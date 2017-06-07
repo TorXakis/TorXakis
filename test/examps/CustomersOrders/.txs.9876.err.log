@@ -1,0 +1,43 @@
+
+TXSSERVER >>  Starting  ..... 
+
+TXSSERVER CMD >>  START
+TXSSERVER RSP <<  FACK START txsserver starting:  "LT322844.asml.com" : 9876
+TXSSERVER CMD >>  INIT C:\TorXakisSandbox\Development\torxakis\examps\CustomersOrders\CustomersOrders.txs
+TXSSERVER RSP <<  PACK INIT input files parsed: C:\TorXakisSandbox\Development\torxakis\examps\CustomersOrders\CustomersOrders.txs
+TXSSERVER RSP <<  PACK INIT smt solver initialized: Z3 [4.5.1 - build hashcode 66e61b8a31a0]
+TXSSERVER RSP <<  FACK INIT txsserver initialized
+TXSSERVER CMD >>  TESTER Model Sut
+TXSSERVER RSP <<  FACK TESTER tester started
+TXSSERVER CMD >>  TEST 10
+TXSSERVER RSP <<  PACK TEST ....1:  OUT: Act    { { ( Report, [ Report(Nil_Customer,Nil_Order) ] ) } }
+TXSSERVER RSP <<  PACK TEST ....2:  IN:  Act    { { ( Customer, [ Customer("","","","",Absent_string,Address("H","P","A","",""),51) ] ) } }
+TXSSERVER RSP <<  PACK TEST ....3:  IN:  Act    { { ( Customer, [ Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29) ] ) } }
+TXSSERVER RSP <<  PACK TEST ....4:  OUT: Act    { { ( Report, [ Report(Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer)),Nil_Order) ] ) } }
+TXSSERVER RSP <<  PACK TEST ....5:  IN:  Act    { { ( Customer, [ Customer("BH","","","",Absent_string,Address("","","L","","H"),8) ] ) } }
+TXSSERVER RSP <<  PACK TEST ....6:  OUT: Act    { { ( Report, [ Report(Cstr_Customer(Customer("BH","","","",Absent_string,Address("","","L","","H"),8),Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer))),Nil_Order) ] ) } }
+TXSSERVER RSP <<  PACK TEST ....7:  IN:  Act    { { ( Customer, [ Customer("B","J","P","R",Absent_string,Address("","","","","BPHB"),88) ] ) } }
+TXSSERVER RSP <<  PACK TEST ....8:  OUT: Act    { { ( Report, [ Report(Cstr_Customer(Customer("B","J","P","R",Absent_string,Address("","","","","BPHB"),88),Cstr_Customer(Customer("BH","","","",Absent_string,Address("","","L","","H"),8),Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer)))),Nil_Order) ] ) } }
+TXSSERVER RSP <<  PACK TEST ....9:  IN:  Act    { { ( Order, [ Order(88,0,-96,-91,ShipInfo(74,87,"A","PBD","B","","","",Present_dateTime(72))) ] ) } }
+TXSSERVER RSP <<  PACK TEST ...10:  OUT: Act    { { ( Report, [ Report(Cstr_Customer(Customer("B","J","P","R",Absent_string,Address("","","","","BPHB"),88),Cstr_Customer(Customer("BH","","","",Absent_string,Address("","","L","","H"),8),Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer)))),Cstr_Order(Order(88,0,-96,-91,ShipInfo(74,87,"A","PBD","B","","","",Present_dateTime(72))),Nil_Order)) ] ) } }
+TXSSERVER RSP <<  FACK TEST PASS
+TXSSERVER CMD >>  TRACE procdef 
+TXSSERVER RSP <<  PACK TRACE PROCDEF trace [Customer :: Customer; Order :: Order; Report :: Report]() EXIT ::=
+TXSSERVER RSP <<  PACK TRACE         Report ! Report(Nil_Customer,Nil_Order)
+TXSSERVER RSP <<  PACK TRACE     >-> Customer ! Customer("","","","",Absent_string,Address("H","P","A","",""),51)
+TXSSERVER RSP <<  PACK TRACE     >-> Customer ! Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29)
+TXSSERVER RSP <<  PACK TRACE     >-> Report ! Report(Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer)),Nil_Order)
+TXSSERVER RSP <<  PACK TRACE     >-> Customer ! Customer("BH","","","",Absent_string,Address("","","L","","H"),8)
+TXSSERVER RSP <<  PACK TRACE     >-> Report ! Report(Cstr_Customer(Customer("BH","","","",Absent_string,Address("","","L","","H"),8),Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer))),Nil_Order)
+TXSSERVER RSP <<  PACK TRACE     >-> Customer ! Customer("B","J","P","R",Absent_string,Address("","","","","BPHB"),88)
+TXSSERVER RSP <<  PACK TRACE     >-> Report ! Report(Cstr_Customer(Customer("B","J","P","R",Absent_string,Address("","","","","BPHB"),88),Cstr_Customer(Customer("BH","","","",Absent_string,Address("","","L","","H"),8),Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer)))),Nil_Order)
+TXSSERVER RSP <<  PACK TRACE     >-> Order ! Order(88,0,-96,-91,ShipInfo(74,87,"A","PBD","B","","","",Present_dateTime(72)))
+TXSSERVER RSP <<  PACK TRACE     >-> Report ! Report(Cstr_Customer(Customer("B","J","P","R",Absent_string,Address("","","","","BPHB"),88),Cstr_Customer(Customer("BH","","","",Absent_string,Address("","","L","","H"),8),Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer)))),Cstr_Order(Order(88,0,-96,-91,ShipInfo(74,87,"A","PBD","B","","","",Present_dateTime(72))),Nil_Order))
+TXSSERVER RSP <<  PACK TRACE     >-> EXIT
+TXSSERVER RSP <<  FACK TRACE ENDDEF
+TXSSERVER CMD >>  QUIT
+TXSSERVER RSP <<  FACK QUIT txsserver closing
+
+TXSSERVER >>  Closing  ..... 
+
+txsserver.exe: <socket: 428>: hGetLine: failed (No error)

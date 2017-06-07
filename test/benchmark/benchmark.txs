@@ -1,0 +1,560 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2016 TNO and Radboud University
+See license.txt
+-}
+
+-- ---------------------------------------------------------------------------
+-- Test Performance of Sequence
+-- ---------------------------------------------------------------------------
+
+CHANDEF ChanDefs ::=
+      Channel1
+    ; Channel2
+    ; Channel3
+    ; Channel4
+    ; Channel5
+    ; Channel6
+    ; Channel7
+    ; Channel8
+    ; Channel9
+    ; ChannelInt1 :: Int
+    ; ChannelInt2 :: Int
+    ; ChannelInt3 :: Int
+    ; Channel10Ints :: Int # Int # Int # Int # Int # Int # Int # Int # Int # Int
+ENDDEF
+
+PROCDEF sequence [ Channel ] ( ) ::=
+    Channel >-> sequence [ Channel ] ( )
+ENDDEF
+
+MODELDEF SpecSequence ::=
+    CHAN IN    
+    CHAN OUT   Channel1
+    BEHAVIOUR
+        sequence [ Channel1 ] ()
+ENDDEF
+
+PROCDEF sequenceData [ ChannelInt :: Int ] ( n :: Int ) ::=
+    ChannelInt ! n >-> sequenceData [ ChannelInt ] ( n )
+ENDDEF
+
+MODELDEF SpecSequenceData ::=
+    CHAN IN    
+    CHAN OUT   ChannelInt1
+    BEHAVIOUR
+        sequenceData [ ChannelInt1 ] ( 4 )
+ENDDEF
+
+PROCDEF sequenceIStep [ Channel ] ( ) ::=
+    Channel >-> ISTEP >-> sequence [ Channel ] ( )
+ENDDEF
+
+MODELDEF SpecSequenceIStep ::=
+    CHAN IN    
+    CHAN OUT   Channel1
+    BEHAVIOUR
+        sequenceIStep [ Channel1 ] ()
+ENDDEF
+
+PROCDEF sequenceAlternate [ Channel1, Channel2 ] ( ) ::=
+    Channel1 >-> sequenceAlternate [ Channel2, Channel1 ] ( )
+ENDDEF
+
+MODELDEF SpecSequenceAlternate ::=
+    CHAN IN    Channel1, Channel2
+    CHAN OUT   
+    BEHAVIOUR
+        sequenceAlternate [ Channel1, Channel2 ] ()
+ENDDEF
+
+-- ---------------------------------------------------------------------------
+PROCDEF choice [ Channel1, Channel2 ] ( ) ::=
+        Channel1 >-> choice [ Channel1, Channel2 ] ( )
+    ##
+        Channel2 >-> choice [ Channel1, Channel2 ] ( )
+ENDDEF
+
+MODELDEF SpecChoice ::=
+    CHAN IN    Channel1, Channel2
+    CHAN OUT   
+    BEHAVIOUR
+        choice [ Channel1, Channel2 ] ()
+ENDDEF
+-- ---------------------------------------------------------------------------
+-- Test Performance of Synchronized processes
+-- ---------------------------------------------------------------------------
+PROCDEF synchronizedN [ Channel ] ( n :: Int ) ::=
+        ( [[ n == 1 ]] =>> sequence [ Channel ] () )
+    ##
+        ( [[ n > 1 ]] =>> (
+                                sequence [ Channel ] () 
+                            |[ Channel ]|
+                                synchronizedN [ Channel ] ( n - 1 )
+                          )
+        )
+ENDDEF
+
+MODELDEF SpecSynchronized ::=
+    CHAN IN    
+    CHAN OUT   Channel1
+    BEHAVIOUR
+        synchronizedN [ Channel1 ] ( 6 )
+ENDDEF
+
+MODELDEF SpecSynchronizedAB ::=
+    CHAN IN    
+    CHAN OUT   Channel1, Channel2
+    BEHAVIOUR
+            sequence [ Channel1 ] ()
+        |[ Channel1 ]|
+            (
+                    sequence [ Channel2 ] ()
+                |[ Channel2 ]|
+                    sequenceAlternate [ Channel1, Channel2 ] ()
+             )
+ENDDEF
+
+PROCDEF synchronizedIStepN [ Channel ] ( n :: Int ) ::=
+        ( [[ n == 1 ]] =>> sequenceIStep [ Channel ] () )
+    ##
+        ( [[ n > 1 ]] =>> (
+                                sequenceIStep [ Channel ] () 
+                            |[ Channel ]|
+                                synchronizedIStepN [ Channel ] ( n - 1 )
+                          )
+        )
+ENDDEF
+
+MODELDEF SpecSynchronizedIStep ::=
+    CHAN IN    
+    CHAN OUT   Channel1
+    BEHAVIOUR
+        synchronizedIStepN [ Channel1 ] ( 4 )
+ENDDEF
+
+PROCDEF synchronizedAlternateN [ Channel1, Channel2 ]  ( n :: Int ) ::=
+        ( [[ n == 1 ]] =>> sequenceAlternate [ Channel1, Channel2 ] () )
+    ##
+        ( [[ n > 1 ]] =>> (
+                                sequenceAlternate [ Channel1, Channel2 ] ()
+                            |[ Channel1, Channel2 ]|
+                                synchronizedAlternateN [ Channel1, Channel2 ] ( n - 1 )
+                          )
+        )
+ENDDEF
+
+MODELDEF SpecSynchronizedAlternate ::=
+    CHAN IN    
+    CHAN OUT   Channel1, Channel2
+    BEHAVIOUR
+        synchronizedAlternateN [ Channel1, Channel2 ] ( 6 )
+ENDDEF
+
+MODELDEF SpecSynchronizedMany ::=
+    CHAN IN    
+    CHAN OUT   Channel1, Channel2, Channel3, Channel4, Channel5, Channel6, Channel7, Channel8, Channel9
+    BEHAVIOUR
+        (
+                sequence [ Channel1 ] ( )
+            |||
+                sequence [ Channel2 ] ( )
+            |||
+                sequence [ Channel3 ] ( )
+            |||
+                sequence [ Channel4 ] ( )
+            |||
+                sequence [ Channel5 ] ( )
+            |||
+                sequence [ Channel6 ] ( )
+            |||
+                sequence [ Channel7 ] ( )
+            |||
+                sequence [ Channel8 ] ( )
+            |||
+                sequence [ Channel9 ] ( )
+        )
+    |[ Channel1, Channel2, Channel3, Channel4, Channel5, Channel6, Channel7, Channel8, Channel9 ]|
+        (
+                sequence [ Channel1 ] ( )
+            |||
+                sequence [ Channel2 ] ( )
+            |||
+                sequence [ Channel3 ] ( )
+            |||
+                sequence [ Channel4 ] ( )
+            |||
+                sequence [ Channel5 ] ( )
+            |||
+                sequence [ Channel6 ] ( )
+            |||
+                sequence [ Channel7 ] ( )
+            |||
+                sequence [ Channel8 ] ( )
+            |||
+                sequence [ Channel9 ] ( )
+        )
+ENDDEF
+
+MODELDEF SpecSynchronizedManyPairs ::=
+    CHAN IN    
+    CHAN OUT   Channel1, Channel2, Channel3, Channel4, Channel5, Channel6, Channel7, Channel8, Channel9
+    BEHAVIOUR
+            (
+                    sequence [ Channel1 ] ( )
+                |[ Channel1 ]|
+                    sequence [ Channel1 ] ( )
+            )
+        |||
+            (
+                    sequence [ Channel2 ] ( )
+                |[ Channel2 ]|
+                    sequence [ Channel2 ] ( )
+            )
+        |||
+            (
+                    sequence [ Channel3 ] ( )
+                |[ Channel3 ]|
+                    sequence [ Channel3 ] ( )
+            )
+        |||
+            (
+                    sequence [ Channel4 ] ( )
+                |[ Channel4 ]|
+                    sequence [ Channel4 ] ( )
+            )
+        |||
+            (
+                    sequence [ Channel5 ] ( )
+                |[ Channel5 ]|
+                    sequence [ Channel5 ] ( )
+            )
+        |||
+            (
+                    sequence [ Channel6 ] ( )
+                |[ Channel6 ]|
+                    sequence [ Channel6 ] ( )
+            )
+        |||
+            (
+                    sequence [ Channel7 ] ( )
+                |[ Channel7 ]|
+                    sequence [ Channel7 ] ( )
+            )
+        |||
+            (
+                    sequence [ Channel8 ] ( )
+                |[ Channel8 ]|
+                    sequence [ Channel8 ] ( )
+            )
+        |||
+            (
+                    sequence [ Channel9 ] ( )
+                |[ Channel9 ]|
+                    sequence [ Channel9 ] ( )
+            )
+ENDDEF
+
+-- ---------------------------------------------------------------------------
+-- Test Performance of Parallel Processes
+-- ---------------------------------------------------------------------------
+PROCDEF parallelN [ Channel ] ( n :: Int ) ::=
+        sequence [ Channel ] () 
+    |||
+        [[ n > 1 ]] =>> parallelN [ Channel ] ( n-1 ) 
+ENDDEF
+
+MODELDEF SpecParallel ::=
+    CHAN IN    
+    CHAN OUT   Channel1
+    BEHAVIOUR
+        parallelN [ Channel1 ] ( 4 )
+ENDDEF
+
+MODELDEF SpecParallelAB ::=
+    CHAN IN    
+    CHAN OUT   Channel1, Channel2
+    BEHAVIOUR
+            sequence [ Channel1 ] ()
+        |||
+            sequence [ Channel2 ] ()
+ENDDEF
+
+PROCDEF parallelIStepN [ Channel ] ( n :: Int ) ::=
+        sequenceIStep [ Channel ] () 
+    |||
+        [[ n > 1 ]] =>> parallelIStepN [ Channel ] ( n-1 ) 
+ENDDEF
+
+MODELDEF SpecParallelIStep ::=
+    CHAN IN    
+    CHAN OUT   Channel1
+    BEHAVIOUR
+        parallelIStepN [ Channel1 ] ( 3 )
+ENDDEF
+
+PROCDEF parallelAlternateN [ Channel1, Channel2 ]  ( n :: Int ) ::=
+        sequenceAlternate [ Channel1, Channel2 ] () 
+    |||
+        [[ n > 1 ]] =>> parallelAlternateN [ Channel1, Channel2 ] ( n-1 ) 
+ENDDEF
+
+MODELDEF SpecParallelAlternate ::=
+    CHAN IN    
+    CHAN OUT   Channel1, Channel2
+    BEHAVIOUR
+        parallelAlternateN [ Channel1, Channel2 ] ( 4 )
+ENDDEF
+
+PROCDEF parallelDataN [ Channel :: Int ] ( n :: Int ) ::=
+        sequenceData [ Channel ] ( n ) 
+    |||
+        [[ n > 1 ]] =>> parallelDataN [ Channel ] ( n-1 ) 
+ENDDEF
+
+MODELDEF SpecParallelData ::=
+    CHAN IN    
+    CHAN OUT   ChannelInt1
+    BEHAVIOUR
+        parallelDataN [ ChannelInt1 ] ( 6 )
+ENDDEF
+-- ---------------------------------------------------------------------------
+-- Test Performance of Hidden Processes
+-- ---------------------------------------------------------------------------
+PROCDEF hideC_synchC_Par_Alternate_C_Xi [ Channel1, Channel2, Channel3, Channel4 ] ( ) ::=
+    HIDE [ HideChannel ] IN
+        sequenceAlternate [ HideChannel, Channel1 ] () 
+    |[ HideChannel ]|
+        sequenceAlternate [ HideChannel, Channel2 ] () 
+    |[ HideChannel ]|
+        sequenceAlternate [ HideChannel, Channel3 ] () 
+    |[ HideChannel ]|
+        sequenceAlternate [ HideChannel, Channel4 ] () 
+    NI
+ENDDEF
+
+MODELDEF SpecHideC_synchC_Par_Alternate_C_Xi ::=
+    CHAN IN    
+    CHAN OUT   Channel1, Channel2, Channel3, Channel4
+    BEHAVIOUR
+        hideC_synchC_Par_Alternate_C_Xi [ Channel1, Channel2, Channel3, Channel4 ] ()
+ENDDEF
+
+PROCDEF synchronizedFirstAlternateN [ Channel1, Channel2 ]  ( n :: Int ) ::=
+        ( [[ n == 1 ]] =>> sequenceAlternate [ Channel1, Channel2 ] () )
+    ##
+        ( [[ n > 1 ]] =>> (
+                                sequenceAlternate [ Channel1, Channel2 ] ()
+                            |[ Channel1 ]|
+                                synchronizedFirstAlternateN [ Channel1, Channel2 ] ( n - 1 )
+                          )
+        )
+ENDDEF
+
+PROCDEF hideC_synchC_Par_Alternate_C_X [ Channel ] ( n :: Int ) ::=
+    HIDE [ HideChannel ] IN
+        synchronizedFirstAlternateN [ HideChannel, Channel ] (n)
+    NI
+ENDDEF
+
+MODELDEF SpecHideC_synchC_Par_Alternate_C_X ::=
+    CHAN IN    
+    CHAN OUT   Channel1
+    BEHAVIOUR
+        hideC_synchC_Par_Alternate_C_X [ Channel1 ] ( 4 )
+ENDDEF
+
+PROCDEF hideC_synchX_Par_Alternate_C_X [ Channel ] ( n :: Int ) ::=
+    HIDE [ HideChannel ] IN
+        synchronizedFirstAlternateN [ Channel, HideChannel  ] (n)
+    NI
+ENDDEF
+
+MODELDEF SpecHideC_synchX_Par_Alternate_C_X ::=
+    CHAN IN    
+    CHAN OUT   Channel1
+    BEHAVIOUR
+        hideC_synchX_Par_Alternate_C_X [ Channel1 ] ( 3 )
+ENDDEF
+
+PROCDEF bag [ In, Out ] () ::=
+    In 
+    >-> (
+                Out
+            |||
+                bag [ In, Out ] ()
+        )
+ENDDEF
+
+PROCDEF match [ InA, InB, Out  ] () ::=
+        InA | InB
+    >-> (
+                Out 
+            |||
+                match [ InA, InB, Out ] ()
+        )
+ENDDEF
+
+MODELDEF SpecHide_Bag_Match ::= 
+    CHAN IN    Channel1, Channel2 
+    CHAN OUT   Channel3
+    BEHAVIOUR
+        HIDE [ H ] IN
+                bag [ Channel1 , H ] ()
+            |[ H ]|
+                match [ H, Channel2 , Channel3 ] ()
+        NI
+ENDDEF
+
+FUNCDEF validInt ( x :: Int ) :: Bool ::=
+    ( 0 <= x ) /\ ( x <= 10)
+ENDDEF
+
+PROCDEF bagInt [ In, Out :: Int ] () ::=
+    In ? x [[ validInt ( x ) ]]
+    >-> (
+                Out ! x
+            |||
+                bagInt [ In, Out ] ()
+        )
+ENDDEF
+
+PROCDEF matchInt [ InA, InB, Out :: Int ] () ::=
+        InA ? a
+    |   InB ? b  [[ ( a == b ) /\ validInt ( a ) /\ validInt ( b )  ]]
+    >-> (
+                Out ! a
+            |||
+                matchInt [ InA, InB, Out ] ()
+        )
+ENDDEF
+
+MODELDEF SpecHide_Bag_MatchInt ::= 
+    CHAN IN    ChannelInt1, ChannelInt2
+    CHAN OUT   ChannelInt3
+    BEHAVIOUR
+        HIDE [ H :: Int ] IN
+                bagInt [ ChannelInt1 , H ] ()
+            |[ H ]|
+                matchInt [ H, ChannelInt2 , ChannelInt3 ] ()
+        NI
+ENDDEF
+
+-- -----------------------------------------------------------
+
+MODELDEF SpecParallelSynchronous ::=
+    CHAN IN    
+    CHAN OUT   Channel1, Channel2, Channel3
+    SYNC {Channel1}, {Channel2}, {Channel3},
+         {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
+         {Channel1|Channel2|Channel3}
+    BEHAVIOUR
+            (
+                    Channel1 >-> Channel2 >-> Channel3 >-> EXIT
+                |[ Channel2 ]|
+                    Channel2 >-> Channel3 >-> Channel1 >-> EXIT
+                |[ Channel2 ]|
+                    Channel3 >-> Channel1 >-> Channel2 >-> EXIT
+            )
+        |[ Channel1, Channel3 ]|
+            Channel1|Channel3 >-> Channel1 >-> ( Channel3 >-> EXIT ||| Channel3 >-> Channel1 >-> EXIT ) 
+ENDDEF 
+
+-- ---------------------------------------------
+-- Nesting
+-- ---------------------------------------------
+PROCDEF synchronizedSequences [ Channel ] ( ) ::=
+        sequence [ Channel ] ()
+    |[ Channel ]|
+        sequence [ Channel ] ()
+ENDDEF
+
+MODELDEF SpecNested ::=
+    CHAN IN    
+    CHAN OUT   Channel1, Channel2, Channel3, Channel4
+    BEHAVIOUR
+        (
+                synchronizedSequences [ Channel1 ] ( )
+            |||
+                synchronizedSequences [ Channel2 ] ( )
+        )
+        |||
+        (
+                synchronizedSequences [ Channel3 ] ( )
+            |||
+                synchronizedSequences [ Channel4 ] ( )
+        )
+ENDDEF 
+
+-- ---------------------------------------------------------------------------
+-- Test Performance of Enable
+-- ---------------------------------------------------------------------------
+PROCDEF sequenceEnable [ Channel ] ( ) ::=
+    (   Channel >-> EXIT
+    ) >>> 
+        sequenceEnable [ Channel ] ( ) 
+ENDDEF
+
+MODELDEF SpecSequenceEnable ::=
+    CHAN IN    
+    CHAN OUT   Channel1 
+    BEHAVIOUR
+        sequenceEnable [ Channel1 ] ( )
+ENDDEF
+
+PROCDEF sequenceEnableInt [ Channel :: Int ] ( a :: Int ) ::=
+    (   Channel ! a >-> EXIT !a
+    ) >>> ACCEPT ?b IN
+        sequenceEnableInt [ Channel ] ( b ) 
+    NI
+ENDDEF
+
+MODELDEF SpecSequenceEnableInt ::=
+    CHAN IN    
+    CHAN OUT   ChannelInt1
+    BEHAVIOUR
+        sequenceEnableInt [ ChannelInt1 ] ( 5 )
+ENDDEF
+
+PROCDEF sequenceEnableIntTwice [ Channel1, Channel2 :: Int ] ( a1, a2 :: Int ) ::=
+    (   Channel1 ! a1 >-> EXIT !a1        ?x2 :: Int
+    |||
+        Channel2 ! a2 >-> EXIT ?x1 :: Int !a2
+    ) >>> ACCEPT ?b1 ?b2 IN
+        sequenceEnableIntTwice [ Channel1, Channel2 ] ( b2, b1 ) 
+    NI
+ENDDEF
+
+MODELDEF SpecSequenceEnableIntTwice ::=
+    CHAN IN    
+    CHAN OUT   ChannelInt1, ChannelInt2 
+    BEHAVIOUR
+        sequenceEnableIntTwice [ ChannelInt1, ChannelInt2 ] ( 5, 7 )
+ENDDEF
+
+-- ---------------------------------------------------------------------------
+PROCDEF sequence10Ints [ Channel  :: Int # Int # Int # Int # Int # Int # Int # Int # Int # Int ] ( ) ::=
+    Channel ? x0 ? x1 ? x2 ? x3 ? x4 ? x5 ? x6 ? x7 ? x8 ? x9
+        [[ (x0 > x1) 
+        /\ (x1 > x2) 
+        /\ (x2 > x3) 
+        /\ (x3 > x4) 
+        /\ (x4 > x5) 
+        /\ (x5 > x6)
+        /\ (x6 > x7)
+        /\ (x7 > x8)
+        /\ (x8 > x9)
+        ]]
+    >-> sequence10Ints [ Channel ] ( )
+ENDDEF
+
+MODELDEF SpecSequence10Ints ::=
+    CHAN IN    
+    CHAN OUT   Channel10Ints
+    BEHAVIOUR
+        sequence10Ints [ Channel10Ints ] ()
+ENDDEF
+-- ---------------------------------------------------------------------------
+-- 
+-- ---------------------------------------------------------------------------
+

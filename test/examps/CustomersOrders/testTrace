@@ -1,0 +1,13 @@
+TXS >>  PROCDEF trace [Customer :: Customer; Order :: Order; Report :: Report]() EXIT ::=
+TXS >>  Report ! Report(Nil_Customer,Nil_Order)
+TXS >>  >-> Customer ! Customer("","","","",Absent_string,Address("H","P","A","",""),51)
+TXS >>  >-> Customer ! Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29)
+TXS >>  >-> Report ! Report(Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer)),Nil_Order)
+TXS >>  >-> Customer ! Customer("BH","","","",Absent_string,Address("","","L","","H"),8)
+TXS >>  >-> Report ! Report(Cstr_Customer(Customer("BH","","","",Absent_string,Address("","","L","","H"),8),Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer))),Nil_Order)
+TXS >>  >-> Customer ! Customer("B","J","P","R",Absent_string,Address("","","","","BPHB"),88)
+TXS >>  >-> Report ! Report(Cstr_Customer(Customer("B","J","P","R",Absent_string,Address("","","","","BPHB"),88),Cstr_Customer(Customer("BH","","","",Absent_string,Address("","","L","","H"),8),Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer)))),Nil_Order)
+TXS >>  >-> Order ! Order(88,0,-96,-91,ShipInfo(74,87,"A","PBD","B","","","",Present_dateTime(72)))
+TXS >>  >-> Report ! Report(Cstr_Customer(Customer("B","J","P","R",Absent_string,Address("","","","","BPHB"),88),Cstr_Customer(Customer("BH","","","",Absent_string,Address("","","L","","H"),8),Cstr_Customer(Customer("BA","P","H","PPBHB",Absent_string,Address("H","AA","","A","B"),29),Cstr_Customer(Customer("","","","",Absent_string,Address("H","P","A","",""),51),Nil_Customer)))),Cstr_Order(Order(88,0,-96,-91,ShipInfo(74,87,"A","PBD","B","","","",Present_dateTime(72))),Nil_Order))
+TXS >>  >-> EXIT
+TXS >>  ENDDEF

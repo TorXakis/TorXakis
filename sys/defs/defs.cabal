@@ -1,0 +1,70 @@
+name:                   defs
+version:                0.2.1.0
+synopsis:               Definitions for TorXakis
+license:                BSD3
+license-file:           license.txt
+author:                 Jan Tretmans
+                      , Pierre van de Laar
+maintainer:          
+                      , pierre.vandelaar@tno.nl
+copyright:              TNO
+category:               Web
+build-type:             Simple
+cabal-version:          >=1.10
+
+library
+  hs-source-dirs:       src
+
+  exposed-modules:      Params
+                      , TxsDDefs
+                      , TxsDefs
+                      , TxsShow
+                      , TxsUtils
+                      , StdTDefs
+                      , Utils
+                      , XmlFormat
+                      , ChanId
+                      , CnectId
+                      , CstrId
+                      , FuncId
+                      , GoalId
+                      , MapperId
+                      , ModelId
+                      , NoId
+                      , ProcId
+                      , PurpId
+                      , SortId
+                      , StatId
+                      , VarId
+                      
+  other-modules:        BehExprDefs
+                      , ConnectionDefs
+                      , ConstDefs
+                      , Ident
+                      , Name
+                      , SortOf
+                      , TxsDef
+                      , ValExprDefs
+                      , ValExprImpls
+                    
+                      , CnectDef
+                      , CstrDef
+                      , FuncDef
+                      , MapperDef
+                      , ModelDef
+                      , ProcDef
+                      , PurpDef
+                      , SortDef
+                      , Variable
+
+
+  ghc-options:         -O2 -optc-O3 -optc-ffast-math
+  
+  build-depends:        base
+                      , bytestring
+                      , containers
+                      , hexpat
+                      , random
+                      , MissingH
+                      
+  default-language:     Haskell2010

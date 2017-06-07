@@ -1,0 +1,14 @@
+
+TXSSERVER >>  Starting  ..... 
+
+TXSSERVER CMD >>  START
+TXSSERVER RSP <<  FACK START txsserver starting:  "LT322844.asml.com" : 9876
+TXSSERVER CMD >>  INIT LuckyPeople.txs
+TXSSERVER RSP <<  PACK INIT input files parsed: LuckyPeople.txs
+TXSSERVER RSP <<  PACK INIT smt solver initialized: Z3 [4.5.1 - build hashcode 66e61b8a31a0]
+TXSSERVER RSP <<  FACK INIT txsserver initialized
+TXSSERVER CMD >>  QUIT
+TXSSERVER RSP <<  FACK QUIT txsserver closing
+
+TXSSERVER >>  Closing  ..... 
+

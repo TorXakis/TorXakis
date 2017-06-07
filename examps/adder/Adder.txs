@@ -1,0 +1,113 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2016 TNO and Radboud University
+See license.txt
+-}
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- Model of (parallel) Adders, for one adder - Adder1 -, and for three adders - Adder3 -,
+-- with inputs "Plus(i) x y" and "Minus(i) x y", and output "Result(i) z".
+-- ----------------------------------------------------------------------------------------- --
+
+
+TYPEDEF  Operation ::=
+      Plus  { p1, p2 :: Int }
+    | Minus { m1, m2 :: Int }
+    | Error      
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+PROCDEF  adder  [ Act :: Operation;  Res :: Int ] ( ) ::=
+       Act ?opn [[ isPlus(opn)  ]]  >->  Res !p1(opn)+p2(opn)  >->  adder [ Act, Res ] ( )
+    ##
+       Act ?opn [[ isMinus(opn) ]]  >->  Res !m1(opn)-m2(opn)  >->  adder [ Act, Res ] ( )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+CHANDEF  Chans  ::=    Action, Action1, Action2, Action3  :: Operation
+                     ; Result, Result1, Result2, Result3  :: Int
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+MODELDEF  Adder ::=
+    CHAN IN    Action
+    CHAN OUT   Result
+    BEHAVIOUR  adder [ Action, Result ] ( )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+CNECTDEF  Sut ::=
+        CLIENTSOCK
+
+        CHAN  OUT  Action                        HOST "localhost"  PORT 7890
+        ENCODE     Action ? opn              ->  ! toString(opn)
+
+        CHAN  IN   Result                        HOST "localhost"  PORT 7890
+        DECODE     Result ! fromString(s)   <-   ? s
+ENDDEF
+
+
+CNECTDEF  Sim  ::=
+        SERVERSOCK
+
+        CHAN  IN   Action                        HOST "localhost"  PORT 7890
+        DECODE     Action ! fromString(s)   <-   ? s
+
+        CHAN  OUT  Result                        HOST "localhost"  PORT 7890
+        ENCODE     Result ? result           ->  ! toString(result)
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+MODELDEF  Adder3 ::=
+        CHAN IN    Action1, Action2, Action3
+        CHAN OUT   Result1, Result2, Result3
+
+        BEHAVIOUR       adder [ Action1, Result1 ] ( )
+                   |||
+                        adder [ Action2, Result2 ] ( )
+                   |||
+                        adder [ Action3, Result3 ] ( )
+
+ENDDEF
+
+CNECTDEF  Sut3 ::=
+        CLIENTSOCK
+
+        CHAN  OUT  Action1                       HOST "localhost"  PORT 7891
+        ENCODE     Action1 ? opn             ->  ! toString(opn)
+
+        CHAN  IN   Result1                       HOST "localhost"  PORT 7891
+        DECODE     Result1 ! fromString(s)  <-   ? s
+
+        CHAN  OUT  Action2                       HOST "localhost"  PORT 7892
+        ENCODE     Action2 ? opn             ->  ! toString(opn)
+
+        CHAN  IN   Result2                       HOST "localhost"  PORT 7892
+        DECODE     Result2 ! fromString(s)  <-   ? s
+
+        CHAN  OUT  Action3                       HOST "localhost"  PORT 7893
+        ENCODE     Action3 ? opn             ->  ! toString(opn)
+
+        CHAN  IN   Result3                       HOST "localhost"  PORT 7893
+        DECODE     Result3 ! fromString(s)  <-   ? s
+
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+-- ----------------------------------------------------------------------------------------- --
+

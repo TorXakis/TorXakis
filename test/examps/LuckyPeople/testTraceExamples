@@ -1,0 +1,39 @@
+TXS >>  PROCDEF trace [In :: Person; Out :: Bool]() EXIT ::=
+TXS >>  In ! C_Person(Male,"Mickey","Mouse",13,1)
+TXS >>  >-> Out ! True
+TXS >>  >-> In ! C_Person(Male,"Donald","Duck",13,3)
+TXS >>  >-> Out ! True
+TXS >>  >-> In ! C_Person(Male,"Luuk","Laar",24,12)
+TXS >>  >-> Out ! True
+TXS >>  >-> In ! C_Person(Female,"Shakira","Ripoll",2,2)
+TXS >>  >-> Out ! True
+TXS >>  >-> In ! C_Person(Male,"Michael","Buble",9,9)
+TXS >>  >-> Out ! True
+TXS >>  >-> In ! C_Person(Female,"Imke","Laar",7,7)
+TXS >>  >-> Out ! True
+TXS >>  >-> In ! C_Person(Male,"Huey","Duck",17,10)
+TXS >>  >-> Out ! False
+TXS >>  >-> In ! C_Person(Male,"Dewey","Duck",17,10)
+TXS >>  >-> Out ! True
+TXS >>  >-> In ! C_Person(Male,"Louie","Duck",17,10)
+TXS >>  >-> Out ! False
+TXS >>  >-> In ! C_Person(Male,"Mickey","Mouse",13,1)
+TXS >>  >-> Out ! True
+TXS >>  >-> In ! C_Person(Male,"Donald","Duck",13,3)
+TXS >>  >-> Out ! True
+TXS >>  >-> In ! C_Person(Female,"April","Duck",15,5)
+TXS >>  >-> Out ! True
+TXS >>  >-> In ! C_Person(Female,"Beatrix","Oranje",31,1)
+TXS >>  >-> Out ! False
+TXS >>  >-> In ! C_Person(Female,"Maxima","Zorreguieta",17,5)
+TXS >>  >-> Out ! False
+TXS >>  >-> In ! C_Person(Female,"Amalia","Oranje",7,12)
+TXS >>  >-> Out ! False
+TXS >>  >-> In ! C_Person(Female,"Alexia","Oranje",26,6)
+TXS >>  >-> Out ! False
+TXS >>  >-> In ! C_Person(Female,"Ariane","Oranje",10,4)
+TXS >>  >-> Out ! False
+TXS >>  >-> In ! C_Person(Male,"Willem","Oranje",27,4)
+TXS >>  >-> Out ! True
+TXS >>  >-> EXIT
+TXS >>  ENDDEF

@@ -1,0 +1,4 @@
+tester Model Sut
+test 1000
+trace procdef $> testTraceRandom
+exit

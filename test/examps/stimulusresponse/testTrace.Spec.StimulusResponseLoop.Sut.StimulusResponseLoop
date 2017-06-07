@@ -1,0 +1,7 @@
+TXS >>  PROCDEF trace [Stimulus :: ; Response :: ]() EXIT ::=
+TXS >>  Stimulus !
+TXS >>  >-> Response !
+TXS >>  >-> Stimulus !
+TXS >>  >-> Response !
+TXS >>  >-> EXIT
+TXS >>  ENDDEF

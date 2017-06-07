@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema"  xmlns:CO="http://www.microsoft.com/" targetNamespace="http://www.microsoft.com/" elementFormDefault="qualified">
+  <element name='Root'>
+    <complexType>
+      <sequence>
+        <element name='Customers'>
+          <complexType>
+            <sequence>
+              <element name='Customer' type='CO:CustomerType' minOccurs='0' maxOccurs='unbounded' />
+            </sequence>
+          </complexType>
+        </element>
+        <element name='Orders'>
+          <complexType>
+            <sequence>
+              <element name='Order' type='CO:OrderType' minOccurs='0' maxOccurs='unbounded' />
+            </sequence>
+          </complexType>
+        </element>
+      </sequence>
+    </complexType>
+    <key name='CustomerIDKey'>
+      <selector xpath='Customers/Customer'/>
+      <field xpath='@CustomerID'/>
+    </key>
+    <keyref name='CustomerIDKeyRef' refer='CO:CustomerIDKey'>
+      <selector xpath='Orders/Order'/>
+      <field xpath='CustomerID'/>
+    </keyref>
+  </element>
+  <complexType name='CustomerType'>
+    <sequence>
+      <element name='CompanyName' type='string'/>
+      <element name='ContactName' type='string'/>
+      <element name='ContactTitle' type='string'/>
+      <element name='Phone' type='string'/>
+      <element name='Fax' minOccurs='0' type='string'/>
+      <element name='FullAddress' type='CO:AddressType'/>
+    </sequence>
+    <attribute name='CustomerID' type='unsignedLong' use="required"/>
+  </complexType>
+  <complexType name='AddressType'>
+    <sequence>
+      <element name='Address' type='string'/>
+      <element name='City' type='string'/>
+      <element name='Region' type='string'/>
+      <element name='PostalCode' type='string' />
+      <element name='Country' type='string'/>
+    </sequence>
+  </complexType>
+  <complexType name='OrderType'>
+    <sequence>
+      <element name='CustomerID' type='unsignedLong'/>
+      <element name='EmployeeID' type='unsignedInt'/>
+      <element name='OrderDate' type='dateTime'/>
+      <element name='RequiredDate' type='dateTime'/>
+      <element name='ShipInfo' type='CO:ShipInfoType'/>
+    </sequence>
+  </complexType>
+  <complexType name='ShipInfoType'>
+    <sequence>
+      <element name='ShipVia' type='integer'/>
+      <element name='Freight' type='decimal'/>
+      <element name='ShipName' type='string'/>
+      <element name='ShipAddress' type='string'/>
+      <element name='ShipCity' type='string'/>
+      <element name='ShipRegion' type='string'/>
+      <element name='ShipPostalCode' type='string'/>
+      <element name='ShipCountry' type='string'/>
+    </sequence>
+    <attribute name='ShippedDate' type='dateTime'/>
+  </complexType>
+</schema>

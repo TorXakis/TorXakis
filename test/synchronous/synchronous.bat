@@ -1,0 +1,1 @@
+torxakis.bat synchronous.txs < synchronous.cmd

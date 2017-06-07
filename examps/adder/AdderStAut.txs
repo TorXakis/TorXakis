@@ -1,0 +1,82 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2016 TNO and Radboud University
+See license.txt
+-}
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- Model of Adder:
+-- with inputs "Plus(i) x y" and "Minus(i) x y", and output "Result(i) z".
+
+
+TYPEDEF  Operation
+    ::=
+          Plus  { p1, p2 :: Int }
+        | Minus { m1, m2 :: Int }
+        | Error
+ENDDEF
+
+
+STAUTDEF adder  [ Act :: Operation;  Res :: Int ] ( )
+ ::=
+      STATE  idle, calc
+
+      VAR    statevar :: Int
+
+      INIT   idle   { statevar := 0 }
+
+      TRANS  idle  ->  Act ?opn [[ isPlus(opn)  ]]  { statevar := p1(opn)+p2(opn) }  ->  calc
+             idle  ->  Act ?opn [[ isMinus(opn) ]]  { statevar := m1(opn)-m2(opn) }  ->  calc
+             calc  ->  Res ! statevar   { }                                          ->  idle
+
+ENDDEF
+
+
+CHANDEF  Chans   ::=    Action  :: Operation
+                      ; Result  :: Int
+ENDDEF
+
+
+MODELDEF Adder
+ ::=
+      CHAN IN    Action
+      CHAN OUT   Result
+
+      BEHAVIOUR  adder [ Action, Result ] ( )
+
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+CNECTDEF  Sut
+    ::=
+        CLIENTSOCK
+
+        CHAN  OUT  Action                        HOST "localhost"  PORT 7890
+        ENCODE     Action ? opn              ->  ! toString(opn)
+
+        CHAN  IN   Result                        HOST "localhost"  PORT 7890
+        DECODE     Result ! fromString(s)   <-   ? s
+
+ENDDEF
+
+
+CNECTDEF  Sim
+    ::=
+        SERVERSOCK
+
+        CHAN  IN   Action                        HOST "localhost"  PORT 7890
+        DECODE     Action ! fromString(s)   <-   ? s
+
+        CHAN  OUT  Result                        HOST "localhost"  PORT 7890
+        ENCODE     Result ? result           ->  ! toString(result)
+
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- ----------------------------------------------------------------------------------------- --
+

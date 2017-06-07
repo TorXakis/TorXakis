@@ -1,0 +1,67 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2016 TNO and Radboud University
+See license.txt
+-}
+
+
+
+PROCDEF cell [ Read, Write :: String # Int ] ( value :: Int ) ::=
+        Read ? reader ! value   >->  cell [Read, Write ] (value)
+    ##
+        Write ? writer ? value  >->  cell [Read ,Write ] (value)
+ENDDEF
+
+
+PROCDEF plus [ Read, Write :: String # Int ] ( myName :: String; n :: Int ) EXIT ::=
+    Read ! myName ? x  >->  Write ! myName ! x+n  >->  EXIT
+ENDDEF
+
+
+PROCDEF system [ Read, Write :: String # Int ] ( ) ::=
+        cell [ Read, Write ] ( 0 )
+    |[ Read, Write ]|
+    (
+             plus [ Read, Write ]("p1",1)
+         |||
+             plus [ Read, Write ]("p2",2)
+         |||
+             plus [ Read, Write ]("p3",4)
+     >>>
+        Read ! "Final" ? x  
+    )
+ENDDEF
+
+
+PROCDEF trace7 [Read, Write :: String # Int]() EXIT ::=
+        Read ! "p1" ! 0
+    >-> Write ! "p1" ! 1
+    >-> Read ! "p3" ! 1
+    >-> Write ! "p3" ! 5
+    >-> Read ! "p2" ! 5
+    >-> Write ! "p2" ! 7
+    >-> Read ! "Final" ! 7
+    >-> EXIT
+ENDDEF
+
+CHANDEF Channels ::=
+    Read, Write :: String # Int
+ENDDEF
+
+MODELDEF Model ::= 
+	CHAN IN   
+    CHAN OUT  Read, Write
+		
+	BEHAVIOUR
+              system [ Read, Write ] ( )
+ENDDEF
+
+MODELDEF Model7 ::= 
+	CHAN IN   
+    CHAN OUT  Read, Write
+		
+	BEHAVIOUR
+              system [ Read, Write ] ( )
+	    ||
+              trace7 [ Read, Write ] ( )
+ENDDEF

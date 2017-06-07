@@ -1,0 +1,139 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2016 TNO and Radboud University
+See license.txt
+-}
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- Model of a Queue of Integers, with input "In x", and "Out y".
+
+
+TYPEDEF  IntList  ::=   Nil
+                      | Cons  { hd ::  Int
+                              ; tl ::  IntList
+                              }
+ENDDEF
+
+
+FUNCDEF  add ( x :: Int; l :: IntList ) :: IntList
+         ::= IF    isNil(l)
+             THEN  Cons(x,Nil)
+             ELSE  Cons(hd(l),add(x,tl(l)))
+             FI
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+TYPEDEF  QueueOp
+    ::=
+          Enq  { val :: Int }
+        | Deq
+        | Error
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+PROCDEF  queue  [ In :: QueueOp; Out :: Int ]  ( buf :: IntList )
+    ::=
+                 In ?qop [[ isEnq(qop) ]]
+            >->  queue [In,Out] (add(val(qop),buf))
+        ##
+                 In ?qop [[ isDeq(qop) ]]
+            >->  (
+                     [[ not(isNil(buf)) ]]  =>>  Out !hd(buf)  >->  queue [In,Out] (tl(buf))
+                  ##
+                     [[ isNil(buf) ]]       =>>  queue [In,Out] (Nil)
+                 )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+CHANDEF  Chans   ::=    In   :: QueueOp
+                      ; Out  :: Int
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+MODELDEF  Queue
+    ::=
+        CHAN IN    In
+        CHAN OUT   Out
+
+        BEHAVIOUR  queue [ In, Out ] ( Nil )
+
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+CNECTDEF  Sut
+    ::=
+        CLIENTSOCK
+
+        CHAN  OUT  In                         HOST "localhost"  PORT 7890
+        ENCODE     In ? qop               ->  ! toString(qop)
+
+        CHAN  IN   Out                        HOST "localhost"  PORT 7890
+        DECODE     Out ! fromString(s)   <-   ? s
+
+ENDDEF
+
+
+CNECTDEF  Sim
+    ::=
+        SERVERSOCK
+
+        CHAN IN    In                         HOST "localhost"  PORT 7890
+        DECODE     In ! fromString(s)    <-   ? s
+
+        CHAN OUT   Out                        HOST "localhost"  PORT 7890
+        ENCODE     Out ? qop              ->  ! toString(qop)
+
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- ----------------------------------------------------------------------------------------- --
+
+
+PROCDEF  lossyQueue  [ In :: QueueOp;  Out :: Int ] ( buf :: IntList )
+    ::=
+                 In ?qop [[ isEnq(qop) ]]
+            >->  (
+                     ISTEP  >->  lossyQueue [In,Out] (add(val(qop),buf))
+                  ##
+                     ISTEP  >->  lossyQueue [In,Out] (buf)
+                 )
+        ##
+                 In ?qop [[ isDeq(qop) ]]
+            >->  (
+                     [[ not(isNil(buf)) ]] =>>  Out !hd(buf)  >->  lossyQueue [In,Out] (tl(buf))
+                  ##
+                     [[ isNil(buf) ]]      =>>  lossyQueue [In,Out] (Nil)
+                 )
+ENDDEF
+
+
+MODELDEF  Lossy
+    ::=
+        CHAN IN    In
+        CHAN OUT   Out
+
+        BEHAVIOUR  lossyQueue  [ In, Out ] (Nil)
+
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- ----------------------------------------------------------------------------------------- --
+

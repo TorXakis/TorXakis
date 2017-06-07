@@ -1,0 +1,127 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2016 TNO and Radboud University
+See license.txt
+-}
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- Dispatch Process
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- Job Data
+
+
+TYPEDEF  JobData  ::=  JobData  {  jobId          :: Int
+                                ;  jobDescription :: String
+                                ;  x, y           :: Int
+                                }
+
+ENDDEF
+
+
+FUNCDEF  isValidJob ( jobdata :: JobData )  :: Bool
+ ::=
+           ( jobId(jobdata) > 0 ) /\ ( ( jobId(jobdata) % 2 ) == 0 )
+       /\  strinre ( jobDescription(jobdata), REGEX('[A-Z][0-9]{2}[a-z]+') )
+       /\  ( x(jobdata) > 0 )
+       /\  ( y(jobdata) > 0 )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- Job Output
+
+
+TYPEDEF  JobOut  ::=  JobOut  {  jobId     :: Int
+                              ;  processor :: Int
+                              ;  gcd       :: Int
+                              }
+                    | Error   {  reason :: String }
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- Greatest Common Divisor
+
+
+FUNCDEF  gcd ( a, b :: Int ) :: Int
+ ::=
+        IF a == b THEN  a
+                  ELSE  IF a > b THEN  gcd ( a - b, b )
+                                 ELSE  gcd ( a, b - a )
+                                 FI
+        FI
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+PROCDEF  processor [ Start :: JobData; Finish :: JobOut ] ( procnum :: Int )
+ ::=
+             Start ? job :: JobData
+        >->
+             Finish ! JobOut ( jobId(job)
+                             , procnum
+                             , gcd ( x(job) , y(job) )
+                             )
+        >->
+             processor [ Start, Finish ] ( procnum )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+PROCDEF  processors [ Start :: JobData; Finish :: JobOut ] ( procnum :: Int )
+ ::=
+             processor [ Start, Finish ] ( procnum )
+        |||
+             [[ procnum > 1 ]]  =>>  processors [ Start, Finish ] ( procnum-1 )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+PROCDEF  dispatcher [ Job, Dispatch :: JobData; Finish :: JobOut ] ( )
+ ::=
+            (      Job ? job :: JobData  [[ isValidJob(job) ]]
+              >->
+                   Dispatch ! job
+              >->
+                   dispatcher [ Job, Dispatch, Finish ]  ( )
+            )
+        ##
+            (      Job ? job :: JobData  [[ not ( isValidJob(job) ) ]]
+              >->
+                   Finish ! Error ( "Non-Valid Input Data" )
+              >->
+                   dispatcher [ Job, Dispatch, Finish ]  ( )
+            )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+MODELDEF Model ::=
+    CHAN IN    Job      :: JobData
+    CHAN OUT   Finish   :: JobOut
+
+    BEHAVIOUR
+        HIDE  [ Job2Proc :: JobData ]
+        IN
+                dispatcher [ Job, Job2Proc, Finish ]  ( )
+            |[ Job2Proc ]|
+                processors [ Job2Proc, Finish ] ( 3 )
+        NI
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+--                                                                                           --
+-- ----------------------------------------------------------------------------------------- --
+

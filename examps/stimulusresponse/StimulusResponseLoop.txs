@@ -1,0 +1,34 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2016 TNO and Radboud University
+See license.txt
+-}
+
+
+PROCDEF stimResp [ Stimulus, Response ] () 
+    ::=
+        Stimulus  >->  Response  >->  stimResp [Stimulus,Response] ()
+ENDDEF
+
+CHANDEF Model ::=   Stimulus, Response
+ENDDEF
+
+MODELDEF Model ::=
+    CHAN IN    Stimulus
+    CHAN OUT   Response
+
+    BEHAVIOUR  
+        stimResp [Stimulus,Response] ()
+ENDDEF
+
+CNECTDEF  Sut
+    ::=
+        CLIENTSOCK
+
+        CHAN  OUT  Stimulus            HOST "localhost"  PORT 7890
+        ENCODE     Stimulus            ->  ! ""
+        
+        CHAN  IN   Response            HOST "localhost"  PORT 7890
+        DECODE     Response            <-   ? s
+ENDDEF
+

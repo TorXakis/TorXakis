@@ -1,0 +1,78 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2016 TNO and Radboud University
+See license.txt
+-}
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- Dispatch Process
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- greatest common diviser
+
+
+FUNCDEF  gcd ( a, b :: Int ) :: Int
+ ::=
+        IF a == b THEN  a
+                  ELSE  IF a > b THEN  gcd ( a - b, b )
+                                 ELSE  gcd ( a, b - a )
+                        FI
+        FI
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- processor
+
+
+PROCDEF  processor [ Start, Finish :: Int # Int ] ( procnum :: Int )
+ ::=
+             Start ?x ?y  [[ x>0, y>0 ]]
+        >->  Finish ! procnum ! gcd ( x, y )
+        >->  processor [ Start, Finish ] ( procnum )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+PROCDEF  processors [ Start, Finish :: Int # Int ] ( procnum :: Int )
+ ::=
+             processor [ Start, Finish ] ( procnum )
+        |||
+             [[ procnum > 1 ]]  =>>  processors [ Start, Finish ] ( procnum-1 )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+PROCDEF  dispatcher [ Job, Dispatch :: Int # Int ] ( )  ::=
+             Job ?x ?y  [[ x>0, y>0 ]]
+        >->  Dispatch !x !y
+        >->  dispatcher [ Job, Dispatch ]  ( )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+MODELDEF Model ::=
+    CHAN IN    Job      :: Int # Int
+    CHAN OUT   Finish   :: Int # Int
+
+    BEHAVIOUR
+        HIDE  [ Job2Proc :: Int # Int ]
+        IN
+                dispatcher [ Job, Job2Proc ]  ( )
+            |[ Job2Proc ]|
+                processors [ Job2Proc, Finish] ( 3 )
+        NI
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+--                                                                                           --
+-- ----------------------------------------------------------------------------------------- --

@@ -1,0 +1,61 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2016 TNO and Radboud University
+See license.txt
+-}
+
+module TestMultipleInstances
+(
+testMultipleInstancesList
+)
+where
+import Control.Monad.State
+import qualified Data.Map as Map
+import System.Process(CreateProcess)
+
+import Test.HUnit
+
+import TxsDefs
+import StdTDefs
+import SMT
+import SolveDefs
+import SolveDefs.Params
+
+smtSolvers :: [CreateProcess]
+smtSolvers = [cmdCVC4, cmdZ3]
+
+testMultipleInstancesList :: Test
+testMultipleInstancesList = TestList $ testsSolvers smtSolvers
+---------------------------------------------------------------------------
+-- Tests
+---------------------------------------------------------------------------
+testsSolvers :: [CreateProcess] -> [Test]
+testsSolvers []       = []
+testsSolvers x        = map (testSolvers (head x)) x ++ testsSolvers (tail x)
+
+testSolvers :: CreateProcess -> CreateProcess -> Test
+testSolvers s1 s2 = TestLabel "Two instances" $ TestCase $ do
+    smtEnv1 <- createSMTEnv s1 False TxsDefs.empty initParams
+    smtEnv2 <- createSMTEnv s2 False TxsDefs.empty initParams
+    
+    let v = VarId "instance" 1234 sortId_Int
+    smtEnv1' <- execStateT openSolver smtEnv1
+    smtEnv2' <- execStateT openSolver smtEnv2
+    
+    smtEnv1'' <- execStateT (addDeclarations [v]) smtEnv1'
+    smtEnv2'' <- execStateT (addDeclarations [v]) smtEnv2'
+    
+    let assertion1 = cstrFunc funcId_ltInt [cstrVar v, cstrConst (Cint 0)]
+    smtEnv1''' <- execStateT (addAssertions [assertion1]) smtEnv1''
+
+    let assertion2 = cstrFunc funcId_gtInt [cstrVar v, cstrConst (Cint 0)]
+    smtEnv2''' <- execStateT (addAssertions [assertion2]) smtEnv2''
+    
+    (resp1, smtEnv1'''') <- runStateT getSolvable smtEnv1'''
+    (resp2, smtEnv2'''') <- runStateT getSolvable smtEnv2'''
+   
+    (_,_) <- runStateT close smtEnv1''''
+    (_,_) <- runStateT close smtEnv2''''
+   
+    assertEqual "sat" Sat resp1
+    assertEqual "sat" Sat resp2

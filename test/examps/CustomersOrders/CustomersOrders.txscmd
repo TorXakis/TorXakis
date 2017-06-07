@@ -1,0 +1,4 @@
+tester Model Sut
+test 10
+trace procdef $> testTrace
+exit

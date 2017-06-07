@@ -1,0 +1,53 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2016 TNO and Radboud University
+See license.txt
+-}
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- Dispatch Process
+
+
+PROCDEF  processor [ Start, Finish ] ( )
+ ::=
+             Start
+        >->  Finish
+        >->  processor [ Start, Finish ] ( )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+PROCDEF  dispatcher [ Job, Dispatch ] ( )
+ ::=
+             Job
+        >->  Dispatch
+        >->  dispatcher [ Job, Dispatch ]  ( )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+MODELDEF Model
+ ::=
+    CHAN IN    Job
+    CHAN OUT   Finish; Job2Proc
+
+    BEHAVIOUR
+
+            dispatcher [ Job, Job2Proc ]  ( )
+
+        |[ Job2Proc ]|
+
+            processor [ Job2Proc, Finish] ( )
+
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+--                                                                                           --
+-- ----------------------------------------------------------------------------------------- --
+
