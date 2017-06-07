@@ -1,9 +1,10 @@
 # TorXakis
 
 TorXakis is a Model Based Test tool.
+It is licensed under the [BSD3 license](LICENSE).
 
 For Users:
-User documentation at [our wiki](https://github.com/TorXakis/TorXakis/wiki.
+User documentation at [our wiki](https://github.com/TorXakis/TorXakis/wiki).
 
 For Developers:
 TorXakis is written in [Haskell](www.haskell.org).
