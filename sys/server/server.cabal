@@ -18,10 +18,7 @@ executable txsserver
   hs-source-dirs:       src
   main-is:              TxsServer.hs
   other-modules:        
-     -- , Cnect
-     -- , EnDecode
-     -- , ServerIf
-                       ToProcdef
+                        ToProcdef
                       
   build-depends:        base
                       , containers
@@ -33,13 +30,11 @@ executable txsserver
                       , time
                       , MissingH
                       
-                      , behave
-                      , behavedefs
+                      , cnect
                       , core
                       , defs
-                      , env
                       , front
-                      , solve
+                      , serverenv
                       , solvedefs
                       , value
                       

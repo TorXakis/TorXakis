@@ -1,0 +1,94 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2016 TNO and Radboud University
+See license.txt
+-}
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- Model of (parallel) Adders, for one adder - Adder1 -, and for three adders - Adder3 -,
+-- with inputs "Plus(i) x y" and "Minus(i) x y", and output "Result(i) z".
+-- ----------------------------------------------------------------------------------------- --
+
+
+CHANDEF  Channels
+    ::=
+        Plus, Minus :: Int # Int          ;
+        Result      :: Int                ;
+        Sin         :: String # Int # Int ;
+        Sout        :: Int
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+PROCDEF  adder  [ Opt, Aft :: Int # Int;   Res :: Int ] ( )
+    ::=
+            Opt ?x ?y   >->   Res !x+y   >->   adder [ Opt, Aft, Res ] ( )
+        ##
+            Aft ?x ?y   >->   Res !x-y   >->   adder [ Opt, Aft, Res ] ( )
+ENDDEF
+
+
+MODELDEF  Adder
+    ::=
+        CHAN IN    Plus, Minus
+        CHAN OUT   Result
+
+        BEHAVIOUR  adder [ Plus, Minus, Result ] ( )
+
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+PROCDEF  mapper [ Plus, Minus :: Int # Int; Result :: Int;
+                  Sin :: String # Int # Int;  Sout :: Int ] ( )
+    ::=
+                 Plus ? x ? y
+            >->  Sin ! "Plus" ! x ! y
+            >->  mapper [ Plus, Minus, Result, Sin, Sout ] ( )
+        ##
+                 Minus ?x ?y
+            >->  Sin ! "Minus" ! x ! y
+            >->  mapper [ Plus, Minus, Result, Sin, Sout ] ( )
+        ##
+                 Sout ? r 
+            >->  Result ! r
+            >->  mapper [ Plus, Minus, Result, Sin, Sout ] ( )
+ENDDEF
+
+
+MAPPERDEF  Mapper
+    ::=
+        CHAN IN    Plus, Minus,
+                   Sout
+        CHAN OUT   Result,
+                   Sin
+
+        BEHAVIOUR  mapper [ Plus, Minus, Result, Sin, Sout ] ( )
+
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+CNECTDEF  Sut
+    ::=
+        CLIENTSOCK
+
+        CHAN  OUT  Sin                      HOST "localhost"  PORT 7890
+        ENCODE     Sin ?op ?x ?y        ->  !op++"("++(toString(x))++","++(toString(y))++")"
+
+        CHAN  IN   Sout                     HOST "localhost"  PORT 7890
+        DECODE     Sout !fromString(s)  <-  ?s
+
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- ----------------------------------------------------------------------------------------- --
+

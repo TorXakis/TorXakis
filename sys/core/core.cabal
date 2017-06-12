@@ -15,14 +15,18 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      Sim
-                      , ServerIf
-                      , Cnect
-                      , EnDecode
-                      , Step
-                      , Test
+  exposed-modules:      TxsCore
+                      , CoreUtils
                       , BuildInfo
                       , VersionInfo
+
+  other-modules:        Ioco
+                      , Mapper
+                      , Purpose
+                      , Trace
+                      , Sim
+                      , Step
+                      , Test
                       
   ghc-options:         -O2 -optc-O3 -optc-ffast-math
   
@@ -30,16 +34,15 @@ library
                       , containers
                       , mtl
                       , network
-    -- for ServerIf
                       , random
 
-                      , behave
                       , behavedefs
+                      , behaveenv
+                      , behave
+                      , coreenv
                       , defs
-                      , env
                       , solve
                       , solvedefs
                       , value
-    -- for EnDecode
                       
   default-language:     Haskell2010

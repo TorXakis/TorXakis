@@ -245,6 +245,24 @@ instance (UsedFids t) => UsedFids [t]
 
 
 -- ----------------------------------------------------------------------------------------- --
+-- conditional output: smt debug  --  NODIG ???
+
+{-
+
+putSmtDebug :: String -> IOE ()
+putSmtDebug s  =  do
+     param_SMT_debug <- getParam "param_SMT_debug"
+     when (read param_SMT_debug) $ lift $ hPutStrLn stderr $ "SMT >> " ++ s
+
+
+hPutSmtLog :: Handle -> String -> IOE ()
+hPutSmtLog log s  =  do 
+     when (log /= stderr) $ lift $ hPutStrLn log s
+
+-}                                     
+
+
+-- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
 

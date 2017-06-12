@@ -1,6 +1,1 @@
-TXS >>  PROCDEF trace [Stimulus :: ; Response :: ]() EXIT ::=
-TXS >>  Stimulus !
-TXS >>  >-> Response !
-TXS >>  >-> Stimulus !
-TXS >>  >-> EXIT
-TXS >>  ENDDEF
+TXS >>  No such trace format

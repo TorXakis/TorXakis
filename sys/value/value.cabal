@@ -32,8 +32,9 @@ library
                       , regex-tdfa
                       , MissingH
                       
+                      , behaveenv
                       , defs
-                      , env
+                      , coreenv
                       , front
                       
   default-language:     Haskell2010

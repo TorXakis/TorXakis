@@ -5,63 +5,82 @@ See license.txt
 -}
 
 -- ----------------------------------------------------------------------------------------- --
+
 module ToProcdef
+
 -- ----------------------------------------------------------------------------------------- --
+-- export
+
+(
+toProcdef   -- :: [TxsDDefs.Action] -> String
+)
+
+-- ----------------------------------------------------------------------------------------- --
+-- import
+
 where
 
 import Control.Monad.State
+
 import qualified Data.String.Utils as Utils
-import qualified Data.List as List
-import qualified Data.Map as Map
-import qualified Data.Set as Set
+import qualified Data.List         as List
+import qualified Data.Map          as Map
+import qualified Data.Set          as Set
 
-import TxsDefs
-import TxsDDefs
-import TxsEnv
-import TxsShow
+-- import from defs
+import qualified TxsDefs    as TxsDefs
+import qualified ChanId     as ChanId
+import qualified SortId     as SortId
+import qualified TxsDDefs   as TxsDDefs
+import qualified TxsShow    as TxsShow
 
-import ChanId
-import SortId
+-- ----------------------------------------------------------------------------------------- --
 
-toProcdef :: [Action] -> TxsDef -> IOE (String) 
-toProcdef actions (DefModel (ModelDef inChanSets outChanSets _ _)) = do
-    channeldefs <- chanIdsToProcdef ( (Set.toList (Set.unions inChanSets)) ++ (Set.toList (Set.unions outChanSets)) ) 
-    actions     <- actionsToProcdef actions
-    return $ "PROCDEF trace ["++ channeldefs ++ "]() EXIT ::=\n        " ++ actions ++ "\n    >-> EXIT\nENDDEF\n"
+toProcdef :: [TxsDDefs.Action] -> String
+toProcdef actions
+  =  let chids       = Set.toList $ Set.unions
+                             [ Set.map fst acts | TxsDDefs.Act acts <- actions ]
+         channeldefs = chanIdsToProcdef chids
+         actions'    = actionsToProcdef actions
+      in "PROCDEF trace ["++ channeldefs ++ "]() EXIT\n" ++
+         " ::=\n" ++ actions' ++ "\n    >-> EXIT\nENDDEF\n"
 
-chanIdsToProcdef :: [ChanId] -> IOE (String)
-chanIdsToProcdef chids = do
-    chans <- mapM chanIdToProcdef chids
-    return $ Utils.join "; " chans
+chanIdsToProcdef :: [TxsDefs.ChanId] -> String
+chanIdsToProcdef chids
+  =  let chans = map chanIdToProcdef chids
+      in Utils.join "; " chans
 
-chanIdToProcdef :: ChanId -> IOE (String)
-chanIdToProcdef chid = do
-    sorts <- sortsToProcdef (chansorts chid)
-    return $ (ChanId.name chid) ++ " :: " ++ sorts
+chanIdToProcdef :: TxsDefs.ChanId -> String
+chanIdToProcdef chid
+  =  let sorts = sortsToProcdef (ChanId.chansorts chid)
+      in (ChanId.name chid) ++ " :: " ++ sorts
 
-sortsToProcdef :: [SortId] -> IOE (String)
-sortsToProcdef sortids = do
-    let sids = map SortId.name sortids
-    return $ Utils.join " # " sids
+sortsToProcdef :: [TxsDefs.SortId] -> String
+sortsToProcdef sortids
+  =  let sids = map SortId.name sortids
+      in Utils.join " # " sids
 
-actionsToProcdef :: [Action] -> IOE (String)
-actionsToProcdef actions = do
-    actions <- mapM actionToProcdef actions
-    return $ Utils.join "\n    >-> " actions
+actionsToProcdef :: [TxsDDefs.Action] -> String
+actionsToProcdef actions
+  =  let actions' = map actionToProcdef actions
+      in Utils.join "\n    >-> " actions'
 
-actionToProcdef :: Action -> IOE (String)
-actionToProcdef ( Act s )    = communicationsToProcdef s
-actionToProcdef ActQui       = return "STOP"        -- can't be replayed
+actionToProcdef :: TxsDDefs.Action -> String
+actionToProcdef (TxsDDefs.Act s)  =  communicationsToProcdef s
+actionToProcdef TxsDDefs.ActQui   =  "STOP"        -- can't be replayed
 
-communicationsToProcdef :: Set.Set (ChanId, [Const]) -> IOE (String)
-communicationsToProcdef set = do
-    communications <- mapM communicationToProcdef (Set.toList set)
-    return $ Utils.join " | " communications
+communicationsToProcdef :: Set.Set (TxsDefs.ChanId, [TxsDefs.Const]) -> String
+communicationsToProcdef set
+  =  let communications = map communicationToProcdef (Set.toList set)
+      in Utils.join " | " communications
     
-communicationToProcdef :: (ChanId, [Const]) -> IOE (String)
-communicationToProcdef (chid, vexprs) = do
-    let values = map pshow vexprs
-    return $ ((ChanId.name chid) ++ " ! ") ++ (Utils.join " ! " values)
+communicationToProcdef :: (TxsDefs.ChanId, [TxsDefs.Const]) -> String
+communicationToProcdef (chid, vexprs)
+  =  let values = map TxsShow.pshow vexprs
+      in ((ChanId.name chid) ++ " ! ") ++ (Utils.join " ! " values)
 
+
+-- ----------------------------------------------------------------------------------------- --
+--                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
 

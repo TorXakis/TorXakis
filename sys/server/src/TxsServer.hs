@@ -14,6 +14,15 @@ module Main
 --   Main Module TorXakis as a Socket Service
 --
 -- ----------------------------------------------------------------------------------------- --
+-- export
+
+(
+  main      -- main :: IO ()
+            -- torxakis server main
+)
+
+-- ----------------------------------------------------------------------------------------- --
+-- import
 
 where
 
@@ -21,7 +30,6 @@ import System.IO
 import System.Environment
 import Network
 import Control.Monad.State
-import System.Random
 import Control.Concurrent
 import Control.Exception
 import Control.DeepSeq
@@ -30,141 +38,137 @@ import qualified Data.Char as Char
 import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
-import qualified Data.Text as Text
- 
-import BuildInfo
-import VersionInfo
 
-import TxsDefs
-import TxsDDefs
-import TxsUtils
-import StdTDefs
-import TxsAlex
-import TxsHappy
-import TxsShow 
-
-import TxsEnv
-
-import CTree
-import CTShow
-import Primer
-import Eval
-import Cnect
-import FreeVar
-
+-- import from local
 import ToProcdef
 
-import Utils
-import Test
-import Sim
-import Step
+-- import from serverenv
+import qualified EnvServer    as IOS
+import qualified IfServer     as IFS
+import qualified ParamServer  as ParamServer
 
-import SolveDefs
-import SMT
-import SMTData(SmtEnv(..))
-import Solve
+-- import from core
+import qualified TxsCore      as TxsCore
+import qualified BuildInfo    as BuildInfo
+import qualified VersionInfo  as VersionInfo
 
-import ServerIf
+-- import from defs
+import qualified TxsDefs      as TxsDefs
+import qualified VarId        as VarId
+import qualified TxsDDefs     as TxsDDefs
+import qualified TxsShow      as TxsShow 
+import qualified TxsUtils     as TxsUtils
+import qualified Utils        as Utils
 
-import VarId
+-- import from front
+import qualified TxsHappy     as TxsHappy
+import qualified TxsAlex      as TxsAlex
+
+-- import from cnect
+import qualified SocketWorld as World
+
+-- import from value
+import qualified Eval         as Eval
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis server main
 
+
 main :: IO ()
 main  =  withSocketsDo $ do
 
      hSetBuffering stderr NoBuffering     -- alt: LineBuffering
-     hSetEncoding stderr latin1
-     
+
      args <- getArgs
      if  length args /= 1
-       then do error "Usage: txsserver <portnumber>"
-       else do portnr         <- return $ ((read (args!!0))::Integer)
-               portid         <- return $ PortNumber (fromInteger portnr)
+       then    hPutStrLn stderr "Usage: txsserver <portnumber>"
+       else do let portnr      = read (head args) :: Integer
+               let portid      = PortNumber (fromInteger portnr)
                servsock       <- listenOn portid
                (hs,host,port) <- accept servsock
                hSetBuffering hs LineBuffering
                hSetEncoding hs latin1
-               
-               hPutStrLn stderr $ "\nTXSSERVER >>  Starting  ..... \n"
-  
-               runStateT cmdsIntpr ( envNone { envhost   = host
-                                             , envportnr = portnr
-                                             , envservhs = hs
-                                             }
-                                   )
+               hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
+               TxsCore.runTxsCore cmdsIntpr ( IOS.envsNone { IOS.host   = host
+                                                           , IOS.portnr = portnr
+                                                           , IOS.servhs = hs
+                                                           }
+                                            )
 
                threadDelay 1000000    -- 1 sec delay on closing
                sClose servsock
-               hPutStrLn stderr $ "\nTXSSERVER >>  Closing  ..... \n"
+               hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis server commands processing
 
-cmdsIntpr :: IOE ()
+cmdsIntpr :: IOS.IOS ()
 cmdsIntpr  =  do
-     modus      <- gets envmodus
-     (cmd,args) <- getCmd
+     modus      <- gets IOS.modus
+     (cmd,args) <- IFS.getCmd
      case cmd of
 -- ----------------------------------------------------------------------------------- modus --
-     { "START"     |       isNoning     modus         ->  do cmdStart     args
-     ; "START"     | not $ isNoning     modus         ->  do cmdNoop      cmd
-     ; "QUIT"      |       True                       ->  do cmdQuit      args  
-     ; "INIT"      |       isIdling     modus         ->  do cmdInit      args  
-     ; "INIT"      | not $ isIdling     modus         ->  do cmdNoop      cmd
-     ; "TERMIT"    |       isNotIdling  modus         ->  do cmdTermit    args
-     ; "TERMIT"    | not $ isNotIdling  modus         ->  do cmdNoop      cmd
+       "START"     |       IOS.isNoned    modus  ->  cmdStart     args
+       "START"     | not $ IOS.isNoned    modus  ->  cmdNoop      cmd
+       "QUIT"                                    ->  cmdQuit      args  
+       "INIT"      |       IOS.isIdled    modus  ->  cmdInit      args  
+       "INIT"      | not $ IOS.isIdled    modus  ->  cmdNoop      cmd
+       "TERMIT"    |       IOS.isGtIdled  modus  ->  cmdTermit    args
+       "TERMIT"    | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
+       "STOP"      |       IOS.isGtInited modus  ->  cmdStop      args
+       "STOP"      | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
 -- -------------------------------------------------------------------------------- settings --
-     ; "INFO"      |       isNotNoning  modus         ->  do cmdInfo      args
-     ; "INFO"      | not $ isNotNoning  modus         ->  do cmdNoop      cmd
-     ; "PARAM"     |       isNotNoning  modus         ->  do cmdParam     args
-     ; "PARAM"     | not $ isNotNoning  modus         ->  do cmdNoop      cmd
-     ; "SEED"      |       isNotNoning  modus         ->  do cmdSeed      args
-     ; "SEED"      | not $ isNotNoning  modus         ->  do cmdNoop      cmd
+       "INFO"      |       IOS.isGtNoned  modus  ->  cmdInfo      args
+       "INFO"      | not $ IOS.isGtNoned  modus  ->  cmdNoop      cmd
+       "PARAM"     |       IOS.isGtNoned  modus  ->  cmdParam     args
+       "PARAM"     | not $ IOS.isGtNoned  modus  ->  cmdNoop      cmd
+       "SEED"      |       IOS.isGtNoned  modus  ->  cmdSeed      args
+       "SEED"      | not $ IOS.isGtNoned  modus  ->  cmdNoop      cmd
 -- ------------------------------------------------------------------------------------ data --
-     ; "VAR"       |       isNotIdling  modus         ->  do cmdVar       args
-     ; "VAR"       | not $ isNotIdling  modus         ->  do cmdNoop      cmd
-     ; "VAL"       |       isNotIdling  modus         ->  do cmdVal       args
-     ; "VAL"       | not $ isNotIdling  modus         ->  do cmdNoop      cmd
-     ; "EVAL"      |       isNotIdling  modus         ->  do cmdEval      args
-     ; "EVAL"      | not $ isNotIdling  modus         ->  do cmdNoop      cmd 
-     ; "SOLVE"     |       isNotIdling  modus         ->  do cmdSolve     args "sol"
-     ; "SOLVE"     | not $ isNotIdling  modus         ->  do cmdNoop      cmd
-     ; "UNISOLVE"  |       isNotIdling  modus         ->  do cmdSolve     args "uni"
-     ; "UNISOLVE"  | not $ isNotIdling  modus         ->  do cmdNoop      cmd
+       "VAR"       |       IOS.isGtIdled  modus  ->  cmdVar       args
+       "VAR"       | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
+       "VAL"       |       IOS.isGtIdled  modus  ->  cmdVal       args
+       "VAL"       | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
+       "EVAL"      |       IOS.isGtIdled  modus  ->  cmdEval      args
+       "EVAL"      | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd 
+       "SOLVE"     |       IOS.isGtIdled  modus  ->  cmdSolve     args "sol"
+       "SOLVE"     | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
+       "UNISOLVE"  |       IOS.isGtIdled  modus  ->  cmdSolve     args "uni"
+       "UNISOLVE"  | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
+       "RANSOLVE"  |       IOS.isGtIdled  modus  ->  cmdSolve     args "ran"
+       "RANSOLVE"  | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
 -- ----- ------------------------------------------------------------------------------ exec --
-     ; "TESTER"    |       isIniting    modus         ->  do cmdTester    args
-     ; "TESTER"    | not $ isIniting    modus         ->  do cmdNoop      cmd
-     ; "SIMULATOR" |       isIniting    modus         ->  do cmdSimulator args
-     ; "SIMULATOR" | not $ isIniting    modus         ->  do cmdNoop      cmd
-     ; "STEPPER"   |       isIniting    modus         ->  do cmdStepper   args
-     ; "STEPPER"   | not $ isIniting    modus         ->  do cmdNoop      cmd
-     ; "STOP"      |       isNotIniting modus         ->  do cmdStop      args
-     ; "STOP"      | not $ isNotIniting modus         ->  do cmdNoop      cmd
+       "TESTER"    |       IOS.isInited   modus  ->  cmdTester    args
+       "TESTER"    | not $ IOS.isInited   modus  ->  cmdNoop      cmd
+       "SIMULATOR" |       IOS.isInited   modus  ->  cmdSimulator args
+       "SIMULATOR" | not $ IOS.isInited   modus  ->  cmdNoop      cmd
+       "STEPPER"   |       IOS.isInited   modus  ->  cmdStepper   args
+       "STEPPER"   | not $ IOS.isInited   modus  ->  cmdNoop      cmd
 -- -------------------------------------------------------------------- test, simulate, step --
-     ; "TEST"      |       isTesting    modus         ->  do cmdTest      args
-     ; "TEST"      | not $ isTesting    modus         ->  do cmdNoop      cmd
-     ; "SIM"       |       isSimuling   modus         ->  do cmdSim       args
-     ; "SIM"       | not $ isSimuling   modus         ->  do cmdNoop      cmd
-     ; "STEP"      |       isStepping   modus         ->  do cmdStep      args
-     ; "STEP"      | not $ isStepping   modus         ->  do cmdNoop      cmd
+       "TEST"      |       IOS.isTested   modus  ->  cmdTest      args
+       "TEST"      | not $ IOS.isTested   modus  ->  cmdNoop      cmd
+       "SIM"       |       IOS.isSimuled  modus  ->  cmdSim       args
+       "SIM"       | not $ IOS.isSimuled  modus  ->  cmdNoop      cmd
+       "STEP"      |       IOS.isStepped  modus  ->  cmdStep      args
+       "STEP"      | not $ IOS.isStepped  modus  ->  cmdNoop      cmd
 -- ----------------------------------------------------------------------------- btree state --
-     ; "SHOW"      |       isNotIdling  modus         ->  do cmdShow      args
-     ; "SHOW"      | not $ isNotIdling  modus         ->  do cmdNoop      cmd
-     ; "GOTO"      |       isNotIniting modus         ->  do cmdGoTo      args
-     ; "GOTO"      | not $ isNotIniting modus         ->  do cmdNoop      cmd
-     ; "PATH"      |       isNotIniting modus         ->  do cmdPath      args
-     ; "PATH"      | not $ isNotIniting modus         ->  do cmdNoop      cmd
-     ; "TRACE"     |       isNotIniting modus         ->  do cmdTrace     args
-     ; "TRACE"     | not $ isNotIniting modus         ->  do cmdNoop      cmd
-     ; "MENU"      |       isNotIniting modus         ->  do cmdMenu      args
-     ; "MENU"      | not $ isNotIniting modus         ->  do cmdNoop      cmd
--- --------------------------------------------------------------------------------- unknown --
-     ; otherwise                                      ->  do cmdUnknown   cmd
-     }
+       "SHOW"      |       IOS.isGtIdled  modus  ->  cmdShow      args
+       "SHOW"      | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
+       "GOTO"      |       IOS.isGtInited modus  ->  cmdGoTo      args
+       "GOTO"      | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
+       "PATH"      |       IOS.isGtInited modus  ->  cmdPath      args
+       "PATH"      | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
+       "TRACE"     |       IOS.isGtInited modus  ->  cmdTrace     args
+       "TRACE"     | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
+       "MENU"      |       IOS.isGtInited modus  ->  cmdMenu      args
+       "MENU"      | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
+       "MAP"       |       IOS.isTested   modus  ->  cmdMap       args
+       "MAP"       |       IOS.isSimuled  modus  ->  cmdMap       args
+       "MAP"       |       IOS.isStepped  modus  ->  cmdNoop      cmd
+       "MAP"       | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
+       _                                         ->  cmdUnknown   cmd
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -172,710 +176,779 @@ cmdsIntpr  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdNoop :: String -> IOE ()                          
+cmdNoop :: String -> IOS.IOS ()
 cmdNoop cmd  =  do
-     fack cmd $ "no action"
+     IFS.nack cmd [" : No action"]
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdUnknown :: String -> IOE ()
+cmdUnknown :: String -> IOS.IOS ()
 cmdUnknown cmd  =  do
-     nack cmd $ "unknown"
+     IFS.nack "ERROR" [ "Unknown command : " ++ cmd ]
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdStart :: String -> IOE ()
-cmdStart args  =  do
-     modify $ \env -> env { envmodus = Idling }
-     host <- gets envhost
-     port <- gets envportnr 
-     fack "START" $ "txsserver starting:  " ++ (show host) ++ " : " ++ (show port)
+cmdStart :: String -> IOS.IOS ()
+cmdStart _  =  do
+     modify $ \env -> env { IOS.modus = IOS.Idled }
+     host <- gets IOS.host
+     port <- gets IOS.portnr
+     IFS.pack "START" ["txsserver starting:  " ++ show host ++ " : " ++ show port]
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdQuit :: String -> IOE ()
-cmdQuit args  =  do
-     fack "QUIT" $ "txsserver closing"
-     return $ ()
+cmdQuit :: String -> IOS.IOS ()
+cmdQuit _  =  do
+     modify $ \env -> env { IOS.modus = IOS.Noned }
+     host <- gets IOS.host
+     port <- gets IOS.portnr
+     IFS.pack "QUIT" ["txsserver closing  " ++ show host ++ " : " ++ show port]
+     return ()
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdInit :: String -> IOE ()
+cmdInit :: String -> IOS.IOS ()
 cmdInit args  =  do
-     srctxts            <- lift $ mapM readFile (words args)
+     servhs             <- gets IOS.servhs
+     unid               <- gets IOS.uid
+     tdefs              <- gets IOS.tdefs
+     srctxts            <- lift $ lift $ mapM readFile (words args)
      srctxt             <- return $ List.intercalate "\n\n" srctxts
-     unid               <- gets envuid
-     tdefs              <- gets envtdefs
-     params             <- gets envparams
-     ((unid',tdefs'),e) <- lift $ catch ( let parsing = txsParser (txsLexer srctxt)
-                                           in return $! (show parsing) `deepseq` (parsing,"")
-                                        )
-                                        ( \e -> return $ ((unid,tdefs),show (e::ErrorCall))
-                                        )
+     ((unid',tdefs'),e) <- lift $ lift $ catch
+                             ( let parsing = TxsHappy.txsParser (TxsAlex.txsLexer srctxt)
+                                in return $! (show parsing) `deepseq` (parsing,"")
+                             )
+                             ( \e -> return $ ((unid,tdefs), show (e::ErrorCall))
+                             )
      if e /= ""
-       then do nack "INIT" $ e
+       then do IFS.nack "INIT" [e]
                cmdsIntpr
-       else do modify $ \env -> env { envmodus  = Initing
-                                    , envuid    = unid'
-                                    , envtdefs  = tdefs'
+       else do modify $ \env -> env { IOS.modus  = IOS.Inited
+                                    , IOS.uid    = unid'
+                                    , IOS.tdefs  = tdefs'
                                     }
-               pack "INIT" $ "input files parsed: " ++ (List.intercalate " " (words args))
-               smtEnv <- lift $ createSMTEnv cmdZ3 False tdefs' params
-               (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
-               pack "INIT" $ "smt solver initialized: " ++ info
-               (_,smtEnv'') <- lift $ runStateT (SMT.addDefinitions tdefs') smtEnv'
-               putSMT "current" smtEnv''
-               fack "INIT" $ "txsserver initialized"
+               lift $ TxsCore.txsInit tdefs' ( (IFS.hmack servhs) . (map TxsShow.pshow) )
+               IFS.pack "INIT" ["input files parsed:", List.intercalate " " (words args)]
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdTermit :: String -> IOE ()
-cmdTermit args  =  do
-     smtEnv <- getSMT "current"
-     lift $ runStateT SMT.close smtEnv
-     -- TODO: PvdL issue: should not ALL smts be closed!
-     pack "TERMIT" $ "smt solver closed"
-     env <- get
-     modify $ \env -> envIdle { envservhs = envservhs env
-                              , envuid    = envuid    env
-                              , envvar    = envvar    env
-                              , envval    = envval    env
-                              , envparams = envparams env
-                              }
-     fack "TERMIT" $ "model closed"
+cmdTermit :: String -> IOS.IOS ()
+cmdTermit _  =  do
+     modify $ \env -> env { IOS.modus  = IOS.Idled
+                          , IOS.tdefs  = TxsDefs.empty
+                          , IOS.tow    = ( Nothing, Nothing, [] )
+                          , IOS.frow   = ( Nothing, [],      [] )
+                          }
+     lift $ TxsCore.txsTermit
+     IFS.pack "TERMIT" []
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdInfo :: String -> IOE ()
-cmdInfo args  =  do
-     pack "INFO" $ "TorXakis version    : " ++ version
-     fack "INFO" $ "Build time          : " ++ BuildInfo.buildTime
+cmdStop :: String -> IOS.IOS ()
+cmdStop _  =  do
+     World.closeSockets
+     modus <- gets IOS.modus
+     if  IOS.isSimuled modus
+       then do [(nmsut,valsut)] <- IOS.getParams ["param_Sut_deltaTime"]
+               [(nmsim,valsim)] <- IOS.getParams ["param_Sim_deltaTime"]
+               IOS.setParams [("param_Sut_deltaTime",valsim)]
+               IOS.setParams [("param_Sim_deltaTime",valsut)]
+               modify $ \env -> env { IOS.modus   = IOS.Inited
+                                    , IOS.tow     = ( Nothing, Nothing, [] )
+                                    , IOS.frow    = ( Nothing, [],      [] )
+                                    }
+               lift $ TxsCore.txsStop
+               IFS.pack "STOP" []
+               cmdsIntpr
+       else do modify $ \env -> env { IOS.modus   = IOS.Inited
+                                    , IOS.tow     = ( Nothing, Nothing, [] )
+                                    , IOS.frow    = ( Nothing, [],      [] )
+                                    }
+               lift $ TxsCore.txsStop
+               IFS.pack "STOP" []
+               cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdInfo :: String -> IOS.IOS ()
+cmdInfo _  =  do
+     IFS.pack "INFO" [ "TorXakis version    : " ++ VersionInfo.version
+                     , "Build time          : " ++ BuildInfo.buildTime
+                     ]
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdParam :: String -> IOE ()
+cmdParam :: String -> IOS.IOS ()
 cmdParam args  =  do
      case words args of
-     { []        -> do params <- gets envparams
-                       mapM ( pack "PARAM" ) $ map ( \(nm,(val,_)) -> (nm++" = "++val) )
-                                             $ Map.toList params
-                       fack "PARAM" $ "all parameters end"
+       []        -> do params1 <- lift $ TxsCore.txsGetParams
+                       params2 <- IOS.getParams []
+                       mapM IFS.mack [ [ nm ++ " = " ++ val ]
+                                     | (nm,val) <- params1 ++ params2
+                                     ]
+                       IFS.pack "PARAM" []
                        cmdsIntpr
-     ; [prm]     -> do val <- getParam prm
-                       fack "PARAM" $ prm++" = "++val
+       [prm]     -> do params1 <- lift $ TxsCore.txsGetParam prm
+                       params2 <- IOS.getParams [prm]
+                       case params1++params2 of
+                         []         -> IFS.nack "PARAM" [ "No parameter: " ++ prm ]
+                         [(nm,val)] -> IFS.pack "PARAM" [ prm++" = "++val ]
+                         _          -> IFS.nack "PARAM" [ "More parameters: " ++ prm ]
                        cmdsIntpr
-     ; [prm,val] -> do setParam prm val
-                       fack "PARAM" $ prm++" = "++val
-                       
-                       -- update params in SmtSolver as well
-                       newParams <- gets envparams
-                       smtEnv <- getSMT "current"
-                       let smtEnv' = smtEnv { params = newParams }
-                       putSMT "current" smtEnv'
-                          
+       [prm,val] -> do params1 <- lift $ TxsCore.txsSetParam prm val
+                       params2 <- IOS.setParams [(prm,val)]
+                       case params1++params2 of
+                         []         -> IFS.nack "PARAM" [ "No parameter: " ++ prm ]
+                         [(nm,val)] -> IFS.pack "PARAM" [ prm++" = "++val ]
+                         _          -> IFS.nack "PARAM" [ "More parameters: " ++ prm ]
                        cmdsIntpr
-     ; _         -> do nack "PARAM" $ "unknown param"
+       _         -> do IFS.nack "PARAM" [ "Unknown parameter action" ]
                        cmdsIntpr
-     }
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdSeed :: String -> IOE ()
+cmdSeed :: String -> IOS.IOS ()
 cmdSeed args  =  do
      case words args of
-     { [val] -> do seed <- return $ read val
-                   lift $ setStdGen(mkStdGen seed)
-                   fack "SEED" $ "seed = "++(show seed)
+       [val] -> do seed <- return $ read val
+                   lift $ TxsCore.txsSeed seed
+                   IFS.pack "SEED" []
                    cmdsIntpr
-     ; _     -> do nack "SEED" $ "unknown seed"
+       _     -> do IFS.nack "SEED" [ "Incorrect seed" ]
                    cmdsIntpr
-     }
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdVar :: String -> IOE ()
+cmdVar :: String -> IOS.IOS ()
 cmdVar args  =  do
      env              <- get
-     uid              <- return $ envuid env
-     tdefs            <- return $ envtdefs env
-     ((uid',vars'),e) <- lift $ catch ( let p = vardeclsParser (  ( Ctdefs $ tdefs )
-                                                                : ( Cunid  $ uid + 1 )
-                                                                : ( txsLexer args )
-                                                               )
-                                         in return $! (show p) `deepseq` (p,"")
-                                      )
-                                      ( \e -> return $ ((uid,[]),(show (e::ErrorCall)))
-                                      )
-     if  e /= ""
-       then do nack "VAR" $ e
-               cmdsIntpr
-       else do if let newnames = (map VarId.name vars')
-                   in    ( newnames `List.intersect` (map VarId.name (envvar env))            == [] )
-                      && ( newnames `List.intersect` (map VarId.name (Map.keys (envval env))) == [] )
-                 then do modify $ \env -> env { envvar = (envvar env) ++ vars'
-                                              , envuid = uid'
-                                              }
-                         fack "VAR" $ fshow vars'
-                         cmdsIntpr
-                 else do modify $ \env -> env { envuid = uid' }
-                         nack "VAR" $ "double variables"
-                         cmdsIntpr
+     uid              <- return $ IOS.uid env
+     tdefs            <- return $ IOS.tdefs env
+     vars             <- return $ IOS.locvars env
+     vals             <- return $ IOS.locvals env
+     if  args == ""
+       then do
+         IFS.pack "VAR" [ TxsShow.fshow vars ]
+         cmdsIntpr
+       else do
+         ((uid',vars'),e) <- lift $ lift $ catch
+                               ( let p = TxsHappy.vardeclsParser
+                                           (  ( TxsAlex.Ctdefs $ tdefs )
+                                            : ( TxsAlex.Cunid $ uid + 1 )
+                                            : ( TxsAlex.txsLexer args )
+                                           )
+                                  in return $! (show p) `deepseq` (p,"")
+                               )
+                               ( \e -> return $ ((uid,[]),(show (e::ErrorCall)))
+                               )
+         if  e /= ""
+           then do
+             modify $ \env -> env { IOS.uid = uid' }
+             IFS.nack "VAR" [ e ]
+             cmdsIntpr
+           else do
+             if  let newnames = (map VarId.name vars')
+                  in ( newnames `List.intersect` (map VarId.name vars) == [] ) &&
+                     ( newnames `List.intersect` (map VarId.name (Map.keys vals)) == [] )
+               then do
+                 modify $ \env -> env { IOS.locvars = vars ++ vars'
+                                      , IOS.uid  = uid'
+                                      }
+                 IFS.pack "VAR" [ TxsShow.fshow vars' ]
+                 cmdsIntpr
+               else do
+                 modify $ \env -> env { IOS.uid = uid' }
+                 IFS.nack "VAR" [ "double variable names: " ++ (TxsShow.fshow vars') ]
+                 cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdVal :: String -> IOE ()
+cmdVal :: String -> IOS.IOS ()
 cmdVal args  =  do
      env              <- get
-     uid              <- return $ envuid env
-     tdefs            <- return $ envtdefs env
-     ((uid',venv'),e) <- lift $ catch ( let p = valdefsParser (  ( Ctdefs  $ tdefs )
-                                                               : ( Cvarenv $ [] )
-                                                               : ( Cunid   $ uid + 1 )
-                                                               : ( txsLexer args )
-                                                              )
-                                         in return $! (show p) `deepseq` (p,"")
-                                      )
-                                      ( \e -> return $ ((uid,Map.empty),(show (e::ErrorCall)))
-                                      )
-     if  e /= ""
-       then do nack "VAL" $ e
-               cmdsIntpr
-       else do if let newnames = map VarId.name (Map.keys venv')
-                   in    ( newnames `List.intersect` (map VarId.name (envvar env))            == [] )
-                      && ( newnames `List.intersect` (map VarId.name (Map.keys (envval env))) == [] )
-                 then do modify $ \env -> env { envval = (envval env) `Map.union`  venv'
-                                              , envuid = uid'
-                                              }
-                         fack "VAL" $ fshow venv'
-                         cmdsIntpr
-                 else do modify $ \env -> env { envuid = uid' }
-                         nack "VAL" $ "double value names"
-                         cmdsIntpr
+     uid              <- return $ IOS.uid env
+     tdefs            <- return $ IOS.tdefs env
+     vars             <- return $ IOS.locvars env
+     vals             <- return $ IOS.locvals env
+     if  args == ""
+       then do
+         IFS.pack "VAL" [ TxsShow.fshow vals ]
+         cmdsIntpr
+       else do
+         ((uid',venv'),e) <- lift $ lift $ catch
+                               ( let p = TxsHappy.valdefsParser
+                                           (  ( TxsAlex.Ctdefs  $ tdefs )
+                                            : ( TxsAlex.Cvarenv $ [] )
+                                            : ( TxsAlex.Cunid $ uid + 1 )
+                                            : ( TxsAlex.txsLexer args )
+                                           )
+                                  in return $! (show p) `deepseq` (p,"")
+                               )
+                               ( \e -> return $ ((uid,Map.empty),(show (e::ErrorCall)))
+                               )
+         if  e /= ""
+           then do
+             modify $ \env -> env { IOS.uid = uid' }
+             IFS.nack "VAL" [ e ]
+             cmdsIntpr
+           else do
+             if  let newnames = map VarId.name (Map.keys venv')
+                  in ( newnames `List.intersect` (map VarId.name vars) == [] ) &&
+                     ( newnames `List.intersect` (map VarId.name (Map.keys vals)) == [] )
+               then do
+                 modify $ \env -> env { IOS.locvals = vals `Map.union` venv'
+                                      , IOS.uid     = uid'
+                                      }
+                 IFS.pack "VAL" [ TxsShow.fshow venv' ]
+                 cmdsIntpr
+               else do
+                 modify $ \env -> env { IOS.uid = uid' }
+                 IFS.nack "VAR" [ "double value names: " ++ (TxsShow.fshow venv') ]
+                 cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdEval :: String -> IOE ()
+cmdEval :: String -> IOS.IOS ()
 cmdEval args  =  do
      env              <- get
-     uid              <- return $ envuid env
-     tdefs            <- return $ envtdefs env
-     ((uid',vexp'),e) <- lift $ catch ( let p = vexprParser (  ( Ctdefs  $ tdefs )
-                                                             : ( Cvarenv $ Map.keys(envval env))
-                                                             : ( Cunid   $ uid + 1 )
-                                                             : ( txsLexer args )
-                                                            )
-                                         in return $! (show p) `deepseq` (p,"")
-                                      )
-                                      ( \e -> return $ ((uid,cstrError ""),(show (e::ErrorCall)))
-                                      )
+     uid              <- return $ IOS.uid env
+     tdefs            <- return $ IOS.tdefs env
+     vals             <- return $ IOS.locvals env
+     ((uid',vexp'),e) <- lift $ lift $ catch
+                           ( let p = TxsHappy.vexprParser
+                                        (  ( TxsAlex.Ctdefs  $ tdefs )
+                                         : ( TxsAlex.Cvarenv $ Map.keys vals )
+                                         : ( TxsAlex.Cunid   $ uid + 1 )
+                                         : ( TxsAlex.txsLexer args )
+                                        )
+                              in return $! (show p) `deepseq` (p,"")
+                           )
+                           ( \e -> return $ ((uid,TxsDefs.cstrError ""),(show (e::ErrorCall)))
+                           )
      if  e /= ""
-       then do nack "EVAL" $ e
+       then do modify $ \env -> env { IOS.uid = uid' }
+               IFS.nack "EVAL" [ e ]
                cmdsIntpr
-       else let vexp'' = cstrEnv (envval env) vexp'
-             in if isClosed vexp''
-                  then do svexp <- eval vexp''
-                          modify $ \env -> env { envuid = uid' }
-                          fack "EVAL" $ fshow svexp
-                          cmdsIntpr
-                  else do modify $ \env -> env { envuid = uid' }
-                          nack "EVAL" $ "value expression not closed"
-                          cmdsIntpr
+       else do modify $ \env -> env { IOS.uid = uid' }
+               walue <- lift $ TxsCore.txsEval (TxsDefs.cstrEnv vals vexp')
+               IFS.pack "EVAL" [ TxsShow.fshow walue ]
+               cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdSolve :: String -> String -> IOE ()
+cmdSolve :: String -> String -> IOS.IOS ()
 cmdSolve args kind  =  do
-     cmd              <- return $ if kind=="uni" then "UNISOLVE" else "SOLVE"
+     (cmd,solver)     <- return $ case kind of
+                                    "sol" -> ( "SOLVE"   , TxsCore.txsSolve    )
+                                    "uni" -> ( "UNISOLVE", TxsCore.txsUniSolve )
+                                    "ran" -> ( "RANSOLVE", TxsCore.txsRanSolve )
      env              <- get
-     uid              <- return $ envuid env
-     tdefs            <- return $ envtdefs env
-     ((uid',vexp'),e) <- lift $ catch ( let p = vexprParser (  ( Ctdefs $ tdefs )
-                                                             : ( Cvarenv $ (Map.keys(envval env)
-                                                                             ) ++ (envvar env))
-                                                             : ( Cunid $ uid + 1 )
-                                                             : ( txsLexer args )
-                                                            )
-                                         in return $! (show p) `deepseq` (p,"")
-                                      )
-                                      ( \e -> return $ ((uid,cstrError ""),(show (e::ErrorCall)))
-                                      )
+     uid              <- return $ IOS.uid env
+     tdefs            <- return $ IOS.tdefs env
+     vars             <- return $ IOS.locvars env
+     vals             <- return $ IOS.locvals env
+     ((uid',vexp'),e) <- lift $ lift $ catch
+                           ( let p = TxsHappy.vexprParser
+                                       (  ( TxsAlex.Ctdefs $ tdefs )
+                                        : ( TxsAlex.Cvarenv $ (Map.keys vals) ++ vars )
+                                        : ( TxsAlex.Cunid $ uid + 1 )
+                                        : ( TxsAlex.txsLexer args )
+                                       )
+                              in return $! (show p) `deepseq` (p,"")
+                           )
+                           ( \e -> return $ ((uid,TxsDefs.cstrError ""),(show (e::ErrorCall)))
+                           )
      if  e /= ""
-       then do nack cmd $ e
+       then do modify $ \env -> env { IOS.uid = uid' }
+               IFS.nack cmd [ e ]
                cmdsIntpr
-       else let vexp'' = cstrEnv (envval env) vexp'
-             in if  sortOf vexp'' == sortId_Bool
-                  then do frees  <- return $ freeVars vexp''
-                          solver <- return $ case kind of
-                                             { "sol" -> solve
-                                             ; "uni" -> uniSolve
-                                             }
-                          assertions <- return $ add vexp'' Solve.empty
-                          smtEnv <- getSMT "current"
-                          (sat,smtEnv') <- lift $ runStateT (solver frees assertions) smtEnv
-                          putSMT "current" smtEnv'
-                          case sat of
-                          { Solved sol    -> do modify $ \env -> env { envuid = uid' }
-                                                pack cmd $ "sat"
-                                                pack cmd $ fshow sol
-                                                fack cmd $ "solved"
-                                                cmdsIntpr
-                          ; Unsolvable    -> do modify $ \env -> env { envuid = uid' }
-                                                fack cmd $ "unsat"
-                                                cmdsIntpr
-                          ; UnableToSolve -> do modify $ \env -> env { envuid = uid' }
-                                                fack cmd $ "unknown"
-                                                cmdsIntpr
-                          }
-                  else do modify $ \env -> env { envuid = uid' }
-                          nack cmd $ "invalid value expression for (uni)solve"
-                          cmdsIntpr
+       else do modify $ \env -> env { IOS.uid = uid' }
+               sols  <- lift $ solver (TxsDefs.cstrEnv vals vexp')
+               IFS.pack cmd [ TxsShow.fshow sols ]
+               cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdTester :: String -> IOE ()
+cmdTester :: String -> IOS.IOS ()
 cmdTester args  =  do
-     tdefs  <- gets envtdefs
-     let tdefs' = TxsDefs.toList tdefs
+     tdefs  <- gets IOS.tdefs
+     tdefs' <- return $ TxsDefs.toList tdefs
      case words args of
-     { [m,c]     -> do mdefs <- return $ [ mdef
-                                         | mdef@(IdModel (ModelId nm uid), modeldef) <- tdefs'
-                                         , nm == m
-                                         ]
-                       cdefs <- return $ [ cdef
-                                         | cdef@(IdCnect (CnectId nm uid), cnectdef) <- tdefs'
-                                         , nm == c
-                                         ]
-                       case (mdefs,cdefs) of
-                       { ([mdef],[cdef]) -> cmdTesterMC mdef cdef
-                       ; _               -> do nack "TESTER" $ "wrong parameters : [" ++ m ++ " , " ++ c ++ "]"
-                                               cmdsIntpr
-                       }
-     ; [m,p,c]   -> do mdefs <- return $ [ mdef
-                                         | mdef@(IdModel (ModelId nm uid), modeldef) <- tdefs'
-                                         , nm == m
-                                         ]
-                       pdefs <- return $ [ pdef
-                                         | pdef@(IdPurp (PurpId nm uid), purpdef) <- tdefs'
-                                         , nm == p
-                                         ]
-                       adefs <- return $ [ adef
-                                         | adef@(IdMapper (MapperId nm uid), mapperdef) <- tdefs'
-                                         , nm == p
-                                         ]
-                       cdefs <- return $ [ cdef
-                                         | cdef@(IdCnect (CnectId nm uid), cnectdef) <- tdefs'
-                                         , nm == c
-                                         ]
-                       case (mdefs,pdefs,adefs,cdefs) of
-                       { ([mdef],[pdef],[],[cdef]) -> cmdTesterMPC mdef pdef cdef
-                       ; ([mdef],[],[adef],[cdef]) -> cmdTesterMAC mdef adef cdef
-                       ; _                         -> do nack "TESTER" $ "wrong parameters : [" ++ m ++ " , " ++ p ++ " , " ++ c ++ "]"
-                                                         cmdsIntpr
-                       }
-     ; [m,p,a,c] -> do mdefs <- return $ [ mdef
-                                         | mdef@(IdModel (ModelId nm uid), modeldef) <- tdefs'
-                                         , nm == m
-                                         ]
-                       pdefs <- return $ [ pdef
-                                         | pdef@(IdPurp (PurpId nm uid), purpdef) <- tdefs'
-                                         , nm == p
-                                         ]
-                       adefs <- return $ [ adef
-                                         | adef@(IdMapper (MapperId nm uid), mapperdef) <- tdefs'
-                                         , nm == a
-                                         ]
-                       cdefs <- return $ [ cdef
-                                         | cdef@(IdCnect (CnectId nm uid), cnectdef) <- tdefs'
-                                         , nm == c
-                                         ]
-                       case (mdefs,pdefs,adefs,cdefs) of
-                       { ([mdef],[pdef],[adef],[cdef]) -> cmdTesterMPAC mdef pdef adef cdef
-                       ; _                             -> do nack "TESTER" $ "wrong parameters  : [" ++ m ++ " , " ++ p ++ " , " ++ a ++ " , " ++ c ++ "]"
-                                                             cmdsIntpr
-                       }
-     ; _         -> do nack "TESTER" $ "wrong parameters : " ++ args
-                       cmdsIntpr
+     { [m,c] -> do
+            mdefs <- return $ [ mdef
+                              | (TxsDefs.IdModel (TxsDefs.ModelId nm uid), mdef) <- tdefs'
+                              , nm == m
+                              ]
+            cdefs <- return $ [ cdef
+                              | (TxsDefs.IdCnect (TxsDefs.CnectId nm uid), cdef) <- tdefs'
+                              , nm == c
+                              ]
+            case (mdefs,cdefs) of
+            { ([modeldef],[cnectdef])
+                         | isConsistentTester modeldef TxsDefs.DefNo TxsDefs.DefNo cnectdef
+                -> do modify $ \env -> env { IOS.modus = IOS.Tested cnectdef }
+                      World.openSockets
+                      envs  <- get
+                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
+                                                modeldef TxsDefs.DefNo TxsDefs.DefNo
+                      IFS.pack "TESTER" []
+                      cmdsIntpr
+            ; _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
+                      cmdsIntpr
+            }
+     ; [m,x,c] -> do
+            mdefs <- return $ [ mdef
+                              | (TxsDefs.IdModel (TxsDefs.ModelId  nm uid), mdef) <- tdefs'
+                              , nm == m
+                              ]
+            adefs <- return $ [ adef
+                              | (TxsDefs.IdMapper (TxsDefs.MapperId nm uid), adef) <- tdefs'
+                              , nm == x
+                              ]
+            pdefs <- return $ [ pdef
+                              | (TxsDefs.IdPurp (TxsDefs.PurpId   nm uid), pdef) <- tdefs'
+                              , nm == x
+                              ]
+            cdefs <- return $ [ cdef
+                              | (TxsDefs.IdCnect (TxsDefs.CnectId  nm uid), cdef) <- tdefs'
+                              , nm == c
+                              ]
+            case (mdefs,adefs,pdefs,cdefs) of
+            { ([modeldef],[mapperdef],[],[cnectdef])
+                         | isConsistentTester modeldef mapperdef TxsDefs.DefNo cnectdef
+                -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
+                      World.openSockets
+                      envs  <- get
+                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
+                                                modeldef mapperdef TxsDefs.DefNo
+                      IFS.pack "TESTER" []
+                      cmdsIntpr
+            ; ([modeldef],[],[purpdef],[cnectdef])
+                         | isConsistentTester modeldef TxsDefs.DefNo purpdef cnectdef
+                -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
+                      World.openSockets
+                      envs  <- get
+                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
+                                                modeldef TxsDefs.DefNo purpdef
+                      IFS.pack "TESTER" [ ]
+                      cmdsIntpr
+            ; _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
+                      cmdsIntpr
+            }
+     ; [m,x,y,c] -> do
+            mdefs <- return $ [ mdef
+                              | (TxsDefs.IdModel (TxsDefs.ModelId  nm uid), mdef) <- tdefs'
+                              , nm == m
+                              ]
+            adefs <- return $ [ adef
+                              | (TxsDefs.IdMapper (TxsDefs.MapperId nm uid), adef) <- tdefs'
+                              , nm == x || nm == y
+                              ]
+            pdefs <- return $ [ pdef
+                              | (TxsDefs.IdPurp (TxsDefs.PurpId   nm uid), pdef) <- tdefs'
+                              , nm == x || nm == y
+                              ]
+            cdefs <- return $ [ cdef
+                              | (TxsDefs.IdCnect (TxsDefs.CnectId  nm uid), cdef) <- tdefs'
+                              , nm == c
+                              ]
+            case (mdefs,adefs,pdefs,cdefs) of
+            { ([modeldef],[mapperdef],[purpdef],[cnectdef])
+                         | isConsistentTester modeldef mapperdef purpdef cnectdef
+                -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
+                      World.openSockets
+                      envs  <- get
+                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
+                                                modeldef mapperdef purpdef
+                      IFS.pack "TESTER" [ ]
+                      cmdsIntpr
+            ; _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
+                      cmdsIntpr
+            }
+     ; _ -> do
+            IFS.nack "TESTER" [ "Wrong parameters" ]
+            cmdsIntpr
      }
 
-    
-cmdTesterMC :: (Ident,TxsDef) -> (Ident,TxsDef) -> IOE ()
-cmdTesterMC (IdModel modelid,modeldef) (IdCnect cnectid,cnectdef)  =  do
-     if  consistentTester modeldef cnectdef
-       then do modify $ \env -> env { envmodus  = Testing modelid cnectid }
-               openCnect
-               initBTree
-               fack "TESTER" $ "tester started"
-               cmdsIntpr
-       else do nack "TESTER" $ "model and cnect not consistent"
-               cmdsIntpr
 
+isConsistentTester :: TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef ->
+                      Bool
 
-cmdTesterMPC :: (Ident,TxsDef) -> (Ident,TxsDef) -> (Ident,TxsDef) -> IOE ()
-cmdTesterMPC mdef pdef cdef  =  do
-     nack "TESTER" $ "test purposes not implemented yet"
-     cmdsIntpr
+isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
+                   (TxsDefs.DefNo)
+                   (TxsDefs.DefNo)
+                   (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+  =  let { mins   = Set.unions minsyncs
+         ; mouts  = Set.unions moutsyncs
+         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+         }
+     in    mins   == ctows
+        && cfrows == mouts
 
+isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
+                   (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
+                   (TxsDefs.DefNo)
+                   (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+  =  let { mins   = Set.unions minsyncs
+         ; mouts  = Set.unions moutsyncs
+         ; ains   = Set.fromList $ achins
+         ; aouts  = Set.fromList $ achouts
+         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+         } 
+      in    (mins `Set.union` cfrows) == ains
+         && aouts == (mouts `Set.union` ctows)
 
-cmdTesterMAC :: (Ident,TxsDef) -> (Ident,TxsDef) -> (Ident,TxsDef) -> IOE ()
-cmdTesterMAC mdef adef cdef  =  do
-     nack "TESTER" $ "mappers not implemented yet"
-     cmdsIntpr
+isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
+                   (TxsDefs.DefNo)
+                   (TxsDefs.DefPurp (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
+                   (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+  =  let { mins   = Set.unions minsyncs
+         ; mouts  = Set.unions moutsyncs
+         ; pins   = Set.unions pinsyncs
+         ; pouts  = Set.unions poutsyncs
+         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+         } 
+      in    ( (pins  == Set.empty) || (pins  == mins)  )
+         && ( (pouts == Set.empty) || (pouts == mouts) )
+         && mins   == ctows
+         && cfrows == mouts
 
+isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
+                   (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
+                   (TxsDefs.DefPurp (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
+                   (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+  =  let { mins   = Set.unions minsyncs
+         ; mouts  = Set.unions moutsyncs
+         ; ains   = Set.fromList $ achins
+         ; aouts  = Set.fromList $ achouts
+         ; pins   = Set.unions pinsyncs
+         ; pouts  = Set.unions poutsyncs
+         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+         } 
+       in   ( (pins  == Set.empty) || (pins  == mins)  )
+         && ( (pouts == Set.empty) || (pouts == mouts) )
+         && (mins `Set.union` cfrows) == ains
+         && aouts == (mouts `Set.union` ctows)
 
-cmdTesterMPAC :: (Ident,TxsDef) -> (Ident,TxsDef) -> (Ident,TxsDef) -> (Ident,TxsDef) -> IOE ()
-cmdTesterMPAC mdef pdef adef cdef  =  do
-     nack "TESTER" $ "test purposes with mappers not implemented yet"
-     cmdsIntpr
-
+isConsistentTester _ _ _ _
+  =  False
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdSimulator :: String -> IOE ()
+cmdSimulator :: String -> IOS.IOS ()
 cmdSimulator args  =  do
-     tdefs  <- gets envtdefs
-     let tdefs' = TxsDefs.toList tdefs
+     tdefs  <- gets IOS.tdefs
+     tdefs' <- return $ TxsDefs.toList tdefs
      case words args of
-     { [m,c]     -> do mdefs <- return $ [ mdef
-                                         | mdef@(IdModel (ModelId nm uid), modeldef) <- tdefs'
-                                         , nm == m
-                                         ]
-                       cdefs <- return $ [ cdef
-                                         | cdef@(IdCnect (CnectId nm uid), cnectdef) <- tdefs'
-                                         , nm == c
-                                         ]
-                       case (mdefs,cdefs) of
-                       { ([mdef],[cdef]) -> cmdSimulatorMC mdef cdef
-                       ; _               -> do nack "SIMULATOR" $ "wrong parameters"
-                                               cmdsIntpr
-                       }
-     ; [m,a,c]   -> do mdefs <- return $ [ mdef
-                                         | mdef@(IdModel (ModelId nm uid), modeldef) <- tdefs'
-                                         , nm == m
-                                         ]
-                       adefs <- return $ [ adef
-                                         | adef@(IdMapper (MapperId nm uid), mapperdef) <- tdefs'
-                                         , nm == a
-                                         ]
-                       cdefs <- return $ [ cdef
-                                         | cdef@(IdCnect (CnectId nm uid), cnectdef) <- tdefs'
-                                         , nm == c
-                                         ]
-                       case (mdefs,adefs,cdefs) of
-                       { ([mdef],[adef],[cdef]) -> cmdSimulatorMAC mdef adef cdef
-                       ; _                      -> do nack "SIMULATOR" $ "wrong parameters"
-                                                      cmdsIntpr
-                       }
-     ; _         -> do nack "SIMULATOR" $ "wrong parameters"
-                       cmdsIntpr
+     { [m,c] -> do
+            mdefs <- return $ [ mdef
+                              | (TxsDefs.IdModel (TxsDefs.ModelId nm uid), mdef) <- tdefs'
+                              , nm == m
+                              ]
+            cdefs <- return $ [ cdef
+                              | (TxsDefs.IdCnect (TxsDefs.CnectId nm uid), cdef) <- tdefs'
+                              , nm == c
+                              ]
+            case (mdefs,cdefs) of
+            { ([modeldef],[cnectdef])
+                         | isConsistentSimulator modeldef TxsDefs.DefNo cnectdef
+                -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
+                      World.openSockets
+                      envs  <- get
+                      lift $ TxsCore.txsSetSim (World.putSocket envs) (World.getSocket envs)
+                                               modeldef TxsDefs.DefNo
+                      IFS.pack "SIMULATOR" []
+                      cmdsIntpr
+            ; _ -> do IFS.nack "SIMULATOR" [ "Wrong or inconsistent parameters" ]
+                      cmdsIntpr
+            }
+     ; [m,a,c] -> do
+            mdefs <- return $ [ mdef
+                              | (TxsDefs.IdModel (TxsDefs.ModelId  nm uid), mdef) <- tdefs'
+                              , nm == m
+                              ]
+            adefs <- return $ [ adef
+                              | (TxsDefs.IdMapper (TxsDefs.MapperId nm uid), adef) <- tdefs'
+                              , nm == a
+                              ]
+            cdefs <- return $ [ cdef
+                              | (TxsDefs.IdCnect (TxsDefs.CnectId  nm uid), cdef) <- tdefs'
+                              , nm == c
+                              ]
+            case (mdefs,adefs,cdefs) of
+            { ([modeldef],[mapperdef],[cnectdef])
+                         | isConsistentSimulator modeldef mapperdef cnectdef
+                -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
+                      World.openSockets
+                      envs  <- get
+                      lift $ TxsCore.txsSetSim (World.putSocket envs) (World.getSocket envs)
+                                               modeldef mapperdef
+                      IFS.pack "SIMULATOR" []
+                      cmdsIntpr
+            ; _ -> do IFS.nack "SIMULATOR" [ "Wrong or inconsistent parameters" ]
+                      cmdsIntpr
+            }
      }
 
-    
-cmdSimulatorMC :: (Ident,TxsDef) -> (Ident,TxsDef) -> IOE ()
-cmdSimulatorMC (IdModel modelid,modeldef) (IdCnect cnectid,cnectdef)  =  do
-     if  consistentSimulator modeldef cnectdef
-       then do sutdeltatime <- getParam "param_Sut_deltaTime"
-               simdeltatime <- getParam "param_Sim_deltaTime"
-               setParam "param_Sut_deltaTime" simdeltatime
-               setParam "param_Sim_deltaTime" sutdeltatime
-               modify $ \env -> env { envmodus  = Simuling modelid cnectid }
-               openCnect
-               initBTree
-               fack "SIMULATOR" $ "simulator started"
-               cmdsIntpr
-       else do nack "SIMULATOR" $ "model and cnect not consistent"
-               cmdsIntpr
 
+isConsistentSimulator :: TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef -> Bool
 
-cmdSimulatorMAC :: (Ident,TxsDef) -> (Ident,TxsDef) -> (Ident,TxsDef) -> IOE ()
-cmdSimulatorMAC mdef adef cdef  =  do
-     nack "SIMULATOR" $ "mappers not implemented yet"
-     cmdsIntpr
+isConsistentSimulator (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
+                      (TxsDefs.DefNo)
+                      (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+  =  let { mins   = Set.unions minsyncs
+         ; mouts  = Set.unions moutsyncs
+         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+         }
+     in    mins  == cfrows
+        && ctows == mouts
+  
+isConsistentSimulator (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
+                      (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
+                      (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+  =  let { mins   = Set.unions minsyncs
+         ; mouts  = Set.unions moutsyncs
+         ; ains   = Set.fromList $ achins
+         ; aouts  = Set.fromList $ achouts
+         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+         }
+      in    (mouts `Set.union` cfrows) == ains
+         && aouts == (mins `Set.union` ctows)
 
+isConsistentSimulator _ _ _
+  =  False
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdStepper :: String -> IOE ()
+cmdStepper :: String -> IOS.IOS ()
 cmdStepper args  =  do
-     tdefs  <- gets envtdefs
-     let tdefs' = TxsDefs.toList tdefs
+     tdefs  <- gets IOS.tdefs
+     mdefs  <- return $ TxsDefs.modelDefs tdefs
      case words args of
-     { [m]       -> do mdefs <- return $ [ mdef
-                                         | mdef@(IdModel (ModelId nm uid), modeldef) <- tdefs'
-                                         , nm == m
-                                         ]
-                       case (mdefs) of
-                       { ([mdef]) -> cmdStepperM mdef 
-                       ; _        -> do nack "STEPPER" $ "wrong parameters"
-                                        cmdsIntpr
-                       }
-     ; _         -> do nack "STEPPER" $ "wrong parameters"
-                       cmdsIntpr
+     { [m] -> do
+          mdefs <- return $ [ mdef
+                            | (TxsDefs.ModelId nm uid, mdef) <- Map.toList mdefs
+                            , nm == m
+                            ]
+          case mdefs of
+          { [modeldef] -> do modify $ \env -> env { IOS.modus = IOS.Stepped }
+                             lift $ TxsCore.txsSetStep (TxsDefs.DefModel modeldef)
+                             IFS.pack "STEPPER" []
+                             cmdsIntpr
+          ; _          -> do IFS.nack "STEPPER" [ "Wrong or inconsistent parameters" ]
+                             cmdsIntpr
+          }
      }
 
-
-cmdStepperM :: (Ident,TxsDef) -> IOE ()
-cmdStepperM (IdModel modelid,modeldef)  =  do
-     if  consistentStepper modeldef
-       then do modify $ \env -> env { envmodus  = Stepping modelid }
-               initBTree
-               fack "STEPPER" $ "stepper started"
-               cmdsIntpr
-       else do nack "STEPPER" $ "model not consistent"
-               cmdsIntpr
-     
 -- ----------------------------------------------------------------------------------------- --
 
-cmdStop :: String -> IOE ()
-cmdStop args  =  do
-     closeCnect
-     modus <- gets envmodus
-     if  isSimuling modus 
-       then do sutdeltatime <- getParam "param_Sut_deltaTime"
-               simdeltatime <- getParam "param_Sim_deltaTime"
-               setParam "param_Sut_deltaTime" simdeltatime
-               setParam "param_Sim_deltaTime" sutdeltatime
-               modify $ \env -> env { envmodus   = Initing
-                                    , envinit    = (-1)
-                                    , envnrst    = 0
-                                    , envcurs    = (-1)
-                                    , envtrie    = []
-                                    , envs2bt    = Map.empty
-                                    , envmapper  = []
-                                    , envtow     = ( Nothing, Nothing, [] )
-                                    , envfrow    = ( Nothing, [],      [] )
-                                    }
-               fack "STOP" $ "simulation/testing/stepping stopped"
-               cmdsIntpr
-       else do modify $ \env -> env { envmodus   = Initing
-                                    , envinit    = (-1)
-                                    , envnrst    = 0
-                                    , envcurs    = (-1)
-                                    , envtrie    = []
-                                    , envs2bt    = Map.empty
-                                    , envmapper  = []
-                                    , envtow     = ( Nothing, Nothing, [] )
-                                    , envfrow    = ( Nothing, [],      [] )
-                                    }
-               fack "STOP" $ "simulation/testing/stepping stopped"
-               cmdsIntpr
-
--- ----------------------------------------------------------------------------------------- --
-
-cmdTest :: String -> IOE ()
+cmdTest :: String -> IOS.IOS ()
 cmdTest args  =  do
      case words args of
-     { []  -> do verdict <- testOut 1                                -- no arg: observe output
-                 fack "TEST" $ fshow verdict
-                 cmdsIntpr
-     ; [d] | and (map Char.isDigit d)
-           -> do verdict <- testN (read d)  1                        -- d::int test steps
-                 fack "TEST" $ fshow verdict
-                 cmdsIntpr
-     ; _   -> do Testing modid _ <- gets envmodus                    -- action arg: give input
-                 tdefs <- gets envtdefs
-                 chids <- case Map.lookup modid (modelDefs tdefs) of
-                          { Just (ModelDef chinsets choutsets _ _)
-                              -> do return $ Set.toList $ Set.unions $ chinsets ++ choutsets
-                          ; _ -> do mack "TEST" $ "no model"
-                                    return $ []
-                          }
-                 act <- readAction chids args
-                 case act of
-                 { Left s           -> do nack "TEST" $ s
-                                          cmdsIntpr
-                 ; Right (Act acts) -> do verdict <- testIn (Act acts) 1   -- try to give input
-                                          fack "TEST" $ fshow verdict
-                                          cmdsIntpr
-                 }
+     { []                                                             -- observe one output --
+          -> do verdict <-lift $ TxsCore.txsTestOut
+                IFS.pack "TEST" [TxsShow.fshow verdict]
+                cmdsIntpr
+     ; [d] | and (map Char.isDigit d)                              -- d::int i/o test steps --
+          -> do verdict <- lift $ TxsCore.txsTestN (read d)
+                IFS.pack "TEST" [TxsShow.fshow verdict]
+                cmdsIntpr
+     ; _  -> do                                                 -- do given action as input --
+                IOS.Tested (TxsDefs.DefCnect (TxsDefs.CnectDef _ conndefs)) <- gets IOS.modus
+                ctows <- return [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+                TxsDDefs.Act acts <- readAction ctows args
+                if  Set.null acts
+                  then cmdsIntpr
+                  else do verdict <- lift $ TxsCore.txsTestIn (TxsDDefs.Act acts)
+                          IFS.pack "TEST" [TxsShow.fshow verdict]
+                          cmdsIntpr
      }
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdSim :: String -> IOE ()
+cmdSim :: String -> IOS.IOS ()
 cmdSim args  =  do
      case words args of
-     { []  -> do verdict <- simN (-1) 1                              -- no arg: infinite sim
-                 fack "SIM" $ fshow verdict
-                 cmdsIntpr
-     ; [d] | and (map Char.isDigit d)                                -- d::int sim steps
-           -> do verdict <- simN (read d) 1
-                 fack "SIM" $ fshow verdict
-                 cmdsIntpr
-     ; _   -> do nack "SIM" "wrong parameter"
-                 cmdsIntpr
+     { []                                                           -- no arg: infinite sim --
+         -> do verdict <- lift $ TxsCore.txsSimN (-1)
+               IFS.pack "SIM" [TxsShow.fshow verdict]
+               cmdsIntpr
+     ; [d] | and (map Char.isDigit d)                                   -- d::int sim steps --
+         -> do verdict <- lift $ TxsCore.txsSimN (read d)
+               IFS.pack "SIM" [TxsShow.fshow verdict]
+               cmdsIntpr
+     ; _                                                                -- not a valid call --
+         -> do IFS.nack "SIM" ["wrong parameter"]
+               cmdsIntpr
      }
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdStep :: String -> IOE ()
+cmdStep :: String -> IOS.IOS ()
 cmdStep args  =  do
      case words args of
-     { []  -> do verdict <- stepN 1 1                                -- no arg: one step
-                 fack "STEP" $ fshow verdict
-                 cmdsIntpr
-     ; [d] | and (map Char.isDigit d)                                -- d::int steps
-           -> do verdict <- stepN (read d) 1
-                 fack "STEP" $ fshow verdict
-                 cmdsIntpr
-     ; _   -> do Stepping modid <- gets envmodus                     -- action arg: step action
-                 tdefs    <- gets envtdefs
-                 chids    <- case Map.lookup modid (modelDefs tdefs) of
-                             { Just (ModelDef chinsets choutsets _ _)
-                                 -> do return $ Set.toList $ Set.unions $ chinsets ++ choutsets
-                             ; _ -> do mack "STEP" $ "no model"
-                                       return $ []
-                             }
-                 act <- readAction chids args
-                 case act of
-                 { Left s    -> do nack "STEP" $ s
-                                   cmdsIntpr
-                 ; Right act -> do done <- doAfter act
-                                   if  done
-                                     then do fack "STEP" $ fshow act
-                                             cmdsIntpr
-                                     else do nack "STEP" $ "impossible step"
-                                             cmdsIntpr
-                 }
+     { []                                                                -- no arg: one step --
+         -> do verdict <- lift $ TxsCore.txsStepN 1
+               IFS.pack "STEP" [TxsShow.fshow verdict]
+               cmdsIntpr
+     ; [d] | and (map Char.isDigit d)                                        -- d::int steps --
+         -> do verdict <- lift $ TxsCore.txsStepN (read d)
+               IFS.pack "STEP" [TxsShow.fshow verdict]
+               cmdsIntpr
+     ; _                                                          -- action arg: step action --
+         -> do tdefs  <- gets IOS.tdefs
+               mdefs  <- return $ TxsDefs.modelDefs tdefs
+               chids  <- return $ Set.toList $ Set.unions
+                            [ Set.unions (chins ++ chouts ++ spls)
+                            | (_, TxsDefs.ModelDef chins chouts spls _) <- Map.toList mdefs
+                            ]
+               TxsDDefs.Act acts <- readAction chids args
+               if  Set.null acts
+                 then cmdsIntpr
+                 else do verdict <- lift $ TxsCore.txsStepA (TxsDDefs.Act acts)
+                         IFS.pack "STEP" [TxsShow.fshow verdict]
+                         cmdsIntpr
      }
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdShow :: String -> IOE ()
+cmdShow :: String -> IOS.IOS ()
 cmdShow args  =  do
-     env <- get
-     txt <- return $ case words args of
-                     { []         -> Just $ show (envtdefs  env)
-                     ; ["tdefs"]  -> Just $ show (envtdefs  env)
-                     ; ["state"]  -> Just $ fshow (envcurs   env)
-                     ; ["model"]  -> do statenr <- return $ envcurs env
-                                        case Map.lookup statenr (envs2bt env) of 
-                                        { Nothing -> Nothing
-                                        ; Just bt -> Just $ fshow bt 
-                                        }
-                     ; ["model",d] | and (map Char.isDigit d)
-                                  -> do statenr <- return $ read d
-                                        case Map.lookup statenr (envs2bt env) of 
-                                        { Nothing -> Nothing
-                                        ; Just bt -> Just $ fshow bt             
-                                        }
-                     ; ["purp"]   -> Just $ fshow (envpurp   env)
-                     ; ["mapper"] -> Just $ fshow (envmapper env)
-                     ; ["cnect"]  -> Just $ let (_, _, towhdls ) = envtow env
-                                                (_, _, frowhdls) = envfrow env
-                                             in fshow (towhdls ++ frowhdls)
-                     ; ["var"]    -> Just $ fshow (envvar   env)
-                     ; ["val"]    -> Just $ fshow (envval   env)
-                     ; _          -> Nothing
-                     }
+     envs <- get
+     txt  <- case words args of
+             {
+             ; ["tdefs"]  -> lift $ TxsCore.txsShow "tdefs"
+             ; ["state"]  -> lift $ TxsCore.txsShow "state"
+             ; ["model"]  -> lift $ TxsCore.txsShow "model"
+             ; ["mapper"] -> lift $ TxsCore.txsShow "mapper"
+             ; ["purp"]   -> lift $ TxsCore.txsShow "purp"
+             ; ["cnect"]  -> return $ let (_, _, towhdls ) = IOS.tow envs
+                                          (_, _, frowhdls) = IOS.frow envs
+                                       in TxsShow.fshow (towhdls ++ frowhdls)
+             ; ["var"]    -> return $ TxsShow.fshow (IOS.locvars envs)
+             ; ["val"]    -> return $ TxsShow.fshow (IOS.locvals envs)
+             ; _          -> return $ ""
+             }
      case txt of
-     { Nothing -> do nack "SHOW" $ "no show"
-                     cmdsIntpr
-     ; Just s  -> do pack "SHOW" $ s
-                     fack "SHOW" $ ""
-                     cmdsIntpr
+     { "" -> do IFS.nack "SHOW" ["nothing to be shown"]
+                cmdsIntpr
+     ; s  -> do IFS.mack [s]
+                IFS.pack "SHOW" ["\n"]
+                cmdsIntpr
      }
   
 -- ----------------------------------------------------------------------------------------- --
 
-cmdGoTo :: String -> IOE ()
+cmdGoTo :: String -> IOS.IOS ()
 cmdGoTo args  =  do
-     state <- case words args of
-              { []        -> do gets envcurs
-              ; ["back"]  -> do return $ -1
-              ; ["back",d] | and (map Char.isDigit d)
-                          -> do steps <- return $ read d
-                                if  steps == 0
-                                  then gets envcurs
-                                  else return $ -steps
-              ; [d] | and (map Char.isDigit d)
-                          -> do return $ read d
-              ; _         -> do mack "GOTO" $ "unknown state"
-                                gets envcurs
-              }
-     if  state >= 0
-       then do s2bt <- gets envs2bt
-               case Map.lookup state s2bt of
-               { Nothing -> do nack "GOTO" $ "unknown state"
-                               cmdsIntpr
-               ; Just ms -> do modify $ \env -> env { envcurs = state }
-                               fack "GOTO" $ show state
-                               cmdsIntpr
-               }
-       else do ltsBackN (-state)
-               newstate <- gets envcurs
-               fack "GOTO" $ show newstate
-               cmdsIntpr
+     case words args of
+     { []        -> do IFS.pack "GOTO" ["gone to current state"]
+                       cmdsIntpr
+     ; ["back"]  -> do lift $ TxsCore.txsGoTo (-1)
+                       IFS.pack "GOTO" ["gone to previous state"]
+                       cmdsIntpr
+     ; ["back",d] | and (map Char.isDigit d)
+                 -> do steps <- return $ read d
+                       if  steps == 0
+                         then do IFS.pack "GOTO" ["gone to current state"]
+                                 cmdsIntpr
+                         else do lift $ TxsCore.txsGoTo (-steps)
+                                 IFS.pack "GOTO" ["gone back " ++ (show steps) ++ "states"]
+                                 cmdsIntpr 
+     ; [d] | and (map Char.isDigit d)
+                 -> do lift $ TxsCore.txsGoTo (read d)
+                       IFS.pack "GOTO" ["gone to state " ++ d]
+                       cmdsIntpr 
+     ; _         -> do IFS.nack "GOTO" ["unknown state"]
+                       cmdsIntpr
+     }
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdPath :: String -> IOE ()
+cmdPath :: String -> IOS.IOS ()
 cmdPath args  =  do
-     initstate <- gets envinit
-     curstate  <- gets envcurs
-     path      <- path initstate curstate
-     txt       <- return $ concat $ [ (showN n 5) ++ ": " ++
-                                      (fshow s1) ++ " -> " ++ (unwords $ lines (fshow a)) ++
-                                      " -> " ++ (fshow s2) ++ "\n"
-                                    | (n,(s1,a,s2)) <- zip [1 ..] path
-                                    ]
-     fack "PATH" $ txt
+     path <- lift $ TxsCore.txsPath
+     IFS.mack [ (TxsShow.showN n 6) ++ ": " ++ (TxsShow.fshow s1) ++ " -> " ++
+                (unwords $ lines (TxsShow.fshow a)) ++ " -> " ++ (TxsShow.fshow s2)
+              | (n,(s1,a,s2)) <- zip [1 ..] path
+              ]
+     IFS.pack "PATH" ["\n"]
      cmdsIntpr
      
 -- ----------------------------------------------------------------------------------------- --
 
-cmdTrace :: String -> IOE ()
+cmdTrace :: String -> IOS.IOS ()
 cmdTrace args  =  do
-     initstate <- gets envinit
-     curstate  <- gets envcurs
-     path      <- path initstate curstate
-     trace     <- return $ [ a | (s,a,s') <- path ]
-     arg       <- return $ if  null args
-                             then "txs"                       -- no arg: Default Torxakis
-                             else (Text.unpack (Text.strip (Text.pack args)))
-     txt       <- if arg == "txs"
-                    then return $ concat $ [ (showN n 5) ++ ":  " ++ (fshow a)
-                                           | (n,a) <- zip [1..] trace
-                                           ] 
-                    else do spec <- getSpec
-                            toProcdef trace spec
-     fack "TRACE" $ txt
+     path  <- lift $ TxsCore.txsPath
+     trace <- return $ [ a | (s,a,s') <- path ]
+     case words args of
+     { []      -> do IFS.mack [ (TxsShow.showN n 6) ++ ":  " ++ (TxsShow.fshow a)
+                              | (n,(s1,a,s2)) <- zip [1..] path
+                              ]
+                     IFS.pack "TRACE" ["\n"]
+                     cmdsIntpr
+     ; ["txs"] -> do IFS.mack [toProcdef trace]
+                     IFS.pack "TRACE" ["\n"]
+                     cmdsIntpr
+     ; _       -> do IFS.nack "TRACE" [ "No such trace format" ]
+                     cmdsIntpr
+     }
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdMenu :: String -> IOS.IOS ()
+cmdMenu args  =  do
+     (kind,what,stnr) <- return
+          $ case words args of
+            { []            -> ( "mod", "all", (-1) )
+            ; ["in"]        -> ( "mod", "in" , (-1) )
+            ; ["in",s]      -> if  and (map Char.isDigit s)
+                                   then ( "mod", "in", (read s)::Int )
+                                 else ( "mod", "in", (-11)             )
+            ; ["out"]       -> ( "mod", "out", (-1) )
+            ; ["out",s]     -> if  and (map Char.isDigit s)
+                                 then ( "mod", "out", (read s)::Int )
+                                 else ( "mod", "out", (-11) )
+            ; [s]           -> if  and (map Char.isDigit s)
+                                 then ( "mod", "all", (read s)::Int )
+                                 else ( "mod", "all", (-11) )
+            ; ["purp",nm]   -> ( "purp", nm , (-1))
+            ; ["purp",gl,s] -> if  and (map Char.isDigit s)
+                                 then ( "purp", gl, (read s)::Int )
+                                 else ( "purp", gl, (-11))
+            ; _             -> ( "mod", "all", (-11) )
+            }
+     menu <- lift $ TxsCore.txsMenu kind what stnr
+     IFS.mack [ TxsShow.fshow menu ]
+     IFS.pack "MENU" [ "\n" ]
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdMenu :: String -> IOE ()
-cmdMenu args  =  do
-     curstnr   <- gets envcurs
-     s2bt      <- gets envs2bt
-     (io,stnr) <- return $ case words args of
-                           { []        -> ("all", curstnr)
-                           ; ["in"]    -> ("in", curstnr)
-                           ; ["in",s]  -> if  and (map Char.isDigit s)
-                                            then ("in", (read s)::StatNr)
-                                            else ("in", -11)
-                           ; ["out"]   -> ("out", curstnr)
-                           ; ["out",s] -> if  and (map Char.isDigit s)
-                                            then ("out", (read s)::StatNr)
-                                            else ("out", -11)
-                           ; [s]       -> if  and (map Char.isDigit s)
-                                            then ("all", (read s)::StatNr)
-                                            else ("all", -11)
-                           ; _         -> ("all", -11)
-                           }
-     mnu <- case (io,Map.lookup stnr s2bt) of
-            { (_,Nothing)     -> do mack "MENU" $ "no state"
-                                    return $ []
-            ; ("all",Just bt) -> do return $ menu bt
-            ; ("in",Just bt)  -> do filterM (isInCTOffers.frst) (menu bt)
-            ; ("out",Just bt) -> do filterM (isOutCTOffers.frst) (menu bt)
-            }
-     fack "MENU" $ fshow mnu
+cmdMap :: String -> IOS.IOS ()
+cmdMap args  =  do
+     tdefs   <- gets IOS.tdefs
+     mdefs   <- return $ TxsDefs.mapperDefs tdefs
+     inchids <- return $ concat [ chins
+                                | ( TxsDefs.MapperId nm uid
+                                  , TxsDefs.MapperDef chins chouts syncs bexp
+                                  ) <- Map.toList mdefs
+                                ]
+     act     <- readAction inchids args
+     act'    <- lift $ TxsCore.txsMapper act
+     IFS.pack "MAP" [TxsShow.fshow act]
      cmdsIntpr
 
 
@@ -884,152 +957,46 @@ cmdMenu args  =  do
 -- Helper Functions
 --
 -- ----------------------------------------------------------------------------------------- --
--- consistentX :  check consistent configurations for testing, Simulation, Stepping
-
-{-
-
-consistentTester :: TxsDef -> TxsDef -> TxsDef -> Bool
-consistentTester modeldef mapperdef cnectdef
-  =  case (modeldef,mapperdef,cnectdef) of
-     { ( ModelDef specinsets specoutsets _ specbexp
-       , ModelDef mapinsets  mapoutsets  _ mapbexp
-       , CnectDef cnecttype conndefs
-       ) -> let { sins   = Set.fromList $ map sig $ Set.toList $ Set.unions specinsets
-                ; souts  = Set.fromList $ map sig $ Set.toList $ Set.unions specoutsets
-                ; mins   = Set.fromList $ map sig $ Set.toList $ Set.unions mapinsets
-                ; mouts  = Set.fromList $ map sig $ Set.toList $ Set.unions mapoutsets
-                ; ctows  = Set.fromList $ map sig [ chan | ConnDtoW  chan _ _ _ _ <- conndefs ]
-                ; cfrows = Set.fromList $ map sig [ chan | ConnDfroW chan _ _ _ _ <- conndefs ]
-                }
-            in  sins   `Set.isSubsetOf` mins
-             && cfrows `Set.isSubsetOf` mins
-             && mouts  `Set.isSubsetOf` ( ctows `Set.union` souts )
-     ; ( _, _, _
-       ) -> error $ "TXS consistentTester: Wrong call\n"
-     }
-
--}
-
-
-consistentTester :: TxsDef -> TxsDef -> Bool
-consistentTester modeldef cnectdef
-  =  case (modeldef,cnectdef) of
-     { ( DefModel (ModelDef specinsets specoutsets _ specbexp)
-       , DefCnect (CnectDef cnecttype conndefs)
-       ) -> let { sins   = Set.fromList $ map (sig . IdChan) $ Set.toList $ Set.unions specinsets
-                ; souts  = Set.fromList $ map (sig . IdChan) $ Set.toList $ Set.unions specoutsets
-                ; ctows  = Set.fromList $ map (sig . IdChan) [ chan | ConnDtoW  chan _ _ _ _ <- conndefs ]
-                ; cfrows = Set.fromList $ map (sig . IdChan) [ chan | ConnDfroW chan _ _ _ _ <- conndefs ]
-                }
-            in  sins   `Set.isSubsetOf` ctows
-             && cfrows `Set.isSubsetOf` souts
-     ; ( _, _
-       ) -> error $ "TXS consistentTester: Wrong call\n"
-     }
-
-
-consistentSimulator :: TxsDef -> TxsDef -> Bool
-consistentSimulator modeldef cnectdef
-  =  case (modeldef,cnectdef) of
-     { ( DefModel (ModelDef specinsets specoutsets _ specbexp)
-       , DefCnect (CnectDef cnecttype conndefs)
-       ) -> let { sins   = Set.fromList $ map (sig . IdChan) $ Set.toList $ Set.unions specinsets
-                ; souts  = Set.fromList $ map (sig . IdChan) $ Set.toList $ Set.unions specoutsets
-                ; ctows  = Set.fromList $ map (sig . IdChan) [ chan | ConnDtoW  chan _ _ _ _ <- conndefs ]
-                ; cfrows = Set.fromList $ map (sig . IdChan) [ chan | ConnDfroW chan _ _ _ _ <- conndefs ]
-                }
-            in  souts  `Set.isSubsetOf` ctows 
-             && cfrows `Set.isSubsetOf` sins
-     ; ( _, _
-       ) -> error $ "TXS consistentSimulator: Wrong call\n"
-     }
-
-
-consistentStepper :: TxsDef -> Bool
-consistentStepper modeldef
-  =  case modeldef of
-     { ( DefModel (ModelDef specinsets specoutsets _ specbexp)
-       ) -> let { sins   = Set.fromList $ map (sig . IdChan) $ Set.toList $ Set.unions specinsets
-                ; souts  = Set.fromList $ map (sig . IdChan) $ Set.toList $ Set.unions specoutsets
-                }
-            in  True
-     ; ( _
-       ) -> error $ "TXS consistentStepper: Wrong call\n"
-     }
-
-
--- ----------------------------------------------------------------------------------------- --
 -- readAction  :  read Action from String
 
-readAction :: [ChanId] -> String -> IOE (Either String Action)
+readAction :: [TxsDefs.ChanId] -> String -> IOS.IOS TxsDDefs.Action
 readAction chids args  =  do
-     env              <- get
-     uid              <- return $ envuid env
-     tdefs            <- return $ envtdefs env
-     ((uid',offs'),e) <- lift $ catch ( let p = prefoffsParser ( ( Ctdefs   $ tdefs )
-                                                                : ( Cchanenv $ chids )
-                                                                : ( Cvarenv  $ Map.keys
-                                                                               (envval env) )
-                                                                : ( Cunid    $ uid + 1 )
-                                                                : ( txsLexer args)
-                                                               )
-                                         in return $! (show p) `deepseq` (p,"")
-                                      )
-                                      ( \e -> return $ ((uid,Set.empty),(show (e::ErrorCall)))
-                                      )
+     uid              <- gets IOS.uid
+     tdefs            <- gets IOS.tdefs
+     vals             <- gets IOS.locvals
+     ((uid',offs'),e) <- lift $ lift $ catch
+                           ( let p = TxsHappy.prefoffsParser
+                                    (  ( TxsAlex.Ctdefs   $ tdefs )
+                                     : ( TxsAlex.Cchanenv $ chids )
+                                     : ( TxsAlex.Cvarenv  $ Map.keys vals )
+                                     : ( TxsAlex.Cunid    $ uid + 1 )
+                                     : ( TxsAlex.txsLexer args )
+                                    )
+                              in return $! (show p) `deepseq` (p,"")
+                           )
+                           ( \e -> return $ ((uid,Set.empty)
+                                            ,(show (e::ErrorCall))
+                                            )
+                           )
      if  e /= ""
-       then do return $ Left e
+       then do IFS.nack "ERROR" [ "incorrect action: " ++ e ]
+               return $ TxsDDefs.Act Set.empty
        else do
-         qstnoffs <- return [ q | q@(Quest vid) <- concat $ map chanoffers (Set.toList offs') ]
+         modify $ \env -> env { IOS.uid = uid' }
+         qstnoffs <- return [ q | q@(TxsDefs.Quest vid)
+                                    <- concat $ map TxsDefs.chanoffers (Set.toList offs') ]
          if  not $ null qstnoffs
-           then do
-             modify $ \env -> env { envuid = uid' }
-             return $ Left "no question mark offer allowed ain action"
+           then do IFS.nack "ERROR" [ "incorrect action: no question mark offer allowed" ]
+                   return $ TxsDDefs.Act Set.empty
            else do
-             modify $ \env -> env { envuid = uid' }
-             venv <- gets envval
-             acts <- sequence $ [ liftP2 (chid, sequence [ eval vexp | Exclam vexp <- choffs ])
-                                | Offer chid choffs <- Set.toList offs'
-                                ]
-             return $ Right ( Act (Set.fromList acts) )
-
-
--- ----------------------------------------------------------------------------------------- --
-
-
-ltsBackN :: Int -> IOE ()
-ltsBackN backsteps
-   | backsteps <= 0  =  do
-       return $ ()
-   | backsteps > 0   =  do
-       init     <- gets envinit
-       curstate <- gets envcurs
-       trie     <- gets envtrie
-       case [ (s,s') | (s,a,s') <- trie, s' == curstate ] of
-       { [(prev,cur)] -> do modify $ \env -> env { envcurs = prev }
-                            if  prev == init
-                              then do return $ ()
-                              else do ltsBackN (backsteps-1)
-       ; _            -> do mack "GOTO" $ "something wrong with Trie"
-                            do return $ ()
-       }
-
-
-path :: StatNr -> StatNr -> IOE [(StatNr,Action,StatNr)]
-path from to
-   | from >= to  =  do
-       return $ []
-   | from < to   =  do
-       init     <- gets envinit
-       trie     <- gets envtrie
-       case [ (s1,a,s2) | (s1,a,s2) <- trie, s2 == to ] of
-       { [(s1,a,s2)] -> do if (s1 == from) || (s1 == init)
-                             then do return $ [(s1,a,s2)]
-                             else do pp <- path from s1
-                                     return $ pp ++ [(s1,a,s2)]
-       ; _            -> do mack "BACK" $ "something wrong with Trie"
-                            return $ []
-       }
+             acts <- lift $ sequence
+                          $ [ Utils.liftP2 (chid, sequence [ TxsCore.txsEval vexp
+                                                           | TxsDefs.Exclam vexp <- choffs
+                                                           ]
+                                           )
+                            | TxsDefs.Offer chid choffs <- Set.toList offs'
+                            ]
+             return $ TxsDDefs.Act (Set.fromList acts)
 
 
 -- ----------------------------------------------------------------------------------------- --

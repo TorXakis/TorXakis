@@ -16,10 +16,8 @@ module Sim
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( simN     --  simN :: Int -> Handle -> IOE ()
-           --  simN depth :  simulation of depth>=0 steps,
-           --                or infinitely if depth<0,
-           --                outputting on hout
+( simInit   -- :: IOC.IOC ()
+, simN      -- :: simN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -27,40 +25,47 @@ module Sim
 
 where
 
-import System.IO
 import System.Random
 import Control.Monad.State
-import GHC.Conc
--- import Debug.Trace
 
-import qualified Data.Char as Char
-import qualified Data.List as List
-import qualified Data.Set  as Set
-import qualified Data.Map  as Map
+import Ioco
+import Mapper
+import CoreUtils
 
-import Params
-import TxsDefs
-import TxsDDefs
-import TxsEnv
-import TxsShow
-import Cnect
-import Primer
-import Step
-import CTree
-import ServerIf
+import qualified ParamCore   as ParamCore
+import qualified EnvCore     as IOC
+import qualified EnvData     as EnvData
+
+import qualified TxsDDefs    as TxsDDefs
+import qualified TxsShow     as TxsShow
+import qualified PShow       as PShow
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- simInit :  initialize models for Simulator
+
+
+simInit :: IOC.IOC ()
+simInit  =  do
+     iocoModelInit
+     mapperInit
+     trieStateInit
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- simN depth :  simulation of depth>0 steps, or infinitely if depth<0
 
 
-simN :: Int -> Int -> IOE Verdict
+simN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simN depth step  =  do
-     param_InputCompletion <- getParam "param_InputCompletion"
-     case (read param_InputCompletion) of
-     { ANGELIC  -> do simA depth step
---   ; DEMONIC  -> do simD depth step
---   ; BUFFERED -> do simB depth step
+     [(parname,parval)] <- IOC.getParams ["param_InputCompletion"]
+     case read parval of
+     { ParamCore.ANGELIC  -> do simA depth step
+--   ; ParamCore.DEMONIC  -> do simD depth step
+--   ; ParamCore.BUFFERED -> do simB depth step
+--   ; _                  -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+--                                            $ "Simulation with unknown input completion" ]
+--                              return $ TxsDDefs.Fail TxsDDefs.ActQui
      }
 
 
@@ -68,210 +73,84 @@ simN depth step  =  do
 -- simA depth :  angelic simulation of depth>0 steps, or infinitely if depth<0
 
 
-simA :: Int -> Int -> IOE Verdict
+simA :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simA depth step  =  do
      if  depth == 0
-       then do return $ Pass
+       then do return $ TxsDDefs.Pass
        else do iochoice <- lift $ randomRIO (True, False)
                if  iochoice
-                 then do simAFroW depth step
-                 else do simAToW  depth step
+                 then do simAfroW depth step
+                 else do simAtoW  depth step
 
 
-simAFroW :: Int -> Int -> IOE Verdict
-simAFroW depth step  =  do
-     simin  <- getFroW                                    -- get next input or qui from world
-     case simin of
-     { Act acts -> do                                     -- world provided input
-         act <- doSimIn (Act acts)                        -- do input in model (via taus)
-         pack "SIM" $ (showN step 5) ++ ":  IN:  "++ (fshow act)
-         simA (depth-1) (step+1)
-     ; ActQui -> do                                       -- world did not produce input
-         simAToW depth step                               -- so continue with output to world
+simAfroW :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
+simAfroW depth step  =  do
+     getFroW <- gets IOC.getfrow
+     act     <- getFroW                                      -- get next output or quiescence
+     mact    <- mapperMap act                                -- apply mapper
+     case mact of
+     { TxsDDefs.Act acts -> do                               -- world provided input to system
+          IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                        $ (TxsShow.showN step 6) ++ ":  IN:  "++ (TxsShow.fshow mact) ]
+          done <- iocoModelAfter mact                        -- do input in model
+          if done
+            then do trieStateNext mact
+                    simA (depth-1) (step+1)                  -- continue whether done or not
+            else do simA (depth-1) (step+1)                  -- continue whether done or not
+     ; TxsDDefs.ActQui -> do                                 -- world did not provide input
+          simAtoW depth step                                 -- continue with output to world
      }
 
 
-simAToW :: Int -> Int -> IOE Verdict
-simAToW depth step  =  do
-     simout  <- proposeSimOut                             -- propose output or qui (via taus)
-     case simout of
-     { Act acts -> do                                     -- real output
-         simact  <- putToW simout                         -- output to world
-         if simact == simout
-           then do                                        -- real output done to world
-             act <- doSimOut (Act acts)                   -- do output in model (not via taus)
-             pack "SIM" $ (showN step 5) ++ ": OUT: " ++ (fshow simout)
-             simA (depth-1) (step+1)
-           else do                                        -- input from world was faster
-             case simact of
-             { Act acts -> do                             -- world produced real input
-                 act <- doSimIn (Act acts)                -- do input in model (via tau-steps)
-                 pack "SIM" $ (showN step 5) ++ ":  IN:  " ++ (fshow act)
-                 simA (depth-1) (step+1)
-             ; _ -> do     
-                 mack "SIM" $ "input is not input ..."
-                 return $ Fail simact
-             }
-     ; ActQui -> do
-         simAFroW depth step
+simAtoW :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
+simAtoW depth step  =  do
+     putToW  <- gets IOC.puttow
+     mayAct  <- ranMenuOut
+     case mayAct of
+     { Just act -> do                                        -- proposed real output or qui
+          mact @(TxsDDefs.Act macts ) <- mapperMap act
+          mact'@(TxsDDefs.Act macts') <- putToW mact         -- do input on sut, always
+          if mact == mact'
+            then do IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                                  $ (TxsShow.showN step 6) ++ ": OUT: " ++ (TxsShow.fshow mact) ]
+                    done <- iocoModelAfter mact              -- do output in model
+                    if done
+                      then do trieStateNext mact
+                              simA (depth-1) (step+1)        -- continue
+                      else do simA (depth-1) (step+1)
+            else do case mact' of                            -- input from world was faster
+                    { TxsDDefs.Act acts -> do                -- world provided input to system
+                         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                                       $ (TxsShow.showN step 6) ++ ":  IN:  "++ (TxsShow.fshow mact) ]
+                         done <- iocoModelAfter mact         -- do input in model
+                         if done
+                           then do trieStateNext mact
+                                   simA (depth-1) (step+1)        -- continue
+                           else do simA (depth-1) (step+1)
+                    ; TxsDDefs.ActQui -> do                  -- world did not provide input
+                         simAtoW depth step                  -- continue with output to world
+                    }
+     ; Nothing -> do                                         -- no proposed output
+          IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                        $ "no proposed output: should not happen" ]
+          return $ TxsDDefs.NoVerdict
      }
-
-
--- ----------------------------------------------------------------------------------------- --
--- proposeSimOut :  propose simulation output or qui (probably via tau-steps)
-
-
-proposeSimOut :: IOE Action
-proposeSimOut  =  do
-     curbtree     <- getBTree
-     taubranches  <- return $ [ b | b@(BTtau _) <- curbtree ]
-     outbranches  <- filterM (isOutCTOffers.btoffers) [ b | b@(BTpref _ _ _ _) <- curbtree ]
-     case ( taubranches, outbranches ) of 
-     { ( [], [] ) -> do
-         return $ ActQui
-     ; ( (tb:tbs), [] ) -> do
-         random      <- lift $ randomRIO ( 0, length(tb:tbs) - 1 )
-         BTtau btree <- return $ (tb:tbs)!!random
-         modify ( \env ->
-                   env { envs2bt = Map.insert (envcurs env) btree (envs2bt env) }
-                )
-         proposeSimOut
-     ; ( [], (ob:obs) ) -> do
-         actout <- ranMenuOut
-         case actout of
-         { Nothing     -> do return $ ActQui
-         ; Just simout -> do return $ simout
-         }
-     ; ( (tb:tbs), (ob:obs) ) -> do
-         random <- lift $ randomRIO ( 0, length(tb:tbs) + length(ob:obs) - 1 )
-         if random < length(tb:tbs)
-           then do
-             BTtau btree <- return $ (tb:tbs)!!random
-             modify ( \env ->
-                       env { envs2bt = Map.insert (envcurs env) btree (envs2bt env) }
-                    )
-             proposeSimOut
-           else do
-             actout <- ranMenuOut
-             case actout of
-             { Nothing     -> do
-                 modify ( \env ->
-                           env { envs2bt = Map.insert (envnrst env) (tb:tbs) (envs2bt env) }
-                        ) 
-                 proposeSimOut
-             ; Just simout -> do return $ simout
-             }
-     }
-
-
--- ----------------------------------------------------------------------------------------- --
--- doSimIn act :  if  act = Act acts  then do the input (via tau-steps) else do nothing
-
-
-doSimIn :: Action -> IOE Action
-
-doSimIn act@(Act acts)  =  do
-     curbtree     <- getBTree
-     taubranches  <- return $ [ b | b@(BTtau _) <- curbtree ]
-     inbranches   <- filterM (isInCTOffers.btoffers) [ b | b@(BTpref _ _ _ _) <- curbtree ]
-     inafters     <- sequence [ liftP2 ( ib, afterBBranch acts ib ) | ib <- inbranches ]
-     execbranches <- return $ [ ib | ( ib, aft ) <- inafters, not $ null aft ]
-     case ( taubranches, execbranches ) of
-     { ( [], [] ) -> do
-         modify ( \env ->
-                   env { envnrst = (envnrst env) + 1
-                       , envcurs = (envnrst env)
-                       , envtrie = (envcurs env, Act acts, envnrst env) : (envtrie env)
-                       , envs2bt = Map.insert (envnrst env) curbtree (envs2bt env)
-                       }
-                )
-         return $ act
-     ; ( (tb:tbs), [] ) -> do
-         random      <- lift $ randomRIO ( 0, length(tb:tbs) - 1 )
-         BTtau btree <- return $ (tb:tbs)!!random
-         modify ( \env ->
-                   env { envs2bt = Map.insert (envcurs env) btree (envs2bt env) }
-                )
-         doSimIn act
-     ; ( [], (eb:ebs) ) -> do
-         random          <- lift $ randomRIO ( 0, length(eb:ebs) - 1 )
-         (newbtree:nbts) <- afterBBranch acts ((eb:ebs)!!random)
-         modify ( \env ->
-                   env { envnrst = (envnrst env) + 1
-                       , envcurs = (envnrst env)
-                       , envtrie = (envcurs env, Act acts, envnrst env) : (envtrie env)
-                       , envs2bt = Map.insert (envnrst env) newbtree (envs2bt env)
-                       }
-                )
-         return $ act
-     ; ( (tb:tbs), (eb:ebs) ) -> do
-         random <- lift $ randomRIO ( 0, length(tb:tbs) + length(eb:ebs) - 1 )
-         if random < length(tb:tbs)
-           then do
-             BTtau btree <- return $ (tb:tbs)!!random
-             modify ( \env ->
-                       env { envs2bt = Map.insert (envcurs env) btree (envs2bt env) }
-                    )
-             doSimIn act
-           else do
-             (newbtree:nbts) <- afterBBranch acts ((eb:ebs)!!(random - length(tb:tbs)))
-             modify ( \env ->
-                       env { envnrst = (envnrst env) + 1
-                           , envcurs = (envnrst env)
-                           , envtrie = (envcurs env, Act acts, envnrst env) : (envtrie env)
-                           , envs2bt = Map.insert (envnrst env) newbtree (envs2bt env)
-                           }
-                    )
-             return $ act
-     }
-
-doSimIn actQui  =  do
-     return $ actQui
-
-
--- ----------------------------------------------------------------------------------------- --
--- doSimOut act :  if  act = actOut acts  then do the output (not via taus) else do nothing
-
-
-doSimOut :: Action -> IOE Action
-doSimOut act@(Act acts)  =  do
-     curbtree      <- getBTree
-     outbranches   <- filterM (isOutCTOffers.btoffers) [ b | b@(BTpref _ _ _ _) <- curbtree ]
-     outafters     <- sequence [ liftP2 ( ob, afterBBranch acts ob ) | ob <- outbranches ]
-     execbranches  <- return $ [ ob | ( ob, aft ) <- outafters, not $ null aft ]
-     case execbranches of 
-     { [] -> do
-         mack "SIM" $ "empty out branches: should not occur"
-         return $ act
-     ; (eb:ebs) -> do
-         random          <- lift $ randomRIO ( 0, length(eb:ebs) - 1 )
-         (newbtree:nbts) <- afterBBranch acts ((eb:ebs)!!random)
-         modify ( \env ->
-                   env { envnrst = (envnrst env) + 1
-                       , envcurs = (envnrst env)
-                       , envtrie = (envcurs env, Act acts, envnrst env) : (envtrie env)
-                       , envs2bt = Map.insert (envnrst env) newbtree (envs2bt env)
-                       }
-                )
-         return $ act
-     }
-
-doSimOut act  =  do
-     return $ act
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- randMenuOut :  random output action from menuOut
 
 
-ranMenuOut :: IOE (Maybe Action)
+ranMenuOut :: IOC.IOC (Maybe TxsDDefs.Action)
 ranMenuOut  =  do
-     menu     <- menuOut
-     act      <- randMenu menu
-     case act of
-     { Nothing         -> return $ Nothing
-     ; Just (Act acts) -> return $ Just (Act acts)
-     }
+     menuOut <- iocoModelMenuOut
+     isQui   <- iocoModelIsQui
+     if isQui
+       then do r <- lift $ randomRIO (0, length menuOut)
+               if r == 0
+                 then return $ Just TxsDDefs.ActQui
+                 else randMenu menuOut
+       else randMenu menuOut
 
 
 -- ----------------------------------------------------------------------------------------- --

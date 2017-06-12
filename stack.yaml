@@ -39,11 +39,14 @@ ghc-variant: integersimple
 packages:
 - location: sys/behave
 - location: sys/behavedefs
+- location: sys/behaveenv
+- location: sys/cnect
 - location: sys/core 
+- location: sys/coreenv
 - location: sys/defs
-- location: sys/env
 - location: sys/front
 - location: sys/server
+- location: sys/serverenv
 - location: sys/solve
 - location: sys/solvedefs
 - location: sys/ui

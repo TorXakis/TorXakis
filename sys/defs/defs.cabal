@@ -32,8 +32,10 @@ library
                       , ModelId
                       , NoId
                       , ProcId
+                      , PShow
                       , PurpId
                       , SortId
+                      , SortOf
                       , StatId
                       , VarId
                       
@@ -42,7 +44,6 @@ library
                       , ConstDefs
                       , Ident
                       , Name
-                      , SortOf
                       , TxsDef
                       , ValExprDefs
                       , ValExprImpls

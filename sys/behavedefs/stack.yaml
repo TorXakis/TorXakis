@@ -38,6 +38,7 @@ ghc-variant: integersimple
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - location: .
+- location: ../coredefs
 - location: ../defs
 - location: ../solve
 

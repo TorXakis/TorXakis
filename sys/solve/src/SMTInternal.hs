@@ -109,7 +109,9 @@ createSMTEnv cmd lgFlag tdefs ps =  do
     lg <- if lgFlag
             then do timeZone <- getCurrentTimeZone
                     startTime <- getCurrentTime
-                    let timeString = replace ":" "-" (show (utcToLocalTime timeZone startTime)) in do
+                    let timeString = replace ":" "-" $
+                                     replace " " "-" $
+                                        show (utcToLocalTime timeZone startTime) in do
                         h <- openFile ("logSMT." ++ timeString ++ ".smt2") WriteMode
                         hSetBuffering h NoBuffering
                         hSetEncoding h latin1

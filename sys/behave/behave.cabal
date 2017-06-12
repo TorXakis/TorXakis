@@ -15,14 +15,14 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      Equiv
+  exposed-modules:      Behave
+
+  other-modules:        Equiv
                       , Expand
                       , Next
-                      , Primer
                       , Reduce
                       , Subst
                       , Unfold
-
 
   ghc-options:         -O2 -optc-O3 -optc-ffast-math
   
@@ -30,10 +30,11 @@ library
                       , containers
                       , mtl
                       , MissingH
-                      
+
                       , behavedefs
+                      , behaveenv
+                      , coreenv
                       , defs
-                      , env
                       , solve
                       , solvedefs
                       , value
@@ -42,11 +43,19 @@ library
   
 test-suite behave-test
   type:                 exitcode-stdio-1.0
-  hs-source-dirs:       test
+  hs-source-dirs:       src
+                      , test
   
   main-is:              TestMain.hs
   
-  other-modules:        TestBExpr
+  other-modules:        Behave
+                      , Equiv
+                      , Expand
+                      , Next
+                      , Reduce
+                      , Subst
+                      , Unfold
+                      , TestBExpr
                       , TestFuncContent
                       , TestHelperFuncContent
                       , TestProcessBehaviour
@@ -62,10 +71,13 @@ test-suite behave-test
                      , HUnit
                      , MissingH
                      
-                     , defs
-                     , behave
                      , behavedefs
-                     , env
+                     , behaveenv
+                     , coreenv
+                     , defs
                      , front
+                     , solve
+                     , solvedefs
+                     , value
                      
   default-language:    Haskell2010

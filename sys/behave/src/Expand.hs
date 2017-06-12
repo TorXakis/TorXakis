@@ -15,10 +15,11 @@ module Expand
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( expand   --  expand :: CNode -> IOE CTree
-           --  'expand cnode' expands 'cnode' (concrete, closed, no interaction variables)
-           --  into a communication tree with interaction variables (closed)
-           --  plain expansion, no input/ouput, no solving
+( expand   -- :: [ Set.Set TxsDefs.ChanId ] -> CNode -> IOB.IOB CTree
+           -- 'expand chsets cnode' expands 'cnode'
+           -- (concrete, closed, no interaction variables)
+           -- into a communication tree with interaction variables (closed)
+           -- plain expansion, no input/ouput, no solving
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -26,24 +27,22 @@ module Expand
 
 where
 
-import Debug.Trace
-
-import System.IO
 import Control.Monad.State
 
 import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
-import qualified Data.Char as Char
+
+import qualified EnvBTree  as IOB
+import qualified EnvData   as EnvData
 
 import TxsDefs
 import TxsUtils
 import StdTDefs
 
 import Utils
-import TxsEnv
-import CTree
-import Eval
+import BTree
+import qualified Eval    as Eval
 
 import ChanId
 
@@ -52,7 +51,7 @@ import ChanId
 --           CNode must be closed and have no free, symbolic, or interaction variables
 
 
-expand :: CNode -> IOE CTree
+expand :: [ Set.Set TxsDefs.ChanId ] -> CNode -> IOB.IOB CTree
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -60,19 +59,19 @@ expand :: CNode -> IOE CTree
 --
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we Stop)  =  do
+expand chsets (BNbexpr we Stop)  =  do
      return $ []
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we (ActionPref (ActOffer offs cnrs) bexp))  =  do
-     (ctoffs, quests, exclams) <- expandOffers offs
+expand chsets (BNbexpr we (ActionPref (ActOffer offs cnrs) bexp))  =  do
+     (ctoffs, quests, exclams) <- expandOffers chsets offs
      ivenv    <- return $ Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
      we'      <- return $ Map.fromList [ (vid, wal)
                                        | (vid, wal) <- Map.toList we 
                                        , vid `Map.notMember` ivenv
                                        ]
-     exclams' <- sequence [ liftP2 ( ivar, eval (cstrEnv (Map.map cstrConst we) vexp) )
+     exclams' <- sequence [ liftP2 ( ivar, Eval.eval (cstrEnv (Map.map cstrConst we) vexp) )
                           | (ivar, vexp) <- exclams
                           ]
      return $ [ CTpref { ctoffers  = ctoffs
@@ -87,100 +86,101 @@ expand (BNbexpr we (ActionPref (ActOffer offs cnrs) bexp))  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we (Guard cnrs bexp))  =  do
-     guardVal <- evalCnrs $ map (cstrEnv (Map.map cstrConst we)) cnrs
+expand chsets (BNbexpr we (Guard cnrs bexp))  =  do
+     guardVal <- Eval.evalCnrs $ map (cstrEnv (Map.map cstrConst we)) cnrs
      if  guardVal
-       then do expand (BNbexpr we bexp)
+       then do expand chsets (BNbexpr we bexp)
        else do return $ []
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we (Choice bexps))  =  do
-     expands <- sequence [ expand (BNbexpr we bexp) | bexp <- bexps ]
+expand chsets (BNbexpr we (Choice bexps))  =  do
+     expands <- sequence [ expand chsets (BNbexpr we bexp) | bexp <- bexps ]
      return $ concat expands
      
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we (Parallel chans bexps))  =  do
-     expand $ BNparallel chans [ BNbexpr we bexp | bexp <- bexps ]
+expand chsets (BNbexpr we (Parallel chans bexps))  =  do
+     expand chsets $ BNparallel chans [ BNbexpr we bexp | bexp <- bexps ]
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we (Enable bexp1 chanoffs bexp2))  =  do
+expand chsets (BNbexpr we (Enable bexp1 chanoffs bexp2))  =  do
      chanoffs' <- mapM (evalChanOffer we) chanoffs
-     expand $ BNenable (BNbexpr we bexp1) chanoffs' (BNbexpr we bexp2)
+     expand chsets $ BNenable (BNbexpr we bexp1) chanoffs' (BNbexpr we bexp2)
 
   where
 
-     evalChanOffer :: (WEnv VarId) -> ChanOffer -> IOE ChanOffer
+     evalChanOffer :: (WEnv VarId) -> ChanOffer -> IOB.IOB ChanOffer
 
      evalChanOffer we (Quest vid)  =  do
           return $ Quest vid
 
      evalChanOffer we (Exclam vexp)  =  do
-          wal <- eval $ cstrEnv (Map.map cstrConst we) vexp
+          wal <- Eval.eval $ cstrEnv (Map.map cstrConst we) vexp
           return $ Exclam (cstrConst wal)
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we (Disable bexp1 bexp2))  =  do
-     expand $ BNdisable (BNbexpr we bexp1) (BNbexpr we bexp2)
+expand chsets (BNbexpr we (Disable bexp1 bexp2))  =  do
+     expand chsets $ BNdisable (BNbexpr we bexp1) (BNbexpr we bexp2)
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we (Interrupt bexp1 bexp2))  =  do
-     expand $ BNinterrupt (BNbexpr we bexp1) (BNbexpr we bexp2)
+expand chsets (BNbexpr we (Interrupt bexp1 bexp2))  =  do
+     expand chsets $ BNinterrupt (BNbexpr we bexp1) (BNbexpr we bexp2)
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we (ProcInst procid chans vexps))  =  do
-     tdefs <- gets envtdefs
+expand chsets (BNbexpr we (ProcInst procid chans vexps))  =  do
+     tdefs <- gets IOB.tdefs
      case Map.lookup procid (procDefs tdefs) of
      { Just (ProcDef chids vids bexp)
          -> do chanmap <- return $ Map.fromList (zip chids chans)
-               wals    <- mapM (eval.(cstrEnv (Map.map cstrConst we))) vexps
+               wals    <- mapM (Eval.eval.(cstrEnv (Map.map cstrConst we))) vexps
                we'     <- return $ Map.fromList (zip vids wals)
-               expand $ BNbexpr we' (relabel chanmap bexp)
-     ; _ -> do lift $ hPutStrLn stderr
-                    $ "TXS Expand expand: Undefined process name in expand\n"
+               expand chsets $ BNbexpr we' (relabel chanmap bexp)
+     ; _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                             $ "Expand: Undefined process name in expand" ]
                return $ []
      }
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we (Hide chans bexp))  =  do
-     expand $ BNhide chans (BNbexpr we bexp)
+expand chsets (BNbexpr we (Hide chans bexp))  =  do
+     expand chsets $ BNhide chans (BNbexpr we bexp)
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we (ValueEnv venv bexp))  =  do
-     we'  <- sequence [ liftP2 ( vid, eval (cstrEnv (Map.map cstrConst we) vexp) )
+expand chsets (BNbexpr we (ValueEnv venv bexp))  =  do
+     we'  <- sequence [ liftP2 ( vid, Eval.eval (cstrEnv (Map.map cstrConst we) vexp) )
                       | (vid, vexp) <- Map.toList venv
                       ]
      we'' <- return $ Map.fromList we'
-     expand $ BNbexpr (combineWEnv we we'') bexp
+     expand chsets $ BNbexpr (combineWEnv we we'') bexp
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNbexpr we (StAut init ve trns))  =  do
+expand chsets (BNbexpr we (StAut init ve trns))  =  do
      envwals <- return $ Map.fromList [ (vid, wal)
                                       | (vid, wal) <- Map.toList we
                                       , vid `Map.notMember` ve
                                       ]
-     vewals  <- sequence [ liftP2 ( vid, eval (cstrEnv (Map.map cstrConst we) vexp) )
+     vewals  <- sequence [ liftP2 ( vid, Eval.eval (cstrEnv (Map.map cstrConst we) vexp) )
                          | (vid, vexp) <- Map.toList ve
                          ]
      stswals <- return $ Map.fromList vewals
-     mapM (expandTrans envwals stswals) [ tr | tr <- trns, from tr == init ]
+     mapM (expandTrans chsets envwals stswals) [ tr | tr <- trns, from tr == init ]
 
   where
 
-     expandTrans :: (WEnv VarId) -> (WEnv VarId) -> Trans -> IOE CTBranch
-     expandTrans envwals stswals (Trans from (ActOffer offs cnrs) update to)  =  do
-          (ctoffs, quests, exclams) <- expandOffers offs
+     expandTrans :: [ Set.Set TxsDefs.ChanId ] -> (WEnv VarId) -> (WEnv VarId) -> Trans
+                    -> IOB.IOB CTBranch
+     expandTrans chsets envwals stswals (Trans from (ActOffer offs cnrs) update to)  =  do
+          (ctoffs, quests, exclams) <- expandOffers chsets offs
           we'      <- return $ envwals `combineWEnv` stswals
           ivenv    <- return $ Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
-          exclams' <- sequence [ liftP2 ( ivar, eval (cstrEnv (Map.map cstrConst we') vexp) )
+          exclams' <- sequence [ liftP2 ( ivar, Eval.eval (cstrEnv (Map.map cstrConst we') vexp) )
                                | (ivar, vexp) <- exclams
                                ]
           we''     <- return $ Map.fromList [ (vid, wal)
@@ -210,9 +210,9 @@ expand (BNbexpr we (StAut init ve trns))  =  do
 --
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNparallel chans cnodes)  = do
+expand chsets (BNparallel chans cnodes)  = do
     let chans'  = Set.fromList $ chanId_Exit : chans    
-    ctpairs <- sequence [ liftP2 ( cnode, expand cnode ) | cnode <- cnodes ]
+    ctpairs <- sequence [ liftP2 ( cnode, expand chsets cnode ) | cnode <- cnodes ]
     return $ (asyncs chans' ctpairs) ++ (syncs chans' ctpairs)
   where
     asyncs ::  (Set.Set ChanId) -> [(CNode,CTree)] -> CTree
@@ -282,14 +282,14 @@ expand (BNparallel chans cnodes)  = do
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNenable cnode1 chanoffs cnode2)  =  do
-     ctree1      <- expand cnode1
-     (ctoff, quests, exclams) <- expandOffer ( Offer chanId_Exit chanoffs )
+expand chsets (BNenable cnode1 chanoffs cnode2)  =  do
+     ctree1      <- expand chsets cnode1
+     (ctoff, quests, exclams) <- expandOffer chsets (Offer chanId_Exit chanoffs)
      ivenv       <- return $ Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
-     exclams'    <- sequence [ liftP2 ( ivar, eval vexp ) | (ivar, vexp) <- exclams ]
+     exclams'    <- sequence [ liftP2 ( ivar, Eval.eval vexp ) | (ivar, vexp) <- exclams ]
      accpreds    <- return $ [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- exclams' ]
      let (exits, noExits) = List.partition (\(CTpref ctoffs1 _ _ _) -> chanId_Exit `Set.member` (Set.map ctchan ctoffs1)) ctree1 in do
-         leftExits   <- sequence [ hideCTBranch
+         leftExits   <- sequence [ hideCTBranch chsets
                                          [chanId_Exit]
                                          ( CTpref ctoffs1
                                                   cthidvars1
@@ -311,9 +311,9 @@ expand (BNenable cnode1 chanoffs cnode2)  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNdisable cnode1 cnode2)  =  do
-     ctree1  <- expand cnode1
-     ctree2  <- expand cnode2
+expand chsets (BNdisable cnode1 cnode2)  =  do
+     ctree1  <- expand chsets cnode1
+     ctree2  <- expand chsets cnode2
      ctree1' <- return $ [ CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1
                          | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
                          , chanId_Exit `Set.member` (Set.map ctchan ctoffs1)
@@ -331,9 +331,9 @@ expand (BNdisable cnode1 cnode2)  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNinterrupt cnode1 cnode2)  =  do
-     ctree1  <- expand cnode1
-     ctree2  <- expand cnode2
+expand chsets (BNinterrupt cnode1 cnode2)  =  do
+     ctree1  <- expand chsets cnode1
+     ctree2  <- expand chsets cnode2
      ctree1' <- return $ [ CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1
                          | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
                          , chanId_Exit `Set.member` (Set.map ctchan ctoffs1)
@@ -347,7 +347,7 @@ expand (BNinterrupt cnode1 cnode2)  =  do
                          | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
                          , chanId_Exit `Set.notMember` (Set.map ctchan ctoffs1)
                          ]
-     ctree3' <- sequence [ hideCTBranch
+     ctree3' <- sequence [ hideCTBranch chsets
                                  [chanId_Exit]
                                  ( CTpref ctoffs2
                                           cthidvars2
@@ -375,9 +375,9 @@ expand (BNinterrupt cnode1 cnode2)  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand (BNhide chans cnode)  =  do
-     ctree   <- expand cnode
-     mapM (hideCTBranch chans) ctree
+expand chsets (BNhide chans cnode)  =  do
+     ctree   <- expand chsets cnode
+     mapM (hideCTBranch chsets chans) ctree
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -387,23 +387,23 @@ expand (BNhide chans cnode)  =  do
 -- expand Offers
 
 
-expandOffers :: (Set.Set Offer) -> IOE ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
-expandOffers offs  =  do
-     ctofftuples <- mapM expandOffer (Set.toList offs)
+expandOffers :: [ Set.Set TxsDefs.ChanId ] -> (Set.Set Offer) -> IOB.IOB ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
+expandOffers chsets offs  =  do
+     ctofftuples <- mapM (expandOffer chsets) (Set.toList offs)
      ( ctoffs, quests, exclams ) <- return $ unzip3 ctofftuples
      return $ ( Set.fromList ctoffs, concat quests, concat exclams )
 
  
-expandOffer :: Offer -> IOE ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
-expandOffer (Offer chid choffs)  =  do
-     ctchoffs <- mapM (expandChanOffer chid) ( zip choffs [1..(length choffs)] )
+expandOffer :: [ Set.Set TxsDefs.ChanId ] -> Offer -> IOB.IOB ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
+expandOffer chsets (Offer chid choffs)  =  do
+     ctchoffs <- mapM (expandChanOffer chsets chid) ( zip choffs [1..(length choffs)] )
      ( ivars, quests, exclams ) <- return $ unzip3 ctchoffs
      return $ ( CToffer chid ivars, concat quests, concat exclams )
 
  
-expandChanOffer :: ChanId -> (ChanOffer,Int) -> IOE ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
-expandChanOffer chid (choff,pos)  =  do
-     curs <- gets envcurs
+expandChanOffer :: [ Set.Set TxsDefs.ChanId ] -> ChanId -> (ChanOffer,Int) -> IOB.IOB ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
+expandChanOffer chsets chid (choff,pos)  =  do
+     curs <- gets IOB.stateid
      case choff of
      { Quest  vid  -> do ivar <- return $ IVar { ivname = ChanId.name chid
                                                , ivuid  = ChanId.unid chid
@@ -426,8 +426,8 @@ expandChanOffer chid (choff,pos)  =  do
 -- hide channels in CTBranch
 
 
-hideCTBranch :: [ChanId] -> CTBranch -> IOE CTBranch
-hideCTBranch chans (CTpref ctoffs hidvars preds next)  =  do
+hideCTBranch :: [ Set.Set TxsDefs.ChanId ] -> [ChanId] -> CTBranch -> IOB.IOB CTBranch
+hideCTBranch chsets chans (CTpref ctoffs hidvars preds next)  =  do
      (hctoffs,vctoffs) <- return $ Set.partition ((`elem` chans).ctchan) ctoffs
      hvars             <- return $ concat ( map ctchoffers (Set.toList hctoffs) )
      hvarlist          <- sequence [ liftP2 (hvar, uniHVar hvar) | hvar <- hvars ]
@@ -515,15 +515,15 @@ instance Relabel Trans
 
 
 -- ----------------------------------------------------------------------------------------- --
--- transform IVar into unique IVar (HVar), and back
+-- transform IVar into unique IVar (HVar)
 
 
-uniHVar :: IVar -> IOE IVar
+uniHVar :: IVar -> IOB.IOB IVar
 uniHVar (IVar ivname ivuid ivpos ivstat ivsrt)  =  do
-     uid    <- gets envuid
-     nuid   <- return $ uid + 1
-     modify ( \env -> env { envuid = nuid } )
-     return $ IVar (ivname++"$$$"++(show ivuid)) nuid ivpos ivstat ivsrt
+     unid   <- gets IOB.unid
+     unid'  <- return $ unid + 1
+     modify $ \env -> env { IOB.unid = unid' }
+     return $ IVar (ivname++"$$$"++(show ivuid)) unid' ivpos ivstat ivsrt
 
 
 -- ----------------------------------------------------------------------------------------- --

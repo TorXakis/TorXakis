@@ -39,6 +39,7 @@ ghc-variant: integersimple
 packages:
 - location: .
 - location: ../behave
+- location: ../coredefs
 - location: ../defs
 - location: ../front
 - location: ../solve

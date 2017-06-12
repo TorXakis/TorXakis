@@ -1,7 +1,7 @@
-name:                   env
-version:                0.2.1.0
-synopsis:               Environment (Monad) for TorXakis
-license:                BSD3
+name:                   behaveenv
+version:                0.1.7.0
+synopsis:               Behaviour Expressions for TorXakis
+license:                OtherLicense
 license-file:           license.txt
 author:                 Jan Tretmans
                       , Pierre van de Laar
@@ -15,18 +15,17 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      TxsEnv
-                      
+  exposed-modules:
+                        EnvBTree
+
   ghc-options:         -O2 -optc-O3 -optc-ffast-math
   
   build-depends:        base
                       , containers
-                      , mtl
-                      , network
-                      , time
                       , MissingH
-                      
-                      , behavedefs
+                      , mtl
+
+                      , coreenv
                       , defs
                       , solvedefs
                       

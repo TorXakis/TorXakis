@@ -36,8 +36,8 @@ import qualified Data.Map  as Map
 
 import TxsDefs
 import StdTDefs
-import TxsEnv
-import CTree
+import qualified EnvBTree   as IOB
+import BTree
 
 
 -- import FreeVar
@@ -51,8 +51,8 @@ import CTree
 class (Eq e) => Equiv e
   where
 
-    (~=~) :: e -> e -> IOE Bool
-    (~/~) :: e -> e -> IOE Bool
+    (~=~) :: e -> e -> IOB.IOB Bool
+    (~/~) :: e -> e -> IOB.IOB Bool
 
     x ~=~ y  =  do  { return $ x == y }
     x ~/~ y  =  do  { eq <- x ~=~ y ;  return $ not eq }

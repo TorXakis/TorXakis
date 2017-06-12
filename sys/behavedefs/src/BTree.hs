@@ -7,31 +7,55 @@ See license.txt
 {-# LANGUAGE DeriveFunctor #-}
 -- ----------------------------------------------------------------------------------------- --
 
-module CTree
+module BTree
 
 -- ----------------------------------------------------------------------------------------- --
 --
 -- Interaction Variables, Communication Tree, Behaviour Tree, Behaviour Node
 --
 -- ----------------------------------------------------------------------------------------- --
+-- export
+
+( BehAction
+, BTree
+, BBranch (..)
+, CTree
+, CTBranch (..)
+, CTOffer (..)
+, BNode (..)
+, CNode
+, INode
+, IVar (..)
+, IWals
+, Menu
+)
+
+-- ----------------------------------------------------------------------------------------- --
+-- import
 
 where
 
--- import Debug.Trace
-
-import qualified Data.Char as Char
-import qualified Data.List as List
+-- import qualified Data.Char as Char
+-- import qualified Data.List as List
 import qualified Data.Set  as Set
-import qualified Data.Map  as Map
-
+-- import qualified Data.Map  as Map
 -- import qualified Data.String.Utils as Utils
 
+-- import from defs
 import TxsDefs
 
-import SolveDefs
+-- import SolveDefs
+-- import qualified SMTData as SMTData
 
 
 -- ----------------------------------------------------------------------------------------- --
+-- ----------------------------------------------------------------------------------------- --
+-- BehAct :  behaviour Action
+
+
+type BehAction  =  Set.Set (TxsDefs.ChanId,[TxsDefs.Const])
+
+
 -- ----------------------------------------------------------------------------------------- --
 -- IVar     :  interaction variable for behaviour tree
 
@@ -47,11 +71,12 @@ data  IVar      =  IVar    { ivname     :: Name       -- name of Channel
 
 instance Variable IVar
   where
-    vname (IVar nm uid pos stat srt)  =  "$"++nm++ "$"++(show uid)++
+    vname (IVar nm uid pos stat _srt)  =  "$"++nm++ "$"++(show uid)++
                                          "$"++(show stat)++"$"++(show pos)++"$"
-    vunid (IVar nm uid pos stat srt)  =  uid
-    vsort (IVar nm uid pos stat srt)  =  srt
+    vunid (IVar { ivuid = uid })  =  uid
+    vsort (IVar { ivsrt = srt })  =  srt
     cstrVariable s i t = IVar s i (-1) (-1) t           -- PvdL for temporary variable
+
 
 type  IVEnv     =  VarEnv VarId IVar
 
@@ -105,18 +130,24 @@ data  BBranch  =  BTpref   { btoffers     :: Set.Set CTOffer        -- set must 
 -- INode :  interaction behaviour node, ie. with interaction variable environment
 
 
-data  BNode env  =  BNbexpr      env BExpr                         -- env must be: (WEnv,IVEnv)
-                  | BNparallel   [ChanId] [BNode env]
-                  | BNenable     (BNode env) [ChanOffer] (BNode env)
-                  | BNdisable    (BNode env) (BNode env)
-                  | BNinterrupt  (BNode env) (BNode env)
-                  | BNhide       [ChanId] (BNode env)
+data  BNode env =  BNbexpr      env BExpr                         -- env must be: (WEnv,IVEnv)
+                 | BNparallel   [ChanId] [BNode env]
+                 | BNenable     (BNode env) [ChanOffer] (BNode env)
+                 | BNdisable    (BNode env) (BNode env)
+                 | BNinterrupt  (BNode env) (BNode env)
+                 | BNhide       [ChanId] (BNode env)
      deriving (Eq,Ord,Read,Show,Functor)
 
 
 type CNode   =  BNode (WEnv VarId)                             --  Concrete Behaviour Node
 
 type INode   =  BNode (WEnv VarId, IVEnv)                      --  Interactions Behaviour Node
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- menu
+
+type  Menu  =  [ ( Set.Set BTree.CTOffer, [BTree.IVar], [TxsDefs.ValExpr BTree.IVar] ) ]
 
 
 -- ----------------------------------------------------------------------------------------- --

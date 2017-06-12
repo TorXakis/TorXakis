@@ -14,6 +14,13 @@ module Reduce
 -- Reduction, and Simplification on BTree's
 --
 -- ----------------------------------------------------------------------------------------- --
+-- export
+
+( Reduce (..)
+)
+
+-- ----------------------------------------------------------------------------------------- --
+-- import
 
 where
 
@@ -25,10 +32,11 @@ import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
+
 import TxsDefs
 import StdTDefs
-import TxsEnv
-import CTree
+import BTree
+import qualified EnvBTree   as IOB
 import Utils
 
 import FreeVar
@@ -48,7 +56,7 @@ import Equiv
 
 class Reduce e
   where
-    reduce :: e -> IOE e
+    reduce :: e -> IOB.IOB e
     reduce x  =  do  return $ x
 
 

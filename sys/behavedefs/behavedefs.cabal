@@ -15,15 +15,16 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      CTree
-                      , CTShow
+  exposed-modules:      BTree
+                      , BTShow
 
   ghc-options:         -O2 -optc-O3 -optc-ffast-math
   
   build-depends:        base
                       , containers
                       , MissingH
-                      
+                      , mtl
+
                       , defs
                       , solvedefs
                       

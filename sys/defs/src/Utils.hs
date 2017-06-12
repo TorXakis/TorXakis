@@ -30,6 +30,16 @@ import qualified Data.Set  as Set
 
 
 -- ----------------------------------------------------------------------------------------- --
+-- monad manipulation
+
+liftP2 :: Monad m => (a, m b) -> m (a, b)
+liftP2 (x, my)  =  do  { y <- my; return (x,y) }
+
+liftP3 :: Monad m => (a, b, m c) -> m (a, b, c)
+liftP3 (x, y, mz)  =  do  { z <- mz; return (x,y,z) }
+
+
+-- ----------------------------------------------------------------------------------------- --
 -- random ordering of a list
 
 -- TODO: why not use shuffleM from https://hackage.haskell.org/package/random-shuffle-0.0.4/docs/System-Random-Shuffle.html?

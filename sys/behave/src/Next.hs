@@ -30,7 +30,7 @@ import qualified Data.Map  as Map
 
 import TxsDefs
 import TxsUtils(combineWEnv)
-import CTree
+import BTree
 
 -- import SolveDefs
 

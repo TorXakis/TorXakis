@@ -6,4 +6,4 @@ See license.txt
 module BuildInfo
 where
 buildTime :: String
-buildTime = "Tue 06/07/2017 10:01:59.98"
+buildTime = "Mon 06/12/2017 10:01:59.98"

@@ -399,7 +399,7 @@ chanId_Exit  = ChanId "EXIT"  901 []
 chanId_Istep = ChanId "ISTEP" 902 []  
 chanId_Qstep = ChanId "QSTEP" 903 []  
 chanId_Hit   = ChanId "HIT"   904 []  
-chanId_Miss  = ChanId "MSTEP" 905 []  
+chanId_Miss  = ChanId "MISS"  905 []  
 
 
 -- ----------------------------------------------------------------------------------------- --

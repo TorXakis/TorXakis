@@ -20,6 +20,7 @@ module Solve
   satSolve        --
 , solve        -- 
 , uniSolve        --
+, ranSolve        --
 , Assertions
 , Solve.empty
 , add 
@@ -29,6 +30,7 @@ module Solve
 -- import
 
 where
+import Control.Monad.State   (lift)
 
 import qualified Data.List as List
 import qualified Data.Set  as Set
@@ -122,6 +124,12 @@ uniSolve vs (Assertions (AssertSet s))                  =
                                                             Unknown -> UnableToSolve
                 Unsolvable                       -> return Unsolvable
                 UnableToSolve                    -> return UnableToSolve
+
+-- random solve
+ranSolve :: (Variable v) => [v] -> Assertions v -> SMT (SolveProblem v)
+ranSolve = solve  -- FOR THE MOMENT
+
+
 
 -- function to "Reduce duplication"
 valExprsSat' :: (Variable v) => [v] -> [ValExpr v] -> SMT SolvableProblem

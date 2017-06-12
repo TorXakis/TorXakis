@@ -48,6 +48,7 @@ data  SmtEnv  =  SmtEnv     { inHandle                  :: Handle
                             , txsDefs                   :: TxsDefs
                             , params                    :: Map.Map String ( String, String -> Bool )
                             }
+               | SmtEnvError
 
 type  SMT a   =  StateT SmtEnv IO a
 

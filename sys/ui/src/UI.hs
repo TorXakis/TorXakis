@@ -175,6 +175,7 @@ cmdIntpr cmdname args  =  do
      ; "path"          ->  do cmdPath       args
      ; "trace"         ->  do cmdTrace      args
      ; "menu"          ->  do cmdMenu       args
+     ; "map"           ->  do cmdMap        args
 -- ---------------------------------------------------------------------------------- system --
      ; "systart"       ->  do cmdSyStart    args
      ; "systop"        ->  do cmdSyStop     args
@@ -435,6 +436,13 @@ cmdTrace args  =  do
 cmdMenu :: String -> UIO ()
 cmdMenu args  =  do
      doCmd "MENU" $ args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdMap :: String -> UIO ()
+cmdMap args  =  do
+     doCmd "MAP" $ args
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --

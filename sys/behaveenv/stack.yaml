@@ -15,7 +15,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-8.13
+resolver: lts-8.5
 ghc-variant: integersimple
 
 # User packages to be built.
@@ -38,9 +38,9 @@ ghc-variant: integersimple
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - location: .
-- location: ..\behavedefs
-- location: ..\defs
-- location: ..\solve
+- location: ../coredefs
+- location: ../defs
+- location: ../solve
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)

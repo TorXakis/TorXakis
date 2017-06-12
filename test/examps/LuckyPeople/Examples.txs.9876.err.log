@@ -2,93 +2,62 @@
 TXSSERVER >>  Starting  ..... 
 
 TXSSERVER CMD >>  START
-TXSSERVER RSP <<  FACK START txsserver starting:  "LT322844.asml.com" : 9876
-TXSSERVER CMD >>  INIT C:\TorXakisSandbox\Development\torxakis\examps\LuckyPeople\spec\LuckyPeople.txs
-TXSSERVER RSP <<  PACK INIT input files parsed: C:\TorXakisSandbox\Development\torxakis\examps\LuckyPeople\spec\LuckyPeople.txs
-TXSSERVER RSP <<  PACK INIT smt solver initialized: Z3 [4.5.1 - build hashcode 66e61b8a31a0]
-TXSSERVER RSP <<  FACK INIT txsserver initialized
+TXSSERVER RSP <<  MACK txsserver starting:  "PC-16153.tsn.tno.nl" : 9876
+TXSSERVER RSP <<  PACK START
+TXSSERVER CMD >>  INIT C:\TorXakisSandbox\TorXakis.git\examps\LuckyPeople\spec\LuckyPeople.txs
+TXSSERVER RSP <<  MACK Solver initialized : Z3 [4.5.1]
+TXSSERVER RSP <<  MACK TxsCore initialized
+TXSSERVER RSP <<  MACK input files parsed:
+TXSSERVER RSP <<  MACK C:\TorXakisSandbox\TorXakis.git\examps\LuckyPeople\spec\LuckyPeople.txs
+TXSSERVER RSP <<  PACK INIT
 TXSSERVER CMD >>  TESTER ModelExamples Sut
-TXSSERVER RSP <<  FACK TESTER tester started
+TXSSERVER RSP <<  MACK Tester started
+TXSSERVER RSP <<  PACK TESTER
 TXSSERVER CMD >>  TEST 36
-TXSSERVER RSP <<  PACK TEST ....1:  IN:  Act    { { ( In, [ C_Person(Male,"Mickey","Mouse",13,1) ] ) } }
-TXSSERVER RSP <<  PACK TEST ....2:  OUT: Act    { { ( Out, [ True ] ) } }
-TXSSERVER RSP <<  PACK TEST ....3:  IN:  Act    { { ( In, [ C_Person(Male,"Donald","Duck",13,3) ] ) } }
-TXSSERVER RSP <<  PACK TEST ....4:  OUT: Act    { { ( Out, [ True ] ) } }
-TXSSERVER RSP <<  PACK TEST ....5:  IN:  Act    { { ( In, [ C_Person(Male,"Luuk","Laar",24,12) ] ) } }
-TXSSERVER RSP <<  PACK TEST ....6:  OUT: Act    { { ( Out, [ True ] ) } }
-TXSSERVER RSP <<  PACK TEST ....7:  IN:  Act    { { ( In, [ C_Person(Female,"Shakira","Ripoll",2,2) ] ) } }
-TXSSERVER RSP <<  PACK TEST ....8:  OUT: Act    { { ( Out, [ True ] ) } }
-TXSSERVER RSP <<  PACK TEST ....9:  IN:  Act    { { ( In, [ C_Person(Male,"Michael","Buble",9,9) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...10:  OUT: Act    { { ( Out, [ True ] ) } }
-TXSSERVER RSP <<  PACK TEST ...11:  IN:  Act    { { ( In, [ C_Person(Female,"Imke","Laar",7,7) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...12:  OUT: Act    { { ( Out, [ True ] ) } }
-TXSSERVER RSP <<  PACK TEST ...13:  IN:  Act    { { ( In, [ C_Person(Male,"Huey","Duck",17,10) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...14:  OUT: Act    { { ( Out, [ False ] ) } }
-TXSSERVER RSP <<  PACK TEST ...15:  IN:  Act    { { ( In, [ C_Person(Male,"Dewey","Duck",17,10) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...16:  OUT: Act    { { ( Out, [ True ] ) } }
-TXSSERVER RSP <<  PACK TEST ...17:  IN:  Act    { { ( In, [ C_Person(Male,"Louie","Duck",17,10) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...18:  OUT: Act    { { ( Out, [ False ] ) } }
-TXSSERVER RSP <<  PACK TEST ...19:  IN:  Act    { { ( In, [ C_Person(Male,"Mickey","Mouse",13,1) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...20:  OUT: Act    { { ( Out, [ True ] ) } }
-TXSSERVER RSP <<  PACK TEST ...21:  IN:  Act    { { ( In, [ C_Person(Male,"Donald","Duck",13,3) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...22:  OUT: Act    { { ( Out, [ True ] ) } }
-TXSSERVER RSP <<  PACK TEST ...23:  IN:  Act    { { ( In, [ C_Person(Female,"April","Duck",15,5) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...24:  OUT: Act    { { ( Out, [ True ] ) } }
-TXSSERVER RSP <<  PACK TEST ...25:  IN:  Act    { { ( In, [ C_Person(Female,"Beatrix","Oranje",31,1) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...26:  OUT: Act    { { ( Out, [ False ] ) } }
-TXSSERVER RSP <<  PACK TEST ...27:  IN:  Act    { { ( In, [ C_Person(Female,"Maxima","Zorreguieta",17,5) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...28:  OUT: Act    { { ( Out, [ False ] ) } }
-TXSSERVER RSP <<  PACK TEST ...29:  IN:  Act    { { ( In, [ C_Person(Female,"Amalia","Oranje",7,12) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...30:  OUT: Act    { { ( Out, [ False ] ) } }
-TXSSERVER RSP <<  PACK TEST ...31:  IN:  Act    { { ( In, [ C_Person(Female,"Alexia","Oranje",26,6) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...32:  OUT: Act    { { ( Out, [ False ] ) } }
-TXSSERVER RSP <<  PACK TEST ...33:  IN:  Act    { { ( In, [ C_Person(Female,"Ariane","Oranje",10,4) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...34:  OUT: Act    { { ( Out, [ False ] ) } }
-TXSSERVER RSP <<  PACK TEST ...35:  IN:  Act    { { ( In, [ C_Person(Male,"Willem","Oranje",27,4) ] ) } }
-TXSSERVER RSP <<  PACK TEST ...36:  OUT: Act    { { ( Out, [ True ] ) } }
-TXSSERVER RSP <<  FACK TEST PASS
+TXSSERVER RSP <<  MACK .....1:  IN:  Act    { { ( In, [ Person(Male,"Mickey","Mouse",13,1) ] ) } }
+TXSSERVER RSP <<  MACK .....2:  OUT: Act    { { ( Out, [ True ] ) } }
+TXSSERVER RSP <<  MACK .....3:  IN:  Act    { { ( In, [ Person(Male,"Donald","Duck",13,3) ] ) } }
+TXSSERVER RSP <<  MACK .....4:  OUT: Act    { { ( Out, [ True ] ) } }
+TXSSERVER RSP <<  MACK .....5:  IN:  Act    { { ( In, [ Person(Male,"Luuk","Laar",24,12) ] ) } }
+TXSSERVER RSP <<  MACK .....6:  OUT: Act    { { ( Out, [ True ] ) } }
+TXSSERVER RSP <<  MACK .....7:  IN:  Act    { { ( In, [ Person(Female,"Shakira","Ripoll",2,2) ] ) } }
+TXSSERVER RSP <<  MACK .....8:  OUT: Act    { { ( Out, [ True ] ) } }
+TXSSERVER RSP <<  MACK .....9:  IN:  Act    { { ( In, [ Person(Male,"Michael","Buble",9,9) ] ) } }
+TXSSERVER RSP <<  MACK ....10:  OUT: Act    { { ( Out, [ True ] ) } }
+TXSSERVER RSP <<  MACK ....11:  IN:  Act    { { ( In, [ Person(Female,"Imke","Laar",7,7) ] ) } }
+TXSSERVER RSP <<  MACK ....12:  OUT: Act    { { ( Out, [ True ] ) } }
+TXSSERVER RSP <<  MACK ....13:  IN:  Act    { { ( In, [ Person(Male,"Huey","Duck",17,10) ] ) } }
+TXSSERVER RSP <<  MACK ....14:  OUT: Act    { { ( Out, [ False ] ) } }
+TXSSERVER RSP <<  MACK ....15:  IN:  Act    { { ( In, [ Person(Male,"Dewey","Duck",17,10) ] ) } }
+TXSSERVER RSP <<  MACK ....16:  OUT: Act    { { ( Out, [ True ] ) } }
+TXSSERVER RSP <<  MACK ....17:  IN:  Act    { { ( In, [ Person(Male,"Louie","Duck",17,10) ] ) } }
+TXSSERVER RSP <<  MACK ....18:  OUT: Act    { { ( Out, [ False ] ) } }
+TXSSERVER RSP <<  MACK ....19:  IN:  Act    { { ( In, [ Person(Male,"Mickey","Mouse",13,1) ] ) } }
+TXSSERVER RSP <<  MACK ....20:  OUT: Act    { { ( Out, [ True ] ) } }
+TXSSERVER RSP <<  MACK ....21:  IN:  Act    { { ( In, [ Person(Male,"Donald","Duck",13,3) ] ) } }
+TXSSERVER RSP <<  MACK ....22:  OUT: Act    { { ( Out, [ True ] ) } }
+TXSSERVER RSP <<  MACK ....23:  IN:  Act    { { ( In, [ Person(Female,"April","Duck",15,5) ] ) } }
+TXSSERVER RSP <<  MACK ....24:  OUT: Act    { { ( Out, [ True ] ) } }
+TXSSERVER RSP <<  MACK ....25:  IN:  Act    { { ( In, [ Person(Female,"Beatrix","Oranje",31,1) ] ) } }
+TXSSERVER RSP <<  MACK ....26:  OUT: Act    { { ( Out, [ False ] ) } }
+TXSSERVER RSP <<  MACK ....27:  IN:  Act    { { ( In, [ Person(Female,"Maxima","Zorreguieta",17,5) ] ) } }
+TXSSERVER RSP <<  MACK ....28:  OUT: Act    { { ( Out, [ False ] ) } }
+TXSSERVER RSP <<  MACK ....29:  IN:  Act    { { ( In, [ Person(Female,"Amalia","Oranje",7,12) ] ) } }
+TXSSERVER RSP <<  MACK ....30:  OUT: Act    { { ( Out, [ False ] ) } }
+TXSSERVER RSP <<  MACK ....31:  IN:  Act    { { ( In, [ Person(Female,"Alexia","Oranje",26,6) ] ) } }
+TXSSERVER RSP <<  MACK ....32:  OUT: Act    { { ( Out, [ False ] ) } }
+TXSSERVER RSP <<  MACK ....33:  IN:  Act    { { ( In, [ Person(Female,"Ariane","Oranje",10,4) ] ) } }
+TXSSERVER RSP <<  MACK ....34:  OUT: Act    { { ( Out, [ False ] ) } }
+TXSSERVER RSP <<  MACK ....35:  IN:  Act    { { ( In, [ Person(Male,"Willem","Oranje",27,4) ] ) } }
+TXSSERVER RSP <<  MACK ....36:  OUT: Act    { { ( Out, [ True ] ) } }
+TXSSERVER RSP <<  MACK PASS
+TXSSERVER RSP <<  PACK TEST
 TXSSERVER CMD >>  TRACE procdef 
-TXSSERVER RSP <<  PACK TRACE PROCDEF trace [In :: Person; Out :: Bool]() EXIT ::=
-TXSSERVER RSP <<  PACK TRACE         In ! C_Person(Male,"Mickey","Mouse",13,1)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! True
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Male,"Donald","Duck",13,3)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! True
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Male,"Luuk","Laar",24,12)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! True
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Female,"Shakira","Ripoll",2,2)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! True
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Male,"Michael","Buble",9,9)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! True
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Female,"Imke","Laar",7,7)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! True
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Male,"Huey","Duck",17,10)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! False
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Male,"Dewey","Duck",17,10)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! True
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Male,"Louie","Duck",17,10)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! False
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Male,"Mickey","Mouse",13,1)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! True
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Male,"Donald","Duck",13,3)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! True
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Female,"April","Duck",15,5)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! True
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Female,"Beatrix","Oranje",31,1)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! False
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Female,"Maxima","Zorreguieta",17,5)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! False
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Female,"Amalia","Oranje",7,12)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! False
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Female,"Alexia","Oranje",26,6)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! False
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Female,"Ariane","Oranje",10,4)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! False
-TXSSERVER RSP <<  PACK TRACE     >-> In ! C_Person(Male,"Willem","Oranje",27,4)
-TXSSERVER RSP <<  PACK TRACE     >-> Out ! True
-TXSSERVER RSP <<  PACK TRACE     >-> EXIT
-TXSSERVER RSP <<  FACK TRACE ENDDEF
+TXSSERVER RSP <<  MACK No such trace format
+TXSSERVER RSP <<  NACK TRACE
 TXSSERVER CMD >>  QUIT
-TXSSERVER RSP <<  FACK QUIT txsserver closing
+TXSSERVER RSP <<  MACK txsserver closing  "PC-16153.tsn.tno.nl" : 9876
+TXSSERVER RSP <<  PACK QUIT
 
 TXSSERVER >>  Closing  ..... 
 

@@ -1,0 +1,38 @@
+name:                   serverenv
+version:                0.1.7.0
+synopsis:               ServerEnv for TorXakis
+license:                OtherLicense
+license-file:           license.txt
+author:                 Jan Tretmans
+                      , Pierre van de Laar
+maintainer:          
+                      , pierre.vandelaar@tno.nl
+copyright:              TNO
+category:               Web
+build-type:             Simple
+cabal-version:          >=1.10
+
+library
+  hs-source-dirs:       src
+
+  exposed-modules:
+                        EnvServer
+                      , IfServer
+                      , ParamServer
+                      
+  ghc-options:         -O2 -optc-O3 -optc-ffast-math
+  
+  build-depends:        base
+                      , containers
+                      , deepseq
+                      , network
+                      , mtl
+                      , random
+                      , text
+                      , time
+                      , MissingH
+                      
+                      , coreenv
+                      , defs
+                      
+  default-language:     Haskell2010

@@ -57,14 +57,12 @@ doRsp cmd  =  do
      hs      <- gets uiservh
      rspline <- lift $ hGetLine hs
      case words rspline of
-        []                              -> doRsp cmd
-        ("PACK":rsp:rargs) | cmd == rsp -> do putOut $ unwords rargs
-                                              doRsp cmd
-        ("MACK":rsp:rargs) | cmd == rsp -> do putErr $ unwords rargs
-                                              doRsp cmd
-        ("FACK":rsp:rargs) | cmd == rsp -> putOut $ unwords rargs
-        ("NACK":rsp:rargs) | cmd == rsp -> putErr $ unwords rargs
-        _                               -> putErr $ "unknown txsserver response: " ++ rspline
+        []                          -> doRsp cmd
+        ("MACK":rargs)              -> do putOut $ unwords rargs
+                                          doRsp cmd
+        ("PACK":[rsp]) | cmd == rsp -> return ()
+        ("NACK":[rsp]) | cmd == rsp -> return ()
+        _                           -> putErr $ "unknown txsserver response: " ++ rspline
      
 
 -- ----------------------------------------------------------------------------------------- --

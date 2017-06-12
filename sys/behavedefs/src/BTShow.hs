@@ -7,7 +7,7 @@ See license.txt
 {-# LANGUAGE FlexibleInstances #-}
 -- ----------------------------------------------------------------------------------------- --
 
-module CTShow
+module BTShow
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -25,7 +25,7 @@ import qualified Data.String.Utils as Utils
 import TxsDefs
 import TxsShow
 
-import CTree
+import BTree
 
 
 -- ----------------------------------------------------------------------------------------- --

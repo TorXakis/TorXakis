@@ -86,8 +86,8 @@ helptxt  =
   "goto [<state>]                 : goto <state>/[current] state number in the model\n"++
   "back [<n>]                     : go back <n>/[one] visible steps in the model state\n"++
   "path                           : show the visible path from the initial state\n"++
-  "trace                          : show the visible trace from the initial state\n"++
-  "menu [in|out] [<state>]        : give the [in|out] menu of actions of [current] <state>\n"++
+  "trace [procdef]                : show the current trace [in PROCDEF format]\n"++
+  "menu [in|out|purp] [<state>]   : give the [in|out] menu of actions of [current] <state>\n"++
   "\n"++
   "--------------------------------\n"++
   "systart <name> <command>       : start external system <command> with internal <name>\n"++

@@ -11,9 +11,19 @@ module Eval
 
 -- ----------------------------------------------------------------------------------------- --
 --
+--
 -- Evaluation of Value Expressions
 --
 -- ----------------------------------------------------------------------------------------- --
+-- export
+
+( eval       -- eval :: (TxsDefs.Variable v) => (TxsDefs.ValExpr v) -> IOB.IOB Const
+             -- evaluation of value expression; eval shall only work on closed vexpr
+, evalCnrs   -- evalCnrs :: (Variable v) => [ValExpr v] -> IOB.IOB Bool
+)
+
+-- ----------------------------------------------------------------------------------------- --
+-- import
 
 where
 
@@ -24,45 +34,48 @@ import Control.Monad.State
 import Control.Exception
 import Control.DeepSeq
 
-import qualified Data.Char as Char
 import qualified Data.List as List
-import qualified Data.Set  as Set
 import qualified Data.Map  as Map
-
 import Data.String.Utils
 
-import TxsDefs
-import TxsAlex
-import TxsHappy
-import TxsEnv
+-- import from behavedefs
+import qualified EnvBTree  as IOB
+import qualified EnvData   as EnvData
+
+-- import from defs
 import StdTDefs
+import TxsDefs
 import TxsShow
-import TxsUtils(partSubst)
-
+import TxsUtils 
 import XmlFormat
+ 
+-- import from front
+import qualified TxsAlex   as TxsAlex
+import qualified TxsHappy  as TxsHappy
 
+-- import from solve
 import RegexAlex
 import RegexPosixHappy
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- eval :  evaluation of value expression
---         eval should only work on closed vexpr 
+--         eval shall only work on closed vexpr 
 
 
-eval :: (Variable v) => (ValExpr v) -> IOE Const
+eval :: (TxsDefs.Variable v) => (TxsDefs.ValExpr v) -> IOB.IOB Const
 
 eval (view -> Vfunc fid vexps)  =  do
-     env     <- get
-     let alldefs = envtdefs env
-     case Map.lookup fid (funcDefs alldefs) of
-     { Nothing                  -> do lift $ hPutStrLn stderr 
-                                           $ "TXS Eval eval: undefined function\n"
-                                      return $ Cerror "eval: undefined function"
-     ; Just (FuncDef args vexp) -> do vals <- mapM eval vexps
-                                      we   <- return $ Map.fromList (zip args vals)
-                                      eval (cstrEnv (Map.map cstrConst we) vexp)
-     }
+     envb    <- get
+     let tdefs = IOB.tdefs envb
+     case Map.lookup fid (funcDefs tdefs) of
+       Nothing -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                   $ "Undefined function: " ++ (fshow fid) ]
+                     return $ Cerror "eval: undefined function"
+       Just (FuncDef args vexp)
+               -> do vals <- mapM eval vexps
+                     we   <- return $ Map.fromList (zip args vals)
+                     eval (cstrEnv (Map.map cstrConst we) vexp)
 
 eval (view -> Vcstr cid vexps)  =  do
      vals <- mapM eval vexps
@@ -72,8 +85,9 @@ eval (view -> Vconst const)  =  do
      return $ const
 
 eval (view -> Vvar vid)  =  do
-     lift $ hPutStrLn stderr $ "TXS Eval eval: Evaluation of expression with variable\n"
-     return $ Cerror "eval: expression with variable"
+     IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                   $ "Evaluation of value expression with free variable(s)" ]
+     return $ Cerror ""
 
 eval (view -> Vite conds vexp1 vexp2)  =  do
      cond <- evalCnrs conds
@@ -82,7 +96,7 @@ eval (view -> Vite conds vexp1 vexp2)  =  do
        else eval vexp2
 
 eval (view -> Venv ve vexp)  =  do
-     eval (partSubst ve vexp)
+     eval (TxsUtils.partSubst ve vexp)
 
 eval (view -> Vequal vexp1 vexp2)  =  do
      val1 <- eval vexp1
@@ -92,67 +106,57 @@ eval (view -> Vequal vexp1 vexp2)  =  do
 eval (view -> Vpredef kd fid vexps)  =  do
      case kd of
      { AFS -> case vexps of
-              { [vexp]        -> do evalAFS fid vexp
-              ; _             -> do lift $ hPutStrLn stderr
-                                         $ "TXS Eval eval: error alg. field selection\nfid = "++ (show fid) ++ "\n"
-                                    return $ Cerror "error alg. field selection"
-              }
+                [vexp]        -> do evalAFS fid vexp
+                _             -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                                  $ "eval: AFS: " ++ (show fid) ]
+                                    return $ Cerror ""
      ; ACC -> case vexps of
-              { [vexp]        -> do evalACC fid vexp
-              ; _             -> do lift $ hPutStrLn stderr
-                                         $ "TXS Eval eval: error alg. constructor check\nfid = "++ (show fid) ++ "\n"
-                                    return $ Cerror "error alg. constructor check"
-              }
+                [vexp]        -> do evalACC fid vexp
+                _             -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                                  $ "eval: ACC: " ++ (show fid) ]
+                                    return $ Cerror ""
      ; ANE -> case vexps of
-              { [vexp1,vexp2] -> do evalANE vexp1 vexp2
-              ; _             -> do lift $ hPutStrLn stderr
-                                         $ "TXS Eval eval: error alg. equality\nfid = "++ (show fid) ++ "\n"
-                                    return $ Cerror " error alg. non-equality"
-              }
+                [vexp1,vexp2] -> do evalANE vexp1 vexp2
+                _             -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                                  $ "eval: ANE: " ++ (show fid) ]
+                                    return $ Cerror ""
      ; AST -> case vexps of
-              { [vexp] -> do wal <- eval vexp
+                [vexp] -> do wal <- eval vexp
                              str2txs (pshow wal)
-              ; _      -> do lift $ hPutStrLn stderr
-                                  $ "TXS Eval eval: error AST\n"
-                             return $ Cerror " error AST"
-              }
+                _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: AST" ]
+                             return $ Cerror ""
      ; ASF -> case vexps of
-              { [vexp] -> do s <- txs2str vexp
-                             uid     <- gets envuid
-                             tdefs   <- gets envtdefs
+                [vexp] -> do s <- txs2str vexp
+                             uid     <- gets IOB.unid
+                             tdefs   <- gets IOB.tdefs
                              ((uid',vexp'),e) <- lift $ catch
-                                      ( let p = vexprParser (  ( Ctdefs  $ tdefs )
-                                                             : ( Cvarenv $ [] )
-                                                             : ( Cunid   $ uid + 1 )
-                                                             : ( txsLexer s )
-                                                            )
-                                         in return $! (show p) `deepseq` (p,"")
-                                      )
-                                      ( \e -> return $ ((uid,cstrError ""),(show (e::ErrorCall)))
-                                      )
+                                ( let p = TxsHappy.vexprParser (  ( TxsAlex.Ctdefs  $ tdefs )
+                                                                : ( TxsAlex.Cvarenv $ [] )
+                                                                : ( TxsAlex.Cunid   $ uid + 1 )
+                                                                : ( TxsAlex.txsLexer s )
+                                                               )
+                                   in return $! (show p) `deepseq` (p,"")
+                                )
+                                ( \e -> return $ ((uid,cstrError ""),(show (e::ErrorCall)))
+                                )
                              if  e /= ""
-                               then do lift $ hPutStrLn stderr
-                                            $ "TXS Eval eval: error ASF\n"
-                                       return $ Cerror " error ASF"
+                               then do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: ASF" ]
+                                       return $ Cerror ""
                                else do eval vexp'
-              ; _      -> do lift $ hPutStrLn stderr
-                                  $ "TXS Eval eval: error ASF\n"
-                             return $ Cerror " error ASF"
-              }
+                _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: ASF" ]
+                             return $ Cerror ""
      ; AXT -> case vexps of
-              { [vexp] -> do wal <- eval vexp
-                             tdefs <- gets envtdefs
+                [vexp] -> do wal <- eval vexp
+                             tdefs <- gets IOB.tdefs
                              str2txs $ constToXml tdefs wal
-              ; _      -> do lift $ hPutStrLn stderr "TXS Eval eval: error AXT\n"
-                             return $ Cerror " error AXT"
-              }
+                _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval AXT" ]
+                             return $ Cerror ""
      ; AXF -> case vexps of
-                { [vexp] -> do  Cstring s <- eval vexp
-                                tdefs <- gets envtdefs
-                                return $ constFromXml tdefs (funcsort fid) s
-                ; _      -> do  lift $ hPutStrLn stderr "TXS Eval eval: error AXF\n"
-                                return $ Cerror " error AXF"
-                }
+                  [vexp] -> do Cstring s <- eval vexp
+                               tdefs <- gets IOB.tdefs
+                               return $ constFromXml tdefs (funcsort fid) s
+                  _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: AXF" ]
+                               return $ Cerror ""
      ; SSB -> do evalSSB fid vexps
      ; SSI -> do evalSSI fid vexps
      ; SSS -> do evalSSS fid vexps
@@ -160,16 +164,17 @@ eval (view -> Vpredef kd fid vexps)  =  do
      }
 
 eval (view -> Verror str)  =  do
-     return $ Cerror str
+     IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING $ "eval: Verror "++ str ]
+     return $ Cerror ""
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of value expression: algebraic field selection
 
 
-evalAFS :: (Variable v) => FuncId -> (ValExpr v) -> IOE Const
+evalAFS :: (Variable v) => FuncId -> (ValExpr v) -> IOB.IOB Const
 evalAFS fid vexp  =  do
-     tdefs <- gets envtdefs
+     tdefs <- gets IOB.tdefs
      val   <- eval vexp
      case val of
      { Cstr cid vals
@@ -177,17 +182,17 @@ evalAFS fid vexp  =  do
             { Just (CstrDef cc fs)
                 -> case List.elemIndices fid fs of
                    { [index] -> return $ vals!!index
-                   ; _       -> do lift $ hPutStrLn stderr
-                                         $ "TXS Eval evalAFS: no field\nfid = " ++ (show fid) ++ "\nvexp = " ++ (show vexp) ++ "\nval = " ++ (show val) ++ "\ncc = " ++ (show cc) ++ "\n"
-                                   return $ Cerror "evalAFS: no field"
+                   ; _       -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $
+                                                     "evalAFS: no field: " ++ (fshow fid) ]
+                                   return $ Cerror ""
                    }
-            ; _ -> do lift $ hPutStrLn stderr
-                           $ "TXS Eval evalAFS: used constructor not found\n" ++ (show val) ++ "\n"
-                      return $ Cerror "evalAFS: used constructor not found"
+            ; _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                    $ "evalAFS: used constructor not found: " ++ (fshow val) ]
+                      return $ Cerror ""
             }
-     ; _ -> do lift $ hPutStrLn stderr 
-                    $ "TXS Eval evalAFS: alg. field selection not on constructor\n" ++ (show val) ++ "\n"
-               return $ Cerror "evalAFS: alg. field selection not on constructor"
+     ; _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                             $ "evalAFS: fiels selection not on constructor:" ++ (fshow val) ]
+               return $ Cerror ""
      }
 
 
@@ -195,21 +200,21 @@ evalAFS fid vexp  =  do
 -- evaluation of value expression: algebraic constructor check
 
 
-evalACC :: (Variable v) => FuncId -> (ValExpr v) -> IOE Const
+evalACC :: (Variable v) => FuncId -> (ValExpr v) -> IOB.IOB Const
 evalACC fid vexp  =  do
-     tdefs <- gets envtdefs
+     tdefs <- gets IOB.tdefs
      val   <- eval vexp
      case val of
      { Cstr cid vals
          -> case Map.lookup cid (cstrDefs tdefs) of
-            { Just (CstrDef cc fs)  -> bool2txs (cc == fid)
-            ; _                     -> do lift $ hPutStrLn stderr
-                                               $ "TXS Eval evalACC: constructor not found\n" ++ (show val) ++ "\n"
-                                          return $ Cerror "evalACC: constructor not found"
+            { Just (CstrDef cc fs) -> bool2txs (cc == fid)
+            ; _                    -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                           $ "evalACC: constructor not found: " ++ (show val) ]
+                                         return $ Cerror "evalACC: constructor not found"
             }
-     ; _ -> do lift $ hPutStrLn stderr
-                    $ "TXS Eval evalACC: alg. constructor check not on constructor\n" ++ (show val) ++ "\n"
-               return $ Cerror "evalACC: alg. constructor check not on constructor"
+     ; _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                             $ "evalACC: constr check not on constructor: " ++ (show val) ]
+               return $ Cerror ""
      }
 
 
@@ -217,14 +222,14 @@ evalACC fid vexp  =  do
 -- evaluation of value expression: algebraic (non)equality
 
 
-evalAEQ :: (Variable v) => (ValExpr v) -> (ValExpr v) -> IOE Const
+evalAEQ :: (Variable v) => (ValExpr v) -> (ValExpr v) -> IOB.IOB Const
 evalAEQ vexp1 vexp2  =  do
      val1 <- eval vexp1
      val2 <- eval vexp2
      bool2txs $ val1 == val2
 
 
-evalANE :: (Variable v) => (ValExpr v) -> (ValExpr v) -> IOE Const
+evalANE :: (Variable v) => (ValExpr v) -> (ValExpr v) -> IOB.IOB Const
 evalANE vexp1 vexp2  =  do
      val1 <- eval vexp1
      val2 <- eval vexp2
@@ -235,7 +240,7 @@ evalANE vexp1 vexp2  =  do
 -- evaluation of value expression: evaluation of standard functions for Bool - SSB
 
 
-evalSSB :: (Variable v) => FuncId -> [ValExpr v] -> IOE Const
+evalSSB :: (Variable v) => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSB (FuncId nm uid args srt) vexps  =  do
      case ( nm, vexps ) of
      { ( "toString",    [v1]    ) -> do b1 <- txs2bool v1
@@ -243,10 +248,10 @@ evalSSB (FuncId nm uid args srt) vexps  =  do
      ; ( "fromString",  [v1]    ) -> do s1 <- txs2str v1
                                         bool2txs $ read s1
      ; ( "toXml",       [v1]    ) -> do wal <- eval v1
-                                        tdefs <- gets envtdefs
+                                        tdefs <- gets IOB.tdefs
                                         str2txs $ constToXml tdefs wal          
      ; ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
-                                        tdefs <- gets envtdefs
+                                        tdefs <- gets IOB.tdefs
                                         return $ constFromXml tdefs sortId_Bool s
      ; ( "<>",          [v1,v2] ) -> do b1 <- txs2bool v1
                                         b2 <- txs2bool v2
@@ -279,9 +284,9 @@ evalSSB (FuncId nm uid args srt) vexps  =  do
      ; ( "<=>",         [v1,v2] ) -> do b1 <- txs2bool v1
                                         b2 <- txs2bool v2
                                         bool2txs $ b1 == b2
-     ; _                         -> do lift $ hPutStrLn stderr
-                                            $ "TXS Eval evalSSB: standard Bool opn\n"
-                                       return $ Cerror "evalSSB: standard Bool opn"
+     ; _                          -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                                      $ "evalSSB: standard Bool opn" ]
+                                        return $ Cerror ""
      }
 
 
@@ -289,7 +294,7 @@ evalSSB (FuncId nm uid args srt) vexps  =  do
 -- evaluation of value expression: evaluation of standard functions for Int - SSI
 
 
-evalSSI :: (Variable v) => FuncId -> [ValExpr v] -> IOE Const
+evalSSI :: (Variable v) => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSI (FuncId nm uid args srt) vexps  =  do
      case ( nm, vexps ) of
      { ( "toString",    [v1]    ) -> do i1 <- txs2int v1
@@ -297,10 +302,10 @@ evalSSI (FuncId nm uid args srt) vexps  =  do
      ; ( "fromString",  [v1]    ) -> do s1 <- txs2str v1
                                         int2txs $ read s1
      ; ( "toXml",       [v1]    ) -> do wal <- eval v1
-                                        tdefs <- gets envtdefs
+                                        tdefs <- gets IOB.tdefs
                                         str2txs $ constToXml tdefs wal
      ; ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
-                                        tdefs <- gets envtdefs
+                                        tdefs <- gets IOB.tdefs
                                         return $ constFromXml tdefs sortId_Int s
      ; ( "+",           [v1]    ) -> do i1 <- txs2int v1
                                         int2txs $ i1
@@ -341,9 +346,9 @@ evalSSI (FuncId nm uid args srt) vexps  =  do
                                         bool2txs $ i1 >= i2
      ; ( "abs",         [v1]    ) -> do i1 <- txs2int v1 
                                         int2txs $ if i1<0 then -i1 else i1
-     ; _                         -> do lift $ hPutStrLn stderr
-                                            $ "TXS Eval evalSSI: standard Int opn\n"
-                                       return $ Cerror "evalSSI: standard Int opn"
+     ; _                          -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                                      $ "evalSSI: standard Int opn" ]
+                                        return $ Cerror ""
      }
 
 
@@ -351,7 +356,7 @@ evalSSI (FuncId nm uid args srt) vexps  =  do
 -- evaluation of value expression: evaluation of standard functions for String - SSS
 
 
-evalSSS :: (Variable v) => FuncId -> [ValExpr v] -> IOE Const
+evalSSS :: (Variable v) => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSS (FuncId nm uid args srt) vexps  =  do
      case ( nm, vexps ) of
      { ( "toString",   [v] ) -> do s <- txs2str v
@@ -359,10 +364,10 @@ evalSSS (FuncId nm uid args srt) vexps  =  do
      ; ( "fromString", [v] ) -> do s <- txs2str v
                                    str2txs $ read s
      ; ( "toXml",      [v] ) -> do wal <- eval v
-                                   tdefs <- gets envtdefs
+                                   tdefs <- gets IOB.tdefs
                                    str2txs $ constToXml tdefs wal
      ; ( "fromXml",    [v] ) -> do Cstring s <- eval v
-                                   tdefs <- gets envtdefs
+                                   tdefs <- gets IOB.tdefs
                                    return $ constFromXml tdefs sortId_String s
      ; ( "<>",     [v1,v2] ) -> do s1 <- txs2str v1
                                    s2 <- txs2str v2
@@ -389,9 +394,9 @@ evalSSS (FuncId nm uid args srt) vexps  =  do
                                          i2' <- return $ fromInteger i2
                                          str2txs $ if 0<=i2' && i2'<(length s1)
                                                      then [s1!!i2'] else ""
-     ; _                           -> do lift $ hPutStrLn stderr
-                                              $ "TXS Eval evalSSS: standard String opn\n"
-                                         return $ Cerror "evalSSS: standard String opn"
+     ; _                           -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                                       $ "evalSSS: standard String opn" ]
+                                         return $ Cerror ""
      }
 
 
@@ -399,15 +404,17 @@ evalSSS (FuncId nm uid args srt) vexps  =  do
 -- evaluation of value expression: evaluation of standard functions for Regex - SSR
 
 
-evalSSR :: (Variable v) => FuncId -> [ValExpr v] -> IOE Const
+evalSSR :: (Variable v) => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSR (FuncId nm uid args srt) vexps  =  do
      case ( nm, vexps ) of
      { ( "strinre",[v1,v2] ) -> do rawRegex     <- txs2regex v2
-                                   haskellRegex <- return $ regexPosixParser (regexLexer rawRegex)
+                                   haskellRegex <- return
+                                                     $ regexPosixParser (regexLexer rawRegex)
                                    value <- txs2str v1
                                    bool2txs $ value =~ haskellRegex
-     ; _ -> do lift $ hPutStrLn stderr $ "TXS Eval evalSSR: error in standard Regex opn\n"
-               return $ Cerror "evalSSR: error in standard Regex opn"
+     ; _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                             $ "evalSSR: error in standard Regex opn" ]
+               return $ Cerror ""
      }
 
 
@@ -415,64 +422,64 @@ evalSSR (FuncId nm uid args srt) vexps  =  do
 -- evaluation of value expression: values from torxakis to haskell and v.v.
 
 
-txs2bool :: (Variable v) => (ValExpr v) -> IOE Bool
+txs2bool :: (Variable v) => (ValExpr v) -> IOB.IOB Bool
 txs2bool vexp  =  do
      wal <- eval vexp
      case wal of
         Cbool b -> return b
         _       -> do
-                        lift $ hPutStrLn stderr $ "TXS Eval txs2bool: not on Bool\nbut on: " ++ (show wal)++"\n"
+                        IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                              $ "txs2bool: not on Bool: " ++ (show wal) ]
                         return False  -- PvdL: why False?
 
 
-bool2txs :: Bool -> IOE Const
+bool2txs :: Bool -> IOB.IOB Const
 bool2txs b = return $ Cbool b
 
 
-txs2int :: (Variable v) => (ValExpr v) -> IOE Integer
+txs2int :: (Variable v) => (ValExpr v) -> IOB.IOB Integer
 txs2int vexp  =  do
      wal <- eval vexp
      case wal of
-     { Cint i   -> do return $ i
-     ; v        -> do lift $ hPutStrLn stderr
-                                $ "TXS Eval txs2int: not on Int:\nbut on: " ++ (show v)++"\n"
-                      return $ 0
+     { Cint i -> do return $ i
+     ; v      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                  $ "txs2int: not on Int: " ++ (show v) ]
+                    return $ 0
      }
 
-int2txs :: Integer -> IOE Const
+int2txs :: Integer -> IOB.IOB Const
 int2txs i  =  do
      return $ Cint i
 
 
-txs2str :: (Variable v) => (ValExpr v) -> IOE String
+txs2str :: (Variable v) => (ValExpr v) -> IOB.IOB String
 txs2str vexp  =  do
      wal <- eval vexp
      case wal of
      { Cstring s -> do return $ s
-     ; v         -> do lift $ hPutStrLn stderr 
-                                $ "TXS Eval txs2str: not on String\nbut on : " ++ (show v) ++ "\n"
-                       return $ "txs2str: not on String"
+     ; v         -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                     $ "txs2str: not on String: " ++ (show v) ]
+                       return $ ""
      }
 
 
-str2txs :: String -> IOE Const
+str2txs :: String -> IOB.IOB Const
 str2txs s  =  do
      return $ Cstring s
 
 
-txs2regex :: (Variable v) => (ValExpr v) -> IOE String
+txs2regex :: (Variable v) => (ValExpr v) -> IOB.IOB String
 txs2regex vexp  =  do
      wal <- eval vexp
      case wal of
      { Cregex r -> do return $ r
-     ; v        -> do lift $ hPutStrLn stderr
-                                $ "TXS Eval txs2regex: not on Regex:\nbut on: " ++ (show v) ++ "\n"
-                                ++ "VExp: " ++ (show vexp)
-                      return $ "txs2str: not on Regex"
+     ; v        -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                    $ "txs2regex: not on Regex: " ++ (show v) ]
+                      return $ ""
      }
 
 
-regex2txs :: String -> IOE Const
+regex2txs :: String -> IOB.IOB Const
 regex2txs r  =  do
      return $ Cregex r
 
@@ -480,12 +487,12 @@ regex2txs r  =  do
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of constraints
 
-evalCnr :: (Variable v) => (ValExpr v) -> IOE Bool
+evalCnr :: (Variable v) => (ValExpr v) -> IOB.IOB Bool
 evalCnr vexp  =  do
      val <- eval vexp     
      return $ val == Cbool True
 
-evalCnrs :: (Variable v) => [ValExpr v] -> IOE Bool
+evalCnrs :: (Variable v) => [ValExpr v] -> IOB.IOB Bool
 evalCnrs []  = return True
 evalCnrs (vexp:vexps) = do
     val <- evalCnr vexp

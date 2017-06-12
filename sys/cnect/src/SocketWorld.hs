@@ -7,7 +7,7 @@ See license.txt
 
 -- ----------------------------------------------------------------------------------------- --
 
-module Cnect
+module SocketWorld
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -15,75 +15,92 @@ module Cnect
 -- In  = From Outside World
 -- Out = To   Outside World
 --
--- Exporting:
+-- ----------------------------------------------------------------------------------------- --
+-- export
 
-( openCnect     --  openCnect :: IOE ()
+( openSockets   --  :: IOS.IOS ()
                 --  open socket connections to outside world
-, closeCnect    --  closeCnectSockets :: IOE ()
+, closeSockets  --  :: IOS.IOS ()
                 --  close connections to outside world 
-, putToW        --  putToW :: Action -> IOE Action
+, putSocket     --  :: IOS.EnvS -> Int -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
                 --  try to output to world, or observe earlier input (no quiescence)
-, getFroW       --  getFroW  :: IOE Action
+, getSocket     --  :: IOS.EnvS -> Int -> IOC.IOC TxsDDefs.Action
                 --  observe input from world on list of handles, or observe quiescence
 )
 
 -- ----------------------------------------------------------------------------------------- --
+-- import
+
 where
 
 import System.IO
-import System.IO.Error
+-- import System.IO.Error
 import System.Timeout
 import Control.Monad.State
 import Control.Concurrent
 import Control.Concurrent.Chan 
 import Network
-import GHC.Conc
-import Debug.Trace
+-- import GHC.Conc
 
-import qualified Data.Char as Char
-import qualified Data.List as List
-import qualified Data.Set  as Set
+-- import qualified Data.Char as Char
+-- import qualified Data.List as List
+-- import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
+-- import from local
+import EnDecode
+
+-- import from serverenv
+import qualified EnvServer   as IOS
+import qualified IfServer    as IfServer
+import qualified ParamServer as ParamServer
+
+-- import from coreenv
+import qualified EnvCore as IOC
+
+-- import from defs
+import qualified Utils    as Utils
 import TxsDefs
 import TxsDDefs
-import TxsEnv
+import qualified TxsShow as TxsShow
 
-import Utils
-import EnDecode
-import NoId
+
+-- ----------------------------------------------------------------------------------------- --
+--
+
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- open connections
 
 
-openCnect :: IOE ()
-openCnect  =  do
-     txsmodus <- gets envmodus
-     tdefs    <- gets envtdefs
-     cnectid  <- case txsmodus of
-                 { Testing  _ cid -> return $ (IdCnect cid)
-                 ; Simuling _ cid -> return $ (IdCnect cid)
-                 ; _              -> do lift $ hPutStrLn stderr $ "TXS openCnect: No open\n"
-                                        return $ (IdNo noId)
+openSockets :: IOS.IOS ()
+openSockets  =  do
+     txsmodus <- gets IOS.modus
+     tdefs    <- gets IOS.tdefs
+     cnectdef <- case txsmodus of
+                 { IOS.Tested  cdef -> return cdef
+                 ; IOS.Simuled cdef -> return cdef
+                 ; _ -> do IfServer.nack "ERROR" [ "OpenCnect: no open" ]
+                           return $ TxsDefs.DefNo
                  }
-     ( towhdls, frowhdls ) <- case TxsDefs.lookup cnectid tdefs of
-                              { Just (DefCnect (CnectDef ClientSocket conndefs))
-                                  -> do lift $ openCnectClientSockets conndefs
-                              ; Just (DefCnect (CnectDef ServerSocket conndefs))
-                                  -> do lift $ openCnectServerSockets conndefs
-                              ; _ -> do lift $ hPutStrLn stderr $ "TXS openCnect: No open\n"
+     ( towhdls, frowhdls ) <- case cnectdef of
+                              { DefCnect (CnectDef ClientSocket conndefs)
+                                  -> do lift $ lift $ openCnectClientSockets conndefs
+                              ; DefCnect (CnectDef ServerSocket conndefs)
+                                  -> do lift $ lift $ openCnectServerSockets conndefs
+                              ; _ -> do IfServer.nack "ERROR" [ "OpenCnect: no open" ]
                                         return $ ( [], [] )
                               }
 
-     towChan     <- lift $ newChan
-     frowChan    <- lift $ newChan
-     towThread   <- lift $ forkIO $ towChanThread towChan
-     frowThreads <- sequence [ lift $ forkIO $ frowChanThread h frowChan
+     towChan     <- lift $ lift $ newChan
+     frowChan    <- lift $ lift $ newChan
+     towThread   <- lift $ lift $ forkIO $ towChanThread towChan
+     frowThreads <- sequence [ lift $ lift $ forkIO $ frowChanThread h frowChan
                              | ConnHfroW _ h _ _ <- frowhdls
                              ]
-     modify $ \env -> env { envtow  = ( Just towChan,  Just towThread, towhdls  )
-                          , envfrow = ( Just frowChan, frowThreads,    frowhdls )
+     modify $ \env -> env { IOS.tow  = ( Just towChan,  Just towThread, towhdls  )
+                          , IOS.frow = ( Just frowChan, frowThreads,    frowhdls )
                           }
 
 -- ----------------------------------------------------------------------------------------- --
@@ -183,9 +200,9 @@ openCnectServerSockets conndefs  =  do
      tofrocnctns <- sequence [ accept listn | listn <- tofrolistns ]
      tocnctns    <- sequence [ accept listn | listn <- tolistns ]
      frocnctns   <- sequence [ accept listn | listn <- frolistns ] 
-     tofrohandls <-          return $ map frst tofrocnctns
-     tohandls    <-          return $ map frst tocnctns
-     frohandls   <-          return $ map frst frocnctns
+     tofrohandls <-          return $ map Utils.frst tofrocnctns
+     tohandls    <-          return $ map Utils.frst tocnctns
+     frohandls   <-          return $ map Utils.frst frocnctns
      sequence_               [ hSetBuffering h NoBuffering | h <- tofrohandls ]
      sequence_               [ hSetBuffering h NoBuffering | h <- tohandls    ]
      sequence_               [ hSetBuffering h NoBuffering | h <- frohandls   ]
@@ -212,81 +229,92 @@ openCnectServerSockets conndefs  =  do
 -- close connections
 
 
-closeCnect :: IOE ()
-closeCnect  =  do
-     ( towChan,  towThread,   towhdls  ) <- gets envtow
-     ( frowChan, frowThreads, frowhdls ) <- gets envfrow
+closeSockets :: IOS.IOS ()
+closeSockets  =  do
+     ( towChan,  towThread,   towhdls  ) <- gets IOS.tow
+     ( frowChan, frowThreads, frowhdls ) <- gets IOS.frow
 
-     lift $ case towThread of
-            { Just thrd -> killThread thrd
-            ; Nothing   -> return $ ()
-            }
-     lift $ mapM killThread frowThreads
-     lift $ mapM hClose [ h | ConnHtoW  _ h _ _ <- towhdls  ]
-     lift $ mapM hClose [ h | ConnHfroW _ h _ _ <- frowhdls ]
+     lift $ lift $ case towThread of
+                   { Just thrd -> killThread thrd
+                   ; Nothing   -> return $ ()
+                   }
+     lift $ lift $ mapM killThread frowThreads
+     lift $ lift $ mapM hClose [ h | ConnHtoW  _ h _ _ <- towhdls  ]
+     lift $ lift $ mapM hClose [ h | ConnHfroW _ h _ _ <- frowhdls ]
 
-     modify $ \env -> env { envtow  = ( Nothing, Nothing, [] )
-                          , envfrow = ( Nothing, [],      [] )
+     modify $ \env -> env { IOS.tow  = ( Nothing, Nothing, [] )
+                          , IOS.frow = ( Nothing, [],      [] )
                           }
      return $ ()
 
 
 -- ----------------------------------------------------------------------------------------- --
--- putToW :  try to do output to world on time, or observe earlier input (no quiescence)
+-- putSocket :  try to do output to world on time, or observe earlier input (no quiescence)
 
 
-putToW :: Action -> IOE Action
+putSocket :: IOS.EnvS -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
 
-putToW act@(Act acts)  =  do
-     ( Just towChan,  _,  _ ) <- gets envtow
-     ( Just frowChan, _,  _ ) <- gets envfrow
-     sact                     <- encode act
-     param_Sut_ioTime         <- getParam "param_Sut_ioTime"
-     obs         <- lift $ timeout ((read param_Sut_ioTime)*1000) (readChan frowChan)
-     case obs of
-     { Nothing         -> do lift $ writeChan towChan sact
-                             return $ act
-     ; Just (SActQui)  -> do lift $ writeChan towChan sact
-                             return $ act
-     ; Just (SAct h s) -> do act' <- decode (SAct h s)
-                             return $ act'
-     }
+putSocket envs act@(Act acts)  =  do
+     let ( Just towChan, _,  _ )  = IOS.tow envs
+         ( Just frowChan, _,  _ ) = IOS.frow envs
+         ioTime                   = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
+                                    { Nothing          -> 10                -- default 10 msec
+                                    ; Just (val,check) -> read val
+                                    }
+      in do sact <- EnDecode.encode envs act
+            obs  <- lift $ timeout (ioTime*1000) (readChan frowChan)       -- timeout in musec
+            case obs of
+            { Nothing         -> do lift $ writeChan towChan sact
+                                    return $ act
+            ; Just (SActQui)  -> do lift $ writeChan towChan sact
+                                    return $ act
+            ; Just (SAct h s) -> do act' <- EnDecode.decode envs (SAct h s)
+                                    return $ act'
+            }
 
-putOut (ActQui)  =  do
-     ( Just towChan,  _,  _ ) <- gets envtow
-     ( Just frowChan, _,  _ ) <- gets envfrow
-     sact                     <- encode ActQui
-     param_Sut_pollDelay      <- getParam "param_Sut_pollDelay"
-     obs         <- lift $ timeout ((read param_Sut_pollDelay)*1000) (readChan frowChan)
-     case obs of
-     { Nothing         -> do param_Sut_deltaTime <- getParam "param_Sut_deltaTime"
-                             lift $ threadDelay ((read param_Sut_deltaTime)*1000)
-                             lift $ writeChan towChan sact
-                             return $ ActQui
-     ; Just (SActQui)  -> do param_Sut_deltaTime <- getParam "param_Sut_deltaTime"
-                             lift $ threadDelay ((read param_Sut_deltaTime)*1000)
-                             lift $ writeChan towChan sact
-                             return $ ActQui
-     ; Just (SAct h s) -> do act' <- decode (SAct h s)
-                             return $ act'
-     }
+putSocket envs ActQui  =  do
+     let ( Just towChan, _,  _ )  = IOS.tow envs
+         ( Just frowChan, _,  _ ) = IOS.frow envs
+         deltaTime                = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
+                                    { Nothing          -> 2000                -- default 2 sec 
+                                    ; Just (val,check) -> read val
+                                    }
+         ioTime                   = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
+                                    { Nothing          -> 10                -- default 10 msec
+                                    ; Just (val,check) -> read val
+                                    }
+      in do sact <- EnDecode.encode envs ActQui
+            obs <- lift $ timeout (ioTime*1000) (readChan frowChan)
+            case obs of
+            { Nothing         -> do lift $ threadDelay (deltaTime*1000)
+                                    lift $ writeChan towChan sact
+                                    return $ ActQui
+            ; Just (SActQui)  -> do lift $ threadDelay (deltaTime*1000)
+                                    lift $ writeChan towChan sact
+                                    return $ ActQui
+            ; Just (SAct h s) -> do act' <- EnDecode.decode envs (SAct h s)
+                                    return $ act'
+            }
 
 
 -- ----------------------------------------------------------------------------------------- --
--- getFroW :  observe input from world, or observe quiescence
+-- getSocket :  observe input from world, or observe quiescence
 
 
-getFroW :: IOE Action
-getFroW   =  do
-     ( Just frowChan, _,  _ ) <- gets envfrow
-     param_Sut_deltaTime      <- getParam "param_Sut_deltaTime"
-     obs         <- lift $ timeout ((read param_Sut_deltaTime)*1000) (readChan frowChan)
-     case obs of
-     { Nothing         -> do return $ ActQui
-     ; Just (SActQui)  -> do return $ ActQui
-     ; Just (SAct h s) -> do act' <- decode (SAct h s)
-                             return $ act'
-     }
+getSocket :: IOS.EnvS -> IOC.IOC TxsDDefs.Action
+getSocket envs  =  do
+     let ( Just frowChan, _,  _ ) = IOS.frow envs
+         deltaTime                = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
+                                    { Nothing          -> 2000                -- default 2 sec 
+                                    ; Just (val,check) -> read val
+                                    }
+      in do obs <- lift $ timeout (deltaTime*1000) (readChan frowChan)
+            case obs of
+            { Nothing         -> do return $ ActQui
+            ; Just (SActQui)  -> do return $ ActQui
+            ; Just (SAct h s) -> do act' <- EnDecode.decode envs (SAct h s)
+                                    return $ act'
+            }
 
 
 -- ----------------------------------------------------------------------------------------- --
