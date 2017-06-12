@@ -68,13 +68,6 @@ cd ..
 echo --- End Test Java
 
 REM
-REM Make Build Info
-REM
-echo --- Start BuildInfo
-call sys\core\bin\buildinfo.bat > sys\core\src\BuildInfo.hs
-echo --- End BuildInfo
-
-REM
 REM Build TorXakis
 REM
 echo --- Start TorXakis Build
