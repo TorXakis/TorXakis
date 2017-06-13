@@ -1,1 +1,5 @@
+#stack working directory
 .stack-work
+
+# Compiled class file - test
+*.class

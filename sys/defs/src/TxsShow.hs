@@ -25,7 +25,6 @@ import qualified Data.Map as Map
 import qualified Data.String.Utils as Utils
 
 import TxsDefs
-import NoId
 import SortId
 import CstrId
 import FuncId
@@ -33,11 +32,8 @@ import ProcId
 import ChanId
 import VarId
 import StatId
-import ModelId
 import PurpId
 import GoalId
-import MapperId
-import CnectId
 
 
 specialOpChars :: String
@@ -80,17 +76,17 @@ instance PShow TxsDefs
                 s ++ "\n" 
             showElem s (IdSort (SortId nm _), DefSort(SortDef _) ) = 
                 s ++ "\nSORTDEF " ++ nm ++ " ;\n"
-            showElem s (IdCstr (CstrId nm _ args srt), DefCstr(CstrDef{}) ) =
+            showElem s (IdCstr (CstrId nm _ a srt), DefCstr(CstrDef{}) ) =
                 s ++ "\nCSTRDEF " ++ nm
-                             ++ " :: " ++ Utils.join " # " (map pshow args)
+                             ++ " :: " ++ Utils.join " # " (map pshow a)
                              ++ " -> " ++ pshow srt ++  " ;\n"
-            showElem s (IdFunc (FuncId nm _ args srt), DefFunc (FuncDef vids vexp) ) =
+            showElem s (IdFunc (FuncId nm _ a srt), DefFunc (FuncDef vids vexp) ) =
                 s ++ "\nFUNCDEF " ++ nm
                   ++ " ( " ++ Utils.join "; " [ n ++ " :: " ++ pshow vsrt
                                               | VarId n _ vsrt <- vids
                                               ]
                             ++ " ) "
-                  ++ " :: " ++ Utils.join " # " (map pshow args)
+                  ++ " :: " ++ Utils.join " # " (map pshow a)
                             ++ " -> " ++ pshow srt ++ " ;\n"
                   ++ "  ::=  " ++ pshow vexp ++ " ;\n"
             showElem s (IdProc (ProcId nm _ chans pvars xt), DefProc (ProcDef _ _ bexp) ) =
@@ -272,6 +268,8 @@ instance (PShow v) => PShow (ValExpr v)
              pshow fid ++ "( " ++ Utils.join ", " (map pshow vexps) ++ " )"
     pshow (view -> Verror s)
         = "ERROR " ++ s
+    pshow _
+        = error "pshow: item not in view"
 
 
 instance PShow Const
@@ -286,8 +284,8 @@ instance PShow Const
       = r
     pshow (Cstr cid [])
       = pshow cid
-    pshow (Cstr cid args)
-      = pshow cid ++ "(" ++ Utils.join "," (map pshow args) ++ ")"
+    pshow (Cstr cid a)
+      = pshow cid ++ "(" ++ Utils.join "," (map pshow a) ++ ")"
     pshow (Cerror s)
       = "ERROR " ++ s
 

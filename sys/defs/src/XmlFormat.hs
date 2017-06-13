@@ -17,8 +17,6 @@ import Data.ByteString (pack)
 import Data.ByteString.Internal (c2w)
 import Data.Char (ord, chr)
 import qualified Data.Map as Map
-import Data.Maybe
-import System.IO
 import Text.XML.Expat.Tree
 
 import TxsDefs
@@ -55,9 +53,9 @@ encodeChar  c     = if validChar c
 -- lookup a constructor definition given its constructor id in the given TorXakis definitions
                         
 lookupConstructorDef :: TxsDefs -> CstrId -> TxsDef
-lookupConstructorDef txsdefs cstrId  =
-    case Map.lookup cstrId (cstrDefs txsdefs) of
-        Nothing -> error $ "ConstructorId " ++ show cstrId ++ " not found in mapping"
+lookupConstructorDef txsdefs cId  =
+    case Map.lookup cId (cstrDefs txsdefs) of
+        Nothing -> error $ "ConstructorId " ++ show cId ++ " not found in mapping"
         Just d  -> DefCstr d
     
 -- ----------------------------------------------------------------------------------------- --

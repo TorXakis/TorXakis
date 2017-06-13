@@ -17,12 +17,7 @@ module SortOf
 
 where
 
-import qualified Data.Set  as Set
-import qualified Data.Map  as Map
-import Data.Maybe (fromMaybe)
-
 import BehExprDefs
-import ConnectionDefs
 import ConstDefs
 import CstrId
 import FuncId
@@ -87,7 +82,7 @@ sortOf' (view -> Vequal _ _)                            =  sortId_Bool
 sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps)  =  fs
 sortOf' (view -> Vpredef{})                             = error "sortOf': Unexpected Ident with Vpredef"
 sortOf' (view -> Verror _str)                           =  sortIdError
-
+sortOf' _                                               = error "sortOf': All items must be in view"
 
 instance SortOf Const
   where

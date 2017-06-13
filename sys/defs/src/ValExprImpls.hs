@@ -11,7 +11,6 @@ where
 -- ----------------------------------------------------------------------------------------- --
 import CstrId
 import FuncId
-import VarId
 import ConstDefs
 import SortOf
 import ValExprDefs
@@ -19,11 +18,11 @@ import Variable
 
 -- ----------------------------------------------------------------------------------------- --
 cstrFunc :: (Variable v) => FuncId -> [ValExpr v] -> ValExpr v
-cstrFunc (FuncId "==" _ [sl, sr] sortId_Bool) [l,r] | sl == sr && sortOf l == sortOf r && sl == sortOf l    = cstrEqual l r             -- TODO: what should I check?
-cstrFunc f args                                                                                             = ValExpr (Vfunc f args)
+cstrFunc (FuncId "==" _ [sl, sr] s) [l,r] | sl == sr && s == sortId_Bool && sortOf l == sortOf r && sl == sortOf l  = cstrEqual l r             -- TODO: what should I check?
+cstrFunc f a                                                                                                        = ValExpr (Vfunc f a)
 
 cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
-cstrCstr c args = ValExpr (Vcstr c args)
+cstrCstr c a = ValExpr (Vcstr c a)
 
 cstrConst :: Const -> ValExpr v
 cstrConst c = ValExpr (Vconst c)
@@ -53,7 +52,7 @@ cstrEqual ve1 ve2                                   = if ve1 <= ve2
                                                         else ValExpr (Vequal ve2 ve1)
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
-cstrPredef p f args = ValExpr (Vpredef p f args)
+cstrPredef p f a = ValExpr (Vpredef p f a)
 
 cstrError :: String -> ValExpr v
 cstrError s = ValExpr (Verror s)

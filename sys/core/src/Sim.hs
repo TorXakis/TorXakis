@@ -38,8 +38,6 @@ import qualified EnvData     as EnvData
 
 import qualified TxsDDefs    as TxsDDefs
 import qualified TxsShow     as TxsShow
-import qualified PShow       as PShow
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- simInit :  initialize models for Simulator

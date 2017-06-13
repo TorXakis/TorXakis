@@ -47,7 +47,6 @@ import qualified EnvData     as EnvData
 import qualified TxsDefs     as TxsDefs
 import qualified TxsDDefs    as TxsDDefs
 import qualified TxsShow     as TxsShow
-import qualified PShow       as PShow
 import qualified BTShow      as BTShow
 
 

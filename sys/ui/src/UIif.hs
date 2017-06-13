@@ -82,6 +82,9 @@ setOut fname iomode  =  do
                                             hout <- lift $ openFile f iomode
                                             lift $ hSetBuffering hout NoBuffering
                                             modify ( \env -> env { uihout = hout } )
+       (_,_)                          -> error $ "setOut: Impossible: prevent warning\n" ++ 
+                                                 "Pattern match(es) are non-exhaustive\n" ++
+                                                 "In a case alternative: Patterns not matched: (_, _)"
      
 -- ----------------------------------------------------------------------------------------- --
 

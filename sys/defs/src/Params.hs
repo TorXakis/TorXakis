@@ -71,12 +71,12 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
 -- test/simulation input generation
   
   , ( "param_Test_inputEager"    , "3"         , \s ->   all Char.isDigit s
-                                                      && 0 <= read s && read s <= 3 )
+                                                      && 0 <= (read s::Integer) && (read s::Integer) <= 3 )
             -- param_Test_inputEager :: Int (0 <= param_Test_inputEager <= 3)
             -- level of input eagerness: 0 .. 3
 
   , ( "param_Sim_inputEager"     , "0"         , \s ->   all Char.isDigit s 
-                                                      && 0 <= read s && read s <= 3 )
+                                                      && 0 <= (read s::Integer) && (read s::Integer) <= 3 )
             -- param_Sim_inputEager :: Int (0 <= param_Test_inputEager <= 3)
             -- level of input eagerness: 0 .. 3
   

@@ -12,7 +12,6 @@ import qualified Data.Map as Map
 import ConstDefs
 import CstrId
 import FuncId
-import SortId
 import VarId
 
 

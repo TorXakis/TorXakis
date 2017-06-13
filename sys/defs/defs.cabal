@@ -32,7 +32,6 @@ library
                       , ModelId
                       , NoId
                       , ProcId
-                      , PShow
                       , PurpId
                       , SortId
                       , SortOf

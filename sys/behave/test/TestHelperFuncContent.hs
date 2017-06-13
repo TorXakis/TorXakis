@@ -287,5 +287,7 @@ subst :: Map.Map FuncContent FuncContent -> FuncContent -> FuncContent
 subst mapFF content = FuncContent (cstrEnv (Map.fromList (map (\(FuncContent (view -> Vvar v), FuncContent y) -> (v,y)) (Map.toList mapFF))) (vexpr content))
 
 functionCall :: FuncKey -> [FuncContent] -> FuncContent
+functionCall (FuncId "==" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId s sortId_Bool && sortOf (vexpr l) == sortOf (vexpr r) && identicalSortId sl (sortOf (vexpr l)) = 
+    FuncContent (cstrEqual (vexpr l) (vexpr r))
 functionCall funcKey args = FuncContent (cstrFunc funcKey (map vexpr args))
 

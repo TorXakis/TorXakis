@@ -20,19 +20,31 @@ import TxsShow
 -- Const  :  values (for now: VExpr)
 -- Action :  trie/primer valued actions
 
-
 data  Action   =  Act     ( Set.Set (ChanId,[Const]) )
                 | ActQui
      deriving (Eq,Ord,Read,Show)
 
 -- ----------------------------------------------------------------------------------------- --
--- SAction :  string encoded actions
 
+instance PShow Action
+  where
+    pshow (Act    set)  =  "Act    { "++(pshow set)++" }\n"
+    pshow  ActQui       =  "No Output (Quiescence)\n"
+
+-- ----------------------------------------------------------------------------------------- --
+-- SAction :  string encoded actions
 
 data  SAction       =  SAct     Handle String
                      | SActQui
      deriving (Eq,Show)
 
+-- ----------------------------------------------------------------------------------------- --
+
+instance PShow SAction
+  where
+    pshow (SAct _h s)  =  "SAct  "++" ! "++(show s)++"\n"
+    pshow  SActQui    =  "No Output (Sut is Quiescent)\n"
+    
 -- ----------------------------------------------------------------------------------------- --
 --  Connections :  connections to outside world
 
@@ -49,6 +61,15 @@ data  ConnHandle    =  ConnHtoW  { chan       :: ChanId
                                  }
      deriving (Eq,Show)
 
+-- ----------------------------------------------------------------------------------------- --
+
+
+instance PShow ConnHandle
+  where
+    pshow (ConnHtoW c h vs v)
+      =  (pshow c) ++ (show h) ++ "\n" ++ (pshow vs) ++ (pshow v) ++ "\n"
+    pshow (ConnHfroW c h v vs)
+      =  (pshow c) ++ (show h) ++ "\n" ++ (pshow v) ++ (pshow vs) ++ "\n"
 
 -- ----------------------------------------------------------------------------------------- --
 -- data Verdict
@@ -58,6 +79,12 @@ data  Verdict  =  Pass
                 | NoVerdict
      deriving (Eq,Ord,Read,Show)
 
+-- ----------------------------------------------------------------------------------------- --
+instance PShow Verdict
+  where
+     pshow  Pass       =  "PASS"
+     pshow (Fail act)  =  "FAIL:  " ++ ( fshow act )
+     pshow  NoVerdict  =  "No Verdict"
 
 -- ----------------------------------------------------------------------------------------- --
 --

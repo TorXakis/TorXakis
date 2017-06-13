@@ -85,18 +85,18 @@ combineWEnv we1 we2
 
 partSubst :: (Variable v) => VarEnv v v -> ValExpr v -> ValExpr v
 
-partSubst ve (view -> Vfunc fid vexps)        =  cstrFunc fid (map (partSubst ve) vexps)
-partSubst ve (view -> Vcstr cid vexps)        =  cstrCstr cid (map (partSubst ve) vexps)
-partSubst _  (view -> Vconst const')          =  cstrConst const'
-partSubst ve (view -> Vvar vid)               =  Map.findWithDefault (cstrVar vid) vid ve
-partSubst ve (view -> Vite cond vexp1 vexp2)  =  cstrIte (map (partSubst ve) cond)
-                                                         (partSubst ve vexp1) 
-                                                         (partSubst ve vexp2)
-partSubst ve (view -> Venv ve' vexp)          =  partSubst ve (partSubst ve' vexp)
-partSubst ve (view -> Vequal vexp1 vexp2)     =  cstrEqual (partSubst ve vexp1) (partSubst ve vexp2)
-partSubst ve (view -> Vpredef kd fid vexps)   =  cstrPredef kd fid (map (partSubst ve) vexps)
-partSubst _  (view -> Verror str)             =  cstrError str
-
+partSubst ve (view -> Vfunc fid vexps)        = cstrFunc fid (map (partSubst ve) vexps)
+partSubst ve (view -> Vcstr cid vexps)        = cstrCstr cid (map (partSubst ve) vexps)
+partSubst _  (view -> Vconst const')          = cstrConst const'
+partSubst ve (view -> Vvar vid)               = Map.findWithDefault (cstrVar vid) vid ve
+partSubst ve (view -> Vite cond vexp1 vexp2)  = cstrIte (map (partSubst ve) cond)
+                                                        (partSubst ve vexp1) 
+                                                        (partSubst ve vexp2)
+partSubst ve (view -> Venv ve' vexp)          = partSubst ve (partSubst ve' vexp)
+partSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (partSubst ve vexp1) (partSubst ve vexp2)
+partSubst ve (view -> Vpredef kd fid vexps)   = cstrPredef kd fid (map (partSubst ve) vexps)
+partSubst _  (view -> Verror str)             = cstrError str
+partSubst _  _                                = error "partSubst: item not in view"
 -- ----------------------------------------------------------------------------------------- --
 -- walSubst :  partial value substitution in value expression
 
@@ -124,6 +124,7 @@ compSubst ve (view -> Venv ve' vexp)          =  compSubst ve (compSubst ve' vex
 compSubst ve (view -> Vequal vexp1 vexp2)     =  cstrEqual (compSubst ve vexp1) (compSubst ve vexp2)
 compSubst ve (view -> Vpredef kd fid vexps)   =  cstrPredef kd fid (map (compSubst ve) vexps)
 compSubst _  (view -> Verror str)             =  cstrError str
+compSubst _  _                                =  error "compSubst: item not in view"
 
 -- ----------------------------------------------------------------------------------------- --
 -- check use of functions for use in SMT:
@@ -194,19 +195,19 @@ class UsedFids t
 
 instance UsedFids BExpr
   where
-    usedFids  Stop                        =  []
-    usedFids (ActionPref actoff bexp)     =  usedFids actoff ++ usedFids bexp
-    usedFids (Guard vexps bexp)           =  usedFids vexps ++ usedFids bexp
-    usedFids (Choice bexps)               =  usedFids bexps
-    usedFids (Parallel _chids bexps)       =  usedFids bexps
-    usedFids (Enable bexp1 choffs bexp2)  =  usedFids bexp1 ++ usedFids choffs
-                                             ++ usedFids bexp2
-    usedFids (Disable bexp1 bexp2)        =  usedFids bexp1 ++ usedFids bexp2
-    usedFids (Interrupt bexp1 bexp2)      =  usedFids bexp1 ++ usedFids bexp2
+    usedFids  Stop                          =  []
+    usedFids (ActionPref actoff bexp)       =  usedFids actoff ++ usedFids bexp
+    usedFids (Guard vexps bexp)             =  usedFids vexps ++ usedFids bexp
+    usedFids (Choice bexps)                 =  usedFids bexps
+    usedFids (Parallel _chids bexps)        =  usedFids bexps
+    usedFids (Enable bexp1 choffs bexp2)    =  usedFids bexp1 ++ usedFids choffs
+                                                              ++ usedFids bexp2
+    usedFids (Disable bexp1 bexp2)          =  usedFids bexp1 ++ usedFids bexp2
+    usedFids (Interrupt bexp1 bexp2)        =  usedFids bexp1 ++ usedFids bexp2
     usedFids (ProcInst _pid _chids vexps)   =  usedFids vexps
-    usedFids (Hide _chids bexp)            =  usedFids bexp
-    usedFids (ValueEnv ve bexp)           =  usedFids (Map.elems ve) ++ usedFids bexp
-    usedFids (StAut _stid ve transs)       =  usedFids (Map.elems ve) ++ usedFids transs
+    usedFids (Hide _chids bexp)             =  usedFids bexp
+    usedFids (ValueEnv ve bexp)             =  usedFids (Map.elems ve) ++ usedFids bexp
+    usedFids (StAut _stid ve transs)        =  usedFids (Map.elems ve) ++ usedFids transs
 
 
 instance UsedFids Trans
@@ -237,6 +238,7 @@ instance UsedFids VExpr
     usedFids (view -> Vequal vexp1 vexp2)       =  usedFids vexp1 ++ usedFids vexp2
     usedFids (view -> Vpredef _k fid vexps)     =  fid : usedFids vexps
     usedFids (view -> Verror _s)                =  []
+    usedFids _                                  =  error "usedFids: item not in view"
 
 
 instance (UsedFids t) => UsedFids [t]
