@@ -1,4 +1,4 @@
-eNoah's Ark example.
+Noah's Ark example.
 
 Taken from http://www.data2type.de/en/xml-xslt-xslfo/schematron/schematron-introduction/
 
