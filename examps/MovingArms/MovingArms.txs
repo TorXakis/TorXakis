@@ -1,0 +1,234 @@
+PROCDEF stoppedMin [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Up >-> movingUp [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Down >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMin and stopped both must accept input Down, such that IOCO can't differentiate between them
+    ##
+        Stop >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMin and movingDown both must accept input Stop, such that IOCO can't differentiate between them
+ENDDEF
+
+PROCDEF stoppedMax [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Down >-> movingDown [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Up >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )      -- stoppedMax and stopped both must accept input Up, such that IOCO can't differentiate between them
+    ##
+        Stop >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMax and movingUp both must accept input Stop, such that IOCO can't differentiate between them
+ENDDEF
+
+PROCDEF stopped [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Up >-> movingUp [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Down >-> movingDown [ Up, Down, Stop, Min, Max ] ( )
+ENDDEF
+
+PROCDEF movingUp [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Stop >-> stopped [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Max >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )
+ENDDEF
+
+PROCDEF movingDown [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Stop >-> stopped [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Min >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )
+ENDDEF
+
+PROCDEF basicAllowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
+                                UpY, DownY, StopY, MinY, MaxY,
+                                UpZ, DownZ, StopZ, MinZ, MaxZ] ( ) ::=
+        stopped [UpX, DownX, StopX, MinX, MaxX] ()
+    ||| stopped [UpY, DownY, StopY, MinY, MaxY] ()
+    ||| stopped [UpZ, DownZ, StopZ, MinZ, MaxZ] ()
+ENDDEF
+
+-- ---------------------------------------------------------------------------
+-- Between SUT and Tester is however not a synchronous channel              --
+------------------------------------------------------------------------------
+
+PROCDEF asynchronousChannel [ In, Out ] () ::=
+    In >-> Out >-> asynchronousChannel [ In, Out ] ()
+ENDDEF
+
+PROCDEF asynchronousAxis [ Up, Down, Stop, Min, Max ] () ::=
+    HIDE [HMin, HMax] IN 
+            asynchronousChannel [HMin, Min] ()
+        |[HMin]|
+            stopped [Up, Down, Stop, HMin, HMax] ()
+        |[HMax]|
+            asynchronousChannel [HMax, Max] ()
+    NI
+ENDDEF
+
+PROCDEF allowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
+                           UpY, DownY, StopY, MinY, MaxY,
+                           UpZ, DownZ, StopZ, MinZ, MaxZ ] ( ) ::=
+        asynchronousAxis [UpX, DownX, StopX, MinX, MaxX] ()
+    ||| asynchronousAxis [UpY, DownY, StopY, MinY, MaxY] ()
+    ||| asynchronousAxis [UpZ, DownZ, StopZ, MinZ, MaxZ] ()
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+CHANDEF Channels ::=
+    UpX, DownX, StopX, MinX, MaxX,
+    UpY, DownY, StopY, MinY, MaxY,
+    UpZ, DownZ, StopZ, MinZ, MaxZ
+ENDDEF
+
+MODELDEF  Model ::=
+    CHAN IN     UpX, DownX, StopX, 
+                UpY, DownY, StopY,
+                UpZ, DownZ, StopZ
+    CHAN OUT    MinX, MaxX,
+                MinY, MaxY,
+                MinZ, MaxZ
+    BEHAVIOUR   allowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
+                                   UpY, DownY, StopY, MinY, MaxY,
+                                   UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
+ENDDEF
+-- ----------------------------------------------------------------------------------------- --
+CNECTDEF  Sut ::=
+        CLIENTSOCK
+
+        CHAN OUT  UpX                     HOST "localhost"  PORT 9901
+        ENCODE    UpX                     ->  ! "upX"
+
+        CHAN OUT  DownX                   HOST "localhost"  PORT 9902
+        ENCODE    DownX                   ->  ! "downX"
+
+        CHAN OUT  StopX                   HOST "localhost"  PORT 9903
+        ENCODE    StopX                   ->  ! "stopX"
+
+        CHAN IN   MinX                    HOST "localhost"  PORT 9904
+        DECODE    MinX                    <-   ? s
+        
+        CHAN IN   MaxX                    HOST "localhost"  PORT 9905
+        DECODE    MaxX                    <-   ? s
+
+        CHAN OUT  UpY                     HOST "localhost"  PORT 9911
+        ENCODE    UpY                     ->  ! "upY"
+
+        CHAN OUT  DownY                   HOST "localhost"  PORT 9912
+        ENCODE    DownY                   ->  ! "downY"
+
+        CHAN OUT  StopY                   HOST "localhost"  PORT 9913
+        ENCODE    StopY                   ->  ! "stopY"
+
+        CHAN IN   MinY                    HOST "localhost"  PORT 9914
+        DECODE    MinY                    <-   ? s
+        
+        CHAN IN   MaxY                    HOST "localhost"  PORT 9915
+        DECODE    MaxY                    <-   ? s
+
+        CHAN OUT  UpZ                     HOST "localhost"  PORT 9921
+        ENCODE    UpZ                     ->  ! "upZ"
+
+        CHAN OUT  DownZ                   HOST "localhost"  PORT 9922
+        ENCODE    DownZ                   ->  ! "downZ"
+
+        CHAN OUT  StopZ                   HOST "localhost"  PORT 9923
+        ENCODE    StopZ                   ->  ! "stopZ"
+
+        CHAN IN   MinZ                    HOST "localhost"  PORT 9924
+        DECODE    MinZ                    <-   ? s
+        
+        CHAN IN   MaxZ                    HOST "localhost"  PORT 9925
+        DECODE    MaxZ                    <-   ? s
+ENDDEF
+
+CNECTDEF  Sim ::=
+        SERVERSOCK
+
+        CHAN IN   UpX                   HOST "localhost"  PORT 9901
+        DECODE    UpX                   <-   ? s
+
+        CHAN IN   DownX                 HOST "localhost"  PORT 9902
+        DECODE    DownX                 <-   ? s
+
+        CHAN IN   StopX                 HOST "localhost"  PORT 9903
+        DECODE    StopX                 <-   ? s
+
+        CHAN OUT  MinX                  HOST "localhost"  PORT 9904
+        ENCODE    MinX                  ->  ! "minX"
+
+        CHAN OUT  MaxX                  HOST "localhost"  PORT 9905
+        ENCODE    MaxX                  ->  ! "maxX"
+
+        CHAN IN   UpY                   HOST "localhost"  PORT 9911
+        DECODE    UpY                   <-   ? s
+
+        CHAN IN   DownY                 HOST "localhost"  PORT 9912
+        DECODE    DownY                 <-   ? s
+
+        CHAN IN   StopY                 HOST "localhost"  PORT 9913
+        DECODE    StopY                 <-   ? s
+
+        CHAN OUT  MinY                  HOST "localhost"  PORT 9914
+        ENCODE    MinY                  ->  ! "minY"
+
+        CHAN OUT  MaxY                  HOST "localhost"  PORT 9915
+        ENCODE    MaxY                  ->  ! "maxY"
+        
+        CHAN IN   UpZ                   HOST "localhost"  PORT 9921
+        DECODE    UpZ                   <-   ? s
+
+        CHAN IN   DownZ                 HOST "localhost"  PORT 9922
+        DECODE    DownZ                 <-   ? s
+
+        CHAN IN   StopZ                 HOST "localhost"  PORT 9923
+        DECODE    StopZ                 <-   ? s
+
+        CHAN OUT  MinZ                  HOST "localhost"  PORT 9924
+        ENCODE    MinZ                  ->  ! "minZ"
+
+        CHAN OUT  MaxZ                  HOST "localhost"  PORT 9925
+        ENCODE    MaxZ                  ->  ! "maxZ"
+        
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+PROCDEF Semaphore [Acquire, Release]() ::=
+    Acquire >-> Release >-> Semaphore [Acquire , Release]()  
+ENDDEF
+
+PROCDEF controlledMovement  [ Acquire, Release, Up, Down, Stop, Min, Max ] ( ) ::=
+    (
+            Acquire | Up >-> (  Release | Stop >-> EXIT
+                             ## Release | Max >-> EXIT
+                             )
+        ##
+            Acquire | Down >-> (  Release | Stop >-> EXIT
+                               ## Release | Min >-> EXIT
+                               )
+    ) >>> controlledMovement  [ Acquire, Release, Up, Down, Stop, Min, Max ] ( )
+ENDDEF
+
+PROCDEF singleAxisMovement [ UpX, DownX, StopX, MinX, MaxX,
+                             UpY, DownY, StopY, MinY, MaxY,
+                             UpZ, DownZ, StopZ, MinZ, MaxZ] ( ) ::=
+    HIDE [Acquire, Release] IN
+        Semaphore [Acquire, Release]()
+    |[Acquire, Release]|
+        (   controlledMovement [Acquire, Release, UpX, DownX, StopX, MinX, MaxX] ()
+        ||| controlledMovement [Acquire, Release, UpY, DownY, StopY, MinY, MaxY] ()
+        ||| controlledMovement [Acquire, Release, UpZ, DownZ, StopZ, MinZ, MaxZ] ()
+        )
+    NI
+ENDDEF
+
+MODELDEF  TestPurpose ::=
+    CHAN IN     UpX, DownX, StopX, 
+                UpY, DownY, StopY,
+                UpZ, DownZ, StopZ
+    CHAN OUT    MinX, MaxX,
+                MinY, MaxY,
+                MinZ, MaxZ
+    BEHAVIOUR   
+        allowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
+                           UpY, DownY, StopY, MinY, MaxY,
+                           UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
+    |[ UpX, DownX, StopX, MinX, MaxX,
+       UpY, DownY, StopY, MinY, MaxY,
+       UpZ, DownZ, StopZ, MinZ, MaxZ]| 
+        singleAxisMovement [ UpX, DownX, StopX, MinX, MaxX,
+                             UpY, DownY, StopY, MinY, MaxY,
+                             UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
+ENDDEF

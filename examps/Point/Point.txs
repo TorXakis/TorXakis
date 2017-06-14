@@ -1,0 +1,68 @@
+TYPEDEF Point ::= Point { x, y :: Int } ENDDEF
+
+FUNCDEF validPoint (p :: Point) :: Bool ::=
+    ( x(p) <> 0 ) /\ ( y(p) <> 0 ) 
+ENDDEF
+
+FUNCDEF inRange (p1, p2 :: Point) :: Bool ::=
+    (x(p1) == x(p2)) \/ (y(p1) == y(p2))
+ENDDEF
+
+PROCDEF  allowedBehaviour  [ In, Out :: Point ]  ( ) ::=
+        In ? p1 [[ validPoint(p1) ]]
+    >-> Out ? p2 [[ validPoint(p2) /\ inRange (p1,p2) ]]
+    >-> allowedBehaviour [In,Out] ()
+ENDDEF
+
+CHANDEF Channels ::=
+    In, Out :: Point
+ENDDEF
+
+MODELDEF  Model ::=
+    CHAN IN     In
+    CHAN OUT    Out
+
+    BEHAVIOUR   allowedBehaviour [ In, Out ] ( )
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+
+FUNCDEF inFirstQuadrant (p :: Point) :: Bool ::=
+    ( x(p) > 0 ) /\ ( y(p) > 0 ) 
+ENDDEF
+
+PROCDEF  testPurpose  [ In :: Point ]  (  ) ::=
+        In ? p [[ inFirstQuadrant(p) ]]
+    >-> testPurpose [In] ()
+ENDDEF
+
+MODELDEF  TestPurpose ::=
+    CHAN IN     In
+    CHAN OUT    Out
+
+    BEHAVIOUR   
+        allowedBehaviour [ In, Out ] ( )
+    |[In]| 
+        testPurpose[In]()
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+CNECTDEF  Sut ::=
+        CLIENTSOCK
+
+        CHAN OUT  In                        HOST "localhost"  PORT 9999
+        ENCODE    In ? s                    ->  ! toString(s)
+
+        CHAN IN   Out                       HOST "localhost"  PORT 9999
+        DECODE    Out ! fromString(s)       <-   ? s
+ENDDEF
+
+CNECTDEF  Sim ::=
+        SERVERSOCK
+
+        CHAN OUT  Out                       HOST "localhost"  PORT 9999
+        ENCODE    Out ? s                   ->  ! toString(s)
+        
+        CHAN IN   In                        HOST "localhost"  PORT 9999
+        DECODE    In ! fromString(s)        <-   ? s
+ENDDEF

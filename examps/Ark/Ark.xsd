@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.schematron.info/ark" xmlns="http://www.schematron.info/ark" elementFormDefault="qualified">
+  <xs:element name="age" type="xs:positiveInteger"/>
+  <xs:element name="ark">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="load"/>
+        <xs:element ref="maxReproductionAge"/>
+        <xs:element ref="loadingCapacity"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="species" type="xs:string"/>
+  <xs:element name="weight" type="xs:positiveInteger"/>
+  <xs:element name="load">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="room" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="maxReproductionAge">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="animal_species" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="male" type="xs:positiveInteger"/>
+  <xs:element name="name" type="xs:string"/>
+  <xs:element name="loadingCapacity" type="xs:positiveInteger"/>
+  <xs:element name="animal">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="species"/>
+        <xs:element ref="weight"/>
+        <xs:element ref="age"/>
+      </xs:sequence>
+      <xs:attribute name="sex" use="required">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="male"/>
+            <xs:enumeration value="female"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="carnivore" use="required">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="yes"/>
+            <xs:enumeration value="no"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="animal_species">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="name"/>
+        <xs:element ref="male"/>
+        <xs:element ref="female"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="room">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="animal" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="female" type="xs:positiveInteger"/>
+</xs:schema>
