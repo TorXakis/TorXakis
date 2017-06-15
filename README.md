@@ -19,5 +19,5 @@ The SMT Solver needs to support [SMTLIB](http://smtlib.cs.uiowa.edu/) version 2.
 and [Strings](http://cvc4.cs.stanford.edu/wiki/Strings).
 The SMT Solvers are assumed to be located on the [PATH](https://en.wikipedia.org/wiki/PATH_(variable)).
 
-
+TorXakis uses [javac](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) and [GNU Make](https://www.gnu.org/software/make/) for development acceptance tests.
 
