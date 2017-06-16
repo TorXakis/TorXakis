@@ -40,7 +40,8 @@ packages:
 - location: .
 - location: ../behavedefs
 - location: ../defs
-- location: ../env
+- location: ../coreenv
+- location: ../behaveenv
 - location: ../front
 - location: ../solvedefs
 - location: ../value

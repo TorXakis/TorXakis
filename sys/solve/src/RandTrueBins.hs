@@ -41,12 +41,20 @@ import StdTDefs
 import TxsDefs
 import TxsUtils
 
+data ParamTrueBins = 
+    ParamTrueBins { maxDepth                :: Int
+                  , nrOfBins                :: Int
+                  , next                    :: 
+                  
+                         }
+
+
 -- ----------------------------------------------------------------------------------------- --
 -- give a random solution for constraint vexps with free variables vars
 
 
-randValExprsSolveTrueBins :: (Variable v) => [v] -> [ValExpr v] -> SMT (SolveProblem v)
-randValExprsSolveTrueBins freevars exprs  =
+randValExprsSolveTrueBins :: (Variable v) => ParamTrueBins -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
+randValExprsSolveTrueBins p freevars exprs  =
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
     if all ( (sortId_Bool == ) . sortOf ) exprs
     then do
@@ -70,18 +78,13 @@ randValExprsSolveTrueBins freevars exprs  =
     where
         combine :: (Variable v) => v -> SMT [ValExpr v] -> SMT [ValExpr v]
         combine vid sexprs = do
-            param_max_rand_depth_string <- getParam "param_max_rand_depth"
-            let param_max_rand_depth = read param_max_rand_depth_string
-            expr <- randomValue (vsort vid) (cstrVar vid) param_max_rand_depth
+            expr <- randomValue p (vsort vid) (cstrVar vid) (maxDepth p)
             exprs' <- sexprs
             return $ expr : exprs'
 
 -- -----------------------------------------------------------------
-next :: SMT (Integer -> Integer)
-next = do
-        param_TrueBins_Next_String <- getParam "param_TrueBins_Next"
-        let param_TrueBins_Next = read param_TrueBins_Next_String
-        case param_TrueBins_Next of
+next :: ParamTrueBins -> SMT (Integer -> Integer)
+next p = case next p  of
             Linear      -> return nextLinear
             Power       -> return nextPower
             Exponent    -> return nextExponent
@@ -229,9 +232,9 @@ lookupConstructors sid  =  do
      tdefs <- gets txsDefs
      return [ def | def@(CstrId{ cstrsort = sid' } , _) <- Map.toList (cstrDefs tdefs), sid == sid']
 
-randomValue :: (Variable v) => SortId -> ValExpr v -> Integer -> SMT (ValExpr v)
-randomValue _sid _expr 0 = return $ cstrConst (Cbool True)
-randomValue sid expr n | n > 0 = 
+randomValue :: (Variable v) => ParamTrueBins -> SortId -> ValExpr v -> Integer -> SMT (ValExpr v)
+randomValue _ _sid _expr 0 = return $ cstrConst (Cbool True)
+randomValue p sid expr n | n > 0 = 
     case sid of
         x | x == sortId_Bool   -> trueBool expr
         x | x == sortId_Int    -> do

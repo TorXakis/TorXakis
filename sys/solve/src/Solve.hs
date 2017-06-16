@@ -20,10 +20,11 @@ module Solve
   satSolve        --
 , solve        -- 
 , uniSolve        --
-, ranSolve        --
+, randSolve        --
 , Assertions
 , Solve.empty
 , add 
+, RandSolveParam(..)
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -52,6 +53,14 @@ import RandIncrementChoice
 
 -- ----------------------------------------------------------------------------------------- --
 
+data RandSolveParam = RandNo
+                    | RandPartition         ParamPartition
+                    | RandTrueBins          ParamTrueBins
+                    | RandIncrementChoice   ParamIncrementChoice
+     deriving (Eq,Ord,Read,Show)
+
+-- ----------------------------------------------------------------------------------------- --
+
 data PrivateAssertions v  = AssertFalse
                           | AssertSet ( Set.Set (ValExpr v) )
      deriving (Eq,Ord,Read,Show)
@@ -67,18 +76,19 @@ empty = Assertions (AssertSet Set.empty)
 
 add :: (Variable v) => ValExpr v -> Assertions v -> Assertions v
 add e (Assertions AssertFalse)    |  sortOf e == sortId_Bool                                            = Assertions AssertFalse
-add e a                           |  sortOf e == sortId_Bool  && (view e == Vconst (Cbool True))             = a
-add e _                           |  sortOf e == sortId_Bool  && (view e == Vconst (Cbool False))            = Assertions AssertFalse
+add e a                           |  sortOf e == sortId_Bool  && (view e == Vconst (Cbool True))        = a
+add e _                           |  sortOf e == sortId_Bool  && (view e == Vconst (Cbool False))       = Assertions AssertFalse
 add e (Assertions (AssertSet s) ) |  sortOf e == sortId_Bool                                            = Assertions ( AssertSet (Set.insert e s) )
 add e _                                                                                                 = error ("Add - Can not add non-boolean expression " ++ show e)
 
 -- ----------------------------------------------------------------------------------------- --
 -- satSolve :  is set of constraints solvable?
--- solve    :  solve set of constraints and provide solution according to strategy, if satisfied
+-- solve    :  solve set of constraints and provide solution (as provided by smt solver), if satisfied
 -- uniSolve :  solve set of constraints and provide solution, if uniquely satisfied
 --             Unsat   :  0 solutions
 --             Sat     :  1 solution
 --             Unknown :  Unknown or >1 solutions
+-- TODO: improve interface of UNISOLVE -> NrOfSolutions := 0, 1, >1 and unknown
 
 
 satSolve :: (Variable v) => [v] -> Assertions v -> SMT SolvableProblem
@@ -95,14 +105,7 @@ solve [] (Assertions (AssertSet s))   | Set.null s = return $ Solved Map.empty
 solve vs (Assertions (AssertSet s))                = 
     let vexps = Set.toList s in
         let vs' = List.nub $ vs ++ concatMap freeVars vexps in do
-            sp    <- do
-                        param_Randomization_string <- getParam "param_Randomization"
-                        let param_Randomization = read param_Randomization_string
-                        case param_Randomization of
-                            No              -> valExprsSolve vs' vexps
-                            Partition       -> randValExprsSolvePartition vs' vexps
-                            TrueBins        -> randValExprsSolveTrueBins vs' vexps
-                            IncrementChoice -> randValExprsSolveIncrementChoice vs' vexps
+            sp    <- valExprsSolve vs' vexps
             return $ case sp of 
                     Solved sol    -> Solved $ Map.filterWithKey (\k _ -> k `elem` vs) sol
                     Unsolvable    -> Unsolvable
@@ -126,8 +129,21 @@ uniSolve vs (Assertions (AssertSet s))                  =
                 UnableToSolve                    -> return UnableToSolve
 
 -- random solve
-ranSolve :: (Variable v) => [v] -> Assertions v -> SMT (SolveProblem v)
-ranSolve = solve  -- FOR THE MOMENT
+randSolve :: (Variable v) => RandSolveParam -> [v] -> Assertions v -> SMT (SolveProblem v)
+randSolve _ _  (Assertions AssertFalse)                  = return Unsolvable
+randSolve _ [] (Assertions (AssertSet s))   | Set.null s = return $ Solved Map.empty
+randSolve p vs (Assertions (AssertSet s))                = 
+    let vexps = Set.toList s in
+        let vs' = List.nub $ vs ++ concatMap freeVars vexps in do
+            sp    <- case p of
+                        RandNo                  -> valExprsSolve vs' vexps                          -- allow easy comparison of difference in performance of randomization algorithm
+                        RandPartition r         -> randValExprsSolvePartition r vs' vexps
+                        RandTrueBins r          -> randValExprsSolveTrueBins r vs' vexps
+                        RandIncrementChoice r   -> randValExprsSolveIncrementChoice r vs' vexps
+            return $ case sp of 
+                    Solved sol    -> Solved $ Map.filterWithKey (\k _ -> k `elem` vs) sol
+                    Unsolvable    -> Unsolvable
+                    UnableToSolve -> UnableToSolve 
 
 
 

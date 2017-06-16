@@ -12,6 +12,7 @@ module RandIncrementChoice
 -- ----------------------------------------------------------------------------------------- --
 -- export
 ( randValExprsSolveIncrementChoice  --  :: (Variable v) => [v] -> [ValExpr v] -> SMT (Satisfaction v)
+, ParamIncrementChoice (..)
 )
 where
 -- ----------------------------------------------------------------------------------------- --
@@ -30,12 +31,20 @@ import SolveDefs
 import StdTDefs
 import TxsDefs
 
+
+data ParamIncrementChoice = 
+    ParamIncrementChoice { maxDepth                 :: Int
+                         , intRange                 :: Integer
+                         , intPower                 :: Int
+                         , maxGeneratedStringLength :: Int
+                         }
+
 -- ----------------------------------------------------------------------------------------- --
 -- give a random solution for constraint vexps with free variables vars
 
 
-randValExprsSolveIncrementChoice :: (Variable v) => [v] -> [ValExpr v] -> SMT (SolveProblem v)
-randValExprsSolveIncrementChoice freevars exprs  =
+randValExprsSolveIncrementChoice :: (Variable v) => ParamIncrementChoice -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
+randValExprsSolveIncrementChoice p freevars exprs  =
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
     if all ( (sortId_Bool == ) . sortOf ) exprs
     then do
@@ -45,10 +54,8 @@ randValExprsSolveIncrementChoice freevars exprs  =
         sat <- getSolvable
         sp <- case sat of 
                 Sat     -> do
-                            param_max_rand_depth_string <- getParam "param_max_rand_depth"
-                            let param_max_rand_depth = read param_max_rand_depth_string
                             shuffledVars <- shuffleM freevars
-                            randomSolve (zip shuffledVars (map (const param_max_rand_depth) [1::Integer .. ]) ) 0
+                            randomSolve p (zip shuffledVars (map (const (maxDepth p)) [1::Integer .. ]) ) 0
                             sol <- getSolution freevars
                             return $ Solved sol
                 Unsat   -> return Unsolvable
@@ -69,10 +76,10 @@ toRegexString  94 = "\\^"
 toRegexString   c = [Char.chr c]
         
 -- precondition: SMT has returned sat        
-randomSolve :: Variable v => [(v, Int)] -> Int -> SMT ()
-randomSolve []        _     = return ()                                         -- empty list -> done
-randomSolve ((_,0):_) _     = error "At maximum depth: should not be added"     -- todo: remove for performance gain!
-randomSolve ((v,_):xs) i    | vsort v == sortId_Bool =
+randomSolve :: Variable v => ParamIncrementChoice -> [(v, Int)] -> Int -> SMT ()
+randomSolve _ []        _     = return ()                                         -- empty list -> done
+randomSolve _ ((_,0):_) _     = error "At maximum depth: should not be added"     -- todo: remove for performance gain!
+randomSolve p ((v,_):xs) i    | vsort v == sortId_Bool =
     do
         b <- lift randomIO
         c <- randomSolveVar v (choicesFunc v b)
@@ -81,7 +88,7 @@ randomSolve ((v,_):xs) i    | vsort v == sortId_Bool =
             _       -> error "RandIncrementChoice: impossible constant - bool"
         sat <- getSolvable
         case sat of 
-            Sat     -> randomSolve xs i
+            Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - Bool"
     where
         choicesFunc :: Variable v => v -> Bool -> Const -> [(Bool, ValExpr v)]
@@ -91,24 +98,20 @@ randomSolve ((v,_):xs) i    | vsort v == sortId_Bool =
                                          ]
         choicesFunc _ _ _        = error "RandIncrementChoice: impossible choice - bool"
 
-randomSolve ((v,_):xs) i    | vsort v == sortId_Int =
+randomSolve p ((v,_):xs) i    | vsort v == sortId_Int =
     do
-        param_IncrementChoice_IntRange_string <- getParam "param_IncrementChoice_IntRange"
-        let param_IncrementChoice_IntRange = read param_IncrementChoice_IntRange_string
-        
-        param_IncrementChoice_IntPower_string <- getParam "param_IncrementChoice_IntPower"
-        let param_IncrementChoice_IntPower = read param_IncrementChoice_IntPower_string :: Integer
-        
-        b <- lift $ randomRIO (- param_IncrementChoice_IntRange, param_IncrementChoice_IntRange)
-        let r = if b < 0 then - abs b ^ param_IncrementChoice_IntPower
-                         else b ^ param_IncrementChoice_IntPower
+        let range = intRange p
+        b <- lift $ randomRIO (- range, range)
+        let power = intPower p
+        let r = if b < 0 then - abs b ^ power
+                         else b ^ power
         c <- randomSolveVar v (choicesFunc v r)
         case c of
             Cint x  -> addAssertions [cstrEqual (cstrVar v) (cstrConst (Cint x))]
             _       -> error "RandIncrementChoice: impossible constant - int"
         sat <- getSolvable
         case sat of 
-            Sat     -> randomSolve xs i
+            Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - Int"
     where
         choicesFunc :: Variable v => v -> Integer -> Const -> [(Bool, ValExpr v)]
@@ -118,7 +121,7 @@ randomSolve ((v,_):xs) i    | vsort v == sortId_Int =
                                      ]
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - int"
 
-randomSolve ((v,-123):xs) i    | vsort v == sortId_String =                 -- abuse depth to encode char versus string
+randomSolve p ((v,-123):xs) i    | vsort v == sortId_String =                 -- abuse depth to encode char versus string
     do
         r <- lift $ randomRIO (0,127)
         s <- randomSolveVar v (choicesFunc v r)
@@ -127,7 +130,7 @@ randomSolve ((v,-123):xs) i    | vsort v == sortId_String =                 -- a
             _           -> error "RandIncrementChoice: impossible constant - char"
         sat <- getSolvable
         case sat of 
-            Sat     -> randomSolve xs i
+            Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - char"
     where
         choicesFunc :: Variable v => v -> Int -> Const -> [(Bool, ValExpr v)]
@@ -143,9 +146,9 @@ randomSolve ((v,-123):xs) i    | vsort v == sortId_String =                 -- a
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - char"
                                      
     
-randomSolve ((v,d):xs) i    | vsort v == sortId_String =
+randomSolve p ((v,d):xs) i    | vsort v == sortId_String =
     do
-        r <- lift $ randomRIO (0,10)
+        r <- lift $ randomRIO (0,maxGeneratedStringLength p)
         c <- randomSolveVar v (choicesFunc v r)
         case c of
             Cstring s   -> do
@@ -160,12 +163,12 @@ randomSolve ((v,d):xs) i    | vsort v == sortId_String =
                                         shuffledVars <- shuffleM (xs ++ zip charVars (map (const (-123)) [1::Integer .. ]) )
                                         sat <- getSolvable
                                         case sat of 
-                                            Sat     -> randomSolve shuffledVars (i+l)
+                                            Sat     -> randomSolve p shuffledVars (i+l)
                                             _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l > 0"
                                 else do
                                         sat <- getSolvable
                                         case sat of 
-                                            Sat     -> randomSolve xs i
+                                            Sat     -> randomSolve p xs i
                                             _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l == 0"
             _              -> error "RandIncrementChoice: impossible constant - string"
     where
@@ -177,7 +180,7 @@ randomSolve ((v,d):xs) i    | vsort v == sortId_String =
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - string"
             
         
-randomSolve ((v,d):xs) i = 
+randomSolve p ((v,d):xs) i = 
     do
         let sid = vsort v
         cstrs <- lookupConstructors sid
@@ -194,9 +197,9 @@ randomSolve ((v,d):xs) i =
                                             if l > 0 
                                                 then do                                    
                                                     shuffledVars <- shuffleM (xs ++ zip fieldVars (map (const d) [1::Integer .. ]) )
-                                                    randomSolve shuffledVars (i+l)
+                                                    randomSolve p shuffledVars (i+l)
                                                 else
-                                                    randomSolve xs i
+                                                    randomSolve p xs i
                             _       -> error "Unexpected SMT issue - previous solution is no longer valid - ADT - 1"
             _   ->
                     do
@@ -218,9 +221,9 @@ randomSolve ((v,d):xs) i =
                                                                 if l > 0 
                                                                     then do                                    
                                                                         shuffledVars <- shuffleM (xs ++ zip fieldVars (map (const (d-1)) [1::Integer .. ]) )
-                                                                        randomSolve shuffledVars (i+l)
+                                                                        randomSolve p shuffledVars (i+l)
                                                                     else
-                                                                        randomSolve xs i
+                                                                        randomSolve p xs i
                                                 _       -> error "Unexpected SMT issue - previous solution is no longer valid - ADT - n"
                                     Nothing                 -> error "RandIncrementChoice: value not found - ADT - n"                        
                             _                   -> error "RandIncrementChoice: impossible constant - ADT - n"
@@ -233,8 +236,8 @@ randomSolve ((v,d):xs) i =
                                  ]
         choicesFunc _ _ _ _        = error "RandIncrementChoice: impossible choice - string"
 
-                        
-                        
+
+-- Find random solution for variable, using the different choices
 randomSolveVar :: (Variable v) => v -> (Const -> [(Bool, ValExpr v)]) -> SMT Const
 randomSolveVar v choicesFunc = do
     sol <- getSolution [v]
