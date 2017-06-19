@@ -40,7 +40,7 @@ smtSolvers = [("CVC4", cmdCVC4),
 
 testConstraintList :: Test
 testConstraintList = 
-    TestList $ concatMap (\(l,s) -> (map (\e -> TestLabel (l ++ " " ++ fst e) $ TestCase $ do smtEnv <- createSMTEnv s False TxsDefs.empty initParams
+    TestList $ concatMap (\(l,s) -> (map (\e -> TestLabel (l ++ " " ++ fst e) $ TestCase $ do smtEnv <- createSMTEnv s False TxsDefs.empty
                                                                                               evalStateT (snd e) smtEnv ) 
                                          labelTestList
                                     )

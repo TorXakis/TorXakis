@@ -35,8 +35,8 @@ testsSolvers x        = map (testSolvers (head x)) x ++ testsSolvers (tail x)
 
 testSolvers :: CreateProcess -> CreateProcess -> Test
 testSolvers s1 s2 = TestLabel "Two instances" $ TestCase $ do
-    smtEnv1 <- createSMTEnv s1 False TxsDefs.empty initParams
-    smtEnv2 <- createSMTEnv s2 False TxsDefs.empty initParams
+    smtEnv1 <- createSMTEnv s1 False TxsDefs.empty
+    smtEnv2 <- createSMTEnv s2 False TxsDefs.empty
     
     let v = VarId "instance" 1234 sortId_Int
     smtEnv1' <- execStateT openSolver smtEnv1

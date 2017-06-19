@@ -34,11 +34,12 @@ import TxsDefs
 
 data ParamIncrementChoice = 
     ParamIncrementChoice { maxDepth                 :: Int
-                         , intRange                 :: Integer
+                         , intRange                 :: Int
                          , intPower                 :: Int
                          , maxGeneratedStringLength :: Int
                          }
-
+    deriving (Eq,Ord,Read,Show)
+    
 -- ----------------------------------------------------------------------------------------- --
 -- give a random solution for constraint vexps with free variables vars
 
@@ -114,11 +115,13 @@ randomSolve p ((v,_):xs) i    | vsort v == sortId_Int =
             Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - Int"
     where
-        choicesFunc :: Variable v => v -> Integer -> Const -> [(Bool, ValExpr v)]
-        choicesFunc v' r (Cint x)  = let cond = x < r in
-                                     [ (cond,     cstrFunc funcId_ltInt [cstrVar v', cstrConst (Cint r)]) 
-                                     , (not cond, cstrFunc funcId_geInt [cstrVar v', cstrConst (Cint r)]) 
-                                     ]
+        choicesFunc :: Variable v => v -> Int -> Const -> [(Bool, ValExpr v)]
+        choicesFunc v' r (Cint x)  = let r' = toInteger r
+                                         cond = x < r' 
+                                     in
+                                         [ (cond,     cstrFunc funcId_ltInt [cstrVar v', cstrConst (Cint r')]) 
+                                         , (not cond, cstrFunc funcId_geInt [cstrVar v', cstrConst (Cint r')]) 
+                                         ]
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - int"
 
 randomSolve p ((v,-123):xs) i    | vsort v == sortId_String =                 -- abuse depth to encode char versus string

@@ -16,7 +16,8 @@ module SolveDefs.Params
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( initParams       --  :: Map.Map String (String,String->Bool)
+( Params
+, initParams       --  :: Map.Map String (String,String->Bool)
                    --  initial values of solve parameters
 , SolveStrategy (..)
 , StringMode(..)
@@ -43,11 +44,14 @@ data  StringMode        =  Regex | Length
 data  Next             =  Linear | Power | Exponent
      deriving (Eq,Ord,Read,Show)
 
+     
+type Params = Map.Map String (String,String->Bool)
+
 ----------------------------------------------------------------------------------------- --
 -- initParams
 
 
-initParams :: Map.Map String (String,String->Bool)
+initParams :: Params
 initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -110,49 +114,6 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
   , ( "param_RandSolve_adtWidth" , "5"         , all Char.isDigit               )
             -- param_RandSolve_adtWidth :: Int (>0)
             -- number of positive (negative) partitions
-  
--- ----------------------------------------------------------------------------------------- --
--- sut observations
-  
-  , ( "param_Sut_deltaTime"      , "2000"      , all Char.isDigit               )
-            -- param_Sut_deltaTime :: Int (>0)
-            -- quiescence output time (millisec >0)
-
-  , ( "param_Sut_ioTime"         , "10"        , all Char.isDigit               )
-            -- param_Sut_ioTime :: Int (>0)
-            --  timeout for input when trying output (msec, >0)
-  
--- ----------------------------------------------------------------------------------------- --
--- test/simulation input generation
-  
-  , ( "param_Test_inputEager"    , "3"         , \s ->   ( all Char.isDigit s )
-                                                      && ( 0 <= read s ) && ( read s <= 3 )   )
-            -- param_Test_inputEager :: Int (0 <= param_Test_inputEager <= 3)
-            -- level of input eagerness: 0 .. 3
-
-  , ( "param_Sim_inputEager"     , "0"         , \s ->   ( all Char.isDigit s )
-                                                      && ( 0 <= read s ) && ( read s <= 3 )   )
-            -- param_Sim_inputEager :: Int (0 <= param_Test_inputEager <= 3)
-            -- level of input eagerness: 0 .. 3
-  
--- ----------------------------------------------------------------------------------------- --
--- test generation
-
-  , ( "param_ImpRel"             , "IOCO"      , \s ->  (s=="IOCO")                           ) 
-            -- param_ImpRel :: ImpRel
-            -- implementation relation; currently only IOCO
-
--- ----------------------------------------------------------------------------------------- --
--- simulation
-
-  , ( "param_InputCompletion"    , "ANGELIC"   , \s ->  (s=="ANGELIC")                        ) 
-            -- param_InputCompletion :: InputCompletion
-            -- input completion for simulation; currently only ANGELIC
-
-  , ( "param_Sim_deltaTime"      , "200"       , all Char.isDigit               )
-            -- param_Sim_deltaTime :: Int (>0)
-            -- quiescence input time (millisec >0)
-
   ]
 
 

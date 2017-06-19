@@ -16,15 +16,15 @@ module Solve
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( -- SolveStrategy      -- see Params.hs
-  satSolve        --
-, solve        -- 
-, uniSolve        --
-, randSolve        --
+( satSolve
+, solve
+, uniSolve
+, randSolve
 , Assertions
 , Solve.empty
 , add 
-, RandSolveParam(..)
+, SolveRandParam(..)
+, toRandParam
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -51,14 +51,7 @@ import RandPartition
 import RandTrueBins
 import RandIncrementChoice
 
--- ----------------------------------------------------------------------------------------- --
-
-data RandSolveParam = RandNo
-                    | RandPartition         ParamPartition
-                    | RandTrueBins          ParamTrueBins
-                    | RandIncrementChoice   ParamIncrementChoice
-     deriving (Eq,Ord,Read,Show)
-
+import SolveRandParam
 -- ----------------------------------------------------------------------------------------- --
 
 data PrivateAssertions v  = AssertFalse
@@ -129,7 +122,7 @@ uniSolve vs (Assertions (AssertSet s))                  =
                 UnableToSolve                    -> return UnableToSolve
 
 -- random solve
-randSolve :: (Variable v) => RandSolveParam -> [v] -> Assertions v -> SMT (SolveProblem v)
+randSolve :: (Variable v) => SolveRandParam -> [v] -> Assertions v -> SMT (SolveProblem v)
 randSolve _ _  (Assertions AssertFalse)                  = return Unsolvable
 randSolve _ [] (Assertions (AssertSet s))   | Set.null s = return $ Solved Map.empty
 randSolve p vs (Assertions (AssertSet s))                = 

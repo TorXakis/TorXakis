@@ -96,7 +96,7 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
     let v = VarId "instance" 123456 sortId_ListInt
     let (TXS2SMTVExprTest inputAssertion _) = createVfunc funcId_gtInt [createVfunc lengthList [createVvar v], createVconst (Cint 5)]
 
-    smtEnv <- createSMTEnv s False TxsDefs.empty initParams
+    smtEnv <- createSMTEnv s False TxsDefs.empty
  
     (_,env1) <- runStateT SMT.openSolver smtEnv
     env3 <- execStateT (addDefinitions txsDefs) env1
