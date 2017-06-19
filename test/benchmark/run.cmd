@@ -158,6 +158,11 @@ timer ta1
 step 100
 timer ta1             $>> benchmarkresult.log
 stop
+stepper SpecSequence10Ints_b
+timer ta_b
+step 100
+timer ta_b            $>> benchmarkresult.log
+stop
 echo                  $>> benchmarkresult.log
 timer all             $>> benchmarkresult.log
 echo                  $>> benchmarkresult.log

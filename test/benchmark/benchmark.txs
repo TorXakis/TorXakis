@@ -8,6 +8,8 @@ See license.txt
 -- Test Performance of Sequence
 -- ---------------------------------------------------------------------------
 
+TYPEDEF Ints10 ::= Ints10 { i0,i1,i2,i3,i4,i5,i6,i7,i8,i9 :: Int } ENDDEF
+
 CHANDEF ChanDefs ::=
       Channel1
     ; Channel2
@@ -22,6 +24,7 @@ CHANDEF ChanDefs ::=
     ; ChannelInt2 :: Int
     ; ChannelInt3 :: Int
     ; Channel10Ints :: Int # Int # Int # Int # Int # Int # Int # Int # Int # Int
+    ; Channel10Ints_b :: Ints10
 ENDDEF
 
 PROCDEF sequence [ Channel ] ( ) ::=
@@ -554,6 +557,30 @@ MODELDEF SpecSequence10Ints ::=
     BEHAVIOUR
         sequence10Ints [ Channel10Ints ] ()
 ENDDEF
+
+
+PROCDEF sequence10Ints_b [ Channel  :: Ints10 ] ( ) ::=
+    Channel ? allXs
+        [[ (i0(allXs) > i1(allXs)) 
+        /\ (i1(allXs) > i2(allXs)) 
+        /\ (i2(allXs) > i3(allXs)) 
+        /\ (i3(allXs) > i4(allXs)) 
+        /\ (i4(allXs) > i5(allXs)) 
+        /\ (i5(allXs) > i6(allXs))
+        /\ (i6(allXs) > i7(allXs))
+        /\ (i7(allXs) > i8(allXs))
+        /\ (i8(allXs) > i9(allXs))
+        ]]
+    >-> sequence10Ints_b [ Channel ] ( )
+ENDDEF
+
+MODELDEF SpecSequence10Ints_b ::=
+    CHAN IN    
+    CHAN OUT   Channel10Ints_b
+    BEHAVIOUR
+        sequence10Ints_b [ Channel10Ints_b ] ()
+ENDDEF
+
 -- ---------------------------------------------------------------------------
 -- 
 -- ---------------------------------------------------------------------------
