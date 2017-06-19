@@ -23,136 +23,136 @@ time                  $>> result.txt
 seed 12345            $>> result.txt
 echo                  $>> result.txt
 timer all
-echo stepper SpecSequence
-echo timer ts1
-echo step 100
-echo timer ts1             $>> result.txt
-echo stop
-echo stepper SpecSequenceIStep
-echo timer ts2
-echo step 100
-echo timer ts2             $>> result.txt
-echo stop
-echo stepper SpecSequenceData
-echo timer ts3
-echo step 100
-echo timer ts3             $>> result.txt
-echo stop
-echo stepper SpecSequenceAlternate
-echo timer ts4
-echo step 100
-echo timer ts4             $>> result.txt
-echo stop
-echo stepper SpecChoice
-echo timer tc1
-echo step 100
-echo timer tc1             $>> result.txt
-echo stop
-echo stepper SpecSynchronized
-echo timer ty1
-echo step 100
-echo timer ty1             $>> result.txt
-echo stop
-echo stepper SpecSynchronizedIStep
-echo timer ty2
-echo step 100
-echo timer ty2             $>> result.txt
-echo stop
-echo stepper SpecSynchronizedAlternate
-echo timer ty3
-echo step 100
-echo timer ty3             $>> result.txt
-echo stop
-echo stepper SpecSynchronizedAB
-echo timer ty4
-echo step 100
-echo timer ty4             $>> result.txt
-echo stop
-echo stepper SpecSynchronizedMany
-echo timer ty5
-echo step 100
-echo timer ty5             $>> result.txt
-echo stop
-echo stepper SpecSynchronizedManyPairs
-echo timer ty6
-echo step 100
-echo timer ty6             $>> result.txt
-echo stop
-echo stepper SpecParallel
-echo timer tp1
-echo step 100
-echo timer tp1             $>> result.txt
-echo stop
-echo stepper SpecParallelIStep
-echo timer tp2
-echo step 100
-echo timer tp2             $>> result.txt
-echo stop
-echo stepper SpecParallelAlternate
-echo timer tp3
-echo step 100
-echo timer tp3             $>> result.txt
-echo stop
-echo stepper SpecParallelAB
-echo timer tp4
-echo step 100
-echo timer tp4             $>> result.txt
-echo stop
-echo stepper SpecParallelData
-echo timer tp5
-echo step 100
-echo timer tp5             $>> result.txt
-echo stop
-echo stepper SpecHideC_synchC_Par_Alternate_C_Xi
-echo timer th1
-echo step 100
-echo timer th1             $>> result.txt
-echo stop
-echo stepper SpecHideC_synchC_Par_Alternate_C_X
-echo timer th2
-echo step 100
-echo timer th2             $>> result.txt
-echo stop
-echo stepper SpecHideC_synchX_Par_Alternate_C_X
-echo timer th3
-echo step 100
-echo timer th3             $>> result.txt
-echo stop
-echo stepper SpecHide_Bag_Match
-echo timer th4
-echo step 100
-echo timer th4             $>> result.txt
-echo stop
-echo stepper SpecHide_Bag_MatchInt
-echo timer th5
-echo step 100
-echo timer th5             $>> result.txt
-echo stop
-echo stepper SpecParallelSynchronous
-echo timer tps
-echo step 100
-echo timer tps             $>> result.txt
-echo stop
-echo stepper SpecNested
-echo timer tn1
-echo step 100
-echo timer tn1             $>> result.txt
-echo stop
-echo stepper SpecSequenceEnable
-echo timer te1
-echo step 100
-echo timer te1             $>> result.txt
-echo stop
-echo stepper SpecSequenceEnableInt
-echo timer te2
-echo step 100
-echo timer te2             $>> result.txt
-echo stop
-echo stepper SpecSequenceEnableIntTwice
-echo timer te3
-echo step 100
-echo timer te3             $>> result.txt
-echo stop
+stepper SpecSequence
+timer ts1
+step 100
+timer ts1             $>> result.txt
+stop
+stepper SpecSequenceIStep
+timer ts2
+step 100
+timer ts2             $>> result.txt
+stop
+stepper SpecSequenceData
+timer ts3
+step 100
+timer ts3             $>> result.txt
+stop
+stepper SpecSequenceAlternate
+timer ts4
+step 100
+timer ts4             $>> result.txt
+stop
+stepper SpecChoice
+timer tc1
+step 100
+timer tc1             $>> result.txt
+stop
+stepper SpecSynchronized
+timer ty1
+step 100
+timer ty1             $>> result.txt
+stop
+stepper SpecSynchronizedIStep
+timer ty2
+step 100
+timer ty2             $>> result.txt
+stop
+stepper SpecSynchronizedAlternate
+timer ty3
+step 100
+timer ty3             $>> result.txt
+stop
+stepper SpecSynchronizedAB
+timer ty4
+step 100
+timer ty4             $>> result.txt
+stop
+stepper SpecSynchronizedMany
+timer ty5
+step 100
+timer ty5             $>> result.txt
+stop
+stepper SpecSynchronizedManyPairs
+timer ty6
+step 100
+timer ty6             $>> result.txt
+stop
+stepper SpecParallel
+timer tp1
+step 100
+timer tp1             $>> result.txt
+stop
+stepper SpecParallelIStep
+timer tp2
+step 100
+timer tp2             $>> result.txt
+stop
+stepper SpecParallelAlternate
+timer tp3
+step 100
+timer tp3             $>> result.txt
+stop
+stepper SpecParallelAB
+timer tp4
+step 100
+timer tp4             $>> result.txt
+stop
+stepper SpecParallelData
+timer tp5
+step 100
+timer tp5             $>> result.txt
+stop
+stepper SpecHideC_synchC_Par_Alternate_C_Xi
+timer th1
+step 100
+timer th1             $>> result.txt
+stop
+stepper SpecHideC_synchC_Par_Alternate_C_X
+timer th2
+step 100
+timer th2             $>> result.txt
+stop
+stepper SpecHideC_synchX_Par_Alternate_C_X
+timer th3
+step 100
+timer th3             $>> result.txt
+stop
+stepper SpecHide_Bag_Match
+timer th4
+step 100
+timer th4             $>> result.txt
+stop
+stepper SpecHide_Bag_MatchInt
+timer th5
+step 100
+timer th5             $>> result.txt
+stop
+stepper SpecParallelSynchronous
+timer tps
+step 100
+timer tps             $>> result.txt
+stop
+stepper SpecNested
+timer tn1
+step 100
+timer tn1             $>> result.txt
+stop
+stepper SpecSequenceEnable
+timer te1
+step 100
+timer te1             $>> result.txt
+stop
+stepper SpecSequenceEnableInt
+timer te2
+step 100
+timer te2             $>> result.txt
+stop
+stepper SpecSequenceEnableIntTwice
+timer te3
+step 100
+timer te3             $>> result.txt
+stop
 stepper SpecSequence10Ints
 timer ta1
 step 100
