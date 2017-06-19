@@ -17,6 +17,7 @@ module RandTrueBins
 -- export
 
 ( randValExprsSolveTrueBins  --  :: (Variable v) => [v] -> [ValExpr v] -> SMT (Satisfaction v)
+, ParamTrueBins(..)
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -41,12 +42,21 @@ import StdTDefs
 import TxsDefs
 import TxsUtils
 
+data ParamTrueBins = 
+    ParamTrueBins { maxDepth                :: Int
+                  , next                    :: Next
+                  , nrOfBins                :: Int
+                  , stringMode              :: StringMode
+                  , stringLength            :: Int
+                  }
+    deriving (Eq,Ord,Read,Show)
+
 -- ----------------------------------------------------------------------------------------- --
 -- give a random solution for constraint vexps with free variables vars
 
 
-randValExprsSolveTrueBins :: (Variable v) => [v] -> [ValExpr v] -> SMT (SolveProblem v)
-randValExprsSolveTrueBins freevars exprs  =
+randValExprsSolveTrueBins :: (Variable v) => ParamTrueBins -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
+randValExprsSolveTrueBins p freevars exprs  =
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
     if all ( (sortId_Bool == ) . sortOf ) exprs
     then do
@@ -70,21 +80,17 @@ randValExprsSolveTrueBins freevars exprs  =
     where
         combine :: (Variable v) => v -> SMT [ValExpr v] -> SMT [ValExpr v]
         combine vid sexprs = do
-            param_max_rand_depth_string <- getParam "param_max_rand_depth"
-            let param_max_rand_depth = read param_max_rand_depth_string
-            expr <- randomValue (vsort vid) (cstrVar vid) param_max_rand_depth
+            expr <- randomValue p (vsort vid) (cstrVar vid) (maxDepth p)
             exprs' <- sexprs
             return $ expr : exprs'
 
 -- -----------------------------------------------------------------
-next :: SMT (Integer -> Integer)
-next = do
-        param_TrueBins_Next_String <- getParam "param_TrueBins_Next"
-        let param_TrueBins_Next = read param_TrueBins_Next_String
-        case param_TrueBins_Next of
-            Linear      -> return nextLinear
-            Power       -> return nextPower
-            Exponent    -> return nextExponent
+nextFunction :: ParamTrueBins -> Integer -> Integer
+nextFunction p = 
+    case RandTrueBins.next p  of
+        Linear      -> nextLinear
+        Power       -> nextPower
+        Exponent    -> nextExponent
 
 step :: Integer
 step = 10
@@ -121,10 +127,10 @@ trueBool expr = do
 -- randomly draw values from multiple bins
 -- the size of the bins is controlled by the next function: either equal size, proportional larger, or exponential larger  
 -- ---------------------------------------------------------------------
-values :: Integer -> (Integer -> Integer) -> SMT [Integer]
+values :: Int -> (Integer -> Integer) -> SMT [Integer]
 values n nxt = valueRecursive n 1 step
     where
-        valueRecursive :: Integer -> Integer -> Integer -> SMT [Integer]
+        valueRecursive :: Int -> Integer -> Integer -> SMT [Integer]
         valueRecursive 0 _ _ = return []
         valueRecursive n' lw hgh = do
                 r <- lift $ randomRIO (lw, hgh-1)
@@ -135,7 +141,7 @@ toBins :: (Variable v) => ValExpr v -> [Integer] -> [ValExpr v]
 toBins v (x1:x2:xs) = cstrFunc funcId_and [cstrFunc funcId_leInt [cstrConst (Cint x1), v], cstrFunc funcId_ltInt [v, cstrConst (Cint x2)] ] : toBins v (x2:xs)
 toBins _ _ = []
                 
-trueBins :: (Variable v) => ValExpr v -> Integer -> (Integer -> Integer) -> SMT (ValExpr v)
+trueBins :: (Variable v) => ValExpr v -> Int -> (Integer -> Integer) -> SMT (ValExpr v)
 trueBins v n nxt = do
     neg <- values n nxt
     pos <- values n nxt
@@ -179,7 +185,7 @@ trueCharRegex = do
         x | x == high -> return $ "[" ++ toRegexString high ++ toRegexString low ++ "-" ++ toRegexString (high-1) ++ "]"
         _             -> return $ "[" ++ toRegexString charId ++ "-" ++ toRegexString high ++ toRegexString low ++ "-" ++ toRegexString (charId-1) ++ "]"
 
-trueCharsRegex :: Integer -> SMT String
+trueCharsRegex :: Int -> SMT String
 trueCharsRegex 0           = return ""
 trueCharsRegex n | n > 0   = do
     hd <- trueCharRegex
@@ -187,7 +193,7 @@ trueCharsRegex n | n > 0   = do
     return $ hd ++ tl
 trueCharsRegex n          = error ("trueCharsRegex: Illegal argument n = " ++ show n)
         
-trueCharsRegexes :: Integer -> SMT [String]
+trueCharsRegexes :: Int -> SMT [String]
 trueCharsRegexes 0          = return [""]
 trueCharsRegexes n | n > 0  = do
     hd <- trueCharsRegex n
@@ -195,30 +201,24 @@ trueCharsRegexes n | n > 0  = do
     return $ hd:tl
 trueCharsRegexes n          = error ("trueCharsRegexes: Illegal argument n = " ++ show n)
     
-trueStringLength :: (Variable v) => Integer -> ValExpr v -> SMT (ValExpr v)
+trueStringLength :: (Variable v) => Int -> ValExpr v -> SMT (ValExpr v)
 trueStringLength n v = do
-    let exprs = map (\m -> cstrFunc funcId_eqInt [cstrFunc funcId_lenString [v], cstrConst (Cint m)]) [0..n] ++ [cstrFunc funcId_gtInt [cstrFunc funcId_lenString [v], cstrConst (Cint n)]]
+    let exprs = map (\m -> cstrFunc funcId_eqInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger m))]) [0..n] ++ [cstrFunc funcId_gtInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger n))]]
     sexprs <- shuffleM exprs
     return $ toOr sexprs
 
-trueStringRegex :: (Variable v) => Integer -> ValExpr v -> SMT (ValExpr v)
+trueStringRegex :: (Variable v) => Int -> ValExpr v -> SMT (ValExpr v)
 trueStringRegex n v = do
     regexes <- trueCharsRegexes n
     sregexes <- shuffleM (regexes ++ [range ++ "{"++ show(n+1) ++ ",}"])               -- Performance gain in problem solver? Use string length for length 0 and greater than n
     let sexprs = map (\regex -> cstrFunc funcId_strinre [v, cstrConst (Cregex regex)]) sregexes
     return $ toOr sexprs
     
-trueString :: (Variable v) => ValExpr v -> SMT (ValExpr v)
-trueString v = do
-    param_TrueBins_StringLength_String <- getParam "param_TrueBins_StringLength"
-    let param_TrueBins_StringLength = read param_TrueBins_StringLength_String
-    
-    param_TrueBins_StringMode_String <- getParam "param_TrueBins_StringMode"
-    let param_TrueBins_StringMode = read param_TrueBins_StringMode_String
-    
-    case param_TrueBins_StringMode of
-        Regex   -> trueStringRegex  param_TrueBins_StringLength v
-        Length  -> trueStringLength param_TrueBins_StringLength v
+trueString :: (Variable v) => ParamTrueBins -> ValExpr v -> SMT (ValExpr v)
+trueString p v = do
+    case stringMode p of
+        Regex   -> trueStringRegex  (stringLength p) v
+        Length  -> trueStringLength (stringLength p) v
 
 -- -----------------------------------------------------------------
 -- enable randomly draw constructors
@@ -229,17 +229,13 @@ lookupConstructors sid  =  do
      tdefs <- gets txsDefs
      return [ def | def@(CstrId{ cstrsort = sid' } , _) <- Map.toList (cstrDefs tdefs), sid == sid']
 
-randomValue :: (Variable v) => SortId -> ValExpr v -> Integer -> SMT (ValExpr v)
-randomValue _sid _expr 0 = return $ cstrConst (Cbool True)
-randomValue sid expr n | n > 0 = 
+randomValue :: (Variable v) => ParamTrueBins -> SortId -> ValExpr v -> Int -> SMT (ValExpr v)
+randomValue _ _sid _expr 0 = return $ cstrConst (Cbool True)
+randomValue p sid expr n | n > 0 = 
     case sid of
         x | x == sortId_Bool   -> trueBool expr
-        x | x == sortId_Int    -> do
-                                    nxt <- RandTrueBins.next
-                                    param_TrueBins_NrOfBins_String <- getParam "param_TrueBins_NrOfBins"
-                                    let param_TrueBins_NrOfBins = read param_TrueBins_NrOfBins_String
-                                    trueBins expr param_TrueBins_NrOfBins nxt
-        x | x == sortId_String -> trueString expr
+        x | x == sortId_Int    -> trueBins expr (nrOfBins p) (nextFunction p)
+        x | x == sortId_String -> trueString p expr
         _ -> do
                 cstrs <- lookupConstructors sid
                 orList <- processConstructors cstrs expr
@@ -262,12 +258,10 @@ randomValue sid expr n | n > 0 =
                 processArguments ::  (Variable v) => [(SortId,FuncId)] -> ValExpr v -> SMT [ValExpr v]
                 processArguments [] _ =  return []
                 processArguments ((sid',fid):xs) expr' = do
-                    r <- randomValue sid' (cstrFunc fid [expr']) (n-1)
+                    r <- randomValue p sid' (cstrFunc fid [expr']) (n-1)
                     rr <- processArguments xs expr'
                     return (r:rr)
-randomValue _sid _expr n = error ("Illegal argument n = " ++ show n)
+randomValue _p _sid _expr n = error ("Illegal argument n = " ++ show n)
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
-
-

@@ -88,8 +88,8 @@ pop = put "(pop 1)"
 -- SMT communication functions via process fork 
 -- ----------------------------------------------------------------------------------------- --
 
-createSMTEnv :: CreateProcess -> Bool -> TxsDefs -> Map.Map String ( String, String -> Bool ) -> IO SmtEnv
-createSMTEnv cmd lgFlag tdefs ps =  do 
+createSMTEnv :: CreateProcess -> Bool -> TxsDefs -> IO SmtEnv
+createSMTEnv cmd lgFlag tdefs =  do 
     (Just hin, Just hout, Just herr, ph) <- createProcess cmd
                                                            { std_out = CreatePipe
                                                            , std_in = CreatePipe
@@ -138,7 +138,6 @@ createSMTEnv cmd lgFlag tdefs ps =  do
                    (Map.fromList (initialMapInstanceTxsToSmtlib ++ 
                                    map (\f -> (IdFunc f, error "Transitive closure should prevent calls to CONNECTION (ENCODE/DECODE) related functions.")) (Set.toList (allENDECfuncs tdefs))))
                    TxsDefs.empty        -- TODO: currently txsdefs only uses to remove EN/DECODE functions: combine with addDefinitions?
-                   ps
             )
 -- ----------------------------------------------------------------------------------------- --
 -- addDefinitions

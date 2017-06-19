@@ -30,6 +30,7 @@ library
                       , SMTHappy
                       , SMTStringAlex
                       , SMTStringHappy                      
+                      , SolveRandParam
                       , TXS2SMT
                       
   build-depends:        array

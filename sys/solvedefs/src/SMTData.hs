@@ -18,7 +18,6 @@ module SMTData
 
 ( SMT 
 , SmtEnv(..)
-, getParam
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -46,7 +45,6 @@ data  SmtEnv  =  SmtEnv     { inHandle                  :: Handle
                             , logFileHandle             :: Maybe Handle
                             , mapInstanceTxsToSmtlib    :: Map.Map Ident String
                             , txsDefs                   :: TxsDefs
-                            , params                    :: Map.Map String ( String, String -> Bool )
                             }
                | SmtEnvError
 
@@ -56,15 +54,6 @@ instance Show SmtEnv
    where
        show smtEnv =  show $ mapInstanceTxsToSmtlib smtEnv
 
--- ------------------------------------------------------------------------------
--- convenience function
--- ------------------------------------------------------------------------------
-getParam :: String -> StateT SmtEnv IO String
-getParam p  =  do
-     ps <- gets params
-     case Map.lookup p ps of
-       Nothing    -> error $ "SMT getParam: No such parameter: " ++ p
-       Just (s,_) -> do return $ s
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --

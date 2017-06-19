@@ -167,7 +167,9 @@ randMenu menu  =  do
          ivars <- return $ vvars ++ hvars
          let assertions = foldr Solve.add Solve.empty preds in do
              smtEnv <- IOC.getSMT "current"
-             (sat,smtEnv') <- lift $ runStateT (Solve.solve ivars assertions) smtEnv
+             parammap <- gets IOC.params
+             let p = Solve.toRandParam parammap
+             (sat,smtEnv') <- lift $ runStateT (Solve.randSolve p ivars assertions) smtEnv
              IOC.putSMT "current" smtEnv'
              case sat of
              { SolveDefs.Solved sol    -> do return $ Just $ TxsDDefs.Act

@@ -17,6 +17,7 @@ module RandPartition
 -- export
 
 ( randValExprsSolvePartition  --  :: (Variable v) => [v] -> [ValExpr v] -> SMT (Satisfaction v)
+, ParamPartition(..)
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -40,20 +41,26 @@ import SMT
 import SMTData
 import Utils
 
+data ParamPartition = 
+    ParamPartition { maxDepth               :: Int
+                   , intHalf                :: Int
+                   , intNum                 :: Int
+                   , adtWidth               :: Int
+                   }
+    deriving (Eq,Ord,Read,Show)
+
 -- ----------------------------------------------------------------------------------------- --
 -- give a random solution for constraint vexps with free variables vars
 
-randValExprsSolvePartition :: (Variable v) => [v] -> [ValExpr v] -> SMT (SolveProblem v)
-randValExprsSolvePartition vs exprs  = 
+randValExprsSolvePartition :: (Variable v) => ParamPartition -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
+randValExprsSolvePartition p vs exprs  = 
      -- if not all constraints are of type boolean: stop, otherwise solve the constraints
      if all ( (sortId_Bool == ) . sortOf ) exprs
         then do
             push
             addDeclarations vs
             addAssertions exprs
-            param_max_rand_depth_string <- getParam "param_max_rand_depth"
-            let param_max_rand_depth = read param_max_rand_depth_string
-            cnrss <- sequence   [ randCnrs (cstrVar v) param_max_rand_depth
+            cnrss <- sequence   [ randCnrs p (cstrVar v) (maxDepth p)
                                 | v <- vs
                                 ]
             cnrss' <- lift $ randOrder ( map Set.unions (cartProd cnrss) )
@@ -100,14 +107,11 @@ randValExprsSolvePartition'' vs (cnrs:cnrss) x =
 -- ----------------------------------------------------------------------------------------- --
 -- n random positive Integers with binomial distribution 
 
-randN :: Int -> SMT [Integer]
-randN n  = 
-     if n==0
-       then return []
-       else do r  <- lift randomIO::(SMT Float)                     -- random float in [0,1)
-               rr <- randN (n-1)
-               param_RandSolve_IntHalf_String <- getParam "param_RandSolve_IntHalf"
-               let h = read param_RandSolve_IntHalf_String
+randN :: ParamPartition -> Int -> SMT [Integer]
+randN _ 0 = return []
+randN p n = do r  <- lift randomIO::(SMT Float)                     -- random float in [0,1)
+               rr <- randN p (n-1)
+               let h = fromIntegral (intHalf p)
                return ( truncate ( (h-2) / (1-r) + 4 - h ) : rr )
 
 
@@ -143,12 +147,11 @@ randCnrsBool vexp  =
 -- ----------------------------------------------------------------------------------------- --
 -- give list of constraints forming a partitioning of Int for vexp (of sort Int)
 
-randCnrsInt :: Variable v => ValExpr v -> SMT [ Set.Set (ValExpr v) ]
-randCnrsInt vexp  =  do
-    param_RandSolve_IntNum_String <- getParam "param_RandSolve_IntNum"
-    let param_RandSolve_IntNum = read param_RandSolve_IntNum_String
-    rpos  <- randN param_RandSolve_IntNum
-    rneg  <- randN param_RandSolve_IntNum
+randCnrsInt :: Variable v => ParamPartition-> ValExpr v -> SMT [ Set.Set (ValExpr v) ]
+randCnrsInt p vexp  =  do
+    let i = intNum p
+    rpos  <- randN p i
+    rneg  <- randN p i
     let rints = List.sort ( rpos ++ map ((-1)*) rneg ++ [-1,0,1] )
     return ( intList2cnrs vexp rints )
 
@@ -171,25 +174,25 @@ randCnrsString vexp  =
 -- ----------------------------------------------------------------------------------------- --
 -- give list of constraints forming a partitioning of ADT sort for vexp
 
-randCnrsADT :: Variable v => ValExpr v -> Int -> SMT [ Set.Set (ValExpr v) ]
-randCnrsADT vexp depth  =  do
+randCnrsADT :: Variable v => ParamPartition -> ValExpr v -> Int -> SMT [ Set.Set (ValExpr v) ]
+randCnrsADT p vexp depth  =  do
     tdefs <- gets txsDefs
     let cstrs = [ def
                 | def@( CstrId{cstrsort = srt}, _ ) <- Map.toList (cstrDefs tdefs)
                 , srt == sortOf vexp
                 ]
-    cnrss <- sequence [ randCnrsCstr cstr vexp depth | cstr <- cstrs ]
+    cnrss <- sequence [ randCnrsCstr p cstr vexp depth | cstr <- cstrs ]
     return $ concat cnrss
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- give list of constraints for one constructor for vexp
 
-randCnrsCstr :: Variable v => (CstrId,CstrDef) -> ValExpr v -> Int
+randCnrsCstr :: Variable v => ParamPartition -> (CstrId,CstrDef) -> ValExpr v -> Int
                                 -> SMT [ Set.Set (ValExpr v) ]
-randCnrsCstr (_, CstrDef cc fss) vexp depth  =  do
+randCnrsCstr p (_, CstrDef cc fss) vexp depth  =  do
      let ccCnr = cstrPredef ACC cc [vexp]
-     recCnrs <- sequence [ randCnrs (cstrFunc fs [vexp]) (depth-1) | fs <- fss ]
+     recCnrs <- sequence [ randCnrs p (cstrFunc fs [vexp]) (depth-1) | fs <- fss ]
      return [ Set.insert ccCnr cnrs
             | cnrs <- map Set.unions (cartProd recCnrs)
             ]
@@ -203,20 +206,20 @@ randCnrsCstr (_, CstrDef cc fss) vexp depth  =  do
 -- Lists of ValExpr, or of Sets of ValExpr, are disjunctions
 
 
-randCnrs :: Variable v => ValExpr v -> Int -> SMT [ Set.Set (ValExpr v) ]
-randCnrs vexp depth  =
+randCnrs :: Variable v => ParamPartition -> ValExpr v -> Int -> SMT [ Set.Set (ValExpr v) ]
+randCnrs p vexp depth  =
      let sort = sortOf vexp
       in if  sort == sortId_Bool
            then randCnrsBool vexp
            else if  sort == sortId_Int
-                  then randCnrsInt vexp
+                  then randCnrsInt p vexp
                   else if  sort == sortId_String
                          then randCnrsString vexp
                          else if  sort == sortId_Regex
                                 then do lift $ hPutStrLn stderr "TXS RandPartition randCnrs: Regex can't be solved\n"
                                         return [ Set.empty ]
                                 else if  depth > 0
-                                       then randCnrsADT vexp depth
+                                       then randCnrsADT p vexp depth
                                        else return [ Set.empty ]
  
 

@@ -27,7 +27,7 @@ smtSolvers = [cmdCVC4, cmdZ3]
 
 testExternalList :: Test
 testExternalList = 
-    TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do smtEnv <- createSMTEnv s False TxsDefs.empty initParams
+    TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do smtEnv <- createSMTEnv s False TxsDefs.empty
                                                                              evalStateT (snd e) smtEnv ) 
                                     ioeTestList
                          )

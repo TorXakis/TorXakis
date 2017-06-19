@@ -138,7 +138,7 @@ txsInit tdefs putMsgs  =  do
      envc <- get
      case envc of
        IOC.Noning params unid
-         -> do smtEnv         <- lift $ SMT.createSMTEnv SMT.cmdZ3 False tdefs params
+         -> do smtEnv         <- lift $ SMT.createSMTEnv SMT.cmdZ3 False tdefs
                (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
                (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions tdefs) smtEnv'
                putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver initialized : " ++ info
@@ -263,6 +263,7 @@ txsSolve vexp  =  do
            SolveDefs.UnableToSolve -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE "unknown" ]
                                          return Map.empty
 
+                                         
 -- ----------------------------------------------------------------------------------------- --
 
 txsUniSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
@@ -297,7 +298,9 @@ txsRanSolve vexp  =  do
          frees         <- return $ FreeVar.freeVars vexp
          assertions    <- return $ Solve.add vexp Solve.empty
          smtEnv        <- IOC.getSMT "current"
-         (sat,smtEnv') <- lift $ runStateT (Solve.ranSolve frees assertions) smtEnv
+         parammap <- gets IOC.params
+         let p = Solve.toRandParam parammap
+         (sat,smtEnv') <- lift $ runStateT (Solve.randSolve p frees assertions) smtEnv
          IOC.putSMT "current" smtEnv'
          case sat of
            SolveDefs.Solved sol    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE "sat" ]
