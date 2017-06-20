@@ -3,3 +3,12 @@
 
 # Compiled class file - test
 *.class
+
+# Log files
+*.log
+
+# SMT Solver output
+*.smt2
+
+# Development Acceptance Test Report
+*.datr
