@@ -1,14 +1,14 @@
 -- ----------------------------------------------------------------------------------------- --
 -- channels
 
-CHANDEF  ChanDefs   ::=  In, Out  :: String
+CHANDEF  ChanDefs   ::=  In, Out  :: Int
 ENDDEF
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- inputs and outputs
 
-PROCDEF  proc  [ In, Out :: String ]  ( ) ::=
+PROCDEF  proc  [ In, Out :: Int ]  ( ) ::=
         In ? x
     >-> Out ! x
     >-> proc [ In, Out ] ()
@@ -34,27 +34,27 @@ CNECTDEF  Sut ::=
         CLIENTSOCK
 
         CHAN OUT  In                        HOST "localhost"  PORT 9999
-        ENCODE    In ? s                    ->  ! s
+        ENCODE    In ? i                    ->  ! toString(i)
 
         CHAN IN   Out                       HOST "localhost"  PORT 9999
-        DECODE    Out ! s                   <-  ? s
+        DECODE    Out ! fromString(s)       <-  ? s
 ENDDEF
 
 CNECTDEF  Sim ::=
         SERVERSOCK
 
         CHAN IN   In                        HOST "localhost"  PORT 9999
-        DECODE    In ! s                    <-  ? s
+        DECODE    In ! fromString(s)        <-  ? s
 
         CHAN OUT  Out                       HOST "localhost"  PORT 9999
-        ENCODE    Out ? s                   ->  ! s
+        ENCODE    Out ? i                   ->  ! toString(i)
 ENDDEF
 
 CNECTDEF  Xut ::=
         CLIENTSOCK
 
         CHAN OUT  In                        HOST "localhost"  PORT 9999
-        ENCODE    In ? s                    ->  ! toXml(s)
+        ENCODE    In ? i                    ->  ! toXml(i)
 
         CHAN IN   Out                       HOST "localhost"  PORT 9999
         DECODE    Out ! fromXml(s)          <-  ? s
@@ -67,5 +67,5 @@ CNECTDEF  Xim ::=
         DECODE    In ! fromXml(s)           <-  ? s
 
         CHAN OUT  Out                       HOST "localhost"  PORT 9999
-        ENCODE    Out ? s                   ->  ! toXml(s)
+        ENCODE    Out ? i                   ->  ! toXml(i)
 ENDDEF
