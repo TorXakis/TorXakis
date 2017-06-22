@@ -1,4 +1,4 @@
 tester ModelExamples Sut
 test 36
-trace procdef $> testTraceExamples
+trace procdef $> testTraceExamples.log
 exit
