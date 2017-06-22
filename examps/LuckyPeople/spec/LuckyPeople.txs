@@ -26,13 +26,13 @@ FUNCDEF isLuckyPerson (p :: Person; last :: Sex; n :: Int) :: Bool ::=
     \/ ( dayOfBirth(p) == monthOfBirth(p) )                             -- same value for day and month of birth?
 ENDDEF
 
-PROCDEF sameSexSequence [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
+PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
         In ? p [[ isValid_Person(p) ]] 
     >-> Out ! isLuckyPerson (p, last, n) 
     >->(
-                ( [[ sex(p) == last ]] =>> sameSexSequence[In,Out] ( sex(p), n+1 ) )
+                ( [[ sex(p) == last ]] =>> luckyPeople[In,Out] ( sex(p), n+1 ) )
             ##
-                ( [[ sex(p) <> last ]] =>> sameSexSequence[In,Out] ( sex(p), 1 ) )
+                ( [[ sex(p) <> last ]] =>> luckyPeople[In,Out] ( sex(p), 1 ) )
         )
 ENDDEF
 
@@ -45,7 +45,7 @@ MODELDEF Model ::=
     CHAN OUT   Out
 
     BEHAVIOUR  
-        sameSexSequence[In, Out](Male,0)            -- first sex choice is arbitrary
+        luckyPeople[In, Out](Male,0)            -- first sex choice is arbitrary
 ENDDEF
 
 
@@ -93,7 +93,7 @@ MODELDEF ModelExamples ::=
     CHAN OUT   Out
     
     BEHAVIOUR  
-            sameSexSequence[In, Out](Male,0)   
+            luckyPeople[In, Out](Male,0)   
         |[In,Out]|
             examples[In,Out]()
 ENDDEF
@@ -132,4 +132,27 @@ CNECTDEF  Xim ::=
 
     CHAN OUT  Out                   HOST "localhost"  PORT 777
     ENCODE    Out ? b               ->  ! toXml(b)
+ENDDEF
+
+PROCDEF increasingRows [ In :: Person ] ( length, pos :: Int; s :: Sex ) ::=
+        In ? p [[ sex(p) == s]]
+    >-> (
+                [[pos == 1]] =>> (
+                                        [[ isMale(s) ]] =>> increasingRows [In] (length, length, Female)
+                                    ##
+                                        [[ isFemale(s) ]] =>> increasingRows [In] (length+1, length+1, Male)
+                                 )
+            ##
+                [[pos>1]] =>> increasingRows [In] (length, pos-1, s)
+         )
+ENDDEF
+
+MODELDEF Overflow ::=
+    CHAN IN    In
+    CHAN OUT   Out
+
+    BEHAVIOUR  
+            increasingRows [In] (1,1,Male)
+        |[In]|
+            luckyPeople [In, Out] (Male,0)            -- first sex choice is arbitrary
 ENDDEF
