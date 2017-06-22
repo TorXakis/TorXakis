@@ -8,7 +8,7 @@ import java.net.*;
 import java.io.*;
 import java.util.concurrent.*;
 
-public class LuckyPeople
+public class LuckyPeopleOverflow
 {
     private static final byte LUCKYAFTER    = 5;
 
@@ -54,10 +54,11 @@ public class LuckyPeople
                 assert fields.length == NROFFIELDS : "Wrong input : "+person;
 
                 final boolean sameSex = last.equals(fields[SEX]);
-                final boolean retval = (!sameSex && (same == LUCKYAFTER)) || lucky(fields);
+                final boolean retval = (!sameSex && (same >= LUCKYAFTER)) || lucky(fields);
                 if (sameSex)
                 {
-                    if (same < LUCKYAFTER) same += 1;
+                    same += 1;
+                    //System.out.println("Same = "+same);
                 }
                 else
                 {
