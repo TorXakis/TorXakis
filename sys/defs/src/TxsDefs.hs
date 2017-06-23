@@ -42,7 +42,6 @@ module TxsDefs
 , VarEnv
 , VExpr
 , VEnv
-, NoId(NoId)
 , SortDef(SortDef)
 , SortId(SortId)
 , CstrDef(CstrDef)
@@ -78,7 +77,6 @@ import Name as X
 import TxsDef as X
 import Variable as X
 
-import NoId
 import SortDef
 import SortId
 import CstrDef
@@ -107,8 +105,7 @@ import ValExprImpls
 -- torxakis definitions
 
 
-data  TxsDefs  =  TxsDefs { noDefs      :: Map.Map NoId ()
-                          , sortDefs    :: Map.Map SortId SortDef
+data  TxsDefs  =  TxsDefs { sortDefs    :: Map.Map SortId SortDef
                           , cstrDefs    :: Map.Map CstrId CstrDef
                           , funcDefs    :: Map.Map FuncId FuncDef
                           , procDefs    :: Map.Map ProcId ProcDef
@@ -136,12 +133,8 @@ empty = TxsDefs  Map.empty
                  Map.empty
                  Map.empty
                  Map.empty
-                 Map.empty
                 
 lookup :: Ident -> TxsDefs -> Maybe TxsDef
-lookup (IdNo s) txsdefs = case Map.lookup s (noDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just _  -> Just DefNo
 lookup (IdSort s) txsdefs = case Map.lookup s (sortDefs txsdefs) of
                                 Nothing -> Nothing
                                 Just d  -> Just (DefSort d)
@@ -180,7 +173,6 @@ lookup (IdCnect s) txsdefs = case Map.lookup s (cnectDefs txsdefs) of
                                 Just d  -> Just (DefCnect d)
                                 
 insert :: Ident -> TxsDef -> TxsDefs -> TxsDefs
-insert (IdNo s)     DefNo         t     = t { noDefs     = Map.insert s () (noDefs t)     }
 insert (IdSort s)   (DefSort d)   t     = t { sortDefs   = Map.insert s d  (sortDefs t)   }
 insert (IdCstr s)   (DefCstr d)   t     = t { cstrDefs   = Map.insert s d  (cstrDefs t)   }
 insert (IdFunc s)   (DefFunc d)   t     = t { funcDefs   = Map.insert s d  (funcDefs t)   }
@@ -203,8 +195,7 @@ fromList = foldl addElem empty
     
     
 toList :: TxsDefs -> [(Ident, TxsDef)]
-toList t =      map (IdNo Control.Arrow.*** (const DefNo))      (Map.toList (noDefs t))
-            ++  map (IdSort Control.Arrow.*** DefSort)          (Map.toList (sortDefs t))
+toList t =      map (IdSort Control.Arrow.*** DefSort)          (Map.toList (sortDefs t))
             ++  map (IdCstr Control.Arrow.*** DefCstr)          (Map.toList (cstrDefs t))
             ++  map (IdFunc Control.Arrow.*** DefFunc)          (Map.toList (funcDefs t))
             ++  map (IdProc Control.Arrow.*** DefProc)          (Map.toList (procDefs t))
@@ -219,8 +210,7 @@ toList t =      map (IdNo Control.Arrow.*** (const DefNo))      (Map.toList (noD
             
             
 keys :: TxsDefs -> [Ident]
-keys t =        map IdNo        (Map.keys (noDefs t))
-            ++  map IdSort      (Map.keys (sortDefs t))
+keys t =        map IdSort      (Map.keys (sortDefs t))
             ++  map IdCstr      (Map.keys (cstrDefs t))
             ++  map IdFunc      (Map.keys (funcDefs t))
             ++  map IdProc      (Map.keys (procDefs t))
@@ -234,8 +224,7 @@ keys t =        map IdNo        (Map.keys (noDefs t))
             ++  map IdCnect     (Map.keys (cnectDefs t))
             
 elems :: TxsDefs -> [TxsDef]
-elems t =       map (const DefNo)   (Map.elems (noDefs t))
-            ++  map DefSort         (Map.elems (sortDefs t))
+elems t =       map DefSort         (Map.elems (sortDefs t))
             ++  map DefCstr         (Map.elems (cstrDefs t))
             ++  map DefFunc         (Map.elems (funcDefs t))
             ++  map DefProc         (Map.elems (procDefs t))
@@ -251,7 +240,6 @@ elems t =       map (const DefNo)   (Map.elems (noDefs t))
             
 union :: TxsDefs -> TxsDefs -> TxsDefs
 union a b = TxsDefs
-                (Map.union (noDefs a)    (noDefs b)     )
                 (Map.union (sortDefs a)  (sortDefs b)   )
                 (Map.union (cstrDefs a)  (cstrDefs b)   )
                 (Map.union (funcDefs a)  (funcDefs b)   )
