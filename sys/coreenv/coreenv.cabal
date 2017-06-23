@@ -1,7 +1,7 @@
 name:                   coreenv
 version:                0.1.7.0
 synopsis:               CoreEnv of TorXakis
-license:                OtherLicense
+license:                BSD3
 license-file:           license.txt
 author:                 Jan Tretmans
                       , Pierre van de Laar
