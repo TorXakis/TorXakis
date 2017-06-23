@@ -1,7 +1,7 @@
 name:                   cnect
 version:                0.1.7.0
 synopsis:               Connections for TorXakis
-license:                OtherLicense
+license:                BSD3
 license-file:           license.txt
 author:                 Jan Tretmans
                       , Pierre van de Laar
