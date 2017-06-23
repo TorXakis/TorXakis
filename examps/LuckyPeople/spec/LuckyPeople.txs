@@ -36,8 +36,8 @@ PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
         )
 ENDDEF
 
-CHANDEF Model ::=    In   :: Person
-                   ; Out  :: Bool
+CHANDEF Channels ::=  In   :: Person
+                    ; Out  :: Bool
 ENDDEF
 
 MODELDEF Model ::=
