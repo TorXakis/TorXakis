@@ -38,10 +38,21 @@ import TxsDefs
 import TxsUtils
 
 cmdCVC4 :: CreateProcess
-cmdCVC4 = proc "cvc4-2017-04-27-win32-opt" ["--lang=smt", "--incremental", "--strings-exp", "--fmf-fun-rlv", "--uf-ss-fair", "--no-strings-std-ascii"] 
+cmdCVC4 = proc  "cvc4-2017-04-27-win32-opt" 
+                ["--lang=smt"
+                , "--incremental"
+                , "--strings-exp"
+                , "--fmf-fun-rlv"
+                , "--uf-ss-fair"
+                , "--no-strings-std-ascii"
+                ] 
 
 cmdZ3 :: CreateProcess
-cmdZ3 = proc "z3" ["-smt2","-in"]
+cmdZ3 = proc    "z3" 
+                ["-smt2"
+                ,"-in"
+             -- , "smt.string_solver=z3str3"      -- Z3 supports multiple string solvers
+                ]
 
 -- ----------------------------------------------------------------------------------------- --
 -- opens a connection to the SMTLIB interactive shell
@@ -282,8 +293,10 @@ put cmd  = do
 checkErrors :: Handle -> String -> IO ()
 checkErrors herr prefix  = do
     errors <- getAllInput herr
-    let pes = concatMap (prefix ++) (lines errors)
-    putStrLn pes
+    case errors of
+        []  -> return ()
+        _   -> let pes = unlines $ map (prefix ++) (lines errors) in
+                putStrLn pes
      
 -- ---------------------------------------------------------------------------------------- --
 -- read all available data from given handle
