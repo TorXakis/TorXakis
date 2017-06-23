@@ -44,7 +44,6 @@ sig ( IdPurp   (PurpId   nm _uid        ) ) = IdPurp   (PurpId   nm 0        )
 sig ( IdGoal   (GoalId   nm _uid        ) ) = IdGoal   (GoalId   nm 0        )
 sig ( IdMapper (MapperId nm _uid        ) ) = IdMapper (MapperId nm 0        )
 sig ( IdCnect  (CnectId  nm _uid        ) ) = IdCnect  (CnectId  nm 0        )
-sig ( IdNo     (NoId     nm _uid        ) ) = IdNo     (NoId     nm 0        )
 
 doubles :: Eq a => [a] -> [a]
 doubles []      =  []

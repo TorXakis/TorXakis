@@ -28,7 +28,7 @@ import SortDef
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis definitions
 
-data  TxsDef        =  DefNo
+data  TxsDef        =  DefNo                    -- TODO: to be removed
                      | DefSort      SortDef
                      | DefCstr      CstrDef
                      | DefFunc      FuncDef

@@ -18,7 +18,6 @@ import FuncId
 import GoalId
 import MapperId
 import ModelId
-import NoId
 import ProcId
 import PurpId
 import SortId
@@ -29,8 +28,7 @@ import Variable
 -- identifiers
 
 
-data  Ident         =  IdNo     NoId
-                     | IdSort   SortId
+data  Ident         =  IdSort   SortId
                      | IdCstr   CstrId
                      | IdFunc   FuncId
                      | IdProc   ProcId
@@ -61,7 +59,6 @@ instance Variable Ident
     cstrVariable s i t = IdVar (VarId s i t)
      
 name :: Ident -> Name
-name (IdNo i)       = NoId.name i
 name (IdSort i)     = SortId.name i
 name (IdCstr i)     = CstrId.name i
 name (IdFunc i)     = FuncId.name i
@@ -76,7 +73,6 @@ name (IdMapper i)   = MapperId.name i
 name (IdCnect i)    = CnectId.name i
 
 unid :: Ident -> Int
-unid (IdNo i)       = NoId.unid i
 unid (IdSort i)     = SortId.unid i
 unid (IdCstr i)     = CstrId.unid i
 unid (IdFunc i)     = FuncId.unid i
