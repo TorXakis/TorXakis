@@ -105,27 +105,27 @@ eval (view -> Vequal vexp1 vexp2)  =  do
 
 eval (view -> Vpredef kd fid vexps)  =  do
      case kd of
-     { AFS -> case vexps of
+       AFS -> case vexps of
                 [vexp]        -> do evalAFS fid vexp
                 _             -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                                   $ "eval: AFS: " ++ (show fid) ]
                                     return $ Cerror ""
-     ; ACC -> case vexps of
+       ACC -> case vexps of
                 [vexp]        -> do evalACC fid vexp
                 _             -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                                   $ "eval: ACC: " ++ (show fid) ]
                                     return $ Cerror ""
-     ; ANE -> case vexps of
+       ANE -> case vexps of
                 [vexp1,vexp2] -> do evalANE vexp1 vexp2
                 _             -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                                   $ "eval: ANE: " ++ (show fid) ]
                                     return $ Cerror ""
-     ; AST -> case vexps of
+       AST -> case vexps of
                 [vexp] -> do wal <- eval vexp
                              str2txs (pshow wal)
                 _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: AST" ]
                              return $ Cerror ""
-     ; ASF -> case vexps of
+       ASF -> case vexps of
                 [vexp] -> do s <- txs2str vexp
                              uid     <- gets IOB.unid
                              tdefs   <- gets IOB.tdefs
@@ -145,23 +145,22 @@ eval (view -> Vpredef kd fid vexps)  =  do
                                else do eval vexp'
                 _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: ASF" ]
                              return $ Cerror ""
-     ; AXT -> case vexps of
+       AXT -> case vexps of
                 [vexp] -> do wal <- eval vexp
                              tdefs <- gets IOB.tdefs
                              str2txs $ constToXml tdefs wal
                 _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval AXT" ]
                              return $ Cerror ""
-     ; AXF -> case vexps of
+       AXF -> case vexps of
                   [vexp] -> do Cstring s <- eval vexp
                                tdefs <- gets IOB.tdefs
                                return $ constFromXml tdefs (funcsort fid) s
                   _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: AXF" ]
                                return $ Cerror ""
-     ; SSB -> do evalSSB fid vexps
-     ; SSI -> do evalSSI fid vexps
-     ; SSS -> do evalSSS fid vexps
-     ; SSR -> do evalSSR fid vexps
-     }
+       SSB -> do evalSSB fid vexps
+       SSI -> do evalSSI fid vexps
+       SSS -> do evalSSS fid vexps
+       SSR -> do evalSSR fid vexps
 
 eval (view -> Verror str)  =  do
      IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING $ "eval: Verror "++ str ]

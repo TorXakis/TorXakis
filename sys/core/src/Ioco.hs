@@ -40,20 +40,20 @@ import Trace
 import CoreUtils
 
 -- import from behavedef
-import qualified BTree     as BTree
+import qualified BTree
 
 -- import from behaveenv
-import qualified Behave    as Behave
+import qualified Behave
 
 -- import from coreenv
 import qualified EnvCore   as IOC
-import qualified EnvData   as EnvData
+import qualified EnvData
 
 -- import from defs
-import qualified TxsDefs   as  TxsDefs
-import qualified TxsDDefs  as  TxsDDefs
+import qualified TxsDefs
+import qualified TxsDDefs
 
-import qualified Utils     as  Utils
+import qualified Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -61,8 +61,7 @@ import qualified Utils     as  Utils
 
 
 iocoModelInit :: IOC.IOC ()
-iocoModelInit  =  do
-     traceModelInit
+iocoModelInit  = traceModelInit
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -95,10 +94,9 @@ iocoModelIsQui  =  do
      curState <- gets IOC.curstate
      modSts   <- gets IOC.modsts
      case Map.lookup curState modSts of
-     { Nothing -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no curstate" ]
-                     return $ True
-     ; Just bt -> do return $ Behave.behRefusal bt (Set.unions outsyncs)
-     }
+       Nothing -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no curstate" ]
+                     return True
+       Just bt ->    return $ Behave.behRefusal bt (Set.unions outsyncs)
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -109,7 +107,7 @@ iocoModelIsQui  =  do
 
 iocoModelAfter :: TxsDDefs.Action -> IOC.IOC Bool
 
-iocoModelAfter (TxsDDefs.Act acts)  =  do
+iocoModelAfter (TxsDDefs.Act acts)  = 
      traceModelAfter acts
 
 iocoModelAfter TxsDDefs.ActQui  =  do
@@ -119,17 +117,16 @@ iocoModelAfter TxsDDefs.ActQui  =  do
      modSts   <- gets IOC.modsts
      curBTree <- case Map.lookup curState modSts of
                  { Nothing -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no curstate" ]
-                                 return $ []
-                 ; Just bt -> do return $ bt
+                                 return []
+                 ; Just bt -> do return bt
                  }
      envb           <- filterEnvCtoEnvB
      (maybt',envb') <- lift $ runStateT (Behave.behAfterRef curBTree (Set.unions outsyncs)) envb
      writeEnvBtoEnvC envb'
      case maybt' of
-     { Nothing  -> do return $ False
-     ; Just bt' -> do modify $ \env -> env { IOC.modsts = Map.insert nexState bt' modSts }
-                      return $ True
-     }
+       Nothing  ->    return False
+       Just bt' -> do modify $ \env -> env { IOC.modsts = Map.insert nexState bt' modSts }
+                      return True
 
 
 -- ----------------------------------------------------------------------------------------- --

@@ -100,10 +100,9 @@ goalMenu gnm  =  do
                                   return $ []
                  }
      case [ (gid,btree) | (gid@(TxsDefs.GoalId nm uid), btree) <- curGoals , nm == gnm ] of
-     { [(gid,bt)] -> do return $ Behave.behMayMenu allSyncs bt
-     ; _          -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given" ]
-                        return $ []
-     }
+       [(gid,bt)] -> do return $ Behave.behMayMenu allSyncs bt
+       _          -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given" ]
+                        return []
 
 
 -- ----------------------------------------------------------------------------------------- --

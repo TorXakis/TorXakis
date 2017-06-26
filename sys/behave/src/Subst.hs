@@ -37,12 +37,12 @@ class Subst e
 
 instance (Ord e,Subst e) => Subst [e]
   where
-    subst ve list  =  map (subst ve) list
+    subst ve =  map (subst ve)
 
 
 instance (Ord e,Subst e) => Subst (Set.Set e)
   where
-    subst ve set  =  Set.map (subst ve) set
+    subst ve =  Set.map (subst ve)
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -52,7 +52,7 @@ instance (Ord e,Subst e) => Subst (Set.Set e)
 instance Subst BExpr
   where
 
-    subst ve (Stop)
+    subst ve Stop
       =  Stop
 
     subst ve (ActionPref (ActOffer offs cnrs)  bexp)

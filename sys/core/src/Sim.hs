@@ -58,13 +58,12 @@ simN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simN depth step  =  do
      [(parname,parval)] <- IOC.getParams ["param_InputCompletion"]
      case read parval of
-     { ParamCore.ANGELIC  -> do simA depth step
---   ; ParamCore.DEMONIC  -> do simD depth step
---   ; ParamCore.BUFFERED -> do simB depth step
---   ; _                  -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+       ParamCore.ANGELIC  -> do simA depth step
+--     ParamCore.DEMONIC  -> do simD depth step
+--     ParamCore.BUFFERED -> do simB depth step
+--     _                  -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
 --                                            $ "Simulation with unknown input completion" ]
 --                              return $ TxsDDefs.Fail TxsDDefs.ActQui
-     }
 
 
 -- ----------------------------------------------------------------------------------------- --
