@@ -18,6 +18,6 @@ tests = TestList    [ TestLabel "Library Tests"        testLibList
 main :: IO ()
 main = do
     Counts  _c _t e f <- runTestTT tests
-    if (e+f == 0)
+    if e+f == 0
         then exitSuccess
         else exitFailure

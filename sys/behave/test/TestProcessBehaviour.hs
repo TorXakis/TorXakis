@@ -29,7 +29,6 @@ import Expand
 import Reduce
 import StdTDefs
 import TxsDefs
-import EnvBTree
 import Unfold
 
 -- ----------------------------------------------------------------------------
@@ -39,7 +38,7 @@ import Unfold
 envbIdle     :: EnvB
 envbIdle     =  EnvB { EnvBTree.smts     = Map.empty
                      , EnvBTree.tdefs    = TxsDefs.empty
-                     , EnvBTree.stateid  = (-1)
+                     , EnvBTree.stateid  = -1
                      , EnvBTree.params   = Map.empty
                                 -- Map.union Params.initParams SolveDefs.Params.initParams ???
                      , EnvBTree.unid     = 1000

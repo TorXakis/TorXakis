@@ -110,10 +110,9 @@ towChanThread :: Chan SAction -> IO ()
 towChanThread towchan  =  do
      sact <- readChan towchan
      case sact of
-     { SAct h s -> do hPutStrLn h s
+       SAct h s -> do hPutStrLn h s
                       towChanThread towchan
-     ; SActQui  -> do towChanThread towchan
-     }
+       SActQui  -> do towChanThread towchan
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -265,14 +264,13 @@ putSocket envs act@(Act acts)  =  do
       in do sact <- EnDecode.encode envs act
             obs  <- lift $ timeout (ioTime*1000) (readChan frowChan)       -- timeout in musec
             case obs of
-            { Nothing         -> do lift $ writeChan towChan sact
+              Nothing         -> do lift $ writeChan towChan sact
                                     return $ act
-            ; Just (SActQui)  -> do lift $ writeChan towChan sact
+              Just (SActQui)  -> do lift $ writeChan towChan sact
                                     return $ act
-            ; Just (SAct h s) -> do act' <- EnDecode.decode envs (SAct h s)
+              Just (SAct h s) -> do act' <- EnDecode.decode envs (SAct h s)
                                     return $ act'
-            }
-
+            
 putSocket envs ActQui  =  do
      let ( Just towChan, _,  _ )  = IOS.tow envs
          ( Just frowChan, _,  _ ) = IOS.frow envs

@@ -398,9 +398,6 @@ isConsistSetTest (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
          && mins  `Set.isSubsetOf` ains
          && mouts `Set.isSubsetOf` aouts
 
-isConsistSetTest _ _ _
-  =  False
-
 -- ----------------------------------------------------------------------------------------- --
 
 txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
@@ -455,9 +452,6 @@ isConsistSetSim (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
          }
       in    mouts `Set.isSubsetOf` ains
          && mins  `Set.isSubsetOf` aouts
-
-isConsistSetSim _ _
-  =  False
 
 -- ----------------------------------------------------------------------------------------- --
 

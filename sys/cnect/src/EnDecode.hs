@@ -43,7 +43,7 @@ import CoreUtils
 import qualified EnvServer  as IOS
 
 -- import from core
-import qualified TxsCore  as TxsCore
+import qualified TxsCore
 import qualified EnvCore  as IOC
 -- import qualified Eval  as Eval
 
@@ -61,29 +61,26 @@ import TxsShow
 encode :: IOS.EnvS -> Action -> IOC.IOC SAction
 
 encode envs (Act offs)  =  do
-     ( _, _, towhdls ) <- return $ IOS.tow envs
-     ss                <- return $ [ tow
-                                   | tow@(ConnHtoW chan h vars vexp) <- towhdls 
-                                   , Set.singleton chan == Set.map fst offs
-                                   ]
-     ConnHtoW chan h vars vexp <- return $ 
+     let ( _, _, towhdls ) = IOS.tow envs
+     let ss = [ tow
+              | tow@(ConnHtoW chan h vars vexp) <- towhdls 
+              , Set.singleton chan == Set.map fst offs
+              ]
+     let ConnHtoW chan h vars vexp =
                              case ss of
-                             { [ tow ] -> tow
-                             ; _       -> error $ "Encode: No (unique) action\n" ++ (fshow ss)
-                             }
-     walues <- return $ case Set.toList offs of
-                        { [ ( chanid, wals ) ] -> wals
-                        ; _                    -> error $ "Encode: No (unique) action\n"
-                        }
-     wenv     <- return $ Map.fromList $ zip vars walues
+                               [ tow ] -> tow
+                               _       -> error $ "Encode: No (unique) action\n" ++ fshow ss
+     let walues = case Set.toList offs of
+                        [ ( chanid, wals ) ] -> wals
+                        _                    -> error "Encode: No (unique) action\n"
+     let wenv = Map.fromList $ zip vars walues
      sval     <- TxsCore.txsEval $ cstrEnv (Map.map cstrConst wenv) vexp
      return $ case sval of
-              { Cstring s -> SAct h s
-              ; _         -> error "Encode: No encoding to String\n"
-              }
+                Cstring s -> SAct h s
+                _         -> error "Encode: No encoding to String\n"
 
-encode envs (ActQui)  =  do
-     return $ SActQui
+encode envs ActQui  =  
+     return SActQui
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -92,21 +89,21 @@ encode envs (ActQui)  =  do
 
 decode :: IOS.EnvS -> SAction -> IOC.IOC Action 
 
-decode envs (SAct hdl sval)  =  do
+decode envs (SAct hdl sval)  = 
      let ( _, _, frowhdls )         = IOS.frow envs
          ConnHfroW chan h var vexps = case [ frow
                                            | frow@(ConnHfroW _ h _ _) <- frowhdls
                                            , h == hdl
                                            ] of
                                       { [ frow ] -> frow
-                                      ; _        -> error $ "TXS Decode: No (unique) handle\n"
+                                      ; _        -> error "TXS Decode: No (unique) handle\n"
                                       }
-      in do senv     <- return $ Map.fromList $ [ (var, cstrConst (Cstring sval)) ]
-            wals     <- mapM (TxsCore.txsEval . (cstrEnv senv)) vexps
+      in do let senv = Map.fromList [ (var, cstrConst (Cstring sval)) ]
+            wals     <- mapM (TxsCore.txsEval . cstrEnv senv) vexps
             return $ Act ( Set.singleton (chan,wals) )
 
-decode envs (SActQui)  =  do
-     return $ ActQui
+decode envs SActQui  =
+     return ActQui
 
 
 -- ----------------------------------------------------------------------------------------- --

@@ -77,9 +77,9 @@ mapperMap (TxsDDefs.Act acts)  =  do
      nexState  <- gets IOC.nexstate
      mapSts    <- gets IOC.mapsts
      case (maybeMapperDef, Map.lookup curState mapSts) of
-     { ( Nothing                                      , _         ) -> do return $ TxsDDefs.Act acts
-     ; ( _                                            , Nothing   ) -> do return $ TxsDDefs.Act acts
-     ; ( Just (TxsDefs.MapperDef chins chouts syncs _), Just mtree) -> do
+       ( Nothing                                      , _         ) -> do return $ TxsDDefs.Act acts
+       ( _                                            , Nothing   ) -> do return $ TxsDDefs.Act acts
+       ( Just (TxsDefs.MapperDef chins chouts syncs _), Just mtree) -> do
           let actchids = Set.map fst acts
           let inchids  = Set.fromList chins
           let outchids = Set.fromList chouts
@@ -112,11 +112,11 @@ mapperMap (TxsDDefs.Act acts)  =  do
               (maymt',envb') <- lift $ runStateT (Behave.behAfterAct syncs mtree macts) envb
               writeEnvBtoEnvC envb'
               case maymt' of
-              { Nothing  -> do
+                Nothing  -> do
                   IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                 $ "Mapper: no mapper after mapping" ]
                   return $ TxsDDefs.Act acts
-              ; Just mt' -> do
+                Just mt' -> do
                   modify $ \env -> env { IOC.mapsts = Map.insert nexState mt' mapSts }
                   case ( filter ((`Set.member` inchids ).fst) (Set.toList macts)
                        , filter ((`Set.member` outchids).fst) (Set.toList macts)
@@ -128,7 +128,7 @@ mapperMap (TxsDDefs.Act acts)  =  do
                   ; ( mins, []    ) -> do mapperMap $ TxsDDefs.Act Set.empty
                   ; ( mins, mouts ) -> do return $ TxsDDefs.Act (Set.fromList mouts)
                   }
-     }    }   }
+          }
 
 mapperMap TxsDDefs.ActQui  =  do
      return $ TxsDDefs.ActQui

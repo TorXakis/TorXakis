@@ -164,37 +164,34 @@ afterActBBranch :: [ Set.Set TxsDefs.ChanId ] -> BehAction -> BBranch -> IOB.IOB
 afterActBBranch chsets behact (BTpref btoffs [] preds next)  =  do
      match <- matchAct2CTOffer behact btoffs
      case match of
-     { Nothing    -> do return $ []
-     ; Just iwals -> let preds' = map (TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals)) preds
+       Nothing    -> do return $ []
+       Just iwals -> let preds' = map (TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals)) preds
                       in do condition <- Eval.evalCnrs preds'
                             if  condition
                               then do cnode <- return $ nextNode iwals next
                                       after <- unfold chsets cnode
                                       return $ [after]
                               else do return $ []
-     }
 
 afterActBBranch chsets behact (BTpref btoffs hidvars preds next)  =  do
      match <- matchAct2CTOffer behact btoffs
      case match of
-     { Nothing
+       Nothing
         -> do return $ []
-     ; Just iwals
+       Just iwals
         -> do preds' <- return $ map (TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals)) preds
               let assertions = foldr add empty preds'
                in do smtEnv <- IOB.getSMT "current"
                      (sat,smtEnv') <- lift $ runStateT (uniSolve hidvars assertions) smtEnv
                      IOB.putSMT "current" smtEnv'
                      case sat of
-                     { Unsolvable -> do return $ []
-                     ; Solved sol -> do cnode <- return $ nextNode (iwals `Map.union` sol) next
+                       Unsolvable -> do return []
+                       Solved sol -> do cnode <- return $ nextNode (iwals `Map.union` sol) next
                                         after <- unfold chsets cnode
                                         return $ [after]
-                     ; UnableToSolve -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                       UnableToSolve -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                                          $ "after: hidden variables not unique" ]
-                                           return $ []
-                     }
-     }
+                                           return []
 
 afterActBBranch chsets behact (BTtau btree)  =  do
      afterActBTree chsets behact btree

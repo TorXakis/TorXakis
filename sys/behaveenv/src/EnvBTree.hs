@@ -38,14 +38,14 @@ import qualified Data.Map  as Map
 
 -- import from coreenv
 -- import qualified EnvCore  as IOC
-import qualified EnvData  as EnvData
-import qualified ParamCore  as ParamCore
+import qualified EnvData
+import qualified ParamCore
 
 -- import from defs
-import qualified TxsDefs  as TxsDefs
+import qualified TxsDefs
 
 -- import from solve
-import qualified SMTData as SMTData
+import qualified SMTData
 
 
 -- ----------------------------------------------------------------------------------------- --

@@ -60,13 +60,13 @@ stepN depth step  =  do
          menu  <- traceModelMenu
          mact  <- randMenu menu
          case mact of
-         { Nothing  -> do
+           Nothing  -> do
               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "probably deadlock" ]
               return $ TxsDDefs.Fail TxsDDefs.ActQui
-         ; Just TxsDDefs.ActQui -> do
+           Just TxsDDefs.ActQui -> do
               IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "no stepping with quiescence" ]
               return $ TxsDDefs.Fail TxsDDefs.ActQui
-         ; Just act@(TxsDDefs.Act acts) -> do
+           Just act@(TxsDDefs.Act acts) -> do
               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                             $ (TxsShow.showN step 6) ++ ": " ++ (TxsShow.fshow act) ]
               done <- traceModelAfter acts
@@ -76,7 +76,6 @@ stepN depth step  =  do
                 else do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                       $ "cannot do selected action" ]
                         return $ TxsDDefs.Fail act
-         }
 
 
 -- ----------------------------------------------------------------------------------------- --
