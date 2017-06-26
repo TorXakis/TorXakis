@@ -128,19 +128,19 @@ testN depth step  =  do
      envc               <- get
      case (read parval, envc) of
      { ( ParamCore.IOCO
-       , IOC.Testing _ _ m a TxsDefs.DefNo _ _ _ _ _ _ _ _ _ _ _ _ _
+       , IOC.Testing _ _ m a Nothing _ _ _ _ _ _ _ _ _ _ _ _ _
        ) -> do testIOCO depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef []      []       _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
+       , IOC.Testing _ _ m a (Just (TxsDefs.PurpDef []      []       _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
        ) -> do testIOCO depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef []      outsyncs _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
+       , IOC.Testing _ _ m a (Just (TxsDefs.PurpDef []      outsyncs _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
        ) -> testIOCOoutPurp depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef insyncs []       _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
+       , IOC.Testing _ _ m a (Just (TxsDefs.PurpDef insyncs []       _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
        ) -> testIOCOinPurp depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
+       , IOC.Testing _ _ m a (Just (TxsDefs.PurpDef insyncs outsyncs _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
        ) -> testIOCOfullPurp depth False step
      ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "testing could not start" ]
                return $ TxsDDefs.NoVerdict

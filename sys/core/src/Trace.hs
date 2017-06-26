@@ -47,7 +47,7 @@ import qualified BTree     as BTree
 
 traceModelInit :: IOC.IOC ()
 traceModelInit  =  do
-     TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
+     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
      allSyncs       <- return $ insyncs ++ outsyncs ++ splsyncs
      envb           <- filterEnvCtoEnvB
      (maybt',envb') <- lift $ runStateT (Behave.behInit allSyncs bexp) envb
@@ -64,7 +64,7 @@ traceModelInit  =  do
 
 traceModelMenu :: IOC.IOC BTree.Menu
 traceModelMenu  =  do     
-     TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
+     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
      curState <- gets IOC.curstate
      modSts   <- gets IOC.modsts
@@ -85,7 +85,7 @@ traceModelMenu  =  do
 
 traceModelAfter :: BTree.BehAction -> IOC.IOC Bool
 traceModelAfter acts  =  do
-     TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
+     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
      curState <- gets IOC.curstate
      nexState <- gets IOC.nexstate

@@ -111,8 +111,8 @@ envsNone    =  EnvS { host      = ""
 data  TxsModus  =  Noned
                  | Idled
                  | Inited
-                 | Tested  TxsDefs.TxsDef   -- CnectDef
-                 | Simuled TxsDefs.TxsDef   -- CnectDef
+                 | Tested  TxsDefs.CnectDef
+                 | Simuled TxsDefs.CnectDef
                  | Stepped
 
 isNoned, isIdled, isInited        :: TxsModus -> Bool

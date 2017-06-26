@@ -91,7 +91,7 @@ iocoModelMenuOut  =  do
 
 iocoModelIsQui :: IOC.IOC Bool
 iocoModelIsQui  =  do
-     TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
+     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
      curState <- gets IOC.curstate
      modSts   <- gets IOC.modsts
      case Map.lookup curState modSts of
@@ -113,7 +113,7 @@ iocoModelAfter (TxsDDefs.Act acts)  =  do
      traceModelAfter acts
 
 iocoModelAfter TxsDDefs.ActQui  =  do
-     TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
+     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
      curState <- gets IOC.curstate
      nexState <- gets IOC.nexstate
      modSts   <- gets IOC.modsts

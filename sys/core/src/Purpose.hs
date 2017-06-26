@@ -63,12 +63,11 @@ import qualified Utils     as Utils
 
 purpInit :: IOC.IOC ()
 purpInit  =  do
-     purpDef <- gets IOC.purpdef
-     case purpDef of
-     { TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs splsyncs goals)
+     maybePurpDef <- gets IOC.purpdef
+     case maybePurpDef of
+        Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals)
          -> do mapM_ (goalInit (insyncs ++ outsyncs ++ splsyncs)) goals
-     ; _ -> do return ()
-     }
+        Nothing -> do return ()
 
 
 goalInit :: [ Set.Set TxsDefs.ChanId ] -> (TxsDefs.GoalId,TxsDefs.BExpr) -> IOC.IOC ()
@@ -91,7 +90,7 @@ goalInit chsets (gid,bexp)  =  do
 
 goalMenu :: String -> IOC.IOC BTree.Menu
 goalMenu gnm  =  do
-     TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
+     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
      curState <- gets IOC.curstate
      purpSts  <- gets IOC.purpsts
@@ -113,7 +112,7 @@ goalMenu gnm  =  do
 
 purpMenuIn :: IOC.IOC BTree.Menu
 purpMenuIn  =  do
-     TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
+     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
      curState <- gets IOC.curstate
      purpSts  <- gets IOC.purpsts
@@ -137,7 +136,7 @@ purpMenuIn  =  do
 
 goalMenuIn :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC BTree.Menu
 goalMenuIn (gid,btree)  =  do
-     TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
+     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
      chins    <- return $ Set.unions insyncs
      return $ [ (ctoffs, hvars, preds)
@@ -152,7 +151,7 @@ goalMenuIn (gid,btree)  =  do
 
 purpAfter :: TxsDDefs.Action -> IOC.IOC (Bool,Bool)
 purpAfter act  =  do
-     TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
+     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
      curState <- gets IOC.curstate
      nexState <- gets IOC.nexstate
@@ -220,7 +219,7 @@ purpVerdict  =  do
 
 goalVerdict :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC ()
 goalVerdict (gid,btree)  =  do
-     TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
+     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                    $ "Goal " ++ (TxsShow.fshow gid) ++ " : " ++

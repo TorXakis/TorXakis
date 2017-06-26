@@ -79,17 +79,18 @@ openSockets  =  do
      txsmodus <- gets IOS.modus
      tdefs    <- gets IOS.tdefs
      cnectdef <- case txsmodus of
-                 { IOS.Tested  cdef -> return cdef
-                 ; IOS.Simuled cdef -> return cdef
+                 { IOS.Tested  cdef -> return $ Just cdef
+                 ; IOS.Simuled cdef -> return $ Just cdef
                  ; _ -> do IfServer.nack "ERROR" [ "OpenCnect: no open" ]
-                           return $ TxsDefs.DefNo
+                           return Nothing
                  }
      ( towhdls, frowhdls ) <- case cnectdef of
-                              { DefCnect (CnectDef ClientSocket conndefs)
+                              { Just (CnectDef ClientSocket conndefs)
                                   -> do lift $ lift $ openCnectClientSockets conndefs
-                              ; DefCnect (CnectDef ServerSocket conndefs)
+                              ; Just (CnectDef ServerSocket conndefs)
                                   -> do lift $ lift $ openCnectServerSockets conndefs
-                              ; _ -> do IfServer.nack "ERROR" [ "OpenCnect: no open" ]
+                              ; Nothing 
+                                  -> do IfServer.nack "ERROR" [ "OpenCnect: no open" ]
                                         return $ ( [], [] )
                               }
 
