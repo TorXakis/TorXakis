@@ -52,18 +52,17 @@ import qualified TxsShow   as TxsShow
 mapperInit :: IOC.IOC ()
 
 mapperInit  =  do
-     mapperDef <- gets IOC.mapperdef
-     case mapperDef of
-     { TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp)
-         -> do envb           <- filterEnvCtoEnvB
-               (maymt',envb') <- lift $ runStateT (Behave.behInit asyncsets abexp) envb
-               writeEnvBtoEnvC envb'
-               modify $ \envc -> envc { IOC.mapsts = case maymt' of
-                                                     { Nothing  -> Map.empty
-                                                     ; Just mt' -> Map.singleton 0 mt'
+     maybeMapperDef <- gets IOC.mapperdef
+     case maybeMapperDef of
+        Just (TxsDefs.MapperDef achins achouts asyncsets abexp)
+            -> do  envb           <- filterEnvCtoEnvB
+                   (maymt',envb') <- lift $ runStateT (Behave.behInit asyncsets abexp) envb
+                   writeEnvBtoEnvC envb'
+                   modify $ \envc -> envc { IOC.mapsts = case maymt' of
+                                                         { Nothing  -> Map.empty
+                                                         ; Just mt' -> Map.singleton 0 mt'
                                       }              }
-     ; _ -> do modify $ \envc -> envc { IOC.mapsts = Map.empty }
-     }
+        Nothing -> do modify $ \envc -> envc { IOC.mapsts = Map.empty }
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -73,14 +72,14 @@ mapperInit  =  do
 mapperMap :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
 
 mapperMap (TxsDDefs.Act acts)  =  do
-     mapperDef <- gets IOC.mapperdef
+     maybeMapperDef <- gets IOC.mapperdef
      curState  <- gets IOC.curstate
      nexState  <- gets IOC.nexstate
      mapSts    <- gets IOC.mapsts
-     case (mapperDef, Map.lookup curState mapSts) of
-     { ( TxsDefs.DefNo                                             , _         ) -> do return $ TxsDDefs.Act acts
-     ; (_                                                          , Nothing   ) -> do return $ TxsDDefs.Act acts
-     ; ( TxsDefs.DefMapper (TxsDefs.MapperDef chins chouts syncs _), Just mtree) -> do
+     case (maybeMapperDef, Map.lookup curState mapSts) of
+     { ( Nothing                                      , _         ) -> do return $ TxsDDefs.Act acts
+     ; ( _                                            , Nothing   ) -> do return $ TxsDDefs.Act acts
+     ; ( Just (TxsDefs.MapperDef chins chouts syncs _), Just mtree) -> do
           let actchids = Set.map fst acts
           let inchids  = Set.fromList chins
           let outchids = Set.fromList chouts

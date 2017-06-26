@@ -80,6 +80,8 @@ module StdTDefs
 )
 where
 
+import Control.Arrow ( (***) )
+
 import ChanId
 import FuncId
 import FuncDef
@@ -106,7 +108,7 @@ stdSortDefs' = [ (sortId_Bool,   SortDef [ funcId_eqBool, funcId_neqBool
                ]
 
 stdSortDefs :: [ ( Ident,       TxsDef  ) ]
-stdSortDefs = map (\(x,y) -> (IdSort x, DefSort y)) stdSortDefs'
+stdSortDefs = map (IdSort Control.Arrow.*** DefSort) stdSortDefs'
 
 -- ----------------------------------------------------------------------------------------- --
 -- standard function names 
@@ -186,7 +188,7 @@ stdFuncDefsBool'
      ]
 
 stdFuncDefsBool :: [ ( Ident, TxsDef ) ]
-stdFuncDefsBool = map (\(x,y) -> (IdFunc x, DefFunc y)) stdFuncDefsBool'
+stdFuncDefsBool = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsBool'
 
 -- ----------------------------------------------------------------------------------------- --
 -- SSI :  Standard Sort Int
@@ -283,7 +285,7 @@ stdFuncDefsInt'
      ]
 
 stdFuncDefsInt :: [ ( Ident, TxsDef ) ]
-stdFuncDefsInt = map (\(x,y) -> (IdFunc x, DefFunc y)) stdFuncDefsInt'
+stdFuncDefsInt = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsInt'
 -- ----------------------------------------------------------------------------------------- --
 -- SSS :  Standard Sort String
 
@@ -364,7 +366,7 @@ stdFuncDefsString'
      ]
 
 stdFuncDefsString :: [ ( Ident, TxsDef ) ]
-stdFuncDefsString = map (\(x,y) -> (IdFunc x, DefFunc y)) stdFuncDefsString'
+stdFuncDefsString = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsString'
 -- ----------------------------------------------------------------------------------------- --
 -- SSR :  Standard Sort Regex
 
@@ -379,7 +381,7 @@ stdFuncDefsRegex'
      ]
 
 stdFuncDefsRegex :: [ ( Ident, TxsDef ) ]
-stdFuncDefsRegex = map (\(x,y) -> (IdFunc x, DefFunc y)) stdFuncDefsRegex'
+stdFuncDefsRegex = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsRegex'
 -- ----------------------------------------------------------------------------------------- --
 -- combined TorXakis standard type definitions
 

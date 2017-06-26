@@ -42,13 +42,13 @@ module TxsCore
                   --    solving Bool VExpr randomly
 , txsSetTest      -- :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
                   --    IOC.IOC TxsDDefs.Action ->
-                  --    TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef ->
+                  --    TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Maybe TxsDefs.PurpDef ->
                   --    IOC.IOC ()
 , txsSetSim       -- :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
                   --    IOC.IOC TxsDDefs.Action ->
-                  --    TxsDefs.TxsDef -> TxsDefs.TxsDef ->
+                  --    TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef ->
                   --    IOC.IOC ()
-, txsSetStep      -- :: TxsDefs.TxsDef -> IOC.IOC ()
+, txsSetStep      -- :: TxsDefs.ModelDef -> IOC.IOC ()
 , txsTestIn       -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
 , txsTestOut      -- :: IOC.IOC TxsDDefs.Verdict
 , txsTestN        -- :: Int -> IOC.IOC TxsDDefs.Verdict
@@ -317,7 +317,7 @@ txsRanSolve vexp  =  do
     
 txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
               IOC.IOC TxsDDefs.Action ->
-              TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef ->
+              TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Maybe TxsDefs.PurpDef ->
               IOC.IOC ()
 txsSetTest putToW getFroW moddef mapdef purpdef  =  do
      envc <- get
@@ -354,16 +354,16 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
      }
 
 
-isConsistSetTest :: TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef -> Bool
+isConsistSetTest :: TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Maybe TxsDefs.PurpDef -> Bool
 
-isConsistSetTest (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                 (TxsDefs.DefNo)
-                 (TxsDefs.DefNo)
+isConsistSetTest (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                 Nothing
+                 Nothing
   =  True
 
-isConsistSetTest (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                 (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                 (TxsDefs.DefNo)
+isConsistSetTest (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                 (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+                 Nothing
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ains   = Set.fromList $ achins
@@ -372,9 +372,9 @@ isConsistSetTest (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsync
       in    mins  `Set.isSubsetOf` ains
          && mouts `Set.isSubsetOf` aouts
  
-isConsistSetTest (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                 (TxsDefs.DefNo)
-                 (TxsDefs.DefPurp (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
+isConsistSetTest (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                 Nothing
+                 (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; pins   = Set.unions pinsyncs
@@ -383,9 +383,9 @@ isConsistSetTest (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsync
       in    ( (pins  == Set.empty) || (pins  == mins)  )
          && ( (pouts == Set.empty) || (pouts == mouts) )
 
-isConsistSetTest (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                 (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                 (TxsDefs.DefPurp (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
+isConsistSetTest (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                 (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+                 (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ains   = Set.fromList $ achins
@@ -405,7 +405,7 @@ isConsistSetTest _ _ _
 
 txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
              IOC.IOC TxsDDefs.Action ->
-             TxsDefs.TxsDef -> TxsDefs.TxsDef ->
+             TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef ->
              IOC.IOC ()
 txsSetSim putToW getFroW moddef mapdef  =  do
      envc    <- get
@@ -440,14 +440,14 @@ txsSetSim putToW getFroW moddef mapdef  =  do
      }
 
 
-isConsistSetSim :: TxsDefs.TxsDef -> TxsDefs.TxsDef -> Bool
+isConsistSetSim :: TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Bool
 
-isConsistSetSim (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                (TxsDefs.DefNo)
+isConsistSetSim (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                Nothing
   =  True
 
-isConsistSetSim (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
+isConsistSetSim (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ains   = Set.fromList $ achins
@@ -461,7 +461,7 @@ isConsistSetSim _ _
 
 -- ----------------------------------------------------------------------------------------- --
 
-txsSetStep :: TxsDefs.TxsDef -> IOC.IOC ()
+txsSetStep :: TxsDefs.ModelDef -> IOC.IOC ()
 txsSetStep moddef  =  do
      envc    <- get
      case envc of
@@ -496,7 +496,7 @@ txsTestIn :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
 txsTestIn act  =  do
      envc    <- get
      case envc of
-     { IOC.Testing _ _ modeldef mapperdef TxsDefs.DefNo _ _ _ _ _ _ _ _ _ _ _ _ _
+     { IOC.Testing _ _ modeldef mapperdef Nothing _ _ _ _ _ _ _ _ _ _ _ _ _
          -> do Test.testIn act 1
      ; IOC.Testing _ _ modeldef mapperdef purpdef       _ _ _ _ _ _ _ _ _ _ _ _ _
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test action with test purpose" ]
@@ -510,7 +510,7 @@ txsTestOut :: IOC.IOC TxsDDefs.Verdict
 txsTestOut  =  do
      envc    <- get
      case envc of
-     { IOC.Testing _ _ modeldef mapperdef TxsDefs.DefNo _ _ _ _ _ _ _ _ _ _ _ _ _
+     { IOC.Testing _ _ modeldef mapperdef Nothing _ _ _ _ _ _ _ _ _ _ _ _ _
          -> do Test.testOut 1
      ; IOC.Testing _ _ modeldef mapperdef purpdef       _ _ _ _ _ _ _ _ _ _ _ _ _
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test output with test purpose" ]
