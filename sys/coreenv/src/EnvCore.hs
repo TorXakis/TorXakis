@@ -76,15 +76,13 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                         , purpdef   :: TxsDefs.TxsDef
                         , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
                         , getfrow   :: IOC TxsDDefs.Action
-                        , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
+                        , behtrie   :: [ (EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr) ]
                                                                      -- behaviour trie
                         , inistate  :: EnvData.StateNr               -- initial beh statenr
                         , curstate  :: EnvData.StateNr               -- current beh statenr
-                        , nexstate  :: EnvData.StateNr               -- current beh statenr
-                        , maxstate  :: EnvData.StateNr               -- max beh statenr
-                        , modsts    :: Map.Map EnvData.StateNr BTree.BTree   -- model state
-                        , mapsts    :: Map.Map EnvData.StateNr BTree.BTree   -- mapper state
-                        , purpsts   :: Map.Map EnvData.StateNr [(TxsDefs.GoalId,BTree.BTree)]
+                        , modsts    :: BTree.BTree                      -- model state
+                        , mapsts    :: BTree.BTree                      -- mapper state
+                        , purpsts   :: [(TxsDefs.GoalId,BTree.BTree)]   -- purpose state
                         , params    :: ParamCore.Params              -- parameters
                         , unid      :: Int                           -- last used unique number
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
@@ -99,10 +97,8 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                                                                      -- behaviour trie
                         , inistate  :: EnvData.StateNr               -- initial beh statenr
                         , curstate  :: EnvData.StateNr               -- current beh statenr
-                        , nexstate  :: EnvData.StateNr               -- current beh statenr
-                        , maxstate  :: EnvData.StateNr               -- max beh statenr
-                        , modsts    :: Map.Map EnvData.StateNr BTree.BTree   -- model state
-                        , mapsts    :: Map.Map EnvData.StateNr BTree.BTree   -- mapper state
+                        , modsts    :: BTree.BTree                   -- model state
+                        , mapsts    :: BTree.BTree                   -- mapper state
                         , params    :: ParamCore.Params              -- parameters
                         , unid      :: Int                           -- last used unique number
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
@@ -114,9 +110,8 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                                                                      -- behaviour trie
                         , inistate  :: EnvData.StateNr               -- initial beh statenr
                         , curstate  :: EnvData.StateNr               -- current beh statenr
-                        , nexstate  :: EnvData.StateNr               -- current beh statenr
                         , maxstate  :: EnvData.StateNr               -- max beh statenr
-                        , modsts    :: Map.Map EnvData.StateNr BTree.BTree   -- model state
+                        , modstss   :: Map.Map EnvData.StateNr BTree.BTree   -- model state
                         , params    :: ParamCore.Params              -- parameters
                         , unid      :: Int                           -- last used unique number
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting

@@ -16,8 +16,7 @@ module Test
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( testInit     -- ::
-, testIn       -- :: 
+( testIn       -- :: 
 , testOut      -- :: 
 , testN        -- ::
 )
@@ -51,50 +50,50 @@ import qualified BTShow      as BTShow
 
 
 -- ----------------------------------------------------------------------------------------- --
--- testInit :  Tetser initialization
-
-
-testInit :: IOC.IOC ()
-testInit  =  do
-     iocoModelInit
-     mapperInit
-     purpInit
-     trieStateInit
-
-
--- ----------------------------------------------------------------------------------------- --
 -- testIn :  try to give input (Act acts), and give new environment
 --        :  result is whether input was successful, or faster output was successful/conforming
 
 
 testIn :: TxsDDefs.Action -> Int -> IOC.IOC TxsDDefs.Verdict
 testIn act@(TxsDDefs.Act acts) step  =  do
-     putToW  <- gets IOC.puttow
-     mact @(TxsDDefs.Act macts ) <- mapperMap act
-     mact'@(TxsDDefs.Act macts') <- putToW mact             -- do input on sut, always
+     putToW <- gets IOC.puttow
+     mact   <- mapperMap act                                -- map action
+     mact'  <- putToW mact                                  -- try to do input on sut
      if mact == mact'
        then do                                              -- input done on sut
          IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                       $ (TxsShow.showN step 6) ++ ":  IN:  " ++ (TxsShow.fshow mact) ]
-         pass <- iocoModelAfter mact
-         if  pass
-           then do trieStateNext (TxsDDefs.Act macts)       -- input done on sut and on btree
+                       $ (TxsShow.showN step 6) ++ ":  IN:  " ++ (TxsShow.fshow act) ]
+         done <- iocoModelAfter act
+         if  done
+           then do modify $ \env -> env                     -- input done on sut and on btree
+                     { IOC.behtrie  = (IOC.behtrie env) ++
+                                      [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                     , IOC.curstate = (IOC.maxstate env)+1
+                     , IOC.maxstate = (IOC.maxstate env)+1
+                     }
                    return $ TxsDDefs.Pass
-           else do expected
-                   return $ TxsDDefs.Fail mact              -- input done on sut, not on btree
+           else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                 $ "proposed input not possible on model" ]
+                   return $ TxsDDefs.Fail act               -- input done on sut, not on btree
        else do                                              -- output was faster
+         act <- mapperMap mact'                             -- map output to model action
          IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                       $ (TxsShow.showN step 6) ++ ":  OUT: " ++ (TxsShow.fshow mact') ]
-         pass <- iocoModelAfter mact'
-         if  pass
-           then do trieStateNext (TxsDDefs.Act macts')      -- output `Elem` menuOut
-                   return $ TxsDDefs.Pass
+                       $ (TxsShow.showN step 6) ++ ":  OUT: " ++ (TxsShow.fshow act) ]
+         done <- iocoModelAfter act
+         if  done
+           then do modify $ \env -> env                     -- input done on sut and on btree
+                     { IOC.behtrie  = (IOC.behtrie env) ++
+                                      [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                     , IOC.curstate = (IOC.maxstate env)+1
+                     , IOC.maxstate = (IOC.maxstate env)+1
+                     }
+                   return $ TxsDDefs.Pass                   -- output act `Elem` menuOut
            else do expected
-                   return $ TxsDDefs.Fail mact'             -- output `notElem` menuOut
+                   return $ TxsDDefs.Fail act               -- output act `notElem` menuOut
  
-testIn TxsDDefs.ActQui step  =  do                                   -- otherwise
+testIn TxsDDefs.ActQui step  =  do
      IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                   $ "testIn can only be called with (TxsDDefs.Act acts)" ]
+                   $ "testIn can only be called with real action (TxsDDefs.Act acts)" ]
      return $ TxsDDefs.Fail TxsDDefs.ActQui
 
 
@@ -106,16 +105,21 @@ testIn TxsDDefs.ActQui step  =  do                                   -- otherwis
 testOut :: Int -> IOC.IOC TxsDDefs.Verdict
 testOut step  =  do
      getFroW <- gets IOC.getfrow
-     act     <- getFroW                                      -- get next output or quiescence
-     mact    <- mapperMap act
+     mact    <- getFroW                                     -- get next output or quiescence
+     act     <- mapperMap mact                              -- map output to model action
      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-               $ (TxsShow.showN step 6) ++ ":  OUT: " ++ (TxsShow.fshow mact) ]
-     pass    <- iocoModelAfter mact
-     if  pass
-       then do trieStateNext mact                            -- output `elem` menuOut
-               return $ TxsDDefs.Pass
+                   $ (TxsShow.showN step 6) ++ ":  OUT: " ++ (TxsShow.fshow act) ]
+     done <- iocoModelAfter act
+     if  done
+       then do modify $ \env -> env
+                 { IOC.behtrie  = (IOC.behtrie env) ++
+                                  [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                 , IOC.curstate = (IOC.maxstate env)+1
+                 , IOC.maxstate = (IOC.maxstate env)+1
+                 }
+               return $ TxsDDefs.Pass                       -- output act `elem` menuOut
        else do expected
-               return $ TxsDDefs.Fail mact                   -- output `notElem` menuOut
+               return $ TxsDDefs.Fail act                   -- output act `notElem` menuOut
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -128,19 +132,23 @@ testN depth step  =  do
      envc               <- get
      case (read parval, envc) of
      { ( ParamCore.IOCO
-       , IOC.Testing _ _ m a TxsDefs.DefNo _ _ _ _ _ _ _ _ _ _ _ _ _
+       , IOC.Testing _ _ m a TxsDefs.DefNo _ _ _ _ _ _ _ _ _ _ _
        ) -> do testIOCO depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef []      []       _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
+       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef []      []       _ _))
+                     _ _ _ _ _ _ _ _ _ _ _
        ) -> do testIOCO depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef []      outsyncs _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
+       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef []      outsyncs _ _))
+                     _ _ _ _ _ _ _ _ _ _ _
        ) -> testIOCOoutPurp depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef insyncs []       _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
+       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef insyncs []       _ _))
+                     _ _ _ _ _ _ _ _ _ _ _
        ) -> testIOCOinPurp depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs _ _)) _ _ _ _ _ _ _ _ _ _ _ _ _
+       , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs _ _))
+                     _ _ _ _ _ _ _ _ _ _ _
        ) -> testIOCOfullPurp depth False step
      ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "testing could not start" ]
                return $ TxsDDefs.NoVerdict
@@ -279,7 +287,12 @@ testIOCOoutPurp depth lastDelta step  =  do
                              then return (False,False)
                              else purpAfter act
              if pass
-               then trieStateNext act
+               then modify $ \env -> env
+                      { IOC.behtrie  = (IOC.behtrie env) ++
+                                       [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                      , IOC.curstate = (IOC.maxstate env)+1
+                      , IOC.maxstate = (IOC.maxstate env)+1
+                      }
                else return $ ()
              case (pass,hit,miss) of
              { (True ,False,False) -> do testIOCOoutPurp (depth-1) False (step+1)
@@ -296,7 +309,12 @@ testIOCOoutPurp depth lastDelta step  =  do
                  pass       <- iocoModelAfter act
                  (hit,miss) <- purpAfter act
                  if pass
-                   then trieStateNext act
+                   then modify $ \env -> env
+                          { IOC.behtrie  = (IOC.behtrie env) ++
+                                           [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                          , IOC.curstate = (IOC.maxstate env)+1
+                          , IOC.maxstate = (IOC.maxstate env)+1
+                          }
                    else return $ ()
                  case (pass,hit,miss) of
                  { (True ,False,False) -> do testIOCOoutPurp (depth-1) False (step+1)
@@ -338,7 +356,12 @@ testIOCOinPurp depth lastDelta step  =  do
                              else return (False,False)
              pass       <- iocoModelAfter act
              if pass
-               then trieStateNext act
+               then modify $ \env -> env
+                      { IOC.behtrie  = (IOC.behtrie env) ++
+                                       [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                      , IOC.curstate = (IOC.maxstate env)+1
+                      , IOC.maxstate = (IOC.maxstate env)+1
+                      }
                else return $ ()
              case (pass,hit,miss) of
              { (True ,False,False) -> do testIOCOinPurp (depth-1) False (step+1)
@@ -355,7 +378,12 @@ testIOCOinPurp depth lastDelta step  =  do
                  pass       <- iocoModelAfter act
                  (hit,miss) <- return $ (False,False)
                  if pass
-                   then trieStateNext act
+                   then modify $ \env -> env
+                          { IOC.behtrie  = (IOC.behtrie env) ++
+                                           [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                          , IOC.curstate = (IOC.maxstate env)+1
+                          , IOC.maxstate = (IOC.maxstate env)+1
+                          }
                    else return $ ()
                  case (pass,hit,miss) of
                  { (True ,False,False) -> do testIOCOinPurp (depth-1) False (step+1)
@@ -401,7 +429,12 @@ testIOCOfullPurp depth lastDelta step  =  do
              (hit,miss) <- purpAfter act
              lift $ hPutStrLn stderr $ "hit miss: " ++ (show hit) ++ (show miss)
              if pass
-               then trieStateNext act
+               then modify $ \env -> env
+                      { IOC.behtrie  = (IOC.behtrie env) ++
+                                       [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                      , IOC.curstate = (IOC.maxstate env)+1
+                      , IOC.maxstate = (IOC.maxstate env)+1
+                      }
                else return $ ()
              case (pass,hit,miss) of
              { (True ,False,False) -> do testIOCOfullPurp (depth-1) False (step+1)
@@ -418,7 +451,12 @@ testIOCOfullPurp depth lastDelta step  =  do
                  pass       <- iocoModelAfter act
                  (hit,miss) <- purpAfter act
                  if pass
-                   then trieStateNext act
+                   then modify $ \env -> env
+                          { IOC.behtrie  = (IOC.behtrie env) ++
+                                           [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                          , IOC.curstate = (IOC.maxstate env)+1
+                          , IOC.maxstate = (IOC.maxstate env)+1
+                          }
                    else return $ ()
                  case (pass,hit,miss) of
                  { (True ,False,False) -> do testIOCOfullPurp (depth-1) False (step+1)

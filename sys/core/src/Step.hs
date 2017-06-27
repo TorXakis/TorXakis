@@ -16,8 +16,7 @@ module Step
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( stepInit   -- :: IOC.IOC ()
-, stepN      -- :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
+( stepN      -- :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 , stepA      -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict 
 )
 
@@ -25,6 +24,8 @@ module Step
 -- import
 
 where
+
+import Control.Monad.State
 
 import Trace
 import CoreUtils
@@ -34,16 +35,6 @@ import qualified EnvCore   as IOC
 import qualified EnvData   as EnvData
 import qualified TxsDDefs  as TxsDDefs
 import qualified TxsShow   as TxsShow
-
-
--- ----------------------------------------------------------------------------------------- --
--- stepInit :  initialize models for Stepper
-
-
-stepInit :: IOC.IOC ()
-stepInit  =  do
-     traceModelInit
-     trieStateInit
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -71,7 +62,12 @@ stepN depth step  =  do
                             $ (TxsShow.showN step 6) ++ ": " ++ (TxsShow.fshow act) ]
               done <- traceModelAfter acts
               if  done
-                then do trieStateNext act
+                then do modify $ \env -> env
+                          { IOC.behtrie  = (IOC.behtrie env) ++
+                                           [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                          , IOC.curstate = (IOC.maxstate env)+1
+                          , IOC.maxstate = (IOC.maxstate env)+1
+                          }
                         stepN (depth-1) (step+1)
                 else do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                       $ "cannot do selected action" ]
@@ -91,13 +87,18 @@ stepA act  =  do
           IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "no stepping with quiescence" ]
           return $ TxsDDefs.Fail TxsDDefs.ActQui
      ; act@(TxsDDefs.Act acts) -> do
-          IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                        $ "Step :  " ++ (TxsShow.fshow act) ]
+          IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Step :  " ++ (TxsShow.fshow act) ]
           done <- traceModelAfter acts
           if  done
-            then do trieStateNext act
+            then do modify $ \env -> env
+                      { IOC.behtrie  = (IOC.behtrie env) ++
+                                       [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                      , IOC.curstate = (IOC.maxstate env)+1
+                      , IOC.maxstate = (IOC.maxstate env)+1
+                      }
                     return $ TxsDDefs.Pass
-            else do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "cannot do selected action" ]
+            else do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                  $ "cannot do selected action" ]
                     return $ TxsDDefs.Fail act
      }
 

@@ -17,8 +17,7 @@ module Ioco
 -- export
 
 
-( iocoModelInit      -- :: IOC.IOC ()
-, iocoModelMenuIn    -- :: IOC.IOC BTree.Menu
+( iocoModelMenuIn    -- :: IOC.IOC BTree.Menu
 , iocoModelMenuOut   -- :: IOC.IOC BTree.Menu
 , iocoModelIsQui     -- :: IOC.IOC Bool
 , iocoModelAfter     -- :: TxsDDefs.Action -> IOC.IOC Bool
@@ -57,15 +56,6 @@ import qualified Utils     as  Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
--- iocoModelInit :  initialize model for ioco
-
-
-iocoModelInit :: IOC.IOC ()
-iocoModelInit  =  do
-     traceModelInit
-
-
--- ----------------------------------------------------------------------------------------- --
 -- iocoModelMenuIn :  input menu on current btree of model, no quiescence, according to ioco
 
 
@@ -92,13 +82,8 @@ iocoModelMenuOut  =  do
 iocoModelIsQui :: IOC.IOC Bool
 iocoModelIsQui  =  do
      TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
-     curState <- gets IOC.curstate
      modSts   <- gets IOC.modsts
-     case Map.lookup curState modSts of
-     { Nothing -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no curstate" ]
-                     return $ True
-     ; Just bt -> do return $ Behave.behRefusal bt (Set.unions outsyncs)
-     }
+     return $ Behave.behRefusal modSts (Set.unions outsyncs)
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -114,20 +99,13 @@ iocoModelAfter (TxsDDefs.Act acts)  =  do
 
 iocoModelAfter TxsDDefs.ActQui  =  do
      TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
-     curState <- gets IOC.curstate
-     nexState <- gets IOC.nexstate
-     modSts   <- gets IOC.modsts
-     curBTree <- case Map.lookup curState modSts of
-                 { Nothing -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no curstate" ]
-                                 return $ []
-                 ; Just bt -> do return $ bt
-                 }
+     modSts         <- gets IOC.modsts
      envb           <- filterEnvCtoEnvB
-     (maybt',envb') <- lift $ runStateT (Behave.behAfterRef curBTree (Set.unions outsyncs)) envb
+     (maybt',envb') <- lift $ runStateT (Behave.behAfterRef modSts (Set.unions outsyncs)) envb
      writeEnvBtoEnvC envb'
      case maybt' of
      { Nothing  -> do return $ False
-     ; Just bt' -> do modify $ \env -> env { IOC.modsts = Map.insert nexState bt' modSts }
+     ; Just bt' -> do modify $ \env -> env { IOC.modsts = bt' }
                       return $ True
      }
 

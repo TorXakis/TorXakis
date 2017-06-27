@@ -17,8 +17,7 @@ module Purpose
 -- export
 
 
-( purpInit          -- :: IOC.IOC ()
-, goalMenu          -- :: String -> IOC.IOC BTree.Menu
+( goalMenu          -- :: String -> IOC.IOC BTree.Menu
 , purpMenuIn        -- :: IOC.IOC BTree.Menu
 , purpAfter         -- :: TxsDDefs.Action -> IOC.IOC (Bool,Bool)
 , purpVerdict       -- :: IOC.IOC ()
@@ -58,51 +57,17 @@ import qualified Utils     as Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
--- purpInit :  initialize test purpose
-
-
-purpInit :: IOC.IOC ()
-purpInit  =  do
-     purpDef <- gets IOC.purpdef
-     case purpDef of
-     { TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs splsyncs goals)
-         -> do mapM_ (goalInit (insyncs ++ outsyncs ++ splsyncs)) goals
-     ; _ -> do return ()
-     }
-
-
-goalInit :: [ Set.Set TxsDefs.ChanId ] -> (TxsDefs.GoalId,TxsDefs.BExpr) -> IOC.IOC ()
-goalInit chsets (gid,bexp)  =  do
-     purpSts         <- gets IOC.purpsts
-     envb            <- filterEnvCtoEnvB
-     (mbtree',envb') <- lift $ runStateT (Behave.behInit chsets bexp) envb
-     writeEnvBtoEnvC envb'
-     goal'           <- return $ case mbtree' of
-                                 { Nothing -> []
-                                 ; Just bt -> [ (gid, bt) ] 
-                                 }
-     modify $ \envc -> envc { IOC.purpsts = Map.insertWith (++) 0 goal' purpSts }
-     IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "goal initialized: " ++ (TxsShow.fshow gid) ]
-                   
-
--- ----------------------------------------------------------------------------------------- --
--- goalMenu :  menu on current btree of goal
+-- goalMenu :  menu on current btree of goal with name
 
 
 goalMenu :: String -> IOC.IOC BTree.Menu
 goalMenu gnm  =  do
      TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-     curState <- gets IOC.curstate
      purpSts  <- gets IOC.purpsts
-     curGoals <- case Map.lookup curState purpSts of
-                 { Just gls -> do return $ gls
-                 ; Nothing  -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "no curstate" ]
-                                  return $ []
-                 }
-     case [ (gid,btree) | (gid@(TxsDefs.GoalId nm uid), btree) <- curGoals , nm == gnm ] of
-     { [(gid,bt)] -> do return $ Behave.behMayMenu allSyncs bt
-     ; _          -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given" ]
+     case [ (gid,gtree) | (gid@(TxsDefs.GoalId nm uid), gtree) <- purpSts, nm == gnm ] of
+     { [(gid,gt)] -> do return $ Behave.behMayMenu allSyncs gt
+     ; _          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "no (unique) goal given" ]
                         return $ []
      }
 
@@ -115,24 +80,14 @@ purpMenuIn :: IOC.IOC BTree.Menu
 purpMenuIn  =  do
      TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-     curState <- gets IOC.curstate
      purpSts  <- gets IOC.purpsts
-     curGoals <- case Map.lookup curState purpSts of
-                 { Just gls -> do return $ gls
-                 ; Nothing  -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "no curstate" ]
-                                  return $ []
-                 }
-     lift $ hPutStrLn stderr $ "purpmenu curGoals: " ++ (TxsShow.fshow curGoals)
      menus    <- mapM goalMenuIn [ (gid,btree)
-                                 | (gid,btree) <- curGoals
+                                 | (gid,btree) <- purpSts
                                  , not $ isHit  allSyncs btree
                                  , not $ isMiss allSyncs btree
                                  , not $ isHalt btree
                                  ]
-     lift $ hPutStrLn stderr $ "purpmenu menus: " ++ (TxsShow.fshow menus)
-     emnuconj <- return $ menuConjuncts menus
-     lift $ hPutStrLn stderr $ "purpmenu menuconj: " ++ (TxsShow.fshow emnuconj)
-     return $ emnuconj
+     return $ menuConjuncts menus
 
 
 goalMenuIn :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC BTree.Menu
@@ -154,23 +109,16 @@ purpAfter :: TxsDDefs.Action -> IOC.IOC (Bool,Bool)
 purpAfter act  =  do
      TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-     curState <- gets IOC.curstate
-     nexState <- gets IOC.nexstate
      purpSts  <- gets IOC.purpsts
-     curGoals <- case Map.lookup curState purpSts of
-                 { Just gls -> do return $ gls
-                 ; Nothing  -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "no curstate" ]
-                                  return $ []
-                 }
      aftGoals <- mapM (goalAfter allSyncs outsyncs act) [ (gid,btree)
-                                                        | (gid,btree) <- curGoals
+                                                        | (gid,btree) <- purpSts
                                                         , not $ isHit  allSyncs btree
                                                         , not $ isMiss allSyncs btree
                                                         , not $ isHalt btree
                                                         ]
      newGoals <- return $ aftGoals ++
-                   [ (gid,btree) | (gid,btree) <- curGoals, gid `notElem` (map fst aftGoals) ]
-     modify $ \envc -> envc { IOC.purpsts = Map.insert nexState newGoals purpSts }
+                   [ (gid,btree) | (gid,btree) <- purpSts, gid `notElem` (map fst aftGoals) ]
+     modify $ \envc -> envc { IOC.purpsts = newGoals }
      return $ ( and [ isHit  allSyncs btree | (gid,btree) <- newGoals ]
               , and [ isMiss allSyncs btree | (gid,btree) <- newGoals ]
               )
@@ -208,14 +156,8 @@ goalAfter allsyncs outsyncs (TxsDDefs.ActQui) (gid,btree)  =  do
 
 purpVerdict :: IOC.IOC ()
 purpVerdict  =  do
-     curState <- gets IOC.curstate
      purpSts  <- gets IOC.purpsts
-     curGoals <- case Map.lookup curState purpSts of
-                 { Just gls -> do return $ gls
-                 ; Nothing  -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "no curstate" ]
-                                  return $ []
-                 }
-     mapM_ goalVerdict curGoals
+     mapM_ goalVerdict purpSts
 
 
 goalVerdict :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC ()

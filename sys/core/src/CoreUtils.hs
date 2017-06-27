@@ -16,9 +16,7 @@ module CoreUtils
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( trieStateInit     -- :: IOC.IOC ()
-, trieStateNext     -- :: TxsDefs.Action -> IOC.IOC ()
-, filterEnvCtoEnvB  -- :: IOC.IOC IOB.EnvB
+( filterEnvCtoEnvB  -- :: IOC.IOC IOB.EnvB
 , writeEnvBtoEnvC   -- :: IOB.EnvB -> IOC.IOC ()
 , isInCTOffers      -- :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 , isOutCTOffers     -- :: Set.Set BTree.CTOffer -> IOC.IOC Bool
@@ -52,35 +50,6 @@ import qualified Utils     as  Utils
 
 import qualified SolveDefs as SolveDefs
 import qualified Solve     as Solve
-
-
--- ----------------------------------------------------------------------------------------- --
--- behtrie initialization
-
-
-trieStateInit :: IOC.IOC ()
-trieStateInit  =  do
-     modify $ \envc -> envc { IOC.behtrie   = []
-                            , IOC.inistate  = 0
-                            , IOC.curstate  = 0
-                            , IOC.nexstate  = 1
-                            , IOC.maxstate  = 0
-                            }
-
-
--- ----------------------------------------------------------------------------------------- --
--- behtrie next state
-
-
-trieStateNext :: TxsDDefs.Action -> IOC.IOC ()
-
-trieStateNext act  =  do
-     modify $ \env -> env
-       { IOC.behtrie  = (IOC.behtrie env) ++ [ (IOC.curstate env, act, IOC.nexstate env) ]
-       , IOC.curstate = (IOC.nexstate env)
-       , IOC.nexstate = (IOC.maxstate env) + 2
-       , IOC.maxstate = (IOC.maxstate env) + 1
-       } 
 
 
 -- ----------------------------------------------------------------------------------------- --

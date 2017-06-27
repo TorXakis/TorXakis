@@ -16,8 +16,7 @@ module Sim
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( simInit   -- :: IOC.IOC ()
-, simN      -- :: simN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
+( simN      -- :: simN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -38,16 +37,6 @@ import qualified EnvData     as EnvData
 
 import qualified TxsDDefs    as TxsDDefs
 import qualified TxsShow     as TxsShow
-
--- ----------------------------------------------------------------------------------------- --
--- simInit :  initialize models for Simulator
-
-
-simInit :: IOC.IOC ()
-simInit  =  do
-     iocoModelInit
-     mapperInit
-     trieStateInit
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -92,7 +81,12 @@ simAfroW depth step  =  do
                         $ (TxsShow.showN step 6) ++ ":  IN:  "++ (TxsShow.fshow mact) ]
           done <- iocoModelAfter mact                        -- do input in model
           if done
-            then do trieStateNext mact
+            then do modify $ \env -> env
+                      { IOC.behtrie  = (IOC.behtrie env) ++
+                                       [ ( IOC.curstate env, mact, (IOC.maxstate env)+1 ) ]
+                      , IOC.curstate = (IOC.maxstate env)+1
+                      , IOC.maxstate = (IOC.maxstate env)+1
+                      }
                     simA (depth-1) (step+1)                  -- continue whether done or not
             else do simA (depth-1) (step+1)                  -- continue whether done or not
      ; TxsDDefs.ActQui -> do                                 -- world did not provide input
@@ -106,31 +100,45 @@ simAtoW depth step  =  do
      mayAct  <- ranMenuOut
      case mayAct of
      { Just act -> do                                        -- proposed real output or qui
-          mact @(TxsDDefs.Act macts ) <- mapperMap act
-          mact'@(TxsDDefs.Act macts') <- putToW mact         -- do input on sut, always
-          if mact == mact'
-            then do IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                                  $ (TxsShow.showN step 6) ++ ": OUT: " ++ (TxsShow.fshow mact) ]
-                    done <- iocoModelAfter mact              -- do output in model
-                    if done
-                      then do trieStateNext mact
-                              simA (depth-1) (step+1)        -- continue
-                      else do simA (depth-1) (step+1)
-            else do case mact' of                            -- input from world was faster
-                    { TxsDDefs.Act acts -> do                -- world provided input to system
-                         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                                       $ (TxsShow.showN step 6) ++ ":  IN:  "++ (TxsShow.fshow mact) ]
-                         done <- iocoModelAfter mact         -- do input in model
-                         if done
-                           then do trieStateNext mact
-                                   simA (depth-1) (step+1)        -- continue
-                           else do simA (depth-1) (step+1)
-                    ; TxsDDefs.ActQui -> do                  -- world did not provide input
-                         simAtoW depth step                  -- continue with output to world
-                    }
+         mact  <- mapperMap act                              -- apply mapper
+         mact' <- putToW mact                                -- do output to world
+         if mact == mact'
+           then do
+             IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO        -- output to world was done
+                           $ (TxsShow.showN step 6) ++ ": OUT: " ++ (TxsShow.fshow act) ]
+             done <- iocoModelAfter act                      -- do output in model
+             if done
+               then do modify $ \env -> env
+                         { IOC.behtrie  = (IOC.behtrie env) ++
+                                          [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                         , IOC.curstate = (IOC.maxstate env)+1
+                         , IOC.maxstate = (IOC.maxstate env)+1
+                         }
+                       simA (depth-1) (step+1)               -- continue
+               else do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                     $ "proposed output could not happen in model" ]
+                       return $ TxsDDefs.NoVerdict
+           else do                                           -- input from world was faster
+             act <- mapperMap mact'                          -- map input to model action
+             case act of
+             { TxsDDefs.Act acts -> do                       -- world provided input to system
+                 IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                               $ (TxsShow.showN step 6) ++ ":  IN:  "++ (TxsShow.fshow act) ]
+                 done <- iocoModelAfter act                  -- do input in model
+                 if done
+                   then do modify $ \env -> env
+                             { IOC.behtrie  = (IOC.behtrie env) ++
+                                              [ (IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
+                             , IOC.curstate = (IOC.maxstate env)+1
+                             , IOC.maxstate = (IOC.maxstate env)+1
+                             }
+                           simA (depth-1) (step+1)           -- continue whether done or not
+                   else do simA (depth-1) (step+1)           -- continue whether done or not
+             ; TxsDDefs.ActQui -> do                         -- world did not provide input
+                 simAtoW depth step                          -- continue with output to world
+             }
      ; Nothing -> do                                         -- no proposed output
-          IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                        $ "no proposed output: should not happen" ]
+          IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no proposed output: should not happen" ]
           return $ TxsDDefs.NoVerdict
      }
 
