@@ -36,6 +36,7 @@ library
                       , SortOf
                       , StatId
                       , VarId
+                      , FuncTable
                       
   other-modules:        BehExprDefs
                       , ConnectionDefs

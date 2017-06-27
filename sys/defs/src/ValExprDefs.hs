@@ -21,6 +21,8 @@ import VarId
 -- | ValExprView: the public view of value expression 'ValExpr'
 data  ValExprView v = Vfunc   FuncId [ValExpr v]
                     | Vcstr   CstrId [ValExpr v]
+                    | Viscstr CstrId (ValExpr v)
+                    | Vaccess CstrId Int (ValExpr v)
                     | Vconst  Const
                     | Vvar    v
                     | Vite    [ValExpr v] (ValExpr v) (ValExpr v)
@@ -29,7 +31,7 @@ data  ValExprView v = Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]
                     | Verror  String
      deriving (Eq,Ord,Read,Show)
-
+     
 -- | ValExpr: value expression
 --
 -- 1. User can't directly construct ValExpr (such that invariants will always hold)

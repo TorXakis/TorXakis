@@ -17,31 +17,30 @@ See license.txt
 -----------------------------------------------------------------------------
 module Sigs
 ( Sigs (..)
-, empty
+, Sigs.empty
 , combine
 )
 where
 
+import qualified Data.Map as Map
+
 import ChanId
-import CstrId
-import FuncId
 import ProcId
 import SortId
 
-data Sigs = Sigs    { chan  :: [ChanId]
-                    , cstr  :: [CstrId]
-                    , func  :: [FuncId]
-                    , pro   :: [ProcId]
-                    , sort  :: [SortId]
-                    }
-    deriving (Eq, Ord, Read, Show)
-    
-empty :: Sigs
-empty = Sigs [] [] [] [] []
+import FuncTable
 
-combine :: Sigs -> Sigs -> Sigs
+data Sigs v = Sigs  { chan  :: [ChanId]
+                    , func  :: FuncTable v
+                    , pro   :: [ProcId]
+                    , sort  :: Map.Map String SortId
+                    }
+    
+empty :: Sigs v
+empty = Sigs [] FuncTable.empty [] Map.empty
+
+combine :: Sigs v -> Sigs v -> Sigs v
 combine l r = Sigs  (chan l ++ chan r)
-                    (cstr l ++ cstr r)
-                    (func l ++ func r)
+                    (FuncTable.union (func l) (func r))
                     (pro l ++ pro r)
-                    (sort l ++ sort r)
+                    (Map.union (sort l) (sort r))
