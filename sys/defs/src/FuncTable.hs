@@ -20,10 +20,11 @@ module FuncTable
 ( Signature (..)
 , SignHandler
 , Handler
-, FuncTable(FuncTable)
+, FuncTable(..)
 , FuncTable.empty
 , FuncTable.insert
 , FuncTable.union
+, FuncTable.names
 , FuncTable.member
 , FuncTable.signatures
 , FuncTable.signHandler
@@ -76,6 +77,11 @@ member :: String -> Signature -> FuncTable v -> Bool
 member n s (toMap -> t) = case Map.lookup n t of
                                 Nothing     ->  False
                                 Just m      ->  Map.member s m
+
+-- | names
+-- All names of the table
+names :: FuncTable v -> [String]
+names (toMap -> t) = Map.keys t
 
 -- | signatures
 -- Get all signatures associated with the given name in the table. 
