@@ -277,7 +277,7 @@ TxsRoot         -- :: { TxsDefs }
                 ;  $1.inhSigs      = Sigs.uniqueCombine Sigs.empty { sort = stdSortTable
                                                                    , func = stdFuncTable
                                                                    }
-                                                       $1.synSigs
+                                                        $1.synSigs
                 ;  $$ = ( ($$.synMaxUid+1), TxsDefs.fromList ( $1 ++ stdTDefs ) )
                 ;  where let dbls = doubles [ nm | (IdModel (ModelId nm uid), DefModel modeldef) <- $1 ]
                           in if null dbls then () else
@@ -463,8 +463,8 @@ TypeDefs        -- :: { [ (Ident,TxsDef) ] }
                 ;  $3.inhNodeUid   = $1.synMaxUid + 1
                 ;  $$.synMaxUid    = $3.synMaxUid
                 ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $3.synSigs
-                ;  $1.inhSigs  = $$.inhSigs
-                ;  $3.inhSigs  = $$.inhSigs
+                ;  $1.inhSigs      = $$.inhSigs
+                ;  $3.inhSigs      = $$.inhSigs
                 ;  $$ = $1 ++ $3
                 }
 
