@@ -281,7 +281,6 @@ data  Token  =  Ttypedef          AlexPosn
               | Cchanenv          [ChanId]
               | Cvarenv           [VarId]
               | Cunid             Int
-   deriving (Eq,Show)
 
 txsLexer :: String -> [Token]
 txsLexer = alexScanTokens

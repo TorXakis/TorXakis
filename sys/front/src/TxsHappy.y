@@ -3212,62 +3212,66 @@ Constant        -- :: { Const }
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  = [ sortId_Bool ]
                 ;  $$ = case $$.inhSolvSort of
-                        { Nothing          -> Cbool True
-                        ; Just sortId_bool -> Cbool True
-                        ; Just _           -> error "\nTXS ERROR 0909\n"
+                        { Nothing                   -> Cbool True
+                        ; Just s | s == sortId_bool -> Cbool True
+                        ; Just _                    -> error "\nTXS ERROR 0909\n"
                         }
-                ;  where if Map.member sortId_Bool (Sigs.sort $$.inhSigs) then () else
-                         error ("\nTXS0471: " ++
-                                "Bool constant but no sort 'Bool': True\n")
+                ;  where case Map.lookup "Bool" (Sigs.sort $$.inhSigs) of
+                            {   Just s | s == sortId_Bool    -> ()
+                            ;   _                            -> error ("\nTXS0471: Bool constant but no sort 'Bool': True\n")
+                            }
                 }
               | False
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  = [ sortId_Bool ]
                 ;  $$ = case $$.inhSolvSort of
-                        { Nothing          -> Cbool False
-                        ; Just sortId_bool -> Cbool False
-                        ; Just _           -> error "\nTXS ERROR 0910\n"
+                        { Nothing                   -> Cbool False
+                        ; Just s | s == sortId_bool -> Cbool False
+                        ; Just _                    -> error "\nTXS ERROR 0910\n"
                         }
-                ;  where if Map.member sortId_Bool (Sigs.sort $$.inhSigs) then () else
-                         error ("\nTXS0471: " ++
-                                "Bool constant but no sort 'Bool': False\n")
+                ;  where case Map.lookup "Bool" (Sigs.sort $$.inhSigs) of
+                            {   Just s | s == sortId_Bool    -> ()
+                            ;   _                            -> error ("\nTXS0471: Bool constant but no sort 'Bool': False\n")
+                            }
                 }
               | integer
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  = [ sortId_Int ]
                 ;  $$ = case $$.inhSolvSort of
-                        { Nothing         -> Cint $1
-                        ; Just sortId_int -> Cint $1
-                        ; Just _          -> error "\nTXS ERROR 0911\n"
+                        { Nothing                   -> Cint $1
+                        ; Just s | s == sortId_int  -> Cint $1
+                        ; Just _                    -> error "\nTXS ERROR 0911\n"
                         }
-                ;  where if Map.member sortId_Int (Sigs.sort $$.inhSigs) then () else
-                         error ("\nTXS0472: " ++
-                                "Integer constant but no sort 'Int': "++(show $1)++"\n")
+                ;  where case Map.lookup "Int" (Sigs.sort $$.inhSigs) of
+                            {   Just s | s == sortId_Int     -> ()
+                            ;   _                            -> error ("\nTXS0472: Integer constant but no sort 'Int': "++(show $1)++"\n")
+                            }
                 }
               | string
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  = [ sortId_String ]
                 ;  $$ = case $$.inhSolvSort of
-                        { Nothing         -> Cstring $1
-                        ; Just stringSort -> Cstring $1
-                        ; Just _          -> error "\nTXS ERROR 0913\n"
+                        { Nothing                       -> Cstring $1
+                        ; Just s | s == sortId_String   -> Cstring $1
+                        ; Just _                        -> error "\nTXS ERROR 0913\n"
                         }
-                ;  where if Map.member sortId_String (Sigs.sort $$.inhSigs) then () else
-                         error ("\nTXS0476: " ++
-                                "String constant but no sort 'String': "++(show $1)++"\n")
+                ;  where case Map.lookup "String" (Sigs.sort $$.inhSigs) of
+                            {   Just s | s == sortId_String  -> ()
+                            ;   _                            -> error ("\nTXS0476: String constant but no sort 'String': "++(show $1)++"\n")
+                            }
                 }
               | REGEX "(" regexval ")"
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  = [ sortId_Regex ]
                 ;  $$ = case $$.inhSolvSort of
-                        { Nothing           -> Cregex $3
-                        ; Just sortId_Regex -> Cregex $3
-                        ; Just _            -> error "\nTXS ERROR 0915\n"
+                        { Nothing                       -> Cregex $3
+                        ; Just s |  s == sortId_Regex   -> Cregex $3
+                        ; Just _                        -> error "\nTXS ERROR 0915\n"
                         }
-                ;  where if Map.member sortId_Regex (Sigs.sort $$.inhSigs) then () else
-                         error $ "\nTXS0477: " ++
-                                 "Regex constant but no sort 'Regex': "++(show $1) ++
-                                 " " ++ (show $3) ++ "\n"
+                ;  where case Map.lookup "Regex" (Sigs.sort $$.inhSigs) of
+                            {   Just s | s == sortId_Regex   -> ()
+                            ;   _                            -> error ("\nTXS0477: Regex constant but no sort 'Regex': REGEX("++ (show $3) ++ ")\n")
+                            }
                 }
 
 
