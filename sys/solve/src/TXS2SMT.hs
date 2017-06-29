@@ -59,8 +59,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdSort sortId_Regex,      error "Regex is not defined in SMT"),
 
 -- Bool
-    (IdFunc funcId_eqBool,         "="),
-    (IdFunc funcId_neqBool,        "distinct"),
     (IdFunc funcId_BoolToString,   error "ToString(Bool) should not be called in SMT"),
     (IdFunc funcId_BoolFromString, error "FromString(Bool) should not be called in SMT"),
     (IdFunc funcId_BoolToXml,      error "ToXml(Bool) should not be called in SMT"),
@@ -73,8 +71,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_iff,            "="),
     
 -- Int
-    (IdFunc funcId_eqInt,          "="),
-    (IdFunc funcId_neqInt,         "distinct"),
     (IdFunc funcId_IntToString,    error "ToString(Int) should not be called in SMT"),
     (IdFunc funcId_IntFromString,  error "FromString(Int) should not be called in SMT"),
     (IdFunc funcId_IntToXml,       error "ToXml(Int) should not be called in SMT"),
@@ -94,8 +90,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_absInt,         "abs"),
 
 -- String
-    (IdFunc funcId_eqString,           "="),
-    (IdFunc funcId_neqString,          "distinct"),
     (IdFunc funcId_StringToString,     error "ToString(String) should not be called in SMT"),
     (IdFunc funcId_StringFromString,   error "FromString(String) should not be called in SMT"),
     (IdFunc funcId_StringToXml,        error "ToXml(String) should not be called in SMT"),
