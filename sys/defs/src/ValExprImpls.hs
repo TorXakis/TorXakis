@@ -20,7 +20,7 @@ import Variable
 
 -- ----------------------------------------------------------------------------------------- --
 cstrFunc :: (Variable v) => FuncId -> [ValExpr v] -> ValExpr v
-cstrFunc f a                                                                                                        = ValExpr (Vfunc f a)
+cstrFunc f a = ValExpr (Vfunc f a)
 
 cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
 cstrCstr c a = ValExpr (Vcstr c a)
@@ -30,7 +30,7 @@ cstrIsCstr c1 (view -> Vcstr c2 _)          = cstrConst (Cbool (c1 == c2) )
 cstrIsCstr c1 (view -> Vconst (Cstr c2 _))  = cstrConst (Cbool (c1 == c2) )
 cstrIsCstr c e = ValExpr (Viscstr c e)
 
--- | Apply ADT Accessor of constructor with constructorName on field with fieldName on the provided value expression.
+-- | Apply ADT Accessor of constructor with CstrId on field with given position on the provided value expression.
 -- Preconditions are /not/ checked.
 cstrAccess :: CstrId -> Int -> ValExpr v -> ValExpr v
 cstrAccess c1 p1 e@(view -> Vcstr c2 fields) = 

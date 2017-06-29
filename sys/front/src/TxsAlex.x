@@ -16,7 +16,8 @@ module TxsAlex
 
 where
 
-import TxsDefs               -- importing
+import TxsDefs
+import Sigs
 }
 
 -- ----------------------------------------------------------------------------------------- --
@@ -278,6 +279,7 @@ data  Token  =  Ttypedef          AlexPosn
               | Tstring           AlexPosn  String
               | Tregexval         AlexPosn  String
               | Ctdefs            TxsDefs
+              | Csigs             (Sigs VarId)
               | Cchanenv          [ChanId]
               | Cvarenv           [VarId]
               | Cunid             Int
