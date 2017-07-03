@@ -82,6 +82,8 @@ containsIdentical x1@(k1,v1) ((k2,v2):xs) =    ( (identicalVarId k1 k2) && (iden
 identicalVExpr :: VExpr -> VExpr -> Bool
 identicalVExpr (view -> Vfunc fid1 vexps1)      (view -> Vfunc fid2 vexps2)      = (identicalFuncId fid1 fid2) && (identicalVExprs vexps1 vexps2)
 identicalVExpr (view -> Vcstr cid1 vexps1)      (view -> Vcstr cid2 vexps2)      = (identicalCstrId cid1 cid2) && (identicalVExprs vexps1 vexps2)
+identicalVExpr (view -> Viscstr cid1 vexp1)     (view -> Viscstr cid2 vexp2)     = (identicalCstrId cid1 cid2) && (identicalVExpr vexp1 vexp2)
+identicalVExpr (view -> Vaccess cid1 p1 vexp1)  (view -> Vaccess cid2 p2 vexp2)  = (identicalCstrId cid1 cid2) && (p1 == p2) && (identicalVExpr vexp1 vexp2)
 identicalVExpr (view -> Vconst c1)              (view -> Vconst c2)              = (c1 == c2)
 identicalVExpr (view -> Vvar v1)                (view -> Vvar v2)                = (identicalVarId v1 v2)
 identicalVExpr (view -> Vite vexps1 vt1 ve1)    (view -> Vite vexps2 vt2 ve2)    = (identicalVExprs vexps1 vexps2) && (identicalVExpr vt1 vt2)  && (identicalVExpr ve1 ve2)

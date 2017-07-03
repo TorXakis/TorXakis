@@ -47,17 +47,12 @@ combine l r = Sigs  (chan l ++ chan r)
                     (Map.union (sort l) (sort r))
                     
 uniqueCombine :: Sigs v -> Sigs v -> Sigs v 
-uniqueCombine l r = let d = duplicate l r 
-                    in if null d  
-                        then combine l r
-                        else error (unlines d)
-                        
-duplicate :: Sigs v -> Sigs v -> [String]
-duplicate l r = 
-    ["duplicate channel " ++ show c | c <- chan l, c `elem` chan r ]
-    ++
-    ["duplicate function " ++ f ++ show s | f <- FuncTable.names (func l), s <- FuncTable.signatures f (func l), FuncTable.member f s (func r)]
-    ++
-    ["duplicate procedure " ++ show p | p <- pro l, p `elem` pro r ]
-    ++
-    ["duplicate sort " ++ s | s <- Map.keys (sort l), Map.member s (sort r) ]
+uniqueCombine l r = Sigs
+                    (let d = ["duplicate channel " ++ show c | c <- chan l, c `elem` chan r ] in 
+                        if null d then chan l ++ chan r else error (unlines d) )
+                    (let d = ["duplicate function " ++ f ++ show s | f <- FuncTable.names (func l), s <- FuncTable.signatures f (func l), FuncTable.member f s (func r)] in
+                        if null d then FuncTable.union (func l) (func r) else error (unlines d) )
+                    (let d = ["duplicate procedure " ++ show p | p <- pro l, p `elem` pro r ] in 
+                        if null d then pro l ++ pro r else error (unlines d) )
+                    (let d = ["duplicate sort " ++ s | s <- Map.keys (sort l), Map.member s (sort r) ] in
+                        if null d then Map.union (sort l) (sort r) else error (unlines d) )

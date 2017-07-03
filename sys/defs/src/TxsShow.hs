@@ -250,6 +250,10 @@ instance (PShow v) => PShow (ValExpr v)
       =  pshow cid
     pshow (view -> Vcstr cid vexps)
       =  pshow cid ++ "(" ++ Utils.join "," (map pshow vexps) ++ ")"
+    pshow (view -> Viscstr cid vexp)
+      = "is"++ CstrId.name cid ++ "(" ++ pshow vexp ++ ")" 
+    pshow (view -> Vaccess cid p vexp)
+      = "access "++ CstrId.name cid ++ " " ++ show p ++ " (" ++ pshow vexp ++ ")" -- TODO: use the accessor name?
     pshow (view -> Vconst con)
       =  pshow con
     pshow (view -> Vvar vid)

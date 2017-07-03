@@ -86,6 +86,8 @@ partSubst :: (Variable v) => VarEnv v v -> ValExpr v -> ValExpr v
 
 partSubst ve (view -> Vfunc fid vexps)        = cstrFunc fid (map (partSubst ve) vexps)
 partSubst ve (view -> Vcstr cid vexps)        = cstrCstr cid (map (partSubst ve) vexps)
+partSubst ve (view -> Viscstr cid vexp)       = cstrIsCstr cid (partSubst ve vexp)
+partSubst ve (view -> Vaccess cid p vexp)     = cstrAccess cid p (partSubst ve vexp)
 partSubst _  (view -> Vconst const')          = cstrConst const'
 partSubst ve (view -> Vvar vid)               = Map.findWithDefault (cstrVar vid) vid ve
 partSubst ve (view -> Vite cond vexp1 vexp2)  = cstrIte (map (partSubst ve) cond)
@@ -112,6 +114,8 @@ compSubst :: (Variable v, Variable w) => VarEnv v w -> ValExpr v -> ValExpr w
 
 compSubst ve (view -> Vfunc fid vexps)        =  cstrFunc fid (map (compSubst ve) vexps)
 compSubst ve (view -> Vcstr cid vexps)        =  cstrCstr cid (map (compSubst ve) vexps)
+compSubst ve (view -> Viscstr cid vexp)       = cstrIsCstr cid (compSubst ve vexp)
+compSubst ve (view -> Vaccess cid p vexp)     = cstrAccess cid p (compSubst ve vexp)
 compSubst _  (view -> Vconst const')          =  cstrConst const'
 compSubst ve (view -> Vvar vid)               =  fromMaybe 
                                                     (cstrError "TXS Subst compSubst: incomplete\n")
@@ -230,6 +234,8 @@ instance UsedFids VExpr
   where
     usedFids (view -> Vfunc fid vexps)          =  fid : usedFids vexps
     usedFids (view -> Vcstr _cid vexps)         =  usedFids vexps
+    usedFids (view -> Viscstr _cid vexp)        =  usedFids vexp
+    usedFids (view -> Vaccess _cid _p vexp)     =  usedFids vexp
     usedFids (view -> Vconst _const)            =  []
     usedFids (view -> Vvar _v)                  =  []
     usedFids (view -> Vite vexps vexp1 vexp2)   =  usedFids (vexp1:vexp2:vexps)

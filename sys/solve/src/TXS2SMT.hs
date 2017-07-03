@@ -110,8 +110,8 @@ initialMapInstanceTxsToSmtlib  =  [
 -- ----------------------------------------------------------------------------------------- --
 -- initialMapInstanceTxsToSmtlib
 
-toFieldName :: CstrId -> FuncId -> String
-toFieldName cstrid field  =  concat [toCstrName cstrid, "$", FuncId.name field]
+toFieldName :: CstrId -> Int -> String
+toFieldName cstrid field  =  concat [toCstrName cstrid, "$", show field]
 
 toIsCstrName :: CstrId -> String
 toIsCstrName cstrid  =  "is-" ++ toCstrName cstrid
@@ -150,11 +150,11 @@ insertMap (id@(IdCstr cstrid), DefCstr(CstrDef c fs)) mp
   =  if id `Map.member` mp
        then error $ "TXS TXS2SMT insertMap: Constructor (" ++ show cstrid ++ ", CstrDef " ++
                     show c ++ " " ++ show fs ++  ") already defined\n"
-       else foldr ( \f -> Map.insert (IdFunc f) (toFieldName cstrid f) ) 
+       else foldr ( \(f,p) -> Map.insert (IdFunc f) (toFieldName cstrid p) ) 
                   ( Map.insert (IdFunc c) (toIsCstrName cstrid)
                                ( Map.insert (IdCstr cstrid) (toCstrName cstrid) mp )
                   )
-                  fs
+                  (zip fs [0..])
 
 insertMap (id@(IdFunc funcId), DefFunc (FuncDef x y)) mp
   =  if id `Map.member` mp
@@ -267,6 +267,10 @@ valexprToSMT mapI (view -> Vfunc funcId args) = "(" ++ justLookup mapI (IdFunc f
 
 valexprToSMT mapI (view -> Vcstr cd [])   =        justLookup mapI (IdCstr cd)
 valexprToSMT mapI (view -> Vcstr cd args) = "(" ++ justLookup mapI (IdCstr cd) ++ " " ++ join " " (map (valexprToSMT mapI) args) ++ ")"
+
+valexprToSMT mapI (view -> Viscstr cd arg)    = toIsCstrName cd ++ "(" ++ valexprToSMT mapI arg ++ ")"
+valexprToSMT mapI (view -> Vaccess cd p arg)  = toFieldName cd p ++ "(" ++ valexprToSMT mapI arg ++ ")"
+
 
 valexprToSMT mapI (view -> Vconst c) = constToSMT mapI c
 

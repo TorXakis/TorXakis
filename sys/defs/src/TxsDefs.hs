@@ -29,6 +29,8 @@ module TxsDefs
 , ValExpr
 , cstrFunc
 , cstrCstr
+, cstrIsCstr
+, cstrAccess
 , cstrConst
 , cstrVar
 , cstrIte
