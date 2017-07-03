@@ -917,7 +917,7 @@ StautDef        -- :: { (Ident,TxsDef) }
                 --           : free variables in StautItems from FormalVars
 
                 --     ;  $7.inhSigs      = $$.inhSigs { pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] } 
-                --                                              ++ (proc $$.inhSigs)
+                --                                              ++ (pro $$.inhSigs)
                 --  PVDL: are global procdefs not available in the stautdef context?? 
 
               : STAUTDEF Id FormalChannels FormalVars ExitKind "::=" StautItemList EndDef
@@ -2637,7 +2637,7 @@ ValExpr         -- :: { VExpr }
               : ValExpr1
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
-                ;  $1.inhSigs  = $$.inhSigs
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $1.inhSolvSort
                      = case ($$.inhSolvSort, $1.synExpdSort) of
