@@ -9,8 +9,7 @@ See license.txt
 -- Dispatch Process
 
 
-PROCDEF  processor [ Start, Finish ] ( )
- ::=
+PROCDEF  processor [ Start, Finish ] ( ) ::=
              Start
         >->  Finish
         >->  processor [ Start, Finish ] ( )
@@ -20,8 +19,7 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
-PROCDEF  processors [ Start, Finish ] ( )
- ::=
+PROCDEF  processors [ Start, Finish ] ( ) ::=
              processor [ Start, Finish ] ( )
         |||
              processor [ Start, Finish ] ( )
@@ -32,22 +30,18 @@ ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 
-
-PROCDEF  dispatcher [ Job, Dispatch ] ( )
- ::=
+PROCDEF  dispatcher [ Job, Dispatch ] ( ) ::=
              Job
         >->  Dispatch
         >->  dispatcher [ Job, Dispatch ]  ( )
 ENDDEF
 
-
 -- ----------------------------------------------------------------------------------------- --
 
 
-MODELDEF Model
- ::=
+MODELDEF Model ::=
     CHAN IN    Job
-    CHAN OUT   Finish; Job2Proc
+    CHAN OUT   Finish, Job2Proc
 
     BEHAVIOUR
 
@@ -59,6 +53,11 @@ MODELDEF Model
 
 ENDDEF
 
+-- ----------------------------------------------------------------------------------------- --
+
+CHANDEF Channels ::=
+	Job, Finish, Job2Proc
+ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

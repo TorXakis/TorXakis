@@ -257,8 +257,8 @@ class Notifier implements Runnable {
 }
 
 class Process implements Runnable {
-    public final int fixSleepTime = 2000;
-    public final int randSleepTime = 2000;
+    public final int fixSleepTime = 1000;
+    public final int randSleepTime = 1000;
     
 	private int id;
 	private ProcessorsStateModel model;

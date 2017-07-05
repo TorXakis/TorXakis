@@ -44,9 +44,10 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
-MODELDEF Model ::=
-    CHAN IN    Job      :: Int # Int
-    CHAN OUT   Finish   :: Int
+MODELDEF Model
+ ::=
+    CHAN IN    Job   
+    CHAN OUT   Finish
 
     BEHAVIOUR
         HIDE  [ Job2Proc :: Int # Int ]
@@ -57,6 +58,12 @@ MODELDEF Model ::=
         NI
 ENDDEF
 
+-- ----------------------------------------------------------------------------------------- --
+
+CHANDEF Channels ::=
+	Job      :: Int # Int;
+	Finish   :: Int
+ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
