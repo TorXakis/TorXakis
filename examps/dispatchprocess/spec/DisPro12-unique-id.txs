@@ -7,8 +7,6 @@ See license.txt
 
 -- ----------------------------------------------------------------------------------------- --
 -- Dispatch Process
-
-
 -- ----------------------------------------------------------------------------------------- --
 -- Job Data
 
@@ -21,7 +19,7 @@ ENDDEF
 
 FUNCDEF  isValidJobId ( jobId :: Int )  :: Bool ::=
     ( jobId > 0 ) 
- /\ ( ( jobId % 2 ) == 0 )
+	/\ ( ( jobId % 2 ) == 0 )
 ENDDEF
 
 FUNCDEF  isValidJob ( jobdata :: JobData )  :: Bool ::=
@@ -29,12 +27,15 @@ FUNCDEF  isValidJob ( jobdata :: JobData )  :: Bool ::=
  /\ strinre ( jobDescription(jobdata), REGEX('[A-Z][0-9]{2}[a-z]+') )
  /\ ( x(jobdata) > 0 )
  /\ ( y(jobdata) > 0 )
+	   /\  ( IF (x(jobdata) < y(jobdata)) THEN
+				( abs(x(jobdata) - y(jobdata)) < (100 * x(jobdata) ))
+			ELSE
+				( abs(x(jobdata) - y(jobdata)) < (100 * y(jobdata) ))
+			FI )
 ENDDEF
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- Job Output
-
 
 TYPEDEF  JobOut  ::=  JobOut  {  jobId     :: Int
                               ;  processor :: Int
@@ -52,7 +53,8 @@ ENDDEF
 FUNCDEF  isValidIntSet ( set :: IntSet )  :: Bool ::=
     IF isEmpty(set)
         THEN True
-        ELSE not ( contains ( hd ( set ) , tl ( set ) ) ) /\ isValidIntSet ( tl ( set ) )
+        ELSE not ( contains ( hd ( set ) , tl ( set ) ) )
+			 /\ isValidIntSet ( tl ( set ) )
     FI
 ENDDEF
 
@@ -89,30 +91,23 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 -- Greatest Common Divisor
 
-
-FUNCDEF  gcd ( a, b :: Int ) :: Int
- ::=
+FUNCDEF  gcd ( a, b :: Int ) :: Int ::=
         IF a == b THEN  a
                   ELSE  IF a > b THEN  gcd ( a - b, b )
                                  ELSE  gcd ( a, b - a )
-                                 FI
+                        FI
         FI
 ENDDEF
 
-
 -- ----------------------------------------------------------------------------------------- --
 
-
-PROCDEF  processor [ Start :: JobData; Finish :: JobOut ] ( procnum :: Int )
- ::=
-             Start ? job :: JobData
-        >->
-             Finish ! JobOut ( jobId(job)
+PROCDEF  processor [ Start :: JobData; Finish :: JobOut ] ( procnum :: Int ) ::=
+             Start ? job
+        >->  Finish ! JobOut ( jobId(job)
                              , procnum
                              , gcd ( x(job) , y(job) )
                              )
-        >->
-             processor [ Start, Finish ] ( procnum )
+        >->  processor [ Start, Finish ] ( procnum )
 ENDDEF
 
 
@@ -120,16 +115,16 @@ ENDDEF
 
 
 PROCDEF  processors [ Start :: JobData; Finish :: JobOut ] ( procnum :: Int ) ::=
-         processor [ Start, Finish ] ( procnum )
-    |||
-         [[ procnum > 1 ]]  =>>  processors [ Start, Finish ] ( procnum-1 )
+             processor [ Start, Finish ] ( procnum )
+        |||
+             [[ procnum > 1 ]]  =>>  processors [ Start, Finish ] ( procnum-1 )
 ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 
 PROCDEF  dispatcher [ Acquire :: Int ; Job , Dispatch :: JobData ] ( ) ::=
-        Acquire ? jobid
-    >-> Job ? job :: JobData  [[ isValidJob(job) /\ (jobId(job) == jobid) ]]
+        Acquire ? jobid |
+		 Job ? job [[ isValidJob(job) /\ (jobId(job) == jobid) ]]
     >-> Dispatch ! job
     >-> dispatcher [ Acquire, Job, Dispatch ]  ( )
 ENDDEF
@@ -147,6 +142,7 @@ PROCDEF releaser [ Finish :: JobOut ; Release :: Int ] ( ) ::=
     >-> Release ! jobId ( jo )
     >-> releaser [ Finish, Release ] ( )
 ENDDEF
+
 -- ----------------------------------------------------------------------------------------- --
 
 
@@ -199,9 +195,19 @@ ENDDEF
 
 PROCDEF traceRight [Job :: JobData; Finish :: JobOut]() EXIT ::=
         Job ! JobData( 82, "N22s", 45, 78 )
-    >-> Finish ! JobOut (82, 1, 3)                      -- assumption: first job assigned to first processor
+    >-> Finish ? o [[
+					IF isJobOut(o)
+					THEN (gcd(o) == 3) /\ (jobId(o) == 82)
+					ELSE False
+					FI
+				   ]]
     >-> Job ! JobData( 82, "L22kk", 17, 63 )
-    >-> Finish ! JobOut (82, 2, 1)                      -- assumption: second job assigned to second processor
+    >-> Finish ? o [[
+					IF isJobOut(o)
+					THEN (gcd(o) == 1) /\ (jobId(o) == 82)
+					ELSE False
+					FI
+				   ]]
     >-> EXIT
 ENDDEF
 

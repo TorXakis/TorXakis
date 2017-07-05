@@ -4,13 +4,11 @@ Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- Dispatch Process
 
 
-PROCDEF  processor [ Start :: Int # Int; Finish :: Int ] ( )
- ::=
+PROCDEF  processor [ Start :: Int # Int; Finish :: Int ] ( ) ::=
              Start ?x ?y  [[ x>0, y>0 ]]
         >->  Finish ?z
         >->  processor [ Start, Finish ] ( )
@@ -20,8 +18,7 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
-PROCDEF  processors [ Start :: Int # Int; Finish :: Int ] ( )
- ::=
+PROCDEF  processors [ Start :: Int # Int; Finish :: Int ] ( ) ::=
              processor [ Start, Finish ] ( )
         |||
              processor [ Start, Finish ] ( )
@@ -33,8 +30,7 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
-PROCDEF  dispatcher [ Job, Dispatch :: Int # Int ] ( )
- ::=
+PROCDEF  dispatcher [ Job, Dispatch :: Int # Int ] ( ) ::=
              Job ?x ?y  [[ x>0, y>0 ]]
         >->  Dispatch !x !y
         >->  dispatcher [ Job, Dispatch ]  ( )
@@ -45,9 +41,9 @@ ENDDEF
 
 
 MODELDEF Model ::=
-    CHAN IN    Job      :: Int # Int
-    CHAN OUT   Finish   :: Int ;
-               Job2Proc :: Int # Int
+    CHAN IN    Job      
+    CHAN OUT   Finish,
+               Job2Proc 
 
     BEHAVIOUR
             dispatcher [ Job, Job2Proc ]  ( )
@@ -55,6 +51,12 @@ MODELDEF Model ::=
             processors [ Job2Proc, Finish] ( )
 ENDDEF
 
+-- ----------------------------------------------------------------------------------------- --
+
+CHANDEF Channels ::=
+	Job, Job2Proc :: Int # Int;
+	Finish   :: Int
+ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

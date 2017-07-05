@@ -7,14 +7,10 @@ See license.txt
 
 -- ----------------------------------------------------------------------------------------- --
 -- Dispatch Process
-
-
 -- ----------------------------------------------------------------------------------------- --
 -- greatest common diviser
 
-
-FUNCDEF  gcd ( a, b :: Int ) :: Int
- ::=
+FUNCDEF  gcd ( a, b :: Int ) :: Int ::=
         IF a == b THEN  a
                   ELSE  IF a > b THEN  gcd ( a - b, b )
                                  ELSE  gcd ( a, b - a )
@@ -22,13 +18,10 @@ FUNCDEF  gcd ( a, b :: Int ) :: Int
         FI
 ENDDEF
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- processor
 
-
-PROCDEF  processor [ Start :: Int # Int; Finish :: Int ] ( )
- ::=
+PROCDEF  processor [ Start :: Int # Int; Finish :: Int ] ( ) ::=
              Start ?x ?y  [[ x>0, y>0 ]]
         >->  Finish ! gcd ( x, y )
         >->  processor [ Start, Finish ] ( )
@@ -38,8 +31,7 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
-PROCDEF  processors [ Start :: Int # Int; Finish :: Int ] ( )
- ::=
+PROCDEF  processors [ Start :: Int # Int; Finish :: Int ] ( ) ::=
              processor [ Start, Finish ] ( )
         |||
              processor [ Start, Finish ] ( )
@@ -51,8 +43,7 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
-PROCDEF  dispatcher [ Job, Dispatch :: Int # Int ] ( )
- ::=
+PROCDEF  dispatcher [ Job, Dispatch :: Int # Int ] ( ) ::=
              Job ?x ?y  [[ x>0, y>0 ]]
         >->  Dispatch !x !y
         >->  dispatcher [ Job, Dispatch ]  ( )
@@ -62,9 +53,9 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
-MODELDEF  Model  ::=
-    CHAN IN    Job      :: Int # Int
-    CHAN OUT   Finish   :: Int
+MODELDEF Model ::=
+    CHAN IN    Job   
+    CHAN OUT   Finish
 
     BEHAVIOUR
             HIDE  [ Job2Proc :: Int # Int ]
@@ -79,17 +70,20 @@ MODELDEF  Model  ::=
             NI
 ENDDEF
 
-
 -- ----------------------------------------------------------------------------------------- --
 
-
-PROCDEF  testPurposes  [ Job :: Int # Int ] ( d :: Int )
- ::=
+PROCDEF  testPurposes  [ Job :: Int # Int ] ( d :: Int ) ::=
              Job ?x ?y  [[ (x % d) == 0,  (y % d) == 0 ]]
         >-> 
              testPurposes [ Job ] ( d+1 )
 ENDDEF
 
+-- ----------------------------------------------------------------------------------------- --
+
+CHANDEF Channels ::=
+	Job      :: Int # Int;
+	Finish   :: Int
+ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
