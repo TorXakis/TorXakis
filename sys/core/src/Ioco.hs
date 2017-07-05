@@ -35,7 +35,6 @@ import qualified Data.Map  as Map
 
 
 -- import from local
-import Trace
 import CoreUtils
 
 -- import from behavedef
@@ -56,22 +55,33 @@ import qualified Utils     as  Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
--- iocoModelMenuIn :  input menu on current btree of model, no quiescence, according to ioco
+-- iocoModelMenuIn  :  input  menu on current btree of model, no quiescence, according to ioco
+-- iocoModelMenuOut :  output menu on current btree of model, no quiescence, according to ioco
+
+
+iocoModelMenu :: IOC.IOC BTree.Menu
+iocoModelMenu  =  do
+     validModel <- validModDef
+     case validModel of
+     { Nothing -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelMenu without valid model" ]
+            return $ []
+     ; Just TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
+            let allSyncs = insyncs ++ outsyncs ++ splsyncs
+                modSts   = hets IOC.modsts
+             in return $ Behave.behMayMenu allSyncs modSts
+     }
 
 
 iocoModelMenuIn :: IOC.IOC BTree.Menu
 iocoModelMenuIn  =  do
-     menu <- traceModelMenu
+     menu <- iocoModelMenu
      filterM (isInCTOffers . Utils.frst) menu
-
-
--- ----------------------------------------------------------------------------------------- --
--- iocoModelMenuOut :  output menu on current btree of model, no quiescence, according to ioco
 
 
 iocoModelMenuOut :: IOC.IOC BTree.Menu
 iocoModelMenuOut  =  do
-     menu <- traceModelMenu
+     menu <- iocoModelMenu
      filterM (isOutCTOffers . Utils.frst) menu
 
 
@@ -81,9 +91,15 @@ iocoModelMenuOut  =  do
 
 iocoModelIsQui :: IOC.IOC Bool
 iocoModelIsQui  =  do
-     TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
-     modSts   <- gets IOC.modsts
-     return $ Behave.behRefusal modSts (Set.unions outsyncs)
+     validModel <- validModDef
+     case validModel of
+     { Nothing -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelIsQui without valid model" ]
+            return $ False
+     ; Just TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
+            let modSts   = gets IOC.modsts
+             in return $ Behave.behRefusal modSts (Set.unions outsyncs)
+     }
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -94,19 +110,73 @@ iocoModelIsQui  =  do
 
 iocoModelAfter :: TxsDDefs.Action -> IOC.IOC Bool
 
-iocoModelAfter (TxsDDefs.Act acts)  =  do
-     traceModelAfter acts
+iocoModelAfter act@(TxsDDefs.Act acts)  =  do
+     validModel <- validModDef
+     case validModel of
+     { Nothing -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelAfter without valid model" ]
+            return $ False
+     ; Just TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
+            let allSyncs = insyncs ++ outsyncs ++ splsyncs
+                curState = gets IOC.curstate
+                modSts   = gets IOC.modsts
+            envb           <- filterEnvCtoEnvB
+            (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
+            case maybt' of
+            { Nothing  -> do return $ False
+            ; Just bt' -> do writeEnvBtoEnvC envb'
+                             modify $ \env -> env
+                               { IOC.behtrie  = (IOC.behtrie env) ++ [(curState,act,curState+1)]
+                               , IOC.curstate = curState + 1
+                               , IOC.modsts   = bt'
+                               }
+                             return $ True
+            }
+     }
 
-iocoModelAfter TxsDDefs.ActQui  =  do
-     TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
-     modSts         <- gets IOC.modsts
-     envb           <- filterEnvCtoEnvB
-     (maybt',envb') <- lift $ runStateT (Behave.behAfterRef modSts (Set.unions outsyncs)) envb
-     writeEnvBtoEnvC envb'
-     case maybt' of
-     { Nothing  -> do return $ False
-     ; Just bt' -> do modify $ \env -> env { IOC.modsts = bt' }
-                      return $ True
+
+iocoModelAfter act@(TxsDDefs.ActQui)  =  do
+     validModel <- validModDef
+     case validModel of
+     { Nothing -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelAfter without valid model" ]
+            return $ False
+     ; Just TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
+            let curState = gets IOC.curstate
+                modSts   = gets IOC.modsts
+            envb           <- filterEnvCtoEnvB
+            (maybt',envb') <- lift $ runStateT (Behave.behAfterRef modSts (Set.unions outsyncs))
+                                               envb
+            case maybt' of
+            { Nothing  -> do return $ False
+            ; Just bt' -> do writeEnvBtoEnvC envb'
+                             modify $ \env -> env
+                               { IOC.behtrie  = (IOC.behtrie env) ++ [(curState,act,curState+1)]
+                               , IOC.curstate = curState + 1
+                               , IOC.modsts   = bt'
+                               }
+                             return $ True
+            }
+     }
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+validModDef :: IOC.IOC (Maybe TxsDefs.TxsDef)
+validModDef  =  do
+     envc <- get
+     case envc of
+     { IOC.Testing _ _
+                   moddef@(TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp))
+                   _ _ _ _ _ _ _ _ _ _ _ _ _ -> do
+            return $ Just moddef
+     ; IOC.Simuling _ _
+                    moddef@(TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp))
+                    _ _ _  _ _ _ _ _ _ _ _ -> do
+            return $ Just moddef
+     ; _ -> do
+            return $ Nothing
      }
 
 

@@ -61,7 +61,7 @@ PROCDEF  mapper [ Plus, Minus :: Int # Int; Result :: Int;
 ENDDEF
 
 
-MAPPERDEF  Mapper
+MAPPERDEF  Map
     ::=
         CHAN IN    Plus, Minus,
                    Sout

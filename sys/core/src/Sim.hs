@@ -35,6 +35,7 @@ import qualified ParamCore   as ParamCore
 import qualified EnvCore     as IOC
 import qualified EnvData     as EnvData
 
+import qualified TxsDefs     as TxsDefs
 import qualified TxsDDefs    as TxsDDefs
 import qualified TxsShow     as TxsShow
 
@@ -45,14 +46,21 @@ import qualified TxsShow     as TxsShow
 
 simN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simN depth step  =  do
+     envc <- get
      [(parname,parval)] <- IOC.getParams ["param_InputCompletion"]
-     case read parval of
-     { ParamCore.ANGELIC  -> do simA depth step
+     case (read parval, envc) of
+     { ( ParamCore.ANGELIC
+       , IOC.Simuling _ _ (TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp))
+                      mapperdef _ _ _ _ _ _ _ _ _ _
+       ) -> do
+            simA depth step
 --   ; ParamCore.DEMONIC  -> do simD depth step
 --   ; ParamCore.BUFFERED -> do simB depth step
---   ; _                  -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
---                                            $ "Simulation with unknown input completion" ]
---                              return $ TxsDDefs.Fail TxsDDefs.ActQui
+     ; ( _
+       , _
+       ) -> do
+            do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "Incorrect start of simulation" ]
+               return $ TxsDDefs.NoVerdict
      }
 
 
@@ -80,12 +88,11 @@ simAfroW depth step  =  do
           IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                         $ (TxsShow.showN step 6) ++ ":  IN:  "++ (TxsShow.fshow mact) ]
           done <- iocoModelAfter mact                        -- do input in model
-          if done
+          if  done
             then do modify $ \env -> env
                       { IOC.behtrie  = (IOC.behtrie env) ++
-                                       [ ( IOC.curstate env, mact, (IOC.maxstate env)+1 ) ]
-                      , IOC.curstate = (IOC.maxstate env)+1
-                      , IOC.maxstate = (IOC.maxstate env)+1
+                                       [ ( IOC.curstate env, mact, (IOC.curstate env)+1 ) ]
+                      , IOC.curstate = (IOC.curstate env)+1
                       }
                     simA (depth-1) (step+1)                  -- continue whether done or not
             else do simA (depth-1) (step+1)                  -- continue whether done or not
@@ -107,12 +114,11 @@ simAtoW depth step  =  do
              IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO        -- output to world was done
                            $ (TxsShow.showN step 6) ++ ": OUT: " ++ (TxsShow.fshow act) ]
              done <- iocoModelAfter act                      -- do output in model
-             if done
+             if  done
                then do modify $ \env -> env
                          { IOC.behtrie  = (IOC.behtrie env) ++
-                                          [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
-                         , IOC.curstate = (IOC.maxstate env)+1
-                         , IOC.maxstate = (IOC.maxstate env)+1
+                                          [ ( IOC.curstate env, act, (IOC.curstate env)+1 ) ]
+                         , IOC.curstate = (IOC.curstate env)+1
                          }
                        simA (depth-1) (step+1)               -- continue
                else do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
@@ -125,12 +131,11 @@ simAtoW depth step  =  do
                  IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                                $ (TxsShow.showN step 6) ++ ":  IN:  "++ (TxsShow.fshow act) ]
                  done <- iocoModelAfter act                  -- do input in model
-                 if done
+                 if  done
                    then do modify $ \env -> env
                              { IOC.behtrie  = (IOC.behtrie env) ++
-                                              [ (IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
-                             , IOC.curstate = (IOC.maxstate env)+1
-                             , IOC.maxstate = (IOC.maxstate env)+1
+                                              [ (IOC.curstate env, act, (IOC.curstate env)+1 ) ]
+                             , IOC.curstate = (IOC.curstate env)+1
                              }
                            simA (depth-1) (step+1)           -- continue whether done or not
                    else do simA (depth-1) (step+1)           -- continue whether done or not

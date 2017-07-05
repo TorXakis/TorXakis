@@ -31,6 +31,7 @@ module CoreUtils
 
 where
 
+import System.IO
 import Control.Monad.State
 
 import qualified Data.Set  as Set
@@ -59,13 +60,48 @@ import qualified Solve     as Solve
 filterEnvCtoEnvB :: IOC.IOC IOB.EnvB
 filterEnvCtoEnvB  =  do
      envc <- get
-     return $ IOB.EnvB { IOB.smts     = IOC.smts     envc
-                       , IOB.tdefs    = IOC.tdefs    envc
-                       , IOB.stateid  = IOC.curstate envc
-                       , IOB.params   = IOC.params   envc
-                       , IOB.unid     = IOC.unid     envc
-                       , IOB.msgs     = []
-                       }
+     case envc of
+     { IOC.Noning params unid
+         -> return $ IOB.EnvB { IOB.smts     = Map.empty
+                              , IOB.tdefs    = TxsDefs.empty
+                              , IOB.stateid  = (-1)
+                              , IOB.params   = params
+                              , IOB.unid     = unid
+                              , IOB.msgs     = []
+                              }
+     ; IOC.Initing smts tdefs params unid putmsgs
+         -> return $ IOB.EnvB { IOB.smts     = smts
+                              , IOB.tdefs    = tdefs
+                              , IOB.stateid  = (-1)
+                              , IOB.params   = params
+                              , IOB.unid     = unid
+                              , IOB.msgs     = []
+                              }
+     ; IOC.Testing smts tdefs _ _ _ _ _ _ inistate curstate _ _ _ params unid msgs
+         -> return $ IOB.EnvB { IOB.smts     = smts
+                              , IOB.tdefs    = tdefs
+                              , IOB.stateid  = curstate
+                              , IOB.params   = params
+                              , IOB.unid     = unid
+                              , IOB.msgs     = []
+                              }
+     ; IOC.Simuling smts tdefs _ _ _ _ _ inistate curstate _ _ params unid msgs
+         -> return $ IOB.EnvB { IOB.smts     = smts
+                              , IOB.tdefs    = tdefs
+                              , IOB.stateid  = curstate
+                              , IOB.params   = params
+                              , IOB.unid     = unid
+                              , IOB.msgs     = []
+                              }
+     ; IOC.Stepping smts tdefs _ _ inistate curstate maxstate _ params unid msgs
+         -> return $ IOB.EnvB { IOB.smts     = smts
+                              , IOB.tdefs    = tdefs
+                              , IOB.stateid  = curstate
+                              , IOB.params   = params
+                              , IOB.unid     = unid
+                              , IOB.msgs     = []
+                              }
+     }
 
 
 -- ----------------------------------------------------------------------------------------- --

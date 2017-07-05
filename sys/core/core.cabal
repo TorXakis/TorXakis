@@ -23,7 +23,6 @@ library
   other-modules:        Ioco
                       , Mapper
                       , Purpose
-                      , Trace
                       , Sim
                       , Step
                       , Test

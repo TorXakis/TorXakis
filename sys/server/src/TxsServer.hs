@@ -317,7 +317,7 @@ cmdSeed :: String -> IOS.IOS ()
 cmdSeed args  =  do
      case words args of
        [val] -> do seed <- return $ read val
-                   lift $ TxsCore.txsSeed seed
+                   lift $ TxsCore.txsSetSeed seed
                    IFS.pack "SEED" []
                    cmdsIntpr
        _     -> do IFS.nack "SEED" [ "Incorrect seed" ]
@@ -913,7 +913,7 @@ cmdMenu args  =  do
      (kind,what,stnr) <- return
           $ case words args of
             { []            -> ( "mod", "all", (-1) )
-            ; ["in"]        -> ( "mod", "in" , (-1) )
+            ; ["in"]        -> ( "mod", "in", (-1)  )
             ; ["in",s]      -> if  and (map Char.isDigit s)
                                    then ( "mod", "in", (read s)::Int )
                                  else ( "mod", "in", (-11)             )

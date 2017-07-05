@@ -30,7 +30,7 @@ module TxsCore
                   --    get parameter value
 , txsSetParam     -- :: String -> String -> IOC.IOC [(String,String)]
                   --    set parameter values
-, txsSeed         -- :: Int -> IOC.IOC ()
+, txsSetSeed      -- :: Int -> IOC.IOC ()
                   --    setting random seed
 , txsEval         -- :: TxsDefs.VExpr -> IOC.IOC TxsDefs.Const
                   --    evaluation of ValExpr
@@ -118,10 +118,12 @@ import qualified Eval        as Eval
 
 runTxsCore :: StateT s IOC.IOC a -> s -> IO ()
 runTxsCore ctrl s0  =  do
-     runStateT (runTxsCtrl ctrl s0) (IOC.Noning { IOC.params = Map.union ParamCore.initParams SolveDefs.Params.initParams
-                                                , IOC.unid   = 0
-                                                }
-                                    )
+     runStateT (runTxsCtrl ctrl s0)
+               (IOC.Noning { IOC.params = Map.union ParamCore.initParams
+                                                    SolveDefs.Params.initParams
+                           , IOC.unid   = 0
+                           }
+               )
      return ()
 
 runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()
@@ -162,7 +164,7 @@ txsInit tdefs putMsgs  =  do
 
 txsTermit :: IOC.IOC ()
 txsTermit  =  do
-     envc    <- get
+     envc <- get
      case envc of
        IOC.Noning params unid
          -> return ()
@@ -203,24 +205,24 @@ txsStop  =  do
 
 txsGetParams :: IOC.IOC [(String,String)]
 txsGetParams  =  do
-       IOC.getParams []
+     IOC.getParams []
 
 -- ----------------------------------------------------------------------------------------- --
 
 txsGetParam :: String -> IOC.IOC [(String,String)]
 txsGetParam prm  =  do
-       IOC.getParams [prm]
+     IOC.getParams [prm]
 
 -- ----------------------------------------------------------------------------------------- --
 
 txsSetParam :: String -> String -> IOC.IOC [(String,String)]
 txsSetParam prm val  =  do
-       IOC.setParams [(prm,val)]
+     IOC.setParams [(prm,val)]
 
 -- ----------------------------------------------------------------------------------------- --
 
-txsSeed :: Int -> IOC.IOC ()
-txsSeed seed  =  do
+txsSetSeed :: Int -> IOC.IOC ()
+txsSetSeed seed  =  do
      lift $ setStdGen(mkStdGen seed)
      IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_INFO $ "Seed set to " ++ (show seed) ]
 
@@ -231,86 +233,120 @@ txsSeed seed  =  do
 
 txsEval :: TxsDefs.VExpr -> IOC.IOC TxsDefs.Const
 txsEval vexp  =  do
-     let frees = FreeVar.freeVars vexp
-      in if  not $ null frees
-           then do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                                 $ "Value expression not closed: " ++ (TxsShow.fshow frees) ]
-                   return $ TxsDefs.Cerror ""
-           else do envb         <- filterEnvCtoEnvB
-                   (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
-                   writeEnvBtoEnvC envb'
-                   return $ wal'
+     envc <- get
+     case envc of
+       IOC.Noning params unid
+         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'eval' without model" ]
+               return $ TxsDefs.Cerror ""
+       _ -> do                       -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               let frees = FreeVar.freeVars vexp
+                in if  not $ null frees
+                     then do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                           $ "Value expression not closed: " ++
+                                             (TxsShow.fshow frees) ]
+                             return $ TxsDefs.Cerror ""
+                     else do envb         <- filterEnvCtoEnvB
+                             (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
+                             writeEnvBtoEnvC envb'
+                             return $ wal'
 
 -- ----------------------------------------------------------------------------------------- --
 
 txsSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsSolve vexp  =  do
-     if  SortOf.sortOf vexp /= SortOf.sortId_Bool
-       then do
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                       $ "Value expression for solve shall be Bool" ]
-         return Map.empty
-       else do
-         frees         <- return $ FreeVar.freeVars vexp
-         assertions    <- return $ Solve.add vexp Solve.empty
-         smtEnv        <- IOC.getSMT "current"
-         (sat,smtEnv') <- lift $ runStateT (Solve.solve frees assertions) smtEnv
-         IOC.putSMT "current" smtEnv'
-         case sat of
-           SolveDefs.Solved sol    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE "sat" ]
-                                         return sol
-           SolveDefs.Unsolvable    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE "unsat" ]
-                                         return Map.empty
-           SolveDefs.UnableToSolve -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE "unknown" ]
-                                         return Map.empty
-
-                                         
+     envc <- get
+     case envc of
+       IOC.Noning params unid
+         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'solve' without model" ]
+               return Map.empty
+       _ -> do                       -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               if  SortOf.sortOf vexp /= SortOf.sortId_Bool
+                 then do
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                 $ "Value expression for solve shall be Bool" ]
+                   return Map.empty
+                 else do
+                   frees         <- return $ FreeVar.freeVars vexp
+                   assertions    <- return $ Solve.add vexp Solve.empty
+                   smtEnv        <- IOC.getSMT "current"
+                   (sat,smtEnv') <- lift $ runStateT (Solve.solve frees assertions) smtEnv
+                   IOC.putSMT "current" smtEnv'
+                   case sat of
+                     SolveDefs.Solved sol    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
+                                                                 "sat" ]
+                                                   return sol
+                     SolveDefs.Unsolvable    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
+                                                                 "unsat" ]
+                                                   return Map.empty
+                     SolveDefs.UnableToSolve -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
+                                                                 "unknown" ]
+                                                   return Map.empty
+          
+                                                   
 -- ----------------------------------------------------------------------------------------- --
 
 txsUniSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsUniSolve vexp  =  do
-     if  SortOf.sortOf vexp /= SortOf.sortId_Bool
-       then do
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Value expression for solve shall be Bool" ]
-         return Map.empty
-       else do
-         frees         <- return $ FreeVar.freeVars vexp
-         assertions    <- return $ Solve.add vexp Solve.empty
-         smtEnv        <- IOC.getSMT "current"
-         (sat,smtEnv') <- lift $ runStateT (Solve.uniSolve frees assertions) smtEnv
-         IOC.putSMT "current" smtEnv'
-         case sat of
-           SolveDefs.Solved sol    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE "sat" ]
-                                         return sol
-           SolveDefs.Unsolvable    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE "unsat" ]
-                                         return Map.empty
-           SolveDefs.UnableToSolve -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE "unknown" ]
-                                         return Map.empty
+     envc <- get
+     case envc of
+       IOC.Noning params unid
+         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'solve' without model" ]
+               return Map.empty
+       _ -> do                       -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               if  SortOf.sortOf vexp /= SortOf.sortId_Bool
+                 then do
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Value expression shall be Bool" ]
+                   return Map.empty
+                 else do
+                   frees         <- return $ FreeVar.freeVars vexp
+                   assertions    <- return $ Solve.add vexp Solve.empty
+                   smtEnv        <- IOC.getSMT "current"
+                   (sat,smtEnv') <- lift $ runStateT (Solve.uniSolve frees assertions) smtEnv
+                   IOC.putSMT "current" smtEnv'
+                   case sat of
+                     SolveDefs.Solved sol    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
+                                                                 "sat" ]
+                                                   return sol
+                     SolveDefs.Unsolvable    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
+                                                                 "unsat" ]
+                                                   return Map.empty
+                     SolveDefs.UnableToSolve -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
+                                                                 "unknown" ]
+                                                   return Map.empty
 
 -- ----------------------------------------------------------------------------------------- --
 
 txsRanSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsRanSolve vexp  =  do
-     if  SortOf.sortOf vexp /= SortOf.sortId_Bool
-       then do
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Value expression for solve shall be Bool" ]
-         return Map.empty
-      else do
-         frees         <- return $ FreeVar.freeVars vexp
-         assertions    <- return $ Solve.add vexp Solve.empty
-         smtEnv        <- IOC.getSMT "current"
-         parammap <- gets IOC.params
-         let p = Solve.toRandParam parammap
-         (sat,smtEnv') <- lift $ runStateT (Solve.randSolve p frees assertions) smtEnv
-         IOC.putSMT "current" smtEnv'
-         case sat of
-           SolveDefs.Solved sol    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE "sat" ]
-                                         return sol
-           SolveDefs.Unsolvable    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE "unsat" ]
-                                         return Map.empty
-           SolveDefs.UnableToSolve -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE "unknown" ]
-                                         return Map.empty
-
+     envc <- get
+     case envc of
+       IOC.Noning params unid
+         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'solve' without model" ]
+               return Map.empty
+       _ -> do                       -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               if  SortOf.sortOf vexp /= SortOf.sortId_Bool
+                 then do
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Value expression shall be Bool" ]
+                   return Map.empty
+                else do
+                   frees         <- return $ FreeVar.freeVars vexp
+                   assertions    <- return $ Solve.add vexp Solve.empty
+                   smtEnv        <- IOC.getSMT "current"
+                   parammap <- gets IOC.params
+                   let p = Solve.toRandParam parammap
+                   (sat,smtEnv') <- lift $ runStateT (Solve.randSolve p frees assertions) smtEnv
+                   IOC.putSMT "current" smtEnv'
+                   case sat of
+                     SolveDefs.Solved sol    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
+                                                                 "sat" ]
+                                                   return sol
+                     SolveDefs.Unsolvable    -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
+                                                                 "unsat" ]
+                                                   return Map.empty
+                     SolveDefs.UnableToSolve -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
+                                                                 "unknown" ]
+                                                   return Map.empty
+          
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis core main api -- modus transition general -- set Tester, Simulator, Stepper
@@ -323,51 +359,143 @@ txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
 txsSetTest putToW getFroW moddef mapdef purpdef  =  do
      envc <- get
      case envc of
-     { IOC.Noning params unid
-         -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester started without model file" ]
-     ; IOC.Initing smts tdefs params unid putmsgs
-         -> if  isConsistSetTest moddef mapdef purpdef
-              then do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
-              else do
-                let TxsDefs.DefModel  (TxsDefs.ModelDef  mchin mchout mspls  mbexp) = moddef
-                let TxsDefs.DefMapper (TxsDefs.MapperDef achin achout asyncs abexp) = mapdef
-                let TxsDefs.DefPurp   (TxsDefs.PurpDef   pchin pchout pspls  goals) = purpdef
-                let allSyncs  = mchin ++ mchout ++ mspls
-                let pAllSyncs = pchin ++ pchout ++ pspls
-                envb            <- filterEnvCtoEnvB
-                (maybt',envb' ) <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
-                (maymt',envb'') <- lift $ runStateT (Behave.behInit asyncs   abexp) envb'
-                case (maybt',maymt') of
-                { (Nothing , _       ) -> do
-                     IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
-                ; (_       , Nothing ) -> do
-                     IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
-                ; (Just bt', Just mt') -> do
-                     writeEnvBtoEnvC envb''
-                     gls <- mapM (goalInit pAllSyncs) goals
-                     put $ IOC.Testing { IOC.smts      = smts
-                                       , IOC.tdefs     = tdefs
-                                       , IOC.modeldef  = moddef
-                                       , IOC.mapperdef = mapdef
-                                       , IOC.purpdef   = purpdef
-                                       , IOC.puttow    = putToW
-                                       , IOC.getfrow   = getFroW
-                                       , IOC.behtrie   = []
-                                       , IOC.inistate  = 0
-                                       , IOC.curstate  = 0
-                                       , IOC.modsts    = bt'
-                                       , IOC.mapsts    = mt'
-                                       , IOC.purpsts   = concat gls
-                                       , IOC.params    = params
-                                       , IOC.unid      = unid
-                                       , IOC.putmsgs   = putmsgs
-                                       }
-                     IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
-                }
-     ; _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulation/Testing/Stepping stopped" ]
-               TxsCore.txsSetTest putToW getFroW moddef mapdef purpdef
+     { IOC.Noning params unid -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester started without model file" ]
+     ; IOC.Initing smts tdefs params unid putmsgs -> do
+            (maybt,mt,gls) <- startTester moddef mapdef purpdef
+            case maybt of
+            { Nothing -> do
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
+            ; Just bt -> do
+                   put $ IOC.Testing { IOC.smts      = smts
+                                     , IOC.tdefs     = tdefs
+                                     , IOC.modeldef  = moddef
+                                     , IOC.mapperdef = mapdef
+                                     , IOC.purpdef   = purpdef
+                                     , IOC.puttow    = putToW
+                                     , IOC.getfrow   = getFroW
+                                     , IOC.behtrie   = []
+                                     , IOC.inistate  = 0
+                                     , IOC.curstate  = 0
+                                     , IOC.modsts    = bt
+                                     , IOC.mapsts    = mt
+                                     , IOC.purpsts   = gls
+                                     , IOC.params    = params
+                                     , IOC.unid      = unid
+                                     , IOC.putmsgs   = putmsgs
+                                     }
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
+            }
+     ; _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
+            TxsCore.txsStop
+            TxsCore.txsSetTest putToW getFroW moddef mapdef purpdef
      }
+
+
+startTester :: TxsDefs.TxsDef ->
+               TxsDefs.TxsDef ->
+               TxsDefs.TxsDef ->
+               IOC.IOC ( Maybe BTree.BTree, BTree.BTree, [(TxsDefs.GoalId,BTree.BTree)] )
+
+startTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
+            (TxsDefs.DefNo)
+            (TxsDefs.DefNo)  =  do
+     let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
+     envb            <- filterEnvCtoEnvB
+     (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
+     writeEnvBtoEnvC envb'
+     return $ ( maybt', [], [] )
+
+startTester (TxsDefs.DefModel  (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp))
+            (TxsDefs.DefMapper (TxsDefs.MapperDef achins   achouts   asyncsets abexp))
+            (TxsDefs.DefNo)  =  do
+     let { mins   = Set.unions minsyncs
+         ; mouts  = Set.unions moutsyncs
+         ; ains   = Set.fromList $ achins
+         ; aouts  = Set.fromList $ achouts
+         }
+      in if     mins  `Set.isSubsetOf` ains
+             && mouts `Set.isSubsetOf` aouts
+           then do let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
+                   envb            <- filterEnvCtoEnvB
+                   (maybt',envb' ) <- lift $ runStateT (Behave.behInit allSyncs  mbexp) envb
+                   (maymt',envb'') <- lift $ runStateT (Behave.behInit asyncsets abexp) envb'
+                   case (maybt',maymt') of
+                   { (Nothing , _       ) -> do
+                          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
+                          return $ ( Nothing, [], [] )
+                   ; (_       , Nothing ) -> do
+                          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester mapper failed" ]
+                          return $ ( Nothing, [], [] )
+                   ; (Just bt', Just mt') -> do
+                          writeEnvBtoEnvC envb''
+                          return $ ( maybt', mt', [] )
+                   }
+           else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
+                   return $ ( Nothing, [], [] )
+
+startTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
+            (TxsDefs.DefNo)
+            (TxsDefs.DefPurp  (TxsDefs.PurpDef  pinsyncs poutsyncs psplsyncs goals))  =  do
+     let { mins   = Set.unions minsyncs
+         ; mouts  = Set.unions moutsyncs
+         ; pins   = Set.unions pinsyncs
+         ; pouts  = Set.unions poutsyncs
+         }
+      in if     ( (pins  == Set.empty) || (pins  == mins)  )
+             && ( (pouts == Set.empty) || (pouts == mouts) )
+           then do let allSyncs  = minsyncs ++ moutsyncs ++ msplsyncs
+                       pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
+                   envb           <- filterEnvCtoEnvB
+                   (maybt',envb') <- lift $ runStateT (Behave.behInit allSyncs  mbexp) envb
+                   case maybt' of
+                   { Nothing -> do
+                          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
+                          return $ ( Nothing, [], [] )
+                   ; Just bt' -> do
+                          writeEnvBtoEnvC envb'
+                          gls <- mapM (goalInit pAllSyncs) goals
+                          return $ ( maybt', [], concat gls )
+                   }
+           else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
+                   return $ ( Nothing, [], [] )
+
+startTester (TxsDefs.DefModel  (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp))
+            (TxsDefs.DefMapper (TxsDefs.MapperDef achins   achouts   asyncsets abexp))
+            (TxsDefs.DefPurp   (TxsDefs.PurpDef   pinsyncs poutsyncs psplsyncs goals))  =  do
+     let { mins   = Set.unions minsyncs
+         ; mouts  = Set.unions moutsyncs
+         ; ains   = Set.fromList $ achins
+         ; aouts  = Set.fromList $ achouts
+         ; pins   = Set.unions pinsyncs
+         ; pouts  = Set.unions poutsyncs
+         }
+      in if     ( (pins  == Set.empty) || (pins  == mins)  )
+             && ( (pouts == Set.empty) || (pouts == mouts) )
+             && mins  `Set.isSubsetOf` ains
+             && mouts `Set.isSubsetOf` aouts
+           then do let allSyncs  = minsyncs ++ moutsyncs ++ msplsyncs
+                       pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
+                   envb            <- filterEnvCtoEnvB
+                   (maybt',envb')  <- lift $ runStateT (Behave.behInit allSyncs  mbexp) envb
+                   (maymt',envb'') <- lift $ runStateT (Behave.behInit asyncsets abexp) envb'
+                   case (maybt',maymt') of
+                   { (Nothing , _       ) -> do
+                          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
+                          return $ ( Nothing, [], [] )
+                   ; (_       , Nothing ) -> do
+                          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester mapper failed" ]
+                          return $ ( Nothing, [], [] )
+                   ; (Just bt', Just mt') -> do
+                          writeEnvBtoEnvC envb''
+                          gls <- mapM (goalInit pAllSyncs) goals
+                          return $ ( maybt', mt', concat gls )
+                   }
+           else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
+                   return $ ( Nothing, [], [] )
+
+startTester _ _ _  =  do
+     return $ ( Nothing, [], [] )
 
 
 goalInit :: [ Set.Set TxsDefs.ChanId ] -> 
@@ -382,54 +510,6 @@ goalInit chsets (gid,bexp)  =  do
               ; Just pt' -> [ (gid, pt') ]
               }
                    
-
-isConsistSetTest :: TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef -> Bool
-
-isConsistSetTest (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                 (TxsDefs.DefNo)
-                 (TxsDefs.DefNo)
-  =  True
-
-isConsistSetTest (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                 (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                 (TxsDefs.DefNo)
-  =  let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ains   = Set.fromList $ achins
-         ; aouts  = Set.fromList $ achouts
-         }
-      in    mins  `Set.isSubsetOf` ains
-         && mouts `Set.isSubsetOf` aouts
- 
-isConsistSetTest (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                 (TxsDefs.DefNo)
-                 (TxsDefs.DefPurp (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
-  =  let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; pins   = Set.unions pinsyncs
-         ; pouts  = Set.unions poutsyncs
-         }
-      in    ( (pins  == Set.empty) || (pins  == mins)  )
-         && ( (pouts == Set.empty) || (pouts == mouts) )
-
-isConsistSetTest (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                 (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                 (TxsDefs.DefPurp (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
-  =  let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ains   = Set.fromList $ achins
-         ; aouts  = Set.fromList $ achouts
-         ; pins   = Set.unions pinsyncs
-         ; pouts  = Set.unions poutsyncs
-         }
-      in    ( (pins  == Set.empty) || (pins  == mins)  )
-         && ( (pouts == Set.empty) || (pouts == mouts) )
-         && mins  `Set.isSubsetOf` ains
-         && mouts `Set.isSubsetOf` aouts
-
-isConsistSetTest _ _ _
-  =  False
-
 -- ----------------------------------------------------------------------------------------- --
 
 txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
@@ -439,66 +519,78 @@ txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
 txsSetSim putToW getFroW moddef mapdef  =  do
      envc <- get
      case envc of
-     { IOC.Noning params unid
-         -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator started without model file" ]
-     ; IOC.Initing smts tdefs params unid putmsgs
-         -> if  not $ isConsistSetSim moddef mapdef
-              then do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
-              else do
-                let TxsDefs.DefModel  (TxsDefs.ModelDef  mchin mchout mspls  mbexp) = moddef
-                let TxsDefs.DefMapper (TxsDefs.MapperDef achin achout asyncs abexp) = mapdef
-                let allSyncs = mchin ++ mchout ++ mspls
-                envb            <- filterEnvCtoEnvB
-                (maybt',envb' ) <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
-                (maymt',envb'') <- lift $ runStateT (Behave.behInit asyncs   abexp) envb'
-                case (maybt',maymt') of
-                { (Nothing , _       ) -> do
-                     IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator start failed" ]
-                ; (_       , Nothing ) -> do
-                     IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator start failed" ]
-                ; (Just bt', Just mt') -> do
-                     writeEnvBtoEnvC envb''
-                     put $ IOC.Simuling { IOC.smts      = smts
-                                        , IOC.tdefs     = tdefs
-                                        , IOC.modeldef  = moddef
-                                        , IOC.mapperdef = mapdef
-                                        , IOC.puttow    = putToW
-                                        , IOC.getfrow   = getFroW
-                                        , IOC.behtrie   = []
-                                        , IOC.inistate  = 0
-                                        , IOC.curstate  = 0
-                                        , IOC.modsts    = bt'
-                                        , IOC.mapsts    = mt'
-                                        , IOC.params    = params
-                                        , IOC.unid      = unid
-                                        , IOC.putmsgs   = putmsgs
-                                        }
-                     IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulator started" ]
-                }
-     ; _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulation/Testing/Stepping stopped" ]
-               TxsCore.txsSetSim putToW getFroW moddef mapdef
+     { IOC.Noning params unid -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator started without model file" ]
+     ; IOC.Initing smts tdefs params unid putmsgs -> do
+            (maybt,mt) <- startSimulator moddef mapdef
+            case maybt of
+            { Nothing -> do
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator start failed" ]
+            ; Just bt -> do
+                   put $ IOC.Simuling { IOC.smts      = smts
+                                      , IOC.tdefs     = tdefs
+                                      , IOC.modeldef  = moddef
+                                      , IOC.mapperdef = mapdef
+                                      , IOC.puttow    = putToW
+                                      , IOC.getfrow   = getFroW
+                                      , IOC.behtrie   = []
+                                      , IOC.inistate  = 0
+                                      , IOC.curstate  = 0
+                                      , IOC.modsts    = bt
+                                      , IOC.mapsts    = mt
+                                      , IOC.params    = params
+                                      , IOC.unid      = unid
+                                      , IOC.putmsgs   = putmsgs
+                                      }
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulator started" ]
+            }
+     ; _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
+            TxsCore.txsStop
+            TxsCore.txsSetSim putToW getFroW moddef mapdef
      }
 
 
-isConsistSetSim :: TxsDefs.TxsDef -> TxsDefs.TxsDef -> Bool
+startSimulator :: TxsDefs.TxsDef ->
+                  TxsDefs.TxsDef ->
+                  IOC.IOC ( Maybe BTree.BTree, BTree.BTree )
 
-isConsistSetSim (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                (TxsDefs.DefNo)
-  =  True
+startSimulator (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
+               (TxsDefs.DefNo)  =  do
+     let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
+     envb            <- filterEnvCtoEnvB
+     (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
+     writeEnvBtoEnvC envb'
+     return $ ( maybt', [] )
 
-isConsistSetSim (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
+startSimulator (TxsDefs.DefModel  (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp))
+               (TxsDefs.DefMapper (TxsDefs.MapperDef achins   achouts   asyncsets abexp))
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ains   = Set.fromList $ achins
          ; aouts  = Set.fromList $ achouts
          }
-      in    mouts `Set.isSubsetOf` ains
-         && mins  `Set.isSubsetOf` aouts
+      in if     mouts `Set.isSubsetOf` ains
+             && mins  `Set.isSubsetOf` aouts
+           then do let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
+                   envb            <- filterEnvCtoEnvB
+                   (maybt',envb' ) <- lift $ runStateT (Behave.behInit allSyncs  mbexp) envb
+                   (maymt',envb'') <- lift $ runStateT (Behave.behInit asyncsets abexp) envb'
+                   case (maybt',maymt') of
+                   { (Nothing , _       ) -> do
+                          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
+                          return $ ( Nothing, [] )
+                   ; (_       , Nothing ) -> do
+                          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester mapper failed" ]
+                          return $ ( Nothing, [] )
+                   ; (Just bt', Just mt') -> do
+                          writeEnvBtoEnvC envb''
+                          return $ ( maybt', mt' )
+                   }
+           else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
+                   return $ ( Nothing, [] )
 
-isConsistSetSim _ _
-  =  False
+startSimulator _ _  =  do
+     return $ ( Nothing, [] )
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -506,18 +598,14 @@ txsSetStep :: TxsDefs.TxsDef -> IOC.IOC ()
 txsSetStep moddef  =  do
      envc <- get
      case envc of
-     { IOC.Noning params unid
-         -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper started without model file" ]
-     ; IOC.Initing smts tdefs params unid putmsgs
-         -> do let TxsDefs.DefModel  (TxsDefs.ModelDef  mchin mchout mspls  mbexp) = moddef
-               let allSyncs = mchin ++ mchout ++ mspls
-               envb           <- filterEnvCtoEnvB
-               (maybt',envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
-               case maybt' of
-               { Nothing  -> do
+     { IOC.Noning params unid -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper started without model file" ]
+     ; IOC.Initing smts tdefs params unid putmsgs -> do
+            maybt <- startStepper moddef
+            case maybt of
+            { Nothing -> do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper start failed" ]
-               ; Just bt' -> do
-                   writeEnvBtoEnvC envb'
+            ; Just bt -> do
                    put $ IOC.Stepping { IOC.smts      = smts
                                       , IOC.tdefs     = tdefs
                                       , IOC.modeldef  = moddef
@@ -525,20 +613,35 @@ txsSetStep moddef  =  do
                                       , IOC.inistate  = 0
                                       , IOC.curstate  = 0
                                       , IOC.maxstate  = 0
-                                      , IOC.modstss   = Map.singleton 0 bt'
+                                      , IOC.modstss   = Map.singleton 0 bt
                                       , IOC.params    = params
                                       , IOC.unid      = unid
                                       , IOC.putmsgs   = putmsgs
                                       }
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepper started" ]
-               }
-     ; _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulation/Testing/Stepping stopped" ]
-               TxsCore.txsSetStep moddef
+            }
+     ; _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
+            TxsCore.txsStop
+            TxsCore.txsSetStep moddef
      }
+
+
+startStepper :: TxsDefs.TxsDef ->
+                IOC.IOC ( Maybe BTree.BTree )
+
+startStepper (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))  =  do
+     let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
+     envb            <- filterEnvCtoEnvB
+     (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
+     writeEnvBtoEnvC envb'
+     return $ maybt'
    
+startStepper _  =  do
+     return $ Nothing
+
 
 -- ----------------------------------------------------------------------------------------- --
+-- torxakis core main api -- core actions --  testing, simulating, stepping
 
 
 txsTestIn :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
@@ -628,9 +731,9 @@ txsShow item  =  do
      case item of
      { "tdefs"  -> do return $ show (IOC.tdefs envc)
      ; "state"  -> do return $ show (IOC.curstate envc)
-     ; "model"  -> do return $ TxsShow.fshow IOC.(modsts envc)
-     ; "mapper" -> do return $ TxsShow.fshow IOC.(mapsts envc)
-     ; "purp"   -> do return $ TxsShow.fshow IOC.(purpsts envc)
+     ; "model"  -> do return $ TxsShow.fshow (IOC.modsts envc)
+     ; "mapper" -> do return $ TxsShow.fshow (IOC.mapsts envc)
+     ; "purp"   -> do return $ TxsShow.fshow (IOC.purpsts envc)
      ; _        -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "nothing to be shown" ]
                       return $ "\n"
      }

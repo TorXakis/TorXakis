@@ -26,7 +26,6 @@ module Test
 
 where
 
-import Debug.Trace
 import System.IO
 
 import System.Random
@@ -410,7 +409,7 @@ testIOCOfullPurp depth lastDelta step  =  do
          return $ TxsDDefs.Pass
        else do
          ioRand   <- lift $ randomRIO (False,True)                  -- random for in- or output
-         modMenu  <- trace "testIOCOfull" iocoModelMenuIn
+         modMenu  <- iocoModelMenuIn
          purpMenu <- purpMenuIn
          lift $ hPutStrLn stderr $ "modMenu: " ++ (show modMenu)
          lift $ hPutStrLn stderr $ "purpMenu: " ++ (show purpMenu)
