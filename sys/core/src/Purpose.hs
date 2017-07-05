@@ -57,6 +57,9 @@ import qualified Utils     as Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
+-- assumes Testing modus and valid PurpDef
+
+-- ----------------------------------------------------------------------------------------- --
 -- goalMenu :  menu on current btree of goal with name
 
 

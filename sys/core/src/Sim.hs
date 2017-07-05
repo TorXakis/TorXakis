@@ -89,13 +89,8 @@ simAfroW depth step  =  do
                         $ (TxsShow.showN step 6) ++ ":  IN:  "++ (TxsShow.fshow mact) ]
           done <- iocoModelAfter mact                        -- do input in model
           if  done
-            then do modify $ \env -> env
-                      { IOC.behtrie  = (IOC.behtrie env) ++
-                                       [ ( IOC.curstate env, mact, (IOC.curstate env)+1 ) ]
-                      , IOC.curstate = (IOC.curstate env)+1
-                      }
-                    simA (depth-1) (step+1)                  -- continue whether done or not
-            else do simA (depth-1) (step+1)                  -- continue whether done or not
+            then do simA (depth-1) (step+1)                  -- continue whether done or not
+            else do simA (depth-1) (step+1)                  -- (angelic)
      ; TxsDDefs.ActQui -> do                                 -- world did not provide input
           simAtoW depth step                                 -- continue with output to world
      }
@@ -115,12 +110,7 @@ simAtoW depth step  =  do
                            $ (TxsShow.showN step 6) ++ ": OUT: " ++ (TxsShow.fshow act) ]
              done <- iocoModelAfter act                      -- do output in model
              if  done
-               then do modify $ \env -> env
-                         { IOC.behtrie  = (IOC.behtrie env) ++
-                                          [ ( IOC.curstate env, act, (IOC.curstate env)+1 ) ]
-                         , IOC.curstate = (IOC.curstate env)+1
-                         }
-                       simA (depth-1) (step+1)               -- continue
+               then do simA (depth-1) (step+1)               -- continue
                else do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                      $ "proposed output could not happen in model" ]
                        return $ TxsDDefs.NoVerdict
@@ -132,13 +122,8 @@ simAtoW depth step  =  do
                                $ (TxsShow.showN step 6) ++ ":  IN:  "++ (TxsShow.fshow act) ]
                  done <- iocoModelAfter act                  -- do input in model
                  if  done
-                   then do modify $ \env -> env
-                             { IOC.behtrie  = (IOC.behtrie env) ++
-                                              [ (IOC.curstate env, act, (IOC.curstate env)+1 ) ]
-                             , IOC.curstate = (IOC.curstate env)+1
-                             }
-                           simA (depth-1) (step+1)           -- continue whether done or not
-                   else do simA (depth-1) (step+1)           -- continue whether done or not
+                   then do simA (depth-1) (step+1)           -- continue whether done or not
+                   else do simA (depth-1) (step+1)           -- (angelic)
              ; TxsDDefs.ActQui -> do                         -- world did not provide input
                  simAtoW depth step                          -- continue with output to world
              }

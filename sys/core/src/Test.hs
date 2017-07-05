@@ -64,13 +64,7 @@ testIn act@(TxsDDefs.Act acts) step  =  do
                        $ (TxsShow.showN step 6) ++ ":  IN:  " ++ (TxsShow.fshow act) ]
          done <- iocoModelAfter act
          if  done
-           then do modify $ \env -> env                     -- input done on sut and on btree
-                     { IOC.behtrie  = (IOC.behtrie env) ++
-                                      [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
-                     , IOC.curstate = (IOC.maxstate env)+1
-                     , IOC.maxstate = (IOC.maxstate env)+1
-                     }
-                   return $ TxsDDefs.Pass
+           then do return $ TxsDDefs.Pass
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                  $ "proposed input not possible on model" ]
                    return $ TxsDDefs.Fail act               -- input done on sut, not on btree
@@ -80,13 +74,7 @@ testIn act@(TxsDDefs.Act acts) step  =  do
                        $ (TxsShow.showN step 6) ++ ":  OUT: " ++ (TxsShow.fshow act) ]
          done <- iocoModelAfter act
          if  done
-           then do modify $ \env -> env                     -- input done on sut and on btree
-                     { IOC.behtrie  = (IOC.behtrie env) ++
-                                      [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
-                     , IOC.curstate = (IOC.maxstate env)+1
-                     , IOC.maxstate = (IOC.maxstate env)+1
-                     }
-                   return $ TxsDDefs.Pass                   -- output act `Elem` menuOut
+           then do return $ TxsDDefs.Pass                   -- output act `Elem` menuOut
            else do expected
                    return $ TxsDDefs.Fail act               -- output act `notElem` menuOut
  
@@ -110,13 +98,7 @@ testOut step  =  do
                    $ (TxsShow.showN step 6) ++ ":  OUT: " ++ (TxsShow.fshow act) ]
      done <- iocoModelAfter act
      if  done
-       then do modify $ \env -> env
-                 { IOC.behtrie  = (IOC.behtrie env) ++
-                                  [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
-                 , IOC.curstate = (IOC.maxstate env)+1
-                 , IOC.maxstate = (IOC.maxstate env)+1
-                 }
-               return $ TxsDDefs.Pass                       -- output act `elem` menuOut
+       then do return $ TxsDDefs.Pass                       -- output act `elem` menuOut
        else do expected
                return $ TxsDDefs.Fail act                   -- output act `notElem` menuOut
 
@@ -132,25 +114,33 @@ testN depth step  =  do
      case (read parval, envc) of
      { ( ParamCore.IOCO
        , IOC.Testing _ _ m a TxsDefs.DefNo _ _ _ _ _ _ _ _ _ _ _
-       ) -> do testIOCO depth False step
+       ) -> do                                                            -- no test purpose --
+            testIOCO depth False step
      ; ( ParamCore.IOCO
        , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef []      []       _ _))
                      _ _ _ _ _ _ _ _ _ _ _
-       ) -> do testIOCO depth False step
+       ) -> do                                       -- empty test purpse == no test purpose --
+            testIOCO depth False step
      ; ( ParamCore.IOCO
        , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef []      outsyncs _ _))
                      _ _ _ _ _ _ _ _ _ _ _
-       ) -> testIOCOoutPurp depth False step
+       ) -> do                                             -- test purpose with only outputs --
+            testIOCOoutPurp depth False step
      ; ( ParamCore.IOCO
        , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef insyncs []       _ _))
                      _ _ _ _ _ _ _ _ _ _ _
-       ) -> testIOCOinPurp depth False step
+       ) -> do                                              -- test purpose with only inputs --
+            testIOCOinPurp depth False step
      ; ( ParamCore.IOCO
        , IOC.Testing _ _ m a (TxsDefs.DefPurp (TxsDefs.PurpDef insyncs outsyncs _ _))
                      _ _ _ _ _ _ _ _ _ _ _
-       ) -> testIOCOfullPurp depth False step
-     ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "testing could not start" ]
-               return $ TxsDDefs.NoVerdict
+       ) -> do                                       -- test purpose with inputs and outputs --
+            testIOCOfullPurp depth False step
+     ; ( _
+       , _
+       ) -> do                                                            -- something wrong --
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "testing could not start" ]
+            return $ TxsDDefs.NoVerdict
      }
 
 
