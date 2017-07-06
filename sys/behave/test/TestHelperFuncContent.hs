@@ -159,12 +159,10 @@ expectSortDef sortDefName constrs =
         isConstrFuncId constrName = expectFuncId ("is"++constrName) funcArgs "Bool"
         -- Accessor Functions for constructor fields
         isAccessorsFuncIds types = concat ( map (\(fields,t) -> map (\field -> expectFuncId field funcArgs t) fields) types )
-        -- IsEqual Functions
-        isEqualFuncId = expectFuncId eqName [(["x", "y"],sortDefName)] "Bool"
      in
         TxsDefs.fromList ( [
                         -- SortDefinition
-                        (IdSort (expectSortId sortDefName), DefSort (SortDef [isEqualFuncId]) )  ] ++ 
+                        (IdSort (expectSortId sortDefName), DefSort SortDef)  ] ++ 
                         -- Constructors
                         (map (\(constrName, types) -> (IdCstr (expectCstrId constrName types sortDefName), DefCstr (CstrDef (isConstrFuncId constrName) (isAccessorsFuncIds types)) ) ) constrs )
                      ) 

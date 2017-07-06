@@ -15,6 +15,6 @@ fi
 if [[ $PN == "" ]]; then
   echo "too many torxakis processes running"
 else
-  txsserver $PN > .txs.log.$PN 2> .txs.err.log.$PN &
+  txsserver $PN > .txs.$PN.log 2> .txs.$PN.err.log &
   txsui $PN $*
 fi

@@ -8,10 +8,8 @@ See license.txt
 module SortDef
 where
 
-import FuncId
-
-
-data  SortDef        = SortDef    [FuncId]              
+-- | SortDef has no information 
+data  SortDef        = SortDef
      deriving (Eq,Ord,Read,Show)
 
 -- ----------------------------------------------------------------------------------------- --

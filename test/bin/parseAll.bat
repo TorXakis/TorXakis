@@ -6,7 +6,7 @@ REM Don't "fall through" to :Body.
 GOTO :EOF
 
 :Body
-REM echo %1
+echo %1
 call torxakis.bat %1  < parseAll.tmp
-TIMEOUT /T 10 /NOBREAK > nul
+TIMEOUT /T 3 /NOBREAK > nul
 GOTO :EOF

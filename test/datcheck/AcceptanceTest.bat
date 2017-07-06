@@ -47,7 +47,6 @@ REM
 echo --- Start Clean
 stack clean
 del %PATHBIN%\*.exe
-del sys\BuildInfo.hs
 cd test
 make clean
 echo --- End Clean

@@ -86,7 +86,7 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
     
     let sDefs = TxsDefs.insert (IdCstr nilId) (DefCstr (CstrDef isNil []) )
                  (TxsDefs.insert (IdCstr constrId) (DefCstr (CstrDef isConstr [hd, tl]) )
-                   (TxsDefs.insert (IdSort sortId_ListInt) (DefSort (SortDef []) )
+                   (TxsDefs.insert (IdSort sortId_ListInt) (DefSort SortDef)
                     TxsDefs.empty))
     assertBool "ListInt sortdef" ("(declare-datatypes () (\n    (ListInt (Constr (head Int) (tail ListInt)) (Nil))\n) )" `List.isInfixOf` sortdefsToSMT maps sDefs )
     assertEqual "length function" e (funcdefsToSMT maps fDefs)

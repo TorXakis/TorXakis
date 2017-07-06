@@ -57,8 +57,9 @@ import StdTDefs                         -- predefined, standard Txs data types
 import Sigs
 
 import qualified Data.List   as List
-import qualified Data.Set    as Set
 import qualified Data.Map    as Map
+import qualified Data.Set    as Set
+import qualified Data.String.Utils as Utils
 }
 
 
@@ -498,7 +499,7 @@ TypeDef         -- :: { [ (Ident,TxsDef) ] }
                                                             $3.synSigs  
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $3.inhDefgSort  = SortId $1 $$.inhNodeUid
-                ;  $$ = $3 
+                ;  $$ = $3 ++ [ ( IdSort (SortId $1 $$.inhNodeUid), DefSort (SortDef) ) ]
                 } 
                 -- unique sort implies unique functions
 
@@ -548,95 +549,94 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                 -- mirroring : -
                 -- constrs   : all used sorts shall be defined
               : capid FieldList
-                {  $2.inhNodeUid   = $$.inhNodeUid + 3
+                {  $2.inhNodeUid   = $$.inhNodeUid + 2*(length $2) + 3
                 ;  $$.synMaxUid    = $2.synMaxUid
-                ;  $2.inhSigs      = $$.inhSigs
-                ;  $2.inhDefCstrId = let { cas = [ fs | Signature _ fs <- concatMap Map.keys (Map.elems (FuncTable.toMap (func $2.synSigs) ) ) ]
-                                         } in CstrId $1 $$.inhNodeUid cas $$.inhDefgSort
-                ;  $$.synSigs = let { cas = [ fs | Signature _ fs <- concatMap Map.keys (Map.elems (FuncTable.toMap (func $2.synSigs) ) ) ]
+                ;  $$.synSigs = let { cas = map snd $2
                                     ; cid = CstrId $1 $$.inhNodeUid cas $$.inhDefgSort
-                                    } in Sigs.uniqueCombine Sigs.empty{func = FuncTable( Map.fromList [($1, Map.singleton (Signature cas $$.inhDefgSort) (cstrHandler cid))
-                                                                                                      ,("is"++$1, Map.singleton (Signature [$$.inhDefgSort] sortId_Bool) (iscstrHandler cid))
-                                                                                                      ]) 
-                                                                      }
-                                                            $2.synSigs 
-                ;  $$ = $2
+                                    } in Sigs.empty{func = FuncTable( Map.fromList $ [($1, Map.singleton (Signature cas $$.inhDefgSort) (cstrHandler cid))
+                                                                                     ,("is"++$1, Map.singleton (Signature [$$.inhDefgSort] sortId_Bool) (iscstrHandler cid))
+                                                                                     ]
+                                                                                     ++
+                                                                                     [ ( nm , Map.singleton (Signature [$$.inhDefgSort] s) (accessHandler cid pos) ) | ((nm,s),pos) <- zip $2 [0..] ]
+                                                                    ) 
+                                                   }
+                ;  $$ = let { cas = map snd $2
+                            ; cid = CstrId $1 $$.inhNodeUid cas $$.inhDefgSort
+                            ; cfid = FuncId ("is"++$1) ($$.inhNodeUid+1) [$$.inhDefgSort] sortId_Bool
+                            ; x =  VarId "x" ($$.inhNodeUid+2) $$.inhDefgSort
+                            ; fs = [ let y = VarId "y" vid $$.inhDefgSort in
+                                    (IdFunc (FuncId nm uid [$$.inhDefgSort] s), DefFunc (FuncDef [y] (cstrAccess cid pos (cstrVar y))))
+                                   | ((nm,s), pos, uid, vid) <- List.zip4 $2 [0..] [($$.inhNodeUid + 3)..] [($$.inhNodeUid +3 + length $2)..] 
+                                   ]
+                            }
+                            in [ ( IdCstr cid, DefCstr (CstrDef cfid (map (\(IdFunc f,_) -> f) fs) ) ) 
+                               , ( IdFunc cfid, DefFunc (FuncDef [x] (cstrIsCstr cid (cstrVar x) ) ) )
+                               ]
+                               ++
+                               fs
+                ;  where let dbls = doubles ([$1, "is"++$1] ++ map fst $2)
+                          in if null dbls then () else
+                             error $ "\nTXS0803: " ++
+                                     "Double defined names: "++(show dbls)++"\n"
+                               
                 }
+                -- TODO: remove addition of constructor and isConstructorFunction: add ADT info to TxsDefs in another way!
 
-FieldList       -- :: { [ (Ident,TxsDef) ] }
+FieldList       -- :: { [ (String, SortId) ] }
                 -- definition of the fields with implicit functions of an algebraic type
                 -- attrs inh : inhNodeUid : unique node identification
-                --           : inhSortSigs: usable sorts
-                --           : inhDefCstrId: defining cstrid
                 -- attrs syn : synMaxUid  : maximum uid in whole subtree
-                --           : synFuncSigs: (implicitly) defined field selector functions
                 -- mirroring : -
                 -- constrs   : all used sorts shall be defined 
               : {- empty -}
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synSigs      = Sigs.empty 
                 ;  $$ =  []
                 }  
               | "{" "}"
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synSigs      = Sigs.empty
                 ;  $$ = []
                 }
               | "{" Fields "}"
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $2.synMaxUid
-                ;  $2.inhSigs      = $$.inhSigs
-                ;  $2.inhDefCstrId = $$.inhDefCstrId
-                ;  $$.synSigs      = $2.synSigs
                 ;  $$ = $2
                 }
 
-Fields          -- :: { [ (Ident,TxsDef) ] }
+Fields          -- :: { [ (String,SortId) ] }
                 -- definition of the fields with implicit functions of an algebraic type
                 -- attrs inh : inhNodeUid : unique node identification
-                --           : inhSortSigs: usable sorts
-                --           : inhDefCstrId: defining cstrid
                 -- attrs syn : synMaxUid  : maximum uid in whole subtree
-                --           : synFuncSigs: (implicitly) defined field selector functions
                 -- mirroring : -
                 -- constrs   : all used sorts shall be defined
               : Field
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
-                ;  $1.inhSigs      = $$.inhSigs
-                ;  $1.inhDefCstrId = $$.inhDefCstrId
-                ;  $$.synSigs      = $1.synSigs
                 ;  $$ = $1
                 }
               | Fields ";" Field
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $3.inhNodeUid   = $1.synMaxUid + 1
                 ;  $$.synMaxUid    = $3.synMaxUid
-                ;  $1.inhSigs      = $$.inhSigs
-                ;  $3.inhSigs      = $$.inhSigs
-                ;  $1.inhDefCstrId = $$.inhDefCstrId
-                ;  $3.inhDefCstrId = $$.inhDefCstrId
-                ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $3.synSigs
                 ;  $$ = $1 ++ $3
+                ;  where let dbls = doubles (map fst ($1 ++ $3))
+                          in if null dbls then () else
+                             error $ "\nTXS0802: " ++
+                                     "Double defined fields: "++(show dbls)++"\n"
                 }
 
-Field           -- :: { [ (Ident,TxsDef) ] }
+Field           -- :: { [ (String, SortId) ] }
                 -- definition of field(s) of same sort with implicit functions
                 -- attrs inh : inhNodeUid : unique node identification
-                --           : inhSortSigs: usable sorts
-                --           : inhDefCstrId: defining cstrid
                 -- attrs syn : synMaxUid  : maximum uid in whole subtree
-                --           : synFuncSigs: (implicitly) defined field selector functions
                 -- mirroring : -
                 -- constrs   : used sort shall be defined
-              : NeSmallIdList "::" capid
-                {  $$.synMaxUid    = $$.inhNodeUid + ((length $1)*2)
-                ;  $$.synSigs      = Sigs.empty { func = case Map.lookup $3 (sort $$.inhSigs) of
-                                                             { Nothing      -> error $ "\nTXS0061: " ++ "Undefined field sort: "++(show $3)++"\n"
-                                                             ; Just s       -> FuncTable(Map.fromList [ ( nm , Map.singleton (Signature [cstrsort $$.inhDefCstrId] s) (accessHandler $$.inhDefCstrId pos) ) | (nm,pos) <- zip $1 [0..] ])
-                                                             }
-                                                 }
-                ;  $$ = []
+              : NeSmallIdList OfSort
+                {  $$.synMaxUid    = $$.inhNodeUid
+                ;  $$ = [ (nm, $2) | nm <- $1]
+                ;  where let dbls = doubles $1
+                          in if null dbls then () else
+                             error $ "\nTXS0801: " ++
+                                     "Double defined fields: "++(show dbls)++"\n"
                 }
 
 FuncDefList     -- :: { [ (Ident,TxsDef) ] }
@@ -1695,7 +1695,7 @@ FormalVars      -- :: { [VarId] }
               | "(" VarDeclList ")"
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $2.synMaxUid
-                ;  $2.inhSigs  = $$.inhSigs
+                ;  $2.inhSigs      = $$.inhSigs
                 ;  $$ = $2
                 ;  where let dbls = doubles ( map ( sig . IdVar ) $2 )
                           in if null dbls then () else
@@ -2160,10 +2160,15 @@ BehaviourExpr4  -- :: { BExpr }
                                     ]
                          in case ppids of
                             { []    -> error $ "\nTXS0323: "++
-                                               "Process not resolved: "++(show $1)++"\n"
+                                               "Process not resolved: "++ show $1 ++"\n" ++
+                                               "Processes with the same name are\n* " ++ 
+                                               Utils.join "\n* " (map show [pid | pid@(ProcId nm _ _ _ _) <- Sigs.pro $$.inhSigs
+                                                                                , nm == $1 ])
                             ; [pid] -> ProcInst pid $2 $3
                             ; _     -> error $ "\nTXS0324: "++ "Process "++
-                                               "not uniquely resolved: "++(show $1)++"\n"
+                                               "not uniquely resolved: "++ show $1 ++"\n"  ++
+                                               "Possible processes are\n* " ++ 
+                                               Utils.join "\n* " (map show ppids)
                             }
                 }
               | LET NeValueDefList IN BehaviourExpr1 EndIn
@@ -2718,40 +2723,36 @@ ValExpr1        -- :: { VExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExpdSort  = [ res
-                                     | Signature args res <- signatures $2 (Sigs.func $$.inhSigs)
-                                     , length args == 2
-                                     , args!!0 `elem` $1.synExpdSort
-                                     , args!!1 `elem` $3.synExpdSort
+                                     | Signature [l,r] res <- signatures $2 (Sigs.func $$.inhSigs)
+                                     , l `elem` $1.synExpdSort
+                                     , r `elem` $3.synExpdSort
                                      ]
                 ;  $1.inhSolvSort
-                     = let pargs = [ args
-                                   | Signature args res <- signatures $2 (Sigs.func $$.inhSigs)
-                                   , length args == 2
-                                   , args!!0 `elem` $1.synExpdSort
-                                   , args!!1 `elem` $3.synExpdSort
+                     = let pargs = [ l
+                                   | Signature [l,r] res <- signatures $2 (Sigs.func $$.inhSigs)
+                                   , l `elem` $1.synExpdSort
+                                   , r `elem` $3.synExpdSort
                                    , case $$.inhSolvSort of
                                             { Nothing  -> True
                                             ; Just sid -> res == sid
                                             }
                                    ]
-                        in if (length pargs) == 1 then Just ((head pargs)!!0) else Nothing
+                        in if (length pargs) == 1 then Just (head pargs) else Nothing
                 ;  $3.inhSolvSort
-                     = let pargs = [ args
-                                   | Signature args res <- signatures $2 (Sigs.func $$.inhSigs)
-                                   , length args == 2
-                                   , args!!0 `elem` $1.synExpdSort
-                                   , args!!1 `elem` $3.synExpdSort
+                     = let pargs = [ r
+                                   | Signature [l,r] res <- signatures $2 (Sigs.func $$.inhSigs)
+                                   , l `elem` $1.synExpdSort
+                                   , r `elem` $3.synExpdSort
                                    , case $$.inhSolvSort of
                                             { Nothing  -> True
                                             ; Just sid -> res == sid
                                             }
                                    ]
-                        in if (length pargs) == 1 then Just ((head pargs)!!1) else Nothing
+                        in if (length pargs) == 1 then Just (head pargs) else Nothing
                 ;  $$ = let vexps = [ h [$1,$3]
-                                    | (Signature args res, h) <- Map.toList (signHandler $2 (Sigs.func $$.inhSigs))
-                                    , length args == 2
-                                    , args!!0 `elem` $1.synExpdSort
-                                    , args!!1 `elem` $3.synExpdSort
+                                    | (Signature [l,r] res, h) <- Map.toList (signHandler $2 (Sigs.func $$.inhSigs))
+                                    , l `elem` $1.synExpdSort
+                                    , r `elem` $3.synExpdSort
                                     , case $$.inhSolvSort of
                                              { Nothing  -> True
                                              ; Just sid -> res == sid
@@ -2878,37 +2879,32 @@ ValExpr2        -- :: { VExpr }
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $2.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExpdSort  = [ res
-                                     | Signature args res <- signatures $1 (Sigs.func $$.inhSigs)
-                                     , if (length args) == 1
-                                         then args!!0 `elem` $2.synExpdSort
-                                         else False
+                                     | Signature [a] res <- signatures $1 (Sigs.func $$.inhSigs)
+                                     , a `elem` $2.synExpdSort
                                      ]
                 ;  $2.inhSolvSort
-                     = let pargs = [ args
-                                   | Signature args res <- signatures $1 (Sigs.func $$.inhSigs)
-                                   , if (length args) == 1
-                                       then args!!0 `elem` $2.synExpdSort
-                                       else False
+                     = let pargs = [ a
+                                   | Signature [a] res <- signatures $1 (Sigs.func $$.inhSigs)
+                                   , a `elem` $2.synExpdSort
                                    , case $$.inhSolvSort of
                                             { Nothing  -> True
                                             ; Just sid -> res == sid
                                             }
                                    ]
-                        in if (length pargs) == 1 then Just ((head pargs)!!0) else Nothing
+                        in if (length pargs) == 1 then Just (head pargs) else Nothing
                 ;  $$ = let vexps = [ h [$2]
-                                    | (Signature args res, h) <- Map.toList (signHandler $1 (Sigs.func $$.inhSigs))
-                                    , if (length args) == 1
-                                        then args!!0 `elem` $2.synExpdSort
-                                        else False
+                                    | (Signature [a] res, h) <- Map.toList (signHandler $1 (Sigs.func $$.inhSigs))
+                                    , a `elem` $2.synExpdSort
                                     , case $$.inhSolvSort of
                                              { Nothing  -> True
                                              ; Just sid -> res == sid
                                              }
                                     ]
-                         in if (length vexps) == 1
-                              then head vexps
-                              else error ("\nTXS0433: " ++
-                                          "Operator not (uniquely) resolved: '" ++ $1 ++ "'\n")
+                         in case (length vexps) of
+                                {   1   -> head vexps
+                                ;   0  ->  error ("\nTXS0433: Operator not resolved: '" ++ $1 ++ "'\n")
+                                ;   _  ->  error ("\nTXS0433: Operator not uniquely resolved: '" ++ $1 ++ "'\n")
+                                }
                 }
               | capid
                 {  $$.synMaxUid    = $$.inhNodeUid
@@ -2922,11 +2918,17 @@ ValExpr2        -- :: { VExpr }
                                              ; Just sid -> res == sid
                                              }
                                     ]
-                         in if (length vexps) == 1
-                              then head vexps
-                              else error ("\nTXS0436: " ++
-                                          "Constructor not (uniquely) resolved: " ++
-                                          (show $1)++"\n")
+                         in case (length vexps) of
+                                { 1 -> head vexps
+                                ; 0 -> error ("\nTXS0436: Constructor not resolved: " ++ show $1 ++"\n" 
+                                                ++ "Available signatures for " ++ show $1 ++ " are \n* "
+                                                ++ Utils.join "\n* " (map show (FuncTable.signatures $1 (Sigs.func $$.inhSigs)))
+                                             )
+                                ; _ -> error ("\nTXS0436: Constructor not uniquely resolved: " ++ show $1 ++"\n" 
+                                                ++ "Matching signatures for " ++ show $1 ++ " are \n* "
+                                                ++ Utils.join "\n* " (map show [ s | s@(Signature [] _) <- FuncTable.signatures $1 (Sigs.func $$.inhSigs) ])
+                                             )
+                                }
                 }
               | capid "(" ValExprs  ")"
                 {  $3.inhNodeUid   = $$.inhNodeUid + 1
@@ -2936,13 +2938,13 @@ ValExpr2        -- :: { VExpr }
                 ;  $$.synExpdSort  = [ res
                                      | Signature args res <- signatures $1 (Sigs.func $$.inhSigs)
                                      , length args == length $3.synExpdSorts
-                                     , and [ a`elem`as | (a,as) <- zip args $3.synExpdSorts ]
+                                     , and [ a `elem` as | (a,as) <- zip args $3.synExpdSorts ]
                                      ]
                 ;  $3.inhSolvSorts
                      = let pargs = [ args 
                                    | Signature args res <- signatures $1 (Sigs.func $$.inhSigs)
                                    , length args == length $3.synExpdSorts
-                                   , and [ a`elem`as | (a,as) <- (zip args $3.synExpdSorts) ]
+                                   , and [ a `elem` as | (a,as) <- (zip args $3.synExpdSorts) ]
                                    , case $$.inhSolvSort of
                                             { Nothing  -> True
                                             ; Just sid -> res == sid
@@ -2954,17 +2956,27 @@ ValExpr2        -- :: { VExpr }
                 ;  $$ = let vexps = [ handler $3
                                     | (Signature args res, handler) <- Map.toList (FuncTable.signHandler $1 (Sigs.func $$.inhSigs))
                                     , length args == length $3.synExpdSorts
-                                    , and [ a`elem`as | (a,as) <- (zip args $3.synExpdSorts) ]
+                                    , and [ a `elem` as | (a,as) <- (zip args $3.synExpdSorts) ]
                                     , case $$.inhSolvSort of
                                             { Nothing  -> True
                                             ; Just sid -> res == sid
                                             }
                                     ]
-                         in if (length vexps) == 1
-                              then head vexps
-                              else error ("\nTXS0434: " ++
-                                          "Constructor not (uniquely) resolved: " ++
-                                          (show $1)++"\n")
+                         in case (length vexps) of
+                                { 1 -> head vexps
+                                ; 0 -> error ("\nTXS0434: Constructor not resolved: " ++ show $1 ++ "\n"
+                                               ++ "Available signatures for " ++ show $1 ++ " are \n* "
+                                               ++ Utils.join "\n* " (map show (FuncTable.signatures $1 (Sigs.func $$.inhSigs)))
+                                             )
+                                ; _ -> error ("\nTXS0434: Constructor not uniquely resolved: " ++ show $1 ++"\n" 
+                                                ++ "Matching signatures for " ++ show $1 ++ " are \n* "
+                                                ++ Utils.join "\n* " (map show [ s
+                                                                               | s@(Signature args _) <- FuncTable.signatures $1 (Sigs.func $$.inhSigs)
+                                                                               , length args == length $3.synExpdSorts
+                                                                               , and [ a `elem` as | (a,as) <- zip args $3.synExpdSorts ]
+                                                                               ])
+                                             )
+                                }
                 }
               | Constant
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1

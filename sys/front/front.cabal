@@ -35,6 +35,7 @@ library
                       , base
                       , containers
                       , defs
+                      , MissingH
                       
   default-language:     Haskell2010
   

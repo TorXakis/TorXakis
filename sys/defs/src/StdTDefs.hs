@@ -107,13 +107,10 @@ stdSortTable = Map.fromList [ ("Bool",   sortId_Bool)
                             ]
 
 stdSortDefs' :: [ ( SortId,       SortDef  ) ]
-stdSortDefs' = [ (sortId_Bool,   SortDef [ funcId_BoolToString, funcId_BoolFromString
-                                         ] )
-               , (sortId_Int,    SortDef [ funcId_IntToString, funcId_IntFromString
-                                         ] )
-               , (sortId_String, SortDef [ funcId_StringToString, funcId_StringFromString
-                                         ] ) 
-               , (sortId_Regex,  SortDef [ ] )
+stdSortDefs' = [ (sortId_Bool,   SortDef)
+               , (sortId_Int,    SortDef)
+               , (sortId_String, SortDef) 
+               , (sortId_Regex,  SortDef)
                ]
 
 stdSortDefs :: [ ( Ident,       TxsDef  ) ]
@@ -192,11 +189,13 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("=>",   Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrPredef SSB funcId_implies ) ] )
     , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrPredef SSB funcId_iff ) ] )
 
-    , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_uniplusInt ) ] )
-    , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_uniminusInt ) ] )
+    , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_uniplusInt )
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_plusInt ) 
+                           ] )
+    , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_uniminusInt )
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_minusInt )
+                           ] )
     , ("abs", Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_absInt ) ] )
-    , ("+",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_plusInt ) ] )
-    , ("-",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_minusInt ) ] )
     , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_timesInt ) ] )
     , ("/",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_divideInt ) ] )
     , ("%",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_moduloInt ) ] )
