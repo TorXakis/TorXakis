@@ -42,13 +42,13 @@ module TxsCore
                   --    solving Bool VExpr randomly
 , txsSetTest      -- :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
                   --    IOC.IOC TxsDDefs.Action ->
-                  --    TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef ->
+                  --    TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Maybe TxsDefs.PurpDef ->
                   --    IOC.IOC ()
 , txsSetSim       -- :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
                   --    IOC.IOC TxsDDefs.Action ->
-                  --    TxsDefs.TxsDef -> TxsDefs.TxsDef ->
+                  --    TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef ->
                   --    IOC.IOC ()
-, txsSetStep      -- :: TxsDefs.TxsDef -> IOC.IOC ()
+, txsSetStep      -- :: TxsDefs.ModelDef -> IOC.IOC ()
 , txsTestIn       -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
 , txsTestOut      -- :: IOC.IOC TxsDDefs.Verdict
 , txsTestN        -- :: Int -> IOC.IOC TxsDDefs.Verdict
@@ -354,7 +354,7 @@ txsRanSolve vexp  =  do
     
 txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
               IOC.IOC TxsDDefs.Action ->
-              TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef ->
+              TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Maybe TxsDefs.PurpDef ->
               IOC.IOC ()
 txsSetTest putToW getFroW moddef mapdef purpdef  =  do
      envc <- get
@@ -392,23 +392,24 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
      }
 
 
-startTester :: TxsDefs.TxsDef ->
-               TxsDefs.TxsDef ->
-               TxsDefs.TxsDef ->
+startTester :: TxsDefs.ModelDef ->
+               Maybe TxsDefs.MapperDef ->
+               Maybe TxsDefs.PurpDef ->
                IOC.IOC ( Maybe BTree.BTree, BTree.BTree, [(TxsDefs.GoalId,BTree.BTree)] )
 
-startTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-            (TxsDefs.DefNo)
-            (TxsDefs.DefNo)  =  do
+startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                 Nothing
+                 Nothing =
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
-     envb            <- filterEnvCtoEnvB
-     (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
-     writeEnvBtoEnvC envb'
-     return $ ( maybt', [], [] )
+     in do 
+       envb            <- filterEnvCtoEnvB
+       (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
+       writeEnvBtoEnvC envb'
+       return $ ( maybt', [], [] )
 
-startTester (TxsDefs.DefModel  (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp))
-            (TxsDefs.DefMapper (TxsDefs.MapperDef achins   achouts   asyncsets abexp))
-            (TxsDefs.DefNo)  =  do
+startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
+                 (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+                 Nothing =
      let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ains   = Set.fromList $ achins
@@ -434,9 +435,9 @@ startTester (TxsDefs.DefModel  (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs m
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return $ ( Nothing, [], [] )
 
-startTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-            (TxsDefs.DefNo)
-            (TxsDefs.DefPurp  (TxsDefs.PurpDef  pinsyncs poutsyncs psplsyncs goals))  =  do
+startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                 Nothing
+                 (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)) =
      let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; pins   = Set.unions pinsyncs
@@ -460,9 +461,9 @@ startTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbe
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return $ ( Nothing, [], [] )
 
-startTester (TxsDefs.DefModel  (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp))
-            (TxsDefs.DefMapper (TxsDefs.MapperDef achins   achouts   asyncsets abexp))
-            (TxsDefs.DefPurp   (TxsDefs.PurpDef   pinsyncs poutsyncs psplsyncs goals))  =  do
+startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
+                 (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+                 (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)) =
      let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ains   = Set.fromList $ achins
@@ -494,10 +495,6 @@ startTester (TxsDefs.DefModel  (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs m
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return $ ( Nothing, [], [] )
 
-startTester _ _ _  =  do
-     return $ ( Nothing, [], [] )
-
-
 goalInit :: [ Set.Set TxsDefs.ChanId ] -> 
             (TxsDefs.GoalId,TxsDefs.BExpr) ->
             IOC.IOC [(TxsDefs.GoalId,BTree.BTree)]
@@ -514,7 +511,7 @@ goalInit chsets (gid,bexp)  =  do
 
 txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
              IOC.IOC TxsDDefs.Action ->
-             TxsDefs.TxsDef -> TxsDefs.TxsDef ->
+             TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef ->
              IOC.IOC ()
 txsSetSim putToW getFroW moddef mapdef  =  do
      envc <- get
@@ -550,20 +547,21 @@ txsSetSim putToW getFroW moddef mapdef  =  do
      }
 
 
-startSimulator :: TxsDefs.TxsDef ->
-                  TxsDefs.TxsDef ->
+startSimulator :: TxsDefs.ModelDef ->
+                  Maybe TxsDefs.MapperDef ->
                   IOC.IOC ( Maybe BTree.BTree, BTree.BTree )
 
-startSimulator (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-               (TxsDefs.DefNo)  =  do
+startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                Nothing =
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
-     envb            <- filterEnvCtoEnvB
-     (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
-     writeEnvBtoEnvC envb'
-     return $ ( maybt', [] )
+     in do
+       envb            <- filterEnvCtoEnvB
+       (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
+       writeEnvBtoEnvC envb'
+       return $ ( maybt', [] )
 
-startSimulator (TxsDefs.DefModel  (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp))
-               (TxsDefs.DefMapper (TxsDefs.MapperDef achins   achouts   asyncsets abexp))
+startSimulator (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
+                (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ains   = Set.fromList $ achins
@@ -589,12 +587,9 @@ startSimulator (TxsDefs.DefModel  (TxsDefs.ModelDef  minsyncs moutsyncs msplsync
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return $ ( Nothing, [] )
 
-startSimulator _ _  =  do
-     return $ ( Nothing, [] )
-
 -- ----------------------------------------------------------------------------------------- --
 
-txsSetStep :: TxsDefs.TxsDef -> IOC.IOC ()
+txsSetStep :: TxsDefs.ModelDef -> IOC.IOC ()
 txsSetStep moddef  =  do
      envc <- get
      case envc of
@@ -626,19 +621,15 @@ txsSetStep moddef  =  do
      }
 
 
-startStepper :: TxsDefs.TxsDef ->
+startStepper :: TxsDefs.ModelDef ->
                 IOC.IOC ( Maybe BTree.BTree )
 
-startStepper (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))  =  do
+startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
      envb            <- filterEnvCtoEnvB
      (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
      writeEnvBtoEnvC envb'
      return $ maybt'
-   
-startStepper _  =  do
-     return $ Nothing
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis core main api -- core actions --  testing, simulating, stepping
@@ -648,7 +639,7 @@ txsTestIn :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
 txsTestIn act  =  do
      envc <- get
      case envc of
-     { IOC.Testing _ _ modeldef mapperdef TxsDefs.DefNo _ _ _ _ _ _ _ _ _ _ _
+     { IOC.Testing _ _ modeldef mapperdef Nothing _ _ _ _ _ _ _ _ _ _ _
          -> do Test.testIn act 1
      ; IOC.Testing _ _ modeldef mapperdef purpdef       _ _ _ _ _ _ _ _ _ _ _
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test action with test purpose" ]
@@ -662,7 +653,7 @@ txsTestOut :: IOC.IOC TxsDDefs.Verdict
 txsTestOut  =  do
      envc <- get
      case envc of
-     { IOC.Testing _ _ modeldef mapperdef TxsDefs.DefNo _ _ _ _ _ _ _ _ _ _ _
+     { IOC.Testing _ _ modeldef mapperdef Nothing _ _ _ _ _ _ _ _ _ _ _
          -> do Test.testOut 1
      ; IOC.Testing _ _ modeldef mapperdef purpdef       _ _ _ _ _ _ _ _ _ _ _
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test output with test purpose" ]

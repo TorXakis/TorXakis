@@ -478,25 +478,24 @@ cmdSolve args kind  =  do
 cmdTester :: String -> IOS.IOS ()
 cmdTester args  =  do
      tdefs  <- gets IOS.tdefs
-     tdefs' <- return $ TxsDefs.toList tdefs
      case words args of
      { [m,c] -> do
             mdefs <- return $ [ mdef
-                              | (TxsDefs.IdModel (TxsDefs.ModelId nm uid), mdef) <- tdefs'
+                              | (TxsDefs.ModelId nm uid, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
                               , nm == m
                               ]
             cdefs <- return $ [ cdef
-                              | (TxsDefs.IdCnect (TxsDefs.CnectId nm uid), cdef) <- tdefs'
+                              | (TxsDefs.CnectId nm uid, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
                               , nm == c
                               ]
             case (mdefs,cdefs) of
             { ([modeldef],[cnectdef])
-                         | isConsistentTester modeldef TxsDefs.DefNo TxsDefs.DefNo cnectdef
+                         | isConsistentTester modeldef Nothing Nothing cnectdef
                 -> do modify $ \env -> env { IOS.modus = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
                       lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef TxsDefs.DefNo TxsDefs.DefNo
+                                                modeldef Nothing Nothing
                       IFS.pack "TESTER" []
                       cmdsIntpr
             ; _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
@@ -504,38 +503,38 @@ cmdTester args  =  do
             }
      ; [m,x,c] -> do
             mdefs <- return $ [ mdef
-                              | (TxsDefs.IdModel (TxsDefs.ModelId  nm uid), mdef) <- tdefs'
+                              | (TxsDefs.ModelId  nm uid, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
                               , nm == m
                               ]
             adefs <- return $ [ adef
-                              | (TxsDefs.IdMapper (TxsDefs.MapperId nm uid), adef) <- tdefs'
+                              | (TxsDefs.MapperId nm uid, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
                               , nm == x
                               ]
             pdefs <- return $ [ pdef
-                              | (TxsDefs.IdPurp (TxsDefs.PurpId   nm uid), pdef) <- tdefs'
+                              | (TxsDefs.PurpId   nm uid, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
                               , nm == x
                               ]
             cdefs <- return $ [ cdef
-                              | (TxsDefs.IdCnect (TxsDefs.CnectId  nm uid), cdef) <- tdefs'
+                              | (TxsDefs.CnectId  nm uid, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
                               , nm == c
                               ]
             case (mdefs,adefs,pdefs,cdefs) of
             { ([modeldef],[mapperdef],[],[cnectdef])
-                         | isConsistentTester modeldef mapperdef TxsDefs.DefNo cnectdef
+                         | isConsistentTester modeldef (Just mapperdef) Nothing cnectdef
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
                       lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef mapperdef TxsDefs.DefNo
+                                                modeldef (Just mapperdef) Nothing
                       IFS.pack "TESTER" []
                       cmdsIntpr
             ; ([modeldef],[],[purpdef],[cnectdef])
-                         | isConsistentTester modeldef TxsDefs.DefNo purpdef cnectdef
+                         | isConsistentTester modeldef Nothing (Just purpdef) cnectdef
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
                       lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef TxsDefs.DefNo purpdef
+                                                modeldef Nothing (Just purpdef)
                       IFS.pack "TESTER" [ ]
                       cmdsIntpr
             ; _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
@@ -543,29 +542,29 @@ cmdTester args  =  do
             }
      ; [m,x,y,c] -> do
             mdefs <- return $ [ mdef
-                              | (TxsDefs.IdModel (TxsDefs.ModelId  nm uid), mdef) <- tdefs'
+                              | (TxsDefs.ModelId  nm uid, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
                               , nm == m
                               ]
             adefs <- return $ [ adef
-                              | (TxsDefs.IdMapper (TxsDefs.MapperId nm uid), adef) <- tdefs'
+                              | (TxsDefs.MapperId nm uid, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
                               , nm == x || nm == y
                               ]
             pdefs <- return $ [ pdef
-                              | (TxsDefs.IdPurp (TxsDefs.PurpId   nm uid), pdef) <- tdefs'
+                              | (TxsDefs.PurpId   nm uid, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
                               , nm == x || nm == y
                               ]
             cdefs <- return $ [ cdef
-                              | (TxsDefs.IdCnect (TxsDefs.CnectId  nm uid), cdef) <- tdefs'
+                              | (TxsDefs.CnectId  nm uid, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
                               , nm == c
                               ]
             case (mdefs,adefs,pdefs,cdefs) of
             { ([modeldef],[mapperdef],[purpdef],[cnectdef])
-                         | isConsistentTester modeldef mapperdef purpdef cnectdef
+                         | isConsistentTester modeldef (Just mapperdef) (Just purpdef) cnectdef
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
                       lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef mapperdef purpdef
+                                                modeldef (Just mapperdef) (Just purpdef)
                       IFS.pack "TESTER" [ ]
                       cmdsIntpr
             ; _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
@@ -577,13 +576,13 @@ cmdTester args  =  do
      }
 
 
-isConsistentTester :: TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef ->
+isConsistentTester :: TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Maybe TxsDefs.PurpDef -> TxsDefs.CnectDef ->
                       Bool
 
-isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                   (TxsDefs.DefNo)
-                   (TxsDefs.DefNo)
-                   (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                   Nothing
+                   Nothing
+                   (TxsDefs.CnectDef cnecttype conndefs)
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
@@ -592,10 +591,10 @@ isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsy
      in    mins   == ctows
         && cfrows == mouts
 
-isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                   (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                   (TxsDefs.DefNo)
-                   (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                   (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+                   Nothing
+                   (TxsDefs.CnectDef cnecttype conndefs)
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ains   = Set.fromList $ achins
@@ -606,10 +605,10 @@ isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsy
       in    (mins `Set.union` cfrows) == ains
          && aouts == (mouts `Set.union` ctows)
 
-isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                   (TxsDefs.DefNo)
-                   (TxsDefs.DefPurp (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
-                   (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                   Nothing
+                   (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
+                   (TxsDefs.CnectDef cnecttype conndefs)
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; pins   = Set.unions pinsyncs
@@ -622,10 +621,10 @@ isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsy
          && mins   == ctows
          && cfrows == mouts
 
-isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                   (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                   (TxsDefs.DefPurp (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
-                   (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                   (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+                   (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
+                   (TxsDefs.CnectDef cnecttype conndefs)
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ains   = Set.fromList $ achins
@@ -640,33 +639,30 @@ isConsistentTester (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsy
          && (mins `Set.union` cfrows) == ains
          && aouts == (mouts `Set.union` ctows)
 
-isConsistentTester _ _ _ _
-  =  False
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdSimulator :: String -> IOS.IOS ()
 cmdSimulator args  =  do
      tdefs  <- gets IOS.tdefs
-     tdefs' <- return $ TxsDefs.toList tdefs
      case words args of
      { [m,c] -> do
             mdefs <- return $ [ mdef
-                              | (TxsDefs.IdModel (TxsDefs.ModelId nm uid), mdef) <- tdefs'
+                              | (TxsDefs.ModelId nm uid, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
                               , nm == m
                               ]
             cdefs <- return $ [ cdef
-                              | (TxsDefs.IdCnect (TxsDefs.CnectId nm uid), cdef) <- tdefs'
+                              | (TxsDefs.CnectId nm uid, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
                               , nm == c
                               ]
             case (mdefs,cdefs) of
             { ([modeldef],[cnectdef])
-                         | isConsistentSimulator modeldef TxsDefs.DefNo cnectdef
+                         | isConsistentSimulator modeldef Nothing cnectdef
                 -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
                       World.openSockets
                       envs  <- get
                       lift $ TxsCore.txsSetSim (World.putSocket envs) (World.getSocket envs)
-                                               modeldef TxsDefs.DefNo
+                                               modeldef Nothing
                       IFS.pack "SIMULATOR" []
                       cmdsIntpr
             ; _ -> do IFS.nack "SIMULATOR" [ "Wrong or inconsistent parameters" ]
@@ -674,25 +670,25 @@ cmdSimulator args  =  do
             }
      ; [m,a,c] -> do
             mdefs <- return $ [ mdef
-                              | (TxsDefs.IdModel (TxsDefs.ModelId  nm uid), mdef) <- tdefs'
+                              | (TxsDefs.ModelId nm uid, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
                               , nm == m
                               ]
             adefs <- return $ [ adef
-                              | (TxsDefs.IdMapper (TxsDefs.MapperId nm uid), adef) <- tdefs'
+                              | (TxsDefs.MapperId nm uid, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
                               , nm == a
                               ]
             cdefs <- return $ [ cdef
-                              | (TxsDefs.IdCnect (TxsDefs.CnectId  nm uid), cdef) <- tdefs'
+                               | (TxsDefs.CnectId nm uid, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
                               , nm == c
                               ]
             case (mdefs,adefs,cdefs) of
             { ([modeldef],[mapperdef],[cnectdef])
-                         | isConsistentSimulator modeldef mapperdef cnectdef
+                         | isConsistentSimulator modeldef (Just mapperdef) cnectdef
                 -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
                       World.openSockets
                       envs  <- get
                       lift $ TxsCore.txsSetSim (World.putSocket envs) (World.getSocket envs)
-                                               modeldef mapperdef
+                                               modeldef (Just mapperdef)
                       IFS.pack "SIMULATOR" []
                       cmdsIntpr
             ; _ -> do IFS.nack "SIMULATOR" [ "Wrong or inconsistent parameters" ]
@@ -701,11 +697,11 @@ cmdSimulator args  =  do
      }
 
 
-isConsistentSimulator :: TxsDefs.TxsDef -> TxsDefs.TxsDef -> TxsDefs.TxsDef -> Bool
+isConsistentSimulator :: TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> TxsDefs.CnectDef -> Bool
 
-isConsistentSimulator (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                      (TxsDefs.DefNo)
-                      (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                      Nothing
+                      (TxsDefs.CnectDef cnecttype conndefs)
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
@@ -714,9 +710,9 @@ isConsistentSimulator (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msp
      in    mins  == cfrows
         && ctows == mouts
   
-isConsistentSimulator (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp))
-                      (TxsDefs.DefMapper (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                      (TxsDefs.DefCnect (TxsDefs.CnectDef cnecttype conndefs))
+isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+                      (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+                      (TxsDefs.CnectDef cnecttype conndefs)
   =  let { mins   = Set.unions minsyncs
          ; mouts  = Set.unions moutsyncs
          ; ains   = Set.fromList $ achins
@@ -727,8 +723,6 @@ isConsistentSimulator (TxsDefs.DefModel (TxsDefs.ModelDef minsyncs moutsyncs msp
       in    (mouts `Set.union` cfrows) == ains
          && aouts == (mins `Set.union` ctows)
 
-isConsistentSimulator _ _ _
-  =  False
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -744,7 +738,7 @@ cmdStepper args  =  do
                             ]
           case mdefs of
           { [modeldef] -> do modify $ \env -> env { IOS.modus = IOS.Stepped }
-                             lift $ TxsCore.txsSetStep (TxsDefs.DefModel modeldef)
+                             lift $ TxsCore.txsSetStep modeldef
                              IFS.pack "STEPPER" []
                              cmdsIntpr
           ; _          -> do IFS.nack "STEPPER" [ "Wrong or inconsistent parameters" ]
@@ -766,7 +760,7 @@ cmdTest args  =  do
                 IFS.pack "TEST" [TxsShow.fshow verdict]
                 cmdsIntpr
      ; _  -> do                                                 -- do given action as input --
-                IOS.Tested (TxsDefs.DefCnect (TxsDefs.CnectDef _ conndefs)) <- gets IOS.modus
+                IOS.Tested (TxsDefs.CnectDef _ conndefs) <- gets IOS.modus
                 ctows <- return [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
                 act <- readAction ctows args
                 if  act == TxsDDefs.ActQui

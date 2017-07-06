@@ -215,7 +215,7 @@ trueStringRegex n v = do
     return $ toOr sexprs
     
 trueString :: (Variable v) => ParamTrueBins -> ValExpr v -> SMT (ValExpr v)
-trueString p v = do
+trueString p v = 
     case stringMode p of
         Regex   -> trueStringRegex  (stringLength p) v
         Length  -> trueStringLength (stringLength p) v

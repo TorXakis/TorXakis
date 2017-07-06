@@ -7,11 +7,8 @@ See license.txt
 
 -- ----------------------------------------------------------------------------------------- --
 -- Dispatch Process
-
-
 -- ----------------------------------------------------------------------------------------- --
 -- greatest common diviser
-
 
 FUNCDEF  gcd ( a, b :: Int ) :: Int
  ::=
@@ -22,10 +19,8 @@ FUNCDEF  gcd ( a, b :: Int ) :: Int
         FI
 ENDDEF
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- processor
-
 
 PROCDEF  processor [ Start :: Int # Int; Finish :: Int ] ( )
  ::=
@@ -62,10 +57,9 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
-MODELDEF Model
- ::=
-    CHAN IN    Job      :: Int # Int
-    CHAN OUT   Finish   :: Int
+MODELDEF Model ::=
+    CHAN IN    Job   
+    CHAN OUT   Finish
 
     BEHAVIOUR
         HIDE  [ Job2Proc :: Int # Int ]
@@ -76,6 +70,12 @@ MODELDEF Model
         NI
 ENDDEF
 
+-- ----------------------------------------------------------------------------------------- --
+
+CHANDEF Channels ::=
+	Job      :: Int # Int;
+	Finish   :: Int
+ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

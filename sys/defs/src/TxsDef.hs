@@ -28,8 +28,7 @@ import SortDef
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis definitions
 
-data  TxsDef        =  DefNo                    -- TODO: to be removed
-                     | DefSort      SortDef
+data  TxsDef        =  DefSort      SortDef
                      | DefCstr      CstrDef
                      | DefFunc      FuncDef
                      | DefProc      ProcDef
@@ -37,6 +36,10 @@ data  TxsDef        =  DefNo                    -- TODO: to be removed
                      | DefPurp      PurpDef
                      | DefMapper    MapperDef
                      | DefCnect     CnectDef
+                     | DefChan
+                     | DefVar
+                     | DefStat
+                     | DefGoal
      deriving (Eq,Ord,Read,Show)
 
 -- ----------------------------------------------------------------------------------------- --

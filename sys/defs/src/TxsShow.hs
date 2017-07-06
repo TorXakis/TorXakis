@@ -72,11 +72,17 @@ instance PShow TxsDefs
     pshow tdefs =  foldl showElem "\n" (TxsDefs.toList tdefs) 
         where
             showElem :: String ->  (Ident, TxsDef) -> String
-            showElem s ( _ , DefNo ) = 
+            showElem s ( _ , DefChan ) = 
                 s ++ "\n" 
-            showElem s (IdSort (SortId nm _), DefSort(SortDef _) ) = 
+            showElem s ( _ , DefVar ) = 
+                s ++ "\n" 
+            showElem s ( _ , DefStat ) = 
+                s ++ "\n" 
+            showElem s ( _ , DefGoal ) = 
+                s ++ "\n" 
+            showElem s (IdSort (SortId nm _), DefSort SortDef{} ) = 
                 s ++ "\nSORTDEF " ++ nm ++ " ;\n"
-            showElem s (IdCstr (CstrId nm _ a srt), DefCstr(CstrDef{}) ) =
+            showElem s (IdCstr (CstrId nm _ a srt), DefCstr CstrDef{} ) =
                 s ++ "\nCSTRDEF " ++ nm
                              ++ " :: " ++ Utils.join " # " (map pshow a)
                              ++ " -> " ++ pshow srt ++  " ;\n"

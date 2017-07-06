@@ -109,12 +109,12 @@ data  TxsDefs  =  TxsDefs { sortDefs    :: Map.Map SortId SortDef
                           , cstrDefs    :: Map.Map CstrId CstrDef
                           , funcDefs    :: Map.Map FuncId FuncDef
                           , procDefs    :: Map.Map ProcId ProcDef
-                          , chanDefs    :: Map.Map ChanId ()
-                          , varDefs     :: Map.Map VarId ()
-                          , statDefs    :: Map.Map StatId ()
+                          , chanDefs    :: Map.Map ChanId ()            -- only for parsing, not envisioned for computation
+                          , varDefs     :: Map.Map VarId ()             -- local 
+                          , statDefs    :: Map.Map StatId ()            -- local
                           , modelDefs   :: Map.Map ModelId ModelDef
                           , purpDefs    :: Map.Map PurpId PurpDef
-                          , goalDefs    :: Map.Map GoalId ()
+                          , goalDefs    :: Map.Map GoalId () --BExpr    -- local, part of PurpDefs
                           , mapperDefs  :: Map.Map MapperId MapperDef
                           , cnectDefs   :: Map.Map CnectId CnectDef
                           }
@@ -149,13 +149,13 @@ lookup (IdProc s) txsdefs = case Map.lookup s (procDefs txsdefs) of
                                 Just d  -> Just (DefProc d)
 lookup (IdChan s) txsdefs = case Map.lookup s (chanDefs txsdefs) of
                                 Nothing -> Nothing
-                                Just _  -> Just DefNo
+                                Just _  -> Just DefChan
 lookup (IdVar s) txsdefs = case Map.lookup s (varDefs txsdefs) of
                                 Nothing -> Nothing
-                                Just _  -> Just DefNo
+                                Just _  -> Just DefVar
 lookup (IdStat s) txsdefs = case Map.lookup s (statDefs txsdefs) of
                                 Nothing -> Nothing
-                                Just _  -> Just DefNo
+                                Just _  -> Just DefStat
 lookup (IdModel s) txsdefs = case Map.lookup s (modelDefs txsdefs) of
                                 Nothing -> Nothing
                                 Just d  -> Just (DefModel d)
@@ -164,7 +164,7 @@ lookup (IdPurp s) txsdefs = case Map.lookup s (purpDefs txsdefs) of
                                 Just d  -> Just (DefPurp d)
 lookup (IdGoal s) txsdefs = case Map.lookup s (goalDefs txsdefs) of
                                 Nothing -> Nothing
-                                Just _  -> Just DefNo
+                                Just _  -> Just DefGoal
 lookup (IdMapper s) txsdefs = case Map.lookup s (mapperDefs txsdefs) of
                                 Nothing -> Nothing
                                 Just d  -> Just (DefMapper d)
@@ -177,12 +177,12 @@ insert (IdSort s)   (DefSort d)   t     = t { sortDefs   = Map.insert s d  (sort
 insert (IdCstr s)   (DefCstr d)   t     = t { cstrDefs   = Map.insert s d  (cstrDefs t)   }
 insert (IdFunc s)   (DefFunc d)   t     = t { funcDefs   = Map.insert s d  (funcDefs t)   }
 insert (IdProc s)   (DefProc d)   t     = t { procDefs   = Map.insert s d  (procDefs t)   }
-insert (IdChan s)   DefNo         t     = t { chanDefs   = Map.insert s () (chanDefs t)   }
-insert (IdVar s)    DefNo         t     = t { varDefs    = Map.insert s () (varDefs t)    }
-insert (IdStat s)   DefNo         t     = t { statDefs   = Map.insert s () (statDefs t)   }
+insert (IdChan s)   DefChan       t     = t { chanDefs   = Map.insert s () (chanDefs t)   }
+insert (IdVar s)    DefVar        t     = t { varDefs    = Map.insert s () (varDefs t)    }
+insert (IdStat s)   DefStat       t     = t { statDefs   = Map.insert s () (statDefs t)   }
 insert (IdModel s)  (DefModel d)  t     = t { modelDefs  = Map.insert s d  (modelDefs t)  }
 insert (IdPurp s)   (DefPurp d)   t     = t { purpDefs   = Map.insert s d  (purpDefs t)   }
-insert (IdGoal s)   DefNo         t     = t { goalDefs   = Map.insert s () (goalDefs t)   }    
+insert (IdGoal s)   DefGoal       t     = t { goalDefs   = Map.insert s () (goalDefs t)   }    
 insert (IdMapper s) (DefMapper d) t     = t { mapperDefs = Map.insert s d  (mapperDefs t) }
 insert (IdCnect s)  (DefCnect d)  t     = t { cnectDefs  = Map.insert s d  (cnectDefs t)  }
 insert i            d             _     = error $ "Unknown insert\nident = " ++ show i ++ "\ndefinition = " ++ show d    
@@ -199,12 +199,12 @@ toList t =      map (IdSort Control.Arrow.*** DefSort)          (Map.toList (sor
             ++  map (IdCstr Control.Arrow.*** DefCstr)          (Map.toList (cstrDefs t))
             ++  map (IdFunc Control.Arrow.*** DefFunc)          (Map.toList (funcDefs t))
             ++  map (IdProc Control.Arrow.*** DefProc)          (Map.toList (procDefs t))
-            ++  map (IdChan Control.Arrow.*** (const DefNo))    (Map.toList (chanDefs t))
-            ++  map (IdVar Control.Arrow.*** (const DefNo))     (Map.toList (varDefs t))
-            ++  map (IdStat Control.Arrow.*** (const DefNo))    (Map.toList (statDefs t))
+            ++  map (IdChan Control.Arrow.*** const DefChan)    (Map.toList (chanDefs t))
+            ++  map (IdVar Control.Arrow.*** const DefVar)      (Map.toList (varDefs t))
+            ++  map (IdStat Control.Arrow.*** const DefStat)    (Map.toList (statDefs t))
             ++  map (IdModel Control.Arrow.*** DefModel)        (Map.toList (modelDefs t))
             ++  map (IdPurp Control.Arrow.*** DefPurp)          (Map.toList (purpDefs t))
-            ++  map (IdGoal Control.Arrow.*** (const DefNo))    (Map.toList (goalDefs t))
+            ++  map (IdGoal Control.Arrow.*** const DefGoal)    (Map.toList (goalDefs t))
             ++  map (IdMapper Control.Arrow.*** DefMapper)      (Map.toList (mapperDefs t))
             ++  map (IdCnect Control.Arrow.*** DefCnect)        (Map.toList (cnectDefs t))
             
@@ -228,12 +228,12 @@ elems t =       map DefSort         (Map.elems (sortDefs t))
             ++  map DefCstr         (Map.elems (cstrDefs t))
             ++  map DefFunc         (Map.elems (funcDefs t))
             ++  map DefProc         (Map.elems (procDefs t))
-            ++  map (const DefNo)   (Map.elems (chanDefs t))
-            ++  map (const DefNo)   (Map.elems (varDefs t))
-            ++  map (const DefNo)   (Map.elems (statDefs t))
+            ++  map (const DefChan) (Map.elems (chanDefs t))
+            ++  map (const DefVar)  (Map.elems (varDefs t))
+            ++  map (const DefStat) (Map.elems (statDefs t))
             ++  map DefModel        (Map.elems (modelDefs t))
             ++  map DefPurp         (Map.elems (purpDefs t))
-            ++  map (const DefNo)   (Map.elems (goalDefs t))
+            ++  map (const DefGoal) (Map.elems (goalDefs t))
             ++  map DefMapper       (Map.elems (mapperDefs t))
             ++  map DefCnect        (Map.elems (cnectDefs t))
 

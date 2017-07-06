@@ -135,15 +135,14 @@ expand chsets (BNbexpr we (Interrupt bexp1 bexp2))  =  do
 expand chsets (BNbexpr we (ProcInst procid chans vexps))  =  do
      tdefs <- gets IOB.tdefs
      case Map.lookup procid (procDefs tdefs) of
-     { Just (ProcDef chids vids bexp)
+       Just (ProcDef chids vids bexp)
          -> do chanmap <- return $ Map.fromList (zip chids chans)
                wals    <- mapM (Eval.eval.(cstrEnv (Map.map cstrConst we))) vexps
                we'     <- return $ Map.fromList (zip vids wals)
                expand chsets $ BNbexpr we' (relabel chanmap bexp)
-     ; _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                              $ "Expand: Undefined process name in expand" ]
                return $ []
-     }
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -405,21 +404,20 @@ expandChanOffer :: [ Set.Set TxsDefs.ChanId ] -> ChanId -> (ChanOffer,Int) -> IO
 expandChanOffer chsets chid (choff,pos)  =  do
      curs <- gets IOB.stateid
      case choff of
-     { Quest  vid  -> do ivar <- return $ IVar { ivname = ChanId.name chid
+       Quest  vid  -> do ivar <- return $ IVar { ivname = ChanId.name chid
                                                , ivuid  = ChanId.unid chid
                                                , ivpos  = pos
                                                , ivstat = curs
                                                , ivsrt  = vsort vid
                                                }
                          return $ ( ivar, [(vid,ivar)], [] )
-     ; Exclam vexp -> do ivar <- return $ IVar { ivname = ChanId.name chid      
+       Exclam vexp -> do ivar <- return $ IVar { ivname = ChanId.name chid      
                                                , ivuid  = ChanId.unid chid
                                                , ivpos  = pos
                                                , ivstat = curs
                                                , ivsrt  = sortOf vexp
                                                }   
                          return $ ( ivar, [], [(ivar,vexp)] )
-     }
 
 
 -- ----------------------------------------------------------------------------------------- --

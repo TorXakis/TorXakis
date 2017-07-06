@@ -121,7 +121,7 @@ writeEnvBtoEnvC envb  =  do
 
 isInCTOffers :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 isInCTOffers ctoffers  =  do
-     TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
+     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
      chinset  <- return $ Set.unions insyncs
      choutset <- return $ Set.unions outsyncs
      chanids  <- return $ Set.map BTree.ctchan ctoffers
@@ -132,7 +132,7 @@ isInCTOffers ctoffers  =  do
 isInAct :: TxsDDefs.Action -> IOC.IOC Bool
 
 isInAct (TxsDDefs.Act acts)  =  do
-     TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
+     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
      chinset  <- return $ Set.unions insyncs
      choutset <- return $ Set.unions outsyncs
      chanids  <- return $ Set.map fst acts
@@ -149,7 +149,7 @@ isInAct (TxsDDefs.ActQui)  =  do
 
 isOutCTOffers :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 isOutCTOffers ctoffers  =  do
-     TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) <- gets IOC.modeldef
+     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
      chinset  <- return $ Set.unions insyncs
      choutset <- return $ Set.unions outsyncs
      chanids  <- return $ Set.map BTree.ctchan ctoffers

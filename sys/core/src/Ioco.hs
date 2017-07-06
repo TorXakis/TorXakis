@@ -38,20 +38,20 @@ import qualified Data.Map  as Map
 import CoreUtils
 
 -- import from behavedef
-import qualified BTree     as BTree
+import qualified BTree
 
 -- import from behaveenv
-import qualified Behave    as Behave
+import qualified Behave
 
 -- import from coreenv
 import qualified EnvCore   as IOC
-import qualified EnvData   as EnvData
+import qualified EnvData
 
 -- import from defs
-import qualified TxsDefs   as  TxsDefs
-import qualified TxsDDefs  as  TxsDDefs
+import qualified TxsDefs
+import qualified TxsDDefs
 
-import qualified Utils     as  Utils
+import qualified Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -66,7 +66,7 @@ iocoModelMenu  =  do
      { Nothing -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelMenu without valid model" ]
             return $ []
-     ; Just (TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)) -> do
+     ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
             allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
             modSts   <- gets IOC.modsts
             return $ Behave.behMayMenu allSyncs modSts
@@ -96,7 +96,7 @@ iocoModelIsQui  =  do
      { Nothing -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelIsQui without valid model" ]
             return $ False
-     ; Just (TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)) -> do
+     ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
             modSts <- gets IOC.modsts
             return $ Behave.behRefusal modSts (Set.unions outsyncs)
      }
@@ -116,7 +116,7 @@ iocoModelAfter act@(TxsDDefs.Act acts)  =  do
      { Nothing -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelAfter without valid model" ]
             return $ False
-     ; Just (TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)) -> do
+     ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
             allSyncs       <- return $ insyncs ++ outsyncs ++ splsyncs
             curState       <- gets IOC.curstate
             modSts         <- gets IOC.modsts
@@ -141,7 +141,7 @@ iocoModelAfter act@(TxsDDefs.ActQui)  =  do
      { Nothing -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelAfter without valid model" ]
             return $ False
-     ; Just (TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)) -> do
+     ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
             curState       <- gets IOC.curstate
             modSts         <- gets IOC.modsts
             envb           <- filterEnvCtoEnvB
@@ -163,20 +163,13 @@ iocoModelAfter act@(TxsDDefs.ActQui)  =  do
 -- ----------------------------------------------------------------------------------------- --
 
 
-validModDef :: IOC.IOC (Maybe TxsDefs.TxsDef)
+validModDef :: IOC.IOC (Maybe TxsDefs.ModelDef)
 validModDef  =  do
      envc <- get
      case envc of
-     { IOC.Testing _ _
-                   moddef@(TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp))
-                   _ _ _ _ _ _ _ _ _ _ _ _ _ -> do
-            return $ Just moddef
-     ; IOC.Simuling _ _
-                    moddef@(TxsDefs.DefModel (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp))
-                    _ _ _  _ _ _ _ _ _ _ _ -> do
-            return $ Just moddef
-     ; _ -> do
-            return $ Nothing
+     { IOC.Testing {IOC.modeldef = moddef} -> return $ Just moddef
+     ; IOC.Simuling {IOC.modeldef = moddef} -> return $ Just moddef
+     ; _ -> return $ Nothing
      }
 
 

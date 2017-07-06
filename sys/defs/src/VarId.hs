@@ -24,7 +24,7 @@ instance Variable VarId
     vname v            = VarId.name v ++ "$$" ++ show (VarId.unid v)
     vunid              = VarId.unid
     vsort              = VarId.varsort
-    cstrVariable s i t = VarId s i t
+    cstrVariable       = VarId 
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --

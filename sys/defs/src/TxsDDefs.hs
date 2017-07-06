@@ -28,7 +28,7 @@ data  Action   =  Act     ( Set.Set (ChanId,[Const]) )
 
 instance PShow Action
   where
-    pshow (Act    set)  =  "Act    { "++(pshow set)++" }\n"
+    pshow (Act    set)  =  "Act    { "++ pshow set ++" }\n"
     pshow  ActQui       =  "No Output (Quiescence)\n"
 
 -- ----------------------------------------------------------------------------------------- --
@@ -42,7 +42,7 @@ data  SAction       =  SAct     Handle String
 
 instance PShow SAction
   where
-    pshow (SAct _h s)  =  "SAct  "++" ! "++(show s)++"\n"
+    pshow (SAct _h s)  =  "SAct  "++" ! "++ show s ++"\n"
     pshow  SActQui    =  "No Output (Sut is Quiescent)\n"
     
 -- ----------------------------------------------------------------------------------------- --
@@ -67,9 +67,9 @@ data  ConnHandle    =  ConnHtoW  { chan       :: ChanId
 instance PShow ConnHandle
   where
     pshow (ConnHtoW c h vs v)
-      =  (pshow c) ++ (show h) ++ "\n" ++ (pshow vs) ++ (pshow v) ++ "\n"
+      =  pshow c ++ show h ++ "\n" ++ pshow vs ++ pshow v ++ "\n"
     pshow (ConnHfroW c h v vs)
-      =  (pshow c) ++ (show h) ++ "\n" ++ (pshow v) ++ (pshow vs) ++ "\n"
+      =  pshow c ++ show h ++ "\n" ++ pshow v ++ pshow vs ++ "\n"
 
 -- ----------------------------------------------------------------------------------------- --
 -- data Verdict
@@ -83,7 +83,7 @@ data  Verdict  =  Pass
 instance PShow Verdict
   where
      pshow  Pass       =  "PASS"
-     pshow (Fail act)  =  "FAIL:  " ++ ( fshow act )
+     pshow (Fail act)  =  "FAIL:  " ++ fshow act
      pshow  NoVerdict  =  "No Verdict"
 
 -- ----------------------------------------------------------------------------------------- --

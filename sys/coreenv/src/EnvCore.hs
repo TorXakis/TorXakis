@@ -35,7 +35,9 @@ where
 
 import Control.Monad.State
 
-import qualified Data.Map  as Map
+import qualified Data.Map   as Map
+import qualified Data.Maybe as Maybe
+
 
 -- import from local
 import qualified EnvData   as EnvData
@@ -46,6 +48,7 @@ import qualified BTree     as BTree
 
 -- import from defs
 import qualified TxsDefs   as TxsDefs
+
 import qualified TxsDDefs  as TxsDDefs
 import qualified TxsShow   as TxsShow
 
@@ -71,9 +74,9 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                         } 
              | Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , modeldef  :: TxsDefs.TxsDef
-                        , mapperdef :: TxsDefs.TxsDef
-                        , purpdef   :: TxsDefs.TxsDef
+                        , modeldef  :: TxsDefs.ModelDef
+                        , mapperdef :: Maybe TxsDefs.MapperDef
+                        , purpdef   :: Maybe TxsDefs.PurpDef
                         , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
                         , getfrow   :: IOC TxsDDefs.Action
                         , behtrie   :: [ (EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr) ]
@@ -89,8 +92,8 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                         } 
              | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , modeldef  :: TxsDefs.TxsDef
-                        , mapperdef :: TxsDefs.TxsDef
+                        , modeldef  :: TxsDefs.ModelDef
+                        , mapperdef :: Maybe TxsDefs.MapperDef
                         , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
                         , getfrow   :: IOC TxsDDefs.Action
                         , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
@@ -105,7 +108,7 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                         } 
              | Stepping { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , modeldef  :: TxsDefs.TxsDef
+                        , modeldef  :: TxsDefs.ModelDef
                         , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
                                                                      -- behaviour trie
                         , inistate  :: EnvData.StateNr               -- initial beh statenr
