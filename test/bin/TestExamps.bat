@@ -18,5 +18,10 @@ cd %1\test\examps\LuckyPeople
 call TestLuckyPeople.bat %1
 echo ----- End LuckyPeople Tests
 
+echo ----- Start Adder Tests
+cd %1\test\examps\Adder
+call TestAdder.bat %1
+echo ----- End Adder Tests
+
 cd %CALLLOC%
 endlocal

@@ -1,0 +1,4 @@
+tester Adder Sut
+test 10
+trace txs $> testTrace.log
+exit
