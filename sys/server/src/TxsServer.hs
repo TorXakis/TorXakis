@@ -178,7 +178,7 @@ cmdsIntpr  =  do
 
 cmdNoop :: String -> IOS.IOS ()
 cmdNoop cmd  =  do
-     IFS.nack cmd [" : No action"]
+     IFS.nack cmd [ "NoOp : No action"]
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
@@ -317,7 +317,7 @@ cmdSeed :: String -> IOS.IOS ()
 cmdSeed args  =  do
      case words args of
        [val] -> do seed <- return $ read val
-                   lift $ TxsCore.txsSeed seed
+                   lift $ TxsCore.txsSetSeed seed
                    IFS.pack "SEED" []
                    cmdsIntpr
        _     -> do IFS.nack "SEED" [ "Incorrect seed" ]
@@ -762,10 +762,10 @@ cmdTest args  =  do
      ; _  -> do                                                 -- do given action as input --
                 IOS.Tested (TxsDefs.CnectDef _ conndefs) <- gets IOS.modus
                 ctows <- return [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
-                TxsDDefs.Act acts <- readAction ctows args
-                if  Set.null acts
-                  then cmdsIntpr
-                  else do verdict <- lift $ TxsCore.txsTestIn (TxsDDefs.Act acts)
+                act <- readAction ctows args
+                if  act == TxsDDefs.ActQui
+                  then do cmdsIntpr
+                  else do verdict <- lift $ TxsCore.txsTestIn act
                           IFS.pack "TEST" [TxsShow.fshow verdict]
                           cmdsIntpr
      }
@@ -808,10 +808,10 @@ cmdStep args  =  do
                             [ Set.unions (chins ++ chouts ++ spls)
                             | (_, TxsDefs.ModelDef chins chouts spls _) <- Map.toList mdefs
                             ]
-               TxsDDefs.Act acts <- readAction chids args
-               if  Set.null acts
-                 then cmdsIntpr
-                 else do verdict <- lift $ TxsCore.txsStepA (TxsDDefs.Act acts)
+               act <- readAction chids args
+               if  act == TxsDDefs.ActQui
+                 then do cmdsIntpr
+                 else do verdict <- lift $ TxsCore.txsStepA act
                          IFS.pack "STEP" [TxsShow.fshow verdict]
                          cmdsIntpr
      }
@@ -907,7 +907,7 @@ cmdMenu args  =  do
      (kind,what,stnr) <- return
           $ case words args of
             { []            -> ( "mod", "all", (-1) )
-            ; ["in"]        -> ( "mod", "in" , (-1) )
+            ; ["in"]        -> ( "mod", "in", (-1)  )
             ; ["in",s]      -> if  and (map Char.isDigit s)
                                    then ( "mod", "in", (read s)::Int )
                                  else ( "mod", "in", (-11)             )
@@ -940,11 +940,16 @@ cmdMap args  =  do
                                   , TxsDefs.MapperDef chins chouts syncs bexp
                                   ) <- Map.toList mdefs
                                 ]
-     act     <- readAction inchids args
-     act'    <- lift $ TxsCore.txsMapper act
-     IFS.pack "MAP" [TxsShow.fshow act]
-     cmdsIntpr
-
+     if  null inchids
+       then do IFS.nack "MAP" [ "No mapper(s) defined" ]
+               cmdsIntpr
+       else do act  <- readAction inchids args
+               if  act == TxsDDefs.ActQui
+               then do IFS.nack "MAP" [ "Not a valid action" ]
+                       cmdsIntpr
+               else do act' <- lift $ TxsCore.txsMapper act
+                       IFS.pack "MAP" [TxsShow.fshow act']
+                       cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -974,14 +979,14 @@ readAction chids args  =  do
                            )
      if  e /= ""
        then do IFS.nack "ERROR" [ "incorrect action: " ++ e ]
-               return $ TxsDDefs.Act Set.empty
+               return $ TxsDDefs.ActQui
        else do
          modify $ \env -> env { IOS.uid = uid' }
          qstnoffs <- return [ q | q@(TxsDefs.Quest vid)
                                     <- concat $ map TxsDefs.chanoffers (Set.toList offs') ]
          if  not $ null qstnoffs
            then do IFS.nack "ERROR" [ "incorrect action: no question mark offer allowed" ]
-                   return $ TxsDDefs.Act Set.empty
+                   return $ TxsDDefs.ActQui
            else do
              acts <- lift $ sequence
                           $ [ Utils.liftP2 (chid, sequence [ TxsCore.txsEval vexp

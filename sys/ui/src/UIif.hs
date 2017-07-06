@@ -57,12 +57,15 @@ doRsp cmd  =  do
      hs      <- gets uiservh
      rspline <- lift $ hGetLine hs
      case words rspline of
-        []                          -> doRsp cmd
-        ("MACK":rargs)              -> do putOut $ unwords rargs
-                                          doRsp cmd
-        ("PACK":[rsp]) | cmd == rsp -> return ()
-        ("NACK":[rsp]) | cmd == rsp -> return ()
-        _                           -> putErr $ "unknown txsserver response: " ++ rspline
+        []                            -> doRsp cmd
+        ("MACK":"ERROR":rargs)        -> do putErr $ unwords rargs
+                                            doRsp cmd
+        ("MACK":rargs)                -> do putOut $ unwords rargs
+                                            doRsp cmd
+        ("PACK":[rsp])   | cmd == rsp -> return ()
+        ("NACK":[rsp])   | cmd == rsp -> return ()
+        ("NACK":"ERROR":rargs)        -> putErr $ unwords rargs
+        _                             -> putErr $ "unknown txsserver response: " ++ rspline
      
 
 -- ----------------------------------------------------------------------------------------- --
@@ -129,3 +132,4 @@ doTimer timername  =  do
 -- ----------------------------------------------------------------------------------------- --
 -- 
 -- ----------------------------------------------------------------------------------------- --
+

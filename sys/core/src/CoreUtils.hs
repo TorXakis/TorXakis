@@ -16,9 +16,7 @@ module CoreUtils
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( trieStateInit     -- :: IOC.IOC ()
-, trieStateNext     -- :: TxsDefs.Action -> IOC.IOC ()
-, filterEnvCtoEnvB  -- :: IOC.IOC IOB.EnvB
+( filterEnvCtoEnvB  -- :: IOC.IOC IOB.EnvB
 , writeEnvBtoEnvC   -- :: IOB.EnvB -> IOC.IOC ()
 , isInCTOffers      -- :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 , isOutCTOffers     -- :: Set.Set BTree.CTOffer -> IOC.IOC Bool
@@ -33,6 +31,7 @@ module CoreUtils
 
 where
 
+import System.IO
 import Control.Monad.State
 
 import qualified Data.Set  as Set
@@ -55,48 +54,54 @@ import qualified Solve     as Solve
 
 
 -- ----------------------------------------------------------------------------------------- --
--- behtrie initialization
-
-
-trieStateInit :: IOC.IOC ()
-trieStateInit  =  do
-     modify $ \envc -> envc { IOC.behtrie   = []
-                            , IOC.inistate  = 0
-                            , IOC.curstate  = 0
-                            , IOC.nexstate  = 1
-                            , IOC.maxstate  = 0
-                            }
-
-
--- ----------------------------------------------------------------------------------------- --
--- behtrie next state
-
-
-trieStateNext :: TxsDDefs.Action -> IOC.IOC ()
-
-trieStateNext act  =  do
-     modify $ \env -> env
-       { IOC.behtrie  = (IOC.behtrie env) ++ [ (IOC.curstate env, act, IOC.nexstate env) ]
-       , IOC.curstate = (IOC.nexstate env)
-       , IOC.nexstate = (IOC.maxstate env) + 2
-       , IOC.maxstate = (IOC.maxstate env) + 1
-       } 
-
-
--- ----------------------------------------------------------------------------------------- --
 -- filterEnvCtoEnvB
 
 
 filterEnvCtoEnvB :: IOC.IOC IOB.EnvB
 filterEnvCtoEnvB  =  do
      envc <- get
-     return $ IOB.EnvB { IOB.smts     = IOC.smts     envc
-                       , IOB.tdefs    = IOC.tdefs    envc
-                       , IOB.stateid  = IOC.curstate envc
-                       , IOB.params   = IOC.params   envc
-                       , IOB.unid     = IOC.unid     envc
-                       , IOB.msgs     = []
-                       }
+     case envc of
+     { IOC.Noning params unid
+         -> return $ IOB.EnvB { IOB.smts     = Map.empty
+                              , IOB.tdefs    = TxsDefs.empty
+                              , IOB.stateid  = (-1)
+                              , IOB.params   = params
+                              , IOB.unid     = unid
+                              , IOB.msgs     = []
+                              }
+     ; IOC.Initing smts tdefs params unid putmsgs
+         -> return $ IOB.EnvB { IOB.smts     = smts
+                              , IOB.tdefs    = tdefs
+                              , IOB.stateid  = (-1)
+                              , IOB.params   = params
+                              , IOB.unid     = unid
+                              , IOB.msgs     = []
+                              }
+     ; IOC.Testing smts tdefs _ _ _ _ _ _ inistate curstate _ _ _ params unid msgs
+         -> return $ IOB.EnvB { IOB.smts     = smts
+                              , IOB.tdefs    = tdefs
+                              , IOB.stateid  = curstate
+                              , IOB.params   = params
+                              , IOB.unid     = unid
+                              , IOB.msgs     = []
+                              }
+     ; IOC.Simuling smts tdefs _ _ _ _ _ inistate curstate _ _ params unid msgs
+         -> return $ IOB.EnvB { IOB.smts     = smts
+                              , IOB.tdefs    = tdefs
+                              , IOB.stateid  = curstate
+                              , IOB.params   = params
+                              , IOB.unid     = unid
+                              , IOB.msgs     = []
+                              }
+     ; IOC.Stepping smts tdefs _ _ inistate curstate maxstate _ params unid msgs
+         -> return $ IOB.EnvB { IOB.smts     = smts
+                              , IOB.tdefs    = tdefs
+                              , IOB.stateid  = curstate
+                              , IOB.params   = params
+                              , IOB.unid     = unid
+                              , IOB.msgs     = []
+                              }
+     }
 
 
 -- ----------------------------------------------------------------------------------------- --

@@ -17,8 +17,7 @@ module Ioco
 -- export
 
 
-( iocoModelInit      -- :: IOC.IOC ()
-, iocoModelMenuIn    -- :: IOC.IOC BTree.Menu
+( iocoModelMenuIn    -- :: IOC.IOC BTree.Menu
 , iocoModelMenuOut   -- :: IOC.IOC BTree.Menu
 , iocoModelIsQui     -- :: IOC.IOC Bool
 , iocoModelAfter     -- :: TxsDDefs.Action -> IOC.IOC Bool
@@ -36,7 +35,6 @@ import qualified Data.Map  as Map
 
 
 -- import from local
-import Trace
 import CoreUtils
 
 -- import from behavedef
@@ -57,30 +55,33 @@ import qualified Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
--- iocoModelInit :  initialize model for ioco
+-- iocoModelMenuIn  :  input  menu on current btree of model, no quiescence, according to ioco
+-- iocoModelMenuOut :  output menu on current btree of model, no quiescence, according to ioco
 
 
-iocoModelInit :: IOC.IOC ()
-iocoModelInit  = traceModelInit
-
-
--- ----------------------------------------------------------------------------------------- --
--- iocoModelMenuIn :  input menu on current btree of model, no quiescence, according to ioco
+iocoModelMenu :: IOC.IOC BTree.Menu
+iocoModelMenu  =  do
+     validModel <- validModDef
+     case validModel of
+     { Nothing -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelMenu without valid model" ]
+            return $ []
+     ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
+            allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
+            modSts   <- gets IOC.modsts
+            return $ Behave.behMayMenu allSyncs modSts
+     }
 
 
 iocoModelMenuIn :: IOC.IOC BTree.Menu
 iocoModelMenuIn  =  do
-     menu <- traceModelMenu
+     menu <- iocoModelMenu
      filterM (isInCTOffers . Utils.frst) menu
-
-
--- ----------------------------------------------------------------------------------------- --
--- iocoModelMenuOut :  output menu on current btree of model, no quiescence, according to ioco
 
 
 iocoModelMenuOut :: IOC.IOC BTree.Menu
 iocoModelMenuOut  =  do
-     menu <- traceModelMenu
+     menu <- iocoModelMenu
      filterM (isOutCTOffers . Utils.frst) menu
 
 
@@ -90,13 +91,15 @@ iocoModelMenuOut  =  do
 
 iocoModelIsQui :: IOC.IOC Bool
 iocoModelIsQui  =  do
-     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
-     curState <- gets IOC.curstate
-     modSts   <- gets IOC.modsts
-     case Map.lookup curState modSts of
-       Nothing -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no curstate" ]
-                     return True
-       Just bt ->    return $ Behave.behRefusal bt (Set.unions outsyncs)
+     validModel <- validModDef
+     case validModel of
+     { Nothing -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelIsQui without valid model" ]
+            return $ False
+     ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
+            modSts <- gets IOC.modsts
+            return $ Behave.behRefusal modSts (Set.unions outsyncs)
+     }
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -107,26 +110,67 @@ iocoModelIsQui  =  do
 
 iocoModelAfter :: TxsDDefs.Action -> IOC.IOC Bool
 
-iocoModelAfter (TxsDDefs.Act acts)  = 
-     traceModelAfter acts
+iocoModelAfter act@(TxsDDefs.Act acts)  =  do
+     validModel <- validModDef
+     case validModel of
+     { Nothing -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelAfter without valid model" ]
+            return $ False
+     ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
+            allSyncs       <- return $ insyncs ++ outsyncs ++ splsyncs
+            curState       <- gets IOC.curstate
+            modSts         <- gets IOC.modsts
+            envb           <- filterEnvCtoEnvB
+            (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
+            case maybt' of
+            { Nothing  -> do return $ False
+            ; Just bt' -> do writeEnvBtoEnvC envb'
+                             modify $ \env -> env
+                               { IOC.behtrie  = (IOC.behtrie env) ++ [(curState,act,curState+1)]
+                               , IOC.curstate = curState + 1
+                               , IOC.modsts   = bt'
+                               }
+                             return $ True
+            }
+     }
 
-iocoModelAfter TxsDDefs.ActQui  =  do
-     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
-     curState <- gets IOC.curstate
-     nexState <- gets IOC.nexstate
-     modSts   <- gets IOC.modsts
-     curBTree <- case Map.lookup curState modSts of
-                 { Nothing -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no curstate" ]
-                                 return []
-                 ; Just bt -> do return bt
-                 }
-     envb           <- filterEnvCtoEnvB
-     (maybt',envb') <- lift $ runStateT (Behave.behAfterRef curBTree (Set.unions outsyncs)) envb
-     writeEnvBtoEnvC envb'
-     case maybt' of
-       Nothing  ->    return False
-       Just bt' -> do modify $ \env -> env { IOC.modsts = Map.insert nexState bt' modSts }
-                      return True
+
+iocoModelAfter act@(TxsDDefs.ActQui)  =  do
+     validModel <- validModDef
+     case validModel of
+     { Nothing -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelAfter without valid model" ]
+            return $ False
+     ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
+            curState       <- gets IOC.curstate
+            modSts         <- gets IOC.modsts
+            envb           <- filterEnvCtoEnvB
+            (maybt',envb') <- lift $ runStateT (Behave.behAfterRef modSts (Set.unions outsyncs))
+                                               envb
+            case maybt' of
+            { Nothing  -> do return $ False
+            ; Just bt' -> do writeEnvBtoEnvC envb'
+                             modify $ \env -> env
+                               { IOC.behtrie  = (IOC.behtrie env) ++ [(curState,act,curState+1)]
+                               , IOC.curstate = curState + 1
+                               , IOC.modsts   = bt'
+                               }
+                             return $ True
+            }
+     }
+
+
+-- ----------------------------------------------------------------------------------------- --
+
+
+validModDef :: IOC.IOC (Maybe TxsDefs.ModelDef)
+validModDef  =  do
+     envc <- get
+     case envc of
+     { IOC.Testing {IOC.modeldef = moddef} -> return $ Just moddef
+     ; IOC.Simuling {IOC.modeldef = moddef} -> return $ Just moddef
+     ; _ -> return $ Nothing
+     }
 
 
 -- ----------------------------------------------------------------------------------------- --
