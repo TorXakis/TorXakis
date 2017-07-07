@@ -9,21 +9,17 @@ See license.txt
 -- Dispatch Process
 
 
-PROCDEF  processor [ Start, Finish ] ( )
- ::=
+PROCDEF  processor [ Start, Finish ] ( ) ::=
              Start
-        >->
-             Finish
-        >->
-             processor [ Start, Finish ] ( )
+        >->  Finish
+        >->  processor [ Start, Finish ] ( )
 ENDDEF
 
 
 -- ----------------------------------------------------------------------------------------- --
 
 
-MODELDEF Model
- ::=
+MODELDEF Model ::=
     CHAN IN    Start
     CHAN OUT   Finish
 

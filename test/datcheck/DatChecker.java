@@ -148,7 +148,9 @@ public class DatChecker {
     }
 
     private static Boolean getExpectedTestResult(String testName) {
-        return !(testName.equals("StimulusResponse Test 2") || testName.equals("StimulusResponse Test 4"));
+        return !(testName.equals("StimulusResponse Test 2")
+                || testName.equals("StimulusResponse Test 4")
+                || testName.equals("DisPro12-unique-id_Wrong Test"));
     }
 
     private static String checkTestBuild(List<String> fileContents) {

@@ -19,7 +19,7 @@ ENDDEF
 
 FUNCDEF  isValidJobId ( jobId :: Int )  :: Bool ::=
     ( jobId > 0 ) 
-	/\ ( ( jobId % 2 ) == 0 )
+ -- /\ ( ( jobId % 2 ) == 0 )
 ENDDEF
 
 FUNCDEF  isValidJob ( jobdata :: JobData )  :: Bool ::=

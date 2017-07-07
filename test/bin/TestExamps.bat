@@ -23,5 +23,10 @@ cd %1\test\examps\Adder
 call TestAdder.bat %1
 echo ----- End Adder Tests
 
+echo ----- Start DispatchProcess Tests
+cd %1\test\examps\DispatchProcess
+call TestDispatchProcess.bat %1
+echo ----- End DispatchProcess Tests
+
 cd %CALLLOC%
 endlocal
