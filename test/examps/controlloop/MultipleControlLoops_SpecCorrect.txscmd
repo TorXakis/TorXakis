@@ -1,0 +1,4 @@
+stepper SpecCorrect
+step 50
+trace txs $> testTrace.log
+exit

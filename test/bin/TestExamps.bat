@@ -28,5 +28,10 @@ cd %1\test\examps\DispatchProcess
 call TestDispatchProcess.bat %1
 echo ----- End DispatchProcess Tests
 
+echo ----- Start ControlLoop Tests
+cd %1\test\examps\ControlLoop
+call TestControlLoop.bat %1
+echo ----- End ControlLoop Tests
+
 cd %CALLLOC%
 endlocal
