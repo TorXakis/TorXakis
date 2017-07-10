@@ -326,9 +326,9 @@ testConditionalIntInstances = testTemplateValue conditionalIntDef
                                                 check3Different
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v1,v2,v3]    = [ cstrFunc funcId_not [cstrFunc equalConditionalIntSort [cstrVar v1, cstrVar v2]]
-                                         , cstrFunc funcId_not [cstrFunc equalConditionalIntSort [cstrVar v2, cstrVar v3]]
-                                         , cstrFunc funcId_not [cstrFunc equalConditionalIntSort [cstrVar v1, cstrVar v3]]
+        createAssertions [v1,v2,v3]    = [ cstrFunc funcId_not [cstrEqual (cstrVar v1) (cstrVar v2)]
+                                         , cstrFunc funcId_not [cstrEqual (cstrVar v2) (cstrVar v3)]
+                                         , cstrFunc funcId_not [cstrEqual (cstrVar v1) (cstrVar v3)]
                                          ]
         createAssertions _   = error "Three variables in problem"
         
@@ -353,7 +353,6 @@ testNestedConstructor = do
                             check3Different
     where
         conditionalPairSortId = SortId "ConditionalPair" 9630
-        equalFuncId = FuncId eqName 329876 [conditionalPairSortId,conditionalPairSortId] sortId_Bool
         
         createAssertions :: [VarId] -> [VExpr]
         createAssertions [v1,v2,v3]    = [ cstrFunc funcId_not [cstrEqual (cstrVar v1) (cstrVar v2)]

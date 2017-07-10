@@ -551,6 +551,7 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
               : capid FieldList
                 {  $2.inhNodeUid   = $$.inhNodeUid + 2*(length $2) + 3
                 ;  $$.synMaxUid    = $2.synMaxUid
+                ;  $2.inhSigs      = $$.inhSigs
                 ;  $$.synSigs = let { cas = map snd $2
                                     ; cid = CstrId $1 $$.inhNodeUid cas $$.inhDefgSort
                                     } in Sigs.empty{func = FuncTable( Map.fromList $ [($1, Map.singleton (Signature cas $$.inhDefgSort) (cstrHandler cid))
@@ -599,6 +600,7 @@ FieldList       -- :: { [ (String, SortId) ] }
               | "{" Fields "}"
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $2.synMaxUid
+                ;  $2.inhSigs      = $$.inhSigs
                 ;  $$ = $2
                 }
 
@@ -611,12 +613,15 @@ Fields          -- :: { [ (String,SortId) ] }
               : Field
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $$ = $1
                 }
               | Fields ";" Field
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $3.inhNodeUid   = $1.synMaxUid + 1
                 ;  $$.synMaxUid    = $3.synMaxUid
+                ;  $1.inhSigs      = $$.inhSigs
+                ;  $3.inhSigs      = $$.inhSigs
                 ;  $$ = $1 ++ $3
                 ;  where let dbls = doubles (map fst ($1 ++ $3))
                           in if null dbls then () else
@@ -632,6 +637,7 @@ Field           -- :: { [ (String, SortId) ] }
                 -- constrs   : used sort shall be defined
               : NeSmallIdList OfSort
                 {  $$.synMaxUid    = $$.inhNodeUid
+                ;  $2.inhSigs      = $$.inhSigs
                 ;  $$ = [ (nm, $2) | nm <- $1]
                 ;  where let dbls = doubles $1
                           in if null dbls then () else

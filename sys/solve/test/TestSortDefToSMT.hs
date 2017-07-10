@@ -60,7 +60,8 @@ testPresentConditionalInt = TestCase $ do
     let txsDefs = TxsDefs.insert (IdCstr presentCstrId) (DefCstr (CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [valueAccessor]) )
                   (TxsDefs.insert (IdSort conditionalIntSortId) (DefSort SortDef)
                    TxsDefs.empty)
-    assertBool "present" ("(declare-datatypes () (\n    (conditionalInt (_present (value Int)))\n) )" `List.isInfixOf` sortdefsToSMT mapI txsDefs )
+    let result = sortdefsToSMT mapI txsDefs 
+    assertBool ("present " ++ show result) ("(declare-datatypes () (\n    (conditionalInt (_present (ConditionalInt$_present$0 Int)))\n) )" `List.isInfixOf` result)
 
 testConditionalInt :: Test
 testConditionalInt = TestCase $ do
@@ -80,7 +81,8 @@ testConditionalInt = TestCase $ do
                   (TxsDefs.insert (IdCstr presentCstrId) (DefCstr (CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [valueAccessor]) )
                    (TxsDefs.insert (IdSort conditionalIntSortId) (DefSort SortDef)
                     TxsDefs.empty))
-    assertBool "conditional" ("(declare-datatypes () (\n    (conditionalInt (_absent) (_present (value Int)))\n) )" `List.isInfixOf` sortdefsToSMT mapI txsDefs )
+    let result = sortdefsToSMT mapI txsDefs 
+    assertBool ("conditional " ++ show result) ("(declare-datatypes () (\n    (conditionalInt (_absent) (_present (ConditionalInt$_present$0 Int)))\n) )" `List.isInfixOf` result)
 
 testPair :: Test
 testPair = TestCase $ do
@@ -101,4 +103,5 @@ testPair = TestCase $ do
     let txsDefs = TxsDefs.insert (IdCstr cstrId) (DefCstr (CstrDef (FuncId "ignore" 9876 [] pairSortId) [firstAccessor, secondAccessor]) )
                   (TxsDefs.insert (IdSort pairSortId) (DefSort SortDef)
                    TxsDefs.empty)
-    assertBool "pair" ("(declare-datatypes () (\n    (PairX (pairX (firstX IntX) (secondX IntX)))\n) )" `List.isInfixOf` sortdefsToSMT mapI txsDefs )
+    let result = sortdefsToSMT mapI txsDefs               
+    assertBool ("pair " ++ show result) ("(declare-datatypes () (\n    (PairX (pairX (Pair$pair$0 IntX) (Pair$pair$1 IntX)))\n) )" `List.isInfixOf` result)
