@@ -256,8 +256,8 @@ cmdStop _  =  do
      if  IOS.isSimuled modus
        then do [(nmsut,valsut)] <- IOS.getParams ["param_Sut_deltaTime"]
                [(nmsim,valsim)] <- IOS.getParams ["param_Sim_deltaTime"]
-               IOS.setParams [("param_Sut_deltaTime",valsim)]
-               IOS.setParams [("param_Sim_deltaTime",valsut)]
+               IOS.setParams [("param_Sut_deltaTime",valsut)]
+               IOS.setParams [("param_Sim_deltaTime",valsim)]
                modify $ \env -> env { IOS.modus   = IOS.Inited
                                     , IOS.tow     = ( Nothing, Nothing, [] )
                                     , IOS.frow    = ( Nothing, [],      [] )
