@@ -33,17 +33,3 @@ call %TORXAKIS% %EXAMPS%\Adder.txs < %TEST%\Adder3.txscmd
 TIMEOUT /T 4 /NOBREAK
 move /Y testTrace.log testTrace.Spec.Adder3.Sut.Adder3.log
 echo ------- End Adder Test 3
-
-REM echo ------- Start Adder Test 4
-REM start /min java -cp %EXAMPS% Adder
-REM call %TORXAKIS% %EXAMPS%\AdderLoop.txs < %TEST%\Adder.txscmd
-REM TIMEOUT /T 10 /NOBREAK
-REM move /Y testTrace.log testTrace.Spec.AdderLoop.Sut.Adder.log
-REM echo ------- End Adder Test 4
-
-REM echo ------- Start Adder Test 5
-REM start /min java -cp %EXAMPS% AdderLoop
-REM call %TORXAKIS% %EXAMPS%\Adder.txs < %TEST%\Adder.txscmd
-REM TIMEOUT /T 10 /NOBREAK
-REM move /Y testTrace.log testTrace.Spec.Adder.Sut.AdderLoop.log
-REM echo ------- End Adder Test 5

@@ -1,0 +1,4 @@
+simulator Model Sim
+sim 10
+trace txs $> testTrace.log
+exit

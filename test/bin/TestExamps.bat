@@ -33,5 +33,10 @@ cd %1\test\examps\ControlLoop
 call TestControlLoop.bat %1
 echo ----- End ControlLoop Tests
 
+echo ----- Start Echo Tests
+cd %1\test\examps\Echo
+call TestEcho.bat %1
+echo ----- End Echo Tests
+
 cd %CALLLOC%
 endlocal
