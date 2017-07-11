@@ -38,5 +38,10 @@ cd %1\test\examps\Echo
 call TestEcho.bat %1
 echo ----- End Echo Tests
 
+echo ----- Start Moving Arms Tests
+cd %1\test\examps\MovingArms
+call TestMovingArms.bat %1
+echo ----- End Moving Arms Tests
+
 cd %CALLLOC%
 endlocal
