@@ -1,4 +1,4 @@
-tester Model Sut
-test 4
+simulator Model Sim
+sim 10
 trace txs $> testTrace.log
 exit

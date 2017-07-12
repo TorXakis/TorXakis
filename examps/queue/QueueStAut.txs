@@ -48,7 +48,7 @@ CHANDEF ChanDefs ::= Enq   ::  Int
                    ; Value :: Int
 ENDDEF
 
-MODELDEF  QueueSpec ::=
+MODELDEF  Queue ::=
       CHAN IN    Enq, Deq
       CHAN OUT   Value
 
@@ -80,7 +80,7 @@ STAUTDEF  lossyQueue  [ Enq, Value :: Int;  Deq ]  ( ) ::=
 ENDDEF
 
 
-MODELDEF  LossyQueue ::=
+MODELDEF  Lossy ::=
       CHAN IN    Enq, Deq
       CHAN OUT   Value
 
@@ -123,7 +123,6 @@ SUTDEF Sut
 
 ENDDEF
 -}
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- ----------------------------------------------------------------------------------------- --

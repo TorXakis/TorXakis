@@ -1,4 +1,4 @@
-tester Model Sut
-test 4
+stepper Model
+step 10
 trace txs $> testTrace.log
 exit

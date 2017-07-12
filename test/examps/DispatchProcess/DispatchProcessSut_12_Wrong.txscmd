@@ -1,0 +1,4 @@
+tester ModelTraceWrong Sut
+test 2
+trace txs $> testTrace.log
+exit

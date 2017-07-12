@@ -1,4 +1,4 @@
-tester Model Sut
-test 4
+stepper SpecProduce
+step 5
 trace txs $> testTrace.log
 exit

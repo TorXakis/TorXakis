@@ -283,7 +283,9 @@ class Process implements Runnable {
 			}
 
 			try {
-				Thread.sleep(fixSleepTime+random.nextInt(randSleepTime));
+				int sleepTime = fixSleepTime + random.nextInt(randSleepTime);
+				System.out.println("Processor " + this.id + ": Sleeping for " + sleepTime + "ms...");
+				Thread.sleep(sleepTime);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -292,7 +294,7 @@ class Process implements Runnable {
 	}
 }
 
-public class Sut {
+public class DispatchProcess {
 
 	public static final int nrofProcessors = 4;
 

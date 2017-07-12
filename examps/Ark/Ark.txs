@@ -143,8 +143,7 @@ FUNCDEF isValid_List_double ( x :: List_double; min :: Int; max :: Conditional_I
 
 TYPEDEF AT_2580 ::= C_AT_2580 { v_room :: List_T_roomType } ENDDEF
 FUNCDEF isValid_AT_2580 ( t :: AT_2580 ) :: Bool ::= 
-                         -- TEST : enfore 3 rooms
-       isValid_List_T_roomType(v_room(t), 3, CAbsent_Int)
+       isValid_List_T_roomType(v_room(t), 0, CAbsent_Int)
     /\ allUnique(speciesInRooms(v_room(t)))
 ENDDEF
 TYPEDEF T_loadType ::= C_T_loadType { base0 :: AT_2580 } ENDDEF
@@ -221,9 +220,9 @@ FUNCDEF isValidElementsList_T_animal_speciesType ( x :: List_T_animal_speciesTyp
 FUNCDEF lengthList_T_animal_speciesType ( x :: List_T_animal_speciesType ) :: Int ::= IF isCNil_T_animal_speciesType(x) THEN 0 ELSE 1 + lengthList_T_animal_speciesType(tail(x)) FI ENDDEF
 FUNCDEF isValid_List_T_animal_speciesType ( x :: List_T_animal_speciesType; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_T_animal_speciesType(x) /\ (min <= lengthList_T_animal_speciesType(x)) /\ (IF isCPresent_Int(max) THEN lengthList_T_animal_speciesType(x) <= value(max) ELSE True FI) ENDDEF
 TYPEDEF AT_2592 ::= C_AT_2592 { v_animal :: List_T_animalType } ENDDEF
-FUNCDEF isValid_AT_2592 ( t :: AT_2592 ) :: Bool ::= 
-                 -- TEST : enfore at least 3 animals per room
-    isValid_List_T_animalType(v_animal(t), 3, CPresent_Int(6)) 
+FUNCDEF isValid_AT_2592 ( t :: AT_2592 ) :: Bool ::=
+    isValid_List_T_animalType(v_animal(t), 0, CAbsent_Int) 
+    
     -- <pattern>                                                        (9)
     --   <rule context="ark:room">
     --     <report test="count(ark:animal) &gt; 6">
