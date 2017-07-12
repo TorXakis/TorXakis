@@ -81,6 +81,7 @@ import CoreUtils
 import Test
 import Sim
 import Step
+import qualified TxsConfig   as TxsConfig
 
 -- import from behave(defs)
 import qualified BTree       as BTree
@@ -135,10 +136,11 @@ runTxsCtrl ctrl s0  =  do
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis core main api -- modus transition general
 
-
 txsInit :: TxsDefs.TxsDefs -> ([EnvData.Msg] -> IOC.IOC ()) -> IOC.IOC ()
 txsInit tdefs putMsgs  =  do
      envc <- get
+     txsConfig <- lift $ TxsConfig.loadConfig
+     let smtCmd = mkSmtSolverCmd txsConfig 
      case envc of
        IOC.Noning params unid
          -> do smtEnv         <- lift $ SMT.createSMTEnv SMT.cmdZ3 False tdefs
@@ -159,7 +161,11 @@ txsInit tdefs putMsgs  =  do
        _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
                TxsCore.txsTermit
                TxsCore.txsInit tdefs putMsgs
-                    
+
+       where mkSmtSolverCmd cfg =
+               case TxsConfig.smtSolver cfg of
+                 TxsConfig.Z3 -> SMT.cmdZ3
+                 TxsConfig.CVC4 -> SMT.cmdCVC4
 -- ----------------------------------------------------------------------------------------- --
 
 txsTermit :: IOC.IOC ()
