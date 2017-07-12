@@ -48,5 +48,10 @@ cd %1\test\examps\Point
 call TestPoint.bat %1
 echo ----- End Point Tests
 
+echo ----- Start Queue Tests
+cd %1\test\examps\Queue
+call TestQueue.bat %1
+echo ----- End Queue Tests
+
 cd %CALLLOC%
 endlocal

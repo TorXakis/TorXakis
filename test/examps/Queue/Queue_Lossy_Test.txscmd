@@ -1,0 +1,5 @@
+param param_Sut_deltaTime 4000
+tester Lossy Sut
+test 20
+trace txs $> testTrace.log
+exit
