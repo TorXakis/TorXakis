@@ -108,6 +108,15 @@ MODELDEF Model ::=
     ,           Material
     ,           MeasureReport
     ,           Out_Material
+
+    SYNC        {In_Material}
+    ,           {Correction}
+    ,           {ProduceReport}
+    ,           {Material}
+    ,           {MeasureReport}
+    ,           {Out_Material}
+    ,           {ProduceReport | MeasureReport}
+
     BEHAVIOUR
         model [In_Material, Correction, ProduceReport, Material, MeasureReport, Out_Material]()
 ENDDEF
