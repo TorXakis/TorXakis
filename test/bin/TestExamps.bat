@@ -53,5 +53,10 @@ cd %1\test\examps\Queue
 call TestQueue.bat %1
 echo ----- End Queue Tests
 
+echo ----- Start ReadWriteConflict Tests
+cd %1\test\examps\ReadWriteConflict
+call TestReadWriteConflict.bat %1
+echo ----- End ReadWriteConflict Tests
+
 cd %CALLLOC%
 endlocal
