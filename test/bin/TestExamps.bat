@@ -43,5 +43,10 @@ cd %1\test\examps\MovingArms
 call TestMovingArms.bat %1
 echo ----- End Moving Arms Tests
 
+echo ----- Start Point Tests
+cd %1\test\examps\Point
+call TestPoint.bat %1
+echo ----- End Point Tests
+
 cd %CALLLOC%
 endlocal
