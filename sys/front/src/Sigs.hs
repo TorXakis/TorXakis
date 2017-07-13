@@ -17,31 +17,42 @@ See license.txt
 -----------------------------------------------------------------------------
 module Sigs
 ( Sigs (..)
-, empty
+, Sigs.empty
 , combine
+, uniqueCombine
 )
 where
 
+import qualified Data.Map as Map
+
 import ChanId
-import CstrId
-import FuncId
 import ProcId
 import SortId
 
-data Sigs = Sigs    { chan  :: [ChanId]
-                    , cstr  :: [CstrId]
-                    , func  :: [FuncId]
-                    , pro   :: [ProcId]
-                    , sort  :: [SortId]
-                    }
-    deriving (Eq, Ord, Read, Show)
-    
-empty :: Sigs
-empty = Sigs [] [] [] [] []
+import FuncTable
 
-combine :: Sigs -> Sigs -> Sigs
+data Sigs v = Sigs  { chan  :: [ChanId]  -- TODO: Map.Map String ChanId
+                    , func  :: FuncTable v
+                    , pro   :: [ProcId]  -- TODO: ProcTable
+                    , sort  :: Map.Map String SortId
+                    }
+    
+empty :: Sigs v
+empty = Sigs [] FuncTable.empty [] Map.empty
+
+combine :: Sigs v -> Sigs v -> Sigs v
 combine l r = Sigs  (chan l ++ chan r)
-                    (cstr l ++ cstr r)
-                    (func l ++ func r)
+                    (FuncTable.union (func l) (func r))
                     (pro l ++ pro r)
-                    (sort l ++ sort r)
+                    (Map.union (sort l) (sort r))
+                    
+uniqueCombine :: Sigs v -> Sigs v -> Sigs v 
+uniqueCombine l r = Sigs
+                    (let d = ["duplicate channel " ++ show c | c <- chan l, c `elem` chan r ] in 
+                        if null d then chan l ++ chan r else error (unlines d) )
+                    (let d = ["duplicate function " ++ f ++ show s | f <- FuncTable.names (func l), s <- FuncTable.signatures f (func l), FuncTable.member f s (func r)] in
+                        if null d then FuncTable.union (func l) (func r) else error (unlines d) )
+                    (let d = ["duplicate procedure " ++ show p | p <- pro l, p `elem` pro r ] in 
+                        if null d then pro l ++ pro r else error (unlines d) )
+                    (let d = ["duplicate sort " ++ s | s <- Map.keys (sort l), Map.member s (sort r) ] in
+                        if null d then Map.union (sort l) (sort r) else error (unlines d) )

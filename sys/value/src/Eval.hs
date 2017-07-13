@@ -81,6 +81,14 @@ eval (view -> Vcstr cid vexps)  =  do
      vals <- mapM eval vexps
      return $ Cstr cid vals
 
+eval (view -> Viscstr cid1 arg) = do
+     Cstr cid2 _ <- eval arg
+     bool2txs ( cid1 == cid2 )
+     
+eval (view -> Vaccess _cid1 p arg) = do
+     Cstr _cid2 args <- eval arg
+     return $ args!!p                   -- TODO: check cids are equal?
+
 eval (view -> Vconst const)  =  do
      return $ const
 

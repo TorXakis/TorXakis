@@ -203,14 +203,14 @@ trueCharsRegexes n          = error ("trueCharsRegexes: Illegal argument n = " +
     
 trueStringLength :: (Variable v) => Int -> ValExpr v -> SMT (ValExpr v)
 trueStringLength n v = do
-    let exprs = map (\m -> cstrFunc funcId_eqInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger m))]) [0..n] ++ [cstrFunc funcId_gtInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger n))]]
+    let exprs = map (\m -> cstrEqual (cstrFunc funcId_lenString [v]) (cstrConst (Cint (toInteger m)))) [0..n] ++ [cstrFunc funcId_gtInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger n))]]
     sexprs <- shuffleM exprs
     return $ toOr sexprs
 
 trueStringRegex :: (Variable v) => Int -> ValExpr v -> SMT (ValExpr v)
 trueStringRegex n v = do
     regexes <- trueCharsRegexes n
-    sregexes <- shuffleM (regexes ++ [range ++ "{"++ show(n+1) ++ ",}"])               -- Performance gain in problem solver? Use string length for length 0 and greater than n
+    sregexes <- shuffleM (regexes ++ [range ++ "{"++ show (n+1) ++ ",}"])               -- Performance gain in problem solver? Use string length for length 0 and greater than n
     let sexprs = map (\regex -> cstrFunc funcId_strinre [v, cstrConst (Cregex regex)]) sregexes
     return $ toOr sexprs
     

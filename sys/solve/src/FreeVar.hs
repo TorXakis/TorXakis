@@ -31,6 +31,8 @@ import Utils
 freeVars :: (Variable v) => ValExpr v -> [v]
 freeVars (view -> Vfunc _fid vexps)        =  List.nub $ concatMap freeVars vexps
 freeVars (view -> Vcstr _cid vexps)        =  List.nub $ concatMap freeVars vexps
+freeVars (view -> Viscstr _cid vexp)       =  freeVars vexp
+freeVars (view -> Vaccess _cid _p vexp)    =  freeVars vexp
 freeVars (view -> Vconst _const)           =  []
 freeVars (view -> Vvar vid)                =  [vid]
 freeVars (view -> Vite cnrs vexp1 vexp2)   =  List.nub $ concatMap freeVars cnrs ++

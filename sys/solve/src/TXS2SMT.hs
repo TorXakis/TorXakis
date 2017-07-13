@@ -59,8 +59,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdSort sortId_Regex,      error "Regex is not defined in SMT"),
 
 -- Bool
-    (IdFunc funcId_eqBool,         "="),
-    (IdFunc funcId_neqBool,        "distinct"),
     (IdFunc funcId_BoolToString,   error "ToString(Bool) should not be called in SMT"),
     (IdFunc funcId_BoolFromString, error "FromString(Bool) should not be called in SMT"),
     (IdFunc funcId_BoolToXml,      error "ToXml(Bool) should not be called in SMT"),
@@ -73,8 +71,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_iff,            "="),
     
 -- Int
-    (IdFunc funcId_eqInt,          "="),
-    (IdFunc funcId_neqInt,         "distinct"),
     (IdFunc funcId_IntToString,    error "ToString(Int) should not be called in SMT"),
     (IdFunc funcId_IntFromString,  error "FromString(Int) should not be called in SMT"),
     (IdFunc funcId_IntToXml,       error "ToXml(Int) should not be called in SMT"),
@@ -94,8 +90,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_absInt,         "abs"),
 
 -- String
-    (IdFunc funcId_eqString,           "="),
-    (IdFunc funcId_neqString,          "distinct"),
     (IdFunc funcId_StringToString,     error "ToString(String) should not be called in SMT"),
     (IdFunc funcId_StringFromString,   error "FromString(String) should not be called in SMT"),
     (IdFunc funcId_StringToXml,        error "ToXml(String) should not be called in SMT"),
@@ -116,8 +110,8 @@ initialMapInstanceTxsToSmtlib  =  [
 -- ----------------------------------------------------------------------------------------- --
 -- initialMapInstanceTxsToSmtlib
 
-toFieldName :: CstrId -> FuncId -> String
-toFieldName cstrid field  =  concat [toCstrName cstrid, "$", FuncId.name field]
+toFieldName :: CstrId -> Int -> String
+toFieldName cstrid field  =  concat [toCstrName cstrid, "$", show field]
 
 toIsCstrName :: CstrId -> String
 toIsCstrName cstrid  =  "is-" ++ toCstrName cstrid
@@ -133,34 +127,21 @@ toFuncName funcId  =  concat ["f", show (FuncId.unid funcId), "$", FuncId.name f
 
 insertMap :: (Ident, TxsDef) -> Map.Map Ident String -> Map.Map Ident String 
 
-insertMap (id@(IdSort sid), DefSort (SortDef fs)) mp
+insertMap (id@(IdSort sid), DefSort SortDef) mp
   = if id `Map.member` mp
        then error $ "TXS TXS2SMT insertMap: Sort " ++ show sid ++ " already defined\n"
-       else Map.insert id (toSortName sid) (insertFuncIds fs mp)
-    where
-        insertFuncIds :: [FuncId] -> Map.Map Ident String -> Map.Map Ident String
-        insertFuncIds [] mp' = mp'
-        insertFuncIds (x:xs) mp' = let mapFs = insertFuncIds xs mp' in 
-                                        case FuncId.name x of
-                                            n | n == eqName             -> Map.insert (IdFunc x) "=" mapFs              -- equals function automatically generated
-                                            n | n == neqName            -> Map.insert (IdFunc x) "distinct" mapFs       -- not equal function automatically generated             
-                                            n | n == toStringName       -> Map.insert (IdFunc x) (error ("ToString("++ SortId.name sid ++") should not be called in SMT")) mapFs        -- toString only in CNECTDEF
-                                            n | n == fromStringName     -> Map.insert (IdFunc x) (error ("FromString("++ SortId.name sid ++") should not be called in SMT")) mapFs      -- fromString only in CNECTDEF
-                                            n | n == toXmlName          -> Map.insert (IdFunc x) (error ("ToXml("++ SortId.name sid ++") should not be called in SMT")) mapFs           -- toXml only in CNECTDEF
-                                            n | n == fromXmlName        -> Map.insert (IdFunc x) (error ("FromXml("++ SortId.name sid ++") should not be called in SMT")) mapFs         -- fromXml only in CNECTDEF
-                                            _                           -> error ("TXS2SMT unknown SortDef function " ++ FuncId.name x )
-                                        
+       else Map.insert id (toSortName sid) mp                                        
                             
               
 insertMap (id@(IdCstr cstrid), DefCstr(CstrDef c fs)) mp
   =  if id `Map.member` mp
        then error $ "TXS TXS2SMT insertMap: Constructor (" ++ show cstrid ++ ", CstrDef " ++
                     show c ++ " " ++ show fs ++  ") already defined\n"
-       else foldr ( \f -> Map.insert (IdFunc f) (toFieldName cstrid f) ) 
+       else foldr ( \(f,p) -> Map.insert (IdFunc f) (toFieldName cstrid p) ) 
                   ( Map.insert (IdFunc c) (toIsCstrName cstrid)
                                ( Map.insert (IdCstr cstrid) (toCstrName cstrid) mp )
                   )
-                  fs
+                  (zip fs [0..])
 
 insertMap (id@(IdFunc funcId), DefFunc (FuncDef x y)) mp
   =  if id `Map.member` mp
@@ -208,14 +189,14 @@ sortdefsToSMT mapI tdefs =
         
         -- convert the given constructor to a SMT constructor declaration
         cstrToSMT :: (CstrId, CstrDef) -> String
-        cstrToSMT (cstrId, CstrDef _ fields) = " (" ++ justLookup mapI (IdCstr cstrId) ++ cstrFieldsToSMT fields ++ ")" 
+        cstrToSMT (cstrId, CstrDef _ fields) = " (" ++ justLookup mapI (IdCstr cstrId) ++ cstrFieldsToSMT cstrId fields ++ ")" 
         
         -- convert the given constructor fields to a SMT constructor declaration        
-        cstrFieldsToSMT :: [FuncId] -> String
-        cstrFieldsToSMT fields =
+        cstrFieldsToSMT :: CstrId -> [FuncId] -> String
+        cstrFieldsToSMT cstrId fields =
             case fields of
                 []  -> ""
-                _   -> " (" ++ join ") (" (map (\f -> justLookup mapI (IdFunc f) ++ " " ++ justLookup mapI (IdSort (funcsort f))) fields ) ++ ")"
+                _   -> " (" ++ join ") (" (map (\(f,p) -> toFieldName cstrId p ++ " " ++ justLookup mapI (IdSort (funcsort f))) (zip fields [0..]) ) ++ ")"
         
 -- ----------------------------------------------------------------------------------------- --
 -- convert function definitions to SMT type declarations (as multiple lines of commands)
@@ -273,6 +254,10 @@ valexprToSMT mapI (view -> Vfunc funcId args) = "(" ++ justLookup mapI (IdFunc f
 
 valexprToSMT mapI (view -> Vcstr cd [])   =        justLookup mapI (IdCstr cd)
 valexprToSMT mapI (view -> Vcstr cd args) = "(" ++ justLookup mapI (IdCstr cd) ++ " " ++ join " " (map (valexprToSMT mapI) args) ++ ")"
+
+valexprToSMT mapI (view -> Viscstr cd arg)    = "(" ++ toIsCstrName cd ++ " " ++ valexprToSMT mapI arg ++ ")"
+valexprToSMT mapI (view -> Vaccess cd p arg)  = "(" ++ toFieldName cd p ++ " " ++ valexprToSMT mapI arg ++ ")"
+
 
 valexprToSMT mapI (view -> Vconst c) = constToSMT mapI c
 

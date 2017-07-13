@@ -9,6 +9,8 @@ See license.txt
 module ValExprImpls
 where
 -- ----------------------------------------------------------------------------------------- --
+import Debug.Trace as Trace
+
 import CstrId
 import FuncId
 import ConstDefs
@@ -18,11 +20,30 @@ import Variable
 
 -- ----------------------------------------------------------------------------------------- --
 cstrFunc :: (Variable v) => FuncId -> [ValExpr v] -> ValExpr v
-cstrFunc (FuncId "==" _ [sl, sr] s) [l,r] | sl == sr && s == sortId_Bool && sortOf l == sortOf r && sl == sortOf l  = cstrEqual l r             -- TODO: what should I check?
-cstrFunc f a                                                                                                        = ValExpr (Vfunc f a)
+cstrFunc f a = ValExpr (Vfunc f a)
 
 cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
 cstrCstr c a = ValExpr (Vcstr c a)
+
+cstrIsCstr :: CstrId -> ValExpr v -> ValExpr v
+cstrIsCstr c1 (view -> Vcstr c2 _)          = cstrConst (Cbool (c1 == c2) )
+cstrIsCstr c1 (view -> Vconst (Cstr c2 _))  = cstrConst (Cbool (c1 == c2) )
+cstrIsCstr c e = ValExpr (Viscstr c e)
+
+-- | Apply ADT Accessor of constructor with CstrId on field with given position on the provided value expression.
+-- Preconditions are /not/ checked.
+cstrAccess :: CstrId -> Int -> ValExpr v -> ValExpr v
+cstrAccess c1 p1 e@(view -> Vcstr c2 fields) = 
+    if c1 == c2 -- prevent crashes due to model errors
+        then fields!!p1
+        else Trace.trace ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on instance from constructor " ++ show c2) $ 
+                ValExpr (Vaccess c1 p1 e)
+cstrAccess c1 p1 e@(view -> Vconst (Cstr c2 fields)) = 
+    if c1 == c2 -- prevent crashes due to model errors
+        then cstrConst (fields!!p1)
+        else Trace.trace ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on value from constructor " ++ show c2) $ 
+                ValExpr (Vaccess c1 p1 e)
+cstrAccess c p e = ValExpr (Vaccess c p e)
 
 cstrConst :: Const -> ValExpr v
 cstrConst c = ValExpr (Vconst c)

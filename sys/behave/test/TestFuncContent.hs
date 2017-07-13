@@ -36,9 +36,8 @@ testFuncContentList = TestList [
                                     TestLabel "Binary Operator"        testBinaryOperatorList,
                                     TestLabel "Unary Operator"         testUnaryOperatorList,
                                     TestLabel "Function"               testFunctionList,
-                                    TestLabel "User Defined Function"  testUserDefinedFunction,
-                                    
-                                    TestLabel "Combinatorial"          testCombinatorialInt                                    
+                                    TestLabel "User Defined Function"  testUserDefinedFunction
+                                ,   TestLabel "Combinatorial"          testCombinatorialInt                                    
                                 ]
 
 ---------------------------------------------------------------------------
@@ -244,8 +243,7 @@ testFunction (name, parameterList, sortOut) = TestCase $ do
         funcKey = getFuncKey funcName parameterList sortOut
       in do
         assertEqual "Function" funcContent (getFuncContent torXakisInput funcKey)
-                                              
-
+                                                                                                      
                 
 testCallConstant :: Test
 testCallConstant = TestCase $ do

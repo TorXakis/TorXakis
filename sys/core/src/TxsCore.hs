@@ -141,7 +141,7 @@ txsInit tdefs putMsgs  =  do
      envc <- get
      case envc of
        IOC.Noning params unid
-         -> do smtEnv         <- lift $ SMT.createSMTEnv SMT.cmdZ3 False tdefs
+         -> do smtEnv         <- lift $ SMT.createSMTEnv SMT.cmdZ3 True tdefs
                (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
                (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions tdefs) smtEnv'
                putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver initialized : " ++ info

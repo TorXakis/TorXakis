@@ -49,6 +49,7 @@ import PurpId
 import SortId
 import StatId
 import VarId
+import FuncTable
 import TxsUtils                         -- some utilities on TxsDefs 
 import TxsShow                          -- pretty pshow for error messages
 import StdTDefs                         -- predefined, standard Txs data types
@@ -56,8 +57,9 @@ import StdTDefs                         -- predefined, standard Txs data types
 import Sigs
 
 import qualified Data.List   as List
-import qualified Data.Set    as Set
 import qualified Data.Map    as Map
+import qualified Data.Set    as Set
+import qualified Data.String.Utils as Utils
 }
 
 
@@ -78,16 +80,17 @@ import qualified Data.Map    as Map
 %tokentype { Token }
 %error { parseError }
 
-%attributetype           { Attrs a }
+%attributetype           { Attrs a v }
 %attribute parseVal      { a }                       -- synthesized: parsed value
 
 %attribute inhNodeUid    { Int }                     -- unique id for each nonterminal
 %attribute synMaxUid     { Int }                     -- last unique id for subtree
 
-%attribute synSigs       { Sigs }                    -- defined Sigs for collection
-%attribute inhSigs       { Sigs }                    -- defined Sigs for usage
+%attribute synSigs       { (Sigs VarId) }                    -- defined Sigs for collection
+%attribute inhSigs       { (Sigs VarId) }                    -- defined Sigs for usage
 
 %attribute inhDefgSort   {   SortId   }              -- defining sort in a TypeDef
+%attribute inhDefCstrId  {   CstrId   }              -- defining CstrId in a TypeDef
 
 %attribute synChanSigs   { [ ChanId ] }              -- locally defined ChanId's for collection
 %attribute inhChanSigs   { [ ChanId ] }              -- locally defined ChanId's for usage
@@ -205,6 +208,7 @@ import qualified Data.Map    as Map
     string        { Tstring           posstring   $$ }
     regexval      { Tregexval         posregexval $$ }
     TDEFS         { Ctdefs            $$ }
+    SIGS          { Csigs             $$ }
     CHANENV       { Cchanenv          $$ }
     VARENV        { Cvarenv           $$ }
     UNID          { Cunid             $$ }
@@ -271,31 +275,11 @@ TxsRoot         -- :: { TxsDefs }
                 {  $$.inhNodeUid   = 1000
                 ;  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
-                ;  $1.inhSigs      = $1.synSigs { sort = (sort $1.synSigs) ++ [ sid | ( (IdSort sid@(SortId nm u))    , tdef ) <- stdTDefs ]
-                                                , cstr = (cstr $1.synSigs) ++ [ cid | ( (IdCstr cid@(CstrId nm u a s)), tdef ) <- stdTDefs ]
-                                                , func = (func $1.synSigs) ++ [ fid | ( (IdFunc fid@(FuncId nm u a s)), tdef ) <- stdTDefs ]
-                                                }
+                ;  $1.inhSigs      = Sigs.uniqueCombine Sigs.empty { sort = stdSortTable
+                                                                   , func = stdFuncTable
+                                                                   }
+                                                        $1.synSigs
                 ;  $$ = ( ($$.synMaxUid+1), TxsDefs.fromList ( $1 ++ stdTDefs ) )
-                ;  where let dbls = doubles (map ( sig . IdSort ) (sort $1.inhSigs))
-                          in if null dbls then () else
-                             error $ "\nTXS0011: " ++
-                                     "Double defined sorts: "++(show dbls)++"\n"
-                ;  where let dbls = doubles (map ( sig . IdCstr ) (cstr $1.inhSigs))
-                          in if null dbls then () else
-                             error $ "\nTXS0012: " ++
-                                     "Double defined constructors: "++(show dbls)++"\n"
-                ;  where let dbls = doubles (map ( sig . IdFunc ) (func $1.inhSigs))
-                          in if null dbls then () else
-                             error $ "\nTXS0013: " ++
-                                     "Double defined functions: "++(show dbls)++"\n"
-                ;  where let dbls = doubles (map ( sig . IdProc ) (pro $1.inhSigs))
-                          in if null dbls then () else
-                             error $ "\nTXS0014: " ++
-                                     "Double defined processes: "++(show dbls)++"\n"
-                ;  where let dbls = doubles (map ( sig . IdChan ) (Sigs.chan $1.inhSigs))
-                          in if null dbls then () else
-                             error $ "\nTXS0015: " ++
-                                     "Double defined channels: "++(show dbls)++"\n"
                 ;  where let dbls = doubles [ nm | (IdModel (ModelId nm uid), DefModel modeldef) <- $1 ]
                           in if null dbls then () else
                              error $ "\nTXS0016: " ++
@@ -349,7 +333,7 @@ TorXakisDefns   -- :: { [ (Ident,TxsDef) ] }
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $2.inhNodeUid   = $1.synMaxUid + 1
                 ;  $$.synMaxUid    = $2.synMaxUid
-                ;  $$.synSigs      = Sigs.combine $1.synSigs $2.synSigs
+                ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $2.synSigs
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $$ = $1 ++ $2
@@ -479,9 +463,9 @@ TypeDefs        -- :: { [ (Ident,TxsDef) ] }
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $3.inhNodeUid   = $1.synMaxUid + 1
                 ;  $$.synMaxUid    = $3.synMaxUid
-                ;  $$.synSigs      = Sigs.combine $1.synSigs $3.synSigs
-                ;  $1.inhSigs  = $$.inhSigs
-                ;  $3.inhSigs  = $$.inhSigs
+                ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $3.synSigs
+                ;  $1.inhSigs      = $$.inhSigs
+                ;  $3.inhSigs      = $$.inhSigs
                 ;  $$ = $1 ++ $3
                 }
 
@@ -503,66 +487,21 @@ TypeDef         -- :: { [ (Ident,TxsDef) ] }
                 {  $3.inhNodeUid   = $$.inhNodeUid + 15
                 ;  $$.synMaxUid    = $3.synMaxUid
                 ;  $$.synSigs      = let dsort = SortId $1 $$.inhNodeUid in
-                                        $3.synSigs  { sort = (sort $3.synSigs) ++ [ dsort ]
-                                                    , func = (func $3.synSigs) ++ 
-                                                              [ FuncId eqName ($$.inhNodeUid+1) [dsort,dsort] sortId_Bool
-                                                              , FuncId neqName ($$.inhNodeUid+2) [dsort,dsort] sortId_Bool
-                                                              , FuncId "toString"   ($$.inhNodeUid+3) [dsort] sortId_String
-                                                              , FuncId "fromString" ($$.inhNodeUid+4) [sortId_String] dsort
-                                                              , FuncId "toXml"   ($$.inhNodeUid+5) [dsort] sortId_String
-                                                              , FuncId "fromXml" ($$.inhNodeUid+6) [sortId_String] dsort
-                                                              ]
-                                                    }
+                                        Sigs.uniqueCombine  Sigs.empty { sort = Map.singleton $1 dsort
+                                                                       , func = FuncTable (Map.fromList [ (eqName, Map.singleton (Signature [dsort,dsort] sortId_Bool) equalHandler)
+                                                                                                        , (neqName, Map.singleton (Signature [dsort,dsort] sortId_Bool) notEqualHandler)
+                                                                                                        , (toStringName, Map.singleton (Signature [dsort] sortId_String) (cstrPredef AST (FuncId toStringName ($$.inhNodeUid+3) [dsort] sortId_String) ) )
+                                                                                                        , (fromStringName, Map.singleton (Signature [sortId_String] dsort) (cstrPredef ASF (FuncId fromStringName ($$.inhNodeUid+4) [sortId_String] dsort) ) )
+                                                                                                        , (toXmlName, Map.singleton (Signature [dsort] sortId_String) (cstrPredef AXT (FuncId toStringName ($$.inhNodeUid+5) [dsort] sortId_String) ) )
+                                                                                                        , (fromXmlName, Map.singleton (Signature [sortId_String] dsort) (cstrPredef AXF (FuncId fromStringName ($$.inhNodeUid+6) [sortId_String] dsort) ) )
+                                                                                                        ] ) 
+                                                                       }
+                                                            $3.synSigs  
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $3.inhDefgSort  = SortId $1 $$.inhNodeUid
-                ;  $$ = $3 ++
-                        let { dsort = SortId $1 $$.inhNodeUid
-                            ; eq = FuncId eqName ($$.inhNodeUid+1) [dsort,dsort] sortId_Bool
-                            ; ne = FuncId neqName ($$.inhNodeUid+2) [dsort,dsort] sortId_Bool
-                            ; sto = FuncId "toString"   ($$.inhNodeUid+3) [dsort] sortId_String
-                            ; sfr = FuncId "fromString" ($$.inhNodeUid+4) [sortId_String] dsort
-                            ; xto = FuncId "toXml"   ($$.inhNodeUid+5) [dsort] sortId_String
-                            ; xfr = FuncId "fromXml" ($$.inhNodeUid+6) [sortId_String] dsort
-                            ; x  = VarId "x" ($$.inhNodeUid+7) dsort
-                            ; y  = VarId "y" ($$.inhNodeUid+8) dsort
-                            ; u  = VarId "u" ($$.inhNodeUid+9) dsort
-                            ; v  = VarId "v" ($$.inhNodeUid+10) dsort
-                            ; d  = VarId "d" ($$.inhNodeUid+11) dsort
-                            ; s  = VarId "s" ($$.inhNodeUid+12) sortId_String
-                            ; e  = VarId "e" ($$.inhNodeUid+13) dsort
-                            ; f  = VarId "f" ($$.inhNodeUid+14) sortId_String
-                            }
-                         in [ ( IdFunc eq
-                              , DefFunc (FuncDef [x,y] ( cstrEqual (cstrVar x) (cstrVar y) ))
-                              )
-                            , ( IdFunc ne
-                              , DefFunc (FuncDef [u,v] ( cstrPredef ANE ne [cstrVar u, cstrVar v] ))
-                              )
-                            , ( IdFunc sto
-                              , DefFunc (FuncDef [d] ( cstrPredef AST sto [cstrVar d] ))
-                              )
-                            , ( IdFunc sfr
-                              , DefFunc (FuncDef [s] ( cstrPredef ASF sfr [cstrVar s] ))
-                              )
-                            , ( IdFunc xto
-                              , DefFunc (FuncDef [e] ( cstrPredef AXT xto [cstrVar e] ))
-                              )
-                            , ( IdFunc xfr
-                              , DefFunc (FuncDef [f] ( cstrPredef AXF xfr [cstrVar f] ))
-                              )
-                            , ( IdSort dsort
-                              , DefSort (SortDef [eq,ne,sto,sfr,xto,xfr])
-                              )
-                            ]
-                ;  where let dbls = doubles (map CstrId.name (cstr $$.synSigs))
-                          in if null dbls then () else
-                             error $ "\nTXS0041: " ++
-                                     "Double defined constructors: " ++ (show dbls) ++ "\n"
-                ;  where let dbls = doubles (map FuncId.name (func $$.synSigs))
-                          in if null dbls then () else
-                             error $ "\nTXS0042: " ++
-                                     "Double defined field names: " ++ (show dbls) ++ "\n"
-                }
+                ;  $$ = $3 ++ [ ( IdSort (SortId $1 $$.inhNodeUid), DefSort (SortDef) ) ]
+                } 
+                -- unique sort implies unique functions
 
 Constructors    -- :: { [ (Ident,TxsDef) ] }
                 -- definition of constructors and implicit functions of an algebraic type
@@ -595,7 +534,7 @@ Constructors    -- :: { [ (Ident,TxsDef) ] }
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $1.inhDefgSort  = $$.inhDefgSort
                 ;  $3.inhDefgSort  = $$.inhDefgSort
-                ;  $$.synSigs      = Sigs.combine $1.synSigs $3.synSigs
+                ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $3.synSigs
                 ;  $$ = $1 ++ $3
                 }
 
@@ -610,74 +549,71 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                 -- mirroring : -
                 -- constrs   : all used sorts shall be defined
               : capid FieldList
-                {  $2.inhNodeUid   = $$.inhNodeUid + 3
+                {  $2.inhNodeUid   = $$.inhNodeUid + 2*(length $2) + 3
                 ;  $$.synMaxUid    = $2.synMaxUid
                 ;  $2.inhSigs      = $$.inhSigs
-                ;  $2.inhDefgSort  = $$.inhDefgSort
-                ;  $$.synSigs      = $2.synSigs { cstr = [ CstrId $1 
-                                                                  $$.inhNodeUid
-                                                                  [ fs | FuncId nm uid fa fs <- func $2.synSigs ]
-                                                                  $$.inhDefgSort
-                                                         ]
-                                                , func = (func $2.synSigs) ++ [FuncId ("is"++$1) ($$.inhNodeUid+1) [$$.inhDefgSort] sortId_Bool]
-                                                }
-                ;  $$ = $2
-                        ++ let { cfid = FuncId ("is"++$1) ($$.inhNodeUid+1)
-                                               [$$.inhDefgSort] sortId_Bool
-                               ; x = VarId "x" ($$.inhNodeUid+2) $$.inhDefgSort
-                               }
-                            in [ ( IdCstr cid, DefCstr (CstrDef cfid (func $2.synSigs ) ) )
-                               | cid <- cstr $$.synSigs
-                               ] ++
-                               [ ( IdFunc cfid
-                                 , DefFunc (FuncDef [x] ( cstrPredef ACC cfid [cstrVar x] ))
-                                 )
+                ;  $$.synSigs = let { cas = map snd $2
+                                    ; cid = CstrId $1 $$.inhNodeUid cas $$.inhDefgSort
+                                    } in Sigs.empty{func = FuncTable( Map.fromList $ [($1, Map.singleton (Signature cas $$.inhDefgSort) (cstrHandler cid))
+                                                                                     ,("is"++$1, Map.singleton (Signature [$$.inhDefgSort] sortId_Bool) (iscstrHandler cid))
+                                                                                     ]
+                                                                                     ++
+                                                                                     [ ( nm , Map.singleton (Signature [$$.inhDefgSort] s) (accessHandler cid pos) ) | ((nm,s),pos) <- zip $2 [0..] ]
+                                                                    ) 
+                                                   }
+                ;  $$ = let { cas = map snd $2
+                            ; cid = CstrId $1 $$.inhNodeUid cas $$.inhDefgSort
+                            ; cfid = FuncId ("is"++$1) ($$.inhNodeUid+1) [$$.inhDefgSort] sortId_Bool
+                            ; x =  VarId "x" ($$.inhNodeUid+2) $$.inhDefgSort
+                            ; fs = [ let y = VarId "y" vid $$.inhDefgSort in
+                                    (IdFunc (FuncId nm uid [$$.inhDefgSort] s), DefFunc (FuncDef [y] (cstrAccess cid pos (cstrVar y))))
+                                   | ((nm,s), pos, uid, vid) <- List.zip4 $2 [0..] [($$.inhNodeUid + 3)..] [($$.inhNodeUid +3 + length $2)..] 
+                                   ]
+                            }
+                            in [ ( IdCstr cid, DefCstr (CstrDef cfid (map (\(IdFunc f,_) -> f) fs) ) ) 
+                               , ( IdFunc cfid, DefFunc (FuncDef [x] (cstrIsCstr cid (cstrVar x) ) ) )
                                ]
+                               ++
+                               fs
+                ;  where let dbls = doubles ([$1, "is"++$1] ++ map fst $2)
+                          in if null dbls then () else
+                             error $ "\nTXS0803: " ++
+                                     "Double defined names: "++(show dbls)++"\n"
+                               
                 }
+                -- TODO: remove addition of constructor and isConstructorFunction: add ADT info to TxsDefs in another way!
 
-FieldList       -- :: { [ (Ident,TxsDef) ] }
+FieldList       -- :: { [ (String, SortId) ] }
                 -- definition of the fields with implicit functions of an algebraic type
                 -- attrs inh : inhNodeUid : unique node identification
-                --           : inhSortSigs: usable sorts
-                --           : inhDefgSort: defining sort
                 -- attrs syn : synMaxUid  : maximum uid in whole subtree
-                --           : synFuncSigs: (implicitly) defined field selector functions
                 -- mirroring : -
                 -- constrs   : all used sorts shall be defined 
               : {- empty -}
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synSigs      = Sigs.empty 
                 ;  $$ =  []
                 }  
               | "{" "}"
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synSigs      = Sigs.empty
                 ;  $$ = []
                 }
               | "{" Fields "}"
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $2.synMaxUid
                 ;  $2.inhSigs      = $$.inhSigs
-                ;  $2.inhDefgSort  = $$.inhDefgSort
-                ;  $$.synSigs      = $2.synSigs
                 ;  $$ = $2
                 }
 
-Fields          -- :: { [ (Ident,TxsDef) ] }
+Fields          -- :: { [ (String,SortId) ] }
                 -- definition of the fields with implicit functions of an algebraic type
                 -- attrs inh : inhNodeUid : unique node identification
-                --           : inhSortSigs: usable sorts
-                --           : inhDefgSort: defining sort
                 -- attrs syn : synMaxUid  : maximum uid in whole subtree
-                --           : synFuncSigs: (implicitly) defined field selector functions
                 -- mirroring : -
                 -- constrs   : all used sorts shall be defined
               : Field
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $1.inhSigs      = $$.inhSigs
-                ;  $1.inhDefgSort  = $$.inhDefgSort
-                ;  $$.synSigs      = $1.synSigs
                 ;  $$ = $1
                 }
               | Fields ";" Field
@@ -686,39 +622,27 @@ Fields          -- :: { [ (Ident,TxsDef) ] }
                 ;  $$.synMaxUid    = $3.synMaxUid
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $3.inhSigs      = $$.inhSigs
-                ;  $1.inhDefgSort  = $$.inhDefgSort
-                ;  $3.inhDefgSort  = $$.inhDefgSort
-                ;  $$.synSigs      = Sigs.combine $1.synSigs $3.synSigs
                 ;  $$ = $1 ++ $3
+                ;  where let dbls = doubles (map fst ($1 ++ $3))
+                          in if null dbls then () else
+                             error $ "\nTXS0802: " ++
+                                     "Double defined fields: "++(show dbls)++"\n"
                 }
 
-Field           -- :: { [ (Ident,TxsDef) ] }
+Field           -- :: { [ (String, SortId) ] }
                 -- definition of field(s) of same sort with implicit functions
                 -- attrs inh : inhNodeUid : unique node identification
-                --           : inhSortSigs: usable sorts
-                --           : inhDefgSort: defining sort
                 -- attrs syn : synMaxUid  : maximum uid in whole subtree
-                --           : synFuncSigs: (implicitly) defined field selector functions
                 -- mirroring : -
                 -- constrs   : used sort shall be defined
-              : NeSmallIdList "::" capid
-                {  $$.synMaxUid    = $$.inhNodeUid + ((length $1)*2)
-                ;  $$.synSigs      = Sigs.empty { func = case $3 `bindOnName` (map IdSort (sort $$.inhSigs)) of
-                                                     { []           -> error $ "\nTXS0061: "++
-                                                                "Undefined field sort: "++(show $3)++"\n"
-                                                     ; [IdSort s]   -> [ FuncId nm uid [$$.inhDefgSort] s
-                                                                       | (nm,uid) <- zip $1 [$$.inhNodeUid..]
-                                                                       ]
-                                                     ; _            -> error $ "\nTXS0062: "++
-                                                                        "Field sort not unique: "++(show $3)++"\n"
-                                                     }
-                                                 }
-                ;  $$ = [ ( IdFunc fid
-                          , let x = VarId "x" uid $$.inhDefgSort
-                             in DefFunc (FuncDef [x] ( cstrPredef AFS fid [cstrVar x] ))
-                          )
-                        | (fid,uid) <- zip (func $$.synSigs) [($$.inhNodeUid+(length $1))..]
-                        ]
+              : NeSmallIdList OfSort
+                {  $$.synMaxUid    = $$.inhNodeUid
+                ;  $2.inhSigs      = $$.inhSigs
+                ;  $$ = [ (nm, $2) | nm <- $1]
+                ;  where let dbls = doubles $1
+                          in if null dbls then () else
+                             error $ "\nTXS0801: " ++
+                                     "Double defined fields: "++(show dbls)++"\n"
                 }
 
 FuncDefList     -- :: { [ (Ident,TxsDef) ] }
@@ -762,27 +686,22 @@ FuncDefs        -- :: { [ (Ident,TxsDef) ] }
                 ;  $$.synMaxUid    = $3.synMaxUid
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $3.inhSigs      = $$.inhSigs
-                ;  $$.synSigs      = Sigs.combine $1.synSigs $3.synSigs
+                ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $3.synSigs
                 ;  $$ = $1 ++ [ $3 ]
                 }
 
 ExFuncDef       -- :: { ( Int, TxsDef ) }
                 -- top-level function definition for external use with multiple parsers
                 -- attrs inh : TDEFS : TorXakis definitions environment
+                --           : SIGS  : Signatures
                 --           : UNID  : unique node identification
                 -- constrs   : defined function shall have unique function name 
-              : TDEFS UNID FuncDef
-                {  $3.inhNodeUid   = $2
-                ;  $3.inhSigs  = Sigs.empty { sort = [ sid | IdSort sid@(SortId nm u)      <- TxsDefs.keys $1 ]
-                                            , cstr = [ cid | IdCstr cid@(CstrId nm u a s)  <- TxsDefs.keys $1 ]
-                                            , func = [ fid | IdFunc fid@(FuncId nm u a s)  <- TxsDefs.keys $1 ]
-                                            }
-                ;  $$ = ( $3.synMaxUid, TxsDefs.fromList [$3] )
-                ;  where if (FuncId.name $ head (func $3.synSigs))
-                            `notElem` [ nm | IdFunc (FuncId nm u a s) <- TxsDefs.keys $1 ] then () else
-                         error $ "\nTXS0102 : " ++ "Function name already in use\n"
+              : TDEFS SIGS UNID FuncDef
+                {  $4.inhNodeUid   = $3
+                ;  $4.inhSigs      = Sigs.uniqueCombine $4.synSigs $2
+                ;  $$ = ( $4.synMaxUid, TxsDefs.fromList [$4] )
                 }
-
+                
 FuncDef         -- :: { (Ident,TxsDef) }
                 -- definition of a prefix- or infix-function;
                 -- attrs inh : inhNodeUid : unique node identification
@@ -806,7 +725,7 @@ FuncDef         -- :: { (Ident,TxsDef) }
                 ;  $5.inhSigs      = $$.inhSigs
                 ;  $5.inhVarSigs   = $2
                 ;  $5.inhSolvSort  = Just $3
-                ;  $$.synSigs      = Sigs.empty { func = [ FuncId $1 $$.inhNodeUid (map varsort $2) $3 ] }
+                ;  $$.synSigs      = Sigs.empty { func = FuncTable (Map.singleton $1 (Map.singleton (Signature (map varsort $2) $3) ( cstrFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3) ) ) ) }
                 ;  $$ = ( IdFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3), 
                           DefFunc (FuncDef $2 $5) )
                 }
@@ -820,7 +739,7 @@ FuncDef         -- :: { (Ident,TxsDef) }
                 ;  $5.inhSigs      = $$.inhSigs
                 ;  $5.inhVarSigs   = $2
                 ;  $5.inhSolvSort  = Just $3
-                ;  $$.synSigs      = Sigs.empty { func = [ FuncId $1 $$.inhNodeUid (map varsort $2) $3 ] }
+                ;  $$.synSigs      = Sigs.empty { func = FuncTable (Map.singleton $1 (Map.singleton (Signature (map varsort $2) $3) ( cstrFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3) ) ) ) }
                 ;  $$ = ( IdFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3), 
                           DefFunc (FuncDef $2 $5) )
                 ;  where if (length $2) == 1 || (length $2) == 2 then () else
@@ -871,26 +790,20 @@ ConstDefs       -- :: { [ (Ident,TxsDef) ] }
                 ;  $$.synMaxUid    = $3.synMaxUid
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $3.inhSigs      = $$.inhSigs
-                ;  $$.synSigs      = Sigs.combine $1.synSigs $3.synSigs
+                ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $3.synSigs
                 ;  $$ = $1 ++ [ $3 ]
                 }
 
 ExConstDef      -- :: { ( Int, TxsDef ) }
                 -- top-level constant definition for external use with multiple parsers
                 -- attrs inh : TDEFS : TorXakis definitions environment
+                --           : SIGS  : Signatures
                 --           : UNID  : unique node identification
                 -- constrs   : defined constant shall have unique function name 
-              : TDEFS UNID ConstDef
-                {  $3.inhNodeUid   = $2
-                ;  $3.inhSigs      = Sigs.empty { sort = [ sid | IdSort sid@(SortId nm u)     <- TxsDefs.keys $1 ]
-                                                , cstr = [ cid | IdCstr cid@(CstrId nm u a s) <- TxsDefs.keys $1 ]
-                                                , func = [ fid | IdFunc fid@(FuncId nm u a s) <- TxsDefs.keys $1 ]
-                                                }
-                ;  $$ = ( $3.synMaxUid, TxsDefs.fromList [$3] )
-                ;  where if (FuncId.name $ head (func $3.synSigs))
-                            `notElem` [ nm | IdFunc (FuncId nm u a s) <- TxsDefs.keys $1 ] then () else
-                         error $ "\nTXS0102 : " ++
-                                 "Constant name already in use\n"
+              : TDEFS SIGS UNID ConstDef
+                {  $4.inhNodeUid   = $3
+                ;  $4.inhSigs      = Sigs.uniqueCombine $4.synSigs $2
+                ;  $$ = ( $4.synMaxUid, TxsDefs.fromList [$4] )
                 }
 
 ConstDef        -- :: { (Ident,TxsDef) }
@@ -912,7 +825,7 @@ ConstDef        -- :: { (Ident,TxsDef) }
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $4.inhSigs      = $$.inhSigs
                 ;  $4.inhSolvSort  = Just $2
-                ;  $$.synSigs      = Sigs.empty { func = [ FuncId $1 $$.inhNodeUid [] $2 ] }
+                ;  $$.synSigs      = Sigs.empty { func = FuncTable (Map.singleton $1 (Map.singleton (Signature [] $2) ( cstrFunc (FuncId $1 $$.inhNodeUid [] $2) ) ) ) }
                 ;  $$ = ( IdFunc (FuncId $1 $$.inhNodeUid [] $2), DefFunc (FuncDef [] $4 ) )
                 }
 
@@ -1010,7 +923,7 @@ StautDef        -- :: { (Ident,TxsDef) }
                 --           : free variables in StautItems from FormalVars
 
                 --     ;  $7.inhSigs      = $$.inhSigs { pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] } 
-                --                                              ++ (proc $$.inhSigs)
+                --                                              ++ (pro $$.inhSigs)
                 --  PVDL: are global procdefs not available in the stautdef context?? 
 
               : STAUTDEF Id FormalChannels FormalVars ExitKind "::=" StautItemList EndDef
@@ -1654,12 +1567,10 @@ OfSort          -- :: { SortId }
                 -- constrs   : sort shall be uniquely defined
               : "::" capid
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$ = case bindOnName $2 (map IdSort (sort $$.inhSigs)) of
-                        { []            -> error ("\nTXS0131: " ++
+                ;  $$ = case Map.lookup $2 (sort $$.inhSigs) of
+                        { Nothing       -> error ("\nTXS0131: " ++
                                                     "Explicit sort not defined: "++(show $2)++"\n")
-                        ; [IdSort sid]  -> sid
-                        ; _             -> error ("\nTXS0132: " ++
-                                                    "Explicit sort double defined: "++(show $2)++"\n")
+                        ; Just sid      -> sid
                         }
                 }
 
@@ -1672,12 +1583,10 @@ OfSorts         -- :: { [SortId] }
                 -- constrs   : sorts shall be uniquely defined
               : SharpCapIdList
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$ = [ case bindOnName nm (map IdSort (sort $$.inhSigs)) of
-                          { []              -> error ("\nTXS0151: " ++
+                ;  $$ = [ case Map.lookup nm (sort $$.inhSigs) of
+                          { Nothing         -> error ("\nTXS0151: " ++
                                                         "Explicit sort not defined: "++(show nm)++"\n")
-                          ; [IdSort sid]    -> sid
-                          ; _               -> error ("\nTXS0152: "++
-                                                        "Explicit sort double defined: "++(show nm)++"\n")
+                          ; Just sid        -> sid
                           }
                         | nm <- $1
                         ]
@@ -1692,12 +1601,10 @@ NeOfSorts       -- :: { [SortId] }
                 -- constrs   : sorts shall be uniquely defined
               : NeSharpCapIdList
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$ = [ case bindOnName nm (map IdSort (sort $$.inhSigs)) of
-                          { []              -> error ("\nTXS0151: " ++
+                ;  $$ = [ case Map.lookup nm (sort $$.inhSigs) of
+                          { Nothing         -> error ("\nTXS0151: " ++
                                                         "Explicit sort not defined: "++(show nm)++"\n")
-                          ; [IdSort sid]    -> sid
-                          ; _               -> error ("\nTXS0152: "++
-                                                        "Explicit sort double defined: "++(show nm)++"\n")
+                          ; Just sid        -> sid
                           }
                         | nm <- $1
                         ]
@@ -1751,13 +1658,14 @@ ChannelDeclList -- :: { [ChanId] }
 ExChannelDecls  -- :: { ( Int, [ChanId] ) }
                 -- definition of (a) formal channel(s) with its sort signature for external use
                 -- attrs inh : TDEFS : TorXakis definitions environment
+                --           : SIGS  : Signatures
                 --           : UNID  : unique node identification
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: [VEnv]: locally defined value definitions
-              : TDEFS UNID ChannelDecls
-                {  $3.inhNodeUid   = $2
-                ;  $3.inhSigs      = Sigs.empty { sort = [ sid | (IdSort sid@(SortId nm u)) <- TxsDefs.keys $1 ] }
-                ;  $$ = ( $3.synMaxUid, $3 )
+              : TDEFS SIGS UNID ChannelDecls
+                {  $4.inhNodeUid   = $3
+                ;  $4.inhSigs      = Sigs.uniqueCombine $4.synSigs $2
+                ;  $$ = ( $4.synMaxUid, $4 )
                 }
 
 ChannelDecls    -- :: { [ChanId] }
@@ -1793,7 +1701,7 @@ FormalVars      -- :: { [VarId] }
               | "(" VarDeclList ")"
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $2.synMaxUid
-                ;  $2.inhSigs  = $$.inhSigs
+                ;  $2.inhSigs      = $$.inhSigs
                 ;  $$ = $2
                 ;  where let dbls = doubles ( map ( sig . IdVar ) $2 )
                           in if null dbls then () else
@@ -1804,13 +1712,14 @@ FormalVars      -- :: { [VarId] }
 ExVarDeclList   -- :: { ( Int, [VarId] ) }
                 -- definition of formal variables for external use with multiple parsers
                 -- attrs inh : TDEFS : TorXakis definitions environment
+                --           : SIGS  : Signatures
                 --           : UNID  : unique node identification
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: [VEnv]: locally defined value definitions
-              : TDEFS UNID VarDeclList
-                {  $3.inhNodeUid   = $2
-                ;  $3.inhSigs      = Sigs.empty { sort = [ sid | (IdSort sid@(SortId nm u)) <- TxsDefs.keys $1 ] }
-                ;  $$ = ( $3.synMaxUid, $3 )
+              : TDEFS SIGS UNID VarDeclList
+                {  $4.inhNodeUid   = $3
+                ;  $4.inhSigs      = Sigs.uniqueCombine $4.synSigs $2
+                ;  $$ = ( $4.synMaxUid, $4 )
                 }
 
 VarDeclList     -- :: { [VarId] }
@@ -1872,16 +1781,12 @@ ExBehaviourExpr -- :: { ( Int, BExpr ) }
                 --           : VARENV: variable declarations environment
                 --           : UNID  : unique node identification
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
-              : TDEFS CHANENV VARENV UNID BehaviourExpr
-                {  $5.inhNodeUid   = $4
-                ;  $5.inhSigs      = Sigs.empty { sort = [ sid | IdSort sid@(SortId nm u)       <- TxsDefs.keys $1 ]
-                                                , cstr = [ cid | IdCstr cid@(CstrId nm u a s)   <- TxsDefs.keys $1 ]
-                                                , func = [ fid | IdFunc fid@(FuncId nm u a s)   <- TxsDefs.keys $1 ]
-                                                , pro  = [ pid | IdProc pid@(ProcId nm u c v e) <- TxsDefs.keys $1 ]
-                                                }
-                ;  $5.inhChanSigs  = $2
-                ;  $5.inhVarSigs   = $3
-                ;  $$ = ( $5.synMaxUid, $5 )
+              : TDEFS SIGS CHANENV VARENV UNID BehaviourExpr
+                {  $6.inhNodeUid   = $5
+                ;  $6.inhSigs      = $2
+                ;  $6.inhChanSigs  = $3
+                ;  $6.inhVarSigs   = $4
+                ;  $$ = ( $6.synMaxUid, $6 )
                 }
 
 BehaviourExpr   -- :: { BExpr }
@@ -2261,10 +2166,15 @@ BehaviourExpr4  -- :: { BExpr }
                                     ]
                          in case ppids of
                             { []    -> error $ "\nTXS0323: "++
-                                               "Process not resolved: "++(show $1)++"\n"
+                                               "Process not resolved: "++ show $1 ++"\n" ++
+                                               "Processes with the same name are\n* " ++ 
+                                               Utils.join "\n* " (map show [pid | pid@(ProcId nm _ _ _ _) <- Sigs.pro $$.inhSigs
+                                                                                , nm == $1 ])
                             ; [pid] -> ProcInst pid $2 $3
                             ; _     -> error $ "\nTXS0324: "++ "Process "++
-                                               "not uniquely resolved: "++(show $1)++"\n"
+                                               "not uniquely resolved: "++ show $1 ++"\n"  ++
+                                               "Possible processes are\n* " ++ 
+                                               Utils.join "\n* " (map show ppids)
                             }
                 }
               | LET NeValueDefList IN BehaviourExpr1 EndIn
@@ -2375,15 +2285,12 @@ ExPrefOfferList -- :: { ( Int, Set.Set Offer ) }
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: Set.Set Offer: parsed offers
                 -- constrs   :  ChanOffers are of form 'Exclam VExpr'
-              : TDEFS CHANENV VARENV UNID PrefOfferList
-                {  $5.inhNodeUid   = $4
-                ;  $5.inhSigs      = Sigs.empty { sort = [ sid | IdSort sid@(SortId nm u)     <- TxsDefs.keys $1 ]
-                                                , cstr = [ cid | IdCstr cid@(CstrId nm u a s) <- TxsDefs.keys $1 ]
-                                                , func = [ fid | IdFunc fid@(FuncId nm u a s) <- TxsDefs.keys $1 ]
-                                                }
-                ;  $5.inhChanSigs  = $2
-                ;  $5.inhVarSigs   = $3
-                ;  $$ = ( $5.synMaxUid, $5 )
+              : TDEFS SIGS CHANENV VARENV UNID PrefOfferList
+                {  $6.inhNodeUid   = $5
+                ;  $6.inhSigs      = $2
+                ;  $6.inhChanSigs  = $3
+                ;  $6.inhVarSigs   = $4
+                ;  $$ = ( $6.synMaxUid, $6 )
                 }
 
 PrefOfferList   -- :: { Set.Set Offer }
@@ -2719,15 +2626,12 @@ ExValExpr       -- :: { ( Int, VExpr ) }
                 --           : UNID  : unique node identification
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: VExpr : VExpr parsed value expression
-              : TDEFS VARENV UNID ValExpr
-                {  $4.inhNodeUid   = $3
-                ;  $4.inhSigs      = Sigs.empty { sort = [ sid | IdSort sid@(SortId nm u)     <- TxsDefs.keys $1 ]
-                                                , cstr = [ cid | IdCstr cid@(CstrId nm u a s) <- TxsDefs.keys $1 ]
-                                                , func = [ fid | IdFunc fid@(FuncId nm u a s) <- TxsDefs.keys $1 ]
-                                                }
-                ;  $4.inhVarSigs   = $2
-                ;  $4.inhSolvSort  = Nothing
-                ;  $$ = ( $4.synMaxUid, $4 )
+              : TDEFS SIGS VARENV UNID ValExpr
+                {  $5.inhNodeUid   = $4
+                ;  $5.inhSigs      = $2
+                ;  $5.inhVarSigs   = $3
+                ;  $5.inhSolvSort  = Nothing
+                ;  $$ = ( $5.synMaxUid, $5 )
                 }
 
 ValExpr         -- :: { VExpr }
@@ -2744,7 +2648,7 @@ ValExpr         -- :: { VExpr }
               : ValExpr1
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
-                ;  $1.inhSigs  = $$.inhSigs
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $1.inhSolvSort
                      = case ($$.inhSolvSort, $1.synExpdSort) of
@@ -2825,47 +2729,39 @@ ValExpr1        -- :: { VExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExpdSort  = [ res
-                                     | FuncId nm uid args res <- Sigs.func $$.inhSigs
-                                     , nm == $2
-                                     , length args == 2
-                                     , args!!0 `elem` $1.synExpdSort
-                                     , args!!1 `elem` $3.synExpdSort
+                                     | Signature [l,r] res <- signatures $2 (Sigs.func $$.inhSigs)
+                                     , l `elem` $1.synExpdSort
+                                     , r `elem` $3.synExpdSort
                                      ]
                 ;  $1.inhSolvSort
-                     = let pargs = [ args
-                                   | FuncId nm uid args res <- Sigs.func $$.inhSigs
-                                   , nm == $2
-                                   , length args == 2
-                                   , args!!0 `elem` $1.synExpdSort
-                                   , args!!1 `elem` $3.synExpdSort
-                                   , res == case $$.inhSolvSort of
-                                            { Nothing  -> res
-                                            ; Just sid -> sid
+                     = let pargs = [ l
+                                   | Signature [l,r] res <- signatures $2 (Sigs.func $$.inhSigs)
+                                   , l `elem` $1.synExpdSort
+                                   , r `elem` $3.synExpdSort
+                                   , case $$.inhSolvSort of
+                                            { Nothing  -> True
+                                            ; Just sid -> res == sid
                                             }
                                    ]
-                        in if (length pargs) == 1 then Just ((head pargs)!!0) else Nothing
+                        in if (length pargs) == 1 then Just (head pargs) else Nothing
                 ;  $3.inhSolvSort
-                     = let pargs = [ args
-                                   | FuncId nm uid args res <- Sigs.func $$.inhSigs
-                                   , nm == $2
-                                   , length args == 2
-                                   , args!!0 `elem` $1.synExpdSort
-                                   , args!!1 `elem` $3.synExpdSort
-                                   , res == case $$.inhSolvSort of
-                                            { Nothing  -> res
-                                            ; Just sid -> sid
+                     = let pargs = [ r
+                                   | Signature [l,r] res <- signatures $2 (Sigs.func $$.inhSigs)
+                                   , l `elem` $1.synExpdSort
+                                   , r `elem` $3.synExpdSort
+                                   , case $$.inhSolvSort of
+                                            { Nothing  -> True
+                                            ; Just sid -> res == sid
                                             }
                                    ]
-                        in if (length pargs) == 1 then Just ((head pargs)!!1) else Nothing
-                ;  $$ = let vexps = [ cstrFunc fid [$1,$3]
-                                    | fid@(FuncId nm uid args res) <- Sigs.func $$.inhSigs
-                                    , nm == $2
-                                    , length args == 2
-                                    , args!!0 `elem` $1.synExpdSort
-                                    , args!!1 `elem` $3.synExpdSort
-                                    , res == case $$.inhSolvSort of
-                                             { Nothing  -> res
-                                             ; Just sid -> sid
+                        in if (length pargs) == 1 then Just (head pargs) else Nothing
+                ;  $$ = let vexps = [ h [$1,$3]
+                                    | (Signature [l,r] res, h) <- Map.toList (signHandler $2 (Sigs.func $$.inhSigs))
+                                    , l `elem` $1.synExpdSort
+                                    , r `elem` $3.synExpdSort
+                                    , case $$.inhSolvSort of
+                                             { Nothing  -> True
+                                             ; Just sid -> res == sid
                                              }
                                     ]
                          in case length vexps of
@@ -2873,7 +2769,6 @@ ValExpr1        -- :: { VExpr }
                                           "Operator not resolved: '" ++ $2 ++ "'\n" ++
                                           "Argument 0: " ++ show $1 ++ "\n" ++
                                           "Argument 1: " ++ show $3 ++ "\n" )
-                                          
                             ; 1 -> head vexps
                             ; n -> error ("\nTXS0423: "++
                                      "Operator not uniquely resolved: '" ++ $2 ++ "'\n")
@@ -2920,25 +2815,22 @@ ValExpr2        -- :: { VExpr }
               : smallid
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort
-                     =   [ res | FuncId nm uid args res <- Sigs.func $$.inhSigs
-                               , nm == $1, args == [] ]
+                     =   [ res | Signature [] res <- signatures $1 (Sigs.func $$.inhSigs) ]
                       ++ [ srt | VarId nm uid srt <- $$.inhVarSigs
                                , nm == $1 ]
-                ;  $$ = let vexps =   [ cstrFunc fid []
-                                      | fid@(FuncId nm uid args res) <- Sigs.func $$.inhSigs
-                                      , nm == $1
-                                      , args == []
-                                      , res == case $$.inhSolvSort of
-                                               { Nothing  -> res
-                                               ; Just sid -> sid
+                ;  $$ = let vexps =   [ h []
+                                      | (Signature [] res, h) <- Map.toList (signHandler $1 (Sigs.func $$.inhSigs))
+                                      , case $$.inhSolvSort of
+                                               { Nothing  -> True
+                                               ; Just sid -> res == sid
                                                }
                                       ]
                                    ++ [ cstrVar vid 
                                       | vid@(VarId nm uid srt) <- $$.inhVarSigs
                                       , nm == $1
-                                      , srt == case $$.inhSolvSort of
-                                               { Nothing  -> srt
-                                               ; Just sid -> sid
+                                      , case $$.inhSolvSort of
+                                               { Nothing  -> True
+                                               ; Just sid -> srt == sid
                                                }
                                       ]
                          in if (length vexps) == 1
@@ -2953,33 +2845,30 @@ ValExpr2        -- :: { VExpr }
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExpdSort  = [ res
-                                     | FuncId nm uid args res <- func $$.inhSigs
-                                     , nm == $1
-                                     , (length args) == (length $3.synExpdSorts)
+                                     | Signature args res <- signatures $1 (Sigs.func $$.inhSigs)
+                                     , length args == length $3.synExpdSorts
                                      , and [ a`elem`as | (a,as) <- zip args $3.synExpdSorts ]
                                      ]
                 ;  $3.inhSolvSorts
                      = let pargs = [ args 
-                                   | FuncId nm uid args res <- func $$.inhSigs
-                                   , nm == $1
+                                   | Signature args res <- signatures $1 (Sigs.func $$.inhSigs)
                                    , length args == length $3.synExpdSorts
                                    , and [ a`elem`as | (a,as) <- (zip args $3.synExpdSorts) ]
-                                   , res == case $$.inhSolvSort of
-                                            { Nothing  -> res
-                                            ; Just sid -> sid
+                                   , case $$.inhSolvSort of
+                                            { Nothing  -> True
+                                            ; Just sid -> res == sid
                                             }
                                    ]
                         in if (length pargs) == 1
                              then [ Just arg | arg <- concat pargs ]
                              else [ Nothing | x <- $3.synExpdSorts ]
-                ;  $$ = let vexps = [ cstrFunc fid $3
-                                    | fid@(FuncId nm uid args res) <- func $$.inhSigs
-                                    , nm == $1
+                ;  $$ = let vexps = [ h $3
+                                    | (Signature args res, h) <- Map.toList (signHandler $1 (Sigs.func $$.inhSigs))
                                     , length args == length $3.synExpdSorts
                                     , and [ a`elem`as | (a,as) <- (zip args $3.synExpdSorts) ]
-                                    , res == case $$.inhSolvSort of
-                                             { Nothing  -> res
-                                             ; Just sid -> sid
+                                    , case $$.inhSolvSort of
+                                             { Nothing  -> True
+                                             ; Just sid -> res == sid
                                              }
                                     ]
                          in if (length vexps) == 1
@@ -2996,62 +2885,56 @@ ValExpr2        -- :: { VExpr }
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $2.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExpdSort  = [ res
-                                     | FuncId nm uid args res <- func $$.inhSigs
-                                     , nm == $1
-                                     , if (length args) == 1
-                                         then args!!0 `elem` $2.synExpdSort
-                                         else False
+                                     | Signature [a] res <- signatures $1 (Sigs.func $$.inhSigs)
+                                     , a `elem` $2.synExpdSort
                                      ]
                 ;  $2.inhSolvSort
-                     = let pargs = [ args
-                                   | FuncId nm uid args res <- func $$.inhSigs
-                                   , nm == $1
-                                   , if (length args) == 1
-                                       then args!!0 `elem` $2.synExpdSort
-                                       else False
-                                   , res == case $$.inhSolvSort of
-                                            { Nothing  -> res
-                                            ; Just sid -> sid
+                     = let pargs = [ a
+                                   | Signature [a] res <- signatures $1 (Sigs.func $$.inhSigs)
+                                   , a `elem` $2.synExpdSort
+                                   , case $$.inhSolvSort of
+                                            { Nothing  -> True
+                                            ; Just sid -> res == sid
                                             }
                                    ]
-                        in if (length pargs) == 1 then Just ((head pargs)!!0) else Nothing
-                ;  $$ = let vexps = [ cstrFunc fid [$2]
-                                    | fid@(FuncId nm uid args res) <- func $$.inhSigs
-                                    , nm == $1
-                                    , if (length args) == 1
-                                        then args!!0 `elem` $2.synExpdSort
-                                        else False
-                                    , res == case $$.inhSolvSort of
-                                             { Nothing  -> res
-                                             ; Just sid -> sid
+                        in if (length pargs) == 1 then Just (head pargs) else Nothing
+                ;  $$ = let vexps = [ h [$2]
+                                    | (Signature [a] res, h) <- Map.toList (signHandler $1 (Sigs.func $$.inhSigs))
+                                    , a `elem` $2.synExpdSort
+                                    , case $$.inhSolvSort of
+                                             { Nothing  -> True
+                                             ; Just sid -> res == sid
                                              }
                                     ]
-                         in if (length vexps) == 1
-                              then head vexps
-                              else error ("\nTXS0433: " ++
-                                          "Operator not (uniquely) resolved: '" ++ $1 ++ "'\n")
+                         in case (length vexps) of
+                                {   1   -> head vexps
+                                ;   0  ->  error ("\nTXS0433: Operator not resolved: '" ++ $1 ++ "'\n")
+                                ;   _  ->  error ("\nTXS0433: Operator not uniquely resolved: '" ++ $1 ++ "'\n")
+                                }
                 }
               | capid
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  =  [ res
-                                      | CstrId nm uid args res <- Sigs.cstr $$.inhSigs
-                                      , nm == $1
-                                      , args == []
+                                      | Signature [] res <- FuncTable.signatures $1 (Sigs.func $$.inhSigs)
                                       ]
-                ;  $$ = let vexps = [ cstrCstr cid []
-                                    | cid@(CstrId nm uid args res) <- Sigs.cstr $$.inhSigs
-                                    , nm == $1
-                                    , args == []
-                                    , res == case $$.inhSolvSort of
-                                             { Nothing  -> res
-                                             ; Just sid -> sid
+                ;  $$ = let vexps = [ handler []
+                                    | (Signature [] res, handler) <- Map.toList (FuncTable.signHandler $1 (Sigs.func $$.inhSigs))
+                                    , case $$.inhSolvSort of
+                                             { Nothing  -> True
+                                             ; Just sid -> res == sid
                                              }
                                     ]
-                         in if (length vexps) == 1
-                              then head vexps
-                              else error ("\nTXS0436: " ++
-                                          "Constructor not (uniquely) resolved: " ++
-                                          (show $1)++"\n")
+                         in case (length vexps) of
+                                { 1 -> head vexps
+                                ; 0 -> error ("\nTXS0436: Constructor not resolved: " ++ show $1 ++"\n" 
+                                                ++ "Available signatures for " ++ show $1 ++ " are \n* "
+                                                ++ Utils.join "\n* " (map show (FuncTable.signatures $1 (Sigs.func $$.inhSigs)))
+                                             )
+                                ; _ -> error ("\nTXS0436: Constructor not uniquely resolved: " ++ show $1 ++"\n" 
+                                                ++ "Matching signatures for " ++ show $1 ++ " are \n* "
+                                                ++ Utils.join "\n* " (map show [ s | s@(Signature [] _) <- FuncTable.signatures $1 (Sigs.func $$.inhSigs) ])
+                                             )
+                                }
                 }
               | capid "(" ValExprs  ")"
                 {  $3.inhNodeUid   = $$.inhNodeUid + 1
@@ -3059,40 +2942,47 @@ ValExpr2        -- :: { VExpr }
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExpdSort  = [ res
-                                     | CstrId nm uid args res <- Sigs.cstr $$.inhSigs
-                                     , nm == $1
+                                     | Signature args res <- signatures $1 (Sigs.func $$.inhSigs)
                                      , length args == length $3.synExpdSorts
-                                     , and [ a`elem`as | (a,as) <- zip args $3.synExpdSorts ]
+                                     , and [ a `elem` as | (a,as) <- zip args $3.synExpdSorts ]
                                      ]
                 ;  $3.inhSolvSorts
                      = let pargs = [ args 
-                                   | CstrId nm uid args res <- Sigs.cstr $$.inhSigs
-                                   , nm == $1
+                                   | Signature args res <- signatures $1 (Sigs.func $$.inhSigs)
                                    , length args == length $3.synExpdSorts
-                                   , and [ a`elem`as | (a,as) <- (zip args $3.synExpdSorts) ]
-                                   , res == case $$.inhSolvSort of
-                                            { Nothing  -> res
-                                            ; Just sid -> sid
+                                   , and [ a `elem` as | (a,as) <- (zip args $3.synExpdSorts) ]
+                                   , case $$.inhSolvSort of
+                                            { Nothing  -> True
+                                            ; Just sid -> res == sid
                                             }
                                    ]
                         in if (length pargs) == 1
                              then [ Just arg | arg <- concat pargs ]
                              else [ Nothing | x <- $3.synExpdSorts ]
-                ;  $$ = let vexps = [ cstrCstr cid $3
-                                    | cid@(CstrId nm uid args res) <- Sigs.cstr $$.inhSigs
-                                    , nm == $1
+                ;  $$ = let vexps = [ handler $3
+                                    | (Signature args res, handler) <- Map.toList (FuncTable.signHandler $1 (Sigs.func $$.inhSigs))
                                     , length args == length $3.synExpdSorts
-                                    , and [ a`elem`as | (a,as) <- (zip args $3.synExpdSorts) ]
-                                    , res == case $$.inhSolvSort of
-                                             { Nothing  -> res
-                                             ; Just sid -> sid
-                                             }
+                                    , and [ a `elem` as | (a,as) <- (zip args $3.synExpdSorts) ]
+                                    , case $$.inhSolvSort of
+                                            { Nothing  -> True
+                                            ; Just sid -> res == sid
+                                            }
                                     ]
-                         in if (length vexps) == 1
-                              then head vexps
-                              else error ("\nTXS0434: " ++
-                                          "Constructor not (uniquely) resolved: " ++
-                                          (show $1)++"\n")
+                         in case (length vexps) of
+                                { 1 -> head vexps
+                                ; 0 -> error ("\nTXS0434: Constructor not resolved: " ++ show $1 ++ "\n"
+                                               ++ "Available signatures for " ++ show $1 ++ " are \n* "
+                                               ++ Utils.join "\n* " (map show (FuncTable.signatures $1 (Sigs.func $$.inhSigs)))
+                                             )
+                                ; _ -> error ("\nTXS0434: Constructor not uniquely resolved: " ++ show $1 ++"\n" 
+                                                ++ "Matching signatures for " ++ show $1 ++ " are \n* "
+                                                ++ Utils.join "\n* " (map show [ s
+                                                                               | s@(Signature args _) <- FuncTable.signatures $1 (Sigs.func $$.inhSigs)
+                                                                               , length args == length $3.synExpdSorts
+                                                                               , and [ a `elem` as | (a,as) <- zip args $3.synExpdSorts ]
+                                                                               ])
+                                             )
+                                }
                 }
               | Constant
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -3113,7 +3003,7 @@ ValExpr2        -- :: { VExpr }
                 }
               | ERROR string
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synExpdSort  = Sigs.sort $$.inhSigs
+                ;  $$.synExpdSort  = Map.elems (Sigs.sort $$.inhSigs)
                 ;  $$ = cstrError $2
                 }
 
@@ -3225,14 +3115,11 @@ ExNeValueDefs   -- :: { ( Int, VEnv ) }
                 --           : UNID  : unique node identification
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: VEnv  : locally defined value definitions
-              : TDEFS VARENV UNID NeValueDefs
-                {  $4.inhNodeUid   = $3
-                ;  $4.inhSigs      = Sigs.empty { sort = [ sid | IdSort sid@(SortId nm u)     <- TxsDefs.keys $1 ]
-                                                , cstr = [ cid | IdCstr cid@(CstrId nm u a s) <- TxsDefs.keys $1 ]
-                                                , func = [ fid | IdFunc fid@(FuncId nm u a s) <- TxsDefs.keys $1 ]
-                                                }
-                ;  $4.inhVarSigs   = $2
-                ;  $$ = ( $4.synMaxUid, $4 )
+              : TDEFS SIGS VARENV UNID NeValueDefs
+                {  $5.inhNodeUid   = $4
+                ;  $5.inhSigs      = $2
+                ;  $5.inhVarSigs   = $3
+                ;  $$ = ( $5.synMaxUid, $5 )
                 }
 
 NeValueDefs     -- :: { VEnv }
@@ -3321,62 +3208,66 @@ Constant        -- :: { Const }
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  = [ sortId_Bool ]
                 ;  $$ = case $$.inhSolvSort of
-                        { Nothing          -> Cbool True
-                        ; Just sortId_bool -> Cbool True
-                        ; Just _           -> error "\nTXS ERROR 0909\n"
+                        { Nothing                   -> Cbool True
+                        ; Just s | s == sortId_Bool -> Cbool True
+                        ; Just _                    -> error "\nTXS ERROR 0909\n"
                         }
-                ;  where if sortId_Bool `elem` (Sigs.sort $$.inhSigs) then () else
-                         error ("\nTXS0471: " ++
-                                "Bool constant but no sort 'Bool': True\n")
+                ;  where case Map.lookup "Bool" (Sigs.sort $$.inhSigs) of
+                            {   Just s | s == sortId_Bool    -> ()
+                            ;   _                            -> error ("\nTXS0471: Bool constant but no sort 'Bool': True\n")
+                            }
                 }
               | False
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  = [ sortId_Bool ]
                 ;  $$ = case $$.inhSolvSort of
-                        { Nothing          -> Cbool False
-                        ; Just sortId_bool -> Cbool False
-                        ; Just _           -> error "\nTXS ERROR 0910\n"
+                        { Nothing                   -> Cbool False
+                        ; Just s | s == sortId_Bool -> Cbool False
+                        ; Just _                    -> error "\nTXS ERROR 0910\n"
                         }
-                ;  where if sortId_Bool `elem` (Sigs.sort $$.inhSigs) then () else
-                         error ("\nTXS0471: " ++
-                                "Bool constant but no sort 'Bool': False\n")
+                ;  where case Map.lookup "Bool" (Sigs.sort $$.inhSigs) of
+                            {   Just s | s == sortId_Bool    -> ()
+                            ;   _                            -> error ("\nTXS0471: Bool constant but no sort 'Bool': False\n")
+                            }
                 }
               | integer
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  = [ sortId_Int ]
                 ;  $$ = case $$.inhSolvSort of
-                        { Nothing         -> Cint $1
-                        ; Just sortId_int -> Cint $1
-                        ; Just _          -> error "\nTXS ERROR 0911\n"
+                        { Nothing                   -> Cint $1
+                        ; Just s | s == sortId_Int  -> Cint $1
+                        ; Just _                    -> error "\nTXS ERROR 0911\n"
                         }
-                ;  where if sortId_Int `elem` (Sigs.sort $$.inhSigs) then () else
-                         error ("\nTXS0472: " ++
-                                "Integer constant but no sort 'Int': "++(show $1)++"\n")
+                ;  where case Map.lookup "Int" (Sigs.sort $$.inhSigs) of
+                            {   Just s | s == sortId_Int     -> ()
+                            ;   _                            -> error ("\nTXS0472: Integer constant but no sort 'Int': "++(show $1)++"\n")
+                            }
                 }
               | string
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  = [ sortId_String ]
                 ;  $$ = case $$.inhSolvSort of
-                        { Nothing         -> Cstring $1
-                        ; Just stringSort -> Cstring $1
-                        ; Just _          -> error "\nTXS ERROR 0913\n"
+                        { Nothing                       -> Cstring $1
+                        ; Just s | s == sortId_String   -> Cstring $1
+                        ; Just _                        -> error "\nTXS ERROR 0913\n"
                         }
-                ;  where if sortId_String `elem` (Sigs.sort $$.inhSigs) then () else
-                         error ("\nTXS0476: " ++
-                                "String constant but no sort 'String': "++(show $1)++"\n")
+                ;  where case Map.lookup "String" (Sigs.sort $$.inhSigs) of
+                            {   Just s | s == sortId_String  -> ()
+                            ;   _                            -> error ("\nTXS0476: String constant but no sort 'String': "++(show $1)++"\n")
+                            }
                 }
               | REGEX "(" regexval ")"
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  = [ sortId_Regex ]
                 ;  $$ = case $$.inhSolvSort of
-                        { Nothing           -> Cregex $3
-                        ; Just sortId_Regex -> Cregex $3
-                        ; Just _            -> error "\nTXS ERROR 0915\n"
+                        { Nothing                       -> Cregex $3
+                        ; Just s |  s == sortId_Regex   -> Cregex $3
+                        ; Just _                        -> error "\nTXS ERROR 0915\n"
                         }
-                ;  where if sortId_Regex `elem`(Sigs.sort $$.inhSigs) then () else
-                         error $ "\nTXS0477: " ++
-                                 "Regex constant but no sort 'Regex': "++(show $1) ++
-                                 " " ++ (show $3) ++ "\n"
+                ;  where case Map.lookup "Regex" (Sigs.sort $$.inhSigs) of
+                            {   Just s | s == sortId_Regex   -> ()
+                            ;   _                            -> error ("\nTXS0477: Regex constant but no sort 'Regex': REGEX("++ (show $3) ++ ")\n")
+                            }
                 }
 
 
@@ -4201,6 +4092,7 @@ showToken t  =  case t of
                 ; Tstring           pos s   ->  (showPos pos) ++ "  " ++ (show s)
                 ; Tregexval         pos r   ->  (showPos pos) ++ "  " ++ (show r)
                 ; Ctdefs            v       ->  "Ctdefs"
+                ; Csigs             v       ->  "Csigs"
                 ; Cchanenv          v       ->  "Cchanenv"
                 ; Cvarenv           v       ->  "Cvarenv"
                 ; Cunid             v       ->  "Cunid"

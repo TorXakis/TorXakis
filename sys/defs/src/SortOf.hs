@@ -66,10 +66,10 @@ instance (Variable v) => SortOf (ValExpr v)
                         
 
 sortOf' :: (Variable v) => ValExpr v -> SortId
-sortOf' (view -> Vfunc (FuncId _nm _uid _fa fs) _vexps) =  fs
-sortOf' (view -> Vfunc _ _)                             = error "sortOf': Unexpected Ident with Vfunc"
-sortOf' (view -> Vcstr (CstrId _nm _uid _ca cs) _vexps) =  cs
-sortOf' (view -> Vcstr _ _)                             = error "sortOf': Unexpected Ident with Vcstr"
+sortOf' (view -> Vfunc (FuncId _nm _uid _fa fs) _vexps) = fs
+sortOf' (view -> Vcstr (CstrId _nm _uid _ca cs) _vexps) = cs
+sortOf' (view -> Viscstr _ _)                           = sortId_Bool
+sortOf' (view -> Vaccess (CstrId _nm _uid ca _cs) p _vexps) = ca!!p
 sortOf' (view -> Vconst con)                            =  sortOf con
 sortOf' (view -> Vvar v)                                =  vsort v
 sortOf' (view -> Vite _cond vexp1 vexp2)                =  -- if the LHS is an error (Verror), we want to yield the type of the RHS which might be no error
