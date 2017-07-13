@@ -8,12 +8,16 @@ set DateTime=%year%%month%%day%_%hours: =0%%minutes%%seconds%
 cd datcheck
 
 echo Start Development Acceptance Test
+echo %DATE%%TIME%
 call AcceptanceTest.bat > %DateTime%_DatOutput.datr 2>&1
 echo End Development Acceptance Test
+echo %DATE%%TIME%
 
 echo Start Development Acceptance Check
+echo %DATE%%TIME%
 call AcceptanceCheck.bat %DateTime%_DatOutput.datr > %DateTime%_DatReport.datr
 echo End Development Acceptance Check
+echo %DATE%%TIME%
 
 type %DateTime%_DatReport.datr
 
