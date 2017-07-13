@@ -20,6 +20,7 @@ data SMTSolver = Z3 | CVC4
 -- | TorXakis configuration options.
 data TxsConfig = TxsConfig
   { smtSolver :: SMTSolver
+  , smtLog :: Bool  -- ^ Log all SMT commands.
   }
 
 -- | File name to look for.
