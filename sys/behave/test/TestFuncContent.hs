@@ -36,15 +36,15 @@ testFuncContentList = TestList [
                                     TestLabel "Binary Operator"        testBinaryOperatorList,
                                     TestLabel "Unary Operator"         testUnaryOperatorList,
                                     TestLabel "Function"               testFunctionList,
-                                    TestLabel "User Defined Function"  testUserDefinedFunction
-                                ,   TestLabel "Combinatorial"          testCombinatorialInt                                    
+                                    TestLabel "User Defined Function"  testUserDefinedFunction,
+                                    TestLabel "Combinatorial"          testCombinatorialInt
                                 ]
 
 ---------------------------------------------------------------------------
 -- Helper functions
----------------------------------------------------------------------------             
+---------------------------------------------------------------------------
 
--------------------------------------------------------------------------------------
+---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
 
@@ -179,7 +179,6 @@ testSubstitution = TestCase $ do
       in do
         assertEqual "Substitute" funcContent (getFuncContent torXakisInput funcKey)
 
-        
 testBinaryOperatorList :: Test
 testBinaryOperatorList = TestList (map testFunction     [   ("==", [(["l","r"], boolSortName)], boolSortName)
                                                         ,   ("<>", [(["l","r"], boolSortName)], boolSortName)
