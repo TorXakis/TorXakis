@@ -4,7 +4,7 @@ Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
 
-
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 -- ----------------------------------------------------------------------------------------- --
 --
 -- TorXakis Interal Data Type Definitions:
@@ -71,6 +71,9 @@ where
 import qualified Data.Map as Map
 import Control.Arrow ( (***) )
 
+import GHC.Generics (Generic)
+import Control.DeepSeq
+
 import BehExprDefs as X
 import ConnectionDefs as X
 import ConstDefs as X
@@ -107,7 +110,7 @@ import ValExprImpls
 -- torxakis definitions
 
 
-data  TxsDefs  =  TxsDefs { sortDefs    :: Map.Map SortId SortDef
+data  TxsDefs  =  TxsDefs { sortDefs    :: Map.Map  SortId SortDef
                           , cstrDefs    :: Map.Map CstrId CstrDef
                           , funcDefs    :: Map.Map FuncId FuncDef
                           , procDefs    :: Map.Map ProcId ProcDef
@@ -120,7 +123,7 @@ data  TxsDefs  =  TxsDefs { sortDefs    :: Map.Map SortId SortDef
                           , mapperDefs  :: Map.Map MapperId MapperDef
                           , cnectDefs   :: Map.Map CnectId CnectDef
                           }
-                  deriving (Eq,Ord,Read,Show)
+                  deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 empty :: TxsDefs
 empty = TxsDefs  Map.empty

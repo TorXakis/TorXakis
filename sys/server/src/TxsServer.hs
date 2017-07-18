@@ -215,13 +215,14 @@ cmdInit args  =  do
      servhs             <- gets IOS.servhs
      unid               <- gets IOS.uid
      tdefs              <- gets IOS.tdefs
+     sigs               <- gets IOS.sigs
      srctxts            <- lift $ lift $ mapM readFile (words args)
      srctxt             <- return $ List.intercalate "\n\n" srctxts
-     ((unid',tdefs'),e) <- lift $ lift $ catch
+     ((unid',tdefs', sigs'),e) <- lift $ lift $ catch
                              ( let parsing = TxsHappy.txsParser (TxsAlex.txsLexer srctxt)
-                                in return $! (show parsing) `deepseq` (parsing,"")
+                                in return $!! (parsing, "")
                              )
-                             ( \e -> return $ ((unid,tdefs), show (e::ErrorCall))
+                             ( \e -> return $ ((unid, tdefs, sigs), show (e::ErrorCall))
                              )
      if e /= ""
        then do IFS.nack "INIT" [e]
@@ -229,6 +230,7 @@ cmdInit args  =  do
        else do modify $ \env -> env { IOS.modus  = IOS.Inited
                                     , IOS.uid    = unid'
                                     , IOS.tdefs  = tdefs'
+                                    , IOS.sigs   = sigs'
                                     }
                lift $ TxsCore.txsInit tdefs' ( (IFS.hmack servhs) . (map TxsShow.pshow) )
                IFS.pack "INIT" ["input files parsed:", List.intercalate " " (words args)]

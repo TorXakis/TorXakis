@@ -15,6 +15,7 @@ See license.txt
 --
 -- This module introduces the cartesian product of Sigs for the TxsParser.
 -----------------------------------------------------------------------------
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module Sigs
 ( Sigs (..)
 , Sigs.empty
@@ -24,6 +25,9 @@ module Sigs
 where
 
 import qualified Data.Map as Map
+
+import GHC.Generics (Generic)
+import Control.DeepSeq
 
 import ChanId
 import ProcId
@@ -35,7 +39,7 @@ data Sigs v = Sigs  { chan  :: [ChanId]  -- TODO: Map.Map String ChanId
                     , func  :: FuncTable v
                     , pro   :: [ProcId]  -- TODO: ProcTable
                     , sort  :: Map.Map String SortId
-                    }
+                    } deriving (Generic, NFData)
     
 empty :: Sigs v
 empty = Sigs [] FuncTable.empty [] Map.empty

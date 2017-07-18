@@ -19,6 +19,8 @@ import TxsShow
 
 import StdTDefs
 import SortId
+
+import Sigs
 ---------------------------------------------------------------------------
 -- Helper Functions
 ---------------------------------------------------------------------------
@@ -104,8 +106,8 @@ data  FuncContent =  FuncContent { vexpr :: VExpr }
 instance Eq FuncContent where  
     FuncContent x == FuncContent y = identicalVExpr x y
     
-toTorXakisDefs :: (Int, TxsDefs) -> TxsDefs
-toTorXakisDefs (a,b) = b
+toTorXakisDefs :: (Int, TxsDefs, Sigs VarId) -> TxsDefs
+toTorXakisDefs (_, b, _) = b
 
 parseTorXakis :: String -> TxsDefs
 parseTorXakis txt = -- Trace.trace ("txt = " ++ txt) 
@@ -316,7 +318,7 @@ functionCall (FuncId "=>" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl so
 functionCall (FuncId "<=>" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Bool && identicalSortId s sortId_Bool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrPredef SSB funcId_iff [vexpr l, vexpr r])
 functionCall (FuncId "+" _ [si] so) [i] | identicalSortId si sortId_Int && identicalSortId so sortId_Int && identicalSortId si (sortOf (vexpr i)) = 
-    FuncContent (cstrPredef SSI funcId_uniplusInt [vexpr i])
+                                          error "This shound't be called"
 functionCall (FuncId "+" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Int && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrPredef SSI funcId_plusInt [vexpr l, vexpr r])
 functionCall (FuncId "-" _ [si] so) [i] | identicalSortId si sortId_Int && identicalSortId so sortId_Int && identicalSortId si (sortOf (vexpr i)) =

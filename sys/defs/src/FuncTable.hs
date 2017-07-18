@@ -16,6 +16,8 @@ See license.txt
 -- This module introduces the context of Sort (collection of all definitions).
 -----------------------------------------------------------------------------
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+
 module FuncTable
 ( Signature (..)
 , SignHandler
@@ -35,10 +37,13 @@ import qualified Data.Map as Map
 import SortId
 import TxsDefs
 
+import GHC.Generics (Generic)
+import Control.DeepSeq
+
 data Signature = Signature  { sortArgs  :: [SortId]
                             , sortRet   :: SortId
                             }
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Generic, NFData)
 
 type Handler v = [ValExpr v] -> ValExpr v
 
@@ -46,6 +51,7 @@ type SignHandler v = Map.Map Signature (Handler v)
 
 -- | Data structure for Function-like Name and Signature to Handler
 newtype FuncTable v = FuncTable { toMap :: Map.Map String (SignHandler v) }
+  deriving (Generic, NFData)
 
 -- | empty
 empty :: FuncTable v

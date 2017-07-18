@@ -137,10 +137,12 @@ eval (view -> Vpredef kd fid vexps)  =  do
                 [vexp] -> do s <- txs2str vexp
                              uid     <- gets IOB.unid
                              tdefs   <- gets IOB.tdefs
+                             sigs    <- gets IOB.sigs
                              ((uid',vexp'),e) <- lift $ catch
-                                ( let p = TxsHappy.vexprParser (  ( TxsAlex.Ctdefs  $ tdefs )
-                                                                : ( TxsAlex.Cvarenv $ [] )
-                                                                : ( TxsAlex.Cunid   $ uid + 1 )
+                                ( let p = TxsHappy.vexprParser (  ( TxsAlex.Ctdefs  tdefs )
+                                                                : ( TxsAlex.Csigs   sigs )
+                                                                : ( TxsAlex.Cvarenv [] )
+                                                                : ( TxsAlex.Cunid (uid + 1) )
                                                                 : ( TxsAlex.txsLexer s )
                                                                )
                                    in return $! (show p) `deepseq` (p,"")
@@ -314,8 +316,6 @@ evalSSI (FuncId nm uid args srt) vexps  =  do
      ; ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
                                         tdefs <- gets IOB.tdefs
                                         return $ constFromXml tdefs sortId_Int s
-     ; ( "+",           [v1]    ) -> do i1 <- txs2int v1
-                                        int2txs $ i1
      ; ( "-",           [v1]    ) -> do i1 <- txs2int v1
                                         int2txs $ (-1) * i1
      ; ( "+",           [v1,v2] ) -> do i1 <- txs2int v1
@@ -333,9 +333,6 @@ evalSSI (FuncId nm uid args srt) vexps  =  do
      ; ( "%",           [v1,v2] ) -> do i1 <- txs2int v1
                                         i2 <- txs2int v2
                                         int2txs  $ i1 `mod` i2
---     ; ( "^",          [v1,v2] ) -> do i1 <- txs2int v1
---                                       i2 <- txs2int v2
---                                       int2txs $ i1 ^ i2
      ; ( "<>",          [v1,v2] ) -> do i1 <- txs2int v1 
                                         i2 <- txs2int v2
                                         bool2txs $ i1 /= i2
