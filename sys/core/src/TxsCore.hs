@@ -5,61 +5,99 @@ See license.txt
 -}
 
 
--- ----------------------------------------------------------------------------------------- --
-
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  TxsCore
+-- Copyright   :  TNO and Radboud University
+-- License     :  BSD3
+-- Maintainer  :  jan.tretmans
+-- Stability   :  experimental
+--
+-- Core Module TorXakis API:
+-- API for TorXakis core functionality.
+-----------------------------------------------------------------------------
 module TxsCore
+( -- * run torxakis core
+  runTxsCore
+  
+  -- * initialize torxakis core
+, txsInit
 
--- ----------------------------------------------------------------------------------------- --
---
---   Core Module TorXakis API
---
--- ----------------------------------------------------------------------------------------- --
--- export
+  -- * terminate torxakis core
+, txsTermit
 
-( runTxsCore      -- :: StateT s IOC.IOC a -> s -> IO ()
-                  --    torxakis core main api start
-, txsInit         -- :: TxsDefs.TxsDefs -> ([EnvData.Msg] -> IOC.IOC ()) -> IOC.IOC ()
-                  --    initialize torxakis core
-, txsTermit       -- :: IOC.IOC ()
-                  --    terminate torxakis core
-, txsStop         -- :: IOC.IOC ()
-                  --    stop executing testing/simulating/stepping
-, txsGetParams    -- :: IOC.IOC [(String,String)]
-                  --    get all parameter values
-, txsGetParam     -- :: String -> IOC.IOC [(String,String)]
-                  --    get parameter value
-, txsSetParam     -- :: String -> String -> IOC.IOC [(String,String)]
-                  --    set parameter values
-, txsSetSeed      -- :: Int -> IOC.IOC ()
-                  --    setting random seed
-, txsEval         -- :: TxsDefs.VExpr -> IOC.IOC TxsDefs.Const
-                  --    evaluation of ValExpr
-, txsSolve        -- :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
-                  --    solving Bool VExpr
-, txsUniSolve     -- :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
-                  --    solving Bool VExpr uniquely
-, txsRanSolve     -- :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
-                  --    solving Bool VExpr randomly
-, txsSetTest      -- :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
-                  --    IOC.IOC TxsDDefs.Action ->
-                  --    TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Maybe TxsDefs.PurpDef ->
-                  --    IOC.IOC ()
-, txsSetSim       -- :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
-                  --    IOC.IOC TxsDDefs.Action ->
-                  --    TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef ->
-                  --    IOC.IOC ()
-, txsSetStep      -- :: TxsDefs.ModelDef -> IOC.IOC ()
-, txsTestIn       -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
-, txsTestOut      -- :: IOC.IOC TxsDDefs.Verdict
-, txsTestN        -- :: Int -> IOC.IOC TxsDDefs.Verdict
-, txsSimN         -- :: Int -> IOC.IOC TxsDDefs.Verdict
-, txsStepN        -- :: Int -> IOC.IOC TxsDDefs.Verdict
-, txsStepA        -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
-, txsShow         -- :: String -> IOC.IOC String
-, txsGoTo         -- :: EnvData.StateNr -> IOC.IOC ()
-, txsPath         -- :: IOC.IOC [(EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr)]
-, txsMenu         -- :: String -> EnvData.StateNr -> IOC.IOC Menu
-, txsMapper       -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
+  -- * Mode
+  -- ** start testing 
+, txsSetTest
+
+  -- *** test Input Action
+, txsTestIn
+
+  -- *** test Output Action
+, txsTestOut
+
+  -- *** test number of Actions
+, txsTestN
+
+  -- ** start simulating 
+, txsSetSim
+
+  -- *** simulate number of Actions
+, txsSimN
+
+  -- ** start stepping
+, txsSetStep
+
+  -- *** step Action
+, txsStepA
+
+  -- *** step number of Actions
+, txsStepN
+
+  -- *** go back to previous state
+, txsGoTo
+
+  -- ** stop testing/simulating/stepping
+, txsStop
+
+  -- * Parameters
+  -- ** get all parameter values
+, txsGetParams
+
+  -- ** get value of parameter
+, txsGetParam
+
+  -- ** set value of parameter
+, txsSetParam
+
+  -- * set random seed
+, txsSetSeed
+
+  -- * evaluation of value expression
+, txsEval 
+
+  -- * Solving
+  -- ** finding a solution for value expression
+, txsSolve
+
+  -- ** finding an unique solution for value expression
+, txsUniSolve
+
+  -- ** finding a random solution for value expression
+, txsRanSolve
+
+  -- * show item
+, txsShow
+
+  -- * give path
+, txsPath
+
+  -- * give menu
+, txsMenu
+
+  -- * give action to mapper
+, txsMapper
+
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -112,10 +150,7 @@ import qualified SolveDefs.Params as SolveDefs.Params
 import qualified Eval        as Eval
 
 
--- ----------------------------------------------------------------------------------------- --
--- torxakis core main api -- start
-
-
+-- | torxakis core main api -- start
 runTxsCore :: StateT s IOC.IOC a -> s -> IO ()
 runTxsCore ctrl s0  =  do
      runStateT (runTxsCtrl ctrl s0)
@@ -132,10 +167,7 @@ runTxsCtrl ctrl s0  =  do
      return ()
 
 
--- ----------------------------------------------------------------------------------------- --
--- torxakis core main api -- modus transition general
-
-
+-- | torxakis core main api -- modus transition general
 txsInit :: TxsDefs.TxsDefs -> ([EnvData.Msg] -> IOC.IOC ()) -> IOC.IOC ()
 txsInit tdefs putMsgs  =  do
      envc <- get
@@ -160,8 +192,7 @@ txsInit tdefs putMsgs  =  do
                TxsCore.txsTermit
                TxsCore.txsInit tdefs putMsgs
                     
--- ----------------------------------------------------------------------------------------- --
-
+-- | terminate torxakis core
 txsTermit :: IOC.IOC ()
 txsTermit  =  do
      envc <- get
@@ -181,6 +212,7 @@ txsTermit  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
+-- | stop testing/simulating/stepping
 txsStop :: IOC.IOC ()
 txsStop  =  do
      envc <- get
@@ -199,38 +231,29 @@ txsStop  =  do
                                  }
 
 
--- ----------------------------------------------------------------------------------------- --
--- torxakis core main api -- get and set parameters, seed
-
-
+-- | Get the values of all parameters.
 txsGetParams :: IOC.IOC [(String,String)]
 txsGetParams  =  do
      IOC.getParams []
 
--- ----------------------------------------------------------------------------------------- --
-
+-- | Get the value of the provided parameter.
 txsGetParam :: String -> IOC.IOC [(String,String)]
 txsGetParam prm  =  do
      IOC.getParams [prm]
 
--- ----------------------------------------------------------------------------------------- --
-
+-- | Set the provided parameter to the provided value.
 txsSetParam :: String -> String -> IOC.IOC [(String,String)]
 txsSetParam prm val  =  do
      IOC.setParams [(prm,val)]
 
--- ----------------------------------------------------------------------------------------- --
-
+-- | Set the random seed to the provided value.
 txsSetSeed :: Int -> IOC.IOC ()
 txsSetSeed seed  =  do
      lift $ setStdGen(mkStdGen seed)
      IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_INFO $ "Seed set to " ++ (show seed) ]
 
-
--- ----------------------------------------------------------------------------------------- --
--- torxakis core main api -- data manipulation, evalution, solving
-
-
+-- | Evaluate the provided value expression.
+--   Only possible when txscore is initialized with a model.
 txsEval :: TxsDefs.VExpr -> IOC.IOC TxsDefs.Const
 txsEval vexp  =  do
      envc <- get
@@ -250,8 +273,8 @@ txsEval vexp  =  do
                              writeEnvBtoEnvC envb'
                              return $ wal'
 
--- ----------------------------------------------------------------------------------------- --
-
+-- | Find a solution for the provided Boolean value expression.
+--   Only possible when txscore is initialized with a model.
 txsSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsSolve vexp  =  do
      envc <- get
@@ -283,8 +306,8 @@ txsSolve vexp  =  do
                                                    return Map.empty
           
                                                    
--- ----------------------------------------------------------------------------------------- --
-
+-- | Find an unique solution for the provided Boolean value expression.
+--   Only possible when txscore is initialized with a model.
 txsUniSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsUniSolve vexp  =  do
      envc <- get
@@ -314,8 +337,8 @@ txsUniSolve vexp  =  do
                                                                  "unknown" ]
                                                    return Map.empty
 
--- ----------------------------------------------------------------------------------------- --
-
+-- | Find a random solution for the provided Boolean value expression.
+--   Only possible when txscore is initialized with a model.
 txsRanSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsRanSolve vexp  =  do
      envc <- get
@@ -348,10 +371,15 @@ txsRanSolve vexp  =  do
                                                    return Map.empty
           
 
--- ----------------------------------------------------------------------------------------- --
--- torxakis core main api -- modus transition general -- set Tester, Simulator, Stepper
-
-    
+-- | Start testing using the provided
+--   * callback function for sending an input action to the SUT (world),
+--   * callback function for receiving an output action from the SUT (world),
+--   * model definition,
+--   * optional mapper definition, and
+--   * optional test purpose definition.
+--   Only possible when txscore is initialized with a model.
+--
+-- modus transition general.
 txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
               IOC.IOC TxsDDefs.Action ->
               TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Maybe TxsDefs.PurpDef ->
@@ -507,8 +535,14 @@ goalInit chsets (gid,bexp)  =  do
               ; Just pt' -> [ (gid, pt') ]
               }
                    
--- ----------------------------------------------------------------------------------------- --
-
+-- | Start simulating using the provided
+--   * callback function for sending an output action to the environment (world),
+--   * callback function for receiving an input action from the environment (world),
+--   * model definition, and
+--   * optional mapper definition.
+--   Only possible when txscore is initialized with a model.
+--
+-- modus transition general.
 txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
              IOC.IOC TxsDDefs.Action ->
              TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef ->
@@ -587,8 +621,10 @@ startSimulator (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return $ ( Nothing, [] )
 
--- ----------------------------------------------------------------------------------------- --
-
+-- | Start stepping using the provided model definition.
+--   Only possible when txscore is initialized with a model.
+--
+-- modus transition general.
 txsSetStep :: TxsDefs.ModelDef -> IOC.IOC ()
 txsSetStep moddef  =  do
      envc <- get
@@ -631,10 +667,10 @@ startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
      writeEnvBtoEnvC envb'
      return $ maybt'
 
--- ----------------------------------------------------------------------------------------- --
--- torxakis core main api -- core actions --  testing, simulating, stepping
-
-
+-- | Test SUT with the provided input action.
+-- core action.
+-- Only possible in test modus (see @txsSetTest).
+-- Not possible with test purpose.
 txsTestIn :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
 txsTestIn act  =  do
      envc <- get
@@ -649,6 +685,10 @@ txsTestIn act  =  do
      }
 
 
+-- | Test SUT by observing output action.
+-- core action.
+-- Only possible in test modus (see @txsSetTest).
+-- Not possible with test purpose.
 txsTestOut :: IOC.IOC TxsDDefs.Verdict
 txsTestOut  =  do
      envc <- get
@@ -663,6 +703,9 @@ txsTestOut  =  do
      }
 
 
+-- | Test SUT with the provided number of actions.
+-- core action.
+-- Only possible in test modus (see @txsSetTest).
 txsTestN :: Int -> IOC.IOC TxsDDefs.Verdict
 txsTestN depth  =  do  
      envc <- get
@@ -674,9 +717,10 @@ txsTestN depth  =  do
      }
 
 
--- ----------------------------------------------------------------------------------------- --
 
-
+-- | Simulate model with the provided number of actions.
+-- core action.
+-- Only possible in simulation modus (see @txsSetSim).
 txsSimN :: Int -> IOC.IOC TxsDDefs.Verdict
 txsSimN depth  =  do
      envc <- get
@@ -688,9 +732,9 @@ txsSimN depth  =  do
      }
 
 
--- ----------------------------------------------------------------------------------------- --
-
-
+-- | Step model with the provided number of actions.
+-- core action.
+-- Only possible in stepper modus (see @txsSetStep).
 txsStepN :: Int -> IOC.IOC TxsDDefs.Verdict
 txsStepN depth  =  do
      envc <- get
@@ -702,6 +746,9 @@ txsStepN depth  =  do
      }
 
 
+-- | Step model with the provided action.
+-- core action.
+-- Only possible in stepper modus (see @txsSetStep).
 txsStepA :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
 txsStepA act  =  do
      envc <- get
@@ -715,7 +762,13 @@ txsStepA act  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
-
+-- | Show provided item.
+--   Valid items are 
+--       "tdefs"  
+--       "state" 
+--       "model" 
+--       "mapper"
+--       "purp"  
 txsShow :: String -> IOC.IOC String
 txsShow item  =  do
      envc <- get
@@ -730,9 +783,9 @@ txsShow item  =  do
      }
   
 
--- ----------------------------------------------------------------------------------------- --
-
-
+-- | Go to state with the provided state number.
+-- core action.
+-- Only possible in stepper modus (see @txsSetStep).
 txsGoTo :: EnvData.StateNr -> IOC.IOC ()
 txsGoTo stateNr  =  do
      if  stateNr >= 0
@@ -744,7 +797,6 @@ txsGoTo stateNr  =  do
        else do ltsBackN (-stateNr)
 
   where
-
      ltsBackN :: Int -> IOC.IOC ()
      ltsBackN backsteps
         | backsteps <= 0  =  do
@@ -763,8 +815,7 @@ txsGoTo stateNr  =  do
             }
 
 
--- ----------------------------------------------------------------------------------------- --
-
+-- | Provide the path.
 txsPath :: IOC.IOC [(EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr)]
 txsPath  =  do
      iniState <- gets IOC.inistate
@@ -790,8 +841,10 @@ txsPath  =  do
                                 return $ []
             }
 
--- ----------------------------------------------------------------------------------------- --
-
+-- | Returns the menu for the provided
+--   * kind ("mod" or "purp")
+--   * what ("all", "in", or "out"), and
+--   * state number.
 txsMenu :: String -> String -> EnvData.StateNr -> IOC.IOC BTree.Menu
 txsMenu kind what stnr  =  do
      curState <- gets IOC.curstate
@@ -817,8 +870,8 @@ txsMenu kind what stnr  =  do
                     return $ []
      }
 
--- ----------------------------------------------------------------------------------------- --
-
+-- | Give the provided action to the mapper.
+-- Not possible in stepper modus (see @txsSetStep).
 txsMapper :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
 txsMapper act  =  do
      envc <- get
