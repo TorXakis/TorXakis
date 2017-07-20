@@ -3,11 +3,14 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
-
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module ValExprDefs
 where
 
 import qualified Data.Map as Map
+
+import GHC.Generics (Generic)
+import Control.DeepSeq
 
 import ConstDefs
 import CstrId
@@ -30,7 +33,7 @@ data  ValExprView v = Vfunc   FuncId [ValExpr v]
                     | Vequal  (ValExpr v) (ValExpr v)
                     | Vpredef PredefKind FuncId [ValExpr v]
                     | Verror  String
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
      
 -- | ValExpr: value expression
 --
@@ -42,7 +45,7 @@ data  ValExprView v = Vfunc   FuncId [ValExpr v]
 newtype ValExpr v = ValExpr { 
                         -- | View on value expression.
                         view :: ValExprView v }
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Generic, NFData)
 
 data PredefKind     = AFS     -- Algebraic Field Selector
                     | ACC     -- Algebraic Constructor Check
@@ -55,7 +58,7 @@ data PredefKind     = AFS     -- Algebraic Field Selector
                     | SSI     -- Standard Sort Int
                     | SSS     -- Standard Sort String
                     | SSR     -- Standard Sort Regex
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 
 type  VarEnv v w    =  Map.Map v (ValExpr w)     -- simultaneous substitution

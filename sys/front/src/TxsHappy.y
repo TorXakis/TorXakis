@@ -54,7 +54,7 @@ import TxsUtils                         -- some utilities on TxsDefs
 import TxsShow                          -- pretty pshow for error messages
 import StdTDefs                         -- predefined, standard Txs data types
 
-import Sigs
+import qualified Sigs
 
 import qualified Data.List   as List
 import qualified Data.Map    as Map
@@ -86,8 +86,8 @@ import qualified Data.String.Utils as Utils
 %attribute inhNodeUid    { Int }                     -- unique id for each nonterminal
 %attribute synMaxUid     { Int }                     -- last unique id for subtree
 
-%attribute synSigs       { (Sigs VarId) }                    -- defined Sigs for collection
-%attribute inhSigs       { (Sigs VarId) }                    -- defined Sigs for usage
+%attribute synSigs       { (Sigs.Sigs VarId) }                    -- defined Sigs for collection
+%attribute inhSigs       { (Sigs.Sigs VarId) }                    -- defined Sigs for usage
 
 %attribute inhDefgSort   {   SortId   }              -- defining sort in a TypeDef
 %attribute inhDefCstrId  {   CstrId   }              -- defining CstrId in a TypeDef
@@ -275,11 +275,11 @@ TxsRoot         -- :: { TxsDefs }
                 {  $$.inhNodeUid   = 1000
                 ;  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
-                ;  $1.inhSigs      = Sigs.uniqueCombine Sigs.empty { sort = stdSortTable
-                                                                   , func = stdFuncTable
+                ;  $1.inhSigs      = Sigs.uniqueCombine Sigs.empty { Sigs.sort = stdSortTable
+                                                                   , Sigs.func = stdFuncTable
                                                                    }
                                                         $1.synSigs
-                ;  $$ = ( ($$.synMaxUid+1), TxsDefs.fromList ( $1 ++ stdTDefs ) )
+                ;  $$ = ( ($$.synMaxUid+1), TxsDefs.fromList ( $1 ++ stdTDefs ), $1.inhSigs) 
                 ;  where let dbls = doubles [ nm | (IdModel (ModelId nm uid), DefModel modeldef) <- $1 ]
                           in if null dbls then () else
                              error $ "\nTXS0016: " ++
@@ -487,8 +487,8 @@ TypeDef         -- :: { [ (Ident,TxsDef) ] }
                 {  $3.inhNodeUid   = $$.inhNodeUid + 15
                 ;  $$.synMaxUid    = $3.synMaxUid
                 ;  $$.synSigs      = let dsort = SortId $1 $$.inhNodeUid in
-                                        Sigs.uniqueCombine  Sigs.empty { sort = Map.singleton $1 dsort
-                                                                       , func = FuncTable (Map.fromList [ (eqName, Map.singleton (Signature [dsort,dsort] sortId_Bool) equalHandler)
+                                        Sigs.uniqueCombine  Sigs.empty { Sigs.sort = Map.singleton $1 dsort
+                                                                       , Sigs.func = FuncTable (Map.fromList [ (eqName, Map.singleton (Signature [dsort,dsort] sortId_Bool) equalHandler)
                                                                                                         , (neqName, Map.singleton (Signature [dsort,dsort] sortId_Bool) notEqualHandler)
                                                                                                         , (toStringName, Map.singleton (Signature [dsort] sortId_String) (cstrPredef AST (FuncId toStringName ($$.inhNodeUid+3) [dsort] sortId_String) ) )
                                                                                                         , (fromStringName, Map.singleton (Signature [sortId_String] dsort) (cstrPredef ASF (FuncId fromStringName ($$.inhNodeUid+4) [sortId_String] dsort) ) )
@@ -554,7 +554,7 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $$.synSigs = let { cas = map snd $2
                                     ; cid = CstrId $1 $$.inhNodeUid cas $$.inhDefgSort
-                                    } in Sigs.empty{func = FuncTable( Map.fromList $ [($1, Map.singleton (Signature cas $$.inhDefgSort) (cstrHandler cid))
+                                    } in Sigs.empty{Sigs.func = FuncTable( Map.fromList $ [($1, Map.singleton (Signature cas $$.inhDefgSort) (cstrHandler cid))
                                                                                      ,("is"++$1, Map.singleton (Signature [$$.inhDefgSort] sortId_Bool) (iscstrHandler cid))
                                                                                      ]
                                                                                      ++
@@ -725,7 +725,7 @@ FuncDef         -- :: { (Ident,TxsDef) }
                 ;  $5.inhSigs      = $$.inhSigs
                 ;  $5.inhVarSigs   = $2
                 ;  $5.inhSolvSort  = Just $3
-                ;  $$.synSigs      = Sigs.empty { func = FuncTable (Map.singleton $1 (Map.singleton (Signature (map varsort $2) $3) ( cstrFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3) ) ) ) }
+                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature (map varsort $2) $3) ( cstrFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3) ) ) ) }
                 ;  $$ = ( IdFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3), 
                           DefFunc (FuncDef $2 $5) )
                 }
@@ -739,7 +739,7 @@ FuncDef         -- :: { (Ident,TxsDef) }
                 ;  $5.inhSigs      = $$.inhSigs
                 ;  $5.inhVarSigs   = $2
                 ;  $5.inhSolvSort  = Just $3
-                ;  $$.synSigs      = Sigs.empty { func = FuncTable (Map.singleton $1 (Map.singleton (Signature (map varsort $2) $3) ( cstrFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3) ) ) ) }
+                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature (map varsort $2) $3) ( cstrFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3) ) ) ) }
                 ;  $$ = ( IdFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3), 
                           DefFunc (FuncDef $2 $5) )
                 ;  where if (length $2) == 1 || (length $2) == 2 then () else
@@ -825,7 +825,7 @@ ConstDef        -- :: { (Ident,TxsDef) }
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $4.inhSigs      = $$.inhSigs
                 ;  $4.inhSolvSort  = Just $2
-                ;  $$.synSigs      = Sigs.empty { func = FuncTable (Map.singleton $1 (Map.singleton (Signature [] $2) ( cstrFunc (FuncId $1 $$.inhNodeUid [] $2) ) ) ) }
+                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature [] $2) ( cstrFunc (FuncId $1 $$.inhNodeUid [] $2) ) ) ) }
                 ;  $$ = ( IdFunc (FuncId $1 $$.inhNodeUid [] $2), DefFunc (FuncDef [] $4 ) )
                 }
 
@@ -901,7 +901,7 @@ ProcDef         -- :: { (Ident,TxsDef) }
                 ;  $6.inhSigs      = $$.inhSigs
                 ;  $6.inhChanSigs  = $2
                 ;  $6.inhVarSigs   = $3
-                ;  $$.synSigs      = Sigs.empty { pro = [ ProcId $1 $$.inhNodeUid $2 $3 $4 ] }
+                ;  $$.synSigs      = Sigs.empty { Sigs.pro = [ ProcId $1 $$.inhNodeUid $2 $3 $4 ] }
                 ;  $$ = ( IdProc (ProcId $1 $$.inhNodeUid $2 $3 $4), 
                           DefProc (ProcDef $2 $3 $6 ) )
                 ;  where if $6.synExitSorts == $4 then () else
@@ -935,10 +935,10 @@ StautDef        -- :: { (Ident,TxsDef) }
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $4.inhSigs      = $$.inhSigs
                 ;  $5.inhSigs      = $$.inhSigs
-                ;  $7.inhSigs      = $$.inhSigs { pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] } 
+                ;  $7.inhSigs      = $$.inhSigs { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] } 
                 ;  $7.inhChanSigs  = $3
                 ;  $7.inhVarSigs   = $4
-                ;  $$.synSigs      = Sigs.empty { pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] }
+                ;  $$.synSigs      = Sigs.empty { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] }
                 ;  $$ = ( IdProc (ProcId $2 $$.inhNodeUid $3 $4 $5), 
                           DefProc (ProcDef $3 $4 $7) )
                 ;  where if $7.synExitSorts == $5 then () else
@@ -1567,7 +1567,7 @@ OfSort          -- :: { SortId }
                 -- constrs   : sort shall be uniquely defined
               : "::" capid
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$ = case Map.lookup $2 (sort $$.inhSigs) of
+                ;  $$ = case Map.lookup $2 (Sigs.sort $$.inhSigs) of
                         { Nothing       -> error ("\nTXS0131: " ++
                                                     "Explicit sort not defined: "++(show $2)++"\n")
                         ; Just sid      -> sid
@@ -1583,7 +1583,7 @@ OfSorts         -- :: { [SortId] }
                 -- constrs   : sorts shall be uniquely defined
               : SharpCapIdList
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$ = [ case Map.lookup nm (sort $$.inhSigs) of
+                ;  $$ = [ case Map.lookup nm (Sigs.sort $$.inhSigs) of
                           { Nothing         -> error ("\nTXS0151: " ++
                                                         "Explicit sort not defined: "++(show nm)++"\n")
                           ; Just sid        -> sid
@@ -1601,7 +1601,7 @@ NeOfSorts       -- :: { [SortId] }
                 -- constrs   : sorts shall be uniquely defined
               : NeSharpCapIdList
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$ = [ case Map.lookup nm (sort $$.inhSigs) of
+                ;  $$ = [ case Map.lookup nm (Sigs.sort $$.inhSigs) of
                           { Nothing         -> error ("\nTXS0151: " ++
                                                         "Explicit sort not defined: "++(show nm)++"\n")
                           ; Just sid        -> sid
@@ -2285,6 +2285,16 @@ ExPrefOfferList -- :: { ( Int, Set.Set Offer ) }
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: Set.Set Offer: parsed offers
                 -- constrs   :  ChanOffers are of form 'Exclam VExpr'
+-- it used to be...                
+-- -              : TDEFS CHANENV VARENV UNID PrefOfferList
+-- -                {  $5.inhNodeUid   = $4
+-- -                ;  $5.inhSigs      = Sigs.empty { sort = [ sid | IdSort sid@(SortId nm u)     <- TxsDefs.keys $1 ]
+-- -                                                , cstr = [ cid | IdCstr cid@(CstrId nm u a s) <- TxsDefs.keys $1 ]
+-- -                                                , func = [ fid | IdFunc fid@(FuncId nm u a s) <- TxsDefs.keys $1 ]
+-- -                                                }
+-- -                ;  $5.inhChanSigs  = $2
+-- -                ;  $5.inhVarSigs   = $3
+-- -                ;  $$ = ( $5.synMaxUid, $5 )                
               : TDEFS SIGS CHANENV VARENV UNID PrefOfferList
                 {  $6.inhNodeUid   = $5
                 ;  $6.inhSigs      = $2

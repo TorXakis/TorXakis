@@ -43,6 +43,8 @@ import qualified ParamCore
 
 -- import from defs
 import qualified TxsDefs
+import qualified Sigs
+import VarId
 
 -- import from solve
 import qualified SMTData
@@ -58,6 +60,7 @@ type  IOB a  =  StateT EnvB IO a
 
 data  EnvB   =  EnvB { smts     :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                      , tdefs    :: TxsDefs.TxsDefs               -- TorXakis definitions
+                     , sigs     :: Sigs.Sigs VarId
                      , stateid  :: EnvData.StateNr               -- current beh statenr
                      , params   :: ParamCore.Params              -- parameters
                      , unid     :: Int                           -- last used unique number

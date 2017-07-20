@@ -4,6 +4,9 @@ Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
 -----------------------------------------------------------------------------
+
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+
 -- |
 -- Module      :  BehExprDefs
 -- Copyright   :  (c) TNO and Radboud University
@@ -15,11 +18,15 @@ See license.txt
 --
 -- This module introduces definitions related to behaviour expressions.
 -----------------------------------------------------------------------------
+
 module BehExprDefs
 
 where
 
 import qualified Data.Set as Set
+
+import GHC.Generics (Generic)
+import Control.DeepSeq
 
 import ChanId
 import ProcId
@@ -40,7 +47,7 @@ data  BExpr         = Stop
                     | Hide        [ChanId] BExpr
                     | ValueEnv    VEnv BExpr
                     | StAut       StatId VEnv [Trans]
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 
 -- | ActOffer
@@ -48,7 +55,7 @@ data  BExpr         = Stop
 data  ActOffer      =  ActOffer { offers      :: Set.Set Offer      -- PvdL -- why not? -- Map ChanId [ChanOffer]
                                 , constraints :: [VExpr]
                                 }
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 
 -- | Offer 
@@ -56,13 +63,13 @@ data  ActOffer      =  ActOffer { offers      :: Set.Set Offer      -- PvdL -- w
 data  Offer         =  Offer { chanid     :: ChanId
                              , chanoffers :: [ChanOffer]
                              }
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 -- | Channel Offer
 -- Offer of a single value
 data  ChanOffer     = Quest  VarId
                     | Exclam VExpr
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 -- | symbolic transitions 
 data  Trans         = Trans  { from     :: StatId
@@ -70,7 +77,7 @@ data  Trans         = Trans  { from     :: StatId
                              , update   :: VEnv
                              , to       :: StatId
                              }
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 -- ----------------------------------------------------------------------------------------- --
 --

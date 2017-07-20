@@ -3,9 +3,13 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module ConstDefs
 where
+
+import GHC.Generics (Generic)
+import Control.DeepSeq
 
 import qualified Data.Map as Map
 
@@ -21,7 +25,7 @@ data  Const         =  Cbool    { cBool :: Bool }
                                            --       storing SMT string as well
                      | Cstr     { cstrId :: CstrId, args :: [Const] }
                      | Cerror   { msg :: String }
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 type  WEnv v        =  Map.Map v Const
 

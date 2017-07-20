@@ -30,6 +30,7 @@ import Reduce
 import StdTDefs
 import TxsDefs
 import Unfold
+import Sigs
 
 -- ----------------------------------------------------------------------------
 -- additional variables
@@ -38,6 +39,7 @@ import Unfold
 envbIdle     :: EnvB
 envbIdle     =  EnvB { EnvBTree.smts     = Map.empty
                      , EnvBTree.tdefs    = TxsDefs.empty
+                     , EnvBTree.sigs     = Sigs.empty
                      , EnvBTree.stateid  = -1
                      , EnvBTree.params   = Map.empty
                                 -- Map.union Params.initParams SolveDefs.Params.initParams ???

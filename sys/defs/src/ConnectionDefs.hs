@@ -3,9 +3,12 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
-
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module ConnectionDefs
 where
+
+import GHC.Generics (Generic)
+import Control.DeepSeq
 
 import ChanId
 import VarId
@@ -16,7 +19,7 @@ import ValExprDefs
 
 data  CnectType     =  ClientSocket
                      | ServerSocket
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 
 
@@ -32,7 +35,7 @@ data  ConnDef       =  ConnDtoW  { chan       :: ChanId
                                  , var        :: VarId           -- decoding domain of String
                                  , vexprs     :: [VExpr]         -- decoding range
                                  }
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 
 -- ----------------------------------------------------------------------------------------- --
