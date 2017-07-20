@@ -47,7 +47,8 @@ import qualified ParamCore as ParamCore
 import qualified BTree     as BTree
 
 -- import from defs
-import qualified TxsDefs   as TxsDefs
+import qualified TxsDefs
+import qualified Sigs
 
 import qualified TxsDDefs  as TxsDDefs
 import qualified TxsShow   as TxsShow
@@ -68,12 +69,14 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                         }
              | Initing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                        , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
                         , params    :: ParamCore.Params              -- parameters
                         , unid      :: Int                           -- last used unique number
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         } 
              | Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                        , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , mapperdef :: Maybe TxsDefs.MapperDef
                         , purpdef   :: Maybe TxsDefs.PurpDef
@@ -92,6 +95,7 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                         } 
              | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                        , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , mapperdef :: Maybe TxsDefs.MapperDef
                         , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
@@ -108,6 +112,7 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                         } 
              | Stepping { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                        , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
                                                                      -- behaviour trie

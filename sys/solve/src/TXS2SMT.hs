@@ -75,7 +75,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_IntFromString,  error "FromString(Int) should not be called in SMT"),
     (IdFunc funcId_IntToXml,       error "ToXml(Int) should not be called in SMT"),
     (IdFunc funcId_IntFromXml,     error "FromXml(Int) should not be called in SMT"),
-    (IdFunc funcId_uniplusInt,     "+ 0"),
     (IdFunc funcId_uniminusInt,    "-"),
     (IdFunc funcId_plusInt,        "+"),
     (IdFunc funcId_minusInt,       "-"),

@@ -113,26 +113,26 @@ testN depth step  =  do
      envc               <- get
      case (read parval, envc) of
      { ( ParamCore.IOCO
-       , IOC.Testing _ _ m a Nothing _ _ _ _ _ _ _ _ _ _ _
+       , IOC.Testing _ _ _ m a Nothing _ _ _ _ _ _ _ _ _ _ _
        ) -> do                                                            -- no test purpose --
             testIOCO depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (Just (TxsDefs.PurpDef []      []       _ _))
+       , IOC.Testing _ _ _ m a (Just (TxsDefs.PurpDef []      []       _ _))
                      _ _ _ _ _ _ _ _ _ _ _
        ) -> do                                       -- empty test purpse == no test purpose --
             testIOCO depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (Just (TxsDefs.PurpDef []      outsyncs _ _))
+       , IOC.Testing _ _ _ m a (Just (TxsDefs.PurpDef []      outsyncs _ _))
                      _ _ _ _ _ _ _ _ _ _ _
        ) -> do                                             -- test purpose with only outputs --
             testIOCOoutPurp depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (Just (TxsDefs.PurpDef insyncs []       _ _))
+       , IOC.Testing _ _ _ m a (Just (TxsDefs.PurpDef insyncs []       _ _))
                      _ _ _ _ _ _ _ _ _ _ _
        ) -> do                                              -- test purpose with only inputs --
             testIOCOinPurp depth False step
      ; ( ParamCore.IOCO
-       , IOC.Testing _ _ m a (Just (TxsDefs.PurpDef insyncs outsyncs _ _))
+       , IOC.Testing _ _ _ m a (Just (TxsDefs.PurpDef insyncs outsyncs _ _))
                      _ _ _ _ _ _ _ _ _ _ _
        ) -> do                                       -- test purpose with inputs and outputs --
             testIOCOfullPurp depth False step

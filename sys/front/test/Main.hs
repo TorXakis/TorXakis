@@ -23,6 +23,8 @@ import TxsHappy
 import TxsDefs
 import TxsShow
 
+import Sigs
+
 -- QuickCheck Extension
 
 subset :: Ord(a) => Set.Set a -> Gen (Set.Set a)
@@ -169,8 +171,8 @@ createGenSortDef (GenSortDef sdn@(CapId sortDefName) constrs) =
        ( Utils.join "\n\t| " (map (\(constrName, fields) -> createCstrId constrName fields sdn) constrs ) )
    ++ "\nENDDEF"
 
-toTorXakisDefs :: (Int, TxsDefs) -> TxsDefs
-toTorXakisDefs (a,b) = b
+toTorXakisDefs :: (Int, TxsDefs, Sigs VarId) -> TxsDefs
+toTorXakisDefs (_, b, _) = b
 
 parseTorXakis :: String -> TxsDefs
 parseTorXakis txt = -- Trace.trace ("txt = " ++ txt) $

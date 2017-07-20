@@ -52,11 +52,10 @@ import ParamServer
 import qualified EnvCore    as IOC
 
 -- import from defs
-import qualified TxsDefs   as TxsDefs
-import qualified TxsDDefs  as TxsDDefs
-import qualified TxsShow   as TxsShow
-
-
+import qualified TxsDefs
+import qualified TxsDDefs
+import qualified TxsShow
+import qualified Sigs
 
 -- ----------------------------------------------------------------------------------------- --
 -- IOS :  torxakis server main state monad transformer
@@ -75,6 +74,7 @@ data EnvS   =  EnvS { host    :: String                    -- host of server cli
                     , modus   :: TxsModus                  -- current modus of TXS operation
                     , uid     :: Int                       -- last used unique id number
                     , tdefs   :: TxsDefs.TxsDefs           -- TorXakis definitions from file
+                    , sigs    :: Sigs.Sigs TxsDefs.VarId   -- Signatures contained in TorXakis files
                     , locvars :: [TxsDefs.VarId]           -- local free variables
                     , locvals :: TxsDefs.VEnv              -- local value environment
                     , tow     :: ( Maybe (Chan TxsDDefs.SAction)   -- connections to world
@@ -96,6 +96,7 @@ envsNone    =  EnvS { host      = ""
                     , modus     = Noned
                     , uid       = 1000
                     , tdefs     = TxsDefs.empty
+                    , sigs      = Sigs.empty
                     , locvars   = []
                     , locvals   = Map.empty
                     , tow       = ( Nothing, Nothing, [] )

@@ -35,8 +35,7 @@ module StdTDefs
 , funcId_IntToString    
 , funcId_IntFromString  
 , funcId_IntToXml       
-, funcId_IntFromXml     
-, funcId_uniplusInt     
+, funcId_IntFromXml
 , funcId_uniminusInt    
 , funcId_plusInt        
 , funcId_minusInt       
@@ -189,7 +188,7 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("=>",   Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrPredef SSB funcId_implies ) ] )
     , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrPredef SSB funcId_iff ) ] )
 
-    , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_uniplusInt )
+    , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, head)
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_plusInt ) 
                            ] )
     , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_uniminusInt )
@@ -281,7 +280,6 @@ funcId_IntFromString    = FuncId fromStringName     302 [sortId_String]         
 funcId_IntToXml         = FuncId toXmlName          303 [sortId_Int]            sortId_String
 funcId_IntFromXml       = FuncId fromXmlName        304 [sortId_String]         sortId_Int
 
-funcId_uniplusInt       = FuncId "+"                305 [sortId_Int]            sortId_Int
 funcId_uniminusInt      = FuncId "-"                306 [sortId_Int]            sortId_Int
 funcId_plusInt          = FuncId "+"                307 [sortId_Int,sortId_Int] sortId_Int
 funcId_minusInt         = FuncId "-"                308 [sortId_Int,sortId_Int] sortId_Int
@@ -307,8 +305,6 @@ stdFuncDefsInt'
                                     in FuncDef [x] (cstrPredef SSI funcId_IntToXml [cstrVar x]) )
      , ( funcId_IntFromXml,     let x = VarId "x" 344 sortId_String
                                     in FuncDef [x] (cstrPredef SSI funcId_IntFromXml [cstrVar x]) )
-     , ( funcId_uniplusInt,     let x = VarId "x" 345 sortId_Int
-                                    in FuncDef [x] (cstrPredef SSI funcId_uniplusInt [cstrVar x]) )
      , ( funcId_uniminusInt,    let x = VarId "x" 346 sortId_Int
                                     in FuncDef [x] (cstrPredef SSI funcId_uniminusInt [cstrVar x]) )
      , ( funcId_plusInt,        let { x = VarId "x" 347 sortId_Int

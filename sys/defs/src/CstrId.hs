@@ -5,10 +5,14 @@ See license.txt
 -}
 
 -- ----------------------------------------------------------------------------------------- --
-
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module CstrId
 
 where
+
+import GHC.Generics (Generic)
+import Control.DeepSeq
+
 import Name
 import SortId
 
@@ -17,7 +21,7 @@ data CstrId         = CstrId    { name       :: Name            -- capid
                                 , cstrargs   :: [SortId]
                                 , cstrsort   :: SortId
                                 }
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 -- ----------------------------------------------------------------------------------------- --
 --

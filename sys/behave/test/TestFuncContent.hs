@@ -202,9 +202,7 @@ testBinaryOperatorList = TestList (map testFunction     [   ("==", [(["l","r"], 
                                                         ])
 
 testUnaryOperatorList :: Test
-testUnaryOperatorList = TestList (map testFunction [   ("+", [(["x"], intSortName)], intSortName)
-                                                   ,   ("-", [(["x"], intSortName)], intSortName)
-                                                   ])
+testUnaryOperatorList = TestList (map testFunction [("-", [(["x"], intSortName)], intSortName) ])
                                                 
         
 testFunctionList :: Test
