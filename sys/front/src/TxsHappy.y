@@ -359,89 +359,70 @@ TorXakisDefn    -- :: { [ (Ident,TxsDef) ] }
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $$.synSigs      = $1.synSigs
-                ;  $1.inhSigs      = Sigs.empty { Sigs.sort = Sigs.sort $$.inhSigs }
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $$ = $1
                 }
               | FuncDefList
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $$.synSigs      = $1.synSigs
-                ;  $1.inhSigs      = Sigs.empty { Sigs.func = Sigs.func $$.inhSigs
-                                                , Sigs.sort = Sigs.sort $$.inhSigs
-                                                }
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $$ = $1
                 }
               | ConstDefList
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $$.synSigs      = $1.synSigs
-                ;  $1.inhSigs      = Sigs.empty { Sigs.sort = Sigs.sort $$.inhSigs }
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $$ = $1
                 }
               | ProcDefList
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $$.synSigs      = $1.synSigs
-                ;  $1.inhSigs      = Sigs.empty { Sigs.func = Sigs.func $$.inhSigs
-                                                , Sigs.pro = Sigs.pro $$.inhSigs
-                                                , Sigs.sort = Sigs.sort $$.inhSigs
-                                                }
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $$ = $1
                 }
               | StautDef
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $$.synSigs      = $1.synSigs
-                ;  $1.inhSigs      = Sigs.empty { Sigs.func = Sigs.func $$.inhSigs
-                                                , Sigs.pro = Sigs.pro $$.inhSigs
-                                                , Sigs.sort = Sigs.sort $$.inhSigs
-                                                }
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $$ = [ $1 ]
                 }
               | ChannelDef
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $$.synSigs      = $1.synSigs
-                ;  $1.inhSigs      = Sigs.empty { Sigs.sort = Sigs.sort $$.inhSigs }              
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $$ = []
                 }
               | ModelDef
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $$.synSigs      = $1.synSigs
-                ;  $1.inhSigs      = Sigs.empty { Sigs.func = Sigs.func $$.inhSigs
-                                                , Sigs.pro = Sigs.pro $$.inhSigs
-                                                , Sigs.chan = Sigs.chan $$.inhSigs
-                                                }
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $$ = [ $1 ]
                 }
               | PurpDef
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $$.synSigs      = $1.synSigs
-                ;  $1.inhSigs      = Sigs.empty { Sigs.func = Sigs.func $$.inhSigs
-                                                , Sigs.pro = Sigs.pro $$.inhSigs
-                                                , Sigs.sort = Sigs.sort $$.inhSigs
-                                                }
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $$ = [ $1 ]
                 }
               | MapperDef
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $$.synSigs      = $1.synSigs
-                ;  $1.inhSigs      = Sigs.empty { Sigs.chan = Sigs.chan $$.inhSigs
-                                                , Sigs.func = Sigs.func $$.inhSigs
-                                                , Sigs.pro = Sigs.pro $$.inhSigs
-                                                }
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $$ = [ $1 ]
                 }
               | CnectDef
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $$.synSigs      = $1.synSigs
-                ;  $1.inhSigs      = Sigs.empty { Sigs.chan = Sigs.chan $$.inhSigs
-                                                , Sigs.func = Sigs.func $$.inhSigs
-                                                }
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $$ = [ $1 ]
                 }
 
@@ -2304,6 +2285,16 @@ ExPrefOfferList -- :: { ( Int, Set.Set Offer ) }
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: Set.Set Offer: parsed offers
                 -- constrs   :  ChanOffers are of form 'Exclam VExpr'
+-- it used to be...                
+-- -              : TDEFS CHANENV VARENV UNID PrefOfferList
+-- -                {  $5.inhNodeUid   = $4
+-- -                ;  $5.inhSigs      = Sigs.empty { sort = [ sid | IdSort sid@(SortId nm u)     <- TxsDefs.keys $1 ]
+-- -                                                , cstr = [ cid | IdCstr cid@(CstrId nm u a s) <- TxsDefs.keys $1 ]
+-- -                                                , func = [ fid | IdFunc fid@(FuncId nm u a s) <- TxsDefs.keys $1 ]
+-- -                                                }
+-- -                ;  $5.inhChanSigs  = $2
+-- -                ;  $5.inhVarSigs   = $3
+-- -                ;  $$ = ( $5.synMaxUid, $5 )                
               : TDEFS SIGS CHANENV VARENV UNID PrefOfferList
                 {  $6.inhNodeUid   = $5
                 ;  $6.inhSigs      = $2

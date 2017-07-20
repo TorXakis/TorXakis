@@ -147,10 +147,14 @@ eval (view -> Vpredef kd fid vexps)  =  do
                                                                )
                                    in return $! (show p) `deepseq` (p,"")
                                 )
-                                ( \e -> return $ ((uid,cstrError ""),(show (e::ErrorCall)))
+                                ( \e -> return $ ((uid,cstrError ""), (show (e::ErrorCall)))
                                 )
                              if  e /= ""
-                               then do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: ASF" ]
+                               then do IOB.putMsgs $ map EnvData.TXS_CORE_SYSTEM_ERROR
+                                         [ "eval: ASF"
+                                         , "vexpr: " ++ s
+                                         , "signatures" ++ show sigs
+                                         ]
                                        return $ Cerror ""
                                else do eval vexp'
                 _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: ASF" ]

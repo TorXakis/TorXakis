@@ -39,7 +39,7 @@ data Sigs v = Sigs  { chan  :: [ChanId]  -- TODO: Map.Map String ChanId
                     , func  :: FuncTable v
                     , pro   :: [ProcId]  -- TODO: ProcTable
                     , sort  :: Map.Map String SortId
-                    } deriving (Generic, NFData)
+                    } deriving (Show, Generic, NFData)
     
 empty :: Sigs v
 empty = Sigs [] FuncTable.empty [] Map.empty
