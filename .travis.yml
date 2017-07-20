@@ -1,0 +1,53 @@
+# This is the simple Travis configuration, which is intended for use
+# on applications which do not require cross-platform and
+# multiple-GHC-version support. For more information and other
+# options, see:
+#
+# https://docs.haskellstack.org/en/stable/travis_ci/
+#
+# Copy these contents into the root directory of your Github project in a file
+# named .travis.yml
+
+# Use new container infrastructure to enable caching
+sudo: false
+
+# Do not choose a language; we provide our own build tools.
+language: generic
+
+# Caching so the next build will be fast too.
+cache:
+  directories:
+  - $HOME/.stack
+
+# Ensure necessary system libraries are present
+addons:
+  apt:
+    packages:
+      - libgmp-dev
+
+before_install:
+# Download and unpack the stack executable
+- mkdir -p ~/.local/bin
+- export PATH=$HOME/.local/bin:$PATH
+- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+- travis_retry curl -L -O https://github.com/TorXakis/Dependencies/releases/download/v0.3.0_linux/z3-4.5.1.0f1583309d08-x64-ubuntu-14.04.zip -O https://github.com/TorXakis/Dependencies/releases/download/v0.3.0_linux/cvc4-1.5-x86_64-linux-opt
+# rename cvc4 executable to get the build working todo: parametrize this in SMTInternal.hs
+- mv cvc4-1.5-x86_64-linux-opt cvc4-2017-06-13-win32-opt
+- mv cvc4-* ~/.local/bin
+- chmod +x ~/.local/bin/cvc4-2017-06-13-win32-opt
+- CURDIR=$(pwd)
+- mkdir ~/.local/z3 && cd ~/.local/z3
+- Z3ZIP=$(ls $CURDIR/z3*.zip)
+- echo $Z3ZIP
+- unzip $Z3ZIP
+- chmod +x ./bin/z3
+- export PATH=$HOME/.local/z3/bin:$PATH
+- cd $CURDIR
+
+install:
+# Build dependencies
+- stack --no-terminal --install-ghc test --only-dependencies --stack-yaml stack_linux.yaml
+
+script:
+# Build the package, its tests, and its docs and run the tests
+- travis_wait 50 stack --no-terminal test --haddock --no-haddock-deps --fast --stack-yaml stack_linux.yaml
