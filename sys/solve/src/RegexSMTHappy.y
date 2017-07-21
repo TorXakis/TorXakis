@@ -7,8 +7,22 @@ See license.txt
 -- ----------------------------------------------------------------------------------------- --
 -- uninterpreted haskell preamble
 {
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  RegexSMTHappy
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+-- 
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Parse XSD Regex into SMT.
+-----------------------------------------------------------------------------
 module RegexSMTHappy
-
+( regexSMTParser
+, encodeStringLiteral
+)
 where
 
 import Data.Char
@@ -245,12 +259,12 @@ SingleCharEsc -- :: { String }
 -- uninterpreted haskell postamble
 {
 
--- ---------------------------------------------------------------------------------
--- encode String Literal to SMT 
--- Escape quote and escape
--- according to smt-lib-version 2.5 standard
--- prevent CVC4 Parse Error "Extended/unprintable characters are not part of SMT-LIB, and they must be encoded as escape sequences"
--- ------------------------------------------------------------------ 
+-- | Encode String to SMT.
+--
+--   According to smt-lib-version 2.5 standard (http://smtlib.cs.uiowa.edu/papers/smt-lib-reference-v2.5-r2015-06-28.pdf),
+--   quote and escape characters are escaped.
+--   
+--   Furthermore, prevent CVC4 Parse Error "Extended/unprintable characters are not part of SMT-LIB, and they must be encoded as escape sequences"
 encodeStringLiteral :: String -> String
 encodeStringLiteral = concatMap toSMTChar 
     where
