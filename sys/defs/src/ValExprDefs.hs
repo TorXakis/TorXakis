@@ -8,6 +8,8 @@ module ValExprDefs
 where
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Data.Set (Set)
 
 import GHC.Generics (Generic)
 import Control.DeepSeq
@@ -31,6 +33,8 @@ data  ValExprView v = Vfunc   FuncId [ValExpr v]
                     | Vite    [ValExpr v] (ValExpr v) (ValExpr v)
                     | Venv    (VarEnv v v) (ValExpr v)
                     | Vequal  (ValExpr v) (ValExpr v)
+                    | Vnot    (ValExpr v)
+                    | Vand    (Set (ValExpr v))
                     | Vpredef PredefKind FuncId [ValExpr v]
                     | Verror  String
      deriving (Eq,Ord,Read,Show, Generic, NFData)

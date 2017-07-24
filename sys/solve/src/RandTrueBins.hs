@@ -33,6 +33,7 @@ import Control.Monad.State
 
 import qualified Data.Char as Char
 import qualified Data.Map  as Map
+import qualified Data.Set  as Set
 
 import SMT
 import SMTData
@@ -103,26 +104,18 @@ nextPower n = n * step
 
 nextExponent :: Integer -> Integer
 nextExponent n = n * n
--- -----------------------------------------------------------------
-
-toOr :: (Variable v) => [ValExpr v] -> ValExpr v
-toOr [] = cstrConst (Cbool False)
-toOr [x] = x
-toOr (x:xs) = cstrFunc funcId_or [x, toOr xs]
-
-toAnd :: (Variable v) => [ValExpr v] -> ValExpr v
-toAnd [] = cstrConst (Cbool True)
-toAnd [x] = x
-toAnd (x:xs) = cstrFunc funcId_and [x, toAnd xs]
 
 -- --------------------------------------
 -- randomly draw boolean value
 -- -----------------------------------------
 trueBool :: (Variable v) => ValExpr v -> SMT (ValExpr v) 
 trueBool expr = do
-    let orList = [expr, cstrPredef SSB funcId_not [expr]]
+    let orList = [expr, cstrNot expr]
     shuffledOrList <- shuffleM orList
-    return $ toOr shuffledOrList
+    -- TODO: the use of sets looses the ordering information that lists had. We
+    -- need to re-introduce the randomization in the order of the `or` terms.
+    return $ cstrOr (Set.fromList shuffledOrList) 
+    
 -- -----------------------------------------------------------------
 -- randomly draw values from multiple bins
 -- the size of the bins is controlled by the next function: either equal size, proportional larger, or exponential larger  
@@ -138,7 +131,7 @@ values n nxt = valueRecursive n 1 step
                 return (r:rr)
                 
 toBins :: (Variable v) => ValExpr v -> [Integer] -> [ValExpr v]
-toBins v (x1:x2:xs) = cstrFunc funcId_and [cstrFunc funcId_leInt [cstrConst (Cint x1), v], cstrFunc funcId_ltInt [v, cstrConst (Cint x2)] ] : toBins v (x2:xs)
+toBins v (x1:x2:xs) = cstrAnd ( Set.fromList [cstrFunc funcId_leInt [cstrConst (Cint x1), v], cstrFunc funcId_ltInt [v, cstrConst (Cint x2)] ] ) : toBins v (x2:xs)
 toBins _ _ = []
                 
 trueBins :: (Variable v) => ValExpr v -> Int -> (Integer -> Integer) -> SMT (ValExpr v)
@@ -150,7 +143,7 @@ trueBins v n nxt = do
                   cstrFunc funcId_leInt [cstrConst (Cint (last binSamples) ), v] ] 
                  ++ toBins v binSamples
     shuffledOrList <- shuffleM orList
-    return $ toOr shuffledOrList
+    return $ cstrOr (Set.fromList shuffledOrList)
     
 -- -----------------------------------------------------------------
 -- enable randomly draw strings
@@ -205,14 +198,14 @@ trueStringLength :: (Variable v) => Int -> ValExpr v -> SMT (ValExpr v)
 trueStringLength n v = do
     let exprs = map (\m -> cstrEqual (cstrFunc funcId_lenString [v]) (cstrConst (Cint (toInteger m)))) [0..n] ++ [cstrFunc funcId_gtInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger n))]]
     sexprs <- shuffleM exprs
-    return $ toOr sexprs
+    return $ cstrOr (Set.fromList sexprs)
 
 trueStringRegex :: (Variable v) => Int -> ValExpr v -> SMT (ValExpr v)
 trueStringRegex n v = do
     regexes <- trueCharsRegexes n
     sregexes <- shuffleM (regexes ++ [range ++ "{"++ show (n+1) ++ ",}"])               -- Performance gain in problem solver? Use string length for length 0 and greater than n
     let sexprs = map (\regex -> cstrFunc funcId_strinre [v, cstrConst (Cregex regex)]) sregexes
-    return $ toOr sexprs
+    return $ cstrOr (Set.fromList sexprs)
     
 trueString :: (Variable v) => ParamTrueBins -> ValExpr v -> SMT (ValExpr v)
 trueString p v = 
@@ -240,7 +233,7 @@ randomValue p sid expr n | n > 0 =
                 cstrs <- lookupConstructors sid
                 orList <- processConstructors cstrs expr
                 shuffledOrList <- shuffleM orList
-                return (toOr shuffledOrList)
+                return (cstrOr (Set.fromList shuffledOrList))
             where
                 processConstructors :: (Variable v) => [(CstrId, CstrDef)] -> ValExpr v -> SMT [ValExpr v]
                 processConstructors [] _ = return []
@@ -253,7 +246,7 @@ randomValue p sid expr n | n > 0 =
                 processConstructor (cid,CstrDef isX []) expr' = return $ cstrFunc isX [expr']
                 processConstructor (cid,CstrDef isX accessors) expr' = do
                     args <- processArguments (zip (cstrargs cid) accessors) expr'
-                    return $ cstrFunc funcId_and [cstrFunc isX [expr'], toAnd args]
+                    return $ cstrAnd (Set.fromList (cstrFunc isX [expr'] : args))
                 
                 processArguments ::  (Variable v) => [(SortId,FuncId)] -> ValExpr v -> SMT [ValExpr v]
                 processArguments [] _ =  return []

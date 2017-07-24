@@ -36,6 +36,9 @@ module TxsDefs
 , cstrIte
 , cstrEnv
 , cstrEqual
+, cstrNot
+, cstrAnd
+, cstrOr
 , cstrPredef
 , cstrError
 , view

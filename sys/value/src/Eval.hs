@@ -36,6 +36,7 @@ import Control.DeepSeq
 
 import qualified Data.List as List
 import qualified Data.Map  as Map
+import qualified Data.Set  as Set
 import Data.String.Utils
 
 -- import from behavedefs
@@ -110,6 +111,16 @@ eval (view -> Vequal vexp1 vexp2)  =  do
      val1 <- eval vexp1
      val2 <- eval vexp2
      bool2txs ( val1 == val2 )
+
+eval (view -> Vnot vexp) = do
+  Cbool val <- eval vexp
+  bool2txs (not val)
+
+eval (view -> Vand vexps) = do
+  consts <- mapM eval (Set.toList vexps)
+  bool2txs $ and (map unBool consts)
+  where unBool :: Const -> Bool
+        unBool (Cbool b) = b
 
 eval (view -> Vpredef kd fid vexps)  =  do
      case kd of

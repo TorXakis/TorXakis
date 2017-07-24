@@ -10,6 +10,7 @@ module ValExprImpls
 where
 -- ----------------------------------------------------------------------------------------- --
 import Debug.Trace as Trace
+import qualified Data.Set as Set
 
 import CstrId
 import FuncId
@@ -67,16 +68,94 @@ cstrEqual (view -> Vconst _) (view -> Vconst _)     = cstrConst (Cbool False)
 -- Simplification True == e <==> e (twice)
 cstrEqual (view -> Vconst (Cbool True)) e           = e
 cstrEqual e (view -> Vconst (Cbool True))           = e
+
+-- Simplification False == e <==> not e (twice)
+cstrEqual (view -> Vconst (Cbool False)) e              = cstrNot e
+cstrEqual e (view -> Vconst (Cbool False))              = cstrNot e
+-- Not x == x <==> false (twice)
+cstrEqual e (view -> Vnot n) | e == n                   = cstrConst (Cbool False)
+cstrEqual (view -> Vnot n) e | e == n                   = cstrConst (Cbool False)
+-- Not x == Not y <==> x == y   -- same representation 
+cstrEqual (view -> Vnot n1) (view -> Vnot n2)     = cstrEqual n1 n2
+-- Not a == b <==> a == Not b -- same representation (twice)
+cstrEqual x@(view -> Vnot n) e                = if n <= e
+                                                        then ValExpr (Vequal x e)
+                                                        else ValExpr (Vequal (cstrNot e) n)
+cstrEqual e x@(view -> Vnot n)                = if n <= e
+                                                        then ValExpr (Vequal x e)
+                                                        else ValExpr (Vequal (cstrNot e) n)
 -- a == b <==> b == a -- same representation
 cstrEqual ve1 ve2                                   = if ve1 <= ve2
                                                         then ValExpr (Vequal ve1 ve2)
                                                         else ValExpr (Vequal ve2 ve1)
+
+-- | Is ValExpr a Not Expression?     
+isNot :: ValExpr v -> Bool
+isNot (view -> Vnot {})    = True
+isNot _                    = False
+
+-- | Apply operator Not on the provided value expression.
+-- Preconditions are /not/ checked.
+cstrNot :: ValExpr v -> ValExpr v
+cstrNot (view -> Vconst (Cbool True))       = cstrConst (Cbool False)
+cstrNot (view -> Vconst (Cbool False))      = cstrConst (Cbool True)
+cstrNot (view -> Vnot ve)                   = ve
+cstrNot ve                                  = ValExpr (Vnot ve)
+
+-- | Is ValExpr an And Expression?     
+isAnd :: ValExpr v -> Bool
+isAnd (view -> Vand {})    = True
+isAnd _                    = False
+
+-- | Apply operator And on the provided set of value expressions.
+-- Preconditions are /not/ checked, see 'validAnd'.
+cstrAnd :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v
+cstrAnd ms = 
+        let (ands, nonands) = Set.partition isAnd ms in
+            cstrAnd' $ foldl Set.union nonands (map (\(view -> Vand a) -> a) (Set.toList ands))
+        
+-- And doesn't contain elements of type Vand.
+cstrAnd' :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v
+cstrAnd' s = 
+    if Set.member (cstrConst (Cbool False)) s
+        then cstrConst (Cbool False)
+        else let s' = Set.delete (cstrConst (Cbool True)) s in
+                case Set.size s' of
+                    0   -> cstrConst (Cbool True)
+                    1   -> head (Set.toList s')
+                    _   ->  -- not(x) and x == False
+                            let (nots, _) = Set.partition isNot s' in
+                                if any (contains s') (map (\(view -> Vnot n) -> n) (Set.toList nots))
+                                    then cstrConst (Cbool False)
+                                    else ValExpr (Vand s')
+                                    -- todo? also check :
+                                    -- 0 <= x and 0 <= -x <==> x == 0
+                                    -- not (0 <= x) and not (0 <= -x) <==> False
+    where                                                        
+        contains :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v -> Bool
+        contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
+        contains set a                = Set.member a set
+
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)
 
 cstrError :: String -> ValExpr v
 cstrError s = ValExpr (Verror s)
+
+-- * Derived constructors
+
+-- | Apply operator Or (\\\/) on the provided set of value expressions.
+-- Preconditions are /not/ checked.
+cstrOr :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v
+-- a \/ b == not (not a /\ not b)
+cstrOr = cstrNot . cstrAnd . Set.map cstrNot
+
+-- | Apply operator Implies (=>) on the provided value expressions.
+-- Preconditions are /not/ checked.
+cstrImplies :: (Ord v) => ValExpr v -> ValExpr v -> ValExpr v
+-- a => b == not a \/ b == not (a /\ not b)
+cstrImplies a b = (cstrNot . cstrAnd) (Set.insert a (Set.singleton (cstrNot b)))
 
 -- ----------------------------------------------------------------------------------------- --
 --

@@ -34,6 +34,7 @@ module TXS2SMT
 where
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Data.Maybe
 import Data.String.Utils
 
@@ -63,12 +64,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_BoolFromString, error "FromString(Bool) should not be called in SMT"),
     (IdFunc funcId_BoolToXml,      error "ToXml(Bool) should not be called in SMT"),
     (IdFunc funcId_BoolFromXml,    error "FromXml(Bool) should not be called in SMT"),
-    (IdFunc funcId_not,            "not"),
-    (IdFunc funcId_and,            "and"),
-    (IdFunc funcId_or,             "or"),
-    (IdFunc funcId_xor,            "xor"),
-    (IdFunc funcId_implies,        "=>"),
-    (IdFunc funcId_iff,            "="),
     
 -- Int
     (IdFunc funcId_IntToString,    error "ToString(Int) should not be called in SMT"),
@@ -278,6 +273,12 @@ valexprToSMT mapI (view -> Venv venv expr)  =
     
 valexprToSMT mapI (view -> Vequal expr1 expr2)  = 
     "(= " ++ valexprToSMT mapI expr1 ++ " " ++ valexprToSMT mapI expr2 ++ ")"
+
+valexprToSMT mapI (view -> Vnot expr)  = 
+    "(not " ++ valexprToSMT mapI expr ++ ")"
+
+valexprToSMT mapI (view -> Vand exprs)  = 
+    "(and " ++ join " " (map (valexprToSMT mapI) (Set.toList exprs)) ++ ")"    
 
 valexprToSMT mapI (view -> Vpredef _ funcId args)  = 
     "(" ++ justLookup mapI (IdFunc funcId) ++ " " ++ join " " (map (valexprToSMT mapI) args) ++ ")"

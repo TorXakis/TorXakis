@@ -24,6 +24,7 @@ import Control.Monad.State
 
 import qualified Data.Char as Char
 import qualified Data.Map  as Map
+import qualified Data.Set  as Set
 
 import SMT
 import SMTData
@@ -208,6 +209,9 @@ randomSolve p ((v,d):xs) i =
                     do
                         shuffledCstrs <- shuffleM cstrs
                         let (partA, partB) = splitAt (div (length cstrs) 2) shuffledCstrs
+                        -- TODO: the use of sets looses the ordering
+                        -- information that lists had. We need to re-introduce
+                        -- the randomization in the order of the `or` terms.
                         c <- randomSolveVar v (choicesFunc v partA partB)
                         case c of
                             Cstr{cstrId = cid}  -> 
@@ -234,8 +238,8 @@ randomSolve p ((v,d):xs) i =
         choicesFunc :: Variable v => v -> [(CstrId, CstrDef)] -> [(CstrId, CstrDef)] -> Const -> [(Bool, ValExpr v)]
         choicesFunc v' partA partB Cstr{cstrId = cId} = 
             let cond = Map.member cId (Map.fromList partA) in
-                                 [ (cond,     toOr (map (\(_,CstrDef isC _) -> cstrFunc isC [cstrVar v']) partA) )
-                                 , (not cond, toOr (map (\(_,CstrDef isC _) -> cstrFunc isC [cstrVar v']) partB) )
+                                 [ (cond, cstrOr $ Set.fromList (map (\(_,CstrDef isC _) -> cstrFunc isC [cstrVar v']) partA) )
+                                 , (not cond, cstrOr $ Set.fromList (map (\(_,CstrDef isC _) -> cstrFunc isC [cstrVar v']) partB) )
                                  ]
         choicesFunc _ _ _ _        = error "RandIncrementChoice: impossible choice - string"
 
@@ -272,11 +276,6 @@ lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]
 lookupConstructors sid  =  do
      tdefs <- gets txsDefs
      return [(cstrid, cdef) | (cstrid@(CstrId _ _ _ sid'), cdef) <- Map.toList (cstrDefs tdefs), sid == sid']
-     
-toOr :: (Variable v) => [ValExpr v] -> ValExpr v
-toOr [] = cstrConst (Cbool False)
-toOr [x] = x
-toOr (x:xs) = cstrFunc funcId_or [x, toOr xs]
 
 addIsConstructor :: (Variable v) => v -> CstrDef -> SMT ()
 addIsConstructor v (CstrDef isC _) = addAssertions [cstrFunc isC [cstrVar v]]

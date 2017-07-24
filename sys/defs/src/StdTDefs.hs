@@ -25,12 +25,6 @@ module StdTDefs
 , funcId_BoolFromString 
 , funcId_BoolToXml      
 , funcId_BoolFromXml    
-, funcId_not            
-, funcId_and            
-, funcId_or             
-, funcId_xor            
-, funcId_implies        
-, funcId_iff            
 
 , funcId_IntToString    
 , funcId_IntFromString  
@@ -82,6 +76,7 @@ module StdTDefs
 where
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Control.Arrow ( (***) )
 
 import ChanId
@@ -137,7 +132,8 @@ equalHandler [a,b]  = cstrEqual a b
 equalHandler _      = error "equalHandler expects two arguments"
 
 notEqualHandler :: Ord v => Handler v
-notEqualHandler a = cstrPredef SSB funcId_not [equalHandler a]
+notEqualHandler [a, b] = cstrNot (cstrEqual a b)
+notEqualHandler _      = error "notEqualHandler expects two arguments"
 
 cstrHandler :: CstrId -> Handler v
 cstrHandler = cstrCstr
@@ -146,12 +142,19 @@ iscstrHandler :: CstrId -> Handler v
 iscstrHandler c [a] = cstrIsCstr c a
 iscstrHandler _ _   = error "iscstrHandler expects one argument"
 
-
 accessHandler :: CstrId -> Int -> Handler v
 accessHandler c p [a] = cstrAccess c p a
 accessHandler _ _ _   = error "accessHandler expects one argument"
 
+impliesHandler :: Ord v => Handler v
+impliesHandler [a,b] = cstrImplies a b
+impliesHandler _     = error "impliesHandler expects two arguments"
 
+xorHandler :: Ord v => Handler v
+xorHandler [a, b] = cstrOr (Set.fromList [arg0, arg1])
+  where arg0 = cstrAnd (Set.fromList [a, cstrNot b])
+        arg1 = cstrAnd (Set.fromList [cstrNot a, b])  
+xorHandler _      = error "xorHandler expects two arguments"
 
 -- ----------------------------------------------------------------------------------------- --
 -- FuncTable
@@ -181,12 +184,12 @@ stdFuncTable = FuncTable ( Map.fromList
                                  , ( Signature [sortId_String]  sortId_Int,      cstrPredef SSI funcId_IntFromXml )
                                  , ( Signature [sortId_String]  sortId_String,   cstrPredef SSS funcId_StringFromXml )
                                  ] )
-    , ("not",  Map.fromList [ ( Signature [sortId_Bool] sortId_Bool, cstrPredef SSB funcId_not ) ] )
-    , ("/\\",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrPredef SSB funcId_and ) ] )
-    , ("\\/",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrPredef SSB funcId_or ) ] )
-    , ("\\|/", Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrPredef SSB funcId_xor ) ] )
-    , ("=>",   Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrPredef SSB funcId_implies ) ] )
-    , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrPredef SSB funcId_iff ) ] )
+    , ("not",  Map.fromList [ ( Signature [sortId_Bool] sortId_Bool, cstrNot . head ) ] )
+    , ("/\\",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrAnd . Set.fromList ) ] )
+    , ("\\/",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrOr . Set.fromList ) ] )
+    , ("\\|/", Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, xorHandler) ] )
+    , ("=>",   Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, impliesHandler ) ] )
+    , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, equalHandler ) ] )
 
     , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, head)
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_plusInt ) 
@@ -225,14 +228,6 @@ funcId_BoolFromString   = FuncId fromStringName 214 [sortId_String]           so
 funcId_BoolToXml        = FuncId toXmlName      215 [sortId_Bool]             sortId_String
 funcId_BoolFromXml      = FuncId fromXmlName    216 [sortId_String]           sortId_Bool
 
-funcId_not              = FuncId "not"          223 [sortId_Bool]             sortId_Bool
-funcId_and              = FuncId "/\\"          224 [sortId_Bool,sortId_Bool] sortId_Bool
-funcId_or               = FuncId "\\/"          225 [sortId_Bool,sortId_Bool] sortId_Bool
-funcId_xor              = FuncId "\\|/"         226 [sortId_Bool,sortId_Bool] sortId_Bool
-funcId_implies          = FuncId "=>"           227 [sortId_Bool,sortId_Bool] sortId_Bool
-funcId_iff              = FuncId "<=>"          228 [sortId_Bool,sortId_Bool] sortId_Bool
-
-
 stdFuncDefsBool' :: [ ( FuncId, FuncDef ) ]
 stdFuncDefsBool'
   =  [ ( funcId_BoolToString,   let x = VarId "x" 243 sortId_Bool
@@ -243,28 +238,6 @@ stdFuncDefsBool'
                                     in FuncDef [x] (cstrPredef SSB funcId_BoolToXml [cstrVar x]) )
      , ( funcId_BoolFromXml,    let x = VarId "x" 246 sortId_String
                                     in FuncDef [x] (cstrPredef SSB funcId_BoolFromXml [cstrVar x]) )
-     , ( funcId_not,            let x = VarId "x" 251 sortId_Bool
-                                    in FuncDef [x] (cstrPredef SSB funcId_not [cstrVar x]) )
-     , ( funcId_and,            let { x = VarId "x" 252 sortId_Bool
-                                    ; y = VarId "y" 253 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSB funcId_and [cstrVar x,cstrVar y]) )
-     , ( funcId_or,             let { x = VarId "x" 254 sortId_Bool
-                                    ; y = VarId "y" 255 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSB funcId_or [cstrVar x,cstrVar y]) )
-     , ( funcId_xor,            let { x = VarId "x" 256 sortId_Bool
-                                    ; y = VarId "y" 257 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSB funcId_xor [cstrVar x,cstrVar y]) )
-     , ( funcId_implies,        let { x = VarId "x" 258 sortId_Bool
-                                    ; y = VarId "y" 259 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSB funcId_implies [cstrVar x,cstrVar y]) )
-     , ( funcId_iff,            let { x = VarId "x" 260 sortId_Bool
-                                    ; y = VarId "y" 261 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSB funcId_iff [cstrVar x,cstrVar y]) )
      ]
 
 stdFuncDefsBool :: [ ( Ident, TxsDef ) ]
