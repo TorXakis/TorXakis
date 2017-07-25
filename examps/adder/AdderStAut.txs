@@ -10,11 +10,10 @@ See license.txt
 -- with inputs "Plus(i) x y" and "Minus(i) x y", and output "Result(i) z".
 
 
-TYPEDEF  Operation
-    ::=
-          Plus  { p1, p2 :: Int }
-        | Minus { m1, m2 :: Int }
-        | Error
+TYPEDEF  Operation ::=
+      Plus  { p1, p2 :: Int }
+    | Minus { m1, m2 :: Int }
+    | Error      
 ENDDEF
 
 
@@ -38,21 +37,19 @@ CHANDEF  Chans   ::=    Action  :: Operation
 ENDDEF
 
 
-MODELDEF Adder
- ::=
-      CHAN IN    Action
-      CHAN OUT   Result
+-- ----------------------------------------------------------------------------------------- --
 
-      BEHAVIOUR  adder [ Action, Result ] ( )
 
+MODELDEF  Adder ::=
+    CHAN IN    Action
+    CHAN OUT   Result
+    BEHAVIOUR  adder [ Action, Result ] ( )
 ENDDEF
 
 
 -- ----------------------------------------------------------------------------------------- --
 
-
-CNECTDEF  Sut
-    ::=
+CNECTDEF  Sut ::=
         CLIENTSOCK
 
         CHAN  OUT  Action                        HOST "localhost"  PORT 7890
@@ -60,12 +57,10 @@ CNECTDEF  Sut
 
         CHAN  IN   Result                        HOST "localhost"  PORT 7890
         DECODE     Result ! fromString(s)   <-   ? s
-
 ENDDEF
 
 
-CNECTDEF  Sim
-    ::=
+CNECTDEF  Sim  ::=
         SERVERSOCK
 
         CHAN  IN   Action                        HOST "localhost"  PORT 7890
@@ -73,7 +68,6 @@ CNECTDEF  Sim
 
         CHAN  OUT  Result                        HOST "localhost"  PORT 7890
         ENCODE     Result ? result           ->  ! toString(result)
-
 ENDDEF
 
 

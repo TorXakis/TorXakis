@@ -1,0 +1,4 @@
+tester Model Sut
+test 8
+trace txs $> testTrace.log
+exit

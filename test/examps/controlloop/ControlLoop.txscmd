@@ -1,0 +1,4 @@
+stepper Model
+step 3
+trace txs $> testTrace.log
+exit

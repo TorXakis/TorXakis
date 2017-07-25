@@ -50,7 +50,7 @@ simN depth step  =  do
      [(parname,parval)] <- IOC.getParams ["param_InputCompletion"]
      case (read parval, envc) of
         { ( ParamCore.ANGELIC
-          , IOC.Simuling _ _ (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)
+          , IOC.Simuling _ _ _ (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)
                          mapperdef _ _ _ _ _ _ _ _ _ _
           ) -> do
                    simA depth step

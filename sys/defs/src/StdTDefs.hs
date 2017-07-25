@@ -25,28 +25,17 @@ module StdTDefs
 , funcId_BoolFromString 
 , funcId_BoolToXml      
 , funcId_BoolFromXml    
-, funcId_eqBool         
-, funcId_neqBool        
-, funcId_not            
-, funcId_and            
-, funcId_or             
-, funcId_xor            
-, funcId_implies        
-, funcId_iff            
 
 , funcId_IntToString    
 , funcId_IntFromString  
 , funcId_IntToXml       
-, funcId_IntFromXml     
-, funcId_uniplusInt     
+, funcId_IntFromXml
 , funcId_uniminusInt    
 , funcId_plusInt        
 , funcId_minusInt       
 , funcId_timesInt       
 , funcId_divideInt      
 , funcId_moduloInt      
-, funcId_eqInt          
-, funcId_neqInt         
 , funcId_ltInt          
 , funcId_leInt          
 , funcId_gtInt          
@@ -57,8 +46,6 @@ module StdTDefs
 , funcId_StringFromString   
 , funcId_StringToXml        
 , funcId_StringFromXml      
-, funcId_eqString           
-, funcId_neqString          
 , funcId_catString          
 , funcId_lenString          
 , funcId_takeWhile          
@@ -69,6 +56,14 @@ module StdTDefs
 
 , funcId_strinre
 
+, equalHandler
+, notEqualHandler
+, cstrHandler
+, iscstrHandler
+, accessHandler
+
+, stdSortTable
+, stdFuncTable
 , stdTDefs
 
 , chanId_Exit
@@ -80,9 +75,12 @@ module StdTDefs
 )
 where
 
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Control.Arrow ( (***) )
 
 import ChanId
+import CstrId
 import FuncId
 import FuncDef
 import Ident
@@ -93,18 +91,20 @@ import TxsDef
 import ValExprDefs
 import ValExprImpls
 import VarId
+import FuncTable
+
+stdSortTable :: Map.Map String SortId
+stdSortTable = Map.fromList [ ("Bool",   sortId_Bool)
+                            , ("Int",    sortId_Int)
+                            , ("String", sortId_String)
+                            , ("Regex",  sortId_Regex)
+                            ]
 
 stdSortDefs' :: [ ( SortId,       SortDef  ) ]
-stdSortDefs' = [ (sortId_Bool,   SortDef [ funcId_eqBool, funcId_neqBool
-                                         , funcId_BoolToString, funcId_BoolFromString
-                                         ] )
-               , (sortId_Int,    SortDef [ funcId_eqInt, funcId_neqInt
-                                         , funcId_IntToString, funcId_IntFromString
-                                         ] )
-               , (sortId_String, SortDef [ funcId_eqString, funcId_neqString
-                                         , funcId_StringToString, funcId_StringFromString
-                                         ] ) 
-               , (sortId_Regex,  SortDef [ ] )
+stdSortDefs' = [ (sortId_Bool,   SortDef)
+               , (sortId_Int,    SortDef)
+               , (sortId_String, SortDef) 
+               , (sortId_Regex,  SortDef)
                ]
 
 stdSortDefs :: [ ( Ident,       TxsDef  ) ]
@@ -126,6 +126,99 @@ toXmlName   = "toXml"
 fromXmlName = "fromXml"
 
 -- ----------------------------------------------------------------------------------------- --
+-- Helper function
+equalHandler :: Ord v => Handler v
+equalHandler [a,b]  = cstrEqual a b
+equalHandler _      = error "equalHandler expects two arguments"
+
+notEqualHandler :: Ord v => Handler v
+notEqualHandler [a, b] = cstrNot (cstrEqual a b)
+notEqualHandler _      = error "notEqualHandler expects two arguments"
+
+cstrHandler :: CstrId -> Handler v
+cstrHandler = cstrCstr
+
+iscstrHandler :: CstrId -> Handler v
+iscstrHandler c [a] = cstrIsCstr c a
+iscstrHandler _ _   = error "iscstrHandler expects one argument"
+
+accessHandler :: CstrId -> Int -> Handler v
+accessHandler c p [a] = cstrAccess c p a
+accessHandler _ _ _   = error "accessHandler expects one argument"
+
+impliesHandler :: Ord v => Handler v
+impliesHandler [a,b] = cstrImplies a b
+impliesHandler _     = error "impliesHandler expects two arguments"
+
+xorHandler :: Ord v => Handler v
+xorHandler [a, b] = cstrOr (Set.fromList [arg0, arg1])
+  where arg0 = cstrAnd (Set.fromList [a, cstrNot b])
+        arg1 = cstrAnd (Set.fromList [cstrNot a, b])  
+xorHandler _      = error "xorHandler expects two arguments"
+
+-- ----------------------------------------------------------------------------------------- --
+-- FuncTable
+stdFuncTable :: Ord v => FuncTable v
+stdFuncTable = FuncTable ( Map.fromList
+    [ ( eqName , Map.fromList [ ( Signature [sortId_Bool,     sortId_Bool]    sortId_Bool, equalHandler )
+                              , ( Signature [sortId_Int,      sortId_Int]     sortId_Bool, equalHandler )
+                              , ( Signature [sortId_String,   sortId_String]  sortId_Bool, equalHandler )
+                              ] )
+    , ( neqName, Map.fromList [ ( Signature [sortId_Bool,     sortId_Bool]    sortId_Bool, notEqualHandler )
+                              , ( Signature [sortId_Int,      sortId_Int]     sortId_Bool, notEqualHandler )
+                              , ( Signature [sortId_String,   sortId_String]  sortId_Bool, notEqualHandler )
+                              ] )
+    , (toStringName, Map.fromList [ ( Signature [sortId_Bool]    sortId_String, cstrPredef SSB funcId_BoolToString )
+                                  , ( Signature [sortId_Int]     sortId_String, cstrPredef SSI funcId_IntToString )
+                                  , ( Signature [sortId_String]  sortId_String, cstrPredef SSS funcId_StringToString )
+                                  ] )
+    , (fromStringName, Map.fromList [ ( Signature [sortId_String]  sortId_Bool,   cstrPredef SSB funcId_BoolFromString )
+                                    , ( Signature [sortId_String]  sortId_Int,    cstrPredef SSI funcId_IntFromString )
+                                    , ( Signature [sortId_String]  sortId_String, cstrPredef SSS funcId_StringFromString )
+                                    ] )
+    , (toXmlName, Map.fromList [ ( Signature [sortId_Bool]    sortId_String, cstrPredef SSB funcId_BoolToXml )
+                               , ( Signature [sortId_Int]     sortId_String, cstrPredef SSI funcId_IntToXml )
+                               , ( Signature [sortId_String]  sortId_String, cstrPredef SSS funcId_StringToXml )
+                               ] )
+    , (fromXmlName, Map.fromList [ ( Signature [sortId_String]  sortId_Bool,     cstrPredef SSB funcId_BoolFromXml )
+                                 , ( Signature [sortId_String]  sortId_Int,      cstrPredef SSI funcId_IntFromXml )
+                                 , ( Signature [sortId_String]  sortId_String,   cstrPredef SSS funcId_StringFromXml )
+                                 ] )
+    , ("not",  Map.fromList [ ( Signature [sortId_Bool] sortId_Bool, cstrNot . head ) ] )
+    , ("/\\",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrAnd . Set.fromList ) ] )
+    , ("\\/",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrOr . Set.fromList ) ] )
+    , ("\\|/", Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, xorHandler) ] )
+    , ("=>",   Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, impliesHandler ) ] )
+    , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, equalHandler ) ] )
+
+    , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, head)
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_plusInt ) 
+                           ] )
+    , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_uniminusInt )
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_minusInt )
+                           ] )
+    , ("abs", Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_absInt ) ] )
+    , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_timesInt ) ] )
+    , ("/",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_divideInt ) ] )
+    , ("%",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_moduloInt ) ] )
+    , ("<",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_ltInt ) ] )
+    , ("<=",  Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_leInt ) ] )
+    , (">",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_gtInt ) ] )
+    , (">=",  Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_geInt ) ] )
+
+    , ("len",  Map.fromList [ ( Signature [sortId_String] sortId_Int, cstrPredef SSS funcId_lenString ) ] )
+    , ("at",   Map.fromList [ ( Signature [sortId_String,sortId_Int] sortId_String, cstrPredef SSS funcId_atString ) ] )
+    , ("++",   Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrPredef SSS funcId_catString ) ] )
+    , ("takeWhile",    Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrPredef SSS funcId_takeWhile ) ] )
+    , ("takeWhileNot", Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrPredef SSS funcId_takeWhileNot ) ] )
+    , ("dropWhile",    Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrPredef SSS funcId_dropWhile ) ] )
+    , ("dropWhileNot", Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrPredef SSS funcId_dropWhileNot ) ] )
+
+    , ("strinre",   Map.fromList [ ( Signature [sortId_String,sortId_Regex] sortId_Bool, cstrPredef SSR funcId_strinre ) ] )
+
+    ] )
+    
+-- ----------------------------------------------------------------------------------------- --
 -- SSB :  Standard Sort Bool
 
 
@@ -134,16 +227,6 @@ funcId_BoolFromString   = FuncId fromStringName 214 [sortId_String]           so
 
 funcId_BoolToXml        = FuncId toXmlName      215 [sortId_Bool]             sortId_String
 funcId_BoolFromXml      = FuncId fromXmlName    216 [sortId_String]           sortId_Bool
-
-funcId_eqBool           = FuncId eqName         221 [sortId_Bool,sortId_Bool] sortId_Bool
-funcId_neqBool          = FuncId neqName        222 [sortId_Bool,sortId_Bool] sortId_Bool
-funcId_not              = FuncId "not"          223 [sortId_Bool]             sortId_Bool
-funcId_and              = FuncId "/\\"          224 [sortId_Bool,sortId_Bool] sortId_Bool
-funcId_or               = FuncId "\\/"          225 [sortId_Bool,sortId_Bool] sortId_Bool
-funcId_xor              = FuncId "\\|/"         226 [sortId_Bool,sortId_Bool] sortId_Bool
-funcId_implies          = FuncId "=>"           227 [sortId_Bool,sortId_Bool] sortId_Bool
-funcId_iff              = FuncId "<=>"          228 [sortId_Bool,sortId_Bool] sortId_Bool
-
 
 stdFuncDefsBool' :: [ ( FuncId, FuncDef ) ]
 stdFuncDefsBool'
@@ -155,36 +238,6 @@ stdFuncDefsBool'
                                     in FuncDef [x] (cstrPredef SSB funcId_BoolToXml [cstrVar x]) )
      , ( funcId_BoolFromXml,    let x = VarId "x" 246 sortId_String
                                     in FuncDef [x] (cstrPredef SSB funcId_BoolFromXml [cstrVar x]) )
-     , ( funcId_eqBool,         let { x = VarId "x" 247 sortId_Bool
-                                    ; y = VarId "y" 248 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrEqual (cstrVar x) (cstrVar y)) )
-     , ( funcId_neqBool,        let { x = VarId "x" 249 sortId_Bool
-                                    ; y = VarId "y" 250 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSB funcId_neqBool [cstrVar x,cstrVar y]) )
-     , ( funcId_not,            let x = VarId "x" 251 sortId_Bool
-                                    in FuncDef [x] (cstrPredef SSB funcId_not [cstrVar x]) )
-     , ( funcId_and,            let { x = VarId "x" 252 sortId_Bool
-                                    ; y = VarId "y" 253 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSB funcId_and [cstrVar x,cstrVar y]) )
-     , ( funcId_or,             let { x = VarId "x" 254 sortId_Bool
-                                    ; y = VarId "y" 255 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSB funcId_or [cstrVar x,cstrVar y]) )
-     , ( funcId_xor,            let { x = VarId "x" 256 sortId_Bool
-                                    ; y = VarId "y" 257 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSB funcId_xor [cstrVar x,cstrVar y]) )
-     , ( funcId_implies,        let { x = VarId "x" 258 sortId_Bool
-                                    ; y = VarId "y" 259 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSB funcId_implies [cstrVar x,cstrVar y]) )
-     , ( funcId_iff,            let { x = VarId "x" 260 sortId_Bool
-                                    ; y = VarId "y" 261 sortId_Bool
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSB funcId_iff [cstrVar x,cstrVar y]) )
      ]
 
 stdFuncDefsBool :: [ ( Ident, TxsDef ) ]
@@ -200,7 +253,6 @@ funcId_IntFromString    = FuncId fromStringName     302 [sortId_String]         
 funcId_IntToXml         = FuncId toXmlName          303 [sortId_Int]            sortId_String
 funcId_IntFromXml       = FuncId fromXmlName        304 [sortId_String]         sortId_Int
 
-funcId_uniplusInt       = FuncId "+"                305 [sortId_Int]            sortId_Int
 funcId_uniminusInt      = FuncId "-"                306 [sortId_Int]            sortId_Int
 funcId_plusInt          = FuncId "+"                307 [sortId_Int,sortId_Int] sortId_Int
 funcId_minusInt         = FuncId "-"                308 [sortId_Int,sortId_Int] sortId_Int
@@ -209,8 +261,6 @@ funcId_divideInt        = FuncId "/"                310 [sortId_Int,sortId_Int] 
 funcId_moduloInt        = FuncId "%"                311 [sortId_Int,sortId_Int] sortId_Int
 -- power is non-linear function that can't be solved by problemsolver (yet)
 -- funcId_powerInt      = FuncId "^"                312 [sortId_Int,sortId_Int] sortId_Int
-funcId_eqInt            = FuncId eqName             313 [sortId_Int,sortId_Int] sortId_Bool
-funcId_neqInt           = FuncId neqName            314 [sortId_Int,sortId_Int] sortId_Bool
 funcId_ltInt            = FuncId "<"                315 [sortId_Int,sortId_Int] sortId_Bool
 funcId_leInt            = FuncId "<="               316 [sortId_Int,sortId_Int] sortId_Bool
 funcId_gtInt            = FuncId ">"                317 [sortId_Int,sortId_Int] sortId_Bool
@@ -228,8 +278,6 @@ stdFuncDefsInt'
                                     in FuncDef [x] (cstrPredef SSI funcId_IntToXml [cstrVar x]) )
      , ( funcId_IntFromXml,     let x = VarId "x" 344 sortId_String
                                     in FuncDef [x] (cstrPredef SSI funcId_IntFromXml [cstrVar x]) )
-     , ( funcId_uniplusInt,     let x = VarId "x" 345 sortId_Int
-                                    in FuncDef [x] (cstrPredef SSI funcId_uniplusInt [cstrVar x]) )
      , ( funcId_uniminusInt,    let x = VarId "x" 346 sortId_Int
                                     in FuncDef [x] (cstrPredef SSI funcId_uniminusInt [cstrVar x]) )
      , ( funcId_plusInt,        let { x = VarId "x" 347 sortId_Int
@@ -256,14 +304,6 @@ stdFuncDefsInt'
 --                                  ; y = VarId "y" 358 sortId_Int
 --                                  }
 --                                  in FuncDef [x,y] (cstrPredef SSI funcId_powerInt [cstrVar x,cstrVar y]) )
-     , ( funcId_eqInt,          let { x = VarId "x" 359 sortId_Int
-                                    ; y = VarId "y" 360 sortId_Int
-                                    }
-                                    in FuncDef [x,y] (cstrEqual (cstrVar x) (cstrVar y)) )
-     , ( funcId_neqInt,         let { x = VarId "x" 361 sortId_Int
-                                    ; y = VarId "y" 362 sortId_Int
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSI funcId_neqInt [cstrVar x,cstrVar y]) )
      , ( funcId_ltInt,          let { x = VarId "x" 363 sortId_Int
                                     ; y = VarId "y" 364 sortId_Int
                                     }
@@ -295,8 +335,6 @@ funcId_StringFromString     = FuncId fromStringName     526 [sortId_String]     
 funcId_StringToXml          = FuncId toXmlName          527 [sortId_String]                 sortId_String
 funcId_StringFromXml        = FuncId fromXmlName        528 [sortId_String]                 sortId_String
 
-funcId_eqString             = FuncId eqName             529 [sortId_String,sortId_String]   sortId_Bool
-funcId_neqString            = FuncId neqName            530 [sortId_String,sortId_String]   sortId_Bool
 funcId_catString            = FuncId "++"               531 [sortId_String,sortId_String]   sortId_String
 funcId_lenString            = FuncId "len"              532 [sortId_String]                 sortId_Int
 
@@ -318,14 +356,6 @@ stdFuncDefsString'
                                         in FuncDef [s] (cstrPredef SSS funcId_StringToXml [cstrVar s]) )
      , ( funcId_StringFromXml,      let { r = VarId "r" 546 sortId_String }
                                         in FuncDef [r] (cstrPredef SSS funcId_StringFromXml [cstrVar r]) )
-     , ( funcId_eqString,           let { x = VarId "x" 547 sortId_String
-                                        ; y = VarId "y" 548 sortId_String
-                                        }
-                                        in FuncDef [x,y] (cstrEqual (cstrVar x) (cstrVar y) ) )
-     , ( funcId_neqString, let { x = VarId "x" 549 sortId_String
-                               ; y = VarId "y" 550 sortId_String
-                               }
-                            in FuncDef [x,y] (cstrPredef SSS funcId_neqString [cstrVar x,cstrVar y]) )
      , ( funcId_catString, let { x = VarId "x" 551 sortId_String
                                ; y = VarId "y" 552 sortId_String
                                }

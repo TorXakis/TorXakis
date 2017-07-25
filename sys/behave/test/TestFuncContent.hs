@@ -37,15 +37,14 @@ testFuncContentList = TestList [
                                     TestLabel "Unary Operator"         testUnaryOperatorList,
                                     TestLabel "Function"               testFunctionList,
                                     TestLabel "User Defined Function"  testUserDefinedFunction,
-                                    
-                                    TestLabel "Combinatorial"          testCombinatorialInt                                    
+                                    TestLabel "Combinatorial"          testCombinatorialInt
                                 ]
 
 ---------------------------------------------------------------------------
 -- Helper functions
----------------------------------------------------------------------------             
+---------------------------------------------------------------------------
 
--------------------------------------------------------------------------------------
+---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
 
@@ -180,7 +179,6 @@ testSubstitution = TestCase $ do
       in do
         assertEqual "Substitute" funcContent (getFuncContent torXakisInput funcKey)
 
-        
 testBinaryOperatorList :: Test
 testBinaryOperatorList = TestList (map testFunction     [   ("==", [(["l","r"], boolSortName)], boolSortName)
                                                         ,   ("<>", [(["l","r"], boolSortName)], boolSortName)
@@ -204,9 +202,7 @@ testBinaryOperatorList = TestList (map testFunction     [   ("==", [(["l","r"], 
                                                         ])
 
 testUnaryOperatorList :: Test
-testUnaryOperatorList = TestList (map testFunction [   ("+", [(["x"], intSortName)], intSortName)
-                                                   ,   ("-", [(["x"], intSortName)], intSortName)
-                                                   ])
+testUnaryOperatorList = TestList (map testFunction [("-", [(["x"], intSortName)], intSortName) ])
                                                 
         
 testFunctionList :: Test
@@ -244,8 +240,7 @@ testFunction (name, parameterList, sortOut) = TestCase $ do
         funcKey = getFuncKey funcName parameterList sortOut
       in do
         assertEqual "Function" funcContent (getFuncContent torXakisInput funcKey)
-                                              
-
+                                                                                                      
                 
 testCallConstant :: Test
 testCallConstant = TestCase $ do

@@ -12,3 +12,9 @@
 
 # Development Acceptance Test Report
 *.datr
+
+# IDE files and folders
+.settings
+.idea
+*.iml
+out/

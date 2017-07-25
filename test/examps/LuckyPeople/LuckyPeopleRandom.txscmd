@@ -1,4 +1,4 @@
 tester Model Sut
 test 1000
-trace procdef $> testTraceRandom.log
+trace txs $> testTraceRandom.log
 exit

@@ -5,10 +5,14 @@ See license.txt
 -}
 
 -- ----------------------------------------------------------------------------------------- --
-
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module FuncId
 
 where
+
+import GHC.Generics (Generic)
+import Control.DeepSeq
+
 import Name
 import SortId
 
@@ -18,7 +22,7 @@ data FuncId         = FuncId    { name       :: Name            -- smallid
                                 , funcargs   :: [SortId]
                                 , funcsort   :: SortId
                                 }
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 -- ----------------------------------------------------------------------------------------- --
 --

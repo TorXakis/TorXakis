@@ -1,0 +1,4 @@
+stepper Lossy
+step 20
+trace txs $> testTrace.log
+exit

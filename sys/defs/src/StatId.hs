@@ -5,10 +5,15 @@ See license.txt
 -}
 
 -- ----------------------------------------------------------------------------------------- --
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module StatId
 
 where
+
+import GHC.Generics (Generic)
+import Control.DeepSeq
+
 import Name
 import ProcId
 
@@ -16,7 +21,7 @@ data StatId         = StatId    { name       :: Name
                                 , unid       :: Int
                                 , procid     :: ProcId
                                 }
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 -- ----------------------------------------------------------------------------------------- --
 --
