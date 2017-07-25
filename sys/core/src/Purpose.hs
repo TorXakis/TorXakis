@@ -62,12 +62,17 @@ import qualified Utils     as Utils
 -- ----------------------------------------------------------------------------------------- --
 -- goalMenu :  menu on current btree of goal with name
 
+getPurpdef :: StateT IOC.EnvC IO (Maybe TxsDefs.PurpDef)
+getPurpdef = gets (IOC.purpdef . IOC.state)
+
+getPupsts :: StateT IOC.EnvC IO  [(TxsDefs.GoalId, BTree.BTree)]
+getPupsts = gets (IOC.purpsts . IOC.state)
 
 goalMenu :: String -> IOC.IOC BTree.Menu
 goalMenu gnm  =  do
-     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
+     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- getPurpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-     purpSts  <- gets IOC.purpsts
+     purpSts  <- getPupsts
      case [ (gid,gtree) | (gid@(TxsDefs.GoalId nm uid), gtree) <- purpSts, nm == gnm ] of
        [(gid,bt)] -> do return $ Behave.behMayMenu allSyncs bt
        _          -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given" ]
@@ -80,9 +85,9 @@ goalMenu gnm  =  do
 
 purpMenuIn :: IOC.IOC BTree.Menu
 purpMenuIn  =  do
-     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
+     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- getPurpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-     purpSts  <- gets IOC.purpsts
+     purpSts  <- getPupsts
      menus    <- mapM goalMenuIn [ (gid,btree)
                                  | (gid,btree) <- purpSts
                                  , not $ isHit  allSyncs btree
@@ -94,7 +99,7 @@ purpMenuIn  =  do
 
 goalMenuIn :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC BTree.Menu
 goalMenuIn (gid,btree)  =  do
-     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
+     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- getPurpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
      chins    <- return $ Set.unions insyncs
      return $ [ (ctoffs, hvars, preds)
@@ -109,9 +114,9 @@ goalMenuIn (gid,btree)  =  do
 
 purpAfter :: TxsDDefs.Action -> IOC.IOC (Bool,Bool)
 purpAfter act  =  do
-     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
+     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- getPurpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-     purpSts  <- gets IOC.purpsts
+     purpSts  <- getPupsts
      aftGoals <- mapM (goalAfter allSyncs outsyncs act) [ (gid,btree)
                                                         | (gid,btree) <- purpSts
                                                         , not $ isHit  allSyncs btree
@@ -120,7 +125,7 @@ purpAfter act  =  do
                                                         ]
      newGoals <- return $ aftGoals ++
                    [ (gid,btree) | (gid,btree) <- purpSts, gid `notElem` (map fst aftGoals) ]
-     modify $ \envc -> envc { IOC.purpsts = newGoals }
+     modify $ \envc -> envc { IOC.state = (IOC.state envc) { IOC.purpsts = newGoals } }
      return $ ( and [ isHit  allSyncs btree | (gid,btree) <- newGoals ]
               , and [ isMiss allSyncs btree | (gid,btree) <- newGoals ]
               )
@@ -158,13 +163,13 @@ goalAfter allsyncs outsyncs (TxsDDefs.ActQui) (gid,btree)  =  do
 
 purpVerdict :: IOC.IOC ()
 purpVerdict  =  do
-     purpSts  <- gets IOC.purpsts
+     purpSts <- getPupsts
      mapM_ goalVerdict purpSts
 
 
 goalVerdict :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC ()
 goalVerdict (gid,btree)  =  do
-     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
+     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- getPurpdef
      allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                    $ "Goal " ++ (TxsShow.fshow gid) ++ " : " ++

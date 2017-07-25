@@ -48,6 +48,7 @@ import qualified IfServer     as IFS
 import qualified ParamServer  as ParamServer
 
 -- import from core
+import qualified Config
 import qualified TxsCore      as TxsCore
 import qualified BuildInfo    as BuildInfo
 import qualified VersionInfo  as VersionInfo
@@ -70,39 +71,34 @@ import qualified SocketWorld as World
 -- import from value
 import qualified Eval         as Eval
 
-
--- ----------------------------------------------------------------------------------------- --
--- torxakis server main
-
-
 main :: IO ()
 main  =  withSocketsDo $ do
+  hSetBuffering stderr NoBuffering     -- alt: LineBuffering
 
-     hSetBuffering stderr NoBuffering     -- alt: LineBuffering
+  uConfig <- Config.load
+     
+  case Config.interpret uConfig of
+    Left xs -> do
+      hPutStrLn stderr $
+        "Errors found while loading the configuration"
+      hPutStrLn stderr (show xs)
+    Right config -> do
+      let portNr = Config.portNumber config
+      servsock       <- listenOn (PortNumber portNr)
+      (hs, host, port) <- accept servsock
+      hSetBuffering hs LineBuffering
+      hSetEncoding hs latin1
+      hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
+      let initS = IOS.envsNone { IOS.host   = host
+                               , IOS.portNr = portNr
+                               , IOS.servhs = hs
+                               }
+      TxsCore.runTxsCore config cmdsIntpr initS
+      threadDelay 1000000    -- 1 sec delay on closing
+      sClose servsock
+      hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
 
-     args <- getArgs
-     if  length args /= 1
-       then    hPutStrLn stderr "Usage: txsserver <portnumber>"
-       else do let portnr      = read (head args) :: Integer
-               let portid      = PortNumber (fromInteger portnr)
-               servsock       <- listenOn portid
-               (hs,host,port) <- accept servsock
-               hSetBuffering hs LineBuffering
-               hSetEncoding hs latin1
-               hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
-               TxsCore.runTxsCore cmdsIntpr ( IOS.envsNone { IOS.host   = host
-                                                           , IOS.portnr = portnr
-                                                           , IOS.servhs = hs
-                                                           }
-                                            )
-
-               threadDelay 1000000    -- 1 sec delay on closing
-               sClose servsock
-               hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
-
-
--- ----------------------------------------------------------------------------------------- --
--- torxakis server commands processing
+-- * TorXakis server commands processing
 
 cmdsIntpr :: IOS.IOS ()
 cmdsIntpr  =  do
@@ -194,7 +190,7 @@ cmdStart :: String -> IOS.IOS ()
 cmdStart _  =  do
      modify $ \env -> env { IOS.modus = IOS.Idled }
      host <- gets IOS.host
-     port <- gets IOS.portnr
+     port <- gets IOS.portNr
      IFS.pack "START" ["txsserver starting:  " ++ show host ++ " : " ++ show port]
      cmdsIntpr
 
@@ -204,7 +200,7 @@ cmdQuit :: String -> IOS.IOS ()
 cmdQuit _  =  do
      modify $ \env -> env { IOS.modus = IOS.Noned }
      host <- gets IOS.host
-     port <- gets IOS.portnr
+     port <- gets IOS.portNr
      IFS.pack "QUIT" ["txsserver closing  " ++ show host ++ " : " ++ show port]
      return ()
 

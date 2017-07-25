@@ -50,8 +50,8 @@ import qualified TxsShow   as TxsShow
 
 mapperMap :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
 mapperMap act@(TxsDDefs.Act acts)  =  do
-     maybeMapperDef <- gets IOC.mapperdef
-     mapSts    <- gets IOC.mapsts
+     maybeMapperDef <- gets (IOC.mapperdef . IOC.state)
+     mapSts    <- gets (IOC.mapsts . IOC.state)
      case (maybeMapperDef, mapSts) of
      { ( Nothing, _  ) -> do return $ act
      ; ( _            , [] ) -> do return $ act
@@ -93,7 +93,7 @@ mapperMap act@(TxsDDefs.Act acts)  =  do
                                  $ "Mapper: no mapper after mapping" ]
                    return $ act
                 Just mt' -> do
-                   modify $ \env -> env { IOC.mapsts = mt' }
+                   modify $ \env -> env { IOC.state = (IOC.state env) { IOC.mapsts = mt' } }
                    case ( filter ((`Set.member` inchids ).fst) (Set.toList macts)
                         , filter ((`Set.member` outchids).fst) (Set.toList macts)
                         ) of

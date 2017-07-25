@@ -81,7 +81,9 @@ import CoreUtils
 import Test
 import Sim
 import Step
-import qualified TxsConfig   as TxsConfig
+
+import qualified Config
+import Config (Config)
 
 -- import from behave(defs)
 import qualified BTree       as BTree
@@ -117,16 +119,19 @@ import qualified Eval        as Eval
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis core main api -- start
 
-
-runTxsCore :: StateT s IOC.IOC a -> s -> IO ()
-runTxsCore ctrl s0  =  do
+runTxsCore :: Config -> StateT s IOC.IOC a -> s -> IO ()
+runTxsCore initConfig ctrl s0  =  do
      runStateT (runTxsCtrl ctrl s0)
-               (IOC.Noning { IOC.params = Map.union ParamCore.initParams
-                                                    SolveDefs.Params.initParams
-                           , IOC.unid   = 0
-                           }
+               (IOC.EnvC { IOC.config = initConfig
+                         , IOC.unid   = 0
+                         , IOC.params = initParams
+                         , IOC.state  = initState
+                         }
                )
      return ()
+       where initState = IOC.Noning
+             initParams =
+               Map.union ParamCore.initParams SolveDefs.Params.initParams
 
 runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()
 runTxsCtrl ctrl s0  =  do 
@@ -140,23 +145,22 @@ runTxsCtrl ctrl s0  =  do
 txsInit :: TxsDefs.TxsDefs -> Sigs.Sigs TxsDefs.VarId -> ([EnvData.Msg] -> IOC.IOC ()) -> IOC.IOC ()
 txsInit tdefs sigs putMsgs  =  do
      envc <- get
-     txsConfig <- lift $ TxsConfig.loadConfig
-     let smtCmd = mkSmtSolverCmd txsConfig 
-     case envc of
-       IOC.Noning params unid
+     case IOC.state envc of
+       IOC.Noning
          -> do smtEnv         <- lift $ SMT.createSMTEnv SMT.cmdZ3 False tdefs
                (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
                (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions tdefs) smtEnv'
                putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver initialized : " ++ info
                        , EnvData.TXS_CORE_USER_INFO $ "TxsCore initialized"
                        ]
-               put $ IOC.Initing { IOC.smts    = Map.singleton "current" smtEnv''
+               put $ envc {
+                 IOC.state = 
+                     IOC.Initing { IOC.smts    = Map.singleton "current" smtEnv''
                                  , IOC.tdefs   = tdefs
                                  , IOC.sigs    = sigs
-                                 , IOC.params  = params
-                                 , IOC.unid    = unid
                                  , IOC.putmsgs = putMsgs
                                  }
+                 }
        IOC.Initing { }
          -> do TxsCore.txsTermit
                TxsCore.txsInit tdefs sigs putMsgs
@@ -164,26 +168,24 @@ txsInit tdefs sigs putMsgs  =  do
                TxsCore.txsTermit
                TxsCore.txsInit tdefs sigs putMsgs
        where mkSmtSolverCmd cfg =
-               case TxsConfig.smtSolver cfg of
-                 TxsConfig.Z3 -> SMT.cmdZ3
-                 TxsConfig.CVC4 -> SMT.cmdCVC4
+               case Config.smtSolver cfg of
+                 Config.Z3 -> SMT.cmdZ3
+                 Config.CVC4 -> SMT.cmdCVC4
                     
 -- ----------------------------------------------------------------------------------------- --
 
 txsTermit :: IOC.IOC ()
 txsTermit  =  do
      envc <- get
-     case envc of
-       IOC.Noning { }
+     case (IOC.state envc) of
+       IOC.Noning
          -> return ()
-       IOC.Initing { IOC.smts = smts , IOC.params = params , IOC.unid = unid, IOC.putmsgs = putmsgs }
+       IOC.Initing { IOC.smts = smts, IOC.putmsgs = putmsgs }
          -> do lift $ mapM_ (runStateT SMT.close) (Map.elems smts)
                putmsgs [ EnvData.TXS_CORE_USER_INFO "Solver(s) closed"
                        , EnvData.TXS_CORE_USER_INFO "TxsCore terminated"
                        ]
-               put $ IOC.Noning { IOC.params = params
-                                , IOC.unid   = unid
-                                }
+               put $ envc { IOC.state = IOC.Noning }
        _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
                TxsCore.txsTermit
 
@@ -192,21 +194,26 @@ txsTermit  =  do
 txsStop :: IOC.IOC ()
 txsStop  =  do
      envc <- get
-     case envc of
-       IOC.Noning params unid
+     case IOC.state envc of
+       IOC.Noning
          -> return ()
-       IOC.Initing smts tdefs sigs params unid putmsgs
+       IOC.Initing { IOC.smts = smts
+                   , IOC.tdefs = tdefs
+                   , IOC.sigs = sigs
+                   , IOC.putmsgs = putmsgs
+                   }
          -> return ()
        _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
                IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulation/Testing/Stepping stopped" ]
-               put $ IOC.Initing { IOC.smts    = IOC.smts    envc
-                                 , IOC.tdefs   = IOC.tdefs   envc
-                                 , IOC.sigs    = IOC.sigs    envc
-                                 , IOC.params  = IOC.params  envc
-                                 , IOC.unid    = IOC.unid    envc
-                                 , IOC.putmsgs = IOC.putmsgs envc
+               let st = IOC.state envc
+               put $ envc {
+                 IOC.state =
+                     IOC.Initing { IOC.smts    = IOC.smts    st
+                                 , IOC.tdefs   = IOC.tdefs   st
+                                 , IOC.sigs    = IOC.sigs    st
+                                 , IOC.putmsgs = IOC.putmsgs st
                                  }
-
+                 }
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis core main api -- get and set parameters, seed
@@ -243,8 +250,8 @@ txsSetSeed seed  =  do
 txsEval :: TxsDefs.VExpr -> IOC.IOC TxsDefs.Const
 txsEval vexp  =  do
      envc <- get
-     case envc of
-       IOC.Noning params unid
+     case IOC.state envc of
+       IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'eval' without model" ]
                return $ TxsDefs.Cerror ""
        _ -> do                       -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
@@ -264,8 +271,8 @@ txsEval vexp  =  do
 txsSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsSolve vexp  =  do
      envc <- get
-     case envc of
-       IOC.Noning params unid
+     case IOC.state envc of
+       IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'solve' without model" ]
                return Map.empty
        _ -> do                       -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
@@ -297,8 +304,8 @@ txsSolve vexp  =  do
 txsUniSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsUniSolve vexp  =  do
      envc <- get
-     case envc of
-       IOC.Noning params unid
+     case IOC.state envc of
+       IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'solve' without model" ]
                return Map.empty
        _ -> do                       -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
@@ -328,8 +335,8 @@ txsUniSolve vexp  =  do
 txsRanSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsRanSolve vexp  =  do
      envc <- get
-     case envc of
-       IOC.Noning params unid
+     case IOC.state envc of
+       IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'solve' without model" ]
                return Map.empty
        _ -> do                       -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
@@ -367,16 +374,18 @@ txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
               IOC.IOC ()
 txsSetTest putToW getFroW moddef mapdef purpdef  =  do
      envc <- get
-     case envc of
-     { IOC.Noning params unid -> do
+     case IOC.state envc of
+     { IOC.Noning -> do
             IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester started without model file" ]
-     ; IOC.Initing smts tdefs sigs params unid putmsgs -> do
+     ; IOC.Initing smts tdefs sigs putmsgs -> do
             (maybt,mt,gls) <- startTester moddef mapdef purpdef
             case maybt of
             { Nothing -> do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
             ; Just bt -> do
-                   put $ IOC.Testing { IOC.smts      = smts
+                   put $ envc {
+                     IOC.state =
+                         IOC.Testing { IOC.smts      = smts
                                      , IOC.tdefs     = tdefs
                                      , IOC.sigs      = sigs
                                      , IOC.modeldef  = moddef
@@ -390,10 +399,9 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
                                      , IOC.modsts    = bt
                                      , IOC.mapsts    = mt
                                      , IOC.purpsts   = gls
-                                     , IOC.params    = params
-                                     , IOC.unid      = unid
                                      , IOC.putmsgs   = putmsgs
                                      }
+                     }
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
             }
      ; _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
@@ -525,16 +533,18 @@ txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
              IOC.IOC ()
 txsSetSim putToW getFroW moddef mapdef  =  do
      envc <- get
-     case envc of
-     { IOC.Noning params unid -> do
+     case IOC.state envc of
+     { IOC.Noning -> do
             IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator started without model file" ]
-     ; IOC.Initing smts tdefs sigs params unid putmsgs -> do
+     ; IOC.Initing smts tdefs sigs putmsgs -> do
             (maybt,mt) <- startSimulator moddef mapdef
             case maybt of
             { Nothing -> do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator start failed" ]
             ; Just bt -> do
-                   put $ IOC.Simuling { IOC.smts      = smts
+                   put $ envc {
+                     IOC.state =
+                         IOC.Simuling { IOC.smts      = smts
                                       , IOC.tdefs     = tdefs
                                       , IOC.sigs      = sigs
                                       , IOC.modeldef  = moddef
@@ -546,10 +556,9 @@ txsSetSim putToW getFroW moddef mapdef  =  do
                                       , IOC.curstate  = 0
                                       , IOC.modsts    = bt
                                       , IOC.mapsts    = mt
-                                      , IOC.params    = params
-                                      , IOC.unid      = unid
                                       , IOC.putmsgs   = putmsgs
                                       }
+                     }
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulator started" ]
             }
      ; _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
@@ -603,8 +612,8 @@ startSimulator (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
 txsSetStep :: TxsDefs.ModelDef -> IOC.IOC ()
 txsSetStep moddef  =  do
      envc <- get
-     case envc of
-     { IOC.Noning params unid -> do
+     case IOC.state envc of
+     { IOC.Noning -> do
             IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper started without model file" ]
      ; IOC.Initing { .. } -> do
             maybt <- startStepper moddef
@@ -612,7 +621,9 @@ txsSetStep moddef  =  do
             { Nothing -> do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper start failed" ]
             ; Just bt -> do
-                   put $ IOC.Stepping { IOC.smts      = smts
+                   put $ envc {
+                     IOC.state =
+                         IOC.Stepping { IOC.smts      = smts
                                       , IOC.tdefs     = tdefs
                                       , IOC.sigs      = sigs
                                       , IOC.modeldef  = moddef
@@ -621,10 +632,9 @@ txsSetStep moddef  =  do
                                       , IOC.curstate  = 0
                                       , IOC.maxstate  = 0
                                       , IOC.modstss   = Map.singleton 0 bt
-                                      , IOC.params    = params
-                                      , IOC.unid      = unid
                                       , IOC.putmsgs   = putmsgs
                                       }
+                     }
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepper started" ]
             }
      ; _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
@@ -650,10 +660,10 @@ startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
 txsTestIn :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
 txsTestIn act  =  do
      envc <- get
-     case envc of
-     { IOC.Testing _ _ _ modeldef mapperdef Nothing _ _ _ _ _ _ _ _ _ _ _
+     case IOC.state envc of
+     { IOC.Testing _ _ _ modeldef mapperdef Nothing _ _ _ _ _ _ _ _ _ 
          -> do Test.testIn act 1
-     ; IOC.Testing _ _ _ modeldef mapperdef purpdef       _ _ _ _ _ _ _ _ _ _ _
+     ; IOC.Testing _ _ _ modeldef mapperdef purpdef _ _ _ _ _ _ _ _ _ 
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test action with test purpose" ]
                return $ TxsDDefs.NoVerdict
      ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
@@ -664,10 +674,10 @@ txsTestIn act  =  do
 txsTestOut :: IOC.IOC TxsDDefs.Verdict
 txsTestOut  =  do
      envc <- get
-     case envc of
-     { IOC.Testing _ _ _ modeldef mapperdef Nothing _ _ _ _ _ _ _ _ _ _ _
+     case IOC.state envc of
+     { IOC.Testing _ _ _ modeldef mapperdef Nothing _ _ _ _ _ _ _ _ _
          -> do Test.testOut 1
-     ; IOC.Testing _ _ _ modeldef mapperdef purpdef       _ _ _ _ _ _ _ _ _ _ _
+     ; IOC.Testing _ _ _ modeldef mapperdef purpdef       _ _ _ _ _ _ _ _ _
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test output with test purpose" ]
                return $ TxsDDefs.NoVerdict
      ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
@@ -678,8 +688,8 @@ txsTestOut  =  do
 txsTestN :: Int -> IOC.IOC TxsDDefs.Verdict
 txsTestN depth  =  do  
      envc <- get
-     case envc of
-     { IOC.Testing _ _ _ modeldef mapperdef purpdef _ _ _ _ _ _ _ _ _ _ _
+     case IOC.state envc of
+     { IOC.Testing { }
          -> do Test.testN depth 1
      ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
                return $ TxsDDefs.NoVerdict
@@ -692,8 +702,8 @@ txsTestN depth  =  do
 txsSimN :: Int -> IOC.IOC TxsDDefs.Verdict
 txsSimN depth  =  do
      envc <- get
-     case envc of
-     { IOC.Simuling _ _ _ modeldef mapperdef _ _ _ _ _ _ _ _ _ _
+     case IOC.state envc of
+     { IOC.Simuling { }
          -> do Sim.simN depth 1
      ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Simulator mode" ]
                return $ TxsDDefs.NoVerdict
@@ -706,8 +716,8 @@ txsSimN depth  =  do
 txsStepN :: Int -> IOC.IOC TxsDDefs.Verdict
 txsStepN depth  =  do
      envc <- get
-     case envc of
-     { IOC.Stepping _ _ _ modeldef _ _ _ _ _ _ _ _
+     case IOC.state envc of
+     { IOC.Stepping { }
          -> do Step.stepN depth 1
      ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Stepper mode" ]
                return $ TxsDDefs.NoVerdict
@@ -717,8 +727,8 @@ txsStepN depth  =  do
 txsStepA :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
 txsStepA act  =  do
      envc <- get
-     case envc of
-     { IOC.Stepping _ _ _ modeldef _ _ _ _ _ _ _ _
+     case IOC.state envc of
+     { IOC.Stepping { }
          -> do Step.stepA act
      ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Stepper mode" ]
                return $ TxsDDefs.NoVerdict
@@ -730,13 +740,13 @@ txsStepA act  =  do
 
 txsShow :: String -> IOC.IOC String
 txsShow item  =  do
-     envc <- get
+     st <- gets IOC.state
      case item of
-     { "tdefs"  -> do return $ show (IOC.tdefs envc)
-     ; "state"  -> do return $ show (IOC.curstate envc)
-     ; "model"  -> do return $ TxsShow.fshow (IOC.modsts envc)
-     ; "mapper" -> do return $ TxsShow.fshow (IOC.mapsts envc)
-     ; "purp"   -> do return $ TxsShow.fshow (IOC.purpsts envc)
+     { "tdefs"  -> do return $ show (IOC.tdefs st)
+     ; "state"  -> do return $ show (IOC.curstate st)
+     ; "model"  -> do return $ TxsShow.fshow (IOC.modsts st)
+     ; "mapper" -> do return $ TxsShow.fshow (IOC.mapsts st)
+     ; "purp"   -> do return $ TxsShow.fshow (IOC.purpsts st)
      ; _        -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "nothing to be shown" ]
                       return $ "\n"
      }
@@ -748,10 +758,14 @@ txsShow item  =  do
 txsGoTo :: EnvData.StateNr -> IOC.IOC ()
 txsGoTo stateNr  =  do
      if  stateNr >= 0
-       then do modStss <- gets IOC.modstss
+       then do modStss <- gets (IOC.modstss . IOC.state)
                case Map.lookup stateNr modStss of
                { Nothing -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "no such state" ]
-               ; Just bt -> do modify $ \env -> env { IOC.curstate = stateNr }
+               ; Just bt -> do modify $ \env ->
+                                  env { IOC.state =
+                                          (IOC.state env)
+                                            { IOC.curstate = stateNr }
+                                      }
                }
        else do ltsBackN (-stateNr)
 
@@ -762,11 +776,17 @@ txsGoTo stateNr  =  do
         | backsteps <= 0  =  do
             return $ ()
         | backsteps > 0   =  do
-            iniState <- gets IOC.inistate
-            curState <- gets IOC.curstate
-            behTrie  <- gets IOC.behtrie
+            st <- gets IOC.state
+            let iniState = IOC.inistate st
+                curState = IOC.curstate st
+                behTrie = IOC.behtrie st
             case [ s | (s,a,s') <- behTrie, s' == curState ] of
-            { [prev] -> do modify $ \env -> env { IOC.curstate = prev }
+            { [prev] -> do modify $ \env ->
+                             env { IOC.state =
+                                     (IOC.state env) {
+                                       IOC.curstate = prev
+                                      }
+                                  }
                            if  prev == iniState
                              then do return $ ()
                              else do ltsBackN (backsteps-1)
@@ -779,20 +799,17 @@ txsGoTo stateNr  =  do
 
 txsPath :: IOC.IOC [(EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr)]
 txsPath  =  do
-     iniState <- gets IOC.inistate
-     curState <- gets IOC.curstate
-     path iniState curState
-
+  st <- gets IOC.state
+  path (IOC.inistate st) (IOC.curstate st)
   where
-
      path :: EnvData.StateNr -> EnvData.StateNr ->
              IOC.IOC [(EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr)]
      path from to
         | from >= to  =  do
             return $ []
         | from < to   =  do
-            iniState <- gets IOC.inistate
-            behTrie  <- gets IOC.behtrie
+            iniState <- gets (IOC.inistate . IOC.state)
+            behTrie  <- gets (IOC.behtrie . IOC.state)
             case [ (s1,a,s2) | (s1,a,s2) <- behTrie, s2 == to ] of
             { [(s1,a,s2)] -> do if (s1 == from) || (s1 == iniState)
                                   then do return $ [(s1,a,s2)]
@@ -806,7 +823,7 @@ txsPath  =  do
 
 txsMenu :: String -> String -> EnvData.StateNr -> IOC.IOC BTree.Menu
 txsMenu kind what stnr  =  do
-     curState <- gets IOC.curstate
+     curState <- gets (IOC.curstate . IOC.state)
      stateNr  <- return $ if stnr == (-1) then curState else stnr
      case kind of
      { "mod"  -> do txsGoTo stateNr
@@ -834,7 +851,7 @@ txsMenu kind what stnr  =  do
 txsMapper :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
 txsMapper act  =  do
      envc <- get
-     case envc of
+     case IOC.state envc of
      { IOC.Testing{ }
          -> do mapperMap act
      ; IOC.Simuling { }

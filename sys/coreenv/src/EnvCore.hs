@@ -18,7 +18,8 @@ module EnvCore
 
 ( IOC             -- IOC = StateT EnvC IO
                   -- torxakis core main state monad transformer
-, EnvC (..)       -- torxakis core state
+, EnvC (..)       
+, CoreState (..)
 , getSMT          -- :: String -> IOC SMTData.SmtEnv
 , putSMT          -- :: String -> SMTData.SmtEnv -> IOC ()
 , getParams       -- :: [String] -> IOC [(String,String)]
@@ -26,6 +27,7 @@ module EnvCore
 , initUnid        -- :: IOC.IOC Int
 , newUnid         -- :: IOC.IOC Int
 , putMsgs         -- :: [EnvData.Msg] -> IOC ()
+, state
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -33,7 +35,7 @@ module EnvCore
 
 where
 
-import Control.Monad.State
+import Control.Monad.State hiding (state)
 
 import qualified Data.Map   as Map
 import qualified Data.Maybe as Maybe
@@ -42,6 +44,7 @@ import qualified Data.Maybe as Maybe
 -- import from local
 import qualified EnvData   as EnvData
 import qualified ParamCore as ParamCore
+import Config
 
 -- import from behavedefs
 import qualified BTree     as BTree
@@ -63,15 +66,18 @@ import qualified SMTData   as SMTData
 
 type  IOC   =  StateT EnvC IO
 
+-- TODO: unify the parameters and config.
+data EnvC = EnvC
+  { config :: Config           -- ^ Core configuration.
+  , unid   :: Int              -- ^ Last used unique number.
+  , params :: ParamCore.Params
+  , state  :: CoreState        -- ^ State specific information. 
+  }
 
-data  EnvC  =  Noning   { params    :: ParamCore.Params              -- parameters
-                        , unid      :: Int                           -- last used unique number
-                        }
+data CoreState = Noning
              | Initing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
                         , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
-                        , params    :: ParamCore.Params              -- parameters
-                        , unid      :: Int                           -- last used unique number
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         } 
              | Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
@@ -89,8 +95,6 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                         , modsts    :: BTree.BTree                      -- model state
                         , mapsts    :: BTree.BTree                      -- mapper state
                         , purpsts   :: [(TxsDefs.GoalId,BTree.BTree)]   -- purpose state
-                        , params    :: ParamCore.Params              -- parameters
-                        , unid      :: Int                           -- last used unique number
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         } 
              | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
@@ -106,8 +110,6 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                         , curstate  :: EnvData.StateNr               -- current beh statenr
                         , modsts    :: BTree.BTree                   -- model state
                         , mapsts    :: BTree.BTree                   -- mapper state
-                        , params    :: ParamCore.Params              -- parameters
-                        , unid      :: Int                           -- last used unique number
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         } 
              | Stepping { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
@@ -120,11 +122,8 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
                         , curstate  :: EnvData.StateNr               -- current beh statenr
                         , maxstate  :: EnvData.StateNr               -- max beh statenr
                         , modstss   :: Map.Map EnvData.StateNr BTree.BTree   -- model state
-                        , params    :: ParamCore.Params              -- parameters
-                        , unid      :: Int                           -- last used unique number
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         } 
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- SMT :  getting and setting SMT solver
@@ -132,8 +131,8 @@ data  EnvC  =  Noning   { params    :: ParamCore.Params              -- paramete
 
 getSMT :: String -> IOC SMTData.SmtEnv
 getSMT smtname  =  do
-     smts    <- gets smts
-     putMsgs <- gets putmsgs
+     smts    <- gets (smts . state)
+     putMsgs <- gets (putmsgs . state)
      case Map.lookup smtname smts of
        Nothing     -> if  not $ Map.null smts
                         then do putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING
@@ -150,8 +149,10 @@ getSMT smtname  =  do
 
 putSMT :: String -> SMTData.SmtEnv -> IOC ()
 putSMT smtname smtenv  =  do
-     smts' <- gets smts
-     modify $ \env -> env { smts = Map.insert smtname smtenv smts' }
+  st <- gets state
+  let smts' = smts st
+      state' = st { smts = Map.insert smtname smtenv smts'}
+  modify $ \env -> env { state = state' }
  
 
 -- ----------------------------------------------------------------------------------------- --
@@ -213,7 +214,7 @@ newUnid  =  do
 
 putMsgs :: [EnvData.Msg] -> IOC ()
 putMsgs msg  =  do
-     putMsgs' <- gets putmsgs
+     putMsgs' <- gets (putmsgs . state)
      putMsgs' msg
 
 
