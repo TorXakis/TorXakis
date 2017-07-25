@@ -191,6 +191,19 @@ MODELDEF ModelTraceWrong ::=
             traceWrong [Job, Finish] ()
 ENDDEF
 
+PROCDEF traceWrongHit [Job :: JobData; Finish :: JobOut]() HIT ::=
+        Job ! JobData( 82, "N22s", 45, 78 )
+    >-> Job ! JobData( 82, "L22kk", 17, 63 )
+    >-> HIT
+ENDDEF
+
+PURPDEF  PurposeWrong ::=
+    CHAN IN    Job
+    CHAN OUT   Finish
+
+        GOAL wrong  ::=  traceWrongHit [Job, Finish]()
+ENDDEF
+
 PROCDEF traceRight [Job :: JobData; Finish :: JobOut]() EXIT ::=
         Job ! JobData( 82, "N22s", 45, 78 )
     >-> Finish ? o [[
@@ -219,6 +232,32 @@ MODELDEF ModelTraceRight ::=
             traceRight [Job, Finish] ()
 ENDDEF
 
+
+PROCDEF traceRightHit [Job :: JobData; Finish :: JobOut]() HIT ::=
+        Job ! JobData( 82, "N22s", 45, 78 )
+    >-> Finish ? o [[
+					IF isJobOut(o)
+					THEN (gcd(o) == 3) /\ (jobId(o) == 82)
+					ELSE False
+					FI
+				   ]]
+    >-> Job ! JobData( 82, "L22kk", 17, 63 )
+    >-> Finish ? o [[
+					IF isJobOut(o)
+					THEN (gcd(o) == 1) /\ (jobId(o) == 82)
+					ELSE False
+					FI
+				   ]]
+    >-> HIT
+ENDDEF
+
+
+PURPDEF  PurposeRight ::=
+    CHAN IN    Job
+    CHAN OUT   Finish
+
+        GOAL right  ::=  traceRightHit [Job, Finish]()
+ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 

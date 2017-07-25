@@ -1,0 +1,4 @@
+tester Model PurposeRight Sut
+test 4
+trace txs $> testTrace.log
+exit
