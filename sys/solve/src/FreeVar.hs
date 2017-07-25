@@ -19,6 +19,7 @@ where
 
 import qualified Data.List as List
 import qualified Data.Map  as Map
+import qualified Data.Set  as Set
 
 import TxsDefs
 import Utils
@@ -40,6 +41,8 @@ freeVars (view -> Vite cnrs vexp1 vexp2)   =  List.nub $ concatMap freeVars cnrs
 freeVars (view -> Venv ve vexp)            =  List.nub $ concatMap freeVars (Map.elems ve) ++
                                                 ( freeVars vexp \\\ Map.keys ve )
 freeVars (view -> Vequal vexp1 vexp2)      =  List.nub $ freeVars vexp1 ++ freeVars vexp2
+freeVars (view -> Vnot vexp)               =  freeVars vexp
+freeVars (view -> Vand vexps)              =  List.nub $ concatMap freeVars (Set.toList vexps)
 freeVars (view -> Vpredef _kd _fid vexps)  =  List.nub $ concatMap freeVars vexps
 freeVars (view -> Verror _str)             =  []
 

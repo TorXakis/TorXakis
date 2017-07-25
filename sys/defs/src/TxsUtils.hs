@@ -95,6 +95,8 @@ partSubst ve (view -> Vite cond vexp1 vexp2)  = cstrIte (map (partSubst ve) cond
                                                         (partSubst ve vexp2)
 partSubst ve (view -> Venv ve' vexp)          = partSubst ve (partSubst ve' vexp)
 partSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (partSubst ve vexp1) (partSubst ve vexp2)
+partSubst ve (view -> Vand vexps)             = cstrAnd $ Set.map (partSubst ve) vexps
+partSubst ve (view -> Vnot vexp)              = cstrNot (partSubst ve vexp)
 partSubst ve (view -> Vpredef kd fid vexps)   = cstrPredef kd fid (map (partSubst ve) vexps)
 partSubst _  (view -> Verror str)             = cstrError str
 partSubst _  _                                = error "partSubst: item not in view"
@@ -125,6 +127,8 @@ compSubst ve (view -> Vite cond vexp1 vexp2)  =  cstrIte (map (compSubst ve) con
                                                          (compSubst ve vexp2)
 compSubst ve (view -> Venv ve' vexp)          =  compSubst ve (compSubst ve' vexp)
 compSubst ve (view -> Vequal vexp1 vexp2)     =  cstrEqual (compSubst ve vexp1) (compSubst ve vexp2)
+compSubst ve (view -> Vand vexps)             = cstrAnd $ Set.map (compSubst ve) vexps
+compSubst ve (view -> Vnot vexp)              = cstrNot (compSubst ve vexp)
 compSubst ve (view -> Vpredef kd fid vexps)   =  cstrPredef kd fid (map (compSubst ve) vexps)
 compSubst _  (view -> Verror str)             =  cstrError str
 compSubst _  _                                =  error "compSubst: item not in view"
@@ -241,6 +245,8 @@ instance UsedFids VExpr
     usedFids (view -> Vite vexps vexp1 vexp2)   =  usedFids (vexp1:vexp2:vexps)
     usedFids (view -> Venv ve vexp)             =  usedFids (vexp:Map.elems ve)
     usedFids (view -> Vequal vexp1 vexp2)       =  usedFids vexp1 ++ usedFids vexp2
+    usedFids (view -> Vand vexps)               =  concatMap usedFids (Set.toList vexps)
+    usedFids (view -> Vnot vexp)                =  usedFids vexp
     usedFids (view -> Vpredef _k fid vexps)     =  fid : usedFids vexps
     usedFids (view -> Verror _s)                =  []
     usedFids _                                  =  error "usedFids: item not in view"
