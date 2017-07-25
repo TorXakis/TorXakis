@@ -25,6 +25,7 @@ import Control.Monad.State
 import qualified Data.Char as Char
 import qualified Data.Map  as Map
 import qualified Data.Set  as Set
+import qualified Data.String.Utils as Utils
 
 import SMT
 import SMTData
@@ -93,11 +94,14 @@ randomSolve p ((v,_):xs) i    | vsort v == sortId_Bool =
             Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - Bool"
     where
-        choicesFunc :: Variable v => v -> Bool -> Const -> [(Bool, ValExpr v)]
-        choicesFunc v' b (Cbool b')  = let cond = b == b' in
-                                         [ (cond,     cstrEqual (cstrVar v') (cstrConst (Cbool b)))
-                                         , (not cond, cstrEqual (cstrVar v') (cstrConst (Cbool (not b)))) 
-                                         ]
+        choicesFunc :: Variable v => v -> Bool -> Const -> SMT [(Bool, String)]
+        choicesFunc v' b (Cbool b')  = do
+                                         let cond = b == b' 
+                                         st <- valExprToString $ cstrEqual (cstrVar v') (cstrConst (Cbool b))
+                                         sf <- valExprToString $ cstrEqual (cstrVar v') (cstrConst (Cbool (not b)))
+                                         return [ (cond, st)
+                                                , (not cond, sf) 
+                                                ]
         choicesFunc _ _ _        = error "RandIncrementChoice: impossible choice - bool"
 
 randomSolve p ((v,_):xs) i    | vsort v == sortId_Int =
@@ -116,13 +120,15 @@ randomSolve p ((v,_):xs) i    | vsort v == sortId_Int =
             Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - Int"
     where
-        choicesFunc :: Variable v => v -> Int -> Const -> [(Bool, ValExpr v)]
-        choicesFunc v' r (Cint x)  = let r' = toInteger r
-                                         cond = x < r' 
-                                     in
-                                         [ (cond,     cstrFunc funcId_ltInt [cstrVar v', cstrConst (Cint r')]) 
-                                         , (not cond, cstrFunc funcId_geInt [cstrVar v', cstrConst (Cint r')]) 
-                                         ]
+        choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, String)]
+        choicesFunc v' r (Cint x)  = do
+                                        let r' = toInteger r
+                                            cond = x < r' 
+                                        st <- valExprToString $ cstrFunc funcId_ltInt [cstrVar v', cstrConst (Cint r')]
+                                        sf <- valExprToString $ cstrFunc funcId_geInt [cstrVar v', cstrConst (Cint r')]
+                                        return [ (cond, st) 
+                                               , (not cond, sf) 
+                                               ]
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - int"
 
 randomSolve p ((v,-123):xs) i    | vsort v == sortId_String =                 -- abuse depth to encode char versus string
@@ -137,16 +143,19 @@ randomSolve p ((v,-123):xs) i    | vsort v == sortId_String =                 --
             Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - char"
     where
-        choicesFunc :: Variable v => v -> Int -> Const -> [(Bool, ValExpr v)]
-        choicesFunc v' r (Cstring [c]) = let cond = r <= Char.ord c && Char.ord c <= r+127 in
-                                     [ (cond,     cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" ++ toRegexString r ++ "-" ++ toRegexString (r+127) ++ "]"))]) 
-                                     , (not cond, case r of
-                                                    0       -> cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" ++ toRegexString 128 ++ "-" ++ toRegexString 255 ++ "]"))]
-                                                    1       -> cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" ++ toRegexString 129 ++ "-" ++ toRegexString 255 ++ toRegexString 0 ++ "]"))]
-                                                    127     -> cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" ++ toRegexString 255 ++ toRegexString 0 ++ "-" ++ toRegexString 126 ++ "]"))]
-                                                    _       -> cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" ++ toRegexString (r+128) ++ "-" ++ toRegexString 255 ++ 
-                                                                                                                              toRegexString 0 ++ "-" ++ toRegexString (r-1) ++ "]"))]) 
-                                     ]
+        choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, String)]
+        choicesFunc v' r (Cstring [c]) = do
+                                            let cond = r <= Char.ord c && Char.ord c <= r+127
+                                            st <- valExprToString $ cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" ++ toRegexString r ++ "-" ++ toRegexString (r+127) ++ "]"))]
+                                            sf <- valExprToString $ case r of
+                                                                        0       -> cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" ++ toRegexString 128 ++ "-" ++ toRegexString 255 ++ "]"))]
+                                                                        1       -> cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" ++ toRegexString 129 ++ "-" ++ toRegexString 255 ++ toRegexString 0 ++ "]"))]
+                                                                        127     -> cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" ++ toRegexString 255 ++ toRegexString 0 ++ "-" ++ toRegexString 126 ++ "]"))]
+                                                                        _       -> cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" ++ toRegexString (r+128) ++ "-" ++ toRegexString 255 ++ 
+                                                                                                                                                  toRegexString 0 ++ "-" ++ toRegexString (r-1) ++ "]"))]
+                                            return [ (cond, st) 
+                                                   , (not cond, sf) 
+                                                   ]
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - char"
                                      
     
@@ -176,11 +185,14 @@ randomSolve p ((v,d):xs) i    | vsort v == sortId_String =
                                             _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l == 0"
             _              -> error "RandIncrementChoice: impossible constant - string"
     where
-        choicesFunc :: Variable v => v -> Int -> Const -> [(Bool, ValExpr v)]
-        choicesFunc v' r (Cstring s) = let cond = length s < r in
-                                     [ (cond,     cstrFunc funcId_ltInt [cstrFunc funcId_lenString [cstrVar v'], cstrConst (Cint (toInteger r))]) 
-                                     , (not cond, cstrFunc funcId_geInt [cstrFunc funcId_lenString [cstrVar v'], cstrConst (Cint (toInteger r))]) 
-                                     ]
+        choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, String)]
+        choicesFunc v' r (Cstring s) = do
+                                            let cond = length s < r
+                                            st <- valExprToString $ cstrFunc funcId_ltInt [cstrFunc funcId_lenString [cstrVar v'], cstrConst (Cint (toInteger r))]
+                                            sf <- valExprToString $ cstrFunc funcId_geInt [cstrFunc funcId_lenString [cstrVar v'], cstrConst (Cint (toInteger r))]
+                                            return [ (cond, st) 
+                                                   , (not cond, sf) 
+                                                   ]
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - string"
             
         
@@ -209,9 +221,6 @@ randomSolve p ((v,d):xs) i =
                     do
                         shuffledCstrs <- shuffleM cstrs
                         let (partA, partB) = splitAt (div (length cstrs) 2) shuffledCstrs
-                        -- TODO: the use of sets looses the ordering
-                        -- information that lists had. We need to re-introduce
-                        -- the randomization in the order of the `or` terms.
                         c <- randomSolveVar v (choicesFunc v partA partB)
                         case c of
                             Cstr{cstrId = cid}  -> 
@@ -235,28 +244,35 @@ randomSolve p ((v,d):xs) i =
                                     Nothing                 -> error "RandIncrementChoice: value not found - ADT - n"                        
                             _                   -> error "RandIncrementChoice: impossible constant - ADT - n"
     where
-        choicesFunc :: Variable v => v -> [(CstrId, CstrDef)] -> [(CstrId, CstrDef)] -> Const -> [(Bool, ValExpr v)]
+        choicesFunc :: Variable v => v -> [(CstrId, CstrDef)] -> [(CstrId, CstrDef)] -> Const -> SMT [(Bool, String)]
         choicesFunc v' partA partB Cstr{cstrId = cId} = 
-            let cond = Map.member cId (Map.fromList partA) in
-                                 [ (cond, cstrOr $ Set.fromList (map (\(_,CstrDef isC _) -> cstrFunc isC [cstrVar v']) partA) )
-                                 , (not cond, cstrOr $ Set.fromList (map (\(_,CstrDef isC _) -> cstrFunc isC [cstrVar v']) partB) )
-                                 ]
+            do
+                let cond = Map.member cId (Map.fromList partA)
+                lA <- mapM (\(_,CstrDef isC _) -> valExprToString $ cstrFunc isC [cstrVar v']) partA
+                lB <- mapM (\(_,CstrDef isC _) -> valExprToString $ cstrFunc isC [cstrVar v']) partB
+                return [ (cond, case lA of
+                                    [a] -> a
+                                    _   -> "(or " ++ Utils.join " " lA ++ ") ")
+                       , (not cond, case lB of
+                                        [b] -> b
+                                        _   -> "(or " ++ Utils.join " " lB ++ ") ")
+                       ]
         choicesFunc _ _ _ _        = error "RandIncrementChoice: impossible choice - string"
 
 
 -- Find random solution for variable, using the different choices
-randomSolveVar :: (Variable v) => v -> (Const -> [(Bool, ValExpr v)]) -> SMT Const
+randomSolveVar :: (Variable v) => v -> (Const -> SMT [(Bool, String)]) -> SMT Const
 randomSolveVar v choicesFunc = do
     sol <- getSolution [v]
     case Map.lookup v sol of
         Just c  -> do
-                        let choices = choicesFunc c
+                        choices <- choicesFunc c
                         shuffledChoices <- shuffleM choices
                         case head shuffledChoices of
                             (True , _)          -> return c
                             (False, assertion)  -> do
                                                         push
-                                                        addAssertions [assertion]
+                                                        SMT.put $ "(assert " ++ assertion ++ ")"
                                                         sat <- getSolvable
                                                         case sat of 
                                                             Sat -> do

@@ -13,16 +13,18 @@ module SMT
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( openSolver        -- :: SMT String
-, close             -- :: SMT ()
-, push              -- :: SMT ()
-, pop               -- :: SMT ()
-, createSMTEnv      -- :: SMTEnv
-, addDefinitions    -- :: SMT ()
-, addDeclarations   -- :: (Variable v) => [v] -> SMT()
-, addAssertions     -- :: (Variable v) => [ValExpr v] -> SMT ()
-, getSolvable       -- :: SMT SolvableProblem
-, getSolution       -- :: (Variable v) => [v] -> SMT (Solution v)
+( createSMTEnv
+, openSolver
+, close
+, addDefinitions
+, addDeclarations
+, addAssertions
+, getSolvable
+, getSolution
+, push
+, pop
+, put
+, valExprToString
 
 , cmdCVC4
 , cmdZ3
