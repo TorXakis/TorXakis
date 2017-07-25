@@ -193,7 +193,7 @@ testBoolFalse :: SMT()
 testBoolFalse = testTemplateValue TxsDefs.empty [sortId_Bool] createAssertions check
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrFunc funcId_not [cstrVar v]]
+        createAssertions [v] = [cstrNot (cstrVar v)]
         createAssertions _   = error "One variable in problem"
         
         check :: [Const] -> SMT()
@@ -326,9 +326,9 @@ testConditionalIntInstances = testTemplateValue conditionalIntDef
                                                 check3Different
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v1,v2,v3]    = [ cstrFunc funcId_not [cstrEqual (cstrVar v1) (cstrVar v2)]
-                                         , cstrFunc funcId_not [cstrEqual (cstrVar v2) (cstrVar v3)]
-                                         , cstrFunc funcId_not [cstrEqual (cstrVar v1) (cstrVar v3)]
+        createAssertions [v1,v2,v3]    = [ cstrNot (cstrEqual (cstrVar v1) (cstrVar v2))
+                                         , cstrNot (cstrEqual (cstrVar v2) (cstrVar v3))
+                                         , cstrNot (cstrEqual (cstrVar v1) (cstrVar v3))
                                          ]
         createAssertions _   = error "Three variables in problem"
         
@@ -355,9 +355,9 @@ testNestedConstructor = do
         conditionalPairSortId = SortId "ConditionalPair" 9630
         
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v1,v2,v3]    = [ cstrFunc funcId_not [cstrEqual (cstrVar v1) (cstrVar v2)]
-                                         , cstrFunc funcId_not [cstrEqual (cstrVar v2) (cstrVar v3)]
-                                         , cstrFunc funcId_not [cstrEqual (cstrVar v1) (cstrVar v3)]
+        createAssertions [v1,v2,v3]    = [ cstrNot (cstrEqual (cstrVar v1) (cstrVar v2))
+                                         , cstrNot (cstrEqual (cstrVar v2) (cstrVar v3))
+                                         , cstrNot (cstrEqual (cstrVar v1) (cstrVar v3))
                                          ]
         createAssertions _   = error "Three variables in problem"
             
