@@ -78,14 +78,14 @@ data EnvS   =  EnvS { host    :: String                    -- ^ host of server c
                     , sigs    :: Sigs.Sigs TxsDefs.VarId   -- ^ Signatures contained in TorXakis files
                     , locvars :: [TxsDefs.VarId]           -- ^ local free variables
                     , locvals :: TxsDefs.VEnv              -- ^ local value environment
-                    , tow     :: ( Maybe (Chan TxsDDefs.SAction)   -- ^ connections to world
+                    , tow     :: ( Maybe (Chan TxsDDefs.SAction)   
                                  , Maybe ThreadId        
                                  , [TxsDDefs.ConnHandle]
-                                 )
-                    , frow    :: ( Maybe (Chan TxsDDefs.SAction)   -- ^ connections from world
+                                 )                         -- ^ connections to world
+                    , frow    :: ( Maybe (Chan TxsDDefs.SAction)   
                                  , [ThreadId]
                                  , [TxsDDefs.ConnHandle]
-                                 )
+                                 )                         -- ^ connections from world
                     , params  :: Params                    -- ^ TorXakis parameters with checks
                     }
 
