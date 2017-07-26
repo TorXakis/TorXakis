@@ -69,7 +69,7 @@ goalMenu :: String -> IOC.IOC BTree.Menu
 goalMenu gnm  =  do
      envc <- get
      case envc of
-     { IOC.Testing _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
+     { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
                    _ _ _ _ _ _ _ purpsts _ _ _ -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             case [ (gid,gtree) | (gid@(TxsDefs.GoalId nm uid), gtree) <- purpsts, nm == gnm ] of
@@ -92,7 +92,7 @@ purpMenuIn :: IOC.IOC (Maybe BTree.Menu)
 purpMenuIn  =  do
      envc <- get
      case envc of
-     { IOC.Testing _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
+     { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
                    _ _ _ _ _ _ _ purpsts _ _ _ | not $ null pinsyncs -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             menus     <- mapM goalMenuIn [ (gid,btree)
@@ -115,7 +115,7 @@ goalMenuIn :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC BTree.Menu
 goalMenuIn (gid,btree)  =  do
      envc <- get
      case envc of
-     { IOC.Testing _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
+     { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
                    _ _ _ _ _ _ _ purpsts _ _ _ -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             chins     <- return $ Set.unions pinsyncs
@@ -138,7 +138,7 @@ purpAfter act  =  do
      envc  <- get
      isInp <- isInAct act
      case envc of
-     { IOC.Testing _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
+     { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
                    _ _ _ _ _ _ _ purpsts _ _ _ | isInp -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             case (isInp,pinsyncs,poutsyncs) of
@@ -201,7 +201,7 @@ purpVerdict :: IOC.IOC ()
 purpVerdict  =  do
      envc <- get
      case envc of
-     { IOC.Testing _ _ modeldef mapperdef purpdef _ _ _ _ _ _ _ purpsts _ _ _ -> do
+     { IOC.Testing _ _ _ modeldef mapperdef purpdef _ _ _ _ _ _ _ purpsts _ _ _ -> do
             mapM_ goalVerdict purpsts
      ; _ -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "purpVerdict incorrectly used" ]
@@ -213,7 +213,7 @@ goalVerdict :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC ()
 goalVerdict (gid,btree)  =  do
      envc <- get
      case envc of
-     { IOC.Testing _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
+     { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
                    _ _ _ _ _ _ _ purpsts _ _ _ -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO

@@ -97,6 +97,9 @@ module TxsCore
 
   -- * give action to mapper
 , txsMapper
+
+  -- * test purpose for N complete coverage
+, txsNComp
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -889,6 +892,45 @@ txsMapper act  =  do
                              "Mapping only allowed in Testing or Simulating mode" ]
                return act
 
+-- NComplete derivation by Petra van den Bos.
+txsNComp :: TxsDefs.ModelDef                   -- ^ model. Currently only StautDef without data is suppported.
+         -> IOC.IOC (Maybe TxsDefs.PurpId)     -- ^ Derived purpose, when succesfull.
+txsNComp mdef@(TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)  =  do
+     envc <- get
+     case (envc,bexp) of
+     { ( IOC.Initing smts tdefs _ params unid putmsgs
+       , TxsDefs.ProcInst procid@(TxsDefs.ProcId pnm _ _ _ _) chans []
+       ) |    and [ Set.size sync == 1 | sync <- insyncs ++ outsyncs ]
+           && and [ null $ srts
+                  | TxsDefs.ChanId nm uid srts <- Set.toList $ Set.unions $ insyncs ++ outsyncs
+                  ]
+           && null splsyncs
+       -> do case Map.lookup procid (TxsDefs.procDefs tdefs) of
+             { Just (TxsDefs.ProcDef chids [] staut@(TxsDefs.StAut _ ve _)) | Map.null ve
+                 -> do let chanmap                       = Map.fromList (zip chids chans)
+                           TxsDefs.StAut statid ve trans = Expand.relabel chanmap staut
+                       maypurp <- NComp.nComplete insyncs outsyncs statid trans
+                       case maypurp of
+                       { Just purpdef
+                           -> do let purpid = TxsDefs.PurpId ("Purp_"++pnm) (unid+1)
+                                     tdefs' = tdefs { TxsDefs.purpDefs = Map.insert
+                                                        purpid purpdef (TxsDefs.purpDefs tdefs)
+                                                    }
+                                 modify $ \env -> env { IOC.tdefs = tdefs' 
+                                                      , IOC.unid  = unid+1
+                                                      }
+                                 return $ Just purpid
+                       ; _ -> return $ Nothing
+                       }
+             ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                     $ "N-Complete requires a data-less STAUTDEF" ]
+                       return $ Nothing
+             }
+     ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             $ "N-Complete should be used after initialization, before testing, "
+                               ++ "with a STAUTDEF with data-less, singleton channels" ]
+               return $ Nothing
+     }
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
