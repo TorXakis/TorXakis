@@ -15,11 +15,12 @@ module Expand
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( expand   -- :: [ Set.Set TxsDefs.ChanId ] -> CNode -> IOB.IOB CTree
-           -- 'expand chsets cnode' expands 'cnode'
-           -- (concrete, closed, no interaction variables)
-           -- into a communication tree with interaction variables (closed)
-           -- plain expansion, no input/ouput, no solving
+( expand         -- :: [ Set.Set TxsDefs.ChanId ] -> CNode -> IOB.IOB CTree
+                 -- 'expand chsets cnode' expands 'cnode'
+                 -- (concrete, closed, no interaction variables)
+                 -- into a communication tree with interaction variables (closed)
+                 -- plain expansion, no input/ouput, no solving
+, Relabel (..)   -- relabel :: (Map.Map ChanId ChanId) -> e -> e
 )
 
 -- ----------------------------------------------------------------------------------------- --
