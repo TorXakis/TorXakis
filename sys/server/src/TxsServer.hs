@@ -217,13 +217,14 @@ cmdInit args  =  do
      servhs             <- gets IOS.servhs
      unid               <- gets IOS.uid
      tdefs              <- gets IOS.tdefs
+     sigs               <- gets IOS.sigs
      srctxts            <- lift $ lift $ mapM readFile (words args)
      srctxt             <- return $ List.intercalate "\n\n" srctxts
-     ((unid',tdefs'),e) <- lift $ lift $ catch
+     ((unid',tdefs', sigs'),e) <- lift $ lift $ catch
                              ( let parsing = TxsHappy.txsParser (TxsAlex.txsLexer srctxt)
-                                in return $! (show parsing) `deepseq` (parsing,"")
+                                in return $!! (parsing, "")
                              )
-                             ( \e -> return $ ((unid,tdefs), show (e::ErrorCall))
+                             ( \e -> return $ ((unid, tdefs, sigs), show (e::ErrorCall))
                              )
      if e /= ""
        then do IFS.nack "INIT" [e]
@@ -231,8 +232,9 @@ cmdInit args  =  do
        else do modify $ \env -> env { IOS.modus  = IOS.Inited
                                     , IOS.uid    = unid'
                                     , IOS.tdefs  = tdefs'
+                                    , IOS.sigs   = sigs'
                                     }
-               lift $ TxsCore.txsInit tdefs' ( (IFS.hmack servhs) . (map TxsShow.pshow) )
+               lift $ TxsCore.txsInit tdefs' sigs' ( (IFS.hmack servhs) . (map TxsShow.pshow) )
                IFS.pack "INIT" ["input files parsed:", List.intercalate " " (words args)]
                cmdsIntpr
 
@@ -332,6 +334,7 @@ cmdVar args  =  do
      env              <- get
      uid              <- return $ IOS.uid env
      tdefs            <- return $ IOS.tdefs env
+     sigs             <- return $ IOS.sigs env
      vars             <- return $ IOS.locvars env
      vals             <- return $ IOS.locvals env
      if  args == ""
@@ -342,10 +345,11 @@ cmdVar args  =  do
          ((uid',vars'),e) <- lift $ lift $ catch
                                ( let p = TxsHappy.vardeclsParser
                                            (  ( TxsAlex.Ctdefs $ tdefs )
+                                            : ( TxsAlex.Csigs $ sigs )
                                             : ( TxsAlex.Cunid $ uid + 1 )
                                             : ( TxsAlex.txsLexer args )
                                            )
-                                  in return $! (show p) `deepseq` (p,"")
+                                  in return $!! (p,"")
                                )
                                ( \e -> return $ ((uid,[]),(show (e::ErrorCall)))
                                )
@@ -376,6 +380,7 @@ cmdVal args  =  do
      env              <- get
      uid              <- return $ IOS.uid env
      tdefs            <- return $ IOS.tdefs env
+     sigs             <- return $ IOS.sigs env
      vars             <- return $ IOS.locvars env
      vals             <- return $ IOS.locvals env
      if  args == ""
@@ -386,11 +391,12 @@ cmdVal args  =  do
          ((uid',venv'),e) <- lift $ lift $ catch
                                ( let p = TxsHappy.valdefsParser
                                            (  ( TxsAlex.Ctdefs  $ tdefs )
+                                            : ( TxsAlex.Csigs  $ sigs )
                                             : ( TxsAlex.Cvarenv $ [] )
                                             : ( TxsAlex.Cunid $ uid + 1 )
                                             : ( TxsAlex.txsLexer args )
                                            )
-                                  in return $! (show p) `deepseq` (p,"")
+                                  in return $!! (p,"")
                                )
                                ( \e -> return $ ((uid,Map.empty),(show (e::ErrorCall)))
                                )
@@ -421,15 +427,17 @@ cmdEval args  =  do
      env              <- get
      uid              <- return $ IOS.uid env
      tdefs            <- return $ IOS.tdefs env
+     sigs             <- return $ IOS.sigs env     
      vals             <- return $ IOS.locvals env
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.vexprParser
                                         (  ( TxsAlex.Ctdefs  $ tdefs )
+                                         : ( TxsAlex.Csigs   $ sigs )
                                          : ( TxsAlex.Cvarenv $ Map.keys vals )
                                          : ( TxsAlex.Cunid   $ uid + 1 )
                                          : ( TxsAlex.txsLexer args )
                                         )
-                              in return $! (show p) `deepseq` (p,"")
+                              in return $!! (p,"")
                            )
                            ( \e -> return $ ((uid,TxsDefs.cstrError ""),(show (e::ErrorCall)))
                            )
@@ -453,16 +461,18 @@ cmdSolve args kind  =  do
      env              <- get
      uid              <- return $ IOS.uid env
      tdefs            <- return $ IOS.tdefs env
+     sigs             <- return $ IOS.sigs env     
      vars             <- return $ IOS.locvars env
      vals             <- return $ IOS.locvals env
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.vexprParser
                                        (  ( TxsAlex.Ctdefs $ tdefs )
+                                        : ( TxsAlex.Csigs $ sigs )
                                         : ( TxsAlex.Cvarenv $ (Map.keys vals) ++ vars )
                                         : ( TxsAlex.Cunid $ uid + 1 )
                                         : ( TxsAlex.txsLexer args )
                                        )
-                              in return $! (show p) `deepseq` (p,"")
+                              in return $!! (p,"")
                            )
                            ( \e -> return $ ((uid,TxsDefs.cstrError ""),(show (e::ErrorCall)))
                            )
@@ -971,16 +981,18 @@ readAction :: [TxsDefs.ChanId] -> String -> IOS.IOS TxsDDefs.Action
 readAction chids args  =  do
      uid              <- gets IOS.uid
      tdefs            <- gets IOS.tdefs
+     sigs             <- gets IOS.sigs
      vals             <- gets IOS.locvals
      ((uid',offs'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.prefoffsParser
                                     (  ( TxsAlex.Ctdefs   $ tdefs )
+                                     : ( TxsAlex.Csigs    $ sigs )
                                      : ( TxsAlex.Cchanenv $ chids )
                                      : ( TxsAlex.Cvarenv  $ Map.keys vals )
                                      : ( TxsAlex.Cunid    $ uid + 1 )
                                      : ( TxsAlex.txsLexer args )
                                     )
-                              in return $! (show p) `deepseq` (p,"")
+                              in return $!! (p,"")
                            )
                            ( \e -> return $ ((uid,Set.empty)
                                             ,(show (e::ErrorCall))

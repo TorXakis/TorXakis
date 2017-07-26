@@ -76,8 +76,7 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
-CNECTDEF  Sut
-    ::=
+CNECTDEF  Sut ::=
         CLIENTSOCK
 
         CHAN  OUT  In                         HOST "localhost"  PORT 7890

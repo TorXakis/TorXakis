@@ -49,19 +49,19 @@ simN depth step  =  do
      envc <- get
      [(parname,parval)] <- IOC.getParams ["param_InputCompletion"]
      case (read parval, envc) of
-     { ( ParamCore.ANGELIC
-       , IOC.Simuling _ _ (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)
-                      mapperdef _ _ _ _ _ _ _ _ _ _
-       ) -> do
-            simA depth step
---   ;  ParamCore.DEMONIC  -> do simD depth step
---   ;  ParamCore.BUFFERED -> do simB depth step
-     ; ( _
-       , _
-       ) -> do
-            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "Incorrect start of simulation" ]
-            return TxsDDefs.NoVerdict
-     }
+        { ( ParamCore.ANGELIC
+          , IOC.Simuling _ _ _ (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)
+                         mapperdef _ _ _ _ _ _ _ _ _ _
+          ) -> do
+                   simA depth step
+--      ;  ParamCore.DEMONIC  -> do simD depth step
+--      ;  ParamCore.BUFFERED -> do simB depth step
+        ; ( _
+          , _
+          ) -> do
+                    IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "Incorrect start of simulation" ]
+                    return TxsDDefs.NoVerdict
+        }
 
 -- ----------------------------------------------------------------------------------------- --
 -- simA depth :  angelic simulation of depth>0 steps, or infinitely if depth<0

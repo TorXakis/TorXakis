@@ -55,7 +55,7 @@ stepN depth step  =  do
        else do
          envc <- get
          case envc of
-            IOC.Stepping _ _ (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)
+            IOC.Stepping _ _ _ (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)
                         _ _ _ _ _ _ _ _ -> do
                 let allSyncs = insyncs ++ outsyncs ++ splsyncs
                     curState = IOC.curstate envc
@@ -113,7 +113,7 @@ stepA act  =  do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "no stepping with quiescence" ]
             return $ TxsDDefs.Fail TxsDDefs.ActQui
      ; ( act@(TxsDDefs.Act acts)
-       , IOC.Stepping _ _ (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)
+       , IOC.Stepping _ _ _ (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)
                       _ _ _ _ _ _ _ _
        ) -> do
             let allSyncs = insyncs ++ outsyncs ++ splsyncs

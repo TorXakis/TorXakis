@@ -18,23 +18,23 @@ library
   exposed-modules:      TxsAlex
                       , TxsHappy
   
-  other-modules:        Sigs
-
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math
-  
-                                            -- add -fglasgow-exts 
-                                            -- see https://www.haskell.org/happy/doc/html/sec-tips.html
+  ghc-options:         -O2 -optc-O3 -optc-ffast-math 
+  -- TODO: -fglasgow-exts are needed to reduce compile time, execution speed,
+  -- and binary size, but they are deprecated. Check which extensions we need
+  -- to use.
+  --
+  -- see https://www.haskell.org/happy/doc/html/sec-tips.html
   build-tools:          alex
                       , happy
-  
-  -- add                happy-options:        -a -g -c            
-  -- see https://www.haskell.org/happy/doc/html/sec-tips.html
-  -- and https://groups.google.com/forum/#!topic/haskell-stack/9oKeSo-nz7U
+  -- Flags `-a -g -c` are passed by default to happy when building with Cabal. 
+  -- see https://stackoverflow.com/q/21100762/2289983
                       
   build-depends:        array
                       , base
                       , containers
                       , defs
+                      , MissingH
+                      , deepseq
                       
   default-language:     Haskell2010
   

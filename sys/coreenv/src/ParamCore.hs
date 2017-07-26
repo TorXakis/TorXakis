@@ -42,16 +42,16 @@ type  Params  =  Map.Map String (String,String->Bool)
 -- implementation relations
 
 data  ImpRel   =  IOCO
-             -- | IocoDelta   --  ioco without quiescence; not implemented yet
-             -- | IocoTick    --  ioco with clock tick
+             -- or IocoDelta   --  ioco without quiescence; not implemented yet
+             -- or IocoTick    --  ioco with clock tick
      deriving (Eq,Ord,Read,Show)
 
 
 -- completion for input-enabledness in simulator
 
 data  InputCompletion  =  ANGELIC
-                     -- | DEMONIC
-                     -- | ERRORSTATE
+                     -- or DEMONIC
+                     -- or ERRORSTATE
      deriving (Eq,Ord,Read,Show)
 
 

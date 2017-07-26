@@ -1,0 +1,4 @@
+stepper SpecProduce
+step 5
+trace txs $> testTrace.log
+exit

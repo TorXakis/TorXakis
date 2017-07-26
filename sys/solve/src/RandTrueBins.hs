@@ -33,6 +33,8 @@ import Control.Monad.State
 
 import qualified Data.Char as Char
 import qualified Data.Map  as Map
+import qualified Data.Set  as Set
+import qualified Data.String.Utils as Utils
 
 import SMT
 import SMTData
@@ -63,7 +65,12 @@ randValExprsSolveTrueBins p freevars exprs  =
         push
         addDeclarations freevars
         randvars <- foldr combine (return []) freevars
-        addAssertions randvars
+        case randvars of
+            [randvar] -> SMT.put $ "(assert " ++ randvar ++ ")"
+            _         -> do
+                            shuffledList <- shuffleM randvars
+                            SMT.put $ "(assert (and " ++ Utils.join " " shuffledList ++ ") )"
+        
         addAssertions exprs
         sat <- getSolvable
         sp <- case sat of 
@@ -78,11 +85,11 @@ randValExprsSolveTrueBins p freevars exprs  =
         lift $ hPutStrLn stderr "TXS RandTrueBins randValExprsSolveTrueBins: Not all added constraints are Bool\n"
         return UnableToSolve
     where
-        combine :: (Variable v) => v -> SMT [ValExpr v] -> SMT [ValExpr v]
+        combine :: (Variable v) => v -> SMT [String] -> SMT [String]
         combine vid sexprs = do
             expr <- randomValue p (vsort vid) (cstrVar vid) (maxDepth p)
-            exprs' <- sexprs
-            return $ expr : exprs'
+            exprs <- sexprs
+            return $ (expr:exprs)
 
 -- -----------------------------------------------------------------
 nextFunction :: ParamTrueBins -> Integer -> Integer
@@ -103,26 +110,17 @@ nextPower n = n * step
 
 nextExponent :: Integer -> Integer
 nextExponent n = n * n
--- -----------------------------------------------------------------
-
-toOr :: (Variable v) => [ValExpr v] -> ValExpr v
-toOr [] = cstrConst (Cbool False)
-toOr [x] = x
-toOr (x:xs) = cstrFunc funcId_or [x, toOr xs]
-
-toAnd :: (Variable v) => [ValExpr v] -> ValExpr v
-toAnd [] = cstrConst (Cbool True)
-toAnd [x] = x
-toAnd (x:xs) = cstrFunc funcId_and [x, toAnd xs]
 
 -- --------------------------------------
 -- randomly draw boolean value
 -- -----------------------------------------
-trueBool :: (Variable v) => ValExpr v -> SMT (ValExpr v) 
+trueBool :: (Variable v) => ValExpr v -> SMT String
 trueBool expr = do
-    let orList = [expr, cstrPredef SSB funcId_not [expr]]
+    let orList = [expr, cstrNot expr]
     shuffledOrList <- shuffleM orList
-    return $ toOr shuffledOrList
+    stringList <- mapM valExprToString shuffledOrList
+    return $ "(or " ++ Utils.join " " stringList ++ ") "
+    
 -- -----------------------------------------------------------------
 -- randomly draw values from multiple bins
 -- the size of the bins is controlled by the next function: either equal size, proportional larger, or exponential larger  
@@ -138,10 +136,10 @@ values n nxt = valueRecursive n 1 step
                 return (r:rr)
                 
 toBins :: (Variable v) => ValExpr v -> [Integer] -> [ValExpr v]
-toBins v (x1:x2:xs) = cstrFunc funcId_and [cstrFunc funcId_leInt [cstrConst (Cint x1), v], cstrFunc funcId_ltInt [v, cstrConst (Cint x2)] ] : toBins v (x2:xs)
+toBins v (x1:x2:xs) = cstrAnd ( Set.fromList [cstrFunc funcId_leInt [cstrConst (Cint x1), v], cstrFunc funcId_ltInt [v, cstrConst (Cint x2)] ] ) : toBins v (x2:xs)
 toBins _ _ = []
                 
-trueBins :: (Variable v) => ValExpr v -> Int -> (Integer -> Integer) -> SMT (ValExpr v)
+trueBins :: (Variable v) => ValExpr v -> Int -> (Integer -> Integer) -> SMT String
 trueBins v n nxt = do
     neg <- values n nxt
     pos <- values n nxt
@@ -150,7 +148,8 @@ trueBins v n nxt = do
                   cstrFunc funcId_leInt [cstrConst (Cint (last binSamples) ), v] ] 
                  ++ toBins v binSamples
     shuffledOrList <- shuffleM orList
-    return $ toOr shuffledOrList
+    stringList <- mapM valExprToString shuffledOrList
+    return $ "(or " ++ Utils.join " " stringList ++ ") "
     
 -- -----------------------------------------------------------------
 -- enable randomly draw strings
@@ -201,20 +200,22 @@ trueCharsRegexes n | n > 0  = do
     return $ hd:tl
 trueCharsRegexes n          = error ("trueCharsRegexes: Illegal argument n = " ++ show n)
     
-trueStringLength :: (Variable v) => Int -> ValExpr v -> SMT (ValExpr v)
+trueStringLength :: (Variable v) => Int -> ValExpr v -> SMT String
 trueStringLength n v = do
-    let exprs = map (\m -> cstrFunc funcId_eqInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger m))]) [0..n] ++ [cstrFunc funcId_gtInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger n))]]
-    sexprs <- shuffleM exprs
-    return $ toOr sexprs
-
-trueStringRegex :: (Variable v) => Int -> ValExpr v -> SMT (ValExpr v)
+    let exprs = map (\m -> cstrEqual (cstrFunc funcId_lenString [v]) (cstrConst (Cint (toInteger m)))) [0..n] ++ [cstrFunc funcId_gtInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger n))]]
+    shuffledOrList <- shuffleM exprs
+    stringList <- mapM valExprToString shuffledOrList
+    return $ "(or " ++ Utils.join " " stringList ++ ") "
+    
+trueStringRegex :: (Variable v) => Int -> ValExpr v -> SMT String
 trueStringRegex n v = do
     regexes <- trueCharsRegexes n
-    sregexes <- shuffleM (regexes ++ [range ++ "{"++ show(n+1) ++ ",}"])               -- Performance gain in problem solver? Use string length for length 0 and greater than n
-    let sexprs = map (\regex -> cstrFunc funcId_strinre [v, cstrConst (Cregex regex)]) sregexes
-    return $ toOr sexprs
+    sregexes <- shuffleM (regexes ++ [range ++ "{"++ show (n+1) ++ ",}"])               -- Performance gain in problem solver? Use string length for length 0 and greater than n
+    let shuffledOrList = map (\regex -> cstrFunc funcId_strinre [v, cstrConst (Cregex regex)]) sregexes
+    stringList <- mapM valExprToString shuffledOrList
+    return $ "(or " ++ Utils.join " " stringList ++ ") "
     
-trueString :: (Variable v) => ParamTrueBins -> ValExpr v -> SMT (ValExpr v)
+trueString :: (Variable v) => ParamTrueBins -> ValExpr v -> SMT String
 trueString p v = 
     case stringMode p of
         Regex   -> trueStringRegex  (stringLength p) v
@@ -229,8 +230,8 @@ lookupConstructors sid  =  do
      tdefs <- gets txsDefs
      return [ def | def@(CstrId{ cstrsort = sid' } , _) <- Map.toList (cstrDefs tdefs), sid == sid']
 
-randomValue :: (Variable v) => ParamTrueBins -> SortId -> ValExpr v -> Int -> SMT (ValExpr v)
-randomValue _ _sid _expr 0 = return $ cstrConst (Cbool True)
+randomValue :: (Variable v) => ParamTrueBins -> SortId -> ValExpr v -> Int -> SMT String
+randomValue _ _sid _expr 0 = return "true"
 randomValue p sid expr n | n > 0 = 
     case sid of
         x | x == sortId_Bool   -> trueBool expr
@@ -240,22 +241,28 @@ randomValue p sid expr n | n > 0 =
                 cstrs <- lookupConstructors sid
                 orList <- processConstructors cstrs expr
                 shuffledOrList <- shuffleM orList
-                return (toOr shuffledOrList)
+                return $ "(or " ++ Utils.join " " shuffledOrList ++ ") "
             where
-                processConstructors :: (Variable v) => [(CstrId, CstrDef)] -> ValExpr v -> SMT [ValExpr v]
+                processConstructors :: (Variable v) => [(CstrId, CstrDef)] -> ValExpr v -> SMT [String]
                 processConstructors [] _ = return []
                 processConstructors (x:xs) expr' = do
                     r <- processConstructor x expr'
                     rr <- processConstructors xs expr'
                     return (r:rr)
         
-                processConstructor :: (Variable v) => (CstrId,CstrDef) -> ValExpr v -> SMT (ValExpr v)
-                processConstructor (cid,CstrDef isX []) expr' = return $ cstrFunc isX [expr']
+                processConstructor :: (Variable v) => (CstrId,CstrDef) -> ValExpr v -> SMT String
+                processConstructor (cid,CstrDef isX []) expr' = valExprToString $ cstrFunc isX [expr']
                 processConstructor (cid,CstrDef isX accessors) expr' = do
+                    cstr <- valExprToString $ cstrFunc isX [expr']
                     args <- processArguments (zip (cstrargs cid) accessors) expr'
-                    return $ cstrFunc funcId_and [cstrFunc isX [expr'], toAnd args]
-                
-                processArguments ::  (Variable v) => [(SortId,FuncId)] -> ValExpr v -> SMT [ValExpr v]
+                    case args of
+                        [arg]   -> return $ "(ite " ++ cstr ++ " " ++ arg ++ " false) "
+                        _       -> do
+                                    shuffledAndList <- shuffleM args
+                                    return $ "(ite " ++ cstr ++ " (and " ++ Utils.join " " shuffledAndList ++ ") false) "
+
+                    
+                processArguments ::  (Variable v) => [(SortId,FuncId)] -> ValExpr v -> SMT [String]
                 processArguments [] _ =  return []
                 processArguments ((sid',fid):xs) expr' = do
                     r <- randomValue p sid' (cstrFunc fid [expr']) (n-1)
