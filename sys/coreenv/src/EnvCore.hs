@@ -27,7 +27,6 @@ module EnvCore
 , initUnid        -- :: IOC.IOC Int
 , newUnid         -- :: IOC.IOC Int
 , putMsgs         -- :: [EnvData.Msg] -> IOC ()
-, state
 )
 
 -- ----------------------------------------------------------------------------------------- --

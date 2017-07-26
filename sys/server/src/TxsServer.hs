@@ -1049,11 +1049,9 @@ interpretConfig = undefined
 -- option found is used.
 loadConfig :: IO UnintConfig
 loadConfig = do
-  portNr <- execParser opts
-  print portNr
-  undefined
+  execParser opts
   where opts =
-          info (portP <**> helper)
+          info (optsP <**> helper)
                ( fullDesc
                <> progDesc "TorXakis server."
                )
@@ -1077,13 +1075,38 @@ configFileName = "txs.yaml"
 loadConfigFromFile :: IO UnintConfig
 loadConfigFromFile = undefined
 
+-- | Configuration options read by the command line.
+data CmdLineConfig = CmdLineConfig
+  { clSmtSolver :: !CoreConfig.SMTSolver
+  , clSmtLog :: !Bool
+  , clPortNumber :: !PortNumber
+  } deriving (Show)
+
+optsP :: Parser CmdLineConfig
+optsP = CmdLineConfig <$> smtSolverP <*> smtLogP <*> portP
+
+
+smtSolverP :: Parser CoreConfig.SMTSolver
+smtSolverP = option auto
+             ( long "smt-solver"
+             <> help "SMT solver to be used"
+             <> showDefault
+             <> value CoreConfig.Z3
+             <> metavar "SOLVER" )
+
+smtLogP :: Parser Bool
+smtLogP = switch
+          ( long "smt-log"
+          <> help "Log the SMT output?"
+          )
+
 portP :: Parser PortNumber
 portP = argument auto (metavar "PORT")
 
 -- parser testing
 parserTesting xss = execParserPure defaultPrefs opts xss
   where opts =
-          info (portP <**> helper)
+          info (optsP <**> helper)
                ( fullDesc
                <> progDesc "TorXakis server."
                )
