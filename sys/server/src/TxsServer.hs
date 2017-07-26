@@ -19,7 +19,6 @@ module Main
 (
   main      -- main :: IO ()
             -- torxakis server main
-  , parserTesting
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -41,12 +40,9 @@ import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
--- Needed for command line parsing
-import Options.Applicative
-import Data.Semigroup ((<>))
-
 -- import from local
 import ToProcdef
+import CmdLineParser
 
 -- import from serverenv
 import qualified EnvServer    as IOS
@@ -1035,8 +1031,13 @@ data UnintConfig = UnintConfig
 type Error = String
 
 -- TODO: change `Either` to `Validation`.
-interpretConfig :: UnintConfig -> Either [Error] Config
-interpretConfig = undefined
+interpretConfig :: CmdLineConfig -> Either [Error] Config
+interpretConfig cfg = undefined
+  Right $ Config
+  { smtSolver = clSmtSolver cfg
+  , smtLog = clSmtLog cfg
+  , portNumber = clPortNumber cfg
+  }
 
 -- | Load the configuration options. These options can be specified by
 -- different means:
@@ -1047,15 +1048,10 @@ interpretConfig = undefined
 --
 -- The configuration options are searched in the order specified, and the first
 -- option found is used.
-loadConfig :: IO UnintConfig
-loadConfig = do
-  execParser opts
-  where opts =
-          info (optsP <**> helper)
-               ( fullDesc
-               <> progDesc "TorXakis server."
-               )
-
+--
+-- For now we only parse command line arguments.
+loadConfig :: IO CmdLineConfig
+loadConfig = parseCmdLine
 
 -- | File name to look for.
 configFileName = "txs.yaml"
@@ -1075,38 +1071,3 @@ configFileName = "txs.yaml"
 loadConfigFromFile :: IO UnintConfig
 loadConfigFromFile = undefined
 
--- | Configuration options read by the command line.
-data CmdLineConfig = CmdLineConfig
-  { clSmtSolver :: !CoreConfig.SMTSolver
-  , clSmtLog :: !Bool
-  , clPortNumber :: !PortNumber
-  } deriving (Show)
-
-optsP :: Parser CmdLineConfig
-optsP = CmdLineConfig <$> smtSolverP <*> smtLogP <*> portP
-
-
-smtSolverP :: Parser CoreConfig.SMTSolver
-smtSolverP = option auto
-             ( long "smt-solver"
-             <> help "SMT solver to be used"
-             <> showDefault
-             <> value CoreConfig.Z3
-             <> metavar "SOLVER" )
-
-smtLogP :: Parser Bool
-smtLogP = switch
-          ( long "smt-log"
-          <> help "Log the SMT output?"
-          )
-
-portP :: Parser PortNumber
-portP = argument auto (metavar "PORT")
-
--- parser testing
-parserTesting xss = execParserPure defaultPrefs opts xss
-  where opts =
-          info (optsP <**> helper)
-               ( fullDesc
-               <> progDesc "TorXakis server."
-               )

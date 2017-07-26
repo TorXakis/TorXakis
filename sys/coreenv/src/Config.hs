@@ -12,10 +12,10 @@ module Config
 where
 
 -- | SMT Solvers that can be choosen.
-data SMTSolver = Z3 | CVC4 deriving (Show, Read)
+data SMTSolver = Z3 | CVC4 deriving (Eq, Show, Read)
 
 -- | TorXakis configuration options.
 data Config = Config
   { smtSolver :: !SMTSolver   -- ^ SMT solver
   , smtLog :: !Bool           -- ^ Log all SMT commands.
-  }
+  } deriving (Eq, Show)

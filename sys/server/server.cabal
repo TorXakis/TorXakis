@@ -12,6 +12,17 @@ category:               Web
 build-type:             Simple
 cabal-version:          >=1.10
 
+library
+  ghc-options:         -O2 -optc-O3 -optc-ffast-math
+  hs-source-dirs:      src
+  exposed-modules:     CmdLineParser
+  build-depends:       base
+                     , optparse-applicative
+                     , network
+
+                     , coreenv
+  default-language: Haskell2010
+                                                
 executable txsserver
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
   
@@ -19,6 +30,7 @@ executable txsserver
   main-is:              TxsServer.hs
   other-modules:        
                         ToProcdef
+                      , CmdLineParser
                       
   build-depends:        base
                       , containers
@@ -29,8 +41,8 @@ executable txsserver
                       , text
                       , time
                       , MissingH
-                      , optparse-applicative
-                      
+                      , optparse-applicative                      
+
                       , cnect
                       , core
                       , coreenv
@@ -41,3 +53,19 @@ executable txsserver
                       , value
                       
   default-language:     Haskell2010
+
+test-suite server-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  other-modules:       CmdLineParserSpec
+  build-depends:       base
+                     , hspec
+                     , server
+                     , optparse-applicative
+                     , QuickCheck
+                     , network
+                     
+                     , coreenv                     
+  ghc-options:       -threaded -rtsopts -with-rtsopts=-N
+  default-language: Haskell2010  
