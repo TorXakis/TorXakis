@@ -175,7 +175,11 @@ txsInit tdefs sigs putMsgs  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
-         -> do smtEnv         <- lift $ SMT.createSMTEnv SMT.cmdZ3 False tdefs
+         -> do
+               let cfg    = IOC.config envc
+                   smtCmd = mkSmtSolverCmd cfg
+                   smtLog = Config.smtLog cfg
+               smtEnv         <- lift $ SMT.createSMTEnv smtCmd smtLog tdefs
                (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
                (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions tdefs) smtEnv'
                putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver initialized : " ++ info

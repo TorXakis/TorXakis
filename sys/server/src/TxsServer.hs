@@ -1032,7 +1032,7 @@ type Error = String
 
 -- TODO: change `Either` to `Validation`.
 interpretConfig :: CmdLineConfig -> Either [Error] Config
-interpretConfig cfg = undefined
+interpretConfig cfg = 
   Right $ Config
   { smtSolver = clSmtSolver cfg
   , smtLog = clSmtLog cfg

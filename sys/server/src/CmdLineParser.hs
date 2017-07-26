@@ -49,7 +49,7 @@ smtSolverP = option auto
 smtLogP :: Parser Bool
 smtLogP = switch
           ( long "smt-log"
-          <> help "Log the SMT output?"
+          <> help "Log the SMT commands?"
           )
 
 portP :: Parser PortNumber
