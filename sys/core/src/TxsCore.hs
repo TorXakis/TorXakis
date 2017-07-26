@@ -165,7 +165,10 @@ runTxsCtrl ctrl s0  =  do
 
 
 -- | torxakis core main api -- modus transition general
-txsInit :: TxsDefs.TxsDefs -> Sigs.Sigs TxsDefs.VarId -> ([EnvData.Msg] -> IOC.IOC ()) -> IOC.IOC ()
+txsInit :: TxsDefs.TxsDefs                  -- ^ Definitions for computations.
+        -> Sigs.Sigs TxsDefs.VarId          -- ^ Signatures needed to parse.
+        -> ([EnvData.Msg] -> IOC.IOC ())    -- ^ Handler for info, warning, and error messages.
+        -> IOC.IOC ()
 txsInit tdefs sigs putMsgs  =  do
      envc <- get
      case envc of
@@ -209,6 +212,7 @@ txsTermit  =  do
                TxsCore.txsTermit
 
 -- | stop testing, simulating, or stepping.
+-- returns txscore to the initialized state.
 -- See 'txsSetTest', 'txsSetSim', and 'txsSetStep', respectively.
 txsStop :: IOC.IOC ()
 txsStop  =  do
@@ -235,25 +239,30 @@ txsGetParams  =
      IOC.getParams []
 
 -- | Get the value of the provided parameter.
-txsGetParam :: String -> IOC.IOC [(String,String)]
+txsGetParam :: String                       -- ^ name of the parameter. 
+            -> IOC.IOC [(String,String)]
 txsGetParam prm  =
      IOC.getParams [prm]
 
 -- | Set the provided parameter to the provided value.
-txsSetParam :: String -> String -> IOC.IOC [(String,String)]
+txsSetParam :: String                       -- ^ name of the parameter. 
+            -> String                       -- ^ new value for the parameter. 
+            -> IOC.IOC [(String,String)]
 txsSetParam prm val  =
      IOC.setParams [(prm,val)]
 
 -- | Set the random seed to the provided value.
-txsSetSeed :: Int -> IOC.IOC ()
+txsSetSeed :: Int                           -- ^ new value for seed. 
+           -> IOC.IOC ()
 txsSetSeed seed  =  do
      lift $ setStdGen(mkStdGen seed)
      IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_INFO $ "Seed set to " ++ show seed ]
 
 -- | Evaluate the provided value expression.
 --
---   Only possible when txscore is initialized with a model.
-txsEval :: TxsDefs.VExpr -> IOC.IOC TxsDefs.Const
+--   Only possible when txscore is initialized.
+txsEval :: TxsDefs.VExpr                    -- ^ value expression to be evaluated.
+        -> IOC.IOC TxsDefs.Const
 txsEval vexp  =  do
      envc <- get
      case envc of
@@ -273,8 +282,9 @@ txsEval vexp  =  do
 
 -- | Find a solution for the provided Boolean value expression.
 --
---   Only possible when txscore is initialized with a model.
-txsSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
+--   Only possible when txscore is initialized.
+txsSolve :: TxsDefs.VExpr                   -- ^ value expression to solve.
+         -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsSolve vexp  =  do
      envc <- get
      case envc of
@@ -306,8 +316,9 @@ txsSolve vexp  =  do
                                                    
 -- | Find an unique solution for the provided Boolean value expression.
 --
---   Only possible when txscore is initialized with a model.
-txsUniSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
+--   Only possible when txscore is initialized.
+txsUniSolve :: TxsDefs.VExpr            -- ^ value expression to solve uniquely.
+            -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsUniSolve vexp  =  do
      envc <- get
      case envc of
@@ -337,8 +348,9 @@ txsUniSolve vexp  =  do
 
 -- | Find a random solution for the provided Boolean value expression.
 --
---   Only possible when txscore is initialized with a model.
-txsRanSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
+--   Only possible when txscore is initialized.
+txsRanSolve :: TxsDefs.VExpr                -- ^ value expression to solve randomly.
+            -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsRanSolve vexp  =  do
      envc <- get
      case envc of
@@ -369,25 +381,22 @@ txsRanSolve vexp  =  do
                                                    return Map.empty
           
 
--- | Start testing using the provided
--- 
---   * callback function for sending an input action to the SUT (world),
+-- | Start testing.
 --
---   * callback function for receiving an output action from the SUT (world),
---
---   * model definition,
---
---   * optional mapper definition, and
---
---   * optional test purpose definition.
---
---   Only possible when txscore is initialized with a model.
+--   Only possible when txscore is initialized.
 --
 -- modus transition general.
-txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
-              IOC.IOC TxsDDefs.Action ->
-              TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Maybe TxsDefs.PurpDef ->
-              IOC.IOC ()
+txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action)  -- ^ callback function for sending an input action to the SUT (world).
+                                                            --   The callback function is called with a proposed input action.
+                                                            --   When the SUT has produced an output action, 
+                                                            --   the callback function must return that output action,
+                                                            --   otherwise the callback function must return the input action.
+           -> IOC.IOC TxsDDefs.Action                       -- ^ callback function for receiving an output action from the SUT (world).
+                                                            --   The callback function signals that the SUT has produced an output action.
+           -> TxsDefs.ModelDef                              -- ^ model definition. 
+           -> Maybe TxsDefs.MapperDef                       -- ^ optional mapper definition.
+           -> Maybe TxsDefs.PurpDef                         -- ^ optional test purpose definition.
+           -> IOC.IOC ()
 txsSetTest putToW getFroW moddef mapdef purpdef  =  do
      envc <- get
      case envc of
@@ -535,23 +544,21 @@ goalInit chsets (gid,bexp)  =  do
               ; Just pt' -> [ (gid, pt') ]
               }
                    
--- | Start simulating using the provided
+-- | Start simulating.
 --
---   * callback function for sending an output action to the environment (world),
---
---   * callback function for receiving an input action from the environment (world),
---
---   * model definition, and
---
---   * optional mapper definition.
---
---   Only possible when txscore is initialized with a model.
+--   Only possible when txscore is initialized.
 --
 -- modus transition general.
-txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
-             IOC.IOC TxsDDefs.Action ->
-             TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef ->
-             IOC.IOC ()
+txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action)   -- ^callback function for sending an output action to the environment (world).
+                                                            --   The callback function is called with a proposed output action.
+                                                            --   When the environment has produced an input action, 
+                                                            --   the callback function must return that input action,
+                                                            --   otherwise the callback function must return the output action. 
+          -> IOC.IOC TxsDDefs.Action                        -- ^ callback function for receiving an input action from the environment (world).
+                                                            --   The callback function signals that the environment has produced an input action.
+          -> TxsDefs.ModelDef                               -- ^ model definition.
+          -> Maybe TxsDefs.MapperDef                        -- ^ optional mapper definition.
+          -> IOC.IOC ()
 txsSetSim putToW getFroW moddef mapdef  =  do
      envc <- get
      case envc of
@@ -625,10 +632,11 @@ startSimulator (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
 
 -- | Start stepping using the provided model definition.
 --
---   Only possible when txscore is initialized with a model.
+--   Only possible when txscore is initialized.
 --
 -- modus transition general.
-txsSetStep :: TxsDefs.ModelDef -> IOC.IOC ()
+txsSetStep :: TxsDefs.ModelDef              -- ^ model definition.
+           -> IOC.IOC ()
 txsSetStep moddef  =  do
      envc <- get
      case envc of
@@ -674,7 +682,8 @@ startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
 --
 -- Only possible in test modus (see 'txsSetTest').
 -- Not possible with test purpose.
-txsTestIn :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
+txsTestIn :: TxsDDefs.Action                    -- ^ input action to test SUT.
+          -> IOC.IOC TxsDDefs.Verdict           -- ^ Verdict of test with provided input action. 
 txsTestIn act  =  do
      envc <- get
      case envc of
@@ -705,7 +714,8 @@ txsTestOut  =  do
 -- core action.
 --
 -- Only possible in test modus (see 'txsSetTest').
-txsTestN :: Int -> IOC.IOC TxsDDefs.Verdict
+txsTestN :: Int                         -- ^ number of actions to test SUT. 
+         -> IOC.IOC TxsDDefs.Verdict    -- ^ Verdict of test with provided number of actions. 
 txsTestN depth  =  do  
      envc <- get
      case envc of
@@ -719,7 +729,8 @@ txsTestN depth  =  do
 -- core action.
 --
 -- Only possible in simulation modus (see 'txsSetSim').
-txsSimN :: Int -> IOC.IOC TxsDDefs.Verdict
+txsSimN :: Int                      -- ^ number of actions to simulate model. 
+        -> IOC.IOC TxsDDefs.Verdict -- ^ Verdict of simulation with number of actions. 
 txsSimN depth  =  do
      envc <- get
      case envc of
@@ -733,7 +744,8 @@ txsSimN depth  =  do
 -- core action.
 --
 -- Only possible in stepper modus (see 'txsSetStep').
-txsStepN :: Int -> IOC.IOC TxsDDefs.Verdict
+txsStepN :: Int                                 -- ^ number of actions to step model.
+         -> IOC.IOC TxsDDefs.Verdict            -- ^ Verdict of stepping with provided number of actions. 
 txsStepN depth  =  do
      envc <- get
      case envc of
@@ -746,7 +758,8 @@ txsStepN depth  =  do
 -- core action.
 --
 -- Only possible in stepper modus (see 'txsSetStep').
-txsStepA :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
+txsStepA :: TxsDDefs.Action                         -- ^ action to step in model.
+         -> IOC.IOC TxsDDefs.Verdict                -- ^ Verdict of stepping with provided action. 
 txsStepA act  =  do
      envc <- get
      case envc of
@@ -756,13 +769,10 @@ txsStepA act  =  do
 
 
 -- | Show provided item.
---   Valid items are 
---       "tdefs"  
---       "state" 
---       "model" 
---       "mapper"
---       "purp"  
-txsShow :: String -> IOC.IOC String
+txsShow :: String               -- ^ item to be shown.
+                                --   Valid items are 
+                                --   "tdefs", "state", "model", "mapper", and "purp".  
+        -> IOC.IOC String
 txsShow item  =  do
      envc <- get
      case item of
@@ -779,7 +789,8 @@ txsShow item  =  do
 -- core action.
 --
 -- Only possible in stepper modus (see 'txsSetStep').
-txsGoTo :: EnvData.StateNr -> IOC.IOC ()
+txsGoTo :: EnvData.StateNr              -- ^ state to go to.
+        -> IOC.IOC ()
 txsGoTo stateNr  =
      if  stateNr >= 0
        then do modStss <- gets IOC.modstss
@@ -828,14 +839,11 @@ txsPath  =  do
                                 return []
              
 
--- | Returns the menu for the provided
---
---   * kind ("mod" or "purp")
---
---   * what ("all", "in", or "out"), and
---
---   * state number.
-txsMenu :: String -> String -> EnvData.StateNr -> IOC.IOC BTree.Menu
+-- | Return the menu, i.e., all possible actions.
+txsMenu :: String                               -- ^ kind (valid values are "mod" and "purp")
+        -> String                               -- ^ what (valid values are "all", "in", and "out")
+        -> EnvData.StateNr                      -- ^ state number.
+        -> IOC.IOC BTree.Menu
 txsMenu kind what stnr  =  do
      curState <- gets IOC.curstate
      let stateNr = if stnr == (-1) then curState else stnr
@@ -861,7 +869,8 @@ txsMenu kind what stnr  =  do
 -- | Give the provided action to the mapper.
 --
 -- Not possible in stepper modus (see 'txsSetStep').
-txsMapper :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
+txsMapper :: TxsDDefs.Action                    -- ^ Action to be provided to mapper.
+          -> IOC.IOC TxsDDefs.Action
 txsMapper act  =  do
      envc <- get
      case envc of
