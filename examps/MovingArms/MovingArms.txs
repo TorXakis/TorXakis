@@ -240,3 +240,45 @@ MODELDEF  TestPurpose ::=
                                  UpY, DownY, StopY, MinY, MaxY,
                                  UpZ, DownZ, StopZ, MinZ, MaxZ] ( 1, No, No, No )
 ENDDEF
+-- ----------------------------------------------------------------------------------------- --
+
+PROCDEF SemaphoreHit [Acquire, Release]() HIT ::=
+    Acquire >-> Release >-> SemaphoreHit [Acquire , Release]()
+ENDDEF
+
+PROCDEF controlledMovementHit  [ Acquire, Release, Up, Down, Stop, Min, Max ] ( ) HIT ::=
+    (
+            Acquire | Up  >-> (  Release | Stop >-> EXIT
+                                ## Release | Max >-> EXIT
+                                )
+        ##
+            Acquire | Down>-> (  Release | Stop >-> EXIT
+                                ## Release | Min >-> EXIT
+                                )
+    ) >>> controlledMovementHit  [ Acquire, Release, Up, Down, Stop, Min, Max ] ( )
+ENDDEF
+
+PROCDEF singleAxisMovementHit [ UpX, DownX, StopX, MinX, MaxX,
+                             UpY, DownY, StopY, MinY, MaxY,
+                             UpZ, DownZ, StopZ, MinZ, MaxZ] ( ) HIT ::=
+    HIDE [Acquire, Release] IN
+        SemaphoreHit [Acquire, Release]()
+    |[Acquire, Release]|
+        (   controlledMovementHit [Acquire, Release, UpX, DownX, StopX, MinX, MaxX] ()
+        ||| controlledMovementHit [Acquire, Release, UpY, DownY, StopY, MinY, MaxY] ()
+        ||| controlledMovementHit [Acquire, Release, UpZ, DownZ, StopZ, MinZ, MaxZ] ()
+        )
+    NI
+ENDDEF
+
+PURPDEF  SingleAxisTestPurpose ::=
+    CHAN IN     UpX, DownX, StopX, 
+                UpY, DownY, StopY,
+                UpZ, DownZ, StopZ
+    CHAN OUT    MinX, MaxX,
+                MinY, MaxY,
+                MinZ, MaxZ
+    GOAL singleAxis ::= singleAxisMovementHit [ UpX, DownX, StopX, MinX, MaxX,
+                             UpY, DownY, StopY, MinY, MaxY,
+                             UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
+ENDDEF
