@@ -44,31 +44,57 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
-PROCDEF  mapper [ Plus, Minus :: Int # Int; Result :: Int;
-                  Sin :: String # Int # Int;  Sout :: Int ] ( )
+PROCDEF  mapperA [ Plus, Minus :: Int # Int; Result :: Int;
+                   Sin :: String # Int # Int;  Sout :: Int ] ( )
     ::=
                  Plus ? x ? y
             >->  Sin ! "Plus" ! x ! y
-            >->  mapper [ Plus, Minus, Result, Sin, Sout ] ( )
+            >->  mapperA [ Plus, Minus, Result, Sin, Sout ] ( )
         ##
                  Minus ?x ?y
             >->  Sin ! "Minus" ! x ! y
-            >->  mapper [ Plus, Minus, Result, Sin, Sout ] ( )
+            >->  mapperA [ Plus, Minus, Result, Sin, Sout ] ( )
         ##
                  Sout ? r 
             >->  Result ! r
-            >->  mapper [ Plus, Minus, Result, Sin, Sout ] ( )
+            >->  mapperA [ Plus, Minus, Result, Sin, Sout ] ( )
 ENDDEF
 
 
-MAPPERDEF  Map
+PROCDEF  mapperS [ Plus, Minus :: Int # Int; Result :: Int;
+                   Sin :: String # Int # Int;  Sout :: Int ] ( )
+    ::=
+                 Plus ? x ? y  | Sin ! "Plus" ? xx ? yy  [[ x == xx, y == yy ]]
+            >->  mapperS [ Plus, Minus, Result, Sin, Sout ] ( )
+        ##
+                 Minus ?x ?y | Sin ! "Minus" ? xx ? yy  [[ x == xx, y == yy ]]
+            >->  mapperS [ Plus, Minus, Result, Sin, Sout ] ( )
+        ##
+                 Sout ? r | Result ? rr  [[ r == rr ]]
+            >->  mapperS [ Plus, Minus, Result, Sin, Sout ] ( )
+ENDDEF
+
+
+MAPPERDEF  MapA
     ::=
         CHAN IN    Plus, Minus,
                    Sout
         CHAN OUT   Result,
                    Sin
 
-        BEHAVIOUR  mapper [ Plus, Minus, Result, Sin, Sout ] ( )
+        BEHAVIOUR  mapperA [ Plus, Minus, Result, Sin, Sout ] ( )
+
+ENDDEF
+
+
+MAPPERDEF  MapS
+    ::=
+        CHAN IN    Plus, Minus,
+                   Sout
+        CHAN OUT   Result,
+                   Sin
+
+        BEHAVIOUR  mapperS [ Plus, Minus, Result, Sin, Sout ] ( )
 
 ENDDEF
 

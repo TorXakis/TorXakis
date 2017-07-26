@@ -69,15 +69,15 @@ encode envs (Act offs)  =  do
      let ConnHtoW chan h vars vexp =
                              case ss of
                                [ tow ] -> tow
-                               _       -> error $ "Encode: No (unique) action\n" ++ fshow ss
+                               _       -> error $ "Encode 1: No (unique) action: " ++ fshow ss
      let walues = case Set.toList offs of
                         [ ( chanid, wals ) ] -> wals
-                        _                    -> error "Encode: No (unique) action\n"
+                        _                    -> error $ "Encode 2: No (unique) action: " ++ fshow offs
      let wenv = Map.fromList $ zip vars walues
      sval     <- TxsCore.txsEval $ cstrEnv (Map.map cstrConst wenv) vexp
      return $ case sval of
                 Cstring s -> SAct h s
-                _         -> error "Encode: No encoding to String\n"
+                _         -> error "Encode 3: No encoding to String\n"
 
 encode envs ActQui  =  
      return SActQui
@@ -96,7 +96,7 @@ decode envs (SAct hdl sval)  =
                                            , h == hdl
                                            ] of
                                       { [ frow ] -> frow
-                                      ; _        -> error "TXS Decode: No (unique) handle\n"
+                                      ; _        -> error "Decode: No (unique) handle\n"
                                       }
       in do let senv = Map.fromList [ (var, cstrConst (Cstring sval)) ]
             wals     <- mapM (TxsCore.txsEval . cstrEnv senv) vexps
