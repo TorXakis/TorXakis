@@ -266,10 +266,7 @@ init  =  do
     put basicDefinitionsSMT
     return ()
 
--- ----------------------------------------------------------------------------------------- --
--- execute the SMT command given as a string 
--- ----------------------------------------------------------------------------------
-
+-- | execute the SMT command given as a string 
 put :: String -> SMT ()
 put cmd  = do
     lg <- gets logFileHandle
@@ -285,6 +282,12 @@ put cmd  = do
             -- show errors - if there are any - and wait for the command to finish executing
             lift $ checkErrors herr "SMT WARN >> "
             return ()
+
+-- | Transform value expression to an SMT string.
+valExprToString :: Variable v => ValExpr v -> SMT String
+valExprToString v = do
+                        mapI <- gets mapInstanceTxsToSmtlib
+                        return $ valexprToSMT mapI v
 
 -- ----------------------------------------------------------------------------------------- --
 --  return error messages if any are present

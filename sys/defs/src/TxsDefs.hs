@@ -39,6 +39,7 @@ module TxsDefs
 , cstrNot
 , cstrAnd
 , cstrOr
+, cstrImplies
 , cstrPredef
 , cstrError
 , view

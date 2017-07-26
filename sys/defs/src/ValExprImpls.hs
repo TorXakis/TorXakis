@@ -53,7 +53,9 @@ cstrVar :: v -> ValExpr v
 cstrVar v = ValExpr (Vvar v)
 
 cstrIte :: [ValExpr v] -> ValExpr v -> ValExpr v -> ValExpr v
-cstrIte cs tb fb = ValExpr (Vite cs tb fb)
+-- if (not b) then tb else fb == if b then fb else tb
+cstrIte [view -> Vnot n] tb fb  = ValExpr (Vite [n] fb tb)
+cstrIte cs tb fb                = ValExpr (Vite cs tb fb)
 
 cstrEnv :: VarEnv v v -> ValExpr v -> ValExpr v
 cstrEnv ve e = ValExpr (Venv ve e)
@@ -100,6 +102,8 @@ cstrNot :: ValExpr v -> ValExpr v
 cstrNot (view -> Vconst (Cbool True))       = cstrConst (Cbool False)
 cstrNot (view -> Vconst (Cbool False))      = cstrConst (Cbool True)
 cstrNot (view -> Vnot ve)                   = ve
+-- not (if cs then tb else fb) == if cs then not (tb) else not (fb)
+cstrNot (view -> Vite cs tb fb)             = ValExpr (Vite cs (cstrNot tb) (cstrNot fb))
 cstrNot ve                                  = ValExpr (Vnot ve)
 
 -- | Is ValExpr an And Expression?     

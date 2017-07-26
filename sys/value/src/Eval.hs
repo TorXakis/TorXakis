@@ -277,40 +277,9 @@ evalSSB (FuncId nm uid args srt) vexps  =  do
      ; ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
                                         tdefs <- gets IOB.tdefs
                                         return $ constFromXml tdefs sortId_Bool s
-     ; ( "<>",          [v1,v2] ) -> do b1 <- txs2bool v1
-                                        b2 <- txs2bool v2
-                                        bool2txs $ b1 /= b2
-     ; ( "not",         [v1]    ) -> do b1 <- txs2bool v1
-                                        bool2txs $ not b1
-     ; ( "/\\",         [v1,v2] ) -> do b1 <- txs2bool v1
-                                        if b1 
-                                        then do
-                                            b2 <- txs2bool v2
-                                            bool2txs b2
-                                        else 
-                                            bool2txs False 
-     ; ( "\\/",         [v1,v2] ) -> do b1 <- txs2bool v1
-                                        if b1 
-                                            then bool2txs True
-                                            else do
-                                                b2 <- txs2bool v2
-                                                bool2txs b2
-     ; ( "\\|/",        [v1,v2] ) -> do b1 <- txs2bool v1
-                                        b2 <- txs2bool v2
-                                        bool2txs $ b1 /= b2
-     ; ( "=>",          [v1,v2] ) -> do b1 <- txs2bool v1
-                                        if b1 
-                                            then do
-                                                b2 <- txs2bool v2
-                                                bool2txs b2
-                                            else 
-                                                bool2txs True
-     ; ( "<=>",         [v1,v2] ) -> do b1 <- txs2bool v1
-                                        b2 <- txs2bool v2
-                                        bool2txs $ b1 == b2
-     ; _                          -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                                      $ "evalSSB: standard Bool opn" ]
-                                        return $ Cerror ""
+     ; ( s, _ )                   -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                                      $ "evalSSB: unknown standard Bool opn - " ++ s ]
+                                        return $ Cerror ("unknown " ++ s)
      }
 
 
