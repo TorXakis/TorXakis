@@ -60,6 +60,7 @@ module TxsCore
 , txsPath         -- :: IOC.IOC [(EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr)]
 , txsMenu         -- :: String -> EnvData.StateNr -> IOC.IOC Menu
 , txsMapper       -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
+, txsNComp        -- :: TxsDefs.ProcDef -> IOC.IOC TxsDefs.PurpId
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -81,10 +82,12 @@ import CoreUtils
 import Test
 import Sim
 import Step
+import NComp
 
 -- import from behave(defs)
 import qualified BTree       as BTree
 import qualified Behave      as Behave
+import Expand(relabel)
 
 -- import from behaveenv
 import qualified EnvBTree    as EnvBTree
@@ -398,8 +401,8 @@ startTester :: TxsDefs.ModelDef ->
                IOC.IOC ( Maybe BTree.BTree, BTree.BTree, [(TxsDefs.GoalId,BTree.BTree)] )
 
 startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
-                 Nothing
-                 Nothing =
+            Nothing
+            Nothing  =
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
      in do 
        envb            <- filterEnvCtoEnvB
@@ -408,12 +411,14 @@ startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
        return $ ( maybt', [], [] )
 
 startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
-                 (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                 Nothing =
-     let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ains   = Set.fromList $ achins
-         ; aouts  = Set.fromList $ achouts
+            (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+            Nothing  =
+     let { mins  = Set.fromList minsyncs
+         ; mouts = Set.fromList moutsyncs
+         ; ains  = Set.fromList $ filter (not . Set.null)
+                       [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
+         ; aouts = Set.fromList $ filter (not . Set.null)
+                       [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
          }
       in if     mins  `Set.isSubsetOf` ains
              && mouts `Set.isSubsetOf` aouts
@@ -436,12 +441,12 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
                    return $ ( Nothing, [], [] )
 
 startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
-                 Nothing
-                 (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)) =
-     let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; pins   = Set.unions pinsyncs
-         ; pouts  = Set.unions poutsyncs
+            Nothing
+            (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))  =
+     let { mins   = Set.fromList minsyncs
+         ; mouts  = Set.fromList moutsyncs
+         ; pins   = Set.fromList pinsyncs
+         ; pouts  = Set.fromList poutsyncs
          }
       in if     ( (pins  == Set.empty) || (pins  == mins)  )
              && ( (pouts == Set.empty) || (pouts == mouts) )
@@ -462,14 +467,16 @@ startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                    return $ ( Nothing, [], [] )
 
 startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
-                 (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                 (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)) =
-     let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ains   = Set.fromList $ achins
-         ; aouts  = Set.fromList $ achouts
-         ; pins   = Set.unions pinsyncs
-         ; pouts  = Set.unions poutsyncs
+            (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+            (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))  =
+     let { mins  = Set.fromList minsyncs
+         ; mouts = Set.fromList moutsyncs
+         ; ains  = Set.fromList $ filter (not . Set.null)
+                       [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
+         ; aouts = Set.fromList $ filter (not . Set.null)
+                       [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
+         ; pins  = Set.fromList pinsyncs
+         ; pouts = Set.fromList poutsyncs
          }
       in if     ( (pins  == Set.empty) || (pins  == mins)  )
              && ( (pouts == Set.empty) || (pouts == mouts) )
@@ -552,7 +559,7 @@ startSimulator :: TxsDefs.ModelDef ->
                   IOC.IOC ( Maybe BTree.BTree, BTree.BTree )
 
 startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
-                Nothing =
+               Nothing  = 
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
      in do
        envb            <- filterEnvCtoEnvB
@@ -560,12 +567,14 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
        writeEnvBtoEnvC envb'
        return $ ( maybt', [] )
 
-startSimulator (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
-                (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
-  =  let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ains   = Set.fromList $ achins
-         ; aouts  = Set.fromList $ achouts
+startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+               (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))  =
+     let { mins  = Set.fromList minsyncs
+         ; mouts = Set.fromList moutsyncs
+         ; ains  = Set.fromList $ filter (not . Set.null)
+                       [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
+         ; aouts = Set.fromList $ filter (not . Set.null) 
+                       [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
          }
       in if     mouts `Set.isSubsetOf` ains
              && mins  `Set.isSubsetOf` aouts
@@ -831,6 +840,47 @@ txsMapper act  =  do
                              $ "Mapping only allowed in Testing or Simulating mode" ]
                return $ act
      }
+
+-- ----------------------------------------------------------------------------------------- --
+
+txsNComp :: TxsDefs.ModelDef -> IOC.IOC (Maybe TxsDefs.PurpId)
+txsNComp mdef@(TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)  =  do
+     envc <- get
+     case (envc,bexp) of
+     { ( IOC.Initing smts tdefs params unid putmsgs
+       , TxsDefs.ProcInst procid@(TxsDefs.ProcId pnm _ _ _ _) chans []
+       ) |    and [ Set.size sync == 1 | sync <- insyncs ++ outsyncs ]
+           && and [ null $ srts
+                  | TxsDefs.ChanId nm uid srts <- Set.toList $ Set.unions $ insyncs ++ outsyncs
+                  ]
+           && null splsyncs
+       -> do case Map.lookup procid (TxsDefs.procDefs tdefs) of
+             { Just (TxsDefs.ProcDef chids [] staut@(TxsDefs.StAut _ ve _)) | Map.null ve
+                 -> do let chanmap                       = Map.fromList (zip chids chans)
+                           TxsDefs.StAut statid ve trans = Expand.relabel chanmap staut
+                       maypurp <- NComp.nComplete insyncs outsyncs statid trans
+                       case maypurp of
+                       { Just purpdef
+                           -> do let purpid = TxsDefs.PurpId ("Purp_"++pnm) (unid+1)
+                                     tdefs' = tdefs { TxsDefs.purpDefs = Map.insert
+                                                        purpid purpdef (TxsDefs.purpDefs tdefs)
+                                                    }
+                                 modify $ \env -> env { IOC.tdefs = tdefs' 
+                                                      , IOC.unid  = unid+1
+                                                      }
+                                 return $ Just purpid
+                       ; _ -> return $ Nothing
+                       }
+             ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                     $ "N-Complete requires a data-less STAUTDEF" ]
+                       return $ Nothing
+             }
+     ; _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             $ "N-Complete should be used after initialization, before testing, "
+                               ++ "with a STAUTDEF with data-less, singleton channels" ]
+               return $ Nothing
+     }
+
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

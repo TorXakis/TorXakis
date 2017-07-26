@@ -119,7 +119,7 @@ testN depth step  =  do
      ; ( ParamCore.IOCO
        , IOC.Testing _ _ m a (Just (TxsDefs.PurpDef []      []       _ _))
                      _ _ _ _ _ _ _ _ _ _ _
-       ) -> do                                       -- empty test purpse == no test purpose --
+       ) -> do                                      -- empty test purpose == no test purpose --
             testIOCO depth False step
      ; ( ParamCore.IOCO
        , IOC.Testing _ _ m a (Just (TxsDefs.PurpDef []      outsyncs _ _))
@@ -209,7 +209,6 @@ expected  =  do
      
 
 -- ----------------------------------------------------------------------------------------- --
--- ----------------------------------------------------------------------------------------- --
 -- testing with test purposes
 
 -- ----------------------------------------------------------------------------------------- --
@@ -253,11 +252,71 @@ testPout step  =  do
 
 
 -- ----------------------------------------------------------------------------------------- --
+-- testIOCOinPurp :  test with test puposes, only on inputs
+
+
+testIOCOinPurp :: Int -> Bool -> Int -> IOC.IOC TxsDDefs.Verdict
+testIOCOinPurp depth lastDelta step  =  do
+     if  depth == 0
+       then do
+         return $ TxsDDefs.Pass
+       else do
+         ioRand      <- lift $ randomRIO (False,True)               -- random for in- or output
+         modMenu     <- iocoModelMenuIn
+         mayPurpMenu <- purpMenuIn
+         input       <- case mayPurpMenu of
+                        { Just purpMenu -> randMenu (menuConjunct modMenu purpMenu)
+                        ; Nothing       -> return Nothing
+                        }
+         iochoice    <- return $ (input /= Nothing) && (lastDelta || ioRand)
+         if  iochoice
+           then do                                                  -- try input, input/=Nothing
+             Just inp <- return $ input
+             act      <- testPin inp step                           -- act can input or output
+             isInput  <- isInAct act
+             pass     <- iocoModelAfter act
+             (hit,miss) <- if isInput
+                             then purpAfter act
+                             else return (False,False)
+             pass       <- iocoModelAfter act
+             case (pass,hit,miss) of
+             { (True ,False,False) -> do testIOCOinPurp (depth-1) False (step+1)
+             ; (True ,_    ,_    ) -> do purpVerdict 
+                                         return $ TxsDDefs.Pass
+             ; (False,_    ,_    ) -> do purpVerdict
+                                         expected
+                                         return $ TxsDDefs.Fail act
+             }
+           else do
+             if  (not lastDelta)
+               then do                                              -- observe output
+                 act        <- testPout step
+                 pass       <- iocoModelAfter act
+                 (hit,miss) <- return $ (False,False)
+                 case (pass,hit,miss) of
+                 { (True ,False,False) -> do testIOCOinPurp (depth-1) False (step+1)
+                 ; (True ,_    ,_    ) -> do purpVerdict
+                                             return $ TxsDDefs.Pass
+                 ; (False,_    ,_    ) -> do purpVerdict
+                                             expected
+                                             return $ TxsDDefs.Fail act
+                 }
+               else do                                              -- lastDelta and no inputs
+                 IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "no more actions" ]
+                 purpVerdict
+                 return $ TxsDDefs.Pass
+
+
+-- ----------------------------------------------------------------------------------------- --
 -- testIOCOoutPurp :  test with test puposes, only on outputs
 
 
 testIOCOoutPurp :: Int -> Bool -> Int -> IOC.IOC TxsDDefs.Verdict
 testIOCOoutPurp depth lastDelta step  =  do
+       IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                     $ "test purpose with only outputs not supported yet" ]
+       return $ TxsDDefs.NoVerdict
+{-
      if  depth == 0
        then do
          return $ TxsDDefs.Pass
@@ -317,75 +376,7 @@ testIOCOoutPurp depth lastDelta step  =  do
                  IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "no more actions" ]
                  purpVerdict
                  return $ TxsDDefs.Pass
-
-
--- ----------------------------------------------------------------------------------------- --
--- testIOCOinPurp :  test with test puposes, only on inputs
-
-
-testIOCOinPurp :: Int -> Bool -> Int -> IOC.IOC TxsDDefs.Verdict
-testIOCOinPurp depth lastDelta step  =  do
-     if  depth == 0
-       then do
-         return $ TxsDDefs.Pass
-       else do
-         ioRand     <- lift $ randomRIO (False,True)                -- random for in- or output
-         modMenu    <- iocoModelMenuIn
-         purpMenu   <- purpMenuIn
-         input      <- randMenu (menuConjunct modMenu purpMenu)
-         iochoice   <- return $ (input /= Nothing) && (lastDelta || ioRand)
-         if  iochoice
-           then do                                                  -- try input, input/=Nothing
-             Just inp <- return $ input
-             act      <- testPin inp step                           -- act can input or output
-             isInput  <- isInAct act
-             pass     <- iocoModelAfter act
-             (hit,miss) <- if isInput
-                             then purpAfter act
-                             else return (False,False)
-             pass       <- iocoModelAfter act
-             if pass
-               then modify $ \env -> env
-                      { IOC.behtrie  = (IOC.behtrie env) ++
-                                       [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
-                      , IOC.curstate = (IOC.maxstate env)+1
-                      , IOC.maxstate = (IOC.maxstate env)+1
-                      }
-               else return $ ()
-             case (pass,hit,miss) of
-             { (True ,False,False) -> do testIOCOinPurp (depth-1) False (step+1)
-             ; (True ,_    ,_    ) -> do purpVerdict 
-                                         return $ TxsDDefs.Pass
-             ; (False,_    ,_    ) -> do purpVerdict
-                                         expected
-                                         return $ TxsDDefs.Fail act
-             }
-           else do
-             if  (not lastDelta)
-               then do                                              -- observe output
-                 act        <- testPout step
-                 pass       <- iocoModelAfter act
-                 (hit,miss) <- return $ (False,False)
-                 if pass
-                   then modify $ \env -> env
-                          { IOC.behtrie  = (IOC.behtrie env) ++
-                                           [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
-                          , IOC.curstate = (IOC.maxstate env)+1
-                          , IOC.maxstate = (IOC.maxstate env)+1
-                          }
-                   else return $ ()
-                 case (pass,hit,miss) of
-                 { (True ,False,False) -> do testIOCOinPurp (depth-1) False (step+1)
-                 ; (True ,_    ,_    ) -> do purpVerdict
-                                             return $ TxsDDefs.Pass
-                 ; (False,_    ,_    ) -> do purpVerdict
-                                             expected
-                                             return $ TxsDDefs.Fail act
-                 }
-               else do                                              -- lastDelta and no inputs
-                 IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "no more actions" ]
-                 purpVerdict
-                 return $ TxsDDefs.Pass
+-}
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -394,6 +385,11 @@ testIOCOinPurp depth lastDelta step  =  do
 
 testIOCOfullPurp :: Int -> Bool -> Int -> IOC.IOC TxsDDefs.Verdict
 testIOCOfullPurp depth lastDelta step  =  do
+     IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                   $ "test purpose with inputs and outputs not supported yet" ]
+     return $ TxsDDefs.NoVerdict
+
+{-
      if  depth == 0
        then do
          return $ TxsDDefs.Pass
@@ -459,6 +455,7 @@ testIOCOfullPurp depth lastDelta step  =  do
                  IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "no more actions" ]
                  purpVerdict
                  return $ TxsDDefs.Pass
+-}
 
 
 -- ----------------------------------------------------------------------------------------- --

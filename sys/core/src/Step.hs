@@ -97,9 +97,11 @@ stepN depth step  =  do
                 IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "Stepping not in Stepper mode" ]
                 return $ TxsDDefs.NoVerdict
 
+
 -- ----------------------------------------------------------------------------------------- --
 -- stepA :  make step with specified action
 --       :  step is input or output, no quiescence, i.e., trace semantics
+
 
 stepA :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict 
 stepA act  =  do

@@ -23,6 +23,8 @@ module Purpose
 , purpVerdict       -- :: IOC.IOC ()
 )
 
+-- these functions shoulds also work properly if there is no purpose
+
 -- ----------------------------------------------------------------------------------------- --
 -- import 
 
@@ -65,65 +67,104 @@ import qualified Utils     as Utils
 
 goalMenu :: String -> IOC.IOC BTree.Menu
 goalMenu gnm  =  do
-     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
-     allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-     purpSts  <- gets IOC.purpsts
-     case [ (gid,gtree) | (gid@(TxsDefs.GoalId nm uid), gtree) <- purpSts, nm == gnm ] of
-       [(gid,bt)] -> do return $ Behave.behMayMenu allSyncs bt
-       _          -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given" ]
-                        return []
+     envc <- get
+     case envc of
+     { IOC.Testing _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
+                   _ _ _ _ _ _ _ purpsts _ _ _ -> do
+            pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
+            case [ (gid,gtree) | (gid@(TxsDefs.GoalId nm uid), gtree) <- purpsts, nm == gnm ] of
+            { [(gid,bt)] -> do return $ Behave.behMayMenu pAllSyncs bt
+            ; _          -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                             $ "no (unique) goal given" ]
+                               return []
+            }
+     ; _ -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "goalMenu: no test purpose given" ]
+            return $ []
+     }
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- purpMenuIn :  menu of input actions of test purpose
 
 
-purpMenuIn :: IOC.IOC BTree.Menu
+purpMenuIn :: IOC.IOC (Maybe BTree.Menu)
 purpMenuIn  =  do
-     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
-     allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-     purpSts  <- gets IOC.purpsts
-     menus    <- mapM goalMenuIn [ (gid,btree)
-                                 | (gid,btree) <- purpSts
-                                 , not $ isHit  allSyncs btree
-                                 , not $ isMiss allSyncs btree
-                                 , not $ isHalt btree
-                                 ]
-     return $ menuConjuncts menus
+     envc <- get
+     case envc of
+     { IOC.Testing _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
+                   _ _ _ _ _ _ _ purpsts _ _ _ | not $ null pinsyncs -> do
+            pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
+            menus     <- mapM goalMenuIn [ (gid,btree)
+                                         | (gid,btree) <- purpsts
+                                         , not $ isHit  pAllSyncs btree
+                                         , not $ isMiss pAllSyncs btree
+                                         , not $ isHalt btree
+                                         ]
+            return $ let menu = menuConjuncts menus
+                      in if  not $ null menu
+                           then Just $ menu
+                           else Just $ concat menus
+     ; _ -> do   -- 
+            -- IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "purpMenuIn incorrectly used" ]
+            return Nothing
+     }
 
 
 goalMenuIn :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC BTree.Menu
 goalMenuIn (gid,btree)  =  do
-     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
-     allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-     chins    <- return $ Set.unions insyncs
-     return $ [ (ctoffs, hvars, preds)
-              | (ctoffs, hvars, preds) <- Behave.behMayMenu allSyncs btree
-              , (Set.map BTree.ctchan ctoffs) `Set.isSubsetOf` chins
-              ]
+     envc <- get
+     case envc of
+     { IOC.Testing _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
+                   _ _ _ _ _ _ _ purpsts _ _ _ -> do
+            pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
+            chins     <- return $ Set.unions pinsyncs
+            return $ [ (ctoffs, hvars, preds)
+                     | (ctoffs, hvars, preds) <- Behave.behMayMenu pAllSyncs btree
+                     , (Set.map BTree.ctchan ctoffs) `Set.isSubsetOf` chins
+                     ]
+     ; _ -> do   -- 
+            -- IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "goalMenuIn incorrectly used" ]
+            return []
+     }
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- purpAfter :  after state for test purpose
 
 
-purpAfter :: TxsDDefs.Action -> IOC.IOC (Bool,Bool)
+purpAfter :: TxsDDefs.Action -> IOC.IOC (Bool,Bool)                            -- (Hit,Miss) --
 purpAfter act  =  do
-     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
-     allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-     purpSts  <- gets IOC.purpsts
-     aftGoals <- mapM (goalAfter allSyncs outsyncs act) [ (gid,btree)
-                                                        | (gid,btree) <- purpSts
-                                                        , not $ isHit  allSyncs btree
-                                                        , not $ isMiss allSyncs btree
-                                                        , not $ isHalt btree
-                                                        ]
-     newGoals <- return $ aftGoals ++
-                   [ (gid,btree) | (gid,btree) <- purpSts, gid `notElem` (map fst aftGoals) ]
-     modify $ \envc -> envc { IOC.purpsts = newGoals }
-     return $ ( and [ isHit  allSyncs btree | (gid,btree) <- newGoals ]
-              , and [ isMiss allSyncs btree | (gid,btree) <- newGoals ]
-              )
+     envc  <- get
+     isInp <- isInAct act
+     case envc of
+     { IOC.Testing _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
+                   _ _ _ _ _ _ _ purpsts _ _ _ | isInp -> do
+            pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
+            case (isInp,pinsyncs,poutsyncs) of
+            { (_,[],[])    -> do return $ (False,False)
+            ; (True,[],_)  -> do return $ (False,False)
+            ; (False,_,[]) -> do return $ (False,False)
+            ; (_,_,_)      -> do
+                   aftGoals  <- mapM (goalAfter pAllSyncs poutsyncs act)
+                                     [ (gid,btree) | (gid,btree) <- purpsts
+                                                   , not $ isHit  pAllSyncs btree
+                                                   , not $ isMiss pAllSyncs btree
+                                                   , not $ isHalt btree
+                                     ]
+                   newGoals  <- return $ aftGoals ++ [ (gid,btree)
+                                                     | (gid,btree) <- purpsts
+                                                     , gid `notElem` (map fst aftGoals)
+                                                     ]
+                   modify $ \envc -> envc { IOC.purpsts = newGoals }
+                   return $ ( and [ isHit  pAllSyncs btree | (gid,btree) <- newGoals ]
+                            , and [ isMiss pAllSyncs btree | (gid,btree) <- newGoals ]
+                            )
+            }
+     ; _ -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "purpAfter incorrectly used" ]
+            return $ (False,False)
+     }
 
 
 goalAfter :: [Set.Set TxsDefs.ChanId] -> [Set.Set TxsDefs.ChanId] -> TxsDDefs.Action ->
@@ -158,25 +199,39 @@ goalAfter allsyncs outsyncs (TxsDDefs.ActQui) (gid,btree)  =  do
 
 purpVerdict :: IOC.IOC ()
 purpVerdict  =  do
-     purpSts  <- gets IOC.purpsts
-     mapM_ goalVerdict purpSts
+     envc <- get
+     case envc of
+     { IOC.Testing _ _ modeldef mapperdef purpdef _ _ _ _ _ _ _ purpsts _ _ _ -> do
+            mapM_ goalVerdict purpsts
+     ; _ -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "purpVerdict incorrectly used" ]
+            return $ ()
+     }
 
 
 goalVerdict :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC ()
 goalVerdict (gid,btree)  =  do
-     Just (TxsDefs.PurpDef insyncs outsyncs splsyncs goals) <- gets IOC.purpdef
-     allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-     IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                   $ "Goal " ++ (TxsShow.fshow gid) ++ " : " ++
-                     ( case (isHit allSyncs btree, isMiss allSyncs btree, isHalt btree) of
-                       { (False,False,False) -> "still active"
-                       ; (True ,False,False) -> "Hit"
-                       ; (False,True ,False) -> "Miss"
-                       ; (False,False,True ) -> "halted"
-                       ; (True ,True ,False) -> "Hit and Miss: should not occur"
-                       ; (_    ,_    ,_    ) -> "Hit/Miss/Halted: ???"
-                       }
-                 )   ] 
+     envc <- get
+     case envc of
+     { IOC.Testing _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
+                   _ _ _ _ _ _ _ purpsts _ _ _ -> do
+            pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
+            IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                        $ "Goal " ++ (TxsShow.fshow gid) ++ ": " ++
+                          ( case (isHit pAllSyncs btree, isMiss pAllSyncs btree, isHalt btree) of
+                            { (False,False,False) -> "still active"
+                            ; (True ,False,False) -> "Hit"
+                            ; (False,True ,False) -> "Miss"
+                            ; (False,False,True ) -> "halted"
+                            ; (True ,True ,False) -> "Hit and Miss: should not occur"
+                            ; (_    ,_    ,_    ) -> "Hit/Miss/Halted: ???"
+                            }
+                          )
+                        ] 
+     ; _ -> do
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "goalVerdict incorrectly used" ]
+            return $ ()
+     }
 
 
 -- ----------------------------------------------------------------------------------------- --

@@ -1,10 +1,11 @@
-name:                   core
+name:                   testsel
 version:                0.2.1.0
-synopsis:               Core of TorXakis
+synopsis:               Test Selection for TorXakis
 license:                BSD3
 license-file:           license.txt
 author:                 Jan Tretmans
                       , Pierre van de Laar
+                      , Petra van den Bos
 maintainer:          
                       , pierre.vandelaar@tno.nl
 copyright:              TNO
@@ -15,34 +16,18 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      TxsCore
-                      , CoreUtils
-                      , BuildInfo
-                      , VersionInfo
-
-  other-modules:        Ioco
-                      , Mapper
-                      , Purpose
-                      , Sim
-                      , Step
-                      , Test
+  exposed-modules:      NComp
                       
+  other-modules:
+
   ghc-options:         -O2 -optc-O3 -optc-ffast-math
   
   build-depends:        base
                       , containers
                       , mtl
-                      , network
-                      , random
+                      , MissingH
 
-                      , behavedefs
-                      , behaveenv
-                      , behave
                       , coreenv
                       , defs
-                      , solve
-                      , solvedefs
-                      , testsel
-                      , value
                       
   default-language:     Haskell2010

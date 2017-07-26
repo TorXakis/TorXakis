@@ -16,9 +16,9 @@ library
   hs-source-dirs:       src
 
   exposed-modules:      Behave
+                      , Expand
 
   other-modules:        Equiv
-                      , Expand
                       , Next
                       , Reduce
                       , Subst
