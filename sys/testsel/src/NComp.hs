@@ -54,10 +54,6 @@ nComplete insyncs outsyncs
          goals    = [ (gid,bexp) | (gid,bexp) <- zip gids (allPaths init transs) ]
       in return $ Just $ TxsDefs.PurpDef insyncs outsyncs splsyncs goals
                               
-nComplete _ _ _ _  =  do
-     IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "N-Complete should get a data-less STAUTDEF" ]
-     return $ Nothing 
-
 
 allPaths :: TxsDefs.StatId -> [TxsDefs.Trans] -> [TxsDefs.BExpr]
 allPaths init transs  =  [ path2bexpr p
