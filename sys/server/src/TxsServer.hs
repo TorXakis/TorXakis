@@ -19,6 +19,7 @@ module Main
 (
   main      -- main :: IO ()
             -- torxakis server main
+  , parserTesting
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -26,6 +27,7 @@ module Main
 
 where
 
+import Data.Either -- TODO: use Validation instead
 import System.IO
 import System.Environment
 import Network
@@ -39,6 +41,10 @@ import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
+-- Needed for command line parsing
+import Options.Applicative
+import Data.Semigroup ((<>))
+
 -- import from local
 import ToProcdef
 
@@ -48,7 +54,7 @@ import qualified IfServer     as IFS
 import qualified ParamServer  as ParamServer
 
 -- import from core
-import qualified Config
+import qualified Config       as CoreConfig
 import qualified TxsCore      as TxsCore
 import qualified BuildInfo    as BuildInfo
 import qualified VersionInfo  as VersionInfo
@@ -75,25 +81,30 @@ main :: IO ()
 main  =  withSocketsDo $ do
   hSetBuffering stderr NoBuffering     -- alt: LineBuffering
 
-  uConfig <- Config.load
+  uConfig <- loadConfig
      
-  case Config.interpret uConfig of
+  case interpretConfig uConfig of
     Left xs -> do
       hPutStrLn stderr $
         "Errors found while loading the configuration"
       hPutStrLn stderr (show xs)
     Right config -> do
-      let portNr = Config.portNumber config
+      let portNr = portNumber config
       servsock       <- listenOn (PortNumber portNr)
       (hs, host, port) <- accept servsock
       hSetBuffering hs LineBuffering
       hSetEncoding hs latin1
       hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
-      let initS = IOS.envsNone { IOS.host   = host
-                               , IOS.portNr = portNr
-                               , IOS.servhs = hs
-                               }
-      TxsCore.runTxsCore config cmdsIntpr initS
+      let initS = IOS.envsNone
+            { IOS.host   = host
+            , IOS.portNr = portNr
+            , IOS.servhs = hs
+            }
+          coreConfig = CoreConfig.Config
+            { CoreConfig.smtSolver = (smtSolver config)
+            , CoreConfig.smtLog = (smtLog config)
+            }
+      TxsCore.runTxsCore coreConfig cmdsIntpr initS
       threadDelay 1000000    -- 1 sec delay on closing
       sClose servsock
       hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
@@ -1006,7 +1017,73 @@ readAction chids args  =  do
              return $ TxsDDefs.Act (Set.fromList acts)
 
 
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --
+-- * Configuration related functions.
 
+data Config = Config
+  { smtSolver :: !CoreConfig.SMTSolver
+  , smtLog :: !Bool
+  , portNumber :: !PortNumber
+  }
+
+-- | Uninterpreted configuration options.
+data UnintConfig = UnintConfig
+  { mSmtSolver :: !(Maybe CoreConfig.SMTSolver)
+  , mSmtLog :: !(Maybe Bool)
+  , mPortNumber :: !(Maybe PortNumber)
+  }
+
+type Error = String
+
+-- TODO: change `Either` to `Validation`.
+interpretConfig :: UnintConfig -> Either [Error] Config
+interpretConfig = undefined
+
+-- | Load the configuration options. These options can be specified by
+-- different means:
+--
+--     1. Command line arguments.
+--     2. Configuration file.
+--     3. Environment variables.
+--
+-- The configuration options are searched in the order specified, and the first
+-- option found is used.
+loadConfig :: IO UnintConfig
+loadConfig = do
+  portNr <- execParser opts
+  print portNr
+  undefined
+  where opts =
+          info (portP <**> helper)
+               ( fullDesc
+               <> progDesc "TorXakis server."
+               )
+
+
+-- | File name to look for.
+configFileName = "txs.yaml"
+
+-- | Create a `UnintConfig` value by trying to read the configuration options
+-- given in a configuration file. The configuration file is assumed to be named
+-- as defined by the variable `configFileName`.
+--
+-- This function looks for the configuration file in the following places:
+--
+--     1. The current working directory.
+--     2. The home directory
+--
+-- The search proceeds in the order listed above, and it stops as soon as a
+-- configuration file is found.
+--
+loadConfigFromFile :: IO UnintConfig
+loadConfigFromFile = undefined
+
+portP :: Parser PortNumber
+portP = argument auto (metavar "PORT")
+
+-- parser testing
+parserTesting xss = execParserPure defaultPrefs opts xss
+  where opts =
+          info (portP <**> helper)
+               ( fullDesc
+               <> progDesc "TorXakis server."
+               )

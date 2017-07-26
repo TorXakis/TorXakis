@@ -189,7 +189,7 @@ txsInit tdefs sigs putMsgs  =  do
                                  , IOC.putmsgs = putMsgs
                                  }
                  }
-       IOC.Initing { }
+       IOC.Initing {}
          -> do TxsCore.txsTermit
                TxsCore.txsInit tdefs sigs putMsgs
        _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --

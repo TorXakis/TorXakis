@@ -29,9 +29,11 @@ executable txsserver
                       , text
                       , time
                       , MissingH
+                      , optparse-applicative
                       
                       , cnect
                       , core
+                      , coreenv
                       , defs
                       , front
                       , serverenv
