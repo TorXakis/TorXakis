@@ -18,7 +18,7 @@ module Purpose
 
 
 ( goalMenu          -- :: String -> IOC.IOC BTree.Menu
-, purpMenuIn        -- :: IOC.IOC BTree.Menu
+, purpMenusIn       -- :: IOC.IOC [BTree.Menu]
 , purpAfter         -- :: TxsDDefs.Action -> IOC.IOC (Bool,Bool)
 , purpVerdict       -- :: IOC.IOC ()
 )
@@ -88,26 +88,21 @@ goalMenu gnm  =  do
 -- purpMenuIn :  menu of input actions of test purpose
 
 
-purpMenuIn :: IOC.IOC (Maybe BTree.Menu)
-purpMenuIn  =  do
+purpMenusIn :: IOC.IOC [BTree.Menu]
+purpMenusIn  =  do
      envc <- get
      case envc of
      { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
                    _ _ _ _ _ _ _ purpsts _ _ _ | not $ null pinsyncs -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
-            menus     <- mapM goalMenuIn [ (gid,btree)
-                                         | (gid,btree) <- purpsts
-                                         , not $ isHit  pAllSyncs btree
-                                         , not $ isMiss pAllSyncs btree
-                                         , not $ isHalt btree
-                                         ]
-            return $ let menu = menuConjuncts menus
-                      in if  not $ null menu
-                           then Just $ menu
-                           else Just $ concat menus
+            mapM goalMenuIn [ (gid,btree) | (gid,btree) <- purpsts
+                                          , not $ isHit  pAllSyncs btree
+                                          , not $ isMiss pAllSyncs btree
+                                          , not $ isHalt btree
+                                          ]
      ; _ -> do   -- 
             -- IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "purpMenuIn incorrectly used" ]
-            return Nothing
+            return []
      }
 
 
@@ -133,19 +128,19 @@ goalMenuIn (gid,btree)  =  do
 -- purpAfter :  after state for test purpose
 
 
-purpAfter :: TxsDDefs.Action -> IOC.IOC (Bool,Bool)                            -- (Hit,Miss) --
+purpAfter :: TxsDDefs.Action -> IOC.IOC Bool                                -- purpose ready --
 purpAfter act  =  do
      envc  <- get
      isInp <- isInAct act
      case envc of
      { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
-                   _ _ _ _ _ _ _ purpsts _ _ _ | isInp -> do
+                   _ _ _ _ _ _ _ purpsts _ _ _ -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             case (isInp,pinsyncs,poutsyncs) of
-            { (_,[],[])    -> do return $ (False,False)
-            ; (True,[],_)  -> do return $ (False,False)
-            ; (False,_,[]) -> do return $ (False,False)
-            ; (_,_,_)      -> do
+            { ( _   , [], []) -> do return $ False
+            ; (True , [], _ ) -> do return $ False
+            ; (False, _ , []) -> do return $ False
+            ; ( _   , _ , _ ) -> do
                    aftGoals  <- mapM (goalAfter pAllSyncs poutsyncs act)
                                      [ (gid,btree) | (gid,btree) <- purpsts
                                                    , not $ isHit  pAllSyncs btree
@@ -157,13 +152,11 @@ purpAfter act  =  do
                                                      , gid `notElem` (map fst aftGoals)
                                                      ]
                    modify $ \envc -> envc { IOC.purpsts = newGoals }
-                   return $ ( and [ isHit  pAllSyncs btree | (gid,btree) <- newGoals ]
-                            , and [ isMiss pAllSyncs btree | (gid,btree) <- newGoals ]
-                            )
+                   return $ null aftGoals
             }
      ; _ -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "purpAfter incorrectly used" ]
-            return $ (False,False)
+            return $ True
      }
 
 
@@ -223,7 +216,6 @@ goalVerdict (gid,btree)  =  do
                             ; (True ,False,False) -> "Hit"
                             ; (False,True ,False) -> "Miss"
                             ; (False,False,True ) -> "halted"
-                            ; (True ,True ,False) -> "Hit and Miss: should not occur"
                             ; (_    ,_    ,_    ) -> "Hit/Miss/Halted: ???"
                             }
                           )
@@ -243,7 +235,6 @@ isHit allsyncs btree
   =  let menu = Behave.behMayMenu allsyncs btree
          chanids = Set.map BTree.ctchan (Set.unions (map Utils.frst menu))
       in StdTDefs.chanId_Hit `Set.member` chanids
-
 
 isMiss :: [ Set.Set TxsDefs.ChanId ] -> BTree.BTree -> Bool
 isMiss allsyncs btree
