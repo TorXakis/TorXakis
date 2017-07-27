@@ -114,7 +114,7 @@ import ValExprImpls
 -- torxakis definitions
 
 
-data  TxsDefs  =  TxsDefs { sortDefs    :: Map.Map  SortId SortDef
+data  TxsDefs  =  TxsDefs { sortDefs    :: Map.Map SortId SortDef
                           , cstrDefs    :: Map.Map CstrId CstrDef
                           , funcDefs    :: Map.Map FuncId FuncDef
                           , procDefs    :: Map.Map ProcId ProcDef
