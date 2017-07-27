@@ -983,7 +983,7 @@ ModelDef        -- :: { (Ident,TxsDef) }
                 -- constrs   : model-used ChanIds shall have unique names 
                 --           : free channels in BehaviourExpr from CHAN IN and CHAN OUT
                 --           : channelsets shall be input xor output
-                --           : exit sort of behaviour shall be (No)Exit
+                --           : exit sort of behaviour shall be (NO)EXIT
               : MODELDEF capid "::=" CHAN IN ChannelUsedList CHAN OUT ChannelUsedList
                 SyncChannels BEHAVIOUR BehaviourExpr EndDef
                 {  $6.inhNodeUid   = $$.inhNodeUid + 1
@@ -1012,10 +1012,10 @@ ModelDef        -- :: { (Ident,TxsDef) }
                                          , not $ chset `Set.isSubsetOf` (Set.fromList $9)
                                          ]
                             ; splsyncs = case $12.synExitSorts of
-                                         { NoExit    -> []
-                                         ; Exit srts -> [ Set.singleton chanId_Exit ]
-                                         ; _         -> error $ "\nTXS0540: "++
-                                                                "Wrong Exit kind in ModelDef\n"
+                                         { NoExit  -> []
+                                         ; Exit [] -> [ Set.singleton chanId_Exit ]
+                                         ; _       -> error $ "\nTXS0540: Exit-kind " ++
+                                                        "in ModelDef shall be EXIT or NOEXIT\n"
                                          }
                             }
                          in if  null errsyncs
@@ -1142,7 +1142,7 @@ TestGoal         -- :: { (GoalId,BExpr) }
                 ;  $$ = ( GoalId $2 $$.inhNodeUid, $4 )
                 ;  where if $4.synExitSorts == Hit then () else
                          error $ "\nTXS0550: "++ 
-                                 "Exit kind in Purpose Definition shall be `Hit'\n"
+                                 "Exit-kind in Purpose Definition shall be HIT\n"
                 }
 
 
@@ -1162,7 +1162,7 @@ MapperDef       -- :: { (Ident,TxsDef) }
                 -- constrs   : mapper-defined ChanIds shall have unique names 
                 --           : free channels in BehaviourExpr from CHAN IN and CHAN OUT
                 --           : channelsets shall be input xor output
-                --           : exit sort of behaviour shall be (No)Exit
+                --           : exit sort of behaviour shall be NOEXIT
               : MAPPERDEF capid "::=" CHAN IN ChannelUsedList CHAN OUT ChannelUsedList
                 SyncChannels BEHAVIOUR BehaviourExpr EndDef
                 {  $6.inhNodeUid   = $$.inhNodeUid + 1
@@ -1182,7 +1182,7 @@ MapperDef       -- :: { (Ident,TxsDef) }
                         )
                 ;  where if $12.synExitSorts == NoExit then () else
                          error $ "\nTXS0555: "++
-                                 "Exit kind in Mapper Definition shall be `NoExit'\n"
+                                 "Exit-kind in MapperDef shall be NOEXIT\n"
                 ;  where let dbls = doubles ( map ChanId.name ($6.synChanSigs ++ $9.synChanSigs) )
                           in if null dbls then () else
                              error  $ "\nTXS0556: "++

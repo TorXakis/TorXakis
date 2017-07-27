@@ -19,7 +19,7 @@ See license.txt
 module TxsCore
 ( -- * run TorXakis core
   runTxsCore
-  
+
   -- * initialize TorXakis core
 , txsInit
 
@@ -27,7 +27,7 @@ module TxsCore
 , txsTermit
 
   -- * Mode
-  -- ** start testing 
+  -- ** start testing
 , txsSetTest
 
   -- *** test Input Action
@@ -39,7 +39,7 @@ module TxsCore
   -- *** test number of Actions
 , txsTestN
 
-  -- ** start simulating 
+  -- ** start simulating
 , txsSetSim
 
   -- *** simulate number of Actions
@@ -74,7 +74,7 @@ module TxsCore
 , txsSetSeed
 
   -- * evaluation of value expression
-, txsEval 
+, txsEval
 
   -- * Solving
   -- ** finding a solution for value expression
@@ -98,6 +98,8 @@ module TxsCore
   -- * give action to mapper
 , txsMapper
 
+  -- * test purpose for N complete coverage
+, txsNComp
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -105,40 +107,42 @@ module TxsCore
 
 where
 
-import Control.Monad
-import Control.Monad.State
-import System.Random
+import           Control.Monad
+import           Control.Monad.State
+import           System.Random
 
-import qualified Data.Set  as Set
-import qualified Data.Map  as Map
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
 
 -- import from local
-import Ioco
-import Mapper
-import Purpose
-import CoreUtils
-import Test
-import Sim
-import Step
+import           CoreUtils
+import           Ioco
+import           Mapper
+import           NComp
+import           Purpose
+import           Sim
+import           Step
+import           Test
 
+import           Config              (Config)
 import qualified Config
-import Config (Config)
 
 -- import from behave(defs)
-import qualified BTree 
 import qualified Behave
+import qualified BTree
+import           Expand              (relabel)
 
 -- import from coreenv
-import qualified EnvCore     as IOC
+import qualified EnvCore             as IOC
 import qualified EnvData
 import qualified ParamCore
 
 -- import from defs
-import qualified TxsDefs
+import qualified Sigs
 import qualified SortOf
 import qualified TxsDDefs
+import qualified TxsDefs
 import qualified TxsShow
-import qualified Sigs
 
 -- import from solve
 import qualified FreeVar
@@ -165,12 +169,15 @@ runTxsCore initConfig ctrl s0  =  do
                Map.union ParamCore.initParams SolveDefs.Params.initParams
 
 runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()
-runTxsCtrl ctrl s0  =  do 
+runTxsCtrl ctrl s0  =  do
      _ <- runStateT ctrl s0
      return ()
 
 -- | TorXakis core main api -- modus transition general
-txsInit :: TxsDefs.TxsDefs -> Sigs.Sigs TxsDefs.VarId -> ([EnvData.Msg] -> IOC.IOC ()) -> IOC.IOC ()
+txsInit :: TxsDefs.TxsDefs                  -- ^ Definitions for computations.
+        -> Sigs.Sigs TxsDefs.VarId          -- ^ Signatures needed to parse.
+        -> ([EnvData.Msg] -> IOC.IOC ())    -- ^ Handler for info, warning, and error messages.
+        -> IOC.IOC ()
 txsInit tdefs sigs putMsgs  =  do
      envc <- get
      case IOC.state envc of
@@ -186,7 +193,7 @@ txsInit tdefs sigs putMsgs  =  do
                        , EnvData.TXS_CORE_USER_INFO   "TxsCore initialized"
                        ]
                put envc {
-                 IOC.state = 
+                 IOC.state =
                      IOC.Initing { IOC.smts    = Map.singleton "current" smtEnv''
                                  , IOC.tdefs   = tdefs
                                  , IOC.sigs    = sigs
@@ -201,9 +208,9 @@ txsInit tdefs sigs putMsgs  =  do
                TxsCore.txsInit tdefs sigs putMsgs
        where mkSmtSolverCmd cfg =
                case Config.smtSolver cfg of
-                 Config.Z3 -> SMT.cmdZ3
+                 Config.Z3   -> SMT.cmdZ3
                  Config.CVC4 -> SMT.cmdCVC4
-                    
+
 -- | terminate TorXakis core
 txsTermit :: IOC.IOC ()
 txsTermit  =  do
@@ -221,6 +228,7 @@ txsTermit  =  do
                TxsCore.txsTermit
 
 -- | stop testing, simulating, or stepping.
+-- returns txscore to the initialized state.
 -- See 'txsSetTest', 'txsSetSim', and 'txsSetStep', respectively.
 txsStop :: IOC.IOC ()
 txsStop  =  do
@@ -248,25 +256,30 @@ txsGetParams  =
      IOC.getParams []
 
 -- | Get the value of the provided parameter.
-txsGetParam :: String -> IOC.IOC [(String,String)]
+txsGetParam :: String                       -- ^ name of the parameter.
+            -> IOC.IOC [(String,String)]
 txsGetParam prm  =
      IOC.getParams [prm]
 
 -- | Set the provided parameter to the provided value.
-txsSetParam :: String -> String -> IOC.IOC [(String,String)]
+txsSetParam :: String                       -- ^ name of the parameter.
+            -> String                       -- ^ new value for the parameter.
+            -> IOC.IOC [(String,String)]
 txsSetParam prm val  =
      IOC.setParams [(prm,val)]
 
 -- | Set the random seed to the provided value.
-txsSetSeed :: Int -> IOC.IOC ()
+txsSetSeed :: Int                           -- ^ new value for seed.
+           -> IOC.IOC ()
 txsSetSeed seed  =  do
      lift $ setStdGen(mkStdGen seed)
      IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_INFO $ "Seed set to " ++ show seed ]
 
 -- | Evaluate the provided value expression.
 --
---   Only possible when txscore is initialized with a model.
-txsEval :: TxsDefs.VExpr -> IOC.IOC TxsDefs.Const
+--   Only possible when txscore is initialized.
+txsEval :: TxsDefs.VExpr                    -- ^ value expression to be evaluated.
+        -> IOC.IOC TxsDefs.Const
 txsEval vexp  =  do
      envc <- get
      case IOC.state envc of
@@ -286,8 +299,9 @@ txsEval vexp  =  do
 
 -- | Find a solution for the provided Boolean value expression.
 --
---   Only possible when txscore is initialized with a model.
-txsSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
+--   Only possible when txscore is initialized.
+txsSolve :: TxsDefs.VExpr                   -- ^ value expression to solve.
+         -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsSolve vexp  =  do
      envc <- get
      case IOC.state envc of
@@ -315,12 +329,13 @@ txsSolve vexp  =  do
                      SolveDefs.UnableToSolve -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
                                                                  "unknown" ]
                                                    return Map.empty
-          
-                                                   
+
+
 -- | Find an unique solution for the provided Boolean value expression.
 --
---   Only possible when txscore is initialized with a model.
-txsUniSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
+--   Only possible when txscore is initialized.
+txsUniSolve :: TxsDefs.VExpr            -- ^ value expression to solve uniquely.
+            -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsUniSolve vexp  =  do
      envc <- get
      case IOC.state envc of
@@ -350,8 +365,9 @@ txsUniSolve vexp  =  do
 
 -- | Find a random solution for the provided Boolean value expression.
 --
---   Only possible when txscore is initialized with a model.
-txsRanSolve :: TxsDefs.VExpr -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
+--   Only possible when txscore is initialized.
+txsRanSolve :: TxsDefs.VExpr                -- ^ value expression to solve randomly.
+            -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
 txsRanSolve vexp  =  do
      envc <- get
      case IOC.state envc of
@@ -380,27 +396,24 @@ txsRanSolve vexp  =  do
                      SolveDefs.UnableToSolve -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
                                                                  "unknown" ]
                                                    return Map.empty
-          
 
--- | Start testing using the provided
--- 
---   * callback function for sending an input action to the SUT (world),
+
+-- | Start testing.
 --
---   * callback function for receiving an output action from the SUT (world),
---
---   * model definition,
---
---   * optional mapper definition, and
---
---   * optional test purpose definition.
---
---   Only possible when txscore is initialized with a model.
+--   Only possible when txscore is initialized.
 --
 -- modus transition general.
-txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
-              IOC.IOC TxsDDefs.Action ->
-              TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Maybe TxsDefs.PurpDef ->
-              IOC.IOC ()
+txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action)  -- ^ callback function for sending an input action to the SUT (world).
+                                                            --   The callback function is called with a proposed input action.
+                                                            --   When the SUT has produced an output action,
+                                                            --   the callback function must return that output action,
+                                                            --   otherwise the callback function must return the input action.
+           -> IOC.IOC TxsDDefs.Action                       -- ^ callback function for receiving an output action from the SUT (world).
+                                                            --   The callback function signals that the SUT has produced an output action.
+           -> TxsDefs.ModelDef                              -- ^ model definition.
+           -> Maybe TxsDefs.MapperDef                       -- ^ optional mapper definition.
+           -> Maybe TxsDefs.PurpDef                         -- ^ optional test purpose definition.
+           -> IOC.IOC ()
 txsSetTest putToW getFroW moddef mapdef purpdef  =  do
      envc <- get
      case IOC.state envc of
@@ -442,22 +455,24 @@ startTester :: TxsDefs.ModelDef ->
                IOC.IOC ( Maybe BTree.BTree, BTree.BTree, [(TxsDefs.GoalId,BTree.BTree)] )
 
 startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
-                 Nothing
-                 Nothing =
+            Nothing
+            Nothing  =
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
-     in do 
+     in do
        envb            <- filterEnvCtoEnvB
        (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
        writeEnvBtoEnvC envb'
        return ( maybt', [], [] )
 
 startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
-                 (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                 Nothing =
-     let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ains   = Set.fromList achins
-         ; aouts  = Set.fromList achouts
+            (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+            Nothing  =
+     let { mins  = Set.fromList minsyncs
+         ; mouts = Set.fromList moutsyncs
+         ; ains  = Set.fromList $ filter (not . Set.null)
+                       [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
+         ; aouts = Set.fromList $ filter (not . Set.null)
+                       [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
          }
       in if     mins  `Set.isSubsetOf` ains
              && mouts `Set.isSubsetOf` aouts
@@ -479,12 +494,12 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
                    return ( Nothing, [], [] )
 
 startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
-                 Nothing
-                 (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)) =
-     let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; pins   = Set.unions pinsyncs
-         ; pouts  = Set.unions poutsyncs
+            Nothing
+            (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))  =
+     let { mins   = Set.fromList minsyncs
+         ; mouts  = Set.fromList moutsyncs
+         ; pins   = Set.fromList pinsyncs
+         ; pouts  = Set.fromList poutsyncs
          }
       in if     ( (pins  == Set.empty) || (pins  == mins)  )
              && ( (pouts == Set.empty) || (pouts == mouts) )
@@ -504,14 +519,16 @@ startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                    return ( Nothing, [], [] )
 
 startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
-                 (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                 (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)) =
-     let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ains   = Set.fromList achins
-         ; aouts  = Set.fromList achouts
-         ; pins   = Set.unions pinsyncs
-         ; pouts  = Set.unions poutsyncs
+            (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+            (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))  =
+     let { mins  = Set.fromList minsyncs
+         ; mouts = Set.fromList moutsyncs
+         ; ains  = Set.fromList $ filter (not . Set.null)
+                       [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
+         ; aouts = Set.fromList $ filter (not . Set.null)
+                       [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
+         ; pins  = Set.fromList pinsyncs
+         ; pouts = Set.fromList poutsyncs
          }
       in if     ( (pins  == Set.empty) || (pins  == mins)  )
              && ( (pouts == Set.empty) || (pouts == mouts) )
@@ -536,7 +553,7 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return ( Nothing, [], [] )
 
-goalInit :: [ Set.Set TxsDefs.ChanId ] -> 
+goalInit :: [ Set.Set TxsDefs.ChanId ] ->
             (TxsDefs.GoalId,TxsDefs.BExpr) ->
             IOC.IOC [(TxsDefs.GoalId,BTree.BTree)]
 goalInit chsets (gid,bexp)  =  do
@@ -544,27 +561,25 @@ goalInit chsets (gid,bexp)  =  do
      (maypt',envb') <- lift $ runStateT (Behave.behInit chsets bexp) envb
      writeEnvBtoEnvC envb'
      return $ case maypt' of
-              { Nothing  -> []   
+              { Nothing  -> []
               ; Just pt' -> [ (gid, pt') ]
               }
-                   
--- | Start simulating using the provided
+
+-- | Start simulating.
 --
---   * callback function for sending an output action to the environment (world),
---
---   * callback function for receiving an input action from the environment (world),
---
---   * model definition, and
---
---   * optional mapper definition.
---
---   Only possible when txscore is initialized with a model.
+--   Only possible when txscore is initialized.
 --
 -- modus transition general.
-txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action) ->
-             IOC.IOC TxsDDefs.Action ->
-             TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef ->
-             IOC.IOC ()
+txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action)   -- ^callback function for sending an output action to the environment (world).
+                                                            --   The callback function is called with a proposed output action.
+                                                            --   When the environment has produced an input action,
+                                                            --   the callback function must return that input action,
+                                                            --   otherwise the callback function must return the output action.
+          -> IOC.IOC TxsDDefs.Action                        -- ^ callback function for receiving an input action from the environment (world).
+                                                            --   The callback function signals that the environment has produced an input action.
+          -> TxsDefs.ModelDef                               -- ^ model definition.
+          -> Maybe TxsDefs.MapperDef                        -- ^ optional mapper definition.
+          -> IOC.IOC ()
 txsSetSim putToW getFroW moddef mapdef  =  do
      envc <- get
      case IOC.state envc of
@@ -573,7 +588,7 @@ txsSetSim putToW getFroW moddef mapdef  =  do
        IOC.Initing smts tdefs sigs putmsgs -> do
          (maybt,mt) <- startSimulator moddef mapdef
          case maybt of
-           Nothing -> 
+           Nothing ->
              IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator start failed" ]
            Just bt -> do
              put envc {
@@ -603,7 +618,7 @@ startSimulator :: TxsDefs.ModelDef ->
                   IOC.IOC ( Maybe BTree.BTree, BTree.BTree )
 
 startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
-                Nothing =
+               Nothing  =
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
      in do
        envb            <- filterEnvCtoEnvB
@@ -611,12 +626,14 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
        writeEnvBtoEnvC envb'
        return ( maybt', [] )
 
-startSimulator (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
-                (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
-  =  let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ains   = Set.fromList achins
-         ; aouts  = Set.fromList achouts
+startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+               (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))  =
+     let { mins  = Set.fromList minsyncs
+         ; mouts = Set.fromList moutsyncs
+         ; ains  = Set.fromList $ filter (not . Set.null)
+                       [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
+         ; aouts = Set.fromList $ filter (not . Set.null)
+                       [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
          }
       in if     mouts `Set.isSubsetOf` ains
              && mins  `Set.isSubsetOf` aouts
@@ -639,10 +656,11 @@ startSimulator (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
 
 -- | Start stepping using the provided model definition.
 --
---   Only possible when txscore is initialized with a model.
+--   Only possible when txscore is initialized.
 --
 -- modus transition general.
-txsSetStep :: TxsDefs.ModelDef -> IOC.IOC ()
+txsSetStep :: TxsDefs.ModelDef              -- ^ model definition.
+           -> IOC.IOC ()
 txsSetStep moddef  =  do
      envc <- get
      case IOC.state envc of
@@ -651,7 +669,7 @@ txsSetStep moddef  =  do
        IOC.Initing { .. } -> do
             maybt <- startStepper moddef
             case maybt of
-              Nothing -> 
+              Nothing ->
                 IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper start failed" ]
               Just bt -> do
                 put envc {
@@ -689,7 +707,8 @@ startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
 --
 -- Only possible in test modus (see 'txsSetTest').
 -- Not possible with test purpose.
-txsTestIn :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
+txsTestIn :: TxsDDefs.Action                    -- ^ input action to test SUT.
+          -> IOC.IOC TxsDDefs.Verdict           -- ^ Verdict of test with provided input action.
 txsTestIn act  =  do
      envc <- get
      case IOC.state envc of
@@ -713,7 +732,7 @@ txsTestOut  =  do
        IOC.Testing { purpdef = Nothing } -> Test.testOut 1
        IOC.Testing { } -> do
          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test output with test purpose" ]
-         return $ TxsDDefs.NoVerdict
+         return TxsDDefs.NoVerdict
        _ -> do
          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
          return TxsDDefs.NoVerdict
@@ -722,8 +741,9 @@ txsTestOut  =  do
 -- core action.
 --
 -- Only possible in test modus (see 'txsSetTest').
-txsTestN :: Int -> IOC.IOC TxsDDefs.Verdict
-txsTestN depth  =  do  
+txsTestN :: Int                         -- ^ number of actions to test SUT.
+         -> IOC.IOC TxsDDefs.Verdict    -- ^ Verdict of test with provided number of actions.
+txsTestN depth  =  do
      envc <- get
      case IOC.state envc of
       IOC.Testing { }-> Test.testN depth 1
@@ -735,7 +755,8 @@ txsTestN depth  =  do
 -- core action.
 --
 -- Only possible in simulation modus (see 'txsSetSim').
-txsSimN :: Int -> IOC.IOC TxsDDefs.Verdict
+txsSimN :: Int                      -- ^ number of actions to simulate model.
+        -> IOC.IOC TxsDDefs.Verdict -- ^ Verdict of simulation with number of actions.
 txsSimN depth  =  do
      envc <- get
      case IOC.state envc of
@@ -748,11 +769,12 @@ txsSimN depth  =  do
 -- core action.
 --
 -- Only possible in stepper modus (see 'txsSetStep').
-txsStepN :: Int -> IOC.IOC TxsDDefs.Verdict
+txsStepN :: Int                                 -- ^ number of actions to step model.
+         -> IOC.IOC TxsDDefs.Verdict            -- ^ Verdict of stepping with provided number of actions.
 txsStepN depth  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Stepping {} -> do Step.stepN depth 1
+       IOC.Stepping {} -> Step.stepN depth 1
        _ -> do
          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Stepper mode" ]
          return TxsDDefs.NoVerdict
@@ -761,25 +783,20 @@ txsStepN depth  =  do
 -- core action.
 --
 -- Only possible in stepper modus (see 'txsSetStep').
-txsStepA :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
+txsStepA :: TxsDDefs.Action                         -- ^ action to step in model.
+         -> IOC.IOC TxsDDefs.Verdict                -- ^ Verdict of stepping with provided action.
 txsStepA act  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Stepping {} -> do Step.stepA act
+       IOC.Stepping {} -> Step.stepA act
        _ -> do
          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Stepper mode" ]
          return  TxsDDefs.NoVerdict
 
 -- | Show provided item.
---
--- Valid items are:
---
---     - `"tdefs"`
---     - `"state"`
---     - `"model"`
---     - `"mapper"`
---     - `"purp"`
-txsShow :: String -> IOC.IOC String
+txsShow :: String          -- ^ item to be shown. Valid items are:
+                           --     "tdefs", "state", "model", "mapper", and "purp".
+        -> IOC.IOC String
 txsShow item  =  do
      st <- gets IOC.state
      case item of
@@ -789,29 +806,29 @@ txsShow item  =  do
        "mapper" -> return $ TxsShow.fshow (IOC.mapsts st)
        "purp"   -> return $ TxsShow.fshow (IOC.purpsts st)
        _        -> do
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "nothing to be shown" ]
-         return $ "\n"
+         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown" ]
+         return "\n"
 
 -- | Go to state with the provided state number.
 -- core action.
 --
 -- Only possible in stepper modus (see 'txsSetStep').
-txsGoTo :: EnvData.StateNr -> IOC.IOC ()
+txsGoTo :: EnvData.StateNr              -- ^ state to go to.
+        -> IOC.IOC ()
 txsGoTo stateNr  =
   if  stateNr >= 0
   then do
     modStss <- gets (IOC.modstss . IOC.state)
     case Map.lookup stateNr modStss of
-       Nothing -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "no such state" ]
-       Just bt ->
+       Nothing -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "no such state" ]
+       Just _ ->
          modify $
            \env ->
              env { IOC.state =
                      (IOC.state env)
                      { IOC.curstate = stateNr }
                  }
-  else do
-    ltsBackN (-stateNr)
+  else ltsBackN (-stateNr)
   where
      ltsBackN :: Int -> IOC.IOC ()
      ltsBackN backsteps
@@ -821,7 +838,7 @@ txsGoTo stateNr  =
             let iniState = IOC.inistate st
                 curState = IOC.curstate st
                 behTrie = IOC.behtrie st
-            case [ s | (s,a,s') <- behTrie, s' == curState ] of
+            case [ s | (s, _, s') <- behTrie, s' == curState ] of
               [prev] -> do
                 modify $
                   \env ->
@@ -858,14 +875,11 @@ txsPath  =  do
            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "Path error" ]
            return []
 
--- | Returns the menu for the provided
---
---   * kind ("mod" or "purp")
---
---   * what ("all", "in", or "out"), and
---
---   * state number.
-txsMenu :: String -> String -> EnvData.StateNr -> IOC.IOC BTree.Menu
+-- | Return the menu, i.e., all possible actions.
+txsMenu :: String                               -- ^ kind (valid values are "mod" and "purp")
+        -> String                               -- ^ what (valid values are "all", "in", and "out")
+        -> EnvData.StateNr                      -- ^ state number.
+        -> IOC.IOC BTree.Menu
 txsMenu kind what stnr  =  do
      curState <- gets (IOC.curstate . IOC.state)
      let stateNr = if stnr == -1 then curState else stnr
@@ -891,7 +905,8 @@ txsMenu kind what stnr  =  do
 -- | Give the provided action to the mapper.
 --
 -- Not possible in stepper modus (see 'txsSetStep').
-txsMapper :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
+txsMapper :: TxsDDefs.Action                    -- ^ Action to be provided to mapper.
+          -> IOC.IOC TxsDDefs.Action
 txsMapper act  =  do
      envc <- get
      case IOC.state envc of
@@ -902,6 +917,48 @@ txsMapper act  =  do
                         "Mapping only allowed in Testing or Simulating mode" ]
          return act
 
+-- NComplete derivation by Petra van den Bos.
+txsNComp :: TxsDefs.ModelDef                   -- ^ model. Currently only
+                                               -- `StautDef` without data is
+                                               -- supported.
+         -> IOC.IOC (Maybe TxsDefs.PurpId)     -- ^ Derived purpose, when
+                                               -- succesful.
+txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)  =  do
+  envc <- get
+  case (IOC.state envc, bexp) of
+    ( IOC.Initing {IOC.tdefs = tdefs}
+      , TxsDefs.ProcInst procid@(TxsDefs.ProcId pnm _ _ _ _) chans []
+      ) | and [ Set.size sync == 1 | sync <- insyncs ++ outsyncs ]
+          && and [ null srts
+                 | TxsDefs.ChanId _ _ srts <- Set.toList $ Set.unions $ insyncs ++ outsyncs
+                 ]
+          && null splsyncs
+       -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
+              Just (TxsDefs.ProcDef chids [] staut@(TxsDefs.StAut _ ve _)) | Map.null ve
+                 -> do let chanmap                       = Map.fromList (zip chids chans)
+                           TxsDefs.StAut statid _ trans = Expand.relabel chanmap staut
+                       maypurp <- NComp.nComplete insyncs outsyncs statid trans
+                       case maypurp of
+                         Just purpdef -> do
+                           unid <- gets IOC.unid
+                           let purpid = TxsDefs.PurpId ("Purp_" ++ pnm) (unid + 1)
+                               tdefs' = tdefs
+                                 { TxsDefs.purpDefs = Map.insert
+                                                      purpid purpdef (TxsDefs.purpDefs tdefs)
+                                 }
+                           IOC.incUnid
+                           IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs' }
+                           return $ Just purpid
+                         _ -> return Nothing
+
+              _ -> do
+                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                "N-Complete requires a data-less STAUTDEF" ]
+                return Nothing
+    _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                          $ "N-Complete should be used after initialization, before testing, "
+                            ++ "with a STAUTDEF with data-less, singleton channels" ]
+            return Nothing
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --

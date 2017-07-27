@@ -4,60 +4,48 @@ Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
 
-
--- ----------------------------------------------------------------------------------------- --
-
+-- | TorXakis Core Environment (Internal State) Data Type Definitions.
 module EnvCore
-
--- ----------------------------------------------------------------------------------------- --
---
--- TorXakis Core Environment (Internal State) Data Type Definitions
---
--- ----------------------------------------------------------------------------------------- --
--- export
-
-( IOC             -- IOC = StateT EnvC IO
+  ( IOC -- IOC = StateT EnvC IO
                   -- torxakis core main state monad transformer
-, EnvC (..)       
-, CoreState (..)
-, getSMT          -- :: String -> IOC SMTData.SmtEnv
-, putSMT          -- :: String -> SMTData.SmtEnv -> IOC ()
-, getParams       -- :: [String] -> IOC [(String,String)]
-, setParams       -- :: [(String,String)] -> IOC [(String,String)]
-, initUnid        -- :: IOC.IOC Int
-, newUnid         -- :: IOC.IOC Int
-, putMsgs         -- :: [EnvData.Msg] -> IOC ()
-)
-
--- ----------------------------------------------------------------------------------------- --
--- import
-
+  , EnvC(..)
+  , CoreState(..)
+  , getSMT -- :: String -> IOC SMTData.SmtEnv
+  , putSMT -- :: String -> SMTData.SmtEnv -> IOC ()
+  , getParams -- :: [String] -> IOC [(String,String)]
+  , setParams -- :: [(String,String)] -> IOC [(String,String)]
+  , initUnid -- :: IOC.IOC Int
+  , newUnid -- :: IOC.IOC Int
+  , putMsgs -- :: [EnvData.Msg] -> IOC ()
+  , modifyCS
+  , incUnid
+  )
 where
 
-import Control.Monad.State hiding (state)
+import           Control.Monad.State hiding (state)
 
-import qualified Data.Map   as Map
-import qualified Data.Maybe as Maybe
+import qualified Data.Map            as Map
+import qualified Data.Maybe          as Maybe
 
 
 -- import from local
-import qualified EnvData   as EnvData
-import qualified ParamCore as ParamCore
-import Config
+import           Config
+import qualified EnvData             as EnvData
+import qualified ParamCore           as ParamCore
 
 -- import from behavedefs
-import qualified BTree     as BTree
+import qualified BTree               as BTree
 
 -- import from defs
-import qualified TxsDefs
 import qualified Sigs
+import qualified TxsDefs
 
-import qualified TxsDDefs  as TxsDDefs
-import qualified TxsShow   as TxsShow
+import qualified TxsDDefs            as TxsDDefs
+import qualified TxsShow             as TxsShow
 
 -- import from solve
-import qualified SMTData   as SMTData
- 
+import qualified SMTData             as SMTData
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- IOC :  torxakis core state monad transformer
@@ -70,15 +58,15 @@ data EnvC = EnvC
   { config :: Config           -- ^ Core configuration.
   , unid   :: Int              -- ^ Last used unique number.
   , params :: ParamCore.Params
-  , state  :: CoreState        -- ^ State specific information. 
+  , state  :: CoreState        -- ^ State specific information.
   }
 
 data CoreState = Noning
-             | Initing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                        , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
-                        , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                        } 
+             | Initing  { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                        , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
+                        , sigs    :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
+                        , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                        }
              | Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
                         , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
@@ -95,7 +83,7 @@ data CoreState = Noning
                         , mapsts    :: BTree.BTree                      -- mapper state
                         , purpsts   :: [(TxsDefs.GoalId,BTree.BTree)]   -- purpose state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                        } 
+                        }
              | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
                         , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
@@ -110,7 +98,7 @@ data CoreState = Noning
                         , modsts    :: BTree.BTree                   -- model state
                         , mapsts    :: BTree.BTree                   -- mapper state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                        } 
+                        }
              | Stepping { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
                         , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
@@ -122,7 +110,14 @@ data CoreState = Noning
                         , maxstate  :: EnvData.StateNr               -- max beh statenr
                         , modstss   :: Map.Map EnvData.StateNr BTree.BTree   -- model state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                        } 
+                        }
+
+
+modifyCS :: (CoreState -> CoreState) -> IOC ()
+modifyCS f  = modify $ \env -> env { state = f (state env) }
+
+incUnid :: IOC ()
+incUnid = modify $ \env -> env { unid = unid env + 1}
 
 -- ----------------------------------------------------------------------------------------- --
 -- SMT :  getting and setting SMT solver
@@ -152,10 +147,10 @@ putSMT smtname smtenv  =  do
   let smts' = smts st
       state' = st { smts = Map.insert smtname smtenv smts'}
   modify $ \env -> env { state = state' }
- 
+
 
 -- ----------------------------------------------------------------------------------------- --
--- Params :  getParams, setParams 
+-- Params :  getParams, setParams
 
 
 getParams :: [String] -> IOC [(String,String)]
@@ -218,6 +213,6 @@ putMsgs msg  =  do
 
 
 -- ----------------------------------------------------------------------------------------- --
--- 
+--
 -- ----------------------------------------------------------------------------------------- --
 

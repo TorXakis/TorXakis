@@ -171,6 +171,8 @@ cmdsIntpr  =  do
        "MAP"       |       IOS.isSimuled  modus  ->  cmdMap       args
        "MAP"       |       IOS.isStepped  modus  ->  cmdNoop      cmd
        "MAP"       | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
+       "NCOMP"     |       IOS.isInited   modus  ->  cmdNComp     args
+       "NCOMP"     | not $ IOS.isInited   modus  ->  cmdNoop      cmd
        _                                         ->  cmdUnknown   cmd
 
 
@@ -589,68 +591,41 @@ cmdTester args  =  do
      }
 
 
-isConsistentTester :: TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> Maybe TxsDefs.PurpDef -> TxsDefs.CnectDef ->
+isConsistentTester :: TxsDefs.ModelDef ->
+                      Maybe TxsDefs.MapperDef ->
+                      Maybe TxsDefs.PurpDef ->
+                      TxsDefs.CnectDef ->
                       Bool
 
 isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                    Nothing
-                   Nothing
+                   _
                    (TxsDefs.CnectDef cnecttype conndefs)
-  =  let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
-         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
-         }
-     in    mins   == ctows
-        && cfrows == mouts
-
-isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
-                   (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                   Nothing
-                   (TxsDefs.CnectDef cnecttype conndefs)
-  =  let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ains   = Set.fromList $ achins
-         ; aouts  = Set.fromList $ achouts
-         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
-         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+  =  let { mins   = Set.fromList minsyncs
+         ; mouts  = Set.fromList moutsyncs
+         ; ctows  = Set.fromList
+                        [ Set.singleton chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+         ; cfrows = Set.fromList
+                        [ Set.singleton chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
          } 
-      in    (mins `Set.union` cfrows) == ains
-         && aouts == (mouts `Set.union` ctows)
-
-isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
-                   Nothing
-                   (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
-                   (TxsDefs.CnectDef cnecttype conndefs)
-  =  let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; pins   = Set.unions pinsyncs
-         ; pouts  = Set.unions poutsyncs
-         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
-         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
-         } 
-      in    ( (pins  == Set.empty) || (pins  == mins)  )
-         && ( (pouts == Set.empty) || (pouts == mouts) )
-         && mins   == ctows
+      in    mins   == ctows
          && cfrows == mouts
 
 isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                    (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                   (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs pbexp))
+                   _
                    (TxsDefs.CnectDef cnecttype conndefs)
-  =  let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ains   = Set.fromList $ achins
-         ; aouts  = Set.fromList $ achouts
-         ; pins   = Set.unions pinsyncs
-         ; pouts  = Set.unions poutsyncs
-         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
-         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+  =  let { ctows  = Set.fromList
+                        [ Set.singleton chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+         ; cfrows = Set.fromList
+                        [ Set.singleton chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+         ; ains   = Set.fromList $ filter (not . Set.null)
+                        [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
+         ; aouts  = Set.fromList $ filter (not . Set.null)
+                        [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
          } 
-       in   ( (pins  == Set.empty) || (pins  == mins)  )
-         && ( (pouts == Set.empty) || (pouts == mouts) )
-         && (mins `Set.union` cfrows) == ains
-         && aouts == (mouts `Set.union` ctows)
+      in    cfrows `Set.isSubsetOf` ains
+         && ctows  `Set.isSubsetOf` aouts
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -715,26 +690,30 @@ isConsistentSimulator :: TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> TxsDefs.
 isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                       Nothing
                       (TxsDefs.CnectDef cnecttype conndefs)
-  =  let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
-         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+  =  let { mins   = Set.fromList minsyncs
+         ; mouts  = Set.fromList moutsyncs
+         ; ctows  = Set.fromList
+                        [ Set.singleton chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+         ; cfrows = Set.fromList
+                        [ Set.singleton chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
          }
-     in    mins  == cfrows
-        && ctows == mouts
+      in    mins  == cfrows 
+         && mouts == ctows 
   
 isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                       (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
                       (TxsDefs.CnectDef cnecttype conndefs)
-  =  let { mins   = Set.unions minsyncs
-         ; mouts  = Set.unions moutsyncs
-         ; ains   = Set.fromList $ achins
-         ; aouts  = Set.fromList $ achouts
-         ; ctows  = Set.fromList $ [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
-         ; cfrows = Set.fromList $ [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+  =  let { ctows  = Set.fromList
+                        [ Set.singleton chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+         ; cfrows = Set.fromList
+                        [ Set.singleton chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
+         ; ains   = Set.fromList $ filter (not . Set.null)
+                        [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
+         ; aouts  = Set.fromList $ filter (not . Set.null)
+                        [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
          }
-      in    (mouts `Set.union` cfrows) == ains
-         && aouts == (mins `Set.union` ctows)
+      in    cfrows `Set.isSubsetOf` ains
+         && ctows  `Set.isSubsetOf` aouts
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -963,6 +942,36 @@ cmdMap args  =  do
                else do act' <- lift $ TxsCore.txsMapper act
                        IFS.pack "MAP" [TxsShow.fshow act']
                        cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdNComp :: String -> IOS.IOS ()
+cmdNComp args  =  do
+     tdefs <- gets IOS.tdefs
+     case words args of
+     { [mname] -> case [ mdef
+                       | mid@(TxsDefs.ModelId nm uid, mdef) <- Map.toList
+                                                                 (TxsDefs.modelDefs tdefs)
+                       , nm == mname
+                       ] of
+                  { [mdef]
+                      -> do mayPurpId <- lift $ TxsCore.txsNComp mdef
+                            case mayPurpId of
+                            { Just purpid
+                                -> do IFS.pack "NCOMP" [ "Test Purpose generated: "
+                                                          ++ TxsShow.fshow purpid ]
+                                      cmdsIntpr
+                            ; Nothing
+                                -> do IFS.nack "NCOMP" [ "Could not generate test purpose" ]
+                                      cmdsIntpr
+                            }
+                  ; _ -> do IFS.nack "NCOMP" [ "No such MODELDEF" ]
+                            cmdsIntpr
+                  }
+     ; _       -> do IFS.nack "NCOMP" [ "Argument must be one MODELDEF name" ]
+                     cmdsIntpr
+     }
+
 
 -- ----------------------------------------------------------------------------------------- --
 --
