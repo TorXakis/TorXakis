@@ -3,7 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
-
+{-# LANGUAGE RecordWildCards #-}
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -60,50 +60,50 @@ import qualified Solve
 filterEnvCtoEnvB :: IOC.IOC IOB.EnvB
 filterEnvCtoEnvB  =  do
      envc <- get
-     case envc of
-     { IOC.Noning params unid
+     case IOC.state envc of
+     { IOC.Noning
          -> return $ IOB.EnvB { IOB.smts     = Map.empty
                               , IOB.tdefs    = TxsDefs.empty
                               , IOB.sigs     = Sigs.empty
                               , IOB.stateid  = (-1)
-                              , IOB.params   = params
-                              , IOB.unid     = unid
+                              , IOB.params   = IOC.params envc
+                              , IOB.unid     = IOC.unid envc
                               , IOB.msgs     = []
                               }
-     ; IOC.Initing smts tdefs sigs params unid putmsgs
+     ; IOC.Initing {..}
          -> return $ IOB.EnvB { IOB.smts     = smts
                               , IOB.tdefs    = tdefs
                               , IOB.sigs     = sigs
                               , IOB.stateid  = (-1)
-                              , IOB.params   = params
-                              , IOB.unid     = unid
+                              , IOB.params   = IOC.params envc
+                              , IOB.unid     = IOC.unid envc
                               , IOB.msgs     = []
                               }
-     ; IOC.Testing smts tdefs sigs _ _ _ _ _ _ inistate curstate _ _ _ params unid msgs
+     ; IOC.Testing {..}
          -> return $ IOB.EnvB { IOB.smts     = smts
                               , IOB.tdefs    = tdefs
                               , IOB.sigs     = sigs
                               , IOB.stateid  = curstate
-                              , IOB.params   = params
-                              , IOB.unid     = unid
+                              , IOB.params   = IOC.params envc
+                              , IOB.unid     = IOC.unid envc
                               , IOB.msgs     = []
                               }
-     ; IOC.Simuling smts tdefs sigs _ _ _ _ _ inistate curstate _ _ params unid msgs
+     ; IOC.Simuling {..}
          -> return $ IOB.EnvB { IOB.smts     = smts
                               , IOB.tdefs    = tdefs
                               , IOB.sigs     = sigs
                               , IOB.stateid  = curstate
-                              , IOB.params   = params
-                              , IOB.unid     = unid
+                              , IOB.params   = IOC.params envc
+                              , IOB.unid     = IOC.unid envc
                               , IOB.msgs     = []
                               }
-     ; IOC.Stepping smts tdefs sigs _ _ inistate curstate maxstate _ params unid msgs
+     ; IOC.Stepping {..}
          -> return $ IOB.EnvB { IOB.smts     = smts
                               , IOB.tdefs    = tdefs
                               , IOB.sigs     = sigs
                               , IOB.stateid  = curstate
-                              , IOB.params   = params
-                              , IOB.unid     = unid
+                              , IOB.params   = IOC.params envc
+                              , IOB.unid     = IOC.unid envc
                               , IOB.msgs     = []
                               }
      }
@@ -115,9 +115,9 @@ filterEnvCtoEnvB  =  do
 
 writeEnvBtoEnvC :: IOB.EnvB -> IOC.IOC ()
 writeEnvBtoEnvC envb  =  do
-     putMsgs <- gets IOC.putmsgs
-     putMsgs $ IOB.msgs envb
-     modify $ \env -> env { IOC.unid  = IOB.unid envb }
+  putMsgs <- gets (IOC.putmsgs . IOC.state)
+  putMsgs $ IOB.msgs envb
+  modify $ \env -> env { IOC.unid = IOB.unid envb }
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -126,7 +126,7 @@ writeEnvBtoEnvC envb  =  do
 
 isInCTOffers :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 isInCTOffers ctoffers  =  do
-     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
+     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets (IOC.modeldef . IOC.state)
      chinset  <- return $ Set.unions insyncs
      choutset <- return $ Set.unions outsyncs
      chanids  <- return $ Set.map BTree.ctchan ctoffers
@@ -137,7 +137,7 @@ isInCTOffers ctoffers  =  do
 isInAct :: TxsDDefs.Action -> IOC.IOC Bool
 
 isInAct (TxsDDefs.Act acts)  =  do
-     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
+     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets (IOC.modeldef . IOC.state)
      chinset  <- return $ Set.unions insyncs
      choutset <- return $ Set.unions outsyncs
      chanids  <- return $ Set.map fst acts
@@ -154,7 +154,7 @@ isInAct (TxsDDefs.ActQui)  =  do
 
 isOutCTOffers :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 isOutCTOffers ctoffers  =  do
-     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets IOC.modeldef
+     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets (IOC.modeldef . IOC.state)
      chinset  <- return $ Set.unions insyncs
      choutset <- return $ Set.unions outsyncs
      chanids  <- return $ Set.map BTree.ctchan ctoffers

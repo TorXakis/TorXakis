@@ -68,7 +68,7 @@ iocoModelMenu  =  do
             return $ []
      ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
             allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
-            modSts   <- gets IOC.modsts
+            modSts   <- gets (IOC.modsts . IOC.state)
             return $ Behave.behMayMenu allSyncs modSts
      }
 
@@ -97,19 +97,25 @@ iocoModelIsQui  =  do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelIsQui without valid model" ]
             return $ False
      ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
-            modSts <- gets IOC.modsts
+            modSts <- gets (IOC.modsts . IOC.state)
             return $ Behave.behRefusal modSts (Set.unions outsyncs)
      }
 
 
--- ----------------------------------------------------------------------------------------- --
--- iocoModelAfter :  do action on current btree and change environment accordingly
--- result gives success, ie. whether act can be done, if not succesful env is not changed
--- act must be a non-empty action; Act ActIn ActOut or ActQui
+iocoStep :: Int -> TxsDDefs.Action -> [BTree.BBranch] -> IOC.EnvC -> IOC.EnvC
+iocoStep curState act bt env = env { IOC.state = newState (IOC.state env)}
+  where newState st = st
+                      { IOC.behtrie = (IOC.behtrie st)
+                                   ++ [(curState, act, curState+1)]
+                      , IOC.curstate = curState + 1
+                      , IOC.modsts   = bt
+                      }
 
-
+-- | iocoModelAfter : do action on current btree and change environment
+-- accordingly result gives success, ie. whether act can be done, if not
+-- succesful env is not changed act must be a non-empty action; Act ActIn
+-- ActOut or ActQui
 iocoModelAfter :: TxsDDefs.Action -> IOC.IOC Bool
-
 iocoModelAfter act@(TxsDDefs.Act acts)  =  do
      validModel <- validModDef
      case validModel of
@@ -118,18 +124,22 @@ iocoModelAfter act@(TxsDDefs.Act acts)  =  do
             return $ False
      ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
             allSyncs       <- return $ insyncs ++ outsyncs ++ splsyncs
-            curState       <- gets IOC.curstate
-            modSts         <- gets IOC.modsts
+            curState       <- gets (IOC.curstate . IOC.state)
+            modSts         <- gets (IOC.modsts . IOC.state)
             envb           <- filterEnvCtoEnvB
             (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
             case maybt' of
             { Nothing  -> do return $ False
             ; Just bt' -> do writeEnvBtoEnvC envb'
-                             modify $ \env -> env
-                               { IOC.behtrie  = (IOC.behtrie env) ++ [(curState,act,curState+1)]
-                               , IOC.curstate = curState + 1
-                               , IOC.modsts   = bt'
-                               }
+                             let alterState env =
+                                   env { IOC.state = newState (IOC.state env)}
+                                 newState st = st
+                                   { IOC.behtrie = (IOC.behtrie st)
+                                                ++ [(curState, act, curState+1)]
+                                   , IOC.curstate = curState + 1
+                                   , IOC.modsts   = bt'
+                                   }
+                             modify $ iocoStep curState act bt'
                              return $ True
             }
      }
@@ -142,19 +152,15 @@ iocoModelAfter act@(TxsDDefs.ActQui)  =  do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelAfter without valid model" ]
             return $ False
      ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
-            curState       <- gets IOC.curstate
-            modSts         <- gets IOC.modsts
+            curState       <- gets (IOC.curstate . IOC.state)
+            modSts         <- gets (IOC.modsts . IOC.state)
             envb           <- filterEnvCtoEnvB
             (maybt',envb') <- lift $ runStateT (Behave.behAfterRef modSts (Set.unions outsyncs))
                                                envb
             case maybt' of
             { Nothing  -> do return $ False
             ; Just bt' -> do writeEnvBtoEnvC envb'
-                             modify $ \env -> env
-                               { IOC.behtrie  = (IOC.behtrie env) ++ [(curState,act,curState+1)]
-                               , IOC.curstate = curState + 1
-                               , IOC.modsts   = bt'
-                               }
+                             modify $ iocoStep curState act bt'
                              return $ True
             }
      }
@@ -165,7 +171,7 @@ iocoModelAfter act@(TxsDDefs.ActQui)  =  do
 
 validModDef :: IOC.IOC (Maybe TxsDefs.ModelDef)
 validModDef  =  do
-     envc <- get
+     envc <- gets IOC.state
      case envc of
      { IOC.Testing {IOC.modeldef = moddef} -> return $ Just moddef
      ; IOC.Simuling {IOC.modeldef = moddef} -> return $ Just moddef

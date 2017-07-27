@@ -26,6 +26,7 @@ module Main
 
 where
 
+import Data.Either -- TODO: use Validation instead
 import System.IO
 import System.Environment
 import Network
@@ -41,6 +42,7 @@ import qualified Data.Map  as Map
 
 -- import from local
 import ToProcdef
+import CmdLineParser
 
 -- import from serverenv
 import qualified EnvServer    as IOS
@@ -48,6 +50,7 @@ import qualified IfServer     as IFS
 import qualified ParamServer  as ParamServer
 
 -- import from core
+import qualified Config       as CoreConfig
 import qualified TxsCore      as TxsCore
 import qualified BuildInfo    as BuildInfo
 import qualified VersionInfo  as VersionInfo
@@ -70,39 +73,39 @@ import qualified SocketWorld as World
 -- import from value
 import qualified Eval         as Eval
 
-
--- ----------------------------------------------------------------------------------------- --
--- torxakis server main
-
-
 main :: IO ()
 main  =  withSocketsDo $ do
+  hSetBuffering stderr NoBuffering     -- alt: LineBuffering
 
-     hSetBuffering stderr NoBuffering     -- alt: LineBuffering
+  uConfig <- loadConfig
+     
+  case interpretConfig uConfig of
+    Left xs -> do
+      hPutStrLn stderr $
+        "Errors found while loading the configuration"
+      hPutStrLn stderr (show xs)
+    Right config -> do
+      let portNr = portNumber config
+      servsock       <- listenOn (PortNumber portNr)
+      (hs, host, port) <- accept servsock
+      hSetBuffering hs LineBuffering
+      hSetEncoding hs latin1
+      hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
+      let initS = IOS.envsNone
+            { IOS.host   = host
+            , IOS.portNr = portNr
+            , IOS.servhs = hs
+            }
+          coreConfig = CoreConfig.Config
+            { CoreConfig.smtSolver = (smtSolver config)
+            , CoreConfig.smtLog = (smtLog config)
+            }
+      TxsCore.runTxsCore coreConfig cmdsIntpr initS
+      threadDelay 1000000    -- 1 sec delay on closing
+      sClose servsock
+      hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
 
-     args <- getArgs
-     if  length args /= 1
-       then    hPutStrLn stderr "Usage: txsserver <portnumber>"
-       else do let portnr      = read (head args) :: Integer
-               let portid      = PortNumber (fromInteger portnr)
-               servsock       <- listenOn portid
-               (hs,host,port) <- accept servsock
-               hSetBuffering hs LineBuffering
-               hSetEncoding hs latin1
-               hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
-               TxsCore.runTxsCore cmdsIntpr ( IOS.envsNone { IOS.host   = host
-                                                           , IOS.portnr = portnr
-                                                           , IOS.servhs = hs
-                                                           }
-                                            )
-
-               threadDelay 1000000    -- 1 sec delay on closing
-               sClose servsock
-               hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
-
-
--- ----------------------------------------------------------------------------------------- --
--- torxakis server commands processing
+-- * TorXakis server commands processing
 
 cmdsIntpr :: IOS.IOS ()
 cmdsIntpr  =  do
@@ -196,7 +199,7 @@ cmdStart :: String -> IOS.IOS ()
 cmdStart _  =  do
      modify $ \env -> env { IOS.modus = IOS.Idled }
      host <- gets IOS.host
-     port <- gets IOS.portnr
+     port <- gets IOS.portNr
      IFS.pack "START" ["txsserver starting:  " ++ show host ++ " : " ++ show port]
      cmdsIntpr
 
@@ -206,7 +209,7 @@ cmdQuit :: String -> IOS.IOS ()
 cmdQuit _  =  do
      modify $ \env -> env { IOS.modus = IOS.Noned }
      host <- gets IOS.host
-     port <- gets IOS.portnr
+     port <- gets IOS.portNr
      IFS.pack "QUIT" ["txsserver closing  " ++ show host ++ " : " ++ show port]
      return ()
 
@@ -604,7 +607,7 @@ isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                         [ Set.singleton chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
          ; cfrows = Set.fromList
                         [ Set.singleton chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
-         }
+         } 
       in    mins   == ctows
          && cfrows == mouts
 
@@ -620,7 +623,7 @@ isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                         [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
          ; aouts  = Set.fromList $ filter (not . Set.null)
                         [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
-         }
+         } 
       in    cfrows `Set.isSubsetOf` ains
          && ctows  `Set.isSubsetOf` aouts
 
@@ -1019,7 +1022,61 @@ readAction chids args  =  do
              return $ TxsDDefs.Act (Set.fromList acts)
 
 
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --
+-- * Configuration related functions.
+
+data Config = Config
+  { smtSolver :: !CoreConfig.SMTSolver
+  , smtLog :: !Bool
+  , portNumber :: !PortNumber
+  }
+
+-- | Uninterpreted configuration options.
+data UnintConfig = UnintConfig
+  { mSmtSolver :: !(Maybe CoreConfig.SMTSolver)
+  , mSmtLog :: !(Maybe Bool)
+  , mPortNumber :: !(Maybe PortNumber)
+  }
+
+type Error = String
+
+-- TODO: change `Either` to `Validation`.
+interpretConfig :: CmdLineConfig -> Either [Error] Config
+interpretConfig cfg = 
+  Right $ Config
+  { smtSolver = clSmtSolver cfg
+  , smtLog = clSmtLog cfg
+  , portNumber = clPortNumber cfg
+  }
+
+-- | Load the configuration options. These options can be specified by
+-- different means:
+--
+--     1. Command line arguments.
+--     2. Configuration file.
+--     3. Environment variables.
+--
+-- The configuration options are searched in the order specified, and the first
+-- option found is used.
+--
+-- For now we only parse command line arguments.
+loadConfig :: IO CmdLineConfig
+loadConfig = parseCmdLine
+
+-- | File name to look for.
+configFileName = "txs.yaml"
+
+-- | Create a `UnintConfig` value by trying to read the configuration options
+-- given in a configuration file. The configuration file is assumed to be named
+-- as defined by the variable `configFileName`.
+--
+-- This function looks for the configuration file in the following places:
+--
+--     1. The current working directory.
+--     2. The home directory
+--
+-- The search proceeds in the order listed above, and it stops as soon as a
+-- configuration file is found.
+--
+loadConfigFromFile :: IO UnintConfig
+loadConfigFromFile = undefined
 

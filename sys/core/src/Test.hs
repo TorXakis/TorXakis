@@ -3,7 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
-
+{-# LANGUAGE RecordWildCards #-}
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -55,7 +55,7 @@ import qualified BTShow      as BTShow
 
 testIn :: TxsDDefs.Action -> Int -> IOC.IOC TxsDDefs.Verdict
 testIn act@(TxsDDefs.Act acts) step  =  do
-     putToW <- gets IOC.puttow
+     putToW <- gets (IOC.puttow . IOC.state)
      mact   <- mapperMap act                                -- map action
      mact'  <- putToW mact                                  -- try to do input on sut
      if mact == mact'
@@ -91,7 +91,7 @@ testIn TxsDDefs.ActQui step  =  do
 
 testOut :: Int -> IOC.IOC TxsDDefs.Verdict
 testOut step  =  do
-     getFroW <- gets IOC.getfrow
+     getFroW <- gets (IOC.getfrow . IOC.state)
      mact    <- getFroW                                     -- get next output or quiescence
      act     <- mapperMap mact                              -- map output to model action
      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
@@ -108,40 +108,29 @@ testOut step  =  do
 
 
 testN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
-testN depth step  =  do
-     [(parname,parval)] <- IOC.getParams ["param_ImpRel"]
-     envc               <- get
-     case (read parval, envc) of
-     { ( ParamCore.IOCO
-       , IOC.Testing _ _ _ m a Nothing _ _ _ _ _ _ _ _ _ _ _
-       ) -> do                                                            -- no test purpose --
-            testIOCO depth False step
-     ; ( ParamCore.IOCO
-       , IOC.Testing _ _ _ m a (Just (TxsDefs.PurpDef []      []       _ _))
-                     _ _ _ _ _ _ _ _ _ _ _
-       ) -> do                                      -- empty test purpose == no test purpose --
-            testIOCO depth False step
-     ; ( ParamCore.IOCO
-       , IOC.Testing _ _ _ m a (Just (TxsDefs.PurpDef []      outsyncs _ _))
-                     _ _ _ _ _ _ _ _ _ _ _
-       ) -> do                                             -- test purpose with only outputs --
-            testIOCOoutPurp depth False step
-     ; ( ParamCore.IOCO
-       , IOC.Testing _ _ _ m a (Just (TxsDefs.PurpDef insyncs []       _ _))
-                     _ _ _ _ _ _ _ _ _ _ _
-       ) -> do                                              -- test purpose with only inputs --
-            testIOCOinPurp depth False step
-     ; ( ParamCore.IOCO
-       , IOC.Testing _ _ _ m a (Just (TxsDefs.PurpDef insyncs outsyncs _ _))
-                     _ _ _ _ _ _ _ _ _ _ _
-       ) -> do                                       -- test purpose with inputs and outputs --
-            testIOCOfullPurp depth False step
-     ; ( _
-       , _
-       ) -> do                                                            -- something wrong --
-            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "testing could not start" ]
-            return $ TxsDDefs.NoVerdict
-     }
+testN depth step = do
+  [(_, parval)] <- IOC.getParams ["param_ImpRel"]
+  envc          <- get
+  case (read parval, IOC.state envc) of
+    (ParamCore.IOCO, IOC.Testing {IOC.purpdef = purpdef}) -> continue purpdef
+    (_, _) -> do  -- something went wrong --
+      IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR $ "testing could not start"]
+      return TxsDDefs.NoVerdict
+  where
+    -- No test purpose.    
+    continue Nothing =
+      testIOCO depth False step 
+    continue (Just (TxsDefs.PurpDef [] [] _ _)) =
+      testIOCO depth False step
+    -- Test purpose with only outputs.    
+    continue (Just (TxsDefs.PurpDef [] outsyncs _ _)) =
+      testIOCOoutPurp depth False step
+    -- Test purpose with only inputs.      
+    continue (Just (TxsDefs.PurpDef insyncs [] _ _)) =
+      testIOCOinPurp depth False step
+    -- Test purpose with inputs and outputs.      
+    continue (Just (TxsDefs.PurpDef insyncs outsyncs _ _)) =
+      testIOCOfullPurp depth False step
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -217,7 +206,7 @@ expected  =  do
 
 testPin :: TxsDDefs.Action -> Int -> IOC.IOC TxsDDefs.Action
 testPin act@(TxsDDefs.Act acts) step  =  do
-     putToW                      <- gets IOC.puttow
+     putToW                      <- gets (IOC.puttow . IOC.state)
      mact @(TxsDDefs.Act macts ) <- mapperMap act
      mact'@(TxsDDefs.Act macts') <- putToW mact             -- do input on sut, always
      if mact == mact'
@@ -243,14 +232,24 @@ testPin TxsDDefs.ActQui step  =  do                                   -- otherwi
 
 testPout :: Int -> IOC.IOC TxsDDefs.Action
 testPout step  =  do
-     getFroW <- gets IOC.getfrow
+     getFroW <- gets (IOC.getfrow . IOC.state)
      act     <- getFroW                                      -- get next output or quiescence
      mact    <- mapperMap act
      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                $ (TxsShow.showN step 6) ++ ":  OUT: " ++ (TxsShow.fshow mact) ]
      return $ mact
 
-
+-- TODO: Ask Jan what is the proper name for this function.
+nextState :: TxsDDefs.Action -> IOC.EnvC -> IOC.EnvC
+nextState act env =
+  env { IOC.state = newState (IOC.state env) }
+  where newState st =
+          st { IOC.behtrie = IOC.behtrie st
+                          ++ [(IOC.curstate st, act, IOC.maxstate st + 1)]
+             , IOC.curstate = IOC.maxstate st + 1
+             , IOC.maxstate = IOC.maxstate st + 1
+             }
+  
 -- ----------------------------------------------------------------------------------------- --
 -- testIOCOinPurp :  test with test puposes, only on inputs
 
@@ -335,12 +334,7 @@ testIOCOoutPurp depth lastDelta step  =  do
                              then return (False,False)
                              else purpAfter act
              if pass
-               then modify $ \env -> env
-                      { IOC.behtrie  = (IOC.behtrie env) ++
-                                       [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
-                      , IOC.curstate = (IOC.maxstate env)+1
-                      , IOC.maxstate = (IOC.maxstate env)+1
-                      }
+               then modify (nextState act)
                else return $ ()
              case (pass,hit,miss) of
              { (True ,False,False) -> do testIOCOoutPurp (depth-1) False (step+1)
@@ -357,12 +351,7 @@ testIOCOoutPurp depth lastDelta step  =  do
                  pass       <- iocoModelAfter act
                  (hit,miss) <- purpAfter act
                  if pass
-                   then modify $ \env -> env
-                          { IOC.behtrie  = (IOC.behtrie env) ++
-                                           [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
-                          , IOC.curstate = (IOC.maxstate env)+1
-                          , IOC.maxstate = (IOC.maxstate env)+1
-                          }
+                   then modify (nextState act)
                    else return $ ()
                  case (pass,hit,miss) of
                  { (True ,False,False) -> do testIOCOoutPurp (depth-1) False (step+1)
@@ -414,21 +403,16 @@ testIOCOfullPurp depth lastDelta step  =  do
              (hit,miss) <- purpAfter act
              lift $ hPutStrLn stderr $ "hit miss: " ++ (show hit) ++ (show miss)
              if pass
-               then modify $ \env -> env
-                      { IOC.behtrie  = (IOC.behtrie env) ++
-                                       [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
-                      , IOC.curstate = (IOC.maxstate env)+1
-                      , IOC.maxstate = (IOC.maxstate env)+1
-                      }
+               then modify (nextState act)
                else return $ ()
              case (pass,hit,miss) of
-             { (True ,False,False) -> do testIOCOfullPurp (depth-1) False (step+1)
-             ; (True ,_    ,_    ) -> do purpVerdict 
-                                         return $ TxsDDefs.Pass
-             ; (False,_    ,_    ) -> do purpVerdict
-                                         expected
-                                         return $ TxsDDefs.Fail act
-             }
+               { (True ,False,False) -> do testIOCOfullPurp (depth-1) False (step+1)
+               ; (True ,_    ,_    ) -> do purpVerdict 
+                                           return $ TxsDDefs.Pass
+               ; (False,_    ,_    ) -> do purpVerdict
+                                           expected
+                                           return $ TxsDDefs.Fail act
+               }
            else do
              if  (not lastDelta)
                then do                                              -- observe output
@@ -436,12 +420,7 @@ testIOCOfullPurp depth lastDelta step  =  do
                  pass       <- iocoModelAfter act
                  (hit,miss) <- purpAfter act
                  if pass
-                   then modify $ \env -> env
-                          { IOC.behtrie  = (IOC.behtrie env) ++
-                                           [ ( IOC.curstate env, act, (IOC.maxstate env)+1 ) ]
-                          , IOC.curstate = (IOC.maxstate env)+1
-                          , IOC.maxstate = (IOC.maxstate env)+1
-                          }
+                   then modify (nextState act)
                    else return $ ()
                  case (pass,hit,miss) of
                  { (True ,False,False) -> do testIOCOfullPurp (depth-1) False (step+1)
