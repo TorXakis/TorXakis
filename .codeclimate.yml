@@ -5,3 +5,4 @@ engines:
   ratings:
     paths:
       - "**.hs"
+      
