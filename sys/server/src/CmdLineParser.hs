@@ -11,24 +11,22 @@ module CmdLineParser
   )
 where
 
-import Options.Applicative
-import Data.Semigroup ((<>))
-import Data.Monoid (mempty)
+import           Data.Semigroup      ((<>))
+import           Options.Applicative
 
 -- imports from `core`
-import Config
-import Network
+import           Config
+import           Network
 
 -- | Configuration options read by the command line.
 data CmdLineConfig = CmdLineConfig
-  { clSmtSolver :: !SMTSolver
-  , clSmtLog :: !Bool
+  { clSmtSolver  :: !SMTSolver
+  , clSmtLog     :: !Bool
   , clPortNumber :: !PortNumber
   } deriving (Eq, Show)
 
 parseCmdLine :: IO CmdLineConfig
-parseCmdLine = do
-  execParser opts
+parseCmdLine = execParser opts
   where opts =
           info (optsP <**> helper)
                ( fullDesc

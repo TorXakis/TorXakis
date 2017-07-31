@@ -26,7 +26,6 @@ module Main
 
 where
 
-import Data.Either -- TODO: use Validation instead
 import System.IO
 import System.Environment
 import Network
@@ -1043,7 +1042,6 @@ data UnintConfig = UnintConfig
 
 type Error = String
 
--- TODO: change `Either` to `Validation`.
 interpretConfig :: CmdLineConfig -> Either [Error] Config
 interpretConfig cfg = 
   Right $ Config

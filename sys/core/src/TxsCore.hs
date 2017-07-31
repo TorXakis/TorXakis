@@ -3,7 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
-{-# LANGUAGE RecordWildCards #-}
+
 
 -----------------------------------------------------------------------------
 -- |
@@ -474,9 +474,9 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
      let { mins  = Set.fromList minsyncs
          ; mouts = Set.fromList moutsyncs
          ; ains  = Set.fromList $ filter (not . Set.null)
-                       [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
+                       [ sync `Set.intersection` Set.fromList achins  | sync <- asyncsets ]
          ; aouts = Set.fromList $ filter (not . Set.null)
-                       [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
+                       [ sync `Set.intersection` Set.fromList achouts | sync <- asyncsets ]
          }
       in if     mins  `Set.isSubsetOf` ains
              && mouts `Set.isSubsetOf` aouts
@@ -528,9 +528,9 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
      let { mins  = Set.fromList minsyncs
          ; mouts = Set.fromList moutsyncs
          ; ains  = Set.fromList $ filter (not . Set.null)
-                       [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
+                       [ sync `Set.intersection` Set.fromList achins  | sync <- asyncsets ]
          ; aouts = Set.fromList $ filter (not . Set.null)
-                       [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
+                       [ sync `Set.intersection` Set.fromList achouts | sync <- asyncsets ]
          ; pins  = Set.fromList pinsyncs
          ; pouts = Set.fromList poutsyncs
          }
@@ -672,7 +672,7 @@ txsSetStep :: TxsDefs.ModelDef              -- ^ model definition.
 txsSetStep moddef  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning -> do
+       IOC.Noning ->
             IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper started without model file" ]
        IOC.Initing { IOC.smts = smts
                    , IOC.tdefs = tdefs
@@ -721,13 +721,15 @@ txsTestIn :: TxsDDefs.Action                    -- ^ input action to test SUT.
 txsTestIn act  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Testing { purpdef = Nothing }    -> do (act,verdict) <- Test.testIn act 1
-                                                  return verdict
-       IOC.Testing {}                       -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test action with test purpose" ]
-                                                  return TxsDDefs.NoVerdict
-       _                                    -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
-                                                  return TxsDDefs.NoVerdict
-
+       IOC.Testing { IOC.purpdef = Nothing }  -> do
+         (act,verdict) <- Test.testIn act 1
+         return verdict
+       IOC.Testing {}                       -> do
+         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test action with test purpose" ]
+         return TxsDDefs.NoVerdict
+       _                                    -> do
+         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
+         return TxsDDefs.NoVerdict
 
 -- | Test SUT by observing output action.
 -- core action.
@@ -738,13 +740,15 @@ txsTestOut :: IOC.IOC TxsDDefs.Verdict
 txsTestOut  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Testing { purpdef = Nothing }    -> do (act,verdict) <- Test.testOut 1
-                                                  return verdict
-       IOC.Testing {}                       -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test output with test purpose" ]
-                                                  return TxsDDefs.NoVerdict
-       _                                    -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
-                                                  return TxsDDefs.NoVerdict
-
+       IOC.Testing { IOC.purpdef = Nothing }    -> do
+         (_, verdict) <- Test.testOut 1
+         return verdict
+       IOC.Testing {}                       -> do
+         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test output with test purpose" ]
+         return TxsDDefs.NoVerdict
+       _                                    -> do
+         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
+         return TxsDDefs.NoVerdict
 
 -- | Test SUT with the provided number of actions.
 -- core action.
@@ -809,9 +813,9 @@ txsShow :: String               -- ^ kind of item to be shown.
                                 --   "model", "mapper", "purp", "modeldef" <name>,
                                 --   "mapperdef" <name>, and "purpdef" <name>.
         -> IOC.IOC String
-txsShow item name  =  do
+txsShow item name  = do
      envc  <- gets IOC.state
-     tdefs <- return $ IOC.tdefs envc
+     let tdefs = IOC.tdefs envc
      case envc of
       IOC.Noning{ }
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Noning: nothing to be shown" ]
