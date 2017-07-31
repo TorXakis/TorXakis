@@ -34,6 +34,9 @@ import VarId
 import StatId
 import PurpId
 import GoalId
+import ModelId
+import MapperId
+import CnectId
 
 
 specialOpChars :: String
@@ -337,12 +340,75 @@ instance PShow Trans
 
 
 -- ----------------------------------------------------------------------------------------- --
+-- PShow: TxsDef
+
+
+instance PShow TxsDef
+  where
+    pshow (DefCstr   (CstrDef fid fids))
+      = "CONSTRUCTOR\n" ++
+        "      " ++ (pshow fid)  ++ "\n" ++
+        "      " ++ (pshow fids)  ++ "\n" ++ "\n"
+
+    pshow (DefFunc   (FuncDef vids vexp))
+      = "FUNCTION\n" ++
+        "      " ++ (pshow vids)  ++ "\n" ++
+        "  ::=\n" ++
+        "    " ++ (fshow vexp) ++ "\n"
+
+    pshow (DefProc   (ProcDef chids vids bexp))
+      = "PROCESS\n" ++
+        "      " ++ (pshow chids)  ++ "\n" ++
+        "      " ++ (pshow vids) ++ "\n" ++
+        "  ::=\n" ++
+        "    " ++ (fshow bexp) ++ "\n"
+
+    pshow (DefModel  (ModelDef insyncs outsyncs splsyncs bexp))
+      = "MODEL\n" ++
+        "      " ++ (pshow insyncs)  ++ "\n" ++
+        "      " ++ (pshow outsyncs) ++ "\n" ++
+        "      " ++ (pshow splsyncs) ++ "\n" ++
+        "  BEHAVIOUR\n" ++
+        "    " ++ (fshow bexp) ++ "\n"
+
+    pshow (DefPurp   (PurpDef insyncs outsyncs splsyncs goals))
+      = "PURPOSE\n" ++
+        "      " ++ (pshow insyncs)  ++ "\n" ++
+        "      " ++ (pshow outsyncs) ++ "\n" ++
+        "      " ++ (pshow splsyncs) ++ "\n" ++
+        "  BEHAVIOUR\n" ++
+        "    " ++ (fshow goals) ++ "\n"
+
+    pshow (DefMapper (MapperDef inchids outchids syncs bexp))
+      = "MAPPER\n" ++
+        "      " ++ (pshow inchids)  ++ "\n" ++
+        "      " ++ (pshow outchids) ++ "\n" ++
+        "      " ++ (pshow syncs) ++ "\n" ++
+        "  BEHAVIOUR\n" ++
+        "    " ++ (fshow bexp) ++ "\n"
+
+    pshow _ = "No PShow for this Definition\n"
+
+
+-- ----------------------------------------------------------------------------------------- --
 -- PShow: Ident
 
 
 instance PShow Ident
   where
-    pshow = vname
+    pshow (IdSort   id)  =  pshow id
+    pshow (IdCstr   id)  =  pshow id
+    pshow (IdFunc   id)  =  pshow id
+    pshow (IdProc   id)  =  pshow id
+    pshow (IdChan   id)  =  pshow id
+    pshow (IdVar    id)  =  pshow id
+    pshow (IdStat   id)  =  pshow id
+    pshow (IdModel  id)  =  pshow id
+    pshow (IdPurp   id)  =  pshow id
+    pshow (IdGoal   id)  =  pshow id
+    pshow (IdMapper id)  =  pshow id
+    pshow (IdCnect  id)  =  pshow id
+
 
 instance PShow ChanId
   where
@@ -379,7 +445,20 @@ instance PShow StatId
 instance PShow VarId
   where
     pshow = VarId.name
+
+instance PShow ModelId
+  where
+    pshow = ModelId.name
+
+instance PShow MapperId
+  where
+    pshow = MapperId.name
+
+instance PShow CnectId
+  where
+    pshow = CnectId.name
     
+
 -- ----------------------------------------------------------------------------------------- --
 -- ----------------------------------------------------------------------------------------- --
 

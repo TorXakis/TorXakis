@@ -812,21 +812,25 @@ cmdStep args  =  do
 
 cmdShow :: String -> IOS.IOS ()
 cmdShow args  =  do
-     envs <- get
-     txt  <- case words args of
-             {
-             ; ["tdefs"]  -> lift $ TxsCore.txsShow "tdefs"
-             ; ["state"]  -> lift $ TxsCore.txsShow "state"
-             ; ["model"]  -> lift $ TxsCore.txsShow "model"
-             ; ["mapper"] -> lift $ TxsCore.txsShow "mapper"
-             ; ["purp"]   -> lift $ TxsCore.txsShow "purp"
-             ; ["cnect"]  -> return $ let (_, _, towhdls ) = IOS.tow envs
-                                          (_, _, frowhdls) = IOS.frow envs
-                                       in TxsShow.fshow (towhdls ++ frowhdls)
-             ; ["var"]    -> return $ TxsShow.fshow (IOS.locvars envs)
-             ; ["val"]    -> return $ TxsShow.fshow (IOS.locvals envs)
-             ; _          -> return $ ""
-             }
+     envs  <- get
+     tdefs <- return $ IOS.tdefs envs
+     txt   <- case words args of
+              { ["tdefs"             ] -> lift $ TxsCore.txsShow "tdefs"     ""
+              ; ["state"    ,"nr"    ] -> lift $ TxsCore.txsShow "state"     ""
+              ; ["state"    ,"model" ] -> lift $ TxsCore.txsShow "model"     ""
+              ; ["state"    ,"mapper"] -> lift $ TxsCore.txsShow "mapper"    ""
+              ; ["state"    ,"purp"  ] -> lift $ TxsCore.txsShow "purp"      ""
+              ; ["modeldef" ,nm      ] -> lift $ TxsCore.txsShow "modeldef"  nm
+              ; ["mapperdef",nm      ] -> lift $ TxsCore.txsShow "mapperdef" nm
+              ; ["purpdef"  ,nm      ] -> lift $ TxsCore.txsShow "purpdef"   nm 
+              ; ["procdef"  ,nm      ] -> lift $ TxsCore.txsShow "procdef"   nm 
+              ; ["cnect"             ] -> return $ let (_, _, towhdls ) = IOS.tow envs
+                                                       (_, _, frowhdls) = IOS.frow envs
+                                                    in TxsShow.fshow (towhdls ++ frowhdls)
+              ; ["var"]     -> return $ TxsShow.fshow (IOS.locvars envs)
+              ; ["val"]     -> return $ TxsShow.fshow (IOS.locvals envs)
+              ; _           -> return $ ""
+              }
      case txt of
      { "" -> do IFS.nack "SHOW" ["nothing to be shown"]
                 cmdsIntpr

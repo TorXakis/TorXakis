@@ -157,12 +157,11 @@ import qualified Eval
 runTxsCore :: Config -> StateT s IOC.IOC a -> s -> IO ()
 runTxsCore initConfig ctrl s0  =  do
      _ <- runStateT (runTxsCtrl ctrl s0)
-               (IOC.EnvC { IOC.config = initConfig
+               IOC.EnvC { IOC.config = initConfig
                          , IOC.unid   = 0
                          , IOC.params = initParams
                          , IOC.state  = initState
                          }
-               )
      return ()
        where initState = IOC.Noning
              initParams =
@@ -215,7 +214,7 @@ txsInit tdefs sigs putMsgs  =  do
 txsTermit :: IOC.IOC ()
 txsTermit  =  do
      envc <- get
-     case (IOC.state envc) of
+     case IOC.state envc of
        IOC.Noning
          -> return ()
        IOC.Initing { IOC.smts = smts, IOC.putmsgs = putmsgs }
@@ -226,6 +225,7 @@ txsTermit  =  do
                put envc { IOC.state = IOC.Noning }
        _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
                TxsCore.txsTermit
+
 
 -- | stop testing, simulating, or stepping.
 -- returns txscore to the initialized state.
@@ -284,7 +284,7 @@ txsEval vexp  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
-         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'eval' without model" ]
+         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'eval' without model" ]
                return $ TxsDefs.Cerror ""
        _ -> let frees = FreeVar.freeVars vexp
             in if  not $ null frees
@@ -306,7 +306,7 @@ txsSolve vexp  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
-         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'solve' without model" ]
+         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR  "No 'solve' without model" ]
                return Map.empty
        _ -> if  SortOf.sortOf vexp /= SortOf.sortId_Bool
                  then do
@@ -340,7 +340,7 @@ txsUniSolve vexp  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
-         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'solve' without model" ]
+         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'solve' without model" ]
                return Map.empty
        _ -> if  SortOf.sortOf vexp /= SortOf.sortId_Bool
                  then do
@@ -372,7 +372,7 @@ txsRanSolve vexp  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
-         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "No 'solve' without model" ]
+         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'solve' without model" ]
                return Map.empty
        _ -> if  SortOf.sortOf vexp /= SortOf.sortId_Bool
                  then do
@@ -417,7 +417,7 @@ txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action)  -- ^ callback functi
 txsSetTest putToW getFroW moddef mapdef purpdef  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning -> do
+       IOC.Noning ->
          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester started without model file" ]
        IOC.Initing smts tdefs sigs putmsgs -> do
          (maybt,mt,gls) <- startTester moddef mapdef purpdef
@@ -713,12 +713,12 @@ txsTestIn act  =  do
      envc <- get
      case IOC.state envc of
        IOC.Testing { purpdef = Nothing}
-         -> do Test.testIn act 1
+         -> Test.testIn act 1
        IOC.Testing { }
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test action with test purpose" ]
-               return $ TxsDDefs.NoVerdict
+               return TxsDDefs.NoVerdict
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
-               return $ TxsDDefs.NoVerdict
+               return TxsDDefs.NoVerdict
 
 -- | Test SUT by observing output action.
 -- core action.
@@ -785,7 +785,7 @@ txsStepN depth  =  do
 -- Only possible in stepper modus (see 'txsSetStep').
 txsStepA :: TxsDDefs.Action                         -- ^ action to step in model.
          -> IOC.IOC TxsDDefs.Verdict                -- ^ Verdict of stepping with provided action.
-txsStepA act  =  do
+txsStepA act =  do
      envc <- get
      case IOC.state envc of
        IOC.Stepping {} -> Step.stepA act
@@ -794,20 +794,61 @@ txsStepA act  =  do
          return  TxsDDefs.NoVerdict
 
 -- | Show provided item.
-txsShow :: String          -- ^ item to be shown. Valid items are:
-                           --     "tdefs", "state", "model", "mapper", and "purp".
+txsShow :: String               -- ^ kind of item to be shown.
+        -> String               -- ^ name of item to be shown.
+                                --   Valid items are "tdefs", "state",
+                                --   "model", "mapper", "purp", "modeldef" <name>,
+                                --   "mapperdef" <name>, and "purpdef" <name>.
         -> IOC.IOC String
-txsShow item  =  do
-     st <- gets IOC.state
-     case item of
-       "tdefs"  -> return $ show (IOC.tdefs st)
-       "state"  -> return $ show (IOC.curstate st)
-       "model"  -> return $ TxsShow.fshow (IOC.modsts st)
-       "mapper" -> return $ TxsShow.fshow (IOC.mapsts st)
-       "purp"   -> return $ TxsShow.fshow (IOC.purpsts st)
-       _        -> do
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown" ]
-         return "\n"
+txsShow item name  =  do
+     envc  <- gets IOC.state
+     tdefs <- return $ IOC.tdefs envc
+     case envc of
+      IOC.Noning{ }
+         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Noning: nothing to be shown" ]
+               return "\n"
+      IOC.Initing{ }
+         -> case (item,name) of
+              ("tdefs"    ,"") -> return $ show (IOC.tdefs envc)
+              ("modeldef" ,nm) -> return $ nm2string nm TxsDefs.IdModel TxsDefs.DefModel
+                                                     (TxsDefs.modelDefs tdefs)
+              ("mapperdef",nm) -> return $ nm2string nm TxsDefs.IdMapper TxsDefs.DefMapper
+                                                     (TxsDefs.mapperDefs tdefs)
+              ("purpdef"  ,nm) -> return $ nm2string nm TxsDefs.IdPurp TxsDefs.DefPurp
+                                                     (TxsDefs.purpDefs tdefs)
+              ("procdef"  ,nm) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
+                                                     (TxsDefs.procDefs tdefs)
+              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown" ]
+                      return "\n"
+      _ -> case (item,name) of
+              ("tdefs"    ,"") -> return $ show (IOC.tdefs envc)
+              ("state"    ,"") -> return $ show (IOC.curstate envc)
+              ("model"    ,"") -> return $ TxsShow.fshow (IOC.modsts envc)
+              ("mapper"   ,"") -> return $ TxsShow.fshow (IOC.mapsts envc)
+              ("purp"     ,"") -> return $ TxsShow.fshow (IOC.purpsts envc)
+              ("modeldef" ,nm) -> return $ nm2string nm TxsDefs.IdModel TxsDefs.DefModel
+                                                     (TxsDefs.modelDefs tdefs)
+              ("mapperdef",nm) -> return $ nm2string nm TxsDefs.IdMapper TxsDefs.DefMapper
+                                                     (TxsDefs.mapperDefs tdefs)
+              ("purpdef"  ,nm) -> return $ nm2string nm TxsDefs.IdPurp TxsDefs.DefPurp
+                                                     (TxsDefs.purpDefs tdefs)
+              ("procdef"  ,nm) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
+                                                     (TxsDefs.procDefs tdefs)
+              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown" ]
+                      return "\n"
+
+  where
+     nm2string :: String
+               -> (id -> TxsDefs.Ident)
+               -> (def -> TxsDefs.TxsDef)
+               -> Map.Map id def
+               -> String
+     nm2string nm id2ident id2def iddefs =
+       let defs = [ (id2ident id, id2def def) | (id, def) <- Map.toList iddefs
+                                              , TxsDefs.name (id2ident id) == nm ]
+       in case defs of
+            [(ident,txsdef)] -> TxsShow.fshow (ident,txsdef)
+            _                -> "no (uniquely) defined item to be shown: " ++ nm ++ "\n"
 
 -- | Go to state with the provided state number.
 -- core action.
@@ -902,6 +943,7 @@ txsMenu kind what stnr  =  do
        _      -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
                     return []
 
+
 -- | Give the provided action to the mapper.
 --
 -- Not possible in stepper modus (see 'txsSetStep').
@@ -917,13 +959,13 @@ txsMapper act  =  do
                         "Mapping only allowed in Testing or Simulating mode" ]
          return act
 
--- NComplete derivation by Petra van den Bos.
+-- | NComplete derivation by Petra van den Bos.
 txsNComp :: TxsDefs.ModelDef                   -- ^ model. Currently only
                                                -- `StautDef` without data is
                                                -- supported.
          -> IOC.IOC (Maybe TxsDefs.PurpId)     -- ^ Derived purpose, when
                                                -- succesful.
-txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)  =  do
+txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
   envc <- get
   case (IOC.state envc, bexp) of
     ( IOC.Initing {IOC.tdefs = tdefs}
