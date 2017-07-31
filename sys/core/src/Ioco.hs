@@ -125,11 +125,7 @@ iocoModelAfter act@(TxsDDefs.Act acts)  =  do
             case maybt' of
             { Nothing  -> do return $ False
             ; Just bt' -> do writeEnvBtoEnvC envb'
-                             modify $ \env -> env
-                               { IOC.behtrie  = (IOC.behtrie env) ++ [(curState,act,curState+1)]
-                               , IOC.curstate = curState + 1
-                               , IOC.modsts   = bt'
-                               }
+                             modify $ \env -> env { IOC.modsts = bt' }
                              return $ True
             }
      }
@@ -150,11 +146,7 @@ iocoModelAfter act@(TxsDDefs.ActQui)  =  do
             case maybt' of
             { Nothing  -> do return $ False
             ; Just bt' -> do writeEnvBtoEnvC envb'
-                             modify $ \env -> env
-                               { IOC.behtrie  = (IOC.behtrie env) ++ [(curState,act,curState+1)]
-                               , IOC.curstate = curState + 1
-                               , IOC.modsts   = bt'
-                               }
+                             modify $ \env -> env { IOC.modsts = bt' }
                              return $ True
             }
      }

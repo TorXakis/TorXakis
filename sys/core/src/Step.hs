@@ -86,11 +86,8 @@ stepN depth step  =  do
                        ; Just bt' -> do
                               writeEnvBtoEnvC envb'
                               modify $ \env -> env
-                                { IOC.behtrie  = (IOC.behtrie env) ++ [(curState,act,nexState)]
-                                , IOC.curstate = nexState
-                                , IOC.maxstate = nexState
-                                , IOC.modstss  = Map.insert nexState bt' (IOC.modstss envc)
-                                }
+                                { IOC.modstss  = Map.insert nexState bt' (IOC.modstss envc) }
+                              nextBehTrie act
                               stepN (depth-1) (step+1)
                        }
             _ -> do
@@ -134,11 +131,8 @@ stepA act  =  do
             ; Just bt' -> do
                    writeEnvBtoEnvC envb'
                    modify $ \env -> env
-                     { IOC.behtrie  = (IOC.behtrie env) ++ [(curState,act,nexState)]
-                     , IOC.curstate = nexState
-                     , IOC.maxstate = nexState
-                     , IOC.modstss  = Map.insert nexState bt' (IOC.modstss envc)
-                     }
+                     { IOC.modstss = Map.insert nexState bt' (IOC.modstss envc) }
+                   nextBehTrie act
                    return $ TxsDDefs.Pass
             }
      ; ( _
