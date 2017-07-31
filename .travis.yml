@@ -53,10 +53,10 @@ script:
 - travis_wait 50 stack --no-terminal test --haddock --no-haddock-deps --fast --stack-yaml stack_linux.yaml
 - mkdir doc
 - cp -a /home/travis/build/TorXakis/TorXakis/.stack-work/install/x86_64-linux/lts-8.13/8.0.2/doc/all/. ./doc/
-- cd doc
-- ls
 
 deploy:
   provider: pages
   skip_cleanup: true
   github_token: $GITHUB_TOKEN
+  on:
+    branch: gh-pages
