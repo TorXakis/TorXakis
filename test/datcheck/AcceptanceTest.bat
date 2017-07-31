@@ -46,7 +46,7 @@ REM Clean project
 REM
 echo %DATE%%TIME%
 echo --- Start Clean
-stack clean
+REM stack clean
 del %PATHBIN%\*.exe
 cd test
 make clean
