@@ -215,6 +215,7 @@ txsTermit  =  do
        _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
                TxsCore.txsTermit
 
+
 -- | stop testing, simulating, or stepping.
 -- returns txscore to the initialized state.
 -- See 'txsSetTest', 'txsSetSim', and 'txsSetStep', respectively.
@@ -779,21 +780,62 @@ txsStepA act  =  do
 
 
 -- | Show provided item.
-txsShow :: String               -- ^ item to be shown.
-                                --   Valid items are 
-                                --   "tdefs", "state", "model", "mapper", and "purp".  
+txsShow :: String               -- ^ kind of item to be shown.
+        -> String               -- ^ name of item to be shown.
+                                --   Valid items are "tdefs", "state",
+                                --   "model", "mapper", "purp", "modeldef" <name>,
+                                --   "mapperdef" <name>, and "purpdef" <name>.
         -> IOC.IOC String
-txsShow item  =  do
-     envc <- get
-     case item of
-       "tdefs"  -> return $ show (IOC.tdefs envc)
-       "state"  -> return $ show (IOC.curstate envc)
-       "model"  -> return $ TxsShow.fshow (IOC.modsts envc)
-       "mapper" -> return $ TxsShow.fshow (IOC.mapsts envc)
-       "purp"   -> return $ TxsShow.fshow (IOC.purpsts envc)
-       _        -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown" ]
+txsShow item name  =  do
+     envc  <- get
+     tdefs <- return $ IOC.tdefs envc
+     case envc of
+     { IOC.Noning{ }
+         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Noning: nothing to be shown" ]
+               return "\n"
+     ; IOC.Initing{ }
+         -> case (item,name) of
+              ("tdefs"    ,"") -> return $ show (IOC.tdefs envc)
+              ("modeldef" ,nm) -> return $ nm2string nm TxsDefs.IdModel TxsDefs.DefModel
+                                                     (TxsDefs.modelDefs tdefs)
+              ("mapperdef",nm) -> return $ nm2string nm TxsDefs.IdMapper TxsDefs.DefMapper
+                                                     (TxsDefs.mapperDefs tdefs)
+              ("purpdef"  ,nm) -> return $ nm2string nm TxsDefs.IdPurp TxsDefs.DefPurp
+                                                     (TxsDefs.purpDefs tdefs)
+              ("procdef"  ,nm) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
+                                                     (TxsDefs.procDefs tdefs)
+              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown" ]
                       return "\n"
-  
+     ; _ -> case (item,name) of
+              ("tdefs"    ,"") -> return $ show (IOC.tdefs envc)
+              ("state"    ,"") -> return $ show (IOC.curstate envc)
+              ("model"    ,"") -> return $ TxsShow.fshow (IOC.modsts envc)
+              ("mapper"   ,"") -> return $ TxsShow.fshow (IOC.mapsts envc)
+              ("purp"     ,"") -> return $ TxsShow.fshow (IOC.purpsts envc)
+              ("modeldef" ,nm) -> return $ nm2string nm TxsDefs.IdModel TxsDefs.DefModel
+                                                     (TxsDefs.modelDefs tdefs)
+              ("mapperdef",nm) -> return $ nm2string nm TxsDefs.IdMapper TxsDefs.DefMapper
+                                                     (TxsDefs.mapperDefs tdefs)
+              ("purpdef"  ,nm) -> return $ nm2string nm TxsDefs.IdPurp TxsDefs.DefPurp
+                                                     (TxsDefs.purpDefs tdefs)
+              ("procdef"  ,nm) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
+                                                     (TxsDefs.procDefs tdefs)
+              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown" ]
+                      return "\n"
+     }
+
+  where
+
+     nm2string :: String -> (id -> TxsDefs.Ident) -> (def -> TxsDefs.TxsDef) -> (Map.Map id def)
+               -> String
+     nm2string nm id2ident id2def iddefs
+       =  let defs = [ (id2ident id, id2def def) | (id,def) <- Map.toList iddefs
+                                                 , TxsDefs.name (id2ident id) == nm ]
+           in case defs of
+              { [(ident,txsdef)] -> TxsShow.fshow (ident,txsdef)
+              ; _                -> "no (uniquely) defined item to be shown: " ++ nm ++ "\n"
+              }
+
 
 -- | Go to state with the provided state number.
 -- core action.
@@ -876,6 +918,7 @@ txsMenu kind what stnr  =  do
        _      -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
                     return []
 
+
 -- | Give the provided action to the mapper.
 --
 -- Not possible in stepper modus (see 'txsSetStep').
@@ -891,6 +934,7 @@ txsMapper act  =  do
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Mapping only allowed in Testing or Simulating mode" ]
                return act
+
 
 -- NComplete derivation by Petra van den Bos.
 txsNComp :: TxsDefs.ModelDef                   -- ^ model. Currently only StautDef without data is suppported.
