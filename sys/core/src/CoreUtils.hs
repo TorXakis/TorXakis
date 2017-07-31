@@ -21,7 +21,9 @@ module CoreUtils
 , isInCTOffers      -- :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 , isOutCTOffers     -- :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 , isInAct           -- :: TxsDDefs.Action -> IOC.IOC Bool
+, nextBehTrie       -- :: TxsDDefs.Action -> IOC.IOC ()
 , randMenu          -- :: BTree.Menu -> IOC.IOC (Maybe TxsDDefs.Action)
+, randPurpMenu      -- :: BTree.Menu -> [BTree.Menu] -> IOC.IOC (Maybe TxsDDefs.Action)
 , menuConjunct      -- :: BTree.Menu -> BTree.Menu -> BTree.Menu
 , menuConjuncts     -- :: [BTree.Menu] -> BTree.Menu
 )
@@ -32,6 +34,7 @@ module CoreUtils
 where
 
 import System.IO
+import System.Random
 import Control.Monad.State
 
 import qualified Data.Set  as Set
@@ -65,7 +68,7 @@ filterEnvCtoEnvB  =  do
          -> return $ IOB.EnvB { IOB.smts     = Map.empty
                               , IOB.tdefs    = TxsDefs.empty
                               , IOB.sigs     = Sigs.empty
-                              , IOB.stateid  = (-1)
+                              , IOB.stateid  = 0
                               , IOB.params   = IOC.params envc
                               , IOB.unid     = IOC.unid envc
                               , IOB.msgs     = []
@@ -74,7 +77,7 @@ filterEnvCtoEnvB  =  do
          -> return $ IOB.EnvB { IOB.smts     = smts
                               , IOB.tdefs    = tdefs
                               , IOB.sigs     = sigs
-                              , IOB.stateid  = (-1)
+                              , IOB.stateid  = 0
                               , IOB.params   = IOC.params envc
                               , IOB.unid     = IOC.unid envc
                               , IOB.msgs     = []
@@ -163,6 +166,42 @@ isOutCTOffers ctoffers  =  do
 
 
 -- ----------------------------------------------------------------------------------------- --
+-- nextBehTrie :  update behtrie and curstate
+
+
+nextBehTrie :: TxsDDefs.Action -> IOC.IOC ()
+nextBehTrie act  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Noning {} -> do return ()
+       IOC.Initing {} -> do return ()
+       IOC.Testing { IOC.behtrie = behtrie
+                   , IOC.curstate = curstate
+                   } -> do
+         IOC.modifyCS $
+           \st -> st { IOC.behtrie  = behtrie ++ [(curstate, act, curstate+1)]
+                     , IOC.curstate = curstate + 1
+                     }
+       IOC.Simuling { IOC.behtrie = behtrie
+                    , IOC.curstate = curstate
+                    } -> do
+         IOC.modifyCS $
+           \st -> st { IOC.behtrie  = behtrie ++ [(curstate, act, curstate+1)]
+                     , IOC.curstate = curstate + 1
+                     }
+       IOC.Stepping { IOC.behtrie = behtrie
+                    , IOC.curstate = curstate
+                    , IOC.maxstate = maxstate
+                    } -> do
+         IOC.modifyCS $
+           \st -> st { IOC.behtrie  = behtrie ++ [(curstate, act, maxstate+1)]
+                     , IOC.curstate = maxstate+1
+                     , IOC.maxstate = maxstate+1
+                     }
+
+
+
+-- ----------------------------------------------------------------------------------------- --
 -- randMenu :  menu randomization
                                                                                            --
 
@@ -172,21 +211,23 @@ randMenu menu  =  do
        then do
          return $ Nothing
        else do
-         ( (ctoffs, hvars, preds) : menu' ) <- lift $ Utils.randOrder menu
-         vvars <- return $ concat ( map BTree.ctchoffers (Set.toList ctoffs) )
-         ivars <- return $ vvars ++ hvars
-         let assertions = foldr Solve.add Solve.empty preds in do
-             smtEnv <- IOC.getSMT "current"
-             parammap <- gets IOC.params
-             let p = Solve.toRandParam parammap
-             (sat,smtEnv') <- lift $ runStateT (Solve.randSolve p ivars assertions) smtEnv
-             IOC.putSMT "current" smtEnv'
-             case sat of
-             { SolveDefs.Solved sol    -> do return $ Just $ TxsDDefs.Act
-                                                        (Set.map (instantCTOffer sol) ctoffs)
-             ; SolveDefs.Unsolvable    -> do randMenu menu'
-             ; SolveDefs.UnableToSolve -> do randMenu menu'
-             }
+         relem <- lift $ randomRIO (0, (length menu)-1)
+         let (ctoffs, hvars, preds) = menu !! relem
+             menu'                  = (take relem menu) ++ (drop (relem+1) menu)
+             vvars                  = concat ( map BTree.ctchoffers (Set.toList ctoffs) )
+             ivars                  = vvars ++ hvars
+             assertions             = foldr Solve.add Solve.empty preds
+         smtEnv   <- IOC.getSMT "current"
+         parammap <- gets IOC.params
+         let p = Solve.toRandParam parammap
+         (sat,smtEnv') <- lift $ runStateT (Solve.randSolve p ivars assertions) smtEnv
+         IOC.putSMT "current" smtEnv'
+         case sat of
+         { SolveDefs.Solved sol    -> do return $ Just $
+                                           TxsDDefs.Act (Set.map (instantCTOffer sol) ctoffs)
+         ; SolveDefs.Unsolvable    -> do randMenu menu'
+         ; SolveDefs.UnableToSolve -> do randMenu menu'
+         }
 
 
 instantCTOffer :: (Map.Map BTree.IVar TxsDefs.Const) -> BTree.CTOffer ->
@@ -201,6 +242,26 @@ instantIVar sol ivar
      { Nothing  -> error $ "TXS Test ranMenuIn: No value for interaction variable\n"
      ; Just wal -> wal
      }
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- combine menu with purpose menus
+
+
+randPurpMenu :: BTree.Menu -> [BTree.Menu] -> IOC.IOC (Maybe TxsDDefs.Action)
+randPurpMenu modmenu purpmenus  =  do
+     if null purpmenus
+       then do
+         return $ Nothing
+       else do
+         rpurp      <- lift $ randomRIO (0, (length purpmenus)-1)
+         purpmenu   <- return $ purpmenus !! rpurp
+         purpmenus' <- return $ (take rpurp purpmenus) ++ (drop (rpurp+1) purpmenus)
+         mayAct     <- randMenu (modmenu `menuConjunct` purpmenu)
+         case mayAct of
+         { Just act -> return $ Just act
+         ; Nothing  -> randPurpMenu modmenu purpmenus'
+         }
 
 
 -- ----------------------------------------------------------------------------------------- --

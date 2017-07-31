@@ -417,34 +417,38 @@ txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action)  -- ^ callback functi
 txsSetTest putToW getFroW moddef mapdef purpdef  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning ->
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester started without model file" ]
-       IOC.Initing smts tdefs sigs putmsgs -> do
-         (maybt,mt,gls) <- startTester moddef mapdef purpdef
-         case maybt of
-           Nothing ->
-             IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
-           Just bt -> do
-             put envc {
-               IOC.state =
-                   IOC.Testing { IOC.smts      = smts
-                               , IOC.tdefs     = tdefs
-                               , IOC.sigs      = sigs
-                               , IOC.modeldef  = moddef
-                               , IOC.mapperdef = mapdef
-                               , IOC.purpdef   = purpdef
-                               , IOC.puttow    = putToW
-                               , IOC.getfrow   = getFroW
-                               , IOC.behtrie   = []
-                               , IOC.inistate  = 0
-                               , IOC.curstate  = 0
-                               , IOC.modsts    = bt
-                               , IOC.mapsts    = mt
-                               , IOC.purpsts   = gls
-                               , IOC.putmsgs   = putmsgs
-                               }
-               }
-             IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
+       IOC.Noning {} ->
+            IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester started without model file" ]
+       IOC.Initing { IOC.smts = smts
+                   , IOC.tdefs = tdefs
+                   , IOC.sigs = sigs
+                   , IOC.putmsgs = putmsgs} -> do
+            IOC.putCS IOC.Testing { IOC.smts      = smts
+                                 , IOC.tdefs     = tdefs
+                                 , IOC.sigs      = sigs
+                                 , IOC.modeldef  = moddef
+                                 , IOC.mapperdef = mapdef
+                                 , IOC.purpdef   = purpdef
+                                 , IOC.puttow    = putToW
+                                 , IOC.getfrow   = getFroW
+                                 , IOC.behtrie   = []
+                                 , IOC.inistate  = 0
+                                 , IOC.curstate  = 0
+                                 , IOC.modsts    = []
+                                 , IOC.mapsts    = []
+                                 , IOC.purpsts   = []
+                                 , IOC.putmsgs   = putmsgs
+                                 }
+            (maybt,mt,gls) <- startTester moddef mapdef purpdef
+            case maybt of
+              Nothing ->
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
+              Just bt -> do
+                   IOC.modifyCS $ \st -> st { IOC.modsts  = bt
+                                            , IOC.mapsts  = mt
+                                            , IOC.purpsts = gls
+                                            }
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
        _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
             TxsCore.txsStop
             TxsCore.txsSetTest putToW getFroW moddef mapdef purpdef
@@ -506,7 +510,7 @@ startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
            then do let allSyncs  = minsyncs ++ moutsyncs ++ msplsyncs
                        pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
                    envb           <- filterEnvCtoEnvB
-                   (maybt',envb') <- lift $ runStateT (Behave.behInit allSyncs  mbexp) envb
+                   (maybt',envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
                    case maybt' of
                      Nothing -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
@@ -583,32 +587,36 @@ txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action)   -- ^callback functio
 txsSetSim putToW getFroW moddef mapdef  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning -> do
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator started without model file" ]
-       IOC.Initing smts tdefs sigs putmsgs -> do
-         (maybt,mt) <- startSimulator moddef mapdef
-         case maybt of
-           Nothing ->
-             IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator start failed" ]
-           Just bt -> do
-             put envc {
-               IOC.state =
-                   IOC.Simuling { IOC.smts      = smts
-                                , IOC.tdefs     = tdefs
-                                , IOC.sigs      = sigs
-                                , IOC.modeldef  = moddef
-                                , IOC.mapperdef = mapdef
-                                , IOC.puttow    = putToW
-                                , IOC.getfrow   = getFroW
-                                , IOC.behtrie   = []
-                                , IOC.inistate  = 0
-                                , IOC.curstate  = 0
-                                , IOC.modsts    = bt
-                                , IOC.mapsts    = mt
-                                , IOC.putmsgs   = putmsgs
-                                }
-               }
-             IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulator started" ]
+       IOC.Noning {} ->
+            IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator started without model file" ]
+       IOC.Initing { IOC.smts = smts
+                   , IOC.tdefs = tdefs
+                   , IOC.sigs = sigs
+                   , IOC.putmsgs = putmsgs} -> do
+            IOC.putCS IOC.Simuling { IOC.smts      = smts
+                                   , IOC.tdefs     = tdefs
+                                   , IOC.sigs      = sigs
+                                   , IOC.modeldef  = moddef
+                                   , IOC.mapperdef = mapdef
+                                   , IOC.puttow    = putToW
+                                   , IOC.getfrow   = getFroW
+                                   , IOC.behtrie   = []
+                                   , IOC.inistate  = 0
+                                   , IOC.curstate  = 0
+                                   , IOC.modsts    = []
+                                   , IOC.mapsts    = []
+                                   , IOC.putmsgs   = putmsgs
+                                   }
+            (maybt,mt) <- startSimulator moddef mapdef
+            case maybt of
+              Nothing ->
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator start failed" ]
+              Just bt -> do
+                   IOC.modifyCS $
+                     \st -> st { IOC.modsts = bt
+                               , IOC.mapsts = mt
+                               }
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulator started" ]
        _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
             TxsCore.txsStop
             TxsCore.txsSetSim putToW getFroW moddef mapdef
@@ -666,15 +674,11 @@ txsSetStep moddef  =  do
      case IOC.state envc of
        IOC.Noning -> do
             IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper started without model file" ]
-       IOC.Initing { .. } -> do
-            maybt <- startStepper moddef
-            case maybt of
-              Nothing ->
-                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper start failed" ]
-              Just bt -> do
-                put envc {
-                  IOC.state =
-                      IOC.Stepping { IOC.smts      = smts
+       IOC.Initing { IOC.smts = smts
+                   , IOC.tdefs = tdefs
+                   , IOC.sigs = sigs
+                   , IOC.putmsgs = putmsgs } -> do
+            IOC.putCS IOC.Stepping { IOC.smts      = smts
                                    , IOC.tdefs     = tdefs
                                    , IOC.sigs      = sigs
                                    , IOC.modeldef  = moddef
@@ -682,11 +686,16 @@ txsSetStep moddef  =  do
                                    , IOC.inistate  = 0
                                    , IOC.curstate  = 0
                                    , IOC.maxstate  = 0
-                                   , IOC.modstss   = Map.singleton 0 bt
+                                   , IOC.modstss   = Map.empty
                                    , IOC.putmsgs   = putmsgs
                                    }
-                  }
-                IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepper started" ]
+            maybt <- startStepper moddef
+            case maybt of
+              Nothing ->
+                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper start failed" ]
+              Just bt -> do
+                   IOC.modifyCS $ \st -> st { IOC.modstss = Map.singleton 0 bt }
+                   IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepper started" ]
        _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
             TxsCore.txsStop
             TxsCore.txsSetStep moddef
@@ -712,13 +721,13 @@ txsTestIn :: TxsDDefs.Action                    -- ^ input action to test SUT.
 txsTestIn act  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Testing { purpdef = Nothing}
-         -> Test.testIn act 1
-       IOC.Testing { }
-         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test action with test purpose" ]
-               return TxsDDefs.NoVerdict
-       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
-               return TxsDDefs.NoVerdict
+       IOC.Testing { purpdef = Nothing }    -> do (act,verdict) <- Test.testIn act 1
+                                                  return verdict
+       IOC.Testing {}                       -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test action with test purpose" ]
+                                                  return TxsDDefs.NoVerdict
+       _                                    -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
+                                                  return TxsDDefs.NoVerdict
+
 
 -- | Test SUT by observing output action.
 -- core action.
@@ -729,13 +738,13 @@ txsTestOut :: IOC.IOC TxsDDefs.Verdict
 txsTestOut  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Testing { purpdef = Nothing } -> Test.testOut 1
-       IOC.Testing { } -> do
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test output with test purpose" ]
-         return TxsDDefs.NoVerdict
-       _ -> do
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
-         return TxsDDefs.NoVerdict
+       IOC.Testing { purpdef = Nothing }    -> do (act,verdict) <- Test.testOut 1
+                                                  return verdict
+       IOC.Testing {}                       -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test output with test purpose" ]
+                                                  return TxsDDefs.NoVerdict
+       _                                    -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Tester mode" ]
+                                                  return TxsDDefs.NoVerdict
+
 
 -- | Test SUT with the provided number of actions.
 -- core action.

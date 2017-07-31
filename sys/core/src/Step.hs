@@ -53,14 +53,15 @@ stepN depth step  =  do
        then do
          return $ TxsDDefs.Pass
        else do
-         st <- gets IOC.state
-         case st of
+         envc <- get
+         case IOC.state envc of
             IOC.Stepping {..} -> do
                 let TxsDefs.ModelDef insyncs outsyncs splsyncs bexp = modeldef
                     allSyncs = insyncs ++ outsyncs ++ splsyncs
-                    curState = IOC.curstate st
-                    nexState = (IOC.maxstate st) + 1
-                    modSts   = case Map.lookup curState (IOC.modstss st) of
+                    stEnvc = IOC.state envc
+                    curState = IOC.curstate stEnvc
+                    nexState = IOC.maxstate stEnvc + 1
+                    modSts   = case Map.lookup curState (IOC.modstss stEnvc) of
                                { Nothing -> []
                                ; Just bt -> bt
                                }
@@ -85,15 +86,9 @@ stepN depth step  =  do
                               return $ TxsDDefs.Fail act
                        ; Just bt' -> do
                               writeEnvBtoEnvC envb'
-                              modify $ \env -> env {
-                                IOC.state = (IOC.state env)
-                                  { IOC.behtrie  = (IOC.behtrie . IOC.state) env
-                                                ++ [(curState, act, nexState)]
-                                  , IOC.curstate = nexState
-                                  , IOC.maxstate = nexState
-                                  , IOC.modstss  = Map.insert nexState bt' (IOC.modstss st)
-                                  }
-                                }
+                              IOC.modifyCS $ \st -> st
+                                { IOC.modstss  = Map.insert nexState bt' (IOC.modstss stEnvc) }
+                              nextBehTrie act
                               stepN (depth-1) (step+1)
                        }
             _ -> do
@@ -108,8 +103,8 @@ stepN depth step  =  do
 
 stepA :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict 
 stepA act  =  do
-     st <- gets IOC.state
-     case (act, st) of
+     envSt <- gets IOC.state
+     case (act, envSt) of
      { ( TxsDDefs.ActQui
        , _
        ) -> do
@@ -118,9 +113,9 @@ stepA act  =  do
      ; ( act@(TxsDDefs.Act acts), IOC.Stepping {..} )-> do
             let TxsDefs.ModelDef insyncs outsyncs splsyncs bexp = modeldef
                 allSyncs = insyncs ++ outsyncs ++ splsyncs
-                curState = IOC.curstate st
-                nexState = (IOC.maxstate st) + 1
-                modSts   = case Map.lookup curState (IOC.modstss st) of
+                curState = IOC.curstate envSt
+                nexState = (IOC.maxstate envSt) + 1
+                modSts   = case Map.lookup curState (IOC.modstss envSt) of
                            { Nothing -> []
                            ; Just bt -> bt
                            }
@@ -134,15 +129,9 @@ stepA act  =  do
                    return $ TxsDDefs.Fail act
             ; Just bt' -> do
                    writeEnvBtoEnvC envb'
-                   modify $ \env -> env {
-                     IOC.state = (IOC.state env) 
-                       { IOC.behtrie  = (IOC.behtrie . IOC.state) env
-                                     ++ [(curState, act, nexState)]
-                       , IOC.curstate = nexState
-                       , IOC.maxstate = nexState
-                       , IOC.modstss  = Map.insert nexState bt' (IOC.modstss st)
-                       }
-                     }
+                   IOC.modifyCS $ \st -> st
+                     { IOC.modstss = Map.insert nexState bt' (IOC.modstss envSt) }
+                   nextBehTrie act
                    return $ TxsDDefs.Pass
             }
      ; ( _

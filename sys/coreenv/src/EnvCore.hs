@@ -17,7 +17,9 @@ module EnvCore
   , initUnid -- :: IOC.IOC Int
   , newUnid -- :: IOC.IOC Int
   , putMsgs -- :: [EnvData.Msg] -> IOC ()
+  -- * Operation on core-state
   , modifyCS
+  , putCS
   , incUnid
   )
 where
@@ -115,6 +117,9 @@ data CoreState = Noning
 
 modifyCS :: (CoreState -> CoreState) -> IOC ()
 modifyCS f  = modify $ \env -> env { state = f (state env) }
+
+putCS :: CoreState -> IOC ()
+putCS newSt = modify $ \env -> env { state = newSt }
 
 incUnid :: IOC ()
 incUnid = modify $ \env -> env { unid = unid env + 1}

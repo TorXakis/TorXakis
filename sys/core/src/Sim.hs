@@ -86,6 +86,7 @@ simAfroW depth step  =  do
           IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                         $ (TxsShow.showN step 6) ++ ":  IN:  "++ (TxsShow.fshow mact) ]
           done <- iocoModelAfter mact                        -- do input in model
+          nextBehTrie mact
           if  done
             then do simA (depth-1) (step+1)                  -- continue whether done or not
             else do simA (depth-1) (step+1)                  -- (angelic)
@@ -107,6 +108,7 @@ simAtoW depth step  =  do
              IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO        -- output to world was done
                            $ (TxsShow.showN step 6) ++ ": OUT: " ++ (TxsShow.fshow act) ]
              done <- iocoModelAfter act                      -- do output in model
+             nextBehTrie act
              if  done
                then do simA (depth-1) (step+1)               -- continue
                else do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
@@ -119,6 +121,7 @@ simAtoW depth step  =  do
                  IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                                $ (TxsShow.showN step 6) ++ ":  IN:  "++ (TxsShow.fshow act) ]
                  done <- iocoModelAfter act                  -- do input in model
+                 nextBehTrie act
                  if  done
                    then do simA (depth-1) (step+1)           -- continue whether done or not
                    else do simA (depth-1) (step+1)           -- (angelic)

@@ -77,7 +77,7 @@ REM Build TorXakis
 REM
 echo %DATE%%TIME%
 echo --- Start TorXakis Install
-stack install --test --fast
+stack install --fast
 dir %PATHBIN%
 echo --- End TorXakis Install
 echo %DATE%%TIME%
@@ -89,7 +89,7 @@ echo --- Start Self Test
 echo %DATE%%TIME%
 set PATH=%PATHSTACK%;%PATHCVC4%;%PATHZ3%
 echo %PATH%
-REM stack test
+stack test --fast
 echo --- End Self Test
 echo %DATE%%TIME%
 
