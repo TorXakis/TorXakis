@@ -1,8 +1,7 @@
 engines:
- hlint:
+  hlint:
     enabled: true
  
   ratings:
     paths:
       - "**.hs"
-      
