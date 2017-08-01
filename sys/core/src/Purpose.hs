@@ -3,16 +3,16 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
-
+{-# LANGUAGE RecordWildCards #-}
 
 -- ----------------------------------------------------------------------------------------- --
 
 module Purpose
 
 -- ----------------------------------------------------------------------------------------- --
--- 
+--
 -- Test Primitives for a Test Purpose, built on Behave
--- 
+--
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
@@ -26,36 +26,36 @@ module Purpose
 -- these functions shoulds also work properly if there is no purpose
 
 -- ----------------------------------------------------------------------------------------- --
--- import 
+-- import
 
 where
 
-import System.IO
-import BTShow
+import           BTShow
+import           System.IO
 
-import Control.Monad.State
+import           Control.Monad.State
 
-import qualified Data.Set  as Set
-import qualified Data.Map  as Map
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
 
 -- import from local
-import CoreUtils
+import           CoreUtils
 
-import qualified Behave    as Behave
+import qualified Behave              as Behave
 
 -- import from behavedef
-import qualified BTree     as BTree
+import qualified BTree               as BTree
 
 -- import from coreenv
-import qualified EnvCore   as IOC
-import qualified EnvData   as EnvData
+import qualified EnvCore             as IOC
+import qualified EnvData             as EnvData
 
 -- import from defs
-import qualified TxsDefs   as TxsDefs
-import qualified TxsDDefs  as TxsDDefs
-import qualified StdTDefs  as StdTDefs
-import qualified TxsShow   as TxsShow
-import qualified Utils     as Utils
+import qualified StdTDefs            as StdTDefs
+import qualified TxsDDefs            as TxsDDefs
+import qualified TxsDefs             as TxsDefs
+import qualified TxsShow             as TxsShow
+import qualified Utils               as Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -64,25 +64,28 @@ import qualified Utils     as Utils
 -- ----------------------------------------------------------------------------------------- --
 -- goalMenu :  menu on current btree of goal with name
 
+getPurpdef :: StateT IOC.EnvC IO (Maybe TxsDefs.PurpDef)
+getPurpdef = gets (IOC.purpdef . IOC.state)
+
+getPupsts :: StateT IOC.EnvC IO  [(TxsDefs.GoalId, BTree.BTree)]
+getPupsts = gets (IOC.purpsts . IOC.state)
 
 goalMenu :: String -> IOC.IOC BTree.Menu
-goalMenu gnm  =  do
-     envc <- get
-     case envc of
-     { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
-                   _ _ _ _ _ _ _ purpsts _ _ _ -> do
-            pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
-            case [ (gid,gtree) | (gid@(TxsDefs.GoalId nm uid), gtree) <- purpsts, nm == gnm ] of
-            { [(gid,bt)] -> do return $ Behave.behMayMenu pAllSyncs bt
-            ; _          -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                             $ "no (unique) goal given" ]
-                               return []
-            }
-     ; _ -> do
-            IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "goalMenu: no test purpose given" ]
-            return $ []
-     }
-
+goalMenu gnm = do
+  envc <- get
+  case IOC.state envc of
+    IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs _)
+                , IOC.purpsts = purpsts
+                } -> do
+      let pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
+      case [ (gid, gtree) | (gid@(TxsDefs.GoalId nm _), gtree) <- purpsts, nm == gnm ] of
+        [(_, bt)] -> return $ Behave.behMayMenu pAllSyncs bt
+        _ -> do
+          IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given"]
+          return []
+    _ -> do
+      IOC.putMsgs [EnvData.TXS_CORE_USER_ERROR "goalMenu: no test purpose given"]
+      return []
 
 -- ----------------------------------------------------------------------------------------- --
 -- purpMenuIn :  menu of input actions of test purpose
@@ -91,27 +94,28 @@ goalMenu gnm  =  do
 purpMenusIn :: IOC.IOC [BTree.Menu]
 purpMenusIn  =  do
      envc <- get
-     case envc of
-     { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
-                   _ _ _ _ _ _ _ purpsts _ _ _ | not $ null pinsyncs -> do
+     case IOC.state envc of
+       IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)
+                   , IOC.purpsts = purpsts
+                   }
+         | not $ null pinsyncs -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             mapM goalMenuIn [ (gid,btree) | (gid,btree) <- purpsts
                                           , not $ isHit  pAllSyncs btree
                                           , not $ isMiss pAllSyncs btree
                                           , not $ isHalt btree
                                           ]
-     ; _ -> do   -- 
+       _ -> do   -- 
             -- IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "purpMenuIn incorrectly used" ]
             return []
-     }
-
 
 goalMenuIn :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC BTree.Menu
 goalMenuIn (gid,btree)  =  do
      envc <- get
-     case envc of
-     { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
-                   _ _ _ _ _ _ _ purpsts _ _ _ -> do
+     case IOC.state envc of
+     { IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)
+                   , IOC.purpsts = purpsts
+                   } -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             chins     <- return $ Set.unions pinsyncs
             return $ [ (ctoffs, hvars, preds)
@@ -132,9 +136,10 @@ purpAfter :: TxsDDefs.Action -> IOC.IOC Bool                                -- p
 purpAfter act  =  do
      envc  <- get
      isInp <- isInAct act
-     case envc of
-     { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
-                   _ _ _ _ _ _ _ purpsts _ _ _ -> do
+     case IOC.state envc of
+     { IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)
+                   , IOC.purpsts = purpsts
+                   } -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             case (isInp,pinsyncs,poutsyncs) of
             { ( _   , [], []) -> do return $ False
@@ -151,7 +156,7 @@ purpAfter act  =  do
                                                      | (gid,btree) <- purpsts
                                                      , gid `notElem` (map fst aftGoals)
                                                      ]
-                   modify $ \envc -> envc { IOC.purpsts = newGoals }
+                   IOC.modifyCS $ \st -> st { IOC.purpsts = newGoals }
                    return $ null aftGoals
             }
      ; _ -> do
@@ -159,31 +164,31 @@ purpAfter act  =  do
             return $ True
      }
 
-
 goalAfter :: [Set.Set TxsDefs.ChanId] -> [Set.Set TxsDefs.ChanId] -> TxsDDefs.Action ->
              (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC (TxsDefs.GoalId,BTree.BTree)
 
-goalAfter allsyncs outsyncs (TxsDDefs.Act acts) (gid,btree)  =  do 
+goalAfter allsyncs outsyncs (TxsDDefs.Act acts) (gid,btree)  =  do
      envb           <- filterEnvCtoEnvB
-     (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allsyncs btree acts) envb
+     (maybt',envb') <- lift $
+       runStateT (Behave.behAfterAct allsyncs btree acts) envb
      writeEnvBtoEnvC envb'
      case maybt' of
-     { Nothing  -> do return $ (gid,[])
-     ; Just bt' -> do return $ (gid,bt')
-     }
-
+      Nothing  -> do return $ (gid,[])
+      Just bt' -> do return $ (gid,bt')
 goalAfter allsyncs outsyncs (TxsDDefs.ActQui) (gid,btree)  =  do
-     qacts          <- return $ Set.singleton (StdTDefs.chanId_Qstep,[])
+     qacts          <- return $ Set.singleton (StdTDefs.chanId_Qstep, [])
      envb           <- filterEnvCtoEnvB
-     (maybt1,envb1) <- lift $ runStateT (Behave.behAfterRef btree (Set.unions outsyncs)) envb
-     (maybt2,envb2) <- lift $ runStateT (Behave.behAfterAct allsyncs btree qacts) envb1
+     (maybt1,envb1) <- lift $
+       runStateT (Behave.behAfterRef btree (Set.unions outsyncs)) envb
+     (maybt2,envb2) <- lift $
+       runStateT (Behave.behAfterAct allsyncs btree qacts) envb1
      writeEnvBtoEnvC envb2
      case (maybt1,maybt2) of
-     { (Nothing ,Nothing ) -> do return $ (gid,[])
-     ; (Just bt1,Nothing ) -> do return $ (gid,bt1)
-     ; (Nothing ,Just bt2) -> do return $ (gid,bt2)
-     ; (Just bt1,Just bt2) -> do return $ (gid,bt1++bt2)
-     }
+      (Nothing ,Nothing ) -> do return $ (gid,[])
+      (Just bt1,Nothing ) -> do return $ (gid,bt1)
+      (Nothing ,Just bt2) -> do return $ (gid,bt2)
+      (Just bt1,Just bt2) -> do return $ (gid,bt1++bt2)
+
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -191,23 +196,22 @@ goalAfter allsyncs outsyncs (TxsDDefs.ActQui) (gid,btree)  =  do
 
 
 purpVerdict :: IOC.IOC ()
-purpVerdict  =  do
-     envc <- get
-     case envc of
-     { IOC.Testing _ _ _ modeldef mapperdef purpdef _ _ _ _ _ _ _ purpsts _ _ _ -> do
-            mapM_ goalVerdict purpsts
-     ; _ -> do
-            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "purpVerdict incorrectly used" ]
-            return $ ()
-     }
-
+purpVerdict = do
+  envc <- get
+  case IOC.state envc of
+    IOC.Testing {IOC.purpsts = purpsts} -> do
+      mapM_ goalVerdict purpsts
+    _ -> do
+      IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "purpVerdict incorrectly used"]
+      return ()
 
 goalVerdict :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC ()
 goalVerdict (gid,btree)  =  do
      envc <- get
-     case envc of
-     { IOC.Testing _ _ _ mdef adef (Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals))
-                   _ _ _ _ _ _ _ purpsts _ _ _ -> do
+     case IOC.state envc of
+     { IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)
+                   , IOC.purpsts = purpsts
+                   }  -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                         $ "Goal " ++ (TxsShow.fshow gid) ++ ": " ++
@@ -228,8 +232,6 @@ goalVerdict (gid,btree)  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 --  hit, miss
-
-
 isHit :: [ Set.Set TxsDefs.ChanId ] -> BTree.BTree -> Bool
 isHit allsyncs btree
   =  let menu = Behave.behMayMenu allsyncs btree
@@ -243,11 +245,5 @@ isMiss allsyncs btree
       in StdTDefs.chanId_Miss `Set.member` chanids
 
 isHalt :: BTree.BTree -> Bool
-isHalt btree
-  =  null btree
-
-
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --
+isHalt btree = null btree
 

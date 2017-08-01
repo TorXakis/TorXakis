@@ -3,7 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
-
+{-# LANGUAGE RecordWildCards #-}
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -48,19 +48,18 @@ simN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simN depth step  =  do
      envc <- get
      [(parname,parval)] <- IOC.getParams ["param_InputCompletion"]
-     case (read parval, envc) of
+     case (read parval, IOC.state envc) of
         { ( ParamCore.ANGELIC
-          , IOC.Simuling _ _ _ (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)
-                         mapperdef _ _ _ _ _ _ _ _ _ _
+          , IOC.Simuling {..}
           ) -> do
-                   simA depth step
+            simA depth step
 --      ;  ParamCore.DEMONIC  -> do simD depth step
 --      ;  ParamCore.BUFFERED -> do simB depth step
         ; ( _
           , _
           ) -> do
-                    IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "Incorrect start of simulation" ]
-                    return TxsDDefs.NoVerdict
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "Incorrect start of simulation" ]
+            return TxsDDefs.NoVerdict
         }
 
 -- ----------------------------------------------------------------------------------------- --
@@ -79,7 +78,7 @@ simA depth step  =  do
 
 simAfroW :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simAfroW depth step  =  do
-     getFroW <- gets IOC.getfrow
+     getFroW <- gets (IOC.getfrow . IOC.state)
      act     <- getFroW                                      -- get next output or quiescence
      mact    <- mapperMap act                                -- apply mapper
      case mact of
@@ -98,7 +97,7 @@ simAfroW depth step  =  do
 
 simAtoW :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simAtoW depth step  =  do
-     putToW  <- gets IOC.puttow
+     putToW  <- gets (IOC.puttow . IOC.state)
      mayAct  <- ranMenuOut
      case mayAct of
      { Just act -> do                                        -- proposed real output or qui

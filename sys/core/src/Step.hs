@@ -3,7 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
-
+{-# LANGUAGE RecordWildCards #-}
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -54,13 +54,14 @@ stepN depth step  =  do
          return $ TxsDDefs.Pass
        else do
          envc <- get
-         case envc of
-            IOC.Stepping _ _ _ (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)
-                        _ _ _ _ _ _ _ _ -> do
-                let allSyncs = insyncs ++ outsyncs ++ splsyncs
-                    curState = IOC.curstate envc
-                    nexState = (IOC.maxstate envc) + 1
-                    modSts   = case Map.lookup curState (IOC.modstss envc) of
+         case IOC.state envc of
+            IOC.Stepping {..} -> do
+                let TxsDefs.ModelDef insyncs outsyncs splsyncs bexp = modeldef
+                    allSyncs = insyncs ++ outsyncs ++ splsyncs
+                    stEnvc = IOC.state envc
+                    curState = IOC.curstate stEnvc
+                    nexState = IOC.maxstate stEnvc + 1
+                    modSts   = case Map.lookup curState (IOC.modstss stEnvc) of
                                { Nothing -> []
                                ; Just bt -> bt
                                }
@@ -85,8 +86,8 @@ stepN depth step  =  do
                               return $ TxsDDefs.Fail act
                        ; Just bt' -> do
                               writeEnvBtoEnvC envb'
-                              modify $ \env -> env
-                                { IOC.modstss  = Map.insert nexState bt' (IOC.modstss envc) }
+                              IOC.modifyCS $ \st -> st
+                                { IOC.modstss  = Map.insert nexState bt' (IOC.modstss stEnvc) }
                               nextBehTrie act
                               stepN (depth-1) (step+1)
                        }
@@ -102,21 +103,19 @@ stepN depth step  =  do
 
 stepA :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict 
 stepA act  =  do
-     envc <- get
-     case (act,envc) of
+     envSt <- gets IOC.state
+     case (act, envSt) of
      { ( TxsDDefs.ActQui
        , _
        ) -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "no stepping with quiescence" ]
             return $ TxsDDefs.Fail TxsDDefs.ActQui
-     ; ( act@(TxsDDefs.Act acts)
-       , IOC.Stepping _ _ _ (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)
-                      _ _ _ _ _ _ _ _
-       ) -> do
-            let allSyncs = insyncs ++ outsyncs ++ splsyncs
-                curState = IOC.curstate envc
-                nexState = (IOC.maxstate envc) + 1
-                modSts   = case Map.lookup curState (IOC.modstss envc) of
+     ; ( act@(TxsDDefs.Act acts), IOC.Stepping {..} )-> do
+            let TxsDefs.ModelDef insyncs outsyncs splsyncs bexp = modeldef
+                allSyncs = insyncs ++ outsyncs ++ splsyncs
+                curState = IOC.curstate envSt
+                nexState = (IOC.maxstate envSt) + 1
+                modSts   = case Map.lookup curState (IOC.modstss envSt) of
                            { Nothing -> []
                            ; Just bt -> bt
                            }
@@ -130,8 +129,8 @@ stepA act  =  do
                    return $ TxsDDefs.Fail act
             ; Just bt' -> do
                    writeEnvBtoEnvC envb'
-                   modify $ \env -> env
-                     { IOC.modstss = Map.insert nexState bt' (IOC.modstss envc) }
+                   IOC.modifyCS $ \st -> st
+                     { IOC.modstss = Map.insert nexState bt' (IOC.modstss envSt) }
                    nextBehTrie act
                    return $ TxsDDefs.Pass
             }

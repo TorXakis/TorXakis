@@ -44,9 +44,9 @@ cd %~dp0\..\..
 REM
 REM Clean project
 REM
-echo --- Start Clean
 echo %DATE%%TIME%
-stack clean
+echo --- Start Clean
+REM stack clean
 del %PATHBIN%\*.exe
 cd test
 make clean
@@ -56,8 +56,8 @@ echo %DATE%%TIME%
 REM
 REM test Copyright
 REM
-echo --- Start TestCopyright
 echo %DATE%%TIME%
+echo --- Start TestCopyright
 make testCopyright
 echo --- End TestCopyright
 echo %DATE%%TIME%
@@ -75,11 +75,11 @@ echo %DATE%%TIME%
 REM
 REM Build TorXakis
 REM
-echo --- Start TorXakis Build
 echo %DATE%%TIME%
-stack build
+echo --- Start TorXakis Install
+stack install --fast
 dir %PATHBIN%
-echo --- End TorXakis Build
+echo --- End TorXakis Install
 echo %DATE%%TIME%
 
 REM
@@ -89,15 +89,15 @@ echo --- Start Self Test
 echo %DATE%%TIME%
 set PATH=%PATHSTACK%;%PATHCVC4%;%PATHZ3%
 echo %PATH%
-stack test
+stack test --fast
 echo --- End Self Test
 echo %DATE%%TIME%
 
 REM
 REM Run TorXakis Tests
 REM
-echo --- Start TestExamps
 echo %DATE%%TIME%
+echo --- Start TestExamps
 set PATH=%PATHSYSTEM%;%PATHSCRIPT%;%PATHBIN%;%PATHCVC4%;%PATHZ3%;%PATHJAVA%
 echo %PATH%
 call test\bin\TestExamps.bat %cd%
