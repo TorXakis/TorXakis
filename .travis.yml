@@ -52,7 +52,7 @@ script:
 # Build the package, its tests, and its docs and run the tests
 - travis_wait 50 stack --no-terminal test --haddock --no-haddock-deps --fast --stack-yaml stack_linux.yaml
 after_success:
-- if [ $TRAVIS_BRANCH == "feat/autoDeployDocs" ]; then
+- if [ $TRAVIS_BRANCH == "develop" ]; then
     rm *.log;
     rm *.zip;
     ./updateAndPushGhPages.sh;
