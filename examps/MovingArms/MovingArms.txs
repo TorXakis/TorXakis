@@ -1,3 +1,9 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
 PROCDEF stoppedMin [ Up, Down, Stop, Min, Max ] ( ) ::=
         Up >-> movingUp [ Up, Down, Stop, Min, Max ] ( )
     ##
