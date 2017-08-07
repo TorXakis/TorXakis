@@ -44,7 +44,7 @@ public class DatChecker {
         System.out.println("Checking development acceptance test output for file " + args[0]);
         doCheck(fileContents);
         System.out.println("Checking finished");
-        if (DebugWriter != null){
+        if (DebugWriter != null) {
             DebugWriter.close();
         }
     }
@@ -136,15 +136,6 @@ public class DatChecker {
             }
         }
         debug("EOF.");
-
-//        String[] searchStrings = {
-//                "^" + prefixTestStart,
-//                "^TXS >>  TorXakis :: Model-Based Testing$",
-//                "^TXS >>  " + expectedResult,
-//                "^TXS >>  TorXakis :: Model-Based Testing  << End$",
-//                "^------- End " + testName + "$"
-//        };
-//        String[] testResultLines = fetchInOrder(fileContents, i, );
     }
 
     private static Boolean getExpectedTestResult(String testName) {
@@ -154,19 +145,21 @@ public class DatChecker {
     }
 
     private static String checkTestBuild(List<String> fileContents) {
-        return findPatternOnly(fileContents
-                , "^--- Start Test Java$"
-                , "^javac -sourcepath "
-                , "^--- End Test Java$"
+        return findInOrder(fileContents,
+                new String[]{
+                        "^--- Start Test Java$",
+                        "^javac -sourcepath ",
+                        "^--- End Test Java$"
+                }
         );
     }
 
     private static String checkTorxakisBuild(List<String> fileContents) {
         String[] searchStrings = {
-                "^--- Start TorXakis Build$",
+                "^--- Start TorXakis Install$",
                 "txsserver.exe$",
                 "txsui.exe$",
-                "^--- End TorXakis Build$"
+                "^--- End TorXakis Install$"
         };
         return findInOrder(fileContents, searchStrings);
     }
