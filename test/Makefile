@@ -32,7 +32,7 @@ test : $(patsubst %.java,%.class, $(JAVASUTFILES)) $(patsubst %.java,%.class, $(
 
 .PHONY      : testCopyright
 testCopyright : $(TSTDIR)/copyright/Copyright.class
-	java -cp copyright Copyright .
+	java -cp copyright Copyright ..
 
 #######################################################################
 .PHONY      : clean
