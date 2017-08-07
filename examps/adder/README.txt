@@ -1,6 +1,6 @@
 TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
-See license.txt
+See LICENSE at root directory of this repository.
 
 
 =======================================================================
@@ -136,4 +136,3 @@ usage:  # To observe the behaviour of model,
         TXS >> help              # TorXakis help for more possibilities
 
 =======================================================================
-
