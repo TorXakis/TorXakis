@@ -12,7 +12,7 @@ SET TEST=%1\test\%REL%
 echo ------- Start CustomersOrders Test
 echo %DATE%%TIME%
 start /min java -cp %EXAMPS% CustomersOrders
-call %TORXAKIS% %EXAMPS%\CustomersOrders.txs < %TEST%\CustomersOrders.txscmd
+call %TORXAKIS% %EXAMPS%\CustomersOrders.txs < %TEST%\CustomersOrders_Tester.txscmd
 TIMEOUT /T 2 /NOBREAK
 move /Y testTrace.log testTrace.Spec.CustomersOrders.Sut.CustomersOrders.log
 echo ------- End CustomersOrders Test
