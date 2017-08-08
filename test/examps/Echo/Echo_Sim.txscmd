@@ -1,4 +1,4 @@
 simulator Model Sim
-sim 10
+sim 16
 trace txs $> testTrace.log
 exit
