@@ -16,19 +16,19 @@ echo TEST %TEST%
 
 
 echo ------- Start ReadWrite Stepper Test
-call %TORXAKIS% %EXAMPS%\ReadWrite.txs < %TEST%\ReadWrite_Step.txscmd
+call %TORXAKIS% %EXAMPS%\ReadWrite.txs < %TEST%\ReadWrite_Stepper.txscmd
 TIMEOUT /T 4 /NOBREAK
-move /Y testTrace.log testTrace.Spec.ReadWrite.Sut.ReadWrite_Step.log
+move /Y testTrace.log testTrace.Spec.ReadWrite.Sut.ReadWrite_Stepper.log
 echo ------- End ReadWrite Stepper Test
 
 echo ------- Start ReadWrite7 Stepper Test
-call %TORXAKIS% %EXAMPS%\ReadWrite.txs < %TEST%\ReadWrite7_Step.txscmd
+call %TORXAKIS% %EXAMPS%\ReadWrite.txs < %TEST%\ReadWrite7_Stepper.txscmd
 TIMEOUT /T 4 /NOBREAK
-move /Y testTrace.log testTrace.Spec.ReadWrite.Sut.ReadWrite7_Step.log
+move /Y testTrace.log testTrace.Spec.ReadWrite.Sut.ReadWrite7_Stepper.log
 echo ------- End ReadWrite7 Stepper Test
 
 echo ------- Start ReadWriteAdvanced Stepper Test
-call %TORXAKIS% %EXAMPS%\ReadWriteAdvanced.txs < %TEST%\ReadWrite_Step.txscmd
+call %TORXAKIS% %EXAMPS%\ReadWriteAdvanced.txs < %TEST%\ReadWrite_Stepper.txscmd
 TIMEOUT /T 4 /NOBREAK
-move /Y testTrace.log testTrace.Spec.ReadWriteAdvanced.Sut.ReadWrite_Step.log
+move /Y testTrace.log testTrace.Spec.ReadWriteAdvanced.Sut.ReadWrite_Stepper.log
 echo ------- End ReadWriteAdvanced Stepper Test
