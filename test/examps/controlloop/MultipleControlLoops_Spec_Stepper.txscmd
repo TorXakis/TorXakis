@@ -1,4 +1,4 @@
-stepper SpecProduce
-step 5
+stepper Spec
+step 30
 trace txs $> testTrace.log
 exit

@@ -13,13 +13,16 @@ SET TEST=%1\test\examps\LuckyPeople
 
 echo ------- Start LuckyPeople Test 1
 start /min java -cp %ASSIGN% LuckyPeople
-call %TORXAKISPORT% %PORT% %SOL%\LuckyPeople.txs < %TEST%\LuckyPeopleExamples.txscmd
+call %TORXAKISPORT% %PORT% %SOL%\LuckyPeople.txs < %TEST%\LuckyPeopleExamples_Tester.txscmd
 TIMEOUT /T 4 /NOBREAK
 move /Y .txs.%PORT%.err.log Examples.txs.%PORT%.err.log
+move /Y testTraceExamples.log testTrace.Spec.LuckyPeopleExamples.Sut.LuckyPeople.log
 echo ------- End LuckyPeople Test 1
+
 echo ------- Start LuckyPeople Test 2
 start /min java -cp %ASSIGN% LuckyPeople
-call %TORXAKISPORT% %PORT% %SOL%\LuckyPeople.txs < %TEST%\LuckyPeopleRandom.txscmd
+call %TORXAKISPORT% %PORT% %SOL%\LuckyPeople.txs < %TEST%\LuckyPeopleRandom_Tester.txscmd
 TIMEOUT /T 4 /NOBREAK
 move /Y .txs.%PORT%.err.log Random.txs.%PORT%.err.log
+move /Y testTraceRandom.log testTrace.Spec.LuckyPeopleRandom.Sut.LuckyPeople.log
 echo ------- End LuckyPeople Test 2
