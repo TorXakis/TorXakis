@@ -1,5 +1,6 @@
 -- | Integration test utilities.
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
 module Sqatt
   ( TxsExample(..)
   , checkSMTSolvers
@@ -11,6 +12,7 @@ module Sqatt
 where
 
 import           Control.Exception
+import           Control.Monad.Except
 import           Data.Foldable
 import           Data.Monoid
 import           Data.Text
@@ -19,6 +21,7 @@ import           Filesystem.Path.CurrentOS
 import           Prelude                   hiding (FilePath)
 import           System.Info
 import           Test.Hspec
+import           Turtle
 import           Turtle.Prelude
 
 -- | A description of a TorXakis example.
@@ -36,7 +39,7 @@ data TxsExample = TxsExample
 
 
 data CompiledSut = JavaCompiledSut
-  { mainClass    :: String
+  { mainClass    :: Text
   , cpSearchPath :: Maybe FilePath -- ^ Class search path. If omitted no `-cp`
                                    --   option will be passed to the `java`
                                    --   command.
@@ -83,43 +86,71 @@ checkCommand cmd = do
 checkCompilers :: IO ()
 checkCompilers = traverse_ checkCommand [javaCmd, javacCmd]
 
-compileExample :: TxsExample -> IO (Either Text RunnableExample)
-compileExample example =
-  case sutSourceFile example of
-    Nothing     ->
-      return $ Right $ StandaloneExample example
-    Just sourcePath ->
-      case extension sourcePath of
-        Just "java" -> do
-          case toText sourcePath of
-            Right textPath -> do
-              cd $ ".." </> ".."
-              currDir <- pwd
-              print currDir
-              proc javacCmd [textPath] mempty
-              print "Compile me!"
-              undefined
-            Left approx -> do
-              return $ Left $ "Could not decode path: " <> approx
-        Just ext    ->
-          return $ Left $
-            "Compiler not found for extension " <> ext
+compileSut :: FilePath -> Test CompiledSut
+compileSut sourcePath =
+  case extension sourcePath of
+    Just "java" ->
+      compileJavaSut sourcePath
+    _    -> do
+      path <- decodePath sourcePath
+      throwError $ UnsupportedLanguage $
+        "Compiler not found for file " <> path
 
-runExample :: RunnableExample -> IO ()
-runExample = undefined
+decodePath :: FilePath -> Test Text
+decodePath filePath =
+  case toText filePath of
+    Right path ->
+      return path
+    Left apprPath ->
+      throwError $ FilePathError $
+        "Cannot decode " <> apprPath <> " properly"
 
-data SqattException = CompileError Text | ProgramNotFound Text | UnsupportedLanguage Text
-  deriving Show
+compileJavaSut :: FilePath -> Test CompiledSut
+compileJavaSut sourcePath = do
+  path <- decodePath sourcePath
+  exitCode <- proc javacCmd [path] mempty
+  case exitCode of
+    ExitFailure code ->
+      throwError $ CompileError $
+        "Java compilation command failed with code: " <> (pack . show) code
+    ExitSuccess -> do
+      mClass <- decodePath $ basename sourcePath
+      let sPath = directory sourcePath
+      return $ JavaCompiledSut mClass (Just sPath)
 
-instance Exception SqattException
+newtype Test a = Test { runTest :: ExceptT SqattError IO a }
+  deriving (Functor, Monad, Applicative, MonadError SqattError, MonadIO)
+
+mkTest :: RunnableExample -> Test ()
+mkTest (ExampleWithSut ex cmpSut) = undefined
+
+execTest :: TxsExample -> IO (Either SqattError ())
+execTest ex = runExceptT $ runTest $ do
+  runnableExample <- getRunnableExample ex
+  mkTest runnableExample
+  where getRunnableExample ex =
+          case sutSourceFile ex of
+            Nothing ->
+              return (StandaloneExample ex)
+            Just sourcePath -> do
+              cmpSut <- compileSut sourcePath
+              return (ExampleWithSut ex cmpSut)
+
+data SqattError = CompileError Text
+                | ProgramNotFound Text
+                | UnsupportedLanguage Text
+                | FilePathError Text
+  deriving (Show, Eq)
+
+instance Exception SqattError
 
 -- TODO: do we need to return a Spec at all? Maybe to use the `it` function...
 testExample :: TxsExample -> Spec
 testExample ex = it (exampleName ex) $ do
-  res <- compileExample ex
-  case res of
-    Left err  -> throwIO $ CompileError err
-    Right cEx -> runExample cEx
+  res <- execTest ex
+  res `shouldBe` Right ()
 
 testExamples :: [TxsExample] -> Spec
-testExamples = traverse_ testExample
+testExamples examples  = do
+  beforeAll (cd $ ".." </> "..")
+            (traverse_ testExample examples)
