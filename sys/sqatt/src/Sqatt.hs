@@ -12,9 +12,11 @@ where
 
 import           Control.Exception
 import           Data.Foldable
+import           Data.Monoid
 import           Data.Text
 import           Filesystem.Path
-import           Prelude           hiding (FilePath)
+import           Filesystem.Path.CurrentOS
+import           Prelude                   hiding (FilePath)
 import           System.Info
 import           Test.Hspec
 import           Turtle.Prelude
@@ -36,15 +38,16 @@ data TxsExample = TxsExample
 data CompiledSut = JavaCompiledSut
   { mainClass    :: String
   , cpSearchPath :: Maybe FilePath -- ^ Class search path. If omitted no `-cp`
-                                   -- option will be passed to the `java`
-                                   -- command.
+                                   --   option will be passed to the `java`
+                                   --   command.
   }
 
 -- | An processed example, ready to be run.
 --
 -- Currently the only processing that takes place is the compilation of the
 -- SUT, if any.
-data CompiledExample = CompiledExample TxsExample (Maybe CompiledSut)
+data RunnableExample = ExampleWithSut TxsExample CompiledSut
+                     | StandaloneExample TxsExample
 
 data ExampleResult = Pass | Fail
 
@@ -57,21 +60,21 @@ checkSMTSolvers = do
   print "         First issue #47 needs to be resolved."
   print "See: https://github.com/TorXakis/TorXakis/issues/47"
 
-exeSuffix :: Text
-exeSuffix = if os == "mingw32" then "exe" else mempty
+addExeSuffix :: Text -> Text
+addExeSuffix path = if os == "mingw32" then path <> ".exe" else path
 
-javaCmd :: FilePath
-javaCmd = "java" <.> exeSuffix
+javaCmd :: Text
+javaCmd = addExeSuffix "java"
 
-javacCmd :: FilePath
-javacCmd = "javac" <.> exeSuffix
+javacCmd :: Text
+javacCmd = addExeSuffix "javac"
 
 -- | Check that the given command exists in the search path of the host system.
-checkCommand :: FilePath -> IO ()
+checkCommand :: Text -> IO ()
 checkCommand cmd = do
-  path <- which cmd
+  path <- which (fromText cmd)
   case path of
-    Nothing -> throwIO $ ProgramNotFound (show cmd)
+    Nothing -> throwIO $ ProgramNotFound (pack (show cmd))
     _       -> return ()
 
 -- | Check that all the compilers are installed.
@@ -80,13 +83,32 @@ checkCommand cmd = do
 checkCompilers :: IO ()
 checkCompilers = traverse_ checkCommand [javaCmd, javacCmd]
 
-compileExample :: TxsExample -> IO (Either String CompiledExample)
-compileExample = undefined
+compileExample :: TxsExample -> IO (Either Text RunnableExample)
+compileExample example =
+  case sutSourceFile example of
+    Nothing     ->
+      return $ Right $ StandaloneExample example
+    Just sourcePath ->
+      case extension sourcePath of
+        Just "java" -> do
+          case toText sourcePath of
+            Right textPath -> do
+              cd $ ".." </> ".."
+              currDir <- pwd
+              print currDir
+              proc javacCmd [textPath] mempty
+              print "Compile me!"
+              undefined
+            Left approx -> do
+              return $ Left $ "Could not decode path: " <> approx
+        Just ext    ->
+          return $ Left $
+            "Compiler not found for extension " <> ext
 
-runExample :: CompiledExample -> IO ()
+runExample :: RunnableExample -> IO ()
 runExample = undefined
 
-data SqattException = CompileError String | ProgramNotFound String
+data SqattException = CompileError Text | ProgramNotFound Text | UnsupportedLanguage Text
   deriving Show
 
 instance Exception SqattException
