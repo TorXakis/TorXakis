@@ -83,10 +83,10 @@ txsServerCmd = addExeSuffix "txsserver"
 txsUICmd :: Text
 txsUICmd = addExeSuffix "txsui"
 
-txsUIPassMsg :: Line
+txsUIPassMsg :: Text
 txsUIPassMsg = "TXS >>  PASS"
 
-txsUIFailMsg :: Line
+txsUIFailMsg :: Text
 txsUIFailMsg = "TXS >>  FAIL"
 
 -- | Check that the given command exists in the search path of the host system.
@@ -138,21 +138,6 @@ compileJavaSut sourcePath = do
 newtype Test a = Test { runTest :: ExceptT SqattError IO a }
   deriving (Functor, Monad, Applicative, MonadError SqattError, MonadIO)
 
--- Some test to see how to call torxakis and the sut
-runexample1 :: IO Bool
-runexample1 = do
-  res <- sutProc `race` txsServerProc `race` txsUIProc
-  return $ Prelude.and (rights [res])
-  where sutProc =
-          proc javaCmd ["-cp", example1cp, "StimulusResponse"] mempty
-        txsUIProc =
-          Turtle.fold (inproc "txsui.exe" ["5000", inputModel] (input cmdsFile))
-                      (elem "TXS >>  PASS")
-        txsServerProc = proc "txsserver.exe" ["5000"] mempty
-        inputModel = "..\\..\\examps\\stimulusresponse\\StimulusResponse.txs"
-        example1cp = "..\\..\\examps\\stimulusresponse"
-        cmdsFile = "..\\examps\\stimulusresponse\\StimulusResponse.txscmd"
-
 getCPOpts :: Maybe FilePath -> Test [Text]
 getCPOpts Nothing   = return []
 getCPOpts (Just fp) = (("-cp":) . pure) <$> decodePath fp
@@ -161,31 +146,25 @@ mkTest :: RunnableExample -> Test ()
 mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP)) = do
   inputModelF <- decodePath (txsModelFile ex)
   cpOpts <- getCPOpts cpSP
-  res <- liftIO $ (sutProc cpOpts) `race` txsServerProc `race` (txsUIProc inputModelF)
+  port <- repr <$> liftIO getFreePort
+  res <- liftIO $
+    sutProc cpOpts `race` txsServerProc port `race` txsUIProc inputModelF port
+  liftIO $ print $ show res
   unless (Prelude.and (rights [res])) (throwError err)
   where
     sutProc cpOpts =
       proc javaCmd (cpOpts <> [mClass]) mempty
     cmdsFile = txsCommandsFile ex
-    txsUIProc imf =
-      Turtle.fold (inproc txsUICmd ["5000", imf] (input cmdsFile))
-                  (elem . expectedMsg . expectedResult $ ex)
+    txsUIProc imf port =
+      Turtle.fold (inproc txsUICmd [port, imf] (input cmdsFile))
+                  (Control.Foldl.any (isInfixOf searchStr . lineToText))
+    searchStr = expectedMsg . expectedResult $ ex
     err = TestExpectationError $
-              format ("Did not get expected result"%s)
+              format ("Did not get expected result "%s)
                      (repr . expectedResult $ ex)
     expectedMsg Fail = txsUIFailMsg
     expectedMsg Pass = txsUIPassMsg
-    txsServerProc = proc txsServerCmd ["5000"] mempty
-
-  -- Run TorXakis: txsserver.exe and txsui
-
-  --
-  -- inproc txui [portNr] input (txsCommandsFile ex)
-
-  -- start /min torxakisServer.bat %PORTNR%
-  -- txsui <portnumber> [input file(s)]
-
-  -- Run the SUT
+    txsServerProc port = proc txsServerCmd [port] mempty
 
 -- | Get a free port number.
 getFreePort :: IO Integer

@@ -14,7 +14,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Examples.StimulusResponse
+  exposed-modules:     Examples.All
+                     , Examples.StimulusResponse
                      , Sqatt
   build-depends:       base >= 4.7 && < 5
                      , hspec
@@ -31,7 +32,7 @@ test-suite qa-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  other-modules:       Examples.StimulusResponseSpec
+  other-modules:       Examples.AllSpec
   build-depends:       base
                      , sqatt
                      , hspec
