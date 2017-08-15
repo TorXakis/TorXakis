@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Examples.StimulusResponse (examples) where
+module Examples.StimulusResponse (test1, examples) where
 
 import           Filesystem.Path
 import           Sqatt

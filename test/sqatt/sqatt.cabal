@@ -23,6 +23,7 @@ library
                      , text
                      , mtl
                      , network
+                     , async
   default-language:    Haskell2010
 
 test-suite qa-test

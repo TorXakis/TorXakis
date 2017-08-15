@@ -11,6 +11,7 @@ module Sqatt
   )
 where
 
+import           Control.Concurrent.Async
 import           Control.Exception
 import           Control.Monad.Except
 import           Data.Foldable
@@ -36,7 +37,7 @@ data TxsExample = TxsExample
                                       --   this record is `Nothing` then the example is assumed to
                                       --   be autonomous (only TorXakis will be run)
   , expectedResult  :: ExampleResult  -- ^ Example's expected result.
-  }
+  } deriving (Show)
 
 
 data CompiledSut = JavaCompiledSut
@@ -53,7 +54,7 @@ data CompiledSut = JavaCompiledSut
 data RunnableExample = ExampleWithSut TxsExample CompiledSut
                      | StandaloneExample TxsExample
 
-data ExampleResult = Pass | Fail
+data ExampleResult = Pass | Fail deriving (Show)
 
 -- | Check that all the supported SMT solvers are installed.
 --
@@ -122,9 +123,30 @@ compileJavaSut sourcePath = do
 newtype Test a = Test { runTest :: ExceptT SqattError IO a }
   deriving (Functor, Monad, Applicative, MonadError SqattError, MonadIO)
 
+
+
+
+-- Some test to see how to call torxakis and the sut
+runexample1 :: IO ()
+runexample1 = do
+  sutProc `race_` txsServerProc `race_` txsUIProc
+  where sutProc = proc javaCmd ["-cp", example1cp, "StimulusResponse"] mempty
+        txsUIProc = sh (inproc "txsui.exe" ["5000", inputModel] (input cmdsFile))
+        txsServerProc = sh (inproc "txsserver.exe" ["5000"] mempty)
+        inputModel = "..\\..\\examps\\stimulusresponse\\StimulusResponse.txs"
+        example1cp = "..\\..\\examps\\stimulusresponse"
+        cmdsFile = "..\\examps\\stimulusresponse\\StimulusResponse.txscmd"
+
 mkTest :: RunnableExample -> Test ()
 mkTest (ExampleWithSut ex cmpSut) = undefined
   -- Run TorXakis: txsserver.exe and txsui
+
+  --
+  -- inproc txui [portNr] input (txsCommandsFile ex)
+
+  -- start /min torxakisServer.bat %PORTNR%
+  -- txsui <portnumber> [input file(s)]
+
   -- Run the SUT
 
 -- | Get a free port number.
