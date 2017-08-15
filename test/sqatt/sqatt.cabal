@@ -22,6 +22,7 @@ library
                      , system-filepath
                      , text
                      , mtl
+                     , network
   default-language:    Haskell2010
 
 test-suite qa-test

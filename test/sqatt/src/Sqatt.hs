@@ -18,6 +18,7 @@ import           Data.Monoid
 import           Data.Text
 import           Filesystem.Path
 import           Filesystem.Path.CurrentOS
+import           Network.Socket
 import           Prelude                   hiding (FilePath)
 import           System.Info
 import           Test.Hspec
@@ -123,6 +124,17 @@ newtype Test a = Test { runTest :: ExceptT SqattError IO a }
 
 mkTest :: RunnableExample -> Test ()
 mkTest (ExampleWithSut ex cmpSut) = undefined
+  -- Run TorXakis: txsserver.exe and txsui
+  -- Run the SUT
+
+-- | Get a free port number.
+getFreePort :: IO Integer
+getFreePort = do
+  sock <- socket AF_INET Stream defaultProtocol
+  bind sock (SockAddrInet aNY_PORT iNADDR_ANY)
+  port <- socketPort  sock
+  close sock
+  return (toInteger port)
 
 execTest :: TxsExample -> IO (Either SqattError ())
 execTest ex = runExceptT $ runTest $ do
