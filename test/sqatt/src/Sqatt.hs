@@ -13,17 +13,20 @@ where
 
 import           Control.Concurrent.Async
 import           Control.Exception
+import           Control.Foldl
 import           Control.Monad.Except
-import           Data.Foldable
+import           Data.Either
+import           Data.Foldable             hiding (elem)
 import           Data.Monoid
 import           Data.Text
 import           Filesystem.Path
 import           Filesystem.Path.CurrentOS
 import           Network.Socket
-import           Prelude                   hiding (FilePath)
+import           Prelude                   hiding (FilePath, elem)
 import           System.Info
 import           Test.Hspec
 import           Turtle
+import           Turtle.Format
 import           Turtle.Prelude
 
 -- | A description of a TorXakis example.
@@ -54,7 +57,7 @@ data CompiledSut = JavaCompiledSut
 data RunnableExample = ExampleWithSut TxsExample CompiledSut
                      | StandaloneExample TxsExample
 
-data ExampleResult = Pass | Fail deriving (Show)
+data ExampleResult = Pass | Fail deriving (Show, Eq)
 
 -- | Check that all the supported SMT solvers are installed.
 --
@@ -73,6 +76,18 @@ javaCmd = addExeSuffix "java"
 
 javacCmd :: Text
 javacCmd = addExeSuffix "javac"
+
+txsServerCmd :: Text
+txsServerCmd = addExeSuffix "txsserver"
+
+txsUICmd :: Text
+txsUICmd = addExeSuffix "txsui"
+
+txsUIPassMsg :: Line
+txsUIPassMsg = "TXS >>  PASS"
+
+txsUIFailMsg :: Line
+txsUIFailMsg = "TXS >>  FAIL"
 
 -- | Check that the given command exists in the search path of the host system.
 checkCommand :: Text -> IO ()
@@ -123,22 +138,45 @@ compileJavaSut sourcePath = do
 newtype Test a = Test { runTest :: ExceptT SqattError IO a }
   deriving (Functor, Monad, Applicative, MonadError SqattError, MonadIO)
 
-
-
-
 -- Some test to see how to call torxakis and the sut
-runexample1 :: IO ()
+runexample1 :: IO Bool
 runexample1 = do
-  sutProc `race_` txsServerProc `race_` txsUIProc
-  where sutProc = proc javaCmd ["-cp", example1cp, "StimulusResponse"] mempty
-        txsUIProc = sh (inproc "txsui.exe" ["5000", inputModel] (input cmdsFile))
-        txsServerProc = sh (inproc "txsserver.exe" ["5000"] mempty)
+  res <- sutProc `race` txsServerProc `race` txsUIProc
+  return $ Prelude.and (rights [res])
+  where sutProc =
+          proc javaCmd ["-cp", example1cp, "StimulusResponse"] mempty
+        txsUIProc =
+          Turtle.fold (inproc "txsui.exe" ["5000", inputModel] (input cmdsFile))
+                      (elem "TXS >>  PASS")
+        txsServerProc = proc "txsserver.exe" ["5000"] mempty
         inputModel = "..\\..\\examps\\stimulusresponse\\StimulusResponse.txs"
         example1cp = "..\\..\\examps\\stimulusresponse"
         cmdsFile = "..\\examps\\stimulusresponse\\StimulusResponse.txscmd"
 
+getCPOpts :: Maybe FilePath -> Test [Text]
+getCPOpts Nothing   = return []
+getCPOpts (Just fp) = (("-cp":) . pure) <$> decodePath fp
+
 mkTest :: RunnableExample -> Test ()
-mkTest (ExampleWithSut ex cmpSut) = undefined
+mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP)) = do
+  inputModelF <- decodePath (txsModelFile ex)
+  cpOpts <- getCPOpts cpSP
+  res <- liftIO $ (sutProc cpOpts) `race` txsServerProc `race` (txsUIProc inputModelF)
+  unless (Prelude.and (rights [res])) (throwError err)
+  where
+    sutProc cpOpts =
+      proc javaCmd (cpOpts <> [mClass]) mempty
+    cmdsFile = txsCommandsFile ex
+    txsUIProc imf =
+      Turtle.fold (inproc txsUICmd ["5000", imf] (input cmdsFile))
+                  (elem . expectedMsg . expectedResult $ ex)
+    err = TestExpectationError $
+              format ("Did not get expected result"%s)
+                     (repr . expectedResult $ ex)
+    expectedMsg Fail = txsUIFailMsg
+    expectedMsg Pass = txsUIPassMsg
+    txsServerProc = proc txsServerCmd ["5000"] mempty
+
   -- Run TorXakis: txsserver.exe and txsui
 
   --
@@ -174,6 +212,7 @@ data SqattError = CompileError Text
                 | ProgramNotFound Text
                 | UnsupportedLanguage Text
                 | FilePathError Text
+                | TestExpectationError Text
   deriving (Show, Eq)
 
 instance Exception SqattError
