@@ -10,5 +10,4 @@ import qualified Examples.StimulusResponse as StimulusResponse
 import           Sqatt
 
 allExamples :: [TxsExampleSet]
---allExamples = [StimulusResponse.exampleSet, Echo.exampleSet]
-allExamples = [StimulusResponse.exampleSet]
+allExamples = [StimulusResponse.exampleSet, Echo.exampleSet]

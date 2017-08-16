@@ -258,10 +258,7 @@ testExample ex = it (exampleName ex) $ do
 
 -- | Test a list of examples.
 testExamples :: [TxsExample] -> Spec
-testExamples examples =
-  beforeAll
-    (cd $ ".." </> "..")
-    (traverse_ testExample examples)
+testExamples examples = traverse_ testExample examples
 
 -- | Test an example set.
 testExampleSet :: TxsExampleSet -> Spec
