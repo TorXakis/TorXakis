@@ -5,8 +5,10 @@ module Examples.All
   )
 where
 
+import qualified Examples.Echo             as Echo
 import qualified Examples.StimulusResponse as StimulusResponse
 import           Sqatt
 
 allExamples :: [TxsExampleSet]
+--allExamples = [StimulusResponse.exampleSet, Echo.exampleSet]
 allExamples = [StimulusResponse.exampleSet]

@@ -5,7 +5,7 @@ REM See LICENSE at root directory of this repository.
 @ECHO OFF
 SET TORXAKIS=torxakis.bat
 SET TORXAKISPORT=torxakisport.bat
-SET REL=examps\echo
+SET REL=examps\Echo
 SET EXAMPS=%1\%REL%
 SET TEST=%1\test\%REL%
 

@@ -8,7 +8,7 @@ import           Prelude         hiding (FilePath)
 import           Sqatt
 
 exampDir :: FilePath
-exampDir = "stimulusresponse"
+exampDir = "StimulusResponse"
 
 stimulusResponseName :: Text
 stimulusResponseName = "StimulusResponse"

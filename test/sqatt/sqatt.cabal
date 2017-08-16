@@ -17,6 +17,7 @@ library
   exposed-modules:     Examples.All
                      , Examples.Paths
                      , Examples.StimulusResponse
+                     , Examples.Echo
                      , Sqatt
   build-depends:       base >= 4.7 && < 5
                      , hspec
@@ -35,6 +36,7 @@ test-suite qa-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       Examples.AllSpec
+                     , Examples.EchoSpec
   build-depends:       base
                      , sqatt
                      , hspec
