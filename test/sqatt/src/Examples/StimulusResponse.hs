@@ -1,49 +1,109 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Examples.StimulusResponse (test1, exampleSet) where
+module Examples.StimulusResponse (exampleSet) where
 
+import           Data.Text
 import           Filesystem.Path
+import           Filesystem.Path.CurrentOS
+import           Prelude                   hiding (FilePath)
 import           Sqatt
+
+exampsDir :: FilePath
+exampsDir = "examps"
+
+testsDir :: FilePath
+testsDir = "test"</> "examps"
+
+txsCmdPath :: FilePath -> Text -> FilePath
+txsCmdPath currExampDir fp =
+  testsDir </> currExampDir </> fromText fp <.> "txscmd"
+
+txsFilePath :: FilePath -> Text -> FilePath
+txsFilePath currExampDir fp =
+  exampsDir </> currExampDir </> fromText fp <.> "txs"
+
+javaFilePath :: FilePath -> Text -> FilePath
+javaFilePath currExampDir fp =
+  exampsDir </> currExampDir </> fromText fp <.> "java"
+
+-----------------------------------
+
+exampDir :: FilePath
+exampDir = "stimulusresponse"
+
+stimulusResponseName :: Text
+stimulusResponseName = "StimulusResponse"
+
+stimulusNoResponseName :: Text
+stimulusNoResponseName = "StimulusNoResponse"
+
+stimulusResponseLoopName :: Text
+stimulusResponseLoopName = "StimulusResponseLoop"
+
+stimulusResponseTxsPath :: FilePath
+stimulusResponseTxsPath = txsFilePath exampDir stimulusResponseName
+
+stimulusNoResponseTxsPath :: FilePath
+stimulusNoResponseTxsPath = txsFilePath exampDir stimulusNoResponseName
+
+stimulusResponseLoopTxsPath :: FilePath
+stimulusResponseLoopTxsPath = txsFilePath exampDir stimulusResponseLoopName
+
+stimulusResponseTxsCmdPath :: FilePath
+stimulusResponseTxsCmdPath = txsCmdPath exampDir stimulusResponseName
+
+stimulusResponseJavaPath :: FilePath
+stimulusResponseJavaPath = javaFilePath exampDir stimulusResponseName
+
+stimulusNoResponseJavaPath :: FilePath
+stimulusNoResponseJavaPath = javaFilePath exampDir stimulusNoResponseName
+
+stimulusResponseLoopJavaPath :: FilePath
+stimulusResponseLoopJavaPath = javaFilePath exampDir stimulusResponseLoopName
 
 test0 :: TxsExample
 test0 = TxsExample
-  "Stimulus-Response Test 0"
-  ("examps"</>"stimulusresponse"</>"StimulusResponse"<.>"txs")
-  ("test"</>"examps"</>"stimulusresponse"</>"StimulusResponse"<.>"txscmd")
-  (Just $ "examps"</>"stimulusresponse"</>"StimulusResponse"<.>"java")
-  Pass
+  { exampleName = "Stimulus-Response Test 0"
+  , txsModelFile = stimulusResponseTxsPath
+  , txsCommandsFile = stimulusResponseTxsCmdPath
+  , sutSourceFile = Just stimulusResponseJavaPath
+  , expectedResult = Pass
+  }
 
 test1 :: TxsExample
 test1 = TxsExample
-  "Stimulus-Response Test 1"
-  ("examps"</>"stimulusresponse"</>"StimulusResponse"<.>"txs")
-  ("test"</>"examps"</>"stimulusresponse"</>"StimulusResponse"<.>"txscmd")
-  (Just $ "examps"</>"stimulusresponse"</>"StimulusNoResponse"<.>"java")
-  Fail
-
+  { exampleName = "Stimulus-Response Test 1"
+  , txsModelFile = stimulusResponseTxsPath
+  , txsCommandsFile = stimulusResponseTxsCmdPath
+  , sutSourceFile = Just stimulusNoResponseJavaPath
+  , expectedResult = Fail
+  }
 
 test2 :: TxsExample
 test2 = TxsExample
-  "Stimulus-Response Test 2"
-  ("examps"</>"stimulusresponse"</>"StimulusResponseLoop"<.>"txs")
-  ("test"</>"examps"</>"stimulusresponse"</>"StimulusResponse"<.>"txscmd")
-  (Just $ "examps"</>"stimulusresponse"</>"StimulusResponseLoop"<.>"java")
-  Pass
+  { exampleName = "Stimulus-Response Test 2"
+  , txsModelFile = stimulusResponseLoopTxsPath
+  , txsCommandsFile = stimulusResponseTxsCmdPath
+  , sutSourceFile = Just stimulusResponseLoopJavaPath
+  , expectedResult = Pass
+  }
 
 test3 :: TxsExample
 test3 = TxsExample
-  "Stimulus-Response Test 3"
-  ("examps"</>"stimulusresponse"</>"StimulusResponseLoop"<.>"txs")
-  ("test"</>"examps"</>"stimulusresponse"</>"StimulusResponse"<.>"txscmd")
-  (Just $ "examps"</>"stimulusresponse"</>"StimulusResponse"<.>"java")
-  Fail
+  { exampleName = "Stimulus-Response Test 3"
+  , txsModelFile = stimulusResponseLoopTxsPath
+  , txsCommandsFile = stimulusResponseTxsCmdPath
+  , sutSourceFile = Just stimulusResponseJavaPath
+  , expectedResult = Fail
+  }
 
 test4 :: TxsExample
 test4 = TxsExample
-  "Stimulus-Response Test 4"
-  ("examps"</>"stimulusresponse"</>"StimulusResponse"<.>"txs")
-  ("test"</>"examps"</>"stimulusresponse"</>"StimulusResponse"<.>"txscmd")
-  (Just $ "examps"</>"stimulusresponse"</>"StimulusResponseLoop"<.>"java")
-  Pass
+  { exampleName = "Stimulus-Response Test 4"
+  , txsModelFile = stimulusResponseTxsPath
+  , txsCommandsFile = stimulusResponseTxsCmdPath
+  , sutSourceFile = Just stimulusResponseLoopJavaPath
+  , expectedResult = Pass
+  }
 
 examples :: [TxsExample]
 examples = [test0, test1, test2, test3, test4]
