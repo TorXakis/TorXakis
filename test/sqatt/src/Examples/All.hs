@@ -11,5 +11,5 @@ module Examples.All (allExamples) where
 import qualified Examples.StimulusResponse as StimulusResponse
 import           Sqatt
 
-allExamples :: [TxsExample]
-allExamples = StimulusResponse.examples
+allExamples :: [TxsExampleSet]
+allExamples = [StimulusResponse.exampleSet]

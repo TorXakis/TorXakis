@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Examples.StimulusResponse (test1, examples) where
+module Examples.StimulusResponse (test1, exampleSet) where
 
 import           Filesystem.Path
 import           Sqatt
@@ -47,3 +47,6 @@ test4 = TxsExample
 
 examples :: [TxsExample]
 examples = [test0, test1, test2, test3, test4]
+
+exampleSet :: TxsExampleSet
+exampleSet = TxsExampleSet "Stimulus Response" examples

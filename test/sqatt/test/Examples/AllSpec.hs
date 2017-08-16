@@ -6,5 +6,5 @@ import           Test.Hspec
 
 spec :: Spec
 spec = beforeAll
-         (checkSMTSolvers >> checkCompilers)
-         (testExamples allExamples)
+         (checkSMTSolvers >> checkCompilers >> checkTxsInstall)
+         (testExampleSets allExamples)

@@ -6,8 +6,12 @@ module Sqatt
   , checkSMTSolvers
   , checkCompilers
   , testExamples
+  , checkTxsInstall
   , ExampleResult (..)
   , javaCmd
+  , testExampleSet
+  , testExampleSets
+  , TxsExampleSet (..)
   )
 where
 
@@ -16,18 +20,18 @@ import           Control.Exception
 import           Control.Foldl
 import           Control.Monad.Except
 import           Data.Either
-import           Data.Foldable             hiding (elem)
+import           Data.Foldable
 import           Data.Monoid
 import           Data.Text
 import           Filesystem.Path
 import           Filesystem.Path.CurrentOS
 import           Network.Socket
-import           Prelude                   hiding (FilePath, elem)
+import           Prelude                   hiding (FilePath)
 import           System.Info
+import qualified System.IO                 as IO
+import           System.IO.Silently
 import           Test.Hspec
 import           Turtle
-import           Turtle.Format
-import           Turtle.Prelude
 
 -- | A description of a TorXakis example.
 data TxsExample = TxsExample
@@ -42,6 +46,12 @@ data TxsExample = TxsExample
   , expectedResult  :: ExampleResult  -- ^ Example's expected result.
   } deriving (Show)
 
+
+-- | A set of examples.
+data TxsExampleSet = TxsExampleSet
+  { exampleSetName :: String -- ^ Name of the example set.
+  , txsExamples    :: [TxsExample] -- ^ Examples in the set.
+  }
 
 data CompiledSut = JavaCompiledSut
   { mainClass    :: Text
@@ -103,6 +113,11 @@ checkCommand cmd = do
 checkCompilers :: IO ()
 checkCompilers = traverse_ checkCommand [javaCmd, javacCmd]
 
+-- | Check that the TorXakis UI and server programs are installed.
+checkTxsInstall :: IO ()
+checkTxsInstall = traverse_ checkCommand [txsUICmd, txsServerCmd]
+
+-- | Compile the system under test.
 compileSut :: FilePath -> Test CompiledSut
 compileSut sourcePath =
   case extension sourcePath of
@@ -113,6 +128,9 @@ compileSut sourcePath =
       throwError $ UnsupportedLanguage $
         "Compiler not found for file " <> path
 
+-- | Decode a file path into a human readable text string. The decoding is
+-- dependent on the operating system. An error is thrown if the decoding is not
+-- successful.
 decodePath :: FilePath -> Test Text
 decodePath filePath =
   case toText filePath of
@@ -122,6 +140,7 @@ decodePath filePath =
       throwError $ FilePathError $
         "Cannot decode " <> apprPath <> " properly"
 
+-- | Compile a SUT written in Java.
 compileJavaSut :: FilePath -> Test CompiledSut
 compileJavaSut sourcePath = do
   path <- decodePath sourcePath
@@ -135,36 +154,58 @@ compileJavaSut sourcePath = do
       let sPath = directory sourcePath
       return $ JavaCompiledSut mClass (Just sPath)
 
+-- | Sqatt test monad.
 newtype Test a = Test { runTest :: ExceptT SqattError IO a }
   deriving (Functor, Monad, Applicative, MonadError SqattError, MonadIO)
 
+-- | Add the class path option if a class-path is given.
 getCPOpts :: Maybe FilePath -> Test [Text]
-getCPOpts Nothing   = return []
-getCPOpts (Just fp) = (("-cp":) . pure) <$> decodePath fp
+getCPOpts Nothing         = return []
+getCPOpts (Just filePath) = (("-cp":) . pure) <$> decodePath filePath
 
-mkTest :: RunnableExample -> Test ()
-mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP)) = do
-  inputModelF <- decodePath (txsModelFile ex)
-  cpOpts <- getCPOpts cpSP
-  port <- repr <$> liftIO getFreePort
-  res <- liftIO $
-    sutProc cpOpts `race` txsServerProc port `race` txsUIProc inputModelF port
-  liftIO $ print $ show res
-  unless (Prelude.and (rights [res])) (throwError err)
+-- | Run TorXakis with the given example specification.
+runTxsWithExample :: TxsExample -> IO (Either SqattError ())
+runTxsWithExample ex = do
+  eInputModelF <- runExceptT $ runTest $ decodePath (txsModelFile ex)
+  case eInputModelF of
+    Left err -> return $ Left err
+    Right inputModelF -> do
+      port <- repr <$> getFreePort
+      res <- hSilence [IO.stdout, IO.stderr] $
+        txsServerProc port `race` txsUIProc inputModelF port
+      if Prelude.and (rights [res])
+        then return $ Right ()
+        else return $ Left tErr
   where
-    sutProc cpOpts =
-      proc javaCmd (cpOpts <> [mClass]) mempty
-    cmdsFile = txsCommandsFile ex
     txsUIProc imf port =
       Turtle.fold (inproc txsUICmd [port, imf] (input cmdsFile))
                   (Control.Foldl.any (isInfixOf searchStr . lineToText))
+    cmdsFile = txsCommandsFile ex
     searchStr = expectedMsg . expectedResult $ ex
-    err = TestExpectationError $
+    tErr = TestExpectationError $
               format ("Did not get expected result "%s)
                      (repr . expectedResult $ ex)
     expectedMsg Fail = txsUIFailMsg
     expectedMsg Pass = txsUIPassMsg
     txsServerProc port = proc txsServerCmd [port] mempty
+
+-- | Make a test out of a runnable example.
+mkTest :: RunnableExample -> Test ()
+mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP)) = do
+  cpOpts <- getCPOpts cpSP
+  res <- liftIO $ sutProc cpOpts `race` runTxsWithExample ex
+  case res of
+    Left retCode     -> throwError SutAborted
+    Right (Left err) -> throwError err
+    Right (Right _)  -> return ()
+  where
+    sutProc cpOpts =
+      proc javaCmd (cpOpts <> [mClass]) mempty
+mkTest (StandaloneExample ex) = do
+  res <- liftIO $ runTxsWithExample ex
+  case res of
+    Left err -> throwError err
+    Right  _ -> return ()
 
 -- | Get a free port number.
 getFreePort :: IO Integer
@@ -175,11 +216,12 @@ getFreePort = do
   close sock
   return (toInteger port)
 
+-- | Execute a test.
 execTest :: TxsExample -> IO (Either SqattError ())
 execTest ex = runExceptT $ runTest $ do
-  runnableExample <- getRunnableExample ex
+  runnableExample <- getRunnableExample
   mkTest runnableExample
-  where getRunnableExample ex =
+  where getRunnableExample =
           case sutSourceFile ex of
             Nothing ->
               return (StandaloneExample ex)
@@ -187,22 +229,35 @@ execTest ex = runExceptT $ runTest $ do
               cmpSut <- compileSut sourcePath
               return (ExampleWithSut ex cmpSut)
 
+-- | Test errors that can arise when running a TorXakis example.
 data SqattError = CompileError Text
                 | ProgramNotFound Text
                 | UnsupportedLanguage Text
                 | FilePathError Text
                 | TestExpectationError Text
+                | SutAborted
   deriving (Show, Eq)
 
 instance Exception SqattError
 
--- TODO: do we need to return a Spec at all? Maybe to use the `it` function...
+-- | Test a single example.
 testExample :: TxsExample -> Spec
 testExample ex = it (exampleName ex) $ do
   res <- execTest ex
   res `shouldBe` Right ()
 
+-- | Test a list of examples.
 testExamples :: [TxsExample] -> Spec
-testExamples examples  = do
-  beforeAll (cd $ ".." </> "..")
-            (traverse_ testExample examples)
+testExamples examples =
+  beforeAll
+    (cd $ ".." </> "..")
+    (traverse_ testExample examples)
+
+-- | Test an example set.
+testExampleSet :: TxsExampleSet -> Spec
+testExampleSet (TxsExampleSet esName exs) =
+  describe esName (testExamples exs)
+
+-- | Test a list of example sets.
+testExampleSets :: [TxsExampleSet] -> Spec
+testExampleSets = traverse_ testExampleSet
