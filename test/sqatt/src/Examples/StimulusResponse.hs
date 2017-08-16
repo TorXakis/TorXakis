@@ -29,7 +29,7 @@ stimulusResponseLoopTxsPath :: FilePath
 stimulusResponseLoopTxsPath = txsFilePath exampDir stimulusResponseLoopName
 
 stimulusResponseTxsCmdPath :: FilePath
-stimulusResponseTxsCmdPath = txsCmdPath exampDir stimulusResponseName
+stimulusResponseTxsCmdPath = txsCmdPath exampDir "StimulusResponse_Tester"
 
 stimulusResponseJavaPath :: FilePath
 stimulusResponseJavaPath = javaFilePath exampDir stimulusResponseName
