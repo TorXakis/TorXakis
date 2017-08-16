@@ -1,6 +1,6 @@
--- | Integration test utilities.
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
+-- | Integration test utilities.
 module Sqatt
   ( TxsExample(..)
   , checkSMTSolvers
@@ -33,6 +33,8 @@ import           System.IO.Silently
 import           Test.Hspec
 import           Turtle
 
+-- * Data structures for specifying examples
+
 -- | A description of a TorXakis example.
 data TxsExample = TxsExample
   { exampleName     :: String         -- ^ Name of the example.
@@ -49,18 +51,19 @@ data TxsExample = TxsExample
 
 -- | A set of examples.
 data TxsExampleSet = TxsExampleSet
-  { exampleSetName :: String -- ^ Name of the example set.
+  { exampleSetName :: String       -- ^ Name of the example set.
   , txsExamples    :: [TxsExample] -- ^ Examples in the set.
   }
 
+-- | Information about a compiled Java program.
 data CompiledSut = JavaCompiledSut
-  { mainClass    :: Text
+  { mainClass    :: Text           -- ^ Name of the main Java class.
   , cpSearchPath :: Maybe FilePath -- ^ Class search path. If omitted no `-cp`
                                    --   option will be passed to the `java`
                                    --   command.
   }
 
--- | An processed example, ready to be run.
+-- | A processed example, ready to be run.
 --
 -- Currently the only processing that takes place is the compilation of the
 -- SUT, if any.
@@ -69,14 +72,7 @@ data RunnableExample = ExampleWithSut TxsExample CompiledSut
 
 data ExampleResult = Pass | Fail deriving (Show, Eq)
 
--- | Check that all the supported SMT solvers are installed.
---
--- Throws an exception on failure.
-checkSMTSolvers :: IO ()
-checkSMTSolvers = do
-  print "WARNING: The presence of SMT solvers was not checked."
-  print "         First issue #47 needs to be resolved."
-  print "See: https://github.com/TorXakis/TorXakis/issues/47"
+-- * Path manipulation functions
 
 addExeSuffix :: Text -> Text
 addExeSuffix path = if os == "mingw32" then path <> ".exe" else path
@@ -99,6 +95,30 @@ txsUIPassMsg = "TXS >>  PASS"
 txsUIFailMsg :: Text
 txsUIFailMsg = "TXS >>  FAIL"
 
+-- | Decode a file path into a human readable text string. The decoding is
+-- dependent on the operating system. An error is thrown if the decoding is not
+-- successful.
+decodePath :: FilePath -> Test Text
+decodePath filePath =
+  case toText filePath of
+    Right path ->
+      return path
+    Left apprPath ->
+      throwError $ FilePathError $
+        "Cannot decode " <> apprPath <> " properly"
+
+-- * Environment checking
+
+-- | Check that all the supported SMT solvers are installed.
+--
+-- Throws an exception on failure.
+checkSMTSolvers :: IO ()
+checkSMTSolvers = do
+  putStrLn "WARNING: The presence of SMT solvers was not checked."
+  putStrLn "         First issue #47 needs to be resolved."
+  putStrLn "See: https://github.com/TorXakis/TorXakis/issues/47"
+
+
 -- | Check that the given command exists in the search path of the host system.
 checkCommand :: Text -> IO ()
 checkCommand cmd = do
@@ -117,6 +137,23 @@ checkCompilers = traverse_ checkCommand [javaCmd, javacCmd]
 checkTxsInstall :: IO ()
 checkTxsInstall = traverse_ checkCommand [txsUICmd, txsServerCmd]
 
+-- * Compilation and testing
+
+-- | Sqatt test monad.
+newtype Test a = Test { runTest :: ExceptT SqattError IO a }
+  deriving (Functor, Monad, Applicative, MonadError SqattError, MonadIO)
+
+-- | Test errors that can arise when running a TorXakis example.
+data SqattError = CompileError Text
+                | ProgramNotFound Text
+                | UnsupportedLanguage Text
+                | FilePathError Text
+                | TestExpectationError Text
+                | SutAborted
+  deriving (Show, Eq)
+
+instance Exception SqattError
+
 -- | Compile the system under test.
 compileSut :: FilePath -> Test CompiledSut
 compileSut sourcePath =
@@ -127,18 +164,6 @@ compileSut sourcePath =
       path <- decodePath sourcePath
       throwError $ UnsupportedLanguage $
         "Compiler not found for file " <> path
-
--- | Decode a file path into a human readable text string. The decoding is
--- dependent on the operating system. An error is thrown if the decoding is not
--- successful.
-decodePath :: FilePath -> Test Text
-decodePath filePath =
-  case toText filePath of
-    Right path ->
-      return path
-    Left apprPath ->
-      throwError $ FilePathError $
-        "Cannot decode " <> apprPath <> " properly"
 
 -- | Compile a SUT written in Java.
 compileJavaSut :: FilePath -> Test CompiledSut
@@ -154,10 +179,6 @@ compileJavaSut sourcePath = do
       let sPath = directory sourcePath
       return $ JavaCompiledSut mClass (Just sPath)
 
--- | Sqatt test monad.
-newtype Test a = Test { runTest :: ExceptT SqattError IO a }
-  deriving (Functor, Monad, Applicative, MonadError SqattError, MonadIO)
-
 -- | Add the class path option if a class-path is given.
 getCPOpts :: Maybe FilePath -> Test [Text]
 getCPOpts Nothing         = return []
@@ -168,7 +189,7 @@ runTxsWithExample :: TxsExample -> IO (Either SqattError ())
 runTxsWithExample ex = do
   eInputModelF <- runExceptT $ runTest $ decodePath (txsModelFile ex)
   case eInputModelF of
-    Left err -> return $ Left err
+    Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       port <- repr <$> getFreePort
       res <- hSilence [IO.stdout, IO.stderr] $
@@ -195,17 +216,17 @@ mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP)) = do
   cpOpts <- getCPOpts cpSP
   res <- liftIO $ sutProc cpOpts `race` runTxsWithExample ex
   case res of
-    Left retCode     -> throwError SutAborted
-    Right (Left err) -> throwError err
-    Right (Right _)  -> return ()
+    Left _              -> throwError SutAborted
+    Right (Left txsErr) -> throwError txsErr
+    Right (Right _)     -> return ()
   where
     sutProc cpOpts =
       proc javaCmd (cpOpts <> [mClass]) mempty
 mkTest (StandaloneExample ex) = do
   res <- liftIO $ runTxsWithExample ex
   case res of
-    Left err -> throwError err
-    Right  _ -> return ()
+    Left txsErr -> throwError txsErr
+    Right  _    -> return ()
 
 -- | Get a free port number.
 getFreePort :: IO Integer
@@ -228,17 +249,6 @@ execTest ex = runExceptT $ runTest $ do
             Just sourcePath -> do
               cmpSut <- compileSut sourcePath
               return (ExampleWithSut ex cmpSut)
-
--- | Test errors that can arise when running a TorXakis example.
-data SqattError = CompileError Text
-                | ProgramNotFound Text
-                | UnsupportedLanguage Text
-                | FilePathError Text
-                | TestExpectationError Text
-                | SutAborted
-  deriving (Show, Eq)
-
-instance Exception SqattError
 
 -- | Test a single example.
 testExample :: TxsExample -> Spec

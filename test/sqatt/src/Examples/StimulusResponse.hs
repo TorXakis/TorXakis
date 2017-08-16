@@ -2,30 +2,10 @@
 module Examples.StimulusResponse (exampleSet) where
 
 import           Data.Text
+import           Examples.Paths
 import           Filesystem.Path
-import           Filesystem.Path.CurrentOS
-import           Prelude                   hiding (FilePath)
+import           Prelude         hiding (FilePath)
 import           Sqatt
-
-exampsDir :: FilePath
-exampsDir = "examps"
-
-testsDir :: FilePath
-testsDir = "test"</> "examps"
-
-txsCmdPath :: FilePath -> Text -> FilePath
-txsCmdPath currExampDir fp =
-  testsDir </> currExampDir </> fromText fp <.> "txscmd"
-
-txsFilePath :: FilePath -> Text -> FilePath
-txsFilePath currExampDir fp =
-  exampsDir </> currExampDir </> fromText fp <.> "txs"
-
-javaFilePath :: FilePath -> Text -> FilePath
-javaFilePath currExampDir fp =
-  exampsDir </> currExampDir </> fromText fp <.> "java"
-
------------------------------------
 
 exampDir :: FilePath
 exampDir = "stimulusresponse"
@@ -109,4 +89,4 @@ examples :: [TxsExample]
 examples = [test0, test1, test2, test3, test4]
 
 exampleSet :: TxsExampleSet
-exampleSet = TxsExampleSet "Stimulus Response" examples
+exampleSet = TxsExampleSet "Stimulus-Response" examples
