@@ -1,3 +1,7 @@
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+
 # This is the simple Travis configuration, which is intended for use
 # on applications which do not require cross-platform and
 # multiple-GHC-version support. For more information and other
@@ -49,6 +53,7 @@ install:
 - travis_wait 50 stack --no-terminal --install-ghc test --only-dependencies --stack-yaml stack_linux.yaml --fast
 
 script:
+
 # Build the package, its tests, and its docs and run the tests
 - travis_wait 50 stack --no-terminal test --haddock --no-haddock-deps --fast --stack-yaml stack_linux.yaml
 - if [ "$TRAVIS_PULL_REQUEST" == "true" ]; then
@@ -57,3 +62,11 @@ script:
     stack test;
     cd -;
   fi
+
+after_success:
+- if [ $TRAVIS_BRANCH == "develop" ]; then
+    rm *.log;
+    rm *.zip;
+    ./updateAndPushGhPages.sh;
+   fi
+

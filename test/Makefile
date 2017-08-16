@@ -1,6 +1,6 @@
 # TorXakis - Model Based Testing
-# Copyright (c) 2015-2016 TNO and Radboud University
-# See license.txt
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
 
 #######################################################################
 # Make file for test purposes only
@@ -32,7 +32,7 @@ test : $(patsubst %.java,%.class, $(JAVASUTFILES)) $(patsubst %.java,%.class, $(
 
 .PHONY      : testCopyright
 testCopyright : $(TSTDIR)/copyright/Copyright.class
-	java -cp copyright Copyright .
+	java -cp copyright Copyright ..
 
 #######################################################################
 .PHONY      : clean
