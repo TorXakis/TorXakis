@@ -12,6 +12,7 @@ module Sqatt
   , testExampleSet
   , testExampleSets
   , TxsExampleSet (..)
+  , SutExample (..)
   )
 where
 
@@ -37,17 +38,19 @@ import           Turtle
 
 -- | A description of a TorXakis example.
 data TxsExample = TxsExample
-  { exampleName     :: String         -- ^ Name of the example.
-  , txsModelFile    :: FilePath       -- ^ Path to the TorXakis model file.
-  , txsCommandsFile :: FilePath       -- ^ Path to the file containing the commands
-                                      --   that will be passed to the TorXakis server.
-  , sutSourceFile   :: Maybe FilePath -- ^ Path to the SUT source code. This
-                                      --   code will be compiled and run together with TorXakis. If
-                                      --   this record is `Nothing` then the example is assumed to
-                                      --   be autonomous (only TorXakis will be run)
-  , expectedResult  :: ExampleResult  -- ^ Example's expected result.
+  { exampleName     :: String           -- ^ Name of the example.
+  , txsModelFile    :: FilePath         -- ^ Path to the TorXakis model file.
+  , txsCommandsFile :: FilePath         -- ^ Path to the file containing the commands
+                                        --   that will be passed to the TorXakis server.
+  , sutExample      :: Maybe SutExample -- ^ SUT example. This  run together with TorXakis. If
+                                        --   this field is `Nothing` then the example is assumed to
+                                        --   be autonomous (only TorXakis will be run)
+  , expectedResult  :: ExampleResult    -- ^ Example's expected result.
   } deriving (Show)
 
+data SutExample = JavaExample { javaSourcePath :: FilePath }
+                | TxsSimulator FilePath
+                deriving (Show)
 
 -- | A set of examples.
 data TxsExampleSet = TxsExampleSet
@@ -57,11 +60,15 @@ data TxsExampleSet = TxsExampleSet
 
 -- | Information about a compiled Java program.
 data CompiledSut = JavaCompiledSut
-  { mainClass    :: Text           -- ^ Name of the main Java class.
-  , cpSearchPath :: Maybe FilePath -- ^ Class search path. If omitted no `-cp`
-                                   --   option will be passed to the `java`
-                                   --   command.
-  }
+                   { mainClass    :: Text           -- ^ Name of the main Java class.
+                   , cpSearchPath :: Maybe FilePath -- ^ Class search path. If omitted no `-cp`
+                                                    --   option will be passed to the `java`
+                                                    --   command.
+                   }
+                 | TxsSimulatedSut                  -- ^ An SUT simulated by TorXakis.
+                   { simulatorCmds :: FilePath      -- ^ Commands to be passed to the simulator.
+                   }
+
 
 -- | A processed example, ready to be run.
 --
@@ -193,7 +200,7 @@ runTxsWithExample ex = do
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       port <- repr <$> getFreePort
-      res <-
+      res <- hSilence [IO.stdout, IO.stderr] $
         txsServerProc port `race` txsUIProc inputModelF port
       case res of
         Left code   -> return $ Left (TxsServerAborted code)
@@ -224,6 +231,14 @@ mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP)) = do
   where
     sutProc cpOpts =
       proc javaCmd (cpOpts <> [mClass]) mempty
+mkTest (ExampleWithSut ex (TxsSimulatedSut cmds)) = do
+  res <- liftIO $ runTxsWithExample ex `race` runTxsWithExample sim
+  case res of
+    Left (Left txsErr) -> throwError txsErr
+    Left (Right _)     -> return ()
+    Right _            -> throwError SutAborted
+  where
+    sim = ex {txsCommandsFile = cmds}
 mkTest (StandaloneExample ex) = do
   res <- liftIO $ runTxsWithExample ex
   case res of
@@ -245,12 +260,14 @@ execTest ex = runExceptT $ runTest $ do
   runnableExample <- getRunnableExample
   mkTest runnableExample
   where getRunnableExample =
-          case sutSourceFile ex of
+          case sutExample ex of
             Nothing ->
               return (StandaloneExample ex)
-            Just sourcePath -> do
+            Just (JavaExample sourcePath) -> do
               cmpSut <- compileSut sourcePath
               return (ExampleWithSut ex cmpSut)
+            Just (TxsSimulator cmds) ->
+              return (ExampleWithSut ex (TxsSimulatedSut cmds))
 
 -- | Test a single example.
 testExample :: TxsExample -> Spec

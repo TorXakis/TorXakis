@@ -19,6 +19,9 @@ echoTxsPath = txsFilePath exampDir echoName
 echoStepperCmdPath :: FilePath
 echoStepperCmdPath = txsCmdPath exampDir "Echo_Stepper"
 
+echoSimulatorCmdPath :: FilePath
+echoSimulatorCmdPath = txsCmdPath exampDir "Echo_Simulator"
+
 echoTesterCmdPath :: FilePath
 echoTesterCmdPath = txsCmdPath exampDir "Echo_Tester"
 
@@ -26,15 +29,15 @@ test0 = TxsExample
   { exampleName = "Stepper"
   , txsModelFile = echoTxsPath
   , txsCommandsFile = echoStepperCmdPath
-  , sutSourceFile = Nothing
+  , sutExample = Nothing
   , expectedResult = Pass
   }
 
 test1 = TxsExample
-  { exampleName = "Tester"
+  { exampleName = "Simulator"
   , txsModelFile = echoTxsPath
   , txsCommandsFile = echoTesterCmdPath
-  , sutSourceFile = Nothing
+  , sutExample = Just (TxsSimulator echoSimulatorCmdPath)
   , expectedResult = Pass
   }
 

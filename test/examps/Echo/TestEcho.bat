@@ -15,11 +15,11 @@ echo EXAMPS %EXAMPS%
 echo TEST %TEST%
 
 
-echo ------- Start Echo Stepper Test
-call %TORXAKIS% %EXAMPS%\Echo.txs < %TEST%\Echo_Stepper.txscmd
-TIMEOUT /T 4 /NOBREAK
-move /Y testTrace.log testTrace.Spec.Echo.Sut.Echo_Stepper.log
-echo ------- End Echo Stepper Test
+rem echo ------- Start Echo Stepper Test
+rem call %TORXAKIS% %EXAMPS%\Echo.txs < %TEST%\Echo_Stepper.txscmd
+rem TIMEOUT /T 4 /NOBREAK
+rem move /Y testTrace.log testTrace.Spec.Echo.Sut.Echo_Stepper.log
+rem echo ------- End Echo Stepper Test
 
 echo ------- Start Echo Simulator Test
 start "" /min /b call %TORXAKISPORT% 9877 %EXAMPS%\Echo.txs < %TEST%\Echo_Simulator.txscmd
