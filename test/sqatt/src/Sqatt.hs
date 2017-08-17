@@ -150,6 +150,7 @@ data SqattError = CompileError Text
                 | FilePathError Text
                 | TestExpectationError Text
                 | SutAborted
+                | TxsServerAborted ExitCode
   deriving (Show, Eq)
 
 instance Exception SqattError
@@ -192,11 +193,12 @@ runTxsWithExample ex = do
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       port <- repr <$> getFreePort
-      res <- hSilence [IO.stdout, IO.stderr] $
+      res <-
         txsServerProc port `race` txsUIProc inputModelF port
-      if Prelude.and (rights [res])
-        then return $ Right ()
-        else return $ Left tErr
+      case res of
+        Left code   -> return $ Left (TxsServerAborted code)
+        Right True  -> return $ Right ()
+        Right False -> return $ Left tErr
   where
     txsUIProc imf port =
       Turtle.fold (inproc txsUICmd [port, imf] (input cmdsFile))
