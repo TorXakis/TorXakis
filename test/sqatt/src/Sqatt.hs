@@ -192,7 +192,7 @@ runTxsWithExample ex = do
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       port <- repr <$> getFreePort
-      res <- hSilence [IO.stdout, IO.stderr] $
+      res <-
         txsServerProc port `race` txsUIProc inputModelF port
       if Prelude.and (rights [res])
         then return $ Right ()
