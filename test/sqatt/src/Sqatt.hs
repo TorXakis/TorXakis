@@ -35,6 +35,7 @@ import           Prelude                   hiding (FilePath)
 import           System.Info
 import qualified System.IO                 as IO
 import           System.IO.Silently
+import           System.Process            (ProcessHandle)
 import qualified System.Process            as Process
 import           System.Random
 import           Test.Hspec
@@ -216,8 +217,7 @@ runTxsWithExample ex = do
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       port <- repr <$> getRandomPort
-      print $ format ("runTxsWithExample: got free port number "%s) port
-      res <- -- hSilence [IO.stdout, IO.stderr] $
+      res <- hSilence [IO.stdout, IO.stderr] $
         txsServerProc port `race` txsUIProc inputModelF port
       case res of
         Left code   -> return $ Left (TxsServerAborted code)
@@ -236,63 +236,29 @@ runTxsWithExample ex = do
     expectedMsg Pass = txsUIPassMsg
     txsServerProc port = proc txsServerCmd [port] mempty
 
--- | Make a test out of a runnable example.
--- runTxsWithExample' :: TxsExample -> IO  (Either SqattError ())
--- runTxsWithExample' _ = do
---   sh $ (sleep 3.0)
---   print "runTxsWithExample' is tired of waiting!"
---   return $ Right ()
-
+-- | Fork a process using `Process.spawnProcess`, and terminates the process
+-- when an asynchronous exception is thrown. Currently this is a workaround for
+-- solving the problem with `cancel`ing a external process:
+--
+--     - https://github.com/Gabriel439/Haskell-Turtle-Library/issues/103
+--
+forkProcess :: String           -- ^ Absolute path to the program executable.
+            -> [String]         -- ^ Program command line arguments.
+            -> IO ProcessHandle
+forkProcess execPath cmdArgs = do
+  ph <- Process.spawnProcess execPath cmdArgs
+  (forever $ sh (sleep 60.0)) `onException` Process.terminateProcess ph
 
 mkTest :: RunnableExample -> Test ()
--- mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP)) = do
---   cpOpts <- getCPOpts cpSP
---   res <- liftIO $ sutProc cpOpts `race` runTxsWithExample ex
---   case res of
---     Left _              -> throwError SutAborted
---     Right (Left txsErr) -> throwError txsErr
---     Right (Right ())    -> return ()
---   where
---     sutProc cpOpts = proc javaCmd (cpOpts <> [mClass]) mempty
-
 mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP)) = do
   cpOpts <- Prelude.map T.unpack <$> getCPOpts cpSP
-  liftIO $ print $ "******************** Running TEST"
-  -- ph <- liftIO $ sutProc cpOpts
   javaExecPath <- execPathForCmd javaCmd
-  res <- liftIO $ sutProc javaExecPath (cpOpts ++ [T.unpack mClass]) `race` runTxsWithExample ex
-  -- liftIO $ Process.terminateProcess ph
-  -- liftIO $ print $ "******************** TEST completed!"
-  -- mec <- liftIO $ Process.waitForProcess ph
-  -- liftIO $ print $ format ("Process exit code: " %s) (repr mec)
+  let javaArgs = cpOpts ++ [T.unpack mClass]
+  res <- liftIO $ forkProcess javaExecPath javaArgs `race` runTxsWithExample ex
   case res of
     Left _              -> throwError SutAborted
     Right (Left txsErr) -> throwError txsErr
     Right (Right ())    -> return ()
-  where
-    -- sutProc cpOpts = sh $ (sleep 30.0)
-    sutProc execPath cmdArgs = do
-      -- let cmd = (T.unpack javaCmd) <> " " <> Prelude.concat (List.intersperse " " $ Prelude.map T.unpack cpOpts) <> " " <> (show mClass)
---      ph <- Process.spawnProcess "/usr/bin/java" ["-cp", "examps/StimulusResponse/", "StimulusResponseLoop"]
-      ph <- Process.spawnProcess execPath cmdArgs
-      (forever $ sh (sleep 60.0) >> print "Waiting for process") `onException` Process.terminateProcess ph
-      -- _ <- (Process.createProcess $ Process.shell "Boooom!") >> return ()
-      -- ph <- Process.callProcess "boomba" []
-      -- print $ format ("Got a process handle")
-      -- (forever $ sh (sleep 2.0) >> print "Waiting for process") `onException`
-      --   (do
-      --       print "Terminating the process"
-      --       -- Process.interruptProcessGroupOf ph
-
-      --       -- iterateWhile (isNothing) $ (do
-      --       --                             Process.terminateProcess ph
-      --       --                             mec <- Process.getProcessExitCode ph
-      --       --                             print $ format ("Process exit code: " %s) (repr mec)
-      --       --                             return mec
-      --       --                         )
-      --   )
-      -- return ()
-
 mkTest (ExampleWithSut ex (TxsSimulatedSut cmds)) = do
   res <- liftIO $ runTxsWithExample ex `race` runTxsWithExample sim
   case res of
@@ -307,26 +273,9 @@ mkTest (StandaloneExample ex) = do
     Left txsErr -> throwError txsErr
     Right  _    -> return ()
 
--- | Get a free port number.
---
--- FIXME: sometimes the port number returned by this function is reported as
--- used when TorXakis tries to connect to it. I have no idea what the problem
--- might be :/
-getFreePort :: IO Integer
-getFreePort = do
-  sock <- socket AF_INET Stream defaultProtocol
-  bind sock (SockAddrInet aNY_PORT iNADDR_ANY)
-  port <- socketPort sock
-  close sock
-  print "Trying to rebind to the sock"
-  sock <- socket AF_INET Stream defaultProtocol
-  bind sock (SockAddrInet port 0x0100007f)
-  port <- socketPort sock
-  close sock
-  return (toInteger port)
-
+-- | Get a random port number.
 getRandomPort :: IO Integer
-getRandomPort = randomRIO (40000, 50000)
+getRandomPort = randomRIO (10000, 60000)
 
 -- | Execute a test.
 execTest :: TxsExample -> IO (Either SqattError ())
