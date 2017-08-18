@@ -87,6 +87,8 @@ test4 = TxsExample
 
 examples :: [TxsExample]
 examples = [test0, test1, test2, test3, test4]
+-- examples = [test2, test3, test4]
+-- examples = [test4]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Stimulus-Response" examples
