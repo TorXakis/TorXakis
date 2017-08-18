@@ -247,7 +247,7 @@ forkProcess :: String           -- ^ Absolute path to the program executable.
             -> IO ProcessHandle
 forkProcess execPath cmdArgs = do
   ph <- Process.spawnProcess execPath cmdArgs
-  (forever $ sh (sleep 60.0)) `onException` Process.terminateProcess ph
+  forever $ sh (sleep 60.0) `onException` Process.terminateProcess ph
 
 mkTest :: RunnableExample -> Test ()
 mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP)) = do
@@ -300,7 +300,7 @@ testExample ex = it (exampleName ex) $ do
 
 -- | Test a list of examples.
 testExamples :: [TxsExample] -> Spec
-testExamples examples = traverse_ testExample examples
+testExamples = traverse_ testExample
 
 -- | Test an example set.
 testExampleSet :: TxsExampleSet -> Spec
