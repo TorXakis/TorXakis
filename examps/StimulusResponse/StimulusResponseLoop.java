@@ -14,7 +14,7 @@ import java.util.concurrent.*;
 public class StimulusResponseLoop
 {
     public static void main(String[] args)
-    {  
+    {
         try
         {
             // instantiate a socket for accepting a connection
@@ -36,7 +36,6 @@ public class StimulusResponseLoop
             PrintWriter sockout = new PrintWriter(new OutputStreamWriter(outStream));
 
             // read a line from the data stream: the stimulus
-
             while (true)
             {
                 sockin.readLine();
