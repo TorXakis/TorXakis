@@ -61,7 +61,7 @@ script:
     cd test/sqatt;
     stack test;
     cd -;
-fi
+  fi
 
 after_success:
 - if [ $TRAVIS_BRANCH == "develop" ]; then
