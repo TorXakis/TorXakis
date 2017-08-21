@@ -15,19 +15,37 @@ import java.util.Random;
  command line argument:
  <port number for the Server socket used in this process>.
  *********************************************************************************************/
-public class Adder {
+public class Adder implements Runnable {
+    // Port number on which the current object will listen.
+    private int portNr;
+
+    Adder (String portNrStr) {
+        this.portNr = Integer.parseInt(portNrStr);
+    }
+
+    public void run() {
+        startAdder();
+    }
+            
     public static void main(String[] args) {
+        if (args.length == 0)
+            System.out.println("own port number required");
+        else {
+            System.out.println("Starting the adders...");
+             // Start adders in parallel, one per-each port number.
+            for (int i = 0; i < args.length; i++) {
+                (new Thread (new Adder(args[i]))).start();
+            }
+        }
+    }
+
+void startAdder() {
         String s, r;
         int sep1, sep2, sep3, x, y;
 
-        if (args.length != 1)
-            System.out.println("own port number required");
-        else {
-            try {
-                int portNo = Integer.parseInt(args[0]);
-
+        try {
                 // instantiate a socket for accepting a connection
-                ServerSocket serverSock = new ServerSocket(portNo);
+                ServerSocket serverSock = new ServerSocket(portNr);
 
                 // wait to accept a connection request
                 // then a data socket is created
@@ -76,6 +94,5 @@ public class Adder {
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
-        }
     }
 }
