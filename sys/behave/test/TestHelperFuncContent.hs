@@ -82,20 +82,20 @@ containsIdentical x1@(k1,v1) ((k2,v2):xs) =    ( (identicalVarId k1 k2) && (iden
                                             || (containsIdentical x1 xs)
 
 identicalVExpr :: VExpr -> VExpr -> Bool
-identicalVExpr (view -> Vfunc fid1 vexps1)      (view -> Vfunc fid2 vexps2)      = (identicalFuncId fid1 fid2) && (identicalVExprs vexps1 vexps2)
-identicalVExpr (view -> Vcstr cid1 vexps1)      (view -> Vcstr cid2 vexps2)      = (identicalCstrId cid1 cid2) && (identicalVExprs vexps1 vexps2)
-identicalVExpr (view -> Viscstr cid1 vexp1)     (view -> Viscstr cid2 vexp2)     = (identicalCstrId cid1 cid2) && (identicalVExpr vexp1 vexp2)
-identicalVExpr (view -> Vaccess cid1 p1 vexp1)  (view -> Vaccess cid2 p2 vexp2)  = (identicalCstrId cid1 cid2) && (p1 == p2) && (identicalVExpr vexp1 vexp2)
-identicalVExpr (view -> Vconst c1)              (view -> Vconst c2)              = (c1 == c2)
-identicalVExpr (view -> Vvar v1)                (view -> Vvar v2)                = (identicalVarId v1 v2)
-identicalVExpr (view -> Vite vc1 vt1 ve1)    (view -> Vite vc2 vt2 ve2)    = (identicalVExpr vc1 vc2) && (identicalVExpr vt1 vt2)  && (identicalVExpr ve1 ve2)
-identicalVExpr (view -> Venv map1 v1)           (view -> Venv map2 v2)           = (identicalMap map1 map2) && (identicalVExpr v1 v2)
-identicalVExpr (view -> Vequal vl1 vr1)         (view -> Vequal vl2 vr2)         = (identicalVExpr vl1 vl2)  && (identicalVExpr vr1 vr2)
-identicalVExpr (view -> Vnot v1)                (view -> Vnot v2)                =  identicalVExpr v1 v2
-identicalVExpr (view -> Vand vs1)               (view -> Vand vs2)               =  identicalVExprs (Set.toAscList vs1) (Set.toAscList vs2)
-identicalVExpr (view -> Vpredef p1 fid1 vexps1) (view -> Vpredef p2 fid2 vexps2) = (p1 == p2) && (identicalFuncId fid1 fid2) && (identicalVExprs vexps1 vexps2)
-identicalVExpr (view -> Verror s1)              (view -> Verror s2)              = (s1 == s2)
-identicalVExpr _                   _                   = False                          -- different 
+identicalVExpr (view -> Vfunc fid1 vexps1)      (view -> Vfunc fid2 vexps2)      = identicalFuncId fid1 fid2 && identicalVExprs vexps1 vexps2
+identicalVExpr (view -> Vcstr cid1 vexps1)      (view -> Vcstr cid2 vexps2)      = identicalCstrId cid1 cid2 && identicalVExprs vexps1 vexps2
+identicalVExpr (view -> Viscstr cid1 vexp1)     (view -> Viscstr cid2 vexp2)     = identicalCstrId cid1 cid2 && identicalVExpr vexp1 vexp2
+identicalVExpr (view -> Vaccess cid1 p1 vexp1)  (view -> Vaccess cid2 p2 vexp2)  = identicalCstrId cid1 cid2 && p1 == p2 && identicalVExpr vexp1 vexp2
+identicalVExpr (view -> Vconst c1)              (view -> Vconst c2)              = c1 == c2
+identicalVExpr (view -> Vvar v1)                (view -> Vvar v2)                = identicalVarId v1 v2
+identicalVExpr (view -> Vite vc1 vt1 ve1)       (view -> Vite vc2 vt2 ve2)       = identicalVExpr vc1 vc2 && identicalVExpr vt1 vt2 && identicalVExpr ve1 ve2
+identicalVExpr (view -> Venv map1 v1)           (view -> Venv map2 v2)           = identicalMap map1 map2 && identicalVExpr v1 v2
+identicalVExpr (view -> Vequal vl1 vr1)         (view -> Vequal vl2 vr2)         = identicalVExpr vl1 vl2  && identicalVExpr vr1 vr2
+identicalVExpr (view -> Vnot v1)                (view -> Vnot v2)                = identicalVExpr v1 v2
+identicalVExpr (view -> Vand vs1)               (view -> Vand vs2)               = identicalVExprs (Set.toAscList vs1) (Set.toAscList vs2)
+identicalVExpr (view -> Vpredef p1 fid1 vexps1) (view -> Vpredef p2 fid2 vexps2) = p1 == p2 && identicalFuncId fid1 fid2 && identicalVExprs vexps1 vexps2
+identicalVExpr (view -> Verror s1)              (view -> Verror s2)              = s1 == s2
+identicalVExpr _                                _                                = False                          -- different 
 
 identicalVExprs :: [VExpr] -> [VExpr] -> Bool
 identicalVExprs [] [] = True
