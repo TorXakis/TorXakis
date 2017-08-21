@@ -4,7 +4,7 @@ REM See LICENSE at root directory of this repository.
 
 @ECHO OFF
 SET TORXAKIS=torxakis.bat
-SET REL=examps\adder
+SET REL=examps\Adder
 SET EXAMPS=%1\%REL%
 SET TEST=%1\test\%REL%
 

@@ -55,9 +55,14 @@ data TxsExample = TxsExample
   , expectedResult  :: ExampleResult    -- ^ Example's expected result.
   } deriving (Show)
 
-data SutExample = JavaExample { javaSourcePath :: FilePath }
-                | TxsSimulator FilePath
-                deriving (Show)
+data SutExample =
+   JavaExample                 -- ^ A Java SUT that must be compiled and executed.
+  { javaSourcePath :: FilePath -- ^ Source file of the SUT.
+  , javaSutArgs    :: [Text]   -- ^ Arguments to be passed to the SUT.
+  }
+  | TxsSimulator FilePath      -- ^ An SUT to be simulated by TorXakis.
+  deriving (Show)
+
 
 -- | A set of examples.
 data TxsExampleSet = TxsExampleSet
@@ -81,7 +86,7 @@ data CompiledSut = JavaCompiledSut
 --
 -- Currently the only processing that takes place is the compilation of the
 -- SUT, if any.
-data RunnableExample = ExampleWithSut TxsExample CompiledSut
+data RunnableExample = ExampleWithSut TxsExample CompiledSut [Text]
                      | StandaloneExample TxsExample
 
 data ExampleResult = Pass | Fail deriving (Show, Eq)
@@ -250,16 +255,16 @@ forkProcess execPath cmdArgs = do
   forever $ sh (sleep 60.0) `onException` Process.terminateProcess ph
 
 mkTest :: RunnableExample -> Test ()
-mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP)) = do
+mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP) args) = do
   cpOpts <- Prelude.map T.unpack <$> getCPOpts cpSP
   javaExecPath <- execPathForCmd javaCmd
-  let javaArgs = cpOpts ++ [T.unpack mClass]
+  let javaArgs = cpOpts ++ [T.unpack mClass] ++ (T.unpack <$> args)
   res <- liftIO $ forkProcess javaExecPath javaArgs `race` runTxsWithExample ex
   case res of
     Left _              -> throwError SutAborted
     Right (Left txsErr) -> throwError txsErr
     Right (Right ())    -> return ()
-mkTest (ExampleWithSut ex (TxsSimulatedSut cmds)) = do
+mkTest (ExampleWithSut ex (TxsSimulatedSut cmds) _) = do
   res <- liftIO $ runTxsWithExample ex `race` runTxsWithExample sim
   case res of
     Left (Left txsErr) -> throwError txsErr
@@ -286,11 +291,11 @@ execTest ex = runExceptT $ runTest $ do
           case sutExample ex of
             Nothing ->
               return (StandaloneExample ex)
-            Just (JavaExample sourcePath) -> do
+            Just (JavaExample sourcePath args) -> do
               cmpSut <- compileSut sourcePath
-              return (ExampleWithSut ex cmpSut)
+              return (ExampleWithSut ex cmpSut args)
             Just (TxsSimulator cmds) ->
-              return (ExampleWithSut ex (TxsSimulatedSut cmds))
+              return (ExampleWithSut ex (TxsSimulatedSut cmds) [])
 
 -- | Test a single example.
 testExample :: TxsExample -> Spec

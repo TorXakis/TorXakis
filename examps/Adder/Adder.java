@@ -30,8 +30,7 @@ public class Adder implements Runnable {
     public static void main(String[] args) {
         if (args.length == 0)
             System.out.println("own port number required");
-        else {
-            System.out.println("Starting the adders...");
+        else {        
              // Start adders in parallel, one per-each port number.
             for (int i = 0; i < args.length; i++) {
                 (new Thread (new Adder(args[i]))).start();
@@ -42,7 +41,8 @@ public class Adder implements Runnable {
 void startAdder() {
         String s, r;
         int sep1, sep2, sep3, x, y;
-
+        String msg = String.format("Starting adders listening on port %d", portNr);
+        System.out.println(msg);
         try {
                 // instantiate a socket for accepting a connection
                 ServerSocket serverSock = new ServerSocket(portNr);
@@ -66,7 +66,10 @@ void startAdder() {
 
                 while (true) {  // read a line from the data stream
                     s = sockIn.readLine().trim();
-                    System.out.println(s);
+
+                    msg = String.format("Adders on port %d received input: %s", portNr, s);
+                    System.out.println(msg);
+                    
                     sep1 = s.indexOf("(");
                     sep2 = s.indexOf(",");
                     sep3 = s.indexOf(")");

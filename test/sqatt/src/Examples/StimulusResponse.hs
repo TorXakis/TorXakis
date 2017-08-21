@@ -45,7 +45,7 @@ test0 = TxsExample
   { exampleName = "Stimulus-Response Test 0"
   , txsModelFile = stimulusResponseTxsPath
   , txsCommandsFile = stimulusResponseTxsCmdPath
-  , sutExample = Just (JavaExample stimulusResponseJavaPath)
+  , sutExample = Just (JavaExample stimulusResponseJavaPath [])
   , expectedResult = Pass
   }
 
@@ -54,7 +54,7 @@ test1 = TxsExample
   { exampleName = "Stimulus-Response Test 1"
   , txsModelFile = stimulusResponseTxsPath
   , txsCommandsFile = stimulusResponseTxsCmdPath
-  , sutExample = Just (JavaExample stimulusNoResponseJavaPath)
+  , sutExample = Just (JavaExample stimulusNoResponseJavaPath [])
   , expectedResult = Fail
   }
 
@@ -63,7 +63,7 @@ test2 = TxsExample
   { exampleName = "Stimulus-Response Test 2"
   , txsModelFile = stimulusResponseLoopTxsPath
   , txsCommandsFile = stimulusResponseTxsCmdPath
-  , sutExample = Just (JavaExample stimulusResponseLoopJavaPath)
+  , sutExample = Just (JavaExample stimulusResponseLoopJavaPath [])
   , expectedResult = Pass
   }
 
@@ -72,7 +72,7 @@ test3 = TxsExample
   { exampleName = "Stimulus-Response Test 3"
   , txsModelFile = stimulusResponseLoopTxsPath
   , txsCommandsFile = stimulusResponseTxsCmdPath
-  , sutExample = Just (JavaExample stimulusResponseJavaPath)
+  , sutExample = Just (JavaExample stimulusResponseJavaPath [])
   , expectedResult = Fail
   }
 
@@ -81,7 +81,7 @@ test4 = TxsExample
   { exampleName = "Stimulus-Response Test 4"
   , txsModelFile = stimulusResponseTxsPath
   , txsCommandsFile = stimulusResponseTxsCmdPath
-  , sutExample = Just (JavaExample stimulusResponseLoopJavaPath)
+  , sutExample = Just (JavaExample stimulusResponseLoopJavaPath [])
   , expectedResult = Pass
   }
 
