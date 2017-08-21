@@ -51,16 +51,10 @@ createVvar :: VarId -> TXS2SMTVExprTest
 createVvar v =
     TXS2SMTVExprTest (cstrVar v) (toSMTVar v)
 
-createVite :: Set.Set TXS2SMTVExprTest -> TXS2SMTVExprTest -> TXS2SMTVExprTest -> TXS2SMTVExprTest 
-createVite conds (TXS2SMTVExprTest input1 expected1) (TXS2SMTVExprTest input2 expected2) =
-    let listConds = Set.toList (Set.map expected conds) in
-    if length listConds == 1
-    then
-        TXS2SMTVExprTest (cstrIte (Set.toList (Set.map input conds)) input1 input2)
-               ("(ite " ++ head listConds ++ " " ++ expected1 ++ " " ++ expected2 ++ ")")
-    else
-        TXS2SMTVExprTest (cstrIte (Set.toList (Set.map input conds)) input1 input2)
-               ("(ite (and " ++ join " " listConds ++ ") " ++ expected1 ++ " " ++ expected2 ++ ")")
+createVite :: TXS2SMTVExprTest -> TXS2SMTVExprTest -> TXS2SMTVExprTest -> TXS2SMTVExprTest 
+createVite (TXS2SMTVExprTest inputc expectedc) (TXS2SMTVExprTest input1 expected1) (TXS2SMTVExprTest input2 expected2) =
+    TXS2SMTVExprTest (cstrIte inputc input1 input2)
+           ("(ite " ++ expectedc ++ " " ++ expected1 ++ " " ++ expected2 ++ ")")
 
 createVequal :: TXS2SMTVExprTest -> TXS2SMTVExprTest -> TXS2SMTVExprTest
 createVequal (TXS2SMTVExprTest input1 expected1) (TXS2SMTVExprTest input2 expected2) =
@@ -70,6 +64,11 @@ createVpredef :: PredefKind -> FuncId -> [TXS2SMTVExprTest] -> TXS2SMTVExprTest
 createVpredef predefkind funcId ies =
     TXS2SMTVExprTest (cstrPredef predefkind funcId (map input ies))
                ("(" ++ FuncId.name funcId ++ " " ++ join " " (map expected ies) ++ ")")
+
+createVand :: Set.Set TXS2SMTVExprTest -> TXS2SMTVExprTest 
+createVand conds =
+    TXS2SMTVExprTest (cstrAnd (Set.map input conds))
+                     ("(and " ++ join " " (Set.toList (Set.map expected conds)) ++ ")")
                
 ----------------------------------------------------------------
 -- functions

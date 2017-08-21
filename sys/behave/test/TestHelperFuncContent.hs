@@ -88,7 +88,7 @@ identicalVExpr (view -> Viscstr cid1 vexp1)     (view -> Viscstr cid2 vexp2)    
 identicalVExpr (view -> Vaccess cid1 p1 vexp1)  (view -> Vaccess cid2 p2 vexp2)  = (identicalCstrId cid1 cid2) && (p1 == p2) && (identicalVExpr vexp1 vexp2)
 identicalVExpr (view -> Vconst c1)              (view -> Vconst c2)              = (c1 == c2)
 identicalVExpr (view -> Vvar v1)                (view -> Vvar v2)                = (identicalVarId v1 v2)
-identicalVExpr (view -> Vite vexps1 vt1 ve1)    (view -> Vite vexps2 vt2 ve2)    = (identicalVExprs vexps1 vexps2) && (identicalVExpr vt1 vt2)  && (identicalVExpr ve1 ve2)
+identicalVExpr (view -> Vite vc1 vt1 ve1)    (view -> Vite vc2 vt2 ve2)    = (identicalVExpr vc1 vc2) && (identicalVExpr vt1 vt2)  && (identicalVExpr ve1 ve2)
 identicalVExpr (view -> Venv map1 v1)           (view -> Venv map2 v2)           = (identicalMap map1 map2) && (identicalVExpr v1 v2)
 identicalVExpr (view -> Vequal vl1 vr1)         (view -> Vequal vl2 vr2)         = (identicalVExpr vl1 vl2)  && (identicalVExpr vr1 vr2)
 identicalVExpr (view -> Vnot v1)                (view -> Vnot v2)                =  identicalVExpr v1 v2
@@ -284,7 +284,7 @@ var name sort = FuncContent (cstrVar (expectVarId name sort) )
 
 -- user must ensure first argument bool, then and else part same type
 ite :: FuncContent -> FuncContent -> FuncContent -> FuncContent
-ite condition thenPart elsePart = FuncContent (cstrIte [vexpr condition] (vexpr thenPart) (vexpr elsePart))
+ite condition thenPart elsePart = FuncContent (cstrIte (vexpr condition) (vexpr thenPart) (vexpr elsePart))
 
 -- user must assert only variables are used as keys
 subst :: Map.Map FuncContent FuncContent -> FuncContent -> FuncContent

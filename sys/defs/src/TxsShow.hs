@@ -261,8 +261,8 @@ instance (PShow v) => PShow (ValExpr v)
       =  pshow con
     pshow (view -> Vvar vid)
       =  pshow vid
-    pshow (view -> Vite cnrs vexp1 vexp2)
-      =  " ( IF " ++ Utils.join ", " (map pshow cnrs) ++ 
+    pshow (view -> Vite cond vexp1 vexp2)
+      =  " ( IF " ++ pshow cond ++ 
          " THEN " ++ pshow vexp1 ++
          " ELSE " ++ pshow vexp2 ++
          " FI )"

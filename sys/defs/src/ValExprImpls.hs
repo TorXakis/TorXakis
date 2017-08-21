@@ -52,9 +52,9 @@ cstrConst c = ValExpr (Vconst c)
 cstrVar :: v -> ValExpr v
 cstrVar v = ValExpr (Vvar v)
 
-cstrIte :: [ValExpr v] -> ValExpr v -> ValExpr v -> ValExpr v
+cstrIte :: ValExpr v -> ValExpr v -> ValExpr v -> ValExpr v
 -- if (not b) then tb else fb == if b then fb else tb
-cstrIte [view -> Vnot n] tb fb  = ValExpr (Vite [n] fb tb)
+cstrIte (view -> Vnot n) tb fb  = ValExpr (Vite n fb tb)
 cstrIte cs tb fb                = ValExpr (Vite cs tb fb)
 
 cstrEnv :: VarEnv v v -> ValExpr v -> ValExpr v

@@ -299,9 +299,9 @@ testConditionalIntPresentValue = testTemplateValue conditionalIntDef [conditiona
 
         createAssertions :: [VarId] -> [VExpr]
         createAssertions [v]    = [ cstrFunc isPresentCstrFunc [cstrVar v]
-                                  , cstrIte [cstrFunc isPresentCstrFunc [cstrVar v]] 
-                                         (cstrFunc funcId_gtInt [cstrFunc valuePresentCstrFunc [cstrVar v], cstrConst (Cint boundary)] ) 
-                                         (cstrConst (Cbool True))
+                                  , cstrIte (cstrFunc isPresentCstrFunc [cstrVar v])
+                                            (cstrFunc funcId_gtInt [cstrFunc valuePresentCstrFunc [cstrVar v], cstrConst (Cint boundary)] ) 
+                                            (cstrConst (Cbool True))
                                   ]
         createAssertions _   = error "One variable in problem"
         
