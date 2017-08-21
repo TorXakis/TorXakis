@@ -25,8 +25,6 @@ stack test --test-arguments=--match=Stimulus
 
 ## Adding new tests
 
-TODO: document how to add new tests
-
 When adding a new tests
 use [camel case](https://en.wikipedia.org/wiki/Camel_case) folder names. The
 rationale behind this is that we want to be consistent with Haskell naming
