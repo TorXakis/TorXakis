@@ -16,6 +16,7 @@ module Sqatt
   )
 where
 
+import           Control.Applicative
 import           Control.Concurrent
 import           Control.Concurrent.Async
 import           Control.Exception
@@ -236,16 +237,17 @@ runTxsWithExample logDir ex = do
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       port <- repr <$> getRandomPort
-      res <- sleep sqattTimeout `race`
-               (txsServerProc logDir port `race` txsUIProc logDir inputModelF port)
-      case res of
-        Left ()             -> return $ Left TestTimedOut
-        Right (Left ())     -> return $ Left TxsServerAborted
-        Right (Right True)  -> return $ Right ()
-        Right (Right False) -> return $ Left tErr
+      runConcurrently $  timer
+                     <|> txsServerProc logDir port
+                     <|> txsUIProc logDir inputModelF port
   where
+    timer = Concurrently $ do
+      sleep sqattTimeout
+      throwIO TestTimedOut
     txsUIProc uiLogDir imf port =
-      Turtle.fold txsUIShell findExpectedMsg
+      Concurrently $ try $ do
+        res <- Turtle.fold txsUIShell findExpectedMsg
+        unless res (throw tErr)
       where txsUIShell :: Shell Line
             txsUIShell = do
               h <- appendonly $ uiLogDir </> "txsui.out.log"
@@ -262,26 +264,47 @@ runTxsWithExample logDir ex = do
     expectedMsg Fail = txsUIFailMsg
     expectedMsg Pass = txsUIPassMsg
     txsServerProc sLogDir port =
-      output (sLogDir </> "txsserver.out.log") (inproc txsServerCmd [port] Turtle.empty)
+      runInprocNI (sLogDir </> "txsserver.out.log") txsServerCmd [port]
+
+-- | Run a process.
+runInproc :: FilePath -- TODO: document this
+          -> Text
+          -> [Text]
+          -> Shell Line
+          -> Concurrently (Either SqattError ())
+runInproc logDir cmd cmdArgs procInput = Concurrently $
+  try $ output logDir (inproc cmd cmdArgs procInput)
+
+-- | Run a process without input.
+runInprocNI :: FilePath
+            -> Text
+            -> [Text]
+            -> Concurrently (Either SqattError ())
+runInprocNI logDir cmd cmdArgs =
+  runInproc logDir cmd cmdArgs Turtle.empty
+
+--      output (sLogDir </> "txsserver.out.log") (inproc txsServerCmd [port] Turtle.empty)
 
 -- | Run TorXakis as system under test.
 runTxsAsSut :: FilePath   -- ^ Path to the logging directory for the current example set.
-                  -> TxsExample -- ^ Example to run.
-                  -> IO (Either SqattError ())
+            -> TxsExample -- ^ Example to run.
+            -> IO (Either SqattError ())
 runTxsAsSut logDir ex = do
   eInputModelF <- runExceptT $ runTest $ decodePath (txsModelFile ex)
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       port <- repr <$> getRandomPort
-      _ <- txsServerProc logDir port `race` txsUIProc logDir inputModelF port
-      return $ Right ()
+      runConcurrently $
+        txsServerProc port <|> txsUIProc inputModelF port
   where
-    txsUIProc logDir imf port =
-      output (logDir </> "txsui.SUT.out.log") (inproc txsUICmd [port, imf] (input cmdsFile))
+    txsUIProc imf port =
+      let cLogDir = logDir </> "txsui.SUT.out.log" in
+      runInproc cLogDir txsUICmd [port, imf] (input cmdsFile)
     cmdsFile = txsCommandsFile ex
-    txsServerProc logDir port =
-      output (logDir </> "txsserver.SUT.out.log") (inproc txsServerCmd [port] Turtle.empty)
+    txsServerProc port =
+      let cLogDir = logDir </> "txsserver.SUT.out.log" in
+      runInprocNI cLogDir txsServerCmd [port]
 
 runSUT :: FilePath -> Text -> [Text] -> IO ()
 runSUT logDir cmd cmdArgs =
