@@ -26,7 +26,7 @@ module EnvData
 where
 
 -- import from defs
-import qualified TxsShow   as TxsShow
+import qualified TxsShow
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -60,7 +60,7 @@ data Msg     =   TXS_CORE_SYSTEM_ERROR     { s :: String }
 
 instance TxsShow.PShow Msg
   where
-    pshow msg  =  s msg
+    pshow = s
 
 
 -- ----------------------------------------------------------------------------------------- --

@@ -2728,7 +2728,7 @@ ValExpr1        -- :: { VExpr }
                                      ]
                 ;  $4.inhSolvSort = $$.inhSolvSort
                 ;  $6.inhSolvSort = $$.inhSolvSort
-                ;  $$ = cstrIte $2 $4 $6
+                ;  $$ = cstrIte (cstrAnd (Set.fromList $2)) $4 $6
                 }
               | ValExpr1 operator ValExpr2
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1

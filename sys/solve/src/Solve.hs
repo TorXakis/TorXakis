@@ -168,16 +168,8 @@ valExprsSolve vs vexps  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
-
-solutionToEqualAssertions :: (Variable v) => Solution v -> [ValExpr v]
-solutionToEqualAssertions sol
-  =  [ cstrEqual (cstrVar v) (cstrConst w) | (v,w) <- Map.toList sol ]
-
-
 negateSolution :: (Variable v) => Solution v -> ValExpr v
-negateSolution sol = cstrIte (solutionToEqualAssertions sol) (cstrConst (Cbool False)) (cstrConst (Cbool True))
-                        -- ite x false true is equal to not (and x)
-                        -- however and with multiple arguments is not supported yet
+negateSolution sol = cstrNot (cstrAnd (Set.fromList [ cstrEqual (cstrVar v) (cstrConst w) | (v,w) <- Map.toList sol ]) )
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

@@ -257,8 +257,7 @@ valexprToSMT mapI (view -> Vconst c) = constToSMT mapI c
 
 valexprToSMT _ (view -> Vvar varId)  =  vname varId
 
-valexprToSMT mapI (view -> Vite [c] expr1 expr2)  = "(ite " ++                     valexprToSMT mapI c      ++ " "  ++ valexprToSMT mapI expr1 ++ " " ++ valexprToSMT mapI expr2 ++ ")"
-valexprToSMT mapI (view -> Vite list expr1 expr2) = "(ite (and " ++ join " " (map (valexprToSMT mapI) list) ++ ") " ++ valexprToSMT mapI expr1 ++ " " ++ valexprToSMT mapI expr2 ++ ")"
+valexprToSMT mapI (view -> Vite c expr1 expr2) = "(ite " ++ valexprToSMT mapI c ++ " "  ++ valexprToSMT mapI expr1 ++ " " ++ valexprToSMT mapI expr2 ++ ")"
 
 valexprToSMT mapI (view -> Venv venv expr)  =
     if Map.null venv
