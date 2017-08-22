@@ -230,16 +230,16 @@ sqattTimeout = 30.0
 -- | Run TorXakis with the given example specification.
 runTxsWithExample :: FilePath   -- ^ Path to the logging directory for the current example set.
                   -> TxsExample -- ^ Example to run.
-                  -> IO (Either SqattError ())
-runTxsWithExample logDir ex = do
+                  -> Concurrently (Either SqattError ())
+runTxsWithExample logDir ex = Concurrently $ do
   eInputModelF <- runExceptT $ runTest $ decodePath (txsModelFile ex)
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       port <- repr <$> getRandomPort
-      runConcurrently $  timer
-                     <|> txsServerProc logDir port
-                     <|> txsUIProc logDir inputModelF port
+      runConcurrently $ timer
+                    <|> txsServerProc logDir port
+                    <|> txsUIProc logDir inputModelF port
   where
     timer = Concurrently $ do
       sleep sqattTimeout
@@ -283,13 +283,11 @@ runInprocNI :: FilePath
 runInprocNI logDir cmd cmdArgs =
   runInproc logDir cmd cmdArgs Turtle.empty
 
---      output (sLogDir </> "txsserver.out.log") (inproc txsServerCmd [port] Turtle.empty)
-
 -- | Run TorXakis as system under test.
 runTxsAsSut :: FilePath   -- ^ Path to the logging directory for the current example set.
             -> TxsExample -- ^ Example to run.
-            -> IO (Either SqattError ())
-runTxsAsSut logDir ex = do
+            -> Concurrently (Either SqattError ())
+runTxsAsSut logDir ex = Concurrently $ do
   eInputModelF <- runExceptT $ runTest $ decodePath (txsModelFile ex)
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
@@ -306,9 +304,9 @@ runTxsAsSut logDir ex = do
       let cLogDir = logDir </> "txsserver.SUT.out.log" in
       runInprocNI cLogDir txsServerCmd [port]
 
-runSUT :: FilePath -> Text -> [Text] -> IO ()
+runSUT :: FilePath -> Text -> [Text] -> Concurrently (Either SqattError ())
 runSUT logDir cmd cmdArgs =
-  output (logDir </> "SUT.out.log") (inproc cmd cmdArgs Turtle.empty)
+  runInprocNI (logDir </> "SUT.out.log") cmd cmdArgs
 
 -- | Fork a process using `Process.spawnProcess`, and terminates the process
 -- when an asynchronous exception is thrown. Currently this is a workaround for
@@ -331,21 +329,21 @@ mkTest logDir (ExampleWithSut ex (JavaCompiledSut mClass cpSP) args) = do
   -- res <- liftIO $ forkProcess javaExecPath javaArgs `race` runTxsWithExample logDir ex
   cpOpts <- getCPOpts cpSP
   let javaArgs = cpOpts ++ [mClass] ++ args
-  res <- liftIO $ runSUT logDir javaCmd javaArgs `race` runTxsWithExample logDir ex
+  res <- liftIO $
+    runConcurrently $  runSUT logDir javaCmd javaArgs
+                   <|> runTxsWithExample logDir ex
   case res of
-    Left _              -> throwError SutAborted
-    Right (Left txsErr) -> throwError txsErr
-    Right (Right ())    -> return ()
+    Left txsErr -> throwError txsErr
+    Right ()    -> return ()
 mkTest logDir (ExampleWithSut ex (TxsSimulatedSut cmds) _) = do
-  res <- liftIO $ runTxsWithExample logDir ex `race` runTxsAsSut logDir sim
+  let sim = ex {txsCommandsFile = cmds}
+  res <- liftIO $
+    runConcurrently $ runTxsWithExample logDir ex <|> runTxsAsSut logDir sim
   case res of
-    Left (Left txsErr) -> throwError txsErr
-    Left (Right _)     -> return ()
-    Right _            -> throwError SutAborted
-  where
-    sim = ex {txsCommandsFile = cmds}
+    Left txsErr -> throwError txsErr
+    Right ()    -> return ()
 mkTest logDir (StandaloneExample ex) = do
-  res <- liftIO $ runTxsWithExample logDir ex
+  res <- liftIO $ runConcurrently $ runTxsWithExample logDir ex
   case res of
     Left txsErr -> throwError txsErr
     Right  _    -> return ()
