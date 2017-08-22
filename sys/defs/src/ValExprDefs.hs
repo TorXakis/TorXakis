@@ -30,7 +30,7 @@ data  ValExprView v = Vfunc   FuncId [ValExpr v]
                     | Vaccess CstrId Int (ValExpr v)
                     | Vconst  Const
                     | Vvar    v
-                    | Vite    [ValExpr v] (ValExpr v) (ValExpr v)
+                    | Vite    (ValExpr v) (ValExpr v) (ValExpr v)
                     | Venv    (VarEnv v v) (ValExpr v)
                     | Vequal  (ValExpr v) (ValExpr v)
                     | Vnot    (ValExpr v)

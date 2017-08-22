@@ -90,7 +90,7 @@ partSubst ve (view -> Viscstr cid vexp)       = cstrIsCstr cid (partSubst ve vex
 partSubst ve (view -> Vaccess cid p vexp)     = cstrAccess cid p (partSubst ve vexp)
 partSubst _  (view -> Vconst const')          = cstrConst const'
 partSubst ve (view -> Vvar vid)               = Map.findWithDefault (cstrVar vid) vid ve
-partSubst ve (view -> Vite cond vexp1 vexp2)  = cstrIte (map (partSubst ve) cond)
+partSubst ve (view -> Vite cond vexp1 vexp2)  = cstrIte (partSubst ve cond)
                                                         (partSubst ve vexp1) 
                                                         (partSubst ve vexp2)
 partSubst ve (view -> Venv ve' vexp)          = partSubst ve (partSubst ve' vexp)
@@ -122,7 +122,7 @@ compSubst _  (view -> Vconst const')          =  cstrConst const'
 compSubst ve (view -> Vvar vid)               =  fromMaybe 
                                                     (cstrError "TXS Subst compSubst: incomplete\n")
                                                     (Map.lookup vid ve)
-compSubst ve (view -> Vite cond vexp1 vexp2)  =  cstrIte (map (compSubst ve) cond)
+compSubst ve (view -> Vite cond vexp1 vexp2)  =  cstrIte (compSubst ve cond)
                                                          (compSubst ve vexp1) 
                                                          (compSubst ve vexp2)
 compSubst ve (view -> Venv ve' vexp)          =  compSubst ve (compSubst ve' vexp)
@@ -242,7 +242,7 @@ instance UsedFids VExpr
     usedFids (view -> Vaccess _cid _p vexp)     =  usedFids vexp
     usedFids (view -> Vconst _const)            =  []
     usedFids (view -> Vvar _v)                  =  []
-    usedFids (view -> Vite vexps vexp1 vexp2)   =  usedFids (vexp1:vexp2:vexps)
+    usedFids (view -> Vite cond tb fb)          =  usedFids [cond, tb, fb]
     usedFids (view -> Venv ve vexp)             =  usedFids (vexp:Map.elems ve)
     usedFids (view -> Vequal vexp1 vexp2)       =  usedFids vexp1 ++ usedFids vexp2
     usedFids (view -> Vand vexps)               =  concatMap usedFids (Set.toList vexps)

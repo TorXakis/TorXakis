@@ -80,7 +80,7 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
     
     let varList = VarId "list" 645421 sortId_ListInt
     let varListIO = createVvar varList
-    let ve = createVite (Set.singleton (createIsConstructor isNil [varListIO])) (createVconst (Cint 0)) (createVfunc funcId_plusInt [createVconst (Cint 1), createVfunc lengthList [createVfunc tl [varListIO]]]) 
+    let ve = createVite (createIsConstructor isNil [varListIO]) (createVconst (Cint 0)) (createVfunc funcId_plusInt [createVconst (Cint 1), createVfunc lengthList [createVfunc tl [varListIO]]]) 
     
     let (TXS2SMTFuncTest fDefs e) = createFunctionDefRecursive maps lengthList [varList] sortId_Int ve 
     

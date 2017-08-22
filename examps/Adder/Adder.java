@@ -29,44 +29,47 @@ public class Adder implements Runnable {
             
     public static void main(String[] args) {
         if (args.length == 0)
-            System.out.println("own port number required");
-        else {        
+            System.out.println("Own port number required");
+        else {
              // Start adders in parallel, one per-each port number.
+            String msg = String.format("Starting %d adders.", args.length);
+            System.out.println(msg);
             for (int i = 0; i < args.length; i++) {
                 (new Thread (new Adder(args[i]))).start();
             }
         }
     }
 
-void startAdder() {
+    void startAdder() {
         String s, r;
         int sep1, sep2, sep3, x, y;
-        String msg = String.format("Starting adders listening on port %d", portNr);
+        String msg = String.format("Starting an adder listening on port %d", portNr);
         System.out.println(msg);
         try {
-                // instantiate a socket for accepting a connection
-                ServerSocket serverSock = new ServerSocket(portNr);
+            // instantiate a socket for accepting a connection
+            ServerSocket serverSock = new ServerSocket(portNr);
 
-                // wait to accept a connection request
-                // then a data socket is created
-                Socket sock = serverSock.accept();
+            // wait to accept a connection request
+            // then a data socket is created
+            Socket sock = serverSock.accept();
 
-                // get an input stream for reading from the data socket
-                InputStream inStream = sock.getInputStream();
-                // create a BufferedReader object for text line input
-                BufferedReader sockIn = new BufferedReader(new InputStreamReader(inStream));
+            // get an input stream for reading from the data socket
+            InputStream inStream = sock.getInputStream();
+            // create a BufferedReader object for text line input
+            BufferedReader sockIn = new BufferedReader(new InputStreamReader(inStream));
 
-                // get an output stream for writing to the data socket
-                OutputStream outStream = sock.getOutputStream();
-                // create a PrinterWriter object for character-mode output
-                PrintWriter sockOut = new PrintWriter(new OutputStreamWriter(outStream));
+            // get an output stream for writing to the data socket
+            OutputStream outStream = sock.getOutputStream();
+            // create a PrinterWriter object for character-mode output
+            PrintWriter sockOut = new PrintWriter(new OutputStreamWriter(outStream));
 
-                Random random = new Random();
-                final int maxSleepTime = 180;
+            Random random = new Random();
+            final int maxSleepTime = 180;
 
-                while (true) {  // read a line from the data stream
-                    s = sockIn.readLine().trim();
-
+            while (true) {  // read a line from the data stream
+                s = sockIn.readLine();
+                if (s != null) {
+                    s = s.trim();
                     msg = String.format("Adders on port %d received input: %s", portNr, s);
                     System.out.println(msg);
                     
@@ -94,8 +97,9 @@ void startAdder() {
                         System.out.println(r);
                     }
                 }
-            } catch (Exception ex) {
-                ex.printStackTrace();
             }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 }

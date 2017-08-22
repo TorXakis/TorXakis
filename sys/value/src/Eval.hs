@@ -98,9 +98,9 @@ eval (view -> Vvar vid)  =  do
                    $ "Evaluation of value expression with free variable(s)" ]
      return $ Cerror ""
 
-eval (view -> Vite conds vexp1 vexp2)  =  do
-     cond <- evalCnrs conds
-     if  cond
+eval (view -> Vite cond vexp1 vexp2)  =  do
+     Cbool val <- eval cond
+     if val
        then eval vexp1
        else eval vexp2
 

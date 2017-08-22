@@ -36,8 +36,9 @@ freeVars (view -> Viscstr _cid vexp)       =  freeVars vexp
 freeVars (view -> Vaccess _cid _p vexp)    =  freeVars vexp
 freeVars (view -> Vconst _const)           =  []
 freeVars (view -> Vvar vid)                =  [vid]
-freeVars (view -> Vite cnrs vexp1 vexp2)   =  List.nub $ concatMap freeVars cnrs ++
-                                                 freeVars vexp1 ++ freeVars vexp2
+freeVars (view -> Vite cond vexp1 vexp2)   =  List.nub $ freeVars cond ++
+                                                         freeVars vexp1 ++ 
+                                                         freeVars vexp2
 freeVars (view -> Venv ve vexp)            =  List.nub $ concatMap freeVars (Map.elems ve) ++
                                                 ( freeVars vexp \\\ Map.keys ve )
 freeVars (view -> Vequal vexp1 vexp2)      =  List.nub $ freeVars vexp1 ++ freeVars vexp2

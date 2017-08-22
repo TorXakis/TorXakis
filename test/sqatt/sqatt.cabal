@@ -29,7 +29,6 @@ library
                      , network
                      , async
                      , foldl
-                     , silently
                      , process
                      , monad-loops
                      , random

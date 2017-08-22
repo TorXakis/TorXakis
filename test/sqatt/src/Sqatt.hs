@@ -34,7 +34,6 @@ import           Network.Socket
 import           Prelude                   hiding (FilePath)
 import           System.Info
 import qualified System.IO                 as IO
-import           System.IO.Silently
 import           System.Process            (ProcessHandle)
 import qualified System.Process            as Process
 import           System.Random
@@ -179,7 +178,8 @@ data SqattError = CompileError Text
                 | FilePathError Text
                 | TestExpectationError Text
                 | SutAborted
-                | TxsServerAborted ExitCode
+                | TxsServerAborted
+                | TestTimedOut
   deriving (Show, Eq)
 
 instance Exception SqattError
@@ -214,6 +214,10 @@ getCPOpts :: Maybe FilePath -> Test [Text]
 getCPOpts Nothing         = return []
 getCPOpts (Just filePath) = (("-cp":) . pure) <$> decodePath filePath
 
+-- For now the timeout is not configurable.
+sqattTimeout :: NominalDiffTime
+sqattTimeout = 30.0
+
 -- | Run TorXakis with the given example specification.
 runTxsWithExample :: TxsExample -> IO (Either SqattError ())
 runTxsWithExample ex = do
@@ -222,12 +226,13 @@ runTxsWithExample ex = do
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       port <- repr <$> getRandomPort
-      res <- hSilence [IO.stdout, IO.stderr] $
-        txsServerProc port `race` txsUIProc inputModelF port
+      res <- sleep sqattTimeout `race`
+               (txsServerProc port `race` txsUIProc inputModelF port)
       case res of
-        Left code   -> return $ Left (TxsServerAborted code)
-        Right True  -> return $ Right ()
-        Right False -> return $ Left tErr
+        Left ()             -> return $ Left TestTimedOut
+        Right (Left ())     -> return $ Left TxsServerAborted
+        Right (Right True)  -> return $ Right ()
+        Right (Right False) -> return $ Left tErr
   where
     txsUIProc imf port =
       Turtle.fold (inproc txsUICmd [port, imf] (input cmdsFile))
@@ -239,7 +244,7 @@ runTxsWithExample ex = do
                      (repr . expectedResult $ ex)
     expectedMsg Fail = txsUIFailMsg
     expectedMsg Pass = txsUIPassMsg
-    txsServerProc port = proc txsServerCmd [port] mempty
+    txsServerProc port = sh (inproc txsServerCmd [port] Turtle.empty)
 
 -- | Fork a process using `Process.spawnProcess`, and terminates the process
 -- when an asynchronous exception is thrown. Currently this is a workaround for
@@ -252,7 +257,7 @@ forkProcess :: String           -- ^ Absolute path to the program executable.
             -> IO ProcessHandle
 forkProcess execPath cmdArgs = do
   ph <- Process.spawnProcess execPath cmdArgs
-  forever $ sh (sleep 60.0) `onException` Process.terminateProcess ph
+  forever (sh (sleep 60.0)) `onException` Process.terminateProcess ph
 
 mkTest :: RunnableExample -> Test ()
 mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP) args) = do

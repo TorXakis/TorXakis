@@ -64,7 +64,7 @@ testViteSingleton = TestCase $ do
     let sortId = SortId "Pierre" 67
     let varId = VarId "x" 1234 sortId
     let cond = createVequal (createVconst (Cint 13)) (createVvar varId)  -- TODO: order should not be relevant!
-    let (TXS2SMTVExprTest i e) = createVite (Set.singleton cond) thenExpr elseExpr
+    let (TXS2SMTVExprTest i e) = createVite cond thenExpr elseExpr
     assertEqual "ite singleton" e (valexprToSMT Map.empty i)
 
 testVite :: Test
@@ -74,9 +74,10 @@ testVite = TestCase $ do
     let sortId = SortId "Pierre" 67
     let var1Id = VarId "v1" 1234 sortId
     let var2Id = VarId "v2" 1235 sortId
-    let conds = Set.insert (createVequal (createVconst (Cint 56)) (createVvar var1Id) )
-               (Set.insert (createVequal (createVconst (Cint 5)) (createVvar var2Id) )
-                Set.empty)
+    let conds = createVand (Set.fromList [ createVequal (createVconst (Cint 56)) (createVvar var1Id)
+                                         , createVequal (createVconst (Cint 5)) (createVvar var2Id)
+                                         ]
+                           )
     let (TXS2SMTVExprTest i e) = createVite conds thenExpr elseExpr
     assertEqual "ite" e (valexprToSMT Map.empty i)
 
