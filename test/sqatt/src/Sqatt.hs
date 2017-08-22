@@ -28,6 +28,7 @@ import qualified Data.List                 as List
 import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text                 as T
+import qualified Data.Text.IO              as TIO
 import           Filesystem.Path
 import           Filesystem.Path.CurrentOS
 import           Network.Socket
@@ -65,9 +66,16 @@ data SutExample =
 
 -- | A set of examples.
 data TxsExampleSet = TxsExampleSet
-  { exampleSetName :: String       -- ^ Name of the example set.
-  , txsExamples    :: [TxsExample] -- ^ Examples in the set.
+  { exampleSetdesc :: ExampleSetDesc -- ^ Description of the example set.
+  , txsExamples    :: [TxsExample]   -- ^ Examples in the set.
   }
+
+newtype ExampleSetDesc = ExampleSetDesc
+  { exampleSetName :: String -- ^ Name of the example set.
+  }
+
+instance IsString ExampleSetDesc where
+  fromString = ExampleSetDesc
 
 -- | Information about a compiled Java program.
 data CompiledSut = JavaCompiledSut
@@ -219,24 +227,35 @@ sqattTimeout :: NominalDiffTime
 sqattTimeout = 30.0
 
 -- | Run TorXakis with the given example specification.
-runTxsWithExample :: TxsExample -> IO (Either SqattError ())
-runTxsWithExample ex = do
+runTxsWithExample :: FilePath   -- ^ Path to the logging directory for the current example set.
+                  -> TxsExample -- ^ Example to run.
+                  -> IO (Either SqattError ())
+runTxsWithExample pLogDir ex = do
+  let logDir = pLogDir </> (fromString . exampleName) ex
+  mktree logDir
   eInputModelF <- runExceptT $ runTest $ decodePath (txsModelFile ex)
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       port <- repr <$> getRandomPort
       res <- sleep sqattTimeout `race`
-               (txsServerProc port `race` txsUIProc inputModelF port)
+               (txsServerProc port `race` txsUIProc logDir inputModelF port)
       case res of
         Left ()             -> return $ Left TestTimedOut
         Right (Left ())     -> return $ Left TxsServerAborted
         Right (Right True)  -> return $ Right ()
         Right (Right False) -> return $ Left tErr
   where
-    txsUIProc imf port =
-      Turtle.fold (inproc txsUICmd [port, imf] (input cmdsFile))
-                  (Control.Foldl.any (T.isInfixOf searchStr . lineToText))
+    txsUIProc logDir imf port =
+      Turtle.fold txsUIShell findExpectedMsg
+      where txsUIShell :: Shell Line
+            txsUIShell = do
+              h <- appendonly $ logDir </> "txsui.out.log"
+              line <- inproc txsUICmd [port, imf] (input cmdsFile)
+              liftIO $ TIO.hPutStrLn h (lineToText line)
+              return line
+            findExpectedMsg :: Fold Line Bool
+            findExpectedMsg = Control.Foldl.any (T.isInfixOf searchStr . lineToText)
     cmdsFile = txsCommandsFile ex
     searchStr = expectedMsg . expectedResult $ ex
     tErr = TestExpectationError $
@@ -244,6 +263,26 @@ runTxsWithExample ex = do
                      (repr . expectedResult $ ex)
     expectedMsg Fail = txsUIFailMsg
     expectedMsg Pass = txsUIPassMsg
+    txsServerProc port = sh (inproc txsServerCmd [port] Turtle.empty)
+
+-- | Run TorXakis as system under test.
+runTxsAsSut :: FilePath   -- ^ Path to the logging directory for the current example set.
+                  -> TxsExample -- ^ Example to run.
+                  -> IO (Either SqattError ())
+runTxsAsSut pLogDir ex = do
+  let logDir = pLogDir </> (fromString . exampleName) ex
+  mktree logDir
+  eInputModelF <- runExceptT $ runTest $ decodePath (txsModelFile ex)
+  case eInputModelF of
+    Left decodeErr -> return $ Left decodeErr
+    Right inputModelF -> do
+      port <- repr <$> getRandomPort
+      _ <- txsServerProc port `race` txsUIProc logDir inputModelF port
+      return $ Right ()
+  where
+    txsUIProc logDir imf port =
+      output (logDir </> "txsui.SUT.out.log") (inproc txsUICmd [port, imf] (input cmdsFile))
+    cmdsFile = txsCommandsFile ex
     txsServerProc port = sh (inproc txsServerCmd [port] Turtle.empty)
 
 -- | Fork a process using `Process.spawnProcess`, and terminates the process
@@ -259,26 +298,26 @@ forkProcess execPath cmdArgs = do
   ph <- Process.spawnProcess execPath cmdArgs
   forever (sh (sleep 60.0)) `onException` Process.terminateProcess ph
 
-mkTest :: RunnableExample -> Test ()
-mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP) args) = do
+mkTest :: FilePath -> RunnableExample -> Test ()
+mkTest logDir (ExampleWithSut ex (JavaCompiledSut mClass cpSP) args) = do
   cpOpts <- Prelude.map T.unpack <$> getCPOpts cpSP
   javaExecPath <- execPathForCmd javaCmd
   let javaArgs = cpOpts ++ [T.unpack mClass] ++ (T.unpack <$> args)
-  res <- liftIO $ forkProcess javaExecPath javaArgs `race` runTxsWithExample ex
+  res <- liftIO $ forkProcess javaExecPath javaArgs `race` runTxsWithExample logDir ex
   case res of
     Left _              -> throwError SutAborted
     Right (Left txsErr) -> throwError txsErr
     Right (Right ())    -> return ()
-mkTest (ExampleWithSut ex (TxsSimulatedSut cmds) _) = do
-  res <- liftIO $ runTxsWithExample ex `race` runTxsWithExample sim
+mkTest logDir (ExampleWithSut ex (TxsSimulatedSut cmds) _) = do
+  res <- liftIO $ runTxsWithExample logDir ex `race` runTxsAsSut logDir sim
   case res of
     Left (Left txsErr) -> throwError txsErr
     Left (Right _)     -> return ()
     Right _            -> throwError SutAborted
   where
     sim = ex {txsCommandsFile = cmds}
-mkTest (StandaloneExample ex) = do
-  res <- liftIO $ runTxsWithExample ex
+mkTest logDir (StandaloneExample ex) = do
+  res <- liftIO $ runTxsWithExample logDir ex
   case res of
     Left txsErr -> throwError txsErr
     Right  _    -> return ()
@@ -288,10 +327,10 @@ getRandomPort :: IO Integer
 getRandomPort = randomRIO (10000, 60000)
 
 -- | Execute a test.
-execTest :: TxsExample -> IO (Either SqattError ())
-execTest ex = runExceptT $ runTest $ do
+execTest :: FilePath -> TxsExample -> IO (Either SqattError ())
+execTest logDir ex = runExceptT $ runTest $ do
   runnableExample <- getRunnableExample
-  mkTest runnableExample
+  mkTest logDir runnableExample
   where getRunnableExample =
           case sutExample ex of
             Nothing ->
@@ -303,20 +342,22 @@ execTest ex = runExceptT $ runTest $ do
               return (ExampleWithSut ex (TxsSimulatedSut cmds) [])
 
 -- | Test a single example.
-testExample :: TxsExample -> Spec
-testExample ex = it (exampleName ex) $ do
-  res <- execTest ex
+testExample :: FilePath -> TxsExample -> Spec
+testExample logDir ex = it (exampleName ex) $ do
+  res <- execTest logDir ex
   res `shouldBe` Right ()
 
 -- | Test a list of examples.
-testExamples :: [TxsExample] -> Spec
-testExamples = traverse_ testExample
+testExamples :: FilePath -> [TxsExample] -> Spec
+testExamples logDir = traverse_ (testExample logDir)
 
 -- | Test an example set.
-testExampleSet :: TxsExampleSet -> Spec
-testExampleSet (TxsExampleSet esName exs) =
-  describe esName (testExamples exs)
+testExampleSet :: FilePath -> TxsExampleSet -> Spec
+testExampleSet logDir (TxsExampleSet exSetDesc exs) = do
+  let thisSetLogDir = logDir </> fromString (exampleSetName exSetDesc)
+  runIO $ mktree thisSetLogDir
+  describe (exampleSetName exSetDesc) (testExamples thisSetLogDir exs)
 
 -- | Test a list of example sets.
-testExampleSets :: [TxsExampleSet] -> Spec
-testExampleSets = traverse_ testExampleSet
+testExampleSets :: FilePath -> [TxsExampleSet] -> Spec
+testExampleSets logDir = traverse_ (testExampleSet logDir)
