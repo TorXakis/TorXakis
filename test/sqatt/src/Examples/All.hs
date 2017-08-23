@@ -12,6 +12,7 @@ module Examples.All
 where
 
 import qualified Examples.Adder            as Adder
+import qualified Examples.ControlLoop      as ControlLoop
 import qualified Examples.Echo             as Echo
 import qualified Examples.LuckyPeople      as LuckyPeople
 import qualified Examples.StimulusResponse as StimulusResponse
@@ -19,6 +20,7 @@ import           Sqatt
 
 allExamples :: [TxsExampleSet]
 allExamples = [ Adder.exampleSet
+              , ControlLoop.exampleSet
               , Echo.exampleSet
               , LuckyPeople.exampleSet
               , StimulusResponse.exampleSet
