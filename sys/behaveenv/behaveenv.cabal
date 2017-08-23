@@ -19,10 +19,9 @@ library
                         EnvBTree
 
   ghc-options:         -O2 -optc-O3 -optc-ffast-math
-  
+
   build-depends:        base
                       , containers
-                      , MissingH
                       , mtl
 
                       , coreenv

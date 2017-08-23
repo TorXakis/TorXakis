@@ -7,6 +7,22 @@ See LICENSE at root directory of this repository.
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE ViewPatterns #-}
 module ValExprImpls
+( cstrFunc
+, cstrCstr
+, cstrIsCstr
+, cstrAccess
+, cstrNot
+, cstrEqual
+, cstrEnv
+, cstrIte
+, cstrVar
+, cstrConst
+, cstrAnd
+, cstrPredef
+, cstrError
+, cstrOr
+, cstrImplies
+)
 where
 -- ----------------------------------------------------------------------------------------- --
 import Debug.Trace as Trace

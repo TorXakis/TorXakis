@@ -5,7 +5,7 @@ license:                BSD3
 license-file:           license.txt
 author:                 Jan Tretmans
                       , Pierre van de Laar
-maintainer:          
+maintainer:
                       , pierre.vandelaar@tno.nl
 copyright:              TNO
 category:               Web
@@ -21,7 +21,7 @@ library
                       , RandIncrementChoice
                       , SMT
                       , Solve
-                      
+
   other-modules:        RegexSMTHappy
                       , RegexXSDtoSMT
                       , SMTInternal
@@ -29,10 +29,10 @@ library
                       , SMTAlex
                       , SMTHappy
                       , SMTStringAlex
-                      , SMTStringHappy                      
+                      , SMTStringHappy
                       , SolveRandParam
                       , TXS2SMT
-                      
+
   build-depends:        array
                       , base
                       , containers
@@ -47,22 +47,22 @@ library
                       , defs
                       , value
                       , solvedefs
-                      
+
   build-tools:          alex
                       , happy
 
   ghc-options:         -O2 -optc-O3 -optc-ffast-math 
   
   default-language:     Haskell2010
-  
-  
+
+
 test-suite SmtSolver-WhiteBox
   type:                 exitcode-stdio-1.0
   hs-source-dirs:       test
                       , src
                                             
   main-is:              TestMainWhiteBox.hs
-  
+
   other-modules:        HelperFuncDefToSMT
                       , HelperToSMT
                       , HelperVexprToSMT
@@ -75,8 +75,11 @@ test-suite SmtSolver-WhiteBox
                       , TestSMTValue
                       , TestSortDefToSMT
                       , TestVexprToSMT
-                      
-                      , CallGraph
+
+                      , FreeVar
+                      , RandIncrementChoice
+                      , RandPartition
+                      , RandTrueBins
                       , RegexSMTHappy
                       , RegexXSDtoSMT
                       , SMT
@@ -85,10 +88,10 @@ test-suite SmtSolver-WhiteBox
                       , SMTHappy
                       , SMTInternal
                       , SMTStringAlex
-                      , SMTStringHappy                      
-                      , Solve
+                      , SMTStringHappy
+                      , SolveRandParam
                       , TXS2SMT
-                      
+
   build-depends:        array
                       , base
                       , containers
@@ -101,7 +104,7 @@ test-suite SmtSolver-WhiteBox
                       , defs
                       , solvedefs
                       , value
-                  
+
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
 
   default-language:     Haskell2010
@@ -111,23 +114,22 @@ test-suite SmtSolver-BlackBox
   hs-source-dirs:       test
                                             
   main-is:              TestMainBlackBox.hs
-  
+
   other-modules:        TestConstraint
                       , TestMultipleInstances
                       , TestPushPop
-                      
+
   build-depends:        base
                       , containers
                       , mtl
                       , process
                       , regex-tdfa
                       , HUnit
-                      , MissingH
                       , defs
                       , solve
                       , solvedefs
                       , value
-                  
+
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
 
   default-language:     Haskell2010

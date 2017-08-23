@@ -25,7 +25,6 @@ library
   build-depends:        base
                       , containers
                       , mtl
-                      , network
 
                       , behavedefs
                       , defs

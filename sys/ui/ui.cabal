@@ -27,7 +27,6 @@ executable txsui
                       , mtl
                       , network
                       , process
-                      , text
                       , time
                       , MissingH
   default-language:     Haskell2010
