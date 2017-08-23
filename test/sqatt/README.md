@@ -22,3 +22,10 @@ be used:
 ```sh
 stack test --test-arguments=--match=Stimulus
 ```
+
+## Adding new tests
+
+When adding a new tests
+use [camel case](https://en.wikipedia.org/wiki/Camel_case) folder names. The
+rationale behind this is that we want to be consistent with Haskell naming
+conventions regarding module folders.

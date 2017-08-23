@@ -4,7 +4,7 @@ REM See LICENSE at root directory of this repository.
 
 @ECHO OFF
 SET TORXAKIS=torxakis.bat
-SET REL=examps\adder
+SET REL=examps\Adder
 SET EXAMPS=%1\%REL%
 SET TEST=%1\test\%REL%
 
@@ -29,9 +29,7 @@ move /Y testTrace.log testTrace.Spec.AdderStAut.Sut.Adder.log
 echo ------- End Adder Test 2
 
 echo ------- Start Adder Test 3 - Parallel Adders
-start /min java -cp %EXAMPS% Adder 7891
-start /min java -cp %EXAMPS% Adder 7892
-start /min java -cp %EXAMPS% Adder 7893
+start /min java -cp %EXAMPS% Adder 7891 7892 7893
 call %TORXAKIS% %EXAMPS%\Adder.txs < %TEST%\Adder3_Tester.txscmd
 TIMEOUT /T 4 /NOBREAK
 move /Y testTrace.log testTrace.Spec.Adder3.Sut.Adder3.log
