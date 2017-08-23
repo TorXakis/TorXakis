@@ -229,7 +229,7 @@ getCPOpts (Just filePath) = (("-cp":) . pure) <$> decodePath filePath
 -- | Timeout (in seconds) for running a test. For now the timeout is not
 -- configurable.
 sqattTimeout :: NominalDiffTime
-sqattTimeout = 30.0
+sqattTimeout = 60.0
 
 -- | Run TorXakis with the given example specification.
 runTxsWithExample :: FilePath   -- ^ Path to the logging directory for the current example set.
