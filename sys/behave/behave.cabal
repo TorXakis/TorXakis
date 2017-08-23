@@ -29,7 +29,6 @@ library
   build-depends:        base
                       , containers
                       , mtl
-                      , MissingH
 
                       , behavedefs
                       , behaveenv
@@ -55,7 +54,6 @@ test-suite behave-test
                       , Reduce
                       , Subst
                       , Unfold
-                      , TestBExpr
                       , TestFuncContent
                       , TestHelperFuncContent
                       , TestProcessBehaviour
@@ -63,9 +61,7 @@ test-suite behave-test
 
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
   
-  build-depends:       array
-                     , base
-                     , bytestring
+  build-depends:       base
                      , containers
                      , mtl
                      , HUnit

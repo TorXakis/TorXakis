@@ -17,8 +17,7 @@ module Equiv
 -- export
 
 ( Equiv (..)
-, elemMby       -- elemM  :: (Monad m) => (a -> a -> m Bool) -> a -> [a] -> m Bool
-, nubMby        -- nubMby :: (Monad m) => (a -> a -> m Bool) -> [a] -> m [a]
+, nubMby
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -39,23 +38,13 @@ import qualified EnvBTree            as IOB
 import           StdTDefs
 import           TxsDefs
 
-
--- import FreeVar
--- import Eval
-
-
 -- ----------------------------------------------------------------------------------------- --
--- Equiv : equivalence
-
-
+-- | Equiv : equivalence
 class (Eq e) => Equiv e
   where
-
     (~=~) :: e -> e -> IOB.IOB Bool
-    (~/~) :: e -> e -> IOB.IOB Bool
 
     x ~=~ y  =  return $ x == y
-    x ~/~ y  =  do  { eq <- x ~=~ y ;  return $ not eq }
 
 
 instance (Equiv t) => Equiv [t]
@@ -243,15 +232,7 @@ instance Equiv BExpr
 
     _ ~=~ _  = return False
 
-
--- ----------------------------------------------------------------------------------------- --
--- ----------------------------------------------------------------------------------------- --
--- helper functions
-
-
--- ----------------------------------------------------------------------------------------- --
--- check elem of, with given momad equality
-
+-- | check elem of, with given momad equality
 elemMby :: (Monad m) => (a -> a -> m Bool) -> a -> [a] -> m Bool
 elemMby _ _ []      =  return False
 elemMby eqm e (x:xs)  =  do
@@ -260,9 +241,7 @@ elemMby eqm e (x:xs)  =  do
        then return True
        else elemMby eqm e xs
 
--- ----------------------------------------------------------------------------------------- --
--- make list unique, with given monad equality, in monad
-
+-- | make list unique, with given monad equality, in monad
 nubMby :: (Monad m) => (a -> a -> m Bool) -> [a] -> m [a]
 nubMby _ []      =  return []
 nubMby eqm (x:xs)  =  do
@@ -271,8 +250,3 @@ nubMby eqm (x:xs)  =  do
        then    nubMby eqm xs
        else do xs' <- nubMby eqm xs
                return $ x:xs'
-
-
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --

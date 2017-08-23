@@ -57,7 +57,6 @@ test-suite Value-WhiteBox
                                           
   build-depends:        array
                       , base
-                      , regex-tdfa
                       , HUnit
                   
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N

@@ -10,7 +10,6 @@ testProcessBehaviourList
 )
 where
 -- test specific Haskell imports
--- import qualified Debug.Trace as Trace
 import Test.HUnit
 
 -- test specific TorXakis imports
@@ -24,9 +23,7 @@ import qualified Data.Set as Set
 -- generic TorXakis imports
 import BTree
 import EnvBTree
-import Behave
 import Expand
-import Reduce
 import StdTDefs
 import TxsDefs
 import Unfold
@@ -34,7 +31,6 @@ import Sigs
 
 -- ----------------------------------------------------------------------------
 -- additional variables
-
 
 envbIdle     :: EnvB
 envbIdle     =  EnvB { EnvBTree.smts     = Map.empty

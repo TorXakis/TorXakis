@@ -5,8 +5,7 @@ license:                BSD3
 license-file:           license.txt
 author:                 Jan Tretmans
                       , Pierre van de Laar
-maintainer:          
-                      , pierre.vandelaar@tno.nl
+maintainer:             pierre.vandelaar@tno.nl
 copyright:              TNO
 category:               Web
 build-type:             Simple
@@ -19,13 +18,11 @@ library
                       , BTShow
 
   ghc-options:         -O2 -optc-O3 -optc-ffast-math
-  
+
   build-depends:        base
                       , containers
                       , MissingH
-                      , mtl
 
                       , defs
-                      , solvedefs
-                      
+
   default-language:     Haskell2010
