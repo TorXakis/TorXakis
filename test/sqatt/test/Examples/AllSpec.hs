@@ -12,14 +12,30 @@ import           Filesystem.Path
 import           Sqatt
 import           System.IO
 import           Test.Hspec
-import           Turtle.Prelude
+import           Turtle
+
+-- | For now the root directory where the logs are stored is not configurable.
+sqattLogsRoot :: Turtle.FilePath
+sqattLogsRoot = "sqatt-logs"
 
 spec :: Spec
 spec = beforeAll
-         ( do cd $ ".." </> ".."
-              checkSMTSolvers
+         ( do checkSMTSolvers
               checkCompilers
               checkTxsInstall
               hSetBuffering System.IO.stdout NoBuffering
          )
-         (testExampleSets allExamples)
+         ( do
+             dir <- runIO $ do
+               cd $ ".." </> ".."
+               currDate <- date
+               let logDir =
+                     sqattLogsRoot </> fromString ("test-" ++ currDateStr)
+                   currDateStr = map repl (show currDate)
+                   repl ' ' = '-'
+                   repl ':' = '-'
+                   repl c   = c
+               mktree logDir
+               return logDir
+             testExampleSets dir allExamples
+         )

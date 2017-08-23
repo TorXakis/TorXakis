@@ -62,10 +62,10 @@ script:
 # Build the package, its tests, and its docs and run the tests
 - travis_wait 50 stack --no-terminal test --haddock --no-haddock-deps --fast --stack-yaml stack_linux.yaml
 - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
-    stack install --stack-yaml stack_linux.yaml;
-    cd test/sqatt;
-    stack test;
-    cd -;
+       stack install --stack-yaml stack_linux.yaml 
+    && cd test/sqatt 
+    && stack test 
+    && cd -;
   fi
 
 after_success:
