@@ -25,6 +25,7 @@ echoSimulatorCmdPath = txsCmdPath exampDir "Echo_Simulator"
 echoTesterCmdPath :: FilePath
 echoTesterCmdPath = txsCmdPath exampDir "Echo_Tester"
 
+test0 :: TxsExample
 test0 = TxsExample
   { exampleName = "Stepper"
   , txsModelFile = echoTxsPath
@@ -33,6 +34,7 @@ test0 = TxsExample
   , expectedResult = Pass
   }
 
+test1 :: TxsExample
 test1 = TxsExample
   { exampleName = "Simulator"
   , txsModelFile = echoTxsPath

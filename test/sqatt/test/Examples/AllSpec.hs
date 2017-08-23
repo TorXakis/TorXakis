@@ -24,7 +24,11 @@ spec = beforeAll
                cd $ ".." </> ".."
                currDate <- date
                let logDir =
-                     sqattLogsRoot </> fromString ("test-" ++ show currDate)
+                     sqattLogsRoot </> fromString ("test-" ++ currDateStr)
+                   currDateStr = map repl (show currDate)
+                   repl ' ' = '-'
+                   repl ':' = '-'
+                   repl c   = c
                mktree logDir
                return logDir
              testExampleSets dir allExamples

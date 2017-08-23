@@ -33,6 +33,7 @@ library
                      , monad-loops
                      , random
                      , time
+  ghc-options:         -Wall -Werror -O
   default-language:    Haskell2010
 
 test-suite qa-test
@@ -46,5 +47,5 @@ test-suite qa-test
                      , turtle >= 1.4.1
                      , system-filepath
                      , time
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -Werror -O
   default-language:    Haskell2010

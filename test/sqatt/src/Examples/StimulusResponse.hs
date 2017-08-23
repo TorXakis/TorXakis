@@ -22,9 +22,6 @@ stimulusResponseLoopName = "StimulusResponseLoop"
 stimulusResponseTxsPath :: FilePath
 stimulusResponseTxsPath = txsFilePath exampDir stimulusResponseName
 
-stimulusNoResponseTxsPath :: FilePath
-stimulusNoResponseTxsPath = txsFilePath exampDir stimulusNoResponseName
-
 stimulusResponseLoopTxsPath :: FilePath
 stimulusResponseLoopTxsPath = txsFilePath exampDir stimulusResponseLoopName
 
@@ -87,8 +84,6 @@ test4 = TxsExample
 
 examples :: [TxsExample]
 examples = [test0, test1, test2, test3, test4]
--- examples = [test2, test3, test4]
--- examples = [test4]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Stimulus-Response" examples
