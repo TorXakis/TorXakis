@@ -72,7 +72,7 @@ public class LuckyPeople
                 sockout.flush();
             }
         }
-        catch (Exception ex) { ex.printStackTrace(); System.exit(1);}
+        catch (Exception ex) { ex.printStackTrace(); System.exit(0);}
     }
 
 

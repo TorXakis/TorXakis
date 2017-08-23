@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 module Examples.Echo (exampleSet) where
 
-import           Data.Text
+import           Data.Text       (Text)
 import           Examples.Paths
 import           Filesystem.Path
 import           Prelude         hiding (FilePath)
