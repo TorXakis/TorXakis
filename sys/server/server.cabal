@@ -22,7 +22,7 @@ library
 
                      , coreenv
   default-language: Haskell2010
-                                                
+
 executable txsserver
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
   
@@ -37,11 +37,8 @@ executable txsserver
                       , deepseq
                       , network
                       , mtl
-                      , random
-                      , text
-                      , time
                       , MissingH
-                      , optparse-applicative                      
+                      , optparse-applicative
 
                       , cnect
                       , core
@@ -49,9 +46,8 @@ executable txsserver
                       , defs
                       , front
                       , serverenv
-                      , solvedefs
                       , value
-                      
+
   default-language:     Haskell2010
 
 test-suite server-test

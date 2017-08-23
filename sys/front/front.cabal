@@ -34,24 +34,22 @@ library
                       , containers
                       , defs
                       , MissingH
-                      , deepseq
-                      
+
   default-language:     Haskell2010
-  
+
 test-suite TorXakisFront-BlackBox
   type:                 exitcode-stdio-1.0
   hs-source-dirs:       test
-                                            
+
   main-is:              Main.hs
   
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
   
-  build-depends:        array
-                      , base
+  build-depends:        base
                       , containers
                       , MissingH
                       , QuickCheck
                       , defs
                       , front
-                      
+
   default-language:     Haskell2010
