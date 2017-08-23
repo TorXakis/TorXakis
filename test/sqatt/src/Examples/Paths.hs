@@ -1,3 +1,9 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
 {-# LANGUAGE OverloadedStrings #-}
 -- | This module specifies the location of the example files, and provides
 -- function for building the file-paths for TorXakis models, commands, and SUT
