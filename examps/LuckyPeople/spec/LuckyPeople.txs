@@ -103,34 +103,34 @@ CONSTDEF separator :: String ::= "@" ENDDEF
 CNECTDEF  Sut ::=
     CLIENTSOCK
 
-    CHAN  OUT  In                   HOST "localhost"  PORT 777
+    CHAN  OUT  In                   HOST "localhost"  PORT 7777
     ENCODE     In  ? p              ->  ! toString(sex(p))        ++ separator ++
                                           firstName(p)            ++ separator ++
                                           lastName(p)             ++ separator ++
                                           toString(dayOfBirth(p)) ++ separator ++
                                           toString(monthOfBirth(p))
 
-    CHAN  IN   Out                  HOST "localhost"  PORT 777
+    CHAN  IN   Out                  HOST "localhost"  PORT 7777
     DECODE     Out  ! fromString(s) <-  ? s
 ENDDEF
 
 CNECTDEF  Xut ::=
     CLIENTSOCK
 
-    CHAN  OUT  In                   HOST "localhost"  PORT 777
+    CHAN  OUT  In                   HOST "localhost"  PORT 7777
     ENCODE     In  ? p              ->  ! toXml(p)
     
-    CHAN  IN   Out                  HOST "localhost"  PORT 777
+    CHAN  IN   Out                  HOST "localhost"  PORT 7777
     DECODE     Out  ! fromXml(s)    <-  ? s
 ENDDEF
 
 CNECTDEF  Xim ::=
     SERVERSOCK
 
-    CHAN IN   In                    HOST "localhost"  PORT 777
+    CHAN IN   In                    HOST "localhost"  PORT 7777
     DECODE    In ! fromXml(s)       <-  ? s
 
-    CHAN OUT  Out                   HOST "localhost"  PORT 777
+    CHAN OUT  Out                   HOST "localhost"  PORT 7777
     ENCODE    Out ? b               ->  ! toXml(b)
 ENDDEF
 

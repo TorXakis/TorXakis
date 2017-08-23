@@ -94,7 +94,7 @@ instance IsString ExampleSetDesc where
 
 -- | Information about a compiled Java program.
 data CompiledSut
-  -- | `JavaCompiledSut mainClass mClassSP`:
+  -- | `JavaCompiledSut mainClass mClassSP args`:
   --
   --   - `mainClass`: name of the main Java class.
   --
@@ -104,10 +104,11 @@ data CompiledSut
   = JavaCompiledSut Text (Maybe FilePath)
   -- | An SUT simulated by TorXakis.
   --
-  --  `TxsSimulatedSut cmds`:
+  --  `TxsSimulatedSut modelPath cmds`:
   --
+  --   - `modelPath`: Path to the TorXakis model.
   --   - `cmds`: Commands to be passed to the simulator.
-  | TxsSimulatedSut FilePath
+  | TxsSimulatedSut FilePath FilePath
 
 -- | A processed example, ready to be run.
 --
@@ -228,14 +229,26 @@ compileJavaSut sourcePath = do
       return $ JavaCompiledSut mClass (Just sPath)
 
 -- | Add the class path option if a class-path is given.
-getCPOpts :: Maybe FilePath -> Test [Text]
-getCPOpts Nothing         = return []
-getCPOpts (Just filePath) = (("-cp":) . pure) <$> decodePath filePath
+getCPOptsIO :: Maybe FilePath -> IO [Text]
+getCPOptsIO Nothing         = return []
+getCPOptsIO (Just filePath) = case toText filePath of
+                                Left apprPath ->
+                                  throw $ FilePathError $
+                                  "Cannot decode " <> apprPath <> " properly"
+                                Right path ->
+                                  return ["-cp", path]
 
 -- | Timeout (in seconds) for running a test. For now the timeout is not
 -- configurable.
 sqattTimeout :: NominalDiffTime
 sqattTimeout = 60.0
+
+-- | Time to allow TorXakis run the checks after the SUT terminates. After this
+-- timeout the SUT process terminates and if the expected result is not
+-- observed in the test the whole test fails.
+txsCheckTimeout :: NominalDiffTime
+txsCheckTimeout = 60.0
+
 
 -- | Run TorXakis with the given example specification.
 runTxsWithExample :: FilePath   -- ^ Path to the logging directory for the current example set.
@@ -274,7 +287,7 @@ runTxsWithExample logDir ex = Concurrently $ do
                      (repr . expectedResult $ ex)
     expectedMsg Fail = txsUIFailMsg
     expectedMsg Pass = txsUIPassMsg
-    txsServerProc sLogDir port =
+    txsServerProc sLogDir port = Concurrently $
       runInprocNI (sLogDir </> "txsserver.out.log") txsServerCmd [port]
 
 -- | Run a process.
@@ -282,8 +295,8 @@ runInproc :: FilePath   -- ^ Directory where the logs will be stored.
           -> Text       -- ^ Command to run.
           -> [Text]     -- ^ Command arguments.
           -> Shell Line -- ^ Lines to be input to the command.
-          -> Concurrently (Either SqattError ())
-runInproc logDir cmd cmdArgs procInput = Concurrently $
+          -> IO (Either SqattError ())
+runInproc logDir cmd cmdArgs procInput =
   try $ output logDir (either id id <$> inprocWithErr cmd cmdArgs procInput)
 
 -- | Run a process without input. See `runInproc`.
@@ -291,16 +304,17 @@ runInproc logDir cmd cmdArgs procInput = Concurrently $
 runInprocNI :: FilePath
             -> Text
             -> [Text]
-            -> Concurrently (Either SqattError ())
+            -> IO (Either SqattError ())
 runInprocNI logDir cmd cmdArgs =
   runInproc logDir cmd cmdArgs Turtle.empty
 
 -- | Run TorXakis as system under test.
 runTxsAsSut :: FilePath   -- ^ Path to the logging directory for the current example set.
-            -> TxsExample -- ^ Example to run.
-            -> Concurrently (Either SqattError ())
-runTxsAsSut logDir ex = Concurrently $ do
-  eInputModelF <- runExceptT $ runTest $ decodePath (txsModelFile ex)
+            -> FilePath   -- ^ Path to the TorXakis model.
+            -> FilePath   -- ^ Path to the commands to be input to the TorXakis model.
+            -> IO (Either SqattError ())
+runTxsAsSut logDir modelFile cmdsFile = do
+  eInputModelF <- runExceptT $ runTest $ decodePath modelFile
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
@@ -308,31 +322,18 @@ runTxsAsSut logDir ex = Concurrently $ do
       runConcurrently $
         txsServerProc port <|> txsUIProc inputModelF port
   where
-    txsUIProc imf port =
+    txsUIProc imf port = Concurrently $
       let cLogDir = logDir </> "txsui.SUT.out.log" in
       runInproc cLogDir txsUICmd [port, imf] (input cmdsFile)
-    cmdsFile = txsCommandsFile ex
-    txsServerProc port =
+    txsServerProc port = Concurrently $
       let cLogDir = logDir </> "txsserver.SUT.out.log" in
       runInprocNI cLogDir txsServerCmd [port]
 
-runSUT :: FilePath -> Text -> [Text] -> Concurrently (Either SqattError ())
-runSUT logDir = runInprocNI (logDir </> "SUT.out.log")
-
 mkTest :: FilePath -> RunnableExample -> Test ()
-mkTest logDir (ExampleWithSut ex (JavaCompiledSut mClass cpSP) args) = do
-  cpOpts <- getCPOpts cpSP
-  let javaArgs = cpOpts ++ [mClass] ++ args
+mkTest logDir (ExampleWithSut ex cSUT args) = do
   res <- liftIO $
-    runConcurrently $  runSUT logDir javaCmd javaArgs
+    runConcurrently $  runSUTWithTimeout logDir cSUT args
                    <|> runTxsWithExample logDir ex
-  case res of
-    Left txsErr -> throwError txsErr
-    Right ()    -> return ()
-mkTest logDir (ExampleWithSut ex (TxsSimulatedSut cmds) _) = do
-  let sim = ex {txsCommandsFile = cmds}
-  res <- liftIO $
-    runConcurrently $ runTxsWithExample logDir ex <|> runTxsAsSut logDir sim
   case res of
     Left txsErr -> throwError txsErr
     Right ()    -> return ()
@@ -341,6 +342,24 @@ mkTest logDir (StandaloneExample ex) = do
   case res of
     Left txsErr -> throwError txsErr
     Right  _    -> return ()
+
+runSUTWithTimeout :: FilePath -> CompiledSut -> [Text] -> Concurrently (Either SqattError ())
+runSUTWithTimeout logDir cSUT args = Concurrently $ do
+  res <- runSUT logDir cSUT args
+  case res of
+    Left someErr ->
+      return $ Left someErr
+    Right _ -> do
+      sleep txsCheckTimeout
+      return (Left TestTimedOut)
+
+runSUT :: FilePath -> CompiledSut -> [Text] -> IO (Either SqattError ())
+runSUT logDir (JavaCompiledSut mClass cpSP) args = do
+  cpOpts <- getCPOptsIO cpSP
+  let javaArgs = cpOpts ++ [mClass] ++ args
+  runInprocNI (logDir </> "SUT.out.log") javaCmd javaArgs
+runSUT logDir (TxsSimulatedSut modelFile cmds) _ =
+  runTxsAsSut logDir modelFile cmds
 
 -- | Get a random port number.
 getRandomPort :: IO Integer
@@ -362,7 +381,7 @@ execTest topLogDir ex = runExceptT $ runTest $ do
           cmpSut <- compileSut sourcePath
           return (ExampleWithSut ex cmpSut args)
         Just (TxsSimulator cmds) ->
-          return (ExampleWithSut ex (TxsSimulatedSut cmds) [])
+          return (ExampleWithSut ex (TxsSimulatedSut (txsModelFile ex) cmds) [])
 
 -- | Test a single example.
 testExample :: FilePath -> TxsExample -> Spec

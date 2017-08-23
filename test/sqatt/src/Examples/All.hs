@@ -13,11 +13,13 @@ where
 
 import qualified Examples.Adder            as Adder
 import qualified Examples.Echo             as Echo
+import qualified Examples.LuckyPeople      as LuckyPeople
 import qualified Examples.StimulusResponse as StimulusResponse
 import           Sqatt
 
 allExamples :: [TxsExampleSet]
-allExamples = [ StimulusResponse.exampleSet
+allExamples = [ Adder.exampleSet
               , Echo.exampleSet
-              , Adder.exampleSet
+              , LuckyPeople.exampleSet
+              , StimulusResponse.exampleSet
               ]

@@ -17,6 +17,7 @@ library
   exposed-modules:     Examples.All
                      , Examples.Adder  
                      , Examples.Echo
+                     , Examples.LuckyPeople
                      , Examples.StimulusResponse
                      , Examples.Paths                     
                      , Sqatt
