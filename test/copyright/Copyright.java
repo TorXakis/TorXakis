@@ -50,7 +50,7 @@ public class Copyright {
 		c.addExtensionCommentedCopyright(".yaml", commentLineBased("#", copyright));
 		c.addExtensionCommentedCopyright(".sh", commentLineBased("#", copyright));
 		c.addExtensionCommentedCopyright(".yml", commentLineBased("#", copyright));
-		c.addExtensionCommentedCopyright(".bat", commentLineBased("REM", copyright));
+		c.addExtensionCommentedCopyright(".bat", commentLineBased("@REM", copyright));
 		c.addExtensionCommentedCopyright(".txt", copyright);
 
 		try {
