@@ -15,9 +15,10 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Examples.All
-                     , Examples.Paths
-                     , Examples.StimulusResponse
+                     , Examples.Adder  
                      , Examples.Echo
+                     , Examples.StimulusResponse
+                     , Examples.Paths                     
                      , Sqatt
   build-depends:       base >= 4.7 && < 5
                      , hspec
@@ -28,7 +29,6 @@ library
                      , network
                      , async
                      , foldl
-                     , silently
                      , process
                      , monad-loops
                      , random

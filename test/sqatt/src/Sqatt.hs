@@ -34,7 +34,6 @@ import           Network.Socket
 import           Prelude                   hiding (FilePath)
 import           System.Info
 import qualified System.IO                 as IO
-import           System.IO.Silently
 import           System.Process            (ProcessHandle)
 import qualified System.Process            as Process
 import           System.Random
@@ -55,9 +54,14 @@ data TxsExample = TxsExample
   , expectedResult  :: ExampleResult    -- ^ Example's expected result.
   } deriving (Show)
 
-data SutExample = JavaExample { javaSourcePath :: FilePath }
-                | TxsSimulator FilePath
-                deriving (Show)
+data SutExample =
+   JavaExample                 -- ^ A Java SUT that must be compiled and executed.
+  { javaSourcePath :: FilePath -- ^ Source file of the SUT.
+  , javaSutArgs    :: [Text]   -- ^ Arguments to be passed to the SUT.
+  }
+  | TxsSimulator FilePath      -- ^ An SUT to be simulated by TorXakis.
+  deriving (Show)
+
 
 -- | A set of examples.
 data TxsExampleSet = TxsExampleSet
@@ -81,7 +85,7 @@ data CompiledSut = JavaCompiledSut
 --
 -- Currently the only processing that takes place is the compilation of the
 -- SUT, if any.
-data RunnableExample = ExampleWithSut TxsExample CompiledSut
+data RunnableExample = ExampleWithSut TxsExample CompiledSut [Text]
                      | StandaloneExample TxsExample
 
 data ExampleResult = Pass | Fail deriving (Show, Eq)
@@ -174,7 +178,8 @@ data SqattError = CompileError Text
                 | FilePathError Text
                 | TestExpectationError Text
                 | SutAborted
-                | TxsServerAborted ExitCode
+                | TxsServerAborted
+                | TestTimedOut
   deriving (Show, Eq)
 
 instance Exception SqattError
@@ -209,6 +214,10 @@ getCPOpts :: Maybe FilePath -> Test [Text]
 getCPOpts Nothing         = return []
 getCPOpts (Just filePath) = (("-cp":) . pure) <$> decodePath filePath
 
+-- For now the timeout is not configurable.
+sqattTimeout :: NominalDiffTime
+sqattTimeout = 30.0
+
 -- | Run TorXakis with the given example specification.
 runTxsWithExample :: TxsExample -> IO (Either SqattError ())
 runTxsWithExample ex = do
@@ -217,12 +226,13 @@ runTxsWithExample ex = do
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       port <- repr <$> getRandomPort
-      res <- hSilence [IO.stdout, IO.stderr] $
-        txsServerProc port `race` txsUIProc inputModelF port
+      res <- sleep sqattTimeout `race`
+               (txsServerProc port `race` txsUIProc inputModelF port)
       case res of
-        Left code   -> return $ Left (TxsServerAborted code)
-        Right True  -> return $ Right ()
-        Right False -> return $ Left tErr
+        Left ()             -> return $ Left TestTimedOut
+        Right (Left ())     -> return $ Left TxsServerAborted
+        Right (Right True)  -> return $ Right ()
+        Right (Right False) -> return $ Left tErr
   where
     txsUIProc imf port =
       Turtle.fold (inproc txsUICmd [port, imf] (input cmdsFile))
@@ -234,7 +244,7 @@ runTxsWithExample ex = do
                      (repr . expectedResult $ ex)
     expectedMsg Fail = txsUIFailMsg
     expectedMsg Pass = txsUIPassMsg
-    txsServerProc port = proc txsServerCmd [port] mempty
+    txsServerProc port = sh (inproc txsServerCmd [port] Turtle.empty)
 
 -- | Fork a process using `Process.spawnProcess`, and terminates the process
 -- when an asynchronous exception is thrown. Currently this is a workaround for
@@ -247,19 +257,19 @@ forkProcess :: String           -- ^ Absolute path to the program executable.
             -> IO ProcessHandle
 forkProcess execPath cmdArgs = do
   ph <- Process.spawnProcess execPath cmdArgs
-  forever $ sh (sleep 60.0) `onException` Process.terminateProcess ph
+  forever (sh (sleep 60.0)) `onException` Process.terminateProcess ph
 
 mkTest :: RunnableExample -> Test ()
-mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP)) = do
+mkTest (ExampleWithSut ex (JavaCompiledSut mClass cpSP) args) = do
   cpOpts <- Prelude.map T.unpack <$> getCPOpts cpSP
   javaExecPath <- execPathForCmd javaCmd
-  let javaArgs = cpOpts ++ [T.unpack mClass]
+  let javaArgs = cpOpts ++ [T.unpack mClass] ++ (T.unpack <$> args)
   res <- liftIO $ forkProcess javaExecPath javaArgs `race` runTxsWithExample ex
   case res of
     Left _              -> throwError SutAborted
     Right (Left txsErr) -> throwError txsErr
     Right (Right ())    -> return ()
-mkTest (ExampleWithSut ex (TxsSimulatedSut cmds)) = do
+mkTest (ExampleWithSut ex (TxsSimulatedSut cmds) _) = do
   res <- liftIO $ runTxsWithExample ex `race` runTxsWithExample sim
   case res of
     Left (Left txsErr) -> throwError txsErr
@@ -286,11 +296,11 @@ execTest ex = runExceptT $ runTest $ do
           case sutExample ex of
             Nothing ->
               return (StandaloneExample ex)
-            Just (JavaExample sourcePath) -> do
+            Just (JavaExample sourcePath args) -> do
               cmpSut <- compileSut sourcePath
-              return (ExampleWithSut ex cmpSut)
+              return (ExampleWithSut ex cmpSut args)
             Just (TxsSimulator cmds) ->
-              return (ExampleWithSut ex (TxsSimulatedSut cmds))
+              return (ExampleWithSut ex (TxsSimulatedSut cmds) [])
 
 -- | Test a single example.
 testExample :: TxsExample -> Spec
