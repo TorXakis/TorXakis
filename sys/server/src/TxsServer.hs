@@ -27,7 +27,6 @@ module Main
 where
 
 import System.IO
-import System.Environment
 import Network
 import Control.Monad.State
 import Control.Concurrent
@@ -46,31 +45,26 @@ import CmdLineParser
 -- import from serverenv
 import qualified EnvServer    as IOS
 import qualified IfServer     as IFS
-import qualified ParamServer  as ParamServer
 
 -- import from core
 import qualified Config       as CoreConfig
-import qualified TxsCore      as TxsCore
-import qualified BuildInfo    as BuildInfo
-import qualified VersionInfo  as VersionInfo
+import qualified TxsCore
+import qualified BuildInfo
+import qualified VersionInfo
 
 -- import from defs
-import qualified TxsDefs      as TxsDefs
-import qualified VarId        as VarId
-import qualified TxsDDefs     as TxsDDefs
-import qualified TxsShow      as TxsShow 
-import qualified TxsUtils     as TxsUtils
-import qualified Utils        as Utils
+import qualified TxsDefs
+import qualified VarId
+import qualified TxsDDefs
+import qualified TxsShow
+import qualified Utils
 
 -- import from front
-import qualified TxsHappy     as TxsHappy
-import qualified TxsAlex      as TxsAlex
+import qualified TxsHappy
+import qualified TxsAlex
 
 -- import from cnect
 import qualified SocketWorld as World
-
--- import from value
-import qualified Eval         as Eval
 
 main :: IO ()
 main  =  withSocketsDo $ do

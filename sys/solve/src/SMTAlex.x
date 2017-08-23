@@ -39,14 +39,14 @@ tokens :-                                          -- Each right-hand side has t
 
    $white+                   ;                     -- white space
 
-   \(                                    { tok ( \p s -> Topenpar p ) }
-   \)                                    { tok ( \p s -> Tclosepar p ) }
-   \-                                    { tok ( \p s -> Tminus p ) }
+   \(                                    { tok ( \p _s -> Topenpar p ) }
+   \)                                    { tok ( \p _s -> Tclosepar p ) }
+   \-                                    { tok ( \p _s -> Tminus p ) }
    
-   let                                   { tok ( \p s -> Tlet p ) }
+   let                                   { tok ( \p _s -> Tlet p ) }
    
-   true                                  { tok ( \p s -> Tbool p True ) }
-   false                                 { tok ( \p s -> Tbool p False ) }
+   true                                  { tok ( \p _s -> Tbool p True ) }
+   false                                 { tok ( \p _s -> Tbool p False ) }
    
    $nameCharStart $nameChar*             { tok ( \p s -> Tname p s ) }
    

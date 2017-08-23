@@ -74,14 +74,14 @@ data  EnvB   =  EnvB { smts     :: Map.Map String SMTData.SmtEnv -- named smt so
 
 getSMT :: String -> IOB SMTData.SmtEnv
 getSMT smtname  =  do
-     smts    <- gets smts
-     case Map.lookup smtname smts of
-       Nothing     -> if  not $ Map.null smts
+     smts'    <- gets smts
+     case Map.lookup smtname smts' of
+       Nothing     -> if  not $ Map.null smts'
                         then do putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING 
                                           $ "No such Solver: " ++ smtname ]
-                                (name,smtenv) <- return $ head $ Map.toList smts
+                                (name',smtenv) <- return $ head $ Map.toList smts'
                                 putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING 
-                                          $ "Using instead: " ++ name ] 
+                                          $ "Using instead: " ++ name' ] 
                                 return smtenv
                         else do putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR 
                                           $ "No such Solver: " ++ smtname ]

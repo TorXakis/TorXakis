@@ -24,7 +24,6 @@ import Control.Monad.State
 
 import qualified Data.Char as Char
 import qualified Data.Map  as Map
-import qualified Data.Set  as Set
 import qualified Data.String.Utils as Utils
 
 import SMT
@@ -171,7 +170,7 @@ randomSolve p ((v,d):xs) i    | vsort v == sortId_String =
                                 then do
                                         let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortId_String) [i .. i+l-1]
                                         addDeclarations charVars
-                                        let exprs = map (\(vNew,p) -> cstrEqual (cstrVar vNew) (cstrFunc funcId_atString [cstrVar v, cstrConst (Cint p)])) (zip charVars [0..])
+                                        let exprs = map (\(vNew,pos) -> cstrEqual (cstrVar vNew) (cstrFunc funcId_atString [cstrVar v, cstrConst (Cint pos)])) (zip charVars [0..])
                                         addAssertions exprs
                                         shuffledVars <- shuffleM (xs ++ zip charVars (map (const (-123)) [1::Integer .. ]) )
                                         sat <- getSolvable

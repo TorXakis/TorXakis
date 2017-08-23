@@ -31,7 +31,6 @@ import qualified Data.Set as Set
 import CstrId
 import FuncId
 import ConstDefs
-import SortOf
 import ValExprDefs
 import Variable
 

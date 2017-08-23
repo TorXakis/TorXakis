@@ -31,8 +31,6 @@ where
 import Control.Monad.State
 
 import qualified Data.Set  as Set
-import qualified Data.Map  as Map
-
 
 -- import from local
 import CoreUtils
@@ -66,7 +64,7 @@ iocoModelMenu  =  do
        Nothing -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelMenu without valid model" ]
             return $ []
-       Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
+       Just (TxsDefs.ModelDef insyncs outsyncs splsyncs _bexp) -> do
             allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
             modSts   <- gets (IOC.modsts . IOC.state)
             return $ Behave.behMayMenu allSyncs modSts
@@ -83,10 +81,7 @@ iocoModelMenuOut  =  do
      filterM (isOutCTOffers . Utils.frst) menu
 
 
--- ----------------------------------------------------------------------------------------- --
--- iocoModelIsQui :  quiescence test on current btree of model 
-
-
+-- | iocoModelIsQui :  quiescence test on current btree of model 
 iocoModelIsQui :: IOC.IOC Bool
 iocoModelIsQui  =  do
      validModel <- validModDef
@@ -94,12 +89,12 @@ iocoModelIsQui  =  do
      { Nothing -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelIsQui without valid model" ]
             return $ False
-     ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
+     ; Just (TxsDefs.ModelDef _insyncs outsyncs _splsyncs _bexp) -> do
             modSts <- gets (IOC.modsts . IOC.state)
             return $ Behave.behRefusal modSts (Set.unions outsyncs)
      }
 
-
+{-
 iocoStep :: Int -> TxsDDefs.Action -> [BTree.BBranch] -> IOC.EnvC -> IOC.EnvC
 iocoStep curState act bt env = env { IOC.state = newState (IOC.state env)}
   where newState st = st
@@ -108,6 +103,7 @@ iocoStep curState act bt env = env { IOC.state = newState (IOC.state env)}
                       , IOC.curstate = curState + 1
                       , IOC.modsts   = bt
                       }
+-}
 
 -- | iocoModelAfter : do action on current btree and change environment
 -- accordingly result gives success, ie. whether act can be done, if not

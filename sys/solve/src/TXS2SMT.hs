@@ -121,14 +121,14 @@ toFuncName funcId  =  concat ["f", show (FuncId.unid funcId), "$", FuncId.name f
 
 insertMap :: (Ident, TxsDef) -> Map.Map Ident String -> Map.Map Ident String 
 
-insertMap (id@(IdSort sid), DefSort SortDef) mp
-  = if id `Map.member` mp
+insertMap (id'@(IdSort sid), DefSort SortDef) mp
+  = if id' `Map.member` mp
        then error $ "TXS TXS2SMT insertMap: Sort " ++ show sid ++ " already defined\n"
-       else Map.insert id (toSortName sid) mp                                        
+       else Map.insert id' (toSortName sid) mp                                        
                             
               
-insertMap (id@(IdCstr cstrid), DefCstr(CstrDef c fs)) mp
-  =  if id `Map.member` mp
+insertMap (id'@(IdCstr cstrid), DefCstr(CstrDef c fs)) mp
+  =  if id' `Map.member` mp
        then error $ "TXS TXS2SMT insertMap: Constructor (" ++ show cstrid ++ ", CstrDef " ++
                     show c ++ " " ++ show fs ++  ") already defined\n"
        else foldr ( \(f,p) -> Map.insert (IdFunc f) (toFieldName cstrid p) ) 
@@ -137,11 +137,11 @@ insertMap (id@(IdCstr cstrid), DefCstr(CstrDef c fs)) mp
                   )
                   (zip fs [0..])
 
-insertMap (id@(IdFunc funcId), DefFunc (FuncDef x y)) mp
-  =  if id `Map.member` mp
+insertMap (id'@(IdFunc funcId), DefFunc (FuncDef x y)) mp
+  =  if id' `Map.member` mp
        then error $ "TXS TXS2SMT insertMap: Function  (" ++ show funcId ++ ", FuncDef " ++
                     show x ++ " " ++ show y ++  ") already defined\n"
-       else Map.insert id (toFuncName funcId) mp
+       else Map.insert id' (toFuncName funcId) mp
                                 
 insertMap (_,d) _ = error $ "Illegal Definition for insertMap " ++ show d
                                
@@ -179,18 +179,18 @@ sortdefsToSMT mapI tdefs =
     where
         -- get the constructors of an ADT
         getCstrs :: SortId -> [(CstrId, CstrDef)]
-        getCstrs s = [(cstrId, cstrDef) | (cstrId, cstrDef) <- Map.toList (cstrDefs tdefs), cstrsort cstrId == s]
+        getCstrs s = [(cstrId', cstrDef) | (cstrId', cstrDef) <- Map.toList (cstrDefs tdefs), cstrsort cstrId' == s]
         
         -- convert the given constructor to a SMT constructor declaration
         cstrToSMT :: (CstrId, CstrDef) -> String
-        cstrToSMT (cstrId, CstrDef _ fields) = " (" ++ justLookup mapI (IdCstr cstrId) ++ cstrFieldsToSMT cstrId fields ++ ")" 
+        cstrToSMT (cstrId', CstrDef _ fields) = " (" ++ justLookup mapI (IdCstr cstrId') ++ cstrFieldsToSMT cstrId' fields ++ ")" 
         
         -- convert the given constructor fields to a SMT constructor declaration        
         cstrFieldsToSMT :: CstrId -> [FuncId] -> String
-        cstrFieldsToSMT cstrId fields =
+        cstrFieldsToSMT cstrId' fields =
             case fields of
                 []  -> ""
-                _   -> " (" ++ join ") (" (map (\(f,p) -> toFieldName cstrId p ++ " " ++ justLookup mapI (IdSort (funcsort f))) (zip fields [0..]) ) ++ ")"
+                _   -> " (" ++ join ") (" (map (\(f,p) -> toFieldName cstrId' p ++ " " ++ justLookup mapI (IdSort (funcsort f))) (zip fields [0..]) ) ++ ")"
         
 -- ----------------------------------------------------------------------------------------- --
 -- convert function definitions to SMT type declarations (as multiple lines of commands)
@@ -236,7 +236,7 @@ constToSMT _ (Cint n) = if n < 0
 constToSMT _ (Cstring s)  =  "\"" ++ encodeStringLiteral s ++ "\""
 constToSMT _ (Cregex r)  =  parseRegex r
 constToSMT mapI (Cstr cd [])   =        justLookup mapI (IdCstr cd)
-constToSMT mapI (Cstr cd args) = "(" ++ justLookup mapI (IdCstr cd) ++ " " ++ join " " (map (constToSMT mapI) args) ++ ")"
+constToSMT mapI (Cstr cd args') = "(" ++ justLookup mapI (IdCstr cd) ++ " " ++ join " " (map (constToSMT mapI) args') ++ ")"
 constToSMT _ x = error ("Illegal input constToSMT - " ++ show x)
 
 -- ----------------------------------------------------------------------------------------- --
@@ -244,10 +244,10 @@ constToSMT _ x = error ("Illegal input constToSMT - " ++ show x)
 -- ----------------------------------------------------------------------------------------- --
 valexprToSMT :: (Variable v) => Map.Map Ident String -> ValExpr v -> String
 valexprToSMT mapI (view -> Vfunc funcId [])   =        justLookup mapI (IdFunc funcId)
-valexprToSMT mapI (view -> Vfunc funcId args) = "(" ++ justLookup mapI (IdFunc funcId) ++ " " ++ join " " (map (valexprToSMT mapI) args) ++ ")"
+valexprToSMT mapI (view -> Vfunc funcId args') = "(" ++ justLookup mapI (IdFunc funcId) ++ " " ++ join " " (map (valexprToSMT mapI) args') ++ ")"
 
-valexprToSMT mapI (view -> Vcstr cd [])   =        justLookup mapI (IdCstr cd)
-valexprToSMT mapI (view -> Vcstr cd args) = "(" ++ justLookup mapI (IdCstr cd) ++ " " ++ join " " (map (valexprToSMT mapI) args) ++ ")"
+valexprToSMT mapI (view -> Vcstr cd [])    =        justLookup mapI (IdCstr cd)
+valexprToSMT mapI (view -> Vcstr cd args') = "(" ++ justLookup mapI (IdCstr cd) ++ " " ++ join " " (map (valexprToSMT mapI) args') ++ ")"
 
 valexprToSMT mapI (view -> Viscstr cd arg)    = "(" ++ toIsCstrName cd ++ " " ++ valexprToSMT mapI arg ++ ")"
 valexprToSMT mapI (view -> Vaccess cd p arg)  = "(" ++ toFieldName cd p ++ " " ++ valexprToSMT mapI arg ++ ")"
@@ -279,8 +279,8 @@ valexprToSMT mapI (view -> Vnot expr)  =
 valexprToSMT mapI (view -> Vand exprs)  = 
     "(and " ++ join " " (map (valexprToSMT mapI) (Set.toList exprs)) ++ ")"    
 
-valexprToSMT mapI (view -> Vpredef _ funcId args)  = 
-    "(" ++ justLookup mapI (IdFunc funcId) ++ " " ++ join " " (map (valexprToSMT mapI) args) ++ ")"
+valexprToSMT mapI (view -> Vpredef _ funcId args')  = 
+    "(" ++ justLookup mapI (IdFunc funcId) ++ " " ++ join " " (map (valexprToSMT mapI) args') ++ ")"
 
 valexprToSMT _ x = error ("Illegal input valexprToSMT - " ++ show x)
 

@@ -54,7 +54,7 @@ newtype FuncTable v = FuncTable { toMap :: Map.Map String (SignHandler v) }
   deriving (Generic, NFData)
 
 instance Show (FuncTable v) where
-  show (FuncTable map) = show $ Map.keys map
+  show (FuncTable mp) = show $ Map.keys mp
 
 -- | empty
 empty :: FuncTable v

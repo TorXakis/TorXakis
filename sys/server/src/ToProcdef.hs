@@ -20,19 +20,15 @@ toProcdef   -- :: [TxsDDefs.Action] -> String
 
 where
 
-import Control.Monad.State
-
 import qualified Data.String.Utils as Utils
-import qualified Data.List         as List
-import qualified Data.Map          as Map
 import qualified Data.Set          as Set
 
 -- import from defs
-import qualified TxsDefs    as TxsDefs
-import qualified ChanId     as ChanId
-import qualified SortId     as SortId
-import qualified TxsDDefs   as TxsDDefs
-import qualified TxsShow    as TxsShow
+import qualified TxsDefs
+import qualified ChanId
+import qualified SortId
+import qualified TxsDDefs
+import qualified TxsShow
 
 -- ----------------------------------------------------------------------------------------- --
 
