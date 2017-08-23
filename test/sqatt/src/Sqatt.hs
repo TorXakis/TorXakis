@@ -94,7 +94,7 @@ instance IsString ExampleSetDesc where
 
 -- | Information about a compiled Java program.
 data CompiledSut
-  -- | `JavaCompiledSut mainClass mClassSP args`:
+  -- | `JavaCompiledSut mainClass mClassSP`:
   --
   --   - `mainClass`: name of the main Java class.
   --
