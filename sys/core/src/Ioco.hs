@@ -130,14 +130,13 @@ iocoModelAfter (TxsDDefs.Act acts)  =  do
      }
 
 
-iocoModelAfter act@(TxsDDefs.ActQui)  =  do
+iocoModelAfter TxsDDefs.ActQui  =  do
      validModel <- validModDef
      case validModel of
      { Nothing -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelAfter without valid model" ]
             return $ False
-     ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) -> do
-            curState       <- gets (IOC.curstate . IOC.state)
+     ; Just (TxsDefs.ModelDef _ outsyncs _ _) -> do
             modSts         <- gets (IOC.modsts . IOC.state)
             envb           <- filterEnvCtoEnvB
             (maybt', envb') <- lift $ runStateT (Behave.behAfterRef modSts (Set.unions outsyncs))

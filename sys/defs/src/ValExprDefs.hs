@@ -52,7 +52,6 @@ newtype ValExpr v = ValExpr {
 
 data PredefKind     = AFS     -- Algebraic Field Selector
                     | ACC     -- Algebraic Constructor Check
-                    | ANE     -- Algebraic Non-Equality
                     | AST     -- Algebraic To String
                     | ASF     -- Algebraic From String
                     | AXT     -- Algebraic To Xml

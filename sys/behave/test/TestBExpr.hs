@@ -88,7 +88,7 @@ parseBexpr content =
 		file = createProcDef definedProcDef definedChannels definedVars definedExits content
 		id :: ProcId
 		id = expectProcId definedProcDef definedChannels definedVars definedExits
-	 in do
+	 in
 	 {
 		Trace.trace ("file = \n" ++ file) 
 					(case findValueOfGenericKey id ( parseTorXakis file ) of		-- to do: idMap / sig 
@@ -113,7 +113,7 @@ anotherBExpr = (Guard [Vvar (expectVarId definedString1 stringSortName)] Stop)
 
 -- Stop
 testStop :: Test
-testStop = TestCase $ do
+testStop = TestCase $
 	let
 		bexpr :: BExpr
 		bexpr = Stop
@@ -122,7 +122,7 @@ testStop = TestCase $ do
 
 -- ActionPref 
 testExclam :: Test
-testExclam = TestCase $ do
+testExclam = TestCase $
 	let
 		value = 10
 		bexpr :: BExpr
@@ -131,7 +131,7 @@ testExclam = TestCase $ do
 		assertEqual ("equal\n" ++ (pshow bexpr))  bexpr (parseBexpr bexpr)
 
 testExclamArgument :: Test
-testExclamArgument = TestCase $ do
+testExclamArgument = TestCase $ 
 	let
 		bexpr :: BExpr
 		bexpr = (ActionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (Vvar (expectVarId definedInt1 intSortName))])) Set.empty Set.empty) Stop) 
@@ -140,7 +140,7 @@ testExclamArgument = TestCase $ do
 		assertEqual ("equal\n" ++ (pshow bexpr))  bexpr (parseBexpr bexpr)
 
 testQuest :: Test
-testQuest = TestCase $ do
+testQuest = TestCase $
 	let
 		varName = "v"
 		varSortName = definedChannel3SortName
@@ -150,7 +150,7 @@ testQuest = TestCase $ do
 		assertEqual ("equal\n" ++ (pshow bexpr))  bexpr (parseBexpr bexpr)	
 		
 testQuestScope :: Test
-testQuestScope = TestCase $ do
+testQuestScope = TestCase $
 	let
 		bexpr :: BExpr
 		bexpr = (ActionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel2 [definedChannel2SortName]) [Quest (expectVarId definedInt1 intSortName)])) Set.empty Set.empty) Stop) 
@@ -160,7 +160,7 @@ testQuestScope = TestCase $ do
 
 -- Guard
 testGuard :: Test
-testGuard = TestCase $ do
+testGuard = TestCase $
 	let 
 		bexpr :: BExpr
 		bexpr = (Guard (Set.fromList [Vvar (expectVarId definedString1 stringSortName)]) Stop) 
@@ -169,7 +169,7 @@ testGuard = TestCase $ do
 
 -- Choice
 testChoice :: Test
-testChoice = TestCase $ do
+testChoice = TestCase $
 	let
 		bexpr :: BExpr
 		bexpr = Choice (Set.fromList [aBExpr, anotherBExpr])
@@ -178,7 +178,7 @@ testChoice = TestCase $ do
 		
 --Parallel
 testSynchronization :: Test
-testSynchronization = TestCase $ do
+testSynchronization = TestCase $
 	let 
 		chans = definedChannels
 		
@@ -192,7 +192,7 @@ testSynchronization = TestCase $ do
 		assertEqual ("equal\n" ++ (pshow bexpr))  bexprExpect (parseBexpr bexpr)
 			
 testInterleaving :: Test
-testInterleaving = TestCase $ do
+testInterleaving = TestCase $
 	let 
 		chans = [] 
 		
@@ -206,7 +206,7 @@ testInterleaving = TestCase $ do
 		assertEqual ("equal\n" ++ (pshow bexpr))  bexprExpect (parseBexpr bexpr)
 
 testCommunicate :: Test
-testCommunicate = TestCase $ do
+testCommunicate = TestCase $
 	let 
 		chans = [([definedChannel1SortName], definedChannel1)] 
 		
@@ -221,7 +221,7 @@ testCommunicate = TestCase $ do
 
 -- Enable
 testEnable :: Test
-testEnable = TestCase $ do
+testEnable = TestCase $
 	let 
 		bexpr :: BExpr
 		bexpr = (Enable aBExpr [] anotherBExpr)
@@ -229,7 +229,7 @@ testEnable = TestCase $ do
 		assertEqual ("equal\n" ++ (pshow bexpr))   bexpr (parseBexpr bexpr)
 
 testEnableCommunicate :: Test
-testEnableCommunicate = TestCase $ do
+testEnableCommunicate = TestCase $
 	let 
 		bexpr :: BExpr
 		bexpr = (Enable aBExpr [Exclam (Vvar (expectVarId definedString2 stringSortName))] anotherBExpr)
@@ -238,7 +238,7 @@ testEnableCommunicate = TestCase $ do
 
 -- Disable
 testDisable :: Test
-testDisable = TestCase $ do
+testDisable = TestCase $
 	let 
 		bexpr :: BExpr
 		bexpr = (Disable aBExpr anotherBExpr)
@@ -247,7 +247,7 @@ testDisable = TestCase $ do
 
 -- ProcInst
 testProcInst :: Test
-testProcInst = TestCase $ do
+testProcInst = TestCase $
 	let 
 		id :: ProcId
 		id = expectProcId definedProcDef definedChannels definedVars Nothing

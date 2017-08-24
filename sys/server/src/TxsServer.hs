@@ -80,7 +80,7 @@ main  =  withSocketsDo $ do
     Right config -> do
       let portNr = portNumber config
       servsock       <- listenOn (PortNumber portNr)
-      (hs, host, port) <- accept servsock
+      (hs, host, _) <- accept servsock
       hSetBuffering hs LineBuffering
       hSetEncoding hs latin1
       hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
@@ -254,8 +254,8 @@ cmdStop _  =  do
      World.closeSockets
      modus <- gets IOS.modus
      if  IOS.isSimuled modus
-       then do [(nmsut,valsut)] <- IOS.getParams ["param_Sut_deltaTime"]
-               [(nmsim,valsim)] <- IOS.getParams ["param_Sim_deltaTime"]
+       then do -- [(_,valsut)] <- IOS.getParams ["param_Sut_deltaTime"]
+               -- [(_,valsim)] <- IOS.getParams ["param_Sim_deltaTime"]
                -- IOS.setParams [("param_Sut_deltaTime",valsut)]
                -- IOS.setParams [("param_Sim_deltaTime",valsim)]
                modify $ \env -> env { IOS.modus   = IOS.Inited
@@ -289,23 +289,23 @@ cmdParam args  =  do
      case words args of
        []        -> do params1 <- lift $ TxsCore.txsGetParams
                        params2 <- IOS.getParams []
-                       mapM IFS.mack [ [ nm ++ " = " ++ val ]
-                                     | (nm,val) <- params1 ++ params2
-                                     ]
+                       mapM_ IFS.mack [ [ nm ++ " = " ++ val ]
+                                      | (nm,val) <- params1 ++ params2
+                                      ]
                        IFS.pack "PARAM" []
                        cmdsIntpr
        [prm]     -> do params1 <- lift $ TxsCore.txsGetParam prm
                        params2 <- IOS.getParams [prm]
                        case params1++params2 of
                          []         -> IFS.nack "PARAM" [ "No parameter: " ++ prm ]
-                         [(nm,val)] -> IFS.pack "PARAM" [ prm++" = "++val ]
+                         [(_,val)]  -> IFS.pack "PARAM" [ prm++" = "++val ]
                          _          -> IFS.nack "PARAM" [ "More parameters: " ++ prm ]
                        cmdsIntpr
        [prm,val] -> do params1 <- lift $ TxsCore.txsSetParam prm val
                        params2 <- IOS.setParams [(prm,val)]
                        case params1++params2 of
                          []         -> IFS.nack "PARAM" [ "No parameter: " ++ prm ]
-                         [(nm,val)] -> IFS.pack "PARAM" [ prm++" = "++val ]
+                         [(_,val')] -> IFS.pack "PARAM" [ prm++" = "++val' ]
                          _          -> IFS.nack "PARAM" [ "More parameters: " ++ prm ]
                        cmdsIntpr
        _         -> do IFS.nack "PARAM" [ "Unknown parameter action" ]
@@ -351,7 +351,7 @@ cmdVar args  =  do
                                )
          if  e /= ""
            then do
-             modify $ \env -> env { IOS.uid = uid' }
+             modify $ \env' -> env' { IOS.uid = uid' }
              IFS.nack "VAR" [ e ]
              cmdsIntpr
            else do
@@ -359,13 +359,13 @@ cmdVar args  =  do
                   in ( newnames `List.intersect` (map VarId.name vars) == [] ) &&
                      ( newnames `List.intersect` (map VarId.name (Map.keys vals)) == [] )
                then do
-                 modify $ \env -> env { IOS.locvars = vars ++ vars'
-                                      , IOS.uid  = uid'
-                                      }
+                 modify $ \env' -> env' { IOS.locvars = vars ++ vars'
+                                        , IOS.uid  = uid'
+                                        }
                  IFS.pack "VAR" [ TxsShow.fshow vars' ]
                  cmdsIntpr
                else do
-                 modify $ \env -> env { IOS.uid = uid' }
+                 modify $ \env' -> env' { IOS.uid = uid' }
                  IFS.nack "VAR" [ "double variable names: " ++ (TxsShow.fshow vars') ]
                  cmdsIntpr
 
@@ -398,7 +398,7 @@ cmdVal args  =  do
                                )
          if  e /= ""
            then do
-             modify $ \env -> env { IOS.uid = uid' }
+             modify $ \env' -> env' { IOS.uid = uid' }
              IFS.nack "VAL" [ e ]
              cmdsIntpr
            else do
@@ -406,13 +406,13 @@ cmdVal args  =  do
                   in ( newnames `List.intersect` (map VarId.name vars) == [] ) &&
                      ( newnames `List.intersect` (map VarId.name (Map.keys vals)) == [] )
                then do
-                 modify $ \env -> env { IOS.locvals = vals `Map.union` venv'
-                                      , IOS.uid     = uid'
-                                      }
+                 modify $ \env' -> env' { IOS.locvals = vals `Map.union` venv'
+                                        , IOS.uid     = uid'
+                                        }
                  IFS.pack "VAL" [ TxsShow.fshow venv' ]
                  cmdsIntpr
                else do
-                 modify $ \env -> env { IOS.uid = uid' }
+                 modify $ \env' -> env' { IOS.uid = uid' }
                  IFS.nack "VAR" [ "double value names: " ++ (TxsShow.fshow venv') ]
                  cmdsIntpr
 
@@ -438,10 +438,10 @@ cmdEval args  =  do
                            ( \e -> return $ ((uid,TxsDefs.cstrError ""),(show (e::ErrorCall)))
                            )
      if  e /= ""
-       then do modify $ \env -> env { IOS.uid = uid' }
+       then do modify $ \env' -> env' { IOS.uid = uid' }
                IFS.nack "EVAL" [ e ]
                cmdsIntpr
-       else do modify $ \env -> env { IOS.uid = uid' }
+       else do modify $ \env' -> env' { IOS.uid = uid' }
                walue <- lift $ TxsCore.txsEval (TxsDefs.cstrEnv vals vexp')
                IFS.pack "EVAL" [ TxsShow.fshow walue ]
                cmdsIntpr
@@ -454,6 +454,7 @@ cmdSolve args kind  =  do
                                     "sol" -> ( "SOLVE"   , TxsCore.txsSolve    )
                                     "uni" -> ( "UNISOLVE", TxsCore.txsUniSolve )
                                     "ran" -> ( "RANSOLVE", TxsCore.txsRanSolve )
+                                    _     -> error $ "cmdSolve - Illegal kind : " ++ show kind
      env              <- get
      uid              <- return $ IOS.uid env
      tdefs            <- return $ IOS.tdefs env
@@ -473,10 +474,10 @@ cmdSolve args kind  =  do
                            ( \e -> return $ ((uid,TxsDefs.cstrError ""),(show (e::ErrorCall)))
                            )
      if  e /= ""
-       then do modify $ \env -> env { IOS.uid = uid' }
+       then do modify $ \env' -> env' { IOS.uid = uid' }
                IFS.nack cmd [ e ]
                cmdsIntpr
-       else do modify $ \env -> env { IOS.uid = uid' }
+       else do modify $ \env' -> env' { IOS.uid = uid' }
                sols  <- lift $ solver (TxsDefs.cstrEnv vals vexp')
                IFS.pack cmd [ TxsShow.fshow sols ]
                cmdsIntpr
@@ -489,11 +490,11 @@ cmdTester args  =  do
      case words args of
      { [m,c] -> do
             mdefs <- return $ [ mdef
-                              | (TxsDefs.ModelId nm uid, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
+                              | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
                               , nm == m
                               ]
             cdefs <- return $ [ cdef
-                              | (TxsDefs.CnectId nm uid, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
+                              | (TxsDefs.CnectId nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
                               , nm == c
                               ]
             case (mdefs,cdefs) of
@@ -511,19 +512,19 @@ cmdTester args  =  do
             }
      ; [m,x,c] -> do
             mdefs <- return $ [ mdef
-                              | (TxsDefs.ModelId  nm uid, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
+                              | (TxsDefs.ModelId  nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
                               , nm == m
                               ]
             adefs <- return $ [ adef
-                              | (TxsDefs.MapperId nm uid, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
+                              | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
                               , nm == x
                               ]
             pdefs <- return $ [ pdef
-                              | (TxsDefs.PurpId   nm uid, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
+                              | (TxsDefs.PurpId   nm _, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
                               , nm == x
                               ]
             cdefs <- return $ [ cdef
-                              | (TxsDefs.CnectId  nm uid, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
+                              | (TxsDefs.CnectId  nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
                               , nm == c
                               ]
             case (mdefs,adefs,pdefs,cdefs) of
@@ -550,19 +551,19 @@ cmdTester args  =  do
             }
      ; [m,x,y,c] -> do
             mdefs <- return $ [ mdef
-                              | (TxsDefs.ModelId  nm uid, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
+                              | (TxsDefs.ModelId  nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
                               , nm == m
                               ]
             adefs <- return $ [ adef
-                              | (TxsDefs.MapperId nm uid, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
+                              | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
                               , nm == x || nm == y
                               ]
             pdefs <- return $ [ pdef
-                              | (TxsDefs.PurpId   nm uid, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
+                              | (TxsDefs.PurpId   nm _, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
                               , nm == x || nm == y
                               ]
             cdefs <- return $ [ cdef
-                              | (TxsDefs.CnectId  nm uid, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
+                              | (TxsDefs.CnectId  nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
                               , nm == c
                               ]
             case (mdefs,adefs,pdefs,cdefs) of
@@ -590,10 +591,10 @@ isConsistentTester :: TxsDefs.ModelDef ->
                       TxsDefs.CnectDef ->
                       Bool
 
-isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs _ _)
                    Nothing
                    _
-                   (TxsDefs.CnectDef cnecttype conndefs)
+                   (TxsDefs.CnectDef _ conndefs)
   =  let { mins   = Set.fromList minsyncs
          ; mouts  = Set.fromList moutsyncs
          ; ctows  = Set.fromList
@@ -604,10 +605,11 @@ isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
       in    mins   == ctows
          && cfrows == mouts
 
-isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
-                   (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
+-- why aren't Model and Mapper checked for consistency?
+isConsistentTester _
+                   (Just (TxsDefs.MapperDef achins achouts asyncsets _))
                    _
-                   (TxsDefs.CnectDef cnecttype conndefs)
+                   (TxsDefs.CnectDef _ conndefs)
   =  let { ctows  = Set.fromList
                         [ Set.singleton chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
          ; cfrows = Set.fromList
@@ -629,11 +631,11 @@ cmdSimulator args  =  do
      case words args of
      { [m,c] -> do
             mdefs <- return $ [ mdef
-                              | (TxsDefs.ModelId nm uid, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
+                              | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
                               , nm == m
                               ]
             cdefs <- return $ [ cdef
-                              | (TxsDefs.CnectId nm uid, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
+                              | (TxsDefs.CnectId nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
                               , nm == c
                               ]
             case (mdefs,cdefs) of
@@ -651,15 +653,15 @@ cmdSimulator args  =  do
             }
      ; [m,a,c] -> do
             mdefs <- return $ [ mdef
-                              | (TxsDefs.ModelId nm uid, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
+                              | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
                               , nm == m
                               ]
             adefs <- return $ [ adef
-                              | (TxsDefs.MapperId nm uid, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
+                              | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
                               , nm == a
                               ]
             cdefs <- return $ [ cdef
-                               | (TxsDefs.CnectId nm uid, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
+                               | (TxsDefs.CnectId nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
                               , nm == c
                               ]
             case (mdefs,adefs,cdefs) of
@@ -675,14 +677,15 @@ cmdSimulator args  =  do
             ; _ -> do IFS.nack "SIMULATOR" [ "Wrong or inconsistent parameters" ]
                       cmdsIntpr
             }
+       ; _ -> error $ "cmdSimulator - Illegal arguments " ++ show args
      }
 
 
 isConsistentSimulator :: TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> TxsDefs.CnectDef -> Bool
 
-isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
+isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs _ _)
                       Nothing
-                      (TxsDefs.CnectDef cnecttype conndefs)
+                      (TxsDefs.CnectDef _ conndefs)
   =  let { mins   = Set.fromList minsyncs
          ; mouts  = Set.fromList moutsyncs
          ; ctows  = Set.fromList
@@ -693,9 +696,9 @@ isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
       in    mins  == cfrows 
          && mouts == ctows 
   
-isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
-                      (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
-                      (TxsDefs.CnectDef cnecttype conndefs)
+isConsistentSimulator _
+                      (Just (TxsDefs.MapperDef achins achouts asyncsets _))
+                      (TxsDefs.CnectDef _ conndefs)
   =  let { ctows  = Set.fromList
                         [ Set.singleton chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
          ; cfrows = Set.fromList
@@ -716,20 +719,22 @@ cmdStepper args  =  do
      tdefs  <- gets IOS.tdefs
      mdefs  <- return $ TxsDefs.modelDefs tdefs
      case words args of
-     { [m] -> do
-          mdefs <- return $ [ mdef
-                            | (TxsDefs.ModelId nm uid, mdef) <- Map.toList mdefs
-                            , nm == m
-                            ]
-          case mdefs of
-          { [modeldef] -> do modify $ \env -> env { IOS.modus = IOS.Stepped }
-                             lift $ TxsCore.txsSetStep modeldef
-                             IFS.pack "STEPPER" []
-                             cmdsIntpr
-          ; _          -> do IFS.nack "STEPPER" [ "Wrong or inconsistent parameters" ]
-                             cmdsIntpr
-          }
-     }
+         { [m] -> do
+              mdefs' <- return $ [ mdef
+                                | (TxsDefs.ModelId nm _, mdef) <- Map.toList mdefs
+                                , nm == m
+                                ]
+              case mdefs' of
+                  { [modeldef] -> do modify $ \env -> env { IOS.modus = IOS.Stepped }
+                                     lift $ TxsCore.txsSetStep modeldef
+                                     IFS.pack "STEPPER" []
+                                     cmdsIntpr
+                  ; _          -> do IFS.nack "STEPPER" [ "Wrong or inconsistent parameters" ]
+                                     cmdsIntpr
+                  }
+         ; _  -> do IFS.nack "STEPPER" [ "Not single argument" ]
+                    cmdsIntpr
+         }
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -806,7 +811,6 @@ cmdStep args  =  do
 cmdShow :: String -> IOS.IOS ()
 cmdShow args  =  do
      envs  <- get
-     tdefs <- return $ IOS.tdefs envs
      txt   <- case words args of
               { ["tdefs"             ] -> lift $ TxsCore.txsShow "tdefs"     ""
               ; ["state"    ,"nr"    ] -> lift $ TxsCore.txsShow "state"     ""
@@ -861,7 +865,7 @@ cmdGoTo args  =  do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdPath :: String -> IOS.IOS ()
-cmdPath args  =  do
+cmdPath _  =  do
      path <- lift $ TxsCore.txsPath
      IFS.mack [ (TxsShow.showN n 6) ++ ": " ++ (TxsShow.fshow s1) ++ " -> " ++
                 (unwords $ lines (TxsShow.fshow a)) ++ " -> " ++ (TxsShow.fshow s2)
@@ -875,10 +879,10 @@ cmdPath args  =  do
 cmdTrace :: String -> IOS.IOS ()
 cmdTrace args  =  do
      path  <- lift $ TxsCore.txsPath
-     trace <- return $ [ a | (s,a,s') <- path ]
+     trace <- return $ [ a | (_,a,_) <- path ]
      case words args of
      { []      -> do IFS.mack [ (TxsShow.showN n 6) ++ ":  " ++ (TxsShow.fshow a)
-                              | (n,(s1,a,s2)) <- zip [1..] path
+                              | (n,(_,a,_)) <- zip [1..] path
                               ]
                      IFS.pack "TRACE" ["\n"]
                      cmdsIntpr
@@ -925,9 +929,7 @@ cmdMap args  =  do
      tdefs   <- gets IOS.tdefs
      mdefs   <- return $ TxsDefs.mapperDefs tdefs
      inchids <- return $ concat [ chins
-                                | ( TxsDefs.MapperId nm uid
-                                  , TxsDefs.MapperDef chins chouts syncs bexp
-                                  ) <- Map.toList mdefs
+                                | ( _ , TxsDefs.MapperDef chins _ _ _ ) <- Map.toList mdefs
                                 ]
      if  null inchids
        then do IFS.nack "MAP" [ "No mapper(s) defined" ]
@@ -947,7 +949,7 @@ cmdNComp args  =  do
      tdefs <- gets IOS.tdefs
      case words args of
      { [mname] -> case [ mdef
-                       | mid@(TxsDefs.ModelId nm uid, mdef) <- Map.toList
+                       | (TxsDefs.ModelId nm _, mdef) <- Map.toList
                                                                  (TxsDefs.modelDefs tdefs)
                        , nm == mname
                        ] of
@@ -1003,7 +1005,7 @@ readAction chids args  =  do
                return $ TxsDDefs.ActQui
        else do
          modify $ \env -> env { IOS.uid = uid' }
-         qstnoffs <- return [ q | q@(TxsDefs.Quest vid)
+         qstnoffs <- return [ q | q@TxsDefs.Quest{}
                                     <- concat $ map TxsDefs.chanoffers (Set.toList offs') ]
          if  not $ null qstnoffs
            then do IFS.nack "ERROR" [ "incorrect action: no question mark offer allowed" ]
@@ -1059,6 +1061,7 @@ loadConfig :: IO CmdLineConfig
 loadConfig = parseCmdLine
 
 -- | File name to look for.
+configFileName :: String
 configFileName = "txs.yaml"
 
 -- | Create a `UnintConfig` value by trying to read the configuration options

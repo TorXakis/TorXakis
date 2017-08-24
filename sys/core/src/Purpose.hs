@@ -30,32 +30,28 @@ module Purpose
 
 where
 
-import           BTShow
-import           System.IO
-
 import           Control.Monad.State
 
-import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 
 -- import from local
 import           CoreUtils
 
-import qualified Behave              as Behave
+import qualified Behave
 
 -- import from behavedef
-import qualified BTree               as BTree
+import qualified BTree
 
 -- import from coreenv
 import qualified EnvCore             as IOC
-import qualified EnvData             as EnvData
+import qualified EnvData
 
 -- import from defs
-import qualified StdTDefs            as StdTDefs
-import qualified TxsDDefs            as TxsDDefs
-import qualified TxsDefs             as TxsDefs
-import qualified TxsShow             as TxsShow
-import qualified Utils               as Utils
+import qualified StdTDefs
+import qualified TxsDDefs
+import qualified TxsDefs
+import qualified TxsShow
+import qualified Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -63,12 +59,6 @@ import qualified Utils               as Utils
 
 -- ----------------------------------------------------------------------------------------- --
 -- goalMenu :  menu on current btree of goal with name
-
-getPurpdef :: StateT IOC.EnvC IO (Maybe TxsDefs.PurpDef)
-getPurpdef = gets (IOC.purpdef . IOC.state)
-
-getPupsts :: StateT IOC.EnvC IO  [(TxsDefs.GoalId, BTree.BTree)]
-getPupsts = gets (IOC.purpsts . IOC.state)
 
 goalMenu :: String -> IOC.IOC BTree.Menu
 goalMenu gnm = do
@@ -95,7 +85,7 @@ purpMenusIn :: IOC.IOC [BTree.Menu]
 purpMenusIn  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)
+       IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs _)
                    , IOC.purpsts = purpsts
                    }
          | not $ null pinsyncs -> do
@@ -110,11 +100,10 @@ purpMenusIn  =  do
             return []
 
 goalMenuIn :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC BTree.Menu
-goalMenuIn (gid,btree)  =  do
+goalMenuIn (_,btree)  =  do
      envc <- get
      case IOC.state envc of
-     { IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)
-                   , IOC.purpsts = purpsts
+     { IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs _)
                    } -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             chins     <- return $ Set.unions pinsyncs
@@ -137,7 +126,7 @@ purpAfter act  =  do
      envc  <- get
      isInp <- isInAct act
      case IOC.state envc of
-     { IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)
+     { IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs _)
                    , IOC.purpsts = purpsts
                    } -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
@@ -167,7 +156,7 @@ purpAfter act  =  do
 goalAfter :: [Set.Set TxsDefs.ChanId] -> [Set.Set TxsDefs.ChanId] -> TxsDDefs.Action ->
              (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC (TxsDefs.GoalId,BTree.BTree)
 
-goalAfter allsyncs outsyncs (TxsDDefs.Act acts) (gid,btree)  =  do
+goalAfter allsyncs _ (TxsDDefs.Act acts) (gid,btree)  =  do
      envb           <- filterEnvCtoEnvB
      (maybt',envb') <- lift $
        runStateT (Behave.behAfterAct allsyncs btree acts) envb
@@ -209,8 +198,7 @@ goalVerdict :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC ()
 goalVerdict (gid,btree)  =  do
      envc <- get
      case IOC.state envc of
-     { IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs goals)
-                   , IOC.purpsts = purpsts
+     { IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs _)
                    }  -> do
             pAllSyncs <- return $ pinsyncs ++ poutsyncs ++ psplsyncs
             IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO

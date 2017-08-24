@@ -38,7 +38,6 @@ import System.IO
 import System.Timeout
 import Control.Monad.State
 import Control.Concurrent
-import Control.Concurrent.Chan 
 import Network
 -- import GHC.Conc
 
@@ -52,18 +51,15 @@ import EnDecode
 
 -- import from serverenv
 import qualified EnvServer   as IOS
-import qualified IfServer    as IfServer
-import qualified ParamServer as ParamServer
+import qualified IfServer
 
 -- import from coreenv
 import qualified EnvCore as IOC
 
 -- import from defs
-import qualified Utils    as Utils
+import qualified Utils
 import TxsDefs
 import TxsDDefs
-import qualified TxsShow as TxsShow
-
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -77,7 +73,6 @@ import qualified TxsShow as TxsShow
 openSockets :: IOS.IOS ()
 openSockets  =  do
      txsmodus <- gets IOS.modus
-     tdefs    <- gets IOS.tdefs
      cnectdef <- case txsmodus of
                  { IOS.Tested  cdef -> return $ Just cdef
                  ; IOS.Simuled cdef -> return $ Just cdef
@@ -126,46 +121,46 @@ frowChanThread h frowchan  =  do
 
 openCnectClientSockets :: [ConnDef] -> IO ([ConnHandle],[ConnHandle])
 openCnectClientSockets conndefs  =  do
-     tofrosocks  <- return   [ (ctow, vars, vexp, cfrow, var, vexps, htow, ptow)
-                             | ConnDtoW  ctow  htow  ptow  vars vexp  <- conndefs
-                             , ConnDfroW cfrow hfrow pfrow var  vexps <- conndefs
+     tofrosocks  <- return   [ (ctow, vars', vexp, cfrow, var', vexps, htow, ptow)
+                             | ConnDtoW  ctow  htow  ptow  vars' vexp  <- conndefs
+                             , ConnDfroW cfrow hfrow pfrow var'  vexps <- conndefs
                              , htow == hfrow, ptow == pfrow
                              ]
-     tosocks     <- return   [ (ctow, vars, vexp, htow, ptow)
-                             | ConnDtoW  ctow  htow  ptow  vars vexp  <- conndefs
+     tosocks     <- return   [ (ctow, vars', vexp, htow, ptow)
+                             | ConnDtoW  ctow  htow  ptow  vars' vexp  <- conndefs
                              , (htow,ptow) `notElem` [(h,p)|(_,_,_,_,_,_,h,p)<-tofrosocks]
                              ]
-     frosocks    <- return   [ (cfrow, var, vexps, hfrow, pfrow)
-                             | ConnDfroW cfrow hfrow pfrow var  vexps <- conndefs
+     frosocks    <- return   [ (cfrow, var', vexps, hfrow, pfrow)
+                             | ConnDfroW cfrow hfrow pfrow var'  vexps <- conndefs
                              , (hfrow,pfrow) `notElem` [(h,p)|(_,_,_,_,_,_,h,p)<-tofrosocks]
                              ]
      tofrohandls <- sequence [ connectTo hst (PortNumber (fromInteger prt))
-                             | (ctow, _, _, cfrow, _, _, hst, prt) <- tofrosocks
+                             | (_, _, _, _, _, _, hst, prt) <- tofrosocks
                              ]
      tohandls    <- sequence [ connectTo hst (PortNumber (fromInteger prt))
-                             | (ctow, _, _, hst, prt) <- tosocks
+                             | (_, _, _, hst, prt) <- tosocks
                              ]
      frohandls   <- sequence [ connectTo hst (PortNumber (fromInteger prt))
-                             | (cfrow, _, _, hst, prt) <- frosocks
+                             | (_, _, _, hst, prt) <- frosocks
                              ]
      sequence_               [ hSetBuffering h NoBuffering | h <- tofrohandls ]
      sequence_               [ hSetBuffering h NoBuffering | h <- tohandls    ]
      sequence_               [ hSetBuffering h NoBuffering | h <- frohandls   ]
-     towhdls     <- return $ [ ConnHtoW ctow h vars vexp
-                             | ( (ctow, vars, vexp, cfrow, var, vexps, htow, ptow), h )
+     towhdls     <- return $ [ ConnHtoW ctow h vars' vexp
+                             | ( (ctow, vars', vexp, _, _, _, _, _), h )
                                  <- zip tofrosocks tofrohandls
                              ]
-                          ++ [ ConnHtoW ctow h vars vexp
-                             | ( (ctow, vars, vexp, htow, ptow), h )
+                          ++ [ ConnHtoW ctow h vars' vexp
+                             | ( (ctow, vars', vexp, _, _), h )
                                  <- zip tosocks tohandls
                              ]
 
-     frowhdls    <- return $ [ ConnHfroW cfrow h var vexps
-                             | ( (ctow, vars, vexp, cfrow, var, vexps, htow, ptow), h )
+     frowhdls    <- return $ [ ConnHfroW cfrow h var' vexps
+                             | ( (_, _, _, cfrow, var', vexps, _, _), h )
                                  <- zip tofrosocks tofrohandls
                              ]
-                          ++ [ ConnHfroW cfrow h var vexps
-                             | ( (cfrow, var, vexps, hfrow, pfrow), h )
+                          ++ [ ConnHfroW cfrow h var' vexps
+                             | ( (cfrow, var', vexps, _, _), h )
                                  <- zip frosocks frohandls
                              ]
      return                  $ ( towhdls, frowhdls )
@@ -174,28 +169,28 @@ openCnectClientSockets conndefs  =  do
 
 openCnectServerSockets :: [ConnDef] -> IO ([ConnHandle],[ConnHandle])
 openCnectServerSockets conndefs  =  do
-     tofrosocks  <- return   [ (ctow, vars, vexp, cfrow, var, vexps, htow, ptow)
-                             | ConnDtoW  ctow  htow  ptow  vars vexp  <- conndefs
-                             , ConnDfroW cfrow hfrow pfrow var  vexps <- conndefs
+     tofrosocks  <- return   [ (ctow, vars', vexp, cfrow, var', vexps, htow, ptow)
+                             | ConnDtoW  ctow  htow  ptow  vars' vexp  <- conndefs
+                             , ConnDfroW cfrow hfrow pfrow var'  vexps <- conndefs
                              , htow == hfrow , ptow == pfrow
                              ]
-     tosocks     <- return   [ (ctow, vars, vexp, htow, ptow)
-                             | ConnDtoW  ctow  htow  ptow  vars vexp  <- conndefs
+     tosocks     <- return   [ (ctow, vars', vexp, htow, ptow)
+                             | ConnDtoW  ctow  htow  ptow  vars' vexp  <- conndefs
                              , (htow,ptow) `notElem` [(h,p)|(_,_,_,_,_,_,h,p)<-tofrosocks]
                              ]
-     frosocks    <- return   [ (cfrow, var, vexps, hfrow, pfrow)
-                             | ConnDfroW cfrow hfrow pfrow var  vexps <- conndefs
+     frosocks    <- return   [ (cfrow, var', vexps, hfrow, pfrow)
+                             | ConnDfroW cfrow hfrow pfrow var' vexps <- conndefs
                              , (hfrow,pfrow) `notElem` [(h,p)|(_,_,_,_,_,_,h,p)<-tofrosocks]
                              ]
      tofrolistns <- sequence [ listenOn (PortNumber (fromInteger prt))
-                             | (ctow, _, _, cfrow, _, _, hst, prt) <- tofrosocks
+                             | (_, _, _, _, _, _, _, prt) <- tofrosocks
                              ]
 
      tolistns    <- sequence [ listenOn (PortNumber (fromInteger prt))
-                             | (ctow, _, _, hst, prt) <- tosocks
+                             | (_, _, _, _, prt) <- tosocks
                              ]
      frolistns   <- sequence [ listenOn (PortNumber (fromInteger prt))
-                             | (cfrow, _, _, hst, prt) <- frosocks
+                             | (_, _, _, _, prt) <- frosocks
                              ]
      tofrocnctns <- sequence [ accept listn | listn <- tofrolistns ]
      tocnctns    <- sequence [ accept listn | listn <- tolistns ]
@@ -206,20 +201,20 @@ openCnectServerSockets conndefs  =  do
      sequence_               [ hSetBuffering h NoBuffering | h <- tofrohandls ]
      sequence_               [ hSetBuffering h NoBuffering | h <- tohandls    ]
      sequence_               [ hSetBuffering h NoBuffering | h <- frohandls   ]
-     towhdls     <- return $ [ ConnHtoW ctow h vars vexp
-                             | ( (ctow, vars, vexp, cfrow, var, vexps, htow, ptow), h )
+     towhdls     <- return $ [ ConnHtoW ctow h vars' vexp
+                             | ( (ctow, vars', vexp, _, _, _, _, _), h )
                                  <- zip tofrosocks tofrohandls
                              ]
-                          ++ [ ConnHtoW ctow h vars vexp
-                             | ( (ctow, vars, vexp, htow, ptow), h )
+                          ++ [ ConnHtoW ctow h vars' vexp
+                             | ( (ctow, vars', vexp, _, _), h )
                                  <- zip tosocks tohandls
                              ]
-     frowhdls    <- return $ [ ConnHfroW cfrow h var vexps
-                             | ( (ctow, vars, vexp, cfrow, var, vexps, htow, ptow), h )
+     frowhdls    <- return $ [ ConnHfroW cfrow h var' vexps
+                             | ( (_, _, _, cfrow, var', vexps, _, _), h )
                                  <- zip tofrosocks tofrohandls
                              ]
-                          ++ [ ConnHfroW cfrow h var vexps
-                             | ( (cfrow, var, vexps, hfrow, pfrow), h )
+                          ++ [ ConnHfroW cfrow h var' vexps
+                             | ( (cfrow, var', vexps, _, _), h )
                                  <- zip frosocks frohandls
                              ]
      return                  $ ( towhdls, frowhdls )
@@ -231,16 +226,16 @@ openCnectServerSockets conndefs  =  do
 
 closeSockets :: IOS.IOS ()
 closeSockets  =  do
-     ( towChan,  towThread,   towhdls  ) <- gets IOS.tow
-     ( frowChan, frowThreads, frowhdls ) <- gets IOS.frow
+     ( _, towThread,   towhdls  ) <- gets IOS.tow
+     ( _, frowThreads, frowhdls ) <- gets IOS.frow
 
      lift $ lift $ case towThread of
                    { Just thrd -> killThread thrd
                    ; Nothing   -> return $ ()
                    }
-     lift $ lift $ mapM killThread frowThreads
-     lift $ lift $ mapM hClose [ h | ConnHtoW  _ h _ _ <- towhdls  ]
-     lift $ lift $ mapM hClose [ h | ConnHfroW _ h _ _ <- frowhdls ]
+     lift $ lift $ mapM_ killThread frowThreads
+     lift $ lift $ mapM_ hClose [ h | ConnHtoW  _ h _ _ <- towhdls  ]
+     lift $ lift $ mapM_ hClose [ h | ConnHfroW _ h _ _ <- frowhdls ]
 
      modify $ \env -> env { IOS.tow  = ( Nothing, Nothing, [] )
                           , IOS.frow = ( Nothing, [],      [] )
@@ -254,12 +249,12 @@ closeSockets  =  do
 
 putSocket :: IOS.EnvS -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
 
-putSocket envs act@(Act acts)  =  do
+putSocket envs act@Act{}  =  do
      let ( Just towChan, _,  _ )  = IOS.tow envs
          ( Just frowChan, _,  _ ) = IOS.frow envs
          ioTime                   = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
                                     { Nothing          -> 10                -- default 10 msec
-                                    ; Just (val,check) -> read val
+                                    ; Just (val,_)     -> read val
                                     }
       in do sact <- EnDecode.encode envs act
             obs  <- lift $ timeout (ioTime*1000) (readChan frowChan)       -- timeout in musec
@@ -276,11 +271,11 @@ putSocket envs ActQui  =  do
          ( Just frowChan, _,  _ ) = IOS.frow envs
          deltaTime                = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
                                     { Nothing          -> 2000                -- default 2 sec 
-                                    ; Just (val,check) -> read val
+                                    ; Just (val,_)     -> read val
                                     }
          ioTime                   = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
                                     { Nothing          -> 10                -- default 10 msec
-                                    ; Just (val,check) -> read val
+                                    ; Just (val,_)     -> read val
                                     }
       in do sact <- EnDecode.encode envs ActQui
             obs <- lift $ timeout (ioTime*1000) (readChan frowChan)
@@ -304,8 +299,8 @@ getSocket :: IOS.EnvS -> IOC.IOC TxsDDefs.Action
 getSocket envs  =  do
      let ( Just frowChan, _,  _ ) = IOS.frow envs
          deltaTime                = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
-                                    { Nothing          -> 2000                -- default 2 sec 
-                                    ; Just (val,check) -> read val
+                                    { Nothing      -> 2000                -- default 2 sec 
+                                    ; Just (val,_) -> read val
                                     }
       in do obs <- lift $ timeout (deltaTime*1000) (readChan frowChan)
             case obs of

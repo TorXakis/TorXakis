@@ -25,17 +25,10 @@ module Equiv
 
 where
 
-import           Control.Monad.State
-import           System.IO
-
-import qualified Data.Char           as Char
-import qualified Data.List           as List
-import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 
 import           BTree
 import qualified EnvBTree            as IOB
-import           StdTDefs
 import           TxsDefs
 
 -- ----------------------------------------------------------------------------------------- --

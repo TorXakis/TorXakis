@@ -52,18 +52,18 @@ import BTree
 import qualified EnvBTree  as IOB
 
 -- import from coreenv
-import qualified EnvData   as EnvData
+import qualified EnvData
 
 -- import from defs
-import qualified TxsDefs   as  TxsDefs
-import qualified TxsUtils  as  TxsUtils
+import qualified TxsDefs
+import qualified TxsUtils
 
 -- import from solve
 import SolveDefs
 import Solve
 
 -- import from value
-import qualified Eval as Eval
+import qualified Eval
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -72,8 +72,8 @@ import qualified Eval as Eval
 
 behInit :: [ Set.Set TxsDefs.ChanId ] -> TxsDefs.BExpr -> IOB.IOB (Maybe BTree)
 behInit chsets bexp  =  do
-     btree <- unfold chsets (BNbexpr Map.empty bexp)
-     return $ Just btree
+     btree' <- unfold chsets (BNbexpr Map.empty bexp)
+     return $ Just btree'
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -81,9 +81,9 @@ behInit chsets bexp  =  do
 
 
 behMayMenu :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
-behMayMenu chsets btree 
-  =  [ ( btoffs, hidvars, preds ) | BTpref btoffs hidvars preds next <- btree ]
-     ++ concat [ behMayMenu chsets btree' | BTtau btree' <- btree ]
+behMayMenu chsets btree' 
+  =  [ ( btoffs, hidvars, preds ) | BTpref btoffs hidvars preds _ <- btree' ]
+     ++ concat [ behMayMenu chsets btree'' | BTtau btree'' <- btree' ]
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -91,7 +91,7 @@ behMayMenu chsets btree
 
 
 behMustMenu :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
-behMustMenu chsets btree
+behMustMenu _ _
   =  []
 
 --   TODO
@@ -107,19 +107,19 @@ behMustMenu chsets btree
 
 
 behRefusal :: BTree -> Set.Set TxsDefs.ChanId -> Bool
-behRefusal btree refset 
-  =  case [ btree' | BTtau btree' <- btree ] of
-     { []      -> and [ refBBranch bbranch refset | bbranch <- btree ]
-     ; btrees' -> or $ map (\bt -> behRefusal bt refset) btrees'
+behRefusal bt refset 
+  =  case [ bt' | BTtau bt' <- bt ] of
+     { []      -> and [ refBBranch bbranch refset | bbranch <- bt ]
+     ; btrees' -> or $ map (\bt' -> behRefusal bt' refset) btrees'
      }
 
 
 refBBranch :: BBranch -> Set.Set TxsDefs.ChanId -> Bool
 
-refBBranch (BTpref btoffs hidvars preds next) refset
+refBBranch (BTpref btoffs _ _ _) refset
   =  not $ (Set.map ctchan btoffs) `Set.isSubsetOf` refset
 
-refBBranch (BTtau btree) refset 
+refBBranch (BTtau _) _ 
   =  False
 
 
@@ -128,12 +128,12 @@ refBBranch (BTtau btree) refset
 
 
 behAfterAct :: [ Set.Set TxsDefs.ChanId ] -> BTree -> BehAction -> IOB.IOB (Maybe BTree)
-behAfterAct chsets btree behact
+behAfterAct chsets bt behact
  | Set.null behact  =  do
      IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "behAfterAct: after empty set/tau action" ]
      return $ Nothing
- | not $ Set.null behact  =  do
-     afters <- afterActBTree chsets behact btree
+ | True = do    -- not $ Set.null behact
+     afters <- afterActBTree chsets behact bt
      if  null afters
        then do return $ Nothing
        else do newbtree  <- return $ map BTtau afters
@@ -148,8 +148,8 @@ behAfterAct chsets btree behact
 
 
 afterActBTree :: [ Set.Set TxsDefs.ChanId ] -> BehAction -> BTree -> IOB.IOB [BTree]
-afterActBTree chsets behact btree  =  do
-     newbtrees <- mapM (afterActBBranch chsets behact) btree
+afterActBTree chsets behact bt  =  do
+     newbtrees <- mapM (afterActBBranch chsets behact) bt
      return $ concat newbtrees
 
 
@@ -193,8 +193,8 @@ afterActBBranch chsets behact (BTpref btoffs hidvars preds next)  =  do
                                                          $ "after: hidden variables not unique" ]
                                            return []
 
-afterActBBranch chsets behact (BTtau btree)  =  do
-     afterActBTree chsets behact btree
+afterActBBranch chsets behact (BTtau bt)  =  do
+     afterActBTree chsets behact bt
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -225,8 +225,8 @@ matchAct2CTOffer behact ctoffs  =  do
 
 
 behAfterRef :: BTree -> Set.Set TxsDefs.ChanId -> IOB.IOB (Maybe BTree)
-behAfterRef btree refset  =  do
-     afters <- afterRefBTree refset btree
+behAfterRef bt refset  =  do
+     afters <- afterRefBTree refset bt
      if  null afters
        then do return $ Nothing
        else do newbtree  <- return $ map BTtau afters
@@ -241,10 +241,10 @@ behAfterRef btree refset  =  do
 
 
 afterRefBTree :: Set.Set TxsDefs.ChanId -> BTree -> IOB.IOB [BTree]
-afterRefBTree refset btree  =  do
-     case [ btree' | BTtau btree' <- btree ] of
-     { []      -> do if and [ refBBranch bbranch refset | bbranch <- btree ]
-                       then return $ [btree]
+afterRefBTree refset bt  =  do
+     case [ bt' | BTtau bt' <- bt ] of
+     { []      -> do if and [ refBBranch bbranch refset | bbranch <- bt ]
+                       then return $ [bt]
                        else return $ []
      ; btrees' -> do btrees'' <- mapM (afterRefBTree refset) btrees'
                      return $ concat btrees''

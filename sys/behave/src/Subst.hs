@@ -19,7 +19,6 @@ module Subst
 
 where
 
-import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
@@ -52,7 +51,7 @@ instance (Ord e,Subst e) => Subst (Set.Set e)
 instance Subst BExpr
   where
 
-    subst ve Stop
+    subst _ Stop
       =  Stop
 
     subst ve (ActionPref (ActOffer offs cnrs)  bexp)
@@ -96,7 +95,7 @@ instance Subst Offer
 
 instance Subst ChanOffer
   where
-    subst ve (Quest vid)    =  Quest vid
+    subst _  (Quest vid)    =  Quest vid
     subst ve (Exclam vexp)  =  Exclam (subst ve vexp)
 
 
