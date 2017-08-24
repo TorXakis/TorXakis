@@ -1,3 +1,3 @@
-export PATH=$HOME/.local/z3/bin:$HOME/.local/bin:$PATH
-stack install --install-ghc --test --haddock --no-haddock-deps --fast --stack-yaml stack_linux.yaml
-cd test/sqatt && stack test && cd -
+export PATH=$HOME/.local/bin:$CACHE_DIR/z3/bin:$CACHE_DIR/bin:$PATH
+stack install --install-ghc --test --haddock --no-haddock-deps --fast --stack-yaml stack_linux.yaml --work-dir $CACHE_DIR_REL/.stack-work --stack-root $CACHE_DIR/.stack --allow-different-user
+cd test/sqatt && stack test --work-dir $CACHE_DIR_REL/test/.stack_work --stack-root $CACHE_DIR/.stack --allow-different-user && cd -
