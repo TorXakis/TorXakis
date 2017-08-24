@@ -261,9 +261,13 @@ runTxsWithExample logDir ex = Concurrently $ do
     Right inputModelF -> do
       port <- repr <$> getRandomPort
       runConcurrently $ timer
+                    <|> heartbeat
                     <|> txsServerProc logDir port
                     <|> txsUIProc logDir inputModelF port
   where
+    heartbeat = Concurrently $ forever $ do
+      sleep 3.0
+      putStrLn "."
     timer = Concurrently $ do
       sleep sqattTimeout
       throwIO TestTimedOut
