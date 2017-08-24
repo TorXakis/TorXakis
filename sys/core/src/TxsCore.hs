@@ -722,7 +722,7 @@ txsTestIn act  =  do
      envc <- get
      case IOC.state envc of
        IOC.Testing { IOC.purpdef = Nothing }  -> do
-         (act,verdict) <- Test.testIn act 1
+         (_,verdict) <- Test.testIn act 1
          return verdict
        IOC.Testing {}                       -> do
          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No test action with test purpose" ]
@@ -857,8 +857,8 @@ txsShow item name  = do
                -> Map.Map id def
                -> String
      nm2string nm id2ident id2def iddefs =
-       let defs = [ (id2ident id, id2def def) | (id, def) <- Map.toList iddefs
-                                              , TxsDefs.name (id2ident id) == nm ]
+       let defs = [ (id2ident id', id2def def) | (id', def) <- Map.toList iddefs
+                                              , TxsDefs.name (id2ident id') == nm ]
        in case defs of
             [(ident,txsdef)] -> TxsShow.fshow (ident,txsdef)
             _                -> "no (uniquely) defined item to be shown: " ++ nm ++ "\n"
@@ -887,7 +887,7 @@ txsGoTo stateNr  =
      ltsBackN :: Int -> IOC.IOC ()
      ltsBackN backsteps
         | backsteps <= 0 = return ()
-        | backsteps > 0  = do
+        | True  = do    -- backsteps > 0
             st <- gets IOC.state
             let iniState = IOC.inistate st
                 curState = IOC.curstate st

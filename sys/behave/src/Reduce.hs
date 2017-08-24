@@ -24,10 +24,6 @@ module Reduce
 
 where
 
-import System.IO
-import Control.Monad.State
-
-import qualified Data.Char as Char
 import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
@@ -67,9 +63,9 @@ class Reduce e
 instance Reduce BTree
   where
 
-    reduce btree  =  do
+    reduce bt  =  do
 
-         btree1              <- nubMby (~=~) btree
+         btree1              <- nubMby (~=~) bt
 
          (visibleBranches, tauBranches)
                              <- return $ List.partition isPref btree1
@@ -102,10 +98,10 @@ instance Reduce BTree
                                ++ visAfterTauTree
                                ++ tauAfterTauTree
 
-         afterTauBranches2 <- return $ [ bb | bb@(BTtau _)        <- btree2 ]
-         visibleBranches2  <- return $ [ bb | bb@(BTpref _ _ _ _) <- btree2 ]
+         afterTauBranches2 <- return $ [ bb | bb@BTtau{}  <- btree2 ]
+         visibleBranches2  <- return $ [ bb | bb@BTpref{} <- btree2 ]
          afterTauBranches3 <- return $ concat [ btree'
-                                              | bb@(BTtau btree') <- afterTauBranches2
+                                              | BTtau btree' <- afterTauBranches2
                                               ]
          visibleBranches3  <- return $ [ bb
                                        | bb <- visibleBranches2
@@ -123,14 +119,14 @@ instance Reduce BTree
 instance Reduce BBranch
   where
 
-    reduce (BTpref btoffs bthidvars btpreds btnext)  =  do
-         if  null bthidvars
-           then do btnext' <- reduce btnext
-                   return $ BTpref btoffs bthidvars btpreds btnext'
-           else do return $ BTpref btoffs bthidvars btpreds btnext
+    reduce (BTpref btoffs bthidvars' btpreds' btnext')  =  do
+         if  null bthidvars'
+           then do reducedBtnext <- reduce btnext'
+                   return $ BTpref btoffs bthidvars' btpreds' reducedBtnext
+           else do return $ BTpref btoffs bthidvars' btpreds' btnext'
 
-    reduce (BTtau btree)  =  do
-         btree' <- reduce btree
+    reduce (BTtau bt)  =  do
+         btree' <- reduce bt
          return $ BTtau btree'
 
 
@@ -159,7 +155,7 @@ instance Reduce INode
          { ( _ , [] )          -> do  return $ stopINode
          ; ( [] , [inode] )    -> do  return $ inode
          ; ( [] , inods )      -> do  return $ BNparallel chids'' inods
-         ; ( (j:js) , (i:is) ) -> do  if  Set.null $ chids'
+         ; ( (j:_) , (i:is) )  -> do  if  Set.null $ chids'
                                         then do return $ BNparallel chids'' (i:is)
                                         else do return $ BNparallel chids'' (j:i:is)
          }
@@ -268,7 +264,7 @@ instance Reduce BExpr
          { ( _ , [] )          -> do  return $ Stop
          ; ( [] , [bexp] )     -> do  return $ bexp
          ; ( [] , bexs )       -> do  return $ Parallel chids'' bexs
-         ; ( (c:cs) , (b:bs) ) -> do  if  Set.null $ chids'
+         ; ( (c:_) , (b:bs) )  -> do  if  Set.null $ chids'
                                         then do return $ Parallel chids'' (b:bs)
                                         else do return $ Parallel chids'' (c:b:bs)
          }
@@ -364,45 +360,43 @@ instance FreeChan INode
     
      where
       freeChans' (BNbexpr (_,_) bexp)            = freeChans bexp
-      freeChans' (BNparallel chids inodes)       = chids ++ (concat $ map freeChans' inodes)
-      freeChans' (BNenable inode1 choffs inode2) = (freeChans' inode1) ++ (freeChans' inode2)
-      freeChans' (BNdisable inode1 inode2)       = (freeChans' inode1) ++ (freeChans' inode2)
-      freeChans' (BNinterrupt inode1 inode2)     = (freeChans' inode1) ++ (freeChans' inode2)
-      freeChans' (BNhide chids inode)            = (List.nub $ freeChans' inode) List.\\ chids
-
+      freeChans' (BNparallel chids inodes)       = chids ++ concatMap freeChans' inodes
+      freeChans' (BNenable inode1 _ inode2)      = freeChans' inode1 ++ freeChans' inode2
+      freeChans' (BNdisable inode1 inode2)       = freeChans' inode1 ++ freeChans' inode2
+      freeChans' (BNinterrupt inode1 inode2)     = freeChans' inode1 ++ freeChans' inode2
+      freeChans' (BNhide chids inode')           = (List.nub $ freeChans' inode') List.\\ chids
 
 instance FreeChan BExpr
   where
     freeChans bexpr  =  List.nub $ freeChans' bexpr
 
      where
-      freeChans' (Stop)                      = []
-      freeChans' (ActionPref ao bexp)        = (freeChans ao) ++ (freeChans' bexp)
-      freeChans' (Guard vexps bexp)          = freeChans' bexp
-      freeChans' (Choice bexps)              = concat $ map freeChans' bexps
-      freeChans' (Parallel chids bexps)      = chids ++ (concat $ map freeChans' bexps)
-      freeChans' (Enable bexp1 choffs bexp2) = (freeChans' bexp1) ++ (freeChans' bexp2)
-      freeChans' (Disable bexp1 bexp2)       = (freeChans' bexp1) ++ (freeChans' bexp2)  
-      freeChans' (Interrupt bexp1 bexp2)     = (freeChans' bexp1) ++ (freeChans' bexp2)
-      freeChans' (ProcInst pid chids vexps)  = chids
-      freeChans' (Hide chids bexp)           = (List.nub $ freeChans' bexp) List.\\ chids
-      freeChans' (ValueEnv ve bexp)          = freeChans' bexp
-      freeChans' (StAut stid ve trns)        = concat $ map freeChans trns
-
+      freeChans'  Stop                       = []
+      freeChans' (ActionPref ao bexp)        = freeChans ao ++ freeChans' bexp
+      freeChans' (Guard _ bexp)              = freeChans' bexp
+      freeChans' (Choice bexps)              = concatMap freeChans' bexps
+      freeChans' (Parallel chids bexps)      = chids ++ concatMap freeChans' bexps
+      freeChans' (Enable bexp1 _ bexp2)      = freeChans' bexp1 ++ freeChans' bexp2
+      freeChans' (Disable bexp1 bexp2)       = freeChans' bexp1 ++ freeChans' bexp2
+      freeChans' (Interrupt bexp1 bexp2)     = freeChans' bexp1 ++ freeChans' bexp2
+      freeChans' (ProcInst _ chids _)        = chids
+      freeChans' (Hide chids bexp)           = freeChans bexp List.\\ chids             -- use freeChans since list-difference \\ only removes first occurrence of elem
+      freeChans' (ValueEnv _ bexp)           = freeChans' bexp
+      freeChans' (StAut _ _ trns)            = concatMap freeChans trns
 
 instance FreeChan ActOffer
   where
-    freeChans (ActOffer offs cnrs)   =  map chanid $ Set.toList offs
+    freeChans (ActOffer offs _)   =  map chanid $ Set.toList offs
 
 
 instance FreeChan Trans
   where
-    freeChans (Trans from actoffer update to)  =  freeChans actoffer
+    freeChans (Trans _ actoffer' _ _)  =  freeChans actoffer'
 
 
 instance (FreeChan t) => FreeChan [t]
   where
-    freeChans list  =  concat $ map freeChans list
+    freeChans list  =  concatMap freeChans list
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -434,13 +428,14 @@ isPref (BTpref _ _ _ _)  =  True
 isPref (BTtau _)         =  False
 
 
+{-
 isTau :: BBranch -> Bool
 isTau (BTpref _ _ _ _)  =  False
 isTau (BTtau _)         =  True
-
+-}
 
 isStable :: BTree -> Bool
-isStable btree  =  and $ map isPref btree
+isStable bt  =  and $ map isPref bt
 
 
 stopINode :: INode

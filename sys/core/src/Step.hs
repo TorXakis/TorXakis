@@ -25,7 +25,6 @@ module Step
 
 where
 
-import System.IO
 import Control.Monad.State
 
 import qualified Data.Map  as Map
@@ -56,7 +55,7 @@ stepN depth step  =  do
          envc <- get
          case IOC.state envc of
             IOC.Stepping {..} -> do
-                let TxsDefs.ModelDef insyncs outsyncs splsyncs bexp = modeldef
+                let TxsDefs.ModelDef insyncs outsyncs splsyncs _ = modeldef
                     allSyncs = insyncs ++ outsyncs ++ splsyncs
                     stEnvc = IOC.state envc
                     curState = IOC.curstate stEnvc
@@ -110,8 +109,8 @@ stepA act  =  do
        ) -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "no stepping with quiescence" ]
             return $ TxsDDefs.Fail TxsDDefs.ActQui
-     ; ( act@(TxsDDefs.Act acts), IOC.Stepping {..} )-> do
-            let TxsDefs.ModelDef insyncs outsyncs splsyncs bexp = modeldef
+     ; ( act'@(TxsDDefs.Act acts), IOC.Stepping {..} )-> do
+            let TxsDefs.ModelDef insyncs outsyncs splsyncs _ = modeldef
                 allSyncs = insyncs ++ outsyncs ++ splsyncs
                 curState = IOC.curstate envSt
                 nexState = (IOC.maxstate envSt) + 1
@@ -120,18 +119,18 @@ stepA act  =  do
                            ; Just bt -> bt
                            }
             IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                          $ (TxsShow.showN 1 6) ++ ": " ++ (TxsShow.fshow act) ]
+                          $ (TxsShow.showN 1 6) ++ ": " ++ (TxsShow.fshow act') ]
             envb           <- filterEnvCtoEnvB
             (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
             case maybt' of
             { Nothing  -> do
                    IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "cannot do action" ]
-                   return $ TxsDDefs.Fail act
+                   return $ TxsDDefs.Fail act'
             ; Just bt' -> do
                    writeEnvBtoEnvC envb'
                    IOC.modifyCS $ \st -> st
                      { IOC.modstss = Map.insert nexState bt' (IOC.modstss envSt) }
-                   nextBehTrie act
+                   nextBehTrie act'
                    return $ TxsDDefs.Pass
             }
      ; ( _

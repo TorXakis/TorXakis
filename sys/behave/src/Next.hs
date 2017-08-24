@@ -23,9 +23,6 @@ module Next
 
 where
 
-import qualified Data.Char as Char
-import qualified Data.List as List
-import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
 import TxsDefs

@@ -30,18 +30,16 @@ where
 import Control.Monad.State
 
 import qualified Data.Set  as Set
-import qualified Data.Map  as Map
 
 import CoreUtils
 
 import qualified EnvCore   as IOC
-import qualified EnvData   as EnvData
-import qualified Behave    as Behave
-import qualified BTree     as BTree
+import qualified EnvData
+import qualified Behave
+import qualified BTree
 
-import qualified TxsDefs   as TxsDefs
-import qualified TxsDDefs  as TxsDDefs
-import qualified TxsShow   as TxsShow
+import qualified TxsDefs
+import qualified TxsDDefs
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -101,8 +99,8 @@ mapperMap act@(TxsDDefs.Act acts)  =  do
                                                          $ "Mapper: something wrong" ]
                                            return $ act
                    ; ( []  , mouts ) -> do return $ TxsDDefs.Act (Set.fromList mouts)
-                   ; ( mins, []    ) -> do mapperMap $ TxsDDefs.Act Set.empty
-                   ; ( mins, mouts ) -> do return $ TxsDDefs.Act (Set.fromList mouts)
+                   ; ( _, []    )    -> do mapperMap $ TxsDDefs.Act Set.empty
+                   ; ( _, mouts )    -> do return $ TxsDDefs.Act (Set.fromList mouts)
      }    }   }
 
 mapperMap act@(TxsDDefs.ActQui)  =  do

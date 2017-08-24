@@ -26,8 +26,6 @@ module Test
 
 where
 
-import System.IO
-
 import System.Random
 import Control.Monad.State
 
@@ -39,14 +37,13 @@ import CoreUtils
 
 -- import from coreeenv
 import qualified EnvCore     as IOC
-import qualified ParamCore   as ParamCore
-import qualified EnvData     as EnvData
+import qualified ParamCore
+import qualified EnvData
 
-import qualified TxsDefs     as TxsDefs
-import qualified TxsDDefs    as TxsDDefs
-import qualified TxsShow     as TxsShow
-import qualified BTShow      as BTShow
-
+import qualified TxsDefs
+import qualified TxsDDefs
+import qualified TxsShow
+import BTShow()
 
 -- ----------------------------------------------------------------------------------------- --
 -- testIn :  try to give input (Act acts), and give new environment
@@ -54,7 +51,7 @@ import qualified BTShow      as BTShow
 
 
 testIn :: TxsDDefs.Action -> Int -> IOC.IOC (TxsDDefs.Action, TxsDDefs.Verdict)
-testIn act@(TxsDDefs.Act acts) step  =  do
+testIn act@TxsDDefs.Act{} step  =  do
      putToW <- gets (IOC.puttow . IOC.state)
      mact   <- mapperMap act                                -- map action
      mact'  <- putToW mact                                  -- try to do input on sut
@@ -78,7 +75,7 @@ testIn act@(TxsDDefs.Act acts) step  =  do
            else do expected
                    return $ (act', TxsDDefs.Fail act')      -- output act' `notElem` menuOut
  
-testIn TxsDDefs.ActQui step  =  do
+testIn TxsDDefs.ActQui _  =  do
      IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                    $ "testIn cannot be done with Quiescence" ]
      return $ (TxsDDefs.ActQui, TxsDDefs.Fail TxsDDefs.ActQui)
@@ -112,7 +109,7 @@ expected  =  do
      menu <- iocoModelMenuOut
      qui  <- iocoModelIsQui
      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Expected:" ]
-     IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ (TxsShow.fshow menu) ]
+     IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ TxsShow.fshow menu ]
      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ if qui then "No Output (Quiescence)" else "" ]
 
 
@@ -136,13 +133,13 @@ testN depth step = do
     continue (Just (TxsDefs.PurpDef [] [] _ _)) =
       testIOCO depth False step
     -- Test purpose with only outputs.    
-    continue (Just (TxsDefs.PurpDef [] outsyncs _ _)) =
+    continue (Just (TxsDefs.PurpDef [] _ _ _)) =
       testIOCOoutPurp depth False step
     -- Test purpose with only inputs.      
-    continue (Just (TxsDefs.PurpDef insyncs [] _ _)) =
+    continue (Just (TxsDefs.PurpDef _ [] _ _)) =
       testIOCOinPurp depth False step
     -- Test purpose with inputs and outputs.      
-    continue (Just (TxsDefs.PurpDef insyncs outsyncs _ _)) =
+    continue (Just (TxsDefs.PurpDef _ _ _ _)) =
       testIOCOfullPurp depth False step
 
 
@@ -168,8 +165,8 @@ testIOCO depth lastDelta step  =  do
          ioRand   <- lift $ randomRIO (False,True)                  -- random for in- or output
          modMenu  <- iocoModelMenuIn
          input    <- randMenu modMenu
-         [(parname,parval)] <- IOC.getParams ["param_Test_inputEager"]
-         iochoice <- return $ case (read parval) of                 -- input (True) or output
+         [(_,parval)] <- IOC.getParams ["param_Test_inputEager"]
+         iochoice <- return $ case (read parval::Integer) of                 -- input (True) or output
                               { 0 -> ( input /= Nothing ) && ( lastDelta || ioRand )
                               ; 1 -> error $ "TXS: undefined input-eagerness level\n"
                               ; 2 -> error $ "TXS: undefined input-eagerness level\n"
@@ -181,16 +178,18 @@ testIOCO depth lastDelta step  =  do
              Just inp      <- return $ input
              (act,verdict) <- testIn inp step
              case verdict of
-             { TxsDDefs.Pass     -> do testIOCO (depth-1) (act==TxsDDefs.ActQui) (step+1)
-             ; TxsDDefs.Fail act -> do return $ TxsDDefs.Fail act
+             { TxsDDefs.Pass      -> do testIOCO (depth-1) (act==TxsDDefs.ActQui) (step+1)
+             ; TxsDDefs.Fail act' -> do return $ TxsDDefs.Fail act'
+             ; _                  -> error "testIOCO - NoVerdict"
              }
            else do
              if  (not lastDelta)
                then do                                            -- observe output
                  (act,verdict) <- testOut step
                  case verdict of
-                 { TxsDDefs.Pass     -> do testIOCO (depth-1) (act==TxsDDefs.ActQui) (step+1)
-                 ; TxsDDefs.Fail act -> do return $ TxsDDefs.Fail act
+                 { TxsDDefs.Pass      -> do testIOCO (depth-1) (act==TxsDDefs.ActQui) (step+1)
+                 ; TxsDDefs.Fail act' -> do return $ TxsDDefs.Fail act'
+                 ; _                  -> error "testIOCO - NoVerdict"
                  }
                else do                                            -- lastDelta and no inputs
                  IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "no more actions" ]
@@ -199,11 +198,8 @@ testIOCO depth lastDelta step  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 -- testing with test purposes
-
--- ----------------------------------------------------------------------------------------- --
--- testPin :  try to give input (Act acts), used with test purpose
-
-
+{-
+-- | testPin :  try to give input (Act acts), used with test purpose
 testPin :: TxsDDefs.Action -> Int -> IOC.IOC TxsDDefs.Action
 testPin act@(TxsDDefs.Act acts) step  =  do
      putToW                      <- gets (IOC.puttow . IOC.state)
@@ -224,12 +220,10 @@ testPin TxsDDefs.ActQui step  =  do                                   -- otherwi
      IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                    $ "testIn can only be called with (TxsDDefs.Act acts)" ]
      return $ TxsDDefs.ActQui
+-}
 
-
--- ----------------------------------------------------------------------------------------- --
--- testPout :  observe output, for use with test purposes
-
-
+{-
+-- | testPout :  observe output, for use with test purposes
 testPout :: Int -> IOC.IOC TxsDDefs.Action
 testPout step  =  do
      getFroW <- gets (IOC.getfrow . IOC.state)
@@ -238,14 +232,12 @@ testPout step  =  do
      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                $ (TxsShow.showN step 6) ++ ":  OUT: " ++ (TxsShow.fshow mact) ]
      return $ mact
+-}
 
-
--- ----------------------------------------------------------------------------------------- --
--- testIOCOinPurp :  test with test puposes, only on inputs
-
+-- | testIOCOinPurp :  test with test puposes, only on inputs
 
 testIOCOinPurp :: Int -> Bool -> Int -> IOC.IOC TxsDDefs.Verdict
-testIOCOinPurp depth lastDelta step  =  do
+testIOCOinPurp _ _ _  =  do
        IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                      $ "test purpose with only inputs not supported yet" ]
        return $ TxsDDefs.NoVerdict
@@ -255,7 +247,7 @@ testIOCOinPurp depth lastDelta step  =  do
 
 
 testIOCOoutPurp :: Int -> Bool -> Int -> IOC.IOC TxsDDefs.Verdict
-testIOCOoutPurp depth lastDelta step  =  do
+testIOCOoutPurp _ _ _  =  do
        IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                      $ "test purpose with only outputs not supported yet" ]
        return $ TxsDDefs.NoVerdict
@@ -292,9 +284,10 @@ testIOCOfullPurp depth lastDelta step  =  do
                                                       (depth-1) (act==TxsDDefs.ActQui) (step+1)
              ; (TxsDDefs.Pass    , True ) -> do purpVerdict 
                                                 return $ TxsDDefs.Pass
-             ; (TxsDDefs.Fail act, _    ) -> do purpVerdict
+             ; (TxsDDefs.Fail act', _   ) -> do purpVerdict
                                                 expected
-                                                return $ TxsDDefs.Fail act
+                                                return $ TxsDDefs.Fail act'
+             ; _                          -> error "testIOCOfullPurp - should not happen"
              }
            else do
              if  (not lastDelta)
@@ -307,9 +300,10 @@ testIOCOfullPurp depth lastDelta step  =  do
                                                       (depth-1) (act==TxsDDefs.ActQui) (step+1)
                  ; (TxsDDefs.Pass    , True ) -> do purpVerdict
                                                     return $ TxsDDefs.Pass
-                 ; (TxsDDefs.Fail act, _    ) -> do purpVerdict
+                 ; (TxsDDefs.Fail act', _   ) -> do purpVerdict
                                                     expected
-                                                    return $ TxsDDefs.Fail act
+                                                    return $ TxsDDefs.Fail act'
+                 ; _                          -> error "testIOCOfullPurp - should not happen"
                  }
                else do                                              -- lastDelta and no inputs
                  IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "no more actions" ]

@@ -133,11 +133,6 @@ eval (view -> Vpredef kd fid vexps)  =  do
                 _             -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                                   $ "eval: ACC: " ++ (show fid) ]
                                     return $ Cerror ""
-       ANE -> case vexps of
-                [vexp1,vexp2] -> do evalANE vexp1 vexp2
-                _             -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                                  $ "eval: ANE: " ++ (show fid) ]
-                                    return $ Cerror ""
        AST -> case vexps of
                 [vexp] -> do wal <- eval vexp
                              str2txs (pshow wal)
@@ -148,7 +143,7 @@ eval (view -> Vpredef kd fid vexps)  =  do
                              uid     <- gets IOB.unid
                              tdefs   <- gets IOB.tdefs
                              sigs    <- gets IOB.sigs
-                             ((uid',vexp'),e) <- lift $ catch
+                             ((_,vexp'),e) <- lift $ catch
                                 ( let p = TxsHappy.vexprParser (  ( TxsAlex.Ctdefs  tdefs )
                                                                 : ( TxsAlex.Csigs   sigs )
                                                                 : ( TxsAlex.Cvarenv [] )
@@ -202,7 +197,7 @@ evalAFS fid vexp  =  do
      case val of
      { Cstr cid vals
          -> case Map.lookup cid (cstrDefs tdefs) of
-            { Just (CstrDef cc fs)
+            { Just (CstrDef _ fs)
                 -> case List.elemIndices fid fs of
                    { [index] -> return $ vals!!index
                    ; _       -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $
@@ -228,35 +223,16 @@ evalACC fid vexp  =  do
      tdefs <- gets IOB.tdefs
      val   <- eval vexp
      case val of
-     { Cstr cid vals
+       Cstr cid _
          -> case Map.lookup cid (cstrDefs tdefs) of
-            { Just (CstrDef cc fs) -> bool2txs (cc == fid)
-            ; _                    -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+              Just (CstrDef cc _) -> bool2txs (cc == fid)
+              _                   -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                            $ "evalACC: constructor not found: " ++ (show val) ]
-                                         return $ Cerror "evalACC: constructor not found"
-            }
-     ; _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                        return $ Cerror "evalACC: constructor not found"
+       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                              $ "evalACC: constr check not on constructor: " ++ (show val) ]
                return $ Cerror ""
-     }
-
-
--- ----------------------------------------------------------------------------------------- --
--- evaluation of value expression: algebraic (non)equality
-
-
-evalAEQ :: (Variable v) => (ValExpr v) -> (ValExpr v) -> IOB.IOB Const
-evalAEQ vexp1 vexp2  =  do
-     val1 <- eval vexp1
-     val2 <- eval vexp2
-     bool2txs $ val1 == val2
-
-
-evalANE :: (Variable v) => (ValExpr v) -> (ValExpr v) -> IOB.IOB Const
-evalANE vexp1 vexp2  =  do
-     val1 <- eval vexp1
-     val2 <- eval vexp2
-     bool2txs $ not ( val1 == val2 )
+      
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -264,7 +240,7 @@ evalANE vexp1 vexp2  =  do
 
 
 evalSSB :: (Variable v) => FuncId -> [ValExpr v] -> IOB.IOB Const
-evalSSB (FuncId nm uid args srt) vexps  =  do
+evalSSB (FuncId nm _ _ _) vexps  =  do
      case ( nm, vexps ) of
      { ( "toString",    [v1]    ) -> do b1 <- txs2bool v1
                                         str2txs $ show b1
@@ -287,7 +263,7 @@ evalSSB (FuncId nm uid args srt) vexps  =  do
 
 
 evalSSI :: (Variable v) => FuncId -> [ValExpr v] -> IOB.IOB Const
-evalSSI (FuncId nm uid args srt) vexps  =  do
+evalSSI (FuncId nm _ _ _) vexps  =  do
      case ( nm, vexps ) of
      { ( "toString",    [v1]    ) -> do i1 <- txs2int v1
                                         str2txs $ show i1
@@ -344,7 +320,7 @@ evalSSI (FuncId nm uid args srt) vexps  =  do
 
 
 evalSSS :: (Variable v) => FuncId -> [ValExpr v] -> IOB.IOB Const
-evalSSS (FuncId nm uid args srt) vexps  =  do
+evalSSS (FuncId nm _ _ _) vexps  =  do
      case ( nm, vexps ) of
      { ( "toString",   [v] ) -> do s <- txs2str v
                                    str2txs $ show s
@@ -392,7 +368,7 @@ evalSSS (FuncId nm uid args srt) vexps  =  do
 
 
 evalSSR :: (Variable v) => FuncId -> [ValExpr v] -> IOB.IOB Const
-evalSSR (FuncId nm uid args srt) vexps  =  do
+evalSSR (FuncId nm _ _ _) vexps  =  do
      case ( nm, vexps ) of
      { ( "strinre",[v1,v2] ) -> do rawRegex     <- txs2regex v2
                                    haskellRegex <- return
@@ -464,11 +440,6 @@ txs2regex vexp  =  do
                                     $ "txs2regex: not on Regex: " ++ (show v) ]
                       return $ ""
      }
-
-
-regex2txs :: String -> IOB.IOB Const
-regex2txs r  =  do
-     return $ Cregex r
 
 
 -- ----------------------------------------------------------------------------------------- --
