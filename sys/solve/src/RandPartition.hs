@@ -35,7 +35,6 @@ import qualified Data.Map  as Map
 
 import TxsDefs
 import StdTDefs
-import TxsUtils
 import SolveDefs
 import SMT
 import SMTData

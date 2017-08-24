@@ -17,7 +17,6 @@ module SMTInternal
 -- import
 
 where
-import qualified Debug.Trace as Trace
 
 import Control.Monad.State   (gets,lift,modify)
 import qualified Data.List as List

@@ -33,7 +33,6 @@ module CoreUtils
 
 where
 
-import System.IO
 import System.Random
 import Control.Monad.State
 
@@ -41,7 +40,7 @@ import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
 -- import from behavedef
-import qualified BTree     as BTree
+import qualified BTree
 
 -- import from behaveenv
 import qualified EnvCore   as IOC
@@ -50,11 +49,9 @@ import qualified EnvBTree  as IOB
 -- import from defs
 import qualified TxsDefs
 import qualified TxsDDefs
-import qualified Utils
 import qualified Sigs
 import qualified SolveDefs
 import qualified Solve
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- filterEnvCtoEnvB
@@ -129,7 +126,7 @@ writeEnvBtoEnvC envb  =  do
 
 isInCTOffers :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 isInCTOffers ctoffers  =  do
-     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets (IOC.modeldef . IOC.state)
+     TxsDefs.ModelDef insyncs outsyncs _splsyncs _bexp <- gets (IOC.modeldef . IOC.state)
      chinset  <- return $ Set.unions insyncs
      choutset <- return $ Set.unions outsyncs
      chanids  <- return $ Set.map BTree.ctchan ctoffers
@@ -140,7 +137,7 @@ isInCTOffers ctoffers  =  do
 isInAct :: TxsDDefs.Action -> IOC.IOC Bool
 
 isInAct (TxsDDefs.Act acts)  =  do
-     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets (IOC.modeldef . IOC.state)
+     TxsDefs.ModelDef insyncs outsyncs _splsyncs _bexp <- gets (IOC.modeldef . IOC.state)
      chinset  <- return $ Set.unions insyncs
      choutset <- return $ Set.unions outsyncs
      chanids  <- return $ Set.map fst acts
@@ -157,7 +154,7 @@ isInAct (TxsDDefs.ActQui)  =  do
 
 isOutCTOffers :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 isOutCTOffers ctoffers  =  do
-     TxsDefs.ModelDef insyncs outsyncs splsyncs bexp <- gets (IOC.modeldef . IOC.state)
+     TxsDefs.ModelDef insyncs outsyncs _splsyncs _bexp <- gets (IOC.modeldef . IOC.state)
      chinset  <- return $ Set.unions insyncs
      choutset <- return $ Set.unions outsyncs
      chanids  <- return $ Set.map BTree.ctchan ctoffers

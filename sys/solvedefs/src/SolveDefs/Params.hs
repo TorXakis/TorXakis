@@ -58,7 +58,7 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
 -- randomization
   
   [ ( "param_max_rand_depth"     , "4"         , \s ->   ( all Char.isDigit s )
-                                                      && ( 0 < read s )             )
+                                                      && ( 0 < (read s::Integer) )             )
             -- param_max_rand_depth :: Int (>0)
   
   , ( "param_Randomization"      , show TrueBins  , \s ->    (s== show No)
@@ -74,7 +74,7 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
             -- IncrementChoice: incremental randomization using single choices and splitting of value space
             
   , ( "param_TrueBins_StringLength"     , "6"         , \s ->   ( all Char.isDigit s )
-                                                             && ( 0 < read s )                 )
+                                                             && ( 0 < (read s::Integer) )                 )
             -- param_TrueBins_StringLength :: Int (>0)
 
   , ( "param_TrueBins_StringMode"     , show Regex         , \s ->    (s== show Regex)
@@ -87,20 +87,20 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
             -- param_TrueBins_Next :: Next
             
   , ( "param_TrueBins_NrOfBins"     , "10"         , \s ->   ( all Char.isDigit s )
-                                                          && ( 0 < read s )                      )
+                                                          && ( 0 < (read s::Integer) )                      )
             -- param_TrueBins_NrOfBins :: Int (>0)
 
   , ( "param_IncrementChoice_MaxGeneratedStringLength"     , "10"         , \s ->   ( all Char.isDigit s )
-                                                                                 && ( 0 < read s )                      )
+                                                                                 && ( 0 < (read s::Integer) )                      )
             -- param_IncrementChoice_MaxGeneratedStringLength :: Int (>0)
 
   , ( "param_IncrementChoice_IntRange"     , "65536"         , \s ->   ( all Char.isDigit s )
-                                                                    && ( 0 < read s )                      )
+                                                                    && ( 0 < (read s::Integer) )                      )
             -- param_IncrementChoice_IntRange :: Int (>0) 
             -- default 2^16
 
   , ( "param_IncrementChoice_IntPower"     , "4"         , \s ->   ( all Char.isDigit s )
-                                                                && ( 0 < read s )                      )
+                                                                && ( 0 < (read s::Integer) )                      )
             -- param_IncrementChoice_IntPower :: Int (>0)
 
   , ( "param_RandSolve_IntHalf"  , "1000"      , all Char.isDigit                ) 

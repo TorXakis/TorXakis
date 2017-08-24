@@ -29,18 +29,18 @@ $singleNoEsc  = [\x00-\xff] # [\\\[\]]
 tokens :-                                          -- Each right-hand side has type
                                                    -- :: AlexPosn -> String -> Token
 
-   \,                        { tok ( \p s -> Tcomma p ) }
-   \.                        { tok ( \p s -> Tdot p ) }
-   \-                        { tok ( \p s -> Tdash p ) }
-   \(                        { tok ( \p s -> Tbracketopen p ) }
-   \)                        { tok ( \p s -> Tbracketclose p ) }
-   \{                        { tok ( \p s -> Tcurlybracketopen p ) }
-   \}                        { tok ( \p s -> Tcurlybracketclose p ) }
-   \[                        { tok ( \p s -> Tsquarebracketopen p ) }
-   \]                        { tok ( \p s -> Tsquarebracketclose p ) }
-   \\                        { tok ( \p s -> Tesc p ) }
-   \|                        { tok ( \p s -> Tunion p ) }
-   \^                        { tok ( \p s -> Ttop p ) }
+   \,                        { tok ( \p _s -> Tcomma p ) }
+   \.                        { tok ( \p _s -> Tdot p ) }
+   \-                        { tok ( \p _s -> Tdash p ) }
+   \(                        { tok ( \p _s -> Tbracketopen p ) }
+   \)                        { tok ( \p _s -> Tbracketclose p ) }
+   \{                        { tok ( \p _s -> Tcurlybracketopen p ) }
+   \}                        { tok ( \p _s -> Tcurlybracketclose p ) }
+   \[                        { tok ( \p _s -> Tsquarebracketopen p ) }
+   \]                        { tok ( \p _s -> Tsquarebracketclose p ) }
+   \\                        { tok ( \p _s -> Tesc p ) }
+   \|                        { tok ( \p _s -> Tunion p ) }
+   \^                        { tok ( \p _s -> Ttop p ) }
    $digit                    { tok ( \p s -> Tdigit p s ) }
    $quantifier               { tok ( \p s -> Tquantifier p s ) }
    $formatEsc                { tok ( \p s -> Tformatesc p s ) }

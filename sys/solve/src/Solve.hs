@@ -31,8 +31,6 @@ module Solve
 -- import
 
 where
-import Control.Monad.State   (lift)
-
 import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
@@ -40,10 +38,8 @@ import qualified Data.Map  as Map
 import TxsDefs
 import StdTDefs
 import FreeVar
-import TxsUtils
 
 import SolveDefs
-import SolveDefs.Params(SolveStrategy(..))
 import SMTInternal
 import SMTData
 

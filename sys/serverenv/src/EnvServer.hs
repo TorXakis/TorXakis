@@ -55,7 +55,6 @@ import qualified EnvCore    as IOC
 -- import from defs
 import qualified TxsDefs
 import qualified TxsDDefs
-import qualified TxsShow
 import qualified Sigs
 
 -- ----------------------------------------------------------------------------------------- --
@@ -148,32 +147,32 @@ getParams prms  =  do
      case prms of
        [] -> do parammap <- gets params
                 return $ map (\(nm,(val,_))->(nm,val)) (Map.toList parammap)
-       _  -> do params <- mapM getParam prms
-                return $ concat params
+       _  -> do params' <- mapM getParam prms
+                return $ concat params'
 
 getParam :: String -> IOS [(String,String)]
 getParam prm  =  do
-     params <- gets params
-     case Map.lookup prm params of
-       Nothing          -> return []
-       Just (val,check) -> return [(prm,val)]
+     params' <- gets params
+     case Map.lookup prm params' of
+       Nothing      -> return []
+       Just (val,_) -> return [(prm,val)]
 
 
 setParams :: [(String,String)] -> IOS [(String,String)]
 setParams parvals  =  do
-     params <- mapM setParam parvals
-     return $ concat params
+     params' <- mapM setParam parvals
+     return $ concat params'
 
 setParam :: (String,String) -> IOS [(String,String)]
 setParam (prm,val)  =  do
-     params <- gets params
-     case Map.lookup prm params of
+     params' <- gets params
+     case Map.lookup prm params' of
        Nothing           -> return []
-       Just (val',check) -> if  check val
-                              then do params' <- return $ Map.insert prm (val,check) params
-                                      modify $ \env -> env { params = params' }
-                                      return $ [(prm,val)]
-                              else return []
+       Just (_,check) -> if check val
+                            then do newParams <- return $ Map.insert prm (val,check) params'
+                                    modify $ \env -> env { params = newParams }
+                                    return $ [(prm,val)]
+                            else return []
 
 
 -- ----------------------------------------------------------------------------------------- --

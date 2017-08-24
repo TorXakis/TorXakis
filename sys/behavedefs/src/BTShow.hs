@@ -17,8 +17,6 @@ module BTShow
 
 where
 
-import qualified Data.List as List
-import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.String.Utils as Utils
 
@@ -37,7 +35,7 @@ import BTree
 
 instance PShow IVar
   where
-    pshow (IVar nm uid pos stat srt)
+    pshow (IVar nm uid pos stat _srt)
       =  "$"++nm++"$"++(show uid)++"$"++(show stat)++"$"++(show pos)++"$  "
 
 
@@ -59,8 +57,8 @@ instance PShow CNode
     pshow (BNenable bnode1 choffs bnode2)
       =  "( " ++ (pshow bnode1) ++ " )\n" ++ ">>>"
          ++ case choffs of
-            { []    -> "\n"
-            ; chofs -> " ACCEPT\n" ++ ( Utils.join ",\n" (map pshow choffs) ) ++ "\n" ++ "IN\n"
+            { [] -> "\n"
+            ; _  -> " ACCEPT\n" ++ ( Utils.join ",\n" (map pshow choffs) ) ++ "\n" ++ "IN\n"
             }
          ++ "( " ++ (pshow bnode2) ++ " )"
     pshow (BNdisable bnode1 bnode2)
@@ -72,7 +70,7 @@ instance PShow CNode
     pshow (BNhide chans bnode)
       =  "HIDE "
          ++ ( Utils.join "; " [ n ++ " :: " ++ ( Utils.join " # " (map pshow srts) )
-                              | ChanId n uid srts <- chans
+                              | ChanId n _uid srts <- chans
                               ] ) ++ " IN\n"
          ++ (pshow bnode) ++ "\n"
          ++ "NI\n"
@@ -102,8 +100,8 @@ instance PShow INode
     pshow (BNenable snode1 choffs snode2)
       =  "( " ++ (pshow snode1) ++ " )\n" ++ ">>>"
          ++ case choffs of
-            { []    -> "\n"
-            ; chofs -> " ACCEPT\n" ++ ( Utils.join ",\n" (map pshow choffs) ) ++ "\n" ++ "IN\n"
+            { [] -> "\n"
+            ; _  -> " ACCEPT\n" ++ ( Utils.join ",\n" (map pshow choffs) ) ++ "\n" ++ "IN\n"
             }
          ++ "( " ++ (pshow snode2) ++ " )"
     pshow (BNdisable snode1 snode2)
@@ -115,7 +113,7 @@ instance PShow INode
     pshow (BNhide chans snode)
       =  "HIDE "
          ++ ( Utils.join "; " [ n ++ " :: " ++ ( Utils.join " # " (map pshow srts) )
-                              | ChanId n uid srts <- chans
+                              | ChanId n _uid srts <- chans
                               ] ) ++ " IN\n"
          ++ (pshow snode) ++ "\n"
          ++ "NI\n"
@@ -127,15 +125,15 @@ instance PShow INode
 
 instance PShow CTBranch
   where
-    pshow (CTpref btoffs hidvars spreds snext)
+    pshow (CTpref btoffs _hidvars spreds snext)
       =  " ## " ++ (pshow btoffs) ++ (pshow spreds) ++ (pshow snext) ++ "\n"
 
 instance PShow BBranch
   where
-    pshow (BTpref btoffs hidvars spreds snext)
+    pshow (BTpref btoffs _hidvars spreds snext)
       =  " ## " ++ (pshow btoffs) ++ (pshow spreds) ++ (pshow snext) ++ "\n"
-    pshow (BTtau btree)
-      =  " ## ISTEP " ++ (pshow btree) ++ "\n"
+    pshow (BTtau bt)
+      =  " ## ISTEP " ++ (pshow bt) ++ "\n"
 
 instance PShow CTOffer
   where

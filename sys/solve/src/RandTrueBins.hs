@@ -25,7 +25,6 @@ module RandTrueBins
 
 where
 
-import Numeric (showHex)
 import System.IO
 import System.Random
 import System.Random.Shuffle
@@ -42,7 +41,6 @@ import SolveDefs
 import SolveDefs.Params
 import StdTDefs
 import TxsDefs
-import TxsUtils
 
 data ParamTrueBins = 
     ParamTrueBins { maxDepth                :: Int
@@ -88,8 +86,8 @@ randValExprsSolveTrueBins p freevars exprs  =
         combine :: (Variable v) => v -> SMT [String] -> SMT [String]
         combine vid sexprs = do
             expr <- randomValue p (vsort vid) (cstrVar vid) (maxDepth p)
-            exprs <- sexprs
-            return $ (expr:exprs)
+            exprs' <- sexprs
+            return $ (expr:exprs')
 
 -- -----------------------------------------------------------------
 nextFunction :: ParamTrueBins -> Integer -> Integer
@@ -251,14 +249,14 @@ randomValue p sid expr n | n > 0 =
                     return (r:rr)
         
                 processConstructor :: (Variable v) => (CstrId,CstrDef) -> ValExpr v -> SMT String
-                processConstructor (cid,CstrDef isX []) expr' = valExprToString $ cstrFunc isX [expr']
-                processConstructor (cid,CstrDef isX accessors) expr' = do
+                processConstructor (_cid,CstrDef isX []) expr' = valExprToString $ cstrFunc isX [expr']
+                processConstructor (cid, CstrDef isX accessors) expr' = do
                     cstr <- valExprToString $ cstrFunc isX [expr']
-                    args <- processArguments (zip (cstrargs cid) accessors) expr'
-                    case args of
+                    args' <- processArguments (zip (cstrargs cid) accessors) expr'
+                    case args' of
                         [arg]   -> return $ "(ite " ++ cstr ++ " " ++ arg ++ " false) "
                         _       -> do
-                                    shuffledAndList <- shuffleM args
+                                    shuffledAndList <- shuffleM args'
                                     return $ "(ite " ++ cstr ++ " (and " ++ Utils.join " " shuffledAndList ++ ") false) "
 
                     

@@ -27,26 +27,24 @@ where
 import           Control.Monad.State hiding (state)
 
 import qualified Data.Map            as Map
-import qualified Data.Maybe          as Maybe
 
 
 -- import from local
 import           Config
-import qualified EnvData             as EnvData
-import qualified ParamCore           as ParamCore
+import qualified EnvData
+import qualified ParamCore
 
 -- import from behavedefs
-import qualified BTree               as BTree
+import qualified BTree
 
 -- import from defs
 import qualified Sigs
 import qualified TxsDefs
 
-import qualified TxsDDefs            as TxsDDefs
-import qualified TxsShow             as TxsShow
+import qualified TxsDDefs
 
 -- import from solve
-import qualified SMTData             as SMTData
+import qualified SMTData
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -130,17 +128,17 @@ incUnid = modify $ \env -> env { unid = unid env + 1}
 
 getSMT :: String -> IOC SMTData.SmtEnv
 getSMT smtname  =  do
-     smts    <- gets (smts . state)
-     putMsgs <- gets (putmsgs . state)
-     case Map.lookup smtname smts of
-       Nothing     -> if  not $ Map.null smts
-                        then do putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING
+     smts'    <- gets (smts . state)
+     putMsgs' <- gets (putmsgs . state)
+     case Map.lookup smtname smts' of
+       Nothing     -> if  not $ Map.null smts'
+                        then do putMsgs' [ EnvData.TXS_CORE_SYSTEM_WARNING
                                           $ "No such Solver: " ++ smtname ]
-                                (name,smtenv) <- return $ head $ Map.toList smts
-                                putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING
-                                          $ "Using instead: " ++ name ]
+                                (name',smtenv) <- return $ head $ Map.toList smts'
+                                putMsgs' [ EnvData.TXS_CORE_SYSTEM_WARNING
+                                          $ "Using instead: " ++ name' ]
                                 return smtenv
-                        else do putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                        else do putMsgs' [ EnvData.TXS_CORE_SYSTEM_ERROR
                                           $ "No such Solver: " ++ smtname ]
                                 return $ SMTData.SmtEnvError
        Just smtenv -> return smtenv
@@ -163,30 +161,30 @@ getParams prms  =  do
      case prms of
        [] -> do parammap <- gets params
                 return $ map (\(nm,(val,_))->(nm,val)) (Map.toList parammap)
-       _  -> do params <- mapM getParam prms
-                return $ concat params
+       _  -> do params' <- mapM getParam prms
+                return $ concat params'
 
 getParam :: String -> IOC [(String,String)]
 getParam prm  =  do
-     params <- gets params
-     case Map.lookup prm params of
-       Nothing          -> return []
-       Just (val,check) -> return [(prm,val)]
+     params' <- gets params
+     case Map.lookup prm params' of
+       Nothing           -> return []
+       Just (val,_check) -> return [(prm,val)]
 
 
 setParams :: [(String,String)] -> IOC [(String,String)]
 setParams parvals  =  do
-     params <- mapM setParam parvals
-     return $ concat params
+     params' <- mapM setParam parvals
+     return $ concat params'
 
 setParam :: (String,String) -> IOC [(String,String)]
 setParam (prm,val)  =  do
-     params <- gets params
-     case Map.lookup prm params of
+     params' <- gets params
+     case Map.lookup prm params' of
        Nothing           -> do return []
-       Just (val',check) -> if  check val
-                              then do params' <- return $ Map.insert prm (val,check) params
-                                      modify $ \env -> env { params = params' }
+       Just (_,check)    -> if check val
+                              then do newParams <- return $ Map.insert prm (val,check) params'
+                                      modify $ \env -> env { params = newParams }
                                       return [(prm,val)]
                               else do return []
 

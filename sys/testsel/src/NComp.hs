@@ -24,16 +24,13 @@ module NComp
 
 where
 
-import Control.Monad.State
-
 import qualified Data.Set  as Set
 import qualified Data.List as List
 
 import qualified EnvCore   as IOC
-import qualified EnvData   as EnvData
 
-import qualified TxsDefs   as TxsDefs
-import qualified StdTDefs  as StdTDefs
+import qualified TxsDefs
+import qualified StdTDefs
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -45,34 +42,34 @@ nComplete :: [ Set.Set TxsDefs.ChanId] -> [ Set.Set TxsDefs.ChanId] ->
              IOC.IOC (Maybe TxsDefs.PurpDef)
 
 nComplete insyncs outsyncs
-          init@(TxsDefs.StatId nm uid (TxsDefs.ProcId nm' uid' _ _ _)) transs  =  do
+          ini@(TxsDefs.StatId nm uid (TxsDefs.ProcId nm' uid' _ _ _)) transs  =  do
      let splsyncs = [ Set.singleton StdTDefs.chanId_Qstep
                     , Set.singleton StdTDefs.chanId_Hit
                     , Set.singleton StdTDefs.chanId_Miss
                     ]
          gids     = [ TxsDefs.GoalId ("Goal_"++nm++nm'++(show n)) (uid*uid'+n) | n <- [1..] ]
-         goals    = [ (gid,bexp) | (gid,bexp) <- zip gids (allPaths init transs) ]
+         goals    = [ (gid,bexp) | (gid,bexp) <- zip gids (allPaths ini transs) ]
       in return $ Just $ TxsDefs.PurpDef insyncs outsyncs splsyncs goals
                               
 
 allPaths :: TxsDefs.StatId -> [TxsDefs.Trans] -> [TxsDefs.BExpr]
-allPaths init transs  =  [ path2bexpr p
-                         | p@(TxsDefs.Trans from a u to : pp) <- List.permutations transs
+allPaths ini transs  =  [ path2bexpr p
+                         | p@(TxsDefs.Trans from _a _u _to : _pp) <- List.permutations transs
                          , isPath p
-                         , from == init
+                         , from == ini
                          ]
 
 isPath :: [TxsDefs.Trans] -> Bool
 isPath []                                =  True
-isPath (TxsDefs.Trans from a u to : [])  =  True
-isPath (TxsDefs.Trans from a u to : TxsDefs.Trans from' a' u' to' : pp)
+isPath (TxsDefs.Trans {} : [])  =  True
+isPath (TxsDefs.Trans _from _a _u to : TxsDefs.Trans from' a' u' to' : pp)
   =  to == from'  && isPath (TxsDefs.Trans from' a' u' to' : pp)
 
 path2bexpr :: [TxsDefs.Trans] -> TxsDefs.BExpr
 path2bexpr []  =  TxsDefs.ActionPref
                     (TxsDefs.ActOffer (Set.singleton $ TxsDefs.Offer StdTDefs.chanId_Hit []) [])
                     TxsDefs.Stop
-path2bexpr (TxsDefs.Trans from a u to : pp)  =  TxsDefs.ActionPref a (path2bexpr pp)
+path2bexpr (TxsDefs.Trans _from a _u _to : pp)  =  TxsDefs.ActionPref a (path2bexpr pp)
 
 
 -- ----------------------------------------------------------------------------------------- --

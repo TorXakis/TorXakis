@@ -8,7 +8,6 @@ module ValExprDefs
 where
 
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 import Data.Set (Set)
 
 import GHC.Generics (Generic)

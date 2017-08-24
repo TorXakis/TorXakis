@@ -29,7 +29,6 @@ where
 
 import Text.Regex.TDFA
 
-import System.IO
 import Control.Monad.State
 import Control.Exception
 import Control.DeepSeq
@@ -37,11 +36,10 @@ import Control.DeepSeq
 import qualified Data.List as List
 import qualified Data.Map  as Map
 import qualified Data.Set  as Set
-import Data.String.Utils
 
 -- import from behavedefs
 import qualified EnvBTree  as IOB
-import qualified EnvData   as EnvData
+import qualified EnvData
 
 -- import from defs
 import StdTDefs
@@ -51,8 +49,8 @@ import TxsUtils
 import XmlFormat
  
 -- import from front
-import qualified TxsAlex   as TxsAlex
-import qualified TxsHappy  as TxsHappy
+import qualified TxsAlex
+import qualified TxsHappy
 
 -- import from solve
 import RegexAlex
@@ -73,9 +71,9 @@ eval (view -> Vfunc fid vexps)  =  do
        Nothing -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                    $ "Undefined function: " ++ (fshow fid) ]
                      return $ Cerror "eval: undefined function"
-       Just (FuncDef args vexp)
+       Just (FuncDef args' vexp)
                -> do vals <- mapM eval vexps
-                     we   <- return $ Map.fromList (zip args vals)
+                     we   <- return $ Map.fromList (zip args' vals)
                      eval (cstrEnv (Map.map cstrConst we) vexp)
 
 eval (view -> Vcstr cid vexps)  =  do
@@ -87,13 +85,13 @@ eval (view -> Viscstr cid1 arg) = do
      bool2txs ( cid1 == cid2 )
      
 eval (view -> Vaccess _cid1 p arg) = do
-     Cstr _cid2 args <- eval arg
-     return $ args!!p                   -- TODO: check cids are equal?
+     Cstr _cid2 args' <- eval arg
+     return $ args'!!p                   -- TODO: check cids are equal?
 
-eval (view -> Vconst const)  =  do
-     return $ const
+eval (view -> Vconst const')  =  do
+     return $ const'
 
-eval (view -> Vvar vid)  =  do
+eval (view -> Vvar _vid)  =  do
      IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                    $ "Evaluation of value expression with free variable(s)" ]
      return $ Cerror ""
@@ -121,6 +119,7 @@ eval (view -> Vand vexps) = do
   bool2txs $ and (map unBool consts)
   where unBool :: Const -> Bool
         unBool (Cbool b) = b
+        unBool _         = error "unBool applied on non-Bool"
 
 eval (view -> Vpredef kd fid vexps)  =  do
      case kd of
@@ -191,7 +190,7 @@ eval (view -> Verror str)  =  do
      IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING $ "eval: Verror "++ str ]
      return $ Cerror ""
 
-
+eval _ = return $ Cerror "undefined"
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of value expression: algebraic field selection
 
