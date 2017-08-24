@@ -102,6 +102,8 @@ test-suite SmtSolver-WhiteBox
                       , HUnit
                       , MissingH
                       , defs
+                      , random
+                      , random-shuffle                      
                       , solvedefs
                       , value
 

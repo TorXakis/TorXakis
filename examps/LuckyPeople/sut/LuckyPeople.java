@@ -26,7 +26,7 @@ public class LuckyPeople
         try
         {
             // instantiate a socket for accepting a connection
-            ServerSocket servsock = new ServerSocket(777);
+            ServerSocket servsock = new ServerSocket(7777);
 
             // wait to accept a connection request and a data socket is returned
             Socket sock = servsock.accept();
@@ -72,7 +72,7 @@ public class LuckyPeople
                 sockout.flush();
             }
         }
-        catch (Exception ex) { ex.printStackTrace(); }
+        catch (Exception ex) { ex.printStackTrace(); System.exit(1);}
     }
 
 

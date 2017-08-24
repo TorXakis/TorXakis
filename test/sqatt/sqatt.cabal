@@ -1,13 +1,13 @@
 name:                sqatt
 version:             0.1
 synopsis:            Simple Quality Assurance Tests for TorXakis
-homepage:            https://github.com/TorXakis/TorXakis/                     
+homepage:            https://github.com/TorXakis/TorXakis/
 license:             BSD3
 license-file:        license.txt
 author:              Damian Nadales Agut
 maintainer:          damian.nadales@gmail.com
 copyright:           2017 TNO
-category:            Test          
+category:            Test
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
@@ -15,10 +15,12 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Examples.All
-                     , Examples.Adder  
+                     , Examples.Adder
+                     , Examples.ControlLoop
                      , Examples.Echo
+                     , Examples.LuckyPeople
                      , Examples.StimulusResponse
-                     , Examples.Paths                     
+                     , Examples.Paths
                      , Sqatt
   build-depends:       base >= 4.7 && < 5
                      , hspec
