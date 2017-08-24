@@ -17,10 +17,14 @@ library
   exposed-modules:     Examples.All
                      , Examples.Adder
                      , Examples.ControlLoop
+                     , Examples.DispatchProcess
                      , Examples.Echo
                      , Examples.LuckyPeople
-                     , Examples.StimulusResponse
+                     , Examples.MovingArms
                      , Examples.Paths
+                     , Examples.Point
+                     , Examples.Queue                     
+                     , Examples.StimulusResponse
                      , Sqatt
   build-depends:       base >= 4.7 && < 5
                      , hspec

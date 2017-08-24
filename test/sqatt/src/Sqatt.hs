@@ -249,7 +249,6 @@ sqattTimeout = 600.0
 txsCheckTimeout :: NominalDiffTime
 txsCheckTimeout = 60.0
 
-
 -- | Run TorXakis with the given example specification.
 runTxsWithExample :: FilePath   -- ^ Path to the logging directory for the current example set.
                   -> TxsExample -- ^ Example to run.
@@ -266,8 +265,8 @@ runTxsWithExample logDir ex = Concurrently $ do
                     <|> txsUIProc logDir inputModelF port
   where
     heartbeat = Concurrently $ forever $ do
-      sleep 3.0
-      putStrLn "."
+      sleep 60.0 -- For now we don't make this configurable.
+      putStr "."
     timer = Concurrently $ do
       sleep sqattTimeout
       throwIO TestTimedOut
