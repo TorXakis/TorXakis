@@ -75,33 +75,33 @@ unfoldCT chsets ctree  =  do
 
 
 unfoldCTbranch :: [ Set.Set TxsDefs.ChanId ] -> CTBranch -> IOB.IOB BTree
-unfoldCTbranch chsets (CTpref ctoffs cthidvars' ctpreds ctnext)
+unfoldCTbranch chsets (CTpref ctoffs cthidvars' ctpreds' ctnext')
    | Set.null ctoffs && null cthidvars'  =  do                -- tau action or nothing
-       predVal <- Eval.evalCnrs ctpreds
+       predVal <- Eval.evalCnrs ctpreds'
        if  predVal
-         then do nextcnode <- return $ nextNode Map.empty ctnext
+         then do nextcnode <- return $ nextNode Map.empty ctnext'
                  nextctree <- expand chsets nextcnode
                  nextbtree <- unfoldCT chsets nextctree
                  return $ [ BTtau nextbtree ]
          else do return $ []
    | Set.null ctoffs && not (null cthidvars') =              -- tau action or nothing
-       let assertions = foldr Solve.add Solve.empty ctpreds
+       let assertions = foldr Solve.add Solve.empty ctpreds'
         in do
            smtEnv <- IOB.getSMT "current"
            (sp,smtEnv') <- lift $ runStateT (Solve.uniSolve cthidvars' assertions) smtEnv
            IOB.putSMT "current" smtEnv'
            case sp of
-           { SolveDefs.Solved sol    -> do nextcnode <- return $ nextNode sol ctnext
+           { SolveDefs.Solved sol    -> do nextcnode <- return $ nextNode sol ctnext'
                                            nextctree <- expand chsets nextcnode
                                            nextbtree <- unfoldCT chsets nextctree
                                            return $ [ BTtau nextbtree ]
            ; SolveDefs.Unsolvable    -> do return $ []
            ; SolveDefs.UnableToSolve -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                                          $ "unfoldCTbranch: Not unique" ]
-                                           return $ [ BTpref ctoffs cthidvars' ctpreds ctnext ]
+                                           return $ [ BTpref ctoffs cthidvars' ctpreds' ctnext' ]
            }
    | True =  -- not $ Set.null ctoffs                                  -- visible action or nothing
-       let assertions = foldr Solve.add Solve.empty ctpreds
+       let assertions = foldr Solve.add Solve.empty ctpreds'
         in do
            vvars  <- return $ concatMap ctchoffers (Set.toList ctoffs)
            smtEnv <- IOB.getSMT "current"
@@ -109,11 +109,11 @@ unfoldCTbranch chsets (CTpref ctoffs cthidvars' ctpreds ctnext)
                                              smtEnv
            IOB.putSMT "current" smtEnv'
            case sat of
-           { SolveDefs.Sat     -> do return $ [ BTpref ctoffs cthidvars' ctpreds ctnext ]
+           { SolveDefs.Sat     -> do return $ [ BTpref ctoffs cthidvars' ctpreds' ctnext' ]
            ; SolveDefs.Unsat   -> do return $ []
            ; SolveDefs.Unknown -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                                    $ "unfoldCTbranch: Solve Unknown" ]
-                                     return $ [ BTpref ctoffs cthidvars' ctpreds ctnext ]
+                                     return $ [ BTpref ctoffs cthidvars' ctpreds' ctnext' ]
            }
 
 -- ----------------------------------------------------------------------------------------- --
@@ -133,8 +133,8 @@ filterBTbranch chsets btpref@(BTpref btoffs _ _ _)  =  do
        then return $ [ btpref ]
        else return $ []
 
-filterBTbranch chsets (BTtau btree)  =  do
-     btree' <- filterBT chsets btree
+filterBTbranch chsets (BTtau bt)  =  do
+     btree' <- filterBT chsets bt
      return $ [ BTtau btree' ]
      
 
