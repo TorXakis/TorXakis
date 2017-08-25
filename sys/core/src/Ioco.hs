@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
 -- ----------------------------------------------------------------------------------------- --
 
 module Ioco
@@ -63,9 +62,9 @@ iocoModelMenu  =  do
      case validModel of
        Nothing -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelMenu without valid model" ]
-            return $ []
+            return []
        Just (TxsDefs.ModelDef insyncs outsyncs splsyncs _bexp) -> do
-            allSyncs <- return $ insyncs ++ outsyncs ++ splsyncs
+            let allSyncs = insyncs ++ outsyncs ++ splsyncs
             modSts   <- gets (IOC.modsts . IOC.state)
             return $ Behave.behMayMenu allSyncs modSts
 
@@ -86,24 +85,12 @@ iocoModelIsQui :: IOC.IOC Bool
 iocoModelIsQui  =  do
      validModel <- validModDef
      case validModel of
-     { Nothing -> do
+       Nothing -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelIsQui without valid model" ]
-            return $ False
-     ; Just (TxsDefs.ModelDef _insyncs outsyncs _splsyncs _bexp) -> do
+            return False
+       Just (TxsDefs.ModelDef _insyncs outsyncs _splsyncs _bexp) -> do
             modSts <- gets (IOC.modsts . IOC.state)
             return $ Behave.behRefusal modSts (Set.unions outsyncs)
-     }
-
-{-
-iocoStep :: Int -> TxsDDefs.Action -> [BTree.BBranch] -> IOC.EnvC -> IOC.EnvC
-iocoStep curState act bt env = env { IOC.state = newState (IOC.state env)}
-  where newState st = st
-                      { IOC.behtrie = (IOC.behtrie st)
-                                   ++ [(curState, act, curState+1)]
-                      , IOC.curstate = curState + 1
-                      , IOC.modsts   = bt
-                      }
--}
 
 -- | iocoModelAfter : do action on current btree and change environment
 -- accordingly result gives success, ie. whether act can be done, if not
@@ -113,55 +100,46 @@ iocoModelAfter :: TxsDDefs.Action -> IOC.IOC Bool
 iocoModelAfter (TxsDDefs.Act acts)  =  do
      validModel <- validModDef
      case validModel of
-     { Nothing -> do
+       Nothing -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelAfter without valid model" ]
-            return $ False
-     ; Just (TxsDefs.ModelDef insyncs outsyncs splsyncs _) -> do
-            allSyncs       <- return $ insyncs ++ outsyncs ++ splsyncs
+            return False
+       Just (TxsDefs.ModelDef insyncs outsyncs splsyncs _) -> do
+            let allSyncs       = insyncs ++ outsyncs ++ splsyncs
             modSts         <- gets (IOC.modsts . IOC.state)
             envb           <- filterEnvCtoEnvB
             (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
             case maybt' of
-            { Nothing  -> do return $ False
-            ; Just bt' -> do writeEnvBtoEnvC envb'
+              Nothing  -> return False
+              Just bt' -> do writeEnvBtoEnvC envb'
                              IOC.modifyCS $ \st -> st { IOC.modsts = bt' }
-                             return $ True
-            }
-     }
-
+                             return True
 
 iocoModelAfter TxsDDefs.ActQui  =  do
      validModel <- validModDef
      case validModel of
-     { Nothing -> do
+       Nothing -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "iocoModelAfter without valid model" ]
-            return $ False
-     ; Just (TxsDefs.ModelDef _ outsyncs _ _) -> do
+            return False
+       Just (TxsDefs.ModelDef _ outsyncs _ _) -> do
             modSts         <- gets (IOC.modsts . IOC.state)
             envb           <- filterEnvCtoEnvB
             (maybt', envb') <- lift $ runStateT (Behave.behAfterRef modSts (Set.unions outsyncs))
                                                 envb
             case maybt' of
-            { Nothing  -> do return $ False
-            ; Just bt' -> do writeEnvBtoEnvC envb'
+              Nothing  -> return False
+              Just bt' -> do writeEnvBtoEnvC envb'
                              IOC.modifyCS $ \st -> st { IOC.modsts = bt' }
-                             return $ True
-            }
-     }
-
+                             return True
 
 -- ----------------------------------------------------------------------------------------- --
-
 
 validModDef :: IOC.IOC (Maybe TxsDefs.ModelDef)
 validModDef  =  do
      envc <- gets IOC.state
      case envc of
-     { IOC.Testing {IOC.modeldef = moddef} -> return $ Just moddef
-     ; IOC.Simuling {IOC.modeldef = moddef} -> return $ Just moddef
-     ; _ -> return $ Nothing
-     }
-
+       IOC.Testing {IOC.modeldef = moddef} -> return $ Just moddef
+       IOC.Simuling {IOC.modeldef = moddef} -> return $ Just moddef
+       _ -> return Nothing
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

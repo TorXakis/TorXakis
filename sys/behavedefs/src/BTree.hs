@@ -71,39 +71,32 @@ data  IVar      =  IVar    { ivname     :: Name       -- name of Channel
 
 instance Variable IVar
   where
-    vname (IVar nm uid pos stat _srt)  =  "$"++nm++ "$"++(show uid)++
-                                         "$"++(show stat)++"$"++(show pos)++"$"
-    vunid (IVar { ivuid = uid })  =  uid
-    vsort (IVar { ivsrt = srt })  =  srt
-    cstrVariable s i t = IVar s i (-1) (-1) t           -- PvdL for temporary variable
+    vname (IVar nm uid pos stat _srt) =
+      "$"++nm++ "$"++ show uid ++"$"++ show stat ++"$"++ show pos ++"$"
+    vunid IVar{ ivuid = uid } = uid
+    vsort IVar{ ivsrt = srt } = srt
+    cstrVariable s i = IVar s i (-1) (-1)           -- PvdL for temporary variable
 
-
-type  IVEnv     =  VarEnv VarId IVar
-
-type  IWals     =  WEnv IVar
-
+type  IVEnv = VarEnv VarId IVar
+type  IWals = WEnv IVar
 
 -- ----------------------------------------------------------------------------------------- --
 -- CTree :  communication tree over interaction variables
 --          closed, ie. no free variables
 
-
 type  CTree     =  [ CTBranch ]
 
-
-data  CTBranch  =  CTpref   { ctoffers    :: Set.Set CTOffer              -- set may be empty
-                            , cthidvars   :: [IVar]                       -- hidden variables 
-                            , ctpreds     :: [ValExpr IVar]
-                            , ctnext      :: INode
-                            }
+data  CTBranch  =  CTpref { ctoffers  :: Set.Set CTOffer              -- set may be empty
+                          , cthidvars :: [IVar]                       -- hidden variables 
+                          , ctpreds   :: [ValExpr IVar]
+                          , ctnext    :: INode
+                          }
      deriving (Eq,Ord,Read,Show)
- 
 
 data  CTOffer   =  CToffer  { ctchan      :: ChanId
                             , ctchoffers  :: [IVar]
                             }
      deriving (Eq,Ord,Read,Show)
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- BTree   :  behaviour tree, ie. communication tree with explicit internal steps
