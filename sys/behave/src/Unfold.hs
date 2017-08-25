@@ -55,13 +55,11 @@ import qualified Eval
 
 
 unfold :: [ Set.Set TxsDefs.ChanId ] -> CNode -> IOB.IOB BTree
-unfold chsets cnode  =  do
+unfold chsets cnode = do
      ctree    <- expand chsets cnode
      btree'   <- unfoldCT chsets ctree
      btree''  <- filterBT chsets btree'
-     btree''' <- reduce btree''
-     return $ btree'''
-
+     reduce btree''
 
 -- ----------------------------------------------------------------------------------------- --
 -- unfoldCT :  transform a communication tree CTree  (without separate tau-branch)
@@ -69,74 +67,69 @@ unfold chsets cnode  =  do
 
 
 unfoldCT :: [ Set.Set TxsDefs.ChanId ] -> CTree -> IOB.IOB BTree
-unfoldCT chsets ctree  =  do
+unfoldCT chsets ctree = do
      btrees <- mapM (unfoldCTbranch chsets) ctree
      return $ concat btrees
 
 
 unfoldCTbranch :: [ Set.Set TxsDefs.ChanId ] -> CTBranch -> IOB.IOB BTree
 unfoldCTbranch chsets (CTpref ctoffs cthidvars' ctpreds' ctnext')
-   | Set.null ctoffs && null cthidvars'  =  do                -- tau action or nothing
-       predVal <- Eval.evalCnrs ctpreds'
-       if  predVal
-         then do nextcnode <- return $ nextNode Map.empty ctnext'
-                 nextctree <- expand chsets nextcnode
-                 nextbtree <- unfoldCT chsets nextctree
-                 return $ [ BTtau nextbtree ]
-         else do return $ []
-   | Set.null ctoffs && not (null cthidvars') =              -- tau action or nothing
+   | Set.null ctoffs =                                           -- tau action or nothing
+        if null cthidvars'
+          then do
+            predVal <- Eval.evalCnrs ctpreds'
+            if  predVal
+              then let nextcnode = nextNode Map.empty ctnext'
+                     in do nextctree <- expand chsets nextcnode
+                           nextbtree <- unfoldCT chsets nextctree
+                           return [ BTtau nextbtree ]
+              else return []
+          else
+            let assertions = foldr Solve.add Solve.empty ctpreds'
+              in do
+                smtEnv <- IOB.getSMT "current"
+                (sp,smtEnv') <- lift $ runStateT (Solve.uniSolve cthidvars' assertions) smtEnv
+                IOB.putSMT "current" smtEnv'
+                case sp of
+                  SolveDefs.Solved sol    -> do let nextcnode = nextNode sol ctnext'
+                                                nextctree <- expand chsets nextcnode
+                                                nextbtree <- unfoldCT chsets nextctree
+                                                return [ BTtau nextbtree ]
+                  SolveDefs.Unsolvable    -> return []
+                  SolveDefs.UnableToSolve -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR "unfoldCTbranch: Not unique" ]
+                                                return [ BTpref ctoffs cthidvars' ctpreds' ctnext' ]
+   | otherwise =                                                  -- visible action or nothing
        let assertions = foldr Solve.add Solve.empty ctpreds'
-        in do
-           smtEnv <- IOB.getSMT "current"
-           (sp,smtEnv') <- lift $ runStateT (Solve.uniSolve cthidvars' assertions) smtEnv
-           IOB.putSMT "current" smtEnv'
-           case sp of
-           { SolveDefs.Solved sol    -> do nextcnode <- return $ nextNode sol ctnext'
-                                           nextctree <- expand chsets nextcnode
-                                           nextbtree <- unfoldCT chsets nextctree
-                                           return $ [ BTtau nextbtree ]
-           ; SolveDefs.Unsolvable    -> do return $ []
-           ; SolveDefs.UnableToSolve -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                                                         $ "unfoldCTbranch: Not unique" ]
-                                           return $ [ BTpref ctoffs cthidvars' ctpreds' ctnext' ]
-           }
-   | True =  -- not $ Set.null ctoffs                                  -- visible action or nothing
-       let assertions = foldr Solve.add Solve.empty ctpreds'
-        in do
-           vvars  <- return $ concatMap ctchoffers (Set.toList ctoffs)
+           vvars = concatMap ctchoffers (Set.toList ctoffs)
+         in do
            smtEnv <- IOB.getSMT "current"
            (sat,smtEnv') <- lift $ runStateT (Solve.satSolve (vvars++cthidvars') assertions)
                                              smtEnv
            IOB.putSMT "current" smtEnv'
            case sat of
-           { SolveDefs.Sat     -> do return $ [ BTpref ctoffs cthidvars' ctpreds' ctnext' ]
-           ; SolveDefs.Unsat   -> do return $ []
-           ; SolveDefs.Unknown -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                                                   $ "unfoldCTbranch: Solve Unknown" ]
-                                     return $ [ BTpref ctoffs cthidvars' ctpreds' ctnext' ]
-           }
+             SolveDefs.Sat     -> return [ BTpref ctoffs cthidvars' ctpreds' ctnext' ]
+             SolveDefs.Unsat   -> return []
+             SolveDefs.Unknown -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR "unfoldCTbranch: Solve Unknown" ]
+                                     return [ BTpref ctoffs cthidvars' ctpreds' ctnext' ]
 
 -- ----------------------------------------------------------------------------------------- --
 -- filterBT :  filter behaviour tree BTree on visible action-sets from Specification
 
-
 filterBT :: [ Set.Set TxsDefs.ChanId ] -> BTree -> IOB.IOB BTree
-filterBT chsets btree'  =  do
+filterBT chsets btree' = do
      btrees <- mapM (filterBTbranch chsets) btree'
      return $ concat btrees
 
-
 filterBTbranch :: [ Set.Set TxsDefs.ChanId ] -> BBranch -> IOB.IOB BTree
 
-filterBTbranch chsets btpref@(BTpref btoffs _ _ _)  =  do
-     if (Set.map ctchan btoffs) `elem` chsets
-       then return $ [ btpref ]
-       else return $ []
+filterBTbranch chsets btpref@(BTpref btoffs _ _ _) =
+     if Set.map ctchan btoffs `elem` chsets
+       then return [ btpref ]
+       else return []
 
-filterBTbranch chsets (BTtau bt)  =  do
+filterBTbranch chsets (BTtau bt) = do
      btree' <- filterBT chsets bt
-     return $ [ BTtau btree' ]
-     
+     return [ BTtau btree' ]
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
