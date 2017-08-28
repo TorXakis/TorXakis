@@ -15,9 +15,9 @@ flag to `hspec` via `stack`:
 stack test --test-arguments=--match=PATTERN
 ```
 
-where `PATTERN` is a pattern that allows to select the name of the test to run.
-For instance, to run the stimulus response tests only the following command can
-be used:
+where `PATTERN` is a pattern is used to select the name of the test to run. For
+instance, to run the stimulus response tests only the following command can be
+used:
 
 ```sh
 stack test --test-arguments=--match=Stimulus
@@ -25,7 +25,7 @@ stack test --test-arguments=--match=Stimulus
 
 ## Adding new tests
 
-When adding a new tests
+When adding a new test
 use [camel case](https://en.wikipedia.org/wiki/Camel_case) folder names. The
 rationale behind this is that we want to be consistent with Haskell naming
 conventions regarding module folders.
