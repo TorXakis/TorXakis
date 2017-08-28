@@ -33,20 +33,20 @@ contains functions to build paths to the test files using these conventions.
 To add a new test case to be included in the development acceptance tests the
 following steps are needed:
 
-    - Create a new file in the `src/Examples` folder, which will describe the
-    test cases.
-    - Add tests cases by specifying:
-        - The example name.
-        - The path to the TorXakis model.
-        - The path to the TorXakis commands.
-        - If needed: the path to the SUT source code (currently only Java is
-        supported), or the path to the TorXakis commands that will be used to
-        run TorXakis as a SUT simulator.
-    - Define a function named `exampleSet` containing the list of examples that
-    will be tested.
-    - Update the `src/Examples/All.hs` file to include the new example set in
-    the list of all examples.
-    - Update the `sqatt.cabal` file to account for the the new file.
+- Create a new file in the `src/Examples` folder, which will describe the
+test cases.
+- Add tests cases by specifying:
+    - The example name.
+    - The path to the TorXakis model.
+    - The path to the TorXakis commands.
+    - If needed: the path to the SUT source code (currently only Java is
+    supported), or the path to the TorXakis commands that will be used to
+    run TorXakis as a SUT simulator.
+- Define a function named `exampleSet` containing the list of examples that
+will be tested.
+- Update the `src/Examples/All.hs` file to include the new example set in
+the list of all examples.
+- Update the `sqatt.cabal` file to account for the the new file.
 
 Some variation is of course allowed in these steps, but for the sake of
 maintainability it is recommended to follow them as close a possible.
@@ -58,15 +58,15 @@ conventions regarding module folders.
 
 We will illustrate the process of adding new development-acceptance tests by
 using an example. Suppose we want to create a new test, named `MyTest`, to test
-a new TorXakis model that is stored in `exampls/MyTest/MyTestModel.txs`. This model will be
-used to test a toy SUT whose source code is located in `examps/MyTest/MySUT.java`.
-Finally assume the commands to be input to TorXakis during the tests are in
-`test/examps/MyTest/MyTestCmds.txscmd`. Note that these file do not exist in the code
-base, and are used as illustration only.
+a new TorXakis model that is stored in `exampls/MyTest/MyTestModel.txs`. This
+model will be used to test a toy SUT whose source code is located in
+`examps/MyTest/MySUT.java`. Finally assume the commands to be input to TorXakis
+during the tests are in `test/examps/MyTest/MyTestCmds.txscmd`. Note that these
+file do not exist in the code-base, and are used as illustration only.
 
-To have define a new development-acceptance test that uses these files, start
-by creating a file in the `src/Examples` folder named `MyTest.hs`. Make sure
-that you enable the `OverloadedStrings` compiler extension, and import
+To define a new development-acceptance test that uses these files, start by
+creating a file in the `src/Examples` folder named `MyTest.hs`. Make sure that
+you enable the `OverloadedStrings` compiler extension, and import
 `Examples.Paths` and `Sqatt`, while hiding `Prelude`'s `FilePath` (since it
 conflicts with the one used by `Sqatt`):
 
@@ -95,9 +95,13 @@ test0 = TxsExample
 ```
 
 The record labels should be self explanatory. For more information please check
-the `sqatt` documentation. Also note that we are repeating the string "MyTest",
-which could be avoided. See the `Examples` folder to see how this is currently
+the `sqatt` documentation. Also note that we are repeating the string `"MyTest"`,
+which could be avoided. See the `src/Examples` folder to see how this is currently
 done.
+
+In the example above we specify a Java SUT. It is also possible to specify no
+SUT or a TorXakis simulated one. The `src/Examples` folder contains examples of
+these cases.
 
 Once the example `test0` is defined, the next step is to add it to a
 `TxsExampleSet`:
@@ -149,5 +153,5 @@ Notice that we're using the `match` flag to run only the newly added test.
 The log files will be written in the TorXakis root directory in a folder named
 `sqatt-logs` (currently this cannot be configured). The logs are structured
 hierarchically as follows: test date and time, test set name, test name. To
-avoid problems in Windows systems, in the log folders, spaces will be replaced
+avoid problems in Windows systems, in the log folders spaces will be replaced
 by underscores (`_`) and colons (`:`) will be replaced by dashes (`-`).
