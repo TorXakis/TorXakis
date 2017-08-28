@@ -24,6 +24,7 @@ module Next
 where
 
 import qualified Data.Map  as Map
+import Data.Maybe
 
 import TxsDefs
 import TxsUtils(combineWEnv)
@@ -40,10 +41,8 @@ nextNode :: IWals -> INode -> CNode
 
 nextNode iwals (BNbexpr (wenv,ivenv) bexp)
   =  let we = Map.fromList [ ( vid
-                             , case Map.lookup ivar iwals of
-                               { Nothing  -> error "TXS Next nextNode: Incomplete instance\n"
-                               ; Just wal -> wal
-                               }
+                             , fromMaybe (error "TXS Next nextNode: Incomplete instance\n")
+                                         (Map.lookup ivar iwals)
                              )
                            | (vid, view -> Vvar ivar) <- Map.toList ivenv
                            ]

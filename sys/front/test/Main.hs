@@ -27,17 +27,17 @@ import Sigs
 
 -- QuickCheck Extension
 
-subset :: Ord(a) => Set.Set a -> Gen (Set.Set a)
-subset s = 
+subset :: Ord a => Set.Set a -> Gen (Set.Set a)
+subset s =
     let l = Set.toList s in
         do
             n <- choose (0, length l)
             shuffled <- shuffle l
             return $ Set.fromList (take n shuffled)
 
-neSubset :: Ord(a) => Set.Set a -> Gen (Set.Set a)
+neSubset :: Ord a => Set.Set a -> Gen (Set.Set a)
 neSubset s = 
-    if (Set.size s) == 0 
+    if Set.size s == 0 
     then error "neSubset: non empty subset of empty set"
     else
         let l = Set.toList s in
@@ -46,18 +46,17 @@ neSubset s =
                 shuffled <- shuffle l
                 return $ Set.fromList (take n shuffled)
                 
-disjointNESubsets :: Ord(a) => Set.Set a -> Gen [Set.Set a]           
-disjointNESubsets s = do
-    if (Set.size s) == 0
+disjointNESubsets :: Ord a => Set.Set a -> Gen [Set.Set a]           
+disjointNESubsets s =
+    if Set.size s == 0
         then return []
         else do
             sb <- neSubset s
             let remaining = Set.difference s sb
             rest <- disjointNESubsets remaining
             return (sb : rest)
-                    
-    
-splitInSubsets :: Ord(a) => Int -> Set.Set a -> Gen [Set.Set a]
+
+splitInSubsets :: Ord a => Int -> Set.Set a -> Gen [Set.Set a]
 --splitInSubsets 0 s = return []
 splitInSubsets 1 s = return [s]
 splitInSubsets m s = do
@@ -83,16 +82,14 @@ smallIds = [ "aap"
            , "null"
            , "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"]
 
-data SmallId = SmallId String
+newtype SmallId = SmallId String
      deriving (Eq,Ord,Read,Show)
 
 instance Arbitrary SmallId where
-    arbitrary = elements (map (\x -> SmallId x) smallIds)
+    arbitrary = elements (map SmallId smallIds)
 
 genUniqueSmallIds :: Gen (Set.Set SmallId)
-genUniqueSmallIds = subset (Set.fromList (map (\x -> SmallId x) smallIds) )
-
-
+genUniqueSmallIds = subset (Set.fromList (map SmallId smallIds) )
 
 capIds :: [String]
 capIds = [ "Aap" 
@@ -111,64 +108,66 @@ capIds = [ "Aap"
          -- "REGEX" is a reserved capId 
 
 
-data CapId = CapId String
+newtype CapId = CapId String
      deriving (Eq,Ord,Read,Show)
 
 instance Arbitrary CapId where
-    arbitrary = elements (map (\x -> CapId x) capIds)
+    arbitrary = elements (map CapId capIds)
 
 genUniqueCapIds :: Gen (Set.Set CapId)
-genUniqueCapIds = subset (Set.fromList (map (\x -> CapId x) capIds) )
+genUniqueCapIds = subset (Set.fromList (map CapId capIds) )
 
 predefSort :: [String]
 predefSort = [ "Int"
+-- TODO CVC4 bug solved; re-add Bool
              --, "Bool" not accepted by TorXakis in structure due to cvc4 bug
              , "String"
              , "Regex"]
-    
+
 genUniqueUserDefinedSortNames :: Gen (Set.Set CapId)
-genUniqueUserDefinedSortNames = subset (Set.map (\x -> CapId x) (Set.difference (Set.fromList capIds) (Set.fromList predefSort)))
-    
+genUniqueUserDefinedSortNames = subset (Set.map CapId (Set.difference (Set.fromList capIds) (Set.fromList predefSort)))
+
 type TypedElement = ([SmallId],CapId)
 type TypedElements = [ TypedElement ]
 type Constructor = (CapId, TypedElements)
-type Constructors = [ Constructor ] 
+type Constructors = [ Constructor ]
 
-data GenSortDef = GenSortDef CapId Constructors 
+data GenSortDef = GenSortDef CapId Constructors
     deriving (Eq,Ord,Read,Show)
 
 instance Arbitrary GenSortDef where
     arbitrary = do
-        sortName <- elements (map (\x -> CapId x) (Set.toList (Set.difference (Set.fromList capIds) (Set.fromList predefSort) ) ) )
-        genGenSortDef sortName (Set.insert sortName (Set.map (\x -> CapId x) (Set.fromList predefSort) ) )
-    
-genGenSortDef :: CapId -> (Set.Set CapId) -> Gen GenSortDef
+        sortName <- elements (map CapId (Set.toList (Set.difference (Set.fromList capIds) (Set.fromList predefSort) ) ) )
+        genGenSortDef sortName (Set.insert sortName (Set.map CapId (Set.fromList predefSort) ) )
+
+genGenSortDef :: CapId -> Set.Set CapId -> Gen GenSortDef
 genGenSortDef sortName sortNames = do
     constrNames <- genUniqueCapIds
     fieldNames <- genUniqueSmallIds
     fieldNamesConstr <- splitInSubsets (Set.size constrNames) fieldNames
     fieldNamesConstrSort <- mapM disjointNESubsets fieldNamesConstr
     typedElements <- mapM (mapM (\x -> do elem <- elements (Set.toList sortNames)
-                                          return (Set.toList x, elem) ) ) fieldNamesConstrSort
+                                          return (Set.toList x, elem) )
+                          )
+                          fieldNamesConstrSort
     return $ GenSortDef sortName (zip (Set.toList constrNames) typedElements)
-    
+
 genGenSortDefs :: Gen [GenSortDef]
 genGenSortDefs = do
     -- generate unique names for sortdefs
     sortNames <- genUniqueCapIds
-    sortDefs <- mapM (\x -> genGenSortDef x sortNames) (Set.toList sortNames)
-    return sortDefs
+    mapM (`genGenSortDef` sortNames) (Set.toList sortNames)
 
 createCstrId :: CapId -> TypedElements -> CapId -> String
 createCstrId (CapId cstrName) fields (CapId sortDefName) = 
-    cstrName ++ " { " ++ 
-                  ( Utils.join " ; " (map (\(field,(CapId t)) -> (Utils.join " , " (map (\(SmallId f) -> f) field) ) ++ " :: " ++ t) fields) ) 
+    cstrName ++ " { "
+             ++ Utils.join " ; " (map (\(field,CapId t) -> Utils.join " , " (map (\(SmallId f) -> f) field) ++ " :: " ++ t) fields)
              ++ " }"
 
 createGenSortDef :: GenSortDef -> String
 createGenSortDef (GenSortDef sdn@(CapId sortDefName) constrs) = 
    "TYPEDEF " ++ sortDefName ++ " ::=\n\t  " ++ 
-       ( Utils.join "\n\t| " (map (\(constrName, fields) -> createCstrId constrName fields sdn) constrs ) )
+       Utils.join "\n\t| " (map (\(constrName, fields) -> createCstrId constrName fields sdn) constrs )
    ++ "\nENDDEF"
 
 toTorXakisDefs :: (Int, TxsDefs, Sigs VarId) -> TxsDefs

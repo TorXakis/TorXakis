@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
 -- ----------------------------------------------------------------------------------------- --
 
 module SolveDefs.Params
@@ -29,7 +28,6 @@ where
 import qualified Data.Char as Char
 import qualified Data.Map  as Map
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- types of parameters
 
@@ -50,15 +48,14 @@ type Params = Map.Map String (String,String->Bool)
 ----------------------------------------------------------------------------------------- --
 -- initParams
 
-
 initParams :: Params
 initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
 
 -- ----------------------------------------------------------------------------------------- --
 -- randomization
   
-  [ ( "param_max_rand_depth"     , "4"         , \s ->   ( all Char.isDigit s )
-                                                      && ( 0 < (read s::Integer) )             )
+  [ ( "param_max_rand_depth"     , "4"         , \s ->   all Char.isDigit s
+                                                      && ( 0 < (read s::Integer) ) )
             -- param_max_rand_depth :: Int (>0)
   
   , ( "param_Randomization"      , show TrueBins  , \s ->    (s== show No)
@@ -72,8 +69,8 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
             -- Partition : interval partitioning of types
             -- TrueBins  : interval partitioning of types using True Bins
             -- IncrementChoice: incremental randomization using single choices and splitting of value space
-            
-  , ( "param_TrueBins_StringLength"     , "6"         , \s ->   ( all Char.isDigit s )
+
+  , ( "param_TrueBins_StringLength"     , "6"         , \s ->   all Char.isDigit s
                                                              && ( 0 < (read s::Integer) )                 )
             -- param_TrueBins_StringLength :: Int (>0)
 
@@ -86,20 +83,20 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
                                                              || (s== show Exponent)                    )
             -- param_TrueBins_Next :: Next
             
-  , ( "param_TrueBins_NrOfBins"     , "10"         , \s ->   ( all Char.isDigit s )
+  , ( "param_TrueBins_NrOfBins"     , "10"         , \s ->   all Char.isDigit s
                                                           && ( 0 < (read s::Integer) )                      )
             -- param_TrueBins_NrOfBins :: Int (>0)
 
-  , ( "param_IncrementChoice_MaxGeneratedStringLength"     , "10"         , \s ->   ( all Char.isDigit s )
+  , ( "param_IncrementChoice_MaxGeneratedStringLength"     , "10"         , \s ->   all Char.isDigit s
                                                                                  && ( 0 < (read s::Integer) )                      )
             -- param_IncrementChoice_MaxGeneratedStringLength :: Int (>0)
 
-  , ( "param_IncrementChoice_IntRange"     , "65536"         , \s ->   ( all Char.isDigit s )
+  , ( "param_IncrementChoice_IntRange"     , "65536"         , \s ->   all Char.isDigit s
                                                                     && ( 0 < (read s::Integer) )                      )
             -- param_IncrementChoice_IntRange :: Int (>0) 
             -- default 2^16
 
-  , ( "param_IncrementChoice_IntPower"     , "4"         , \s ->   ( all Char.isDigit s )
+  , ( "param_IncrementChoice_IntPower"     , "4"         , \s ->   all Char.isDigit s
                                                                 && ( 0 < (read s::Integer) )                      )
             -- param_IncrementChoice_IntPower :: Int (>0)
 

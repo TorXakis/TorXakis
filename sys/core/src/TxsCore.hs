@@ -639,9 +639,9 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
      let { mins  = Set.fromList minsyncs
          ; mouts = Set.fromList moutsyncs
          ; ains  = Set.fromList $ filter (not . Set.null)
-                       [ sync `Set.intersection` (Set.fromList achins)  | sync <- asyncsets ]
+                       [ sync `Set.intersection` Set.fromList achins  | sync <- asyncsets ]
          ; aouts = Set.fromList $ filter (not . Set.null)
-                       [ sync `Set.intersection` (Set.fromList achouts) | sync <- asyncsets ]
+                       [ sync `Set.intersection` Set.fromList achouts | sync <- asyncsets ]
          }
       in if     mouts `Set.isSubsetOf` ains
              && mins  `Set.isSubsetOf` aouts
@@ -887,7 +887,7 @@ txsGoTo stateNr  =
      ltsBackN :: Int -> IOC.IOC ()
      ltsBackN backsteps
         | backsteps <= 0 = return ()
-        | True  = do    -- backsteps > 0
+        | otherwise  = do    -- backsteps > 0
             st <- gets IOC.state
             let iniState = IOC.inistate st
                 curState = IOC.curstate st

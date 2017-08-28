@@ -33,12 +33,13 @@ module FuncTable
 )
 where
 
+import Control.DeepSeq
 import qualified Data.Map as Map
+import Data.Maybe
+import GHC.Generics (Generic)
+
 import SortId
 import TxsDefs
-
-import GHC.Generics (Generic)
-import Control.DeepSeq
 
 data Signature = Signature  { sortArgs  :: [SortId]
                             , sortRet   :: SortId
@@ -58,7 +59,7 @@ instance Show (FuncTable v) where
 
 -- | empty
 empty :: FuncTable v
-empty = FuncTable (Map.empty)
+empty = FuncTable Map.empty
 
 -- | insert
 -- Insert a new name, signature and handler in the table. 
@@ -102,6 +103,4 @@ signatures n (toMap -> t) = case Map.lookup n t of
 -- | signHandler
 -- Get signHandler associated with the given name in the table. 
 signHandler :: String -> FuncTable v -> SignHandler v
-signHandler n (toMap -> t) = case Map.lookup n t of
-                                Nothing     ->  Map.empty
-                                Just m      ->  m
+signHandler n (toMap -> t) = fromMaybe Map.empty (Map.lookup n t)

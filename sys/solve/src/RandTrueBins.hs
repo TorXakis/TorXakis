@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
 -- ----------------------------------------------------------------------------------------- --
 
 module RandTrueBins
@@ -54,7 +53,6 @@ data ParamTrueBins =
 -- ----------------------------------------------------------------------------------------- --
 -- give a random solution for constraint vexps with free variables vars
 
-
 randValExprsSolveTrueBins :: (Variable v) => ParamTrueBins -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
 randValExprsSolveTrueBins p freevars exprs  =
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
@@ -87,7 +85,7 @@ randValExprsSolveTrueBins p freevars exprs  =
         combine vid sexprs = do
             expr <- randomValue p (vsort vid) (cstrVar vid) (maxDepth p)
             exprs' <- sexprs
-            return $ (expr:exprs')
+            return (expr:exprs')
 
 -- -----------------------------------------------------------------
 nextFunction :: ParamTrueBins -> Integer -> Integer
@@ -110,15 +108,22 @@ nextExponent :: Integer -> Integer
 nextExponent n = n * n
 
 -- --------------------------------------
+-- helper functions
+
+shuffleOrList :: Variable v => [ValExpr v] -> SMT String
+shuffleOrList orList = do
+    shuffledOrList <- shuffleM orList
+    stringList <- mapM valExprToString shuffledOrList
+    return $ "(or " ++ Utils.join " " stringList ++ ") "
+
+-- --------------------------------------
 -- randomly draw boolean value
 -- -----------------------------------------
 trueBool :: (Variable v) => ValExpr v -> SMT String
 trueBool expr = do
     let orList = [expr, cstrNot expr]
-    shuffledOrList <- shuffleM orList
-    stringList <- mapM valExprToString shuffledOrList
-    return $ "(or " ++ Utils.join " " stringList ++ ") "
-    
+    shuffleOrList orList
+
 -- -----------------------------------------------------------------
 -- randomly draw values from multiple bins
 -- the size of the bins is controlled by the next function: either equal size, proportional larger, or exponential larger  
@@ -132,11 +137,11 @@ values n nxt = valueRecursive n 1 step
                 r <- lift $ randomRIO (lw, hgh-1)
                 rr <- valueRecursive (n'-1) hgh (nxt hgh)
                 return (r:rr)
-                
+
 toBins :: (Variable v) => ValExpr v -> [Integer] -> [ValExpr v]
 toBins v (x1:x2:xs) = cstrAnd ( Set.fromList [cstrFunc funcId_leInt [cstrConst (Cint x1), v], cstrFunc funcId_ltInt [v, cstrConst (Cint x2)] ] ) : toBins v (x2:xs)
 toBins _ _ = []
-                
+
 trueBins :: (Variable v) => ValExpr v -> Int -> (Integer -> Integer) -> SMT String
 trueBins v n nxt = do
     neg <- values n nxt
@@ -145,14 +150,11 @@ trueBins v n nxt = do
     let orList = [cstrFunc funcId_ltInt [v, cstrConst (Cint (head binSamples) )],
                   cstrFunc funcId_leInt [cstrConst (Cint (last binSamples) ), v] ] 
                  ++ toBins v binSamples
-    shuffledOrList <- shuffleM orList
-    stringList <- mapM valExprToString shuffledOrList
-    return $ "(or " ++ Utils.join " " stringList ++ ") "
-    
+    shuffleOrList orList
+
 -- -----------------------------------------------------------------
 -- enable randomly draw strings
 -- ---------------------------------------------------------------------
-
 
 toRegexString :: Int -> String
 toRegexString  45 = "\\-"
@@ -169,7 +171,7 @@ toRegexString   c = [Char.chr c]
 low :: Int
 low = 0
 high :: Int
-high = 255      
+high = 255
 
 range :: String
 range = "[" ++ toRegexString low ++ "-" ++ toRegexString high ++ "]"
@@ -189,7 +191,7 @@ trueCharsRegex n | n > 0   = do
     tl <- trueCharsRegex (n-1)
     return $ hd ++ tl
 trueCharsRegex n          = error ("trueCharsRegex: Illegal argument n = " ++ show n)
-        
+
 trueCharsRegexes :: Int -> SMT [String]
 trueCharsRegexes 0          = return [""]
 trueCharsRegexes n | n > 0  = do
@@ -197,14 +199,14 @@ trueCharsRegexes n | n > 0  = do
     tl <- trueCharsRegexes (n-1)
     return $ hd:tl
 trueCharsRegexes n          = error ("trueCharsRegexes: Illegal argument n = " ++ show n)
-    
+
 trueStringLength :: (Variable v) => Int -> ValExpr v -> SMT String
 trueStringLength n v = do
-    let exprs = map (\m -> cstrEqual (cstrFunc funcId_lenString [v]) (cstrConst (Cint (toInteger m)))) [0..n] ++ [cstrFunc funcId_gtInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger n))]]
+    let exprs = map (cstrEqual (cstrFunc funcId_lenString [v]) . cstrConst . Cint . toInteger ) [0..n] ++ [cstrFunc funcId_gtInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger n))]]
     shuffledOrList <- shuffleM exprs
     stringList <- mapM valExprToString shuffledOrList
     return $ "(or " ++ Utils.join " " stringList ++ ") "
-    
+
 trueStringRegex :: (Variable v) => Int -> ValExpr v -> SMT String
 trueStringRegex n v = do
     regexes <- trueCharsRegexes n
@@ -212,7 +214,7 @@ trueStringRegex n v = do
     let shuffledOrList = map (\regex -> cstrFunc funcId_strinre [v, cstrConst (Cregex regex)]) sregexes
     stringList <- mapM valExprToString shuffledOrList
     return $ "(or " ++ Utils.join " " stringList ++ ") "
-    
+
 trueString :: (Variable v) => ParamTrueBins -> ValExpr v -> SMT String
 trueString p v = 
     case stringMode p of
