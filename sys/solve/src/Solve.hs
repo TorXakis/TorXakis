@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
 -- ----------------------------------------------------------------------------------------- --
 
 module Solve
@@ -53,8 +52,8 @@ import SolveRandParam
 data PrivateAssertions v  = AssertFalse
                           | AssertSet ( Set.Set (ValExpr v) )
      deriving (Eq,Ord,Read,Show)
-     
-data Assertions v = Assertions (PrivateAssertions v)
+
+newtype Assertions v = Assertions (PrivateAssertions v)
      deriving (Eq,Ord)
 
 instance (Variable v) => Show (Assertions v) where
