@@ -1,4 +1,4 @@
-# TorXakis quality assurance
+# Simple quality assurance tests for TorXakis (sqatt)
 
 This folder contains the quality assurance tests for TorXakis.
 
