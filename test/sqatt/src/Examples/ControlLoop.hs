@@ -13,10 +13,6 @@ import           Filesystem.Path
 import           Prelude         hiding (FilePath)
 import           Sqatt
 
-
--- controlLoopText :: Text
--- controlLoopText = "ControLoop"
-
 exampDir :: FilePath
 exampDir = "ControlLoop"
 

@@ -19,6 +19,7 @@ module Sqatt
   , testExampleSets
   , TxsExampleSet (..)
   , SutExample (..)
+  , toFSSafeStr
   )
 where
 
@@ -155,6 +156,13 @@ decodePath filePath =
     Left apprPath ->
       throwError $ FilePathError $
         "Cannot decode " <> apprPath <> " properly"
+
+-- | Replace the characters that might cause problems on Windows systems.
+toFSSafeStr :: String -> String
+toFSSafeStr str = repl <$> str
+  where repl ' ' = '_'
+        repl ':' = '-'
+        repl c   = c
 
 -- * Environment checking
 
@@ -388,7 +396,7 @@ exampleInputFiles ex =
 -- | Execute a test.
 execTest :: FilePath -> TxsExample -> Test ()
 execTest topLogDir ex = do
-  let logDir = topLogDir </> (fromString . exampleName) ex
+  let logDir = topLogDir </> (fromString . toFSSafeStr . exampleName) ex
   mktree logDir
   traverse_ pathMustExist (exampleInputFiles ex)
   runnableExample <- getRunnableExample
@@ -417,7 +425,8 @@ testExamples logDir = traverse_ (testExample logDir)
 -- | Test an example set.
 testExampleSet :: FilePath -> TxsExampleSet -> Spec
 testExampleSet logDir (TxsExampleSet exSetDesc exs) = do
-  let thisSetLogDir = logDir </> fromString (exampleSetName exSetDesc)
+  let thisSetLogDir =
+        logDir </> (fromString . toFSSafeStr . exampleSetName) exSetDesc
   runIO $ mktree thisSetLogDir
   describe (exampleSetName exSetDesc) (testExamples thisSetLogDir exs)
 
