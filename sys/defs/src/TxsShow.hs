@@ -225,7 +225,6 @@ instance PShow Offer
     pshow (Offer chid choffs)
       =  pshow chid ++ concatMap pshow choffs
 
-
 instance PShow ChanOffer
   where
     pshow (Quest (VarId nm _ vs))
@@ -233,12 +232,10 @@ instance PShow ChanOffer
     pshow (Exclam vexp)
       =  " ! " ++ pshow vexp
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: ValExpr
 
-
-instance (PShow v) => PShow (ValExpr v)
+instance PShow v => PShow (ValExpr v)
   where
     pshow (view -> Vfunc fid vexps)
       =  if isSpecialOp fid
@@ -347,45 +344,45 @@ instance PShow TxsDef
   where
     pshow (DefCstr   (CstrDef fid fids))
       = "CONSTRUCTOR\n" ++
-        "      " ++ (pshow fid)  ++ "\n" ++
-        "      " ++ (pshow fids)  ++ "\n" ++ "\n"
+        "      " ++ pshow fid  ++ "\n" ++
+        "      " ++ pshow fids  ++ "\n" ++ "\n"
 
     pshow (DefFunc   (FuncDef vids vexp))
       = "FUNCTION\n" ++
-        "      " ++ (pshow vids)  ++ "\n" ++
+        "      " ++ pshow vids  ++ "\n" ++
         "  ::=\n" ++
-        "    " ++ (fshow vexp) ++ "\n"
+        "    " ++ fshow vexp ++ "\n"
 
     pshow (DefProc   (ProcDef chids vids bexp))
       = "PROCESS\n" ++
-        "      " ++ (pshow chids)  ++ "\n" ++
-        "      " ++ (pshow vids) ++ "\n" ++
+        "      " ++ pshow chids  ++ "\n" ++
+        "      " ++ pshow vids ++ "\n" ++
         "  ::=\n" ++
-        "    " ++ (fshow bexp) ++ "\n"
+        "    " ++ fshow bexp ++ "\n"
 
     pshow (DefModel  (ModelDef insyncs outsyncs splsyncs bexp))
       = "MODEL\n" ++
-        "      " ++ (pshow insyncs)  ++ "\n" ++
-        "      " ++ (pshow outsyncs) ++ "\n" ++
-        "      " ++ (pshow splsyncs) ++ "\n" ++
+        "      " ++ pshow insyncs  ++ "\n" ++
+        "      " ++ pshow outsyncs ++ "\n" ++
+        "      " ++ pshow splsyncs ++ "\n" ++
         "  BEHAVIOUR\n" ++
-        "    " ++ (fshow bexp) ++ "\n"
+        "    " ++ fshow bexp ++ "\n"
 
     pshow (DefPurp   (PurpDef insyncs outsyncs splsyncs goals))
       = "PURPOSE\n" ++
-        "      " ++ (pshow insyncs)  ++ "\n" ++
-        "      " ++ (pshow outsyncs) ++ "\n" ++
-        "      " ++ (pshow splsyncs) ++ "\n" ++
+        "      " ++ pshow insyncs  ++ "\n" ++
+        "      " ++ pshow outsyncs ++ "\n" ++
+        "      " ++ pshow splsyncs ++ "\n" ++
         "  BEHAVIOUR\n" ++
-        "    " ++ (fshow goals) ++ "\n"
+        "    " ++ fshow goals ++ "\n"
 
     pshow (DefMapper (MapperDef inchids outchids syncs bexp))
       = "MAPPER\n" ++
-        "      " ++ (pshow inchids)  ++ "\n" ++
-        "      " ++ (pshow outchids) ++ "\n" ++
-        "      " ++ (pshow syncs) ++ "\n" ++
+        "      " ++ pshow inchids  ++ "\n" ++
+        "      " ++ pshow outchids ++ "\n" ++
+        "      " ++ pshow syncs ++ "\n" ++
         "  BEHAVIOUR\n" ++
-        "    " ++ (fshow bexp) ++ "\n"
+        "    " ++ fshow bexp ++ "\n"
 
     pshow _ = "No PShow for this Definition\n"
 

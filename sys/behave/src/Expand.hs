@@ -28,6 +28,7 @@ module Expand
 
 where
 
+import           Control.Arrow
 import           Control.Monad.State
 
 import qualified Data.List           as List
@@ -42,7 +43,7 @@ import           TxsDefs
 import           TxsUtils
 
 import           BTree
-import qualified Eval                as Eval
+import qualified Eval
 import           Utils
 
 import           ChanId
@@ -155,7 +156,7 @@ expand chsets (BNbexpr we (ValueEnv venv bexp))  =  do
      we'  <- sequence [ liftP2 ( vid, Eval.eval (cstrEnv (Map.map cstrConst we) vexp) )
                       | (vid, vexp) <- Map.toList venv
                       ]
-     we'' <- return $ Map.fromList we'
+     let we'' = Map.fromList we'
      expand chsets $ BNbexpr (combineWEnv we we'') bexp
 
 -- ----------------------------------------------------------------------------------------- --
@@ -235,7 +236,7 @@ expand chsets (BNparallel chans cnodes)  = do
                      -> (CNode, [(CTBranch, (Set.Set ChanId, Bool) )] )
                      -> ([CNode], [([CNode],[(CTBranch, (Set.Set ChanId, Bool) )] )] )
         allAsyncs (nodes,transitions) (node,branches) =
-                        let newTransitions =  map (\(ns,bs) -> (node:ns, bs)) transitions
+                        let newTransitions =  map (Control.Arrow.first ((:) node)) transitions
                                              ++
                                                 [ (nodes, [branch])
                                                 | branch@(_,(_,intersection)) <- branches
@@ -261,7 +262,7 @@ expand chsets (BNparallel chans cnodes)  = do
                      ( concatMap cthidvars ctprefs )
                      ( concatMap ctpreds ctprefs )
                      ( BNparallel chans $ map ctnext ctprefs )
-          | zips <- foldl allPairsMatch [[]] (map ( (calcSets chans') . snd ) ctpairs)
+          | zips <- foldl allPairsMatch [[]] (map (calcSets chans' . snd ) ctpairs)
           ]
       where
         calcSets :: Set.Set ChanId -> CTree -> [(CTBranch, (Set.Set ChanId, Set.Set ChanId) )]
@@ -284,10 +285,10 @@ expand chsets (BNparallel chans cnodes)  = do
 expand chsets (BNenable cnode1 chanoffs cnode2)  =  do
      ctree1      <- expand chsets cnode1
      (_, quests, exclams) <- expandOffer chsets (Offer chanId_Exit chanoffs)
-     ivenv       <- return $ Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
+     let ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
      exclams'    <- sequence [ liftP2 ( ivar, Eval.eval vexp ) | (ivar, vexp) <- exclams ]
-     accpreds    <- return $ [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- exclams' ]
-     let (exits, noExits) = List.partition (\(CTpref ctoffs1 _ _ _) -> chanId_Exit `Set.member` (Set.map ctchan ctoffs1)) ctree1 in do
+     let accpreds = [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- exclams' ]
+     let (exits, noExits) = List.partition (\(CTpref ctoffs1 _ _ _) -> chanId_Exit `Set.member` Set.map ctchan ctoffs1) ctree1 in do
          leftExits   <- sequence [ hideCTBranch chsets
                                          [chanId_Exit]
                                          ( CTpref ctoffs1
@@ -297,15 +298,15 @@ expand chsets (BNenable cnode1 chanoffs cnode2)  =  do
                                          )
                                  | CTpref ctoffs1 cthidvars1 ctpreds1 _ <- exits
                                  ]
-         leftNoExits <- return $ [ CTpref ctoffs1
-                                          cthidvars1
-                                          ctpreds1
-                                          ( BNenable ctnext1
-                                                     chanoffs
-                                                     ( fmap (\we->(we,Map.empty)) cnode2 )
-                                          )
-                                 | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- noExits
-                                 ]
+         let leftNoExits = [ CTpref ctoffs1
+                                  cthidvars1
+                                  ctpreds1
+                                  ( BNenable ctnext1
+                                             chanoffs
+                                             ( fmap (\we->(we,Map.empty)) cnode2 )
+                                  )
+                           | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- noExits
+                           ]
          return $ leftExits ++ leftNoExits
 
 -- ----------------------------------------------------------------------------------------- --
@@ -313,19 +314,19 @@ expand chsets (BNenable cnode1 chanoffs cnode2)  =  do
 expand chsets (BNdisable cnode1 cnode2)  =  do
      ctree1  <- expand chsets cnode1
      ctree2  <- expand chsets cnode2
-     ctree1' <- return $ [ CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1
-                         | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
-                         , chanId_Exit `Set.member` (Set.map ctchan ctoffs1)
-                         ]
-     ctree2' <- return $ [ CTpref ctoffs1
-                                  cthidvars1
-                                  ctpreds1
-                                  ( BNdisable ctnext1
-                                              ( fmap (\we->(we,Map.empty)) cnode2 )
-                                  )
-                         | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
-                         , chanId_Exit `Set.notMember` (Set.map ctchan ctoffs1)
-                         ]
+     let ctree1' = [ CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1
+                   | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
+                   , chanId_Exit `Set.member` Set.map ctchan ctoffs1
+                   ]
+     let ctree2' = [ CTpref ctoffs1
+                            cthidvars1
+                            ctpreds1
+                            ( BNdisable ctnext1
+                                        ( fmap (\we->(we,Map.empty)) cnode2 )
+                            )
+                   | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
+                   , chanId_Exit `Set.notMember` Set.map ctchan ctoffs1
+                   ]
      return $ ctree1' ++ ctree2' ++ ctree2
 
 -- ----------------------------------------------------------------------------------------- --
@@ -333,19 +334,19 @@ expand chsets (BNdisable cnode1 cnode2)  =  do
 expand chsets (BNinterrupt cnode1 cnode2)  =  do
      ctree1  <- expand chsets cnode1
      ctree2  <- expand chsets cnode2
-     ctree1' <- return $ [ CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1
-                         | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
-                         , chanId_Exit `Set.member` (Set.map ctchan ctoffs1)
-                         ]
-     ctree2' <- return $ [ CTpref ctoffs1
-                                  cthidvars1
-                                  ctpreds1
-                                  ( BNinterrupt ctnext1
-                                                ( fmap (\we->(we,Map.empty)) cnode2 )
-                                  )
-                         | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
-                         , chanId_Exit `Set.notMember` (Set.map ctchan ctoffs1)
-                         ]
+     let ctree1' = [ CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1
+                   | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
+                   , chanId_Exit `Set.member` Set.map ctchan ctoffs1
+                   ]
+     let ctree2' = [ CTpref ctoffs1
+                            cthidvars1
+                            ctpreds1
+                            ( BNinterrupt ctnext1
+                                          ( fmap (\we->(we,Map.empty)) cnode2 )
+                            )
+                   | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
+                   , chanId_Exit `Set.notMember` Set.map ctchan ctoffs1
+                   ]
      ctree3' <- sequence [ hideCTBranch chsets
                                  [chanId_Exit]
                                  ( CTpref ctoffs2
@@ -356,20 +357,20 @@ expand chsets (BNinterrupt cnode1 cnode2)  =  do
                                           )
                                  )
                          | CTpref ctoffs2 cthidvars2 ctpreds2 _ <- ctree2
-                         , chanId_Exit `Set.member` (Set.map ctchan ctoffs2)
+                         , chanId_Exit `Set.member` Set.map ctchan ctoffs2
                          ]
-     ctree4' <- return $ [ CTpref ctoffs2
-                                  cthidvars2
-                                  ctpreds2
-                                  ( BNenable ctnext2
-                                             []
-                                             ( BNinterrupt ( fmap (\we->(we,Map.empty)) cnode1 )
-                                                           ( fmap (\we->(we,Map.empty)) cnode2 )
-                                             )
-                                  )
-                         | CTpref ctoffs2 cthidvars2 ctpreds2 ctnext2 <- ctree2
-                         , chanId_Exit `Set.notMember` (Set.map ctchan ctoffs2)
-                         ]
+     let ctree4' = [ CTpref ctoffs2
+                            cthidvars2
+                            ctpreds2
+                            ( BNenable ctnext2
+                                       []
+                                       ( BNinterrupt ( fmap (\we->(we,Map.empty)) cnode1 )
+                                                     ( fmap (\we->(we,Map.empty)) cnode2 )
+                                       )
+                            )
+                   | CTpref ctoffs2 cthidvars2 ctpreds2 ctnext2 <- ctree2
+                   , chanId_Exit `Set.notMember` Set.map ctchan ctoffs2
+                   ]
      return $ ctree1' ++ ctree2' ++ ctree3' ++ ctree4'
 
 -- ----------------------------------------------------------------------------------------- --
@@ -386,37 +387,37 @@ expand chsets (BNhide chans cnode)  =  do
 -- expand Offers
 
 
-expandOffers :: [ Set.Set TxsDefs.ChanId ] -> (Set.Set Offer) -> IOB.IOB ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
+expandOffers :: [ Set.Set TxsDefs.ChanId ] -> Set.Set Offer -> IOB.IOB ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
 expandOffers chsets offs  =  do
      ctofftuples <- mapM (expandOffer chsets) (Set.toList offs)
      ( ctoffs, quests, exclams ) <- return $ unzip3 ctofftuples
-     return $ ( Set.fromList ctoffs, concat quests, concat exclams )
+     return ( Set.fromList ctoffs, concat quests, concat exclams )
 
 
 expandOffer :: [ Set.Set TxsDefs.ChanId ] -> Offer -> IOB.IOB ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
 expandOffer chsets (Offer chid choffs)  =  do
      ctchoffs <- mapM (expandChanOffer chsets chid) ( zip choffs [1..(length choffs)] )
-     ( ivars, quests, exclams ) <- return $ unzip3 ctchoffs
-     return $ ( CToffer chid ivars, concat quests, concat exclams )
+     let ( ivars, quests, exclams ) = unzip3 ctchoffs
+     return ( CToffer chid ivars, concat quests, concat exclams )
 
 
 expandChanOffer :: [ Set.Set TxsDefs.ChanId ] -> ChanId -> (ChanOffer,Int) -> IOB.IOB ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
 expandChanOffer _ chid (choff,pos)  =  do
      curs <- gets IOB.stateid
      case choff of
-       Quest  vid  -> do ivar <- return $ IVar { ivname = ChanId.name chid
-                                               , ivuid  = ChanId.unid chid
-                                               , ivpos  = pos
-                                               , ivstat = curs
-                                               , ivsrt  = vsort vid
-                                               }
+       Quest  vid  -> do let ivar = IVar { ivname = ChanId.name chid
+                                         , ivuid  = ChanId.unid chid
+                                         , ivpos  = pos
+                                         , ivstat = curs
+                                         , ivsrt  = vsort vid
+                                         }
                          return ( ivar, [(vid,ivar)], [] )
-       Exclam vexp -> do ivar <- return $ IVar { ivname = ChanId.name chid
-                                               , ivuid  = ChanId.unid chid
-                                               , ivpos  = pos
-                                               , ivstat = curs
-                                               , ivsrt  = sortOf vexp
-                                               }
+       Exclam vexp -> do let ivar = IVar { ivname = ChanId.name chid
+                                         , ivuid  = ChanId.unid chid
+                                         , ivpos  = pos
+                                         , ivstat = curs
+                                         , ivsrt  = sortOf vexp
+                                         }
                          return ( ivar, [], [(ivar,vexp)] )
 
 

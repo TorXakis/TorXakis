@@ -51,7 +51,7 @@ import qualified SMTData
 -- IOC :  torxakis core state monad transformer
 
 
-type  IOC   =  StateT EnvC IO
+type  IOC  = StateT EnvC IO
 
 -- TODO: unify the parameters and config.
 data EnvC = EnvC
@@ -125,9 +125,8 @@ incUnid = modify $ \env -> env { unid = unid env + 1}
 -- ----------------------------------------------------------------------------------------- --
 -- SMT :  getting and setting SMT solver
 
-
 getSMT :: String -> IOC SMTData.SmtEnv
-getSMT smtname  =  do
+getSMT smtname = do
      smts'    <- gets (smts . state)
      putMsgs' <- gets (putmsgs . state)
      case Map.lookup smtname smts' of
@@ -140,24 +139,21 @@ getSMT smtname  =  do
                                 return smtenv
                         else do putMsgs' [ EnvData.TXS_CORE_SYSTEM_ERROR
                                           $ "No such Solver: " ++ smtname ]
-                                return $ SMTData.SmtEnvError
+                                return SMTData.SmtEnvError
        Just smtenv -> return smtenv
 
-
 putSMT :: String -> SMTData.SmtEnv -> IOC ()
-putSMT smtname smtenv  =  do
+putSMT smtname smtenv = do
   st <- gets state
   let smts' = smts st
       state' = st { smts = Map.insert smtname smtenv smts'}
   modify $ \env -> env { state = state' }
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- Params :  getParams, setParams
 
-
 getParams :: [String] -> IOC [(String,String)]
-getParams prms  =  do
+getParams prms =
      case prms of
        [] -> do parammap <- gets params
                 return $ map (\(nm,(val,_))->(nm,val)) (Map.toList parammap)
@@ -165,55 +161,48 @@ getParams prms  =  do
                 return $ concat params'
 
 getParam :: String -> IOC [(String,String)]
-getParam prm  =  do
+getParam prm = do
      params' <- gets params
      case Map.lookup prm params' of
        Nothing           -> return []
        Just (val,_check) -> return [(prm,val)]
 
-
 setParams :: [(String,String)] -> IOC [(String,String)]
-setParams parvals  =  do
+setParams parvals = do
      params' <- mapM setParam parvals
      return $ concat params'
 
 setParam :: (String,String) -> IOC [(String,String)]
-setParam (prm,val)  =  do
+setParam (prm,val) = do
      params' <- gets params
      case Map.lookup prm params' of
-       Nothing           -> do return []
+       Nothing           -> return []
        Just (_,check)    -> if check val
-                              then do newParams <- return $ Map.insert prm (val,check) params'
+                              then let newParams = Map.insert prm (val,check) params'
+                                    in do
                                       modify $ \env -> env { params = newParams }
                                       return [(prm,val)]
-                              else do return []
-
+                              else return []
 
 -- ----------------------------------------------------------------------------------------- --
 -- Unid :  unique (negative) number for identifiers
 
-
 initUnid :: IOC Int
-initUnid  =  do
-     return (-1)
-
+initUnid = return (-1)
 
 newUnid :: IOC Int
-newUnid  =  do
+newUnid = do
      uid <- gets unid
      modify $ \env -> env { unid = uid - 1 }
      return $ uid - 1
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- put messages
 
-
 putMsgs :: [EnvData.Msg] -> IOC ()
-putMsgs msg  =  do
+putMsgs msg = do
      putMsgs' <- gets (putmsgs . state)
      putMsgs' msg
-
 
 -- ----------------------------------------------------------------------------------------- --
 --

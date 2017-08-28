@@ -110,14 +110,14 @@ behRefusal :: BTree -> Set.Set TxsDefs.ChanId -> Bool
 behRefusal bt refset 
   =  case [ bt' | BTtau bt' <- bt ] of
      { []      -> and [ refBBranch bbranch refset | bbranch <- bt ]
-     ; btrees' -> or $ map (\bt' -> behRefusal bt' refset) btrees'
+     ; btrees' -> any (`behRefusal` refset) btrees'
      }
 
 
 refBBranch :: BBranch -> Set.Set TxsDefs.ChanId -> Bool
 
 refBBranch (BTpref btoffs _ _ _) refset
-  =  not $ (Set.map ctchan btoffs) `Set.isSubsetOf` refset
+  =  not $ Set.map ctchan btoffs `Set.isSubsetOf` refset
 
 refBBranch (BTtau _) _ 
   =  False
@@ -130,14 +130,14 @@ refBBranch (BTtau _) _
 behAfterAct :: [ Set.Set TxsDefs.ChanId ] -> BTree -> BehAction -> IOB.IOB (Maybe BTree)
 behAfterAct chsets bt behact
  | Set.null behact  =  do
-     IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "behAfterAct: after empty set/tau action" ]
-     return $ Nothing
- | True = do    -- not $ Set.null behact
+     IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "behAfterAct: after empty set/tau action" ]
+     return Nothing
+ | otherwise = do
      afters <- afterActBTree chsets behact bt
      if  null afters
-       then do return $ Nothing
-       else do newbtree  <- return $ map BTtau afters
-               newbtree' <- reduce $ newbtree
+       then return Nothing
+       else do let newbtree  = map BTtau afters
+               newbtree' <- reduce newbtree
                return $ Just newbtree'
 
 
@@ -164,37 +164,36 @@ afterActBBranch :: [ Set.Set TxsDefs.ChanId ] -> BehAction -> BBranch -> IOB.IOB
 afterActBBranch chsets behact (BTpref btoffs [] preds next)  =  do
      match <- matchAct2CTOffer behact btoffs
      case match of
-       Nothing    -> do return $ []
+       Nothing    -> return []
        Just iwals -> let preds' = map (TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals)) preds
                       in do condition <- Eval.evalCnrs preds'
                             if  condition
-                              then do cnode <- return $ nextNode iwals next
+                              then do let cnode = nextNode iwals next
                                       after <- unfold chsets cnode
-                                      return $ [after]
-                              else do return $ []
+                                      return [after]
+                              else return []
 
 afterActBBranch chsets behact (BTpref btoffs hidvars preds next)  =  do
      match <- matchAct2CTOffer behact btoffs
      case match of
        Nothing
-        -> do return $ []
+        -> return []
        Just iwals
-        -> do preds' <- return $ map (TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals)) preds
+        -> do let preds' = map (TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals)) preds
               let assertions = foldr add empty preds'
                in do smtEnv <- IOB.getSMT "current"
                      (sat,smtEnv') <- lift $ runStateT (uniSolve hidvars assertions) smtEnv
                      IOB.putSMT "current" smtEnv'
                      case sat of
-                       Unsolvable -> do return []
-                       Solved sol -> do cnode <- return $ nextNode (iwals `Map.union` sol) next
+                       Unsolvable -> return []
+                       Solved sol -> do let cnode = nextNode (iwals `Map.union` sol) next
                                         after <- unfold chsets cnode
-                                        return $ [after]
+                                        return [after]
                        UnableToSolve -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                                                         $ "after: hidden variables not unique" ]
+                                                         "after: hidden variables not unique" ]
                                            return []
 
-afterActBBranch chsets behact (BTtau bt)  =  do
-     afterActBTree chsets behact bt
+afterActBBranch chsets behact (BTtau bt)  =  afterActBTree chsets behact bt
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -204,21 +203,20 @@ afterActBBranch chsets behact (BTtau bt)  =  do
 
 
 matchAct2CTOffer :: BehAction -> Set.Set CTOffer -> IOB.IOB (Maybe IWals)
-matchAct2CTOffer behact ctoffs  =  do
-     if  Set.null ctoffs
-       then do
-         IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "matchAct2CTOffer: empty ctoffs" ]
-         return $ Nothing
-       else
-         if  Set.map fst behact == Set.map ctchan ctoffs
-           then return $ Just $ Map.fromList
+matchAct2CTOffer behact ctoffs
+    | Set.null ctoffs =
+        do
+          IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "matchAct2CTOffer: empty ctoffs" ]
+          return Nothing
+    | Set.map fst behact == Set.map ctchan ctoffs =
+        return $ Just $ Map.fromList
                               $ concat [ zip ctchoffs wals
                                        | CToffer chid1 ctchoffs <- Set.toList ctoffs
                                        , ( chid2, wals )        <- Set.toList behact
                                        , chid1 == chid2
                                        ]
-           else return $ Nothing
-
+    | otherwise =
+        return Nothing
 
 -- ----------------------------------------------------------------------------------------- --
 -- behAfterRef :  perform after refusal on BTree
@@ -228,11 +226,10 @@ behAfterRef :: BTree -> Set.Set TxsDefs.ChanId -> IOB.IOB (Maybe BTree)
 behAfterRef bt refset  =  do
      afters <- afterRefBTree refset bt
      if  null afters
-       then do return $ Nothing
-       else do newbtree  <- return $ map BTtau afters
-               newbtree' <- reduce $ newbtree
+       then return Nothing
+       else do let newbtree = map BTtau afters
+               newbtree' <- reduce newbtree
                return $ Just newbtree'
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- afterRefBTree :  list of possible BTree states after refusal
@@ -241,16 +238,14 @@ behAfterRef bt refset  =  do
 
 
 afterRefBTree :: Set.Set TxsDefs.ChanId -> BTree -> IOB.IOB [BTree]
-afterRefBTree refset bt  =  do
-     case [ bt' | BTtau bt' <- bt ] of
-     { []      -> do if and [ refBBranch bbranch refset | bbranch <- bt ]
-                       then return $ [bt]
-                       else return $ []
-     ; btrees' -> do btrees'' <- mapM (afterRefBTree refset) btrees'
-                     return $ concat btrees''
-     }
+afterRefBTree refset bt =
+    case [ bt' | BTtau bt' <- bt ] of
+      []      -> if and [ refBBranch bbranch refset | bbranch <- bt ]
+                   then return [bt]
+                   else return []
+      btrees' -> do btrees'' <- mapM (afterRefBTree refset) btrees'
+                    return $ concat btrees''
 
- 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --

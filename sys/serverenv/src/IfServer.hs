@@ -9,7 +9,6 @@ Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
 
-
 -- ----------------------------------------------------------------------------------------- --
 
 module IfServer
@@ -42,13 +41,11 @@ import EnvServer
 
 import qualified EnvCore as IOC
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- server socket communication :  get commands
 
-
 getCmd :: IOS (String,String)
-getCmd  =  do
+getCmd = do
      servhs' <- gets servhs
      cmdline <- lift $ lift $ hGetLine servhs'
      lift $ lift $ hPutStrLn stderr $ "TXSSERVER CMD >>  " ++ cmdline
@@ -62,41 +59,39 @@ getCmd  =  do
 
 
 putRsp :: Handle -> String -> IOC.IOC ()
-putRsp servhs' rsp  =  do
+putRsp servhs' rsp = do
      lift $ hPutStrLn stderr $ "TXSSERVER RSP <<  " ++ rsp
-     lift $ hPutStrLn servhs' $ rsp
-
+     lift $ hPutStrLn servhs' rsp
 
 -- put messages via handle
 
 hmack :: Handle -> [String] -> IOC.IOC ()
-hmack servhs'  xss  =  do
-     mapM_ ( (putRsp servhs') . ("MACK " ++) ) ( concat $ map lines xss )
+hmack servhs' xss = mapM_ ( putRsp servhs' . ("MACK " ++) ) ( concatMap lines xss )
 
 
 -- put multi/intermediate acknowledgements
 
 mack :: [String] -> IOS ()
-mack xss  =  do
+mack xss = do
      servhs' <- gets servhs
-     lift $ mapM_ ( (putRsp servhs') . ("MACK " ++) ) ( concat $ map lines xss )
+     lift $ mapM_ ( putRsp servhs' . ("MACK " ++) ) ( concatMap lines xss )
 
 
 -- put positive acknowledgement
 
 pack :: String -> [String] -> IOS ()
-pack cmd xss  =  do
+pack cmd xss = do
      servhs' <- gets servhs
-     lift $ mapM_ ( (putRsp servhs') . ("MACK " ++) ) ( concat $ map lines xss )
+     lift $ mapM_ ( putRsp servhs' . ("MACK " ++) ) ( concatMap lines xss )
      lift $ putRsp servhs' $ "PACK " ++ cmd
 
 
 -- put negative acknowledgement
 
 nack :: String -> [String] -> IOS ()
-nack cmd xss  =  do
+nack cmd xss = do
      servhs' <- gets servhs
-     lift $ mapM_ ( (putRsp servhs') . ("MACK " ++) ) ( concat $ map lines xss )
+     lift $ mapM_ ( putRsp servhs' . ("MACK " ++) ) ( concatMap lines xss )
      lift $ putRsp servhs' $ "NACK " ++ cmd
 
 

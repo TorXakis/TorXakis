@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
 -- ----------------------------------------------------------------------------------------- --
 
 module EnvServer
@@ -61,14 +60,14 @@ import qualified Sigs
 -- IOS :  torxakis server main state monad transformer
 
 
-type IOS a  =  StateT EnvS IOC.IOC a
+type IOS a = StateT EnvS IOC.IOC a
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis server state type definitions
 
 
-data EnvS   =  EnvS { host    :: String                    -- ^ host of server client
+data EnvS  = EnvS { host    :: String                    -- ^ host of server client
                     , portNr  :: PortNumber                -- ^ port number of server client
                     , servhs  :: Handle                    -- ^ server socket handle
                     , modus   :: TxsModus                  -- ^ current modus of TXS operation
@@ -90,7 +89,7 @@ data EnvS   =  EnvS { host    :: String                    -- ^ host of server c
 
 
 envsNone    :: EnvS
-envsNone    =  EnvS { host      = ""
+envsNone   = EnvS { host      = ""
                     , portNr    = 0
                     , servhs    = stderr
                     , modus     = Noned
@@ -109,7 +108,7 @@ envsNone    =  EnvS { host      = ""
 -- Txs Modus
 
 
-data  TxsModus  =  Noned
+data  TxsModus = Noned
                  | Idled
                  | Inited
                  | Tested  TxsDefs.CnectDef
@@ -120,22 +119,22 @@ isNoned, isIdled, isInited        :: TxsModus -> Bool
 isTested, isSimuled, isStepped    :: TxsModus -> Bool
 isGtNoned, isGtIdled, isGtInited  :: TxsModus -> Bool
 
-isNoned Noned             =  True
-isNoned _                 =  False
-isIdled Idled             =  True
-isIdled _                 =  False
-isInited Inited           =  True
-isInited _                =  False
-isTested  (Tested _)      =  True
-isTested  _               =  False
-isSimuled (Simuled _)     =  True
-isSimuled _               =  False
-isStepped Stepped         =  True
-isStepped _               =  False
+isNoned Noned            = True
+isNoned _                = False
+isIdled Idled            = True
+isIdled _                = False
+isInited Inited          = True
+isInited _               = False
+isTested  (Tested _)     = True
+isTested  _              = False
+isSimuled (Simuled _)    = True
+isSimuled _              = False
+isStepped Stepped        = True
+isStepped _              = False
 
-isGtNoned  m              =  not (isNoned m)
-isGtIdled  m              =  isGtNoned m && not (isIdled m)
-isGtInited m              =  isGtIdled m && not (isInited m)
+isGtNoned  m             = not (isNoned m)
+isGtIdled  m             = isGtNoned m && not (isIdled m)
+isGtInited m             = isGtIdled m && not (isInited m)
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -143,7 +142,7 @@ isGtInited m              =  isGtIdled m && not (isInited m)
 
 
 getParams :: [String] -> IOS [(String,String)]
-getParams prms  =  do
+getParams prms =
      case prms of
        [] -> do parammap <- gets params
                 return $ map (\(nm,(val,_))->(nm,val)) (Map.toList parammap)
@@ -151,7 +150,7 @@ getParams prms  =  do
                 return $ concat params'
 
 getParam :: String -> IOS [(String,String)]
-getParam prm  =  do
+getParam prm = do
      params' <- gets params
      case Map.lookup prm params' of
        Nothing      -> return []
@@ -159,28 +158,28 @@ getParam prm  =  do
 
 
 setParams :: [(String,String)] -> IOS [(String,String)]
-setParams parvals  =  do
+setParams parvals = do
      params' <- mapM setParam parvals
      return $ concat params'
 
 setParam :: (String,String) -> IOS [(String,String)]
-setParam (prm,val)  =  do
+setParam (prm,val) = do
      params' <- gets params
      case Map.lookup prm params' of
        Nothing           -> return []
        Just (_,check) -> if check val
-                            then do newParams <- return $ Map.insert prm (val,check) params'
+                            then let  newParams = Map.insert prm (val,check) params'
+                                  in do
                                     modify $ \env -> env { params = newParams }
-                                    return $ [(prm,val)]
+                                    return [(prm,val)]
                             else return []
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- Msg :  (Error) Messages
 
 {-
 
-data Msg     =   TXS_SERV_SYSTEM_ERROR     { s :: String }
+data Msg    =  TXS_SERV_SYSTEM_ERROR     { s :: String }
                | TXS_SERV_MODEL_ERROR      { s :: String }
                | TXS_SERV_USER_ERROR       { s :: String }
                | TXS_SERV_RUNTIME_ERROR    { s :: String }
@@ -200,19 +199,19 @@ data Msg     =   TXS_SERV_SYSTEM_ERROR     { s :: String }
 
 instance TxsShow.PShow Msg
   where
-     pshow msg  =  s msg
+     pshow msg = s msg
 
 
 -- | Add messages to IOS Monad.
 putMsgs :: [Msg] -> IOS ()
-putMsgs mess  =  do
+putMsgs mess = do
      msgs' <- gets msgs
      modify $ \env -> env { msgs = msgs' ++ mess }
 
 
 -- | Take messages from Monad, and reset message list .
 takeMsgs :: IOS [String]
-takeMsgs  =  do
+takeMsgs = do
      msgs' <- gets msgs
      modify $ \env -> env { msgs = [] }
      return $ map TxsShow.pshow msgs'

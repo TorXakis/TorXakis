@@ -49,7 +49,7 @@ chanIdsToProcdef chids
 chanIdToProcdef :: TxsDefs.ChanId -> String
 chanIdToProcdef chid
   =  let sorts = sortsToProcdef (ChanId.chansorts chid)
-      in (ChanId.name chid) ++ " :: " ++ sorts
+      in ChanId.name chid ++ " :: " ++ sorts
 
 sortsToProcdef :: [TxsDefs.SortId] -> String
 sortsToProcdef sortids
@@ -73,8 +73,7 @@ communicationsToProcdef set
 communicationToProcdef :: (TxsDefs.ChanId, [TxsDefs.Const]) -> String
 communicationToProcdef (chid, vexprs)
   =  let values = map TxsShow.pshow vexprs
-      in ((ChanId.name chid) ++ " ! ") ++ (Utils.join " ! " values)
-
+      in ChanId.name chid ++ " ! " ++ Utils.join " ! " values
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

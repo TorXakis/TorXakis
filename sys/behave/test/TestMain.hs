@@ -8,17 +8,17 @@ module Main where
 import System.Exit
 import Test.HUnit
 
---import TestBExpr
+-- import TestBExpr
 import TestFuncContent
 import TestProcessBehaviour
 
 testBehaveList :: Test
-testBehaveList = TestList 
-    [   TestLabel "Function Content"                        testFuncContentList
-        --TestLabel "ProcessDefinition Content"               testBExprList       
-    ,   TestLabel "Process Behaviour"                       testProcessBehaviourList
+testBehaveList = TestList
+    [ TestLabel "Function Content"          testFuncContentList
+    -- , TestLabel "ProcessDefinition Content" testBExprList
+    , TestLabel "Process Behaviour"         testProcessBehaviourList
     ]
-    
+
 main :: IO ()
 main = do
     Counts  _c _t e f <- runTestTT testBehaveList

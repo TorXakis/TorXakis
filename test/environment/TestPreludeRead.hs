@@ -12,43 +12,43 @@ where
 import Test.HUnit
 
 testEmpty :: Test
-testEmpty = TestCase $ do
-    let s = (read "\"\"")::String in
+testEmpty = TestCase $
+    let s = read "\"\"" :: String in
         assertEqual "check empty" "" s
 
 testQuote :: Test
-testQuote = TestCase $ do
-    let s = (read "\"\\\"\"")::String in
+testQuote = TestCase $
+    let s = read "\"\\\"\"" :: String in
         assertEqual "check quote" "\"" s
 
 testBackslash :: Test
-testBackslash = TestCase $ do
-    let s = (read "\"\\\\\"")::String in
+testBackslash = TestCase $
+    let s = read "\"\\\\\"" :: String in
         assertEqual "check backslash" "\\" s
 
 testBackslashSpecial :: Test
-testBackslashSpecial = TestCase $ do
-    let s = (read "\"\\a\"")::String in
+testBackslashSpecial = TestCase $
+    let s = read "\"\\a\"" :: String in
         assertEqual "check backslash special" "\a" s
 
 testSpecialChar :: Test
-testSpecialChar = TestCase $ do
-    let s = (read "\"\\x07\"")::String in
+testSpecialChar = TestCase $
+    let s = read "\"\\x07\"" :: String in
         assertEqual "check special char" "\a" s        -- 007 Bell
 
 testHex :: Test
-testHex = TestCase $ do
-    let s = (read "\"\\xAa\"")::String in
+testHex = TestCase $
+    let s = read "\"\\xAa\"" :: String in
         assertEqual "check hex" "\xaa" s      -- not case sensitive in hexadecimal characters
 
 testHexX :: Test
-testHexX = TestCase $ do
-    let s = (read "\"\\XfB\"")::String in
+testHexX = TestCase $
+    let s = read "\"\\XfB\"" :: String in
         assertEqual "check HEX" "\xfb" s      -- not case sensitive in x
 
 testControlCodeAbbreviation :: Test
-testControlCodeAbbreviation = TestCase $ do
-    let s = (read "\"\\ENQ\"")::String in
+testControlCodeAbbreviation = TestCase $
+    let s = read "\"\\ENQ\"" :: String in
         assertEqual "check special char" "\ENQ" s        -- 005 enquiry - is case sensitive!
         
 ----------------------------------------------------------------------------------------
