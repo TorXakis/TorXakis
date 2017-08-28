@@ -8,8 +8,7 @@ See LICENSE at root directory of this repository.
 module Examples.Point (exampleSet) where
 
 import           Examples.Paths
-import           Filesystem.Path
-import           Prelude         hiding (FilePath)
+import           Prelude        hiding (FilePath)
 import           Sqatt
 
 exampDir :: FilePath

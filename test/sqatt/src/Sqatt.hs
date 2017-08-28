@@ -20,6 +20,8 @@ module Sqatt
   , TxsExampleSet (..)
   , SutExample (..)
   , toFSSafeStr
+  -- * Re-exports
+  , module Turtle
   )
 where
 
@@ -251,7 +253,7 @@ getCPOptsIO (Just filePath) = case toText filePath of
 -- | Timeout (in seconds) for running a test. For now the timeout is not
 -- configurable.
 sqattTimeout :: NominalDiffTime
-sqattTimeout = 600.0
+sqattTimeout = 900.0
 
 -- | Time to allow TorXakis run the checks after the SUT terminates. After this
 -- timeout the SUT process terminates and if the expected result is not
