@@ -25,58 +25,58 @@ module Main
 
 where
 
-import System.IO
-import Network
-import Control.Monad.State
-import Control.Concurrent
-import Control.Exception
-import Control.DeepSeq
+import           Control.Concurrent
+import           Control.DeepSeq
+import           Control.Exception
+import           Control.Monad.State
+import           Network
+import           System.IO
 
-import qualified Data.Char as Char
-import qualified Data.List as List
-import qualified Data.Set  as Set
-import qualified Data.Map  as Map
+import qualified Data.Char           as Char
+import qualified Data.List           as List
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
 
 -- import from local
-import ToProcdef
-import CmdLineParser
+import           ToProcdef
+import qualified TxsServerConfig     as SC
 
 -- import from serverenv
-import qualified EnvServer    as IOS
-import qualified IfServer     as IFS
+import qualified EnvServer           as IOS
+import qualified IfServer            as IFS
 
 -- import from core
-import qualified Config       as CoreConfig
-import qualified TxsCore
 import qualified BuildInfo
+import qualified Config              as CoreConfig
+import qualified TxsCore
 import qualified VersionInfo
 
 -- import from defs
-import qualified TxsDefs
-import qualified VarId
 import qualified TxsDDefs
+import qualified TxsDefs
 import qualified TxsShow
 import qualified Utils
+import qualified VarId
 
 -- import from front
-import qualified TxsHappy
 import qualified TxsAlex
+import qualified TxsHappy
 
 -- import from cnect
-import qualified SocketWorld as World
+import qualified SocketWorld         as World
 
 main :: IO ()
 main = withSocketsDo $ do
   hSetBuffering stderr NoBuffering     -- alt: LineBuffering
 
-  uConfig <- loadConfig
-     
-  case interpretConfig uConfig of
+  uConfig <- SC.loadConfig
+
+  case SC.interpretConfig uConfig of
     Left xs -> do
       hPutStrLn stderr "Errors found while loading the configuration"
       hPrint stderr xs
     Right config -> do
-      let portNr = portNumber config
+      let portNr = SC.portNumber config
       servsock      <- listenOn (PortNumber portNr)
       (hs, host, _) <- accept servsock
       hSetBuffering hs LineBuffering
@@ -88,8 +88,8 @@ main = withSocketsDo $ do
             , IOS.servhs = hs
             }
           coreConfig = CoreConfig.Config
-            { CoreConfig.smtSolver = smtSolver config
-            , CoreConfig.smtLog = smtLog config
+            { CoreConfig.smtSolver = SC.smtSolver config
+            , CoreConfig.smtLog = SC.smtLog config
             }
       TxsCore.runTxsCore coreConfig cmdsIntpr initS
       threadDelay 1000000    -- 1 sec delay on closing
@@ -106,8 +106,8 @@ cmdsIntpr = do
 -- ----------------------------------------------------------------------------------- modus --
        "START"     |       IOS.isNoned    modus  ->  cmdStart     args
        "START"     | not $ IOS.isNoned    modus  ->  cmdNoop      cmd
-       "QUIT"                                    ->  cmdQuit      args  
-       "INIT"      |       IOS.isIdled    modus  ->  cmdInit      args  
+       "QUIT"      ->  cmdQuit      args
+       "INIT"      |       IOS.isIdled    modus  ->  cmdInit      args
        "INIT"      | not $ IOS.isIdled    modus  ->  cmdNoop      cmd
        "TERMIT"    |       IOS.isGtIdled  modus  ->  cmdTermit    args
        "TERMIT"    | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
@@ -126,7 +126,7 @@ cmdsIntpr = do
        "VAL"       |       IOS.isGtIdled  modus  ->  cmdVal       args
        "VAL"       | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
        "EVAL"      |       IOS.isGtIdled  modus  ->  cmdEval      args
-       "EVAL"      | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd 
+       "EVAL"      | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
        "SOLVE"     |       IOS.isGtIdled  modus  ->  cmdSolve     args "sol"
        "SOLVE"     | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
        "UNISOLVE"  |       IOS.isGtIdled  modus  ->  cmdSolve     args "uni"
@@ -164,7 +164,7 @@ cmdsIntpr = do
        "MAP"       | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
        "NCOMP"     |       IOS.isInited   modus  ->  cmdNComp     args
        "NCOMP"     | not $ IOS.isInited   modus  ->  cmdNoop      cmd
-       _                                         ->  cmdUnknown   cmd
+       _           ->  cmdUnknown   cmd
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -419,7 +419,7 @@ cmdEval args = do
      env              <- get
      let uid          = IOS.uid env
          tdefs        = IOS.tdefs env
-         sigs         = IOS.sigs env     
+         sigs         = IOS.sigs env
          vals         = IOS.locvals env
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.vexprParser
@@ -590,7 +590,7 @@ isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs _ _)
                         [ Set.singleton chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
          ; cfrows = Set.fromList
                         [ Set.singleton chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
-         } 
+         }
       in    mins   == ctows
          && cfrows == mouts
 
@@ -677,9 +677,9 @@ isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs _ _)
          ; cfrows = Set.fromList
                         [ Set.singleton chan | TxsDefs.ConnDfroW chan _ _ _ _ <- conndefs ]
          }
-      in    mins  == cfrows 
-         && mouts == ctows 
-  
+      in    mins  == cfrows
+         && mouts == ctows
+
 isConsistentSimulator _
                       (Just (TxsDefs.MapperDef achins achouts asyncsets _))
                       (TxsDefs.CnectDef _ conndefs)
@@ -799,8 +799,8 @@ cmdShow args = do
                 ["state"    ,"purp"  ] -> lift $ TxsCore.txsShow "purp"      ""
                 ["modeldef" ,nm      ] -> lift $ TxsCore.txsShow "modeldef"  nm
                 ["mapperdef",nm      ] -> lift $ TxsCore.txsShow "mapperdef" nm
-                ["purpdef"  ,nm      ] -> lift $ TxsCore.txsShow "purpdef"   nm 
-                ["procdef"  ,nm      ] -> lift $ TxsCore.txsShow "procdef"   nm 
+                ["purpdef"  ,nm      ] -> lift $ TxsCore.txsShow "purpdef"   nm
+                ["procdef"  ,nm      ] -> lift $ TxsCore.txsShow "procdef"   nm
                 ["cnect"             ] -> return $ let (_, _, towhdls ) = IOS.tow envs
                                                        (_, _, frowhdls) = IOS.frow envs
                                                     in TxsShow.fshow (towhdls ++ frowhdls)
@@ -835,7 +835,7 @@ cmdGoTo args =
        [d] | all Char.isDigit d
                  -> do lift $ TxsCore.txsGoTo (read d)
                        IFS.pack "GOTO" ["gone to state " ++ d]
-                       cmdsIntpr 
+                       cmdsIntpr
        _         -> do IFS.nack "GOTO" ["unknown state"]
                        cmdsIntpr
 
@@ -850,7 +850,7 @@ cmdPath _ = do
               ]
      IFS.pack "PATH" ["\n"]
      cmdsIntpr
-     
+
 -- ----------------------------------------------------------------------------------------- --
 
 cmdTrace :: String -> IOS.IOS ()
@@ -988,61 +988,3 @@ readAction chids args = do
                             ]
              return $ TxsDDefs.Act (Set.fromList acts)
 
-
--- * Configuration related functions.
-
-data Config = Config
-  { smtSolver :: !CoreConfig.SMTSolver
-  , smtLog :: !Bool
-  , portNumber :: !PortNumber
-  }
-
--- | Uninterpreted configuration options.
-data UnintConfig = UnintConfig
-  { mSmtSolver :: !(Maybe CoreConfig.SMTSolver)
-  , mSmtLog :: !(Maybe Bool)
-  , mPortNumber :: !(Maybe PortNumber)
-  }
-
-type Error = String
-
-interpretConfig :: CmdLineConfig -> Either [Error] Config
-interpretConfig cfg = 
-  Right Config
-          { smtSolver = clSmtSolver cfg
-          , smtLog = clSmtLog cfg
-          , portNumber = clPortNumber cfg
-          }
-
--- | Load the configuration options. These options can be specified by
--- different means:
---
---     1. Command line arguments.
---     2. Configuration file.
---     3. Environment variables.
---
--- The configuration options are searched in the order specified, and the first
--- option found is used.
---
--- For now we only parse command line arguments.
-loadConfig :: IO CmdLineConfig
-loadConfig = parseCmdLine
-
--- | File name to look for.
-configFileName :: String
-configFileName = "txs.yaml"
-
--- | Create a `UnintConfig` value by trying to read the configuration options
--- given in a configuration file. The configuration file is assumed to be named
--- as defined by the variable `configFileName`.
---
--- This function looks for the configuration file in the following places:
---
---     1. The current working directory.
---     2. The home directory
---
--- The search proceeds in the order listed above, and it stops as soon as a
--- configuration file is found.
---
-loadConfigFromFile :: IO UnintConfig
-loadConfigFromFile = undefined

@@ -4,7 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
--- | This module defines the TorXakis options that.
+-- | This module defines the options that can be passed to TorXakis.
 module Config
   ( Config (..)
   , SMTSolver (..)
@@ -16,6 +16,8 @@ data SMTSolver = Z3 | CVC4 deriving (Eq, Show, Read)
 
 -- | TorXakis configuration options.
 data Config = Config
-  { smtSolver :: !SMTSolver   -- ^ SMT solver
-  , smtLog :: !Bool           -- ^ Log all SMT commands.
+  { -- | SMT solver
+    smtSolver :: !SMTSolver
+    -- | Log all SMT commands.
+  , smtLog    :: !Bool
   } deriving (Eq, Show)
