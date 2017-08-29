@@ -6,8 +6,8 @@ See LICENSE at root directory of this repository.
 
 
 -- ----------------------------------------------------------------------------------------- --
--- Model of (parallel) Adders, for one adder - Adder1 -, and for three adders - Adder3 -,
--- with inputs "Plus(i) x y" and "Minus(i) x y", and output "Result(i) z".
+-- Model of (parallel) Adder, with Mapper. Synchronous and asynchronous mapping examples
+-- are included.
 -- ----------------------------------------------------------------------------------------- --
 
 
@@ -76,6 +76,7 @@ ENDDEF
 
 
 {-
+-- Asynchronous Mapping
 MAPPERDEF  MapA
     ::=
         CHAN IN    Plus, Minus,
@@ -88,7 +89,7 @@ MAPPERDEF  MapA
 ENDDEF
 -}
 
-
+-- Synchronous Mapping
 MAPPERDEF  MapS
     ::=
         CHAN IN    Plus, Minus,
