@@ -39,6 +39,7 @@ library
                      , monad-loops
                      , random
                      , time
+                     , extra
   ghc-options:         -Wall -Werror -O
   default-language:    Haskell2010
 

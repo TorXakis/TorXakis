@@ -7,10 +7,8 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 module Examples.StimulusResponse (exampleSet) where
 
-import           Data.Text
 import           Examples.Paths
-import           Filesystem.Path
-import           Prelude         hiding (FilePath)
+import           Prelude        hiding (FilePath)
 import           Sqatt
 
 exampDir :: FilePath

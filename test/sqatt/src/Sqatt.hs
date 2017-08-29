@@ -19,6 +19,9 @@ module Sqatt
   , testExampleSets
   , TxsExampleSet (..)
   , SutExample (..)
+  , toFSSafeStr
+  -- * Re-exports
+  , module Turtle
   )
 where
 
@@ -27,6 +30,7 @@ import           Control.Concurrent.Async
 import           Control.Exception
 import           Control.Foldl
 import           Control.Monad.Except
+import           Control.Monad.Extra
 import           Data.Either
 import           Data.Foldable
 import           Data.Maybe
@@ -69,7 +73,8 @@ data SutExample
     -- | Arguments to be passed to the SUT.
   , javaSutArgs    :: [Text]
   }
-  -- | A TorXakis simulated SUT.
+  -- | A TorXakis simulated SUT. The FilePath specifies the location of the
+  -- commands to be input to the simulator.
   | TxsSimulator FilePath
   deriving (Show)
 
@@ -153,6 +158,13 @@ decodePath filePath =
     Left apprPath ->
       throwError $ FilePathError $
         "Cannot decode " <> apprPath <> " properly"
+
+-- | Replace the characters that might cause problems on Windows systems.
+toFSSafeStr :: String -> String
+toFSSafeStr str = repl <$> str
+  where repl ' ' = '_'
+        repl ':' = '-'
+        repl c   = c
 
 -- * Environment checking
 
@@ -241,7 +253,7 @@ getCPOptsIO (Just filePath) = case toText filePath of
 -- | Timeout (in seconds) for running a test. For now the timeout is not
 -- configurable.
 sqattTimeout :: NominalDiffTime
-sqattTimeout = 600.0
+sqattTimeout = 1200.0
 
 -- | Time to allow TorXakis run the checks after the SUT terminates. After this
 -- timeout the SUT process terminates and if the expected result is not
@@ -368,11 +380,27 @@ runSUT logDir (TxsSimulatedSut modelFile cmds) _ =
 getRandomPort :: IO Integer
 getRandomPort = randomRIO (10000, 60000)
 
+-- | Check that the file exists.
+pathMustExist :: FilePath -> Test ()
+pathMustExist path =
+  unlessM (testpath path) (throwError sqattErr)
+  where sqattErr =
+          FilePathError $ format ("file "%s%" does not exists ") (repr path)
+
+-- | Retrieve all the file paths from an example
+exampleInputFiles :: TxsExample -> [FilePath]
+exampleInputFiles ex =
+  [txsModelFile ex, txsCommandsFile ex]
+  ++ fromMaybe [] (sutInputFiles <$> sutExample ex)
+  where sutInputFiles (JavaExample jsp _)     = [jsp]
+        sutInputFiles (TxsSimulator cmdsFile) = [cmdsFile]
+
 -- | Execute a test.
-execTest :: FilePath -> TxsExample -> IO (Either SqattError ())
-execTest topLogDir ex = runExceptT $ runTest $ do
-  let logDir = topLogDir </> (fromString . exampleName) ex
+execTest :: FilePath -> TxsExample -> Test ()
+execTest topLogDir ex = do
+  let logDir = topLogDir </> (fromString . toFSSafeStr . exampleName) ex
   mktree logDir
+  traverse_ pathMustExist (exampleInputFiles ex)
   runnableExample <- getRunnableExample
   mkTest logDir runnableExample
   where
@@ -389,7 +417,7 @@ execTest topLogDir ex = runExceptT $ runTest $ do
 -- | Test a single example.
 testExample :: FilePath -> TxsExample -> Spec
 testExample logDir ex = it (exampleName ex) $ do
-  res <- execTest logDir ex
+  res <- runExceptT $ runTest $ execTest logDir ex
   res `shouldBe` Right ()
 
 -- | Test a list of examples.
@@ -399,7 +427,8 @@ testExamples logDir = traverse_ (testExample logDir)
 -- | Test an example set.
 testExampleSet :: FilePath -> TxsExampleSet -> Spec
 testExampleSet logDir (TxsExampleSet exSetDesc exs) = do
-  let thisSetLogDir = logDir </> fromString (exampleSetName exSetDesc)
+  let thisSetLogDir =
+        logDir </> (fromString . toFSSafeStr . exampleSetName) exSetDesc
   runIO $ mktree thisSetLogDir
   describe (exampleSetName exSetDesc) (testExamples thisSetLogDir exs)
 

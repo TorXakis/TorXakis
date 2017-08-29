@@ -31,10 +31,7 @@ spec = beforeAll
                currDate <- date
                let logDir =
                      sqattLogsRoot </> fromString ("test-" ++ currDateStr)
-                   currDateStr = map repl (show currDate)
-                   repl ' ' = '-'
-                   repl ':' = '-'
-                   repl c   = c
+                   currDateStr = toFSSafeStr (show currDate)
                mktree logDir
                return logDir
              testExampleSets dir allExamples
