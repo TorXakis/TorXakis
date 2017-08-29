@@ -165,6 +165,7 @@ testIOCO depth lastDelta step =
            then do                                                -- try input, input/=Nothing
              let Just inp  =  input
              (act,verdict) <- testIn inp step
+             nextBehTrie act
              case verdict of
                TxsDDefs.Pass      -> testIOCO (depth-1) (act==TxsDDefs.ActQui) (step+1)
                TxsDDefs.Fail act' -> return $ TxsDDefs.Fail act'
@@ -173,6 +174,7 @@ testIOCO depth lastDelta step =
              if not lastDelta
                then do                                            -- observe output
                  (act,verdict) <- testOut step
+                 nextBehTrie act
                  case verdict of
                    TxsDDefs.Pass      -> testIOCO (depth-1) (act==TxsDDefs.ActQui) (step+1)
                    TxsDDefs.Fail act' -> return $ TxsDDefs.Fail act'
@@ -183,43 +185,6 @@ testIOCO depth lastDelta step =
 
 -- ----------------------------------------------------------------------------------------- --
 -- testing with test purposes
-{-
--- | testPin :  try to give input (Act acts), used with test purpose
-testPin :: TxsDDefs.Action -> Int -> IOC.IOC TxsDDefs.Action
-testPin act@(TxsDDefs.Act acts) step = do
-     putToW                      <- gets (IOC.puttow . IOC.state)
-     mact @(TxsDDefs.Act macts ) <- mapperMap act
-     mact'@(TxsDDefs.Act macts') <- putToW mact             -- do input on sut, always
-     if mact == mact'
-       then do                                              -- input done on sut
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                       $ (TxsShow.showN step 6) ++ ":  IN:  " ++ (TxsShow.fshow mact) ]
-         return $ mact                                      -- input done on sut, not on btree
-       else do                                              -- output was faster
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                       $ (TxsShow.showN step 6) ++ ":  OUT: " ++ (TxsShow.fshow mact') ]
-         return $ mact'                                     -- output `notElem` menuOut
-
-
-testPin TxsDDefs.ActQui step = do                                   -- otherwise
-     IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                   $ "testIn can only be called with (TxsDDefs.Act acts)" ]
-     return $ TxsDDefs.ActQui
--}
-
-{-
--- | testPout :  observe output, for use with test purposes
-testPout :: Int -> IOC.IOC TxsDDefs.Action
-testPout step = do
-     getFroW <- gets (IOC.getfrow . IOC.state)
-     act     <- getFroW                                      -- get next output or quiescence
-     mact    <- mapperMap act
-     IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-               $ (TxsShow.showN step 6) ++ ":  OUT: " ++ (TxsShow.fshow mact) ]
-     return $ mact
--}
-
--- | testIOCOinPurp :  test with test puposes, only on inputs
 
 testIOCOinPurp :: Int -> Bool -> Int -> IOC.IOC TxsDDefs.Verdict
 testIOCOinPurp _ _ _ = do

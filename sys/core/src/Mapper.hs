@@ -46,10 +46,10 @@ import qualified TxsDDefs
 mapperMap :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
 mapperMap act@(TxsDDefs.Act acts)  =  do
      maybeMapperDef <- gets (IOC.mapperdef . IOC.state)
-     mapSts    <- gets (IOC.mapsts . IOC.state)
+     mapSts         <- gets (IOC.mapsts . IOC.state)
      case (maybeMapperDef, mapSts) of
-       ( Nothing, _  )       -> return act
-       ( _            , [] ) -> return act
+       ( Nothing, _  ) -> return act
+       ( _      , [] ) -> return act
        ( Just (TxsDefs.MapperDef chins chouts syncs _), mtree) -> do
            let actchids = Set.map fst acts
                inchids  = Set.fromList chins

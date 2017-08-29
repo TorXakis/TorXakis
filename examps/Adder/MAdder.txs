@@ -75,6 +75,7 @@ PROCDEF  mapperS [ Plus, Minus :: Int # Int; Result :: Int;
 ENDDEF
 
 
+{-
 MAPPERDEF  MapA
     ::=
         CHAN IN    Plus, Minus,
@@ -85,6 +86,7 @@ MAPPERDEF  MapA
         BEHAVIOUR  mapperA [ Plus, Minus, Result, Sin, Sout ] ( )
 
 ENDDEF
+-}
 
 
 MAPPERDEF  MapS
@@ -93,6 +95,9 @@ MAPPERDEF  MapS
                    Sout
         CHAN OUT   Result,
                    Sin
+        SYNC       { Plus | Sin },
+                   { Minus | Sin },
+                   { Sout | Result }
 
         BEHAVIOUR  mapperS [ Plus, Minus, Result, Sin, Sout ] ( )
 
@@ -117,3 +122,4 @@ ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 -- ----------------------------------------------------------------------------------------- --
+
