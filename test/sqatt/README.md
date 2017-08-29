@@ -16,7 +16,7 @@ stack test --test-arguments=--match=PATTERN
 ```
 
 where `PATTERN` is a pattern is used to select the name of the test to run. For
-instance, to run the stimulus response tests only the following command can be
+instance, to run **only** the stimulus response tests the following command can be
 used:
 
 ```sh
@@ -33,8 +33,8 @@ contains functions to build paths to the test files using these conventions.
 To add a new test case to be included in the development acceptance tests the
 following steps are needed:
 
-- Create a new file in the `src/Examples` folder, which will describe the
-test cases.
+- Create a new Haskell file in the `src/Examples` folder, which will describe
+the test cases.
 - Add tests cases by specifying:
     - The example name.
     - The path to the TorXakis model.
@@ -49,7 +49,7 @@ the list of all examples.
 - Update the `sqatt.cabal` file to account for the the new file.
 
 Some variation is of course allowed in these steps, but for the sake of
-maintainability it is recommended to follow them as close a possible.
+maintainability it is recommended to follow them as close as possible.
 
 When adding a new test
 use [camel case](https://en.wikipedia.org/wiki/Camel_case) folder names. The
@@ -58,11 +58,11 @@ conventions regarding module folders.
 
 We will illustrate the process of adding new development-acceptance tests by
 using an example. Suppose we want to create a new test, named `MyTest`, to test
-a new TorXakis model that is stored in `exampls/MyTest/MyTestModel.txs`. This
+a new TorXakis model that is stored in `examps/MyTest/MyTestModel.txs`. This
 model will be used to test a toy SUT whose source code is located in
 `examps/MyTest/MySUT.java`. Finally assume the commands to be input to TorXakis
 during the tests are in `test/examps/MyTest/MyTestCmds.txscmd`. Note that these
-file do not exist in the code-base, and are used as illustration only.
+files do not exist in the code-base, and are used as illustration only.
 
 To define a new development-acceptance test that uses these files, start by
 creating a file in the `src/Examples` folder named `MyTest.hs`. Make sure that
@@ -95,9 +95,9 @@ test0 = TxsExample
 ```
 
 The record labels should be self explanatory. For more information please check
-the `sqatt` documentation. Also note that we are repeating the string `"MyTest"`,
-which could be avoided. See the `src/Examples` folder to see how this is currently
-done.
+the existing `sqatt` tests (defined in `src/Examples`) . Also note that we are
+repeating the string `"MyTest"`, which could be avoided. See the `src/Examples`
+folder to see how this is currently done.
 
 In the example above we specify a Java SUT. It is also possible to specify no
 SUT or a TorXakis simulated one. The `src/Examples` folder contains examples of
