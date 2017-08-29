@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/TorXakis/TorXakis.svg?branch=develop)](https://travis-ci.org/TorXakis/TorXakis)[![Code Climate](https://codeclimate.com/github/TorXakis/TorXakis/badges/gpa.svg)](https://codeclimate.com/github/TorXakis/TorXakis)
+[![Build Status](https://semaphoreci.com/api/v1/capitanbatata/torxakis/branches/develop/shields_badge.svg)](https://semaphoreci.com/capitanbatata/torxakis)[![Code Climate](https://codeclimate.com/github/TorXakis/TorXakis/badges/gpa.svg)](https://codeclimate.com/github/TorXakis/TorXakis)
 # TorXakis
 
 TorXakis is a tool for Model Based Testing.
