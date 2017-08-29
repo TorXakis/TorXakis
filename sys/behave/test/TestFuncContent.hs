@@ -13,8 +13,6 @@ import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
--- import qualified Debug.Trace as Trace
-
 import TxsAlex
 import TxsHappy
 import TxsDefs hiding (var)
@@ -44,99 +42,54 @@ testFuncContentList = TestList [
 -- Helper functions
 ---------------------------------------------------------------------------
 
+createFuncDefWithKey :: String -> TypedElements -> String -> FuncContent -> (String, FuncKey)
+createFuncDefWithKey funcName parameterList sortName funcContent =
+    ( createFuncDef funcName parameterList sortName funcContent
+    , getFuncKey funcName parameterList sortName)
 ---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
 
 testConstantInt :: Test
-testConstantInt = TestCase $ do
+testConstantInt = TestCase $
     let
-        funcName :: String
-        funcName = "myFunc"
-        parameterList :: TypedElements
-        parameterList = []
-        sortName :: String
-        sortName = intSortName
-        funcContent :: FuncContent
         funcContent = constantInt 12
-        
-        torXakisInput :: String
-        torXakisInput = createFuncDef funcName parameterList sortName funcContent
-        
-        funcKey :: FuncKey
-        funcKey = getFuncKey funcName parameterList sortName
-      in do
+        (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" [] intSortName funcContent
+      in
         assertEqual "Constant Int" funcContent (getFuncContent torXakisInput funcKey)
 
 testConstantString :: Test
-testConstantString = TestCase $ do
+testConstantString = TestCase $
     let
-        funcName :: String
-        funcName = "myFunc"
-        parameterList :: TypedElements
-        parameterList = []
-        sortName :: String
-        sortName = stringSortName
-        funcContent :: FuncContent
         funcContent = constantString "Just a string"
-        
-        torXakisInput :: String
-        torXakisInput = createFuncDef funcName parameterList sortName funcContent
-        
-        funcKey :: FuncKey
-        funcKey = getFuncKey funcName parameterList sortName
-      in do
+        (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" [] stringSortName funcContent
+      in
         assertEqual "Constant String" funcContent (getFuncContent torXakisInput funcKey)
 
 testConstantBool :: Test
-testConstantBool = TestCase $ do
+testConstantBool = TestCase $
     let
-        funcName :: String
-        funcName = "myFunc"
-        parameterList :: TypedElements
-        parameterList = []
-        sortName :: String
-        sortName = boolSortName
-        funcContent :: FuncContent
         funcContent = constantBool "True"
-        
-        torXakisInput :: String
-        torXakisInput = createFuncDef funcName parameterList sortName funcContent
-        
-        funcKey :: FuncKey
-        funcKey = getFuncKey funcName parameterList sortName
-      in do
+        (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" [] boolSortName funcContent
+      in
         assertEqual "Constant Bool" funcContent (getFuncContent torXakisInput funcKey)
 
        
 testVariable :: Test
-testVariable = TestCase $ do
+testVariable = TestCase $
     let
-        funcName :: String
-        funcName = "myFunc"
-        varName :: String
         varName = "a"
-        sortName :: String
         sortName = boolSortName
-        parameterList :: TypedElements
         parameterList = [([varName], sortName)]
-        funcContent :: FuncContent
         funcContent = var varName sortName
-        
-        torXakisInput :: String
-        torXakisInput = createFuncDef funcName parameterList sortName funcContent
-        
-        funcKey :: FuncKey
-        funcKey = getFuncKey funcName parameterList sortName
-      in do
+        (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" parameterList sortName funcContent
+      in
         assertEqual "Variable" funcContent (getFuncContent torXakisInput funcKey)
 
         
 testITE :: Test
-testITE = TestCase $ do
+testITE = TestCase $
     let
-        funcName :: String
-        funcName = "myFunc"
         boolVarName :: String
         boolVarName = "b"
         intVar1Name :: String
@@ -149,34 +102,24 @@ testITE = TestCase $ do
         funcContent = ite (var boolVarName boolSortName)
                           (var intVar1Name intSortName)
                           (var intVar2Name intSortName)
-        torXakisInput :: String
-        torXakisInput = createFuncDef funcName parameterList intSortName funcContent
-        
-        funcKey :: FuncKey
-        funcKey = getFuncKey funcName parameterList intSortName
-      in do
+                          
+        (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" parameterList intSortName funcContent
+      in
         assertEqual "ITE" funcContent (getFuncContent torXakisInput funcKey)
 
 testSubstitution :: Test
-testSubstitution = TestCase $ do
+testSubstitution = TestCase $
     let
-        funcName :: String
-        funcName = "myFunc"
-        parameterList :: TypedElements
-        parameterList = []
         varName :: String
         varName = "s"
         sortName :: String
         sortName = stringSortName
         funcContent :: FuncContent
-        funcContent = subst (Map.fromList [((var varName sortName), constantString "New York")])
+        funcContent = subst (Map.fromList [(var varName sortName, constantString "New York")])
                             (var varName sortName)
-        torXakisInput :: String
-        torXakisInput = createFuncDef funcName parameterList sortName funcContent
         
-        funcKey :: FuncKey
-        funcKey = getFuncKey funcName parameterList sortName
-      in do
+        (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" [] sortName funcContent
+      in
         assertEqual "Substitute" funcContent (getFuncContent torXakisInput funcKey)
 
 testBinaryOperatorList :: Test
@@ -219,100 +162,51 @@ testFunctionList = TestList (map testFunction [   ("toString", [(["b"], boolSort
 
 
 testFunction :: (String, TypedElements, String) -> Test
-testFunction (name, parameterList, sortOut) = TestCase $ do
+testFunction (name, parameterList, sortOut) = TestCase $
     let
-        funcName :: String
-        funcName = "myFunc"
-
         funcCallKey :: FuncKey
         funcCallKey = getFuncKey name parameterList sortOut
         
         funcContent :: FuncContent
         funcContent = functionCall funcCallKey (fromTypedElementsToFuncContents parameterList)
         
-        var name sort = FuncContent (cstrVar (expectVarId name sort) )
-        
-        
-        torXakisInput :: String
-        torXakisInput = createFuncDef funcName parameterList sortOut funcContent
-        
-        funcKey :: FuncKey
-        funcKey = getFuncKey funcName parameterList sortOut
-      in do
+        (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" parameterList sortOut funcContent
+      in
         assertEqual "Function" funcContent (getFuncContent torXakisInput funcKey)
                                                                                                       
                 
 testCallConstant :: Test
-testCallConstant = TestCase $ do
+testCallConstant = TestCase $
     let
-        sortName :: String
-        sortName = intSortName
-        
         constName :: String
         constName = "myConst"
+        
         constDef :: String
-        constDef = createConstDef constName sortName (constantInt 3)
+        constDef = createConstDef constName intSortName (constantInt 3)
         
         constCallKey :: FuncKey
-        constCallKey = getFuncKey constName [] sortName
+        constCallKey = getFuncKey constName [] intSortName
         
-        funcName :: String
-        funcName = "myFunc"
-        parameterList :: TypedElements
-        parameterList = []
-                
         funcContent :: FuncContent
         funcContent = functionCall constCallKey []
         
-        funcDef :: String
-        funcDef = createFuncDef funcName parameterList sortName funcContent
-        
-        torXakisInput :: String
-        torXakisInput = constDef ++ "\n" ++ funcDef
-        
-        funcKey :: FuncKey
-        funcKey = getFuncKey funcName parameterList sortName
-      in do
-        assertEqual "const call" funcContent (getFuncContent torXakisInput funcKey)
+        (funcDef, funcKey) = createFuncDefWithKey "myFunc" [] intSortName funcContent
+      in
+        assertEqual "const call" funcContent (getFuncContent (constDef ++ "\n" ++ funcDef) funcKey)
 
 testUserDefinedFunction :: Test
-testUserDefinedFunction = TestCase $ do
+testUserDefinedFunction = TestCase $
     let
-        sortName :: String
         sortName = intSortName
-        
-        userdefinedFunctionName :: String
-        userdefinedFunctionName = "userDefinedFunction"
-        userDefinedParameterName :: String
         userDefinedParameterName = "userDefinedParameterName"
-        userDefinedParameterList :: TypedElements
         userDefinedParameterList = [([userDefinedParameterName], sortName)]
-        userdefinedFuncDef :: String
-        userdefinedFuncDef = createFuncDef userdefinedFunctionName userDefinedParameterList sortName (var userDefinedParameterName sortName)
-        userdefinedFuncCallKey :: FuncKey
-        userdefinedFuncCallKey = getFuncKey userdefinedFunctionName userDefinedParameterList sortName
+        (userdefinedFuncDef, userdefinedFuncCallKey) = createFuncDefWithKey "userDefinedFunction" userDefinedParameterList sortName (var userDefinedParameterName sortName)
         
-        funcName :: String
-        funcName = "myFunc"
-        parameterList :: TypedElements
-        parameterList = []
-        funcContent :: FuncContent
         funcContent = functionCall userdefinedFuncCallKey [constantInt 0]
-        funcDef :: String
-        funcDef = createFuncDef funcName parameterList sortName funcContent
-        
-        torXakisInput :: String
-        torXakisInput = userdefinedFuncDef ++ "\n" ++ funcDef
-        
-        funcKey :: FuncKey
-        funcKey = getFuncKey funcName parameterList sortName
-      in do
-        assertEqual "call to user defined function" funcContent (getFuncContent torXakisInput funcKey)
+        (funcDef, funcKey) = createFuncDefWithKey "myFunc" [] sortName funcContent
+      in
+        assertEqual "call to user defined function" funcContent (getFuncContent (userdefinedFuncDef ++ "\n" ++ funcDef) funcKey)
 
-        
-        
-        
-        
 createConstBoolFuncContent :: Integer -> [FuncContent]
 createConstBoolFuncContent _ = [constantBool "True", constantBool "False"]
 
@@ -329,8 +223,8 @@ createVarBoolFuncContent _ = [var varBool1Name boolSortName,var varBool2Name boo
 
 createBoolFuncContent :: Integer -> [FuncContent]
 createBoolFuncContent boundary = 
-        (createConstBoolFuncContent boundary)
-     ++ (createVarBoolFuncContent boundary)
+        createConstBoolFuncContent boundary
+     ++ createVarBoolFuncContent boundary
 
 
 createConstIntFuncContent :: Integer -> [FuncContent]
@@ -354,7 +248,7 @@ createUnaryIntFuncContent boundary =
                     minusFuncKey = getFuncKey "-" [(["x"],intSortName)] intSortName
                     absFuncKey = getFuncKey "abs" [(["x"],intSortName)] intSortName
                   in 
-                    concat (map (\funcKey -> map (\x -> functionCall funcKey [x]) (createIntFuncContent (boundary-1))) [minusFuncKey, absFuncKey])
+                    concatMap (\funcKey -> map (\x -> functionCall funcKey [x]) (createIntFuncContent (boundary-1))) [minusFuncKey, absFuncKey]
 
 sumTuple :: Integer -> [(Integer,Integer)]
 sumTuple max =
@@ -367,8 +261,7 @@ createBinaryIntFuncContent :: Integer -> [FuncContent]
 createBinaryIntFuncContent boundary = 
         if boundary <= 1 
             then []
-            else
-                concat (map createInstances (sumTuple (boundary-2) ))
+            else concatMap createInstances (sumTuple (boundary-2) )
     where
          createInstances :: (Integer,Integer) -> [FuncContent] 
          createInstances (n,m) = 
@@ -382,8 +275,7 @@ createSubstituteIntFuncContent :: Integer -> [FuncContent]
 createSubstituteIntFuncContent boundary = 
         if boundary <= 1 
             then []
-            else 
-                concat (map createInstances (sumTuple (boundary-2) ) )
+            else concatMap createInstances (sumTuple (boundary-2) )
     where
          createInstances :: (Integer,Integer) -> [FuncContent] 
          createInstances (n,m) = 
@@ -394,7 +286,7 @@ createSubstituteIntFuncContent boundary =
 
 sumTuple3 :: Integer -> [(Integer,Integer,Integer)]
 sumTuple3 max =
-        concat (map createTuple3 [0..max])
+        concatMap createTuple3 [0..max]
     where 
         createTuple3 :: Integer -> [(Integer,Integer,Integer)]
         createTuple3 n = [(n,x,y) | (x,y) <- sumTuple (max-n)]
@@ -404,8 +296,7 @@ createITEIntFuncContent :: Integer -> [FuncContent]
 createITEIntFuncContent boundary = 
         if boundary <= 2 
             then []
-            else 
-                concat (map createInstances (sumTuple3 (boundary-3) ) )
+            else concatMap createInstances (sumTuple3 (boundary-3) )
     where
          createInstances :: (Integer,Integer,Integer) -> [FuncContent] 
          createInstances (k,l,m) = 
@@ -418,29 +309,20 @@ createITEIntFuncContent boundary =
                 
 createIntFuncContent :: Integer -> [FuncContent]
 createIntFuncContent boundary = 
-        (createConstIntFuncContent boundary)
-     ++ (createVarIntFuncContent boundary)
-     ++ (createUnaryIntFuncContent boundary)
-     ++ (createBinaryIntFuncContent boundary) 
-     ++ (createSubstituteIntFuncContent boundary)
-     ++ (createITEIntFuncContent boundary)
+        createConstIntFuncContent boundary
+     ++ createVarIntFuncContent boundary
+     ++ createUnaryIntFuncContent boundary
+     ++ createBinaryIntFuncContent boundary
+     ++ createSubstituteIntFuncContent boundary
+     ++ createITEIntFuncContent boundary
 
      
 testFuncContent :: FuncContent -> Test
-testFuncContent funcContent = TestCase $ do
+testFuncContent funcContent = TestCase $
     let
-        funcName :: String
-        funcName = "myFunc"
-        
-        parameterList :: TypedElements
-        parameterList = [([varInt1Name, varInt2Name], intSortName),([varBool1Name, varBool2Name], boolSortName)]
-        
-        torXakisInput :: String
-        torXakisInput = createFuncDef funcName parameterList intSortName funcContent
-        
-        funcKey :: FuncKey
-        funcKey = getFuncKey funcName parameterList intSortName
-      in do
+        parameterList = [([varInt1Name, varInt2Name], intSortName),([varBool1Name, varBool2Name], boolSortName)]        
+        (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" parameterList intSortName funcContent
+      in
         assertEqual "FuncContent" funcContent (getFuncContent torXakisInput funcKey)
  
 testCombinatorialInt = TestList (map testFuncContent (createIntFuncContent 5))
