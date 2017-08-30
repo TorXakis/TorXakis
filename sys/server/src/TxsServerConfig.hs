@@ -7,32 +7,42 @@ See LICENSE at root directory of this repository.
 module TxsServerConfig (loadConfig, interpretConfig, Config (..), UnintConfig(..)) where
 
 import           CmdLineParser
-import qualified Config        as CoreConfig
+import           Config
+import           Data.Foldable
+import           Data.Monoid
 import           Network
 
-
-data Config = Config
-  { smtSolver  :: !CoreConfig.SMTSolver
-  , smtLog     :: !Bool
-  , portNumber :: !PortNumber
-  }
-
 -- | Uninterpreted configuration options.
-data UnintConfig = UnintConfig
-  { mSmtSolver  :: !(Maybe CoreConfig.SMTSolver)
-  , mSmtLog     :: !(Maybe Bool)
-  , mPortNumber :: !(Maybe PortNumber)
-  }
+type UnintConfig = CmdLineConfig -- TODO: termporary alias
+-- data UnintConfig = UnintConfig
+--   { mSmtSolver  :: !(Maybe CoreConfig.SMTSolver)
+--   , mSmtLog     :: !(Maybe Bool)
+--   , mPortNumber :: !(Maybe PortNumber)
+--   }
 
 type Error = String
 
-interpretConfig :: CmdLineConfig -> Either [Error] Config
-interpretConfig cfg =
-  Right Config
-          { smtSolver = clSmtSolver cfg
-          , smtLog = clSmtLog cfg
-          , portNumber = clPortNumber cfg
-          }
+interpretConfig :: UnintConfig -> Either [Error] Config
+interpretConfig uCfg = Right $ cfgMod defaultConfig
+  where
+    cfgMod :: Config -> Config
+    cfgMod = appEndo $ foldMap Endo cfgMods
+    cfgMods :: [Config -> Config]
+    cfgMods = [changeSolver, changeSmtLog]
+    changeSolver :: Config -> Config
+    changeSolver cfg =
+      case clSmtSolver uCfg of
+        Nothing ->
+          cfg
+        Just solver ->
+          cfg { selectedSolver = SolverId solver }
+    changeSmtLog cfg =
+      case clSmtLog uCfg of -- TODO: refactor this duplication
+        Nothing ->
+          cfg
+        Just val ->
+          cfg { smtLog = val }
+
 
 -- | Load the configuration options. These options can be specified by
 -- different means:
@@ -49,8 +59,8 @@ loadConfig :: IO CmdLineConfig
 loadConfig = parseCmdLine
 
 -- | File name to look for.
--- configFileName :: String
--- configFileName = "txs.yaml"
+-- configFileName :: FilePath
+-- configFileName = ".torxakis.yml"
 
 -- | Create a `UnintConfig` value by trying to read the configuration options
 -- given in a configuration file. The configuration file is assumed to be named

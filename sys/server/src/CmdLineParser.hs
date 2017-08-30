@@ -20,9 +20,9 @@ import           Network
 
 -- | Configuration options read by the command line.
 data CmdLineConfig = CmdLineConfig
-  { clSmtSolver  :: !SMTSolver
-  , clSmtLog     :: !Bool
-  , clPortNumber :: !PortNumber
+  { clSmtSolver  :: Maybe String
+  , clSmtLog     :: Maybe Bool
+  , clPortNumber :: PortNumber
   } deriving (Eq, Show)
 
 parseCmdLine :: IO CmdLineConfig
@@ -36,19 +36,19 @@ parseCmdLine = execParser opts
 optsP :: Parser CmdLineConfig
 optsP = CmdLineConfig <$> smtSolverP <*> smtLogP <*> portP
 
-smtSolverP :: Parser SMTSolver
-smtSolverP = option auto
+smtSolverP :: Parser (Maybe String)
+smtSolverP = optional $ option auto
              ( long "smt-solver"
              <> help "SMT solver to be used"
-             <> showDefault
-             <> value Z3
-             <> metavar "SOLVER" )
+             <> metavar "SOLVER"
+             )
 
-smtLogP :: Parser Bool
-smtLogP = switch
-          ( long "smt-log"
-          <> help "Log the SMT commands?"
-          )
+smtLogP :: Parser (Maybe Bool)
+smtLogP = optional $
+      flag' True
+        (long "smt-log" <> help "Log the SMT solver commands.")
+  <|> flag' False
+        (long "no-smt-log" <> help "Don't log the SMT solver commands.")
 
 portP :: Parser PortNumber
 portP = argument auto (metavar "PORT")

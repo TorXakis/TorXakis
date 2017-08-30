@@ -38,6 +38,7 @@ import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 
 -- import from local
+import           CmdLineParser
 import           ToProcdef
 import qualified TxsServerConfig     as SC
 
@@ -76,7 +77,7 @@ main = withSocketsDo $ do
       hPutStrLn stderr "Errors found while loading the configuration"
       hPrint stderr xs
     Right config -> do
-      let portNr = SC.portNumber config
+      let portNr = clPortNumber uConfig
       servsock      <- listenOn (PortNumber portNr)
       (hs, host, _) <- accept servsock
       hSetBuffering hs LineBuffering
@@ -87,10 +88,7 @@ main = withSocketsDo $ do
             , IOS.portNr = portNr
             , IOS.servhs = hs
             }
-          coreConfig = CoreConfig.Config
-            { CoreConfig.smtSolver = SC.smtSolver config
-            , CoreConfig.smtLog = SC.smtLog config
-            }
+          coreConfig = config
       TxsCore.runTxsCore coreConfig cmdsIntpr initS
       threadDelay 1000000    -- 1 sec delay on closing
       sClose servsock

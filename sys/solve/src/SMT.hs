@@ -9,7 +9,7 @@ module SMT
 -- ----------------------------------------------------------------------------------------- --
 --
 -- SMT: open a connection to SMT, send constraints, and retrieve a model
--- 
+--
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
@@ -26,8 +26,8 @@ module SMT
 , put
 , valExprToString
 
-, cmdCVC4
-, cmdZ3
+-- , cmdCVC4 TODO: remove this
+-- , cmdZ3
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -35,4 +35,4 @@ module SMT
 
 where
 
-import SMTInternal
+import           SMTInternal

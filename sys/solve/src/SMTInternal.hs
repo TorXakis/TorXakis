@@ -18,48 +18,51 @@ module SMTInternal
 
 where
 
-import Control.Monad.State   (gets,lift,modify)
-import qualified Data.List as List
-import qualified Data.Map  as Map
-import qualified Data.Set  as Set
-import Data.Time
-import Data.String.Utils (endswith,join,replace,startswith,strip)
-import System.IO
-import System.Process
+import           Control.Monad.State (gets, lift, modify)
+import qualified Data.List           as List
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
+import           Data.String.Utils   (endswith, join, replace, startswith,
+                                      strip)
+import           Data.Time
+import           System.IO
+import           System.Process
 
-import SMT2TXS
-import SMTData
-import SMTAlex
-import SMTHappy
-import SolveDefs
-import TXS2SMT
-import TxsDefs
-import TxsUtils
+import           SMT2TXS
+import           SMTAlex
+import           SMTData
+import           SMTHappy
+import           SolveDefs
+import           TXS2SMT
+import           TxsDefs
+import           TxsUtils
 
-cmdCVC4 :: CreateProcess
-cmdCVC4 = proc "cvc4-2017-06-13-win32-opt"
-                ["--lang=smt"
-                , "--incremental"
-                , "--strings-exp"
-                , "--fmf-fun-rlv"
-                , "--uf-ss-fair"
-                , "--no-strings-std-ascii"
-                ] 
 
-cmdZ3 :: CreateProcess
-cmdZ3 = proc    "z3" 
-                ["-smt2"
-                ,"-in"
-             -- , "smt.string_solver=z3str3"      -- Z3 supports multiple string solvers
-                ]
+-- TODO: remove this
+-- cmdCVC4 :: CreateProcess
+-- cmdCVC4 = proc "cvc4-2017-06-13-win32-opt"
+--                 ["--lang=smt"
+--                 , "--incremental"
+--                 , "--strings-exp"
+--                 , "--fmf-fun-rlv"
+--                 , "--uf-ss-fair"
+--                 , "--no-strings-std-ascii"
+--                 ]
+
+-- cmdZ3 :: CreateProcess
+-- cmdZ3 = proc    "z3"
+--                 ["-smt2"
+--                 ,"-in"
+--              -- , "smt.string_solver=z3str3"      -- Z3 supports multiple string solvers
+--                 ]
 
 -- ----------------------------------------------------------------------------------------- --
 -- opens a connection to the SMTLIB interactive shell
--- defines the logic and sets the appropriate options 
+-- defines the logic and sets the appropriate options
 -- and returns a handle for SMT
 -- ----------------------------------------------------------------------------------------- --
 openSolver :: SMT String
-openSolver = do 
+openSolver = do
     n <- getInfo "name"
     v <- getInfo "version"
     SMTInternal.init
@@ -79,9 +82,9 @@ close  =  do
     lift $ hClose hout
     lift $ hClose herr
     case lfmh of
-        Nothing     -> return ()
-        Just lfh    -> lift $ hClose lfh
-    
+        Nothing  -> return ()
+        Just lfh -> lift $ hClose lfh
+
 -- ----------------------------------------------------------------------------------------- --
 -- push
 -- ----------------------------------------------------------------------------------------- --
@@ -95,11 +98,11 @@ pop :: SMT ()
 pop = put "(pop 1)"
 
 -- ----------------------------------------------------------------------------------------- --
--- SMT communication functions via process fork 
+-- SMT communication functions via process fork
 -- ----------------------------------------------------------------------------------------- --
 
 createSMTEnv :: CreateProcess -> Bool -> TxsDefs -> IO SmtEnv
-createSMTEnv cmd lgFlag tdefs =  do 
+createSMTEnv cmd lgFlag tdefs =  do
     (Just hin, Just hout, Just herr, ph) <- createProcess cmd
                                                            { std_out = CreatePipe
                                                            , std_in = CreatePipe
@@ -110,11 +113,11 @@ createSMTEnv cmd lgFlag tdefs =  do
     hSetBuffering hin  NoBuffering         -- alternative: LineBuffering
     hSetBuffering hout NoBuffering
     hSetBuffering herr NoBuffering
-    
+
     hSetEncoding hin  latin1
     hSetEncoding hout latin1
     hSetEncoding herr latin1
-    
+
     -- open SMT logging file
     lg <- if lgFlag
             then do timeZone <- getCurrentTimeZone
@@ -134,18 +137,18 @@ createSMTEnv cmd lgFlag tdefs =  do
     --Trace.trace ("hin encoding = " ++ show ein ++ "\n" ++
     --             "hout encoding = " ++ show eout ++ "\n" ++
     --             "herr encoding = " ++ show eerr ++ "\n" )
-    
-    
+
+
     -- hSetNewlineMode hin  ( NewlineMode { inputNL = LF,   outputNL = CRLF } )
     -- hSetNewlineMode hout ( NewlineMode { inputNL = CRLF, outputNL = LF   } )
 
-    
-    return (SmtEnv hin 
+
+    return (SmtEnv hin
                    hout
                    herr
                    ph
                    lg
-                   (Map.fromList (initialMapInstanceTxsToSmtlib ++ 
+                   (Map.fromList (initialMapInstanceTxsToSmtlib ++
                                    map (\f -> (IdFunc f, error "Transitive closure should prevent calls to CONNECTION (ENCODE/DECODE) related functions.")) (Set.toList (allENDECfuncs tdefs))))
                    TxsDefs.empty        -- TODO: currently txsdefs only uses to remove EN/DECODE functions: combine with addDefinitions?
             )
@@ -157,7 +160,7 @@ addDefinitions txsdefs =  do
     mapI <- gets mapInstanceTxsToSmtlib
     -- exclude earlier defined sorts, e.g. for the pre-defined data types,
     -- such as Bool, Int, and String, because we use the equivalent SMTLIB built-in types
-    let newdefs = filter (\(i, _) -> Map.notMember i mapI) (TxsDefs.toList txsdefs)  
+    let newdefs = filter (\(i, _) -> Map.notMember i mapI) (TxsDefs.toList txsdefs)
         (datas, funcs) = foldr separator ([],[]) newdefs
         mapC           = foldr insertMap mapI datas
                            -- sorts & constructors must be processed first, functions later
@@ -167,7 +170,7 @@ addDefinitions txsdefs =  do
                          -- remove isX, accessors and equal functions related to data types
                          -- remove the transitive closure of function for connections (such as toString and toXml)
                          -- TODO: is this still needed with new ValExpr that have special constructors for these `functions`?
-        mapR = foldr insertMap mapC newfuncs                       
+        mapR = foldr insertMap mapC newfuncs
     put ( funcdefsToSMT mapR (TxsDefs.fromList newfuncs) )
     put "\n\n"
     original <- gets txsDefs
@@ -211,7 +214,7 @@ getSolvable = do
                "sat"        -> Sat
                "unsat"      -> Unsat
                "unknown"    -> Unknown
-               _            -> error ("SMT checkSat: Unexpected result '"++ s ++ "'") 
+               _            -> error ("SMT checkSat: Unexpected result '"++ s ++ "'")
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -233,12 +236,12 @@ getSolution vs    = do
 
 -- ------------------------------------------
 -- get SMT info
--- ------------------------------------------  
+-- ------------------------------------------
 getInfo :: String -> SMT String
 getInfo info = do
     put ("(get-info :" ++ info ++ ")")
     s <- getSMTresponse
-    -- todo: should a parser for a info/name be made? 
+    -- todo: should a parser for a info/name be made?
     let list = strip s in
         if startswith "(" list && endswith ")" list
         then
@@ -252,7 +255,7 @@ getInfo info = do
         else
             error ("SMT response violates brackets in pattern.\nExpected (:" ++ info ++ " \"<name>\")\nActual "++ list)
 
-     
+
 -- ----------------------------------------------------------------------------------------- --
 -- init
 -- ----------------------------------------------------------------------------------------- --
@@ -265,7 +268,7 @@ init  =  do
     put basicDefinitionsSMT
     return ()
 
--- | execute the SMT command given as a string 
+-- | execute the SMT command given as a string
 put :: String -> SMT ()
 put cmd  = do
     lg <- gets logFileHandle
@@ -274,7 +277,7 @@ put cmd  = do
   where
         putLine :: String -> SMT ()
         putLine cmd'  = do
-            hin <- gets inHandle 
+            hin <- gets inHandle
             -- execute command
             lift $ hPutStrLn hin cmd'
             herr <- gets errHandle
@@ -299,7 +302,7 @@ checkErrors herr prefix  = do
         []  -> return ()
         _   -> let pes = unlines $ map (prefix ++) (lines errors) in
                 putStrLn pes
-     
+
 -- ---------------------------------------------------------------------------------------- --
 -- read all available data from given handle
 -- this operation doesn't block when no data can be read
@@ -317,7 +320,7 @@ getAllInput h = do
 -- this operation is blocking until some data can be read
 getResponse :: Handle -> Integer -> IO String
 getResponse h count = do
-    s <- hGetLine h 
+    s <- hGetLine h
     let newCount = count + countBracket s in
         if 0 == newCount
             then return s
@@ -332,21 +335,21 @@ getSMTresponse = do
 
 countBracket :: String -> Integer
 countBracket ('"':xs) = skipCountInsideString xs          -- ignore brackets inside strings
-countBracket ('(':xs) = 1 + countBracket xs 
-countBracket (')':xs) = -1 + countBracket xs 
-countBracket (_:xs)   = countBracket xs 
-countBracket [] = 0
+countBracket ('(':xs) = 1 + countBracket xs
+countBracket (')':xs) = -1 + countBracket xs
+countBracket (_:xs)   = countBracket xs
+countBracket []       = 0
 
 skipCountInsideString :: String -> Integer
 skipCountInsideString ('"':'"':xxs) = skipCountInsideString xxs       -- escape quote, stay in string
-skipCountInsideString ('"':xs) = countBracket xs            -- outside string
-skipCountInsideString (_:xs)   = skipCountInsideString xs
-skipCountInsideString []     = 0
+skipCountInsideString ('"':xs)      = countBracket xs            -- outside string
+skipCountInsideString (_:xs)        = skipCountInsideString xs
+skipCountInsideString []            = 0
 
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --
 
 hPutSmtLog :: Maybe Handle -> String -> IO ()
-hPutSmtLog (Just lg) s  = hPutStrLn lg s
-hPutSmtLog Nothing   _  = return ()
+hPutSmtLog (Just lg) s = hPutStrLn lg s
+hPutSmtLog Nothing   _ = return ()
