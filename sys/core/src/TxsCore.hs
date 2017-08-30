@@ -930,18 +930,14 @@ txsPath  =  do
            return []
 
 -- | Return the menu, i.e., all possible actions.
-txsMenu :: String                               -- ^ kind (valid values are "mod" and "purp")
-        -> String                               -- ^ what (valid values are "all", "in", and "out")
-        -> EnvData.StateNr                      -- ^ state number.
+txsMenu :: String                               -- ^ kind (valid values are "mod", "purp", or "map")
+        -> String                               -- ^ what (valid values are "all", "in", "out", or a <goal name>)
         -> IOC.IOC BTree.Menu
-txsMenu kind what stnr  =  do
+txsMenu kind what  =  do
      curState <- gets (IOC.curstate . IOC.state)
-     let stateNr = if stnr == -1 then curState else stnr
      case kind of
-       "mod"  -> do txsGoTo stateNr
-                    menuIn   <- Ioco.iocoModelMenuIn
+       "mod"  -> do menuIn   <- Ioco.iocoModelMenuIn
                     menuOut  <- Ioco.iocoModelMenuOut
-                    txsGoTo curState
                     case what of
                       "all" -> return $ menuIn ++ menuOut
                       "in"  -> return menuIn
@@ -949,10 +945,8 @@ txsMenu kind what stnr  =  do
                       _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                                 "error in menu" ]
                                   return []
-       "purp" -> do txsGoTo stateNr
-                    gmenu <- Purpose.goalMenu what
-                    txsGoTo curState
-                    return gmenu
+       "map"  -> do Mapper.mapperMenu
+       "purp" -> do Purpose.goalMenu what
        _      -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
                     return []
 

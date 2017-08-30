@@ -19,6 +19,7 @@ module Mapper
               -- maps actions to actions
               -- if no mapper or error then idenity
               -- quiescence etc is always identity
+, mapperMenu  -- menu of current mapper state
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -97,6 +98,22 @@ mapperMap act@(TxsDDefs.Act acts)  =  do
 
 mapperMap act@TxsDDefs.ActQui = return act
 
+
+-- ----------------------------------------------------------------------------------------- --
+-- mapperMenu :  menu of current mapper state
+
+mapperMenu :: IOC.IOC BTree.Menu
+mapperMenu = do
+  maybeMapperDef <- gets (IOC.mapperdef . IOC.state)
+  mapSts         <- gets (IOC.mapsts . IOC.state)
+  case (maybeMapperDef, mapSts) of
+    ( Nothing, _  ) -> return []
+    ( _      , [] ) -> return []
+    ( Just (TxsDefs.MapperDef chins chouts syncs _), mtree) -> do
+        return $ Behave.behMayMenu syncs mtree
+
+
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
+
