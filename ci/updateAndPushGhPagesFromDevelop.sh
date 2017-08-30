@@ -2,7 +2,6 @@
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
 
-stack haddock
 git remote remove origin;
 git remote add origin https://github.com/TorXakis/TorXakis.git;
 git fetch;

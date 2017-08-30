@@ -1,2 +1,2 @@
-rm ../*.log;
-rm ../*.zip;
+rm ./*.log;
+rm ./*.zip;
