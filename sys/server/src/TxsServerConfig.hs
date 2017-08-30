@@ -3,14 +3,27 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+{-# LANGUAGE DeriveGeneric #-}
 -- | Configuration related functionality for TorXakis server.
-module TxsServerConfig (loadConfig, interpretConfig, Config (..), UnintConfig(..)) where
+module TxsServerConfig
+  ( loadConfig
+  , interpretConfig
+  , Config (..)
+  , UnintConfig(..)
+  , loadConfigFromFile -- TODO: hide this.
+  )
+where
 
 import           CmdLineParser
 import           Config
+import           Data.Aeson.Types
 import           Data.Foldable
 import           Data.Monoid
+import           Data.Yaml
+import           GHC.Generics
 import           Network
+import           System.Directory
+import           System.FilePath
 
 -- | Uninterpreted configuration options.
 type UnintConfig = CmdLineConfig -- TODO: termporary alias
@@ -59,8 +72,28 @@ loadConfig :: IO CmdLineConfig
 loadConfig = parseCmdLine
 
 -- | File name to look for.
--- configFileName :: FilePath
--- configFileName = ".torxakis.yml"
+configFileName :: FilePath
+configFileName = ".torxakis.yaml"
+
+-- | Structure of the configuration file.
+data FileConfig = FileConfig
+  { -- | Log all SMT commands?
+    fcSmtLog           :: Maybe Bool
+    -- | Available solvers that can be chosen from.
+  , fcAvailableSolvers :: [SolverFileConfig]
+  , fcSelectedSolver   :: Maybe String
+  } deriving (Eq, Show, Generic)
+
+instance FromJSON FileConfig where
+    parseJSON = genericParseJSON defaultOptions
+
+data SolverFileConfig = SolverFileConfig
+  { fcSolverId       :: String
+  , fcExecutableName :: FilePath
+  , fcFlags          :: [String]
+  } deriving (Eq, Show, Generic)
+
+instance FromJSON SolverFileConfig
 
 -- | Create a `UnintConfig` value by trying to read the configuration options
 -- given in a configuration file. The configuration file is assumed to be named
@@ -74,6 +107,19 @@ loadConfig = parseCmdLine
 -- The search proceeds in the order listed above, and it stops as soon as a
 -- configuration file is found.
 --
--- loadConfigFromFile :: IO UnintConfig
--- loadConfigFromFile = undefined
+loadConfigFromFile :: IO (Either ParseException FileConfig)
+loadConfigFromFile = do
+  -- Check for the configuration file in the current directory.
+  fileInCurrentDir <- doesFileExist configFileName
+  if fileInCurrentDir
+    then decodeFileEither configFileName
+    else do
+    home <- getHomeDirectory
+    let path = home </> configFileName
+    fileInHomeDir <- doesFileExist path
+    if fileInHomeDir
+      then decodeFileEither path
+      else return (Left $ AesonException path) -- TODO: this should be another exception (like file not found).
+
+
 

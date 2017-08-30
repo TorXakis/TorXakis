@@ -36,7 +36,7 @@ newtype SolverId = SolverId { solverId :: String }
 data Config = Config
   { -- | Log all SMT commands?
     smtLog           :: Bool
-    -- | Available solvers that can be choosen from.
+    -- | Available solvers that can be chosen from.
   , availableSolvers :: Map.Map SolverId SolverConfig
   , selectedSolver   :: SolverId
   } deriving (Eq, Show)

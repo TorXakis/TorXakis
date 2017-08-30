@@ -5,7 +5,7 @@ license:                BSD3
 license-file:           license.txt
 author:                 Jan Tretmans
                       , Pierre van de Laar
-maintainer:          
+maintainer:
                       , pierre.vandelaar@tno.nl
 copyright:              TNO
 category:               Web
@@ -25,14 +25,14 @@ library
 
 executable txsserver
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
-  
+
   hs-source-dirs:       src
   main-is:              TxsServer.hs
-  other-modules:        
+  other-modules:
                         ToProcdef
                       , CmdLineParser
                       , TxsServerConfig
-                      
+
   build-depends:        base
                       , containers
                       , deepseq
@@ -40,6 +40,11 @@ executable txsserver
                       , mtl
                       , MissingH
                       , optparse-applicative
+                      , directory
+                      , yaml
+                      , directory
+                      , filepath
+                      , aeson
 
                       , cnect
                       , core
@@ -62,7 +67,7 @@ test-suite server-test
                      , optparse-applicative
                      , QuickCheck
                      , network
-                     
-                     , coreenv                     
+
+                     , coreenv
   ghc-options:       -threaded -rtsopts -with-rtsopts=-N
-  default-language: Haskell2010  
+  default-language: Haskell2010
