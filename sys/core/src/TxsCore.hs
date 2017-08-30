@@ -945,8 +945,8 @@ txsMenu kind what  =  do
                       _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                                 "error in menu" ]
                                   return []
-       "map"  -> do Mapper.mapperMenu
-       "purp" -> do Purpose.goalMenu what
+       "map"  -> Mapper.mapperMenu
+       "purp" -> Purpose.goalMenu what
        _      -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
                     return []
 

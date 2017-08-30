@@ -109,7 +109,7 @@ mapperMenu = do
   case (maybeMapperDef, mapSts) of
     ( Nothing, _  ) -> return []
     ( _      , [] ) -> return []
-    ( Just (TxsDefs.MapperDef chins chouts syncs _), mtree) -> do
+    ( Just (TxsDefs.MapperDef chins chouts syncs _), mtree) ->
         return $ Behave.behMayMenu syncs mtree
 
 
