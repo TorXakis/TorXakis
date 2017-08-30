@@ -2,12 +2,13 @@
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
 
+stack haddock
 git remote remove origin;
 git remote add origin https://github.com/TorXakis/TorXakis.git;
 git fetch;
 git checkout gh-pages;
 git rebase develop;
-cp -a $CACHE_DIR/.stack-work/install/x86_64-linux/lts-8.13/8.0.2/doc/all/. ./doc/;
+cp -r $CACHE_DIR/.stack-work/install/x86_64-linux/lts-8.13/8.0.2/doc/. ./doc/;
 git add .;
 commitMsg="Haddock @ $(date +%Y%m%d_%H%M%S)";
 git commit -m "$(echo $commitMsg)";
