@@ -12,9 +12,9 @@ else
     curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C $CACHE_DIR/bin '*/stack'
 fi
 
-if [ -f $CACHE_DIR/bin/cvc4-2017-06-13-win32-opt ]
+if [ -f $CACHE_DIR/bin/cvc4 ]
 then
-    echo "$CACHE_DIR/bin/cvc4-2017-06-13-win32-opt found in cache."
+    echo "$CACHE_DIR/bin/cvc4 found in cache."
 else
     curl -L -O https://github.com/TorXakis/Dependencies/releases/download/v0.3.0_linux/cvc4-1.5-x86_64-linux-opt
     # Making symbolic links to the cvc4 executable to get the build working
