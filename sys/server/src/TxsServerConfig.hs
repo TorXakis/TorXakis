@@ -54,42 +54,24 @@ interpretConfig uCfg =
     cfgMod = appEndo $ foldMap Endo (clCfgMods ++ fcCfgMods)
     clCfgMods = [clChangeSolver, clChangeSmtLog, fcChangeAvailableSolvers]
     fcCfgMods = [fcChangeSolver, fcChangeSmtLog]
-    clChangeSolver cfg =
-      case (clSmtSolver . cmdLineCfg) uCfg of
-        Nothing ->
-          cfg
-        Just solver ->
-          cfg { selectedSolver = SolverId solver }
-    clChangeSmtLog cfg =
-      case (clSmtLog . cmdLineCfg) uCfg of -- TODO: refactor this duplication
-        Nothing ->
-          cfg
-        Just val ->
-          cfg { smtLog = val }
-    fcChangeSolver cfg =
-      case fileCfg uCfg >>= fcSelectedSolver of
-        Nothing ->
-          cfg
-        Just solver ->
-          cfg { selectedSolver = SolverId solver }
-    fcChangeSmtLog cfg =
-      case fileCfg uCfg >>= fcSmtLog of -- TODO: refactor this duplication
-        Nothing ->
-          cfg
-        Just val ->
-          cfg { smtLog = val }
-    fcChangeAvailableSolvers cfg =
-      case fileCfg uCfg >>= fcAvailableSolvers of
-        Nothing -> cfg
-        Just xs ->
-          cfg { availableSolvers = addSolvers xs (availableSolvers cfg)}
-      where
-        addSolvers newSolvers solversMap =
-          Map.fromList (toKV <$> newSolvers) <> solversMap
-        toKV cfg =
-          ( SolverId (fcSolverId cfg)
-          , SolverConfig (fcExecutableName cfg) (fromMaybe [] . fcFlags $ cfg)
-          )
+    clChangeSolver =
+      updateCfg ((clSmtSolver . cmdLineCfg) uCfg) changeSolver
+    clChangeSmtLog  =
+      updateCfg ((clSmtLog . cmdLineCfg) uCfg) changeLog
+    fcChangeSolver =
+      updateCfg (fileCfg uCfg >>= fcSelectedSolver) changeSolver
+    fcChangeSmtLog =
+      updateCfg (fileCfg uCfg >>= fcSmtLog) changeLog
+    fcChangeAvailableSolvers =
+      updateCfg (Map.fromList . map toKV <$>
+                  (fileCfg uCfg >>= fcAvailableSolvers)
+                )
+                addSolvers
+    toKV solverFC =
+      ( SolverId (fcSolverId solverFC)
+      , SolverConfig (fcExecutableName solverFC)
+                     (fromMaybe [] . fcFlags $ solverFC)
+      )
 
 -- | Load the configuration options. These options can be specified by
 -- different means:

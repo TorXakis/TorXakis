@@ -14,12 +14,17 @@ module Config
   , cvc4DefaultProc
   , z3DefaultProc
   , SolverConfig (..)
+  , changeSolver
+  , changeLog
+  , addSolvers
+  , updateCfg
   )
 where
 
 import           Data.Map       (Map)
 import qualified Data.Map       as Map
 import           Data.Maybe
+import           Data.Monoid
 import           System.Process
 
 data SolverConfig = SolverConfig
@@ -41,6 +46,20 @@ data Config = Config
   , availableSolvers :: Map.Map SolverId SolverConfig
   , selectedSolver   :: SolverId
   } deriving (Eq, Show)
+
+-- | Change the selected solver.
+changeSolver :: Config -> String -> Config
+changeSolver cfg solver = cfg { selectedSolver = SolverId solver }
+
+changeLog :: Config -> Bool -> Config
+changeLog cfg b = cfg { smtLog = b }
+
+addSolvers :: Config -> Map.Map SolverId SolverConfig -> Config
+addSolvers cfg newSolvers = cfg { availableSolvers = newSolvers <> availableSolvers cfg }
+
+updateCfg :: Maybe a -> (Config -> a -> Config) -> Config -> Config
+updateCfg ma f cfg =
+  maybe cfg (f cfg) ma
 
 -- | TorXakis default configuration
 defaultConfig :: Config
