@@ -24,6 +24,7 @@ import           SolveDefs.Params
 
 import           Config
 import           Data.Maybe
+import           TestSolvers
 
 testExternalList :: Test
 testExternalList =

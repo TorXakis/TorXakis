@@ -10,9 +10,6 @@ module Config
   , getProc
   , defaultConfig
   , SolverId (..)
-  , defaultSMTProcs
-  , cvc4DefaultProc
-  , z3DefaultProc
   , SolverConfig (..)
   , changeSolver
   , changeLog
@@ -106,19 +103,3 @@ getProc :: Config -> Maybe CreateProcess
 getProc cfg = do
   solver <- Map.lookup (selectedSolver cfg) (availableSolvers cfg)
   return $ proc (execName solver) (smtArgs solver)
-
--- | Default SMT solvers. These are used only in test code.
---
--- TODO: check if this can't be placed somewhere else, or whether it is
--- necessary.
-defaultSMTProcs :: [CreateProcess]
-defaultSMTProcs =
-  [ cvc4DefaultProc
-  , z3DefaultProc
-  ]
-
-cvc4DefaultProc :: CreateProcess
-cvc4DefaultProc = fromJust $ getProc defaultConfig { selectedSolver = cvc4default }
-
-z3DefaultProc :: CreateProcess
-z3DefaultProc = fromJust $ getProc defaultConfig { selectedSolver = z3default }

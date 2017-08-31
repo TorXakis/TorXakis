@@ -27,7 +27,7 @@ import           SMTData
 import           SolveDefs
 import           SolveDefs.Params
 
-import           Config
+import           TestSolvers
 
 testPushPopList :: Test
 testPushPopList =

@@ -29,16 +29,15 @@ import           SMT
 import           SMTData
 import           SolveDefs
 import           SolveDefs.Params
-
-import           Config
+import           TestSolvers
 
 import           RegexAlex
 import           RegexPosixHappy
 
 -- ----------------------------------------------------------------------------
 smtSolvers :: [(String, CreateProcess)]
-smtSolvers =  [ ("CVC4", cvc4DefaultProc)
-              , ("Z3", z3DefaultProc)
+smtSolvers =  [ ("CVC4", cmdCVC4)
+              , ("Z3", cmdZ3)
               ]
 
 testConstraintList :: Test

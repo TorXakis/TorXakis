@@ -21,7 +21,7 @@ import           SolveDefs.Params
 import           StdTDefs
 import           TxsDefs
 
-import           Config
+import           TestSolvers
 
 testMultipleInstancesList :: Test
 testMultipleInstancesList = TestList $ testsSolvers defaultSMTProcs

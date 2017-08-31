@@ -10,7 +10,7 @@ module TxsServerConfig
   , interpretConfig
   , Config (..)
   , UnintConfig(..)
-  , loadConfigFromFile -- TODO: hide this.
+  , loadConfigFromFile
   )
 where
 
@@ -159,5 +159,3 @@ findConfigFile :: IO (Maybe FilePath)
 findConfigFile = do
   home <- getHomeDirectory
   findM doesFileExist [configFileName, home </> configFileName]
-
-

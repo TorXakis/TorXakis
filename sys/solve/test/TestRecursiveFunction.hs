@@ -30,7 +30,7 @@ import           SolveDefs.Params
 import           HelperFuncDefToSMT
 import           HelperVexprToSMT
 
-import           Config
+import           TestSolvers
 
 -- --------------------------------------------------------------
 testRecursiveFunctionList :: Test
@@ -40,9 +40,11 @@ testRecursiveFunctionList =
                          )
                          defaultSMTProcs
 
+
+
 testList :: [(String, CreateProcess -> Test)]
 testList = [
-        ("recursive functie", testRecursiveFunction)
+        ("recursive function", testRecursiveFunction)
     ]
 ---------------------------------------------------------------------------
 -- Tests

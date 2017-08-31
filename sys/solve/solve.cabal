@@ -75,6 +75,7 @@ test-suite SmtSolver-WhiteBox
                       , TestSMTValue
                       , TestSortDefToSMT
                       , TestVexprToSMT
+                      , TestSolvers
 
                       , FreeVar
                       , RandIncrementChoice
@@ -122,6 +123,7 @@ test-suite SmtSolver-BlackBox
   other-modules:        TestConstraint
                       , TestMultipleInstances
                       , TestPushPop
+                      , TestSolvers
 
   build-depends:        base
                       , containers
