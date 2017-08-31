@@ -22,3 +22,4 @@ The SMT Solvers are assumed to be located on the [PATH](https://en.wikipedia.org
 
 TorXakis uses [javac](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) and [GNU Make](https://www.gnu.org/software/make/) for development acceptance tests.
 
+[Haddock Docs](doc/index.html)
