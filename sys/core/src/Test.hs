@@ -57,21 +57,23 @@ testIn act@TxsDDefs.Act{} step = do
        then do                                              -- input done on sut
          IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                        $ TxsShow.showN step 6 ++ ":  IN:  " ++ TxsShow.fshow act ]
+         nextBehTrie act
          done <- iocoModelAfter act
          if  done
            then return (act,  TxsDDefs.Pass)
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                  "proposed input not possible on model" ]
-                   return (act, TxsDDefs.Fail act)        -- input done on sut, not on btree
+                   return (act, TxsDDefs.Fail act)          -- input done on sut, not on btree
        else do                                              -- output was faster
          act' <- mapperMap mact'                            -- map output to model action
          IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                        $ TxsShow.showN step 6 ++ ":  OUT: " ++ TxsShow.fshow act' ]
-         done <- iocoModelAfter act
+         nextBehTrie act'
+         done <- iocoModelAfter act'
          if  done
-           then return (act', TxsDDefs.Pass)           -- output act' `Elem` menuOut
+           then return (act', TxsDDefs.Pass)                -- output act' `Elem` menuOut
            else do expected
-                   return (act', TxsDDefs.Fail act')      -- output act' `notElem` menuOut
+                   return (act', TxsDDefs.Fail act')        -- output act' `notElem` menuOut
  
 testIn TxsDDefs.ActQui _ = do
      IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
@@ -89,11 +91,12 @@ testOut step = do
      act     <- mapperMap mact                              -- map output to model action
      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                    $ TxsShow.showN step 6 ++ ":  OUT: " ++ TxsShow.fshow act ]
+     nextBehTrie act
      done <- iocoModelAfter act
      if  done
-       then return (act, TxsDDefs.Pass)                -- output act `elem` menuOut
+       then return (act, TxsDDefs.Pass)                     -- output act `elem` menuOut
        else do expected
-               return (act, TxsDDefs.Fail act)            -- output act `notElem` menuOut
+               return (act, TxsDDefs.Fail act)              -- output act `notElem` menuOut
 
 -- ----------------------------------------------------------------------------------------- --
 -- expected :  expected outputs after fail
@@ -151,21 +154,20 @@ testIOCO depth lastDelta step =
      if  depth == 0
        then return TxsDDefs.Pass
        else do
-         ioRand   <- lift $ randomRIO (False,True)                  -- random for in- or output
+         ioRand   <- lift $ randomRIO (False,True)                 -- random for in- or output
          modMenu  <- iocoModelMenuIn
          input    <- randMenu modMenu
          [(_,parval)] <- IOC.getParams ["param_Test_inputEager"]
-         let iochoice = case (read parval::Integer) of                 -- input (True) or output
+         let iochoice = case (read parval::Integer) of             -- input (True) or output
                              0 -> isJust input && ( lastDelta || ioRand )
                              1 -> error "TXS: undefined input-eagerness level\n"
                              2 -> error "TXS: undefined input-eagerness level\n"
                              3 -> isJust input
                              _ -> error "TXS: undefined input-eagerness level\n"
          if  iochoice
-           then do                                                -- try input, input/=Nothing
+           then do                                                 -- try input, input/=Nothing
              let Just inp  =  input
              (act,verdict) <- testIn inp step
-             nextBehTrie act
              case verdict of
                TxsDDefs.Pass      -> testIOCO (depth-1) (act==TxsDDefs.ActQui) (step+1)
                TxsDDefs.Fail act' -> return $ TxsDDefs.Fail act'
@@ -174,7 +176,6 @@ testIOCO depth lastDelta step =
              if not lastDelta
                then do                                            -- observe output
                  (act,verdict) <- testOut step
-                 nextBehTrie act
                  case verdict of
                    TxsDDefs.Pass      -> testIOCO (depth-1) (act==TxsDDefs.ActQui) (step+1)
                    TxsDDefs.Fail act' -> return $ TxsDDefs.Fail act'
@@ -224,7 +225,6 @@ testIOCOfullPurp depth lastDelta step =
              -- lift $ hPutStrLn stderr $ "\n***inp: " ++ (show inp)
              (act, verdict) <- testIn inp step                      -- act can input or output
              purpReady      <- purpAfter act
-             nextBehTrie act
              -- lift $ hPutStrLn stderr $ "\n***purpReady: " ++ (show purpReady)
              case (verdict, purpReady) of
                (TxsDDefs.Pass    , False) -> testIOCOfullPurp (depth-1) (act==TxsDDefs.ActQui) (step+1)
@@ -239,7 +239,6 @@ testIOCOfullPurp depth lastDelta step =
                then do                                              -- observe output
                  (act,verdict) <- testOut step
                  purpReady     <- purpAfter act
-                 nextBehTrie act
                  case (verdict, purpReady) of
                    (TxsDDefs.Pass    , False) -> testIOCOfullPurp (depth-1) (act==TxsDDefs.ActQui) (step+1)
                    (TxsDDefs.Pass    , True ) -> do purpVerdict
