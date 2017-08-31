@@ -80,20 +80,38 @@ data FileConfig = FileConfig
   { -- | Log all SMT commands?
     fcSmtLog           :: Maybe Bool
     -- | Available solvers that can be chosen from.
-  , fcAvailableSolvers :: [SolverFileConfig]
+  , fcAvailableSolvers :: Maybe [SolverFileConfig]
   , fcSelectedSolver   :: Maybe String
   } deriving (Eq, Show, Generic)
 
 instance FromJSON FileConfig where
-    parseJSON = genericParseJSON defaultOptions
+    parseJSON = genericParseJSON
+      defaultOptions
+      { fieldLabelModifier = fieldsMapping
+      , omitNothingFields  = True
+      }
+      where
+        fieldsMapping "fcSelectedSolver"   = "selected-solver"
+        fieldsMapping "fcAvailableSolvers" = "available-solvers"
+        fieldsMapping "fcSmtLog"           = "smt-log"
+        fieldsMapping x                    = x
 
 data SolverFileConfig = SolverFileConfig
   { fcSolverId       :: String
   , fcExecutableName :: FilePath
-  , fcFlags          :: [String]
+  , fcFlags          :: Maybe [String]
   } deriving (Eq, Show, Generic)
 
-instance FromJSON SolverFileConfig
+instance FromJSON SolverFileConfig where
+  parseJSON = genericParseJSON
+    defaultOptions
+    { fieldLabelModifier = fieldsMapping
+    , omitNothingFields  = True
+    }
+    where fieldsMapping "fcSolverId"       = "id"
+          fieldsMapping "fcExecutableName" = "executable-name"
+          fieldsMapping "fcFlags"          = "flags"
+          fieldsMapping x                  = x
 
 -- | Create a `UnintConfig` value by trying to read the configuration options
 -- given in a configuration file. The configuration file is assumed to be named
