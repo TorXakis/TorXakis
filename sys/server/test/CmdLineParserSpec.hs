@@ -21,7 +21,7 @@ toCmdArgs :: CmdLineConfig -> [String]
 toCmdArgs cfg
   =  [ show (clPortNumber cfg) ]
   ++ ["--smt-solver" | isJust (clSmtSolver cfg)]
-  ++ [ show solver | isJust (clSmtSolver cfg)
+  ++ [ solver | isJust (clSmtSolver cfg)
                    , let solver = fromJust (clSmtSolver cfg)]
   ++ ["--smt-log" |  isJust (clSmtLog cfg)
                   && fromJust (clSmtLog cfg)]

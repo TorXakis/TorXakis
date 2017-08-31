@@ -28,6 +28,7 @@ import           Data.Time
 import           System.IO
 import           System.Process
 
+import           Control.Exception   (onException)
 import           SMT2TXS
 import           SMTAlex
 import           SMTData
@@ -108,6 +109,7 @@ createSMTEnv cmd lgFlag tdefs =  do
                                                            , std_in = CreatePipe
                                                            , std_err = CreatePipe
                                                            }
+
           -- TODO: bug#1954 https://esi-redmine.tno.nl/issues/1954
           -- changes needed here?
     hSetBuffering hin  NoBuffering         -- alternative: LineBuffering
@@ -152,6 +154,7 @@ createSMTEnv cmd lgFlag tdefs =  do
                                    map (\f -> (IdFunc f, error "Transitive closure should prevent calls to CONNECTION (ENCODE/DECODE) related functions.")) (Set.toList (allENDECfuncs tdefs))))
                    TxsDefs.empty        -- TODO: currently txsdefs only uses to remove EN/DECODE functions: combine with addDefinitions?
             )
+
 -- ----------------------------------------------------------------------------------------- --
 -- addDefinitions
 -- ----------------------------------------------------------------------------------------- --
@@ -331,7 +334,16 @@ getResponse h count = do
 getSMTresponse :: SMT String
 getSMTresponse = do
     hout <- gets outHandle
-    lift $ getResponse hout 0
+    ph <- gets smtProcessHandle
+    lift $ getResponse hout 0 `onException` exitWithError ph
+    where
+      exitWithError procHandle = do
+        ec <- getProcessExitCode procHandle
+        -- The output and error handles of the SMT process are closed when this
+        -- error occurs (maybe because they're pipes?) so no information can be
+        -- given to the user, other than this.
+        putStrLn $ "getSMTresponse: SMT exited with status: " ++ show ec
+        error "getSMTresponse: Could not get a response from the solver"
 
 countBracket :: String -> Integer
 countBracket ('"':xs) = skipCountInsideString xs          -- ignore brackets inside strings

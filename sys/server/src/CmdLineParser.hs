@@ -37,7 +37,7 @@ optsP :: Parser CmdLineConfig
 optsP = CmdLineConfig <$> smtSolverP <*> smtLogP <*> portP
 
 smtSolverP :: Parser (Maybe String)
-smtSolverP = optional $ option auto
+smtSolverP = optional $ strOption
              ( long "smt-solver"
              <> help ("SMT solver to be used. It must be selected from "
                      ++ "the list of available solvers.")

@@ -1,4 +1,4 @@
-selected-solver: "z3"
+selected-solver: "cvc4"
 available-solvers:
 - solver-id: "z3"
   executable-name: "z3"
