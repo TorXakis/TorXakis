@@ -1,3 +1,5 @@
+![TorXakis logo](https://user-images.githubusercontent.com/661967/29917789-506f21fa-8e43-11e7-9804-596decacebe4.png "TorXakis")
+
 [![Build Status](https://semaphoreci.com/api/v1/capitanbatata/torxakis/branches/develop/shields_badge.svg)](https://semaphoreci.com/capitanbatata/torxakis)[![Code Climate](https://codeclimate.com/github/TorXakis/TorXakis/badges/gpa.svg)](https://codeclimate.com/github/TorXakis/TorXakis)
 # TorXakis
 
@@ -22,4 +24,4 @@ The SMT Solvers are assumed to be located on the [PATH](https://en.wikipedia.org
 
 TorXakis uses [javac](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) and [GNU Make](https://www.gnu.org/software/make/) for development acceptance tests.
 
-[Haddock Docs](doc/index.html)
+[Haddock Docs](https://torxakis.github.io/TorXakis/doc/index.html)
