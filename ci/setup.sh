@@ -17,10 +17,13 @@ then
     echo "$CACHE_DIR/bin/cvc4-2017-06-13-win32-opt found in cache."
 else
     curl -L -O https://github.com/TorXakis/Dependencies/releases/download/v0.3.0_linux/cvc4-1.5-x86_64-linux-opt
-    # rename cvc4 executable to get the build working todo: parametrize this in SMTInternal.hs
-    mv cvc4-1.5-x86_64-linux-opt cvc4-2017-06-13-win32-opt
-    mv cvc4-* $CACHE_DIR/bin
-    chmod +x $CACHE_DIR/bin/cvc4-2017-06-13-win32-opt
+    # Making symbolic links to the cvc4 executable to get the build working
+    # TODO: remove this once everybody is using the new configuration file
+    ln -s cvc4-1.5-x86_64-linux-opt cvc4-2017-06-13-win32-opt
+    # Using cvc4 as executable name to avoid having to update the configuration file in CI.
+    ln -s cvc4-1.5-x86_64-linux-opt cvc4
+    mv cvc4* $CACHE_DIR/bin
+    chmod +x $CACHE_DIR/bin/cvc4*
 fi
 
 if [ -d $CACHE_DIR/z3 ]
