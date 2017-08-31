@@ -108,7 +108,7 @@ instance FromJSON SolverFileConfig where
     { fieldLabelModifier = fieldsMapping
     , omitNothingFields  = True
     }
-    where fieldsMapping "fcSolverId"       = "id"
+    where fieldsMapping "fcSolverId"       = "solver-id"
           fieldsMapping "fcExecutableName" = "executable-name"
           fieldsMapping "fcFlags"          = "flags"
           fieldsMapping x                  = x
