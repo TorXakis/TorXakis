@@ -59,9 +59,14 @@ PURPDEF  Purp1
         CHAN IN    Action
         CHAN OUT   Result
 
-        GOAL m7  ::=  Action !Plus(4,7)   >->  Result ?r  >->
-                      Action !Minus(4,7)  >->  Result ?r  >->  HIT
-
+        GOAL m1  ::=  Action !Plus (4,7)      >->  Result ?r  >->
+                      Action !Minus(4,7)      >->  Result ?r  >->  HIT
+        GOAL m2  ::=  Action !Plus (-1,-7)    >->  Result ?r  >->
+                      Action !Minus(-1,-7)    >->  Result ?r  >->  HIT
+        GOAL m3  ::=  Action !Plus (33,-42)   >->  Result ?r  >->
+                      Action !Minus(33,-42)   >->  Result ?r  >->  HIT
+        GOAL m4  ::=  Action !Plus (-17,123)  >->  Result ?r  >->
+                      Action !Minus(-17,123)  >->  Result ?r  >->  HIT
 ENDDEF
 
 
@@ -103,6 +108,17 @@ PURPDEF  Purp3
         GOAL p3  ::=  p3 [ Action, Result ] ( 0 )
 
 ENDDEF
+
+
+{-
+PURPDEF  Replay
+    ::=
+        CHAN IN    Action
+        CHAN OUT   Result
+
+        GOAL replay  ::=  replayProc [ Action, Result ] ( )
+ENDDEF
+-}
 
 
 -- ----------------------------------------------------------------------------------------- --

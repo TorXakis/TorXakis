@@ -94,7 +94,8 @@ setOut fname iomode  =  do
 putOut :: String -> UIO ()
 putOut s  =  do
      hout <- gets uihout
-     lift $ hPutStrLn hout $ "TXS >>  " ++ s
+     let pre = if hout == stdout then "TXS >>  " else ""
+      in lift $ hPutStrLn hout $ pre ++ s
 
 -- ----------------------------------------------------------------------------------------- --
 

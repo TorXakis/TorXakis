@@ -858,16 +858,19 @@ cmdTrace args = do
      path  <- lift TxsCore.txsPath
      let trace = [ a | (_,a,_) <- path ]
      case words args of
-       []      -> do IFS.mack [ TxsShow.showN n 6 ++ ":  " ++ TxsShow.fshow a
-                              | (n,(_,a,_)) <- zip [1..] path
-                              ]
-                     IFS.pack "TRACE" ["\n"]
-                     cmdsIntpr
-       ["txs"] -> do IFS.mack [toProcdef trace]
-                     IFS.pack "TRACE" ["\n"]
-                     cmdsIntpr
-       _       -> do IFS.nack "TRACE" [ "No such trace format" ]
-                     cmdsIntpr
+       []       -> do IFS.mack [ TxsShow.showN n 6 ++ ":  " ++ TxsShow.fshow a
+                               | (n,(_,a,_)) <- zip [1..] path
+                               ]
+                      IFS.pack "TRACE" ["\n"]
+                      cmdsIntpr
+       ["proc"] -> do IFS.mack [toProcdef trace]
+                      IFS.pack "TRACE" ["\n"]
+                      cmdsIntpr
+       ["purp"] -> do IFS.mack [toPurpdef trace]
+                      IFS.pack "TRACE" ["\n"]
+                      cmdsIntpr
+       _        -> do IFS.nack "TRACE" [ "No such trace format" ]
+                      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 

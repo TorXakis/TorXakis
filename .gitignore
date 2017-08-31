@@ -19,6 +19,7 @@
 *.iml
 out/
 TAGS
+*.swp
 
 # SemaphoreCI cache folders
 .semaphore-cache
