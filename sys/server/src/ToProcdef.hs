@@ -11,8 +11,8 @@ module ToProcdef
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-(
-toProcdef   -- :: [TxsDDefs.Action] -> String
+( toProcdef   -- :: [TxsDDefs.Action] -> String
+, toPurpdef   -- :: [TxsDDefs.Action] -> String
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -72,8 +72,18 @@ communicationsToProcdef set
     
 communicationToProcdef :: (TxsDefs.ChanId, [TxsDefs.Const]) -> String
 communicationToProcdef (chid, vexprs)
-  =  let values = map TxsShow.pshow vexprs
-      in ChanId.name chid ++ " ! " ++ Utils.join " ! " values
+  =  ChanId.name chid ++ concatMap ( (" ! " ++) . TxsShow.pshow ) vexprs 
+
+-- ----------------------------------------------------------------------------------------- --
+
+toPurpdef :: [TxsDDefs.Action] -> String
+toPurpdef actions
+  =  let chids       = Set.toList $ Set.unions
+                             [ Set.map fst acts | TxsDDefs.Act acts <- actions ]
+         channeldefs = chanIdsToProcdef chids
+         actions'    = actionsToProcdef actions
+      in "PROCDEF replayProc ["++ channeldefs ++ "]() HIT\n" ++
+         " ::=\n" ++ actions' ++ "\n    >-> HIT\nENDDEF\n"
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
