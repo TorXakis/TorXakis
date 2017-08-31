@@ -54,9 +54,11 @@ test-suite behave-test
                       , Reduce
                       , Subst
                       , Unfold
+                      , TestBExpr
                       , TestFuncContent
                       , TestHelperFuncContent
                       , TestProcessBehaviour
+
                       
 
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N

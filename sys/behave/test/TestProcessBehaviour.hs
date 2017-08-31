@@ -44,11 +44,13 @@ envbIdle     =  EnvB { EnvBTree.smts     = Map.empty
                      }
 
 -- ----------------------------------------------------------------------------
+testProcessBehaviourList :: Test
 testProcessBehaviourList  = TestList $ map (\e -> TestLabel (fst e) $ TestCase $ evalStateT (snd e) envbIdle ) ioeTestList
 
+ioeTestList :: [(String, IOB())]
 ioeTestList = [
     ("Stop",        testStop),
-    --("Exit",        testExit),
+    ("Exit",        testExit),
     ("Guard False", testGuardFalse),
     ("Guard True",  testGuardTrue),
     ("Choice",      testChoice)
@@ -61,8 +63,8 @@ ioeTestList = [
 testStop :: IOB()
 testStop = do
     let bnode = BNbexpr Map.empty Stop
-    btree <- unfold [] bnode
-    -- modify ( \env -> env { envs2bt = Map.singleton 0 btree  } )
+    _bt <- unfold [] bnode
+    -- modify ( \env -> env { envs2bt = Map.singleton 0 bt  } )
     -- actual <- isQui
     -- lift $ assertEqual "stop process" True actual
     

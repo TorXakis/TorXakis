@@ -8,14 +8,14 @@ module Main where
 import System.Exit
 import Test.HUnit
 
--- import TestBExpr
+import TestBExpr
 import TestFuncContent
 import TestProcessBehaviour
 
 testBehaveList :: Test
 testBehaveList = TestList
     [ TestLabel "Function Content"          testFuncContentList
-    -- , TestLabel "ProcessDefinition Content" testBExprList
+    , TestLabel "ProcessDefinition Content" testBExprList
     , TestLabel "Process Behaviour"         testProcessBehaviourList
     ]
 
