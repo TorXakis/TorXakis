@@ -77,7 +77,7 @@ main = withSocketsDo $ do
       hPutStrLn stderr "Errors found while loading the configuration"
       hPrint stderr xs
     Right config -> do
-      let portNr = clPortNumber uConfig
+      let portNr = (clPortNumber . SC.cmdLineCfg) uConfig
       servsock      <- listenOn (PortNumber portNr)
       (hs, host, _) <- accept servsock
       hSetBuffering hs LineBuffering

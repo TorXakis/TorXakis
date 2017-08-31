@@ -16,8 +16,13 @@ where
 
 import           CmdLineParser
 import           Config
+import           Control.Monad.Extra
 import           Data.Aeson.Types
+import           Data.Bifunctor
 import           Data.Foldable
+import           Data.Map            (Map)
+import qualified Data.Map            as Map
+import           Data.Maybe
 import           Data.Monoid
 import           Data.Yaml
 import           GHC.Generics
@@ -26,36 +31,65 @@ import           System.Directory
 import           System.FilePath
 
 -- | Uninterpreted configuration options.
-type UnintConfig = CmdLineConfig -- TODO: termporary alias
--- data UnintConfig = UnintConfig
---   { mSmtSolver  :: !(Maybe CoreConfig.SMTSolver)
---   , mSmtLog     :: !(Maybe Bool)
---   , mPortNumber :: !(Maybe PortNumber)
---   }
+data UnintConfig = UnintConfig
+  { -- | Configuration options passed via the command line.
+    cmdLineCfg :: CmdLineConfig
+    -- | Configuration options specified in a configuration file. The
+    -- configuration file is optional, hence the use of `Maybe`.
+  , fileCfg    :: Maybe FileConfig
+  } deriving (Show, Eq)
 
 type Error = String
 
 interpretConfig :: UnintConfig -> Either [Error] Config
-interpretConfig uCfg = Right $ cfgMod defaultConfig
+interpretConfig uCfg =
+  let cfg = cfgMod defaultConfig in
+    if Map.member (selectedSolver cfg) (availableSolvers cfg)
+    then Right cfg
+    else Left [ "No solver found with id " ++ show (selectedSolver cfg)
+              ++ " in the available solvers: " ++ show (availableSolvers cfg)
+              ]
   where
     cfgMod :: Config -> Config
-    cfgMod = appEndo $ foldMap Endo cfgMods
-    cfgMods :: [Config -> Config]
-    cfgMods = [changeSolver, changeSmtLog]
-    changeSolver :: Config -> Config
-    changeSolver cfg =
-      case clSmtSolver uCfg of
+    cfgMod = appEndo $ foldMap Endo (clCfgMods ++ fcCfgMods)
+    clCfgMods = [clChangeSolver, clChangeSmtLog, fcChangeAvailableSolvers]
+    fcCfgMods = [fcChangeSolver, fcChangeSmtLog]
+    clChangeSolver cfg =
+      case (clSmtSolver . cmdLineCfg) uCfg of
         Nothing ->
           cfg
         Just solver ->
           cfg { selectedSolver = SolverId solver }
-    changeSmtLog cfg =
-      case clSmtLog uCfg of -- TODO: refactor this duplication
+    clChangeSmtLog cfg =
+      case (clSmtLog . cmdLineCfg) uCfg of -- TODO: refactor this duplication
         Nothing ->
           cfg
         Just val ->
           cfg { smtLog = val }
-
+    fcChangeSolver cfg =
+      case fileCfg uCfg >>= fcSelectedSolver of
+        Nothing ->
+          cfg
+        Just solver ->
+          cfg { selectedSolver = SolverId solver }
+    fcChangeSmtLog cfg =
+      case fileCfg uCfg >>= fcSmtLog of -- TODO: refactor this duplication
+        Nothing ->
+          cfg
+        Just val ->
+          cfg { smtLog = val }
+    fcChangeAvailableSolvers cfg =
+      case fileCfg uCfg >>= fcAvailableSolvers of
+        Nothing -> cfg
+        Just xs ->
+          cfg { availableSolvers = addSolvers xs (availableSolvers cfg)}
+      where
+        addSolvers newSolvers solversMap =
+          Map.fromList (toKV <$> newSolvers) <> solversMap
+        toKV cfg =
+          ( SolverId (fcSolverId cfg)
+          , SolverConfig (fcExecutableName cfg) (fromMaybe [] . fcFlags $ cfg)
+          )
 
 -- | Load the configuration options. These options can be specified by
 -- different means:
@@ -68,8 +102,8 @@ interpretConfig uCfg = Right $ cfgMod defaultConfig
 -- option found is used.
 --
 -- For now we only parse command line arguments.
-loadConfig :: IO CmdLineConfig
-loadConfig = parseCmdLine
+loadConfig :: IO UnintConfig
+loadConfig = UnintConfig <$> parseCmdLine <*> loadConfigFromFile
 
 -- | File name to look for.
 configFileName :: FilePath
@@ -125,19 +159,23 @@ instance FromJSON SolverFileConfig where
 -- The search proceeds in the order listed above, and it stops as soon as a
 -- configuration file is found.
 --
-loadConfigFromFile :: IO (Either ParseException FileConfig)
+loadConfigFromFile :: IO (Maybe FileConfig)
 loadConfigFromFile = do
-  -- Check for the configuration file in the current directory.
-  fileInCurrentDir <- doesFileExist configFileName
-  if fileInCurrentDir
-    then decodeFileEither configFileName
-    else do
-    home <- getHomeDirectory
-    let path = home </> configFileName
-    fileInHomeDir <- doesFileExist path
-    if fileInHomeDir
-      then decodeFileEither path
-      else return (Left $ AesonException path) -- TODO: this should be another exception (like file not found).
+  mPath <- findConfigFile
+  case mPath of
+    Nothing ->
+      return Nothing
+    Just path -> do
+      res <- decodeFileEither path
+      case res of
+        Left err   -> error (show err)
+        Right fCfg -> return (Just fCfg)
 
+-- | Tries to find the TorXakis configuration file. Returns the first
+--  configuration file found, or nothing otherwise
+findConfigFile :: IO (Maybe FilePath)
+findConfigFile = do
+  home <- getHomeDirectory
+  findM doesFileExist [configFileName, home </> configFileName]
 
 

@@ -13,6 +13,7 @@ module Config
   , defaultSMTProcs
   , cvc4DefaultProc
   , z3DefaultProc
+  , SolverConfig (..)
   )
 where
 

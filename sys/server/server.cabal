@@ -45,6 +45,8 @@ executable txsserver
                       , directory
                       , filepath
                       , aeson
+                      , extra
+                      , bifunctors
 
                       , cnect
                       , core
