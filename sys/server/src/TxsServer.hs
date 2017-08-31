@@ -871,27 +871,15 @@ cmdTrace args = do
 
 cmdMenu :: String -> IOS.IOS ()
 cmdMenu args =
-     let (kind,what,stnr) =
+     let (kind,what) =
           case words args of
-              []            -> ( "mod", "all", -1 )
-              ["in"]        -> ( "mod", "in",  -1 )
-              ["in",s]      -> if  all Char.isDigit s
-                                   then ( "mod", "in", read s ::Int )
-                                 else ( "mod", "in", -11 )
-              ["out"]       -> ( "mod", "out",       -1 )
-              ["out",s]     -> if  all Char.isDigit s
-                                 then ( "mod", "out", read s ::Int )
-                                 else ( "mod", "out", -11 )
-              [s]           -> if  all Char.isDigit s
-                                 then ( "mod", "all", read s ::Int )
-                                 else ( "mod", "all", -11 )
-              ["purp",nm]   -> ( "purp", nm , -1 )
-              ["purp",gl,s] -> if  all Char.isDigit s
-                                 then ( "purp", gl, read s ::Int )
-                                 else ( "purp", gl, -11 )
-              _             -> ( "mod", "all", -11 )
+              ["in"]       -> ( "mod", "in" )
+              ["out"]      -> ( "mod", "out" )
+              ["map"]      -> ( "map", "" )
+              ["purp",gnm] -> ( "purp", gnm )
+              _            -> ( "mod", "all" )
      in do
-       menu <- lift $ TxsCore.txsMenu kind what stnr
+       menu <- lift $ TxsCore.txsMenu kind what
        IFS.mack [ TxsShow.fshow menu ]
        IFS.pack "MENU" [ "\n" ]
        cmdsIntpr
