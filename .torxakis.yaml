@@ -1,4 +1,4 @@
-selected-solver: "cvc4"
+selected-solver: "z3"
 available-solvers:
 - solver-id: "z3"
   executable-name: "z3"
@@ -12,8 +12,11 @@ available-solvers:
   - "-in"
   - "-smt.string_solver=z3str3"
 - solver-id: "cvc4"
-  executable-name: "cvc4-2017-06-13-win32-opt"
+  executable-name: "cvc4"
   flags:
   - "--lang=smt"
   - "--incremental"
-  - "--foo=bar"
+  - "--strings-exp"
+  - "--fmf-fun-rlv"
+  - "--uf-ss-fair"
+  - "--no-strings-std-ascii"

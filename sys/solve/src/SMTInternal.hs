@@ -38,25 +38,6 @@ import           TXS2SMT
 import           TxsDefs
 import           TxsUtils
 
-
--- TODO: remove this
--- cmdCVC4 :: CreateProcess
--- cmdCVC4 = proc "cvc4-2017-06-13-win32-opt"
---                 ["--lang=smt"
---                 , "--incremental"
---                 , "--strings-exp"
---                 , "--fmf-fun-rlv"
---                 , "--uf-ss-fair"
---                 , "--no-strings-std-ascii"
---                 ]
-
--- cmdZ3 :: CreateProcess
--- cmdZ3 = proc    "z3"
---                 ["-smt2"
---                 ,"-in"
---              -- , "smt.string_solver=z3str3"      -- Z3 supports multiple string solvers
---                 ]
-
 -- ----------------------------------------------------------------------------------------- --
 -- opens a connection to the SMTLIB interactive shell
 -- defines the logic and sets the appropriate options

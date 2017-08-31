@@ -25,9 +25,6 @@ module SMT
 , pop
 , put
 , valExprToString
-
--- , cmdCVC4 TODO: remove this
--- , cmdZ3
 )
 
 -- ----------------------------------------------------------------------------------------- --

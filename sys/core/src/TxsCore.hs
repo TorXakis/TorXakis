@@ -112,7 +112,6 @@ import           Control.Monad.State
 import           Data.Maybe
 import           System.Random
 
-
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 
@@ -186,10 +185,13 @@ txsInit tdefs sigs putMsgs  =  do
          -> do
                let cfg    = IOC.config envc
                    smtLog = Config.smtLog cfg
-                   -- TODO: An error will be thrown if the selected solver is
-                   -- not in the list of available solvers. A nicer error
-                   -- handling requires some refactoring of the TorXakis core
-                   -- to take this into account.
+                   -- An error will be thrown if the selected solver is not in
+                   -- the list of available solvers. The sanity of the
+                   -- configuration is checked outside this function, however
+                   -- nothing prevents a client of this function from injecting
+                   -- a wrong configuration. A nicer error handling requires
+                   -- some refactoring of the TorXakis core to take this into
+                   -- account.
                    smtProc = fromJust (Config.getProc cfg)
                smtEnv         <- lift $ SMT.createSMTEnv smtProc smtLog tdefs
                (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
