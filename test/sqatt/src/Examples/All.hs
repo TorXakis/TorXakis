@@ -13,6 +13,7 @@ where
 
 import qualified Examples.Adder            as Adder
 import qualified Examples.ControlLoop      as ControlLoop
+import qualified Examples.CustomersOrders  as CustomersOrders
 import qualified Examples.DispatchProcess  as DispatchProcess
 import qualified Examples.Echo             as Echo
 import qualified Examples.LuckyPeople      as LuckyPeople
@@ -25,6 +26,7 @@ import           Sqatt
 allExamples :: [TxsExampleSet]
 allExamples = [ Adder.exampleSet
               , ControlLoop.exampleSet
+              , CustomersOrders.exampleSet
               , DispatchProcess.exampleSet
               , Echo.exampleSet
               , LuckyPeople.exampleSet
