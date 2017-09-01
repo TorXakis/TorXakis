@@ -109,6 +109,7 @@ where
 
 import           Control.Monad
 import           Control.Monad.State
+import           Data.Maybe
 import           System.Random
 
 import qualified Data.Map            as Map
@@ -183,9 +184,16 @@ txsInit tdefs sigs putMsgs  =  do
        IOC.Noning
          -> do
                let cfg    = IOC.config envc
-                   smtCmd = mkSmtSolverCmd cfg
                    smtLog = Config.smtLog cfg
-               smtEnv         <- lift $ SMT.createSMTEnv smtCmd smtLog tdefs
+                   -- An error will be thrown if the selected solver is not in
+                   -- the list of available solvers. The sanity of the
+                   -- configuration is checked outside this function, however
+                   -- nothing prevents a client of this function from injecting
+                   -- a wrong configuration. A nicer error handling requires
+                   -- some refactoring of the TorXakis core to take this into
+                   -- account.
+                   smtProc = fromJust (Config.getProc cfg)
+               smtEnv         <- lift $ SMT.createSMTEnv smtProc smtLog tdefs
                (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
                (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions tdefs) smtEnv'
                putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver initialized : " ++ info
@@ -205,10 +213,6 @@ txsInit tdefs sigs putMsgs  =  do
        _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
                TxsCore.txsTermit
                TxsCore.txsInit tdefs sigs putMsgs
-       where mkSmtSolverCmd cfg =
-               case Config.smtSolver cfg of
-                 Config.Z3   -> SMT.cmdZ3
-                 Config.CVC4 -> SMT.cmdCVC4
 
 -- | terminate TorXakis core
 txsTermit :: IOC.IOC ()

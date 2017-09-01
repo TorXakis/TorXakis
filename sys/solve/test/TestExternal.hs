@@ -9,29 +9,30 @@ module TestExternal
 testExternalList
 )
 where
-import Test.HUnit
+import           Test.HUnit
 
-import Control.Monad.State
-import qualified Data.Map as Map
-import System.Process(CreateProcess)
+import           Control.Monad.State
+import qualified Data.Map            as Map
+import           System.Process      (CreateProcess)
 
-import SMT
-import SMTData
-import SMTInternal
-import TxsDefs
+import           SMT
+import           SMTData
+import           SMTInternal
+import           TxsDefs
 
-import SolveDefs.Params
+import           SolveDefs.Params
 
-smtSolvers :: [CreateProcess]
-smtSolvers = [cmdCVC4, cmdZ3]
+import           Config
+import           Data.Maybe
+import           TestSolvers
 
 testExternalList :: Test
-testExternalList = 
+testExternalList =
     TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do smtEnv <- createSMTEnv s False TxsDefs.empty
-                                                                             evalStateT (snd e) smtEnv ) 
+                                                                             evalStateT (snd e) smtEnv )
                                     ioeTestList
                          )
-                         smtSolvers
+                         defaultSMTProcs
 
 ioeTestList :: [(String, SMT())]
 ioeTestList = [
@@ -47,7 +48,7 @@ testOpenClose :: SMT ()
 testOpenClose = do
     _ <- openSolver
     close
-    
+
 testOpenSolveClose :: SMT ()
 testOpenSolveClose = do
     _ <- openSolver

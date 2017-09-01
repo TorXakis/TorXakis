@@ -7,17 +7,99 @@ See LICENSE at root directory of this repository.
 -- | This module defines the options that can be passed to TorXakis.
 module Config
   ( Config (..)
-  , SMTSolver (..)
+  , getProc
+  , defaultConfig
+  , SolverId (..)
+  , SolverConfig (..)
+  , changeSolver
+  , changeLog
+  , addSolvers
+  , updateCfg
   )
 where
 
--- | SMT Solvers that can be choosen.
-data SMTSolver = Z3 | CVC4 deriving (Eq, Show, Read)
+import           Data.Map       (Map)
+import qualified Data.Map       as Map
+import           Data.Maybe
+import           Data.Monoid
+import           System.Process
+
+data SolverConfig = SolverConfig
+  {
+    -- | Executable name.
+    execName :: FilePath
+    -- | Arguments for to be passed to the smtSolver.
+  , smtArgs  :: [String]
+  } deriving (Eq, Show)
+
+newtype SolverId = SolverId { solverId :: String }
+  deriving (Eq, Ord, Show)
 
 -- | TorXakis configuration options.
 data Config = Config
-  { -- | SMT solver
-    smtSolver :: !SMTSolver
-    -- | Log all SMT commands.
-  , smtLog    :: !Bool
+  { -- | Log all SMT commands?
+    smtLog           :: Bool
+    -- | Available solvers that can be chosen from.
+  , availableSolvers :: Map.Map SolverId SolverConfig
+  , selectedSolver   :: SolverId
   } deriving (Eq, Show)
+
+-- | Change the selected solver.
+changeSolver :: Config -> String -> Config
+changeSolver cfg solver = cfg { selectedSolver = SolverId solver }
+
+changeLog :: Config -> Bool -> Config
+changeLog cfg b = cfg { smtLog = b }
+
+addSolvers :: Config -> Map.Map SolverId SolverConfig -> Config
+addSolvers cfg newSolvers = cfg { availableSolvers = newSolvers <> availableSolvers cfg }
+
+updateCfg :: Maybe a -> (Config -> a -> Config) -> Config -> Config
+updateCfg ma f cfg =
+  maybe cfg (f cfg) ma
+
+-- | TorXakis default configuration
+defaultConfig :: Config
+defaultConfig = Config
+  { smtLog = False
+  , availableSolvers = Map.fromList
+                       [ (z3default, z3defaultConfig)
+                       , (cvc4default, cvc4defaultConfig)
+                       ]
+  , selectedSolver = z3default
+  }
+
+z3default :: SolverId
+z3default = SolverId "z3"
+
+z3defaultConfig :: SolverConfig
+z3defaultConfig = SolverConfig
+  { execName = "z3"
+  , smtArgs =
+      [ "-smt2"
+      , "-in"
+      ]
+  }
+
+cvc4default :: SolverId
+cvc4default = SolverId "cvc4"
+
+cvc4defaultConfig :: SolverConfig
+cvc4defaultConfig = SolverConfig
+  { execName = "cvc4"
+  , smtArgs =
+      [ "--lang=smt"
+      , "--incremental"
+      , "--strings-exp"
+      , "--fmf-fun-rlv"
+      , "--uf-ss-fair"
+      , "--no-strings-std-ascii"
+      ]
+  }
+
+-- | Return a `CreateProcess` according to the selected solver in the
+-- configuration.
+getProc :: Config -> Maybe CreateProcess
+getProc cfg = do
+  solver <- Map.lookup (selectedSolver cfg) (availableSolvers cfg)
+  return $ proc (execName solver) (smtArgs solver)

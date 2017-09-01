@@ -10,33 +10,32 @@ testPushPopList
 )
 where
 
-import Data.Maybe
-import qualified Data.Map as Map
-import Control.Arrow( (&&&) )
-import Control.Monad.State
-import System.Process(CreateProcess)
+import           Control.Arrow       ((&&&))
+import           Control.Monad.State
+import qualified Data.Map            as Map
+import           Data.Maybe
+import           System.Process      (CreateProcess)
 
-import Test.HUnit
+import           Test.HUnit
 
-import TxsDefs
-import StdTDefs
+import           StdTDefs
+import           TxsDefs
 
-import SMT
-import SMTData
+import           SMT
+import           SMTData
 
-import SolveDefs
-import SolveDefs.Params
+import           SolveDefs
+import           SolveDefs.Params
 
-smtSolvers :: [CreateProcess]
-smtSolvers = [cmdCVC4, cmdZ3]
+import           TestSolvers
 
 testPushPopList :: Test
-testPushPopList = 
+testPushPopList =
     TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do smtEnv <- createSMTEnv s False TxsDefs.empty
-                                                                             evalStateT (snd e) smtEnv ) 
+                                                                             evalStateT (snd e) smtEnv )
                                     labelTestList
                          )
-                         smtSolvers
+                         defaultSMTProcs
 
 labelTestList :: [(String, SMT())]
 labelTestList = [
@@ -62,7 +61,7 @@ getValues vs = do
     return values
 
 testPushPopTemplate :: ([VarId] -> [([VarId] -> [VExpr], [Const] -> SMT())] -> SMT()) ->
-                        TxsDefs -> [SortId] -> ([VarId] -> [VExpr], [Const] -> SMT()) -> 
+                        TxsDefs -> [SortId] -> ([VarId] -> [VExpr], [Const] -> SMT()) ->
                                               [([VarId] -> [VExpr], [Const] -> SMT())] -> SMT()
 testPushPopTemplate steps txsDefs types (createInitialAssertions,checkInitial) pps = do
     _ <- SMT.openSolver
@@ -76,15 +75,15 @@ testPushPopTemplate steps txsDefs types (createInitialAssertions,checkInitial) p
     popValues <- getValues vs
     checkInitial popValues
     SMT.close
-    
+
 pushAssertionsCheck :: [VarId] -> ([VarId] -> [VExpr]) -> ([Const] -> SMT()) -> SMT()
 pushAssertionsCheck vs createAssertions check = do
         push
         addAssertions (createAssertions vs)
         pushValues <- getValues vs
         check pushValues
-    
-testNestedPushPopTemplate :: TxsDefs -> [SortId] -> ([VarId] -> [VExpr], [Const] -> SMT()) -> 
+
+testNestedPushPopTemplate :: TxsDefs -> [SortId] -> ([VarId] -> [VExpr], [Const] -> SMT()) ->
                                               [([VarId] -> [VExpr], [Const] -> SMT())] -> SMT()
 testNestedPushPopTemplate = testPushPopTemplate nestedSteps
   where
@@ -95,7 +94,7 @@ testNestedPushPopTemplate = testPushPopTemplate nestedSteps
         nestedSteps vs xs
         pop
 
-testSequentialPushPopTemplate :: TxsDefs -> [SortId] -> ([VarId] -> [VExpr], [Const] -> SMT()) -> 
+testSequentialPushPopTemplate :: TxsDefs -> [SortId] -> ([VarId] -> [VExpr], [Const] -> SMT()) ->
                                               [([VarId] -> [VExpr], [Const] -> SMT())] -> SMT()
 testSequentialPushPopTemplate = testPushPopTemplate (mapM_ . step)
     where
@@ -109,14 +108,14 @@ testSequentialPushPopTemplate = testPushPopTemplate (mapM_ . step)
 ---------------------------------------------------------------------------
 checkInt :: [Const] -> SMT()
 checkInt [value] = case value of
-    Cint _  -> lift $ assertBool "expected pattern" True
-    _       -> lift $ assertBool "unexpected pattern" False
+    Cint _ -> lift $ assertBool "expected pattern" True
+    _      -> lift $ assertBool "unexpected pattern" False
 checkInt _  = error "One variable in problem"
 
 
 testPush :: SMT ()
 testPush = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int]   (const [], checkInt) []
-    
+
 testPushAssertion :: SMT()
 testPushAssertion = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int]  (const [], checkInt)
                                                                 [(createAssertions, checkAssert)]
@@ -130,7 +129,7 @@ testPushAssertion = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int]  (c
             Cint x  -> lift $ assertBool ("expected pattern " ++ show x) (x < 0)
             _       -> lift $ assertBool "unexpected pattern" False
         checkAssert _       = error "One variable in problem"
-    
+
 testPushAssertionPop :: SMT()
 testPushAssertionPop = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int]  (const [], checkInt)
                                                                 [(createAssertions, checkAssert)]
@@ -144,7 +143,7 @@ testPushAssertionPop = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int] 
             Cint x  -> lift $ assertBool ("expected pattern " ++ show x) (x>123)
             _       -> lift $ assertBool "unexpected pattern" False
         checkAssert _       = error "One variable in problem"
-    
+
 testPushAssertionPopAssertion :: SMT()
 testPushAssertionPopAssertion = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int]  (const [], checkInt)
                                                                                       [(createAssertions1, checkAssert1),(createAssertions2, checkAssert2)]
@@ -155,20 +154,20 @@ testPushAssertionPopAssertion = testSequentialPushPopTemplate TxsDefs.empty [sor
 
         checkAssert1 :: [Const] -> SMT()
         checkAssert1 [value]    = case value of
-            Cint x  -> lift $ assertBool ("expected pattern " ++ show x) (x<0)
-            _       -> lift $ assertBool "unexpected pattern" False
+            Cint x -> lift $ assertBool ("expected pattern " ++ show x) (x<0)
+            _      -> lift $ assertBool "unexpected pattern" False
         checkAssert1 _          = error "One variable in problem"
-        
+
         createAssertions2 :: [VarId] -> [VExpr]
         createAssertions2 [v] = [cstrFunc funcId_gtInt [cstrVar v, cstrConst (Cint 0)]]
         createAssertions2 _   = error "One variable in problem"
 
         checkAssert2 :: [Const] -> SMT()
         checkAssert2 [value]    = case value of
-            Cint x  -> lift $ assertBool ("expected pattern " ++ show x) (x>0)
-            _       -> lift $ assertBool "unexpected pattern" False     
+            Cint x -> lift $ assertBool ("expected pattern " ++ show x) (x>0)
+            _      -> lift $ assertBool "unexpected pattern" False
         checkAssert2 _      = error "One variable in problem"
-        
+
 testNestedRanges :: SMT()
 testNestedRanges = testNestedPushPopTemplate TxsDefs.empty [sortId_Int]  (const [], checkInt)
                                                                      (map (createAssertions Control.Arrow.&&& checkAssert) [100,99..1])
