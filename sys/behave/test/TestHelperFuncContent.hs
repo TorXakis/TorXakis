@@ -10,7 +10,7 @@ where
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import qualified Data.String.Utils as Utils
--- import qualified Debug.Trace as Trace
+import qualified Debug.Trace as Trace
 
 import ChanId
 import ProcId
@@ -61,6 +61,7 @@ identicalExitSort (Exit s1) (Exit s2) = identicalLists identicalSortId s1 s2
 identicalExitSort _ _ = False
 
 identicalChanId :: ChanId -> ChanId -> Bool
+identicalChanId (ChanId "EXIT" _ _) (ChanId "EXIT" _ _) = True
 identicalChanId (ChanId name1 _ chansorts1) (ChanId name2 _ chansorts2) =
        name1 == name2
     && identicalLists identicalSortId chansorts1 chansorts2
@@ -130,7 +131,7 @@ identicalChanOffer _ _                                          = False
 
 identicalBExpr :: BExpr -> BExpr -> Bool
 identicalBExpr Stop Stop = True
-identicalBExpr (ActionPref  actOffer1 bExpr1) (ActionPref  actOffer2 bExpr2) =     identicalActOffer actOffer1 actOffer2 
+identicalBExpr (ActionPref actOffer1 bExpr1) (ActionPref actOffer2 bExpr2)   =     identicalActOffer actOffer1 actOffer2 
                                                                                 && identicalBExpr bExpr1 bExpr2
 identicalBExpr (Guard vexprs1 bExpr1) (Guard vexprs2 bExpr2)                 =     identicalLists identicalVExpr vexprs1 vexprs2
                                                                                 && identicalBExpr bExpr1 bExpr2
@@ -242,27 +243,15 @@ expectFuncDef :: String -> TypedElements -> String -> FuncContent -> TxsDefs
 expectFuncDef nm args' srt content = TxsDefs.fromList [(IdFunc (expectFuncId nm args' srt), DefFunc (FuncDef (fromTypedElementsToVarIds args') (vexpr content)))] 
 
 createProcDef :: String -> TypedElements -> TypedElements -> Maybe [String] -> BExpr -> String
-createProcDef nm chans vars' Nothing content = "PROCDEF " ++ nm ++ 
-                                            " [ " ++ Utils.join " ; " (map (\(chan',t) -> t ++ " :: " ++ Utils.join ", " chan') chans) ++ " ] " ++
-                                            " ( " ++ Utils.join " ; " (map (\(var',t) -> Utils.join ", " var' ++ " :: " ++ t) vars') ++ " ) " ++ 
-                                            " ::=\n" ++
-                                            pshow content        -- ident ?
-                                            ++ "\nENDDEF"
-
-createProcDef nm chans vars' (Just []) content = "PROCDEF " ++ nm ++ 
-                                            " [ " ++ Utils.join " ; " (map (\(chan',t) -> t ++ " :: " ++ Utils.join ", " chan') chans) ++ " ] " ++
-                                            " ( " ++ Utils.join " ; " (map (\(var',t) -> Utils.join ", " var' ++ " :: " ++ t) vars') ++ " ) " ++ 
-                                            " EXIT " ++
-                                            " ::=\n" ++
-                                            pshow content        -- ident ?
-                                            ++ "\nENDDEF"
-
-createProcDef nm chans vars' (Just exits) content = "PROCDEF " ++ nm ++ 
-                                            " [ " ++ Utils.join " ; " (map (\(chan',t) -> t ++ " :: " ++ Utils.join ", " chan') chans) ++ " ] " ++
-                                            " ( " ++ Utils.join " ; " (map (\(var',t) -> Utils.join ", " var' ++ " :: " ++ t) vars') ++ " ) " ++ 
-                                            " EXIT ( " ++ Utils.join " , " exits ++ " ) " ++ 
-                                            " ::=\n" ++
-                                            pshow content        -- ident ?
+createProcDef nm chans vars' exits content = "PROCDEF " ++ nm
+                                            ++ " [ " ++ Utils.join " ; " (map (\(chan',t) -> t ++ " :: " ++ Utils.join ", " chan') chans) ++ " ] "
+                                            ++ " ( " ++ Utils.join " ; " (map (\(var',t) -> Utils.join ", " var' ++ " :: " ++ t) vars') ++ " ) " 
+                                            ++ case exits of 
+                                                    Nothing -> ""
+                                                    Just [] -> "EXIT "
+                                                    Just l  -> "EXIT " ++ Utils.join " # " l
+                                            ++ " ::=\n" 
+                                            ++ pshow content        -- ident ?
                                             ++ "\nENDDEF"
 
 expectProcDef :: String -> TypedElements -> TypedElements -> Maybe [String] -> BExpr -> TxsDefs

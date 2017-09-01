@@ -172,13 +172,14 @@ instance PShow BExpr
                  ++ " )"
          }
     pshow (Enable bexp1 chofs bexp2)
-      =  "( " ++ pshow bexp1 ++ " )\n" ++ ">>>"
-         ++ case chofs of
-            { []    -> "\n"
-            ; _     -> " ACCEPT\n" ++ Utils.join ",\n" (map pshow chofs)
-                       ++ "\n" ++ "IN\n"
-            }
-         ++ "( " ++ pshow bexp2 ++ " )"
+      =  let last = pshow bexp2 
+            in
+              "( " ++ pshow bexp1 ++ " )\n" ++ ">>>"
+                 ++ case chofs of
+                    { []    -> last ++ "\n"
+                    ; _     -> " ACCEPT\n" ++ Utils.join "\n" (map pshow chofs)
+                               ++ "\nIN\n" ++ last ++ "\nNI\n"
+                    }
     pshow (Disable bexp1 bexp2)
       =  "( " ++ pshow bexp1 ++ " )\n"
          ++ "[>>\n" ++ "( " ++ pshow bexp2 ++ " )"

@@ -13,7 +13,7 @@ import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
-import Debug.Trace as Trace
+-- import Debug.Trace as Trace
 
 import TxsDefs
 import TxsShow
@@ -47,9 +47,7 @@ definedChannels = [([definedChannel1SortName], definedChannel1),
                    ([definedChannel2SortName], definedChannel2),
                    ([definedChannel3SortName], definedChannel3)]
          
-chanExit :: TypedElement
-chanExit = ([], "EXIT")
-                 
+                
 definedInt1 :: String
 definedInt1 = "x"
 
@@ -81,18 +79,15 @@ definedVars = [ ([definedInt1, definedInt2, definedInt3], intSortName)
 definedProcDef :: String
 definedProcDef = "proc"
 
-definedExits :: Maybe [String]
-definedExits = Nothing
-
-parseBexpr :: BExpr -> BExpr
-parseBexpr content =
+parseBexpr :: Maybe [String] -> BExpr -> BExpr
+parseBexpr definedExits content =
     let
         file :: String
         file = createProcDef definedProcDef definedChannels definedVars definedExits content
         pid :: ProcId
         pid = expectProcId definedProcDef definedChannels definedVars definedExits
       in
-        Trace.trace ("file = \n" ++ file) $
+        -- Trace.trace ("file = \n" ++ file) $
                     case findValueOfGenericKey (IdProc pid) ( parseTorXakis file ) of        -- TODO: idMap / sig 
                          Just (DefProc (ProcDef _definedChannels' _definedVars' bexp)) -> bexp
                          Nothing                                                       -> error $ "Test Error: process\n" ++ show pid ++ "\nnot found in \n" ++ show ( Map.keys (procDefs (parseTorXakis file) ) )
@@ -103,24 +98,36 @@ parseBexpr content =
 ---------------------------------------------------------------------------
     -- can ALLGATES be entered as Channel name? If so, how to prevent this ; how to test it is ok?
 
-aBExpr :: BExpr
-aBExpr = ActionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrConst (Cint 123))])) [] )
-          (ActionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" []) [])) [] ) 
-           Stop)
-
-anotherBExpr :: BExpr
-anotherBExpr = Guard [cstrVar (expectVarId definedBool1 boolSortName)] Stop
-
 -- Stop
 testStop :: Test
 testStop = TestCase $
     let bexpr :: BExpr
         bexpr = Stop
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr Nothing bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
 
+-- Exit
+testExit :: Test
+testExit = TestCase $
+    let bexpr :: BExpr
+        bexpr = ActionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" []) [])) [] ) Stop 
+        actual :: BExpr
+        actual = parseBexpr (Just []) bexpr
+      in
+        assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
+
+-- ExitValue
+testExitValue :: Test
+testExitValue = TestCase $
+    let bexpr :: BExpr
+        bexpr = ActionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" [intSortName]) [Exclam (cstrConst (Cint 8978))])) [] ) Stop 
+        actual :: BExpr
+        actual = parseBexpr (Just [intSortName]) bexpr
+      in
+        assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
+           
 -- ActionPref 
 testExclam :: Test
 testExclam = TestCase $
@@ -128,7 +135,7 @@ testExclam = TestCase $
         bexpr :: BExpr
         bexpr = ActionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrConst (Cint value))])) []) Stop
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr Nothing bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
 
@@ -137,7 +144,7 @@ testExclamArgument = TestCase $
     let bexpr :: BExpr
         bexpr = ActionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrVar (expectVarId definedInt1 intSortName))])) []) Stop
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr Nothing bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
 
@@ -148,7 +155,7 @@ testQuest = TestCase $
         bexpr :: BExpr
         bexpr = ActionPref (ActOffer (Set.singleton (Offer (expectChanId definedChannel3 [definedChannel3SortName]) [Quest (expectVarId varName varSortName)])) []) Stop
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr Nothing bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual  
         
@@ -157,18 +164,39 @@ testQuestScope = TestCase $
     let bexpr :: BExpr
         bexpr = ActionPref (ActOffer (Set.singleton (Offer (expectChanId definedChannel2 [definedChannel2SortName]) [Quest (expectVarId definedInt1 intSortName)])) []) Stop
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr Nothing bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
         -- TODO: is x really overwritten/shadowed?
+
+        
+        
+-- Exit & Processes to use
+aDefinedExit :: Maybe [String]
+aDefinedExit = Just [intSortName, stringSortName]
+        
+aBExpr :: BExpr
+aBExpr = ActionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrConst (Cint 123))])) [] )
+          (ActionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" [ intSortName, stringSortName]) 
+                                                                          [ Exclam (cstrVar (expectVarId definedInt1 intSortName))
+                                                                          , Exclam (cstrVar (expectVarId definedString3 stringSortName))]) ) [] ) 
+           Stop)
+
+anotherBExpr :: BExpr
+anotherBExpr = Guard [cstrVar (expectVarId definedBool1 boolSortName)]
+                     (ActionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT"  [ intSortName, stringSortName])
+                                                                                      [ Exclam (cstrVar (expectVarId definedInt2 intSortName))
+                                                                                      , Exclam (cstrVar (expectVarId definedString2 stringSortName))]) ) [] ) 
+                      Stop)
+
 
 -- Guard
 testGuard :: Test
 testGuard = TestCase $
     let bexpr :: BExpr
-        bexpr = Guard [cstrVar (expectVarId definedBool1 boolSortName)] Stop
+        bexpr = Guard [cstrVar (expectVarId definedBool1 boolSortName)] aBExpr
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr aDefinedExit bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
 
@@ -178,7 +206,7 @@ testChoice = TestCase $
     let bexpr :: BExpr
         bexpr = Choice [aBExpr, anotherBExpr]
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr aDefinedExit bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
         
@@ -189,7 +217,7 @@ testSynchronization = TestCase $
         bexpr :: BExpr
         bexpr = Parallel (map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr aDefinedExit bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
 
@@ -199,7 +227,7 @@ testInterleaving = TestCase $
         bexpr :: BExpr
         bexpr = Parallel (map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr aDefinedExit bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
 
@@ -209,7 +237,7 @@ testCommunicate = TestCase $
         bexpr :: BExpr
         bexpr = Parallel (map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr aDefinedExit bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
 
@@ -217,18 +245,24 @@ testCommunicate = TestCase $
 testEnable :: Test
 testEnable = TestCase $
     let bexpr :: BExpr
-        bexpr = Enable aBExpr [] anotherBExpr
+        bexpr = Enable (ActionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" []) [])) [] ) Stop) 
+                       [] 
+                       anotherBExpr
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr aDefinedExit bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
 
 testEnableCommunicate :: Test
 testEnableCommunicate = TestCase $
     let bexpr :: BExpr
-        bexpr = Enable aBExpr [Exclam (cstrVar (expectVarId definedString2 stringSortName))] anotherBExpr
+        bexpr = Enable aBExpr 
+                       [ Quest (expectVarId "t1" intSortName)
+                       , Quest (expectVarId "t2" stringSortName)
+                       ] 
+                       anotherBExpr
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr aDefinedExit bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
 
@@ -238,7 +272,7 @@ testDisable = TestCase $
     let bexpr :: BExpr
         bexpr = Disable aBExpr anotherBExpr
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr aDefinedExit bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
 
@@ -251,7 +285,7 @@ testProcInst = TestCase $
         bexpr :: BExpr
         bexpr = ProcInst pid (fromTypedElementsToChanIds definedChannels) (fromTypedElementsToVExprs definedVars)
         actual :: BExpr
-        actual = parseBexpr bexpr
+        actual = parseBexpr Nothing bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
 
@@ -260,6 +294,8 @@ testProcInst = TestCase $
 ----------------------------------------------------------------------------------------
 testBExprList :: Test
 testBExprList = TestList [ TestLabel "Stop" testStop,
+                           TestLabel "Exit" testExit,
+                           TestLabel "ExitValue" testExitValue,
                            TestLabel "ActionPref Exclam" testExclam,
                            TestLabel "ActionPref Exclam Argument" testExclamArgument,
                            TestLabel "ActionPref Quest" testQuest,

@@ -50,7 +50,6 @@ testProcessBehaviourList  = TestList $ map (\e -> TestLabel (fst e) $ TestCase $
 ioeTestList :: [(String, IOB())]
 ioeTestList = [
     ("Stop",        testStop),
-    ("Exit",        testExit),
     ("Guard False", testGuardFalse),
     ("Guard True",  testGuardTrue),
     ("Choice",      testChoice)
@@ -70,12 +69,6 @@ testStop = do
     
     next <- expand [] bnode
     lift $ assertEqual "expand stop" [] next
-    
-testExit :: IOB()
-testExit = do
-    let bnode = BNbexpr Map.empty (ActionPref (ActOffer (Set.singleton (Offer chanId_Exit []) ) [] ) Stop )
-    next <- expand [] bnode
-    lift $ assertEqual "expand exit" [] next
 
 testGuardFalse :: IOB()
 testGuardFalse = do
