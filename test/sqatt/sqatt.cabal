@@ -15,7 +15,9 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Examples.All
-                     , Examples.Adder
+                     , Sqatt
+  other-modules:       Examples.Adder
+                     , Examples.CustomersOrders
                      , Examples.ControlLoop
                      , Examples.DispatchProcess
                      , Examples.Echo
@@ -23,9 +25,8 @@ library
                      , Examples.MovingArms
                      , Examples.Paths
                      , Examples.Point
-                     , Examples.Queue                     
+                     , Examples.Queue
                      , Examples.StimulusResponse
-                     , Sqatt
   build-depends:       base >= 4.7 && < 5
                      , hspec
                      , turtle >= 1.4.1
