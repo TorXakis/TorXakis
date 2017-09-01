@@ -38,6 +38,7 @@ import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 
 -- import from local
+import           CmdLineParser
 import           ToProcdef
 import qualified TxsServerConfig     as SC
 
@@ -76,7 +77,7 @@ main = withSocketsDo $ do
       hPutStrLn stderr "Errors found while loading the configuration"
       hPrint stderr xs
     Right config -> do
-      let portNr = SC.portNumber config
+      let portNr = (clPortNumber . SC.cmdLineCfg) uConfig
       servsock      <- listenOn (PortNumber portNr)
       (hs, host, _) <- accept servsock
       hSetBuffering hs LineBuffering
@@ -87,10 +88,7 @@ main = withSocketsDo $ do
             , IOS.portNr = portNr
             , IOS.servhs = hs
             }
-          coreConfig = CoreConfig.Config
-            { CoreConfig.smtSolver = SC.smtSolver config
-            , CoreConfig.smtLog = SC.smtLog config
-            }
+          coreConfig = config
       TxsCore.runTxsCore coreConfig cmdsIntpr initS
       threadDelay 1000000    -- 1 sec delay on closing
       sClose servsock
@@ -858,42 +856,33 @@ cmdTrace args = do
      path  <- lift TxsCore.txsPath
      let trace = [ a | (_,a,_) <- path ]
      case words args of
-       []      -> do IFS.mack [ TxsShow.showN n 6 ++ ":  " ++ TxsShow.fshow a
-                              | (n,(_,a,_)) <- zip [1..] path
-                              ]
-                     IFS.pack "TRACE" ["\n"]
-                     cmdsIntpr
-       ["txs"] -> do IFS.mack [toProcdef trace]
-                     IFS.pack "TRACE" ["\n"]
-                     cmdsIntpr
-       _       -> do IFS.nack "TRACE" [ "No such trace format" ]
-                     cmdsIntpr
+       []       -> do IFS.mack [ TxsShow.showN n 6 ++ ":  " ++ TxsShow.fshow a
+                               | (n,(_,a,_)) <- zip [1..] path
+                               ]
+                      IFS.pack "TRACE" ["\n"]
+                      cmdsIntpr
+       ["proc"] -> do IFS.mack [toProcdef trace]
+                      IFS.pack "TRACE" ["\n"]
+                      cmdsIntpr
+       ["purp"] -> do IFS.mack [toPurpdef trace]
+                      IFS.pack "TRACE" ["\n"]
+                      cmdsIntpr
+       _        -> do IFS.nack "TRACE" [ "No such trace format" ]
+                      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdMenu :: String -> IOS.IOS ()
 cmdMenu args =
-     let (kind,what,stnr) =
+     let (kind,what) =
           case words args of
-              []            -> ( "mod", "all", -1 )
-              ["in"]        -> ( "mod", "in",  -1 )
-              ["in",s]      -> if  all Char.isDigit s
-                                   then ( "mod", "in", read s ::Int )
-                                 else ( "mod", "in", -11 )
-              ["out"]       -> ( "mod", "out",       -1 )
-              ["out",s]     -> if  all Char.isDigit s
-                                 then ( "mod", "out", read s ::Int )
-                                 else ( "mod", "out", -11 )
-              [s]           -> if  all Char.isDigit s
-                                 then ( "mod", "all", read s ::Int )
-                                 else ( "mod", "all", -11 )
-              ["purp",nm]   -> ( "purp", nm , -1 )
-              ["purp",gl,s] -> if  all Char.isDigit s
-                                 then ( "purp", gl, read s ::Int )
-                                 else ( "purp", gl, -11 )
-              _             -> ( "mod", "all", -11 )
+              ["in"]       -> ( "mod", "in" )
+              ["out"]      -> ( "mod", "out" )
+              ["map"]      -> ( "map", "" )
+              ["purp",gnm] -> ( "purp", gnm )
+              _            -> ( "mod", "all" )
      in do
-       menu <- lift $ TxsCore.txsMenu kind what stnr
+       menu <- lift $ TxsCore.txsMenu kind what
        IFS.mack [ TxsShow.fshow menu ]
        IFS.pack "MENU" [ "\n" ]
        cmdsIntpr

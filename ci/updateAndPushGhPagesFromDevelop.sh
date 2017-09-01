@@ -7,7 +7,8 @@ git remote add origin https://github.com/TorXakis/TorXakis.git;
 git fetch;
 git checkout gh-pages;
 git rebase develop;
-cp -a $CACHE_DIR/.stack-work/install/x86_64-linux/lts-8.13/8.0.2/doc/all/. ./doc/;
+rm ./doc/* -rf
+cp -r $CACHE_DIR/.stack-work/install/x86_64-linux/lts-9.1/8.0.2/doc/. ./doc/;
 git add .;
 commitMsg="Haddock @ $(date +%Y%m%d_%H%M%S)";
 git commit -m "$(echo $commitMsg)";

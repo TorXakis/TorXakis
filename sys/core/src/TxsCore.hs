@@ -109,6 +109,7 @@ where
 
 import           Control.Monad
 import           Control.Monad.State
+import           Data.Maybe
 import           System.Random
 
 import qualified Data.Map            as Map
@@ -183,9 +184,16 @@ txsInit tdefs sigs putMsgs  =  do
        IOC.Noning
          -> do
                let cfg    = IOC.config envc
-                   smtCmd = mkSmtSolverCmd cfg
                    smtLog = Config.smtLog cfg
-               smtEnv         <- lift $ SMT.createSMTEnv smtCmd smtLog tdefs
+                   -- An error will be thrown if the selected solver is not in
+                   -- the list of available solvers. The sanity of the
+                   -- configuration is checked outside this function, however
+                   -- nothing prevents a client of this function from injecting
+                   -- a wrong configuration. A nicer error handling requires
+                   -- some refactoring of the TorXakis core to take this into
+                   -- account.
+                   smtProc = fromJust (Config.getProc cfg)
+               smtEnv         <- lift $ SMT.createSMTEnv smtProc smtLog tdefs
                (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
                (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions tdefs) smtEnv'
                putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver initialized : " ++ info
@@ -205,10 +213,6 @@ txsInit tdefs sigs putMsgs  =  do
        _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
                TxsCore.txsTermit
                TxsCore.txsInit tdefs sigs putMsgs
-       where mkSmtSolverCmd cfg =
-               case Config.smtSolver cfg of
-                 Config.Z3   -> SMT.cmdZ3
-                 Config.CVC4 -> SMT.cmdCVC4
 
 -- | terminate TorXakis core
 txsTermit :: IOC.IOC ()
@@ -930,18 +934,14 @@ txsPath  =  do
            return []
 
 -- | Return the menu, i.e., all possible actions.
-txsMenu :: String                               -- ^ kind (valid values are "mod" and "purp")
-        -> String                               -- ^ what (valid values are "all", "in", and "out")
-        -> EnvData.StateNr                      -- ^ state number.
+txsMenu :: String                               -- ^ kind (valid values are "mod", "purp", or "map")
+        -> String                               -- ^ what (valid values are "all", "in", "out", or a <goal name>)
         -> IOC.IOC BTree.Menu
-txsMenu kind what stnr  =  do
+txsMenu kind what  =  do
      curState <- gets (IOC.curstate . IOC.state)
-     let stateNr = if stnr == -1 then curState else stnr
      case kind of
-       "mod"  -> do txsGoTo stateNr
-                    menuIn   <- Ioco.iocoModelMenuIn
+       "mod"  -> do menuIn   <- Ioco.iocoModelMenuIn
                     menuOut  <- Ioco.iocoModelMenuOut
-                    txsGoTo curState
                     case what of
                       "all" -> return $ menuIn ++ menuOut
                       "in"  -> return menuIn
@@ -949,10 +949,8 @@ txsMenu kind what stnr  =  do
                       _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                                 "error in menu" ]
                                   return []
-       "purp" -> do txsGoTo stateNr
-                    gmenu <- Purpose.goalMenu what
-                    txsGoTo curState
-                    return gmenu
+       "map"  -> Mapper.mapperMenu
+       "purp" -> Purpose.goalMenu what
        _      -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
                     return []
 

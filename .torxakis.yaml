@@ -1,0 +1,22 @@
+selected-solver: "z3"
+available-solvers:
+- solver-id: "z3"
+  executable-name: "z3"
+  flags:
+  - "-smt2"
+  - "-in"
+- solver-id: "z3str3"
+  executable-name: "z3"
+  flags:
+  - "-smt2"
+  - "-in"
+  - "-smt.string_solver=z3str3"
+- solver-id: "cvc4"
+  executable-name: "cvc4"
+  flags:
+  - "--lang=smt"
+  - "--incremental"
+  - "--strings-exp"
+  - "--fmf-fun-rlv"
+  - "--uf-ss-fair"
+  - "--no-strings-std-ascii"
