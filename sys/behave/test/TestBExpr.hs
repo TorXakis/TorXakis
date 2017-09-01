@@ -91,7 +91,7 @@ parseBexpr definedExits content =
                     case findValueOfGenericKey (IdProc pid) ( parseTorXakis file ) of        -- TODO: idMap / sig 
                          Just (DefProc (ProcDef _definedChannels' _definedVars' bexp)) -> bexp
                          Nothing                                                       -> error $ "Test Error: process\n" ++ show pid ++ "\nnot found in \n" ++ show ( Map.keys (procDefs (parseTorXakis file) ) )
-                         Just _another                                                 -> error $ "Test Error: process not a ProcDef"
+                         Just _another                                                 -> error "Test Error: process not a ProcDef"
                     
 ---------------------------------------------------------------------------
 -- Tests
