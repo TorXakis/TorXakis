@@ -10,19 +10,14 @@ testFuncContentList
 )
 where
 import Test.HUnit
-import qualified Data.Set as Set
 import qualified Data.Map as Map
-
-import TxsAlex
-import TxsHappy
-import TxsDefs hiding (var)
-import TxsShow
 
 import TestHelperFuncContent
 
 ----------------------------------------------------------------------------------------
 -- List of Tests
 ----------------------------------------------------------------------------------------
+testFuncContentList :: Test
 testFuncContentList = TestList [
                                     TestLabel "Constant Int"           testConstantInt,
                                     TestLabel "Constant String"        testConstantString,
@@ -81,7 +76,7 @@ testVariable = TestCase $
         varName = "a"
         sortName = boolSortName
         parameterList = [([varName], sortName)]
-        funcContent = var varName sortName
+        funcContent = varContent varName sortName
         (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" parameterList sortName funcContent
       in
         assertEqual "Variable" funcContent (getFuncContent torXakisInput funcKey)
@@ -99,9 +94,9 @@ testITE = TestCase $
         parameterList :: TypedElements
         parameterList = [([boolVarName], boolSortName), ([intVar1Name,intVar2Name], intSortName)]
         funcContent :: FuncContent
-        funcContent = ite (var boolVarName boolSortName)
-                          (var intVar1Name intSortName)
-                          (var intVar2Name intSortName)
+        funcContent = ite (varContent boolVarName boolSortName)
+                          (varContent intVar1Name intSortName)
+                          (varContent intVar2Name intSortName)
                           
         (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" parameterList intSortName funcContent
       in
@@ -115,8 +110,8 @@ testSubstitution = TestCase $
         sortName :: String
         sortName = stringSortName
         funcContent :: FuncContent
-        funcContent = subst (Map.fromList [(var varName sortName, constantString "New York")])
-                            (var varName sortName)
+        funcContent = subst (Map.fromList [(varContent varName sortName, constantString "New York")])
+                            (varContent varName sortName)
         
         (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" [] sortName funcContent
       in
@@ -162,10 +157,10 @@ testFunctionList = TestList (map testFunction [   ("toString", [(["b"], boolSort
 
 
 testFunction :: (String, TypedElements, String) -> Test
-testFunction (name, parameterList, sortOut) = TestCase $
+testFunction (nm, parameterList, sortOut) = TestCase $
     let
         funcCallKey :: FuncKey
-        funcCallKey = getFuncKey name parameterList sortOut
+        funcCallKey = getFuncKey nm parameterList sortOut
         
         funcContent :: FuncContent
         funcContent = functionCall funcCallKey (fromTypedElementsToFuncContents parameterList)
@@ -200,7 +195,7 @@ testUserDefinedFunction = TestCase $
         sortName = intSortName
         userDefinedParameterName = "userDefinedParameterName"
         userDefinedParameterList = [([userDefinedParameterName], sortName)]
-        (userdefinedFuncDef, userdefinedFuncCallKey) = createFuncDefWithKey "userDefinedFunction" userDefinedParameterList sortName (var userDefinedParameterName sortName)
+        (userdefinedFuncDef, userdefinedFuncCallKey) = createFuncDefWithKey "userDefinedFunction" userDefinedParameterList sortName (varContent userDefinedParameterName sortName)
         
         funcContent = functionCall userdefinedFuncCallKey [constantInt 0]
         (funcDef, funcKey) = createFuncDefWithKey "myFunc" [] sortName funcContent
@@ -219,7 +214,7 @@ varBool2Name = "b2"
 
 
 createVarBoolFuncContent :: Integer -> [FuncContent]
-createVarBoolFuncContent _ = [var varBool1Name boolSortName,var varBool2Name boolSortName]
+createVarBoolFuncContent _ = [varContent varBool1Name boolSortName,varContent varBool2Name boolSortName]
 
 createBoolFuncContent :: Integer -> [FuncContent]
 createBoolFuncContent boundary = 
@@ -237,7 +232,7 @@ varInt2Name :: String
 varInt2Name = "i2"
 
 createVarIntFuncContent :: Integer -> [FuncContent]
-createVarIntFuncContent _ = [var varInt1Name intSortName,var varInt2Name intSortName]
+createVarIntFuncContent _ = [varContent varInt1Name intSortName,varContent varInt2Name intSortName]
 
 createUnaryIntFuncContent :: Integer -> [FuncContent]
 createUnaryIntFuncContent boundary = 
@@ -251,11 +246,11 @@ createUnaryIntFuncContent boundary =
                     concatMap (\funcKey -> map (\x -> functionCall funcKey [x]) (createIntFuncContent (boundary-1))) [minusFuncKey, absFuncKey]
 
 sumTuple :: Integer -> [(Integer,Integer)]
-sumTuple max =
-        map createTuple [0..max]
+sumTuple mx =
+        map createTuple [0..mx]
     where 
         createTuple :: Integer -> (Integer,Integer)
-        createTuple n = (n, max-n)
+        createTuple n = (n, mx-n)
         
 createBinaryIntFuncContent :: Integer -> [FuncContent]
 createBinaryIntFuncContent boundary = 
@@ -282,14 +277,14 @@ createSubstituteIntFuncContent boundary =
             let xs = createIntFuncContent n
                 ys = createIntFuncContent m
               in 
-                [subst (Map.fromList [(var varInt1Name intSortName, x)]) y | x <- xs, y <- ys]
+                [subst (Map.fromList [(varContent varInt1Name intSortName, x)]) y | x <- xs, y <- ys]
 
 sumTuple3 :: Integer -> [(Integer,Integer,Integer)]
-sumTuple3 max =
-        concatMap createTuple3 [0..max]
+sumTuple3 mx =
+        concatMap createTuple3 [0..mx]
     where 
         createTuple3 :: Integer -> [(Integer,Integer,Integer)]
-        createTuple3 n = [(n,x,y) | (x,y) <- sumTuple (max-n)]
+        createTuple3 n = [(n,x,y) | (x,y) <- sumTuple (mx-n)]
             
                 
 createITEIntFuncContent :: Integer -> [FuncContent]
@@ -324,5 +319,6 @@ testFuncContent funcContent = TestCase $
         (torXakisInput, funcKey) = createFuncDefWithKey "myFunc" parameterList intSortName funcContent
       in
         assertEqual "FuncContent" funcContent (getFuncContent torXakisInput funcKey)
- 
+
+testCombinatorialInt :: Test
 testCombinatorialInt = TestList (map testFuncContent (createIntFuncContent 5))
