@@ -25,6 +25,7 @@ library
                      , Examples.MovingArms
                      , Examples.Paths
                      , Examples.Point
+                     , Examples.ReadWriteConflict
                      , Examples.Queue
                      , Examples.StimulusResponse
   build-depends:       base >= 4.7 && < 5
