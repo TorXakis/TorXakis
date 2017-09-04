@@ -58,10 +58,10 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
                                                       && ( 0 < (read s::Integer) ) )
             -- param_max_rand_depth :: Int (>0)
   
-  , ( "param_Randomization"      , show TrueBins  , \s ->    (s== show No)
-                                                          || (s== show Partition)
-                                                          || (s== show TrueBins)
-                                                          || (s== show IncrementChoice)
+  , ( "param_Randomization"      , show IncrementChoice  , \s ->    (s == show No)
+                                                                 || (s == show Partition)
+                                                                 || (s == show TrueBins)
+                                                                 || (s == show IncrementChoice)
                                                          )
             -- param_Randomization :: SolveStrategy
             -- randomization strategy for constraint solving
