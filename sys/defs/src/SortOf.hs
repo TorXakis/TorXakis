@@ -6,7 +6,8 @@ See LICENSE at root directory of this repository.
 
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns      #-}
 module SortOf
 
 -- ----------------------------------------------------------------------------------------- --
@@ -17,14 +18,14 @@ module SortOf
 
 where
 
-import BehExprDefs
-import ConstDefs
-import CstrId
-import FuncId
-import SortId
-import VarId
-import ValExprDefs
-import Variable
+import           BehExprDefs
+import           ConstDefs
+import           CstrId
+import           FuncId
+import           SortId
+import           ValExprDefs
+import           Variable
+import           VarId
 
 -- ----------------------------------------------------------------------------------------- --
 -- value expression, etc. :  sortOf -------------------------------------------------------- --
@@ -51,8 +52,8 @@ class SortOf s
 
 instance SortOf ChanOffer
   where
-    sortOf (Quest (VarId _nm _uid vs))          =  vs
-    sortOf (Exclam vexp)                        =  sortOf vexp
+    sortOf (Quest (VarId _nm _uid vs)) =  vs
+    sortOf (Exclam vexp)               =  sortOf vexp
 
 sortIdError :: SortId
 sortIdError = SortId "_Error" (-1)
@@ -63,7 +64,7 @@ instance (Variable v) => SortOf (ValExpr v)
                       if s == sortIdError
                         then sortId_String
                         else s
-                        
+
 
 sortOf' :: (Variable v) => ValExpr v -> SortId
 sortOf' (view -> Vfunc (FuncId _nm _uid _fa fs) _vexps) = fs
@@ -73,7 +74,7 @@ sortOf' (view -> Vaccess (CstrId _nm _uid ca _cs) p _vexps) = ca!!p
 sortOf' (view -> Vconst con)                            =  sortOf con
 sortOf' (view -> Vvar v)                                =  vsort v
 sortOf' (view -> Vite _cond vexp1 vexp2)                =  -- if the LHS is an error (Verror), we want to yield the type of the RHS which might be no error
-                                                             let sort' = sortOf' vexp1 in 
+                                                             let sort' = sortOf' vexp1 in
                                                              if sort' == sortIdError
                                                                then sortOf' vexp2
                                                                else sort'
@@ -88,11 +89,11 @@ sortOf' _                                               = error "sortOf': All it
 
 instance SortOf Const
   where
-    sortOf (Cbool _b)                               = sortId_Bool
-    sortOf (Cint _i)                                = sortId_Int 
-    sortOf (Cstring _s)                             = sortId_String
-    sortOf (Cstr (CstrId _nm _uid _ca cs) _)        = cs
-    sortOf _                                        = error "Unexpect SortOf - Const"
+    sortOf (Cbool _b)                        = sortId_Bool
+    sortOf (Cint _i)                         = sortId_Int
+    sortOf (Cstring _s)                      = sortId_String
+    sortOf (Cstr (CstrId _nm _uid _ca cs) _) = cs
+    sortOf _                                 = error "Unexpect SortOf - Const"
 
 
 instance SortOf VarId

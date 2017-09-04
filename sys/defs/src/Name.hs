@@ -10,7 +10,10 @@ See LICENSE at root directory of this repository.
 module Name
 where
 
-type Name = String
+import           Data.Text (Text)
+
+
+type Name = Text
 
 -- ----------------------------------------------------------------------------------------- --
 --

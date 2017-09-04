@@ -68,5 +68,7 @@ library
                       , hexpat
                       , random
                       , MissingH
+                      , text
+                      , text-show
 
   default-language:     Haskell2010

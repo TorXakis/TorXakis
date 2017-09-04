@@ -6,13 +6,14 @@ See LICENSE at root directory of this repository.
 
 
 -- ----------------------------------------------------------------------------------------- --
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module StdTDefs
 
 -- ----------------------------------------------------------------------------------------- --
---  
+--
 -- Predefined, Standard TorXakis Data Types :  Bool, Int, Char, String
--- 
+--
 -- ----------------------------------------------------------------------------------------- --
 ( eqName
 , neqName
@@ -21,38 +22,38 @@ module StdTDefs
 , toXmlName
 , fromXmlName
 
-, funcId_BoolToString   
-, funcId_BoolFromString 
-, funcId_BoolToXml      
-, funcId_BoolFromXml    
+, funcId_BoolToString
+, funcId_BoolFromString
+, funcId_BoolToXml
+, funcId_BoolFromXml
 
-, funcId_IntToString    
-, funcId_IntFromString  
-, funcId_IntToXml       
+, funcId_IntToString
+, funcId_IntFromString
+, funcId_IntToXml
 , funcId_IntFromXml
-, funcId_uniminusInt    
-, funcId_plusInt        
-, funcId_minusInt       
-, funcId_timesInt       
-, funcId_divideInt      
-, funcId_moduloInt      
-, funcId_ltInt          
-, funcId_leInt          
-, funcId_gtInt          
-, funcId_geInt          
-, funcId_absInt         
+, funcId_uniminusInt
+, funcId_plusInt
+, funcId_minusInt
+, funcId_timesInt
+, funcId_divideInt
+, funcId_moduloInt
+, funcId_ltInt
+, funcId_leInt
+, funcId_gtInt
+, funcId_geInt
+, funcId_absInt
 
-, funcId_StringToString     
-, funcId_StringFromString   
-, funcId_StringToXml        
-, funcId_StringFromXml      
-, funcId_catString          
-, funcId_lenString          
-, funcId_takeWhile          
-, funcId_takeWhileNot       
-, funcId_dropWhile          
-, funcId_dropWhileNot       
-, funcId_atString 
+, funcId_StringToString
+, funcId_StringFromString
+, funcId_StringToXml
+, funcId_StringFromXml
+, funcId_catString
+, funcId_lenString
+, funcId_takeWhile
+, funcId_takeWhileNot
+, funcId_dropWhile
+, funcId_dropWhileNot
+, funcId_atString
 
 , funcId_strinre
 
@@ -75,23 +76,24 @@ module StdTDefs
 )
 where
 
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import Control.Arrow ( (***) )
+import           Control.Arrow ((***))
+import qualified Data.Map      as Map
+import qualified Data.Set      as Set
+import           Data.Text     (Text)
 
-import ChanId
-import CstrId
-import FuncId
-import FuncDef
-import Ident
-import SortDef
-import SortId
-import SortOf
-import TxsDef
-import ValExprDefs
-import ValExprImpls
-import VarId
-import FuncTable
+import           ChanId
+import           CstrId
+import           FuncDef
+import           FuncId
+import           FuncTable
+import           Ident
+import           SortDef
+import           SortId
+import           SortOf
+import           TxsDef
+import           ValExprDefs
+import           ValExprImpls
+import           VarId
 
 stdSortTable :: Map.Map String SortId
 stdSortTable = Map.fromList [ ("Bool",   sortId_Bool)
@@ -103,7 +105,7 @@ stdSortTable = Map.fromList [ ("Bool",   sortId_Bool)
 stdSortDefs' :: [ ( SortId,       SortDef  ) ]
 stdSortDefs' = [ (sortId_Bool,   SortDef)
                , (sortId_Int,    SortDef)
-               , (sortId_String, SortDef) 
+               , (sortId_String, SortDef)
                , (sortId_Regex,  SortDef)
                ]
 
@@ -111,25 +113,25 @@ stdSortDefs :: [ ( Ident,       TxsDef  ) ]
 stdSortDefs = map (IdSort Control.Arrow.*** DefSort) stdSortDefs'
 
 -- ----------------------------------------------------------------------------------------- --
--- standard function names 
+-- standard function names
 
-eqName, neqName :: String
+eqName, neqName :: Text
 eqName   =  "=="
 neqName  =  "<>"
 
-toStringName, fromStringName :: String
+toStringName, fromStringName :: Text
 toStringName   = "toString"
 fromStringName = "fromString"
 
-toXmlName, fromXmlName :: String
+toXmlName, fromXmlName :: Text
 toXmlName   = "toXml"
 fromXmlName = "fromXml"
 
 -- ----------------------------------------------------------------------------------------- --
 -- Helper function
 equalHandler :: Ord v => Handler v
-equalHandler [a,b]  = cstrEqual a b
-equalHandler _      = error "equalHandler expects two arguments"
+equalHandler [a,b] = cstrEqual a b
+equalHandler _     = error "equalHandler expects two arguments"
 
 notEqualHandler :: Ord v => Handler v
 notEqualHandler [a, b] = cstrNot (cstrEqual a b)
@@ -153,7 +155,7 @@ impliesHandler _     = error "impliesHandler expects two arguments"
 xorHandler :: Ord v => Handler v
 xorHandler [a, b] = cstrOr (Set.fromList [arg0, arg1])
   where arg0 = cstrAnd (Set.fromList [a, cstrNot b])
-        arg1 = cstrAnd (Set.fromList [cstrNot a, b])  
+        arg1 = cstrAnd (Set.fromList [cstrNot a, b])
 xorHandler _      = error "xorHandler expects two arguments"
 
 -- ----------------------------------------------------------------------------------------- --
@@ -192,7 +194,7 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, equalHandler ) ] )
 
     , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, head)
-                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_plusInt ) 
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_plusInt )
                            ] )
     , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_uniminusInt )
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_minusInt )
@@ -217,7 +219,7 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("strinre",   Map.fromList [ ( Signature [sortId_String,sortId_Regex] sortId_Bool, cstrPredef SSR funcId_strinre ) ] )
 
     ] )
-    
+
 -- ----------------------------------------------------------------------------------------- --
 -- SSB :  Standard Sort Bool
 
@@ -428,12 +430,12 @@ stdTDefs =    stdSortDefs
 
 
 chanId_Exit  = ChanId "EXIT"  901 []
-chanId_Istep = ChanId "ISTEP" 902 []  
-chanId_Qstep = ChanId "QSTEP" 903 []  
-chanId_Hit   = ChanId "HIT"   904 []  
-chanId_Miss  = ChanId "MISS"  905 []  
+chanId_Istep = ChanId "ISTEP" 902 []
+chanId_Qstep = ChanId "QSTEP" 903 []
+chanId_Hit   = ChanId "HIT"   904 []
+chanId_Miss  = ChanId "MISS"  905 []
 
 
 -- ----------------------------------------------------------------------------------------- --
--- 
+--
 -- ----------------------------------------------------------------------------------------- --
