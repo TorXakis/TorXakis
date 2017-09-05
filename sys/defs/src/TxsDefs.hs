@@ -3,9 +3,9 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- ----------------------------------------------------------------------------------------- --
 --
 -- TorXakis Interal Data Type Definitions:
@@ -74,9 +74,10 @@ module TxsDefs
 )
 where
 import           Control.Arrow   ((***))
-import qualified Data.Map        as Map
-
 import           Control.DeepSeq
+import qualified Data.Map        as Map
+import           Data.Text       (Text)
+import qualified Data.Text       as T
 import           GHC.Generics    (Generic)
 
 import           BehExprDefs     as X
