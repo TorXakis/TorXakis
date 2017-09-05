@@ -31,6 +31,8 @@ library
                       , mtl
                       , regex-tdfa
                       , MissingH
+                      , text
+                      , text-show
                       
                       , behaveenv
                       , defs

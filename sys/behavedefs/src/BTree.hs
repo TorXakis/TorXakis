@@ -4,7 +4,8 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- ----------------------------------------------------------------------------------------- --
 
 module BTree
@@ -35,14 +36,13 @@ module BTree
 
 where
 
--- import qualified Data.Char as Char
--- import qualified Data.List as List
-import qualified Data.Set  as Set
--- import qualified Data.Map  as Map
--- import qualified Data.String.Utils as Utils
+import           Data.Monoid
+import qualified Data.Set    as Set
+import qualified Data.Text   as T
+import           TextShow
 
 -- import from defs
-import TxsDefs
+import           TxsDefs
 
 -- import SolveDefs
 -- import qualified SMTData as SMTData
@@ -60,22 +60,21 @@ type BehAction  =  Set.Set (TxsDefs.ChanId,[TxsDefs.Const])
 -- IVar     :  interaction variable for behaviour tree
 
 
-data  IVar      =  IVar    { ivname     :: Name       -- name of Channel
-                           , ivuid      :: Int        -- uid of Channel
-                           , ivpos      :: Int        -- 1..length (chansorts chan)
-                           , ivstat     :: Int        -- depth in the behaviour tree
-                           , ivsrt      :: SortId     -- (chansorts chan)!!(pos-1)
+data  IVar      =  IVar    { ivname :: Name       -- name of Channel
+                           , ivuid  :: Int        -- uid of Channel
+                           , ivpos  :: Int        -- 1..length (chansorts chan)
+                           , ivstat :: Int        -- depth in the behaviour tree
+                           , ivsrt  :: SortId     -- (chansorts chan)!!(pos-1)
                            }
      deriving (Eq,Ord,Read,Show)
 
 
-instance Variable IVar
-  where
+instance Variable IVar where
     vname (IVar nm uid pos stat _srt) =
-      "$"++nm++ "$"++ show uid ++"$"++ show stat ++"$"++ show pos ++"$"
+      "$" <> nm <> "$" <> showt uid <> "$" <> showt stat <> "$" <> showt pos <> "$"
     vunid IVar{ ivuid = uid } = uid
     vsort IVar{ ivsrt = srt } = srt
-    cstrVariable s i = IVar s i (-1) (-1)           -- PvdL for temporary variable
+    cstrVariable s i = IVar (T.pack s) i (-1) (-1)           -- PvdL for temporary variable
 
 type  IVEnv = VarEnv VarId IVar
 type  IWals = WEnv IVar
@@ -87,14 +86,14 @@ type  IWals = WEnv IVar
 type  CTree     =  [ CTBranch ]
 
 data  CTBranch  =  CTpref { ctoffers  :: Set.Set CTOffer              -- set may be empty
-                          , cthidvars :: [IVar]                       -- hidden variables 
+                          , cthidvars :: [IVar]                       -- hidden variables
                           , ctpreds   :: [ValExpr IVar]
                           , ctnext    :: INode
                           }
      deriving (Eq,Ord,Read,Show)
 
-data  CTOffer   =  CToffer  { ctchan      :: ChanId
-                            , ctchoffers  :: [IVar]
+data  CTOffer   =  CToffer  { ctchan     :: ChanId
+                            , ctchoffers :: [IVar]
                             }
      deriving (Eq,Ord,Read,Show)
 
@@ -102,15 +101,15 @@ data  CTOffer   =  CToffer  { ctchan      :: ChanId
 -- BTree   :  behaviour tree, ie. communication tree with explicit internal steps
 --            BTree is the basic behaviour state structure
 --            a BTree is closed, ie. no free variables
-     
+
 
 type  BTree    =  [ BBranch ]
 
 
-data  BBranch  =  BTpref   { btoffers     :: Set.Set CTOffer        -- set must be non-empty
-                           , bthidvars    :: [IVar]                 -- hidden variables 
-                           , btpreds      :: [ValExpr IVar]
-                           , btnext       :: INode
+data  BBranch  =  BTpref   { btoffers  :: Set.Set CTOffer        -- set must be non-empty
+                           , bthidvars :: [IVar]                 -- hidden variables
+                           , btpreds   :: [ValExpr IVar]
+                           , btnext    :: INode
                            }
                 | BTtau    { btree        :: BTree
                            }

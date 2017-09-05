@@ -5,7 +5,8 @@ See LICENSE at root directory of this repository.
 -}
 
 -- ----------------------------------------------------------------------------------------- --
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns      #-}
 module Eval
 
 -- ----------------------------------------------------------------------------------------- --
@@ -26,38 +27,43 @@ module Eval
 
 where
 
-import Text.Regex.TDFA
+import           Control.DeepSeq
+import           Control.Exception
+import           Control.Monad.State
+import           Data.Maybe
+import           Data.Monoid
+import           Data.Text           (Text)
+import qualified Data.Text           as T
+import           Data.Text.Read
+import           Text.Regex.TDFA
+import           TextShow
 
-import Control.Monad.State
-import Control.Exception
-import Control.DeepSeq
-
-import qualified Data.List as List
-import qualified Data.Map  as Map
-import qualified Data.Set  as Set
+import qualified Data.List           as List
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
 
 -- import from behavedefs
-import qualified EnvBTree  as IOB
+import qualified EnvBTree            as IOB
 import qualified EnvData
 
 -- import from defs
-import StdTDefs
-import TxsDefs
-import TxsShow
-import TxsUtils 
-import XmlFormat
- 
+import           StdTDefs
+import           TxsDefs
+import           TxsShow
+import           TxsUtils
+import           XmlFormat
+
 -- import from front
 import qualified TxsAlex
 import qualified TxsHappy
 
 -- import from solve
-import RegexAlex
-import RegexPosixHappy
+import           RegexAlex
+import           RegexPosixHappy
 
 -- ----------------------------------------------------------------------------------------- --
 -- eval :  evaluation of value expression
---         eval shall only work on closed vexpr 
+--         eval shall only work on closed vexpr
 
 eval :: TxsDefs.Variable v => TxsDefs.ValExpr v -> IOB.IOB Const
 
@@ -80,7 +86,7 @@ eval (view -> Vcstr cid vexps) = do
 eval (view -> Viscstr cid1 arg) = do
      Cstr cid2 _ <- eval arg
      bool2txs ( cid1 == cid2 )
-     
+
 eval (view -> Vaccess _cid1 p arg) = do
      Cstr _cid2 args' <- eval arg
      return $ args'!!p                   -- TODO: check cids are equal?
@@ -129,7 +135,7 @@ eval (view -> Vpredef kd fid vexps) =
                                     return $ Cerror ""
        AST -> case vexps of
                 [vexp] -> do wal <- eval vexp
-                             str2txs (pshow wal)
+                             str2txs (T.pack (pshow wal))
                 _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: AST" ]
                              return $ Cerror ""
        ASF -> case vexps of
@@ -142,15 +148,15 @@ eval (view -> Vpredef kd fid vexps) =
                                                                : TxsAlex.Csigs   sigs
                                                                : TxsAlex.Cvarenv []
                                                                : TxsAlex.Cunid (uid + 1)
-                                                               : TxsAlex.txsLexer s
+                                                               : TxsAlex.txsLexer (T.unpack s)
                                                                )
                                    in return $! show p `deepseq` (p,"")
                                 )
-                                ( \e -> return ((uid,cstrError ""), show (e::ErrorCall)))
+                                ( \e -> return ((uid, cstrError ""), show (e::ErrorCall)))
                              if  e /= ""
                                then do IOB.putMsgs $ map EnvData.TXS_CORE_SYSTEM_ERROR
                                          [ "eval: ASF"
-                                         , "vexpr: " ++ s
+                                         , "vexpr: " ++ show s
                                          , "signatures" ++ show sigs
                                          ]
                                        return $ Cerror ""
@@ -175,7 +181,7 @@ eval (view -> Vpredef kd fid vexps) =
        SSR -> evalSSR fid vexps
 
 eval (view -> Verror str) = do
-     IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING $ "eval: Verror "++ str ]
+     IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING $ "eval: Verror " ++ show str ]
      return $ Cerror ""
 
 eval _ = return $ Cerror "undefined"
@@ -223,22 +229,30 @@ evalACC fid vexp = do
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of value expression: evaluation of standard functions for Bool - SSB
 
+-- TODO: see how to make this exception safe.
+readBool :: Text -> Bool
+readBool "True"  = True
+readBool "true"  = True
+readBool "False" = False
+readBool "false" = False
+readBool x       = error $ "Unable to parse bool " ++ show x
+
 evalSSB :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSB (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
        ( "toString",    [v1]    ) -> do b1 <- txs2bool v1
-                                        str2txs $ show b1
+                                        str2txs $ showt b1
        ( "fromString",  [v1]    ) -> do s1 <- txs2str v1
-                                        bool2txs $ read s1
+                                        bool2txs $ readBool s1
        ( "toXml",       [v1]    ) -> do wal <- eval v1
                                         tdefs <- gets IOB.tdefs
-                                        str2txs $ constToXml tdefs wal          
+                                        str2txs $ constToXml tdefs wal
        ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
                                         tdefs <- gets IOB.tdefs
                                         return $ constFromXml tdefs sortId_Bool s
        ( s, _ )                   -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                                      $ "evalSSB: unknown standard Bool opn - " ++ s ]
-                                        return $ Cerror ("unknown " ++ s)
+                                                      $ "evalSSB: unknown standard Bool opn - " ++ show s ]
+                                        return $ Cerror ("unknown " ++ show s)
 
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of value expression: evaluation of standard functions for Int - SSI
@@ -247,9 +261,9 @@ evalSSI :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSI (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
        ( "toString",    [v1]    ) -> do i1 <- txs2int v1
-                                        str2txs $ show i1
+                                        str2txs $ showt i1
        ( "fromString",  [v1]    ) -> do s1 <- txs2str v1
-                                        int2txs $ read s1
+                                        int2txs $ read (T.unpack s1)
        ( "toXml",       [v1]    ) -> do wal <- eval v1
                                         tdefs <- gets IOB.tdefs
                                         str2txs $ constToXml tdefs wal
@@ -273,22 +287,22 @@ evalSSI (FuncId nm _ _ _) vexps =
        ( "%",           [v1,v2] ) -> do i1 <- txs2int v1
                                         i2 <- txs2int v2
                                         int2txs  $ i1 `mod` i2
-       ( "<>",          [v1,v2] ) -> do i1 <- txs2int v1 
+       ( "<>",          [v1,v2] ) -> do i1 <- txs2int v1
                                         i2 <- txs2int v2
                                         bool2txs $ i1 /= i2
-       ( "<",           [v1,v2] ) -> do i1 <- txs2int v1 
+       ( "<",           [v1,v2] ) -> do i1 <- txs2int v1
                                         i2 <- txs2int v2
                                         bool2txs $ i1 < i2
-       ( "<=",          [v1,v2] ) -> do i1 <- txs2int v1 
+       ( "<=",          [v1,v2] ) -> do i1 <- txs2int v1
                                         i2 <- txs2int v2
                                         bool2txs $ i1 <= i2
-       ( ">",           [v1,v2] ) -> do i1 <- txs2int v1 
+       ( ">",           [v1,v2] ) -> do i1 <- txs2int v1
                                         i2 <- txs2int v2
                                         bool2txs $ i1 > i2
-       ( ">=",          [v1,v2] ) -> do i1 <- txs2int v1 
+       ( ">=",          [v1,v2] ) -> do i1 <- txs2int v1
                                         i2 <- txs2int v2
                                         bool2txs $ i1 >= i2
-       ( "abs",         [v1]    ) -> do i1 <- txs2int v1 
+       ( "abs",         [v1]    ) -> do i1 <- txs2int v1
                                         int2txs $ if i1<0 then -i1 else i1
        _                          -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "evalSSI: standard Int opn" ]
                                         return $ Cerror ""
@@ -301,9 +315,10 @@ evalSSS :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSS (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
        ( "toString",   [v] ) -> do s <- txs2str v
-                                   str2txs $ show s
+                                   -- TODO: consider changing the type of `str2txs` to use text to avoid packing and unpacking.
+                                   str2txs $ T.pack $ show s
        ( "fromString", [v] ) -> do s <- txs2str v
-                                   str2txs $ read s
+                                   str2txs $ read (T.unpack s)
        ( "toXml",      [v] ) -> do wal <- eval v
                                    tdefs <- gets IOB.tdefs
                                    str2txs $ constToXml tdefs wal
@@ -315,28 +330,34 @@ evalSSS (FuncId nm _ _ _) vexps =
                                    bool2txs $ s1 /= s2
        ( "++",     [v1,v2] ) -> do s1 <- txs2str v1
                                    s2 <- txs2str v2
-                                   str2txs $ s1 ++ s2
-       ( "len",    [v1]    ) -> do s1 <- txs2str v1 
-                                   int2txs  $ toInteger (length s1)
+                                   str2txs $ s1 <> s2
+       ( "len",    [v1]    ) -> do s1 <- txs2str v1
+                                   int2txs  $ toInteger (T.length s1)
        ( "takeWhile",    [v1,v2] ) -> do s1 <- txs2str v1
                                          s2 <- txs2str v2
-                                         str2txs $ takeWhile (`elem` s1) s2
+                                         str2txs $ T.takeWhile (`elemT` s1) s2
        ( "takeWhileNot", [v1,v2] ) -> do s1 <- txs2str v1
                                          s2 <- txs2str v2
-                                         str2txs $ takeWhile (`notElem` s1) s2
+                                         str2txs $ T.takeWhile (`notElemT` s1) s2
        ( "dropWhile",    [v1,v2] ) -> do s1 <- txs2str v1
                                          s2 <- txs2str v2
-                                         str2txs $ dropWhile (`elem` s1) s2
+                                         str2txs $ T.dropWhile (`elemT` s1) s2
        ( "dropWhileNot", [v1,v2] ) -> do s1 <- txs2str v1
                                          s2 <- txs2str v2
-                                         str2txs $ dropWhile (`notElem` s1) s2
+                                         str2txs $ T.dropWhile (`notElemT` s1) s2
        ( "at", [v1,v2] )           -> do s1 <- txs2str v1
                                          i2 <- txs2int v2
                                          let i2' = fromInteger i2
-                                         str2txs $ if 0<=i2' && i2'< length s1
-                                                     then [s1!!i2'] else ""
+                                         str2txs $ if 0<=i2' && i2'< T.length s1
+                                                   then T.singleton (T.index s1 i2') else ""
        _                           -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "evalSSS: standard String opn" ]
                                          return $ Cerror ""
+
+elemT :: Char -> Text -> Bool
+elemT c = isJust . T.find (== c)
+
+notElemT :: Char -> Text -> Bool
+notElemT c = not . elemT c
 
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of value expression: evaluation of standard functions for Regex - SSR
@@ -344,9 +365,9 @@ evalSSS (FuncId nm _ _ _) vexps =
 evalSSR :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSR (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
-       ( "strinre",[v1,v2] ) -> do rawRegex     <- txs2regex v2
+       ( "strinre",[v1,v2] ) -> do rawRegex     <- T.unpack <$> txs2regex v2
                                    let haskellRegex = regexPosixParser (regexLexer rawRegex)
-                                   value <- txs2str v1
+                                   value <- T.unpack <$> txs2str v1
                                    bool2txs $ value =~ haskellRegex
        _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "evalSSR: error in standard Regex opn" ]
                return $ Cerror ""
@@ -379,7 +400,7 @@ txs2int vexp = do
 int2txs :: Integer -> IOB.IOB Const
 int2txs i = return $ Cint i
 
-txs2str :: Variable v => ValExpr v -> IOB.IOB String
+txs2str :: Variable v => ValExpr v -> IOB.IOB Text
 txs2str vexp = do
      wal <- eval vexp
      case wal of
@@ -388,10 +409,10 @@ txs2str vexp = do
                                      $ "txs2str: not on String: " ++ show v ]
                        return ""
 
-str2txs :: String -> IOB.IOB Const
-str2txs s = return $ Cstring s
+str2txs :: Text -> IOB.IOB Const
+str2txs = return . Cstring
 
-txs2regex :: Variable v => ValExpr v -> IOB.IOB String
+txs2regex :: Variable v => ValExpr v -> IOB.IOB Text
 txs2regex vexp = do
      wal <- eval vexp
      case wal of
