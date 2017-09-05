@@ -35,12 +35,13 @@ import           ChanId
 import           ProcId
 import           SortId
 
+import           Data.Text       (Text)
 import           FuncTable
 
 data Sigs v = Sigs  { chan :: [ChanId]  -- TODO: Map.Map String ChanId
                     , func :: FuncTable v
                     , pro  :: [ProcId]  -- TODO: ProcTable
-                    , sort :: Map.Map String SortId
+                    , sort :: Map.Map Text SortId
                     } deriving (Show, Generic, NFData)
 
 empty :: Sigs v
@@ -60,5 +61,5 @@ uniqueCombine l r = Sigs
                         if null d then FuncTable.union (func l) (func r) else error (unlines d) )
                     (let d = ["duplicate procedure " ++ show p | p <- pro l, p `elem` pro r ] in
                         if null d then pro l ++ pro r else error (unlines d) )
-                    (let d = ["duplicate sort " ++ s | s <- Map.keys (sort l), Map.member s (sort r) ] in
+                    (let d = ["duplicate sort " ++ show s | s <- Map.keys (sort l), Map.member s (sort r) ] in
                         if null d then Map.union (sort l) (sort r) else error (unlines d) )

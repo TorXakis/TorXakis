@@ -83,6 +83,7 @@ import           Data.Text     (Text)
 
 import           ChanId
 import           CstrId
+import           Data.Text     (Text)
 import           FuncDef
 import           FuncId
 import           FuncTable
@@ -95,7 +96,7 @@ import           ValExprDefs
 import           ValExprImpls
 import           VarId
 
-stdSortTable :: Map.Map String SortId
+stdSortTable :: Map.Map Text SortId
 stdSortTable = Map.fromList [ ("Bool",   sortId_Bool)
                             , ("Int",    sortId_Int)
                             , ("String", sortId_String)

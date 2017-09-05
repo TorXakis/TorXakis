@@ -17,6 +17,7 @@ import           CstrId
 import           Data.ByteString          (pack)
 import           Data.ByteString.Internal (c2w)
 import           Data.Char                (chr, ord)
+import           Data.Foldable
 import qualified Data.Map                 as Map
 import           Data.Monoid
 import           Data.Text                (Text)
@@ -25,6 +26,7 @@ import           FuncId
 import           SortId
 import           StdTDefs
 import           Text.XML.Expat.Tree
+import           TextShow
 import           TxsDefs
 
 -- Assumptions : Char in extended ASCII (i.e. ord c in [0..255]  { thus [0x0..0xFF] } )
@@ -50,6 +52,23 @@ encodeChar  c     = if validChar c
                         then T.singleton c
                         else "<char>" <> T.pack (show (ord c)) <> "</char>"
 
+-- | Make an XML node.
+--
+-- TODO: to make this more efficient return always a `[Text]`, and use `T.concat`
+-- at the end (which is O(n)).
+--
+mkNode :: Text -- ^ Tag string.
+       -> Text -- ^ Contents
+       -> Text -- ^ String representation of the node.
+mkNode tag contents =
+  "<" <> tag <> ">" <> contents <> "</" <> tag <> ">"
+
+-- | Infix and right associative version of mkNode.
+(~>) :: Text -> Text -> Text
+(~>) = mkNode
+
+infixr 6 ~>
+
 -- ----------------------------------------------------------------------------------------- --
 -- lookup a constructor definition given its constructor id in the given TorXakis definitions
 
@@ -71,7 +90,7 @@ lookupConstructor tdefs sid n
           ] of
         [c] -> c
         _   -> error $ "TXS SMT2TXS lookupConstructor: No (unique) constructor for sort " ++
-                      show sid ++ " and name " ++ n ++ "\n"
+                      show sid ++ " and name " ++ T.unpack n ++ "\n"
 -- ----------------------------------------------------------------------------------------- --
 rootName :: Text
 rootName = "TorXakisMsg"
@@ -81,49 +100,69 @@ constToXml tdefs w = pairNameConstToXml tdefs (rootName, w)
 
 getFieldNames :: TxsDef -> [Text]
 getFieldNames (DefCstr (CstrDef _ funcIds))   = map FuncId.name funcIds
-getFieldNames _                               = error "getFieldNames: unexpected input"
+getFieldNames _                               = error "getFieldNames: unexpected input" -- TODO: give a more informative error message.
 
 pairNameConstToXml :: TxsDefs -> (Text, Const)  -> Text
-pairNameConstToXml _        (n,Cbool True)      =   "<" ++ n ++ ">true</" ++ n ++ ">"
-pairNameConstToXml _        (n,Cbool False)     =   "<" ++ n ++ ">false</" ++ n ++ ">"
-pairNameConstToXml _        (n,Cint i)          =   "<" ++ n ++ ">" ++ show i ++ "</" ++ n ++ ">"
-pairNameConstToXml _        (n,Cstring s)       =   "<" ++ n ++ ">" ++ T.unpack (encodeString s) ++ "</" ++ n ++ ">"
-pairNameConstToXml tdefs    (n,Cstr cid wals)   =   let cName = CstrId.name cid in
-                                                        let cDef = lookupConstructorDef tdefs cid in
-                                                            "<" ++ n ++ "><" ++ cName ++ ">" ++
-                                                                concatMap (pairNameConstToXml tdefs) (zip (getFieldNames cDef) wals) ++
-                                                            "</" ++ cName ++ "></" ++ n ++ ">"
-pairNameConstToXml _ (n,w)                      = error ("XmlFormat - constToXml: " ++ show w ++ " - Const for name " ++ n ++ " can not be translated to Xml")
+pairNameConstToXml _ (n, Cbool True) =
+  n ~> "true"
+pairNameConstToXml _ (n, Cbool False) =
+  n ~> "false"
+pairNameConstToXml _ (n, Cint i) =
+  n ~> showt i
+pairNameConstToXml _ (n, Cstring s) =
+  n ~> s
+pairNameConstToXml tdefs (n, Cstr cid wals) =
+  let cName = CstrId.name cid
+      cDef = lookupConstructorDef tdefs cid
+      nodes = foldMap (pairNameConstToXml tdefs)
+                      (zip (getFieldNames cDef) wals)
+  in
+    n ~> cName ~> nodes
+pairNameConstToXml _ (n,w) =
+  error (   "XmlFormat - constToXml: " ++ show w
+         ++ " - Const for name " ++ show n
+         ++ " can not be translated to Xml"
+        )
 
 
 stringFromList :: [Node Text Text] -> Text
 stringFromList []                                           = ""
 stringFromList (Text a: xs)                                 = a <> stringFromList xs
-stringFromList (Element "char" [] [Text nrString] : xs )    = chr(read nrString) : stringFromList xs
+stringFromList (Element "char" [] [Text nrString] : xs ) =
+  T.singleton (chr (read (T.unpack nrString))) <> stringFromList xs
 stringFromList (x:_)                                        = error ("XmlFormat - stringFromList : unexpected item " ++ show x)
 
 constFromXml :: TxsDefs -> SortId -> Text -> Const
-constFromXml tdefs sid s = case parse' defaultParseOptions{ overrideEncoding = Just ISO88591 } (pack $ map c2w s) of
-                                Left err    -> error ("constFromXml parse error " ++ show err)
-                                Right tree  -> pairNameConstFromXml tdefs sid tree rootName
+constFromXml tdefs sid s =
+  case parse' defaultParseOptions{ overrideEncoding = Just ISO88591 } (pack $ map c2w (T.unpack s)) of
+    Left err   -> error ("constFromXml parse error " ++ show err)
+    Right tree -> pairNameConstFromXml tdefs sid tree rootName
 
 pairNameConstFromXml :: TxsDefs -> SortId -> Node Text Text -> Text -> Const
-pairNameConstFromXml = undefined
--- pairNameConstFromXml _     sid     (Element nt [] list) n                      | n == nt, sid == sortId_Bool       = Cbool ("true" == stringFromList list)
--- pairNameConstFromXml _     sid     (Element nt [] list) n                      | n == nt, sid == sortId_Int        = Cint (read (stringFromList list))
--- pairNameConstFromXml _     sid     (Element nt [] list) n                      | n == nt, sid == sortId_String     = Cstring (stringFromList list)
--- pairNameConstFromXml tdefs sid     (Element nt [] [Element cname [] list]) n   | n == nt                           =
---     let cstrid = lookupConstructor tdefs sid cname in
---         if length (cstrargs cstrid) == length list
---             then let cDef = lookupConstructorDef tdefs cstrid in
---                     let vexprArgs = map (\(sid',argValue,n') -> pairNameConstFromXml tdefs sid' argValue n') (zip3 (cstrargs cstrid) list (getFieldNames cDef)) in
---                         Cstr cstrid vexprArgs
---             else error $ "XmlFormat - constFromXml: Number of arguments mismatch " ++
---                          "in constructor " ++ cname ++ " of sort " ++ SortId.name sid ++
---                          " : definition " ++ show (length (cstrargs cstrid)) ++
---                          " vs actual " ++ show (length list) ++ "\n"
--- pairNameConstFromXml _ sid i n                                                                                     =
---     error $ "XmlFormat - constFromXml: Unexpected item " ++ show i ++ " for name " ++ n ++ " with sort " ++ SortId.name sid ++ "\n"
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --
+pairNameConstFromXml _ sid (Element nt [] list) n
+  | n == nt, sid == sortId_Bool = Cbool ("true" == stringFromList list)
+pairNameConstFromXml _     sid     (Element nt [] list) n
+  | n == nt, sid == sortId_Int = Cint (read (T.unpack (stringFromList list)))
+pairNameConstFromXml _ sid (Element nt [] list) n
+  | n == nt, sid == sortId_String = Cstring (stringFromList list)
+pairNameConstFromXml tdefs sid (Element nt [] [Element cname [] list]) n
+  | n == nt =
+    let cstrid = lookupConstructor tdefs sid cname
+        cDef = lookupConstructorDef tdefs cstrid
+        vexprArgs =
+          map (uncurry3 (pairNameConstFromXml tdefs))
+              (zip3 (cstrargs cstrid) list (getFieldNames cDef))
+        uncurry3 f (a, b, c) = f a b c
+    in
+      if length (cstrargs cstrid) == length list
+      then Cstr cstrid vexprArgs
+      else error $  "XmlFormat - constFromXml: Number of arguments mismatch "
+                 ++ "in constructor " ++ show cname
+                 ++ " of sort " ++ show (SortId.name sid)
+                 ++ " : definition " ++ show (length (cstrargs cstrid))
+                 ++ " vs actual " ++ show (length list) ++ "\n"
+pairNameConstFromXml _ sid i n                                                                                     =
+    error $  "XmlFormat - constFromXml: Unexpected item "
+          ++ show i
+          ++ " for name " ++ show n
+          ++ " with sort " ++ show (SortId.name sid) ++ "\n"
