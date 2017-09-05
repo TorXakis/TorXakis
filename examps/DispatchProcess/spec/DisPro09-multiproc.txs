@@ -9,13 +9,11 @@ See LICENSE at root directory of this repository.
 -- Dispatch Process
 -- ----------------------------------------------------------------------------------------- --
 -- greatest common diviser
-
+-- https://en.wikipedia.org/wiki/Euclidean_algorithm
 FUNCDEF  gcd ( a, b :: Int ) :: Int ::=
-        IF a == b THEN  a
-                  ELSE  IF a > b THEN  gcd ( a - b, b )
-                                 ELSE  gcd ( a, b - a )
-                        FI
-        FI
+	IF b == 0 THEN  a
+			  ELSE  gcd (b, a % b)
+	FI
 ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
