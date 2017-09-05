@@ -3,7 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
+{-# LANGUAGE OverloadedStrings #-}
 module TestSMTValue
 (
 testSMTValueList
@@ -67,10 +67,10 @@ substitute bind (TVEConstructor c vals) = TVEConstructor c (map (substitute bind
 substitute bind y = y
 
 toSMTValue :: TestValExpr -> SMTValue
-toSMTValue (TVEConstructor s vals)  = SMTConstructor s (map toSMTValue vals)
+toSMTValue (TVEConstructor s vals)  = SMTConstructor (T.pack s) (map toSMTValue vals)
 toSMTValue (TVEBool b)              = SMTBool b
 toSMTValue (TVEInt i)               = SMTInt i
-toSMTValue (TVEString s)            = SMTString s
+toSMTValue (TVEString s)            = SMTString (T.pack s)
 toSMTValue (TVEVar s)               = error ("var " ++ s ++ " does not have a constant value")
 ---------------------------------------------------------------------------
 -- SMTValue constructors
@@ -91,7 +91,7 @@ createNegative :: SMTValueTest -> SMTValueTest
 createNegative (SMTValueTest s (TVEInt i)) = SMTValueTest ("(- " ++ s ++ ")") (TVEInt (-1*i))
 
 createSMTString :: String -> SMTValueTest
-createSMTString s = SMTValueTest ("\"" ++ encodeStringLiteral s ++ "\"") (TVEString s)
+createSMTString s = SMTValueTest ("\"" ++ T.unpack (encodeStringLiteral (T.pack s)) ++ "\"") (TVEString s)
 
 createSMTVar :: String -> SMTValueTest
 createSMTVar s = SMTValueTest s (TVEVar s)

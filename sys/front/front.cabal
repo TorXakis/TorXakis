@@ -51,6 +51,7 @@ test-suite TorXakisFront-BlackBox
                       , MissingH
                       , QuickCheck
                       , defs
+                      , text                      
                       , front
 
   default-language:     Haskell2010

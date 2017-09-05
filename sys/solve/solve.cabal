@@ -109,6 +109,8 @@ test-suite SmtSolver-WhiteBox
                       , random-shuffle                      
                       , solvedefs
                       , value
+                      , text
+                      , text-show                      
 
                       , coreenv
 
@@ -137,6 +139,8 @@ test-suite SmtSolver-BlackBox
                       , solve
                       , solvedefs
                       , value
+                      , text
+                      , text-show                      
 
                       , coreenv
 

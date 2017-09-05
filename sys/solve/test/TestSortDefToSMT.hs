@@ -3,21 +3,23 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
+{-# LANGUAGE OverloadedStrings #-}
 module TestSortDefToSMT
 (
 testSortDefToSMTList
 )
 where
-import Test.HUnit
-import qualified Data.List as List
-import qualified Data.Map as Map
+import qualified Data.List  as List
+import qualified Data.Map   as Map
+import           Data.Text  (Text)
+import qualified Data.Text  as T
+import           Test.HUnit
 
-import TxsDefs
+import           TxsDefs
 
-import TXS2SMT
+import           TXS2SMT
 
--- -------------------------------------------------------------- 
+-- --------------------------------------------------------------
 testSortDefToSMTList :: Test
 testSortDefToSMTList = TestList [
         TestLabel "default"                 testDefaultConstructor,
@@ -25,13 +27,13 @@ testSortDefToSMTList = TestList [
         TestLabel "present Condition Int"   testPresentConditionalInt,
         TestLabel "Conditional Int"         testConditionalInt,
         TestLabel "Pair"                    testPair
-    ]    
+    ]
 ---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
 testDefaultConstructor :: Test
 testDefaultConstructor = TestCase $ assertEqual "default" "" (sortdefsToSMT Map.empty TxsDefs.empty)
-    
+
 testAbsentConditionalInt :: Test
 testAbsentConditionalInt = TestCase $ do
     let conditionalIntSortId = SortId "ConditionalInt" 1234
@@ -41,9 +43,9 @@ testAbsentConditionalInt = TestCase $ do
                 Map.empty
                )
     let txsDefs = TxsDefs.insert (IdCstr absentCstrId) (DefCstr (CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) []) )
-                 (TxsDefs.insert (IdSort conditionalIntSortId) (DefSort SortDef) 
+                 (TxsDefs.insert (IdSort conditionalIntSortId) (DefSort SortDef)
                   TxsDefs.empty)
-    assertBool "absent" ("(declare-datatypes () (\n    (conditionalInt (_absent))\n) )" `List.isInfixOf ` sortdefsToSMT mapI txsDefs )
+    assertBool "absent" ("(declare-datatypes () (\n    (conditionalInt (_absent))\n) )" `List.isInfixOf ` T.unpack (sortdefsToSMT mapI txsDefs) )
 
 testPresentConditionalInt :: Test
 testPresentConditionalInt = TestCase $ do
@@ -60,7 +62,7 @@ testPresentConditionalInt = TestCase $ do
     let txsDefs = TxsDefs.insert (IdCstr presentCstrId) (DefCstr (CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [valueAccessor]) )
                   (TxsDefs.insert (IdSort conditionalIntSortId) (DefSort SortDef)
                    TxsDefs.empty)
-    let result = sortdefsToSMT mapI txsDefs 
+    let result = T.unpack $ sortdefsToSMT mapI txsDefs
     assertBool ("present " ++ show result) ("(declare-datatypes () (\n    (conditionalInt (_present (ConditionalInt$_present$0 Int)))\n) )" `List.isInfixOf` result)
 
 testConditionalInt :: Test
@@ -81,7 +83,7 @@ testConditionalInt = TestCase $ do
                   (TxsDefs.insert (IdCstr presentCstrId) (DefCstr (CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [valueAccessor]) )
                    (TxsDefs.insert (IdSort conditionalIntSortId) (DefSort SortDef)
                     TxsDefs.empty))
-    let result = sortdefsToSMT mapI txsDefs 
+    let result = T.unpack (sortdefsToSMT mapI txsDefs)
     assertBool ("conditional " ++ show result) ("(declare-datatypes () (\n    (conditionalInt (_absent) (_present (ConditionalInt$_present$0 Int)))\n) )" `List.isInfixOf` result)
 
 testPair :: Test
@@ -91,7 +93,7 @@ testPair = TestCase $ do
     let cstrId    = CstrId "pair" 2345 [] pairSortId
     let firstAccessor = FuncId "first" 6565 [] intSortId
     let secondAccessor = FuncId "second" 6566 [] intSortId
-    
+
     let mapI = Map.insert (IdSort pairSortId) "PairX"
                (Map.insert (IdCstr cstrId) "pairX"
                 (Map.insert (IdFunc firstAccessor) "firstX"
@@ -99,9 +101,9 @@ testPair = TestCase $ do
                   (Map.insert (IdFunc secondAccessor) "secondX"
                    Map.empty
                ))))
-               
+
     let txsDefs = TxsDefs.insert (IdCstr cstrId) (DefCstr (CstrDef (FuncId "ignore" 9876 [] pairSortId) [firstAccessor, secondAccessor]) )
                   (TxsDefs.insert (IdSort pairSortId) (DefSort SortDef)
                    TxsDefs.empty)
-    let result = sortdefsToSMT mapI txsDefs               
+    let result = T.unpack (sortdefsToSMT mapI txsDefs)
     assertBool ("pair " ++ show result) ("(declare-datatypes () (\n    (PairX (pairX (Pair$pair$0 IntX) (Pair$pair$1 IntX)))\n) )" `List.isInfixOf` result)
