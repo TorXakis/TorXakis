@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 
--- ----------------------------------------------------------------------------------------- --
+{-# LANGUAGE OverloadedStrings #-}
 module Expand
 
 -- ----------------------------------------------------------------------------------------- --
@@ -30,6 +30,8 @@ where
 
 import           Control.Arrow
 import           Control.Monad.State
+import           Data.Monoid
+import           TextShow
 
 import qualified Data.List           as List
 import qualified Data.Map            as Map
@@ -522,7 +524,7 @@ uniHVar (IVar ivname' ivuid' ivpos' ivstat' ivsrt')  =  do
      unid'   <- gets IOB.unid
      let newUnid = unid' + 1
      modify $ \env -> env { IOB.unid = newUnid }
-     return $ IVar (ivname'++"$$$"++show ivuid') newUnid ivpos' ivstat' ivsrt'
+     return $ IVar (ivname'<>"$$$"<>showt ivuid') newUnid ivpos' ivstat' ivsrt'
 
 
 -- ----------------------------------------------------------------------------------------- --

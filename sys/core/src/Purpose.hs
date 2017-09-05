@@ -4,8 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
--- ----------------------------------------------------------------------------------------- --
-
+{-# LANGUAGE OverloadedStrings #-}
 module Purpose
 
 -- ----------------------------------------------------------------------------------------- --
@@ -32,6 +31,8 @@ where
 import           Control.Monad.State
 
 import qualified Data.Set            as Set
+import           Data.Text           (Text)
+import qualified Data.Text           as T
 
 -- import from local
 import           CoreUtils
@@ -67,7 +68,7 @@ goalMenu gnm = do
                 , IOC.purpsts = purpsts
                 } -> do
       let pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
-      case [ (gid, gtree) | (gid@(TxsDefs.GoalId nm _), gtree) <- purpsts, nm == gnm ] of
+      case [ (gid, gtree) | (gid@(TxsDefs.GoalId nm _), gtree) <- purpsts, nm == (T.pack gnm) ] of
         [(_, bt)] -> return $ Behave.behMayMenu pAllSyncs bt
         _ -> do
           IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given"]
