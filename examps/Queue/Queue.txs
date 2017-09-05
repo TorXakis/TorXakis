@@ -23,7 +23,9 @@ FUNCDEF  add ( x :: Int; l :: IntList ) :: IntList
              FI
 ENDDEF
 
-
+FUNCDEF overflow (x :: Int) :: Bool ::=
+    True -- (x < -2147483648) \/ ( x > +2147483647)
+ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
@@ -40,7 +42,7 @@ ENDDEF
 
 PROCDEF  queue  [ In :: QueueOp; Out :: Int ]  ( buf :: IntList )
     ::=
-                 In ?qop [[ isEnq(qop) ]]
+                 In ?qop [[ IF isEnq(qop) THEN not(overflow(val(qop))) ELSE False FI ]]
             >->  queue [In,Out] (add(val(qop),buf))
         ##
                  In ?qop [[ isDeq(qop) ]]
@@ -107,7 +109,7 @@ ENDDEF
 
 PROCDEF  lossyQueue  [ In :: QueueOp;  Out :: Int ] ( buf :: IntList )
     ::=
-                 In ?qop [[ isEnq(qop) ]]
+                 In ?qop [[ IF isEnq(qop) THEN not(overflow(val(qop))) ELSE False FI ]]
             >->  (
                      ISTEP  >->  lossyQueue [In,Out] (add(val(qop),buf))
                   ##
