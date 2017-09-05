@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 -- ----------------------------------------------------------------------------------------- --
-
+{-# LANGUAGE OverloadedStrings #-}
 module ToProcdef
 
 -- ----------------------------------------------------------------------------------------- --
@@ -20,70 +20,74 @@ module ToProcdef
 
 where
 
-import qualified Data.String.Utils as Utils
+import           Data.Foldable
+import           Data.Monoid
 import qualified Data.Set          as Set
+import qualified Data.String.Utils as Utils
+import           Data.Text         (Text)
+import qualified Data.Text         as T
 
 -- import from defs
-import qualified TxsDefs
 import qualified ChanId
 import qualified SortId
 import qualified TxsDDefs
+import qualified TxsDefs
 import qualified TxsShow
 
 -- ----------------------------------------------------------------------------------------- --
 
-toProcdef :: [TxsDDefs.Action] -> String
+toProcdef :: [TxsDDefs.Action] -> Text
 toProcdef actions
   =  let chids       = Set.toList $ Set.unions
                              [ Set.map fst acts | TxsDDefs.Act acts <- actions ]
          channeldefs = chanIdsToProcdef chids
          actions'    = actionsToProcdef actions
-      in "PROCDEF trace ["++ channeldefs ++ "]() EXIT\n" ++
-         " ::=\n" ++ actions' ++ "\n    >-> EXIT\nENDDEF\n"
+      in "PROCDEF trace ["<> channeldefs <> "]() EXIT\n" <>
+         " ::=\n" <> actions' <> "\n    >-> EXIT\nENDDEF\n"
 
-chanIdsToProcdef :: [TxsDefs.ChanId] -> String
+chanIdsToProcdef :: [TxsDefs.ChanId] -> Text
 chanIdsToProcdef chids
   =  let chans = map chanIdToProcdef chids
-      in Utils.join "; " chans
+      in T.intercalate "; " chans
 
-chanIdToProcdef :: TxsDefs.ChanId -> String
+chanIdToProcdef :: TxsDefs.ChanId -> Text
 chanIdToProcdef chid
   =  let sorts = sortsToProcdef (ChanId.chansorts chid)
-      in ChanId.name chid ++ " :: " ++ sorts
+      in ChanId.name chid <> " :: " <> sorts
 
-sortsToProcdef :: [TxsDefs.SortId] -> String
+sortsToProcdef :: [TxsDefs.SortId] -> Text
 sortsToProcdef sortids
   =  let sids = map SortId.name sortids
-      in Utils.join " # " sids
+      in T.intercalate " # " sids
 
-actionsToProcdef :: [TxsDDefs.Action] -> String
+actionsToProcdef :: [TxsDDefs.Action] -> Text
 actionsToProcdef actions
   =  let actions' = map actionToProcdef actions
-      in Utils.join "\n    >-> " actions'
+      in T.intercalate "\n    >-> " actions'
 
-actionToProcdef :: TxsDDefs.Action -> String
-actionToProcdef (TxsDDefs.Act s)  =  communicationsToProcdef s
-actionToProcdef TxsDDefs.ActQui   =  "STOP"        -- can't be replayed
+actionToProcdef :: TxsDDefs.Action -> Text
+actionToProcdef (TxsDDefs.Act s) =  communicationsToProcdef s
+actionToProcdef TxsDDefs.ActQui  =  "STOP"        -- can't be replayed
 
-communicationsToProcdef :: Set.Set (TxsDefs.ChanId, [TxsDefs.Const]) -> String
+communicationsToProcdef :: Set.Set (TxsDefs.ChanId, [TxsDefs.Const]) -> Text
 communicationsToProcdef set
   =  let communications = map communicationToProcdef (Set.toList set)
-      in Utils.join " | " communications
-    
-communicationToProcdef :: (TxsDefs.ChanId, [TxsDefs.Const]) -> String
+      in T.intercalate " | " communications
+
+communicationToProcdef :: (TxsDefs.ChanId, [TxsDefs.Const]) -> Text
 communicationToProcdef (chid, vexprs)
-  =  ChanId.name chid ++ concatMap ( (" ! " ++) . TxsShow.pshow ) vexprs 
+  =  ChanId.name chid <> foldMap ( (" ! " <>) . T.pack . TxsShow.pshow ) vexprs
 
 -- ----------------------------------------------------------------------------------------- --
 
-toPurpdef :: [TxsDDefs.Action] -> String
+toPurpdef :: [TxsDDefs.Action] -> Text
 toPurpdef actions
   =  let chids       = Set.toList $ Set.unions
                              [ Set.map fst acts | TxsDDefs.Act acts <- actions ]
          channeldefs = chanIdsToProcdef chids
          actions'    = actionsToProcdef actions
-      in "PROCDEF replayProc ["++ channeldefs ++ "]() HIT\n" ++
-         " ::=\n" ++ actions' ++ "\n    >-> HIT\nENDDEF\n"
+      in "PROCDEF replayProc ["<> channeldefs <> "]() HIT\n" <>
+         " ::=\n" <> actions' <> "\n    >-> HIT\nENDDEF\n"
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
