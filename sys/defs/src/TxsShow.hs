@@ -279,7 +279,7 @@ instance PShow v => PShow (ValExpr v) where
            else
              pshow fid ++ "( " ++ Utils.join ", " (map pshow vexps) ++ " )"
     pshow (view -> Verror s)
-        = "ERROR " ++ s
+        = "ERROR " ++ show s
     pshow _
         = error "pshow: item not in view"
 
@@ -288,7 +288,7 @@ instance PShow Const where
   pshow (Cbool b) = show b
   pshow (Cint i) = show i
   pshow (Cstring s) = "\"" ++ T.unpack s ++ "\""
-  pshow (Cregex r) = r
+  pshow (Cregex r) = show r
   pshow (Cstr cid []) = pshow cid
   pshow (Cstr cid a) = pshow cid ++ "(" ++ Utils.join "," (map pshow a) ++ ")"
   pshow (Cerror s) = "ERROR " ++ s

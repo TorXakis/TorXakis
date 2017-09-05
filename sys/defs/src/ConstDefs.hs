@@ -22,7 +22,7 @@ import           CstrId
 data  Const         =  Cbool    { cBool :: Bool }
                      | Cint     { cInt :: Integer }
                      | Cstring  { cString :: Text }
-                     | Cregex   { cRegex :: String }      -- XSD input
+                     | Cregex   { cRegex :: Text }      -- XSD input
                                            -- PvdL: performance gain: translate only once,
                                            --       storing SMT string as well
                      | Cstr     { cstrId :: CstrId, args :: [Const] }

@@ -3,16 +3,18 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
 module ConnectionDefs
 where
 
-import GHC.Generics (Generic)
-import Control.DeepSeq
+import           Control.DeepSeq
+import           Data.Text       (Text)
+import           GHC.Generics    (Generic)
 
-import ChanId
-import VarId
-import ValExprDefs
+import           ChanId
+import           ValExprDefs
+import           VarId
 
 -- ----------------------------------------------------------------------------------------- --
 -- Connection Definitions
@@ -23,17 +25,17 @@ data  CnectType     =  ClientSocket
 
 
 
-data  ConnDef       =  ConnDtoW  { chan       :: ChanId
-                                 , hostname   :: String
-                                 , portnr     :: Integer
-                                 , vars       :: [VarId]         -- encoding domain
-                                 , vexpr      :: VExpr           -- encoding range of String
+data  ConnDef       =  ConnDtoW  { chan     :: ChanId
+                                 , hostname :: Text
+                                 , portnr   :: Integer
+                                 , vars     :: [VarId]         -- encoding domain
+                                 , vexpr    :: VExpr           -- encoding range of String
                                  }
-                     | ConnDfroW { chan       :: ChanId
-                                 , hostname   :: String
-                                 , portnr     :: Integer
-                                 , var        :: VarId           -- decoding domain of String
-                                 , vexprs     :: [VExpr]         -- decoding range
+                     | ConnDfroW { chan     :: ChanId
+                                 , hostname :: Text
+                                 , portnr   :: Integer
+                                 , var      :: VarId           -- decoding domain of String
+                                 , vexprs   :: [VExpr]         -- decoding range
                                  }
      deriving (Eq,Ord,Read,Show, Generic, NFData)
 
