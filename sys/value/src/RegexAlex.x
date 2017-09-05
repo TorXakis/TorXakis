@@ -12,6 +12,9 @@ module RegexAlex
 
 where
 
+import Data.Text (Text)
+import qualified Data.Text as T
+  
 }
 -- ----------------------------------------------------------------------------------------- --
 %wrapper "posn"
@@ -41,16 +44,18 @@ tokens :-                                          -- Each right-hand side has t
    \\                        { tok ( \p _s -> Tesc p ) }
    \|                        { tok ( \p _s -> Tunion p ) }
    \^                        { tok ( \p _s -> Ttop p ) }
-   $digit                    { tok ( \p s -> Tdigit p s ) }
-   $quantifier               { tok ( \p s -> Tquantifier p s ) }
-   $formatEsc                { tok ( \p s -> Tformatesc p s ) }
-   $normal                   { tok ( \p s -> Tnormal p s ) }
+   $digit                    { tokT ( \p s -> Tdigit p s ) }
+   $quantifier               { tokT ( \p s -> Tquantifier p s ) }
+   $formatEsc                { tokT ( \p s -> Tformatesc p s ) }
+   $normal                   { tokT ( \p s -> Tnormal p s ) }
 
 -- ----------------------------------------------------------------------------------------- --
 
 {
 -- Some action helpers:
 tok f p s = f p s
+
+tokT f p s = f p (T.pack s)
 
 data  Token  = Tcomma AlexPosn
              | Tdot AlexPosn
@@ -64,11 +69,11 @@ data  Token  = Tcomma AlexPosn
              | Tesc AlexPosn
              | Tunion AlexPosn
              | Ttop AlexPosn
-             | Tdigit AlexPosn String
-             | Tquantifier AlexPosn String
-             | Tformatesc AlexPosn String
-             | Tnormal AlexPosn String
-   deriving (Eq,Show)
+             | Tdigit AlexPosn Text
+             | Tquantifier AlexPosn Text
+             | Tformatesc AlexPosn Text
+             | Tnormal AlexPosn Text
+   deriving (Eq, Show)
 
 regexLexer :: String -> [Token]
 regexLexer = alexScanTokens

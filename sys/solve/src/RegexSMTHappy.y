@@ -19,6 +19,7 @@ See LICENSE at root directory of this repository.
 --
 -- Parse XSD Regex into SMT.
 -----------------------------------------------------------------------------
+{-# LANGUAGE OverloadedStrings #-}  
 module RegexSMTHappy
 ( regexSMTParser
 , encodeStringLiteral
@@ -27,6 +28,10 @@ where
 
 import Data.Char
 import Text.Printf
+import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Monoid
+import Data.Foldable
 
 import RegexAlex                        -- importing
                                         -- data Token(..), AlexPosn(..)
@@ -69,13 +74,13 @@ import RegexAlex                        -- importing
 -- See https://www.haskell.org/happy/doc/html/sec-sequences.html
 -- The only reason we used left recursion is that Happy is more efficient at parsing left-recursive rules
 
-Digits  :: { String }
+Digits  :: { Text }
         : digit
             { $1 }
         | Digits digit
-            { $1 ++ $2 }
+            { $1 <> $2 }
             
-Normal  :: { String }
+Normal  :: { Text }
         -- everything that is included in ~[.\\?*+{}()|[\]]
         -- include CommaChar | DashChar | TopChar | DigitChar | FormatEscChar | NormalChar                
         : ","
@@ -91,7 +96,7 @@ Normal  :: { String }
         | normal
             { encodeStringLiteral $1 }
 
-SingleCharNoEsc :: { String }
+SingleCharNoEsc :: { Text }
                 -- everything that is included in ~[\\[\]]
                 : ","
                     { "," }
@@ -121,7 +126,7 @@ SingleCharNoEsc :: { String }
                     { encodeStringLiteral $1 }
 
 
-SingleCharEscChar   :: { String }
+SingleCharEscChar   :: { Text }
                     -- everything that is included in [\.\\\?\*\+\{\}\(\)\[\]\|\-\^]
                     : "."
                         { "." }
@@ -148,43 +153,43 @@ SingleCharEscChar   :: { String }
                     | "^"
                         { "^" }
                     
-RegExp  :: { String }
+RegExp  :: { Text }
         : Branches
             { case $1 of
                [x] -> x
-               list -> "(re.union " ++ (concat list) ++ ") "
+               list -> "(re.union " <> fold list <> ") "
             }
 
-Branches    :: { [String] }
+Branches    :: { [Text] }
             : Branches "|" Branch 
                 { $1 ++ [$3] }
             | Branch
                 { [$1] }
                 
-Branch  :: { String }
+Branch  :: { Text }
         : 
             { "(str.to.re \"\") " } 
         | NeBranch
             { case $1 of
                [x] -> x
-               list -> "(re.++ " ++ (concat list) ++ ") "
+               list -> "(re.<> " <> fold list <> ") "
             }
             
-NeBranch    :: { [String] }
+NeBranch    :: { [Text] }
             : NeBranch Piece
                 { $1 ++ [$2] }
             | Piece
                 { [$1] }
                 
-Piece   :: { String }
+Piece   :: { Text }
         : Atom
             { $1 }
         | Atom Quantifier
-            { "(" ++ $2 ++ " " ++ $1 ++ ") "}
+            { "(" <> $2 <> " " <> $1 <> ") "}
         | Atom "{" Quantity "}"
-            { "(re.loop " ++ $1 ++ $3 ++ ") " }
+            { "(re.loop " <> $1 <> $3 <> ") " }
                 
-Quantifier  :: { String }
+Quantifier  :: { Text }
             : quantifier
                 { case $1 of
                     "*" -> "re.*"
@@ -192,27 +197,27 @@ Quantifier  :: { String }
                     "?" -> "re.opt"
                 }
                     
-Quantity    :: { String }
+Quantity    :: { Text }
             : Digits "," Digits                  -- QuantRange
-                { $1 ++ " " ++ $3 }
+                { $1 <> " " <> $3 }
             | Digits ","                         -- QuantMin
                 { $1 }
             | Digits                             -- QuantExact
-                { $1 ++ " " ++ $1 }
+                { $1 <> " " <> $1 }
 
-Atom    :: { String }
+Atom    :: { Text }
         : "(" RegExp ")"                        -- Precedence
             { $2 }
         | Normal
-            { "(str.to.re \"" ++ $1 ++ "\") " }
+            { "(str.to.re \"" <> $1 <> "\") " }
         | CharClass
             { $1 }
             
-CharClass   :: { String }
+CharClass   :: { Text }
             : "[" CharGroup "]"        -- charClassExpr
                 { $2 }
             | SingleCharEsc
-                { "(str.to.re \"" ++ $1 ++ "\") " }
+                { "(str.to.re \"" <> $1 <> "\") " }
             | "."                      -- wildcardEsc
                 -- UTF8 - extended ascii 256 characters
                 -- from \x00 till \xFF                    
@@ -221,38 +226,38 @@ CharClass   :: { String }
                 { "(re.union (re.range \"\\x00\" \"\\x09\") (re.range \"\\x0B\" \"\\x0C\") (re.range \"\\x0E\" \"\\xFF\") ) " }     
             --  | charClassEsc   
                 
-CharGroup   :: { String }
+CharGroup   :: { Text }
             : PosCharGroup          -- simplified from ( posCharGroup | negCharGroup ) ( DashChar charClassExpr )?
                 { case $1 of
                    [x] -> x
-                   list -> "(re.union " ++ (concat list) ++ ") "
+                   list -> "(re.union " <> fold list <> ") "
                 }
 
-PosCharGroup    :: { [String] }                
+PosCharGroup    :: { [Text] }                
                 : PosCharGroup CharGroupPart 
                     { $1 ++ $2 }
                 | CharGroupPart
                     { $1 }
 
-CharGroupPart   :: { [String] } 
+CharGroupPart   :: { [Text] } 
                 : SingleChar "-" SingleChar
-                    { ["(re.range \"" ++ $1 ++ "\" \"" ++ $3 ++ "\") "] }
+                    { ["(re.range \"" <> $1 <> "\" \"" <> $3 <> "\") "] }
                 | SingleChar "-"
-                    { ["(str.to.re \"" ++ $1 ++ "\") ",
+                    { ["(str.to.re \"" <> $1 <> "\") ",
                        "(str.to.re \"-\") "] }
                 | SingleChar
-                    { ["(str.to.re \"" ++ $1 ++ "\") "] }
+                    { ["(str.to.re \"" <> $1 <> "\") "] }
                 --  | charClassEsc   
 
-SingleChar  :: { String } 
+SingleChar  :: { Text } 
             : SingleCharNoEsc              
                 {  $1 }
             | SingleCharEsc
                 { $1 }
             
-SingleCharEsc   :: { String } 
+SingleCharEsc   :: { Text } 
                 : "\\" formatEsc
-                    { "\\" ++ $2 }
+                    { "\\" <> $2 }
                 | "\\" SingleCharEscChar
                     { if $2=="\\" then "\\\\" else $2 }
 -- ----------------------------------------------------------------------------------------- --
@@ -265,14 +270,14 @@ SingleCharEsc   :: { String }
 --   quote and escape characters are escaped.
 --   
 --   Furthermore, prevent CVC4 Parse Error "Extended/unprintable characters are not part of SMT-LIB, and they must be encoded as escape sequences"
-encodeStringLiteral :: String -> String
-encodeStringLiteral = concatMap toSMTChar 
+encodeStringLiteral :: Text -> Text
+encodeStringLiteral = T.concatMap toSMTChar
     where
-        toSMTChar :: Char -> String
+        toSMTChar :: Char -> Text
         toSMTChar '"' = "\"\""
         toSMTChar '\\' = "\\\\"
-        toSMTChar c  | ord c < 32 || ord c >= 127     = printf "\\x%02x" (ord c)
-        toSMTChar c                                   = [c]
+        toSMTChar c  | ord c < 32 || ord c >= 127     = T.pack $ printf "\\x%02x" (ord c)
+        toSMTChar c                                   = T.singleton c
 
 -- ----------------------------------------------------------------------------------------- --
 -- error handling

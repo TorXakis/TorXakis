@@ -6,6 +6,7 @@ See LICENSE at root directory of this repository.
 
 
 -- ----------------------------------------------------------------------------------------- --
+{-# LANGUAGE OverloadedStrings #-}
 
 module SMTInternal
 
@@ -27,6 +28,10 @@ import           Data.String.Utils   (endswith, join, replace, startswith,
 import           Data.Time
 import           System.IO
 import           System.Process
+
+import           Data.Monoid
+import           Data.Text           (Text)
+import qualified Data.Text           as T
 
 import           Control.Exception   (onException)
 import           SMT2TXS
@@ -131,7 +136,7 @@ createSMTEnv cmd lgFlag tdefs =  do
                    herr
                    ph
                    lg
-                   (Map.fromList (initialMapInstanceTxsToSmtlib ++
+                   (Map.fromList (initialMapInstanceTxsToSmtlib <>
                                    map (\f -> (IdFunc f, error "Transitive closure should prevent calls to CONNECTION (ENCODE/DECODE) related functions.")) (Set.toList (allENDECfuncs tdefs))))
                    TxsDefs.empty        -- TODO: currently txsdefs only uses to remove EN/DECODE functions: combine with addDefinitions?
             )
@@ -148,14 +153,14 @@ addDefinitions txsdefs =  do
         (datas, funcs) = foldr separator ([],[]) newdefs
         mapC           = foldr insertMap mapI datas
                            -- sorts & constructors must be processed first, functions later
-    put ( sortdefsToSMT mapC (TxsDefs.fromList datas) )
+    putT ( sortdefsToSMT mapC (TxsDefs.fromList datas) )
     put "\n\n"
     let newfuncs = filter (\(i, _) -> Map.notMember i mapC) funcs
                          -- remove isX, accessors and equal functions related to data types
                          -- remove the transitive closure of function for connections (such as toString and toXml)
                          -- TODO: is this still needed with new ValExpr that have special constructors for these `functions`?
         mapR = foldr insertMap mapC newfuncs
-    put ( funcdefsToSMT mapR (TxsDefs.fromList newfuncs) )
+    putT ( funcdefsToSMT mapR (TxsDefs.fromList newfuncs) )
     put "\n\n"
     original <- gets txsDefs
     modify ( \e -> e { mapInstanceTxsToSmtlib = mapR
@@ -175,7 +180,7 @@ addDeclarations :: (Variable v) => [v] -> SMT ()
 addDeclarations [] = return ()
 addDeclarations vs  =  do
     mapI <- gets mapInstanceTxsToSmtlib
-    put ( declarationsToSMT mapI vs )
+    putT ( declarationsToSMT mapI vs )
     return ()
 
 -- ----------------------------------------------------------------------------------------- --
@@ -184,7 +189,7 @@ addDeclarations vs  =  do
 addAssertions :: (Variable v) => [ValExpr v] -> SMT ()
 addAssertions vexps  =  do
     mapI <- gets mapInstanceTxsToSmtlib
-    put ( assertionsToSMT mapI vexps )
+    putT ( assertionsToSMT mapI vexps )
     return ()
 
 -- ----------------------------------------------------------------------------------------- --
@@ -207,13 +212,13 @@ getSolvable = do
 getSolution :: (Variable v) => [v] -> SMT (Solution v)
 getSolution []    = return Map.empty
 getSolution vs    = do
-    put ("(get-value (" ++ join " " (map vname vs) ++"))")
+    putT ("(get-value (" <> T.intercalate " " (map vname vs) <>"))")
     s <- getSMTresponse
-    let vnameSMTValueMap = smtParser (smtLexer s)
+    let vnameSMTValueMap = Map.mapKeys T.pack . smtParser . smtLexer $ s
     tdefs <- gets txsDefs
     return $ Map.fromList (map (toConst tdefs vnameSMTValueMap) vs)
   where
-    toConst :: (Variable v) => TxsDefs -> Map.Map String SMTValue -> v -> (v, Const)
+    toConst :: (Variable v) => TxsDefs -> Map.Map Text SMTValue -> v -> (v, Const)
     toConst tdefs mp v = case Map.lookup (vname v) mp of
                             Just smtValue   -> (v, smtValueToValExpr smtValue tdefs (vsort v))
                             Nothing         -> error "getSolution - SMT hasn't returned the value of requested variable."
@@ -249,15 +254,15 @@ init  =  do
     put "(set-logic ALL)"
     put "(set-option :produce-models true)"
     put "(set-info :smt-lib-version 2.5)"
-    put basicDefinitionsSMT
+    putT basicDefinitionsSMT
     return ()
 
 -- | execute the SMT command given as a string
 put :: String -> SMT ()
 put cmd  = do
-    lg <- gets logFileHandle
-    lift $ hPutSmtLog lg cmd
-    mapM_ putLine (lines cmd)
+  lg <- gets logFileHandle
+  lift $ hPutSmtLog lg cmd
+  mapM_ putLine (lines cmd)
   where
         putLine :: String -> SMT ()
         putLine cmd'  = do
@@ -269,11 +274,14 @@ put cmd  = do
             lift $ checkErrors herr "SMT WARN >> "
             return ()
 
+putT :: Text -> SMT ()
+putT = put . T.unpack
+
 -- | Transform value expression to an SMT string.
-valExprToString :: Variable v => ValExpr v -> SMT String
+valExprToString :: Variable v => ValExpr v -> SMT Text
 valExprToString v = do
-                        mapI <- gets mapInstanceTxsToSmtlib
-                        return $ valexprToSMT mapI v
+  mapI <- gets mapInstanceTxsToSmtlib
+  return $ valexprToSMT mapI v
 
 -- ----------------------------------------------------------------------------------------- --
 --  return error messages if any are present

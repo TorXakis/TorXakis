@@ -366,7 +366,7 @@ evalSSR :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSR (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
        ( "strinre",[v1,v2] ) -> do rawRegex     <- T.unpack <$> txs2regex v2
-                                   let haskellRegex = regexPosixParser (regexLexer rawRegex)
+                                   let haskellRegex = T.unpack $ regexPosixParser (regexLexer rawRegex)
                                    value <- T.unpack <$> txs2str v1
                                    bool2txs $ value =~ haskellRegex
        _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "evalSSR: error in standard Regex opn" ]
