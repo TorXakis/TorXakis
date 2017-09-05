@@ -30,7 +30,7 @@ if [ -d $CACHE_DIR/z3 ]
 then
     echo "$CACHE_DIR/z3 found in cache."
 else
-    curl -L -O https://github.com/TorXakis/Dependencies/releases/download/v0.3.0_linux/z3-4.5.1.0f1583309d08-x64-ubuntu-14.04.zip
+    curl -L -O https://github.com/TorXakis/Dependencies/releases/download/z3-4.5.1/z3-4.5.1.059bad909ad4-x64-ubuntu-14.04.zip
     CURDIR=$(pwd)
     mkdir $CACHE_DIR/z3 && cd $CACHE_DIR/z3
     Z3ZIP=$(ls $CURDIR/z3*.zip)
