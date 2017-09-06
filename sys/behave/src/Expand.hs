@@ -390,19 +390,19 @@ expand chsets (BNhide chans cnode)  =  do
 expandOffers :: [ Set.Set TxsDefs.ChanId ] -> Set.Set Offer -> IOB.IOB ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
 expandOffers chsets offs  =  do
      ctofftuples <- mapM (expandOffer chsets) (Set.toList offs)
-     ( ctoffs, quests, exclams ) <- return $ unzip3 ctofftuples
+     let ( ctoffs, quests, exclams ) = unzip3 ctofftuples
      return ( Set.fromList ctoffs, concat quests, concat exclams )
 
 
 expandOffer :: [ Set.Set TxsDefs.ChanId ] -> Offer -> IOB.IOB ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
 expandOffer chsets (Offer chid choffs)  =  do
-     ctchoffs <- mapM (expandChanOffer chsets chid) ( zip choffs [1..(length choffs)] )
+     ctchoffs <- mapM (expandChanOffer chid) ( zip choffs [1..(length choffs)] )
      let ( ivars, quests, exclams ) = unzip3 ctchoffs
      return ( CToffer chid ivars, concat quests, concat exclams )
 
 
-expandChanOffer :: [ Set.Set TxsDefs.ChanId ] -> ChanId -> (ChanOffer,Int) -> IOB.IOB ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
-expandChanOffer _ chid (choff,pos)  =  do
+expandChanOffer :: ChanId -> (ChanOffer,Int) -> IOB.IOB ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
+expandChanOffer chid (choff,pos)  =  do
      curs <- gets IOB.stateid
      case choff of
        Quest  vid  -> do let ivar = IVar { ivname = ChanId.name chid

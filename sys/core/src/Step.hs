@@ -71,7 +71,7 @@ stepN depth step =
                        (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
                        case maybt' of
                          Nothing  -> do
-                              IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "cannot do action" ]
+                              IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "stepN - cannot do action" ]
                               return $ TxsDDefs.Fail act
                          Just bt' -> do
                               writeEnvBtoEnvC envb'
@@ -107,7 +107,7 @@ stepA act = do
             (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
             case maybt' of
               Nothing  -> do
-                   IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "cannot do action" ]
+                   IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "stepA - cannot do action" ]
                    return $ TxsDDefs.Fail act'
               Just bt' -> do
                    writeEnvBtoEnvC envb'

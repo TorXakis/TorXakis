@@ -137,13 +137,13 @@ PROCDEF monitorProduce  [ In_Cmd        :: Int # ProduceCmd
                          ; Out_Material  :: Int # BatchInfo
                          ]    ( id :: Int ) ::=
         In_Cmd ! id ? produceCmd | In_Material ! id ? inBatchInfo [[ isValid_BatchInfo (inBatchInfo) 
-                                                                 /\ ( batchId(produceCmd) == batchId(inBatchInfo) )
-                                                                 ]]
+                                                                  /\ ( batchId(produceCmd) == batchId(inBatchInfo) )
+                                                                  ]]
     >-> ( 
             Out_Report ! id ? produceReport :: ProduceReport 
                 [[ isValid_ProduceReport(produceReport)
-                /\ (batchInfo(produceReport)          == inBatchInfo)
-                /\ (recipeId(produceReport) == recipeId(produceCmd))
+                /\ (batchInfo(produceReport) == inBatchInfo)
+                /\ (recipeId(produceReport)  == recipeId(produceCmd))
                 ]]
         |||
             Out_Material ! id ! inBatchInfo
