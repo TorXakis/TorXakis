@@ -39,9 +39,9 @@ CHANDEF Channels ::=
 ENDDEF
 
 MODELDEF Model ::= 
-	CHAN IN   
+    CHAN IN   
     CHAN OUT  Memory
-		
-	BEHAVIOUR
+        
+    BEHAVIOUR
               system [ Memory ] ( )
 ENDDEF

@@ -14,7 +14,6 @@ See LICENSE at root directory of this repository.
 TYPEDEF  Operation ::=
       Plus  { p1, p2 :: Int }
     | Minus { m1, m2 :: Int }
-    | Error      
 ENDDEF
 
 FUNCDEF overflow (x :: Int) :: Bool ::=

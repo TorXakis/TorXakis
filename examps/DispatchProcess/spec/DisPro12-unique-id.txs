@@ -27,11 +27,11 @@ FUNCDEF  isValidJob ( jobdata :: JobData )  :: Bool ::=
  /\ strinre ( jobDescription(jobdata), REGEX('[A-Z][0-9]{2}[a-z]+') )
  /\ ( x(jobdata) > 0 )
  /\ ( y(jobdata) > 0 )
-	   /\  ( IF (x(jobdata) < y(jobdata)) THEN
-				( abs(x(jobdata) - y(jobdata)) < (100 * x(jobdata) ))
-			ELSE
-				( abs(x(jobdata) - y(jobdata)) < (100 * y(jobdata) ))
-			FI )
+       /\  ( IF (x(jobdata) < y(jobdata)) THEN
+                ( abs(x(jobdata) - y(jobdata)) < (100 * x(jobdata) ))
+            ELSE
+                ( abs(x(jobdata) - y(jobdata)) < (100 * y(jobdata) ))
+            FI )
 ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
@@ -54,7 +54,7 @@ FUNCDEF  isValidIntSet ( set :: IntSet )  :: Bool ::=
     IF isEmpty(set)
         THEN True
         ELSE not ( contains ( hd ( set ) , tl ( set ) ) )
-			 /\ isValidIntSet ( tl ( set ) )
+             /\ isValidIntSet ( tl ( set ) )
     FI
 ENDDEF
 
@@ -92,9 +92,9 @@ ENDDEF
 -- Greatest Common Divisor
 -- https://en.wikipedia.org/wiki/Euclidean_algorithm
 FUNCDEF  gcd ( a, b :: Int ) :: Int ::=
-	IF b == 0 THEN  a
-			  ELSE  gcd (b, a % b)
-	FI
+    IF b == 0 THEN  a
+              ELSE  gcd (b, a % b)
+    FI
 ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
@@ -122,7 +122,7 @@ ENDDEF
 
 PROCDEF  dispatcher [ Acquire :: Int ; Job , Dispatch :: JobData ] ( ) ::=
         Acquire ? jobid |
-		 Job ? job [[ isValidJob(job) /\ (jobId(job) == jobid) ]]
+         Job ? job [[ isValidJob(job) /\ (jobId(job) == jobid) ]]
     >-> Dispatch ! job
     >-> dispatcher [ Acquire, Job, Dispatch ]  ( )
 ENDDEF
@@ -194,18 +194,18 @@ ENDDEF
 PROCDEF traceRight [Job :: JobData; Finish :: JobOut]() EXIT ::=
         Job ! JobData( 82, "N22s", 45, 78 )
     >-> Finish ? o [[
-					IF isJobOut(o)
-					THEN (gcd(o) == 3) /\ (jobId(o) == 82)
-					ELSE False
-					FI
-				   ]]
+                    IF isJobOut(o)
+                    THEN (gcd(o) == 3) /\ (jobId(o) == 82)
+                    ELSE False
+                    FI
+                   ]]
     >-> Job ! JobData( 82, "L22kk", 17, 63 )
     >-> Finish ? o [[
-					IF isJobOut(o)
-					THEN (gcd(o) == 1) /\ (jobId(o) == 82)
-					ELSE False
-					FI
-				   ]]
+                    IF isJobOut(o)
+                    THEN (gcd(o) == 1) /\ (jobId(o) == 82)
+                    ELSE False
+                    FI
+                   ]]
     >-> EXIT
 ENDDEF
 
