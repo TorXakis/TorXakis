@@ -70,5 +70,6 @@ library
                       , MissingH
                       , text
                       , text-show
+                      , mtl
 
   default-language:     Haskell2010

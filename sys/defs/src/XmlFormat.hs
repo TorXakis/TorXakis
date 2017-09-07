@@ -4,15 +4,13 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
--- ----------------------------------------------------------------------------------------- --
 module XmlFormat
-(
-      constToXml
-    , constFromXml
-)
--- ----------------------------------------------------------------------------------------- --
+  ( constToXml
+  , constFromXml
+  )
 where
 
+import           Control.Monad.State
 import           CstrId
 import           Data.ByteString          (pack)
 import           Data.ByteString.Internal (c2w)
@@ -20,6 +18,7 @@ import           Data.Char                (chr, ord)
 import           Data.Foldable
 import qualified Data.Map                 as Map
 import           Data.Monoid
+import           Data.String
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           FuncId
@@ -28,6 +27,23 @@ import           StdTDefs
 import           Text.XML.Expat.Tree
 import           TextShow
 import           TxsDefs
+
+
+-- | Simple binary tree to represent the XML information that will be converted to string.
+data XMLTree = XLeaf Text | XNode Text [XMLTree]
+
+xmlTreeToText :: XMLTree -> Text
+xmlTreeToText tree = T.concat $ execState (xmlTreeToList tree) []
+  where
+    xmlTreeToList :: XMLTree -> State [Text] ()
+    xmlTreeToList (XLeaf text) = modify (text:)
+    xmlTreeToList (XNode text ts) = do
+      modify (T.concat ["</", text, ">" ]:)
+      traverse xmlTreeToList ts
+      modify (T.concat ["<", text, ">" ]:)
+
+instance IsString XMLTree where
+  fromString = XLeaf . T.pack
 
 -- Assumptions : Char in extended ASCII (i.e. ord c in [0..255]  { thus [0x0..0xFF] } )
 --               Use xml 1.0
@@ -46,26 +62,21 @@ encodeString :: Text -> Text
 encodeString = T.concatMap encodeChar
 
 encodeChar :: Char -> Text
-encodeChar '&'    = "&amp;"
-encodeChar '<'    = "&lt;"
-encodeChar  c     = if validChar c
-                        then T.singleton c
-                        else "<char>" <> T.pack (show (ord c)) <> "</char>"
+encodeChar '&' = "&amp;"
+encodeChar '<' = "&lt;"
+encodeChar  c  =
+  if validChar c
+  then T.singleton c
+  else T.concat ["<char>", T.pack (show (ord c)), "</char>"]
 
 -- | Make an XML node.
 --
 -- TODO: to make this more efficient return always a `[Text]`, and use `T.concat`
 -- at the end (which is O(n)).
 --
-mkNode :: Text -- ^ Tag string.
-       -> Text -- ^ Contents
-       -> Text -- ^ String representation of the node.
-mkNode tag contents =
-  "<" <> tag <> ">" <> contents <> "</" <> tag <> ">"
-
--- | Infix and right associative version of mkNode.
-(~>) :: Text -> Text -> Text
-(~>) = mkNode
+-- | Infix and right associative version of XNode.
+(~>) :: Text -> [XMLTree] -> XMLTree
+(~>) = XNode
 
 infixr 6 ~>
 
@@ -96,41 +107,46 @@ rootName :: Text
 rootName = "TorXakisMsg"
 
 constToXml :: TxsDefs -> Const -> Text
-constToXml tdefs w = pairNameConstToXml tdefs (rootName, w)
+constToXml tdefs w =
+  xmlTreeToText $ pairNameConstToXml tdefs (rootName, w)
 
 getFieldNames :: TxsDef -> [Text]
 getFieldNames (DefCstr (CstrDef _ funcIds))   = map FuncId.name funcIds
 getFieldNames _                               = error "getFieldNames: unexpected input" -- TODO: give a more informative error message.
 
-pairNameConstToXml :: TxsDefs -> (Text, Const)  -> Text
+pairNameConstToXml :: TxsDefs -> (Text, Const)  -> XMLTree
 pairNameConstToXml _ (n, Cbool True) =
-  n ~> "true"
+  n ~> ["true"]
 pairNameConstToXml _ (n, Cbool False) =
-  n ~> "false"
+  n ~> ["false"]
 pairNameConstToXml _ (n, Cint i) =
-  n ~> showt i
+  n ~> [XLeaf (showt i)]
 pairNameConstToXml _ (n, Cstring s) =
-  n ~> s
+  n ~> [XLeaf (encodeString s)]
 pairNameConstToXml tdefs (n, Cstr cid wals) =
   let cName = CstrId.name cid
       cDef = lookupConstructorDef tdefs cid
-      nodes = foldMap (pairNameConstToXml tdefs)
-                      (zip (getFieldNames cDef) wals)
+      nodes = map (pairNameConstToXml tdefs)
+                  (zip (getFieldNames cDef) wals)
   in
-    n ~> cName ~> nodes
-pairNameConstToXml _ (n,w) =
+    n ~> [cName ~> nodes]
+pairNameConstToXml _ (n, w) =
   error (   "XmlFormat - constToXml: " ++ show w
          ++ " - Const for name " ++ show n
          ++ " can not be translated to Xml"
         )
 
-
 stringFromList :: [Node Text Text] -> Text
-stringFromList []                                           = ""
-stringFromList (Text a: xs)                                 = a <> stringFromList xs
-stringFromList (Element "char" [] [Text nrString] : xs ) =
-  T.singleton (chr (read (T.unpack nrString))) <> stringFromList xs
-stringFromList (x:_)                                        = error ("XmlFormat - stringFromList : unexpected item " ++ show x)
+stringFromList = T.concat . go
+  where
+    go :: [Node Text Text] -> [Text]
+    go [] = [""]
+    go (Text a : xs) =
+      a:go xs
+    go (Element "char" [] [Text nrString] : xs ) =
+      T.singleton (chr (read (T.unpack nrString))) : go xs
+    go (x:_) =
+      error ("XmlFormat - stringFromList : unexpected item " ++ show x)
 
 constFromXml :: TxsDefs -> SortId -> Text -> Const
 constFromXml tdefs sid s =
@@ -161,8 +177,10 @@ pairNameConstFromXml tdefs sid (Element nt [] [Element cname [] list]) n
                  ++ " of sort " ++ show (SortId.name sid)
                  ++ " : definition " ++ show (length (cstrargs cstrid))
                  ++ " vs actual " ++ show (length list) ++ "\n"
-pairNameConstFromXml _ sid i n                                                                                     =
+pairNameConstFromXml tdefs sid i n =
     error $  "XmlFormat - constFromXml: Unexpected item "
           ++ show i
           ++ " for name " ++ show n
-          ++ " with sort " ++ show (SortId.name sid) ++ "\n"
+          ++ " with sort " ++ show (SortId.name sid)
+          ++ " using tdefs " ++ show tdefs
+          ++ "\n"
