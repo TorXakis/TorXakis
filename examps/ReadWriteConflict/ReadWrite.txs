@@ -49,19 +49,19 @@ CHANDEF Channels ::=
 ENDDEF
 
 MODELDEF Model ::= 
-	CHAN IN   
+    CHAN IN   
     CHAN OUT  Read, Write
-		
-	BEHAVIOUR
+        
+    BEHAVIOUR
               system [ Read, Write ] ( )
 ENDDEF
 
 MODELDEF Model7 ::= 
-	CHAN IN   
+    CHAN IN   
     CHAN OUT  Read, Write
-		
-	BEHAVIOUR
+        
+    BEHAVIOUR
               system [ Read, Write ] ( )
-	    ||
+        ||
               trace7 [ Read, Write ] ( )
 ENDDEF

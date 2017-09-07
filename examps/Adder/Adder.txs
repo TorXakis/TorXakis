@@ -14,17 +14,24 @@ See LICENSE at root directory of this repository.
 TYPEDEF  Operation ::=
       Plus  { p1, p2 :: Int }
     | Minus { m1, m2 :: Int }
-    | Error      
 ENDDEF
 
-
+FUNCDEF overflow (x :: Int) :: Bool ::=
+    (x < -2147483648) \/ ( x > +2147483647)
+ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 
 PROCDEF  adder  [ Act :: Operation;  Res :: Int ] ( ) ::=
-       Act ?opn [[ isPlus(opn)  ]]  >->  Res !p1(opn)+p2(opn)  >->  adder [ Act, Res ] ( )
+       Act ?opn [[ IF isPlus(opn) THEN    not (overflow (p1(opn))) 
+                                       /\ not (overflow (p2(opn))) 
+                                       /\ not (overflow (p1(opn)+p2(opn)))
+                                  ELSE False FI ]]  >->  Res !p1(opn)+p2(opn)  >->  adder [ Act, Res ] ( )
     ##
-       Act ?opn [[ isMinus(opn) ]]  >->  Res !m1(opn)-m2(opn)  >->  adder [ Act, Res ] ( )
+       Act ?opn [[ IF isMinus(opn) THEN   not (overflow (m1(opn))) 
+                                       /\ not (overflow (m2(opn))) 
+                                       /\ not (overflow (m1(opn)-m2(opn)))
+                                   ELSE False FI ]]  >->  Res !m1(opn)-m2(opn)  >->  adder [ Act, Res ] ( )
 ENDDEF
 
 
