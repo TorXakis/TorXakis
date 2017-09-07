@@ -3,25 +3,27 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns      #-}
 module TestHelperFuncContent
 
 where
-import qualified Data.Set as Set
-import qualified Data.Map as Map
+import qualified Data.Map          as Map
+import qualified Data.Set          as Set
 import qualified Data.String.Utils as Utils
-import qualified Debug.Trace as Trace
+import qualified Data.Text         as T
+import qualified Debug.Trace       as Trace
 
-import ChanId
-import ProcId
-import TxsAlex
-import TxsHappy
-import TxsDefs hiding (vexpr)
-import TxsShow
-import Sigs
-import SortId
-import StdTDefs
-import VarId
+import           ChanId
+import           ProcId
+import           Sigs
+import           SortId
+import           StdTDefs
+import           TxsAlex
+import           TxsDefs           hiding (vexpr)
+import           TxsHappy
+import           TxsShow
+import           VarId
 
 ---------------------------------------------------------------------------
 -- Helper Functions
@@ -48,7 +50,7 @@ type TypedElement = ([String],String)
 type TypedElements = [ TypedElement ]
 
 type Constructor = (String, TypedElements)
-type Constructors = [ Constructor ] 
+type Constructors = [ Constructor ]
 
 identicalLists :: (a-> a-> Bool) -> [a] -> [a] -> Bool
 identicalLists _ [] [] = True
@@ -56,9 +58,9 @@ identicalLists identicalItems (x1:xs1) (x2:xs2) = identicalItems x1 x2 && identi
 identicalLists _ _ _ = False            -- different length
 
 identicalExitSort :: ExitSort -> ExitSort -> Bool
-identicalExitSort NoExit NoExit = True
+identicalExitSort NoExit NoExit       = True
 identicalExitSort (Exit s1) (Exit s2) = identicalLists identicalSortId s1 s2
-identicalExitSort _ _ = False
+identicalExitSort _ _                 = False
 
 identicalChanId :: ChanId -> ChanId -> Bool
 identicalChanId (ChanId "EXIT" _ _) (ChanId "EXIT" _ _) = True
@@ -77,7 +79,7 @@ identicalFuncId :: FuncId -> FuncId -> Bool
 identicalFuncId (FuncId name1 _ funcargs1 funcsort1) (FuncId name2 _ funcargs2 funcsort2) =       name1 == name2
                                                                                                && identicalLists identicalSortId funcargs1 funcargs2
                                                                                                && identicalSortId funcsort1 funcsort2
-                                                                                               
+
 identicalCstrId :: CstrId -> CstrId -> Bool
 identicalCstrId (CstrId name1 _ cstrargs1 cstrsort1) (CstrId name2 _ cstrargs2 cstrsort2) =       name1 == name2
                                                                                                && identicalLists identicalSortId cstrargs1 cstrargs2
@@ -85,12 +87,12 @@ identicalCstrId (CstrId name1 _ cstrargs1 cstrsort1) (CstrId name2 _ cstrargs2 c
 
 identicalVarId :: VarId -> VarId -> Bool
 identicalVarId (VarId name1 _ sortid1) (VarId name2 _ sortid2) = name1 == name2 && identicalSortId sortid1 sortid2
-                                                                                               
+
 identicalSortId :: SortId -> SortId -> Bool
-identicalSortId s1 s2 = SortId.name s1 == SortId.name s2     
+identicalSortId s1 s2 = SortId.name s1 == SortId.name s2
 
 identicalMap :: VarEnv VarId VarId -> VarEnv VarId VarId -> Bool
-identicalMap map1 map2 = containsAllIdentical (Map.toList map1) (Map.toList map2) 
+identicalMap map1 map2 = containsAllIdentical (Map.toList map1) (Map.toList map2)
 
 containsAllIdentical :: [(VarId, VExpr)] -> [(VarId, VExpr)] -> Bool
 containsAllIdentical [] _ = True
@@ -98,7 +100,7 @@ containsAllIdentical (x:xs) s = containsIdentical x s && containsAllIdentical xs
 
 containsIdentical :: (VarId, VExpr) -> [(VarId, VExpr)] -> Bool
 containsIdentical _ [] = False
-containsIdentical x1@(k1,v1) ((k2,v2):xs) =    ( identicalVarId k1 k2 && identicalVExpr v1 v2 ) 
+containsIdentical x1@(k1,v1) ((k2,v2):xs) =    ( identicalVarId k1 k2 && identicalVExpr v1 v2 )
                                             || containsIdentical x1 xs
 
 identicalVExpr :: VExpr -> VExpr -> Bool
@@ -115,7 +117,7 @@ identicalVExpr (view -> Vnot v1)                (view -> Vnot v2)               
 identicalVExpr (view -> Vand vs1)               (view -> Vand vs2)               = identicalLists identicalVExpr (Set.toAscList vs1) (Set.toAscList vs2)
 identicalVExpr (view -> Vpredef p1 fid1 vexps1) (view -> Vpredef p2 fid2 vexps2) = p1 == p2 && identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2
 identicalVExpr (view -> Verror s1)              (view -> Verror s2)              = s1 == s2
-identicalVExpr _                                _                                = False                          -- different 
+identicalVExpr _                                _                                = False                          -- different
 
 identicalActOffer :: ActOffer -> ActOffer -> Bool
 identicalActOffer (ActOffer offers1 vexprs1) (ActOffer offers2 vexprs2) =    identicalLists identicalOffer (Set.toAscList offers1) (Set.toAscList offers2)
@@ -131,7 +133,7 @@ identicalChanOffer _ _                                          = False
 
 identicalBExpr :: BExpr -> BExpr -> Bool
 identicalBExpr Stop Stop = True
-identicalBExpr (ActionPref actOffer1 bExpr1) (ActionPref actOffer2 bExpr2)   =     identicalActOffer actOffer1 actOffer2 
+identicalBExpr (ActionPref actOffer1 bExpr1) (ActionPref actOffer2 bExpr2)   =     identicalActOffer actOffer1 actOffer2
                                                                                 && identicalBExpr bExpr1 bExpr2
 identicalBExpr (Guard vexprs1 bExpr1) (Guard vexprs2 bExpr2)                 =     identicalLists identicalVExpr vexprs1 vexprs2
                                                                                 && identicalBExpr bExpr1 bExpr2
@@ -153,21 +155,21 @@ identicalBExpr (Hide chans1 bexpr1) (Hide chans2 bexpr2)                     =  
 identicalBExpr (ValueEnv mp1 bexpr1) (ValueEnv mp2 bexpr2)                   = error "TODO - identicalBExpr - ValueEnv"
 identicalBExpr (StAut sid1 mp1 trans1) (StAut sid2 mp2 trans2)               = error "TODO - identicalBExpr - StAut"
 identicalBExpr _ _                                                           = False
-                    
+
 newtype  FuncContent =  FuncContent { vexpr :: VExpr }
     deriving (Ord,Read,Show)
-    
-instance Eq FuncContent where  
+
+instance Eq FuncContent where
     FuncContent x == FuncContent y = identicalVExpr x y
-    
+
 instance SortOf FuncContent where
     sortOf f = sortOf (vexpr f)
-    
+
 toTorXakisDefs :: (Int, TxsDefs, Sigs VarId) -> TxsDefs
 toTorXakisDefs (_, b, _) = b
 
 parseTorXakis :: String -> TxsDefs
-parseTorXakis txt = -- Trace.trace ("txt = " ++ txt) 
+parseTorXakis txt = -- Trace.trace ("txt = " ++ txt)
                     let parserOutput = txsParser (txsLexer txt) in
                         -- Trace.trace ("parser output = " ++ show(parserOutput)) $
                             toTorXakisDefs parserOutput
@@ -176,7 +178,7 @@ fromTypedElementsToSortIds :: TypedElements -> [SortId]
 fromTypedElementsToSortIds = concatMap (\(is,t) -> map (\_ -> expectSortId t) is)
 
 fromMaybeTypeToMaybeSortIds :: Maybe [String] -> ExitSort
-fromMaybeTypeToMaybeSortIds Nothing = NoExit
+fromMaybeTypeToMaybeSortIds Nothing       = NoExit
 fromMaybeTypeToMaybeSortIds (Just params) = Exit (map expectSortId params)
 
 fromTypedElementsToVarIds :: TypedElements -> [VarId]
@@ -195,23 +197,23 @@ createSortId :: String -> String
 createSortId nm = nm
 
 expectSortId :: String -> SortId
-expectSortId nm = SortId nm dontCareUnid
+expectSortId nm = SortId (T.pack nm) dontCareUnid
 
 createCstrId :: String -> TypedElements -> String -> String
-createCstrId cstrName fields _sortDefName = cstrName ++ " { " 
+createCstrId cstrName fields _sortDefName = cstrName ++ " { "
                                             ++ Utils.join " , " (map (\(field,t) -> Utils.join ", " field ++ " :: " ++ t) fields)
                                             ++ " }"
 
 expectCstrId :: String -> TypedElements -> String -> CstrId
-expectCstrId cstrName types sortDefName = CstrId cstrName dontCareUnid (fromTypedElementsToSortIds types) (expectSortId sortDefName) 
+expectCstrId cstrName types sortDefName = CstrId (T.pack cstrName) dontCareUnid (fromTypedElementsToSortIds types) (expectSortId sortDefName)
 
 createSortDef :: String -> Constructors -> String
-createSortDef sortDefName constrs = "TYPEDEF " ++ sortDefName ++ " ::=\n\t  " ++ 
+createSortDef sortDefName constrs = "TYPEDEF " ++ sortDefName ++ " ::=\n\t  " ++
                                             Utils.join "\n\t| " (map (\(constrName, fields) -> createCstrId constrName fields sortDefName) constrs )
                                     ++ "\nENDDEF"
 
 expectSortDef :: String -> Constructors -> TxsDefs
-expectSortDef sortDefName constrs = 
+expectSortDef sortDefName constrs =
     let
         funcArgs = [([dontCareName],sortDefName)]
         -- IsConstructor Functions
@@ -220,53 +222,53 @@ expectSortDef sortDefName constrs =
         isAccessorsFuncIds = concatMap (\(fields,t) -> map (\field -> expectFuncId field funcArgs t) fields)
      in
         TxsDefs.fromList  ( (IdSort (expectSortId sortDefName), DefSort SortDef)
-                          : map (\(constrName, types) -> (IdCstr (expectCstrId constrName types sortDefName), DefCstr (CstrDef (isConstrFuncId constrName) (isAccessorsFuncIds types)) ) ) constrs 
+                          : map (\(constrName, types) -> (IdCstr (expectCstrId constrName types sortDefName), DefCstr (CstrDef (isConstrFuncId constrName) (isAccessorsFuncIds types)) ) ) constrs
                           )
-                     
+
 
 createConstDef :: String -> String -> FuncContent -> String
-createConstDef nm srt content =  "CONSTDEF " ++ nm ++ " :: " ++ srt ++ " ::=\n" 
+createConstDef nm srt content =  "CONSTDEF " ++ nm ++ " :: " ++ srt ++ " ::=\n"
                                   ++ pshow (vexpr content)     -- ident ?
                                   ++ "\nENDDEF"
 
 expectConstDef :: String -> String -> VExpr -> TxsDefs
-expectConstDef nm srt content = TxsDefs.fromList [(IdFunc (expectFuncId nm [] srt), DefFunc (FuncDef (fromTypedElementsToVarIds []) content))] 
+expectConstDef nm srt content = TxsDefs.fromList [(IdFunc (expectFuncId nm [] srt), DefFunc (FuncDef (fromTypedElementsToVarIds []) content))]
 
-                                        
+
 createFuncDef :: String -> TypedElements -> String -> FuncContent -> String
-createFuncDef nm vars' srt content =  "FUNCDEF " ++ nm 
-                                      ++ " ( " ++ Utils.join " ; " (map (\(var',t) -> Utils.join ", " var' ++ " :: " ++ t) vars') ++ " ) :: " ++ srt ++ " ::=\n" 
+createFuncDef nm vars' srt content =  "FUNCDEF " ++ nm
+                                      ++ " ( " ++ Utils.join " ; " (map (\(var',t) -> Utils.join ", " var' ++ " :: " ++ t) vars') ++ " ) :: " ++ srt ++ " ::=\n"
                                       ++ pshow (vexpr content)     -- ident ?
                                       ++ "\nENDDEF"
-                                            
+
 expectFuncDef :: String -> TypedElements -> String -> FuncContent -> TxsDefs
-expectFuncDef nm args' srt content = TxsDefs.fromList [(IdFunc (expectFuncId nm args' srt), DefFunc (FuncDef (fromTypedElementsToVarIds args') (vexpr content)))] 
+expectFuncDef nm args' srt content = TxsDefs.fromList [(IdFunc (expectFuncId nm args' srt), DefFunc (FuncDef (fromTypedElementsToVarIds args') (vexpr content)))]
 
 createProcDef :: String -> TypedElements -> TypedElements -> Maybe [String] -> BExpr -> String
 createProcDef nm chans vars' exits content = "PROCDEF " ++ nm
                                             ++ " [ " ++ Utils.join " ; " (map (\(chan',t) -> t ++ " :: " ++ Utils.join ", " chan') chans) ++ " ] "
-                                            ++ " ( " ++ Utils.join " ; " (map (\(var',t) -> Utils.join ", " var' ++ " :: " ++ t) vars') ++ " ) " 
-                                            ++ case exits of 
+                                            ++ " ( " ++ Utils.join " ; " (map (\(var',t) -> Utils.join ", " var' ++ " :: " ++ t) vars') ++ " ) "
+                                            ++ case exits of
                                                     Nothing -> ""
                                                     Just [] -> "EXIT "
                                                     Just l  -> "EXIT " ++ Utils.join " # " l
-                                            ++ " ::=\n" 
+                                            ++ " ::=\n"
                                             ++ pshow content        -- ident ?
                                             ++ "\nENDDEF"
 
 expectProcDef :: String -> TypedElements -> TypedElements -> Maybe [String] -> BExpr -> TxsDefs
-expectProcDef nm chans vars' exits content = TxsDefs.fromList [(  IdProc  (expectProcId nm chans vars' exits), 
+expectProcDef nm chans vars' exits content = TxsDefs.fromList [(  IdProc  (expectProcId nm chans vars' exits),
                                                                    DefProc (ProcDef (fromTypedElementsToChanIds chans)
-                                                                                    (fromTypedElementsToVarIds vars') 
+                                                                                    (fromTypedElementsToVarIds vars')
                                                                                     content
                                                                         )
                                                                 )
-                                                               ] 
+                                                               ]
 
-                                            
-                                            
+
+
 expectProcId :: String -> TypedElements -> TypedElements -> Maybe [String] -> ProcId
-expectProcId nm chans vars' exits = ProcId nm 
+expectProcId nm chans vars' exits = ProcId (T.pack nm)
                                      dontCareUnid
                                      (fromTypedElementsToChanIds chans)
                                      (fromTypedElementsToVarIds vars')
@@ -274,13 +276,13 @@ expectProcId nm chans vars' exits = ProcId nm
 
 
 expectFuncId :: String -> TypedElements -> String -> FuncId
-expectFuncId funcname funcargs' funcsrt = FuncId funcname dontCareUnid (fromTypedElementsToSortIds funcargs') (expectSortId funcsrt)
+expectFuncId funcname funcargs' funcsrt = FuncId (T.pack funcname) dontCareUnid (fromTypedElementsToSortIds funcargs') (expectSortId funcsrt)
 
 expectVarId :: String -> String -> VarId
-expectVarId varname varsrt = VarId varname dontCareUnid (expectSortId varsrt)
+expectVarId varname varsrt = VarId (T.pack varname) dontCareUnid (expectSortId varsrt)
 
 expectChanId :: String -> [String] -> ChanId
-expectChanId nm sorts = ChanId nm dontCareUnid (map expectSortId sorts)
+expectChanId nm sorts = ChanId (T.pack nm) dontCareUnid (map expectSortId sorts)
 
 
 findValueOfGenericKeyAssocs :: Ident -> [(Ident,TxsDef)] -> Maybe TxsDef
@@ -288,22 +290,22 @@ findValueOfGenericKeyAssocs _key [] = Nothing
 findValueOfGenericKeyAssocs (IdSort key1) ((IdSort key2, sdef@DefSort{}):xs) =
                                                             if identicalSortId key1 key2
                                                                then Just sdef
-                                                               else findValueOfGenericKeyAssocs (IdSort key1) xs 
+                                                               else findValueOfGenericKeyAssocs (IdSort key1) xs
 findValueOfGenericKeyAssocs (IdCstr key1) ((IdCstr key2, cdef@DefCstr{}):xs) =
                                                             if identicalCstrId key1 key2
                                                                then Just cdef
-                                                               else findValueOfGenericKeyAssocs (IdCstr key1) xs 
+                                                               else findValueOfGenericKeyAssocs (IdCstr key1) xs
 findValueOfGenericKeyAssocs (IdFunc key1) ((IdFunc key2, fdef@DefFunc{}):xs) =
                                                             if identicalFuncId key1 key2
                                                                 then Just fdef
-                                                                else findValueOfGenericKeyAssocs (IdFunc key1) xs 
+                                                                else findValueOfGenericKeyAssocs (IdFunc key1) xs
 findValueOfGenericKeyAssocs (IdProc key1) ((IdProc key2, pdef@DefProc{}):xs) =
                                                             if identicalProcId key1 key2
                                                                 then Just pdef
-                                                                else findValueOfGenericKeyAssocs (IdProc key1) xs 
-findValueOfGenericKeyAssocs key (_x:xs) = findValueOfGenericKeyAssocs key xs                                     
+                                                                else findValueOfGenericKeyAssocs (IdProc key1) xs
+findValueOfGenericKeyAssocs key (_x:xs) = findValueOfGenericKeyAssocs key xs
 
-                                
+
 findValueOfGenericKey :: Ident -> TxsDefs -> Maybe TxsDef
 findValueOfGenericKey key txsdefs = findValueOfGenericKeyAssocs key (TxsDefs.toList txsdefs)
 
@@ -313,7 +315,7 @@ type FuncKey = FuncId
 
 getFuncContent :: String -> FuncKey -> FuncContent
 getFuncContent torXakisInput funcKey =
-        --Trace.trace ("torXakisInput = \n" ++ torXakisInput) $ 
+        --Trace.trace ("torXakisInput = \n" ++ torXakisInput) $
         --Trace.trace ("funcKey = \n" ++ show(funcKey)) $
             case findValueOfGenericKey (IdFunc funcKey) ( parseTorXakis torXakisInput ) of
                 Just (DefFunc (FuncDef _ vexp) )    -> FuncContent vexp
@@ -324,11 +326,11 @@ getFuncKey :: String -> TypedElements -> String -> FuncKey
 getFuncKey = expectFuncId
 
 
-constantInt :: Integer -> FuncContent 
+constantInt :: Integer -> FuncContent
 constantInt n = FuncContent (cstrConst (Cint n))
 
-constantString :: String -> FuncContent 
-constantString s = FuncContent (cstrConst (Cstring s))
+constantString :: String -> FuncContent
+constantString = FuncContent . cstrConst . Cstring . T.pack
 
 constantBool :: String -> FuncContent
 constantBool s = FuncContent (cstrConst (Cbool ("True" == s)))
@@ -372,12 +374,12 @@ functionCall (FuncId "\\|/" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl 
         where   a = vexpr l
                 b = vexpr r
                 arg0 = cstrAnd (Set.fromList [a, cstrNot b])
-                arg1 = cstrAnd (Set.fromList [cstrNot a, b])  
+                arg1 = cstrAnd (Set.fromList [cstrNot a, b])
 functionCall (FuncId "=>" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Bool && identicalSortId s sortId_Bool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrImplies (vexpr l) (vexpr r))
 functionCall (FuncId "<=>" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Bool && identicalSortId s sortId_Bool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrEqual (vexpr l) (vexpr r))
-functionCall (FuncId "+" _ [si] so) [i] | identicalSortId si sortId_Int && identicalSortId so sortId_Int && identicalSortId si (sortOf (vexpr i)) = 
+functionCall (FuncId "+" _ [si] so) [i] | identicalSortId si sortId_Int && identicalSortId so sortId_Int && identicalSortId si (sortOf (vexpr i)) =
                                           error "This shound't be called"
 functionCall (FuncId "+" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Int && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrPredef SSI funcId_plusInt [vexpr l, vexpr r])
@@ -403,11 +405,11 @@ functionCall (FuncId ">=" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl so
     FuncContent (cstrPredef SSI funcId_geInt [vexpr l, vexpr r])
 functionCall (FuncId "len" _ [si] so) [i] | identicalSortId si sortId_String && identicalSortId so sortId_Int && identicalSortId sortId_String (sortOf (vexpr i)) =
     FuncContent (cstrPredef SSS funcId_lenString [vexpr i])
-functionCall (FuncId "at" _ [sl,sr] s) [l,r] | identicalSortId sl sortId_String && identicalSortId sr sortId_Int && identicalSortId s sortId_String && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) = 
+functionCall (FuncId "at" _ [sl,sr] s) [l,r] | identicalSortId sl sortId_String && identicalSortId sr sortId_Int && identicalSortId s sortId_String && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrPredef SSS funcId_atString [vexpr l, vexpr r])
 functionCall (FuncId "++" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_String && identicalSortId s sortId_String && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrPredef SSS funcId_catString [vexpr l, vexpr r])
-functionCall (FuncId "strinre" _ [sl,sr] s) [l,r] | identicalSortId sl sortId_String && identicalSortId sr sortId_Regex && identicalSortId s sortId_Bool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) = 
+functionCall (FuncId "strinre" _ [sl,sr] s) [l,r] | identicalSortId sl sortId_String && identicalSortId sr sortId_Regex && identicalSortId s sortId_Bool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrPredef SSR funcId_strinre [vexpr l, vexpr r])
-    
+
 functionCall funcKey args' = FuncContent (cstrFunc funcKey (map vexpr args'))

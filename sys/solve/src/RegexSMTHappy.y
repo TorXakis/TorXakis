@@ -172,7 +172,7 @@ Branch  :: { Text }
         | NeBranch
             { case $1 of
                [x] -> x
-               list -> "(re.<> " <> fold list <> ") "
+               list -> "(re.++ " <> fold list <> ") "
             }
             
 NeBranch    :: { [Text] }

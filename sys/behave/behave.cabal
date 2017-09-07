@@ -69,6 +69,8 @@ test-suite behave-test
                      , mtl
                      , HUnit
                      , MissingH
+                     , text
+                     , text-show
                      
                      , behavedefs
                      , behaveenv
