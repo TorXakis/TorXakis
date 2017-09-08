@@ -48,8 +48,7 @@ MODELDEF Model ::=
         luckyPeople[In, Out](Male,0)            -- first sex choice is arbitrary
 ENDDEF
 
-
-PROCDEF examples [ In :: Person; Out :: Bool ] () ::=
+PROCDEF examples [ In :: Person; Out :: Bool ] () HIT ::=
         In ! Person( Male, "Mickey", "Mouse", 13, 1 )
     >-> Out ! True
     >-> In ! Person( Male, "Donald", "Duck", 13, 3 )
@@ -86,16 +85,14 @@ PROCDEF examples [ In :: Person; Out :: Bool ] () ::=
     >-> Out ! False
     >-> In ! Person( Male, "Willem", "Oranje", 27, 4 )
     >-> Out ! True
+    >-> HIT
 ENDDEF
 
-MODELDEF ModelExamples ::=
+PURPDEF PurposeExamples ::=
     CHAN IN    In 
     CHAN OUT   Out
     
-    BEHAVIOUR  
-            luckyPeople[In, Out](Male,0)   
-        |[In,Out]|
-            examples[In,Out]()
+    GOAL examples ::= examples [In,Out] ()
 ENDDEF
 
 CONSTDEF separator :: String ::= "@" ENDDEF
@@ -134,25 +131,23 @@ CNECTDEF  Xim ::=
     ENCODE    Out ? b               ->  ! toXml(b)
 ENDDEF
 
-PROCDEF increasingRows [ In :: Person ] ( length, pos :: Int; s :: Sex ) ::=
+PROCDEF increasingRows [ In :: Person; Out :: Bool ] ( length, pos :: Int; s :: Sex ) HIT ::=
         In ? p [[ sex(p) == s]]
+    >-> Out ? b
     >-> (
                 [[pos == 1]] =>> (
-                                        [[ isMale(s) ]] =>> increasingRows [In] (length, length, Female)
+                                        [[ isMale(s) ]] =>> increasingRows [In,Out] (length, length, Female)
                                     ##
-                                        [[ isFemale(s) ]] =>> increasingRows [In] (length+1, length+1, Male)
+                                        [[ isFemale(s) ]] =>> increasingRows [In,Out] (length+1, length+1, Male)
                                  )
             ##
-                [[pos>1]] =>> increasingRows [In] (length, pos-1, s)
+                [[pos>1]] =>> increasingRows [In,Out] (length, pos-1, s)
          )
 ENDDEF
 
-MODELDEF Overflow ::=
-    CHAN IN    In
+PURPDEF PurposeOverflow ::=
+    CHAN IN    In 
     CHAN OUT   Out
-
-    BEHAVIOUR  
-            increasingRows [In] (1,1,Male)
-        |[In]|
-            luckyPeople [In, Out] (Male,0)            -- first sex choice is arbitrary
+    
+    GOAL overflow ::= increasingRows [In,Out] (1,1,Male)
 ENDDEF

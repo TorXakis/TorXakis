@@ -1,4 +1,0 @@
-tester ModelExamples Sut
-test 36
-trace txs $> testTraceExamples.log
-exit

@@ -26,7 +26,7 @@ public class LuckyPeopleOverflow
         try
         {
             // instantiate a socket for accepting a connection
-            ServerSocket servsock = new ServerSocket(777);
+            ServerSocket servsock = new ServerSocket(7777);
 
             // wait to accept a connection request and a data socket is returned
             Socket sock = servsock.accept();
@@ -47,7 +47,6 @@ public class LuckyPeopleOverflow
             String last = "";
             while (true)
             {
-                // read a line from the data stream: the stimulus
                 String person = sockin.readLine();
                 
                 String[] fields = person.split(SEPARATOR);
@@ -58,14 +57,13 @@ public class LuckyPeopleOverflow
                 if (sameSex)
                 {
                     same += 1;
-                    //System.out.println("Same = "+same);
                 }
                 else
                 {
                     same = 1;
                     last = fields[SEX];
                 }
-                // send a line to the data stream: the response
+                // send a line to the data stream: is lucky?
                 if (retval)
                     sockout.print("True\n");
                 else
