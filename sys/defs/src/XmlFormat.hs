@@ -29,18 +29,19 @@ import           TextShow
 import           TxsDefs
 
 
--- | Simple binary tree to represent the XML information that will be converted to string.
+-- | Simple rose tree to represent the XML information that will be converted
+-- to string.
 data XMLTree = XLeaf Text | XNode Text [XMLTree]
 
 xmlTreeToText :: XMLTree -> Text
-xmlTreeToText tree = T.concat $ execState (xmlTreeToList tree) []
+xmlTreeToText tree = T.concat $ reverse $ execState (xmlTreeToList tree) []
   where
     xmlTreeToList :: XMLTree -> State [Text] ()
     xmlTreeToList (XLeaf text) = modify (text:)
     xmlTreeToList (XNode text ts) = do
-      modify (T.concat ["</", text, ">" ]:)
-      traverse xmlTreeToList ts
       modify (T.concat ["<", text, ">" ]:)
+      traverse xmlTreeToList ts
+      modify (T.concat ["</", text, ">" ]:)
 
 instance IsString XMLTree where
   fromString = XLeaf . T.pack
@@ -70,9 +71,6 @@ encodeChar  c  =
   else T.concat ["<char>", T.pack (show (ord c)), "</char>"]
 
 -- | Make an XML node.
---
--- TODO: to make this more efficient return always a `[Text]`, and use `T.concat`
--- at the end (which is O(n)).
 --
 -- | Infix and right associative version of XNode.
 (~>) :: Text -> [XMLTree] -> XMLTree
