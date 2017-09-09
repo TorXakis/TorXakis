@@ -79,7 +79,7 @@ getSMT smtname  =  do
        Nothing     -> if  not $ Map.null smts'
                         then do putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING 
                                           $ "No such Solver: " ++ smtname ]
-                                (name',smtenv) <- return $ head $ Map.toList smts'
+                                let (name',smtenv) = head $ Map.toList smts'
                                 putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING 
                                           $ "Using instead: " ++ name' ] 
                                 return smtenv

@@ -86,37 +86,37 @@ cmdsIntpr :: UIO ()
 cmdsIntpr  =  do
      (cmdhin:_cmdhins) <- gets uihins
      lift $ hPutStr stderr $ if cmdhin == stdin then "TXS <<  " else ""
-     line             <- lift $ hGetLine cmdhin
-     (cmd,args1)      <- return $ span (/= ' ') (dropWhile (== ' ') line)
-     (args,redir1)    <- return $ span (/= '$') (dropWhile (== ' ') args1)
-     let redir = replace "$<"  " $< "
-                 $ replace "$>"  " $> "
-                 $ replace "$>>" " $= " redir1
+     line              <- lift $ hGetLine cmdhin
+     let (cmd,args1)   = span (/= ' ') (dropWhile (== ' ') line)
+     let (args,redir1) = span (/= '$') (dropWhile (== ' ') args1)
+     let redir         = replace "$<"  " $< "
+                         $ replace "$>"  " $> "
+                         $ replace "$>>" " $= " redir1
      case words redir of
-         { []                      -> do setOut "" WriteMode
+           []                      -> do setOut "" WriteMode
                                          cmdIntpr cmd args
-         ; ["$<",fin]              -> do setOut "" WriteMode
+           ["$<",fin]              -> do setOut "" WriteMode
                                          args' <- lift $ readFile fin
                                          cmdIntpr cmd $ replace "\n" " " args'
-         ; ["$>",fout]             -> do setOut fout WriteMode
+           ["$>",fout]             -> do setOut fout WriteMode
                                          cmdIntpr cmd args
-         ; ["$=",fapp]             -> do setOut fapp AppendMode
+           ["$=",fapp]             -> do setOut fapp AppendMode
                                          cmdIntpr cmd args
-         ; ["$<",fin,"$>",fout]    -> do setOut fout WriteMode
+           ["$<",fin,"$>",fout]    -> do setOut fout WriteMode
                                          args' <- lift $ readFile fin
                                          cmdIntpr cmd $ replace "\n" " " args'
-         ; ["$<",fin,"$=",fapp]    -> do setOut fapp AppendMode
+           ["$<",fin,"$=",fapp]    -> do setOut fapp AppendMode
                                          args' <- lift $ readFile fin
                                          cmdIntpr cmd $ replace "\n" " " args'
-         ; ["$>",fout,"$<",fin]    -> do setOut fout WriteMode
+           ["$>",fout,"$<",fin]    -> do setOut fout WriteMode
                                          args' <- lift $ readFile fin
                                          cmdIntpr cmd $ replace "\n" " " args'
-         ; ["$=",fapp,"$<",fin]    -> do setOut fapp AppendMode
+           ["$=",fapp,"$<",fin]    -> do setOut fapp AppendMode
                                          args' <- lift $ readFile fin
                                          cmdIntpr cmd $ replace "\n" " " args'
-         ; _                       -> do putErr "wrong IO-redirection in command"
+           _                       -> do putErr "wrong IO-redirection in command"
                                          cmdsIntpr
-         }
+          
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -285,7 +285,7 @@ cmdSeed args  =  do
 
 cmdRun :: String -> UIO ()
 cmdRun args  =  do
-     (fin,_rest) <- return $ span (/= ' ') (dropWhile (== ' ') args)
+     let (fin,_rest) = span (/= ' ') (dropWhile (== ' ') args)
      hin        <- lift $ openFile fin ReadMode
      lift $ hSetBuffering hin NoBuffering
      cmdhins <- gets uihins

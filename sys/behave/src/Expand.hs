@@ -427,16 +427,16 @@ expandChanOffer chid (choff,pos)  =  do
 
 hideCTBranch :: [ Set.Set TxsDefs.ChanId ] -> [ChanId] -> CTBranch -> IOB.IOB CTBranch
 hideCTBranch _ chans (CTpref ctoffs hidvars preds next)  =  do
-     (hctoffs,vctoffs) <- return $ Set.partition ((`elem` chans).ctchan) ctoffs
-     let hvars         = concatMap ctchoffers (Set.toList hctoffs)
-     hvarlist          <- sequence [ liftP2 (hvar, uniHVar hvar) | hvar <- hvars ]
-     let hvarmap       = Map.fromList hvarlist
-     let unihvars      = Map.elems hvarmap
-     let hvarenv       = Map.map cstrVar hvarmap
-     let ctnext1'      = let chans' = chans \\\ [chanId_Exit]
-                            in if  null chans'
-                                 then next
-                                 else BNhide chans' next
+     let (hctoffs,vctoffs) = Set.partition ((`elem` chans).ctchan) ctoffs
+     let hvars             = concatMap ctchoffers (Set.toList hctoffs)
+     hvarlist              <- sequence [ liftP2 (hvar, uniHVar hvar) | hvar <- hvars ]
+     let hvarmap           = Map.fromList hvarlist
+     let unihvars          = Map.elems hvarmap
+     let hvarenv           = Map.map cstrVar hvarmap
+     let ctnext1'          = let chans' = chans \\\ [chanId_Exit]
+                               in if null chans'
+                                    then next
+                                    else BNhide chans' next
      return CTpref { ctoffers  = vctoffs
                    , cthidvars = hidvars ++ unihvars
                    , ctpreds   = map (partSubst hvarenv) preds
