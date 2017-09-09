@@ -108,10 +108,10 @@ iocoModelAfter (TxsDDefs.Act acts)  =  do
             modSts         <- gets (IOC.modsts . IOC.state)
             envb           <- filterEnvCtoEnvB
             (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
+            writeEnvBtoEnvC envb' 
             case maybt' of
               Nothing  -> return False
-              Just bt' -> do writeEnvBtoEnvC envb'
-                             IOC.modifyCS $ \st -> st { IOC.modsts = bt' }
+              Just bt' -> do IOC.modifyCS $ \st -> st { IOC.modsts = bt' }
                              return True
 
 iocoModelAfter TxsDDefs.ActQui  =  do
@@ -125,10 +125,10 @@ iocoModelAfter TxsDDefs.ActQui  =  do
             envb           <- filterEnvCtoEnvB
             (maybt', envb') <- lift $ runStateT (Behave.behAfterRef modSts (Set.unions outsyncs))
                                                 envb
+            writeEnvBtoEnvC envb' 
             case maybt' of
               Nothing  -> return False
-              Just bt' -> do writeEnvBtoEnvC envb'
-                             IOC.modifyCS $ \st -> st { IOC.modsts = bt' }
+              Just bt' -> do IOC.modifyCS $ \st -> st { IOC.modsts = bt' }
                              return True
 
 -- ----------------------------------------------------------------------------------------- --
