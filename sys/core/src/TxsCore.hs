@@ -496,7 +496,7 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
                      (_       , Nothing ) -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester mapper failed" ]
                           return ( Nothing, [], [] )
-                     (Just _, Just mt') -> do
+                     (Just _, Just mt') ->
                           return ( maybt', mt', [] )
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return ( Nothing, [], [] )
@@ -661,7 +661,7 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                      (_       , Nothing ) -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester mapper failed" ]
                           return ( Nothing, [] )
-                     (Just _, Just mt') -> do
+                     (Just _, Just mt') ->
                           return ( maybt', mt' )
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return ( Nothing, [] )
