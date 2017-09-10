@@ -13,9 +13,11 @@ See LICENSE at root directory of this repository.
 TYPEDEF  Operation ::=
       Plus  { p1, p2 :: Int }
     | Minus { m1, m2 :: Int }
-    | Error      
 ENDDEF
 
+FUNCDEF overflow (x :: Int) :: Bool ::=
+    (x < -2147483648) \/ ( x > +2147483647)
+ENDDEF
 
 STAUTDEF adder  [ Act :: Operation;  Res :: Int ] ( )
  ::=
@@ -25,9 +27,15 @@ STAUTDEF adder  [ Act :: Operation;  Res :: Int ] ( )
 
       INIT   idle   { statevar := 0 }
 
-      TRANS  idle  ->  Act ?opn [[ isPlus(opn)  ]]  { statevar := p1(opn)+p2(opn) }  ->  calc
-             idle  ->  Act ?opn [[ isMinus(opn) ]]  { statevar := m1(opn)-m2(opn) }  ->  calc
-             calc  ->  Res ! statevar   { }                                          ->  idle
+      TRANS  idle  ->  Act ?opn [[ IF isPlus(opn) THEN    not (overflow (p1(opn))) 
+                                                       /\ not (overflow (p2(opn))) 
+                                                       /\ not (overflow (p1(opn)+p2(opn)))
+                                                  ELSE False FI  ]]  { statevar := p1(opn)+p2(opn) }  ->  calc
+             idle  ->  Act ?opn [[ IF isMinus(opn) THEN   not (overflow (m1(opn))) 
+                                                       /\ not (overflow (m2(opn))) 
+                                                       /\ not (overflow (m1(opn)-m2(opn)))
+                                                   ELSE False FI ]]  { statevar := m1(opn)-m2(opn) }  ->  calc
+             calc  ->  Res ! statevar   { }                                                           ->  idle
 
 ENDDEF
 

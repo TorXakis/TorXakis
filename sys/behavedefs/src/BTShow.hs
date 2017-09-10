@@ -114,8 +114,8 @@ instance PShow CTBranch
 
 instance PShow BBranch
   where
-    pshow (BTpref btoffs _hidvars spreds snext)
-      =  " ## " ++ pshow btoffs ++ pshow spreds ++ pshow snext ++ "\n"
+    pshow (BTpref btoffs hidvars spreds snext)
+      =  " ## " ++ pshow btoffs ++ pshow hidvars ++ pshow spreds ++ pshow snext ++ "\n"
     pshow (BTtau bt)
       =  " ## ISTEP " ++ pshow bt ++ "\n"
 

@@ -392,19 +392,19 @@ expand chsets (BNhide chans cnode)  =  do
 expandOffers :: [ Set.Set TxsDefs.ChanId ] -> Set.Set Offer -> IOB.IOB ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
 expandOffers chsets offs  =  do
      ctofftuples <- mapM (expandOffer chsets) (Set.toList offs)
-     ( ctoffs, quests, exclams ) <- return $ unzip3 ctofftuples
+     let ( ctoffs, quests, exclams ) = unzip3 ctofftuples
      return ( Set.fromList ctoffs, concat quests, concat exclams )
 
 
 expandOffer :: [ Set.Set TxsDefs.ChanId ] -> Offer -> IOB.IOB ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
 expandOffer chsets (Offer chid choffs)  =  do
-     ctchoffs <- mapM (expandChanOffer chsets chid) ( zip choffs [1..(length choffs)] )
+     ctchoffs <- mapM (expandChanOffer chid) ( zip choffs [1..(length choffs)] )
      let ( ivars, quests, exclams ) = unzip3 ctchoffs
      return ( CToffer chid ivars, concat quests, concat exclams )
 
 
-expandChanOffer :: [ Set.Set TxsDefs.ChanId ] -> ChanId -> (ChanOffer,Int) -> IOB.IOB ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
-expandChanOffer _ chid (choff,pos)  =  do
+expandChanOffer :: ChanId -> (ChanOffer,Int) -> IOB.IOB ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
+expandChanOffer chid (choff,pos)  =  do
      curs <- gets IOB.stateid
      case choff of
        Quest  vid  -> do let ivar = IVar { ivname = ChanId.name chid
@@ -429,16 +429,16 @@ expandChanOffer _ chid (choff,pos)  =  do
 
 hideCTBranch :: [ Set.Set TxsDefs.ChanId ] -> [ChanId] -> CTBranch -> IOB.IOB CTBranch
 hideCTBranch _ chans (CTpref ctoffs hidvars preds next)  =  do
-     (hctoffs,vctoffs) <- return $ Set.partition ((`elem` chans).ctchan) ctoffs
-     let hvars         = concatMap ctchoffers (Set.toList hctoffs)
-     hvarlist          <- sequence [ liftP2 (hvar, uniHVar hvar) | hvar <- hvars ]
-     let hvarmap       = Map.fromList hvarlist
-     let unihvars      = Map.elems hvarmap
-     let hvarenv       = Map.map cstrVar hvarmap
-     let ctnext1'      = let chans' = chans \\\ [chanId_Exit]
-                            in if  null chans'
-                                 then next
-                                 else BNhide chans' next
+     let (hctoffs,vctoffs) = Set.partition ((`elem` chans).ctchan) ctoffs
+     let hvars             = concatMap ctchoffers (Set.toList hctoffs)
+     hvarlist              <- sequence [ liftP2 (hvar, uniHVar hvar) | hvar <- hvars ]
+     let hvarmap           = Map.fromList hvarlist
+     let unihvars          = Map.elems hvarmap
+     let hvarenv           = Map.map cstrVar hvarmap
+     let ctnext1'          = let chans' = chans \\\ [chanId_Exit]
+                               in if null chans'
+                                    then next
+                                    else BNhide chans' next
      return CTpref { ctoffers  = vctoffs
                    , cthidvars = hidvars ++ unihvars
                    , ctpreds   = map (partSubst hvarenv) preds

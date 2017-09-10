@@ -15,7 +15,6 @@ TYPEDEF  Operation
     ::=
           Plus  { p1, p2 :: Int }
         | Minus { m1, m2 :: Int }
-        | Error      
 ENDDEF
 
 
@@ -24,9 +23,15 @@ ENDDEF
 
 PROCDEF  adder  [ Act :: Operation;  Res :: Int ] ( )
     ::=
-           Act ?opn [[ isPlus(opn)  ]]  >->  Res !p1(opn)+p2(opn)  >->  adder [ Act, Res ] ( )
+           Act ?opn [[ IF isPlus(opn) THEN    not (overflow (p1(opn))) 
+                                           /\ not (overflow (p2(opn))) 
+                                           /\ not (overflow (p1(opn)+p2(opn)))
+                                      ELSE False FI   ]]  >->  Res !p1(opn)+p2(opn)  >->  adder [ Act, Res ] ( )
         ##
-           Act ?opn [[ isMinus(opn) ]]  >->  Res !m1(opn)-m2(opn)  >->  adder [ Act, Res ] ( )
+           Act ?opn [[ IF isMinus(opn) THEN   not (overflow (m1(opn))) 
+                                           /\ not (overflow (m2(opn))) 
+                                           /\ not (overflow (m1(opn)-m2(opn)))
+                                       ELSE False FI  ]]  >->  Res !m1(opn)-m2(opn)  >->  adder [ Act, Res ] ( )
 ENDDEF
 
 
@@ -72,11 +77,11 @@ ENDDEF
 
 PROCDEF  p2  [ Act :: Operation; Res :: Int ] ( )  HIT
     ::=
-                Act ?opn [[ isPlus(opn), p1(opn) > 100, p2(opn) > 100 ]]
+                Act ?opn [[ IF isPlus(opn) THEN (p1(opn) > 100) /\ (p2(opn) > 100) ELSE False FI ]]
            >->  Res ? r
            >->  p2 [Act,Res] ()
         ##
-                Act ?opn [[ isMinus(opn), m1(opn) < 0, (m2(opn) % 13) == 0 ]]
+                Act ?opn [[ IF isMinus(opn) THEN (m1(opn) < 0) /\ ((m2(opn) % 13) == 0) ELSE False FI ]]
            >->  Res ? r
            >->  p2 [Act,Res] ()
 ENDDEF
@@ -94,7 +99,7 @@ ENDDEF
 
 PROCDEF  p3  [ Act :: Operation;  Res :: Int ] ( r :: Int )  HIT
     ::=
-                Act ?opn [[ isPlus(opn), p1(opn) >= r, p2(opn) == 2 ]]
+                Act ?opn [[ IF isPlus(opn) THEN (p1(opn) >= r) /\ (p2(opn) == 2) ELSE False FI ]]
            >->  Res ?r  
            >->  p3 [Act, Res] ( r )
 ENDDEF

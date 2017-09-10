@@ -33,20 +33,20 @@ MODELDEF ModelSynchronized1_X ::=
     SYNC {Channel1}, {Channel2}, 
          {Channel1| Channel2}
     BEHAVIOUR
-        	Channel1
-	|[ Channel1 ]|
-		(
-			( Channel1 | Channel2 )
-		|[ Channel2 ]|
-			( Channel2 )
-		)
+            Channel1
+    |[ Channel1 ]|
+        (
+            ( Channel1 | Channel2 )
+        |[ Channel2 ]|
+            ( Channel2 )
+        )
 ENDDEF
 -- ---------------------------------------------------------------------------
 
 PROCDEF specSynchronized2 [Channel1, Channel2] ()::=
-       	( Channel1 ||| Channel2 )
+           ( Channel1 ||| Channel2 )
     |[ Channel1, Channel2 ]|
-	( Channel1 ||| Channel2 )
+    ( Channel1 ||| Channel2 )
 ENDDEF
 
 PROCDEF traceSynchronized2_1 [Channel1, Channel2] ()::=
@@ -66,9 +66,9 @@ MODELDEF ModelSynchronized2_Trace1 ::=
     CHAN OUT   Channel1, Channel2
     SYNC {Channel1}, {Channel2}, {Channel1|Channel2}
     BEHAVIOUR
-		specSynchronized2 [Channel1, Channel2] () 
-	|[ Channel1, Channel2 ]|
-		traceSynchronized2_1 [Channel1, Channel2] ()
+        specSynchronized2 [Channel1, Channel2] () 
+    |[ Channel1, Channel2 ]|
+        traceSynchronized2_1 [Channel1, Channel2] ()
 ENDDEF
  
 MODELDEF ModelSynchronized2_Trace2 ::=
@@ -76,9 +76,9 @@ MODELDEF ModelSynchronized2_Trace2 ::=
     CHAN OUT   Channel1, Channel2
     SYNC {Channel1}, {Channel2}, {Channel1|Channel2}
     BEHAVIOUR
-		specSynchronized2 [Channel1, Channel2] () 
-	|[ Channel1, Channel2 ]|
-		traceSynchronized2_2 [Channel1, Channel2] ()
+        specSynchronized2 [Channel1, Channel2] () 
+    |[ Channel1, Channel2 ]|
+        traceSynchronized2_2 [Channel1, Channel2] ()
 ENDDEF
 
 MODELDEF ModelSynchronized2_Trace3 ::=
@@ -86,9 +86,9 @@ MODELDEF ModelSynchronized2_Trace3 ::=
     CHAN OUT   Channel1, Channel2
     SYNC {Channel1}, {Channel2}, {Channel1|Channel2}
     BEHAVIOUR
-		specSynchronized2 [Channel1, Channel2] () 
-	|[ Channel1, Channel2 ]|
-		traceSynchronized2_3 [Channel1, Channel2] ()
+        specSynchronized2 [Channel1, Channel2] () 
+    |[ Channel1, Channel2 ]|
+        traceSynchronized2_3 [Channel1, Channel2] ()
 ENDDEF
 
 -- ---------------------------------------------------------------------------
@@ -100,13 +100,13 @@ MODELDEF ModelSynchronized2_X ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-        	( Channel1 | Channel2 )
-	|[ Channel1, Channel2 ]|
-		(
-			( Channel1 | Channel3 )
-		|[Channel3]|
-			( Channel2 | Channel3 )
-		)
+            ( Channel1 | Channel2 )
+    |[ Channel1, Channel2 ]|
+        (
+            ( Channel1 | Channel3 )
+        |[Channel3]|
+            ( Channel2 | Channel3 )
+        )
 ENDDEF
 
 MODELDEF ModelSynchronized2_Y ::=
@@ -116,13 +116,13 @@ MODELDEF ModelSynchronized2_Y ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-        	( Channel1 | Channel2 )
-	|[ Channel1, Channel2 ]|
-		(
-			Channel1
-		|[Channel3]|
-			Channel2
-		)
+            ( Channel1 | Channel2 )
+    |[ Channel1, Channel2 ]|
+        (
+            Channel1
+        |[Channel3]|
+            Channel2
+        )
 ENDDEF
 
 MODELDEF ModelSynchronized2_Ya ::=
@@ -132,23 +132,23 @@ MODELDEF ModelSynchronized2_Ya ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-        	( Channel1 | Channel2 )
-	|[ Channel1, Channel2 ]|
-		(
-			Channel1
-		|[Channel3]|
-			Channel2
-		|[Channel3]|
-			Channel3
-		)
+            ( Channel1 | Channel2 )
+    |[ Channel1, Channel2 ]|
+        (
+            Channel1
+        |[Channel3]|
+            Channel2
+        |[Channel3]|
+            Channel3
+        )
 ENDDEF
 
 -- ---------------------------------------------------------------------------
 
 PROCDEF specSynchronized3 [Channel1, Channel2, Channel3] ()::=
-       	( Channel1 ||| Channel2 ||| Channel3)
+           ( Channel1 ||| Channel2 ||| Channel3)
     |[ Channel1, Channel2, Channel3 ]|
-	( Channel1 ||| Channel2 ||| Channel3)
+    ( Channel1 ||| Channel2 ||| Channel3)
 ENDDEF
 
 PROCDEF traceSynchronized3_1 [Channel1, Channel2, Channel3] ()::=
@@ -210,9 +210,9 @@ MODELDEF ModelSynchronized3_Trace1 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_1 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_1 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace2 ::=
@@ -222,9 +222,9 @@ MODELDEF ModelSynchronized3_Trace2 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_2 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_2 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace3 ::=
@@ -234,9 +234,9 @@ MODELDEF ModelSynchronized3_Trace3 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_3 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_3 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace4 ::=
@@ -246,9 +246,9 @@ MODELDEF ModelSynchronized3_Trace4 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_4 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_4 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace5 ::=
@@ -258,9 +258,9 @@ MODELDEF ModelSynchronized3_Trace5 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_5 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_5 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace6 ::=
@@ -270,9 +270,9 @@ MODELDEF ModelSynchronized3_Trace6 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_6 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_6 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace7 ::=
@@ -282,9 +282,9 @@ MODELDEF ModelSynchronized3_Trace7 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_7 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_7 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace8 ::=
@@ -294,9 +294,9 @@ MODELDEF ModelSynchronized3_Trace8 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_8 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_8 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace9 ::=
@@ -306,9 +306,9 @@ MODELDEF ModelSynchronized3_Trace9 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_9 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_9 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace10 ::=
@@ -318,9 +318,9 @@ MODELDEF ModelSynchronized3_Trace10 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_10 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_10 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace11 ::=
@@ -330,9 +330,9 @@ MODELDEF ModelSynchronized3_Trace11 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_11 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_11 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace12 ::=
@@ -342,9 +342,9 @@ MODELDEF ModelSynchronized3_Trace12 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_12 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_12 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 MODELDEF ModelSynchronized3_Trace13 ::=
@@ -354,9 +354,9 @@ MODELDEF ModelSynchronized3_Trace13 ::=
          {Channel1|Channel2}, {Channel1|Channel3}, {Channel2|Channel3},
          {Channel1|Channel2|Channel3}
     BEHAVIOUR
-		specSynchronized3 [Channel1, Channel2, Channel3] () 
-	|[ Channel1, Channel2, Channel3 ]|
-		traceSynchronized3_13 [Channel1, Channel2, Channel3] ()
+        specSynchronized3 [Channel1, Channel2, Channel3] () 
+    |[ Channel1, Channel2, Channel3 ]|
+        traceSynchronized3_13 [Channel1, Channel2, Channel3] ()
 ENDDEF
  
 -- ---------------------------------------------------------------------------
@@ -372,15 +372,15 @@ MODELDEF ModelSynchronized3_X ::=
          {Channel1|Channel3|Channel4}, {Channel2|Channel3|Channel4},
          {Channel1|Channel2|Channel3|Channel4}
     BEHAVIOUR
-        	(Channel1 | Channel2 | Channel3 )
-	|[ Channel1, Channel2, Channel3 ]|
-		(
-			( Channel1 | Channel4 )
-		|[Channel4]|
-			( Channel2 | Channel4 )
-		|[Channel4]|
-			( Channel3 | Channel4 )
-		)
+            (Channel1 | Channel2 | Channel3 )
+    |[ Channel1, Channel2, Channel3 ]|
+        (
+            ( Channel1 | Channel4 )
+        |[Channel4]|
+            ( Channel2 | Channel4 )
+        |[Channel4]|
+            ( Channel3 | Channel4 )
+        )
 ENDDEF
 
 MODELDEF ModelSynchronized3_Y ::=
@@ -394,15 +394,15 @@ MODELDEF ModelSynchronized3_Y ::=
          {Channel1|Channel3|Channel4}, {Channel2|Channel3|Channel4},
          {Channel1|Channel2|Channel3|Channel4}
     BEHAVIOUR
-        	(Channel1 | Channel2 | Channel3 )
-	|[ Channel1, Channel2, Channel3 ]|
-		(
-			Channel1
-		|[Channel4]|
-			Channel2
-		|[Channel4]|
-			Channel3
-		)
+            (Channel1 | Channel2 | Channel3 )
+    |[ Channel1, Channel2, Channel3 ]|
+        (
+            Channel1
+        |[Channel4]|
+            Channel2
+        |[Channel4]|
+            Channel3
+        )
 ENDDEF
 
 MODELDEF ModelSynchronized3_Z ::=
@@ -416,15 +416,15 @@ MODELDEF ModelSynchronized3_Z ::=
          {Channel1|Channel3|Channel4}, {Channel2|Channel3|Channel4},
          {Channel1|Channel2|Channel3|Channel4}
     BEHAVIOUR
-        	( Channel1 ||| ( Channel1 | Channel3 ) )
-	|[ Channel1, Channel2, Channel3 ]|
-		(
-			Channel1
-		|[Channel4]|
-			Channel1
-		|[Channel4]|
-			Channel3
-		)
+            ( Channel1 ||| ( Channel1 | Channel3 ) )
+    |[ Channel1, Channel2, Channel3 ]|
+        (
+            Channel1
+        |[Channel4]|
+            Channel1
+        |[Channel4]|
+            Channel3
+        )
 ENDDEF
 
 MODELDEF ModelSynchronized6 ::=
@@ -433,19 +433,19 @@ MODELDEF ModelSynchronized6 ::=
     SYNC {Channel1|Channel2|Channel3},
          {Channel4|Channel5|Channel6|Channel7}
     BEHAVIOUR
-        	( Channel1 | Channel2 | Channel3 )
-	|[ Channel1, Channel2, Channel3 ]|
-		(
-				( Channel4 | Channel5 | Channel6 )
-			|[ Channel4, Channel5, Channel6 ]|
-				(
-					( ( Channel7 | Channel4 ) ||| Channel1 )
-				|[Channel7]|
-					( ( Channel7 | Channel5 ) ||| Channel2 )
-				|[Channel7]|
-					( ( Channel7 | Channel6 ) ||| Channel3 )
-				)
-		)
+            ( Channel1 | Channel2 | Channel3 )
+    |[ Channel1, Channel2, Channel3 ]|
+        (
+                ( Channel4 | Channel5 | Channel6 )
+            |[ Channel4, Channel5, Channel6 ]|
+                (
+                    ( ( Channel7 | Channel4 ) ||| Channel1 )
+                |[Channel7]|
+                    ( ( Channel7 | Channel5 ) ||| Channel2 )
+                |[Channel7]|
+                    ( ( Channel7 | Channel6 ) ||| Channel3 )
+                )
+        )
 ENDDEF
 
 MODELDEF ModelSynchronized6_2 ::=
@@ -454,19 +454,19 @@ MODELDEF ModelSynchronized6_2 ::=
     SYNC {Channel1|Channel2|Channel3},
          {Channel4|Channel5|Channel6|Channel7}
     BEHAVIOUR
-		(
-       		( Channel1 | Channel2 | Channel3 )
-		|||
-			( Channel4 | Channel5 | Channel6 )
-		)
-	|[ Channel1, Channel2, Channel3, Channel4, Channel5, Channel6 ]|
-		(
-			( ( Channel7 | Channel4 ) ||| Channel1 )
-		|[Channel7]|
-			( ( Channel7 | Channel5 ) ||| Channel2 )
-		|[Channel7]|
-			( ( Channel7 | Channel6 ) ||| Channel3 )
-		)
+        (
+               ( Channel1 | Channel2 | Channel3 )
+        |||
+            ( Channel4 | Channel5 | Channel6 )
+        )
+    |[ Channel1, Channel2, Channel3, Channel4, Channel5, Channel6 ]|
+        (
+            ( ( Channel7 | Channel4 ) ||| Channel1 )
+        |[Channel7]|
+            ( ( Channel7 | Channel5 ) ||| Channel2 )
+        |[Channel7]|
+            ( ( Channel7 | Channel6 ) ||| Channel3 )
+        )
 ENDDEF
 
 MODELDEF ModelSynchronized3_3 ::=
@@ -474,13 +474,13 @@ MODELDEF ModelSynchronized3_3 ::=
     CHAN OUT   Channel1, Channel2, Channel3, Channel4
     SYNC { Channel1 | Channel2 }
     BEHAVIOUR
-       		( Channel1 | Channel2 )
-	|[ Channel1, Channel2, Channel3 ]|
-		(
-			( Channel1 )
-		|[ Channel4 ]|
-			( Channel2 )
-		|[ Channel4 ]|
-			( Channel4 | Channel3 )
-		)
+               ( Channel1 | Channel2 )
+    |[ Channel1, Channel2, Channel3 ]|
+        (
+            ( Channel1 )
+        |[ Channel4 ]|
+            ( Channel2 )
+        |[ Channel4 ]|
+            ( Channel4 | Channel3 )
+        )
 ENDDEF

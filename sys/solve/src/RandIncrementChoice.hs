@@ -84,6 +84,10 @@ toRegexString  94 = "\\^"
 toRegexString   c = T.singleton (Char.chr c)
 
 -- precondition: SMT has returned sat
+--
+-- * configuration parameters
+-- * List of tuples of (Variable, Depth)
+-- * available variable id
 randomSolve :: Variable v => ParamIncrementChoice -> [(v, Int)] -> Int -> SMT ()
 randomSolve _ []        _     = return ()                                         -- empty list -> done
 randomSolve _ ((_,0):_) _     = error "At maximum depth: should not be added"     -- todo: remove for performance gain!

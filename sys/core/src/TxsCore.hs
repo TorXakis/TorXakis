@@ -491,6 +491,7 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
                    envb            <- filterEnvCtoEnvB
                    (maybt',envb' ) <- lift $ runStateT (Behave.behInit allSyncs  mbexp) envb
                    (maymt',envb'') <- lift $ runStateT (Behave.behInit asyncsets abexp) envb'
+                   writeEnvBtoEnvC envb''
                    case (maybt',maymt') of
                      (Nothing , _       ) -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
@@ -498,8 +499,7 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
                      (_       , Nothing ) -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester mapper failed" ]
                           return ( Nothing, [], [] )
-                     (Just _, Just mt') -> do
-                          writeEnvBtoEnvC envb''
+                     (Just _, Just mt') ->
                           return ( maybt', mt', [] )
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return ( Nothing, [], [] )
@@ -518,12 +518,12 @@ startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                        pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
                    envb           <- filterEnvCtoEnvB
                    (maybt',envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
+                   writeEnvBtoEnvC envb'
                    case maybt' of
                      Nothing -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
                           return ( Nothing, [], [] )
                      Just _ -> do
-                          writeEnvBtoEnvC envb'
                           gls <- mapM (goalInit pAllSyncs) goals
                           return ( maybt', [], concat gls )
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
@@ -550,6 +550,7 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
                    envb            <- filterEnvCtoEnvB
                    (maybt',envb')  <- lift $ runStateT (Behave.behInit allSyncs  mbexp) envb
                    (maymt',envb'') <- lift $ runStateT (Behave.behInit asyncsets abexp) envb'
+                   writeEnvBtoEnvC envb''
                    case (maybt',maymt') of
                      (Nothing , _       ) -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
@@ -558,7 +559,6 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester mapper failed" ]
                           return ( Nothing, [], [] )
                      (Just _, Just mt') -> do
-                          writeEnvBtoEnvC envb''
                           gls <- mapM (goalInit pAllSyncs) goals
                           return ( maybt', mt', concat gls )
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
@@ -656,6 +656,7 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                    envb            <- filterEnvCtoEnvB
                    (maybt',envb' ) <- lift $ runStateT (Behave.behInit allSyncs  mbexp) envb
                    (maymt',envb'') <- lift $ runStateT (Behave.behInit asyncsets abexp) envb'
+                   writeEnvBtoEnvC envb''
                    case (maybt',maymt') of
                      (Nothing , _       ) -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
@@ -663,8 +664,7 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                      (_       , Nothing ) -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester mapper failed" ]
                           return ( Nothing, [] )
-                     (Just _, Just mt') -> do
-                          writeEnvBtoEnvC envb''
+                     (Just _, Just mt') ->
                           return ( maybt', mt' )
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return ( Nothing, [] )
@@ -941,22 +941,40 @@ txsMenu :: String                               -- ^ kind (valid values are "mod
         -> String                               -- ^ what (valid values are "all", "in", "out", or a <goal name>)
         -> IOC.IOC BTree.Menu
 txsMenu kind what  =  do
-     curState <- gets (IOC.curstate . IOC.state)
-     case kind of
-       "mod"  -> do menuIn   <- Ioco.iocoModelMenuIn
-                    menuOut  <- Ioco.iocoModelMenuOut
-                    case what of
-                      "all" -> return $ menuIn ++ menuOut
-                      "in"  -> return menuIn
-                      "out" -> return menuOut
-                      _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                                "error in menu" ]
-                                  return []
-       "map"  -> Mapper.mapperMenu
-       "purp" -> Purpose.goalMenu what
-       _      -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
-                    return []
-
+     envSt <- gets IOC.state
+     case (kind,envSt) of
+       ("mod",IOC.Testing {})  -> do
+            menuIn   <- Ioco.iocoModelMenuIn
+            menuOut  <- Ioco.iocoModelMenuOut
+            case what of
+              "all" -> return $ menuIn ++ menuOut
+              "in"  -> return menuIn
+              "out" -> return menuOut
+              _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
+                          return []
+       ("mod",IOC.Simuling {}) -> do
+            menuIn   <- Ioco.iocoModelMenuIn
+            menuOut  <- Ioco.iocoModelMenuOut
+            case what of
+              "all" -> return $ menuIn ++ menuOut
+              "in"  -> return menuIn
+              "out" -> return menuOut
+              _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
+                          return []
+       ("mod",IOC.Stepping {}) -> do
+            menuIn  <- Step.stepModelMenuIn
+            menuOut <- Step.stepModelMenuOut
+            case what of
+              "all" -> return $ menuIn ++ menuOut
+              "in"  -> return menuIn
+              "out" -> return menuOut
+              _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
+                          return []
+       ("map",IOC.Testing {})  -> Mapper.mapperMenu
+       ("map",IOC.Simuling {}) -> Mapper.mapperMenu
+       ("purp",IOC.Testing {}) -> Purpose.goalMenu what
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
+               return []
 
 -- | Give the provided action to the mapper.
 --

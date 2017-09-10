@@ -16,8 +16,10 @@ module Step
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( stepN      -- :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
-, stepA      -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict 
+( stepN            -- :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
+, stepA            -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict 
+, stepModelMenuIn  -- :: IOC.IOC BTree.Menu
+, stepModelMenuOut -- :: IOC.IOC BTree.Menu
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -36,6 +38,8 @@ import qualified TxsDefs
 import qualified TxsDDefs
 import qualified TxsShow
 import qualified Behave
+import qualified BTree
+import qualified Utils
 
 -- ----------------------------------------------------------------------------------------- --
 -- stepN :  make 'depth' random steps (visible) from current mstate
@@ -69,12 +73,12 @@ stepN depth step =
                                      $ TxsShow.showN step 6 ++ ": " ++ TxsShow.fshow act ]
                        envb           <- filterEnvCtoEnvB
                        (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
+                       writeEnvBtoEnvC envb'
                        case maybt' of
                          Nothing  -> do
-                              IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "cannot do action" ]
+                              IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "stepN - cannot do action" ]
                               return $ TxsDDefs.Fail act
                          Just bt' -> do
-                              writeEnvBtoEnvC envb'
                               IOC.modifyCS $ \st -> st
                                 { IOC.modstss  = Map.insert nexState bt' (IOC.modstss stEnvc) }
                               nextBehTrie act
@@ -105,12 +109,12 @@ stepA act = do
                           $ TxsShow.showN 1 6 ++ ": " ++ TxsShow.fshow act' ]
             envb           <- filterEnvCtoEnvB
             (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
+            writeEnvBtoEnvC envb'
             case maybt' of
               Nothing  -> do
-                   IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "cannot do action" ]
+                   IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "stepA - cannot do action" ]
                    return $ TxsDDefs.Fail act'
               Just bt' -> do
-                   writeEnvBtoEnvC envb'
                    IOC.modifyCS $ \st -> st
                      { IOC.modstss = Map.insert nexState bt' (IOC.modstss envSt) }
                    nextBehTrie act'
@@ -118,6 +122,34 @@ stepA act = do
        ( _, _) -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "Stepping not in Stepper mode" ]
             return TxsDDefs.NoVerdict
+
+-- ----------------------------------------------------------------------------------------- --
+-- stepMenu
+
+stepModelMenu :: IOC.IOC BTree.Menu
+stepModelMenu  =  do
+     envSt <- gets IOC.state
+     case envSt of
+       IOC.Stepping {IOC.modeldef = TxsDefs.ModelDef insyncs outsyncs splsyncs _bexp} -> do
+         let allSyncs = insyncs ++ outsyncs ++ splsyncs
+             curState = IOC.curstate envSt
+             nexState = IOC.maxstate envSt + 1
+             modSts   = fromMaybe [] (Map.lookup curState (IOC.modstss envSt))
+         return $ Behave.behMayMenu allSyncs modSts
+       _ -> do
+         IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "stepModelMenu without valid model"     ]
+         return []
+
+stepModelMenuIn :: IOC.IOC BTree.Menu
+stepModelMenuIn  =  do
+     menu <- stepModelMenu
+     filterM (isInCTOffers . Utils.frst) menu
+
+stepModelMenuOut :: IOC.IOC BTree.Menu
+stepModelMenuOut  =  do
+     menu <- stepModelMenu
+     filterM (isOutCTOffers . Utils.frst) menu
+
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
