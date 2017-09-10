@@ -16,30 +16,21 @@ import           ChanId
 import           ValExprDefs
 import           VarId
 
--- ----------------------------------------------------------------------------------------- --
--- Connection Definitions
+-- | Connection Definitions
+data CnectType =  ClientSocket
+               | ServerSocket
+  deriving (Eq, Ord, Read, Show, Generic, NFData)
 
-data  CnectType     =  ClientSocket
-                     | ServerSocket
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
-
-
-
-data  ConnDef       =  ConnDtoW  { chan     :: ChanId
-                                 , hostname :: Text
-                                 , portnr   :: Integer
-                                 , vars     :: [VarId]         -- encoding domain
-                                 , vexpr    :: VExpr           -- encoding range of String
-                                 }
-                     | ConnDfroW { chan     :: ChanId
-                                 , hostname :: Text
-                                 , portnr   :: Integer
-                                 , var      :: VarId           -- decoding domain of String
-                                 , vexprs   :: [VExpr]         -- decoding range
-                                 }
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
-
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+data  ConnDef = ConnDtoW  { chan     :: ChanId
+                          , hostname :: Text
+                          , portnr   :: Integer
+                          , vars     :: [VarId]  -- ^ Encoding domain
+                          , vexpr    :: VExpr    -- ^ Encoding range of String
+                          }
+              | ConnDfroW { chan     :: ChanId
+                          , hostname :: Text
+                          , portnr   :: Integer
+                          , var      :: VarId   -- ^ Decoding domain of String
+                          , vexprs   :: [VExpr] -- ^ Decoding range
+                          }
+  deriving (Eq,Ord,Read,Show, Generic, NFData)

@@ -3,13 +3,9 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
--- ----------------------------------------------------------------------------------------- --
-
 module Ident
 
 where
-import           Name
 
 import           ChanId
 import           CnectId
@@ -18,6 +14,7 @@ import           FuncId
 import           GoalId
 import           MapperId
 import           ModelId
+import           Name
 import           ProcId
 import           PurpId
 import           SortId
@@ -26,19 +23,19 @@ import           Variable
 import           VarId
 
 -- | Identifiers
-data  Ident         =  IdSort   SortId
-                     | IdCstr   CstrId
-                     | IdFunc   FuncId
-                     | IdProc   ProcId
-                     | IdChan   ChanId
-                     | IdVar    VarId
-                     | IdStat   StatId
-                     | IdModel  ModelId
-                     | IdPurp   PurpId
-                     | IdGoal   GoalId
-                     | IdMapper MapperId
-                     | IdCnect  CnectId
-     deriving (Eq,Ord,Read,Show)
+data Ident = IdSort   SortId
+           | IdCstr   CstrId
+           | IdFunc   FuncId
+           | IdProc   ProcId
+           | IdChan   ChanId
+           | IdVar    VarId
+           | IdStat   StatId
+           | IdModel  ModelId
+           | IdPurp   PurpId
+           | IdGoal   GoalId
+           | IdMapper MapperId
+           | IdCnect  CnectId
+  deriving (Eq,Ord,Read,Show)
 
 instance Variable Ident where
   vname vid =  case vid of
@@ -85,7 +82,3 @@ unid (IdPurp i)   = PurpId.unid i
 unid (IdGoal i)   = GoalId.unid i
 unid (IdMapper i) = MapperId.unid i
 unid (IdCnect i)  = CnectId.unid i
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --

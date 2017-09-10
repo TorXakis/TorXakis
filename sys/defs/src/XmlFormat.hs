@@ -30,7 +30,8 @@ import           TxsDefs
 
 
 -- | Simple rose tree to represent the XML information that will be converted
--- to string.
+-- to string. This is meant to serve as an intermediate representation of the
+-- XML text string, so that `T.concat` is called only once.
 data XMLTree = XLeaf Text | XNode Text [XMLTree]
 
 xmlTreeToText :: XMLTree -> Text

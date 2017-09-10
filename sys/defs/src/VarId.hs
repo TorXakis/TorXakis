@@ -29,7 +29,7 @@ data VarId          = VarId     { name    :: Name             --smallid
      deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 instance Variable VarId where
-  vname v            = VarId.name v <> "$$" <> (showt . VarId.unid) v
+  vname v            = VarId.name v <> "$$" <> showt (VarId.unid v)
   vunid              = VarId.unid
   vsort              = VarId.varsort
   cstrVariable       = VarId . T.pack

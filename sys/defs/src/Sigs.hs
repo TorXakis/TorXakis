@@ -57,7 +57,7 @@ uniqueCombine :: Sigs v -> Sigs v -> Sigs v
 uniqueCombine l r = Sigs
                     (let d = ["duplicate channel " ++ show c | c <- chan l, c `elem` chan r ] in
                         if null d then chan l ++ chan r else error (unlines d) )
-                    (let d = ["duplicate function " ++ T.unpack f ++ show s | f <- FuncTable.names (func l), s <- FuncTable.signatures f (func l), FuncTable.member f s (func r)] in
+                    (let d = ["duplicate function " ++ show f ++ show s | f <- FuncTable.names (func l), s <- FuncTable.signatures f (func l), FuncTable.member f s (func r)] in
                         if null d then FuncTable.union (func l) (func r) else error (unlines d) )
                     (let d = ["duplicate procedure " ++ show p | p <- pro l, p `elem` pro r ] in
                         if null d then pro l ++ pro r else error (unlines d) )

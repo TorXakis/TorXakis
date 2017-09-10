@@ -8,13 +8,8 @@ See LICENSE at root directory of this repository.
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+-- | Predefined, Standard TorXakis Data Types : Bool, Int, Char, String.
 module StdTDefs
-
--- ----------------------------------------------------------------------------------------- --
---
--- Predefined, Standard TorXakis Data Types :  Bool, Int, Char, String
---
--- ----------------------------------------------------------------------------------------- --
 ( eqName
 , neqName
 , toStringName
@@ -400,9 +395,8 @@ stdFuncDefsString'
 
 stdFuncDefsString :: [ ( Ident, TxsDef ) ]
 stdFuncDefsString = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsString'
--- ----------------------------------------------------------------------------------------- --
--- SSR :  Standard Sort Regex
 
+-- * SSR :  Standard Sort Regex
 funcId_strinre    = FuncId "strinre"     611 [sortId_String, sortId_Regex]    sortId_Bool
 
 stdFuncDefsRegex' :: [ ( FuncId, FuncDef ) ]
@@ -415,10 +409,8 @@ stdFuncDefsRegex'
 
 stdFuncDefsRegex :: [ ( Ident, TxsDef ) ]
 stdFuncDefsRegex = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsRegex'
--- ----------------------------------------------------------------------------------------- --
--- combined TorXakis standard type definitions
 
-
+-- * Combined TorXakis standard type definitions
 stdTDefs :: [ ( Ident, TxsDef ) ]
 stdTDefs =    stdSortDefs
            ++ stdFuncDefsBool
@@ -426,17 +418,9 @@ stdTDefs =    stdSortDefs
            ++ stdFuncDefsString
            ++ stdFuncDefsRegex
 
--- ----------------------------------------------------------------------------------------- --
--- standard channel identifiers ------------------------------------------------------------ --
-
-
+-- * Standard channel identifiers
 chanId_Exit  = ChanId "EXIT"  901 []
 chanId_Istep = ChanId "ISTEP" 902 []
 chanId_Qstep = ChanId "QSTEP" 903 []
 chanId_Hit   = ChanId "HIT"   904 []
 chanId_Miss  = ChanId "MISS"  905 []
-
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --

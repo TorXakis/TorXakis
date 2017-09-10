@@ -312,10 +312,9 @@ evalSSS :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSS (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
        ( "toString",   [v] ) -> do s <- txs2str v
-                                   -- TODO: consider changing the type of `str2txs` to use text to avoid packing and unpacking.
-                                   str2txs $ T.pack $ show s
+                                   str2txs s
        ( "fromString", [v] ) -> do s <- txs2str v
-                                   str2txs $ read (T.unpack s)
+                                   str2txs s
        ( "toXml",      [v] ) -> do wal <- eval v
                                    tdefs <- gets IOB.tdefs
                                    str2txs $ constToXml tdefs wal

@@ -149,7 +149,8 @@ goalAfter :: [Set.Set TxsDefs.ChanId] -> [Set.Set TxsDefs.ChanId] -> TxsDDefs.Ac
 
 goalAfter allsyncs _ (TxsDDefs.Act acts) (gid,btree)  =  do
      envb           <- filterEnvCtoEnvB
-     (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allsyncs btree acts) envb
+     (maybt',envb') <- lift $
+       runStateT (Behave.behAfterAct allsyncs btree acts) envb
      writeEnvBtoEnvC envb'
      case maybt' of
       Nothing  -> return (gid,[])
@@ -157,8 +158,10 @@ goalAfter allsyncs _ (TxsDDefs.Act acts) (gid,btree)  =  do
 goalAfter allsyncs outsyncs TxsDDefs.ActQui (gid,btree)  =  do
      let qacts      = Set.singleton (StdTDefs.chanId_Qstep, [])
      envb           <- filterEnvCtoEnvB
-     (maybt1,envb1) <- lift $ runStateT (Behave.behAfterRef btree (Set.unions outsyncs)) envb
-     (maybt2,envb2) <- lift $ runStateT (Behave.behAfterAct allsyncs btree qacts) envb1
+     (maybt1,envb1) <- lift $
+       runStateT (Behave.behAfterRef btree (Set.unions outsyncs)) envb
+     (maybt2,envb2) <- lift $
+       runStateT (Behave.behAfterAct allsyncs btree qacts) envb1
      writeEnvBtoEnvC envb2
      case (maybt1,maybt2) of
       (Nothing ,Nothing ) -> return (gid,[])
