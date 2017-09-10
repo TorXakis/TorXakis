@@ -68,7 +68,7 @@ goalMenu gnm = do
                 , IOC.purpsts = purpsts
                 } -> do
       let pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
-      case [ (gid, gtree) | (gid@(TxsDefs.GoalId nm _), gtree) <- purpsts, nm == (T.pack gnm) ] of
+      case [ (gid, gtree) | (gid@(TxsDefs.GoalId nm _), gtree) <- purpsts, nm == T.pack gnm ] of
         [(_, bt)] -> return $ Behave.behMayMenu pAllSyncs bt
         _ -> do
           IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given"]

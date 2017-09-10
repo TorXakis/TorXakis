@@ -78,7 +78,6 @@ import           Data.Text     (Text)
 
 import           ChanId
 import           CstrId
-import           Data.Text     (Text)
 import           FuncDef
 import           FuncId
 import           FuncTable
