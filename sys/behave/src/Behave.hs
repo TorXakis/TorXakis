@@ -188,7 +188,7 @@ afterActBBranch chsets behact (BTpref btoffs hidvars preds next)  =  do
                                                 after <- unfold chsets cnode
                                                 return [after]
                                UnableToSolve -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                                                                 "after: hidden variables not unique" ]
+                                                                 "after: cannot find unique value for hidden variables" ]
                                                    return []
 
 afterActBBranch chsets behact (BTtau bt)  =  afterActBTree chsets behact bt
