@@ -26,10 +26,8 @@ where
 
 import qualified Data.Map          as Map
 import           Data.Monoid
-import           Data.String.Utils
 import           Data.Text         (Text)
 import qualified Data.Text         as T
-import           TextShow
 
 import           CstrId
 import           SortId

@@ -15,7 +15,6 @@ import           Data.Semigroup      ((<>))
 import           Options.Applicative
 
 -- imports from `core`
-import           Config
 import           Network
 
 -- | Configuration options read by the command line.

@@ -23,7 +23,6 @@ library
                       , containers
                       , MissingH
                       , text
-                      , text-show
 
                       , defs
 

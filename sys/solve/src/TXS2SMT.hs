@@ -34,15 +34,12 @@ module TXS2SMT
 
 where
 
-import           Data.Foldable
 import qualified Data.Map          as Map
 import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Set          as Set
-import           Data.String.Utils
 import           Data.Text         (Text)
 import qualified Data.Text         as T
-import           TextShow
 
 import           CstrId
 import           FuncId
@@ -111,7 +108,7 @@ initialMapInstanceTxsToSmtlib  =  [
 -- initialMapInstanceTxsToSmtlib
 
 toFieldName :: CstrId -> Int -> Text
-toFieldName cstrid field  =  T.concat [toCstrName cstrid, "$", showt field]
+toFieldName cstrid field  =  T.concat [toCstrName cstrid, "$", (T.pack . show) field]
 
 toIsCstrName :: CstrId -> Text
 toIsCstrName cstrid  =  "is-" <> toCstrName cstrid
@@ -123,7 +120,7 @@ toSortName :: SortId -> Text
 toSortName = SortId.name
 
 toFuncName :: FuncId -> Text
-toFuncName funcId  =  T.concat ["f", showt (FuncId.unid funcId), "$", FuncId.name funcId]
+toFuncName funcId  =  T.concat ["f", (T.pack . show) (FuncId.unid funcId), "$", FuncId.name funcId]
 
 insertMap :: (Ident, TxsDef) -> Map.Map Ident Text -> Map.Map Ident Text
 insertMap (id'@(IdSort sid), DefSort SortDef) mp
@@ -236,8 +233,8 @@ constToSMT _ (Cbool b) = if b
                             then "true"
                             else "false"
 constToSMT _ (Cint n) = if n < 0
-                            then "(- " <> showt (abs n) <> ")"
-                            else showt n
+                            then "(- " <> (T.pack . show) (abs n) <> ")"
+                            else (T.pack . show) n
 constToSMT _ (Cstring s)  =  "\"" <> encodeStringLiteral s <> "\""
 constToSMT _ (Cregex r)  =  parseRegex r
 constToSMT mapI (Cstr cd [])   =        justLookup mapI (IdCstr cd)

@@ -18,9 +18,7 @@ module BTShow
 where
 
 import qualified Data.Map          as Map
-import           Data.Monoid
 import qualified Data.String.Utils as Utils
-import           TextShow
 
 import           BTree
 import           TxsDefs

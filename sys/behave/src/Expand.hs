@@ -31,11 +31,11 @@ where
 import           Control.Arrow
 import           Control.Monad.State
 import           Data.Monoid
-import           TextShow
 
 import qualified Data.List           as List
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
+import qualified Data.Text           as T
 
 import qualified EnvBTree            as IOB
 import qualified EnvData
@@ -397,7 +397,7 @@ expandOffers chsets offs  =  do
 
 
 expandOffer :: [ Set.Set TxsDefs.ChanId ] -> Offer -> IOB.IOB ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
-expandOffer chsets (Offer chid choffs)  =  do
+expandOffer _chsets (Offer chid choffs)  =  do
      ctchoffs <- mapM (expandChanOffer chid) ( zip choffs [1..(length choffs)] )
      let ( ivars, quests, exclams ) = unzip3 ctchoffs
      return ( CToffer chid ivars, concat quests, concat exclams )
@@ -524,7 +524,7 @@ uniHVar (IVar ivname' ivuid' ivpos' ivstat' ivsrt')  =  do
      unid'   <- gets IOB.unid
      let newUnid = unid' + 1
      modify $ \env -> env { IOB.unid = newUnid }
-     return $ IVar (ivname'<>"$$$"<>showt ivuid') newUnid ivpos' ivstat' ivsrt'
+     return $ IVar (ivname'<>"$$$"<> (T.pack . show) ivuid') newUnid ivpos' ivstat' ivsrt'
 
 
 -- ----------------------------------------------------------------------------------------- --

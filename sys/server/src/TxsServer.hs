@@ -33,7 +33,6 @@ import qualified Data.Char           as Char
 import qualified Data.List           as List
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
-import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Network
 import           System.IO
@@ -49,7 +48,6 @@ import qualified IfServer            as IFS
 
 -- import from core
 import qualified BuildInfo
-import qualified Config              as CoreConfig
 import qualified TxsCore
 import qualified VersionInfo
 

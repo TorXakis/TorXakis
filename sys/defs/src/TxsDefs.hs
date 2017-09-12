@@ -76,8 +76,6 @@ where
 import           Control.Arrow   ((***))
 import           Control.DeepSeq
 import qualified Data.Map        as Map
-import           Data.Text       (Text)
-import qualified Data.Text       as T
 import           GHC.Generics    (Generic)
 
 import           BehExprDefs     as X
