@@ -26,8 +26,7 @@ module SMTHappy
 )
 where
 import SMTAlex (Token(..), smtLexer)
-import Data.Text (Text)
-import qualified Data.Text as T
+
 import qualified SMTStringAlex   as SMTStringAlex                 -- Parse SMT string according to smtlib 2.5 standard
 import qualified SMTStringHappy  as SMTStringHappy
                                         
@@ -156,7 +155,7 @@ RuleExpression -- :: { SMTValue }
                   {  
                      $$ = case Map.lookup $1 $$.bind of 
                              { Nothing  -> if ($1 =~ cstrRegex) then
-                                               SMTConstructor (T.pack $1) []
+                                               SMTConstructor $1 []
                                            else
                                                error ("SMT var " ++ $1 ++ " not declared")
                              ; Just val -> val
@@ -172,13 +171,13 @@ RuleExpression -- :: { SMTValue }
                   }
                 | string
                   {
-                    $$ = SMTString $ T.pack $ (SMTStringHappy.smtStringParser (SMTStringAlex.smtStringLexer (init (tail $1)))) 
+                    $$ = SMTString (SMTStringHappy.smtStringParser (SMTStringAlex.smtStringLexer (init (tail $1)))) 
                   }
                 | "(" name RuleValues ")"
                   {
                     $3.bind = $$.bind
                   ; $$ = if ($2 =~ cstrRegex) then
-                            SMTConstructor (T.pack $2) $3
+                            SMTConstructor $2 $3
                          else
                             error ("SMT: " ++ $2 ++ " is not a constructor name.")
                   }
@@ -194,10 +193,10 @@ parseError _ = error "Parse Error"
 noerror = ()
 
 -- | Data structure for SMTValues.
-data  SMTValue       = SMTConstructor Text [SMTValue]
+data  SMTValue       = SMTConstructor String [SMTValue]
                      | SMTBool Bool
                      | SMTInt Integer
-                     | SMTString Text
+                     | SMTString String
      deriving (Eq,Ord,Read,Show)
 
 -- | Smt Parser.

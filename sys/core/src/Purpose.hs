@@ -4,7 +4,8 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-{-# LANGUAGE OverloadedStrings #-}
+-- ----------------------------------------------------------------------------------------- --
+
 module Purpose
 
 -- ----------------------------------------------------------------------------------------- --
@@ -31,8 +32,6 @@ where
 import           Control.Monad.State
 
 import qualified Data.Set            as Set
-import           Data.Text           (Text)
-import qualified Data.Text           as T
 
 -- import from local
 import           CoreUtils
@@ -68,7 +67,7 @@ goalMenu gnm = do
                 , IOC.purpsts = purpsts
                 } -> do
       let pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
-      case [ (gid, gtree) | (gid@(TxsDefs.GoalId nm _), gtree) <- purpsts, nm == T.pack gnm ] of
+      case [ (gid, gtree) | (gid@(TxsDefs.GoalId nm _), gtree) <- purpsts, nm == gnm ] of
         [(_, bt)] -> return $ Behave.behMayMenu pAllSyncs bt
         _ -> do
           IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given"]
@@ -149,8 +148,7 @@ goalAfter :: [Set.Set TxsDefs.ChanId] -> [Set.Set TxsDefs.ChanId] -> TxsDDefs.Ac
 
 goalAfter allsyncs _ (TxsDDefs.Act acts) (gid,btree)  =  do
      envb           <- filterEnvCtoEnvB
-     (maybt',envb') <- lift $
-       runStateT (Behave.behAfterAct allsyncs btree acts) envb
+     (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allsyncs btree acts) envb
      writeEnvBtoEnvC envb'
      case maybt' of
       Nothing  -> return (gid,[])
@@ -158,10 +156,8 @@ goalAfter allsyncs _ (TxsDDefs.Act acts) (gid,btree)  =  do
 goalAfter allsyncs outsyncs TxsDDefs.ActQui (gid,btree)  =  do
      let qacts      = Set.singleton (StdTDefs.chanId_Qstep, [])
      envb           <- filterEnvCtoEnvB
-     (maybt1,envb1) <- lift $
-       runStateT (Behave.behAfterRef btree (Set.unions outsyncs)) envb
-     (maybt2,envb2) <- lift $
-       runStateT (Behave.behAfterAct allsyncs btree qacts) envb1
+     (maybt1,envb1) <- lift $ runStateT (Behave.behAfterRef btree (Set.unions outsyncs)) envb
+     (maybt2,envb2) <- lift $ runStateT (Behave.behAfterAct allsyncs btree qacts) envb1
      writeEnvBtoEnvC envb2
      case (maybt1,maybt2) of
       (Nothing ,Nothing ) -> return (gid,[])

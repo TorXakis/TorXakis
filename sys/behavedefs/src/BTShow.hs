@@ -11,29 +11,29 @@ module BTShow
 
 -- ----------------------------------------------------------------------------------------- --
 --
--- Pretty and Formatted Show for TorXakisDefs
+-- Pretty and Formatted Show for TorXakisDefs 
 --
 -- ----------------------------------------------------------------------------------------- --
 
 where
 
-import qualified Data.Map          as Map
-import           Data.Monoid
+import qualified Data.Map as Map
 import qualified Data.String.Utils as Utils
-import           TextShow
 
-import           BTree
-import           TxsDefs
-import           TxsShow
+import BTree
+import TxsDefs
+import TxsShow
 
 -- ----------------------------------------------------------------------------------------- --
 -- PShow BNode
 
-instance PShow IVar where
-  pshow (IVar nm uid pos stat _srt) =
-    "$"++ show nm ++"$"++ show uid ++"$"++ show stat ++"$"++ show pos ++"$  "
+instance PShow IVar
+  where
+    pshow (IVar nm uid pos stat _srt)
+      =  "$"++nm++"$"++ show uid ++"$"++ show stat ++"$"++ show pos ++"$  "
 
-instance PShow CNode where
+instance PShow CNode
+  where
     pshow (BNbexpr we bexp)
       =  "VALENV "
          ++ Utils.join ";\n" (map (\(k,v) -> pshow k ++ " = " ++ pshow v) (Map.assocs we))
@@ -59,7 +59,7 @@ instance PShow CNode where
          ++ "( " ++ pshow bnode2 ++ " )"
     pshow (BNhide chans bnode)
       =  "HIDE "
-         ++ Utils.join "; " [ show n ++ " :: " ++ Utils.join " # " (map pshow srts)
+         ++ Utils.join "; " [ n ++ " :: " ++ Utils.join " # " (map pshow srts)
                             | ChanId n _uid srts <- chans
                             ]
          ++ " IN\n"
@@ -79,7 +79,7 @@ instance PShow INode
     pshow (BNparallel chans snodes)
       =  case snodes of
            [] -> "STOP\n"
-           be -> "( "
+           be -> "( " 
                  ++ Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow chans) ++" ]|\n( ")
                                (map pshow be)
                  ++ " )"
@@ -97,7 +97,7 @@ instance PShow INode
          ++ "( " ++ pshow snode2 ++ " )"
     pshow (BNhide chans snode)
       =  "HIDE "
-         ++ Utils.join "; " [ show n ++ " :: " ++ Utils.join " # " (map pshow srts)
+         ++ Utils.join "; " [ n ++ " :: " ++ Utils.join " # " (map pshow srts)
                             | ChanId n _uid srts <- chans
                             ]
          ++ " IN\n"

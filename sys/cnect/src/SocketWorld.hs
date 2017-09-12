@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 -- ----------------------------------------------------------------------------------------- --
-{-# LANGUAGE OverloadedStrings #-}
+
 module SocketWorld
 
 -- ----------------------------------------------------------------------------------------- --
@@ -20,7 +20,7 @@ module SocketWorld
 ( openSockets   --  :: IOS.IOS ()
                 --  open socket connections to outside world
 , closeSockets  --  :: IOS.IOS ()
-                --  close connections to outside world
+                --  close connections to outside world 
 , putSocket     --  :: IOS.EnvS -> Int -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
                 --  try to output to world, or observe earlier input (no quiescence)
 , getSocket     --  :: IOS.EnvS -> Int -> IOC.IOC TxsDDefs.Action
@@ -32,35 +32,33 @@ module SocketWorld
 
 where
 
-import           System.IO
+import System.IO
 -- import System.IO.Error
-import           Control.Concurrent
-import           Control.Monad.State
-import           Data.Text           (Text)
-import qualified Data.Text           as T
-import           Network
-import           System.Timeout
+import System.Timeout
+import Control.Monad.State
+import Control.Concurrent
+import Network
 -- import GHC.Conc
 
 -- import qualified Data.Char as Char
 -- import qualified Data.List as List
 -- import qualified Data.Set  as Set
-import qualified Data.Map            as Map
+import qualified Data.Map  as Map
 
 -- import from local
-import           EnDecode
+import EnDecode
 
 -- import from serverenv
-import qualified EnvServer           as IOS
+import qualified EnvServer   as IOS
 import qualified IfServer
 
 -- import from coreenv
-import qualified EnvCore             as IOC
+import qualified EnvCore as IOC
 
 -- import from defs
-import           TxsDDefs
-import           TxsDefs
 import qualified Utils
+import TxsDefs
+import TxsDDefs
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -85,7 +83,7 @@ openSockets  =  do
                                   -> lift $ lift $ openCnectClientSockets conndefs
                               ; Just (CnectDef ServerSocket conndefs)
                                   -> lift $ lift $ openCnectServerSockets conndefs
-                              ; Nothing
+                              ; Nothing 
                                   -> do IfServer.nack "ERROR" [ "OpenCnect: no open" ]
                                         return  ( [], [] )
                               }
@@ -106,7 +104,7 @@ towChanThread :: Chan SAction -> IO ()
 towChanThread towchan  =  do
      sact <- readChan towchan
      case sact of
-       SAct h s -> do hPutStrLn h (T.unpack s)
+       SAct h s -> do hPutStrLn h s
                       towChanThread towchan
        SActQui  -> towChanThread towchan
 
@@ -114,7 +112,7 @@ towChanThread towchan  =  do
 
 frowChanThread :: Handle -> Chan SAction -> IO ()
 frowChanThread h frowchan  =  do
-     s <- T.pack <$> hGetLine h
+     s <- hGetLine h
      writeChan frowchan (SAct h s)
      frowChanThread h frowchan
 
@@ -135,13 +133,13 @@ openCnectClientSockets conndefs = do
                        | ConnDfroW cfrow hfrow pfrow var'  vexps <- conndefs
                        , (hfrow,pfrow) `notElem` [(h,p)|(_,_,_,_,_,_,h,p)<-tofrosocks]
                        ]
-     tofrohandls <- sequence [ connectTo (T.unpack hst) (PortNumber (fromInteger prt))
+     tofrohandls <- sequence [ connectTo hst (PortNumber (fromInteger prt))
                              | (_, _, _, _, _, _, hst, prt) <- tofrosocks
                              ]
-     tohandls    <- sequence [ connectTo (T.unpack hst)(PortNumber (fromInteger prt))
+     tohandls    <- sequence [ connectTo hst (PortNumber (fromInteger prt))
                              | (_, _, _, hst, prt) <- tosocks
                              ]
-     frohandls   <- sequence [ connectTo (T.unpack hst) (PortNumber (fromInteger prt))
+     frohandls   <- sequence [ connectTo hst (PortNumber (fromInteger prt))
                              | (_, _, _, hst, prt) <- frosocks
                              ]
      sequence_               [ hSetBuffering h NoBuffering | h <- tofrohandls ]
@@ -190,7 +188,7 @@ openCnectServerSockets conndefs  =  do
                              ]
      tofrocnctns <- sequence [ accept listn | listn <- tofrolistns ]
      tocnctns    <- sequence [ accept listn | listn <- tolistns ]
-     frocnctns   <- sequence [ accept listn | listn <- frolistns ]
+     frocnctns   <- sequence [ accept listn | listn <- frolistns ] 
      let tofrohandls = map Utils.frst tofrocnctns
          tohandls    = map Utils.frst tocnctns
          frohandls   = map Utils.frst frocnctns
@@ -241,8 +239,8 @@ putSocket envs act@Act{} =
      let ( Just towChan, _,  _ )  = IOS.tow envs
          ( Just frowChan, _,  _ ) = IOS.frow envs
          ioTime                   = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
-                                      Nothing      -> 10                -- default 10 msec
-                                      Just (val,_) -> read val
+                                      Nothing          -> 10                -- default 10 msec
+                                      Just (val,_)     -> read val
       in do sact <- EnDecode.encode envs act
             obs  <- lift $ timeout (ioTime*1000) (readChan frowChan)       -- timeout in musec
             case obs of
@@ -256,11 +254,11 @@ putSocket envs ActQui =
      let ( Just towChan, _,  _ )  = IOS.tow envs
          ( Just frowChan, _,  _ ) = IOS.frow envs
          deltaTime                = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
-                                      Nothing      -> 2000                -- default 2 sec
-                                      Just (val,_) -> read val
+                                      Nothing          -> 2000                -- default 2 sec 
+                                      Just (val,_)     -> read val
          ioTime                   = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
-                                      Nothing      -> 10                -- default 10 msec
-                                      Just (val,_) -> read val
+                                      Nothing          -> 10                -- default 10 msec
+                                      Just (val,_)     -> read val
       in do sact <- EnDecode.encode envs ActQui
             obs <- lift $ timeout (ioTime*1000) (readChan frowChan)
             case obs of
@@ -279,7 +277,7 @@ getSocket :: IOS.EnvS -> IOC.IOC TxsDDefs.Action
 getSocket envs =
      let ( Just frowChan, _,  _ ) = IOS.frow envs
          deltaTime                = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
-                                      Nothing      -> 2000                -- default 2 sec
+                                      Nothing      -> 2000                -- default 2 sec 
                                       Just (val,_) -> read val
       in do obs <- lift $ timeout (deltaTime*1000) (readChan frowChan)
             case obs of

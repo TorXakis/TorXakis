@@ -6,11 +6,8 @@ See LICENSE at root directory of this repository.
 
 module RegexXSDtoSMT
 where
+import RegexAlex
+import RegexSMTHappy
 
-import           Data.Text     (Text)
-import qualified Data.Text     as T
-import           RegexAlex
-import           RegexSMTHappy
-
-parseRegex :: Text -> Text
-parseRegex = regexSMTParser . regexLexer . T.unpack
+parseRegex :: String -> String
+parseRegex = regexSMTParser . regexLexer

@@ -6,14 +6,14 @@ See LICENSE at root directory of this repository.
 
 
 -- ----------------------------------------------------------------------------------------- --
-{-# LANGUAGE OverloadedStrings #-}
+
 module EnDecode
 
 -- ----------------------------------------------------------------------------------------- --
 --
 -- En- and Decoding between abstract model actions and
 -- concrete representations of actions on connections
---
+--  
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
@@ -28,22 +28,20 @@ module EnDecode
 
 where
 
-import qualified Data.Map  as Map
 import qualified Data.Set  as Set
-import           Data.Text (Text)
-import qualified Data.Text as T
+import qualified Data.Map  as Map
 
 -- import from serverenv
-import qualified EnvServer as IOS
+import qualified EnvServer  as IOS
 
 -- import from core
-import qualified EnvCore   as IOC
 import qualified TxsCore
+import qualified EnvCore  as IOC
 
 --import from defs
-import           TxsDDefs
-import           TxsDefs
-import           TxsShow
+import TxsDefs
+import TxsDDefs
+import TxsShow
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -55,7 +53,7 @@ encode :: IOS.EnvS -> Action -> IOC.IOC SAction
 encode envs (Act offs)  =  do
      let ( _, _, towhdls ) = IOS.tow envs
      let ss = [ tow
-              | tow@(ConnHtoW chan' _h _vars _vexp) <- towhdls
+              | tow@(ConnHtoW chan' _h _vars _vexp) <- towhdls 
               , Set.singleton chan' == Set.map fst offs
               ]
      let ConnHtoW _chan h vars' vexp =
@@ -71,7 +69,7 @@ encode envs (Act offs)  =  do
                 Cstring s -> SAct h s
                 _         -> error "Encode 3: No encoding to String\n"
 
-encode _envs ActQui  =
+encode _envs ActQui  =  
      return SActQui
 
 
@@ -79,9 +77,9 @@ encode _envs ActQui  =
 -- decode :  decoding from Concrete (String) to Abstract
 
 
-decode :: IOS.EnvS -> SAction -> IOC.IOC Action
+decode :: IOS.EnvS -> SAction -> IOC.IOC Action 
 
-decode envs (SAct hdl sval)  =
+decode envs (SAct hdl sval)  = 
      let ( _, _, frowhdls )         = IOS.frow envs
          ConnHfroW chan' _h var' vexps = case [ frow
                                              | frow@(ConnHfroW _ h _ _) <- frowhdls

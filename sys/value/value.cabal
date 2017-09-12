@@ -31,8 +31,6 @@ library
                       , mtl
                       , regex-tdfa
                       , MissingH
-                      , text
-                      , text-show
                       
                       , behaveenv
                       , defs
@@ -60,8 +58,6 @@ test-suite Value-WhiteBox
   build-depends:        array
                       , base
                       , HUnit
-                      , text
-                      , text-show                      
                   
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
 

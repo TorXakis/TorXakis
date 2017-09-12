@@ -5,11 +5,11 @@ See LICENSE at root directory of this repository.
 -}
 
 -- ----------------------------------------------------------------------------------------- --
-{-# LANGUAGE OverloadedStrings #-}
+
 module NComp
 
 -- ----------------------------------------------------------------------------------------- --
---
+-- 
 -- Test selection by N-Complete algorithm for ioco
 --
 -- ----------------------------------------------------------------------------------------- --
@@ -23,15 +23,13 @@ module NComp
 
 where
 
-import qualified Data.List   as List
-import           Data.Monoid
-import qualified Data.Set    as Set
-import           TextShow
+import qualified Data.Set  as Set
+import qualified Data.List as List
 
-import qualified EnvCore     as IOC
+import qualified EnvCore   as IOC
 
-import qualified StdTDefs
 import qualified TxsDefs
+import qualified StdTDefs
 
 -- ----------------------------------------------------------------------------------------- --
 -- nComplete
@@ -41,12 +39,12 @@ nComplete :: [ Set.Set TxsDefs.ChanId] -> [ Set.Set TxsDefs.ChanId] ->
              IOC.IOC (Maybe TxsDefs.PurpDef)
 
 nComplete insyncs outsyncs
-          ini@(TxsDefs.StatId nm uid (TxsDefs.ProcId nm' uid' _ _ _)) transs =
+          ini@(TxsDefs.StatId nm uid (TxsDefs.ProcId nm' uid' _ _ _)) transs = 
      let splsyncs = [ Set.singleton StdTDefs.chanId_Qstep
                     , Set.singleton StdTDefs.chanId_Hit
                     , Set.singleton StdTDefs.chanId_Miss
                     ]
-         gids     = [ TxsDefs.GoalId ("Goal_" <> nm <> nm' <> showt n ) (uid*uid'+n) | n <- [1..] ]
+         gids     = [ TxsDefs.GoalId ("Goal_"++nm++nm'++ show n ) (uid*uid'+n) | n <- [1..] ]
          goals    = [ (gid,bexp) | (gid,bexp) <- zip gids (allPaths ini transs) ]
       in return $ Just $ TxsDefs.PurpDef insyncs outsyncs splsyncs goals
 

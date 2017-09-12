@@ -6,8 +6,7 @@ See LICENSE at root directory of this repository.
 
 
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns      #-}
+{-# LANGUAGE ViewPatterns #-}
 -- ----------------------------------------------------------------------------------------- --
 module TxsUtils
 
@@ -19,13 +18,13 @@ module TxsUtils
 
 where
 
-import qualified Data.Map   as Map
-import           Data.Maybe (fromMaybe)
-import qualified Data.Set   as Set
+import qualified Data.Set  as Set
+import qualified Data.Map  as Map
+import Data.Maybe (fromMaybe)
 
-import           FuncId
-import           StdTDefs
-import           TxsDefs
+import StdTDefs
+import TxsDefs
+import FuncId
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -47,8 +46,8 @@ sig ( IdMapper (MapperId nm _uid        ) ) = IdMapper (MapperId nm 0        )
 sig ( IdCnect  (CnectId  nm _uid        ) ) = IdCnect  (CnectId  nm 0        )
 
 doubles :: Eq a => [a] -> [a]
-doubles []     =  []
-doubles (x:xs) =  if x `elem` xs then x:doubles xs else doubles xs
+doubles []      =  []
+doubles (x:xs)  =  if x `elem` xs then x:doubles xs else doubles xs
 
 bindOnName :: Name -> [Ident] -> [Ident]
 bindOnName nm =  filter (\i -> TxsDefs.name i == nm)
@@ -92,7 +91,7 @@ partSubst ve (view -> Vaccess cid p vexp)     = cstrAccess cid p (partSubst ve v
 partSubst _  (view -> Vconst const')          = cstrConst const'
 partSubst ve (view -> Vvar vid)               = Map.findWithDefault (cstrVar vid) vid ve
 partSubst ve (view -> Vite cond vexp1 vexp2)  = cstrIte (partSubst ve cond)
-                                                        (partSubst ve vexp1)
+                                                        (partSubst ve vexp1) 
                                                         (partSubst ve vexp2)
 partSubst ve (view -> Venv ve' vexp)          = partSubst ve (partSubst ve' vexp)
 partSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (partSubst ve vexp1) (partSubst ve vexp2)
@@ -120,11 +119,11 @@ compSubst ve (view -> Vcstr cid vexps)        =  cstrCstr cid (map (compSubst ve
 compSubst ve (view -> Viscstr cid vexp)       = cstrIsCstr cid (compSubst ve vexp)
 compSubst ve (view -> Vaccess cid p vexp)     = cstrAccess cid p (compSubst ve vexp)
 compSubst _  (view -> Vconst const')          =  cstrConst const'
-compSubst ve (view -> Vvar vid)               =  fromMaybe
+compSubst ve (view -> Vvar vid)               =  fromMaybe 
                                                     (cstrError "TXS Subst compSubst: incomplete\n")
                                                     (Map.lookup vid ve)
 compSubst ve (view -> Vite cond vexp1 vexp2)  =  cstrIte (compSubst ve cond)
-                                                         (compSubst ve vexp1)
+                                                         (compSubst ve vexp1) 
                                                          (compSubst ve vexp2)
 compSubst ve (view -> Venv ve' vexp)          =  compSubst ve (compSubst ve' vexp)
 compSubst ve (view -> Vequal vexp1 vexp2)     =  cstrEqual (compSubst ve vexp1) (compSubst ve vexp2)
@@ -190,8 +189,8 @@ funcCallsClosure tdefs fids
 funcCalls :: TxsDefs -> FuncId -> Set.Set FuncId
 funcCalls tdefs fid
   =  case Map.lookup fid (funcDefs tdefs) of
-     { Just (FuncDef _vids vexp) -> Set.fromList $ usedFids vexp
-     ; _                         -> Set.empty
+     { Just (FuncDef _vids vexp)    -> Set.fromList $ usedFids vexp
+     ; _                            -> Set.empty
      }
 
 -- ----------------------------------------------------------------------------------------- --
@@ -231,10 +230,10 @@ instance UsedFids ActOffer
 
 instance UsedFids ChanOffer
   where
-    usedFids (Quest _vid)  =  []
-    usedFids (Exclam vexp) =  usedFids vexp
+    usedFids (Quest _vid)    =  []
+    usedFids (Exclam vexp)  =  usedFids vexp
 
-
+ 
 instance UsedFids VExpr
   where
     usedFids (view -> Vfunc fid vexps)          =  fid : usedFids vexps
@@ -270,10 +269,10 @@ putSmtDebug s  =  do
 
 
 hPutSmtLog :: Handle -> String -> IOE ()
-hPutSmtLog log s  =  do
+hPutSmtLog log s  =  do 
      when (log /= stderr) $ lift $ hPutStrLn log s
 
--}
+-}                                     
 
 
 -- ----------------------------------------------------------------------------------------- --

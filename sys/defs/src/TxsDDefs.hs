@@ -11,12 +11,11 @@ module TxsDDefs
 
 where
 
-import qualified Data.Set  as Set
-import           Data.Text (Text)
-import qualified Data.Text as T
-import           System.IO
-import           TxsDefs   (ChanId, Const, VExpr, VarId)
-import           TxsShow
+import System.IO
+import qualified Data.Set as Set
+
+import TxsDefs(ChanId, Const, VarId, VExpr)
+import TxsShow
 -- ----------------------------------------------------------------------------------------- --
 -- Const  :  values (for now: VExpr)
 -- Action :  trie/primer valued actions
@@ -29,13 +28,13 @@ data  Action   =  Act     ( Set.Set (ChanId,[Const]) )
 
 instance PShow Action
   where
-    pshow (Act    set) =  "Act    { "++ pshow set ++" }\n"
-    pshow  ActQui      =  "No Output (Quiescence)\n"
+    pshow (Act    set)  =  "Act    { "++ pshow set ++" }\n"
+    pshow  ActQui       =  "No Output (Quiescence)\n"
 
 -- ----------------------------------------------------------------------------------------- --
 -- SAction :  string encoded actions
 
-data  SAction       =  SAct     Handle Text
+data  SAction       =  SAct     Handle String
                      | SActQui
      deriving (Eq,Show)
 
@@ -43,22 +42,22 @@ data  SAction       =  SAct     Handle Text
 
 instance PShow SAction
   where
-    pshow (SAct _h s) =  "SAct  "++" ! "++ show s ++"\n"
+    pshow (SAct _h s)  =  "SAct  "++" ! "++ show s ++"\n"
     pshow  SActQui    =  "No Output (Sut is Quiescent)\n"
-
+    
 -- ----------------------------------------------------------------------------------------- --
 --  Connections :  connections to outside world
 
 
-data  ConnHandle    =  ConnHtoW  { chan   :: ChanId
-                                 , handle :: Handle
-                                 , vars   :: [VarId]         -- encoding domain
-                                 , vexpr  :: VExpr           -- encoding range of String
+data  ConnHandle    =  ConnHtoW  { chan       :: ChanId
+                                 , handle     :: Handle
+                                 , vars       :: [VarId]         -- encoding domain
+                                 , vexpr      :: VExpr           -- encoding range of String
                                  }
-                     | ConnHfroW { chan   :: ChanId
-                                 , handle :: Handle
-                                 , var    :: VarId           -- decoding domain of String
-                                 , vexprs :: [VExpr]         -- decoding range
+                     | ConnHfroW { chan       :: ChanId
+                                 , handle     :: Handle
+                                 , var        :: VarId           -- decoding domain of String
+                                 , vexprs     :: [VExpr]         -- decoding range
                                  }
      deriving (Eq,Show)
 
@@ -83,9 +82,9 @@ data  Verdict  =  Pass
 -- ----------------------------------------------------------------------------------------- --
 instance PShow Verdict
   where
-     pshow  Pass      =  "PASS"
-     pshow (Fail act) =  "FAIL:  " ++ fshow act
-     pshow  NoVerdict =  "No Verdict"
+     pshow  Pass       =  "PASS"
+     pshow (Fail act)  =  "FAIL:  " ++ fshow act
+     pshow  NoVerdict  =  "No Verdict"
 
 -- ----------------------------------------------------------------------------------------- --
 --

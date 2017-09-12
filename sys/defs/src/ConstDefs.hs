@@ -3,29 +3,32 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module ConstDefs
 where
 
-import           Control.DeepSeq
-import           GHC.Generics    (Generic)
+import GHC.Generics (Generic)
+import Control.DeepSeq
 
-import qualified Data.Map        as Map
-import           Data.Text       (Text)
+import qualified Data.Map as Map
 
-import           CstrId
+import CstrId
 
--- | Union of Boolean, Integer, String, and AlgebraicDataType constant values.
-data Const = Cbool    { cBool :: Bool }
-           | Cint     { cInt :: Integer }
-           | Cstring  { cString :: Text }
-           | Cregex   { cRegex :: Text } -- ^ XSD input
-                                         -- PvdL: performance gain: translate only once,
-                                         --       storing SMT string as well
-           | Cstr     { cstrId :: CstrId, args :: [Const] }
-           | Cerror   { msg :: String }
-  deriving (Eq, Ord, Read, Show, Generic, NFData)
+-- | Const
+-- Union of Boolean, integer, string, and AlgebraicDataType constant values
+data  Const         =  Cbool    { cBool :: Bool }
+                     | Cint     { cInt :: Integer }
+                     | Cstring  { cString :: String }
+                     | Cregex   { cRegex :: String }      -- XSD input
+                                           -- PvdL: performance gain: translate only once,
+                                           --       storing SMT string as well
+                     | Cstr     { cstrId :: CstrId, args :: [Const] }
+                     | Cerror   { msg :: String }
+     deriving (Eq,Ord,Read,Show, Generic, NFData)
 
-type WEnv v = Map.Map v Const
+type  WEnv v        =  Map.Map v Const
+
+-- ----------------------------------------------------------------------------------------- --
+--
+-- ----------------------------------------------------------------------------------------- --

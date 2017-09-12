@@ -24,17 +24,17 @@ module ValExprImpls
 , cstrImplies
 )
 where
+-- ----------------------------------------------------------------------------------------- --
+import Debug.Trace as Trace
+import qualified Data.Set as Set
 
-import qualified Data.Set    as Set
-import           Data.Text   (Text)
-import           Debug.Trace as Trace
+import CstrId
+import FuncId
+import ConstDefs
+import ValExprDefs
+import Variable
 
-import           ConstDefs
-import           CstrId
-import           FuncId
-import           ValExprDefs
-import           Variable
-
+-- ----------------------------------------------------------------------------------------- --
 cstrFunc :: (Variable v) => FuncId -> [ValExpr v] -> ValExpr v
 cstrFunc f a = ValExpr (Vfunc f a)
 
@@ -42,22 +42,22 @@ cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
 cstrCstr c a = ValExpr (Vcstr c a)
 
 cstrIsCstr :: CstrId -> ValExpr v -> ValExpr v
-cstrIsCstr c1 (view -> Vcstr c2 _)         = cstrConst (Cbool (c1 == c2) )
-cstrIsCstr c1 (view -> Vconst (Cstr c2 _)) = cstrConst (Cbool (c1 == c2) )
-cstrIsCstr c e                             = ValExpr (Viscstr c e)
+cstrIsCstr c1 (view -> Vcstr c2 _)          = cstrConst (Cbool (c1 == c2) )
+cstrIsCstr c1 (view -> Vconst (Cstr c2 _))  = cstrConst (Cbool (c1 == c2) )
+cstrIsCstr c e = ValExpr (Viscstr c e)
 
 -- | Apply ADT Accessor of constructor with CstrId on field with given position on the provided value expression.
 -- Preconditions are /not/ checked.
 cstrAccess :: CstrId -> Int -> ValExpr v -> ValExpr v
-cstrAccess c1 p1 e@(view -> Vcstr c2 fields) =
+cstrAccess c1 p1 e@(view -> Vcstr c2 fields) = 
     if c1 == c2 -- prevent crashes due to model errors
         then fields!!p1
-        else Trace.trace ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on instance from constructor " ++ show c2) $
+        else Trace.trace ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on instance from constructor " ++ show c2) $ 
                 ValExpr (Vaccess c1 p1 e)
-cstrAccess c1 p1 e@(view -> Vconst (Cstr c2 fields)) =
+cstrAccess c1 p1 e@(view -> Vconst (Cstr c2 fields)) = 
     if c1 == c2 -- prevent crashes due to model errors
         then cstrConst (fields!!p1)
-        else Trace.trace ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on value from constructor " ++ show c2) $
+        else Trace.trace ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on value from constructor " ++ show c2) $ 
                 ValExpr (Vaccess c1 p1 e)
 cstrAccess c p e = ValExpr (Vaccess c p e)
 
@@ -69,8 +69,8 @@ cstrVar v = ValExpr (Vvar v)
 
 cstrIte :: ValExpr v -> ValExpr v -> ValExpr v -> ValExpr v
 -- if (not b) then tb else fb == if b then fb else tb
-cstrIte (view -> Vnot n) tb fb = ValExpr (Vite n fb tb)
-cstrIte cs tb fb               = ValExpr (Vite cs tb fb)
+cstrIte (view -> Vnot n) tb fb  = ValExpr (Vite n fb tb)
+cstrIte cs tb fb                = ValExpr (Vite cs tb fb)
 
 cstrEnv :: VarEnv v v -> ValExpr v -> ValExpr v
 cstrEnv ve e = ValExpr (Venv ve e)
@@ -80,7 +80,7 @@ cstrEnv ve e = ValExpr (Venv ve e)
 cstrEqual :: (Ord v) => ValExpr v -> ValExpr v -> ValExpr v
 -- Simplification a == a <==> True
 cstrEqual ve1 ve2 | ve1 == ve2                      = cstrConst (Cbool True)
--- Simplification Different Values <==> False : use Same Values are already detected in previous step
+-- Simplification Different Values <==> False : use Same Values are already detected in previous step  
 cstrEqual (view -> Vconst _) (view -> Vconst _)     = cstrConst (Cbool False)
 -- Simplification True == e <==> e (twice)
 cstrEqual (view -> Vconst (Cbool True)) e           = e
@@ -92,7 +92,7 @@ cstrEqual e (view -> Vconst (Cbool False))              = cstrNot e
 -- Not x == x <==> false (twice)
 cstrEqual e (view -> Vnot n) | e == n                   = cstrConst (Cbool False)
 cstrEqual (view -> Vnot n) e | e == n                   = cstrConst (Cbool False)
--- Not x == Not y <==> x == y   -- same representation
+-- Not x == Not y <==> x == y   -- same representation 
 cstrEqual (view -> Vnot n1) (view -> Vnot n2)     = cstrEqual n1 n2
 -- Not a == b <==> a == Not b -- same representation (twice)
 cstrEqual x@(view -> Vnot n) e                = if n <= e
@@ -106,10 +106,10 @@ cstrEqual ve1 ve2                                   = if ve1 <= ve2
                                                         then ValExpr (Vequal ve1 ve2)
                                                         else ValExpr (Vequal ve2 ve1)
 
--- | Is ValExpr a Not Expression?
+-- | Is ValExpr a Not Expression?     
 isNot :: ValExpr v -> Bool
-isNot (view -> Vnot {}) = True
-isNot _                 = False
+isNot (view -> Vnot {})    = True
+isNot _                    = False
 
 -- | Apply operator Not on the provided value expression.
 -- Preconditions are /not/ checked.
@@ -121,21 +121,21 @@ cstrNot (view -> Vnot ve)                   = ve
 cstrNot (view -> Vite cs tb fb)             = ValExpr (Vite cs (cstrNot tb) (cstrNot fb))
 cstrNot ve                                  = ValExpr (Vnot ve)
 
--- | Is ValExpr an And Expression?
+-- | Is ValExpr an And Expression?     
 isAnd :: ValExpr v -> Bool
-isAnd (view -> Vand {}) = True
-isAnd _                 = False
+isAnd (view -> Vand {})    = True
+isAnd _                    = False
 
 -- | Apply operator And on the provided set of value expressions.
 -- Preconditions are /not/ checked, see 'validAnd'.
 cstrAnd :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v
-cstrAnd ms =
+cstrAnd ms = 
         let (ands, nonands) = Set.partition isAnd ms in
             cstrAnd' $ foldl Set.union nonands (map (\(view -> Vand a) -> a) (Set.toList ands))
-
+        
 -- And doesn't contain elements of type Vand.
 cstrAnd' :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v
-cstrAnd' s =
+cstrAnd' s = 
     if Set.member (cstrConst (Cbool False)) s
         then cstrConst (Cbool False)
         else let s' = Set.delete (cstrConst (Cbool True)) s in
@@ -150,7 +150,7 @@ cstrAnd' s =
                                     -- todo? also check :
                                     -- 0 <= x and 0 <= -x <==> x == 0
                                     -- not (0 <= x) and not (0 <= -x) <==> False
-    where
+    where                                                        
         contains :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set
@@ -159,7 +159,7 @@ cstrAnd' s =
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)
 
-cstrError :: Text -> ValExpr v
+cstrError :: String -> ValExpr v
 cstrError s = ValExpr (Verror s)
 
 -- * Derived constructors

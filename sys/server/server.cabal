@@ -47,7 +47,6 @@ executable txsserver
                       , aeson
                       , extra
                       , bifunctors
-                      , text
 
                       , cnect
                       , core

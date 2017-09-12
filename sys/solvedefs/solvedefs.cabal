@@ -24,7 +24,6 @@ library
                       , containers
                       , mtl
                       , process
-                      , text
                       -- torxakis packages
                       , defs
                       
