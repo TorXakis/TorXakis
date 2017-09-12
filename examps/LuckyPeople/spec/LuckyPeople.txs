@@ -145,9 +145,33 @@ PROCDEF increasingRows [ In :: Person; Out :: Bool ] ( length, pos :: Int; s :: 
          )
 ENDDEF
 
-PURPDEF PurposeOverflow ::=
+PURPDEF PurposeIncreasingRows ::=
     CHAN IN    In 
     CHAN OUT   Out
     
-    GOAL overflow ::= increasingRows [In,Out] (1,1,Male)
+    GOAL increasingRows ::= increasingRows [In,Out] (1,1,Male)
+ENDDEF
+
+PROCDEF byteOverflow [ In :: Person; Out :: Bool ] ( pos :: Int; s :: Sex ) HIT ::=
+        In ? p [[ sex(p) == s]]
+    >-> Out ? b
+    >-> (
+                [[pos < 128]] =>> byteOverflow [In,Out] (pos+1, s)
+            ##
+                [[pos == 128]] =>> (
+                                        [[ isMale(s) ]] =>> byteOverflow [In,Out] (pos+1, Female)
+                                    ##
+                                        [[ isFemale(s) ]] =>> byteOverflow [In,Out] (pos+1, Male)
+                                  )
+            ##
+                [[pos > 128]] =>> HIT
+         )
+ENDDEF
+
+PURPDEF PurposeByteOverflow ::=
+    CHAN IN    In 
+    CHAN OUT   Out
+    
+    GOAL overflowMale ::= byteOverflow [In,Out] (1,Male)
+    GOAL overflowFemale ::= byteOverflow [In,Out] (1,Female)
 ENDDEF

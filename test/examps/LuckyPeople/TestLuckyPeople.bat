@@ -23,3 +23,18 @@ call %TORXAKISPORT% %PORT% %SOL%\LuckyPeople.txs < %TEST%\LuckyPeopleRandom_Test
 TIMEOUT /T 4 /NOBREAK
 move /Y .txs.%PORT%.err.log Random.txs.%PORT%.err.log
 echo ------- End LuckyPeople Random Test
+
+echo ------- Start LuckyPeople By Gender Test
+start /min java -cp %ASSIGN% LuckyPeople
+call %TORXAKISPORT% %PORT% %SOL%\LuckyPeople.txs < %TEST%\LuckyPeopleByGender_Purpose.txscmd
+TIMEOUT /T 4 /NOBREAK
+move /Y .txs.%PORT%.err.log ByGender.txs.%PORT%.err.log
+echo ------- End LuckyPeople By Gender Test
+
+REM echo ------- Start LuckyPeople Overflow Test
+REM REM Launch LuckyPeopleOverflow to see it fail
+REM start /min java -cp %ASSIGN% LuckyPeople
+REM call %TORXAKISPORT% %PORT% %SOL%\LuckyPeople.txs < %TEST%\LuckyPeopleOverflow_Purpose.txscmd
+REM TIMEOUT /T 4 /NOBREAK
+REM move /Y .txs.%PORT%.err.log Overflow.txs.%PORT%.err.log
+REM echo ------- End LuckyPeople Overflow Test
