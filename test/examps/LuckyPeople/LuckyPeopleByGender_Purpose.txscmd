@@ -1,4 +1,4 @@
 tester Model PurposeIncreasingRows Sut
-test 128
+test 300
 trace txs $> testTraceByGender.log
 exit
