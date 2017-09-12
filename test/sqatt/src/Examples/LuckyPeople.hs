@@ -25,9 +25,9 @@ sutDir = exampDir </> "sut"
 
 test0 :: TxsExample
 test0 = TxsExample
-  { exampleName = "Test 0"
+  { exampleName = "Examples Purpose Test"
   , txsModelFile = txsFilePath specDir luckyPeopleText
-  , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleExamples_Tester"
+  , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleExamples_Purpose"
   , sutExample =
     Just (JavaExample
            (javaFilePath sutDir luckyPeopleText)
@@ -38,9 +38,9 @@ test0 = TxsExample
 
 test1 :: TxsExample
 test1 = TxsExample
-  { exampleName = "Test 1"
+  { exampleName = "Lucky By Gender Test"
   , txsModelFile = txsFilePath specDir luckyPeopleText
-  , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleRandom_Tester"
+  , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleByGender_Purpose"
   , sutExample =
     Just (JavaExample
            (javaFilePath sutDir luckyPeopleText)
@@ -50,7 +50,7 @@ test1 = TxsExample
   }
 
 examples :: [TxsExample]
-examples = [test1, test0]
+examples = [test0, test1]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Lucky People" examples
