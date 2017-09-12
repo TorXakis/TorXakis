@@ -24,6 +24,7 @@ module SMT
 , push
 , pop
 , put
+, putT
 , valExprToString
 )
 

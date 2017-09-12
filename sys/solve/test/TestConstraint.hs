@@ -3,7 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
+{-# LANGUAGE OverloadedStrings #-}
 module TestConstraint
 (
 testConstraintList
@@ -14,6 +14,8 @@ import           Control.Monad.State
 import           Data.Char
 import qualified Data.Map            as Map
 import           Data.Maybe
+import           Data.Text           (Text)
+import qualified Data.Text           as T
 import           System.Process      (CreateProcess)
 import           Text.Regex.TDFA
 
@@ -133,7 +135,7 @@ testTemplateValue :: TxsDefs -> [SortId] -> ([VarId] -> [VExpr]) -> ([Const] -> 
 testTemplateValue txsDefs types createAssertions check = do
     _ <- SMT.openSolver
     addDefinitions txsDefs
-    let v = map (\(x,t) -> VarId ("i" ++ show x) x t) (zip [1000..] types)
+    let v = map (\(x,t) -> VarId (T.pack ("i" ++ show x)) x t) (zip [1000..] types)
     addDeclarations v
     addAssertions (createAssertions v)
     resp <- getSolvable
@@ -411,12 +413,13 @@ testStringEquals :: String -> SMT()
 testStringEquals str = testTemplateValue TxsDefs.empty [sortId_String] createAssertions check
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrEqual (cstrVar v) (cstrConst (Cstring str))]
+        createAssertions [v] = [cstrEqual (cstrVar v) (cstrConst (Cstring (T.pack str)))]
         createAssertions _   = error "One variable in problem"
 
         check :: [Const] -> SMT()
         check [value] = case value of
-                            Cstring s   -> lift $ assertBool ("expected pattern s = " ++ s) (s == str)
+                            Cstring s   -> lift $ assertBool ("expected pattern s = " ++ T.unpack s)
+                                                             (T.unpack s == str)
                             _           -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"
 
@@ -429,7 +432,7 @@ testStringLength n = testTemplateValue TxsDefs.empty [sortId_String] createAsser
 
         check :: [Const] -> SMT()
         check [value] = case value of
-                            Cstring s   -> lift $ assertBool "expected pattern" (n == length s)
+                            Cstring s   -> lift $ assertBool "expected pattern" (n == T.length s)
                             _           -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"
 
@@ -438,12 +441,12 @@ testRegex :: String -> SMT ()
 testRegex regexStr = testTemplateValue TxsDefs.empty [sortId_String] createAssertions check
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrPredef SSR funcId_strinre [cstrVar v, cstrConst (Cregex regexStr)]]
+        createAssertions [v] = [cstrPredef SSR funcId_strinre [cstrVar v, cstrConst (Cregex (T.pack regexStr))]]
 
         check :: [Const] -> SMT()
         check [value] = case value of
-                            Cstring s   -> let haskellRegex = regexPosixParser (regexLexer regexStr) in
-                                                lift $ assertBool ("expected pattern: smt solution " ++ s ++ "\nXSD pattern " ++ regexStr ++ "\nHaskell pattern " ++ haskellRegex)
-                                                                  (s =~ haskellRegex)
+                            Cstring s   -> let haskellRegex = T.unpack $ regexPosixParser (regexLexer regexStr) in
+                                                lift $ assertBool ("expected pattern: smt solution " ++ T.unpack s ++ "\nXSD pattern " ++ regexStr ++ "\nHaskell pattern " ++ haskellRegex)
+                                                                  (T.unpack s =~ haskellRegex)
                             _                  -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"

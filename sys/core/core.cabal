@@ -33,6 +33,7 @@ library
                       , containers
                       , mtl
                       , random
+                      , text
 
                       , behavedefs
                       , behaveenv

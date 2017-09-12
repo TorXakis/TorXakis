@@ -16,6 +16,9 @@ module TxsAlex
 
 where
 
+import Data.Text (Text)
+import qualified Data.Text as T
+  
 import TxsDefs
 import Sigs
 }
@@ -132,9 +135,9 @@ tokens :-                                           -- Each right-hand side has 
     \;                        { tok ( \p _s -> Tsemicolon p ) }
     \,                        { tok ( \p _s -> Tcomma p ) }
  
-    $alphaCap[$alpha $digit \_]*          { tok ( \p s -> Tcapid p s ) }
-    $alphaSmall[$alpha $digit \_]*        { tok ( \p s -> Tsmallid p s ) }
-    $special+                             { tok ( \p s -> Toperator p s ) }
+    $alphaCap[$alpha $digit \_]*          { tokT ( \p s -> Tcapid p s ) }
+    $alphaSmall[$alpha $digit \_]*        { tokT ( \p s -> Tsmallid p s ) }
+    $special+                             { tokT ( \p s -> Toperator p s ) }
     $digit+                               { tok ( \p s -> Tinteger p (read s) ) }
     \"( [$stringable]
        | \\[abfnrtv\"\&\'\\]                -- Table B.1 Single-character escape codes http://book.realworldhaskell.org/read/characters-strings-and-escaping-rules.html
@@ -181,14 +184,15 @@ tokens :-                                           -- Each right-hand side has 
        | \\[oO] $oct+                       -- Numeric escapes - oct
        | \\[xX] $hex+                       -- Numeric escapes - hex
       )*
-    \"                                    { tok ( \p s -> Tstring p (read s) ) }
-    \'[$regexable]*\'                     { tok ( \p s -> Tregexval p (init (tail s)) ) }
+    \"                                    { tok ( \p s -> Tstring p (T.pack (read s)) ) }
+    \'[$regexable]*\'                     { tok ( \p s -> Tregexval p (T.pack (init (tail s))) ) }
 
 -- ----------------------------------------------------------------------------------------- --
 
 {
 -- Some action helpers:
 tok f p s = f p s
+tokT f p s = f p (T.pack s)
 
 -- The token type:
 data  Token  =  Ttypedef          AlexPosn
@@ -271,13 +275,13 @@ data  Token  =  Ttypedef          AlexPosn
               | Tsharp            AlexPosn
               | Tsemicolon        AlexPosn
               | Tcomma            AlexPosn
-              | Tcapid            AlexPosn  String
-              | Tsmallid          AlexPosn  String
-              | Toperator         AlexPosn  String
+              | Tcapid            AlexPosn  Text
+              | Tsmallid          AlexPosn  Text
+              | Toperator         AlexPosn  Text
               | Tbool             AlexPosn  Bool
               | Tinteger          AlexPosn  Integer
-              | Tstring           AlexPosn  String
-              | Tregexval         AlexPosn  String
+              | Tstring           AlexPosn  Text
+              | Tregexval         AlexPosn  Text
               | Ctdefs            TxsDefs
               | Csigs             (Sigs VarId)
               | Cchanenv          [ChanId]
@@ -288,4 +292,3 @@ txsLexer :: String -> [Token]
 txsLexer = alexScanTokens
 }
 
--- ----------------------------------------------------------------------------------------- --

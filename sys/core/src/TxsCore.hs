@@ -16,6 +16,7 @@ See LICENSE at root directory of this repository.
 -- Core Module TorXakis API:
 -- API for TorXakis core functionality.
 -----------------------------------------------------------------------------
+{-# LANGUAGE OverloadedStrings #-}
 module TxsCore
 ( -- * run TorXakis core
   runTxsCore
@@ -109,11 +110,13 @@ where
 
 import           Control.Monad
 import           Control.Monad.State
-import           Data.Maybe
-import           System.Random
-
 import qualified Data.Map            as Map
+import           Data.Maybe
+import           Data.Monoid
 import qualified Data.Set            as Set
+import           Data.Text           (Text)
+import qualified Data.Text           as T
+import           System.Random
 
 -- import from local
 import           CoreUtils
@@ -862,7 +865,7 @@ txsShow item name  = do
                -> String
      nm2string nm id2ident id2def iddefs =
        let defs = [ (id2ident id', id2def def) | (id', def) <- Map.toList iddefs
-                                              , TxsDefs.name (id2ident id') == nm ]
+                                              , TxsDefs.name (id2ident id') == T.pack nm ]
        in case defs of
             [(ident,txsdef)] -> TxsShow.fshow (ident,txsdef)
             _                -> "no (uniquely) defined item to be shown: " ++ nm ++ "\n"
@@ -1012,7 +1015,7 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
                        case maypurp of
                          Just purpdef -> do
                            unid <- gets IOC.unid
-                           let purpid = TxsDefs.PurpId ("Purp_" ++ pnm) (unid + 1)
+                           let purpid = TxsDefs.PurpId ("Purp_" <> pnm) (unid + 1)
                                tdefs' = tdefs
                                  { TxsDefs.purpDefs = Map.insert
                                                       purpid purpdef (TxsDefs.purpDefs tdefs)

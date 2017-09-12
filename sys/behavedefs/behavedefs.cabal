@@ -22,6 +22,8 @@ library
   build-depends:        base
                       , containers
                       , MissingH
+                      , text
+                      , text-show
 
                       , defs
 

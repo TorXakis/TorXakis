@@ -3,20 +3,22 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
+{-# LANGUAGE OverloadedStrings #-}
 module TestRegexPosix
 (
 testRegexPosixList
 )
 where
 -- general Haskell imports
-import Test.HUnit
+import           Data.Text       (Text)
+import qualified Data.Text       as T
+import           Test.HUnit
 
 -- specific SMT imports
-import RegexAlex
-import RegexPosixHappy
+import           RegexAlex
+import           RegexPosixHappy
 
--- ----------------------------------------------------------------------------    
+-- ----------------------------------------------------------------------------
 testRegexPosixList :: Test
 testRegexPosixList = TestList [
         TestLabel "Empty"                    testEmpty,
@@ -73,13 +75,13 @@ data TestObject = TestObject { input    :: String
                              , expected :: String
                              }
 
-             
+
 ---------------------------------------------------------------------------
 -- TestObject constructors
 ---------------------------------------------------------------------------
 regexEmptyString :: TestObject
 regexEmptyString = TestObject "" ""
- 
+
 regexFromChar :: Char -> TestObject
 regexFromChar c = TestObject [c] [c]
 
@@ -99,7 +101,7 @@ unionRegex [t] = t
 unionRegex (hd:tl) =  foldl joinRegex hd tl
     where   joinRegex :: TestObject -> TestObject -> TestObject
             joinRegex (TestObject input1 expected1) (TestObject input2 expected2) = TestObject (input1 ++ "|" ++ input2) (expected1 ++ "|" ++ expected2)
-       
+
 precedenceRegex :: TestObject ->  TestObject
 precedenceRegex (TestObject inp expct)     = TestObject ("(" ++ inp ++ ")") ("(" ++ expct ++ ")")
 
@@ -131,14 +133,14 @@ charGroupPartEscChar :: Char -> TestObject
 charGroupPartEscChar 't' = TestObject "\\t" "\t"
 charGroupPartEscChar 'n' = TestObject "\\n" "\n"
 charGroupPartEscChar 'r' = TestObject "\\r" "\r"
-charGroupPartEscChar c = TestObject ("\\"++[c]) [c]
+charGroupPartEscChar c   = TestObject ("\\"++[c]) [c]
 
 charGroupRegex :: [TestObject] -> TestObject
-charGroupRegex [TestObject inp expct] = TestObject ("["++inp++"]") ("["++expct++"]") 
+charGroupRegex [TestObject inp expct] = TestObject ("["++inp++"]") ("["++expct++"]")
 charGroupRegex list = toTestObject (foldl addCharGroupPart ("","") list)
     where
-        addCharGroupPart :: (String,String) -> TestObject -> (String,String) 
-        addCharGroupPart (concatIn, concatExp) (TestObject inp expct) = (concatIn ++ inp, concatExp ++ expct) 
+        addCharGroupPart :: (String,String) -> TestObject -> (String,String)
+        addCharGroupPart (concatIn, concatExp) (TestObject inp expct) = (concatIn ++ inp, concatExp ++ expct)
         toTestObject :: (String, String) -> TestObject
         toTestObject (inp,expct) = TestObject ( "[" ++ inp ++ "]" ) ( "[" ++ expct ++ "]" )
 
@@ -148,34 +150,34 @@ charGroupRegex list = toTestObject (foldl addCharGroupPart ("","") list)
 testTestObject :: String -> TestObject -> Test
 testTestObject s rt = TestCase $
     -- Trace.trace ( (input rt) ++ " => " ++ (expected rt) ) $ do
-    assertEqual s ("^" ++ expected rt ++ "$") (regexPosixParser (regexLexer (input rt) ) )
+    assertEqual s ("^" ++ expected rt ++ "$") (T.unpack (regexPosixParser (regexLexer (input rt) ) ))
 
 ---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
 testEmpty :: Test
 testEmpty = testTestObject "empty" regexEmptyString
-    
+
 testFromChar :: Test
-testFromChar = testTestObject "from Char" $ regexFromChar 'a' 
+testFromChar = testTestObject "from Char" $ regexFromChar 'a'
 
 testFromDigitChar :: Test
-testFromDigitChar = testTestObject "from Digit Char" $ regexFromChar '2' 
+testFromDigitChar = testTestObject "from Digit Char" $ regexFromChar '2'
 
 testFromFormatChar :: Test
-testFromFormatChar = testTestObject "from Format Char" $ regexFromChar 'n' 
+testFromFormatChar = testTestObject "from Format Char" $ regexFromChar 'n'
 
 testUnion :: Test
-testUnion = testTestObject "union" $ unionRegex [regexFromChar 'a',regexFromChar 'b'] 
-    
+testUnion = testTestObject "union" $ unionRegex [regexFromChar 'a',regexFromChar 'b']
+
 testUnionMultiple1 :: Test
 testUnionMultiple1 = testTestObject "union multiple 1" $ unionRegex [precedenceRegex $ unionRegex [regexFromChar 'a', regexFromChar 'b'], regexFromChar 'c']
 
 testUnionMultiple2 :: Test
-testUnionMultiple2 = testTestObject "union multiple 2" $ unionRegex [regexFromChar 'a', precedenceRegex $ unionRegex [regexFromChar 'b', regexFromChar 'c']] 
+testUnionMultiple2 = testTestObject "union multiple 2" $ unionRegex [regexFromChar 'a', precedenceRegex $ unionRegex [regexFromChar 'b', regexFromChar 'c']]
 
 testUnionMultiple3 :: Test
-testUnionMultiple3 = testTestObject "union multiple 3" $ unionRegex [regexFromChar 'a', regexFromChar 'b', regexFromChar 'c'] 
+testUnionMultiple3 = testTestObject "union multiple 3" $ unionRegex [regexFromChar 'a', regexFromChar 'b', regexFromChar 'c']
 
 testConcat :: Test
 testConcat = testTestObject "concat" $ concatRegex [regexFromChar 'a', regexFromChar 'b']
@@ -200,7 +202,7 @@ testPlus = testTestObject "Plus" $ plusRegex (regexFromChar 'a')
 
 testPlusMultiple :: Test
 testPlusMultiple = testTestObject "Plus Multiple" $ plusRegex ( precedenceRegex $ concatRegex [regexFromChar 'a', regexFromChar 'b'] )
-    
+
 testStar :: Test
 testStar = testTestObject "Star" $ starRegex (regexFromChar 'a')
 
@@ -229,28 +231,28 @@ testQuantityExactMultiple :: Test
 testQuantityExactMultiple = testTestObject "Quantity Exact Multiple" $ quantityExactRegex (precedenceRegex $ unionRegex [regexFromChar 'a', regexFromChar 'b']) 256
 
 testConcatUnion1 :: Test
-testConcatUnion1 = testTestObject "concat union 1" $ concatRegex [precedenceRegex $ unionRegex [regexFromChar 'a', regexFromChar 'b'], regexFromChar 'c'] 
+testConcatUnion1 = testTestObject "concat union 1" $ concatRegex [precedenceRegex $ unionRegex [regexFromChar 'a', regexFromChar 'b'], regexFromChar 'c']
 
 testConcatUnion2 :: Test
-testConcatUnion2 = testTestObject "concat union 2" $ concatRegex [regexFromChar 'a', precedenceRegex $ unionRegex [regexFromChar 'b', regexFromChar 'c']] 
+testConcatUnion2 = testTestObject "concat union 2" $ concatRegex [regexFromChar 'a', precedenceRegex $ unionRegex [regexFromChar 'b', regexFromChar 'c']]
 
 testUnionConcat1 :: Test
-testUnionConcat1 = testTestObject "union concat 1" $ unionRegex [concatRegex [regexFromChar 'a', regexFromChar 'b'], regexFromChar 'c'] 
+testUnionConcat1 = testTestObject "union concat 1" $ unionRegex [concatRegex [regexFromChar 'a', regexFromChar 'b'], regexFromChar 'c']
 
 testUnionConcat2 :: Test
-testUnionConcat2 = testTestObject "union concat 2" $ unionRegex [regexFromChar 'a', concatRegex [regexFromChar 'b', regexFromChar 'c']] 
+testUnionConcat2 = testTestObject "union concat 2" $ unionRegex [regexFromChar 'a', concatRegex [regexFromChar 'b', regexFromChar 'c']]
 
 testUnionOfUnions :: Test
-testUnionOfUnions = testTestObject "union of unions" $ unionRegex [precedenceRegex $ unionRegex [regexFromChar 'a', regexFromChar 'b'], precedenceRegex $ unionRegex [regexFromChar 'c', regexFromChar 'd']] 
+testUnionOfUnions = testTestObject "union of unions" $ unionRegex [precedenceRegex $ unionRegex [regexFromChar 'a', regexFromChar 'b'], precedenceRegex $ unionRegex [regexFromChar 'c', regexFromChar 'd']]
 
 testUnionOfConcats :: Test
-testUnionOfConcats = testTestObject "union of concats" $ unionRegex [concatRegex [regexFromChar 'a', regexFromChar 'b'], concatRegex [regexFromChar 'c', regexFromChar 'd']] 
+testUnionOfConcats = testTestObject "union of concats" $ unionRegex [concatRegex [regexFromChar 'a', regexFromChar 'b'], concatRegex [regexFromChar 'c', regexFromChar 'd']]
 
 testConcatOfConcats :: Test
 testConcatOfConcats = testTestObject "concat of concats" $ concatRegex [precedenceRegex $ concatRegex [regexFromChar 'a', regexFromChar 'b'], precedenceRegex $ concatRegex [regexFromChar 'c', regexFromChar 'd']]
 
 testConcatOfUnions :: Test
-testConcatOfUnions = testTestObject "concat of unions" $ concatRegex [precedenceRegex $ unionRegex [regexFromChar 'a', regexFromChar 'b'], precedenceRegex $ unionRegex [regexFromChar 'c', regexFromChar 'd']] 
+testConcatOfUnions = testTestObject "concat of unions" $ concatRegex [precedenceRegex $ unionRegex [regexFromChar 'a', regexFromChar 'b'], precedenceRegex $ unionRegex [regexFromChar 'c', regexFromChar 'd']]
 
 testCharGroupRange :: Test
 testCharGroupRange = testTestObject "char group range" $ charGroupRegex [charGroupPartRange 'a' 'n']

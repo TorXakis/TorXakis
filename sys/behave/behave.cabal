@@ -29,6 +29,7 @@ library
   build-depends:        base
                       , containers
                       , mtl
+                      , text-show
 
                       , behavedefs
                       , behaveenv
@@ -68,6 +69,8 @@ test-suite behave-test
                      , mtl
                      , HUnit
                      , MissingH
+                     , text
+                     , text-show
                      
                      , behavedefs
                      , behaveenv

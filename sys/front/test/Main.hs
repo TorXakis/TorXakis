@@ -4,26 +4,28 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-{-# LANGUAGE TemplateHaskell #-} 
-
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Main where
 
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import qualified Data.String.Utils as Utils
-import System.Exit
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
+import qualified Data.String.Utils   as Utils
+import           Data.Text           (Text)
+import qualified Data.Text           as T
+import           System.Exit
 
 --import qualified Debug.Trace as Trace
 
-import Test.QuickCheck
-import Test.QuickCheck.All
+import           Test.QuickCheck
+import           Test.QuickCheck.All
 
-import TxsAlex
-import TxsHappy
-import TxsDefs
-import TxsShow
+import           TxsAlex
+import           TxsDefs
+import           TxsHappy
+import           TxsShow
 
-import Sigs
+import           Sigs
 
 -- QuickCheck Extension
 
@@ -36,8 +38,8 @@ subset s =
             return $ Set.fromList (take n shuffled)
 
 neSubset :: Ord a => Set.Set a -> Gen (Set.Set a)
-neSubset s = 
-    if Set.size s == 0 
+neSubset s =
+    if Set.size s == 0
     then error "neSubset: non empty subset of empty set"
     else
         let l = Set.toList s in
@@ -45,8 +47,8 @@ neSubset s =
                 n <- choose (1, length l)
                 shuffled <- shuffle l
                 return $ Set.fromList (take n shuffled)
-                
-disjointNESubsets :: Ord a => Set.Set a -> Gen [Set.Set a]           
+
+disjointNESubsets :: Ord a => Set.Set a -> Gen [Set.Set a]
 disjointNESubsets s =
     if Set.size s == 0
         then return []
@@ -61,7 +63,7 @@ splitInSubsets :: Ord a => Int -> Set.Set a -> Gen [Set.Set a]
 splitInSubsets 1 s = return [s]
 splitInSubsets m s = do
     n <- choose (0, Set.size s)
-    if n == 0 
+    if n == 0
         then do
             rest <- splitInSubsets (m-1) s
             return (Set.empty : rest)
@@ -77,8 +79,8 @@ smallIds :: [String]
 smallIds = [ "aap"
            , "a123"
            , "a_"
-           , "geen" 
-           , "gEEN" 
+           , "geen"
+           , "gEEN"
            , "null"
            , "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"]
 
@@ -92,12 +94,12 @@ genUniqueSmallIds :: Gen (Set.Set SmallId)
 genUniqueSmallIds = subset (Set.fromList (map SmallId smallIds) )
 
 capIds :: [String]
-capIds = [ "Aap" 
+capIds = [ "Aap"
          , "A123"
          , "A_"
-         , "GEEN" 
-         , "Geen" 
-         , "Int" 
+         , "GEEN"
+         , "Geen"
+         , "Int"
          , "Boolean"
          , "Insert"
          , "NULL"
@@ -105,7 +107,7 @@ capIds = [ "Aap"
          , "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"
          ]
          -- "Bool" not accepted by TorXakis in structure due to cvc4 bug
-         -- "REGEX" is a reserved capId 
+         -- "REGEX" is a reserved capId
 
 
 newtype CapId = CapId String
@@ -159,14 +161,14 @@ genGenSortDefs = do
     mapM (`genGenSortDef` sortNames) (Set.toList sortNames)
 
 createCstrId :: CapId -> TypedElements -> CapId -> String
-createCstrId (CapId cstrName) fields (CapId sortDefName) = 
+createCstrId (CapId cstrName) fields (CapId sortDefName) =
     cstrName ++ " { "
              ++ Utils.join " ; " (map (\(field,CapId t) -> Utils.join " , " (map (\(SmallId f) -> f) field) ++ " :: " ++ t) fields)
              ++ " }"
 
 createGenSortDef :: GenSortDef -> String
-createGenSortDef (GenSortDef sdn@(CapId sortDefName) constrs) = 
-   "TYPEDEF " ++ sortDefName ++ " ::=\n\t  " ++ 
+createGenSortDef (GenSortDef sdn@(CapId sortDefName) constrs) =
+   "TYPEDEF " ++ sortDefName ++ " ::=\n\t  " ++
        Utils.join "\n\t| " (map (\(constrName, fields) -> createCstrId constrName fields sdn) constrs )
    ++ "\nENDDEF"
 
@@ -176,15 +178,15 @@ toTorXakisDefs (_, b, _) = b
 parseTorXakis :: String -> TxsDefs
 parseTorXakis txt = -- Trace.trace ("txt = " ++ txt) $
                         let parserOutput = txsParser (txsLexer txt) in
-                            -- Trace.trace ("parser output = " ++ show(parserOutput)) 
+                            -- Trace.trace ("parser output = " ++ show(parserOutput))
                                 toTorXakisDefs parserOutput
-                       
-prop_defined :: GenSortDef -> Bool                       
-prop_defined sf@(GenSortDef (CapId n) _) = 
+
+prop_defined :: GenSortDef -> Bool
+prop_defined sf@(GenSortDef (CapId n) _) =
     1 == length [x | x@(SortId n' _, SortDef{}) <- Map.toList ( sortDefs (parseTorXakis (createGenSortDef sf)))
-                   , n == n'
+                   , T.unpack n' == n
                 ]
-    
+
 return []
 
 main :: IO ()
