@@ -19,8 +19,6 @@ See LICENSE at root directory of this repository.
 --
 -- Parse XSD Regex into Posix.
 -----------------------------------------------------------------------------
-{-# LANGUAGE OverloadedStrings #-}
-  
 module RegexPosixHappy
 ( regexPosixParser )
 where
@@ -28,9 +26,6 @@ where
 import RegexAlex                        -- importing
                                         -- data Token(..), AlexPosn(..)
                                         -- regexLexer :: String --> [Token]
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Monoid
 }
     
 -- ----------------------------------------------------------------------------------------- --
@@ -69,16 +64,16 @@ import Data.Monoid
 -- See https://www.haskell.org/happy/doc/html/sec-sequences.html
 -- The only reason we used left recursion is that Happy is more efficient at parsing left-recursive rules
 
-Digits      :: { Text }
+Digits      :: { String }
             : digit
                 { $1 }
             | Digits digit
-                { $1 <> $2 }
+                { $1 ++ $2 }
 
                 
             -- everything that is included in ~[.\\?*+{}()|[\]]
             -- include CommaChar | DashChar | TopChar | DigitChar | FormatEscChar | NormalChar                                
-Normal      :: { Text }
+Normal      :: { String }
             : ","
                 { "," }
             | "-"
@@ -93,7 +88,7 @@ Normal      :: { Text }
                 { $1 }
 
                 -- everything that is included in ~[\\[\]]
-SingleCharNoEsc :: { Text }
+SingleCharNoEsc :: { String }
                 : ","
                     { "," }
                 | "."
@@ -122,7 +117,7 @@ SingleCharNoEsc :: { Text }
                     { $1 }
 
                     -- everything that is included in [\.\\\?\*\+\{\}\(\)\[\]\|\-\^]
-SingleCharEscChar   :: { Text }
+SingleCharEscChar   :: { String }
                     : "."
                         { "." }
                     | "\\"
@@ -148,56 +143,56 @@ SingleCharEscChar   :: { Text }
                     | "^"
                         { "^" }
                     
-RegExp  :: { Text }
+RegExp  :: { String }
         : RegExp1
-            { "^"<> $1 <> "$" }
+            { "^"++ $1 ++ "$" }
             
-RegExp1 :: { Text }
+RegExp1 :: {String}
         : Branches
             { $1 }
 
-Branches    :: { Text }
+Branches    :: { String }
             : Branches "|" Branch 
-                { $1 <> "|" <> $3 }
+                { $1 ++ "|" ++ $3 }
             | Branch
                 { $1 }
                 
-Branch  :: { Text }
+Branch  :: { String }
         : {- empty -}
             { "" } 
         | NeBranch
             { $1 }
             
                 
-NeBranch    :: { Text }
+NeBranch    :: { String }
             : NeBranch Piece
-               { $1 <> $2 }
+               { $1 ++ $2 }
             | Piece
                 { $1 }
                 
-Piece       :: { Text }
+Piece       :: { String }
             : Atom
                 { $1 }
             | Atom Quantifier
-                { $1 <> $2 }
+                { $1 ++ $2 }
             | Atom "{" Quantity "}"
-                { $1 <> "{" <> $3 <> "}" }
+                { $1 ++ "{" ++ $3 ++ "}" }
                 
-Quantifier  :: { Text }
+Quantifier  :: { String }
             : quantifier
                 { $1 }
                     
-Quantity    :: { Text }
+Quantity    :: { String }
             : Digits "," Digits                  -- QuantRange
-                { $1 <> "," <> $3 }
+                { $1 ++ "," ++ $3 }
             | Digits ","                         -- QuantMin
-                { $1 <> ","}
+                { $1 ++ ","}
             | Digits                             -- QuantExact
                 { $1  }
 
-Atom    :: { Text }
+Atom    :: { String }
         : "(" RegExp1 ")"                        -- Precedence
-            { "(" <> $2 <> ")" }
+            { "(" ++ $2 ++ ")" }
         | Normal
             { $1 }
         | NormalSingleCharEsc
@@ -211,40 +206,40 @@ Atom    :: { Text }
             { $1 }
      -- | charClassEsc   
                 
-CharClass   :: { Text }
+CharClass   :: { String }
             : "[" CharGroup "]"        -- charClassExpr
-                { "[" <> $2 <> "]" }
+                { "[" ++ $2 ++ "]" }
 
-NormalSingleCharEsc :: { Text } 
+NormalSingleCharEsc :: { String } 
                     : "\\" formatEsc
-                        { "\\" <> $2 }
+                        { "\\" ++ $2 }
                     | "\\" SingleCharEscChar
-                        { "\\" <> $2 }
+                        { "\\" ++ $2 }
                 
-CharGroup   :: { Text }
+CharGroup   :: { String }
             : PosCharGroup          -- simplified from ( posCharGroup | negCharGroup ) ( DashChar charClassExpr )?
                 { $1 }
 
-PosCharGroup    :: { Text }                
+PosCharGroup    :: { String }                
                 : PosCharGroup CharGroupPart
-                    { $1 <> $2 }
+                    { $1 ++ $2 }
                 | CharGroupPart
                     { $1 }
 
-CharGroupPart   :: { Text }              -- range like a-z -> treated as just 3 characters (thus 'a' '-' 'z'), 
+CharGroupPart   :: { String }              -- range like a-z -> treated as just 3 characters (thus 'a' '-' 'z'), 
                                            -- correct range interpretation is still done by Posix 
                                            -- known: issue [x-\]] results in other interpretation of CharClass
                 : SingleChar
                     { $1 }
                 --  | charClassEsc   
 
-SingleChar  :: { Text } 
+SingleChar  :: { String } 
             : SingleCharNoEsc
                 { $1 }
             | SingleCharEsc
                 { $1 }
                 
-SingleCharEsc   :: { Text } 
+SingleCharEsc   :: { String } 
                 : "\\" formatEsc
                     { case $2 of
                         "n"     -> "\n" 
@@ -257,7 +252,7 @@ SingleCharEsc   :: { Text }
 -- uninterpreted haskell postamble
 {
 -- | Parser to translate XSD Regex to Posix Regex.
-regexPosixParser :: [Token] -> Text
+regexPosixParser :: [Token] -> String
 regexPosixParser = localRegexPosixParser
 -- ----------------------------------------------------------------------------------------- --
 -- error handling

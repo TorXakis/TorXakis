@@ -3,7 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE OverloadedStrings #-}
+
 module TestPushPop
 (
 testPushPopList
@@ -14,9 +14,8 @@ import           Control.Arrow       ((&&&))
 import           Control.Monad.State
 import qualified Data.Map            as Map
 import           Data.Maybe
-import           Data.Text           (Text)
-import qualified Data.Text           as T
 import           System.Process      (CreateProcess)
+
 import           Test.HUnit
 
 import           StdTDefs
@@ -67,7 +66,7 @@ testPushPopTemplate :: ([VarId] -> [([VarId] -> [VExpr], [Const] -> SMT())] -> S
 testPushPopTemplate steps txsDefs types (createInitialAssertions,checkInitial) pps = do
     _ <- SMT.openSolver
     addDefinitions txsDefs
-    let vs = map (\(x,t) -> VarId (T.pack ("i" ++ show x)) x t) (zip [1000..] types)
+    let vs = map (\(x,t) -> VarId ("i" ++ show x) x t) (zip [1000..] types)
     addDeclarations vs
     addAssertions (createInitialAssertions vs)
     initialValues <- getValues vs

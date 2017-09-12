@@ -4,7 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-{-# LANGUAGE OverloadedStrings #-}
+-- ----------------------------------------------------------------------------------------- --
 
 module Main
 
@@ -29,14 +29,13 @@ import           Control.Concurrent
 import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad.State
+import           Network
+import           System.IO
+
 import qualified Data.Char           as Char
 import qualified Data.List           as List
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
-import           Data.Text           (Text)
-import qualified Data.Text           as T
-import           Network
-import           System.IO
 
 -- import from local
 import           CmdLineParser
@@ -430,7 +429,7 @@ cmdEval args = do
                                         )
                               in return $!! (p,"")
                            )
-                           ( \e -> return ((uid,TxsDefs.cstrError ""), show (e::ErrorCall)))
+                           ( \e -> return ((uid,TxsDefs.cstrError ""),show (e::ErrorCall)))
      if  e /= ""
        then do modify $ \env' -> env' { IOS.uid = uid' }
                IFS.nack "EVAL" [ e ]
@@ -484,11 +483,11 @@ cmdTester args = do
        [m,c] -> do
             let mdefs = [ mdef
                         | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                        , T.unpack  nm == m
+                        , nm == m
                         ]
                 cdefs = [ cdef
                         | (TxsDefs.CnectId nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
-                        , T.unpack nm == c
+                        , nm == c
                         ]
             case (mdefs,cdefs) of
               ([modeldef],[cnectdef])
@@ -505,19 +504,19 @@ cmdTester args = do
        [m,x,c] -> do
             let mdefs  =  [ mdef
                           | (TxsDefs.ModelId  nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                          , T.unpack nm == m
+                          , nm == m
                           ]
                 adefs  =  [ adef
                           | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
-                          , T.unpack nm == x
+                          , nm == x
                           ]
                 pdefs  =  [ pdef
                           | (TxsDefs.PurpId   nm _, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
-                          , T.unpack nm == x
+                          , nm == x
                           ]
                 cdefs  =  [ cdef
                           | (TxsDefs.CnectId  nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
-                          , T.unpack nm == c
+                          , nm == c
                           ]
             case (mdefs,adefs,pdefs,cdefs) of
               ([modeldef],[mapperdef],[],[cnectdef])
@@ -543,19 +542,19 @@ cmdTester args = do
        [m,x,y,c] -> do
             let mdefs  =  [ mdef
                           | (TxsDefs.ModelId  nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                          , T.unpack nm == m
+                          , nm == m
                           ]
                 adefs  =  [ adef
                           | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
-                          , T.unpack nm == x || T.unpack nm == y
+                          , nm == x || nm == y
                           ]
                 pdefs  =  [ pdef
                           | (TxsDefs.PurpId   nm _, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
-                          , T.unpack nm == x || T.unpack nm == y
+                          , nm == x || nm == y
                           ]
                 cdefs  =  [ cdef
                           | (TxsDefs.CnectId  nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
-                          , T.unpack nm == c
+                          , nm == c
                           ]
             case (mdefs,adefs,pdefs,cdefs) of
               ([modeldef],[mapperdef],[purpdef],[cnectdef])
@@ -619,11 +618,11 @@ cmdSimulator args = do
        [m,c] -> do
             let mdefs  =  [ mdef
                           | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                          , T.unpack nm == m
+                          , nm == m
                           ]
                 cdefs  =  [ cdef
                           | (TxsDefs.CnectId nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
-                          , T.unpack nm == c
+                          , nm == c
                           ]
             case (mdefs,cdefs) of
               ([modeldef],[cnectdef])
@@ -640,15 +639,15 @@ cmdSimulator args = do
        [m,a,c] -> do
             let mdefs  =  [ mdef
                           | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                          , T.unpack nm == m
+                          , nm == m
                           ]
                 adefs  =  [ adef
                           | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
-                          , T.unpack nm == a
+                          , nm == a
                           ]
                 cdefs  =  [ cdef
                           | (TxsDefs.CnectId nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
-                          , T.unpack nm == c
+                          , nm == c
                           ]
             case (mdefs,adefs,cdefs) of
               ([modeldef],[mapperdef],[cnectdef])
@@ -705,7 +704,7 @@ cmdStepper args = do
       [m] -> do
          let mdefs'  =  [ mdef
                         | (TxsDefs.ModelId nm _, mdef) <- Map.toList mdefs
-                        , T.unpack nm == m
+                        , nm == m
                         ]
          case mdefs' of
            [modeldef] -> do modify $ \env -> env { IOS.modus = IOS.Stepped }
@@ -862,10 +861,10 @@ cmdTrace args = do
                                ]
                       IFS.pack "TRACE" ["\n"]
                       cmdsIntpr
-       ["proc"] -> do IFS.mack [T.unpack (toProcdef trace)]
+       ["proc"] -> do IFS.mack [toProcdef trace]
                       IFS.pack "TRACE" ["\n"]
                       cmdsIntpr
-       ["purp"] -> do IFS.mack [T.unpack (toPurpdef trace)]
+       ["purp"] -> do IFS.mack [toPurpdef trace]
                       IFS.pack "TRACE" ["\n"]
                       cmdsIntpr
        _        -> do IFS.nack "TRACE" [ "No such trace format" ]
@@ -916,7 +915,7 @@ cmdNComp args = do
      case words args of
        [mname] -> case [ mdef
                        | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                       , T.unpack nm == mname
+                       , nm == mname
                        ] of
                     [mdef]
                       -> do mayPurpId <- lift $ TxsCore.txsNComp mdef

@@ -3,23 +3,20 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module ValExprDefs
 where
 
-import qualified Data.Map        as Map
-import           Data.Set        (Set)
-import           Data.Text       (Text)
+import qualified Data.Map as Map
+import Data.Set (Set)
 
-import           Control.DeepSeq
-import           GHC.Generics    (Generic)
+import GHC.Generics (Generic)
+import Control.DeepSeq
 
-import           ConstDefs
-import           CstrId
-import           FuncId
-import           VarId
-
+import ConstDefs
+import CstrId
+import FuncId
+import VarId
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -38,9 +35,9 @@ data  ValExprView v = Vfunc   FuncId [ValExpr v]
                     | Vnot    (ValExpr v)
                     | Vand    (Set (ValExpr v))
                     | Vpredef PredefKind FuncId [ValExpr v]
-                    | Verror  Text
+                    | Verror  String
      deriving (Eq,Ord,Read,Show, Generic, NFData)
-
+     
 -- | ValExpr: value expression
 --
 -- 1. User can't directly construct ValExpr (such that invariants will always hold)
@@ -48,7 +45,7 @@ data  ValExprView v = Vfunc   FuncId [ValExpr v]
 -- 2. User can still pattern match on ValExpr using 'ValExprView'
 --
 -- 3. Overhead at run-time is zero. See https://wiki.haskell.org/Performance/Data_types#Newtypes
-newtype ValExpr v = ValExpr {
+newtype ValExpr v = ValExpr { 
                         -- | View on value expression.
                         view :: ValExprView v }
   deriving (Eq, Ord, Read, Show, Generic, NFData)

@@ -3,7 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE OverloadedStrings #-}
+
 module TestRecursiveFunction
 (
 testRecursiveFunctionList
@@ -16,8 +16,6 @@ import qualified Data.List           as List
 import qualified Data.Map            as Map
 import           Data.Maybe
 import qualified Data.Set            as Set
-import           Data.Text           (Text)
-import qualified Data.Text           as T
 import           System.Process      (CreateProcess)
 
 import           StdTDefs
@@ -91,9 +89,9 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
                  (TxsDefs.insert (IdCstr constrId) (DefCstr (CstrDef isConstr [hd, tl]) )
                    (TxsDefs.insert (IdSort sortId_ListInt) (DefSort SortDef)
                     TxsDefs.empty))
-    let result = T.unpack (sortdefsToSMT maps sDefs)
+    let result = sortdefsToSMT maps sDefs
     assertBool ("ListInt sortdef " ++ show result) ("(declare-datatypes () (\n    (ListInt (Constr (ListInt$Constr$0 Int) (ListInt$Constr$1 ListInt)) (Nil))\n) )" `List.isInfixOf` result)
-    assertEqual "length function" e (T.unpack (funcdefsToSMT maps fDefs))
+    assertEqual "length function" e (funcdefsToSMT maps fDefs)
 
     let txsDefs = TxsDefs.union fDefs sDefs
 

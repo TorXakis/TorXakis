@@ -4,53 +4,66 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
+-- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns      #-}
--- | SortOf for TxsDefs
+{-# LANGUAGE ViewPatterns #-}
 module SortOf
+
+-- ----------------------------------------------------------------------------------------- --
+--                                                                                           --
+-- SortOf for TxsDefs
+--                                                                                           --
+-- ----------------------------------------------------------------------------------------- --
 
 where
 
-import           BehExprDefs
-import           ConstDefs
-import           CstrId
-import           FuncId
-import           SortId
-import           ValExprDefs
-import           Variable
-import           VarId
+import BehExprDefs
+import ConstDefs
+import CstrId
+import FuncId
+import SortId
+import VarId
+import ValExprDefs
+import Variable
 
--- * standard sorts
+-- ----------------------------------------------------------------------------------------- --
+-- value expression, etc. :  sortOf -------------------------------------------------------- --
+
+-- ----------------------------------------------------------------------------------------- --
+-- standard sorts
 
 sortId_Bool :: SortId
-sortId_Bool = SortId "Bool" 101
+sortId_Bool   = SortId "Bool"   101
 
 sortId_Int :: SortId
-sortId_Int = SortId "Int" 102
+sortId_Int    = SortId "Int"    102
 
 sortId_String :: SortId
 sortId_String = SortId "String" 104
 
 sortId_Regex :: SortId
-sortId_Regex = SortId "Regex" 105
+sortId_Regex  = SortId "Regex"  105
 
--- | Value expression, etc. :  sortOf
-class SortOf s where
-  sortOf :: s -> SortId
+class SortOf s
+  where
+    sortOf :: s -> SortId
 
-instance SortOf ChanOffer where
-  sortOf (Quest (VarId _nm _uid vs)) =  vs
-  sortOf (Exclam vexp)               =  sortOf vexp
+
+instance SortOf ChanOffer
+  where
+    sortOf (Quest (VarId _nm _uid vs))          =  vs
+    sortOf (Exclam vexp)                        =  sortOf vexp
 
 sortIdError :: SortId
 sortIdError = SortId "_Error" (-1)
 
-instance (Variable v) => SortOf (ValExpr v) where
-  sortOf vexp = let s = sortOf' vexp in
-    if s == sortIdError
-    then sortId_String
-    else s
+instance (Variable v) => SortOf (ValExpr v)
+  where
+    sortOf vexp = let s = sortOf' vexp in
+                      if s == sortIdError
+                        then sortId_String
+                        else s
+                        
 
 sortOf' :: (Variable v) => ValExpr v -> SortId
 sortOf' (view -> Vfunc (FuncId _nm _uid _fa fs) _vexps) = fs
@@ -60,7 +73,7 @@ sortOf' (view -> Vaccess (CstrId _nm _uid ca _cs) p _vexps) = ca!!p
 sortOf' (view -> Vconst con)                            =  sortOf con
 sortOf' (view -> Vvar v)                                =  vsort v
 sortOf' (view -> Vite _cond vexp1 vexp2)                =  -- if the LHS is an error (Verror), we want to yield the type of the RHS which might be no error
-                                                             let sort' = sortOf' vexp1 in
+                                                             let sort' = sortOf' vexp1 in 
                                                              if sort' == sortIdError
                                                                then sortOf' vexp2
                                                                else sort'
@@ -73,13 +86,19 @@ sortOf' (view -> Vpredef{})                             = error "sortOf': Unexpe
 sortOf' (view -> Verror _str)                           =  sortIdError
 sortOf' _                                               = error "sortOf': All items must be in view"
 
-instance SortOf Const where
-  sortOf (Cbool _b)                        = sortId_Bool
-  sortOf (Cint _i)                         = sortId_Int
-  sortOf (Cstring _s)                      = sortId_String
-  sortOf (Cstr (CstrId _nm _uid _ca cs) _) = cs
-  sortOf _                                 = error "Unexpect SortOf - Const"
+instance SortOf Const
+  where
+    sortOf (Cbool _b)                               = sortId_Bool
+    sortOf (Cint _i)                                = sortId_Int 
+    sortOf (Cstring _s)                             = sortId_String
+    sortOf (Cstr (CstrId _nm _uid _ca cs) _)        = cs
+    sortOf _                                        = error "Unexpect SortOf - Const"
 
 
-instance SortOf VarId  where
-  sortOf (VarId _nm _unid srt)                    = srt
+instance SortOf VarId
+  where
+    sortOf (VarId _nm _unid srt)                    = srt
+
+-- ----------------------------------------------------------------------------------------- --
+--                                                                                           --
+-- ----------------------------------------------------------------------------------------- --

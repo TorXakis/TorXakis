@@ -26,7 +26,6 @@ library
                       , containers
                       , network
                       , mtl
-                      , text
                       
                       , core
                       , coreenv

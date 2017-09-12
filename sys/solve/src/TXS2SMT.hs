@@ -6,8 +6,7 @@ See LICENSE at root directory of this repository.
 
 
 -- ----------------------------------------------------------------------------------------- --
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns      #-}
+{-# LANGUAGE ViewPatterns #-}
 module TXS2SMT
 
 -- ----------------------------------------------------------------------------------------- --
@@ -34,30 +33,25 @@ module TXS2SMT
 
 where
 
-import           Data.Foldable
-import qualified Data.Map          as Map
-import           Data.Maybe
-import           Data.Monoid
-import qualified Data.Set          as Set
-import           Data.String.Utils
-import           Data.Text         (Text)
-import qualified Data.Text         as T
-import           TextShow
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Data.Maybe
+import Data.String.Utils
 
-import           CstrId
-import           FuncId
-import           SortId
-import           StdTDefs
-import           TxsDefs
-import           VarId
+import TxsDefs
+import StdTDefs
+import CstrId
+import FuncId
+import SortId
+import VarId
 
-import           RegexSMTHappy     (encodeStringLiteral)
-import           RegexXSDtoSMT
+import RegexXSDtoSMT
+import RegexSMTHappy(encodeStringLiteral)
 
 -- ----------------------------------------------------------------------------------------- --
 -- initialMapInstanceTxsToSmtlib
 
-initialMapInstanceTxsToSmtlib :: [ (Ident, Text) ]
+initialMapInstanceTxsToSmtlib :: [ (Ident, String) ]
 initialMapInstanceTxsToSmtlib  =  [
 -- Sorts :
     (IdSort sortId_Bool,       "Bool"),
@@ -70,7 +64,7 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_BoolFromString, error "FromString(Bool) should not be called in SMT"),
     (IdFunc funcId_BoolToXml,      error "ToXml(Bool) should not be called in SMT"),
     (IdFunc funcId_BoolFromXml,    error "FromXml(Bool) should not be called in SMT"),
-
+    
 -- Int
     (IdFunc funcId_IntToString,    error "ToString(Int) should not be called in SMT"),
     (IdFunc funcId_IntFromString,  error "FromString(Int) should not be called in SMT"),
@@ -110,33 +104,34 @@ initialMapInstanceTxsToSmtlib  =  [
 -- ----------------------------------------------------------------------------------------- --
 -- initialMapInstanceTxsToSmtlib
 
-toFieldName :: CstrId -> Int -> Text
-toFieldName cstrid field  =  T.concat [toCstrName cstrid, "$", showt field]
+toFieldName :: CstrId -> Int -> String
+toFieldName cstrid field  =  concat [toCstrName cstrid, "$", show field]
 
-toIsCstrName :: CstrId -> Text
-toIsCstrName cstrid  =  "is-" <> toCstrName cstrid
+toIsCstrName :: CstrId -> String
+toIsCstrName cstrid  =  "is-" ++ toCstrName cstrid
 
-toCstrName :: CstrId -> Text
-toCstrName cstrid  =  T.concat [SortId.name (cstrsort cstrid), "$", CstrId.name cstrid]
+toCstrName :: CstrId -> String
+toCstrName cstrid  =  concat [SortId.name (cstrsort cstrid), "$", CstrId.name cstrid]
 
-toSortName :: SortId -> Text
-toSortName = SortId.name
+toSortName :: SortId -> String
+toSortName = SortId.name 
 
-toFuncName :: FuncId -> Text
-toFuncName funcId  =  T.concat ["f", showt (FuncId.unid funcId), "$", FuncId.name funcId]
+toFuncName :: FuncId -> String
+toFuncName funcId  =  concat ["f", show (FuncId.unid funcId), "$", FuncId.name funcId]
 
-insertMap :: (Ident, TxsDef) -> Map.Map Ident Text -> Map.Map Ident Text
+insertMap :: (Ident, TxsDef) -> Map.Map Ident String -> Map.Map Ident String 
+
 insertMap (id'@(IdSort sid), DefSort SortDef) mp
   = if id' `Map.member` mp
        then error $ "TXS TXS2SMT insertMap: Sort " ++ show sid ++ " already defined\n"
-       else Map.insert id' (toSortName sid) mp
-
-
+       else Map.insert id' (toSortName sid) mp                                        
+                            
+              
 insertMap (id'@(IdCstr cstrid), DefCstr(CstrDef c fs)) mp
   =  if id' `Map.member` mp
        then error $ "TXS TXS2SMT insertMap: Constructor (" ++ show cstrid ++ ", CstrDef " ++
                     show c ++ " " ++ show fs ++  ") already defined\n"
-       else foldr ( \(f,p) -> Map.insert (IdFunc f) (toFieldName cstrid p) )
+       else foldr ( \(f,p) -> Map.insert (IdFunc f) (toFieldName cstrid p) ) 
                   ( Map.insert (IdFunc c) (toIsCstrName cstrid)
                                ( Map.insert (IdCstr cstrid) (toCstrName cstrid) mp )
                   )
@@ -147,15 +142,15 @@ insertMap (id'@(IdFunc funcId), DefFunc (FuncDef x y)) mp
        then error $ "TXS TXS2SMT insertMap: Function  (" ++ show funcId ++ ", FuncDef " ++
                     show x ++ " " ++ show y ++  ") already defined\n"
        else Map.insert id' (toFuncName funcId) mp
-
+                                
 insertMap (_,d) _ = error $ "Illegal Definition for insertMap " ++ show d
-
+                               
 -- ----------------------------------------------------------------------------------------- --
 -- basic definitions for SMT
 -- native Torxakis functions that are not natively supported in SMT
 -- ----------------------------------------------------------------------------------------- --
-basicDefinitionsSMT :: Text
-basicDefinitionsSMT = ""
+basicDefinitionsSMT :: String
+basicDefinitionsSMT = ""          
      -- ++ "(define-fun-rec pow ((a Int)(b Int)) Int (ite (= b 0) 1 (* a (pow a (- b 1)))))"
 
 
@@ -170,60 +165,60 @@ basicDefinitionsSMT = ""
 -- ----------------------------------------------------------------------------------------- --
 -- convert sort definitions to SMT type declarations (as multiple lines of commands)
 -- ----------------------------------------------------------------------------------------- --
-sortdefsToSMT :: Map.Map Ident Text -> TxsDefs -> Text
+sortdefsToSMT :: Map.Map Ident String -> TxsDefs -> String
 sortdefsToSMT mapI tdefs =
     let sorts = Map.keys (sortDefs tdefs) in
         case sorts of
             []      -> ""
             _       -> "(declare-datatypes () (\n"
-                       <> foldMap (\s -> "    ("
-                                           <> justLookup mapI (IdSort s)
-                                           <> foldMap cstrToSMT (getCstrs s) <> ")\n" )
+                       ++ concatMap (\s -> "    (" 
+                                           ++ justLookup mapI (IdSort s)
+                                           ++ concatMap cstrToSMT (getCstrs s) ++ ")\n" ) 
                                     sorts
-                       <> ") )\n"
+                       ++ ") )\n"                            
     where
         -- get the constructors of an ADT
         getCstrs :: SortId -> [(CstrId, CstrDef)]
         getCstrs s = [(cstrId', cstrDef) | (cstrId', cstrDef) <- Map.toList (cstrDefs tdefs), cstrsort cstrId' == s]
-
+        
         -- convert the given constructor to a SMT constructor declaration
-        cstrToSMT :: (CstrId, CstrDef) -> Text
-        cstrToSMT (cstrId', CstrDef _ fields) = " (" <> justLookup mapI (IdCstr cstrId') <> cstrFieldsToSMT cstrId' fields <> ")"
-
-        -- convert the given constructor fields to a SMT constructor declaration
-        cstrFieldsToSMT :: CstrId -> [FuncId] -> Text
+        cstrToSMT :: (CstrId, CstrDef) -> String
+        cstrToSMT (cstrId', CstrDef _ fields) = " (" ++ justLookup mapI (IdCstr cstrId') ++ cstrFieldsToSMT cstrId' fields ++ ")" 
+        
+        -- convert the given constructor fields to a SMT constructor declaration        
+        cstrFieldsToSMT :: CstrId -> [FuncId] -> String
         cstrFieldsToSMT cstrId' fields =
             case fields of
                 []  -> ""
-                _   -> " (" <> T.intercalate ") (" (map (\(f,p) -> toFieldName cstrId' p <> " " <> justLookup mapI (IdSort (funcsort f))) (zip fields [0..]) ) <> ")"
-
-
--- | Convert function definitions to SMT type declarations (as multiple lines
--- of commands).
-funcdefsToSMT :: Map.Map Ident Text -> TxsDefs -> Text
+                _   -> " (" ++ join ") (" (map (\(f,p) -> toFieldName cstrId' p ++ " " ++ justLookup mapI (IdSort (funcsort f))) (zip fields [0..]) ) ++ ")"
+        
+-- ----------------------------------------------------------------------------------------- --
+-- convert function definitions to SMT type declarations (as multiple lines of commands)
+-- ----------------------------------------------------------------------------------------- --        
+funcdefsToSMT :: Map.Map Ident String -> TxsDefs -> String
 funcdefsToSMT mapTxs tdefs =
-    -- tdefs contains only new function definitions
+    -- tdefs contains only new function definitions    
     toTxs (map toDT (TxsDefs.toList tdefs))
   where
-    toTxs :: [(Text ,Text)] -> Text
+    toTxs :: [(String,String)] -> String
     toTxs [] = ""
     toTxs l = let (lD,lT) = unzip l in
-                "(define-funs-rec\n  (\n    " <> T.intercalate "\n    " lD <> "\n  )\n  (\n    " <> T.intercalate "\n    " lT <> "\n  )\n)\n"
+                "(define-funs-rec\n  (\n    " ++ join "\n    " lD ++ "\n  )\n  (\n    " ++ join "\n    " lT ++ "\n  )\n)\n"
 
-    toDT :: (Ident, TxsDef) -> (Text, Text)
-    toDT (fid@(IdFunc idf), DefFunc (FuncDef vs expr))  = ("("<> justLookup mapTxs fid <> "(" <> T.intercalate " " (map (\v -> "(" <> vname v <> " " <> justLookup mapTxs (IdSort (varsort v)) <> ")") vs) <> ") " <> justLookup mapTxs (IdSort (funcsort idf)) <>")", valexprToSMT mapTxs expr)
+    toDT :: (Ident, TxsDef) -> (String,String)
+    toDT (fid@(IdFunc idf), DefFunc (FuncDef vs expr))  = ("("++ justLookup mapTxs fid ++ "(" ++ join " " (map (\v -> "(" ++ vname v ++ " " ++ justLookup mapTxs (IdSort (varsort v)) ++ ")") vs) ++ ") " ++ justLookup mapTxs (IdSort (funcsort idf)) ++")", valexprToSMT mapTxs expr)
     toDT (_,_)                                          = error "Solve - TXS2SMT - funcdefsToSMT - Only FuncId and FuncDef tuple expected."
 -- ----------------------------------------------------------------------------------------- --
 -- assertions to SMT
 -- ----------------------------------------------------------------------------------------- --
-assertionsToSMT :: (Variable v) => Map.Map Ident Text -> [ValExpr v] -> Text
-assertionsToSMT mapI assertions =
-        T.intercalate "\n" (map assertionToSMT assertions)
+assertionsToSMT :: (Variable v) => Map.Map Ident String -> [ValExpr v] -> String
+assertionsToSMT mapI assertions = 
+        join "\n" (map assertionToSMT assertions)
     where
-        assertionToSMT :: (Variable v) => ValExpr v -> Text
-        assertionToSMT expr = "(assert " <> valexprToSMT mapI expr <> ")"
-
-justLookup :: Map.Map Ident Text -> Ident -> Text
+        assertionToSMT :: (Variable v) => ValExpr v -> String
+        assertionToSMT expr = "(assert " ++ valexprToSMT mapI expr ++ ")" 
+ 
+justLookup :: Map.Map Ident String -> Ident -> String
 justLookup mapI ident =
     let ms = Map.lookup ident mapI in
         fromMaybe (error $ "Ident " ++ show ident ++ " not found in mapping with keys: " ++ show (Map.keys mapI) ++ "\n") ms
@@ -231,71 +226,71 @@ justLookup mapI ident =
 -- ----------------------------------------------------------------------------------------- --
 -- constToSMT: translate a const to a SMT constraint
 -- ----------------------------------------------------------------------------------------- --
-constToSMT :: Map.Map Ident Text -> Const -> Text
+constToSMT :: Map.Map Ident String -> Const -> String
 constToSMT _ (Cbool b) = if b
                             then "true"
                             else "false"
 constToSMT _ (Cint n) = if n < 0
-                            then "(- " <> showt (abs n) <> ")"
-                            else showt n
-constToSMT _ (Cstring s)  =  "\"" <> encodeStringLiteral s <> "\""
+                            then "(- " ++ show (abs n) ++ ")"
+                            else show n
+constToSMT _ (Cstring s)  =  "\"" ++ encodeStringLiteral s ++ "\""
 constToSMT _ (Cregex r)  =  parseRegex r
 constToSMT mapI (Cstr cd [])   =        justLookup mapI (IdCstr cd)
-constToSMT mapI (Cstr cd args') = "(" <> justLookup mapI (IdCstr cd) <> " " <> T.intercalate " " (map (constToSMT mapI) args') <> ")"
-constToSMT _ x = error ("Illegal input constToSMT - " <> show x)
+constToSMT mapI (Cstr cd args') = "(" ++ justLookup mapI (IdCstr cd) ++ " " ++ join " " (map (constToSMT mapI) args') ++ ")"
+constToSMT _ x = error ("Illegal input constToSMT - " ++ show x)
 
 -- ----------------------------------------------------------------------------------------- --
 -- valexprToSMT: translate a ValExpr to a SMT constraint
 -- ----------------------------------------------------------------------------------------- --
-valexprToSMT :: (Variable v) => Map.Map Ident Text -> ValExpr v -> Text
+valexprToSMT :: (Variable v) => Map.Map Ident String -> ValExpr v -> String
 valexprToSMT mapI (view -> Vfunc funcId [])   =        justLookup mapI (IdFunc funcId)
-valexprToSMT mapI (view -> Vfunc funcId args') = "(" <> justLookup mapI (IdFunc funcId) <> " " <> T.intercalate " " (map (valexprToSMT mapI) args') <> ")"
+valexprToSMT mapI (view -> Vfunc funcId args') = "(" ++ justLookup mapI (IdFunc funcId) ++ " " ++ join " " (map (valexprToSMT mapI) args') ++ ")"
 
 valexprToSMT mapI (view -> Vcstr cd [])    =        justLookup mapI (IdCstr cd)
-valexprToSMT mapI (view -> Vcstr cd args') = "(" <> justLookup mapI (IdCstr cd) <> " " <> T.intercalate " " (map (valexprToSMT mapI) args') <> ")"
+valexprToSMT mapI (view -> Vcstr cd args') = "(" ++ justLookup mapI (IdCstr cd) ++ " " ++ join " " (map (valexprToSMT mapI) args') ++ ")"
 
-valexprToSMT mapI (view -> Viscstr cd arg)    = "(" <> toIsCstrName cd <> " " <> valexprToSMT mapI arg <> ")"
-valexprToSMT mapI (view -> Vaccess cd p arg)  = "(" <> toFieldName cd p <> " " <> valexprToSMT mapI arg <> ")"
+valexprToSMT mapI (view -> Viscstr cd arg)    = "(" ++ toIsCstrName cd ++ " " ++ valexprToSMT mapI arg ++ ")"
+valexprToSMT mapI (view -> Vaccess cd p arg)  = "(" ++ toFieldName cd p ++ " " ++ valexprToSMT mapI arg ++ ")"
 
 
 valexprToSMT mapI (view -> Vconst c) = constToSMT mapI c
 
 valexprToSMT _ (view -> Vvar varId)  =  vname varId
 
-valexprToSMT mapI (view -> Vite c expr1 expr2) = "(ite " <> valexprToSMT mapI c <> " "  <> valexprToSMT mapI expr1 <> " " <> valexprToSMT mapI expr2 <> ")"
+valexprToSMT mapI (view -> Vite c expr1 expr2) = "(ite " ++ valexprToSMT mapI c ++ " "  ++ valexprToSMT mapI expr1 ++ " " ++ valexprToSMT mapI expr2 ++ ")"
 
 valexprToSMT mapI (view -> Venv venv expr)  =
     if Map.null venv
         then valexprToSMT mapI expr
-        else "(let (" <> Map.foldrWithKey keyValuePairVarIdVExprToSMT "" venv <> ") "
-              <> valexprToSMT mapI expr <> ")"
-    where
-        keyValuePairVarIdVExprToSMT :: (Variable v) => v -> ValExpr v -> Text -> Text
-        keyValuePairVarIdVExprToSMT v expr' s = s <> "(" <> valexprToSMT mapI (cstrVar v) <> " " <> valexprToSMT mapI expr' <> ")"
+        else "(let (" ++ Map.foldrWithKey keyValuePairVarIdVExprToSMT "" venv ++ ") "
+              ++ valexprToSMT mapI expr ++ ")"
+    where 
+        keyValuePairVarIdVExprToSMT :: (Variable v) => v -> ValExpr v -> String -> String
+        keyValuePairVarIdVExprToSMT v expr' s = s ++ "(" ++ valexprToSMT mapI (cstrVar v) ++ " " ++ valexprToSMT mapI expr' ++ ")"
 -- alternative implementation:
 --    valexprToSMT mapI (substVEnv venv vexpr)
+    
+valexprToSMT mapI (view -> Vequal expr1 expr2)  = 
+    "(= " ++ valexprToSMT mapI expr1 ++ " " ++ valexprToSMT mapI expr2 ++ ")"
 
-valexprToSMT mapI (view -> Vequal expr1 expr2)  =
-    "(= " <> valexprToSMT mapI expr1 <> " " <> valexprToSMT mapI expr2 <> ")"
+valexprToSMT mapI (view -> Vnot expr)  = 
+    "(not " ++ valexprToSMT mapI expr ++ ")"
 
-valexprToSMT mapI (view -> Vnot expr)  =
-    "(not " <> valexprToSMT mapI expr <> ")"
+valexprToSMT mapI (view -> Vand exprs)  = 
+    "(and " ++ join " " (map (valexprToSMT mapI) (Set.toList exprs)) ++ ")"    
 
-valexprToSMT mapI (view -> Vand exprs)  =
-    "(and " <> T.intercalate " " (map (valexprToSMT mapI) (Set.toList exprs)) <> ")"
-
-valexprToSMT mapI (view -> Vpredef _ funcId args')  =
-    "(" <> justLookup mapI (IdFunc funcId) <> " " <> T.intercalate " " (map (valexprToSMT mapI) args') <> ")"
+valexprToSMT mapI (view -> Vpredef _ funcId args')  = 
+    "(" ++ justLookup mapI (IdFunc funcId) ++ " " ++ join " " (map (valexprToSMT mapI) args') ++ ")"
 
 valexprToSMT _ x = error ("Illegal input valexprToSMT - " ++ show x)
 
 -- ----------------------------------------------------------------------------------------- --
-declarationsToSMT :: (Variable v) => Map.Map Ident Text -> [v] -> Text
+declarationsToSMT :: (Variable v) => Map.Map Ident String -> [v] -> String
 declarationsToSMT mapI vs  =
-    T.intercalate "\n" (map declarationToSMT vs)
+    join "\n" (map declarationToSMT vs)
     where
-      declarationToSMT :: (Variable v) => v -> Text
-      declarationToSMT v  =  "(declare-fun " <> vname v <> "() " <> justLookup mapI (IdSort (vsort v)) <>")"
+      declarationToSMT :: (Variable v) => v -> String
+      declarationToSMT v  =  "(declare-fun " ++ vname v ++ "() " ++ justLookup mapI (IdSort (vsort v)) ++")"
 
 
 -- ----------------------------------------------------------------------------------------- --

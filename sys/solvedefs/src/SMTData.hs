@@ -12,11 +12,11 @@ module SMTData
 -- ----------------------------------------------------------------------------------------- --
 --
 -- SMT Data type
---
+-- 
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( SMT
+( SMT 
 , SmtEnv(..)
 )
 
@@ -25,34 +25,34 @@ module SMTData
 
 where
 
-import           Control.Monad.State
-import           Data.Text           (Text)
+import Control.Monad.State
 
-import           System.IO
-import           System.Process
+import System.IO
+import System.Process
 
-import qualified Data.Map            as Map
+import qualified Data.Map as Map
 
-import           TxsDefs
+import TxsDefs
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- SMT state monad for smt solver
 
-data  SmtEnv  =  SmtEnv     { inHandle               :: Handle
-                            , outHandle              :: Handle
-                            , errHandle              :: Handle
-                            , smtProcessHandle       :: ProcessHandle
-                            , logFileHandle          :: Maybe Handle
-                            , mapInstanceTxsToSmtlib :: Map.Map Ident Text
-                            , txsDefs                :: TxsDefs
+data  SmtEnv  =  SmtEnv     { inHandle                  :: Handle
+                            , outHandle                 :: Handle
+                            , errHandle                 :: Handle
+                            , smtProcessHandle          :: ProcessHandle
+                            , logFileHandle             :: Maybe Handle
+                            , mapInstanceTxsToSmtlib    :: Map.Map Ident String
+                            , txsDefs                   :: TxsDefs
                             }
                | SmtEnvError
 
 type  SMT a   =  StateT SmtEnv IO a
 
-instance Show SmtEnv where
-  show smtEnv =  show $ mapInstanceTxsToSmtlib smtEnv
+instance Show SmtEnv
+   where
+       show smtEnv =  show $ mapInstanceTxsToSmtlib smtEnv
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

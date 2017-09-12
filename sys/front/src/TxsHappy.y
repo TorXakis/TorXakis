@@ -17,7 +17,6 @@ See LICENSE at root directory of this repository.
 
 
 {
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 module TxsHappy
 
@@ -61,7 +60,6 @@ import qualified Data.List   as List
 import qualified Data.Map    as Map
 import qualified Data.Set    as Set
 import qualified Data.String.Utils as Utils
-import Data.Monoid
 }
 
 
@@ -557,7 +555,7 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                 ;  $$.synSigs = let { cas = map snd $2
                                     ; cid = CstrId $1 $$.inhNodeUid cas $$.inhDefgSort
                                     } in Sigs.empty{Sigs.func = FuncTable( Map.fromList $ [($1, Map.singleton (Signature cas $$.inhDefgSort) (cstrHandler cid))
-                                                                                     ,("is" <> $1, Map.singleton (Signature [$$.inhDefgSort] sortId_Bool) (iscstrHandler cid))
+                                                                                     ,("is"++$1, Map.singleton (Signature [$$.inhDefgSort] sortId_Bool) (iscstrHandler cid))
                                                                                      ]
                                                                                      ++
                                                                                      [ ( nm , Map.singleton (Signature [$$.inhDefgSort] s) (accessHandler cid pos) ) | ((nm,s),pos) <- zip $2 [0..] ]
@@ -565,7 +563,7 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                                                    }
                 ;  $$ = let { cas = map snd $2
                             ; cid = CstrId $1 $$.inhNodeUid cas $$.inhDefgSort
-                            ; cfid = FuncId ("is" <> $1) ($$.inhNodeUid+1) [$$.inhDefgSort] sortId_Bool
+                            ; cfid = FuncId ("is"++$1) ($$.inhNodeUid+1) [$$.inhDefgSort] sortId_Bool
                             ; x =  VarId "x" ($$.inhNodeUid+2) $$.inhDefgSort
                             ; fs = [ let y = VarId "y" vid $$.inhDefgSort in
                                     (IdFunc (FuncId nm uid [$$.inhDefgSort] s), DefFunc (FuncDef [y] (cstrAccess cid pos (cstrVar y))))
@@ -577,7 +575,7 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                                ]
                                ++
                                fs
-                ;  where let dbls = doubles ([$1, "is" <> $1] ++ map fst $2)
+                ;  where let dbls = doubles ([$1, "is"++$1] ++ map fst $2)
                           in if null dbls then () else
                              error $ "\nTXS0803: " ++
                                      "Double defined names: "++(show dbls)++"\n"
@@ -746,7 +744,7 @@ FuncDef         -- :: { (Ident,TxsDef) }
                           DefFunc (FuncDef $2 $5) )
                 ;  where if (length $2) == 1 || (length $2) == 2 then () else
                          error $ "\nTXS0101: "++
-                           "Operator shall have one or two arguments: '"++ show $1 ++"'\n"
+                           "Operator shall have one or two arguments: '"++ $1 ++"'\n"
                 }
 
 ConstDefList    -- :: { [ (Ident,TxsDef) ] }
@@ -908,7 +906,7 @@ ProcDef         -- :: { (Ident,TxsDef) }
                           DefProc (ProcDef $2 $3 $6 ) )
                 ;  where if $6.synExitSorts == $4 then () else
                          error $ "\nTXS2242: " ++
-                                 "Defined exit kind does not match actual one: "++ show $1 ++"\n"
+                                 "Defined exit kind does not match actual one: "++ $1 ++"\n"
                 }
 
 StautDef        -- :: { (Ident,TxsDef) }
@@ -945,7 +943,7 @@ StautDef        -- :: { (Ident,TxsDef) }
                           DefProc (ProcDef $3 $4 $7) )
                 ;  where if $7.synExitSorts == $5 then () else
                          error $ "\nTXS2244: " ++
-                                "Defined exit kind does not match actual one: "++ show $2 ++"\n"
+                                "Defined exit kind does not match actual one: "++ $2 ++"\n"
                 }
 
 ChannelDef      -- :: { [] }
@@ -966,7 +964,7 @@ ChannelDef      -- :: { [] }
                 ;  where let dbls = doubles (map ( sig . IdChan ) $4)
                           in if null dbls then () else
                              error $ "\nTXS0536: " ++
-                                     "Double defined channels: "++ show dbls ++"\n"
+                                     "Double defined channels: "++(show dbls)++"\n"
                 }
 
 -- ----------------------------------------------------------------------------------------- --
@@ -2778,12 +2776,12 @@ ValExpr1        -- :: { VExpr }
                                     ]
                          in case length vexps of
                             { 0 -> error ("\nTXS0422: " ++
-                                          "Operator not resolved: '" ++ show $2 ++ "'\n" ++
+                                          "Operator not resolved: '" ++ $2 ++ "'\n" ++
                                           "Argument 0: " ++ show $1 ++ "\n" ++
                                           "Argument 1: " ++ show $3 ++ "\n" )
                             ; 1 -> head vexps
                             ; n -> error ("\nTXS0423: "++
-                                     "Operator not uniquely resolved: '" ++ show $2 ++ "'\n")
+                                     "Operator not uniquely resolved: '" ++ $2 ++ "'\n")
                             }
                 }
               | ValExpr2 OfSort
@@ -2920,8 +2918,8 @@ ValExpr2        -- :: { VExpr }
                                     ]
                          in case (length vexps) of
                                 {   1   -> head vexps
-                                ;   0  ->  error ("\nTXS0433: Operator not resolved: '" ++ show $1 ++ "'\n")
-                                ;   _  ->  error ("\nTXS0433: Operator not uniquely resolved: '" ++ show $1 ++ "'\n")
+                                ;   0  ->  error ("\nTXS0433: Operator not resolved: '" ++ $1 ++ "'\n")
+                                ;   _  ->  error ("\nTXS0433: Operator not uniquely resolved: '" ++ $1 ++ "'\n")
                                 }
                 }
               | capid
@@ -3252,7 +3250,7 @@ Constant        -- :: { Const }
                         }
                 ;  where case Map.lookup "Int" (Sigs.sort $$.inhSigs) of
                             {   Just s | s == sortId_Int     -> ()
-                            ;   _                            -> error ("\nTXS0472: Integer constant but no sort 'Int': "++ show $1 ++"\n")
+                            ;   _                            -> error ("\nTXS0472: Integer constant but no sort 'Int': "++(show $1)++"\n")
                             }
                 }
               | string
@@ -3265,7 +3263,7 @@ Constant        -- :: { Const }
                         }
                 ;  where case Map.lookup "String" (Sigs.sort $$.inhSigs) of
                             {   Just s | s == sortId_String  -> ()
-                            ;   _                            -> error ("\nTXS0476: String constant but no sort 'String': "++ show $1 ++"\n")
+                            ;   _                            -> error ("\nTXS0476: String constant but no sort 'String': "++(show $1)++"\n")
                             }
                 }
               | REGEX "(" regexval ")"
@@ -3278,7 +3276,7 @@ Constant        -- :: { Const }
                         }
                 ;  where case Map.lookup "Regex" (Sigs.sort $$.inhSigs) of
                             {   Just s | s == sortId_Regex   -> ()
-                            ;   _                            -> error ("\nTXS0477: Regex constant but no sort 'Regex': REGEX("++ show $3 ++ ")\n")
+                            ;   _                            -> error ("\nTXS0477: Regex constant but no sort 'Regex': REGEX("++ (show $3) ++ ")\n")
                             }
                 }
 

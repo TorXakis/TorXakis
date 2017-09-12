@@ -3,9 +3,8 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
+
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 -- ----------------------------------------------------------------------------------------- --
 --
 -- TorXakis Interal Data Type Definitions:
@@ -15,7 +14,7 @@ See LICENSE at root directory of this repository.
 --   *  Connections :  connections to outside world
 --
 -- ----------------------------------------------------------------------------------------- --
-module TxsDefs
+module TxsDefs 
 ( TxsDefs(..)
 , TxsDefs.empty
 , TxsDefs.fromList
@@ -73,61 +72,60 @@ module TxsDefs
 , module X
 )
 where
-import           Control.Arrow   ((***))
-import           Control.DeepSeq
-import qualified Data.Map        as Map
-import           Data.Text       (Text)
-import qualified Data.Text       as T
-import           GHC.Generics    (Generic)
+import qualified Data.Map as Map
+import Control.Arrow ( (***) )
 
-import           BehExprDefs     as X
-import           ConnectionDefs  as X
-import           ConstDefs       as X
-import           Ident           as X
-import           Name            as X
-import           TxsDef          as X
-import           Variable        as X
+import GHC.Generics (Generic)
+import Control.DeepSeq
 
-import           ChanId
-import           CnectDef
-import           CnectId
-import           CstrDef
-import           CstrId
-import           FuncDef
-import           FuncId
-import           GoalId
-import           MapperDef
-import           MapperId
-import           ModelDef
-import           ModelId
-import           ProcDef
-import           ProcId
-import           PurpDef
-import           PurpId
-import           SortDef
-import           SortId
-import           StatId
-import           VarId
+import BehExprDefs as X
+import ConnectionDefs as X
+import ConstDefs as X
+import Ident as X
+import Name as X
+import TxsDef as X
+import Variable as X
 
-import           ValExprDefs
-import           ValExprImpls
+import SortDef
+import SortId
+import CstrDef
+import CstrId
+import FuncDef
+import FuncId
+import ProcDef
+import ProcId
+import ChanId
+import VarId
+import StatId
+import ModelDef
+import ModelId
+import PurpDef
+import PurpId
+import GoalId
+import MapperDef
+import MapperId
+import CnectDef
+import CnectId
+
+import ValExprDefs
+import ValExprImpls
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis definitions
 
 
-data  TxsDefs  =  TxsDefs { sortDefs   :: Map.Map SortId SortDef
-                          , cstrDefs   :: Map.Map CstrId CstrDef
-                          , funcDefs   :: Map.Map FuncId FuncDef
-                          , procDefs   :: Map.Map ProcId ProcDef
-                          , chanDefs   :: Map.Map ChanId ()            -- only for parsing, not envisioned for computation
-                          , varDefs    :: Map.Map VarId ()             -- local
-                          , statDefs   :: Map.Map StatId ()            -- local
-                          , modelDefs  :: Map.Map ModelId ModelDef
-                          , purpDefs   :: Map.Map PurpId PurpDef
-                          , goalDefs   :: Map.Map GoalId () --BExpr    -- local, part of PurpDefs
-                          , mapperDefs :: Map.Map MapperId MapperDef
-                          , cnectDefs  :: Map.Map CnectId CnectDef
+data  TxsDefs  =  TxsDefs { sortDefs    :: Map.Map SortId SortDef
+                          , cstrDefs    :: Map.Map CstrId CstrDef
+                          , funcDefs    :: Map.Map FuncId FuncDef
+                          , procDefs    :: Map.Map ProcId ProcDef
+                          , chanDefs    :: Map.Map ChanId ()            -- only for parsing, not envisioned for computation
+                          , varDefs     :: Map.Map VarId ()             -- local 
+                          , statDefs    :: Map.Map StatId ()            -- local
+                          , modelDefs   :: Map.Map ModelId ModelDef
+                          , purpDefs    :: Map.Map PurpId PurpDef
+                          , goalDefs    :: Map.Map GoalId () --BExpr    -- local, part of PurpDefs
+                          , mapperDefs  :: Map.Map MapperId MapperDef
+                          , cnectDefs   :: Map.Map CnectId CnectDef
                           }
                   deriving (Eq,Ord,Read,Show, Generic, NFData)
 
@@ -144,7 +142,7 @@ empty = TxsDefs  Map.empty
                  Map.empty
                  Map.empty
                  Map.empty
-
+                
 lookup :: Ident -> TxsDefs -> Maybe TxsDef
 lookup (IdSort s) txsdefs = case Map.lookup s (sortDefs txsdefs) of
                                 Nothing -> Nothing
@@ -182,7 +180,7 @@ lookup (IdMapper s) txsdefs = case Map.lookup s (mapperDefs txsdefs) of
 lookup (IdCnect s) txsdefs = case Map.lookup s (cnectDefs txsdefs) of
                                 Nothing -> Nothing
                                 Just d  -> Just (DefCnect d)
-
+                                
 insert :: Ident -> TxsDef -> TxsDefs -> TxsDefs
 insert (IdSort s)   (DefSort d)   t     = t { sortDefs   = Map.insert s d  (sortDefs t)   }
 insert (IdCstr s)   (DefCstr d)   t     = t { cstrDefs   = Map.insert s d  (cstrDefs t)   }
@@ -193,19 +191,18 @@ insert (IdVar s)    DefVar        t     = t { varDefs    = Map.insert s () (varD
 insert (IdStat s)   DefStat       t     = t { statDefs   = Map.insert s () (statDefs t)   }
 insert (IdModel s)  (DefModel d)  t     = t { modelDefs  = Map.insert s d  (modelDefs t)  }
 insert (IdPurp s)   (DefPurp d)   t     = t { purpDefs   = Map.insert s d  (purpDefs t)   }
-insert (IdGoal s)   DefGoal       t     = t { goalDefs   = Map.insert s () (goalDefs t)   }
+insert (IdGoal s)   DefGoal       t     = t { goalDefs   = Map.insert s () (goalDefs t)   }    
 insert (IdMapper s) (DefMapper d) t     = t { mapperDefs = Map.insert s d  (mapperDefs t) }
 insert (IdCnect s)  (DefCnect d)  t     = t { cnectDefs  = Map.insert s d  (cnectDefs t)  }
-insert i            d             _     = error $ "Unknown insert\nident = " ++ show i ++ "\ndefinition = " ++ show d
-
--- TODO: why not using Map.fromList?
+insert i            d             _     = error $ "Unknown insert\nident = " ++ show i ++ "\ndefinition = " ++ show d    
+    
 fromList :: [(Ident, TxsDef)] -> TxsDefs
 fromList = foldl addElem empty
   where
     addElem :: TxsDefs -> (Ident,TxsDef) -> TxsDefs
     addElem t (k,v) = insert k v t
-
-
+    
+    
 toList :: TxsDefs -> [(Ident, TxsDef)]
 toList t =      map (IdSort Control.Arrow.*** DefSort)          (Map.toList (sortDefs t))
             ++  map (IdCstr Control.Arrow.*** DefCstr)          (Map.toList (cstrDefs t))
@@ -219,8 +216,8 @@ toList t =      map (IdSort Control.Arrow.*** DefSort)          (Map.toList (sor
             ++  map (IdGoal Control.Arrow.*** const DefGoal)    (Map.toList (goalDefs t))
             ++  map (IdMapper Control.Arrow.*** DefMapper)      (Map.toList (mapperDefs t))
             ++  map (IdCnect Control.Arrow.*** DefCnect)        (Map.toList (cnectDefs t))
-
-
+            
+            
 keys :: TxsDefs -> [Ident]
 keys t =        map IdSort      (Map.keys (sortDefs t))
             ++  map IdCstr      (Map.keys (cstrDefs t))
@@ -234,7 +231,7 @@ keys t =        map IdSort      (Map.keys (sortDefs t))
             ++  map IdGoal      (Map.keys (goalDefs t))
             ++  map IdMapper    (Map.keys (mapperDefs t))
             ++  map IdCnect     (Map.keys (cnectDefs t))
-
+            
 elems :: TxsDefs -> [TxsDef]
 elems t =       map DefSort         (Map.elems (sortDefs t))
             ++  map DefCstr         (Map.elems (cstrDefs t))
@@ -249,7 +246,7 @@ elems t =       map DefSort         (Map.elems (sortDefs t))
             ++  map DefMapper       (Map.elems (mapperDefs t))
             ++  map DefCnect        (Map.elems (cnectDefs t))
 
-
+            
 union :: TxsDefs -> TxsDefs -> TxsDefs
 union a b = TxsDefs
                 (Map.union (sortDefs a)  (sortDefs b)   )

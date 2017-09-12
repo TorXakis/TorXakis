@@ -3,7 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE OverloadedStrings #-}
+
 module TestMultipleInstances
 (
 testMultipleInstancesList
@@ -11,8 +11,6 @@ testMultipleInstancesList
 where
 import           Control.Monad.State
 import qualified Data.Map            as Map
-import           Data.Text           (Text)
-import qualified Data.Text           as T
 import           System.Process      (CreateProcess)
 
 import           Test.HUnit

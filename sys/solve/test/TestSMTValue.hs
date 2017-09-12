@@ -3,29 +3,27 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE OverloadedStrings #-}
+
 module TestSMTValue
 (
 testSMTValueList
 )
 where
 -- general Haskell imports
-import           Control.Exception
-import           Control.Monad
-import qualified Data.Map          as Map
-import           Data.Maybe
-import           Data.String.Utils
-import           Data.Text         (Text)
-import qualified Data.Text         as T
-import           Test.HUnit
+import Test.HUnit
+import Control.Exception
+import Control.Monad
+import qualified Data.Map as Map
+import Data.Maybe
+import Data.String.Utils
 
 -- import qualified Debug.Trace as Trace
 
 -- specific SMT imports
-import           SMTAlex
-import           SMTHappy
+import SMTAlex
+import SMTHappy
 
--- ----------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------    
 testSMTValueList = TestList [
         TestCase $ assertEqual "DoubleQuote"  (Map.singleton "x" (SMTString "\""))   (smtParser (smtLexer "((x \"\"\"\"))")),
         TestCase $ assertEqual "DoubleEscape" (Map.singleton "x" (SMTString "\\"))   (smtParser (smtLexer "((x \"\\\\\"))")),
@@ -51,8 +49,8 @@ data  TestValExpr       = TVEConstructor String [TestValExpr]
                         | TVEInt Integer
                         | TVEString String
                         | TVEVar String
-     deriving (Eq,Ord,Read,Show)
-
+     deriving (Eq,Ord,Read,Show)    
+    
 data  SMTValueTest         =  SMTValueTest  { input    :: String
                                             , expected :: TestValExpr
                                             }
@@ -67,10 +65,10 @@ substitute bind (TVEConstructor c vals) = TVEConstructor c (map (substitute bind
 substitute bind y = y
 
 toSMTValue :: TestValExpr -> SMTValue
-toSMTValue (TVEConstructor s vals)  = SMTConstructor (T.pack s) (map toSMTValue vals)
+toSMTValue (TVEConstructor s vals)  = SMTConstructor s (map toSMTValue vals)
 toSMTValue (TVEBool b)              = SMTBool b
 toSMTValue (TVEInt i)               = SMTInt i
-toSMTValue (TVEString s)            = SMTString (T.pack s)
+toSMTValue (TVEString s)            = SMTString s
 toSMTValue (TVEVar s)               = error ("var " ++ s ++ " does not have a constant value")
 ---------------------------------------------------------------------------
 -- SMTValue constructors
@@ -81,9 +79,9 @@ createSMTConstructor name [] = SMTValueTest name (TVEConstructor name [])
 createSMTConstructor name neList = SMTValueTest ("(" ++ name ++ " " ++ Data.String.Utils.join " " (map input neList) ++ ")") (TVEConstructor name (map expected neList))
 
 createSMTBool :: Bool -> SMTValueTest
-createSMTBool True  = SMTValueTest "true" (TVEBool True)
+createSMTBool True = SMTValueTest "true" (TVEBool True)
 createSMTBool False = SMTValueTest "false" (TVEBool False)
-
+     
 createSMTInt :: Integer -> SMTValueTest
 createSMTInt i = SMTValueTest (show i) (TVEInt i)
 
@@ -91,7 +89,7 @@ createNegative :: SMTValueTest -> SMTValueTest
 createNegative (SMTValueTest s (TVEInt i)) = SMTValueTest ("(- " ++ s ++ ")") (TVEInt (-1*i))
 
 createSMTString :: String -> SMTValueTest
-createSMTString s = SMTValueTest ("\"" ++ T.unpack (encodeStringLiteral (T.pack s)) ++ "\"") (TVEString s)
+createSMTString s = SMTValueTest ("\"" ++ encodeStringLiteral s ++ "\"") (TVEString s)
 
 createSMTVar :: String -> SMTValueTest
 createSMTVar s = SMTValueTest s (TVEVar s)
@@ -105,35 +103,35 @@ toLetBind :: Map.Map SMTValueTest SMTValueTest -> Map.Map TestValExpr TestValExp
 toLetBind bind = Map.fromList (map (\(SMTValueTest inputX expectedX, SMTValueTest inputY expectedY) -> (expectedX, expectedY) ) (Map.toList bind) )
 
 createSMTLet :: Map.Map SMTValueTest SMTValueTest -> SMTValueTest -> SMTValueTest
-createSMTLet bind svt@(SMTValueTest input expected) =
-    SMTValueTest ("(let ("++ toLetPairs bind ++") " ++ input ++ " )") (substitute (toLetBind bind) expected)
-
+createSMTLet bind svt@(SMTValueTest input expected) = 
+    SMTValueTest ("(let ("++ toLetPairs bind ++") " ++ input ++ " )") (substitute (toLetBind bind) expected) 
+    
 -- ---------------------------------------------------------------------------------
 -- decode SMT String Literal
 -- Handle escaped quote and escape
 -- according to smt-lib-version 2.5 standard
--- ------------------------------------------------------------------
-encodeStringLiteral :: Text -> Text
+-- ------------------------------------------------------------------ 
+encodeStringLiteral :: String -> String
 encodeStringLiteral string =
-    T.replace "\\" "\\\\" (T.replace "\"" "\"\"" string)
+    replace "\\" "\\\\" (replace "\"" "\"\"" string)
 ---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
 testSMTValueTest :: String -> SMTValueTest -> Test
-testSMTValueTest s (SMTValueTest input expected) = TestCase $
+testSMTValueTest s (SMTValueTest input expected) = TestCase $ 
     --Trace.trace (" SMTValue : " ++ input) $ do
     assertEqual s (Map.singleton "x" (toSMTValue expected)) (smtParser (smtLexer ("((x " ++ input ++ "))")))
 
 testIntPositive :: Test
 testIntPositive = testSMTValueTest "Int positive" (createSMTInt 3)
-
+    
 testIntNegative :: Test
 testIntNegative = testSMTValueTest "Int negative" (createNegative int)
     where int = createSMTInt 3
-
+    
 testString :: Test
 testString = testSMTValueTest "String" (createSMTString "jaap piet")
-
+    
 testStringSpecialCharacters :: Test
 testStringSpecialCharacters = testSMTValueTest "String Special Characters" (createSMTString "jaap \\ piet \" klaas")
 
@@ -162,7 +160,7 @@ testConstructor = testSMTValueTest "Constructor" (createSMTConstructor "Aap" [cr
 
 testLetInt :: String -> Test
 testLetInt name = testSMTValueTest "Let Int" (createSMTLet (Map.fromList[(var,val)]) var)
-    where
+    where 
         var = createSMTVar name
         val = createSMTInt 2
 
@@ -185,23 +183,23 @@ testLetList = TestList [
     TestLabel "Let Int !1"   (testLetInt "!1")
     ]
 
-
+        
 testLetConstructor :: Test
 testLetConstructor = testSMTValueTest "Let Constructor" (createSMTLet (Map.fromList[(var,val)]) var)
-    where
+    where 
         var = createSMTVar "a!"
         arg1 = createSMTBool False
         arg2 = createSMTConstructor "Piet" []
         arg3 = createSMTInt 2
         val = createSMTConstructor "Aap" [arg1,arg2,arg3]
-
+        
 testLetOnConstructor :: Test
 testLetOnConstructor = testSMTValueTest "Let On Constructor" (createSMTLet (Map.fromList[(var,val)]) constructor)
     where
         var = createSMTVar "a!"
         val = createSMTInt 2
         constructor = createSMTConstructor "Aap" [var,var]
-
+    
 testLetNesting :: Test
 testLetNesting = testSMTValueTest "Let Nesting" (createSMTLet (Map.fromList[(varA,valA),(varB,valB)]) let1)
     where
@@ -211,7 +209,7 @@ testLetNesting = testSMTValueTest "Let Nesting" (createSMTLet (Map.fromList[(var
         valB = createSMTInt 3
         constructor = createSMTConstructor "Aap" [varA,varB]
         let1 = createSMTLet (Map.fromList[(varA,varB),(varB,varA)]) constructor
-
+    
 testLetPair4 :: Test
 testLetPair4 = testSMTValueTest "Let Pair 4" (createSMTLet (Map.fromList[(var,val)]) constructor4)
     where
