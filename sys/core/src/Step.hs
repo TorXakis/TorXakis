@@ -133,7 +133,6 @@ stepModelMenu  =  do
        IOC.Stepping {IOC.modeldef = TxsDefs.ModelDef insyncs outsyncs splsyncs _bexp} -> do
          let allSyncs = insyncs ++ outsyncs ++ splsyncs
              curState = IOC.curstate envSt
-             nexState = IOC.maxstate envSt + 1
              modSts   = fromMaybe [] (Map.lookup curState (IOC.modstss envSt))
          return $ Behave.behMayMenu allSyncs modSts
        _ -> do

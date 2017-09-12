@@ -28,7 +28,6 @@ where
 import qualified Data.Map        as Map
 
 import           Control.DeepSeq
-import qualified Data.Text       as T
 import           GHC.Generics    (Generic)
 
 import           ChanId

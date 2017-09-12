@@ -44,7 +44,6 @@ library
                       , time
                       , MissingH
                       , text
-                      , text-show
 
                       , defs
                       , value
@@ -110,7 +109,6 @@ test-suite SmtSolver-WhiteBox
                       , solvedefs
                       , value
                       , text
-                      , text-show                      
 
                       , coreenv
 
@@ -140,7 +138,6 @@ test-suite SmtSolver-BlackBox
                       , solvedefs
                       , value
                       , text
-                      , text-show                      
 
                       , coreenv
 

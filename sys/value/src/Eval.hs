@@ -34,9 +34,7 @@ import           Data.Maybe
 import           Data.Monoid
 import           Data.Text           (Text)
 import qualified Data.Text           as T
-import           Data.Text.Read
 import           Text.Regex.TDFA
-import           TextShow
 
 import qualified Data.List           as List
 import qualified Data.Map            as Map
@@ -241,7 +239,7 @@ evalSSB :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSB (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
        ( "toString",    [v1]    ) -> do b1 <- txs2bool v1
-                                        str2txs $ showt b1
+                                        str2txs $ (T.pack . show) b1
        ( "fromString",  [v1]    ) -> do s1 <- txs2str v1
                                         bool2txs $ readBool s1
        ( "toXml",       [v1]    ) -> do wal <- eval v1
@@ -261,7 +259,7 @@ evalSSI :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSI (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
        ( "toString",    [v1]    ) -> do i1 <- txs2int v1
-                                        str2txs $ showt i1
+                                        str2txs $ (T.pack . show) i1
        ( "fromString",  [v1]    ) -> do s1 <- txs2str v1
                                         int2txs $ read (T.unpack s1)
        ( "toXml",       [v1]    ) -> do wal <- eval v1

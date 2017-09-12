@@ -19,7 +19,6 @@ import           Data.Monoid
 import qualified Data.Text       as T
 import           Name
 import           SortId
-import           TextShow
 import           Variable
 
 data VarId          = VarId     { name    :: Name             --smallid
@@ -29,7 +28,7 @@ data VarId          = VarId     { name    :: Name             --smallid
      deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 instance Variable VarId where
-  vname v            = VarId.name v <> "$$" <> showt (VarId.unid v)
+  vname v            = VarId.name v <> "$$" <> (T.pack . show) (VarId.unid v)
   vunid              = VarId.unid
   vsort              = VarId.varsort
   cstrVariable       = VarId . T.pack

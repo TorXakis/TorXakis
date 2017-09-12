@@ -39,13 +39,9 @@ where
 import           Data.Monoid
 import qualified Data.Set    as Set
 import qualified Data.Text   as T
-import           TextShow
 
 -- import from defs
 import           TxsDefs
-
--- import SolveDefs
--- import qualified SMTData as SMTData
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -71,7 +67,7 @@ data  IVar      =  IVar    { ivname :: Name       -- name of Channel
 
 instance Variable IVar where
     vname (IVar nm uid pos stat _srt) =
-      "$" <> nm <> "$" <> showt uid <> "$" <> showt stat <> "$" <> showt pos <> "$"
+      "$" <> nm <> "$" <> (T.pack . show) uid <> "$" <> (T.pack . show) stat <> "$" <> (T.pack . show) pos <> "$"
     vunid IVar{ ivuid = uid } = uid
     vsort IVar{ ivsrt = srt } = srt
     cstrVariable s i = IVar (T.pack s) i (-1) (-1)           -- PvdL for temporary variable

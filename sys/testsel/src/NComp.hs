@@ -26,7 +26,7 @@ where
 import qualified Data.List   as List
 import           Data.Monoid
 import qualified Data.Set    as Set
-import           TextShow
+import qualified Data.Text           as T
 
 import qualified EnvCore     as IOC
 
@@ -46,7 +46,7 @@ nComplete insyncs outsyncs
                     , Set.singleton StdTDefs.chanId_Hit
                     , Set.singleton StdTDefs.chanId_Miss
                     ]
-         gids     = [ TxsDefs.GoalId ("Goal_" <> nm <> nm' <> showt n ) (uid*uid'+n) | n <- [1..] ]
+         gids     = [ TxsDefs.GoalId ("Goal_" <> nm <> nm' <> (T.pack . show) n ) (uid*uid'+n) | n <- [1..] ]
          goals    = [ (gid,bexp) | (gid,bexp) <- zip gids (allPaths ini transs) ]
       in return $ Just $ TxsDefs.PurpDef insyncs outsyncs splsyncs goals
 

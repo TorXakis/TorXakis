@@ -15,9 +15,7 @@ import           CstrId
 import           Data.ByteString          (pack)
 import           Data.ByteString.Internal (c2w)
 import           Data.Char                (chr, ord)
-import           Data.Foldable
 import qualified Data.Map                 as Map
-import           Data.Monoid
 import           Data.String
 import           Data.Text                (Text)
 import qualified Data.Text                as T
@@ -25,7 +23,6 @@ import           FuncId
 import           SortId
 import           StdTDefs
 import           Text.XML.Expat.Tree
-import           TextShow
 import           TxsDefs
 
 
@@ -41,7 +38,7 @@ xmlTreeToText tree = T.concat $ reverse $ execState (xmlTreeToList tree) []
     xmlTreeToList (XLeaf text) = modify (text:)
     xmlTreeToList (XNode text ts) = do
       modify (T.concat ["<", text, ">" ]:)
-      traverse xmlTreeToList ts
+      _ <- traverse xmlTreeToList ts
       modify (T.concat ["</", text, ">" ]:)
 
 instance IsString XMLTree where
@@ -119,7 +116,7 @@ pairNameConstToXml _ (n, Cbool True) =
 pairNameConstToXml _ (n, Cbool False) =
   n ~> ["false"]
 pairNameConstToXml _ (n, Cint i) =
-  n ~> [XLeaf (showt i)]
+  n ~> [XLeaf (T.pack (show i))]
 pairNameConstToXml _ (n, Cstring s) =
   n ~> [XLeaf (encodeString s)]
 pairNameConstToXml tdefs (n, Cstr cid wals) =

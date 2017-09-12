@@ -20,10 +20,8 @@ module ToProcdef
 
 where
 
-import           Data.Foldable
 import           Data.Monoid
 import qualified Data.Set          as Set
-import qualified Data.String.Utils as Utils
 import           Data.Text         (Text)
 import qualified Data.Text         as T
 

@@ -36,7 +36,6 @@ import           System.IO
 -- import System.IO.Error
 import           Control.Concurrent
 import           Control.Monad.State
-import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Network
 import           System.Timeout

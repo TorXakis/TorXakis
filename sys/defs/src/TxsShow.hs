@@ -171,13 +171,13 @@ instance PShow BExpr
                  ++ " )"
          }
     pshow (Enable bexp1 chofs bexp2)
-      =  let last = pshow bexp2
+      =  let psBexp2 = pshow bexp2
             in
               "( " ++ pshow bexp1 ++ " )\n" ++ ">>>"
                  ++ case chofs of
-                    { []    -> last ++ "\n"
+                    { []    -> psBexp2 ++ "\n"
                     ; _     -> " ACCEPT\n" ++ Utils.join "\n" (map pshow chofs)
-                               ++ "\nIN\n" ++ last ++ "\nNI\n"
+                               ++ "\nIN\n" ++ psBexp2 ++ "\nNI\n"
                     }
     pshow (Disable bexp1 bexp2)
       =  "( " ++ pshow bexp1 ++ " )\n"

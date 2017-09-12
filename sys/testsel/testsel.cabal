@@ -26,7 +26,6 @@ library
                       , containers
                       , mtl
                       , text
-                      , text-show
 
                       , coreenv
                       , defs

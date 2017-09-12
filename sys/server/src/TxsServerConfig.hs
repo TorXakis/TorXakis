@@ -18,15 +18,11 @@ import           CmdLineParser
 import           Config
 import           Control.Monad.Extra
 import           Data.Aeson.Types
-import           Data.Bifunctor
-import           Data.Foldable
-import           Data.Map            (Map)
 import qualified Data.Map            as Map
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Yaml
 import           GHC.Generics
-import           Network
 import           System.Directory
 import           System.FilePath
 
