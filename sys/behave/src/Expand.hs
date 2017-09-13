@@ -89,11 +89,12 @@ expand chsets (BNbexpr we (ActionPref (ActOffer offs cnrs) bexp))  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand chsets (BNbexpr we (Guard cnrs bexp))  =  do
-     guardVal <- Eval.evalCnrs $ map (cstrEnv (Map.map cstrConst we)) cnrs
-     if  guardVal
-       then expand chsets (BNbexpr we bexp)
-       else return []
+expand chsets (BNbexpr we (Guard c bexp))  = do
+    c' <- Eval.eval $ cstrEnv (Map.map cstrConst we) c 
+    case c' of
+        Cbool True  -> expand chsets (BNbexpr we bexp)
+        Cbool False -> return []
+        _           -> error "expand - guard not a boolean"
 
 -- ----------------------------------------------------------------------------------------- --
 

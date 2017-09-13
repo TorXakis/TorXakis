@@ -172,10 +172,10 @@ instance Equiv BExpr
          eq_bexp <- bexp1 ~=~ bexp2
          return $ eq_offs && eq_cnrs && eq_bexp
 
-    (Guard cnrs1 bexp1) ~=~ (Guard cnrs2 bexp2)  =  do
-         let eq_cnrs = Set.fromList cnrs1 == Set.fromList cnrs2
+    (Guard c1 bexp1) ~=~ (Guard c2 bexp2)  =  do
+         let eq_c = c1 == c2
          eq_bexp <- bexp1 ~=~ bexp2
-         return $ eq_cnrs && eq_bexp
+         return $ eq_c && eq_bexp
 
     (Choice bexps1) ~=~ (Choice bexps2)  =
         Set.fromList bexps1 ~=~ Set.fromList bexps2

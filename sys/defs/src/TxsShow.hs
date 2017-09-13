@@ -151,12 +151,8 @@ instance PShow BExpr
     pshow (ActionPref actoff bexp)
       =  pshow actoff ++ "\n"
          ++ "  >->  " ++ "( " ++ pshow bexp ++ " )"
-    pshow (Guard cnrs bexp)
-      =  case cnrs of
-         { []    -> pshow bexp
-         ; cnrs' -> "[[ " ++ Utils.join ", " (map pshow cnrs')
-                    ++ " ]] =>> \n" ++ "( " ++ pshow bexp ++ " )"
-         }
+    pshow (Guard c bexp)
+      =  "[[ " ++ pshow c ++ " ]] =>> \n" ++ "( " ++ pshow bexp ++ " )"
     pshow (Choice bexps)
       =  case bexps of
          { [] -> "STOP\n"

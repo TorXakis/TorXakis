@@ -203,17 +203,15 @@ instance Reduce BExpr
                   else do bexp' <- reduce bexp
                           return $ ActionPref (ActOffer offs'' cnrs'') bexp'
 
-    reduce (Guard cnrs bexp) = do
-         cnrs'  <- mapM reduce cnrs
-         let cnrs'' = filter (/= cstrConst (Cbool True)) cnrs'
-         if  null cnrs''
-           then reduce bexp
-           else if cstrConst (Cbool False) `elem` cnrs''
-                  then return Stop
-                  else do bexp' <- reduce bexp
-                          if  bexp' == Stop
-                            then return Stop
-                            else return $ Guard cnrs'' bexp'
+    reduce (Guard c bexp) = do
+         c'  <- reduce c
+         case view c' of
+            Vconst (Cbool True)  -> reduce bexp
+            Vconst (Cbool False) -> return Stop
+            _                    -> do bexp' <- reduce bexp
+                                       if bexp' == Stop
+                                         then return Stop
+                                         else return $ Guard c' bexp'
 
     reduce (Choice bexps) = do
          bexps' <- mapM reduce bexps

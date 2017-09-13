@@ -2055,7 +2055,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $2.inhVarSigs   = $$.inhVarSigs
                 ;  $5.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $5.synExitSorts
-                ;  $$ = Guard $2 $5
+                ;  $$ = Guard (cstrAnd (Set.fromList $2)) $5
                 }
               | PrefOfferList ">->" BehaviourExpr4
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1

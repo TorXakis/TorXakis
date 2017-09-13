@@ -72,7 +72,7 @@ testStop = do
 
 testGuardFalse :: IOB()
 testGuardFalse = do
-    let bnode = BNbexpr Map.empty (Guard [ cstrConst (Cbool False) ] Stop )
+    let bnode = BNbexpr Map.empty (Guard (cstrConst (Cbool False)) Stop )
     next <- expand [] bnode
     lift $ assertEqual "expand guard false" [] next
 
@@ -82,7 +82,7 @@ testGuardTrue = do
     let bnode = BNbexpr Map.empty aBExpr
     nextExpected <- expand [] bnode
     
-    let bnodeGuard = BNbexpr Map.empty (Guard [ cstrConst (Cbool True) ] aBExpr )
+    let bnodeGuard = BNbexpr Map.empty (Guard (cstrConst (Cbool True)) aBExpr )
     nextActual <- expand [] bnodeGuard
     lift $ assertEqual "expand guard true" nextExpected nextActual
     
