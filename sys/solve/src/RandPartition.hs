@@ -85,7 +85,7 @@ randValExprsSolvePartition'' vs (cnrs:cnrss) x =
     if all ( (sortId_Bool == ) . sortOf) (Set.toList cnrs)
     then do
         push
-        -- why is addDeclarations not needed as in RandTrueBins?
+        -- addDeclarations already added in randValExprsSolvePartition
         addAssertions (Set.toList cnrs)
         sat <- getSolvable
         sp <- case sat of 
@@ -189,8 +189,8 @@ randCnrsADT p vexp depth  =  do
 
 randCnrsCstr :: Variable v => ParamPartition -> (CstrId,CstrDef) -> ValExpr v -> Int
                                 -> SMT [ Set.Set (ValExpr v) ]
-randCnrsCstr p (_, CstrDef cc fss) vexp depth  =  do
-     let ccCnr = cstrPredef ACC cc [vexp]
+randCnrsCstr p (cid, CstrDef _ fss) vexp depth  =  do
+     let ccCnr = cstrIsCstr cid vexp
      recCnrs <- sequence [ randCnrs p (cstrFunc fs [vexp]) (depth-1) | fs <- fss ]
      return [ Set.insert ccCnr cnrs
             | cnrs <- map Set.unions (cartProd recCnrs)

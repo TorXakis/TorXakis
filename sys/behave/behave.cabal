@@ -68,10 +68,8 @@ test-suite behave-test
                      , containers
                      , mtl
                      , text
-
                      , HUnit
                      , MissingH
-                     , text
                      
                      , behavedefs
                      , behaveenv

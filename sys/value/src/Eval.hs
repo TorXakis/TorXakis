@@ -121,16 +121,6 @@ eval (view -> Vand vexps) = do
 
 eval (view -> Vpredef kd fid vexps) =
      case kd of
-       AFS -> case vexps of
-                [vexp]        -> evalAFS fid vexp
-                _             -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                                  $ "eval: AFS: " ++ show fid ]
-                                    return $ Cerror ""
-       ACC -> case vexps of
-                [vexp]        -> evalACC fid vexp
-                _             -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                                  $ "eval: ACC: " ++ show fid ]
-                                    return $ Cerror ""
        AST -> case vexps of
                 [vexp] -> do wal <- eval vexp
                              str2txs (T.pack (pshow wal))
@@ -183,46 +173,6 @@ eval (view -> Verror str) = do
      return $ Cerror ""
 
 eval _ = return $ Cerror "undefined"
--- ----------------------------------------------------------------------------------------- --
--- evaluation of value expression: algebraic field selection
-
-evalAFS :: Variable v => FuncId -> ValExpr v -> IOB.IOB Const
-evalAFS fid vexp = do
-     tdefs <- gets IOB.tdefs
-     val   <- eval vexp
-     case val of
-       Cstr cid vals
-         -> case Map.lookup cid (cstrDefs tdefs) of
-              Just (CstrDef _ fs)
-                -> case List.elemIndices fid fs of
-                     [index] -> return $ vals!!index
-                     _       -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $
-                                                     "evalAFS: no field: " ++ fshow fid ]
-                                   return $ Cerror ""
-              _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                    $ "evalAFS: used constructor not found: " ++ fshow val ]
-                      return $ Cerror ""
-       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                             $ "evalAFS: fiels selection not on constructor:" ++ fshow val ]
-               return $ Cerror ""
-
--- ----------------------------------------------------------------------------------------- --
--- evaluation of value expression: algebraic constructor check
-
-evalACC :: Variable v => FuncId -> ValExpr v -> IOB.IOB Const
-evalACC fid vexp = do
-     tdefs <- gets IOB.tdefs
-     val   <- eval vexp
-     case val of
-       Cstr cid _
-         -> case Map.lookup cid (cstrDefs tdefs) of
-              Just (CstrDef cc _) -> bool2txs (cc == fid)
-              _                   -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                           $ "evalACC: constructor not found: " ++ show val ]
-                                        return $ Cerror "evalACC: constructor not found"
-       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                             $ "evalACC: constr check not on constructor: " ++ show val ]
-               return $ Cerror ""
 
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of value expression: evaluation of standard functions for Bool - SSB

@@ -53,9 +53,7 @@ newtype ValExpr v = ValExpr {
                         view :: ValExprView v }
   deriving (Eq, Ord, Read, Show, Generic, NFData)
 
-data PredefKind     = AFS     -- Algebraic Field Selector
-                    | ACC     -- Algebraic Constructor Check
-                    | AST     -- Algebraic To String
+data PredefKind     = AST     -- Algebraic To String
                     | ASF     -- Algebraic From String
                     | AXT     -- Algebraic To Xml
                     | AXF     -- Algebraic From Xml
