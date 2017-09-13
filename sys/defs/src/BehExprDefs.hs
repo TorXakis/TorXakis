@@ -53,7 +53,7 @@ data  BExpr         = Stop
 -- | ActOffer
 -- Offer on multiple channels with constraints
 data  ActOffer      =  ActOffer { offers      :: Set.Set Offer      -- PvdL -- why not? -- Map ChanId [ChanOffer]
-                                , constraints :: [VExpr]
+                                , constraint  :: VExpr
                                 }
      deriving (Eq,Ord,Read,Show, Generic, NFData)
 

@@ -67,7 +67,7 @@ expand _ (BNbexpr _ Stop)  = return []
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand chsets (BNbexpr we (ActionPref (ActOffer offs cnrs) bexp))  =  do
+expand chsets (BNbexpr we (ActionPref (ActOffer offs cnd) bexp))  =  do
      (ctoffs, quests, exclams) <- expandOffers chsets offs
      let ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
          we'   = Map.fromList [ (vid, wal)
@@ -78,13 +78,13 @@ expand chsets (BNbexpr we (ActionPref (ActOffer offs cnrs) bexp))  =  do
                           | (ivar, vexp) <- exclams
                           ]
      return [ CTpref { ctoffers  = ctoffs
-                       , cthidvars = []
-                       , ctpreds   = [ compSubst ivenv (walSubst we' vexp) | vexp <- cnrs ]
-                                     ++ [ cstrEqual (cstrVar ivar) (cstrConst wal)
-                                        | (ivar, wal) <- exclams'
-                                        ]
-                       , ctnext    = BNbexpr (we',ivenv) bexp
-                       }
+                     , cthidvars = []
+                     , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (walSubst we' cnd) 
+                                                         : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- exclams' ]
+                                                         )
+                                           )
+                     , ctnext    = BNbexpr (we',ivenv) bexp
+                     }
             ]
 
 -- ----------------------------------------------------------------------------------------- --
@@ -179,7 +179,7 @@ expand chsets (BNbexpr we (StAut ini ve trns))  =  do
 
      expandTrans :: [ Set.Set TxsDefs.ChanId ] -> WEnv VarId -> WEnv VarId -> Trans
                     -> IOB.IOB CTBranch
-     expandTrans chsets' envwals stswals (Trans _ (ActOffer offs cnrs) update' to')  =  do
+     expandTrans chsets' envwals stswals (Trans _ (ActOffer offs cnd) update' to')  =  do
           (ctoffs, quests, exclams) <- expandOffers chsets' offs
           let we'   = envwals `combineWEnv` stswals
               ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
@@ -198,15 +198,13 @@ expand chsets (BNbexpr we (StAut ini ve trns))  =  do
                                  | (vid, vexp) <- Map.toList update'
                                  ]
           return CTpref { ctoffers  = ctoffs
-                          , cthidvars = []
-                          , ctpreds   =   [ compSubst ivenv (walSubst we'' vexp)
-                                          | vexp <- cnrs
-                                          ]
-                                       ++ [ cstrEqual (cstrVar ivar) (cstrConst wal)
-                                          | (ivar, wal) <- exclams'
-                                          ]
-                          , ctnext    = BNbexpr (envwals',ivenv) (StAut to' ve' trns)
-                          }
+                        , cthidvars = []
+                        , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (walSubst we'' cnd)
+                                                            : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- exclams' ]
+                                                            )
+                                              )
+                        , ctnext    = BNbexpr (envwals',ivenv) (StAut to' ve' trns)
+                        }
 
 -- ----------------------------------------------------------------------------------------- --
 -- expand  :  for genuine BNode
@@ -223,7 +221,7 @@ expand chsets (BNparallel chans cnodes)  = do
         = [ let ctprefs = map fst trees in
               CTpref ( Set.unions $ map ctoffers ctprefs )
                      ( concatMap cthidvars ctprefs )
-                     ( concatMap ctpreds ctprefs )
+                     ( cstrAnd (Set.fromList (map ctpred ctprefs) ) )
                      ( BNparallel chans $ map ctnext ctprefs ++ map (fmap (\we->(we,Map.empty))) nodes )
           | (nodes, trees) <- snd ( foldl allAsyncs ([],[]) (map (calcSets chans') ctpairs) )
           -- not (null nodes)            -- handle not synchronizing, but all synchronous events as well
@@ -263,7 +261,7 @@ expand chsets (BNparallel chans cnodes)  = do
         = [ let ctprefs = map fst zips in
               CTpref ( Set.unions $ map ctoffers ctprefs )
                      ( concatMap cthidvars ctprefs )
-                     ( concatMap ctpreds ctprefs )
+                     ( cstrAnd (Set.fromList (map ctpred ctprefs)) )
                      ( BNparallel chans $ map ctnext ctprefs )
           | zips <- foldl allPairsMatch [[]] (map (calcSets chans' . snd ) ctpairs)
           ]
@@ -296,7 +294,7 @@ expand chsets (BNenable cnode1 chanoffs cnode2)  =  do
                                          [chanId_Exit]
                                          ( CTpref ctoffs1
                                                   cthidvars1
-                                                  ( ctpreds1 ++ accpreds )
+                                                  ( cstrAnd (Set.fromList (ctpreds1:accpreds) ) )
                                                   ( fmap (\we->(we,ivenv)) cnode2 )
                                          )
                                  | CTpref ctoffs1 cthidvars1 ctpreds1 _ <- exits
@@ -429,7 +427,7 @@ expandChanOffer chid (choff,pos)  =  do
 
 
 hideCTBranch :: [ Set.Set TxsDefs.ChanId ] -> [ChanId] -> CTBranch -> IOB.IOB CTBranch
-hideCTBranch _ chans (CTpref ctoffs hidvars preds next)  =  do
+hideCTBranch _ chans (CTpref ctoffs hidvars pred next)  =  do
      let (hctoffs,vctoffs) = Set.partition ((`elem` chans).ctchan) ctoffs
      let hvars             = concatMap ctchoffers (Set.toList hctoffs)
      hvarlist              <- sequence [ liftP2 (hvar, uniHVar hvar) | hvar <- hvars ]
@@ -442,7 +440,7 @@ hideCTBranch _ chans (CTpref ctoffs hidvars preds next)  =  do
                                     else BNhide chans' next
      return CTpref { ctoffers  = vctoffs
                    , cthidvars = hidvars ++ unihvars
-                   , ctpreds   = map (partSubst hvarenv) preds
+                   , ctpred    = partSubst hvarenv pred
                    , ctnext    = let f (we, ivenv) = (we, Map.map (partSubst hvarenv) ivenv)
                                   in fmap f ctnext1'
                    }

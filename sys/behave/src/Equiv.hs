@@ -166,9 +166,9 @@ instance Equiv BExpr
 
     Stop ~=~ Stop = return True
 
-    (ActionPref (ActOffer offs1 cnrs1) bexp1) ~=~ (ActionPref (ActOffer offs2 cnrs2) bexp2) = do
+    (ActionPref (ActOffer offs1 c1) bexp1) ~=~ (ActionPref (ActOffer offs2 c2) bexp2) = do
          let eq_offs = offs1 == offs2
-             eq_cnrs = Set.fromList cnrs1 == Set.fromList cnrs2
+             eq_cnrs = c1 == c2
          eq_bexp <- bexp1 ~=~ bexp2
          return $ eq_offs && eq_cnrs && eq_bexp
 

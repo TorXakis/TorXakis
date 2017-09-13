@@ -83,7 +83,7 @@ type  CTree     =  [ CTBranch ]
 
 data  CTBranch  =  CTpref { ctoffers  :: Set.Set CTOffer              -- set may be empty
                           , cthidvars :: [IVar]                       -- hidden variables
-                          , ctpreds   :: [ValExpr IVar]
+                          , ctpred    :: ValExpr IVar
                           , ctnext    :: INode
                           }
      deriving (Eq,Ord,Read,Show)
