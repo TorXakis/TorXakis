@@ -120,8 +120,8 @@ identicalVExpr (view -> Verror s1)              (view -> Verror s2)             
 identicalVExpr _                                _                                = False                          -- different
 
 identicalActOffer :: ActOffer -> ActOffer -> Bool
-identicalActOffer (ActOffer offers1 vexprs1) (ActOffer offers2 vexprs2) =    identicalLists identicalOffer (Set.toAscList offers1) (Set.toAscList offers2)
-                                                                          && identicalLists identicalVExpr vexprs1 vexprs2
+identicalActOffer (ActOffer offers1 vexpr1) (ActOffer offers2 vexpr2) =    identicalLists identicalOffer (Set.toAscList offers1) (Set.toAscList offers2)
+                                                                        && identicalVExpr vexpr1 vexpr2
 identicalOffer :: Offer -> Offer -> Bool
 identicalOffer (Offer cid1 chanoffers1) (Offer cid2 chanoffers2)        =    identicalChanId cid1 cid2
                                                                           && identicalLists identicalChanOffer chanoffers1 chanoffers2

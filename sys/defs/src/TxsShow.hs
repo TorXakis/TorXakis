@@ -208,11 +208,11 @@ instance PShow BExpr
 
 instance PShow ActOffer
   where
-    pshow (ActOffer ofs cnrs)
+    pshow (ActOffer ofs c)
       =  "{ " ++ Utils.join " | " (map pshow (Set.toList ofs)) ++ "} "
-         ++ case cnrs of
-            { [] -> ""
-            ; cnrs' -> "\n   [[ " ++ Utils.join ", " (map pshow cnrs') ++ " ]]"
+         ++ case view c of
+            { Vconst (Cbool True) -> ""
+            ; _                   -> "\n   [[ " ++ pshow c ++ " ]]"
             }
 
 

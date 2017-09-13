@@ -2068,7 +2068,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = map (\(IdVar v) -> v ) $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $1.synVarSigs)
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $3.synExitSorts
-                ;  $$ = ActionPref (ActOffer $1 []) $3
+                ;  $$ = ActionPref (ActOffer $1 (cstrConst (Cbool True))) $3
                 }
               | PrefOfferList "[[" NeValExprs "]]" ">->" BehaviourExpr4
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -2090,7 +2090,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $3.inhVarSigs   = map (\(IdVar v) -> v ) $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $1.synVarSigs)
                 ;  $6.inhVarSigs   = map (\(IdVar v) -> v ) $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $1.synVarSigs)
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $6.synExitSorts
-                ;  $$ = ActionPref (ActOffer $1 $3) $6
+                ;  $$ = ActionPref (ActOffer $1 (cstrAnd (Set.fromList $3))) $6
                 }
               | PrefOfferList
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -2099,7 +2099,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $1.inhChanSigs  = $$.inhChanSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts
-                ;  $$ = ActionPref (ActOffer $1 []) Stop
+                ;  $$ = ActionPref (ActOffer $1 (cstrConst (Cbool True))) Stop
                 }
               | PrefOfferList "[[" NeValExprs "]]"
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -2117,7 +2117,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = map (\(IdVar v) -> v ) $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $1.synVarSigs)
                 ;  $$.synExitSorts = $1.synExitSorts
-                ;  $$ = ActionPref (ActOffer $1 $3) Stop
+                ;  $$ = ActionPref (ActOffer $1 (cstrAnd (Set.fromList $3))) Stop
                 }
               | STOP
                 {  $$.synMaxUid    = $$.inhNodeUid
@@ -3735,7 +3735,7 @@ Transition      -- :: { Trans }
                 ;  $7.inhStateSigs = $$.inhStateSigs
                 ;  $5.inhStVarSigs = $$.inhStVarSigs
                 ;  $$.synExitSorts = $3.synExitSorts
-                ;  $$ = Trans $1 (ActOffer $3 $4) $5 $7
+                ;  $$ = Trans $1 (ActOffer $3 (cstrAnd (Set.fromList $4))) $5 $7
                 ;  where let dbls = doubles $ map ( sig . IdVar )
                                             $ $$.inhVarSigs ++ $$.inhStVarSigs ++ $3.synVarSigs
                           in if null dbls then () else
@@ -3760,7 +3760,7 @@ Transition      -- :: { Trans }
                 ;  $8.inhStateSigs = $$.inhStateSigs
                 ;  $6.inhStVarSigs = $$.inhStVarSigs
                 ;  $$.synExitSorts = $4.synExitSorts
-                ;  $$ = Trans $2 (ActOffer $4 $5) $6 $8
+                ;  $$ = Trans $2 (ActOffer $4 (cstrAnd (Set.fromList $5))) $6 $8
                 ;  where let dbls =doubles $ map ( sig . IdVar )
                                            $ $$.inhVarSigs ++ $$.inhStVarSigs ++ $4.synVarSigs
                           in if null dbls then () else
@@ -3785,7 +3785,7 @@ Transition      -- :: { Trans }
                 ;  $4.inhStateSigs = $$.inhStateSigs
                 ;  $8.inhStVarSigs = $$.inhStVarSigs
                 ;  $$.synExitSorts = $6.synExitSorts
-                ;  $$ = Trans $2 (ActOffer $6 $7) $8 $4
+                ;  $$ = Trans $2 (ActOffer $6 (cstrAnd (Set.fromList $7))) $8 $4
                 ;  where let dbls = doubles $ map ( sig . IdVar )
                                             $ $$.inhVarSigs ++ $$.inhStVarSigs ++ $6.synVarSigs
                           in if null dbls then () else
