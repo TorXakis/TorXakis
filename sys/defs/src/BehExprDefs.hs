@@ -37,7 +37,7 @@ import ValExprDefs
 -- | Behaviour Expression
 data  BExpr         = Stop
                     | ActionPref  ActOffer BExpr
-                    | Guard       [VExpr] BExpr
+                    | Guard       VExpr BExpr
                     | Choice      [BExpr]
                     | Parallel    [ChanId] [BExpr]
                     | Enable      BExpr [ChanOffer] BExpr

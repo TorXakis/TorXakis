@@ -183,7 +183,7 @@ aBExpr = ActionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1
            Stop)
 
 anotherBExpr :: BExpr
-anotherBExpr = Guard [cstrVar (expectVarId definedBool1 boolSortName)]
+anotherBExpr = Guard (cstrVar (expectVarId definedBool1 boolSortName))
                      (ActionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT"  [ intSortName, stringSortName])
                                                                                       [ Exclam (cstrVar (expectVarId definedInt2 intSortName))
                                                                                       , Exclam (cstrVar (expectVarId definedString2 stringSortName))]) ) [] ) 
@@ -194,7 +194,7 @@ anotherBExpr = Guard [cstrVar (expectVarId definedBool1 boolSortName)]
 testGuard :: Test
 testGuard = TestCase $
     let bexpr :: BExpr
-        bexpr = Guard [cstrVar (expectVarId definedBool1 boolSortName)] aBExpr
+        bexpr = Guard (cstrVar (expectVarId definedBool1 boolSortName)) aBExpr
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in
