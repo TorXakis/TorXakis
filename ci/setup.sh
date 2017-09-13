@@ -18,8 +18,6 @@ then
 else
     curl -L -O https://github.com/TorXakis/Dependencies/releases/download/v0.3.0_linux/cvc4-1.5-x86_64-linux-opt
     # Making symbolic links to the cvc4 executable to get the build working
-    # TODO: remove this once everybody is using the new configuration file
-    ln -s cvc4-1.5-x86_64-linux-opt cvc4-1.5-win32-opt
     # Using cvc4 as executable name to avoid having to update the configuration file in CI.
     ln -s cvc4-1.5-x86_64-linux-opt cvc4
     mv cvc4* $CACHE_DIR/bin

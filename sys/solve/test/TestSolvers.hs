@@ -21,7 +21,7 @@ defaultSMTProcs =
   ]
 
 cmdCVC4 :: CreateProcess
-cmdCVC4 = proc "cvc4-2017-06-13-win32-opt"
+cmdCVC4 = proc "cvc4"
                 ["--lang=smt"
                 , "--incremental"
                 , "--strings-exp"
