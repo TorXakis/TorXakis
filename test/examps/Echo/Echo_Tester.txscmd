@@ -1,4 +1,4 @@
-param param_Sut_deltaTime 5500
+param param_Sut_deltaTime 7500
 tester Model Sut
 test 10
 trace txs $> testTrace.log
