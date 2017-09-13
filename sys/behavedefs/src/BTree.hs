@@ -104,7 +104,7 @@ type  BTree    =  [ BBranch ]
 
 data  BBranch  =  BTpref   { btoffers  :: Set.Set CTOffer        -- set must be non-empty
                            , bthidvars :: [IVar]                 -- hidden variables
-                           , btpreds   :: [ValExpr IVar]
+                           , btpred    :: ValExpr IVar
                            , btnext    :: INode
                            }
                 | BTtau    { btree        :: BTree
@@ -135,7 +135,7 @@ type INode   =  BNode (WEnv VarId, IVEnv)                      --  Interactions 
 -- ----------------------------------------------------------------------------------------- --
 -- menu
 
-type  Menu  =  [ ( Set.Set BTree.CTOffer, [BTree.IVar], [TxsDefs.ValExpr BTree.IVar] ) ]
+type  Menu  =  [ ( Set.Set BTree.CTOffer, [BTree.IVar], TxsDefs.ValExpr BTree.IVar ) ]
 
 
 -- ----------------------------------------------------------------------------------------- --

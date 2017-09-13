@@ -197,11 +197,11 @@ randMenu menu =
        else do
          relem <- lift $ randomRIO (0, length menu - 1)
          let (pre, x:post) = splitAt relem menu
-             (ctoffs, hvars, preds) = x
+             (ctoffs, hvars, pred)  = x
              menu'                  = pre++post
              vvars                  = concatMap BTree.ctchoffers (Set.toList ctoffs)
              ivars                  = vvars ++ hvars
-             assertions             = foldr Solve.add Solve.empty preds
+             assertions             = Solve.add pred Solve.empty
          smtEnv   <- IOC.getSMT "current"
          parammap <- gets IOC.params
          let p = Solve.toRandParam parammap
@@ -245,11 +245,11 @@ randPurpMenu modmenu purpmenus =
 
 menuConjunct :: BTree.Menu -> BTree.Menu -> BTree.Menu
 menuConjunct menu1 menu2
- = [ ( ctoffs1, hvars1 ++ hvars2, preds1 ++ preds2 )
-     | (ctoffs1,hvars1,preds1) <- menu1
-     , (ctoffs2,hvars2,preds2) <- menu2
-     , ctoffs1 == ctoffs2
-     ]
+ = [ (ctoffs1,hvars1 ++ hvars2, TxsDefs.cstrAnd (Set.fromList [pred1,pred2]) )
+   | (ctoffs1,hvars1,pred1) <- menu1
+   , (ctoffs2,hvars2,pred2) <- menu2
+   , ctoffs1 == ctoffs2
+   ]
 
 
 menuConjuncts :: [BTree.Menu] -> BTree.Menu

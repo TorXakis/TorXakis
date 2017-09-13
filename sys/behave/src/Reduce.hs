@@ -190,18 +190,13 @@ instance Reduce BExpr
 
     reduce Stop = return Stop
 
-    reduce (ActionPref (ActOffer offs cnrs) bexp) = do
-         offs'  <- mapM reduce (Set.toList offs)
-         let offs'' = Set.fromList offs'
-         cnrs'  <- mapM reduce cnrs
-         let cnrs'' = filter (/= cstrConst (Cbool True)) cnrs'
-         if  null cnrs''
-           then do bexp' <- reduce bexp
-                   return $ ActionPref (ActOffer offs'' []) bexp'
-           else if cstrConst (Cbool False) `elem` cnrs''
-                  then return Stop
-                  else do bexp' <- reduce bexp
-                          return $ ActionPref (ActOffer offs'' cnrs'') bexp'
+    reduce (ActionPref (ActOffer offs c) bexp) = do
+         c'  <- reduce c
+         case view c' of
+            Vconst (Cbool False) -> return Stop
+            _                    -> do offs' <- mapM reduce (Set.toList offs)
+                                       bexp' <- reduce bexp
+                                       return $ ActionPref (ActOffer (Set.fromList offs') c') bexp'
 
     reduce (Guard c bexp) = do
          c'  <- reduce c

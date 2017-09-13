@@ -19,7 +19,6 @@ module Eval
 
 ( eval       -- eval :: (TxsDefs.Variable v) => (TxsDefs.ValExpr v) -> IOB.IOB Const
              -- evaluation of value expression; eval shall only work on closed vexpr
-, evalCnrs   -- evalCnrs :: Variable v => [ValExpr v] -> IOB.IOB Bool
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -411,23 +410,6 @@ txs2regex vexp = do
        v        -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                     $ "txs2regex: not on Regex: " ++ show v ]
                       return ""
-
--- ----------------------------------------------------------------------------------------- --
--- evaluation of constraints
-
-evalCnr :: Variable v => ValExpr v -> IOB.IOB Bool
-evalCnr vexp = do
-     val <- eval vexp
-     return $ val == Cbool True
-
-evalCnrs :: Variable v => [ValExpr v] -> IOB.IOB Bool
-evalCnrs []  = return True
-evalCnrs (vexp:vexps) = do
-    val <- evalCnr vexp
-    if val then
-        evalCnrs vexps
-    else
-        return False
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

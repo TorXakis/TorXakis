@@ -58,16 +58,18 @@ mapperMap act@(TxsDDefs.Act acts)  =  do
                allmenu  = Behave.behMayMenu syncs mtree
                mapmenu  = [ ( btoffs
                             , hidvars
-                            , preds ++
-                              [ TxsDefs.cstrEqual (TxsDefs.cstrVar ivar)
-                                                  (TxsDefs.cstrConst wal)
-                              | BTree.CToffer chan choffs <- Set.toList btoffs
-                              , (chid, wals)              <- Set.toList acts
-                              , (ivar, wal)               <- zip choffs wals
-                              , chan == chid
-                              ]
+                            , TxsDefs.cstrAnd (Set.fromList (pred
+                                                            : [ TxsDefs.cstrEqual (TxsDefs.cstrVar ivar)
+                                                                                  (TxsDefs.cstrConst wal)
+                                                              | BTree.CToffer chan choffs <- Set.toList btoffs
+                                                              , (chid, wals)              <- Set.toList acts
+                                                              , (ivar, wal)               <- zip choffs wals
+                                                              , chan == chid
+                                                              ]
+                                                            )
+                                               )
                             )
-                          | (btoffs, hidvars, preds) <- allmenu
+                          | (btoffs, hidvars, pred) <- allmenu
                           , actchids ==
                             Set.filter (`Set.member` inchids) (Set.map BTree.ctchan btoffs)
                           ]
