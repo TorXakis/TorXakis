@@ -134,25 +134,28 @@ CNECTDEF  Xim ::=
     ENCODE    Out ? b               ->  ! toXml(b)
 ENDDEF
 
-PROCDEF increasingRows [ In :: Person ] ( length, pos :: Int; s :: Sex ) ::=
-        In ? p [[ sex(p) == s]]
-    >-> (
-                [[pos == 1]] =>> (
-                                        [[ isMale(s) ]] =>> increasingRows [In] (length, length, Female)
-                                    ##
-                                        [[ isFemale(s) ]] =>> increasingRows [In] (length+1, length+1, Male)
-                                 )
+PROCDEF increasingRows [ In :: Person ; Out :: Bool ] ( pos, length :: Int; s :: Sex ) HIT ::=
+            ( [[ pos == 1 ]] =>> In ? p [[ (sex(p) == s)                                         -- only luck due to
+                                        /\ ( at(firstName(p), 0 ) <> at(lastName(p), 0 ) )       -- position in row
+                                        /\ ( dayOfBirth(p) <> monthOfBirth(p) )
+                                        ]] >-> EXIT
+            ## [[ pos > 1 ]] =>> In ? p [[ sex(p) == s ]] >-> EXIT
+            ) 
+        >>> Out ? b
+        >-> (
+                [[pos == length ]] =>> (
+                                         [[ isMale(s) ]] =>> increasingRows [In,Out] (1, length, Female)
+                                       ##
+                                         [[ isFemale(s) ]] =>> increasingRows [In,Out] (1, length+1, Male)
+                                       )
             ##
-                [[pos>1]] =>> increasingRows [In] (length, pos-1, s)
-         )
+                [[pos < length ]] =>> increasingRows [In, Out] (pos+1,length, s)
+            )
 ENDDEF
 
-MODELDEF Overflow ::=
+PURPDEF PurposeIncreasingRows ::=
     CHAN IN    In
     CHAN OUT   Out
 
-    BEHAVIOUR  
-            increasingRows [In] (1,1,Male)
-        |[In]|
-            luckyPeople [In, Out] (Male,0)            -- first sex choice is arbitrary
+    GOAL increasingRows ::= increasingRows [In,Out] (1,1,Male)
 ENDDEF
