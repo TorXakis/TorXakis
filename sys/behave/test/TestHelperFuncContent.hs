@@ -115,6 +115,8 @@ identicalVExpr (view -> Venv map1 v1)           (view -> Venv map2 v2)          
 identicalVExpr (view -> Vequal vl1 vr1)         (view -> Vequal vl2 vr2)         = identicalVExpr vl1 vl2  && identicalVExpr vr1 vr2
 identicalVExpr (view -> Vnot v1)                (view -> Vnot v2)                = identicalVExpr v1 v2
 identicalVExpr (view -> Vand vs1)               (view -> Vand vs2)               = identicalLists identicalVExpr (Set.toAscList vs1) (Set.toAscList vs2)
+identicalVExpr (view -> Vdivide t1 n1)          (view -> Vdivide t2 n2)          = identicalVExpr t1 t2  && identicalVExpr n1 n2
+identicalVExpr (view -> Vmodulo t1 n1)          (view -> Vmodulo t2 n2)          = identicalVExpr t1 t2  && identicalVExpr n1 n2
 identicalVExpr (view -> Vpredef p1 fid1 vexps1) (view -> Vpredef p2 fid2 vexps2) = p1 == p2 && identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2
 identicalVExpr (view -> Verror s1)              (view -> Verror s2)              = s1 == s2
 identicalVExpr _                                _                                = False                          -- different
@@ -392,9 +394,9 @@ functionCall (FuncId "abs" _ [si] so) [i] | identicalSortId si sortId_Int && ide
 functionCall (FuncId "*" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Int && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrPredef SSI funcId_timesInt [vexpr l, vexpr r])
 functionCall (FuncId "/" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Int && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
-    FuncContent (cstrPredef SSI funcId_divideInt [vexpr l, vexpr r])
+    FuncContent (cstrDivide (vexpr l) (vexpr r))
 functionCall (FuncId "%" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Int && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
-    FuncContent (cstrPredef SSI funcId_moduloInt [vexpr l, vexpr r])
+    FuncContent (cstrModulo (vexpr l) (vexpr r))
 functionCall (FuncId "<" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Bool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrPredef SSI funcId_ltInt [vexpr l, vexpr r])
 functionCall (FuncId "<=" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Bool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =

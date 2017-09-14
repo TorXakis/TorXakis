@@ -102,6 +102,16 @@ eval (view -> Vite cond vexp1 vexp2) = do
 
 eval (view -> Venv ve vexp) = eval (TxsUtils.partSubst ve vexp)
 
+eval (view -> Vdivide t n) = do
+     valT <- txs2int t
+     valN <- txs2int n
+     int2txs $ valT `div` valN
+
+eval (view -> Vmodulo t n) = do
+     valT <- txs2int t
+     valN <- txs2int n
+     int2txs $ valT `mod` valN
+
 eval (view -> Vequal vexp1 vexp2) = do
      val1 <- eval vexp1
      val2 <- eval vexp2
@@ -228,12 +238,6 @@ evalSSI (FuncId nm _ _ _) vexps =
        ( "*",           [v1,v2] ) -> do i1 <- txs2int v1
                                         i2 <- txs2int v2
                                         int2txs $ i1 * i2
-       ( "/",           [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        int2txs $ i1 `div` i2
-       ( "%",           [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        int2txs  $ i1 `mod` i2
        ( "<",           [v1,v2] ) -> do i1 <- txs2int v1
                                         i2 <- txs2int v2
                                         bool2txs $ i1 < i2

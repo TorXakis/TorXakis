@@ -36,6 +36,8 @@ module TxsDefs
 , cstrVar
 , cstrIte
 , cstrEnv
+, cstrModulo
+, cstrDivide
 , cstrEqual
 , cstrNot
 , cstrAnd

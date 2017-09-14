@@ -82,7 +82,7 @@ behInit chsets bexp  =  do
 
 behMayMenu :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
 behMayMenu chsets btree' 
-  =  [ ( btoffs, hidvars, pred ) | BTpref btoffs hidvars pred _ <- btree' ]
+  =  [ ( btoffs, hidvars, pred' ) | BTpref btoffs hidvars pred' _ <- btree' ]
      ++ concat [ behMayMenu chsets btree'' | BTtau btree'' <- btree' ]
 
 
@@ -161,12 +161,12 @@ afterActBTree chsets behact bt  =  do
 
 afterActBBranch :: [ Set.Set TxsDefs.ChanId ] -> BehAction -> BBranch -> IOB.IOB [BTree]
 
-afterActBBranch chsets behact (BTpref btoffs [] pred next)  =  do
+afterActBBranch chsets behact (BTpref btoffs [] pred' next)  =  do
      match <- matchAct2CTOffer behact btoffs
      case match of
        Nothing    -> return []
-       Just iwals -> let pred' = TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals) pred
-                      in do condition <- Eval.eval pred'
+       Just iwals -> let pred'' = TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals) pred'
+                      in do condition <- Eval.eval pred''
                             case condition of
                                 TxsDefs.Cbool True  -> do let cnode = nextNode iwals next
                                                           after <- unfold chsets cnode
@@ -174,12 +174,12 @@ afterActBBranch chsets behact (BTpref btoffs [] pred next)  =  do
                                 TxsDefs.Cbool False -> return []
                                 _                   -> error "afterActBBranch - condition is not a Boolean"
 
-afterActBBranch chsets behact (BTpref btoffs hidvars pred next)  =  do
+afterActBBranch chsets behact (BTpref btoffs hidvars pred' next)  =  do
      match <- matchAct2CTOffer behact btoffs
      case match of
        Nothing    -> return []
-       Just iwals -> let pred' = TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals) pred
-                         assertion = add pred' empty
+       Just iwals -> let pred'' = TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals) pred'
+                         assertion = add pred'' empty
                        in do smtEnv <- IOB.getSMT "current"
                              (sat,smtEnv') <- lift $ runStateT (uniSolve hidvars assertion) smtEnv
                              IOB.putSMT "current" smtEnv'

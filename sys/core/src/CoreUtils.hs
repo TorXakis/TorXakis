@@ -197,11 +197,11 @@ randMenu menu =
        else do
          relem <- lift $ randomRIO (0, length menu - 1)
          let (pre, x:post) = splitAt relem menu
-             (ctoffs, hvars, pred)  = x
+             (ctoffs, hvars, pred')  = x
              menu'                  = pre++post
              vvars                  = concatMap BTree.ctchoffers (Set.toList ctoffs)
              ivars                  = vvars ++ hvars
-             assertions             = Solve.add pred Solve.empty
+             assertions             = Solve.add pred' Solve.empty
          smtEnv   <- IOC.getSMT "current"
          parammap <- gets IOC.params
          let p = Solve.toRandParam parammap

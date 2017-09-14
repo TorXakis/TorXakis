@@ -77,8 +77,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_plusInt,        "+"),
     (IdFunc funcId_minusInt,       "-"),
     (IdFunc funcId_timesInt,       "*"),
-    (IdFunc funcId_divideInt,      "div"),
-    (IdFunc funcId_moduloInt,      "mod"),
 --  (IdFunc funcId_powerInt,       "pow"),
     (IdFunc funcId_ltInt,          "<"),
     (IdFunc funcId_leInt,          "<="),
@@ -260,6 +258,9 @@ valexprToSMT mapI (view -> Vconst c) = constToSMT mapI c
 valexprToSMT _ (view -> Vvar varId)  =  vname varId
 
 valexprToSMT mapI (view -> Vite c expr1 expr2) = "(ite " <> valexprToSMT mapI c <> " "  <> valexprToSMT mapI expr1 <> " " <> valexprToSMT mapI expr2 <> ")"
+
+valexprToSMT mapI (view -> Vdivide t n) = "(div " <> valexprToSMT mapI t <> " "  <> valexprToSMT mapI n <> ")"
+valexprToSMT mapI (view -> Vmodulo t n) = "(mod " <> valexprToSMT mapI t <> " "  <> valexprToSMT mapI n <> ")"
 
 valexprToSMT mapI (view -> Venv venv expr)  =
     if Map.null venv
