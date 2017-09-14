@@ -20,7 +20,7 @@ adderJavaPath = javaFilePath exampDir "Adder"
 test0 :: TxsExample
 test0 = TxsExample
   { exampleName = "Basic"
-  , txsModelFile = txsFilePath exampDir "Adder"
+  , txsModelFiles = [txsFilePath exampDir "Adder"]
   , txsCommandsFile = txsCmdPath exampDir "Adder_Tester"
   , sutExample =
     Just (JavaExample
@@ -33,7 +33,7 @@ test0 = TxsExample
 test1 :: TxsExample
 test1 = TxsExample
   { exampleName = "State Automation"
-  , txsModelFile = txsFilePath exampDir "AdderStAut"
+  , txsModelFiles = [txsFilePath exampDir "AdderStAut"]
   , txsCommandsFile = txsCmdPath exampDir "Adder_Tester"
   , sutExample =
     Just (JavaExample
@@ -46,7 +46,7 @@ test1 = TxsExample
 test2 :: TxsExample
 test2 = TxsExample
   { exampleName = "Parallel adders"
-  , txsModelFile = txsFilePath exampDir "Adder"
+  , txsModelFiles = [txsFilePath exampDir "Adder"]
   , txsCommandsFile = txsCmdPath exampDir "Adder3_Tester"
   , sutExample =
     Just (JavaExample

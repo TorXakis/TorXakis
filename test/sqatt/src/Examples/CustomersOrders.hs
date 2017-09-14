@@ -20,7 +20,7 @@ exampDir = "CustomersOrders"
 test :: TxsExample
 test = TxsExample
   { exampleName = "Customers & Orders Test"
-  , txsModelFile = txsFilePath exampDir customersOrdersText
+  , txsModelFiles = [txsFilePath exampDir customersOrdersText]
   , txsCommandsFile = txsCmdPath exampDir "CustomersOrders_Tester"
   , sutExample =
     Just (JavaExample

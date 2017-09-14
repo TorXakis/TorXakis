@@ -52,8 +52,8 @@ data TxsExample
   = TxsExample {
     -- | Name of the example.
     exampleName     :: String
-    -- | Path to the TorXakis model file.
-  , txsModelFile    :: FilePath
+    -- | Path to the TorXakis model files.
+  , txsModelFiles   :: [FilePath]
     -- | Path to the file containing the commands that will be passed to the
     --   TorXakis server.
   , txsCommandsFile :: FilePath
@@ -109,11 +109,11 @@ data CompiledSut
   = JavaCompiledSut Text (Maybe FilePath)
   -- | An SUT simulated by TorXakis.
   --
-  --  `TxsSimulatedSut modelPath cmds`:
+  --  `TxsSimulatedSut modelPaths cmds`:
   --
-  --   - `modelPath`: Path to the TorXakis model.
+  --   - `modelPaths`: Paths to the TorXakis models.
   --   - `cmds`: Commands to be passed to the simulator.
-  | TxsSimulatedSut FilePath FilePath
+  | TxsSimulatedSut [FilePath] FilePath
 
 -- | A processed example, ready to be run.
 --
@@ -266,7 +266,8 @@ runTxsWithExample :: FilePath   -- ^ Path to the logging directory for the curre
                   -> TxsExample -- ^ Example to run.
                   -> Concurrently (Either SqattError ())
 runTxsWithExample logDir ex = Concurrently $ do
-  eInputModelF <- runExceptT $ runTest $ decodePath (txsModelFile ex)
+  eInputModelF <- runExceptT $ runTest $ mapM decodePath (txsModelFiles ex)
+
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
@@ -290,7 +291,7 @@ runTxsWithExample logDir ex = Concurrently $ do
         txsUIShell :: Shell Line
         txsUIShell = do
           h <- appendonly $ uiLogDir </> "txsui.out.log"
-          line <- either id id <$> inprocWithErr txsUICmd [port, imf] (input cmdsFile)
+          line <- either id id <$> inprocWithErr txsUICmd (port:imf) (input cmdsFile)
           liftIO $ TIO.hPutStrLn h (lineToText line)
           return line
         findExpectedMsg :: Fold Line Bool
@@ -325,11 +326,11 @@ runInprocNI logDir cmd cmdArgs =
 
 -- | Run TorXakis as system under test.
 runTxsAsSut :: FilePath   -- ^ Path to the logging directory for the current example set.
-            -> FilePath   -- ^ Path to the TorXakis model.
+            -> [FilePath] -- ^ List of paths to the TorXakis model.
             -> FilePath   -- ^ Path to the commands to be input to the TorXakis model.
             -> IO (Either SqattError ())
-runTxsAsSut logDir modelFile cmdsFile = do
-  eInputModelF <- runExceptT $ runTest $ decodePath modelFile
+runTxsAsSut logDir modelFiles cmdsFile = do
+  eInputModelF <- runExceptT $ runTest $ mapM decodePath modelFiles
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
@@ -339,7 +340,7 @@ runTxsAsSut logDir modelFile cmdsFile = do
   where
     txsUIProc imf port = Concurrently $
       let cLogDir = logDir </> "txsui.SUT.out.log" in
-      runInproc cLogDir txsUICmd [port, imf] (input cmdsFile)
+      runInproc cLogDir txsUICmd (port:imf) (input cmdsFile)
     txsServerProc port = Concurrently $
       let cLogDir = logDir </> "txsserver.SUT.out.log" in
       runInprocNI cLogDir txsServerCmd [port]
@@ -373,8 +374,8 @@ runSUT logDir (JavaCompiledSut mClass cpSP) args = do
   cpOpts <- getCPOptsIO cpSP
   let javaArgs = cpOpts ++ [mClass] ++ args
   runInprocNI (logDir </> "SUT.out.log") javaCmd javaArgs
-runSUT logDir (TxsSimulatedSut modelFile cmds) _ =
-  runTxsAsSut logDir modelFile cmds
+runSUT logDir (TxsSimulatedSut modelFiles cmds) _ =
+  runTxsAsSut logDir modelFiles cmds
 
 -- | Get a random port number.
 getRandomPort :: IO Integer
@@ -390,7 +391,7 @@ pathMustExist path =
 -- | Retrieve all the file paths from an example
 exampleInputFiles :: TxsExample -> [FilePath]
 exampleInputFiles ex =
-  [txsModelFile ex, txsCommandsFile ex]
+  (txsCommandsFile ex:txsModelFiles ex)
   ++ fromMaybe [] (sutInputFiles <$> sutExample ex)
   where sutInputFiles (JavaExample jsp _)     = [jsp]
         sutInputFiles (TxsSimulator cmdsFile) = [cmdsFile]
@@ -412,7 +413,7 @@ execTest topLogDir ex = do
           cmpSut <- compileSut sourcePath
           return (ExampleWithSut ex cmpSut args)
         Just (TxsSimulator cmds) ->
-          return (ExampleWithSut ex (TxsSimulatedSut (txsModelFile ex) cmds) [])
+          return (ExampleWithSut ex (TxsSimulatedSut (txsModelFiles ex) cmds) [])
 
 -- | Test a single example.
 testExample :: FilePath -> TxsExample -> Spec

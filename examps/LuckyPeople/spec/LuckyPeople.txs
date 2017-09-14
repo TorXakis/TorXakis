@@ -60,53 +60,6 @@ MODELDEF Model ::=
         luckyPeople[In, Out](Male,0)            -- first sex choice is arbitrary
 ENDDEF
 
-PROCDEF examples [ In :: Person; Out :: Bool ] () HIT ::=
-        In ! Person( Male, "Mickey", "Mouse", 13, 1 )
-    >-> Out ! True
-    >-> In ! Person( Male, "Donald", "Duck", 13, 3 )
-    >-> Out ! True
-    >-> In ! Person( Male, "Luuk", "Laar", 24, 12 )
-    >-> Out ! True
-    >-> In ! Person( Female, "Shakira", "Ripoll", 2, 2 )
-    >-> Out ! True
-    >-> In ! Person( Male, "Michael", "Buble", 9, 9 )
-    >-> Out ! True
-    >-> In ! Person( Female, "Imke", "Laar", 7, 7 )
-    >-> Out ! True
-    >-> In ! Person( Male, "Huey", "Duck", 17, 10 )
-    >-> Out ! False
-    >-> In ! Person( Male, "Dewey", "Duck", 17, 10 )
-    >-> Out ! True
-    >-> In ! Person( Male, "Louie", "Duck", 17, 10 )
-    >-> Out ! False
-    >-> In ! Person( Male, "Mickey", "Mouse", 13, 1 )
-    >-> Out ! True
-    >-> In ! Person( Male, "Donald", "Duck", 13, 3 )
-    >-> Out ! True
-    >-> In ! Person( Female, "April", "Duck", 15, 5 )
-    >-> Out ! True
-    >-> In ! Person( Female, "Beatrix", "Oranje", 31, 1 )
-    >-> Out ! False
-    >-> In ! Person( Female, "Maxima", "Zorreguieta", 17, 5 )
-    >-> Out ! False
-    >-> In ! Person( Female, "Amalia", "Oranje", 7, 12 )
-    >-> Out ! False
-    >-> In ! Person( Female, "Alexia", "Oranje", 26, 6 )
-    >-> Out ! False
-    >-> In ! Person( Female, "Ariane", "Oranje", 10, 4 )
-    >-> Out ! False
-    >-> In ! Person( Male, "Willem", "Oranje", 27, 4 )
-    >-> Out ! True
-    >-> HIT
-ENDDEF
-
-PURPDEF PurposeExamples ::=
-    CHAN IN    In 
-    CHAN OUT   Out
-    
-    GOAL examples ::= examples [In,Out] ()
-ENDDEF
-
 CONSTDEF separator :: String ::= "@" ENDDEF
 
 CNECTDEF  Sut ::=
@@ -141,32 +94,4 @@ CNECTDEF  Xim ::=
 
     CHAN OUT  Out                   HOST "localhost"  PORT 7777
     ENCODE    Out ? b               ->  ! toXml(b)
-ENDDEF
-
-PROCDEF repeatAndSwitchGender [ In :: Person ; Out :: Bool ] ( pos, length :: Int; s :: Sex) HIT ::=
-        (
-            [[ pos > 1 ]] =>> In ? p [[ sex(p) == s ]] >-> EXIT
-            ##
-            [[ pos == 1 ]] =>> In ? p [[ (sex(p) == s)
-                                        /\ ( not (isLuckyByName(p)))
-                                        /\ ( not (isLuckyByBirthday(p)))
-                                      ]] >-> EXIT
-        )
-        >>> Out ? b
-        >-> (
-                [[pos == length ]] =>> (
-                                         [[ isMale(s) ]] =>> repeatAndSwitchGender [In,Out] (1, length, Female)
-                                       ##
-                                         [[ isFemale(s) ]] =>> repeatAndSwitchGender [In,Out] (1, length+1, Male)
-                                       )
-                ##
-                [[pos < length ]] =>> repeatAndSwitchGender [In, Out] (pos+1,length, s)
-            )
-ENDDEF
-
-PURPDEF PurposeLuckyByGender ::=
-    CHAN IN    In 
-    CHAN OUT   Out
-
-    GOAL luckyByGender ::= repeatAndSwitchGender [In,Out] (1,1,Male)
 ENDDEF

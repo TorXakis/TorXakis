@@ -14,6 +14,12 @@ import           Sqatt
 luckyPeopleText :: Text
 luckyPeopleText = "LuckyPeople"
 
+examplePurposeText :: Text
+examplePurposeText = "PurposeExamples"
+
+genderPurposeText :: Text
+genderPurposeText = "PurposeLuckyByGender"
+
 exampDir :: FilePath
 exampDir = "LuckyPeople"
 
@@ -26,7 +32,7 @@ sutDir = exampDir </> "sut"
 test0 :: TxsExample
 test0 = TxsExample
   { exampleName = "Examples Purpose Test"
-  , txsModelFile = txsFilePath specDir luckyPeopleText
+  , txsModelFiles = map (txsFilePath specDir)  [luckyPeopleText, examplePurposeText]
   , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleExamples_Purpose"
   , sutExample =
     Just (JavaExample
@@ -39,7 +45,7 @@ test0 = TxsExample
 test1 :: TxsExample
 test1 = TxsExample
   { exampleName = "Lucky By Gender Test"
-  , txsModelFile = txsFilePath specDir luckyPeopleText
+  , txsModelFiles = map (txsFilePath specDir) [luckyPeopleText, genderPurposeText]
   , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleByGender_Purpose"
   , sutExample =
     Just (JavaExample
