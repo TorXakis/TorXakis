@@ -55,8 +55,21 @@ test1 = TxsExample
   , expectedResult = Pass
   }
 
+test2 :: TxsExample
+test2 = TxsExample
+  { exampleName = "Random Lucky Test"
+  , txsModelFiles = [txsFilePath specDir luckyPeopleText]
+  , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleRandom_Tester"
+  , sutExample =
+    Just (JavaExample
+           (javaFilePath sutDir luckyPeopleText)
+           []
+         )
+  , expectedResult = Pass
+  }
+
 examples :: [TxsExample]
-examples = [test0, test1]
+examples = [test0, test1, test2]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Lucky People" examples
