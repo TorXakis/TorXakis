@@ -8,7 +8,7 @@ TYPEDEF Sex ::= Male | Female ENDDEF
 
 TYPEDEF Person ::=
     Person { sex :: Sex 
-           ; firstName, lastName :: String 
+           ; firstName, lastName :: String
            ; dayOfBirth, monthOfBirth :: Int
            }
 ENDDEF
@@ -21,9 +21,21 @@ FUNCDEF isValid_Person (p :: Person) :: Bool ::=
 ENDDEF
 
 FUNCDEF isLuckyPerson (p :: Person; last :: Sex; n :: Int) :: Bool ::=
-       ( ( sex(p) <> last ) /\ ( n >= 5 ) )                             -- change of sex after enough others?
-    \/ ( at(firstName(p), 0 ) == at(lastName(p), 0 ) )                  -- same first character in first and last name?
-    \/ ( dayOfBirth(p) == monthOfBirth(p) )                             -- same value for day and month of birth?
+       isLuckyByGender(p, last, n)
+    \/ isLuckyByName(p)
+    \/ isLuckyByBirthday(p)
+ENDDEF
+
+FUNCDEF isLuckyByGender (p :: Person; last :: Sex; n :: Int) :: Bool ::=
+    ( sex(p) <> last ) /\ ( n >= 5 )
+ENDDEF
+
+FUNCDEF isLuckyByName (p :: Person) :: Bool ::=
+    at(firstName(p), 0 ) == at(lastName(p), 0 )
+ENDDEF
+
+FUNCDEF isLuckyByBirthday (p :: Person) :: Bool ::=
+    dayOfBirth(p) == monthOfBirth(p)
 ENDDEF
 
 PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
@@ -131,47 +143,30 @@ CNECTDEF  Xim ::=
     ENCODE    Out ? b               ->  ! toXml(b)
 ENDDEF
 
-PROCDEF increasingRows [ In :: Person; Out :: Bool ] ( length, pos :: Int; s :: Sex ) HIT ::=
-        In ? p [[ sex(p) == s]]
-    >-> Out ? b
-    >-> (
-                [[pos == 1]] =>> (
-                                        [[ isMale(s) ]] =>> increasingRows [In,Out] (length, length, Female)
-                                    ##
-                                        [[ isFemale(s) ]] =>> increasingRows [In,Out] (length+1, length+1, Male)
-                                 )
+PROCDEF repeatAndSwitchGender [ In :: Person ; Out :: Bool ] ( pos, length :: Int; s :: Sex) HIT ::=
+        (
+            [[ pos > 1 ]] =>> In ? p [[ sex(p) == s ]] >-> EXIT
             ##
-                [[pos>1]] =>> increasingRows [In,Out] (length, pos-1, s)
-         )
+            [[ pos == 1 ]] =>> In ? p [[ (sex(p) == s)
+                                        /\ ( not (isLuckyByName(p)))
+                                        /\ ( not (isLuckyByBirthday(p)))
+                                      ]] >-> EXIT
+        )
+        >>> Out ? b
+        >-> (
+                [[pos == length ]] =>> (
+                                         [[ isMale(s) ]] =>> repeatAndSwitchGender [In,Out] (1, length, Female)
+                                       ##
+                                         [[ isFemale(s) ]] =>> repeatAndSwitchGender [In,Out] (1, length+1, Male)
+                                       )
+                ##
+                [[pos < length ]] =>> repeatAndSwitchGender [In, Out] (pos+1,length, s)
+            )
 ENDDEF
 
-PURPDEF PurposeIncreasingRows ::=
+PURPDEF PurposeLuckyByGender ::=
     CHAN IN    In 
     CHAN OUT   Out
-    
-    GOAL increasingRows ::= increasingRows [In,Out] (1,1,Male)
-ENDDEF
 
-PROCDEF byteOverflow [ In :: Person; Out :: Bool ] ( pos :: Int; s :: Sex ) HIT ::=
-        In ? p [[ sex(p) == s]]
-    >-> Out ? b
-    >-> (
-                [[pos < 128]] =>> byteOverflow [In,Out] (pos+1, s)
-            ##
-                [[pos == 128]] =>> (
-                                        [[ isMale(s) ]] =>> byteOverflow [In,Out] (pos+1, Female)
-                                    ##
-                                        [[ isFemale(s) ]] =>> byteOverflow [In,Out] (pos+1, Male)
-                                  )
-            ##
-                [[pos > 128]] =>> HIT
-         )
-ENDDEF
-
-PURPDEF PurposeByteOverflow ::=
-    CHAN IN    In 
-    CHAN OUT   Out
-    
-    GOAL overflowMale ::= byteOverflow [In,Out] (1,Male)
-    GOAL overflowFemale ::= byteOverflow [In,Out] (1,Female)
+    GOAL luckyByGender ::= repeatAndSwitchGender [In,Out] (1,1,Male)
 ENDDEF

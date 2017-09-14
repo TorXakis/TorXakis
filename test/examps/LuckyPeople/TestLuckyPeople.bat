@@ -17,16 +17,16 @@ TIMEOUT /T 4 /NOBREAK
 move /Y .txs.%PORT%.err.log Examples_Purpose.txs.%PORT%.err.log
 echo ------- End LuckyPeople Test Examples Purpose Test
 
-echo ------- Start LuckyPeople Random Test
-start /min java -cp %ASSIGN% LuckyPeople
-call %TORXAKISPORT% %PORT% %SOL%\LuckyPeople.txs < %TEST%\LuckyPeopleRandom_Tester.txscmd
-TIMEOUT /T 4 /NOBREAK
-move /Y .txs.%PORT%.err.log Random.txs.%PORT%.err.log
-echo ------- End LuckyPeople Random Test
-
 echo ------- Start LuckyPeople By Gender Test
 start /min java -cp %ASSIGN% LuckyPeople
 call %TORXAKISPORT% %PORT% %SOL%\LuckyPeople.txs < %TEST%\LuckyPeopleByGender_Purpose.txscmd
 TIMEOUT /T 4 /NOBREAK
 move /Y .txs.%PORT%.err.log ByGender.txs.%PORT%.err.log
 echo ------- End LuckyPeople By Gender Test
+
+echo ------- Start LuckyPeople Random Test
+start /min java -cp %ASSIGN% LuckyPeople
+call %TORXAKISPORT% %PORT% %SOL%\LuckyPeople.txs < %TEST%\LuckyPeopleRandom_Tester.txscmd
+TIMEOUT /T 4 /NOBREAK
+move /Y .txs.%PORT%.err.log Random.txs.%PORT%.err.log
+echo ------- End LuckyPeople Random Test
