@@ -17,6 +17,8 @@ module ValExprImpls
 , cstrIte
 , cstrVar
 , cstrConst
+, cstrModulo
+, cstrDivide
 , cstrAnd
 , cstrPredef
 , cstrError
@@ -38,9 +40,13 @@ import           Variable
 cstrFunc :: (Variable v) => FuncId -> [ValExpr v] -> ValExpr v
 cstrFunc f a = ValExpr (Vfunc f a)
 
+-- | Apply ADT Constructor of constructor with CstrId and the provided arguments (the list of value expressions).
+-- Preconditions are /not/ checked.
 cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
 cstrCstr c a = ValExpr (Vcstr c a)
 
+-- | Is the provided value expression made by the ADT constructor with CstrId?
+-- Preconditions are /not/ checked.
 cstrIsCstr :: CstrId -> ValExpr v -> ValExpr v
 cstrIsCstr c1 (view -> Vcstr c2 _)         = cstrConst (Cbool (c1 == c2) )
 cstrIsCstr c1 (view -> Vconst (Cstr c2 _)) = cstrConst (Cbool (c1 == c2) )
@@ -67,6 +73,8 @@ cstrConst c = ValExpr (Vconst c)
 cstrVar :: v -> ValExpr v
 cstrVar v = ValExpr (Vvar v)
 
+-- | Apply operator ITE (IF THEN ELSE) on the provided value expressions.
+-- Preconditions are /not/ checked.
 cstrIte :: ValExpr v -> ValExpr v -> ValExpr v -> ValExpr v
 -- if (not b) then tb else fb == if b then fb else tb
 cstrIte (view -> Vnot n) tb fb = ValExpr (Vite n fb tb)
@@ -127,7 +135,7 @@ isAnd (view -> Vand {}) = True
 isAnd _                 = False
 
 -- | Apply operator And on the provided set of value expressions.
--- Preconditions are /not/ checked, see 'validAnd'.
+-- Preconditions are /not/ checked.
 cstrAnd :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v
 cstrAnd ms =
         let (ands, nonands) = Set.partition isAnd ms in
@@ -155,6 +163,23 @@ cstrAnd' s =
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set
 
+-- Divide
+
+-- | Apply operator Divide on the provided value expressions.
+-- Preconditions are /not/ checked.
+cstrDivide :: ValExpr v -> ValExpr v -> ValExpr v
+cstrDivide vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Divide" $ ValExpr (Vdivide vet ven)
+cstrDivide (view ->  Vconst (Cint t)) (view ->  Vconst (Cint n)) = cstrConst (Cint (t `div` n) )
+cstrDivide vet ven = ValExpr (Vdivide vet ven)
+    
+-- Modulo
+
+-- | Apply operator Modulo on the provided value expressions.
+-- Preconditions are /not/ checked.
+cstrModulo :: ValExpr v -> ValExpr v -> ValExpr v
+cstrModulo vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Modulo" $ ValExpr (Vmodulo vet ven) 
+cstrModulo (view -> Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `mod` n) )
+cstrModulo vet ven = ValExpr (Vmodulo vet ven)
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)

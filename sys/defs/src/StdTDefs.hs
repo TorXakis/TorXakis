@@ -30,8 +30,6 @@ module StdTDefs
 , funcId_plusInt
 , funcId_minusInt
 , funcId_timesInt
-, funcId_divideInt
-, funcId_moduloInt
 , funcId_ltInt
 , funcId_leInt
 , funcId_gtInt
@@ -144,8 +142,17 @@ accessHandler c p [a] = cstrAccess c p a
 accessHandler _ _ _   = error "accessHandler expects one argument"
 
 impliesHandler :: Ord v => Handler v
-impliesHandler [a,b] = cstrImplies a b
-impliesHandler _     = error "impliesHandler expects two arguments"
+impliesHandler = twoArgumentHandler cstrImplies
+
+divideHandler :: Handler v
+divideHandler = twoArgumentHandler cstrDivide
+
+moduloHandler :: Handler v
+moduloHandler = twoArgumentHandler cstrModulo
+
+twoArgumentHandler :: (ValExpr v -> ValExpr v -> ValExpr v) -> Handler v
+twoArgumentHandler f [a,b] = f a b
+twoArgumentHandler _ _     = error "twoArgumentHandler expects two arguments"
 
 xorHandler :: Ord v => Handler v
 xorHandler [a, b] = cstrOr (Set.fromList [arg0, arg1])
@@ -196,8 +203,8 @@ stdFuncTable = FuncTable ( Map.fromList
                            ] )
     , ("abs", Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_absInt ) ] )
     , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_timesInt ) ] )
-    , ("/",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_divideInt ) ] )
-    , ("%",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_moduloInt ) ] )
+    , ("/",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, divideHandler ) ] )
+    , ("%",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, moduloHandler ) ] )
     , ("<",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_ltInt ) ] )
     , ("<=",  Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_leInt ) ] )
     , (">",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_gtInt ) ] )
@@ -254,8 +261,6 @@ funcId_uniminusInt      = FuncId "-"                306 [sortId_Int]            
 funcId_plusInt          = FuncId "+"                307 [sortId_Int,sortId_Int] sortId_Int
 funcId_minusInt         = FuncId "-"                308 [sortId_Int,sortId_Int] sortId_Int
 funcId_timesInt         = FuncId "*"                309 [sortId_Int,sortId_Int] sortId_Int
-funcId_divideInt        = FuncId "/"                310 [sortId_Int,sortId_Int] sortId_Int
-funcId_moduloInt        = FuncId "%"                311 [sortId_Int,sortId_Int] sortId_Int
 -- power is non-linear function that can't be solved by problemsolver (yet)
 -- funcId_powerInt      = FuncId "^"                312 [sortId_Int,sortId_Int] sortId_Int
 funcId_ltInt            = FuncId "<"                315 [sortId_Int,sortId_Int] sortId_Bool
@@ -289,14 +294,6 @@ stdFuncDefsInt'
                                     ; y = VarId "y" 352 sortId_Int
                                     }
                                     in FuncDef [x,y] (cstrPredef SSI funcId_timesInt [cstrVar x,cstrVar y]) )
-     , ( funcId_divideInt,      let { x = VarId "x" 353 sortId_Int
-                                    ; y = VarId "y" 354 sortId_Int
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSI funcId_divideInt [cstrVar x,cstrVar y]) )
-     , ( funcId_moduloInt,      let { x = VarId "x" 355 sortId_Int
-                                    ; y = VarId "y" 356 sortId_Int
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSI funcId_moduloInt [cstrVar x,cstrVar y]) )
 --     , ( funcId_powerInt,     let { x = VarId "x" 357 sortId_Int
 --                                  ; y = VarId "y" 358 sortId_Int
 --                                  }

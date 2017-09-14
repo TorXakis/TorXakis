@@ -41,6 +41,8 @@ freeVars (view -> Vite cond vexp1 vexp2)   =  List.nub $ freeVars cond ++
                                                          freeVars vexp2
 freeVars (view -> Venv ve vexp)            =  List.nub $ concatMap freeVars (Map.elems ve) ++
                                                 ( freeVars vexp \\\ Map.keys ve )
+freeVars (view -> Vdivide t n)             =  List.nub $ freeVars t ++ freeVars n
+freeVars (view -> Vmodulo t n)             =  List.nub $ freeVars t ++ freeVars n
 freeVars (view -> Vequal vexp1 vexp2)      =  List.nub $ freeVars vexp1 ++ freeVars vexp2
 freeVars (view -> Vnot vexp)               =  freeVars vexp
 freeVars (view -> Vand vexps)              =  List.nub $ concatMap freeVars (Set.toList vexps)

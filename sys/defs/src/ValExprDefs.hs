@@ -26,17 +26,30 @@ import           VarId
 -- value expression
 
 -- | ValExprView: the public view of value expression 'ValExpr'
-data  ValExprView v = Vfunc   FuncId [ValExpr v]
+data  ValExprView v = Vconst  Const
+                    | Vvar    v
+                    -- Boolean
+                    | Vequal  (ValExpr v) (ValExpr v)
+                    | Vite    {   condition   :: ValExpr v
+                              ,   trueBranch  :: ValExpr v
+                              ,   falseBranch :: ValExpr v
+                              }
+                    | Vnot    (ValExpr v)
+                    | Vand    (Set (ValExpr v))
+                    -- Int 
+                    | Vdivide     {   dividend    :: ValExpr v
+                                  ,   divisor     :: ValExpr v
+                                  }
+                    | Vmodulo     {   dividend    :: ValExpr v
+                                  ,   divisor     :: ValExpr v
+                                  }
+                    -- ADT
                     | Vcstr   CstrId [ValExpr v]
                     | Viscstr CstrId (ValExpr v)
                     | Vaccess CstrId Int (ValExpr v)
-                    | Vconst  Const
-                    | Vvar    v
-                    | Vite    (ValExpr v) (ValExpr v) (ValExpr v)
+                    
                     | Venv    (VarEnv v v) (ValExpr v)
-                    | Vequal  (ValExpr v) (ValExpr v)
-                    | Vnot    (ValExpr v)
-                    | Vand    (Set (ValExpr v))
+                    | Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]
                     | Verror  Text
      deriving (Eq,Ord,Read,Show, Generic, NFData)

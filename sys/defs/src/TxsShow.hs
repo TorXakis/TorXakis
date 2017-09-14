@@ -265,6 +265,10 @@ instance PShow v => PShow (ValExpr v) where
       =  "(not (" ++ pshow vexp ++ ") )"
     pshow (view -> Vand vexps)
       =  "(" ++ Utils.join " /\\ " (map pshow (Set.toList vexps)) ++ " )"
+    pshow (view -> Vdivide t n)
+      =  "(" ++ pshow t ++ " / " ++ pshow n ++ " )"
+    pshow (view -> Vmodulo t n)
+      =  "(" ++ pshow t ++ " % " ++ pshow n ++ " )"
     pshow (view -> Vpredef _ fid vexps)
       =  if isSpecialOp fid
            then
