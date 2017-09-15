@@ -37,8 +37,8 @@ following steps are needed:
 the test cases.
 - Add tests cases by specifying:
     - The example name.
-    - The path to the TorXakis model.
-    - The path to the TorXakis commands.
+    - The paths to the _.txs_ files that contain the TorXakis model.
+    - The path to the file that contains TorXakis commands.
     - If needed: the path to the SUT source code (currently only Java is
     supported), or the path to the TorXakis commands that will be used to
     run TorXakis as a SUT simulator.
@@ -85,7 +85,7 @@ Next, we add a test case by defining a new `TxsExample` value:
 test0 :: TxsExample
 test0 = TxsExample
   { exampleName = "What the test is checking"
-  , txsModelFile = txsFilePath "MyTest" "MyTestModel"
+  , txsModelFiles = [txsFilePath "MyTest" "MyTestModel"]
   , txsCommandsFile = txsCmdPath "MyTest" "MyTestCmds"
   , sutExample = 
       Just (JavaExample (javaFilePath "MyTest" "MySUT") ["Some", "SUT", "Args"])

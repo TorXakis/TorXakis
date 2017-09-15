@@ -1,0 +1,4 @@
+tester Model PurposeExamples Sut
+test 50
+trace txs $> testTracePurposeExamples.log
+exit

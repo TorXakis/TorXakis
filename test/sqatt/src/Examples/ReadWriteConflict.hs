@@ -23,7 +23,7 @@ exampDir = "ReadWriteConflict"
 testStepper :: TxsExample
 testStepper = TxsExample
   { exampleName = "ReadWriteConflict Stepper Test"
-  , txsModelFile = txsFilePath exampDir readWriteConflictText
+  , txsModelFiles = [txsFilePath exampDir readWriteConflictText]
   , txsCommandsFile = txsCmdPath exampDir "ReadWrite_Stepper"
   , sutExample = Nothing
   , expectedResult = Pass
@@ -32,7 +32,7 @@ testStepper = TxsExample
 testStepper7 :: TxsExample
 testStepper7 = TxsExample
   { exampleName = "ReadWriteConflict Stepper7 Test"
-  , txsModelFile = txsFilePath exampDir readWriteConflictText
+  , txsModelFiles = [txsFilePath exampDir readWriteConflictText]
   , txsCommandsFile = txsCmdPath exampDir "ReadWrite7_Stepper"
   , sutExample = Nothing
   , expectedResult = Pass
@@ -41,7 +41,7 @@ testStepper7 = TxsExample
 testAdvancedStepper :: TxsExample
 testAdvancedStepper = TxsExample
   { exampleName = "ReadWriteConflict_Advanced Stepper Test"
-  , txsModelFile = txsFilePath exampDir readWriteConflictAdvancedText
+  , txsModelFiles = [txsFilePath exampDir readWriteConflictAdvancedText]
   , txsCommandsFile = txsCmdPath exampDir "ReadWrite_Stepper"
   , sutExample = Nothing
   , expectedResult = Pass

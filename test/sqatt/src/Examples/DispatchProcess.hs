@@ -32,7 +32,7 @@ javaSUT = Just (JavaExample dispatchProcessSUTPath [])
 test0 :: TxsExample
 test0 = TxsExample
   { exampleName = "Process 01"
-  , txsModelFile = txsFilePath specDir "DisPro01-processor"
+  , txsModelFiles = [txsFilePath specDir "DisPro01-processor"]
   , txsCommandsFile = dispatchProcessCmdsPath
   , sutExample = Nothing
   , expectedResult = Pass
@@ -41,7 +41,7 @@ test0 = TxsExample
 test1 :: TxsExample
 test1 = TxsExample
   { exampleName = "Process 02"
-  , txsModelFile = txsFilePath specDir "DisPro02-dispatch"
+  , txsModelFiles = [txsFilePath specDir "DisPro02-dispatch"]
   , txsCommandsFile = dispatchProcessCmdsPath
   , sutExample = Nothing
   , expectedResult = Pass
@@ -50,7 +50,7 @@ test1 = TxsExample
 test2 :: TxsExample
 test2 = TxsExample
   { exampleName = "Process 03"
-  , txsModelFile = txsFilePath specDir "DisPro03-processors"
+  , txsModelFiles = [txsFilePath specDir "DisPro03-processors"]
   , txsCommandsFile = dispatchProcessCmdsPath
   , sutExample = Nothing
   , expectedResult = Pass
@@ -59,7 +59,7 @@ test2 = TxsExample
 test3 :: TxsExample
 test3 = TxsExample
   { exampleName = "Process 04"
-  , txsModelFile = txsFilePath specDir "DisPro04-hide"
+  , txsModelFiles = [txsFilePath specDir "DisPro04-hide"]
   , txsCommandsFile = dispatchProcessCmdsPath
   , sutExample = Nothing
   , expectedResult = Pass
@@ -68,7 +68,7 @@ test3 = TxsExample
 test4 :: TxsExample
 test4 = TxsExample
   { exampleName = "Process 05"
-  , txsModelFile = txsFilePath specDir "DisPro05-data"
+  , txsModelFiles = [txsFilePath specDir "DisPro05-data"]
   , txsCommandsFile = dispatchProcessCmdsPath
   , sutExample = Nothing
   , expectedResult = Pass
@@ -78,7 +78,7 @@ test4 = TxsExample
 test5 :: TxsExample
 test5 = TxsExample
   { exampleName = "Process 05a"
-  , txsModelFile = txsFilePath specDir "DisPro05a-data-nohide"
+  , txsModelFiles = [txsFilePath specDir "DisPro05a-data-nohide"]
   , txsCommandsFile = dispatchProcessCmdsPath
   , sutExample = Nothing
   , expectedResult = Pass
@@ -87,7 +87,7 @@ test5 = TxsExample
 test6 :: TxsExample
 test6 = TxsExample
   { exampleName = "Process 06"
-  , txsModelFile = txsFilePath specDir "DisPro06-datapos"
+  , txsModelFiles = [txsFilePath specDir "DisPro06-datapos"]
   , txsCommandsFile = dispatchProcessCmdsPath
   , sutExample = Nothing
   , expectedResult = Pass
@@ -96,7 +96,7 @@ test6 = TxsExample
 test7 :: TxsExample
 test7 = TxsExample
   { exampleName = "Process 06a"
-  , txsModelFile = txsFilePath specDir "DisPro06a-datapos-nohide"
+  , txsModelFiles = [txsFilePath specDir "DisPro06a-datapos-nohide"]
   , txsCommandsFile = dispatchProcessCmdsPath
   , sutExample = Nothing
   , expectedResult = Pass
@@ -105,7 +105,7 @@ test7 = TxsExample
 test8 :: TxsExample
 test8 = TxsExample
   { exampleName = "Process 07"
-  , txsModelFile = txsFilePath specDir "DisPro07-gcd"
+  , txsModelFiles = [txsFilePath specDir "DisPro07-gcd"]
   , txsCommandsFile = dispatchProcessCmdsPath
   , sutExample = Nothing
   , expectedResult = Pass
@@ -114,7 +114,7 @@ test8 = TxsExample
 test9 :: TxsExample
 test9 = TxsExample
   { exampleName = "Process 08"
-  , txsModelFile = txsFilePath specDir "DisPro08-gcdpurp"
+  , txsModelFiles = [txsFilePath specDir "DisPro08-gcdpurp"]
   , txsCommandsFile = dispatchProcessCmdsPath
   , sutExample = Nothing
   , expectedResult = Pass
@@ -123,7 +123,7 @@ test9 = TxsExample
 test10 :: TxsExample
 test10 = TxsExample
   { exampleName = "Process 09"
-  , txsModelFile = txsFilePath specDir "DisPro09-multiproc"
+  , txsModelFiles = [txsFilePath specDir "DisPro09-multiproc"]
   , txsCommandsFile = dispatchProcessCmdsPath
   , sutExample = Nothing
   , expectedResult = Pass
@@ -132,7 +132,7 @@ test10 = TxsExample
 test11 :: TxsExample
 test11 = TxsExample
   { exampleName = "Process 10 - Data"
-  , txsModelFile = txsFilePath specDir "DisPro10-data"
+  , txsModelFiles = [txsFilePath specDir "DisPro10-data"]
   , txsCommandsFile = txsCmdPath exampDir "DispatchProcess_Tester"
   , sutExample = javaSUT
   , expectedResult = Pass
@@ -142,7 +142,7 @@ test11 = TxsExample
 -- test12 :: TxsExample
 -- test12 = TxsExample
 --   { exampleName = "Process 12 - Unique ID"
---   , txsModelFile = txsFilePath specDir "DisPro12-unique-id"
+--   , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
 --   , txsCommandsFile = txsCmdPath exampDir "DispatchProcess_Tester_12"
 --   , sutExample = javaSUT
 --   , expectedResult = Pass
@@ -151,7 +151,7 @@ test11 = TxsExample
 test13 :: TxsExample
 test13 = TxsExample
   { exampleName = "Process 12 - Unique ID (Wrong)"
-  , txsModelFile = txsFilePath specDir "DisPro12-unique-id"
+  , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
   , txsCommandsFile = txsCmdPath exampDir "DispatchProcess_Tester_12_Wrong"
   , sutExample = javaSUT
   , expectedResult = Fail
@@ -160,7 +160,7 @@ test13 = TxsExample
 test14 :: TxsExample
 test14 = TxsExample
   { exampleName = "Process 12 - Unique ID (Right)"
-  , txsModelFile = txsFilePath specDir "DisPro12-unique-id"
+  , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
   , txsCommandsFile = txsCmdPath exampDir "DispatchProcess_Tester_12_Right"
   , sutExample = javaSUT
   , expectedResult = Pass

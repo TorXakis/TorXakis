@@ -1,0 +1,27 @@
+PROCDEF repeatAndSwitchGender [ In :: Person ; Out :: Bool ] ( pos, length :: Int; s :: Sex) HIT ::=
+        (
+            [[ pos > 1 ]] =>> In ? p [[ sex(p) == s ]] >-> EXIT
+            ##
+            [[ pos == 1 ]] =>> In ? p [[ (sex(p) == s)
+                                        /\ ( not (isLuckyByName(p)))
+                                        /\ ( not (isLuckyByBirthday(p)))
+                                      ]] >-> EXIT
+        )
+        >>> Out ? b
+        >-> (
+                [[pos == length ]] =>> (
+                                         [[ isMale(s) ]] =>> repeatAndSwitchGender [In,Out] (1, length, Female)
+                                       ##
+                                         [[ isFemale(s) ]] =>> repeatAndSwitchGender [In,Out] (1, length+1, Male)
+                                       )
+                ##
+                [[pos < length ]] =>> repeatAndSwitchGender [In, Out] (pos+1,length, s)
+            )
+ENDDEF
+
+PURPDEF PurposeLuckyByGender ::=
+    CHAN IN    In 
+    CHAN OUT   Out
+
+    GOAL luckyByGender ::= repeatAndSwitchGender [In,Out] (1,1,Male)
+ENDDEF

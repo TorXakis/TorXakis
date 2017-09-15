@@ -14,6 +14,12 @@ import           Sqatt
 luckyPeopleText :: Text
 luckyPeopleText = "LuckyPeople"
 
+examplePurposeText :: Text
+examplePurposeText = "PurposeExamples"
+
+genderPurposeText :: Text
+genderPurposeText = "PurposeLuckyByGender"
+
 exampDir :: FilePath
 exampDir = "LuckyPeople"
 
@@ -25,9 +31,9 @@ sutDir = exampDir </> "sut"
 
 test0 :: TxsExample
 test0 = TxsExample
-  { exampleName = "Test 0"
-  , txsModelFile = txsFilePath specDir luckyPeopleText
-  , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleExamples_Tester"
+  { exampleName = "Examples Purpose Test"
+  , txsModelFiles = map (txsFilePath specDir)  [luckyPeopleText, examplePurposeText]
+  , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleExamples_Purpose"
   , sutExample =
     Just (JavaExample
            (javaFilePath sutDir luckyPeopleText)
@@ -38,8 +44,21 @@ test0 = TxsExample
 
 test1 :: TxsExample
 test1 = TxsExample
-  { exampleName = "Test 1"
-  , txsModelFile = txsFilePath specDir luckyPeopleText
+  { exampleName = "Lucky By Gender Test"
+  , txsModelFiles = map (txsFilePath specDir) [luckyPeopleText, genderPurposeText]
+  , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleByGender_Purpose"
+  , sutExample =
+    Just (JavaExample
+           (javaFilePath sutDir luckyPeopleText)
+           []
+         )
+  , expectedResult = Pass
+  }
+
+test2 :: TxsExample
+test2 = TxsExample
+  { exampleName = "Random Lucky Test"
+  , txsModelFiles = [txsFilePath specDir luckyPeopleText]
   , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleRandom_Tester"
   , sutExample =
     Just (JavaExample
@@ -50,7 +69,7 @@ test1 = TxsExample
   }
 
 examples :: [TxsExample]
-examples = [test1, test0]
+examples = [test0, test1, test2]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Lucky People" examples

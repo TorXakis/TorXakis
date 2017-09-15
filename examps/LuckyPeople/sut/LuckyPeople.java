@@ -47,7 +47,6 @@ public class LuckyPeople
             String last = "";
             while (true)
             {
-                // read a line from the data stream: the stimulus
                 String person = sockin.readLine();
                 
                 String[] fields = person.split(SEPARATOR);
@@ -57,14 +56,15 @@ public class LuckyPeople
                 final boolean retval = (!sameSex && (same == LUCKYAFTER)) || lucky(fields);
                 if (sameSex)
                 {
-                    if (same < LUCKYAFTER) same += 1;
+                    if (same < LUCKYAFTER)
+					    same += 1;
                 }
                 else
                 {
                     same = 1;
                     last = fields[SEX];
                 }
-                // send a line to the data stream: the response
+                // send a line to the data stream: is lucky?
                 if (retval)
                     sockout.print("True\n");
                 else
