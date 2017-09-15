@@ -155,3 +155,19 @@ The log files will be written in the TorXakis root directory in a folder named
 hierarchically as follows: test date and time, test set name, test name. To
 avoid problems in Windows systems, in the log folders spaces will be replaced
 by underscores (`_`) and colons (`:`) will be replaced by dashes (`-`).
+
+## Long-running tests
+
+Some example cases are known to take longer than others. We run these tests in parallel with the rest, in order to prevent them from timing the whole build out. These tests have "**#long**" tag in their names. If you add a test that you expect to take longer, you can have them run in the Long Tests group by adding _#long_ to their name.
+
+[Customers and Orders test](src/Examples/CustomersOrders.hs) is an example to such tests.
+```
+test = TxsExample
+  { exampleName = "Customers & Orders Test #long"
+  , txsModelFiles = [txsFilePath exampDir customersOrdersText]
+...
+```
+
+The parallelization of these tests are handled by our CI provider by running two separate test jobs. Long running tests are run with "_--match=#long_" test parameter while faster tests are run with "_--skip=#long_".
+
+These jobs are scripted in [test.sh](../../ci/test.sh) and [test_long.sh](../../ci/test_long.sh) respectively.
