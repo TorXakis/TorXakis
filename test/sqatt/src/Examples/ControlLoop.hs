@@ -54,8 +54,18 @@ test3 = TxsExample
   , expectedResult = Pass
   }
 
+test4 :: TxsExample
+test4 = TxsExample
+  { exampleName = "Multiple Loops Stepper #long"
+  , txsModelFiles = [multipleControlLoopTxsPath]
+  , txsCommandsFile = txsCmdPath exampDir "MultipleControlLoops_Spec_Stepper"
+  , sutExample = Nothing
+  , expectedResult = Pass
+  }
+
+
 examples :: [TxsExample]
-examples = [test0, test2, test3]
+examples = [test0, test2, test3, test4]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Control Loop" examples

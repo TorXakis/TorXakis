@@ -140,7 +140,7 @@ test11 = TxsExample
 
 test12 :: TxsExample
 test12 = TxsExample
-  { exampleName = "Process 12 - Unique ID"
+  { exampleName = "Process 12 - Unique ID #long"
   , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
   , txsCommandsFile = txsCmdPath exampDir "DispatchProcess_Tester_12"
   , sutExample = javaSUT
