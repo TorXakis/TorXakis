@@ -138,15 +138,14 @@ test11 = TxsExample
   , expectedResult = Pass
   }
 
--- Disabled for now: See https://github.com/TorXakis/TorXakis/issues/100
--- test12 :: TxsExample
--- test12 = TxsExample
---   { exampleName = "Process 12 - Unique ID"
---   , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
---   , txsCommandsFile = txsCmdPath exampDir "DispatchProcess_Tester_12"
---   , sutExample = javaSUT
---   , expectedResult = Pass
---   }
+test12 :: TxsExample
+test12 = TxsExample
+  { exampleName = "Process 12 - Unique ID #long"
+  , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
+  , txsCommandsFile = txsCmdPath exampDir "DispatchProcess_Tester_12"
+  , sutExample = javaSUT
+  , expectedResult = Pass
+  }
 
 test13 :: TxsExample
 test13 = TxsExample
@@ -168,7 +167,7 @@ test14 = TxsExample
 
 examples :: [TxsExample]
 examples = [ test0, test1, test2, test3, test4, test5, test6, test7, test8
-           , test9, test10, test11, test13, test14
+           , test9, test10, test11, test12, test13, test14
            ]
 
 exampleSet :: TxsExampleSet

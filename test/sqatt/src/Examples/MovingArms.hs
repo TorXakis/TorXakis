@@ -25,7 +25,7 @@ test0 = TxsExample
 
 test1 :: TxsExample
 test1 = TxsExample
-  { exampleName = "Purpose Stepper Test"
+  { exampleName = "Purpose Stepper Test #long"
   , txsModelFiles = [txsFilePath exampDir "MovingArms"]
   , txsCommandsFile = txsCmdPath exampDir "MovingArms_Purpose_Stepper"
   , sutExample = Nothing

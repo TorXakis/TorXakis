@@ -19,7 +19,7 @@ exampDir = "CustomersOrders"
 
 test :: TxsExample
 test = TxsExample
-  { exampleName = "Customers & Orders Test"
+  { exampleName = "Customers & Orders Test #long"
   , txsModelFiles = [txsFilePath exampDir customersOrdersText]
   , txsCommandsFile = txsCmdPath exampDir "CustomersOrders_Tester"
   , sutExample =
