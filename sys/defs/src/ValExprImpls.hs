@@ -18,6 +18,8 @@ module ValExprImpls
 , cstrVar
 , cstrConst
 , cstrModulo
+, cstrMinus
+, cstrSum
 , cstrDivide
 , cstrAnd
 , cstrPredef
@@ -34,6 +36,7 @@ import           Debug.Trace as Trace
 import           ConstDefs
 import           CstrId
 import           FuncId
+import           Sum
 import           ValExprDefs
 import           Variable
 
@@ -66,6 +69,11 @@ cstrAccess c1 p1 e@(view -> Vconst (Cstr c2 fields)) =
         else Trace.trace ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on value from constructor " ++ show c2) $
                 ValExpr (Vaccess c1 p1 e)
 cstrAccess c p e = ValExpr (Vaccess c p e)
+
+-- | Is ValExpr a Constant/Value Expression?     
+isConst :: ValExpr v -> Bool
+isConst (view -> Vconst{}) = True
+isConst _                  = False
 
 cstrConst :: Const -> ValExpr v
 cstrConst c = ValExpr (Vconst c)
@@ -180,6 +188,57 @@ cstrModulo :: ValExpr v -> ValExpr v -> ValExpr v
 cstrModulo vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Modulo" $ ValExpr (Vmodulo vet ven) 
 cstrModulo (view -> Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `mod` n) )
 cstrModulo vet ven = ValExpr (Vmodulo vet ven)
+
+-- | Apply operator Minus on the provided value expression.
+-- Preconditions are /not/ checked.
+cstrMinus :: Ord v => ValExpr v -> ValExpr v
+cstrMinus (view -> Vconst (Cint x)) = cstrConst (Cint (-x))
+cstrMinus (view -> Vsum s)          = cstrSum (Sum.multiply (-1) s)
+cstrMinus v                         = ValExpr (Vsum (Sum.fromDistinctAscMultiplierList [(v,-1)]))
+
+-- Sum
+
+-- | Is ValExpr a Sum Expression?     
+isSum :: ValExpr v -> Bool
+isSum (view -> Vsum{}) = True
+isSum _                = False
+
+-- implementation details:
+-- Properties incorporated
+--    at most one value: the value is the sum of all values
+--         special case if the sum is zero, no value is inserted since v == v+0
+--    remove all nested sums, since (a+b) + (c+d) == (a+b+c+d)
+
+         
+-- | Apply operator sum on the provided sum of value expressions.
+-- Preconditions are /not/ checked.
+cstrSum :: Ord v => Sum (ValExpr v) -> ValExpr v
+cstrSum ms = 
+    let (adds, nonadds) = Sum.partition isSum ms in
+            cstrSum' $ foldl Sum.sum nonadds (Sum.foldMultiplier toSumList [] adds)
+    where                                                        
+        toSumList :: ValExpr v -> Integer -> [Sum (ValExpr v)] -> [Sum (ValExpr v)]
+        toSumList (view -> Vsum s) n  = (:) (Sum.multiply n s)
+        toSumList _                _  = error ("ValExprImpls.hs - cstrSum - Unexpected ValExpr")
+                    
+-- Sum doesn't contain elements of type VExprSum
+cstrSum' :: Ord v => Sum (ValExpr v) -> ValExpr v
+cstrSum' ms = 
+    let (vals, nonvals) = Sum.partition isConst ms in
+        let sumVals = Sum.foldMultiplier addVal 0 vals in
+            let retMS = case sumVals of
+                        0   -> nonvals                                      -- 0 + x == x
+                        _   -> Sum.add (cstrConst (Cint sumVals)) nonvals
+                in
+                    case Sum.toMultiplierList retMS of
+                        []          -> cstrConst (Cint 0)                                -- sum of nothing equal zero
+                        [(term,1)]  -> term
+                        _           -> ValExpr (Vsum retMS)
+    where                                                        
+        addVal :: ValExpr v -> Integer -> Integer -> Integer
+        addVal (view -> Vconst (Cint i)) n = (+) (i * n)
+        addVal _ _                         = error ("ValExprImpls.hs - cstrSum' - Unexpected ValExpr")
+
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)

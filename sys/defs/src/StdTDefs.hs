@@ -26,9 +26,6 @@ module StdTDefs
 , funcId_IntFromString
 , funcId_IntToXml
 , funcId_IntFromXml
-, funcId_uniminusInt
-, funcId_plusInt
-, funcId_minusInt
 , funcId_timesInt
 , funcId_ltInt
 , funcId_leInt
@@ -83,6 +80,7 @@ import           Ident
 import           SortDef
 import           SortId
 import           SortOf
+import           Sum
 import           TxsDef
 import           ValExprDefs
 import           ValExprImpls
@@ -160,6 +158,13 @@ xorHandler [a, b] = cstrOr (Set.fromList [arg0, arg1])
         arg1 = cstrAnd (Set.fromList [cstrNot a, b])
 xorHandler _      = error "xorHandler expects two arguments"
 
+cstrUniMinusHandler :: Ord v => Handler v
+cstrUniMinusHandler [a] = cstrMinus a
+cstrUniMinusHandler _   = error "cstrUniMinusHandler expects one argument"
+
+cstrMinusHandler :: Ord v => Handler v
+cstrMinusHandler [a,b] = cstrSum (Sum.fromMultiplierList [(a,1),(b,-1)])
+cstrMinusHandler _   = error "cstrMinusHandler expects two arguments"
 -- ----------------------------------------------------------------------------------------- --
 -- FuncTable
 stdFuncTable :: Ord v => FuncTable v
@@ -196,10 +201,10 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, equalHandler ) ] )
 
     , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, head)
-                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_plusInt )
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . Sum.fromList )
                            ] )
-    , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_uniminusInt )
-                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_minusInt )
+    , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrUniMinusHandler )
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrMinusHandler )
                            ] )
     , ("abs", Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_absInt ) ] )
     , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_timesInt ) ] )
@@ -257,9 +262,6 @@ funcId_IntFromString    = FuncId fromStringName     302 [sortId_String]         
 funcId_IntToXml         = FuncId toXmlName          303 [sortId_Int]            sortId_String
 funcId_IntFromXml       = FuncId fromXmlName        304 [sortId_String]         sortId_Int
 
-funcId_uniminusInt      = FuncId "-"                306 [sortId_Int]            sortId_Int
-funcId_plusInt          = FuncId "+"                307 [sortId_Int,sortId_Int] sortId_Int
-funcId_minusInt         = FuncId "-"                308 [sortId_Int,sortId_Int] sortId_Int
 funcId_timesInt         = FuncId "*"                309 [sortId_Int,sortId_Int] sortId_Int
 -- power is non-linear function that can't be solved by problemsolver (yet)
 -- funcId_powerInt      = FuncId "^"                312 [sortId_Int,sortId_Int] sortId_Int
@@ -280,16 +282,6 @@ stdFuncDefsInt'
                                     in FuncDef [x] (cstrPredef SSI funcId_IntToXml [cstrVar x]) )
      , ( funcId_IntFromXml,     let x = VarId "x" 344 sortId_String
                                     in FuncDef [x] (cstrPredef SSI funcId_IntFromXml [cstrVar x]) )
-     , ( funcId_uniminusInt,    let x = VarId "x" 346 sortId_Int
-                                    in FuncDef [x] (cstrPredef SSI funcId_uniminusInt [cstrVar x]) )
-     , ( funcId_plusInt,        let { x = VarId "x" 347 sortId_Int
-                                    ; y = VarId "y" 348 sortId_Int
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSI funcId_plusInt [cstrVar x,cstrVar y]) )
-     , ( funcId_minusInt,       let { x = VarId "x" 349 sortId_Int
-                                    ; y = VarId "y" 350 sortId_Int
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSI funcId_minusInt [cstrVar x,cstrVar y]) )
      , ( funcId_timesInt,       let { x = VarId "x" 351 sortId_Int
                                     ; y = VarId "y" 352 sortId_Int
                                     }

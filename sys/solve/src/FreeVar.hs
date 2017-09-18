@@ -21,6 +21,7 @@ import qualified Data.List as List
 import qualified Data.Map  as Map
 import qualified Data.Set  as Set
 
+import Sum
 import TxsDefs
 import Utils
 
@@ -43,6 +44,7 @@ freeVars (view -> Venv ve vexp)            =  List.nub $ concatMap freeVars (Map
                                                 ( freeVars vexp \\\ Map.keys ve )
 freeVars (view -> Vdivide t n)             =  List.nub $ freeVars t ++ freeVars n
 freeVars (view -> Vmodulo t n)             =  List.nub $ freeVars t ++ freeVars n
+freeVars (view -> Vsum s)                  =  List.nub $ concatMap freeVars (Sum.distinctTerms s)
 freeVars (view -> Vequal vexp1 vexp2)      =  List.nub $ freeVars vexp1 ++ freeVars vexp2
 freeVars (view -> Vnot vexp)               =  freeVars vexp
 freeVars (view -> Vand vexps)              =  List.nub $ concatMap freeVars (Set.toList vexps)

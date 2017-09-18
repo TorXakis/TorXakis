@@ -17,6 +17,7 @@ import           ConstDefs
 import           CstrId
 import           FuncId
 import           SortId
+import           Sum
 import           ValExprDefs
 import           Variable
 import           VarId
@@ -70,6 +71,7 @@ sortOf' (view -> Vnot { })                              =  sortId_Bool
 sortOf' (view -> Vand { })                              =  sortId_Bool
 sortOf' (view -> Vmodulo { })                           =  sortId_Int
 sortOf' (view -> Vdivide { })                           =  sortId_Int
+sortOf' (view -> Vsum { })                           =  sortId_Int
 sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps)  =  fs
 sortOf' (view -> Vpredef{})                             = error "sortOf': Unexpected Ident with Vpredef"
 sortOf' (view -> Verror _str)                           =  sortIdError
