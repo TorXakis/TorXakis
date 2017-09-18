@@ -36,6 +36,7 @@ import           ProcId
 import           PurpId
 import           SortId
 import           StatId
+import           Sum
 import           TxsDefs
 import           VarId
 
@@ -269,6 +270,17 @@ instance PShow v => PShow (ValExpr v) where
       =  "(" ++ pshow t ++ " / " ++ pshow n ++ " )"
     pshow (view -> Vmodulo t n)
       =  "(" ++ pshow t ++ " % " ++ pshow n ++ " )"
+    pshow (view -> Vsum s)
+      = showList (Sum.toMultiplierList s)  
+      where
+        showList []     = "0"
+        showList [x]    = showElem x
+        showList (x:xs) = "( " ++ showElem x ++ " + " ++ showList xs ++ " )"
+        
+        showElem (t,1) = pshow t
+        showElem (t,p) = "( " ++ show p ++ " * " ++ pshow t ++ " )"
+        
+      
     pshow (view -> Vpredef _ fid vexps)
       =  if isSpecialOp fid
            then
