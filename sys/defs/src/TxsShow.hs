@@ -277,8 +277,9 @@ instance PShow v => PShow (ValExpr v) where
         showList [x]    = showElem x
         showList (x:xs) = "( " ++ showElem x ++ " + " ++ showList xs ++ " )"
         
-        showElem (t,1) = pshow t
-        showElem (t,p) = "( " ++ show p ++ " * " ++ pshow t ++ " )"
+        showElem (t,1)  = pshow t
+        showElem (t,-1) = "(- " ++ pshow t ++ " )"
+        showElem (t,p)  = "( " ++ show p ++ " * " ++ pshow t ++ " )"
         
       
     pshow (view -> Vpredef _ fid vexps)
