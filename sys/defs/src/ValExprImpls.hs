@@ -219,7 +219,7 @@ cstrSum ms =
     where                                                        
         toSumList :: ValExpr v -> Integer -> [Sum (ValExpr v)] -> [Sum (ValExpr v)]
         toSumList (view -> Vsum s) n  = (:) (Sum.multiply n s)
-        toSumList _                _  = error ("ValExprImpls.hs - cstrSum - Unexpected ValExpr")
+        toSumList _                _  = error "ValExprImpls.hs - cstrSum - Unexpected ValExpr"
                     
 -- Sum doesn't contain elements of type VExprSum
 cstrSum' :: Ord v => Sum (ValExpr v) -> ValExpr v
@@ -237,7 +237,7 @@ cstrSum' ms =
     where                                                        
         addVal :: ValExpr v -> Integer -> Integer -> Integer
         addVal (view -> Vconst (Cint i)) n = (+) (i * n)
-        addVal _ _                         = error ("ValExprImpls.hs - cstrSum' - Unexpected ValExpr")
+        addVal _ _                         = error "ValExprImpls.hs - cstrSum' - Unexpected ValExpr"
 
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v

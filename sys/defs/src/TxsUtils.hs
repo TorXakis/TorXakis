@@ -19,6 +19,7 @@ module TxsUtils
 
 where
 
+import           Control.Arrow (first)
 import qualified Data.Map   as Map
 import           Data.Maybe (fromMaybe)
 import qualified Data.Set   as Set
@@ -98,7 +99,7 @@ partSubst ve (view -> Vite cond vexp1 vexp2)  = cstrIte (partSubst ve cond)
 partSubst ve (view -> Venv ve' vexp)          = partSubst ve (partSubst ve' vexp)
 partSubst ve (view -> Vdivide t n)            = cstrDivide (partSubst ve t) (partSubst ve n)
 partSubst ve (view -> Vmodulo t n)            = cstrModulo (partSubst ve t) (partSubst ve n)
-partSubst ve (view -> Vsum s)                 = cstrSum $ Sum.fromMultiplierList $ map (\(expr, occur) -> (partSubst ve expr, occur)) $ Sum.toMultiplierList s
+partSubst ve (view -> Vsum s)                 = cstrSum $ Sum.fromMultiplierList $ map (first (compSubst ve)) $ Sum.toMultiplierList s
 partSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (partSubst ve vexp1) (partSubst ve vexp2)
 partSubst ve (view -> Vand vexps)             = cstrAnd $ Set.map (partSubst ve) vexps
 partSubst ve (view -> Vnot vexp)              = cstrNot (partSubst ve vexp)
@@ -133,7 +134,7 @@ compSubst ve (view -> Vite cond vexp1 vexp2)  =  cstrIte (compSubst ve cond)
 compSubst ve (view -> Venv ve' vexp)          =  compSubst ve (compSubst ve' vexp)
 compSubst ve (view -> Vdivide t n)            = cstrDivide (compSubst ve t) (compSubst ve n)
 compSubst ve (view -> Vmodulo t n)            = cstrModulo (compSubst ve t) (compSubst ve n)
-compSubst ve (view -> Vsum s)                 = cstrSum $ Sum.fromMultiplierList $ map (\(expr, occur) -> (compSubst ve expr, occur)) $ Sum.toMultiplierList s
+compSubst ve (view -> Vsum s)                 = cstrSum $ Sum.fromMultiplierList $ map (first (compSubst ve)) $ Sum.toMultiplierList s
 compSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (compSubst ve vexp1) (compSubst ve vexp2)
 compSubst ve (view -> Vand vexps)             = cstrAnd $ Set.map (compSubst ve) vexps
 compSubst ve (view -> Vnot vexp)              = cstrNot (compSubst ve vexp)

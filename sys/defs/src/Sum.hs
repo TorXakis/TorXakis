@@ -73,7 +73,7 @@ import GHC.Generics (Generic)
 -- | Sum is a parameterized data type.
 -- Sum represents a symbolic sum of terms of the type parameter @a@.
 -- The same term can occur multiple times.
-data Sum a = Sum { unSum :: Map.Map a Integer }
+newtype Sum a = Sum { unSum :: Map.Map a Integer }
     deriving (Eq, Ord, Read, Show, Generic, NFData)
 {--------------------------------------------------------------------
   Query
