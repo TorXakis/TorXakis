@@ -39,6 +39,7 @@ library
                       , FuncTable
                       , Sigs
                       , Sum
+                      , Product
                       
   other-modules:        BehExprDefs
                       , ConnectionDefs
@@ -80,7 +81,9 @@ test-suite defs-BlackBox-test
                      
   main-is:             TestMainBlackBox.hs
   
-  other-modules:       GenSum
+  other-modules:       GenProduct
+                     , GenSum
+                     , TestProduct
                      , TestSum
                        
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     

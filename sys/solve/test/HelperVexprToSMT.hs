@@ -79,4 +79,4 @@ createVand conds =
 createUniminusInt :: TXS2SMTVExprTest -> TXS2SMTVExprTest
 createUniminusInt ie =
     TXS2SMTVExprTest (cstrMinus (input ie))
-               ("(- " ++ (expected ie) ++ ")")
+               ("(- " ++ expected ie ++ ")")

@@ -8,13 +8,16 @@ module Main where
 
 import System.Exit
 
+import TestProduct
 import TestSum
 
 test :: IO Bool
 test = do
+    resultProduct <- testProduct
     resultSum <- testSum
     
-    return resultSum   
+    return $   resultProduct
+            && resultSum
 
 main :: IO ()
 main = do
