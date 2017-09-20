@@ -25,6 +25,7 @@ See license.txt
 -- In the complexity of functions /n/ refers to the number of distinct terms,
 -- /t/ is the total number of terms.
 -----------------------------------------------------------------------------
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module Product  ( 
     -- * Product type
       Product
@@ -65,8 +66,9 @@ module Product  (
 import Prelude hiding (product)
 
 import Control.Arrow ((***))
+import Control.DeepSeq
 import qualified Data.Map.Strict as Map
-
+import GHC.Generics (Generic)
 {--------------------------------------------------------------------
   The data type
 --------------------------------------------------------------------}
@@ -74,7 +76,7 @@ import qualified Data.Map.Strict as Map
 -- Product represents a symbolic product of terms of the type parameter @a@.
 -- The same term can occur multiple times.
 newtype Product a = Product { unProduct :: Map.Map a Integer }
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Read, Show, Generic, NFData)
 {--------------------------------------------------------------------
   Query
 --------------------------------------------------------------------}

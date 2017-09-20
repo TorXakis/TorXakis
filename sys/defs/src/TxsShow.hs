@@ -33,6 +33,7 @@ import           GoalId
 import           MapperId
 import           ModelId
 import           ProcId
+import           Product
 import           PurpId
 import           SortId
 import           StatId
@@ -266,10 +267,6 @@ instance PShow v => PShow (ValExpr v) where
       =  "(not (" ++ pshow vexp ++ ") )"
     pshow (view -> Vand vexps)
       =  "(" ++ Utils.join " /\\ " (map pshow (Set.toList vexps)) ++ " )"
-    pshow (view -> Vdivide t n)
-      =  "(" ++ pshow t ++ " / " ++ pshow n ++ " )"
-    pshow (view -> Vmodulo t n)
-      =  "(" ++ pshow t ++ " % " ++ pshow n ++ " )"
     pshow (view -> Vsum s)
       = showList (Sum.toMultiplierList s)  
       where
@@ -280,8 +277,21 @@ instance PShow v => PShow (ValExpr v) where
         showElem (t,1)  = pshow t
         showElem (t,-1) = "(- " ++ pshow t ++ " )"
         showElem (t,p)  = "( " ++ show p ++ " * " ++ pshow t ++ " )"
+    pshow (view -> Vproduct s)
+      = showList (Product.toPowerList s)  
+      where
+        showList []     = "1"
+        showList [x]    = showElem x
+        showList (x:xs) = "( " ++ showElem x ++ " * " ++ showList xs ++ " )"
         
-      
+        showElem (t,1)  = pshow t
+        showElem (t,p)  | p > 0 = "( " ++ pshow t ++ " ^ "  ++ show p ++ " )"   -- TODO: TorXakis doesn't support Power (not even x ^ integer)
+        showElem (_,p)  = error ("TxsShow - pshow VExpr - illegal power: p = " ++ show p)
+        
+    pshow (view -> Vdivide t n)
+      =  "(" ++ pshow t ++ " / " ++ pshow n ++ " )"
+    pshow (view -> Vmodulo t n)
+      =  "(" ++ pshow t ++ " % " ++ pshow n ++ " )"
     pshow (view -> Vpredef _ fid vexps)
       =  if isSpecialOp fid
            then

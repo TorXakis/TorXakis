@@ -26,7 +26,6 @@ module StdTDefs
 , funcId_IntFromString
 , funcId_IntToXml
 , funcId_IntFromXml
-, funcId_timesInt
 , funcId_ltInt
 , funcId_leInt
 , funcId_gtInt
@@ -77,6 +76,7 @@ import           FuncDef
 import           FuncId
 import           FuncTable
 import           Ident
+import           Product
 import           SortDef
 import           SortId
 import           SortOf
@@ -207,7 +207,7 @@ stdFuncTable = FuncTable ( Map.fromList
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrMinusHandler )
                            ] )
     , ("abs", Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_absInt ) ] )
-    , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrPredef SSI funcId_timesInt ) ] )
+    , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrProduct . Product.fromList ) ] )
     , ("/",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, divideHandler ) ] )
     , ("%",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, moduloHandler ) ] )
     , ("<",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_ltInt ) ] )
@@ -262,9 +262,6 @@ funcId_IntFromString    = FuncId fromStringName     302 [sortId_String]         
 funcId_IntToXml         = FuncId toXmlName          303 [sortId_Int]            sortId_String
 funcId_IntFromXml       = FuncId fromXmlName        304 [sortId_String]         sortId_Int
 
-funcId_timesInt         = FuncId "*"                309 [sortId_Int,sortId_Int] sortId_Int
--- power is non-linear function that can't be solved by problemsolver (yet)
--- funcId_powerInt      = FuncId "^"                312 [sortId_Int,sortId_Int] sortId_Int
 funcId_ltInt            = FuncId "<"                315 [sortId_Int,sortId_Int] sortId_Bool
 funcId_leInt            = FuncId "<="               316 [sortId_Int,sortId_Int] sortId_Bool
 funcId_gtInt            = FuncId ">"                317 [sortId_Int,sortId_Int] sortId_Bool
@@ -282,14 +279,6 @@ stdFuncDefsInt'
                                     in FuncDef [x] (cstrPredef SSI funcId_IntToXml [cstrVar x]) )
      , ( funcId_IntFromXml,     let x = VarId "x" 344 sortId_String
                                     in FuncDef [x] (cstrPredef SSI funcId_IntFromXml [cstrVar x]) )
-     , ( funcId_timesInt,       let { x = VarId "x" 351 sortId_Int
-                                    ; y = VarId "y" 352 sortId_Int
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSI funcId_timesInt [cstrVar x,cstrVar y]) )
---     , ( funcId_powerInt,     let { x = VarId "x" 357 sortId_Int
---                                  ; y = VarId "y" 358 sortId_Int
---                                  }
---                                  in FuncDef [x,y] (cstrPredef SSI funcId_powerInt [cstrVar x,cstrVar y]) )
      , ( funcId_ltInt,          let { x = VarId "x" 363 sortId_Int
                                     ; y = VarId "y" 364 sortId_Int
                                     }

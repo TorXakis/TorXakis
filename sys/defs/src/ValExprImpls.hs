@@ -20,6 +20,7 @@ module ValExprImpls
 , cstrModulo
 , cstrMinus
 , cstrSum
+, cstrProduct
 , cstrDivide
 , cstrAnd
 , cstrPredef
@@ -36,6 +37,7 @@ import           Debug.Trace as Trace
 import           ConstDefs
 import           CstrId
 import           FuncId
+import           Product
 import           Sum
 import           ValExprDefs
 import           Variable
@@ -170,25 +172,6 @@ cstrAnd' s =
         contains :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set
-
--- Divide
-
--- | Apply operator Divide on the provided value expressions.
--- Preconditions are /not/ checked.
-cstrDivide :: ValExpr v -> ValExpr v -> ValExpr v
-cstrDivide vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Divide" $ ValExpr (Vdivide vet ven)
-cstrDivide (view ->  Vconst (Cint t)) (view ->  Vconst (Cint n)) = cstrConst (Cint (t `div` n) )
-cstrDivide vet ven = ValExpr (Vdivide vet ven)
-    
--- Modulo
-
--- | Apply operator Modulo on the provided value expressions.
--- Preconditions are /not/ checked.
-cstrModulo :: ValExpr v -> ValExpr v -> ValExpr v
-cstrModulo vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Modulo" $ ValExpr (Vmodulo vet ven) 
-cstrModulo (view -> Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `mod` n) )
-cstrModulo vet ven = ValExpr (Vmodulo vet ven)
-
 -- | Apply operator Minus on the provided value expression.
 -- Preconditions are /not/ checked.
 cstrMinus :: Ord v => ValExpr v -> ValExpr v
@@ -238,6 +221,76 @@ cstrSum' ms =
         addVal :: ValExpr v -> Integer -> Integer -> Integer
         addVal (view -> Vconst (Cint i)) n = (+) (i * n)
         addVal _ _                         = error "ValExprImpls.hs - cstrSum' - Unexpected ValExpr"
+
+
+-- Product
+
+-- | Is ValExpr a Product Expression?     
+isProduct :: ValExpr v -> Bool
+isProduct (view -> Vproduct{}) = True
+isProduct _                    = False
+
+-- implementation details:
+-- Properties incorporated
+--    at most one value: the value is the product of all values
+--         special case if the product is one, no value is inserted since v == v*1
+--    remove all nested products, since (a*b) * (c*d) == (a*b*c*d)
+         
+-- | Apply operator product on the provided product of value expressions.
+-- Be aware that division is not associative for Integer, so only use power >= 0.
+-- Preconditions are /not/ checked.
+cstrProduct :: Ord v => Product (ValExpr v) -> ValExpr v
+cstrProduct ms = 
+    let (prods, nonprods) = Product.partition isProduct ms in
+        cstrProduct' $ foldl Product.product nonprods (Product.foldPower toProductList [] prods)
+        -- TODO: canonical form -- make one sum of products (so remove all sums within all products)
+    where                                                        
+        toProductList :: ValExpr v -> Integer -> [Product (ValExpr v)] -> [Product (ValExpr v)]
+        toProductList (view -> Vproduct p) n  = (:) (Product.power n p)
+        toProductList _                    _  = error "ValExprImpl.hs - cstrProduct - Unexpected ValExpr "
+                    
+-- Product doesn't contain elements of type VExprProduct
+cstrProduct' :: Ord v => Product (ValExpr v) -> ValExpr v
+cstrProduct' ms = 
+    let (vals, nonvals) = Product.partition isConst ms in
+        let (zeros, _) = Product.partition isZero vals in
+            case Product.nrofTerms zeros of
+                0   ->  let productVals = Product.foldPower timesVal 1 vals in
+                            case Product.toPowerList nonvals of
+                                []          ->  cstrConst (Cint productVals)
+                                [(term, 1)] ->  cstrSum (Sum.fromMultiplierList [(term, productVals)])                           -- term can be Sum -> rewrite needed
+                                _           ->  cstrSum (Sum.fromMultiplierList [(ValExpr (Vproduct nonvals), productVals)])  -- productVals can be 1 -> rewrite possible
+                _   ->  let (_,n) = Product.fraction zeros in
+                            case Product.nrofTerms n of
+                                0   ->  cstrConst (Cint 0)      -- 0 * x == 0
+                                _   ->  Trace.trace "Error in model: Division by Zero in Product (via negative power)" $
+                                        ValExpr (Vproduct ms)
+    where
+        isZero :: ValExpr v -> Bool
+        isZero (view -> Vconst (Cint 0)) = True
+        isZero _                         = False
+        
+        timesVal :: ValExpr v -> Integer -> Integer -> Integer
+        timesVal (view -> Vconst (Cint i)) n  = (*) (i ^ n)  -- see https://wiki.haskell.org/Power_function
+        timesVal _ _                          = error "ValExprImpl.hs - cstrProduct' - Unexpected ValExpr "
+
+-- Divide
+
+-- | Apply operator Divide on the provided value expressions.
+-- Preconditions are /not/ checked.
+cstrDivide :: ValExpr v -> ValExpr v -> ValExpr v
+cstrDivide vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Divide" $ ValExpr (Vdivide vet ven)
+cstrDivide (view ->  Vconst (Cint t)) (view ->  Vconst (Cint n)) = cstrConst (Cint (t `div` n) )
+cstrDivide vet ven = ValExpr (Vdivide vet ven)
+    
+-- Modulo
+
+-- | Apply operator Modulo on the provided value expressions.
+-- Preconditions are /not/ checked.
+cstrModulo :: ValExpr v -> ValExpr v -> ValExpr v
+cstrModulo vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Modulo" $ ValExpr (Vmodulo vet ven) 
+cstrModulo (view -> Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `mod` n) )
+cstrModulo vet ven = ValExpr (Vmodulo vet ven)
 
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
