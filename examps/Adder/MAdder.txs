@@ -47,7 +47,10 @@ ENDDEF
 PROCDEF  mapperA [ Plus, Minus :: Int # Int; Result :: Int;
                    Sin :: String # Int # Int;  Sout :: Int ] ( )
     ::=
-                 Plus ? x ? y
+            -- Note that the two actions below define a mapper rule: actions of
+            -- the form `Plus ? x ? y` will be mapped to a `Sin ! "Plus" ! x !
+            -- y` action, and this is what will be observed by the SUT.
+                 Plus ? x ? y         
             >->  Sin ! "Plus" ! x ! y
             >->  mapperA [ Plus, Minus, Result, Sin, Sout ] ( )
         ##
