@@ -16,5 +16,18 @@ import           GHC.Generics    (Generic)
 import           BehExprDefs
 import           ChanId
 
-data MapperDef = MapperDef [ChanId] [ChanId] [Set.Set ChanId] BExpr  -- ins, outs, syncs
+-- | A mapper maps actions to actions.
+--
+-- For instance, the process:
+--
+-- > Plus ? x ? y >->  Sin ! "Plus" ! x ! y ||  Min ? x ? y >->  Sin ! "Minus" ! x ! y ||
+--
+-- defines a mapper rule that maps `Plus` and `Min` channels to `Sin`.
+--
+-- See `examps/Adder/MAdder.txs` for more details.
+data MapperDef = MapperDef
+  [ChanId]         -- ^ Input channels.
+  [ChanId]         -- ^ Output channels.
+  [Set.Set ChanId] -- ^ Synchronization channels.
+  BExpr
   deriving (Eq, Ord, Read, Show, Generic, NFData)
