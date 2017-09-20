@@ -185,17 +185,15 @@ cstrMinus v                         = ValExpr (Vsum (Sum.fromDistinctAscMultipli
 isSum :: ValExpr v -> Bool
 isSum (view -> Vsum{}) = True
 isSum _                = False
-
+        
+-- | Apply operator sum on the provided sum of value expressions.
+-- Preconditions are /not/ checked.
+cstrSum :: Ord v => Sum (ValExpr v) -> ValExpr v
 -- implementation details:
 -- Properties incorporated
 --    at most one value: the value is the sum of all values
 --         special case if the sum is zero, no value is inserted since v == v+0
 --    remove all nested sums, since (a+b) + (c+d) == (a+b+c+d)
-
-         
--- | Apply operator sum on the provided sum of value expressions.
--- Preconditions are /not/ checked.
-cstrSum :: Ord v => Sum (ValExpr v) -> ValExpr v
 cstrSum ms = 
     let (adds, nonadds) = Sum.partition isSum ms in
             cstrSum' $ foldl Sum.sum nonadds (Sum.foldMultiplier toSumList [] adds)
@@ -229,17 +227,16 @@ cstrSum' ms =
 isProduct :: ValExpr v -> Bool
 isProduct (view -> Vproduct{}) = True
 isProduct _                    = False
-
--- implementation details:
--- Properties incorporated
---    at most one value: the value is the product of all values
---         special case if the product is one, no value is inserted since v == v*1
---    remove all nested products, since (a*b) * (c*d) == (a*b*c*d)
          
 -- | Apply operator product on the provided product of value expressions.
 -- Be aware that division is not associative for Integer, so only use power >= 0.
 -- Preconditions are /not/ checked.
 cstrProduct :: Ord v => Product (ValExpr v) -> ValExpr v
+-- implementation details:
+-- Properties incorporated
+--    at most one value: the value is the product of all values
+--         special case if the product is one, no value is inserted since v == v*1
+--    remove all nested products, since (a*b) * (c*d) == (a*b*c*d)
 cstrProduct ms = 
     let (prods, nonprods) = Product.partition isProduct ms in
         cstrProduct' $ foldl Product.product nonprods (Product.foldPower toProductList [] prods)

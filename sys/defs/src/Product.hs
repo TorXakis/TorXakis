@@ -67,6 +67,7 @@ import Prelude hiding (product)
 
 import Control.Arrow ((***))
 import Control.DeepSeq
+import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import GHC.Generics (Generic)
 {--------------------------------------------------------------------
@@ -107,7 +108,7 @@ multiplyPower x m p = (Product . Map.alter increment x . unProduct) p
 
 -- | The product of a list of products.
 products :: Ord a => [Product a] -> Product a
-products = foldlStrict product (Product Map.empty)
+products = List.foldl' product (Product Map.empty)
 
 -- | /O(n+m)/. The product of two products.
 --
@@ -180,14 +181,3 @@ fromPowerList = Product . Map.filter (0/=) . Map.fromListWith (+)       -- Terms
 -- /The precondition (input list is strictly ascending) is not checked./
 fromDistinctAscPowerList :: [(a, Integer)] -> Product a 
 fromDistinctAscPowerList = Product . Map.filter (0/=) . Map.fromDistinctAscList
-
-{--------------------------------------------------------------------
-  Utilities
---------------------------------------------------------------------}
-
--- TODO : Use foldl' from base?
-foldlStrict :: (a -> t -> a) -> a -> [t] -> a
-foldlStrict f z xs
-  = case xs of
-      []     -> z
-      (x:xx) -> let z' = f z x in seq z' (foldlStrict f z' xx)

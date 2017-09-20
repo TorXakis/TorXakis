@@ -64,6 +64,7 @@ import Prelude hiding (sum, subtract)
 
 import Control.Arrow ((***))
 import Control.DeepSeq
+import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import GHC.Generics (Generic)
 
@@ -105,7 +106,7 @@ addMultiply x m s = (Sum . Map.alter increment x . unSum) s
 
 -- | The sum of a list of sums.
 sums :: Ord a => [Sum a] -> Sum a
-sums = foldlStrict sum (Sum Map.empty)
+sums = List.foldl' sum (Sum Map.empty)
 
 -- | /O(n+m)/. The sum of two sums.
 --
@@ -114,7 +115,7 @@ sums = foldlStrict sum (Sum Map.empty)
 sum :: Ord a => Sum a -> Sum a -> Sum a
 sum (Sum m1) (Sum m2) = Sum $ Map.filter (0/=) $ Map.unionWith (+) m1 m2
 
--- | /O(n)/. Multiply the sum /ms/ with the constant /x/.
+-- | /O(n)/. Multiply the constant with the sum.
 multiply :: Integer -> Sum a -> Sum a
 multiply 0 _ = Sum Map.empty
 multiply n s = (Sum . Map.map (n *) . unSum) s
@@ -171,14 +172,3 @@ fromMultiplierList = Sum . Map.filter (0/=) . Map.fromListWith (+)
 -- /The precondition (input list is strictly ascending) is not checked./
 fromDistinctAscMultiplierList :: [(a, Integer)] -> Sum a 
 fromDistinctAscMultiplierList = Sum . Map.filter (0/=) . Map.fromDistinctAscList
-
-{--------------------------------------------------------------------
-  Utilities
---------------------------------------------------------------------}
-
--- TODO : Use foldl' from base?
-foldlStrict :: (a -> t -> a) -> a -> [t] -> a
-foldlStrict f z xs
-  = case xs of
-      []     -> z
-      (x:xx) -> let z' = f z x in seq z' (foldlStrict f z' xx)

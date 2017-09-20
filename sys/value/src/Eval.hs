@@ -185,7 +185,7 @@ eval (view -> Vpredef kd fid vexps) =
                 [vexp] -> do wal <- eval vexp
                              tdefs <- gets IOB.tdefs
                              str2txs $ constToXml tdefs wal
-                _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval AXT" ]
+                _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: AXT" ]
                              return $ Cerror ""
        AXF -> case vexps of
                   [vexp] -> do Cstring s <- eval vexp
