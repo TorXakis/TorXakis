@@ -43,8 +43,10 @@ import qualified Data.Text         as T
 
 import           CstrId
 import           FuncId
+import           Product
 import           SortId
 import           StdTDefs
+import           Sum
 import           TxsDefs
 import           VarId
 
@@ -73,11 +75,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_IntFromString,  error "FromString(Int) should not be called in SMT"),
     (IdFunc funcId_IntToXml,       error "ToXml(Int) should not be called in SMT"),
     (IdFunc funcId_IntFromXml,     error "FromXml(Int) should not be called in SMT"),
-    (IdFunc funcId_uniminusInt,    "-"),
-    (IdFunc funcId_plusInt,        "+"),
-    (IdFunc funcId_minusInt,       "-"),
-    (IdFunc funcId_timesInt,       "*"),
---  (IdFunc funcId_powerInt,       "pow"),
     (IdFunc funcId_ltInt,          "<"),
     (IdFunc funcId_leInt,          "<="),
     (IdFunc funcId_gtInt,          ">"),
@@ -223,6 +220,9 @@ justLookup mapI ident =
     let ms = Map.lookup ident mapI in
         fromMaybe (error $ "Ident " ++ show ident ++ " not found in mapping with keys: " ++ show (Map.keys mapI) ++ "\n") ms
 
+integer2smt :: Integer -> Text
+integer2smt n | n < 0 = "(- " <> (T.pack . show) (abs n) <> ")"
+integer2smt n         = (T.pack . show) n
 -- ----------------------------------------------------------------------------------------- --
 -- constToSMT: translate a const to a SMT constraint
 -- ----------------------------------------------------------------------------------------- --
@@ -230,9 +230,7 @@ constToSMT :: Map.Map Ident Text -> Const -> Text
 constToSMT _ (Cbool b) = if b
                             then "true"
                             else "false"
-constToSMT _ (Cint n) = if n < 0
-                            then "(- " <> (T.pack . show) (abs n) <> ")"
-                            else (T.pack . show) n
+constToSMT _ (Cint n) = integer2smt n
 constToSMT _ (Cstring s)  =  "\"" <> encodeStringLiteral s <> "\""
 constToSMT _ (Cregex r)  =  parseRegex r
 constToSMT mapI (Cstr cd [])   =        justLookup mapI (IdCstr cd)
@@ -258,6 +256,32 @@ valexprToSMT mapI (view -> Vconst c) = constToSMT mapI c
 valexprToSMT _ (view -> Vvar varId)  =  vname varId
 
 valexprToSMT mapI (view -> Vite c expr1 expr2) = "(ite " <> valexprToSMT mapI c <> " "  <> valexprToSMT mapI expr1 <> " " <> valexprToSMT mapI expr2 <> ")"
+
+
+valexprToSMT mapI (view -> Vsum s) = 
+    let ol = Sum.toMultiplierList s in
+        case ol of
+        {  [o]          -> arg2smt o
+        ;   _           -> "(+ " <> T.intercalate " " (map arg2smt ol) <> ")"
+        }
+    where 
+        arg2smt :: (Variable v) => (ValExpr v, Integer) -> Text
+        arg2smt (vexpr, 1)                              = valexprToSMT mapI vexpr
+        arg2smt (vexpr, -1)                             = "(- " <> valexprToSMT mapI vexpr <> ")"
+        arg2smt (vexpr, multiplier) |  multiplier /= 0  = "(* " <> integer2smt multiplier <> " " <> valexprToSMT mapI vexpr <> ")"
+        arg2smt (_, multiplier)                         = error ("valexprToSMT - arg2smt - illegal multiplier " ++ show multiplier)
+
+valexprToSMT mapI (view -> Vproduct p) = 
+    let ol = Product.toPowerList p in
+        case ol of
+        {  [o]          -> arg2smt o
+        ;   _           -> "(* " <> T.intercalate " " (map arg2smt ol) <> ")"
+        }
+    where 
+        arg2smt :: (Variable v) => (ValExpr v, Integer) -> Text
+        arg2smt (vexpr, 1)                  = valexprToSMT mapI vexpr
+        arg2smt (vexpr, power) |  power > 0 = "(^ " <> valexprToSMT mapI vexpr <> " " <> integer2smt power <> ")"
+        arg2smt (_, power)                  = error ("valexprToSMT - arg2smt - illegal power " ++ show power)
 
 valexprToSMT mapI (view -> Vdivide t n) = "(div " <> valexprToSMT mapI t <> " "  <> valexprToSMT mapI n <> ")"
 valexprToSMT mapI (view -> Vmodulo t n) = "(mod " <> valexprToSMT mapI t <> " "  <> valexprToSMT mapI n <> ")"

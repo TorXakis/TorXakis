@@ -38,6 +38,8 @@ library
                       , VarId
                       , FuncTable
                       , Sigs
+                      , Sum
+                      , Product
                       
   other-modules:        BehExprDefs
                       , ConnectionDefs
@@ -70,5 +72,26 @@ library
                       , MissingH
                       , text
                       , mtl
-
   default-language:     Haskell2010
+                    
+                      
+test-suite defs-BlackBox-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+                     
+  main-is:             TestMainBlackBox.hs
+  
+  other-modules:       GenProduct
+                     , GenSum
+                     , TestProduct
+                     , TestSum
+                       
+  ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
+  
+  build-depends:       base
+                     , containers
+                     , MissingH
+                     , QuickCheck
+                     , defs
+                     
+  default-language:    Haskell2010

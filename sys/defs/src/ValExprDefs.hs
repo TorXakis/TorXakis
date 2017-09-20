@@ -18,7 +18,10 @@ import           GHC.Generics    (Generic)
 import           ConstDefs
 import           CstrId
 import           FuncId
+import           Product
+import           Sum
 import           VarId
+
 
 
 
@@ -43,6 +46,8 @@ data  ValExprView v = Vconst  Const
                     | Vmodulo     {   dividend    :: ValExpr v
                                   ,   divisor     :: ValExpr v
                                   }
+                    | Vsum      (Sum (ValExpr v))
+                    | Vproduct  (Product (ValExpr v))
                     -- ADT
                     | Vcstr   CstrId [ValExpr v]
                     | Viscstr CstrId (ValExpr v)

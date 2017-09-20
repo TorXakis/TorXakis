@@ -17,6 +17,7 @@ import           ConstDefs
 import           CstrId
 import           FuncId
 import           SortId
+import           Sum
 import           ValExprDefs
 import           Variable
 import           VarId
@@ -68,6 +69,8 @@ sortOf' (view -> Venv _ve vexp)                         =  sortOf' vexp
 sortOf' (view -> Vequal { })                            =  sortId_Bool
 sortOf' (view -> Vnot { })                              =  sortId_Bool
 sortOf' (view -> Vand { })                              =  sortId_Bool
+sortOf' (view -> Vsum { })                              =  sortId_Int
+sortOf' (view -> Vproduct { })                          =  sortId_Int
 sortOf' (view -> Vmodulo { })                           =  sortId_Int
 sortOf' (view -> Vdivide { })                           =  sortId_Int
 sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps)  =  fs

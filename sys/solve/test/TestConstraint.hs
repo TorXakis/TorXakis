@@ -24,6 +24,7 @@ import           Test.HUnit
 
 -- general Torxakis imports
 import           StdTDefs
+import           Sum
 import           TxsDefs
 
 -- specific SMT imports
@@ -156,12 +157,12 @@ testNone :: SMT()
 testNone = testTemplateSat []
 
 testNegativeNegativeIsIdentity :: SMT()
-testNegativeNegativeIsIdentity = testTemplateSat [cstrEqual ie (cstrPredef SSI funcId_uniminusInt [cstrPredef SSI funcId_uniminusInt [ie]])]
+testNegativeNegativeIsIdentity = testTemplateSat [cstrEqual ie (cstrMinus (cstrMinus ie))]
     where
         ie = cstrConst (Cint 3) :: VExpr
 
 testAdd :: SMT()
-testAdd = testTemplateSat [cstrEqual (cstrConst (Cint 12)) (cstrPredef SSI funcId_plusInt [cstrConst (Cint 3), cstrConst (Cint 9)])]
+testAdd = testTemplateSat [cstrEqual (cstrConst (Cint 12)) (cstrSum (Sum.fromList [cstrConst (Cint 3), cstrConst (Cint 9)]))]
 
 -- --------------------------------------------------------------------------------------------------------------------
 testNoVariables :: SMT()

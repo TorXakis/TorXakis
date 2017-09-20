@@ -26,6 +26,7 @@ module Eval
 
 where
 
+import           Control.Arrow ((***))
 import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad.State
@@ -44,6 +45,8 @@ import qualified EnvBTree            as IOB
 import qualified EnvData
 
 -- import from defs
+import           Product
+import           Sum
 import           StdTDefs
 import           TxsDefs
 import           TxsShow
@@ -101,6 +104,24 @@ eval (view -> Vite cond vexp1 vexp2) = do
        else eval vexp2
 
 eval (view -> Venv ve vexp) = eval (TxsUtils.partSubst ve vexp)
+
+eval (view -> Vsum s) = do
+    consts <- mapM evalTuple (Sum.toMultiplierList s)
+    eval (cstrSum $ Sum.fromMultiplierList consts)       -- simplifies to integer
+  where 
+    evalTuple :: Variable v => (TxsDefs.ValExpr v, Integer) -> IOB.IOB (TxsDefs.ValExpr v, Integer)
+    evalTuple (v,i) = do
+        c <- eval v
+        return (cstrConst c,i)
+
+eval (view -> Vproduct p) = do
+    consts <- mapM evalTuple (Product.toPowerList p)
+    eval (cstrProduct $ Product.fromPowerList consts)       -- simplifies to integer
+  where 
+    evalTuple :: Variable v => (TxsDefs.ValExpr v, Integer) -> IOB.IOB (TxsDefs.ValExpr v, Integer)
+    evalTuple (v,i) = do
+        c <- eval v
+        return (cstrConst c,i)
 
 eval (view -> Vdivide t n) = do
      valT <- txs2int t
@@ -164,7 +185,7 @@ eval (view -> Vpredef kd fid vexps) =
                 [vexp] -> do wal <- eval vexp
                              tdefs <- gets IOB.tdefs
                              str2txs $ constToXml tdefs wal
-                _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval AXT" ]
+                _      -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "eval: AXT" ]
                              return $ Cerror ""
        AXF -> case vexps of
                   [vexp] -> do Cstring s <- eval vexp
@@ -227,17 +248,6 @@ evalSSI (FuncId nm _ _ _) vexps =
        ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
                                         tdefs <- gets IOB.tdefs
                                         return $ constFromXml tdefs sortId_Int s
-       ( "-",           [v1]    ) -> do i1 <- txs2int v1
-                                        int2txs $ (-1) * i1
-       ( "+",           [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        int2txs $ i1 + i2
-       ( "-",           [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        int2txs $ i1 - i2
-       ( "*",           [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        int2txs $ i1 * i2
        ( "<",           [v1,v2] ) -> do i1 <- txs2int v1
                                         i2 <- txs2int v2
                                         bool2txs $ i1 < i2

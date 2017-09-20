@@ -19,12 +19,15 @@ module TxsUtils
 
 where
 
+import           Control.Arrow (first)
 import qualified Data.Map   as Map
 import           Data.Maybe (fromMaybe)
 import qualified Data.Set   as Set
 
 import           FuncId
+import           Product
 import           StdTDefs
+import           Sum
 import           TxsDefs
 
 
@@ -97,6 +100,8 @@ partSubst ve (view -> Vite cond vexp1 vexp2)  = cstrIte (partSubst ve cond)
 partSubst ve (view -> Venv ve' vexp)          = partSubst ve (partSubst ve' vexp)
 partSubst ve (view -> Vdivide t n)            = cstrDivide (partSubst ve t) (partSubst ve n)
 partSubst ve (view -> Vmodulo t n)            = cstrModulo (partSubst ve t) (partSubst ve n)
+partSubst ve (view -> Vsum s)                 = cstrSum $ Sum.fromMultiplierList $ map (first (partSubst ve)) $ Sum.toMultiplierList s
+partSubst ve (view -> Vproduct p)             = cstrProduct $ Product.fromPowerList $ map (first (partSubst ve)) $ Product.toPowerList p
 partSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (partSubst ve vexp1) (partSubst ve vexp2)
 partSubst ve (view -> Vand vexps)             = cstrAnd $ Set.map (partSubst ve) vexps
 partSubst ve (view -> Vnot vexp)              = cstrNot (partSubst ve vexp)
@@ -131,6 +136,8 @@ compSubst ve (view -> Vite cond vexp1 vexp2)  =  cstrIte (compSubst ve cond)
 compSubst ve (view -> Venv ve' vexp)          =  compSubst ve (compSubst ve' vexp)
 compSubst ve (view -> Vdivide t n)            = cstrDivide (compSubst ve t) (compSubst ve n)
 compSubst ve (view -> Vmodulo t n)            = cstrModulo (compSubst ve t) (compSubst ve n)
+compSubst ve (view -> Vsum s)                 = cstrSum $ Sum.fromMultiplierList $ map (first (compSubst ve)) $ Sum.toMultiplierList s
+compSubst ve (view -> Vproduct p)             = cstrProduct $ Product.fromPowerList $ map (first (compSubst ve)) $ Product.toPowerList p
 compSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (compSubst ve vexp1) (compSubst ve vexp2)
 compSubst ve (view -> Vand vexps)             = cstrAnd $ Set.map (compSubst ve) vexps
 compSubst ve (view -> Vnot vexp)              = cstrNot (compSubst ve vexp)
@@ -249,6 +256,8 @@ instance UsedFids VExpr
     usedFids (view -> Vvar _v)                  =  []
     usedFids (view -> Vite cond tb fb)          =  usedFids [cond, tb, fb]
     usedFids (view -> Venv ve vexp)             =  usedFids (vexp:Map.elems ve)
+    usedFids (view -> Vsum s)                   =  concatMap usedFids (Sum.distinctTerms s)
+    usedFids (view -> Vproduct p)               =  concatMap usedFids (Product.distinctTerms p)
     usedFids (view -> Vdivide t n)              =  usedFids t ++ usedFids n
     usedFids (view -> Vmodulo t n)              =  usedFids t ++ usedFids n
     usedFids (view -> Vequal vexp1 vexp2)       =  usedFids vexp1 ++ usedFids vexp2
