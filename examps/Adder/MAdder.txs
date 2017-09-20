@@ -96,6 +96,11 @@ MAPPERDEF  MapS
                    Sout
         CHAN OUT   Result,
                    Sin
+        -- The SYNC keyword here specifies which are the actions that will be
+        -- observed in this behavior. For instance, we can observe `Plus |
+        -- Sin`, `Minus | Sin` or `Sout | Result`, but not individual actions
+        -- such as `Plus`, `Sin`, `Minus`, etc.
+        -- 
         SYNC       { Plus | Sin },
                    { Minus | Sin },
                    { Sout | Result }

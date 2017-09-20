@@ -9,9 +9,9 @@ See LICENSE at root directory of this repository.
 module Ioco
 
 -- ----------------------------------------------------------------------------------------- --
--- 
+--
 -- Test Primitives for an IOCO Model, built on Behave
--- 
+--
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
@@ -23,16 +23,16 @@ module Ioco
 )
 
 -- ----------------------------------------------------------------------------------------- --
--- import 
+-- import
 
 where
 
-import Control.Monad.State
+import           Control.Monad.State
 
-import qualified Data.Set  as Set
+import qualified Data.Set            as Set
 
 -- import from local
-import CoreUtils
+import           CoreUtils
 
 -- import from behavedef
 import qualified BTree
@@ -41,12 +41,12 @@ import qualified BTree
 import qualified Behave
 
 -- import from coreenv
-import qualified EnvCore   as IOC
+import qualified EnvCore             as IOC
 import qualified EnvData
 
 -- import from defs
-import qualified TxsDefs
 import qualified TxsDDefs
+import qualified TxsDefs
 
 import qualified Utils
 
@@ -79,8 +79,7 @@ iocoModelMenuOut  =  do
      menu <- iocoModelMenu
      filterM (isOutCTOffers . Utils.frst) menu
 
-
--- | iocoModelIsQui :  quiescence test on current btree of model 
+-- | iocoModelIsQui :  quiescence test on current btree of model
 iocoModelIsQui :: IOC.IOC Bool
 iocoModelIsQui  =  do
      validModel <- validModDef
@@ -108,7 +107,7 @@ iocoModelAfter (TxsDDefs.Act acts)  =  do
             modSts         <- gets (IOC.modsts . IOC.state)
             envb           <- filterEnvCtoEnvB
             (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
-            writeEnvBtoEnvC envb' 
+            writeEnvBtoEnvC envb'
             case maybt' of
               Nothing  -> return False
               Just bt' -> do IOC.modifyCS $ \st -> st { IOC.modsts = bt' }
@@ -125,7 +124,7 @@ iocoModelAfter TxsDDefs.ActQui  =  do
             envb           <- filterEnvCtoEnvB
             (maybt', envb') <- lift $ runStateT (Behave.behAfterRef modSts (Set.unions outsyncs))
                                                 envb
-            writeEnvBtoEnvC envb' 
+            writeEnvBtoEnvC envb'
             case maybt' of
               Nothing  -> return False
               Just bt' -> do IOC.modifyCS $ \st -> st { IOC.modsts = bt' }
@@ -137,9 +136,9 @@ validModDef :: IOC.IOC (Maybe TxsDefs.ModelDef)
 validModDef  =  do
      envc <- gets IOC.state
      case envc of
-       IOC.Testing {IOC.modeldef = moddef} -> return $ Just moddef
+       IOC.Testing {IOC.modeldef = moddef}  -> return $ Just moddef
        IOC.Simuling {IOC.modeldef = moddef} -> return $ Just moddef
-       _ -> return Nothing
+       _                                    -> return Nothing
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
