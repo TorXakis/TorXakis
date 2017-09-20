@@ -5,4 +5,3 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# OPTIONS_GHC -F -pgmF hspec-discover #-}
-
