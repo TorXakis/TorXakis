@@ -29,6 +29,7 @@ import           VarId
 -- value expression
 
 -- | ValExprView: the public view of value expression 'ValExpr'
+-- TODO: consider using GADT's here!
 data  ValExprView v = Vconst  Const
                     | Vvar    v
                     -- Boolean
@@ -39,20 +40,21 @@ data  ValExprView v = Vconst  Const
                               }
                     | Vnot    (ValExpr v)
                     | Vand    (Set (ValExpr v))
-                    -- Int 
-                    | Vdivide     {   dividend    :: ValExpr v
-                                  ,   divisor     :: ValExpr v
+                    -- Int
+                    | Vdivide     {   dividend :: ValExpr v
+                                  ,   divisor  :: ValExpr v
                                   }
-                    | Vmodulo     {   dividend    :: ValExpr v
-                                  ,   divisor     :: ValExpr v
+                    | Vmodulo     {   dividend :: ValExpr v
+                                  ,   divisor  :: ValExpr v
                                   }
+                    -- QUESTION: does this mean that we can sum booleans and strings?
                     | Vsum      (Sum (ValExpr v))
                     | Vproduct  (Product (ValExpr v))
                     -- ADT
                     | Vcstr   CstrId [ValExpr v]
                     | Viscstr CstrId (ValExpr v)
                     | Vaccess CstrId Int (ValExpr v)
-                    
+
                     | Venv    (VarEnv v v) (ValExpr v)
                     | Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]
