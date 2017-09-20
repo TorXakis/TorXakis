@@ -248,17 +248,6 @@ evalSSI (FuncId nm _ _ _) vexps =
        ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
                                         tdefs <- gets IOB.tdefs
                                         return $ constFromXml tdefs sortId_Int s
-       ( "-",           [v1]    ) -> do i1 <- txs2int v1
-                                        int2txs $ (-1) * i1
-       ( "+",           [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        int2txs $ i1 + i2
-       ( "-",           [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        int2txs $ i1 - i2
-       ( "*",           [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        int2txs $ i1 * i2
        ( "<",           [v1,v2] ) -> do i1 <- txs2int v1
                                         i2 <- txs2int v2
                                         bool2txs $ i1 < i2
