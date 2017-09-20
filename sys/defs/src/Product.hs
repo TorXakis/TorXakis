@@ -8,14 +8,15 @@ See license.txt
 -- Module      :  Product
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  Closed-style (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
 --
 -- Implementation for a symbolic product.
--- 
--- Note: Integer division is not associative, so negative occurances should be not be used for Integers.
+--
+-- Note: Integer division is not associative, so negative occurrences should be
+-- not be used for Integers.
 --
 -- inspiration taken from
 -- https://hackage.haskell.org/package/multiset-0.3.3/docs/src/Data-MultiSet.html
@@ -25,8 +26,9 @@ See license.txt
 -- In the complexity of functions /n/ refers to the number of distinct terms,
 -- /t/ is the total number of terms.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-module Product  ( 
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
+module Product  (
     -- * Product type
       Product
 
@@ -38,18 +40,18 @@ module Product  (
     -- * Filter
     , partition
     , fraction
-    
+
     -- * Fold
     , foldPower
-    
+
     -- * Product of Term and Products
     , multiply
     , divide
     , multiplyPower
     , product
     , products
-    
-    -- * Power 
+
+    -- * Power
     , power
 
     -- * Constructors and conversion
@@ -63,13 +65,13 @@ module Product  (
     , fromDistinctAscPowerList
 ) where
 
-import Prelude hiding (product)
+import           Prelude         hiding (product)
 
-import Control.Arrow ((***))
-import Control.DeepSeq
-import qualified Data.List as List
+import           Control.Arrow   ((***))
+import           Control.DeepSeq
+import qualified Data.List       as List
 import qualified Data.Map.Strict as Map
-import GHC.Generics (Generic)
+import           GHC.Generics    (Generic)
 {--------------------------------------------------------------------
   The data type
 --------------------------------------------------------------------}
@@ -102,9 +104,9 @@ multiplyPower _ 0 p = p                                 -- invariant: no term wi
 multiplyPower x m p = (Product . Map.alter increment x . unProduct) p
     where
         increment :: Maybe Integer -> Maybe Integer
-        increment Nothing            = Just m
+        increment Nothing  = Just m
         increment (Just n) | n == -m = Nothing          -- Terms with power zero are removed
-        increment (Just n)           = Just (n+m)
+        increment (Just n) = Just (n+m)
 
 -- | The product of a list of products.
 products :: Ord a => [Product a] -> Product a
@@ -146,10 +148,10 @@ foldPower :: (a -> Integer -> b -> b) -> b -> Product a -> b
 foldPower f z = Map.foldrWithKey f z . unProduct
 
 {--------------------------------------------------------------------
-  Lists 
+  Lists
 --------------------------------------------------------------------}
 
--- | /O(n)/. The distinct terms of a product, 
+-- | /O(n)/. The distinct terms of a product,
 -- each term occurs only once in the list.
 --
 -- > distinctTerms = map fst . toOccurList
@@ -157,11 +159,11 @@ distinctTerms :: Product a -> [a]
 distinctTerms = Map.keys . unProduct
 
 -- | /O(t*log t)/. Create a product from a list of terms.
-fromList :: Ord a => [a] -> Product a 
+fromList :: Ord a => [a] -> Product a
 fromList xs = fromPowerList $ zip xs (repeat 1)
 
 {--------------------------------------------------------------------
-  Multiplier lists 
+  Multiplier lists
 --------------------------------------------------------------------}
 
 -- | /O(n)/. Convert the product to a list of term\/power pairs.
@@ -173,11 +175,11 @@ toDistinctAscPowerList :: Product a -> [(a, Integer)]
 toDistinctAscPowerList = Map.toAscList . unProduct
 
 -- | /O(n*log n)/. Create a product from a list of term\/power pairs.
-fromPowerList :: Ord a => [(a, Integer)] -> Product a 
+fromPowerList :: Ord a => [(a, Integer)] -> Product a
 fromPowerList = Product . Map.filter (0/=) . Map.fromListWith (+)       -- Terms with power zero are removed
 
--- | /O(n)/. Build a product from an ascending list of term\/power pairs where 
+-- | /O(n)/. Build a product from an ascending list of term\/power pairs where
 -- each term appears only once.
 -- /The precondition (input list is strictly ascending) is not checked./
-fromDistinctAscPowerList :: [(a, Integer)] -> Product a 
+fromDistinctAscPowerList :: [(a, Integer)] -> Product a
 fromDistinctAscPowerList = Product . Map.filter (0/=) . Map.fromDistinctAscList
