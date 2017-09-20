@@ -15,10 +15,9 @@ import Product
 
 newtype GenProduct a = GenProduct (Product a)
     deriving (Show)
-    
+
 instance (Ord a, Arbitrary a) => Arbitrary (GenProduct a) where
   arbitrary = do
-    i <- choose (0,100)
-    args <- vectorOf i arbitrary
-    powers <- vectorOf i chooseAny
+    args   <- listOf arbitrary
+    powers <- vectorOf (length args) arbitrary
     return $ GenProduct (Product.fromPowerList (zip args powers))

@@ -18,7 +18,6 @@ newtype GenSum a = GenSum (Sum a)
     
 instance (Ord a, Arbitrary a) => Arbitrary (GenSum a) where
   arbitrary = do
-    i <- choose (0,100)
-    args <- vectorOf i arbitrary
-    multipliers <- vectorOf i chooseAny
+    args        <- listOf arbitrary
+    multipliers <- vectorOf (length args) arbitrary
     return $ GenSum (Sum.fromMultiplierList (zip args multipliers))
