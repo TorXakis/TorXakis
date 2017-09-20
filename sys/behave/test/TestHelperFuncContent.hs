@@ -12,13 +12,17 @@ import qualified Data.Map          as Map
 import qualified Data.Set          as Set
 import qualified Data.String.Utils as Utils
 import qualified Data.Text         as T
+import           Data.Tuple (fst,snd)
 import qualified Debug.Trace       as Trace
+
 
 import           ChanId
 import           ProcId
+import           Product
 import           Sigs
 import           SortId
 import           StdTDefs
+import           Sum
 import           TxsAlex
 import           TxsDefs           hiding (vexpr)
 import           TxsHappy
@@ -117,6 +121,13 @@ identicalVExpr (view -> Vnot v1)                (view -> Vnot v2)               
 identicalVExpr (view -> Vand vs1)               (view -> Vand vs2)               = identicalLists identicalVExpr (Set.toAscList vs1) (Set.toAscList vs2)
 identicalVExpr (view -> Vdivide t1 n1)          (view -> Vdivide t2 n2)          = identicalVExpr t1 t2  && identicalVExpr n1 n2
 identicalVExpr (view -> Vmodulo t1 n1)          (view -> Vmodulo t2 n2)          = identicalVExpr t1 t2  && identicalVExpr n1 n2
+identicalVExpr (view -> Vsum s1)                (view -> Vsum s2)                = let l1 = Sum.toMultiplierList s1
+                                                                                       l2 = Sum.toMultiplierList s2
+                                                                                     in identicalLists (\e1 e2 -> snd e1 == snd e2 && identicalVExpr (fst e1) (fst e2)) l1 l2
+identicalVExpr (view -> Vproduct s1)            (view -> Vproduct s2)            = let l1 = Product.toPowerList s1
+                                                                                       l2 = Product.toPowerList s2
+                                                                                     in identicalLists (\e1 e2 -> snd e1 == snd e2 && identicalVExpr (fst e1) (fst e2)) l1 l2
+
 identicalVExpr (view -> Vpredef p1 fid1 vexps1) (view -> Vpredef p2 fid2 vexps2) = p1 == p2 && identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2
 identicalVExpr (view -> Verror s1)              (view -> Verror s2)              = s1 == s2
 identicalVExpr _                                _                                = False                          -- different
@@ -384,15 +395,15 @@ functionCall (FuncId "<=>" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl s
 functionCall (FuncId "+" _ [si] so) [i] | identicalSortId si sortId_Int && identicalSortId so sortId_Int && identicalSortId si (sortOf (vexpr i)) =
                                           error "This shound't be called"
 functionCall (FuncId "+" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Int && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
-    FuncContent (cstrPredef SSI funcId_plusInt [vexpr l, vexpr r])
+    FuncContent (cstrSum (Sum.fromList [vexpr l, vexpr r]))
 functionCall (FuncId "-" _ [si] so) [i] | identicalSortId si sortId_Int && identicalSortId so sortId_Int && identicalSortId si (sortOf (vexpr i)) =
-    FuncContent (cstrPredef SSI funcId_uniminusInt [vexpr i])
+    FuncContent (cstrMinus (vexpr i))
 functionCall (FuncId "-" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Int && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
-    FuncContent (cstrPredef SSI funcId_minusInt [vexpr l, vexpr r])
+    FuncContent (cstrSum (Sum.fromMultiplierList [(vexpr l,1), (vexpr r,-1)]))
 functionCall (FuncId "abs" _ [si] so) [i] | identicalSortId si sortId_Int && identicalSortId so sortId_Int && identicalSortId si (sortOf (vexpr i)) =
     FuncContent (cstrPredef SSI funcId_absInt [vexpr i])
 functionCall (FuncId "*" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Int && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
-    FuncContent (cstrPredef SSI funcId_timesInt [vexpr l, vexpr r])
+    FuncContent (cstrProduct (Product.fromList [vexpr l, vexpr r]))
 functionCall (FuncId "/" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Int && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrDivide (vexpr l) (vexpr r))
 functionCall (FuncId "%" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_Int && identicalSortId s sortId_Int && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =

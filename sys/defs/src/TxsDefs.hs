@@ -28,23 +28,6 @@ module TxsDefs
 , TxsDef(..)
 , Variable(..)
 , ValExpr
-, cstrFunc
-, cstrCstr
-, cstrIsCstr
-, cstrAccess
-, cstrConst
-, cstrVar
-, cstrIte
-, cstrEnv
-, cstrModulo
-, cstrDivide
-, cstrEqual
-, cstrNot
-, cstrAnd
-, cstrOr
-, cstrImplies
-, cstrPredef
-, cstrError
 , view
 , ValExprView(..)
 , PredefKind(..)
@@ -110,7 +93,7 @@ import           StatId
 import           VarId
 
 import           ValExprDefs
-import           ValExprImpls
+import           ValExprImpls   as X
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis definitions

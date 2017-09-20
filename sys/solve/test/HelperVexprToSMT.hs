@@ -13,6 +13,7 @@ import           Data.Text         (Text)
 import qualified Data.Text         as T
 
 import           StdTDefs
+import           Sum
 import           TxsDefs
 
 import           FuncId
@@ -40,6 +41,11 @@ createVfunc funcId ies =
     TXS2SMTVExprTest (cstrFunc funcId (map input ies))
                ("(" ++ T.unpack (FuncId.name funcId) ++ " " ++ join " " (map expected ies) ++ ")")
 
+createVsum :: [TXS2SMTVExprTest] -> TXS2SMTVExprTest
+createVsum ies =
+    TXS2SMTVExprTest (cstrSum (Sum.fromList (map input ies)))
+               ("(+ " ++ join " " (map expected ies) ++ ")")
+
 createVconst :: Const -> TXS2SMTVExprTest
 createVconst c@(Cint n) =
     if n < 0
@@ -62,11 +68,6 @@ createVequal :: TXS2SMTVExprTest -> TXS2SMTVExprTest -> TXS2SMTVExprTest
 createVequal (TXS2SMTVExprTest input1 expected1) (TXS2SMTVExprTest input2 expected2) =
     TXS2SMTVExprTest (cstrEqual input1 input2) ("(= " ++ expected1 ++ " " ++ expected2 ++ ")" )     -- TODO: TXS can change order -- order should not be fixed ?? use regex??
 
-createVpredef :: PredefKind -> FuncId -> [TXS2SMTVExprTest] -> TXS2SMTVExprTest
-createVpredef predefkind funcId ies =
-    TXS2SMTVExprTest (cstrPredef predefkind funcId (map input ies))
-               ("(" ++ T.unpack (FuncId.name funcId) ++ " " ++ join " " (map expected ies) ++ ")")
-
 createVand :: Set.Set TXS2SMTVExprTest -> TXS2SMTVExprTest
 createVand conds =
     TXS2SMTVExprTest (cstrAnd (Set.map input conds))
@@ -77,4 +78,5 @@ createVand conds =
 ------------------------------------------------------------------
 createUniminusInt :: TXS2SMTVExprTest -> TXS2SMTVExprTest
 createUniminusInt ie =
-    createVpredef SSI funcId_uniminusInt [ie]
+    TXS2SMTVExprTest (cstrMinus (input ie))
+               ("(- " ++ expected ie ++ ")")
