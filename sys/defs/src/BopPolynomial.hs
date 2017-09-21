@@ -21,9 +21,9 @@ See license.txt
 --  Binary operation polynomials: a symbolic representation of polynomials of
 --  the form:
 --
--- > a0 <+> a1 <+> ... <+> an-1
+-- > a0 <> a1 <> ... <> an-1
 --
--- `ai \in A`, and <+> is a commutative (binary) operation, and (A, <+>) is a
+-- `ai \in A`, and <> is a commutative (binary) operation, and (A, <>) is a
 -- Monoid.
 -----------------------------------------------------------------------------
 
@@ -38,12 +38,13 @@ module BopPolynomial
   , addNTimes
     -- * TODO: classify these operations.
   , asMap
-  , (<+>)
   , multiply
   , IntMultipliable
   , foldP
   -- * Product wrapper, and operations.
-  , MyProduct(..)
+  , Product(..)
+  -- * Commutative class.
+  , Commutative
   )
 where
 
@@ -53,14 +54,13 @@ import qualified Data.Map.Strict as Map
 import           Data.Monoid     hiding (Product (..))
 import           GHC.Exts
 
-newtype BopPolynomial a = BP { asMap :: Map a Int }
+newtype BopPolynomial a = BP { asMap :: Map a Int } deriving Eq
 
 instance Show a => Show (BopPolynomial a) where
     show (BP p) = show (Map.assocs p)
 
 -- | Types with a commutative operator.
-class Commutative a where
-    (<+>) :: a -> a -> a
+class Commutative a
 
 -- | Types that can be multiplied by an integral.
 class (Num a, Monoid a) => IntMultipliable a where
@@ -73,25 +73,25 @@ class (Num a, Monoid a) => IntMultipliable a where
 instance Integral a => IntMultipliable (Sum a) where
     multiply n (Sum x) = Sum (fromInteger $ toInteger x * toInteger n)
 
-newtype MyProduct a = MyProduct {getProduct :: a} deriving (Show, Functor, Num, Ord)
+newtype Product a = Product {getProduct :: a} deriving (Show, Functor, Num, Ord)
 
-instance AEq a => Eq (MyProduct a) where
-    (MyProduct x) == (MyProduct y) = x ~== y
+instance AEq a => Eq (Product a) where
+    (Product x) == (Product y) = x ~== y
 
-instance Num a => Monoid (MyProduct a) where
-    mempty = MyProduct 1
-    (MyProduct x) `mappend` (MyProduct y) = MyProduct $ x * y
+instance Num a => Monoid (Product a) where
+    mempty = Product 1
+    (Product x) `mappend` (Product y) = Product $ x * y
 
-instance Fractional a => Fractional (MyProduct a) where
-    fromRational r = MyProduct (fromRational r)
-    (MyProduct x) / (MyProduct y) = MyProduct $ x / y
+instance Fractional a => Fractional (Product a) where
+    fromRational r = Product (fromRational r)
+    (Product x) / (Product y) = Product $ x / y
 
-instance Fractional a => IntMultipliable (MyProduct a) where
+instance Fractional a => IntMultipliable (Product a) where
     -- Note that this could lead to a negative exponent error if x is 0.
-    multiply n (MyProduct x) = MyProduct (x ^^ toInteger n)
+    multiply n (Product x) = Product (x ^^ toInteger n)
 
-instance Num a => Commutative (Sum a) where
-    (Sum x) <+> (Sum y) = Sum (x + y)
+instance Num a => Commutative (Sum a)
+instance Num a => Commutative (Product a)
 
 instance
     ( Monoid a
