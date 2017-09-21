@@ -8,21 +8,22 @@ See license.txt
 -- Module      :  Sum
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  Closed-style (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
 --
 -- Implementation for a symbolic sum.
--- 
+--
 -- inspiration taken from
 -- https://hackage.haskell.org/package/multiset-0.3.3/docs/src/Data-MultiSet.html
 --
 -- In the complexity of functions /n/ refers to the number of distinct terms,
 -- /t/ is the total number of terms.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-module Sum  ( 
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
+module Sum  (
     -- * Sum type
       Sum
 
@@ -33,19 +34,19 @@ module Sum  (
 
     -- * Filter
     , partition
-    
+
     -- * Fold
     , foldMultiplier
-    
+
     -- * Sum of Term and Sums
     , add
     , subtract
     , addMultiply
     , sum
     , sums
-    
-    
-    -- * Multiply 
+
+
+    -- * Multiply
     , multiply
 
     -- * Constructors and conversion
@@ -60,13 +61,13 @@ module Sum  (
     , fromDistinctAscMultiplierList
 ) where
 
-import Prelude hiding (sum, subtract)
+import           Prelude         hiding (subtract, sum)
 
-import Control.Arrow ((***))
-import Control.DeepSeq
-import qualified Data.List as List
+import           Control.Arrow   ((***))
+import           Control.DeepSeq
+import qualified Data.List       as List
 import qualified Data.Map.Strict as Map
-import GHC.Generics (Generic)
+import           GHC.Generics    (Generic)
 
 {--------------------------------------------------------------------
   The data type
@@ -80,6 +81,7 @@ newtype Sum a = Sum { unSum :: Map.Map a Integer }
   Query
 --------------------------------------------------------------------}
 -- | /O(1)/. The number of distinct terms in the sum.
+-- TODO: remove this, use BopPolynomial
 nrofTerms :: Sum a -> Int
 nrofTerms = Map.size . unSum
 
@@ -100,9 +102,9 @@ addMultiply _ 0 s = s                                    -- invariant: no term w
 addMultiply x m s = (Sum . Map.alter increment x . unSum) s
     where
         increment :: Maybe Integer -> Maybe Integer
-        increment Nothing            = Just m
+        increment Nothing  = Just m
         increment (Just n) | n == -m = Nothing           -- Terms with multiplier zero are removed
-        increment (Just n)           = Just (n+m)
+        increment (Just n) = Just (n+m)
 
 -- | The sum of a list of sums.
 sums :: Ord a => [Sum a] -> Sum a
@@ -137,10 +139,10 @@ foldMultiplier :: (a -> Integer -> b -> b) -> b -> Sum a -> b
 foldMultiplier f z = Map.foldrWithKey f z . unSum
 
 {--------------------------------------------------------------------
-  Lists 
+  Lists
 --------------------------------------------------------------------}
 
--- | /O(n)/. The distinct terms of a sum, 
+-- | /O(n)/. The distinct terms of a sum,
 -- each term occurs only once in the list.
 --
 -- > distinctTerms = map fst . toOccurList
@@ -148,11 +150,11 @@ distinctTerms :: Sum a -> [a]
 distinctTerms = Map.keys . unSum
 
 -- | /O(t*log t)/. Create a sum from a list of terms.
-fromList :: Ord a => [a] -> Sum a 
+fromList :: Ord a => [a] -> Sum a
 fromList xs = fromMultiplierList $ zip xs (repeat 1)
 
 {--------------------------------------------------------------------
-  Multiplier lists 
+  Multiplier lists
 --------------------------------------------------------------------}
 
 -- | /O(n)/. Convert the sum to a list of term\/multiplier pairs.
@@ -164,11 +166,11 @@ toDistinctAscMultiplierList :: Sum a -> [(a, Integer)]
 toDistinctAscMultiplierList = Map.toAscList . unSum
 
 -- | /O(n*log n)/. Create a sum from a list of term\/multiplier pairs.
-fromMultiplierList :: Ord a => [(a, Integer)] -> Sum a 
+fromMultiplierList :: Ord a => [(a, Integer)] -> Sum a
 fromMultiplierList = Sum . Map.filter (0/=) . Map.fromListWith (+)
 
--- | /O(n)/. Build a sum from an ascending list of term\/multiplier pairs where 
+-- | /O(n)/. Build a sum from an ascending list of term\/multiplier pairs where
 -- each term appears only once.
 -- /The precondition (input list is strictly ascending) is not checked./
-fromDistinctAscMultiplierList :: [(a, Integer)] -> Sum a 
+fromDistinctAscMultiplierList :: [(a, Integer)] -> Sum a
 fromDistinctAscMultiplierList = Sum . Map.filter (0/=) . Map.fromDistinctAscList

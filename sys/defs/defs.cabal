@@ -73,6 +73,7 @@ library
                       , MissingH
                       , text
                       , mtl
+                      , ieee754
   default-language:     Haskell2010
                     
 
