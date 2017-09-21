@@ -29,32 +29,54 @@ See license.txt
 
 module BopPolynomial
   ( -- * Binary Operation Polynomial Type.
-    BopPolynomial
+    BopPolynomial (..)
+
     -- * Query.
-  , nrofTerms
+  , nrofDistinctTerms
+  , distinctTerms  -- exposed for performance reasons checking properties for
+                   -- all distinct terms is faster than for all terms
+
+  -- * Filter
+  , partition
+
+  -- | Folds
+  , foldMultiplier
+  , foldP
+
     -- * Manipulation of the polynomial.
   , append
   , remove
   , addNTimes
-    -- * TODO: classify these operations.
-  , asMap
+
+
+  -- * Application of the binary operation.
   , multiply
-  , IntMultipliable
-  , foldP
+
+
   -- * Product wrapper, and operations.
   , Product(..)
-  -- * Commutative class.
+
+  -- * Class that define restrictions on the polynomial types.
   , Commutative
+  , IntMultipliable
+
+  -- ** Multiplier lists
+  , toMultiplierList
+  , toDistinctAscMultiplierList
+  , fromMultiplierList
+  , fromDistinctAscMultiplierList
   )
 where
 
+import           Control.Arrow   ((***))
 import           Data.AEq
+import           Data.List       hiding (partition)
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import           Data.Monoid     hiding (Product (..))
 import           GHC.Exts
 
-newtype BopPolynomial a = BP { asMap :: Map a Int } deriving Eq
+newtype BopPolynomial a = BP { asMap :: Map a Integer } deriving Eq
 
 instance Show a => Show (BopPolynomial a) where
     show (BP p) = show (Map.assocs p)
@@ -63,7 +85,7 @@ instance Show a => Show (BopPolynomial a) where
 class Commutative a
 
 -- | Types that can be multiplied by an integral.
-class (Num a, Monoid a) => IntMultipliable a where
+class IntMultipliable a where
     -- | `multiply n x` multiplies `x` `n` times.
     multiply :: Integral n
              => n -- ^ Multiplication factor.
@@ -90,6 +112,12 @@ instance Fractional a => IntMultipliable (Product a) where
     -- Note that this could lead to a negative exponent error if x is 0.
     multiply n (Product x) = Product (x ^^ toInteger n)
 
+instance ( Num a, Ord a
+         , Commutative a
+         , IntMultipliable a
+         ) => IntMultipliable (BopPolynomial a) where
+    multiply n (BP p) = BP $ (toInteger n *) <$> p
+
 instance Num a => Commutative (Sum a)
 instance Num a => Commutative (Product a)
 
@@ -107,15 +135,40 @@ instance Ord a => IsList (BopPolynomial a) where
     fromList xs = BP $ Map.fromListWith (+) $ zip xs (repeat 1)
     toList (BP p) = do
         (x, n) <- Map.toList p
-        replicate n x
+        genericReplicate n x
 
 -- | Fold the polynomial.
-foldP :: IntMultipliable a => BopPolynomial a -> a
+foldP :: (IntMultipliable a, Monoid a) => BopPolynomial a -> a
 foldP (BP p) = Map.foldrWithKey (\x n -> (multiply n x <>)) mempty p
 
 -- | Number of distinct terms in the polynomial.
-nrofTerms :: BopPolynomial a -> Int
-nrofTerms = Map.size . asMap
+nrofDistinctTerms :: BopPolynomial a -> Int
+nrofDistinctTerms = Map.size . asMap
+
+-- | /O(n)/. The distinct terms of a polynomial., each term occurs only once in
+-- the list.
+--
+distinctTerms :: BopPolynomial a -> [a]
+distinctTerms = Map.keys . asMap
+
+-- | /O(n)/. Convert the polynomial to a list of term\/multiplier pairs.
+toMultiplierList :: BopPolynomial a -> [(a, Integer)]
+toMultiplierList = toDistinctAscMultiplierList
+
+-- | /O(n)/. Convert the polynomial to a distinct ascending list of term\/multiplier
+-- pairs.
+toDistinctAscMultiplierList :: BopPolynomial a -> [(a, Integer)]
+toDistinctAscMultiplierList = Map.toAscList . asMap
+
+-- | /O(n*log n)/. Create a polynomial from a list of term\/multiplier pairs.
+fromMultiplierList :: Ord a => [(a, Integer)] -> BopPolynomial a
+fromMultiplierList = BP . Map.filter (0/=) . Map.fromListWith (+)
+
+-- | /O(n)/. Build a polynomial from an ascending list of term\/multiplier
+-- pairs where each term appears only once. /The precondition (input list is
+-- strictly ascending) is not checked./
+fromDistinctAscMultiplierList :: [(a, Integer)] -> BopPolynomial a
+fromDistinctAscMultiplierList = BP . Map.filter (0/=) . Map.fromDistinctAscList
 
 -- | Append a term to the polynomial.
 --
@@ -139,11 +192,22 @@ remove = addNTimes (-1)
 
 -- | Add the term `x` `n` times. If `n` is negative the term will be removed
 -- `n` times.
-addNTimes :: Ord a => Int -> a -> BopPolynomial a -> BopPolynomial a
+addNTimes :: Ord a => Integer -> a -> BopPolynomial a -> BopPolynomial a
 addNTimes 0 _ s = s                                    -- invariant: no term with multiplier 0 is stored.
 addNTimes m x s = (BP . Map.alter increment x . asMap) s
     where
-        increment :: Maybe Int -> Maybe Int
+        increment :: Maybe Integer -> Maybe Integer
         increment Nothing  = Just m
         increment (Just n) | n == -m = Nothing           -- Terms with multiplier zero are removed
         increment (Just n) = Just (n+m)
+
+-- | /O(n)/. Partition the polynomial into two polynomial, one with all
+-- elements that satisfy the predicate and one with all elements that don't
+-- satisfy the predicate.
+partition :: (a -> Bool) -> BopPolynomial a -> (BopPolynomial a,BopPolynomial a)
+partition p = (BP *** BP) . Map.partitionWithKey (\k _ -> p k) . asMap
+
+-- | /O(n)/. Fold over the terms of the polynomial with their multipliers.
+foldMultiplier :: (a -> Integer -> b -> b) -> b -> BopPolynomial a -> b
+foldMultiplier f z = Map.foldrWithKey f z . asMap
+

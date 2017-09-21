@@ -14,7 +14,8 @@ import           GHC.Exts
 import           Test.Hspec
 import           Test.QuickCheck
 
-multiplyLaw :: (Integral n, Eq a, IntMultipliable a, Show a) => n -> a -> Property
+multiplyLaw :: (Integral n, Eq a, IntMultipliable a, Monoid a, Show a)
+            => n -> a -> Property
 multiplyLaw n x
     =                 multiply   n'  x ===   fold (genericReplicate n' x)
     .&&. (n' /= 0 ==> multiply (-n') x === multiply (-1) (fold (genericReplicate n' x)))
@@ -26,7 +27,8 @@ propIntMultipliableSum n s = multiplyLaw n (Sum s)
 propIntMultipliableProduct :: Int -> Double -> Property
 propIntMultipliableProduct n s = multiplyLaw n (Product s)
 
-fromListLaw :: (Eq a, IntMultipliable a, Show a, Ord a) => [a] -> Property
+fromListLaw :: (Eq a, IntMultipliable a, Monoid a, Show a, Ord a)
+            => [a] -> Property
 fromListLaw xs = fold xs === foldP (fromList xs)
 
 propFromListSum :: [Int] -> Property
@@ -36,7 +38,7 @@ propFromListProduct :: [Double] -> Property
 propFromListProduct xs = fromListLaw (Product <$> xs)
 
 nrOfTermsLaw :: Ord a => [a] -> Property
-nrOfTermsLaw xs = nrofTerms (fromList xs) === length (nub xs)
+nrOfTermsLaw xs = nrofDistinctTerms (fromList xs) === length (nub xs)
 
 monoidLawEmpty0ForBoP :: (Eq a, Show a, Monoid (BopPolynomial a))
                      => BopPolynomial a -> Property
