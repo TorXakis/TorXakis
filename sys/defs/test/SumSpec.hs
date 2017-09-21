@@ -37,15 +37,15 @@ prop_SumShow (GenSum s) =
     show [s] == show [s]
 
 -- * Test data
-sum6 :: Sum Int
+sum6 :: Sum Integer
 sum6 = fromList [1, 2, 3]
 
-sum10 :: Sum Int
+sum10 :: Sum Integer
 sum10 = fromList [2, 2, 6]
 
 -- * Compute the value of the sum.
-theSumOf :: Sum Int -> Int
-theSumOf = foldMultiplier (\x _ -> (x +)) 0
+theSumOf :: Sum Integer -> Integer
+theSumOf = foldMultiplier (\x m -> (m * x +)) 0
 
 spec :: Spec
 spec = do
@@ -58,7 +58,7 @@ spec = do
     it "sum6 is should be 6" $
       theSumOf sum6 `shouldBe` 6
     it "sum10 is should be 10" $
-      theSumOf sum6 `shouldBe` 6
+      theSumOf sum10 `shouldBe` 10
     it "sum6 + sum10 should be 16" $
       theSumOf (sum6 `sum` sum10) `shouldBe` 16
     it "sum6 - 10 should be -4" $
