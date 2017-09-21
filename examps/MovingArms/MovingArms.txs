@@ -238,3 +238,51 @@ MODELDEF  TestPurpose ::=
                              UpY, DownY, StopY, MinY, MaxY,
                              UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
 ENDDEF
+
+STAUTDEF singleAxisMovementSTAUTDEF[ UpX, DownX, StopX, MinX, MaxX,
+                                     UpY, DownY, StopY, MinY, MaxY,
+                                     UpZ, DownZ, StopZ, MinZ, MaxZ] () ::=
+      STATE  idle, moveX, moveY, moveZ
+      
+      VAR    up :: Bool
+
+      INIT   idle
+
+      TRANS  idle  -> UpX   { up := True  }  ->  moveX
+             idle  -> DownX { up := False }  ->  moveX
+             idle  -> UpY   { up := True  }  ->  moveY
+             idle  -> DownY { up := False }  ->  moveY
+             idle  -> UpZ   { up := True  }  ->  moveZ
+             idle  -> DownZ { up := False }  ->  moveZ
+
+             moveX -> StopX                  -> idle
+             moveX -> MaxX [[ up ]]          -> idle
+             moveX -> MinX [[ not( up ) ]]   -> idle
+
+             moveY -> StopY                  -> idle
+             moveY -> MaxY [[ up ]]          -> idle
+             moveY -> MinY [[ not( up ) ]]   -> idle
+
+             moveZ -> StopZ                  -> idle
+             moveZ -> MaxZ [[ up ]]          -> idle
+             moveZ -> MinZ [[ not( up ) ]]   -> idle
+ENDDEF
+
+MODELDEF  TestPurposeSTAUTDEF ::=
+    CHAN IN     UpX, DownX, StopX, 
+                UpY, DownY, StopY,
+                UpZ, DownZ, StopZ
+    CHAN OUT    MinX, MaxX,
+                MinY, MaxY,
+                MinZ, MaxZ
+    BEHAVIOUR   
+        allowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
+                           UpY, DownY, StopY, MinY, MaxY,
+                           UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
+    |[ UpX, DownX, StopX, MinX, MaxX,
+       UpY, DownY, StopY, MinY, MaxY,
+       UpZ, DownZ, StopZ, MinZ, MaxZ]| 
+        singleAxisMovementSTAUTDEF [ UpX, DownX, StopX, MinX, MaxX,
+                                     UpY, DownY, StopY, MinY, MaxY,
+                                     UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
+ENDDEF
