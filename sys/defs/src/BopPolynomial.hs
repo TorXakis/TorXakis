@@ -40,7 +40,7 @@ module BopPolynomial
   , asMap
   , (<+>)
   , multiply
-  , Multiply
+  , IntMultipliable
   , foldP
   -- * Product wrapper, and operations.
   , MyProduct(..)
@@ -62,15 +62,15 @@ instance Show a => Show (BopPolynomial a) where
 class Commutative a where
     (<+>) :: a -> a -> a
 
--- | Types that can be multiplied by a negative constant.
-class (Num a, Monoid a) => Multiply a where
+-- | Types that can be multiplied by an integral.
+class (Num a, Monoid a) => IntMultipliable a where
     -- | `multiply n x` multiplies `x` `n` times.
     multiply :: Integral n
              => n -- ^ Multiplication factor.
              -> a -- ^ Element to multiply.
              -> a
 
-instance Integral a => Multiply (Sum a) where
+instance Integral a => IntMultipliable (Sum a) where
     multiply n (Sum x) = Sum (fromInteger $ toInteger x * toInteger n)
 
 newtype MyProduct a = MyProduct {getProduct :: a} deriving (Show, Functor, Num, Ord)
@@ -86,7 +86,7 @@ instance Fractional a => Fractional (MyProduct a) where
     fromRational r = MyProduct (fromRational r)
     (MyProduct x) / (MyProduct y) = MyProduct $ x / y
 
-instance Fractional a => Multiply (MyProduct a) where
+instance Fractional a => IntMultipliable (MyProduct a) where
     -- Note that this could lead to a negative exponent error if x is 0.
     multiply n (MyProduct x) = MyProduct (x ^^ toInteger n)
 
@@ -97,7 +97,7 @@ instance
     ( Monoid a
     , Commutative a
     , Ord a
-    , Multiply a
+    , IntMultipliable a
     ) => Monoid (BopPolynomial a) where
     mempty = BP []
     BP p0 `mappend` BP p1 = BP $ Map.filter (/= 0) $ Map.unionWith (+) p0 p1
@@ -110,7 +110,7 @@ instance Ord a => IsList (BopPolynomial a) where
         replicate n x
 
 -- | Fold the polynomial.
-foldP :: Multiply a => BopPolynomial a -> a
+foldP :: IntMultipliable a => BopPolynomial a -> a
 foldP (BP p) = Map.foldrWithKey (\x n -> (multiply n x <>)) mempty p
 
 -- | Number of distinct terms in the polynomial.
