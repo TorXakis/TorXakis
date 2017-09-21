@@ -76,7 +76,8 @@ import qualified Data.Map.Strict as Map
 import           Data.Monoid     hiding (Product (..))
 import           GHC.Exts
 
-newtype BopPolynomial a = BP { asMap :: Map a Integer } deriving Eq
+newtype BopPolynomial a = BP { asMap :: Map a Integer }
+    deriving (Eq)
 
 instance Show a => Show (BopPolynomial a) where
     show (BP p) = show (Map.assocs p)
@@ -112,21 +113,13 @@ instance Fractional a => IntMultipliable (Product a) where
     -- Note that this could lead to a negative exponent error if x is 0.
     multiply n (Product x) = Product (x ^^ toInteger n)
 
-instance ( Num a, Ord a
-         , Commutative a
-         , IntMultipliable a
-         ) => IntMultipliable (BopPolynomial a) where
+instance IntMultipliable (BopPolynomial a) where
     multiply n (BP p) = BP $ (toInteger n *) <$> p
 
 instance Num a => Commutative (Sum a)
 instance Num a => Commutative (Product a)
 
-instance
-    ( Monoid a
-    , Commutative a
-    , Ord a
-    , IntMultipliable a
-    ) => Monoid (BopPolynomial a) where
+instance Ord a => Monoid (BopPolynomial a) where
     mempty = BP []
     BP p0 `mappend` BP p1 = BP $ Map.filter (/= 0) $ Map.unionWith (+) p0 p1
 

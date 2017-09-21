@@ -22,6 +22,7 @@ See license.txt
 -- /t/ is the total number of terms.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveFunctor  #-}
 {-# LANGUAGE DeriveGeneric  #-}
 module Sum  (
     -- * Sum type
@@ -63,10 +64,14 @@ module Sum  (
 
 import           Prelude         hiding (subtract, sum)
 
+import           BopPolynomial   (BopPolynomial, Commutative, IntMultipliable)
+import qualified BopPolynomial   as BP
 import           Control.Arrow   ((***))
 import           Control.DeepSeq
+import           Data.Foldable   hiding (sum)
 import qualified Data.List       as List
 import qualified Data.Map.Strict as Map
+import qualified Data.Monoid     as M
 import           GHC.Generics    (Generic)
 
 {--------------------------------------------------------------------
@@ -77,6 +82,9 @@ import           GHC.Generics    (Generic)
 -- The same term can occur multiple times.
 newtype Sum a = Sum { unSum :: Map.Map a Integer }
     deriving (Eq, Ord, Read, Show, Generic, NFData)
+
+newtype SumPolynomial a = SP { asPolynomial :: BopPolynomial a}
+
 {--------------------------------------------------------------------
   Query
 --------------------------------------------------------------------}
@@ -85,6 +93,10 @@ newtype Sum a = Sum { unSum :: Map.Map a Integer }
 nrofTerms :: Sum a -> Int
 nrofTerms = Map.size . unSum
 
+nrofTermsNew :: SumPolynomial a -> Int
+nrofTermsNew = BP.nrofDistinctTerms . asPolynomial
+
+
 {--------------------------------------------------------------------
   Sums and multiplications
 --------------------------------------------------------------------}
@@ -92,9 +104,15 @@ nrofTerms = Map.size . unSum
 add :: Ord a => a -> Sum a -> Sum a
 add t = addMultiply t 1
 
+addNew :: Ord a => a -> SumPolynomial a -> SumPolynomial a
+addNew t (SP bp) = SP (BP.append t bp)
+
 -- | /O(log n)/. Subtract a term from a sum.
 subtract :: Ord a => a -> Sum a -> Sum a
 subtract t = addMultiply t (-1)
+
+subtractNew :: Ord a => a -> SumPolynomial a -> SumPolynomial a
+subtractNew t (SP bp) = SP (BP.remove t bp)
 
 -- | /O(log n)/. Add a term multiplied by the given coefficient to a sum.
 addMultiply :: Ord a => a -> Integer -> Sum a -> Sum a
@@ -109,6 +127,9 @@ addMultiply x m s = (Sum . Map.alter increment x . unSum) s
 -- | The sum of a list of sums.
 sums :: Ord a => [Sum a] -> Sum a
 sums = List.foldl' sum (Sum Map.empty)
+
+sumsNew :: (Ord a) => [SumPolynomial a] -> SumPolynomial a
+sumsNew xs = SP (fold (map asPolynomial xs))
 
 -- | /O(n+m)/. The sum of two sums.
 --
