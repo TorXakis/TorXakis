@@ -125,7 +125,7 @@ nrofTerms = Map.size . asMap
 --
 -- > [1, 2, 3, 2]
 append :: Ord a => a -> BopPolynomial a -> BopPolynomial a
-append = undefined
+append = addNTimes 1
 
 -- | Remove a term from the polynomial.
 --
@@ -135,12 +135,13 @@ append = undefined
 --
 -- > [1, 3]
 remove :: Ord a => a -> BopPolynomial a -> BopPolynomial a
-remove = undefined
+remove = addNTimes (-1)
 
--- | Add the term `x` `n` times. If `n` is negative the term will be removed.
-addNTimes :: Ord a => a -> Int -> BopPolynomial a -> BopPolynomial a
-addNTimes _ 0 s = s                                    -- invariant: no term with multiplier 0 is stored.
-addNTimes x m s = (BP . Map.alter increment x . asMap) s
+-- | Add the term `x` `n` times. If `n` is negative the term will be removed
+-- `n` times.
+addNTimes :: Ord a => Int -> a -> BopPolynomial a -> BopPolynomial a
+addNTimes 0 _ s = s                                    -- invariant: no term with multiplier 0 is stored.
+addNTimes m x s = (BP . Map.alter increment x . asMap) s
     where
         increment :: Maybe Int -> Maybe Int
         increment Nothing  = Just m

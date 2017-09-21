@@ -47,31 +47,52 @@ monoidLawEmpty1ForBoP :: (Eq a, Show a, Monoid (BopPolynomial a))
 monoidLawEmpty1ForBoP p = mempty <> p === p
 
 monoidLawMappendForBoP :: (Eq a, Show a, Monoid (BopPolynomial a))
-                     => BopPolynomial a
-                     -> BopPolynomial a
-                     -> BopPolynomial a
-                     -> Property
+                       => BopPolynomial a
+                       -> BopPolynomial a
+                       -> BopPolynomial a
+                       -> Property
 monoidLawMappendForBoP p0 p1 p2 = (p0 <> p1) <> p2 === p0 <> (p1 <> p2)
 
 propMonoidEmpty0For :: (Eq (f a), Show (f a), Ord (f a)
                        , Monoid (BopPolynomial (f a)))
-                       => (a -> f a) -> [a] -> Property
+                    => (a -> f a) -> [a] -> Property
 propMonoidEmpty0For f = monoidLawEmpty0ForBoP . fromList . (f <$>)
 
 propMonoidEmpty1For :: (Eq (f a), Show (f a), Ord (f a)
                        , Monoid (BopPolynomial (f a)))
-                       => (a -> f a) -> [a] -> Property
+                    => (a -> f a) -> [a] -> Property
 propMonoidEmpty1For f = monoidLawEmpty1ForBoP . fromList . (f <$>)
 
 propMonoidMappendFor :: (Eq (f a), Show (f a), Ord (f a)
                         , Monoid (BopPolynomial (f a)))
-                        => (a -> f a) -> [a] -> [a] -> [a] -> Property
+                     => (a -> f a) -> [a] -> [a] -> [a] -> Property
 propMonoidMappendFor f xs ys zs =
     monoidLawMappendForBoP  p0 p1 p2
     where
       p0 = fromList (f <$> xs)
       p1 = fromList (f <$> ys)
       p2 = fromList (f <$> xs)
+
+propAppendFor :: (Eq (f a), Show (f a), Ord (f a)
+                 , IntMultipliable (f a)
+                 , Monoid (f a)
+                 , Monoid (BopPolynomial (f a)))
+              => (a -> f a) ->a -> [a] -> Property
+propAppendFor f x xs = foldP (append x' p) === x' <> foldP p
+    where
+      x' = f x
+      p  = fromList (f <$> xs)
+
+propRemoveFor :: (Eq (f a), Show (f a), Ord (f a)
+                 , IntMultipliable (f a)
+                 , Monoid (f a)
+                 , Monoid (BopPolynomial (f a)))
+              => (a -> f a) ->a -> [a] -> Property
+propRemoveFor f x xs = foldP (remove x' p) === multiply (-1) x' <> foldP p
+    where
+      x' = f x
+      p  = fromList (f <$> xs)
+
 
 spec :: Spec
 spec = do
@@ -103,4 +124,11 @@ spec = do
             property propFromListProduct
         it "The number of distinct terms is correctly computed" $
             property (nrOfTermsLaw :: [Int] -> Property)
-
+        it "append should append a term to the polynomial (Sum)" $
+            property (propAppendFor Sum :: Int -> [Int] -> Property)
+        it "append should append a term to the polynomial (Product)" $
+            property (propAppendFor Product :: Double -> [Double] -> Property)
+        it "remove should remove a term to the polynomial (Sum)" $
+            property (propRemoveFor Sum :: Int -> [Int] -> Property)
+        it "remove should remove a term to the polynomial (Product)" $
+            property (propRemoveFor Product :: Double -> [Double] -> Property)
