@@ -6,21 +6,21 @@ See license.txt
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module BopPolynomialSpec where
+module FreeMonoidXSpec where
 
-import           BopPolynomial
 import           Data.AEq        (AEq, (~==))
 import           Data.Foldable
 import           Data.List
 import           Data.Monoid     hiding (Product (..))
 import           Data.Proxy
+import           FreeMonoidX
 import           GHC.Exts
 import           Test.Hspec
 import           Test.QuickCheck
 
 -- * Instances of `IntMultipliable` used for testing purposes
 
--- | A term of `BopPolynomial` where the operation `<>` is the sum (`+`)
+-- | A term of `FreeMonoidX` where the operation `<>` is the sum (`+`)
 newtype PSum a = PSum { getSum :: a }
     deriving (Eq, Show, Functor, Num, Ord)
 
@@ -31,7 +31,7 @@ instance Num a => Monoid (PSum a) where
     mempty = PSum 0
     (PSum x) `mappend` (PSum y) = PSum $ x + y
 
--- | A term of a `BopPolynomial` where the operation `<>` is the product (`*`)
+-- | A term of a `FreeMonoidX` where the operation `<>` is the product (`*`)
 newtype PProduct a = PProduct {getPProduct :: a}
     deriving (Show, Functor, Num, Ord)
 
@@ -83,35 +83,35 @@ propFromListProduct xs = fromListLaw (PProduct <$> xs)
 nrOfTermsLaw :: Ord a => Proxy a -> [a] -> Property
 nrOfTermsLaw _ xs = nrofDistinctTerms (fromList xs) === length (nub xs)
 
--- * Monoid laws and properties `BopPolynomial`
+-- * Monoid laws and properties `FreeMonoidX`
 
-monoidLawEmpty0ForBoP :: (Eq a, Show a, Monoid (BopPolynomial a))
-                     => BopPolynomial a -> Property
+monoidLawEmpty0ForBoP :: (Eq a, Show a, Monoid (FreeMonoidX a))
+                     => FreeMonoidX a -> Property
 monoidLawEmpty0ForBoP p = p <> mempty === p
 
-monoidLawEmpty1ForBoP :: (Eq a, Show a, Monoid (BopPolynomial a))
-                     => BopPolynomial a -> Property
+monoidLawEmpty1ForBoP :: (Eq a, Show a, Monoid (FreeMonoidX a))
+                     => FreeMonoidX a -> Property
 monoidLawEmpty1ForBoP p = mempty <> p === p
 
-monoidLawMappendForBoP :: (Eq a, Show a, Monoid (BopPolynomial a))
-                       => BopPolynomial a
-                       -> BopPolynomial a
-                       -> BopPolynomial a
+monoidLawMappendForBoP :: (Eq a, Show a, Monoid (FreeMonoidX a))
+                       => FreeMonoidX a
+                       -> FreeMonoidX a
+                       -> FreeMonoidX a
                        -> Property
 monoidLawMappendForBoP p0 p1 p2 = (p0 <> p1) <> p2 === p0 <> (p1 <> p2)
 
 propMonoidEmpty0For :: (Eq (f a), Show (f a), Ord (f a)
-                       , Monoid (BopPolynomial (f a)))
+                       , Monoid (FreeMonoidX (f a)))
                     => (a -> f a) -> Proxy a -> [a] -> Property
 propMonoidEmpty0For f _ = monoidLawEmpty0ForBoP . fromList . (f <$>)
 
 propMonoidEmpty1For :: (Eq (f a), Show (f a), Ord (f a)
-                       , Monoid (BopPolynomial (f a)))
+                       , Monoid (FreeMonoidX (f a)))
                     => (a -> f a) -> Proxy a -> [a] -> Property
 propMonoidEmpty1For f _ = monoidLawEmpty1ForBoP . fromList . (f <$>)
 
 propMonoidMappendFor :: (Eq (f a), Show (f a), Ord (f a)
-                        , Monoid (BopPolynomial (f a)))
+                        , Monoid (FreeMonoidX (f a)))
                      => (a -> f a) -> Proxy a -> [a] -> [a] -> [a] -> Property
 propMonoidMappendFor f _ xs ys zs =
     monoidLawMappendForBoP  p0 p1 p2
@@ -125,7 +125,7 @@ propMonoidMappendFor f _ xs ys zs =
 propAppendFor :: (Eq (f a), Show (f a), Ord (f a)
                  , IntMultipliable (f a)
                  , Monoid (f a)
-                 , Monoid (BopPolynomial (f a)))
+                 , Monoid (FreeMonoidX (f a)))
               => (a -> f a) -> Proxy a ->a -> [a] -> Property
 propAppendFor f _ x xs = foldP (append x' p) === x' <> foldP p
     where
@@ -138,7 +138,7 @@ propAppendFor f _ x xs = foldP (append x' p) === x' <> foldP p
 propRemoveFor :: (Eq (f a), Show (f a), Ord (f a)
                  , IntMultipliable (f a)
                  , Monoid (f a)
-                 , Monoid (BopPolynomial (f a)))
+                 , Monoid (FreeMonoidX (f a)))
               => (a -> f a) -> Proxy a -> a -> [a] -> Property
 propRemoveFor f _ x xs = foldP (remove x' p) === multiply (-1) x' <> foldP p
     where
@@ -162,14 +162,14 @@ spec = do
             property $ propIntMultipliableFor PSum pInt
         it "`PProduct` is an instance of `IntMultipliable` provided were " $
             property $ propIntMultipliableFor PProduct pDouble
-    describe "Monoid instance of `BopPolynomial` for Sum" $ do
+    describe "Monoid instance of `FreeMonoidX` for Sum" $ do
         it "Satisfies the first `mempty` law" $
             property $ propMonoidEmpty0For PSum pInt
         it "Satisfies the second `mempty` law" $
             property $ propMonoidEmpty1For PSum pInt
         it "Satisfies the `mapped` law" $
             property $ propMonoidMappendFor PSum pInt
-    describe "Monoid instance of `BopPolynomial` for Product" $ do
+    describe "Monoid instance of `FreeMonoidX` for Product" $ do
         it "Satisfies the first `mempty` law" $
             property $ propMonoidEmpty0For PProduct pDouble
         it "Satisfies the second `mempty` law" $

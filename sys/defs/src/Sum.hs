@@ -65,8 +65,6 @@ module Sum  (
 
 import           Prelude         hiding (subtract, sum)
 
-import           BopPolynomial   (BopPolynomial, IntMultipliable)
-import qualified BopPolynomial   as BP
 import           Control.Arrow   ((***))
 import           Control.DeepSeq
 import           Control.Newtype
@@ -74,6 +72,8 @@ import           Data.Foldable   hiding (sum)
 import qualified Data.List       as List
 import qualified Data.Map.Strict as Map
 import qualified Data.Monoid     as M
+import           FreeMonoidX     (FreeMonoidX, IntMultipliable)
+import qualified FreeMonoidX     as BP
 import           GHC.Generics    (Generic)
 
 {--------------------------------------------------------------------
@@ -85,20 +85,20 @@ import           GHC.Generics    (Generic)
 newtype Sum a = Sum { unSum :: Map.Map a Integer }
     deriving (Eq, Ord, Read, Show, Generic, NFData)
 
-newtype SumPolynomial a = SP { asPolynomial :: BopPolynomial a} deriving (Generic)
+newtype SumPolynomial a = SP { asPolynomial :: FreeMonoidX a} deriving (Generic)
 
-instance Newtype (SumPolynomial a) (BopPolynomial a) where
+instance Newtype (SumPolynomial a) (FreeMonoidX a) where
   pack = SP
   unpack (SP a) = a
 
-(<$$>) :: (BopPolynomial a -> BopPolynomial a) -> SumPolynomial a -> SumPolynomial a
+(<$$>) :: (FreeMonoidX a -> FreeMonoidX a) -> SumPolynomial a -> SumPolynomial a
 f <$$> (SP bp) = SP (f bp)
 
 {--------------------------------------------------------------------
   Query
 --------------------------------------------------------------------}
 -- | /O(1)/. The number of distinct terms in the sum.
--- TODO: remove this, use BopPolynomial
+-- TODO: remove this, use FreeMonoidX
 nrofTerms :: Sum a -> Int
 nrofTerms = Map.size . unSum
 

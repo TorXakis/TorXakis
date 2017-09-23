@@ -40,7 +40,7 @@ library
                       , Sigs
                       , Sum
                       , Product
-                      , BopPolynomial
+                      , FreeMonoidX
                       
   other-modules:        BehExprDefs
                       , ConnectionDefs
@@ -89,7 +89,7 @@ test-suite defs-BlackBox-test
                      , ValExprSpec
                      , SumSpec
                      , ProductSpec
-                     , BopPolynomialSpec
+                     , FreeMonoidXSpec
                        
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
   
