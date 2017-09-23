@@ -25,7 +25,7 @@ newtype PSum a = PSum { getSum :: a }
     deriving (Eq, Show, Functor, Num, Ord)
 
 instance Integral a => IntMultipliable (PSum a) where
-    multiply n (PSum x) = PSum (fromInteger $ toInteger x * toInteger n)
+    n <.> PSum x = PSum (fromInteger $ toInteger x * toInteger n)
 
 instance Num a => Monoid (PSum a) where
     mempty = PSum 0
@@ -50,15 +50,15 @@ instance Fractional a => IntMultipliable (PProduct a) where
     -- Instances of `IntMultipliable` for `PPproduct` are only defined for
     -- fractional numbers. We cannot define this for `Int` (or `Integer`) since
     -- the multiplicative inverse is not defined for them.
-    multiply n (PProduct x) = PProduct (x ^^ toInteger n)
+    n <.> (PProduct x) = PProduct (x ^^ toInteger n)
 
 -- * Laws of multiplication and instances of it
 
 multiplyLaw :: (Integral n, Eq a, IntMultipliable a, Monoid a, Show a)
             => n -> a -> Property
 multiplyLaw n x
-    =                 multiply   n'  x ===   fold (genericReplicate n' x)
-    .&&. (n' /= 0 ==> multiply (-n') x === multiply (-1) (fold (genericReplicate n' x)))
+    =    (               n' <.> x === fold (genericReplicate n' x))
+    .&&. (n' /= 0 ==> (-n') <.> x === (-1) <.> (fold (genericReplicate n' x)))
     where n' = abs n
 
 propIntMultipliableFor :: ( Eq (f a), IntMultipliable (f a)
@@ -70,7 +70,7 @@ propIntMultipliableFor f _ n s = multiplyLaw n (f s)
 
 fromListLaw :: (Eq a, IntMultipliable a, Monoid a, Show a, Ord a)
             => [a] -> Property
-fromListLaw xs = fold xs === foldP (fromList xs)
+fromListLaw xs = fold xs === foldFMX (fromList xs)
 
 propFromListSum :: [Int] -> Property
 propFromListSum xs = fromListLaw (PSum <$> xs)
@@ -127,7 +127,7 @@ propAppendFor :: (Eq (f a), Show (f a), Ord (f a)
                  , Monoid (f a)
                  , Monoid (FreeMonoidX (f a)))
               => (a -> f a) -> Proxy a ->a -> [a] -> Property
-propAppendFor f _ x xs = foldP (append x' p) === x' <> foldP p
+propAppendFor f _ x xs = foldFMX (append x' p) === x' <> foldFMX p
     where
       x' = f x
       p  = fromList (f <$> xs)
@@ -140,7 +140,7 @@ propRemoveFor :: (Eq (f a), Show (f a), Ord (f a)
                  , Monoid (f a)
                  , Monoid (FreeMonoidX (f a)))
               => (a -> f a) -> Proxy a -> a -> [a] -> Property
-propRemoveFor f _ x xs = foldP (remove x' p) === multiply (-1) x' <> foldP p
+propRemoveFor f _ x xs = foldFMX (remove x' p) ===  ((-1) <.> x') <> foldFMX p
     where
       x' = f x
       p  = fromList (f <$> xs)

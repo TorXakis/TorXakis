@@ -22,17 +22,30 @@ See license.txt
 -- > a0 <> a1 <> ... <> an-1
 --
 -- `ai \in A`, `<>` is a commutative (binary) operation, `(A, <>)` is a
--- Monoid, and there is a multiplication operator `**` that is distributive
--- w.r.t `<>`:
+-- Monoid, there is a multiplication operator `<.>` that is distributive
+-- w.r.t `<>`, and there is additive inverse for the elements of `A`:
 --
--- > a <> b        = b <> a               -- for all a, b in A (commutativity)
--- > a ** (b <> c) = (a ** b) <> (a ** c) -- for all a, b, c in A (left distributivity).
--- > (b <> c) ** a = (b ** a) <> (c ** a) -- for all a, b, c in A (right distributivity).
+-- > a <> b         = b <> a                 -- for all a, b in A (commutativity)
+-- > a <.> (b <> c) = (a <.> b) <> (a <.> c) -- for all a, b, c in A (left distributivity).
+-- > (b <> c) <.> a = (b <.> a) <> (c <.> a) -- for all a, b, c in A (right distributivity).
+-- > a <> -a        = 0                      -- for all a, for some (-a), where `0 = mempty`.
 --
+-- Furthermore, to be able to assign semantics to this symbolic representation
+-- it is required that the terms are integer-multipliable, meaning that
+--
+-- > `a <.> n`
+--
+-- is equivalent to adding an element `a` `n` times if `n` is non-negative, or
+-- removing it `n` times otherwise. See `IntMultipliable` class, and
+-- `multiplyLaw` in `FreeMonoidXSpec`.
+--
+-- Note that we're using `<.>` as having both types `A -> A` and `Integral n =>
+-- n -> a`, which is fine at the moment since the `FreeMonoidX`'s we are
+-- dealing with are numeric types.
 -----------------------------------------------------------------------------
 
 module FreeMonoidX
-  ( -- * Binary Operation Polynomial Type.
+  ( -- * Free Monoid with multiplication Type
     FreeMonoidX (..)
 
     -- * Query.
@@ -45,20 +58,20 @@ module FreeMonoidX
 
   -- | Folds
   , foldMultiplier
-  , foldP
+  , foldFMX
 
-    -- * Manipulation of the polynomial.
+    -- * Manipulation of the free monoid
   , append
   , remove
   , addNTimes
 
-  -- * Application of the binary operation.
-  , multiply
+  -- * Multiplication operator
+  , (<.>)
 
-  -- * Class that define restrictions on the polynomial types.
+  -- * Integer multipliable restriction
   , IntMultipliable
 
-  -- ** Multiplier lists
+  -- * Multiplier lists
   , toMultiplierList
   , toDistinctAscMultiplierList
   , fromMultiplierList
@@ -87,17 +100,21 @@ newtype FreeMonoidX a = FPX { asMap :: Map a Integer }
 instance Show a => Show (FreeMonoidX a) where
     show (FPX p) = show (Map.assocs p)
 
--- | Types that can be multiplied by an integral. See the test code
--- `FreeMonoidXspec` for examples of instances of this class.
+-- | Types that can be multiplied by an integral. This restriction is required
+-- to be able to assign a correct semantic to the symbolic representation of
+-- the free-monoid. If the elements of the free-monoid are not
+-- `IntMultipliable`, then `foldFMX` is ill-defined.
+--
+-- See the test code `FreeMonoidXspec` for examples of instances of this class.
 class IntMultipliable a where
-    -- | `multiply n x` multiplies `x` `n` times.
-    multiply :: Integral n
-             => n -- ^ Multiplication factor.
-             -> a -- ^ Element to multiply.
-             -> a
+    -- | `n <.> x` multiplies `x` `n` times.
+    (<.>) :: Integral n
+         => n -- ^ Multiplication factor.
+         -> a -- ^ Element to multiply.
+         -> a
 
 instance IntMultipliable (FreeMonoidX a) where
-    multiply n (FPX p) = FPX $ (toInteger n *) <$> p
+    n <.> (FPX p) = FPX $ (toInteger n *) <$> p
 
 instance Ord a => Monoid (FreeMonoidX a) where
     mempty = FPX []
@@ -110,61 +127,73 @@ instance Ord a => IsList (FreeMonoidX a) where
         (x, n) <- Map.toList p
         genericReplicate n x
 
--- | Fold the polynomial.
-foldP :: (IntMultipliable a, Monoid a) => FreeMonoidX a -> a
-foldP (FPX p) = Map.foldrWithKey (\x n -> (multiply n x <>)) mempty p
+-- | Fold the free-monoid.
+foldFMX :: (IntMultipliable a, Monoid a) => FreeMonoidX a -> a
+foldFMX (FPX p) = Map.foldrWithKey (\x n -> (n <.> x <>)) mempty p
 
--- | Number of distinct terms in the polynomial.
+-- | Number of distinct terms in the free-monoid.
 nrofDistinctTerms :: FreeMonoidX a -> Int
 nrofDistinctTerms = Map.size . asMap
 
--- | /O(n)/. The distinct terms of a polynomial., each term occurs only once in
+-- | /O(n)/. The distinct terms of a free-monoid., each term occurs only once in
 -- the list.
 --
 distinctTerms :: FreeMonoidX a -> [a]
 distinctTerms = Map.keys . asMap
 
--- | /O(n)/. Convert the polynomial to a list of term\/multiplier pairs.
+-- | /O(n)/. Convert the free-monoid to a list of term\/multiplier pairs.
 toMultiplierList :: FreeMonoidX a -> [(a, Integer)]
 toMultiplierList = toDistinctAscMultiplierList
 
--- | /O(n)/. Convert the polynomial to a distinct ascending list of term\/multiplier
+-- | /O(n)/. Convert the free-monoid to a distinct ascending list of term\/multiplier
 -- pairs.
 toDistinctAscMultiplierList :: FreeMonoidX a -> [(a, Integer)]
 toDistinctAscMultiplierList = Map.toAscList . asMap
 
--- | /O(n*log n)/. Create a polynomial from a list of term\/multiplier pairs.
+-- | /O(n*log n)/. Create a free-monoid from a list of term\/multiplier pairs.
 fromMultiplierList :: Ord a => [(a, Integer)] -> FreeMonoidX a
 fromMultiplierList = FPX . Map.filter (0/=) . Map.fromListWith (+)
 
--- | /O(n)/. Build a polynomial from an ascending list of term\/multiplier
+-- | /O(n)/. Build a free-monoid from an ascending list of term\/multiplier
 -- pairs where each term appears only once. /The precondition (input list is
 -- strictly ascending) is not checked./
 fromDistinctAscMultiplierList :: [(a, Integer)] -> FreeMonoidX a
 fromDistinctAscMultiplierList = FPX . Map.filter (0/=) . Map.fromDistinctAscList
 
--- | Append a term to the polynomial.
+-- | Append a term to the free-monoid.
 --
 -- > append 2 [1, 2, 3]
 --
--- should be equivalent to the polynomial
+-- should be equivalent to the free-monoid.
 --
 -- > [1, 2, 3, 2]
 append :: Ord a => a -> FreeMonoidX a -> FreeMonoidX a
 append = addNTimes 1
 
--- | Remove a term from the polynomial.
+-- | Remove a term from the free-monoid.
 --
--- > remove 2 [1, 2, 3]
+-- > remove 2 (1 <> 2 <> 3)
 --
--- should be equivalent to the polynomial
+-- should be equivalent to the free-monoid
 --
--- > [1, 3]
+-- > (1 <> 3)
 remove :: Ord a => a -> FreeMonoidX a -> FreeMonoidX a
 remove = addNTimes (-1)
 
 -- | Add the term `x` `n` times. If `n` is negative the term will be removed
 -- `n` times.
+--
+-- > addNtimes 2 10 (10 <> 12 <> 12)
+--
+-- should be equivalent to
+--
+-- (10 <> 10 <> 10 <> 12 <> 12)
+--
+-- > addNTimes (-2) 10 (10 <> 12 <> 12)
+--
+-- should be equivalent to
+--
+-- > (-10 <> 12 <> 12)
 addNTimes :: Ord a => Integer -> a -> FreeMonoidX a -> FreeMonoidX a
 addNTimes 0 _ s = s                                    -- invariant: no term with multiplier 0 is stored.
 addNTimes m x s = (FPX . Map.alter increment x . asMap) s
@@ -174,13 +203,13 @@ addNTimes m x s = (FPX . Map.alter increment x . asMap) s
         increment (Just n) | n == -m = Nothing           -- Terms with multiplier zero are removed
         increment (Just n) = Just (n+m)
 
--- | /O(n)/. Partition the polynomial into two polynomial, one with all
+-- | /O(n)/. Partition the free-monoid into two free-monoids, one with all
 -- elements that satisfy the predicate and one with all elements that don't
 -- satisfy the predicate.
 partition :: (a -> Bool) -> FreeMonoidX a -> (FreeMonoidX a,FreeMonoidX a)
 partition p = (FPX *** FPX) . Map.partitionWithKey (\k _ -> p k) . asMap
 
--- | /O(n)/. Fold over the terms of the polynomial with their multipliers.
+-- | /O(n)/. Fold over the terms of the free-monoid with their multipliers.
 foldMultiplier :: (a -> Integer -> b -> b) -> b -> FreeMonoidX a -> b
 foldMultiplier f z = Map.foldrWithKey f z . asMap
 
