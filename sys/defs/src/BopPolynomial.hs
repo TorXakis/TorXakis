@@ -3,10 +3,8 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
-{-# LANGUAGE DeriveFunctor              #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedLists            #-}
-{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE TypeFamilies    #-}
 {-# OPTIONS -Wall -Werror #-}
 -----------------------------------------------------------------------------
 -- |
@@ -48,16 +46,10 @@ module BopPolynomial
   , remove
   , addNTimes
 
-
   -- * Application of the binary operation.
   , multiply
 
-
-  -- * Product wrapper, and operations.
-  , Product(..)
-
   -- * Class that define restrictions on the polynomial types.
-  , Commutative
   , IntMultipliable
 
   -- ** Multiplier lists
@@ -69,23 +61,28 @@ module BopPolynomial
 where
 
 import           Control.Arrow   ((***))
-import           Data.AEq
 import           Data.List       hiding (partition)
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import           Data.Monoid     hiding (Product (..))
 import           GHC.Exts
 
+-- | Symbolic representation of a polynomial, where each term is a member of
+-- type `a`.
+--
+-- The integer value of the map represents the number of occurrences of a term
+-- in the polynomial. Given this representation it is crucial that the
+-- operation is commutative, since the information of about the order of the
+-- term is lost in this representation.
+--
 newtype BopPolynomial a = BP { asMap :: Map a Integer }
     deriving (Eq)
 
 instance Show a => Show (BopPolynomial a) where
     show (BP p) = show (Map.assocs p)
 
--- | Types with a commutative operator.
-class Commutative a
-
--- | Types that can be multiplied by an integral.
+-- | Types that can be multiplied by an integral. See the test code
+-- `BopPolynomialspec` for examples of instances of this class.
 class IntMultipliable a where
     -- | `multiply n x` multiplies `x` `n` times.
     multiply :: Integral n
@@ -93,31 +90,8 @@ class IntMultipliable a where
              -> a -- ^ Element to multiply.
              -> a
 
-instance Integral a => IntMultipliable (Sum a) where
-    multiply n (Sum x) = Sum (fromInteger $ toInteger x * toInteger n)
-
-newtype Product a = Product {getProduct :: a} deriving (Show, Functor, Num, Ord)
-
-instance AEq a => Eq (Product a) where
-    (Product x) == (Product y) = x ~== y
-
-instance Num a => Monoid (Product a) where
-    mempty = Product 1
-    (Product x) `mappend` (Product y) = Product $ x * y
-
-instance Fractional a => Fractional (Product a) where
-    fromRational r = Product (fromRational r)
-    (Product x) / (Product y) = Product $ x / y
-
-instance Fractional a => IntMultipliable (Product a) where
-    -- Note that this could lead to a negative exponent error if x is 0.
-    multiply n (Product x) = Product (x ^^ toInteger n)
-
 instance IntMultipliable (BopPolynomial a) where
     multiply n (BP p) = BP $ (toInteger n *) <$> p
-
-instance Num a => Commutative (Sum a)
-instance Num a => Commutative (Product a)
 
 instance Ord a => Monoid (BopPolynomial a) where
     mempty = BP []

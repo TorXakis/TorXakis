@@ -73,7 +73,7 @@ library
                       , MissingH
                       , text
                       , mtl
-                      , ieee754
+                      , newtype
   default-language:     Haskell2010
                     
 
@@ -99,5 +99,6 @@ test-suite defs-BlackBox-test
                      , QuickCheck
                      , hspec
                      , defs
+                     , ieee754                     
                      
   default-language:    Haskell2010
