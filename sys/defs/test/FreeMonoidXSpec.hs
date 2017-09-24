@@ -7,6 +7,7 @@ See license.txt
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# OPTIONS -Wall -Werror #-}
 module FreeMonoidXSpec where
 
 import           Data.AEq        (AEq, (~==))
@@ -16,22 +17,11 @@ import           Data.Monoid     hiding (Product (..))
 import           Data.Proxy
 import           FreeMonoidX
 import           GHC.Exts
+import           Sum             (SumTerm (..))
 import           Test.Hspec
 import           Test.QuickCheck
 
 -- * Instances of `IntMultipliable` used for testing purposes
-
--- | A term of `FreeMonoidX` where the operation `<>` is the sum (`+`)
--- TODO: use `SumTerm` (defined in `Sum`).
-newtype PSum a = PSum { getSum :: a }
-    deriving (Eq, Show, Functor, Num, Ord)
-
-instance Integral a => IntMultipliable (PSum a) where
-    n <.> PSum x = PSum (fromInteger $ toInteger x * toInteger n)
-
-instance Num a => Monoid (PSum a) where
-    mempty = PSum 0
-    (PSum x) `mappend` (PSum y) = PSum $ x + y
 
 -- | A term of a `FreeMonoidX` where the operation `<>` is the product (`*`)
 newtype PProduct a = PProduct {getPProduct :: a}
@@ -59,8 +49,8 @@ instance Fractional a => IntMultipliable (PProduct a) where
 multiplyLaw :: (Integral n, Eq a, IntMultipliable a, Monoid a, Show a)
             => n -> a -> Property
 multiplyLaw n x
-    =    (               n' <.> x ===          fold (genericReplicate n' x))
-    .&&. (n' /= 0 ==> (-n') <.> x === (-1) <.> fold (genericReplicate n' x))
+    =    (               n' <.> x ===                 fold (genericReplicate n' x))
+    .&&. (n' /= 0 ==> (-n') <.> x === (-1 :: Int) <.> fold (genericReplicate n' x))
     where n' = abs n
 
 propIntMultipliableFor :: ( Eq (f a), IntMultipliable (f a)
@@ -82,7 +72,7 @@ fromListLaw :: (Eq a, IntMultipliable a, Monoid a, Show a, Ord a)
 fromListLaw xs = fold xs === foldFMX (fromList xs)
 
 propFromListSum :: [Int] -> Property
-propFromListSum xs = fromListLaw (PSum <$> xs)
+propFromListSum xs = fromListLaw (SumTerm <$> xs)
 
 propFromListProduct :: [Double] -> Property
 propFromListProduct xs = fromListLaw (PProduct <$> xs)
@@ -127,7 +117,7 @@ propMonoidMappendFor f _ xs ys zs =
     where
       p0 = fromList (f <$> xs)
       p1 = fromList (f <$> ys)
-      p2 = fromList (f <$> xs)
+      p2 = fromList (f <$> zs)
 
 -- * Properties of append
 
@@ -149,7 +139,8 @@ propRemoveFor :: (Eq (f a), Show (f a), Ord (f a)
                  , Monoid (f a)
                  , Monoid (FreeMonoidX (f a)))
               => (a -> f a) -> Proxy a -> a -> [a] -> Property
-propRemoveFor f _ x xs = foldFMX (remove x' p) ===  ((-1) <.> x') <> foldFMX p
+propRemoveFor f _ x xs =
+    foldFMX (remove x' p) ===  ((-1 :: Int) <.> x') <> foldFMX p
     where
       x' = f x
       p  = fromList (f <$> xs)
@@ -167,21 +158,21 @@ pDouble = Proxy
 spec :: Spec
 spec = do
     describe "IntMultipliable instances" $ do
-        it "`PSum` is an instance of `IntMultipliable`" $
-            property $ propIntMultipliableFor PSum pInt
+        it "`SumTerm` is an instance of `IntMultipliable`" $
+            property $ propIntMultipliableFor SumTerm pInt
         it "`PProduct` is an instance of `IntMultipliable`" $
             property $ propIntMultipliableFor PProduct pDouble
-        it "`FreeMonoidX` with `PSum` terms is an instance of `IntMultipliable`" $
-            property $ propIntMultipliableForFMX (fromList . (PSum <$>)) pInt
+        it "`FreeMonoidX` with `SumTerm` terms is an instance of `IntMultipliable`" $
+            property $ propIntMultipliableForFMX (fromList . (SumTerm <$>)) pInt
         it "`FreeMonoidX` with `PProduct` terms is an instance of `IntMultipliable`" $
             property $ propIntMultipliableForFMX (fromList . (PProduct <$>)) pDouble
     describe "Monoid instance of `FreeMonoidX` for Sum" $ do
         it "Satisfies the first `mempty` law" $
-            property $ propMonoidEmpty0For PSum pInt
+            property $ propMonoidEmpty0For SumTerm pInt
         it "Satisfies the second `mempty` law" $
-            property $ propMonoidEmpty1For PSum pInt
+            property $ propMonoidEmpty1For SumTerm pInt
         it "Satisfies the `mapped` law" $
-            property $ propMonoidMappendFor PSum pInt
+            property $ propMonoidMappendFor SumTerm pInt
     describe "Monoid instance of `FreeMonoidX` for Product" $ do
         it "Satisfies the first `mempty` law" $
             property $ propMonoidEmpty0For PProduct pDouble
@@ -190,17 +181,17 @@ spec = do
         it "Satisfies the `mapped` law" $
             property $ propMonoidMappendFor PProduct pDouble
     describe "Operations" $ do
-        it "PSum satisfies the `fromList` laws" $
+        it "SumTerm satisfies the `fromList` laws" $
             property propFromListSum
         it "Data.Monoid.PProduct satisfies the `fromList` laws" $
             property propFromListProduct
         it "The number of distinct terms is correctly computed" $
             property $ nrOfTermsLaw pInt
-        it "append should append a term to the polynomial (PSum)" $
-            property $ propAppendFor PSum pInt
+        it "append should append a term to the polynomial (SumTerm)" $
+            property $ propAppendFor SumTerm pInt
         it "append should append a term to the polynomial (PProduct)" $
             property $ propAppendFor PProduct pDouble
-        it "remove should remove a term to the polynomial (PSum)" $
-            property $ propRemoveFor PSum pInt
+        it "remove should remove a term to the polynomial (SumTerm)" $
+            property $ propRemoveFor SumTerm pInt
         it "remove should remove a term to the polynomial (PProduct)" $
             property $ propRemoveFor PProduct pDouble

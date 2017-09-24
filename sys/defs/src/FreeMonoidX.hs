@@ -253,8 +253,6 @@ mapTerms f = fromMultiplierList . (first f <$>) . toMultiplierList
 --
 -- Assuming `a < b`.
 --
--- TODO: is `FreeMonoidX` a monad? Intuitively it doesn't seem so, since it is
--- not possible to define a functor instance for it.
 flatten :: (Ord a, IntMultipliable a) => FreeMonoidX (FreeMonoidX a) -> FreeMonoidX a
 flatten (FMX p) = fold $ multiplyFMX <$> Map.toAscList p
     where
