@@ -3,12 +3,15 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2016 TNO and Radboud University
 See license.txt
 -}
-{-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE TypeFamilies    #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedLists            #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TypeFamilies               #-}
 {-# OPTIONS -Wall -Werror #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  BopPolynomial
+-- Module      :  FreeMonoidX
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  Closed-style (see the file license.txt)
 --
@@ -42,6 +45,18 @@ See license.txt
 -- Note that we're using `<.>` as having both types `A -> A` and `Integral n =>
 -- n -> a`, which is fine at the moment since the `FreeMonoidX`'s we are
 -- dealing with are numeric types.
+--
+--
+-- `FreeMonoidX a` is an instance of the `IsList` class, which means that in
+-- combination with the `OverloadedLists` extension is possible to write
+-- free-monoids as lists. For instance the free-monoid:
+--
+-- > a0 <> a1 <> ... <> an-1
+--
+-- Can be written as
+--
+-- [a0, a1, ..., an-1]
+--
 -----------------------------------------------------------------------------
 
 module FreeMonoidX
@@ -52,6 +67,9 @@ module FreeMonoidX
   , nrofDistinctTerms
   , distinctTerms  -- exposed for performance reasons checking properties for
                    -- all distinct terms is faster than for all terms
+
+  -- * Map
+  , mapTerms
 
   -- * Filter
   , partition
@@ -64,6 +82,7 @@ module FreeMonoidX
   , append
   , remove
   , addNTimes
+  , flatten
 
   -- * Multiplication operator
   , (<.>)
@@ -79,12 +98,15 @@ module FreeMonoidX
   )
 where
 
-import           Control.Arrow   ((***))
+import           Control.Arrow   (first, (***))
+import           Control.DeepSeq
+import           Data.Foldable
 import           Data.List       hiding (partition)
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import           Data.Monoid     hiding (Product (..))
 import           GHC.Exts
+import           GHC.Generics    (Generic)
 
 -- | Symbolic representation of a polynomial, where each term is a member of
 -- type `a`.
@@ -94,11 +116,11 @@ import           GHC.Exts
 -- operation is commutative, since the information of about the order of the
 -- term is lost in this representation.
 --
-newtype FreeMonoidX a = FPX { asMap :: Map a Integer }
-    deriving (Eq)
+newtype FreeMonoidX a = FMX { asMap :: Map a Integer }
+    deriving (Eq, Ord, Read, Generic, NFData)
 
 instance Show a => Show (FreeMonoidX a) where
-    show (FPX p) = show (Map.assocs p)
+    show (FMX p) = show (Map.assocs p)
 
 -- | Types that can be multiplied by an integral. This restriction is required
 -- to be able to assign a correct semantic to the symbolic representation of
@@ -113,23 +135,24 @@ class IntMultipliable a where
          -> a -- ^ Element to multiply.
          -> a
 
-instance IntMultipliable (FreeMonoidX a) where
-    n <.> (FPX p) = FPX $ (toInteger n *) <$> p
+instance Ord a => IntMultipliable (FreeMonoidX a) where
+    0 <.> _ = mempty
+    n <.> (FMX p) = FMX $ (toInteger n *) <$> p
 
 instance Ord a => Monoid (FreeMonoidX a) where
-    mempty = FPX []
-    FPX p0 `mappend` FPX p1 = FPX $ Map.filter (/= 0) $ Map.unionWith (+) p0 p1
+    mempty = FMX []
+    FMX p0 `mappend` FMX p1 = FMX $ Map.filter (/= 0) $ Map.unionWith (+) p0 p1
 
 instance Ord a => IsList (FreeMonoidX a) where
     type Item (FreeMonoidX a) = a
-    fromList xs = FPX $ Map.fromListWith (+) $ zip xs (repeat 1)
-    toList (FPX p) = do
+    fromList xs = FMX $ Map.fromListWith (+) $ zip xs (repeat 1)
+    toList (FMX p) = do
         (x, n) <- Map.toList p
         genericReplicate n x
 
 -- | Fold the free-monoid.
 foldFMX :: (IntMultipliable a, Monoid a) => FreeMonoidX a -> a
-foldFMX (FPX p) = Map.foldrWithKey (\x n -> (n <.> x <>)) mempty p
+foldFMX (FMX p) = Map.foldrWithKey (\x n -> (n <.> x <>)) mempty p
 
 -- | Number of distinct terms in the free-monoid.
 nrofDistinctTerms :: FreeMonoidX a -> Int
@@ -152,13 +175,13 @@ toDistinctAscMultiplierList = Map.toAscList . asMap
 
 -- | /O(n*log n)/. Create a free-monoid from a list of term\/multiplier pairs.
 fromMultiplierList :: Ord a => [(a, Integer)] -> FreeMonoidX a
-fromMultiplierList = FPX . Map.filter (0/=) . Map.fromListWith (+)
+fromMultiplierList = FMX . Map.filter (0/=) . Map.fromListWith (+)
 
 -- | /O(n)/. Build a free-monoid from an ascending list of term\/multiplier
 -- pairs where each term appears only once. /The precondition (input list is
 -- strictly ascending) is not checked./
 fromDistinctAscMultiplierList :: [(a, Integer)] -> FreeMonoidX a
-fromDistinctAscMultiplierList = FPX . Map.filter (0/=) . Map.fromDistinctAscList
+fromDistinctAscMultiplierList = FMX . Map.filter (0/=) . Map.fromDistinctAscList
 
 -- | Append a term to the free-monoid.
 --
@@ -196,7 +219,7 @@ remove = addNTimes (-1)
 -- > (-10 <> 12 <> 12)
 addNTimes :: Ord a => Integer -> a -> FreeMonoidX a -> FreeMonoidX a
 addNTimes 0 _ s = s                                    -- invariant: no term with multiplier 0 is stored.
-addNTimes m x s = (FPX . Map.alter increment x . asMap) s
+addNTimes m x s = (FMX . Map.alter increment x . asMap) s
     where
         increment :: Maybe Integer -> Maybe Integer
         increment Nothing  = Just m
@@ -207,9 +230,33 @@ addNTimes m x s = (FPX . Map.alter increment x . asMap) s
 -- elements that satisfy the predicate and one with all elements that don't
 -- satisfy the predicate.
 partition :: (a -> Bool) -> FreeMonoidX a -> (FreeMonoidX a,FreeMonoidX a)
-partition p = (FPX *** FPX) . Map.partitionWithKey (\k _ -> p k) . asMap
+partition p = (FMX *** FMX) . Map.partitionWithKey (\k _ -> p k) . asMap
 
 -- | /O(n)/. Fold over the terms of the free-monoid with their multipliers.
 foldMultiplier :: (a -> Integer -> b -> b) -> b -> FreeMonoidX a -> b
 foldMultiplier f z = Map.foldrWithKey f z . asMap
 
+-- | Map the terms of the free-monoid.
+--
+mapTerms :: Ord b => (a -> b) -> FreeMonoidX a -> FreeMonoidX b
+mapTerms f = fromMultiplierList . (first f <$>) . toMultiplierList
+
+-- | Flatten a free-monoid.
+--
+-- For instance, the monoid
+--
+-- > (a + b) + (a + b) + a
+--
+-- will be rewritten as:
+--
+-- > a + a + a + b + b
+--
+-- Assuming `a < b`.
+--
+-- TODO: is `FreeMonoidX` a monad? Intuitively it doesn't seem so, since it is
+-- not possible to define a functor instance for it.
+flatten :: (Ord a, IntMultipliable a) => FreeMonoidX (FreeMonoidX a) -> FreeMonoidX a
+flatten (FMX p) = fold $ multiplyFMX <$> Map.toAscList p
+    where
+      multiplyFMX :: Ord a => (FreeMonoidX a, Integer) -> FreeMonoidX a
+      multiplyFMX (fm, n) = n <.> fm

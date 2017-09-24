@@ -17,6 +17,7 @@ import           GHC.Generics    (Generic)
 
 import           ConstDefs
 import           CstrId
+import           FreeMonoidX
 import           FuncId
 import           Product
 import           Sum
@@ -24,12 +25,10 @@ import           VarId
 
 
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- value expression
 
 -- | ValExprView: the public view of value expression 'ValExpr'
--- TODO: consider using GADT's here!
 data  ValExprView v = Vconst  Const
                     | Vvar    v
                     -- Boolean
@@ -47,8 +46,7 @@ data  ValExprView v = Vconst  Const
                     | Vmodulo     {   dividend :: ValExpr v
                                   ,   divisor  :: ValExpr v
                                   }
-                    -- QUESTION: does this mean that we can sum booleans and strings?
-                    | Vsum      (Sum (ValExpr v))
+                    | Vsum      (FreeSum (ValExpr v))
                     | Vproduct  (Product (ValExpr v))
                     -- ADT
                     | Vcstr   CstrId [ValExpr v]
@@ -59,7 +57,13 @@ data  ValExprView v = Vconst  Const
                     | Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]
                     | Verror  Text
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
+     deriving (Eq, Ord, Read, Show, Generic, NFData)
+
+instance Num (ValExpr v)
+instance Enum (ValExpr v)
+instance Ord v => Integral (ValExpr v)
+instance Ord v => Real (ValExpr v)
+
 
 -- | ValExpr: value expression
 --

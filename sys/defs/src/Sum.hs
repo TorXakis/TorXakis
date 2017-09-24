@@ -26,8 +26,10 @@ See license.txt
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Sum  (
-    -- * Sum type
-      Sum
+    -- * Sum types
+    Sum
+    , FreeSum
+    , SumTerm (..)
 
     -- * Query
     , nrofTerms
@@ -49,17 +51,13 @@ module Sum  (
 
 
     -- * Multiply
-    , multiply
+   , multiply
 
     -- * Constructors and conversion
-
-    -- ** List
-    , fromList
 
     -- ** Multiplier lists
     , toMultiplierList
     , toDistinctAscMultiplierList
-    , fromMultiplierList
     , fromDistinctAscMultiplierList
 ) where
 
@@ -71,9 +69,9 @@ import           Control.Newtype
 import           Data.Foldable   hiding (sum)
 import qualified Data.List       as List
 import qualified Data.Map.Strict as Map
-import qualified Data.Monoid     as M
-import           FreeMonoidX     (FreeMonoidX, IntMultipliable)
-import qualified FreeMonoidX     as BP
+import           Data.Monoid     ((<>))
+import           FreeMonoidX     (FreeMonoidX, IntMultipliable, (<.>))
+import qualified FreeMonoidX     as FMX
 import           GHC.Generics    (Generic)
 
 {--------------------------------------------------------------------
@@ -85,44 +83,46 @@ import           GHC.Generics    (Generic)
 newtype Sum a = Sum { unSum :: Map.Map a Integer }
     deriving (Eq, Ord, Read, Show, Generic, NFData)
 
-newtype SumPolynomial a = SP { asPolynomial :: FreeMonoidX a} deriving (Generic)
+-- | This newtype is used to declare that free-monoids of the form:
+--
+-- > a0 <> a1 <> ... <> an-1
+--
+-- will be interpreted as the arithmetic sum of terms:
+--
+-- > a0 + a1 + ... + an-1
+--
+newtype SumTerm a = SumTerm { summand :: a } deriving (Eq, Ord, Read, Show, Generic, NFData, Functor)
 
-instance Newtype (SumPolynomial a) (FreeMonoidX a) where
-  pack = SP
-  unpack (SP a) = a
+instance Num a => Monoid (SumTerm a) where
+    mempty = SumTerm 0
+    (SumTerm x) `mappend` (SumTerm y) = SumTerm $ x + y
 
-(<$$>) :: (FreeMonoidX a -> FreeMonoidX a) -> SumPolynomial a -> SumPolynomial a
-f <$$> (SP bp) = SP (f bp)
+type FreeSum a = FreeMonoidX (SumTerm a)
+
+instance Integral a => IntMultipliable (SumTerm a) where
+    n <.> SumTerm x = SumTerm (fromInteger $ toInteger x * toInteger n)
 
 {--------------------------------------------------------------------
   Query
 --------------------------------------------------------------------}
 -- | /O(1)/. The number of distinct terms in the sum.
--- TODO: remove this, use FreeMonoidX
-nrofTerms :: Sum a -> Int
-nrofTerms = Map.size . unSum
-
-nrofTermsNew :: SumPolynomial a -> Int
-nrofTermsNew = BP.nrofDistinctTerms . asPolynomial
-
+nrofTerms :: FreeSum a -> Int
+nrofTerms = FMX.nrofDistinctTerms
 
 {--------------------------------------------------------------------
   Sums and multiplications
 --------------------------------------------------------------------}
 -- | /O(log n)/. Add a term to a sum.
-add :: Ord a => a -> Sum a -> Sum a
-add t = addMultiply t 1
-
-addNew :: Ord a => a -> SumPolynomial a -> SumPolynomial a
-addNew t = (BP.append t <$$>)
+add :: Ord a => a -> FreeSum a -> FreeSum a
+add = FMX.append . SumTerm
 
 -- | /O(log n)/. Subtract a term from a sum.
 subtract :: Ord a => a -> Sum a -> Sum a
 subtract t = addMultiply t (-1)
 
-subtractNew :: Ord a => a -> SumPolynomial a -> SumPolynomial a
+subtractNew :: Ord a => SumTerm a -> FreeSum a -> FreeSum a
 -- subtractNew t = (BP.remove t <$$>)
-subtractNew t = over SP (BP.remove t)
+subtractNew = FMX.remove
 
 -- | /O(log n)/. Add a term multiplied by the given coefficient to a sum.
 addMultiply :: Ord a => a -> Integer -> Sum a -> Sum a
@@ -138,8 +138,8 @@ addMultiply x m s = (Sum . Map.alter increment x . unSum) s
 sums :: Ord a => [Sum a] -> Sum a
 sums = List.foldl' sum (Sum Map.empty)
 
-sumsNew :: (Ord a) => [SumPolynomial a] -> SumPolynomial a
-sumsNew xs = SP (foldMap asPolynomial xs)
+sumsNew :: (Ord a) => [FreeSum a] -> FreeSum a
+sumsNew = fold
 
 -- | /O(n+m)/. The sum of two sums.
 --
@@ -148,18 +148,20 @@ sumsNew xs = SP (foldMap asPolynomial xs)
 sum :: Ord a => Sum a -> Sum a -> Sum a
 sum (Sum m1) (Sum m2) = Sum $ Map.filter (0/=) $ Map.unionWith (+) m1 m2
 
+sumNew :: Ord a => FreeSum a -> FreeSum a -> FreeSum a
+sumNew = (<>)
+
 -- | /O(n)/. Multiply the constant with the sum.
-multiply :: Integer -> Sum a -> Sum a
-multiply 0 _ = Sum Map.empty
-multiply n s = (Sum . Map.map (n *) . unSum) s
+multiply :: Ord a => Integer -> FreeSum a -> FreeSum a
+multiply = (<.>)
 
 {--------------------------------------------------------------------
   Partition
 --------------------------------------------------------------------}
 -- | /O(n)/. Partition the sum into two sums, one with all elements that satisfy
 -- the predicate and one with all elements that don't satisfy the predicate.
-partition :: (a -> Bool) -> Sum a -> (Sum a,Sum a)
-partition p = (Sum *** Sum) . Map.partitionWithKey (\k _ -> p k) . unSum
+partition :: (a -> Bool) -> FreeSum a -> (FreeSum a, FreeSum a)
+partition f = FMX.partition (f . summand)
 
 {--------------------------------------------------------------------
   Fold
@@ -180,10 +182,6 @@ foldMultiplier f z = Map.foldrWithKey f z . unSum
 distinctTerms :: Sum a -> [a]
 distinctTerms = Map.keys . unSum
 
--- | /O(t*log t)/. Create a sum from a list of terms.
-fromList :: Ord a => [a] -> Sum a
-fromList xs = fromMultiplierList $ zip xs (repeat 1)
-
 {--------------------------------------------------------------------
   Multiplier lists
 --------------------------------------------------------------------}
@@ -195,10 +193,6 @@ toMultiplierList = toDistinctAscMultiplierList
 -- | /O(n)/. Convert the sum to a distinct ascending list of term\/multiplier pairs.
 toDistinctAscMultiplierList :: Sum a -> [(a, Integer)]
 toDistinctAscMultiplierList = Map.toAscList . unSum
-
--- | /O(n*log n)/. Create a sum from a list of term\/multiplier pairs.
-fromMultiplierList :: Ord a => [(a, Integer)] -> Sum a
-fromMultiplierList = Sum . Map.filter (0/=) . Map.fromListWith (+)
 
 -- | /O(n)/. Build a sum from an ascending list of term\/multiplier pairs where
 -- each term appears only once.

@@ -6,6 +6,7 @@ See license.txt
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 module FreeMonoidXSpec where
 
 import           Data.AEq        (AEq, (~==))
@@ -21,6 +22,7 @@ import           Test.QuickCheck
 -- * Instances of `IntMultipliable` used for testing purposes
 
 -- | A term of `FreeMonoidX` where the operation `<>` is the sum (`+`)
+-- TODO: use `SumTerm` (defined in `Sum`).
 newtype PSum a = PSum { getSum :: a }
     deriving (Eq, Show, Functor, Num, Ord)
 
@@ -57,14 +59,21 @@ instance Fractional a => IntMultipliable (PProduct a) where
 multiplyLaw :: (Integral n, Eq a, IntMultipliable a, Monoid a, Show a)
             => n -> a -> Property
 multiplyLaw n x
-    =    (               n' <.> x === fold (genericReplicate n' x))
-    .&&. (n' /= 0 ==> (-n') <.> x === (-1) <.> (fold (genericReplicate n' x)))
+    =    (               n' <.> x ===          fold (genericReplicate n' x))
+    .&&. (n' /= 0 ==> (-n') <.> x === (-1) <.> fold (genericReplicate n' x))
     where n' = abs n
 
 propIntMultipliableFor :: ( Eq (f a), IntMultipliable (f a)
                           , Monoid (f a), Show (f a))
                        => (a  -> f a) -> Proxy a -> Int -> a -> Property
 propIntMultipliableFor f _ n s = multiplyLaw n (f s)
+
+propIntMultipliableForFMX :: ( Eq (f a), IntMultipliable (f a), Ord (f a)
+                             , Monoid (f a), Show (f a))
+                          => ([a] -> FreeMonoidX (f a)) -> Proxy a -> Int -> [a]
+                          -> Property
+propIntMultipliableForFMX f _ n xs = multiplyLaw n (f xs)
+
 
 -- * From list laws and properties
 
@@ -160,8 +169,12 @@ spec = do
     describe "IntMultipliable instances" $ do
         it "`PSum` is an instance of `IntMultipliable`" $
             property $ propIntMultipliableFor PSum pInt
-        it "`PProduct` is an instance of `IntMultipliable` provided were " $
+        it "`PProduct` is an instance of `IntMultipliable`" $
             property $ propIntMultipliableFor PProduct pDouble
+        it "`FreeMonoidX` with `PSum` terms is an instance of `IntMultipliable`" $
+            property $ propIntMultipliableForFMX (fromList . (PSum <$>)) pInt
+        it "`FreeMonoidX` with `PProduct` terms is an instance of `IntMultipliable`" $
+            property $ propIntMultipliableForFMX (fromList . (PProduct <$>)) pDouble
     describe "Monoid instance of `FreeMonoidX` for Sum" $ do
         it "Satisfies the first `mempty` law" $
             property $ propMonoidEmpty0For PSum pInt

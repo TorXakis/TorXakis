@@ -85,9 +85,7 @@ test-suite defs-BlackBox-test
   main-is:             Spec.hs
   
   other-modules:       GenProduct
-                     , GenSum
                      , ValExprSpec
-                     , SumSpec
                      , ProductSpec
                      , FreeMonoidXSpec
                        

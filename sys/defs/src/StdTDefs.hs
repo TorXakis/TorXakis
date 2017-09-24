@@ -6,6 +6,8 @@ See LICENSE at root directory of this repository.
 
 
 -- ----------------------------------------------------------------------------------------- --
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 -- | Predefined, Standard TorXakis Data Types : Bool, Int, Char, String.
@@ -69,14 +71,16 @@ import           Control.Arrow ((***))
 import qualified Data.Map      as Map
 import qualified Data.Set      as Set
 import           Data.Text     (Text)
+import           GHC.Exts
 
 import           ChanId
 import           CstrId
+import qualified FreeMonoidX   as FMX
 import           FuncDef
 import           FuncId
 import           FuncTable
 import           Ident
-import           Product
+import qualified Product
 import           SortDef
 import           SortId
 import           SortOf
@@ -158,16 +162,16 @@ xorHandler [a, b] = cstrOr (Set.fromList [arg0, arg1])
         arg1 = cstrAnd (Set.fromList [cstrNot a, b])
 xorHandler _      = error "xorHandler expects two arguments"
 
-cstrUniMinusHandler :: Ord v => Handler v
+cstrUniMinusHandler :: (Ord v, Integral (ValExpr v)) => Handler v
 cstrUniMinusHandler [a] = cstrMinus a
 cstrUniMinusHandler _   = error "cstrUniMinusHandler expects one argument"
 
-cstrMinusHandler :: Ord v => Handler v
-cstrMinusHandler [a,b] = cstrSum (Sum.fromMultiplierList [(a,1),(b,-1)])
-cstrMinusHandler _   = error "cstrMinusHandler expects two arguments"
+cstrMinusHandler :: (Ord v, Integral (ValExpr v)) => Handler v
+cstrMinusHandler [a,b] = cstrSum $ FMX.fromMultiplierList [(SumTerm a,1), (SumTerm b,-1)]
+cstrMinusHandler _     = error "cstrMinusHandler expects two arguments"
 -- ----------------------------------------------------------------------------------------- --
 -- FuncTable
-stdFuncTable :: Ord v => FuncTable v
+stdFuncTable :: (Ord v, Integral (ValExpr v)) => FuncTable v
 stdFuncTable = FuncTable ( Map.fromList
     [ ( eqName , Map.fromList [ ( Signature [sortId_Bool,     sortId_Bool]    sortId_Bool, equalHandler )
                               , ( Signature [sortId_Int,      sortId_Int]     sortId_Bool, equalHandler )
@@ -201,7 +205,7 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, equalHandler ) ] )
 
     , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, head)
-                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . Sum.fromList )
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . fromList . (SumTerm <$>))
                            ] )
     , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrUniMinusHandler )
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrMinusHandler )
