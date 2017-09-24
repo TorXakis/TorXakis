@@ -71,7 +71,7 @@ import           Control.Arrow ((***))
 import qualified Data.Map      as Map
 import qualified Data.Set      as Set
 import           Data.Text     (Text)
-import           GHC.Exts
+import qualified GHC.Exts      as Exts
 
 import           ChanId
 import           CstrId
@@ -205,7 +205,7 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, equalHandler ) ] )
 
     , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, head)
-                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . fromList . (SumTerm <$>))
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . Exts.fromList . (SumTerm <$>))
                            ] )
     , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrUniMinusHandler )
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrMinusHandler )

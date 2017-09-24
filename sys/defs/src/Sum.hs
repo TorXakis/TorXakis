@@ -56,6 +56,8 @@ module Sum  (
     -- * Constructors and conversion
 
     -- ** Multiplier lists
+    , fromList
+    , fromMultiplierList
     , toMultiplierList
     , toDistinctAscMultiplierList
     , fromDistinctAscMultiplierList
@@ -63,7 +65,7 @@ module Sum  (
 
 import           Prelude         hiding (subtract, sum)
 
-import           Control.Arrow   ((***))
+import           Control.Arrow   (first, (***))
 import           Control.DeepSeq
 import           Control.Newtype
 import           Data.Foldable   hiding (sum)
@@ -72,6 +74,7 @@ import qualified Data.Map.Strict as Map
 import           Data.Monoid     ((<>))
 import           FreeMonoidX     (FreeMonoidX, IntMultipliable, (<.>))
 import qualified FreeMonoidX     as FMX
+import qualified GHC.Exts        as Exts
 import           GHC.Generics    (Generic)
 
 {--------------------------------------------------------------------
@@ -179,16 +182,22 @@ foldMultiplier f z = Map.foldrWithKey f z . unSum
 -- each term occurs only once in the list.
 --
 -- > distinctTerms = map fst . toOccurList
-distinctTerms :: Sum a -> [a]
-distinctTerms = Map.keys . unSum
+distinctTerms :: FreeSum a -> [a]
+distinctTerms = (summand <$>) . FMX.distinctTerms
+
+-- | /O(t*log t)/. Create a sum from a list of terms.
+fromList :: Ord a => [a] -> FreeSum a
+fromList = Exts.fromList . (SumTerm <$>)
 
 {--------------------------------------------------------------------
   Multiplier lists
 --------------------------------------------------------------------}
+fromMultiplierList :: Ord a => [(a, Integer)] -> FreeSum a
+fromMultiplierList = FMX.fromMultiplierList . (first SumTerm <$>)
 
 -- | /O(n)/. Convert the sum to a list of term\/multiplier pairs.
-toMultiplierList :: Sum a -> [(a, Integer)]
-toMultiplierList = toDistinctAscMultiplierList
+toMultiplierList :: FreeSum  a -> [(a, Integer)]
+toMultiplierList = (first summand <$>) . FMX.toDistinctAscMultiplierList
 
 -- | /O(n)/. Convert the sum to a distinct ascending list of term\/multiplier pairs.
 toDistinctAscMultiplierList :: Sum a -> [(a, Integer)]

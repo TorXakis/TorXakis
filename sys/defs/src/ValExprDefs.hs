@@ -59,11 +59,15 @@ data  ValExprView v = Vconst  Const
                     | Verror  Text
      deriving (Eq, Ord, Read, Show, Generic, NFData)
 
+-- These instances are needed to use the symbolic representation of sums and
+-- products of val expressions. These instances have no implementation, which
+-- means that if an attempt is made to compute the value of a sum or product of
+-- `ValExpr` then a runtime error will occur. When GADT's are used it will be
+-- possible to define instances for `ValExpr` of numeric types.
 instance Num (ValExpr v)
 instance Enum (ValExpr v)
-instance Ord v => Integral (ValExpr v)
 instance Ord v => Real (ValExpr v)
-
+instance Ord v => Integral (ValExpr v)
 
 -- | ValExpr: value expression
 --
