@@ -17,14 +17,15 @@ module FreeVar
 )
 where
 
-import qualified Data.List as List
-import qualified Data.Map  as Map
-import qualified Data.Set  as Set
+import qualified Data.List   as List
+import qualified Data.Map    as Map
+import qualified Data.Set    as Set
 
-import Product
-import Sum
-import TxsDefs
-import Utils
+import           FreeMonoidX
+import           Product
+import           Sum
+import           TxsDefs
+import           Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -39,12 +40,12 @@ freeVars (view -> Vaccess _cid _p vexp)    =  freeVars vexp
 freeVars (view -> Vconst _const)           =  []
 freeVars (view -> Vvar vid)                =  [vid]
 freeVars (view -> Vite cond vexp1 vexp2)   =  List.nub $ freeVars cond ++
-                                                         freeVars vexp1 ++ 
+                                                         freeVars vexp1 ++
                                                          freeVars vexp2
 freeVars (view -> Venv ve vexp)            =  List.nub $ concatMap freeVars (Map.elems ve) ++
                                                 ( freeVars vexp \\\ Map.keys ve )
-freeVars (view -> Vsum s)                  =  List.nub $ concatMap freeVars (Sum.distinctTerms s)
-freeVars (view -> Vproduct p)              =  List.nub $ concatMap freeVars (Product.distinctTerms p)
+freeVars (view -> Vsum s)                  =  List.nub $ concatMap freeVars (distinctTermsT s)
+freeVars (view -> Vproduct p)              =  List.nub $ concatMap freeVars (distinctTermsT p)
 freeVars (view -> Vdivide t n)             =  List.nub $ freeVars t ++ freeVars n
 freeVars (view -> Vmodulo t n)             =  List.nub $ freeVars t ++ freeVars n
 freeVars (view -> Vequal vexp1 vexp2)      =  List.nub $ freeVars vexp1 ++ freeVars vexp2

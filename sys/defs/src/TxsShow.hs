@@ -278,7 +278,7 @@ instance PShow v => PShow (ValExpr v) where
         showElem (t,-1) = "(- " ++ pshow t ++ " )"
         showElem (t,p)  = "( " ++ show p ++ " * " ++ pshow t ++ " )"
     pshow (view -> Vproduct s)
-      = showList (Product.toPowerList s)
+      = showList (FMX.toDistinctAscMultiplierListT s)
       where
         showList []     = "1"
         showList [x]    = showElem x

@@ -10,18 +10,19 @@ import qualified Data.List       as List
 import           Test.Hspec
 import           Test.QuickCheck
 
+import           FreeMonoidX     (fromDistinctAscPowerListT, fromListT,
+                                  toDistinctAscMultiplierListT)
 import           GenProduct
 import           Product
-
 
 -- * Properties
 prop_ProductPower :: GenProduct Integer -> Integer -> Bool
 prop_ProductPower (GenProduct s) 0 =
-  power 0 s == Product.fromList []
+  power 0 s == fromListT []
 prop_ProductPower (GenProduct s) n =
-  power n s == ( fromDistinctAscPowerList
+  power n s == ( fromDistinctAscPowerListT
                  . List.map (second (n *))
-                 . toDistinctAscPowerList
+                 . toDistinctAscMultiplierListT
                ) s
 
 prop_ProductEq :: GenProduct Integer -> Bool

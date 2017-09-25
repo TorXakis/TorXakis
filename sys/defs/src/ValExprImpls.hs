@@ -216,14 +216,14 @@ cstrSum :: forall v . (Ord v, Integral (ValExpr v)) => FreeSum (ValExpr v) -> Va
 cstrSum ms =
     cstrSum' $ nonadds <> FMX.flatten sumOfAdds
     where
-      (adds, nonadds) = Sum.partition isSum ms
+      (adds, nonadds) = FMX.partitionT isSum ms
       sumOfAdds :: FMX.FreeMonoidX (FMX.FreeMonoidX (SumTerm (ValExpr v)))
       sumOfAdds = FMX.mapTerms (getSum . summand) adds
 
 -- Sum doesn't contain elements of type VExprSum
 cstrSum' :: Ord v => FreeSum (ValExpr v) -> ValExpr v
 cstrSum' ms =
-    let (vals, nonvals) = Sum.partition isConst ms
+    let (vals, nonvals) = FMX.partitionT isConst ms
         sumVals = summand $ FMX.foldFMX (FMX.mapTerms (SumTerm . getIntVal . summand) vals)
         retMS = case sumVals of
                     0 -> nonvals                                      -- 0 + x == x
@@ -257,7 +257,7 @@ cstrProduct :: forall v .(Ord v, Integral (ValExpr v)) => FreeProduct (ValExpr v
 cstrProduct ms =
     cstrProduct' $ noprods <> FMX.flatten prodOfProds
     where
-      (prods, noprods) = Product.partition isProduct ms
+      (prods, noprods) = FMX.partitionT isProduct ms
       prodOfProds :: FMX.FreeMonoidX (FMX.FreeMonoidX (ProductTerm (ValExpr v)))
       prodOfProds = FMX.mapTerms (getProduct . factor) prods
         -- TODO: canonical form -- make one sum of products (so remove all sums within all products)
@@ -266,15 +266,15 @@ cstrProduct ms =
 cstrProduct' :: (Ord v, Integral (ValExpr v))
              => FreeProduct (ValExpr v) -> ValExpr v
 cstrProduct' ms =
-    let (vals, nonvals) = Product.partition isConst ms
-        (zeros, _) = Product.partition isZero vals
+    let (vals, nonvals) = FMX.partitionT isConst ms
+        (zeros, _) = FMX.partitionT isZero vals
     in
         case FMX.nrofDistinctTerms zeros of
             0   ->  -- let productVals = Product.foldPower timesVal 1 vals in
                     let intProducts = FMX.mapTerms (getIntVal <$>) vals
                         productVals = factor (FMX.foldFMX intProducts)
                     in
-                        case Product.toPowerList nonvals of
+                        case FMX.toDistinctAscMultiplierListT nonvals of
                             []          ->  cstrConst (Cint productVals)
                             [(term, 1)] ->  cstrSum (FMX.fromMultiplierList [(SumTerm term, productVals)])                           -- term can be Sum -> rewrite needed
                             _           ->  cstrSum (FMX.fromMultiplierList [(SumTerm (ValExpr (Vproduct nonvals)), productVals)])  -- productVals can be 1 -> rewrite possible

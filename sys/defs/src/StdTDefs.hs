@@ -211,7 +211,7 @@ stdFuncTable = FuncTable ( Map.fromList
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrMinusHandler )
                            ] )
     , ("abs", Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_absInt ) ] )
-    , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrProduct . Product.fromList ) ] )
+    , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrProduct . FMX.fromListT ) ] )
     , ("/",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, divideHandler ) ] )
     , ("%",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, moduloHandler ) ] )
     , ("<",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_ltInt ) ] )

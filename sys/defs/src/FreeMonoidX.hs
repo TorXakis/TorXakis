@@ -63,16 +63,17 @@ module FreeMonoidX
   ( -- * Free Monoid with multiplication Type
     FreeMonoidX (..)
 
-    -- * Query.
+  -- * Query
   , nrofDistinctTerms
   , distinctTerms  -- exposed for performance reasons checking properties for
                    -- all distinct terms is faster than for all terms
-
+  , distinctTermsT
   -- * Map
   , mapTerms
 
   -- * Filter
   , partition
+  , partitionT
 
   -- | Folds
   , foldMultiplier
@@ -87,14 +88,21 @@ module FreeMonoidX
   -- * Multiplication operator
   , (<.>)
 
-  -- * Integer multipliable restriction
+  -- * Monoid terms restriction
   , IntMultipliable
+  , TermWrapper (..)
 
   -- * Multiplier lists
   , toMultiplierList
   , toDistinctAscMultiplierList
   , fromMultiplierList
   , fromDistinctAscMultiplierList
+  -- ** Multiplier lists of `TermWrapper`'s
+  , fromListT
+  , toMultiplierListT
+  , toDistinctAscMultiplierListT
+  , fromMultiplierListT
+  , fromDistinctAscPowerListT
   )
 where
 
@@ -121,6 +129,12 @@ newtype FreeMonoidX a = FMX { asMap :: Map a Integer }
 
 instance Show a => Show (FreeMonoidX a) where
     show (FMX p) = show (Map.assocs p)
+
+-- | A term of the monoid which wraps a value. This could be for instance a
+-- sum-term or a product term.
+class TermWrapper f where
+    wrap :: a -> f a
+    unwrap :: f a -> a
 
 -- | Types that can be multiplied by an integral. This restriction is required
 -- to be able to assign a correct semantic to the symbolic representation of
@@ -150,6 +164,11 @@ instance Ord a => IsList (FreeMonoidX a) where
         (x, n) <- Map.toList p
         genericReplicate n x
 
+-- | /O(t*log t)/. Create a product from a list of terms using the given term
+-- wrapper.
+fromListT :: (Ord (t a), TermWrapper t) => [a] -> FreeMonoidX (t a)
+fromListT = fromList . (wrap <$>)
+
 -- | Fold the free-monoid.
 foldFMX :: (IntMultipliable a, Monoid a) => FreeMonoidX a -> a
 foldFMX (FMX p) = Map.foldrWithKey (\x n -> (n <.> x <>)) mempty p
@@ -164,24 +183,39 @@ nrofDistinctTerms = Map.size . asMap
 distinctTerms :: FreeMonoidX a -> [a]
 distinctTerms = Map.keys . asMap
 
+distinctTermsT :: TermWrapper t => FreeMonoidX (t a) -> [a]
+distinctTermsT = (unwrap <$>) . distinctTerms
+
 -- | /O(n)/. Convert the free-monoid to a list of term\/multiplier pairs.
 toMultiplierList :: FreeMonoidX a -> [(a, Integer)]
 toMultiplierList = toDistinctAscMultiplierList
+
+toMultiplierListT :: TermWrapper t => FreeMonoidX (t a) -> [(a, Integer)]
+toMultiplierListT = (first unwrap <$>) . toDistinctAscMultiplierList
 
 -- | /O(n)/. Convert the free-monoid to a distinct ascending list of term\/multiplier
 -- pairs.
 toDistinctAscMultiplierList :: FreeMonoidX a -> [(a, Integer)]
 toDistinctAscMultiplierList = Map.toAscList . asMap
 
+toDistinctAscMultiplierListT :: TermWrapper t => FreeMonoidX (t a) -> [(a, Integer)]
+toDistinctAscMultiplierListT = (first unwrap <$>) . toDistinctAscMultiplierList
+
 -- | /O(n*log n)/. Create a free-monoid from a list of term\/multiplier pairs.
 fromMultiplierList :: Ord a => [(a, Integer)] -> FreeMonoidX a
 fromMultiplierList = FMX . Map.filter (0/=) . Map.fromListWith (+)
+
+fromMultiplierListT :: (Ord (t a), TermWrapper t) => [(a, Integer)] -> FreeMonoidX (t a)
+fromMultiplierListT = fromMultiplierList . (first wrap <$>)
 
 -- | /O(n)/. Build a free-monoid from an ascending list of term\/multiplier
 -- pairs where each term appears only once. /The precondition (input list is
 -- strictly ascending) is not checked./
 fromDistinctAscMultiplierList :: [(a, Integer)] -> FreeMonoidX a
 fromDistinctAscMultiplierList = FMX . Map.filter (0/=) . Map.fromDistinctAscList
+
+fromDistinctAscPowerListT :: TermWrapper t => [(a, Integer)] -> FreeMonoidX (t a)
+fromDistinctAscPowerListT = fromDistinctAscMultiplierList . (first wrap <$>)
 
 -- | Append a term to the free-monoid.
 --
@@ -232,6 +266,10 @@ addNTimes m x s = (FMX . Map.alter increment x . asMap) s
 partition :: (a -> Bool) -> FreeMonoidX a -> (FreeMonoidX a,FreeMonoidX a)
 partition p = (FMX *** FMX) . Map.partitionWithKey (\k _ -> p k) . asMap
 
+partitionT :: TermWrapper t => (a -> Bool) -> FreeMonoidX (t a)
+           -> (FreeMonoidX (t a), FreeMonoidX (t a))
+partitionT p = partition (p . unwrap)
+
 -- | /O(n)/. Fold over the terms of the free-monoid with their multipliers.
 foldMultiplier :: (a -> Integer -> b -> b) -> b -> FreeMonoidX a -> b
 foldMultiplier f z = Map.foldrWithKey f z . asMap
@@ -245,11 +283,11 @@ mapTerms f = fromMultiplierList . (first f <$>) . toMultiplierList
 --
 -- For instance, the monoid
 --
--- > (a + b) + (a + b) + a
+-- > (a <> b) <> (a <> b) <> a
 --
 -- will be rewritten as:
 --
--- > a + a + a + b + b
+-- > a <> a <> a <> b <> b
 --
 -- Assuming `a < b`.
 --

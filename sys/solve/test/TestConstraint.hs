@@ -23,6 +23,7 @@ import           Text.Regex.TDFA
 import           Test.HUnit
 
 -- general Torxakis imports
+import           FreeMonoidX
 import           StdTDefs
 import           Sum
 import           TxsDefs
@@ -162,7 +163,7 @@ testNegativeNegativeIsIdentity = testTemplateSat [cstrEqual ie (cstrMinus (cstrM
         ie = cstrConst (Cint 3) :: VExpr
 
 testAdd :: SMT()
-testAdd = testTemplateSat [cstrEqual (cstrConst (Cint 12)) (cstrSum (Sum.fromList [cstrConst (Cint 3), cstrConst (Cint 9)]))]
+testAdd = testTemplateSat [cstrEqual (cstrConst (Cint 12)) (cstrSum (fromListT [cstrConst (Cint 3), cstrConst (Cint 9)]))]
 
 -- --------------------------------------------------------------------------------------------------------------------
 testNoVariables :: SMT()

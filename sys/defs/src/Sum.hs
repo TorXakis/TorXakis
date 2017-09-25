@@ -31,13 +31,6 @@ module Sum
       FreeSum
     , SumTerm (..)
 
-    -- * Query
-    , distinctTerms     -- exposed for performance reasons
-                        -- checking properties for all distinct terms is faster than for all terms
-
-    -- * Filter
-    , partition
-
     -- * Sum of Term and Sums
     , add
     , subtract
@@ -46,22 +39,16 @@ module Sum
 
     -- * Multiply
     , multiply
-
-    -- ** Multiplier lists
-    , fromList
-    , fromMultiplierList
-    , toMultiplierList
     ) where
 
 import           Prelude         hiding (subtract, sum)
 
-import           Control.Arrow   (first)
 import           Control.DeepSeq
 import           Data.Foldable   hiding (sum)
 import           Data.Monoid     ((<>))
-import           FreeMonoidX     (FreeMonoidX, IntMultipliable, (<.>))
+import           FreeMonoidX     (FreeMonoidX, IntMultipliable, TermWrapper,
+                                  (<.>))
 import qualified FreeMonoidX     as FMX
-import qualified GHC.Exts        as Exts
 import           GHC.Generics    (Generic)
 
 {--------------------------------------------------------------------
@@ -86,6 +73,10 @@ newtype SumTerm a = SumTerm { summand :: a }
 instance Num a => Monoid (SumTerm a) where
     mempty = SumTerm 0
     (SumTerm x) `mappend` (SumTerm y) = SumTerm $ x + y
+
+instance TermWrapper SumTerm where
+    wrap = SumTerm
+    unwrap = summand
 
 instance Integral a => IntMultipliable (SumTerm a) where
     n <.> SumTerm x = SumTerm (fromInteger $ toInteger x * toInteger n)
@@ -112,36 +103,3 @@ sum = (<>)
 -- | /O(n)/. Multiply the constant with the sum.
 multiply :: Ord a => Integer -> FreeSum a -> FreeSum a
 multiply = (<.>)
-
-{--------------------------------------------------------------------
-  Partition
---------------------------------------------------------------------}
--- | /O(n)/. Partition the sum into two sums, one with all elements that satisfy
--- the predicate and one with all elements that don't satisfy the predicate.
-partition :: (a -> Bool) -> FreeSum a -> (FreeSum a, FreeSum a)
-partition p = FMX.partition (p . summand)
-
-{--------------------------------------------------------------------
-  Lists
---------------------------------------------------------------------}
-
--- | /O(n)/. The distinct terms of a sum,
--- each term occurs only once in the list.
---
--- > distinctTerms = map fst . toOccurList
-distinctTerms :: FreeSum a -> [a]
-distinctTerms = (summand <$>) . FMX.distinctTerms
-
--- | /O(t*log t)/. Create a sum from a list of terms.
-fromList :: Ord a => [a] -> FreeSum a
-fromList = Exts.fromList . (SumTerm <$>)
-
-{--------------------------------------------------------------------
-  Multiplier lists
---------------------------------------------------------------------}
-fromMultiplierList :: Ord a => [(a, Integer)] -> FreeSum a
-fromMultiplierList = FMX.fromMultiplierList . (first SumTerm <$>)
-
--- | /O(n)/. Convert the sum to a list of term\/multiplier pairs.
-toMultiplierList :: FreeSum  a -> [(a, Integer)]
-toMultiplierList = (first summand <$>) . FMX.toDistinctAscMultiplierList
