@@ -75,11 +75,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_IntFromString,  error "FromString(Int) should not be called in SMT"),
     (IdFunc funcId_IntToXml,       error "ToXml(Int) should not be called in SMT"),
     (IdFunc funcId_IntFromXml,     error "FromXml(Int) should not be called in SMT"),
-    (IdFunc funcId_ltInt,          "<"),
-    (IdFunc funcId_leInt,          "<="),
-    (IdFunc funcId_gtInt,          ">"),
-    (IdFunc funcId_geInt,          ">="),
-    (IdFunc funcId_absInt,         "abs"),
 
 -- String
     (IdFunc funcId_StringToString,     error "ToString(String) should not be called in SMT"),
@@ -285,6 +280,7 @@ valexprToSMT mapI (view -> Vproduct p) =
 
 valexprToSMT mapI (view -> Vdivide t n) = "(div " <> valexprToSMT mapI t <> " "  <> valexprToSMT mapI n <> ")"
 valexprToSMT mapI (view -> Vmodulo t n) = "(mod " <> valexprToSMT mapI t <> " "  <> valexprToSMT mapI n <> ")"
+valexprToSMT mapI (view -> Vgez v)      = "(<= 0 " <> valexprToSMT mapI v <> ")"
 
 valexprToSMT mapI (view -> Venv venv expr)  =
     if Map.null venv

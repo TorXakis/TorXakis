@@ -94,12 +94,13 @@ partSubst ve (view -> Viscstr cid vexp)       = cstrIsCstr cid (partSubst ve vex
 partSubst ve (view -> Vaccess cid p vexp)     = cstrAccess cid p (partSubst ve vexp)
 partSubst _  (view -> Vconst const')          = cstrConst const'
 partSubst ve (view -> Vvar vid)               = Map.findWithDefault (cstrVar vid) vid ve
-partSubst ve (view -> Vite cond vexp1 vexp2)  = cstrIte (partSubst ve cond)
+partSubst ve (view -> Vite cond vexp1 vexp2)  = cstrITE (partSubst ve cond)
                                                         (partSubst ve vexp1)
                                                         (partSubst ve vexp2)
 partSubst ve (view -> Venv ve' vexp)          = partSubst ve (partSubst ve' vexp)
 partSubst ve (view -> Vdivide t n)            = cstrDivide (partSubst ve t) (partSubst ve n)
 partSubst ve (view -> Vmodulo t n)            = cstrModulo (partSubst ve t) (partSubst ve n)
+partSubst ve (view -> Vgez v)                 = cstrGEZ (partSubst ve v)
 partSubst ve (view -> Vsum s)                 = cstrSum $ Sum.fromMultiplierList $ map (first (partSubst ve)) $ Sum.toMultiplierList s
 partSubst ve (view -> Vproduct p)             = cstrProduct $ Product.fromPowerList $ map (first (partSubst ve)) $ Product.toPowerList p
 partSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (partSubst ve vexp1) (partSubst ve vexp2)
@@ -130,12 +131,13 @@ compSubst _  (view -> Vconst const')          =  cstrConst const'
 compSubst ve (view -> Vvar vid)               =  fromMaybe
                                                     (cstrError "TXS Subst compSubst: incomplete\n")
                                                     (Map.lookup vid ve)
-compSubst ve (view -> Vite cond vexp1 vexp2)  =  cstrIte (compSubst ve cond)
+compSubst ve (view -> Vite cond vexp1 vexp2)  =  cstrITE (compSubst ve cond)
                                                          (compSubst ve vexp1)
                                                          (compSubst ve vexp2)
 compSubst ve (view -> Venv ve' vexp)          =  compSubst ve (compSubst ve' vexp)
 compSubst ve (view -> Vdivide t n)            = cstrDivide (compSubst ve t) (compSubst ve n)
 compSubst ve (view -> Vmodulo t n)            = cstrModulo (compSubst ve t) (compSubst ve n)
+compSubst ve (view -> Vgez v)                 = cstrGEZ (compSubst ve v)
 compSubst ve (view -> Vsum s)                 = cstrSum $ Sum.fromMultiplierList $ map (first (compSubst ve)) $ Sum.toMultiplierList s
 compSubst ve (view -> Vproduct p)             = cstrProduct $ Product.fromPowerList $ map (first (compSubst ve)) $ Product.toPowerList p
 compSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (compSubst ve vexp1) (compSubst ve vexp2)
@@ -260,6 +262,7 @@ instance UsedFids VExpr
     usedFids (view -> Vproduct p)               =  concatMap usedFids (Product.distinctTerms p)
     usedFids (view -> Vdivide t n)              =  usedFids t ++ usedFids n
     usedFids (view -> Vmodulo t n)              =  usedFids t ++ usedFids n
+    usedFids (view -> Vgez v)                   =  usedFids v
     usedFids (view -> Vequal vexp1 vexp2)       =  usedFids vexp1 ++ usedFids vexp2
     usedFids (view -> Vand vexps)               =  concatMap usedFids (Set.toList vexps)
     usedFids (view -> Vnot vexp)                =  usedFids vexp

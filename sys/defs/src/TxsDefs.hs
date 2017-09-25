@@ -93,7 +93,8 @@ import           StatId
 import           VarId
 
 import           ValExprDefs
-import           ValExprImpls   as X
+import           ValExprImpls            as X
+import           ValExprImplsExtension   as X
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis definitions

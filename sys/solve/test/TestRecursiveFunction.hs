@@ -99,7 +99,7 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
     let txsDefs = TxsDefs.union fDefs sDefs
 
     let v = VarId "instance" 123456 sortId_ListInt
-    let (TXS2SMTVExprTest inputAssertion _) = createVfunc funcId_gtInt [createVfunc lengthList [createVvar v], createVconst (Cint 5)]
+    let (TXS2SMTVExprTest inputAssertion _) = createVgez (createVsum [createVfunc lengthList [createVvar v], createVconst (Cint 6)])
 
     smtEnv <- createSMTEnv s False TxsDefs.empty
 
