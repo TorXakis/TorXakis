@@ -100,7 +100,7 @@ instance Applicative ProductTerm where
     fa <*> a = ProductTerm $ factor fa (factor a)
 
 instance Num a => Monoid (ProductTerm a) where
-    mempty = pure 0
+    mempty = pure 1
     pt0 `mappend` pt1 = pure (*) <*> pt0 <*> pt1
 
 instance Integral a => IntMultipliable (ProductTerm a) where
