@@ -67,7 +67,7 @@ import           GHC.Generics    (Generic)
 {--------------------------------------------------------------------
   The data types
 --------------------------------------------------------------------}
--- | `FreeSum` represents a symbolic sum of terms of the type parameter @a@.
+-- | `FreeSum` represents a symbolic sum of terms of the type parameter `a`.
 -- The same term can occur multiple times.
 --
 type FreeSum a = FreeMonoidX (SumTerm a)
@@ -105,6 +105,7 @@ subtract = FMX.remove . SumTerm
 sums :: (Ord a) => [FreeSum a] -> FreeSum a
 sums = fold
 
+-- | /O(n+m)/. The sum of two sums.
 sum :: Ord a => FreeSum a -> FreeSum a -> FreeSum a
 sum = (<>)
 
@@ -118,7 +119,7 @@ multiply = (<.>)
 -- | /O(n)/. Partition the sum into two sums, one with all elements that satisfy
 -- the predicate and one with all elements that don't satisfy the predicate.
 partition :: (a -> Bool) -> FreeSum a -> (FreeSum a, FreeSum a)
-partition f = FMX.partition (f . summand)
+partition p = FMX.partition (p . summand)
 
 {--------------------------------------------------------------------
   Lists

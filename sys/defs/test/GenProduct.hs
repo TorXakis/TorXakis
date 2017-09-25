@@ -8,12 +8,12 @@ module GenProduct
 )
 where
 
-import Test.QuickCheck
-import Test.QuickCheck.Gen(chooseAny)
+import           Test.QuickCheck
+import           Test.QuickCheck.Gen (chooseAny)
 
-import Product
+import           Product
 
-newtype GenProduct a = GenProduct (Product a)
+newtype GenProduct a = GenProduct (FreeProduct a)
     deriving (Show)
 
 instance (Ord a, Arbitrary a) => Arbitrary (GenProduct a) where

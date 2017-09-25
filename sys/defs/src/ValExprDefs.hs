@@ -47,7 +47,7 @@ data  ValExprView v = Vconst  Const
                                   ,   divisor  :: ValExpr v
                                   }
                     | Vsum      (FreeSum (ValExpr v))
-                    | Vproduct  (Product (ValExpr v))
+                    | Vproduct  (FreeProduct (ValExpr v))
                     -- ADT
                     | Vcstr   CstrId [ValExpr v]
                     | Viscstr CstrId (ValExpr v)

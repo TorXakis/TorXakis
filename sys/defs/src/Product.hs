@@ -26,14 +26,16 @@ See license.txt
 -- In the complexity of functions /n/ refers to the number of distinct terms,
 -- /t/ is the total number of terms.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Product  (
     -- * Product type
-      Product
+      FreeProduct
+    , ProductTerm (..)
 
     -- * Query
-    , nrofTerms
     , distinctTerms     -- exposed for performance reasons
                         -- checking properties for all distinct terms is faster than for all terms
 
@@ -41,13 +43,9 @@ module Product  (
     , partition
     , fraction
 
-    -- * Fold
-    , foldPower
-
     -- * Product of Term and Products
     , multiply
     , divide
-    , multiplyPower
     , product
     , products
 
@@ -67,85 +65,97 @@ module Product  (
 
 import           Prelude         hiding (product)
 
-import           Control.Arrow   ((***))
+import           Control.Arrow   (first, second, (***))
 import           Control.DeepSeq
+import           Data.Foldable   hiding (product)
 import qualified Data.List       as List
 import qualified Data.Map.Strict as Map
+import           Data.Monoid
+import qualified GHC.Exts        as Exts
 import           GHC.Generics    (Generic)
+
+import           FreeMonoidX     (FreeMonoidX (..), IntMultipliable, (<.>))
+import qualified FreeMonoidX     as FMX
 {--------------------------------------------------------------------
   The data type
 --------------------------------------------------------------------}
--- | Product is a parameterized data type.
--- Product represents a symbolic product of terms of the type parameter @a@.
+-- |
+-- `FreeProduct` represents a symbolic product of terms of the type parameter `a`.
 -- The same term can occur multiple times.
-newtype Product a = Product { unProduct :: Map.Map a Integer }
-    deriving (Eq, Ord, Read, Show, Generic, NFData)
-{--------------------------------------------------------------------
-  Query
---------------------------------------------------------------------}
--- | /O(1)/. The number of distinct terms in the product.
-nrofTerms :: Product a -> Int
-nrofTerms = Map.size . unProduct
+type FreeProduct a = FreeMonoidX (ProductTerm a)
+
+-- | Terms of a free-monoids of the form:
+--
+-- > a0 <> a1 <> ... <> an-1
+--
+-- where `<>` will be interpreted as the arithmetic multiplication of terms:
+--
+-- > a0 * a1 * ... * an-1
+--
+newtype ProductTerm a = ProductTerm { factor :: a }
+    deriving (Eq, Ord, Num, Read, Show, Generic, NFData, Functor)
+
+instance Applicative ProductTerm where
+    pure = ProductTerm
+    fa <*> a = ProductTerm $ factor fa (factor a)
+
+instance Num a => Monoid (ProductTerm a) where
+    mempty = pure 0
+    pt0 `mappend` pt1 = pure (*) <*> pt0 <*> pt1
+
+instance Integral a => IntMultipliable (ProductTerm a) where
+    -- Instances of `IntMultipliable` for `PPproduct` are only defined for
+    -- fractional numbers. We cannot define this for `Int` (or `Integer`) since
+    -- the multiplicative inverse is not defined for them.
+    --
+    -- TODO: the right constraint should be:
+    --
+    -- > Fractional a => IntMultipliable (ProductTerm a)
+    --
+    -- However in the current state of we don't have fractional numbers or
+    -- double.
+
+    -- See https://wiki.haskell.org/Power_function
+    n <.> pt = (^ toInteger n) <$> pt
 
 {--------------------------------------------------------------------
   Products and multiplications
 --------------------------------------------------------------------}
 -- | /O(log n)/. Multiply a product with a term.
-multiply :: Ord a => a -> Product a -> Product a
-multiply t = multiplyPower t 1
+multiply :: Ord a => a -> FreeProduct a -> FreeProduct a
+multiply = FMX.append . ProductTerm
 
 -- | /O(log n)/. Divide a product by a term.
-divide :: Ord a => a -> Product a -> Product a
-divide t = multiplyPower t (-1)
-
--- | /O(log n)/. Multiply a term to the given power with a product.
-multiplyPower :: Ord a => a -> Integer -> Product a -> Product a
-multiplyPower _ 0 p = p                                 -- invariant: no term with power 0 is stored.
-multiplyPower x m p = (Product . Map.alter increment x . unProduct) p
-    where
-        increment :: Maybe Integer -> Maybe Integer
-        increment Nothing  = Just m
-        increment (Just n) | n == -m = Nothing          -- Terms with power zero are removed
-        increment (Just n) = Just (n+m)
+divide :: Ord a => a -> FreeProduct a -> FreeProduct a
+divide = FMX.remove . ProductTerm
 
 -- | The product of a list of products.
-products :: Ord a => [Product a] -> Product a
-products = List.foldl' product (Product Map.empty)
+products :: Ord a => [FreeProduct a] -> FreeProduct a
+products = fold
 
 -- | /O(n+m)/. The product of two products.
 --
--- The implementation uses the efficient /hedge-union/ algorithm.
--- Hedge-union is more efficient on (bigproduct `product` smallproduct).
-product :: Ord a => Product a -> Product a -> Product a
-product (Product m1) (Product m2) = Product $ Map.filter (0/=) $ Map.unionWith (+) m1 m2   -- Terms with power zero are removed
+product :: Ord a => FreeProduct a -> FreeProduct a -> FreeProduct a
+product = (<>)
 
 -- | /O(n)/. Take the product /ms/ to the power with the constant /x/.
-power :: Integer -> Product a -> Product a
-power 0 _ = Product Map.empty
-power n s = (Product . Map.map (n *) . unProduct) s
+power :: Ord a => Integer -> FreeProduct a -> FreeProduct a
+power = (<.>)
+
 
 {--------------------------------------------------------------------
   Partition
 --------------------------------------------------------------------}
 -- | /O(n)/. Partition the product into two products, one with all elements that satisfy
 -- the predicate and one with all elements that don't satisfy the predicate.
-partition :: (a -> Bool) -> Product a -> (Product a, Product a)
-partition p = (Product *** Product) . Map.partitionWithKey (\k _ -> p k) . unProduct
+partition :: (a -> Bool) -> FreeProduct a -> (FreeProduct a, FreeProduct a)
+partition p = FMX.partition (p . factor)
 
-{--------------------------------------------------------------------
-  Fraction
---------------------------------------------------------------------}
+
 -- | /O(n)/. Partition the product into the dividend and divisor.
-fraction :: Product a -> (Product a, Product a)
-fraction = (Product *** (power (-1). Product) ) . Map.partition (>= 0) . unProduct
-
-{--------------------------------------------------------------------
-  Fold
---------------------------------------------------------------------}
-
--- | /O(n)/. Fold over the terms of a product with their multipliers.
-foldPower :: (a -> Integer -> b -> b) -> b -> Product a -> b
-foldPower f z = Map.foldrWithKey f z . unProduct
+fraction :: Ord a => FreeProduct a -> (FreeProduct a, FreeProduct a)
+fraction =
+    (FMX *** (power (-1). FMX) ) . Map.partition (>= 0) . asMap
 
 {--------------------------------------------------------------------
   Lists
@@ -155,31 +165,32 @@ foldPower f z = Map.foldrWithKey f z . unProduct
 -- each term occurs only once in the list.
 --
 -- > distinctTerms = map fst . toOccurList
-distinctTerms :: Product a -> [a]
-distinctTerms = Map.keys . unProduct
+distinctTerms :: FreeProduct a -> [a]
+distinctTerms = (factor <$>). FMX.distinctTerms
 
 -- | /O(t*log t)/. Create a product from a list of terms.
-fromList :: Ord a => [a] -> Product a
-fromList xs = fromPowerList $ zip xs (repeat 1)
+fromList :: Ord a => [a] -> FreeProduct a
+fromList = Exts.fromList . (ProductTerm <$>)
 
 {--------------------------------------------------------------------
   Multiplier lists
 --------------------------------------------------------------------}
 
 -- | /O(n)/. Convert the product to a list of term\/power pairs.
-toPowerList :: Product a -> [(a, Integer)]
-toPowerList = toDistinctAscPowerList
+toPowerList :: FreeProduct a -> [(a, Integer)]
+toPowerList = (first factor <$>) . FMX.toDistinctAscMultiplierList
 
 -- | /O(n)/. Convert the product to a distinct ascending list of term\/power pairs.
-toDistinctAscPowerList :: Product a -> [(a, Integer)]
-toDistinctAscPowerList = Map.toAscList . unProduct
+toDistinctAscPowerList :: FreeProduct a -> [(a, Integer)]
+toDistinctAscPowerList = (first factor <$>) . FMX.toDistinctAscMultiplierList
 
 -- | /O(n*log n)/. Create a product from a list of term\/power pairs.
-fromPowerList :: Ord a => [(a, Integer)] -> Product a
-fromPowerList = Product . Map.filter (0/=) . Map.fromListWith (+)       -- Terms with power zero are removed
+fromPowerList :: Ord a => [(a, Integer)] -> FreeProduct a
+fromPowerList = FMX.fromMultiplierList . (first ProductTerm <$>)
 
 -- | /O(n)/. Build a product from an ascending list of term\/power pairs where
 -- each term appears only once.
 -- /The precondition (input list is strictly ascending) is not checked./
-fromDistinctAscPowerList :: [(a, Integer)] -> Product a
-fromDistinctAscPowerList = Product . Map.filter (0/=) . Map.fromDistinctAscList
+fromDistinctAscPowerList :: [(a, Integer)] -> FreeProduct a
+fromDistinctAscPowerList =
+    FMX.fromDistinctAscMultiplierList . (first ProductTerm <$>)
