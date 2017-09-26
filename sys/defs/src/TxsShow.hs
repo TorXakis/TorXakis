@@ -292,6 +292,8 @@ instance PShow v => PShow (ValExpr v) where
       =  "(" ++ pshow t ++ " / " ++ pshow n ++ " )"
     pshow (view -> Vmodulo t n)
       =  "(" ++ pshow t ++ " % " ++ pshow n ++ " )"
+    pshow (view -> Vgez v)
+      =  "( 0 <= " ++ pshow v ++ " )"
     pshow (view -> Vpredef _ fid vexps)
       =  if isSpecialOp fid
            then

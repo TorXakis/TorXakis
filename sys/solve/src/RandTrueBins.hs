@@ -140,7 +140,7 @@ values n nxt = valueRecursive n 1 step
                 return (r:rr)
 
 toBins :: (Variable v) => ValExpr v -> [Integer] -> [ValExpr v]
-toBins v (x1:x2:xs) = cstrAnd ( Set.fromList [cstrFunc funcId_leInt [cstrConst (Cint x1), v], cstrFunc funcId_ltInt [v, cstrConst (Cint x2)] ] ) : toBins v (x2:xs)
+toBins v (x1:x2:xs) = cstrAnd ( Set.fromList [cstrLE (cstrConst (Cint x1)) v, cstrLT v (cstrConst (Cint x2)) ] ) : toBins v (x2:xs)
 toBins _ _ = []
 
 trueBins :: (Variable v) => ValExpr v -> Int -> (Integer -> Integer) -> SMT Text
@@ -148,8 +148,9 @@ trueBins v n nxt = do
     neg <- values n nxt
     pos <- values n nxt
     let binSamples = reverse (map negate neg) ++ pos
-    let orList = [cstrFunc funcId_ltInt [v, cstrConst (Cint (head binSamples) )],
-                  cstrFunc funcId_leInt [cstrConst (Cint (last binSamples) ), v] ]
+    let orList = [ cstrLT v (cstrConst (Cint (head binSamples) ))
+                 , cstrLE (cstrConst (Cint (last binSamples) )) v
+                 ]
                  ++ toBins v binSamples
     shuffleOrList orList
 
@@ -203,7 +204,7 @@ trueCharsRegexes n          = error ("trueCharsRegexes: Illegal argument n = " +
 
 trueStringLength :: (Variable v) => Int -> ValExpr v -> SMT Text
 trueStringLength n v = do
-    let exprs = map (cstrEqual (cstrFunc funcId_lenString [v]) . cstrConst . Cint . toInteger ) [0..n] ++ [cstrFunc funcId_gtInt [cstrFunc funcId_lenString [v], cstrConst (Cint (toInteger n))]]
+    let exprs = map (cstrEqual (cstrFunc funcId_lenString [v]) . cstrConst . Cint . toInteger ) [0..n] ++ [cstrGT (cstrFunc funcId_lenString [v]) (cstrConst (Cint (toInteger n)))]
     shuffledOrList <- shuffleM exprs
     stringList <- mapM valExprToString shuffledOrList
     return $ "(or " <> T.intercalate " " stringList <> ") "

@@ -158,7 +158,7 @@ testNone :: SMT()
 testNone = testTemplateSat []
 
 testNegativeNegativeIsIdentity :: SMT()
-testNegativeNegativeIsIdentity = testTemplateSat [cstrEqual ie (cstrMinus (cstrMinus ie))]
+testNegativeNegativeIsIdentity = testTemplateSat [cstrEqual ie (cstrUnaryMinus (cstrUnaryMinus ie))]
     where
         ie = cstrConst (Cint 3) :: VExpr
 
@@ -224,7 +224,7 @@ testIntNegative :: SMT()
 testIntNegative = testTemplateValue TxsDefs.empty [sortId_Int] createAssertions check
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrFunc funcId_ltInt [cstrVar v, cstrConst (Cint 0)]]
+        createAssertions [v] = [cstrLT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions _   = error "One variable in problem"
 
         check :: [Const] -> SMT()
@@ -305,8 +305,8 @@ testConditionalIntPresentValue = testTemplateValue conditionalIntDef [conditiona
 
         createAssertions :: [VarId] -> [VExpr]
         createAssertions [v]    = [ cstrFunc isPresentCstrFunc [cstrVar v]
-                                  , cstrIte (cstrFunc isPresentCstrFunc [cstrVar v])
-                                            (cstrFunc funcId_gtInt [cstrFunc valuePresentCstrFunc [cstrVar v], cstrConst (Cint boundary)] )
+                                  , cstrITE (cstrFunc isPresentCstrFunc [cstrVar v])
+                                            (cstrGT (cstrFunc valuePresentCstrFunc [cstrVar v]) (cstrConst (Cint boundary)) )
                                             (cstrConst (Cbool True))
                                   ]
         createAssertions _   = error "One variable in problem"

@@ -28,11 +28,6 @@ module StdTDefs
 , funcId_IntFromString
 , funcId_IntToXml
 , funcId_IntFromXml
-, funcId_ltInt
-, funcId_leInt
-, funcId_gtInt
-, funcId_geInt
-, funcId_absInt
 
 , funcId_StringToString
 , funcId_StringFromString
@@ -67,15 +62,15 @@ module StdTDefs
 )
 where
 
-import           Control.Arrow ((***))
-import qualified Data.Map      as Map
-import qualified Data.Set      as Set
-import           Data.Text     (Text)
-import qualified GHC.Exts      as Exts
+import           Control.Arrow         ((***))
+import qualified Data.Map              as Map
+import qualified Data.Set              as Set
+import           Data.Text             (Text)
+import qualified GHC.Exts              as Exts
 
 import           ChanId
 import           CstrId
-import qualified FreeMonoidX   as FMX
+import qualified FreeMonoidX           as FMX
 import           FuncDef
 import           FuncId
 import           FuncTable
@@ -88,6 +83,7 @@ import           Sum
 import           TxsDef
 import           ValExprDefs
 import           ValExprImpls
+import           ValExprImplsExtension
 import           VarId
 
 stdSortTable :: Map.Map Text SortId
@@ -124,51 +120,30 @@ fromXmlName = "fromXml"
 
 -- ----------------------------------------------------------------------------------------- --
 -- Helper function
-equalHandler :: Ord v => Handler v
-equalHandler [a,b] = cstrEqual a b
-equalHandler _     = error "equalHandler expects two arguments"
 
-notEqualHandler :: Ord v => Handler v
-notEqualHandler [a, b] = cstrNot (cstrEqual a b)
-notEqualHandler _      = error "notEqualHandler expects two arguments"
-
-cstrHandler :: CstrId -> Handler v
-cstrHandler = cstrCstr
-
-iscstrHandler :: CstrId -> Handler v
-iscstrHandler c [a] = cstrIsCstr c a
-iscstrHandler _ _   = error "iscstrHandler expects one argument"
-
-accessHandler :: CstrId -> Int -> Handler v
-accessHandler c p [a] = cstrAccess c p a
-accessHandler _ _ _   = error "accessHandler expects one argument"
-
-impliesHandler :: Ord v => Handler v
-impliesHandler = twoArgumentHandler cstrImplies
-
-divideHandler :: Handler v
-divideHandler = twoArgumentHandler cstrDivide
-
-moduloHandler :: Handler v
-moduloHandler = twoArgumentHandler cstrModulo
+oneArgumentHandler :: (ValExpr v -> ValExpr v) -> Handler v
+oneArgumentHandler f [a] = f a
+oneArgumentHandler _ _   = error "oneArgumentHandler expects one argument"
 
 twoArgumentHandler :: (ValExpr v -> ValExpr v -> ValExpr v) -> Handler v
 twoArgumentHandler f [a,b] = f a b
 twoArgumentHandler _ _     = error "twoArgumentHandler expects two arguments"
 
-xorHandler :: Ord v => Handler v
-xorHandler [a, b] = cstrOr (Set.fromList [arg0, arg1])
-  where arg0 = cstrAnd (Set.fromList [a, cstrNot b])
-        arg1 = cstrAnd (Set.fromList [cstrNot a, b])
-xorHandler _      = error "xorHandler expects two arguments"
+equalHandler :: Ord v => Handler v
+equalHandler = twoArgumentHandler cstrEqual
 
-cstrUniMinusHandler :: (Ord v, Integral (ValExpr v)) => Handler v
-cstrUniMinusHandler [a] = cstrMinus a
-cstrUniMinusHandler _   = error "cstrUniMinusHandler expects one argument"
+notEqualHandler :: Ord v => Handler v
+notEqualHandler = twoArgumentHandler (\a b -> cstrNot (cstrEqual a b))
 
-cstrMinusHandler :: (Ord v, Integral (ValExpr v)) => Handler v
-cstrMinusHandler [a,b] = cstrSum $ FMX.fromMultiplierList [(SumTerm a,1), (SumTerm b,-1)]
-cstrMinusHandler _     = error "cstrMinusHandler expects two arguments"
+cstrHandler :: CstrId -> Handler v
+cstrHandler = cstrCstr
+
+iscstrHandler :: CstrId -> Handler v
+iscstrHandler c = oneArgumentHandler (cstrIsCstr c)
+
+accessHandler :: CstrId -> Int -> Handler v
+accessHandler c p = oneArgumentHandler (cstrAccess c p)
+
 -- ----------------------------------------------------------------------------------------- --
 -- FuncTable
 stdFuncTable :: (Ord v, Integral (ValExpr v)) => FuncTable v
@@ -197,27 +172,27 @@ stdFuncTable = FuncTable ( Map.fromList
                                  , ( Signature [sortId_String]  sortId_Int,      cstrPredef SSI funcId_IntFromXml )
                                  , ( Signature [sortId_String]  sortId_String,   cstrPredef SSS funcId_StringFromXml )
                                  ] )
-    , ("not",  Map.fromList [ ( Signature [sortId_Bool] sortId_Bool, cstrNot . head ) ] )
+    , ("not",  Map.fromList [ ( Signature [sortId_Bool] sortId_Bool, oneArgumentHandler cstrNot ) ] )
     , ("/\\",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrAnd . Set.fromList ) ] )
     , ("\\/",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, cstrOr . Set.fromList ) ] )
-    , ("\\|/", Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, xorHandler) ] )
-    , ("=>",   Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, impliesHandler ) ] )
-    , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, equalHandler ) ] )
+    , ("\\|/", Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, twoArgumentHandler cstrXor) ] )
+    , ("=>",   Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, twoArgumentHandler cstrImplies ) ] )
+    , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, twoArgumentHandler cstrEqual ) ] )
 
-    , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, head)
+    , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler id)
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . Exts.fromList . (SumTerm <$>))
                            ] )
-    , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrUniMinusHandler )
-                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrMinusHandler )
+    , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler cstrUnaryMinus )
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrMinus )
                            ] )
-    , ("abs", Map.fromList [ ( Signature [sortId_Int] sortId_Int, cstrPredef SSI funcId_absInt ) ] )
+    , ("abs", Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler cstrAbs ) ] )
     , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrProduct . FMX.fromListT ) ] )
-    , ("/",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, divideHandler ) ] )
-    , ("%",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, moduloHandler ) ] )
-    , ("<",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_ltInt ) ] )
-    , ("<=",  Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_leInt ) ] )
-    , (">",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_gtInt ) ] )
-    , (">=",  Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, cstrPredef SSI funcId_geInt ) ] )
+    , ("/",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrDivide ) ] )
+    , ("%",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrModulo ) ] )
+    , ("<",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, twoArgumentHandler cstrLT ) ] )
+    , ("<=",  Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, twoArgumentHandler cstrLE ) ] )
+    , (">",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, twoArgumentHandler cstrGT ) ] )
+    , (">=",  Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, twoArgumentHandler cstrGE ) ] )
 
     , ("len",  Map.fromList [ ( Signature [sortId_String] sortId_Int, cstrPredef SSS funcId_lenString ) ] )
     , ("at",   Map.fromList [ ( Signature [sortId_String,sortId_Int] sortId_String, cstrPredef SSS funcId_atString ) ] )
@@ -266,12 +241,6 @@ funcId_IntFromString    = FuncId fromStringName     302 [sortId_String]         
 funcId_IntToXml         = FuncId toXmlName          303 [sortId_Int]            sortId_String
 funcId_IntFromXml       = FuncId fromXmlName        304 [sortId_String]         sortId_Int
 
-funcId_ltInt            = FuncId "<"                315 [sortId_Int,sortId_Int] sortId_Bool
-funcId_leInt            = FuncId "<="               316 [sortId_Int,sortId_Int] sortId_Bool
-funcId_gtInt            = FuncId ">"                317 [sortId_Int,sortId_Int] sortId_Bool
-funcId_geInt            = FuncId ">="               318 [sortId_Int,sortId_Int] sortId_Bool
-funcId_absInt           = FuncId "abs"              319 [sortId_Int]            sortId_Int
-
 
 stdFuncDefsInt' :: [ ( FuncId, FuncDef ) ]
 stdFuncDefsInt'
@@ -283,24 +252,6 @@ stdFuncDefsInt'
                                     in FuncDef [x] (cstrPredef SSI funcId_IntToXml [cstrVar x]) )
      , ( funcId_IntFromXml,     let x = VarId "x" 344 sortId_String
                                     in FuncDef [x] (cstrPredef SSI funcId_IntFromXml [cstrVar x]) )
-     , ( funcId_ltInt,          let { x = VarId "x" 363 sortId_Int
-                                    ; y = VarId "y" 364 sortId_Int
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSI funcId_ltInt [cstrVar x,cstrVar y]) )
-     , ( funcId_leInt,          let { x = VarId "x" 365 sortId_Int
-                                    ; y = VarId "y" 366 sortId_Int
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSI funcId_leInt [cstrVar x,cstrVar y]) )
-     , ( funcId_gtInt,          let { x = VarId "x" 367 sortId_Int
-                                    ; y = VarId "y" 368 sortId_Int
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSI funcId_gtInt [cstrVar x,cstrVar y]) )
-     , ( funcId_geInt,          let { x = VarId "x" 369 sortId_Int
-                                    ; y = VarId "y" 370 sortId_Int
-                                    }
-                                    in FuncDef [x,y] (cstrPredef SSI funcId_geInt [cstrVar x,cstrVar y]) )
-     , ( funcId_absInt,         let x = VarId "x" 371 sortId_Int
-                                    in FuncDef [x] (cstrPredef SSI funcId_absInt [cstrVar x]) )
      ]
 
 stdFuncDefsInt :: [ ( Ident, TxsDef ) ]

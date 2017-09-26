@@ -132,8 +132,8 @@ randomSolve p ((v,_):xs) i    | vsort v == sortId_Int =
         choicesFunc v' r (Cint x)  = do
                                         let r' = toInteger r
                                             cond = x < r'
-                                        st <- valExprToString $ cstrFunc funcId_ltInt [cstrVar v', cstrConst (Cint r')]
-                                        sf <- valExprToString $ cstrFunc funcId_geInt [cstrVar v', cstrConst (Cint r')]
+                                        st <- valExprToString $ cstrLT (cstrVar v') (cstrConst (Cint r'))
+                                        sf <- valExprToString $ cstrGE (cstrVar v') (cstrConst (Cint r'))
                                         return [ (cond, st)
                                                , (not cond, sf)
                                                ]
@@ -201,8 +201,8 @@ randomSolve p ((v,d):xs) i    | vsort v == sortId_String =
         choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, Text)]
         choicesFunc v' r (Cstring s) = do
                                             let cond = T.length s < r
-                                            st <- valExprToString $ cstrFunc funcId_ltInt [cstrFunc funcId_lenString [cstrVar v'], cstrConst (Cint (toInteger r))]
-                                            sf <- valExprToString $ cstrFunc funcId_geInt [cstrFunc funcId_lenString [cstrVar v'], cstrConst (Cint (toInteger r))]
+                                            st <- valExprToString $ cstrLT (cstrFunc funcId_lenString [cstrVar v']) (cstrConst (Cint (toInteger r)))
+                                            sf <- valExprToString $ cstrGE (cstrFunc funcId_lenString [cstrVar v']) (cstrConst (Cint (toInteger r)))
                                             return [ (cond, st)
                                                    , (not cond, sf)
                                                    ]
