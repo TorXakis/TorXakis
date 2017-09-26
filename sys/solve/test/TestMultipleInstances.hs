@@ -46,10 +46,10 @@ testSolvers s1 s2 = TestLabel "Two instances" $ TestCase $ do
     smtEnv1'' <- execStateT (addDeclarations [v]) smtEnv1'
     smtEnv2'' <- execStateT (addDeclarations [v]) smtEnv2'
 
-    let assertion1 = cstrFunc funcId_ltInt [cstrVar v, cstrConst (Cint 0)]
+    let assertion1 = cstrLT (cstrVar v) (cstrConst (Cint 0))
     smtEnv1''' <- execStateT (addAssertions [assertion1]) smtEnv1''
 
-    let assertion2 = cstrFunc funcId_gtInt [cstrVar v, cstrConst (Cint 0)]
+    let assertion2 = cstrGT (cstrVar v) (cstrConst (Cint 0))
     smtEnv2''' <- execStateT (addAssertions [assertion2]) smtEnv2''
 
     (resp1, smtEnv1'''') <- runStateT getSolvable smtEnv1'''

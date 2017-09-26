@@ -121,15 +121,15 @@ randN p n = do r  <- lift randomIO::(SMT Float)                     -- random fl
 -- TODO: make single set of constraints?
 intList2cnrs :: (Variable v) => ValExpr v -> [Integer] -> [ Set.Set (ValExpr v) ]
 intList2cnrs vexp list
-  =   Set.singleton ( cstrPredef SSI funcId_ltInt [ vexp, cstrConst(Cint(head list)) ] ) 
-    : Set.singleton ( cstrPredef SSI funcId_geInt [ vexp, cstrConst(Cint(last list)) ] )
+  =   Set.singleton ( cstrLT vexp (cstrConst (Cint (head list) ) ) )
+    : Set.singleton ( cstrGE vexp (cstrConst (Cint (last list) ) ) )
     : intList2cnrs' list
   where
     intList2cnrs' []        =  []
     intList2cnrs' [_]       =  []
     intList2cnrs' (l:r:rr)
-      = Set.insert ( cstrPredef SSI funcId_geInt [ vexp, cstrConst (Cint l) ] )
-          ( Set.singleton ( cstrPredef SSI funcId_ltInt [ vexp, cstrConst (Cint r) ] ) )
+      = Set.insert ( cstrGE vexp (cstrConst (Cint l) ) ) 
+                   ( Set.singleton ( cstrLT vexp (cstrConst (Cint r) ) ) )
         : intList2cnrs' (r:rr)
 
 
@@ -160,14 +160,10 @@ randCnrsInt p vexp  =  do
 
 randCnrsString :: Variable v => ValExpr v -> SMT [ Set.Set (ValExpr v) ]
 randCnrsString vexp  =
-     return [ Set.singleton ( cstrEqual (cstrFunc funcId_lenString [vexp]) (cstrConst(Cint 0)) )
-            , Set.singleton ( cstrEqual (cstrFunc funcId_lenString [vexp]) (cstrConst(Cint 1)) )
-            , Set.singleton
-                ( cstrPredef SSI funcId_geInt [ cstrFunc funcId_lenString [vexp]
-                                           , cstrConst(Cint 2)
-                                           ]
-                )
-            ]
+    return [ Set.singleton ( cstrEqual ( cstrFunc funcId_lenString [vexp] ) ( cstrConst (Cint 0) ) )
+           , Set.singleton ( cstrEqual ( cstrFunc funcId_lenString [vexp] ) ( cstrConst (Cint 1) ) )
+           , Set.singleton ( cstrGE    ( cstrFunc funcId_lenString [vexp] ) ( cstrConst (Cint 2) ) )
+           ]
 
 
 -- ----------------------------------------------------------------------------------------- --

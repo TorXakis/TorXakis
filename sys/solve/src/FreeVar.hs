@@ -47,6 +47,7 @@ freeVars (view -> Vsum s)                  =  List.nub $ concatMap freeVars (Sum
 freeVars (view -> Vproduct p)              =  List.nub $ concatMap freeVars (Product.distinctTerms p)
 freeVars (view -> Vdivide t n)             =  List.nub $ freeVars t ++ freeVars n
 freeVars (view -> Vmodulo t n)             =  List.nub $ freeVars t ++ freeVars n
+freeVars (view -> Vgez vexp)               =  freeVars vexp
 freeVars (view -> Vequal vexp1 vexp2)      =  List.nub $ freeVars vexp1 ++ freeVars vexp2
 freeVars (view -> Vnot vexp)               =  freeVars vexp
 freeVars (view -> Vand vexps)              =  List.nub $ concatMap freeVars (Set.toList vexps)

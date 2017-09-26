@@ -49,6 +49,7 @@ library
                       , TxsDef
                       , ValExprDefs
                       , ValExprImpls
+                      , ValExprImplsExtension
                     
                       , CnectDef
                       , CstrDef

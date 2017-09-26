@@ -80,28 +80,28 @@ eval (view -> Vfunc fid vexps) = do
                      eval (cstrEnv (Map.map cstrConst we) vexp)
 
 eval (view -> Vcstr cid vexps) = do
-     vals <- mapM eval vexps
-     return $ Cstr cid vals
+    vals <- mapM eval vexps
+    return $ Cstr cid vals
 
 eval (view -> Viscstr cid1 arg) = do
-     Cstr cid2 _ <- eval arg
-     bool2txs ( cid1 == cid2 )
+    Cstr cid2 _ <- eval arg
+    bool2txs ( cid1 == cid2 )
 
 eval (view -> Vaccess _cid1 p arg) = do
-     Cstr _cid2 args' <- eval arg
-     return $ args'!!p                   -- TODO: check cids are equal?
+    Cstr _cid2 args' <- eval arg
+    return $ args'!!p                   -- TODO: check cids are equal?
 
 eval (view -> Vconst const') = return const'
 
 eval (view -> Vvar _vid) = do
-     IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "Evaluation of value expression with free variable(s)" ]
-     return $ Cerror ""
+    IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "Evaluation of value expression with free variable(s)" ]
+    return $ Cerror ""
 
 eval (view -> Vite cond vexp1 vexp2) = do
-     Cbool val <- eval cond
-     if val
-       then eval vexp1
-       else eval vexp2
+    Cbool val <- eval cond
+    if val
+      then eval vexp1
+      else eval vexp2
 
 eval (view -> Venv ve vexp) = eval (TxsUtils.partSubst ve vexp)
 
@@ -124,27 +124,31 @@ eval (view -> Vproduct p) = do
         return (cstrConst c,i)
 
 eval (view -> Vdivide t n) = do
-     valT <- txs2int t
-     valN <- txs2int n
-     int2txs $ valT `div` valN
+    valT <- txs2int t
+    valN <- txs2int n
+    int2txs $ valT `div` valN
 
 eval (view -> Vmodulo t n) = do
-     valT <- txs2int t
-     valN <- txs2int n
-     int2txs $ valT `mod` valN
+    valT <- txs2int t
+    valN <- txs2int n
+    int2txs $ valT `mod` valN
+     
+eval (view -> Vgez v) = do
+    val <- txs2int v
+    bool2txs ( 0 <= val )
 
 eval (view -> Vequal vexp1 vexp2) = do
-     val1 <- eval vexp1
-     val2 <- eval vexp2
-     bool2txs ( val1 == val2 )
+    val1 <- eval vexp1
+    val2 <- eval vexp2
+    bool2txs ( val1 == val2 )
 
 eval (view -> Vnot vexp) = do
-  Cbool val <- eval vexp
-  bool2txs (not val)
+    Cbool val <- eval vexp
+    bool2txs (not val)
 
 eval (view -> Vand vexps) = do
-  consts <- mapM eval (Set.toList vexps)
-  bool2txs $ all unBool consts
+    consts <- mapM eval (Set.toList vexps)
+    bool2txs $ all unBool consts
   where unBool :: Const -> Bool
         unBool (Cbool b) = b
         unBool _         = error "unBool applied on non-Bool"
@@ -248,20 +252,6 @@ evalSSI (FuncId nm _ _ _) vexps =
        ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
                                         tdefs <- gets IOB.tdefs
                                         return $ constFromXml tdefs sortId_Int s
-       ( "<",           [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        bool2txs $ i1 < i2
-       ( "<=",          [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        bool2txs $ i1 <= i2
-       ( ">",           [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        bool2txs $ i1 > i2
-       ( ">=",          [v1,v2] ) -> do i1 <- txs2int v1
-                                        i2 <- txs2int v2
-                                        bool2txs $ i1 >= i2
-       ( "abs",         [v1]    ) -> do i1 <- txs2int v1
-                                        int2txs $ if i1<0 then -i1 else i1
        _                          -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "evalSSI: standard Int opn" ]
                                         return $ Cerror ""
 
