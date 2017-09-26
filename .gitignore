@@ -23,3 +23,6 @@ TAGS
 
 # SemaphoreCI cache folders
 .semaphore-cache
+
+# Sphinx build folders
+docs/wiki/_build
