@@ -12,15 +12,15 @@ import           Test.Hspec
 import           TxsDefs
 
 sum012 :: ValExpr Int
-sum012 = cstrSum  $ [ SumTerm (cstrConst (Cint 0))
-                    , SumTerm (cstrConst (Cint 1))
-                    , SumTerm (cstrConst (Cint 2))
-                    ]
+sum012 = cstrSum [ SumTerm (cstrConst (Cint 0))
+                 , SumTerm (cstrConst (Cint 1))
+                 , SumTerm (cstrConst (Cint 2))
+                 ]
 
 sum12 :: ValExpr Int
-sum12 = cstrSum $ [ SumTerm (cstrConst (Cint 1))
-                  , SumTerm (cstrConst (Cint 2))
-                  ]
+sum12 = cstrSum [ SumTerm (cstrConst (Cint 1))
+                , SumTerm (cstrConst (Cint 2))
+                ]
 
 spec :: Spec
 spec =
