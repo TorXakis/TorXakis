@@ -27,6 +27,8 @@ module ValExprImplsExtension
   -- * Derived Integer operators: 
   -- ** Unary Plus
 , cstrUnaryPlus
+  -- ** Unary Minus = negate single argument
+, cstrUnaryMinus
   -- ** Plus = Sum of two terms
 , cstrPlus
   -- ** Minus
@@ -79,19 +81,28 @@ cstrImplies a b = (cstrNot . cstrAnd) (Set.insert a (Set.singleton (cstrNot b)))
 cstrUnaryPlus :: ValExpr v -> ValExpr v
 cstrUnaryPlus = id
 
+-- | Apply unary operator Minus on the provided value expression.
+-- Preconditions are /not/ checked.
+cstrUnaryMinus :: Ord v => ValExpr v -> ValExpr v
+cstrUnaryMinus v = cstrSum (Sum.fromMultiplierList [(v,-1)])
+
 -- | Apply operator Add on the provided value expressions.
+-- Preconditions are /not/ checked.
 cstrPlus :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
 cstrPlus a b = cstrSum (Sum.fromList [a,b])
 
 -- | Apply operator Minus on the provided value expressions.
+-- Preconditions are /not/ checked.
 cstrMinus :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
 cstrMinus a b = cstrSum (Sum.fromMultiplierList [(a,1),(b,-1)])
 
 -- | Apply operator Times on the provided value expressions.
+-- Preconditions are /not/ checked.
 cstrTimes :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
 cstrTimes a b = cstrProduct (Product.fromList [a,b])
 
--- | Apply operator Abs on the provided value expression.
+-- | Apply operator Absolute value (abs) on the provided value expression.
+-- Preconditions are /not/ checked.
 cstrAbs :: Ord v => ValExpr v -> ValExpr v
 cstrAbs a = cstrITE (cstrGEZ a) a (cstrUnaryMinus a)
 
