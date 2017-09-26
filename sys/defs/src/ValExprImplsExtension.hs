@@ -17,29 +17,42 @@ See LICENSE at root directory of this repository.
 --
 -----------------------------------------------------------------------------
 module ValExprImplsExtension
-( -- * Derived Boolean operators: Or, Xor, Implies
+( -- * Derived Boolean operators
+  -- ** Or (\/)
   cstrOr
+  -- ** Exclusive or (\|/)
 , cstrXor
+  -- ** Implies (=>)
 , cstrImplies
-  -- * Derived Integer operators: Minus, Add, Times, Abs
-, cstrAdd
+  -- * Derived Integer operators: 
+  -- ** Unary Plus
+, cstrUnaryPlus
+  -- ** Plus = Sum of two terms
+, cstrPlus
+  -- ** Minus
 , cstrMinus
+  -- ** Times = Product of two terms
 , cstrTimes
+  -- ** Absolute value
 , cstrAbs
-  -- * Derived Integer comparisons LT, LE, GE, GT: based on GEZ
+  -- * Derived Integer comparisons
+  -- ** Less than (<)
 , cstrLT
+  -- ** Less Equal (<=)
 , cstrLE
+  -- ** Greater Equal (>=)
 , cstrGE
+  -- ** Greater Than (>)
 , cstrGT
 )
 where
 
 import qualified Data.Set as Set
 
-import Product
-import Sum
-import ValExprDefs
-import ValExprImpls
+import           Product
+import           Sum
+import           ValExprDefs
+import           ValExprImpls
 
 
 -- | Apply operator Or (\\\/) on the provided set of value expressions.
@@ -61,9 +74,14 @@ cstrImplies :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
 -- a => b == not a \/ b == not (a /\ not b)
 cstrImplies a b = (cstrNot . cstrAnd) (Set.insert a (Set.singleton (cstrNot b)))
 
+-- | Apply unary operator Plus on the provided value expression.
+-- Preconditions are /not/ checked.
+cstrUnaryPlus :: ValExpr v -> ValExpr v
+cstrUnaryPlus = id
+
 -- | Apply operator Add on the provided value expressions.
-cstrAdd :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
-cstrAdd a b = cstrSum (Sum.fromList [a,b])
+cstrPlus :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
+cstrPlus a b = cstrSum (Sum.fromList [a,b])
 
 -- | Apply operator Minus on the provided value expressions.
 cstrMinus :: Ord v => ValExpr v -> ValExpr v -> ValExpr v

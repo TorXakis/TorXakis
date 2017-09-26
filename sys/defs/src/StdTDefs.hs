@@ -71,11 +71,9 @@ import           FuncDef
 import           FuncId
 import           FuncTable
 import           Ident
-import           Product
 import           SortDef
 import           SortId
 import           SortOf
-import           Sum
 import           TxsDef
 import           ValExprDefs
 import           ValExprImpls
@@ -175,14 +173,14 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("=>",   Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, twoArgumentHandler cstrImplies ) ] )
     , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, twoArgumentHandler cstrEqual ) ] )
 
-    , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler id)
-                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . Sum.fromList )
+    , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler cstrUnaryPlus)
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrPlus )
                            ] )
     , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler cstrUnaryMinus )
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrMinus )
                            ] )
     , ("abs", Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler cstrAbs ) ] )
-    , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrProduct . Product.fromList ) ] )
+    , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrTimes ) ] )
     , ("/",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrDivide ) ] )
     , ("%",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrModulo ) ] )
     , ("<",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, twoArgumentHandler cstrLT ) ] )
