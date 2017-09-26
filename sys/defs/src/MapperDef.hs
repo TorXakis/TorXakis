@@ -26,8 +26,8 @@ import           ChanId
 --
 -- See `examps/Adder/MAdder.txs` for more details.
 data MapperDef = MapperDef
-  [ChanId]         -- ^ Input channels.
-  [ChanId]         -- ^ Output channels.
-  [Set.Set ChanId] -- ^ Synchronization channels.
-  BExpr
-  deriving (Eq, Ord, Read, Show, Generic, NFData)
+    { inputChs  :: [ChanId]         -- ^ Input channels.
+    , outputChs :: [ChanId]         -- ^ Output channels.
+    , syncChs   :: [Set.Set ChanId] -- ^ Synchronization channels.
+    , bexpr     :: BExpr            -- ^ Behavior expression.
+    } deriving (Eq, Ord, Read, Show, Generic, NFData)
