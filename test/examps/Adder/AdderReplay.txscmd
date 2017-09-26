@@ -1,0 +1,4 @@
+tester Adder AdderReplay SutConnection
+test 20
+trace proc $> AdderReplayProc.txs
+exit

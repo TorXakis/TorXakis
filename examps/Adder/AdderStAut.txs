@@ -57,7 +57,7 @@ ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 
-CNECTDEF  Sut ::=
+CNECTDEF  SutConnection ::=
         CLIENTSOCK
 
         CHAN  OUT  Action                        HOST "localhost"  PORT 7890

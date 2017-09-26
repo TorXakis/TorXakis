@@ -26,3 +26,8 @@ TAGS
 
 # Sphinx build folders
 docs/wiki/_build
+
+# TorXakis traces generated while running `sqatt`
+
+/*Proc.txs
+/*Purpose.txs
