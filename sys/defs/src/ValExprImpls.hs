@@ -7,26 +7,56 @@ See LICENSE at root directory of this repository.
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE ViewPatterns #-}
 module ValExprImpls
-( cstrFunc
-, cstrCstr
-, cstrIsCstr
-, cstrAccess
-, cstrNot
+( -- * Constructors to create Value Expressions
+  -- ** Constant value
+  cstrConst
+  -- ** VarRef
+, cstrVar  
+  -- ** General Operators to create Value Expressions
+  -- *** Equal  
 , cstrEqual
-, cstrEnv
-, cstrIte
-, cstrVar
-, cstrConst
-, cstrModulo
-, cstrMinus
-, cstrSum
-, cstrProduct
-, cstrDivide
+  -- *** If Then Else
+, cstrITE
+  -- *** Function Call
+, cstrFunc
+  -- ** Boolean Operators to create Value Expressions
+  -- *** Not
+, cstrNot
+  -- *** And
 , cstrAnd
+  -- ** Integer Operators to create Value Expressions
+  -- *** Unary Minus (i.e. single argument)
+, cstrUnaryMinus
+  -- *** Sum
+, cstrSum
+  -- *** Product
+, cstrProduct
+  -- *** Divide
+, cstrDivide
+  -- *** Modulo
+, cstrModulo
+  -- *** Comparisons GEZ
+, cstrGEZ
+  -- ** String Operators to create Value Expressions
+  -- *** Length operator
+--, cstrLength
+  -- *** At operator
+--, cstrAt
+  -- *** Concat operator
+--, cstrConcat
+  -- ** Algebraic Data Type Operators to create Value Expressions
+  -- *** Algebraic Data Type constructor operator
+, cstrCstr
+  -- *** Algebraic Data Type IsConstructor function
+, cstrIsCstr
+  -- *** Algebraic Data Type Accessor
+, cstrAccess
+
+-- to be documented
 , cstrPredef
 , cstrError
-, cstrOr
-, cstrImplies
+-- to be removed -- use subst
+, cstrEnv
 )
 where
 
@@ -85,10 +115,10 @@ cstrVar v = ValExpr (Vvar v)
 
 -- | Apply operator ITE (IF THEN ELSE) on the provided value expressions.
 -- Preconditions are /not/ checked.
-cstrIte :: ValExpr v -> ValExpr v -> ValExpr v -> ValExpr v
+cstrITE :: ValExpr v -> ValExpr v -> ValExpr v -> ValExpr v
 -- if (not b) then tb else fb == if b then fb else tb
-cstrIte (view -> Vnot n) tb fb = ValExpr (Vite n fb tb)
-cstrIte cs tb fb               = ValExpr (Vite cs tb fb)
+cstrITE (view -> Vnot n) tb fb = ValExpr (Vite n fb tb)
+cstrITE cs tb fb               = ValExpr (Vite cs tb fb)
 
 cstrEnv :: VarEnv v v -> ValExpr v -> ValExpr v
 cstrEnv ve e = ValExpr (Venv ve e)
@@ -172,12 +202,13 @@ cstrAnd' s =
         contains :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set
--- | Apply operator Minus on the provided value expression.
+        
+-- | Apply unary operator Minus on the provided value expression.
 -- Preconditions are /not/ checked.
-cstrMinus :: Ord v => ValExpr v -> ValExpr v
-cstrMinus (view -> Vconst (Cint x)) = cstrConst (Cint (-x))
-cstrMinus (view -> Vsum s)          = cstrSum (Sum.multiply (-1) s)
-cstrMinus v                         = ValExpr (Vsum (Sum.fromDistinctAscMultiplierList [(v,-1)]))
+cstrUnaryMinus :: Ord v => ValExpr v -> ValExpr v
+cstrUnaryMinus (view -> Vconst (Cint x)) = cstrConst (Cint (-x))
+cstrUnaryMinus (view -> Vsum s)          = cstrSum (Sum.multiply (-1) s)
+cstrUnaryMinus v                         = ValExpr (Vsum (Sum.fromDistinctAscMultiplierList [(v,-1)]))
 
 -- Sum
 
@@ -289,26 +320,19 @@ cstrModulo vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in mo
 cstrModulo (view -> Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `mod` n) )
 cstrModulo vet ven = ValExpr (Vmodulo vet ven)
 
+-- | Apply operator GEZ (Greater Equal Zero) on the provided value expression.
+-- Preconditions are /not/ checked.
+cstrGEZ :: ValExpr v -> ValExpr v
+-- Simplification Values
+cstrGEZ (view -> Vconst (Cint v))   = cstrConst (Cbool (0 <= v))
+-- cstrGEZ (view -> Vlength _)      = cstrConst (Cbool True)        -- length of string is always Greater or equal to zero
+cstrGEZ ve                          = ValExpr (Vgez ve)
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)
 
 cstrError :: Text -> ValExpr v
 cstrError s = ValExpr (Verror s)
-
--- * Derived constructors
-
--- | Apply operator Or (\\\/) on the provided set of value expressions.
--- Preconditions are /not/ checked.
-cstrOr :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v
--- a \/ b == not (not a /\ not b)
-cstrOr = cstrNot . cstrAnd . Set.map cstrNot
-
--- | Apply operator Implies (=>) on the provided value expressions.
--- Preconditions are /not/ checked.
-cstrImplies :: (Ord v) => ValExpr v -> ValExpr v -> ValExpr v
--- a => b == not a \/ b == not (a /\ not b)
-cstrImplies a b = (cstrNot . cstrAnd) (Set.insert a (Set.singleton (cstrNot b)))
 
 -- ----------------------------------------------------------------------------------------- --
 --

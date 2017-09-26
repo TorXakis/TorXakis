@@ -38,8 +38,8 @@ createIsConstructor funcId ies =
 
 createVfunc :: FuncId -> [TXS2SMTVExprTest] -> TXS2SMTVExprTest
 createVfunc funcId ies =
-    TXS2SMTVExprTest (cstrFunc funcId (map input ies))
-               ("(" ++ T.unpack (FuncId.name funcId) ++ " " ++ join " " (map expected ies) ++ ")")
+   TXS2SMTVExprTest (cstrFunc funcId (map input ies))
+              ("(" ++ T.unpack (FuncId.name funcId) ++ " " ++ join " " (map expected ies) ++ ")")
 
 createVsum :: [TXS2SMTVExprTest] -> TXS2SMTVExprTest
 createVsum ies =
@@ -61,7 +61,7 @@ createVvar v =
 
 createVite :: TXS2SMTVExprTest -> TXS2SMTVExprTest -> TXS2SMTVExprTest -> TXS2SMTVExprTest
 createVite (TXS2SMTVExprTest inputc expectedc) (TXS2SMTVExprTest input1 expected1) (TXS2SMTVExprTest input2 expected2) =
-    TXS2SMTVExprTest (cstrIte inputc input1 input2)
+    TXS2SMTVExprTest (cstrITE inputc input1 input2)
            ("(ite " ++ expectedc ++ " " ++ expected1 ++ " " ++ expected2 ++ ")")
 
 createVequal :: TXS2SMTVExprTest -> TXS2SMTVExprTest -> TXS2SMTVExprTest
@@ -73,10 +73,14 @@ createVand conds =
     TXS2SMTVExprTest (cstrAnd (Set.map input conds))
                      ("(and " ++ join " " (Set.toList (Set.map expected conds)) ++ ")")
 
+createVgez :: TXS2SMTVExprTest -> TXS2SMTVExprTest
+createVgez (TXS2SMTVExprTest input expected) =
+    TXS2SMTVExprTest (cstrGEZ input ) ("(<= 0 " ++ expected ++ ")" )
+
 ----------------------------------------------------------------
 -- functions
 ------------------------------------------------------------------
 createUniminusInt :: TXS2SMTVExprTest -> TXS2SMTVExprTest
 createUniminusInt ie =
-    TXS2SMTVExprTest (cstrMinus (input ie))
+    TXS2SMTVExprTest (cstrUnaryMinus (input ie))
                ("(- " ++ expected ie ++ ")")

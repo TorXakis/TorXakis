@@ -122,7 +122,7 @@ testPushAssertion = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int]  (c
                                                                 [(createAssertions, checkAssert)]
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrFunc funcId_ltInt [cstrVar v, cstrConst (Cint 0)]]
+        createAssertions [v] = [cstrLT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions _   = error "One variable in problem"
 
         checkAssert :: [Const] -> SMT()
@@ -136,7 +136,7 @@ testPushAssertionPop = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int] 
                                                                 [(createAssertions, checkAssert)]
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrFunc funcId_gtInt [cstrVar v, cstrConst (Cint 123)]]
+        createAssertions [v] = [cstrGT (cstrVar v) (cstrConst (Cint 123))]
         createAssertions _   = error "One variable in problem"
 
         checkAssert :: [Const] -> SMT()
@@ -150,7 +150,7 @@ testPushAssertionPopAssertion = testSequentialPushPopTemplate TxsDefs.empty [sor
                                                                                       [(createAssertions1, checkAssert1),(createAssertions2, checkAssert2)]
     where
         createAssertions1 :: [VarId] -> [VExpr]
-        createAssertions1 [v] = [cstrFunc funcId_ltInt [cstrVar v, cstrConst (Cint 0)]]
+        createAssertions1 [v] = [cstrLT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions1 _   = error "One variable in problem"
 
         checkAssert1 :: [Const] -> SMT()
@@ -160,7 +160,7 @@ testPushAssertionPopAssertion = testSequentialPushPopTemplate TxsDefs.empty [sor
         checkAssert1 _          = error "One variable in problem"
 
         createAssertions2 :: [VarId] -> [VExpr]
-        createAssertions2 [v] = [cstrFunc funcId_gtInt [cstrVar v, cstrConst (Cint 0)]]
+        createAssertions2 [v] = [cstrGT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions2 _   = error "One variable in problem"
 
         checkAssert2 :: [Const] -> SMT()
@@ -175,8 +175,9 @@ testNestedRanges = testNestedPushPopTemplate TxsDefs.empty [sortId_Int]  (const 
     where
         y = 123
         createAssertions :: Integer -> [VarId] -> [VExpr]
-        createAssertions n [v] = [ cstrFunc funcId_gtInt [cstrVar v, cstrConst (Cint (y-n))]
-                                 , cstrFunc funcId_ltInt [cstrVar v, cstrConst (Cint (y+n))]]
+        createAssertions n [v] = [ cstrGT (cstrVar v) (cstrConst (Cint (y-n)))
+                                 , cstrLT (cstrVar v) (cstrConst (Cint (y+n)))
+                                 ]
         createAssertions _ _   = error "One variable in problem"
 
         checkAssert :: Integer -> [Const] -> SMT()
