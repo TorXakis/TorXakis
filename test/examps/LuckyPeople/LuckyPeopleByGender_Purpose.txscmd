@@ -1,4 +1,4 @@
 tester Model PurposeLuckyByGender Sut
 test 300
-trace txs $> testTraceLuckyByGender.log
+trace proc $> testTraceLuckyByGender.log
 exit

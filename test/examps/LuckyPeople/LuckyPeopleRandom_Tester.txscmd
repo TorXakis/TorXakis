@@ -1,4 +1,4 @@
 tester Model Sut
 test 20
-trace txs $> testTraceRandom.log
+trace proc $> testTraceRandom.log
 exit

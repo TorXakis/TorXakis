@@ -1,4 +1,4 @@
 tester ModelTraceWrong Sut
 test 2
-trace txs $> testTrace.log
+trace proc $> testTrace.log
 exit
