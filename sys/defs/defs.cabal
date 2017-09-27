@@ -40,6 +40,7 @@ library
                       , Sigs
                       , Sum
                       , Product
+                      , FreeMonoidX
                       
   other-modules:        BehExprDefs
                       , ConnectionDefs
@@ -73,19 +74,21 @@ library
                       , MissingH
                       , text
                       , mtl
+                      , newtype
   default-language:     Haskell2010
                     
-                      
+
+-- TODO: QUESTION: why is this called `defs-BlackBox-test`?
 test-suite defs-BlackBox-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
                      
-  main-is:             TestMainBlackBox.hs
+  main-is:             Spec.hs
   
   other-modules:       GenProduct
-                     , GenSum
-                     , TestProduct
-                     , TestSum
+                     , ValExprSpec
+                     , ProductSpec
+                     , FreeMonoidXSpec
                        
   ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
   
@@ -93,6 +96,8 @@ test-suite defs-BlackBox-test
                      , containers
                      , MissingH
                      , QuickCheck
+                     , hspec
                      , defs
+                     , ieee754                     
                      
   default-language:    Haskell2010

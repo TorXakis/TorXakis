@@ -12,6 +12,7 @@ import           Data.String.Utils
 import           Data.Text         (Text)
 import qualified Data.Text         as T
 
+import           FreeMonoidX
 import           StdTDefs
 import           Sum
 import           TxsDefs
@@ -43,7 +44,7 @@ createVfunc funcId ies =
 
 createVsum :: [TXS2SMTVExprTest] -> TXS2SMTVExprTest
 createVsum ies =
-    TXS2SMTVExprTest (cstrSum (Sum.fromList (map input ies)))
+    TXS2SMTVExprTest (cstrSum (fromListT (map input ies)))
                ("(+ " ++ join " " (map expected ies) ++ ")")
 
 createVconst :: Const -> TXS2SMTVExprTest

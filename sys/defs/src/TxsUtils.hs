@@ -5,6 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
@@ -20,16 +21,16 @@ module TxsUtils
 where
 
 import           Control.Arrow (first)
-import qualified Data.Map   as Map
-import           Data.Maybe (fromMaybe)
-import qualified Data.Set   as Set
+import qualified Data.Map      as Map
+import           Data.Maybe    (fromMaybe)
+import qualified Data.Set      as Set
 
+import qualified FreeMonoidX   as FMX
 import           FuncId
 import           Product
 import           StdTDefs
 import           Sum
 import           TxsDefs
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- identifiers: signatures, binding
@@ -86,7 +87,7 @@ combineWEnv we1 we2
 -- partial variable Substitution in value expression
 -- ie. some free variables are not Substituted, so types must be equal
 
-partSubst :: (Variable v) => VarEnv v v -> ValExpr v -> ValExpr v
+partSubst :: (Variable v, Integral (ValExpr v)) => VarEnv v v -> ValExpr v -> ValExpr v
 
 partSubst ve (view -> Vfunc fid vexps)        = cstrFunc fid (map (partSubst ve) vexps)
 partSubst ve (view -> Vcstr cid vexps)        = cstrCstr cid (map (partSubst ve) vexps)
@@ -101,8 +102,10 @@ partSubst ve (view -> Venv ve' vexp)          = partSubst ve (partSubst ve' vexp
 partSubst ve (view -> Vdivide t n)            = cstrDivide (partSubst ve t) (partSubst ve n)
 partSubst ve (view -> Vmodulo t n)            = cstrModulo (partSubst ve t) (partSubst ve n)
 partSubst ve (view -> Vgez v)                 = cstrGEZ (partSubst ve v)
-partSubst ve (view -> Vsum s)                 = cstrSum $ Sum.fromMultiplierList $ map (first (partSubst ve)) $ Sum.toMultiplierList s
-partSubst ve (view -> Vproduct p)             = cstrProduct $ Product.fromPowerList $ map (first (partSubst ve)) $ Product.toPowerList p
+partSubst ve (view -> Vsum s)                 = cstrSum $ FMX.mapTerms (partSubst ve <$>) s
+partSubst ve (view -> Vproduct p)             =
+    cstrProduct $ FMX.fromOccurListT $
+      map (first (partSubst ve)) $ FMX.toDistinctAscOccurListT p
 partSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (partSubst ve vexp1) (partSubst ve vexp2)
 partSubst ve (view -> Vand vexps)             = cstrAnd $ Set.map (partSubst ve) vexps
 partSubst ve (view -> Vnot vexp)              = cstrNot (partSubst ve vexp)
@@ -113,7 +116,7 @@ partSubst _  _                                = error "partSubst: item not in vi
 -- walSubst :  partial value substitution in value expression
 
 
-walSubst :: (Variable v) => WEnv v -> ValExpr v -> ValExpr v
+walSubst :: (Variable v, Integral (ValExpr v)) => WEnv v -> ValExpr v -> ValExpr v
 walSubst wenv =  partSubst (Map.map cstrConst wenv)
 
 -- ----------------------------------------------------------------------------------------- --
@@ -121,8 +124,8 @@ walSubst wenv =  partSubst (Map.map cstrConst wenv)
 -- ie. all free variables of value expression must be substituted
 
 
-compSubst :: (Variable v, Variable w) => VarEnv v w -> ValExpr v -> ValExpr w
-
+compSubst :: (Variable v, Variable w, Integral (ValExpr v), Integral (ValExpr w))
+          => VarEnv v w -> ValExpr v -> ValExpr w
 compSubst ve (view -> Vfunc fid vexps)        =  cstrFunc fid (map (compSubst ve) vexps)
 compSubst ve (view -> Vcstr cid vexps)        =  cstrCstr cid (map (compSubst ve) vexps)
 compSubst ve (view -> Viscstr cid vexp)       = cstrIsCstr cid (compSubst ve vexp)
@@ -138,8 +141,10 @@ compSubst ve (view -> Venv ve' vexp)          =  compSubst ve (compSubst ve' vex
 compSubst ve (view -> Vdivide t n)            = cstrDivide (compSubst ve t) (compSubst ve n)
 compSubst ve (view -> Vmodulo t n)            = cstrModulo (compSubst ve t) (compSubst ve n)
 compSubst ve (view -> Vgez v)                 = cstrGEZ (compSubst ve v)
-compSubst ve (view -> Vsum s)                 = cstrSum $ Sum.fromMultiplierList $ map (first (compSubst ve)) $ Sum.toMultiplierList s
-compSubst ve (view -> Vproduct p)             = cstrProduct $ Product.fromPowerList $ map (first (compSubst ve)) $ Product.toPowerList p
+compSubst ve (view -> Vsum s)                 = cstrSum $ FMX.mapTerms (compSubst ve <$>) s
+compSubst ve (view -> Vproduct p)             =
+    cstrProduct $ FMX.fromOccurListT $
+      map (first (compSubst ve)) $ FMX.toDistinctAscOccurListT p
 compSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (compSubst ve vexp1) (compSubst ve vexp2)
 compSubst ve (view -> Vand vexps)             = cstrAnd $ Set.map (compSubst ve) vexps
 compSubst ve (view -> Vnot vexp)              = cstrNot (compSubst ve vexp)
@@ -258,8 +263,8 @@ instance UsedFids VExpr
     usedFids (view -> Vvar _v)                  =  []
     usedFids (view -> Vite cond tb fb)          =  usedFids [cond, tb, fb]
     usedFids (view -> Venv ve vexp)             =  usedFids (vexp:Map.elems ve)
-    usedFids (view -> Vsum s)                   =  concatMap usedFids (Sum.distinctTerms s)
-    usedFids (view -> Vproduct p)               =  concatMap usedFids (Product.distinctTerms p)
+    usedFids (view -> Vsum s)                   =  concatMap usedFids (FMX.distinctTermsT s)
+    usedFids (view -> Vproduct p)               =  concatMap usedFids (FMX.distinctTermsT p)
     usedFids (view -> Vdivide t n)              =  usedFids t ++ usedFids n
     usedFids (view -> Vmodulo t n)              =  usedFids t ++ usedFids n
     usedFids (view -> Vgez v)                   =  usedFids v
@@ -274,26 +279,3 @@ instance UsedFids VExpr
 instance (UsedFids t) => UsedFids [t]
   where
     usedFids  =  concatMap usedFids
-
-
--- ----------------------------------------------------------------------------------------- --
--- conditional output: smt debug  --  NODIG ???
-
-{-
-
-putSmtDebug :: String -> IOE ()
-putSmtDebug s  =  do
-     param_SMT_debug <- getParam "param_SMT_debug"
-     when (read param_SMT_debug) $ lift $ hPutStrLn stderr $ "SMT >> " ++ s
-
-
-hPutSmtLog :: Handle -> String -> IOE ()
-hPutSmtLog log s  =  do
-     when (log /= stderr) $ lift $ hPutStrLn log s
-
--}
-
-
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --
