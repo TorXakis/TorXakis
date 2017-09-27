@@ -67,7 +67,7 @@ cstrAdd a b = cstrSum (fromListT [a,b])
 
 -- | Apply operator Minus on the provided value expressions.
 cstrMinus :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
-cstrMinus a b = cstrSum (fromMultiplierListT [(a,1),(b,-1)])
+cstrMinus a b = cstrSum (fromOccurListT [(a,1),(b,-1)])
 
 -- | Apply operator Times on the provided value expressions.
 cstrTimes :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
@@ -81,22 +81,22 @@ cstrAbs a = cstrITE (cstrGEZ a) a (cstrUnaryMinus a)
 -- Preconditions are /not/ checked.
 cstrLT :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
 -- a < b <==> a - b < 0 <==> Not ( a - b >= 0 )
-cstrLT ve1 ve2 = cstrNot (cstrGEZ (cstrSum (fromMultiplierListT [(ve1,1),(ve2,-1)])))
+cstrLT ve1 ve2 = cstrNot (cstrGEZ (cstrSum (fromOccurListT [(ve1,1),(ve2,-1)])))
 
 -- | Apply operator GT (>) on the provided value expression.
 -- Preconditions are /not/ checked.
 cstrGT :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
 -- a > b <==> 0 > b - a <==> Not ( 0 <= b - a )
-cstrGT ve1 ve2 = cstrNot (cstrGEZ (cstrSum (fromMultiplierListT [(ve1,-1),(ve2,1)])))
+cstrGT ve1 ve2 = cstrNot (cstrGEZ (cstrSum (fromOccurListT [(ve1,-1),(ve2,1)])))
 
 -- | Apply operator LE (<=) on the provided value expression.
 -- Preconditions are /not/ checked.
 cstrLE :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
 -- a <= b <==> 0 <= b - a
-cstrLE ve1 ve2 = cstrGEZ (cstrSum (fromMultiplierListT [(ve1,-1),(ve2,1)]))
+cstrLE ve1 ve2 = cstrGEZ (cstrSum (fromOccurListT [(ve1,-1),(ve2,1)]))
 
 -- | Apply operator GE (>=) on the provided value expression.
 -- Preconditions are /not/ checked.
 cstrGE :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
 -- a >= b <==> a - b >= 0
-cstrGE ve1 ve2 = cstrGEZ (cstrSum (fromMultiplierListT [(ve1,1),(ve2,-1)]))
+cstrGE ve1 ve2 = cstrGEZ (cstrSum (fromOccurListT [(ve1,1),(ve2,-1)]))

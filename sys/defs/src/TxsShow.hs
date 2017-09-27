@@ -268,7 +268,7 @@ instance PShow v => PShow (ValExpr v) where
     pshow (view -> Vand vexps)
       =  "(" ++ Utils.join " /\\ " (map pshow (Set.toList vexps)) ++ " )"
     pshow (view -> Vsum s)
-      = showList (FMX.toMultiplierList s)
+      = showList (FMX.toOccurList s)
       where
         showList []     = "0"
         showList [x]    = showElem x
@@ -278,7 +278,7 @@ instance PShow v => PShow (ValExpr v) where
         showElem (t,-1) = "(- " ++ pshow t ++ " )"
         showElem (t,p)  = "( " ++ show p ++ " * " ++ pshow t ++ " )"
     pshow (view -> Vproduct s)
-      = showList (FMX.toDistinctAscMultiplierListT s)
+      = showList (FMX.toDistinctAscOccurListT s)
       where
         showList []     = "1"
         showList [x]    = showElem x

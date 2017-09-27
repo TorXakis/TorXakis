@@ -76,13 +76,13 @@ module FreeMonoidX
   , partitionT
 
   -- | Folds
-  , foldMultiplier
+  , foldOccur
   , foldFMX
 
     -- * Manipulation of the free monoid
   , append
   , remove
-  , addNTimes
+  , appendMany
   , flatten
 
   -- * Multiplication operator
@@ -92,16 +92,16 @@ module FreeMonoidX
   , IntMultipliable
   , TermWrapper (..)
 
-  -- * Multiplier lists
-  , toMultiplierList
-  , toDistinctAscMultiplierList
-  , fromMultiplierList
-  , fromDistinctAscMultiplierList
-  -- ** Multiplier lists of `TermWrapper`'s
+  -- * Occurrence lists
+  , toOccurList
+  , toDistinctAscOccurList
+  , fromOccurList
+  , fromDistinctAscOccurList
+  -- ** Occurrence lists of `TermWrapper`'s
   , fromListT
-  , toMultiplierListT
-  , toDistinctAscMultiplierListT
-  , fromMultiplierListT
+  , toOccurListT
+  , toDistinctAscOccurListT
+  , fromOccurListT
   , fromDistinctAscPowerListT
   )
 where
@@ -186,36 +186,45 @@ distinctTerms = Map.keys . asMap
 distinctTermsT :: TermWrapper t => FreeMonoidX (t a) -> [a]
 distinctTermsT = (unwrap <$>) . distinctTerms
 
--- | /O(n)/. Convert the free-monoid to a list of term\/multiplier pairs.
-toMultiplierList :: FreeMonoidX a -> [(a, Integer)]
-toMultiplierList = toDistinctAscMultiplierList
+-- | /O(n)/. Convert the free-monoid to a list of (term, occurrence) tuples.
+--
+-- For instance given the term:
+--
+-- > a <> b <> a <> b <> a
+--
+-- `toOccurList` applied to it will result in the following list:
+--
+-- > [(a, 3), (b, 2)]
+--
+toOccurList :: FreeMonoidX a -> [(a, Integer)]
+toOccurList = toDistinctAscOccurList
 
-toMultiplierListT :: TermWrapper t => FreeMonoidX (t a) -> [(a, Integer)]
-toMultiplierListT = (first unwrap <$>) . toDistinctAscMultiplierList
+toOccurListT :: TermWrapper t => FreeMonoidX (t a) -> [(a, Integer)]
+toOccurListT = (first unwrap <$>) . toDistinctAscOccurList
 
 -- | /O(n)/. Convert the free-monoid to a distinct ascending list of term\/multiplier
 -- pairs.
-toDistinctAscMultiplierList :: FreeMonoidX a -> [(a, Integer)]
-toDistinctAscMultiplierList = Map.toAscList . asMap
+toDistinctAscOccurList :: FreeMonoidX a -> [(a, Integer)]
+toDistinctAscOccurList = Map.toAscList . asMap
 
-toDistinctAscMultiplierListT :: TermWrapper t => FreeMonoidX (t a) -> [(a, Integer)]
-toDistinctAscMultiplierListT = (first unwrap <$>) . toDistinctAscMultiplierList
+toDistinctAscOccurListT :: TermWrapper t => FreeMonoidX (t a) -> [(a, Integer)]
+toDistinctAscOccurListT = (first unwrap <$>) . toDistinctAscOccurList
 
 -- | /O(n*log n)/. Create a free-monoid from a list of term\/multiplier pairs.
-fromMultiplierList :: Ord a => [(a, Integer)] -> FreeMonoidX a
-fromMultiplierList = FMX . Map.filter (0/=) . Map.fromListWith (+)
+fromOccurList :: Ord a => [(a, Integer)] -> FreeMonoidX a
+fromOccurList = FMX . Map.filter (0/=) . Map.fromListWith (+)
 
-fromMultiplierListT :: (Ord (t a), TermWrapper t) => [(a, Integer)] -> FreeMonoidX (t a)
-fromMultiplierListT = fromMultiplierList . (first wrap <$>)
+fromOccurListT :: (Ord (t a), TermWrapper t) => [(a, Integer)] -> FreeMonoidX (t a)
+fromOccurListT = fromOccurList . (first wrap <$>)
 
 -- | /O(n)/. Build a free-monoid from an ascending list of term\/multiplier
 -- pairs where each term appears only once. /The precondition (input list is
 -- strictly ascending) is not checked./
-fromDistinctAscMultiplierList :: [(a, Integer)] -> FreeMonoidX a
-fromDistinctAscMultiplierList = FMX . Map.filter (0/=) . Map.fromDistinctAscList
+fromDistinctAscOccurList :: [(a, Integer)] -> FreeMonoidX a
+fromDistinctAscOccurList = FMX . Map.filter (0/=) . Map.fromDistinctAscList
 
 fromDistinctAscPowerListT :: TermWrapper t => [(a, Integer)] -> FreeMonoidX (t a)
-fromDistinctAscPowerListT = fromDistinctAscMultiplierList . (first wrap <$>)
+fromDistinctAscPowerListT = fromDistinctAscOccurList . (first wrap <$>)
 
 -- | Append a term to the free-monoid.
 --
@@ -225,7 +234,7 @@ fromDistinctAscPowerListT = fromDistinctAscMultiplierList . (first wrap <$>)
 --
 -- > [1, 2, 3, 2]
 append :: Ord a => a -> FreeMonoidX a -> FreeMonoidX a
-append = addNTimes 1
+append = appendMany 1
 
 -- | Remove a term from the free-monoid.
 --
@@ -235,25 +244,25 @@ append = addNTimes 1
 --
 -- > (1 <> 3)
 remove :: Ord a => a -> FreeMonoidX a -> FreeMonoidX a
-remove = addNTimes (-1)
+remove = appendMany (-1)
 
 -- | Add the term `x` `n` times. If `n` is negative the term will be removed
 -- `n` times.
 --
--- > addNtimes 2 10 (10 <> 12 <> 12)
+-- > appendMany 2 10 (10 <> 12 <> 12)
 --
 -- should be equivalent to
 --
 -- (10 <> 10 <> 10 <> 12 <> 12)
 --
--- > addNTimes (-2) 10 (10 <> 12 <> 12)
+-- > appendMany (-2) 10 (10 <> 12 <> 12)
 --
 -- should be equivalent to
 --
 -- > (-10 <> 12 <> 12)
-addNTimes :: Ord a => Integer -> a -> FreeMonoidX a -> FreeMonoidX a
-addNTimes 0 _ s = s                                    -- invariant: no term with multiplier 0 is stored.
-addNTimes m x s = (FMX . Map.alter increment x . asMap) s
+appendMany :: Ord a => Integer -> a -> FreeMonoidX a -> FreeMonoidX a
+appendMany 0 _ s = s                                    -- invariant: no term with multiplier 0 is stored.
+appendMany m x s = (FMX . Map.alter increment x . asMap) s
     where
         increment :: Maybe Integer -> Maybe Integer
         increment Nothing  = Just m
@@ -271,13 +280,13 @@ partitionT :: TermWrapper t => (a -> Bool) -> FreeMonoidX (t a)
 partitionT p = partition (p . unwrap)
 
 -- | /O(n)/. Fold over the terms of the free-monoid with their multipliers.
-foldMultiplier :: (a -> Integer -> b -> b) -> b -> FreeMonoidX a -> b
-foldMultiplier f z = Map.foldrWithKey f z . asMap
+foldOccur :: (a -> Integer -> b -> b) -> b -> FreeMonoidX a -> b
+foldOccur f z = Map.foldrWithKey f z . asMap
 
 -- | Map the terms of the free-monoid.
 --
 mapTerms :: Ord b => (a -> b) -> FreeMonoidX a -> FreeMonoidX b
-mapTerms f = fromMultiplierList . (first f <$>) . toMultiplierList
+mapTerms f = fromOccurList . (first f <$>) . toOccurList
 
 -- | Flatten a free-monoid.
 --

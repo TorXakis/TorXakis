@@ -122,11 +122,11 @@ identicalVExpr (view -> Vnot v1)                (view -> Vnot v2)               
 identicalVExpr (view -> Vand vs1)               (view -> Vand vs2)               = identicalLists identicalVExpr (Set.toAscList vs1) (Set.toAscList vs2)
 identicalVExpr (view -> Vdivide t1 n1)          (view -> Vdivide t2 n2)          = identicalVExpr t1 t2  && identicalVExpr n1 n2
 identicalVExpr (view -> Vmodulo t1 n1)          (view -> Vmodulo t2 n2)          = identicalVExpr t1 t2  && identicalVExpr n1 n2
-identicalVExpr (view -> Vsum s1)                (view -> Vsum s2)                = let l1 = toMultiplierListT s1
-                                                                                       l2 = toMultiplierListT s2
+identicalVExpr (view -> Vsum s1)                (view -> Vsum s2)                = let l1 = toOccurListT s1
+                                                                                       l2 = toOccurListT s2
                                                                                    in identicalLists (\e1 e2 -> snd e1 == snd e2 && identicalVExpr (fst e1) (fst e2)) l1 l2
-identicalVExpr (view -> Vproduct s1)            (view -> Vproduct s2)            = let l1 = toMultiplierListT s1
-                                                                                       l2 = toMultiplierListT s2
+identicalVExpr (view -> Vproduct s1)            (view -> Vproduct s2)            = let l1 = toOccurListT s1
+                                                                                       l2 = toOccurListT s2
                                                                                      in identicalLists (\e1 e2 -> snd e1 == snd e2 && identicalVExpr (fst e1) (fst e2)) l1 l2
 identicalVExpr (view -> Vgez v1)                (view -> Vgez v2)                = identicalVExpr v1 v2
 identicalVExpr (view -> Vpredef p1 fid1 vexps1) (view -> Vpredef p2 fid2 vexps2) = p1 == p2 && identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2

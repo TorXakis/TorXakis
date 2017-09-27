@@ -11,7 +11,7 @@ import           Test.Hspec
 import           Test.QuickCheck
 
 import           FreeMonoidX     (fromDistinctAscPowerListT, fromListT,
-                                  toDistinctAscMultiplierListT)
+                                  toDistinctAscOccurListT)
 import           GenProduct
 import           Product
 
@@ -22,7 +22,7 @@ prop_ProductPower (GenProduct s) 0 =
 prop_ProductPower (GenProduct s) n =
   power n s == ( fromDistinctAscPowerListT
                  . List.map (second (n *))
-                 . toDistinctAscMultiplierListT
+                 . toDistinctAscOccurListT
                ) s
 
 prop_ProductEq :: GenProduct Integer -> Bool

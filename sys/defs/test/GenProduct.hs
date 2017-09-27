@@ -11,7 +11,7 @@ where
 import           Test.QuickCheck
 import           Test.QuickCheck.Gen (chooseAny)
 
-import           FreeMonoidX         (fromMultiplierListT)
+import           FreeMonoidX         (fromOccurListT)
 import           Product
 
 newtype GenProduct a = GenProduct (FreeProduct a)
@@ -21,4 +21,4 @@ instance (Ord a, Arbitrary a) => Arbitrary (GenProduct a) where
   arbitrary = do
     args   <- listOf arbitrary
     powers <- vectorOf (length args) arbitrary
-    return $ GenProduct (fromMultiplierListT (zip args powers))
+    return $ GenProduct (fromOccurListT (zip args powers))

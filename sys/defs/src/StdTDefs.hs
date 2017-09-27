@@ -180,7 +180,7 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, twoArgumentHandler cstrEqual ) ] )
 
     , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler id)
-                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . Exts.fromList . (SumTerm <$>))
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . FMX.fromListT )
                            ] )
     , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler cstrUnaryMinus )
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrMinus )

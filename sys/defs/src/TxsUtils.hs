@@ -104,8 +104,8 @@ partSubst ve (view -> Vmodulo t n)            = cstrModulo (partSubst ve t) (par
 partSubst ve (view -> Vgez v)                 = cstrGEZ (partSubst ve v)
 partSubst ve (view -> Vsum s)                 = cstrSum $ FMX.mapTerms (partSubst ve <$>) s
 partSubst ve (view -> Vproduct p)             =
-    cstrProduct $ FMX.fromMultiplierListT $
-      map (first (partSubst ve)) $ FMX.toDistinctAscMultiplierListT p
+    cstrProduct $ FMX.fromOccurListT $
+      map (first (partSubst ve)) $ FMX.toDistinctAscOccurListT p
 partSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (partSubst ve vexp1) (partSubst ve vexp2)
 partSubst ve (view -> Vand vexps)             = cstrAnd $ Set.map (partSubst ve) vexps
 partSubst ve (view -> Vnot vexp)              = cstrNot (partSubst ve vexp)
@@ -143,8 +143,8 @@ compSubst ve (view -> Vmodulo t n)            = cstrModulo (compSubst ve t) (com
 compSubst ve (view -> Vgez v)                 = cstrGEZ (compSubst ve v)
 compSubst ve (view -> Vsum s)                 = cstrSum $ FMX.mapTerms (compSubst ve <$>) s
 compSubst ve (view -> Vproduct p)             =
-    cstrProduct $ FMX.fromMultiplierListT $
-      map (first (compSubst ve)) $ FMX.toDistinctAscMultiplierListT p
+    cstrProduct $ FMX.fromOccurListT $
+      map (first (compSubst ve)) $ FMX.toDistinctAscOccurListT p
 compSubst ve (view -> Vequal vexp1 vexp2)     = cstrEqual (compSubst ve vexp1) (compSubst ve vexp2)
 compSubst ve (view -> Vand vexps)             = cstrAnd $ Set.map (compSubst ve) vexps
 compSubst ve (view -> Vnot vexp)              = cstrNot (compSubst ve vexp)

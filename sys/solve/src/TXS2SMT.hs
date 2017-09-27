@@ -255,7 +255,7 @@ valexprToSMT mapI (view -> Vite c expr1 expr2) = "(ite " <> valexprToSMT mapI c 
 
 
 valexprToSMT mapI (view -> Vsum s) =
-    let ol = toMultiplierListT s in
+    let ol = toOccurListT s in
         case ol of
         {  [o] -> arg2smt o
         ;   _  -> "(+ " <> T.intercalate " " (map arg2smt ol) <> ")"
@@ -268,7 +268,7 @@ valexprToSMT mapI (view -> Vsum s) =
         arg2smt (_, multiplier)                         = error ("valexprToSMT - arg2smt - illegal multiplier " ++ show multiplier)
 
 valexprToSMT mapI (view -> Vproduct p) =
-    let ol = toMultiplierListT p in
+    let ol = toOccurListT p in
         case ol of
         {  [o] -> arg2smt o
         ;   _  -> "(* " <> T.intercalate " " (map arg2smt ol) <> ")"

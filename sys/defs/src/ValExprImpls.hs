@@ -258,7 +258,7 @@ cstrSum' ms =
                     0 -> nonvals                                      -- 0 + x == x
                     _ -> Sum.add (cstrConst (Cint sumVals)) nonvals
     in
-        case FMX.toMultiplierList retMS of
+        case FMX.toOccurList retMS of
             []         -> cstrConst (Cint 0)                                -- sum of nothing equal zero
             [(term,1)] -> summand term
             _          -> ValExpr (Vsum retMS)
@@ -303,10 +303,10 @@ cstrProduct' ms =
                     let intProducts = FMX.mapTerms (getIntVal <$>) vals
                         productVals = factor (FMX.foldFMX intProducts)
                     in
-                        case FMX.toDistinctAscMultiplierListT nonvals of
+                        case FMX.toDistinctAscOccurListT nonvals of
                             []          ->  cstrConst (Cint productVals)
-                            [(term, 1)] ->  cstrSum (FMX.fromMultiplierList [(SumTerm term, productVals)])                           -- term can be Sum -> rewrite needed
-                            _           ->  cstrSum (FMX.fromMultiplierList [(SumTerm (ValExpr (Vproduct nonvals)), productVals)])  -- productVals can be 1 -> rewrite possible
+                            [(term, 1)] ->  cstrSum (FMX.fromOccurList [(SumTerm term, productVals)])                           -- term can be Sum -> rewrite needed
+                            _           ->  cstrSum (FMX.fromOccurList [(SumTerm (ValExpr (Vproduct nonvals)), productVals)])  -- productVals can be 1 -> rewrite possible
             _   ->  let (_, n) = Product.fraction zeros in
                         case FMX.nrofDistinctTerms n of
                             0   ->  cstrConst (Cint 0)      -- 0 * x == 0

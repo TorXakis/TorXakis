@@ -107,8 +107,8 @@ eval (view -> Vite cond vexp1 vexp2) = do
 eval (view -> Venv ve vexp) = eval (TxsUtils.partSubst ve vexp)
 
 eval (view -> Vsum s) = do
-    consts <- mapM evalTuple (toMultiplierListT s)
-    eval (cstrSum $ fromMultiplierListT consts)       -- simplifies to integer
+    consts <- mapM evalTuple (toOccurListT s)
+    eval (cstrSum $ fromOccurListT consts)       -- simplifies to integer
   where
     evalTuple :: Variable v => (TxsDefs.ValExpr v, Integer) -> IOB.IOB (TxsDefs.ValExpr v, Integer)
     evalTuple (v,i) = do
@@ -116,8 +116,8 @@ eval (view -> Vsum s) = do
         return (cstrConst c,i)
 
 eval (view -> Vproduct p) = do
-    consts <- mapM evalTuple (toMultiplierListT p)
-    eval (cstrProduct $ fromMultiplierListT consts)       -- simplifies to integer
+    consts <- mapM evalTuple (toOccurListT p)
+    eval (cstrProduct $ fromOccurListT consts)       -- simplifies to integer
   where
     evalTuple :: Variable v => (TxsDefs.ValExpr v, Integer) -> IOB.IOB (TxsDefs.ValExpr v, Integer)
     evalTuple (v,i) = do
@@ -133,7 +133,7 @@ eval (view -> Vmodulo t n) = do
     valT <- txs2int t
     valN <- txs2int n
     int2txs $ valT `mod` valN
-     
+
 eval (view -> Vgez v) = do
     val <- txs2int v
     bool2txs ( 0 <= val )
