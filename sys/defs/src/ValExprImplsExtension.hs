@@ -18,19 +18,34 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 {-# OPTIONS -Wall -Werror #-}
 module ValExprImplsExtension
-( -- * Derived Boolean operators: Or, Xor, Implies
+( -- * Derived Boolean operators
+  -- ** Or (\/)
   cstrOr
+  -- ** Exclusive or (\|/)
 , cstrXor
+  -- ** Implies (=>)
 , cstrImplies
-  -- * Derived Integer operators: Minus, Add, Times, Abs
-, cstrAdd
+  -- * Derived Integer operators:
+  -- ** Unary Plus
+, cstrUnaryPlus
+  -- ** Unary Minus = negate single argument
+, cstrUnaryMinus
+  -- ** Plus = Sum of two terms
+, cstrPlus
+  -- ** Minus
 , cstrMinus
+  -- ** Times = Product of two terms
 , cstrTimes
+  -- ** Absolute value
 , cstrAbs
-  -- * Derived Integer comparisons LT, LE, GE, GT: based on GEZ
+  -- * Derived Integer comparisons
+  -- ** Less than (<)
 , cstrLT
+  -- ** Less Equal (<=)
 , cstrLE
+  -- ** Greater Equal (>=)
 , cstrGE
+  -- ** Greater Than (>)
 , cstrGT
 )
 where
@@ -61,19 +76,33 @@ cstrImplies :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
 -- a => b == not a \/ b == not (a /\ not b)
 cstrImplies a b = (cstrNot . cstrAnd) (Set.insert a (Set.singleton (cstrNot b)))
 
+-- | Apply unary operator Plus on the provided value expression.
+-- Preconditions are /not/ checked.
+cstrUnaryPlus :: ValExpr v -> ValExpr v
+cstrUnaryPlus = id
+
+-- | Apply unary operator Minus on the provided value expression.
+-- Preconditions are /not/ checked.
+cstrUnaryMinus :: Ord v => ValExpr v -> ValExpr v
+cstrUnaryMinus v = cstrSum (fromOccurListT [(v,-1)])
+
 -- | Apply operator Add on the provided value expressions.
-cstrAdd :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
-cstrAdd a b = cstrSum (fromListT [a,b])
+-- Preconditions are /not/ checked.
+cstrPlus :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
+cstrPlus a b = cstrSum (fromListT [a,b])
 
 -- | Apply operator Minus on the provided value expressions.
+-- Preconditions are /not/ checked.
 cstrMinus :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
 cstrMinus a b = cstrSum (fromOccurListT [(a,1),(b,-1)])
 
 -- | Apply operator Times on the provided value expressions.
+-- Preconditions are /not/ checked.
 cstrTimes :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
 cstrTimes a b = cstrProduct (fromListT [a,b])
 
--- | Apply operator Abs on the provided value expression.
+-- | Apply operator Absolute value (abs) on the provided value expression.
+-- Preconditions are /not/ checked.
 cstrAbs :: Ord v => ValExpr v -> ValExpr v
 cstrAbs a = cstrITE (cstrGEZ a) a (cstrUnaryMinus a)
 

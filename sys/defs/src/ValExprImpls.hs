@@ -28,8 +28,6 @@ module ValExprImpls
   -- *** And
 , cstrAnd
   -- ** Integer Operators to create Value Expressions
-  -- *** Unary Minus (i.e. single argument)
-, cstrUnaryMinus
   -- *** Sum
 , cstrSum
   -- *** Product
@@ -215,13 +213,6 @@ cstrAnd' s =
         contains :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set
-
--- | Apply unary operator Minus on the provided value expression.
--- Preconditions are /not/ checked.
-cstrUnaryMinus :: (Ord v, Integral (ValExpr v)) => ValExpr v -> ValExpr v
-cstrUnaryMinus (view -> Vconst (Cint x)) = cstrConst (Cint (-x))
-cstrUnaryMinus (view -> Vsum s)          = cstrSum  ((-1) <.> s)
-cstrUnaryMinus v                         = ValExpr (Vsum ((-1) <.> [SumTerm v]))
 
 -- * Sum
 
