@@ -6,6 +6,8 @@ See LICENSE at root directory of this repository.
 
 
 -- ----------------------------------------------------------------------------------------- --
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 -- | Predefined, Standard TorXakis Data Types : Bool, Int, Char, String.
@@ -60,13 +62,15 @@ module StdTDefs
 )
 where
 
-import           Control.Arrow ((***))
-import qualified Data.Map      as Map
-import qualified Data.Set      as Set
-import           Data.Text     (Text)
+import           Control.Arrow         ((***))
+import qualified Data.Map              as Map
+import qualified Data.Set              as Set
+import           Data.Text             (Text)
+import qualified GHC.Exts              as Exts
 
 import           ChanId
 import           CstrId
+import qualified FreeMonoidX           as FMX
 import           FuncDef
 import           FuncId
 import           FuncTable
@@ -140,7 +144,7 @@ accessHandler c p = oneArgumentHandler (cstrAccess c p)
 
 -- ----------------------------------------------------------------------------------------- --
 -- FuncTable
-stdFuncTable :: Ord v => FuncTable v
+stdFuncTable :: (Ord v, Integral (ValExpr v)) => FuncTable v
 stdFuncTable = FuncTable ( Map.fromList
     [ ( eqName , Map.fromList [ ( Signature [sortId_Bool,     sortId_Bool]    sortId_Bool, equalHandler )
                               , ( Signature [sortId_Int,      sortId_Int]     sortId_Bool, equalHandler )
