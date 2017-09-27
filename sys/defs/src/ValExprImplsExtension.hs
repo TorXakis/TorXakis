@@ -84,7 +84,7 @@ cstrUnaryPlus = id
 -- | Apply unary operator Minus on the provided value expression.
 -- Preconditions are /not/ checked.
 cstrUnaryMinus :: Ord v => ValExpr v -> ValExpr v
-cstrUnaryMinus v = cstrSum (Sum.fromMultiplierList [(v,-1)])
+cstrUnaryMinus v = cstrSum (fromOccurListT [(v,-1)])
 
 -- | Apply operator Add on the provided value expressions.
 -- Preconditions are /not/ checked.
