@@ -204,7 +204,7 @@ trueCharsRegexes n          = error ("trueCharsRegexes: Illegal argument n = " +
 
 trueStringLength :: (Variable v) => Int -> ValExpr v -> SMT Text
 trueStringLength n v = do
-    let exprs = map (cstrEqual (cstrFunc funcId_lenString [v]) . cstrConst . Cint . toInteger ) [0..n] ++ [cstrGT (cstrFunc funcId_lenString [v]) (cstrConst (Cint (toInteger n)))]
+    let exprs = map (cstrEqual (cstrLength v) . cstrConst . Cint . toInteger ) [0..n] ++ [cstrGT (cstrLength v) (cstrConst (Cint (toInteger n)))]
     shuffledOrList <- shuffleM exprs
     stringList <- mapM valExprToString shuffledOrList
     return $ "(or " <> T.intercalate " " stringList <> ") "

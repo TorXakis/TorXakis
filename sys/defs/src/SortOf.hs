@@ -74,6 +74,10 @@ sortOf' (view -> Vproduct { })                          =  sortId_Int
 sortOf' (view -> Vmodulo { })                           =  sortId_Int
 sortOf' (view -> Vdivide { })                           =  sortId_Int
 sortOf' (view -> Vgez { })                              =  sortId_Bool
+sortOf' (view -> Vlength { })                           =  sortId_Int
+sortOf' (view -> Vat { })                               =  sortId_String
+sortOf' (view -> Vconcat { })                           =  sortId_String
+
 sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps)  =  fs
 sortOf' (view -> Vpredef{})                             = error "sortOf': Unexpected Ident with Vpredef"
 sortOf' (view -> Verror _str)                           =  sortIdError

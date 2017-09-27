@@ -82,9 +82,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_StringFromString,   error "FromString(String) should not be called in SMT"),
     (IdFunc funcId_StringToXml,        error "ToXml(String) should not be called in SMT"),
     (IdFunc funcId_StringFromXml,      error "FromXml(String) should not be called in SMT"),
-    (IdFunc funcId_catString,          "str.++"),
-    (IdFunc funcId_lenString,          "str.len"),
-    (IdFunc funcId_atString,           "str.at"),
     (IdFunc funcId_takeWhile,          error "takeWhile should not be called in SMT"),
     (IdFunc funcId_takeWhileNot,       error "takeWhileNot should not be called in SMT"),
     (IdFunc funcId_dropWhile,          error "dropWhile should not be called in SMT"),
@@ -302,6 +299,13 @@ valexprToSMT mapI (view -> Vnot expr)  =
 
 valexprToSMT mapI (view -> Vand exprs)  =
     "(and " <> T.intercalate " " (map (valexprToSMT mapI) (Set.toList exprs)) <> ")"
+
+valexprToSMT mapI (view -> Vlength expr)  =
+    "(str.len " <> valexprToSMT mapI expr <> ")"
+valexprToSMT mapI (view -> Vat s p)  =
+    "(str.at " <> valexprToSMT mapI s <> " " <> valexprToSMT mapI p <> ")"
+valexprToSMT mapI (view -> Vconcat vexprs)  =
+    "(str.++ " <> T.intercalate " " (map (valexprToSMT mapI) vexprs) <> ")"
 
 valexprToSMT mapI (view -> Vpredef _ funcId args')  =
     "(" <> justLookup mapI (IdFunc funcId) <> " " <> T.intercalate " " (map (valexprToSMT mapI) args') <> ")"

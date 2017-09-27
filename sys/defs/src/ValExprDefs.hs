@@ -32,23 +32,33 @@ import           VarId
 data  ValExprView v = Vconst  Const
                     | Vvar    v
                     -- Boolean
-                    | Vequal  (ValExpr v) (ValExpr v)
-                    | Vite    {   condition   :: ValExpr v
-                              ,   trueBranch  :: ValExpr v
-                              ,   falseBranch :: ValExpr v
-                              }
-                    | Vnot    (ValExpr v)
-                    | Vand    (Set (ValExpr v))
+                    | Vequal    (ValExpr v) (ValExpr v)
+                    | Vite      {   condition   :: ValExpr v
+                                ,   trueBranch  :: ValExpr v
+                                ,   falseBranch :: ValExpr v
+                                }
+                    | Vnot      (ValExpr v)
+                    | Vand      (Set (ValExpr v))
                     -- Int
-                    | Vdivide     {   dividend :: ValExpr v
-                                  ,   divisor  :: ValExpr v
-                                  }
-                    | Vmodulo     {   dividend :: ValExpr v
-                                  ,   divisor  :: ValExpr v
-                                  }
+                    | Vdivide   {   dividend :: ValExpr v
+                                ,   divisor  :: ValExpr v
+                                }
+                    | Vmodulo   {   dividend :: ValExpr v
+                                ,   divisor  :: ValExpr v
+                                }
                     | Vsum      (FreeSum (ValExpr v))
                     | Vproduct  (FreeProduct (ValExpr v))
                     | Vgez      (ValExpr v)
+                    -- String
+                    | Vlength   (ValExpr v)
+                    | Vat       {   string   :: ValExpr v
+                                ,   position :: ValExpr v
+                                }
+                    | Vconcat   [ValExpr v]
+                    -- Regex
+                    | Vstrinre {    string :: ValExpr v
+                               ,    regex  :: ValExpr v
+                               }
                     -- ADT
                     | Vcstr   CstrId [ValExpr v]
                     | Viscstr CstrId (ValExpr v)

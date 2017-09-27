@@ -154,6 +154,20 @@ eval (view -> Vand vexps) = do
         unBool (Cbool b) = b
         unBool _         = error "unBool applied on non-Bool"
 
+eval (view -> Vlength vexp) = do
+    Cint val <- eval vexp
+    int2txs val
+        
+eval (view -> Vat s p) = do
+    Cstring vs <- eval s
+    Cint vp <- eval p
+    str2txs (T.take 1 (T.drop (fromInteger vp) vs))
+
+eval (view -> Vconcat vexprs) = do
+    vs <- mapM eval vexprs
+    let vs' = map (\(Cstring s) -> s) vs
+    str2txs (T.concat vs')
+    
 eval (view -> Vpredef kd fid vexps) =
      case kd of
        AST -> case vexps of
@@ -273,11 +287,6 @@ evalSSS (FuncId nm _ _ _) vexps =
        ( "fromXml",    [v] ) -> do Cstring s <- eval v
                                    tdefs <- gets IOB.tdefs
                                    return $ constFromXml tdefs sortId_String s
-       ( "++",     [v1,v2] ) -> do s1 <- txs2str v1
-                                   s2 <- txs2str v2
-                                   str2txs $ s1 <> s2
-       ( "len",    [v1]    ) -> do s1 <- txs2str v1
-                                   int2txs  $ toInteger (T.length s1)
        ( "takeWhile",    [v1,v2] ) -> do s1 <- txs2str v1
                                          s2 <- txs2str v2
                                          str2txs $ T.takeWhile (`elemT` s1) s2
@@ -290,11 +299,6 @@ evalSSS (FuncId nm _ _ _) vexps =
        ( "dropWhileNot", [v1,v2] ) -> do s1 <- txs2str v1
                                          s2 <- txs2str v2
                                          str2txs $ T.dropWhile (`notElemT` s1) s2
-       ( "at", [v1,v2] )           -> do s1 <- txs2str v1
-                                         i2 <- txs2int v2
-                                         let i2' = fromInteger i2
-                                         str2txs $ if 0<=i2' && i2'< T.length s1
-                                                   then T.singleton (T.index s1 i2') else ""
        _                           -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "evalSSS: standard String opn" ]
                                          return $ Cerror ""
 

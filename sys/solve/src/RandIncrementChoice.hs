@@ -179,12 +179,12 @@ randomSolve p ((v,d):xs) i    | vsort v == sortId_String =
         case c of
             Cstring s   -> do
                                 let l = T.length s
-                                addAssertions [cstrEqual (cstrFunc funcId_lenString [cstrVar v]) (cstrConst (Cint (toInteger l)))]
+                                addAssertions [cstrEqual (cstrLength (cstrVar v)) (cstrConst (Cint (toInteger l)))]
                                 if l > 0 && d > 1
                                 then do
                                         let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortId_String) [i .. i+l-1]
                                         addDeclarations charVars
-                                        let exprs = map (\(vNew,pos) -> cstrEqual (cstrVar vNew) (cstrFunc funcId_atString [cstrVar v, cstrConst (Cint pos)])) (zip charVars [0..])
+                                        let exprs = map (\(vNew,pos) -> cstrEqual (cstrVar vNew) (cstrAt (cstrVar v) (cstrConst (Cint pos)))) (zip charVars [0..])
                                         addAssertions exprs
                                         shuffledVars <- shuffleM (xs ++ zip charVars (map (const (-123)) [1::Integer .. ]) )
                                         sat <- getSolvable
@@ -201,8 +201,8 @@ randomSolve p ((v,d):xs) i    | vsort v == sortId_String =
         choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, Text)]
         choicesFunc v' r (Cstring s) = do
                                             let cond = T.length s < r
-                                            st <- valExprToString $ cstrLT (cstrFunc funcId_lenString [cstrVar v']) (cstrConst (Cint (toInteger r)))
-                                            sf <- valExprToString $ cstrGE (cstrFunc funcId_lenString [cstrVar v']) (cstrConst (Cint (toInteger r)))
+                                            st <- valExprToString $ cstrLT (cstrLength (cstrVar v')) (cstrConst (Cint (toInteger r)))
+                                            sf <- valExprToString $ cstrGE (cstrLength (cstrVar v')) (cstrConst (Cint (toInteger r)))
                                             return [ (cond, st)
                                                    , (not cond, sf)
                                                    ]

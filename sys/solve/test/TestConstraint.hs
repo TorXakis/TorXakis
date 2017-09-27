@@ -429,7 +429,7 @@ testStringLength :: Int -> SMT()
 testStringLength n = testTemplateValue TxsDefs.empty [sortId_String] createAssertions check
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrEqual (cstrConst (Cint (toInteger n))) (cstrPredef SSS funcId_lenString [cstrVar v])]
+        createAssertions [v] = [cstrEqual (cstrConst (Cint (toInteger n))) (cstrLength (cstrVar v))]
         createAssertions _   = error "One variable in problem"
 
         check :: [Const] -> SMT()
