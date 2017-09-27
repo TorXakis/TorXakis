@@ -6,6 +6,7 @@ See LICENSE at root directory of this repository.
 
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE OverloadedStrings #-}
 module ValExprImpls
 ( -- * Constructors to create Value Expressions
   -- ** Constant value
@@ -39,11 +40,14 @@ module ValExprImpls
 , cstrGEZ
   -- ** String Operators to create Value Expressions
   -- *** Length operator
---, cstrLength
+, cstrLength
   -- *** At operator
---, cstrAt
+, cstrAt
   -- *** Concat operator
---, cstrConcat
+, cstrConcat
+  -- ** Regular Expression Operators to create Value Expressions
+  -- *** String in Regular Expression  operator
+--, cstrStrInRe
   -- ** Algebraic Data Type Operators to create Value Expressions
   -- *** Algebraic Data Type constructor operator
 , cstrCstr
@@ -60,17 +64,23 @@ module ValExprImpls
 )
 where
 
+import           Data.Monoid ((<>))
 import qualified Data.Set    as Set
 import           Data.Text   (Text)
+import qualified Data.Text   as T
 import           Debug.Trace as Trace
+--import           Text.Regex.TDFA  --Needed for strinre
 
 import           ConstDefs
 import           CstrId
 import           FuncId
 import           Product
+--import           RegexAlex            --Needed for strinre
+--import           RegexPosixHappy      --Needed for strinre
 import           Sum
 import           ValExprDefs
 import           Variable
+
 
 cstrFunc :: (Variable v) => FuncId -> [ValExpr v] -> ValExpr v
 cstrFunc f a = ValExpr (Vfunc f a)
@@ -325,8 +335,58 @@ cstrModulo vet ven = ValExpr (Vmodulo vet ven)
 cstrGEZ :: ValExpr v -> ValExpr v
 -- Simplification Values
 cstrGEZ (view -> Vconst (Cint v))   = cstrConst (Cbool (0 <= v))
--- cstrGEZ (view -> Vlength _)      = cstrConst (Cbool True)        -- length of string is always Greater or equal to zero
+cstrGEZ (view -> Vlength _)         = cstrConst (Cbool True)        -- length of string is always Greater or equal to zero
 cstrGEZ ve                          = ValExpr (Vgez ve)
+
+
+-- | Apply operator Length on the provided value expression.
+-- Preconditions are /not/ checked.
+cstrLength :: ValExpr v -> ValExpr v
+cstrLength (view -> Vconst (Cstring s)) = cstrConst (Cint (Prelude.toInteger (T.length s)))
+cstrLength v                            = ValExpr (Vlength v)
+
+-- | Apply operator At on the provided value expressions.
+-- Preconditions are /not/ checked.
+cstrAt :: ValExpr v -> ValExpr v -> ValExpr v
+cstrAt ves@(view -> Vconst (Cstring s)) vei@(view -> Vconst (Cint i)) = 
+    if i < 0 || i >= Prelude.toInteger (T.length s)
+        then Trace.trace ("Error in model: Accessing string " ++ show s ++ " of length " ++ show (T.length s) ++ " with illegal index "++ show i) $
+             ValExpr (Vat ves vei)
+        else cstrConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))
+cstrAt ves vei = ValExpr (Vat ves vei)
+
+-- | Apply operator Concat on the provided sequence of value expressions.
+-- Preconditions are /not/ checked.
+cstrConcat :: (Eq v) => [ValExpr v] -> ValExpr v
+cstrConcat l = 
+    let n = (mergeVals . flatten . filter (cstrConst (Cstring "") /= ) ) l in
+        case Prelude.length n of
+           0   -> cstrConst (Cstring "")
+           1   -> head n
+           _   -> ValExpr (Vconcat n)
+
+-- implementation details:
+-- Properties incorporated
+--    "" ++ x == x          - remove empty strings
+--    "a" ++ "b" == "ab"    - concat consecutive string values
+--   remove all nested Concats, since (a ++ b) ++ (c ++ d) == (a ++ b ++ c ++ d)
+           
+mergeVals :: [ValExpr v] -> [ValExpr v]
+mergeVals []            = []
+mergeVals [x]           = [x]
+mergeVals ( (view -> Vconst (Cstring s1)) : (view -> Vconst (Cstring s2)) : xs) = 
+                          mergeVals (cstrConst (Cstring (s1 <> s2)): xs)
+mergeVals (x1:x2:xs)    = x1 : mergeVals (x2:xs)
+
+flatten :: [ValExpr v] -> [ValExpr v]
+flatten []                       = []
+flatten ((view -> Vconcat l):xs) = l ++ flatten xs
+flatten (x:xs)                   = x : flatten xs
+
+-- | Apply String In Regular Expression operator on the provided value expressions.
+-- Preconditions are /not/ checked.
+--cstrStrInRe :: ValExpr v -> ValExpr v -> ValExpr v
+--cstrStrInRe ves@(view -> Vconst (Cstring s)) vei@(view -> Vconst (Cregex r)) = cstrConst (Cbool (s =~ regexPosixParser (regexLexer r)))
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)

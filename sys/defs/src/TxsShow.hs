@@ -294,6 +294,13 @@ instance PShow v => PShow (ValExpr v) where
       =  "(" ++ pshow t ++ " % " ++ pshow n ++ " )"
     pshow (view -> Vgez v)
       =  "( 0 <= " ++ pshow v ++ " )"
+    pshow (view -> Vlength v)
+      =  "len( " ++ pshow v ++ " )"
+    pshow (view -> Vat s p)
+      =  "at( " ++ pshow s ++ ", "++ pshow p ++ " )"
+    pshow (view -> Vconcat vexps)
+      =  "( " ++ Utils.join " ++ " (map pshow vexps) ++ " )"
+      
     pshow (view -> Vpredef _ fid vexps)
       =  if isSpecialOp fid
            then

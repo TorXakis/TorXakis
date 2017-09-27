@@ -160,9 +160,9 @@ randCnrsInt p vexp  =  do
 
 randCnrsString :: Variable v => ValExpr v -> SMT [ Set.Set (ValExpr v) ]
 randCnrsString vexp  =
-    return [ Set.singleton ( cstrEqual ( cstrFunc funcId_lenString [vexp] ) ( cstrConst (Cint 0) ) )
-           , Set.singleton ( cstrEqual ( cstrFunc funcId_lenString [vexp] ) ( cstrConst (Cint 1) ) )
-           , Set.singleton ( cstrGE    ( cstrFunc funcId_lenString [vexp] ) ( cstrConst (Cint 2) ) )
+    return [ Set.singleton ( cstrEqual ( cstrLength vexp ) ( cstrConst (Cint 0) ) )
+           , Set.singleton ( cstrEqual ( cstrLength vexp ) ( cstrConst (Cint 1) ) )
+           , Set.singleton ( cstrGE    ( cstrLength vexp ) ( cstrConst (Cint 2) ) )
            ]
 
 
