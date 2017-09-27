@@ -6,6 +6,8 @@ See LICENSE at root directory of this repository.
 
 
 -- ----------------------------------------------------------------------------------------- --
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 -- | Predefined, Standard TorXakis Data Types : Bool, Int, Char, String.
@@ -57,18 +59,20 @@ module StdTDefs
 )
 where
 
-import           Control.Arrow ((***))
-import qualified Data.Map      as Map
-import qualified Data.Set      as Set
-import           Data.Text     (Text)
+import           Control.Arrow         ((***))
+import qualified Data.Map              as Map
+import qualified Data.Set              as Set
+import           Data.Text             (Text)
+import qualified GHC.Exts              as Exts
 
 import           ChanId
 import           CstrId
+import qualified FreeMonoidX           as FMX
 import           FuncDef
 import           FuncId
 import           FuncTable
 import           Ident
-import           Product
+import qualified Product
 import           SortDef
 import           SortId
 import           SortOf
@@ -139,7 +143,7 @@ accessHandler c p = oneArgumentHandler (cstrAccess c p)
 
 -- ----------------------------------------------------------------------------------------- --
 -- FuncTable
-stdFuncTable :: Ord v => FuncTable v
+stdFuncTable :: (Ord v, Integral (ValExpr v)) => FuncTable v
 stdFuncTable = FuncTable ( Map.fromList
     [ ( eqName , Map.fromList [ ( Signature [sortId_Bool,     sortId_Bool]    sortId_Bool, equalHandler )
                               , ( Signature [sortId_Int,      sortId_Int]     sortId_Bool, equalHandler )
@@ -173,13 +177,13 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, twoArgumentHandler cstrEqual ) ] )
 
     , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler id)
-                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . Sum.fromList )
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . FMX.fromListT )
                            ] )
     , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler cstrUnaryMinus )
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrMinus )
                            ] )
     , ("abs", Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler cstrAbs ) ] )
-    , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrProduct . Product.fromList ) ] )
+    , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrProduct . FMX.fromListT ) ] )
     , ("/",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrDivide ) ] )
     , ("%",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrModulo ) ] )
     , ("<",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, twoArgumentHandler cstrLT ) ] )

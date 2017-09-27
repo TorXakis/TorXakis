@@ -17,11 +17,11 @@ import           GHC.Generics    (Generic)
 
 import           ConstDefs
 import           CstrId
+import           FreeMonoidX
 import           FuncId
 import           Product
 import           Sum
 import           VarId
-
 
 
 
@@ -39,36 +39,46 @@ data  ValExprView v = Vconst  Const
                                 }
                     | Vnot      (ValExpr v)
                     | Vand      (Set (ValExpr v))
-                    -- Int 
-                    | Vdivide   {   dividend    :: ValExpr v
-                                ,   divisor     :: ValExpr v
+                    -- Int
+                    | Vdivide   {   dividend :: ValExpr v
+                                ,   divisor  :: ValExpr v
                                 }
-                    | Vmodulo   {   dividend    :: ValExpr v
-                                ,   divisor     :: ValExpr v
+                    | Vmodulo   {   dividend :: ValExpr v
+                                ,   divisor  :: ValExpr v
                                 }
-                    | Vsum      (Sum (ValExpr v))
-                    | Vproduct  (Product (ValExpr v))
+                    | Vsum      (FreeSum (ValExpr v))
+                    | Vproduct  (FreeProduct (ValExpr v))
                     | Vgez      (ValExpr v)
                     -- String
                     | Vlength   (ValExpr v)
-                    | Vat       {   string    :: ValExpr v
-                                ,   position  :: ValExpr v
+                    | Vat       {   string   :: ValExpr v
+                                ,   position :: ValExpr v
                                 }
                     | Vconcat   [ValExpr v]
                     -- Regex
-                    | Vstrinre {    string    :: ValExpr v
-                               ,    regex     :: ValExpr v
+                    | Vstrinre {    string :: ValExpr v
+                               ,    regex  :: ValExpr v
                                }
                     -- ADT
                     | Vcstr   CstrId [ValExpr v]
                     | Viscstr CstrId (ValExpr v)
                     | Vaccess CstrId Int (ValExpr v)
-                    
+
                     | Venv    (VarEnv v v) (ValExpr v)
                     | Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]
                     | Verror  Text
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
+     deriving (Eq, Ord, Read, Show, Generic, NFData)
+
+-- These instances are needed to use the symbolic representation of sums and
+-- products of val expressions. These instances have no implementation, which
+-- means that if an attempt is made to compute the value of a sum or product of
+-- `ValExpr` then a runtime error will occur. When GADT's are used it will be
+-- possible to define instances for `ValExpr` of numeric types.
+instance Num (ValExpr v)
+instance Enum (ValExpr v)
+instance Ord v => Real (ValExpr v)
+instance Ord v => Integral (ValExpr v)
 
 -- | ValExpr: value expression
 --

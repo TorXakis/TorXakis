@@ -26,7 +26,7 @@ module Eval
 
 where
 
-import           Control.Arrow ((***))
+import           Control.Arrow       ((***))
 import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad.State
@@ -45,9 +45,10 @@ import qualified EnvBTree            as IOB
 import qualified EnvData
 
 -- import from defs
+import           FreeMonoidX
 import           Product
-import           Sum
 import           StdTDefs
+import           Sum
 import           TxsDefs
 import           TxsShow
 import           TxsUtils
@@ -106,18 +107,18 @@ eval (view -> Vite cond vexp1 vexp2) = do
 eval (view -> Venv ve vexp) = eval (TxsUtils.partSubst ve vexp)
 
 eval (view -> Vsum s) = do
-    consts <- mapM evalTuple (Sum.toMultiplierList s)
-    eval (cstrSum $ Sum.fromMultiplierList consts)       -- simplifies to integer
-  where 
+    consts <- mapM evalTuple (toOccurListT s)
+    eval (cstrSum $ fromOccurListT consts)       -- simplifies to integer
+  where
     evalTuple :: Variable v => (TxsDefs.ValExpr v, Integer) -> IOB.IOB (TxsDefs.ValExpr v, Integer)
     evalTuple (v,i) = do
         c <- eval v
         return (cstrConst c,i)
 
 eval (view -> Vproduct p) = do
-    consts <- mapM evalTuple (Product.toPowerList p)
-    eval (cstrProduct $ Product.fromPowerList consts)       -- simplifies to integer
-  where 
+    consts <- mapM evalTuple (toOccurListT p)
+    eval (cstrProduct $ fromOccurListT consts)       -- simplifies to integer
+  where
     evalTuple :: Variable v => (TxsDefs.ValExpr v, Integer) -> IOB.IOB (TxsDefs.ValExpr v, Integer)
     evalTuple (v,i) = do
         c <- eval v
@@ -132,7 +133,7 @@ eval (view -> Vmodulo t n) = do
     valT <- txs2int t
     valN <- txs2int n
     int2txs $ valT `mod` valN
-     
+
 eval (view -> Vgez v) = do
     val <- txs2int v
     bool2txs ( 0 <= val )
