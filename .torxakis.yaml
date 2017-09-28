@@ -1,4 +1,4 @@
-selected-solver: "z3str3"
+selected-solver: "z3"
 available-solvers:
 - solver-id: "z3"
   executable-name: "z3"
