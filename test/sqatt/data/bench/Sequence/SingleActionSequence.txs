@@ -1,0 +1,23 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+-- | Specification of a sequential process that performs a single action
+--   repeatedly.
+
+CHANDEF ChanDefs ::=
+      MyAct
+ENDDEF      
+
+PROCDEF sequence [ Act ] ( ) ::=
+    Act >-> sequence [ Act ] ( )
+ENDDEF
+
+MODELDEF ForeverAct ::=
+    CHAN IN    
+    CHAN OUT   MyAct
+    BEHAVIOUR
+        sequence [ MyAct ] ()
+ENDDEF

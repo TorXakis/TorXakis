@@ -19,7 +19,10 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-9.1
+
+## I need a `criterion` version at least 1.2.2.0 to be able to use the
+## `perRunEnvWithCleanup` function.
+resolver: nightly-2017-09-28
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.

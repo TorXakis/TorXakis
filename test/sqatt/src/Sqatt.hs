@@ -11,15 +11,21 @@ module Sqatt
   ( TxsExample(..)
   , checkSMTSolvers
   , checkCompilers
-  , testExamples
   , checkTxsInstall
   , ExampleResult (..)
   , javaCmd
-  , testExampleSet
-  , testExampleSets
   , TxsExampleSet (..)
   , SutExample (..)
   , toFSSafeStr
+  -- * Testing
+  , testExamples
+  , testExampleSet
+  , testExampleSets
+  -- * Benchmarking
+  , benchmarkExampleSet
+  -- * Logging
+  , sqattLogsRoot
+  , mkLogDir
   -- * Re-exports
   , module Turtle
   )
@@ -31,6 +37,7 @@ import           Control.Exception
 import           Control.Foldl
 import           Control.Monad.Except
 import           Control.Monad.Extra
+import           Criterion.Main
 import           Data.Either
 import           Data.Foldable
 import           Data.Maybe
@@ -425,14 +432,67 @@ testExample logDir ex = it (exampleName ex) $ do
 testExamples :: FilePath -> [TxsExample] -> Spec
 testExamples logDir = traverse_ (testExample logDir)
 
+-- | Make a benchmark from a TorXakis example.
+mkBenchmark :: FilePath -> TxsExample -> Benchmark
+mkBenchmark logDir ex =
+    bench (exampleName ex) $
+        perRunEnvWithCleanup
+            (mktree logDir) -- Environment creation for a single run
+            cleanUp         -- Cleanup action.
+            runBenchmark    -- Benchmark to run
+    where
+      runBenchmark = const $ do
+          res <- runExceptT $ runTest $ execTest logDir ex
+          unless (isRight res) (error $ "Unexpected error: " ++ show res)
+      cleanUp = const $
+          -- We have to clean up the log files in case of a successful run. We
+          -- could back them up, but this will lead to unnecessary complex code
+          -- to keep logs that will probably never be analyzed. If this is
+          -- intended use the testing functionalities of 'sqatt'.
+          rmtree logDir
+
+-- | Make a list of benchmarks from a list of TorXakis examples.
+mkBenchmarks :: FilePath -> [TxsExample] -> [Benchmark]
+mkBenchmarks logDir = (mkBenchmark logDir <$>)
+
+-- | Run benchmarks on a set of examples.
+benchmarkExampleSet :: FilePath -> TxsExampleSet -> Benchmark
+benchmarkExampleSet logDir es@(TxsExampleSet exSetDesc exs) =
+    Criterion.Main.env
+        (mktree thisSetLogDir)
+        (const $ bgroup groupName benchmarks)
+    where thisSetLogDir = esLogDir logDir es
+          groupName = exampleSetName exSetDesc
+          benchmarks = mkBenchmarks thisSetLogDir exs
+
+esLogDir :: FilePath -> TxsExampleSet -> FilePath
+esLogDir logRoot exSet =
+    logRoot </> (  fromString
+                . toFSSafeStr
+                . exampleSetName
+                . exampleSetdesc) exSet
+
 -- | Test an example set.
 testExampleSet :: FilePath -> TxsExampleSet -> Spec
-testExampleSet logDir (TxsExampleSet exSetDesc exs) = do
-  let thisSetLogDir =
-        logDir </> (fromString . toFSSafeStr . exampleSetName) exSetDesc
+testExampleSet logDir es@(TxsExampleSet exSetDesc exs) = do
+  let thisSetLogDir = esLogDir logDir es
   runIO $ mktree thisSetLogDir
   describe (exampleSetName exSetDesc) (testExamples thisSetLogDir exs)
 
 -- | Test a list of example sets.
 testExampleSets :: FilePath -> [TxsExampleSet] -> Spec
 testExampleSets logDir = traverse_ (testExampleSet logDir)
+
+-- | For now the root directory where the logs are stored is not configurable.
+sqattLogsRoot :: FilePath
+sqattLogsRoot = "sqatt-logs"
+
+-- | Create a log directory with the specified prefix.
+mkLogDir :: String -> IO FilePath
+mkLogDir strPrefix = do
+    currDate <- date
+    let logDir =
+            sqattLogsRoot </> fromString (strPrefix ++ currDateStr)
+        currDateStr = toFSSafeStr (show currDate)
+    mktree logDir
+    return logDir

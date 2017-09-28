@@ -16,6 +16,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Examples.All
                      , Sqatt
+                     , Examples.Benchmarks.Sequence
   other-modules:       Examples.Adder
                      , Examples.CustomersOrders
                      , Examples.ControlLoop
@@ -27,8 +28,9 @@ library
                      , Examples.Point
                      , Examples.ReadWriteConflict
                      , Examples.Queue
-                     , Examples.StimulusResponse
+                     , Examples.StimulusResponse                     
   build-depends:       base >= 4.7 && < 5
+                     , criterion >= 1.2.2.0
                      , hspec
                      , turtle >= 1.4.1
                      , system-filepath
