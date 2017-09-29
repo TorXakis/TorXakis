@@ -76,9 +76,24 @@ data  ValExprView v = Vconst  Const
 -- `ValExpr` then a runtime error will occur. When GADT's are used it will be
 -- possible to define instances for `ValExpr` of numeric types.
 instance Num (ValExpr v)
+    where
+        (+)         = error "Symbolic ValExpr Num: +"
+        (*)         = error "Symbolic ValExpr Num: *"
+        abs         = error "Symbolic ValExpr Num: abs"
+        signum      = error "Symbolic ValExpr Num: signum"
+        fromInteger = error "Symbolic ValExpr Num: fromInteger"
+        (-)         = error "Symbolic ValExpr Num: -"
 instance Enum (ValExpr v)
+    where
+        toEnum   = error "Symbolic ValExpr Enum: toEnum"
+        fromEnum = error "Symbolic ValExpr Enum: fromEnum"
 instance Ord v => Real (ValExpr v)
+    where
+        toRational = error "Symbolic ValExpr Real: toRational"
 instance Ord v => Integral (ValExpr v)
+    where
+        quotRem   = error "Symbolic ValExpr Integral: quotRem"
+        toInteger = error "Symbolic ValExpr Integral: toInteger"
 
 -- | ValExpr: value expression
 --

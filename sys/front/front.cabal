@@ -18,7 +18,7 @@ library
   exposed-modules:      TxsAlex
                       , TxsHappy
   
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math 
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math 
   -- TODO: -fglasgow-exts are needed to reduce compile time, execution speed,
   -- and binary size, but they are deprecated. Check which extensions we need
   -- to use.
@@ -44,7 +44,7 @@ test-suite TorXakisFront-BlackBox
 
   main-is:              Main.hs
   
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
   
   build-depends:        base
                       , containers
