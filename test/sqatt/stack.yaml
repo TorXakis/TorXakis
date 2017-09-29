@@ -48,6 +48,7 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - turtle-1.4.1 # See https://github.com/Gabriel439/Haskell-Turtle-Library/issues/103
+- Win32-2.3.1.1
 
 # Override default flag values for local packages and extra-deps
 flags: {}
