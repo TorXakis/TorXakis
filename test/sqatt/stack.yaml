@@ -22,7 +22,7 @@
 
 ## I need a `criterion` version at least 1.2.2.0 to be able to use the
 ## `perRunEnvWithCleanup` function.
-resolver: nightly-2017-09-28
+resolver: lts-9.6
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.

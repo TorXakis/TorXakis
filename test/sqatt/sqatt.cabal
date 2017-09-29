@@ -30,7 +30,7 @@ library
                      , Examples.Queue
                      , Examples.StimulusResponse                     
   build-depends:       base >= 4.7 && < 5
-                     , criterion >= 1.2.2.0
+                     , criterion
                      , hspec
                      , turtle >= 1.4.1
                      , system-filepath
