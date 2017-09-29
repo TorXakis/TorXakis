@@ -58,9 +58,8 @@ import           XmlFormat
 import qualified TxsAlex
 import qualified TxsHappy
 
--- import from solve
-import           RegexAlex
-import           RegexPosixHappy
+-- import from RegexRepr
+import           RegexRepr
 
 -- ----------------------------------------------------------------------------------------- --
 -- eval :  evaluation of value expression
@@ -315,7 +314,7 @@ evalSSR :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB Const
 evalSSR (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
        ( "strinre",[v1,v2] ) -> do rawRegex     <- T.unpack <$> txs2regex v2
-                                   let haskellRegex = T.unpack $ regexPosixParser (regexLexer rawRegex)
+                                   let haskellRegex = T.unpack ( xsd2posix (T.pack rawRegex ) )
                                    value <- T.unpack <$> txs2str v1
                                    bool2txs $ value =~ haskellRegex
        _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "evalSSR: error in standard Regex opn" ]

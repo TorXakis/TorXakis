@@ -22,9 +22,7 @@ library
                       , SMT
                       , Solve
 
-  other-modules:        RegexSMTHappy
-                      , RegexXSDtoSMT
-                      , SMTInternal
+  other-modules:        SMTInternal
                       , SMT2TXS
                       , SMTAlex
                       , SMTHappy
@@ -48,6 +46,7 @@ library
                       , defs
                       , value
                       , solvedefs
+                      , regexrepr
 
   build-tools:          alex
                       , happy
@@ -82,8 +81,6 @@ test-suite SmtSolver-WhiteBox
                       , RandIncrementChoice
                       , RandPartition
                       , RandTrueBins
-                      , RegexSMTHappy
-                      , RegexXSDtoSMT
                       , SMT
                       , SMT2TXS
                       , SMTAlex
@@ -105,7 +102,7 @@ test-suite SmtSolver-WhiteBox
                       , MissingH
                       , defs
                       , random
-                      , random-shuffle                      
+                      , random-shuffle
                       , solvedefs
                       , value
                       , text

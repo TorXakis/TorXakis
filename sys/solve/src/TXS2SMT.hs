@@ -45,14 +45,12 @@ import           CstrId
 import           FreeMonoidX
 import           FuncId
 import           Product
+import           RegexRepr
 import           SortId
 import           StdTDefs
 import           Sum
 import           TxsDefs
 import           VarId
-
-import           RegexSMTHappy (encodeStringLiteral)
-import           RegexXSDtoSMT
 
 -- ----------------------------------------------------------------------------------------- --
 -- initialMapInstanceTxsToSmtlib
@@ -225,7 +223,7 @@ constToSMT _ (Cbool b) = if b
                             else "false"
 constToSMT _ (Cint n) = integer2smt n
 constToSMT _ (Cstring s)  =  "\"" <> encodeStringLiteral s <> "\""
-constToSMT _ (Cregex r)  =  parseRegex r
+constToSMT _ (Cregex r)  =  xsd2smt r
 constToSMT mapI (Cstr cd [])   =        justLookup mapI (IdCstr cd)
 constToSMT mapI (Cstr cd args') = "(" <> justLookup mapI (IdCstr cd) <> " " <> T.intercalate " " (map (constToSMT mapI) args') <> ")"
 constToSMT _ x = error ("Illegal input constToSMT - " <> show x)

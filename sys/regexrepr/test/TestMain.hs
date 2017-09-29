@@ -8,13 +8,13 @@ module Main where
 import System.Exit
 import Test.HUnit
 
-import TestRegexPosix
-
+import TestXsd2Posix
+import TestXsd2Smt
 
 testSmtList :: Test
-testSmtList = TestList [
-        TestLabel "RegexPosix"              testRegexPosixList
-    ]
+testSmtList = TestList [ TestLabel "Regex Xsd 2 Posix" testXsd2PosixList
+                       , TestLabel "Regex Xsd 2 Smt"   testXsd2SmtList
+                       ]
 
 main :: IO ()
 main = do
