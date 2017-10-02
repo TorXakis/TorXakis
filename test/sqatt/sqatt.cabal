@@ -16,8 +16,9 @@ library
   hs-source-dirs:      src
   exposed-modules:     Examples.All
                      , Sqatt
-                     , Examples.Benchmarks.Sequence
-  other-modules:       Examples.Adder
+                     , Benchmarks.All
+  other-modules:       Benchmarks.Sequence
+                     , Examples.Adder
                      , Examples.CustomersOrders
                      , Examples.ControlLoop
                      , Examples.DispatchProcess
@@ -28,7 +29,7 @@ library
                      , Examples.Point
                      , Examples.ReadWriteConflict
                      , Examples.Queue
-                     , Examples.StimulusResponse                     
+                     , Examples.StimulusResponse
   build-depends:       base >= 4.7 && < 5
                      , criterion
                      , hspec

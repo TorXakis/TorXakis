@@ -1,16 +1,11 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -Wno-all #-}
--- TODO: remove 'OPTIONS_GHC' after finishing this task.
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+import           Benchmarks.All
 import           Criterion.Main
-import           Criterion.Main.Options
-import qualified Examples.Benchmarks.Sequence as Sequence
-import           Sqatt
-import           System.Environment
 
 main :: IO ()
-main = do
-    logDir <- mkLogDir "bench-"
-    matches <- getArgs -- For now we use the arguments to match as glob patterns
-    runMode (Run defaultConfig Glob matches)
-        [ benchmarkExampleSet logDir Sequence.benchmarksSet
-        ]
+main = defaultMain allBenchmarks
+

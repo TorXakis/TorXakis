@@ -300,9 +300,10 @@ runTxsWithExample mLogDir ex = Concurrently $ do
         txsUIShell :: Shell Line
         txsUIShell =
             case mUiLogDir of
-                Nothing -> inproc txsUICmd
-                                  (port:imf)
-                                  (input cmdsFile)
+                Nothing ->
+                    either id id <$> inprocWithErr txsUICmd
+                                                        (port:imf)
+                                                        (input cmdsFile)
                 Just uiLogDir -> do
                     h <- appendonly $ uiLogDir </> "txsui.out.log"
                     line <- either id id <$> inprocWithErr txsUICmd
@@ -331,7 +332,7 @@ runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @
 runInproc mLogDir cmd cmdArgs procInput =
     case mLogDir of
         Nothing ->
-            try $ sh $ inproc cmd cmdArgs procInput
+            try $ sh $ inprocWithErr cmd cmdArgs procInput
         Just logDir ->
             try $ output logDir $
                 either id id <$> inprocWithErr cmd cmdArgs procInput
