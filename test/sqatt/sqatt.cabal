@@ -19,6 +19,7 @@ library
                      , Benchmarks.All
   other-modules:       Benchmarks.Sequence
                      , Benchmarks.Choice
+                     , Benchmarks.Synchronization
                      , Examples.Adder
                      , Examples.CustomersOrders
                      , Examples.ControlLoop

@@ -1,0 +1,35 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+PROCDEF synchronizedN[act](n :: Int) ::=
+     ([[ n == 1 ]] =>> sequence[act]())
+  ##
+     ([[ n >  1 ]] =>> sequence[act]() |[act]| synchronizedN[act](n - 1))
+ENDDEF
+
+MODELDEF ForeverSynchronized3 ::=
+    CHAN IN
+    CHAN OUT MyAct
+    BEHAVIOUR synchronizedN[MyAct](3)
+ENDDEF
+
+MODELDEF ForeverSynchronized6 ::=
+    CHAN IN
+    CHAN OUT MyAct
+    BEHAVIOUR synchronizedN[MyAct](6)
+ENDDEF
+
+MODELDEF ForeverSyncAlt2 ::=
+    CHAN IN
+    CHAN OUT MyAct, MyOtherAct
+    BEHAVIOUR
+        sequence[MyAct]()
+        |[MyAct]|
+      ( sequence[MyOtherAct]() -- TODO: are parenthesis needed?
+        |[MyOtherAct]|
+        sequenceAlternate[MyAct, MyOtherAct]()
+      )
+ENDDEF        
