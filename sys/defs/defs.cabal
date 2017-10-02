@@ -41,6 +41,7 @@ library
                       , Sum
                       , Product
                       , FreeMonoidX
+                      , RegexXSD2Posix
                       
   other-modules:        BehExprDefs
                       , ConnectionDefs
@@ -65,16 +66,23 @@ library
 
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
   
-  build-depends:        base
+  build-tools:          happy
+  
+  build-depends:        array
+                      , base
                       , bytestring
                       , containers
                       , deepseq
                       , hexpat
-                      , random
-                      , MissingH
-                      , text
                       , mtl
                       , newtype
+                      , random
+                      , regex-tdfa
+                      , text
+                      , MissingH
+                      
+                      , lexregexxsd
+                      
   default-language:     Haskell2010
                     
 
@@ -88,15 +96,19 @@ test-suite defs-BlackBox
                      , ValExprSpec
                      , ProductSpec
                      , FreeMonoidXSpec
+                     , XSD2PosixSpec
                        
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
   
   build-depends:       base
                      , containers
+                     , hspec
+                     , hspec-contrib
                      , ieee754
+                     , text
+                     , HUnit
                      , MissingH
                      , QuickCheck
-                     , hspec
                      
                      , defs
   default-language:    Haskell2010

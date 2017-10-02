@@ -4,19 +4,21 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-module TestXsd2Smt
+module TestXSD2SMT
 (
-testXsd2SmtList
+testXSD2SMTList
 )
 where
 -- general Haskell imports
 import           Data.Char
 import           Data.Text     (Text)
 import qualified Data.Text     as T
+--import qualified Debug.Trace   as Trace
 import           Numeric (showHex)
 import           Test.HUnit
 
-import           RegexRepr
+import           RegexXSD2SMT
+
 
 -- | escape non-printable characters
 -- see http://cvc4.cs.stanford.edu/wiki/Strings
@@ -32,8 +34,8 @@ escape (x:xs)
     | otherwise                     = x:escape xs
 
 -- ----------------------------------------------------------------------------
-testXsd2SmtList :: Test
-testXsd2SmtList = TestList [
+testXSD2SMTList :: Test
+testXSD2SMTList = TestList [
         TestLabel "Empty"                    testEmpty,
         TestLabel "FromChar"                 testFromChar,
         TestLabel "From Digit Char"          testFromDigitChar,

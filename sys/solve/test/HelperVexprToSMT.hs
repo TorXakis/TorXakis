@@ -53,7 +53,7 @@ createVconst c@(Cint n) =
         then TXS2SMTVExprTest (cstrConst c) ("(- " ++ show (abs n) ++ ")")
         else TXS2SMTVExprTest (cstrConst c) (show n)
 createVconst c@(Cstring str) =
-    TXS2SMTVExprTest (cstrConst c) ("\"" ++ escape (T.unpack str) ++ "\"")
+    TXS2SMTVExprTest (cstrConst c) ("\"" ++ HelperToSMT.escape (T.unpack str) ++ "\"")
 createVconst _               = error "Not supported / Not possible"
 
 createVvar :: VarId -> TXS2SMTVExprTest

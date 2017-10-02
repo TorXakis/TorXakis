@@ -47,6 +47,7 @@ import qualified EnvData
 -- import from defs
 import           FreeMonoidX
 import           Product
+import           RegexXSD2Posix
 import           StdTDefs
 import           Sum
 import           TxsDefs
@@ -58,8 +59,6 @@ import           XmlFormat
 import qualified TxsAlex
 import qualified TxsHappy
 
--- import from RegexRepr
-import           RegexRepr
 
 -- ----------------------------------------------------------------------------------------- --
 -- eval :  evaluation of value expression

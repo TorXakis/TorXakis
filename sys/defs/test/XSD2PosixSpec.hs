@@ -4,21 +4,21 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-module TestXsd2Posix
-(
-testXsd2PosixList
-)
+module XSD2PosixSpec
+
 where
 -- general Haskell imports
 import           Data.Text       (Text)
 import qualified Data.Text       as T
+import           Test.Hspec
+import           Test.Hspec.Contrib.HUnit
 import           Test.HUnit
 
-import           RegexRepr
+import           RegexXSD2Posix
 
 -- ----------------------------------------------------------------------------
-testXsd2PosixList :: Test
-testXsd2PosixList = TestList [
+testXSD2PosixList :: Test
+testXSD2PosixList = TestList [
         TestLabel "Empty"                    testEmpty,
         TestLabel "FromChar"                 testFromChar,
         TestLabel "From Digit Char"          testFromDigitChar,
@@ -296,3 +296,6 @@ testCharGroupRangeChars3 = testTestObject "char group range chars 3" $ charGroup
 
 testDot :: Test
 testDot = testTestObject "dot" regexDot
+
+spec :: Spec
+spec = fromHUnitTest (TestLabel "run all test" testXSD2PosixList)

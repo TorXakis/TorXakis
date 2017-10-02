@@ -71,7 +71,7 @@ import qualified Data.Set      as Set
 import           Data.Text     (Text)
 import qualified Data.Text     as T
 import           Debug.Trace   as Trace
---import           Text.Regex.TDFA  --Needed for strinre
+import           Text.Regex.TDFA
 
 import           ConstDefs
 import           CstrId
@@ -79,8 +79,7 @@ import           FreeMonoidX   ((<.>))
 import qualified FreeMonoidX   as FMX
 import           FuncId
 import           Product
---import           RegexAlex            --Needed for strinre
---import           RegexPosixHappy      --Needed for strinre
+import           RegexXSD2Posix
 import           Sum
 import           ValExprDefs
 import           Variable
@@ -390,8 +389,8 @@ flatten (x:xs)                   = x : flatten xs
 
 -- | Apply String In Regular Expression operator on the provided value expressions.
 -- Preconditions are /not/ checked.
---cstrStrInRe :: ValExpr v -> ValExpr v -> ValExpr v
---cstrStrInRe ves@(view -> Vconst (Cstring s)) vei@(view -> Vconst (Cregex r)) = cstrConst (Cbool (s =~ regexPosixParser (regexLexer r)))
+cstrStrInRe :: ValExpr v -> ValExpr v -> ValExpr v
+cstrStrInRe ves@(view -> Vconst (Cstring s)) vei@(view -> Vconst (Cregex r)) = cstrConst (Cbool (T.unpack s =~ T.unpack (xsd2posix r) ) )
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)

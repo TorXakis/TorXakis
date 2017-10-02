@@ -26,7 +26,6 @@ module TXS2SMT
 , declarationsToSMT    --  :: (Variable v) => Map.Map Ident String -> [v] -> String
 , justLookup           -- Test Purposes -- :: Map.Map Ident String -> Ident -> String
 , valexprToSMT         -- Test Purposes -- :: (Variable v) => Map.Map Ident String -> (ValExpr v) -> String
-, encodeStringLiteral
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -45,7 +44,8 @@ import           CstrId
 import           FreeMonoidX
 import           FuncId
 import           Product
-import           RegexRepr
+import           RegexXSD2SMT
+import           SMTString
 import           SortId
 import           StdTDefs
 import           Sum
@@ -222,7 +222,7 @@ constToSMT _ (Cbool b) = if b
                             then "true"
                             else "false"
 constToSMT _ (Cint n) = integer2smt n
-constToSMT _ (Cstring s)  =  "\"" <> encodeStringLiteral s <> "\""
+constToSMT _ (Cstring s)  =  "\"" <> stringToSMT s <> "\""
 constToSMT _ (Cregex r)  =  xsd2smt r
 constToSMT mapI (Cstr cd [])   =        justLookup mapI (IdCstr cd)
 constToSMT mapI (Cstr cd args') = "(" <> justLookup mapI (IdCstr cd) <> " " <> T.intercalate " " (map (constToSMT mapI) args') <> ")"

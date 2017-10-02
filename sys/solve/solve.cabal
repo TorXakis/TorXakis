@@ -19,7 +19,9 @@ library
                       , RandPartition
                       , RandTrueBins
                       , RandIncrementChoice
+                      , RegexXSD2SMT
                       , SMT
+                      , SMTString
                       , Solve
 
   other-modules:        SMTInternal
@@ -46,7 +48,7 @@ library
                       , defs
                       , value
                       , solvedefs
-                      , regexrepr
+                      , lexregexxsd
 
   build-tools:          alex
                       , happy
@@ -70,7 +72,6 @@ test-suite SmtSolver-WhiteBox
                       , TestExternal
                       , TestFuncDefToSMT
                       , TestRecursiveFunction
-                      , TestRegexSMT
                       , TestSMTCount
                       , TestSMTValue
                       , TestSortDefToSMT
@@ -81,11 +82,13 @@ test-suite SmtSolver-WhiteBox
                       , RandIncrementChoice
                       , RandPartition
                       , RandTrueBins
+                      , RegexXSD2SMT
                       , SMT
                       , SMT2TXS
                       , SMTAlex
                       , SMTHappy
                       , SMTInternal
+                      , SMTString
                       , SMTStringAlex
                       , SMTStringHappy
                       , SolveRandParam
@@ -108,6 +111,7 @@ test-suite SmtSolver-WhiteBox
                       , text
 
                       , coreenv
+                      , lexregexxsd
 
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
 
@@ -123,6 +127,7 @@ test-suite SmtSolver-BlackBox
                       , TestMultipleInstances
                       , TestPushPop
                       , TestSolvers
+                      , TestXSD2SMT
 
   build-depends:        base
                       , containers
