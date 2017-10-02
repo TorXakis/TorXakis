@@ -1,0 +1,22 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+CHANDEF ChanDefs ::=
+    foo
+  ; bar
+ENDDEF
+
+PROCDEF choice[act0, act1]() ::=
+       act0 >-> choice[act0, act1]()
+    ##
+       act1 >-> choice[act0, act1]()
+ENDDEF
+
+MODELDEF ForeverChoice ::=
+    CHAN IN  foo, bar
+    CHAN OUT
+    BEHAVIOUR choice[foo, bar]()
+ENDDEF

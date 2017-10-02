@@ -18,6 +18,7 @@ library
                      , Sqatt
                      , Benchmarks.All
   other-modules:       Benchmarks.Sequence
+                     , Benchmarks.Choice
                      , Examples.Adder
                      , Examples.CustomersOrders
                      , Examples.ControlLoop
