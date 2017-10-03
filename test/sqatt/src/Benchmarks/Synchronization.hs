@@ -45,12 +45,35 @@ alternateTwoProcs = TxsExample
     , expectedResult = Pass
     }
 
+
+-- do100Acts3procsIStep :: TxsExample
+-- do100Acts3procsIStep = TxsExample
+--     { exampleName = "3 processes with internal action"
+--     , txsModelFiles = modelFiles
+--     , txsCommandsFile = txsCmdPathBench benchDir "ForeverSynchronizedIStep3"
+--     , sutExample = Nothing
+--     , expectedResult = Pass
+--     }
+
+manyActsSyncTop :: TxsExample
+manyActsSyncTop = TxsExample
+    { exampleName = "many processes synchronizing at the top"
+    , txsModelFiles = modelFiles
+    , txsCommandsFile = txsCmdPathBench benchDir "ManyActsSyncTop"
+    , sutExample = Nothing
+    , expectedResult = Pass
+    }
+
+
+
 benchmarksSet :: TxsExampleSet
 -- TODO: do100Acts3procs hangs TorXakis, see https://github.com/TorXakis/TorXakis/issues/268
 -- benchmarksSet = TxsExampleSet "Synchronization" [ do100Acts3procs
 --                                                 , do100Acts6procs
 --                                                 , alternateTwoProcs
 --                                                 ]
-benchmarksSet = TxsExampleSet "Synchronization" [ alternateTwoProcs ]
+benchmarksSet = TxsExampleSet "Synchronization" [ alternateTwoProcs
+                                                , manyActsSyncTop
+                                                ]
 
 

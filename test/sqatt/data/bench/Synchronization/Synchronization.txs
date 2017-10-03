@@ -32,4 +32,81 @@ MODELDEF ForeverSyncAlt2 ::=
         |[MyOtherAct]|
         sequenceAlternate[MyAct, MyOtherAct]()
       )
-ENDDEF        
+ENDDEF
+
+PROCDEF synchronizedNIStep[act](n :: Int) ::=
+     ([[ n == 1 ]] =>> sequenceIStep[act]())
+  ##
+     ([[ n >  1 ]] =>> sequenceIStep[act]() |[act]| synchronizedNIStep[act](n - 1))
+ENDDEF
+
+MODELDEF ForeverSynchronizedIStep3 ::=
+    CHAN IN
+    CHAN OUT MyAct
+    BEHAVIOUR synchronizedN[MyAct](3)
+ENDDEF
+
+PROCDEF syncAlternateN[act0, act1](n :: Int) ::=
+     ([[ n == 1 ]] =>> sequenceAlternate[act0, act1]())
+  ##
+     ([[ n >  1 ]] =>> sequenceAlternate[act0, act1]()
+                       |[act0, act1]|
+                       syncAlternateN[act0, act1](n - 1)
+     )
+ENDDEF
+
+MODELDEF SyncAlternate6 ::=
+    CHAN IN
+    CHAN OUT MyAct, MyOtherAct
+    BEHAVIOUR syncAlternateN[MyAct, MyOtherAct](6)
+ENDDEF
+
+CHANDEF SyncChansDef ::=
+    SyncAct0
+  ; SyncAct1
+  ; SyncAct2
+  ; SyncAct3
+  ; SyncAct4
+  ; SyncAct5
+  ; SyncAct6
+  ; SyncAct7
+  ; SyncAct8
+ENDDEF
+
+-- | Many actions, synchronized at the top level.
+MODELDEF ManyActsSyncTop ::=
+    CHAN IN
+    CHAN OUT SyncAct0
+           , SyncAct1
+           , SyncAct2
+           , SyncAct3
+           , SyncAct4
+           , SyncAct5
+           , SyncAct6
+           , SyncAct7
+           , SyncAct8
+    BEHAVIOUR
+        (   sequence[SyncAct0]()
+        ||| sequence[SyncAct1]()
+        ||| sequence[SyncAct2]()
+        ||| sequence[SyncAct3]()
+        ||| sequence[SyncAct4]()
+        ||| sequence[SyncAct5]()
+        ||| sequence[SyncAct6]()
+        ||| sequence[SyncAct7]()
+        ||| sequence[SyncAct8]()
+        )
+        |[ SyncAct0, SyncAct1, SyncAct2, SyncAct3, SyncAct4
+         , SyncAct5, SyncAct6, SyncAct7, SyncAct8
+        ]|
+        (   sequence[SyncAct0]()
+        ||| sequence[SyncAct1]()
+        ||| sequence[SyncAct2]()
+        ||| sequence[SyncAct3]()
+        ||| sequence[SyncAct4]()
+        ||| sequence[SyncAct5]()
+        ||| sequence[SyncAct6]()
+        ||| sequence[SyncAct7]()
+        ||| sequence[SyncAct8]()
+        )        
+ENDDEF
