@@ -27,7 +27,7 @@ library
                       , Step
                       , Test
                       
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
   
   build-depends:        base
                       , containers
