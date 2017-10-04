@@ -551,41 +551,38 @@ PROCDEF flow [ In_Correction       :: Int # BatchId
         measureId     = id % nMeasure;
         correctId     = id % nCorrect 
     IN
-        In_ProductId ! id ? inProductId >->
-        (
-            -- triggers
-                (       In_ProduceCmd ! produceId ? inProduceCmd [[ batchId(inProduceCmd) == inProductId ]] 
-                    >-> Out_ProduceReport ! produceId ? produceReport :: ProduceReport [[ batchId(batchInfo(produceReport)) == inProductId ]]
-                    >-> In_ProduceReport ! correctId ! produceReport 
-                    >-> EXIT ! inProductId
-                )
-            ||| 
-                (       In_MeasureCmd ! measureId ? inMeasureCmd [[ batchId(inMeasureCmd) == inProductId ]] 
-                    >-> Out_MeasureReport ! measureId ? measureReport :: MeasureReport [[ batchId(batchInfo(measureReport)) == inProductId ]]
-                    >-> In_MeasureReport ! correctId ! measureReport 
-                    >-> EXIT ! inProductId
-                )
-            |||
-                (       In_CorrectCmd ! correctId ? inCorrectCmd [[ batchId(inCorrectCmd) == inProductId ]] 
-                    >-> Out_Correction ! correctId ! inProductId
-                    >-> In_Correction ! produceId ! inProductId
-                    >-> EXIT ! inProductId
-                )
-            -- material flow
-            |||
-                (     materialFlow [ In_ProduceMaterial, Out_ProduceMaterial, In_MeasureMaterial, Out_MeasureMaterial ] ( inProductId, produceId, measureId )
-                  >>> EXIT ! inProductId
-                )
-        ) 
-        >>> ACCEPT ? inProductId IN
-                    Release ! inProductId
+        In_ProductId ! id ? inProductId >-> (
+            (
+                -- triggers
+                    (       In_ProduceCmd ! produceId ? inProduceCmd [[ batchId(inProduceCmd) == inProductId ]] 
+                        >-> Out_ProduceReport ! produceId ? produceReport :: ProduceReport [[ batchId(batchInfo(produceReport)) == inProductId ]]
+                        >-> In_ProduceReport ! correctId ! produceReport 
+                        >-> EXIT
+                    )
+                ||| 
+                    (       In_MeasureCmd ! measureId ? inMeasureCmd [[ batchId(inMeasureCmd) == inProductId ]] 
+                        >-> Out_MeasureReport ! measureId ? measureReport :: MeasureReport [[ batchId(batchInfo(measureReport)) == inProductId ]]
+                        >-> In_MeasureReport ! correctId ! measureReport 
+                        >-> EXIT
+                    )
+                |||
+                    (       In_CorrectCmd ! correctId ? inCorrectCmd [[ batchId(inCorrectCmd) == inProductId ]] 
+                        >-> Out_Correction ! correctId ! inProductId
+                        >-> In_Correction ! produceId ! inProductId
+                        >-> EXIT
+                    )
+                -- material flow
+                |||
+                    materialFlow [ In_ProduceMaterial, Out_ProduceMaterial, In_MeasureMaterial, Out_MeasureMaterial ] ( inProductId, produceId, measureId )
+            ) 
+            >>>     Release ! inProductId
                 >-> flow [ In_Correction
                          , In_ProduceCmd, In_ProduceMaterial, Out_ProduceReport, Out_ProduceMaterial
                          , In_MeasureCmd, In_MeasureMaterial, Out_MeasureReport, Out_MeasureMaterial
                          , In_CorrectCmd, In_ProduceReport, In_MeasureReport, Out_Correction
                          , In_ProductId, Release
                          ] ( id )
-            NI
+        )
     NI
 ENDDEF
 
