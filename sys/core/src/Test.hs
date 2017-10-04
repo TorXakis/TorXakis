@@ -217,7 +217,13 @@ testIOCOfullPurp depth lastDelta step =
          -- lift $ hPutStrLn stderr $ "\n***purpMenus: " ++ (TxsShow.fshow purpMenus)
          input     <- randPurpMenu modMenu purpMenus
          -- lift $ hPutStrLn stderr $ "\n***input: " ++ (TxsShow.fshow input)
-         let iochoice = isJust input && (lastDelta || ioRand)
+         [(_,parval)] <- IOC.getParams ["param_Test_inputEager"]
+         let iochoice = case (read parval::Integer) of             -- input (True) or output
+                          0 -> isJust input && ( lastDelta || ioRand )
+                          1 -> error "TXS: undefined input-eagerness level\n"
+                          2 -> error "TXS: undefined input-eagerness level\n"
+                          3 -> isJust input
+                          _ -> error "TXS: undefined input-eagerness level\n"
          -- lift $ hPutStrLn stderr $ "\n***iochoice: " ++ (show iochoice)
          if  iochoice
            then do                                                  -- try input, input/=Nothing

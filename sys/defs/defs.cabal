@@ -63,7 +63,7 @@ library
                       , Variable
 
 
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
   
   build-depends:        base
                       , bytestring
@@ -78,8 +78,7 @@ library
   default-language:     Haskell2010
                     
 
--- TODO: QUESTION: why is this called `defs-BlackBox-test`?
-test-suite defs-BlackBox-test
+test-suite defs-BlackBox
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
                      
@@ -90,14 +89,14 @@ test-suite defs-BlackBox-test
                      , ProductSpec
                      , FreeMonoidXSpec
                        
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
   
   build-depends:       base
                      , containers
+                     , ieee754
                      , MissingH
                      , QuickCheck
                      , hspec
-                     , defs
-                     , ieee754                     
                      
+                     , defs
   default-language:    Haskell2010

@@ -10,7 +10,7 @@ available-solvers:
   flags:
   - "-smt2"
   - "-in"
-  - "-smt.string_solver=z3str3"
+  - "smt.string_solver=z3str3"
 - solver-id: "cvc4"
   executable-name: "cvc4"
   flags:
