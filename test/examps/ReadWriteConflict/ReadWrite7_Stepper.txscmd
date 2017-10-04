@@ -1,4 +1,4 @@
 stepper Model7
 step 7
-trace txs $> testTrace.log
+trace proc $> testTrace.log
 exit

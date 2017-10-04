@@ -32,9 +32,9 @@ test0 = TxsExample
 
 test1 :: TxsExample
 test1 = TxsExample
-  { exampleName = "State Automation"
+  { exampleName = "State Automaton"
   , txsModelFiles = [txsFilePath exampDir "AdderStAut"]
-  , txsCommandsFile = txsCmdPath exampDir "Adder_Tester"
+  , txsCommandsFile = txsCmdPath exampDir "AdderStautTester"
   , sutExample =
     Just (JavaExample
            adderJavaPath
@@ -45,7 +45,7 @@ test1 = TxsExample
 
 test2 :: TxsExample
 test2 = TxsExample
-  { exampleName = "Parallel adders"
+  { exampleName = "Parallel Adders"
   , txsModelFiles = [txsFilePath exampDir "Adder"]
   , txsCommandsFile = txsCmdPath exampDir "Adder3_Tester"
   , sutExample =
@@ -56,8 +56,25 @@ test2 = TxsExample
   , expectedResult = Pass
   }
 
+
+test3 :: TxsExample
+test3 = TxsExample
+  { exampleName = "Replay Adder"
+  , txsModelFiles = [ txsFilePath exampDir "Adder"
+                    , txsFilePath exampDir "AdderReplay"
+                    , txsPurposeFromTracePath "AdderPurpose"
+                    ]
+  , txsCommandsFile = txsCmdPath exampDir "AdderReplay"
+  , sutExample =
+    Just (JavaExample
+           adderJavaPath
+           ["7890"]
+         )
+  , expectedResult = Message "Goal replayAdd: Hit"
+  }
+
 examples :: [TxsExample]
-examples = [test0, test1, test2]
+examples = [test0, test1, test2, test3]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Adder" examples

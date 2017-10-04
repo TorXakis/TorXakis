@@ -98,7 +98,7 @@ main = withSocketsDo $ do
 cmdsIntpr :: IOS.IOS ()
 cmdsIntpr = do
      modus      <- gets IOS.modus
-     (cmd,args) <- IFS.getCmd
+     (cmd, args) <- IFS.getCmd
      case cmd of
 -- ----------------------------------------------------------------------------------- modus --
        "START"     |       IOS.isNoned    modus  ->  cmdStart     args
@@ -853,10 +853,10 @@ cmdPath _ = do
 cmdTrace :: String -> IOS.IOS ()
 cmdTrace args = do
      path  <- lift TxsCore.txsPath
-     let trace = [ a | (_,a,_) <- path ]
+     let trace = [ a | (_, a ,_) <- path ]
      case words args of
        []       -> do IFS.mack [ TxsShow.showN n 6 ++ ":  " ++ TxsShow.fshow a
-                               | (n,(_,a,_)) <- zip [1..] path
+                               | (n, (_, a, _)) <- zip [1..] path
                                ]
                       IFS.pack "TRACE" ["\n"]
                       cmdsIntpr

@@ -1,4 +1,4 @@
 stepper Model
 step 3
-trace txs $> testTrace.log
+trace proc $> testTrace.log
 exit

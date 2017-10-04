@@ -47,7 +47,10 @@ ENDDEF
 PROCDEF  mapperA [ Plus, Minus :: Int # Int; Result :: Int;
                    Sin :: String # Int # Int;  Sout :: Int ] ( )
     ::=
-                 Plus ? x ? y
+            -- Note that the two actions below define a mapper rule: actions of
+            -- the form `Plus ? x ? y` will be mapped to a `Sin ! "Plus" ! x !
+            -- y` action, and this is what will be observed by the SUT.
+                 Plus ? x ? y         
             >->  Sin ! "Plus" ! x ! y
             >->  mapperA [ Plus, Minus, Result, Sin, Sout ] ( )
         ##
@@ -96,6 +99,11 @@ MAPPERDEF  MapS
                    Sout
         CHAN OUT   Result,
                    Sin
+        -- The SYNC keyword here specifies which are the actions that will be
+        -- observed in this behavior. For instance, we can observe `Plus |
+        -- Sin`, `Minus | Sin` or `Sout | Result`, but not individual actions
+        -- such as `Plus`, `Sin`, `Minus`, etc.
+        -- 
         SYNC       { Plus | Sin },
                    { Minus | Sin },
                    { Sout | Result }

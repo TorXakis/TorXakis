@@ -1,5 +1,5 @@
 param param_Sut_deltaTime 10000
 tester Model Sut
 test 10
-trace txs $> testTrace.log
+trace proc $> testTrace.log
 exit
