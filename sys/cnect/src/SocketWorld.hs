@@ -61,8 +61,35 @@ import           TxsDDefs
 import           TxsDefs
 import qualified Utils
 
+
 -- ----------------------------------------------------------------------------------------- --
---
+-- socket world
+
+data SockWorld = SockWorld { tow    :: ( Maybe (Chan TxsDDefs.SAction)
+                                       , Maybe ThreadId
+                                       , [TxsDDefs.ConnHandle]
+                                       )                  -- ^ connections to world
+                           , frow   :: ( Maybe (Chan TxsDDefs.SAction)
+                                       , [ThreadId]
+                                       , [TxsDDefs.ConnHandle]
+                                       )                  -- ^ connections from world
+                           , params :: Params             -- ^ TorXakis parameters with checks
+                           }
+
+instance EWorld SockWorld
+  where
+     startW  = startSockWorld
+     stopW   = stopSockWorld
+     putToW  = putToSockWorld
+     getFroW = getFroSockWorld
+ 
+
+-- ----------------------------------------------------------------------------------------- --
+-- socketworld as eworld
+
+
+   
+
 
 
 

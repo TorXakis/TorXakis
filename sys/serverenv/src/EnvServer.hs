@@ -90,18 +90,18 @@ data EnvS  = EnvS { host    :: String                    -- ^ host of server cli
 
 envsNone    :: EnvS
 envsNone   = EnvS { host      = ""
-                    , portNr    = 0
-                    , servhs    = stderr
-                    , modus     = Noned
-                    , uid       = 1000
-                    , tdefs     = TxsDefs.empty
-                    , sigs      = Sigs.empty
-                    , locvars   = []
-                    , locvals   = Map.empty
-                    , tow       = ( Nothing, Nothing, [] )
-                    , frow      = ( Nothing, [],      [] )
-                    , params    = initParams
-                    }
+                  , portNr    = 0
+                  , servhs    = stderr
+                  , modus     = Noned
+                  , uid       = 1000
+                  , tdefs     = TxsDefs.empty
+                  , sigs      = Sigs.empty
+                  , locvars   = []
+                  , locvals   = Map.empty
+                  , tow       = ( Nothing, Nothing, [] )
+                  , frow      = ( Nothing, [],      [] )
+                  , params    = initParams
+                  }
 
 
 -- ----------------------------------------------------------------------------------------- --

@@ -135,6 +135,9 @@ import qualified Behave
 import qualified BTree
 import           Expand              (relabel)
 
+-- import from cnect
+import qualified EWorld
+
 -- import from coreenv
 import qualified EnvCore             as IOC
 import qualified EnvData
@@ -153,6 +156,7 @@ import qualified SMT
 import qualified Solve
 import qualified SolveDefs
 import qualified SolveDefs.Params
+
 -- import from value
 import qualified Eval
 
@@ -409,18 +413,12 @@ txsRanSolve vexp  =  do
 --   Only possible when txscore is initialized.
 --
 -- modus transition general.
-txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action)  -- ^ callback function for sending an input action to the SUT (world).
-                                                            --   The callback function is called with a proposed input action.
-                                                            --   When the SUT has produced an output action,
-                                                            --   the callback function must return that output action,
-                                                            --   otherwise the callback function must return the input action.
-           -> IOC.IOC TxsDDefs.Action                       -- ^ callback function for receiving an output action from the SUT (world).
-                                                            --   The callback function signals that the SUT has produced an output action.
+txsSetTest :: (EWorld w) => w
            -> TxsDefs.ModelDef                              -- ^ model definition.
            -> Maybe TxsDefs.MapperDef                       -- ^ optional mapper definition.
            -> Maybe TxsDefs.PurpDef                         -- ^ optional test purpose definition.
            -> IOC.IOC ()
-txsSetTest putToW getFroW moddef mapdef purpdef  =  do
+txsSetTest eWorld moddef mapdef purpdef  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning {} ->
@@ -435,8 +433,7 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
                                  , IOC.modeldef  = moddef
                                  , IOC.mapperdef = mapdef
                                  , IOC.purpdef   = purpdef
-                                 , IOC.puttow    = putToW
-                                 , IOC.getfrow   = getFroW
+                                 , IOC.eworld    = eWorld
                                  , IOC.behtrie   = []
                                  , IOC.inistate  = 0
                                  , IOC.curstate  = 0
@@ -457,7 +454,7 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
        _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
             TxsCore.txsStop
-            TxsCore.txsSetTest putToW getFroW moddef mapdef purpdef
+            TxsCore.txsSetTest eWorld moddef mapdef purpdef
 
 startTester :: TxsDefs.ModelDef ->
                Maybe TxsDefs.MapperDef ->

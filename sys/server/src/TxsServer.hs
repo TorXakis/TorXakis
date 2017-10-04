@@ -245,7 +245,7 @@ cmdTermit _ = do
 
 cmdStop :: String -> IOS.IOS ()
 cmdStop _ = do
-     World.closeSockets
+     -- World.closeSockets
      -- modus <- gets IOS.modus
      -- if  IOS.isSimuled modus
        -- then do -- [(_,valsut)] <- IOS.getParams ["param_Sut_deltaTime"]

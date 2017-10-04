@@ -3,6 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+{-# LANGUAGE ExistentialQuantification #-}
 
 -- | TorXakis Core Environment (Internal State) Data Type Definitions.
 module EnvCore
@@ -40,8 +41,10 @@ import qualified BTree
 -- import from defs
 import qualified Sigs
 import qualified TxsDefs
-
 import qualified TxsDDefs
+
+-- import from cnect
+import qualified EWorld
 
 -- import from solve
 import qualified SMTData
@@ -67,14 +70,14 @@ data CoreState = Noning
                         , sigs    :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
                         , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         }
-             | Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+             | forall ew. (EWorld ew) =>
+               Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
                         , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , mapperdef :: Maybe TxsDefs.MapperDef
                         , purpdef   :: Maybe TxsDefs.PurpDef
-                        , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
-                        , getfrow   :: IOC TxsDDefs.Action
+                        , eworld    :: ew
                         , behtrie   :: [ (EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr) ]
                                                                      -- behaviour trie
                         , inistate  :: EnvData.StateNr               -- initial beh statenr
