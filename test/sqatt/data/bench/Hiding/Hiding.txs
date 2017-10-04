@@ -1,0 +1,40 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+FUNCDEF validInt(x :: Int) :: Bool ::=
+    (0 <= x) /\ (x <= 10)
+ENDDEF
+
+-- | Process that outputs only the valid integers it receives.
+PROCDEF bagInt[In, Out :: Int]() ::=
+    In ? x [[validInt(x)]]
+    >-> (Out ! x ||| bagInt[In, Out]())
+ENDDEF
+
+-- | Process that outputs only the valid matching integers it receives.
+PROCDEF matchInt[InA, InB, Out :: Int]()::=
+    InA ? a | InB ? b [[(a == b) /\ validInt(a) /\ validInt(b)]]
+    >->
+    ( Out ! a ||| matchInt[InA, InB, Out]())
+ENDDEF
+
+CHANDEF X ::=
+    MyInA :: Int
+  ; MyInB :: Int
+  ; MyOut :: Int  
+ENDDEF
+
+-- SpecHide_Bag_MatchInt
+MODELDEF MatchInt ::=
+    CHAN IN MyInA, MyInB
+    CHAN OUT MyOut
+    BEHAVIOUR
+        HIDE [H :: Int] IN
+            bagInt[MyInA, H]()
+            |[H]|
+            matchInt[H, MyInB, MyOut]()
+        NI
+ENDDEF

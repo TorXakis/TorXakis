@@ -18,23 +18,14 @@ modelFiles = [ txsFilePathBench benchDir "Synchronization"
              , txsFilePathBench "Sequence" "SingleActionSequence"
              ]
 
--- do100Acts3procs :: TxsExample
--- do100Acts3procs = TxsExample
---     { exampleName = "3 processes"
---     , txsModelFiles = modelFiles
---     , txsCommandsFile = txsCmdPathBench benchDir "ForeverSynchronized3"
---     , sutExample = Nothing
---     , expectedResult = Pass
---     }
-
--- do100Acts6procs :: TxsExample
--- do100Acts6procs = TxsExample
---     { exampleName = "6 processes"
---     , txsModelFiles = modelFiles
---     , txsCommandsFile = txsCmdPathBench benchDir "ForeverSynchronized6"
---     , sutExample = Nothing
---     , expectedResult = Pass
---     }
+do100Acts3procs :: TxsExample
+do100Acts3procs = TxsExample
+    { exampleName = "3 processes"
+    , txsModelFiles = modelFiles
+    , txsCommandsFile = txsCmdPathBench benchDir "ForeverSynchronized3"
+    , sutExample = Nothing
+    , expectedResult = Pass
+    }
 
 alternateTwoProcs :: TxsExample
 alternateTwoProcs = TxsExample
@@ -45,15 +36,14 @@ alternateTwoProcs = TxsExample
     , expectedResult = Pass
     }
 
-
--- do100Acts3procsIStep :: TxsExample
--- do100Acts3procsIStep = TxsExample
---     { exampleName = "3 processes with internal action"
---     , txsModelFiles = modelFiles
---     , txsCommandsFile = txsCmdPathBench benchDir "ForeverSynchronizedIStep3"
---     , sutExample = Nothing
---     , expectedResult = Pass
---     }
+do100Acts3procsIStep :: TxsExample
+do100Acts3procsIStep = TxsExample
+    { exampleName = "3 processes with internal action"
+    , txsModelFiles = modelFiles
+    , txsCommandsFile = txsCmdPathBench benchDir "ForeverSynchronizedIStep3"
+    , sutExample = Nothing
+    , expectedResult = Pass
+    }
 
 manyActsSyncTop :: TxsExample
 manyActsSyncTop = TxsExample
@@ -64,16 +54,9 @@ manyActsSyncTop = TxsExample
     , expectedResult = Pass
     }
 
-
-
 benchmarksSet :: TxsExampleSet
--- TODO: do100Acts3procs hangs TorXakis, see https://github.com/TorXakis/TorXakis/issues/268
--- benchmarksSet = TxsExampleSet "Synchronization" [ do100Acts3procs
---                                                 , do100Acts6procs
---                                                 , alternateTwoProcs
---                                                 ]
 benchmarksSet = TxsExampleSet "Synchronization" [ alternateTwoProcs
+                                                , do100Acts3procs
+                                                , do100Acts3procsIStep
                                                 , manyActsSyncTop
                                                 ]
-
-

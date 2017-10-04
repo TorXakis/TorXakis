@@ -1,3 +1,4 @@
+
 name:                sqatt
 version:             0.1
 synopsis:            Simple Quality Assurance Tests for TorXakis
@@ -19,6 +20,7 @@ library
                      , Benchmarks.All
   other-modules:       Benchmarks.Sequence
                      , Benchmarks.Choice
+                     , Benchmarks.Hiding
                      , Benchmarks.Synchronization
                      , Examples.Adder
                      , Examples.CustomersOrders

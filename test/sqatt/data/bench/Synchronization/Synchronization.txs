@@ -4,10 +4,10 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-PROCDEF synchronizedN[act](n :: Int) ::=
-     ([[ n == 1 ]] =>> sequence[act]())
+PROCDEF synchronizedN[Act](n :: Int) ::=
+     ([[ n == 1 ]] =>> sequence[Act]())
   ##
-     ([[ n >  1 ]] =>> sequence[act]() |[act]| synchronizedN[act](n - 1))
+     ([[ n >  1 ]] =>> (sequence[Act]() |[Act]| synchronizedN[Act](n - 1)))
 ENDDEF
 
 MODELDEF ForeverSynchronized3 ::=
@@ -16,28 +16,23 @@ MODELDEF ForeverSynchronized3 ::=
     BEHAVIOUR synchronizedN[MyAct](3)
 ENDDEF
 
-MODELDEF ForeverSynchronized6 ::=
-    CHAN IN
-    CHAN OUT MyAct
-    BEHAVIOUR synchronizedN[MyAct](6)
-ENDDEF
-
 MODELDEF ForeverSyncAlt2 ::=
     CHAN IN
     CHAN OUT MyAct, MyOtherAct
     BEHAVIOUR
         sequence[MyAct]()
         |[MyAct]|
-      ( sequence[MyOtherAct]() -- TODO: are parenthesis needed?
-        |[MyOtherAct]|
-        sequenceAlternate[MyAct, MyOtherAct]()
-      )
+        ( sequence[MyOtherAct]()
+          |[MyOtherAct]|
+          sequenceAlternate[MyAct, MyOtherAct]()
+        )
+        
 ENDDEF
 
 PROCDEF synchronizedNIStep[act](n :: Int) ::=
      ([[ n == 1 ]] =>> sequenceIStep[act]())
   ##
-     ([[ n >  1 ]] =>> sequenceIStep[act]() |[act]| synchronizedNIStep[act](n - 1))
+     ([[ n >  1 ]] =>> (sequenceIStep[act]() |[act]| synchronizedNIStep[act](n - 1)))
 ENDDEF
 
 MODELDEF ForeverSynchronizedIStep3 ::=
@@ -49,9 +44,9 @@ ENDDEF
 PROCDEF syncAlternateN[act0, act1](n :: Int) ::=
      ([[ n == 1 ]] =>> sequenceAlternate[act0, act1]())
   ##
-     ([[ n >  1 ]] =>> sequenceAlternate[act0, act1]()
-                       |[act0, act1]|
-                       syncAlternateN[act0, act1](n - 1)
+     ([[ n >  1 ]] =>> (sequenceAlternate[act0, act1]()
+                        |[act0, act1]|
+                        syncAlternateN[act0, act1](n - 1))
      )
 ENDDEF
 
