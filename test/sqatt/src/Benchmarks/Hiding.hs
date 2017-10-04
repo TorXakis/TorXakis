@@ -13,16 +13,59 @@ import           Sqatt
 benchDir :: FilePath
 benchDir = "Hiding"
 
+modelFiles :: [FilePath]
+modelFiles = [ txsFilePathBench benchDir "Hiding"
+             , txsFilePathBench "Sequence" "SingleActionSequence"
+             ]
+
+alt4hide1 :: TxsExample
+alt4hide1 = TxsExample
+    { exampleName = "Alternate 4 hide 1 action"
+    , txsModelFiles = modelFiles
+    , txsCommandsFile = txsCmdPathBench benchDir "Alternate4Hide1Act"
+    , sutExample = Nothing
+    , expectedResult = Pass
+    }
+
+hideFirstSFA :: TxsExample
+hideFirstSFA = TxsExample
+    { exampleName = "Hide first of sync first alternate"
+    , txsModelFiles = modelFiles
+    , txsCommandsFile = txsCmdPathBench benchDir "HideFirstSFA"
+    , sutExample = Nothing
+    , expectedResult = Pass
+    }
+
+hideSecondSFA :: TxsExample
+hideSecondSFA = TxsExample
+    { exampleName = "Hide second of sync second alternate"
+    , txsModelFiles = modelFiles
+    , txsCommandsFile = txsCmdPathBench benchDir "HideSecondSFA"
+    , sutExample = Nothing
+    , expectedResult = Pass
+    }
+
+matchNoData :: TxsExample
+matchNoData = TxsExample
+    { exampleName = "Match"
+    , txsModelFiles = modelFiles
+    , txsCommandsFile = txsCmdPathBench benchDir "Match"
+    , sutExample = Nothing
+    , expectedResult = Pass
+    }
+
 matchInt :: TxsExample
 matchInt = TxsExample
     { exampleName = "Match Int"
-    , txsModelFiles = [txsFilePathBench benchDir "Hiding"]
+    , txsModelFiles = modelFiles
     , txsCommandsFile = txsCmdPathBench benchDir "MatchInt"
     , sutExample = Nothing
     , expectedResult = Pass
     }
 
 benchmarksSet :: TxsExampleSet
-benchmarksSet = TxsExampleSet "Hiding" [ matchInt ]
-
-
+benchmarksSet = TxsExampleSet "Hiding" [ alt4hide1
+                                       , hideFirstSFA
+                                       , hideSecondSFA
+                                       , matchNoData
+                                       , matchInt ]
