@@ -52,10 +52,33 @@ import           TxsDefs
 type BehAction  =  Set.Set (TxsDefs.ChanId,[TxsDefs.Const])
 
 
--- ----------------------------------------------------------------------------------------- --
--- IVar     :  interaction variable for behaviour tree
-
-
+-- | IVar     :  interaction variable for behaviour tree
+--
+-- An interaction variable is used to combine the communication of different
+-- processes over the same channel.
+--
+-- The following channel communication:
+--
+-- > A ? x ? y ? z
+--
+-- Is associated to the following `IVar`'s:
+--
+-- > IVar "A" uid 1 d sortOf(x)
+-- > IVar "A" uid 2 d sortOf(y)
+-- > IVar "A" uid 3 d sortOf(z)
+--
+-- These variables allow to translate communications like:
+--
+-- > A ! 6
+--
+-- which gets translated to:
+--
+-- > A ? A1 [[ A1 == 6 ]]
+--
+-- where A1 is associated to `IVar`:
+--
+-- > IVar "A" uid 1 d Int
+--
 data  IVar      =  IVar    { ivname :: Name       -- name of Channel
                            , ivuid  :: Int        -- uid of Channel
                            , ivpos  :: Int        -- 1..length (chansorts chan)
@@ -73,6 +96,7 @@ instance Variable IVar where
     cstrVariable s i = IVar (T.pack s) i (-1) (-1)           -- PvdL for temporary variable
 
 type  IVEnv = VarEnv VarId IVar
+
 type  IWals = WEnv IVar
 
 -- ----------------------------------------------------------------------------------------- --

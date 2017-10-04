@@ -18,6 +18,12 @@ TYPEDEF  Operation
 ENDDEF
 
 
+FUNCDEF overflow (x :: Int) :: Bool
+    ::=
+        (x < -2147483648) \/ ( x > +2147483647)
+ENDDEF
+
+
 -- ----------------------------------------------------------------------------------------- --
 
 
@@ -115,7 +121,6 @@ PURPDEF  Purp3
 ENDDEF
 
 
-{-
 PURPDEF  Replay
     ::=
         CHAN IN    Action
@@ -123,7 +128,6 @@ PURPDEF  Replay
 
         GOAL replay  ::=  replayProc [ Action, Result ] ( )
 ENDDEF
--}
 
 
 -- ----------------------------------------------------------------------------------------- --

@@ -23,6 +23,7 @@ import           Text.Regex.TDFA
 import           Test.HUnit
 
 -- general Torxakis imports
+import           FreeMonoidX
 import           StdTDefs
 import           Sum
 import           TxsDefs
@@ -162,7 +163,7 @@ testNegativeNegativeIsIdentity = testTemplateSat [cstrEqual ie (cstrUnaryMinus (
         ie = cstrConst (Cint 3) :: VExpr
 
 testAdd :: SMT()
-testAdd = testTemplateSat [cstrEqual (cstrConst (Cint 12)) (cstrSum (Sum.fromList [cstrConst (Cint 3), cstrConst (Cint 9)]))]
+testAdd = testTemplateSat [cstrEqual (cstrConst (Cint 12)) (cstrSum (fromListT [cstrConst (Cint 3), cstrConst (Cint 9)]))]
 
 -- --------------------------------------------------------------------------------------------------------------------
 testNoVariables :: SMT()
@@ -428,7 +429,7 @@ testStringLength :: Int -> SMT()
 testStringLength n = testTemplateValue TxsDefs.empty [sortId_String] createAssertions check
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrEqual (cstrConst (Cint (toInteger n))) (cstrPredef SSS funcId_lenString [cstrVar v])]
+        createAssertions [v] = [cstrEqual (cstrConst (Cint (toInteger n))) (cstrLength (cstrVar v))]
         createAssertions _   = error "One variable in problem"
 
         check :: [Const] -> SMT()

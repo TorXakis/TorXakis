@@ -5,15 +5,19 @@ See LICENSE at root directory of this repository.
 -}
 
 -- ----------------------------------------------------------------------------------------- --
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE OverloadedLists     #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns        #-}
 module ValExprImpls
 ( -- * Constructors to create Value Expressions
   -- ** Constant value
   cstrConst
   -- ** VarRef
-, cstrVar  
+, cstrVar
   -- ** General Operators to create Value Expressions
-  -- *** Equal  
+  -- *** Equal
 , cstrEqual
   -- *** If Then Else
 , cstrITE
@@ -25,8 +29,6 @@ module ValExprImpls
   -- *** And
 , cstrAnd
   -- ** Integer Operators to create Value Expressions
-  -- *** Unary Minus (i.e. single argument)
-, cstrUnaryMinus
   -- *** Sum
 , cstrSum
   -- *** Product
@@ -39,11 +41,14 @@ module ValExprImpls
 , cstrGEZ
   -- ** String Operators to create Value Expressions
   -- *** Length operator
---, cstrLength
+, cstrLength
   -- *** At operator
---, cstrAt
+, cstrAt
   -- *** Concat operator
---, cstrConcat
+, cstrConcat
+  -- ** Regular Expression Operators to create Value Expressions
+  -- *** String in Regular Expression  operator
+--, cstrStrInRe
   -- ** Algebraic Data Type Operators to create Value Expressions
   -- *** Algebraic Data Type constructor operator
 , cstrCstr
@@ -60,17 +65,26 @@ module ValExprImpls
 )
 where
 
-import qualified Data.Set    as Set
-import           Data.Text   (Text)
-import           Debug.Trace as Trace
+import           Data.Foldable
+import           Data.Monoid   ((<>))
+import qualified Data.Set      as Set
+import           Data.Text     (Text)
+import qualified Data.Text     as T
+import           Debug.Trace   as Trace
+--import           Text.Regex.TDFA  --Needed for strinre
 
 import           ConstDefs
 import           CstrId
+import           FreeMonoidX   ((<.>))
+import qualified FreeMonoidX   as FMX
 import           FuncId
 import           Product
+--import           RegexAlex            --Needed for strinre
+--import           RegexPosixHappy      --Needed for strinre
 import           Sum
 import           ValExprDefs
 import           Variable
+
 
 cstrFunc :: (Variable v) => FuncId -> [ValExpr v] -> ValExpr v
 cstrFunc f a = ValExpr (Vfunc f a)
@@ -102,10 +116,16 @@ cstrAccess c1 p1 e@(view -> Vconst (Cstr c2 fields)) =
                 ValExpr (Vaccess c1 p1 e)
 cstrAccess c p e = ValExpr (Vaccess c p e)
 
--- | Is ValExpr a Constant/Value Expression?     
+-- | Is ValExpr a Constant/Value Expression?
 isConst :: ValExpr v -> Bool
 isConst (view -> Vconst{}) = True
 isConst _                  = False
+
+-- | Get the integer value of a constant.
+getIntVal :: ValExpr v -> Integer
+getIntVal (view -> Vconst (Cint i)) = i
+getIntVal v                         =
+    error "ValExprImpls.hs - getIntVal - Unexpected ValExpr: "
 
 cstrConst :: Const -> ValExpr v
 cstrConst c = ValExpr (Vconst c)
@@ -202,105 +222,100 @@ cstrAnd' s =
         contains :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set
-        
--- | Apply unary operator Minus on the provided value expression.
--- Preconditions are /not/ checked.
-cstrUnaryMinus :: Ord v => ValExpr v -> ValExpr v
-cstrUnaryMinus (view -> Vconst (Cint x)) = cstrConst (Cint (-x))
-cstrUnaryMinus (view -> Vsum s)          = cstrSum (Sum.multiply (-1) s)
-cstrUnaryMinus v                         = ValExpr (Vsum (Sum.fromDistinctAscMultiplierList [(v,-1)]))
 
--- Sum
+-- * Sum
 
--- | Is ValExpr a Sum Expression?     
+-- | Is ValExpr a Sum Expression?
 isSum :: ValExpr v -> Bool
 isSum (view -> Vsum{}) = True
 isSum _                = False
-        
+
+getSum :: ValExpr v -> FreeSum (ValExpr v)
+getSum (view -> Vsum s) = s
+getSum e = error "ValExprImpls.hs - getSum - Unexpected ValExpr "
+
 -- | Apply operator sum on the provided sum of value expressions.
 -- Preconditions are /not/ checked.
-cstrSum :: Ord v => Sum (ValExpr v) -> ValExpr v
+cstrSum :: forall v . (Ord v, Integral (ValExpr v)) => FreeSum (ValExpr v) -> ValExpr v
 -- implementation details:
 -- Properties incorporated
 --    at most one value: the value is the sum of all values
 --         special case if the sum is zero, no value is inserted since v == v+0
 --    remove all nested sums, since (a+b) + (c+d) == (a+b+c+d)
-cstrSum ms = 
-    let (adds, nonadds) = Sum.partition isSum ms in
-            cstrSum' $ foldl Sum.sum nonadds (Sum.foldMultiplier toSumList [] adds)
-    where                                                        
-        toSumList :: ValExpr v -> Integer -> [Sum (ValExpr v)] -> [Sum (ValExpr v)]
-        toSumList (view -> Vsum s) n  = (:) (Sum.multiply n s)
-        toSumList _                _  = error "ValExprImpls.hs - cstrSum - Unexpected ValExpr"
-                    
--- Sum doesn't contain elements of type VExprSum
-cstrSum' :: Ord v => Sum (ValExpr v) -> ValExpr v
-cstrSum' ms = 
-    let (vals, nonvals) = Sum.partition isConst ms in
-        let sumVals = Sum.foldMultiplier addVal 0 vals in
-            let retMS = case sumVals of
-                        0   -> nonvals                                      -- 0 + x == x
-                        _   -> Sum.add (cstrConst (Cint sumVals)) nonvals
-                in
-                    case Sum.toMultiplierList retMS of
-                        []          -> cstrConst (Cint 0)                                -- sum of nothing equal zero
-                        [(term,1)]  -> term
-                        _           -> ValExpr (Vsum retMS)
-    where                                                        
-        addVal :: ValExpr v -> Integer -> Integer -> Integer
-        addVal (view -> Vconst (Cint i)) n = (+) (i * n)
-        addVal _ _                         = error "ValExprImpls.hs - cstrSum' - Unexpected ValExpr"
+cstrSum ms =
+    cstrSum' $ nonadds <> FMX.flatten sumOfAdds
+    where
+      (adds, nonadds) = FMX.partitionT isSum ms
+      sumOfAdds :: FMX.FreeMonoidX (FMX.FreeMonoidX (SumTerm (ValExpr v)))
+      sumOfAdds = FMX.mapTerms (getSum . summand) adds
 
+-- Sum doesn't contain elements of type VExprSum
+cstrSum' :: Ord v => FreeSum (ValExpr v) -> ValExpr v
+cstrSum' ms =
+    let (vals, nonvals) = FMX.partitionT isConst ms
+        sumVals = summand $ FMX.foldFMX (FMX.mapTerms (SumTerm . getIntVal . summand) vals)
+        retMS = case sumVals of
+                    0 -> nonvals                                      -- 0 + x == x
+                    _ -> Sum.add (cstrConst (Cint sumVals)) nonvals
+    in
+        case FMX.toOccurList retMS of
+            []         -> cstrConst (Cint 0)                                -- sum of nothing equal zero
+            [(term,1)] -> summand term
+            _          -> ValExpr (Vsum retMS)
 
 -- Product
 
--- | Is ValExpr a Product Expression?     
+-- | Is ValExpr a Product Expression?
 isProduct :: ValExpr v -> Bool
 isProduct (view -> Vproduct{}) = True
 isProduct _                    = False
-         
+
+getProduct :: ValExpr v -> FreeProduct (ValExpr v)
+getProduct (view -> Vproduct s) = s
+getProduct e = error "ValExprImpls.hs - getProduct - Unexpected ValExpr "
+
 -- | Apply operator product on the provided product of value expressions.
 -- Be aware that division is not associative for Integer, so only use power >= 0.
 -- Preconditions are /not/ checked.
-cstrProduct :: Ord v => Product (ValExpr v) -> ValExpr v
+cstrProduct :: forall v .(Ord v, Integral (ValExpr v)) => FreeProduct (ValExpr v) -> ValExpr v
 -- implementation details:
 -- Properties incorporated
 --    at most one value: the value is the product of all values
 --         special case if the product is one, no value is inserted since v == v*1
 --    remove all nested products, since (a*b) * (c*d) == (a*b*c*d)
-cstrProduct ms = 
-    let (prods, nonprods) = Product.partition isProduct ms in
-        cstrProduct' $ foldl Product.product nonprods (Product.foldPower toProductList [] prods)
+cstrProduct ms =
+    cstrProduct' $ noprods <> FMX.flatten prodOfProds
+    where
+      (prods, noprods) = FMX.partitionT isProduct ms
+      prodOfProds :: FMX.FreeMonoidX (FMX.FreeMonoidX (ProductTerm (ValExpr v)))
+      prodOfProds = FMX.mapTerms (getProduct . factor) prods
         -- TODO: canonical form -- make one sum of products (so remove all sums within all products)
-    where                                                        
-        toProductList :: ValExpr v -> Integer -> [Product (ValExpr v)] -> [Product (ValExpr v)]
-        toProductList (view -> Vproduct p) n  = (:) (Product.power n p)
-        toProductList _                    _  = error "ValExprImpl.hs - cstrProduct - Unexpected ValExpr "
-                    
+
 -- Product doesn't contain elements of type VExprProduct
-cstrProduct' :: Ord v => Product (ValExpr v) -> ValExpr v
-cstrProduct' ms = 
-    let (vals, nonvals) = Product.partition isConst ms in
-        let (zeros, _) = Product.partition isZero vals in
-            case Product.nrofTerms zeros of
-                0   ->  let productVals = Product.foldPower timesVal 1 vals in
-                            case Product.toPowerList nonvals of
-                                []          ->  cstrConst (Cint productVals)
-                                [(term, 1)] ->  cstrSum (Sum.fromMultiplierList [(term, productVals)])                           -- term can be Sum -> rewrite needed
-                                _           ->  cstrSum (Sum.fromMultiplierList [(ValExpr (Vproduct nonvals), productVals)])  -- productVals can be 1 -> rewrite possible
-                _   ->  let (_,n) = Product.fraction zeros in
-                            case Product.nrofTerms n of
-                                0   ->  cstrConst (Cint 0)      -- 0 * x == 0
-                                _   ->  Trace.trace "Error in model: Division by Zero in Product (via negative power)" $
-                                        ValExpr (Vproduct ms)
+cstrProduct' :: (Ord v, Integral (ValExpr v))
+             => FreeProduct (ValExpr v) -> ValExpr v
+cstrProduct' ms =
+    let (vals, nonvals) = FMX.partitionT isConst ms
+        (zeros, _) = FMX.partitionT isZero vals
+    in
+        case FMX.nrofDistinctTerms zeros of
+            0   ->  -- let productVals = Product.foldPower timesVal 1 vals in
+                    let intProducts = FMX.mapTerms (getIntVal <$>) vals
+                        productVals = factor (FMX.foldFMX intProducts)
+                    in
+                        case FMX.toDistinctAscOccurListT nonvals of
+                            []          ->  cstrConst (Cint productVals)
+                            [(term, 1)] ->  cstrSum (FMX.fromOccurList [(SumTerm term, productVals)])                           -- term can be Sum -> rewrite needed
+                            _           ->  cstrSum (FMX.fromOccurList [(SumTerm (ValExpr (Vproduct nonvals)), productVals)])  -- productVals can be 1 -> rewrite possible
+            _   ->  let (_, n) = Product.fraction zeros in
+                        case FMX.nrofDistinctTerms n of
+                            0   ->  cstrConst (Cint 0)      -- 0 * x == 0
+                            _   ->  Trace.trace "Error in model: Division by Zero in Product (via negative power)" $
+                                    ValExpr (Vproduct ms)
     where
         isZero :: ValExpr v -> Bool
         isZero (view -> Vconst (Cint 0)) = True
         isZero _                         = False
-        
-        timesVal :: ValExpr v -> Integer -> Integer -> Integer
-        timesVal (view -> Vconst (Cint i)) n  = (*) (i ^ n)  -- see https://wiki.haskell.org/Power_function
-        timesVal _ _                          = error "ValExprImpl.hs - cstrProduct' - Unexpected ValExpr "
 
 -- Divide
 
@@ -310,13 +325,13 @@ cstrDivide :: ValExpr v -> ValExpr v -> ValExpr v
 cstrDivide vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Divide" $ ValExpr (Vdivide vet ven)
 cstrDivide (view ->  Vconst (Cint t)) (view ->  Vconst (Cint n)) = cstrConst (Cint (t `div` n) )
 cstrDivide vet ven = ValExpr (Vdivide vet ven)
-    
+
 -- Modulo
 
 -- | Apply operator Modulo on the provided value expressions.
 -- Preconditions are /not/ checked.
 cstrModulo :: ValExpr v -> ValExpr v -> ValExpr v
-cstrModulo vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Modulo" $ ValExpr (Vmodulo vet ven) 
+cstrModulo vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Modulo" $ ValExpr (Vmodulo vet ven)
 cstrModulo (view -> Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `mod` n) )
 cstrModulo vet ven = ValExpr (Vmodulo vet ven)
 
@@ -324,9 +339,59 @@ cstrModulo vet ven = ValExpr (Vmodulo vet ven)
 -- Preconditions are /not/ checked.
 cstrGEZ :: ValExpr v -> ValExpr v
 -- Simplification Values
-cstrGEZ (view -> Vconst (Cint v))   = cstrConst (Cbool (0 <= v))
--- cstrGEZ (view -> Vlength _)      = cstrConst (Cbool True)        -- length of string is always Greater or equal to zero
-cstrGEZ ve                          = ValExpr (Vgez ve)
+cstrGEZ (view -> Vconst (Cint v)) = cstrConst (Cbool (0 <= v))
+cstrGEZ (view -> Vlength _)       = cstrConst (Cbool True)        -- length of string is always Greater or equal to zero
+cstrGEZ ve                        = ValExpr (Vgez ve)
+
+
+-- | Apply operator Length on the provided value expression.
+-- Preconditions are /not/ checked.
+cstrLength :: ValExpr v -> ValExpr v
+cstrLength (view -> Vconst (Cstring s)) = cstrConst (Cint (Prelude.toInteger (T.length s)))
+cstrLength v                            = ValExpr (Vlength v)
+
+-- | Apply operator At on the provided value expressions.
+-- Preconditions are /not/ checked.
+cstrAt :: ValExpr v -> ValExpr v -> ValExpr v
+cstrAt ves@(view -> Vconst (Cstring s)) vei@(view -> Vconst (Cint i)) =
+    if i < 0 || i >= Prelude.toInteger (T.length s)
+        then Trace.trace ("Error in model: Accessing string " ++ show s ++ " of length " ++ show (T.length s) ++ " with illegal index "++ show i) $
+             ValExpr (Vat ves vei)
+        else cstrConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))
+cstrAt ves vei = ValExpr (Vat ves vei)
+
+-- | Apply operator Concat on the provided sequence of value expressions.
+-- Preconditions are /not/ checked.
+cstrConcat :: (Eq v) => [ValExpr v] -> ValExpr v
+cstrConcat l =
+    let n = (mergeVals . flatten . filter (cstrConst (Cstring "") /= ) ) l in
+        case Prelude.length n of
+           0 -> cstrConst (Cstring "")
+           1 -> head n
+           _ -> ValExpr (Vconcat n)
+
+-- implementation details:
+-- Properties incorporated
+--    "" ++ x == x          - remove empty strings
+--    "a" ++ "b" == "ab"    - concat consecutive string values
+--   remove all nested Concats, since (a ++ b) ++ (c ++ d) == (a ++ b ++ c ++ d)
+
+mergeVals :: [ValExpr v] -> [ValExpr v]
+mergeVals []            = []
+mergeVals [x]           = [x]
+mergeVals ( (view -> Vconst (Cstring s1)) : (view -> Vconst (Cstring s2)) : xs) =
+                          mergeVals (cstrConst (Cstring (s1 <> s2)): xs)
+mergeVals (x1:x2:xs)    = x1 : mergeVals (x2:xs)
+
+flatten :: [ValExpr v] -> [ValExpr v]
+flatten []                       = []
+flatten ((view -> Vconcat l):xs) = l ++ flatten xs
+flatten (x:xs)                   = x : flatten xs
+
+-- | Apply String In Regular Expression operator on the provided value expressions.
+-- Preconditions are /not/ checked.
+--cstrStrInRe :: ValExpr v -> ValExpr v -> ValExpr v
+--cstrStrInRe ves@(view -> Vconst (Cstring s)) vei@(view -> Vconst (Cregex r)) = cstrConst (Cbool (s =~ regexPosixParser (regexLexer r)))
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)

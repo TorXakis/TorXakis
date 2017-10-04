@@ -40,6 +40,7 @@ library
                       , Sigs
                       , Sum
                       , Product
+                      , FreeMonoidX
                       
   other-modules:        BehExprDefs
                       , ConnectionDefs
@@ -62,7 +63,7 @@ library
                       , Variable
 
 
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
   
   build-depends:        base
                       , bytestring
@@ -73,26 +74,29 @@ library
                       , MissingH
                       , text
                       , mtl
+                      , newtype
   default-language:     Haskell2010
                     
-                      
-test-suite defs-BlackBox-test
+
+test-suite defs-BlackBox
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
                      
-  main-is:             TestMainBlackBox.hs
+  main-is:             Spec.hs
   
   other-modules:       GenProduct
-                     , GenSum
-                     , TestProduct
-                     , TestSum
+                     , ValExprSpec
+                     , ProductSpec
+                     , FreeMonoidXSpec
                        
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
   
   build-depends:       base
                      , containers
+                     , ieee754
                      , MissingH
                      , QuickCheck
-                     , defs
+                     , hspec
                      
+                     , defs
   default-language:    Haskell2010

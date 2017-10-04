@@ -1,0 +1,60 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+-- | Specification of a sequential process that performs a single action
+--   repeatedly.
+
+CHANDEF ChanDefs ::=
+      MyAct
+    ; MyOtherAct
+    ; MyIntChan :: Int
+ENDDEF      
+
+PROCDEF sequence[Act]() ::=
+    Act >-> sequence[Act]()
+ENDDEF
+
+MODELDEF ForeverAct ::=
+    CHAN IN    
+    CHAN OUT MyAct
+    BEHAVIOUR sequence[MyAct]()
+ENDDEF
+
+-- * Adding an `ISTEP`
+
+PROCDEF sequenceIStep[Act]() ::=
+    Act >-> ISTEP >-> sequence[Act]()
+ENDDEF
+
+MODELDEF ForeverActIStep ::=
+    CHAN IN
+    CHAN OUT MyAct
+    BEHAVIOUR sequenceIStep[MyAct]()
+ENDDEF
+
+-- * Adding data
+
+PROCDEF sequenceData[c :: Int](n :: Int) ::=
+    c ! n >-> sequenceData[c](n)
+ENDDEF
+
+MODELDEF ForeverOutput4 ::=
+    CHAN IN
+    CHAN OUT MyIntChan
+    BEHAVIOUR sequenceData[MyIntChan](4)
+ENDDEF
+
+-- * Alternation
+
+PROCDEF sequenceAlternate[act0, act1]() ::=
+    act0 >-> sequenceAlternate[act1, act0]()
+ENDDEF
+
+MODELDEF ForeverAlternate ::=
+    CHAN IN MyAct, MyOtherAct
+    CHAN OUT
+    BEHAVIOUR sequenceAlternate[MyAct, MyOtherAct]()
+ENDDEF

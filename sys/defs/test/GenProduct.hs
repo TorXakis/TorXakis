@@ -8,16 +8,17 @@ module GenProduct
 )
 where
 
-import Test.QuickCheck
-import Test.QuickCheck.Gen(chooseAny)
+import           Test.QuickCheck
+import           Test.QuickCheck.Gen (chooseAny)
 
-import Product
+import           FreeMonoidX         (fromOccurListT)
+import           Product
 
-newtype GenProduct a = GenProduct (Product a)
+newtype GenProduct a = GenProduct (FreeProduct a)
     deriving (Show)
 
 instance (Ord a, Arbitrary a) => Arbitrary (GenProduct a) where
   arbitrary = do
     args   <- listOf arbitrary
     powers <- vectorOf (length args) arbitrary
-    return $ GenProduct (Product.fromPowerList (zip args powers))
+    return $ GenProduct (fromOccurListT (zip args powers))

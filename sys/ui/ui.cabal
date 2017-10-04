@@ -15,7 +15,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 executable txsui
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
   
   hs-source-dirs:       src
   main-is:              UI.hs

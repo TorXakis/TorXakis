@@ -28,6 +28,7 @@ import qualified Data.Text         as T
 import           ChanId
 import           CnectId
 import           CstrId
+import qualified FreeMonoidX       as FMX
 import           FuncId
 import           GoalId
 import           MapperId
@@ -40,7 +41,6 @@ import           StatId
 import           Sum
 import           TxsDefs
 import           VarId
-
 
 specialOpChars :: String
 specialOpChars  =  "=+-*/\\^<>|@&%"                 -- must be equal to $special in TxsAlex
@@ -268,32 +268,39 @@ instance PShow v => PShow (ValExpr v) where
     pshow (view -> Vand vexps)
       =  "(" ++ Utils.join " /\\ " (map pshow (Set.toList vexps)) ++ " )"
     pshow (view -> Vsum s)
-      = showList (Sum.toMultiplierList s)  
+      = showList (FMX.toOccurList s)
       where
         showList []     = "0"
         showList [x]    = showElem x
         showList (x:xs) = "( " ++ showElem x ++ " + " ++ showList xs ++ " )"
-        
+
         showElem (t,1)  = pshow t
         showElem (t,-1) = "(- " ++ pshow t ++ " )"
         showElem (t,p)  = "( " ++ show p ++ " * " ++ pshow t ++ " )"
     pshow (view -> Vproduct s)
-      = showList (Product.toPowerList s)  
+      = showList (FMX.toDistinctAscOccurListT s)
       where
         showList []     = "1"
         showList [x]    = showElem x
         showList (x:xs) = "( " ++ showElem x ++ " * " ++ showList xs ++ " )"
-        
+
         showElem (t,1)  = pshow t
         showElem (t,p)  | p > 0 = "( " ++ pshow t ++ " ^ "  ++ show p ++ " )"   -- TODO: TorXakis doesn't support Power (not even x ^ integer)
         showElem (_,p)  = error ("TxsShow - pshow VExpr - illegal power: p = " ++ show p)
-        
+
     pshow (view -> Vdivide t n)
       =  "(" ++ pshow t ++ " / " ++ pshow n ++ " )"
     pshow (view -> Vmodulo t n)
       =  "(" ++ pshow t ++ " % " ++ pshow n ++ " )"
     pshow (view -> Vgez v)
       =  "( 0 <= " ++ pshow v ++ " )"
+    pshow (view -> Vlength v)
+      =  "len( " ++ pshow v ++ " )"
+    pshow (view -> Vat s p)
+      =  "at( " ++ pshow s ++ ", "++ pshow p ++ " )"
+    pshow (view -> Vconcat vexps)
+      =  "( " ++ Utils.join " ++ " (map pshow vexps) ++ " )"
+      
     pshow (view -> Vpredef _ fid vexps)
       =  if isSpecialOp fid
            then
@@ -514,6 +521,9 @@ instance PShow t => PShow (Maybe t)
     pshow Nothing  =  ""
     pshow (Just x) =  pshow x
 
+instance PShow a => PShow (SumTerm a) where
+    pshow (SumTerm a) = pshow a
+    fshow (SumTerm a) = fshow a
 
 instance PShow Bool
 

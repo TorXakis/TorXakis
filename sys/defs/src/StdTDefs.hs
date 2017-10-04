@@ -6,6 +6,8 @@ See LICENSE at root directory of this repository.
 
 
 -- ----------------------------------------------------------------------------------------- --
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 -- | Predefined, Standard TorXakis Data Types : Bool, Int, Char, String.
@@ -31,13 +33,10 @@ module StdTDefs
 , funcId_StringFromString
 , funcId_StringToXml
 , funcId_StringFromXml
-, funcId_catString
-, funcId_lenString
 , funcId_takeWhile
 , funcId_takeWhileNot
 , funcId_dropWhile
 , funcId_dropWhileNot
-, funcId_atString
 
 , funcId_strinre
 
@@ -60,22 +59,22 @@ module StdTDefs
 )
 where
 
-import           Control.Arrow ((***))
-import qualified Data.Map      as Map
-import qualified Data.Set      as Set
-import           Data.Text     (Text)
+import           Control.Arrow         ((***))
+import qualified Data.Map              as Map
+import qualified Data.Set              as Set
+import           Data.Text             (Text)
+import qualified GHC.Exts              as Exts
 
 import           ChanId
 import           CstrId
+import qualified FreeMonoidX           as FMX
 import           FuncDef
 import           FuncId
 import           FuncTable
 import           Ident
-import           Product
 import           SortDef
 import           SortId
 import           SortOf
-import           Sum
 import           TxsDef
 import           ValExprDefs
 import           ValExprImpls
@@ -142,7 +141,7 @@ accessHandler c p = oneArgumentHandler (cstrAccess c p)
 
 -- ----------------------------------------------------------------------------------------- --
 -- FuncTable
-stdFuncTable :: Ord v => FuncTable v
+stdFuncTable :: (Ord v, Integral (ValExpr v)) => FuncTable v
 stdFuncTable = FuncTable ( Map.fromList
     [ ( eqName , Map.fromList [ ( Signature [sortId_Bool,     sortId_Bool]    sortId_Bool, equalHandler )
                               , ( Signature [sortId_Int,      sortId_Int]     sortId_Bool, equalHandler )
@@ -175,14 +174,14 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("=>",   Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, twoArgumentHandler cstrImplies ) ] )
     , ("<=>",  Map.fromList [ ( Signature [sortId_Bool,sortId_Bool] sortId_Bool, twoArgumentHandler cstrEqual ) ] )
 
-    , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler id)
-                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrSum . Sum.fromList )
+    , ("+",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler cstrUnaryPlus)
+                           , ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrPlus )
                            ] )
     , ("-",   Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler cstrUnaryMinus )
                            , ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrMinus )
                            ] )
     , ("abs", Map.fromList [ ( Signature [sortId_Int] sortId_Int, oneArgumentHandler cstrAbs ) ] )
-    , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, cstrProduct . Product.fromList ) ] )
+    , ("*",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrTimes ) ] )
     , ("/",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrDivide ) ] )
     , ("%",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Int, twoArgumentHandler cstrModulo ) ] )
     , ("<",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, twoArgumentHandler cstrLT ) ] )
@@ -190,9 +189,9 @@ stdFuncTable = FuncTable ( Map.fromList
     , (">",   Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, twoArgumentHandler cstrGT ) ] )
     , (">=",  Map.fromList [ ( Signature [sortId_Int,sortId_Int] sortId_Bool, twoArgumentHandler cstrGE ) ] )
 
-    , ("len",  Map.fromList [ ( Signature [sortId_String] sortId_Int, cstrPredef SSS funcId_lenString ) ] )
-    , ("at",   Map.fromList [ ( Signature [sortId_String,sortId_Int] sortId_String, cstrPredef SSS funcId_atString ) ] )
-    , ("++",   Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrPredef SSS funcId_catString ) ] )
+    , ("len",  Map.fromList [ ( Signature [sortId_String] sortId_Int, oneArgumentHandler cstrLength ) ] )
+    , ("at",   Map.fromList [ ( Signature [sortId_String,sortId_Int] sortId_String, twoArgumentHandler cstrAt ) ] )
+    , ("++",   Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrConcat ) ] )
     , ("takeWhile",    Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrPredef SSS funcId_takeWhile ) ] )
     , ("takeWhileNot", Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrPredef SSS funcId_takeWhileNot ) ] )
     , ("dropWhile",    Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrPredef SSS funcId_dropWhile ) ] )
@@ -261,15 +260,10 @@ funcId_StringFromString     = FuncId fromStringName     526 [sortId_String]     
 funcId_StringToXml          = FuncId toXmlName          527 [sortId_String]                 sortId_String
 funcId_StringFromXml        = FuncId fromXmlName        528 [sortId_String]                 sortId_String
 
-funcId_catString            = FuncId "++"               531 [sortId_String,sortId_String]   sortId_String
-funcId_lenString            = FuncId "len"              532 [sortId_String]                 sortId_Int
-
 funcId_takeWhile            = FuncId "takeWhile"        533 [sortId_String,sortId_String]   sortId_String
 funcId_takeWhileNot         = FuncId "takeWhileNot"     534 [sortId_String,sortId_String]   sortId_String
 funcId_dropWhile            = FuncId "dropWhile"        535 [sortId_String,sortId_String]   sortId_String
 funcId_dropWhileNot         = FuncId "dropWhileNot"     536 [sortId_String,sortId_String]   sortId_String
-
-funcId_atString             = FuncId "at"               537 [sortId_String, sortId_Int]     sortId_String
 
 stdFuncDefsString' :: [ ( FuncId, FuncDef ) ]
 stdFuncDefsString'
@@ -282,13 +276,6 @@ stdFuncDefsString'
                                         in FuncDef [s] (cstrPredef SSS funcId_StringToXml [cstrVar s]) )
      , ( funcId_StringFromXml,      let { r = VarId "r" 546 sortId_String }
                                         in FuncDef [r] (cstrPredef SSS funcId_StringFromXml [cstrVar r]) )
-     , ( funcId_catString, let { x = VarId "x" 551 sortId_String
-                               ; y = VarId "y" 552 sortId_String
-                               }
-                            in FuncDef [x,y] (cstrPredef SSS funcId_catString [cstrVar x,cstrVar y]) )
-     , ( funcId_lenString, let { x = VarId "x" 553 sortId_String
-                               }
-                            in FuncDef [x] (cstrPredef SSS funcId_lenString [cstrVar x]) )
      , ( funcId_takeWhile
        , let { x = VarId "x" 554 sortId_String
              ; y = VarId "y" 555 sortId_String
@@ -312,12 +299,6 @@ stdFuncDefsString'
              ; y = VarId "y" 561 sortId_String
              }
           in FuncDef [x,y] (cstrPredef SSS funcId_dropWhileNot [cstrVar x,cstrVar y])
-       )
-     , ( funcId_atString
-       , let { s = VarId "s" 562 sortId_String
-             ; n = VarId "n" 563 sortId_Int
-             }
-          in FuncDef [s,n] (cstrPredef SSS funcId_atString [cstrVar s, cstrVar n])
        )
      ]
 

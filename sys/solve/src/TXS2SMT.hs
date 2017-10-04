@@ -34,14 +34,15 @@ module TXS2SMT
 
 where
 
-import qualified Data.Map          as Map
+import qualified Data.Map      as Map
 import           Data.Maybe
 import           Data.Monoid
-import qualified Data.Set          as Set
-import           Data.Text         (Text)
-import qualified Data.Text         as T
+import qualified Data.Set      as Set
+import           Data.Text     (Text)
+import qualified Data.Text     as T
 
 import           CstrId
+import           FreeMonoidX
 import           FuncId
 import           Product
 import           SortId
@@ -50,7 +51,7 @@ import           Sum
 import           TxsDefs
 import           VarId
 
-import           RegexSMTHappy     (encodeStringLiteral)
+import           RegexSMTHappy (encodeStringLiteral)
 import           RegexXSDtoSMT
 
 -- ----------------------------------------------------------------------------------------- --
@@ -81,9 +82,6 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_StringFromString,   error "FromString(String) should not be called in SMT"),
     (IdFunc funcId_StringToXml,        error "ToXml(String) should not be called in SMT"),
     (IdFunc funcId_StringFromXml,      error "FromXml(String) should not be called in SMT"),
-    (IdFunc funcId_catString,          "str.++"),
-    (IdFunc funcId_lenString,          "str.len"),
-    (IdFunc funcId_atString,           "str.at"),
     (IdFunc funcId_takeWhile,          error "takeWhile should not be called in SMT"),
     (IdFunc funcId_takeWhileNot,       error "takeWhileNot should not be called in SMT"),
     (IdFunc funcId_dropWhile,          error "dropWhile should not be called in SMT"),
@@ -217,7 +215,7 @@ justLookup mapI ident =
 
 integer2smt :: Integer -> Text
 integer2smt n | n < 0 = "(- " <> (T.pack . show) (abs n) <> ")"
-integer2smt n         = (T.pack . show) n
+integer2smt n = (T.pack . show) n
 -- ----------------------------------------------------------------------------------------- --
 -- constToSMT: translate a const to a SMT constraint
 -- ----------------------------------------------------------------------------------------- --
@@ -253,26 +251,26 @@ valexprToSMT _ (view -> Vvar varId)  =  vname varId
 valexprToSMT mapI (view -> Vite c expr1 expr2) = "(ite " <> valexprToSMT mapI c <> " "  <> valexprToSMT mapI expr1 <> " " <> valexprToSMT mapI expr2 <> ")"
 
 
-valexprToSMT mapI (view -> Vsum s) = 
-    let ol = Sum.toMultiplierList s in
+valexprToSMT mapI (view -> Vsum s) =
+    let ol = toOccurListT s in
         case ol of
-        {  [o]          -> arg2smt o
-        ;   _           -> "(+ " <> T.intercalate " " (map arg2smt ol) <> ")"
+        {  [o] -> arg2smt o
+        ;   _  -> "(+ " <> T.intercalate " " (map arg2smt ol) <> ")"
         }
-    where 
+    where
         arg2smt :: (Variable v) => (ValExpr v, Integer) -> Text
         arg2smt (vexpr, 1)                              = valexprToSMT mapI vexpr
         arg2smt (vexpr, -1)                             = "(- " <> valexprToSMT mapI vexpr <> ")"
         arg2smt (vexpr, multiplier) |  multiplier /= 0  = "(* " <> integer2smt multiplier <> " " <> valexprToSMT mapI vexpr <> ")"
         arg2smt (_, multiplier)                         = error ("valexprToSMT - arg2smt - illegal multiplier " ++ show multiplier)
 
-valexprToSMT mapI (view -> Vproduct p) = 
-    let ol = Product.toPowerList p in
+valexprToSMT mapI (view -> Vproduct p) =
+    let ol = toOccurListT p in
         case ol of
-        {  [o]          -> arg2smt o
-        ;   _           -> "(* " <> T.intercalate " " (map arg2smt ol) <> ")"
+        {  [o] -> arg2smt o
+        ;   _  -> "(* " <> T.intercalate " " (map arg2smt ol) <> ")"
         }
-    where 
+    where
         arg2smt :: (Variable v) => (ValExpr v, Integer) -> Text
         arg2smt (vexpr, 1)                  = valexprToSMT mapI vexpr
         arg2smt (vexpr, power) |  power > 0 = "(^ " <> valexprToSMT mapI vexpr <> " " <> integer2smt power <> ")"
@@ -301,6 +299,13 @@ valexprToSMT mapI (view -> Vnot expr)  =
 
 valexprToSMT mapI (view -> Vand exprs)  =
     "(and " <> T.intercalate " " (map (valexprToSMT mapI) (Set.toList exprs)) <> ")"
+
+valexprToSMT mapI (view -> Vlength expr)  =
+    "(str.len " <> valexprToSMT mapI expr <> ")"
+valexprToSMT mapI (view -> Vat s p)  =
+    "(str.at " <> valexprToSMT mapI s <> " " <> valexprToSMT mapI p <> ")"
+valexprToSMT mapI (view -> Vconcat vexprs)  =
+    "(str.++ " <> T.intercalate " " (map (valexprToSMT mapI) vexprs) <> ")"
 
 valexprToSMT mapI (view -> Vpredef _ funcId args')  =
     "(" <> justLookup mapI (IdFunc funcId) <> " " <> T.intercalate " " (map (valexprToSMT mapI) args') <> ")"

@@ -24,7 +24,7 @@ library
                       , Subst
                       , Unfold
 
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math
+  ghc-options:        -Werror -O2 -optc-O3 -optc-ffast-math
   
   build-depends:        base
                       , containers
@@ -62,7 +62,7 @@ test-suite behave-test
 
                       
 
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:       -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
   
   build-depends:       base
                      , containers

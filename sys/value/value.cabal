@@ -19,7 +19,7 @@ library
                       , RegexAlex       
                       , RegexPosixHappy      
   
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
   
   build-tools:          alex
                       , happy
@@ -61,6 +61,6 @@ test-suite Value-WhiteBox
                       , HUnit
                       , text
                  
-  ghc-options:         -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
 
   default-language:     Haskell2010

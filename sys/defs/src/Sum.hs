@@ -8,167 +8,98 @@ See license.txt
 -- Module      :  Sum
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  Closed-style (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
 --
 -- Implementation for a symbolic sum.
--- 
+--
 -- inspiration taken from
 -- https://hackage.haskell.org/package/multiset-0.3.3/docs/src/Data-MultiSet.html
 --
 -- In the complexity of functions /n/ refers to the number of distinct terms,
 -- /t/ is the total number of terms.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-module Sum  ( 
-    -- * Sum type
-      Sum
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# OPTIONS -Wall -Werror #-}
+module Sum
+    (  -- * Sum types
+      FreeSum
+    , SumTerm (..)
 
-    -- * Query
-    , nrofTerms
-    , distinctTerms     -- exposed for performance reasons
-                        -- checking properties for all distinct terms is faster than for all terms
-
-    -- * Filter
-    , partition
-    
-    -- * Fold
-    , foldMultiplier
-    
     -- * Sum of Term and Sums
     , add
     , subtract
-    , addMultiply
     , sum
     , sums
-    
-    
-    -- * Multiply 
+
+    -- * Multiply
     , multiply
+    ) where
 
-    -- * Constructors and conversion
+import           Prelude         hiding (subtract, sum)
 
-    -- ** List
-    , fromList
-
-    -- ** Multiplier lists
-    , toMultiplierList
-    , toDistinctAscMultiplierList
-    , fromMultiplierList
-    , fromDistinctAscMultiplierList
-) where
-
-import Prelude hiding (sum, subtract)
-
-import Control.Arrow ((***))
-import Control.DeepSeq
-import qualified Data.List as List
-import qualified Data.Map.Strict as Map
-import GHC.Generics (Generic)
+import           Control.DeepSeq
+import           Data.Foldable   hiding (sum)
+import           Data.Monoid     ((<>))
+import           FreeMonoidX     (FreeMonoidX, IntMultipliable, TermWrapper,
+                                  (<.>))
+import qualified FreeMonoidX     as FMX
+import           GHC.Generics    (Generic)
 
 {--------------------------------------------------------------------
-  The data type
+  The data types
 --------------------------------------------------------------------}
--- | Sum is a parameterized data type.
--- Sum represents a symbolic sum of terms of the type parameter @a@.
+-- | `FreeSum` represents a symbolic sum of terms of the type parameter `a`.
 -- The same term can occur multiple times.
-newtype Sum a = Sum { unSum :: Map.Map a Integer }
-    deriving (Eq, Ord, Read, Show, Generic, NFData)
-{--------------------------------------------------------------------
-  Query
---------------------------------------------------------------------}
--- | /O(1)/. The number of distinct terms in the sum.
-nrofTerms :: Sum a -> Int
-nrofTerms = Map.size . unSum
+--
+type FreeSum a = FreeMonoidX (SumTerm a)
+
+-- | Terms of a free-monoids of the form:
+--
+-- > a0 <> a1 <> ... <> an-1
+--
+-- where `<>` will be interpreted as the arithmetic sum of terms:
+--
+-- > a0 + a1 + ... + an-1
+--
+newtype SumTerm a = SumTerm { summand :: a }
+    deriving (Eq, Ord, Read, Show, Generic, NFData, Functor)
+
+instance Num a => Monoid (SumTerm a) where
+    mempty = SumTerm 0
+    (SumTerm x) `mappend` (SumTerm y) = SumTerm $ x + y
+
+instance TermWrapper SumTerm where
+    wrap = SumTerm
+    unwrap = summand
+
+instance Integral a => IntMultipliable (SumTerm a) where
+    n <.> SumTerm x = SumTerm (fromInteger $ toInteger x * toInteger n)
 
 {--------------------------------------------------------------------
   Sums and multiplications
 --------------------------------------------------------------------}
 -- | /O(log n)/. Add a term to a sum.
-add :: Ord a => a -> Sum a -> Sum a
-add t = addMultiply t 1
+add :: Ord a => a -> FreeSum a -> FreeSum a
+add = FMX.append . SumTerm
 
 -- | /O(log n)/. Subtract a term from a sum.
-subtract :: Ord a => a -> Sum a -> Sum a
-subtract t = addMultiply t (-1)
-
--- | /O(log n)/. Add a term multiplied by the given coefficient to a sum.
-addMultiply :: Ord a => a -> Integer -> Sum a -> Sum a
-addMultiply _ 0 s = s                                    -- invariant: no term with multiplier 0 is stored.
-addMultiply x m s = (Sum . Map.alter increment x . unSum) s
-    where
-        increment :: Maybe Integer -> Maybe Integer
-        increment Nothing            = Just m
-        increment (Just n) | n == -m = Nothing           -- Terms with multiplier zero are removed
-        increment (Just n)           = Just (n+m)
+subtract :: Ord a => a -> FreeSum a -> FreeSum a
+subtract = FMX.remove . SumTerm
 
 -- | The sum of a list of sums.
-sums :: Ord a => [Sum a] -> Sum a
-sums = List.foldl' sum (Sum Map.empty)
+sums :: (Ord a) => [FreeSum a] -> FreeSum a
+sums = fold
 
 -- | /O(n+m)/. The sum of two sums.
---
--- The implementation uses the efficient /hedge-union/ algorithm.
--- Hedge-union is more efficient on (bigsum `sum` smallsum).
-sum :: Ord a => Sum a -> Sum a -> Sum a
-sum (Sum m1) (Sum m2) = Sum $ Map.filter (0/=) $ Map.unionWith (+) m1 m2
+sum :: Ord a => FreeSum a -> FreeSum a -> FreeSum a
+sum = (<>)
 
 -- | /O(n)/. Multiply the constant with the sum.
-multiply :: Integer -> Sum a -> Sum a
-multiply 0 _ = Sum Map.empty
-multiply n s = (Sum . Map.map (n *) . unSum) s
-
-{--------------------------------------------------------------------
-  Partition
---------------------------------------------------------------------}
--- | /O(n)/. Partition the sum into two sums, one with all elements that satisfy
--- the predicate and one with all elements that don't satisfy the predicate.
-partition :: (a -> Bool) -> Sum a -> (Sum a,Sum a)
-partition p = (Sum *** Sum) . Map.partitionWithKey (\k _ -> p k) . unSum
-
-{--------------------------------------------------------------------
-  Fold
---------------------------------------------------------------------}
-
--- | /O(n)/. Fold over the terms of a sum with their multipliers.
-foldMultiplier :: (a -> Integer -> b -> b) -> b -> Sum a -> b
-foldMultiplier f z = Map.foldrWithKey f z . unSum
-
-{--------------------------------------------------------------------
-  Lists 
---------------------------------------------------------------------}
-
--- | /O(n)/. The distinct terms of a sum, 
--- each term occurs only once in the list.
---
--- > distinctTerms = map fst . toOccurList
-distinctTerms :: Sum a -> [a]
-distinctTerms = Map.keys . unSum
-
--- | /O(t*log t)/. Create a sum from a list of terms.
-fromList :: Ord a => [a] -> Sum a 
-fromList xs = fromMultiplierList $ zip xs (repeat 1)
-
-{--------------------------------------------------------------------
-  Multiplier lists 
---------------------------------------------------------------------}
-
--- | /O(n)/. Convert the sum to a list of term\/multiplier pairs.
-toMultiplierList :: Sum a -> [(a, Integer)]
-toMultiplierList = toDistinctAscMultiplierList
-
--- | /O(n)/. Convert the sum to a distinct ascending list of term\/multiplier pairs.
-toDistinctAscMultiplierList :: Sum a -> [(a, Integer)]
-toDistinctAscMultiplierList = Map.toAscList . unSum
-
--- | /O(n*log n)/. Create a sum from a list of term\/multiplier pairs.
-fromMultiplierList :: Ord a => [(a, Integer)] -> Sum a 
-fromMultiplierList = Sum . Map.filter (0/=) . Map.fromListWith (+)
-
--- | /O(n)/. Build a sum from an ascending list of term\/multiplier pairs where 
--- each term appears only once.
--- /The precondition (input list is strictly ascending) is not checked./
-fromDistinctAscMultiplierList :: [(a, Integer)] -> Sum a 
-fromDistinctAscMultiplierList = Sum . Map.filter (0/=) . Map.fromDistinctAscList
+multiply :: Ord a => Integer -> FreeSum a -> FreeSum a
+multiply = (<.>)
