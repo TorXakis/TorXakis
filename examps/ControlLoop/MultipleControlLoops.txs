@@ -332,44 +332,6 @@ PROCDEF corrects [ In_Cmd           :: Int # CorrectCmd
         ([[n > 1]] =>> corrects [ In_Cmd, In_ProduceReport, In_MeasureReport, Out_Correction ](n-1) )
 ENDDEF
 
-TYPEDEF ListCorrectCmd ::= NilCorrectCmd
-                         | CstrCorrectCmd { head :: CorrectCmd
-                                          ; tail :: ListCorrectCmd
-                                          }                                 
-ENDDEF
-
-FUNCDEF containsCorrectCmd ( x :: CorrectCmd ; l :: ListCorrectCmd ) :: Bool ::= 
-    IF isNilCorrectCmd(l) 
-    THEN False
-    ELSE (x == head(l)) \/ containsCorrectCmd(x,tail(l))
-    FI
-ENDDEF
-
-FUNCDEF removeCorrectCmd ( x :: CorrectCmd ; l :: ListCorrectCmd ) :: ListCorrectCmd ::= 
-    IF isNilCorrectCmd(l) 
-    THEN NilCorrectCmd             -- thus l
-    ELSE IF (x == head(l)) 
-            THEN tail(l)
-            ELSE CstrCorrectCmd(head(l), removeCorrectCmd(x,tail(l)))
-         FI
-    FI
-ENDDEF
-
-FUNCDEF containsBatchIdCorrectCmd ( b :: BatchId; l :: ListCorrectCmd ) :: Bool ::=
-    IF isNilCorrectCmd(l) 
-    THEN False
-    ELSE (b == batchId(head(l))) \/ containsBatchIdCorrectCmd(b,tail(l))
-    FI
-ENDDEF
-
--- bag commands: they can occur in any order
-PROCDEF correctInCmdHandler [ In_Cmd :: Int # CorrectCmd; Out_Cmd :: Int # CorrectCmd ] ( id :: Int; l :: ListCorrectCmd ) ::=
-        Out_Cmd ! id ? correctCmd [[ containsCorrectCmd(correctCmd, l) ]] >-> correctInCmdHandler [ In_Cmd, Out_Cmd ] ( id , removeCorrectCmd(correctCmd,l))
-    ##
-        In_Cmd ! id ? correctCmd :: CorrectCmd [[ isValid_CorrectCmd(correctCmd) /\ not ( containsBatchIdCorrectCmd (batchId(correctCmd),l)) ]] >-> correctInCmdHandler [ In_Cmd, Out_Cmd ] ( id , CstrCorrectCmd(correctCmd,l))
-ENDDEF
-
-
 TYPEDEF ListProduceReport ::= NilProduceReport
                              | CstrProduceReport { head :: ProduceReport
                                                   ; tail :: ListProduceReport
@@ -468,18 +430,13 @@ PROCDEF correct [ In_Cmd           :: Int # CorrectCmd
                 ; In_MeasureReport :: Int # MeasureReport
                 ; Out_Correction   :: Int # BatchId
                 ]       ( id :: Int ) ::=
-
-    HIDE [ H_In_Cmd :: Int # CorrectCmd ] IN
-            correctInCmdHandler [ In_Cmd, H_In_Cmd ] ( id, NilCorrectCmd )
-        |[ H_In_Cmd ]|
-            HIDE [ H_In_ProduceReport :: Int # ProduceReport ] IN
-                    correctInProduceReportHandler [ In_ProduceReport, H_In_ProduceReport ] ( id, NilProduceReport )
-                |[ H_In_ProduceReport ]|
-                    HIDE [ H_In_MeasureReport :: Int # MeasureReport ] IN
-                            correctInMeasureReportHandler [ In_MeasureReport, H_In_MeasureReport ] ( id, NilMeasureReport )
-                        |[ H_In_MeasureReport ]|
-                            correctProcess [ H_In_Cmd, H_In_ProduceReport, H_In_MeasureReport, Out_Correction ] ( id )
-                    NI
+    HIDE [ H_In_ProduceReport :: Int # ProduceReport ] IN
+            correctInProduceReportHandler [ In_ProduceReport, H_In_ProduceReport ] ( id, NilProduceReport )
+        |[ H_In_ProduceReport ]|
+            HIDE [ H_In_MeasureReport :: Int # MeasureReport ] IN
+                    correctInMeasureReportHandler [ In_MeasureReport, H_In_MeasureReport ] ( id, NilMeasureReport )
+                |[ H_In_MeasureReport ]|
+                    correctProcess [ In_Cmd, H_In_ProduceReport, H_In_MeasureReport, Out_Correction ] ( id )
             NI
     NI
 ENDDEF
@@ -516,18 +473,17 @@ PROCDEF flows [ In_Correction       :: Int # BatchId
               ; In_ProduceReport    :: Int # ProduceReport
               ; In_MeasureReport    :: Int # MeasureReport
               ; Out_Correction      :: Int # BatchId
-              ; In_ProductId        :: Int # BatchId
-              ; Release             :: BatchId
+              ; Out_ProductId        :: Int # BatchId # Bool
               ]     ( n :: Int ) EXIT ::= 
         flow [ In_Correction, In_ProduceCmd, In_ProduceMaterial, Out_ProduceReport, Out_ProduceMaterial
              , In_MeasureCmd, In_MeasureMaterial, Out_MeasureReport, Out_MeasureMaterial
              , In_CorrectCmd, In_ProduceReport, In_MeasureReport, Out_Correction
-             , In_ProductId, Release ](n-1)
+             , Out_ProductId ](n-1)
     |||
         ([[n > 1]] =>> flows [ In_Correction, In_ProduceCmd, In_ProduceMaterial, Out_ProduceReport, Out_ProduceMaterial
                              , In_MeasureCmd, In_MeasureMaterial, Out_MeasureReport, Out_MeasureMaterial    
                              , In_CorrectCmd, In_ProduceReport, In_MeasureReport, Out_Correction
-                             , In_ProductId, Release ](n-1) )
+                             , Out_ProductId ](n-1) )
 ENDDEF
 
 
@@ -544,14 +500,13 @@ PROCDEF flow [ In_Correction       :: Int # BatchId
              ; In_ProduceReport    :: Int # ProduceReport
              ; In_MeasureReport    :: Int # MeasureReport
              ; Out_Correction      :: Int # BatchId
-             ; In_ProductId        :: Int # BatchId
-             ; Release             :: BatchId
+             ; Out_ProductId       :: Int # BatchId # Bool
              ]        ( id :: Int ) EXIT ::= 
     LET produceId     = id % nProduce;
         measureId     = id % nMeasure;
         correctId     = id % nCorrect 
     IN
-        In_ProductId ! id ? inProductId >-> (
+        Out_ProductId ! id ? inProductId ! True >-> (
             (
                 -- triggers
                     (       In_ProduceCmd ! produceId ? inProduceCmd [[ batchId(inProduceCmd) == inProductId ]] 
@@ -575,12 +530,12 @@ PROCDEF flow [ In_Correction       :: Int # BatchId
                 |||
                     materialFlow [ In_ProduceMaterial, Out_ProduceMaterial, In_MeasureMaterial, Out_MeasureMaterial ] ( inProductId, produceId, measureId )
             ) 
-            >>>     Release ! inProductId
+            >>>     Out_ProductId ! id ! inProductId ! False
                 >-> flow [ In_Correction
                          , In_ProduceCmd, In_ProduceMaterial, Out_ProduceReport, Out_ProduceMaterial
                          , In_MeasureCmd, In_MeasureMaterial, Out_MeasureReport, Out_MeasureMaterial
                          , In_CorrectCmd, In_ProduceReport, In_MeasureReport, Out_Correction
-                         , In_ProductId, Release
+                         , Out_ProductId
                          ] ( id )
         )
     NI
@@ -627,12 +582,12 @@ FUNCDEF removeBatchId ( b :: BatchId ; l :: ListBatchId ) :: ListBatchId ::=
     FI
 ENDDEF
 
-PROCDEF material [ Out_ProductId :: Int # BatchId; Release :: BatchId ] ( inuse :: ListBatchId ) ::=
-        Out_ProductId ? id ? bId [[ isValid_BatchId(bId) /\ not(containsBatchId(bId, inuse)) ]] >-> material [ Out_ProductId, Release ] (CstrBatchId(bId, inuse)) 
-    ##  Release ? bId >-> material [ Out_ProductId, Release ] (removeBatchId(bId, inuse)) 
+PROCDEF material [ Out_ProductId :: Int # BatchId # Bool ] ( inuse :: ListBatchId ) ::=
+        Out_ProductId ? id ? bId ! True [[ isValid_BatchId(bId) /\ not(containsBatchId(bId, inuse)) ]] >-> material [ Out_ProductId ] (CstrBatchId(bId, inuse)) 
+    ##  Out_ProductId ? id ? bId ! False [[ containsBatchId(bId, inuse) ]] >-> material [ Out_ProductId ] (removeBatchId(bId, inuse)) 
 ENDDEF
 
-CHANDEF ChannelsFlow ::= Out_ProductId :: Int # BatchId
+CHANDEF ChannelsFlow ::= Out_ProductId :: Int # BatchId # Bool
 ENDDEF
 
 -- ---------------------------------------
@@ -651,11 +606,10 @@ PROCDEF specification [ In_Correction       :: Int # BatchId
                       ; In_ProduceReport    :: Int # ProduceReport
                       ; In_MeasureReport    :: Int # MeasureReport
                       ; Out_Correction      :: Int # BatchId
-                      ; Out_ProductId       :: Int # BatchId
+                      ; Out_ProductId       :: Int # BatchId # Bool
                       ] ( ) ::=
-    HIDE [ Release :: BatchId ] IN
-        material [ Out_ProductId, Release ] ( NilBatchId )
-    |[ Out_ProductId, Release ]|
+        material [ Out_ProductId ] ( NilBatchId )
+    |[ Out_ProductId ]|
         (
             produces [ In_Correction , In_ProduceCmd , In_ProduceMaterial , Out_ProduceReport , Out_ProduceMaterial ] ( nProduce )
         |[ In_Correction , In_ProduceCmd , In_ProduceMaterial , Out_ProduceReport , Out_ProduceMaterial ]| 
@@ -667,12 +621,11 @@ PROCDEF specification [ In_Correction       :: Int # BatchId
                 |[ In_CorrectCmd , In_ProduceReport , In_MeasureReport , Out_Correction ]|
                     flows [ In_Correction , In_ProduceCmd , In_ProduceMaterial , Out_ProduceReport , Out_ProduceMaterial
                          , In_MeasureCmd , In_MeasureMaterial , Out_MeasureReport , Out_MeasureMaterial
-                         , In_CorrectCmd , In_ProduceReport , In_MeasureReport , Out_Correction , Out_ProductId, Release
+                         , In_CorrectCmd , In_ProduceReport , In_MeasureReport , Out_Correction , Out_ProductId
                          ] ( nFlow ) 
                 )
             )
         )
-    NI
 ENDDEF
 
 MODELDEF Spec ::=
@@ -762,7 +715,8 @@ CNECTDEF  Sut ::=
 
     CHAN  IN   Out_ProductId                        HOST "localhost"  PORT 3225
     DECODE  Out_ProductId ! fromString( takeWhileNot (separator, s) ) 
-                      ! fromString( dropWhile (separator, dropWhileNot (separator, s)) ) <- ?s
+                          ! fromString( takeWhileNot (separator, dropWhile (separator, dropWhileNot (separator, s)) ) )
+                          ! fromString( dropWhile (separator, dropWhileNot (separator, dropWhile (separator, dropWhileNot (separator, s)) ) ) )  <- ?s
 ENDDEF
 
 CNECTDEF  Sim ::=
@@ -816,6 +770,6 @@ CNECTDEF  Sim ::=
     ENCODE  Out_Correction  ? id ? batchId          -> ! toString(id) ++ separator ++ toString(batchId)
     
     CHAN  OUT   Out_ProductId                         HOST "localhost"  PORT 3225
-    ENCODE  Out_ProductId ?id ? batchId                 -> ! toString(id) ++ separator ++ toString(batchId)
+    ENCODE  Out_ProductId ?id ? batchId ? b           -> ! toString(id) ++ separator ++ toString(batchId) ++ separator ++ toString(b)
 
 ENDDEF
