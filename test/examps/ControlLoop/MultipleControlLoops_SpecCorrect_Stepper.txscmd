@@ -1,4 +1,4 @@
 stepper SpecCorrect
 step 50
-trace txs $> testTrace.log
+trace proc $> testTrace.log
 exit

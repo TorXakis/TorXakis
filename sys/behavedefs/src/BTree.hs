@@ -159,6 +159,14 @@ type INode   =  BNode (WEnv VarId, IVEnv)                      --  Interactions 
 -- ----------------------------------------------------------------------------------------- --
 -- menu
 
+-- |
+--
+-- An element of the form (offers, hiddenVars, valexp)
+--
+-- Example offers G ? x | H ? y ~ Set { G ? x ,  H ? y }
+--
+-- valexp: = value expression over interaction variables. interaction variables
+-- must come from the hidden variables or offers.
 type  Menu  =  [ ( Set.Set BTree.CTOffer, [BTree.IVar], TxsDefs.ValExpr BTree.IVar ) ]
 
 

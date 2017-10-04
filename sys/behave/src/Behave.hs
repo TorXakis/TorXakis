@@ -10,9 +10,9 @@ See LICENSE at root directory of this repository.
 module Behave
 
 -- ----------------------------------------------------------------------------------------- --
--- 
+--
 -- Test Primitives over LTS to BTree -- no IO
--- 
+--
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
@@ -31,25 +31,25 @@ module Behave
 )
 
 -- ----------------------------------------------------------------------------------------- --
--- import 
+-- import
 
 where
 
-import Control.Monad.State
+import           Control.Monad.State
 
-import qualified Data.Set  as Set
-import qualified Data.Map  as Map
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
 
 -- import from local
-import Next
-import Reduce
-import Unfold
+import           Next
+import           Reduce
+import           Unfold
 
 -- import from behavedef
-import BTree
+import           BTree
 
 -- import from behaveenv
-import qualified EnvBTree  as IOB
+import qualified EnvBTree            as IOB
 
 -- import from coreenv
 import qualified EnvData
@@ -59,8 +59,8 @@ import qualified TxsDefs
 import qualified TxsUtils
 
 -- import from solve
-import SolveDefs
-import Solve
+import           Solve
+import           SolveDefs
 
 -- import from value
 import qualified Eval
@@ -76,12 +76,14 @@ behInit chsets bexp  =  do
      return $ Just btree'
 
 
--- ----------------------------------------------------------------------------------------- --
--- behMayMenu :  may menu of BTree without quiescence
 
-
-behMayMenu :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
-behMayMenu chsets btree' 
+-- | behMayMenu :  may menu of BTree without quiescence
+--
+-- Returns the list of all possible *visible* symbolic-actions.
+behMayMenu :: [ Set.Set TxsDefs.ChanId ] -- ^
+           -> BTree
+           -> Menu
+behMayMenu chsets btree'
   =  [ ( btoffs, hidvars, pred' ) | BTpref btoffs hidvars pred' _ <- btree' ]
      ++ concat [ behMayMenu chsets btree'' | BTtau btree'' <- btree' ]
 
@@ -104,10 +106,11 @@ behMustMenu _ _
 
 -- ----------------------------------------------------------------------------------------- --
 -- behRefusal :  check refusal set on BTree
-
-
+--
+-- TODO: Put an informal/description of refusal set.
+--
 behRefusal :: BTree -> Set.Set TxsDefs.ChanId -> Bool
-behRefusal bt refset 
+behRefusal bt refset
   =  case [ bt' | BTtau bt' <- bt ] of
      { []      -> and [ refBBranch bbranch refset | bbranch <- bt ]
      ; btrees' -> any (`behRefusal` refset) btrees'
@@ -119,13 +122,13 @@ refBBranch :: BBranch -> Set.Set TxsDefs.ChanId -> Bool
 refBBranch (BTpref btoffs _ _ _) refset
   =  not $ Set.map ctchan btoffs `Set.isSubsetOf` refset
 
-refBBranch (BTtau _) _ 
+refBBranch (BTtau _) _
   =  False
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- behAfterAct :  perform after action on BTree
-
+--
 
 behAfterAct :: [ Set.Set TxsDefs.ChanId ] -> BTree -> BehAction -> IOB.IOB (Maybe BTree)
 behAfterAct chsets bt behact
