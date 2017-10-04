@@ -28,6 +28,7 @@ library
                       , mtl
                       , text
                       
+                      , core
                       , coreenv
                       , defs
                       , serverenv

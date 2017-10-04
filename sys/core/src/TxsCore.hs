@@ -136,7 +136,7 @@ import qualified BTree
 import           Expand              (relabel)
 
 -- import from cnect
-import qualified EWorld
+-- import qualified EWorld
 
 -- import from coreenv
 import qualified EnvCore             as IOC
@@ -413,7 +413,7 @@ txsRanSolve vexp  =  do
 --   Only possible when txscore is initialized.
 --
 -- modus transition general.
-txsSetTest :: (EWorld w) => w
+txsSetTest :: (IOC.EWorld w) => w
            -> TxsDefs.ModelDef                              -- ^ model definition.
            -> Maybe TxsDefs.MapperDef                       -- ^ optional mapper definition.
            -> Maybe TxsDefs.PurpDef                         -- ^ optional test purpose definition.

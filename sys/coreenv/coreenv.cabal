@@ -29,7 +29,6 @@ library
 
                       , behavedefs
                       , defs
-                      , eworld
                       , solvedefs
                       
   default-language:     Haskell2010

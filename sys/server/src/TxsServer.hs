@@ -494,8 +494,7 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef Nothing Nothing
+                      lift $ TxsCore.txsSetTest envs modeldef Nothing Nothing
                       IFS.pack "TESTER" []
                       cmdsIntpr
               _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
@@ -523,8 +522,7 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef (Just mapperdef) Nothing
+                      lift $ TxsCore.txsSetTest envs modeldef (Just mapperdef) Nothing
                       IFS.pack "TESTER" []
                       cmdsIntpr
               ([modeldef],[],[purpdef],[cnectdef])
@@ -532,8 +530,7 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef Nothing (Just purpdef)
+                      lift $ TxsCore.txsSetTest envs modeldef Nothing (Just purpdef)
                       IFS.pack "TESTER" [ ]
                       cmdsIntpr
               _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
@@ -561,8 +558,7 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef (Just mapperdef) (Just purpdef)
+                      lift $ TxsCore.txsSetTest envs modeldef (Just mapperdef) (Just purpdef)
                       IFS.pack "TESTER" [ ]
                       cmdsIntpr
               _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
@@ -629,7 +625,7 @@ cmdSimulator args = do
                 -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetSim (World.putSocket envs) (World.getSocket envs)
+                      lift $ TxsCore.txsSetSim (World.putSockWorld envs) (World.getSockWorld envs)
                                                modeldef Nothing
                       IFS.pack "SIMULATOR" []
                       cmdsIntpr
@@ -654,7 +650,7 @@ cmdSimulator args = do
                 -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetSim (World.putSocket envs) (World.getSocket envs)
+                      lift $ TxsCore.txsSetSim (World.putSockWorld envs) (World.getSockWorld envs)
                                                modeldef (Just mapperdef)
                       IFS.pack "SIMULATOR" []
                       cmdsIntpr

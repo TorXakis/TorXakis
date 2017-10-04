@@ -11,6 +11,7 @@ module EnvCore
                   -- torxakis core main state monad transformer
   , EnvC(..)
   , CoreState(..)
+  , EWorld(..)
   , getSMT -- :: String -> IOC SMTData.SmtEnv
   , putSMT -- :: String -> SMTData.SmtEnv -> IOC ()
   , getParams -- :: [String] -> IOC [(String,String)]
@@ -44,7 +45,7 @@ import qualified TxsDefs
 import qualified TxsDDefs
 
 -- import from cnect
-import qualified EWorld
+-- import qualified EWorld
 
 -- import from solve
 import qualified SMTData
@@ -126,6 +127,19 @@ incUnid :: IOC ()
 incUnid = modify $ \env -> env { unid = unid env + 1}
 
 -- ----------------------------------------------------------------------------------------- --
+-- external world
+
+
+class EWorld w
+  where
+     startW  :: w -> IOC w
+     stopW   :: w -> IOC w
+     putToW  :: w -> TxsDDefs.Action -> IOC TxsDDefs.Action
+     getFroW :: w -> IOC TxsDDefs.Action
+ 
+
+-- ----------------------------------------------------------------------------------------- --
+-- SMT :  getting and setting SMT solver
 -- SMT :  getting and setting SMT solver
 
 getSMT :: String -> IOC SMTData.SmtEnv

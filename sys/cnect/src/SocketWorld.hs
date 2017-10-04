@@ -17,14 +17,16 @@ module SocketWorld
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( openSockets   --  :: IOS.IOS ()
-                --  open socket connections to outside world
-, closeSockets  --  :: IOS.IOS ()
-                --  close connections to outside world
-, putSocket     --  :: IOS.EnvS -> Int -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
-                --  try to output to world, or observe earlier input (no quiescence)
-, getSocket     --  :: IOS.EnvS -> Int -> IOC.IOC TxsDDefs.Action
-                --  observe input from world on list of handles, or observe quiescence
+( openSockets      --  :: IOS.IOS ()
+                   --  open socket connections to outside world
+, closeSockets     --  :: IOS.IOS ()
+                   --  close connections to outside world
+, startSockWorld   --
+, stopSockWorld    --
+, putSockWorld     --  :: IOS.EnvS -> Int -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
+                   --  try to output to world, or observe earlier input (no quiescence)
+, getSockWorld     --  :: IOS.EnvS -> Int -> IOC.IOC TxsDDefs.Action
+                   --  observe input from world on list of handles, or observe quiescence
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -65,32 +67,39 @@ import qualified Utils
 -- ----------------------------------------------------------------------------------------- --
 -- socket world
 
+
+{-
 data SockWorld = SockWorld { tow    :: ( Maybe (Chan TxsDDefs.SAction)
                                        , Maybe ThreadId
                                        , [TxsDDefs.ConnHandle]
-                                       )                  -- ^ connections to world
+                                       )                   -- ^ connections to world
                            , frow   :: ( Maybe (Chan TxsDDefs.SAction)
                                        , [ThreadId]
                                        , [TxsDDefs.ConnHandle]
-                                       )                  -- ^ connections from world
-                           , params :: Params             -- ^ TorXakis parameters with checks
+                                       )                   -- ^ connections from world
                            }
+-}
 
-instance EWorld SockWorld
+
+instance IOC.EWorld IOS.EnvS
   where
      startW  = startSockWorld
      stopW   = stopSockWorld
-     putToW  = putToSockWorld
-     getFroW = getFroSockWorld
+     putToW  = putSockWorld
+     getFroW = getSockWorld
  
 
 -- ----------------------------------------------------------------------------------------- --
 -- socketworld as eworld
 
 
-   
+startSockWorld :: IOS.EnvS -> IOC.IOC IOS.EnvS
+startSockWorld w  =  do
+     return w
 
-
+stopSockWorld  :: IOS.EnvS -> IOC.IOC IOS.EnvS
+stopSockWorld w  =  do
+     return w
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -259,11 +268,11 @@ closeSockets  =  do
 
 
 -- ----------------------------------------------------------------------------------------- --
--- putSocket :  try to do output to world on time, or observe earlier input (no quiescence)
+-- putSockWorld :  try to do output to world on time, or observe earlier input (no quiescence)
 
-putSocket :: IOS.EnvS -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
+putSockWorld :: IOS.EnvS -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
 
-putSocket envs act@Act{} =
+putSockWorld envs act@Act{} =
      let ( Just towChan, _,  _ )  = IOS.tow envs
          ( Just frowChan, _,  _ ) = IOS.frow envs
          ioTime                   = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
@@ -278,7 +287,7 @@ putSocket envs act@Act{} =
                                     return act
               Just (SAct h s) -> EnDecode.decode envs (SAct h s)
 
-putSocket envs ActQui =
+putSockWorld envs ActQui =
      let ( Just towChan, _,  _ )  = IOS.tow envs
          ( Just frowChan, _,  _ ) = IOS.frow envs
          deltaTime                = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
@@ -299,10 +308,10 @@ putSocket envs ActQui =
               Just (SAct h s) -> EnDecode.decode envs (SAct h s)
 
 -- ----------------------------------------------------------------------------------------- --
--- getSocket :  observe input from world, or observe quiescence
+-- getSockwWorld :  observe input from world, or observe quiescence
 
-getSocket :: IOS.EnvS -> IOC.IOC TxsDDefs.Action
-getSocket envs =
+getSockWorld :: IOS.EnvS -> IOC.IOC TxsDDefs.Action
+getSockWorld envs =
      let ( Just frowChan, _,  _ ) = IOS.frow envs
          deltaTime                = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
                                       Nothing      -> 2000                -- default 2 sec
