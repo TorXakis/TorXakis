@@ -1,3 +1,4 @@
+seed 3835
 tester Model Sut
 test 20
 trace proc $> testTrace.log

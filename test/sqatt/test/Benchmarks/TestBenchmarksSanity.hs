@@ -17,4 +17,3 @@ main = do
     logDir <- mkLogDir "benchmarks-test-"
     cd $ "test" </> "sqatt"
     hspec $ parallel $ testExampleSets (".." </> ".." </> logDir) allExamples
-
