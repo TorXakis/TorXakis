@@ -1,3 +1,4 @@
+seed 98216
 tester Model Sut
 test 10
 trace proc $> testTrace.log
