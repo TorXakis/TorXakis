@@ -45,6 +45,15 @@ do100Acts3procsIStep = TxsExample
     , expectedResult = Pass
     }
 
+manySeqSync :: TxsExample
+manySeqSync = TxsExample
+    { exampleName = "6 sequential processes synchronizing in two actions"
+    , txsModelFiles = modelFiles
+    , txsCommandsFile = txsCmdPathBench benchDir "SyncAlternate6"
+    , sutExample = Nothing
+    , expectedResult = Pass
+    }
+
 manyActsSyncTop :: TxsExample
 manyActsSyncTop = TxsExample
     { exampleName = "many processes synchronizing at the top"
@@ -54,9 +63,20 @@ manyActsSyncTop = TxsExample
     , expectedResult = Pass
     }
 
+manySyncPairs :: TxsExample
+manySyncPairs = TxsExample
+    { exampleName = "many processes synchronizing in pairs"
+    , txsModelFiles = modelFiles
+    , txsCommandsFile = txsCmdPathBench benchDir "ManySyncPairs"
+    , sutExample = Nothing
+    , expectedResult = Pass
+    }
+
 benchmarksSet :: TxsExampleSet
 benchmarksSet = TxsExampleSet "Synchronization" [ alternateTwoProcs
                                                 , do100Acts3procs
                                                 , do100Acts3procsIStep
+                                                , manySeqSync
                                                 , manyActsSyncTop
+                                                , manySyncPairs
                                                 ]

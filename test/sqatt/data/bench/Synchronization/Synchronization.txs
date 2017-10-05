@@ -105,3 +105,35 @@ MODELDEF ManyActsSyncTop ::=
         ||| sequence[SyncAct8]()
         )        
 ENDDEF
+
+-- | Many pairs of synchronized actions, composed in parallel.
+MODELDEF ManySyncPairs ::=
+    CHAN IN
+    CHAN OUT SyncAct0
+           , SyncAct1
+           , SyncAct2
+           , SyncAct3
+           , SyncAct4
+           , SyncAct5
+           , SyncAct6
+           , SyncAct7
+           , SyncAct8
+    BEHAVIOUR
+        (sequence[SyncAct0]() |[SyncAct0]| sequence[SyncAct0]())
+        |||
+        (sequence[SyncAct1]() |[SyncAct1]| sequence[SyncAct1]())
+        |||
+        (sequence[SyncAct2]() |[SyncAct2]| sequence[SyncAct2]())
+        |||
+        (sequence[SyncAct3]() |[SyncAct3]| sequence[SyncAct3]())
+        |||
+        (sequence[SyncAct4]() |[SyncAct4]| sequence[SyncAct4]())
+        |||
+        (sequence[SyncAct5]() |[SyncAct5]| sequence[SyncAct5]())
+        |||
+        (sequence[SyncAct6]() |[SyncAct6]| sequence[SyncAct6]())
+        |||
+        (sequence[SyncAct7]() |[SyncAct7]| sequence[SyncAct7]())
+        |||
+        (sequence[SyncAct8]() |[SyncAct8]| sequence[SyncAct8]())
+ENDDEF
