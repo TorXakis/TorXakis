@@ -22,7 +22,7 @@ do100Acts3procs :: TxsExample
 do100Acts3procs = TxsExample
     { exampleName = "3 processes"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "ForeverSynchronized3"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "ForeverSynchronized3"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -31,7 +31,7 @@ alternateTwoProcs :: TxsExample
 alternateTwoProcs = TxsExample
     { exampleName = "alternate 2 processes"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "ForeverSyncAlt2"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "ForeverSyncAlt2"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -40,7 +40,7 @@ do100Acts3procsIStep :: TxsExample
 do100Acts3procsIStep = TxsExample
     { exampleName = "3 processes with internal action"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "ForeverSynchronizedIStep3"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "ForeverSynchronizedIStep3"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -49,7 +49,7 @@ manySeqSync :: TxsExample
 manySeqSync = TxsExample
     { exampleName = "6 sequential processes synchronizing in two actions"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "SyncAlternate6"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "SyncAlternate6"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -58,7 +58,7 @@ manyActsSyncTop :: TxsExample
 manyActsSyncTop = TxsExample
     { exampleName = "many processes synchronizing at the top"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "ManyActsSyncTop"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "ManyActsSyncTop"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -67,7 +67,7 @@ manySyncPairs :: TxsExample
 manySyncPairs = TxsExample
     { exampleName = "many processes synchronizing in pairs"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "ManySyncPairs"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "ManySyncPairs"]
     , sutExample = Nothing
     , expectedResult = Pass
     }

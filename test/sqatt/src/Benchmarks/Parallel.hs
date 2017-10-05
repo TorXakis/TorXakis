@@ -22,7 +22,7 @@ parallel4 :: TxsExample
 parallel4 = TxsExample
     { exampleName = "4 parallel sequential-processes"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "Parallel4"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "Parallel4"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -31,7 +31,7 @@ parallelIStep4 :: TxsExample
 parallelIStep4 = TxsExample
     { exampleName = "4 parallel sequential-processes, with internal step"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "Parallel4"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "Parallel4"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -41,7 +41,7 @@ parallelAlternate4 :: TxsExample
 parallelAlternate4 = TxsExample
     { exampleName = "4 parallel sequential-processes with alternating actions"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "ParallelAlternate4"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "ParallelAlternate4"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -50,7 +50,7 @@ parallelMultiact4 :: TxsExample
 parallelMultiact4 = TxsExample
     { exampleName = "4 parallel sequential-processes with multiple actions"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "ParallelMultiAct"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "ParallelMultiAct"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -59,7 +59,7 @@ parallelSync :: TxsExample
 parallelSync = TxsExample
     { exampleName = "convoluted parallel-synchronous model"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "ParallelSync"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "ParallelSync"]
     , sutExample = Nothing
     , expectedResult = Fail
     }
@@ -68,7 +68,7 @@ parallelNested :: TxsExample
 parallelNested = TxsExample
     { exampleName = "4 parallel nested synchronizing sequences"
     , txsModelFiles = modelFiles
-    , txsCommandsFile = txsCmdPathBench benchDir "ParallelNested"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "ParallelNested"]
     , sutExample = Nothing
     , expectedResult = Pass
     }

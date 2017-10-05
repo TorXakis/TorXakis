@@ -33,7 +33,7 @@ test0 :: TxsExample
 test0 = TxsExample
   { exampleName = "Stepper"
   , txsModelFiles = [echoTxsPath]
-  , txsCommandsFile = echoStepperCmdPath
+  , txsCmdsFiles = [echoStepperCmdPath]
   , sutExample = Nothing
   , expectedResult = Pass
   }
@@ -42,7 +42,7 @@ test1 :: TxsExample
 test1 = TxsExample
   { exampleName = "Simulator"
   , txsModelFiles = [echoTxsPath]
-  , txsCommandsFile = echoTesterCmdPath
+  , txsCmdsFiles = [echoTesterCmdPath]
   , sutExample = Just (TxsSimulator echoSimulatorCmdPath)
   , expectedResult = Pass
   }

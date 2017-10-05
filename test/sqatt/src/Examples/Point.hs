@@ -18,7 +18,7 @@ test0 :: TxsExample
 test0 = TxsExample
   { exampleName = "Stepper Test"
   , txsModelFiles = [txsFilePath exampDir "Point"]
-  , txsCommandsFile = txsCmdPath exampDir "Point_Stepper"
+  , txsCmdsFiles = [txsCmdPath exampDir "Point_Stepper"]
   , sutExample = Nothing
   , expectedResult = Pass
   }
@@ -27,7 +27,7 @@ test1 :: TxsExample
 test1 = TxsExample
   { exampleName = "Purpose Stepper Test"
   , txsModelFiles = [txsFilePath exampDir "Point"]
-  , txsCommandsFile = txsCmdPath exampDir "Point_Purpose_Stepper"
+  , txsCmdsFiles = [txsCmdPath exampDir "Point_Purpose_Stepper"]
   , sutExample = Nothing
   , expectedResult = Pass
   }

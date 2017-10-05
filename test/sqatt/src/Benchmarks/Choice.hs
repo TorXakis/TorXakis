@@ -17,7 +17,7 @@ do100Choices :: TxsExample
 do100Choices = TxsExample
     { exampleName = "100 choices"
     , txsModelFiles = [txsFilePathBench benchDir "Choice"]
-    , txsCommandsFile = txsCmdPathBench benchDir "ForeverChoice"
+    , txsCmdsFiles = [txsCmdPathBench benchDir "ForeverChoice"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
