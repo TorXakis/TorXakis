@@ -6,8 +6,9 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 module Benchmarks.Synchronization (benchmarksSet) where
 
+import           Benchmarks.Common
 import           Examples.Paths
-import           Prelude        hiding (FilePath)
+import           Prelude           hiding (FilePath)
 import           Sqatt
 
 benchDir :: FilePath
@@ -22,7 +23,8 @@ do100Acts3procs :: TxsExample
 do100Acts3procs = TxsExample
     { exampleName = "3 processes"
     , txsModelFiles = modelFiles
-    , txsCmdsFiles = [txsCmdPathBench benchDir "ForeverSynchronized3"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "ForeverSynchronized3"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -31,7 +33,9 @@ alternateTwoProcs :: TxsExample
 alternateTwoProcs = TxsExample
     { exampleName = "alternate 2 processes"
     , txsModelFiles = modelFiles
-    , txsCmdsFiles = [txsCmdPathBench benchDir "ForeverSyncAlt2"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "ForeverSyncAlt2"
+                     ]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -40,7 +44,9 @@ do100Acts3procsIStep :: TxsExample
 do100Acts3procsIStep = TxsExample
     { exampleName = "3 processes with internal action"
     , txsModelFiles = modelFiles
-    , txsCmdsFiles = [txsCmdPathBench benchDir "ForeverSynchronizedIStep3"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "ForeverSynchronizedIStep3"
+                     ]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -49,7 +55,9 @@ manySeqSync :: TxsExample
 manySeqSync = TxsExample
     { exampleName = "6 sequential processes synchronizing in two actions"
     , txsModelFiles = modelFiles
-    , txsCmdsFiles = [txsCmdPathBench benchDir "SyncAlternate6"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "SyncAlternate6"
+                     ]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -58,7 +66,9 @@ manyActsSyncTop :: TxsExample
 manyActsSyncTop = TxsExample
     { exampleName = "many processes synchronizing at the top"
     , txsModelFiles = modelFiles
-    , txsCmdsFiles = [txsCmdPathBench benchDir "ManyActsSyncTop"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "ManyActsSyncTop"
+                     ]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -67,7 +77,9 @@ manySyncPairs :: TxsExample
 manySyncPairs = TxsExample
     { exampleName = "many processes synchronizing in pairs"
     , txsModelFiles = modelFiles
-    , txsCmdsFiles = [txsCmdPathBench benchDir "ManySyncPairs"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "ManySyncPairs"
+                     ]
     , sutExample = Nothing
     , expectedResult = Pass
     }

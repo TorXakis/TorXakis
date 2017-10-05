@@ -20,6 +20,7 @@ library
                      , Benchmarks.All
   other-modules:       Benchmarks.Choice
                      , Benchmarks.Enable
+                     , Benchmarks.Common                     
                      , Benchmarks.Hiding
                      , Benchmarks.Parallel
                      , Benchmarks.Sequence

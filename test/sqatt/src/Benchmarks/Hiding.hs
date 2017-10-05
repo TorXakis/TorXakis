@@ -6,8 +6,9 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 module Benchmarks.Hiding (benchmarksSet) where
 
+import           Benchmarks.Common
 import           Examples.Paths
-import           Prelude        hiding (FilePath)
+import           Prelude           hiding (FilePath)
 import           Sqatt
 
 benchDir :: FilePath
@@ -22,7 +23,9 @@ alt4hide1 :: TxsExample
 alt4hide1 = TxsExample
     { exampleName = "Alternate 4 hide 1 action"
     , txsModelFiles = modelFiles
-    , txsCmdsFiles = [txsCmdPathBench benchDir "Alternate4Hide1Act"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "Alternate4Hide1Act"
+                     ]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -31,7 +34,9 @@ hideFirstSFA :: TxsExample
 hideFirstSFA = TxsExample
     { exampleName = "Hide first of sync first alternate"
     , txsModelFiles = modelFiles
-    , txsCmdsFiles = [txsCmdPathBench benchDir "HideFirstSFA"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "HideFirstSFA"
+                     ]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -40,7 +45,9 @@ hideSecondSFA :: TxsExample
 hideSecondSFA = TxsExample
     { exampleName = "Hide second of sync second alternate"
     , txsModelFiles = modelFiles
-    , txsCmdsFiles = [txsCmdPathBench benchDir "HideSecondSFA"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "HideSecondSFA"
+                     ]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -49,7 +56,9 @@ matchNoData :: TxsExample
 matchNoData = TxsExample
     { exampleName = "Match"
     , txsModelFiles = modelFiles
-    , txsCmdsFiles = [txsCmdPathBench benchDir "Match"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "Match"
+                     ]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -58,7 +67,9 @@ matchInt :: TxsExample
 matchInt = TxsExample
     { exampleName = "Match Int"
     , txsModelFiles = modelFiles
-    , txsCmdsFiles = [txsCmdPathBench benchDir "MatchInt"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "MatchInt"
+                     ]
     , sutExample = Nothing
     , expectedResult = Pass
     }

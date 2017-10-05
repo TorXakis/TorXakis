@@ -6,8 +6,9 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 module Benchmarks.Choice (benchmarksSet) where
 
+import           Benchmarks.Common
 import           Examples.Paths
-import           Prelude        hiding (FilePath)
+import           Prelude           hiding (FilePath)
 import           Sqatt
 
 benchDir :: FilePath
@@ -17,7 +18,9 @@ do100Choices :: TxsExample
 do100Choices = TxsExample
     { exampleName = "100 choices"
     , txsModelFiles = [txsFilePathBench benchDir "Choice"]
-    , txsCmdsFiles = [txsCmdPathBench benchDir "ForeverChoice"]
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "ForeverChoice"
+                     ]
     , sutExample = Nothing
     , expectedResult = Pass
     }
