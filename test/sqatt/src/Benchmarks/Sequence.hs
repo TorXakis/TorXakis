@@ -24,6 +24,7 @@ do100Acts = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "SingleActionSequence"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -35,6 +36,7 @@ do100IActs = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "SingleActionIStepSequence"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -46,6 +48,7 @@ do100DataActs = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ForeverOutput4"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -57,6 +60,19 @@ sequence10Ints = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "Sequence10Ints"
                      ]
+    , txsServerArgs = []
+    , sutExample = Nothing
+    , expectedResult = Pass
+    }
+
+sequence10IntsCvc4 :: TxsExample
+sequence10IntsCvc4 = TxsExample
+    { exampleName = "sequence with a 10 integer channel (cvc4)"
+    , txsModelFiles = modelFiles
+    , txsCmdsFiles = [ seedSetupCmdFile
+                     , txsCmdPathBench benchDir "Sequence10Ints"
+                     ]
+    , txsServerArgs = ["--smt-solver", "cvc4"]
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -68,6 +84,7 @@ sequence10IntsTD = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "Sequence10IntsTypeDef"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -77,5 +94,6 @@ benchmarksSet = TxsExampleSet "Sequence" [ do100Acts
                                          , do100IActs
                                          , do100DataActs
                                          , sequence10Ints
+                                         , sequence10IntsCvc4
                                          , sequence10IntsTD
                                          ]

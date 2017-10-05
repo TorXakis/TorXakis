@@ -22,6 +22,7 @@ test0 = TxsExample
   { exampleName = "Basic"
   , txsModelFiles = [txsFilePath exampDir "Adder"]
   , txsCmdsFiles = [txsCmdPath exampDir "Adder_Tester"]
+  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            adderJavaPath
@@ -35,6 +36,7 @@ test1 = TxsExample
   { exampleName = "State Automaton"
   , txsModelFiles = [txsFilePath exampDir "AdderStAut"]
   , txsCmdsFiles = [txsCmdPath exampDir "AdderStautTester"]
+  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            adderJavaPath
@@ -48,6 +50,7 @@ test2 = TxsExample
   { exampleName = "Parallel Adders"
   , txsModelFiles = [txsFilePath exampDir "Adder"]
   , txsCmdsFiles = [txsCmdPath exampDir "Adder3_Tester"]
+  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            adderJavaPath
@@ -65,6 +68,7 @@ test3 = TxsExample
                     , txsPurposeFromTracePath "AdderPurpose"
                     ]
   , txsCmdsFiles = [txsCmdPath exampDir "AdderReplay"]
+  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            adderJavaPath

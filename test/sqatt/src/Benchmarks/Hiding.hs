@@ -26,6 +26,7 @@ alt4hide1 = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "Alternate4Hide1Act"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -37,6 +38,7 @@ hideFirstSFA = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "HideFirstSFA"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -48,6 +50,7 @@ hideSecondSFA = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "HideSecondSFA"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -59,6 +62,7 @@ matchNoData = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "Match"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -70,6 +74,7 @@ matchInt = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "MatchInt"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }

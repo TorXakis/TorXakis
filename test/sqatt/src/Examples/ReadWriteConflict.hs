@@ -25,6 +25,7 @@ testStepper = TxsExample
   { exampleName = "ReadWriteConflict Stepper Test"
   , txsModelFiles = [txsFilePath exampDir readWriteConflictText]
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper"]
+  , txsServerArgs = []
   , sutExample = Nothing
   , expectedResult = Pass
   }
@@ -34,6 +35,7 @@ testStepper7 = TxsExample
   { exampleName = "ReadWriteConflict Stepper7 Test"
   , txsModelFiles = [txsFilePath exampDir readWriteConflictText]
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite7_Stepper"]
+  , txsServerArgs = []
   , sutExample = Nothing
   , expectedResult = Pass
   }
@@ -43,6 +45,7 @@ testAdvancedStepper = TxsExample
   { exampleName = "ReadWriteConflict_Advanced Stepper Test"
   , txsModelFiles = [txsFilePath exampDir readWriteConflictAdvancedText]
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper"]
+  , txsServerArgs = []
   , sutExample = Nothing
   , expectedResult = Pass
   }

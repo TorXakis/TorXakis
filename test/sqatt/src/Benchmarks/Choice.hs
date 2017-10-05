@@ -21,6 +21,7 @@ do100Choices = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ForeverChoice"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }

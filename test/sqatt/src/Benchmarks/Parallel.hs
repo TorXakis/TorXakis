@@ -26,6 +26,7 @@ parallel4 = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "Parallel4"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -37,6 +38,7 @@ parallelIStep4 = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "Parallel4"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -49,6 +51,7 @@ parallelAlternate4 = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ParallelAlternate4"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -60,6 +63,7 @@ parallelMultiact4 = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ParallelMultiAct"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -71,6 +75,7 @@ parallelSync = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ParallelSync"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Fail
     }
@@ -82,6 +87,7 @@ parallelNested = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ParallelNested"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }

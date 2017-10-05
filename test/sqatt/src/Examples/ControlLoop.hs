@@ -22,6 +22,7 @@ test0 = TxsExample
   { exampleName = "Stepper"
   , txsModelFiles = [txsFilePath exampDir "ControlLoopModel"]
   , txsCmdsFiles = [txsCmdPath exampDir "ControlLoop_Stepper"]
+  , txsServerArgs = []
   , sutExample = Nothing
   , expectedResult = Pass
   }
@@ -41,6 +42,7 @@ test2 = TxsExample
   { exampleName = "Spec Measure"
   , txsModelFiles = [multipleControlLoopTxsPath]
   , txsCmdsFiles = [txsCmdPath exampDir "MultipleControlLoops_SpecMeasure_Stepper"]
+  , txsServerArgs = []
   , sutExample = Nothing
   , expectedResult = Pass
   }
@@ -50,6 +52,7 @@ test3 = TxsExample
   { exampleName = "Spec Correct"
   , txsModelFiles = [multipleControlLoopTxsPath]
   , txsCmdsFiles = [txsCmdPath exampDir "MultipleControlLoops_SpecCorrect_Stepper"]
+  , txsServerArgs = []
   , sutExample = Nothing
   , expectedResult = Pass
   }
@@ -59,6 +62,7 @@ test4 = TxsExample
   { exampleName = "Multiple Loops Stepper #long"
   , txsModelFiles = [multipleControlLoopTxsPath]
   , txsCmdsFiles = [txsCmdPath exampDir "MultipleControlLoops_Spec_Stepper"]
+  , txsServerArgs = []
   , sutExample = Nothing
   , expectedResult = Pass
   }

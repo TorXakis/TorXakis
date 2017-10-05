@@ -19,6 +19,7 @@ test0 = TxsExample
   { exampleName = "Stepper Test"
   , txsModelFiles = [txsFilePath exampDir "Point"]
   , txsCmdsFiles = [txsCmdPath exampDir "Point_Stepper"]
+  , txsServerArgs = []
   , sutExample = Nothing
   , expectedResult = Pass
   }
@@ -28,6 +29,7 @@ test1 = TxsExample
   { exampleName = "Purpose Stepper Test"
   , txsModelFiles = [txsFilePath exampDir "Point"]
   , txsCmdsFiles = [txsCmdPath exampDir "Point_Purpose_Stepper"]
+  , txsServerArgs = []
   , sutExample = Nothing
   , expectedResult = Pass
   }

@@ -24,7 +24,9 @@ do100Acts3procs = TxsExample
     { exampleName = "3 processes"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "ForeverSynchronized3"]
+                     , txsCmdPathBench benchDir "ForeverSynchronized3"
+                     ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -36,6 +38,7 @@ alternateTwoProcs = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ForeverSyncAlt2"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -47,6 +50,7 @@ do100Acts3procsIStep = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ForeverSynchronizedIStep3"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -58,6 +62,7 @@ manySeqSync = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "SyncAlternate6"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -69,6 +74,7 @@ manyActsSyncTop = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ManyActsSyncTop"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }
@@ -80,6 +86,7 @@ manySyncPairs = TxsExample
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ManySyncPairs"
                      ]
+    , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
     }

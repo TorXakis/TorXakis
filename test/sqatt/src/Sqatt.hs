@@ -65,6 +65,8 @@ data TxsExample
     --   TorXakis server. Commands are passed in the order specified by the
     --   order of the files in the list.
   , txsCmdsFiles   :: [FilePath]
+    -- | Command line arguments to be passed to the TorXakis server command.
+  , txsServerArgs  :: [Text]
     -- | SUT example. This run together with TorXakis. If this field is
     --   `Nothing` then the example is assumed to be autonomous (only TorXakis
     --   will be run)
@@ -290,7 +292,7 @@ runTxsWithExample mLogDir ex = Concurrently $ do
       port <- repr <$> getRandomPort
       runConcurrently $ timer
                     <|> heartbeat
-                    <|> txsServerProc mLogDir port
+                    <|> txsServerProc mLogDir (port : txsServerArgs ex)
                     <|> txsUIProc mLogDir inputModelF port
   where
     heartbeat = Concurrently $ forever $ do
@@ -327,9 +329,8 @@ runTxsWithExample mLogDir ex = Concurrently $ do
     tErr = TestExpectationError $
               format ("Did not get expected result "%s)
                      (repr . expectedResult $ ex)
-
-    txsServerProc sLogDir port = Concurrently $
-      runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd [port]
+    txsServerProc sLogDir args = Concurrently $
+      runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd args
 
 -- | Run a process.
 runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @Nothing@ if no logging is desired.
