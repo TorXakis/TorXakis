@@ -40,6 +40,8 @@ the test cases.
     - The example name.
     - The paths to the _.txs_ files that contain the TorXakis model.
     - The path to the file that contains TorXakis commands.
+    - Command line arguments, if any, for the `TorXakis` server command
+      (`txserver`).
     - If needed: the path to the SUT source code (currently only Java is
     supported), or the path to the TorXakis commands that will be used to
     run TorXakis as a SUT simulator.
@@ -87,7 +89,8 @@ test0 :: TxsExample
 test0 = TxsExample
   { exampleName = "What the test is checking"
   , txsModelFiles = [txsFilePath "MyTest" "MyTestModel"]
-  , txsCommandsFile = txsCmdPath "MyTest" "MyTestCmds"
+  , txsCommandsFile = [txsCmdPath "MyTest" "MyTestCmds"]
+  , txsServerArgs = []
   , sutExample = 
       Just (JavaExample (javaFilePath "MyTest" "MySUT") ["Some", "SUT", "Args"])
   , expectedResult = Pass
@@ -159,19 +162,28 @@ by underscores (`_`) and colons (`:`) will be replaced by dashes (`-`).
 
 ### Long-running tests
 
-Some example cases are known to take longer than others. We run these tests in parallel with the rest, in order to prevent them from timing the whole build out. These tests have "**#long**" tag in their names. If you add a test that you expect to take longer, you can have them run in the Long Tests group by adding _#long_ to their name.
+Some example cases are known to take longer than others. We run these tests in
+parallel with the rest, in order to prevent them from timing the whole build
+out. These tests have "**#long**" tag in their names. If you add a test that
+you expect to take longer, you can have them run in the Long Tests group by
+adding _#long_ to their name.
 
-[Customers and Orders test](src/Examples/CustomersOrders.hs) is an example to such tests.
-```
+[Customers and Orders test](src/Examples/CustomersOrders.hs) is an example to
+such tests.
+
+```haskell
 test = TxsExample
   { exampleName = "Customers & Orders Test #long"
   , txsModelFiles = [txsFilePath exampDir customersOrdersText]
 ...
 ```
 
-The parallelization of these tests are handled by our CI provider by running two separate test jobs. Long running tests are run with "_--match=#long_" test parameter while faster tests are run with "_--skip=#long_".
+The parallelization of these tests are handled by our CI provider by running
+two separate test jobs. Long running tests are run with "_--match=#long_" test
+parameter while faster tests are run with "_--skip=#long_".
 
-These jobs are scripted in [test.sh](../../ci/test.sh) and [test_long.sh](../../ci/test_long.sh) respectively.
+These jobs are scripted in [test.sh](../../ci/test.sh)
+and [test_long.sh](../../ci/test_long.sh) respectively.
 
 ## Benchmarks
 
@@ -229,3 +241,16 @@ stack bench --ba "--help"
 ```
 
 for the full list of options.
+
+### Tests for the benchmarks
+
+Since it is desirable that the benchmarks do not fail, `sqatt` includes a test
+suite for the benchmarks, which check for their sanity. To run only this test
+suite use:
+
+```sh
+stack test sqatt:benchmarks-sanity-test
+```
+
+This is also useful when debugging a failed benchmark, since when running the
+benchmarks no files are logged.
