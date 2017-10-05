@@ -23,3 +23,11 @@ TAGS
 
 # SemaphoreCI cache folders
 .semaphore-cache
+
+# Sphinx build folders
+docs/wiki/_build
+
+# TorXakis traces generated while running `sqatt`
+
+/*Proc.txs
+/*Purpose.txs

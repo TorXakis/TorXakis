@@ -129,7 +129,7 @@ data CompiledSut
 data RunnableExample = ExampleWithSut TxsExample CompiledSut [Text]
                      | StandaloneExample TxsExample
 
-data ExampleResult = Pass | Fail deriving (Show, Eq)
+data ExampleResult = Pass | Fail | Message Text deriving (Show, Eq)
 
 -- * Path manipulation functions
 
@@ -148,11 +148,17 @@ txsServerCmd = addExeSuffix "txsserver"
 txsUICmd :: Text
 txsUICmd = addExeSuffix "txsui"
 
-txsUIPassMsg :: Text
-txsUIPassMsg = "TXS >>  PASS"
+txsUILinePrefix :: Text
+txsUILinePrefix = "TXS >>  "
 
-txsUIFailMsg :: Text
-txsUIFailMsg = "TXS >>  FAIL"
+
+class ExpectedMessage a where
+    expectedMessage :: a -> Text
+
+instance ExpectedMessage ExampleResult where
+    expectedMessage Pass          = txsUILinePrefix <> "PASS"
+    expectedMessage Fail          = txsUILinePrefix <> "FAIL"
+    expectedMessage (Message msg) = txsUILinePrefix <> msg
 
 -- | Decode a file path into a human readable text string. The decoding is
 -- dependent on the operating system. An error is thrown if the decoding is not
@@ -314,12 +320,11 @@ runTxsWithExample mLogDir ex = Concurrently $ do
         findExpectedMsg :: Fold Line Bool
         findExpectedMsg = Control.Foldl.any (T.isInfixOf searchStr . lineToText)
     cmdsFile = txsCommandsFile ex
-    searchStr = expectedMsg . expectedResult $ ex
+    searchStr = expectedMessage . expectedResult $ ex
     tErr = TestExpectationError $
               format ("Did not get expected result "%s)
                      (repr . expectedResult $ ex)
-    expectedMsg Fail = txsUIFailMsg
-    expectedMsg Pass = txsUIPassMsg
+
     txsServerProc sLogDir port = Concurrently $
       runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd [port]
 

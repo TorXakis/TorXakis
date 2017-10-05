@@ -175,7 +175,8 @@ purpVerdict :: IOC.IOC ()
 purpVerdict = do
   envc <- get
   case IOC.state envc of
-    IOC.Testing {IOC.purpsts = purpsts} ->
+    IOC.Testing { IOC.purpsts = purpsts } -> do
+      IOC.putMsgs [EnvData.TXS_CORE_USER_INFO $ "Goals: " ++ show (length purpsts)]
       mapM_ goalVerdict purpsts
     _ -> do
       IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "purpVerdict incorrectly used"]

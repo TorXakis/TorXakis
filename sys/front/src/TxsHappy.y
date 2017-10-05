@@ -1720,7 +1720,7 @@ ExVarDeclList   -- :: { ( Int, [VarId] ) }
                 --           : $$: [VEnv]: locally defined value definitions
               : TDEFS SIGS UNID VarDeclList
                 {  $4.inhNodeUid   = $3
-                ;  $4.inhSigs      = Sigs.uniqueCombine $4.synSigs $2
+                ;  $4.inhSigs      = $2
                 ;  $$ = ( $4.synMaxUid, $4 )
                 }
 

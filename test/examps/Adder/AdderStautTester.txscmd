@@ -1,4 +1,4 @@
 tester Adder SutConnection
 test 10
-trace purp $> AdderPurpose.txs
+trace proc $> AdderStautProc.txs
 exit

@@ -4,8 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
-CONSTDEF nProduce :: Int   ::= 3
+CONSTDEF nProduce  :: Int  ::= 3
        ; nMeasure  :: Int  ::= 2
        ; nCorrect  :: Int  ::= 1
        ; nFlow     :: Int  ::= 3
@@ -75,20 +74,20 @@ ENDDEF
 -- produce procdef
 -- ------------------------------------------------------------------------------------------------
 PROCDEF produces [ In_Correction :: Int # BatchId
-                  ; In_Cmd        :: Int # ProduceCmd
-                  ; In_Material   :: Int # BatchInfo
-                  ; Out_Report    :: Int # ProduceReport
-                  ; Out_Material  :: Int # BatchInfo ]
-                        ( n :: Int ) ::=
+                 ; In_Cmd        :: Int # ProduceCmd
+                 ; In_Material   :: Int # BatchInfo
+                 ; Out_Report    :: Int # ProduceReport
+                 ; Out_Material  :: Int # BatchInfo
+                 ] ( n :: Int ) ::=
         produce [ In_Correction , In_Cmd , In_Material , Out_Report , Out_Material ] ( n-1 )      -- id from 0 till N-1 (in accordance with x modulo N )
     |||
         ( [[n > 1]] =>> produces [ In_Correction , In_Cmd , In_Material , Out_Report , Out_Material ] ( n-1 ) )
 ENDDEF
 
 TYPEDEF ListProduceCmd ::= NilProduceCmd
-                          | CstrProduceCmd { head :: ProduceCmd
-                                            ; tail :: ListProduceCmd
-                                            }                                 
+                         | CstrProduceCmd { head :: ProduceCmd
+                                          ; tail :: ListProduceCmd
+                                          }                                 
 ENDDEF
 
 FUNCDEF containsProduceCmd ( x :: ProduceCmd ; l :: ListProduceCmd ) :: Bool ::= 
@@ -108,34 +107,41 @@ FUNCDEF removeProduceCmd ( x :: ProduceCmd ; l :: ListProduceCmd ) :: ListProduc
     FI
 ENDDEF
 
+FUNCDEF containsBatchIdProduceCmd ( b :: BatchId; l :: ListProduceCmd ) :: Bool ::=
+    IF isNilProduceCmd(l) 
+    THEN False
+    ELSE (b == batchId(head(l))) \/ containsBatchIdProduceCmd(b,tail(l))
+    FI
+ENDDEF
+
 -- bag commands: they can occur in any order
 PROCDEF produceInCmdHandler [ In_Cmd :: Int # ProduceCmd; Out_Cmd :: Int # ProduceCmd ] ( id :: Int; l :: ListProduceCmd ) ::=
         Out_Cmd ! id ? produceCmd [[ containsProduceCmd(produceCmd, l) ]] >-> produceInCmdHandler [ In_Cmd, Out_Cmd ] ( id , removeProduceCmd(produceCmd,l))
     ##
-        In_Cmd ! id ? produceCmd :: ProduceCmd [[ isValid_ProduceCmd(produceCmd) ]] >-> produceInCmdHandler [ In_Cmd, Out_Cmd ] ( id , CstrProduceCmd(produceCmd,l))
+        In_Cmd ! id ? produceCmd :: ProduceCmd [[ isValid_ProduceCmd(produceCmd) /\ not( containsBatchIdProduceCmd (batchId(produceCmd), l) ) ]] >-> produceInCmdHandler [ In_Cmd, Out_Cmd ] ( id , CstrProduceCmd(produceCmd,l))
 ENDDEF
 
 PROCDEF produceProcess  [ In_Correction :: Int # BatchId
-                         ; In_Cmd        :: Int # ProduceCmd
-                         ; In_Material   :: Int # BatchInfo
-                         ; Out_Report    :: Int # ProduceReport
-                         ; Out_Material  :: Int # BatchInfo
-                         ]    ( id :: Int ) ::=
+                        ; In_Cmd        :: Int # ProduceCmd
+                        ; In_Material   :: Int # BatchInfo
+                        ; Out_Report    :: Int # ProduceReport
+                        ; Out_Material  :: Int # BatchInfo
+                        ]    ( id :: Int ) ::=
         productionProduce [ In_Correction ]( id )
     |||
         monitorProduce [ In_Cmd, In_Material, Out_Report, Out_Material ]( id )
 ENDDEF
 
 PROCDEF productionProduce [ In_Correction :: Int # BatchId ]( id :: Int ) ::=
-        In_Correction ! id ? batchId
+        In_Correction ! id ? batchId [[ isValid_BatchId(batchId) ]]
     >-> productionProduce [ In_Correction ]( id )
 ENDDEF
 
 PROCDEF monitorProduce  [ In_Cmd        :: Int # ProduceCmd
-                         ; In_Material   :: Int # BatchInfo
-                         ; Out_Report    :: Int # ProduceReport
-                         ; Out_Material  :: Int # BatchInfo
-                         ]    ( id :: Int ) ::=
+                        ; In_Material   :: Int # BatchInfo
+                        ; Out_Report    :: Int # ProduceReport
+                        ; Out_Material  :: Int # BatchInfo
+                        ]    ( id :: Int ) ::=
         In_Cmd ! id ? produceCmd | In_Material ! id ? inBatchInfo [[ isValid_BatchInfo (inBatchInfo) 
                                                                   /\ ( batchId(produceCmd) == batchId(inBatchInfo) )
                                                                   ]]
@@ -153,11 +159,11 @@ PROCDEF monitorProduce  [ In_Cmd        :: Int # ProduceCmd
 ENDDEF
 
 PROCDEF produce [ In_Correction :: Int # BatchId
-                 ; In_Cmd        :: Int # ProduceCmd
-                 ; In_Material   :: Int # BatchInfo
-                 ; Out_Report    :: Int # ProduceReport
-                 ; Out_Material  :: Int # BatchInfo
-                 ]    ( id :: Int ) ::=
+                ; In_Cmd        :: Int # ProduceCmd
+                ; In_Material   :: Int # BatchInfo
+                ; Out_Report    :: Int # ProduceReport
+                ; Out_Material  :: Int # BatchInfo
+                ]    ( id :: Int ) ::=
     HIDE [ H_In_Cmd :: Int # ProduceCmd ] IN
         produceInCmdHandler [ In_Cmd, H_In_Cmd ] ( id, NilProduceCmd )
     |[ H_In_Cmd ]|
@@ -240,11 +246,18 @@ FUNCDEF removeMeasureCmd ( x :: MeasureCmd ; l :: ListMeasureCmd ) :: ListMeasur
     FI
 ENDDEF
 
+FUNCDEF containsBatchIdMeasureCmd ( b :: BatchId; l :: ListMeasureCmd ) :: Bool ::=
+    IF isNilMeasureCmd(l) 
+    THEN False
+    ELSE (b == batchId(head(l))) \/ containsBatchIdMeasureCmd(b,tail(l))
+    FI
+ENDDEF
+
 -- bag commands: they can occur in any order
 PROCDEF measureInCmdHandler [ In_Cmd :: Int # MeasureCmd; Out_Cmd :: Int # MeasureCmd ] ( id :: Int; l :: ListMeasureCmd ) ::=
         Out_Cmd ! id ? measureCmd [[ containsMeasureCmd(measureCmd, l) ]] >-> measureInCmdHandler [ In_Cmd, Out_Cmd ] ( id , removeMeasureCmd(measureCmd,l))
     ##
-        In_Cmd ! id ? measureCmd :: MeasureCmd [[ isValid_MeasureCmd(measureCmd) ]] >-> measureInCmdHandler [ In_Cmd, Out_Cmd ] ( id , CstrMeasureCmd(measureCmd,l))
+        In_Cmd ! id ? measureCmd :: MeasureCmd [[ isValid_MeasureCmd(measureCmd) /\ not ( containsBatchIdMeasureCmd (batchId(measureCmd) , l) ) ]] >-> measureInCmdHandler [ In_Cmd, Out_Cmd ] ( id , CstrMeasureCmd(measureCmd,l))
 ENDDEF
 
 
@@ -309,46 +322,15 @@ ENDDEF
 -- ------------------------------------------------------------------------------------------------
 -- correct procdefs
 -- ------------------------------------------------------------------------------------------------
-PROCDEF corrects [ In_Cmd             :: Int # CorrectCmd
-                 ; In_ProduceReport  :: Int # ProduceReport
-                 ; In_MeasureReport   :: Int # MeasureReport
-                 ; Out_Correction     :: Int # BatchId
+PROCDEF corrects [ In_Cmd           :: Int # CorrectCmd
+                 ; In_ProduceReport :: Int # ProduceReport
+                 ; In_MeasureReport :: Int # MeasureReport
+                 ; Out_Correction   :: Int # BatchId
                  ]      ( n :: Int ) ::=
         correct [ In_Cmd, In_ProduceReport, In_MeasureReport, Out_Correction ](n-1)
     |||
         ([[n > 1]] =>> corrects [ In_Cmd, In_ProduceReport, In_MeasureReport, Out_Correction ](n-1) )
 ENDDEF
-
-TYPEDEF ListCorrectCmd ::= NilCorrectCmd
-                         | CstrCorrectCmd { head :: CorrectCmd
-                                          ; tail :: ListCorrectCmd
-                                          }                                 
-ENDDEF
-
-FUNCDEF containsCorrectCmd ( x :: CorrectCmd ; l :: ListCorrectCmd ) :: Bool ::= 
-    IF isNilCorrectCmd(l) 
-    THEN False
-    ELSE (x == head(l)) \/ containsCorrectCmd(x,tail(l))
-    FI
-ENDDEF
-
-FUNCDEF removeCorrectCmd ( x :: CorrectCmd ; l :: ListCorrectCmd ) :: ListCorrectCmd ::= 
-    IF isNilCorrectCmd(l) 
-    THEN NilCorrectCmd             -- thus l
-    ELSE IF (x == head(l)) 
-            THEN tail(l)
-            ELSE CstrCorrectCmd(head(l), removeCorrectCmd(x,tail(l)))
-         FI
-    FI
-ENDDEF
-
--- bag commands: they can occur in any order
-PROCDEF correctInCmdHandler [ In_Cmd :: Int # CorrectCmd; Out_Cmd :: Int # CorrectCmd ] ( id :: Int; l :: ListCorrectCmd ) ::=
-        Out_Cmd ! id ? correctCmd [[ containsCorrectCmd(correctCmd, l) ]] >-> correctInCmdHandler [ In_Cmd, Out_Cmd ] ( id , removeCorrectCmd(correctCmd,l))
-    ##
-        In_Cmd ! id ? correctCmd :: CorrectCmd [[ isValid_CorrectCmd(correctCmd) ]] >-> correctInCmdHandler [ In_Cmd, Out_Cmd ] ( id , CstrCorrectCmd(correctCmd,l))
-ENDDEF
-
 
 TYPEDEF ListProduceReport ::= NilProduceReport
                              | CstrProduceReport { head :: ProduceReport
@@ -373,11 +355,18 @@ FUNCDEF removeProduceReport ( x :: ProduceReport ; l :: ListProduceReport ) :: L
     FI
 ENDDEF
 
+FUNCDEF containsBatchIdProduceReport ( b :: BatchId; l :: ListProduceReport ) :: Bool ::=
+    IF isNilProduceReport(l) 
+    THEN False
+    ELSE (b == batchId(batchInfo(head(l)))) \/ containsBatchIdProduceReport(b,tail(l))
+    FI
+ENDDEF
+
 -- bag commands: they can occur in any order
 PROCDEF correctInProduceReportHandler [ In_ProduceReport :: Int # ProduceReport; Out_ProduceReport :: Int # ProduceReport ] ( id :: Int; l :: ListProduceReport ) ::=
         Out_ProduceReport ! id ? produceReport [[ containsProduceReport(produceReport, l) ]] >-> correctInProduceReportHandler [ In_ProduceReport, Out_ProduceReport ] ( id , removeProduceReport(produceReport,l))
     ##
-        In_ProduceReport ! id ? produceReport :: ProduceReport [[ isValid_ProduceReport(produceReport) ]] >-> correctInProduceReportHandler [ In_ProduceReport, Out_ProduceReport ] ( id , CstrProduceReport(produceReport,l))
+        In_ProduceReport ! id ? produceReport :: ProduceReport [[ isValid_ProduceReport(produceReport) /\ not (containsBatchIdProduceReport(batchId(batchInfo(produceReport) ), l ) ) ]] >-> correctInProduceReportHandler [ In_ProduceReport, Out_ProduceReport ] ( id , CstrProduceReport(produceReport,l))
 ENDDEF
 
 
@@ -404,26 +393,25 @@ FUNCDEF removeMeasureReport ( x :: MeasureReport ; l :: ListMeasureReport ) :: L
     FI
 ENDDEF
 
+FUNCDEF containsBatchIdMeasureReport ( b :: BatchId; l :: ListMeasureReport ) :: Bool ::=
+    IF isNilMeasureReport(l) 
+    THEN False
+    ELSE (b == batchId(batchInfo(head(l)))) \/ containsBatchIdMeasureReport(b,tail(l))
+    FI
+ENDDEF
+
 -- bag commands: they can occur in any order
 PROCDEF correctInMeasureReportHandler [ In_MeasureReport :: Int # MeasureReport; Out_MeasureReport :: Int # MeasureReport ] ( id :: Int; l :: ListMeasureReport ) ::=
         Out_MeasureReport ! id ? measureReport [[ containsMeasureReport(measureReport, l) ]] >-> correctInMeasureReportHandler [ In_MeasureReport, Out_MeasureReport ] ( id , removeMeasureReport(measureReport,l))
     ##
-        In_MeasureReport ! id ? measureReport :: MeasureReport [[ isValid_MeasureReport(measureReport) ]] >-> correctInMeasureReportHandler [ In_MeasureReport, Out_MeasureReport ] ( id , CstrMeasureReport(measureReport,l))
+        In_MeasureReport ! id ? measureReport :: MeasureReport [[ isValid_MeasureReport(measureReport) /\ not (containsBatchIdMeasureReport (batchId(batchInfo(measureReport)), l) ) ]] >-> correctInMeasureReportHandler [ In_MeasureReport, Out_MeasureReport ] ( id , CstrMeasureReport(measureReport,l))
 ENDDEF
 
-PROCDEF correctInMeasureReportHandler [ In_MeasureReport :: Int # MeasureReport; Out_MeasureReport :: Int # MeasureReport ] ( id :: Int ) ::=
-        In_MeasureReport ! id ? measureReport :: MeasureReport [[ isValid_MeasureReport(measureReport) ]] 
-    >-> (
-            Out_MeasureReport ! id ! measureReport
-        |||
-            correctInMeasureReportHandler [ In_MeasureReport, Out_MeasureReport ] ( id )
-        )
-ENDDEF
 
-PROCDEF correctProcess [ In_Cmd             :: Int # CorrectCmd
+PROCDEF correctProcess [ In_Cmd            :: Int # CorrectCmd
                        ; In_ProduceReport  :: Int # ProduceReport
-                       ; In_MeasureReport   :: Int # MeasureReport
-                       ; Out_Correction     :: Int # BatchId
+                       ; In_MeasureReport  :: Int # MeasureReport
+                       ; Out_Correction    :: Int # BatchId
                        ] ( id :: Int ) ::=
 
         In_Cmd ! id ? correctCmd | In_ProduceReport ! id ? produceReport | In_MeasureReport ! id ? measureReport
@@ -437,32 +425,27 @@ PROCDEF correctProcess [ In_Cmd             :: Int # CorrectCmd
         )
 ENDDEF
 
-PROCDEF correct [ In_Cmd             :: Int # CorrectCmd
-                ; In_ProduceReport  :: Int # ProduceReport
-                ; In_MeasureReport   :: Int # MeasureReport
-                ; Out_Correction     :: Int # BatchId
+PROCDEF correct [ In_Cmd           :: Int # CorrectCmd
+                ; In_ProduceReport :: Int # ProduceReport
+                ; In_MeasureReport :: Int # MeasureReport
+                ; Out_Correction   :: Int # BatchId
                 ]       ( id :: Int ) ::=
-
-    HIDE [ H_In_Cmd :: Int # CorrectCmd ] IN
-            correctInCmdHandler [ In_Cmd, H_In_Cmd ] ( id, NilCorrectCmd )
-        |[ H_In_Cmd ]|
-            HIDE [ H_In_ProduceReport :: Int # ProduceReport ] IN
-                    correctInProduceReportHandler [ In_ProduceReport, H_In_ProduceReport ] ( id, NilProduceReport )
-                |[ H_In_ProduceReport ]|
-                    HIDE [ H_In_MeasureReport :: Int # MeasureReport ] IN
-                            correctInMeasureReportHandler [ In_MeasureReport, H_In_MeasureReport ] ( id, NilMeasureReport )
-                        |[ H_In_MeasureReport ]|
-                            correctProcess [ H_In_Cmd, H_In_ProduceReport, H_In_MeasureReport, Out_Correction ] ( id )
-                    NI
+    HIDE [ H_In_ProduceReport :: Int # ProduceReport ] IN
+            correctInProduceReportHandler [ In_ProduceReport, H_In_ProduceReport ] ( id, NilProduceReport )
+        |[ H_In_ProduceReport ]|
+            HIDE [ H_In_MeasureReport :: Int # MeasureReport ] IN
+                    correctInMeasureReportHandler [ In_MeasureReport, H_In_MeasureReport ] ( id, NilMeasureReport )
+                |[ H_In_MeasureReport ]|
+                    correctProcess [ In_Cmd, H_In_ProduceReport, H_In_MeasureReport, Out_Correction ] ( id )
             NI
     NI
 ENDDEF
 
 CHANDEF ChannelsCorrect ::=
-                In_CorrectCmd        :: Int # CorrectCmd
-    ;           In_ProduceReport    :: Int # ProduceReport
-    ;           In_MeasureReport     :: Int # MeasureReport
-    ;           Out_Correction       :: Int # BatchId
+                In_CorrectCmd    :: Int # CorrectCmd
+    ;           In_ProduceReport :: Int # ProduceReport
+    ;           In_MeasureReport :: Int # MeasureReport
+    ;           Out_Correction   :: Int # BatchId
 ENDDEF
 
 MODELDEF SpecCorrect ::=
@@ -477,90 +460,91 @@ ENDDEF
 -- ------------------------------------------------------------------------------------------------
 -- flow procdefs
 -- ------------------------------------------------------------------------------------------------
-PROCDEF flows [ In_Correction        :: Int # BatchId
+PROCDEF flows [ In_Correction       :: Int # BatchId
               ; In_ProduceCmd       :: Int # ProduceCmd
               ; In_ProduceMaterial  :: Int # BatchInfo
               ; Out_ProduceReport   :: Int # ProduceReport
               ; Out_ProduceMaterial :: Int # BatchInfo
-              ; In_MeasureCmd        :: Int # MeasureCmd
-              ; In_MeasureMaterial   :: Int # BatchInfo
-              ; Out_MeasureReport    :: Int # MeasureReport
-              ; Out_MeasureMaterial  :: Int # BatchInfo
-              ; In_CorrectCmd        :: Int # CorrectCmd
+              ; In_MeasureCmd       :: Int # MeasureCmd
+              ; In_MeasureMaterial  :: Int # BatchInfo
+              ; Out_MeasureReport   :: Int # MeasureReport
+              ; Out_MeasureMaterial :: Int # BatchInfo
+              ; In_CorrectCmd       :: Int # CorrectCmd
               ; In_ProduceReport    :: Int # ProduceReport
-              ; In_MeasureReport     :: Int # MeasureReport
-              ; Out_Correction       :: Int # BatchId
-              ; In_ProductId             :: Int # BatchId
+              ; In_MeasureReport    :: Int # MeasureReport
+              ; Out_Correction      :: Int # BatchId
+              ; Out_ProductId        :: Int # BatchId # Bool
               ]     ( n :: Int ) EXIT ::= 
         flow [ In_Correction, In_ProduceCmd, In_ProduceMaterial, Out_ProduceReport, Out_ProduceMaterial
              , In_MeasureCmd, In_MeasureMaterial, Out_MeasureReport, Out_MeasureMaterial
-             , In_CorrectCmd, In_ProduceReport, In_MeasureReport, Out_Correction         
-             , In_ProductId ](n-1)
+             , In_CorrectCmd, In_ProduceReport, In_MeasureReport, Out_Correction
+             , Out_ProductId ](n-1)
     |||
         ([[n > 1]] =>> flows [ In_Correction, In_ProduceCmd, In_ProduceMaterial, Out_ProduceReport, Out_ProduceMaterial
                              , In_MeasureCmd, In_MeasureMaterial, Out_MeasureReport, Out_MeasureMaterial    
-                             , In_CorrectCmd, In_ProduceReport, In_MeasureReport, Out_Correction         
-                             , In_ProductId ](n-1) )
+                             , In_CorrectCmd, In_ProduceReport, In_MeasureReport, Out_Correction
+                             , Out_ProductId ](n-1) )
 ENDDEF
 
 
-PROCDEF flow [ In_Correction        :: Int # BatchId
+PROCDEF flow [ In_Correction       :: Int # BatchId
              ; In_ProduceCmd       :: Int # ProduceCmd
              ; In_ProduceMaterial  :: Int # BatchInfo
              ; Out_ProduceReport   :: Int # ProduceReport
              ; Out_ProduceMaterial :: Int # BatchInfo
-             ; In_MeasureCmd        :: Int # MeasureCmd
-             ; In_MeasureMaterial   :: Int # BatchInfo
-             ; Out_MeasureReport    :: Int # MeasureReport
-             ; Out_MeasureMaterial  :: Int # BatchInfo
-             ; In_CorrectCmd        :: Int # CorrectCmd
+             ; In_MeasureCmd       :: Int # MeasureCmd
+             ; In_MeasureMaterial  :: Int # BatchInfo
+             ; Out_MeasureReport   :: Int # MeasureReport
+             ; Out_MeasureMaterial :: Int # BatchInfo
+             ; In_CorrectCmd       :: Int # CorrectCmd
              ; In_ProduceReport    :: Int # ProduceReport
-             ; In_MeasureReport     :: Int # MeasureReport
-             ; Out_Correction       :: Int # BatchId
-             ; In_ProductId             :: Int # BatchId
+             ; In_MeasureReport    :: Int # MeasureReport
+             ; Out_Correction      :: Int # BatchId
+             ; Out_ProductId       :: Int # BatchId # Bool
              ]        ( id :: Int ) EXIT ::= 
     LET produceId     = id % nProduce;
         measureId     = id % nMeasure;
         correctId     = id % nCorrect 
     IN
-        In_ProductId ! id ? inProductId >->
-        (
-            -- triggers
-                (       In_ProduceCmd ! produceId ? inProduceCmd [[ batchId(inProduceCmd) == inProductId ]] 
-                    >-> Out_ProduceReport ! produceId ? produceReport :: ProduceReport [[ batchId(batchInfo(produceReport)) == inProductId ]]
-                    >-> In_ProduceReport ! correctId ! produceReport 
-                    >-> EXIT
-                )
-            ||| 
-                (       In_MeasureCmd ! measureId ? inMeasureCmd [[ batchId(inMeasureCmd) == inProductId ]] 
-                    >-> Out_MeasureReport ! measureId ? measureReport :: MeasureReport [[ batchId(batchInfo(measureReport)) == inProductId ]]
-                    >-> In_MeasureReport ! correctId ! measureReport 
-                    >-> EXIT 
-                )
-            |||
-                (       In_CorrectCmd ! correctId ? inCorrectCmd [[ batchId(inCorrectCmd) == inProductId ]] 
-                    >-> Out_Correction ! correctId ! inProductId
-                    >-> In_Correction ! produceId ! inProductId
-                    >-> EXIT
-                )
-            -- material flow
-            |||
-                materialFlow [ In_ProduceMaterial, Out_ProduceMaterial, In_MeasureMaterial, Out_MeasureMaterial ] ( inProductId, produceId, measureId )
-        ) 
-        >>>
-            flow [ In_Correction
-                 , In_ProduceCmd, In_ProduceMaterial, Out_ProduceReport, Out_ProduceMaterial
-                 , In_MeasureCmd, In_MeasureMaterial, Out_MeasureReport, Out_MeasureMaterial
-                 , In_CorrectCmd, In_ProduceReport, In_MeasureReport, Out_Correction
-                 , In_ProductId
-                 ] ( id )
+        Out_ProductId ! id ? inProductId ! True >-> (
+            (
+                -- triggers
+                    (       In_ProduceCmd ! produceId ? inProduceCmd [[ batchId(inProduceCmd) == inProductId ]] 
+                        >-> Out_ProduceReport ! produceId ? produceReport :: ProduceReport [[ batchId(batchInfo(produceReport)) == inProductId ]]
+                        >-> In_ProduceReport ! correctId ! produceReport 
+                        >-> EXIT
+                    )
+                ||| 
+                    (       In_MeasureCmd ! measureId ? inMeasureCmd [[ batchId(inMeasureCmd) == inProductId ]] 
+                        >-> Out_MeasureReport ! measureId ? measureReport :: MeasureReport [[ batchId(batchInfo(measureReport)) == inProductId ]]
+                        >-> In_MeasureReport ! correctId ! measureReport 
+                        >-> EXIT
+                    )
+                |||
+                    (       In_CorrectCmd ! correctId ? inCorrectCmd [[ batchId(inCorrectCmd) == inProductId ]] 
+                        >-> Out_Correction ! correctId ! inProductId
+                        >-> In_Correction ! produceId ! inProductId
+                        >-> EXIT
+                    )
+                -- material flow
+                |||
+                    materialFlow [ In_ProduceMaterial, Out_ProduceMaterial, In_MeasureMaterial, Out_MeasureMaterial ] ( inProductId, produceId, measureId )
+            ) 
+            >>>     Out_ProductId ! id ! inProductId ! False
+                >-> flow [ In_Correction
+                         , In_ProduceCmd, In_ProduceMaterial, Out_ProduceReport, Out_ProduceMaterial
+                         , In_MeasureCmd, In_MeasureMaterial, Out_MeasureReport, Out_MeasureMaterial
+                         , In_CorrectCmd, In_ProduceReport, In_MeasureReport, Out_Correction
+                         , Out_ProductId
+                         ] ( id )
+        )
     NI
 ENDDEF
 
 PROCDEF materialFlow [ In_ProduceMaterial  :: Int # BatchInfo
                      ; Out_ProduceMaterial :: Int # BatchInfo
-                     ; In_MeasureMaterial   :: Int # BatchInfo
-                     ; Out_MeasureMaterial  :: Int # BatchInfo
+                     ; In_MeasureMaterial  :: Int # BatchInfo
+                     ; Out_MeasureMaterial :: Int # BatchInfo
                      ] 
                      ( batchId :: BatchId
                      ; produceId, measureId :: Int 
@@ -575,33 +559,56 @@ ENDDEF
 -- -------------------------------------------------------------
 -- material procdefs
 -- --------------------------------------------------------------
-PROCDEF material [Out_ProductId :: Int # BatchId ] ( ) ::=
-        Out_ProductId ? id ? inProductId [[ isValid_BatchId(inProductId) ]]
-    >-> material [ Out_ProductId ] ( )
+TYPEDEF ListBatchId ::= NilBatchId
+                      | CstrBatchId { head :: BatchId
+                                    ; tail :: ListBatchId
+                                    }                                 
 ENDDEF
 
-CHANDEF ChannelsFlow ::= Out_ProductId :: Int # BatchId
+FUNCDEF containsBatchId ( b :: BatchId ; l :: ListBatchId ) :: Bool ::= 
+    IF isNilBatchId(l) 
+    THEN False
+    ELSE (b == head(l)) \/ containsBatchId(b,tail(l))
+    FI
+ENDDEF
+
+FUNCDEF removeBatchId ( b :: BatchId ; l :: ListBatchId ) :: ListBatchId ::= 
+    IF isNilBatchId(l) 
+    THEN NilBatchId             -- thus l
+    ELSE IF (b == head(l)) 
+            THEN tail(l)
+            ELSE CstrBatchId(head(l), removeBatchId(b,tail(l)))
+         FI
+    FI
+ENDDEF
+
+PROCDEF material [ Out_ProductId :: Int # BatchId # Bool ] ( inuse :: ListBatchId ) ::=
+        Out_ProductId ? id ? bId ! True [[ isValid_BatchId(bId) /\ not(containsBatchId(bId, inuse)) ]] >-> material [ Out_ProductId ] (CstrBatchId(bId, inuse)) 
+    ##  Out_ProductId ? id ? bId ! False [[ containsBatchId(bId, inuse) ]] >-> material [ Out_ProductId ] (removeBatchId(bId, inuse)) 
+ENDDEF
+
+CHANDEF ChannelsFlow ::= Out_ProductId :: Int # BatchId # Bool
 ENDDEF
 
 -- ---------------------------------------
 -- specification
 -- ---------------------------------------
-PROCDEF specification [ In_Correction        :: Int # BatchId
+PROCDEF specification [ In_Correction       :: Int # BatchId
                       ; In_ProduceCmd       :: Int # ProduceCmd
                       ; In_ProduceMaterial  :: Int # BatchInfo
                       ; Out_ProduceReport   :: Int # ProduceReport
                       ; Out_ProduceMaterial :: Int # BatchInfo
-                      ; In_MeasureCmd        :: Int # MeasureCmd
-                      ; In_MeasureMaterial   :: Int # BatchInfo
-                      ; Out_MeasureReport    :: Int # MeasureReport
-                      ; Out_MeasureMaterial  :: Int # BatchInfo
-                      ; In_CorrectCmd        :: Int # CorrectCmd
+                      ; In_MeasureCmd       :: Int # MeasureCmd
+                      ; In_MeasureMaterial  :: Int # BatchInfo
+                      ; Out_MeasureReport   :: Int # MeasureReport
+                      ; Out_MeasureMaterial :: Int # BatchInfo
+                      ; In_CorrectCmd       :: Int # CorrectCmd
                       ; In_ProduceReport    :: Int # ProduceReport
-                      ; In_MeasureReport     :: Int # MeasureReport
-                      ; Out_Correction       :: Int # BatchId
-                      ; Out_ProductId            :: Int # BatchId
+                      ; In_MeasureReport    :: Int # MeasureReport
+                      ; Out_Correction      :: Int # BatchId
+                      ; Out_ProductId       :: Int # BatchId # Bool
                       ] ( ) ::=
-        material [ Out_ProductId ] ( )
+        material [ Out_ProductId ] ( NilBatchId )
     |[ Out_ProductId ]|
         (
             produces [ In_Correction , In_ProduceCmd , In_ProduceMaterial , Out_ProduceReport , Out_ProduceMaterial ] ( nProduce )
@@ -708,7 +715,8 @@ CNECTDEF  Sut ::=
 
     CHAN  IN   Out_ProductId                        HOST "localhost"  PORT 3225
     DECODE  Out_ProductId ! fromString( takeWhileNot (separator, s) ) 
-                      ! fromString( dropWhile (separator, dropWhileNot (separator, s)) ) <- ?s
+                          ! fromString( takeWhileNot (separator, dropWhile (separator, dropWhileNot (separator, s)) ) )
+                          ! fromString( dropWhile (separator, dropWhileNot (separator, dropWhile (separator, dropWhileNot (separator, s)) ) ) )  <- ?s
 ENDDEF
 
 CNECTDEF  Sim ::=
@@ -762,6 +770,6 @@ CNECTDEF  Sim ::=
     ENCODE  Out_Correction  ? id ? batchId          -> ! toString(id) ++ separator ++ toString(batchId)
     
     CHAN  OUT   Out_ProductId                         HOST "localhost"  PORT 3225
-    ENCODE  Out_ProductId ?id ? batchId                 -> ! toString(id) ++ separator ++ toString(batchId)
+    ENCODE  Out_ProductId ?id ? batchId ? b           -> ! toString(id) ++ separator ++ toString(batchId) ++ separator ++ toString(b)
 
 ENDDEF

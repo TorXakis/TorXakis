@@ -1,5 +1,5 @@
 param param_Sim_deltaTime 4000
 simulator Lossy Sim
 sim 6
-trace txs $> testTrace.log
+trace proc $> testTrace.log
 exit
