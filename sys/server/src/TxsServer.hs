@@ -418,11 +418,12 @@ cmdEval args = do
          tdefs        = IOS.tdefs env
          sigs         = IOS.sigs env
          vals         = IOS.locvals env
+         vars         = IOS.locvars env
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.vexprParser
                                         ( TxsAlex.Ctdefs   tdefs
                                         : TxsAlex.Csigs    sigs
-                                        : TxsAlex.Cvarenv (Map.keys vals)
+                                        : TxsAlex.Cvarenv (Map.keys vals ++ vars)
                                         : TxsAlex.Cunid   (uid + 1)
                                         : TxsAlex.txsLexer args
                                         )
