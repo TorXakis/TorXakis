@@ -1,6 +1,7 @@
 module Benchmarks.All (allBenchmarks) where
 
 import qualified Benchmarks.Choice          as Choice
+import qualified Benchmarks.Enable          as Enable
 import qualified Benchmarks.Hiding          as Hiding
 import qualified Benchmarks.Parallel        as Parallel
 import qualified Benchmarks.Sequence        as Sequence
@@ -10,6 +11,7 @@ import           Sqatt
 
 allBenchmarks :: [Benchmark]
 allBenchmarks = benchmarkExampleSet <$> [ Choice.benchmarksSet
+                                        , Enable.benchmarksSet
                                         , Hiding.benchmarksSet
                                         , Parallel.benchmarksSet
                                         , Sequence.benchmarksSet

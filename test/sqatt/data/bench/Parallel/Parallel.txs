@@ -73,3 +73,33 @@ MODELDEF ParallelData6 ::=
     CHAN OUT POutInt
     BEHAVIOUR parallelDataN[POutInt](6)
 ENDDEF
+
+MODELDEF ParallelSync ::=
+    CHAN IN
+    CHAN OUT POut, POut2, POut3
+    SYNC {POut}, {POut2}, {POut3}
+       , {POut | POut2}, {POut | POut3}, {POut2 | POut3}
+       , {POut | POut2 | POut3}
+    BEHAVIOUR
+        (POut >-> POut2 >-> POut3 >-> EXIT
+         |[POut2]|
+         POut2 >-> POut3 >-> POut >-> EXIT
+         |[POut2]|
+         POut3 >-> POut >-> POut2 >-> EXIT
+        )
+        |[POut, POut3]|
+        POut | POut3 >-> POut >-> (POut3 >-> EXIT ||| POut3 >-> POut >-> EXIT)
+ENDDEF
+
+PROCDEF syncSeqs[Act]() ::=
+    sequence[Act]() |[Act]| sequence[Act]()
+ENDDEF
+
+MODELDEF ParallelNested ::=
+    CHAN IN
+    CHAN OUT POut, POut2, POut3, POut4
+    BEHAVIOUR
+        (syncSeqs[POut]()  ||| syncSeqs[POut2]())
+        |||
+        (syncSeqs[POut3]() ||| syncSeqs[POut4]())
+ENDDEF

@@ -55,9 +55,30 @@ parallelMultiact4 = TxsExample
     , expectedResult = Pass
     }
 
+parallelSync :: TxsExample
+parallelSync = TxsExample
+    { exampleName = "convoluted parallel-synchronous model"
+    , txsModelFiles = modelFiles
+    , txsCommandsFile = txsCmdPathBench benchDir "ParallelSync"
+    , sutExample = Nothing
+    , expectedResult = Fail
+    }
+
+parallelNested :: TxsExample
+parallelNested = TxsExample
+    { exampleName = "4 parallel nested synchronizing sequences"
+    , txsModelFiles = modelFiles
+    , txsCommandsFile = txsCmdPathBench benchDir "ParallelNested"
+    , sutExample = Nothing
+    , expectedResult = Pass
+    }
+
+
 benchmarksSet :: TxsExampleSet
 benchmarksSet = TxsExampleSet "Parallel" [ parallel4
                                          , parallelIStep4
                                          , parallelAlternate4
                                          , parallelMultiact4
+                                         , parallelSync
+                                         , parallelNested
                                          ]

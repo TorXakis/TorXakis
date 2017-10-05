@@ -1,0 +1,48 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+CHANDEF EnableBenchChans ::=
+    EAct
+  ; ECh  :: Int
+  ; ECh0 :: Int
+  ; ECh1 :: Int    
+ENDDEF
+
+-- | Sequence of enabling actions.
+PROCDEF seqEnable[Act]() ::=
+    (Act >-> EXIT) >>> seqEnable[Act]()
+ENDDEF
+
+MODELDEF SeqEnable ::=
+    CHAN IN
+    CHAN OUT EAct
+    BEHAVIOUR seqEnable[EAct]()
+ENDDEF
+
+-- | Sequence of enabling actions with data.
+PROCDEF seqEnableInt[Ch :: Int](v :: Int) ::=
+    (Ch ! v >-> EXIT ! v) >>> ACCEPT ? w IN seqEnableInt[Ch](w) NI
+ENDDEF
+
+MODELDEF SeqEnableInt ::=
+    CHAN IN
+    CHAN OUT ECh
+    BEHAVIOUR seqEnableInt[ECh](31416)
+ENDDEF
+
+-- | Sequence of enabling actions, which output two integers.
+PROCDEF seqEnableTwoInts[Ch0, Ch1 :: Int](v0, v1 :: Int) ::=
+    (Ch0 ! v0 >-> EXIT ! v0 ? x :: Int 
+     |||
+     Ch1 ! v1 >-> EXIT ? y :: Int ! v1
+    ) >>> ACCEPT ? w0 ? w1 IN seqEnableTwoInts[Ch0, Ch1](w0, w1) NI
+ENDDEF
+
+MODELDEF SeqEnableTwoInts ::=
+    CHAN IN
+    CHAN OUT ECh0, ECh1
+    BEHAVIOUR seqEnableTwoInts[ECh0, ECh1](20, 17)
+ENDDEF
