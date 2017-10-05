@@ -18,9 +18,10 @@ library
   exposed-modules:     Examples.All
                      , Sqatt
                      , Benchmarks.All
-  other-modules:       Benchmarks.Sequence
-                     , Benchmarks.Choice
+  other-modules:       Benchmarks.Choice
                      , Benchmarks.Hiding
+                     , Benchmarks.Parallel
+                     , Benchmarks.Sequence
                      , Benchmarks.Synchronization
                      , Examples.Adder
                      , Examples.CustomersOrders
