@@ -26,7 +26,6 @@ module TXS2SMT
 , declarationsToSMT    --  :: (Variable v) => Map.Map Ident String -> [v] -> String
 , justLookup           -- Test Purposes -- :: Map.Map Ident String -> Ident -> String
 , valexprToSMT         -- Test Purposes -- :: (Variable v) => Map.Map Ident String -> (ValExpr v) -> String
-, encodeStringLiteral
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -45,14 +44,13 @@ import           CstrId
 import           FreeMonoidX
 import           FuncId
 import           Product
+import           RegexXSD2SMT
+import           SMTString
 import           SortId
 import           StdTDefs
 import           Sum
 import           TxsDefs
 import           VarId
-
-import           RegexSMTHappy (encodeStringLiteral)
-import           RegexXSDtoSMT
 
 -- ----------------------------------------------------------------------------------------- --
 -- initialMapInstanceTxsToSmtlib
@@ -85,10 +83,8 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_takeWhile,          error "takeWhile should not be called in SMT"),
     (IdFunc funcId_takeWhileNot,       error "takeWhileNot should not be called in SMT"),
     (IdFunc funcId_dropWhile,          error "dropWhile should not be called in SMT"),
-    (IdFunc funcId_dropWhileNot,       error "dropWhileNot should not be called in SMT"),
+    (IdFunc funcId_dropWhileNot,       error "dropWhileNot should not be called in SMT")
 
--- Regex
-    (IdFunc funcId_strinre,    "str.in.re")
     ]
 
 
@@ -224,8 +220,8 @@ constToSMT _ (Cbool b) = if b
                             then "true"
                             else "false"
 constToSMT _ (Cint n) = integer2smt n
-constToSMT _ (Cstring s)  =  "\"" <> encodeStringLiteral s <> "\""
-constToSMT _ (Cregex r)  =  parseRegex r
+constToSMT _ (Cstring s)  =  "\"" <> stringToSMT s <> "\""
+constToSMT _ (Cregex r)  =  xsd2smt r
 constToSMT mapI (Cstr cd [])   =        justLookup mapI (IdCstr cd)
 constToSMT mapI (Cstr cd args') = "(" <> justLookup mapI (IdCstr cd) <> " " <> T.intercalate " " (map (constToSMT mapI) args') <> ")"
 constToSMT _ x = error ("Illegal input constToSMT - " <> show x)
@@ -306,7 +302,8 @@ valexprToSMT mapI (view -> Vat s p)  =
     "(str.at " <> valexprToSMT mapI s <> " " <> valexprToSMT mapI p <> ")"
 valexprToSMT mapI (view -> Vconcat vexprs)  =
     "(str.++ " <> T.intercalate " " (map (valexprToSMT mapI) vexprs) <> ")"
-
+valexprToSMT mapI (view -> Vstrinre s r)  =
+    "(str.in.re " <> valexprToSMT mapI s <> " " <> valexprToSMT mapI r <> ")"
 valexprToSMT mapI (view -> Vpredef _ funcId args')  =
     "(" <> justLookup mapI (IdFunc funcId) <> " " <> T.intercalate " " (map (valexprToSMT mapI) args') <> ")"
 

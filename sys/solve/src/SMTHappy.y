@@ -28,8 +28,7 @@ where
 import SMTAlex (Token(..), smtLexer)
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified SMTStringAlex   as SMTStringAlex                 -- Parse SMT string according to smtlib 2.5 standard
-import qualified SMTStringHappy  as SMTStringHappy
+import qualified SMTString as SMTString    -- Parse SMT string according to smtlib 2.5 standard
                                         
 import qualified Data.Map    as Map
 import Data.String.Utils
@@ -172,7 +171,7 @@ RuleExpression -- :: { SMTValue }
                   }
                 | string
                   {
-                    $$ = SMTString $ T.pack $ (SMTStringHappy.smtStringParser (SMTStringAlex.smtStringLexer (init (tail $1)))) 
+                    $$ = SMTString $ SMTString.stringFromSMT (T.pack (init (tail $1)))
                   }
                 | "(" name RuleValues ")"
                   {

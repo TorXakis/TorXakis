@@ -16,14 +16,9 @@ library
   hs-source-dirs:       src
 
   exposed-modules:      Eval
-                      , RegexAlex       
-                      , RegexPosixHappy      
   
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
   
-  build-tools:          alex
-                      , happy
-                      
   build-depends:        array
                       , base
                       , containers
@@ -38,29 +33,4 @@ library
                       , coreenv
                       , front
                       
-  default-language:     Haskell2010
-  
-test-suite Value-WhiteBox
-  type:                 exitcode-stdio-1.0
-  
-  hs-source-dirs:       src
-                      , test
-                                            
-  main-is:              TestMainWhiteBox.hs
-  
-  other-modules:        RegexAlex
-                      , RegexPosixHappy      
-  
-                      , TestRegexPosix
-  
-  build-tools:          alex
-                      , happy
-                                          
-  build-depends:        array
-                      , base
-                      , HUnit
-                      , text
-                 
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
-
   default-language:     Haskell2010

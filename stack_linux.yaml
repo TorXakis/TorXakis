@@ -48,6 +48,7 @@ packages:
 - location: sys/coreenv
 - location: sys/defs
 - location: sys/front
+- location: sys/lexregexxsd
 - location: sys/server
 - location: sys/serverenv
 - location: sys/solve

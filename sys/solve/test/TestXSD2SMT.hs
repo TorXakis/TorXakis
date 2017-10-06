@@ -4,27 +4,44 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-module TestRegexPosix
+module TestXSD2SMT
 (
-testRegexPosixList
+testXSD2SMTList
 )
 where
 -- general Haskell imports
-import           Data.Text       (Text)
-import qualified Data.Text       as T
+import           Data.Char
+import           Data.Text     (Text)
+import qualified Data.Text     as T
+--import qualified Debug.Trace   as Trace
+import           Numeric (showHex)
 import           Test.HUnit
 
--- specific SMT imports
-import           RegexAlex
-import           RegexPosixHappy
+import           RegexXSD2SMT
+
+
+-- | escape non-printable characters
+-- see http://cvc4.cs.stanford.edu/wiki/Strings
+--  0x20 == 32
+--  0x7e == 126
+escape :: String -> String
+escape [] = []
+escape (x:xs) 
+    | x == '"'                      = "\"\"" ++ escape xs
+    | x == '\\'                     = "\\\\" ++ escape xs
+    | ord x < 16                    = "\\x0" ++ showHex (ord x) (escape xs)
+    | ord x < 32 || ord x >= 127    = "\\x"  ++ showHex (ord x) (escape xs)
+    | otherwise                     = x:escape xs
 
 -- ----------------------------------------------------------------------------
-testRegexPosixList :: Test
-testRegexPosixList = TestList [
+testXSD2SMTList :: Test
+testXSD2SMTList = TestList [
         TestLabel "Empty"                    testEmpty,
         TestLabel "FromChar"                 testFromChar,
         TestLabel "From Digit Char"          testFromDigitChar,
         TestLabel "From Format Char"         testFromFormatChar,
+        TestLabel "Quotes"                   testFromCharQuotes,
+        TestLabel "From Non Printable Char"  testFromNonPrintableChar,
         TestLabel "Union"                    testUnion,
         TestLabel "Union Multiple 1"         testUnionMultiple1,
         TestLabel "Union Multiple 2"         testUnionMultiple2,
@@ -58,9 +75,11 @@ testRegexPosixList = TestList [
         TestLabel "CharGroup Single Char 1"  testCharGroupChar1,
         TestLabel "CharGroup Single Char 2"  testCharGroupChar2,
         TestLabel "CharGroup Single Char 3"  testCharGroupChar3,
+        TestLabel "CharGroup Single Char 4"  testCharGroupChar4,
         TestLabel "CharGroup Chars 1"        testCharGroupChars1,
         TestLabel "CharGroup Chars 2"        testCharGroupChars2,
         TestLabel "CharGroup Chars 3"        testCharGroupChars3,
+        TestLabel "CharGroup Chars 4"        testCharGroupChars4,
         TestLabel "CharGroup Esc Char 1"     testCharGroupEscChar1,
         TestLabel "CharGroup Esc Char 2"     testCharGroupEscChar2,
         TestLabel "CharGroup Esc Char 3"     testCharGroupEscChar3,
@@ -68,6 +87,8 @@ testRegexPosixList = TestList [
         TestLabel "CharGroup Range Chars 1"  testCharGroupRangeChars1,
         TestLabel "CharGroup Range Chars 2"  testCharGroupRangeChars2,
         TestLabel "CharGroup Range Chars 3"  testCharGroupRangeChars3,
+        TestLabel "CharGroup Range Chars 4"  testCharGroupRangeChars4,
+        TestLabel "CharGroup Range Chars 5"  testCharGroupRangeChars5,
         TestLabel "Dot"                      testDot
     ]
 
@@ -80,69 +101,73 @@ data TestObject = TestObject { input    :: String
 -- TestObject constructors
 ---------------------------------------------------------------------------
 regexEmptyString :: TestObject
-regexEmptyString = TestObject "" ""
+regexEmptyString = TestObject "" "(str.to.re \"\") "
 
 regexFromChar :: Char -> TestObject
-regexFromChar c = TestObject [c] [c]
+regexFromChar c = TestObject [c] ("(str.to.re \"" ++ escape [c] ++ "\") ")
 
 regexDot :: TestObject
-regexDot = TestObject ['.'] "[^\r\n]"
+regexDot = TestObject ['.'] "(re.union (re.range \"\\x00\" \"\\x09\") (re.range \"\\x0B\" \"\\x0C\") (re.range \"\\x0E\" \"\\xFF\") ) "
 
 concatRegex :: [TestObject] -> TestObject
 concatRegex [] = regexEmptyString
 concatRegex [t] = t
-concatRegex (hd:tl)  = foldl addRegex hd tl
+concatRegex (hd:tl)  = finalize (foldl addRegex hd tl)
     where   addRegex :: TestObject -> TestObject -> TestObject
             addRegex (TestObject input1 expected1) (TestObject input2 expected2) = TestObject (input1 ++ input2) (expected1 ++ expected2)
+            finalize :: TestObject -> TestObject
+            finalize (TestObject i e) = TestObject i ("(re.++ " ++ e ++ ") ")
 
 unionRegex :: [TestObject] -> TestObject
 unionRegex [] =  regexEmptyString
 unionRegex [t] = t
-unionRegex (hd:tl) =  foldl joinRegex hd tl
+unionRegex (hd:tl) =  finalize (foldl joinRegex hd tl)
     where   joinRegex :: TestObject -> TestObject -> TestObject
-            joinRegex (TestObject input1 expected1) (TestObject input2 expected2) = TestObject (input1 ++ "|" ++ input2) (expected1 ++ "|" ++ expected2)
+            joinRegex (TestObject input1 expected1) (TestObject input2 expected2) = TestObject (input1 ++ "|" ++ input2) (expected1 ++ expected2)
+            finalize :: TestObject -> TestObject
+            finalize (TestObject inp expct) = TestObject inp ("(re.union " ++ expct ++ ") ")
 
 precedenceRegex :: TestObject ->  TestObject
-precedenceRegex (TestObject inp expct)     = TestObject ("(" ++ inp ++ ")") ("(" ++ expct ++ ")")
+precedenceRegex (TestObject inp expct)     = TestObject ("(" ++ inp ++ ")") expct
 
 optionalRegex :: TestObject -> TestObject
-optionalRegex (TestObject inp expct) = TestObject ( inp ++  "?") (expct ++ "?")
+optionalRegex (TestObject inp expct) = TestObject ( inp ++  "?") ("(re.opt " ++ expct ++ ") ")
 
 plusRegex :: TestObject -> TestObject
-plusRegex (TestObject inp expct) = TestObject ( inp ++  "+") (expct ++ "+")
+plusRegex (TestObject inp expct) = TestObject ( inp ++  "+") ("(re.+ " ++ expct ++ ") ")
 
 starRegex :: TestObject -> TestObject
-starRegex (TestObject inp expct) = TestObject ( inp ++  "*") (expct ++ "*")
+starRegex (TestObject inp expct) = TestObject ( inp ++  "*") ("(re.* " ++ expct ++ ") ")
 
 quantityRangeRegex :: TestObject -> Int -> Int -> TestObject
-quantityRangeRegex (TestObject inp expct) low high = TestObject ( inp ++  "{" ++ show low ++ "," ++ show high ++ "}") ( expct ++  "{" ++ show low ++ "," ++ show high ++ "}")
+quantityRangeRegex (TestObject inp expct) low high = TestObject ( inp ++  "{" ++ show low ++ "," ++ show high ++ "}") ("(re.loop " ++ expct ++ show low ++ " " ++ show high ++ ") ")
 
 quantityMinRegex :: TestObject -> Int -> TestObject
-quantityMinRegex (TestObject inp expct) low = TestObject ( inp ++  "{" ++ show low ++ ",}") ( expct ++  "{" ++ show low ++ ",}")
+quantityMinRegex (TestObject inp expct) low = TestObject ( inp ++  "{" ++ show low ++ ",}") ("(re.loop " ++ expct ++ show low ++ ") ")
 
 quantityExactRegex :: TestObject -> Int -> TestObject
 quantityExactRegex rt val = quantityRangeRegex rt val val
 
 charGroupPartRange :: Char -> Char -> TestObject
-charGroupPartRange c1 c2 = TestObject ([c1] ++ "-" ++ [c2]) ([c1] ++ "-" ++ [c2])
+charGroupPartRange c1 c2 = TestObject ([c1] ++ "-" ++ [c2]) ("(re.range \"" ++ escape [c1] ++ "\" \"" ++ escape [c2] ++ "\") ")
 
 charGroupPartChar :: Char -> TestObject
-charGroupPartChar c = TestObject [c] [c]
+charGroupPartChar c = TestObject [c] ("(str.to.re \"" ++ escape [c] ++ "\") ")
 
 charGroupPartEscChar :: Char -> TestObject
-charGroupPartEscChar 't' = TestObject "\\t" "\t"
-charGroupPartEscChar 'n' = TestObject "\\n" "\n"
-charGroupPartEscChar 'r' = TestObject "\\r" "\r"
-charGroupPartEscChar c   = TestObject ("\\"++[c]) [c]
+charGroupPartEscChar 't' = TestObject "\\t" "(str.to.re \"\\t\") "
+charGroupPartEscChar 'n' = TestObject "\\n" "(str.to.re \"\\n\") "
+charGroupPartEscChar 'r' = TestObject "\\r" "(str.to.re \"\\r\") "
+charGroupPartEscChar c = TestObject ("\\"++[c]) ("(str.to.re \"" ++ [c] ++ "\") ")
 
 charGroupRegex :: [TestObject] -> TestObject
-charGroupRegex [TestObject inp expct] = TestObject ("["++inp++"]") ("["++expct++"]")
+charGroupRegex [TestObject inp expct] = TestObject ("["++inp++"]") expct
 charGroupRegex list = toTestObject (foldl addCharGroupPart ("","") list)
     where
         addCharGroupPart :: (String,String) -> TestObject -> (String,String)
         addCharGroupPart (concatIn, concatExp) (TestObject inp expct) = (concatIn ++ inp, concatExp ++ expct)
         toTestObject :: (String, String) -> TestObject
-        toTestObject (inp,expct) = TestObject ( "[" ++ inp ++ "]" ) ( "[" ++ expct ++ "]" )
+        toTestObject (inp,expct) = TestObject ( "[" ++ inp ++ "]" ) ( "(re.union " ++ expct ++ ") ")
 
 ---------------------------------------------------------------------------
 -- Test Template
@@ -150,7 +175,7 @@ charGroupRegex list = toTestObject (foldl addCharGroupPart ("","") list)
 testTestObject :: String -> TestObject -> Test
 testTestObject s rt = TestCase $
     -- Trace.trace ( (input rt) ++ " => " ++ (expected rt) ) $ do
-    assertEqual s ("^" ++ expected rt ++ "$") (T.unpack (regexPosixParser (regexLexer (input rt) ) ))
+    assertEqual s (expected rt) (T.unpack (xsd2smt (T.pack (input rt) ) ) )
 
 ---------------------------------------------------------------------------
 -- Tests
@@ -166,6 +191,12 @@ testFromDigitChar = testTestObject "from Digit Char" $ regexFromChar '2'
 
 testFromFormatChar :: Test
 testFromFormatChar = testTestObject "from Format Char" $ regexFromChar 'n'
+
+testFromCharQuotes :: Test
+testFromCharQuotes = testTestObject "from Char Quotes" $ regexFromChar '"'
+
+testFromNonPrintableChar :: Test
+testFromNonPrintableChar = testTestObject "from Non Printable Char" $ regexFromChar '\x01'
 
 testUnion :: Test
 testUnion = testTestObject "union" $ unionRegex [regexFromChar 'a',regexFromChar 'b']
@@ -266,6 +297,9 @@ testCharGroupChar2 = testTestObject "char group single char 2" $ charGroupRegex 
 testCharGroupChar3 :: Test
 testCharGroupChar3 = testTestObject "char group single char 3" $ charGroupRegex [charGroupPartChar '-']
 
+testCharGroupChar4 :: Test
+testCharGroupChar4 = testTestObject "char group single char 4" $ charGroupRegex [charGroupPartChar '\t']
+
 testCharGroupChars1 :: Test
 testCharGroupChars1 = testTestObject "char group chars 1" $ charGroupRegex [charGroupPartChar 'a', charGroupPartChar 'b', charGroupPartChar 'c']
 
@@ -274,6 +308,9 @@ testCharGroupChars2 = testTestObject "char group chars 2" $ charGroupRegex [char
 
 testCharGroupChars3 :: Test
 testCharGroupChars3 = testTestObject "char group chars 3" $ charGroupRegex [charGroupPartChar '-', charGroupPartChar 'a']
+
+testCharGroupChars4 :: Test
+testCharGroupChars4 = testTestObject "char group chars 4" $ charGroupRegex [charGroupPartChar '\x03', charGroupPartChar '\x7F']
 
 testCharGroupEscChar1 :: Test
 testCharGroupEscChar1 = testTestObject "char group esc char 1" $ charGroupRegex [charGroupPartEscChar 't']
@@ -295,6 +332,12 @@ testCharGroupRangeChars2 = testTestObject "char group range chars 2" $ charGroup
 
 testCharGroupRangeChars3 :: Test
 testCharGroupRangeChars3 = testTestObject "char group range chars 3" $ charGroupRegex [charGroupPartRange 'a' 'k', charGroupPartChar '-']
+
+testCharGroupRangeChars4 :: Test
+testCharGroupRangeChars4 = testTestObject "char group range chars 4" $ charGroupRegex [charGroupPartRange '"' 'z', charGroupPartChar '\'']
+
+testCharGroupRangeChars5 :: Test
+testCharGroupRangeChars5 = testTestObject "char group range chars 5" $ charGroupRegex [charGroupPartRange '\x06' '\x7F', charGroupPartChar '\x0A']
 
 testDot :: Test
 testDot = testTestObject "dot" regexDot

@@ -1,0 +1,27 @@
+name:                   lexregexxsd
+version:                0.2.1.0
+synopsis:               Lexer for Regular Expression accord to the XSD format
+license:                BSD3
+license-file:           license.txt
+author:                 Jan Tretmans
+                      , Pierre van de Laar
+maintainer:          
+                      , pierre.vandelaar@tno.nl
+copyright:              TNO
+category:               Web
+build-type:             Simple
+cabal-version:          >=1.10
+
+library
+  hs-source-dirs:       src
+  exposed-modules:      RegexAlex
+  
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
+  
+  build-tools:          alex
+  
+  build-depends:        array
+                      , base
+                      , text
+                      
+  default-language:     Haskell2010

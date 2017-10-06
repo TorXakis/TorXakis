@@ -19,12 +19,12 @@ library
                       , RandPartition
                       , RandTrueBins
                       , RandIncrementChoice
+                      , RegexXSD2SMT
                       , SMT
+                      , SMTString
                       , Solve
 
-  other-modules:        RegexSMTHappy
-                      , RegexXSDtoSMT
-                      , SMTInternal
+  other-modules:        SMTInternal
                       , SMT2TXS
                       , SMTAlex
                       , SMTHappy
@@ -48,6 +48,7 @@ library
                       , defs
                       , value
                       , solvedefs
+                      , lexregexxsd
 
   build-tools:          alex
                       , happy
@@ -71,7 +72,6 @@ test-suite SmtSolver-WhiteBox
                       , TestExternal
                       , TestFuncDefToSMT
                       , TestRecursiveFunction
-                      , TestRegexSMT
                       , TestSMTCount
                       , TestSMTValue
                       , TestSortDefToSMT
@@ -82,13 +82,13 @@ test-suite SmtSolver-WhiteBox
                       , RandIncrementChoice
                       , RandPartition
                       , RandTrueBins
-                      , RegexSMTHappy
-                      , RegexXSDtoSMT
+                      , RegexXSD2SMT
                       , SMT
                       , SMT2TXS
                       , SMTAlex
                       , SMTHappy
                       , SMTInternal
+                      , SMTString
                       , SMTStringAlex
                       , SMTStringHappy
                       , SolveRandParam
@@ -105,12 +105,13 @@ test-suite SmtSolver-WhiteBox
                       , MissingH
                       , defs
                       , random
-                      , random-shuffle                      
+                      , random-shuffle
                       , solvedefs
                       , value
                       , text
 
                       , coreenv
+                      , lexregexxsd
 
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
 
@@ -126,6 +127,7 @@ test-suite SmtSolver-BlackBox
                       , TestMultipleInstances
                       , TestPushPop
                       , TestSolvers
+                      , TestXSD2SMT
 
   build-depends:        base
                       , containers
