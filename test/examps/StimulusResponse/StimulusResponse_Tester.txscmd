@@ -1,4 +1,4 @@
 tester Model Sut
 test 4
-trace txs $> testTrace.log
+trace proc $> testTrace.log
 exit

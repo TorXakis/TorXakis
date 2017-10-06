@@ -1,0 +1,111 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+-- | Specification of a sequential process that performs a single action
+--   repeatedly.
+
+CHANDEF ChanDefs ::=
+      MyAct
+    ; MyOtherAct
+    ; MyIntChan :: Int
+    ; Ch10Ints :: Int # Int # Int # Int # Int # Int # Int # Int # Int # Int
+    ; Ch10IntsTD :: Ints10
+ENDDEF      
+
+PROCDEF sequence[Act]() ::=
+    Act >-> sequence[Act]()
+ENDDEF
+
+MODELDEF ForeverAct ::=
+    CHAN IN    
+    CHAN OUT MyAct
+    BEHAVIOUR sequence[MyAct]()
+ENDDEF
+
+-- * Adding an `ISTEP`
+
+PROCDEF sequenceIStep[Act]() ::=
+    Act >-> ISTEP >-> sequence[Act]()
+ENDDEF
+
+MODELDEF ForeverActIStep ::=
+    CHAN IN
+    CHAN OUT MyAct
+    BEHAVIOUR sequenceIStep[MyAct]()
+ENDDEF
+
+-- * Adding data
+
+PROCDEF sequenceData[c :: Int](n :: Int) ::=
+    c ! n >-> sequenceData[c](n)
+ENDDEF
+
+MODELDEF ForeverOutput4 ::=
+    CHAN IN
+    CHAN OUT MyIntChan
+    BEHAVIOUR sequenceData[MyIntChan](4)
+ENDDEF
+
+-- * Alternation
+
+PROCDEF sequenceAlternate[act0, act1]() ::=
+    act0 >-> sequenceAlternate[act1, act0]()
+ENDDEF
+
+MODELDEF ForeverAlternate ::=
+    CHAN IN MyAct, MyOtherAct
+    CHAN OUT
+    BEHAVIOUR sequenceAlternate[MyAct, MyOtherAct]()
+ENDDEF
+
+-- * Sequence with 10 integers received over a channel of type tuple, and using guards.
+PROCDEF sequence10Ints [Ch :: Int # Int # Int # Int # Int # Int # Int # Int # Int # Int]() ::=
+    Ch ? x0 ? x1 ? x2 ? x3 ? x4 ? x5 ? x6 ? x7 ? x8 ? x9
+        [[ (x0 > x1) 
+        /\ (x1 > x2) 
+        /\ (x2 > x3) 
+        /\ (x3 > x4) 
+        /\ (x4 > x5) 
+        /\ (x5 > x6)
+        /\ (x6 > x7)
+        /\ (x7 > x8)
+        /\ (x8 > x9)
+        ]]
+    >-> sequence10Ints[Ch]()
+ENDDEF
+
+MODELDEF Sequence10Ints ::=
+    CHAN IN    
+    CHAN OUT   Ch10Ints
+    BEHAVIOUR
+        sequence10Ints[Ch10Ints]()
+ENDDEF
+
+-- * Sequence with 10 integers received over a channel of a custom type, and using guards.
+TYPEDEF Ints10 ::= Ints10 {i0, i1, i2, i3, i4, i5, i6, i7, i8, i9 :: Int} ENDDEF
+
+PROCDEF sequence10IntsTypeDef [ Ch  :: Ints10 ] ( ) ::=
+    Ch ? allXs
+        [[ (i0(allXs) > i1(allXs)) 
+        /\ (i1(allXs) > i2(allXs)) 
+        /\ (i2(allXs) > i3(allXs)) 
+        /\ (i3(allXs) > i4(allXs)) 
+        /\ (i4(allXs) > i5(allXs)) 
+        /\ (i5(allXs) > i6(allXs))
+        /\ (i6(allXs) > i7(allXs))
+        /\ (i7(allXs) > i8(allXs))
+        /\ (i8(allXs) > i9(allXs))
+        ]]
+    >-> sequence10IntsTypeDef[Ch]()
+ENDDEF
+
+MODELDEF Sequence10IntsTypeDef ::=
+    CHAN IN    
+    CHAN OUT Ch10IntsTD
+    BEHAVIOUR
+        sequence10IntsTypeDef[Ch10IntsTD]()
+ENDDEF
+

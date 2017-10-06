@@ -1,4 +1,4 @@
 stepper TestPurpose
 step 10
-trace txs $> testTrace.log
+trace proc $> testTrace.log
 exit

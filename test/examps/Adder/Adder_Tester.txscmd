@@ -1,4 +1,4 @@
-tester Adder Sut
+tester Adder SutConnection
 test 10
-trace txs $> testTrace.log
+trace purp $> AdderPurpose.txs
 exit

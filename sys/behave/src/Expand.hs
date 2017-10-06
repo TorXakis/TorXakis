@@ -50,23 +50,16 @@ import           Utils
 
 import           ChanId
 
--- ----------------------------------------------------------------------------------------- --
--- expand :  expansion of CNode into communication tree, recursively over CNode structure
---           CNode must be closed and have no free, symbolic, or interaction variables
 
-
-expand :: [ Set.Set TxsDefs.ChanId ] -> CNode -> IOB.IOB CTree
-
-
--- ----------------------------------------------------------------------------------------- --
+-- | Expansion of CNode into communication tree, recursively over CNode
+-- structure CNode must be closed and have no free, symbolic, or interaction
+-- variables.
+expand :: [ Set.Set TxsDefs.ChanId ] -- ^ Set of expected synchronization channels.
+       -> CNode
+       -> IOB.IOB CTree
 -- expand  :  for  BNbexpr WEnv BExpr
---
--- ----------------------------------------------------------------------------------------- --
-
 expand _ (BNbexpr _ Stop)  = return []
-
--- ----------------------------------------------------------------------------------------- --
-
+--
 expand chsets (BNbexpr we (ActionPref (ActOffer offs cnd) bexp))  =  do
      (ctoffs, quests, exclams) <- expandOffers chsets offs
      let ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
@@ -79,7 +72,7 @@ expand chsets (BNbexpr we (ActionPref (ActOffer offs cnd) bexp))  =  do
                           ]
      return [ CTpref { ctoffers  = ctoffs
                      , cthidvars = []
-                     , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (walSubst we' cnd) 
+                     , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (walSubst we' cnd)
                                                          : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- exclams' ]
                                                          )
                                            )
@@ -90,7 +83,7 @@ expand chsets (BNbexpr we (ActionPref (ActOffer offs cnd) bexp))  =  do
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (Guard c bexp))  = do
-    c' <- Eval.eval $ cstrEnv (Map.map cstrConst we) c 
+    c' <- Eval.eval $ cstrEnv (Map.map cstrConst we) c
     case c' of
         Cbool True  -> expand chsets (BNbexpr we bexp)
         Cbool False -> return []

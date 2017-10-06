@@ -11,15 +11,21 @@ module Sqatt
   ( TxsExample(..)
   , checkSMTSolvers
   , checkCompilers
-  , testExamples
   , checkTxsInstall
   , ExampleResult (..)
   , javaCmd
-  , testExampleSet
-  , testExampleSets
   , TxsExampleSet (..)
   , SutExample (..)
   , toFSSafeStr
+  -- * Testing
+  , testExamples
+  , testExampleSet
+  , testExampleSets
+  -- * Benchmarking
+  , benchmarkExampleSet
+  -- * Logging
+  , sqattLogsRoot
+  , mkLogDir
   -- * Re-exports
   , module Turtle
   )
@@ -31,6 +37,7 @@ import           Control.Exception
 import           Control.Foldl
 import           Control.Monad.Except
 import           Control.Monad.Extra
+import           Criterion.Main
 import           Data.Either
 import           Data.Foldable
 import           Data.Maybe
@@ -51,18 +58,21 @@ import           Turtle
 data TxsExample
   = TxsExample {
     -- | Name of the example.
-    exampleName     :: String
-    -- | Path to the TorXakis model files.
-  , txsModelFiles   :: [FilePath]
-    -- | Path to the file containing the commands that will be passed to the
-    --   TorXakis server.
-  , txsCommandsFile :: FilePath
+    exampleName    :: String
+    -- | Paths to the TorXakis model files.
+  , txsModelFiles  :: [FilePath]
+    -- | Paths to the files containing the commands that will be passed to the
+    --   TorXakis server. Commands are passed in the order specified by the
+    --   order of the files in the list.
+  , txsCmdsFiles   :: [FilePath]
+    -- | Command line arguments to be passed to the TorXakis server command.
+  , txsServerArgs  :: [Text]
     -- | SUT example. This run together with TorXakis. If this field is
     --   `Nothing` then the example is assumed to be autonomous (only TorXakis
     --   will be run)
-  , sutExample      :: Maybe SutExample
+  , sutExample     :: Maybe SutExample
     -- | Example's expected result.
-  , expectedResult  :: ExampleResult
+  , expectedResult :: ExampleResult
   } deriving (Show)
 
 data SutExample
@@ -122,7 +132,7 @@ data CompiledSut
 data RunnableExample = ExampleWithSut TxsExample CompiledSut [Text]
                      | StandaloneExample TxsExample
 
-data ExampleResult = Pass | Fail deriving (Show, Eq)
+data ExampleResult = Pass | Fail | Message Text deriving (Show, Eq)
 
 -- * Path manipulation functions
 
@@ -141,11 +151,17 @@ txsServerCmd = addExeSuffix "txsserver"
 txsUICmd :: Text
 txsUICmd = addExeSuffix "txsui"
 
-txsUIPassMsg :: Text
-txsUIPassMsg = "TXS >>  PASS"
+txsUILinePrefix :: Text
+txsUILinePrefix = "TXS >>  "
 
-txsUIFailMsg :: Text
-txsUIFailMsg = "TXS >>  FAIL"
+
+class ExpectedMessage a where
+    expectedMessage :: a -> Text
+
+instance ExpectedMessage ExampleResult where
+    expectedMessage Pass          = txsUILinePrefix <> "PASS"
+    expectedMessage Fail          = txsUILinePrefix <> "FAIL"
+    expectedMessage (Message msg) = txsUILinePrefix <> msg
 
 -- | Decode a file path into a human readable text string. The decoding is
 -- dependent on the operating system. An error is thrown if the decoding is not
@@ -262,10 +278,12 @@ txsCheckTimeout :: NominalDiffTime
 txsCheckTimeout = 60.0
 
 -- | Run TorXakis with the given example specification.
-runTxsWithExample :: FilePath   -- ^ Path to the logging directory for the current example set.
-                  -> TxsExample -- ^ Example to run.
+runTxsWithExample :: Maybe FilePath   -- ^ Path to the logging directory for
+                                      -- the current example set, or nothing if
+                                      -- no logging is desired.
+                  -> TxsExample       -- ^ Example to run.
                   -> Concurrently (Either SqattError ())
-runTxsWithExample logDir ex = Concurrently $ do
+runTxsWithExample mLogDir ex = Concurrently $ do
   eInputModelF <- runExceptT $ runTest $ mapM decodePath (txsModelFiles ex)
 
   case eInputModelF of
@@ -274,8 +292,8 @@ runTxsWithExample logDir ex = Concurrently $ do
       port <- repr <$> getRandomPort
       runConcurrently $ timer
                     <|> heartbeat
-                    <|> txsServerProc logDir port
-                    <|> txsUIProc logDir inputModelF port
+                    <|> txsServerProc mLogDir (port : txsServerArgs ex)
+                    <|> txsUIProc mLogDir inputModelF port
   where
     heartbeat = Concurrently $ forever $ do
       sleep 60.0 -- For now we don't make this configurable.
@@ -283,53 +301,67 @@ runTxsWithExample logDir ex = Concurrently $ do
     timer = Concurrently $ do
       sleep sqattTimeout
       throwIO TestTimedOut
-    txsUIProc uiLogDir imf port =
+    txsUIProc mUiLogDir imf port =
       Concurrently $ try $ do
         res <- Turtle.fold txsUIShell findExpectedMsg
         unless res (throw tErr)
       where
+        inLines :: Shell Line
+        inLines = asum $ input <$> cmdsFile
         txsUIShell :: Shell Line
-        txsUIShell = do
-          h <- appendonly $ uiLogDir </> "txsui.out.log"
-          line <- either id id <$> inprocWithErr txsUICmd (port:imf) (input cmdsFile)
-          liftIO $ TIO.hPutStrLn h (lineToText line)
-          return line
+        txsUIShell =
+            case mUiLogDir of
+                Nothing ->
+                    either id id <$> inprocWithErr txsUICmd
+                                                        (port:imf)
+                                                        inLines
+                Just uiLogDir -> do
+                    h <- appendonly $ uiLogDir </> "txsui.out.log"
+                    line <- either id id <$> inprocWithErr txsUICmd
+                                                           (port:imf)
+                                                           inLines
+                    liftIO $ TIO.hPutStrLn h (lineToText line)
+                    return line
         findExpectedMsg :: Fold Line Bool
         findExpectedMsg = Control.Foldl.any (T.isInfixOf searchStr . lineToText)
-    cmdsFile = txsCommandsFile ex
-    searchStr = expectedMsg . expectedResult $ ex
+    cmdsFile = txsCmdsFiles ex
+    searchStr = expectedMessage . expectedResult $ ex
     tErr = TestExpectationError $
               format ("Did not get expected result "%s)
                      (repr . expectedResult $ ex)
-    expectedMsg Fail = txsUIFailMsg
-    expectedMsg Pass = txsUIPassMsg
-    txsServerProc sLogDir port = Concurrently $
-      runInprocNI (sLogDir </> "txsserver.out.log") txsServerCmd [port]
+    txsServerProc sLogDir args = Concurrently $
+      runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd args
 
 -- | Run a process.
-runInproc :: FilePath   -- ^ Directory where the logs will be stored.
-          -> Text       -- ^ Command to run.
-          -> [Text]     -- ^ Command arguments.
-          -> Shell Line -- ^ Lines to be input to the command.
+runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @Nothing@ if no logging is desired.
+          -> Text             -- ^ Command to run.
+          -> [Text]           -- ^ Command arguments.
+          -> Shell Line       -- ^ Lines to be input to the command.
           -> IO (Either SqattError ())
-runInproc logDir cmd cmdArgs procInput =
-  try $ output logDir (either id id <$> inprocWithErr cmd cmdArgs procInput)
+runInproc mLogDir cmd cmdArgs procInput =
+    case mLogDir of
+        Nothing ->
+            try $ sh $ inprocWithErr cmd cmdArgs procInput
+        Just logDir ->
+            try $ output logDir $
+                either id id <$> inprocWithErr cmd cmdArgs procInput
 
 -- | Run a process without input. See `runInproc`.
 --
-runInprocNI :: FilePath
+runInprocNI :: Maybe FilePath
             -> Text
             -> [Text]
             -> IO (Either SqattError ())
-runInprocNI logDir cmd cmdArgs =
-  runInproc logDir cmd cmdArgs Turtle.empty
+runInprocNI mLogDir cmd cmdArgs =
+  runInproc mLogDir cmd cmdArgs Turtle.empty
 
 -- | Run TorXakis as system under test.
-runTxsAsSut :: FilePath   -- ^ Path to the logging directory for the current example set.
-            -> [FilePath] -- ^ List of paths to the TorXakis model.
-            -> FilePath   -- ^ Path to the commands to be input to the TorXakis model.
+runTxsAsSut :: Maybe FilePath   -- ^ Path to the logging directory for the current
+                                -- example set, or @Nothing@ if no logging is desired.
+            -> [FilePath]       -- ^ List of paths to the TorXakis model.
+            -> FilePath         -- ^ Path to the commands to be input to the TorXakis model.
             -> IO (Either SqattError ())
-runTxsAsSut logDir modelFiles cmdsFile = do
+runTxsAsSut mLogDir modelFiles cmdsFile = do
   eInputModelF <- runExceptT $ runTest $ mapM decodePath modelFiles
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
@@ -339,29 +371,30 @@ runTxsAsSut logDir modelFiles cmdsFile = do
         txsServerProc port <|> txsUIProc inputModelF port
   where
     txsUIProc imf port = Concurrently $
-      let cLogDir = logDir </> "txsui.SUT.out.log" in
-      runInproc cLogDir txsUICmd (port:imf) (input cmdsFile)
+      let mCLogDir = (</> "txsui.SUT.out.log") <$> mLogDir in
+      runInproc mCLogDir txsUICmd (port:imf) (input cmdsFile)
     txsServerProc port = Concurrently $
-      let cLogDir = logDir </> "txsserver.SUT.out.log" in
-      runInprocNI cLogDir txsServerCmd [port]
+      let mCLogDir = (</> "txsserver.SUT.out.log") <$> mLogDir in
+      runInprocNI mCLogDir txsServerCmd [port]
 
-mkTest :: FilePath -> RunnableExample -> Test ()
-mkTest logDir (ExampleWithSut ex cSUT args) = do
+mkTest :: Maybe FilePath -> RunnableExample -> Test ()
+mkTest mLogDir (ExampleWithSut ex cSUT args) = do
   res <- liftIO $
-    runConcurrently $  runSUTWithTimeout logDir cSUT args
-                   <|> runTxsWithExample logDir ex
+    runConcurrently $  runSUTWithTimeout mLogDir cSUT args
+                   <|> runTxsWithExample mLogDir ex
   case res of
     Left txsErr -> throwError txsErr
     Right ()    -> return ()
-mkTest logDir (StandaloneExample ex) = do
-  res <- liftIO $ runConcurrently $ runTxsWithExample logDir ex
+mkTest mLogDir (StandaloneExample ex) = do
+  res <- liftIO $ runConcurrently $ runTxsWithExample mLogDir ex
   case res of
     Left txsErr -> throwError txsErr
     Right  _    -> return ()
 
-runSUTWithTimeout :: FilePath -> CompiledSut -> [Text] -> Concurrently (Either SqattError ())
-runSUTWithTimeout logDir cSUT args = Concurrently $ do
-  res <- runSUT logDir cSUT args
+runSUTWithTimeout :: Maybe FilePath -> CompiledSut -> [Text]
+                  -> Concurrently (Either SqattError ())
+runSUTWithTimeout mLogDir cSUT args = Concurrently $ do
+  res <- runSUT mLogDir cSUT args
   case res of
     Left someErr ->
       return $ Left someErr
@@ -369,11 +402,12 @@ runSUTWithTimeout logDir cSUT args = Concurrently $ do
       sleep txsCheckTimeout
       return (Left TestTimedOut)
 
-runSUT :: FilePath -> CompiledSut -> [Text] -> IO (Either SqattError ())
-runSUT logDir (JavaCompiledSut mClass cpSP) args = do
+runSUT :: Maybe FilePath -> CompiledSut -> [Text]
+       -> IO (Either SqattError ())
+runSUT mLogDir (JavaCompiledSut mClass cpSP) args = do
   cpOpts <- getCPOptsIO cpSP
   let javaArgs = cpOpts ++ [mClass] ++ args
-  runInprocNI (logDir </> "SUT.out.log") javaCmd javaArgs
+  runInprocNI ((</> "SUT.out.log") <$> mLogDir) javaCmd javaArgs
 runSUT logDir (TxsSimulatedSut modelFiles cmds) _ =
   runTxsAsSut logDir modelFiles cmds
 
@@ -391,19 +425,19 @@ pathMustExist path =
 -- | Retrieve all the file paths from an example
 exampleInputFiles :: TxsExample -> [FilePath]
 exampleInputFiles ex =
-  (txsCommandsFile ex:txsModelFiles ex)
+  (txsCmdsFiles ex ++ txsModelFiles ex)
   ++ fromMaybe [] (sutInputFiles <$> sutExample ex)
   where sutInputFiles (JavaExample jsp _)     = [jsp]
         sutInputFiles (TxsSimulator cmdsFile) = [cmdsFile]
 
 -- | Execute a test.
-execTest :: FilePath -> TxsExample -> Test ()
-execTest topLogDir ex = do
-  let logDir = topLogDir </> (fromString . toFSSafeStr . exampleName) ex
-  mktree logDir
+execTest :: Maybe FilePath -> TxsExample -> Test ()
+execTest mTopLogDir ex = do
+  let mLogDir = (</> (fromString . toFSSafeStr . exampleName) ex) <$> mTopLogDir
+  for_ mLogDir mktree
   traverse_ pathMustExist (exampleInputFiles ex)
   runnableExample <- getRunnableExample
-  mkTest logDir runnableExample
+  mkTest mLogDir runnableExample
   where
     getRunnableExample =
       case sutExample ex of
@@ -418,21 +452,62 @@ execTest topLogDir ex = do
 -- | Test a single example.
 testExample :: FilePath -> TxsExample -> Spec
 testExample logDir ex = it (exampleName ex) $ do
-  res <- runExceptT $ runTest $ execTest logDir ex
+  res <- runExceptT $ runTest $ execTest (Just logDir) ex
   res `shouldBe` Right ()
 
 -- | Test a list of examples.
 testExamples :: FilePath -> [TxsExample] -> Spec
 testExamples logDir = traverse_ (testExample logDir)
 
+-- | Make a benchmark from a TorXakis example.
+mkBenchmark :: TxsExample -> Benchmark
+mkBenchmark ex =
+    bench (exampleName ex) $ nfIO runBenchmark
+    where
+      runBenchmark = do
+          res <- runExceptT $ runTest $ execTest Nothing ex
+          unless (isRight res) (error $ "Unexpected error: " ++ show res)
+
+-- | Make a list of benchmarks from a list of TorXakis examples.
+mkBenchmarks :: [TxsExample] -> [Benchmark]
+mkBenchmarks = (mkBenchmark <$>)
+
+-- | Run benchmarks on a set of examples.
+benchmarkExampleSet :: TxsExampleSet -> Benchmark
+benchmarkExampleSet (TxsExampleSet exSetDesc exs) =
+    bgroup groupName benchmarks
+    where
+      groupName = exampleSetName exSetDesc
+      benchmarks = mkBenchmarks exs
+
+esLogDir :: FilePath -> TxsExampleSet -> FilePath
+esLogDir logRoot exSet =
+    logRoot </> (  fromString
+                . toFSSafeStr
+                . exampleSetName
+                . exampleSetdesc) exSet
+
 -- | Test an example set.
 testExampleSet :: FilePath -> TxsExampleSet -> Spec
-testExampleSet logDir (TxsExampleSet exSetDesc exs) = do
-  let thisSetLogDir =
-        logDir </> (fromString . toFSSafeStr . exampleSetName) exSetDesc
+testExampleSet logDir es@(TxsExampleSet exSetDesc exs) = do
+  let thisSetLogDir = esLogDir logDir es
   runIO $ mktree thisSetLogDir
   describe (exampleSetName exSetDesc) (testExamples thisSetLogDir exs)
 
 -- | Test a list of example sets.
 testExampleSets :: FilePath -> [TxsExampleSet] -> Spec
 testExampleSets logDir = traverse_ (testExampleSet logDir)
+
+-- | For now the root directory where the logs are stored is not configurable.
+sqattLogsRoot :: FilePath
+sqattLogsRoot = "sqatt-logs"
+
+-- | Create a log directory with the specified prefix.
+mkLogDir :: String -> IO FilePath
+mkLogDir strPrefix = do
+    currDate <- date
+    let logDir =
+            sqattLogsRoot </> fromString (strPrefix ++ currDateStr)
+        currDateStr = toFSSafeStr (show currDate)
+    mktree logDir
+    return logDir

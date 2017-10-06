@@ -33,7 +33,8 @@ test0 :: TxsExample
 test0 = TxsExample
   { exampleName = "Examples Purpose Test"
   , txsModelFiles = map (txsFilePath specDir)  [luckyPeopleText, examplePurposeText]
-  , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleExamples_Purpose"
+  , txsCmdsFiles = [txsCmdPath exampDir "LuckyPeopleExamples_Purpose"]
+  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            (javaFilePath sutDir luckyPeopleText)
@@ -46,7 +47,8 @@ test1 :: TxsExample
 test1 = TxsExample
   { exampleName = "Lucky By Gender Test"
   , txsModelFiles = map (txsFilePath specDir) [luckyPeopleText, genderPurposeText]
-  , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleByGender_Purpose"
+  , txsCmdsFiles = [txsCmdPath exampDir "LuckyPeopleByGender_Purpose"]
+  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            (javaFilePath sutDir luckyPeopleText)
@@ -59,7 +61,8 @@ test2 :: TxsExample
 test2 = TxsExample
   { exampleName = "Random Lucky Test"
   , txsModelFiles = [txsFilePath specDir luckyPeopleText]
-  , txsCommandsFile = txsCmdPath exampDir "LuckyPeopleRandom_Tester"
+  , txsCmdsFiles = [txsCmdPath exampDir "LuckyPeopleRandom_Tester"]
+  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            (javaFilePath sutDir luckyPeopleText)

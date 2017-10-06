@@ -1,0 +1,117 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+CHANDEF HidingBenchChans ::=
+    HCAct0
+  ; HCAct1
+  ; HCAct2
+  ; HCAct3
+  ; MyInA
+  ; MyInB
+  ; MyOut
+  ; MyInAInt :: Int
+  ; MyInBInt :: Int
+  ; MyOutInt :: Int
+ENDDEF
+
+-- | 4 'sequenceAlternate' processes that syncronize on one hidden action.
+PROCDEF alternate4Hide1Act[Act0, Act1, Act2, Act3]() ::=
+    HIDE [HAct] IN
+        sequenceAlternate[HAct, Act0]()
+        |[HAct]|
+        sequenceAlternate[HAct, Act1]()
+        |[HAct]|
+        sequenceAlternate[HAct, Act2]()
+        |[HAct]|
+        sequenceAlternate[HAct, Act3]()
+    NI
+ENDDEF
+
+MODELDEF Alternate4Hide1Act ::=
+    CHAN IN
+    CHAN OUT HCAct0, HCAct1, HCAct2, HCAct3
+    BEHAVIOUR alternate4Hide1Act[HCAct0, HCAct1, HCAct2, HCAct3]()
+ENDDEF
+
+PROCDEF syncFirstAlternateN[Act0, Act1](n :: Int) ::=
+    ([[ n == 1]] =>> sequenceAlternate[Act0, Act1]())
+    ##
+    ([[ n >  1]] =>> (sequenceAlternate[Act0, Act1]()
+                     |[Act0]|
+                     syncFirstAlternateN[Act0, Act1](n - 1)))
+ENDDEF
+
+PROCDEF hideFirstSFA[Act](n :: Int) ::=
+    HIDE [HChan] IN
+        syncFirstAlternateN[HChan, Act](n)
+    NI
+ENDDEF
+
+MODELDEF HideFirstSFA ::=
+    CHAN IN
+    CHAN OUT HCAct0
+    BEHAVIOUR
+        hideFirstSFA[HCAct0](4)
+ENDDEF
+
+PROCDEF hideSecondSFA[Act](n :: Int) ::=
+    HIDE [HChan] IN
+        syncFirstAlternateN[Act, HChan](n)
+    NI
+ENDDEF
+
+MODELDEF HideSecondSFA ::=
+    CHAN IN
+    CHAN OUT HCAct0
+    BEHAVIOUR
+        hideSecondSFA[HCAct0](4)
+ENDDEF
+
+PROCDEF bag[In, Out]() ::=
+    In >-> (Out ||| bag[In, Out]())
+ENDDEF
+
+PROCDEF match[InA, InB, Out]() ::=
+    InA | InB >-> (Out ||| match[InA, InB, Out]())
+ENDDEF
+
+MODELDEF Match ::=
+    CHAN IN MyInA, MyInB
+    CHAN OUT MyOut
+    BEHAVIOUR
+        HIDE [H] IN
+            bag[MyInA, H]() |[H]| match[H, MyInB, MyOut]()
+        NI
+ENDDEF
+
+FUNCDEF validInt(x :: Int) :: Bool ::=
+    (0 <= x) /\ (x <= 10)
+ENDDEF
+
+-- | Process that outputs only the valid integers it receives.
+PROCDEF bagInt[In, Out :: Int]() ::=
+    In ? x [[validInt(x)]]
+    >-> (Out ! x ||| bagInt[In, Out]())
+ENDDEF
+
+-- | Process that outputs only the valid matching integers it receives.
+PROCDEF matchInt[InA, InB, Out :: Int]()::=
+    InA ? a | InB ? b [[(a == b) /\ validInt(a) /\ validInt(b)]]
+    >->
+    ( Out ! a ||| matchInt[InA, InB, Out]())
+ENDDEF
+
+-- SpecHide_Bag_MatchInt
+MODELDEF MatchInt ::=
+    CHAN IN MyInAInt, MyInBInt
+    CHAN OUT MyOutInt
+    BEHAVIOUR
+        HIDE [H :: Int] IN
+            bagInt[MyInAInt, H]()
+            |[H]|
+            matchInt[H, MyInBInt, MyOutInt]()
+        NI
+ENDDEF

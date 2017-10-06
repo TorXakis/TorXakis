@@ -1,4 +1,4 @@
 tester Adder3 Sut3
 test 30
-trace txs $> testTrace.log
+trace proc $> Adder3Proc.txs
 exit
