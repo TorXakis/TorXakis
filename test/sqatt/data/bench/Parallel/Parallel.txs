@@ -1,0 +1,105 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+CHANDEF ParallelBenchChans ::=
+    POut
+  ; POut2
+  ; POut3
+  ; POut4
+  ; POutInt :: Int
+ENDDEF
+
+-- |  Define 'n' parallel sequential-processes that perform action
+-- | 'Act'.
+PROCDEF parallelN[Act](n :: Int) ::=
+    sequence[Act]() ||| [[n > 1]] =>> parallelN[Act](n-1)
+ENDDEF
+
+MODELDEF Parallel4 ::=
+    CHAN IN
+    CHAN OUT POut
+    BEHAVIOUR
+        parallelN[POut](4)
+ENDDEF
+
+-- Define 'n' parallel sequential-processes that perform action 'Act' plus an
+-- internal action.
+PROCDEF parallelIStepN[Act](n :: Int) ::=
+    sequenceIStep[Act]() ||| [[ n > 1]] =>> parallelIStepN[Act](n - 1)
+ENDDEF
+
+MODELDEF ParallelIStep4 ::=
+    CHAN IN
+    CHAN OUT POut
+    BEHAVIOUR
+        parallelIStepN[POut](4)
+ENDDEF
+
+-- Define 'n' parallel processes that alternate 'Act0' and 'Act1'.
+PROCDEF parallelAlternateN[Act0, Act1](n :: Int) ::=
+    sequenceAlternate[Act0, Act1]()
+    |||
+    [[n > 1]] =>> parallelAlternateN[Act0, Act1](n - 1)
+ENDDEF
+
+MODELDEF ParallelAlternate4 ::=
+    CHAN IN
+    CHAN OUT POut, POut2
+    BEHAVIOUR
+        parallelAlternateN[POut, POut2](4)
+ENDDEF
+
+-- Four processes running multiple actions in parallel.
+MODELDEF ParallelMultiAct4 ::=
+    CHAN IN
+    CHAN OUT POut, POut2, POut3, POut4
+    BEHAVIOUR
+        sequence[POut]()  ||| sequence[POut2]()
+        |||
+        sequence[POut3]() ||| sequence[POut4]()
+ENDDEF
+
+-- |  Define 'n' parallel sequential-processes that communicate data on
+-- | 'Ch'.
+PROCDEF parallelDataN[Ch :: Int](n :: Int) ::=
+    sequenceData[Ch](n) ||| [[n > 1]] =>> parallelDataN[Ch](n - 1)
+ENDDEF
+
+MODELDEF ParallelData6 ::=
+    CHAN IN
+    CHAN OUT POutInt
+    BEHAVIOUR parallelDataN[POutInt](6)
+ENDDEF
+
+MODELDEF ParallelSync ::=
+    CHAN IN
+    CHAN OUT POut, POut2, POut3
+    SYNC {POut}, {POut2}, {POut3}
+       , {POut | POut2}, {POut | POut3}, {POut2 | POut3}
+       , {POut | POut2 | POut3}
+    BEHAVIOUR
+        (POut >-> POut2 >-> POut3 >-> EXIT
+         |[POut2]|
+         POut2 >-> POut3 >-> POut >-> EXIT
+         |[POut2]|
+         POut3 >-> POut >-> POut2 >-> EXIT
+        )
+        |[POut, POut3]|
+        POut | POut3 >-> POut >-> (POut3 >-> EXIT ||| POut3 >-> POut >-> EXIT)
+ENDDEF
+
+PROCDEF syncSeqs[Act]() ::=
+    sequence[Act]() |[Act]| sequence[Act]()
+ENDDEF
+
+MODELDEF ParallelNested ::=
+    CHAN IN
+    CHAN OUT POut, POut2, POut3, POut4
+    BEHAVIOUR
+        (syncSeqs[POut]()  ||| syncSeqs[POut2]())
+        |||
+        (syncSeqs[POut3]() ||| syncSeqs[POut4]())
+ENDDEF

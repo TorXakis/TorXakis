@@ -58,18 +58,21 @@ import           Turtle
 data TxsExample
   = TxsExample {
     -- | Name of the example.
-    exampleName     :: String
-    -- | Path to the TorXakis model files.
-  , txsModelFiles   :: [FilePath]
-    -- | Path to the file containing the commands that will be passed to the
-    --   TorXakis server.
-  , txsCommandsFile :: FilePath
+    exampleName    :: String
+    -- | Paths to the TorXakis model files.
+  , txsModelFiles  :: [FilePath]
+    -- | Paths to the files containing the commands that will be passed to the
+    --   TorXakis server. Commands are passed in the order specified by the
+    --   order of the files in the list.
+  , txsCmdsFiles   :: [FilePath]
+    -- | Command line arguments to be passed to the TorXakis server command.
+  , txsServerArgs  :: [Text]
     -- | SUT example. This run together with TorXakis. If this field is
     --   `Nothing` then the example is assumed to be autonomous (only TorXakis
     --   will be run)
-  , sutExample      :: Maybe SutExample
+  , sutExample     :: Maybe SutExample
     -- | Example's expected result.
-  , expectedResult  :: ExampleResult
+  , expectedResult :: ExampleResult
   } deriving (Show)
 
 data SutExample
@@ -289,7 +292,7 @@ runTxsWithExample mLogDir ex = Concurrently $ do
       port <- repr <$> getRandomPort
       runConcurrently $ timer
                     <|> heartbeat
-                    <|> txsServerProc mLogDir port
+                    <|> txsServerProc mLogDir (port : txsServerArgs ex)
                     <|> txsUIProc mLogDir inputModelF port
   where
     heartbeat = Concurrently $ forever $ do
@@ -303,30 +306,31 @@ runTxsWithExample mLogDir ex = Concurrently $ do
         res <- Turtle.fold txsUIShell findExpectedMsg
         unless res (throw tErr)
       where
+        inLines :: Shell Line
+        inLines = asum $ input <$> cmdsFile
         txsUIShell :: Shell Line
         txsUIShell =
             case mUiLogDir of
                 Nothing ->
                     either id id <$> inprocWithErr txsUICmd
                                                         (port:imf)
-                                                        (input cmdsFile)
+                                                        inLines
                 Just uiLogDir -> do
                     h <- appendonly $ uiLogDir </> "txsui.out.log"
                     line <- either id id <$> inprocWithErr txsUICmd
                                                            (port:imf)
-                                                           (input cmdsFile)
+                                                           inLines
                     liftIO $ TIO.hPutStrLn h (lineToText line)
                     return line
         findExpectedMsg :: Fold Line Bool
         findExpectedMsg = Control.Foldl.any (T.isInfixOf searchStr . lineToText)
-    cmdsFile = txsCommandsFile ex
+    cmdsFile = txsCmdsFiles ex
     searchStr = expectedMessage . expectedResult $ ex
     tErr = TestExpectationError $
               format ("Did not get expected result "%s)
                      (repr . expectedResult $ ex)
-
-    txsServerProc sLogDir port = Concurrently $
-      runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd [port]
+    txsServerProc sLogDir args = Concurrently $
+      runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd args
 
 -- | Run a process.
 runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @Nothing@ if no logging is desired.
@@ -421,7 +425,7 @@ pathMustExist path =
 -- | Retrieve all the file paths from an example
 exampleInputFiles :: TxsExample -> [FilePath]
 exampleInputFiles ex =
-  (txsCommandsFile ex:txsModelFiles ex)
+  (txsCmdsFiles ex ++ txsModelFiles ex)
   ++ fromMaybe [] (sutInputFiles <$> sutExample ex)
   where sutInputFiles (JavaExample jsp _)     = [jsp]
         sutInputFiles (TxsSimulator cmdsFile) = [cmdsFile]
