@@ -213,7 +213,7 @@ trueStringRegex :: (Variable v) => Int -> ValExpr v -> SMT Text
 trueStringRegex n v = do
     regexes <- trueCharsRegexes n
     sregexes <- shuffleM (regexes <> [range <> "{"<> (T.pack . show) (n+1) <> ",}"])               -- Performance gain in problem solver? Use string length for length 0 and greater than n
-    let shuffledOrList = map (\regex -> cstrFunc funcId_strinre [v, cstrConst (Cregex regex)]) sregexes
+    let shuffledOrList = map (\regex -> cstrStrInRe v (cstrConst (Cregex regex))) sregexes
     stringList <- mapM valExprToString shuffledOrList
     return $ "(or " <> T.intercalate " " stringList <> ") "
 

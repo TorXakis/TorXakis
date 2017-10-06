@@ -442,8 +442,8 @@ testRegex :: String -> SMT ()
 testRegex regexStr = testTemplateValue TxsDefs.empty [sortId_String] createAssertions check
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrPredef SSR funcId_strinre [cstrVar v, cstrConst (Cregex (T.pack regexStr))]]
-
+        createAssertions [v] = [cstrStrInRe (cstrVar v) (cstrConst (Cregex (T.pack regexStr)))]
+        
         check :: [Const] -> SMT()
         check [value] = case value of
                             Cstring s   -> let haskellRegex = xsd2posix . T.pack $ regexStr in

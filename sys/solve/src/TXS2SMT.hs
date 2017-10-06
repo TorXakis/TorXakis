@@ -83,10 +83,8 @@ initialMapInstanceTxsToSmtlib  =  [
     (IdFunc funcId_takeWhile,          error "takeWhile should not be called in SMT"),
     (IdFunc funcId_takeWhileNot,       error "takeWhileNot should not be called in SMT"),
     (IdFunc funcId_dropWhile,          error "dropWhile should not be called in SMT"),
-    (IdFunc funcId_dropWhileNot,       error "dropWhileNot should not be called in SMT"),
+    (IdFunc funcId_dropWhileNot,       error "dropWhileNot should not be called in SMT")
 
--- Regex
-    (IdFunc funcId_strinre,    "str.in.re")
     ]
 
 
@@ -304,7 +302,8 @@ valexprToSMT mapI (view -> Vat s p)  =
     "(str.at " <> valexprToSMT mapI s <> " " <> valexprToSMT mapI p <> ")"
 valexprToSMT mapI (view -> Vconcat vexprs)  =
     "(str.++ " <> T.intercalate " " (map (valexprToSMT mapI) vexprs) <> ")"
-
+valexprToSMT mapI (view -> Vstrinre s r)  =
+    "(str.in.re " <> valexprToSMT mapI s <> " " <> valexprToSMT mapI r <> ")"
 valexprToSMT mapI (view -> Vpredef _ funcId args')  =
     "(" <> justLookup mapI (IdFunc funcId) <> " " <> T.intercalate " " (map (valexprToSMT mapI) args') <> ")"
 

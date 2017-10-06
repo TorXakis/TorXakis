@@ -160,14 +160,14 @@ randomSolve p ((v,-123):xs) i    | vsort v == sortId_String =                 --
             let
               c = T.head str
               cond = r <= Char.ord c && Char.ord c <= r+127
-            st <- valExprToString $ cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" <> toRegexString r <> "-" <> toRegexString (r+127) <> "]"))]
+            st <- valExprToString $ cstrStrInRe (cstrVar v') (cstrConst (Cregex ("[" <> toRegexString r <> "-" <> toRegexString (r+127) <> "]")))
             sf <- valExprToString $
               case r of
-                0       -> cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" <> toRegexString 128 <> "-" <> toRegexString 255 <> "]"))]
-                1       -> cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" <> toRegexString 129 <> "-" <> toRegexString 255 <> toRegexString 0 <> "]"))]
-                127     -> cstrFunc funcId_strinre [cstrVar v', cstrConst (Cregex ("[" <> toRegexString 255 <> toRegexString 0 <> "-" <> toRegexString 126 <> "]"))]
-                _       -> cstrFunc funcId_strinre [cstrVar v', cstrConst
-                                                                (Cregex ("[" <> toRegexString (r+128) <> "-" <> toRegexString 255 <> toRegexString 0 <> "-" <> toRegexString (r-1) <> "]"))]
+                0       -> cstrStrInRe (cstrVar v') (cstrConst (Cregex ("[" <> toRegexString 128 <> "-" <> toRegexString 255 <> "]")))
+                1       -> cstrStrInRe (cstrVar v') (cstrConst (Cregex ("[" <> toRegexString 129 <> "-" <> toRegexString 255 <> toRegexString 0 <> "]")))
+                127     -> cstrStrInRe (cstrVar v') (cstrConst (Cregex ("[" <> toRegexString 255 <> toRegexString 0 <> "-" <> toRegexString 126 <> "]")))
+                _       -> cstrStrInRe (cstrVar v') (cstrConst
+                                                               (Cregex ("[" <> toRegexString (r+128) <> "-" <> toRegexString 255 <> toRegexString 0 <> "-" <> toRegexString (r-1) <> "]")))
             return [ (cond, st), (not cond, sf) ]
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - char"
 

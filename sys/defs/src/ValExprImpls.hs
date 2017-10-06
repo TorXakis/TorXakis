@@ -47,8 +47,8 @@ module ValExprImpls
   -- *** Concat operator
 , cstrConcat
   -- ** Regular Expression Operators to create Value Expressions
-  -- *** String in Regular Expression  operator
---, cstrStrInRe
+  -- *** String in Regular Expression operator
+, cstrStrInRe
   -- ** Algebraic Data Type Operators to create Value Expressions
   -- *** Algebraic Data Type constructor operator
 , cstrCstr
@@ -390,7 +390,8 @@ flatten (x:xs)                   = x : flatten xs
 -- | Apply String In Regular Expression operator on the provided value expressions.
 -- Preconditions are /not/ checked.
 cstrStrInRe :: ValExpr v -> ValExpr v -> ValExpr v
-cstrStrInRe ves@(view -> Vconst (Cstring s)) vei@(view -> Vconst (Cregex r)) = cstrConst (Cbool (T.unpack s =~ T.unpack (xsd2posix r) ) )
+cstrStrInRe (view -> Vconst (Cstring s)) (view -> Vconst (Cregex r)) = cstrConst (Cbool (T.unpack s =~ T.unpack (xsd2posix r) ) )
+cstrStrInRe s r                                                      = ValExpr (Vstrinre s r)
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)
