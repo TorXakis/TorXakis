@@ -47,6 +47,7 @@ import qualified EnvData
 -- import from defs
 import           FreeMonoidX
 import           Product
+import           RegexXSD2Posix
 import           StdTDefs
 import           Sum
 import           TxsDefs
@@ -58,9 +59,6 @@ import           XmlFormat
 import qualified TxsAlex
 import qualified TxsHappy
 
--- import from solve
-import           RegexAlex
-import           RegexPosixHappy
 
 -- ----------------------------------------------------------------------------------------- --
 -- eval :  evaluation of value expression
@@ -167,7 +165,12 @@ eval (view -> Vconcat vexprs) = do
     vs <- mapM eval vexprs
     let vs' = map (\(Cstring s) -> s) vs
     str2txs (T.concat vs')
-    
+
+eval (view -> Vstrinre s r) = do
+    Cstring vs <- eval s
+    Cregex vr <- eval r
+    bool2txs (T.unpack vs =~ T.unpack (xsd2posix vr))
+
 eval (view -> Vpredef kd fid vexps) =
      case kd of
        AST -> case vexps of
@@ -215,7 +218,6 @@ eval (view -> Vpredef kd fid vexps) =
        SSB -> evalSSB fid vexps
        SSI -> evalSSI fid vexps
        SSS -> evalSSS fid vexps
-       SSR -> evalSSR fid vexps
 
 eval (view -> Verror str) = do
      IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_WARNING $ "eval: Verror " ++ show str ]
@@ -307,19 +309,6 @@ elemT c = isJust . T.find (== c)
 
 notElemT :: Char -> Text -> Bool
 notElemT c = not . elemT c
-
--- ----------------------------------------------------------------------------------------- --
--- evaluation of value expression: evaluation of standard functions for Regex - SSR
-
-evalSSR :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB Const
-evalSSR (FuncId nm _ _ _) vexps =
-     case ( nm, vexps ) of
-       ( "strinre",[v1,v2] ) -> do rawRegex     <- T.unpack <$> txs2regex v2
-                                   let haskellRegex = T.unpack $ regexPosixParser (regexLexer rawRegex)
-                                   value <- T.unpack <$> txs2str v1
-                                   bool2txs $ value =~ haskellRegex
-       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "evalSSR: error in standard Regex opn" ]
-               return $ Cerror ""
 
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of value expression: values from torxakis to haskell and v.v.

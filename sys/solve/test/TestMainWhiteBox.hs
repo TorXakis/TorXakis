@@ -11,7 +11,6 @@ import Test.HUnit
 import TestExternal
 import TestFuncDefToSMT
 import TestRecursiveFunction
-import TestRegexSMT
 import TestSMTCount
 import TestSMTValue
 import TestSortDefToSMT
@@ -23,7 +22,6 @@ testSmtList = TestList [
         TestLabel "External"                testExternalList,
         TestLabel "FuncDefToSmt"            testFuncDefToSMTList,
         TestLabel "RecursiveFunction"       testRecursiveFunctionList,
-        TestLabel "RegexSMT"                testRegexSMTList,
         TestLabel "SMT Count"               testSMTCountList,
         TestLabel "SMTValue"                testSMTValueList,
         TestLabel "SortDefToSmt"            testSortDefToSMTList,

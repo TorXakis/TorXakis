@@ -27,6 +27,7 @@ import           FreeMonoidX
 import           StdTDefs
 import           Sum
 import           TxsDefs
+import           RegexXSD2Posix
 
 -- specific SMT imports
 import           SMT
@@ -35,8 +36,6 @@ import           SolveDefs
 import           SolveDefs.Params
 import           TestSolvers
 
-import           RegexAlex
-import           RegexPosixHappy
 
 -- ----------------------------------------------------------------------------
 smtSolvers :: [(String, CreateProcess)]
@@ -90,7 +89,7 @@ ioeTestStringEquals = [
 
 testStringEqualsChar :: [(String , SMT())]
 testStringEqualsChar =
-    map (\i -> ("char = " ++ [chr i], testStringEquals [chr i]))  [0..255]
+    map (\i -> ("char = " ++ [chr i], testStringEquals (T.pack [chr i])))  [0..255]
 
 ioeTestStringLength :: [(String, SMT())]
 ioeTestStringLength = [
@@ -411,17 +410,17 @@ testString = testTemplateValue TxsDefs.empty [sortId_String] (const []) check
                             _           -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"
 
-testStringEquals :: String -> SMT()
+testStringEquals :: Text -> SMT()
 testStringEquals str = testTemplateValue TxsDefs.empty [sortId_String] createAssertions check
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrEqual (cstrVar v) (cstrConst (Cstring (T.pack str)))]
+        createAssertions [v] = [cstrEqual (cstrVar v) (cstrConst (Cstring str))]
         createAssertions _   = error "One variable in problem"
 
         check :: [Const] -> SMT()
         check [value] = case value of
                             Cstring s   -> lift $ assertBool ("expected pattern s = " ++ T.unpack s)
-                                                             (T.unpack s == str)
+                                                             (s == str)
                             _           -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"
 
@@ -443,12 +442,12 @@ testRegex :: String -> SMT ()
 testRegex regexStr = testTemplateValue TxsDefs.empty [sortId_String] createAssertions check
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrPredef SSR funcId_strinre [cstrVar v, cstrConst (Cregex (T.pack regexStr))]]
-
+        createAssertions [v] = [cstrStrInRe (cstrVar v) (cstrConst (Cregex (T.pack regexStr)))]
+        
         check :: [Const] -> SMT()
         check [value] = case value of
-                            Cstring s   -> let haskellRegex = T.unpack $ regexPosixParser (regexLexer regexStr) in
-                                                lift $ assertBool ("expected pattern: smt solution " ++ T.unpack s ++ "\nXSD pattern " ++ regexStr ++ "\nHaskell pattern " ++ haskellRegex)
-                                                                  (T.unpack s =~ haskellRegex)
+                            Cstring s   -> let haskellRegex = xsd2posix . T.pack $ regexStr in
+                                                lift $ assertBool ("expected pattern: smt solution " ++ T.unpack s ++ "\nXSD pattern " ++ regexStr ++ "\nHaskell pattern " ++ T.unpack haskellRegex)
+                                                                  (T.unpack s =~ T.unpack haskellRegex)
                             _                  -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"

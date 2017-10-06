@@ -132,6 +132,7 @@ identicalVExpr (view -> Vgez v1)                (view -> Vgez v2)               
 identicalVExpr (view -> Vlength v1)             (view -> Vlength v2)             = identicalVExpr v1 v2
 identicalVExpr (view -> Vat s1 p1)              (view -> Vat s2 p2)              = identicalVExpr s1 s2 && identicalVExpr p1 p2
 identicalVExpr (view -> Vconcat vs1)            (view -> Vconcat vs2)            = identicalLists identicalVExpr vs1 vs2
+identicalVExpr (view -> Vstrinre s1 r1)         (view -> Vstrinre s2 r2)         = identicalVExpr s1 s2 && identicalVExpr r1 r2
 identicalVExpr (view -> Vpredef p1 fid1 vexps1) (view -> Vpredef p2 fid2 vexps2) = p1 == p2 && identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2
 identicalVExpr (view -> Verror s1)              (view -> Verror s2)              = s1 == s2
 identicalVExpr _                                _                                = False                          -- different
@@ -423,6 +424,6 @@ functionCall (FuncId "at" _ [sl,sr] s) [l,r] | identicalSortId sl sortId_String 
 functionCall (FuncId "++" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortId_String && identicalSortId s sortId_String && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrConcat [vexpr l, vexpr r])
 functionCall (FuncId "strinre" _ [sl,sr] s) [l,r] | identicalSortId sl sortId_String && identicalSortId sr sortId_Regex && identicalSortId s sortId_Bool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
-    FuncContent (cstrPredef SSR funcId_strinre [vexpr l, vexpr r])
+    FuncContent (cstrStrInRe (vexpr l) (vexpr r))
 
 functionCall funcKey args' = FuncContent (cstrFunc funcKey (map vexpr args'))
