@@ -31,7 +31,8 @@ test1 :: TxsExample
 test1 = TxsExample
   { exampleName = "Spec Produce"
   , txsModelFiles = [multipleControlLoopTxsPath]
-  , txsCommandsFile = txsCmdPath exampDir "MultipleControlLoops_SpecProduce_Stepper"
+  , txsCmdsFiles = [txsCmdPath exampDir "MultipleControlLoops_SpecProduce_Stepper"]
+  , txsServerArgs = []
   , sutExample = Nothing
   , expectedResult = Pass
   }
