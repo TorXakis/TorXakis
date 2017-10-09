@@ -118,7 +118,7 @@ echo ------- End DisPro12-unique-id Test
 
 echo ------- Start DisPro12-unique-id_Wrong Test
 start /min java -cp %EXAMPSUTS% DispatchProcess
-call %TORXAKIS% %EXAMPS%\DisPro12-unique-id.txs < %TEST%\DispatchProcess_Tester_12_Wrong.txscmd
+call %TORXAKIS% %EXAMPS%\DisPro12-unique-id.txs < %TEST%\DispatchProcess_Stepper_12_Wrong.txscmd
 TIMEOUT /T 4 /NOBREAK
 move /Y testTrace.log testTrace.Spec.DisPro12-unique-id.Sut.DispatchProcess.log
 echo ------- End DisPro12-unique-id_Wrong Test
@@ -126,7 +126,7 @@ echo ------- End DisPro12-unique-id_Wrong Test
 
 echo ------- Start DisPro12-unique-id_Right Test
 start /min java -cp %EXAMPSUTS% DispatchProcess
-call %TORXAKIS% %EXAMPS%\DisPro12-unique-id.txs < %TEST%\DispatchProcess_Tester_12_Right.txscmd
+call %TORXAKIS% %EXAMPS%\DisPro12-unique-id.txs < %TEST%\DispatchProcess_Stepper_12_Right.txscmd
 TIMEOUT /T 4 /NOBREAK
 move /Y testTrace.log testTrace.Spec.DisPro12-unique-id.Sut.DispatchProcess.log
 echo ------- End DisPro12-unique-id_Right Test
