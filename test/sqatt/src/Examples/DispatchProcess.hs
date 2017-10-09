@@ -164,9 +164,9 @@ test13 :: TxsExample
 test13 = TxsExample
   { exampleName = "Process 12 - Unique ID (Wrong)"
   , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
-  , txsCmdsFiles = [txsCmdPath exampDir "DispatchProcess_Tester_12_Wrong"]
+  , txsCmdsFiles = [txsCmdPath exampDir "DispatchProcess_Stepper_12_Wrong"]
   , txsServerArgs = []
-  , sutExample = javaSUT
+  , sutExample = Nothing
   , expectedResult = Fail
   }
 
@@ -174,9 +174,9 @@ test14 :: TxsExample
 test14 = TxsExample
   { exampleName = "Process 12 - Unique ID (Right)"
   , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
-  , txsCmdsFiles = [txsCmdPath exampDir "DispatchProcess_Tester_12_Right"]
+  , txsCmdsFiles = [txsCmdPath exampDir "DispatchProcess_Stepper_12_Right"]
   , txsServerArgs = []
-  , sutExample = javaSUT
+  , sutExample = Nothing
   , expectedResult = Pass
   }
 
