@@ -68,24 +68,24 @@ type IOS a = StateT EnvS IOC.IOC a
 
 
 data EnvS  = EnvS { host    :: String                    -- ^ host of server client
-                    , portNr  :: PortNumber                -- ^ port number of server client
-                    , servhs  :: Handle                    -- ^ server socket handle
-                    , modus   :: TxsModus                  -- ^ current modus of TXS operation
-                    , uid     :: Int                       -- ^ last used unique id number
-                    , tdefs   :: TxsDefs.TxsDefs           -- ^ TorXakis definitions from file
-                    , sigs    :: Sigs.Sigs TxsDefs.VarId   -- ^ Signatures contained in TorXakis files
-                    , locvars :: [TxsDefs.VarId]           -- ^ local free variables
-                    , locvals :: TxsDefs.VEnv              -- ^ local value environment
-                    , tow     :: ( Maybe (Chan TxsDDefs.SAction)   
-                                 , Maybe ThreadId        
-                                 , [TxsDDefs.ConnHandle]
-                                 )                         -- ^ connections to world
-                    , frow    :: ( Maybe (Chan TxsDDefs.SAction)   
-                                 , [ThreadId]
-                                 , [TxsDDefs.ConnHandle]
-                                 )                         -- ^ connections from world
-                    , params  :: Params                    -- ^ TorXakis parameters with checks
-                    }
+                  , portNr  :: PortNumber                -- ^ port number of server client
+                  , servhs  :: Handle                    -- ^ server socket handle
+                  , modus   :: TxsModus                  -- ^ current modus of TXS operation
+                  , uid     :: Int                       -- ^ last used unique id number
+                  , tdefs   :: TxsDefs.TxsDefs           -- ^ TorXakis definitions from file
+                  , sigs    :: Sigs.Sigs TxsDefs.VarId   -- ^ Signatures contained in TorXakis files
+                  , locvars :: [TxsDefs.VarId]           -- ^ local free variables
+                  , locvals :: TxsDefs.VEnv              -- ^ local value environment
+                  , tow     :: ( Maybe (Chan TxsDDefs.SAction)   
+                               , Maybe ThreadId        
+                               , [TxsDDefs.ConnHandle]
+                               )                         -- ^ connections to world
+                  , frow    :: ( Maybe (Chan TxsDDefs.SAction)   
+                               , [ThreadId]
+                               , [TxsDDefs.ConnHandle]
+                               )                         -- ^ connections from world
+                  , params  :: Params                    -- ^ TorXakis parameters with checks
+                  }
 
 
 envsNone    :: EnvS

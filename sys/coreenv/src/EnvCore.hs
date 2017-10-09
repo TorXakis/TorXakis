@@ -88,13 +88,13 @@ data CoreState = Noning
                         , purpsts   :: [(TxsDefs.GoalId,BTree.BTree)]   -- purpose state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         }
-             | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+             | forall ew. (EWorld ew) =>
+               Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
                         , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , mapperdef :: Maybe TxsDefs.MapperDef
-                        , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
-                        , getfrow   :: IOC TxsDDefs.Action
+                        , eworld    :: ew
                         , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
                                                                      -- behaviour trie
                         , inistate  :: EnvData.StateNr               -- initial beh statenr

@@ -17,11 +17,7 @@ module SocketWorld
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( openSockets      --  :: IOS.IOS ()
-                   --  open socket connections to outside world
-, closeSockets     --  :: IOS.IOS ()
-                   --  close connections to outside world
-, startSockWorld   --
+( startSockWorld   --
 , stopSockWorld    --
 , putSockWorld     --  :: IOS.EnvS -> Int -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
                    --  try to output to world, or observe earlier input (no quiescence)
@@ -34,7 +30,6 @@ module SocketWorld
 
 where
 
-import           System.IO
 -- import System.IO.Error
 import           Control.Concurrent
 import           Control.Monad.State
@@ -95,11 +90,14 @@ instance IOC.EWorld IOS.EnvS
 
 startSockWorld :: IOS.EnvS -> IOC.IOC IOS.EnvS
 startSockWorld w  =  do
-     return w
+     (_,w') <- runStateT openSockets w
+     return w'
+
 
 stopSockWorld  :: IOS.EnvS -> IOC.IOC IOS.EnvS
 stopSockWorld w  =  do
-     return w
+     (_,w') <- runStateT closeSockets w
+     return w'
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -254,12 +252,13 @@ closeSockets  =  do
      ( _, towThread,   towhdls  ) <- gets IOS.tow
      ( _, frowThreads, frowhdls ) <- gets IOS.frow
 
+     lift $ lift $ mapM_ hClose [ h | ConnHtoW  _ h _ _ <- towhdls  ]
+     lift $ lift $ mapM_ hClose [ h | ConnHfroW _ h _ _ <- frowhdls ]
+
      lift $ lift $ case towThread of
                      Just thrd -> killThread thrd
                      Nothing   -> return ()
      lift $ lift $ mapM_ killThread frowThreads
-     lift $ lift $ mapM_ hClose [ h | ConnHtoW  _ h _ _ <- towhdls  ]
-     lift $ lift $ mapM_ hClose [ h | ConnHfroW _ h _ _ <- frowhdls ]
 
      modify $ \env -> env { IOS.tow  = ( Nothing, Nothing, [] )
                           , IOS.frow = ( Nothing, [],      [] )

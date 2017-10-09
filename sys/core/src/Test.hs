@@ -50,12 +50,12 @@ import BTShow()
 
 testIn :: TxsDDefs.Action -> Int -> IOC.IOC (TxsDDefs.Action, TxsDDefs.Verdict)
 testIn act@TxsDDefs.Act{} step = do
-     cState  <- gets IOC.state
-     putToW  <- case cState of
-                  IOC.Testing { IOC.eworld = eWorld } -> return $ IOC.putToW eWorld
-                  _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                        "testIn while not in Testing mode" ]
-                          return $ \act -> return act
+     cState <- gets IOC.state
+     putToW <- case cState of
+                 IOC.Testing { IOC.eworld = eWorld } -> return $ IOC.putToW eWorld
+                 _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                       "testIn while not in Testing mode" ]
+                         return $ \act -> return act
      mact   <- mapperMap act                                -- map action
      mact'  <- putToW mact                                  -- try to do input on sut
      if mact == mact'
@@ -92,11 +92,11 @@ testIn TxsDDefs.ActQui _ = do
 testOut :: Int -> IOC.IOC (TxsDDefs.Action, TxsDDefs.Verdict)
 testOut step = do
      cState  <- gets IOC.state
-     getFroW <- case cState of
-                  IOC.Testing { IOC.eworld = eWorld } -> IOC.getFroW eWorld
-                  _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                        "testOut while not in Testing mode" ]
-                          return TxsDDefs.ActQui
+     let getFroW = case cState of
+                     IOC.Testing { IOC.eworld = eWorld } -> IOC.getFroW eWorld
+                     _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                           "testOut while not in Testing mode" ]
+                             return TxsDDefs.ActQui
      mact    <- getFroW                                     -- get next output or quiescence
      act     <- mapperMap mact                              -- map output to model action
      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO

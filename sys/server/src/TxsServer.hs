@@ -63,7 +63,7 @@ import qualified TxsAlex
 import qualified TxsHappy
 
 -- import from cnect
-import qualified SocketWorld         as World
+import SocketWorld
 
 main :: IO ()
 main = withSocketsDo $ do
@@ -245,7 +245,6 @@ cmdTermit _ = do
 
 cmdStop :: String -> IOS.IOS ()
 cmdStop _ = do
-     -- World.closeSockets
      -- modus <- gets IOS.modus
      -- if  IOS.isSimuled modus
        -- then do -- [(_,valsut)] <- IOS.getParams ["param_Sut_deltaTime"]
@@ -493,9 +492,10 @@ cmdTester args = do
               ([modeldef],[cnectdef])
                          | isConsistentTester modeldef Nothing Nothing cnectdef
                 -> do modify $ \env -> env { IOS.modus = IOS.Tested cnectdef }
-                      World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest envs modeldef Nothing Nothing
+
+                      envs' <- lift $ TxsCore.txsSetTest envs modeldef Nothing Nothing
+                      put envs'
                       IFS.pack "TESTER" []
                       cmdsIntpr
               _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
@@ -521,17 +521,17 @@ cmdTester args = do
               ([modeldef],[mapperdef],[],[cnectdef])
                          | isConsistentTester modeldef (Just mapperdef) Nothing cnectdef
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
-                      World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest envs modeldef (Just mapperdef) Nothing
+                      envs' <- lift $ TxsCore.txsSetTest envs modeldef (Just mapperdef) Nothing
+                      put envs'
                       IFS.pack "TESTER" []
                       cmdsIntpr
               ([modeldef],[],[purpdef],[cnectdef])
                          | isConsistentTester modeldef Nothing (Just purpdef) cnectdef
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
-                      World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest envs modeldef Nothing (Just purpdef)
+                      envs' <- lift $ TxsCore.txsSetTest envs modeldef Nothing (Just purpdef)
+                      put envs'
                       IFS.pack "TESTER" [ ]
                       cmdsIntpr
               _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
@@ -557,9 +557,9 @@ cmdTester args = do
               ([modeldef],[mapperdef],[purpdef],[cnectdef])
                          | isConsistentTester modeldef (Just mapperdef) (Just purpdef) cnectdef
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
-                      World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest envs modeldef (Just mapperdef) (Just purpdef)
+                      envs' <- lift $ TxsCore.txsSetTest envs modeldef (Just mapperdef) (Just purpdef)
+                      put envs'
                       IFS.pack "TESTER" [ ]
                       cmdsIntpr
               _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
@@ -624,10 +624,9 @@ cmdSimulator args = do
               ([modeldef],[cnectdef])
                          | isConsistentSimulator modeldef Nothing cnectdef
                 -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
-                      World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetSim (World.putSockWorld envs) (World.getSockWorld envs)
-                                               modeldef Nothing
+                      envs' <- lift $ TxsCore.txsSetSim envs modeldef Nothing
+                      put envs'
                       IFS.pack "SIMULATOR" []
                       cmdsIntpr
               _ -> do IFS.nack "SIMULATOR" [ "Wrong or inconsistent parameters" ]
@@ -649,10 +648,9 @@ cmdSimulator args = do
               ([modeldef],[mapperdef],[cnectdef])
                          | isConsistentSimulator modeldef (Just mapperdef) cnectdef
                 -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
-                      World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetSim (World.putSockWorld envs) (World.getSockWorld envs)
-                                               modeldef (Just mapperdef)
+                      envs' <- lift $ TxsCore.txsSetSim envs modeldef (Just mapperdef)
+                      put envs'
                       IFS.pack "SIMULATOR" []
                       cmdsIntpr
               _ -> do IFS.nack "SIMULATOR" [ "Wrong or inconsistent parameters" ]
@@ -715,7 +713,8 @@ cmdStepper args = do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdTest :: String -> IOS.IOS ()
-cmdTest args =
+cmdTest args =  do
+     envs <- get
      case words args of
        []                                                             -- observe one output --
           -> do verdict <-lift TxsCore.txsTestOut
