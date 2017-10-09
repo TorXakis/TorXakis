@@ -161,6 +161,8 @@ cmdsIntpr = do
        "MAP"       | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
        "NCOMP"     |       IOS.isInited   modus  ->  cmdNComp     args
        "NCOMP"     | not $ IOS.isInited   modus  ->  cmdNoop      cmd
+       "LPE"       |       IOS.isInited   modus  ->  cmdLPE       args
+       "LPE"       | not $ IOS.isInited   modus  ->  cmdNoop      cmd
        _           ->  cmdUnknown   cmd
 
 
@@ -911,6 +913,31 @@ cmdMap args = do
 
 cmdNComp :: String -> IOS.IOS ()
 cmdNComp args = do
+     tdefs <- gets IOS.tdefs
+     case words args of
+       [mname] -> case [ mdef
+                       | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
+                       , T.unpack nm == mname
+                       ] of
+                    [mdef]
+                      -> do mayPurpId <- lift $ TxsCore.txsNComp mdef
+                            case mayPurpId of
+                              Just purpid
+                                -> do IFS.pack "NCOMP" [ "Test Purpose generated: "
+                                                          ++ TxsShow.fshow purpid ]
+                                      cmdsIntpr
+                              Nothing
+                                -> do IFS.nack "NCOMP" [ "Could not generate test purpose" ]
+                                      cmdsIntpr
+                    _ -> do IFS.nack "NCOMP" [ "No such MODELDEF" ]
+                            cmdsIntpr
+       _       -> do IFS.nack "NCOMP" [ "Argument must be one MODELDEF name" ]
+                     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdLPE :: String -> IOS.IOS ()
+cmdLPE args = do
      tdefs <- gets IOS.tdefs
      case words args of
        [mname] -> case [ mdef
