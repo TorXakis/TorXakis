@@ -114,6 +114,7 @@ partSubst ve (view -> Vat s p)                = cstrAt (partSubst ve s) (partSub
 partSubst ve (view -> Vconcat vexps)          = cstrConcat $ map (partSubst ve) vexps
 partSubst ve (view -> Vstrinre s r)           = cstrStrInRe (partSubst ve s) (partSubst ve r)
 partSubst ve (view -> Vpredef kd fid vexps)   = cstrPredef kd fid (map (partSubst ve) vexps)
+partSubst _  (view -> Vany srt)               = cstrAny srt
 partSubst _  (view -> Verror str)             = cstrError str
 partSubst _  _                                = error "partSubst: item not in view"
 -- ----------------------------------------------------------------------------------------- --
@@ -157,6 +158,7 @@ compSubst ve (view -> Vat s p)                = cstrAt (compSubst ve s) (compSub
 compSubst ve (view -> Vconcat vexps)          = cstrConcat $ map (compSubst ve) vexps
 compSubst ve (view -> Vstrinre s r)           = cstrStrInRe (compSubst ve s) (compSubst ve r)
 compSubst ve (view -> Vpredef kd fid vexps)   =  cstrPredef kd fid (map (compSubst ve) vexps)
+compSubst _  (view -> Vany srt)               =  cstrAny srt
 compSubst _  (view -> Verror str)             =  cstrError str
 compSubst _  _                                =  error "compSubst: item not in view"
 
@@ -284,6 +286,7 @@ instance UsedFids VExpr
     usedFids (view -> Vconcat vexps)            =  concatMap usedFids vexps
     usedFids (view -> Vstrinre s r)             =  usedFids s ++ usedFids r
     usedFids (view -> Vpredef _k fid vexps)     =  fid : usedFids vexps
+    usedFids (view -> Vany _s)                  =  []
     usedFids (view -> Verror _s)                =  []
     usedFids _                                  =  error "usedFids: item not in view"
 

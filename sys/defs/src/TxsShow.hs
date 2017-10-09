@@ -311,6 +311,8 @@ instance PShow v => PShow (ValExpr v) where
                _     -> error "TXS: Operator should have one or two arguments"
            else
              pshow fid ++ "( " ++ Utils.join ", " (map pshow vexps) ++ " )"
+    pshow (view -> Vany srt)
+        = "(ANY :: " ++ pshow srt ++ ")"
     pshow (view -> Verror s)
         = "ERROR " ++ show s
     pshow _

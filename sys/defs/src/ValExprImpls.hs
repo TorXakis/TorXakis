@@ -59,6 +59,7 @@ module ValExprImpls
 
 -- to be documented
 , cstrPredef
+, cstrAny
 , cstrError
 -- to be removed -- use subst
 , cstrEnv
@@ -80,6 +81,7 @@ import qualified FreeMonoidX   as FMX
 import           FuncId
 import           Product
 import           RegexXSD2Posix
+import           SortId
 import           Sum
 import           ValExprDefs
 import           Variable
@@ -395,6 +397,9 @@ cstrStrInRe s r                                                      = ValExpr (
 
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)
+
+cstrAny :: SortId -> ValExpr v
+cstrAny srt = ValExpr (Vany srt)
 
 cstrError :: Text -> ValExpr v
 cstrError s = ValExpr (Verror s)

@@ -80,6 +80,7 @@ sortOf' (view -> Vconcat { })                           =  sortId_String
 sortOf' (view -> Vstrinre { })                          =  sortId_Bool
 sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps)  =  fs
 sortOf' (view -> Vpredef{})                             = error "sortOf': Unexpected Ident with Vpredef"
+sortOf' (view -> Vany srt)                              =  srt
 sortOf' (view -> Verror _str)                           =  sortIdError
 sortOf' _                                               = error "sortOf': All items must be in view"
 
