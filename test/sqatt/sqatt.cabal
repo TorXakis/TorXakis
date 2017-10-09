@@ -23,6 +23,7 @@ library
                      , Benchmarks.Common                     
                      , Benchmarks.Hiding
                      , Benchmarks.Parallel
+                     , Benchmarks.RealWorld                     
                      , Benchmarks.Sequence
                      , Benchmarks.Synchronization
                      , Examples.Adder
