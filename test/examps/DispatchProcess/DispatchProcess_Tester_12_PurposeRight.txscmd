@@ -1,5 +1,4 @@
 seed 20276
 tester Model PurposeRight Sut
 test 5
-trace txs $> testTrace.log
 exit
