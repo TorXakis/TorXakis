@@ -1,0 +1,5 @@
+param param_Sut_deltaTime 5500
+tester Model RestrictedAxisTestPurpose Sut
+test 20
+trace txs $> testTrace.log
+exit

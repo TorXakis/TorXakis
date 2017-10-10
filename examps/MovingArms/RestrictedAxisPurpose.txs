@@ -1,0 +1,44 @@
+
+TYPEDEF Movement ::= Up | No | Down ENDDEF
+
+-- This algorithm is derived using LPE and some human optimization
+-- starting with the process
+-- PROCDEF Semaphore [Acquire, Release](n:: Int) ::=
+--       [[n>0]] =>> Acquire >-> Semaphore [Acquire , Release](n-1)  
+--    ##             Release >-> Semaphore [Acquire , Release](n+1)  
+-- ENDDEF
+-- In particular, synchronous acquiring (and releasing) of a semaphore by different axes is NOT possible.
+-- Consequently, movements in different directions will never start or stop together.
+PROCDEF restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX,
+                                UpY, DownY, StopY, MinY, MaxY,
+                                UpZ, DownZ, StopZ, MinZ, MaxZ] ( n :: Int; movementX, movementY, movementZ :: Movement ) HIT ::=
+         UpX   [[ (n>0) /\ isNo(movementX) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, Up,   movementY, movementZ)
+      ## DownX [[ (n>0) /\ isNo(movementX) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, Down, movementY, movementZ)
+      ## StopX [[ not ( isNo(movementX) )  ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, No,   movementY, movementZ)
+      ## MaxX  [[ isUp(movementX)          ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, No,   movementY, movementZ)
+      ## MinX  [[ isDown(movementX)        ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, No,   movementY, movementZ)
+
+      ## UpY   [[ (n>0) /\ isNo(movementY) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, Up,   movementZ)
+      ## DownY [[ (n>0) /\ isNo(movementY) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, Down, movementZ)
+      ## StopY [[ not ( isNo(movementY) )  ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, No,   movementZ)
+      ## MaxY  [[ isUp(movementY)          ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, No,   movementZ)
+      ## MinY  [[ isDown(movementY)        ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, No,   movementZ)
+
+      ## UpZ   [[ (n>0) /\ isNo(movementZ) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, movementY, Up  )
+      ## DownZ [[ (n>0) /\ isNo(movementZ) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, movementY, Down)
+      ## StopZ [[ not ( isNo(movementZ) )  ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, movementY, No  )
+      ## MaxZ  [[ isUp(movementZ)          ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, movementY, No  )
+      ## MinZ  [[ isDown(movementZ)        ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, movementY, No  )
+ENDDEF
+
+PURPDEF  RestrictedAxisTestPurpose ::=
+    CHAN IN     UpX, DownX, StopX, 
+                UpY, DownY, StopY,
+                UpZ, DownZ, StopZ
+    CHAN OUT    MinX, MaxX,
+                MinY, MaxY,
+                MinZ, MaxZ
+    GOAL restrictedAxis ::= restrictedAxisMovement [ UpX, DownX, StopX, MinX, MaxX,
+                                                     UpY, DownY, StopY, MinY, MaxY,
+                                                     UpZ, DownZ, StopZ, MinZ, MaxZ] ( 1, No, No, No )
+ENDDEF
