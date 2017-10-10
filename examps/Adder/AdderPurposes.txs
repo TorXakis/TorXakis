@@ -1,0 +1,66 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+-- ----------------------------------------------------------------------------------------- --
+-- Test Purpose with 4 Goals
+-- ----------------------------------------------------------------------------------------- --
+
+PURPDEF  Purp1 ::=
+        CHAN IN    Action
+        CHAN OUT   Result
+
+        GOAL m1  ::=  Action !Plus (4,7)      >->  Result ?r  >->
+                      Action !Minus(4,7)      >->  Result ?r  >->  HIT
+        GOAL m2  ::=  Action !Plus (-1,-7)    >->  Result ?r  >->
+                      Action !Minus(-1,-7)    >->  Result ?r  >->  HIT
+        GOAL m3  ::=  Action !Plus (33,-42)   >->  Result ?r  >->
+                      Action !Minus(33,-42)   >->  Result ?r  >->  HIT
+        GOAL m4  ::=  Action !Plus (-17,123)  >->  Result ?r  >->
+                      Action !Minus(-17,123)  >->  Result ?r  >->  HIT
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+-- Test Purpose with operand constraints
+-- ----------------------------------------------------------------------------------------- --
+
+PROCDEF  p2  [ Act :: Operation; Res :: Int ] ( )  HIT
+    ::=
+                Act ?opn [[ IF isPlus(opn) THEN (p1(opn) > 100) /\ (p2(opn) > 100) ELSE False FI ]]
+           >->  Res ? r
+           >->  p2 [Act,Res] ()
+        ##
+                Act ?opn [[ IF isMinus(opn) THEN (m1(opn) < 0) /\ ((m2(opn) % 13) == 0) ELSE False FI ]]
+           >->  Res ? r
+           >->  p2 [Act,Res] ()
+ENDDEF
+
+PURPDEF  Purp2 ::=
+        CHAN IN    Action
+        CHAN OUT   Result
+
+        GOAL p2  ::=  p2 [ Action, Result ] ( )
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+-- Test Purpose to continuously add 2 after a random starting value
+-- ----------------------------------------------------------------------------------------- --
+
+PROCDEF  p3  [ Act :: Operation;  Res :: Int ] ( r :: Int )  HIT ::=
+                Act ?opn [[ IF isPlus(opn) THEN (p1(opn) >= r) /\ (p2(opn) == 2) ELSE False FI ]]
+           >->  Res ?r  
+           >->  p3 [Act, Res] ( r )
+ENDDEF
+
+PURPDEF  Purp3 ::=
+        CHAN IN    Action
+        CHAN OUT   Result
+
+        GOAL p3  ::=  p3 [ Action, Result ] ( 0 )
+
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+-- ----------------------------------------------------------------------------------------- --
