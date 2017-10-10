@@ -61,11 +61,9 @@ import           Control.Arrow         ((***))
 import qualified Data.Map              as Map
 import qualified Data.Set              as Set
 import           Data.Text             (Text)
-import qualified GHC.Exts              as Exts
 
 import           ChanId
 import           CstrId
-import qualified FreeMonoidX           as FMX
 import           FuncDef
 import           FuncId
 import           FuncTable
@@ -209,7 +207,7 @@ funcId_BoolFromString   = FuncId fromStringName 214 [sortId_String]           so
 funcId_BoolToXml        = FuncId toXmlName      215 [sortId_Bool]             sortId_String
 funcId_BoolFromXml      = FuncId fromXmlName    216 [sortId_String]           sortId_Bool
 
-stdFuncDefsBool' :: [ ( FuncId, FuncDef ) ]
+stdFuncDefsBool' :: [ ( FuncId, FuncDef VarId) ]
 stdFuncDefsBool'
   =  [ ( funcId_BoolToString,   let x = VarId "x" 243 sortId_Bool
                                     in FuncDef [x] (cstrPredef SSB funcId_BoolToString [cstrVar x]) )
@@ -235,7 +233,7 @@ funcId_IntToXml         = FuncId toXmlName          303 [sortId_Int]            
 funcId_IntFromXml       = FuncId fromXmlName        304 [sortId_String]         sortId_Int
 
 
-stdFuncDefsInt' :: [ ( FuncId, FuncDef ) ]
+stdFuncDefsInt' :: [ ( FuncId, FuncDef VarId) ]
 stdFuncDefsInt'
   =  [ ( funcId_IntToString,    let x = VarId "x" 341 sortId_Int
                                     in FuncDef [x] (cstrPredef SSI funcId_IntToString [cstrVar x]) )
@@ -263,7 +261,7 @@ funcId_takeWhileNot         = FuncId "takeWhileNot"     534 [sortId_String,sortI
 funcId_dropWhile            = FuncId "dropWhile"        535 [sortId_String,sortId_String]   sortId_String
 funcId_dropWhileNot         = FuncId "dropWhileNot"     536 [sortId_String,sortId_String]   sortId_String
 
-stdFuncDefsString' :: [ ( FuncId, FuncDef ) ]
+stdFuncDefsString' :: [ ( FuncId, FuncDef VarId) ]
 stdFuncDefsString'
   =  [
        ( funcId_StringToString,     let { s = VarId "s" 543 sortId_String }

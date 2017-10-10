@@ -102,7 +102,7 @@ import           ValExprImplsExtension   as X
 
 data  TxsDefs  =  TxsDefs { sortDefs   :: Map.Map SortId SortDef
                           , cstrDefs   :: Map.Map CstrId CstrDef
-                          , funcDefs   :: Map.Map FuncId FuncDef
+                          , funcDefs   :: Map.Map FuncId (FuncDef VarId)
                           , procDefs   :: Map.Map ProcId ProcDef
                           , chanDefs   :: Map.Map ChanId ()            -- only for parsing, not envisioned for computation
                           , varDefs    :: Map.Map VarId ()             -- local
