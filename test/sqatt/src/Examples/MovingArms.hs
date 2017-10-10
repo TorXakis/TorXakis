@@ -26,7 +26,7 @@ test0 = TxsExample
 
 testSingleAxisPurpose :: TxsExample
 testSingleAxisPurpose = TxsExample
-  { exampleName = "Single Axis Purpose Test #long"
+  { exampleName = "Single Axis Purpose Test"
   , txsModelFiles = [ txsFilePath exampDir "MovingArms"
                     , txsFilePath exampDir "SingleAxisPurpose" ]
   , txsCmdsFiles = [txsCmdPath exampDir "MovingArms_SingleAxisPurpose_Tester"]
@@ -37,7 +37,7 @@ testSingleAxisPurpose = TxsExample
 
 testRestrictedAxisPurpose :: TxsExample
 testRestrictedAxisPurpose = TxsExample
-  { exampleName = "Restricted Axis Purpose Test #long"
+  { exampleName = "Restricted Axis Purpose Test"
   , txsModelFiles = [ txsFilePath exampDir "MovingArms"
                     , txsFilePath exampDir "RestrictedAxisPurpose" ]
   , txsCmdsFiles = [txsCmdPath exampDir "MovingArms_RestrictedAxisPurpose_Tester"]
