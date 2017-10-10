@@ -1,4 +1,5 @@
+seed 27379
 tester Model PurposeWrong Sut
-test 2
+test 4
 trace txs $> testTrace.log
 exit
