@@ -1,0 +1,41 @@
+
+PROCDEF Semaphore [Acquire, Release]() HIT ::=
+    Acquire >-> Release >-> Semaphore [Acquire , Release]()
+ENDDEF
+
+PROCDEF controlledMovement  [ Acquire, Release, Up, Down, Stop, Min, Max ] ( ) HIT ::=
+    (
+            Acquire | Up  >-> (  Release | Stop >-> EXIT
+                                ## Release | Max >-> EXIT
+                                )
+        ##
+            Acquire | Down>-> (  Release | Stop >-> EXIT
+                                ## Release | Min >-> EXIT
+                                )
+    ) >>> controlledMovement  [ Acquire, Release, Up, Down, Stop, Min, Max ] ( )
+ENDDEF
+
+PROCDEF singleAxisMovement [ UpX, DownX, StopX, MinX, MaxX,
+                             UpY, DownY, StopY, MinY, MaxY,
+                             UpZ, DownZ, StopZ, MinZ, MaxZ] ( ) HIT ::=
+    HIDE [Acquire, Release] IN
+        Semaphore [Acquire, Release]()
+    |[Acquire, Release]|
+        (   controlledMovement [Acquire, Release, UpX, DownX, StopX, MinX, MaxX] ()
+        ||| controlledMovement [Acquire, Release, UpY, DownY, StopY, MinY, MaxY] ()
+        ||| controlledMovement [Acquire, Release, UpZ, DownZ, StopZ, MinZ, MaxZ] ()
+        )
+    NI
+ENDDEF
+
+PURPDEF  SingleAxisTestPurpose ::=
+    CHAN IN     UpX, DownX, StopX, 
+                UpY, DownY, StopY,
+                UpZ, DownZ, StopZ
+    CHAN OUT    MinX, MaxX,
+                MinY, MaxY,
+                MinZ, MaxZ
+    GOAL singleAxis ::= singleAxisMovement [ UpX, DownX, StopX, MinX, MaxX,
+                             UpY, DownY, StopY, MinY, MaxY,
+                             UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
+ENDDEF
