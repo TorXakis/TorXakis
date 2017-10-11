@@ -15,12 +15,9 @@ module PreGNF
 
 where
 
---import           Control.Monad.State
-
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 
--- import from defs
 import TxsDefs
 import qualified TxsUtils
 
@@ -31,16 +28,13 @@ import ValExprDefs
 
 import qualified Data.Text         as T
 
---data  ProcDef        =  ProcDef    [ChanId] [VarId] BExpr
---     deriving (Eq,Ord,Read,Show, Generic, NFData)
-
 
 type ProcDefs = Map.Map TxsDefs.ProcId TxsDefs.ProcDef
 
 -- ----------------------------------------------------------------------------------------- --
--- preGNF :  ...
---               :  result list is empty: refusal is not possible
---               :  result contains empty list: STOP is possible after refusal
+-- preGNF : 
+-- ----------------------------------------------------------------------------------------- --
+
 
 preGNF :: ProcId -> [ProcId] -> ProcDefs -> ProcDefs
 preGNF procId preGNFTranslatedProcDefs procDefs =    
@@ -96,7 +90,6 @@ preGNFBExpr bexpr choiceCnt freeVarsInScope procId preGNFTranslatedProcDefs proc
                                 procDef' = ProcDef chansDef (paramsDef ++ freeVarsInScope) bexpr
                             -- create ProcInst calling that ProcDef
                                 name' = T.append (ProcId.name procId) (T.pack ("$" ++ show choiceCnt)) 
-                            -- error (T.unpack name')
                                 procId' = procId { ProcId.name = name'}
                             -- create ProcInst, translate params to VExprs 
                                 paramsDef' = map ValExpr (map Vvar paramsDef)
@@ -122,9 +115,6 @@ preGNFBExpr bexpr choiceCnt freeVarsInScope procId preGNFTranslatedProcDefs proc
         extractVarIds :: ChanOffer -> [VarId] -> [VarId]
         extractVarIds (Quest varId) varIds  = (varId:varIds)
         extractVarIds _ varIds              = varIds
-
-
-
 
 
 -- ----------------------------------------------------------------------------------------- --
