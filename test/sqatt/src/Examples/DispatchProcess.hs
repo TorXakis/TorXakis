@@ -162,22 +162,22 @@ test12 = TxsExample
 
 test13 :: TxsExample
 test13 = TxsExample
-  { exampleName = "Process 12 - Unique ID (Wrong)"
+  { exampleName = "Process 12 - Unique ID (Purpose - Wrong)"
   , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
-  , txsCmdsFiles = [txsCmdPath exampDir "DispatchProcess_Stepper_12_Wrong"]
+  , txsCmdsFiles = [txsCmdPath exampDir "DispatchProcess_Tester_12_PurposeWrong"]
   , txsServerArgs = []
-  , sutExample = Nothing
-  , expectedResult = Fail
+  , sutExample = javaSUT
+  , expectedResult = Message "Goal wrong: halted"
   }
 
 test14 :: TxsExample
 test14 = TxsExample
-  { exampleName = "Process 12 - Unique ID (Right)"
+  { exampleName = "Process 12 - Unique ID (Purpose - Right)"
   , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
-  , txsCmdsFiles = [txsCmdPath exampDir "DispatchProcess_Stepper_12_Right"]
+  , txsCmdsFiles = [txsCmdPath exampDir "DispatchProcess_Tester_12_PurposeRight"]
   , txsServerArgs = []
-  , sutExample = Nothing
-  , expectedResult = Pass
+  , sutExample = javaSUT
+  , expectedResult = Message "Goal right: Hit"
   }
 
 examples :: [TxsExample]
