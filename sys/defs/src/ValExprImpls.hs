@@ -62,6 +62,7 @@ module ValExprImpls
 , cstrError
 -- * Substitution of var by value
 , subst
+, compSubst         -- changes type
 )
 where
 
@@ -408,13 +409,13 @@ cstrError s = ValExpr (Verror s)
 
 -- | Substitute variables by values in value expression.
 -- Preconditions are /not/ checked.
-subst :: (Variable v, Integral (ValExpr v)) 
-      => Map.Map v (ValExpr v) -> Map.Map FuncId (FuncDef v) -> ValExpr v -> ValExpr v
+subst :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
+      => Map.Map v (ValExpr v) -> Map.Map FuncId (FuncDef w) -> ValExpr v -> ValExpr v
 subst ve _ x | ve == Map.empty = x
 subst ve fis x                 = subst' ve fis (view x)
 
-subst' :: (Variable v, Integral (ValExpr v)) 
-       => Map.Map v (ValExpr v) -> Map.Map FuncId (FuncDef v) -> ValExprView v -> ValExpr v
+subst' :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
+       => Map.Map v (ValExpr v) -> Map.Map FuncId (FuncDef w) -> ValExprView v -> ValExpr v
 subst' _  _   (Vconst const')          = cstrConst const'
 subst' ve _   (Vvar vid)               = Map.findWithDefault (cstrVar vid) vid ve
 subst' ve fis (Vfunc fid vexps)        = cstrFunc fis fid (map (subst' ve fis . view) vexps)

@@ -253,10 +253,10 @@ randomValue p sid expr n | n > 0 =
                     return (r:rr)
 
                 processConstructor :: (Variable v) => (CstrId,CstrDef) -> ValExpr v -> SMT Text
-                processConstructor (_cid,CstrDef isX []) expr' = valExprToString $ cstrFunc isX [expr']
-                processConstructor (cid, CstrDef isX accessors) expr' = do
-                    cstr <- valExprToString $ cstrFunc isX [expr']
-                    args' <- processArguments (zip (cstrargs cid) accessors) expr'
+                processConstructor (cid,CstrDef _isX []) expr' = valExprToString $ cstrIsCstr cid expr'
+                processConstructor (cid, CstrDef _isX _accessors) expr' = do
+                    cstr <- valExprToString $ cstrIsCstr cid expr'
+                    args' <- processArguments cid (zip (cstrargs cid) [0..]) expr'
                     case args' of
                         [arg]   -> return $ "(ite " <> cstr <> " " <> arg <> " false) "
                         _       -> do
@@ -264,10 +264,10 @@ randomValue p sid expr n | n > 0 =
                                     return $ "(ite " <> cstr <> " (and " <> T.intercalate " " shuffledAndList <> ") false) "
 
 
-                processArguments ::  (Variable v) => [(SortId,FuncId)] -> ValExpr v -> SMT [Text]
-                processArguments [] _ =  return []
-                processArguments ((sid',fid):xs) expr' = do
-                    r <- randomValue p sid' (cstrFunc fid [expr']) (n-1)
-                    rr <- processArguments xs expr'
+                processArguments ::  (Variable v) => CstrId -> [(SortId,Int)] -> ValExpr v -> SMT [Text]
+                processArguments _   [] _ =  return []
+                processArguments cid ((sid',pos):xs) expr' = do
+                    r <- randomValue p sid' (cstrAccess cid pos expr') (n-1)
+                    rr <- processArguments cid xs expr'
                     return (r:rr)
 randomValue _p _sid _expr n = error ("Illegal argument n = " ++ show n)

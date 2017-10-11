@@ -76,7 +76,7 @@ eval (view -> Vfunc fid vexps) = do
        Just (FuncDef args' vexp)
                -> do vals <- mapM eval vexps
                      let we = Map.fromList (zip args' vals)
-                     eval (cstrEnv (Map.map cstrConst we) vexp)
+                     eval (subst (Map.map cstrConst we) (Map.empty :: Map.Map FuncId (FuncDef VarId)) vexp)
 
 eval (view -> Vcstr cid vexps) = do
     vals <- mapM eval vexps
@@ -101,8 +101,6 @@ eval (view -> Vite cond vexp1 vexp2) = do
     if val
       then eval vexp1
       else eval vexp2
-
-eval (view -> Venv ve vexp) = eval (TxsUtils.partSubst ve vexp)
 
 eval (view -> Vsum s) = do
     consts <- mapM evalTuple (toOccurListT s)
