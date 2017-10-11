@@ -1,4 +1,4 @@
 param param_Sut_deltaTime 10000
-tester Model Sut
-test 10
+tester Model HitAll Sut
+test 40
 exit
