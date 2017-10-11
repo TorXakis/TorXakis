@@ -15,7 +15,9 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      Params
+  exposed-modules:      ValExprDefs
+                      , BehExprDefs
+                      , Params
                       , TxsDDefs
                       , TxsDefs
                       , TxsShow
@@ -42,16 +44,13 @@ library
                       , Product
                       , FreeMonoidX
                       
-  other-modules:        BehExprDefs
-                      , ConnectionDefs
+  other-modules:        ConnectionDefs
                       , ConstDefs
                       , Ident
                       , Name
                       , TxsDef
-                      , ValExprDefs
                       , ValExprImpls
                       , ValExprImplsExtension
-                    
                       , CnectDef
                       , CstrDef
                       , FuncDef
