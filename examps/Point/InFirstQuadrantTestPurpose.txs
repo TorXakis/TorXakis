@@ -1,0 +1,17 @@
+
+FUNCDEF inFirstQuadrant (p :: Point) :: Bool ::=
+    ( x(p) > 0 ) /\ ( y(p) > 0 ) 
+ENDDEF
+
+PROCDEF enforceFirstQuadrant [ In, Out :: Point ]  ( ) HIT ::=
+        In ? p [[ inFirstQuadrant(p) ]]
+    >-> Out ? po
+    >-> enforceFirstQuadrant [In, Out] ()
+ENDDEF
+
+PURPDEF  FirstQuadrantTestPurpose ::=
+    CHAN IN     In
+    CHAN OUT    Out
+
+    GOAL firstQuadrant ::= enforceFirstQuadrant[In, Out]()
+ENDDEF
