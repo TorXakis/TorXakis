@@ -21,7 +21,7 @@ modelFiles = [ txsFilePathBench benchDir "Hiding"
 
 alt4hide1 :: TxsExample
 alt4hide1 = TxsExample
-    { exampleName = "Alternate 4 hide 1 action"
+    { exampleName = "alternate 4 hide 1 action"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "Alternate4Hide1Act"
@@ -33,7 +33,7 @@ alt4hide1 = TxsExample
 
 hideFirstSFA :: TxsExample
 hideFirstSFA = TxsExample
-    { exampleName = "Hide first of sync first alternate"
+    { exampleName = "hide first of sync first alternate"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "HideFirstSFA"
@@ -45,7 +45,7 @@ hideFirstSFA = TxsExample
 
 hideSecondSFA :: TxsExample
 hideSecondSFA = TxsExample
-    { exampleName = "Hide second of sync second alternate"
+    { exampleName = "hide second of sync second alternate"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "HideSecondSFA"
@@ -57,7 +57,7 @@ hideSecondSFA = TxsExample
 
 matchNoData :: TxsExample
 matchNoData = TxsExample
-    { exampleName = "Match"
+    { exampleName = "match"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "Match"
@@ -69,7 +69,7 @@ matchNoData = TxsExample
 
 matchInt :: TxsExample
 matchInt = TxsExample
-    { exampleName = "Match Int"
+    { exampleName = "match Int"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "MatchInt"

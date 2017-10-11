@@ -46,7 +46,7 @@ parallelIStep4 = TxsExample
 
 parallelAlternate4 :: TxsExample
 parallelAlternate4 = TxsExample
-    { exampleName = "4 parallel sequential-processes with alternating actions"
+    { exampleName = "4 parallel sequential-processes, with alternating actions"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ParallelAlternate4"
@@ -58,7 +58,7 @@ parallelAlternate4 = TxsExample
 
 parallelMultiact4 :: TxsExample
 parallelMultiact4 = TxsExample
-    { exampleName = "4 parallel sequential-processes with multiple actions"
+    { exampleName = "4 parallel sequential-processes, with multiple actions"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPathBench benchDir "ParallelMultiAct"
