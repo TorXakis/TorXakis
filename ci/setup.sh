@@ -1,3 +1,6 @@
+javac ./test/copyright/Copyright.java
+java ./test/copyright/Copyright .
+
 sudo apt-get install -y libgmp3-dev
 # Download and unpack the stack executable
 if [ ! -d $CACHE_DIR/bin ]
