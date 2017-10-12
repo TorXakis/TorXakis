@@ -1,6 +1,6 @@
 @REM TorXakis - Model Based Testing
 @REM Copyright (c) 2015-2017 TNO and Radboud University
-
+@REM See LICENSE at root directory of this repository.
 @ECHO off
 
 IF [%1]==[] GOTO InvalidNumberArguments		REM TARGET_DIR
