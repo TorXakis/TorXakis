@@ -1,3 +1,9 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
 module Benchmarks.All (allExamples, allBenchmarks) where
 
 import qualified Benchmarks.Choice          as Choice

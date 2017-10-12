@@ -70,8 +70,11 @@ public class Copyright {
             System.out.println("#Violations = " + c.getCount());
             if (c.isCorrect()) {
                 System.out.println("Pass");
-            } else {
+            } else if (solve) {
+                System.out.println("Fixed");
+            }else {
                 System.out.println("Fail");
+                System.out.println("Use /test/copyright/FixCopyrightNotices.bat to add missing copyright notices.");
                 System.exit(-1);
             }
         } catch (IOException e) {
@@ -165,9 +168,11 @@ public class Copyright {
 
     private void handledErroneousFile(Path entry, String[] commentedCopyright) {
         count += 1;
-        System.out.println(entry.toString());
         if (solve) {
             fixComment(entry, commentedCopyright);
+            System.out.println(entry.toString() + " fixed!");
+        } else {
+            System.out.println(entry.toString());
         }
     }
 

@@ -1,3 +1,9 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
 PROCDEF replayProc [Action :: Operation; Result :: Int]() HIT
 ::=
 Action ! Minus(-2147481852,-2147474792)
