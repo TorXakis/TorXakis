@@ -10,9 +10,6 @@
 # SMT Solver output
 *.smt2
 
-# Development Acceptance Test Report
-*.datr
-
 # IDE files and folders
 .settings
 .idea
