@@ -1,4 +1,3 @@
-seed 17191
 stepper Model
 step 20
 trace proc $> testTrace.log

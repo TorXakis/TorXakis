@@ -1,4 +1,3 @@
-seed 27379
 stepper ModelTraceWrong
 step 2
 trace proc $> testTrace.log
