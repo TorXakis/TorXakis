@@ -939,25 +939,18 @@ cmdNComp args = do
 cmdLPE :: String -> IOS.IOS ()
 cmdLPE args = do
      tdefs <- gets IOS.tdefs
-     case words args of
-       [mname] -> case [ mdef
-                       | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                       , T.unpack nm == mname
-                       ] of
-                    [mdef]
-                      -> do mayPurpId <- lift $ TxsCore.txsNComp mdef
-                            case mayPurpId of
-                              Just purpid
-                                -> do IFS.pack "NCOMP" [ "Test Purpose generated: "
-                                                          ++ TxsShow.fshow purpid ]
-                                      cmdsIntpr
-                              Nothing
-                                -> do IFS.nack "NCOMP" [ "Could not generate test purpose" ]
-                                      cmdsIntpr
-                    _ -> do IFS.nack "NCOMP" [ "No such MODELDEF" ]
+     let mdefs = TxsDefs.modelDefs tdefs
+         chids = Set.toList $ Set.unions [ Set.unions (chins ++ chouts ++ spls)
+                                         | (_, TxsDefs.ModelDef chins chouts spls _)
+                                           <- Map.toList mdefs
+                                         ]
+     bexpr       <- readBExpr chids args
+     mayProcInst <- lift $ TxsCore.txsLPE bexpr
+     case mayProcInst of
+       Just procinst' -> do IFS.pack "LPE" [ "LPE generated:\n" ++ TxsShow.fshow procinst' ]
                             cmdsIntpr
-       _       -> do IFS.nack "NCOMP" [ "Argument must be one MODELDEF name" ]
-                     cmdsIntpr
+       Nothing        -> do IFS.nack "LPE" [ "Could not generate LPE" ]
+                            cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -1003,4 +996,35 @@ readAction chids args = do
                             | TxsDefs.Offer chid choffs <- Set.toList offs'
                             ]
              return $ TxsDDefs.Act (Set.fromList acts)
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- readBExpr :  read BExpr from String
+
+readBExpr :: [TxsDefs.ChanId] -> String -> IOS.IOS TxsDefs.BExpr
+readBExpr chids args = do
+     uid               <- gets IOS.uid
+     tdefs             <- gets IOS.tdefs
+     sigs              <- gets IOS.sigs
+     vals              <- gets IOS.locvals
+     ((uid',bexpr'),e) <- lift $ lift $ catch
+                            ( let p = TxsHappy.bexprParser
+                                      ( TxsAlex.Ctdefs   tdefs
+                                      : TxsAlex.Csigs    sigs
+                                      : TxsAlex.Cchanenv chids
+                                      : TxsAlex.Cvarenv  (Map.keys vals)
+                                      : TxsAlex.Cunid    (uid + 1)
+                                      : TxsAlex.txsLexer args
+                                      )
+                               in return $!! (p,"")
+                            )
+                            ( \e -> return ((uid,TxsDefs.Stop),show (e::ErrorCall)))
+     if  e /= ""
+       then do IFS.nack "ERROR" [ "incorrect behaviour expression: " ++ e ]
+               return TxsDefs.Stop
+       else return bexpr'
+
+-- ----------------------------------------------------------------------------------------- --
+--                                                                                           --
+-- ----------------------------------------------------------------------------------------- --
 
