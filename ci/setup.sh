@@ -1,5 +1,5 @@
 javac ./test/copyright/Copyright.java
-java ./test/copyright/Copyright .
+java -cp ./test/copyright Copyright .
 
 sudo apt-get install -y libgmp3-dev
 # Download and unpack the stack executable
