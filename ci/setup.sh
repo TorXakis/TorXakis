@@ -1,5 +1,7 @@
+set -e
+
 javac ./test/copyright/Copyright.java
-java -cp ./test/copyright Copyright .
+java -cp ./test/copyright Copyright . 0 ./.semaphore-cache
 
 sudo apt-get install -y libgmp3-dev
 # Download and unpack the stack executable
