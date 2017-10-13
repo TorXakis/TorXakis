@@ -182,8 +182,7 @@ eval (view -> Vpredef kd fid vexps) =
                              tdefs   <- gets IOB.tdefs
                              sigs    <- gets IOB.sigs
                              ((_,vexp'),e) <- lift $ catch
-                                ( let p = TxsHappy.vexprParser ( TxsAlex.Ctdefs  tdefs
-                                                               : TxsAlex.Csigs   sigs
+                                ( let p = TxsHappy.vexprParser ( TxsAlex.Csigs   sigs
                                                                : TxsAlex.Cvarenv []
                                                                : TxsAlex.Cunid (uid + 1)
                                                                : TxsAlex.txsLexer (T.unpack s)
