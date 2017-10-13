@@ -1,3 +1,12 @@
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+
+set -e
+
+javac ./test/copyright/Copyright.java
+java -cp ./test/copyright Copyright . 0 ./.semaphore-cache
+
 sudo apt-get install -y libgmp3-dev
 # Download and unpack the stack executable
 if [ ! -d $CACHE_DIR/bin ]

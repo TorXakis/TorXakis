@@ -1,0 +1,84 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+TYPEDEF ReportList  ::= Nil_Report | Cstr_Report  { head ::  Report ; tail ::  ReportList } ENDDEF
+TYPEDEF Report ::= Report { customers :: List_Customer ; orders :: List_Order } ENDDEF
+TYPEDEF List_Customer ::= Nil_Customer | Cstr_Customer { head :: Customer; tail :: List_Customer } ENDDEF
+TYPEDEF Customer ::= Customer { companyName :: String; contactName :: String; contactTitle :: String; phone :: String; fax :: Conditional_string; fullAddress :: Address; customerID :: Int } ENDDEF
+TYPEDEF List_Order ::= Nil_Order | Cstr_Order { head :: Order; tail :: List_Order } ENDDEF
+TYPEDEF Order ::= Order { customerID :: Int; employeeID :: Int; orderDate :: Int; requiredDate :: Int; shipInfo :: ShipInfo } ENDDEF
+TYPEDEF Address ::= Address { address :: String; city :: String; region :: String; postalCode :: String; country :: String } ENDDEF
+TYPEDEF ShipInfo ::= ShipInfo { shipVia :: Int; freight :: Int; shipName :: String; shipAddress :: String; shipCity :: String; shipRegion :: String; shipPostalCode :: String; shipCountry :: String; shippedDate :: Conditional_dateTime } ENDDEF
+TYPEDEF Conditional_string ::=  Absent_string | Present_string { value :: String } ENDDEF
+TYPEDEF Conditional_dateTime ::=  Absent_dateTime | Present_dateTime { value :: Int } ENDDEF
+TYPEDEF Conditional_Int ::=  Absent_Int | Present_Int { value :: Int } ENDDEF
+
+FUNCDEF isValid_integer ( x :: Int ) :: Bool ::= True ENDDEF
+FUNCDEF isValid_unsignedLong ( x :: Int ) :: Bool ::= (0 <= x) /\ (x <= 18446744073709551615) ENDDEF
+FUNCDEF isValid_unsignedInt ( x :: Int ) :: Bool ::= (0 <= x) /\ (x <= 4294967295) ENDDEF
+FUNCDEF isValid_string ( x :: String ) :: Bool ::= strinre(x,REGEX('[A-Z]*')) ENDDEF  -- newline not allowed in socket communication, non printable characters are problematic
+FUNCDEF isValid_dateTime ( x :: Int ) :: Bool ::= True ENDDEF
+FUNCDEF isValid_decimal  ( x :: Int ) :: Bool ::= True ENDDEF
+FUNCDEF isValid_Conditional_string( x :: Conditional_string ) :: Bool ::= IF isPresent_string(x) THEN isValid_string(value(x)) ELSE True FI ENDDEF
+FUNCDEF isValid_Conditional_dateTime( x :: Conditional_dateTime ) :: Bool ::= IF isPresent_dateTime(x) THEN isValid_dateTime(value(x)) ELSE True FI ENDDEF
+FUNCDEF isValid_Report ( t :: Report ) :: Bool ::= isValid_List_Customer(customers(t), 0, Absent_Int) /\ isValid_List_Order(orders(t), 0, Absent_Int) /\ uniqueCustomerIDs(customers(t)) /\ validCustomerIDsInOrders(orders(t),customers(t)) ENDDEF
+FUNCDEF uniqueCustomerIDs ( x :: List_Customer ) :: Bool ::= IF (isNil_Customer (x)) THEN True ELSE not(containsCustomerID(customerID(head (x)), tail(x))) /\ uniqueCustomerIDs(tail(x)) FI ENDDEF
+FUNCDEF containsCustomerID ( cid :: Int; x :: List_Customer ) :: Bool ::= IF (isNil_Customer (x)) THEN False ELSE IF ( customerID(head (x)) == cid ) THEN True ELSE containsCustomerID (cid, tail(x)) FI FI ENDDEF
+FUNCDEF validCustomerIDsInOrders ( o :: List_Order; c :: List_Customer ) :: Bool ::= IF (isNil_Order (o)) THEN True ELSE containsCustomerID(customerID(head(o)), c) /\ validCustomerIDsInOrders (tail(o), c) FI ENDDEF
+FUNCDEF isValid_List_Customer ( x :: List_Customer; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_Customer(x) /\ (min <= lengthList_Customer(x)) /\ (IF isPresent_Int(max) THEN lengthList_Customer(x) <= value(max) ELSE True FI) ENDDEF
+FUNCDEF isValidElementsList_Customer ( x :: List_Customer ) :: Bool ::= IF isCstr_Customer(x) THEN isValid_Customer(head(x)) /\ isValidElementsList_Customer(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_Customer ( x :: List_Customer ) :: Int ::= IF isNil_Customer(x) THEN 0 ELSE 1 + lengthList_Customer(tail(x)) FI ENDDEF
+FUNCDEF isValid_Customer ( t :: Customer ) :: Bool ::= isValid_string(companyName(t)) /\ isValid_string(contactName(t)) /\ isValid_string(contactTitle(t)) /\ isValid_string(phone(t)) /\ isValid_Conditional_string(fax(t)) /\ isValid_Address(fullAddress(t)) /\ isValid_unsignedLong(customerID(t)) ENDDEF
+FUNCDEF isValid_Address ( t :: Address ) :: Bool ::= isValid_string(address(t)) /\ isValid_string(city(t)) /\ isValid_string(region(t)) /\ isValid_string(postalCode(t)) /\ isValid_string(country(t)) ENDDEF
+FUNCDEF isValid_List_Order ( x :: List_Order; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_Order(x) /\ (min <= lengthList_Order(x)) /\ (IF isPresent_Int(max) THEN lengthList_Order(x) <= value(max) ELSE True FI) ENDDEF
+FUNCDEF isValidElementsList_Order ( x :: List_Order ) :: Bool ::= IF isCstr_Order(x) THEN isValid_Order(head(x)) /\ isValidElementsList_Order(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_Order ( x :: List_Order ) :: Int ::= IF isNil_Order(x) THEN 0 ELSE 1 + lengthList_Order(tail(x)) FI ENDDEF
+FUNCDEF isValid_Order ( t :: Order ) :: Bool ::= isValid_unsignedLong(customerID(t)) /\ isValid_unsignedInt(employeeID(t)) /\ isValid_dateTime(orderDate(t)) /\ isValid_dateTime(requiredDate(t)) /\ isValid_ShipInfo(shipInfo(t)) /\ (requiredDate(t) > orderDate(t)) /\ ( LET sd = shippedDate(shipInfo(t)) IN IF isPresent_dateTime(sd) THEN value(sd) >= orderDate(t) ELSE True FI NI ) ENDDEF
+FUNCDEF isValid_ShipInfo ( t :: ShipInfo ) :: Bool ::= isValid_integer(shipVia(t)) /\ isValid_decimal(freight(t)) /\ isValid_string(shipName(t)) /\ isValid_string(shipAddress(t)) /\ isValid_string(shipCity(t)) /\ isValid_string(shipRegion(t)) /\ isValid_string(shipPostalCode(t)) /\ isValid_string(shipCountry(t)) /\ isValid_Conditional_dateTime(shippedDate(t)) ENDDEF
+
+
+FUNCDEF  add ( x :: Report; l :: ReportList ) :: ReportList ::= 
+    IF    isNil_Report(l)
+    THEN  Cstr_Report(x,Nil_Report)
+    ELSE  Cstr_Report(head(l), add(x,tail(l)))
+    FI
+ENDDEF
+
+PROCDEF bufferedOutput [ IReport, OReport :: Report ] (queue :: ReportList) ::=
+        IReport ? r >-> bufferedOutput [ IReport, OReport ] (add (r , queue))
+    ##
+        [[ isCstr_Report (queue) ]] =>> OReport ! head(queue) >-> bufferedOutput [ IReport, OReport ] (tail(queue))
+ENDDEF
+
+PROCDEF handle [ Customer :: Customer; Order :: Order; Report :: Report ] (cs :: List_Customer; os :: List_Order; changed :: Bool) EXIT ::= 
+        [[ changed ]] =>>   (   Report ! Report ( cs, os )
+                            >-> handle [Customer , Order , Report ] ( cs , os , False)
+                            )
+    ##
+        (   Customer ? c [[ isValid_Customer(c) /\ not ( containsCustomerID ( customerID ( c ) , cs ) ) ]] 
+        >-> handle [Customer, Order, Report] ( Cstr_Customer ( c, cs ), os , True ) 
+        )
+    ##
+        (   [[ isCstr_Customer(cs) ]] =>> Order ? o [[ isValid_Order(o) /\ containsCustomerID ( customerID(o), cs ) ]] 
+        >-> handle [Customer, Order, Report] ( cs, Cstr_Order ( o, os ) , True ) 
+        )
+ENDDEF
+
+CHANDEF Chans ::=   Customer  :: Customer
+                  ; Order     :: Order 
+                  ; Report    :: Report 
+ENDDEF
+
+MODELDEF Model ::= 
+    CHAN IN    Customer, Order
+    CHAN OUT   Report
+    BEHAVIOUR
+        HIDE [ HReport :: Report ] IN
+                handle [ Customer, Order, HReport ] ( Nil_Customer, Nil_Order, True )
+            |[ HReport ]|
+                bufferedOutput [ HReport, Report ] (Nil_Report)
+        NI
+ENDDEF
