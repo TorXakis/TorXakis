@@ -1,5 +1,3 @@
-param param_Sim_deltaTime 4000
 simulator Model Sim
-sim 6
-trace proc $> testTrace.log
+sim 10
 exit
