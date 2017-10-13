@@ -840,7 +840,7 @@ txsShow item name  = do
                                                      (TxsDefs.purpDefs tdefs)
               ("procdef"  ,nm) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
                                                      (TxsDefs.procDefs tdefs)
-              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown" ]
+              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown 1" ]
                       return "\n"
       _ -> case (item,name) of
               ("tdefs"    ,"") -> return $ show (IOC.tdefs envc)
@@ -856,7 +856,7 @@ txsShow item name  = do
                                                      (TxsDefs.purpDefs tdefs)
               ("procdef"  ,nm) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
                                                      (TxsDefs.procDefs tdefs)
-              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown" ]
+              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown 2" ]
                       return "\n"
 
   where
