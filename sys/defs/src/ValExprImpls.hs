@@ -442,7 +442,7 @@ subst' _  _   (Verror str)             = cstrError str
 -- Preconditions are /not/ checked.
 compSubst :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
           => Map.Map v (ValExpr w) -> Map.Map FuncId (FuncDef v) -> ValExpr v -> ValExpr w
-compSubst ve _ _ | ve == Map.empty = cstrError "TXS Subst compSubst: variables must be substitute, yet varenv empty\n"
+-- compSubst ve _ _ | ve == Map.empty = cstrError "TXS Subst compSubst: variables must be substitute, yet varenv empty\n"
 compSubst ve fis x                 = compSubst' ve fis (view x)
 
 compSubst' :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
