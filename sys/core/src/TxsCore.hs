@@ -820,7 +820,7 @@ txsShow :: String               -- ^ kind of item to be shown.
         -> String               -- ^ name of item to be shown.
                                 --   Valid items are "tdefs", "state",
                                 --   "model", "mapper", "purp", "modeldef" <name>,
-                                --   "mapperdef" <name>, and "purpdef" <name>.
+                                --   "mapperdef" <name>, "purpdef" <name>
         -> IOC.IOC String
 txsShow item name  = do
      envc  <- gets IOC.state
@@ -1018,7 +1018,7 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
                        case maypurp of
                          Just purpdef -> do
                            unid <- gets IOC.unid
-                           let purpid = TxsDefs.PurpId ("Purp_" <> pnm) (unid + 1)
+                           let purpid = TxsDefs.PurpId ("PURP_"<>pnm) (unid+1)
                                tdefs' = tdefs
                                  { TxsDefs.purpDefs = Map.insert
                                                       purpid purpdef (TxsDefs.purpDefs tdefs)
@@ -1089,7 +1089,7 @@ lpeTransform procinst procdefs
        TxsDefs.ProcInst procid@(TxsDefs.ProcId nm uid chids vars ext) chans vexps
          -> case Map.lookup procid procdefs of
               Just procdef -> Just ( TxsDefs.ProcInst
-                                       (TxsDefs.ProcId ("lpe$$"<>nm) uid chids vars ext)
+                                       (TxsDefs.ProcId ("LPE_"<>nm) uid chids vars ext)
                                        chans
                                        vexps
                                    , procdef
