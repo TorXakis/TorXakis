@@ -187,7 +187,7 @@ randCnrsCstr :: Variable v => ParamPartition -> (CstrId,CstrDef) -> ValExpr v ->
                                 -> SMT [ Set.Set (ValExpr v) ]
 randCnrsCstr p (cid, CstrDef{}) vexp depth  =  do
      let ccCnr = cstrIsCstr cid vexp
-     recCnrs <- sequence [ randCnrs p (cstrAccess cid pos vexp) (depth-1) | (_,pos) <- (zip (cstrargs cid) [0..]) ]
+     recCnrs <- sequence [ randCnrs p (cstrAccess cid pos vexp) (depth-1) | (_,pos) <- zip (cstrargs cid) [0..] ]
      return [ Set.insert ccCnr cnrs
             | cnrs <- map Set.unions (cartProd recCnrs)
             ]
