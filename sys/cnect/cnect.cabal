@@ -26,6 +26,7 @@ library
                       , containers
                       , network
                       , mtl
+                      , process
                       , text
                       
                       , core

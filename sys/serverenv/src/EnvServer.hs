@@ -108,7 +108,7 @@ envsNone   = EnvS { host      = ""
 -- Txs Modus
 
 
-data  TxsModus = Noned
+data  TxsModus =   Noned
                  | Idled
                  | Inited
                  | Tested  TxsDefs.CnectDef

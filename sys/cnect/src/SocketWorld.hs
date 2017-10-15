@@ -30,7 +30,8 @@ module SocketWorld
 
 where
 
--- import System.IO.Error
+import           System.IO
+import           System.Process
 import           Control.Concurrent
 import           Control.Monad.State
 import qualified Data.Text           as T

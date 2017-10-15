@@ -50,7 +50,7 @@ ENDDEF
 CNECTDEF  SutConnection ::=
         CLIENTSOCK
 
-        CHAN  OUT  Action                        HOST "localhost"  PORT 7890
+        CHAN OUT   Action                        HOST "localhost"  PORT 7890
         ENCODE     Action ? opn              ->  ! toString(opn)
 
         CHAN  IN   Result                        HOST "localhost"  PORT 7890
