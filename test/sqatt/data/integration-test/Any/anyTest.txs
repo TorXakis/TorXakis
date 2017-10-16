@@ -1,0 +1,22 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+CHANDEF Chandefs ::=
+    A, X :: Int
+ENDDEF
+
+PROCDEF p0 [A, X::Int] (n, m::Int) ::=
+    A ? m >-> p1 [A,X] (n, m)
+ENDDEF
+
+PROCDEF p1 [A,X::Int] (n, m::Int) ::=
+    X ! n + m >-> p0 [A, X] (n, ANY)
+ENDDEF
+
+MODELDEF Mod ::=
+    CHAN IN A
+    CHAN OUT X
+    BEHAVIOUR p0 [A, X] (2, ANY)
+ENDDEF

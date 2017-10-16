@@ -17,6 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Examples.All
                      , Sqatt
+                     , Paths
                      , Benchmarks.All
                      , Integration.All
   other-modules:       Benchmarks.Choice
@@ -39,6 +40,7 @@ library
                      , Examples.ReadWriteConflict
                      , Examples.Queue
                      , Examples.StimulusResponse
+                     , Integration.Any
   build-depends:       base >= 4.7 && < 5
                      , criterion
                      , hspec
