@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 module Benchmarks.Choice (benchmarksSet) where
 
 import           Benchmarks.Common
-import           Examples.Paths
+import           Paths
 import           Prelude           hiding (FilePath)
 import           Sqatt
 
@@ -17,9 +17,9 @@ benchDir = "Choice"
 do100Choices :: TxsExample
 do100Choices = TxsExample
     { exampleName = "100 choices"
-    , txsModelFiles = [txsFilePathBench benchDir "Choice"]
+    , txsModelFiles = [txsFilePath BenchTest benchDir "Choice"]
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "ForeverChoice"
+                     , txsCmdPath BenchTest benchDir "ForeverChoice"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing

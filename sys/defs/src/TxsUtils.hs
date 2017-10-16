@@ -20,10 +20,10 @@ module TxsUtils
 
 where
 
-import qualified Data.Map      as Map
-import qualified Data.Set      as Set
+import qualified Data.Map    as Map
+import qualified Data.Set    as Set
 
-import qualified FreeMonoidX   as FMX
+import qualified FreeMonoidX as FMX
 import           FuncId
 import           StdTDefs
 import           TxsDefs
@@ -202,6 +202,7 @@ instance UsedFids VExpr
     usedFids (view -> Vconcat vexps)            =  concatMap usedFids vexps
     usedFids (view -> Vstrinre s r)             =  usedFids s ++ usedFids r
     usedFids (view -> Vpredef _k fid vexps)     =  fid : usedFids vexps
+    usedFids (view -> Vany _s)                  =  []
     usedFids (view -> Verror _s)                =  []
     usedFids _                                  =  error "usedFids: item not in view"
 

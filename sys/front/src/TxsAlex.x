@@ -100,6 +100,7 @@ tokens :-                                           -- Each right-hand side has 
     QSTEP                     { tok ( \p _s -> Tqstep p ) }
     ERROR                     { tok ( \p _s -> Terror p ) }
     REGEX                     { tok ( \p _s -> Tregex p ) }
+    ANY                       { tok ( \p _s -> Tany p ) }
     True                      { tok ( \p _s -> Tbool p True) }
     False                     { tok ( \p _s -> Tbool p False) }
  
@@ -244,6 +245,7 @@ data  Token  =  Ttypedef          AlexPosn
               | Tqstep            AlexPosn
               | Terror            AlexPosn
               | Tregex            AlexPosn
+              | Tany              AlexPosn
               | Tarrow            AlexPosn
               | Tbarrow           AlexPosn
               | Tchoice           AlexPosn

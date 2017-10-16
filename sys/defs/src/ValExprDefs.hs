@@ -19,6 +19,7 @@ import           ConstDefs
 import           CstrId
 import           FuncId
 import           Product
+import           SortId
 import           Sum
 import           VarId
 
@@ -65,6 +66,7 @@ data  ValExprView v = Vconst  Const
 
                     | Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]
+                    | Vany    SortId
                     | Verror  Text
      deriving (Eq, Ord, Read, Show, Generic, NFData)
 

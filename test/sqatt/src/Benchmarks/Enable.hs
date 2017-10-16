@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 module Benchmarks.Enable (benchmarksSet) where
 
 import           Benchmarks.Common
-import           Examples.Paths
+import           Paths
 import           Prelude           hiding (FilePath)
 import           Sqatt
 
@@ -15,8 +15,8 @@ benchDir :: FilePath
 benchDir = "Enable"
 
 modelFiles :: [FilePath]
-modelFiles = [ txsFilePathBench benchDir "Enable"
-             , txsFilePathBench "Sequence" "SingleActionSequence"
+modelFiles = [ txsFilePath BenchTest benchDir "Enable"
+             , txsFilePath BenchTest "Sequence" "SingleActionSequence"
              ]
 
 seqEnable :: TxsExample
@@ -24,7 +24,7 @@ seqEnable = TxsExample
     { exampleName = "sequence of enable operators, without data"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "SeqEnable"
+                     , txsCmdPath BenchTest benchDir "SeqEnable"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -36,7 +36,7 @@ seqEnableInt = TxsExample
     { exampleName = "sequence of enable operators, with integers"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "SeqEnableInt"
+                     , txsCmdPath BenchTest benchDir "SeqEnableInt"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -48,7 +48,7 @@ seqEnableTwoInts = TxsExample
     { exampleName = "sequence of enable operators, with integers and two outputs"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "SeqEnableTwoInts"
+                     , txsCmdPath BenchTest benchDir "SeqEnableTwoInts"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing

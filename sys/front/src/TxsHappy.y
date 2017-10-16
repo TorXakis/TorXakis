@@ -170,6 +170,7 @@ import Data.Monoid
     QSTEP         { Tqstep            pos }
     ERROR         { Terror            pos }
     REGEX         { Tregex            pos }
+    ANY           { Tany              pos }
     True          { Tbool             posbool True }
     False         { Tbool             posbool  False }
     "->"          { Tarrow            pos }
@@ -2998,6 +2999,15 @@ ValExpr2        -- :: { VExpr }
                 ;  $$.synExpdSort  = $2.synExpdSort
                 ;  $2.inhSolvSort  = $$.inhSolvSort
                 ;  $$ = $2
+                }
+              | ANY
+                {  $$.synMaxUid    = $$.inhNodeUid
+                ;  $$.synExpdSort  = Map.elems (Sigs.sort $$.inhSigs)
+                ;  $$ = case $$.inhSolvSort of
+                        { Nothing  -> error $ "\nTXS0435: " ++
+                                              "Sort of ANY cannot be deduced\n"
+                        ; Just srt -> cstrAny srt
+                        }
                 }
               | ERROR string
                 {  $$.synMaxUid    = $$.inhNodeUid

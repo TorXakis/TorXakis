@@ -59,6 +59,7 @@ module ValExprImpls
 
 -- to be documented
 , cstrPredef
+, cstrAny
 , cstrError
 -- * Substitution of var by value
 , subst
@@ -66,35 +67,36 @@ module ValExprImpls
 )
 where
 
-import           Control.Arrow (first)
-import qualified Data.Map      as Map
-import           Data.Maybe    (fromMaybe)
-import           Data.Monoid   ((<>))
-import qualified Data.Set      as Set
-import           Data.Text     (Text)
-import qualified Data.Text     as T
-import           Debug.Trace   as Trace
+import           Control.Arrow   (first)
+import qualified Data.Map        as Map
+import           Data.Maybe      (fromMaybe)
+import           Data.Monoid     ((<>))
+import qualified Data.Set        as Set
+import           Data.Text       (Text)
+import qualified Data.Text       as T
+import           Debug.Trace     as Trace
 import           Text.Regex.TDFA
 
 import           ConstDefs
 import           CstrId
-import qualified FreeMonoidX   as FMX
-import           FuncId
+import qualified FreeMonoidX     as FMX
 import           FuncDef
+import           FuncId
 import           Product
 import           RegexXSD2Posix
+import           SortId
 import           Sum
 import           ValExprDefs
 import           Variable
 
 
 cstrFunc :: (Variable v, Variable w) => Map.Map FuncId (FuncDef v) -> FuncId -> [ValExpr w] -> ValExpr w
-cstrFunc fis fi arguments = 
+cstrFunc fis fi arguments =
     case Map.lookup fi fis of
         Nothing ->  ValExpr (Vfunc fi arguments) -- When implementing the body of a recursive function, a function call is made while the implementation is not (yet) finished and available.
         Just (FuncDef params body)-> case view body of
                                         Vconst x -> cstrConst x
-                                        _        -> if all isConst arguments 
+                                        _        -> if all isConst arguments
                                                         then compSubst (Map.fromList (zip params arguments)) fis body
                                                         else ValExpr (Vfunc fi arguments)
 
@@ -404,6 +406,9 @@ cstrStrInRe s r                                                      = ValExpr (
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)
 
+cstrAny :: SortId -> ValExpr v
+cstrAny srt = ValExpr (Vany srt)
+
 cstrError :: Text -> ValExpr v
 cstrError s = ValExpr (Verror s)
 
@@ -411,8 +416,8 @@ cstrError s = ValExpr (Verror s)
 -- Preconditions are /not/ checked.
 subst :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
       => Map.Map v (ValExpr v) -> Map.Map FuncId (FuncDef w) -> ValExpr v -> ValExpr v
-subst ve _ x | ve == Map.empty = x
-subst ve fis x                 = subst' ve fis (view x)
+subst ve _ x   | ve == Map.empty = x
+subst ve fis x = subst' ve fis (view x)
 
 subst' :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
        => Map.Map v (ValExpr v) -> Map.Map FuncId (FuncDef w) -> ValExprView v -> ValExpr v
@@ -436,6 +441,7 @@ subst' ve fis (Vat s p)                = cstrAt ( (subst' ve fis . view) s) ( (s
 subst' ve fis (Vconcat vexps)          = cstrConcat $ map (subst' ve fis . view) vexps
 subst' ve fis (Vstrinre s r)           = cstrStrInRe ( (subst' ve fis . view) s) ( (subst' ve fis . view) r)
 subst' ve fis (Vpredef kd fid vexps)   = cstrPredef kd fid (map (subst' ve fis . view) vexps)
+subst' _  _   (Vany sId)               = cstrAny sId
 subst' _  _   (Verror str)             = cstrError str
 
 -- | Substitute variables by values in value expression (change variable kind).
@@ -469,6 +475,7 @@ compSubst' ve fis (Vat s p)                = cstrAt ( (compSubst' ve fis . view)
 compSubst' ve fis (Vconcat vexps)          = cstrConcat $ map (compSubst' ve fis . view) vexps
 compSubst' ve fis (Vstrinre s r)           = cstrStrInRe ( (compSubst' ve fis . view) s) ( (compSubst' ve fis . view) r)
 compSubst' ve fis (Vpredef kd fid vexps)   = cstrPredef kd fid (map (compSubst' ve fis . view) vexps)
+compSubst' _  _   (Vany sId)               = cstrAny sId
 compSubst' _  _   (Verror str)             = cstrError str
 
 -- ----------------------------------------------------------------------------------------- --

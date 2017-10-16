@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 module Benchmarks.RealWorld (benchmarksSet) where
 
 import           Benchmarks.Common
-import           Examples.Paths
+import           Paths
 import           Prelude           hiding (FilePath)
 import           Sqatt
 
@@ -17,9 +17,9 @@ benchDir = "RealWorld"
 multipleControlLoops :: TxsExample
 multipleControlLoops = TxsExample
     { exampleName = "Multiple Control Loops Stepper"
-    , txsModelFiles = [ txsFilePathBench benchDir "MultipleControlLoops" ]
+    , txsModelFiles = [ txsFilePath BenchTest benchDir "MultipleControlLoops" ]
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "MultipleControlLoops"
+                     , txsCmdPath BenchTest benchDir "MultipleControlLoops"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -29,8 +29,8 @@ multipleControlLoops = TxsExample
 customersAndOrders :: TxsExample
 customersAndOrders = TxsExample
     { exampleName = "Customers and Orders"
-    , txsModelFiles = [ txsFilePathBench benchDir "CustomersOrders" ]
-    , txsCmdsFiles = [ txsCmdPathBench benchDir "CustomersOrders" ]
+    , txsModelFiles = [ txsFilePath BenchTest benchDir "CustomersOrders" ]
+    , txsCmdsFiles = [ txsCmdPath BenchTest benchDir "CustomersOrders" ]
     , txsServerArgs = []
     , sutExample = Nothing
     , expectedResult = Pass
@@ -39,9 +39,9 @@ customersAndOrders = TxsExample
 movingArms :: TxsExample
 movingArms = TxsExample
     { exampleName = "Moving Arms"
-    , txsModelFiles = [ txsFilePathBench benchDir "MovingArms" ]
+    , txsModelFiles = [ txsFilePath BenchTest benchDir "MovingArms" ]
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "MovingArms"
+                     , txsCmdPath BenchTest benchDir "MovingArms"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -51,9 +51,9 @@ movingArms = TxsExample
 movingArmsPurpose :: TxsExample
 movingArmsPurpose = TxsExample
     { exampleName = "Moving Arms (Purpose)"
-    , txsModelFiles = [ txsFilePathBench benchDir "MovingArms" ]
+    , txsModelFiles = [ txsFilePath BenchTest benchDir "MovingArms" ]
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "MovingArmsPurpose"
+                     , txsCmdPath BenchTest benchDir "MovingArmsPurpose"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
