@@ -1,5 +1,5 @@
 seed 27379
-tester ModelTraceWrong Sut
-test 2
+stepper ModelTraceWrong
+step 2
 trace proc $> testTrace.log
 exit

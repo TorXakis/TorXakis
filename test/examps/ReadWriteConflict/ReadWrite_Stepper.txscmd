@@ -1,4 +1,3 @@
 stepper Model
 step 7
-trace proc $> testTrace.log
 exit

@@ -17,7 +17,6 @@ import           GHC.Generics    (Generic)
 
 import           ConstDefs
 import           CstrId
-import           FreeMonoidX
 import           FuncId
 import           Product
 import           SortId
@@ -65,7 +64,6 @@ data  ValExprView v = Vconst  Const
                     | Viscstr CstrId (ValExpr v)
                     | Vaccess CstrId Int (ValExpr v)
 
-                    | Venv    (VarEnv v v) (ValExpr v)
                     | Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]
                     | Vany    SortId
@@ -108,6 +106,15 @@ newtype ValExpr v = ValExpr {
                         -- | View on value expression.
                         view :: ValExprView v }
   deriving (Eq, Ord, Read, Show, Generic, NFData)
+
+-- | Evaluate the provided value expression.
+-- Either the Right Constant Value is returned or an error message.
+eval :: Show v => ValExpr v -> Either String Const
+eval = evalView . view
+
+evalView :: Show v => ValExprView v -> Either String Const
+evalView (Vconst v) = Right v
+evalView x          = Left $ "Value Expression is not a constant value " ++ show x
 
 data PredefKind     = AST     -- Algebraic To String
                     | ASF     -- Algebraic From String

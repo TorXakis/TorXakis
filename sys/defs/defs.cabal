@@ -64,7 +64,7 @@ library
                       , Variable
 
 
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
+  ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math
   
   build-tools:          happy
   

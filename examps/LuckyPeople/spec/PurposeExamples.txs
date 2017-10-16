@@ -1,3 +1,9 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
 PROCDEF examples [ In :: Person; Out :: Bool ] () HIT ::=
         In ! Person( Male, "Mickey", "Mouse", 13, 1 )
     >-> Out ! True

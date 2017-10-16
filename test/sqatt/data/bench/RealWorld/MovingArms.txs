@@ -1,0 +1,143 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+PROCDEF stoppedMin [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Up >-> movingUp [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Down >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMin and stopped both must accept input Down, such that IOCO can't differentiate between them
+    ##
+        Stop >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMin and movingDown both must accept input Stop, such that IOCO can't differentiate between them
+ENDDEF
+
+PROCDEF stoppedMax [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Down >-> movingDown [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Up >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )      -- stoppedMax and stopped both must accept input Up, such that IOCO can't differentiate between them
+    ##
+        Stop >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMax and movingUp both must accept input Stop, such that IOCO can't differentiate between them
+ENDDEF
+
+PROCDEF stopped [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Up >-> movingUp [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Down >-> movingDown [ Up, Down, Stop, Min, Max ] ( )
+ENDDEF
+
+PROCDEF movingUp [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Stop >-> stopped [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Max >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )
+ENDDEF
+
+PROCDEF movingDown [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Stop >-> stopped [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Min >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )
+ENDDEF
+
+PROCDEF basicAllowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
+                                UpY, DownY, StopY, MinY, MaxY,
+                                UpZ, DownZ, StopZ, MinZ, MaxZ] ( ) ::=
+        stopped [UpX, DownX, StopX, MinX, MaxX] ()
+    ||| stopped [UpY, DownY, StopY, MinY, MaxY] ()
+    ||| stopped [UpZ, DownZ, StopZ, MinZ, MaxZ] ()
+ENDDEF
+
+-- ---------------------------------------------------------------------------
+-- Between SUT and Tester is however not a synchronous channel              --
+------------------------------------------------------------------------------
+
+PROCDEF asynchronousChannel [ In, Out ] () ::=
+    In >-> Out >-> asynchronousChannel [ In, Out ] ()
+ENDDEF
+
+PROCDEF asynchronousAxis [ Up, Down, Stop, Min, Max ] () ::=
+    HIDE [HMin, HMax] IN 
+            asynchronousChannel [HMin, Min] ()
+        |[HMin]|
+            stopped [Up, Down, Stop, HMin, HMax] ()
+        |[HMax]|
+            asynchronousChannel [HMax, Max] ()
+    NI
+ENDDEF
+
+PROCDEF allowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
+                           UpY, DownY, StopY, MinY, MaxY,
+                           UpZ, DownZ, StopZ, MinZ, MaxZ ] ( ) ::=
+        asynchronousAxis [UpX, DownX, StopX, MinX, MaxX] ()
+    ||| asynchronousAxis [UpY, DownY, StopY, MinY, MaxY] ()
+    ||| asynchronousAxis [UpZ, DownZ, StopZ, MinZ, MaxZ] ()
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+CHANDEF Channels ::=
+    UpX, DownX, StopX, MinX, MaxX,
+    UpY, DownY, StopY, MinY, MaxY,
+    UpZ, DownZ, StopZ, MinZ, MaxZ
+ENDDEF
+
+MODELDEF  Model ::=
+    CHAN IN     UpX, DownX, StopX, 
+                UpY, DownY, StopY,
+                UpZ, DownZ, StopZ
+    CHAN OUT    MinX, MaxX,
+                MinY, MaxY,
+                MinZ, MaxZ
+    BEHAVIOUR   allowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
+                                   UpY, DownY, StopY, MinY, MaxY,
+                                   UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
+ENDDEF
+
+TYPEDEF Movement ::= Up | No | Down ENDDEF
+
+-- This algorithm is derived using LPE and some human optimization
+-- starting with the process
+-- PROCDEF Semaphore [Acquire, Release](n:: Int) ::=
+--       [[n>0]] =>> Acquire >-> Semaphore [Acquire , Release](n-1)  
+--    ##             Release >-> Semaphore [Acquire , Release](n+1)  
+-- ENDDEF
+-- In particular, synchronous acquiring (and releasing) of a semaphore by different axes is NOT possible.
+-- Consequently, movements in different directions will never start or stop together.
+PROCDEF restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX,
+                                UpY, DownY, StopY, MinY, MaxY,
+                                UpZ, DownZ, StopZ, MinZ, MaxZ] ( n :: Int; movementX, movementY, movementZ :: Movement ) ::=
+         UpX   [[ (n>0) /\ isNo(movementX) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, Up,   movementY, movementZ)
+      ## DownX [[ (n>0) /\ isNo(movementX) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, Down, movementY, movementZ)
+      ## StopX [[ not ( isNo(movementX) )  ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, No,   movementY, movementZ)
+      ## MaxX  [[ isUp(movementX)          ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, No,   movementY, movementZ)
+      ## MinX  [[ isDown(movementX)        ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, No,   movementY, movementZ)
+
+      ## UpY   [[ (n>0) /\ isNo(movementY) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, Up,   movementZ)
+      ## DownY [[ (n>0) /\ isNo(movementY) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, Down, movementZ)
+      ## StopY [[ not ( isNo(movementY) )  ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, No,   movementZ)
+      ## MaxY  [[ isUp(movementY)          ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, No,   movementZ)
+      ## MinY  [[ isDown(movementY)        ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, No,   movementZ)
+
+      ## UpZ   [[ (n>0) /\ isNo(movementZ) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, movementY, Up  )
+      ## DownZ [[ (n>0) /\ isNo(movementZ) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, movementY, Down)
+      ## StopZ [[ not ( isNo(movementZ) )  ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, movementY, No  )
+      ## MaxZ  [[ isUp(movementZ)          ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, movementY, No  )
+      ## MinZ  [[ isDown(movementZ)        ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, movementY, No  )
+ENDDEF
+
+MODELDEF  TestPurpose ::=
+    CHAN IN     UpX, DownX, StopX, 
+                UpY, DownY, StopY,
+                UpZ, DownZ, StopZ
+    CHAN OUT    MinX, MaxX,
+                MinY, MaxY,
+                MinZ, MaxZ
+    BEHAVIOUR   
+        allowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
+                           UpY, DownY, StopY, MinY, MaxY,
+                           UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
+    |[ UpX, DownX, StopX, MinX, MaxX,
+       UpY, DownY, StopY, MinY, MaxY,
+       UpZ, DownZ, StopZ, MinZ, MaxZ]| 
+        restrictedAxisMovement [ UpX, DownX, StopX, MinX, MaxX,
+                                 UpY, DownY, StopY, MinY, MaxY,
+                                 UpZ, DownZ, StopZ, MinZ, MaxZ] ( 1, No, No, No )
+ENDDEF

@@ -1,0 +1,4 @@
+tester Adder Purp3 SutConnection
+test 20
+trace proc $> AdderPurp3Proc.txs
+exit

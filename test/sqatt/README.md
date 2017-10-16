@@ -233,6 +233,12 @@ stack bench --ba "-m glob Seq*/*data*"
 Note that globbing on the benchmarks works as though they were filepaths,
 that's why `"*"` won't match any benchmarks.
 
+To generate HTML output use the `--output` flag, for example:
+
+```sh
+stack bench --ba "-m glob Seq*/*data* --output report.html"
+```
+
 The benchmark program uses Criterion's default main method, which supports a
 wide range of options. Run:
 

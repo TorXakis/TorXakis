@@ -24,21 +24,23 @@ import ModelDef
 import ProcDef
 import PurpDef
 import SortDef
+
+import VarId
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis definitions
 
-data  TxsDef        =  DefSort      SortDef
-                     | DefCstr      CstrDef
-                     | DefFunc      FuncDef
-                     | DefProc      ProcDef
-                     | DefModel     ModelDef
-                     | DefPurp      PurpDef
-                     | DefMapper    MapperDef
-                     | DefCnect     CnectDef
-                     | DefChan
-                     | DefVar
-                     | DefStat
-                     | DefGoal
+data  TxsDef = DefSort      SortDef
+             | DefCstr      CstrDef
+             | DefFunc      (FuncDef VarId)
+             | DefProc      ProcDef
+             | DefModel     ModelDef
+             | DefPurp      PurpDef
+             | DefMapper    MapperDef
+             | DefCnect     CnectDef
+             | DefChan
+             | DefVar
+             | DefStat
+             | DefGoal
      deriving (Eq,Ord,Read,Show)
 
 -- ----------------------------------------------------------------------------------------- --

@@ -84,7 +84,7 @@ MODELDEF Model ::=
         IN
                 dispatcher [ Job, Job2Proc ]  ( )
             |[ Job2Proc ]|
-                 processors [ Job2Proc, Finish ] ( 5 )
+                 processors [ Job2Proc, Finish ] ( 4 )
         NI
 ENDDEF
 -- ----------------------------------------------------------------------------------------- --

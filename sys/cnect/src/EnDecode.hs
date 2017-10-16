@@ -28,6 +28,8 @@ module EnDecode
 
 where
 
+import           Control.Monad.State
+
 import qualified Data.Map  as Map
 import qualified Data.Set  as Set
 
@@ -64,7 +66,8 @@ encode envs (Act offs)  =  do
                         [ ( _chanid, wals ) ] -> wals
                         _                     -> error $ "Encode 2: No (unique) action: " ++ fshow offs
      let wenv = Map.fromList $ zip vars' walues
-     sval     <- TxsCore.txsEval $ cstrEnv (Map.map cstrConst wenv) vexp
+     st <- gets IOC.state
+     sval     <- TxsCore.txsEval $ subst (Map.map cstrConst wenv) (funcDefs (IOC.tdefs st)) vexp
      return $ case sval of
                 Cstring s -> SAct h s
                 _         -> error "Encode 3: No encoding to String\n"
@@ -89,7 +92,8 @@ decode envs (SAct hdl sval)  =
                                           ; _        -> error "Decode: No (unique) handle\n"
                                           }
       in do let senv = Map.fromList [ (var', cstrConst (Cstring sval)) ]
-            wals     <- mapM (TxsCore.txsEval . cstrEnv senv) vexps
+            st <- gets IOC.state
+            wals     <- mapM (TxsCore.txsEval . subst senv (funcDefs (IOC.tdefs st))) vexps
             return $ Act ( Set.singleton (chan',wals) )
 
 decode _envs SActQui  =

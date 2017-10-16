@@ -22,7 +22,7 @@ exampDir = "ReadWriteConflict"
 
 testStepper :: TxsExample
 testStepper = TxsExample
-  { exampleName = "ReadWriteConflict Stepper Test"
+  { exampleName = "Stepper Test"
   , txsModelFiles = [txsFilePath exampDir readWriteConflictText]
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper"]
   , txsServerArgs = []
@@ -30,19 +30,19 @@ testStepper = TxsExample
   , expectedResult = Pass
   }
 
-testStepper7 :: TxsExample
-testStepper7 = TxsExample
-  { exampleName = "ReadWriteConflict Stepper7 Test"
+testHitAll7 :: TxsExample
+testHitAll7 = TxsExample
+  { exampleName = "HitAll7 Purpose Test"
   , txsModelFiles = [txsFilePath exampDir readWriteConflictText]
-  , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite7_Stepper"]
+  , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_HitAll7Purpose_Tester"]
   , txsServerArgs = []
-  , sutExample = Nothing
+  , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "ReadWrite_Simulator")
   , expectedResult = Pass
   }
 
 testAdvancedStepper :: TxsExample
 testAdvancedStepper = TxsExample
-  { exampleName = "ReadWriteConflict_Advanced Stepper Test"
+  { exampleName = "Advanced Stepper Test"
   , txsModelFiles = [txsFilePath exampDir readWriteConflictAdvancedText]
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper"]
   , txsServerArgs = []
@@ -51,7 +51,7 @@ testAdvancedStepper = TxsExample
   }
 
 examples :: [TxsExample]
-examples = [testStepper,testStepper7,testAdvancedStepper]
+examples = [testStepper,testHitAll7,testAdvancedStepper]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Read/Write Conflict" examples

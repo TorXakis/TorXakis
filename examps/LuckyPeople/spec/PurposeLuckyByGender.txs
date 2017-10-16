@@ -1,3 +1,9 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
 PROCDEF repeatAndSwitchGender [ In :: Person ; Out :: Bool ] ( pos, length :: Int; s :: Sex) HIT ::=
         (
             [[ pos > 1 ]] =>> In ? p [[ sex(p) == s ]] >-> EXIT

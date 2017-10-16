@@ -17,7 +17,6 @@ import           ConstDefs
 import           CstrId
 import           FuncId
 import           SortId
-import           Sum
 import           ValExprDefs
 import           Variable
 import           VarId
@@ -65,7 +64,6 @@ sortOf' (view -> Vite _cond vexp1 vexp2)                =  -- if the LHS is an e
                                                              if sort' == sortIdError
                                                                then sortOf' vexp2
                                                                else sort'
-sortOf' (view -> Venv _ve vexp)                         =  sortOf' vexp
 sortOf' (view -> Vequal { })                            =  sortId_Bool
 sortOf' (view -> Vnot { })                              =  sortId_Bool
 sortOf' (view -> Vand { })                              =  sortId_Bool
