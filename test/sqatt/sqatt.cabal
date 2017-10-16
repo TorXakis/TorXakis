@@ -62,7 +62,7 @@ library
 test-suite integration-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test/Integration
-  main-is:             AllSpec.hs
+  main-is:             Main.hs
   build-depends:       base
                      , sqatt
                      , hspec
