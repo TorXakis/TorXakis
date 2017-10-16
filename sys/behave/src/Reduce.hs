@@ -127,7 +127,7 @@ instance Reduce INode
   where
 
     reduce (BNbexpr (wenv,ivenv) bexp) = do
-         bexp' <- reduce $ subst (Map.map cstrConst wenv) bexp
+         bexp' <- reduce $ Subst.subst (Map.map cstrConst wenv) bexp
          return $ BNbexpr (Map.empty, ivenv) bexp'
 
     reduce (BNparallel chids inodes) = do
@@ -267,7 +267,7 @@ instance Reduce BExpr
                      then return bexp'
                      else return $ Hide chids' bexp'
 
-    reduce (ValueEnv venv bexp) = reduce $ subst venv bexp
+    reduce (ValueEnv venv bexp) = reduce $ Subst.subst venv bexp
 
     reduce (StAut stid ve trns) = return $ StAut stid ve trns
 

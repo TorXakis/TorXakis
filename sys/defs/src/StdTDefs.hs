@@ -9,7 +9,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 -- | Predefined, Standard TorXakis Data Types : Bool, Int, Char, String.
 module StdTDefs
 ( eqName
@@ -61,11 +60,9 @@ import           Control.Arrow         ((***))
 import qualified Data.Map              as Map
 import qualified Data.Set              as Set
 import           Data.Text             (Text)
-import qualified GHC.Exts              as Exts
 
 import           ChanId
 import           CstrId
-import qualified FreeMonoidX           as FMX
 import           FuncDef
 import           FuncId
 import           FuncTable
@@ -203,13 +200,17 @@ stdFuncTable = FuncTable ( Map.fromList
 -- SSB :  Standard Sort Bool
 
 
+funcId_BoolToString :: FuncId
 funcId_BoolToString     = FuncId toStringName   213 [sortId_Bool]             sortId_String
+funcId_BoolFromString :: FuncId
 funcId_BoolFromString   = FuncId fromStringName 214 [sortId_String]           sortId_Bool
 
+funcId_BoolToXml :: FuncId
 funcId_BoolToXml        = FuncId toXmlName      215 [sortId_Bool]             sortId_String
+funcId_BoolFromXml :: FuncId
 funcId_BoolFromXml      = FuncId fromXmlName    216 [sortId_String]           sortId_Bool
 
-stdFuncDefsBool' :: [ ( FuncId, FuncDef ) ]
+stdFuncDefsBool' :: [ ( FuncId, FuncDef VarId) ]
 stdFuncDefsBool'
   =  [ ( funcId_BoolToString,   let x = VarId "x" 243 sortId_Bool
                                     in FuncDef [x] (cstrPredef SSB funcId_BoolToString [cstrVar x]) )
@@ -227,15 +228,18 @@ stdFuncDefsBool = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsBool'
 -- ----------------------------------------------------------------------------------------- --
 -- SSI :  Standard Sort Int
 
-
+funcId_IntToString :: FuncId
 funcId_IntToString      = FuncId toStringName       301 [sortId_Int]            sortId_String
+funcId_IntFromString :: FuncId
 funcId_IntFromString    = FuncId fromStringName     302 [sortId_String]         sortId_Int
 
+funcId_IntToXml :: FuncId
 funcId_IntToXml         = FuncId toXmlName          303 [sortId_Int]            sortId_String
+funcId_IntFromXml :: FuncId
 funcId_IntFromXml       = FuncId fromXmlName        304 [sortId_String]         sortId_Int
 
 
-stdFuncDefsInt' :: [ ( FuncId, FuncDef ) ]
+stdFuncDefsInt' :: [ ( FuncId, FuncDef VarId) ]
 stdFuncDefsInt'
   =  [ ( funcId_IntToString,    let x = VarId "x" 341 sortId_Int
                                     in FuncDef [x] (cstrPredef SSI funcId_IntToString [cstrVar x]) )
@@ -252,18 +256,26 @@ stdFuncDefsInt = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsInt'
 -- ----------------------------------------------------------------------------------------- --
 -- SSS :  Standard Sort String
 
+funcId_StringToString :: FuncId
 funcId_StringToString       = FuncId toStringName       525 [sortId_String]                 sortId_String
+funcId_StringFromString :: FuncId
 funcId_StringFromString     = FuncId fromStringName     526 [sortId_String]                 sortId_String
-
+ 
+funcId_StringToXml :: FuncId
 funcId_StringToXml          = FuncId toXmlName          527 [sortId_String]                 sortId_String
+funcId_StringFromXml :: FuncId
 funcId_StringFromXml        = FuncId fromXmlName        528 [sortId_String]                 sortId_String
 
+funcId_takeWhile :: FuncId
 funcId_takeWhile            = FuncId "takeWhile"        533 [sortId_String,sortId_String]   sortId_String
+funcId_takeWhileNot:: FuncId
 funcId_takeWhileNot         = FuncId "takeWhileNot"     534 [sortId_String,sortId_String]   sortId_String
+funcId_dropWhile :: FuncId
 funcId_dropWhile            = FuncId "dropWhile"        535 [sortId_String,sortId_String]   sortId_String
+funcId_dropWhileNot :: FuncId
 funcId_dropWhileNot         = FuncId "dropWhileNot"     536 [sortId_String,sortId_String]   sortId_String
 
-stdFuncDefsString' :: [ ( FuncId, FuncDef ) ]
+stdFuncDefsString' :: [ ( FuncId, FuncDef VarId) ]
 stdFuncDefsString'
   =  [
        ( funcId_StringToString,     let { s = VarId "s" 543 sortId_String }
@@ -311,8 +323,14 @@ stdTDefs =    stdSortDefs
            ++ stdFuncDefsString
 
 -- * Standard channel identifiers
+chanId_Exit :: ChanId
 chanId_Exit  = ChanId "EXIT"  901 []
+chanId_Istep :: ChanId
 chanId_Istep = ChanId "ISTEP" 902 []
+chanId_Qstep :: ChanId
 chanId_Qstep = ChanId "QSTEP" 903 []
+chanId_Hit :: ChanId
 chanId_Hit   = ChanId "HIT"   904 []
+chanId_Miss :: ChanId
 chanId_Miss  = ChanId "MISS"  905 []
+ 
