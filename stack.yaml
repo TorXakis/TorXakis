@@ -20,7 +20,6 @@
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
 resolver: lts-9.7
-ghc-variant: integersimple
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -57,28 +56,9 @@ packages:
 - location: sys/testsel
 - location: sys/ui
 - location: sys/value
-
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- text-1.2.2.2
-- hexpat-0.20.13
-- hashable-1.2.6.1
-- integer-logarithms-1.0.2
-- scientific-0.3.5.1
-
-# Override default flag values for local packages and extra-deps
-flags: 
-  text: 
-    integer-simple: true
-  hexpat:
-    bundle: true
-  hashable:
-    integer-gmp: false
-  integer-logarithms:
-    integer-gmp: false
-  scientific:
-    integer-simple: true
 
 # Extra package databases containing global packages
 extra-package-dbs: []
