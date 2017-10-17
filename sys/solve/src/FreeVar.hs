@@ -42,8 +42,6 @@ freeVars (view -> Vvar vid)                =  [vid]
 freeVars (view -> Vite cond vexp1 vexp2)   =  List.nub $ freeVars cond ++
                                                          freeVars vexp1 ++
                                                          freeVars vexp2
-freeVars (view -> Venv ve vexp)            =  List.nub $ concatMap freeVars (Map.elems ve) ++
-                                                ( freeVars vexp \\\ Map.keys ve )
 freeVars (view -> Vsum s)                  =  List.nub $ concatMap freeVars (distinctTermsT s)
 freeVars (view -> Vproduct p)              =  List.nub $ concatMap freeVars (distinctTermsT p)
 freeVars (view -> Vdivide t n)             =  List.nub $ freeVars t ++ freeVars n
@@ -57,6 +55,7 @@ freeVars (view -> Vat s p)                 =  List.nub $ freeVars s ++ freeVars 
 freeVars (view -> Vconcat vexps)           =  List.nub $ concatMap freeVars vexps
 freeVars (view -> Vstrinre s r)            =  List.nub $ freeVars s ++ freeVars r
 freeVars (view -> Vpredef _kd _fid vexps)  =  List.nub $ concatMap freeVars vexps
+freeVars (view -> Vany _srt)               =  []
 freeVars (view -> Verror _str)             =  []
 freeVars _                                 = error "freeVars - Item not in view"
 

@@ -168,32 +168,36 @@ afterActBBranch chsets behact (BTpref btoffs [] pred' next)  =  do
      match <- matchAct2CTOffer behact btoffs
      case match of
        Nothing    -> return []
-       Just iwals -> let pred'' = TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals) pred'
-                      in do condition <- Eval.eval pred''
-                            case condition of
-                                TxsDefs.Cbool True  -> do let cnode = nextNode iwals next
-                                                          after <- unfold chsets cnode
-                                                          return [after]
-                                TxsDefs.Cbool False -> return []
-                                _                   -> error "afterActBBranch - condition is not a Boolean"
+       Just iwals -> do
+                      tds <- gets IOB.tdefs
+                      let pred'' = TxsDefs.subst (Map.map TxsDefs.cstrConst iwals) (TxsDefs.funcDefs tds) pred'
+                      condition <- Eval.eval pred''
+                      case condition of
+                          TxsDefs.Cbool True  -> do let cnode = nextNode iwals next
+                                                    after <- unfold chsets cnode
+                                                    return [after]
+                          TxsDefs.Cbool False -> return []
+                          _                   -> error "afterActBBranch - condition is not a Boolean"
 
 afterActBBranch chsets behact (BTpref btoffs hidvars pred' next)  =  do
      match <- matchAct2CTOffer behact btoffs
      case match of
        Nothing    -> return []
-       Just iwals -> let pred'' = TxsUtils.partSubst (Map.map TxsDefs.cstrConst iwals) pred'
-                         assertion = add pred'' empty
-                       in do smtEnv <- IOB.getSMT "current"
-                             (sat,smtEnv') <- lift $ runStateT (uniSolve hidvars assertion) smtEnv
-                             IOB.putSMT "current" smtEnv'
-                             case sat of
-                               Unsolvable -> return []
-                               Solved sol -> do let cnode = nextNode (iwals `Map.union` sol) next
-                                                after <- unfold chsets cnode
-                                                return [after]
-                               UnableToSolve -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                                                                 "after: cannot find unique value for hidden variables" ]
-                                                   return []
+       Just iwals -> do
+                      tds <- gets IOB.tdefs
+                      let pred'' = TxsDefs.subst (Map.map TxsDefs.cstrConst iwals) (TxsDefs.funcDefs tds) pred'
+                          assertion = add pred'' empty
+                      smtEnv <- IOB.getSMT "current"
+                      (sat,smtEnv') <- lift $ runStateT (uniSolve hidvars assertion) smtEnv
+                      IOB.putSMT "current" smtEnv'
+                      case sat of
+                        Unsolvable -> return []
+                        Solved sol -> do let cnode = nextNode (iwals `Map.union` sol) next
+                                         after <- unfold chsets cnode
+                                         return [after]
+                        UnableToSolve -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                                          "after: cannot find unique value for hidden variables" ]
+                                            return []
 
 afterActBBranch chsets behact (BTtau bt)  =  afterActBTree chsets behact bt
 

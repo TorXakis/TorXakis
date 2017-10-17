@@ -217,8 +217,8 @@ randomSolve p ((v,d):xs) i =
             []  -> error $ "Unexpected: no constructor for " ++ show v
             [(cid,cdef)] -> -- no choice -- one constructor
                     do
-                        addIsConstructor v cdef
-                        fieldVars <- addFields v i (cid,cdef)
+                        addIsConstructor v cid
+                        fieldVars <- addFields v i cid
                         sat <- getSolvable
                         case sat of
                             Sat     -> do
@@ -240,8 +240,8 @@ randomSolve p ((v,d):xs) i =
                                 case Map.lookup cid (Map.fromList cstrs) of
                                     Just (cdef@CstrDef{})   ->
                                         do
-                                            addIsConstructor v cdef
-                                            fieldVars <- if d > 1 then addFields v i (cid,cdef)
+                                            addIsConstructor v cid
+                                            fieldVars <- if d > 1 then addFields v i cid
                                                                   else return []
                                             sat2 <- getSolvable
                                             case sat2 of
@@ -261,8 +261,8 @@ randomSolve p ((v,d):xs) i =
         choicesFunc v' partA partB Cstr{cstrId = cId} =
             do
                 let cond = Map.member cId (Map.fromList partA)
-                lA <- mapM (\(_,CstrDef isC _) -> valExprToString $ cstrFunc isC [cstrVar v']) partA
-                lB <- mapM (\(_,CstrDef isC _) -> valExprToString $ cstrFunc isC [cstrVar v']) partB
+                lA <- mapM (\(cid,CstrDef{}) -> valExprToString $ cstrIsCstr cid (cstrVar v')) partA
+                lB <- mapM (\(cid,CstrDef{}) -> valExprToString $ cstrIsCstr cid (cstrVar v')) partB
                 return [ (cond, case lA of
                                     [a] -> a
                                     _   -> "(or " <> T.intercalate " " lA <> ") ")
@@ -306,14 +306,14 @@ lookupConstructors sid  =  do
      tdefs <- gets txsDefs
      return [(cstrid, cdef) | (cstrid@(CstrId _ _ _ sid'), cdef) <- Map.toList (cstrDefs tdefs), sid == sid']
 
-addIsConstructor :: (Variable v) => v -> CstrDef -> SMT ()
-addIsConstructor v (CstrDef isC _) = addAssertions [cstrFunc isC [cstrVar v]]
+addIsConstructor :: (Variable v) => v -> CstrId -> SMT ()
+addIsConstructor v cid = addAssertions [cstrIsCstr cid (cstrVar v)]
 
-addFields :: (Variable v) => v -> Int -> (CstrId, CstrDef) -> SMT [v]
-addFields v i (CstrId { cstrargs = args' }, CstrDef _ fs) = do
+addFields :: (Variable v) => v -> Int -> CstrId -> SMT [v]
+addFields v i cid@CstrId{ cstrargs = args' } = do
     let fieldVars = map (\(iNew,sNew) -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sNew) (zip [i .. ] args')
     addDeclarations fieldVars
-    let exprs = map (\(fieldSelector, fieldVar) -> cstrEqual (cstrVar fieldVar) (cstrFunc fieldSelector [cstrVar v])) (zip fs fieldVars)
+    let exprs = map (\(pos, fieldVar) -> cstrEqual (cstrVar fieldVar) (cstrAccess cid pos (cstrVar v))) (zip [0..] fieldVars)
     addAssertions exprs
     return fieldVars
 -- ----------------------------------------------------------------------------------------- --

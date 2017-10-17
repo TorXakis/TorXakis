@@ -7,8 +7,8 @@ See LICENSE at root directory of this repository.
 -- | Common definitions for benchmarks.
 module Benchmarks.Common (benchCommonDir, seedSetupCmdFile) where
 
-import           Examples.Paths
 import           Filesystem.Path
+import           Paths
 import           Prelude         hiding (FilePath)
 
 -- | Directory name of the common files for benchmarks.
@@ -16,4 +16,4 @@ benchCommonDir :: FilePath
 benchCommonDir = "Common"
 
 seedSetupCmdFile :: FilePath
-seedSetupCmdFile = txsCmdPathBench benchCommonDir "seedSetup"
+seedSetupCmdFile = txsCmdPath BenchTest benchCommonDir "seedSetup"

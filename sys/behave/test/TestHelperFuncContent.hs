@@ -116,7 +116,6 @@ identicalVExpr (view -> Vaccess cid1 p1 vexp1)  (view -> Vaccess cid2 p2 vexp2) 
 identicalVExpr (view -> Vconst c1)              (view -> Vconst c2)              = c1 == c2
 identicalVExpr (view -> Vvar v1)                (view -> Vvar v2)                = identicalVarId v1 v2
 identicalVExpr (view -> Vite vc1 vt1 ve1)       (view -> Vite vc2 vt2 ve2)       = identicalVExpr vc1 vc2 && identicalVExpr vt1 vt2 && identicalVExpr ve1 ve2
-identicalVExpr (view -> Venv map1 v1)           (view -> Venv map2 v2)           = identicalMap map1 map2 && identicalVExpr v1 v2
 identicalVExpr (view -> Vequal vl1 vr1)         (view -> Vequal vl2 vr2)         = identicalVExpr vl1 vl2  && identicalVExpr vr1 vr2
 identicalVExpr (view -> Vnot v1)                (view -> Vnot v2)                = identicalVExpr v1 v2
 identicalVExpr (view -> Vand vs1)               (view -> Vand vs2)               = identicalLists identicalVExpr (Set.toAscList vs1) (Set.toAscList vs2)
@@ -362,7 +361,10 @@ ite condition thenPart elsePart = FuncContent (cstrITE (vexpr condition) (vexpr 
 
 -- user must assert only variables are used as keys
 subst :: Map.Map FuncContent FuncContent -> FuncContent -> FuncContent
-subst mapFF content = FuncContent (cstrEnv (Map.fromList (map (\(FuncContent (view -> Vvar v), FuncContent y) -> (v,y)) (Map.toList mapFF))) (vexpr content))
+subst mapFF content = FuncContent (TxsDefs.subst (Map.fromList (map (\(FuncContent (view -> Vvar v), FuncContent y) -> (v,y)) (Map.toList mapFF)))
+                                                 (Map.empty :: Map.Map FuncId (FuncDef VarId))
+                                                 (vexpr content)
+                                  )
 
 functionCall :: FuncKey -> [FuncContent] -> FuncContent
 functionCall (FuncId "==" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId s sortId_Bool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
@@ -426,4 +428,4 @@ functionCall (FuncId "++" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl so
 functionCall (FuncId "strinre" _ [sl,sr] s) [l,r] | identicalSortId sl sortId_String && identicalSortId sr sortId_Regex && identicalSortId s sortId_Bool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrStrInRe (vexpr l) (vexpr r))
 
-functionCall funcKey args' = FuncContent (cstrFunc funcKey (map vexpr args'))
+functionCall funcKey args' = FuncContent (cstrFunc (Map.empty :: Map.Map FuncId (FuncDef VarId)) funcKey (map vexpr args'))

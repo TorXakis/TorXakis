@@ -17,7 +17,6 @@ import           ConstDefs
 import           CstrId
 import           FuncId
 import           SortId
-import           Sum
 import           ValExprDefs
 import           Variable
 import           VarId
@@ -65,7 +64,6 @@ sortOf' (view -> Vite _cond vexp1 vexp2)                =  -- if the LHS is an e
                                                              if sort' == sortIdError
                                                                then sortOf' vexp2
                                                                else sort'
-sortOf' (view -> Venv _ve vexp)                         =  sortOf' vexp
 sortOf' (view -> Vequal { })                            =  sortId_Bool
 sortOf' (view -> Vnot { })                              =  sortId_Bool
 sortOf' (view -> Vand { })                              =  sortId_Bool
@@ -80,6 +78,7 @@ sortOf' (view -> Vconcat { })                           =  sortId_String
 sortOf' (view -> Vstrinre { })                          =  sortId_Bool
 sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps)  =  fs
 sortOf' (view -> Vpredef{})                             = error "sortOf': Unexpected Ident with Vpredef"
+sortOf' (view -> Vany srt)                              =  srt
 sortOf' (view -> Verror _str)                           =  sortIdError
 sortOf' _                                               = error "sortOf': All items must be in view"
 

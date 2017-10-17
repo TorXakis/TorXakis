@@ -337,8 +337,7 @@ cmdVar args = do
        else do
          ((uid',vars'),e) <- lift $ lift $ catch
                                ( let p = TxsHappy.vardeclsParser
-                                           ( TxsAlex.Ctdefs tdefs
-                                           : TxsAlex.Csigs sigs
+                                           ( TxsAlex.Csigs sigs
                                            : TxsAlex.Cunid (uid + 1)
                                            : TxsAlex.txsLexer args
                                            )
@@ -382,8 +381,7 @@ cmdVal args = do
        else do
          ((uid',venv'),e) <- lift $ lift $ catch
                                ( let p = TxsHappy.valdefsParser
-                                           ( TxsAlex.Ctdefs tdefs
-                                           : TxsAlex.Csigs sigs
+                                           ( TxsAlex.Csigs sigs
                                            : TxsAlex.Cvarenv []
                                            : TxsAlex.Cunid (uid + 1)
                                            : TxsAlex.txsLexer args
@@ -423,8 +421,7 @@ cmdEval args = do
          vars         = IOS.locvars env
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.vexprParser
-                                        ( TxsAlex.Ctdefs   tdefs
-                                        : TxsAlex.Csigs    sigs
+                                        ( TxsAlex.Csigs    sigs
                                         : TxsAlex.Cvarenv (Map.keys vals ++ vars)
                                         : TxsAlex.Cunid   (uid + 1)
                                         : TxsAlex.txsLexer args
@@ -437,7 +434,7 @@ cmdEval args = do
                IFS.nack "EVAL" [ e ]
                cmdsIntpr
        else do modify $ \env' -> env' { IOS.uid = uid' }
-               walue <- lift $ TxsCore.txsEval (TxsDefs.cstrEnv vals vexp')
+               walue <- lift $ TxsCore.txsEval (TxsDefs.subst vals (TxsDefs.funcDefs tdefs) vexp')
                IFS.pack "EVAL" [ TxsShow.fshow walue ]
                cmdsIntpr
 
@@ -458,8 +455,7 @@ cmdSolve args kind = do
          vals         = IOS.locvals env
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.vexprParser
-                                       ( TxsAlex.Ctdefs tdefs
-                                       : TxsAlex.Csigs sigs
+                                       ( TxsAlex.Csigs sigs
                                        : TxsAlex.Cvarenv (Map.keys vals ++ vars)
                                        : TxsAlex.Cunid (uid + 1)
                                        : TxsAlex.txsLexer args
@@ -472,7 +468,7 @@ cmdSolve args kind = do
                IFS.nack cmd [ e ]
                cmdsIntpr
        else do modify $ \env' -> env' { IOS.uid = uid' }
-               sols  <- lift $ solver (TxsDefs.cstrEnv vals vexp')
+               sols  <- lift $ solver (TxsDefs.subst vals (TxsDefs.funcDefs tdefs) vexp')
                IFS.pack cmd [ TxsShow.fshow sols ]
                cmdsIntpr
 
@@ -967,8 +963,7 @@ readAction chids args = do
      vals             <- gets IOS.locvals
      ((uid',offs'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.prefoffsParser
-                                    ( TxsAlex.Ctdefs   tdefs
-                                    : TxsAlex.Csigs    sigs
+                                    ( TxsAlex.Csigs    sigs
                                     : TxsAlex.Cchanenv chids
                                     : TxsAlex.Cvarenv  (Map.keys vals)
                                     : TxsAlex.Cunid    (uid + 1)

@@ -276,17 +276,6 @@ valexprToSMT mapI (view -> Vdivide t n) = "(div " <> valexprToSMT mapI t <> " " 
 valexprToSMT mapI (view -> Vmodulo t n) = "(mod " <> valexprToSMT mapI t <> " "  <> valexprToSMT mapI n <> ")"
 valexprToSMT mapI (view -> Vgez v)      = "(<= 0 " <> valexprToSMT mapI v <> ")"
 
-valexprToSMT mapI (view -> Venv venv expr)  =
-    if Map.null venv
-        then valexprToSMT mapI expr
-        else "(let (" <> Map.foldrWithKey keyValuePairVarIdVExprToSMT "" venv <> ") "
-              <> valexprToSMT mapI expr <> ")"
-    where
-        keyValuePairVarIdVExprToSMT :: (Variable v) => v -> ValExpr v -> Text -> Text
-        keyValuePairVarIdVExprToSMT v expr' s = s <> "(" <> valexprToSMT mapI (cstrVar v) <> " " <> valexprToSMT mapI expr' <> ")"
--- alternative implementation:
---    valexprToSMT mapI (substVEnv venv vexpr)
-
 valexprToSMT mapI (view -> Vequal expr1 expr2)  =
     "(= " <> valexprToSMT mapI expr1 <> " " <> valexprToSMT mapI expr2 <> ")"
 

@@ -259,8 +259,6 @@ instance PShow v => PShow (ValExpr v) where
          " THEN " ++ pshow vexp1 ++
          " ELSE " ++ pshow vexp2 ++
          " FI )"
-    pshow (view -> Venv ve vexp)
-      =  " ( LET " ++ pshow ve ++ " IN " ++ pshow vexp ++ " NI )"
     pshow (view -> Vequal vexp1 vexp2)
       =  "( " ++ pshow vexp1 ++ " == " ++ pshow vexp2 ++ " )"
     pshow (view -> Vnot vexp)
@@ -268,25 +266,25 @@ instance PShow v => PShow (ValExpr v) where
     pshow (view -> Vand vexps)
       =  "(" ++ Utils.join " /\\ " (map pshow (Set.toList vexps)) ++ " )"
     pshow (view -> Vsum s)
-      = showList (FMX.toOccurList s)
+      = listShow (FMX.toOccurList s)
       where
-        showList []     = "0"
-        showList [x]    = showElem x
-        showList (x:xs) = "( " ++ showElem x ++ " + " ++ showList xs ++ " )"
+        listShow []     = "0"
+        listShow [x]    = elemShow x
+        listShow (x:xs) = "( " ++ elemShow x ++ " + " ++ listShow xs ++ " )"
 
-        showElem (t,1)  = pshow t
-        showElem (t,-1) = "(- " ++ pshow t ++ " )"
-        showElem (t,p)  = "( " ++ show p ++ " * " ++ pshow t ++ " )"
+        elemShow (t,1)  = pshow t
+        elemShow (t,-1) = "(- " ++ pshow t ++ " )"
+        elemShow (t,p)  = "( " ++ show p ++ " * " ++ pshow t ++ " )"
     pshow (view -> Vproduct s)
-      = showList (FMX.toDistinctAscOccurListT s)
+      = listShow (FMX.toDistinctAscOccurListT s)
       where
-        showList []     = "1"
-        showList [x]    = showElem x
-        showList (x:xs) = "( " ++ showElem x ++ " * " ++ showList xs ++ " )"
+        listShow []     = "1"
+        listShow [x]    = elemShow x
+        listShow (x:xs) = "( " ++ elemShow x ++ " * " ++ listShow xs ++ " )"
 
-        showElem (t,1)  = pshow t
-        showElem (t,p)  | p > 0 = "( " ++ pshow t ++ " ^ "  ++ show p ++ " )"   -- TODO: TorXakis doesn't support Power (not even x ^ integer)
-        showElem (_,p)  = error ("TxsShow - pshow VExpr - illegal power: p = " ++ show p)
+        elemShow (t,1)  = pshow t
+        elemShow (t,p)  | p > 0 = "( " ++ pshow t ++ " ^ "  ++ show p ++ " )"   -- TODO: TorXakis doesn't support Power (not even x ^ integer)
+        elemShow (_,p)  = error ("TxsShow - pshow VExpr - illegal power: p = " ++ show p)
 
     pshow (view -> Vdivide t n)
       =  "(" ++ pshow t ++ " / " ++ pshow n ++ " )"
@@ -311,6 +309,8 @@ instance PShow v => PShow (ValExpr v) where
                _     -> error "TXS: Operator should have one or two arguments"
            else
              pshow fid ++ "( " ++ Utils.join ", " (map pshow vexps) ++ " )"
+    pshow (view -> Vany srt)
+        = "(ANY :: " ++ pshow srt ++ ")"
     pshow (view -> Verror s)
         = "ERROR " ++ show s
     pshow _
@@ -525,6 +525,10 @@ instance PShow t => PShow (Maybe t)
 instance PShow a => PShow (SumTerm a) where
     pshow (SumTerm a) = pshow a
     fshow (SumTerm a) = fshow a
+
+instance PShow a => PShow (ProductTerm a) where
+    pshow (ProductTerm a) = pshow a
+    fshow (ProductTerm a) = fshow a
 
 instance PShow Bool
 

@@ -67,12 +67,13 @@ expand chsets (BNbexpr we (ActionPref (ActOffer offs cnd) bexp))  =  do
                               | (vid, wal) <- Map.toList we
                               , vid `Map.notMember` ivenv
                               ]
-     exclams' <- sequence [ liftP2 ( ivar, Eval.eval (cstrEnv (Map.map cstrConst we) vexp) )
+     tds <- gets IOB.tdefs
+     exclams' <- sequence [ liftP2 ( ivar, Eval.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
                           | (ivar, vexp) <- exclams
                           ]
      return [ CTpref { ctoffers  = ctoffs
                      , cthidvars = []
-                     , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (walSubst we' cnd)
+                     , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (funcDefs tds) (subst (Map.map cstrConst we') (funcDefs tds) cnd)
                                                          : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- exclams' ]
                                                          )
                                            )
@@ -83,7 +84,8 @@ expand chsets (BNbexpr we (ActionPref (ActOffer offs cnd) bexp))  =  do
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (Guard c bexp))  = do
-    c' <- Eval.eval $ cstrEnv (Map.map cstrConst we) c
+    tds <- gets IOB.tdefs
+    c' <- Eval.eval $ subst (Map.map cstrConst we) (funcDefs tds) c
     case c' of
         Cbool True  -> expand chsets (BNbexpr we bexp)
         Cbool False -> return []
@@ -114,7 +116,8 @@ expand chsets (BNbexpr we (Enable bexp1 chanoffs bexp2))  =  do
           return $ Quest vid
 
      evalChanOffer we' (Exclam vexp)  =  do
-          wal <- Eval.eval $ cstrEnv (Map.map cstrConst we') vexp
+          tds <- gets IOB.tdefs
+          wal <- Eval.eval $ subst (Map.map cstrConst we') (funcDefs tds) vexp
           return $ Exclam (cstrConst wal)
 
 -- ----------------------------------------------------------------------------------------- --
@@ -134,7 +137,7 @@ expand chsets (BNbexpr we (ProcInst procid chans vexps))  =  do
      case Map.lookup procid (procDefs tdefs) of
        Just (ProcDef chids vids bexp)
          -> do let chanmap = Map.fromList (zip chids chans)
-               wals    <- mapM (Eval.eval . cstrEnv (Map.map cstrConst we)) vexps
+               wals  <- mapM (Eval.eval . subst (Map.map cstrConst we) (funcDefs tdefs) ) vexps
                let we' = Map.fromList (zip vids wals)
                expand chsets $ BNbexpr we' (relabel chanmap bexp)
        _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
@@ -149,55 +152,56 @@ expand chsets (BNbexpr we (Hide chans bexp))  =
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (ValueEnv venv bexp))  =  do
-     we'  <- sequence [ liftP2 ( vid, Eval.eval (cstrEnv (Map.map cstrConst we) vexp) )
-                      | (vid, vexp) <- Map.toList venv
-                      ]
-     let we'' = Map.fromList we'
-     expand chsets $ BNbexpr (combineWEnv we we'') bexp
+    tds   <- gets IOB.tdefs
+    we'  <- sequence [ liftP2 ( vid, Eval.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
+                     | (vid, vexp) <- Map.toList venv
+                     ]
+    let we'' = Map.fromList we'
+    expand chsets $ BNbexpr (combineWEnv we we'') bexp
 
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (StAut ini ve trns))  =  do
-     let envwals = Map.fromList [ (vid, wal)
-                                | (vid, wal) <- Map.toList we
-                                , vid `Map.notMember` ve
-                                ]
-     vewals  <- sequence [ liftP2 ( vid, Eval.eval (cstrEnv (Map.map cstrConst we) vexp) )
-                         | (vid, vexp) <- Map.toList ve
-                         ]
-     let stswals = Map.fromList vewals
-     mapM (expandTrans chsets envwals stswals) [ tr | tr <- trns, from tr == ini ]
-
-  where
-
-     expandTrans :: [ Set.Set TxsDefs.ChanId ] -> WEnv VarId -> WEnv VarId -> Trans
-                    -> IOB.IOB CTBranch
-     expandTrans chsets' envwals stswals (Trans _ (ActOffer offs cnd) update' to')  =  do
-          (ctoffs, quests, exclams) <- expandOffers chsets' offs
-          let we'   = envwals `combineWEnv` stswals
-              ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
-          exclams' <- sequence [ liftP2 ( ivar, Eval.eval (cstrEnv (Map.map cstrConst we') vexp) )
-                               | (ivar, vexp) <- exclams
+    let envwals = Map.fromList [ (vid, wal)
+                               | (vid, wal) <- Map.toList we
+                               , vid `Map.notMember` ve
                                ]
-          let we'' = Map.fromList [ (vid, wal)
-                                  | (vid, wal) <- Map.toList we'
-                                  , vid `Map.notMember` ivenv
-                                  ]
-              envwals' = Map.fromList [ (vid, wal)
-                                      | (vid, wal) <- Map.toList envwals
-                                      , vid `Map.notMember` ivenv
-                                      ]
-              ve' = Map.fromList [ (vid, walSubst we'' vexp)
-                                 | (vid, vexp) <- Map.toList update'
+    tds   <- gets IOB.tdefs
+    vewals  <- sequence [ liftP2 ( vid, Eval.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
+                        | (vid, vexp) <- Map.toList ve
+                        ]
+    let stswals = Map.fromList vewals
+    mapM (expandTrans chsets envwals stswals) [ tr | tr <- trns, from tr == ini ]
+  where
+    expandTrans :: [ Set.Set TxsDefs.ChanId ] -> WEnv VarId -> WEnv VarId -> Trans
+                   -> IOB.IOB CTBranch
+    expandTrans chsets' envwals stswals (Trans _ (ActOffer offs cnd) update' to')  =  do
+         (ctoffs, quests, exclams) <- expandOffers chsets' offs
+         let we'   = envwals `combineWEnv` stswals
+             ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
+         tds <- gets IOB.tdefs
+         exclams' <- sequence [ liftP2 ( ivar, Eval.eval (subst (Map.map cstrConst we') (funcDefs tds) vexp) )
+                              | (ivar, vexp) <- exclams
+                              ]
+         let we'' = Map.fromList [ (vid, wal)
+                                 | (vid, wal) <- Map.toList we'
+                                 , vid `Map.notMember` ivenv
                                  ]
-          return CTpref { ctoffers  = ctoffs
-                        , cthidvars = []
-                        , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (walSubst we'' cnd)
-                                                            : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- exclams' ]
-                                                            )
-                                              )
-                        , ctnext    = BNbexpr (envwals',ivenv) (StAut to' ve' trns)
-                        }
+             envwals' = Map.fromList [ (vid, wal)
+                                     | (vid, wal) <- Map.toList envwals
+                                     , vid `Map.notMember` ivenv
+                                     ]
+             ve' = Map.fromList [ (vid, subst (Map.map cstrConst we'') (funcDefs tds) vexp)
+                                | (vid, vexp) <- Map.toList update'
+                                ]
+         return CTpref { ctoffers  = ctoffs
+                       , cthidvars = []
+                       , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (funcDefs tds) (subst (Map.map cstrConst we'') (funcDefs tds) cnd)
+                                                           : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- exclams' ]
+                                                           )
+                                             )
+                       , ctnext    = BNbexpr (envwals',ivenv) (StAut to' ve' trns)
+                       }
 
 -- ----------------------------------------------------------------------------------------- --
 -- expand  :  for genuine BNode
@@ -420,25 +424,25 @@ expandChanOffer chid (choff,pos)  =  do
 
 
 hideCTBranch :: [ Set.Set TxsDefs.ChanId ] -> [ChanId] -> CTBranch -> IOB.IOB CTBranch
-hideCTBranch _ chans (CTpref ctoffs hidvars pred' next)  =  do
-     let (hctoffs,vctoffs) = Set.partition ((`elem` chans).ctchan) ctoffs
-     let hvars             = concatMap ctchoffers (Set.toList hctoffs)
-     hvarlist              <- sequence [ liftP2 (hvar, uniHVar hvar) | hvar <- hvars ]
-     let hvarmap           = Map.fromList hvarlist
-     let unihvars          = Map.elems hvarmap
-     let hvarenv           = Map.map cstrVar hvarmap
-     let ctnext1'          = let chans' = chans \\\ [chanId_Exit]
-                               in if null chans'
-                                    then next
-                                    else BNhide chans' next
-     return CTpref { ctoffers  = vctoffs
-                   , cthidvars = hidvars ++ unihvars
-                   , ctpred    = partSubst hvarenv pred'
-                   , ctnext    = let f (we, ivenv) = (we, Map.map (partSubst hvarenv) ivenv)
+hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
+    tds <- gets IOB.tdefs
+    let (hctoffs,vctoffs) = Set.partition ((`elem` chans).ctchan) ctoffs
+        hvars             = concatMap ctchoffers (Set.toList hctoffs)
+    hvarlist              <- sequence [ liftP2 (hvar, uniHVar hvar) | hvar <- hvars ]
+    let hvarmap           = Map.fromList hvarlist
+        unihvars          = Map.elems hvarmap
+        hvarenv           = Map.map cstrVar hvarmap
+        ctnext1'          = let chans' = chans \\\ [chanId_Exit]
+                              in if null chans'
+                                   then next
+                                   else BNhide chans' next
+    return CTpref { ctoffers  = vctoffs
+                  , cthidvars = hidvars ++ unihvars
+                  , ctpred    = subst hvarenv (funcDefs tds) pred'
+                  , ctnext    = let f (we, ivenv) = (we, Map.map (subst hvarenv (funcDefs tds)) ivenv)
                                   in fmap f ctnext1'
-                   }
-
-
+                  }
+    
 -- ----------------------------------------------------------------------------------------- --
 -- relabel
 
