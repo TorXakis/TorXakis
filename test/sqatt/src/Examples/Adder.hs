@@ -28,7 +28,7 @@ test0 = TxsExample
            adderJavaPath
            ["7890"]
          )
-  , expectedResult = Pass
+  , expectedResult = Fail
   }
 
 test1 :: TxsExample
