@@ -1094,8 +1094,8 @@ lpeTransform procinst procdefs
                                        vexps
                                    , procdef
                                    )
-              __           -> error $ "LPE transformation: undefined process instantiation\n"
-       _ -> error $ "LPE transformation: only defined for process instantiation\n"
+              __           -> error "LPE transformation: undefined process instantiation\n"
+       _ -> error "LPE transformation: only defined for process instantiation\n"
 
 
 -- ----------------------------------------------------------------------------------------- --
