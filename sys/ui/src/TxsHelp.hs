@@ -89,6 +89,9 @@ helptxt  =
   "menu [in|out|purp] [<state>]          : give the [in|out] menu of actions of [current] <state>\n"++
   "\n"++
   "--------------------------------\n"++
+  "ncomp                                 : test purpose generation via `N-Complete'-algorithm\n"++
+  "lpe                                   : lpe transformation (Linear Process Equation)\n"++
+  "--------------------------------\n"++
   "systart <name> <command>              : start external system <command> with internal <name>\n"++
   "systop  <name>                        : stop external command with internal <name>\n"++
   "<command> '$<' <file>                 : read command arguments from <file>\n"++

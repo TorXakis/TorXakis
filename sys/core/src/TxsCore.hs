@@ -101,6 +101,9 @@ module TxsCore
 
   -- * test purpose for N complete coverage
 , txsNComp
+
+  -- * LPE transformation
+, txsLPE
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -817,7 +820,7 @@ txsShow :: String               -- ^ kind of item to be shown.
         -> String               -- ^ name of item to be shown.
                                 --   Valid items are "tdefs", "state",
                                 --   "model", "mapper", "purp", "modeldef" <name>,
-                                --   "mapperdef" <name>, and "purpdef" <name>.
+                                --   "mapperdef" <name>, "purpdef" <name>
         -> IOC.IOC String
 txsShow item name  = do
      envc  <- gets IOC.state
@@ -837,7 +840,7 @@ txsShow item name  = do
                                                      (TxsDefs.purpDefs tdefs)
               ("procdef"  ,nm) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
                                                      (TxsDefs.procDefs tdefs)
-              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown" ]
+              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown 1" ]
                       return "\n"
       _ -> case (item,name) of
               ("tdefs"    ,"") -> return $ show (IOC.tdefs envc)
@@ -853,7 +856,7 @@ txsShow item name  = do
                                                      (TxsDefs.purpDefs tdefs)
               ("procdef"  ,nm) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
                                                      (TxsDefs.procDefs tdefs)
-              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown" ]
+              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown 2" ]
                       return "\n"
 
   where
@@ -990,6 +993,7 @@ txsMapper act  =  do
                         "Mapping only allowed in Testing or Simulating mode" ]
          return act
 
+
 -- | NComplete derivation by Petra van den Bos.
 txsNComp :: TxsDefs.ModelDef                   -- ^ model. Currently only
                                                -- `StautDef` without data is
@@ -1014,7 +1018,7 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
                        case maypurp of
                          Just purpdef -> do
                            unid <- gets IOC.unid
-                           let purpid = TxsDefs.PurpId ("Purp_" <> pnm) (unid + 1)
+                           let purpid = TxsDefs.PurpId ("PURP_"<>pnm) (unid+1)
                                tdefs' = tdefs
                                  { TxsDefs.purpDefs = Map.insert
                                                       purpid purpdef (TxsDefs.purpDefs tdefs)
@@ -1032,6 +1036,69 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
                           $ "N-Complete should be used after initialization, before testing, "
                             ++ "with a STAUTDEF with data-less, singleton channels" ]
             return Nothing
+
+-- ----------------------------------------------------------------------------------------- --
+
+-- | LPE transformation by Carsten Ruetz
+txsLPE :: TxsDefs.BExpr                     -- ^ behaviour expression, to be transformed;
+                                            --   shall be a process instantiation.
+       -> IOC.IOC (Maybe TxsDefs.BExpr)     -- ^ transformed process instantiation
+txsLPE bexpr  =  do
+  envc <- get
+  case (IOC.state envc, bexpr) of
+    (IOC.Initing {IOC.tdefs = tdefs}, TxsDefs.ProcInst procid chans vexps)
+      -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
+           Just (TxsDefs.ProcDef chids vids bexp)
+             -> case lpeTransform bexpr (TxsDefs.procDefs tdefs) of
+                  Just (procinst'@(TxsDefs.ProcInst procid' chans' vexps'), procdef')
+                    -> case Map.lookup procid' (TxsDefs.procDefs tdefs) of
+                         Nothing
+                           -> do let tdefs' = tdefs
+                                       { TxsDefs.procDefs = Map.insert procid' procdef'
+                                                                       (TxsDefs.procDefs tdefs)
+                                       }
+                                 IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs' }
+                                 return $ Just procinst'
+                         _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                               "LPE: generated process id already exists" ]
+                                 return Nothing
+
+                  _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                        "LPE: transformation failed" ]
+                          return Nothing
+           _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                 "LPE: process in process instantiation not defined" ]
+                   return Nothing
+    _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                          "LPE: only allowed when initialized and with process instantiation" ]
+            return Nothing
+
+-- ----------------------------------------------------------------------------------------- --
+-- temp function for lpe                                                                     --
+
+-- | placeholder for LPE tranformation
+lpeTransform :: TxsDefs.BExpr              -- ^ behaviour expression to be transformed,
+                                           --   assumed to be a process instantiation
+             -> Map.Map TxsDefs.ProcId TxsDefs.ProcDef  -- ^ context of process definitions
+                                                        --   in which process instantiation
+                                                        --   is assumed to be defined
+             -> Maybe (TxsDefs.BExpr, TxsDefs.ProcDef)  -- ^ transformed process instantiation
+                                                        --   with its LPE definition
+lpeTransform procinst procdefs
+  =  case procinst of
+       TxsDefs.ProcInst procid@(TxsDefs.ProcId nm uid chids vars ext) chans vexps
+         -> case Map.lookup procid procdefs of
+              Just procdef -> Just ( TxsDefs.ProcInst
+                                       (TxsDefs.ProcId ("LPE_"<>nm) uid chids vars ext)
+                                       chans
+                                       vexps
+                                   , procdef
+                                   )
+              __           -> error "LPE transformation: undefined process instantiation\n"
+       _ -> error "LPE transformation: only defined for process instantiation\n"
+
+
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
+

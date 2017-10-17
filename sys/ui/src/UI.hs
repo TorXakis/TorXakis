@@ -172,6 +172,7 @@ cmdIntpr cmdname args  =
          ; "menu"          -> cmdMenu       args
          ; "map"           -> cmdMap        args
          ; "ncomp"         -> cmdNComp      args
+         ; "lpe"           -> cmdLPE        args
 -- ---------------------------------------------------------------------------------- system --
          ; "systart"       -> cmdSyStart    args
          ; "systop"        -> cmdSyStop     args
@@ -445,6 +446,13 @@ cmdMap args  =  do
 cmdNComp :: String -> UIO ()
 cmdNComp args  =  do
      doCmd "NCOMP" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdLPE :: String -> UIO ()
+cmdLPE args  =  do
+     doCmd "LPE" args
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
