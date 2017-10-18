@@ -8,35 +8,38 @@ version: pre-0.5.0.{build}.{branch}
     # - /^hotfix.*$/
 
 init:
-- set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
-- pwd
-- SET CACHE_DIR=C:\TorXakis\.cache && SET CACHE_DIR_REL=.cache
-- echo CACHE_DIR %CACHE_DIR%
+- ps: $env:Path += ";C:\Program Files\Git\mingw64\bin"
+- ps: pwd
+- ps: $CACHE_DIR = "C:\TorXakis\.cache"
+- ps: $CACHE_DIR_REL = ".cache"
+- ps: $CACHE_DIR
+- ps: $env:STACK_ROOT
 
 install:
-- mkdir .cache
-- ls -A
+- ps: ls
+- ps: mkdir .cache
+- ps: ls
 # obtain the stack executable
 - curl -ostack.zip -L --insecure http://www.stackage.org/stack/windows-i386
-- 7z x stack.zip %CACHE_DIR%/stack.exe
+- ps: 7z x stack.zip "${CACHE_DIR}\stack.exe"
 # obtain the cvc4 executable
 - curl -L -O https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.5/cvc4-1.5-win32-opt.exe
-- ls -A %CACHE_DIR%
-- mkdir %CACHE_DIR%/bin
-- mv cvc4-1.5-win32-opt.exe %CACHE_DIR%/bin/cvc4.exe
+- ps: ls $CACHE_DIR
+- ps: mkdir $CACHE_DIR\bin
+- ps: mv cvc4-1.5-win32-opt.exe $CACHE_DIR\bin\cvc4.exe
 # install z3
 - curl -L -oz3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.5.1/z3-4.5.1.059bad909ad4-x64-win_20170905.zip
-- mkdir %CACHE_DIR%\z3
-- 7z x z3.zip %CACHE_DIR%\z3\
+- ps: mkdir $CACHE_DIR\z3
+- ps: 7z x z3.zip $CACHE_DIR\z3\
 
 before_build:
-- set PATH=%CACHE_DIR%;%CACHE_DIR%\z3\bin;%CACHE_DIR%\bin;%PATH%
+- ps: $env:Path += ";${CACHE_DIR};${CACHE_DIR}\z3\bin;${CACHE_DIR}\bin"
 
 build_script:
 # Suppress output from stack setup, as there is a lot and it's not necessary.
 # stack setup --no-terminal > nul
 # stack build --only-snapshot --no-terminal
-- stack install --install-ghc --test --fast --stack-yaml stack.yaml --work-dir %CACHE_DIR_REL%\.stack-work --stack-root %STACK_ROOT%
+- ps: stack install --install-ghc --test --fast --stack-yaml stack.yaml --work-dir $CACHE_DIR_REL\.stack-work --stack-root $env:STACK_ROOT
 # --allow-different-user
 
 # after_build:
@@ -59,8 +62,8 @@ cache:
 # - '%LocalAppData%\NuGet\v3-cache' # NuGet v3
 
 test_script:
-- cd test/sqatt
-- stack test --work-dir %CACHE_DIR_REL%\test\.stack_work --stack-root %STACK_ROOT% && cd -
+- ps: cd test/sqatt
+- ps: stack test --work-dir $CACHE_DIR_REL\test\.stack_work --stack-root $env:STACK_ROOT && cd -
 # --allow-different-user
 
 # after_test:
