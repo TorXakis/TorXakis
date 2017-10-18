@@ -67,7 +67,7 @@ cache:
 
 test_script:
 - ps: pushd test/sqatt
-- stack build --test --work-dir %CACHE_DIR_REL%\test\.stack_work --stack-root %STACK_ROOT%
+- stack test --install-ghc --work-dir %CACHE_DIR_REL%\test\.stack_work --stack-root %STACK_ROOT%
 - ps: popd
 
 # after_test:
