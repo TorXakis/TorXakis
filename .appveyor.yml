@@ -11,6 +11,7 @@ init:
 - ps: $env:Path += ";C:\Program Files\Git\mingw64\bin"
 - ps: $CACHE_DIR = "C:\TorXakis\.cache"
 - ps: $CACHE_DIR_REL = ".cache"
+- ps: $env:Path += ";${CACHE_DIR};${CACHE_DIR}\z3\bin;C:\Users\appveyor\AppData\Roaming\local\bin"
 
 install:
 - ps: if (-not (Test-Path ".cache")) { mkdir .cache} else { Write-Host ".cache found." }
@@ -42,7 +43,6 @@ install:
 - ps: ls $CACHE_DIR
 
 before_build:
-- ps: $env:Path += ";${CACHE_DIR};${CACHE_DIR}\z3\bin;C:\Users\appveyor\AppData\Roaming\local\bin"
 - ps: $env:CACHE_DIR = $CACHE_DIR
 - ps: $env:CACHE_DIR_REL = $CACHE_DIR_REL
 
