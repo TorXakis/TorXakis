@@ -18,12 +18,12 @@ install:
 - ls -A
 # obtain the stack executable
 - curl -ostack.zip -L --insecure http://www.stackage.org/stack/windows-i386
-- 7z x stack.zip %CACHE_DIR%\stack.exe
+- 7z x stack.zip %CACHE_DIR%/stack.exe
 # obtain the cvc4 executable
 - curl -L -O https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.5/cvc4-1.5-win32-opt.exe
 - ls -A %CACHE_DIR%
-- mkdir %CACHE_DIR%\bin
-- mv cvc4-1.5-win32-opt.exe %CACHE_DIR%\bin\cvc4.exe
+- mkdir %CACHE_DIR%/bin
+- mv cvc4-1.5-win32-opt.exe %CACHE_DIR%/bin/cvc4.exe
 # install z3
 - curl -L -oz3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.5.1/z3-4.5.1.059bad909ad4-x64-win_20170905.zip
 - mkdir %CACHE_DIR%\z3
