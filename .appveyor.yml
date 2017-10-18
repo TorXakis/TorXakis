@@ -13,29 +13,39 @@ init:
 - ps: $CACHE_DIR_REL = ".cache"
 
 install:
-- ps: mkdir .cache
+- ps: if (-not (Test-Path ".cache")) { mkdir .cache} else { Write-Host ".cache found." }
 # obtain the stack executable
-- ps: curl -OutFile stack.zip http://www.stackage.org/stack/windows-i386
-- ps: 7z x $("-o" + $CACHE_DIR) stack.zip stack.exe 
-# obtain the cvc4 executable
-- curl -L -O https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.5/cvc4-1.5-win32-opt.exe
-- ps: mkdir $CACHE_DIR\bin
-- ps: mv cvc4-1.5-win32-opt.exe $CACHE_DIR\bin\cvc4.exe
-# install z3
-- curl -L -oz3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.5.1/z3-4.5.1.059bad909ad4-x64-win_20170905.zip
-- ps: mkdir $CACHE_DIR\z3
-- ps: 7z x $("-o${CACHE_DIR}\z3\") z3.zip
+- ps: if (-not (Test-Path ".$CACHE_DIR\stack.exe")) {
+        curl -OutFile stack.zip http://www.stackage.org/stack/windows-i386;
+        7z x $("-o" + $CACHE_DIR) stack.zip stack.exe;
+    } else {
+        Write-Host "stack.exe found.";
+    }
+- stack --version
+- ps: if (-not (Test-Path "$CACHE_DIR\cvc4.exe")) {
+        # obtain the cvc4 executable
+        curl -OutFile $("$CACHE_DIR\cvc4.exe") https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.5/cvc4-1.5-win32-opt.exe;
+    } else {
+        Write-Host "cvc4.exe found.";
+    }
+- ps: if (-not (Test-Path "$CACHE_DIR\z3")) {
+        # install z3
+        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.5.1/z3-4.5.1.059bad909ad4-x64-win_20170905.zip
+        mkdir $CACHE_DIR\z3
+        7z x $("-o${CACHE_DIR}\z3\") z3.zip
+    } else {
+        Write-Host "z3 folder found.";
+    }
 - ps: ls $CACHE_DIR
 
 before_build:
-- ps: $env:Path += ";${CACHE_DIR};${CACHE_DIR}\z3\bin;${CACHE_DIR}\bin;C:\Users\appveyor\AppData\Roaming\local\bin"
+- ps: $env:Path += ";${CACHE_DIR};${CACHE_DIR}\z3\bin;C:\Users\appveyor\AppData\Roaming\local\bin"
 - ps: $env:CACHE_DIR = $CACHE_DIR
 - ps: $env:CACHE_DIR_REL = $CACHE_DIR_REL
 
 build_script:
 - stack setup --no-terminal > nul
 - stack install --install-ghc --test --fast --work-dir %CACHE_DIR_REL%\.stack-work --stack-root %STACK_ROOT%
-# --allow-different-user
 
 # after_build:
 # - 
@@ -51,16 +61,12 @@ environment:
 cache:
 - .cache
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
-# - projectA\libs
-# - node_modules                    # local npm modules
-# - '%LocalAppData%\NuGet\Cache'    # NuGet < v3
-# - '%LocalAppData%\NuGet\v3-cache' # NuGet v3
+
 
 test_script:
 - ps: pushd test/sqatt
 - stack setup --no-terminal > nul
 - stack test --work-dir %CACHE_DIR_REL%\test\.stack_work --stack-root %STACK_ROOT%
-# --allow-different-user
 - ps: popd
 
 # after_test:
