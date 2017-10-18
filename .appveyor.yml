@@ -29,10 +29,12 @@ install:
 
 before_build:
 - ps: $env:Path += ";${CACHE_DIR};${CACHE_DIR}\z3\bin;${CACHE_DIR}\bin"
+- ps: $env:CACHE_DIR = $CACHE_DIR
+- ps: $env:CACHE_DIR_REL = $CACHE_DIR_REL
 
 build_script:
-- stack setup
-- ps: stack install --install-ghc --test --fast --work-dir $CACHE_DIR_REL\.stack-work --stack-root $env:STACK_ROOT
+- stack setup --no-terminal
+- stack install --install-ghc --test --fast --work-dir %CACHE_DIR_REL%\.stack-work --stack-root %STACK_ROOT%
 # --allow-different-user
 
 # after_build:
@@ -55,9 +57,9 @@ cache:
 # - '%LocalAppData%\NuGet\v3-cache' # NuGet v3
 
 test_script:
-- ps: cd test/sqatt
-- ps: stack test --work-dir $CACHE_DIR_REL\test\.stack_work --stack-root $env:STACK_ROOT
+- ps: pushd test/sqatt
+- stack test --work-dir %CACHE_DIR_REL%\test\.stack_work --stack-root %STACK_ROOT%
 # --allow-different-user
-- ps: cd -
+- ps: popd
 
 # after_test:
