@@ -29,10 +29,9 @@ install:
 
 before_build:
 - ps: $env:Path += ";${CACHE_DIR};${CACHE_DIR}\z3\bin;${CACHE_DIR}\bin"
-- ps: (Get-WmiObject Win32_OperatingSystem).OSArchitecture
-- ps: $Env:PROCESSOR_ARCHITECTURE
 
 build_script:
+- ps: stack setup
 - ps: stack install --install-ghc --test --fast --work-dir $CACHE_DIR_REL\.stack-work --stack-root $env:STACK_ROOT
 # --allow-different-user
 
