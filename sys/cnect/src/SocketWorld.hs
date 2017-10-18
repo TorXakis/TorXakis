@@ -108,6 +108,7 @@ stopSockWorld w  =  do
 openSockets :: IOS.IOS ()
 openSockets  =  do
      txsmodus <- gets IOS.modus
+     IfServer.mack [ "X1: " ++ (show txsmodus) ]
      cnectdef <- case txsmodus of
                  { IOS.Tested  cdef -> return $ Just cdef
                  ; IOS.Simuled cdef -> return $ Just cdef
