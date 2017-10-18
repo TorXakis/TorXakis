@@ -461,10 +461,8 @@ logDirOfExample topLogDir exmpName = (</> (fromString . toFSSafeStr) exmpName) <
 
 dumpToScreen :: FilePath -> Shell ()
 dumpToScreen logDir = do
-  liftIO $ print logDir
-  view (ls logDir)
   file <- ls logDir
-  liftIO $ putStrLn $ "==>" ++ encodeString file
+  liftIO $ putStrLn $ "==> " ++ encodeString file
   stdout $ "> " <> input file
   printf "--- EOF ---\n\n"
 
