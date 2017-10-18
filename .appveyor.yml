@@ -9,36 +9,30 @@ version: pre-0.5.0.{build}.{branch}
 
 init:
 - ps: $env:Path += ";C:\Program Files\Git\mingw64\bin"
-- ps: pwd
 - ps: $CACHE_DIR = "C:\TorXakis\.cache"
 - ps: $CACHE_DIR_REL = ".cache"
-- ps: $CACHE_DIR
-- ps: $env:STACK_ROOT
 
 install:
-- ps: ls
 - ps: mkdir .cache
-- ps: ls
 # obtain the stack executable
-- curl -ostack.zip -L --insecure http://www.stackage.org/stack/windows-i386
-- ps: 7z x stack.zip "${CACHE_DIR}\stack.exe"
+- ps: curl -OutFile stack.zip http://www.stackage.org/stack/windows-i386
+- ps: 7z x $("-o" + $CACHE_DIR) stack.zip stack.exe 
 # obtain the cvc4 executable
 - curl -L -O https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.5/cvc4-1.5-win32-opt.exe
-- ps: ls $CACHE_DIR
 - ps: mkdir $CACHE_DIR\bin
 - ps: mv cvc4-1.5-win32-opt.exe $CACHE_DIR\bin\cvc4.exe
 # install z3
 - curl -L -oz3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.5.1/z3-4.5.1.059bad909ad4-x64-win_20170905.zip
 - ps: mkdir $CACHE_DIR\z3
-- ps: 7z x z3.zip $CACHE_DIR\z3\
+- ps: 7z x $("-o${CACHE_DIR}\z3\") z3.zip
+- ps: ls $CACHE_DIR
 
-before_build:
+# before_build:
 - ps: $env:Path += ";${CACHE_DIR};${CACHE_DIR}\z3\bin;${CACHE_DIR}\bin"
+- ps: (Get-WmiObject Win32_OperatingSystem).OSArchitecture
+- ps: $Env:PROCESSOR_ARCHITECTURE
 
-build_script:
-# Suppress output from stack setup, as there is a lot and it's not necessary.
-# stack setup --no-terminal > nul
-# stack build --only-snapshot --no-terminal
+# build_script:
 - ps: stack install --install-ghc --test --fast --stack-yaml stack.yaml --work-dir $CACHE_DIR_REL\.stack-work --stack-root $env:STACK_ROOT
 # --allow-different-user
 
@@ -63,7 +57,8 @@ cache:
 
 test_script:
 - ps: cd test/sqatt
-- ps: stack test --work-dir $CACHE_DIR_REL\test\.stack_work --stack-root $env:STACK_ROOT && cd -
+- ps: stack test --work-dir $CACHE_DIR_REL\test\.stack_work --stack-root $env:STACK_ROOT
 # --allow-different-user
+- ps: cd -
 
 # after_test:
