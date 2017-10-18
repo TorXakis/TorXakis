@@ -18,8 +18,8 @@ install:
 # obtain the stack executable
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\stack.exe")) {
-        curl -OutFile stack.zip http://www.stackage.org/stack/windows-i386;
-        7z x $("-o" + $CACHE_DIR) stack.zip stack.exe;
+        curl -OutFile stack.zip http://www.stackage.org/stack/windows-i386
+        7z x $("-o" + $CACHE_DIR) stack.zip stack.exe
     } else {
         Write-Host "stack.exe found.";
     }
@@ -27,7 +27,7 @@ install:
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\cvc4.exe")) {
         # obtain the cvc4 executable
-        curl -OutFile $("$CACHE_DIR\cvc4.exe") https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.5/cvc4-1.5-win32-opt.exe;
+        curl -OutFile $("$CACHE_DIR\cvc4.exe") https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.5/cvc4-1.5-win32-opt.exe
     } else {
         Write-Host "cvc4.exe found.";
     }
