@@ -17,6 +17,7 @@
 out/
 TAGS
 *.swp
+.vscode
 
 # SemaphoreCI cache folders
 .semaphore-cache
