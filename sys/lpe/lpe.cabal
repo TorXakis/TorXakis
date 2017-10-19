@@ -15,8 +15,10 @@ library
   hs-source-dirs:       src
 
   exposed-modules:      PreGNF
+                      , GNF
+                      , TranslatedProcDefs
 
-  other-modules:        
+  other-modules:        LPEHelpers  
 
   ghc-options:        -Werror -O2 -optc-O3 -optc-ffast-math
   
@@ -26,10 +28,11 @@ library
                       , text
 
                       , defs
+                      , behave
                       
   default-language:     Haskell2010
   
-test-suite preGNF-test
+test-suite lpe-test
   type:                 exitcode-stdio-1.0
   hs-source-dirs:       src
                       , test
@@ -38,6 +41,12 @@ test-suite preGNF-test
   
   other-modules:        TestPreGNF
                       , PreGNF
+                      , TestGNF
+                      , GNF
+                      , TestLPEHelpers
+                      , LPEHelpers
+
+                      , TranslatedProcDefs
 
                       
 
@@ -51,5 +60,6 @@ test-suite preGNF-test
                      , MissingH
                      
                      , defs
+                     , behave
                      
   default-language:    Haskell2010

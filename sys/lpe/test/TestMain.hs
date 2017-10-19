@@ -9,11 +9,14 @@ import System.Exit
 import Test.HUnit
 
 import TestPreGNF
-
+import TestGNF
+import TestLPEHelpers
 
 testLPEList :: Test
 testLPEList = TestList
-    [ TestLabel "preGNF"          testPreGNFList
+    [   TestLabel "preGNF"          testPreGNFList
+       , TestLabel "GNF"             testGNFList
+      , TestLabel "LPEHelpers"      testLPEHelpersList
     ]
 
 main :: IO ()

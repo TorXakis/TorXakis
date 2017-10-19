@@ -17,11 +17,11 @@ library
 
   exposed-modules:      Behave
                       , Expand
+                      , Subst
 
   other-modules:        Equiv
                       , Next
                       , Reduce
-                      , Subst
                       , Unfold
 
   ghc-options:        -Werror -O2 -optc-O3 -optc-ffast-math
