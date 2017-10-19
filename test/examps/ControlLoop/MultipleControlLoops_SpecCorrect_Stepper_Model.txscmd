@@ -1,0 +1,4 @@
+stepper SpecCorrect
+step 100
+trace proc $> testTrace.log
+exit

@@ -10,5 +10,6 @@ import           Test.Hspec
 
 main :: IO ()
 main = do
+    cd $ ".." </> ".."
     logDir <- mkLogDir "explore-model-test-"
     hspec $ parallel $ testExampleSets logDir allTests

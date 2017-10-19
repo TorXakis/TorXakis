@@ -1,0 +1,4 @@
+stepper Model
+step 500
+trace proc $> testTrace.log
+exit

@@ -19,7 +19,7 @@ multipleControlLoopTxsPath = txsFilePath exampDir "MultipleControlLoops"
 
 test0 :: TxsExample
 test0 = TxsExample
-  { exampleName = "Stepper"
+  { exampleName = "Stepper 500"
   , txsModelFiles = [txsFilePath exampDir "ControlLoopModel"]
   , txsCmdsFiles = [txsCmdPath exampDir "ControlLoop_Stepper_Model"]
   , txsServerArgs = []
@@ -29,7 +29,7 @@ test0 = TxsExample
 
 test1 :: TxsExample
 test1 = TxsExample
-  { exampleName = "Spec Produce"
+  { exampleName = "Spec Produce 100"
   , txsModelFiles = [multipleControlLoopTxsPath]
   , txsCmdsFiles = [txsCmdPath exampDir "MultipleControlLoops_SpecProduce_Stepper_Model"]
   , txsServerArgs = []
@@ -39,7 +39,7 @@ test1 = TxsExample
 
 test2 :: TxsExample
 test2 = TxsExample
-  { exampleName = "Spec Measure"
+  { exampleName = "Spec Measure 100"
   , txsModelFiles = [multipleControlLoopTxsPath]
   , txsCmdsFiles = [txsCmdPath exampDir "MultipleControlLoops_SpecMeasure_Stepper_Model"]
   , txsServerArgs = []
@@ -49,7 +49,7 @@ test2 = TxsExample
 
 test3 :: TxsExample
 test3 = TxsExample
-  { exampleName = "Spec Correct"
+  { exampleName = "Spec Correct 100"
   , txsModelFiles = [multipleControlLoopTxsPath]
   , txsCmdsFiles = [txsCmdPath exampDir "MultipleControlLoops_SpecCorrect_Stepper_Model"]
   , txsServerArgs = []
@@ -59,7 +59,7 @@ test3 = TxsExample
 
 test4 :: TxsExample
 test4 = TxsExample
-  { exampleName = "Multiple Loops Stepper"
+  { exampleName = "Multiple Loops Stepper 30"
   , txsModelFiles = [multipleControlLoopTxsPath]
   , txsCmdsFiles = [txsCmdPath exampDir "MultipleControlLoops_Spec_Stepper_Model"]
   , txsServerArgs = []
