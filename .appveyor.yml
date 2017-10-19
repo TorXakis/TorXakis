@@ -40,7 +40,6 @@ install:
     } else {
         Write-Host "z3 folder found.";
     }
-- ps: ls $CACHE_DIR
 
 before_build:
 - ps: $env:CACHE_DIR = $CACHE_DIR
@@ -63,7 +62,6 @@ environment:
 cache:
 - .cache
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
-
 
 test_script:
 - ps: pushd test/sqatt
