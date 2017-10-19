@@ -61,6 +61,7 @@ environment:
 
 cache:
 - .cache
+- '%LOCALAPPDATA%\Programs\stack'
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
 
 test_script:
