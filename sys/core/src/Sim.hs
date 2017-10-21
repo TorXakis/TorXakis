@@ -74,7 +74,12 @@ simA depth step =
 
 simAfroW :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simAfroW depth step = do
-     getFroW <- gets (IOC.getfrow . IOC.state)
+     cState  <- gets IOC.state
+     let getFroW = case cState of
+                     IOC.Testing { IOC.eworld = eWorld } -> IOC.getFroW eWorld
+                     _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                           "simAfroW while not in Simuling mode" ]
+                             return TxsDDefs.ActQui
      act     <- getFroW                                      -- get next output or quiescence
      mact    <- mapperMap act                                -- apply mapper
      case mact of
@@ -89,7 +94,12 @@ simAfroW depth step = do
 
 simAtoW :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simAtoW depth step = do
-     putToW  <- gets (IOC.puttow . IOC.state)
+     cState  <- gets IOC.state
+     putToW  <- case cState of
+                  IOC.Simuling { IOC.eworld = eWorld } -> return $ IOC.putToW eWorld
+                  _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                        "simAtoW while not in Simuling mode" ]
+                          return $ \act -> return act
      mayAct  <- ranMenuOut
      case mayAct of
        Just act -> do                                        -- proposed real output or qui

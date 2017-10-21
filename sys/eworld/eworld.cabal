@@ -1,6 +1,6 @@
-name:                   cnect
+name:                   eworld
 version:                0.2.1.0
-synopsis:               Connections for TorXakis
+synopsis:               External World Definitions for TorXakis
 license:                BSD3
 license-file:           license.txt
 author:                 Jan Tretmans
@@ -15,23 +15,15 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:        
-                        SocketWorld
-  other-modules:        
-                        EnDecode
-                      
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
-  
+  exposed-modules:
+                        EWorld
+
+  ghc-options:         -O2 -optc-O3 -optc-ffast-math
+
   build-depends:        base
                       , containers
-                      , network
                       , mtl
-                      , process
-                      , text
-                      
-                      , core
-                      , coreenv
+
                       , defs
-                      , serverenv
                       
   default-language:     Haskell2010
