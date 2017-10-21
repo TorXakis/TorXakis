@@ -262,9 +262,9 @@ testConditionalInt = testTemplateValue conditionalIntDef [conditionalIntSortId] 
     where
         check :: [Const] -> SMT()
         check [value] = case value of
-            Cstr x []       | x == absentCstrId     -> lift $ assertBool "expected pattern" True
-            Cstr x [Cint _] | x == presentCstrId    -> lift $ assertBool "expected pattern" True
-            _                                                   -> lift $ assertBool "unexpected pattern" False
+            Cstr x []       | x == absentCstrId  -> lift $ assertBool "expected pattern" True
+            Cstr x [Cint _] | x == presentCstrId -> lift $ assertBool "expected pattern" True
+            _                                    -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"
 
 
@@ -272,7 +272,7 @@ testConditionalIntIsAbsent :: SMT()
 testConditionalIntIsAbsent = testTemplateValue conditionalIntDef [conditionalIntSortId] createAssertions check
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrFunc isAbsentCstrFunc [cstrVar v]]
+        createAssertions [v] = [cstrIsCstr absentCstrId (cstrVar v)]
         createAssertions _   = error "One variable in problem"
 
         check :: [Const] -> SMT()
@@ -286,7 +286,7 @@ testConditionalIntIsPresent :: SMT()
 testConditionalIntIsPresent = testTemplateValue conditionalIntDef [conditionalIntSortId] createAssertions check
     where
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v] = [cstrFunc isPresentCstrFunc [cstrVar v]]
+        createAssertions [v] = [cstrIsCstr presentCstrId (cstrVar v)]
         createAssertions _   = error "One variable in problem"
 
         check :: [Const] -> SMT()
@@ -303,9 +303,9 @@ testConditionalIntPresentValue = testTemplateValue conditionalIntDef [conditiona
         boundary = 4
 
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [v]    = [ cstrFunc isPresentCstrFunc [cstrVar v]
-                                  , cstrITE (cstrFunc isPresentCstrFunc [cstrVar v])
-                                            (cstrGT (cstrFunc valuePresentCstrFunc [cstrVar v]) (cstrConst (Cint boundary)) )
+        createAssertions [v]    = [ cstrIsCstr presentCstrId (cstrVar v)
+                                  , cstrITE (cstrIsCstr presentCstrId (cstrVar v))
+                                            (cstrGT (cstrAccess presentCstrId 0 (cstrVar v)) (cstrConst (Cint boundary)) )
                                             (cstrConst (Cbool True))
                                   ]
         createAssertions _   = error "One variable in problem"
@@ -390,8 +390,8 @@ testFunctions = do
         const2 = cstrConst (Cint 3) :: VExpr
 
         createAssertions :: [VarId] -> [VExpr]
-        createAssertions [b1,b2,i]    = [ cstrFunc fid1 [cstrVar b1, cstrVar b2]
-                                        , cstrEqual (cstrVar i) (cstrFunc fid2 [])
+        createAssertions [b1,b2,i]    = [ cstrFunc (Map.empty :: Map.Map FuncId (FuncDef VarId)) fid1 [cstrVar b1, cstrVar b2]
+                                        , cstrEqual (cstrVar i) (cstrFunc (Map.empty :: Map.Map FuncId (FuncDef VarId)) fid2 [])
                                         ]
         createAssertions _   = error "Three variables in problem"
 

@@ -19,7 +19,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-8.19
+resolver: lts-9.7
 ghc-variant: integersimple
 
 # User packages to be built.
@@ -44,13 +44,15 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- text-1.2.2.1
+- text-1.2.2.2
+- hexpat-0.20.13
 
 # Override default flag values for local packages and extra-deps
 flags: 
   text: 
     integer-simple: true
-
+  hexpat:
+    bundle: true
 # Extra package databases containing global packages
 extra-package-dbs: []
 

@@ -71,9 +71,9 @@ testViteSingleton = TestCase $ do
 
 testVite :: Test
 testVite = TestCase $ do
-    let thenExpr = createVconst (Cint 3)
-    let elseExpr = createVconst (Cint 12)
-    let sortId = SortId "Pierre" 67
+    let thenExpr = createVconst (Cint 33)
+    let elseExpr = createVconst (Cint 123)
+    let sortId = SortId "Jan" 67
     let var1Id = VarId "v1" 1234 sortId
     let var2Id = VarId "v2" 1235 sortId
     let conds = createVand (Set.fromList [ createVequal (createVconst (Cint 56)) (createVvar var1Id)

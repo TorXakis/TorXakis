@@ -170,6 +170,7 @@ import Data.Monoid
     QSTEP         { Tqstep            pos }
     ERROR         { Terror            pos }
     REGEX         { Tregex            pos }
+    ANY           { Tany              pos }
     True          { Tbool             posbool True }
     False         { Tbool             posbool  False }
     "->"          { Tarrow            pos }
@@ -694,14 +695,13 @@ FuncDefs        -- :: { [ (Ident,TxsDef) ] }
 
 ExFuncDef       -- :: { ( Int, TxsDef ) }
                 -- top-level function definition for external use with multiple parsers
-                -- attrs inh : TDEFS : TorXakis definitions environment
-                --           : SIGS  : Signatures
+                -- attrs inh : SIGS  : Signatures
                 --           : UNID  : unique node identification
                 -- constrs   : defined function shall have unique function name 
-              : TDEFS SIGS UNID FuncDef
-                {  $4.inhNodeUid   = $3
-                ;  $4.inhSigs      = Sigs.uniqueCombine $4.synSigs $2
-                ;  $$ = ( $4.synMaxUid, TxsDefs.fromList [$4] )
+              : SIGS UNID FuncDef
+                { $3.inhSigs      = $1
+                ; $3.inhNodeUid   = $2
+                ; $$ = ( $3.synMaxUid, TxsDefs.fromList [$3] )
                 }
                 
 FuncDef         -- :: { (Ident,TxsDef) }
@@ -727,7 +727,7 @@ FuncDef         -- :: { (Ident,TxsDef) }
                 ;  $5.inhSigs      = $$.inhSigs
                 ;  $5.inhVarSigs   = $2
                 ;  $5.inhSolvSort  = Just $3
-                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature (map varsort $2) $3) ( cstrFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3) ) ) ) }
+                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature (map varsort $2) $3) ( cstrFunc (Map.empty::Map.Map FuncId (FuncDef VarId)) (FuncId $1 $$.inhNodeUid (map varsort $2) $3) )  ) ) }
                 ;  $$ = ( IdFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3), 
                           DefFunc (FuncDef $2 $5) )
                 }
@@ -741,7 +741,7 @@ FuncDef         -- :: { (Ident,TxsDef) }
                 ;  $5.inhSigs      = $$.inhSigs
                 ;  $5.inhVarSigs   = $2
                 ;  $5.inhSolvSort  = Just $3
-                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature (map varsort $2) $3) ( cstrFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3) ) ) ) }
+                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature (map varsort $2) $3) ( cstrFunc (Map.empty::Map.Map FuncId (FuncDef VarId)) (FuncId $1 $$.inhNodeUid (map varsort $2) $3) ) ) ) }
                 ;  $$ = ( IdFunc (FuncId $1 $$.inhNodeUid (map varsort $2) $3), 
                           DefFunc (FuncDef $2 $5) )
                 ;  where if (length $2) == 1 || (length $2) == 2 then () else
@@ -798,14 +798,13 @@ ConstDefs       -- :: { [ (Ident,TxsDef) ] }
 
 ExConstDef      -- :: { ( Int, TxsDef ) }
                 -- top-level constant definition for external use with multiple parsers
-                -- attrs inh : TDEFS : TorXakis definitions environment
-                --           : SIGS  : Signatures
+                -- attrs inh : SIGS  : Signatures
                 --           : UNID  : unique node identification
                 -- constrs   : defined constant shall have unique function name 
-              : TDEFS SIGS UNID ConstDef
-                {  $4.inhNodeUid   = $3
-                ;  $4.inhSigs      = Sigs.uniqueCombine $4.synSigs $2
-                ;  $$ = ( $4.synMaxUid, TxsDefs.fromList [$4] )
+              : SIGS UNID ConstDef
+                {  $3.inhSigs      = $1
+                ;  $3.inhNodeUid   = $2
+                ;  $$ = ( $3.synMaxUid, TxsDefs.fromList [$3] )
                 }
 
 ConstDef        -- :: { (Ident,TxsDef) }
@@ -827,7 +826,7 @@ ConstDef        -- :: { (Ident,TxsDef) }
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $4.inhSigs      = $$.inhSigs
                 ;  $4.inhSolvSort  = Just $2
-                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature [] $2) ( cstrFunc (FuncId $1 $$.inhNodeUid [] $2) ) ) ) }
+                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature [] $2) ( cstrFunc (Map.empty::Map.Map FuncId (FuncDef VarId)) (FuncId $1 $$.inhNodeUid [] $2) ) ) ) }
                 ;  $$ = ( IdFunc (FuncId $1 $$.inhNodeUid [] $2), DefFunc (FuncDef [] $4 ) )
                 }
 
@@ -1659,15 +1658,14 @@ ChannelDeclList -- :: { [ChanId] }
 
 ExChannelDecls  -- :: { ( Int, [ChanId] ) }
                 -- definition of (a) formal channel(s) with its sort signature for external use
-                -- attrs inh : TDEFS : TorXakis definitions environment
-                --           : SIGS  : Signatures
+                -- attrs inh : SIGS  : Signatures
                 --           : UNID  : unique node identification
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: [VEnv]: locally defined value definitions
-              : TDEFS SIGS UNID ChannelDecls
-                {  $4.inhNodeUid   = $3
-                ;  $4.inhSigs      = Sigs.uniqueCombine $4.synSigs $2
-                ;  $$ = ( $4.synMaxUid, $4 )
+              : SIGS UNID ChannelDecls
+                {  $3.inhSigs      = $1
+                ;  $3.inhNodeUid   = $2
+                ;  $$ = ( $3.synMaxUid, $3 )
                 }
 
 ChannelDecls    -- :: { [ChanId] }
@@ -1713,15 +1711,14 @@ FormalVars      -- :: { [VarId] }
 
 ExVarDeclList   -- :: { ( Int, [VarId] ) }
                 -- definition of formal variables for external use with multiple parsers
-                -- attrs inh : TDEFS : TorXakis definitions environment
-                --           : SIGS  : Signatures
+                -- attrs inh : SIGS  : Signatures
                 --           : UNID  : unique node identification
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: [VEnv]: locally defined value definitions
-              : TDEFS SIGS UNID VarDeclList
-                {  $4.inhNodeUid   = $3
-                ;  $4.inhSigs      = $2
-                ;  $$ = ( $4.synMaxUid, $4 )
+              : SIGS UNID VarDeclList
+                {  $3.inhSigs      = $1
+                ;  $3.inhNodeUid   = $2
+                ;  $$ = ( $3.synMaxUid, $3 )
                 }
 
 VarDeclList     -- :: { [VarId] }
@@ -1779,16 +1776,15 @@ VarDecl         -- :: { VarId }
 
 ExBehaviourExpr -- :: { ( Int, BExpr ) }
                 -- top-level behaviour expression for external use with multiple parsers
-                -- attrs inh : TDEFS : TorXakis definitions environment
-                --           : VARENV: variable declarations environment
+                -- attrs inh : VARENV: variable declarations environment
                 --           : UNID  : unique node identification
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
-              : TDEFS SIGS CHANENV VARENV UNID BehaviourExpr
-                {  $6.inhNodeUid   = $5
-                ;  $6.inhSigs      = $2
-                ;  $6.inhChanSigs  = $3
-                ;  $6.inhVarSigs   = $4
-                ;  $$ = ( $6.synMaxUid, $6 )
+              : SIGS CHANENV VARENV UNID BehaviourExpr
+                {  $5.inhSigs      = $1
+                ;  $5.inhChanSigs  = $2
+                ;  $5.inhVarSigs   = $3
+                ;  $5.inhNodeUid   = $4
+                ;  $$ = ( $5.synMaxUid, $5 )
                 }
 
 BehaviourExpr   -- :: { BExpr }
@@ -2281,28 +2277,19 @@ ActualValExprs  -- :: { [VExpr] }
 
 ExPrefOfferList -- :: { ( Int, Set.Set Offer ) }
                 -- PrefOfferList for external use with multiple parsers
-                -- attrs inh : TDEFS : TorXakis definitions environment
+                -- attrs inh : SIGS
+                --           : CHANENV
                 --           : VARENV: variable declarations environment
                 --           : UNID  : unique node identification
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: Set.Set Offer: parsed offers
-                -- constrs   :  ChanOffers are of form 'Exclam VExpr'
--- it used to be...                
--- -              : TDEFS CHANENV VARENV UNID PrefOfferList
--- -                {  $5.inhNodeUid   = $4
--- -                ;  $5.inhSigs      = Sigs.empty { sort = [ sid | IdSort sid@(SortId nm u)     <- TxsDefs.keys $1 ]
--- -                                                , cstr = [ cid | IdCstr cid@(CstrId nm u a s) <- TxsDefs.keys $1 ]
--- -                                                , func = [ fid | IdFunc fid@(FuncId nm u a s) <- TxsDefs.keys $1 ]
--- -                                                }
--- -                ;  $5.inhChanSigs  = $2
--- -                ;  $5.inhVarSigs   = $3
--- -                ;  $$ = ( $5.synMaxUid, $5 )                
-              : TDEFS SIGS CHANENV VARENV UNID PrefOfferList
-                {  $6.inhNodeUid   = $5
-                ;  $6.inhSigs      = $2
-                ;  $6.inhChanSigs  = $3
-                ;  $6.inhVarSigs   = $4
-                ;  $$ = ( $6.synMaxUid, $6 )
+                -- constrs   :  ChanOffers are of form 'Exclam VExpr'               
+              : SIGS CHANENV VARENV UNID PrefOfferList
+                {  $5.inhSigs      = $1
+                ;  $5.inhChanSigs  = $2
+                ;  $5.inhVarSigs   = $3
+                ;  $5.inhNodeUid   = $4
+                ;  $$ = ( $5.synMaxUid, $5 )
                 }
 
 PrefOfferList   -- :: { Set.Set Offer }
@@ -2633,17 +2620,17 @@ ChannelOffer    -- :: { [ChanOffer] }
 
 ExValExpr       -- :: { ( Int, VExpr ) }
                 -- top-level value expression for external use with multiple parsers
-                -- attrs inh : TDEFS : TorXakis definitions environment
+                -- attrs inh : SIGS : 
                 --           : VARENV: variable declarations environment
                 --           : UNID  : unique node identification
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: VExpr : VExpr parsed value expression
-              : TDEFS SIGS VARENV UNID ValExpr
-                {  $5.inhNodeUid   = $4
-                ;  $5.inhSigs      = $2
-                ;  $5.inhVarSigs   = $3
-                ;  $5.inhSolvSort  = Nothing
-                ;  $$ = ( $5.synMaxUid, $5 )
+              : SIGS VARENV UNID ValExpr
+                {  $4.inhSigs      = $1
+                ;  $4.inhVarSigs   = $2
+                ;  $4.inhSolvSort  = Nothing
+                ;  $4.inhNodeUid   = $3
+                ;  $$ = ( $4.synMaxUid, $4 )
                 }
 
 ValExpr         -- :: { VExpr }
@@ -2707,7 +2694,7 @@ ValExpr1        -- :: { VExpr }
                 ;  $4.inhVarSigs   = map (\(IdVar v) -> v ) $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $2.synVarSigs)
                 ;  $$.synExpdSort  = $4.synExpdSort 
                 ;  $4.inhSolvSort  = $$.inhSolvSort
-                ;  $$ = foldr cstrEnv $4 $2
+                ;  $$ = foldr (\x -> subst x (Map.empty :: Map.Map FuncId (FuncDef VarId)) ) $4 $2
                 }
               | IF NeValExprs THEN ValExpr1 ELSE ValExpr1 EndIf
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
@@ -3013,6 +3000,15 @@ ValExpr2        -- :: { VExpr }
                 ;  $2.inhSolvSort  = $$.inhSolvSort
                 ;  $$ = $2
                 }
+              | ANY
+                {  $$.synMaxUid    = $$.inhNodeUid
+                ;  $$.synExpdSort  = Map.elems (Sigs.sort $$.inhSigs)
+                ;  $$ = case $$.inhSolvSort of
+                        { Nothing  -> error $ "\nTXS0435: " ++
+                                              "Sort of ANY cannot be deduced\n"
+                        ; Just srt -> cstrAny srt
+                        }
+                }
               | ERROR string
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExpdSort  = Map.elems (Sigs.sort $$.inhSigs)
@@ -3122,16 +3118,16 @@ NeValueDefList  -- :: { [ VEnv ] }
 ExNeValueDefs   -- :: { ( Int, VEnv ) }
                 -- non-empty list of simultaneaous value definitions
                 -- for external use with multiple parsers
-                -- attrs inh : TDEFS : TorXakis definitions environment
+                -- attrs inh : SIGS 
                 --           : VARENV: variable declarations environment
                 --           : UNID  : unique node identification
                 -- attrs syn : $$: MaxUid: maximum uid in whole subtree
                 --           : $$: VEnv  : locally defined value definitions
-              : TDEFS SIGS VARENV UNID NeValueDefs
-                {  $5.inhNodeUid   = $4
-                ;  $5.inhSigs      = $2
-                ;  $5.inhVarSigs   = $3
-                ;  $$ = ( $5.synMaxUid, $5 )
+              : SIGS VARENV UNID NeValueDefs
+                {  $4.inhSigs      = $1
+                ;  $4.inhVarSigs   = $2
+                ;  $4.inhNodeUid   = $3
+                ;  $$ = ( $4.synMaxUid, $4 )
                 }
 
 NeValueDefs     -- :: { VEnv }

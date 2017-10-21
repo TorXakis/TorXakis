@@ -432,8 +432,7 @@ exampleInputFiles ex =
 
 -- | Execute a test.
 execTest :: Maybe FilePath -> TxsExample -> Test ()
-execTest mTopLogDir ex = do
-  let mLogDir = (</> (fromString . toFSSafeStr . exampleName) ex) <$> mTopLogDir
+execTest mLogDir ex = do
   for_ mLogDir mktree
   traverse_ pathMustExist (exampleInputFiles ex)
   runnableExample <- getRunnableExample
@@ -452,10 +451,22 @@ execTest mTopLogDir ex = do
 -- | Test a single example.
 testExample :: FilePath -> TxsExample -> Spec
 testExample logDir ex = it (exampleName ex) $ do
-  res <- runExceptT $ runTest $ execTest (Just logDir) ex
+  let mLogDir = logDirOfExample (Just logDir) (exampleName ex)
+  res <- runExceptT $ runTest $ execTest mLogDir ex
+  unless (isRight res) (sh $ dumpToScreen $ fromJust mLogDir)
   res `shouldBe` Right ()
 
--- | Test a list of examples.
+logDirOfExample :: Maybe FilePath -> String -> Maybe FilePath
+logDirOfExample topLogDir exmpName = (</> (fromString . toFSSafeStr) exmpName) <$> topLogDir
+
+dumpToScreen :: FilePath -> Shell ()
+dumpToScreen logDir = do
+  file <- ls logDir
+  liftIO $ putStrLn $ "==> " ++ encodeString file
+  stdout $ "> " <> input file
+  printf "--- EOF ---\n\n"
+
+  -- | Test a list of examples.
 testExamples :: FilePath -> [TxsExample] -> Spec
 testExamples logDir = traverse_ (testExample logDir)
 

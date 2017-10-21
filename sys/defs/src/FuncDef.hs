@@ -11,10 +11,9 @@ where
 import GHC.Generics (Generic)
 import Control.DeepSeq
 
-import VarId
 import ValExprDefs
 
-data  FuncDef        = FuncDef    [VarId] VExpr
+data  FuncDef v      = FuncDef    [v] (ValExpr v)
      deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 -- ----------------------------------------------------------------------------------------- --

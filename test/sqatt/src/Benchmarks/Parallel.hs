@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 module Benchmarks.Parallel (benchmarksSet) where
 
 import           Benchmarks.Common
-import           Examples.Paths
+import           Paths
 import           Prelude           hiding (FilePath)
 import           Sqatt
 
@@ -15,8 +15,8 @@ benchDir :: FilePath
 benchDir = "Parallel"
 
 modelFiles :: [FilePath]
-modelFiles = [ txsFilePathBench benchDir "Parallel"
-             , txsFilePathBench "Sequence" "SingleActionSequence"
+modelFiles = [ txsFilePath BenchTest benchDir "Parallel"
+             , txsFilePath BenchTest "Sequence" "SingleActionSequence"
              ]
 
 parallel4 :: TxsExample
@@ -24,7 +24,7 @@ parallel4 = TxsExample
     { exampleName = "4 parallel sequential-processes"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "Parallel4"
+                     , txsCmdPath BenchTest benchDir "Parallel4"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -36,7 +36,7 @@ parallelIStep4 = TxsExample
     { exampleName = "4 parallel sequential-processes, with internal step"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "Parallel4"
+                     , txsCmdPath BenchTest benchDir "Parallel4"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -49,7 +49,7 @@ parallelAlternate4 = TxsExample
     { exampleName = "4 parallel sequential-processes, with alternating actions"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "ParallelAlternate4"
+                     , txsCmdPath BenchTest benchDir "ParallelAlternate4"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -61,7 +61,7 @@ parallelMultiact4 = TxsExample
     { exampleName = "4 parallel sequential-processes, with multiple actions"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "ParallelMultiAct"
+                     , txsCmdPath BenchTest benchDir "ParallelMultiAct"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -73,7 +73,7 @@ parallelSync = TxsExample
     { exampleName = "convoluted parallel-synchronous model"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "ParallelSync"
+                     , txsCmdPath BenchTest benchDir "ParallelSync"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -85,7 +85,7 @@ parallelNested = TxsExample
     { exampleName = "4 parallel nested synchronizing sequences"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "ParallelNested"
+                     , txsCmdPath BenchTest benchDir "ParallelNested"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
