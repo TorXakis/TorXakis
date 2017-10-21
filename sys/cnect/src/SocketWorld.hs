@@ -17,12 +17,13 @@ module SocketWorld
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( startSockWorld   --
-, stopSockWorld    --
-, putSockWorld     --  :: IOS.EnvS -> Int -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
-                   --  try to output to world, or observe earlier input (no quiescence)
-, getSockWorld     --  :: IOS.EnvS -> Int -> IOC.IOC TxsDDefs.Action
-                   --  observe input from world on list of handles, or observe quiescence
+(
+-- startSockWorld   --
+-- stopSockWorld    --
+-- putSockWorld     --  :: IOS.EnvS -> Int -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
+                    --  try to output to world, or observe earlier input (no quiescence)
+-- getSockWorld     --  :: IOS.EnvS -> Int -> IOC.IOC TxsDDefs.Action
+                    --  observe input from world on list of handles, or observe quiescence
 )
 
 -- ----------------------------------------------------------------------------------------- --

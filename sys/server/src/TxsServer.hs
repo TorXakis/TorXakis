@@ -552,7 +552,8 @@ cmdSolve args kind = do
                          IFS.nack cmd [ e ]
                          cmdsIntpr
                  else do modify $ \envs' -> envs' { IOS.uid = uid' }
-                         sols  <- lift $ solver (TxsDefs.cstrEnv vals vexp')
+                         sols  <- lift $ solver (TxsDefs.subst vals
+                                                   (TxsDefs.funcDefs tdefs) vexp')
                          IFS.pack cmd [ TxsShow.fshow sols ]
                          cmdsIntpr
 
@@ -584,6 +585,7 @@ cmdTester args = do
                      ([modeldef],[cnectdef])
                            | isConsistentTester modeldef Nothing Nothing cnectdef
                        -> do modify $ \env -> env { IOS.modus = IOS.Tested cnectdef }
+                             envs <- get
                              envs' <- lift $ TxsCore.txsSetTest envs modeldef Nothing Nothing
                              put envs'
                              IFS.pack "TESTER" []
@@ -611,6 +613,7 @@ cmdTester args = do
                      ([modeldef],[mapperdef],[],[cnectdef])
                            | isConsistentTester modeldef (Just mapperdef) Nothing cnectdef
                        -> do modify $ \env -> env { IOS.modus = IOS.Tested cnectdef }
+                             envs <- get
                              envs' <- lift $ TxsCore.txsSetTest envs modeldef (Just mapperdef) Nothing
                              put envs'
                              IFS.pack "TESTER" []
@@ -618,6 +621,7 @@ cmdTester args = do
                      ([modeldef],[],[purpdef],[cnectdef])
                            | isConsistentTester modeldef Nothing (Just purpdef) cnectdef
                        -> do modify $ \env -> env { IOS.modus = IOS.Tested cnectdef }
+                             envs <- get
                              envs' <- lift $ TxsCore.txsSetTest envs modeldef Nothing (Just purpdef)
                              put envs'
                              IFS.pack "TESTER" [ ]
@@ -645,6 +649,7 @@ cmdTester args = do
                      ([modeldef],[mapperdef],[purpdef],[cnectdef])
                            | isConsistentTester modeldef (Just mapperdef) (Just purpdef) cnectdef
                        -> do modify $ \env -> env { IOS.modus = IOS.Tested cnectdef }
+                             envs <- get
                              envs' <- lift $ TxsCore.txsSetTest envs modeldef (Just mapperdef) (Just purpdef)
                              put envs'
                              IFS.pack "TESTER" [ ]
