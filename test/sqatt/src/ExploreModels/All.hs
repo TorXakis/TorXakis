@@ -7,7 +7,10 @@ See LICENSE at root directory of this repository.
 module ExploreModels.All (allTests) where
 
 import qualified ExploreModels.ControlLoop as ControlLoop
+import qualified ExploreModels.CustomersOrders as CustomersOrders
 import           Sqatt
 
 allTests :: [TxsExampleSet]
-allTests = [ ControlLoop.exampleSet ]
+allTests = [ ControlLoop.exampleSet
+           , CustomersOrders.exampleSet
+           ]
