@@ -38,8 +38,6 @@ module StdTDefs
 , funcId_dropWhile
 , funcId_dropWhileNot
 
-, funcId_strinre
-
 , equalHandler
 , notEqualHandler
 , cstrHandler
@@ -197,7 +195,7 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("dropWhile",    Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrPredef SSS funcId_dropWhile ) ] )
     , ("dropWhileNot", Map.fromList [ ( Signature [sortId_String,sortId_String] sortId_String, cstrPredef SSS funcId_dropWhileNot ) ] )
 
-    , ("strinre",   Map.fromList [ ( Signature [sortId_String,sortId_Regex] sortId_Bool, cstrPredef SSR funcId_strinre ) ] )
+    , ("strinre",   Map.fromList [ ( Signature [sortId_String,sortId_Regex] sortId_Bool, twoArgumentHandler cstrStrInRe ) ] )
 
     ] )
 
@@ -305,27 +303,12 @@ stdFuncDefsString'
 stdFuncDefsString :: [ ( Ident, TxsDef ) ]
 stdFuncDefsString = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsString'
 
--- * SSR :  Standard Sort Regex
-funcId_strinre    = FuncId "strinre"     611 [sortId_String, sortId_Regex]    sortId_Bool
-
-stdFuncDefsRegex' :: [ ( FuncId, FuncDef ) ]
-stdFuncDefsRegex'
-  =  [ ( funcId_strinre,  let { x = VarId "s" 643 sortId_String
-                              ; y = VarId "r" 644 sortId_Regex
-                              }
-                            in FuncDef [x,y] (cstrPredef SSR funcId_strinre [cstrVar x,cstrVar y]) )
-     ]
-
-stdFuncDefsRegex :: [ ( Ident, TxsDef ) ]
-stdFuncDefsRegex = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsRegex'
-
 -- * Combined TorXakis standard type definitions
 stdTDefs :: [ ( Ident, TxsDef ) ]
 stdTDefs =    stdSortDefs
            ++ stdFuncDefsBool
            ++ stdFuncDefsInt
            ++ stdFuncDefsString
-           ++ stdFuncDefsRegex
 
 -- * Standard channel identifiers
 chanId_Exit  = ChanId "EXIT"  901 []

@@ -300,7 +300,8 @@ instance PShow v => PShow (ValExpr v) where
       =  "at( " ++ pshow s ++ ", "++ pshow p ++ " )"
     pshow (view -> Vconcat vexps)
       =  "( " ++ Utils.join " ++ " (map pshow vexps) ++ " )"
-      
+    pshow (view -> Vstrinre s r)
+      =  "strinre( " ++ pshow s ++ ", "++ pshow r ++ " )"
     pshow (view -> Vpredef _ fid vexps)
       =  if isSpecialOp fid
            then

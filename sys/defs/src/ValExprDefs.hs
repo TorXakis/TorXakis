@@ -114,7 +114,6 @@ data PredefKind     = AST     -- Algebraic To String
                     | SSB     -- Standard Sort Bool
                     | SSI     -- Standard Sort Int
                     | SSS     -- Standard Sort String
-                    | SSR     -- Standard Sort Regex
      deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 

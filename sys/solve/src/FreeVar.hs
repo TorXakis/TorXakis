@@ -55,6 +55,7 @@ freeVars (view -> Vand vexps)              =  List.nub $ concatMap freeVars (Set
 freeVars (view -> Vlength vexp)            =  freeVars vexp
 freeVars (view -> Vat s p)                 =  List.nub $ freeVars s ++ freeVars p
 freeVars (view -> Vconcat vexps)           =  List.nub $ concatMap freeVars vexps
+freeVars (view -> Vstrinre s r)            =  List.nub $ freeVars s ++ freeVars r
 freeVars (view -> Vpredef _kd _fid vexps)  =  List.nub $ concatMap freeVars vexps
 freeVars (view -> Verror _str)             =  []
 freeVars _                                 = error "freeVars - Item not in view"

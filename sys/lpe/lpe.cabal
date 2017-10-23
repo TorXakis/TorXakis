@@ -16,6 +16,7 @@ library
 
   exposed-modules:      PreGNF
                       , GNF
+                      , LPE
                       , TranslatedProcDefs
 
   other-modules:        LPEHelpers  
@@ -43,6 +44,8 @@ test-suite lpe-test
                       , PreGNF
                       , TestGNF
                       , GNF
+                      , TestLPE
+                      , LPE
                       , TestLPEHelpers
                       , LPEHelpers
 

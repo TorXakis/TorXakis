@@ -27,15 +27,15 @@ test0 = TxsExample
   , expectedResult = Pass
   }
 
--- Disabled because of Model problem. See https://github.com/TorXakis/TorXakis/issues/217
--- test1 :: TxsExample
--- test1 = TxsExample
-  -- { exampleName = "Spec Produce"
-  -- , txsModelFiles = [multipleControlLoopTxsPath]
-  -- , txsCmdsFiles = [txsCmdPath exampDir "MultipleControlLoops_SpecProduce_Stepper"]
-  -- , sutExample = Nothing
-  -- , expectedResult = Pass
-  -- }
+test1 :: TxsExample
+test1 = TxsExample
+  { exampleName = "Spec Produce"
+  , txsModelFiles = [multipleControlLoopTxsPath]
+  , txsCmdsFiles = [txsCmdPath exampDir "MultipleControlLoops_SpecProduce_Stepper"]
+  , txsServerArgs = []
+  , sutExample = Nothing
+  , expectedResult = Pass
+  }
 
 test2 :: TxsExample
 test2 = TxsExample
@@ -69,7 +69,7 @@ test4 = TxsExample
 
 
 examples :: [TxsExample]
-examples = [test0, test2, test3, test4]
+examples = [test0, test1, test2, test3, test4]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Control Loop" examples

@@ -10,18 +10,20 @@ import Test.HUnit
 
 import TestPreGNF
 import TestGNF
+import TestLPE
 import TestLPEHelpers
 
-testLPEList :: Test
-testLPEList = TestList
-    [   TestLabel "preGNF"          testPreGNFList
+testList :: Test
+testList = TestList
+    [    TestLabel "preGNF"          testPreGNFList
        , TestLabel "GNF"             testGNFList
-      , TestLabel "LPEHelpers"      testLPEHelpersList
+       , TestLabel "LPE"             testLPEList
+       , TestLabel "LPEHelpers"      testLPEHelpersList
     ]
 
 main :: IO ()
 main = do
-    Counts  _c _t e f <- runTestTT testLPEList
+    Counts  _c _t e f <- runTestTT testList
     if 0 == e+f
         then exitSuccess
         else exitFailure
