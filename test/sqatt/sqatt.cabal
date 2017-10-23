@@ -44,6 +44,7 @@ library
                      , Integration.Any
                      , ExploreModels.ControlLoop
                      , ExploreModels.CustomersOrders
+                     , ExploreModels.DispatchProcess
   build-depends:       base >= 4.7 && < 5
                      , criterion
                      , hspec

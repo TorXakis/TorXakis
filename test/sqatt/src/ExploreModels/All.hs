@@ -8,9 +8,11 @@ module ExploreModels.All (allTests) where
 
 import qualified ExploreModels.ControlLoop as ControlLoop
 import qualified ExploreModels.CustomersOrders as CustomersOrders
+import qualified ExploreModels.DispatchProcess as DispatchProcess
 import           Sqatt
 
 allTests :: [TxsExampleSet]
 allTests = [ ControlLoop.exampleSet
            , CustomersOrders.exampleSet
+           , DispatchProcess.exampleSet
            ]
