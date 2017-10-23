@@ -1,4 +1,0 @@
-stepper TestPurpose
-step 10
-trace proc $> testTrace.log
-exit

@@ -33,26 +33,6 @@ ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 
-FUNCDEF inFirstQuadrant (p :: Point) :: Bool ::=
-    ( x(p) > 0 ) /\ ( y(p) > 0 ) 
-ENDDEF
-
-PROCDEF  testPurpose  [ In :: Point ]  (  ) ::=
-        In ? p [[ inFirstQuadrant(p) ]]
-    >-> testPurpose [In] ()
-ENDDEF
-
-MODELDEF  TestPurpose ::=
-    CHAN IN     In
-    CHAN OUT    Out
-
-    BEHAVIOUR   
-        allowedBehaviour [ In, Out ] ( )
-    |[In]| 
-        testPurpose[In]()
-ENDDEF
-
--- ----------------------------------------------------------------------------------------- --
 CNECTDEF  Sut ::=
         CLIENTSOCK
 

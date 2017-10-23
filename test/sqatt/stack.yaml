@@ -19,7 +19,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-9.6
+resolver: lts-9.7
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -63,7 +63,7 @@ extra-package-dbs: []
 #
 # Override the architecture used by stack, especially useful on Windows
 # arch: i386
-# arch: x86_64
+arch: x86_64
 #
 # Extra directories used by stack for building
 # extra-include-dirs: [/path/to/dir]

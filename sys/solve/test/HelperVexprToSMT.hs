@@ -7,6 +7,7 @@ See LICENSE at root directory of this repository.
 module HelperVexprToSMT
 
 where
+import qualified Data.Map          as Map
 import qualified Data.Set          as Set
 import           Data.String.Utils
 import           Data.Text         (Text)
@@ -17,7 +18,9 @@ import           StdTDefs
 import           Sum
 import           TxsDefs
 
+import           CstrId
 import           FuncId
+import           SortId
 import           VarId
 
 import           HelperToSMT
@@ -32,14 +35,14 @@ data  TXS2SMTVExprTest         =  TXS2SMTVExprTest  { input    :: VExpr
 toSMTVar :: VarId -> String
 toSMTVar v = T.unpack (VarId.name v) ++ "$$" ++ show (VarId.unid v)
 
-createIsConstructor :: FuncId -> [TXS2SMTVExprTest] -> TXS2SMTVExprTest
-createIsConstructor funcId ies =
-    TXS2SMTVExprTest (cstrFunc funcId (map input ies))
-                     ("(is-" ++ drop 2 (T.unpack (FuncId.name funcId)) ++ " " ++ join " " (map expected ies) ++ ")")
+createIsConstructor :: CstrId -> TXS2SMTVExprTest -> TXS2SMTVExprTest
+createIsConstructor cid ie =
+    TXS2SMTVExprTest (cstrIsCstr cid (input ie))
+                     ("(is-" ++ T.unpack (SortId.name (CstrId.cstrsort cid)) ++ "$" ++ T.unpack (CstrId.name cid) ++ " " ++ expected ie ++ ")")
 
 createVfunc :: FuncId -> [TXS2SMTVExprTest] -> TXS2SMTVExprTest
 createVfunc funcId ies =
-   TXS2SMTVExprTest (cstrFunc funcId (map input ies))
+   TXS2SMTVExprTest (cstrFunc (Map.empty :: Map.Map FuncId (FuncDef VarId)) funcId (map input ies))
               ("(" ++ T.unpack (FuncId.name funcId) ++ " " ++ join " " (map expected ies) ++ ")")
 
 createVsum :: [TXS2SMTVExprTest] -> TXS2SMTVExprTest

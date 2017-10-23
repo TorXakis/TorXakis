@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 module Benchmarks.Sequence (benchmarksSet) where
 
 import           Benchmarks.Common
-import           Examples.Paths
+import           Paths
 import           Prelude           hiding (FilePath)
 import           Sqatt
 
@@ -15,14 +15,14 @@ benchDir :: FilePath
 benchDir = "Sequence"
 
 modelFiles :: [FilePath]
-modelFiles = [txsFilePathBench benchDir "SingleActionSequence"]
+modelFiles = [txsFilePath BenchTest benchDir "SingleActionSequence"]
 
 do100Acts :: TxsExample
 do100Acts = TxsExample
     { exampleName = "100 actions"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "SingleActionSequence"
+                     , txsCmdPath BenchTest benchDir "SingleActionSequence"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -34,7 +34,7 @@ do100IActs = TxsExample
     { exampleName = "100 internal actions"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "SingleActionIStepSequence"
+                     , txsCmdPath BenchTest benchDir "SingleActionIStepSequence"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -46,7 +46,7 @@ do100DataActs = TxsExample
     { exampleName = "100 data actions"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "ForeverOutput4"
+                     , txsCmdPath BenchTest benchDir "ForeverOutput4"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -58,7 +58,7 @@ sequence10Ints = TxsExample
     { exampleName = "sequence with a 10 integer channel"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "Sequence10Ints"
+                     , txsCmdPath BenchTest benchDir "Sequence10Ints"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -70,7 +70,7 @@ sequence10IntsCvc4 = TxsExample
     { exampleName = "sequence with a 10 integer channel (cvc4)"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "Sequence10Ints"
+                     , txsCmdPath BenchTest benchDir "Sequence10Ints"
                      ]
     , txsServerArgs = ["--smt-solver", "cvc4"]
     , sutExample = Nothing
@@ -82,7 +82,7 @@ sequence10IntsTD = TxsExample
     { exampleName = "sequence with a 10 integer channel, using a custom type"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "Sequence10IntsTypeDef"
+                     , txsCmdPath BenchTest benchDir "Sequence10IntsTypeDef"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing

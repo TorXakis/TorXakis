@@ -78,13 +78,12 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
                  (Map.insert (IdFunc hd) "head"
                   (Map.insert (IdFunc tl) "tail"
                    (Map.insert (IdCstr nilId) "Nil"
-                    (Map.insert (IdFunc isNil) "is-Nil"
-                       (Map.fromList initialMapInstanceTxsToSmtlib)
-                 ))))))
+                     (Map.fromList initialMapInstanceTxsToSmtlib)
+                 )))))
 
     let varList = VarId "list" 645421 sortId_ListInt
     let varListIO = createVvar varList
-    let ve = createVite (createIsConstructor isNil [varListIO]) (createVconst (Cint 0)) (createVsum [createVconst (Cint 1), createVfunc lengthList [createVfunc tl [varListIO]]])
+    let ve = createVite (createIsConstructor nilId varListIO) (createVconst (Cint 0)) (createVsum [createVconst (Cint 1), createVfunc lengthList [createVfunc tl [varListIO]]])
 
     let (TXS2SMTFuncTest fDefs e) = createFunctionDefRecursive maps lengthList [varList] sortId_Int ve
 

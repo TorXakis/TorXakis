@@ -1,5 +1,0 @@
-param param_Sut_deltaTime 4000
-tester TestPurpose Sut
-test 6
-trace proc $> testTrace.log
-exit

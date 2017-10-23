@@ -26,11 +26,12 @@ test0 = TxsExample
 
 test1 :: TxsExample
 test1 = TxsExample
-  { exampleName = "Purpose Stepper Test"
-  , txsModelFiles = [txsFilePath exampDir "Point"]
-  , txsCmdsFiles = [txsCmdPath exampDir "Point_Purpose_Stepper"]
+  { exampleName = "First Quadrant Test Purpose"
+  , txsModelFiles = [ txsFilePath exampDir "Point"
+                    , txsFilePath exampDir "InFirstQuadrantTestPurpose" ]
+  , txsCmdsFiles = [txsCmdPath exampDir "Point_FirstQuadrant_Tester"]
   , txsServerArgs = []
-  , sutExample = Nothing
+  , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "Point_Simulator")
   , expectedResult = Pass
   }
 

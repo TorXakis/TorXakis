@@ -10,9 +10,6 @@
 # SMT Solver output
 *.smt2
 
-# Development Acceptance Test Report
-*.datr
-
 # IDE files and folders
 .settings
 .idea
@@ -20,6 +17,7 @@
 out/
 TAGS
 *.swp
+.vscode
 
 # SemaphoreCI cache folders
 .semaphore-cache

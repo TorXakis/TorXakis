@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 module Benchmarks.Hiding (benchmarksSet) where
 
 import           Benchmarks.Common
-import           Examples.Paths
+import           Paths
 import           Prelude           hiding (FilePath)
 import           Sqatt
 
@@ -15,16 +15,16 @@ benchDir :: FilePath
 benchDir = "Hiding"
 
 modelFiles :: [FilePath]
-modelFiles = [ txsFilePathBench benchDir "Hiding"
-             , txsFilePathBench "Sequence" "SingleActionSequence"
+modelFiles = [ txsFilePath BenchTest benchDir "Hiding"
+             , txsFilePath BenchTest "Sequence" "SingleActionSequence"
              ]
 
 alt4hide1 :: TxsExample
 alt4hide1 = TxsExample
-    { exampleName = "Alternate 4 hide 1 action"
+    { exampleName = "alternate 4 hide 1 action"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "Alternate4Hide1Act"
+                     , txsCmdPath BenchTest benchDir "Alternate4Hide1Act"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -33,10 +33,10 @@ alt4hide1 = TxsExample
 
 hideFirstSFA :: TxsExample
 hideFirstSFA = TxsExample
-    { exampleName = "Hide first of sync first alternate"
+    { exampleName = "hide first of sync first alternate"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "HideFirstSFA"
+                     , txsCmdPath BenchTest benchDir "HideFirstSFA"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -45,10 +45,10 @@ hideFirstSFA = TxsExample
 
 hideSecondSFA :: TxsExample
 hideSecondSFA = TxsExample
-    { exampleName = "Hide second of sync second alternate"
+    { exampleName = "hide second of sync second alternate"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "HideSecondSFA"
+                     , txsCmdPath BenchTest benchDir "HideSecondSFA"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -57,10 +57,10 @@ hideSecondSFA = TxsExample
 
 matchNoData :: TxsExample
 matchNoData = TxsExample
-    { exampleName = "Match"
+    { exampleName = "match"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "Match"
+                     , txsCmdPath BenchTest benchDir "Match"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing
@@ -69,10 +69,10 @@ matchNoData = TxsExample
 
 matchInt :: TxsExample
 matchInt = TxsExample
-    { exampleName = "Match Int"
+    { exampleName = "match Int"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
-                     , txsCmdPathBench benchDir "MatchInt"
+                     , txsCmdPath BenchTest benchDir "MatchInt"
                      ]
     , txsServerArgs = []
     , sutExample = Nothing

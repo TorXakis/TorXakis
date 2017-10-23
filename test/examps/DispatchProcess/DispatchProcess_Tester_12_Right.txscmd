@@ -1,5 +1,0 @@
-seed 20276
-tester ModelTraceRight Sut
-test 4
-trace proc $> testTrace.log
-exit

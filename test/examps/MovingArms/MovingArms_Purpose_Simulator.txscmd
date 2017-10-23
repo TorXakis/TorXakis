@@ -1,5 +1,0 @@
-param param_Sim_deltaTime 4000
-simulator TestPurpose Sim
-sim 10
-trace proc $> testTrace.log
-exit
