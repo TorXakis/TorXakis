@@ -29,7 +29,10 @@ PROCDEF system [ Memory :: MemoryAccess ] ( ) ::=
              plus [ Memory ](2)
          |||
              plus [ Memory ](4)
-     >>> Memory ? x [[ isRead(x) ]]  
+     >>>
+            Memory ? x [[ isRead(x) ]]
+        >-> Memory ? x [[ isWrite(x) /\ (newValue(x) == 0) ]]
+        >-> system [ Memory ] ( )
     )
 ENDDEF
 
