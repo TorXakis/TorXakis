@@ -47,6 +47,7 @@ library
                      , ExploreModels.DispatchProcess
                      , ExploreModels.LuckyPeople
                      , ExploreModels.MovingArms
+                     , ExploreModels.Queue
   build-depends:       base >= 4.7 && < 5
                      , criterion
                      , hspec

@@ -11,6 +11,7 @@ import qualified ExploreModels.CustomersOrders as CustomersOrders
 import qualified ExploreModels.DispatchProcess as DispatchProcess
 import qualified ExploreModels.LuckyPeople as LuckyPeople
 import qualified ExploreModels.MovingArms as MovingArms
+import qualified ExploreModels.Queue as Queue
 import           Sqatt
 
 allTests :: [TxsExampleSet]
@@ -19,4 +20,5 @@ allTests = [ ControlLoop.exampleSet
            , DispatchProcess.exampleSet
            , LuckyPeople.exampleSet
            , MovingArms.exampleSet
+           , Queue.exampleSet
            ]
