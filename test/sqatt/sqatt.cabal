@@ -46,6 +46,7 @@ library
                      , ExploreModels.CustomersOrders
                      , ExploreModels.DispatchProcess
                      , ExploreModels.LuckyPeople
+                     , ExploreModels.MovingArms
   build-depends:       base >= 4.7 && < 5
                      , criterion
                      , hspec
