@@ -20,7 +20,7 @@ import           Sqatt
 
 -- test :: TxsExample
 -- test = TxsExample
---   { exampleName = "Customers & Orders Stepper 50"
+--   { exampleName = "Stepper 50"
 --   , txsModelFiles = [txsFilePath exampDir customersOrdersText]
 --   , txsCmdsFiles = [txsCmdPath exampDir "CustomersOrders_Stepper_Model"]
 --   , txsServerArgs = []

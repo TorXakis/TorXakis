@@ -16,7 +16,7 @@ exampDir = "MovingArms"
 
 testModel :: TxsExample
 testModel = TxsExample
-  { exampleName = "Model Test"
+  { exampleName = "Stepper 200"
   , txsModelFiles = [txsFilePath exampDir "MovingArms"]
   , txsCmdsFiles = [txsCmdPath exampDir "MovingArms_Stepper_Model"]
   , txsServerArgs = []

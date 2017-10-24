@@ -22,7 +22,7 @@ specDir = exampDir </> "spec"
 
 testModel :: TxsExample
 testModel = TxsExample
-  { exampleName = "LuckyPeople Model Test"
+  { exampleName = "Stepper 200"
   , txsModelFiles = map (txsFilePath specDir)  [luckyPeopleText]
   , txsCmdsFiles = [txsCmdPath exampDir "LuckyPeople_Stepper_Model"]
   , txsServerArgs = []
