@@ -145,7 +145,7 @@ test12 :: TxsExample
 test12 = TxsExample
   { exampleName = "Process 12 - Unique ID"
   , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
-  , txsCmdsFiles = [dispatchProcessCmdsPath <> "_12"]
+  , txsCmdsFiles = [txsCmdPath exampDir "DispatchProcess_Stepper_Model_12"]
   , txsServerArgs = []
   , sutExample = Nothing
   , expectedResult = Pass
