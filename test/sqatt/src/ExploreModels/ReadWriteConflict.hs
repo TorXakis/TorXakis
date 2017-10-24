@@ -22,7 +22,7 @@ exampDir = "ReadWriteConflict"
 
 testStepper :: TxsExample
 testStepper = TxsExample
-  { exampleName = "Stepper 200"
+  { exampleName = "Stepper 100"
   , txsModelFiles = [txsFilePath exampDir readWriteConflictText]
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper_Model"]
   , txsServerArgs = []
@@ -32,7 +32,7 @@ testStepper = TxsExample
 
 testAdvancedStepper :: TxsExample
 testAdvancedStepper = TxsExample
-  { exampleName = "Advanced Stepper 200"
+  { exampleName = "Advanced Stepper 100"
   , txsModelFiles = [txsFilePath exampDir readWriteConflictAdvancedText]
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper_Model"]
   , txsServerArgs = []
