@@ -47,6 +47,7 @@ import qualified Data.Text.IO              as TIO
 import           Filesystem.Path
 import           Filesystem.Path.CurrentOS
 import           Prelude                   hiding (FilePath)
+import qualified System.IO                 as IO
 import           System.Info
 import           System.Random
 import           Test.Hspec
@@ -507,7 +508,9 @@ testExampleSet logDir es@(TxsExampleSet exSetDesc exs) = do
 
 -- | Test a list of example sets.
 testExampleSets :: FilePath -> [TxsExampleSet] -> Spec
-testExampleSets logDir = traverse_ (testExampleSet logDir)
+testExampleSets logDir exampleSets = do
+  runIO $ IO.hSetBuffering IO.stdout IO.NoBuffering
+  traverse_ (testExampleSet logDir) exampleSets
 
 -- | For now the root directory where the logs are stored is not configurable.
 sqattLogsRoot :: FilePath
