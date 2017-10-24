@@ -45,6 +45,7 @@ library
                      , ExploreModels.ControlLoop
                      , ExploreModels.CustomersOrders
                      , ExploreModels.DispatchProcess
+                     , ExploreModels.LuckyPeople
   build-depends:       base >= 4.7 && < 5
                      , criterion
                      , hspec
