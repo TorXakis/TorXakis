@@ -32,4 +32,4 @@ examples :: [TxsExample]
 examples = [] -- [test]
 
 exampleSet :: TxsExampleSet
-exampleSet = TxsExampleSet "Customers and Orders #model" examples
+exampleSet = TxsExampleSet "Customers and Orders" examples

@@ -157,4 +157,4 @@ examples = [ test0, test1, test2, test3, test4, test5, test6, test7, test8
            ]
 
 exampleSet :: TxsExampleSet
-exampleSet = TxsExampleSet "Dispatch Process #model" examples
+exampleSet = TxsExampleSet "Dispatch Process" examples

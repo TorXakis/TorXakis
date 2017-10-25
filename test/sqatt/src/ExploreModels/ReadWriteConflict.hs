@@ -44,4 +44,4 @@ examples :: [TxsExample]
 examples = [testStepper,testAdvancedStepper]
 
 exampleSet :: TxsExampleSet
-exampleSet = TxsExampleSet "ReadWrite Conflict #model" examples
+exampleSet = TxsExampleSet "ReadWrite Conflict" examples

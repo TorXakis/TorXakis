@@ -72,4 +72,4 @@ examples :: [TxsExample]
 examples = [test0, test1, test2, test3, test4]
 
 exampleSet :: TxsExampleSet
-exampleSet = TxsExampleSet "Control Loop #model" examples
+exampleSet = TxsExampleSet "Control Loop" examples

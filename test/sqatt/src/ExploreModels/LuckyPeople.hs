@@ -34,5 +34,5 @@ examples :: [TxsExample]
 examples = [testModel]
 
 exampleSet :: TxsExampleSet
-exampleSet = TxsExampleSet "Lucky People #model" examples
+exampleSet = TxsExampleSet "Lucky People" examples
 

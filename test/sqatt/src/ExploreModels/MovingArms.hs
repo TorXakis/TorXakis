@@ -28,4 +28,4 @@ examples :: [TxsExample]
 examples = [testModel]
 
 exampleSet :: TxsExampleSet
-exampleSet = TxsExampleSet "Moving Arms #model" examples
+exampleSet = TxsExampleSet "Moving Arms" examples

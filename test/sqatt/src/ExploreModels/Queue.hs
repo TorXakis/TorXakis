@@ -38,4 +38,4 @@ examples :: [TxsExample]
 examples = [testModel, testLossyModel]
 
 exampleSet :: TxsExampleSet
-exampleSet = TxsExampleSet "Queue #model" examples
+exampleSet = TxsExampleSet "Queue" examples
