@@ -1,0 +1,4 @@
+stepper Lossy
+step 200
+trace proc $> traceTestModel.log
+exit
