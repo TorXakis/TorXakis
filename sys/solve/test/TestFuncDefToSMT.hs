@@ -4,13 +4,13 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TestFuncDefToSMT
 (
 testFuncDefToSMTList
 )
 where
 import qualified Data.Map           as Map
-import           Data.Text          (Text)
 import qualified Data.Text          as T
 import           Test.HUnit
 

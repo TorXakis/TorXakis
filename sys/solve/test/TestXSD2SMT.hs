@@ -11,9 +11,7 @@ testXSD2SMTList
 where
 -- general Haskell imports
 import           Data.Char
-import           Data.Text     (Text)
 import qualified Data.Text     as T
---import qualified Debug.Trace   as Trace
 import           Numeric (showHex)
 import           Test.HUnit
 

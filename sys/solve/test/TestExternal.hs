@@ -12,18 +12,12 @@ where
 import           Test.HUnit
 
 import           Control.Monad.State
-import qualified Data.Map            as Map
-import           System.Process      (CreateProcess)
 
 import           SMT
 import           SMTData
 import           SMTInternal
 import           TxsDefs
 
-import           SolveDefs.Params
-
-import           Config
-import           Data.Maybe
 import           TestSolvers
 
 testExternalList :: Test

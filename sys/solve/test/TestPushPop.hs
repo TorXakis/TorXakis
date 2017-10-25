@@ -4,6 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TestPushPop
 (
 testPushPopList
@@ -14,9 +15,7 @@ import           Control.Arrow       ((&&&))
 import           Control.Monad.State
 import qualified Data.Map            as Map
 import           Data.Maybe
-import           Data.Text           (Text)
 import qualified Data.Text           as T
-import           System.Process      (CreateProcess)
 import           Test.HUnit
 
 import           StdTDefs
@@ -24,10 +23,7 @@ import           TxsDefs
 
 import           SMT
 import           SMTData
-
 import           SolveDefs
-import           SolveDefs.Params
-
 import           TestSolvers
 
 testPushPopList :: Test
@@ -89,7 +85,7 @@ testNestedPushPopTemplate :: TxsDefs -> [SortId] -> ([VarId] -> [VExpr], [Const]
 testNestedPushPopTemplate = testPushPopTemplate nestedSteps
   where
     nestedSteps :: [VarId] -> [([VarId] -> [VExpr], [Const] -> SMT())] -> SMT()
-    nestedSteps vs [] = return ()
+    nestedSteps _ [] = return ()
     nestedSteps vs ((createAssertions, check):xs) = do
         pushAssertionsCheck vs createAssertions check
         nestedSteps vs xs

@@ -4,6 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module HelperFuncDefToSMT
 where
 import qualified Data.Map          as Map
@@ -46,5 +47,5 @@ createFunctionDefsRecursive mapI l =
   where
     insert (fn, vs, _sort, expr) = TxsDefs.insert (IdFunc fn) (DefFunc (FuncDef vs (HelperVexprToSMT.input expr)))
     define (fn, vs, sort, _expr) = "    (" ++ T.unpack (justLookup mapI (IdFunc fn)) ++ "(" ++ join " " (map (\vi -> "(" ++ toSMTVar vi ++ " " ++ T.unpack (justLookup mapI (IdSort (varsort vi))) ++ ")") vs) ++ ") " ++ T.unpack (justLookup mapI (IdSort sort)) ++ ")\n"
-    body (fn, vs, sort, expr)    = "    " ++ HelperVexprToSMT.expected expr ++ "\n"
+    body (_, _, _, expr)    = "    " ++ HelperVexprToSMT.expected expr ++ "\n"
 
