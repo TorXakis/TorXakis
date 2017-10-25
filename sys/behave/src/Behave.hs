@@ -56,7 +56,6 @@ import qualified EnvData
 
 -- import from defs
 import qualified TxsDefs
-import qualified TxsUtils
 
 -- import from solve
 import           Solve

@@ -326,7 +326,6 @@ cmdVar :: String -> IOS.IOS ()
 cmdVar args = do
      env              <- get
      let uid          = IOS.uid env
-         tdefs        = IOS.tdefs env
          sigs         = IOS.sigs env
          vars         = IOS.locvars env
          vals         = IOS.locvals env
@@ -370,7 +369,6 @@ cmdVal :: String -> IOS.IOS ()
 cmdVal args = do
      env              <- get
      let uid          = IOS.uid env
-         tdefs        = IOS.tdefs env
          sigs         = IOS.sigs env
          vars         = IOS.locvars env
          vals         = IOS.locvals env
@@ -958,7 +956,6 @@ cmdLPE args = do
 readAction :: [TxsDefs.ChanId] -> String -> IOS.IOS TxsDDefs.Action
 readAction chids args = do
      uid              <- gets IOS.uid
-     tdefs            <- gets IOS.tdefs
      sigs             <- gets IOS.sigs
      vals             <- gets IOS.locvals
      ((uid',offs'),e) <- lift $ lift $ catch
@@ -1002,7 +999,7 @@ readBExpr chids args = do
      tdefs             <- gets IOS.tdefs
      sigs              <- gets IOS.sigs
      vals              <- gets IOS.locvals
-     ((uid',bexpr'),e) <- lift $ lift $ catch
+     ((_,bexpr'),e) <- lift $ lift $ catch
                             ( let p = TxsHappy.bexprParser
                                       ( TxsAlex.Ctdefs   tdefs
                                       : TxsAlex.Csigs    sigs

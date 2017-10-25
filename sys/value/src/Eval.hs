@@ -7,6 +7,7 @@ See LICENSE at root directory of this repository.
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module Eval
 
 -- ----------------------------------------------------------------------------------------- --
@@ -26,17 +27,14 @@ module Eval
 
 where
 
-import           Control.Arrow       ((***))
 import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad.State
 import           Data.Maybe
-import           Data.Monoid
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Text.Regex.TDFA
 
-import qualified Data.List           as List
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 
@@ -46,13 +44,10 @@ import qualified EnvData
 
 -- import from defs
 import           FreeMonoidX
-import           Product
 import           RegexXSD2Posix
 import           StdTDefs
-import           Sum
 import           TxsDefs
 import           TxsShow
-import           TxsUtils
 import           XmlFormat
 
 -- import from front
@@ -179,7 +174,6 @@ eval (view -> Vpredef kd fid vexps) =
        ASF -> case vexps of
                 [vexp] -> do s <- txs2str vexp
                              uid     <- gets IOB.unid
-                             tdefs   <- gets IOB.tdefs
                              sigs    <- gets IOB.sigs
                              ((_,vexp'),e) <- lift $ catch
                                 ( let p = TxsHappy.vexprParser ( TxsAlex.Csigs   sigs
@@ -346,15 +340,6 @@ txs2str vexp = do
 
 str2txs :: Text -> IOB.IOB Const
 str2txs = return . Cstring
-
-txs2regex :: Variable v => ValExpr v -> IOB.IOB Text
-txs2regex vexp = do
-     wal <- eval vexp
-     case wal of
-       Cregex r -> return r
-       v        -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                    $ "txs2regex: not on Regex: " ++ show v ]
-                      return ""
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
