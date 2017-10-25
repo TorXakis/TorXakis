@@ -25,6 +25,7 @@ import           Data.Yaml
 import           GHC.Generics
 import           System.Directory
 import           System.FilePath
+import           System.IO
 
 -- | Uninterpreted configuration options.
 data UnintConfig = UnintConfig
@@ -141,9 +142,11 @@ loadConfigFromFile :: IO (Maybe FileConfig)
 loadConfigFromFile = do
   mPath <- findConfigFile
   case mPath of
-    Nothing ->
+    Nothing -> do
+      hPutStrLn stderr "No configuration file found."  -- TODO: add a `DEBUG` flag to torxakis.
       return Nothing
     Just path -> do
+      hPutStrLn stderr $ "Found configuration file at `" ++ path ++ "`." -- TODO: add a `DEBUG` flag to torxakis.
       res <- decodeFileEither path
       case res of
         Left err   -> error (show err)
@@ -155,3 +158,5 @@ findConfigFile :: IO (Maybe FilePath)
 findConfigFile = do
   home <- getHomeDirectory
   findM doesFileExist [configFileName, home </> configFileName]
+
+
