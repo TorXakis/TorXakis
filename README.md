@@ -1,4 +1,4 @@
-![TorXakis logo](https://user-images.githubusercontent.com/661967/29917789-506f21fa-8e43-11e7-9804-596decacebe4.png "TorXakis")
+![TorXakis logo](https://git.io/vFvfj "TorXakis")
 
 [![Build Status](https://semaphoreci.com/api/v1/capitanbatata/torxakis/branches/develop/shields_badge.svg)](https://semaphoreci.com/capitanbatata/torxakis)[![Code Climate](https://codeclimate.com/github/TorXakis/TorXakis/badges/gpa.svg)](https://codeclimate.com/github/TorXakis/TorXakis)
 # TorXakis
