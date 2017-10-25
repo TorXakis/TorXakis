@@ -62,7 +62,7 @@ PROCDEF handle [ Customer :: Customer; Order :: Order; Report :: Report ] (cs ::
         >-> handle [Customer, Order, Report] ( Cstr_Customer ( c, cs ), os , True ) 
         )
     ##
-        (   [[ isCstr_Customer(cs) ]] =>> Order ? o [[ isValid_Order(o) /\ containsCustomerID ( customerID(o), cs ) ]] 
+        (   Order ? o [[ isValid_Order(o) /\ containsCustomerID ( customerID(o), cs ) ]] 
         >-> handle [Customer, Order, Report] ( cs, Cstr_Order ( o, os ) , True ) 
         )
 ENDDEF
