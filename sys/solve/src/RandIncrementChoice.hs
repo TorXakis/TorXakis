@@ -238,7 +238,7 @@ randomSolve p ((v,d):xs) i =
                         case c of
                             Cstr{cstrId = cid}  ->
                                 case Map.lookup cid (Map.fromList cstrs) of
-                                    Just (CstrDef{})   ->
+                                    Just CstrDef{} ->
                                         do
                                             addIsConstructor v cid
                                             fieldVars <- if d > 1 then addFields v i cid

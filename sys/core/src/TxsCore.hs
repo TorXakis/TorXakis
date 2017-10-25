@@ -1048,7 +1048,7 @@ txsLPE bexpr  =  do
   case (IOC.state envc, bexpr) of
     (IOC.Initing {IOC.tdefs = tdefs}, TxsDefs.ProcInst procid _ _)
       -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
-           Just (TxsDefs.ProcDef _ _ _)
+           Just TxsDefs.ProcDef{}
              -> case lpeTransform bexpr (TxsDefs.procDefs tdefs) of
                   Just (procinst'@(TxsDefs.ProcInst procid' _ _), procdef')
                     -> case Map.lookup procid' (TxsDefs.procDefs tdefs) of
