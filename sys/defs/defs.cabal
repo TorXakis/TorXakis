@@ -64,7 +64,7 @@ library
                       , Variable
 
 
-  ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math
+  ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math -Wall
   
   build-tools:          happy
   
@@ -98,7 +98,7 @@ test-suite defs-BlackBox
                      , FreeMonoidXSpec
                      , XSD2PosixSpec
                        
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
   
   build-depends:       base
                      , containers

@@ -8,6 +8,7 @@ See LICENSE at root directory of this repository.
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TXS2SMT
 
 -- ----------------------------------------------------------------------------------------- --
@@ -43,12 +44,10 @@ import qualified Data.Text     as T
 import           CstrId
 import           FreeMonoidX
 import           FuncId
-import           Product
 import           RegexXSD2SMT
 import           SMTString
 import           SortId
 import           StdTDefs
-import           Sum
 import           TxsDefs
 import           VarId
 

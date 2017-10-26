@@ -1046,11 +1046,11 @@ txsLPE :: TxsDefs.BExpr                     -- ^ behaviour expression, to be tra
 txsLPE bexpr  =  do
   envc <- get
   case (IOC.state envc, bexpr) of
-    (IOC.Initing {IOC.tdefs = tdefs}, TxsDefs.ProcInst procid chans vexps)
+    (IOC.Initing {IOC.tdefs = tdefs}, TxsDefs.ProcInst procid _ _)
       -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
-           Just (TxsDefs.ProcDef chids vids bexp)
+           Just TxsDefs.ProcDef{}
              -> case lpeTransform bexpr (TxsDefs.procDefs tdefs) of
-                  Just (procinst'@(TxsDefs.ProcInst procid' chans' vexps'), procdef')
+                  Just (procinst'@(TxsDefs.ProcInst procid' _ _), procdef')
                     -> case Map.lookup procid' (TxsDefs.procDefs tdefs) of
                          Nothing
                            -> do let tdefs' = tdefs

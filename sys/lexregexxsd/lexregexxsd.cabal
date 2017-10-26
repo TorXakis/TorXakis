@@ -16,7 +16,7 @@ library
   hs-source-dirs:       src
   exposed-modules:      RegexAlex
   
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
   
   build-tools:          alex
   

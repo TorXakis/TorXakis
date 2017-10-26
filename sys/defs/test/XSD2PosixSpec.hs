@@ -8,7 +8,6 @@ module XSD2PosixSpec
 
 where
 -- general Haskell imports
-import           Data.Text       (Text)
 import qualified Data.Text       as T
 import           Test.Hspec
 import           Test.Hspec.Contrib.HUnit

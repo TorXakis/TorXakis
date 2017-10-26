@@ -5,6 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- ----------------------------------------------------------------------------------------- --
 
 module BTShow

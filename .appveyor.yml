@@ -52,7 +52,7 @@ before_build:
 - ps: $env:CACHE_DIR_REL = $CACHE_DIR_REL
 
 build_script:
-- stack install --install-ghc --test --fast --no-terminal --work-dir %CACHE_DIR_REL%\.stack-work --stack-root %STACK_ROOT%
+- stack install --pedantic --install-ghc --test --fast --no-terminal --work-dir %CACHE_DIR_REL%\.stack-work --stack-root %STACK_ROOT%
 
 # after_build:
 # - 

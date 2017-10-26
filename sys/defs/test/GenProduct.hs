@@ -9,7 +9,6 @@ module GenProduct
 where
 
 import           Test.QuickCheck
-import           Test.QuickCheck.Gen (chooseAny)
 
 import           FreeMonoidX         (fromOccurListT)
 import           Product

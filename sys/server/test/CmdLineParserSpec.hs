@@ -3,17 +3,18 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module CmdLineParserSpec (spec) where
 
 import           CmdLineParser
-import           Config
 import           Data.Maybe
 import           Network
 import           Options.Applicative
 import           Test.Hspec
 import           Test.QuickCheck     hiding (Failure, Success)
 -- | Function used to test the command line arguments parsing.
+parserTesting :: [String] -> ParserResult CmdLineConfig
 parserTesting = execParserPure defaultPrefs opts
   where opts = info optsP mempty
 
