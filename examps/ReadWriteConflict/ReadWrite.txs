@@ -39,36 +39,13 @@ ENDDEF
     Defining Channels and Model
 -}
 CHANDEF Channels ::=
-    Read, Write, Dummy :: Int
+    Read, Write :: Int
 ENDDEF
 
 MODELDEF Model ::=
-    CHAN IN Dummy
+    CHAN IN
     CHAN OUT  Read, Write
 
     BEHAVIOUR
               system [ Read, Write ] ( )
 ENDDEF
-
-CNECTDEF  Sut ::=
-    CLIENTSOCK
-
-    CHAN OUT Dummy                   HOST "localhost"  PORT 7776
-    ENCODE   Dummy ? s               -> ! toString(s)
-    CHAN IN  Read                    HOST "localhost"  PORT 7777
-    DECODE   Read ! fromString(s)    <- ? s
-    CHAN IN  Write                   HOST "localhost"  PORT 7778
-    DECODE   Write ! fromString(s)   <- ? s
-ENDDEF
-
-CNECTDEF  Sim ::=
-    SERVERSOCK
-
-    CHAN IN   Dummy                   HOST "localhost"  PORT 7776
-    DECODE    Dummy ! fromString(s)   <- ? s
-    CHAN OUT  Read                    HOST "localhost"  PORT 7777
-    ENCODE    Read ? b                ->  ! toString(b)
-    CHAN OUT  Write                   HOST "localhost"  PORT 7778
-    ENCODE    Write ? b               ->  ! toString(b)
-ENDDEF
-
