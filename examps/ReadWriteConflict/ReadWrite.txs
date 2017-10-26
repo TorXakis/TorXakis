@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 PROCDEF memory [ Read, Write :: Int ] ( value :: Int ) ::=
-        Read  ? input [[ input == value]]    >-> memory [Read, Write] (value)
+        Read  ! value    >-> memory [Read, Write] (value)
     ##
         Write ? newValue >-> memory [Read, Write] (newValue)
 ENDDEF

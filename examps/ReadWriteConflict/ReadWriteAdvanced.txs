@@ -19,11 +19,7 @@ PROCDEF plus [ Memory :: MemoryAccess ] ( n :: Int ) EXIT ::=
     Memory ? x [[ isRead(x) ]] >->  Memory ! Write(value(x)+n)  >->  EXIT
 ENDDEF
 
-
-PROCDEF system [ Memory :: MemoryAccess ] ( ) ::=
-        memory [ Memory ] ( 0 )
-    |[ Memory ]|
-    (
+PROCDEF readWrite [ Memory :: MemoryAccess ] ( ) ::=
              plus [ Memory ](1)
          |||
              plus [ Memory ](2)
@@ -31,9 +27,14 @@ PROCDEF system [ Memory :: MemoryAccess ] ( ) ::=
              plus [ Memory ](4)
      >>>
              Memory ? x [[ isRead(x) ]]  
-         >-> Memory ? x [[ isWrite(x) /\ (newValue (x) == 0) ]]
+         >-> Memory ! Write(0)
          >-> system [ Memory ] ( )
-    )
+ENDDEF
+
+PROCDEF system [ Memory :: MemoryAccess ] ( ) ::=
+        memory [ Memory ] ( 0 )
+    |[ Memory ]|
+        readWrite [ Memory ] ( )
 ENDDEF
 
 
