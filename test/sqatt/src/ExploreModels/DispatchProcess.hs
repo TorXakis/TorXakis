@@ -141,19 +141,19 @@ test11 = TxsExample
   , expectedResult = Pass
   }
 
-test12 :: TxsExample
-test12 = TxsExample
-  { exampleName = "Process 12 - Unique ID"
-  , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
-  , txsCmdsFiles = [txsCmdPath exampDir "DispatchProcess_Stepper_Model_12"]
-  , txsServerArgs = []
-  , sutExample = Nothing
-  , expectedResult = Pass
-  }
+-- test12 :: TxsExample
+-- test12 = TxsExample
+--   { exampleName = "Process 12 - Unique ID"
+--   , txsModelFiles = [txsFilePath specDir "DisPro12-unique-id"]
+--   , txsCmdsFiles = [txsCmdPath exampDir "DispatchProcess_Stepper_Model_12"]
+--   , txsServerArgs = []
+--   , sutExample = Nothing
+--   , expectedResult = Pass
+--   }
 
 examples :: [TxsExample]
 examples = [ test0, test1, test2, test3, test4, test5, test6, test7, test8
-           , test9, test10, test11, test12
+           , test9, test10, test11 -- , test12
            ]
 
 exampleSet :: TxsExampleSet
