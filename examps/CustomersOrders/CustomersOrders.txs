@@ -25,15 +25,15 @@ FUNCDEF isValid_decimal  ( x :: Int ) :: Bool ::= True ENDDEF
 FUNCDEF isValid_Conditional_string( x :: Conditional_string ) :: Bool ::= IF isPresent_string(x) THEN isValid_string(value(x)) ELSE True FI ENDDEF
 FUNCDEF isValid_Conditional_dateTime( x :: Conditional_dateTime ) :: Bool ::= IF isPresent_dateTime(x) THEN isValid_dateTime(value(x)) ELSE True FI ENDDEF
 FUNCDEF isValid_Report ( t :: Report ) :: Bool ::= isValid_List_Customer(customers(t), 0, Absent_Int) /\ isValid_List_Order(orders(t), 0, Absent_Int) /\ uniqueCustomerIDs(customers(t)) /\ validCustomerIDsInOrders(orders(t),customers(t)) ENDDEF
-FUNCDEF uniqueCustomerIDs ( x :: List_Customer ) :: Bool ::= IF (isNil_Customer (x)) THEN True ELSE not(containsCustomerID(customerID(head (x)), tail(x))) /\ uniqueCustomerIDs(tail(x)) FI ENDDEF
-FUNCDEF containsCustomerID ( cid :: Int; x :: List_Customer ) :: Bool ::= IF (isNil_Customer (x)) THEN False ELSE IF ( customerID(head (x)) == cid ) THEN True ELSE containsCustomerID (cid, tail(x)) FI FI ENDDEF
-FUNCDEF validCustomerIDsInOrders ( o :: List_Order; c :: List_Customer ) :: Bool ::= IF (isNil_Order (o)) THEN True ELSE containsCustomerID(customerID(head(o)), c) /\ validCustomerIDsInOrders (tail(o), c) FI ENDDEF
-FUNCDEF isValid_List_Customer ( x :: List_Customer; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_Customer(x) /\ (min <= lengthList_Customer(x)) /\ (IF isPresent_Int(max) THEN lengthList_Customer(x) <= value(max) ELSE True FI) ENDDEF
+FUNCDEF uniqueCustomerIDs ( x :: List_Customer ) :: Bool ::= IF isNil_Customer (x) THEN True ELSE not(containsCustomerID(customerID(head (x)), tail(x))) /\ uniqueCustomerIDs(tail(x)) FI ENDDEF
+FUNCDEF containsCustomerID ( cid :: Int; x :: List_Customer ) :: Bool ::= IF isNil_Customer (x) THEN False ELSE IF customerID(head (x)) == cid THEN True ELSE containsCustomerID (cid, tail(x)) FI FI ENDDEF
+FUNCDEF validCustomerIDsInOrders ( o :: List_Order; c :: List_Customer ) :: Bool ::= IF isNil_Order (o) THEN True ELSE containsCustomerID(customerID(head(o)), c) /\ validCustomerIDsInOrders (tail(o), c) FI ENDDEF
+FUNCDEF isValid_List_Customer ( x :: List_Customer; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_Customer(x) /\ (min <= lengthList_Customer(x)) /\ ( IF isPresent_Int(max) THEN lengthList_Customer(x) <= value(max) ELSE True FI ) ENDDEF
 FUNCDEF isValidElementsList_Customer ( x :: List_Customer ) :: Bool ::= IF isCstr_Customer(x) THEN isValid_Customer(head(x)) /\ isValidElementsList_Customer(tail(x)) ELSE True FI ENDDEF
 FUNCDEF lengthList_Customer ( x :: List_Customer ) :: Int ::= IF isNil_Customer(x) THEN 0 ELSE 1 + lengthList_Customer(tail(x)) FI ENDDEF
 FUNCDEF isValid_Customer ( t :: Customer ) :: Bool ::= isValid_string(companyName(t)) /\ isValid_string(contactName(t)) /\ isValid_string(contactTitle(t)) /\ isValid_string(phone(t)) /\ isValid_Conditional_string(fax(t)) /\ isValid_Address(fullAddress(t)) /\ isValid_unsignedLong(customerID(t)) ENDDEF
 FUNCDEF isValid_Address ( t :: Address ) :: Bool ::= isValid_string(address(t)) /\ isValid_string(city(t)) /\ isValid_string(region(t)) /\ isValid_string(postalCode(t)) /\ isValid_string(country(t)) ENDDEF
-FUNCDEF isValid_List_Order ( x :: List_Order; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_Order(x) /\ (min <= lengthList_Order(x)) /\ (IF isPresent_Int(max) THEN lengthList_Order(x) <= value(max) ELSE True FI) ENDDEF
+FUNCDEF isValid_List_Order ( x :: List_Order; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_Order(x) /\ (min <= lengthList_Order(x)) /\ ( IF isPresent_Int(max) THEN lengthList_Order(x) <= value(max) ELSE True FI ) ENDDEF
 FUNCDEF isValidElementsList_Order ( x :: List_Order ) :: Bool ::= IF isCstr_Order(x) THEN isValid_Order(head(x)) /\ isValidElementsList_Order(tail(x)) ELSE True FI ENDDEF
 FUNCDEF lengthList_Order ( x :: List_Order ) :: Int ::= IF isNil_Order(x) THEN 0 ELSE 1 + lengthList_Order(tail(x)) FI ENDDEF
 FUNCDEF isValid_Order ( t :: Order ) :: Bool ::= isValid_unsignedLong(customerID(t)) /\ isValid_unsignedInt(employeeID(t)) /\ isValid_dateTime(orderDate(t)) /\ isValid_dateTime(requiredDate(t)) /\ isValid_ShipInfo(shipInfo(t)) /\ (requiredDate(t) > orderDate(t)) /\ ( LET sd = shippedDate(shipInfo(t)) IN IF isPresent_dateTime(sd) THEN value(sd) >= orderDate(t) ELSE True FI NI ) ENDDEF
@@ -62,7 +62,7 @@ PROCDEF handle [ Customer :: Customer; Order :: Order; Report :: Report ] (cs ::
         >-> handle [Customer, Order, Report] ( Cstr_Customer ( c, cs ), os , True ) 
         )
     ##
-        (   [[ isCstr_Customer(cs) ]] =>> Order ? o [[ isValid_Order(o) /\ containsCustomerID ( customerID(o), cs ) ]] 
+        (   Order ? o [[ isValid_Order(o) /\ containsCustomerID ( customerID(o), cs ) ]] 
         >-> handle [Customer, Order, Report] ( cs, Cstr_Order ( o, os ) , True ) 
         )
 ENDDEF
