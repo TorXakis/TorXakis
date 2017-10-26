@@ -12,6 +12,27 @@ It is licensed under the [BSD3 license](LICENSE).
 ## For Users
 User documentation at [our wiki](https://github.com/TorXakis/TorXakis/wiki).
 
+## Installation
+
+### Windows
+For Windows systems an installer is provided in the [releases][13] section.
+
+### Linux
+
+For Linux systems we provide a [`snap`][`12`] package. To install `TorXakis`
+run:
+
+```sh
+sudo snap install torxakis
+```
+
+**TODO**: verify these instructions.
+
+When running `TorXakis` as a snap, the configuration file for `TorXakis` should
+go in the `~/snap/torxakis/current` directory. This is because snaps run in an
+isolated environment, and they are not able to see any hidden files in the
+users home directory.
+
 ## For Developers
 
 TorXakis is written in [Haskell](https://www.haskell.org) and
@@ -118,3 +139,4 @@ See the README files in each folders to get a more detailed explanation.
 [10]: https://docs.haskellstack.org/en/stable/install_and_upgrade/
 [11]: https://github.com/TorXakis/TorXakis/issues/40
 [12]: https://www.ubuntu.com/desktop/snappy
+[13]: https://github.com/TorXakis/TorXakis/releases
