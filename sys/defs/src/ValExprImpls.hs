@@ -148,9 +148,11 @@ cstrVar v = ValExpr (Vvar v)
 -- | Apply operator ITE (IF THEN ELSE) on the provided value expressions.
 -- Preconditions are /not/ checked.
 cstrITE :: ValExpr v -> ValExpr v -> ValExpr v -> ValExpr v
+cstrITE (view -> Vconst (Cbool True))  tb _ = tb
+cstrITE (view -> Vconst (Cbool False)) _ fb = fb
 -- if (not b) then tb else fb == if b then fb else tb
-cstrITE (view -> Vnot n) tb fb = ValExpr (Vite n fb tb)
-cstrITE cs tb fb               = ValExpr (Vite cs tb fb)
+cstrITE (view -> Vnot n) tb fb              = ValExpr (Vite n fb tb)
+cstrITE cs tb fb                            = ValExpr (Vite cs tb fb)
 
 -- | Apply operator Equal on the provided value expressions.
 -- Preconditions are /not/ checked.

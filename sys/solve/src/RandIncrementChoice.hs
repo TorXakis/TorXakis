@@ -261,8 +261,8 @@ randomSolve p ((v,d):xs) i =
         choicesFunc v' partA partB Cstr{cstrId = cId} =
             do
                 let cond = Map.member cId (Map.fromList partA)
-                lA <- mapM (\(cid,CstrDef{}) -> valExprToString $ cstrIsCstr cid (cstrVar v')) partA
-                lB <- mapM (\(cid,CstrDef{}) -> valExprToString $ cstrIsCstr cid (cstrVar v')) partB
+                lA <- mapM (\(tempCid,CstrDef{}) -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partA
+                lB <- mapM (\(tempCid,CstrDef{}) -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partB
                 return [ (cond, case lA of
                                     [a] -> a
                                     _   -> "(or " <> T.intercalate " " lA <> ") ")

@@ -253,7 +253,7 @@ randomValue p sid expr n | n > 0 =
                     return (r:rr)
 
                 processConstructor :: (Variable v) => (CstrId,CstrDef) -> ValExpr v -> SMT Text
-                processConstructor (cid,CstrDef _isX []) expr' = valExprToString $ cstrIsCstr cid expr'
+                processConstructor (cid, CstrDef _isX []) expr' = valExprToString $ cstrIsCstr cid expr'
                 processConstructor (cid, CstrDef _isX _accessors) expr' = do
                     cstr <- valExprToString $ cstrIsCstr cid expr'
                     args' <- processArguments cid (zip (cstrargs cid) [0..]) expr'
