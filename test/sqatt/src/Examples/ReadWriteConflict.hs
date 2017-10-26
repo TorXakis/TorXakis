@@ -35,7 +35,7 @@ testStepper = TxsExample
 
 testPurpStepper :: TxsExample
 testPurpStepper = TxsExample
-  { exampleName = "Stepper Test"
+  { exampleName = "Stepper Test for Purp Model"
   , txsModelFiles = [txsFilePath exampDir readWriteConflictTestPurpText]
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper"]
   , txsServerArgs = []
@@ -67,4 +67,4 @@ examples :: [TxsExample]
 examples = [testStepper, testPurpStepper,testHitAll7,testAdvancedStepper]
 
 exampleSet :: TxsExampleSet
-exampleSet = TxsExampleSet "Read/Write Conflict" examples
+exampleSet = TxsExampleSet "ReadWrite Conflict" examples
