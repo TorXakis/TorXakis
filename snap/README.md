@@ -22,3 +22,11 @@ and then create the snap by running:
 ```sh
 snapcraft
 ```
+
+If you rebuild `TorXakis` remember to clean `torxakis-bin`:
+
+```sh
+snapcraft clean torxakis-bin 
+```
+
+The command above will make sure that the new executable packaged.
