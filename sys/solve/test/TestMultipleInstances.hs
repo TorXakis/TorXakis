@@ -10,16 +10,12 @@ testMultipleInstancesList
 )
 where
 import           Control.Monad.State
-import qualified Data.Map            as Map
-import           Data.Text           (Text)
-import qualified Data.Text           as T
 import           System.Process      (CreateProcess)
 
 import           Test.HUnit
 
 import           SMT
 import           SolveDefs
-import           SolveDefs.Params
 import           StdTDefs
 import           TxsDefs
 

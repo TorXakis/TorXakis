@@ -18,14 +18,10 @@ module FreeVar
 where
 
 import qualified Data.List   as List
-import qualified Data.Map    as Map
 import qualified Data.Set    as Set
 
 import           FreeMonoidX
-import           Product
-import           Sum
 import           TxsDefs
-import           Utils
 
 
 -- ----------------------------------------------------------------------------------------- --

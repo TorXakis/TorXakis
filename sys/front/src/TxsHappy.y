@@ -492,12 +492,12 @@ TypeDef         -- :: { [ (Ident,TxsDef) ] }
                 ;  $$.synSigs      = let dsort = SortId $1 $$.inhNodeUid in
                                         Sigs.uniqueCombine  Sigs.empty { Sigs.sort = Map.singleton $1 dsort
                                                                        , Sigs.func = FuncTable (Map.fromList [ (eqName, Map.singleton (Signature [dsort,dsort] sortId_Bool) equalHandler)
-                                                                                                        , (neqName, Map.singleton (Signature [dsort,dsort] sortId_Bool) notEqualHandler)
-                                                                                                        , (toStringName, Map.singleton (Signature [dsort] sortId_String) (cstrPredef AST (FuncId toStringName ($$.inhNodeUid+3) [dsort] sortId_String) ) )
-                                                                                                        , (fromStringName, Map.singleton (Signature [sortId_String] dsort) (cstrPredef ASF (FuncId fromStringName ($$.inhNodeUid+4) [sortId_String] dsort) ) )
-                                                                                                        , (toXmlName, Map.singleton (Signature [dsort] sortId_String) (cstrPredef AXT (FuncId toStringName ($$.inhNodeUid+5) [dsort] sortId_String) ) )
-                                                                                                        , (fromXmlName, Map.singleton (Signature [sortId_String] dsort) (cstrPredef AXF (FuncId fromStringName ($$.inhNodeUid+6) [sortId_String] dsort) ) )
-                                                                                                        ] ) 
+                                                                                                             , (neqName, Map.singleton (Signature [dsort,dsort] sortId_Bool) notEqualHandler)
+                                                                                                             , (toStringName, Map.singleton (Signature [dsort] sortId_String) (cstrPredef AST (FuncId toStringName ($$.inhNodeUid+3) [dsort] sortId_String) ) )
+                                                                                                             , (fromStringName, Map.singleton (Signature [sortId_String] dsort) (cstrPredef ASF (FuncId fromStringName ($$.inhNodeUid+4) [sortId_String] dsort) ) )
+                                                                                                             , (toXmlName, Map.singleton (Signature [dsort] sortId_String) (cstrPredef AXT (FuncId toStringName ($$.inhNodeUid+5) [dsort] sortId_String) ) )
+                                                                                                             , (fromXmlName, Map.singleton (Signature [sortId_String] dsort) (cstrPredef AXF (FuncId fromStringName ($$.inhNodeUid+6) [sortId_String] dsort) ) )
+                                                                                                             ] ) 
                                                                        }
                                                             $3.synSigs  
                 ;  $3.inhSigs      = $$.inhSigs
@@ -574,10 +574,8 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                                    ]
                             }
                             in [ ( IdCstr cid, DefCstr (CstrDef cfid (map (\(IdFunc f,_) -> f) fs) ) ) 
-                               , ( IdFunc cfid, DefFunc (FuncDef [x] (cstrIsCstr cid (cstrVar x) ) ) )
                                ]
-                               ++
-                               fs
+                               
                 ;  where let dbls = doubles ([$1, "is" <> $1] ++ map fst $2)
                           in if null dbls then () else
                              error $ "\nTXS0803: " ++

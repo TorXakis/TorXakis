@@ -4,18 +4,16 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module HelperVexprToSMT
 
 where
 import qualified Data.Map          as Map
 import qualified Data.Set          as Set
 import           Data.String.Utils
-import           Data.Text         (Text)
 import qualified Data.Text         as T
 
 import           FreeMonoidX
-import           StdTDefs
-import           Sum
 import           TxsDefs
 
 import           CstrId

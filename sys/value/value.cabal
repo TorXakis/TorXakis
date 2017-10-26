@@ -17,7 +17,7 @@ library
 
   exposed-modules:      Eval
   
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
   
   build-depends:        array
                       , base
