@@ -1,0 +1,6 @@
+timer t1 $>> testTrace.log
+stepper Model
+step 500
+trace proc $>> testTrace.log
+timer t1 $>> testTrace.log
+exit
