@@ -15,6 +15,18 @@ parts:
     source: .stack-work/install/x86_64-linux-nopie/lts-9.7/8.0.2/bin/
     stage-packages: []
 
+  torxakis-bootstrap-data:
+    # Bootstrap data for TorXakis, for instance initial configuration.
+    #
+    # This makes the `snap/data` folder available, and data can be copied upon
+    # starting `TorXakis`, for instance, as follows:
+    #
+    # cp $SNAP/snap/data/* $SNAP_USER_DATA/
+    #
+    # See: https://forum.snapcraft.io/t/use-of-home-and-network-plugs/2587/19
+    plugin: dump
+    source: snap/data
+    
   cvc4-bin:
     plugin: dump
     source: https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.5/cvc4-1.5-x86_64-linux-opt.tar.gz
@@ -22,7 +34,7 @@ parts:
   z3-bin:
     plugin: dump
     source: https://github.com/TorXakis/Dependencies/releases/download/z3-4.5.1/z3-4.5.1.x64-ubuntu-14.04.tar.gz
-
+    
 apps:
   txsui:
     command: txsui
