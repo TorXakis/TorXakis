@@ -24,9 +24,9 @@ PROCDEF readWrite [ Read, Write :: Int ] ( ) ::=
          |||
              plus [ Read, Write ](4)
      >>>
-              Read ? value
-         >->  Write ! 0
-         >->  readWrite [ Read, Write ] ( )
+             Read ? value
+         >-> Write ! 0
+         >-> readWrite [ Read, Write ] ( )
 ENDDEF
 
 PROCDEF system [ Read, Write :: Int ] ( ) ::=
