@@ -71,7 +71,7 @@ cache:
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-8.0.2.installed'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.0.2'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.0.2.installed'
-# - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20150512'
+- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20150512'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20150512.installed'
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
 
