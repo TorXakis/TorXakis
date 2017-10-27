@@ -29,7 +29,6 @@ install:
     } else {
         Write-Host "stack.exe found.";
     }
-- stack --version
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\cvc4.exe")) {
         # obtain the cvc4 executable
@@ -52,10 +51,10 @@ before_build:
 - ps: $env:CACHE_DIR_REL = $CACHE_DIR_REL
 
 build_script:
-- stack install --pedantic --install-ghc --test --fast --no-terminal --work-dir %CACHE_DIR_REL%\.stack-work --stack-root %STACK_ROOT%
+- stack install --pedantic --install-ghc --test --fast --no-terminal --stack-root %STACK_ROOT%
 
 # after_build:
-# - 
+# -
 
 # before_test:
 # - 
@@ -63,9 +62,10 @@ build_script:
 clone_folder: c:\TorXakis
 environment:
   global:
-    STACK_ROOT: c:\TorXakis\.cache\.stack
+    STACK_ROOT: c:\TorXakis\.stack
 
 cache:
+- .stack -> .stack.yaml
 - .cache
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-8.0.2'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-8.0.2.installed'
@@ -77,7 +77,7 @@ cache:
 
 test_script:
 - ps: pushd test/sqatt
-- stack test --install-ghc --test-arguments="--skip=#model" --no-terminal --work-dir %CACHE_DIR_REL%\test\.stack_work --stack-root %STACK_ROOT%
+- stack test --install-ghc --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT%
 - ps: popd
 
 # after_test:
