@@ -277,7 +277,7 @@ sqattTimeout = 1800.0
 -- timeout the SUT process terminates and if TorXakis hasn't terminated yet
 -- the whole test fails.
 txsCheckTimeout :: NominalDiffTime
-txsCheckTimeout = 0.01
+txsCheckTimeout = 60.0
 
 -- | Run TorXakis with the given example specification.
 runTxsWithExample :: Maybe FilePath   -- ^ Path to the logging directory for
@@ -302,7 +302,6 @@ runTxsWithExample mLogDir ex = Concurrently $ do
       putStr "."
     timer = Concurrently $ do
       sleep sqattTimeout
-      -- throwIO TestTimedOut
       return $ Left TestTimedOut
     txsUIProc mUiLogDir imf port =
       Concurrently $ do

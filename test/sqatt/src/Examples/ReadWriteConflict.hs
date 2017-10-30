@@ -30,7 +30,7 @@ testStepper = TxsExample
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper"]
   , txsServerArgs = []
   , sutExample = Nothing
-  , expectedResult = Fail
+  , expectedResult = Pass
   }
 
 testPurpStepper :: TxsExample
@@ -40,7 +40,7 @@ testPurpStepper = TxsExample
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper"]
   , txsServerArgs = []
   , sutExample = Nothing
-  , expectedResult = Fail
+  , expectedResult = Pass
   }
   
 testHitAll7 :: TxsExample
@@ -60,7 +60,7 @@ testAdvancedStepper = TxsExample
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper"]
   , txsServerArgs = []
   , sutExample = Nothing
-  , expectedResult = Fail
+  , expectedResult = Pass
   }
 
 examples :: [TxsExample]
