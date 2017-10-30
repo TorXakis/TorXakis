@@ -305,8 +305,10 @@ runTxsWithExample mLogDir ex = Concurrently $ do
       return $ Left TestTimedOut
     txsUIProc mUiLogDir imf port =
       Concurrently $ do
-        res <- Turtle.fold txsUIShell findExpectedMsg
-        return $ unless res $ Left tErr
+        eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
+        case eRes of
+          Left exception -> return $ Left exception
+          Right res -> return $ unless res $ Left tErr
       where
         inLines :: Shell Line
         inLines = asum $ input <$> cmdsFile
