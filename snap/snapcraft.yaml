@@ -56,3 +56,11 @@ apps:
       - network
       - home
       - network-bind
+
+  cvc4:
+    command: cvc4-1.5-x86_64-linux-opt
+    plugs:
+      - network
+      - home
+      - network-bind
+      
