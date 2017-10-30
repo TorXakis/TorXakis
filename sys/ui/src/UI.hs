@@ -17,26 +17,25 @@ module Main
 
 where
 
+import           Control.Concurrent
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.State.Strict
+import qualified Data.Map                         as Map
 import           Data.Maybe
+import           Data.String.Utils
 import           Data.Time
 import           Network
-import           System.Environment
-import           System.IO
-
-import           Control.Concurrent
-import qualified Data.Map                         as Map
-import           Data.String.Utils
 import           System.Console.Haskeline
+import           System.Environment
+import           System.FilePath
+import           System.IO
 import           System.Process
 
 import           TxsHelp
 import           UIenv
 import           UIif
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis ui main
@@ -66,7 +65,8 @@ main  =  withSocketsDo $ do
                hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
 
                now <- getCurrentTime
-               _ <- runStateT ( runInputT defaultSettings $
+               home <- getEnv "HOME"
+               _ <- runStateT ( runInputT (txsHaskelineSettings home) $
                                   do { doCmd "START" ""
                                      ; doCmd "INIT"  $ unwords (tail args)
                                      ; cmdsIntpr
@@ -85,6 +85,13 @@ main  =  withSocketsDo $ do
 -- | TorXakis prompt. For now this is not configurable.
 txsPrompt :: String
 txsPrompt = "TXS >> "
+
+-- | Construct the Haskeline settings.
+txsHaskelineSettings :: MonadIO m
+                     => FilePath -- ^ Home directory for `TorXakis`.
+                     -> Settings m
+txsHaskelineSettings txsHome =
+    defaultSettings { historyFile = Just $ txsHome </> ".torxakis-hist.txt" }
 
 -- | TorXakis UI commands processing.
 cmdsIntpr :: UIO ()

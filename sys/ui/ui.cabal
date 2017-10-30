@@ -31,4 +31,5 @@ executable txsui
                       , MissingH
                       , haskeline
                       , transformers
+                      , filepath
   default-language:     Haskell2010
