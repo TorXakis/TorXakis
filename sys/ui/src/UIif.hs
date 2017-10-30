@@ -29,15 +29,15 @@ module UIif
 
 where
 
-import System.IO
-import Control.Monad.State
-import Data.Time
+import           Control.Monad.State
+import           Data.Time
+import           System.IO
 
-import Data.String.Utils
+import           Data.String.Utils
 
-import qualified Data.Map  as Map
- 
-import UIenv
+import qualified Data.Map            as Map
+
+import           UIenv
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -45,17 +45,17 @@ import UIenv
 
 doCmd :: String -> String -> UIO ()
 doCmd cmd cargs  =  do
-     hs     <- gets uiservh
+     hs     <- lift $ gets uiservh
      let cargs' = if null (dropWhile (== ' ') cargs) then "" else " " ++ cargs
-     lift $ hPutStrLn hs $ cmd ++ cargs'
+     liftIO $ hPutStrLn hs $ cmd ++ cargs'
      doRsp cmd
 
 -- ----------------------------------------------------------------------------------------- --
 
 doRsp :: String -> UIO ()
 doRsp cmd  =  do
-     hs      <- gets uiservh
-     rspline <- lift $ hGetLine hs
+     hs      <- lift $ gets uiservh
+     rspline <- liftIO $ hGetLine hs
      case words rspline of
         []                            -> doRsp cmd
         ("MACK":"ERROR":rargs)        -> do putErr $ unwords rargs
@@ -66,41 +66,41 @@ doRsp cmd  =  do
         ("NACK":[rsp])   | cmd == rsp -> return ()
         ("NACK":"ERROR":rargs)        -> putErr $ unwords rargs
         _                             -> putErr $ "unknown txsserver response: " ++ rspline
-     
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- user standard IO communication
 
 setOut :: String -> IOMode -> UIO ()
 setOut fname iomode  =  do
-     hOut <- gets uihout
+     hOut <- lift $ gets uihout
      case (hOut,fname) of
        (h,f) | h == stdout && f == "" -> return ()
-             | h == stdout && f /= "" -> do hout <- lift $ openFile f iomode
-                                            lift $ hSetBuffering hout NoBuffering
-                                            modify ( \env -> env { uihout = hout } )
-             | h /= stdout && f == "" -> do lift $ hClose h
-                                            modify ( \env -> env { uihout = stdout } )
-             | h /= stdout && f /= "" -> do lift $ hClose h
-                                            hout <- lift $ openFile f iomode
-                                            lift $ hSetBuffering hout NoBuffering
-                                            modify ( \env -> env { uihout = hout } )
-       (_,_)                          -> error $ "setOut: Impossible: prevent warning\n" ++ 
+             | h == stdout && f /= "" -> do hout <- liftIO $ openFile f iomode
+                                            liftIO $ hSetBuffering hout NoBuffering
+                                            lift $ modify ( \env -> env { uihout = hout } )
+             | h /= stdout && f == "" -> do liftIO $ hClose h
+                                            lift $ modify ( \env -> env { uihout = stdout } )
+             | h /= stdout && f /= "" -> do liftIO $ hClose h
+                                            hout <- liftIO $ openFile f iomode
+                                            liftIO $ hSetBuffering hout NoBuffering
+                                            lift $ modify ( \env -> env { uihout = hout } )
+       (_,_)                          -> error $ "setOut: Impossible: prevent warning\n" ++
                                                  "Pattern match(es) are non-exhaustive\n" ++
                                                  "In a case alternative: Patterns not matched: (_, _)"
-     
+
 -- ----------------------------------------------------------------------------------------- --
 
 putOut :: String -> UIO ()
 putOut s  =  do
-     hout <- gets uihout
+     hout <- lift$ gets uihout
      let pre = if hout == stdout then "TXS >>  " else ""
-      in lift $ hPutStrLn hout $ pre ++ s
+      in liftIO $ hPutStrLn hout $ pre ++ s
 
 -- ----------------------------------------------------------------------------------------- --
 
 putErr :: String -> UIO ()
-putErr s  = lift $ hPutStrLn stderr $ "TXS Error >>  " ++ s
+putErr s  = liftIO $ hPutStrLn stderr $ "TXS Error >>  " ++ s
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -108,28 +108,28 @@ putErr s  = lift $ hPutStrLn stderr $ "TXS Error >>  " ++ s
 
 showTime :: UIO String
 showTime  =  do
-     timezone <- lift getCurrentTimeZone
-     now      <- lift getCurrentTime
+     timezone <- liftIO getCurrentTimeZone
+     now      <- liftIO getCurrentTime
      return $ "Time = " ++ replace ":" "-" ( show $ utcToLocalTime timezone now )
 
 -- ----------------------------------------------------------------------------------------- --
-     
+
 doTimer :: String -> UIO String
 doTimer timername  =  do
-     timezone <- lift getCurrentTimeZone
-     now      <- lift getCurrentTime
-     timers   <- gets uitimers
+     timezone <- liftIO getCurrentTimeZone
+     now      <- liftIO getCurrentTime
+     timers   <- lift $ gets uitimers
      case Map.lookup timername timers of
-        Nothing   -> do modify ( \env -> env { uitimers = Map.insert timername now timers } )
+        Nothing   -> do lift $ modify ( \env -> env { uitimers = Map.insert timername now timers } )
                         return $ "TXS >> Timer " ++ show timername ++ " start = " ++
                                 show ( utcToLocalTime timezone now )
         Just prev -> do when (timername /= "global") $
-                            modify (\env -> env { uitimers = Map.delete timername timers })
+                            lift $ modify (\env -> env { uitimers = Map.delete timername timers })
                         let period = diffUTCTime now prev
                         return $ "TXS >> Timer " ++ show timername ++ " stop = " ++
                                 show ( utcToLocalTime timezone now ) ++
                                 " -- Duration = " ++ show period
 
 -- ----------------------------------------------------------------------------------------- --
--- 
+--
 -- ----------------------------------------------------------------------------------------- --

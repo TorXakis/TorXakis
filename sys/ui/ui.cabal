@@ -29,4 +29,6 @@ executable txsui
                       , process
                       , time
                       , MissingH
+                      , haskeline
+                      , transformers
   default-language:     Haskell2010
