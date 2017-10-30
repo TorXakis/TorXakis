@@ -28,6 +28,7 @@ import           Data.String.Utils
 import           Data.Time
 import           Network
 import           System.Console.Haskeline
+import           System.Directory
 import           System.Environment
 import           System.FilePath
 import           System.IO
@@ -65,7 +66,7 @@ main  =  withSocketsDo $ do
                hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
 
                now <- getCurrentTime
-               home <- getEnv "HOME"
+               home <- getHomeDirectory
                _ <- runStateT ( runInputT (txsHaskelineSettings home) $
                                   do { doCmd "START" ""
                                      ; doCmd "INIT"  $ unwords (tail args)
