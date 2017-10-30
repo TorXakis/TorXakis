@@ -143,10 +143,10 @@ loadConfigFromFile = do
   mPath <- findConfigFile
   case mPath of
     Nothing -> do
-      hPutStrLn stderr "No configuration file found."  -- TODO: add a `DEBUG` flag to torxakis.
+      hPutStrLn stderr "No configuration file found."
       return Nothing
     Just path -> do
-      hPutStrLn stderr $ "Found configuration file at `" ++ path ++ "`." -- TODO: add a `DEBUG` flag to torxakis.
+      hPutStrLn stderr $ "Found configuration file at `" ++ path ++ "`."
       res <- decodeFileEither path
       case res of
         Left err   -> error (show err)

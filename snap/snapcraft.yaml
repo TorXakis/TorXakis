@@ -42,7 +42,7 @@ parts:
 apps:
   txsui:
     command: txsui
-    plugs:  # TODO: how to get this working in `strict` mode?
+    plugs:
       - network
       - home
       - network-bind
