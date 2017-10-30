@@ -14,6 +14,9 @@ import           Sqatt
 readWriteConflictText :: Text
 readWriteConflictText = "ReadWrite"
 
+readWriteConflictTestPurpText :: Text
+readWriteConflictTestPurpText = "ReadWriteTestPurposes"
+
 readWriteConflictAdvancedText :: Text
 readWriteConflictAdvancedText = "ReadWriteAdvanced"
 
@@ -30,10 +33,20 @@ testStepper = TxsExample
   , expectedResult = Pass
   }
 
+testPurpStepper :: TxsExample
+testPurpStepper = TxsExample
+  { exampleName = "Stepper Test for Purp Model"
+  , txsModelFiles = [txsFilePath exampDir readWriteConflictTestPurpText]
+  , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper"]
+  , txsServerArgs = []
+  , sutExample = Nothing
+  , expectedResult = Pass
+  }
+  
 testHitAll7 :: TxsExample
 testHitAll7 = TxsExample
   { exampleName = "HitAll7 Purpose Test"
-  , txsModelFiles = [txsFilePath exampDir readWriteConflictText]
+  , txsModelFiles = [txsFilePath exampDir readWriteConflictTestPurpText]
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_HitAll7Purpose_Tester"]
   , txsServerArgs = []
   , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "ReadWrite_Simulator")
@@ -51,7 +64,7 @@ testAdvancedStepper = TxsExample
   }
 
 examples :: [TxsExample]
-examples = [testStepper,testHitAll7,testAdvancedStepper]
+examples = [testStepper, testPurpStepper,testHitAll7,testAdvancedStepper]
 
 exampleSet :: TxsExampleSet
-exampleSet = TxsExampleSet "Read/Write Conflict" examples
+exampleSet = TxsExampleSet "ReadWrite Conflict" examples

@@ -1,0 +1,4 @@
+stepper Model
+step 200
+trace proc $> traceTestModel.log
+exit

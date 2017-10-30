@@ -4,97 +4,48 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-TYPEDEF MemoryAccess ::= MemoryAccess { identity :: String; value :: Int }
-ENDDEF
-
-PROCDEF cell [ Read, Write :: MemoryAccess ] ( value :: Int ) ::=
-        Read ? ma [[ value (ma) == value]] >-> cell [Read, Write ] (value)
+PROCDEF memory [ Read, Write :: Int ] ( value :: Int ) ::=
+        Read  ! value    >-> memory [Read, Write] (value)
     ##
-        Write ? ma >->  cell [Read, Write] (value (ma))
+        Write ? newValue >-> memory [Read, Write] (newValue)
 ENDDEF
 
-
-PROCDEF plus [ Read, Write :: MemoryAccess ] ( myName :: String; n :: Int ) EXIT ::=
-    Read ? ma [[ identity (ma) == myName]] >-> Write ! MemoryAccess (myName, value (ma)+n) >-> EXIT
+{-
+    Defining a process to use the memory
+-}
+PROCDEF plus [ Read, Write :: Int ] ( n :: Int ) EXIT ::=
+    Read ? value >-> Write ! (value + n) >-> EXIT
 ENDDEF
 
-
-PROCDEF readWrite [ Read, Write :: MemoryAccess ] ( ) ::=
-             plus [ Read, Write ]("p1",1)
+PROCDEF readWrite [ Read, Write :: Int ] ( ) ::=
+             plus [ Read, Write ](1)
          |||
-             plus [ Read, Write ]("p2",2)
+             plus [ Read, Write ](2)
          |||
-             plus [ Read, Write ]("p3",4)
+             plus [ Read, Write ](4)
      >>>
-              Read ? ma [[ identity (ma) == "Final"]]
-         >->  Write ! MemoryAccess("Reset",0)
-         >->  readWrite [ Read, Write ] ( )
+             Read ? value
+         >-> Write ! 0
+         >-> readWrite [ Read, Write ] ( )
 ENDDEF
 
-
-PROCDEF system [ Read, Write :: MemoryAccess ] ( ) ::=
-        cell [ Read, Write ] ( 0 )
+PROCDEF system [ Read, Write :: Int ] ( ) ::=
+        memory [ Read, Write ] ( 0 )
     |[ Read, Write ]|
         readWrite [ Read, Write ] ( )
 ENDDEF
 
+{-
+    Defining Channels and Model
+-}
 CHANDEF Channels ::=
-    Read, Write, Dummy :: MemoryAccess
+    Read, Write :: Int
 ENDDEF
 
-MODELDEF Model ::= 
-    CHAN IN Dummy
+MODELDEF Model ::=
+    CHAN IN
     CHAN OUT  Read, Write
-		
-	BEHAVIOUR
+
+    BEHAVIOUR
               system [ Read, Write ] ( )
 ENDDEF
-
-
--- -------------------------------------------------------- --
--- Test Purpose to prove that all outcomes [1..7] are obtained
------------------------------------------------------------------
-
-PROCDEF output [Read, Write :: MemoryAccess](n :: Int) HIT ::=
-        Read ! MemoryAccess ("Final",n) >-> HIT
-    ##
-        Read ? ma [[ (identity(ma) <> "Final") \/ (value(ma) <> n)]] >-> output [Read, Write](n)
-    ##
-        Write ? ma >-> output [Read, Write](n)
-ENDDEF
-
-PURPDEF HitAll ::= 
-    CHAN IN   Dummy
-    CHAN OUT  Read, Write
-
-    GOAL Hit1 ::= output [Read, Write] (1)
-    GOAL Hit2 ::= output [Read, Write] (2)
-    GOAL Hit3 ::= output [Read, Write] (3)
-    GOAL Hit4 ::= output [Read, Write] (4)
-    GOAL Hit5 ::= output [Read, Write] (5)
-    GOAL Hit6 ::= output [Read, Write] (6)
-    GOAL Hit7 ::= output [Read, Write] (7)
-ENDDEF
-
-CNECTDEF  Sut ::=
-    CLIENTSOCK
-
-    CHAN OUT Dummy                   HOST "localhost"  PORT 7776
-    ENCODE   Dummy ? s               -> ! toString(s)
-    CHAN IN  Read                    HOST "localhost"  PORT 7777
-    DECODE   Read ! fromString(s)    <- ? s
-    CHAN IN  Write                   HOST "localhost"  PORT 7778
-    DECODE   Write ! fromString(s)   <- ? s
-ENDDEF
-
-CNECTDEF  Sim ::=
-    SERVERSOCK
-
-    CHAN IN   Dummy                   HOST "localhost"  PORT 7776
-    DECODE    Dummy ! fromString(s)   <- ? s
-    CHAN OUT  Read                    HOST "localhost"  PORT 7777
-    ENCODE    Read ? b                ->  ! toString(b)
-    CHAN OUT  Write                   HOST "localhost"  PORT 7778
-    ENCODE    Write ? b               ->  ! toString(b)
-ENDDEF
-
