@@ -3,7 +3,7 @@
 [![Build Status](https://semaphoreci.com/api/v1/capitanbatata/torxakis/branches/develop/badge.svg)](https://semaphoreci.com/capitanbatata/torxakis)
 [![Build status](https://ci.appveyor.com/api/projects/status/sv3e96co0019taf9?svg=true)](https://ci.appveyor.com/project/keremispirli/torxakis)
 [![Code Climate](https://codeclimate.com/github/TorXakis/TorXakis/badges/gpa.svg)](https://codeclimate.com/github/TorXakis/TorXakis)
-    [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 # TorXakis
 
@@ -25,10 +25,8 @@ For Linux systems we provide a [`snap`][`12`] package. To install `TorXakis`
 run:
 
 ```sh
-sudo snap install torxakis
+sudo snap install torxakis --edge
 ```
-
-**TODO**: verify these instructions.
 
 When running `TorXakis` as a snap, the configuration file for `TorXakis` should
 go in the `~/snap/torxakis/current` directory. This is because snaps run in an
