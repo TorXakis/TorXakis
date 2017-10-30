@@ -271,13 +271,13 @@ getCPOptsIO (Just filePath) = case toText filePath of
 -- | Timeout (in seconds) for running a test. For now the timeout is not
 -- configurable.
 sqattTimeout :: NominalDiffTime
-sqattTimeout = 10.0
+sqattTimeout = 1800.0
 
 -- | Time to allow TorXakis run the checks after the SUT terminates. After this
 -- timeout the SUT process terminates and if TorXakis hasn't terminated yet
 -- the whole test fails.
 txsCheckTimeout :: NominalDiffTime
-txsCheckTimeout = 60.0
+txsCheckTimeout = 0.01
 
 -- | Run TorXakis with the given example specification.
 runTxsWithExample :: Maybe FilePath   -- ^ Path to the logging directory for
