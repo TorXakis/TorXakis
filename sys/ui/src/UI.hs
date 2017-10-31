@@ -22,72 +22,109 @@ import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.State.Strict
+import           Data.Foldable
 import qualified Data.Map                         as Map
 import           Data.Maybe
 import           Data.String.Utils
 import           Data.Time
+import           GHC.IO.Handle
 import           Network
 import           System.Console.Haskeline
 import           System.Directory
-import           System.Environment
 import           System.FilePath
 import           System.IO
 import           System.Process
 
+import           ArgsHandling
 import           TxsHelp
 import           UIenv
 import           UIif
 
--- ----------------------------------------------------------------------------------------- --
--- torxakis ui main
-
 main :: IO ()
 main  =  withSocketsDo $ do
 
-     hSetBuffering stdin  NoBuffering     -- alt: LineBuffering
-     hSetBuffering stdout NoBuffering     -- alt: LineBuffering
-     hSetBuffering stderr NoBuffering     -- alt: LineBuffering
+    hSetBuffering stdin  NoBuffering     -- alt: LineBuffering
+    hSetBuffering stdout NoBuffering     -- alt: LineBuffering
+    hSetBuffering stderr NoBuffering     -- alt: LineBuffering
 
-     hSetEncoding stdin latin1
-     hSetEncoding stdout latin1
-     hSetEncoding stderr latin1
+    hSetEncoding stdin latin1
+    hSetEncoding stdout latin1
+    hSetEncoding stderr latin1
 
-     args <- getArgs
-     if  length args < 1
-       then error "Usage: txsui <portnumber> [input file(s)]"
-       else do threadDelay 1000000    -- 1 sec delay on trying to connect
-               let hostname = "localhost"
-               let portnr = read (head args) :: Integer
-               let portid = PortNumber (fromInteger portnr)
-               hc       <- connectTo hostname portid
-               hSetBuffering hc NoBuffering
-               hSetEncoding hc latin1
+    eUIArgs <- getTxsUIArgs
+    either error startUI eUIArgs
 
-               hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
+    where
+      startUI uiArgs = do
+        (hc, mPh) <- connectToServer (txsServerAddress uiArgs)
+        hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
+        now <- getCurrentTime
+        home <- getHomeDirectory
+        _ <- runStateT ( runInputT (txsHaskelineSettings home) $
+                           do { doCmd "START" ""
+                              ; doCmd "INIT"  $ unwords (inputFiles uiArgs)
+                              ; cmdsIntpr
+                              }
+                       )
+                       UIenv { uiservh   = hc
+                             , uihins    = [stdin]
+                             , uihout    = stdout
+                             , uisystems = Map.empty
+                             , uitimers  = Map.singleton "global" now
+                             , uiparams  = Map.empty
+                             }
+        hClose hc
+        hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
+        traverse_ waitForProcess mPh -- Wait for the server process to finish, if it was started by the UI.
 
-               now <- getCurrentTime
-               home <- getHomeDirectory
-               _ <- runStateT ( runInputT (txsHaskelineSettings home) $
-                                  do { doCmd "START" ""
-                                     ; doCmd "INIT"  $ unwords (tail args)
-                                     ; cmdsIntpr
-                                     }
-                              )
-                              UIenv { uiservh   = hc
-                                    , uihins    = [stdin]
-                                    , uihout    = stdout
-                                    , uisystems = Map.empty
-                                    , uitimers  = Map.singleton "global" now
-                                    , uiparams  = Map.empty
-                                    }
-               hClose hc
-               hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
+-- | Connect to the server. If the port number of the `TxsServerAddress`
+-- argument is 'Nothing` then a new 'txsserver' process is started on
+-- "localhost". The port to which UI and server connect is determined by
+-- looking at some random available port.
+--
+-- This function returns the handle for reading from the 'txsserver' socket,
+-- and maybe a process handle if the server was started in this function.
+connectToServer :: TxsServerAddress -> IO (Handle, Maybe ProcessHandle)
+connectToServer sAddr = do
+    (p, ph) <- findTxsServer (portId sAddr)
+    putStrLn $ "Connecting to: " ++ show p
+    threadDelay 1000000    -- 1 sec delay on trying to connect
+    hc <- connectTo (hostName sAddr) p
+    putStrLn $ "Connection established."
+    hSetBuffering hc NoBuffering
+    hSetEncoding hc latin1
+    return (hc, ph)
+
+-- | If the argument is Nothing, this function will start the TorXakis server,
+-- and return the port that will be used for communication with it. If the
+-- argument contains a port number this port number is returned and no process
+-- is started (the TorXakis server is assumed to be running).
+findTxsServer :: Maybe PortID -> IO (PortID, Maybe ProcessHandle)
+findTxsServer Nothing = do
+    (_, Just hout, _, ph) <- createProcess $
+        (proc "txsserver" []) { std_out = CreatePipe
+                              , std_in = CreatePipe
+                              , std_err = CreatePipe
+                              }
+        -- (proc "echo" ["foo", "bar", "\n", "baz"]) { std_out = CreatePipe
+        --                       , std_in = CreatePipe
+        --                       , std_err = CreatePipe
+        --                       }
+    -- The TorXakis server will announce its port via the standard input, so we
+    -- need to read its answer.
+    putStrLn "Trying to get an answer from the server"
+    hSetBuffering hout LineBuffering
+    line <- hGetLine hout
+    putStrLn $ "Got " ++ line
+    return $ (PortNumber . fromInteger $ (read line :: Integer), Just ph)
+findTxsServer (Just p) = return (p, Nothing)
 
 -- | TorXakis prompt. For now this is not configurable.
 txsPrompt :: String
 txsPrompt = "TXS >> "
 
--- | Construct the Haskeline settings.
+-- | Construct the Haskeline settings. Currently only the location of the
+-- configuration file is determined here.
 txsHaskelineSettings :: MonadIO m
                      => FilePath -- ^ Home directory for `TorXakis`.
                      -> Settings m

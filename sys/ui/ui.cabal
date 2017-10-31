@@ -7,8 +7,7 @@ license:             BSD3
 license-file:        license.txt
 author:              Jan Tretmans
                    , Pierre van de Laar
-maintainer:          
-                   , pierre.vandelaar@tno.nl
+maintainer:          pierre.vandelaar@tno.nl
 copyright:           TNO
 category:            Web
 build-type:          Simple
@@ -22,6 +21,7 @@ executable txsui
   other-modules:        TxsHelp
                       , UIenv
                       , UIif
+                      , ArgsHandling
   build-depends:        base
                       , containers
                       , mtl
