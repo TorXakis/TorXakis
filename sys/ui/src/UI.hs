@@ -99,7 +99,8 @@ cmdsIntpr :: UIO ()
 cmdsIntpr  =  do
      (cmdhin:_cmdhins) <- lift $ gets uihins
      line <- if cmdhin == stdin
-             then fromMaybe "" <$> getInputLine txsPrompt
+             then (filter (/= '\r') . fromMaybe "")
+                  <$> getInputLine txsPrompt
              else liftIO $ hGetLine cmdhin
      let (cmd,args1)   = span (/= ' ') (dropWhile (== ' ') line)
      let (args,redir1) = span (/= '$') (dropWhile (== ' ') args1)
