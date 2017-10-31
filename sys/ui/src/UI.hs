@@ -17,23 +17,26 @@ module Main
 
 where
 
-import System.IO
-import System.Environment
-import Network
-import Control.Monad.State
-import Data.Maybe
-import Data.Time
+import           Control.Concurrent
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Class
+import           Control.Monad.Trans.State.Strict
+import qualified Data.Map                         as Map
+import           Data.Maybe
+import           Data.String.Utils
+import           Data.Time
+import           Network
+import           System.Console.Haskeline
+import           System.Directory
+import           System.Environment
+import           System.FilePath
+import           System.IO
+import           System.Process
 
-import System.Process
-import Control.Concurrent
-import Data.String.Utils
-
-import qualified Data.Map  as Map
-
-import TxsHelp
-import UIenv
-import UIif
-
+import           TxsHelp
+import           UIenv
+import           UIif
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis ui main
@@ -48,7 +51,7 @@ main  =  withSocketsDo $ do
      hSetEncoding stdin latin1
      hSetEncoding stdout latin1
      hSetEncoding stderr latin1
-     
+
      args <- getArgs
      if  length args < 1
        then error "Usage: txsui <portnumber> [input file(s)]"
@@ -63,30 +66,42 @@ main  =  withSocketsDo $ do
                hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
 
                now <- getCurrentTime
-               _ <- runStateT ( do { doCmd "START" ""
-                                   ; doCmd "INIT"  $ unwords (tail args)
-                                   ; cmdsIntpr
-                                   }
+               home <- getHomeDirectory
+               _ <- runStateT ( runInputT (txsHaskelineSettings home) $
+                                  do { doCmd "START" ""
+                                     ; doCmd "INIT"  $ unwords (tail args)
+                                     ; cmdsIntpr
+                                     }
                               )
                               UIenv { uiservh   = hc
                                     , uihins    = [stdin]
                                     , uihout    = stdout
                                     , uisystems = Map.empty
-                                    , uitimers  = Map.singleton "global" now 
+                                    , uitimers  = Map.singleton "global" now
                                     , uiparams  = Map.empty
                                     }
                hClose hc
                hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
 
+-- | TorXakis prompt. For now this is not configurable.
+txsPrompt :: String
+txsPrompt = "TXS >> "
 
--- ----------------------------------------------------------------------------------------- --
--- torxakis ui commands processing
+-- | Construct the Haskeline settings.
+txsHaskelineSettings :: MonadIO m
+                     => FilePath -- ^ Home directory for `TorXakis`.
+                     -> Settings m
+txsHaskelineSettings txsHome =
+    defaultSettings { historyFile = Just $ txsHome </> ".torxakis-hist.txt" }
 
+-- | TorXakis UI commands processing.
 cmdsIntpr :: UIO ()
 cmdsIntpr  =  do
-     (cmdhin:_cmdhins) <- gets uihins
-     lift $ hPutStr stderr $ if cmdhin == stdin then "TXS <<  " else ""
-     line              <- lift $ hGetLine cmdhin
+     (cmdhin:_cmdhins) <- lift $ gets uihins
+     line <- if cmdhin == stdin
+             then (filter (/= '\r') . fromMaybe "")
+                  <$> getInputLine txsPrompt
+             else liftIO $ hGetLine cmdhin
      let (cmd,args1)   = span (/= ' ') (dropWhile (== ' ') line)
      let (args,redir1) = span (/= '$') (dropWhile (== ' ') args1)
      let redir         = replace "$<"  " $< "
@@ -96,27 +111,27 @@ cmdsIntpr  =  do
            []                      -> do setOut "" WriteMode
                                          cmdIntpr cmd args
            ["$<",fin]              -> do setOut "" WriteMode
-                                         args' <- lift $ readFile fin
+                                         args' <- liftIO $ readFile fin
                                          cmdIntpr cmd $ replace "\n" " " args'
            ["$>",fout]             -> do setOut fout WriteMode
                                          cmdIntpr cmd args
            ["$=",fapp]             -> do setOut fapp AppendMode
                                          cmdIntpr cmd args
            ["$<",fin,"$>",fout]    -> do setOut fout WriteMode
-                                         args' <- lift $ readFile fin
+                                         args' <- liftIO $ readFile fin
                                          cmdIntpr cmd $ replace "\n" " " args'
            ["$<",fin,"$=",fapp]    -> do setOut fapp AppendMode
-                                         args' <- lift $ readFile fin
+                                         args' <- liftIO $ readFile fin
                                          cmdIntpr cmd $ replace "\n" " " args'
            ["$>",fout,"$<",fin]    -> do setOut fout WriteMode
-                                         args' <- lift $ readFile fin
+                                         args' <- liftIO $ readFile fin
                                          cmdIntpr cmd $ replace "\n" " " args'
            ["$=",fapp,"$<",fin]    -> do setOut fapp AppendMode
-                                         args' <- lift $ readFile fin
+                                         args' <- liftIO $ readFile fin
                                          cmdIntpr cmd $ replace "\n" " " args'
            _                       -> do putErr "wrong IO-redirection in command"
                                          cmdsIntpr
-          
+
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -126,9 +141,9 @@ cmdIntpr :: String -> String -> UIO ()
 cmdIntpr cmdname args  =
      case cmdname of
 -- ----------------------------------------------------------------------------------- modus --
-         { "quit"          -> cmdQuit       args 
-         ; "q"             -> cmdQuit       args 
-         ; "exit"          -> cmdExit       args 
+         { "quit"          -> cmdQuit       args
+         ; "q"             -> cmdQuit       args
+         ; "exit"          -> cmdExit       args
          ; "x"             -> cmdExit       args
 -- -------------------------------------------------------------------------------- settings --
          ; "help"          -> cmdHelp       args
@@ -177,11 +192,11 @@ cmdIntpr cmdname args  =
          ; "systart"       -> cmdSyStart    args
          ; "systop"        -> cmdSyStop     args
 -- ---------------------------------------------------------------------------- unrecognized --
-         ; _               -> do putErr "???  ('help' for help)"
-                                 (cmdhin:cmdhins) <- gets uihins
+         ; _               -> do putErr $ "unrecognized command `" ++ cmdname ++  "` (enter 'help' for help)"
+                                 (cmdhin:cmdhins) <- lift $ gets uihins
                                  if  cmdhin == stdin
                                     then    cmdsIntpr
-                                    else do modify ( \e -> e { uihins = cmdhins } )
+                                    else do lift $ modify ( \e -> e { uihins = cmdhins } )
                                             cmdsIntpr
          }
 
@@ -192,12 +207,12 @@ cmdIntpr cmdname args  =
 
 cmdQuit :: String -> UIO ()
 cmdQuit _args  =  do
-     systems  <- gets uisystems
-     runprocs <- lift $ filterM ( \ph -> do { ec <- getProcessExitCode ph
+     systems  <- lift $ gets uisystems
+     runprocs <- liftIO $ filterM ( \ph -> do { ec <- getProcessExitCode ph
                                             ; return (isNothing ec)
                                             }
                                 ) ( Map.elems systems )
-     _ <- ($) lift $ mapM terminateProcess runprocs
+     _ <- ($) liftIO $ mapM terminateProcess runprocs
      doCmd "QUIT" ""
      return ()
 
@@ -205,11 +220,11 @@ cmdQuit _args  =  do
 
 cmdExit :: String -> UIO ()
 cmdExit _args  =  do
-     (cmdhin:cmdhins) <- gets uihins
+     (cmdhin:cmdhins) <- lift $ gets uihins
      if  cmdhin == stdin
        then do doCmd "QUIT" ""
                return ()
-       else do modify ( \e -> e { uihins = cmdhins } )
+       else do lift $ modify ( \e -> e { uihins = cmdhins } )
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
@@ -239,7 +254,7 @@ cmdDelay :: String -> UIO ()
 cmdDelay args  =
      case words args of
          { [val] -> do let sec = read val ::Int
-                       lift $ threadDelay $ 1000000 * sec      -- sec seconds delay
+                       liftIO $ threadDelay $ 1000000 * sec      -- sec seconds delay
                        cmdsIntpr
          ; _     -> do putErr "unknown delay"
                        cmdsIntpr
@@ -268,11 +283,11 @@ cmdEcho :: String -> UIO ()
 cmdEcho args  =  do
      putOut args
      cmdsIntpr
-              
+
 -- ----------------------------------------------------------------------------------------- --
 
 cmdComment :: String -> UIO ()
-cmdComment _args  = 
+cmdComment _args  =
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
@@ -287,12 +302,12 @@ cmdSeed args  =  do
 cmdRun :: String -> UIO ()
 cmdRun args  =  do
      let (fin,_rest) = span (/= ' ') (dropWhile (== ' ') args)
-     hin        <- lift $ openFile fin ReadMode
-     lift $ hSetBuffering hin NoBuffering
-     cmdhins <- gets uihins
-     modify ( \e -> e { uihins = hin:cmdhins } )
+     hin        <- liftIO $ openFile fin ReadMode
+     liftIO $ hSetBuffering hin NoBuffering
+     cmdhins <- lift $ gets uihins
+     lift $ modify ( \e -> e { uihins = hin:cmdhins } )
      cmdsIntpr
-     lift $ hClose hin
+     liftIO $ hClose hin
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -300,7 +315,7 @@ cmdShow :: String -> UIO ()
 cmdShow args  =  do
      doCmd "SHOW" args
      cmdsIntpr
-  
+
 -- ----------------------------------------------------------------------------------------- --
 
 cmdVar :: String -> UIO ()
@@ -416,7 +431,7 @@ cmdBack args  =  do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdPath :: String -> UIO ()
-cmdPath args  =  do 
+cmdPath args  =  do
      doCmd "PATH" args
      cmdsIntpr
 
@@ -459,22 +474,22 @@ cmdLPE args  =  do
 
 cmdSyStart :: String -> UIO ()
 cmdSyStart args  =  do
-     systems <- gets uisystems
+     systems <- lift $ gets uisystems
      case words args of
          { (nm:cmd:args')
              -> if Map.member nm systems
                  then do putErr "system name in use"
                          cmdsIntpr
                  else do (Just hin, Just hout, Just herr, ph)
-                             <- lift $ createProcess (proc cmd args')
+                             <- liftIO $ createProcess (proc cmd args')
                                                      { std_out = CreatePipe
                                                      , std_in  = CreatePipe
                                                      , std_err = CreatePipe
                                                      }
-                         lift $ hSetBuffering hin  NoBuffering
-                         lift $ hSetBuffering hout NoBuffering
-                         lift $ hSetBuffering herr NoBuffering
-                         modify ( \e -> e { uisystems = Map.insert nm ph systems } )
+                         liftIO $ hSetBuffering hin  NoBuffering
+                         liftIO $ hSetBuffering hout NoBuffering
+                         liftIO $ hSetBuffering herr NoBuffering
+                         lift $ modify ( \e -> e { uisystems = Map.insert nm ph systems } )
                          cmdsIntpr
          ; _ -> do putErr "no system to start"
                    cmdsIntpr
@@ -484,15 +499,15 @@ cmdSyStart args  =  do
 
 cmdSyStop :: String -> UIO ()
 cmdSyStop args  =  do
-     systems <- gets uisystems
+     systems <- lift $ gets uisystems
      case words args of
          { [nm] -> case Map.lookup nm systems of
                    { Nothing -> do putErr "no system to stop"
                                    cmdsIntpr
-                   ; Just ph -> do modify ( \e -> e { uisystems = Map.delete nm systems } )
-                                   ec <- lift $ getProcessExitCode ph
+                   ; Just ph -> do lift $ modify ( \e -> e { uisystems = Map.delete nm systems } )
+                                   ec <- liftIO $ getProcessExitCode ph
                                    if isNothing ec
-                                     then do lift $ terminateProcess ph
+                                     then do liftIO $ terminateProcess ph
                                              cmdsIntpr
                                      else do putErr "system already stopped"
                                              cmdsIntpr
