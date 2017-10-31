@@ -1,10 +1,10 @@
 # Modelling Example - Lucky People
-We want to test our [java program](Java_program) [LuckyPeople.java](https://github.com/TorXakis/TorXakis/blob/develop/examps/LuckyPeople/sut/LuckyPeople.java).
-This program gets as input a sequence of persons and determines if those people are lucky. The detailed behaviour of this program can be found at the [assignment page](Modelling-Example-Lucky-People).
+We want to test our [java program][8] [LuckyPeople.java](sut/LuckyPeople.java).
+This program gets as input a sequence of persons and determines if those people are lucky. The detailed behaviour of this program can be found at the [assignment page](Modelling-Example-Lucky-People.md).
 All the files used in this example can be found at [the example folder](https://github.com/TorXakis/TorXakis/tree/develop/examps/LuckyPeople).
 ## Types
 We start with defining the types that are needed to model This program's (our System Under Test - SUT) behaviour.
-The input of our SUT are persons with first name, last name, sex, day of birth and month of birth. Let's [define the types](TypeDefs) needed:
+The input of our SUT are persons with first name, last name, sex, day of birth and month of birth. Let's [define the types][1] needed:
 ```
 TYPEDEF Sex ::= Male | Female ENDDEF
 
@@ -16,15 +16,15 @@ TYPEDEF Person ::=
 ENDDEF
 ```
 ## Channels
-Our SUT receives a sequence of persons and determines if those people are lucky. Let's [define the channels](ChanDefs) needed for modelling this behaviour:
+Our SUT receives a sequence of persons and determines if those people are lucky. Let's [define the channels][2] needed for modelling this behaviour:
 ```
 CHANDEF Channels ::=  In   :: Person
                     ; Out  :: Bool
 ENDDEF
 ```
 ## Procedure
-In our [model definition](ModelDefs), we need a way to define the behaviour of determining whether a Person is lucky or not.
-Let's implement a [procedure definition](ProcDefs) for this:
+In our [model definition][5], we need a way to define the behaviour of determining whether a Person is lucky or not.
+Let's implement a [procedure definition][4] for this:
 
 `PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=`
 
@@ -40,7 +40,7 @@ Next, we want to communicate to the output whether this person is lucky or not. 
 
 `>-> Out ! isLuckyPerson (p, last, n)`
 
-"**>->**" is the [Sequence Operator](Sequence_Operator). It means that after the process on the left has communicated, the described process behaviour on the right is exposed.
+"**>->**" is the [Sequence Operator][9]. It means that after the process on the left has communicated, the described process behaviour on the right is exposed.
 
 After communicating the result to the output channel, it's time to go back and wait for next input. There's one catch, though: As we said above, we should keep track of how many people with the current sex have been processed so far.
 
@@ -52,11 +52,11 @@ After communicating the result to the output channel, it's time to go back and w
     )
 ```
 
-"**##**" is the [Choice Operator](Choice_Operator). It means that either one of those processes are executed, but never both.
+"**##**" is the [Choice Operator][10]. It means that either one of those processes are executed, but never both.
 
-"**=>>**" is the [Guard Operator](Guard_Operator). The process behaviour on the right is executed only if the expression on the left of it is *true*.
+"**=>>**" is the [Guard Operator][11]. The process behaviour on the right is executed only if the expression on the left of it is *true*.
 
-So the [process definition](ProcDefs) of Lucky People looks like this:
+So the [process definition][4] of Lucky People looks like this:
 ```
 PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
         In ? p [[ isValid_Person(p) ]] 
@@ -68,7 +68,7 @@ PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
         )
 ENDDEF
 ```
-Now we can use this [procedure definition](ProcDefs) in our [Model](ModelDefs).
+Now we can use this [procedure definition][4] in our [Model][5].
 ## Model
 The model should specify that the system uses two channels, one incoming for the Person and one outgoing for the result.
 It should also specify that "*luckyPeople*" process is executed with the input and this process's output is communicated to the out channel as this model's behaviour.
@@ -83,7 +83,7 @@ ENDDEF
 ```
 
 ## Functions
-We're not done yet. We need to implement the [function definitions](FuncDefs) that our "*luckyPeople*" process uses.
+We're not done yet. We need to implement the [function definitions][3] that our "*luckyPeople*" process uses.
 ### isValid_Person
 We want to validate the input in order to make sure that it represents data of a person that can actually exist.
 ```
@@ -96,7 +96,7 @@ ENDDEF
 ```
 "*strinre*" function checks whether the given string matches the given Regular Expression. First two lines ensure that only the inputs with Capital case first name and surname are valid.
 ### isLuckyPerson
-To make the "*luckyPerson*" process cleaner, we decided to extract the logic of determining the person's luckiness into a separate function. As we have seen in the [assignment page](Modelling-Example-Lucky-People), a person can be lucky based on 3 criteria: gender, name or birthday. So our [function definition](FuncDefs) should be something like this:
+To make the "*luckyPerson*" process cleaner, we decided to extract the logic of determining the person's luckiness into a separate function. As we have seen in the [assignment page](Modelling-Example-Lucky-People.md), a person can be lucky based on 3 criteria: gender, name or birthday. So our [function definition][3] should be something like this:
 ```
 FUNCDEF isLuckyPerson (p :: Person; last :: Sex; n :: Int) :: Bool ::=
        isLuckyByGender(p, last, n)
@@ -104,7 +104,7 @@ FUNCDEF isLuckyPerson (p :: Person; last :: Sex; n :: Int) :: Bool ::=
     \/ isLuckyByBirthday(p)
 ENDDEF
 ```
-Now let's define each of these criteria as separate [function definitions](FuncDefs).
+Now let's define each of these criteria as separate [function definitions][3].
 
 ### isLuckyByGender
 A person is lucky by gender if previous 5 people were all from the opposite sex.
@@ -133,7 +133,7 @@ ENDDEF
 ## SUT Connection
 Our SUT communicates with the outside world by sending and receiving lines i.e. strings terminated by a line feed, over a socket at port 7777.
 The SUT also expects one person per input line, fields separated by "@" sign. So we should make sure that the Person type in our TorXakis model is properly serialized before being communicated to the SUT. The return value from the SUT should also be deserialized into proper data structure (Bool).
-Assuming that TorXakis and the SUT run on the same machine (localhost) the [SUT connection](CnectDefs) can be defined in TorXakis as follows:
+Assuming that TorXakis and the SUT run on the same machine (localhost) the [SUT connection][6] can be defined in TorXakis as follows:
 ```
 CONSTDEF separator :: String ::= "@" ENDDEF
 
@@ -153,11 +153,11 @@ ENDDEF
 
 ```
 ## Model Based Testing
-1.  Start the SUT: run the [Java program](Java_program) in a command window.
+1.  Start the SUT: run the [Java program][8] in a command window.
 
 `$> java LuckyPeople`
 
-2.  Start TorXakis: run the [TorXakis](TorXakis) with the LuckyPeople model described above in another command window.
+2.  Start TorXakis: run the [TorXakis][7] with the LuckyPeople model described above in another command window.
 
 `$> torxakis LuckyPeople.txs`
 
@@ -185,7 +185,7 @@ TXS >>  PASS
 
 ## XML-Based communication
 TorXakis is capable of XML-based communication with SUT's. We don't have an SUT which does that but TorXakis can help us there, too: TorXakis can also act as a simulator which behaves based on a model.
-Let's [define another connection](CnectDefs) and a simulator, both of which use XML-based communication.
+Let's [define another connection][6] and a simulator, both of which use XML-based communication.
 ```
 CNECTDEF  Xut ::=
     CLIENTSOCK
@@ -208,7 +208,7 @@ CNECTDEF  Xim ::=
 ENDDEF
 ```
 Let's test our simulator.
-1.  Start TorXakis as simulator: run the [TorXakis](TorXakis) with the LuckyPeople model described above in a command window.
+1.  Start TorXakis as simulator: run the [TorXakis][7] with the LuckyPeople model described above in a command window.
 
 `$> torxakis LuckyPeople.txs`
 
@@ -218,7 +218,7 @@ Let's test our simulator.
 
 TorXakis will hang, waiting for a tester to connect.
 
-3.  Start another TorXakis instance as the Tester: run the [TorXakis](TorXakis) with the LuckyPeople model described above in another command window.
+3.  Start another TorXakis instance as the Tester: run the [TorXakis][7] with the LuckyPeople model described above in another command window.
 
 `$> torxakis LuckyPeople.txs`
 
@@ -230,7 +230,7 @@ As soon as you enter this command, you'll see that Simulator also responds:
 
 `TXS >>  Simulator started`
 
-5.  Simulator works a bit slower than the Java implementation. To prevent unexpected delays to cause false negatives, increase delta times of tester.
+5.  Simulator works a bit slower than the [Java implementation][8]. To prevent unexpected delays to cause false negatives, increase delta times of tester.
 In the command window of the tester, input following commands:
 ```
 param param_Sim_deltaTime 4000
@@ -282,4 +282,16 @@ TXS >>  ....30: OUT: No Output (Quiescence)
 TXS >>  PASS
 ```
 
-### Next: [Testing with predetermined input](Modelling-Example-Lucky-People-(Testing-With-Predetermined-Input))
+### Next: [Testing with predetermined input](Modelling-Example-Lucky-People-(Testing-With-Predetermined-Input).md)
+
+[1]: https://github.com/TorXakis/TorXakis/wiki/TypeDefs
+[2]: https://github.com/TorXakis/TorXakis/wiki/ChanDefs
+[3]: https://github.com/TorXakis/TorXakis/wiki/FuncDefs
+[4]: https://github.com/TorXakis/TorXakis/wiki/ProcDefs
+[5]: https://github.com/TorXakis/TorXakis/wiki/ModelDefs
+[6]: https://github.com/TorXakis/TorXakis/wiki/CnectDefs
+[7]: https://github.com/TorXakis/TorXakis/wiki/TorXakis
+[8]: https://github.com/TorXakis/TorXakis/wiki/Java_program
+[9]: https://github.com/TorXakis/TorXakis/wiki/Sequence_Operator
+[10]: https://github.com/TorXakis/TorXakis/wiki/Choice_Operator
+[11]: https://github.com/TorXakis/TorXakis/wiki/Guard_Operator

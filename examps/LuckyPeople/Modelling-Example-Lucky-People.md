@@ -67,7 +67,7 @@ Provide a test report: a file containing the verdict whether 'LuckyPeople.java' 
 
 ## Solution
 
-You can find a solution [here](Modelling-Example-Lucky-People-(Solution)).
+You can find a solution [here](Modelling-Example-Lucky-People-(Solution).md).
 
 [1]: https://github.com/TorXakis/TorXakis/wiki/TypeDefs
 [2]: https://github.com/TorXakis/TorXakis/wiki/ChanDefs

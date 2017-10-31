@@ -1,5 +1,5 @@
 ### Testing with predetermined input
-We can also tell TorXakis to use predetermined input data for testing. For this, we can make use of [Test Purpose](TestPurpose)s. We'll define a process that communicates Person data and resulting boolean at each step, then we'll add as many steps as we want for our predetermined input, and then we'll use this process in our Test Purpose.
+We can also tell TorXakis to use predetermined input data for testing. For this, we can make use of [Test Purpose][9]s. We'll define a process that communicates Person data and resulting boolean at each step, then we'll add as many steps as we want for our predetermined input, and then we'll use this process in our Test Purpose.
 
 Let's create a _PurposeExamples.txs_ file and define that process and write some test data with expected results:
 ```
@@ -57,11 +57,11 @@ Defining the Goal of the Test Purpose with *examples* process effectively forces
 
 Now we can use this Test Purpose to test SUT with our predetermined inputs.
 
-1.  Start the SUT: run the [Java program](Java_program) in a command window.
+1.  Start the SUT: run the [Java program][8] in a command window.
 
 `$> java LuckyPeople`
 
-2.  Start TorXakis: run the [TorXakis](TorXakis) with the LuckyPeople model and PurposeExamples test purpose in another command window.
+2.  Start TorXakis: run the [TorXakis][7] with the LuckyPeople model and PurposeExamples test purpose in another command window.
 
 `$> torxakis LuckyPeople.txs PurposeExamples.txs`
 
@@ -126,4 +126,14 @@ TXS >>  Goal examples: Hit
 TXS >>  PASS
 ```
 
-### Next: [Lucky based on gender](Modelling-Example-Lucky-People-(Lucky-Based-On-Gender))
+### Next: [Lucky based on gender](Modelling-Example-Lucky-People-(Lucky-Based-On-Gender).md)
+
+[1]: https://github.com/TorXakis/TorXakis/wiki/TypeDefs
+[2]: https://github.com/TorXakis/TorXakis/wiki/ChanDefs
+[3]: https://github.com/TorXakis/TorXakis/wiki/FuncDefs
+[4]: https://github.com/TorXakis/TorXakis/wiki/ProcDefs
+[5]: https://github.com/TorXakis/TorXakis/wiki/ModelDefs
+[6]: https://github.com/TorXakis/TorXakis/wiki/CnectDefs
+[7]: https://github.com/TorXakis/TorXakis/wiki/TorXakis
+[8]: https://github.com/TorXakis/TorXakis/wiki/Java_program
+[9]: https://github.com/TorXakis/TorXakis/wiki/TestPurpose
