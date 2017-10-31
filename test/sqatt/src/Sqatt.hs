@@ -228,6 +228,7 @@ data SqattError = CompileError Text
                 | SutAborted
                 | TxsServerAborted
                 | TestTimedOut
+                | TxsChecksTimedOut
   deriving (Show, Eq)
 
 instance Exception SqattError
@@ -273,8 +274,8 @@ sqattTimeout :: NominalDiffTime
 sqattTimeout = 1800.0
 
 -- | Time to allow TorXakis run the checks after the SUT terminates. After this
--- timeout the SUT process terminates and if the expected result is not
--- observed in the test the whole test fails.
+-- timeout the SUT process terminates and if TorXakis hasn't terminated yet
+-- the whole test fails.
 txsCheckTimeout :: NominalDiffTime
 txsCheckTimeout = 60.0
 
@@ -301,11 +302,13 @@ runTxsWithExample mLogDir ex = Concurrently $ do
       putStr "."
     timer = Concurrently $ do
       sleep sqattTimeout
-      throwIO TestTimedOut
+      return $ Left TestTimedOut
     txsUIProc mUiLogDir imf port =
-      Concurrently $ try $ do
-        res <- Turtle.fold txsUIShell findExpectedMsg
-        unless res (throw tErr)
+      Concurrently $ do
+        eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
+        case eRes of
+          Left exception -> return $ Left exception
+          Right res -> return $ unless res $ Left tErr
       where
         inLines :: Shell Line
         inLines = asum $ input <$> cmdsFile
@@ -401,7 +404,7 @@ runSUTWithTimeout mLogDir cSUT args = Concurrently $ do
       return $ Left someErr
     Right _ -> do
       sleep txsCheckTimeout
-      return (Left TestTimedOut)
+      return (Left TxsChecksTimedOut)
 
 runSUT :: Maybe FilePath -> CompiledSut -> [Text]
        -> IO (Either SqattError ())
@@ -454,6 +457,7 @@ testExample :: FilePath -> TxsExample -> Spec
 testExample logDir ex = it (exampleName ex) $ do
   let mLogDir = logDirOfExample (Just logDir) (exampleName ex)
   res <- runExceptT $ runTest $ execTest mLogDir ex
+  sleep 2.0 -- let the files be closed
   unless (isRight res) (sh $ dumpToScreen $ fromJust mLogDir)
   res `shouldBe` Right ()
 

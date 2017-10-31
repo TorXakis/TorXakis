@@ -31,14 +31,26 @@ import           GHC.IO.Handle
 import           Network
 import           System.Console.Haskeline
 import           System.Directory
+import           Network
+import           System.Console.Haskeline
+import           System.Directory
+import           System.Environment
 import           System.FilePath
 import           System.IO
 import           System.Process
+
 
 import           ArgsHandling
 import           TxsHelp
 import           UIenv
 import           UIif
+import           TxsHelp
+import           UIenv
+import           UIif
+
+-- ----------------------------------------------------------------------------------------- --
+-- torxakis ui main
+>>>>>>> 39b558c151a6aad2b10532e5cfd240558c5d4af6
 
 main :: IO ()
 main  =  withSocketsDo $ do

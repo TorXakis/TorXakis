@@ -3835,11 +3835,11 @@ UpdateList      -- :: { VEnv }
                 --           : used objects shall be defined
               : {- empty -}
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$ = Map.fromList [ (vid, cstrVar vid) | vid <- $$.inhStVarSigs ]
+                ;  $$ = Map.empty
                 }
               | "{" "}"
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$ = Map.fromList [ (vid, cstrVar vid) | vid <- $$.inhStVarSigs ]
+                ;  $$ = Map.empty
                 }
               | Updates 
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -3847,11 +3847,7 @@ UpdateList      -- :: { VEnv }
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $1.inhStVarSigs = $$.inhStVarSigs
-                ;  $$ = let id = Map.fromList [ (vid, cstrVar vid)
-                                              | vid <- $$.inhStVarSigs
-                                              , vid `Map.notMember` $1
-                                              ]
-                         in $1 `Map.union` id
+                ;  $$ = $1
                 }
               | "{" Updates "}"
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
@@ -3859,11 +3855,7 @@ UpdateList      -- :: { VEnv }
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $2.inhVarSigs   = $$.inhVarSigs
                 ;  $2.inhStVarSigs = $$.inhStVarSigs
-                ;  $$ = let id = Map.fromList [ (vid, cstrVar vid)
-                                              | vid <- $$.inhStVarSigs
-                                              , vid `Map.notMember` $2
-                                              ]
-                         in $2 `Map.union` id
+                ;  $$ = $2
                 }
 
 Updates         -- :: { VEnv }
@@ -3880,7 +3872,7 @@ Updates         -- :: { VEnv }
               : Update
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
-                ;  $1.inhSigs  = $$.inhSigs
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $1.inhStVarSigs = $$.inhStVarSigs
                 ;  $$ = $1
