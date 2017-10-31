@@ -107,10 +107,7 @@ connectToServer sAddr = do
 findTxsServer :: Maybe PortID -> IO (PortID, Maybe ProcessHandle)
 findTxsServer Nothing = do
     (_, Just hout, _, ph) <- createProcess $
-        (proc "txsserver" []) { std_out = CreatePipe
-                              , std_in = CreatePipe
-                              , std_err = CreatePipe
-                              }
+        (proc "txsserver" []) { std_out = CreatePipe }
         -- (proc "echo" ["foo", "bar", "\n", "baz"]) { std_out = CreatePipe
         --                       , std_in = CreatePipe
         --                       , std_err = CreatePipe
