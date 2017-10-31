@@ -200,7 +200,7 @@ expand chsets (BNbexpr we (StAut ini ve trns))  =  do
                                                            : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- exclams' ]
                                                            )
                                              )
-                       , ctnext    = BNbexpr (envwals',ivenv) (StAut to' ve' trns)
+                       , ctnext    = BNbexpr (envwals',ivenv) (StAut to' (Map.union ve' ve) trns)
                        }
 
 -- ----------------------------------------------------------------------------------------- --
