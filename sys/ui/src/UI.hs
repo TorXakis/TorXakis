@@ -191,7 +191,7 @@ cmdIntpr cmdname args  =
          ; "systart"       -> cmdSyStart    args
          ; "systop"        -> cmdSyStop     args
 -- ---------------------------------------------------------------------------- unrecognized --
-         ; _               -> do putErr "???  ('help' for help)"
+         ; _               -> do putErr $ "unrecognized command `" ++ cmdname ++  "` (enter 'help' for help)"
                                  (cmdhin:cmdhins) <- lift $ gets uihins
                                  if  cmdhin == stdin
                                     then    cmdsIntpr
