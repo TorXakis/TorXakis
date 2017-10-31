@@ -79,7 +79,7 @@ stack install --fast --stack-yaml stack_linux.yaml
 This disables all optimizations and takes the compile time down to
 around 5 minutes, however bear in mind that `TorXakis` will be slightly slower
 (for instance we experience a 10 seconds overhead when testing a model that
-took `30` about seconds with the optimized version).
+took about `30` seconds with the optimized version).
 
 The reason for having two configuration files is that on Windows systems the
 libraries are linked statically, and thus we cannot use the `integer-gmp`
