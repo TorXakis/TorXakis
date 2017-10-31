@@ -11,7 +11,7 @@ The three processes repeat the following steps:
 
 After briefly introducing the data types and function that are used in this model, we will discuss these three processes in order of simplicity. We will end with the complete control loop model.
 
-All the files used in this example can be found at [the example folder](https://github.com/TorXakis/TorXakis/tree/develop/examps/controlloop).
+All the files used in this example can be found at [the example folder](https://github.com/TorXakis/TorXakis/tree/develop/examps/ControlLoop).
 
 ## Data Types
 All [data types][1] are Cartesian Products of two integers: id and value.

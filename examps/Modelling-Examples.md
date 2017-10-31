@@ -14,9 +14,9 @@ Please consult the [java program section][1] for instruction on working with [ja
 *   [Modelling Example - Lucky People][7]
 
 [1]: https://github.com/TorXakis/TorXakis/wiki/Java_program
-[2]: https://github.com/TorXakis/TorXakis/wiki/Modelling-Example-Stimulus-Response
-[3]: https://github.com/TorXakis/TorXakis/wiki/Modelling-Example-Echo
-[4]: https://github.com/TorXakis/TorXakis/wiki/Modelling-Example-Shared-Memory
+[2]: StimulusResponse/Modelling-Example-Stimulus-Response.md
+[3]: Echo/Modelling-Example-Echo.md
+[4]: ReadWriteConflict/Modelling-Example-Shared-Memory.md
 [5]: ControlLoop/Modelling-Example-Control-Loop.md
-[6]: https://github.com/TorXakis/TorXakis/wiki/Modelling-Example-Customers-Orders
-[7]: https://github.com/TorXakis/TorXakis/wiki/Modelling-Example-Lucky-People
+[6]: CustomersOrders/Modelling-Example-Customers-Orders.md
+[7]: LuckyPeople/Modelling-Example-Lucky-People.md
