@@ -3415,10 +3415,7 @@ StautItemList   -- :: { BExpr }
                                         (show (Sigs.pro $$.inhSigs)) ++ "\n" else
                          if  not $ null $ doubles ( map ( sig . IdVar ) (vars ++ $$.inhVarSigs) )
                            then error $ "\nTXS1012: " ++ "Double defined state/parameter vars: "
-                                        ++ (show (Sigs.pro $$.inhSigs)) ++ "\n" else
-                         if  not $ Set.fromList vars == Set.fromList (Map.keys $ head venvs)
-                           then error $ "\nTXS1015: " ++ "No (unique) initial values for " ++
-                                        "all state vars: " ++ (show (Sigs.pro $$.inhSigs)) ++ "\n"
+                                        ++ (show (Sigs.pro $$.inhSigs)) ++ "\n"
                            else ()
                 }
 
