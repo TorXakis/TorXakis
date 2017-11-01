@@ -33,4 +33,5 @@ executable txsui
                       , transformers
                       , filepath
                       , directory
+                      , async
   default-language:     Haskell2010

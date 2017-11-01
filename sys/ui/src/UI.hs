@@ -18,6 +18,8 @@ module Main
 where
 
 import           Control.Concurrent
+import           Control.Concurrent.Async
+import           Control.Exception
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
@@ -29,7 +31,7 @@ import           Data.Maybe
 import           Data.Time
 import           GHC.IO.Handle
 import           Network
-import           System.Console.Haskeline
+import           System.Console.Haskeline         hiding (bracket)
 import           System.Directory
 import           System.FilePath
 import           System.IO
@@ -60,27 +62,30 @@ main  =  withSocketsDo $ do
 
     where
       startUI uiArgs = do
-        hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
-        now <- getCurrentTime
-        home <- getHomeDirectory
-        logDir <- mkLogDir (home </> ".torxakis")
-        (hc, mTsi) <- connectToServer logDir (txsServerAddress uiArgs)
-        _ <- runStateT ( runInputT (txsHaskelineSettings home) $
-                           do { doCmd "START" ""
-                              ; doCmd "INIT"  $ unwords (inputFiles uiArgs)
-                              ; cmdsIntpr
-                              }
-                       )
-                       UIenv { uiservh   = hc
-                             , uihins    = [stdin]
-                             , uihout    = stdout
-                             , uisystems = Map.empty
-                             , uitimers  = Map.singleton "global" now
-                             , uiparams  = Map.empty
-                             }
-        hClose hc
-        hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
-        traverse_ cleanup mTsi -- wait for the server process to finish, if it was started by the UI.
+          hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
+          now <- getCurrentTime
+          bracket (initializeServer uiArgs) cleanup $ \(hc, _) -> do
+              home <- getHomeDirectory
+              _ <- runStateT ( runInputT (txsHaskelineSettings home) $
+                               do { doCmd "START" ""
+                                  ; doCmd "INIT"  $ unwords (inputFiles uiArgs)
+                                  ; cmdsIntpr
+                                  }
+                             )
+                            UIenv { uiservh   = hc
+                                  , uihins    = [stdin]
+                                  , uihout    = stdout
+                                  , uisystems = Map.empty
+                                  , uitimers  = Map.singleton "global" now
+                                  , uiparams  = Map.empty
+                                  }
+              hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
+
+      initializeServer :: UIArgs -> IO (Handle, Maybe TxsServerInfo)
+      initializeServer uiArgs = do
+          home <- getHomeDirectory
+          logDir <- mkLogDir (home </> ".torxakis")
+          connectToServer logDir (txsServerAddress uiArgs)
 
       mkLogDir :: FilePath -> IO FilePath
       mkLogDir prefix = do
@@ -90,10 +95,18 @@ main  =  withSocketsDo $ do
           createDirectoryIfMissing True logDir
           return logDir
 
-      cleanup :: TxsServerInfo -> IO ()
-      cleanup tsi
-          =  waitForProcess (spHandle tsi)
-          >> hClose (sErrHandle tsi)
+      -- | Shutdown the TorXakis UI properly.
+      cleanup :: (Handle, Maybe TxsServerInfo) -> IO ()
+      cleanup (h, mTsi) =
+          hClose h >> traverse_ shutdownServer mTsi
+
+      shutdownServer :: TxsServerInfo -> IO ()
+      shutdownServer tsi
+          = putStrLn "Shutting down TxsServer..."
+          >> waitForProcess (procHandle tsi)
+          >> hClose (errHandle tsi)
+          >> cancel (monitorAsync tsi)
+          >> putStrLn "TxsServer shut down."
 
 -- | Connect to the server. If the port number of the `TxsServerAddress`
 -- argument is 'Nothing` then a new 'txsserver' process is started on
@@ -118,8 +131,12 @@ connectToServer logDir sAddr = do
 
 -- | Information associated to the TorXakis server process started by the UI.
 data TxsServerInfo = TxsServerInfo
-    { spHandle   :: ProcessHandle -- ^ Server process handle.
-    , sErrHandle :: Handle        -- ^ Handle to the standard error file.
+    { -- ^ Server process handle.
+      procHandle   :: ProcessHandle
+      -- ^ Handle to the standard error file.
+    , errHandle    :: Handle
+    -- ^ Asynchronous action associated with the server monitor process.
+    , monitorAsync :: Async ()
     }
 
 -- | If the argument is Nothing, this function will start the TorXakis server,
@@ -130,18 +147,35 @@ findTxsServer :: FilePath -> Maybe PortID -> IO (PortID, Maybe TxsServerInfo)
 findTxsServer logDir Nothing = do
     errh <- openFile (logDir </> "txsserver-err.log") ReadWriteMode
     hSetBuffering errh LineBuffering
+    outFileH <- openFile (logDir </> "txsserver-out.log") ReadWriteMode
+    hSetBuffering outFileH LineBuffering
     (_, Just outh, _, ph) <- createProcess $
         (proc "txsserver" []) { std_out = CreatePipe
                               , std_err = UseHandle errh
                               }
     -- The TorXakis server will announce its port via the standard input, so we
     -- need to read its answer.
-    putStrLn "Trying to get an answer from the server"
     line <- hGetLine outh
-    putStrLn $ "Got " ++ line
+    a <- async $ monitor outh outFileH
     return $ ( PortNumber . fromInteger $ (read line :: Integer)
-             , Just (TxsServerInfo { spHandle = ph, sErrHandle = errh } )
+             , Just (TxsServerInfo { procHandle = ph
+                                   , errHandle = errh
+                                   , monitorAsync = a
+                                   } )
              )
+    where
+      monitor :: Handle -> Handle -> IO ()
+      monitor from to = do
+          eLine <- try $ hGetLine from :: IO (Either IOException String)
+          case eLine of
+              Left _ -> do
+                  -- The monitor stops monitoring if there is an exception
+                  -- thrown.
+                  return ()
+              Right line -> do
+                  putStrLn line
+                  hPutStrLn to line
+                  monitor from to
 findTxsServer _ (Just p) = return (p, Nothing)
 
 -- | TorXakis prompt. For now this is not configurable.
