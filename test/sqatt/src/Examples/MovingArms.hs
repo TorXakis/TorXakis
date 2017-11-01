@@ -35,19 +35,19 @@ testSingleAxisPurpose = TxsExample
   , expectedResult = Pass
   }
 
-testRestrictedAxisPurpose :: TxsExample
-testRestrictedAxisPurpose = TxsExample
-  { exampleName = "Restricted Axis Purpose Test"
-  , txsModelFiles = [ txsFilePath exampDir "MovingArms"
-                    , txsFilePath exampDir "RestrictedAxisPurpose" ]
-  , txsCmdsFiles = [txsCmdPath exampDir "MovingArms_RestrictedAxisPurpose_Tester"]
-  , txsServerArgs = []
-  , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "MovingArms_Simulator")
-  , expectedResult = Pass
-  }
+-- testRestrictedAxisPurpose :: TxsExample
+-- testRestrictedAxisPurpose = TxsExample
+--   { exampleName = "Restricted Axis Purpose Test"
+--   , txsModelFiles = [ txsFilePath exampDir "MovingArms"
+--                     , txsFilePath exampDir "RestrictedAxisPurpose" ]
+--   , txsCmdsFiles = [txsCmdPath exampDir "MovingArms_RestrictedAxisPurpose_Tester"]
+--   , txsServerArgs = []
+--   , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "MovingArms_Simulator")
+--   , expectedResult = Pass
+--   }
 
 examples :: [TxsExample]
-examples = [test0, testSingleAxisPurpose, testRestrictedAxisPurpose]
+examples = [test0, testSingleAxisPurpose] -- , testRestrictedAxisPurpose
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Moving Arms" examples
