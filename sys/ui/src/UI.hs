@@ -23,9 +23,9 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.State.Strict
 import           Data.Foldable
+import           Data.List.Utils
 import qualified Data.Map                         as Map
 import           Data.Maybe
-import           Data.String.Utils
 import           Data.Time
 import           GHC.IO.Handle
 import           Network
@@ -34,7 +34,6 @@ import           System.Directory
 import           System.FilePath
 import           System.IO
 import           System.Process
-
 
 import           ArgsHandling
 import           TxsHelp
@@ -61,10 +60,11 @@ main  =  withSocketsDo $ do
 
     where
       startUI uiArgs = do
-        (hc, mPh) <- connectToServer (txsServerAddress uiArgs)
         hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
         now <- getCurrentTime
         home <- getHomeDirectory
+        logDir <- mkLogDir (home </> ".torxakis")
+        (hc, mTsi) <- connectToServer logDir (txsServerAddress uiArgs)
         _ <- runStateT ( runInputT (txsHaskelineSettings home) $
                            do { doCmd "START" ""
                               ; doCmd "INIT"  $ unwords (inputFiles uiArgs)
@@ -80,7 +80,20 @@ main  =  withSocketsDo $ do
                              }
         hClose hc
         hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
-        traverse_ waitForProcess mPh -- Wait for the server process to finish, if it was started by the UI.
+        traverse_ cleanup mTsi -- wait for the server process to finish, if it was started by the UI.
+
+      mkLogDir :: FilePath -> IO FilePath
+      mkLogDir prefix = do
+          currTimeDir <- replace ":" "-"  . replace " " "_" . show <$> getZonedTime
+          -- Make the directory.
+          let logDir = prefix </> "txsui-logs" </> currTimeDir
+          createDirectoryIfMissing True logDir
+          return logDir
+
+      cleanup :: TxsServerInfo -> IO ()
+      cleanup tsi
+          =  waitForProcess (spHandle tsi)
+          >> hClose (sErrHandle tsi)
 
 -- | Connect to the server. If the port number of the `TxsServerAddress`
 -- argument is 'Nothing` then a new 'txsserver' process is started on
@@ -89,37 +102,47 @@ main  =  withSocketsDo $ do
 --
 -- This function returns the handle for reading from the 'txsserver' socket,
 -- and maybe a process handle if the server was started in this function.
-connectToServer :: TxsServerAddress -> IO (Handle, Maybe ProcessHandle)
-connectToServer sAddr = do
-    (p, ph) <- findTxsServer (portId sAddr)
+--
+connectToServer :: FilePath -- ^ Log directory.
+                -> TxsServerAddress
+                -> IO (Handle, Maybe TxsServerInfo)
+connectToServer logDir sAddr = do
+    (p, mTsi) <- findTxsServer logDir (portId sAddr)
     putStrLn $ "Connecting to: " ++ show p
     threadDelay 1000000    -- 1 sec delay on trying to connect
     hc <- connectTo (hostName sAddr) p
     putStrLn $ "Connection established."
     hSetBuffering hc NoBuffering
     hSetEncoding hc latin1
-    return (hc, ph)
+    return (hc, mTsi)
+
+-- | Information associated to the TorXakis server process started by the UI.
+data TxsServerInfo = TxsServerInfo
+    { spHandle   :: ProcessHandle -- ^ Server process handle.
+    , sErrHandle :: Handle        -- ^ Handle to the standard error file.
+    }
 
 -- | If the argument is Nothing, this function will start the TorXakis server,
 -- and return the port that will be used for communication with it. If the
 -- argument contains a port number this port number is returned and no process
 -- is started (the TorXakis server is assumed to be running).
-findTxsServer :: Maybe PortID -> IO (PortID, Maybe ProcessHandle)
-findTxsServer Nothing = do
-    (_, Just hout, _, ph) <- createProcess $
-        (proc "txsserver" []) { std_out = CreatePipe }
-        -- (proc "echo" ["foo", "bar", "\n", "baz"]) { std_out = CreatePipe
-        --                       , std_in = CreatePipe
-        --                       , std_err = CreatePipe
-        --                       }
+findTxsServer :: FilePath -> Maybe PortID -> IO (PortID, Maybe TxsServerInfo)
+findTxsServer logDir Nothing = do
+    errh <- openFile (logDir </> "txsserver-err.log") ReadWriteMode
+    hSetBuffering errh LineBuffering
+    (_, Just outh, _, ph) <- createProcess $
+        (proc "txsserver" []) { std_out = CreatePipe
+                              , std_err = UseHandle errh
+                              }
     -- The TorXakis server will announce its port via the standard input, so we
     -- need to read its answer.
     putStrLn "Trying to get an answer from the server"
-    hSetBuffering hout LineBuffering
-    line <- hGetLine hout
+    line <- hGetLine outh
     putStrLn $ "Got " ++ line
-    return $ (PortNumber . fromInteger $ (read line :: Integer), Just ph)
-findTxsServer (Just p) = return (p, Nothing)
+    return $ ( PortNumber . fromInteger $ (read line :: Integer)
+             , Just (TxsServerInfo { spHandle = ph, sErrHandle = errh } )
+             )
+findTxsServer _ (Just p) = return (p, Nothing)
 
 -- | TorXakis prompt. For now this is not configurable.
 txsPrompt :: String

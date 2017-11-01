@@ -20,7 +20,7 @@ parserTesting = execParserPure defaultPrefs opts
 
 toCmdArgs :: CmdLineConfig -> [String]
 toCmdArgs cfg
-  =  [ show (clPortNumber cfg) ]
+  =  (show <$> maybeToList (clPortNumber cfg))
   ++ ["--smt-solver" | isJust (clSmtSolver cfg)]
   ++ [ solver | isJust (clSmtSolver cfg)
                    , let solver = fromJust (clSmtSolver cfg)]
@@ -41,6 +41,3 @@ spec =
     it "parses the arguments correctly" $ property $
       \clConfig ->
         show (Success clConfig) === show (parserTesting (toCmdArgs clConfig))
-    it "fails when the port is missing" $
-      getParseResult (parserTesting ["--smt-log"])
-        `shouldBe` Nothing
