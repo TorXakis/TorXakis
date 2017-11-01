@@ -229,6 +229,7 @@ data SqattError = CompileError Text
                 | TxsServerAborted
                 | TestTimedOut
                 | TxsChecksTimedOut
+                | UnexpectedException Text
   deriving (Show, Eq)
 
 instance Exception SqattError
@@ -343,12 +344,19 @@ runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @
           -> Shell Line       -- ^ Lines to be input to the command.
           -> IO (Either SqattError ())
 runInproc mLogDir cmd cmdArgs procInput =
-    case mLogDir of
-        Nothing ->
-            try $ sh $ inprocWithErr cmd cmdArgs procInput
-        Just logDir ->
-            try $ output logDir $
-                either id id <$> inprocWithErr cmd cmdArgs procInput
+  case mLogDir of
+    Nothing -> do
+      res <- try $ sh $ inprocWithErr cmd cmdArgs procInput
+      case res of
+        Left unhandledException ->
+          return $ Left $ UnexpectedException . T.pack . show $ unhandledException
+        Right () -> return res
+    Just logDir -> do
+      res <- try $ output logDir $ either id id <$> inprocWithErr cmd cmdArgs procInput
+      case res of
+        Left unhandledException ->
+          return $ Left $ UnexpectedException . T.pack . show $ unhandledException
+        Right () -> return res
 
 -- | Run a process without input. See `runInproc`.
 --
