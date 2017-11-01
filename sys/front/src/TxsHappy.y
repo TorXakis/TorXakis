@@ -782,7 +782,7 @@ ConstDefs       -- :: { [ (Ident,TxsDef) ] }
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $$.synSigs      = $1.synSigs
-                ;  $$ = [ $1 ]
+                ;  $$ = $1
                 }
               | ConstDefs ";" ConstDef
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -791,7 +791,7 @@ ConstDefs       -- :: { [ (Ident,TxsDef) ] }
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $3.synSigs
-                ;  $$ = $1 ++ [ $3 ]
+                ;  $$ = $1 ++ $3
                 }
 
 ExConstDef      -- :: { ( Int, TxsDef ) }
@@ -799,13 +799,14 @@ ExConstDef      -- :: { ( Int, TxsDef ) }
                 -- attrs inh : SIGS  : Signatures
                 --           : UNID  : unique node identification
                 -- constrs   : defined constant shall have unique function name 
+                -- TODO: also SIGS has changed -> should be returned as well?
               : SIGS UNID ConstDef
                 {  $3.inhSigs      = $1
                 ;  $3.inhNodeUid   = $2
-                ;  $$ = ( $3.synMaxUid, TxsDefs.fromList [$3] )
+                ;  $$ = ( $3.synMaxUid, TxsDefs.fromList $3 )
                 }
 
-ConstDef        -- :: { (Ident,TxsDef) }
+ConstDef        -- :: { [(Ident,TxsDef)] }
                 -- definition of a constant as a nullary function;
                 -- attrs inh : inhNodeUid : unique node identification
                 --           : inhSortSigs: usable sorts
@@ -824,8 +825,8 @@ ConstDef        -- :: { (Ident,TxsDef) }
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $4.inhSigs      = $$.inhSigs
                 ;  $4.inhSolvSort  = Just $2
-                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature [] $2) ( cstrFunc (Map.empty::Map.Map FuncId (FuncDef VarId)) (FuncId $1 $$.inhNodeUid [] $2) ) ) ) }
-                ;  $$ = ( IdFunc (FuncId $1 $$.inhNodeUid [] $2), DefFunc (FuncDef [] $4 ) )
+                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature [] $2) (const $4) ) ) }
+                ;  $$ = []
                 }
 
 ProcDefList     -- :: { [ (Ident,TxsDef) ] }

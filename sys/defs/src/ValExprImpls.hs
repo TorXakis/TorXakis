@@ -104,7 +104,9 @@ cstrFunc fis fi arguments =
 -- | Apply ADT Constructor of constructor with CstrId and the provided arguments (the list of value expressions).
 -- Preconditions are /not/ checked.
 cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
-cstrCstr c a = ValExpr (Vcstr c a)
+cstrCstr c a = if all isConst a
+                then cstrConst (Cstr c (map (\(view -> Vconst v) -> v) a))
+                else ValExpr (Vcstr c a)   
 
 -- | Is the provided value expression made by the ADT constructor with CstrId?
 -- Preconditions are /not/ checked.
@@ -418,7 +420,7 @@ cstrError s = ValExpr (Verror s)
 -- Preconditions are /not/ checked.
 subst :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
       => Map.Map v (ValExpr v) -> Map.Map FuncId (FuncDef w) -> ValExpr v -> ValExpr v
-subst ve _ x   | ve == Map.empty = x
+--subst ve _ x   | ve == Map.empty = x
 subst ve fis x = subst' ve fis (view x)
 
 subst' :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
