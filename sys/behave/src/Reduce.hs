@@ -35,8 +35,6 @@ import BTree
 import qualified EnvBTree   as IOB
 import Utils
 
-import FreeVar
-import Eval
 import Subst
 
 import Equiv
@@ -290,11 +288,7 @@ instance Reduce ChanOffer
 
 instance Reduce VExpr
   where
-    reduce vexp =
-         if  isClosed vexp
-           then do wal <- eval vexp
-                   return $ cstrConst wal
-           else return vexp
+    reduce vexp = return vexp
 
 -- ----------------------------------------------------------------------------------------- --
 -- class: free channels

@@ -46,7 +46,7 @@ import qualified EnvData
 import           FreeMonoidX
 import           RegexXSD2Posix
 import           StdTDefs
-import           TxsDefs
+import           TxsDefs            hiding (eval)
 import           TxsShow
 import           XmlFormat
 

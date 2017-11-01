@@ -29,6 +29,7 @@ module TxsDefs
 , Variable(..)
 , ValExpr
 , view
+, eval
 , ValExprView(..)
 , PredefKind(..)
 , VarEnv
@@ -182,7 +183,6 @@ insert (IdMapper s) (DefMapper d) t     = t { mapperDefs = Map.insert s d  (mapp
 insert (IdCnect s)  (DefCnect d)  t     = t { cnectDefs  = Map.insert s d  (cnectDefs t)  }
 insert i            d             _     = error $ "Unknown insert\nident = " ++ show i ++ "\ndefinition = " ++ show d
 
--- TODO: why not using Map.fromList?
 fromList :: [(Ident, TxsDef)] -> TxsDefs
 fromList = foldl addElem empty
   where

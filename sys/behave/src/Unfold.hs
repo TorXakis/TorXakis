@@ -47,7 +47,6 @@ import qualified SolveDefs
 import qualified Solve
 
 import BTree
-import qualified Eval
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -77,14 +76,18 @@ unfoldCTbranch chsets (CTpref ctoffs cthidvars' ctpred' ctnext')
    | Set.null ctoffs =                                           -- tau action or nothing
         if null cthidvars'
           then do
-            predVal <- Eval.eval ctpred'
-            case predVal of
-              TxsDefs.Cbool True  -> let nextcnode = nextNode Map.empty ctnext'
-                                       in do nextctree <- expand chsets nextcnode
-                                             nextbtree <- unfoldCT chsets nextctree
-                                             return [ BTtau nextbtree ]
-              TxsDefs.Cbool False -> return []
-              _                   -> error "unfoldCTbranch - ctpred' is not a Boolean"
+            case TxsDefs.eval ctpred' of
+              Right (TxsDefs.Cbool True)  -> do let nextcnode = nextNode Map.empty ctnext'
+                                                nextctree <- expand chsets nextcnode
+                                                nextbtree <- unfoldCT chsets nextctree
+                                                return [ BTtau nextbtree ]
+              Right (TxsDefs.Cbool False) -> return []
+              Right _                     -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                                              "unfoldCTbranch - ctpred' is not a Boolean value"]
+                                                return []
+              Left s                      -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
+                                                              ("unfoldCTbranch - ctpred' is not a value - " ++ show s)]
+                                                return []
           else
             let assertion = Solve.add ctpred' Solve.empty
               in do
