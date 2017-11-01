@@ -75,7 +75,7 @@ unfoldCTbranch :: [ Set.Set TxsDefs.ChanId ] -> CTBranch -> IOB.IOB BTree
 unfoldCTbranch chsets (CTpref ctoffs cthidvars' ctpred' ctnext')
    | Set.null ctoffs =                                           -- tau action or nothing
         if null cthidvars'
-          then do
+          then
             case TxsDefs.eval ctpred' of
               Right (TxsDefs.Cbool True)  -> do let nextcnode = nextNode Map.empty ctnext'
                                                 nextctree <- expand chsets nextcnode

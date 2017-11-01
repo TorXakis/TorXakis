@@ -288,7 +288,7 @@ instance Reduce ChanOffer
 
 instance Reduce VExpr
   where
-    reduce vexp = return vexp
+    reduce = return
 
 -- ----------------------------------------------------------------------------------------- --
 -- class: free channels
