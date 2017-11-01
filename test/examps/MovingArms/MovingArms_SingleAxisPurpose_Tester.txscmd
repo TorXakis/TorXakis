@@ -1,4 +1,4 @@
 param param_Sut_deltaTime 5500
-tester Model SingleAxisTestPurpose Sut
+tester ModelWithAsyncChannels SingleAxisTestPurpose Sut
 test 10
 exit
