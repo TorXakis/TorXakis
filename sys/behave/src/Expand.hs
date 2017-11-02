@@ -90,7 +90,7 @@ expand chsets (BNbexpr we (ActionPref (ActOffer offs cnd) bexp))  =  do
         (s,_) -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                   ("Expand: Eval failed in expand - ActionPref" ++ show s) ]
                     return []
-    
+
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (Guard c bexp))  = do
@@ -132,9 +132,9 @@ expand chsets (BNbexpr we (Enable bexp1 chanoffs bexp2))  =  do
 
      evalChanOffer we' (Exclam vexp)  =  do
           tds <- gets IOB.tdefs
-          case TxsDefs.eval $ subst (Map.map cstrConst we') (funcDefs tds) vexp of
-            Right wal -> return $ Right $ Exclam (cstrConst wal)
-            Left s    -> return $ Left s
+          let res = TxsDefs.eval $ subst (Map.map cstrConst we') (funcDefs tds) vexp
+          return $ right (Exclam . cstrConst) res
+
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (Disable bexp1 bexp2))  =
@@ -474,7 +474,7 @@ hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
                   , ctnext    = let f (we, ivenv) = (we, Map.map (subst hvarenv (funcDefs tds)) ivenv)
                                   in fmap f ctnext1'
                   }
-    
+
 -- ----------------------------------------------------------------------------------------- --
 -- relabel
 
