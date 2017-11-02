@@ -3,8 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-
+{-# OPTIONS -Wno-unused-imports -Wno-unused-binds #-}
 -- ----------------------------------------------------------------------------------------- --
 
 module Main
@@ -19,7 +18,7 @@ where
 
 import           Control.Concurrent
 import           Control.Concurrent.Async
-import           Control.Exception
+import           Control.Exception                hiding (handle)
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
@@ -69,7 +68,7 @@ main  =  withSocketsDo $ do
               _ <- runStateT ( runInputT (txsHaskelineSettings home) $
                                do { doCmd "START" ""
                                   ; doCmd "INIT"  $ unwords (inputFiles uiArgs)
-                                  ; cmdsIntpr
+                                  ; cmdsIntprSafe
                                   }
                              )
                             UIenv { uiservh   = hc
@@ -97,16 +96,16 @@ main  =  withSocketsDo $ do
 
       -- | Shutdown the TorXakis UI properly.
       cleanup :: (Handle, Maybe TxsServerInfo) -> IO ()
-      cleanup (h, mTsi) =
-          hClose h >> traverse_ shutdownServer mTsi
+      cleanup (h, mTsi) = do
+          hClose h
+          traverse_ cleanupServer mTsi
 
-      shutdownServer :: TxsServerInfo -> IO ()
-      shutdownServer tsi
-          = putStrLn "Shutting down TxsServer..."
-          >> waitForProcess (procHandle tsi)
-          >> hClose (errHandle tsi)
-          >> cancel (monitorAsync tsi)
-          >> putStrLn "TxsServer shut down."
+      -- | Cleanup the resources associated to the 'txsserver' process started
+      -- by the UI.
+      cleanupServer :: TxsServerInfo -> IO ()
+      cleanupServer tsi = do
+          hClose (errHandle tsi)
+          cancel (monitorAsync tsi)
 
 -- | Connect to the server. If the port number of the `TxsServerAddress`
 -- argument is 'Nothing` then a new 'txsserver' process is started on
@@ -152,6 +151,7 @@ findTxsServer logDir Nothing = do
     (_, Just outh, _, ph) <- createProcess $
         (proc "txsserver" []) { std_out = CreatePipe
                               , std_err = UseHandle errh
+                              , delegate_ctlc = False -- The UI handles the Ctrl-C command.
                               }
     -- The TorXakis server will announce its port via the standard input, so we
     -- need to read its answer.
@@ -189,6 +189,18 @@ txsHaskelineSettings :: MonadIO m
                      -> Settings m
 txsHaskelineSettings txsHome =
     defaultSettings { historyFile = Just $ txsHome </> ".torxakis-hist.txt" }
+
+-- | Like 'cmdsIntpr' but handling the 'Ctrl-C' key-press. Currently it does
+-- nothing but it is left as place-holder in case a more sophisticated handler
+-- is needed.
+--
+cmdsIntprSafe :: UIO ()
+cmdsIntprSafe = handle handleCtrlC (withInterrupt cmdsIntpr)
+    where
+      handleCtrlC :: Interrupt -> UIO ()
+      handleCtrlC _ = do
+          outputStrLn "Received `Ctrl-C`: quitting."
+
 
 -- | TorXakis UI commands processing.
 cmdsIntpr :: UIO ()
@@ -302,7 +314,7 @@ cmdIntpr cmdname args  =
 -- ----------------------------------------------------------------------------------------- --
 
 cmdQuit :: String -> UIO ()
-cmdQuit _args  =  do
+cmdQuit _  =  do
      systems  <- lift $ gets uisystems
      runprocs <- liftIO $ filterM ( \ph -> do { ec <- getProcessExitCode ph
                                             ; return (isNothing ec)
