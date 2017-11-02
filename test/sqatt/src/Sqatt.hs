@@ -32,6 +32,7 @@ module Sqatt
 where
 
 import           Control.Applicative
+import           Control.Arrow
 import           Control.Concurrent.Async
 import           Control.Exception
 import           Control.Foldl
@@ -344,13 +345,10 @@ runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @
           -> Shell Line       -- ^ Lines to be input to the command.
           -> IO (Either SqattError ())
 runInproc mLogDir cmd cmdArgs procInput = do
-  res <- case mLogDir of
+  testResult <- case mLogDir of
     Nothing -> try $ sh $ inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
     Just logDir -> try $ output logDir $ either id id <$> inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
-  case res of
-    Left unhandledException ->
-      return $ Left $ UnexpectedException . T.pack . show $ unhandledException
-    Right () -> return $ Right ()
+  return $ left (UnexpectedException . T.pack . show) testResult
 
 -- | Run a process without input. See `runInproc`.
 --
