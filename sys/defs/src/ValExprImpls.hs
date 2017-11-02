@@ -59,7 +59,6 @@ module ValExprImpls
 
 -- to be documented
 , cstrPredef
-, cstrAny
 , cstrError
 -- * Substitution of var by value
 , subst
@@ -84,7 +83,6 @@ import           FuncDef
 import           FuncId
 import           Product
 import           RegexXSD2Posix
-import           SortId
 import           Sum
 import           ValExprDefs
 import           Variable
@@ -410,9 +408,6 @@ cstrStrInRe s r                                                      = ValExpr (
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)
 
-cstrAny :: SortId -> ValExpr v
-cstrAny srt = ValExpr (Vany srt)
-
 cstrError :: Text -> ValExpr v
 cstrError s = ValExpr (Verror s)
 
@@ -445,7 +440,6 @@ subst' ve fis (Vat s p)                = cstrAt ( (subst' ve fis . view) s) ( (s
 subst' ve fis (Vconcat vexps)          = cstrConcat $ map (subst' ve fis . view) vexps
 subst' ve fis (Vstrinre s r)           = cstrStrInRe ( (subst' ve fis . view) s) ( (subst' ve fis . view) r)
 subst' ve fis (Vpredef kd fid vexps)   = cstrPredef kd fid (map (subst' ve fis . view) vexps)
-subst' _  _   (Vany sId)               = cstrAny sId
 subst' _  _   (Verror str)             = cstrError str
 
 -- | Substitute variables by values in value expression (change variable kind).
@@ -479,7 +473,6 @@ compSubst' ve fis (Vat s p)                = cstrAt ( (compSubst' ve fis . view)
 compSubst' ve fis (Vconcat vexps)          = cstrConcat $ map (compSubst' ve fis . view) vexps
 compSubst' ve fis (Vstrinre s r)           = cstrStrInRe ( (compSubst' ve fis . view) s) ( (compSubst' ve fis . view) r)
 compSubst' ve fis (Vpredef kd fid vexps)   = cstrPredef kd fid (map (compSubst' ve fis . view) vexps)
-compSubst' _  _   (Vany sId)               = cstrAny sId
 compSubst' _  _   (Verror str)             = cstrError str
 
 -- ----------------------------------------------------------------------------------------- --

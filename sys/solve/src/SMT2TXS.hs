@@ -65,29 +65,29 @@ lookupConstructor tdefs sid n
 -- | convert an SMT expression to a ValExpr given a varName the varName is the
 -- name of a SMT identifier that refers to a SMT variable.
 smtValueToValExpr :: SMTValue -> TxsDefs -> SortId -> Const
-smtValueToValExpr (SMTBool b) _ sort
-  =  if sortId_Bool == sort
+smtValueToValExpr (SMTBool b) _ srt
+  =  if sortId_Bool == srt
        then Cbool b
        else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
-                     "Bool expected, got " ++ pshow sort ++ "\n"
+                     "Bool expected, got " ++ pshow srt ++ "\n"
 
-smtValueToValExpr (SMTInt i) _ sort
-  =  if sortId_Int == sort
+smtValueToValExpr (SMTInt i) _ srt
+  =  if sortId_Int == srt
        then Cint i
        else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
-                     "Int expected, got " ++ pshow sort ++ "\n"
+                     "Int expected, got " ++ pshow srt ++ "\n"
 
-smtValueToValExpr (SMTString s) _ sort
-  =  if sortId_String == sort
+smtValueToValExpr (SMTString s) _ srt
+  =  if sortId_String == srt
        then Cstring s
        else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
-                     "String expected, got " ++ pshow sort ++ "\n"
+                     "String expected, got " ++ pshow srt ++ "\n"
 
-smtValueToValExpr (SMTConstructor cname argValues) tdefs sort =
-    let nameSort = SortId.name sort in
+smtValueToValExpr (SMTConstructor cname argValues) tdefs srt =
+    let nameSort = SortId.name srt in
         if T.isPrefixOf (nameSort <> "$") cname
             then  -- look up internal CstrId
-                let cstrid = lookupConstructor tdefs sort (T.drop (1 + T.length nameSort) cname) in
+                let cstrid = lookupConstructor tdefs srt (T.drop (1 + T.length nameSort) cname) in
                     if length (cstrargs cstrid) == length argValues
                         then  -- recursively translate the arguments:
                             let vexprArgs = map (\(argValue, sort') -> smtValueToValExpr argValue tdefs sort')

@@ -3005,7 +3005,7 @@ ValExpr2        -- :: { VExpr }
                 ;  $$ = case $$.inhSolvSort of
                         { Nothing  -> error $ "\nTXS0435: " ++
                                               "Sort of ANY cannot be deduced\n"
-                        ; Just srt -> cstrAny srt
+                        ; Just srt -> cstrConst (Cany srt)
                         }
                 }
               | ERROR string
