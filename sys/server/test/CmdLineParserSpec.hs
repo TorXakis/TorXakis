@@ -37,7 +37,7 @@ instance Arbitrary PortNumber where
 
 spec :: Spec
 spec =
-  describe "parseCmdLine" $ do
+  describe "parseCmdLine" $
     it "parses the arguments correctly" $ property $
       \clConfig ->
         show (Success clConfig) === show (parserTesting (toCmdArgs clConfig))

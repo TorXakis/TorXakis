@@ -156,18 +156,18 @@ findTxsServer logDir Nothing = do
     -- need to read its answer.
     line <- hGetLine outh
     a <- async $ monitor outh outFileH
-    return $ ( PortNumber . fromInteger $ (read line :: Integer)
-             , Just (TxsServerInfo { procHandle = ph
-                                   , errHandle = errh
-                                   , monitorAsync = a
-                                   } )
-             )
+    return ( PortNumber . fromInteger $ (read line :: Integer)
+           , Just TxsServerInfo { procHandle = ph
+                                 , errHandle = errh
+                                 , monitorAsync = a
+                                 }
+           )
     where
       monitor :: Handle -> Handle -> IO ()
       monitor from to = do
           eLine <- try $ hGetLine from :: IO (Either IOException String)
           case eLine of
-              Left _ -> do
+              Left _ ->
                   -- The monitor stops monitoring if there is an exception
                   -- thrown.
                   return ()
@@ -197,7 +197,7 @@ cmdsIntprSafe :: UIO ()
 cmdsIntprSafe = handle handleCtrlC (withInterrupt cmdsIntpr)
     where
       handleCtrlC :: Interrupt -> UIO ()
-      handleCtrlC _ = do
+      handleCtrlC _ =
           outputStrLn "Received `Ctrl-C`: quitting."
 
 
