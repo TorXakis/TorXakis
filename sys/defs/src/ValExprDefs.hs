@@ -106,7 +106,7 @@ newtype ValExpr v = ValExpr {
   deriving (Eq, Ord, Read, Show, Generic, NFData)
 
 -- | Evaluate the provided value expression.
--- Either the Right Constant Value is returned or an error message.
+-- Either the Right Constant Value is returned or a (Left) error message.
 eval :: Show v => ValExpr v -> Either String Const
 eval = evalView . view
 
