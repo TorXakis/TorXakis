@@ -346,17 +346,17 @@ runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @
 runInproc mLogDir cmd cmdArgs procInput =
   case mLogDir of
     Nothing -> do
-      res <- try $ sh $ inprocWithErr cmd cmdArgs procInput
+      res <- try $ sh $ inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
       case res of
         Left unhandledException ->
           return $ Left $ UnexpectedException . T.pack . show $ unhandledException
-        Right () -> return res
+        Right () -> return $ Right ()
     Just logDir -> do
-      res <- try $ output logDir $ either id id <$> inprocWithErr cmd cmdArgs procInput
+      res <- try $ output logDir $ either id id <$> inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
       case res of
         Left unhandledException ->
           return $ Left $ UnexpectedException . T.pack . show $ unhandledException
-        Right () -> return res
+        Right () -> return $ Right ()
 
 -- | Run a process without input. See `runInproc`.
 --
