@@ -122,7 +122,7 @@ connectToServer logDir sAddr = do
     putStrLn $ "Connecting to: " ++ show p
     threadDelay 1000000    -- 1 sec delay on trying to connect
     hc <- connectTo (hostName sAddr) p
-    putStrLn $ "Connection established."
+    putStrLn "Connection established."
     hSetBuffering hc NoBuffering
     hSetEncoding hc latin1
     return (hc, mTsi)
