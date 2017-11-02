@@ -387,7 +387,7 @@ mkTest :: Maybe FilePath -> RunnableExample -> Test ()
 mkTest mLogDir (ExampleWithSut ex cSUT args) = do
   res <- liftIO $
     runConcurrently $  runSUTWithTimeout mLogDir cSUT args
-                   <|> runTxsWithExample mLogDir ex 0.25
+                   <|> runTxsWithExample mLogDir ex 0.1
   case res of
     Left txsErr -> throwError txsErr
     Right ()    -> return ()
