@@ -3,8 +3,6 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-
 -- ----------------------------------------------------------------------------------------- --
 
 module Main
@@ -18,25 +16,30 @@ module Main
 where
 
 import           Control.Concurrent
+import           Control.Concurrent.Async
+import           Control.Exception                hiding (handle)
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.State.Strict
+import           Data.Foldable
+import           Data.List.Utils
 import qualified Data.Map                         as Map
 import           Data.Maybe
-import           Data.String.Utils
 import           Data.Time
+import           GHC.IO.Handle
 import           Network
-import           System.Console.Haskeline
+import           System.Console.Haskeline         hiding (bracket)
 import           System.Directory
-import           System.Environment
 import           System.FilePath
 import           System.IO
 import           System.Process
 
+import           ArgsHandling
 import           TxsHelp
 import           UIenv
 import           UIif
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis ui main
@@ -44,55 +47,159 @@ import           UIif
 main :: IO ()
 main  =  withSocketsDo $ do
 
-     hSetBuffering stdin  NoBuffering     -- alt: LineBuffering
-     hSetBuffering stdout NoBuffering     -- alt: LineBuffering
-     hSetBuffering stderr NoBuffering     -- alt: LineBuffering
+    hSetBuffering stdin  NoBuffering     -- alt: LineBuffering
+    hSetBuffering stdout NoBuffering     -- alt: LineBuffering
+    hSetBuffering stderr NoBuffering     -- alt: LineBuffering
 
-     hSetEncoding stdin latin1
-     hSetEncoding stdout latin1
-     hSetEncoding stderr latin1
+    hSetEncoding stdin latin1
+    hSetEncoding stdout latin1
+    hSetEncoding stderr latin1
 
-     args <- getArgs
-     if  length args < 1
-       then error "Usage: txsui <portnumber> [input file(s)]"
-       else do threadDelay 1000000    -- 1 sec delay on trying to connect
-               let hostname = "localhost"
-               let portnr = read (head args) :: Integer
-               let portid = PortNumber (fromInteger portnr)
-               hc       <- connectTo hostname portid
-               hSetBuffering hc NoBuffering
-               hSetEncoding hc latin1
+    eUIArgs <- getTxsUIArgs
+    either error startUI eUIArgs
 
-               hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
+    where
+      startUI uiArgs = do
+          hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
+          now <- getCurrentTime
+          bracket (initializeServer uiArgs) cleanup $ \(hc, _) -> do
+              home <- getHomeDirectory
+              _ <- runStateT ( runInputT (txsHaskelineSettings home) $
+                               do { doCmd "START" ""
+                                  ; doCmd "INIT"  $ unwords (inputFiles uiArgs)
+                                  ; cmdsIntprSafe
+                                  }
+                             )
+                            UIenv { uiservh   = hc
+                                  , uihins    = [stdin]
+                                  , uihout    = stdout
+                                  , uisystems = Map.empty
+                                  , uitimers  = Map.singleton "global" now
+                                  , uiparams  = Map.empty
+                                  }
+              hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
 
-               now <- getCurrentTime
-               home <- getHomeDirectory
-               _ <- runStateT ( runInputT (txsHaskelineSettings home) $
-                                  do { doCmd "START" ""
-                                     ; doCmd "INIT"  $ unwords (tail args)
-                                     ; cmdsIntpr
-                                     }
-                              )
-                              UIenv { uiservh   = hc
-                                    , uihins    = [stdin]
-                                    , uihout    = stdout
-                                    , uisystems = Map.empty
-                                    , uitimers  = Map.singleton "global" now
-                                    , uiparams  = Map.empty
-                                    }
-               hClose hc
-               hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
+      initializeServer :: UIArgs -> IO (Handle, Maybe TxsServerInfo)
+      initializeServer uiArgs = do
+          home <- getHomeDirectory
+          logDir <- mkLogDir (home </> ".torxakis")
+          connectToServer logDir (txsServerAddress uiArgs)
+
+      mkLogDir :: FilePath -> IO FilePath
+      mkLogDir prefix = do
+          currTimeDir <- replace ":" "-"  . replace " " "_" . show <$> getZonedTime
+          -- Make the directory.
+          let logDir = prefix </> "txsui-logs" </> currTimeDir
+          createDirectoryIfMissing True logDir
+          return logDir
+
+      -- | Shutdown the TorXakis UI properly.
+      cleanup :: (Handle, Maybe TxsServerInfo) -> IO ()
+      cleanup (h, mTsi) = do
+          hClose h
+          traverse_ cleanupServer mTsi
+
+      -- | Cleanup the resources associated to the 'txsserver' process started
+      -- by the UI.
+      cleanupServer :: TxsServerInfo -> IO ()
+      cleanupServer tsi = do
+          hClose (errHandle tsi)
+          cancel (monitorAsync tsi)
+
+-- | Connect to the server. If the port number of the `TxsServerAddress`
+-- argument is 'Nothing` then a new 'txsserver' process is started on
+-- "localhost". The port to which UI and server connect is determined by
+-- looking at some random available port.
+--
+-- This function returns the handle for reading from the 'txsserver' socket,
+-- and maybe a process handle if the server was started in this function.
+--
+connectToServer :: FilePath -- ^ Log directory.
+                -> TxsServerAddress
+                -> IO (Handle, Maybe TxsServerInfo)
+connectToServer logDir sAddr = do
+    (p, mTsi) <- findTxsServer logDir (portId sAddr)
+    putStrLn $ "Connecting to: " ++ show p
+    threadDelay 1000000    -- 1 sec delay on trying to connect
+    hc <- connectTo (hostName sAddr) p
+    putStrLn "Connection established."
+    hSetBuffering hc NoBuffering
+    hSetEncoding hc latin1
+    return (hc, mTsi)
+
+-- | Information associated to the TorXakis server process started by the UI.
+data TxsServerInfo = TxsServerInfo
+    { -- ^ Server process handle.
+      procHandle   :: ProcessHandle
+      -- ^ Handle to the standard error file.
+    , errHandle    :: Handle
+    -- ^ Asynchronous action associated with the server monitor process.
+    , monitorAsync :: Async ()
+    }
+
+-- | If the argument is Nothing, this function will start the TorXakis server,
+-- and return the port that will be used for communication with it. If the
+-- argument contains a port number this port number is returned and no process
+-- is started (the TorXakis server is assumed to be running).
+findTxsServer :: FilePath -> Maybe PortID -> IO (PortID, Maybe TxsServerInfo)
+findTxsServer logDir Nothing = do
+    errh <- openFile (logDir </> "txsserver-err.log") ReadWriteMode
+    hSetBuffering errh LineBuffering
+    outFileH <- openFile (logDir </> "txsserver-out.log") ReadWriteMode
+    hSetBuffering outFileH LineBuffering
+    (_, Just outh, _, ph) <- createProcess $
+        (proc "txsserver" []) { std_out = CreatePipe
+                              , std_err = UseHandle errh
+                              , delegate_ctlc = False -- The UI handles the Ctrl-C command.
+                              }
+    -- The TorXakis server will announce its port via the standard input, so we
+    -- need to read its answer.
+    line <- hGetLine outh
+    a <- async $ monitor outh outFileH
+    return ( PortNumber . fromInteger $ (read line :: Integer)
+           , Just TxsServerInfo { procHandle = ph
+                                 , errHandle = errh
+                                 , monitorAsync = a
+                                 }
+           )
+    where
+      monitor :: Handle -> Handle -> IO ()
+      monitor from to = do
+          eLine <- try $ hGetLine from :: IO (Either IOException String)
+          case eLine of
+              Left _ ->
+                  -- The monitor stops monitoring if there is an exception
+                  -- thrown.
+                  return ()
+              Right line -> do
+                  putStrLn line
+                  hPutStrLn to line
+                  monitor from to
+findTxsServer _ (Just p) = return (p, Nothing)
 
 -- | TorXakis prompt. For now this is not configurable.
 txsPrompt :: String
 txsPrompt = "TXS >> "
 
--- | Construct the Haskeline settings.
+-- | Construct the Haskeline settings. Currently only the location of the
+-- configuration file is determined here.
 txsHaskelineSettings :: MonadIO m
                      => FilePath -- ^ Home directory for `TorXakis`.
                      -> Settings m
 txsHaskelineSettings txsHome =
     defaultSettings { historyFile = Just $ txsHome </> ".torxakis-hist.txt" }
+
+-- | Like 'cmdsIntpr' but handling the 'Ctrl-C' key-press. Currently it does
+-- nothing but it is left as place-holder in case a more sophisticated handler
+-- is needed.
+--
+cmdsIntprSafe :: UIO ()
+cmdsIntprSafe = handle handleCtrlC (withInterrupt cmdsIntpr)
+    where
+      handleCtrlC :: Interrupt -> UIO ()
+      handleCtrlC _ =
+          outputStrLn "Received `Ctrl-C`: quitting."
+
 
 -- | TorXakis UI commands processing.
 cmdsIntpr :: UIO ()
@@ -206,7 +313,7 @@ cmdIntpr cmdname args  =
 -- ----------------------------------------------------------------------------------------- --
 
 cmdQuit :: String -> UIO ()
-cmdQuit _args  =  do
+cmdQuit _  =  do
      systems  <- lift $ gets uisystems
      runprocs <- liftIO $ filterM ( \ph -> do { ec <- getProcessExitCode ph
                                             ; return (isNothing ec)

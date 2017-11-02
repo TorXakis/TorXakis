@@ -56,10 +56,14 @@ packages:
 - location: sys/testsel
 - location: sys/ui
 - location: sys/value
+
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-
+- process-1.6.2.0 # This is needed to have the 'txsui' starting the 'txsserver'
+                  # without it crashing.
+- Cabal-2.0.0.2
+  
 # Extra package databases containing global packages
 extra-package-dbs: []
 
