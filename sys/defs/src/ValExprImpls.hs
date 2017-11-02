@@ -59,7 +59,6 @@ module ValExprImpls
 
 -- to be documented
 , cstrPredef
-, cstrAny
 , cstrError
 -- * Substitution of var by value
 , subst
@@ -84,7 +83,6 @@ import           FuncDef
 import           FuncId
 import           Product
 import           RegexXSD2Posix
-import           SortId
 import           Sum
 import           ValExprDefs
 import           Variable
@@ -104,7 +102,9 @@ cstrFunc fis fi arguments =
 -- | Apply ADT Constructor of constructor with CstrId and the provided arguments (the list of value expressions).
 -- Preconditions are /not/ checked.
 cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
-cstrCstr c a = ValExpr (Vcstr c a)
+cstrCstr c a = if all isConst a
+                then cstrConst (Cstr c (map (\(view -> Vconst v) -> v) a))
+                else ValExpr (Vcstr c a)   
 
 -- | Is the provided value expression made by the ADT constructor with CstrId?
 -- Preconditions are /not/ checked.
@@ -408,9 +408,6 @@ cstrStrInRe s r                                                      = ValExpr (
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)
 
-cstrAny :: SortId -> ValExpr v
-cstrAny srt = ValExpr (Vany srt)
-
 cstrError :: Text -> ValExpr v
 cstrError s = ValExpr (Verror s)
 
@@ -418,7 +415,7 @@ cstrError s = ValExpr (Verror s)
 -- Preconditions are /not/ checked.
 subst :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
       => Map.Map v (ValExpr v) -> Map.Map FuncId (FuncDef w) -> ValExpr v -> ValExpr v
-subst ve _ x   | ve == Map.empty = x
+--subst ve _ x   | ve == Map.empty = x
 subst ve fis x = subst' ve fis (view x)
 
 subst' :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
@@ -443,7 +440,6 @@ subst' ve fis (Vat s p)                = cstrAt ( (subst' ve fis . view) s) ( (s
 subst' ve fis (Vconcat vexps)          = cstrConcat $ map (subst' ve fis . view) vexps
 subst' ve fis (Vstrinre s r)           = cstrStrInRe ( (subst' ve fis . view) s) ( (subst' ve fis . view) r)
 subst' ve fis (Vpredef kd fid vexps)   = cstrPredef kd fid (map (subst' ve fis . view) vexps)
-subst' _  _   (Vany sId)               = cstrAny sId
 subst' _  _   (Verror str)             = cstrError str
 
 -- | Substitute variables by values in value expression (change variable kind).
@@ -477,7 +473,6 @@ compSubst' ve fis (Vat s p)                = cstrAt ( (compSubst' ve fis . view)
 compSubst' ve fis (Vconcat vexps)          = cstrConcat $ map (compSubst' ve fis . view) vexps
 compSubst' ve fis (Vstrinre s r)           = cstrStrInRe ( (compSubst' ve fis . view) s) ( (compSubst' ve fis . view) r)
 compSubst' ve fis (Vpredef kd fid vexps)   = cstrPredef kd fid (map (compSubst' ve fis . view) vexps)
-compSubst' _  _   (Vany sId)               = cstrAny sId
 compSubst' _  _   (Verror str)             = cstrError str
 
 -- ----------------------------------------------------------------------------------------- --

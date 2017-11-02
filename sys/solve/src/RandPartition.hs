@@ -202,14 +202,14 @@ randCnrsCstr p (cid, CstrDef{}) vexp depth  =  do
 
 randCnrs :: Variable v => ParamPartition -> ValExpr v -> Int -> SMT [ Set.Set (ValExpr v) ]
 randCnrs p vexp depth  =
-     let sort = sortOf vexp
-      in if  sort == sortId_Bool
+     let srt = sortOf vexp
+      in if  srt == sortId_Bool
            then randCnrsBool vexp
-           else if  sort == sortId_Int
+           else if  srt == sortId_Int
                   then randCnrsInt p vexp
-                  else if  sort == sortId_String
+                  else if  srt == sortId_String
                          then randCnrsString vexp
-                         else if  sort == sortId_Regex
+                         else if  srt == sortId_Regex
                                 then do lift $ hPutStrLn stderr "TXS RandPartition randCnrs: Regex can't be solved\n"
                                         return [ Set.empty ]
                                 else if  depth > 0

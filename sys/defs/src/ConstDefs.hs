@@ -16,6 +16,7 @@ import qualified Data.Map        as Map
 import           Data.Text       (Text)
 
 import           CstrId
+import           SortId
 
 -- | Union of Boolean, Integer, String, and AlgebraicDataType constant values.
 data Const = Cbool    { cBool :: Bool }
@@ -26,6 +27,7 @@ data Const = Cbool    { cBool :: Bool }
                                          --       storing SMT string as well
            | Cstr     { cstrId :: CstrId, args :: [Const] }
            | Cerror   { msg :: String }
+           | Cany     { sort :: SortId }
   deriving (Eq, Ord, Read, Show, Generic, NFData)
 
 type WEnv v = Map.Map v Const
