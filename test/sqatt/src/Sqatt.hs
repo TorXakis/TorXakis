@@ -282,17 +282,19 @@ txsCheckTimeout :: NominalDiffTime
 txsCheckTimeout = 60.0
 
 -- | Run TorXakis with the given example specification.
-runTxsWithExample :: Maybe FilePath   -- ^ Path to the logging directory for
-                                      -- the current example set, or nothing if
-                                      -- no logging is desired.
-                  -> TxsExample       -- ^ Example to run.
-                  -> Concurrently (Either SqattError ())
-runTxsWithExample mLogDir ex = Concurrently $ do
+runTxsWithExample :: Maybe FilePath     -- ^ Path to the logging directory for
+                                        -- the current example set, or nothing if
+                                        -- no logging is desired.
+                    -> TxsExample       -- ^ Example to run.
+                    -> NominalDiffTime  -- ^ Delay before start, in seconds.
+                    -> Concurrently (Either SqattError ())
+runTxsWithExample mLogDir ex delay = Concurrently $ do
   eInputModelF <- runExceptT $ runTest $ mapM decodePath (txsModelFiles ex)
 
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
+      sleep delay
       port <- repr <$> getRandomPort
       runConcurrently $ timer
                     <|> heartbeat
@@ -385,12 +387,12 @@ mkTest :: Maybe FilePath -> RunnableExample -> Test ()
 mkTest mLogDir (ExampleWithSut ex cSUT args) = do
   res <- liftIO $
     runConcurrently $  runSUTWithTimeout mLogDir cSUT args
-                   <|> runTxsWithExample mLogDir ex
+                   <|> runTxsWithExample mLogDir ex 0.25
   case res of
     Left txsErr -> throwError txsErr
     Right ()    -> return ()
 mkTest mLogDir (StandaloneExample ex) = do
-  res <- liftIO $ runConcurrently $ runTxsWithExample mLogDir ex
+  res <- liftIO $ runConcurrently $ runTxsWithExample mLogDir ex 0
   case res of
     Left txsErr -> throwError txsErr
     Right  _    -> return ()
