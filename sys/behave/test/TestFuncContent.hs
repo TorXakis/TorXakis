@@ -176,8 +176,11 @@ testCallConstant = TestCase $
         constName :: String
         constName = "myConst"
         
+        value :: FuncContent
+        value = constantInt 3
+        
         constDef :: String
-        constDef = createConstDef constName intSortName (constantInt 3)
+        constDef = createConstDef constName intSortName value
         
         constCallKey :: FuncKey
         constCallKey = getFuncKey constName [] intSortName
@@ -187,7 +190,7 @@ testCallConstant = TestCase $
         
         (funcDef, funcKey) = createFuncDefWithKey "myFunc" [] intSortName funcContent
       in
-        assertEqual "const call" funcContent (getFuncContent (constDef ++ "\n" ++ funcDef) funcKey)
+        assertEqual "const call - optimization" value (getFuncContent (constDef ++ "\n" ++ funcDef) funcKey)
 
 testUserDefinedFunction :: Test
 testUserDefinedFunction = TestCase $
