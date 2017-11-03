@@ -128,7 +128,7 @@ gnfBExpr bexpr choiceCnt procId translatedProcDefs procDefs =
                                                             bexprRelabeled = relabel chanmap bexprDef -- trace ("chanmap: " ++ show chanmap) relabel chanmap bexprProcDef
                                                             -- substitute params 
                                                             parammap = Map.fromList (zip paramsDef paramsInst)
-                                                            bexprSubstituted = subst parammap bexprRelabeled in
+                                                            bexprSubstituted = Subst.subst parammap bexprRelabeled in
                                                             (extractSteps bexprSubstituted, procDefs')
                                                             
                                                             
