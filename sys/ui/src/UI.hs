@@ -26,10 +26,12 @@ import           Data.Foldable
 import           Data.List.Utils
 import qualified Data.Map                         as Map
 import           Data.Maybe
+import           Data.String.Utils
 import           Data.Time
 import           GHC.IO.Handle
 import           Network
 import           System.Console.Haskeline         hiding (bracket)
+import           System.Console.Haskeline.History
 import           System.Directory
 import           System.FilePath
 import           System.IO
@@ -187,7 +189,11 @@ txsHaskelineSettings :: MonadIO m
                      => FilePath -- ^ Home directory for `TorXakis`.
                      -> Settings m
 txsHaskelineSettings txsHome =
-    defaultSettings { historyFile = Just $ txsHome </> ".torxakis-hist.txt" }
+    defaultSettings { historyFile = Just $ txsHome </> ".torxakis-hist.txt"
+                    -- We add entries to the history ourselves, by using
+                    -- 'addHistoryRemovingAllDupes'.
+                    , autoAddHistory = False
+                    }
 
 -- | Like 'cmdsIntpr' but handling the 'Ctrl-C' key-press. Currently it does
 -- nothing but it is left as place-holder in case a more sophisticated handler
@@ -205,10 +211,14 @@ cmdsIntprSafe = handle handleCtrlC (withInterrupt cmdsIntpr)
 cmdsIntpr :: UIO ()
 cmdsIntpr  =  do
      (cmdhin:_cmdhins) <- lift $ gets uihins
-     line <- if cmdhin == stdin
-             then (filter (/= '\r') . fromMaybe "")
+     line <- if cmdhin /= stdin
+             then liftIO $ hGetLine cmdhin
+             else (filter (/= '\r') . fromMaybe "")
                   <$> getInputLine txsPrompt
-             else liftIO $ hGetLine cmdhin
+     unless (cmdhin /= stdin || null line) $
+         -- Add the line to the history, removing the duplicates, and trimming
+         -- leading and trailing white-spaces.
+         modifyHistory $ addHistoryRemovingAllDupes (strip line)
      let (cmd,args1)   = span (/= ' ') (dropWhile (== ' ') line)
      let (args,redir1) = span (/= '$') (dropWhile (== ' ') args1)
      let redir         = replace "$<"  " $< "
