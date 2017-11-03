@@ -121,10 +121,8 @@ connectToServer :: FilePath -- ^ Log directory.
                 -> IO (Handle, Maybe TxsServerInfo)
 connectToServer logDir sAddr = do
     (p, mTsi) <- findTxsServer logDir (portId sAddr)
-    putStrLn $ "Connecting to: " ++ show p
     threadDelay 1000000    -- 1 sec delay on trying to connect
     hc <- connectTo (hostName sAddr) p
-    putStrLn "Connection established."
     hSetBuffering hc NoBuffering
     hSetEncoding hc latin1
     return (hc, mTsi)
