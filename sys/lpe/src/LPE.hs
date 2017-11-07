@@ -210,7 +210,7 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
                 -- plus an extra one (that of the program counter)
                 params = snd $ splitAt ((length paramsInst)+1) (ProcId.procvars procIdNew)
                 paramsSorts = map varIdToSort params
-                paramsANYs = map (ValExpr . Vany) paramsSorts
+                paramsANYs = map (cstrConst . Cany) paramsSorts
                 paramsNew = (pcValue : paramsInst) ++ paramsANYs in
             ProcInst procIdNew (ProcId.procchans procIdNew) paramsNew
 
@@ -220,7 +220,7 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
             let -- get the params, but leave out the first one because it's the program counter
                 (_:params) = ProcId.procvars procIdNew
                 paramsSorts = map varIdToSort params
-                paramsANYs = map (ValExpr . Vany) paramsSorts
+                paramsANYs = map (cstrConst . Cany) paramsSorts
                 paramsInst = (cstrConst (Cint (-1)) : paramsANYs)
                 chansInst = ProcId.procchans procIdNew
                 procInst = ProcInst procIdNew chansInst paramsInst in

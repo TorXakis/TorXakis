@@ -1011,13 +1011,11 @@ readAction chids args = do
 readBExpr :: [TxsDefs.ChanId] -> String -> IOS.IOS TxsDefs.BExpr
 readBExpr chids args = do
      uid               <- gets IOS.uid
-     tdefs             <- gets IOS.tdefs
      sigs              <- gets IOS.sigs
      vals              <- gets IOS.locvals
      ((_,bexpr'),e) <- lift $ lift $ catch
                             ( let p = TxsHappy.bexprParser
-                                      ( TxsAlex.Ctdefs   tdefs
-                                      : TxsAlex.Csigs    sigs
+                                      ( TxsAlex.Csigs    sigs
                                       : TxsAlex.Cchanenv chids
                                       : TxsAlex.Cvarenv  (Map.keys vals)
                                       : TxsAlex.Cunid    (uid + 1)
