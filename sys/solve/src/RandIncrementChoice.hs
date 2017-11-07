@@ -215,7 +215,7 @@ randomSolve p ((v,d):xs) i =
         cstrs <- lookupConstructors sid
         case cstrs of
             []  -> error $ "Unexpected: no constructor for " ++ show v
-            [(cid,cdef)] -> -- no choice -- one constructor
+            [(cid,_)] -> -- no choice -- one constructor
                     do
                         addIsConstructor v cid
                         fieldVars <- addFields v i cid
@@ -238,7 +238,7 @@ randomSolve p ((v,d):xs) i =
                         case c of
                             Cstr{cstrId = cid}  ->
                                 case Map.lookup cid (Map.fromList cstrs) of
-                                    Just (cdef@CstrDef{})   ->
+                                    Just CstrDef{} ->
                                         do
                                             addIsConstructor v cid
                                             fieldVars <- if d > 1 then addFields v i cid
@@ -261,8 +261,8 @@ randomSolve p ((v,d):xs) i =
         choicesFunc v' partA partB Cstr{cstrId = cId} =
             do
                 let cond = Map.member cId (Map.fromList partA)
-                lA <- mapM (\(cid,CstrDef{}) -> valExprToString $ cstrIsCstr cid (cstrVar v')) partA
-                lB <- mapM (\(cid,CstrDef{}) -> valExprToString $ cstrIsCstr cid (cstrVar v')) partB
+                lA <- mapM (\(tempCid,CstrDef{}) -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partA
+                lB <- mapM (\(tempCid,CstrDef{}) -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partB
                 return [ (cond, case lA of
                                     [a] -> a
                                     _   -> "(or " <> T.intercalate " " lA <> ") ")

@@ -4,14 +4,13 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-incomplete-patterns #-}
 module TestSMTValue
 (
 testSMTValueList
 )
 where
 -- general Haskell imports
-import           Control.Exception
-import           Control.Monad
 import qualified Data.Map          as Map
 import           Data.Maybe
 import           Data.String.Utils
@@ -19,13 +18,12 @@ import           Data.Text         (Text)
 import qualified Data.Text         as T
 import           Test.HUnit
 
--- import qualified Debug.Trace as Trace
-
 -- specific SMT imports
 import           SMTAlex
 import           SMTHappy
 
 -- ----------------------------------------------------------------------------
+testSMTValueList :: Test
 testSMTValueList = TestList [
         TestCase $ assertEqual "DoubleQuote"  (Map.singleton "x" (SMTString "\""))   (smtParser (smtLexer "((x \"\"\"\"))")),
         TestCase $ assertEqual "DoubleEscape" (Map.singleton "x" (SMTString "\\"))   (smtParser (smtLexer "((x \"\\\\\"))")),
@@ -64,7 +62,7 @@ data  SMTValueTest         =  SMTValueTest  { input    :: String
 substitute :: Map.Map TestValExpr TestValExpr -> TestValExpr -> TestValExpr
 substitute bind var@(TVEVar _) = fromMaybe var (Map.lookup var bind)
 substitute bind (TVEConstructor c vals) = TVEConstructor c (map (substitute bind) vals)
-substitute bind y = y
+substitute _ y = y
 
 toSMTValue :: TestValExpr -> SMTValue
 toSMTValue (TVEConstructor s vals)  = SMTConstructor (T.pack s) (map toSMTValue vals)
@@ -99,13 +97,13 @@ createSMTVar s = SMTValueTest s (TVEVar s)
 toLetPairs :: Map.Map SMTValueTest SMTValueTest -> String
 toLetPairs bind = concatMap toLetPair (Map.toList bind)
     where toLetPair :: (SMTValueTest, SMTValueTest) -> String
-          toLetPair (SMTValueTest inputX expectedX, SMTValueTest inputY expectedY) = "(" ++ inputX ++ " " ++ inputY ++ ")"
+          toLetPair (SMTValueTest inputX _, SMTValueTest inputY _) = "(" ++ inputX ++ " " ++ inputY ++ ")"
 
 toLetBind :: Map.Map SMTValueTest SMTValueTest -> Map.Map TestValExpr TestValExpr
-toLetBind bind = Map.fromList (map (\(SMTValueTest inputX expectedX, SMTValueTest inputY expectedY) -> (expectedX, expectedY) ) (Map.toList bind) )
+toLetBind bind = Map.fromList (map (\(SMTValueTest _ expectedX, SMTValueTest _ expectedY) -> (expectedX, expectedY) ) (Map.toList bind) )
 
 createSMTLet :: Map.Map SMTValueTest SMTValueTest -> SMTValueTest -> SMTValueTest
-createSMTLet bind svt@(SMTValueTest input expected) =
+createSMTLet bind (SMTValueTest input expected) =
     SMTValueTest ("(let ("++ toLetPairs bind ++") " ++ input ++ " )") (substitute (toLetBind bind) expected)
 
 -- ---------------------------------------------------------------------------------
@@ -137,6 +135,7 @@ testString = testSMTValueTest "String" (createSMTString "jaap piet")
 testStringSpecialCharacters :: Test
 testStringSpecialCharacters = testSMTValueTest "String Special Characters" (createSMTString "jaap \\ piet \" klaas")
 
+testEscapeCharactersList :: Test
 testEscapeCharactersList = TestList [ -- abefnrtv
         TestCase $ assertEqual "EscapeChar a"   (Map.singleton "x" (SMTString "\a"))   (smtParser (smtLexer "((x \"\\a\"))")),
         TestCase $ assertEqual "EscapeChar b"   (Map.singleton "x" (SMTString "\b"))   (smtParser (smtLexer "((x \"\\b\"))")),
@@ -166,7 +165,7 @@ testLetInt name = testSMTValueTest "Let Int" (createSMTLet (Map.fromList[(var,va
         var = createSMTVar name
         val = createSMTInt 2
 
-
+testLetList :: Test
 testLetList = TestList [
     TestLabel "Let Int a"   (testLetInt "a"),
     TestLabel "Let Int A"   (testLetInt "A"),

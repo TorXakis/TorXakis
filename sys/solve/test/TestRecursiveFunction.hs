@@ -15,20 +15,16 @@ import           Control.Monad.State
 import qualified Data.List           as List
 import qualified Data.Map            as Map
 import           Data.Maybe
-import qualified Data.Set            as Set
-import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           System.Process      (CreateProcess)
 
 import           StdTDefs
-import           Sum
 import           TxsDefs
 
 import           SMT
 import           TXS2SMT
 
 import           SolveDefs
-import           SolveDefs.Params
 
 import           HelperFuncDefToSMT
 import           HelperVexprToSMT

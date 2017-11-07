@@ -21,7 +21,7 @@ import           Network
 data CmdLineConfig = CmdLineConfig
   { clSmtSolver  :: Maybe String
   , clSmtLog     :: Maybe Bool
-  , clPortNumber :: PortNumber
+  , clPortNumber :: Maybe PortNumber
   } deriving (Eq, Show)
 
 parseCmdLine :: IO CmdLineConfig
@@ -50,5 +50,5 @@ smtLogP = optional $
   <|> flag' False
         (long "no-smt-log" <> help "Don't log the SMT solver commands.")
 
-portP :: Parser PortNumber
-portP = argument auto (metavar "PORT")
+portP :: Parser (Maybe PortNumber)
+portP = optional $ argument auto (metavar "PORT")

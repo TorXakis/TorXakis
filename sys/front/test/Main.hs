@@ -6,24 +6,22 @@ See LICENSE at root directory of this repository.
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module Main where
 
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.String.Utils   as Utils
-import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           System.Exit
 
 --import qualified Debug.Trace as Trace
 
 import           Test.QuickCheck
-import           Test.QuickCheck.All
 
 import           TxsAlex
 import           TxsDefs
 import           TxsHappy
-import           TxsShow
 
 import           Sigs
 
@@ -161,7 +159,7 @@ genGenSortDefs = do
     mapM (`genGenSortDef` sortNames) (Set.toList sortNames)
 
 createCstrId :: CapId -> TypedElements -> CapId -> String
-createCstrId (CapId cstrName) fields (CapId sortDefName) =
+createCstrId (CapId cstrName) fields (CapId _sortDefName) =
     cstrName ++ " { "
              ++ Utils.join " ; " (map (\(field,CapId t) -> Utils.join " , " (map (\(SmallId f) -> f) field) ++ " :: " ++ t) fields)
              ++ " }"

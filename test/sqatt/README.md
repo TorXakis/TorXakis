@@ -3,6 +3,7 @@
 This folder contains the quality assurance tests for TorXakis.
 
 ## Integration tests
+
 To run the integration tests execute:
 
 ```sh
@@ -34,8 +35,7 @@ contains functions to build paths to the test files using these conventions.
 To add a new test case to be included in the development acceptance tests the
 following steps are needed:
 
-- Create a new Haskell file in the `src/Examples` folder, which will describe
-the test cases.
+- Create a new Haskell file in the `src/Examples` folder, which will describe the test cases.
 - Add tests cases by specifying:
     - The example name.
     - The paths to the _.txs_ files that contain the TorXakis model.
@@ -45,10 +45,8 @@ the test cases.
     - If needed: the path to the SUT source code (currently only Java is
     supported), or the path to the TorXakis commands that will be used to
     run TorXakis as a SUT simulator.
-- Define a function named `exampleSet` containing the list of examples that
-will be tested.
-- Update the `src/Examples/All.hs` file to include the new example set in
-the list of all examples.
+- Define a function named `exampleSet` containing the list of examples that will be tested.
+- Update the `src/Examples/All.hs` file to include the new example set in the list of all examples.
 - Update the `sqatt.cabal` file to account for the the new file.
 
 Some variation is of course allowed in these steps, but for the sake of

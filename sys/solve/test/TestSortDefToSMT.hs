@@ -4,6 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TestSortDefToSMT
 (
 testSortDefToSMTList
@@ -11,7 +12,6 @@ testSortDefToSMTList
 where
 import qualified Data.List  as List
 import qualified Data.Map   as Map
-import           Data.Text  (Text)
 import qualified Data.Text  as T
 import           Test.HUnit
 

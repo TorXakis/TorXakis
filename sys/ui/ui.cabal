@@ -7,21 +7,21 @@ license:             BSD3
 license-file:        license.txt
 author:              Jan Tretmans
                    , Pierre van de Laar
-maintainer:          
-                   , pierre.vandelaar@tno.nl
+maintainer:          pierre.vandelaar@tno.nl
 copyright:           TNO
 category:            Web
 build-type:          Simple
 cabal-version:       >=1.10
 
 executable txsui
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
   
   hs-source-dirs:       src
   main-is:              UI.hs
   other-modules:        TxsHelp
                       , UIenv
                       , UIif
+                      , ArgsHandling
   build-depends:        base
                       , containers
                       , mtl
@@ -29,4 +29,9 @@ executable txsui
                       , process
                       , time
                       , MissingH
+                      , haskeline
+                      , transformers
+                      , filepath
+                      , directory
+                      , async
   default-language:     Haskell2010

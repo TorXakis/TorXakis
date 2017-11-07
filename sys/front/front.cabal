@@ -18,7 +18,7 @@ library
   exposed-modules:      TxsAlex
                       , TxsHappy
   
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math 
+  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
   -- TODO: -fglasgow-exts are needed to reduce compile time, execution speed,
   -- and binary size, but they are deprecated. Check which extensions we need
   -- to use.

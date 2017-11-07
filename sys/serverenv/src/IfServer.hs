@@ -33,13 +33,13 @@ module IfServer
 
 where
 
-import System.IO
-import Control.Monad.State
+import           Control.Monad.State
+import           System.IO
 
 -- import from local
-import EnvServer
+import           EnvServer
 
-import qualified EnvCore as IOC
+import qualified EnvCore             as IOC
 
 -- ----------------------------------------------------------------------------------------- --
 -- server socket communication :  get commands
@@ -50,8 +50,8 @@ getCmd = do
      cmdline <- lift $ lift $ hGetLine servhs'
      lift $ lift $ hPutStrLn stderr $ "TXSSERVER CMD >>  " ++ cmdline
      case words cmdline of
-       (cmd:args)  -> return ( cmd, unwords args )
-       _           -> return ( "NOOP", "" )
+       (cmd:args) -> return ( cmd, unwords args )
+       _          -> return ( "NOOP", "" )
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -69,7 +69,7 @@ hmack :: Handle -> [String] -> IOC.IOC ()
 hmack servhs' xss = mapM_ ( putRsp servhs' . ("MACK " ++) ) ( concatMap lines xss )
 
 
--- put multi/intermediate acknowledgements
+-- put multi/intermediate acknowledgments
 
 mack :: [String] -> IOS ()
 mack xss = do
@@ -77,7 +77,7 @@ mack xss = do
      lift $ mapM_ ( putRsp servhs' . ("MACK " ++) ) ( concatMap lines xss )
 
 
--- put positive acknowledgement
+-- put positive acknowledgment
 
 pack :: String -> [String] -> IOS ()
 pack cmd xss = do

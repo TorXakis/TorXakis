@@ -56,14 +56,10 @@ import qualified EnvData
 
 -- import from defs
 import qualified TxsDefs
-import qualified TxsUtils
 
 -- import from solve
 import           Solve
 import           SolveDefs
-
--- import from value
-import qualified Eval
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -171,13 +167,17 @@ afterActBBranch chsets behact (BTpref btoffs [] pred' next)  =  do
        Just iwals -> do
                       tds <- gets IOB.tdefs
                       let pred'' = TxsDefs.subst (Map.map TxsDefs.cstrConst iwals) (TxsDefs.funcDefs tds) pred'
-                      condition <- Eval.eval pred''
-                      case condition of
-                          TxsDefs.Cbool True  -> do let cnode = nextNode iwals next
-                                                    after <- unfold chsets cnode
-                                                    return [after]
-                          TxsDefs.Cbool False -> return []
-                          _                   -> error "afterActBBranch - condition is not a Boolean"
+                      case TxsDefs.eval pred'' of
+                          Right (TxsDefs.Cbool True)  -> do let cnode = nextNode iwals next
+                                                            after <- unfold chsets cnode
+                                                            return [after]
+                          Right (TxsDefs.Cbool False) -> return []
+                          Right _                     -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                                                          "afterActBBranch - condition is not a Boolean value"]
+                                                            return []
+                          Left s                      -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
+                                                                          ("afterActBBranch - condition is not a value - " ++ show s)]
+                                                            return []
 
 afterActBBranch chsets behact (BTpref btoffs hidvars pred' next)  =  do
      match <- matchAct2CTOffer behact btoffs

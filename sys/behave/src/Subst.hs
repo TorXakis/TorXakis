@@ -104,7 +104,7 @@ instance Subst ChanOffer
 
 instance Subst VExpr
   where
-    subst x = TxsDefs.subst x (Map.empty :: Map.Map FuncId (FuncDef VarId))
+    subst x = TxsDefs.subst x (Map.empty :: Map.Map FuncId (FuncDef VarId))     --TODO: It should use the defined function here: get it from the MONAD -> Map.empty optimization is possible!
     
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

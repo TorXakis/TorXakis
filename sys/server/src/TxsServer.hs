@@ -34,7 +34,8 @@ import qualified Data.List           as List
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
-import           Network
+import           Network             hiding (socketPort)
+import           Network.Socket      hiding (accept, sClose)
 import           System.IO
 
 -- import from local
@@ -68,7 +69,7 @@ import qualified SocketWorld         as World
 main :: IO ()
 main = withSocketsDo $ do
   hSetBuffering stderr NoBuffering     -- alt: LineBuffering
-
+  hSetBuffering stdout LineBuffering
   uConfig <- SC.loadConfig
 
   case SC.interpretConfig uConfig of
@@ -76,22 +77,36 @@ main = withSocketsDo $ do
       hPutStrLn stderr "Errors found while loading the configuration"
       hPrint stderr xs
     Right config -> do
-      let portNr = (clPortNumber . SC.cmdLineCfg) uConfig
-      servsock      <- listenOn (PortNumber portNr)
-      (hs, host, _) <- accept servsock
-      hSetBuffering hs LineBuffering
-      hSetEncoding hs latin1
-      hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
-      let initS = IOS.envsNone
-            { IOS.host   = host
-            , IOS.portNr = portNr
-            , IOS.servhs = hs
-            }
-          coreConfig = config
-      TxsCore.runTxsCore coreConfig cmdsIntpr initS
-      threadDelay 1000000    -- 1 sec delay on closing
-      sClose servsock
-      hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
+        (portNr, sock) <- txsListenOn $ (clPortNumber . SC.cmdLineCfg) uConfig
+        (hs, host, _) <- accept sock
+        hSetBuffering hs LineBuffering
+        hSetEncoding hs latin1
+        hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
+        let initS = IOS.envsNone
+                { IOS.host   = host
+                , IOS.portNr = portNr
+                , IOS.servhs = hs
+                }
+            coreConfig = config
+        TxsCore.runTxsCore coreConfig cmdsIntpr initS
+        threadDelay 1000000    -- 1 sec delay on closing
+        sClose sock
+        hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
+
+-- | Listen on the given port. If no port number is given, then a free port is
+-- determined, and this port number is printed to the standard output.
+txsListenOn :: Maybe PortNumber -> IO (PortNumber, Socket)
+txsListenOn Nothing = do -- Get a free port to listen to.
+    sock <- listenOn (PortNumber aNY_PORT)
+    portNr <- socketPort sock
+    -- If no port was specified, then we print the port number in case the
+    -- process that is starting 'txsserver' (most likely 'txsui') needs the
+    -- port number to connect to it afterwards.
+    print portNr
+    return (portNr, sock)
+txsListenOn (Just portNr) = do
+    sock <- listenOn (PortNumber portNr)
+    return (portNr, sock)
 
 -- * TorXakis server commands processing
 
@@ -326,7 +341,6 @@ cmdVar :: String -> IOS.IOS ()
 cmdVar args = do
      env              <- get
      let uid          = IOS.uid env
-         tdefs        = IOS.tdefs env
          sigs         = IOS.sigs env
          vars         = IOS.locvars env
          vals         = IOS.locvals env
@@ -370,7 +384,6 @@ cmdVal :: String -> IOS.IOS ()
 cmdVal args = do
      env              <- get
      let uid          = IOS.uid env
-         tdefs        = IOS.tdefs env
          sigs         = IOS.sigs env
          vars         = IOS.locvars env
          vals         = IOS.locvals env
@@ -958,7 +971,6 @@ cmdLPE args = do
 readAction :: [TxsDefs.ChanId] -> String -> IOS.IOS TxsDDefs.Action
 readAction chids args = do
      uid              <- gets IOS.uid
-     tdefs            <- gets IOS.tdefs
      sigs             <- gets IOS.sigs
      vals             <- gets IOS.locvals
      ((uid',offs'),e) <- lift $ lift $ catch
@@ -1002,7 +1014,7 @@ readBExpr chids args = do
      tdefs             <- gets IOS.tdefs
      sigs              <- gets IOS.sigs
      vals              <- gets IOS.locvals
-     ((uid',bexpr'),e) <- lift $ lift $ catch
+     ((_,bexpr'),e) <- lift $ lift $ catch
                             ( let p = TxsHappy.bexprParser
                                       ( TxsAlex.Ctdefs   tdefs
                                       : TxsAlex.Csigs    sigs

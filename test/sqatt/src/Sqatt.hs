@@ -32,6 +32,7 @@ module Sqatt
 where
 
 import           Control.Applicative
+import           Control.Arrow
 import           Control.Concurrent.Async
 import           Control.Exception
 import           Control.Foldl
@@ -47,6 +48,7 @@ import qualified Data.Text.IO              as TIO
 import           Filesystem.Path
 import           Filesystem.Path.CurrentOS
 import           Prelude                   hiding (FilePath)
+import qualified System.IO                 as IO
 import           System.Info
 import           System.Random
 import           Test.Hspec
@@ -227,6 +229,8 @@ data SqattError = CompileError Text
                 | SutAborted
                 | TxsServerAborted
                 | TestTimedOut
+                | TxsChecksTimedOut
+                | UnexpectedException Text
   deriving (Show, Eq)
 
 instance Exception SqattError
@@ -272,23 +276,25 @@ sqattTimeout :: NominalDiffTime
 sqattTimeout = 1800.0
 
 -- | Time to allow TorXakis run the checks after the SUT terminates. After this
--- timeout the SUT process terminates and if the expected result is not
--- observed in the test the whole test fails.
+-- timeout the SUT process terminates and if TorXakis hasn't terminated yet
+-- the whole test fails.
 txsCheckTimeout :: NominalDiffTime
 txsCheckTimeout = 60.0
 
 -- | Run TorXakis with the given example specification.
-runTxsWithExample :: Maybe FilePath   -- ^ Path to the logging directory for
-                                      -- the current example set, or nothing if
-                                      -- no logging is desired.
-                  -> TxsExample       -- ^ Example to run.
-                  -> Concurrently (Either SqattError ())
-runTxsWithExample mLogDir ex = Concurrently $ do
+runTxsWithExample :: Maybe FilePath     -- ^ Path to the logging directory for
+                                        -- the current example set, or nothing if
+                                        -- no logging is desired.
+                    -> TxsExample       -- ^ Example to run.
+                    -> NominalDiffTime  -- ^ Delay before start, in seconds.
+                    -> Concurrently (Either SqattError ())
+runTxsWithExample mLogDir ex delay = Concurrently $ do
   eInputModelF <- runExceptT $ runTest $ mapM decodePath (txsModelFiles ex)
 
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
+      sleep delay
       port <- repr <$> getRandomPort
       runConcurrently $ timer
                     <|> heartbeat
@@ -300,11 +306,13 @@ runTxsWithExample mLogDir ex = Concurrently $ do
       putStr "."
     timer = Concurrently $ do
       sleep sqattTimeout
-      throwIO TestTimedOut
+      return $ Left TestTimedOut
     txsUIProc mUiLogDir imf port =
-      Concurrently $ try $ do
-        res <- Turtle.fold txsUIShell findExpectedMsg
-        unless res (throw tErr)
+      Concurrently $ do
+        eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
+        case eRes of
+          Left exception -> return $ Left exception
+          Right res -> return $ unless res $ Left tErr
       where
         inLines :: Shell Line
         inLines = asum $ input <$> cmdsFile
@@ -338,13 +346,11 @@ runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @
           -> [Text]           -- ^ Command arguments.
           -> Shell Line       -- ^ Lines to be input to the command.
           -> IO (Either SqattError ())
-runInproc mLogDir cmd cmdArgs procInput =
-    case mLogDir of
-        Nothing ->
-            try $ sh $ inprocWithErr cmd cmdArgs procInput
-        Just logDir ->
-            try $ output logDir $
-                either id id <$> inprocWithErr cmd cmdArgs procInput
+runInproc mLogDir cmd cmdArgs procInput = do
+  testResult <- case mLogDir of
+    Nothing -> try $ sh $ inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
+    Just logDir -> try $ output logDir $ either id id <$> inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
+  return $ left (UnexpectedException . T.pack . show) testResult
 
 -- | Run a process without input. See `runInproc`.
 --
@@ -381,12 +387,12 @@ mkTest :: Maybe FilePath -> RunnableExample -> Test ()
 mkTest mLogDir (ExampleWithSut ex cSUT args) = do
   res <- liftIO $
     runConcurrently $  runSUTWithTimeout mLogDir cSUT args
-                   <|> runTxsWithExample mLogDir ex
+                   <|> runTxsWithExample mLogDir ex 0.1
   case res of
     Left txsErr -> throwError txsErr
     Right ()    -> return ()
 mkTest mLogDir (StandaloneExample ex) = do
-  res <- liftIO $ runConcurrently $ runTxsWithExample mLogDir ex
+  res <- liftIO $ runConcurrently $ runTxsWithExample mLogDir ex 0
   case res of
     Left txsErr -> throwError txsErr
     Right  _    -> return ()
@@ -400,7 +406,7 @@ runSUTWithTimeout mLogDir cSUT args = Concurrently $ do
       return $ Left someErr
     Right _ -> do
       sleep txsCheckTimeout
-      return (Left TestTimedOut)
+      return (Left TxsChecksTimedOut)
 
 runSUT :: Maybe FilePath -> CompiledSut -> [Text]
        -> IO (Either SqattError ())
@@ -453,6 +459,7 @@ testExample :: FilePath -> TxsExample -> Spec
 testExample logDir ex = it (exampleName ex) $ do
   let mLogDir = logDirOfExample (Just logDir) (exampleName ex)
   res <- runExceptT $ runTest $ execTest mLogDir ex
+  sleep 2.0 -- let the files be closed
   unless (isRight res) (sh $ dumpToScreen $ fromJust mLogDir)
   res `shouldBe` Right ()
 
@@ -507,7 +514,9 @@ testExampleSet logDir es@(TxsExampleSet exSetDesc exs) = do
 
 -- | Test a list of example sets.
 testExampleSets :: FilePath -> [TxsExampleSet] -> Spec
-testExampleSets logDir = traverse_ (testExampleSet logDir)
+testExampleSets logDir exampleSets = do
+  runIO $ IO.hSetBuffering IO.stdout IO.NoBuffering
+  traverse_ (testExampleSet logDir) exampleSets
 
 -- | For now the root directory where the logs are stored is not configurable.
 sqattLogsRoot :: FilePath

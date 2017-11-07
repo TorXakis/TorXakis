@@ -205,7 +205,7 @@ txsInit tdefs sigs putMsgs  =  do
                smtEnv         <- lift $ SMT.createSMTEnv smtProc smtLog tdefs
                (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
                (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions tdefs) smtEnv'
-               putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver initialized : " ++ info
+               putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver " ++ show (Config.solverId (Config.selectedSolver cfg)) ++ " initialized : " ++ info
                        , EnvData.TXS_CORE_USER_INFO   "TxsCore initialized"
                        ]
                put envc {
@@ -1050,11 +1050,11 @@ txsLPE :: TxsDefs.BExpr                     -- ^ behaviour expression, to be tra
 txsLPE bexpr  =  do
   envc <- get
   case (IOC.state envc, bexpr) of
-    (IOC.Initing {IOC.tdefs = tdefs}, TxsDefs.ProcInst procid chans vexps)
+    (IOC.Initing {IOC.tdefs = tdefs}, TxsDefs.ProcInst procid _ _)
       -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
-           Just (TxsDefs.ProcDef chids vids bexp)
+           Just TxsDefs.ProcDef{}
              -> case LPE.lpeTransform bexpr (TxsDefs.procDefs tdefs) of
-                  Just (procinst'@(TxsDefs.ProcInst procid' chans' vexps'), procdef')
+                  Just (procinst'@(TxsDefs.ProcInst procid' _ _), procdef')
                     -> case Map.lookup procid' (TxsDefs.procDefs tdefs) of
                          Nothing
                            -> do let tdefs' = tdefs

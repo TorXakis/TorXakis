@@ -1,4 +1,5 @@
 param param_Sut_deltaTime 5500
-tester Model RestrictedAxisTestPurpose Sut
+param param_Test_inputEager 0
+tester ModelWithAsyncChannels RestrictedAxisTestPurpose Sut
 test 20
 exit

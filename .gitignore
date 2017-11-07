@@ -29,3 +29,10 @@ docs/wiki/_build
 
 /*Proc.txs
 /*Purpose.txs
+
+# Snapcraft artifacts
+parts
+prime
+stage
+snap/.snapcraft
+*.snap

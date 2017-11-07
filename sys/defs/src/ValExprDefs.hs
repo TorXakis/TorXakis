@@ -19,7 +19,6 @@ import           ConstDefs
 import           CstrId
 import           FuncId
 import           Product
-import           SortId
 import           Sum
 import           VarId
 
@@ -66,7 +65,6 @@ data  ValExprView v = Vconst  Const
 
                     | Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]
-                    | Vany    SortId
                     | Verror  Text
      deriving (Eq, Ord, Read, Show, Generic, NFData)
 
@@ -108,7 +106,7 @@ newtype ValExpr v = ValExpr {
   deriving (Eq, Ord, Read, Show, Generic, NFData)
 
 -- | Evaluate the provided value expression.
--- Either the Right Constant Value is returned or an error message.
+-- Either the Right Constant Value is returned or a (Left) error message.
 eval :: Show v => ValExpr v -> Either String Const
 eval = evalView . view
 

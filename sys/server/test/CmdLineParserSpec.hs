@@ -3,23 +3,24 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module CmdLineParserSpec (spec) where
 
 import           CmdLineParser
-import           Config
 import           Data.Maybe
 import           Network
 import           Options.Applicative
 import           Test.Hspec
 import           Test.QuickCheck     hiding (Failure, Success)
 -- | Function used to test the command line arguments parsing.
+parserTesting :: [String] -> ParserResult CmdLineConfig
 parserTesting = execParserPure defaultPrefs opts
   where opts = info optsP mempty
 
 toCmdArgs :: CmdLineConfig -> [String]
 toCmdArgs cfg
-  =  [ show (clPortNumber cfg) ]
+  =  (show <$> maybeToList (clPortNumber cfg))
   ++ ["--smt-solver" | isJust (clSmtSolver cfg)]
   ++ [ solver | isJust (clSmtSolver cfg)
                    , let solver = fromJust (clSmtSolver cfg)]
@@ -36,10 +37,7 @@ instance Arbitrary PortNumber where
 
 spec :: Spec
 spec =
-  describe "parseCmdLine" $ do
+  describe "parseCmdLine" $
     it "parses the arguments correctly" $ property $
       \clConfig ->
         show (Success clConfig) === show (parserTesting (toCmdArgs clConfig))
-    it "fails when the port is missing" $
-      getParseResult (parserTesting ["--smt-log"])
-        `shouldBe` Nothing

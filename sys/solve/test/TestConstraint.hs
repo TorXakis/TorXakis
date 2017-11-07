@@ -4,6 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-incomplete-patterns #-}
 module TestConstraint
 (
 testConstraintList
@@ -25,7 +26,6 @@ import           Test.HUnit
 -- general Torxakis imports
 import           FreeMonoidX
 import           StdTDefs
-import           Sum
 import           TxsDefs
 import           RegexXSD2Posix
 
@@ -33,7 +33,6 @@ import           RegexXSD2Posix
 import           SMT
 import           SMTData
 import           SolveDefs
-import           SolveDefs.Params
 import           TestSolvers
 
 

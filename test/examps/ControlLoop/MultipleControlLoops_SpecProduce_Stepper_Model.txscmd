@@ -1,0 +1,6 @@
+timer t1 $>> testTrace.log
+stepper SpecProduce
+step 100
+trace proc $>> testTrace.log
+timer t1 $>> testTrace.log
+exit
