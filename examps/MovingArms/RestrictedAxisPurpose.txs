@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 
-TYPEDEF Movement ::= Up | No | Down ENDDEF
+TYPEDEF State ::= NoMax | Up | No | Down | NoMin ENDDEF
 
 -- This algorithm is derived using LPE and some human optimization
 -- starting with the process
@@ -17,24 +17,56 @@ TYPEDEF Movement ::= Up | No | Down ENDDEF
 -- Consequently, movements in different directions will never start or stop together.
 PROCDEF restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX,
                                 UpY, DownY, StopY, MinY, MaxY,
-                                UpZ, DownZ, StopZ, MinZ, MaxZ] ( n :: Int; movementX, movementY, movementZ :: Movement ) HIT ::=
-         UpX   [[ (n>0) /\ isNo(movementX) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, Up,   movementY, movementZ)
-      ## DownX [[ (n>0) /\ isNo(movementX) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, Down, movementY, movementZ)
-      ## StopX [[ not ( isNo(movementX) )  ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, No,   movementY, movementZ)
-      ## MaxX  [[ isUp(movementX)          ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, No,   movementY, movementZ)
-      ## MinX  [[ isDown(movementX)        ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, No,   movementY, movementZ)
+                                UpZ, DownZ, StopZ, MinZ, MaxZ] ( n :: Int; stateX, stateY, stateZ :: State ) HIT ::=
+         UpX   [[ (n>0) /\ (isNo(stateX) \/ isNoMin(stateX)) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, Up,     stateY, stateZ)
+      ## DownX [[ (n>0) /\ (isNo(stateX) \/ isNoMax(stateX)) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, Down,   stateY, stateZ)
+      ## StopX [[ isUp(stateX) \/ isDown(stateX)             ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, No,     stateY, stateZ)
+      ## StopX [[ isNoMax(stateX) \/ isNoMin(stateX)         ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n,   stateX, stateY, stateZ)
+      ## MaxX  [[ isUp(stateX)                               ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, NoMax,  stateY, stateZ)
+      ## MinX  [[ isDown(stateX)                             ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, NoMin,  stateY, stateZ)
 
-      ## UpY   [[ (n>0) /\ isNo(movementY) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, Up,   movementZ)
-      ## DownY [[ (n>0) /\ isNo(movementY) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, Down, movementZ)
-      ## StopY [[ not ( isNo(movementY) )  ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, No,   movementZ)
-      ## MaxY  [[ isUp(movementY)          ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, No,   movementZ)
-      ## MinY  [[ isDown(movementY)        ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, No,   movementZ)
+      ## UpY   [[ (n>0) /\ (isNo(stateY) \/ isNoMin(stateY)) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, stateX, Up,     stateZ)
+      ## DownY [[ (n>0) /\ (isNo(stateY) \/ isNoMax(stateY)) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, stateX, Down,   stateZ)
+      ## StopY [[ isUp(stateY) \/ isDown(stateY)             ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, stateX, No,     stateZ)
+      ## StopY [[ isNoMax(stateY) \/ isNoMin(stateY)         ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n,   stateX, stateY, stateZ)
+      ## MaxY  [[ isUp(stateY)                               ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, stateX, NoMax,  stateZ)
+      ## MinY  [[ isDown(stateY)                             ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, stateX, NoMin,  stateZ)
 
-      ## UpZ   [[ (n>0) /\ isNo(movementZ) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, movementY, Up  )
-      ## DownZ [[ (n>0) /\ isNo(movementZ) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, movementX, movementY, Down)
-      ## StopZ [[ not ( isNo(movementZ) )  ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, movementY, No  )
-      ## MaxZ  [[ isUp(movementZ)          ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, movementY, No  )
-      ## MinZ  [[ isDown(movementZ)        ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, movementX, movementY, No  )
+      ## UpZ   [[ (n>0) /\ (isNo(stateZ) \/ isNoMin(stateZ)) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, stateX, stateY, Up)
+      ## DownZ [[ (n>0) /\ (isNo(stateZ) \/ isNoMax(stateZ)) ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n-1, stateX, stateY, Down)
+      ## StopZ [[ isUp(stateZ) \/ isDown(stateZ)             ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, stateX, stateY, No)
+      ## StopZ [[ isNoMax(stateZ) \/ isNoMin(stateZ)         ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n,   stateX, stateY, stateZ)
+      ## MaxZ  [[ isUp(stateZ)                               ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, stateX, stateY, NoMax)
+      ## MinZ  [[ isDown(stateZ)                             ]] >-> restrictedAxisMovement[ UpX, DownX, StopX, MinX, MaxX, UpY, DownY, StopY, MinY, MaxY, UpZ, DownZ, StopZ, MinZ, MaxZ](n+1, stateX, stateY, NoMin)
+
+ENDDEF
+
+PROCDEF asynchronousChannelHIT [ In, Out ] () HIT ::=
+    In >-> Out >-> asynchronousChannelHIT [ In, Out ] ()
+ENDDEF
+
+PROCDEF restrictedAsynchronousAxisMovement[ UpX, DownX, StopX, MinX, MaxX,
+                                            UpY, DownY, StopY, MinY, MaxY,
+                                            UpZ, DownZ, StopZ, MinZ, MaxZ] ( n :: Int; stateX, stateY, stateZ :: State ) HIT ::=
+        HIDE [HMinX, HMaxX, HMinY, HMaxY, HMinZ, HMaxZ] IN
+            (
+                    asynchronousChannel [HMinX, MinX] ()
+                |||
+                    asynchronousChannelHIT [HMaxX, MaxX] ()
+                |||
+                    asynchronousChannelHIT [HMinY, MinY] ()
+                |||
+                    asynchronousChannelHIT [HMaxY, MaxY] ()
+                |||
+                    asynchronousChannelHIT [HMinZ, MinZ] ()
+                |||
+                    asynchronousChannelHIT [HMaxZ, MaxZ] ()
+            )
+        |[HMinX, HMaxX, HMinY, HMaxY, HMinZ, HMaxZ ]|
+            restrictedAxisMovement [ UpX, DownX, StopX, MinX, MaxX,
+                                     UpY, DownY, StopY, MinY, MaxY,
+                                     UpZ, DownZ, StopZ, MinZ, MaxZ] ( n, stateX, stateY, stateZ )
+        NI
 ENDDEF
 
 PURPDEF  RestrictedAxisTestPurpose ::=
@@ -44,7 +76,7 @@ PURPDEF  RestrictedAxisTestPurpose ::=
     CHAN OUT    MinX, MaxX,
                 MinY, MaxY,
                 MinZ, MaxZ
-    GOAL restrictedAxis ::= restrictedAxisMovement [ UpX, DownX, StopX, MinX, MaxX,
-                                                     UpY, DownY, StopY, MinY, MaxY,
-                                                     UpZ, DownZ, StopZ, MinZ, MaxZ] ( 1, No, No, No )
+    GOAL restrictedAxis ::= restrictedAsynchronousAxisMovement[ UpX, DownX, StopX, MinX, MaxX,
+                                     UpY, DownY, StopY, MinY, MaxY,
+                                     UpZ, DownZ, StopZ, MinZ, MaxZ] ( 1, No, No, No )
 ENDDEF
