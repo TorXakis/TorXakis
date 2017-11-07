@@ -28,7 +28,6 @@ import ProcId
 import ChanId
 import VarId
 import BehExprDefs
-import ValExprDefs
 import SortId
 import StdTDefs (stdSortTable)
 
@@ -182,7 +181,7 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
                 chanNames = map (\chanId -> "$" ++ T.unpack (ChanId.name chanId) ) chans
                 prefix = T.unpack (ProcId.name procId) ++ concat chanNames ++ "$"
                 -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
-                prefixedParams = map (ValExpr . Vvar) $ map (prefixVarId prefix) paramsDef
+                prefixedParams = map cstrVar $ map (prefixVarId prefix) paramsDef
                 paramMap = Map.fromList $ zip paramsDef prefixedParams
 
                 -- collect prefixed params for later usage
@@ -244,7 +243,7 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
                         params = if (procId, procChans) == (procIdInst, chansInst)
                                     then paramsInst
                                     else case Map.lookup proc procToParams of
-                                             Just ps   -> map (ValExpr . Vvar) ps
+                                             Just ps   -> map cstrVar ps
                                              Nothing   -> error "createParams: no params found for given proc (should be impossible)"
                     in
                     params ++ paramsRec
@@ -276,10 +275,10 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr =
         -- say A?x [x>1], this becomes A?A1 [A1 > 1]
         constraintOfOffer = constraint actOffer
 
-        varMap' = Map.fromList $ map (\(f,s) -> (f, ValExpr (Vvar s))) varMap
+        varMap' = Map.fromList $ map (\(f,s) -> (f, cstrVar s)) varMap
 
         constraintOfOffer' = Subst.subst varMap' constraintOfOffer
-        constraintPC = cstrEqual (ValExpr (Vvar varIdPC)) (cstrConst (Cint pcValue))
+        constraintPC = cstrEqual (cstrVar varIdPC) (cstrConst (Cint pcValue))
         constraint' = cstrAnd $ Set.fromList (constraintPC : constraintOfOffer' : constraints')
 
         actOffer' = ActOffer { offers = Set.fromList offers'
@@ -321,7 +320,7 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr =
                         chanOffer' = Quest varIdChani
                         constraints = case chanOffer of
                                         (Quest varId)  -> constraintsRec
-                                        (Exclam vexpr) -> let constraint' = cstrEqual (ValExpr (Vvar varIdChani)) vexpr in
+                                        (Exclam vexpr) -> let constraint' = cstrEqual (cstrVar varIdChani) vexpr in
                                                           (constraint':constraintsRec)
                         varMap = case chanOffer of
                                         (Quest varId)   -> ((varId, varIdChani) : varMapRec)

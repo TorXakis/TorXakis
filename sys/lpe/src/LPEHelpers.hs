@@ -27,7 +27,6 @@ import qualified TxsUtils
 import ProcId 
 import VarId
 import BehExprDefs
-import ValExprDefs
 
 import qualified Data.Text         as T
 

@@ -25,7 +25,6 @@ import LPEHelpers
 import ProcId 
 import VarId
 import BehExprDefs
-import ValExprDefs
 
 import qualified Data.Text         as T
 import TranslatedProcDefs 
@@ -92,8 +91,8 @@ preGNFBExpr bexpr choiceCnt freeVarsInScope procId translatedProcDefs procDefs =
                                 name' = T.append (ProcId.name procId) (T.pack ("$pre" ++ show choiceCnt)) 
                                 procId' = procId { ProcId.name = name', ProcId.procvars = (paramsDef ++ freeVarsInScope)}
                             -- create ProcInst, translate params to VExprs 
-                                paramsDef' = map ValExpr (map Vvar paramsDef)
-                                paramsFreeVars = map ValExpr (map Vvar freeVarsInScope)
+                                paramsDef' = map cstrVar paramsDef
+                                paramsFreeVars = map cstrVar freeVarsInScope
                                 procInst' = ProcInst procId' chansDef (paramsDef' ++ paramsFreeVars) 
                             -- put created ProcDefs in the ProcDefs
                                 procDefs' = Map.insert procId' procDef' procDefs

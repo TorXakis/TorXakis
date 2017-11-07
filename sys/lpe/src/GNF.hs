@@ -26,7 +26,6 @@ import PreGNF
 import ProcId 
 import VarId
 import BehExprDefs
-import ValExprDefs
 
 import qualified Data.Text         as T
 
@@ -98,8 +97,8 @@ gnfBExpr bexpr choiceCnt procId translatedProcDefs procDefs =
                                             name' = T.append (ProcId.name procId) (T.pack ("$gnf" ++ show choiceCnt)) 
                                             procId' = procId { ProcId.name = name', ProcId.procvars = (paramsDef ++ varsInOffer)}
                                             -- create ProcInst, translate params to VExprs 
-                                            paramsDef' = map ValExpr (map Vvar paramsDef)
-                                            paramsFreeVars = map ValExpr (map Vvar varsInOffer)
+                                            paramsDef' = map cstrVar paramsDef
+                                            paramsFreeVars = map cstrVar varsInOffer
                                             procInst' = ProcInst procId' chansDef (paramsDef' ++ paramsFreeVars) 
                                             
                                             -- put created ProcDefs in the ProcDefs
