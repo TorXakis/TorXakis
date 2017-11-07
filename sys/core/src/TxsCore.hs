@@ -159,6 +159,10 @@ import qualified SolveDefs.Params
 -- import from value
 import qualified Eval
 
+-- import from lpe
+import qualified LPE
+
+
 -- | TorXakis core main api -- start
 runTxsCore :: Config -> StateT s IOC.IOC a -> s -> IO ()
 runTxsCore initConfig ctrl s0  =  do
@@ -1049,7 +1053,7 @@ txsLPE bexpr  =  do
     (IOC.Initing {IOC.tdefs = tdefs}, TxsDefs.ProcInst procid chans vexps)
       -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
            Just (TxsDefs.ProcDef chids vids bexp)
-             -> case lpeTransform bexpr (TxsDefs.procDefs tdefs) of
+             -> case LPE.lpeTransform bexpr (TxsDefs.procDefs tdefs) of
                   Just (procinst'@(TxsDefs.ProcInst procid' chans' vexps'), procdef')
                     -> case Map.lookup procid' (TxsDefs.procDefs tdefs) of
                          Nothing
@@ -1076,6 +1080,8 @@ txsLPE bexpr  =  do
 -- ----------------------------------------------------------------------------------------- --
 -- temp function for lpe                                                                     --
 
+{-
+
 -- | placeholder for LPE tranformation
 lpeTransform :: TxsDefs.BExpr              -- ^ behaviour expression to be transformed,
                                            --   assumed to be a process instantiation
@@ -1097,6 +1103,7 @@ lpeTransform procinst procdefs
               __           -> error "LPE transformation: undefined process instantiation\n"
        _ -> error "LPE transformation: only defined for process instantiation\n"
 
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

@@ -44,5 +44,6 @@ library
                       , solvedefs
                       , testsel
                       , value
+                      , lpe
                       
   default-language:     Haskell2010

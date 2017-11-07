@@ -8,8 +8,8 @@ See LICENSE at root directory of this repository.
 -- ----------------------------------------------------------------------------------------- --
 
 module LPE
-( lpe
-, lpeTransform )
+( lpeTransform
+)
 
 -- ----------------------------------------------------------------------------------------- --
 -- import
@@ -67,7 +67,7 @@ emptyTranslatedProcDefs = TranslatedProcDefs { TranslatedProcDefs.lPreGNF = []
 
 
 -- wrapper around lpe function, returning only the relevant ProcDef instead of all ProcDefs
-lpeTransform :: BExpr -> ProcDefs -> (BExpr, TxsDefs.ProcDef)
+lpeTransform :: BExpr -> ProcDefs -> Maybe (BExpr, TxsDefs.ProcDef)
 lpeTransform procInst procDefs = let (procInst', procDefs') = lpe procInst emptyTranslatedProcDefs procDefs
                                      ProcInst procIdInst chansInst paramsInst = procInst'
                                      ProcDef chans params bexpr = case Map.lookup procIdInst procDefs' of
@@ -77,14 +77,14 @@ lpeTransform procInst procDefs = let (procInst', procDefs') = lpe procInst empty
 
                                      -- rename ProcId P to P$LPE
                                      -- put new ProcId in the procInst
-                                     procIdName' = T.pack $ (T.unpack (ProcId.name procIdInst)) ++ "$LPE"
+                                     procIdName' = T.pack $ "LPE_" ++ (T.unpack (ProcId.name procIdInst))
                                      procIdInst' = procIdInst { ProcId.name = procIdName'}
                                      procInst'' = ProcInst procIdInst' chansInst paramsInst
 
                                      -- put new ProcId in each step
                                      steps = map (substituteProcId procIdInst procIdInst') (extractSteps bexpr)
                                      procDef = ProcDef chans params (wrapSteps steps) in
-                                 (procInst'', procDef)
+                                 Just (procInst'', procDef)
     where
         substituteProcId :: ProcId -> ProcId -> BExpr -> BExpr
         substituteProcId orig new Stop = Stop
