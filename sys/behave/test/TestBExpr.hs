@@ -88,7 +88,7 @@ parseBexpr definedExits content =
         pid = expectProcId definedProcDef definedChannels definedVars definedExits
       in
         -- Trace.trace ("file = \n" ++ file) $
-                    case findValueOfGenericKey (IdProc pid) ( parseTorXakis file ) of        -- TODO: idMap / sig 
+                    case findValueOfGenericKey (IdProc pid) ( parseTorXakis file ) of
                          Just (DefProc (ProcDef _definedChannels' _definedVars' bexp)) -> bexp
                          Nothing                                                       -> error $ "Test Error: process\n" ++ show pid ++ "\nnot found in \n" ++ show ( Map.keys (procDefs (parseTorXakis file) ) )
                          Just _another                                                 -> error "Test Error: process not a ProcDef"
@@ -167,9 +167,6 @@ testQuestScope = TestCase $
         actual = parseBexpr Nothing bexpr
       in
         assertBool ("expected =\n" ++ pshow bexpr ++ "\nactual =\n" ++ pshow actual) $ identicalBExpr bexpr actual
-        -- TODO: is x really overwritten/shadowed?
-
-        
         
 -- Exit & Processes to use
 aDefinedExit :: Maybe [String]
@@ -306,7 +303,7 @@ testBExprList = TestList [ TestLabel "Stop" testStop,
                            TestLabel "Parallel Interleaving" testInterleaving,
                            TestLabel "Parallel Communicate" testCommunicate,
                            TestLabel "Enable" testEnable,
-                           TestLabel "Enable Communicate" testEnableCommunicate, -- TODO: Jan please fix this failing test
+                           TestLabel "Enable Communicate" testEnableCommunicate,
                            TestLabel "Disable" testDisable,
                            TestLabel "ProcInst" testProcInst   
                          ]

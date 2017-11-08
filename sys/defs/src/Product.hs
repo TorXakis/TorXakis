@@ -93,18 +93,6 @@ instance TermWrapper ProductTerm where
     unwrap = factor
 
 instance Integral a => IntMultipliable (ProductTerm a) where
-    -- Instances of `IntMultipliable` for `PPproduct` are only defined for
-    -- fractional numbers. We cannot define this for `Int` (or `Integer`) since
-    -- the multiplicative inverse is not defined for them.
-    --
-    -- TODO: the right constraint should be:
-    --
-    -- > Fractional a => IntMultipliable (ProductTerm a)
-    --
-    -- However in the current state of we don't have fractional numbers or
-    -- double.
-
-    -- See https://wiki.haskell.org/Power_function
     n <.> pt = (^ toInteger n) <$> pt
 
 {--------------------------------------------------------------------

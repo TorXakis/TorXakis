@@ -249,7 +249,7 @@ instance PShow v => PShow (ValExpr v) where
       = "is"++ T.unpack (CstrId.name cid) ++ "(" ++ pshow vexp ++ ")"
     pshow (view -> Vaccess cid p vexp)
       =  "access "++ T.unpack (CstrId.name cid) ++ " " ++ show p
-      ++ " (" ++ pshow vexp ++ ")" -- TODO: use the accessor name?
+      ++ " (" ++ pshow vexp ++ ")"
     pshow (view -> Vconst con)
       =  pshow con
     pshow (view -> Vvar vid)
@@ -283,7 +283,7 @@ instance PShow v => PShow (ValExpr v) where
         listShow (x:xs) = "( " ++ elemShow x ++ " * " ++ listShow xs ++ " )"
 
         elemShow (t,1)  = pshow t
-        elemShow (t,p)  | p > 0 = "( " ++ pshow t ++ " ^ "  ++ show p ++ " )"   -- TODO: TorXakis doesn't support Power (not even x ^ integer)
+        elemShow (t,p)  | p > 0 = "( " ++ pshow t ++ " ^ "  ++ show p ++ " )"
         elemShow (_,p)  = error ("TxsShow - pshow VExpr - illegal power: p = " ++ show p)
 
     pshow (view -> Vdivide t n)
@@ -412,15 +412,6 @@ instance PShow TxsDef
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: Ident
 
--- TODO: the boilerplate below should be eliminated if we introduced an `Id` data-type:
---
--- > data Id v = Id {name :: Name,  unid :: Int }
---
--- And then we can have:
---
--- > data ChanIdT = ChanIdT
--- > type ChanId = Id ChanIdT
-
 instance PShow Ident where
     pshow (IdSort   id) =  pshow id
     pshow (IdCstr   id) =  pshow id
@@ -531,14 +522,9 @@ instance PShow a => PShow (ProductTerm a) where
 
 instance PShow Bool
 
-
 instance PShow Int
-
 
 showN :: Int -> Int -> String
 showN n p  =  let ns = show n in replicate (p- length ns) '.' ++ ns
 
-
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
 -- ----------------------------------------------------------------------------------------- --

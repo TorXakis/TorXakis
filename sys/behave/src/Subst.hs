@@ -101,11 +101,6 @@ instance Subst ChanOffer
 -- ----------------------------------------------------------------------------------------- --
 -- variable substition in VExpr
 
-
 instance Subst VExpr
   where
-    subst x = TxsDefs.subst x (Map.empty :: Map.Map FuncId (FuncDef VarId))     --TODO: It should use the defined function here: get it from the MONAD -> Map.empty optimization is possible!
-    
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --
+    subst x = TxsDefs.subst x (Map.empty :: Map.Map FuncId (FuncDef VarId))

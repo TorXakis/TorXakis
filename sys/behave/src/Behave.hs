@@ -20,7 +20,7 @@ module Behave
                -- initialize BTree
 , behMayMenu   -- :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
                -- may menu of BTree without quiescence
-, behMustMenu  -- :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu    -- TODO
+, behMustMenu  -- :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
                -- must menu of BTree without quiescence
 , behRefusal   -- :: BTree -> Set.Set TxsDefs.ChanId -> Bool
                -- check refusal set on BTree
@@ -87,13 +87,9 @@ behMayMenu chsets btree'
 -- ----------------------------------------------------------------------------------------- --
 -- behMustMenu :  must menu of BTree without quiescence
 
-
 behMustMenu :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
 behMustMenu _ _
   =  []
-
---   TODO
-
 {-   case [ btree' | BTtau btree' <- btree ] of
      { []      -> [ ( btoffs, hidvars, preds ) | BTpref btoffs hidvars preds next <- btree ]
      ; btrees' -> concat $ map behMustMenu btrees'
@@ -102,8 +98,6 @@ behMustMenu _ _
 
 -- ----------------------------------------------------------------------------------------- --
 -- behRefusal :  check refusal set on BTree
---
--- TODO: Put an informal/description of refusal set.
 --
 behRefusal :: BTree -> Set.Set TxsDefs.ChanId -> Bool
 behRefusal bt refset

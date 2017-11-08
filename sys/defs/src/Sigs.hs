@@ -37,9 +37,9 @@ import           SortId
 import           Data.Text       (Text)
 import           FuncTable
 
-data Sigs v = Sigs  { chan :: [ChanId]  -- TODO: Map.Map String ChanId
+data Sigs v = Sigs  { chan :: [ChanId]
                     , func :: FuncTable v
-                    , pro  :: [ProcId]  -- TODO: ProcTable
+                    , pro  :: [ProcId]
                     , sort :: Map.Map Text SortId
                     } deriving (Show, Generic, NFData)
 
