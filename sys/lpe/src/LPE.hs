@@ -74,7 +74,7 @@ lpeTransform procInst procDefs = let (procInst', procDefs') = lpe procInst empty
                                                                    Nothing        -> error "lpeTransform: could not find the given procId"
 
 
-                                     -- rename ProcId P to P$LPE
+                                     -- rename ProcId P to LPE_<P>
                                      -- put new ProcId in the procInst
                                      procIdName' = T.pack $ "LPE_" ++ (T.unpack (ProcId.name procIdInst))
                                      procIdInst' = procIdInst { ProcId.name = procIdName'}
@@ -96,7 +96,7 @@ lpe :: BExpr -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
 lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procDefs =
     let -- remember the current ProcId to avoid recursive loops translating the same ProcId again
         translatedProcDefs' = translatedProcDefs { lLPE = (lLPE translatedProcDefs) ++ [procIdInst]}
-        -- first translate to LPE
+        -- first translate to GNF
         procDefs' = gnf procIdInst translatedProcDefs' procDefs
         -- decompose translated ProcDef
         ProcDef chansDef paramsDef bexpr = case Map.lookup procIdInst procDefs' of

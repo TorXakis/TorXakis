@@ -17,12 +17,13 @@ library
   exposed-modules:      PreGNF
                       , GNF
                       , LPE
+                      , LPEPar
+
+  other-modules:        LPEHelpers
                       , TranslatedProcDefs
 
-  other-modules:        LPEHelpers  
-
   ghc-options:        -Werror -O2 -optc-O3 -optc-ffast-math
-  
+
   build-depends:        base
                       , containers
                       , mtl
@@ -30,39 +31,41 @@ library
 
                       , defs
                       , behave
-                      
+
   default-language:     Haskell2010
-  
+
 test-suite lpe-test
   type:                 exitcode-stdio-1.0
   hs-source-dirs:       src
                       , test
-  
+
   main-is:              TestMain.hs
-  
+
   other-modules:        TestPreGNF
                       , PreGNF
                       , TestGNF
                       , GNF
                       , TestLPE
                       , LPE
+                      , LPEPar
+                      , TestLPEPar
                       , TestLPEHelpers
                       , LPEHelpers
 
                       , TranslatedProcDefs
 
-                      
+
 
   ghc-options:       -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
-  
+
   build-depends:       base
                      , containers
                      , mtl
                      , text
                      , HUnit
                      , MissingH
-                     
+
                      , defs
                      , behave
-                     
+
   default-language:    Haskell2010

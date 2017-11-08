@@ -11,6 +11,7 @@ import Test.HUnit
 import TestPreGNF
 import TestGNF
 import TestLPE
+import TestLPEPar
 import TestLPEHelpers
 
 testList :: Test
@@ -18,6 +19,7 @@ testList = TestList
     [    TestLabel "preGNF"          testPreGNFList
        , TestLabel "GNF"             testGNFList
        , TestLabel "LPE"             testLPEList
+       , TestLabel "LPEPar"          testLPEParList
        , TestLabel "LPEHelpers"      testLPEHelpersList
     ]
 
