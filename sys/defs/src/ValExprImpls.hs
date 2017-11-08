@@ -226,9 +226,6 @@ cstrAnd' s =
                                 if any (contains s') (map (\(view -> Vnot n) -> n) (Set.toList nots))
                                     then cstrConst (Cbool False)
                                     else ValExpr (Vand s')
-                                    -- todo? also check :
-                                    -- 0 <= x and 0 <= -x <==> x == 0
-                                    -- not (0 <= x) and not (0 <= -x) <==> False
     where
         contains :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
@@ -300,7 +297,6 @@ cstrProduct ms =
       (prods, noprods) = FMX.partitionT isProduct ms
       prodOfProds :: FMX.FreeMonoidX (FMX.FreeMonoidX (ProductTerm (ValExpr v)))
       prodOfProds = FMX.mapTerms (getProduct . factor) prods
-        -- TODO: canonical form -- make one sum of products (so remove all sums within all products)
 
 -- Product doesn't contain elements of type VExprProduct
 cstrProduct' :: (Ord v, Integral (ValExpr v))

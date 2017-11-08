@@ -42,7 +42,6 @@ liftP3 (x, y, mz)  =  do  { z <- mz; return (x,y,z) }
 -- ----------------------------------------------------------------------------------------- --
 -- random ordering of a list
 
--- TODO: why not use shuffleM from https://hackage.haskell.org/package/random-shuffle-0.0.4/docs/System-Random-Shuffle.html?
 randOrder :: [t] -> IO [t]
 randOrder []    =  return []
 randOrder list  =  do
