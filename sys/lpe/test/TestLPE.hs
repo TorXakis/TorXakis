@@ -701,7 +701,7 @@ testChannelSwitch = TestCase $
 -- LPE_P[A,B](pc$P, P$A$B$s, P$gnf1$A$B$s, P$gnf1$A$B$x) :=
 --       A?A1 [pc$P == 0] >-> LPE_P[A,B](1, P$A$B$s, P$A$B$s, A1)
 --    ## B?B1 [pc$P == 1, B1 ==  P$gnf1$A$B$s] >-> LPE_P[A,B](-1, ANY, ANY, ANY)
--- with procInst = LPE_P[A](0,1,ANY,ANY)
+-- with procInst = LPE_P[A,B](0,1,ANY,ANY)
 testMultiAction :: Test
 testMultiAction = TestCase $
    assertEqual "multi action" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
@@ -760,6 +760,37 @@ testMultiAction = TestCase $
       procInst' = ProcInst procIdPlpe [chanIdA, chanIdB] [int0, int1, anyInt, anyInt]
 
 
+-- Channel instantiation not executed for top-level ProcInst
+-- P[A]() := A?x >-> STOP
+-- with procInst = P[B]()
+-- becomes
+-- LPE_P[A](pc$P) := A?A1 [pc$P == 0] >-> LPE_P[A](-1)
+-- with procInst = LPE_P[B](0)
+testChannelInstantiation :: Test
+testChannelInstantiation = TestCase $
+   assertEqual "ActionPref Stop" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   where
+      procInst = ProcInst procIdP [chanIdB] []
+      procIdP = procIdGen "P" [chanIdA] []
+
+      procDefP = ProcDef [chanIdA] [] (ActionPref actOfferAx Stop)
+
+      procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP]
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP]
+                      (ActionPref
+                        -- action: A?A1 [pc$P == 0]
+                        ActOffer {  offers = Set.singleton(
+                                                  Offer { chanid = chanIdA
+                                                        , chanoffers = [Quest varIdA1]
+                                                  })
+                                              , constraint = cstrEqual vexprPcP int0
+                                  }
+                        (ProcInst procIdPlpe [chanIdA] [vexprMin1]))
+
+      procDefs = Map.fromList  [  (procIdP, procDefP)]
+      procInst' = ProcInst procIdPlpe [chanIdB] [int0]
+
+
 
 ----------------------------------------------------------------------------------------
 -- List of Tests
@@ -778,4 +809,5 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
                         , TestLabel "Params are made unique" testParamsUnique
                         , TestLabel "switching channels" testChannelSwitch
                         , TestLabel "multi action" testMultiAction
+                        , TestLabel "channel instantiation not for top-level ProcInst" testChannelInstantiation
                         ]

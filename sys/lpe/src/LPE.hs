@@ -102,7 +102,9 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
         ProcDef chansDef paramsDef bexpr = case Map.lookup procIdInst procDefs' of
                              Just procDef   -> procDef
                              Nothing        -> error "LPE: could not find given procId (should be impossible)"
-        calledProcs = calledProcDefs procInst [] procDefs'
+
+        accuInit = [(procIdInst, chansDef)]
+        calledProcs = calledProcDefs procDefs' accuInit (extractSteps bexpr)
 
         -- create program counter mapping
         pcName = "pc$" ++ (T.unpack (ProcId.name procIdInst))
@@ -135,10 +137,13 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
     (procInstLPE, procDefs'')
     where
         -- recursively collect all (ProcId, Channels)-combinations that are called
-        calledProcDefs :: BExpr -> [Proc] -> ProcDefs -> [Proc]
-        calledProcDefs procInst@(ProcInst procIdInst chansInst paramsInst) accu procDefs =
-            -- check if we collected the given (procIdInst, chansInst) combination already
-            if (elem (procIdInst, chansInst) accu)
+        calledProcDefs :: ProcDefs -> [Proc] -> [BExpr] -> [Proc]
+        calledProcDefs procDefs accu bexprs = foldl (processStep procDefs) accu bexprs
+          where
+            processStep :: ProcDefs -> [Proc] -> BExpr -> [Proc]
+            -- case bexpr == A >-> P'[]()
+            processStep procDefs accu (ActionPref actOffer procInst@(ProcInst procIdInst chansInst paramsInst)) =
+              if (elem (procIdInst, chansInst) accu)
                 then accu
                 else let -- add combination to accu
                          accu' = accu ++ [(procIdInst, chansInst)]
@@ -147,22 +152,14 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
                                      Just procDef   -> procDef
                                      Nothing        -> error "LPE: could not find given procId (should be impossible)"
                          -- instantiate bexpr with channels of ProcInst
-                         -- substitute channels
                          chanmap = Map.fromList (zip chansDef chansInst)
                          bexprRelabeled = relabel chanmap bexprDef
-                         -- go through steps
-                         steps = extractSteps bexprRelabeled
-                         accu'' = processSteps steps accu' in
+                         -- go through steps recursively
+                         accu'' = calledProcDefs procDefs accu' (extractSteps bexprRelabeled) in
                      accu''
-            where
-                -- run through steps and collect ProcIds and their channels
-                -- assumption: steps are in GNF, i.e. STOP, A >-> STOP, or A >-> ProcInst
-                processSteps :: [BExpr] -> [Proc] -> [Proc]
-                processSteps [] accu = accu
-                processSteps ((ActionPref actOffer procInst@(ProcInst procIdInst chansInst paramsInst)): bexprs) accu =
-                        let accuRec = calledProcDefs procInst accu procDefs in
-                        processSteps bexprs accuRec
-                processSteps (_ : bexprs) accu = processSteps bexprs accu
+
+            -- case bexpr == A >-> STOP: nothing to collect
+            processStep procDefs proc bexpr = proc
 
         -- translate all Procs (procId, channels)-combination
         translateProcs :: [Proc] -> VarId -> PCMapping -> ProcDefs -> ([BExpr], [VarId], ProcToParams)
@@ -211,7 +208,7 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
                 paramsSorts = map varIdToSort params
                 paramsANYs = map (cstrConst . Cany) paramsSorts
                 paramsNew = (pcValue : paramsInst) ++ paramsANYs in
-            ProcInst procIdNew (ProcId.procchans procIdNew) paramsNew
+            ProcInst procIdNew chansInst paramsNew
 
         -- update the ProcInsts in the steps to the new ProcId
         stepsUpdateProcInsts :: [Proc] -> ProcToParams -> PCMapping -> ProcId -> BExpr -> BExpr
