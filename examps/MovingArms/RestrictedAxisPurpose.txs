@@ -7,14 +7,6 @@ See LICENSE at root directory of this repository.
 
 TYPEDEF State ::= StoppedMax | StoppingUp | MovingUp | NoMovement | MovingDown | StoppingDown | StoppedMin ENDDEF
 
--- This algorithm is derived using LPE and some human optimization
--- starting with the process
--- PROCDEF Semaphore [Acquire, Release](n:: Int) ::=
---       [[n>0]] =>> Acquire >-> Semaphore [Acquire , Release](n-1)  
---    ##             Release >-> Semaphore [Acquire , Release](n+1)  
--- ENDDEF
--- In particular, synchronous acquiring (and releasing) of a semaphore by different axes is NOT possible.
--- Consequently, movements in different directions will never start or stop together.
 PROCDEF restrictedAxisMovement[ UpX, DownX, StopX, StoppedX, MinX, MaxX,
                                 UpY, DownY, StopY, StoppedY, MinY, MaxY,
                                 UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ] ( n :: Int; stateX, stateY, stateZ :: State ) HIT ::=
