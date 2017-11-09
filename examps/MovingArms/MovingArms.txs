@@ -4,20 +4,19 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-PROCDEF stoppedMin [ Up, Down, Stop, Min, Max ] ( ) ::=
-        Up >-> movingUp [ Up, Down, Stop, Min, Max ] ( )
-    ##
-        Down >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMin and stopped both must accept input Down, such that IOCO can't differentiate between them
-    ##
-        Stop >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMin and movingDown both must accept input Stop, such that IOCO can't differentiate between them
+CHANDEF Channels ::=
+    UpX, DownX, StopX, MinX, MaxX,
+    UpY, DownY, StopY, MinY, MaxY,
+    UpZ, DownZ, StopZ, MinZ, MaxZ
 ENDDEF
+-- ----------------------------------------------------------------------------------------- --
 
-PROCDEF stoppedMax [ Up, Down, Stop, Min, Max ] ( ) ::=
-        Down >-> movingDown [ Up, Down, Stop, Min, Max ] ( )
-    ##
-        Up >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )      -- stoppedMax and stopped both must accept input Up, such that IOCO can't differentiate between them
-    ##
-        Stop >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMax and movingUp both must accept input Stop, such that IOCO can't differentiate between them
+PROCDEF basicAllowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
+                                UpY, DownY, StopY, MinY, MaxY,
+                                UpZ, DownZ, StopZ, MinZ, MaxZ] ( ) ::=
+        stopped [UpX, DownX, StopX, MinX, MaxX] ()
+    ||| stopped [UpY, DownY, StopY, MinY, MaxY] ()
+    ||| stopped [UpZ, DownZ, StopZ, MinZ, MaxZ] ()
 ENDDEF
 
 PROCDEF stopped [ Up, Down, Stop, Min, Max ] ( ) ::=
@@ -38,12 +37,20 @@ PROCDEF movingDown [ Up, Down, Stop, Min, Max ] ( ) ::=
         Min >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )
 ENDDEF
 
-PROCDEF basicAllowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
-                                UpY, DownY, StopY, MinY, MaxY,
-                                UpZ, DownZ, StopZ, MinZ, MaxZ] ( ) ::=
-        stopped [UpX, DownX, StopX, MinX, MaxX] ()
-    ||| stopped [UpY, DownY, StopY, MinY, MaxY] ()
-    ||| stopped [UpZ, DownZ, StopZ, MinZ, MaxZ] ()
+PROCDEF stoppedMin [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Up >-> movingUp [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Down >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMin and stopped both must accept input Down, such that IOCO can't differentiate between them
+    ##
+        Stop >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMin and movingDown both must accept input Stop, such that IOCO can't differentiate between them
+ENDDEF
+
+PROCDEF stoppedMax [ Up, Down, Stop, Min, Max ] ( ) ::=
+        Down >-> movingDown [ Up, Down, Stop, Min, Max ] ( )
+    ##
+        Up >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )      -- stoppedMax and stopped both must accept input Up, such that IOCO can't differentiate between them
+    ##
+        Stop >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMax and movingUp both must accept input Stop, such that IOCO can't differentiate between them
 ENDDEF
 
 MODELDEF  Model ::=
@@ -57,10 +64,10 @@ MODELDEF  Model ::=
                                         UpY, DownY, StopY, MinY, MaxY,
                                         UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
 ENDDEF
+
 -- ---------------------------------------------------------------------------
 -- Between SUT and Tester is however not a synchronous channel              --
 ------------------------------------------------------------------------------
-
 PROCDEF asynchronousChannel [ In, Out ] () ::=
     In >-> Out >-> asynchronousChannel [ In, Out ] ()
 ENDDEF
@@ -81,13 +88,6 @@ PROCDEF allowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
         asynchronousAxis [UpX, DownX, StopX, MinX, MaxX] ()
     ||| asynchronousAxis [UpY, DownY, StopY, MinY, MaxY] ()
     ||| asynchronousAxis [UpZ, DownZ, StopZ, MinZ, MaxZ] ()
-ENDDEF
-
--- ----------------------------------------------------------------------------------------- --
-CHANDEF Channels ::=
-    UpX, DownX, StopX, MinX, MaxX,
-    UpY, DownY, StopY, MinY, MaxY,
-    UpZ, DownZ, StopZ, MinZ, MaxZ
 ENDDEF
 
 MODELDEF ModelWithAsyncChannels ::=
