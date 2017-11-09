@@ -19,11 +19,7 @@ library
                       , TxsHappy
   
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
-  -- TODO: -fglasgow-exts are needed to reduce compile time, execution speed,
-  -- and binary size, but they are deprecated. Check which extensions we need
-  -- to use.
-  --
-  -- see https://www.haskell.org/happy/doc/html/sec-tips.html
+  
   build-tools:          alex
                       , happy
   -- Flags `-a -g -c` are passed by default to happy when building with Cabal. 

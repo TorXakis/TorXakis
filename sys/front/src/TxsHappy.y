@@ -582,7 +582,6 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                                      "Double defined names: "++(show dbls)++"\n"
                                
                 }
-                -- TODO: remove addition of constructor and isConstructorFunction: add ADT info to TxsDefs in another way!
 
 FieldList       -- :: { [ (String, SortId) ] }
                 -- definition of the fields with implicit functions of an algebraic type
@@ -798,8 +797,7 @@ ExConstDef      -- :: { ( Int, TxsDef ) }
                 -- top-level constant definition for external use with multiple parsers
                 -- attrs inh : SIGS  : Signatures
                 --           : UNID  : unique node identification
-                -- constrs   : defined constant shall have unique function name 
-                -- TODO: also SIGS has changed -> should be returned as well?
+                -- constrs   : defined constant shall have unique function name
               : SIGS UNID ConstDef
                 {  $3.inhSigs      = $1
                 ;  $3.inhNodeUid   = $2

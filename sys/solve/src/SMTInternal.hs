@@ -95,9 +95,6 @@ createSMTEnv cmd lgFlag tdefs =  do
                                                            , std_in = CreatePipe
                                                            , std_err = CreatePipe
                                                            }
-
-          -- TODO: bug#1954 https://esi-redmine.tno.nl/issues/1954
-          -- changes needed here?
     hSetBuffering hin  NoBuffering         -- alternative: LineBuffering
     hSetBuffering hout NoBuffering
     hSetBuffering herr NoBuffering
@@ -138,7 +135,7 @@ createSMTEnv cmd lgFlag tdefs =  do
                    lg
                    (Map.fromList (initialMapInstanceTxsToSmtlib <>
                                    map (\f -> (IdFunc f, error "Transitive closure should prevent calls to CONNECTION (ENCODE/DECODE) related functions.")) (Set.toList (allENDECfuncs tdefs))))
-                   TxsDefs.empty        -- TODO: currently txsdefs only uses to remove EN/DECODE functions: combine with addDefinitions?
+                   TxsDefs.empty
             )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -158,7 +155,6 @@ addDefinitions txsdefs =  do
     let newfuncs = filter (\(i, _) -> Map.notMember i mapC) funcs
                          -- remove isX, accessors and equal functions related to data types
                          -- remove the transitive closure of function for connections (such as toString and toXml)
-                         -- TODO: is this still needed with new ValExpr that have special constructors for these `functions`?
         mapR = foldr insertMap mapC newfuncs
     putT ( funcdefsToSMT mapR (TxsDefs.fromList newfuncs) )
     put "\n\n"
@@ -230,7 +226,6 @@ getInfo :: String -> SMT String
 getInfo info = do
     put ("(get-info :" ++ info ++ ")")
     s <- getSMTresponse
-    -- todo: should a parser for a info/name be made?
     let list = strip s in
         if startswith "(" list && endswith ")" list
         then
