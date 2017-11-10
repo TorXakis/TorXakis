@@ -28,7 +28,13 @@ ENDDEF
 PROCDEF movingUp [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
         Stop >-> stoppingUp [ Up, Down, Stop, Stopped, Min, Max ] ( )
     ##
-        Max >-> stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
+        Max >-> stoppingAtMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF stoppingAtMax [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stop >-> stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
 ENDDEF
 
 PROCDEF stoppingUp [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
@@ -41,15 +47,21 @@ PROCDEF stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
         Down >-> movingDown [ Up, Down, Stop, Stopped, Min, Max ] ( )
     -- ##
         -- Up >-> stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )      -- stoppedMax and stopped both must accept input Up, such that IOCO can't differentiate between them
-    ##
-        Stop >-> stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )    -- stoppedMax and movingUp both must accept input Stop, such that IOCO can't differentiate between them
+    -- ##
+        -- Stop >-> stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )    -- stoppedMax and movingUp both must accept input Stop, such that IOCO can't differentiate between them
 ENDDEF
 
 
 PROCDEF movingDown [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
         Stop >-> stoppingDown [ Up, Down, Stop, Stopped, Min, Max ] ( )
     ##
-        Min >-> stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
+        Min >-> stoppingAtMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF stoppingAtMin [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stop >-> stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
 ENDDEF
 
 PROCDEF stoppingDown [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
@@ -62,8 +74,8 @@ PROCDEF stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
         Up >-> movingUp [ Up, Down, Stop, Stopped, Min, Max ] ( )
     -- ##
         -- Down >-> stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )    -- stoppedMin and stopped both must accept input Down, such that IOCO can't differentiate between them
-    ##
-        Stop >-> stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )    -- stoppedMin and movingDown both must accept input Stop, such that IOCO can't differentiate between them
+    -- ##
+        -- Stop >-> stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )    -- stoppedMin and movingDown both must accept input Stop, such that IOCO can't differentiate between them
 ENDDEF
 
 MODELDEF  Model ::=
