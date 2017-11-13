@@ -1,4 +1,4 @@
-stepper ModelWithAsyncChannels
-step 200
+stepper Model
+step 500
 trace proc $> traceTestModel.log
 exit
