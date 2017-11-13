@@ -87,5 +87,18 @@ instance PShow Verdict
      pshow  NoVerdict =  "No Verdict"
 
 -- ----------------------------------------------------------------------------------------- --
+-- test purposes verdict
+
+data PurpVerdict = PurpHit | PurpMiss | PurpHalted
+     deriving (Eq,Ord,Read,Show)
+
+-- ----------------------------------------------------------------------------------------- --
+instance PShow PurpVerdict
+  where
+     pshow  PurpHit    =  "Hit"
+     pshow  PurpMiss   =  "Miss"
+     pshow  PurpHalted =  "Halted"
+
+-- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --

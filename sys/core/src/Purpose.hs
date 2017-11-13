@@ -68,7 +68,8 @@ goalMenu gnm = do
                 } -> do
       let pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
       case [ (gid, gtree) | (gid@(TxsDefs.GoalId nm _), gtree) <- purpsts, nm == T.pack gnm ] of
-        [(_, bt)] -> return $ Behave.behMayMenu pAllSyncs bt
+        [(_, Left bt)] -> return $ Behave.behMayMenu pAllSyncs bt
+        [(_, Right _)] -> return $ []
         _ -> do
           IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given"]
           return []
@@ -89,7 +90,7 @@ purpMenusIn  =  do
                    }
          | not $ null pinsyncs -> do
             let pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
-            mapM goalMenuIn [ (gid,btree) | (gid,btree) <- purpsts
+            mapM goalMenuIn [ (gid,btree) | (gid,Left btree) <- purpsts
                                           , not $ isHit  pAllSyncs btree
                                           , not $ isMiss pAllSyncs btree
                                           , not $ isHalt btree
@@ -128,33 +129,34 @@ purpAfter act  =  do
               (False, _ , []) -> return False
               ( _   , _ , _ ) -> do
                    aftGoals  <- mapM (goalAfter pAllSyncs poutsyncs act)
-                                     [ (gid,btree) | (gid,btree) <- purpsts
+                                     [ (gid,Left btree) | (gid,Left btree) <- purpsts
                                                    , not $ isHit  pAllSyncs btree
                                                    , not $ isMiss pAllSyncs btree
                                                    , not $ isHalt btree
                                      ]
-                   let newGoals  = aftGoals ++ [ (gid,btree)
-                                               | (gid,btree) <- purpsts
+                   let newGoals  = aftGoals ++ [ (gid,Left btree)
+                                               | (gid,Left btree) <- purpsts
                                                , gid `notElem` map fst aftGoals
-                                               ]
+                                               ] ++ [verd | verd@(_,Right _) <- purpsts ]
                    IOC.modifyCS $ \st -> st { IOC.purpsts = newGoals }
-                   return $ null aftGoals
+                   purpVerdict
        _ -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "purpAfter incorrectly used" ]
             return True
 
 goalAfter :: [Set.Set TxsDefs.ChanId] -> [Set.Set TxsDefs.ChanId] -> TxsDDefs.Action ->
-             (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC (TxsDefs.GoalId,BTree.BTree)
+             (TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict) ->
+             IOC.IOC (TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)
 
-goalAfter allsyncs _ (TxsDDefs.Act acts) (gid,btree)  =  do
+goalAfter allsyncs _ (TxsDDefs.Act acts) (gid,Left btree)  =  do
      envb           <- filterEnvCtoEnvB
      (maybt',envb') <- lift $
        runStateT (Behave.behAfterAct allsyncs btree acts) envb
      writeEnvBtoEnvC envb'
      case maybt' of
-      Nothing  -> return (gid,[])
-      Just bt' -> return (gid,bt')
-goalAfter allsyncs outsyncs TxsDDefs.ActQui (gid,btree)  =  do
+      Nothing  -> return (gid,Left [])
+      Just bt' -> return (gid,Left bt')
+goalAfter allsyncs outsyncs TxsDDefs.ActQui (gid,Left btree)  =  do
      let qacts      = Set.singleton (StdTDefs.chanId_Qstep, [])
      envb           <- filterEnvCtoEnvB
      (maybt1,envb1) <- lift $
@@ -163,44 +165,62 @@ goalAfter allsyncs outsyncs TxsDDefs.ActQui (gid,btree)  =  do
        runStateT (Behave.behAfterAct allsyncs btree qacts) envb1
      writeEnvBtoEnvC envb2
      case (maybt1,maybt2) of
-      (Nothing ,Nothing ) -> return (gid,[])
-      (Just bt1,Nothing ) -> return (gid,bt1)
-      (Nothing ,Just bt2) -> return (gid,bt2)
-      (Just bt1,Just bt2) -> return (gid,bt1++bt2)
+      (Nothing ,Nothing ) -> return (gid,Left [])
+      (Just bt1,Nothing ) -> return (gid,Left bt1)
+      (Nothing ,Just bt2) -> return (gid,Left bt2)
+      (Just bt1,Just bt2) -> return (gid,Left (bt1++bt2))
+goalAfter _ _ _ goal@(_, Right _) = return goal
+      
 
 -- ----------------------------------------------------------------------------------------- --
 -- purpVerdict :  output of  hit/miss verdicts
 
-purpVerdict :: IOC.IOC ()
+purpVerdict :: IOC.IOC Bool -- did any goal hit?
 purpVerdict = do
   envc <- get
   case IOC.state envc of
     IOC.Testing { IOC.purpsts = purpsts } -> do
-      mapM_ goalVerdict purpsts
+      hitsAndNewPurps <- mapM goalVerdict purpsts
+      let (hasHit, newPurps) = unzip3to2 hitsAndNewPurps
+      IOC.modifyCS (\s -> (s {IOC.purpsts = newPurps}))
+      return $ or hasHit
     _ -> do
       IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "purpVerdict incorrectly used"]
-      return ()
+      return False
+  where
+    unzip3to2 :: [(a,b,c)] -> ([a],[(b,c)])
+    unzip3to2 [] = ([],[])
+    unzip3to2 ((x,y,z):xs) = let (xrest,yzrest) = unzip3to2 xs
+                             in (x : xrest, (y,z) : yzrest)
 
-goalVerdict :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC ()
-goalVerdict (gid,btree)  =  do
+
+goalVerdict :: (TxsDefs.GoalId, Either BTree.BTree TxsDDefs.PurpVerdict)
+    -> IOC.IOC (Bool, TxsDefs.GoalId, Either BTree.BTree TxsDDefs.PurpVerdict)
+    -- (did the goal hit, updated goal/verdict)
+goalVerdict (gid, Right goal) = return (False, gid, Right goal)
+goalVerdict (gid, Left btree) = do
      envc <- get
      case IOC.state envc of
        IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs _)
                    }  -> do
             let pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
-            IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                        $ "Goal " ++ TxsShow.fshow gid ++ ": " ++
-                          ( case (isHit pAllSyncs btree, isMiss pAllSyncs btree, isHalt btree) of
-                              (False,False,False) -> "still active"
-                              (True ,False,False) -> "Hit"
-                              (False,True ,False) -> "Miss"
-                              (False,False,True ) -> "halted"
-                              (_    ,_    ,_    ) -> "Hit/Miss/Halted: ???"
-                          )
-                        ]
+            let (hasHit, newGoal) = case (isHit pAllSyncs btree, isMiss pAllSyncs btree, isHalt btree) of
+                          (False,False,False) -> (False, Just $ Left btree)
+                          (True ,False,False) -> (True, Just $ Right TxsDDefs.PurpHit)
+                          (False,True ,False) -> (False, Just $ Right TxsDDefs.PurpMiss)
+                          (False,False,True ) -> (False, Just $ Right TxsDDefs.PurpHalted)
+                          (_    ,_    ,_    ) -> (False, Nothing)
+            case newGoal of
+              Nothing -> do
+                IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "goalVerdict incorrectly used" ]
+                return $ (hasHit, gid, Right TxsDDefs.PurpHalted)
+              Just (Left beh) -> return (hasHit, gid, Left beh)
+              Just (Right verd) -> do
+                IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Goal " ++ TxsShow.fshow gid ++ ": " ++ TxsShow.fshow verd]
+                return (hasHit, gid, Right verd)
        _ -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "goalVerdict incorrectly used" ]
-            return ()
+            return (True, gid, Right TxsDDefs.PurpHalted)
 
 -- ----------------------------------------------------------------------------------------- --
 --  hit, miss

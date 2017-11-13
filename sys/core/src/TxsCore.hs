@@ -150,6 +150,7 @@ import qualified SortOf
 import qualified TxsDDefs
 import qualified TxsDefs
 import qualified TxsShow
+import qualified Utils
 
 -- import from solve
 import qualified FreeVar
@@ -457,7 +458,7 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
               Just bt -> do
                    IOC.modifyCS $ \st -> st { IOC.modsts  = bt
                                             , IOC.mapsts  = mt
-                                            , IOC.purpsts = gls
+                                            , IOC.purpsts = fmap (Utils.mapSnd Left) gls
                                             }
                    when
                        (not $ null gls)
