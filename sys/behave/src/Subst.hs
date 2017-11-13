@@ -19,18 +19,17 @@ module Subst
 
 where
 
-import qualified Data.Set  as Set
-import qualified Data.Map  as Map
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
-import TxsDefs
+import           TxsDefs
 
--- ----------------------------------------------------------------------------------------- --
--- Substitution
-
-
-class Subst e
-  where
-    subst :: TxsDefs.VEnv -> e -> e
+-- | Expressions that support a substitution function.
+class Subst e where
+    -- | Substitution function.
+    subst :: TxsDefs.VEnv -- ^ Mapping from variable id's to expressions on those variable id's.
+          -> e            -- ^ Input expression.
+          -> e
 
 
 instance (Ord e,Subst e) => Subst [e]
@@ -64,7 +63,7 @@ instance Subst BExpr
 
     subst ve (Parallel chids bexps)
       =  Parallel chids (map (Subst.subst ve) bexps)
-    
+
     subst ve (Enable bexp1 choffs bexp2)
       =  Enable (Subst.subst ve bexp1) (Subst.subst ve choffs) (Subst.subst ve bexp2)
 
@@ -94,8 +93,8 @@ instance Subst Offer
 
 instance Subst ChanOffer
   where
-    subst _  (Quest vid)    =  Quest vid
-    subst ve (Exclam vexp)  =  Exclam (Subst.subst ve vexp)
+    subst _  (Quest vid)   =  Quest vid
+    subst ve (Exclam vexp) =  Exclam (Subst.subst ve vexp)
 
 
 -- ----------------------------------------------------------------------------------------- --
