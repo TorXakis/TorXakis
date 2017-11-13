@@ -4,41 +4,31 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
--- This algorithm is derived using LPE and some human optimization
--- starting with the process
--- PROCDEF Semaphore [Acquire, Release](n:: Int) ::=
---       [[n>0]] =>> Acquire >-> Semaphore [Acquire , Release](n-1)  
---    ##             Release >-> Semaphore [Acquire , Release](n+1)  
--- ENDDEF
--- In particular, synchronous acquiring (and releasing) of a semaphore by different axes is NOT possible.
--- Consequently, movements in different directions will never start or stop together.
 PROCDEF Semaphore [Acquire, Release]() HIT ::=
     Acquire >-> Release >-> Semaphore [Acquire , Release]()
 ENDDEF
 
-PROCDEF controlledMovement  [ Acquire, Release, Up, Down, Stop, Stopped, Min, Max ] ( ) HIT ::=
+PROCDEF controlledMovement  [ Acquire, Release, Up, Down, Stopped, Min, Max ] ( ) HIT ::=
     (
-            Acquire | Up  >-> (  Stop >-> ( Release | Stopped >-> EXIT
-                                           ## Release | Max   >-> EXIT )
-                                ## Release | Max >-> EXIT
-                                )
+            Acquire | Up  >-> (  Release | Stopped >-> EXIT
+                              ## Release | Max >-> EXIT
+                              )
         ##
-            Acquire | Down>-> (  Stop >-> ( Release | Stopped >-> EXIT
-                                           ## Release | Min   >-> EXIT )
-                                ## Release | Min >-> EXIT
-                                )
-    ) >>> controlledMovement  [ Acquire, Release, Up, Down, Stop, Stopped, Min, Max ] ( )
+            Acquire | Down>-> (  Release | Stopped >-> EXIT
+                              ## Release | Min >-> EXIT
+                              )
+    ) >>> controlledMovement  [ Acquire, Release, Up, Down, Stopped, Min, Max ] ( )
 ENDDEF
 
-PROCDEF singleAxisMovement [ UpX, DownX, StopX, StoppedX, MinX, MaxX,
-                             UpY, DownY, StopY, StoppedY, MinY, MaxY,
-                             UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ] ( ) HIT ::=
+PROCDEF singleAxisMovement [ UpX, DownX, StoppedX, MinX, MaxX,
+                             UpY, DownY, StoppedY, MinY, MaxY,
+                             UpZ, DownZ, StoppedZ, MinZ, MaxZ] ( ) HIT ::=
     HIDE [Acquire, Release] IN
         Semaphore [Acquire, Release]()
     |[Acquire, Release]|
-        (   controlledMovement [Acquire, Release, UpX, DownX, StopX, StoppedX, MinX, MaxX] ()
-        ||| controlledMovement [Acquire, Release, UpY, DownY, StopY, StoppedY, MinY, MaxY] ()
-        ||| controlledMovement [Acquire, Release, UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ] ()
+        (   controlledMovement [Acquire, Release, UpX, DownX, StoppedX, MinX, MaxX] ()
+        ||| controlledMovement [Acquire, Release, UpY, DownY, StoppedY, MinY, MaxY] ()
+        ||| controlledMovement [Acquire, Release, UpZ, DownZ, StoppedZ, MinZ, MaxZ] ()
         )
     NI
 ENDDEF
@@ -50,7 +40,7 @@ PURPDEF  SingleAxisTestPurpose ::=
     CHAN OUT    StoppedX, MinX, MaxX,
                 StoppedY, MinY, MaxY,
                 StoppedZ, MinZ, MaxZ
-    GOAL singleAxis ::= singleAxisMovement [ UpX, DownX, StopX, StoppedX, MinX, MaxX,
-                                             UpY, DownY, StopY, StoppedY, MinY, MaxY,
-                                             UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ] ( )
+    GOAL singleAxis ::= singleAxisMovement [ UpX, DownX, StoppedX, MinX, MaxX,
+                                             UpY, DownY, StoppedY, MinY, MaxY,
+                                             UpZ, DownZ, StoppedZ, MinZ, MaxZ] ( )
 ENDDEF
