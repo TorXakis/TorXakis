@@ -46,6 +46,17 @@ PROCDEF basicAllowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
     ||| stopped [UpZ, DownZ, StopZ, MinZ, MaxZ] ()
 ENDDEF
 
+MODELDEF  Model ::=
+    CHAN IN     UpX, DownX, StopX, 
+                UpY, DownY, StopY,
+                UpZ, DownZ, StopZ
+    CHAN OUT    MinX, MaxX,
+                MinY, MaxY,
+                MinZ, MaxZ
+    BEHAVIOUR   basicAllowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
+                                        UpY, DownY, StopY, MinY, MaxY,
+                                        UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
+ENDDEF
 -- ---------------------------------------------------------------------------
 -- Between SUT and Tester is however not a synchronous channel              --
 ------------------------------------------------------------------------------
@@ -79,7 +90,7 @@ CHANDEF Channels ::=
     UpZ, DownZ, StopZ, MinZ, MaxZ
 ENDDEF
 
-MODELDEF  Model ::=
+MODELDEF ModelWithAsyncChannels ::=
     CHAN IN     UpX, DownX, StopX, 
                 UpY, DownY, StopY,
                 UpZ, DownZ, StopZ

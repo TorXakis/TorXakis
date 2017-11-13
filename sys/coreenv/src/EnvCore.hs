@@ -46,14 +46,11 @@ import qualified TxsDDefs
 -- import from solve
 import qualified SMTData
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- IOC :  torxakis core state monad transformer
 
-
 type  IOC  = StateT EnvC IO
 
--- TODO: unify the parameters and config.
 data EnvC = EnvC
   { config :: Config           -- ^ Core configuration.
   , unid   :: Int              -- ^ Last used unique number.

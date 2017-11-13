@@ -582,7 +582,6 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                                      "Double defined names: "++(show dbls)++"\n"
                                
                 }
-                -- TODO: remove addition of constructor and isConstructorFunction: add ADT info to TxsDefs in another way!
 
 FieldList       -- :: { [ (String, SortId) ] }
                 -- definition of the fields with implicit functions of an algebraic type
@@ -782,7 +781,7 @@ ConstDefs       -- :: { [ (Ident,TxsDef) ] }
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $$.synSigs      = $1.synSigs
-                ;  $$ = [ $1 ]
+                ;  $$ = $1
                 }
               | ConstDefs ";" ConstDef
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -791,21 +790,21 @@ ConstDefs       -- :: { [ (Ident,TxsDef) ] }
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $3.synSigs
-                ;  $$ = $1 ++ [ $3 ]
+                ;  $$ = $1 ++ $3
                 }
 
 ExConstDef      -- :: { ( Int, TxsDef ) }
                 -- top-level constant definition for external use with multiple parsers
                 -- attrs inh : SIGS  : Signatures
                 --           : UNID  : unique node identification
-                -- constrs   : defined constant shall have unique function name 
+                -- constrs   : defined constant shall have unique function name
               : SIGS UNID ConstDef
                 {  $3.inhSigs      = $1
                 ;  $3.inhNodeUid   = $2
-                ;  $$ = ( $3.synMaxUid, TxsDefs.fromList [$3] )
+                ;  $$ = ( $3.synMaxUid, TxsDefs.fromList $3 )
                 }
 
-ConstDef        -- :: { (Ident,TxsDef) }
+ConstDef        -- :: { [(Ident,TxsDef)] }
                 -- definition of a constant as a nullary function;
                 -- attrs inh : inhNodeUid : unique node identification
                 --           : inhSortSigs: usable sorts
@@ -824,8 +823,8 @@ ConstDef        -- :: { (Ident,TxsDef) }
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $4.inhSigs      = $$.inhSigs
                 ;  $4.inhSolvSort  = Just $2
-                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature [] $2) ( cstrFunc (Map.empty::Map.Map FuncId (FuncDef VarId)) (FuncId $1 $$.inhNodeUid [] $2) ) ) ) }
-                ;  $$ = ( IdFunc (FuncId $1 $$.inhNodeUid [] $2), DefFunc (FuncDef [] $4 ) )
+                ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature [] $2) (const $4) ) ) }
+                ;  $$ = []
                 }
 
 ProcDefList     -- :: { [ (Ident,TxsDef) ] }
@@ -3004,7 +3003,7 @@ ValExpr2        -- :: { VExpr }
                 ;  $$ = case $$.inhSolvSort of
                         { Nothing  -> error $ "\nTXS0435: " ++
                                               "Sort of ANY cannot be deduced\n"
-                        ; Just srt -> cstrAny srt
+                        ; Just srt -> cstrConst (Cany srt)
                         }
                 }
               | ERROR string
@@ -3415,10 +3414,7 @@ StautItemList   -- :: { BExpr }
                                         (show (Sigs.pro $$.inhSigs)) ++ "\n" else
                          if  not $ null $ doubles ( map ( sig . IdVar ) (vars ++ $$.inhVarSigs) )
                            then error $ "\nTXS1012: " ++ "Double defined state/parameter vars: "
-                                        ++ (show (Sigs.pro $$.inhSigs)) ++ "\n" else
-                         if  not $ Set.fromList vars == Set.fromList (Map.keys $ head venvs)
-                           then error $ "\nTXS1015: " ++ "No (unique) initial values for " ++
-                                        "all state vars: " ++ (show (Sigs.pro $$.inhSigs)) ++ "\n"
+                                        ++ (show (Sigs.pro $$.inhSigs)) ++ "\n"
                            else ()
                 }
 
@@ -3835,11 +3831,11 @@ UpdateList      -- :: { VEnv }
                 --           : used objects shall be defined
               : {- empty -}
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$ = Map.fromList [ (vid, cstrVar vid) | vid <- $$.inhStVarSigs ]
+                ;  $$ = Map.empty
                 }
               | "{" "}"
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$ = Map.fromList [ (vid, cstrVar vid) | vid <- $$.inhStVarSigs ]
+                ;  $$ = Map.empty
                 }
               | Updates 
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -3847,11 +3843,7 @@ UpdateList      -- :: { VEnv }
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $1.inhStVarSigs = $$.inhStVarSigs
-                ;  $$ = let id = Map.fromList [ (vid, cstrVar vid)
-                                              | vid <- $$.inhStVarSigs
-                                              , vid `Map.notMember` $1
-                                              ]
-                         in $1 `Map.union` id
+                ;  $$ = $1
                 }
               | "{" Updates "}"
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
@@ -3859,11 +3851,7 @@ UpdateList      -- :: { VEnv }
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $2.inhVarSigs   = $$.inhVarSigs
                 ;  $2.inhStVarSigs = $$.inhStVarSigs
-                ;  $$ = let id = Map.fromList [ (vid, cstrVar vid)
-                                              | vid <- $$.inhStVarSigs
-                                              , vid `Map.notMember` $2
-                                              ]
-                         in $2 `Map.union` id
+                ;  $$ = $2
                 }
 
 Updates         -- :: { VEnv }
@@ -3880,7 +3868,7 @@ Updates         -- :: { VEnv }
               : Update
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $$.synMaxUid    = $1.synMaxUid
-                ;  $1.inhSigs  = $$.inhSigs
+                ;  $1.inhSigs      = $$.inhSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $1.inhStVarSigs = $$.inhStVarSigs
                 ;  $$ = $1

@@ -46,7 +46,7 @@ import qualified EnvData
 import           FreeMonoidX
 import           RegexXSD2Posix
 import           StdTDefs
-import           TxsDefs
+import           TxsDefs            hiding (eval)
 import           TxsShow
 import           XmlFormat
 
@@ -83,7 +83,7 @@ eval (view -> Viscstr cid1 arg) = do
 
 eval (view -> Vaccess _cid1 p arg) = do
     Cstr _cid2 args' <- eval arg
-    return $ args'!!p                   -- TODO: check cids are equal?
+    return $ args'!!p
 
 eval (view -> Vconst const') = return const'
 
@@ -219,7 +219,6 @@ eval _ = return $ Cerror "undefined"
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of value expression: evaluation of standard functions for Bool - SSB
 
--- TODO: see how to make this exception safe.
 readBool :: Text -> Bool
 readBool "True"  = True
 readBool "true"  = True

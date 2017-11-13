@@ -20,7 +20,7 @@ module Behave
                -- initialize BTree
 , behMayMenu   -- :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
                -- may menu of BTree without quiescence
-, behMustMenu  -- :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu    -- TODO
+, behMustMenu  -- :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
                -- must menu of BTree without quiescence
 , behRefusal   -- :: BTree -> Set.Set TxsDefs.ChanId -> Bool
                -- check refusal set on BTree
@@ -61,9 +61,6 @@ import qualified TxsDefs
 import           Solve
 import           SolveDefs
 
--- import from value
-import qualified Eval
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- behInit :  initialize BTree
@@ -90,13 +87,9 @@ behMayMenu chsets btree'
 -- ----------------------------------------------------------------------------------------- --
 -- behMustMenu :  must menu of BTree without quiescence
 
-
 behMustMenu :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
 behMustMenu _ _
   =  []
-
---   TODO
-
 {-   case [ btree' | BTtau btree' <- btree ] of
      { []      -> [ ( btoffs, hidvars, preds ) | BTpref btoffs hidvars preds next <- btree ]
      ; btrees' -> concat $ map behMustMenu btrees'
@@ -105,8 +98,6 @@ behMustMenu _ _
 
 -- ----------------------------------------------------------------------------------------- --
 -- behRefusal :  check refusal set on BTree
---
--- TODO: Put an informal/description of refusal set.
 --
 behRefusal :: BTree -> Set.Set TxsDefs.ChanId -> Bool
 behRefusal bt refset
@@ -170,13 +161,17 @@ afterActBBranch chsets behact (BTpref btoffs [] pred' next)  =  do
        Just iwals -> do
                       tds <- gets IOB.tdefs
                       let pred'' = TxsDefs.subst (Map.map TxsDefs.cstrConst iwals) (TxsDefs.funcDefs tds) pred'
-                      condition <- Eval.eval pred''
-                      case condition of
-                          TxsDefs.Cbool True  -> do let cnode = nextNode iwals next
-                                                    after <- unfold chsets cnode
-                                                    return [after]
-                          TxsDefs.Cbool False -> return []
-                          _                   -> error "afterActBBranch - condition is not a Boolean"
+                      case TxsDefs.eval pred'' of
+                          Right (TxsDefs.Cbool True)  -> do let cnode = nextNode iwals next
+                                                            after <- unfold chsets cnode
+                                                            return [after]
+                          Right (TxsDefs.Cbool False) -> return []
+                          Right _                     -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                                                          "afterActBBranch - condition is not a Boolean value"]
+                                                            return []
+                          Left s                      -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
+                                                                          ("afterActBBranch - condition is not a value - " ++ show s)]
+                                                            return []
 
 afterActBBranch chsets behact (BTpref btoffs hidvars pred' next)  =  do
      match <- matchAct2CTOffer behact btoffs

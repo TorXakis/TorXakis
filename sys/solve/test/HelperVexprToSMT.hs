@@ -68,7 +68,7 @@ createVite (TXS2SMTVExprTest inputc expectedc) (TXS2SMTVExprTest input1 expected
 
 createVequal :: TXS2SMTVExprTest -> TXS2SMTVExprTest -> TXS2SMTVExprTest
 createVequal (TXS2SMTVExprTest input1 expected1) (TXS2SMTVExprTest input2 expected2) =
-    TXS2SMTVExprTest (cstrEqual input1 input2) ("(= " ++ expected1 ++ " " ++ expected2 ++ ")" )     -- TODO: TXS can change order -- order should not be fixed ?? use regex??
+    TXS2SMTVExprTest (cstrEqual input1 input2) ("(= " ++ expected1 ++ " " ++ expected2 ++ ")" )    
 
 createVand :: Set.Set TXS2SMTVExprTest -> TXS2SMTVExprTest
 createVand conds =

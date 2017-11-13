@@ -108,7 +108,7 @@ constToXml tdefs w =
 
 getFieldNames :: TxsDef -> [Text]
 getFieldNames (DefCstr (CstrDef _ funcIds))   = map FuncId.name funcIds
-getFieldNames _                               = error "getFieldNames: unexpected input" -- TODO: give a more informative error message.
+getFieldNames _                               = error "getFieldNames: unexpected input"
 
 pairNameConstToXml :: TxsDefs -> (Text, Const)  -> XMLTree
 pairNameConstToXml _ (n, Cbool True) =

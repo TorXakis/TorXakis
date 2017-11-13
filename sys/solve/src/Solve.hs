@@ -76,8 +76,6 @@ add e _                                                                         
 --             Unsat   :  0 solutions
 --             Sat     :  1 solution
 --             Unknown :  Unknown or >1 solutions
--- TODO: improve interface of UNISOLVE -> NrOfSolutions := 0, 1, >1 and unknown
-
 
 satSolve :: (Variable v) => [v] -> Assertions v -> SMT SolvableProblem
 satSolve _  (Assertions AssertFalse)                = return Unsat

@@ -78,7 +78,6 @@ sortOf' (view -> Vconcat { })                           =  sortId_String
 sortOf' (view -> Vstrinre { })                          =  sortId_Bool
 sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps)  =  fs
 sortOf' (view -> Vpredef{})                             = error "sortOf': Unexpected Ident with Vpredef"
-sortOf' (view -> Vany srt)                              =  srt
 sortOf' (view -> Verror _str)                           =  sortIdError
 sortOf' _                                               = error "sortOf': All items must be in view"
 
@@ -87,6 +86,7 @@ instance SortOf Const where
   sortOf (Cint _i)                         = sortId_Int
   sortOf (Cstring _s)                      = sortId_String
   sortOf (Cstr (CstrId _nm _uid _ca cs) _) = cs
+  sortOf (Cany s)                          = s
   sortOf _                                 = error "Unexpect SortOf - Const"
 
 
