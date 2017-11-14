@@ -4,103 +4,84 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-PROCDEF stoppedMin [ Up, Down, Stop, Min, Max ] ( ) ::=
-        Up >-> movingUp [ Up, Down, Stop, Min, Max ] ( )
-    ##
-        Down >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMin and stopped both must accept input Down, such that IOCO can't differentiate between them
-    ##
-        Stop >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMin and movingDown both must accept input Stop, such that IOCO can't differentiate between them
+CHANDEF Channels ::=
+    UpX, DownX, StopX, StoppedX, MinX, MaxX,
+    UpY, DownY, StopY, StoppedY, MinY, MaxY,
+    UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ
+ENDDEF
+-- ----------------------------------------------------------------------------------------- --
+
+PROCDEF basicAllowedBehaviour [ UpX, DownX, StopX, StoppedX, MinX, MaxX,
+                                UpY, DownY, StopY, StoppedY, MinY, MaxY,
+                                UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ] ( ) ::=
+        stopped [UpX, DownX, StopX, StoppedX, MinX, MaxX] ()
+    ||| stopped [UpY, DownY, StopY, StoppedY, MinY, MaxY] ()
+    ||| stopped [UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ] ()
 ENDDEF
 
-PROCDEF stoppedMax [ Up, Down, Stop, Min, Max ] ( ) ::=
-        Down >-> movingDown [ Up, Down, Stop, Min, Max ] ( )
+PROCDEF stopped [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Up >-> movingUp [ Up, Down, Stop, Stopped, Min, Max ] ( )
     ##
-        Up >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )      -- stoppedMax and stopped both must accept input Up, such that IOCO can't differentiate between them
-    ##
-        Stop >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )    -- stoppedMax and movingUp both must accept input Stop, such that IOCO can't differentiate between them
+        Down >-> movingDown [ Up, Down, Stop, Stopped, Min, Max ] ( )
 ENDDEF
 
-PROCDEF stopped [ Up, Down, Stop, Min, Max ] ( ) ::=
-        Up >-> movingUp [ Up, Down, Stop, Min, Max ] ( )
+PROCDEF movingUp [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stop >-> stoppingUp [ Up, Down, Stop, Stopped, Min, Max ] ( )
     ##
-        Down >-> movingDown [ Up, Down, Stop, Min, Max ] ( )
+        Max >-> stoppingAtMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
 ENDDEF
 
-PROCDEF movingUp [ Up, Down, Stop, Min, Max ] ( ) ::=
-        Stop >-> stopped [ Up, Down, Stop, Min, Max ] ( )
+PROCDEF stoppingAtMax [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stop >-> stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
     ##
-        Max >-> stoppedMax [ Up, Down, Stop, Min, Max ] ( )
+        stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
 ENDDEF
 
-PROCDEF movingDown [ Up, Down, Stop, Min, Max ] ( ) ::=
-        Stop >-> stopped [ Up, Down, Stop, Min, Max ] ( )
+PROCDEF stoppingUp [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stopped >-> stopped [ Up, Down, Stop, Stopped, Min, Max ] ( )
     ##
-        Min >-> stoppedMin [ Up, Down, Stop, Min, Max ] ( )
+        Max >-> stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
 ENDDEF
 
-PROCDEF basicAllowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
-                                UpY, DownY, StopY, MinY, MaxY,
-                                UpZ, DownZ, StopZ, MinZ, MaxZ] ( ) ::=
-        stopped [UpX, DownX, StopX, MinX, MaxX] ()
-    ||| stopped [UpY, DownY, StopY, MinY, MaxY] ()
-    ||| stopped [UpZ, DownZ, StopZ, MinZ, MaxZ] ()
+PROCDEF stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Down >-> movingDown [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+
+PROCDEF movingDown [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stop >-> stoppingDown [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        Min >-> stoppingAtMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF stoppingAtMin [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stop >-> stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF stoppingDown [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stopped >-> stopped [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        Min >-> stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Up >-> movingUp [ Up, Down, Stop, Stopped, Min, Max ] ( )
 ENDDEF
 
 MODELDEF  Model ::=
     CHAN IN     UpX, DownX, StopX, 
                 UpY, DownY, StopY,
                 UpZ, DownZ, StopZ
-    CHAN OUT    MinX, MaxX,
-                MinY, MaxY,
-                MinZ, MaxZ
-    BEHAVIOUR   basicAllowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
-                                        UpY, DownY, StopY, MinY, MaxY,
-                                        UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
-ENDDEF
--- ---------------------------------------------------------------------------
--- Between SUT and Tester is however not a synchronous channel              --
-------------------------------------------------------------------------------
-
-PROCDEF asynchronousChannel [ In, Out ] () ::=
-    In >-> Out >-> asynchronousChannel [ In, Out ] ()
+    CHAN OUT    StoppedX, MinX, MaxX,
+                StoppedY, MinY, MaxY,
+                StoppedZ, MinZ, MaxZ
+    BEHAVIOUR   basicAllowedBehaviour [ UpX, DownX, StopX, StoppedX, MinX, MaxX,
+                                        UpY, DownY, StopY, StoppedY, MinY, MaxY,
+                                        UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ] ( )
 ENDDEF
 
-PROCDEF asynchronousAxis [ Up, Down, Stop, Min, Max ] () ::=
-    HIDE [HMin, HMax] IN 
-            asynchronousChannel [HMin, Min] ()
-        |[HMin]|
-            stopped [Up, Down, Stop, HMin, HMax] ()
-        |[HMax]|
-            asynchronousChannel [HMax, Max] ()
-    NI
-ENDDEF
-
-PROCDEF allowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
-                           UpY, DownY, StopY, MinY, MaxY,
-                           UpZ, DownZ, StopZ, MinZ, MaxZ ] ( ) ::=
-        asynchronousAxis [UpX, DownX, StopX, MinX, MaxX] ()
-    ||| asynchronousAxis [UpY, DownY, StopY, MinY, MaxY] ()
-    ||| asynchronousAxis [UpZ, DownZ, StopZ, MinZ, MaxZ] ()
-ENDDEF
-
--- ----------------------------------------------------------------------------------------- --
-CHANDEF Channels ::=
-    UpX, DownX, StopX, MinX, MaxX,
-    UpY, DownY, StopY, MinY, MaxY,
-    UpZ, DownZ, StopZ, MinZ, MaxZ
-ENDDEF
-
-MODELDEF ModelWithAsyncChannels ::=
-    CHAN IN     UpX, DownX, StopX, 
-                UpY, DownY, StopY,
-                UpZ, DownZ, StopZ
-    CHAN OUT    MinX, MaxX,
-                MinY, MaxY,
-                MinZ, MaxZ
-    BEHAVIOUR   allowedBehaviour [ UpX, DownX, StopX, MinX, MaxX,
-                                   UpY, DownY, StopY, MinY, MaxY,
-                                   UpZ, DownZ, StopZ, MinZ, MaxZ] ( )
-ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 CNECTDEF  Sut ::=
         CLIENTSOCK
@@ -149,6 +130,15 @@ CNECTDEF  Sut ::=
         
         CHAN IN   MaxZ                    HOST "localhost"  PORT 9925
         DECODE    MaxZ                    <-   ? s
+
+        CHAN IN   StoppedX                HOST "localhost"  PORT 9926
+        DECODE    StoppedX                <-   ? s
+
+        CHAN IN   StoppedY                HOST "localhost"  PORT 9927
+        DECODE    StoppedY                <-   ? s
+
+        CHAN IN   StoppedZ                HOST "localhost"  PORT 9928
+        DECODE    StoppedZ                <-   ? s
 ENDDEF
 
 CNECTDEF  Sim ::=
@@ -198,5 +188,14 @@ CNECTDEF  Sim ::=
 
         CHAN OUT  MaxZ                  HOST "localhost"  PORT 9925
         ENCODE    MaxZ                  ->  ! "maxZ"
-        
+
+        CHAN OUT  StoppedX              HOST "localhost"  PORT 9926
+        ENCODE    StoppedX              ->  ! "stoppedX"
+
+        CHAN OUT  StoppedY              HOST "localhost"  PORT 9927
+        ENCODE    StoppedY              ->  ! "stoppedY"
+
+        CHAN OUT  StoppedZ              HOST "localhost"  PORT 9928
+        ENCODE    StoppedZ              ->  ! "stoppedZ"
+
 ENDDEF
