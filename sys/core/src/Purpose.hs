@@ -188,11 +188,7 @@ purpVerdict = do
       IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "purpVerdict incorrectly used"]
       return False
   where
-    unzip3to2 :: [(a,b,c)] -> ([a],[(b,c)])
-    unzip3to2 [] = ([],[])
-    unzip3to2 ((x,y,z):xs) = let (xrest,yzrest) = unzip3to2 xs
-                             in (x : xrest, (y,z) : yzrest)
-
+    unzip3to2 = foldr (\(x, y, z) (xs, yzs) -> (x:xs, (y, z):yzs)) ([], [])
 
 goalVerdict :: (TxsDefs.GoalId, Either BTree.BTree TxsDDefs.PurpVerdict)
     -> IOC.IOC (Bool, TxsDefs.GoalId, Either BTree.BTree TxsDDefs.PurpVerdict)
