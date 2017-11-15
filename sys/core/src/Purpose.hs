@@ -69,7 +69,7 @@ goalMenu gnm = do
       let pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
       case [ (gid, gtree) | (gid@(TxsDefs.GoalId nm _), gtree) <- purpsts, nm == T.pack gnm ] of
         [(_, Left bt)] -> return $ Behave.behMayMenu pAllSyncs bt
-        [(_, Right _)] -> return $ []
+        [(_, Right _)] -> return []
         _ -> do
           IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given"]
           return []
@@ -182,7 +182,7 @@ purpVerdict = do
     IOC.Testing { IOC.purpsts = purpsts } -> do
       hitsAndNewPurps <- mapM goalVerdict purpsts
       let (hasHit, newPurps) = unzip3to2 hitsAndNewPurps
-      IOC.modifyCS (\s -> (s {IOC.purpsts = newPurps}))
+      IOC.modifyCS (\s -> s {IOC.purpsts = newPurps})
       return $ or hasHit
     _ -> do
       IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "purpVerdict incorrectly used"]
@@ -213,7 +213,7 @@ goalVerdict (gid, Left btree) = do
             case newGoal of
               Nothing -> do
                 IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "goalVerdict incorrectly used" ]
-                return $ (hasHit, gid, Right TxsDDefs.PurpHalted)
+                return (hasHit, gid, Right TxsDDefs.PurpHalted)
               Just (Left beh) -> return (hasHit, gid, Left beh)
               Just (Right verd) -> do
                 IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Goal " ++ TxsShow.fshow gid ++ ": " ++ TxsShow.fshow verd]

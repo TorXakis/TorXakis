@@ -460,8 +460,8 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
                                             , IOC.mapsts  = mt
                                             , IOC.purpsts = fmap (Utils.mapSnd Left) gls
                                             }
-                   when
-                       (not $ null gls)
+                   unless
+                       (null gls)
                        (IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Goals: " ++ List.intercalate "," (TxsShow.fshow . fst <$> gls) ])
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
        _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
