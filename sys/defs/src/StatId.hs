@@ -5,23 +5,25 @@ See LICENSE at root directory of this repository.
 -}
 
 -- ----------------------------------------------------------------------------------------- --
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 module StatId
 
 where
 
-import GHC.Generics (Generic)
-import Control.DeepSeq
+import           Control.DeepSeq
+import           Data.Data
+import           GHC.Generics    (Generic)
 
-import Name
-import ProcId
+import           Name
+import           ProcId
 
-data StatId         = StatId    { name       :: Name
-                                , unid       :: Int
-                                , procid     :: ProcId
+data StatId         = StatId    { name   :: Name
+                                , unid   :: Int
+                                , procid :: ProcId
                                 }
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
+     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 -- ----------------------------------------------------------------------------------------- --
 --

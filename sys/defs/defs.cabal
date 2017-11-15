@@ -80,6 +80,7 @@ library
                       , regex-tdfa
                       , text
                       , MissingH
+                      , syb
                       
                       , lexregexxsd
                       
