@@ -124,8 +124,24 @@ testPurp3 = TxsExample
   , expectedResult = Pass
   }
 
+testPurp4 :: TxsExample
+testPurp4 = TxsExample
+  { exampleName = "Purp4 - Overlapping Steps"
+  , txsModelFiles = [ txsFilePath exampDir "Adder"
+                    , txsFilePath exampDir "AdderPurposes"
+                    ]
+  , txsCmdsFiles = [txsCmdPath exampDir "AdderPurp4"]
+  , txsServerArgs = []
+  , sutExample =
+    Just (JavaExample
+            adderJavaPath
+            ["7890"]
+          )
+  , expectedResult = Message "Goal m1: Hit"
+  }
+  
 examples :: [TxsExample]
-examples = [test0, test1, test2, testReplayTrace, testPurp1, testPurp2, testPurp3]
+examples = [test0, test1, test2, testReplayTrace, testPurp1, testPurp2, testPurp3, testPurp4]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Adder" examples
