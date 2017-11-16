@@ -424,7 +424,7 @@ subst :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
       -> ValExpr v                  -- ^ Value expression where the
                                     -- substitution will take place.
       -> ValExpr v
---subst ve _ x   | ve == Map.empty = x
+subst ve _ x   | ve == Map.empty = x
 subst ve fis x = subst' ve fis (view x)
 
 subst' :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
