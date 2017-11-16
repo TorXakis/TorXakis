@@ -93,6 +93,7 @@ test-suite defs-BlackBox
   main-is:             Spec.hs
   
   other-modules:       GenProduct
+                     , BehExprDefsSpec
                      , ValExprSpec
                      , ProductSpec
                      , FreeMonoidXSpec
@@ -109,6 +110,8 @@ test-suite defs-BlackBox
                      , HUnit
                      , MissingH
                      , QuickCheck
+                     , generic-random >= 1.0
+                     , quickcheck-instances
                      
                      , defs
   default-language:    Haskell2010

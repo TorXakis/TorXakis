@@ -63,6 +63,7 @@ extra-deps:
 - process-1.6.2.0 # This is needed to have the 'txsui' starting the 'txsserver'
                   # without it crashing.
 - Cabal-2.0.0.2
+- generic-random-1.0.0.0
   
 # Extra package databases containing global packages
 extra-package-dbs: []

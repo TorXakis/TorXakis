@@ -79,6 +79,10 @@ data  Trans         = Trans  { from     :: StatId
                              }
      deriving (Eq,Ord,Read,Show, Generic, NFData)
 
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+-- * Functions on behavior expressions.
+
+-- | Equality modulo unique id's. Compare two behavior expressions for equality
+-- ignoring the differences in unique identifiers.
+(~~) :: BExpr -> BExpr
+(~~) = undefined
+
