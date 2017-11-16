@@ -512,6 +512,11 @@ instance PShow t => PShow (Maybe t)
     pshow Nothing  =  ""
     pshow (Just x) =  pshow x
 
+instance (PShow t, PShow u) => PShow (Either t u)
+  where
+    pshow (Left  x) = pshow x
+    pshow (Right x) = pshow x
+
 instance PShow a => PShow (SumTerm a) where
     pshow (SumTerm a) = pshow a
     fshow (SumTerm a) = fshow a

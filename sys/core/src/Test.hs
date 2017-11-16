@@ -213,9 +213,11 @@ testIOCOfullPurp depth lastDelta step =
          ioRand    <- lift $ randomRIO (False,True)                 -- random for in- or output
          modMenu   <- iocoModelMenuIn
          purpMenus <- purpMenusIn
+         input <- if null purpMenus
+                    then randMenu modMenu
+                    else randPurpMenu modMenu purpMenus
          -- lift $ hPutStrLn stderr $ "\n***modMenu: " ++ (TxsShow.fshow modMenu)
          -- lift $ hPutStrLn stderr $ "\n***purpMenus: " ++ (TxsShow.fshow purpMenus)
-         input     <- randPurpMenu modMenu purpMenus
          -- lift $ hPutStrLn stderr $ "\n***input: " ++ (TxsShow.fshow input)
          [(_,parval)] <- IOC.getParams ["param_Test_inputEager"]
          let iochoice = case (read parval::Integer) of             -- input (True) or output
@@ -227,35 +229,31 @@ testIOCOfullPurp depth lastDelta step =
          -- lift $ hPutStrLn stderr $ "\n***iochoice: " ++ (show iochoice)
          if  iochoice
            then do                                                  -- try input, input/=Nothing
-             let Just inp       = input
+             let Just inp = input
              -- lift $ hPutStrLn stderr $ "\n***inp: " ++ (show inp)
              (act, verdict) <- testIn inp step                      -- act can input or output
-             purpReady      <- purpAfter act
+             anyHit <- purpAfter act
              -- lift $ hPutStrLn stderr $ "\n***purpReady: " ++ (show purpReady)
-             case (verdict, purpReady) of
+             case (verdict, anyHit) of
                (TxsDDefs.Pass    , False) -> testIOCOfullPurp (depth-1) (act==TxsDDefs.ActQui) (step+1)
-               (TxsDDefs.Pass    , True ) -> do purpVerdict
-                                                return TxsDDefs.Pass
-               (TxsDDefs.Fail act', _   ) -> do purpVerdict
-                                                expected
+               (TxsDDefs.Pass    , True ) -> return TxsDDefs.Pass
+               (TxsDDefs.Fail act', _   ) -> do expected
                                                 return $ TxsDDefs.Fail act'
                _                          -> error "testIOCOfullPurp - should not happen"
            else
              if not lastDelta
                then do                                              -- observe output
                  (act,verdict) <- testOut step
-                 purpReady     <- purpAfter act
-                 case (verdict, purpReady) of
+                 anyHit        <- purpAfter act
+                 case (verdict, anyHit) of
                    (TxsDDefs.Pass    , False) -> testIOCOfullPurp (depth-1) (act==TxsDDefs.ActQui) (step+1)
-                   (TxsDDefs.Pass    , True ) -> do purpVerdict
-                                                    return TxsDDefs.Pass
-                   (TxsDDefs.Fail act', _   ) -> do purpVerdict
-                                                    expected
+                   (TxsDDefs.Pass    , True ) -> return TxsDDefs.Pass
+                   (TxsDDefs.Fail act', _   ) -> do expected
                                                     return $ TxsDDefs.Fail act'
                    _                          -> error "testIOCOfullPurp - should not happen"
                else do                                              -- lastDelta and no inputs
                  IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "no more actions" ]
-                 purpVerdict
+                 _ <- purpVerdict
                  return TxsDDefs.Pass
 
 -- ----------------------------------------------------------------------------------------- --
