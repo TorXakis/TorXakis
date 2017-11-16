@@ -63,27 +63,22 @@ module ValExprImpls
 -- * Substitution of var by value
 , subst
 , compSubst         -- changes type
-, gSubst
 )
 where
 
-import           Control.Arrow         (first)
-import           Data.Data
-import           Data.Generics.Aliases
-import           Data.Generics.Schemes
-import           Data.Map              (Map)
-import qualified Data.Map              as Map
-import           Data.Maybe            (fromMaybe)
-import           Data.Monoid           ((<>))
-import qualified Data.Set              as Set
-import           Data.Text             (Text)
-import qualified Data.Text             as T
-import           Debug.Trace           as Trace
+import           Control.Arrow   (first)
+import qualified Data.Map        as Map
+import           Data.Maybe      (fromMaybe)
+import           Data.Monoid     ((<>))
+import qualified Data.Set        as Set
+import           Data.Text       (Text)
+import qualified Data.Text       as T
+import           Debug.Trace     as Trace
 import           Text.Regex.TDFA
 
 import           ConstDefs
 import           CstrId
-import qualified FreeMonoidX           as FMX
+import qualified FreeMonoidX     as FMX
 import           FuncDef
 import           FuncId
 import           Product
@@ -91,7 +86,6 @@ import           RegexXSD2Posix
 import           Sum
 import           ValExprDefs
 import           Variable
-import           VarId
 
 cstrFunc :: (Variable v, Variable w) => Map.Map FuncId (FuncDef v) -> FuncId -> [ValExpr w] -> ValExpr w
 cstrFunc fis fi arguments =
@@ -415,18 +409,6 @@ cstrPredef p f a = ValExpr (Vpredef p f a)
 
 cstrError :: Text -> ValExpr v
 cstrError s = ValExpr (Verror s)
-
--- | Substitute variables by value expressions contained inside a data
--- structure. Substitution only take place on values of type @ValExpr v@, the
--- other values remain unaltered.
-gSubst :: (Data d)
-       => VEnv                       -- ^ Mapping from variables to
-                                     -- expressions.
-       -> Map FuncId (FuncDef VarId) -- ^ Mapping of function identifiers to
-                                     -- their definitions.
-       -> d                          -- ^ Input data structure.
-       -> d
-gSubst ve fis = everywhere (mkT $ subst ve fis)
 
 -- | Substitute variables by value expressions in a value expression.
 --
