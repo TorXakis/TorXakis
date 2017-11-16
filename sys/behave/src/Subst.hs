@@ -67,8 +67,8 @@ instance Subst BExpr where
                (subst ve fdefs choffs)
                (subst ve fdefs bexp2)
 
-    subst ve fdefs (Disable bexp1 bexp2)
-      =  Disable (subst ve fdefs bexp1) (subst ve fdefs bexp2)
+    subst ve fdefs (Disable bexp1 bexp2) =
+        Disable (subst ve fdefs bexp1) (subst ve fdefs bexp2)
 
     subst ve fdefs (Interrupt bexp1 bexp2) =
         Interrupt (subst ve fdefs bexp1) (subst ve fdefs bexp2)

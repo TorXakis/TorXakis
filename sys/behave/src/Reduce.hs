@@ -106,10 +106,8 @@ instance Reduce BBranch
 instance Reduce INode where
 
     reduce (BNbexpr (wenv,ivenv) bexp) = do
-        -- TODO: uncomment this.
-        -- fdefs <- IOB.getFuncDefs
-        -- bexp' <- reduce $ gSubst (Map.map cstrConst wenv) fdefs bexp
-        bexp' <- reduce $ Subst.subst (Map.map cstrConst wenv) Map.empty bexp
+        fdefs <- IOB.getFuncDefs
+        bexp' <- reduce $ Subst.subst (Map.map cstrConst wenv) fdefs bexp
         return $ BNbexpr (Map.empty, ivenv) bexp'
 
     reduce (BNparallel chids inodes) = do
@@ -250,10 +248,8 @@ instance Reduce BExpr
                      else return $ Hide chids' bexp'
 
     reduce (ValueEnv venv bexp) = do
-        -- TODO: uncomment this.
-        -- fdefs <- IOB.getFuncDefs
-        -- reduce $ gSubst venv fdefs bexp
-        reduce $ Subst.subst venv Map.empty bexp
+        fdefs <- IOB.getFuncDefs
+        reduce $ Subst.subst venv fdefs bexp
 
     reduce (StAut stid ve trns) = return $ StAut stid ve trns
 

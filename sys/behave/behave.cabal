@@ -31,7 +31,6 @@ library
                       , extra
                       , mtl
                       , text
-                      , syb
 
                       , behavedefs
                       , behaveenv
