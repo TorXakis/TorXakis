@@ -111,6 +111,7 @@ module TxsCore
 
 where
 
+import           Control.Arrow
 import           Control.Monad
 import           Control.Monad.State
 import qualified Data.List           as List
@@ -150,7 +151,6 @@ import qualified SortOf
 import qualified TxsDDefs
 import qualified TxsDefs
 import qualified TxsShow
-import qualified Utils
 
 -- import from solve
 import qualified FreeVar
@@ -458,7 +458,7 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
               Just bt -> do
                    IOC.modifyCS $ \st -> st { IOC.modsts  = bt
                                             , IOC.mapsts  = mt
-                                            , IOC.purpsts = fmap (Utils.mapSnd Left) gls
+                                            , IOC.purpsts = fmap (second Left) gls
                                             }
                    unless
                        (null gls)
