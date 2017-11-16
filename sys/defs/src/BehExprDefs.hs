@@ -32,8 +32,8 @@ import           GHC.Generics    (Generic)
 import           ChanId
 import           ProcId
 import           StatId
-import           ValExprDefs
 import           VarId
+import           VarEnv
 
 -- | Behaviour Expression
 data BExpr = Stop

@@ -38,6 +38,7 @@ library
                       , defs
                       , solve
                       , solvedefs
+                      , valexpr
 
                       
   default-language:     Haskell2010

@@ -61,6 +61,9 @@ import qualified TxsDefs
 import           Solve
 import           SolveDefs
 
+-- import from valexpr
+import           ConstDefs
+import           ValExpr
 
 -- ----------------------------------------------------------------------------------------- --
 -- behInit :  initialize BTree
@@ -160,12 +163,12 @@ afterActBBranch chsets behact (BTpref btoffs [] pred' next)  =  do
        Nothing    -> return []
        Just iwals -> do
                       tds <- gets IOB.tdefs
-                      let pred'' = TxsDefs.subst (Map.map TxsDefs.cstrConst iwals) (TxsDefs.funcDefs tds) pred'
-                      case TxsDefs.eval pred'' of
-                          Right (TxsDefs.Cbool True)  -> do let cnode = nextNode iwals next
+                      let pred'' = ValExpr.subst (Map.map cstrConst iwals) (TxsDefs.funcDefs tds) pred'
+                      case ValExpr.eval pred'' of
+                          Right (Cbool True)          -> do let cnode = nextNode iwals next
                                                             after <- unfold chsets cnode
                                                             return [after]
-                          Right (TxsDefs.Cbool False) -> return []
+                          Right (Cbool False)         -> return []
                           Right _                     -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                                                           "afterActBBranch - condition is not a Boolean value"]
                                                             return []
@@ -179,7 +182,7 @@ afterActBBranch chsets behact (BTpref btoffs hidvars pred' next)  =  do
        Nothing    -> return []
        Just iwals -> do
                       tds <- gets IOB.tdefs
-                      let pred'' = TxsDefs.subst (Map.map TxsDefs.cstrConst iwals) (TxsDefs.funcDefs tds) pred'
+                      let pred'' = subst (Map.map cstrConst iwals) (TxsDefs.funcDefs tds) pred'
                           assertion = add pred'' empty
                       smtEnv <- IOB.getSMT "current"
                       (sat,smtEnv') <- lift $ runStateT (uniSolve hidvars assertion) smtEnv

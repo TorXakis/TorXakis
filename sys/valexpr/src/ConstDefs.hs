@@ -12,7 +12,6 @@ where
 import           Control.DeepSeq
 import           GHC.Generics    (Generic)
 
-import qualified Data.Map        as Map
 import           Data.Text       (Text)
 
 import           CstrId
@@ -29,5 +28,3 @@ data Const = Cbool    { cBool :: Bool }
            | Cerror   { msg :: String }
            | Cany     { sort :: SortId }
   deriving (Eq, Ord, Read, Show, Generic, NFData)
-
-type WEnv v = Map.Map v Const

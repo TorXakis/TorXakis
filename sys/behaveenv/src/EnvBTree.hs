@@ -30,21 +30,18 @@ where
 
 import Control.Monad.State
 
--- import qualified Data.Char as Char
--- import qualified Data.List as List
--- import qualified Data.Set  as Set
 import qualified Data.Map  as Map
--- import qualified Data.String.Utils as Utils
 
 -- import from coreenv
--- import qualified EnvCore  as IOC
 import qualified EnvData
 import qualified ParamCore
 
 -- import from defs
 import qualified TxsDefs
 import qualified Sigs
-import VarId
+
+-- import from valexpr
+import qualified VarId
 
 -- import from solve
 import qualified SMTData
@@ -60,7 +57,7 @@ type  IOB a  =  StateT EnvB IO a
 
 data  EnvB   =  EnvB { smts     :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                      , tdefs    :: TxsDefs.TxsDefs               -- TorXakis definitions
-                     , sigs     :: Sigs.Sigs VarId
+                     , sigs     :: Sigs.Sigs VarId.VarId
                      , stateid  :: EnvData.StateNr               -- current beh statenr
                      , params   :: ParamCore.Params              -- parameters
                      , unid     :: Int                           -- last used unique number

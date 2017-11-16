@@ -22,7 +22,11 @@ where
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
+import FuncDef
+import FuncId
 import TxsDefs
+import ValExpr
+import VarId
 
 -- ----------------------------------------------------------------------------------------- --
 -- Substitution
@@ -103,4 +107,4 @@ instance Subst ChanOffer
 
 instance Subst VExpr
   where
-    subst x = TxsDefs.subst x (Map.empty :: Map.Map FuncId (FuncDef VarId))
+    subst x = ValExpr.subst x (Map.empty :: Map.Map FuncId (FuncDef VarId))

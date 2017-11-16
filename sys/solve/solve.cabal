@@ -46,10 +46,10 @@ library
                       , text
 
                       , defs
-                      , value
-                      , solvedefs
                       , lexregexxsd
-
+                      , solvedefs
+                      , valexpr
+                      , value
   build-tools:          alex
                       , happy
 

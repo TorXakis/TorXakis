@@ -8,7 +8,6 @@ See LICENSE at root directory of this repository.
 module ValExprDefs
 where
 
-import qualified Data.Map        as Map
 import           Data.Set        (Set)
 import           Data.Text       (Text)
 
@@ -20,7 +19,6 @@ import           CstrId
 import           FuncId
 import           Product
 import           Sum
-import           VarId
 
 
 
@@ -114,6 +112,7 @@ evalView :: Show v => ValExprView v -> Either String Const
 evalView (Vconst v) = Right v
 evalView x          = Left $ "Value Expression is not a constant value " ++ show x
 
+-- | only needed for CNECTDEF
 data PredefKind     = AST     -- Algebraic To String
                     | ASF     -- Algebraic From String
                     | AXT     -- Algebraic To Xml
@@ -123,16 +122,6 @@ data PredefKind     = AST     -- Algebraic To String
                     | SSS     -- Standard Sort String
      deriving (Eq,Ord,Read,Show, Generic, NFData)
 
-
-type  VarEnv v w    =  Map.Map v (ValExpr w)     -- simultaneous substitution
-                                                 -- all variables different
-                                                 -- non-recursive
-
-
-type  VExpr         =  ValExpr VarId
-
-
-type  VEnv          =  VarEnv VarId VarId
 
 -- ----------------------------------------------------------------------------------------- --
 --

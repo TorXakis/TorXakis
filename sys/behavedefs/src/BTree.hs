@@ -40,8 +40,13 @@ import           Data.Monoid
 import qualified Data.Set    as Set
 import qualified Data.Text   as T
 
--- import from defs
+import           ConstDefs
+import           Name
+import           SortId
 import           TxsDefs
+import           ValExpr
+import           Variable
+import           VarId
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -49,7 +54,7 @@ import           TxsDefs
 -- BehAct :  behaviour Action
 
 
-type BehAction  =  Set.Set (TxsDefs.ChanId,[TxsDefs.Const])
+type BehAction  =  Set.Set (TxsDefs.ChanId,[Const])
 
 
 -- | IVar     :  interaction variable for behaviour tree
@@ -167,7 +172,7 @@ type INode   =  BNode (WEnv VarId, IVEnv)                      --  Interactions 
 --
 -- valexp: = value expression over interaction variables. interaction variables
 -- must come from the hidden variables or offers.
-type  Menu  =  [ ( Set.Set BTree.CTOffer, [BTree.IVar], TxsDefs.ValExpr BTree.IVar ) ]
+type  Menu  =  [ ( Set.Set BTree.CTOffer, [BTree.IVar], ValExpr BTree.IVar ) ]
 
 
 -- ----------------------------------------------------------------------------------------- --

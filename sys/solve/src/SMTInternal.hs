@@ -20,20 +20,21 @@ module SMTInternal
 
 where
 
+import           Control.Exception   (onException)
 import           Control.Monad.State (gets, lift, modify)
+
 import qualified Data.List           as List
 import qualified Data.Map            as Map
+import           Data.Monoid
 import qualified Data.Set            as Set
 import           Data.String.Utils   (endswith, replace, startswith, strip)
+import           Data.Text           (Text)
+import qualified Data.Text           as T
 import           Data.Time
 import           System.IO
 import           System.Process
 
-import           Data.Monoid
-import           Data.Text           (Text)
-import qualified Data.Text           as T
-
-import           Control.Exception   (onException)
+import           ConstDefs
 import           SMT2TXS
 import           SMTAlex
 import           SMTData
@@ -42,6 +43,8 @@ import           SolveDefs
 import           TXS2SMT
 import           TxsDefs
 import           TxsUtils
+import           ValExpr
+import           Variable
 
 -- ----------------------------------------------------------------------------------------- --
 -- opens a connection to the SMTLIB interactive shell

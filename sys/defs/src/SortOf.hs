@@ -17,7 +17,7 @@ import           ConstDefs
 import           CstrId
 import           FuncId
 import           SortId
-import           ValExprDefs
+import           ValExpr
 import           Variable
 import           VarId
 

@@ -28,20 +28,17 @@ import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
-
+import BTree
+import ConstDefs
+import qualified EnvBTree   as IOB
+import Equiv
 import TxsDefs
 import StdTDefs
-import BTree
-import qualified EnvBTree   as IOB
-import Utils
-
 import Subst
+import Utils
+import ValExpr
 
-import Equiv
 
-
--- import System.Random
--- import Debug.Trace
 
 
 -- ----------------------------------------------------------------------------------------- --

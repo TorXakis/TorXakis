@@ -14,8 +14,8 @@ where
 import GHC.Generics (Generic)
 import Control.DeepSeq
 
-import Name
 import ChanId
+import Name
 import SortId
 import VarId
 

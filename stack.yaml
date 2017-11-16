@@ -19,7 +19,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-9.7
+resolver: lts-9.13
 ghc-variant: integersimple
 
 # User packages to be built.
@@ -57,6 +57,7 @@ packages:
 - location: sys/testsel
 - location: sys/ui
 - location: sys/value
+- location: sys/valexpr
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)

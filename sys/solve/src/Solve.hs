@@ -34,7 +34,8 @@ import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
-import TxsDefs
+import ConstDefs
+
 import StdTDefs
 import FreeVar
 
@@ -47,6 +48,9 @@ import RandTrueBins
 import RandIncrementChoice
 
 import SolveRandParam
+
+import ValExpr
+import Variable
 -- ----------------------------------------------------------------------------------------- --
 
 data PrivateAssertions v  = AssertFalse

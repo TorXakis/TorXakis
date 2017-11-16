@@ -26,11 +26,9 @@ where
 import qualified Data.Map  as Map
 import Data.Maybe
 
-import TxsDefs
-import TxsUtils(combineWEnv)
 import BTree
-
--- import SolveDefs
+import TxsUtils(combineWEnv)
+import ValExpr
 
 
 -- ----------------------------------------------------------------------------------------- --
