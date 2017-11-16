@@ -73,8 +73,6 @@ eval (view -> Vfunc fid vexps) = do
                      let we = Map.fromList (zip args' vals)
                      fdefs <- IOB.getFuncDefs
                      eval (subst (Map.map cstrConst we) fdefs vexp)
-                     -- TODO: remove this.
---                     eval (subst (Map.map cstrConst we)  (Map.empty :: Map.Map FuncId (FuncDef VarId)) vexp)
 
 eval (view -> Vcstr cid vexps) = do
     vals <- mapM eval vexps
