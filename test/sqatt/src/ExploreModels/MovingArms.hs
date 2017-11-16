@@ -16,7 +16,7 @@ exampDir = "MovingArms"
 
 testModel :: TxsExample
 testModel = TxsExample
-  { exampleName = "Stepper 200"
+  { exampleName = "Stepper 500"
   , txsModelFiles = [txsFilePath exampDir "MovingArms"]
   , txsCmdsFiles = [txsCmdPath exampDir "MovingArms_Stepper_Model"]
   , txsServerArgs = []
@@ -24,8 +24,19 @@ testModel = TxsExample
   , expectedResult = Pass
   }
 
+testRestrictedAxisPurpose0 :: TxsExample
+testRestrictedAxisPurpose0 = TxsExample
+  { exampleName = "Restricted Axis Purpose Test (input eagerness 0) 100"
+  , txsModelFiles = [ txsFilePath exampDir "MovingArms"
+                    , txsFilePath exampDir "RestrictedAxisPurpose" ]
+  , txsCmdsFiles = [txsCmdPath exampDir "MovingArms_RestrictedAxisPurpose_eager0_Tester_Model"]
+  , txsServerArgs = []
+  , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "MovingArms_Simulator_Model")
+  , expectedResult = Pass
+  }
+  
 examples :: [TxsExample]
-examples = [testModel]
+examples = [testModel, testRestrictedAxisPurpose0]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Moving Arms #model" examples
