@@ -80,7 +80,7 @@ data CoreState = Noning
                         , curstate  :: EnvData.StateNr               -- current beh statenr
                         , modsts    :: BTree.BTree                      -- model state
                         , mapsts    :: BTree.BTree                      -- mapper state
-                        , purpsts   :: [(TxsDefs.GoalId,BTree.BTree)]   -- purpose state
+                        , purpsts   :: [(TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)]   -- purpose state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         }
              | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs

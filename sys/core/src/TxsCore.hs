@@ -111,8 +111,10 @@ module TxsCore
 
 where
 
+import           Control.Arrow
 import           Control.Monad
 import           Control.Monad.State
+import qualified Data.List           as List
 import qualified Data.Map            as Map
 import           Data.Maybe
 import           Data.Monoid
@@ -460,8 +462,11 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
               Just bt -> do
                    IOC.modifyCS $ \st -> st { IOC.modsts  = bt
                                             , IOC.mapsts  = mt
-                                            , IOC.purpsts = gls
+                                            , IOC.purpsts = fmap (second Left) gls
                                             }
+                   unless
+                       (null gls)
+                       (IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Goals: " ++ List.intercalate "," (TxsShow.fshow . fst <$> gls) ])
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
        _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
             TxsCore.txsStop
