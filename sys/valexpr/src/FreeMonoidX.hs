@@ -8,7 +8,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedLists            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeFamilies               #-}
-{-# OPTIONS -Wall -Werror #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  FreeMonoidX

@@ -75,5 +75,5 @@ test-suite defs-BlackBox
                      , MissingH
                      , QuickCheck
                      
-                     , defs
+                     , valexpr
   default-language:    Haskell2010

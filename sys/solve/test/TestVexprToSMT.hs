@@ -9,14 +9,16 @@ module TestVexprToSMT
 testVexprToSMTList
 )
 where
+import           Data.Char
 import qualified Data.Map         as Map
 import qualified Data.Set         as Set
 import qualified Data.Text        as T
 import           Test.HUnit
 
-import           TxsDefs
+import           ConstDefs
+import           SortId
+import           VarId
 
-import           Data.Char
 import           HelperVexprToSMT
 import           TXS2SMT
 

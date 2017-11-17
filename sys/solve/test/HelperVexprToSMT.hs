@@ -16,9 +16,12 @@ import qualified Data.Text         as T
 import           FreeMonoidX
 import           TxsDefs
 
+import           ConstDefs
 import           CstrId
+import           FuncDef
 import           FuncId
 import           SortId
+import           ValExpr
 import           VarId
 
 import           HelperToSMT
