@@ -5,19 +5,22 @@ See LICENSE at root directory of this repository.
 -}
 
 -- ----------------------------------------------------------------------------------------- --
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 module SortId
 
 where
-import Name
+import           Name
 
-import GHC.Generics (Generic)
-import Control.DeepSeq
+import           Control.DeepSeq
+import           Data.Data
+import           GHC.Generics    (Generic)
 
-data  SortId        =  SortId   { name       :: Name            -- capid
-                                , unid       :: Int
+data  SortId        =  SortId   { name :: Name            -- capid
+                                , unid :: Int
                                 }
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
+     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- ----------------------------------------------------------------------------------------- --
 --

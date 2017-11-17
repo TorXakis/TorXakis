@@ -3,16 +3,17 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 module ValExprDefs
 where
 
+import           Control.DeepSeq
+import           Data.Data
 import qualified Data.Map        as Map
 import           Data.Set        (Set)
 import           Data.Text       (Text)
-
-import           Control.DeepSeq
 import           GHC.Generics    (Generic)
 
 import           ConstDefs
@@ -66,7 +67,7 @@ data  ValExprView v = Vconst  Const
                     | Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]
                     | Verror  Text
-     deriving (Eq, Ord, Read, Show, Generic, NFData)
+     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- These instances are needed to use the symbolic representation of sums and
 -- products of val expressions. These instances have no implementation, which
@@ -103,7 +104,7 @@ instance Ord v => Integral (ValExpr v)
 newtype ValExpr v = ValExpr {
                         -- | View on value expression.
                         view :: ValExprView v }
-  deriving (Eq, Ord, Read, Show, Generic, NFData)
+  deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Evaluate the provided value expression.
 -- Either the Right Constant Value is returned or a (Left) error message.
@@ -121,7 +122,7 @@ data PredefKind     = AST     -- Algebraic To String
                     | SSB     -- Standard Sort Bool
                     | SSI     -- Standard Sort Int
                     | SSS     -- Standard Sort String
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
+     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 
 type  VarEnv v w    =  Map.Map v (ValExpr w)     -- simultaneous substitution

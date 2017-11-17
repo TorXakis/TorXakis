@@ -36,6 +36,15 @@ go in the `~/snap/torxakis/current` directory. This is because snaps run in an
 isolated environment, and they are not able to see any hidden files in the
 users home directory.
 
+If you are installing `TorXakis` using a downloaded snap (say
+`torxakis_nightly_amd64.snap`), then you need to provide the path to the snap
+along with the `--dangerous` flag, since you are not fetching the snap from the
+official Ubuntu repository.
+
+```sh
+sudo snap install torxakis_nightly_amd64.snap --dangerous
+```
+
 ## For Developers
 
 TorXakis is written in [Haskell](https://www.haskell.org) and
