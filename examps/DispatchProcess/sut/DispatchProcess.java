@@ -19,8 +19,15 @@ import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Random;
+import java.time.*;
 
 import javax.swing.*;
+
+class Logger {
+	static void LogToConsole(String logMessage){
+		System.out.println(LocalDateTime.now() + " - " + logMessage);
+	}
+}
 
 enum State {
 	Idle, Processing, Done
@@ -34,7 +41,7 @@ class ProcessorsStateModel {
 		return gcd.toString();
 	}
 
-	private int nrofProcessors; 
+	private int nrofProcessors;
 	/**
 	 * @return the nrofProcessors
 	 */
@@ -50,7 +57,7 @@ class ProcessorsStateModel {
 	public State getState(int i) {
 		return states[i];
 	}
-	
+
 	private String data[][];
 	public String getJobId(int i){
 		return data[i][0];
@@ -105,8 +112,8 @@ class ProcessorsStateView extends JPanel implements ActionListener {
 
 	private static final long serialVersionUID = 8547665121133548210L;
 	private final int delay = 100;
-	private final int width = 200; 
-	private final int border = 20; 
+	private final int width = 200;
+	private final int border = 20;
 
 	private final ProcessorsStateModel psm;
 	private Timer timer;
@@ -132,8 +139,8 @@ class ProcessorsStateView extends JPanel implements ActionListener {
 			{
 				g.setColor(Color.WHITE);
 				g.setFont(getFont().deriveFont(44.0f));
-				g.drawString(	psm.getJobId(i), 
-								border + (border+width)*i + (width - g.getFontMetrics().stringWidth(psm.getJobId(i)))/2, 
+				g.drawString(	psm.getJobId(i),
+								border + (border+width)*i + (width - g.getFontMetrics().stringWidth(psm.getJobId(i)))/2,
 								border + (width + g.getFontMetrics().getHeight())/2);
 			}
 		}
@@ -148,7 +155,7 @@ class ProcessorsStateView extends JPanel implements ActionListener {
 class Dispatcher implements Runnable {
 	private Socket socket;
 	private ProcessorsStateModel model;
-	public Dispatcher (Socket socket, ProcessorsStateModel model)
+	Dispatcher(Socket socket, ProcessorsStateModel model)
 	{
 		this.socket = socket;
 		this.model = model;
@@ -172,7 +179,7 @@ class Dispatcher implements Runnable {
 				{
 					System.exit(-101);
 				}
-				System.out.println("input: "+line);
+				Logger.LogToConsole("input: "+line);
 
 				boolean dispatched = false;
 				while (! dispatched )
@@ -229,8 +236,8 @@ class Notifier implements Runnable {
 			{
 				if (State.Done.equals(model.getState(id)))
 				{
-					String output = "JobOut("+ model.getJobId(id)+ "," + Integer.toString(id+1) + "," + model.getGCD(id) +")";		// Processors expected range [1..N] 
-					System.out.println("output " + output);
+					String output = "JobOut("+ model.getJobId(id)+ "," + Integer.toString(id+1) + "," + model.getGCD(id) +")";		// Processors expected range [1..N]
+					Logger.LogToConsole("output " + output);
 					sockout.print(output + "\n");
 					sockout.flush();
 					model.setState(id, State.Idle);
@@ -259,7 +266,7 @@ class Notifier implements Runnable {
 class Process implements Runnable {
     public final int fixSleepTime = 1000;
     public final int randSleepTime = 1000;
-    
+
 	private int id;
 	private ProcessorsStateModel model;
 	public Process (int id, ProcessorsStateModel model)
@@ -284,7 +291,7 @@ class Process implements Runnable {
 
 			try {
 				int sleepTime = fixSleepTime + random.nextInt(randSleepTime);
-				System.out.println("Processor " + this.id + ": Sleeping for " + sleepTime + "ms...");
+				Logger.LogToConsole("Processor " + this.id + ": Sleeping for " + sleepTime + "ms...");
 				Thread.sleep(sleepTime);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -309,6 +316,7 @@ public class DispatchProcess {
 		//Display the window.
 		frame.pack();
 		frame.setVisible(true);
+		Logger.LogToConsole("UI ready");
 	}
 
 	public static void main(String[] args) {
@@ -326,19 +334,26 @@ public class DispatchProcess {
 			// instantiate a socket for accepting a connection
 			ServerSocket serverSocket = new ServerSocket(7890);
 
+			Logger.LogToConsole("Waiting for tester");
 			// wait to accept a connection request and a data socket is returned
 			Socket socket = serverSocket.accept();
+			Logger.LogToConsole("Tester connected");
 
+			Logger.LogToConsole("Starting processors...");
 			for(int i = 0; i < model.getNrofProcessors(); i++)
 			{
 				Thread process = new Thread(new Process(i, model));
-				process.start();	
+				process.start();
 			}
+			Logger.LogToConsole("Starting notifier...");
 			Thread notifier = new Thread(new Notifier(socket, model));
 			notifier.start();
 
+			Logger.LogToConsole("Starting dispatcher...");
 			Thread dispatcher = new Thread(new Dispatcher(socket, model));
 			dispatcher.start();
+
+			Logger.LogToConsole("Ready");
 		}
 		catch (IOException e)
 		{
