@@ -27,6 +27,7 @@ public class QueueServer
             // instantiate a socket for accepting a connection
             ServerSocket servsock = new ServerSocket(portNo);
 
+            System.out.println("Waiting for tester");
             // wait to accept a connecion request
             // then a data socket is created
             Socket sock = servsock.accept();
@@ -42,7 +43,9 @@ public class QueueServer
             // create a PrinterWriter object for character-mode output
             PrintWriter sockout =
                     new PrintWriter(new OutputStreamWriter(outStream));
- 
+
+            System.out.println("Tester connected.");
+
             String s;
             int sep1, sep2, x;
             Queue q = new Queue();
