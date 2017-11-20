@@ -25,41 +25,30 @@ module Reduce
 where
 
 import qualified Data.List as List
-import qualified Data.Set  as Set
 import qualified Data.Map  as Map
+import qualified Data.Set  as Set
 
-import BTree
-import ConstDefs
-import qualified EnvBTree   as IOB
-import Equiv
-import TxsDefs
-import StdTDefs
-import Subst
-import Utils
-import ValExpr
-
-
-
+import           BTree
+import           ConstDefs
+import qualified EnvBTree  as IOB
+import           StdTDefs
+import           Subst
+import           TxsDefs
+import           Utils
+import           ValExpr
 
 -- ----------------------------------------------------------------------------------------- --
 -- reduction
 
+import           Equiv
 
-class Reduce e
-  where
+class Reduce e where
     reduce :: e -> IOB.IOB e
     reduce = return
 
-
--- ----------------------------------------------------------------------------------------- --
--- Reduce :  BTree
-
-
-instance Reduce BTree
-  where
+instance Reduce BTree where
 
     reduce bt = do
-
          btree1              <- nubMby (~=~) bt
 
          let (visibleBranches, tauBranches) = List.partition isPref btree1
@@ -118,12 +107,12 @@ instance Reduce BBranch
 -- ----------------------------------------------------------------------------------------- --
 -- Reduce :  INode  --  assumption: no hidvars (?)
 
-instance Reduce INode
-  where
+instance Reduce INode where
 
     reduce (BNbexpr (wenv,ivenv) bexp) = do
-         bexp' <- reduce $ Subst.subst (Map.map cstrConst wenv) bexp
-         return $ BNbexpr (Map.empty, ivenv) bexp'
+        fdefs <- IOB.getFuncDefs
+        bexp' <- reduce $ Subst.subst (Map.map cstrConst wenv) fdefs bexp
+        return $ BNbexpr (Map.empty, ivenv) bexp'
 
     reduce (BNparallel chids inodes) = do
          inodes' <- mapM reduce inodes
@@ -256,13 +245,15 @@ instance Reduce BExpr
     reduce (Hide chids bexp) = do
          bexp' <- reduce bexp
          if  bexp' == Stop
-           then return Stop 
+           then return Stop
            else let chids' = List.nub chids `List.intersect` freeChans bexp'
                 in if null chids'
                      then return bexp'
                      else return $ Hide chids' bexp'
 
-    reduce (ValueEnv venv bexp) = reduce $ Subst.subst venv bexp
+    reduce (ValueEnv venv bexp) = do
+        fdefs <- IOB.getFuncDefs
+        reduce $ Subst.subst venv fdefs bexp
 
     reduce (StAut stid ve trns) = return $ StAut stid ve trns
 

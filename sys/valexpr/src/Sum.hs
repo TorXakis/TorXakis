@@ -22,6 +22,7 @@ See LICENSE at root directory of this repository.
 -- /t/ is the total number of terms.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -40,15 +41,15 @@ module Sum
     , multiply
     ) where
 
-import           Prelude         hiding (subtract, sum)
-
 import           Control.DeepSeq
+import           Data.Data
 import           Data.Foldable   hiding (sum)
 import           Data.Monoid     ((<>))
 import           FreeMonoidX     (FreeMonoidX, IntMultipliable, TermWrapper,
                                   (<.>))
 import qualified FreeMonoidX     as FMX
 import           GHC.Generics    (Generic)
+import           Prelude         hiding (subtract, sum)
 
 {--------------------------------------------------------------------
   The data types
@@ -67,7 +68,7 @@ type FreeSum a = FreeMonoidX (SumTerm a)
 -- > a0 + a1 + ... + an-1
 --
 newtype SumTerm a = SumTerm { summand :: a }
-    deriving (Eq, Ord, Read, Show, Generic, NFData, Functor)
+    deriving (Eq, Ord, Read, Show, Generic, NFData, Functor, Data)
 
 instance Num a => Monoid (SumTerm a) where
     mempty = SumTerm 0

@@ -5,6 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes        #-}
 -- ----------------------------------------------------------------------------------------- --
 
 module Subst
@@ -19,92 +20,80 @@ module Subst
 
 where
 
-import qualified Data.Set  as Set
-import qualified Data.Map  as Map
+import           Data.Map (Map)
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
-import FuncDef
-import FuncId
-import TxsDefs
-import ValExpr
-import VarId
+-- TorXakis imports
+import           FuncDef
+import           FuncId
+import           TxsDefs
+import qualified ValExpr
+import           VarId
 
--- ----------------------------------------------------------------------------------------- --
--- Substitution
+-- | Expressions that support substitution of variables for expressions.
+class Subst e where
+    -- | Substitution function.
+    subst :: TxsDefs.VEnv                -- ^ Mapping from variable id's to
+                                         -- expressions on those variable id's.
+          -> Map FuncId (FuncDef VarId) -- ^ Mapping of function identifiers.
+                                         -- to their definitions.
+          -> e                           -- ^ Input expression.
+          -> e
 
+instance (Ord e,Subst e) => Subst [e] where
+    subst ve fis = map (subst ve fis)
 
-class Subst e
-  where
-    subst :: TxsDefs.VEnv -> e -> e
+instance (Ord e,Subst e) => Subst (Set.Set e) where
+    subst ve fis = Set.map (subst ve fis)
 
+instance Subst BExpr where
 
-instance (Ord e,Subst e) => Subst [e]
-  where
-    subst ve =  map (Subst.subst ve)
+    subst _ _ Stop = Stop
 
+    subst ve fdefs (ActionPref (ActOffer offs cnrs) bexp) =
+        ActionPref (ActOffer (subst ve fdefs offs)
+                             (subst ve fdefs cnrs))
+                   (subst ve fdefs bexp)
 
-instance (Ord e,Subst e) => Subst (Set.Set e)
-  where
-    subst ve =  Set.map (Subst.subst ve)
+    subst ve fdefs (Guard cnrs bexp) =
+        Guard (subst ve fdefs cnrs) (subst ve fdefs bexp)
 
+    subst ve fdefs (Choice bexps) =
+        Choice (subst ve fdefs bexps)
 
--- ----------------------------------------------------------------------------------------- --
--- variable substitution in BExpr
+    subst ve fdefs (Parallel chids bexps) =
+        Parallel chids (map (subst ve fdefs) bexps)
 
+    subst ve fdefs (Enable bexp1 choffs bexp2) =
+        Enable (subst ve fdefs bexp1)
+               (subst ve fdefs choffs)
+               (subst ve fdefs bexp2)
 
-instance Subst BExpr
-  where
+    subst ve fdefs (Disable bexp1 bexp2) =
+        Disable (subst ve fdefs bexp1) (subst ve fdefs bexp2)
 
-    subst _ Stop
-      =  Stop
+    subst ve fdefs (Interrupt bexp1 bexp2) =
+        Interrupt (subst ve fdefs bexp1) (subst ve fdefs bexp2)
 
-    subst ve (ActionPref (ActOffer offs cnrs)  bexp)
-      =  ActionPref (ActOffer (Subst.subst ve offs) (Subst.subst ve cnrs)) (Subst.subst ve bexp)
+    subst ve fdefs (ProcInst pid chans vexps) =
+        ProcInst pid chans (subst ve fdefs vexps)
 
-    subst ve (Guard cnrs bexp)
-      =  Guard (Subst.subst ve cnrs) (Subst.subst ve bexp)
+    subst ve fdefs (Hide chids bexp) =
+        Hide chids (subst ve fdefs bexp)
 
-    subst ve (Choice bexps)
-      =  Choice (Subst.subst ve bexps)
+    subst ve fdefs (ValueEnv venv bexp) =
+        subst ve fdefs (subst venv fdefs bexp)
 
-    subst ve (Parallel chids bexps)
-      =  Parallel chids (map (Subst.subst ve) bexps)
-    
-    subst ve (Enable bexp1 choffs bexp2)
-      =  Enable (Subst.subst ve bexp1) (Subst.subst ve choffs) (Subst.subst ve bexp2)
+    subst ve fdefs (StAut stid venv trns) =
+        StAut stid (Map.map (subst ve fdefs) venv) trns
 
-    subst ve (Disable bexp1 bexp2)
-      =  Disable (Subst.subst ve bexp1) (Subst.subst ve bexp2)
+instance Subst Offer where
+    subst ve fdefs (Offer chid choffs) = Offer chid (subst ve fdefs choffs)
 
-    subst ve (Interrupt bexp1 bexp2)
-      =  Interrupt (Subst.subst ve bexp1) (Subst.subst ve bexp2)
+instance Subst ChanOffer where
+    subst _  _ (Quest vid)       = Quest vid
+    subst ve fdefs (Exclam vexp) = Exclam (subst ve fdefs vexp)
 
-    subst ve (ProcInst pid chans vexps)
-      =  ProcInst pid chans (Subst.subst ve vexps)
-
-    subst ve (Hide chids bexp)
-      =  Hide chids (Subst.subst ve bexp)
-
-    subst ve (ValueEnv venv bexp)
-      =  Subst.subst ve (Subst.subst venv bexp)
-
-    subst ve (StAut stid venv trns)
-      =  StAut stid (Map.map (Subst.subst ve) venv) trns
-
-
-instance Subst Offer
-  where
-    subst ve (Offer chid choffs)  =  Offer chid (Subst.subst ve choffs)
-
-
-instance Subst ChanOffer
-  where
-    subst _  (Quest vid)    =  Quest vid
-    subst ve (Exclam vexp)  =  Exclam (Subst.subst ve vexp)
-
-
--- ----------------------------------------------------------------------------------------- --
--- variable substition in VExpr
-
-instance Subst VExpr
-  where
-    subst x = ValExpr.subst x (Map.empty :: Map.Map FuncId (FuncDef VarId))
+instance Subst VExpr where
+    subst = ValExpr.subst

@@ -5,23 +5,26 @@ See LICENSE at root directory of this repository.
 -}
 
 -- ----------------------------------------------------------------------------------------- --
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 module CstrId
 
 where
 
-import GHC.Generics (Generic)
-import Control.DeepSeq
+import           Control.DeepSeq
+import           Data.Data
+import           GHC.Generics    (Generic)
 
-import Name
-import SortId
+import           Name
+import           SortId
 
-data CstrId         = CstrId    { name       :: Name            -- capid
-                                , unid       :: Int
-                                , cstrargs   :: [SortId]
-                                , cstrsort   :: SortId
+data CstrId         = CstrId    { name     :: Name            -- capid
+                                , unid     :: Int
+                                , cstrargs :: [SortId]
+                                , cstrsort :: SortId
                                 }
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
+     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 -- ----------------------------------------------------------------------------------------- --
 --

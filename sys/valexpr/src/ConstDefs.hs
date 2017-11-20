@@ -3,16 +3,16 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric  #-}
-
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 module ConstDefs
 where
 
 import           Control.DeepSeq
-import           GHC.Generics    (Generic)
-
+import           Data.Data
 import           Data.Text       (Text)
+import           GHC.Generics    (Generic)
 
 import           CstrId
 import           SortId
@@ -27,4 +27,4 @@ data Const = Cbool    { cBool :: Bool }
            | Cstr     { cstrId :: CstrId, args :: [Const] }
            | Cerror   { msg :: String }
            | Cany     { sort :: SortId }
-  deriving (Eq, Ord, Read, Show, Generic, NFData)
+  deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
