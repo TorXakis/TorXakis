@@ -130,7 +130,8 @@ There are several folders in this repository, which serve different purposes:
 - [`ci`](ci/): scripts used in our continuous integration process.
 - [`docs`](docs/): documentation files for `TorXakis`.
 - [`examps`](examps/): example models and systems-under-test (SUT's) to play
-  around with.
+  around with. This folder also contains some binary (.jpg and .pptx) files,
+  which are used for documentation. Such files are tracked with [Git-LFS][15](*).
 - [`snap`](snap/): files needed to create Linux [snaps][12].
 - [`sys`](sys/): packages that make up `TorXakis` this is where the source code
   resides.
@@ -138,6 +139,10 @@ There are several folders in this repository, which serve different purposes:
   license-checking, etc).
 
 See the README files in each folders to get a more detailed explanation.
+
+(*): Git-LFS is installed by default along with official git client, so you should
+     be able to access these files without extra effort. If, for some reason, you
+     don't have Git-LFS, then you can [install the official Git-LFS extension][15].
 
 [1]: https://en.wikipedia.org/wiki/Satisfiability_modulo_theories
 [2]: http://cvc4.cs.stanford.edu/web/
@@ -153,3 +158,4 @@ See the README files in each folders to get a more detailed explanation.
 [12]: https://www.ubuntu.com/desktop/snappy
 [13]: https://github.com/TorXakis/TorXakis/releases
 [14]: https://docs.snapcraft.io/core/install
+[15]: https://git-lfs.github.com/
