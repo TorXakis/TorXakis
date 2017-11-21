@@ -592,7 +592,7 @@ isConsistentTester :: TxsDefs.ModelDef ->
 isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs _ _)
                    Nothing
                    _
-                   (TxsDefs.CnectDef _ conndefs)
+                   (TxsDefs.CnectDef _ _ conndefs)
  = let { mins   = Set.fromList minsyncs
          ; mouts  = Set.fromList moutsyncs
          ; ctows  = Set.fromList
@@ -604,10 +604,11 @@ isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs _ _)
          && cfrows == mouts
 
 -- why aren't Model and Mapper checked for consistency?
+-- TODO: the consistency check rules for connect-defs shouldn't go into the server.
 isConsistentTester _
                    (Just (TxsDefs.MapperDef achins achouts asyncsets _))
                    _
-                   (TxsDefs.CnectDef _ conndefs)
+                   (TxsDefs.CnectDef _ _ conndefs)
  = let { ctows  = Set.fromList
                         [ Set.singleton chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
          ; cfrows = Set.fromList
@@ -678,7 +679,7 @@ isConsistentSimulator :: TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> TxsDefs.
 
 isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs _ _)
                       Nothing
-                      (TxsDefs.CnectDef _ conndefs)
+                      (TxsDefs.CnectDef _ _ conndefs)
  = let { mins   = Set.fromList minsyncs
          ; mouts  = Set.fromList moutsyncs
          ; ctows  = Set.fromList
@@ -691,7 +692,7 @@ isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs _ _)
 
 isConsistentSimulator _
                       (Just (TxsDefs.MapperDef achins achouts asyncsets _))
-                      (TxsDefs.CnectDef _ conndefs)
+                      (TxsDefs.CnectDef _ _ conndefs)
  = let { ctows  = Set.fromList
                         [ Set.singleton chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
          ; cfrows = Set.fromList
@@ -741,7 +742,7 @@ cmdTest args =
                 IFS.pack "TEST" [TxsShow.fshow verdict]
                 cmdsIntpr
        _  -> do                                                 -- do given action as input --
-                IOS.Tested (TxsDefs.CnectDef _ conndefs) <- gets IOS.modus
+                IOS.Tested (TxsDefs.CnectDef _ _ conndefs) <- gets IOS.modus
                 let ctows  =  [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
                 act <- readAction ctows args
                 if  act == TxsDDefs.ActQui

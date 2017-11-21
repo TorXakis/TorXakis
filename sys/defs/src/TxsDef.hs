@@ -16,16 +16,16 @@ See LICENSE at root directory of this repository.
 module TxsDef
 where
 
-import CnectDef
-import CstrDef
-import FuncDef
-import MapperDef
-import ModelDef
-import ProcDef
-import PurpDef
-import SortDef
+import           ConnectionDefs
+import           CstrDef
+import           FuncDef
+import           MapperDef
+import           ModelDef
+import           ProcDef
+import           PurpDef
+import           SortDef
 
-import VarId
+import           VarId
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis definitions
 

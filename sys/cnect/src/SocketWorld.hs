@@ -39,11 +39,7 @@ import           Control.Monad.State
 import qualified Data.Text           as T
 import           Network
 import           System.Timeout
--- import GHC.Conc
 
--- import qualified Data.Char as Char
--- import qualified Data.List as List
--- import qualified Data.Set  as Set
 import qualified Data.Map            as Map
 
 -- import from local
@@ -60,6 +56,8 @@ import qualified EnvCore             as IOC
 import           TxsDDefs
 import           TxsDefs
 import qualified Utils
+
+
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -79,10 +77,11 @@ openSockets  =  do
                  ; _ -> do IfServer.nack "ERROR" [ "OpenCnect: no open" ]
                            return Nothing
                  }
+     maybe (return ()) (lift .lift . startSUT . eworldCfg) cnectdef
      ( towhdls, frowhdls ) <- case cnectdef of
-                              { Just (CnectDef ClientSocket conndefs)
+                              { Just (CnectDef _ ClientSocket conndefs)
                                   -> lift $ lift $ openCnectClientSockets conndefs
-                              ; Just (CnectDef ServerSocket conndefs)
+                              ; Just (CnectDef _ ServerSocket conndefs)
                                   -> lift $ lift $ openCnectServerSockets conndefs
                               ; Nothing
                                   -> do IfServer.nack "ERROR" [ "OpenCnect: no open" ]
@@ -289,3 +288,8 @@ getSocket envs =
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
+
+-- * SUT manipulation.
+startSUT :: EWorldCfg -> IO ()
+startSUT _ = putStrLn "TODO: start the SUT" -- Start the SUT
+

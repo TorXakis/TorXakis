@@ -134,13 +134,19 @@ instance PShow TxsDefs where
         ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
         ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
         ++ "ENDDEF\n"
-      showElem s (IdCnect (CnectId nm _), DefCnect (CnectDef cnecttype conndefs) ) =
+      showElem s (IdCnect (CnectId nm _), DefCnect (CnectDef eWorld cnecttype conndefs) ) =
         s ++ "\nCNECTDEF " ++ T.unpack nm ++"  ::=\n"
+        ++ pshow eWorld
         ++ pshow cnecttype ++ "\n"
         ++ pshow conndefs ++ "\n"
         ++ "ENDDEF\n"
       showElem _ _ =
         error "illegal list"
+
+
+instance PShow EWorldCfg where
+    pshow (EWorldCfg Nothing)    = ""
+    pshow (EWorldCfg (Just cmd)) = "EWORLD START " ++ T.unpack cmd
 
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: BExpr
