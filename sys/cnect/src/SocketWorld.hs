@@ -216,12 +216,14 @@ closeSockets :: IOS.IOS ()
 closeSockets  =  do
      ( _, towThread,   towhdls  ) <- gets IOS.tow
      ( _, frowThreads, frowhdls ) <- gets IOS.frow
-
      lift $ lift $ case towThread of
-                     Just thrd -> killThread thrd
+                     Just thrd -> putStrLn "Killing towThread" >> killThread thrd
                      Nothing   -> return ()
+     lift $ lift $ putStrLn "Killing frowThreads"
      lift $ lift $ mapM_ killThread frowThreads
+     lift $ lift $ putStrLn "Closing towhdls"
      lift $ lift $ mapM_ hClose [ h | ConnHtoW  _ h _ _ <- towhdls  ]
+     lift $ lift $ putStrLn "Closing frowhdls"
      lift $ lift $ mapM_ hClose [ h | ConnHfroW _ h _ _ <- frowhdls ]
 
      modify $ \env -> env { IOS.tow  = ( Nothing, Nothing, [] )
