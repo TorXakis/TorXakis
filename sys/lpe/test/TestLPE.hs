@@ -95,6 +95,13 @@ actOfferBx   = ActOffer {  offers = Set.singleton(
                         , constraint = cstrConst (Cbool True)
             }
 
+-- action: C?x
+actOfferCx   = ActOffer {  offers = Set.singleton(
+                                        Offer { chanid = chanIdC
+                                              , chanoffers = [Quest varIdX]
+                                        })
+                        , constraint = cstrConst (Cbool True)
+            }
 
 -- sorts, chanIds
 intSort = SortId {  SortId.name = T.pack "Int"
@@ -108,7 +115,10 @@ chanIdB = ChanId    { ChanId.name = T.pack "B"
                     , ChanId.unid = 3
                     , ChanId.chansorts = [intSort]
                     }
-
+chanIdC = ChanId    { ChanId.name = T.pack "C"
+                    , ChanId.unid = 4
+                    , ChanId.chansorts = [intSort]
+                    }
 anyInt = cstrConst $ Cany intSort
 
 ---------------------------------------------------------------------------

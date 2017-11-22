@@ -10,7 +10,7 @@ See LICENSE at root directory of this repository.
 module LPEHelpers
 ( extractVars
 , wrapSteps
-, extractSteps 
+, extractSteps
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -24,7 +24,7 @@ import qualified Data.Set            as Set
 import TxsDefs
 import qualified TxsUtils
 
-import ProcId 
+import ProcId
 import VarId
 import BehExprDefs
 
@@ -32,15 +32,15 @@ import qualified Data.Text         as T
 
 
 -- ----------------------------------------------------------------------------------------- --
--- Helpers : 
+-- Helpers :
 -- ----------------------------------------------------------------------------------------- --
 
 extractVars :: ActOffer -> [VarId]
 extractVars actOffer = let  set = offers actOffer in
-                       Set.foldr collect [] set 
-    where 
+                       Set.foldr collect [] set
+    where
         collect :: Offer -> [VarId] -> [VarId]
-        collect Offer{chanoffers = coffers} varIds = foldr extractVarIds [] coffers 
+        collect Offer{chanoffers = coffers} varIds = foldr extractVarIds [] coffers
 
         extractVarIds :: ChanOffer -> [VarId] -> [VarId]
         extractVarIds (Quest varId) varIds  = (varId:varIds)
