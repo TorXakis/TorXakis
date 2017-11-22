@@ -27,10 +27,10 @@ See LICENSE at root directory of this repository.
 -- /t/ is the total number of terms.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# OPTIONS -Wall -Werror #-}
 module Product  (
     -- * Product type
       FreeProduct
@@ -49,14 +49,14 @@ module Product  (
     , power
 ) where
 
-import           Prelude         hiding (product)
-
 import           Control.Arrow   ((***))
 import           Control.DeepSeq
+import           Data.Data
 import           Data.Foldable   hiding (product)
 import qualified Data.Map.Strict as Map
 import           Data.Monoid
 import           GHC.Generics    (Generic)
+import           Prelude         hiding (product)
 
 import           FreeMonoidX     (FreeMonoidX (..), IntMultipliable,
                                   TermWrapper, (<.>))
@@ -78,7 +78,7 @@ type FreeProduct a = FreeMonoidX (ProductTerm a)
 -- > a0 * a1 * ... * an-1
 --
 newtype ProductTerm a = ProductTerm { factor :: a }
-    deriving (Eq, Ord, Read, Show, Generic, NFData, Functor)
+    deriving (Eq, Ord, Read, Show, Generic, NFData, Functor, Data)
 
 instance Applicative ProductTerm where
     pure = ProductTerm

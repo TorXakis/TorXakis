@@ -10,9 +10,12 @@ where
 import qualified Data.Map          as Map
 import           Data.Text         (Text)
 import qualified Data.Text         as T
-
 import           Data.String.Utils
+
+import           FuncDef
+import           FuncId
 import           HelperVexprToSMT
+import           SortId
 import           TXS2SMT
 import           TxsDefs
 import           VarId

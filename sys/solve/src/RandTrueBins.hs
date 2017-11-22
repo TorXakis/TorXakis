@@ -35,12 +35,18 @@ import           System.IO
 import           System.Random
 import           System.Random.Shuffle
 
+import           ConstDefs
+import           CstrDef
+import           CstrId
 import           SMT
 import           SMTData
 import           SolveDefs
 import           SolveDefs.Params
+import           SortId
 import           StdTDefs
 import           TxsDefs
+import           ValExpr
+import           Variable
 
 data ParamTrueBins =
     ParamTrueBins { maxDepth     :: Int

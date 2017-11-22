@@ -3,12 +3,12 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+{-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeFamilies               #-}
-{-# OPTIONS -Wall -Werror #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  FreeMonoidX
@@ -108,6 +108,7 @@ where
 
 import           Control.Arrow   (first, (***))
 import           Control.DeepSeq
+import           Data.Data
 import           Data.Foldable
 import           Data.List       hiding (partition)
 import           Data.Map.Strict (Map)
@@ -125,7 +126,7 @@ import           GHC.Generics    (Generic)
 -- term is lost in this representation.
 --
 newtype FreeMonoidX a = FMX { asMap :: Map a Integer }
-    deriving (Eq, Ord, Read, Generic, NFData)
+    deriving (Eq, Ord, Read, Generic, NFData, Data)
 
 instance Show a => Show (FreeMonoidX a) where
     show (FMX p) = show (Map.assocs p)

@@ -27,10 +27,13 @@ import qualified Data.Text         as T
 
 -- import from defs
 import qualified ChanId
-import qualified SortId
 import qualified TxsDDefs
 import qualified TxsDefs
 import qualified TxsShow
+
+-- import from valexpr
+import ConstDefs
+import SortId
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -53,7 +56,7 @@ chanIdToProcdef chid
   =  let sorts = sortsToProcdef (ChanId.chansorts chid)
       in ChanId.name chid <> " :: " <> sorts
 
-sortsToProcdef :: [TxsDefs.SortId] -> Text
+sortsToProcdef :: [SortId] -> Text
 sortsToProcdef sortids
   =  let sids = map SortId.name sortids
       in T.intercalate " # " sids
@@ -67,12 +70,12 @@ actionToProcdef :: TxsDDefs.Action -> Text
 actionToProcdef (TxsDDefs.Act s) =  communicationsToProcdef s
 actionToProcdef TxsDDefs.ActQui  =  "STOP"        -- can't be replayed
 
-communicationsToProcdef :: Set.Set (TxsDefs.ChanId, [TxsDefs.Const]) -> Text
+communicationsToProcdef :: Set.Set (TxsDefs.ChanId, [Const]) -> Text
 communicationsToProcdef set
   =  let communications = map communicationToProcdef (Set.toList set)
       in T.intercalate " | " communications
 
-communicationToProcdef :: (TxsDefs.ChanId, [TxsDefs.Const]) -> Text
+communicationToProcdef :: (TxsDefs.ChanId, [Const]) -> Text
 communicationToProcdef (chid, vexprs)
   =  ChanId.name chid <> foldMap ( (" ! " <>) . T.pack . TxsShow.pshow ) vexprs
 

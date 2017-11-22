@@ -23,10 +23,17 @@ where
 import qualified Data.Map    as Map
 import qualified Data.Set    as Set
 
+import           CstrId
 import qualified FreeMonoidX as FMX
+import           FuncDef
 import           FuncId
+import           Name
+import           SortId
 import           StdTDefs
 import           TxsDefs
+import           ValExpr
+import           Variable
+import           VarId
 
 -- ----------------------------------------------------------------------------------------- --
 -- identifiers: signatures, binding

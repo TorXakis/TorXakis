@@ -30,5 +30,6 @@ library
                       , behavedefs
                       , defs
                       , solvedefs
+                      , valexpr
                       
   default-language:     Haskell2010

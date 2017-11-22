@@ -28,6 +28,7 @@ public class LuckyPeople
             // instantiate a socket for accepting a connection
             ServerSocket servsock = new ServerSocket(7777);
 
+            System.out.println("Waiting for tester");
             // wait to accept a connection request and a data socket is returned
             Socket sock = servsock.accept();
 
@@ -43,6 +44,7 @@ public class LuckyPeople
             // create a PrinterWriter object for character-mode output
             PrintWriter sockout = new PrintWriter(new OutputStreamWriter(outStream));
 
+            System.out.println("Tester connected.");
             byte same = 0;
             String last = "";
             while (true)
@@ -57,7 +59,7 @@ public class LuckyPeople
                 if (sameSex)
                 {
                     if (same < LUCKYAFTER)
-					    same += 1;
+                        same += 1;
                 }
                 else
                 {

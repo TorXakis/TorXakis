@@ -16,15 +16,23 @@ import qualified Data.Text         as T
 import           Data.Tuple        (fst, snd)
 
 import           ChanId
+import           ConstDefs
+import           CstrDef
+import           CstrId
 import           FreeMonoidX
+import           FuncDef
+import           FuncId
 import           ProcId
 import           Sigs
+import           SortDef
 import           SortId
 import           StdTDefs
 import           TxsAlex
 import           TxsDefs           hiding (vexpr)
 import           TxsHappy
 import           TxsShow
+import           ValExpr
+import           VarId
 
 ---------------------------------------------------------------------------
 -- Helper Functions
@@ -357,7 +365,7 @@ ite condition thenPart elsePart = FuncContent (cstrITE (vexpr condition) (vexpr 
 
 -- user must assert only variables are used as keys
 subst :: Map.Map FuncContent FuncContent -> FuncContent -> FuncContent
-subst mapFF content = FuncContent (TxsDefs.subst (Map.fromList (map (\(FuncContent (view -> Vvar v), FuncContent y) -> (v,y)) (Map.toList mapFF)))
+subst mapFF content = FuncContent (ValExpr.subst (Map.fromList (map (\(FuncContent (view -> Vvar v), FuncContent y) -> (v,y)) (Map.toList mapFF)))
                                                  (Map.empty :: Map.Map FuncId (FuncDef VarId))
                                                  (vexpr content)
                                   )

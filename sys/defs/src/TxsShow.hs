@@ -27,8 +27,11 @@ import qualified Data.Text         as T
 
 import           ChanId
 import           CnectId
+import           ConstDefs
+import           CstrDef
 import           CstrId
 import qualified FreeMonoidX       as FMX
+import           FuncDef
 import           FuncId
 import           GoalId
 import           MapperId
@@ -36,10 +39,12 @@ import           ModelId
 import           ProcId
 import           Product
 import           PurpId
+import           SortDef
 import           SortId
 import           StatId
 import           Sum
 import           TxsDefs
+import           ValExpr
 import           VarId
 
 specialOpChars :: String
@@ -511,6 +516,11 @@ instance PShow t => PShow (Maybe t)
   where
     pshow Nothing  =  ""
     pshow (Just x) =  pshow x
+
+instance (PShow t, PShow u) => PShow (Either t u)
+  where
+    pshow (Left  x) = pshow x
+    pshow (Right x) = pshow x
 
 instance PShow a => PShow (SumTerm a) where
     pshow (SumTerm a) = pshow a

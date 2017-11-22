@@ -13,8 +13,8 @@ import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
 import           ChanId
-import           ValExprDefs
 import           VarId
+import           VarEnv
 
 -- | Connection Definitions
 data CnectType =  ClientSocket

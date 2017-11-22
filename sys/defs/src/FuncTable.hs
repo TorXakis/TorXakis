@@ -40,7 +40,7 @@ import           Data.Maybe
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 import           SortId
-import           TxsDefs
+import           ValExpr
 
 data Signature = Signature  { sortArgs :: [SortId]
                             , sortRet  :: SortId

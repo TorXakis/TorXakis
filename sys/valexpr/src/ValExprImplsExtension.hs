@@ -16,7 +16,6 @@ See LICENSE at root directory of this repository.
 -- This module defines extension of functions on and constructors of value expressions.
 --
 -----------------------------------------------------------------------------
-{-# OPTIONS -Wall -Werror #-}
 module ValExprImplsExtension
 ( -- * Derived Boolean operators
   -- ** Or (\/)

@@ -40,8 +40,10 @@ import qualified BTree
 -- import from defs
 import qualified Sigs
 import qualified TxsDefs
-
 import qualified TxsDDefs
+
+-- import from valexpr
+import qualified VarId (VarId)
 
 -- import from solve
 import qualified SMTData
@@ -61,12 +63,12 @@ data EnvC = EnvC
 data CoreState = Noning
              | Initing  { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs    :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
+                        , sigs    :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         }
              | Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
+                        , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , mapperdef :: Maybe TxsDefs.MapperDef
                         , purpdef   :: Maybe TxsDefs.PurpDef
@@ -78,12 +80,12 @@ data CoreState = Noning
                         , curstate  :: EnvData.StateNr               -- current beh statenr
                         , modsts    :: BTree.BTree                      -- model state
                         , mapsts    :: BTree.BTree                      -- mapper state
-                        , purpsts   :: [(TxsDefs.GoalId,BTree.BTree)]   -- purpose state
+                        , purpsts   :: [(TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)]   -- purpose state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         }
              | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
+                        , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , mapperdef :: Maybe TxsDefs.MapperDef
                         , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
@@ -98,7 +100,7 @@ data CoreState = Noning
                         }
              | Stepping { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
+                        , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
                                                                      -- behaviour trie

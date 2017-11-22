@@ -14,8 +14,12 @@ where
 import qualified Data.Set  as Set
 import           Data.Text (Text)
 import           System.IO
-import           TxsDefs   (ChanId, Const, VExpr, VarId)
+
+import           ConstDefs (Const)
+import           TxsDefs   (ChanId, VExpr)
 import           TxsShow
+import           VarId     (VarId)
+
 -- ----------------------------------------------------------------------------------------- --
 -- Const  :  values (for now: VExpr)
 -- Action :  trie/primer valued actions
@@ -85,6 +89,19 @@ instance PShow Verdict
      pshow  Pass      =  "PASS"
      pshow (Fail act) =  "FAIL:  " ++ fshow act
      pshow  NoVerdict =  "No Verdict"
+
+-- ----------------------------------------------------------------------------------------- --
+-- test purposes verdict
+
+data PurpVerdict = PurpHit | PurpMiss | PurpHalted
+     deriving (Eq,Ord,Read,Show)
+
+-- ----------------------------------------------------------------------------------------- --
+instance PShow PurpVerdict
+  where
+     pshow  PurpHit    =  "Hit"
+     pshow  PurpMiss   =  "Miss"
+     pshow  PurpHalted =  "Halted"
 
 -- ----------------------------------------------------------------------------------------- --
 --

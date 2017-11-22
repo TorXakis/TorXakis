@@ -18,13 +18,18 @@ import           Data.Maybe
 import qualified Data.Text           as T
 import           System.Process      (CreateProcess)
 
+import           ConstDefs
+import           CstrDef
+import           CstrId
+import           FuncId
+import           SMT
+import           SortDef
+import           SortId
+import           SolveDefs
 import           StdTDefs
 import           TxsDefs
-
-import           SMT
 import           TXS2SMT
-
-import           SolveDefs
+import           VarId
 
 import           HelperFuncDefToSMT
 import           HelperVexprToSMT

@@ -60,6 +60,7 @@ public class CustomersOrders
                     // instantiate a socket for accepting a connection
                     servsockCustomer = new ServerSocket(7890);
 
+                    System.out.println("Customer thread waiting for tester");
                     // wait to accept a connection request and a data socket is returned
                     Socket sockCustomer = servsockCustomer.accept();
 
@@ -68,6 +69,8 @@ public class CustomersOrders
 
                     // create a BufferedReader object for text line input
                     BufferedReader sockinCustomer = new BufferedReader(new InputStreamReader(inStreamCustomer));
+
+                    System.out.println("Customer thread ready");
 
                     // read a line from the data stream: the stimulus
                     String customer = sockinCustomer.readLine();
@@ -99,6 +102,7 @@ public class CustomersOrders
                     // instantiate a socket for accepting a connection
                     servsockOrder = new ServerSocket(7891);
 
+                    System.out.println("Order thread waiting for tester");
                     // wait to accept a connection request and a data socket is returned
                     Socket sockOrder = servsockOrder.accept();
 
@@ -107,6 +111,8 @@ public class CustomersOrders
 
                     // create a BufferedReader object for text line input
                     BufferedReader sockinOrder = new BufferedReader(new InputStreamReader(inStreamOrder));
+
+                    System.out.println("Order thread ready");
 
                     String order = sockinOrder.readLine();
                     while(order != null)    //read null when socket is closed
@@ -138,6 +144,7 @@ public class CustomersOrders
                     // instantiate a socket for accepting a connection
                     servsockReport = new ServerSocket(7892);
 
+                    System.out.println("Report thread waiting for tester");
                     // wait to accept a connection request and a data socket is returned
                     Socket sockReport = servsockReport.accept();
 
@@ -146,6 +153,8 @@ public class CustomersOrders
 
                     // create a PrinterWriter object for character-mode output
                     PrintWriter sockoutReport = new PrintWriter(new OutputStreamWriter(outStreamReport));
+
+                    System.out.println("Report thread ready");
 
                     while(true)
                     {

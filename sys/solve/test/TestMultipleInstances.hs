@@ -14,10 +14,13 @@ import           System.Process      (CreateProcess)
 
 import           Test.HUnit
 
+import           ConstDefs
 import           SMT
 import           SolveDefs
 import           StdTDefs
 import           TxsDefs
+import           ValExpr
+import           VarId
 
 import           TestSolvers
 
