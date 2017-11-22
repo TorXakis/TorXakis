@@ -18,8 +18,12 @@ import           Data.Maybe
 import qualified Data.Text           as T
 import           Test.HUnit
 
+import           ConstDefs
+import           SortId
 import           StdTDefs
 import           TxsDefs
+import           ValExpr
+import           VarId
 
 import           SMT
 import           SMTData

@@ -25,8 +25,11 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 -- TorXakis imports
-import           TxsDefs  hiding (subst)
-import qualified TxsDefs
+import           FuncDef
+import           FuncId
+import           TxsDefs
+import qualified ValExpr
+import           VarId
 
 -- | Expressions that support substitution of variables for expressions.
 class Subst e where
@@ -93,4 +96,4 @@ instance Subst ChanOffer where
     subst ve fdefs (Exclam vexp) = Exclam (subst ve fdefs vexp)
 
 instance Subst VExpr where
-    subst = TxsDefs.subst
+    subst = ValExpr.subst

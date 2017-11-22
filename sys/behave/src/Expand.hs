@@ -39,17 +39,18 @@ import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
 
+import           BTree
+import           ChanId
+import           ConstDefs
 import qualified EnvBTree            as IOB
 import qualified EnvData
-
 import           StdTDefs
 import           TxsDefs
 import           TxsUtils
-
-import           BTree
 import           Utils
-
-import           ChanId
+import           ValExpr
+import           VarId
+import           Variable
 
 -- | transfer tuple containing an either to an either containing a tuple
 toEitherTuple :: (a, Either String b) -> Either String (a,b)
@@ -74,7 +75,7 @@ expand chsets (BNbexpr we (ActionPref (ActOffer offs cnd) bexp))  =  do
                              , vid `Map.notMember` ivenv
                              ]
     tds <- gets IOB.tdefs
-    let exclams' = map toEitherTuple [ (ivar, TxsDefs.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
+    let exclams' = map toEitherTuple [ (ivar, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
                                      | (ivar, vexp) <- exclams
                                      ]
     case Data.Either.partitionEithers exclams' of
@@ -95,7 +96,7 @@ expand chsets (BNbexpr we (ActionPref (ActOffer offs cnd) bexp))  =  do
 
 expand chsets (BNbexpr we (Guard c bexp))  = do
     tds <- gets IOB.tdefs
-    case TxsDefs.eval $ subst (Map.map cstrConst we) (funcDefs tds) c of
+    case ValExpr.eval $ subst (Map.map cstrConst we) (funcDefs tds) c of
         Right (Cbool True)  -> expand chsets (BNbexpr we bexp)
         Right (Cbool False) -> return []
         _                   -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
@@ -132,7 +133,7 @@ expand chsets (BNbexpr we (Enable bexp1 chanoffs bexp2))  =  do
 
      evalChanOffer we' (Exclam vexp)  =  do
           tds <- gets IOB.tdefs
-          let res = TxsDefs.eval $ subst (Map.map cstrConst we') (funcDefs tds) vexp
+          let res = ValExpr.eval $ subst (Map.map cstrConst we') (funcDefs tds) vexp
           return $ right (Exclam . cstrConst) res
 
 -- ----------------------------------------------------------------------------------------- --
@@ -152,7 +153,7 @@ expand chsets (BNbexpr we (ProcInst procid chans vexps))  =  do
      case Map.lookup procid (procDefs tdefs) of
        Just (ProcDef chids vids bexp)
          -> do let chanmap = Map.fromList (zip chids chans)
-               let wals = map (TxsDefs.eval . subst (Map.map cstrConst we) (funcDefs tdefs) ) vexps
+               let wals = map (ValExpr.eval . subst (Map.map cstrConst we) (funcDefs tdefs) ) vexps
                case Data.Either.partitionEithers wals of
                     ([], r) -> do let we' = Map.fromList (zip vids r)
                                   expand chsets $ BNbexpr we' (relabel chanmap bexp)
@@ -172,7 +173,7 @@ expand chsets (BNbexpr we (Hide chans bexp))  =
 
 expand chsets (BNbexpr we (ValueEnv venv bexp))  =  do
     tds   <- gets IOB.tdefs
-    let we' = map toEitherTuple [ (vid, TxsDefs.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp))
+    let we' = map toEitherTuple [ (vid, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp))
                                 | (vid, vexp) <- Map.toList venv
                                 ]
     case Data.Either.partitionEithers we' of
@@ -189,7 +190,7 @@ expand chsets (BNbexpr we (StAut ini ve trns))  =  do
                                , vid `Map.notMember` ve
                                ]
     tds   <- gets IOB.tdefs
-    let vewals = map toEitherTuple [ (vid, TxsDefs.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
+    let vewals = map toEitherTuple [ (vid, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
                                    | (vid, vexp) <- Map.toList ve
                                    ]
     case Data.Either.partitionEithers vewals of
@@ -205,7 +206,7 @@ expand chsets (BNbexpr we (StAut ini ve trns))  =  do
          let we'   = envwals `combineWEnv` stswals
              ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
          tds <- gets IOB.tdefs
-         let exclams' = map toEitherTuple [ ( ivar, TxsDefs.eval (subst (Map.map cstrConst we') (funcDefs tds) vexp) )
+         let exclams' = map toEitherTuple [ ( ivar, ValExpr.eval (subst (Map.map cstrConst we') (funcDefs tds) vexp) )
                                           | (ivar, vexp) <- exclams
                                           ]
          case Data.Either.partitionEithers exclams' of
@@ -313,7 +314,7 @@ expand chsets (BNenable cnode1 chanoffs cnode2)  =  do
      ctree1      <- expand chsets cnode1
      (_, quests, exclams) <- expandOffer chsets (Offer chanId_Exit chanoffs)
      let ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
-     let exclams' = map toEitherTuple [ (ivar, TxsDefs.eval vexp) | (ivar, vexp) <- exclams ]
+     let exclams' = map toEitherTuple [ (ivar, ValExpr.eval vexp) | (ivar, vexp) <- exclams ]
      case Data.Either.partitionEithers exclams' of
         ([], r) -> do let accpreds = [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- r ]
                           (exits, noExits) = List.partition (\(CTpref ctoffs1 _ _ _) -> chanId_Exit `Set.member` Set.map ctchan ctoffs1) ctree1

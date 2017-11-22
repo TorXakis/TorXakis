@@ -21,7 +21,8 @@ import qualified Data.List   as List
 import qualified Data.Set    as Set
 
 import           FreeMonoidX
-import           TxsDefs
+import           ValExpr
+import           Variable
 
 
 -- ----------------------------------------------------------------------------------------- --

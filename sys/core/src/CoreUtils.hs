@@ -54,6 +54,10 @@ import qualified Sigs
 import qualified SolveDefs
 import qualified Solve
 
+-- import from valexpr
+import ConstDefs
+import ValExpr
+
 -- ----------------------------------------------------------------------------------------- --
 -- filterEnvCtoEnvB
 
@@ -213,12 +217,12 @@ randMenu menu =
            SolveDefs.Unsolvable    -> randMenu menu'
            SolveDefs.UnableToSolve -> randMenu menu'
 
-instantCTOffer :: Map.Map BTree.IVar TxsDefs.Const -> BTree.CTOffer ->
-                  (TxsDefs.ChanId, [TxsDefs.Const])
+instantCTOffer :: Map.Map BTree.IVar Const -> BTree.CTOffer ->
+                  (TxsDefs.ChanId, [Const])
 instantCTOffer sol (BTree.CToffer chan choffs)
  = ( chan, map (instantIVar sol) choffs )
 
-instantIVar :: Map.Map BTree.IVar TxsDefs.Const -> BTree.IVar -> TxsDefs.Const
+instantIVar :: Map.Map BTree.IVar Const -> BTree.IVar -> Const
 instantIVar sol ivar
  =   fromMaybe
       (error "TXS Test ranMenuIn: No value for interaction variable\n")
@@ -245,7 +249,7 @@ randPurpMenu modmenu purpmenus =
 
 menuConjunct :: BTree.Menu -> BTree.Menu -> BTree.Menu
 menuConjunct menu1 menu2
- = [ (ctoffs1,hvars1 ++ hvars2, TxsDefs.cstrAnd (Set.fromList [pred1,pred2]) )
+ = [ (ctoffs1,hvars1 ++ hvars2, cstrAnd (Set.fromList [pred1,pred2]) )
    | (ctoffs1,hvars1,pred1) <- menu1
    , (ctoffs2,hvars2,pred2) <- menu2
    , ctoffs1 == ctoffs2

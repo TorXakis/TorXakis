@@ -32,5 +32,6 @@ library
                       , defs
                       , coreenv
                       , front
+                      , valexpr
                       
   default-language:     Haskell2010

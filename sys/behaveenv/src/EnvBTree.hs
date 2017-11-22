@@ -36,8 +36,11 @@ import qualified EnvData
 import qualified ParamCore
 
 -- import from defs
+import           FuncDef
+import           FuncId
 import qualified Sigs
 import           TxsDefs
+import           VarId
 
 -- import from solve
 import qualified SMTData

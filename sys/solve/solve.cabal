@@ -46,9 +46,10 @@ library
                       , text
 
                       , defs
-                      , value
-                      , solvedefs
                       , lexregexxsd
+                      , solvedefs
+                      , valexpr
+                      , value
 
   build-tools:          alex
                       , happy
@@ -103,15 +104,16 @@ test-suite SmtSolver-WhiteBox
                       , time
                       , HUnit
                       , MissingH
-                      , defs
                       , random
                       , random-shuffle
-                      , solvedefs
-                      , value
                       , text
 
                       , coreenv
+                      , defs
                       , lexregexxsd
+                      , solvedefs
+                      , valexpr
+                      , value
 
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
 
@@ -135,13 +137,14 @@ test-suite SmtSolver-BlackBox
                       , process
                       , regex-tdfa
                       , HUnit
-                      , defs
-                      , solve
-                      , solvedefs
-                      , value
                       , text
 
                       , coreenv
+                      , defs
+                      , solve
+                      , solvedefs
+                      , valexpr
+                      , value
 
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
 

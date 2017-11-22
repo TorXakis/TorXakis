@@ -25,5 +25,6 @@ library
                       , text
 
                       , defs
+                      , valexpr
 
   default-language:     Haskell2010

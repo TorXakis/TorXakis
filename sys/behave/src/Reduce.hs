@@ -28,13 +28,17 @@ import qualified Data.List as List
 import qualified Data.Map  as Map
 import qualified Data.Set  as Set
 
-
 import           BTree
+import           ConstDefs
 import qualified EnvBTree  as IOB
 import           StdTDefs
 import           Subst
 import           TxsDefs
 import           Utils
+import           ValExpr
+
+-- ----------------------------------------------------------------------------------------- --
+-- reduction
 
 import           Equiv
 

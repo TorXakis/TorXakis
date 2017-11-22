@@ -31,7 +31,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# OPTIONS -Wall -Werror #-}
 module Product  (
     -- * Product type
       FreeProduct

@@ -33,12 +33,17 @@ import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
-import TxsDefs
-import StdTDefs
-import SolveDefs
+import ConstDefs
+import CstrId
+import CstrDef
 import SMT
 import SMTData
+import SolveDefs
+import StdTDefs
+import TxsDefs
 import Utils
+import ValExpr
+import Variable
 
 data ParamPartition = 
     ParamPartition { maxDepth               :: Int

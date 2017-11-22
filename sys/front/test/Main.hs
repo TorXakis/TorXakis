@@ -24,6 +24,9 @@ import           TxsDefs
 import           TxsHappy
 
 import           Sigs
+import           SortDef
+import           SortId
+import           VarId
 
 -- QuickCheck Extension
 

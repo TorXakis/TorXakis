@@ -56,6 +56,8 @@ import qualified TxsDefs
 import qualified TxsDDefs
 import qualified Sigs
 
+-- import from valexpr
+import qualified VarId
 -- ----------------------------------------------------------------------------------------- --
 -- IOS :  torxakis server main state monad transformer
 
@@ -73,8 +75,8 @@ data EnvS  = EnvS { host    :: String                    -- ^ host of server cli
                     , modus   :: TxsModus                  -- ^ current modus of TXS operation
                     , uid     :: Int                       -- ^ last used unique id number
                     , tdefs   :: TxsDefs.TxsDefs           -- ^ TorXakis definitions from file
-                    , sigs    :: Sigs.Sigs TxsDefs.VarId   -- ^ Signatures contained in TorXakis files
-                    , locvars :: [TxsDefs.VarId]           -- ^ local free variables
+                    , sigs    :: Sigs.Sigs VarId.VarId   -- ^ Signatures contained in TorXakis files
+                    , locvars :: [VarId.VarId]           -- ^ local free variables
                     , locvals :: TxsDefs.VEnv              -- ^ local value environment
                     , tow     :: ( Maybe (Chan TxsDDefs.SAction)   
                                  , Maybe ThreadId        

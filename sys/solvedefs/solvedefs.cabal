@@ -27,6 +27,7 @@ library
                       , text
                       -- torxakis packages
                       , defs
+                      , valexpr
                       
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
   
