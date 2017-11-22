@@ -71,9 +71,7 @@ import           SortDef
 import           SortId
 import           SortOf
 import           TxsDef
-import           ValExprDefs
-import           ValExprImpls
-import           ValExprImplsExtension
+import           ValExpr
 import           VarId
 
 stdSortTable :: Map.Map Text SortId

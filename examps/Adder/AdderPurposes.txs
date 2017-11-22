@@ -20,6 +20,8 @@ PURPDEF  Purp1 ::=
                       Action !Minus(33,-42)   >->  Result ?r  >->  HIT
         GOAL m4  ::=  Action !Plus (-17,123)  >->  Result ?r  >->
                       Action !Minus(-17,123)  >->  Result ?r  >->  HIT
+        GOAL m5  ::=  Action ?x [[ isPlus(x) ]] >-> Result ?r1 >-> HIT
+        GOAL m6  ::=  Action ?x [[ isMinus(x) ]] >-> Result ?r1 >-> HIT
 ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
@@ -63,4 +65,47 @@ PURPDEF  Purp3 ::=
 ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
+-- Test Purpose with goals with overlapping prefixes
 -- ----------------------------------------------------------------------------------------- --
+
+PURPDEF  Purp4 ::=
+        CHAN IN    Action
+        CHAN OUT   Result
+
+        GOAL m1  ::=
+            Action !Plus (4,7) >-> Result ?r >->
+            HIT
+        GOAL m2  ::=
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            HIT
+        GOAL m3  ::=
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            HIT
+        GOAL m4  ::=
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            HIT
+        GOAL m5  ::=
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            HIT
+        GOAL m6  ::=
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            Action !Plus (4,7) >-> Result ?r >->
+            HIT
+ENDDEF

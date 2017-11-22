@@ -21,17 +21,29 @@ For Windows systems an installer is provided in the [releases][13] section.
 
 ### Linux
 
-For Linux systems we provide a [`snap`][`12`] package. To install `TorXakis`
+For Linux systems we provide a [`snap`][12] package. To install `TorXakis`
 run:
 
 ```sh
 sudo snap install torxakis --edge
 ```
 
+If you don't have the `snap` package manager installed on your Linux
+distribution see the [installation instructions for your platform][14].
+
 When running `TorXakis` as a snap, the configuration file for `TorXakis` should
 go in the `~/snap/torxakis/current` directory. This is because snaps run in an
 isolated environment, and they are not able to see any hidden files in the
 users home directory.
+
+If you are installing `TorXakis` using a downloaded snap (say
+`torxakis_nightly_amd64.snap`), then you need to provide the path to the snap
+along with the `--dangerous` flag, since you are not fetching the snap from the
+official Ubuntu repository.
+
+```sh
+sudo snap install torxakis_nightly_amd64.snap --dangerous
+```
 
 ## For Developers
 
@@ -118,7 +130,8 @@ There are several folders in this repository, which serve different purposes:
 - [`ci`](ci/): scripts used in our continuous integration process.
 - [`docs`](docs/): documentation files for `TorXakis`.
 - [`examps`](examps/): example models and systems-under-test (SUT's) to play
-  around with.
+  around with. This folder also contains some binary (.jpg and .pptx) files,
+  which are used for documentation. Such files are tracked with [Git-LFS][15](*).
 - [`snap`](snap/): files needed to create Linux [snaps][12].
 - [`sys`](sys/): packages that make up `TorXakis` this is where the source code
   resides.
@@ -126,6 +139,10 @@ There are several folders in this repository, which serve different purposes:
   license-checking, etc).
 
 See the README files in each folders to get a more detailed explanation.
+
+(*): Git-LFS is installed by default along with official git client, so you should
+     be able to access these files without extra effort. If, for some reason, you
+     don't have Git-LFS, then you can [install the official Git-LFS extension][15].
 
 [1]: https://en.wikipedia.org/wiki/Satisfiability_modulo_theories
 [2]: http://cvc4.cs.stanford.edu/web/
@@ -140,3 +157,5 @@ See the README files in each folders to get a more detailed explanation.
 [11]: https://github.com/TorXakis/TorXakis/issues/40
 [12]: https://www.ubuntu.com/desktop/snappy
 [13]: https://github.com/TorXakis/TorXakis/releases
+[14]: https://docs.snapcraft.io/core/install
+[15]: https://git-lfs.github.com/

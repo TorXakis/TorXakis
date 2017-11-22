@@ -5,8 +5,9 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 
 -- |
 -- Module      :  BehExprDefs
@@ -27,13 +28,15 @@ where
 import qualified Data.Set        as Set
 
 import           Control.DeepSeq
+import           Data.Data
 import           GHC.Generics    (Generic)
 
 import           ChanId
 import           ProcId
 import           StatId
-import           ValExprDefs
 import           VarId
+import           VarEnv
+
 
 -- | Behaviour Expression
 data BExpr = Stop
@@ -48,14 +51,14 @@ data BExpr = Stop
            | Hide        [ChanId] BExpr
            | ValueEnv    VEnv BExpr
            | StAut       StatId VEnv [Trans]
-  deriving (Eq,Ord,Read,Show, Generic, NFData)
+  deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 -- | ActOffer
 -- Offer on multiple channels with constraints
 data ActOffer = ActOffer
   { offers     :: Set.Set Offer      -- PvdL -- why not? -- Map ChanId [ChanOffer]
   , constraint :: VExpr
-  } deriving (Eq, Ord, Read, Show, Generic, NFData)
+  } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 
 -- | Offer
@@ -63,13 +66,13 @@ data ActOffer = ActOffer
 data Offer = Offer
   { chanid     :: ChanId
   , chanoffers :: [ChanOffer]
-  } deriving (Eq,Ord,Read,Show, Generic, NFData)
+  } deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 -- | Channel Offer
 -- Offer of a single value
 data  ChanOffer     = Quest  VarId
                     | Exclam VExpr
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
+     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 -- | symbolic transitions
 data  Trans         = Trans  { from     :: StatId
@@ -77,7 +80,7 @@ data  Trans         = Trans  { from     :: StatId
                              , update   :: VEnv
                              , to       :: StatId
                              }
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
+     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 -- ----------------------------------------------------------------------------------------- --
 --

@@ -33,12 +33,17 @@ import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
-import TxsDefs
-import StdTDefs
-import SolveDefs
+import ConstDefs
+import CstrId
+import CstrDef
 import SMT
 import SMTData
+import SolveDefs
+import StdTDefs
+import TxsDefs
 import Utils
+import ValExpr
+import Variable
 
 data ParamPartition = 
     ParamPartition { maxDepth               :: Int
@@ -116,9 +121,7 @@ randN p n = do r  <- lift randomIO::(SMT Float)                     -- random fl
 
 -- ----------------------------------------------------------------------------------------- --
 -- turn ordered Integer list into list of constraints for vexp
--- TODO: improve 1. handle empty / first item
---               2. handle next / last item     -> to save call to last 
--- TODO: make single set of constraints?
+
 intList2cnrs :: (Variable v) => ValExpr v -> [Integer] -> [ Set.Set (ValExpr v) ]
 intList2cnrs vexp list
   =   Set.singleton ( cstrLT vexp (cstrConst (Cint (head list) ) ) )

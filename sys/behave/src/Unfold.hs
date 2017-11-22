@@ -29,24 +29,20 @@ module Unfold
 where
 
 import Control.Monad.State
-
 import qualified Data.Set   as Set
 import qualified Data.Map   as Map
 
--- import from local
+import BTree
+import ConstDefs
+import qualified EnvBTree   as IOB
+import qualified EnvData
 import Expand
 import Next
 import Reduce
-
-import qualified EnvBTree   as IOB
-import qualified EnvData
-
-import qualified TxsDefs
-
 import qualified SolveDefs
 import qualified Solve
-
-import BTree
+import qualified TxsDefs
+import           ValExpr
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -76,12 +72,12 @@ unfoldCTbranch chsets (CTpref ctoffs cthidvars' ctpred' ctnext')
    | Set.null ctoffs =                                           -- tau action or nothing
         if null cthidvars'
           then
-            case TxsDefs.eval ctpred' of
-              Right (TxsDefs.Cbool True)  -> do let nextcnode = nextNode Map.empty ctnext'
+            case ValExpr.eval ctpred' of
+              Right (Cbool True)          -> do let nextcnode = nextNode Map.empty ctnext'
                                                 nextctree <- expand chsets nextcnode
                                                 nextbtree <- unfoldCT chsets nextctree
                                                 return [ BTtau nextbtree ]
-              Right (TxsDefs.Cbool False) -> return []
+              Right (Cbool False)         -> return []
               Right _                     -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                                               "unfoldCTbranch - ctpred' is not a Boolean value"]
                                                 return []

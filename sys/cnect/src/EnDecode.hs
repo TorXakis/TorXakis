@@ -45,6 +45,9 @@ import           TxsDDefs
 import           TxsDefs
 import           TxsShow
 
+-- import from valexpr
+import           ConstDefs
+import           ValExpr
 
 -- ----------------------------------------------------------------------------------------- --
 -- encode :  encoding from Abstract to Concrete (String)

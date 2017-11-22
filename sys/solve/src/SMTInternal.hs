@@ -20,20 +20,21 @@ module SMTInternal
 
 where
 
+import           Control.Exception   (onException)
 import           Control.Monad.State (gets, lift, modify)
+
 import qualified Data.List           as List
 import qualified Data.Map            as Map
+import           Data.Monoid
 import qualified Data.Set            as Set
 import           Data.String.Utils   (endswith, replace, startswith, strip)
+import           Data.Text           (Text)
+import qualified Data.Text           as T
 import           Data.Time
 import           System.IO
 import           System.Process
 
-import           Data.Monoid
-import           Data.Text           (Text)
-import qualified Data.Text           as T
-
-import           Control.Exception   (onException)
+import           ConstDefs
 import           SMT2TXS
 import           SMTAlex
 import           SMTData
@@ -42,6 +43,8 @@ import           SolveDefs
 import           TXS2SMT
 import           TxsDefs
 import           TxsUtils
+import           ValExpr
+import           Variable
 
 -- ----------------------------------------------------------------------------------------- --
 -- opens a connection to the SMTLIB interactive shell
@@ -95,9 +98,6 @@ createSMTEnv cmd lgFlag tdefs =  do
                                                            , std_in = CreatePipe
                                                            , std_err = CreatePipe
                                                            }
-
-          -- TODO: bug#1954 https://esi-redmine.tno.nl/issues/1954
-          -- changes needed here?
     hSetBuffering hin  NoBuffering         -- alternative: LineBuffering
     hSetBuffering hout NoBuffering
     hSetBuffering herr NoBuffering
@@ -138,7 +138,7 @@ createSMTEnv cmd lgFlag tdefs =  do
                    lg
                    (Map.fromList (initialMapInstanceTxsToSmtlib <>
                                    map (\f -> (IdFunc f, error "Transitive closure should prevent calls to CONNECTION (ENCODE/DECODE) related functions.")) (Set.toList (allENDECfuncs tdefs))))
-                   TxsDefs.empty        -- TODO: currently txsdefs only uses to remove EN/DECODE functions: combine with addDefinitions?
+                   TxsDefs.empty
             )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -158,7 +158,6 @@ addDefinitions txsdefs =  do
     let newfuncs = filter (\(i, _) -> Map.notMember i mapC) funcs
                          -- remove isX, accessors and equal functions related to data types
                          -- remove the transitive closure of function for connections (such as toString and toXml)
-                         -- TODO: is this still needed with new ValExpr that have special constructors for these `functions`?
         mapR = foldr insertMap mapC newfuncs
     putT ( funcdefsToSMT mapR (TxsDefs.fromList newfuncs) )
     put "\n\n"
@@ -230,7 +229,6 @@ getInfo :: String -> SMT String
 getInfo info = do
     put ("(get-info :" ++ info ++ ")")
     s <- getSMTresponse
-    -- todo: should a parser for a info/name be made?
     let list = strip s in
         if startswith "(" list && endswith ")" list
         then

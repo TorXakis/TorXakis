@@ -1,0 +1,5 @@
+param param_Sut_deltaTime 5500
+param param_Test_inputEager 0
+tester Model RestrictedAxisTestPurpose Sut
+test 100
+exit

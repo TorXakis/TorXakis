@@ -111,8 +111,10 @@ module TxsCore
 
 where
 
+import           Control.Arrow
 import           Control.Monad
 import           Control.Monad.State
+import qualified Data.List           as List
 import qualified Data.Map            as Map
 import           Data.Maybe
 import           Data.Monoid
@@ -156,12 +158,16 @@ import qualified SMT
 import qualified Solve
 import qualified SolveDefs
 import qualified SolveDefs.Params
+
 -- import from value
 import qualified Eval
 
 -- import from lpe
 import qualified LPE
 
+-- import from valexpr
+import ConstDefs
+import VarId
 
 -- | TorXakis core main api -- start
 runTxsCore :: Config -> StateT s IOC.IOC a -> s -> IO ()
@@ -184,7 +190,7 @@ runTxsCtrl ctrl s0  =  do
 
 -- | TorXakis core main api -- modus transition general
 txsInit :: TxsDefs.TxsDefs                  -- ^ Definitions for computations.
-        -> Sigs.Sigs TxsDefs.VarId          -- ^ Signatures needed to parse.
+        -> Sigs.Sigs VarId          -- ^ Signatures needed to parse.
         -> ([EnvData.Msg] -> IOC.IOC ())    -- ^ Handler for info, warning, and error messages.
         -> IOC.IOC ()
 txsInit tdefs sigs putMsgs  =  do
@@ -292,19 +298,19 @@ txsSetSeed seed  =  do
 --
 --   Only possible when txscore is initialized.
 txsEval :: TxsDefs.VExpr                    -- ^ value expression to be evaluated.
-        -> IOC.IOC TxsDefs.Const
+        -> IOC.IOC Const
 txsEval vexp  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'eval' without model" ]
-               return $ TxsDefs.Cerror ""
+               return $ Cerror ""
        _ -> let frees = FreeVar.freeVars vexp
             in if  not $ null frees
                      then do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                            $ "Value expression not closed: " ++
                                              TxsShow.fshow frees ]
-                             return $ TxsDefs.Cerror ""
+                             return $ Cerror ""
                      else do envb         <- filterEnvCtoEnvB
                              (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
                              writeEnvBtoEnvC envb'
@@ -314,7 +320,7 @@ txsEval vexp  =  do
 --
 --   Only possible when txscore is initialized.
 txsSolve :: TxsDefs.VExpr                   -- ^ value expression to solve.
-         -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
+         -> IOC.IOC (TxsDefs.WEnv VarId)
 txsSolve vexp  =  do
      envc <- get
      case IOC.state envc of
@@ -348,7 +354,7 @@ txsSolve vexp  =  do
 --
 --   Only possible when txscore is initialized.
 txsUniSolve :: TxsDefs.VExpr            -- ^ value expression to solve uniquely.
-            -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
+            -> IOC.IOC (TxsDefs.WEnv VarId)
 txsUniSolve vexp  =  do
      envc <- get
      case IOC.state envc of
@@ -380,7 +386,7 @@ txsUniSolve vexp  =  do
 --
 --   Only possible when txscore is initialized.
 txsRanSolve :: TxsDefs.VExpr                -- ^ value expression to solve randomly.
-            -> IOC.IOC (TxsDefs.WEnv TxsDefs.VarId)
+            -> IOC.IOC (TxsDefs.WEnv VarId)
 txsRanSolve vexp  =  do
      envc <- get
      case IOC.state envc of
@@ -459,8 +465,11 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
               Just bt -> do
                    IOC.modifyCS $ \st -> st { IOC.modsts  = bt
                                             , IOC.mapsts  = mt
-                                            , IOC.purpsts = gls
+                                            , IOC.purpsts = fmap (second Left) gls
                                             }
+                   unless
+                       (null gls)
+                       (IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Goals: " ++ List.intercalate "," (TxsShow.fshow . fst <$> gls) ])
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
        _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
             TxsCore.txsStop
@@ -826,7 +835,7 @@ txsShow :: String               -- ^ kind of item to be shown.
                                 --   "model", "mapper", "purp", "modeldef" <name>,
                                 --   "mapperdef" <name>, "purpdef" <name>
         -> IOC.IOC String
-txsShow item name  = do
+txsShow item nm  = do
      envc  <- gets IOC.state
      let tdefs = IOC.tdefs envc
      case envc of
@@ -834,31 +843,31 @@ txsShow item name  = do
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Noning: nothing to be shown" ]
                return "\n"
       IOC.Initing{ }
-         -> case (item,name) of
+         -> case (item,nm) of
               ("tdefs"    ,"") -> return $ show (IOC.tdefs envc)
-              ("modeldef" ,nm) -> return $ nm2string nm TxsDefs.IdModel TxsDefs.DefModel
+              ("modeldef" ,_) -> return $ nm2string nm TxsDefs.IdModel TxsDefs.DefModel
                                                      (TxsDefs.modelDefs tdefs)
-              ("mapperdef",nm) -> return $ nm2string nm TxsDefs.IdMapper TxsDefs.DefMapper
+              ("mapperdef",_) -> return $ nm2string nm TxsDefs.IdMapper TxsDefs.DefMapper
                                                      (TxsDefs.mapperDefs tdefs)
-              ("purpdef"  ,nm) -> return $ nm2string nm TxsDefs.IdPurp TxsDefs.DefPurp
+              ("purpdef"  ,_) -> return $ nm2string nm TxsDefs.IdPurp TxsDefs.DefPurp
                                                      (TxsDefs.purpDefs tdefs)
-              ("procdef"  ,nm) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
+              ("procdef"  ,_) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
                                                      (TxsDefs.procDefs tdefs)
               _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown 1" ]
                       return "\n"
-      _ -> case (item,name) of
+      _ -> case (item,nm) of
               ("tdefs"    ,"") -> return $ show (IOC.tdefs envc)
               ("state"    ,"") -> return $ show (IOC.curstate envc)
               ("model"    ,"") -> return $ TxsShow.fshow (IOC.modsts envc)
               ("mapper"   ,"") -> return $ TxsShow.fshow (IOC.mapsts envc)
               ("purp"     ,"") -> return $ TxsShow.fshow (IOC.purpsts envc)
-              ("modeldef" ,nm) -> return $ nm2string nm TxsDefs.IdModel TxsDefs.DefModel
+              ("modeldef" ,_)  -> return $ nm2string nm TxsDefs.IdModel TxsDefs.DefModel
                                                      (TxsDefs.modelDefs tdefs)
-              ("mapperdef",nm) -> return $ nm2string nm TxsDefs.IdMapper TxsDefs.DefMapper
+              ("mapperdef",_)  -> return $ nm2string nm TxsDefs.IdMapper TxsDefs.DefMapper
                                                      (TxsDefs.mapperDefs tdefs)
-              ("purpdef"  ,nm) -> return $ nm2string nm TxsDefs.IdPurp TxsDefs.DefPurp
+              ("purpdef"  ,_)  -> return $ nm2string nm TxsDefs.IdPurp TxsDefs.DefPurp
                                                      (TxsDefs.purpDefs tdefs)
-              ("procdef"  ,nm) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
+              ("procdef"  ,_)  -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
                                                      (TxsDefs.procDefs tdefs)
               _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown 2" ]
                       return "\n"
@@ -869,12 +878,12 @@ txsShow item name  = do
                -> (def -> TxsDefs.TxsDef)
                -> Map.Map id def
                -> String
-     nm2string nm id2ident id2def iddefs =
+     nm2string nm' id2ident id2def iddefs =
        let defs = [ (id2ident id', id2def def) | (id', def) <- Map.toList iddefs
-                                              , TxsDefs.name (id2ident id') == T.pack nm ]
+                                              , TxsDefs.name (id2ident id') == T.pack nm' ]
        in case defs of
             [(ident,txsdef)] -> TxsShow.fshow (ident,txsdef)
-            _                -> "no (uniquely) defined item to be shown: " ++ nm ++ "\n"
+            _                -> "no (uniquely) defined item to be shown: " ++ nm' ++ "\n"
 
 -- | Go to state with the provided state number.
 -- core action.
@@ -1021,8 +1030,8 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
                        maypurp <- NComp.nComplete insyncs outsyncs statid trans
                        case maypurp of
                          Just purpdef -> do
-                           unid <- gets IOC.unid
-                           let purpid = TxsDefs.PurpId ("PURP_"<>pnm) (unid+1)
+                           uid <- gets IOC.unid
+                           let purpid = TxsDefs.PurpId ("PURP_"<>pnm) (uid+1)
                                tdefs' = tdefs
                                  { TxsDefs.purpDefs = Map.insert
                                                       purpid purpdef (TxsDefs.purpDefs tdefs)
@@ -1108,4 +1117,3 @@ lpeTransform procinst procdefs
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
-

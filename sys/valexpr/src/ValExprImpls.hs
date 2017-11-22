@@ -87,24 +87,27 @@ import           Sum
 import           ValExprDefs
 import           Variable
 
-
 cstrFunc :: (Variable v, Variable w) => Map.Map FuncId (FuncDef v) -> FuncId -> [ValExpr w] -> ValExpr w
 cstrFunc fis fi arguments =
     case Map.lookup fi fis of
-        Nothing ->  ValExpr (Vfunc fi arguments) -- When implementing the body of a recursive function, a function call is made while the implementation is not (yet) finished and available.
-        Just (FuncDef params body)-> case view body of
-                                        Vconst x -> cstrConst x
-                                        _        -> if all isConst arguments
-                                                        then compSubst (Map.fromList (zip params arguments)) fis body
-                                                        else ValExpr (Vfunc fi arguments)
-
+        Nothing ->
+            -- When implementing the body of a recursive function, a function
+            -- call is made while the implementation is not (yet) finished and
+            -- available.
+            ValExpr (Vfunc fi arguments)
+        Just (FuncDef params body)->
+            case view body of
+                Vconst x -> cstrConst x
+                _        -> if all isConst arguments
+                            then compSubst (Map.fromList (zip params arguments)) fis body
+                            else ValExpr (Vfunc fi arguments)
 
 -- | Apply ADT Constructor of constructor with CstrId and the provided arguments (the list of value expressions).
 -- Preconditions are /not/ checked.
 cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
 cstrCstr c a = if all isConst a
                 then cstrConst (Cstr c (map (\(view -> Vconst v) -> v) a))
-                else ValExpr (Vcstr c a)   
+                else ValExpr (Vcstr c a)
 
 -- | Is the provided value expression made by the ADT constructor with CstrId?
 -- Preconditions are /not/ checked.
@@ -226,9 +229,6 @@ cstrAnd' s =
                                 if any (contains s') (map (\(view -> Vnot n) -> n) (Set.toList nots))
                                     then cstrConst (Cbool False)
                                     else ValExpr (Vand s')
-                                    -- todo? also check :
-                                    -- 0 <= x and 0 <= -x <==> x == 0
-                                    -- not (0 <= x) and not (0 <= -x) <==> False
     where
         contains :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
@@ -300,7 +300,6 @@ cstrProduct ms =
       (prods, noprods) = FMX.partitionT isProduct ms
       prodOfProds :: FMX.FreeMonoidX (FMX.FreeMonoidX (ProductTerm (ValExpr v)))
       prodOfProds = FMX.mapTerms (getProduct . factor) prods
-        -- TODO: canonical form -- make one sum of products (so remove all sums within all products)
 
 -- Product doesn't contain elements of type VExprProduct
 cstrProduct' :: (Ord v, Integral (ValExpr v))
@@ -411,11 +410,21 @@ cstrPredef p f a = ValExpr (Vpredef p f a)
 cstrError :: Text -> ValExpr v
 cstrError s = ValExpr (Verror s)
 
--- | Substitute variables by values in value expression.
+-- | Substitute variables by value expressions in a value expression.
+--
 -- Preconditions are /not/ checked.
+--
 subst :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
-      => Map.Map v (ValExpr v) -> Map.Map FuncId (FuncDef w) -> ValExpr v -> ValExpr v
---subst ve _ x   | ve == Map.empty = x
+      => Map.Map v (ValExpr v)      -- ^ Map from variables to value expressions.
+      -> Map.Map FuncId (FuncDef w) -- ^ Map from identifiers to their
+                                    -- definitions, this is used to replace
+                                    -- function calls by their bodies if all
+                                    -- the arguments of the function are
+                                    -- constant.
+      -> ValExpr v                  -- ^ Value expression where the
+                                    -- substitution will take place.
+      -> ValExpr v
+subst ve _ x   | ve == Map.empty = x
 subst ve fis x = subst' ve fis (view x)
 
 subst' :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
@@ -442,7 +451,7 @@ subst' ve fis (Vstrinre s r)           = cstrStrInRe ( (subst' ve fis . view) s)
 subst' ve fis (Vpredef kd fid vexps)   = cstrPredef kd fid (map (subst' ve fis . view) vexps)
 subst' _  _   (Verror str)             = cstrError str
 
--- | Substitute variables by values in value expression (change variable kind).
+-- | Substitute variables by value expressions in a value expression (change variable kind).
 -- Preconditions are /not/ checked.
 compSubst :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
           => Map.Map v (ValExpr w) -> Map.Map FuncId (FuncDef v) -> ValExpr v -> ValExpr w

@@ -22,12 +22,14 @@ import qualified Data.Set as Set
 
 -- generic TorXakis imports
 import BTree
+import ConstDefs
 import EnvBTree
 import Expand
+import Sigs
 import StdTDefs
 import TxsDefs
 import Unfold
-import Sigs
+import ValExpr
 
 -- ----------------------------------------------------------------------------
 -- additional variables

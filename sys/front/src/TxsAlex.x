@@ -18,9 +18,10 @@ where
 
 import Data.Text (Text)
 import qualified Data.Text as T
-  
-import TxsDefs
+
 import Sigs
+import TxsDefs
+import VarId
 }
 
 -- ----------------------------------------------------------------------------------------- --

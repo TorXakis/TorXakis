@@ -40,6 +40,7 @@ import qualified BTree
 
 import qualified TxsDefs
 import qualified TxsDDefs
+import ValExpr
 
 -- ----------------------------------------------------------------------------------------- --
 -- mapper :  may only be called when in Testing or Simuling mode
@@ -58,15 +59,15 @@ mapperMap act@(TxsDDefs.Act acts)  =  do
                allmenu  = Behave.behMayMenu syncs mtree
                mapmenu  = [ ( btoffs
                             , hidvars
-                            , TxsDefs.cstrAnd (Set.fromList (pred'
-                                                            : [ TxsDefs.cstrEqual (TxsDefs.cstrVar ivar)
-                                                                                  (TxsDefs.cstrConst wal)
-                                                              | BTree.CToffer chan choffs <- Set.toList btoffs
-                                                              , (chid, wals)              <- Set.toList acts
-                                                              , (ivar, wal)               <- zip choffs wals
-                                                              , chan == chid
-                                                              ]
-                                                            )
+                            , cstrAnd (Set.fromList (pred'
+                                                    : [ cstrEqual (cstrVar ivar)
+                                                                  (cstrConst wal)
+                                                      | BTree.CToffer chan choffs <- Set.toList btoffs
+                                                      , (chid, wals)              <- Set.toList acts
+                                                      , (ivar, wal)               <- zip choffs wals
+                                                      , chan == chid
+                                                      ]
+                                                    )
                                                )
                             )
                           | (btoffs, hidvars, pred') <- allmenu

@@ -5,7 +5,7 @@ license:                BSD3
 license-file:           license.txt
 author:                 Jan Tretmans
                       , Pierre van de Laar
-maintainer:          
+maintainer:
                       , pierre.vandelaar@tno.nl
 copyright:              TNO
 category:               Web
@@ -26,47 +26,31 @@ library
                       , XmlFormat
                       , ChanId
                       , CnectId
-                      , CstrId
-                      , FuncId
                       , GoalId
                       , MapperId
                       , ModelId
                       , ProcId
                       , PurpId
-                      , SortId
                       , SortOf
                       , StatId
-                      , VarId
                       , FuncTable
                       , Sigs
-                      , Sum
-                      , Product
-                      , FreeMonoidX
-                      , RegexXSD2Posix
-                      
+
   other-modules:        ConnectionDefs
-                      , ConstDefs
                       , Ident
-                      , Name
                       , TxsDef
-                      , ValExprDefs
-                      , ValExprImpls
-                      , ValExprImplsExtension
                       , CnectDef
-                      , CstrDef
-                      , FuncDef
                       , MapperDef
                       , ModelDef
                       , ProcDef
                       , PurpDef
-                      , SortDef
-                      , Variable
+                      , VarEnv
 
 
   ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math -Wall
-  
+
   build-tools:          happy
-  
+
   build-depends:        array
                       , base
                       , bytestring
@@ -79,35 +63,8 @@ library
                       , regex-tdfa
                       , text
                       , MissingH
-                      
-                      , lexregexxsd
-                      
-  default-language:     Haskell2010
-                    
 
-test-suite defs-BlackBox
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-                     
-  main-is:             Spec.hs
-  
-  other-modules:       GenProduct
-                     , ValExprSpec
-                     , ProductSpec
-                     , FreeMonoidXSpec
-                     , XSD2PosixSpec
-                       
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
-  
-  build-depends:       base
-                     , containers
-                     , hspec
-                     , hspec-contrib
-                     , ieee754
-                     , text
-                     , HUnit
-                     , MissingH
-                     , QuickCheck
-                     
-                     , defs
-  default-language:    Haskell2010
+                      , lexregexxsd
+                      , valexpr
+
+  default-language:     Haskell2010

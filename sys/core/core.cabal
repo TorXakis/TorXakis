@@ -43,6 +43,7 @@ library
                       , solve
                       , solvedefs
                       , testsel
+                      , valexpr
                       , value
                       , lpe
                       

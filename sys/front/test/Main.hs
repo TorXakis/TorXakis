@@ -24,6 +24,9 @@ import           TxsDefs
 import           TxsHappy
 
 import           Sigs
+import           SortDef
+import           SortId
+import           VarId
 
 -- QuickCheck Extension
 
@@ -119,7 +122,6 @@ genUniqueCapIds = subset (Set.fromList (map CapId capIds) )
 
 predefSort :: [String]
 predefSort = [ "Int"
--- TODO CVC4 bug solved; re-add Bool
              --, "Bool" not accepted by TorXakis in structure due to cvc4 bug
              , "String"
              , "Regex"]

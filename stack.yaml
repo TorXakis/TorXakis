@@ -19,7 +19,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-9.7
+resolver: lts-9.13
 ghc-variant: integersimple
 
 # User packages to be built.
@@ -58,6 +58,7 @@ packages:
 - location: sys/testsel
 - location: sys/ui
 - location: sys/value
+- location: sys/valexpr
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
@@ -66,7 +67,7 @@ extra-deps:
 - hexpat-0.20.13
 - hashable-1.2.6.1
 - integer-logarithms-1.0.2
-- scientific-0.3.5.1
+- scientific-0.3.5.2
 
 # Override default flag values for local packages and extra-deps
 flags: 

@@ -46,9 +46,16 @@ import qualified EnvData
 import           FreeMonoidX
 import           RegexXSD2Posix
 import           StdTDefs
-import           TxsDefs            hiding (eval)
+import           TxsDefs
 import           TxsShow
 import           XmlFormat
+
+-- import from valexpr
+import           ConstDefs
+import           FuncDef
+import           FuncId
+import           ValExpr             hiding (eval)
+import           Variable
 
 -- import from front
 import qualified TxsAlex
@@ -59,7 +66,7 @@ import qualified TxsHappy
 -- eval :  evaluation of value expression
 --         eval shall only work on closed vexpr
 
-eval :: TxsDefs.Variable v => TxsDefs.ValExpr v -> IOB.IOB Const
+eval :: Variable v => ValExpr v -> IOB.IOB Const
 
 eval (view -> Vfunc fid vexps) = do
      envb <- get
@@ -71,7 +78,8 @@ eval (view -> Vfunc fid vexps) = do
        Just (FuncDef args' vexp)
                -> do vals <- mapM eval vexps
                      let we = Map.fromList (zip args' vals)
-                     eval (subst (Map.map cstrConst we) (Map.empty :: Map.Map FuncId (FuncDef VarId)) vexp)
+                     fdefs <- IOB.getFuncDefs
+                     eval (subst (Map.map cstrConst we) fdefs vexp)
 
 eval (view -> Vcstr cid vexps) = do
     vals <- mapM eval vexps
@@ -83,7 +91,7 @@ eval (view -> Viscstr cid1 arg) = do
 
 eval (view -> Vaccess _cid1 p arg) = do
     Cstr _cid2 args' <- eval arg
-    return $ args'!!p                   -- TODO: check cids are equal?
+    return $ args'!!p
 
 eval (view -> Vconst const') = return const'
 
@@ -101,7 +109,7 @@ eval (view -> Vsum s) = do
     consts <- mapM evalTuple (toOccurListT s)
     eval (cstrSum $ fromOccurListT consts)       -- simplifies to integer
   where
-    evalTuple :: Variable v => (TxsDefs.ValExpr v, Integer) -> IOB.IOB (TxsDefs.ValExpr v, Integer)
+    evalTuple :: Variable v => (ValExpr v, Integer) -> IOB.IOB (ValExpr v, Integer)
     evalTuple (v,i) = do
         c <- eval v
         return (cstrConst c,i)
@@ -110,7 +118,7 @@ eval (view -> Vproduct p) = do
     consts <- mapM evalTuple (toOccurListT p)
     eval (cstrProduct $ fromOccurListT consts)       -- simplifies to integer
   where
-    evalTuple :: Variable v => (TxsDefs.ValExpr v, Integer) -> IOB.IOB (TxsDefs.ValExpr v, Integer)
+    evalTuple :: Variable v => (ValExpr v, Integer) -> IOB.IOB (ValExpr v, Integer)
     evalTuple (v,i) = do
         c <- eval v
         return (cstrConst c,i)
@@ -148,7 +156,7 @@ eval (view -> Vand vexps) = do
 eval (view -> Vlength vexp) = do
     Cint val <- eval vexp
     int2txs val
-        
+
 eval (view -> Vat s p) = do
     Cstring vs <- eval s
     Cint vp <- eval p
@@ -219,7 +227,6 @@ eval _ = return $ Cerror "undefined"
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of value expression: evaluation of standard functions for Bool - SSB
 
--- TODO: see how to make this exception safe.
 readBool :: Text -> Bool
 readBool "True"  = True
 readBool "true"  = True

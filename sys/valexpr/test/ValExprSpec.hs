@@ -4,12 +4,12 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedLists #-}
-{-# OPTIONS -Wall -Werror #-}
 module ValExprSpec where
 
 import           Sum
 import           Test.Hspec
-import           TxsDefs
+import           ConstDefs
+import           ValExpr
 
 sum012 :: ValExpr Int
 sum012 = cstrSum [ SumTerm (cstrConst (Cint 0))

@@ -9,14 +9,16 @@ module TestVexprToSMT
 testVexprToSMTList
 )
 where
+import           Data.Char
 import qualified Data.Map         as Map
 import qualified Data.Set         as Set
 import qualified Data.Text        as T
 import           Test.HUnit
 
-import           TxsDefs
+import           ConstDefs
+import           SortId
+import           VarId
 
-import           Data.Char
 import           HelperVexprToSMT
 import           TXS2SMT
 
@@ -64,7 +66,7 @@ testViteSingleton = TestCase $ do
     let elseExpr = createVconst (Cint 12)
     let sortId = SortId "Pierre" 67
     let varId = VarId "x" 1234 sortId
-    let cond = createVequal (createVconst (Cint 13)) (createVvar varId)  -- TODO: order should not be relevant!
+    let cond = createVequal (createVconst (Cint 13)) (createVvar varId)
     let (TXS2SMTVExprTest i e) = createVite cond thenExpr elseExpr
     assertEqual "ite singleton" e (T.unpack (valexprToSMT Map.empty i))
 

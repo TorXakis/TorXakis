@@ -20,8 +20,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 module TxsHappy
-
-( txsParser                             -- exporting
+( txsParser
 , constdefParser
 , funcdefParser
 , bexprParser
@@ -31,8 +30,12 @@ module TxsHappy
 , vardeclsParser
 , valdefsParser
 )
-
 where
+import qualified Data.List   as List
+import qualified Data.Map    as Map
+import qualified Data.Set    as Set
+import qualified Data.String.Utils as Utils
+import Data.Monoid
 
 import TxsAlex                          -- importing
                                         -- data Token(..), AlexPosn(..)
@@ -40,13 +43,17 @@ import TxsAlex                          -- importing
 import TxsDefs                          -- types for parseVal main attribute
 import ChanId
 import CnectId
+import ConstDefs
+import CstrDef
 import CstrId
+import FuncDef
 import FuncId
 import GoalId
 import MapperId
 import ModelId
 import ProcId
 import PurpId
+import SortDef
 import SortId
 import StatId
 import VarId
@@ -54,14 +61,8 @@ import FuncTable
 import TxsUtils                         -- some utilities on TxsDefs 
 import TxsShow                          -- pretty pshow for error messages
 import StdTDefs                         -- predefined, standard Txs data types
-
 import qualified Sigs
-
-import qualified Data.List   as List
-import qualified Data.Map    as Map
-import qualified Data.Set    as Set
-import qualified Data.String.Utils as Utils
-import Data.Monoid
+import ValExpr
 }
 
 
@@ -582,7 +583,6 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                                      "Double defined names: "++(show dbls)++"\n"
                                
                 }
-                -- TODO: remove addition of constructor and isConstructorFunction: add ADT info to TxsDefs in another way!
 
 FieldList       -- :: { [ (String, SortId) ] }
                 -- definition of the fields with implicit functions of an algebraic type
@@ -798,8 +798,7 @@ ExConstDef      -- :: { ( Int, TxsDef ) }
                 -- top-level constant definition for external use with multiple parsers
                 -- attrs inh : SIGS  : Signatures
                 --           : UNID  : unique node identification
-                -- constrs   : defined constant shall have unique function name 
-                -- TODO: also SIGS has changed -> should be returned as well?
+                -- constrs   : defined constant shall have unique function name
               : SIGS UNID ConstDef
                 {  $3.inhSigs      = $1
                 ;  $3.inhNodeUid   = $2

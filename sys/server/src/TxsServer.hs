@@ -59,6 +59,9 @@ import qualified TxsShow
 import qualified Utils
 import qualified VarId
 
+-- import from valexpr
+import qualified ValExpr
+
 -- import from front
 import qualified TxsAlex
 import qualified TxsHappy
@@ -441,13 +444,13 @@ cmdEval args = do
                                         )
                               in return $!! (p,"")
                            )
-                           ( \e -> return ((uid,TxsDefs.cstrError ""), show (e::ErrorCall)))
+                           ( \e -> return ((uid,ValExpr.cstrError "cmdEval parse failed"), show (e::ErrorCall)))
      if  e /= ""
        then do modify $ \env' -> env' { IOS.uid = uid' }
                IFS.nack "EVAL" [ e ]
                cmdsIntpr
        else do modify $ \env' -> env' { IOS.uid = uid' }
-               walue <- lift $ TxsCore.txsEval (TxsDefs.subst vals (TxsDefs.funcDefs tdefs) vexp')
+               walue <- lift $ TxsCore.txsEval (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp')
                IFS.pack "EVAL" [ TxsShow.fshow walue ]
                cmdsIntpr
 
@@ -475,13 +478,13 @@ cmdSolve args kind = do
                                        )
                               in return $!! (p,"")
                            )
-                           ( \e -> return ((uid,TxsDefs.cstrError ""),show (e::ErrorCall)))
+                           ( \e -> return ((uid,ValExpr.cstrError "cmdSolve parse failed."),show (e::ErrorCall)))
      if  e /= ""
        then do modify $ \env' -> env' { IOS.uid = uid' }
                IFS.nack cmd [ e ]
                cmdsIntpr
        else do modify $ \env' -> env' { IOS.uid = uid' }
-               sols  <- lift $ solver (TxsDefs.subst vals (TxsDefs.funcDefs tdefs) vexp')
+               sols  <- lift $ solver (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp')
                IFS.pack cmd [ TxsShow.fshow sols ]
                cmdsIntpr
 

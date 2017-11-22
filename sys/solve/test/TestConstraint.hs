@@ -24,10 +24,19 @@ import           Text.Regex.TDFA
 import           Test.HUnit
 
 -- general Torxakis imports
+import           ConstDefs
+import           CstrDef
+import           CstrId
 import           FreeMonoidX
+import           FuncDef
+import           FuncId
+import           RegexXSD2Posix
+import           SortDef
+import           SortId
 import           StdTDefs
 import           TxsDefs
-import           RegexXSD2Posix
+import           ValExpr
+import           VarId
 
 -- specific SMT imports
 import           SMT

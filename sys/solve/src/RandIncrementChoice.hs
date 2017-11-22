@@ -31,11 +31,17 @@ import           Data.Monoid
 import           Data.Text             (Text)
 import qualified Data.Text             as T
 
+import           ConstDefs
+import           CstrDef
+import           CstrId
 import           SMT
 import           SMTData
 import           SolveDefs
+import           SortId
 import           StdTDefs
 import           TxsDefs
+import           ValExpr
+import           Variable
 
 
 data ParamIncrementChoice =
@@ -89,7 +95,7 @@ toRegexString   c = T.singleton (Char.chr c)
 -- * available variable id
 randomSolve :: Variable v => ParamIncrementChoice -> [(v, Int)] -> Int -> SMT ()
 randomSolve _ []        _     = return ()                                         -- empty list -> done
-randomSolve _ ((_,0):_) _     = error "At maximum depth: should not be added"     -- todo: remove for performance gain!
+randomSolve _ ((_,0):_) _     = error "At maximum depth: should not be added"
 randomSolve p ((v,_):xs) i    | vsort v == sortId_Bool =
     do
         b <- lift randomIO
