@@ -20,6 +20,7 @@ public class StimulusResponse
             // instantiate a socket for accepting a connection
             ServerSocket servsock = new ServerSocket(7890);
 
+            System.out.println("Waiting for tester");
             // wait to accept a connection request and a data socket is returned
             Socket sock = servsock.accept();
 
@@ -34,6 +35,8 @@ public class StimulusResponse
 
             // create a PrinterWriter object for character-mode output
             PrintWriter sockout = new PrintWriter(new OutputStreamWriter(outStream));
+
+            System.out.println("Tester connected.");
 
             // read a line from the data stream: the stimulus
             sockin.readLine();
