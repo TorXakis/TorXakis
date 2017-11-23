@@ -6,6 +6,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeOperators              #-}
 -----------------------------------------------------------------------------
@@ -26,7 +27,11 @@ module Id where
 import           Control.Applicative
 import           Control.DeepSeq
 import           Data.Data
-import           Data.Foldable
+import           Data.Foldable       hiding (toList)
+import           Data.Map.Strict     (Map)
+import qualified Data.Map.Strict     as Map
+import           Data.Set            (Set)
+import qualified Data.Set            as Set
 import           Data.Text           (Text)
 import           GHC.Generics
 
@@ -47,11 +52,33 @@ class Resettable e where
 instance Resettable Id where
     reset _ = Id 0
 
+instance Resettable Bool where
+    reset = id
+
+instance Resettable Char where
+    reset = id
+
 instance Resettable Text where
     reset = id
 
-instance Resettable a => Resettable [a] where
+-- | We don't want to reset @Integer@s, since they are not @Id@s.
+instance Resettable Integer where
+    reset = id
+
+instance Resettable Int where
+    reset = id
+
+instance (Resettable a) => Resettable [a] where
     reset = (reset <$>)
+
+instance (Resettable a, Resettable b) => Resettable (a, b) where
+    reset (a, b) = (reset a, reset b)
+
+instance (Ord a, Resettable a) => Resettable (Set a) where
+    reset = Set.fromList . (reset <$>) . Set.toList
+
+instance (Ord k, Ord v, Resettable k, Resettable v) => Resettable (Map k v) where
+    reset = Map.fromList . (reset <$>) . Map.toList
 
 class GResettable f where
     gReset :: f e -> f e

@@ -117,6 +117,8 @@ import           Data.Monoid     hiding (Product (..))
 import           GHC.Exts
 import           GHC.Generics    (Generic)
 
+import           Id
+
 -- | Symbolic representation of a polynomial, where each term is a member of
 -- type `a`.
 --
@@ -131,6 +133,7 @@ newtype FreeMonoidX a = FMX { asMap :: Map a Integer }
 instance Show a => Show (FreeMonoidX a) where
     show (FMX p) = show (Map.assocs p)
 
+instance (Ord a, Resettable a) => Resettable (FreeMonoidX a)
 -- | A term of the monoid which wraps a value. This could be for instance a
 -- sum-term or a product term.
 class TermWrapper f where
