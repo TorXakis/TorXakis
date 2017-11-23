@@ -39,11 +39,12 @@ import qualified BTree
 
 -- import from defs
 import qualified Sigs
-import qualified TxsDefs
 import qualified TxsDDefs
+import qualified TxsDefs
 
 -- import from valexpr
-import qualified VarId (VarId)
+import           Id
+import qualified VarId               (VarId)
 
 -- import from solve
 import qualified SMTData
@@ -55,7 +56,7 @@ type  IOC  = StateT EnvC IO
 
 data EnvC = EnvC
   { config :: Config           -- ^ Core configuration.
-  , unid   :: Int              -- ^ Last used unique number.
+  , unid   :: Id              -- ^ Last used unique number.
   , params :: ParamCore.Params
   , state  :: CoreState        -- ^ State specific information.
   }
@@ -186,10 +187,10 @@ setParam (prm,val) = do
 -- ----------------------------------------------------------------------------------------- --
 -- Unid :  unique (negative) number for identifiers
 
-initUnid :: IOC Int
+initUnid :: IOC Id
 initUnid = return (-1)
 
-newUnid :: IOC Int
+newUnid :: IOC Id
 newUnid = do
      uid <- gets unid
      modify $ \env -> env { unid = uid - 1 }

@@ -16,15 +16,15 @@ import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
 
+import           Id
 import           Name
 import           SortId
 
-data ChanId         = ChanId    { name      :: Name
-                                , unid      :: Int
-                                , chansorts :: [SortId]
-                                }
-     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
+data ChanId = ChanId
+    { name      :: Name
+    , unid      :: Id
+    , chansorts :: [SortId]
+    } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+instance Resettable ChanId
+instance Identifiable ChanId

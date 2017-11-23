@@ -17,6 +17,7 @@ import           Data.Data
 import           GHC.Generics    (Generic)
 
 import           ChanId
+import           Id
 import           Name
 import           SortId
 import           VarId
@@ -26,13 +27,20 @@ data  ExitSort      =  NoExit
                      | Hit
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
+instance Resettable ExitSort
+instance Identifiable ExitSort
+
 data ProcId         = ProcId    { name      :: Name
-                                , unid      :: Int
+                                , unid      :: Id
                                 , procchans :: [ChanId]
                                 , procvars  :: [VarId]
                                 , procexit  :: ExitSort
                                 }
-     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
+     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance Resettable ProcId
+instance Identifiable ProcId
+
 
 -- ----------------------------------------------------------------------------------------- --
 --

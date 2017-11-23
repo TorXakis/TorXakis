@@ -38,6 +38,7 @@ import qualified ParamCore
 -- import from defs
 import           FuncDef
 import           FuncId
+import           Id
 import qualified Sigs
 import           TxsDefs
 import           VarId
@@ -54,7 +55,7 @@ data EnvB = EnvB { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver 
                  , sigs    :: Sigs.Sigs VarId
                  , stateid :: EnvData.StateNr               -- current beh statenr
                  , params  :: ParamCore.Params              -- parameters
-                 , unid    :: Int                           -- last used unique number
+                 , unid    :: Id                           -- last used unique number
                  , msgs    :: [EnvData.Msg]                 -- (error) reporting
                  }
 

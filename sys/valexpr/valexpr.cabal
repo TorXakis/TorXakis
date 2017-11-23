@@ -30,6 +30,7 @@ library
                       , ValExpr
                       , Variable
                       , VarId
+                      , Id
 
   other-modules:        ValExprDefs
                       , ValExprImpls
