@@ -19,14 +19,10 @@ import           Id
 import           Name
 
 
-data  SortId        =  SortId   { name :: Name            -- capid
-                                , unid :: Id
-                                }
-     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+data SortId = SortId
+    { name :: Name            -- capid
+    , unid :: Id
+    } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Resettable SortId
 instance Identifiable SortId
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --

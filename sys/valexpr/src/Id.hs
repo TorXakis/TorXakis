@@ -11,7 +11,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE TypeOperators              #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Control.Concurrent.Async
+-- Module      :  Id
 -- Copyright   :  (c) 2015-2017 TNO and Radboud University
 -- License     :  BSD3 (see the file LICENSE)
 --
@@ -36,11 +36,14 @@ import           Data.Text           (Text)
 import           GHC.Generics
 
 newtype Id = Id { _id :: Int }
-    deriving (Eq, Show, Ord, Enum, Num, Read, NFData, Data)
+    deriving (Eq, Ord, Enum, Num, Read, NFData, Data)
+
+instance Show Id where
+    show (Id x) = show x
 
 -- * Resettable
 
--- | Class of expressions that contain values of type @Id@ that can be reset
+-- | Types that contain values of type @Id@ that can be reset
 -- (set to zero).
 class Resettable e where
     -- | Reset all the @Id@'s inside an expression.
@@ -108,7 +111,7 @@ instance (Resettable a) => GResettable (K1 i a) where
 
 -- * Identifiable
 
--- | Expression that contains a single @Id@
+-- | Values that contain at least a value of type @Id@.
 class Identifiable e where
     getId :: e -> Maybe Id
 
@@ -130,24 +133,20 @@ class GIdentifiable f where
 instance GIdentifiable U1 where
     gGetId U1 = Nothing
 
-
 -- | Getting the identifier of a product amounts to getting the first @Id@
 -- identifiable of the first identifiable value. An identifiable instance
 -- should contain at least one such a value, but we do now check for this.
 instance (GIdentifiable a, GIdentifiable b) => GIdentifiable (a :*: b) where
     gGetId (a :*: b) = gGetId a <|> gGetId b
 
--- | Getting the identifier of the sum is the same as getting the identifier of
--- the term.
 instance (GIdentifiable a, GIdentifiable b) => GIdentifiable (a :+: b) where
     gGetId (L1 x) = gGetId x
     gGetId (R1 x) = gGetId x
 
--- | Nothing to do for the metadata.
 instance (GIdentifiable a) => GIdentifiable (M1 i c a) where
     gGetId (M1 x) = gGetId x
 
--- | And getting the id of a constructor is the same as getting the id of its
+-- | Getting the @Id@ of a constructor is the same as getting the @Id@ of its
 -- argument.
 instance (Identifiable a) => GIdentifiable (K1 i a) where
     gGetId (K1 x) = getId x

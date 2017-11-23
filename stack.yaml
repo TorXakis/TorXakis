@@ -67,7 +67,6 @@ extra-deps:
 - hashable-1.2.6.1
 - integer-logarithms-1.0.2
 - scientific-0.3.5.2
-# - generic-random-1.0.0.0
 
 # Override default flag values for local packages and extra-deps
 flags: 

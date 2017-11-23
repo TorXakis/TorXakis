@@ -56,7 +56,7 @@ type  IOC  = StateT EnvC IO
 
 data EnvC = EnvC
   { config :: Config           -- ^ Core configuration.
-  , unid   :: Id              -- ^ Last used unique number.
+  , unid   :: Id               -- ^ Last used unique number.
   , params :: ParamCore.Params
   , state  :: CoreState        -- ^ State specific information.
   }

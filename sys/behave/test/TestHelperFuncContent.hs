@@ -22,6 +22,7 @@ import           CstrId
 import           FreeMonoidX
 import           FuncDef
 import           FuncId
+import           Id
 import           ProcId
 import           Sigs
 import           SortDef
@@ -49,7 +50,7 @@ stringSortName = "String"
 regexSortName :: String
 regexSortName = "Regex"
 
-dontCareUnid :: Int
+dontCareUnid :: Id
 dontCareUnid = 0
 
 dontCareName :: String
@@ -186,7 +187,7 @@ instance Eq FuncContent where
 instance SortOf FuncContent where
     sortOf f = sortOf (vexpr f)
 
-toTorXakisDefs :: (Int, TxsDefs, Sigs VarId) -> TxsDefs
+toTorXakisDefs :: (Id, TxsDefs, Sigs VarId) -> TxsDefs
 toTorXakisDefs (_, b, _) = b
 
 parseTorXakis :: String -> TxsDefs

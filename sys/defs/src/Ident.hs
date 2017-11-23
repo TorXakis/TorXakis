@@ -42,7 +42,7 @@ data Ident = IdSort   SortId
            | IdGoal   GoalId
            | IdMapper MapperId
            | IdCnect  CnectId
-  deriving (Eq,Ord,Read,Show, Generic)
+  deriving (Eq, Ord, Read, Show, Generic)
 
 instance Identifiable Ident
 
@@ -80,18 +80,7 @@ name (IdCnect i)  = CnectId.name i
 
 unid :: Ident -> Int
 -- For now we have to be optimistic about this check. Once we're able to
--- compute at the type level which one of the terms of the product is
--- @Identifiable@ we can get rid of this.
-unid i = fromJust undefined _id (getId i)
--- unid (IdSort i)   = SortId.unid i
--- unid (IdCstr i)   = CstrId.unid i
--- unid (IdFunc i)   = FuncId.unid i
--- unid (IdProc i)   = ProcId.unid i
--- unid (IdChan i)   = ChanId.unid i
--- unid (IdVar i)    = VarId.unid i
--- unid (IdStat i)   = StatId.unid i
--- unid (IdModel i)  = ModelId.unid i
--- unid (IdPurp i)   = PurpId.unid i
--- unid (IdGoal i)   = GoalId.unid i
--- unid (IdMapper i) = MapperId.unid i
--- unid (IdCnect i)  = CnectId.unid i
+-- compute at the type level which terms of the product are @Identifiable@ we
+-- can get rid of this.
+unid i = _id $ fromMaybe err (getId i)
+    where err = error $ "No Id found in " ++ show i

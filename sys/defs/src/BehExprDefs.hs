@@ -94,6 +94,6 @@ instance Resettable Trans
 -- * Functions on behavior expressions.
 
 -- | Equality modulo unique id's. Compare two behavior expressions for equality
--- ignoring the differences in unique identifiers.
+-- ignoring the differences in identifiers.
 (~~) :: BExpr -> BExpr -> Bool
 be0 ~~ be1 = reset be0 == reset be1
