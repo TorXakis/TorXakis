@@ -16,15 +16,15 @@ import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
 
+import           Id
 import           Name
 import           ProcId
 
-data StatId         = StatId    { name   :: Name
-                                , unid   :: Int
-                                , procid :: ProcId
-                                }
-     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
+data StatId = StatId
+    { name   :: Name
+    , unid   :: Id
+    , procid :: ProcId
+    } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+instance Resettable StatId
+instance Identifiable StatId

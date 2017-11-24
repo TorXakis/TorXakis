@@ -15,6 +15,7 @@ import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
 import           CstrId
+import           Id
 import           SortId
 
 -- | Union of Boolean, Integer, String, and AlgebraicDataType constant values.
@@ -28,3 +29,5 @@ data Const = Cbool    { cBool :: Bool }
            | Cerror   { msg :: String }
            | Cany     { sort :: SortId }
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance Resettable Const

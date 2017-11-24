@@ -54,6 +54,7 @@ import           XmlFormat
 import           ConstDefs
 import           FuncDef
 import           FuncId
+import           Id
 import           ValExpr             hiding (eval)
 import           Variable
 
@@ -186,7 +187,7 @@ eval (view -> Vpredef kd fid vexps) =
                              ((_,vexp'),e) <- lift $ catch
                                 ( let p = TxsHappy.vexprParser ( TxsAlex.Csigs   sigs
                                                                : TxsAlex.Cvarenv []
-                                                               : TxsAlex.Cunid (uid + 1)
+                                                               : TxsAlex.Cunid (_id uid + 1)
                                                                : TxsAlex.txsLexer (T.unpack s)
                                                                )
                                    in return $! show p `deepseq` (p,"")

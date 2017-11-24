@@ -49,8 +49,8 @@ import           TxsDefs
 import           TxsUtils
 import           Utils
 import           ValExpr
-import           VarId
 import           Variable
+import           VarId
 
 -- | transfer tuple containing an either to an either containing a tuple
 toEitherTuple :: (a, Either String b) -> Either String (a,b)

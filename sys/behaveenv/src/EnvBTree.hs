@@ -38,6 +38,7 @@ import qualified ParamCore
 -- import from defs
 import           FuncDef
 import           FuncId
+import           Id
 import qualified Sigs
 import           TxsDefs
 import           VarId
@@ -49,13 +50,13 @@ import qualified SMTData
 -- are necessary in BTree manipulation
 type IOB a = StateT EnvB IO a
 
-data EnvB = EnvB { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                 , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
+data EnvB = EnvB { smts    :: Map.Map String SMTData.SmtEnv -- ^ Named smt solver envs
+                 , tdefs   :: TxsDefs.TxsDefs               -- ^ TorXakis definitions
                  , sigs    :: Sigs.Sigs VarId
-                 , stateid :: EnvData.StateNr               -- current beh statenr
-                 , params  :: ParamCore.Params              -- parameters
-                 , unid    :: Int                           -- last used unique number
-                 , msgs    :: [EnvData.Msg]                 -- (error) reporting
+                 , stateid :: EnvData.StateNr               -- ^ Current beh statenr
+                 , params  :: ParamCore.Params              -- ^ Parameters
+                 , unid    :: Id                            -- ^ Last used unique number
+                 , msgs    :: [EnvData.Msg]                 -- ^ (error) reporting
                  }
 
 -- | Get the SMT solver.

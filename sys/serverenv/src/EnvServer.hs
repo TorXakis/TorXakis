@@ -38,25 +38,26 @@ module EnvServer
 
 where
 
-import System.IO
-import Network
-import Control.Monad.State
-import Control.Concurrent
+import           Control.Concurrent
+import           Control.Monad.State
+import           Network
+import           System.IO
 
-import qualified Data.Map  as Map
+import qualified Data.Map            as Map
 
 -- import from local
-import ParamServer
+import           ParamServer
 
 -- import from coreenv
-import qualified EnvCore    as IOC
+import qualified EnvCore             as IOC
 
 -- import from defs
-import qualified TxsDefs
-import qualified TxsDDefs
 import qualified Sigs
+import qualified TxsDDefs
+import qualified TxsDefs
 
 -- import from valexpr
+import           Id
 import qualified VarId
 -- ----------------------------------------------------------------------------------------- --
 -- IOS :  torxakis server main state monad transformer
@@ -73,16 +74,16 @@ data EnvS  = EnvS { host    :: String                    -- ^ host of server cli
                     , portNr  :: PortNumber                -- ^ port number of server client
                     , servhs  :: Handle                    -- ^ server socket handle
                     , modus   :: TxsModus                  -- ^ current modus of TXS operation
-                    , uid     :: Int                       -- ^ last used unique id number
+                    , uid     :: Id                       -- ^ last used unique id number
                     , tdefs   :: TxsDefs.TxsDefs           -- ^ TorXakis definitions from file
                     , sigs    :: Sigs.Sigs VarId.VarId   -- ^ Signatures contained in TorXakis files
                     , locvars :: [VarId.VarId]           -- ^ local free variables
                     , locvals :: TxsDefs.VEnv              -- ^ local value environment
-                    , tow     :: ( Maybe (Chan TxsDDefs.SAction)   
-                                 , Maybe ThreadId        
+                    , tow     :: ( Maybe (Chan TxsDDefs.SAction)
+                                 , Maybe ThreadId
                                  , [TxsDDefs.ConnHandle]
                                  )                         -- ^ connections to world
-                    , frow    :: ( Maybe (Chan TxsDDefs.SAction)   
+                    , frow    :: ( Maybe (Chan TxsDDefs.SAction)
                                  , [ThreadId]
                                  , [TxsDDefs.ConnHandle]
                                  )                         -- ^ connections from world
@@ -121,18 +122,18 @@ isNoned, isIdled, isInited        :: TxsModus -> Bool
 isTested, isSimuled, isStepped    :: TxsModus -> Bool
 isGtNoned, isGtIdled, isGtInited  :: TxsModus -> Bool
 
-isNoned Noned            = True
-isNoned _                = False
-isIdled Idled            = True
-isIdled _                = False
-isInited Inited          = True
-isInited _               = False
-isTested  (Tested _)     = True
-isTested  _              = False
-isSimuled (Simuled _)    = True
-isSimuled _              = False
-isStepped Stepped        = True
-isStepped _              = False
+isNoned Noned = True
+isNoned _     = False
+isIdled Idled = True
+isIdled _     = False
+isInited Inited = True
+isInited _      = False
+isTested  (Tested _) = True
+isTested  _          = False
+isSimuled (Simuled _) = True
+isSimuled _           = False
+isStepped Stepped = True
+isStepped _       = False
 
 isGtNoned  m             = not (isNoned m)
 isGtIdled  m             = isGtNoned m && not (isIdled m)
@@ -219,8 +220,3 @@ takeMsgs = do
      return $ map TxsShow.pshow msgs'
 
 -}
-
-
--- ----------------------------------------------------------------------------------------- --
--- 
--- ----------------------------------------------------------------------------------------- --

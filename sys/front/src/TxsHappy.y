@@ -63,6 +63,7 @@ import TxsShow                          -- pretty pshow for error messages
 import StdTDefs                         -- predefined, standard Txs data types
 import qualified Sigs
 import ValExpr
+import Id
 }
 
 
@@ -86,8 +87,8 @@ import ValExpr
 %attributetype           { Attrs a v }
 %attribute parseVal      { a }                       -- synthesized: parsed value
 
-%attribute inhNodeUid    { Int }                     -- unique id for each nonterminal
-%attribute synMaxUid     { Int }                     -- last unique id for subtree
+%attribute inhNodeUid    { Id }                     -- unique id for each nonterminal
+%attribute synMaxUid     { Id }                     -- last unique id for subtree
 
 %attribute synSigs       { (Sigs.Sigs VarId) }                    -- defined Sigs for collection
 %attribute inhSigs       { (Sigs.Sigs VarId) }                    -- defined Sigs for usage
@@ -553,7 +554,7 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                 -- mirroring : -
                 -- constrs   : all used sorts shall be defined
               : capid FieldList
-                {  $2.inhNodeUid   = $$.inhNodeUid + 2*(length $2) + 3
+                {  $2.inhNodeUid   = $$.inhNodeUid + Id (2 * (length $2)) + 3
                 ;  $$.synMaxUid    = $2.synMaxUid
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $$.synSigs = let { cas = map snd $2
@@ -571,7 +572,7 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                             ; x =  VarId "x" ($$.inhNodeUid+2) $$.inhDefgSort
                             ; fs = [ let y = VarId "y" vid $$.inhDefgSort in
                                     (IdFunc (FuncId nm uid [$$.inhDefgSort] s), DefFunc (FuncDef [y] (cstrAccess cid pos (cstrVar y))))
-                                   | ((nm,s), pos, uid, vid) <- List.zip4 $2 [0..] [($$.inhNodeUid + 3)..] [($$.inhNodeUid +3 + length $2)..] 
+                                   | ((nm,s), pos, uid, vid) <- List.zip4 $2 [0..] [($$.inhNodeUid + 3)..] [($$.inhNodeUid +3 + Id (length $2))..] 
                                    ]
                             }
                             in [ ( IdCstr cid, DefCstr (CstrDef cfid (map (\(IdFunc f,_) -> f) fs) ) ) 
@@ -698,7 +699,7 @@ ExFuncDef       -- :: { ( Int, TxsDef ) }
                 -- constrs   : defined function shall have unique function name 
               : SIGS UNID FuncDef
                 { $3.inhSigs      = $1
-                ; $3.inhNodeUid   = $2
+                ; $3.inhNodeUid   = Id $2
                 ; $$ = ( $3.synMaxUid, TxsDefs.fromList [$3] )
                 }
                 
@@ -801,7 +802,7 @@ ExConstDef      -- :: { ( Int, TxsDef ) }
                 -- constrs   : defined constant shall have unique function name
               : SIGS UNID ConstDef
                 {  $3.inhSigs      = $1
-                ;  $3.inhNodeUid   = $2
+                ;  $3.inhNodeUid   = Id $2
                 ;  $$ = ( $3.synMaxUid, TxsDefs.fromList $3 )
                 }
 
@@ -1662,7 +1663,7 @@ ExChannelDecls  -- :: { ( Int, [ChanId] ) }
                 --           : $$: [VEnv]: locally defined value definitions
               : SIGS UNID ChannelDecls
                 {  $3.inhSigs      = $1
-                ;  $3.inhNodeUid   = $2
+                ;  $3.inhNodeUid   = Id $2
                 ;  $$ = ( $3.synMaxUid, $3 )
                 }
 
@@ -1674,11 +1675,11 @@ ChannelDecls    -- :: { [ChanId] }
                 -- mirroring : -
                 -- constrs   : used sorts shall be defined
               : NeIdList
-                {  $$.synMaxUid    = $$.inhNodeUid + (length $1)
+                {  $$.synMaxUid    = $$.inhNodeUid + Id (length $1)
                 ;  $$ = [ ChanId nm uid [] | (nm,uid) <- zip $1 [$$.inhNodeUid..] ]
                 }
               | NeIdList "::" NeOfSorts
-                {  $3.inhNodeUid   = $$.inhNodeUid + (length $1)
+                {  $3.inhNodeUid   = $$.inhNodeUid + Id (length $1)
                 ;  $$.synMaxUid    = $3.synMaxUid
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $$ = [ ChanId nm uid $3 | (nm,uid) <- zip $1 [$$.inhNodeUid..] ]
@@ -1715,7 +1716,7 @@ ExVarDeclList   -- :: { ( Int, [VarId] ) }
                 --           : $$: [VEnv]: locally defined value definitions
               : SIGS UNID VarDeclList
                 {  $3.inhSigs      = $1
-                ;  $3.inhNodeUid   = $2
+                ;  $3.inhNodeUid   = Id $2
                 ;  $$ = ( $3.synMaxUid, $3 )
                 }
 
@@ -1749,7 +1750,7 @@ VarDecls        -- :: { [VarId] }
                 -- mirroring : -
                 -- constrs   : used sorts shall be defined
               : NeSmallIdList OfSort
-                {  $2.inhNodeUid   = $$.inhNodeUid + (length $1)
+                {  $2.inhNodeUid   = $$.inhNodeUid + Id (length $1)
                 ;  $$.synMaxUid    = $2.synMaxUid
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $$ = [ VarId nm uid $2 | (nm,uid) <- zip $1 [$$.inhNodeUid..] ]
@@ -1781,7 +1782,7 @@ ExBehaviourExpr -- :: { ( Int, BExpr ) }
                 {  $5.inhSigs      = $1
                 ;  $5.inhChanSigs  = $2
                 ;  $5.inhVarSigs   = $3
-                ;  $5.inhNodeUid   = $4
+                ;  $5.inhNodeUid   = Id $4
                 ;  $$ = ( $5.synMaxUid, $5 )
                 }
 
@@ -2286,7 +2287,7 @@ ExPrefOfferList -- :: { ( Int, Set.Set Offer ) }
                 {  $5.inhSigs      = $1
                 ;  $5.inhChanSigs  = $2
                 ;  $5.inhVarSigs   = $3
-                ;  $5.inhNodeUid   = $4
+                ;  $5.inhNodeUid   = Id $4
                 ;  $$ = ( $5.synMaxUid, $5 )
                 }
 
@@ -2627,7 +2628,7 @@ ExValExpr       -- :: { ( Int, VExpr ) }
                 {  $4.inhSigs      = $1
                 ;  $4.inhVarSigs   = $2
                 ;  $4.inhSolvSort  = Nothing
-                ;  $4.inhNodeUid   = $3
+                ;  $4.inhNodeUid   = Id $3
                 ;  $$ = ( $4.synMaxUid, $4 )
                 }
 
@@ -3124,7 +3125,7 @@ ExNeValueDefs   -- :: { ( Int, VEnv ) }
               : SIGS VARENV UNID NeValueDefs
                 {  $4.inhSigs      = $1
                 ;  $4.inhVarSigs   = $2
-                ;  $4.inhNodeUid   = $3
+                ;  $4.inhNodeUid   = Id $3
                 ;  $$ = ( $4.synMaxUid, $4 )
                 }
 
@@ -3542,7 +3543,7 @@ StateItem       -- :: { [StatId] }
                 -- mirroring : -
                 -- constrs   : all defined states shall be unique
               : STATE NeIdList
-                {  $$.synMaxUid    = $$.inhNodeUid + (length $2)
+                {  $$.synMaxUid    = $$.inhNodeUid + Id (length $2)
                 ;  $$.synStateSigs = [ StatId nm uid pid
                                      | (nm,uid) <- zip $2 [$$.inhNodeUid ..]
                                      , pid <- Sigs.pro $$.inhSigs
