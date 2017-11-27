@@ -9,6 +9,10 @@ module TestLPE
 testLPEList
 )
 where
+
+import LPE
+import TranslatedProcDefs
+
 import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -22,9 +26,6 @@ import qualified Data.Text         as T
 import VarId
 import ConstDefs
 import ValExpr
-
-import LPE
-import TranslatedProcDefs
 
 ---------------------------------------------------------------------------
 -- Helper functions
@@ -805,6 +806,114 @@ testChannelInstantiation = TestCase $
 
 
 
+-- -------------------------------------------------
+-- LPEPar integration (it's called at preGNF level)
+-- -------------------------------------------------
+
+-- test parallel bexpr at lower level
+-- P[A]() := A?x >-> (A!x >-> STOP || A!x >-> STOP)
+-- with ProcInst P[A]()
+-- first preGNF
+-- P[A]() := A?x >-> P$pre1[A](x)
+-- P$pre1[A](x) := A!x >-> STOP || A!x >-> STOP
+-- then parallel translation:
+-- P$pre1[A](op1$pc$P$pre1$op1, op1$P$pre1$x, op2$pc$P$pre1$op2, op2$P$pre1$x) :=
+--   A?A1 [op1$pc$P$pre1$op1 == 0, op2$pc$P$pre1$op2 == 0,
+--         A1 == op1$P$pre1$x, A1 == op2$P$pre1$x] >->  P$pre1[A](-1, ANY, -1, ANY)
+--  with P$pre1[A](0, x, 0, x) // which is put into P[A]() !!!
+
+-- LPE of P becomes:
+-- P[A](pc$P, P$pre1$A$op1$pc$P$pre1$op1, P$pre1$A$op1$P$pre1$op1$A$x, P$pre1$A$op2$pc$P$pre1$op2, P$pre1$A$op2$P$pre1$op2$A$x) :=
+--    A?A1 [pc$P == 0] >-> P[A](1, x, 0, x, 0)
+-- ## A?A1 [pc$P == 1,
+--          P$pre1$A$op1$pc$P$pre1$op1 == 0, P$pre1$A$op2$pc$P$pre1$op2 == 0,
+--          A1 == P$pre1$A$op1$P$pre1$x, A1 == P$pre1$A$op2$P$pre1$x] >->  P$pre1[A](1, -1, ANY, -1, ANY)
+--    // note that pc$P is set to 1, but the pc=1 for each operand makes sure, the STOP is translated correctly
+-- resulting ProcInst is put in the original place in preGNF!!
+-- with ProcInst: P[A](0, ANY, ANY, ANY, ANY)
+
+-- description of the param names:
+    --  P$pre1$A$ op1$  P$pre1$op1$A$x
+    --                  name after LPE of left operator: temporary ProcId = P$pre1$op1!
+    --                  full process name + var name
+    --            made unique during parallel translation: prefix of operator nr
+    --  name after LPE of temporary procDef P$pre1$A
+
+testLPEPar :: Test
+testLPEPar = TestCase $
+   assertEqual "test LPEPar integration"  (Just (procInst', procDefP')) (lpeTransform procInst procDefs)
+   where
+      procInst = ProcInst procIdP [chanIdA] []
+      procIdP = procIdGen "P" [chanIdA] []
+
+      procDefP = ProcDef [chanIdA] [] (
+            ActionPref actOfferAx (
+                Parallel [chanIdA] [
+                    ActionPref actOfferAExclamX Stop,
+                    ActionPref actOfferAExclamX Stop
+                  ]
+                ))
+      procDefs = Map.fromList  [  (procIdP, procDefP)]
+
+      -- pc$P, P$pre1$A$op1$pc$P$pre1$op1, P$pre1$A$op1$P$pre1$x, P$pre1$A$op2$pc$P$pre1$op2, P$pre1$A$op2$P$pre1$x) :=
+      varIdpcP = VarId (T.pack "pc$P") 0 intSort
+      varIdOp1pc = VarId (T.pack "P$pre1$A$op1$pc$P$pre1$op1") 0 intSort
+
+      varIdOp1x = VarId (T.pack "P$pre1$A$op1$P$pre1$op1$A$x") 33 intSort
+
+
+      varIdOp2pc = VarId (T.pack "P$pre1$A$op2$pc$P$pre1$op2") 0 intSort
+      varIdOp2x = VarId (T.pack "P$pre1$A$op2$P$pre1$op2$A$x") 33 intSort
+
+      vexprpcP = cstrVar varIdpcP
+      vexprOp1pc = cstrVar varIdOp1pc
+      vexprOp1x = cstrVar varIdOp1x
+      vexprOp2pc = cstrVar varIdOp2pc
+      vexprOp2x = cstrVar varIdOp2x
+
+      procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP, varIdOp1pc, varIdOp1x, varIdOp2pc, varIdOp2x]
+      procDefP' = ProcDef [chanIdA] [varIdpcP, varIdOp1pc, varIdOp1x, varIdOp2pc, varIdOp2x] (
+                    Choice [
+                        --    A?A1 [pc$P == 0] >-> P[A](1, x, 0, x, 0)
+                        (ActionPref
+                          ActOffer {  offers = Set.singleton(
+                                                    Offer { chanid = chanIdA
+                                                          , chanoffers = [Quest varIdA1]
+                                                    })
+                                                , constraint =  cstrEqual vexprpcP int0
+                                    }
+                          (ProcInst procIdP' [chanIdA] [int1, int0, vexprA1, int0, vexprA1]))
+                          -- ## A?A1 [pc$P == 1,
+                          --          P$pre1$A$op1$pc$P$pre1$op1 == 0, P$pre1$A$op2$pc$P$pre1$op2 == 0,
+                          --          A1 == P$pre1$A$op1$P$pre1$x, A1 == P$pre1$A$op2$P$pre1$x] >->  P$pre1[A](-1, -1, ANY, -1, ANY)
+                          , (ActionPref
+                          ActOffer {  offers = Set.singleton(
+                                                    Offer { chanid = chanIdA
+                                                          , chanoffers = [Quest varIdA1]
+                                                    })
+                                                , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprpcP int1
+                                                                                      , cstrEqual vexprOp1pc int0
+                                                                                      , cstrEqual vexprA1 vexprOp1x
+                                                                                      , cstrEqual vexprOp2pc int0
+                                                                                      , cstrEqual vexprA1 vexprOp2x
+                                                                ])
+
+
+                                    }
+                          (ProcInst procIdP' [chanIdA] [int1, vexprMin1, anyInt, vexprMin1, anyInt]))])
+
+      procInst' = ProcInst procIdP' [chanIdA] [int0, anyInt, anyInt, anyInt, anyInt]
+
+
+-- -------------------------------------------------
+-- test parallel nesting
+-- e.g. P[A]() := Q[A]() || Q[B]()
+-- Q[A]() := A >-> STOP || A >-> STOP
+-- -------------------------------------------------
+
+
+
+
 ----------------------------------------------------------------------------------------
 -- List of Tests
 ----------------------------------------------------------------------------------------
@@ -823,4 +932,6 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
                         , TestLabel "switching channels" testChannelSwitch
                         , TestLabel "multi action" testMultiAction
                         , TestLabel "channel instantiation not for top-level ProcInst" testChannelInstantiation
+
+                        , TestLabel "lpePar integration" testLPEPar
                         ]

@@ -13,7 +13,6 @@ where
 import ProcId
 
 
-
 -- | TranslatedProcDefs
 -- keeping track of already translated ProcDefs to avoid double work and loops
 data TranslatedProcDefs = TranslatedProcDefs
@@ -21,3 +20,7 @@ data TranslatedProcDefs = TranslatedProcDefs
   , lGNF     :: [ProcId]
   , lLPE     :: [ProcId]
   } deriving (Eq, Ord, Read, Show)
+
+emptyTranslatedProcDefs = TranslatedProcDefs { TranslatedProcDefs.lPreGNF = []
+                                             , TranslatedProcDefs.lGNF = []
+                                             , TranslatedProcDefs.lLPE = [] }

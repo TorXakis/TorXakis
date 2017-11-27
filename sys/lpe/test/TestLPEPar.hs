@@ -9,6 +9,10 @@ module TestLPEPar
 testLPEParList
 )
 where
+
+import LPE
+import TranslatedProcDefs
+
 import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -22,9 +26,6 @@ import qualified Data.Text         as T
 import VarId
 import ConstDefs
 import ValExpr
-
-import LPEPar
-import TranslatedProcDefs
 
 type ProcDefs = Map.Map TxsDefs.ProcId TxsDefs.ProcDef
 
@@ -42,10 +43,6 @@ lpeParTestWrapper procInst translatedProcDefs procDefs =
   (procInst', procDef')
 
 
-
-emptyTranslatedProcDefs = TranslatedProcDefs { TranslatedProcDefs.lPreGNF = []
-                                             , TranslatedProcDefs.lGNF = []
-                                             , TranslatedProcDefs.lLPE = [] }
 
 procIdGen :: String -> [ChanId] -> [VarId] -> ProcId
 procIdGen name chans vars = ProcId   {    ProcId.name       = T.pack name
@@ -86,29 +83,6 @@ actOfferA   = ActOffer {  offers = Set.singleton(
                         , constraint = cstrConst (Cbool True)
             }
 
--- -- action: A!1
--- actOfferA1   = ActOffer {  offers = Set.singleton(
---                                         Offer { chanid = chanIdA
---                                               , chanoffers = [Exclam vexpr1]
---                                         })
---                         , constraint = cstrConst (Cbool True)
---             }
---
--- -- action: A?x
--- actOfferAx   = ActOffer {  offers = Set.singleton(
---                                         Offer { chanid = chanIdA
---                                               , chanoffers = [Quest varIdX]
---                                         })
---                         , constraint = cstrConst (Cbool True)
---             }
--- -- action: A!x
--- actOfferAExclamX   = ActOffer {  offers = Set.singleton(
---                                         Offer { chanid = chanIdA
---                                               , chanoffers = [Exclam vexprX]
---                                         })
---                         , constraint = cstrConst (Cbool True)
---             }
-
 -- action: B    // no chanoffers!
 actOfferB   = ActOffer {  offers = Set.singleton(
                                         Offer { chanid = chanIdB
@@ -117,22 +91,6 @@ actOfferB   = ActOffer {  offers = Set.singleton(
                         , constraint = cstrConst (Cbool True)
             }
 
--- -- action: B!1
--- actOfferB1   = ActOffer {  offers = Set.singleton(
---                                         Offer { chanid = chanIdB
---                                               , chanoffers = [Exclam vexpr1]
---                                         })
---                         , constraint = cstrConst (Cbool True)
---             }
---
--- -- action: B?x
--- actOfferBx   = ActOffer {  offers = Set.singleton(
---                                         Offer { chanid = chanIdB
---                                               , chanoffers = [Quest varIdX]
---                                         })
---                         , constraint = cstrConst (Cbool True)
---             }
---
 
 
 -- action: A|B    // no chanoffers!

@@ -9,6 +9,10 @@ module TestPreGNF
 testPreGNFList
 )
 where
+
+import LPE
+import TranslatedProcDefs
+
 import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
@@ -23,9 +27,6 @@ import qualified Data.Text         as T
 import ConstDefs
 import ValExpr
 
-import PreGNF
-import TranslatedProcDefs
-
 ---------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------
@@ -37,10 +38,6 @@ procIdGen name chans vars = ProcId   {    ProcId.name       = T.pack name
                                         , ProcId.procvars   = vars
                                         , ProcId.procexit   = NoExit
                                     }
-
-emptyTranslatedProcDefs = TranslatedProcDefs { TranslatedProcDefs.lPreGNF = []
-                                             , TranslatedProcDefs.lGNF = []
-                                             , TranslatedProcDefs.lLPE = [] }
 
 varIdX = VarId (T.pack "x") 33 intSort
 varIdY = VarId (T.pack "y") 34 intSort

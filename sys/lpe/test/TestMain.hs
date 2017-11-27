@@ -12,7 +12,6 @@ import TestPreGNF
 import TestGNF
 import TestLPE
 import TestLPEPar
-import TestLPEHelpers
 
 testList :: Test
 testList = TestList
@@ -20,7 +19,6 @@ testList = TestList
        , TestLabel "GNF"             testGNFList
        , TestLabel "LPE"             testLPEList
        , TestLabel "LPEPar"          testLPEParList
-       , TestLabel "LPEHelpers"      testLPEHelpersList
     ]
 
 main :: IO ()

@@ -14,13 +14,9 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      PreGNF
-                      , GNF
-                      , LPE
-                      , LPEPar
+  exposed-modules:    LPE
 
-  other-modules:        LPEHelpers
-                      , TranslatedProcDefs
+  other-modules:      TranslatedProcDefs
 
   ghc-options:        -Werror -O2 -optc-O3 -optc-ffast-math
 
@@ -43,19 +39,11 @@ test-suite lpe-test
   main-is:              TestMain.hs
 
   other-modules:        TestPreGNF
-                      , PreGNF
                       , TestGNF
-                      , GNF
                       , TestLPE
                       , LPE
-                      , LPEPar
                       , TestLPEPar
-                      , TestLPEHelpers
-                      , LPEHelpers
-
                       , TranslatedProcDefs
-
-
 
   ghc-options:       -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
 
