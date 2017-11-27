@@ -24,6 +24,7 @@ import TxsDefs
 import qualified TxsUtils
 import LPEHelpers
 import GNF
+import ConstDefs
 
 import ProcId
 import ChanId
@@ -36,6 +37,7 @@ import qualified Data.Text         as T
 
 import Expand (relabel)
 import Subst
+import ValExpr
 
 import TranslatedProcDefs
 
@@ -263,7 +265,8 @@ lpeBExpr chanMap paramMap varIdPC pcValue Stop = Stop
 lpeBExpr chanMap paramMap varIdPC pcValue bexpr =
     let -- instantiate the bexpr
         bexprRelabeled = relabel chanMap bexpr
-        bexprSubstituted = Subst.subst paramMap bexprRelabeled
+        -- TODO: properly initialise funcDefs param of subst
+        bexprSubstituted = Subst.subst paramMap (Map.fromList []) bexprRelabeled
 
         -- decompose bexpr, bexpr' can be STOP or ProcInst (distinction later)
         ActionPref actOffer bexpr' = bexprSubstituted
@@ -275,7 +278,8 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr =
 
         varMap' = Map.fromList $ map (\(f,s) -> (f, cstrVar s)) varMap
 
-        constraintOfOffer' = Subst.subst varMap' constraintOfOffer
+        -- TODO: properly initialise funcDefs param of subst
+        constraintOfOffer' = Subst.subst varMap' (Map.fromList []) constraintOfOffer
         constraintPC = cstrEqual (cstrVar varIdPC) (cstrConst (Cint pcValue))
         constraint' = cstrAnd $ Set.fromList (constraintPC : constraintOfOffer' : constraints')
 
@@ -285,7 +289,8 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr =
 
         bexpr'' = case bexpr' of
                     Stop -> Stop
-                    procInst -> Subst.subst varMap' procInst
+                    -- TODO: properly initialise funcDefs param of subst
+                    procInst -> Subst.subst varMap' (Map.fromList []) procInst
         in
     (ActionPref actOffer' bexpr'')
 

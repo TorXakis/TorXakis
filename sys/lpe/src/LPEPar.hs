@@ -29,6 +29,7 @@ import VarId
 import BehExprDefs
 import SortId
 import StdTDefs (stdSortTable)
+import ValExpr
 
 import qualified Data.Text         as T
 
@@ -183,7 +184,8 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
             -- TODO: create new unids as well!
             paramsDefPrefixed = map (prefixVarId prefix) paramsDef
             paramMap = Map.fromList $ zip paramsDef (map cstrVar paramsDefPrefixed)
-            bexpr'' = Subst.subst paramMap bexpr' in
+            -- TODO: properly initialise funcDefs param of subst
+            bexpr'' = Subst.subst paramMap (Map.fromList []) bexpr' in
         (opNr+1, stepsOpParams ++ [((extractSteps bexpr''), paramsDefPrefixed)], paramsInsts ++ paramsInstLPE, procDefs'')
           where
             prefixVarId :: String -> VarId -> VarId

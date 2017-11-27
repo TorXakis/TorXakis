@@ -10,7 +10,7 @@ See LICENSE at root directory of this repository.
 module GNF
 ( gnf )
 
--- ----------------------------------------------------------------------------------------- --
+-- -----------------©------------------------------------------------------------------------ --
 -- import
 
 where
@@ -128,7 +128,8 @@ gnfBExpr bexpr choiceCnt procId translatedProcDefs procDefs =
                                                             bexprRelabeled = relabel chanmap bexprDef -- trace ("chanmap: " ++ show chanmap) relabel chanmap bexprProcDef
                                                             -- substitute params
                                                             parammap = Map.fromList (zip paramsDef paramsInst)
-                                                            bexprSubstituted = Subst.subst parammap bexprRelabeled in
+                                                            -- TODO: initialise funcDefs param properly
+                                                            bexprSubstituted = Subst.subst parammap (Map.fromList []) bexprRelabeled in
                                                             (extractSteps bexprSubstituted, procDefs')
 
 

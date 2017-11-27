@@ -18,7 +18,10 @@ import TxsShow
 import ProcId
 import ChanId
 import SortId
+import VarId
 import qualified Data.Text         as T
+import ConstDefs
+import ValExpr
 
 import PreGNF
 import TranslatedProcDefs

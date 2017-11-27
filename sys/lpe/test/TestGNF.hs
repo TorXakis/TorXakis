@@ -19,6 +19,9 @@ import ProcId
 import ChanId
 import SortId
 import qualified Data.Text         as T
+import VarId
+import ConstDefs
+import ValExpr
 
 import GNF
 import TranslatedProcDefs
