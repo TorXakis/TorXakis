@@ -51,7 +51,7 @@ before_build:
 - ps: $env:CACHE_DIR_REL = $CACHE_DIR_REL
 
 build_script:
-- stack install --pedantic --install-ghc --test --fast --no-terminal --stack-root %STACK_ROOT%
+- stack install --pedantic --install-ghc --test --no-terminal --stack-root %STACK_ROOT%
 
 # after_build:
 # -
