@@ -11,11 +11,11 @@ where
 
 import           Control.DeepSeq
 import           Data.Data
-import qualified Data.Map        as Map
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
 import           CstrId
+import           Id
 import           SortId
 
 -- | Union of Boolean, Integer, String, and AlgebraicDataType constant values.
@@ -30,4 +30,4 @@ data Const = Cbool    { cBool :: Bool }
            | Cany     { sort :: SortId }
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-type WEnv v = Map.Map v Const
+instance Resettable Const

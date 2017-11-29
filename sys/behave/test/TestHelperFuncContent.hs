@@ -16,15 +16,24 @@ import qualified Data.Text         as T
 import           Data.Tuple        (fst, snd)
 
 import           ChanId
+import           ConstDefs
+import           CstrDef
+import           CstrId
 import           FreeMonoidX
+import           FuncDef
+import           FuncId
+import           Id
 import           ProcId
 import           Sigs
+import           SortDef
 import           SortId
 import           StdTDefs
 import           TxsAlex
 import           TxsDefs           hiding (vexpr)
 import           TxsHappy
 import           TxsShow
+import           ValExpr
+import           VarId
 
 ---------------------------------------------------------------------------
 -- Helper Functions
@@ -41,7 +50,7 @@ stringSortName = "String"
 regexSortName :: String
 regexSortName = "Regex"
 
-dontCareUnid :: Int
+dontCareUnid :: Id
 dontCareUnid = 0
 
 dontCareName :: String
@@ -178,7 +187,7 @@ instance Eq FuncContent where
 instance SortOf FuncContent where
     sortOf f = sortOf (vexpr f)
 
-toTorXakisDefs :: (Int, TxsDefs, Sigs VarId) -> TxsDefs
+toTorXakisDefs :: (Id, TxsDefs, Sigs VarId) -> TxsDefs
 toTorXakisDefs (_, b, _) = b
 
 parseTorXakis :: String -> TxsDefs
@@ -357,7 +366,7 @@ ite condition thenPart elsePart = FuncContent (cstrITE (vexpr condition) (vexpr 
 
 -- user must assert only variables are used as keys
 subst :: Map.Map FuncContent FuncContent -> FuncContent -> FuncContent
-subst mapFF content = FuncContent (TxsDefs.subst (Map.fromList (map (\(FuncContent (view -> Vvar v), FuncContent y) -> (v,y)) (Map.toList mapFF)))
+subst mapFF content = FuncContent (ValExpr.subst (Map.fromList (map (\(FuncContent (view -> Vvar v), FuncContent y) -> (v,y)) (Map.toList mapFF)))
                                                  (Map.empty :: Map.Map FuncId (FuncDef VarId))
                                                  (vexpr content)
                                   )

@@ -59,6 +59,10 @@ import qualified TxsShow
 import qualified Utils
 import qualified VarId
 
+-- import from valexpr
+import           Id
+import qualified ValExpr
+
 -- import from front
 import qualified TxsAlex
 import qualified TxsHappy
@@ -352,7 +356,7 @@ cmdVar args = do
          ((uid',vars'),e) <- lift $ lift $ catch
                                ( let p = TxsHappy.vardeclsParser
                                            ( TxsAlex.Csigs sigs
-                                           : TxsAlex.Cunid (uid + 1)
+                                           : TxsAlex.Cunid (_id uid + 1)
                                            : TxsAlex.txsLexer args
                                            )
                                   in return $!! (p,"")
@@ -396,7 +400,7 @@ cmdVal args = do
                                ( let p = TxsHappy.valdefsParser
                                            ( TxsAlex.Csigs sigs
                                            : TxsAlex.Cvarenv []
-                                           : TxsAlex.Cunid (uid + 1)
+                                           : TxsAlex.Cunid (_id uid + 1)
                                            : TxsAlex.txsLexer args
                                            )
                                   in return $!! (p,"")
@@ -436,18 +440,18 @@ cmdEval args = do
                            ( let p = TxsHappy.vexprParser
                                         ( TxsAlex.Csigs    sigs
                                         : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-                                        : TxsAlex.Cunid   (uid + 1)
+                                        : TxsAlex.Cunid   (_id uid + 1)
                                         : TxsAlex.txsLexer args
                                         )
                               in return $!! (p,"")
                            )
-                           ( \e -> return ((uid,TxsDefs.cstrError ""), show (e::ErrorCall)))
+                           ( \e -> return ((uid,ValExpr.cstrError "cmdEval parse failed"), show (e::ErrorCall)))
      if  e /= ""
        then do modify $ \env' -> env' { IOS.uid = uid' }
                IFS.nack "EVAL" [ e ]
                cmdsIntpr
        else do modify $ \env' -> env' { IOS.uid = uid' }
-               walue <- lift $ TxsCore.txsEval (TxsDefs.subst vals (TxsDefs.funcDefs tdefs) vexp')
+               walue <- lift $ TxsCore.txsEval (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp')
                IFS.pack "EVAL" [ TxsShow.fshow walue ]
                cmdsIntpr
 
@@ -470,18 +474,18 @@ cmdSolve args kind = do
                            ( let p = TxsHappy.vexprParser
                                        ( TxsAlex.Csigs sigs
                                        : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-                                       : TxsAlex.Cunid (uid + 1)
+                                       : TxsAlex.Cunid (_id uid + 1)
                                        : TxsAlex.txsLexer args
                                        )
                               in return $!! (p,"")
                            )
-                           ( \e -> return ((uid,TxsDefs.cstrError ""),show (e::ErrorCall)))
+                           ( \e -> return ((uid,ValExpr.cstrError "cmdSolve parse failed."),show (e::ErrorCall)))
      if  e /= ""
        then do modify $ \env' -> env' { IOS.uid = uid' }
                IFS.nack cmd [ e ]
                cmdsIntpr
        else do modify $ \env' -> env' { IOS.uid = uid' }
-               sols  <- lift $ solver (TxsDefs.subst vals (TxsDefs.funcDefs tdefs) vexp')
+               sols  <- lift $ solver (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp')
                IFS.pack cmd [ TxsShow.fshow sols ]
                cmdsIntpr
 
@@ -979,7 +983,7 @@ readAction chids args = do
                                     ( TxsAlex.Csigs    sigs
                                     : TxsAlex.Cchanenv chids
                                     : TxsAlex.Cvarenv  (Map.keys vals)
-                                    : TxsAlex.Cunid    (uid + 1)
+                                    : TxsAlex.Cunid    (_id uid + 1)
                                     : TxsAlex.txsLexer args
                                     )
                               in return $!! (p,"")
@@ -1021,12 +1025,12 @@ readBExpr chids args = do
                                       : TxsAlex.Csigs    sigs
                                       : TxsAlex.Cchanenv chids
                                       : TxsAlex.Cvarenv  (Map.keys vals)
-                                      : TxsAlex.Cunid    (uid + 1)
+                                      : TxsAlex.Cunid    (_id uid + 1)
                                       : TxsAlex.txsLexer args
                                       )
                                in return $!! (p,"")
                             )
-                            ( \e -> return ((uid,TxsDefs.Stop),show (e::ErrorCall)))
+                            ( \e -> return ((uid, TxsDefs.Stop),show (e::ErrorCall)))
      if  e /= ""
        then do IFS.nack "ERROR" [ "incorrect behaviour expression: " ++ e ]
                return TxsDefs.Stop

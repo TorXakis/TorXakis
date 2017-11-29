@@ -8,11 +8,15 @@ See LICENSE at root directory of this repository.
 module HelperFuncDefToSMT
 where
 import qualified Data.Map          as Map
+import           Data.String.Utils
 import           Data.Text         (Text)
 import qualified Data.Text         as T
 
-import           Data.String.Utils
+import           FuncDef
+import           FuncId
 import           HelperVexprToSMT
+import           Id
+import           SortId
 import           TXS2SMT
 import           TxsDefs
 import           VarId
@@ -28,7 +32,7 @@ data  TXS2SMTFuncTest         =  TXS2SMTFuncTest { input    :: TxsDefs
 ---------------------------------------------------------------------------
 
 createFunctionId :: Text -> Int -> [VarId] -> SortId -> FuncId
-createFunctionId n u vs = FuncId  n u (map varsort vs)
+createFunctionId n u vs = FuncId  n (Id u) (map varsort vs)
 
 -- non-recursive function (is mapped on recursive function)
 createFunctionDef :: Map.Map Ident Text -> FuncId -> [VarId] -> SortId -> TXS2SMTVExprTest -> TXS2SMTFuncTest

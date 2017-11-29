@@ -24,8 +24,9 @@ where
 
 import qualified Data.Map  as Map
 
-import TxsDefs
+import ConstDefs
 import TxsShow
+import Variable
 
 
 -- ----------------------------------------------------------------------------------------- --

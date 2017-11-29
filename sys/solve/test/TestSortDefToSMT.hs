@@ -15,6 +15,11 @@ import qualified Data.Map   as Map
 import qualified Data.Text  as T
 import           Test.HUnit
 
+import           CstrDef
+import           CstrId
+import           FuncId
+import           SortDef
+import           SortId
 import           TxsDefs
 
 import           TXS2SMT

@@ -27,8 +27,11 @@ import qualified Data.Text         as T
 
 import           ChanId
 import           CnectId
+import           ConstDefs
+import           CstrDef
 import           CstrId
 import qualified FreeMonoidX       as FMX
+import           FuncDef
 import           FuncId
 import           GoalId
 import           MapperId
@@ -36,10 +39,12 @@ import           ModelId
 import           ProcId
 import           Product
 import           PurpId
+import           SortDef
 import           SortId
 import           StatId
 import           Sum
 import           TxsDefs
+import           ValExpr
 import           VarId
 
 specialOpChars :: String

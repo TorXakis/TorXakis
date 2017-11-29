@@ -41,14 +41,20 @@ import qualified Data.Set      as Set
 import           Data.Text     (Text)
 import qualified Data.Text     as T
 
+import           ConstDefs
+import           CstrDef
 import           CstrId
 import           FreeMonoidX
+import           FuncDef
 import           FuncId
 import           RegexXSD2SMT
 import           SMTString
+import           SortDef
 import           SortId
 import           StdTDefs
 import           TxsDefs
+import           ValExpr
+import           Variable
 import           VarId
 
 -- ----------------------------------------------------------------------------------------- --

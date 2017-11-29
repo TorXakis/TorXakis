@@ -18,7 +18,7 @@ library
   exposed-modules:      TxsAlex
                       , TxsHappy
   
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
+  ghc-options:         -Werror -Wall -O0 -optc-O3 -optc-ffast-math
   
   build-tools:          alex
                       , happy
@@ -28,9 +28,11 @@ library
   build-depends:        array
                       , base
                       , containers
-                      , defs
                       , MissingH
                       , text
+
+                      , defs
+                      , valexpr
 
   default-language:     Haskell2010
 
@@ -47,7 +49,9 @@ test-suite TorXakisFront-BlackBox
                       , MissingH
                       , QuickCheck
                       , defs
-                      , text                      
+                      , text
+                      
                       , front
+                      , valexpr
 
   default-language:     Haskell2010

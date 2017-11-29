@@ -29,8 +29,8 @@ import           GHC.Generics    (Generic)
 
 --  Local imports.
 import           ChanId
-import           ValExprDefs
 import           VarId
+import           VarEnv
 
 -- | Description of how TorXakis connects and interacts with the outside-world
 -- (mostly the system-under-test). It connections includes information about:

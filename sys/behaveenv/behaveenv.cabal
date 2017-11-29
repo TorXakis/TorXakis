@@ -27,5 +27,6 @@ library
                       , coreenv
                       , defs
                       , solvedefs
+                      , valexpr
                       
   default-language:     Haskell2010

@@ -11,7 +11,6 @@ module XmlFormat
 where
 
 import           Control.Monad.State
-import           CstrId
 import           Data.ByteString          (pack)
 import           Data.ByteString.Internal (c2w)
 import           Data.Char                (chr, ord)
@@ -19,10 +18,14 @@ import qualified Data.Map                 as Map
 import           Data.String
 import           Data.Text                (Text)
 import qualified Data.Text                as T
+import           Text.XML.Expat.Tree
+
+import           ConstDefs
+import           CstrDef
+import           CstrId
 import           FuncId
 import           SortId
 import           StdTDefs
-import           Text.XML.Expat.Tree
 import           TxsDefs
 
 

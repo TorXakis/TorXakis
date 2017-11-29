@@ -39,9 +39,12 @@ import qualified BTree
 
 -- import from defs
 import qualified Sigs
+import qualified TxsDDefs
 import qualified TxsDefs
 
-import qualified TxsDDefs
+-- import from valexpr
+import           Id
+import qualified VarId               (VarId)
 
 -- import from solve
 import qualified SMTData
@@ -53,7 +56,7 @@ type  IOC  = StateT EnvC IO
 
 data EnvC = EnvC
   { config :: Config           -- ^ Core configuration.
-  , unid   :: Int              -- ^ Last used unique number.
+  , unid   :: Id               -- ^ Last used unique number.
   , params :: ParamCore.Params
   , state  :: CoreState        -- ^ State specific information.
   }
@@ -61,12 +64,12 @@ data EnvC = EnvC
 data CoreState = Noning
              | Initing  { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs    :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
+                        , sigs    :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         }
              | Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
+                        , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , mapperdef :: Maybe TxsDefs.MapperDef
                         , purpdef   :: Maybe TxsDefs.PurpDef
@@ -83,7 +86,7 @@ data CoreState = Noning
                         }
              | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
+                        , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , mapperdef :: Maybe TxsDefs.MapperDef
                         , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
@@ -98,7 +101,7 @@ data CoreState = Noning
                         }
              | Stepping { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs      :: Sigs.Sigs TxsDefs.VarId       -- TorXakis signatures
+                        , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
                                                                      -- behaviour trie
@@ -184,10 +187,10 @@ setParam (prm,val) = do
 -- ----------------------------------------------------------------------------------------- --
 -- Unid :  unique (negative) number for identifiers
 
-initUnid :: IOC Int
+initUnid :: IOC Id
 initUnid = return (-1)
 
-newUnid :: IOC Int
+newUnid :: IOC Id
 newUnid = do
      uid <- gets unid
      modify $ \env -> env { unid = uid - 1 }

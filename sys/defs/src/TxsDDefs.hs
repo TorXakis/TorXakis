@@ -14,8 +14,12 @@ where
 import qualified Data.Set  as Set
 import           Data.Text (Text)
 import           System.IO
-import           TxsDefs   (ChanId, Const, VExpr, VarId)
+
+import           ConstDefs (Const)
+import           TxsDefs   (ChanId, VExpr)
 import           TxsShow
+import           VarId     (VarId)
+
 -- ----------------------------------------------------------------------------------------- --
 -- Const  :  values (for now: VExpr)
 -- Action :  trie/primer valued actions

@@ -26,25 +26,13 @@ module TxsDefs
 , TxsDefs.union
 , TxsDefs.insert
 , TxsDef(..)
-, Variable(..)
-, ValExpr
-, view
-, eval
-, ValExprView(..)
-, PredefKind(..)
 , VarEnv
 , VExpr
 , VEnv
-, SortDef(SortDef)
-, SortId(SortId)
-, CstrDef(CstrDef)
-, CstrId(CstrId, cstrargs, cstrsort)
-, FuncDef(FuncDef)
-, FuncId(FuncId, funcargs, funcsort)
+, WEnv
 , ProcDef(ProcDef)
 , ProcId(ProcId)
 , ChanId(ChanId)
-, VarId(VarId)
 , StatId(StatId)
 , ModelDef(ModelDef)
 , ModelId(ModelId)
@@ -60,18 +48,15 @@ module TxsDefs
 , module X
 )
 where
-import           Control.Arrow         ((***))
+import           Control.Arrow   ((***))
 import           Control.DeepSeq
-import qualified Data.Map              as Map
-import           GHC.Generics          (Generic)
+import qualified Data.Map        as Map
+import           GHC.Generics    (Generic)
 
-import           BehExprDefs           as X
-import           ConnectionDefs        as X
-import           ConstDefs             as X
-import           Ident                 as X
-import           Name                  as X
-import           TxsDef                as X
-import           Variable              as X
+import           BehExprDefs     as X
+import           ConnectionDefs  as X
+import           Ident           as X
+import           TxsDef          as X
 
 import           ChanId
 import           CnectId
@@ -91,16 +76,11 @@ import           PurpId
 import           SortDef
 import           SortId
 import           StatId
+import           VarEnv
 import           VarId
-
-import           ValExprDefs
-import           ValExprImpls          as X
-import           ValExprImplsExtension as X
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis definitions
-
-
 data  TxsDefs  =  TxsDefs { sortDefs   :: Map.Map SortId SortDef
                           , cstrDefs   :: Map.Map CstrId CstrDef
                           , funcDefs   :: Map.Map FuncId (FuncDef VarId)
@@ -248,6 +228,7 @@ union a b = TxsDefs
                 (Map.union (goalDefs a)  (goalDefs b)   )
                 (Map.union (mapperDefs a)(mapperDefs b) )
                 (Map.union (cnectDefs a) (cnectDefs b)  )
+
 
 -- ----------------------------------------------------------------------------------------- --
 --

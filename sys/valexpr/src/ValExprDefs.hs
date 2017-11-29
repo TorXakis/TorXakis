@@ -11,7 +11,6 @@ where
 
 import           Control.DeepSeq
 import           Data.Data
-import qualified Data.Map        as Map
 import           Data.Set        (Set)
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
@@ -19,10 +18,9 @@ import           GHC.Generics    (Generic)
 import           ConstDefs
 import           CstrId
 import           FuncId
+import           Id
 import           Product
 import           Sum
-import           VarId
-
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -69,6 +67,8 @@ data  ValExprView v = Vconst  Const
                     | Verror  Text
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
+instance (Ord v, Resettable v) => Resettable (ValExprView v)
+
 -- These instances are needed to use the symbolic representation of sums and
 -- products of val expressions. These instances have no implementation, which
 -- means that if an attempt is made to compute the value of a sum or product of
@@ -106,6 +106,8 @@ newtype ValExpr v = ValExpr {
                         view :: ValExprView v }
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
+instance (Ord v, Resettable v) => Resettable (ValExpr v)
+
 -- | Evaluate the provided value expression.
 -- Either the Right Constant Value is returned or a (Left) error message.
 eval :: Show v => ValExpr v -> Either String Const
@@ -115,6 +117,7 @@ evalView :: Show v => ValExprView v -> Either String Const
 evalView (Vconst v) = Right v
 evalView x          = Left $ "Value Expression is not a constant value " ++ show x
 
+-- | only needed for CNECTDEF
 data PredefKind     = AST     -- Algebraic To String
                     | ASF     -- Algebraic From String
                     | AXT     -- Algebraic To Xml
@@ -122,18 +125,9 @@ data PredefKind     = AST     -- Algebraic To String
                     | SSB     -- Standard Sort Bool
                     | SSI     -- Standard Sort Int
                     | SSS     -- Standard Sort String
-     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
+     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-
-type  VarEnv v w    =  Map.Map v (ValExpr w)     -- simultaneous substitution
-                                                 -- all variables different
-                                                 -- non-recursive
-
-
-type  VExpr         =  ValExpr VarId
-
-
-type  VEnv          =  VarEnv VarId VarId
+instance Resettable PredefKind
 
 -- ----------------------------------------------------------------------------------------- --
 --

@@ -26,7 +26,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveFunctor         #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# OPTIONS -Wall -Werror #-}
 module Sum
     (  -- * Sum types
       FreeSum
@@ -52,6 +51,8 @@ import qualified FreeMonoidX     as FMX
 import           GHC.Generics    (Generic)
 import           Prelude         hiding (subtract, sum)
 
+import           Id
+
 {--------------------------------------------------------------------
   The data types
 --------------------------------------------------------------------}
@@ -70,6 +71,8 @@ type FreeSum a = FreeMonoidX (SumTerm a)
 --
 newtype SumTerm a = SumTerm { summand :: a }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Functor, Data)
+
+instance (Resettable a) => Resettable (SumTerm a)
 
 instance Num a => Monoid (SumTerm a) where
     mempty = SumTerm 0

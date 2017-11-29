@@ -6,22 +6,23 @@ See LICENSE at root directory of this repository.
 
 -- ----------------------------------------------------------------------------------------- --
 
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
 
 module CnectId
 
 where
 
-import GHC.Generics (Generic)
-import Control.DeepSeq
+import           Control.DeepSeq
+import           GHC.Generics    (Generic)
 
-import Name
+import           Id
+import           Name
 
-data CnectId        = CnectId   { name       :: Name            -- capid
-                                , unid       :: Int
-                                }
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
+data CnectId = CnectId
+    { name :: Name            -- capid
+    , unid :: Id
+    } deriving (Eq, Ord, Read, Show, Generic, NFData)
 
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+instance Resettable CnectId
+instance Identifiable CnectId

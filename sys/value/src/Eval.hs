@@ -46,9 +46,17 @@ import qualified EnvData
 import           FreeMonoidX
 import           RegexXSD2Posix
 import           StdTDefs
-import           TxsDefs             hiding (eval)
+import           TxsDefs
 import           TxsShow
 import           XmlFormat
+
+-- import from valexpr
+import           ConstDefs
+import           FuncDef
+import           FuncId
+import           Id
+import           ValExpr             hiding (eval)
+import           Variable
 
 -- import from front
 import qualified TxsAlex
@@ -59,7 +67,7 @@ import qualified TxsHappy
 -- eval :  evaluation of value expression
 --         eval shall only work on closed vexpr
 
-eval :: TxsDefs.Variable v => TxsDefs.ValExpr v -> IOB.IOB Const
+eval :: Variable v => ValExpr v -> IOB.IOB Const
 
 eval (view -> Vfunc fid vexps) = do
      envb <- get
@@ -102,7 +110,7 @@ eval (view -> Vsum s) = do
     consts <- mapM evalTuple (toOccurListT s)
     eval (cstrSum $ fromOccurListT consts)       -- simplifies to integer
   where
-    evalTuple :: Variable v => (TxsDefs.ValExpr v, Integer) -> IOB.IOB (TxsDefs.ValExpr v, Integer)
+    evalTuple :: Variable v => (ValExpr v, Integer) -> IOB.IOB (ValExpr v, Integer)
     evalTuple (v,i) = do
         c <- eval v
         return (cstrConst c,i)
@@ -111,7 +119,7 @@ eval (view -> Vproduct p) = do
     consts <- mapM evalTuple (toOccurListT p)
     eval (cstrProduct $ fromOccurListT consts)       -- simplifies to integer
   where
-    evalTuple :: Variable v => (TxsDefs.ValExpr v, Integer) -> IOB.IOB (TxsDefs.ValExpr v, Integer)
+    evalTuple :: Variable v => (ValExpr v, Integer) -> IOB.IOB (ValExpr v, Integer)
     evalTuple (v,i) = do
         c <- eval v
         return (cstrConst c,i)
@@ -179,7 +187,7 @@ eval (view -> Vpredef kd fid vexps) =
                              ((_,vexp'),e) <- lift $ catch
                                 ( let p = TxsHappy.vexprParser ( TxsAlex.Csigs   sigs
                                                                : TxsAlex.Cvarenv []
-                                                               : TxsAlex.Cunid (uid + 1)
+                                                               : TxsAlex.Cunid (_id uid + 1)
                                                                : TxsAlex.txsLexer (T.unpack s)
                                                                )
                                    in return $! show p `deepseq` (p,"")
