@@ -103,12 +103,12 @@ capIds = [ "Aap"
          , "Geen"
          , "Int"
          , "Boolean"
+         , "Bool"
          , "Insert"
          , "NULL"
          , "Null"
          , "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"
          ]
-         -- "Bool" not accepted by TorXakis in structure due to cvc4 bug
          -- "REGEX" is a reserved capId
 
 
@@ -123,7 +123,7 @@ genUniqueCapIds = subset (Set.fromList (map CapId capIds) )
 
 predefSort :: [String]
 predefSort = [ "Int"
-             --, "Bool" not accepted by TorXakis in structure due to cvc4 bug
+             , "Bool"
              , "String"
              , "Regex"]
 
