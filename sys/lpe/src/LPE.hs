@@ -43,7 +43,6 @@ import qualified TxsUtils
 import Expand (relabel)
 import Subst
 
-
 -- ----------------------------------------------------------------------------------------- --
 -- Types :
 -- ----------------------------------------------------------------------------------------- --
@@ -651,7 +650,7 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr =
         -- TODO: properly initialise funcDefs param of subst
         constraintOfOffer' = Subst.subst varMap' (Map.fromList []) constraintOfOffer
         constraintPC = cstrEqual (cstrVar varIdPC) (cstrConst (Cint pcValue))
-        constraint' = cstrAnd $ Set.fromList (constraintPC : constraintOfOffer' : constraints')
+        constraint' = cstrITE constraintPC (cstrAnd (Set.fromList (constraintOfOffer' : constraints'))) (cstrConst (Cbool False))
 
         actOffer' = ActOffer { offers = Set.fromList offers'
                              , constraint = constraint' }
