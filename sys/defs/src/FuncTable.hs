@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 -- |
 -- Module      :  FuncTable
 -- Copyright   :  (c) TNO and Radboud University
--- License     :  Closed-style (see the file license.txt)
+-- License     :  BSD3 (see the file license.txt)
 --
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
