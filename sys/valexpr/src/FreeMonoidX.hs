@@ -13,7 +13,7 @@ See LICENSE at root directory of this repository.
 -- |
 -- Module      :  FreeMonoidX
 -- Copyright   :  (c) TNO and Radboud University
--- License     :  Closed-style (see the file license.txt)
+-- License     :  BSD3 (see the file license.txt)
 --
 -- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
