@@ -7,175 +7,122 @@ See LICENSE at root directory of this repository.
 import java.net.*;
 import java.io.*;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-public class CustomersOrders
-{
-    static final String TorXakisMsgOpenTag = "<TorXakisMsg>";
-    static final String TorXakisMsgCloseTag = "</TorXakisMsg>";
+public class CustomersOrders {
+    private static final String TorXakisMsgOpenTag = "<TorXakisMsg>";
+    private static final String TorXakisMsgCloseTag = "</TorXakisMsg>";
     private String customers = "<Nil_Customer></Nil_Customer>";
     private String orders = "<Nil_Order></Nil_Order>";
     private boolean changed = true;
-    
-    private synchronized void addCustomer(String customer)
-    {
-        customers = "<Cstr_Customer><head>" + customer.substring( TorXakisMsgOpenTag.length() , customer.length() - TorXakisMsgCloseTag.length() ) + "</head>" + 
-                                   "<tail>" + customers + "</tail></Cstr_Customer>";
+
+    private synchronized void addCustomer(String customer) {
+        customers = "<Cstr_Customer><head>" + customer.substring(TorXakisMsgOpenTag.length(), customer.length() - TorXakisMsgCloseTag.length()) + "</head>" +
+                "<tail>" + customers + "</tail></Cstr_Customer>";
         changed = true;
     }
-    
-    private synchronized void addOrder(String order)
-    {
-        orders = "<Cstr_Order><head>" + order.substring( TorXakisMsgOpenTag.length() , order.length() - TorXakisMsgCloseTag.length() ) + "</head>" +
-                             "<tail>" + orders + "</tail></Cstr_Order>";
+
+    private synchronized void addOrder(String order) {
+        orders = "<Cstr_Order><head>" + order.substring(TorXakisMsgOpenTag.length(), order.length() - TorXakisMsgCloseTag.length()) + "</head>" +
+                "<tail>" + orders + "</tail></Cstr_Order>";
         changed = true;
     }
-    
-    private synchronized String getReport()
-    {
+
+    private synchronized String getReport() {
         changed = false;
-        String report = // "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
-                           TorXakisMsgOpenTag +
-                                "<Report>" +
-                                    "<customers>" 
-                                        + customers + 
-                                    "</customers>" +
-                                    "<orders>"
-                                        + orders + 
-                                    "</orders>" +
-                                "</Report>" +
-                            TorXakisMsgCloseTag; 
+        String report =
+                TorXakisMsgOpenTag +
+                        "<Report>" +
+                        "<customers>"
+                        + customers +
+                        "</customers>" +
+                        "<orders>"
+                        + orders +
+                        "</orders>" +
+                        "</Report>" +
+                        TorXakisMsgCloseTag;
         System.out.println("Report: " + report);
         return report;
     }
-        
-    public static void main(String[] args)
-    {  
+
+    public static void main(String[] args) {
         CustomersOrders co = new CustomersOrders();
-        
-        Thread threadCustomer = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                ServerSocket servsockCustomer;
-                try{
-                    // instantiate a socket for accepting a connection
-                    servsockCustomer = new ServerSocket(7890);
 
-                    System.out.println("Customer thread waiting for tester");
-                    // wait to accept a connection request and a data socket is returned
-                    Socket sockCustomer = servsockCustomer.accept();
-
-                    // get an input stream for reading from the data socket
-                    InputStream inStreamCustomer = sockCustomer.getInputStream();
-
-                    // create a BufferedReader object for text line input
-                    BufferedReader sockinCustomer = new BufferedReader(new InputStreamReader(inStreamCustomer));
-
-                    System.out.println("Customer thread ready");
-
-                    // read a line from the data stream: the stimulus
-                    String customer = sockinCustomer.readLine();
-                    while(customer != null) //read null when socket is closed
-                    {
-                        System.out.println("Customer: " + customer);
-                        //update data structure
-                        co.addCustomer(customer);
-                        // read a line from the data stream: the stimulus
-                        customer = sockinCustomer.readLine();
-                    }
-                    System.exit(0);
-                }
-                catch (IOException e)
-                {
-                    System.err.println("IOException Customer");
-                    e.printStackTrace();
-                    System.exit(-1);
-                }
-            }
-        });
+        Thread threadCustomer = getInputThread(7890, "Customer", co::addCustomer);
         threadCustomer.start();
 
-        Thread threadOrder = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                ServerSocket servsockOrder;
-                try{
-                    // instantiate a socket for accepting a connection
-                    servsockOrder = new ServerSocket(7891);
-
-                    System.out.println("Order thread waiting for tester");
-                    // wait to accept a connection request and a data socket is returned
-                    Socket sockOrder = servsockOrder.accept();
-
-                    // get an input stream for reading from the data socket
-                    InputStream inStreamOrder = sockOrder.getInputStream();
-
-                    // create a BufferedReader object for text line input
-                    BufferedReader sockinOrder = new BufferedReader(new InputStreamReader(inStreamOrder));
-
-                    System.out.println("Order thread ready");
-
-                    String order = sockinOrder.readLine();
-                    while(order != null)    //read null when socket is closed
-                    {
-                        System.out.println("Order: " + order);
-                        //update data structure
-                        co.addOrder(order);
-                        // read a line from the data stream: the stimulus
-                        order = sockinOrder.readLine();
-                    }
-                    System.exit(0);
-                }
-                catch (IOException e)
-                {
-                    System.err.println("IOException Order");
-                    e.printStackTrace();
-                    System.exit(-1);
-                }
-               }
-        });
+        Thread threadOrder = getInputThread(7891, "Order", co::addOrder);
         threadOrder.start();
 
-        Thread threadReport = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                ServerSocket servsockReport;
-                try
-                {
-                    // instantiate a socket for accepting a connection
-                    servsockReport = new ServerSocket(7892);
-
-                    System.out.println("Report thread waiting for tester");
-                    // wait to accept a connection request and a data socket is returned
-                    Socket sockReport = servsockReport.accept();
-
-                    // get an output stream for writing to the data socket
-                    OutputStream outStreamReport = sockReport.getOutputStream();
-
-                    // create a PrinterWriter object for character-mode output
-                    PrintWriter sockoutReport = new PrintWriter(new OutputStreamWriter(outStreamReport));
-
-                    System.out.println("Report thread ready");
-
-                    while(true)
-                    {
-                        if (co.changed)
-                        {
-                            //send report
-                            sockoutReport.print(co.getReport()+"\n");
-                            sockoutReport.flush();
-                        }
-                        //sleep
-                        TimeUnit.SECONDS.sleep(25);
-                    }
-                }
-                catch (IOException | InterruptedException e)
-                {
-                    System.err.println("Exception Report");
-                    e.printStackTrace();
-                    System.exit(-1);
-                }
+        Thread threadReport = getOutputThread(7892, "Report", () -> {
+            if (co.changed) {
+                return co.getReport() + "\n";
             }
+            return "";
         });
         threadReport.start();
+    }
+
+    private static Thread getInputThread(int port, String type, Consumer<String> process) {
+        return new Thread(() -> {
+            try {
+                ServerSocket server = new ServerSocket(port);
+                System.out.println(type + " thread waiting for tester...");
+                Socket inputSocket = server.accept();
+                InputStream inputStream = inputSocket.getInputStream();
+                BufferedReader socketReader = new BufferedReader(new InputStreamReader(inputStream));
+                System.out.println(type + " thread ready");
+                String input = socketReader.readLine();
+                try {
+                    while (input != null) {
+                        System.out.println(type + ": " + input);
+                        process.accept(input);
+                        input = socketReader.readLine();
+                    }
+                } catch (IOException e) {
+                    System.err.println("IOException while reading " + type + ". Last read: " + input);
+                    e.printStackTrace();
+                }
+                server.close();
+            } catch (IOException e) {
+                System.err.println("IOException in InputThread of " + type);
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        });
+    }
+
+    private static Thread getOutputThread(int port, String type, Supplier<String> process) {
+        return new Thread(() -> {
+            try {
+                ServerSocket server = new ServerSocket(port);
+
+                System.out.println(type + " thread waiting for tester");
+                Socket outputSocket = server.accept();
+                OutputStream outputStream = outputSocket.getOutputStream();
+                PrintWriter socketWriter = new PrintWriter(new OutputStreamWriter(outputStream));
+
+                System.out.println(type + " thread ready");
+                String output;
+                while (true) {
+                    output = process.get();
+                    if (!output.isEmpty()) {
+                        System.out.println(type + ": " + output);
+                        socketWriter.print(output);
+                        socketWriter.flush();
+                    }
+                    try {
+                        TimeUnit.SECONDS.sleep(25);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                }
+            } catch (IOException e) {
+                System.err.println("IOException in OutputThread of " + type);
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        });
     }
 }
