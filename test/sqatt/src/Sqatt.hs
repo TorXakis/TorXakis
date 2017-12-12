@@ -249,8 +249,9 @@ compileSut sourcePath =
 -- | Compile a SUT written in Java.
 compileJavaSut :: FilePath -> Test CompiledSut
 compileJavaSut sourcePath = do
-  path <- decodePath sourcePath
-  exitCode <- proc javacCmd [path] mempty
+  allJavaFiles <- Turtle.fold (mfilter (`hasExtension` "java") (ls $ directory sourcePath)) Control.Foldl.list
+  path <- mapM decodePath allJavaFiles
+  exitCode <- proc javacCmd path mempty
   case exitCode of
     ExitFailure code ->
       throwError $ CompileError $
