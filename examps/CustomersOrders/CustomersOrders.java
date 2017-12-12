@@ -66,6 +66,7 @@ public class CustomersOrders {
 
     private static Thread getInputThread(int port, String type, Consumer<String> process) {
         return new Thread(() -> {
+            String input = "";
             try {
                 ServerSocket server = new ServerSocket(port);
                 System.out.println(type + " thread waiting for tester...");
@@ -73,20 +74,15 @@ public class CustomersOrders {
                 InputStream inputStream = inputSocket.getInputStream();
                 BufferedReader socketReader = new BufferedReader(new InputStreamReader(inputStream));
                 System.out.println(type + " thread ready");
-                String input = socketReader.readLine();
-                try {
-                    while (input != null) {
-                        System.out.println(type + ": " + input);
-                        process.accept(input);
-                        input = socketReader.readLine();
-                    }
-                } catch (IOException e) {
-                    System.err.println("IOException while reading " + type + ". Last read: " + input);
-                    e.printStackTrace();
+                input = socketReader.readLine();
+                while (input != null) {
+                    System.out.println(type + ": " + input);
+                    process.accept(input);
+                    input = socketReader.readLine();
                 }
                 server.close();
             } catch (IOException e) {
-                System.err.println("IOException in InputThread of " + type);
+                System.err.println("IOException while reading " + type + ". Last read: " + input);
                 e.printStackTrace();
                 System.exit(-1);
             }
@@ -97,12 +93,10 @@ public class CustomersOrders {
         return new Thread(() -> {
             try {
                 ServerSocket server = new ServerSocket(port);
-
                 System.out.println(type + " thread waiting for tester");
                 Socket outputSocket = server.accept();
                 OutputStream outputStream = outputSocket.getOutputStream();
                 PrintWriter socketWriter = new PrintWriter(new OutputStreamWriter(outputStream));
-
                 System.out.println(type + " thread ready");
                 String output;
                 while (true) {
@@ -112,14 +106,10 @@ public class CustomersOrders {
                         socketWriter.print(output);
                         socketWriter.flush();
                     }
-                    try {
-                        TimeUnit.SECONDS.sleep(25);
-                    } catch (InterruptedException e) {
-                        break;
-                    }
+                    TimeUnit.SECONDS.sleep(25);
                 }
-            } catch (IOException e) {
-                System.err.println("IOException in OutputThread of " + type);
+            } catch (IOException | InterruptedException e) {
+                System.err.println("Exception in OutputThread of " + type);
                 e.printStackTrace();
                 System.exit(-1);
             }
