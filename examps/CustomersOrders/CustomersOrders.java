@@ -98,14 +98,9 @@ public class CustomersOrders {
                 OutputStream outputStream = outputSocket.getOutputStream();
                 PrintWriter socketWriter = new PrintWriter(new OutputStreamWriter(outputStream));
                 System.out.println(type + " thread ready");
-                String output;
                 while (true) {
-                    output = process.get();
-                    if (!output.isEmpty()) {
-                        System.out.println(type + ": " + output);
-                        socketWriter.print(output);
-                        socketWriter.flush();
-                    }
+                    String output = process.get();
+                    writeIfNotEmpty(type, output, socketWriter);
                     TimeUnit.SECONDS.sleep(25);
                 }
             } catch (IOException | InterruptedException e) {
@@ -114,5 +109,13 @@ public class CustomersOrders {
                 System.exit(-1);
             }
         });
+    }
+
+    private static void writeIfNotEmpty(String type, String output, PrintWriter socketWriter) {
+        if (!output.isEmpty()) {
+            System.out.println(type + ": " + output);
+            socketWriter.print(output);
+            socketWriter.flush();
+        }
     }
 }
