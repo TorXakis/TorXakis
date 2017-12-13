@@ -12,6 +12,7 @@ version: pre-0.5.0.{build}.{branch}
     # - /^hotfix.*$/
 
 init:
+- ps: Starting init at $(Get-Date)
 - ps: $env:Path += ";C:\Program Files\Git\mingw64\bin"
 - ps: $CACHE_DIR = "C:\TorXakis\.cache"
 - ps: $CACHE_DIR_REL = ".cache"
@@ -20,6 +21,7 @@ init:
 - mkdir %LOCALAPPDATA%\Programs\stack\x86_64-windows
 
 install:
+- ps: Starting install at $(Get-Date)
 - ps: if (-not (Test-Path ".cache")) { mkdir .cache} else { Write-Host ".cache found." }
 # obtain the stack executable
 - ps: |
@@ -51,6 +53,7 @@ before_build:
 - ps: $env:CACHE_DIR_REL = $CACHE_DIR_REL
 
 build_script:
+- ps: Starting build at $(Get-Date)
 - stack install --pedantic --install-ghc --test --no-terminal --stack-root %STACK_ROOT%
 
 # after_build:
@@ -76,6 +79,7 @@ cache:
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
 
 test_script:
+- ps: Starting test at $(Get-Date)
 - ps: pushd test/sqatt
 - stack test --install-ghc --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT%
 - ps: popd
