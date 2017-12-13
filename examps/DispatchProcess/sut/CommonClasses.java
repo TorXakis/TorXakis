@@ -39,27 +39,33 @@ class Notifier implements Runnable {
             OutputStream outStream = socket.getOutputStream();
             PrintWriter socketWriter = new PrintWriter(new OutputStreamWriter(outStream));
 
-            int id = 0;
+            int processorId = 0;
             while (true) {
-                if (State.Done.equals(model.getState(id))) {
-                    String output = "JobOut(" + model.getJobId(id) + "," + Integer.toString(id + 1) + "," + model.getGCD(id) + ")";        // Processors expected range [1..N]
-                    Logger.LogToConsole("output " + output);
-                    socketWriter.print(output + "\n");
-                    socketWriter.flush();
-                    model.setState(id, State.Idle);
+                if (State.Done.equals(model.getState(processorId))) {
+                    notifyFinishedJobOfProcessor(socketWriter, processorId);
+                    model.setState(processorId, State.Idle);
                 }
 
-                id += 1;
-                if (id == model.getNrOfProcessors())
-                    id = 0;
-
+                processorId = (processorId + 1) % model.getNrOfProcessors();
                 Thread.sleep(1);
             }
         } catch (IOException | InterruptedException e) {
-            System.err.println("Notifier");
+            System.err.println("Exception in Notifier");
             e.printStackTrace();
             System.exit(-2);
         }
+    }
+
+    private void notifyFinishedJobOfProcessor(PrintWriter socketWriter, int processorId) {
+        String output =
+                "JobOut("
+                        + model.getJobId(processorId)
+                        + "," + Integer.toString(processorId + 1)
+                        + "," + model.getGCD(processorId)
+                        + ")";
+        Logger.LogToConsole("output " + output);
+        socketWriter.print(output + "\n");
+        socketWriter.flush();
     }
 }
 
@@ -78,34 +84,34 @@ class Dispatcher implements Runnable {
             InputStream inputStream = socket.getInputStream();
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
 
-            int id = 0;
+            int nextProcessorId = 0;
             while (true) {
                 String line = bufferedReader.readLine();
                 if (line == null) {
                     System.exit(-101);
                 }
                 Logger.LogToConsole("input: " + line);
-
-                boolean dispatched = false;
-                while (!dispatched) {
-                    if (State.Idle.equals(model.getState(id))) {
-                        model.setData(id, line.substring(8, line.length() - 1));
-                        model.setState(id, State.Processing);
-                        dispatched = true;
-                    }
-
-                    id += 1;
-                    if (id == model.getNrOfProcessors())
-                        id = 0;
-
-                    Thread.sleep(1);
-                }
+                nextProcessorId = dispatchToFirstAvailableProcessor(nextProcessorId, line);
             }
         } catch (IOException | InterruptedException e) {
             System.err.println("Dispatcher");
             e.printStackTrace();
             System.exit(-3);
         }
+    }
+
+    public int dispatchToFirstAvailableProcessor(int processorId, String line) throws InterruptedException {
+        while (true) {
+            if (State.Idle.equals(model.getState(processorId))) {
+                model.setData(processorId, line.substring(8, line.length() - 1));
+                model.setState(processorId, State.Processing);
+                break;
+            }
+
+            processorId = (processorId + 1) % model.getNrOfProcessors();
+            Thread.sleep(1);
+        }
+        return processorId;
     }
 }
 
