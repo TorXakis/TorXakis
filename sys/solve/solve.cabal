@@ -45,16 +45,14 @@ library
                       , MissingH
                       , text
 
-                      , defs
                       , lexregexxsd
                       , solvedefs
                       , valexpr
-                      , value
-
+                      
   build-tools:          alex
                       , happy
 
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
+  ghc-options:          -Werror -O2 -optc-O3 -optc-ffast-math -Wall
   
   default-language:     Haskell2010
 
@@ -109,13 +107,11 @@ test-suite SmtSolver-WhiteBox
                       , text
 
                       , coreenv
-                      , defs
                       , lexregexxsd
                       , solvedefs
                       , valexpr
-                      , value
-
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
+                      
+  ghc-options:          -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
 
   default-language:     Haskell2010
 
@@ -140,12 +136,10 @@ test-suite SmtSolver-BlackBox
                       , text
 
                       , coreenv
-                      , defs
                       , solve
                       , solvedefs
                       , valexpr
-                      , value
-
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
+                      
+  ghc-options:          -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
 
   default-language:     Haskell2010

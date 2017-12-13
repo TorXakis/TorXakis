@@ -21,20 +21,6 @@ import           ValExpr
 import           Variable
 import           VarId
 
--- * standard sorts
-
-sortId_Bool :: SortId
-sortId_Bool = SortId "Bool" 101
-
-sortId_Int :: SortId
-sortId_Int = SortId "Int" 102
-
-sortId_String :: SortId
-sortId_String = SortId "String" 104
-
-sortId_Regex :: SortId
-sortId_Regex = SortId "Regex" 105
-
 -- | Value expression, etc. :  sortOf
 class SortOf s where
   sortOf :: s -> SortId

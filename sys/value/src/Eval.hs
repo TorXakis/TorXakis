@@ -45,7 +45,6 @@ import qualified EnvData
 -- import from defs
 import           FreeMonoidX
 import           RegexXSD2Posix
-import           StdTDefs
 import           TxsDefs
 import           TxsShow
 import           XmlFormat
@@ -55,6 +54,7 @@ import           ConstDefs
 import           FuncDef
 import           FuncId
 import           Id
+import           SortId
 import           ValExpr             hiding (eval)
 import           Variable
 

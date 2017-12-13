@@ -18,6 +18,8 @@ module SMTData
 
 ( SMT
 , SmtEnv(..)
+, EnvNames(..)
+, EnvDefs (..)
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -32,27 +34,43 @@ import           System.IO
 import           System.Process
 
 import qualified Data.Map            as Map
-
-import           TxsDefs
-
+import           CstrDef
+import           CstrId
+import           FuncDef
+import           FuncId
+import           SortDef
+import           SortId
+import           VarId
 
 -- ----------------------------------------------------------------------------------------- --
 -- SMT state monad for smt solver
 
-data  SmtEnv  =  SmtEnv     { inHandle               :: Handle
-                            , outHandle              :: Handle
-                            , errHandle              :: Handle
-                            , smtProcessHandle       :: ProcessHandle
-                            , logFileHandle          :: Maybe Handle
-                            , mapInstanceTxsToSmtlib :: Map.Map Ident Text
-                            , txsDefs                :: TxsDefs
+data EnvDefs = EnvDefs { sortDefs   :: Map.Map SortId SortDef
+                       , cstrDefs   :: Map.Map CstrId CstrDef
+                       , funcDefs   :: Map.Map FuncId (FuncDef VarId)
+                       }
+               deriving (Eq,Ord,Read,Show)
+
+data EnvNames = EnvNames { sortNames   :: Map.Map SortId Text
+                         , cstrNames   :: Map.Map CstrId Text
+                         , funcNames   :: Map.Map FuncId Text
+                         }
+                deriving (Eq,Ord,Read,Show)
+
+data  SmtEnv  =  SmtEnv     { inHandle          :: Handle
+                            , outHandle         :: Handle
+                            , errHandle         :: Handle
+                            , smtProcessHandle  :: ProcessHandle
+                            , logFileHandle     :: Maybe Handle
+                            , envNames          :: EnvNames
+                            , envDefs           :: EnvDefs
                             }
                | SmtEnvError
 
 type  SMT a   =  StateT SmtEnv IO a
 
 instance Show SmtEnv where
-  show smtEnv =  show $ mapInstanceTxsToSmtlib smtEnv
+  show smtEnv =  show $ envNames smtEnv
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

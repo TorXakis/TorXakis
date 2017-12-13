@@ -25,7 +25,6 @@ import           CstrDef
 import           CstrId
 import           FuncId
 import           SortId
-import           StdTDefs
 import           TxsDefs
 
 
