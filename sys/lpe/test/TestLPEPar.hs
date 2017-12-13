@@ -55,8 +55,8 @@ procIdGen name chans vars = ProcId   {    ProcId.name       = T.pack name
 varIdX = VarId (T.pack "x") 33 intSort
 varIdY = VarId (T.pack "y") 34 intSort
 varIdS = VarId (T.pack "s") 35 intSort
-varIdA1 = VarId (T.pack "A1") 34 intSort
-varIdB1 = VarId (T.pack "B1") 34 intSort
+varIdA1 = VarId (T.pack "A$1") 34 intSort
+varIdB1 = VarId (T.pack "B$1") 34 intSort
 
 vexprX = cstrVar varIdX
 vexprS = cstrVar varIdS

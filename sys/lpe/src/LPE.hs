@@ -43,6 +43,7 @@ import qualified TxsUtils
 import Expand (relabel)
 import Subst
 
+import Debug.Trace
 
 -- ----------------------------------------------------------------------------------------- --
 -- Types :
@@ -156,7 +157,7 @@ preGNFBExpr bexpr choiceCnt freeVarsInScope procId translatedProcDefs procDefs =
                                 procDefs'' = preGNF procId' translatedProcDefs procDefs' in
                             (procInst', procDefs'')
 
-        (Parallel syncChans operands) -> --error "parallel not yet implemented"
+        (Parallel syncChans operands) ->
                             -- parallel at lower level not allowed
 
                             -- decompose the ProcDef of ProcId
@@ -166,7 +167,7 @@ preGNFBExpr bexpr choiceCnt freeVarsInScope procId translatedProcDefs procDefs =
 
                             -- create new ProcDef
                                 procDef' = ProcDef chansDef (paramsDef ++ freeVarsInScope) bexpr
-                            -- create ProcInst calling that ProcDef
+                            -- create new ProcId
                                 name' = T.append (ProcId.name procId) (T.pack ("$pre" ++ show choiceCnt))
                                 procId' = procId { ProcId.name = name', ProcId.procvars = (paramsDef ++ freeVarsInScope)}
                             -- create ProcInst, translate params to VExprs
@@ -291,6 +292,10 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
                                             Just procDef   -> procDef
                                             Nothing        -> error "lpePar: could not find the given procId"
       Parallel syncChans ops = bexpr
+
+      -- translate the operands to LPE first
+      -- collect (in accu) per operand: translated steps, the generated procInst
+      --  and a changed mapping of procDefs
       (_, stepsOpParams, paramsInsts, procDefs') = foldl translateOperand (1, [],[], procDefs) ops
 
 
@@ -339,8 +344,8 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
 
                 -- combine action offers
                 --  union of offers, concatenation of constraints
-                offersLR = Set.union offersL offersR
-                constraintLR = cstrAnd (Set.fromList [constraintL, constraintR])
+                offersLR = trace ("\ncombining: " ++ (show offersL) ++ " and " ++ (show offersR)) $ Set.union offersL offersR
+                constraintLR = trace ("\nconstraints: " ++ (show constraintL) ++ " and " ++ (show constraintR)) $ cstrAnd (Set.fromList [constraintL, constraintR])
 
                 -- new ActOffers and ProcInst
                 actOfferLR = ActOffer { offers = offersLR,
@@ -456,7 +461,7 @@ lpeTransform procInst procDefs = let (procInst', procDefs') = lpe procInst empty
                                      -- put new ProcId in each step
                                      steps = map (substituteProcId procIdInst procIdInst') (extractSteps bexpr)
                                      procDef = ProcDef chans params (wrapSteps steps) in
-                                 Just (procInst'', procDef)
+                                 trace (show procDef) $ Just (procInst'', procDef)
     where
         substituteProcId :: ProcId -> ProcId -> BExpr -> BExpr
         substituteProcId orig new Stop = Stop
@@ -687,7 +692,7 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr =
                     let -- recursion first
                         (chanOffersRec, constraintsRec, varMapRec) = translateChanOffers chanOffers chanName
                         -- transform current chanOffer
-                        chanName' = chanName ++ show i
+                        chanName' = chanName ++ "$" ++ show i
                         -- TODO: unid change
                         varIdChani = VarId (T.pack chanName') 34 sort
                         chanOffer' = Quest varIdChani
