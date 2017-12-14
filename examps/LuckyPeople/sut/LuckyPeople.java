@@ -8,78 +8,60 @@ import java.net.*;
 import java.io.*;
 import java.util.concurrent.*;
 
-public class LuckyPeople
-{
-    private static final byte LUCKYAFTER    = 5;
+public class LuckyPeople {
+    private static final byte LUCKYAFTER = 5;
 
-    private static final String SEPARATOR   = "@";
+    private static final String SEPARATOR = "@";
 
-    private static final int NROFFIELDS     = 5;
-    private static final int SEX            = 0;
-    private static final int FIRSTNAME      = 1;
-    private static final int LASTNAME       = 2;
-    private static final int DAYOFBIRTH     = 3;
-    private static final int MONTHOFBIRTH   = 4;
+    private static final int NROFFIELDS = 5;
+    private static final int SEX = 0;
+    private static final int FIRSTNAME = 1;
+    private static final int LASTNAME = 2;
+    private static final int DAYOFBIRTH = 3;
+    private static final int MONTHOFBIRTH = 4;
 
-    public static void main(String[] args)
-    {
-        try
-        {
-            // instantiate a socket for accepting a connection
-            ServerSocket servsock = new ServerSocket(7777);
+    public static void main(String[] args) {
+        try {
+            ServerSocket serverSocket = new ServerSocket(7777);
 
             System.out.println("Waiting for tester");
-            // wait to accept a connection request and a data socket is returned
-            Socket sock = servsock.accept();
+            Socket sock = serverSocket.accept();
 
-            // get an input stream for reading from the data socket
             InputStream inStream = sock.getInputStream();
+            BufferedReader socketReader = new BufferedReader(new InputStreamReader(inStream));
 
-            // create a BufferedReader object for text line input
-            BufferedReader sockin = new BufferedReader(new InputStreamReader(inStream));
-
-            // get an output stream for writing to the data socket
             OutputStream outStream = sock.getOutputStream();
-
-            // create a PrinterWriter object for character-mode output
-            PrintWriter sockout = new PrintWriter(new OutputStreamWriter(outStream));
+            PrintWriter socketWriter = new PrintWriter(new OutputStreamWriter(outStream));
 
             System.out.println("Tester connected.");
             byte same = 0;
             String last = "";
-            while (true)
-            {
-                String person = sockin.readLine();
-                
+            while (true) {
+                String person = socketReader.readLine();
+
                 String[] fields = person.split(SEPARATOR);
-                assert fields.length == NROFFIELDS : "Wrong input : "+person;
+                assert fields.length == NROFFIELDS : "Wrong input : " + person;
 
                 final boolean sameSex = last.equals(fields[SEX]);
-                final boolean retval = (!sameSex && (same == LUCKYAFTER)) || lucky(fields);
-                if (sameSex)
-                {
+                final boolean isLucky = (!sameSex && (same == LUCKYAFTER)) || lucky(fields);
+                if (sameSex) {
                     if (same < LUCKYAFTER)
                         same += 1;
-                }
-                else
-                {
+                } else {
                     same = 1;
                     last = fields[SEX];
                 }
-                // send a line to the data stream: is lucky?
-                if (retval)
-                    sockout.print("True\n");
-                else
-                    sockout.print("False\n");
-                sockout.flush();
+                socketWriter.print((isLucky ? "True" : "False") + "\n");
+                socketWriter.flush();
             }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
-        catch (Exception ex) { ex.printStackTrace(); System.exit(1);}
     }
 
 
     private static boolean lucky(String[] fields) {
-        return     (fields[FIRSTNAME].charAt(0) == fields[LASTNAME].charAt(0)) 
+        return (fields[FIRSTNAME].charAt(0) == fields[LASTNAME].charAt(0))
                 || fields[DAYOFBIRTH].equals(fields[MONTHOFBIRTH]);
     }
 }

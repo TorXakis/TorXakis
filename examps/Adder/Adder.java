@@ -16,90 +16,81 @@ import java.util.Random;
  <port number for the Server socket used in this process>.
  *********************************************************************************************/
 public class Adder implements Runnable {
-    // Port number on which the current object will listen.
     private int portNr;
 
-    Adder (String portNrStr) {
+    Adder(String portNrStr) {
         this.portNr = Integer.parseInt(portNrStr);
     }
 
     public void run() {
         startAdder();
     }
-            
+
     public static void main(String[] args) {
-        if (args.length == 0)
+        if (args.length == 0) {
             System.out.println("Own port number required");
-        else {
-             // Start adders in parallel, one per-each port number.
-            String msg = String.format("Starting %d adders.", args.length);
-            System.out.println(msg);
-            for (int i = 0; i < args.length; i++) {
-                (new Thread (new Adder(args[i]))).start();
-            }
+            return;
+        }
+        // Start adders in parallel, one per-each port number.
+        String msg = String.format("Starting %d adders.", args.length);
+        System.out.println(msg);
+        for (String arg : args) {
+            (new Thread(new Adder(arg))).start();
         }
     }
 
-    void startAdder() {
-        String s, r;
-        int sep1, sep2, sep3, x, y;
-        String msg = String.format("Starting an adder listening on port %d", portNr);
-        System.out.println(msg);
+    private void startAdder() {
+        System.out.println(String.format("Starting an adder listening on port %d", portNr));
         try {
-            // instantiate a socket for accepting a connection
             ServerSocket serverSock = new ServerSocket(portNr);
-
-            // wait to accept a connection request
-            // then a data socket is created
             Socket sock = serverSock.accept();
 
-            // get an input stream for reading from the data socket
             InputStream inStream = sock.getInputStream();
-            // create a BufferedReader object for text line input
             BufferedReader sockIn = new BufferedReader(new InputStreamReader(inStream));
 
-            // get an output stream for writing to the data socket
             OutputStream outStream = sock.getOutputStream();
-            // create a PrinterWriter object for character-mode output
             PrintWriter sockOut = new PrintWriter(new OutputStreamWriter(outStream));
 
-            Random random = new Random();
             final int maxSleepTime = 180;
 
-            while (true) {  // read a line from the data stream
-                s = sockIn.readLine();
-                if (s != null) {
-                    s = s.trim();
-                    msg = String.format("Adders on port %d received input: %s", portNr, s);
-                    System.out.println(msg);
-                    
-                    sep1 = s.indexOf("(");
-                    sep2 = s.indexOf(",");
-                    sep3 = s.indexOf(")");
-                    x = Integer.parseInt(s.substring(sep1 + 1, sep2).trim());
-                    y = Integer.parseInt(s.substring(sep2 + 1, sep3).trim());
-
-                    Thread.sleep(random.nextInt(maxSleepTime));
-
-                    if (s.startsWith("Plus")) {
-                        r = " " + (x + y);
-                        sockOut.print(r + "\n");
-                        sockOut.flush();
-                        System.out.println(r);
-                    }
-                    if (s.startsWith("Minus")) {
-                        r = " " + (x - y);
-                        // next line inserts error
-                        // if (x <= -500 && y >= 500) answer -= 1;
-                        // r = " " + answer;
-                        sockOut.print(r + "\n");
-                        sockOut.flush();
-                        System.out.println(r);
-                    }
+            while (true) {
+                String s = sockIn.readLine();
+                if (s == null) {
+                    continue;
                 }
+
+                processInput(s, sockOut, maxSleepTime);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
+        }
+    }
+
+    private void processInput(String s, PrintWriter sockOut, int maxSleepTime) throws InterruptedException {
+        s = s.trim();
+        System.out.println(String.format("Adders on port %d received input: %s", portNr, s));
+
+        int sep1 = s.indexOf("(");
+        int sep2 = s.indexOf(",");
+        int sep3 = s.indexOf(")");
+        int x = Integer.parseInt(s.substring(sep1 + 1, sep2).trim());
+        int y = Integer.parseInt(s.substring(sep2 + 1, sep3).trim());
+
+        Random random = new Random();
+        Thread.sleep(random.nextInt(maxSleepTime));
+
+        String r;
+        if (s.startsWith("Plus")) {
+            r = " " + (x + y);
+            sockOut.print(r + "\n");
+            sockOut.flush();
+            System.out.println(r);
+        }
+        if (s.startsWith("Minus")) {
+            r = " " + (x - y);
+            sockOut.print(r + "\n");
+            sockOut.flush();
+            System.out.println(r);
         }
     }
 }
