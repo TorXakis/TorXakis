@@ -81,6 +81,7 @@ public class CustomersOrders {
                     input = socketReader.readLine();
                 }
                 server.close();
+                System.exit(0);
             } catch (IOException e) {
                 System.err.println("IOException while reading " + type + ". Last read: " + input);
                 e.printStackTrace();
