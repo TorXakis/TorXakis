@@ -42,7 +42,7 @@ public class LuckyPeople {
         }
     }
 }
-
+                // send a line to the data stream: is lucky?
 class LuckState {
     private static final byte LUCKY_AFTER = 5;
     private static final int SEX = 0;
