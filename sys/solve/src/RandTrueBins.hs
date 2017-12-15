@@ -43,8 +43,6 @@ import           SMTData
 import           SolveDefs
 import           SolveDefs.Params
 import           SortId
-import           StdTDefs
-import           TxsDefs
 import           ValExpr
 import           Variable
 
@@ -87,7 +85,7 @@ randValExprsSolveTrueBins p freevars exprs  =
     else do
         lift $ hPutStrLn stderr "TXS RandTrueBins randValExprsSolveTrueBins: Not all added constraints are Bool\n"
         return UnableToSolve
-    where
+  where
         combine :: (Variable v) => v -> SMT [Text] -> SMT [Text]
         combine vid sexprs = do
             expr <- randomValue p (vsort vid) (cstrVar vid) (maxDepth p)
@@ -235,8 +233,8 @@ trueString p v =
 -- lookup a constructor given its sort and constructor name
 lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]
 lookupConstructors sid  =  do
-     tdefs <- gets txsDefs
-     return [ def | def@(CstrId{ cstrsort = sid' } , _) <- Map.toList (cstrDefs tdefs), sid == sid']
+     edefs <- gets envDefs
+     return [ def | def@(CstrId{ cstrsort = sid' } , _) <- Map.toList (cstrDefs edefs), sid == sid']
 
 randomValue :: (Variable v) => ParamTrueBins -> SortId -> ValExpr v -> Int -> SMT Text
 randomValue _ _sid _expr 0 = return "true"

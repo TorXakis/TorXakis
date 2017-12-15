@@ -38,8 +38,6 @@ import           SMT
 import           SMTData
 import           SolveDefs
 import           SortId
-import           StdTDefs
-import           TxsDefs
 import           ValExpr
 import           Variable
 
@@ -309,8 +307,8 @@ randomSolveVar v choicesFunc = do
 -- lookup a constructor given its sort and constructor name
 lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]
 lookupConstructors sid  =  do
-     tdefs <- gets txsDefs
-     return [(cstrid, cdef) | (cstrid@(CstrId _ _ _ sid'), cdef) <- Map.toList (cstrDefs tdefs), sid == sid']
+     edefs <- gets envDefs
+     return [(cstrid, cdef) | (cstrid@(CstrId _ _ _ sid'), cdef) <- Map.toList (cstrDefs edefs), sid == sid']
 
 addIsConstructor :: (Variable v) => v -> CstrId -> SMT ()
 addIsConstructor v cid = addAssertions [cstrIsCstr cid (cstrVar v)]

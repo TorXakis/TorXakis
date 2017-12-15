@@ -39,9 +39,7 @@ import CstrDef
 import SMT
 import SMTData
 import SolveDefs
-import StdTDefs
-import TxsDefs
-import Utils
+import SortId
 import ValExpr
 import Variable
 
@@ -174,9 +172,9 @@ randCnrsString vexp  =
 
 randCnrsADT :: Variable v => ParamPartition -> ValExpr v -> Int -> SMT [ Set.Set (ValExpr v) ]
 randCnrsADT p vexp depth  =  do
-    tdefs <- gets txsDefs
+    edefs <- gets envDefs
     let cstrs = [ def
-                | def@( CstrId{cstrsort = srt}, _ ) <- Map.toList (cstrDefs tdefs)
+                | def@( CstrId{cstrsort = srt}, _ ) <- Map.toList (cstrDefs edefs)
                 , srt == sortOf vexp
                 ]
     cnrss <- sequence [ randCnrsCstr p cstr vexp depth | cstr <- cstrs ]
