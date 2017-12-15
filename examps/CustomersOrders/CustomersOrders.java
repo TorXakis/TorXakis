@@ -11,21 +11,26 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class CustomersOrders {
-    private static final String TorXakisMsgOpenTag = "<TorXakisMsg>";
-    private static final String TorXakisMsgCloseTag = "</TorXakisMsg>";
-    private String customers = "<Nil_Customer></Nil_Customer>";
-    private String orders = "<Nil_Order></Nil_Order>";
-    private boolean changed = true;
+    private static class Storage {
+        final String name;
+        String storage;
 
-    private synchronized void addCustomer(String customer) {
-        customers = "<Cstr_Customer><head>" + customer.substring(TorXakisMsgOpenTag.length(), customer.length() - TorXakisMsgCloseTag.length()) + "</head>" +
-                "<tail>" + customers + "</tail></Cstr_Customer>";
-        changed = true;
+        Storage(String name, String storage) {
+            this.name = name;
+            this.storage = storage;
+        }
     }
 
-    private synchronized void addOrder(String order) {
-        orders = "<Cstr_Order><head>" + order.substring(TorXakisMsgOpenTag.length(), order.length() - TorXakisMsgCloseTag.length()) + "</head>" +
-                "<tail>" + orders + "</tail></Cstr_Order>";
+    private static Storage customers = new Storage("Customer", "<Nil_Customer></Nil_Customer>");
+    private static Storage orders = new Storage("Order", "<Nil_Order></Nil_Order>");
+
+    private static final String TorXakisMsgOpenTag = "<TorXakisMsg>";
+    private static final String TorXakisMsgCloseTag = "</TorXakisMsg>";
+    private static boolean changed = true;
+
+    private static synchronized void addItem(String item, Storage storage) {
+        storage.storage = "<Cstr_" + storage.name + "><head>" + item.substring(TorXakisMsgOpenTag.length(), item.length() - TorXakisMsgCloseTag.length()) + "</head>" +
+                "<tail>" + storage.storage + "</tail></Cstr_" + storage.name + ">";
         changed = true;
     }
 
@@ -35,10 +40,10 @@ public class CustomersOrders {
                 TorXakisMsgOpenTag +
                         "<Report>" +
                         "<customers>"
-                        + customers +
+                        + customers.storage +
                         "</customers>" +
                         "<orders>"
-                        + orders +
+                        + orders.storage +
                         "</orders>" +
                         "</Report>" +
                         TorXakisMsgCloseTag;
@@ -49,10 +54,10 @@ public class CustomersOrders {
     public static void main(String[] args) {
         CustomersOrders co = new CustomersOrders();
 
-        Thread threadCustomer = getInputThread(7890, "Customer", co::addCustomer);
+        Thread threadCustomer = getInputThread(7890, customers);
         threadCustomer.start();
 
-        Thread threadOrder = getInputThread(7891, "Order", co::addOrder);
+        Thread threadOrder = getInputThread(7891, orders);
         threadOrder.start();
 
         Thread threadReport = getOutputThread(7892, "Report", () -> {
@@ -64,26 +69,27 @@ public class CustomersOrders {
         threadReport.start();
     }
 
-    private static Thread getInputThread(int port, String type, Consumer<String> process) {
+    private static Thread getInputThread(int port, Storage storage) {
         return new Thread(() -> {
             String input = "";
             try {
                 ServerSocket server = new ServerSocket(port);
-                System.out.println(type + " thread waiting for tester...");
+                System.out.println(storage.name + " thread waiting for tester...");
                 Socket inputSocket = server.accept();
                 InputStream inputStream = inputSocket.getInputStream();
                 BufferedReader socketReader = new BufferedReader(new InputStreamReader(inputStream));
-                System.out.println(type + " thread ready");
+                System.out.println(storage.name + " thread ready");
+
                 input = socketReader.readLine();
                 while (input != null) {
-                    System.out.println(type + ": " + input);
-                    process.accept(input);
+                    System.out.println(storage.name + ": " + input);
+                    addItem(input, storage);
                     input = socketReader.readLine();
                 }
                 server.close();
                 System.exit(0);
             } catch (IOException e) {
-                System.err.println("IOException while reading " + type + ". Last read: " + input);
+                System.err.println("IOException while reading " + storage.name + ". Last read: " + input);
                 e.printStackTrace();
                 System.exit(-1);
             }

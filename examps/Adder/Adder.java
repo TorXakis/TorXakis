@@ -79,18 +79,16 @@ public class Adder implements Runnable {
         Random random = new Random();
         Thread.sleep(random.nextInt(maxSleepTime));
 
-        String r;
         if (s.startsWith("Plus")) {
-            r = " " + (x + y);
-            sockOut.print(r + "\n");
-            sockOut.flush();
-            System.out.println(r);
+            printResult(sockOut, x + y);
+        } else if (s.startsWith("Minus")) {
+            printResult(sockOut, x - y);
         }
-        if (s.startsWith("Minus")) {
-            r = " " + (x - y);
-            sockOut.print(r + "\n");
-            sockOut.flush();
-            System.out.println(r);
-        }
+    }
+
+    private void printResult(PrintWriter sockOut, int result) {
+        sockOut.print(" " + Integer.toString(result) + "\n");
+        sockOut.flush();
+        System.out.println(result);
     }
 }
