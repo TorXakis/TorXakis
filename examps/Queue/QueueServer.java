@@ -21,24 +21,18 @@ public class QueueServer {
             Socket sock = serverSocket.accept();
 
             InputStream inStream = sock.getInputStream();
-            BufferedReader socketReader =
-                    new BufferedReader(new InputStreamReader(inStream));
+            BufferedReader socketReader = new BufferedReader(new InputStreamReader(inStream));
 
             OutputStream outStream = sock.getOutputStream();
-            PrintWriter socketWriter =
-                    new PrintWriter(new OutputStreamWriter(outStream));
-
+            PrintWriter socketWriter = new PrintWriter(new OutputStreamWriter(outStream));
             System.out.println("Tester connected.");
 
-            String s;
             Queue q = new Queue();
-            q.show();
-
             while (true) {
-                s = socketReader.readLine().trim();
+                q.show();
+                String s = socketReader.readLine().trim();
                 processInput(s, q, socketWriter);
                 socketWriter.flush();
-                q.show();
             }
         } catch (Exception ex) {
             ex.printStackTrace();
