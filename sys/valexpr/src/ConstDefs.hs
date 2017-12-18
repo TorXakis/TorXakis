@@ -17,6 +17,7 @@ import           GHC.Generics    (Generic)
 import           CstrId
 import           Id
 import           SortId
+import           SortOf
 
 -- | Union of Boolean, Integer, String, and AlgebraicDataType constant values.
 data Const = Cbool    { cBool :: Bool }
@@ -31,3 +32,12 @@ data Const = Cbool    { cBool :: Bool }
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Resettable Const
+
+instance SortOf Const where
+  sortOf (Cbool _b)                        = sortId_Bool
+  sortOf (Cint _i)                         = sortId_Int
+  sortOf (Cstring _s)                      = sortId_String
+  sortOf (Cregex _r)                       = sortId_Regex
+  sortOf (Cstr (CstrId _nm _uid _ca cs) _) = cs
+  sortOf (Cany s)                          = s
+  sortOf (Cerror _)                        = sortIdError

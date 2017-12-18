@@ -65,7 +65,7 @@ randValExprsSolvePartition p vs exprs  =
             cnrss <- sequence   [ randCnrs p (cstrVar v) (maxDepth p)
                                 | v <- vs
                                 ]
-            cnrss' <- lift $ randOrder ( map Set.unions (cartProd cnrss) )
+            cnrss' <- lift $ shuffleM ( map Set.unions (cartProd cnrss) )
             sat    <- randValExprsSolvePartition' vs cnrss'
             pop
             return sat

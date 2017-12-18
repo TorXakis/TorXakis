@@ -43,6 +43,7 @@ import           SMTData
 import           SolveDefs
 import           SolveDefs.Params
 import           SortId
+import           SortOf
 import           ValExpr
 import           Variable
 

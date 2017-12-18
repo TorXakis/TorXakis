@@ -26,16 +26,6 @@ liftP3 :: Monad m => (a, b, m c) -> m (a, b, c)
 liftP3 (x, y, mz)  =  do  { z <- mz; return (x,y,z) }
 
 -- ----------------------------------------------------------------------------------------- --
--- random ordering of a list
-
-randOrder :: [t] -> IO [t]
-randOrder []    =  return []
-randOrder list  =  do
-     first <- randomRIO ( 0, length list -1 )
-     rest  <- randOrder ( take first list ++ drop (first+1) list )
-     return ( list!!first : rest )
-
--- ----------------------------------------------------------------------------------------- --
 -- cartesian product
 
 cartProd :: [[t]] -> [[t]]

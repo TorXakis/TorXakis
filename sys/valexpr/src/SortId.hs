@@ -41,3 +41,7 @@ sortId_String = SortId "String" 104
 
 sortId_Regex :: SortId
 sortId_Regex = SortId "Regex" 105
+
+sortIdError :: SortId
+sortIdError = SortId "_Error" (-1)
+
