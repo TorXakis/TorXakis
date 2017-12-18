@@ -89,16 +89,16 @@ toFuncName funcId  =  T.concat ["f", (T.pack . show) (FuncId.unid funcId), "$", 
 
 insertSort :: (SortId, SortDef) -> EnvNames -> EnvNames
 insertSort (sid, _) enames
-  = if sid `Map.member` (sortNames enames)
+  = if sid `Map.member` sortNames enames
        then error $ "TXS TXS2SMT insertMap: Sort " ++ show sid ++ " already defined\n"
        else enames { sortNames = Map.insert sid (toSortName sid) (sortNames enames) }
 
 insertCstr :: (CstrId, CstrDef) -> EnvNames -> EnvNames
 insertCstr (cd, CstrDef c fs) enames
-  =  if cd `Map.member` (cstrNames enames)
+  =  if cd `Map.member` cstrNames enames
        then error $ "TXS TXS2SMT insertMap: Constructor (" ++ show cd ++ ", CstrDef " ++
                     show c ++ " " ++ show fs ++  ") already defined\n"
-       else foldr ( \(f,p) -> \enames -> enames { funcNames = Map.insert f (toFieldName cd p) (funcNames enames) } )
+       else foldr ( \(f,p) enames -> enames { funcNames = Map.insert f (toFieldName cd p) (funcNames enames) } )
                   ( enames { funcNames = Map.insert c (toIsCstrName cd) (funcNames enames)
                            , cstrNames = Map.insert cd (toCstrName cd) (cstrNames enames)
                            } 
@@ -107,7 +107,7 @@ insertCstr (cd, CstrDef c fs) enames
 
 insertFunc :: (FuncId, FuncDef VarId) -> EnvNames -> EnvNames
 insertFunc (funcId, FuncDef x y) enames
-  =  if funcId `Map.member` (funcNames enames)
+  =  if funcId `Map.member` funcNames enames
        then error $ "TXS TXS2SMT insertMap: Function  (" ++ show funcId ++ ", FuncDef " ++
                     show x ++ " " ++ show y ++  ") already defined\n"
        else enames { funcNames = Map.insert funcId (toFuncName funcId) (funcNames enames) }
