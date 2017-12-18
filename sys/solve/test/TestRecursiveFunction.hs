@@ -23,11 +23,10 @@ import           CstrDef
 import           CstrId
 import           FuncId
 import           SMT
+import           SMTData
 import           SortDef
 import           SortId
 import           SolveDefs
-import           StdTDefs
-import           TxsDefs
 import           TXS2SMT
 import           VarId
 
@@ -73,35 +72,40 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
     -- ----------------------------------
     let lengthList = FuncId "lengthList" 19876 [sortId_ListInt] sortId_Int
 
-    let maps = Map.insert (IdFunc lengthList) "lengthList"
-               (Map.insert (IdSort sortId_ListInt) "ListInt"
-                (Map.insert (IdCstr constrId) "Constr"
-                 (Map.insert (IdFunc hd) "head"
-                  (Map.insert (IdFunc tl) "tail"
-                   (Map.insert (IdCstr nilId) "Nil"
-                     (Map.fromList initialMapInstanceTxsToSmtlib)
-                 )))))
-
+    let maps = EnvNames (Map.fromList [ (sortId_ListInt, "ListInt")
+                                      , (sortId_Int, "Int")
+                                      , (sortId_Bool, "Bool")
+                                      ])
+                        (Map.fromList [ (nilId, "Nil")
+                                      , (constrId, "Constr")
+                                      ])
+                        (Map.fromList [ (lengthList, "lengthList")
+                                      , (hd, "head")
+                                      , (tl, "tail")
+                                      ])
+    
     let varList = VarId "list" 645421 sortId_ListInt
     let varListIO = createVvar varList
     let ve = createVite (createIsConstructor nilId varListIO) (createVconst (Cint 0)) (createVsum [createVconst (Cint 1), createVfunc lengthList [createVfunc tl [varListIO]]])
 
     let (TXS2SMTFuncTest fDefs e) = createFunctionDefRecursive maps lengthList [varList] sortId_Int ve
 
-    let sDefs = TxsDefs.insert (IdCstr nilId) (DefCstr (CstrDef isNil []) )
-                 (TxsDefs.insert (IdCstr constrId) (DefCstr (CstrDef isConstr [hd, tl]) )
-                   (TxsDefs.insert (IdSort sortId_ListInt) (DefSort SortDef)
-                    TxsDefs.empty))
+    let sDefs = EnvDefs (Map.fromList [(sortId_ListInt,SortDef)])
+                        (Map.fromList [(nilId,CstrDef isNil []), (constrId,CstrDef isConstr [hd, tl])])
+                        Map.empty
+    
     let result = T.unpack (sortdefsToSMT maps sDefs)
     assertBool ("ListInt sortdef " ++ show result) ("(declare-datatypes () (\n    (ListInt (Constr (ListInt$Constr$0 Int) (ListInt$Constr$1 ListInt)) (Nil))\n) )" `List.isInfixOf` result)
-    assertEqual "length function" e (T.unpack (funcdefsToSMT maps fDefs))
+    assertEqual "length function" e (T.unpack (funcdefsToSMT maps (funcDefs fDefs)))
 
-    let txsDefs = TxsDefs.union fDefs sDefs
+    let txsDefs = EnvDefs (Map.union (sortDefs fDefs) (sortDefs sDefs))
+                          (Map.union (cstrDefs fDefs) (cstrDefs sDefs))
+                          (Map.union (funcDefs fDefs) (funcDefs sDefs))
 
     let v = VarId "instance" 123456 sortId_ListInt
     let (TXS2SMTVExprTest inputAssertion _) = createVgez (createVsum [createVfunc lengthList [createVvar v], createVconst (Cint 6)])
 
-    smtEnv <- createSMTEnv s False TxsDefs.empty
+    smtEnv <- createSMTEnv s False
 
     (_,env1) <- runStateT SMT.openSolver smtEnv
     env3 <- execStateT (addDefinitions txsDefs) env1

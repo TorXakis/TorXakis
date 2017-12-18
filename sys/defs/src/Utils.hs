@@ -7,7 +7,6 @@ See LICENSE at root directory of this repository.
 module Utils
 where
 
-import System.Random
 import qualified Data.Set  as Set
 
 -- ----------------------------------------------------------------------------------------- --
@@ -25,13 +24,6 @@ liftP2 (x, my)  =  do  { y <- my; return (x,y) }
 liftP3 :: Monad m => (a, b, m c) -> m (a, b, c)
 liftP3 (x, y, mz)  =  do  { z <- mz; return (x,y,z) }
 
--- ----------------------------------------------------------------------------------------- --
--- cartesian product
-
-cartProd :: [[t]] -> [[t]]
-cartProd =  foldr listProd [[]]
-  where
-    listProd sq acc  =  [ e:a | e <- sq, a <- acc ]
 
 -- ----------------------------------------------------------------------------------------- --
 -- generalized intersection on list of sets

@@ -20,8 +20,6 @@ import           Test.HUnit
 
 import           ConstDefs
 import           SortId
-import           StdTDefs
-import           TxsDefs
 import           ValExpr
 import           VarId
 
@@ -32,7 +30,7 @@ import           TestSolvers
 
 testPushPopList :: Test
 testPushPopList =
-    TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do smtEnv <- createSMTEnv s False TxsDefs.empty
+    TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do smtEnv <- createSMTEnv s False
                                                                              evalStateT (snd e) smtEnv )
                                     labelTestList
                          )
@@ -61,12 +59,12 @@ getValues vs = do
 --    Trace.trace ("values = " ++ (show values)) $
     return values
 
-testPushPopTemplate :: ([VarId] -> [([VarId] -> [VExpr], [Const] -> SMT())] -> SMT()) ->
-                        TxsDefs -> [SortId] -> ([VarId] -> [VExpr], [Const] -> SMT()) ->
-                                              [([VarId] -> [VExpr], [Const] -> SMT())] -> SMT()
-testPushPopTemplate steps txsDefs types (createInitialAssertions,checkInitial) pps = do
+testPushPopTemplate :: ([VarId] -> [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()) ->
+                        EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId], [Const] -> SMT()) ->
+                                              [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()
+testPushPopTemplate steps envDefs types (createInitialAssertions,checkInitial) pps = do
     _ <- SMT.openSolver
-    addDefinitions txsDefs
+    addDefinitions envDefs
     let vs = map (\(x,t) -> VarId (T.pack ("i" ++ show x)) x t) (zip [1000..] types)
     addDeclarations vs
     addAssertions (createInitialAssertions vs)
@@ -77,29 +75,29 @@ testPushPopTemplate steps txsDefs types (createInitialAssertions,checkInitial) p
     checkInitial popValues
     SMT.close
 
-pushAssertionsCheck :: [VarId] -> ([VarId] -> [VExpr]) -> ([Const] -> SMT()) -> SMT()
+pushAssertionsCheck :: [VarId] -> ([VarId] -> [ValExpr VarId]) -> ([Const] -> SMT()) -> SMT()
 pushAssertionsCheck vs createAssertions check = do
         push
         addAssertions (createAssertions vs)
         pushValues <- getValues vs
         check pushValues
 
-testNestedPushPopTemplate :: TxsDefs -> [SortId] -> ([VarId] -> [VExpr], [Const] -> SMT()) ->
-                                              [([VarId] -> [VExpr], [Const] -> SMT())] -> SMT()
+testNestedPushPopTemplate :: EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId], [Const] -> SMT()) ->
+                                              [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()
 testNestedPushPopTemplate = testPushPopTemplate nestedSteps
   where
-    nestedSteps :: [VarId] -> [([VarId] -> [VExpr], [Const] -> SMT())] -> SMT()
+    nestedSteps :: [VarId] -> [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()
     nestedSteps _ [] = return ()
     nestedSteps vs ((createAssertions, check):xs) = do
         pushAssertionsCheck vs createAssertions check
         nestedSteps vs xs
         pop
 
-testSequentialPushPopTemplate :: TxsDefs -> [SortId] -> ([VarId] -> [VExpr], [Const] -> SMT()) ->
-                                              [([VarId] -> [VExpr], [Const] -> SMT())] -> SMT()
+testSequentialPushPopTemplate :: EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId], [Const] -> SMT()) ->
+                                              [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()
 testSequentialPushPopTemplate = testPushPopTemplate (mapM_ . step)
     where
-        step :: [VarId] -> ([VarId] -> [VExpr], [Const] -> SMT()) -> SMT()
+        step :: [VarId] -> ([VarId] -> [ValExpr VarId], [Const] -> SMT()) -> SMT()
         step vs (createAssertions, check) = do
             pushAssertionsCheck vs createAssertions check
             pop
@@ -115,13 +113,13 @@ checkInt _  = error "One variable in problem"
 
 
 testPush :: SMT ()
-testPush = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int]   (const [], checkInt) []
+testPush = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int]   (const [], checkInt) []
 
 testPushAssertion :: SMT()
-testPushAssertion = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int]  (const [], checkInt)
-                                                                [(createAssertions, checkAssert)]
+testPushAssertion = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int]  (const [], checkInt)
+                                                                                          [(createAssertions, checkAssert)]
     where
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrLT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions _   = error "One variable in problem"
 
@@ -132,10 +130,10 @@ testPushAssertion = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int]  (c
         checkAssert _       = error "One variable in problem"
 
 testPushAssertionPop :: SMT()
-testPushAssertionPop = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int]  (const [], checkInt)
+testPushAssertionPop = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int]  (const [], checkInt)
                                                                 [(createAssertions, checkAssert)]
     where
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrGT (cstrVar v) (cstrConst (Cint 123))]
         createAssertions _   = error "One variable in problem"
 
@@ -146,10 +144,10 @@ testPushAssertionPop = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int] 
         checkAssert _       = error "One variable in problem"
 
 testPushAssertionPopAssertion :: SMT()
-testPushAssertionPopAssertion = testSequentialPushPopTemplate TxsDefs.empty [sortId_Int]  (const [], checkInt)
+testPushAssertionPopAssertion = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int]  (const [], checkInt)
                                                                                       [(createAssertions1, checkAssert1),(createAssertions2, checkAssert2)]
     where
-        createAssertions1 :: [VarId] -> [VExpr]
+        createAssertions1 :: [VarId] -> [ValExpr VarId]
         createAssertions1 [v] = [cstrLT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions1 _   = error "One variable in problem"
 
@@ -159,7 +157,7 @@ testPushAssertionPopAssertion = testSequentialPushPopTemplate TxsDefs.empty [sor
             _      -> lift $ assertBool "unexpected pattern" False
         checkAssert1 _          = error "One variable in problem"
 
-        createAssertions2 :: [VarId] -> [VExpr]
+        createAssertions2 :: [VarId] -> [ValExpr VarId]
         createAssertions2 [v] = [cstrGT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions2 _   = error "One variable in problem"
 
@@ -170,11 +168,11 @@ testPushAssertionPopAssertion = testSequentialPushPopTemplate TxsDefs.empty [sor
         checkAssert2 _      = error "One variable in problem"
 
 testNestedRanges :: SMT()
-testNestedRanges = testNestedPushPopTemplate TxsDefs.empty [sortId_Int]  (const [], checkInt)
+testNestedRanges = testNestedPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int]  (const [], checkInt)
                                                                      (map (createAssertions Control.Arrow.&&& checkAssert) [100,99..1])
     where
         y = 123
-        createAssertions :: Integer -> [VarId] -> [VExpr]
+        createAssertions :: Integer -> [VarId] -> [ValExpr VarId]
         createAssertions n [v] = [ cstrGT (cstrVar v) (cstrConst (Cint (y-n)))
                                  , cstrLT (cstrVar v) (cstrConst (Cint (y+n)))
                                  ]

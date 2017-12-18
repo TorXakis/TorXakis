@@ -36,7 +36,6 @@ import qualified Data.Map  as Map
 
 import ConstDefs
 
-import StdTDefs
 import FreeVar
 
 import SolveDefs
@@ -48,6 +47,8 @@ import RandTrueBins
 import RandIncrementChoice
 
 import SolveRandParam
+import SortId
+import SortOf
 
 import ValExpr
 import Variable

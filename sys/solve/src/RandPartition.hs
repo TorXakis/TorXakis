@@ -25,9 +25,10 @@ module RandPartition
 
 where
 
-import System.IO
-import System.Random
-import Control.Monad.State
+import           Control.Monad.State
+import           System.IO
+import           System.Random
+import           System.Random.Shuffle
 
 import qualified Data.List as List
 import qualified Data.Set  as Set
@@ -40,6 +41,7 @@ import SMT
 import SMTData
 import SolveDefs
 import SortId
+import SortOf
 import ValExpr
 import Variable
 
@@ -216,7 +218,14 @@ randCnrs p vexp depth  =
                                 else if  depth > 0
                                        then randCnrsADT p vexp depth
                                        else return [ Set.empty ]
- 
+
+-- ----------------------------------------------------------------------------------------- --
+-- cartesian product
+
+cartProd :: [[t]] -> [[t]]
+cartProd =  foldr listProd [[]]
+  where
+    listProd sq acc  =  [ e:a | e <- sq, a <- acc ]
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

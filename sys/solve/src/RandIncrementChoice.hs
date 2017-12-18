@@ -38,6 +38,7 @@ import           SMT
 import           SMTData
 import           SolveDefs
 import           SortId
+import           SortOf
 import           ValExpr
 import           Variable
 

@@ -33,8 +33,6 @@ import           FuncId
 import           RegexXSD2Posix
 import           SortDef
 import           SortId
-import           StdTDefs
-import           TxsDefs
 import           ValExpr
 import           VarId
 
@@ -53,7 +51,7 @@ smtSolvers =  [ ("CVC4", cmdCVC4)
 
 testConstraintList :: Test
 testConstraintList =
-    TestList $ concatMap (\(l,s) -> (map (\e -> TestLabel (l ++ " " ++ fst e) $ TestCase $ do smtEnv <- createSMTEnv s False TxsDefs.empty
+    TestList $ concatMap (\(l,s) -> (map (\e -> TestLabel (l ++ " " ++ fst e) $ TestCase $ do smtEnv <- createSMTEnv s False
                                                                                               evalStateT (snd e) smtEnv )
                                          labelTestList
                                     )
@@ -132,7 +130,7 @@ ioeTestRegex = [
 -----------------------------------------------------
 -- Helper function
 -----------------------------------------------------
-testTemplateSat :: [VExpr] -> SMT()
+testTemplateSat :: [ValExpr VarId] -> SMT()
 testTemplateSat createAssertions = do
     _ <- SMT.openSolver
     addAssertions createAssertions
@@ -140,10 +138,10 @@ testTemplateSat createAssertions = do
     lift $ assertEqual "sat" Sat resp
     SMT.close
 
-testTemplateValue :: TxsDefs -> [SortId] -> ([VarId] -> [VExpr]) -> ([Const] -> SMT()) -> SMT()
-testTemplateValue txsDefs types createAssertions check = do
+testTemplateValue :: EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId]) -> ([Const] -> SMT()) -> SMT()
+testTemplateValue envDefs types createAssertions check = do
     _ <- SMT.openSolver
-    addDefinitions txsDefs
+    addDefinitions envDefs
     let v = map (\(x,t) -> VarId (T.pack ("i" ++ show x)) x t) (zip [1000..] types)
     addDeclarations v
     addAssertions (createAssertions v)
@@ -167,21 +165,21 @@ testNone = testTemplateSat []
 testNegativeNegativeIsIdentity :: SMT()
 testNegativeNegativeIsIdentity = testTemplateSat [cstrEqual ie (cstrUnaryMinus (cstrUnaryMinus ie))]
     where
-        ie = cstrConst (Cint 3) :: VExpr
+        ie = cstrConst (Cint 3) :: ValExpr VarId
 
 testAdd :: SMT()
 testAdd = testTemplateSat [cstrEqual (cstrConst (Cint 12)) (cstrSum (fromListT [cstrConst (Cint 3), cstrConst (Cint 9)]))]
 
 -- --------------------------------------------------------------------------------------------------------------------
 testNoVariables :: SMT()
-testNoVariables = testTemplateValue TxsDefs.empty [] (const []) check
+testNoVariables = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [] (const []) check
     where
         check :: [Const] -> SMT()
         check [] = lift $ assertBool "expected pattern" True
         check _  = error "No variable in problem"
 
 testBool :: SMT()
-testBool = testTemplateValue TxsDefs.empty [sortId_Bool] (const []) check
+testBool = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortId_Bool] (const []) check
     where
         check :: [Const] -> SMT()
         check [value]   = case value of
@@ -190,9 +188,9 @@ testBool = testTemplateValue TxsDefs.empty [sortId_Bool] (const []) check
         check _         = error "One variable in problem"
 
 testBoolTrue :: SMT()
-testBoolTrue = testTemplateValue TxsDefs.empty [sortId_Bool] createAssertions check
+testBoolTrue = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortId_Bool] createAssertions check
     where
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrVar v]
         createAssertions _   = error "One variable in problem"
 
@@ -203,9 +201,9 @@ testBoolTrue = testTemplateValue TxsDefs.empty [sortId_Bool] createAssertions ch
         check _         = error "One variable in problem"
 
 testBoolFalse :: SMT()
-testBoolFalse = testTemplateValue TxsDefs.empty [sortId_Bool] createAssertions check
+testBoolFalse = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortId_Bool] createAssertions check
     where
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrNot (cstrVar v)]
         createAssertions _   = error "One variable in problem"
 
@@ -217,7 +215,7 @@ testBoolFalse = testTemplateValue TxsDefs.empty [sortId_Bool] createAssertions c
 
 
 testInt :: SMT()
-testInt = testTemplateValue TxsDefs.empty [sortId_Int] (const []) check
+testInt = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int] (const []) check
     where
         check :: [Const] -> SMT()
         check [value] = case value of
@@ -228,9 +226,9 @@ testInt = testTemplateValue TxsDefs.empty [sortId_Int] (const []) check
 
 
 testIntNegative :: SMT()
-testIntNegative = testTemplateValue TxsDefs.empty [sortId_Int] createAssertions check
+testIntNegative = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int] createAssertions check
     where
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrLT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions _   = error "One variable in problem"
 
@@ -258,12 +256,8 @@ isPresentCstrFunc = FuncId "is_present" 9877 [conditionalIntSortId] sortId_Bool
 valuePresentCstrFunc :: FuncId
 valuePresentCstrFunc = FuncId "value" 6565 [conditionalIntSortId] sortId_Int
 
-conditionalIntDef :: TxsDefs
-conditionalIntDef = TxsDefs.insert (IdCstr absentCstrId) (DefCstr (CstrDef isAbsentCstrFunc []) )
-                      (TxsDefs.insert (IdCstr presentCstrId) (DefCstr (CstrDef isPresentCstrFunc [valuePresentCstrFunc]) )
-                       (TxsDefs.insert (IdSort conditionalIntSortId) (DefSort SortDef)
-                        TxsDefs.empty
-                       ))
+conditionalIntDef :: EnvDefs
+conditionalIntDef = EnvDefs (Map.fromList [(conditionalIntSortId, SortDef)]) (Map.fromList [(absentCstrId,CstrDef isAbsentCstrFunc []), (presentCstrId, CstrDef isPresentCstrFunc [valuePresentCstrFunc])]) Map.empty
 
 testConditionalInt :: SMT()
 testConditionalInt = testTemplateValue conditionalIntDef [conditionalIntSortId] (const []) check
@@ -279,7 +273,7 @@ testConditionalInt = testTemplateValue conditionalIntDef [conditionalIntSortId] 
 testConditionalIntIsAbsent :: SMT()
 testConditionalIntIsAbsent = testTemplateValue conditionalIntDef [conditionalIntSortId] createAssertions check
     where
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrIsCstr absentCstrId (cstrVar v)]
         createAssertions _   = error "One variable in problem"
 
@@ -293,7 +287,7 @@ testConditionalIntIsAbsent = testTemplateValue conditionalIntDef [conditionalInt
 testConditionalIntIsPresent :: SMT()
 testConditionalIntIsPresent = testTemplateValue conditionalIntDef [conditionalIntSortId] createAssertions check
     where
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrIsCstr presentCstrId (cstrVar v)]
         createAssertions _   = error "One variable in problem"
 
@@ -310,7 +304,7 @@ testConditionalIntPresentValue = testTemplateValue conditionalIntDef [conditiona
         boundary :: Integer
         boundary = 4
 
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v]    = [ cstrIsCstr presentCstrId (cstrVar v)
                                   , cstrITE (cstrIsCstr presentCstrId (cstrVar v))
                                             (cstrGT (cstrAccess presentCstrId 0 (cstrVar v)) (cstrConst (Cint boundary)) )
@@ -338,7 +332,7 @@ testConditionalIntInstances = testTemplateValue conditionalIntDef
                                                 createAssertions
                                                 check3Different
     where
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v1,v2,v3]    = [ cstrNot (cstrEqual (cstrVar v1) (cstrVar v2))
                                          , cstrNot (cstrEqual (cstrVar v2) (cstrVar v3))
                                          , cstrNot (cstrEqual (cstrVar v1) (cstrVar v3))
@@ -352,13 +346,12 @@ testNestedConstructor = do
         let pairCstrId = CstrId "Pair" 2344 [sortId_Int,sortId_Int] pairSortId
         let absentCstrId = CstrId "Absent" 2345 [] conditionalPairSortId
         let presentCstrId = CstrId "Present" 2346 [pairSortId] conditionalPairSortId
-        let conditionalPairDefs =
-                      TxsDefs.insert (IdCstr pairCstrId) (DefCstr (CstrDef (FuncId "ignore" 9875 [] pairSortId) [FuncId "x" 6565 [] sortId_Int, FuncId "y" 6666 [] sortId_Int]))
-                      (TxsDefs.insert (IdCstr absentCstrId) (DefCstr (CstrDef (FuncId "ignore" 9876 [] conditionalPairSortId) []) )
-                       (TxsDefs.insert (IdCstr presentCstrId) (DefCstr (CstrDef (FuncId "ignore" 9877 [] conditionalPairSortId) [FuncId "value" 6767 [] pairSortId]) )
-                        (TxsDefs.insert (IdSort conditionalPairSortId) (DefSort SortDef)
-                         (TxsDefs.insert (IdSort pairSortId) (DefSort SortDef)
-                          TxsDefs.empty))))
+        let conditionalPairDefs = EnvDefs (Map.fromList [ (conditionalPairSortId, SortDef), (pairSortId, SortDef) ])
+                                          (Map.fromList [ (pairCstrId, CstrDef (FuncId "ignore" 9875 [] pairSortId) [FuncId "x" 6565 [] sortId_Int, FuncId "y" 6666 [] sortId_Int])
+                                                        , (absentCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalPairSortId) [])
+                                                        , (presentCstrId, CstrDef (FuncId "ignore" 9877 [] conditionalPairSortId) [FuncId "value" 6767 [] pairSortId])
+                                                        ])        
+                                          Map.empty
 
         testTemplateValue   conditionalPairDefs
                             [conditionalPairSortId,conditionalPairSortId,conditionalPairSortId]
@@ -367,7 +360,7 @@ testNestedConstructor = do
     where
         conditionalPairSortId = SortId "ConditionalPair" 9630
 
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v1,v2,v3]    = [ cstrNot (cstrEqual (cstrVar v1) (cstrVar v2))
                                          , cstrNot (cstrEqual (cstrVar v2) (cstrVar v3))
                                          , cstrNot (cstrEqual (cstrVar v1) (cstrVar v3))
@@ -379,14 +372,10 @@ testFunctions = do
         let varX = VarId "x" 645421 sortId_Bool
         let varY = VarId "y" 645422 sortId_Bool
         let body1 = cstrEqual (cstrVar varX) (cstrVar varY)
-        let fd1 = DefFunc (FuncDef [varX, varY] body1)
-        let fd2 = DefFunc (FuncDef [] const2)
+        let fd1 = FuncDef [varX, varY] body1
+        let fd2 = FuncDef [] const2
 
-        let tDefs = TxsDefs.insert  (IdFunc fid2)
-                                    fd2
-                                    (TxsDefs.insert (IdFunc fid1)
-                                                    fd1
-                                                    TxsDefs.empty)
+        let tDefs = EnvDefs Map.empty Map.empty (Map.fromList [(fid1, fd1), (fid2, fd2)])
 
         testTemplateValue tDefs
                           [sortId_Bool,sortId_Bool,sortId_Int]
@@ -395,9 +384,9 @@ testFunctions = do
     where
         fid1 = FuncId "multipleArgsFunction" 123454321 [sortId_Bool, sortId_Bool] sortId_Bool
         fid2 = FuncId "myConst" 12345678 [] sortId_Int
-        const2 = cstrConst (Cint 3) :: VExpr
+        const2 = cstrConst (Cint 3) :: ValExpr VarId
 
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [b1,b2,i]    = [ cstrFunc (Map.empty :: Map.Map FuncId (FuncDef VarId)) fid1 [cstrVar b1, cstrVar b2]
                                         , cstrEqual (cstrVar i) (cstrFunc (Map.empty :: Map.Map FuncId (FuncDef VarId)) fid2 [])
                                         ]
@@ -410,7 +399,7 @@ testFunctions = do
         check _         = error "Three variable in problem"
 
 testString :: SMT()
-testString = testTemplateValue TxsDefs.empty [sortId_String] (const []) check
+testString = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortId_String] (const []) check
     where
         check :: [Const] -> SMT()
         check [value]   = case value of
@@ -419,9 +408,9 @@ testString = testTemplateValue TxsDefs.empty [sortId_String] (const []) check
         check _         = error "One variable in problem"
 
 testStringEquals :: Text -> SMT()
-testStringEquals str = testTemplateValue TxsDefs.empty [sortId_String] createAssertions check
+testStringEquals str = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortId_String] createAssertions check
     where
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrEqual (cstrVar v) (cstrConst (Cstring str))]
         createAssertions _   = error "One variable in problem"
 
@@ -433,9 +422,9 @@ testStringEquals str = testTemplateValue TxsDefs.empty [sortId_String] createAss
         check _         = error "One variable in problem"
 
 testStringLength :: Int -> SMT()
-testStringLength n = testTemplateValue TxsDefs.empty [sortId_String] createAssertions check
+testStringLength n = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortId_String] createAssertions check
     where
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrEqual (cstrConst (Cint (toInteger n))) (cstrLength (cstrVar v))]
         createAssertions _   = error "One variable in problem"
 
@@ -447,9 +436,9 @@ testStringLength n = testTemplateValue TxsDefs.empty [sortId_String] createAsser
 
 
 testRegex :: String -> SMT ()
-testRegex regexStr = testTemplateValue TxsDefs.empty [sortId_String] createAssertions check
+testRegex regexStr = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortId_String] createAssertions check
     where
-        createAssertions :: [VarId] -> [VExpr]
+        createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrStrInRe (cstrVar v) (cstrConst (Cregex (T.pack regexStr)))]
         
         check :: [Const] -> SMT()
