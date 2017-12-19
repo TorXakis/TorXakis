@@ -30,7 +30,6 @@ library
                       , ModelId
                       , ProcId
                       , PurpId
-                      , SortOf
                       , StatId
                       , FuncTable
                       , Sigs

@@ -23,6 +23,7 @@ import           Id
 -- Local imports.
 import           Name
 import           SortId
+import           SortOf
 import           Variable
 
 
@@ -40,3 +41,6 @@ instance Variable VarId where
 
 instance Resettable VarId
 instance Identifiable VarId
+
+instance SortOf VarId  where
+  sortOf (VarId _nm _unid srt)                    = srt

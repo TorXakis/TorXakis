@@ -26,7 +26,6 @@ import           Control.Monad.State (gets, lift, modify)
 import qualified Data.List           as List
 import qualified Data.Map            as Map
 import           Data.Monoid
-import qualified Data.Set            as Set
 import           Data.String.Utils   (endswith, replace, startswith, strip)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
@@ -41,8 +40,6 @@ import           SMTData
 import           SMTHappy
 import           SolveDefs
 import           TXS2SMT
-import           TxsDefs
-import           TxsUtils
 import           ValExpr
 import           Variable
 
@@ -91,8 +88,8 @@ pop = put "(pop 1)"
 -- SMT communication functions via process fork
 -- ----------------------------------------------------------------------------------------- --
 
-createSMTEnv :: CreateProcess -> Bool -> TxsDefs -> IO SmtEnv
-createSMTEnv cmd lgFlag tdefs =  do
+createSMTEnv :: CreateProcess -> Bool -> IO SmtEnv
+createSMTEnv cmd lgFlag =  do
     (Just hin, Just hout, Just herr, ph) <- createProcess cmd
                                                            { std_out = CreatePipe
                                                            , std_in = CreatePipe
@@ -136,41 +133,42 @@ createSMTEnv cmd lgFlag tdefs =  do
                    herr
                    ph
                    lg
-                   (Map.fromList (initialMapInstanceTxsToSmtlib <>
-                                   map (\f -> (IdFunc f, error "Transitive closure should prevent calls to CONNECTION (ENCODE/DECODE) related functions.")) (Set.toList (allENDECfuncs tdefs))))
-                   TxsDefs.empty
+                   initialEnvNames
+                   (EnvDefs Map.empty Map.empty Map.empty)
             )
 
 -- ----------------------------------------------------------------------------------------- --
 -- addDefinitions
 -- ----------------------------------------------------------------------------------------- --
-addDefinitions :: TxsDefs -> SMT ()
-addDefinitions txsdefs =  do
-    mapI <- gets mapInstanceTxsToSmtlib
+addDefinitions :: EnvDefs -> SMT ()
+addDefinitions edefs =  do
+    enames <- gets envNames
     -- exclude earlier defined sorts, e.g. for the pre-defined data types,
     -- such as Bool, Int, and String, because we use the equivalent SMTLIB built-in types
-    let newdefs = filter (\(i, _) -> Map.notMember i mapI) (TxsDefs.toList txsdefs)
-        (datas, funcs) = foldr separator ([],[]) newdefs
-        mapC           = foldr insertMap mapI datas
-                           -- sorts & constructors must be processed first, functions later
-    putT ( sortdefsToSMT mapC (TxsDefs.fromList datas) )
+    let newSorts = Map.filterWithKey (\k _ -> Map.notMember k (sortNames enames)) (sortDefs edefs)
+    let snames = foldr insertSort enames (Map.toList newSorts)
+    
+    -- constructors of sort introduce functions
+    let newCstrs = Map.filterWithKey (\k _ -> Map.notMember k (cstrNames snames)) (cstrDefs edefs)
+    let cnames = foldr insertCstr snames (Map.toList newCstrs)
+    
+    putT ( sortdefsToSMT cnames (EnvDefs newSorts newCstrs Map.empty) )
     put "\n\n"
-    let newfuncs = filter (\(i, _) -> Map.notMember i mapC) funcs
-                         -- remove isX, accessors and equal functions related to data types
-                         -- remove the transitive closure of function for connections (such as toString and toXml)
-        mapR = foldr insertMap mapC newfuncs
-    putT ( funcdefsToSMT mapR (TxsDefs.fromList newfuncs) )
+    
+    
+    let newFuncs = Map.filterWithKey (\k _ -> Map.notMember k (funcNames cnames)) (funcDefs edefs)
+    let fnames = foldr insertFunc cnames (Map.toList newFuncs)
+    putT ( funcdefsToSMT fnames newFuncs )
     put "\n\n"
-    original <- gets txsDefs
-    modify ( \e -> e { mapInstanceTxsToSmtlib = mapR
-                     , txsDefs = TxsDefs.union original txsdefs} )
-    where
-        separator :: (Ident, TxsDef) -> ( [(Ident, TxsDef)], [(Ident, TxsDef)] )
-                                     -> ( [(Ident, TxsDef)], [(Ident, TxsDef)] )
-        separator e@(IdCstr{}, DefCstr{}) (dataList, funcList) = (e:dataList,   funcList)
-        separator e@(IdSort{}, DefSort{}) (dataList, funcList) = (e:dataList,   funcList)
-        separator e@(IdFunc{}, DefFunc{}) (dataList, funcList) = (  dataList, e:funcList)
-        separator _ (dataList, funcList)                       = (  dataList,   funcList)
+    
+    original <- gets envDefs
+    modify ( \e -> e { envNames = fnames
+                     , envDefs = EnvDefs (Map.union (sortDefs original) (sortDefs edefs))
+                                         (Map.union (cstrDefs original) (cstrDefs edefs))
+                                         (Map.union (funcDefs original) (funcDefs edefs))
+                     } 
+           )
+       -- use union to be certain all definitions remain included
 
 -- --------------------------------------------------------------------------------------------
 -- addDeclarations
@@ -178,7 +176,7 @@ addDefinitions txsdefs =  do
 addDeclarations :: (Variable v) => [v] -> SMT ()
 addDeclarations [] = return ()
 addDeclarations vs  =  do
-    mapI <- gets mapInstanceTxsToSmtlib
+    mapI <- gets envNames
     putT ( declarationsToSMT mapI vs )
     return ()
 
@@ -187,7 +185,7 @@ addDeclarations vs  =  do
 -- ----------------------------------------------------------------------------------------- --
 addAssertions :: (Variable v) => [ValExpr v] -> SMT ()
 addAssertions vexps  =  do
-    mapI <- gets mapInstanceTxsToSmtlib
+    mapI <- gets envNames
     putT ( assertionsToSMT mapI vexps )
     return ()
 
@@ -214,12 +212,12 @@ getSolution vs    = do
     putT ("(get-value (" <> T.intercalate " " (map vname vs) <>"))")
     s <- getSMTresponse
     let vnameSMTValueMap = Map.mapKeys T.pack . smtParser . smtLexer $ s
-    tdefs <- gets txsDefs
-    return $ Map.fromList (map (toConst tdefs vnameSMTValueMap) vs)
+    edefs <- gets envDefs
+    return $ Map.fromList (map (toConst edefs vnameSMTValueMap) vs)
   where
-    toConst :: (Variable v) => TxsDefs -> Map.Map Text SMTValue -> v -> (v, Const)
-    toConst tdefs mp v = case Map.lookup (vname v) mp of
-                            Just smtValue   -> (v, smtValueToValExpr smtValue tdefs (vsort v))
+    toConst :: (Variable v) => EnvDefs -> Map.Map Text SMTValue -> v -> (v, Const)
+    toConst edefs mp v = case Map.lookup (vname v) mp of
+                            Just smtValue   -> (v, smtValueToValExpr smtValue (cstrDefs edefs) (vsort v))
                             Nothing         -> error "getSolution - SMT hasn't returned the value of requested variable."
 
 -- ------------------------------------------
@@ -278,7 +276,7 @@ putT = put . T.unpack
 -- | Transform value expression to an SMT string.
 valExprToString :: Variable v => ValExpr v -> SMT Text
 valExprToString v = do
-  mapI <- gets mapInstanceTxsToSmtlib
+  mapI <- gets envNames
   return $ valexprToSMT mapI v
 
 -- ----------------------------------------------------------------------------------------- --

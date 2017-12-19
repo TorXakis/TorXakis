@@ -113,8 +113,8 @@ checkENDECdef tdefs tdef
 
 baseENDECfuncs :: TxsDefs -> Set.Set FuncId
 baseENDECfuncs tdefs
-  =  Set.fromList $ funcId_takeWhile : funcId_takeWhileNot
-                    : funcId_dropWhile : funcId_dropWhileNot
+  =  Set.fromList $ funcIdtakeWhile : funcIdtakeWhileNot
+                    : funcIddropWhile : funcIddropWhileNot
                     : [ fid
                       | fid@FuncId{ FuncId.name = nm } <- Map.keys (funcDefs tdefs)
                       , (nm == "toString") || (nm  == "fromString") ||

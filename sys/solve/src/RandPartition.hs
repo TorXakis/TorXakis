@@ -25,9 +25,10 @@ module RandPartition
 
 where
 
-import System.IO
-import System.Random
-import Control.Monad.State
+import           Control.Monad.State
+import           System.IO
+import           System.Random
+import           System.Random.Shuffle
 
 import qualified Data.List as List
 import qualified Data.Set  as Set
@@ -39,9 +40,8 @@ import CstrDef
 import SMT
 import SMTData
 import SolveDefs
-import StdTDefs
-import TxsDefs
-import Utils
+import SortId
+import SortOf
 import ValExpr
 import Variable
 
@@ -59,7 +59,7 @@ data ParamPartition =
 randValExprsSolvePartition :: (Variable v) => ParamPartition -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
 randValExprsSolvePartition p vs exprs  = 
      -- if not all constraints are of type boolean: stop, otherwise solve the constraints
-     if all ( (sortId_Bool == ) . sortOf ) exprs
+     if all ( (sortIdBool == ) . sortOf ) exprs
         then do
             push
             addDeclarations vs
@@ -67,7 +67,7 @@ randValExprsSolvePartition p vs exprs  =
             cnrss <- sequence   [ randCnrs p (cstrVar v) (maxDepth p)
                                 | v <- vs
                                 ]
-            cnrss' <- lift $ randOrder ( map Set.unions (cartProd cnrss) )
+            cnrss' <- lift $ shuffleM ( map Set.unions (cartProd cnrss) )
             sat    <- randValExprsSolvePartition' vs cnrss'
             pop
             return sat
@@ -87,7 +87,7 @@ randValExprsSolvePartition'' _ [] x           =  return x
 
 randValExprsSolvePartition'' vs (cnrs:cnrss) x = 
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
-    if all ( (sortId_Bool == ) . sortOf) (Set.toList cnrs)
+    if all ( (sortIdBool == ) . sortOf) (Set.toList cnrs)
     then do
         push
         -- addDeclarations already added in randValExprsSolvePartition
@@ -174,9 +174,9 @@ randCnrsString vexp  =
 
 randCnrsADT :: Variable v => ParamPartition -> ValExpr v -> Int -> SMT [ Set.Set (ValExpr v) ]
 randCnrsADT p vexp depth  =  do
-    tdefs <- gets txsDefs
+    edefs <- gets envDefs
     let cstrs = [ def
-                | def@( CstrId{cstrsort = srt}, _ ) <- Map.toList (cstrDefs tdefs)
+                | def@( CstrId{cstrsort = srt}, _ ) <- Map.toList (cstrDefs edefs)
                 , srt == sortOf vexp
                 ]
     cnrss <- sequence [ randCnrsCstr p cstr vexp depth | cstr <- cstrs ]
@@ -206,19 +206,26 @@ randCnrsCstr p (cid, CstrDef{}) vexp depth  =  do
 randCnrs :: Variable v => ParamPartition -> ValExpr v -> Int -> SMT [ Set.Set (ValExpr v) ]
 randCnrs p vexp depth  =
      let srt = sortOf vexp
-      in if  srt == sortId_Bool
+      in if  srt == sortIdBool
            then randCnrsBool vexp
-           else if  srt == sortId_Int
+           else if  srt == sortIdInt
                   then randCnrsInt p vexp
-                  else if  srt == sortId_String
+                  else if  srt == sortIdString
                          then randCnrsString vexp
-                         else if  srt == sortId_Regex
+                         else if  srt == sortIdRegex
                                 then do lift $ hPutStrLn stderr "TXS RandPartition randCnrs: Regex can't be solved\n"
                                         return [ Set.empty ]
                                 else if  depth > 0
                                        then randCnrsADT p vexp depth
                                        else return [ Set.empty ]
- 
+
+-- ----------------------------------------------------------------------------------------- --
+-- cartesian product
+
+cartProd :: [[t]] -> [[t]]
+cartProd =  foldr listProd [[]]
+  where
+    listProd sq acc  =  [ e:a | e <- sq, a <- acc ]
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

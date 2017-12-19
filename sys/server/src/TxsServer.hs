@@ -486,7 +486,7 @@ cmdSolve args kind = do
                cmdsIntpr
        else do modify $ \env' -> env' { IOS.uid = uid' }
                sols  <- lift $ solver (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp')
-               IFS.pack cmd [ TxsShow.fshow sols ]
+               IFS.pack cmd [ show sols ]
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --

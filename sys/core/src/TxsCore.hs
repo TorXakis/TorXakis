@@ -147,10 +147,10 @@ import qualified ParamCore
 
 -- import from defs
 import qualified Sigs
-import qualified SortOf
 import qualified TxsDDefs
 import qualified TxsDefs
 import qualified TxsShow
+import           TxsUtils
 
 -- import from solve
 import qualified FreeVar
@@ -158,11 +158,14 @@ import qualified SMT
 import qualified Solve
 import qualified SolveDefs
 import qualified SolveDefs.Params
+import qualified SMTData
 
 -- import from value
 import qualified Eval
 
 -- import from valexpr
+import qualified SortId
+import qualified SortOf
 import ConstDefs
 import VarId
 
@@ -205,9 +208,9 @@ txsInit tdefs sigs putMsgs  =  do
                    -- some refactoring of the TorXakis core to take this into
                    -- account.
                    smtProc = fromJust (Config.getProc cfg)
-               smtEnv         <- lift $ SMT.createSMTEnv smtProc smtLog tdefs
+               smtEnv         <- lift $ SMT.createSMTEnv smtProc smtLog
                (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
-               (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions tdefs) smtEnv'
+               (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions (SMTData.EnvDefs (TxsDefs.sortDefs tdefs) (TxsDefs.cstrDefs tdefs) (Set.foldr Map.delete (TxsDefs.funcDefs tdefs) (allENDECfuncs tdefs)))) smtEnv'
                putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver " ++ show (Config.solverId (Config.selectedSolver cfg)) ++ " initialized : " ++ info
                        , EnvData.TXS_CORE_USER_INFO   "TxsCore initialized"
                        ]
@@ -324,7 +327,7 @@ txsSolve vexp  =  do
        IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR  "No 'solve' without model" ]
                return Map.empty
-       _ -> if  SortOf.sortOf vexp /= SortOf.sortId_Bool
+       _ -> if  SortOf.sortOf vexp /= SortId.sortIdBool
                  then do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                  "Value expression for solve shall be Bool" ]
@@ -358,7 +361,7 @@ txsUniSolve vexp  =  do
        IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'solve' without model" ]
                return Map.empty
-       _ -> if  SortOf.sortOf vexp /= SortOf.sortId_Bool
+       _ -> if  SortOf.sortOf vexp /= SortId.sortIdBool
                  then do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Value expression shall be Bool" ]
                    return Map.empty
@@ -390,7 +393,7 @@ txsRanSolve vexp  =  do
        IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'solve' without model" ]
                return Map.empty
-       _ -> if  SortOf.sortOf vexp /= SortOf.sortId_Bool
+       _ -> if  SortOf.sortOf vexp /= SortId.sortIdBool
                  then do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Value expression shall be Bool" ]
                    return Map.empty

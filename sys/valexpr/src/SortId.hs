@@ -8,6 +8,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE OverloadedStrings #-}
 module SortId where
 
 import           Control.DeepSeq
@@ -26,3 +27,21 @@ data SortId = SortId
 
 instance Resettable SortId
 instance Identifiable SortId
+
+-- * standard sorts
+
+sortIdBool :: SortId
+sortIdBool = SortId "Bool" 101
+
+sortIdInt :: SortId
+sortIdInt = SortId "Int" 102
+
+sortIdString :: SortId
+sortIdString = SortId "String" 104
+
+sortIdRegex :: SortId
+sortIdRegex = SortId "Regex" 105
+
+sortIdError :: SortId
+sortIdError = SortId "_Error" (-1)
+

@@ -13,7 +13,6 @@ See LICENSE at root directory of this repository.
 
 
 {-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 module SolveDefs
 ( Solution
 , SolvableProblem(..)
@@ -25,9 +24,6 @@ where
 import qualified Data.Map  as Map
 
 import ConstDefs
-import TxsShow
-import Variable
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- SMT definitions
@@ -44,16 +40,6 @@ data  SolveProblem v  = Solved (Solution v)
                       | Unsolvable
                       | UnableToSolve
      deriving (Eq,Ord,Read,Show)
-
--- ----------------------------------------------------------------------------------------- --
-
-instance (Variable v, PShow v) => PShow (Solution v)
-  where
-    pshow sol
-      =  concatMap (\(v,w) -> pshow v ++ " = " ++ pshow w ++ "\n") (Map.toList sol)
-
-
-instance (Variable v) => PShow (SolveProblem v)
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

@@ -34,6 +34,7 @@ import           GHC.Generics    (Generic)
 import           ChanId
 import           Id
 import           ProcId
+import           SortOf
 import           StatId
 import           VarEnv
 import           VarId
@@ -80,6 +81,9 @@ data  ChanOffer     = Quest  VarId
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 instance Resettable ChanOffer
+instance SortOf ChanOffer where
+  sortOf (Quest (VarId _nm _uid vs)) =  vs
+  sortOf (Exclam vexp)               =  sortOf vexp
 
 -- | symbolic transitions
 data  Trans         = Trans  { from     :: StatId
