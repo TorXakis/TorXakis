@@ -377,17 +377,17 @@ functionCall (FuncId "==" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId s sor
 functionCall (FuncId "<>" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId s sortIdBool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrNot (cstrEqual (vexpr l) (vexpr r) ) )
 functionCall (FuncId "toString" _ [si] so) [i] | identicalSortId si sortIdBool && identicalSortId so sortIdString && identicalSortId si (sortOf (vexpr i)) =
-    FuncContent (cstrPredef SSB funcId_BoolToString [vexpr i])
+    FuncContent (cstrPredef SSB funcIdBoolToString [vexpr i])
 functionCall (FuncId "toString" _ [si] so) [i] | identicalSortId si sortIdInt && identicalSortId so sortIdString && identicalSortId si (sortOf (vexpr i)) =
-    FuncContent (cstrPredef SSI funcId_IntToString [vexpr i])
+    FuncContent (cstrPredef SSI funcIdIntToString [vexpr i])
 functionCall (FuncId "toString" _ [si] so) [i] | identicalSortId si sortIdString && identicalSortId so sortIdString && identicalSortId si (sortOf (vexpr i)) =
-    FuncContent (cstrPredef SSS funcId_StringToString [vexpr i])
+    FuncContent (cstrPredef SSS funcIdStringToString [vexpr i])
 functionCall (FuncId "fromString" _ [si] so) [i] | identicalSortId si sortIdString && identicalSortId so sortIdBool && identicalSortId si (sortOf (vexpr i)) =
-    FuncContent (cstrPredef SSB funcId_BoolFromString [vexpr i])
+    FuncContent (cstrPredef SSB funcIdBoolFromString [vexpr i])
 functionCall (FuncId "fromString" _ [si] so) [i] | identicalSortId si sortIdString && identicalSortId so sortIdInt && identicalSortId si (sortOf (vexpr i)) =
-    FuncContent (cstrPredef SSI funcId_IntFromString [vexpr i])
+    FuncContent (cstrPredef SSI funcIdIntFromString [vexpr i])
 functionCall (FuncId "fromString" _ [si] so) [i] | identicalSortId si sortIdString && identicalSortId so sortIdString && identicalSortId si (sortOf (vexpr i)) =
-    FuncContent (cstrPredef SSS funcId_StringFromString [vexpr i])
+    FuncContent (cstrPredef SSS funcIdStringFromString [vexpr i])
 functionCall (FuncId "not" _ [si] so) [i] | identicalSortId si sortIdBool && identicalSortId so sortIdBool && identicalSortId sortIdBool (sortOf (vexpr i)) =
     FuncContent (cstrNot (vexpr i) )
 functionCall (FuncId "/\\" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl sortIdBool && identicalSortId s sortIdBool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
