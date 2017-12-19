@@ -209,7 +209,7 @@ txsInit tdefs sigs putMsgs  =  do
                    smtProc = fromJust (Config.getProc cfg)
                smtEnv         <- lift $ SMT.createSMTEnv smtProc smtLog
                (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
-               (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions (SMTData.EnvDefs (TxsDefs.sortDefs tdefs) (TxsDefs.cstrDefs tdefs) (TxsDefs.funcDefs tdefs))) smtEnv'
+               (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions (SMTData.EnvDefs (TxsDefs.sortDefs tdefs) (TxsDefs.cstrDefs tdefs) (Map.diff (TxsDefs.funcDefs tdefs) (allENDECfuncs tdefs)))) smtEnv'
                putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver " ++ show (Config.solverId (Config.selectedSolver cfg)) ++ " initialized : " ++ info
                        , EnvData.TXS_CORE_USER_INFO   "TxsCore initialized"
                        ]
