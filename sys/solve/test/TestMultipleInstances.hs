@@ -37,7 +37,7 @@ testSolvers s1 s2 = TestLabel "Two instances" $ TestCase $ do
     smtEnv1 <- createSMTEnv s1 False
     smtEnv2 <- createSMTEnv s2 False
 
-    let v = VarId "instance" 1234 sortId_Int
+    let v = VarId "instance" 1234 sortIdInt
     smtEnv1' <- execStateT openSolver smtEnv1
     smtEnv2' <- execStateT openSolver smtEnv2
 

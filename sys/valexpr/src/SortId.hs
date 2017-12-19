@@ -30,17 +30,17 @@ instance Identifiable SortId
 
 -- * standard sorts
 
-sortId_Bool :: SortId
-sortId_Bool = SortId "Bool" 101
+sortIdBool :: SortId
+sortIdBool = SortId "Bool" 101
 
-sortId_Int :: SortId
-sortId_Int = SortId "Int" 102
+sortIdInt :: SortId
+sortIdInt = SortId "Int" 102
 
-sortId_String :: SortId
-sortId_String = SortId "String" 104
+sortIdString :: SortId
+sortIdString = SortId "String" 104
 
-sortId_Regex :: SortId
-sortId_Regex = SortId "Regex" 105
+sortIdRegex :: SortId
+sortIdRegex = SortId "Regex" 105
 
 sortIdError :: SortId
 sortIdError = SortId "_Error" (-1)

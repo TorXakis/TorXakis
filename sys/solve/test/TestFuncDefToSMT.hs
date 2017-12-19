@@ -46,58 +46,58 @@ testConstant :: Test
 testConstant = TestCase $ do
     let ve = createVconst (Cint 3)
     let myConst = "myConst"
-    let fid = createFunctionId myConst 987654 [] sortId_Int
-    let mapI = EnvNames (Map.fromList [(sortId_Int, "Sort_Int")])
+    let fid = createFunctionId myConst 987654 [] sortIdInt
+    let mapI = EnvNames (Map.fromList [(sortIdInt, "Sort_Int")])
                         Map.empty
                         (Map.fromList [(fid,myConst)])
-    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [] sortId_Int ve
+    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [] sortIdInt ve
     assertEqual "Constant Function" e (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))
 
 testSingleArg :: Test
 testSingleArg = TestCase $ do
-    let v = VarId "x" 645421 sortId_Int
+    let v = VarId "x" 645421 sortIdInt
     let ve = createVvar v
     let fName = "singleArgFunction"
-    let fid = createFunctionId fName 987654 [v] sortId_Int
-    let mapI = EnvNames (Map.fromList [(sortId_Int, "Sort_Int")])
+    let fid = createFunctionId fName 987654 [v] sortIdInt
+    let mapI = EnvNames (Map.fromList [(sortIdInt, "Sort_Int")])
                         Map.empty
                         (Map.fromList [(fid, fName)])
-    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [v] sortId_Int ve
+    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [v] sortIdInt ve
     assertEqual "single Argument Function" e (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))
 
 testMultipleArgs :: Test
 testMultipleArgs = TestCase $ do
-    let varX = VarId "x" 645421 sortId_Bool
-    let varY = VarId "y" 645422 sortId_Bool
+    let varX = VarId "x" 645421 sortIdBool
+    let varY = VarId "y" 645422 sortIdBool
     let ve = createVequal (createVvar varX) (createVvar varY)
     let fName = "multipleArgsFunction"
-    let fid = createFunctionId fName 987654 [varX, varY] sortId_Bool
-    let mapI = EnvNames (Map.fromList [(sortId_Bool, "SortBoolean")])
+    let fid = createFunctionId fName 987654 [varX, varY] sortIdBool
+    let mapI = EnvNames (Map.fromList [(sortIdBool, "SortBoolean")])
                         Map.empty
                         (Map.fromList [(fid, fName)])
-    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [varX, varY] sortId_Bool ve
+    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [varX, varY] sortIdBool ve
     assertEqual "multiple Arguments Function" e (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))
 
 testMultipleFunctions :: Test
 testMultipleFunctions = TestCase $ do
     let fName1 = "multipleArgsFunction"
-    let varX = VarId "x" 645421 sortId_Bool
-    let varY = VarId "y" 645422 sortId_Bool
-    let fid1 = createFunctionId fName1 987654 [varX, varY] sortId_Bool
+    let varX = VarId "x" 645421 sortIdBool
+    let varY = VarId "y" 645422 sortIdBool
+    let fid1 = createFunctionId fName1 987654 [varX, varY] sortIdBool
     let vexpr1 = createVequal (createVvar varX) (createVvar varY)
 
     let fName2 = "myConst"
-    let fid2 = createFunctionId fName2 97531 [] sortId_Int
+    let fid2 = createFunctionId fName2 97531 [] sortIdInt
     let vexpr2 = createVconst (Cint 3)
 
-    let mapI = EnvNames (Map.fromList [(sortId_Bool, "boolean")
-                                      ,(sortId_Int, "integer")
+    let mapI = EnvNames (Map.fromList [(sortIdBool, "boolean")
+                                      ,(sortIdInt, "integer")
                                       ])
                         Map.empty
                         (Map.fromList [(fid1, fName1)
                                       ,(fid2, fName2)
                                       ])
 
-    let (TXS2SMTFuncTest envdefs expected) = createFunctionDefsRecursive mapI [(fid1,[varX, varY],sortId_Bool,vexpr1),(fid2,[],sortId_Int,vexpr2)]
+    let (TXS2SMTFuncTest envdefs expected) = createFunctionDefsRecursive mapI [(fid1,[varX, varY],sortIdBool,vexpr1),(fid2,[],sortIdInt,vexpr2)]
 
     assertEqual "multiple Functions" expected (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))

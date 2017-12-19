@@ -63,19 +63,19 @@ lookupConstructor cstrMap sid n
 -- name of a SMT identifier that refers to a SMT variable.
 smtValueToValExpr :: SMTValue -> Map.Map CstrId CstrDef -> SortId -> Const
 smtValueToValExpr (SMTBool b) _ srt
-  =  if sortId_Bool == srt
+  =  if sortIdBool == srt
        then Cbool b
        else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
                      "Bool expected, got " ++ show srt ++ "\n"
 
 smtValueToValExpr (SMTInt i) _ srt
-  =  if sortId_Int == srt
+  =  if sortIdInt == srt
        then Cint i
        else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
                      "Int expected, got " ++ show srt ++ "\n"
 
 smtValueToValExpr (SMTString s) _ srt
-  =  if sortId_String == srt
+  =  if sortIdString == srt
        then Cstring s
        else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
                      "String expected, got " ++ show srt ++ "\n"

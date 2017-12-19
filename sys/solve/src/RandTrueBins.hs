@@ -62,7 +62,7 @@ data ParamTrueBins =
 randValExprsSolveTrueBins :: (Variable v) => ParamTrueBins -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
 randValExprsSolveTrueBins p freevars exprs  =
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
-    if all ( (sortId_Bool == ) . sortOf ) exprs
+    if all ( (sortIdBool == ) . sortOf ) exprs
     then do
         push
         addDeclarations freevars
@@ -241,9 +241,9 @@ randomValue :: (Variable v) => ParamTrueBins -> SortId -> ValExpr v -> Int -> SM
 randomValue _ _sid _expr 0 = return "true"
 randomValue p sid expr n | n > 0 =
     case sid of
-        x | x == sortId_Bool   -> trueBool expr
-        x | x == sortId_Int    -> trueBins expr (nrOfBins p) (nextFunction p)
-        x | x == sortId_String -> trueString p expr
+        x | x == sortIdBool   -> trueBool expr
+        x | x == sortIdInt    -> trueBins expr (nrOfBins p) (nextFunction p)
+        x | x == sortIdString -> trueString p expr
         _ -> do
                 cstrs <- lookupConstructors sid
                 orList <- processConstructors cstrs expr

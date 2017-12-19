@@ -125,13 +125,13 @@ evalView x          = Left $ "Value Expression is not a constant value " ++ show
 instance (Variable v) => SortOf (ValExpr v) where
   sortOf vexp = let s = sortOf' vexp in
     if s == sortIdError
-    then sortId_String
+    then sortIdString
     else s
 
 sortOf' :: (Variable v) => ValExpr v -> SortId
 sortOf' (view -> Vfunc (FuncId _nm _uid _fa fs) _vexps) = fs
 sortOf' (view -> Vcstr (CstrId _nm _uid _ca cs) _vexps) = cs
-sortOf' (view -> Viscstr _ _)                           = sortId_Bool
+sortOf' (view -> Viscstr _ _)                           = sortIdBool
 sortOf' (view -> Vaccess (CstrId _nm _uid ca _cs) p _vexps) = ca!!p
 sortOf' (view -> Vconst con)                            =  sortOf con
 sortOf' (view -> Vvar v)                                =  vsort v
@@ -140,18 +140,18 @@ sortOf' (view -> Vite _cond vexp1 vexp2)                =  -- if the LHS is an e
                                                              if sort' == sortIdError
                                                                then sortOf' vexp2
                                                                else sort'
-sortOf' (view -> Vequal { })                            =  sortId_Bool
-sortOf' (view -> Vnot { })                              =  sortId_Bool
-sortOf' (view -> Vand { })                              =  sortId_Bool
-sortOf' (view -> Vsum { })                              =  sortId_Int
-sortOf' (view -> Vproduct { })                          =  sortId_Int
-sortOf' (view -> Vmodulo { })                           =  sortId_Int
-sortOf' (view -> Vdivide { })                           =  sortId_Int
-sortOf' (view -> Vgez { })                              =  sortId_Bool
-sortOf' (view -> Vlength { })                           =  sortId_Int
-sortOf' (view -> Vat { })                               =  sortId_String
-sortOf' (view -> Vconcat { })                           =  sortId_String
-sortOf' (view -> Vstrinre { })                          =  sortId_Bool
+sortOf' (view -> Vequal { })                            =  sortIdBool
+sortOf' (view -> Vnot { })                              =  sortIdBool
+sortOf' (view -> Vand { })                              =  sortIdBool
+sortOf' (view -> Vsum { })                              =  sortIdInt
+sortOf' (view -> Vproduct { })                          =  sortIdInt
+sortOf' (view -> Vmodulo { })                           =  sortIdInt
+sortOf' (view -> Vdivide { })                           =  sortIdInt
+sortOf' (view -> Vgez { })                              =  sortIdBool
+sortOf' (view -> Vlength { })                           =  sortIdInt
+sortOf' (view -> Vat { })                               =  sortIdString
+sortOf' (view -> Vconcat { })                           =  sortIdString
+sortOf' (view -> Vstrinre { })                          =  sortIdBool
 sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps)  =  fs
 sortOf' (view -> Vpredef{})                             = error "sortOf': Unexpected Ident with Vpredef"
 sortOf' (view -> Verror _str)                           =  sortIdError

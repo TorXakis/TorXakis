@@ -34,10 +34,10 @@ data Const = Cbool    { cBool :: Bool }
 instance Resettable Const
 
 instance SortOf Const where
-  sortOf (Cbool _b)                        = sortId_Bool
-  sortOf (Cint _i)                         = sortId_Int
-  sortOf (Cstring _s)                      = sortId_String
-  sortOf (Cregex _r)                       = sortId_Regex
+  sortOf (Cbool _b)                        = sortIdBool
+  sortOf (Cint _i)                         = sortIdInt
+  sortOf (Cstring _s)                      = sortIdString
+  sortOf (Cregex _r)                       = sortIdRegex
   sortOf (Cstr (CstrId _nm _uid _ca cs) _) = cs
   sortOf (Cany s)                          = s
   sortOf (Cerror _)                        = sortIdError

@@ -113,10 +113,10 @@ checkInt _  = error "One variable in problem"
 
 
 testPush :: SMT ()
-testPush = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int]   (const [], checkInt) []
+testPush = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortIdInt]   (const [], checkInt) []
 
 testPushAssertion :: SMT()
-testPushAssertion = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int]  (const [], checkInt)
+testPushAssertion = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortIdInt]  (const [], checkInt)
                                                                                           [(createAssertions, checkAssert)]
     where
         createAssertions :: [VarId] -> [ValExpr VarId]
@@ -130,7 +130,7 @@ testPushAssertion = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty M
         checkAssert _       = error "One variable in problem"
 
 testPushAssertionPop :: SMT()
-testPushAssertionPop = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int]  (const [], checkInt)
+testPushAssertionPop = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortIdInt]  (const [], checkInt)
                                                                 [(createAssertions, checkAssert)]
     where
         createAssertions :: [VarId] -> [ValExpr VarId]
@@ -144,7 +144,7 @@ testPushAssertionPop = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empt
         checkAssert _       = error "One variable in problem"
 
 testPushAssertionPopAssertion :: SMT()
-testPushAssertionPopAssertion = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int]  (const [], checkInt)
+testPushAssertionPopAssertion = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortIdInt]  (const [], checkInt)
                                                                                       [(createAssertions1, checkAssert1),(createAssertions2, checkAssert2)]
     where
         createAssertions1 :: [VarId] -> [ValExpr VarId]
@@ -168,7 +168,7 @@ testPushAssertionPopAssertion = testSequentialPushPopTemplate (EnvDefs Map.empty
         checkAssert2 _      = error "One variable in problem"
 
 testNestedRanges :: SMT()
-testNestedRanges = testNestedPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortId_Int]  (const [], checkInt)
+testNestedRanges = testNestedPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortIdInt]  (const [], checkInt)
                                                                      (map (createAssertions Control.Arrow.&&& checkAssert) [100,99..1])
     where
         y = 123
