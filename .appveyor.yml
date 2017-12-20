@@ -60,7 +60,7 @@ build_script:
     do {
         Write-Host Try $tryCount
         $tryCount++
-        stack install --pedantic --install-ghc --test --no-terminal --stack-root %STACK_ROOT%
+        cmd /c "stack install --pedantic --install-ghc --test --no-terminal --stack-root %STACK_ROOT%"
     } While ((!$?) -and (tryCount -le 10))
 
 # after_build:
