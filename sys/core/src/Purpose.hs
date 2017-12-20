@@ -157,7 +157,7 @@ goalAfter allsyncs _ (TxsDDefs.Act acts) (gid,Left btree)  =  do
       Nothing  -> return (gid,Left [])
       Just bt' -> return (gid,Left bt')
 goalAfter allsyncs outsyncs TxsDDefs.ActQui (gid,Left btree)  =  do
-     let qacts      = Set.singleton (StdTDefs.chanId_Qstep, [])
+     let qacts      = Set.singleton (StdTDefs.chanIdQstep, [])
      envb           <- filterEnvCtoEnvB
      (maybt1,envb1) <- lift $
        runStateT (Behave.behAfterRef btree (Set.unions outsyncs)) envb
@@ -224,13 +224,13 @@ isHit :: [ Set.Set TxsDefs.ChanId ] -> BTree.BTree -> Bool
 isHit allsyncs btree
   =  let menu = Behave.behMayMenu allsyncs btree
          chanids = Set.map BTree.ctchan (Set.unions (map Utils.frst menu))
-      in StdTDefs.chanId_Hit `Set.member` chanids
+      in StdTDefs.chanIdHit `Set.member` chanids
 
 isMiss :: [ Set.Set TxsDefs.ChanId ] -> BTree.BTree -> Bool
 isMiss allsyncs btree
   =  let menu = Behave.behMayMenu allsyncs btree
          chanids = Set.map BTree.ctchan (Set.unions (map Utils.frst menu))
-      in StdTDefs.chanId_Miss `Set.member` chanids
+      in StdTDefs.chanIdMiss `Set.member` chanids
 
 isHalt :: BTree.BTree -> Bool
 isHalt = null
