@@ -9,6 +9,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MonoLocalBinds    #-}
 -- | Predefined, Standard TorXakis Data Types : Bool, Int, Char, String.
 module StdTDefs
 ( eqName

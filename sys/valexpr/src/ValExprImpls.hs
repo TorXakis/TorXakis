@@ -10,6 +10,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE MonoLocalBinds      #-}
 module ValExprImpls
 ( -- * Constructors to create Value Expressions
   -- ** Constant value

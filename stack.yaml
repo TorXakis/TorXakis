@@ -19,7 +19,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-9.13
+resolver: lts-10.0
 ghc-variant: integersimple
 
 # User packages to be built.
