@@ -50,8 +50,7 @@ test-suite behave-test
   
   main-is:              TestMain.hs
   
-  other-modules:        Behave
-                      , Equiv
+  other-modules:        Equiv
                       , Expand
                       , Next
                       , Reduce

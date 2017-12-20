@@ -8,6 +8,11 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE ViewPatterns #-}
 module ValExprDefs
+( ValExprView(..)
+, ValExpr(..)       -- for local usage only!
+, eval
+, PredefKind(..)
+)
 where
 
 import           Control.DeepSeq
@@ -129,33 +134,33 @@ instance (Variable v) => SortOf (ValExpr v) where
     else s
 
 sortOf' :: (Variable v) => ValExpr v -> SortId
-sortOf' (view -> Vfunc (FuncId _nm _uid _fa fs) _vexps) = fs
-sortOf' (view -> Vcstr (CstrId _nm _uid _ca cs) _vexps) = cs
-sortOf' (view -> Viscstr _ _)                           = sortIdBool
-sortOf' (view -> Vaccess (CstrId _nm _uid ca _cs) p _vexps) = ca!!p
-sortOf' (view -> Vconst con)                            =  sortOf con
-sortOf' (view -> Vvar v)                                =  vsort v
-sortOf' (view -> Vite _cond vexp1 vexp2)                =  -- if the LHS is an error (Verror), we want to yield the type of the RHS which might be no error
-                                                             let sort' = sortOf' vexp1 in
-                                                             if sort' == sortIdError
-                                                               then sortOf' vexp2
-                                                               else sort'
-sortOf' (view -> Vequal { })                            =  sortIdBool
-sortOf' (view -> Vnot { })                              =  sortIdBool
-sortOf' (view -> Vand { })                              =  sortIdBool
-sortOf' (view -> Vsum { })                              =  sortIdInt
-sortOf' (view -> Vproduct { })                          =  sortIdInt
-sortOf' (view -> Vmodulo { })                           =  sortIdInt
-sortOf' (view -> Vdivide { })                           =  sortIdInt
-sortOf' (view -> Vgez { })                              =  sortIdBool
-sortOf' (view -> Vlength { })                           =  sortIdInt
-sortOf' (view -> Vat { })                               =  sortIdString
-sortOf' (view -> Vconcat { })                           =  sortIdString
-sortOf' (view -> Vstrinre { })                          =  sortIdBool
-sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps)  =  fs
-sortOf' (view -> Vpredef{})                             = error "sortOf': Unexpected Ident with Vpredef"
-sortOf' (view -> Verror _str)                           =  sortIdError
-sortOf' _                                               = error "sortOf': All items must be in view"
+sortOf' (view -> Vfunc (FuncId _nm _uid _fa fs) _vexps)       = fs
+sortOf' (view -> Vcstr (CstrId _nm _uid _ca cs) _vexps)       = cs
+sortOf' (view -> Viscstr { })                                 = sortIdBool
+sortOf' (view -> Vaccess (CstrId _nm _uid ca _cs) p _vexps)   = ca!!p
+sortOf' (view -> Vconst con)                                  = sortOf con
+sortOf' (view -> Vvar v)                                      = vsort v
+sortOf' (view -> Vite _cond vexp1 vexp2)                      = -- if the LHS is an error (Verror), we want to yield the type of the RHS which might be no error
+                                                                  let sort' = sortOf' vexp1 in
+                                                                  if sort' == sortIdError
+                                                                    then sortOf' vexp2
+                                                                    else sort'
+sortOf' (view -> Vequal { })                                  = sortIdBool
+sortOf' (view -> Vnot { })                                    = sortIdBool
+sortOf' (view -> Vand { })                                    = sortIdBool
+sortOf' (view -> Vsum { })                                    = sortIdInt
+sortOf' (view -> Vproduct { })                                = sortIdInt
+sortOf' (view -> Vmodulo { })                                 = sortIdInt
+sortOf' (view -> Vdivide { })                                 = sortIdInt
+sortOf' (view -> Vgez { })                                    = sortIdBool
+sortOf' (view -> Vlength { })                                 = sortIdInt
+sortOf' (view -> Vat { })                                     = sortIdString
+sortOf' (view -> Vconcat { })                                 = sortIdString
+sortOf' (view -> Vstrinre { })                                = sortIdBool
+sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps) = fs
+sortOf' (view -> Vpredef{})                                   = error "sortOf': Unexpected Ident with Vpredef"
+sortOf' (view -> Verror _str)                                 = sortIdError
+sortOf' _                                                     = error "sortOf': All items must be in view"
 
 
 

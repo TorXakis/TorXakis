@@ -19,13 +19,11 @@ library
   
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
   
-  build-depends:        array
-                      , base
+  build-depends:        base
                       , containers
                       , deepseq
                       , mtl
                       , regex-tdfa
-                      , MissingH
                       , text
                       
                       , behaveenv

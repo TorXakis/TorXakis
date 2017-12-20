@@ -50,20 +50,15 @@ library
   
   build-tools:          happy
   
-  build-depends:        array
-                      , base
+  build-depends:        base
                       , bytestring
                       , containers
                       , deepseq
                       , hexpat
                       , mtl
-                      , newtype
-                      , random
-                      , regex-tdfa
                       , text
                       , MissingH
                       
-                      , lexregexxsd
                       , valexpr
                       
   default-language:     Haskell2010
