@@ -55,7 +55,13 @@ before_build:
 
 build_script:
 - ps: Write-Host Starting build at $(Get-Date)
-- stack install --pedantic --install-ghc --test --no-terminal --stack-root %STACK_ROOT%
+- ps: |
+    $tryCount = 1
+    do {
+        Write-Host Try $tryCount
+        $tryCount++
+        stack install --pedantic --install-ghc --test --no-terminal --stack-root %STACK_ROOT%
+    } While ((!$?) && (tryCount -le 10))
 
 # after_build:
 # -
