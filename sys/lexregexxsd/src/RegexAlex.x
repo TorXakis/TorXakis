@@ -4,10 +4,22 @@
 
 -- ----------------------------------------------------------------------------------------- --
 {
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  RegexAlex
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+-- 
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Tokenize regular expressions according to the XSD standard.
+-- See http://www.w3.org/TR/xmlschema11-2/#regexs
+-----------------------------------------------------------------------------
 module RegexAlex
-( Token(..)                  -- exporting
-, AlexPosn(..)               -- Alex type for Position
-, regexLexer                 -- regexLexer :: String -> [Token]
+( Token(..)
+, regexLexer
 )
 
 where
@@ -57,6 +69,7 @@ tok f p s = f p s
 
 tokT f p s = f p (T.pack s)
 
+-- | Tokens for regular expressions.
 data  Token  = Tcomma AlexPosn
              | Tdot AlexPosn
              | Tdash AlexPosn
@@ -75,6 +88,7 @@ data  Token  = Tcomma AlexPosn
              | Tnormal AlexPosn Text
    deriving (Eq, Show)
 
+-- | Lexer for regular expressions.
 regexLexer :: String -> [Token]
 regexLexer = alexScanTokens
 }
