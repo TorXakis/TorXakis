@@ -77,10 +77,6 @@ test-suite SmtSolver-WhiteBox
                       , TestVexprToSMT
                       , TestSolvers
 
-                      , FreeVar
-                      , RandIncrementChoice
-                      , RandPartition
-                      , RandTrueBins
                       , RegexXSD2SMT
                       , SMT
                       , SMT2TXS
@@ -90,7 +86,6 @@ test-suite SmtSolver-WhiteBox
                       , SMTString
                       , SMTStringAlex
                       , SMTStringHappy
-                      , SolveRandParam
                       , TXS2SMT
 
   build-depends:        array
@@ -102,11 +97,8 @@ test-suite SmtSolver-WhiteBox
                       , time
                       , HUnit
                       , MissingH
-                      , random
-                      , random-shuffle
                       , text
 
-                      , coreenv
                       , lexregexxsd
                       , solvedefs
                       , valexpr
@@ -135,7 +127,6 @@ test-suite SmtSolver-BlackBox
                       , HUnit
                       , text
 
-                      , coreenv
                       , solve
                       , solvedefs
                       , valexpr
