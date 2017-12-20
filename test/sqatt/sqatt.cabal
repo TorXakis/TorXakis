@@ -52,7 +52,7 @@ library
   build-depends:       base >= 4.7 && < 5
                      , criterion
                      , hspec
-                     , turtle >= 1.4.1
+                     , turtle
                      , system-filepath
                      , text
                      , mtl
@@ -95,7 +95,7 @@ test-suite examples-test
   build-depends:       base
                      , sqatt
                      , hspec
-                     , turtle >= 1.4.1
+                     , turtle
                      , system-filepath
                      , time
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -Werror -O
@@ -108,7 +108,7 @@ test-suite models-test
   build-depends:       base
                      , sqatt
                      , hspec
-                     , turtle >= 1.4.1
+                     , turtle
                      , system-filepath
                      , time
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -Werror -O

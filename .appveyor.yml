@@ -88,7 +88,13 @@ cache:
 test_script:
 - ps: Write-Host Starting test at $(Get-Date)
 - ps: pushd test/sqatt
-- stack test --install-ghc --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT%
+- ps: |
+    $tryCount = 1
+    do {
+        Write-Host Try $tryCount
+        $tryCount++
+        cmd /c "stack test --install-ghc --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT% 2>&1"
+    } While ((!$?) -and ($tryCount -le 10))
 - ps: popd
 
 # after_test:
