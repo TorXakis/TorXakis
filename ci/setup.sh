@@ -21,9 +21,6 @@ else
     curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C $CACHE_DIR/bin '*/stack'
 fi
 
-# Stack should be installed at this stage.
-echo "Using stack `stack --version`"
-
 if [ -f $CACHE_DIR/bin/cvc4 ]
 then
     echo "$CACHE_DIR/bin/cvc4 found in cache."
