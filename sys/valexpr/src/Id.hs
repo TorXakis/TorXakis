@@ -27,7 +27,7 @@ module Id where
 import           Control.Applicative
 import           Control.DeepSeq
 import           Data.Data
-import           Data.Foldable       hiding (toList)
+import           Data.Foldable
 import           Data.Map.Strict     (Map)
 import qualified Data.Map.Strict     as Map
 import           Data.Set            (Set)

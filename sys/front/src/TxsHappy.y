@@ -1013,7 +1013,7 @@ ModelDef        -- :: { (Ident,TxsDef) }
                                          ]
                             ; splsyncs = case $12.synExitSorts of
                                          { NoExit  -> []
-                                         ; Exit [] -> [ Set.singleton chanId_Exit ]
+                                         ; Exit [] -> [ Set.singleton chanIdExit ]
                                          ; _       -> error $ "\nTXS0540: Exit-kind " ++
                                                         "in ModelDef shall be EXIT or NOEXIT\n"
                                          }
@@ -1073,9 +1073,9 @@ PurpDef         -- :: { (Ident,TxsDef) }
                                          , not $ chset `Set.isSubsetOf` (Set.fromList $6)
                                          , not $ chset `Set.isSubsetOf` (Set.fromList $9)
                                          ]
-                            ; splsyncs = [ Set.singleton chanId_Qstep
-                                         , Set.singleton chanId_Hit
-                                         , Set.singleton chanId_Miss
+                            ; splsyncs = [ Set.singleton chanIdQstep
+                                         , Set.singleton chanIdHit
+                                         , Set.singleton chanIdMiss
                                          ]
                             }
                          in if  null errsyncs
@@ -2315,7 +2315,7 @@ PrefOfferList   -- :: { Set.Set Offer }
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synVarSigs   = []
                 ;  $$.synExitSorts = Hit
-                ;  $$ = Set.singleton $ Offer { chanid     = chanId_Qstep
+                ;  $$ = Set.singleton $ Offer { chanid     = chanIdQstep
                                               , chanoffers = []
                                               }
                 }
@@ -2323,7 +2323,7 @@ PrefOfferList   -- :: { Set.Set Offer }
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synVarSigs   = []
                 ;  $$.synExitSorts = Hit
-                ;  $$ = Set.singleton $ Offer { chanid     = chanId_Hit
+                ;  $$ = Set.singleton $ Offer { chanid     = chanIdHit
                                               , chanoffers = []
                                               }
                 }
@@ -2331,7 +2331,7 @@ PrefOfferList   -- :: { Set.Set Offer }
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synVarSigs   = []
                 ;  $$.synExitSorts = Hit
-                ;  $$ = Set.singleton $ Offer { chanid     = chanId_Miss
+                ;  $$ = Set.singleton $ Offer { chanid     = chanIdMiss
                                               , chanoffers = []
                                               }
                 }
@@ -2465,11 +2465,11 @@ Offer           -- :: { Offer }
                 ;  $$.synMaxUid    = $2.synMaxUid
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $2.inhSolvSorts = [ Nothing | s <- $2.synExpdSorts ]
-                ;  $$.synChanSigs  = [ chanId_Exit ]
+                ;  $$.synChanSigs  = [ chanIdExit ]
                 ;  $$.synVarSigs   = $2.synVarSigs
                 ;  $2.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = Exit (map sortOf $2)
-                ;  $$ = Offer chanId_Exit $2
+                ;  $$ = Offer chanIdExit $2
                 }
               | Id ChannelOffList
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1

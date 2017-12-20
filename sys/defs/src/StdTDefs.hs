@@ -47,11 +47,11 @@ module StdTDefs
 , stdFuncTable
 , stdTDefs
 
-, chanId_Exit
-, chanId_Istep
-, chanId_Qstep
-, chanId_Hit
-, chanId_Miss
+, chanIdExit
+, chanIdIstep
+, chanIdQstep
+, chanIdHit
+, chanIdMiss
 , module SortOf
 )
 where
@@ -321,14 +321,14 @@ stdTDefs =    stdSortDefs
            ++ stdFuncDefsString
 
 -- * Standard channel identifiers
-chanId_Exit :: ChanId
-chanId_Exit  = ChanId "EXIT"  901 []
-chanId_Istep :: ChanId
-chanId_Istep = ChanId "ISTEP" 902 []
-chanId_Qstep :: ChanId
-chanId_Qstep = ChanId "QSTEP" 903 []
-chanId_Hit :: ChanId
-chanId_Hit   = ChanId "HIT"   904 []
-chanId_Miss :: ChanId
-chanId_Miss  = ChanId "MISS"  905 []
+chanIdExit :: ChanId
+chanIdExit  = ChanId "EXIT"  901 []
+chanIdIstep :: ChanId
+chanIdIstep = ChanId "ISTEP" 902 []
+chanIdQstep :: ChanId
+chanIdQstep = ChanId "QSTEP" 903 []
+chanIdHit :: ChanId
+chanIdHit   = ChanId "HIT"   904 []
+chanIdMiss :: ChanId
+chanIdMiss  = ChanId "MISS"  905 []
  
