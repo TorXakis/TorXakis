@@ -31,6 +31,7 @@ install:
     } else {
         Write-Host "stack.exe found.";
     }
+- ps: Write-Host $(stack --version)
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\cvc4.exe")) {
         # obtain the cvc4 executable
