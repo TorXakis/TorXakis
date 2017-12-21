@@ -20,7 +20,6 @@
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
 resolver: lts-10.0
-ghc-variant: integersimple
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -49,17 +48,7 @@ extra-deps:
 - unix-compat-0.4.3.1
 
 # Override default flag values for local packages and extra-deps
-flags: 
-  text: 
-    integer-simple: true
-  # hexpat:
-    # bundle: true
-  hashable:
-    integer-gmp: false
-  integer-logarithms:
-    integer-gmp: false
-  scientific:
-    integer-simple: true
+flags: {}
 
 # Extra package databases containing global packages
 extra-package-dbs: []
