@@ -117,9 +117,9 @@ cd test/sqatt
 stack bench --ba "--output  `date +%s`-report-`git rev-parse HEAD`.html --csv `date +%s`-report-`git rev-parse HEAD`.csv"
 ```
 
-On Windows you can run:
+On Windows PowerShell you can run:
 
-```bat
+```posh
 cd test\sqatt
 stack bench --ba "--output
 $(get-date).ToString("yyyyMMdd-hhmmss")-report-$((git rev-parse
