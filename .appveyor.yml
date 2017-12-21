@@ -60,7 +60,7 @@ build_script:
     do {
         Write-Host Try $tryCount
         $tryCount++
-        cmd /c "stack install --pedantic --install-ghc --test --no-terminal --stack-root %STACK_ROOT% 2>&1"
+        cmd /c "stack install --pedantic --install-ghc --test --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml 2>&1"
     } While ((!$?) -and ($tryCount -le 10))
 
 # after_build:
