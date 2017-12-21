@@ -31,6 +31,7 @@ install:
     } else {
         Write-Host "stack.exe found.";
     }
+- ps: Write-Host $(stack --version)
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\cvc4.exe")) {
         # obtain the cvc4 executable
@@ -54,7 +55,13 @@ before_build:
 
 build_script:
 - ps: Write-Host Starting build at $(Get-Date)
-- stack install --pedantic --install-ghc --test --no-terminal --stack-root %STACK_ROOT%
+- ps: |
+    $tryCount = 1
+    do {
+        Write-Host Try $tryCount
+        $tryCount++
+        cmd /c "stack install --pedantic --install-ghc --test --no-terminal --stack-root %STACK_ROOT% 2>&1"
+    } While ((!$?) -and ($tryCount -le 10))
 
 # after_build:
 # -
@@ -70,10 +77,8 @@ environment:
 cache:
 - .stack -> .stack.yaml
 - .cache
-- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-8.0.2'
-- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-8.0.2.installed'
-- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.0.2'
-- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.0.2.installed'
+- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2'
+- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2.installed'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20150512'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20150512.installed'
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
@@ -81,7 +86,13 @@ cache:
 test_script:
 - ps: Write-Host Starting test at $(Get-Date)
 - ps: pushd test/sqatt
-- stack test --install-ghc --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT%
+- ps: |
+    $tryCount = 1
+    do {
+        Write-Host Try $tryCount
+        $tryCount++
+        cmd /c "stack test --install-ghc --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml 2>&1"
+    } While ((!$?) -and ($tryCount -le 10))
 - ps: popd
 
 # after_test:
