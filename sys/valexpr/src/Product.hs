@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 -- |
 -- Module      :  Product
 -- Copyright   :  (c) TNO and Radboud University
--- License     :  Closed-style (see the file license.txt)
+-- License     :  BSD3 (see the file license.txt)
 --
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
@@ -61,6 +61,8 @@ import           Prelude         hiding (product)
 import           FreeMonoidX     (FreeMonoidX (..), IntMultipliable,
                                   TermWrapper, (<.>))
 import qualified FreeMonoidX     as FMX
+
+import           Id
 {--------------------------------------------------------------------
   The data types
 --------------------------------------------------------------------}
@@ -79,6 +81,8 @@ type FreeProduct a = FreeMonoidX (ProductTerm a)
 --
 newtype ProductTerm a = ProductTerm { factor :: a }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Functor, Data)
+
+instance (Resettable a) => Resettable (ProductTerm a)
 
 instance Applicative ProductTerm where
     pure = ProductTerm

@@ -32,11 +32,12 @@ import           Data.Data
 import           GHC.Generics    (Generic)
 
 import           ChanId
+import           Id
 import           ProcId
+import           SortOf
 import           StatId
-import           VarId
 import           VarEnv
-
+import           VarId
 
 -- | Behaviour Expression
 data BExpr = Stop
@@ -53,6 +54,8 @@ data BExpr = Stop
            | StAut       StatId VEnv [Trans]
   deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
+instance Resettable BExpr
+
 -- | ActOffer
 -- Offer on multiple channels with constraints
 data ActOffer = ActOffer
@@ -60,6 +63,7 @@ data ActOffer = ActOffer
   , constraint :: VExpr
   } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
+instance Resettable ActOffer
 
 -- | Offer
 -- Offer on a single channel (with multiple values)
@@ -68,11 +72,18 @@ data Offer = Offer
   , chanoffers :: [ChanOffer]
   } deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
+instance Resettable Offer
+
 -- | Channel Offer
 -- Offer of a single value
 data  ChanOffer     = Quest  VarId
                     | Exclam VExpr
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
+
+instance Resettable ChanOffer
+instance SortOf ChanOffer where
+  sortOf (Quest (VarId _nm _uid vs)) =  vs
+  sortOf (Exclam vexp)               =  sortOf vexp
 
 -- | symbolic transitions
 data  Trans         = Trans  { from     :: StatId
@@ -82,6 +93,11 @@ data  Trans         = Trans  { from     :: StatId
                              }
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+instance Resettable Trans
+
+-- * Functions on behavior expressions.
+
+-- | Equality modulo unique id's. Compare two behavior expressions for equality
+-- ignoring the differences in identifiers.
+(~~) :: BExpr -> BExpr -> Bool
+be0 ~~ be1 = reset be0 == reset be1

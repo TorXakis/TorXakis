@@ -45,7 +45,6 @@ import qualified EnvData
 -- import from defs
 import           FreeMonoidX
 import           RegexXSD2Posix
-import           StdTDefs
 import           TxsDefs
 import           TxsShow
 import           XmlFormat
@@ -54,6 +53,8 @@ import           XmlFormat
 import           ConstDefs
 import           FuncDef
 import           FuncId
+import           Id
+import           SortId
 import           ValExpr             hiding (eval)
 import           Variable
 
@@ -186,7 +187,7 @@ eval (view -> Vpredef kd fid vexps) =
                              ((_,vexp'),e) <- lift $ catch
                                 ( let p = TxsHappy.vexprParser ( TxsAlex.Csigs   sigs
                                                                : TxsAlex.Cvarenv []
-                                                               : TxsAlex.Cunid (uid + 1)
+                                                               : TxsAlex.Cunid (_id uid + 1)
                                                                : TxsAlex.txsLexer (T.unpack s)
                                                                )
                                    in return $! show p `deepseq` (p,"")
@@ -246,7 +247,7 @@ evalSSB (FuncId nm _ _ _) vexps =
                                         str2txs $ constToXml tdefs wal
        ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
                                         tdefs <- gets IOB.tdefs
-                                        return $ constFromXml tdefs sortId_Bool s
+                                        return $ constFromXml tdefs sortIdBool s
        ( s, _ )                   -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                                       $ "evalSSB: unknown standard Bool opn - " ++ show s ]
                                         return $ Cerror ("unknown " ++ show s)
@@ -266,7 +267,7 @@ evalSSI (FuncId nm _ _ _) vexps =
                                         str2txs $ constToXml tdefs wal
        ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
                                         tdefs <- gets IOB.tdefs
-                                        return $ constFromXml tdefs sortId_Int s
+                                        return $ constFromXml tdefs sortIdInt s
        _                          -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "evalSSI: standard Int opn" ]
                                         return $ Cerror ""
 
@@ -286,7 +287,7 @@ evalSSS (FuncId nm _ _ _) vexps =
                                    str2txs $ constToXml tdefs wal
        ( "fromXml",    [v] ) -> do Cstring s <- eval v
                                    tdefs <- gets IOB.tdefs
-                                   return $ constFromXml tdefs sortId_String s
+                                   return $ constFromXml tdefs sortIdString s
        ( "takeWhile",    [v1,v2] ) -> do s1 <- txs2str v1
                                          s2 <- txs2str v2
                                          str2txs $ T.takeWhile (`elemT` s1) s2

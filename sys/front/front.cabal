@@ -18,7 +18,7 @@ library
   exposed-modules:      TxsAlex
                       , TxsHappy
   
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
+  ghc-options:         -Werror -Wall -O0 -optc-O3 -optc-ffast-math
   
   build-tools:          alex
                       , happy

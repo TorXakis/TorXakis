@@ -43,8 +43,7 @@ import           SMTData
 import           SolveDefs
 import           SolveDefs.Params
 import           SortId
-import           StdTDefs
-import           TxsDefs
+import           SortOf
 import           ValExpr
 import           Variable
 
@@ -63,7 +62,7 @@ data ParamTrueBins =
 randValExprsSolveTrueBins :: (Variable v) => ParamTrueBins -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
 randValExprsSolveTrueBins p freevars exprs  =
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
-    if all ( (sortId_Bool == ) . sortOf ) exprs
+    if all ( (sortIdBool == ) . sortOf ) exprs
     then do
         push
         addDeclarations freevars
@@ -87,7 +86,7 @@ randValExprsSolveTrueBins p freevars exprs  =
     else do
         lift $ hPutStrLn stderr "TXS RandTrueBins randValExprsSolveTrueBins: Not all added constraints are Bool\n"
         return UnableToSolve
-    where
+  where
         combine :: (Variable v) => v -> SMT [Text] -> SMT [Text]
         combine vid sexprs = do
             expr <- randomValue p (vsort vid) (cstrVar vid) (maxDepth p)
@@ -235,16 +234,16 @@ trueString p v =
 -- lookup a constructor given its sort and constructor name
 lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]
 lookupConstructors sid  =  do
-     tdefs <- gets txsDefs
-     return [ def | def@(CstrId{ cstrsort = sid' } , _) <- Map.toList (cstrDefs tdefs), sid == sid']
+     edefs <- gets envDefs
+     return [ def | def@(CstrId{ cstrsort = sid' } , _) <- Map.toList (cstrDefs edefs), sid == sid']
 
 randomValue :: (Variable v) => ParamTrueBins -> SortId -> ValExpr v -> Int -> SMT Text
 randomValue _ _sid _expr 0 = return "true"
 randomValue p sid expr n | n > 0 =
     case sid of
-        x | x == sortId_Bool   -> trueBool expr
-        x | x == sortId_Int    -> trueBins expr (nrOfBins p) (nextFunction p)
-        x | x == sortId_String -> trueString p expr
+        x | x == sortIdBool   -> trueBool expr
+        x | x == sortIdInt    -> trueBins expr (nrOfBins p) (nextFunction p)
+        x | x == sortIdString -> trueString p expr
         _ -> do
                 cstrs <- lookupConstructors sid
                 orList <- processConstructors cstrs expr

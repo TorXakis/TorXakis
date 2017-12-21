@@ -38,8 +38,7 @@ import           SMT
 import           SMTData
 import           SolveDefs
 import           SortId
-import           StdTDefs
-import           TxsDefs
+import           SortOf
 import           ValExpr
 import           Variable
 
@@ -59,7 +58,7 @@ data ParamIncrementChoice =
 randValExprsSolveIncrementChoice :: (Variable v) => ParamIncrementChoice -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
 randValExprsSolveIncrementChoice p freevars exprs  =
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
-    if all ( (sortId_Bool == ) . sortOf ) exprs
+    if all ( (sortIdBool == ) . sortOf ) exprs
     then do
         push
         addDeclarations freevars
@@ -96,7 +95,7 @@ toRegexString   c = T.singleton (Char.chr c)
 randomSolve :: Variable v => ParamIncrementChoice -> [(v, Int)] -> Int -> SMT ()
 randomSolve _ []        _     = return ()                                         -- empty list -> done
 randomSolve _ ((_,0):_) _     = error "At maximum depth: should not be added"
-randomSolve p ((v,_):xs) i    | vsort v == sortId_Bool =
+randomSolve p ((v,_):xs) i    | vsort v == sortIdBool =
     do
         b <- lift randomIO
         c <- randomSolveVar v (choicesFunc v b)
@@ -118,7 +117,7 @@ randomSolve p ((v,_):xs) i    | vsort v == sortId_Bool =
                                                 ]
         choicesFunc _ _ _        = error "RandIncrementChoice: impossible choice - bool"
 
-randomSolve p ((v,_):xs) i    | vsort v == sortId_Int =
+randomSolve p ((v,_):xs) i    | vsort v == sortIdInt =
     do
         let range = intRange p
         b <- lift $ randomRIO (- range, range)
@@ -145,7 +144,7 @@ randomSolve p ((v,_):xs) i    | vsort v == sortId_Int =
                                                ]
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - int"
 
-randomSolve p ((v,-123):xs) i    | vsort v == sortId_String =                 -- abuse depth to encode char versus string
+randomSolve p ((v,-123):xs) i    | vsort v == sortIdString =                 -- abuse depth to encode char versus string
     do
         r <- lift $ randomRIO (0,127)
         s <- randomSolveVar v (choicesFunc v r)
@@ -178,7 +177,7 @@ randomSolve p ((v,-123):xs) i    | vsort v == sortId_String =                 --
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - char"
 
 
-randomSolve p ((v,d):xs) i    | vsort v == sortId_String =
+randomSolve p ((v,d):xs) i    | vsort v == sortIdString =
     do
         r <- lift $ randomRIO (0,maxGeneratedStringLength p)
         c <- randomSolveVar v (choicesFunc v r)
@@ -188,7 +187,7 @@ randomSolve p ((v,d):xs) i    | vsort v == sortId_String =
                                 addAssertions [cstrEqual (cstrLength (cstrVar v)) (cstrConst (Cint (toInteger l)))]
                                 if l > 0 && d > 1
                                 then do
-                                        let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortId_String) [i .. i+l-1]
+                                        let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortIdString) [i .. i+l-1]
                                         addDeclarations charVars
                                         let exprs = map (\(vNew,pos) -> cstrEqual (cstrVar vNew) (cstrAt (cstrVar v) (cstrConst (Cint pos)))) (zip charVars [0..])
                                         addAssertions exprs
@@ -309,8 +308,8 @@ randomSolveVar v choicesFunc = do
 -- lookup a constructor given its sort and constructor name
 lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]
 lookupConstructors sid  =  do
-     tdefs <- gets txsDefs
-     return [(cstrid, cdef) | (cstrid@(CstrId _ _ _ sid'), cdef) <- Map.toList (cstrDefs tdefs), sid == sid']
+     edefs <- gets envDefs
+     return [(cstrid, cdef) | (cstrid@(CstrId _ _ _ sid'), cdef) <- Map.toList (cstrDefs edefs), sid == sid']
 
 addIsConstructor :: (Variable v) => v -> CstrId -> SMT ()
 addIsConstructor v cid = addAssertions [cstrIsCstr cid (cstrVar v)]

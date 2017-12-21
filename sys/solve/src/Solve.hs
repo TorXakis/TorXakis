@@ -36,7 +36,6 @@ import qualified Data.Map  as Map
 
 import ConstDefs
 
-import StdTDefs
 import FreeVar
 
 import SolveDefs
@@ -48,6 +47,8 @@ import RandTrueBins
 import RandIncrementChoice
 
 import SolveRandParam
+import SortId
+import SortOf
 
 import ValExpr
 import Variable
@@ -67,10 +68,10 @@ empty :: Assertions v
 empty = Assertions (AssertSet Set.empty)
 
 add :: (Variable v) => ValExpr v -> Assertions v -> Assertions v
-add e (Assertions AssertFalse)    |  sortOf e == sortId_Bool                                            = Assertions AssertFalse
-add e a                           |  sortOf e == sortId_Bool  && (view e == Vconst (Cbool True))        = a
-add e _                           |  sortOf e == sortId_Bool  && (view e == Vconst (Cbool False))       = Assertions AssertFalse
-add e (Assertions (AssertSet s) ) |  sortOf e == sortId_Bool                                            = Assertions ( AssertSet (Set.insert e s) )
+add e (Assertions AssertFalse)    |  sortOf e == sortIdBool                                            = Assertions AssertFalse
+add e a                           |  sortOf e == sortIdBool  && (view e == Vconst (Cbool True))        = a
+add e _                           |  sortOf e == sortIdBool  && (view e == Vconst (Cbool False))       = Assertions AssertFalse
+add e (Assertions (AssertSet s) ) |  sortOf e == sortIdBool                                            = Assertions ( AssertSet (Set.insert e s) )
 add e _                                                                                                 = error ("Add - Can not add non-boolean expression " ++ show e)
 
 -- ----------------------------------------------------------------------------------------- --

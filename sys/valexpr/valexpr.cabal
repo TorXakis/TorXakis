@@ -26,10 +26,12 @@ library
                       , RegexXSD2Posix
                       , SortDef
                       , SortId
+                      , SortOf
                       , Sum
                       , ValExpr
                       , Variable
                       , VarId
+                      , Id
 
   other-modules:        ValExprDefs
                       , ValExprImpls
@@ -66,13 +68,11 @@ test-suite defs-BlackBox
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
   
   build-depends:       base
-                     , containers
                      , hspec
                      , hspec-contrib
                      , ieee754
                      , text
                      , HUnit
-                     , MissingH
                      , QuickCheck
                      
                      , valexpr

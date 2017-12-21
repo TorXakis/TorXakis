@@ -60,6 +60,7 @@ import qualified Utils
 import qualified VarId
 
 -- import from valexpr
+import           Id
 import qualified ValExpr
 
 -- import from front
@@ -355,7 +356,7 @@ cmdVar args = do
          ((uid',vars'),e) <- lift $ lift $ catch
                                ( let p = TxsHappy.vardeclsParser
                                            ( TxsAlex.Csigs sigs
-                                           : TxsAlex.Cunid (uid + 1)
+                                           : TxsAlex.Cunid (_id uid + 1)
                                            : TxsAlex.txsLexer args
                                            )
                                   in return $!! (p,"")
@@ -399,7 +400,7 @@ cmdVal args = do
                                ( let p = TxsHappy.valdefsParser
                                            ( TxsAlex.Csigs sigs
                                            : TxsAlex.Cvarenv []
-                                           : TxsAlex.Cunid (uid + 1)
+                                           : TxsAlex.Cunid (_id uid + 1)
                                            : TxsAlex.txsLexer args
                                            )
                                   in return $!! (p,"")
@@ -439,7 +440,7 @@ cmdEval args = do
                            ( let p = TxsHappy.vexprParser
                                         ( TxsAlex.Csigs    sigs
                                         : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-                                        : TxsAlex.Cunid   (uid + 1)
+                                        : TxsAlex.Cunid   (_id uid + 1)
                                         : TxsAlex.txsLexer args
                                         )
                               in return $!! (p,"")
@@ -473,7 +474,7 @@ cmdSolve args kind = do
                            ( let p = TxsHappy.vexprParser
                                        ( TxsAlex.Csigs sigs
                                        : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-                                       : TxsAlex.Cunid (uid + 1)
+                                       : TxsAlex.Cunid (_id uid + 1)
                                        : TxsAlex.txsLexer args
                                        )
                               in return $!! (p,"")
@@ -485,7 +486,7 @@ cmdSolve args kind = do
                cmdsIntpr
        else do modify $ \env' -> env' { IOS.uid = uid' }
                sols  <- lift $ solver (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp')
-               IFS.pack cmd [ TxsShow.fshow sols ]
+               IFS.pack cmd [ show sols ]
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
@@ -981,7 +982,7 @@ readAction chids args = do
                                     ( TxsAlex.Csigs    sigs
                                     : TxsAlex.Cchanenv chids
                                     : TxsAlex.Cvarenv  (Map.keys vals)
-                                    : TxsAlex.Cunid    (uid + 1)
+                                    : TxsAlex.Cunid    (_id uid + 1)
                                     : TxsAlex.txsLexer args
                                     )
                               in return $!! (p,"")
@@ -1021,12 +1022,12 @@ readBExpr chids args = do
                                       ( TxsAlex.Csigs    sigs
                                       : TxsAlex.Cchanenv chids
                                       : TxsAlex.Cvarenv  (Map.keys vals)
-                                      : TxsAlex.Cunid    (uid + 1)
+                                      : TxsAlex.Cunid    (_id uid + 1)
                                       : TxsAlex.txsLexer args
                                       )
                                in return $!! (p,"")
                             )
-                            ( \e -> return ((uid,TxsDefs.Stop),show (e::ErrorCall)))
+                            ( \e -> return ((uid, TxsDefs.Stop),show (e::ErrorCall)))
      if  e /= ""
        then do IFS.nack "ERROR" [ "incorrect behaviour expression: " ++ e ]
                return TxsDefs.Stop

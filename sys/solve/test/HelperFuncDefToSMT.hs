@@ -8,21 +8,22 @@ See LICENSE at root directory of this repository.
 module HelperFuncDefToSMT
 where
 import qualified Data.Map          as Map
+import           Data.Maybe
+import           Data.String.Utils
 import           Data.Text         (Text)
 import qualified Data.Text         as T
-import           Data.String.Utils
 
 import           FuncDef
 import           FuncId
 import           HelperVexprToSMT
+import           Id
+import           SMTData
 import           SortId
-import           TXS2SMT
-import           TxsDefs
 import           VarId
 ------------------------------
 -- Data types
 ---------------------------------------------------------------------------
-data  TXS2SMTFuncTest         =  TXS2SMTFuncTest { input    :: TxsDefs
+data  TXS2SMTFuncTest         =  TXS2SMTFuncTest { input    :: EnvDefs
                                                  , expected :: String
                                                  }
      deriving (Eq,Ord,Read,Show)
@@ -31,24 +32,29 @@ data  TXS2SMTFuncTest         =  TXS2SMTFuncTest { input    :: TxsDefs
 ---------------------------------------------------------------------------
 
 createFunctionId :: Text -> Int -> [VarId] -> SortId -> FuncId
-createFunctionId n u vs = FuncId  n u (map varsort vs)
+createFunctionId n u vs = FuncId  n (Id u) (map varsort vs)
 
 -- non-recursive function (is mapped on recursive function)
-createFunctionDef :: Map.Map Ident Text -> FuncId -> [VarId] -> SortId -> TXS2SMTVExprTest -> TXS2SMTFuncTest
+createFunctionDef :: EnvNames -> FuncId -> [VarId] -> SortId -> TXS2SMTVExprTest -> TXS2SMTFuncTest
 createFunctionDef = createFunctionDefRecursive
 
 -- one recursive function
-createFunctionDefRecursive :: Map.Map Ident Text -> FuncId -> [VarId] -> SortId -> TXS2SMTVExprTest -> TXS2SMTFuncTest
+createFunctionDefRecursive :: EnvNames -> FuncId -> [VarId] -> SortId -> TXS2SMTVExprTest -> TXS2SMTFuncTest
 createFunctionDefRecursive mapI fn vs sort expr =
     createFunctionDefsRecursive mapI [(fn,vs,sort,expr)]
 
 -- group of recusive functions
-createFunctionDefsRecursive :: Map.Map Ident Text -> [(FuncId, [VarId], SortId, TXS2SMTVExprTest)] -> TXS2SMTFuncTest
+createFunctionDefsRecursive :: EnvNames -> [(FuncId, [VarId], SortId, TXS2SMTVExprTest)] -> TXS2SMTFuncTest
 createFunctionDefsRecursive mapI l =
-    TXS2SMTFuncTest (foldr insert TxsDefs.empty l)
+    TXS2SMTFuncTest (EnvDefs Map.empty Map.empty (foldr insert Map.empty l) )
                     ("(define-funs-rec\n  (\n" ++ concatMap define l ++ "  )\n  (\n" ++ concatMap body l ++ "  )\n)\n")
   where
-    insert (fn, vs, _sort, expr) = TxsDefs.insert (IdFunc fn) (DefFunc (FuncDef vs (HelperVexprToSMT.input expr)))
-    define (fn, vs, sort, _expr) = "    (" ++ T.unpack (justLookup mapI (IdFunc fn)) ++ "(" ++ join " " (map (\vi -> "(" ++ toSMTVar vi ++ " " ++ T.unpack (justLookup mapI (IdSort (varsort vi))) ++ ")") vs) ++ ") " ++ T.unpack (justLookup mapI (IdSort sort)) ++ ")\n"
+    insert (fn, vs, _sort, expr) = Map.insert fn (FuncDef vs (HelperVexprToSMT.input expr))
+    define (fn, vs, sort, _expr) = "    (" ++ T.unpack (justLookupFunc fn mapI) ++ "(" ++ join " " (map (\vi -> "(" ++ toSMTVar vi ++ " " ++ T.unpack (justLookupSort (varsort vi) mapI) ++ ")") vs) ++ ") " ++ T.unpack (justLookupSort sort mapI) ++ ")\n"
     body (_, _, _, expr)    = "    " ++ HelperVexprToSMT.expected expr ++ "\n"
 
+justLookupSort :: SortId -> EnvNames -> Text
+justLookupSort sd enames = fromMaybe (error $ "SortId " ++ show sd ++ " not found in mapping with keys: " ++ show (Map.keys (sortNames enames)) ++ "\n") (Map.lookup sd (sortNames enames))
+
+justLookupFunc :: FuncId -> EnvNames -> Text
+justLookupFunc fd enames = fromMaybe (error $ "FuncId " ++ show fd ++ " not found in mapping with keys: " ++ show (Map.keys (funcNames enames)) ++ "\n") (Map.lookup fd (funcNames enames))

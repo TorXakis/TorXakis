@@ -4,119 +4,96 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 */
 
-
-/*********************************************************************
- A queue: what goes in must come out
- Communication via stream-mode socket;
- command line argument:
- <port number for the Server socket used in this process>.
- *********************************************************************/
-
 import java.net.*;
 import java.io.*;
 
-public class QueueServer
+public class QueueServer {
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("own port number required");
+            return;
+        }
+        try {
+            int portNo = Integer.parseInt(args[0]);
 
-{  public static void main(String[] args)
-   {  if (args.length != 1)
-         System.out.println("own port number required");
-      else
-      {  try
-         {  int portNo = Integer.parseInt(args[0]);
-
-            // instantiate a socket for accepting a connection
-            ServerSocket servsock = new ServerSocket(portNo);
-
+            ServerSocket serverSocket = new ServerSocket(portNo);
             System.out.println("Waiting for tester");
-            // wait to accept a connecion request
-            // then a data socket is created
-            Socket sock = servsock.accept();
+            Socket sock = serverSocket.accept();
 
-            // get an input stream for reading from the data socket
             InputStream inStream = sock.getInputStream();
-            // create a BufferedReader object for text line input
-            BufferedReader sockin =
-                   new BufferedReader(new InputStreamReader(inStream));
- 
-            // get an output stream for writing to the data socket
-            OutputStream outStream = sock.getOutputStream();
-            // create a PrinterWriter object for character-mode output
-            PrintWriter sockout =
-                    new PrintWriter(new OutputStreamWriter(outStream));
+            BufferedReader socketReader = new BufferedReader(new InputStreamReader(inStream));
 
+            OutputStream outStream = sock.getOutputStream();
+            PrintWriter socketWriter = new PrintWriter(new OutputStreamWriter(outStream));
             System.out.println("Tester connected.");
 
-            String s;
-            int sep1, sep2, x;
             Queue q = new Queue();
-            q.show();
-
-            while (true)
-            {  s = sockin.readLine().trim();
-               if (s.startsWith("Enq"))
-               {  sep1 = s.indexOf("(");
-                  sep2 = s.indexOf(")");
-                  x = Integer.parseInt(s.substring(sep1+1,sep2).trim());
-                  q.add(x);
-                  // sockout.print("Ok\n");
-               }
-               if (s.startsWith("Deq"))
-               {  if (q.empty())
-                  {  // sockout.print("Empty\n");
-                  }
-                  else
-                  {  sockout.print(q.take()+"\n"); }
-               }
-               sockout.flush();
-               q.show();
+            while (true) {
+                q.show();
+                String s = socketReader.readLine().trim();
+                processInput(s, q, socketWriter);
+                socketWriter.flush();
             }
-         }
-         catch (Exception ex) { ex.printStackTrace(); }
-      }
-   }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private static void processInput(String s, Queue q, PrintWriter socketWriter) {
+        if (s.startsWith("Enq")) {
+            int sep1 = s.indexOf("(");
+            int sep2 = s.indexOf(")");
+            int x = Integer.parseInt(s.substring(sep1 + 1, sep2).trim());
+            q.add(x);
+        } else if (s.startsWith("Deq")) {
+            if (!q.empty()) {
+                socketWriter.print(q.take() + "\n");
+            }
+        }
+    }
 }
 
-class Queue
-{  private Cell first = null;
-   private Cell last  = null;
+class Queue {
+    private Cell first = null;
+    private Cell last = null;
 
-   public void add(int x)
-   {  Cell h = new Cell();
-      h.data = x;
-      h.rest = null;
-      if (empty())
-      {  first = h; }
-      else
-      {  last.rest = h; } ;
-      last = h;
-   }
+    public void add(int x) {
+        Cell cell = new Cell();
+        cell.data = x;
+        cell.rest = null;
+        if (empty()) {
+            first = cell;
+        } else {
+            last.rest = cell;
+        }
+        last = cell;
+    }
 
-   public boolean empty()
-   {  return(first==null); }
+    public boolean empty() {
+        return (first == null);
+    }
 
-   public int take()
-   {  Cell h = first;
-      first = h.rest;
-      return(h.data);
-   }
+    public int take() {
+        Cell cell = first;
+        first = cell.rest;
+        return (cell.data);
+    }
 
-   public void show()
-   {  System.out.print("[ ");
-      Cell h = first;
-      while (h != null)
-      {  System.out.print(h.data);
-         h = h.rest;
-         if (h != null)
-         {  System.out.print(", ");
-         }
-      }
-      System.out.println(" ]");
-   }
-      
+    public void show() {
+        System.out.print("[ ");
+        Cell cell = first;
+        while (cell != null) {
+            System.out.print(cell.data);
+            cell = cell.rest;
+            if (cell != null) {
+                System.out.print(", ");
+            }
+        }
+        System.out.println(" ]");
+    }
 }
 
-class Cell
-{  public int data;
-   public Cell rest;
+class Cell {
+    public int data;
+    public Cell rest;
 }
-

@@ -49,8 +49,8 @@ import           TxsDefs
 import           TxsUtils
 import           Utils
 import           ValExpr
-import           VarId
 import           Variable
+import           VarId
 
 -- | transfer tuple containing an either to an either containing a tuple
 toEitherTuple :: (a, Either String b) -> Either String (a,b)
@@ -239,7 +239,7 @@ expand chsets (BNbexpr we (StAut ini ve trns))  =  do
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNparallel chans cnodes)  = do
-    let chans'  = Set.fromList $ chanId_Exit : chans
+    let chans'  = Set.fromList $ chanIdExit : chans
     ctpairs <- sequence [ liftP2 ( cnode, expand chsets cnode ) | cnode <- cnodes ]
     return $ asyncs chans' ctpairs ++ syncs chans' ctpairs
   where
@@ -312,14 +312,14 @@ expand chsets (BNparallel chans cnodes)  = do
 
 expand chsets (BNenable cnode1 chanoffs cnode2)  =  do
      ctree1      <- expand chsets cnode1
-     (_, quests, exclams) <- expandOffer chsets (Offer chanId_Exit chanoffs)
+     (_, quests, exclams) <- expandOffer chsets (Offer chanIdExit chanoffs)
      let ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
      let exclams' = map toEitherTuple [ (ivar, ValExpr.eval vexp) | (ivar, vexp) <- exclams ]
      case Data.Either.partitionEithers exclams' of
         ([], r) -> do let accpreds = [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- r ]
-                          (exits, noExits) = List.partition (\(CTpref ctoffs1 _ _ _) -> chanId_Exit `Set.member` Set.map ctchan ctoffs1) ctree1
+                          (exits, noExits) = List.partition (\(CTpref ctoffs1 _ _ _) -> chanIdExit `Set.member` Set.map ctchan ctoffs1) ctree1
                       leftExits   <- sequence [ hideCTBranch chsets
-                                                      [chanId_Exit]
+                                                      [chanIdExit]
                                                       ( CTpref ctoffs1
                                                                cthidvars1
                                                                ( cstrAnd (Set.fromList (ctpreds1:accpreds) ) )
@@ -347,7 +347,7 @@ expand chsets (BNdisable cnode1 cnode2)  =  do
      ctree2  <- expand chsets cnode2
      let ctree1' = [ CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1
                    | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
-                   , chanId_Exit `Set.member` Set.map ctchan ctoffs1
+                   , chanIdExit `Set.member` Set.map ctchan ctoffs1
                    ]
      let ctree2' = [ CTpref ctoffs1
                             cthidvars1
@@ -356,7 +356,7 @@ expand chsets (BNdisable cnode1 cnode2)  =  do
                                         ( fmap (\we->(we,Map.empty)) cnode2 )
                             )
                    | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
-                   , chanId_Exit `Set.notMember` Set.map ctchan ctoffs1
+                   , chanIdExit `Set.notMember` Set.map ctchan ctoffs1
                    ]
      return $ ctree1' ++ ctree2' ++ ctree2
 
@@ -367,7 +367,7 @@ expand chsets (BNinterrupt cnode1 cnode2)  =  do
      ctree2  <- expand chsets cnode2
      let ctree1' = [ CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1
                    | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
-                   , chanId_Exit `Set.member` Set.map ctchan ctoffs1
+                   , chanIdExit `Set.member` Set.map ctchan ctoffs1
                    ]
      let ctree2' = [ CTpref ctoffs1
                             cthidvars1
@@ -376,10 +376,10 @@ expand chsets (BNinterrupt cnode1 cnode2)  =  do
                                           ( fmap (\we->(we,Map.empty)) cnode2 )
                             )
                    | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- ctree1
-                   , chanId_Exit `Set.notMember` Set.map ctchan ctoffs1
+                   , chanIdExit `Set.notMember` Set.map ctchan ctoffs1
                    ]
      ctree3' <- sequence [ hideCTBranch chsets
-                                 [chanId_Exit]
+                                 [chanIdExit]
                                  ( CTpref ctoffs2
                                           cthidvars2
                                           ctpreds2
@@ -388,7 +388,7 @@ expand chsets (BNinterrupt cnode1 cnode2)  =  do
                                           )
                                  )
                          | CTpref ctoffs2 cthidvars2 ctpreds2 _ <- ctree2
-                         , chanId_Exit `Set.member` Set.map ctchan ctoffs2
+                         , chanIdExit `Set.member` Set.map ctchan ctoffs2
                          ]
      let ctree4' = [ CTpref ctoffs2
                             cthidvars2
@@ -400,7 +400,7 @@ expand chsets (BNinterrupt cnode1 cnode2)  =  do
                                        )
                             )
                    | CTpref ctoffs2 cthidvars2 ctpreds2 ctnext2 <- ctree2
-                   , chanId_Exit `Set.notMember` Set.map ctchan ctoffs2
+                   , chanIdExit `Set.notMember` Set.map ctchan ctoffs2
                    ]
      return $ ctree1' ++ ctree2' ++ ctree3' ++ ctree4'
 
@@ -465,7 +465,7 @@ hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
     let hvarmap           = Map.fromList hvarlist
         unihvars          = Map.elems hvarmap
         hvarenv           = Map.map cstrVar hvarmap
-        ctnext1'          = let chans' = chans \\\ [chanId_Exit]
+        ctnext1'          = let chans' = chans \\\ [chanIdExit]
                               in if null chans'
                                    then next
                                    else BNhide chans' next

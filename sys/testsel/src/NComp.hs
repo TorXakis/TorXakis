@@ -44,9 +44,9 @@ nComplete :: [ Set.Set TxsDefs.ChanId] -> [ Set.Set TxsDefs.ChanId] ->
 
 nComplete insyncs outsyncs
           ini@(TxsDefs.StatId nm uid (TxsDefs.ProcId nm' uid' _ _ _)) transs =
-     let splsyncs = [ Set.singleton StdTDefs.chanId_Qstep
-                    , Set.singleton StdTDefs.chanId_Hit
-                    , Set.singleton StdTDefs.chanId_Miss
+     let splsyncs = [ Set.singleton StdTDefs.chanIdQstep
+                    , Set.singleton StdTDefs.chanIdHit
+                    , Set.singleton StdTDefs.chanIdMiss
                     ]
          gids     = [ TxsDefs.GoalId ("Goal_" <> nm <> nm' <> (T.pack . show) n ) (uid*uid'+n) | n <- [1..] ]
          goals    = [ (gid,bexp) | (gid,bexp) <- zip gids (allPaths ini transs) ]
@@ -67,7 +67,7 @@ isPath (TxsDefs.Trans _from _a _u to : TxsDefs.Trans from' a' u' to' : pp) =
 
 path2bexpr :: [TxsDefs.Trans] -> TxsDefs.BExpr
 path2bexpr [] = TxsDefs.ActionPref
-                    (TxsDefs.ActOffer (Set.singleton $ TxsDefs.Offer StdTDefs.chanId_Hit []) (ValExpr.cstrConst (ConstDefs.Cbool True)))
+                    (TxsDefs.ActOffer (Set.singleton $ TxsDefs.Offer StdTDefs.chanIdHit []) (ValExpr.cstrConst (ConstDefs.Cbool True)))
                     TxsDefs.Stop
 path2bexpr (TxsDefs.Trans _from a _u _to : pp) = TxsDefs.ActionPref a (path2bexpr pp)
 
