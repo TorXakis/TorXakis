@@ -7,6 +7,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE MonoLocalBinds             #-}
 module FreeMonoidXSpec where
 
 import           Data.AEq        (AEq, (~==))

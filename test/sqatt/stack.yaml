@@ -19,7 +19,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-9.7
+resolver: lts-10.0
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -44,9 +44,8 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- turtle-1.4.1 # See https://github.com/Gabriel439/Haskell-Turtle-Library/issues/103
-- criterion-1.2.2.0
-- statistics-0.14.0.2
+- Win32-2.3.1.1
+- unix-compat-0.4.3.1
 
 # Override default flag values for local packages and extra-deps
 flags: {}
