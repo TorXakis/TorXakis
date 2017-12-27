@@ -33,17 +33,11 @@ module SocketWorld
 where
 
 import           System.IO
--- import System.IO.Error
 import           Control.Concurrent
 import           Control.Monad.State
 import qualified Data.Text           as T
 import           Network
 import           System.Timeout
--- import GHC.Conc
-
--- import qualified Data.Char as Char
--- import qualified Data.List as List
--- import qualified Data.Set  as Set
 import qualified Data.Map            as Map
 
 -- import from local
