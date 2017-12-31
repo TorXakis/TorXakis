@@ -33,6 +33,7 @@ module SocketWorld
 where
 
 import           Control.Concurrent
+import           Control.Concurrent.Async
 import           Control.Monad.State
 import qualified Data.Text           as T
 import           System.Timeout
@@ -173,15 +174,21 @@ openCnectServerSockets conndefs  =  do
                        | ConnDfroW cfrow hfrow pfrow var' vexps <- conndefs
                        , (hfrow,pfrow) `notElem` [(h,p)|(_,_,_,_,_,_,h,p)<-tofrosocks]
                        ]
-     tofroConns <- sequence [ TVS.acceptOn (fromInteger prt)
-                             | (_, _, _, _, _, _, _, prt) <- tofrosocks
-                             ]
-     toConns    <- sequence [ TVS.acceptOn (fromInteger prt)
-                             | (_, _, _, _, prt) <- tosocks
-                             ]
-     froConns   <- sequence [ TVS.acceptOn (fromInteger prt)
-                             | (_, _, _, _, prt) <- frosocks
-                             ]
+     tofroConnsA <- async $ mapConcurrently TVS.acceptOn
+                                   [fromInteger prt
+                                   | (_, _, _, _, _, _, _, prt) <- tofrosocks
+                                   ]
+     toConnsA    <- async $ mapConcurrently TVS.acceptOn
+                                   [fromInteger prt
+                                   | (_, _, _, _, prt) <- tosocks
+                                   ]
+     froConnsA   <- async $ mapConcurrently TVS.acceptOn
+                                   [fromInteger prt
+                                   | (_, _, _, _, prt) <- frosocks
+                                   ]
+     tofroConns <- wait tofroConnsA
+     toConns    <- wait toConnsA
+     froConns   <- wait froConnsA
      -- sequence_       [ hSetBuffering h NoBuffering | h <- tofrohandls ]
      -- sequence_       [ hSetBuffering h NoBuffering | h <- tohandls    ]
      -- sequence_       [ hSetBuffering h NoBuffering | h <- frohandls   ]

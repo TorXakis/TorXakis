@@ -27,6 +27,7 @@ library
                       , network
                       , mtl
                       , text
+                      , async
 
                       , text-via-sockets
 
