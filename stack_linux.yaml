@@ -61,6 +61,8 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
+- git: git@github.com:capitanbatata/text-via-sockets.git
+  commit: 61c508a01bf66bd138c54b5069e97bc30fde2b5f
   
 # Extra package databases containing global packages
 extra-package-dbs: []
