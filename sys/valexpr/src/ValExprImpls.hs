@@ -3,8 +3,18 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
--- ----------------------------------------------------------------------------------------- --
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  ValExprImpls
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+-- 
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Implementation file for Value Expressions.
+-----------------------------------------------------------------------------
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedLists     #-}
 {-# LANGUAGE OverloadedStrings   #-}
@@ -88,6 +98,8 @@ import           Sum
 import           ValExprDefs
 import           Variable
 
+-- | Create a function call.
+-- Preconditions are /not/ checked.
 cstrFunc :: (Variable v, Variable w) => Map.Map FuncId (FuncDef v) -> FuncId -> [ValExpr w] -> ValExpr w
 cstrFunc fis fi arguments =
     case Map.lookup fi fis of
@@ -143,9 +155,11 @@ getIntVal (view -> Vconst (Cint i)) = i
 getIntVal _                         =
     error "ValExprImpls.hs - getIntVal - Unexpected ValExpr: "
 
+-- | Create a constant as a value expression.
 cstrConst :: Const -> ValExpr v
 cstrConst c = ValExpr (Vconst c)
 
+-- | Create a variable as a value expression.
 cstrVar :: v -> ValExpr v
 cstrVar v = ValExpr (Vvar v)
 
@@ -405,9 +419,11 @@ cstrStrInRe :: ValExpr v -> ValExpr v -> ValExpr v
 cstrStrInRe (view -> Vconst (Cstring s)) (view -> Vconst (Cregex r)) = cstrConst (Cbool (T.unpack s =~ T.unpack (xsd2posix r) ) )
 cstrStrInRe s r                                                      = ValExpr (Vstrinre s r)
 
+-- | Create a call to a predefined function as a value expression.
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)
 
+-- | Create an error as a value expression.
 cstrError :: Text -> ValExpr v
 cstrError s = ValExpr (Verror s)
 
