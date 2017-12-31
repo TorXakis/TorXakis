@@ -137,7 +137,7 @@ openCnectClientSockets conndefs = do
      froConns   <- sequence [ TVS.connectTo (T.unpack hst) (show prt)
                              | (_, _, _, hst, prt) <- frosocks
                              ]
-     -- | TODO: see if we need to set the buffering at the connection.                   
+     -- TODO: see if we need to set the buffering at the connection.
      -- sequence_               [ hSetBuffering h NoBuffering | h <- tofrohandls ]
      -- sequence_               [ hSetBuffering h NoBuffering | h <- tohandls    ]
      -- sequence_               [ hSetBuffering h NoBuffering | h <- frohandls   ]
