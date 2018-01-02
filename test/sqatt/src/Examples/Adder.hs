@@ -139,9 +139,23 @@ testPurp4 = TxsExample
           )
   , expectedResult = Message "Goal m1: Hit"
   }
-  
+
+testStop :: TxsExample
+testStop = TxsExample
+  { exampleName = "Test 'Stop' command"
+  , txsModelFiles = [txsFilePath exampDir "Adder"]
+  , txsCmdsFiles = [txsCmdPath exampDir "AdderStop"]
+  , txsServerArgs = []
+  , sutExample =
+    Just (JavaExample
+            adderJavaPath
+            ["7890"]
+          )
+  , expectedResult = Message "Simulation/Testing/Stepping stopped"
+  }
+
 examples :: [TxsExample]
-examples = [test0, test1, test2, testReplayTrace, testPurp1, testPurp2, testPurp3, testPurp4]
+examples = [test0, test1, test2, testReplayTrace, testPurp1, testPurp2, testPurp3, testPurp4, testStop]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Adder" examples
