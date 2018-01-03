@@ -62,7 +62,7 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - git: https://github.com/capitanbatata/text-via-sockets.git
-  commit: 9c24101f0c5d924d477430825db1b5750d64945c
+  commit: b8d8ddac325c221cd9f519087abeb49a54128fe4
   
 # Extra package databases containing global packages
 extra-package-dbs: []
