@@ -156,7 +156,6 @@ txsUICmd = addExeSuffix "txsui"
 txsUILinePrefix :: Text
 txsUILinePrefix = "TXS >>  "
 
-
 class ExpectedMessage a where
     expectedMessage :: a -> Text
 
@@ -191,17 +190,17 @@ toFSSafeStr str = repl <$> str
 -- Throws an exception on failure.
 checkSMTSolvers :: IO ()
 checkSMTSolvers = do
-  putStrLn "WARNING: The presence of SMT solvers was not checked."
-  putStrLn "         First issue #47 needs to be resolved."
-  putStrLn "See: https://github.com/TorXakis/TorXakis/issues/47"
-
+  traverse_ checkCommand txsSupportedSolvers
+  return ()
+  where
+    txsSupportedSolvers = Prelude.map addExeSuffix ["z3","cvc4"]
 
 -- | Check that the given command exists in the search path of the host system.
 checkCommand :: Text -> IO ()
 checkCommand cmd = do
-  path <- which (fromText cmd)
+  path <- which $ fromText cmd
   case path of
-    Nothing -> throwIO $ ProgramNotFound (T.pack (show cmd))
+    Nothing -> throwIO $ ProgramNotFound $ T.pack $ show cmd
     _       -> return ()
 
 -- | Check that all the compilers are installed.
