@@ -63,7 +63,7 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - git: https://github.com/capitanbatata/text-via-sockets.git
-  commit: 78c8be14d709775437097d5b2d88417a3f45f64b
+  commit: e3228cd0407ec0d7991a544e154ea2def184fcae
 
 # Override default flag values for local packages and extra-deps
 flags:
