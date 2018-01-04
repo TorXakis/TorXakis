@@ -14,7 +14,7 @@ where
 import qualified Data.Set  as Set
 import           Data.Text (Text)
 
-import           Network.TextViaSockets
+import           Network.TextViaSockets (Connection)
 
 import           ConstDefs (Const)
 import           TxsDefs   (ChanId, VExpr)

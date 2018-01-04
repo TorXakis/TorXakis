@@ -104,8 +104,8 @@ txsListenOn Nothing = do -- Get a free port to listen to.
     sock <- listenOn (PortNumber aNY_PORT)
     portNr <- socketPort sock
     -- If no port was specified, then we print the port number in case the
-    -- process that is starting 'txsserver' (most likely 'txsui') needs the
-    -- port number to connect to it afterwards.
+    -- process that is starting 'txsserver' (most likely the 'torxakis'
+    -- command) needs the port number to connect to it afterwards.
     print portNr
     return (portNr, sock)
 txsListenOn (Just portNr) = do

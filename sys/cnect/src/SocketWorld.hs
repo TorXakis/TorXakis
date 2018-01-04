@@ -40,7 +40,7 @@ import           System.Timeout
 import qualified Data.Map            as Map
 
 import           Network.TextViaSockets (Connection)
-import qualified Network.TextViaSockets as TVS -- TODO: removed the qualified import once we `Network` is no longer needed.
+import qualified Network.TextViaSockets as TVS
 
 -- import from local
 import           EnDecode
@@ -138,10 +138,6 @@ openCnectClientSockets conndefs = do
      froConns   <- sequence [ TVS.connectTo (T.unpack hst) (show prt)
                              | (_, _, _, hst, prt) <- frosocks
                              ]
-     -- TODO: see if we need to set the buffering at the connection.
-     -- sequence_               [ hSetBuffering h NoBuffering | h <- tofrohandls ]
-     -- sequence_               [ hSetBuffering h NoBuffering | h <- tohandls    ]
-     -- sequence_               [ hSetBuffering h NoBuffering | h <- frohandls   ]
      let towhdls  = [ ConnHtoW ctow c vars' vexp
                     | ( (ctow, vars', vexp, _, _, _, _, _), c ) <- zip tofrosocks tofroConns
                     ] ++
@@ -189,9 +185,6 @@ openCnectServerSockets conndefs  =  do
      tofroConns <- wait tofroConnsA
      toConns    <- wait toConnsA
      froConns   <- wait froConnsA
-     -- sequence_       [ hSetBuffering h NoBuffering | h <- tofrohandls ]
-     -- sequence_       [ hSetBuffering h NoBuffering | h <- tohandls    ]
-     -- sequence_       [ hSetBuffering h NoBuffering | h <- frohandls   ]
      let towConns   = [ ConnHtoW ctow c vars' vexp
                      | ( (ctow, vars', vexp, _, _, _, _, _), c ) <- zip tofrosocks tofroConns
                      ]++

@@ -45,7 +45,7 @@ packages:
 - location: sys/behavedefs
 - location: sys/behaveenv
 - location: sys/cnect
-- location: sys/core 
+- location: sys/core
 - location: sys/coreenv
 - location: sys/defs
 - location: sys/front
@@ -63,11 +63,11 @@ packages:
 # (e.g., acme-missiles-0.3)
 extra-deps:
 - git: https://github.com/capitanbatata/text-via-sockets.git
-  commit: 66c0210ce0438011d9a3402ad185d7ec4504e188
+  commit: 78c8be14d709775437097d5b2d88417a3f45f64b
 
 # Override default flag values for local packages and extra-deps
-flags: 
-  text: 
+flags:
+  text:
     integer-simple: true
   hexpat:
     bundle: true
