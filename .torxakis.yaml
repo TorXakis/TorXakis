@@ -23,3 +23,8 @@ available-solvers:
   - "--fmf-fun-rlv"
   - "--uf-ss-fair"
   - "--no-strings-std-ascii"
+parameters:
+- name: "sim_deltaTime"
+  value: 200
+- name: "sut_deltaTime"
+  value: 2000

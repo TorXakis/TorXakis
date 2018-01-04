@@ -11,9 +11,12 @@ module Config
   , defaultConfig
   , SolverId (..)
   , SolverConfig (..)
+  , ParameterName (..)
+  , ParameterValue (..)
   , changeSolver
   , changeLog
   , addSolvers
+  , setParameters
   , updateCfg
   )
 where
@@ -33,6 +36,12 @@ data SolverConfig = SolverConfig
 newtype SolverId = SolverId { solverId :: String }
   deriving (Eq, Ord, Show)
 
+newtype ParameterName = ParamName { getParamName :: String }
+  deriving (Eq, Ord, Show)
+
+newtype ParameterValue = ParamValue { getParamValue :: String }
+  deriving (Eq, Ord, Show)
+
 -- | TorXakis configuration options.
 data Config = Config
   { -- | Log all SMT commands?
@@ -40,9 +49,9 @@ data Config = Config
     -- | Available solvers that can be chosen from.
   , availableSolvers :: Map.Map SolverId SolverConfig
   , selectedSolver   :: SolverId
+  , parameters       :: Map.Map ParameterName ParameterValue
   } deriving (Eq, Show)
 
--- | Change the selected solver.
 changeSolver :: Config -> String -> Config
 changeSolver cfg solver = cfg { selectedSolver = SolverId solver }
 
@@ -52,9 +61,11 @@ changeLog cfg b = cfg { smtLog = b }
 addSolvers :: Config -> Map.Map SolverId SolverConfig -> Config
 addSolvers cfg newSolvers = cfg { availableSolvers = newSolvers <> availableSolvers cfg }
 
+setParameters :: Config -> Map.Map ParameterName ParameterValue -> Config
+setParameters cfg newParams = cfg { parameters = newParams }
+
 updateCfg :: Maybe a -> (Config -> a -> Config) -> Config -> Config
-updateCfg ma f cfg =
-  maybe cfg (f cfg) ma
+updateCfg ma f cfg = maybe cfg (f cfg) ma
 
 -- | TorXakis default configuration
 defaultConfig :: Config
@@ -65,6 +76,7 @@ defaultConfig = Config
                        , (cvc4default, cvc4defaultConfig)
                        ]
   , selectedSolver = z3default
+  , parameters = Map.fromList []
   }
 
 z3default :: SolverId
