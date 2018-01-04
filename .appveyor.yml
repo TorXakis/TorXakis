@@ -75,7 +75,8 @@ environment:
     STACK_ROOT: c:\TorXakis\.stack
 
 cache:
-- .stack -> .stack.yaml
+- .stack
+- .stack-work -> .stack.yaml
 - .cache
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2.installed'
