@@ -11,6 +11,7 @@ version: pre-0.5.0.{build}.{branch}
     # - develop
     # - /^hotfix.*$/
 
+
 init:
 - ps: Write-Host Starting init at $(Get-Date)
 - ps: $env:Path += ";C:\Program Files\Git\mingw64\bin"
