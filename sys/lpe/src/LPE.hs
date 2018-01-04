@@ -5,27 +5,41 @@ See LICENSE at root directory of this repository.
 -}
 
 
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  LPE 
+-- Copyright   :  TNO and Radboud University
+-- License     :  BSD3
+-- Maintainer  :  carsten.ruetz, jan.tretmans
+-- Stability   :  experimental
+--
+-----------------------------------------------------------------------------
+
+{-# LANGUAGE OverloadedStrings #-}
+
 module LPE
-( preGNF,
-  gnf,
-  lpeTransform,
-  lpe,
-  lpePar
+( -- preGNF
+-- , gnf
+ lpeTransform
+-- , lpe
+-- , lpePar
 )
 
 where
 
 -- ----------------------------------------------------------------------------------------- --
 -- import
--- ----------------------------------------------------------------------------------------- --
 
--- import Debug.Trace
-
-import TranslatedProcDefs
+import Debug.Trace
+import Control.Monad.State
 
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
+import           Data.Maybe
+import           Data.Monoid 
+
+import TranslatedProcDefs
 
 import TxsDefs
 import ConstDefs
@@ -40,16 +54,18 @@ import BehExprDefs
 import ValExpr
 import qualified TxsUtils
 
+import qualified EnvData
+import qualified EnvBasic            as EnvB
+
 import Expand (relabel)
 import Subst
 
-import Debug.Trace
 
 -- ----------------------------------------------------------------------------------------- --
 -- Types :
 -- ----------------------------------------------------------------------------------------- --
 
-type ProcDefs = Map.Map TxsDefs.ProcId TxsDefs.ProcDef
+type ProcDefs = Map.Map ProcId ProcDef
 
 type Proc = (ProcId, [ChanId])
 type PCMapping = Map.Map Proc Integer
@@ -92,6 +108,7 @@ extractSteps bexpr = [bexpr]
 -- preGNF :
 -- ----------------------------------------------------------------------------------------- --
 
+{-
 
 preGNF :: ProcId -> TranslatedProcDefs -> ProcDefs -> ProcDefs
 preGNF procId translatedProcDefs procDefs =
@@ -435,6 +452,7 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
                   procInst' = ProcInst procIdNew chansDef (map cstrVar paramsDef) in
               (procInst', procDefs')
 
+-}
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -442,9 +460,36 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
 -- ----------------------------------------------------------------------------------------- --
 
 
+-- | wrapper around lpe function, returning only the relevant ProcDef instead of all ProcDefs
+lpeTransform :: (EnvB.EnvB envb )    -- ^ Monad for unique identifiers and error messages
+             => BExpr                -- ^ behaviour expression to be transformed,
+                                     --   assumed to be a process instantiation
+             -> ProcDefs             -- ^ context of process definitions in which process
+                                     --   instantiation is assumed to be defined
+             -> envb (Maybe (BExpr, ProcDef))
+                                     -- ^ transformed process instantiation with LPE definition
+-- template function for lpe      
+lpeTransform procInst procDefs  =  do
+     case procInst of 
+       ProcInst procid@(ProcId nm uid chids vars ext) chans vexps
+         -> case Map.lookup procid procDefs of
+              Just procdef
+                -> do uid'    <- EnvB.newUnid
+                      procid' <- return $ ProcId ("LPE_"<>nm) uid' chids vars ext
+                      return $ Just ( ProcInst procid' chans vexps 
+                                    , procdef  
+                                    ) 
+              _ -> do EnvB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                     "LPE Transformation: undefined process instantiation" ]
+                      return Nothing 
+       _ -> do EnvB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                              "LPE Transformation: only defined for process instantiation" ]
+               return Nothing 
+               
+{-
 
--- wrapper around lpe function, returning only the relevant ProcDef instead of all ProcDefs
-lpeTransform :: BExpr -> ProcDefs -> Maybe (BExpr, TxsDefs.ProcDef)
+-- carsten original function for lpe      
+
 lpeTransform procInst procDefs = let (procInst', procDefs') = lpe procInst emptyTranslatedProcDefs procDefs
                                      ProcInst procIdInst chansInst paramsInst = procInst'
                                      ProcDef chans params bexpr = case Map.lookup procIdInst procDefs' of
@@ -469,6 +514,10 @@ lpeTransform procInst procDefs = let (procInst', procDefs') = lpe procInst empty
           if (procId == orig)
               then ActionPref actOffer (ProcInst new chansInst paramsInst)
               else error "Found a different ProcId, thus the given BExpr is probably not in LPE format"
+
+-}
+
+{-
 
 lpe :: BExpr -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
 lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procDefs =
@@ -714,6 +763,10 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr =
                          in
                     ((chanOffer':chanOffersRec), constraints, varMap)
 
+-}
+
+
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
+

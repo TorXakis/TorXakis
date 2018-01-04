@@ -148,7 +148,7 @@ expand chsets (BNbexpr we (Interrupt bexp1 bexp2))  =
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand chsets (BNbexpr we (ProcInst procid chans vexps))  =  do
+expand chsets (BNbexpr we (ProcInst procid@(ProcId nm _ _ _ _) chans vexps))  =  do
      tdefs <- gets IOB.tdefs
      case Map.lookup procid (procDefs tdefs) of
        Just (ProcDef chids vids bexp)
@@ -160,8 +160,8 @@ expand chsets (BNbexpr we (ProcInst procid chans vexps))  =  do
                     (s, _)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                                 ("Expand: Eval failed in expand - ProcInst " ++ show s) ]
                                   return []
-       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                               "Expand: Undefined process name in expand" ]
+       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $
+                             "Expand: Undefined process name: " ++ (T.unpack nm) ]
                return []
 
 -- ----------------------------------------------------------------------------------------- --
@@ -559,3 +559,4 @@ uniHVar (IVar ivname' ivuid' ivpos' ivstat' ivsrt')  =  do
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
+
