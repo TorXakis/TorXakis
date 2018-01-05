@@ -151,7 +151,7 @@ txsServerCmd :: Text
 txsServerCmd = addExeSuffix "txsserver"
 
 txsUICmd :: Text
-txsUICmd = addExeSuffix "txsui"
+txsUICmd = addExeSuffix "torxakis"
 
 txsUILinePrefix :: Text
 txsUILinePrefix = "TXS >>  "

@@ -13,7 +13,8 @@ where
 
 import qualified Data.Set  as Set
 import           Data.Text (Text)
-import           System.IO
+
+import           Network.TextViaSockets (Connection)
 
 import           ConstDefs (Const)
 import           TxsDefs   (ChanId, VExpr)
@@ -38,7 +39,7 @@ instance PShow Action
 -- ----------------------------------------------------------------------------------------- --
 -- SAction :  string encoded actions
 
-data  SAction       =  SAct     Handle Text
+data  SAction       =  SAct     Connection Text
                      | SActQui
      deriving (Eq,Show)
 
@@ -53,15 +54,15 @@ instance PShow SAction
 --  Connections :  connections to outside world
 
 
-data  ConnHandle    =  ConnHtoW  { chan   :: ChanId
-                                 , handle :: Handle
-                                 , vars   :: [VarId]         -- encoding domain
-                                 , vexpr  :: VExpr           -- encoding range of String
+data  ConnHandle    =  ConnHtoW  { chan       :: ChanId
+                                 , connection :: Connection      -- ^ Connection to world
+                                 , vars       :: [VarId]         -- ^ Encoding domain
+                                 , vexpr      :: VExpr           -- ^ Encoding range of String
                                  }
-                     | ConnHfroW { chan   :: ChanId
-                                 , handle :: Handle
-                                 , var    :: VarId           -- decoding domain of String
-                                 , vexprs :: [VExpr]         -- decoding range
+                     | ConnHfroW { chan       :: ChanId
+                                 , connection :: Connection      -- ^ Connection from world
+                                 , var        :: VarId           -- ^ Decoding domain of String
+                                 , vexprs     :: [VExpr]         -- ^ Decoding range
                                  }
      deriving (Eq,Show)
 

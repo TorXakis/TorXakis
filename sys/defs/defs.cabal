@@ -58,6 +58,8 @@ library
                       , mtl
                       , text
                       , MissingH
+
+                      , text-via-sockets
                       
                       , valexpr
                       

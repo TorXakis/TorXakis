@@ -45,7 +45,7 @@ packages:
 - location: sys/behavedefs
 - location: sys/behaveenv
 - location: sys/cnect
-- location: sys/core 
+- location: sys/core
 - location: sys/coreenv
 - location: sys/defs
 - location: sys/front
@@ -62,10 +62,12 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
+- git: https://github.com/capitanbatata/text-via-sockets.git
+  commit: e3228cd0407ec0d7991a544e154ea2def184fcae
 
 # Override default flag values for local packages and extra-deps
-flags: 
-  text: 
+flags:
+  text:
     integer-simple: true
   hexpat:
     bundle: true
