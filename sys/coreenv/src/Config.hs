@@ -47,9 +47,9 @@ data Config = Config
   { -- | Log all SMT commands?
     smtLog           :: Bool
     -- | Available solvers that can be chosen from.
-  , availableSolvers :: Map.Map SolverId SolverConfig
-  , selectedSolver   :: SolverId
-  , parameters       :: Map.Map ParameterName ParameterValue
+  , availableSolvers     :: Map.Map SolverId SolverConfig
+  , selectedSolver       :: SolverId
+  , configuredParameters :: [(ParameterName,ParameterValue)]
   } deriving (Eq, Show)
 
 changeSolver :: Config -> String -> Config
@@ -61,8 +61,8 @@ changeLog cfg b = cfg { smtLog = b }
 addSolvers :: Config -> Map.Map SolverId SolverConfig -> Config
 addSolvers cfg newSolvers = cfg { availableSolvers = newSolvers <> availableSolvers cfg }
 
-setParameters :: Config -> Map.Map ParameterName ParameterValue -> Config
-setParameters cfg newParams = cfg { parameters = newParams }
+setParameters :: Config -> [(ParameterName,ParameterValue)] -> Config
+setParameters cfg newParams = cfg { configuredParameters = newParams }
 
 updateCfg :: Maybe a -> (Config -> a -> Config) -> Config -> Config
 updateCfg ma f cfg = maybe cfg (f cfg) ma
@@ -76,7 +76,7 @@ defaultConfig = Config
                        , (cvc4default, cvc4defaultConfig)
                        ]
   , selectedSolver = z3default
-  , parameters = Map.fromList []
+  , configuredParameters = []
   }
 
 z3default :: SolverId

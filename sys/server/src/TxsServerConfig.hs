@@ -11,6 +11,8 @@ module TxsServerConfig
   , Config (..)
   , UnintConfig(..)
   , loadConfigFromFile
+  , getParamName
+  , getParamValue
   )
 where
 
@@ -70,10 +72,7 @@ interpretConfig uCfg =
                      (fromMaybe [] . fcFlags $ solverFC)
       )
     fcChangeParam =
-      updateCfg (Map.fromList . map toParamKV <$>
-                  (fileCfg uCfg >>= fcParameters)
-                )
-                setParameters
+      updateCfg (map toParamKV <$> (fileCfg uCfg >>= fcParameters)) setParameters
     toParamKV paramFC =
       ( ParamName (fcParamName paramFC)
       , ParamValue (fcParamValue paramFC)
@@ -148,9 +147,9 @@ instance FromJSON ParameterFileConfig where
     { fieldLabelModifier = fieldsMapping
     , omitNothingFields  = True
     }
-    where fieldsMapping "fcParamName" = "name"
-          fieldsMapping "fcValue"     = "value"
-          fieldsMapping x             = x
+    where fieldsMapping "fcParamName"  = "name"
+          fieldsMapping "fcParamValue" = "value"
+          fieldsMapping x              = x
 
 -- | Create a `UnintConfig` value by trying to read the configuration options
 -- given in a configuration file. The configuration file is assumed to be named

@@ -104,6 +104,7 @@ module TxsCore
 
   -- * LPE transformation
 , txsLPE
+, updateParams
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -172,16 +173,26 @@ import VarId
 -- | TorXakis core main api -- start
 runTxsCore :: Config -> StateT s IOC.IOC a -> s -> IO ()
 runTxsCore initConfig ctrl s0  =  do
-     _ <- runStateT (runTxsCtrl ctrl s0)
-               IOC.EnvC { IOC.config = initConfig
-                         , IOC.unid   = 0
-                         , IOC.params = initParams
-                         , IOC.state  = initState
-                         }
-     return ()
-       where initState = IOC.Noning
-             initParams =
-               Map.union ParamCore.initParams SolveDefs.Params.initParams
+      _ <- runStateT (runTxsCtrl ctrl s0)
+              IOC.EnvC { IOC.config = initConfig
+                        , IOC.unid   = 0
+                        , IOC.params = updateParams initParams
+                                        $ Config.configuredParameters initConfig
+                        , IOC.state  = initState
+                        }
+      return ()
+      where initState = IOC.Noning
+            initParams =
+              Map.union ParamCore.initParams SolveDefs.Params.initParams
+
+updateParams :: ParamCore.Params -> [(Config.ParameterName,Config.ParameterValue)] -> ParamCore.Params
+updateParams oldParams [] = oldParams
+updateParams oldParams ((Config.ParamName pnStr, Config.ParamValue pvStr):cps) =
+  let paramName = "param_" ++ pnStr
+      paramValuePair = updateVal pvStr $ Map.lookup paramName oldParams
+      updateVal _      Nothing             = error "This should never happen due to Map.adjust"
+      updateVal newVal (Just (_oldVal, f)) = (newVal, f)
+  in  updateParams (Map.adjust (\_ -> paramValuePair) paramName oldParams) cps
 
 runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()
 runTxsCtrl ctrl s0  =  do

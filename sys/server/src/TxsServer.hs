@@ -81,21 +81,22 @@ main = withSocketsDo $ do
       hPutStrLn stderr "Errors found while loading the configuration"
       hPrint stderr xs
     Right config -> do
-        (portNr, sock) <- txsListenOn $ (clPortNumber . SC.cmdLineCfg) uConfig
-        (hs, host, _) <- accept sock
-        hSetBuffering hs LineBuffering
-        hSetEncoding hs latin1
-        hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
-        let initS = IOS.envsNone
-                { IOS.host   = host
-                , IOS.portNr = portNr
-                , IOS.servhs = hs
-                }
-            coreConfig = config
-        TxsCore.runTxsCore coreConfig cmdsIntpr initS
-        threadDelay 1000000    -- 1 sec delay on closing
-        sClose sock
-        hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
+      (portNr, sock) <- txsListenOn $ (clPortNumber . SC.cmdLineCfg) uConfig
+      (hs, host, _) <- accept sock
+      hSetBuffering hs LineBuffering
+      hSetEncoding hs latin1
+      hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
+      let initS = IOS.envsNone
+              { IOS.host   = host
+              , IOS.portNr = portNr
+              , IOS.servhs = hs
+              , IOS.params = TxsCore.updateParams (IOS.params IOS.envsNone) $ SC.configuredParameters config
+              }
+          coreConfig = config
+      TxsCore.runTxsCore coreConfig cmdsIntpr initS
+      threadDelay 1000000    -- 1 sec delay on closing
+      sClose sock
+      hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
 
 -- | Listen on the given port. If no port number is given, then a free port is
 -- determined, and this port number is printed to the standard output.
