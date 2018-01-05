@@ -108,8 +108,6 @@ extractSteps bexpr = [bexpr]
 -- preGNF :
 -- ----------------------------------------------------------------------------------------- --
 
-{-
-
 preGNF :: ProcId -> TranslatedProcDefs -> ProcDefs -> ProcDefs
 preGNF procId translatedProcDefs procDefs =
     let    -- decompose the ProcDef of ProcId
@@ -452,8 +450,6 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
                   procInst' = ProcInst procIdNew chansDef (map cstrVar paramsDef) in
               (procInst', procDefs')
 
--}
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- LPE :
@@ -476,9 +472,10 @@ lpeTransform procInst procDefs  =  do
               Just procdef
                 -> do uid'    <- EnvB.newUnid
                       procid' <- return $ ProcId ("LPE_"<>nm) uid' chids vars ext
-                      return $ Just ( ProcInst procid' chans vexps 
-                                    , procdef  
-                                    ) 
+                      return $ lpeTransform' procInst procDefs
+                               -- Just ( ProcInst procid' chans vexps 
+                               --      , procdef  
+                               --      ) 
               _ -> do EnvB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                      "LPE Transformation: undefined process instantiation" ]
                       return Nothing 
@@ -486,26 +483,24 @@ lpeTransform procInst procDefs  =  do
                               "LPE Transformation: only defined for process instantiation" ]
                return Nothing 
                
-{-
 
 -- carsten original function for lpe      
 
-lpeTransform procInst procDefs = let (procInst', procDefs') = lpe procInst emptyTranslatedProcDefs procDefs
-                                     ProcInst procIdInst chansInst paramsInst = procInst'
-                                     ProcDef chans params bexpr = case Map.lookup procIdInst procDefs' of
-                                                                   Just procDef   -> procDef
-                                                                   Nothing        -> error "lpeTransform: could not find the given procId"
+lpeTransform' procInst procDefs = let (procInst', procDefs') = lpe procInst emptyTranslatedProcDefs procDefs
+                                      ProcInst procIdInst chansInst paramsInst = procInst'
+                                      ProcDef chans params bexpr = case Map.lookup procIdInst procDefs' of
+                                                                     Just procDef   -> procDef
+                                                                     Nothing        -> error "lpeTransform: could not find the given procId"
 
+                                      -- rename ProcId P to LPE_<P>
+                                      -- put new ProcId in the procInst
+                                      procIdName' = T.pack $ "LPE_" ++ (T.unpack (ProcId.name procIdInst))
+                                      procIdInst' = procIdInst { ProcId.name = procIdName'}
+                                      procInst'' = ProcInst procIdInst' chansInst paramsInst
 
-                                     -- rename ProcId P to LPE_<P>
-                                     -- put new ProcId in the procInst
-                                     procIdName' = T.pack $ "LPE_" ++ (T.unpack (ProcId.name procIdInst))
-                                     procIdInst' = procIdInst { ProcId.name = procIdName'}
-                                     procInst'' = ProcInst procIdInst' chansInst paramsInst
-
-                                     -- put new ProcId in each step
-                                     steps = map (substituteProcId procIdInst procIdInst') (extractSteps bexpr)
-                                     procDef = ProcDef chans params (wrapSteps steps) in
+                                      -- put new ProcId in each step
+                                      steps = map (substituteProcId procIdInst procIdInst') (extractSteps bexpr)
+                                      procDef = ProcDef chans params (wrapSteps steps) in
                                  trace (show procDef) $ Just (procInst'', procDef)
     where
         substituteProcId :: ProcId -> ProcId -> BExpr -> BExpr
@@ -515,9 +510,6 @@ lpeTransform procInst procDefs = let (procInst', procDefs') = lpe procInst empty
               then ActionPref actOffer (ProcInst new chansInst paramsInst)
               else error "Found a different ProcId, thus the given BExpr is probably not in LPE format"
 
--}
-
-{-
 
 lpe :: BExpr -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
 lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procDefs =
@@ -762,8 +754,6 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr =
                                         (Exclam vexpr)  -> varMapRec
                          in
                     ((chanOffer':chanOffersRec), constraints, varMap)
-
--}
 
 
 -- ----------------------------------------------------------------------------------------- --
