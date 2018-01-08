@@ -186,11 +186,10 @@ runTxsCore initConfig ctrl s0  =  do
               Map.union ParamCore.initParams SolveDefs.Params.initParams
 
 updateParams :: ParamCore.Params -> [(Config.ParameterName,Config.ParameterValue)] -> ParamCore.Params
-updateParams oldParams cps = foldl applyConfParam oldParams cps
+updateParams = foldl applyConfParam
   where applyConfParam allParams (Config.ParamName pnStr, Config.ParamValue pvStr) =
-          Map.adjust (\oldParamKV -> updateVal oldParamKV pvStr) paramName allParams
-          where paramName = "param_" ++ pnStr
-                updateVal (oldVal, validate) newValCandidate
+          Map.adjust (updateOldParamWith pvStr) ("param_" ++ pnStr) allParams
+          where updateOldParamWith newValCandidate (oldVal, validate)
                   | validate newValCandidate  = (newValCandidate, validate)
                   | otherwise                 = (         oldVal, validate)
 
