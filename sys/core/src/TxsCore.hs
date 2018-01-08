@@ -190,8 +190,10 @@ updateParams oldParams [] = oldParams
 updateParams oldParams ((Config.ParamName pnStr, Config.ParamValue pvStr):cps) =
   let paramName = "param_" ++ pnStr
       paramValuePair = updateVal pvStr $ Map.lookup paramName oldParams
-      updateVal _      Nothing             = error "This should never happen due to Map.adjust"
-      updateVal newVal (Just (_oldVal, f)) = (newVal, f)
+      updateVal _ Nothing = error "This should never happen due to Map.adjust in updateParams"
+      updateVal newValCandidate (Just (oldVal, f))
+        | f newValCandidate  = (newValCandidate, f)
+        | otherwise          = (        oldVal,  f)
   in  updateParams (Map.adjust (const paramValuePair) paramName oldParams) cps
 
 runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()
