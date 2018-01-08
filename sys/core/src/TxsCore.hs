@@ -192,7 +192,7 @@ updateParams oldParams ((Config.ParamName pnStr, Config.ParamValue pvStr):cps) =
       paramValuePair = updateVal pvStr $ Map.lookup paramName oldParams
       updateVal _      Nothing             = error "This should never happen due to Map.adjust"
       updateVal newVal (Just (_oldVal, f)) = (newVal, f)
-  in  updateParams (Map.adjust (\_ -> paramValuePair) paramName oldParams) cps
+  in  updateParams (Map.adjust (const paramValuePair) paramName oldParams) cps
 
 runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()
 runTxsCtrl ctrl s0  =  do
