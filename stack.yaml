@@ -62,7 +62,7 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- git: https://github.com/capitanbatata/text-via-sockets.git
+- git: https://github.com/TorXakis/text-via-sockets.git
   commit: e3228cd0407ec0d7991a544e154ea2def184fcae
 
 # Override default flag values for local packages and extra-deps
