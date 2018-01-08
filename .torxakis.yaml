@@ -23,10 +23,10 @@ available-solvers:
   - "--fmf-fun-rlv"
   - "--uf-ss-fair"
   - "--no-strings-std-ascii"
-parameters:
-- name: "Sim_deltaTime"
-  value: "1000"
-- name: "Sut_deltaTime"
-  value: "5000"
-- name: "TrueBins_NrOfBins"
-  value: "8"
+# parameters:
+# - name: "Sim_deltaTime"
+#   value: "1000"
+# - name: "Sut_deltaTime"
+#   value: "5000"
+# - name: "TrueBins_NrOfBins"
+#   value: "8"
