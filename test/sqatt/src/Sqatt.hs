@@ -64,6 +64,7 @@ data TxsExample
     exampleName    :: String
     -- | Action to run before testing the example.
   , setupAction    :: IO ()
+  , tearDownAction :: IO ()
     -- | Paths to the TorXakis model files.
   , txsModelFiles  :: [FilePath]
     -- | Paths to the files containing the commands that will be passed to the
@@ -463,8 +464,10 @@ execTest mLogDir ex = do
 -- | Test a single example.
 testExample :: FilePath -> TxsExample -> Spec
 testExample logDir ex = it (exampleName ex) $ do
+  setupAction ex
   let mLogDir = logDirOfExample (Just logDir) (exampleName ex)
   res <- runExceptT $ runTest $ execTest mLogDir ex
+  tearDownAction ex
   sleep 2.0 -- let the files be closed
   unless (isRight res) (sh $ dumpToScreen $ fromJust mLogDir)
   res `shouldBe` Right ()
@@ -542,6 +545,7 @@ emptyExample :: TxsExample
 emptyExample = TxsExample
   { exampleName = ""
   , setupAction = return ()
+  , tearDownAction = return ()
   , txsModelFiles = []
   , txsCmdsFiles = []
   , txsServerArgs = []
