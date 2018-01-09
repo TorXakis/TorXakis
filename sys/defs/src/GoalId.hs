@@ -5,22 +5,23 @@ See LICENSE at root directory of this repository.
 -}
 
 -- ----------------------------------------------------------------------------------------- --
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
 
 module GoalId
-  
+
 where
 
-import GHC.Generics (Generic)
-import Control.DeepSeq
+import           Control.DeepSeq
+import           GHC.Generics    (Generic)
 
-import Name
+import           Id
+import           Name
 
-data GoalId         = GoalId    { name       :: Name
-                                , unid       :: Int
-                                }
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
+data GoalId = GoalId
+    { name :: Name
+    , unid :: Id
+    } deriving (Eq, Ord, Read, Show, Generic, NFData)
 
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+instance Resettable GoalId
+instance Identifiable GoalId

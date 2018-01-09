@@ -16,16 +16,16 @@ import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
 
+import           Id
 import           Name
 import           SortId
 
-data CstrId         = CstrId    { name     :: Name            -- capid
-                                , unid     :: Int
-                                , cstrargs :: [SortId]
-                                , cstrsort :: SortId
-                                }
-     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
+data CstrId = CstrId
+    { name     :: Name            -- capid
+    , unid     :: Id
+    , cstrargs :: [SortId]
+    , cstrsort :: SortId
+    } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+instance Resettable CstrId
+instance Identifiable CstrId

@@ -5,6 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 -- ----------------------------------------------------------------------------------------- --
 
 module Reduce
@@ -116,14 +117,14 @@ instance Reduce INode where
 
     reduce (BNparallel chids inodes) = do
          inodes' <- mapM reduce inodes
-         let (stops,nstops) = List.partition ( \i -> case i of { BNbexpr _ Stop -> True
-                                                               ; _ -> False
-                                                               }
+         let (stops,nstops) = List.partition ( \case 
+                                                  BNbexpr _ Stop -> True
+                                                  _              -> False
                                              )
                                              inodes'
              chans'         = Set.unions $ map (Set.fromList . freeChans) nstops
-             chids'         = Set.fromList (chanId_Exit:chids) `Set.intersection` chans'
-             chids''        = Set.toList chids' \\\ [chanId_Exit]
+             chids'         = Set.fromList (chanIdExit:chids) `Set.intersection` chans'
+             chids''        = Set.toList chids' \\\ [chanIdExit]
          case (stops,nstops) of
            ( _ , [] )       -> return stopINode
            ( [] , [inode] ) -> return inode
@@ -204,8 +205,8 @@ instance Reduce BExpr
          bexps' <- mapM reduce bexps
          let (stops,nstops) = List.partition (== Stop) bexps'
              chans'  = Set.unions $ map (Set.fromList . freeChans) nstops
-             chids'  = Set.fromList (chanId_Exit:chids) `Set.intersection` chans'
-             chids'' = Set.toList chids' \\\ [chanId_Exit]
+             chids'  = Set.fromList (chanIdExit:chids) `Set.intersection` chans'
+             chids'' = Set.toList chids' \\\ [chanIdExit]
          case (stops,nstops) of
            ( _ , [] )      -> return Stop
            ( [] , [bexp] ) -> return bexp

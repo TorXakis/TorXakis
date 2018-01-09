@@ -16,17 +16,16 @@ import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
 
+import           Id
 import           Name
 import           SortId
 
+data FuncId = FuncId
+    { name     :: Name            -- smallid
+    , unid     :: Id
+    , funcargs :: [SortId]
+    , funcsort :: SortId
+    } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-data FuncId         = FuncId    { name     :: Name            -- smallid
-                                , unid     :: Int
-                                , funcargs :: [SortId]
-                                , funcsort :: SortId
-                                }
-     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+instance Resettable FuncId
+instance Identifiable FuncId

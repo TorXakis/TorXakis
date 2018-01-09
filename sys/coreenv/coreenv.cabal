@@ -16,6 +16,7 @@ library
   hs-source-dirs:       src
 
   exposed-modules:      EnvCore
+                      , EnvBasic
                       , EnvData
                       , ParamCore
                       , Config

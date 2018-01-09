@@ -63,6 +63,7 @@ import TxsShow                          -- pretty pshow for error messages
 import StdTDefs                         -- predefined, standard Txs data types
 import qualified Sigs
 import ValExpr
+import Id
 }
 
 
@@ -86,8 +87,8 @@ import ValExpr
 %attributetype           { Attrs a v }
 %attribute parseVal      { a }                       -- synthesized: parsed value
 
-%attribute inhNodeUid    { Int }                     -- unique id for each nonterminal
-%attribute synMaxUid     { Int }                     -- last unique id for subtree
+%attribute inhNodeUid    { Id }                     -- unique id for each nonterminal
+%attribute synMaxUid     { Id }                     -- last unique id for subtree
 
 %attribute synSigs       { (Sigs.Sigs VarId) }                    -- defined Sigs for collection
 %attribute inhSigs       { (Sigs.Sigs VarId) }                    -- defined Sigs for usage
@@ -492,12 +493,12 @@ TypeDef         -- :: { [ (Ident,TxsDef) ] }
                 ;  $$.synMaxUid    = $3.synMaxUid
                 ;  $$.synSigs      = let dsort = SortId $1 $$.inhNodeUid in
                                         Sigs.uniqueCombine  Sigs.empty { Sigs.sort = Map.singleton $1 dsort
-                                                                       , Sigs.func = FuncTable (Map.fromList [ (eqName, Map.singleton (Signature [dsort,dsort] sortId_Bool) equalHandler)
-                                                                                                             , (neqName, Map.singleton (Signature [dsort,dsort] sortId_Bool) notEqualHandler)
-                                                                                                             , (toStringName, Map.singleton (Signature [dsort] sortId_String) (cstrPredef AST (FuncId toStringName ($$.inhNodeUid+3) [dsort] sortId_String) ) )
-                                                                                                             , (fromStringName, Map.singleton (Signature [sortId_String] dsort) (cstrPredef ASF (FuncId fromStringName ($$.inhNodeUid+4) [sortId_String] dsort) ) )
-                                                                                                             , (toXmlName, Map.singleton (Signature [dsort] sortId_String) (cstrPredef AXT (FuncId toStringName ($$.inhNodeUid+5) [dsort] sortId_String) ) )
-                                                                                                             , (fromXmlName, Map.singleton (Signature [sortId_String] dsort) (cstrPredef AXF (FuncId fromStringName ($$.inhNodeUid+6) [sortId_String] dsort) ) )
+                                                                       , Sigs.func = FuncTable (Map.fromList [ (eqName, Map.singleton (Signature [dsort,dsort] sortIdBool) equalHandler)
+                                                                                                             , (neqName, Map.singleton (Signature [dsort,dsort] sortIdBool) notEqualHandler)
+                                                                                                             , (toStringName, Map.singleton (Signature [dsort] sortIdString) (cstrPredef AST (FuncId toStringName ($$.inhNodeUid+3) [dsort] sortIdString) ) )
+                                                                                                             , (fromStringName, Map.singleton (Signature [sortIdString] dsort) (cstrPredef ASF (FuncId fromStringName ($$.inhNodeUid+4) [sortIdString] dsort) ) )
+                                                                                                             , (toXmlName, Map.singleton (Signature [dsort] sortIdString) (cstrPredef AXT (FuncId toStringName ($$.inhNodeUid+5) [dsort] sortIdString) ) )
+                                                                                                             , (fromXmlName, Map.singleton (Signature [sortIdString] dsort) (cstrPredef AXF (FuncId fromStringName ($$.inhNodeUid+6) [sortIdString] dsort) ) )
                                                                                                              ] ) 
                                                                        }
                                                             $3.synSigs  
@@ -553,13 +554,13 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                 -- mirroring : -
                 -- constrs   : all used sorts shall be defined
               : capid FieldList
-                {  $2.inhNodeUid   = $$.inhNodeUid + 2*(length $2) + 3
+                {  $2.inhNodeUid   = $$.inhNodeUid + Id (2 * (length $2)) + 3
                 ;  $$.synMaxUid    = $2.synMaxUid
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $$.synSigs = let { cas = map snd $2
                                     ; cid = CstrId $1 $$.inhNodeUid cas $$.inhDefgSort
                                     } in Sigs.empty{Sigs.func = FuncTable( Map.fromList $ [($1, Map.singleton (Signature cas $$.inhDefgSort) (cstrHandler cid))
-                                                                                     ,("is" <> $1, Map.singleton (Signature [$$.inhDefgSort] sortId_Bool) (iscstrHandler cid))
+                                                                                     ,("is" <> $1, Map.singleton (Signature [$$.inhDefgSort] sortIdBool) (iscstrHandler cid))
                                                                                      ]
                                                                                      ++
                                                                                      [ ( nm , Map.singleton (Signature [$$.inhDefgSort] s) (accessHandler cid pos) ) | ((nm,s),pos) <- zip $2 [0..] ]
@@ -567,11 +568,11 @@ Constructor     -- :: { [ (Ident,TxsDef) ] }
                                                    }
                 ;  $$ = let { cas = map snd $2
                             ; cid = CstrId $1 $$.inhNodeUid cas $$.inhDefgSort
-                            ; cfid = FuncId ("is" <> $1) ($$.inhNodeUid+1) [$$.inhDefgSort] sortId_Bool
+                            ; cfid = FuncId ("is" <> $1) ($$.inhNodeUid+1) [$$.inhDefgSort] sortIdBool
                             ; x =  VarId "x" ($$.inhNodeUid+2) $$.inhDefgSort
                             ; fs = [ let y = VarId "y" vid $$.inhDefgSort in
                                     (IdFunc (FuncId nm uid [$$.inhDefgSort] s), DefFunc (FuncDef [y] (cstrAccess cid pos (cstrVar y))))
-                                   | ((nm,s), pos, uid, vid) <- List.zip4 $2 [0..] [($$.inhNodeUid + 3)..] [($$.inhNodeUid +3 + length $2)..] 
+                                   | ((nm,s), pos, uid, vid) <- List.zip4 $2 [0..] [($$.inhNodeUid + 3)..] [($$.inhNodeUid +3 + Id (length $2))..] 
                                    ]
                             }
                             in [ ( IdCstr cid, DefCstr (CstrDef cfid (map (\(IdFunc f,_) -> f) fs) ) ) 
@@ -698,7 +699,7 @@ ExFuncDef       -- :: { ( Int, TxsDef ) }
                 -- constrs   : defined function shall have unique function name 
               : SIGS UNID FuncDef
                 { $3.inhSigs      = $1
-                ; $3.inhNodeUid   = $2
+                ; $3.inhNodeUid   = Id $2
                 ; $$ = ( $3.synMaxUid, TxsDefs.fromList [$3] )
                 }
                 
@@ -801,7 +802,7 @@ ExConstDef      -- :: { ( Int, TxsDef ) }
                 -- constrs   : defined constant shall have unique function name
               : SIGS UNID ConstDef
                 {  $3.inhSigs      = $1
-                ;  $3.inhNodeUid   = $2
+                ;  $3.inhNodeUid   = Id $2
                 ;  $$ = ( $3.synMaxUid, TxsDefs.fromList $3 )
                 }
 
@@ -1012,7 +1013,7 @@ ModelDef        -- :: { (Ident,TxsDef) }
                                          ]
                             ; splsyncs = case $12.synExitSorts of
                                          { NoExit  -> []
-                                         ; Exit [] -> [ Set.singleton chanId_Exit ]
+                                         ; Exit [] -> [ Set.singleton chanIdExit ]
                                          ; _       -> error $ "\nTXS0540: Exit-kind " ++
                                                         "in ModelDef shall be EXIT or NOEXIT\n"
                                          }
@@ -1072,9 +1073,9 @@ PurpDef         -- :: { (Ident,TxsDef) }
                                          , not $ chset `Set.isSubsetOf` (Set.fromList $6)
                                          , not $ chset `Set.isSubsetOf` (Set.fromList $9)
                                          ]
-                            ; splsyncs = [ Set.singleton chanId_Qstep
-                                         , Set.singleton chanId_Hit
-                                         , Set.singleton chanId_Miss
+                            ; splsyncs = [ Set.singleton chanIdQstep
+                                         , Set.singleton chanIdHit
+                                         , Set.singleton chanIdMiss
                                          ]
                             }
                          in if  null errsyncs
@@ -1386,7 +1387,7 @@ ConnectionIn    -- :: { ConnChan }
                 ;  $3.inhChanSigs  = Sigs.chan $$.inhSigs
                 ;  $$.synChanSigs  = $3
                 ;  $$ = case $3 of
-                        { [chid] -> ConnDfroW chid $5 $7 (VarId "" (-1) sortId_String) []
+                        { [chid] -> ConnDfroW chid $5 $7 (VarId "" (-1) sortIdString) []
                         ; _      -> error "\nTXS0229: Only single channel in connection\n"
                         }
                 }
@@ -1416,9 +1417,9 @@ Encoding        -- :: { ConnDef }
                 ;  $4.inhChanSigs  = Sigs.chan $$.inhSigs
                 ;  $2.inhVarSigs   = []
                 ;  $4.inhVarSigs   = $2.synVarSigs
-                ;  $4.inhSolvSorts = [Just sortId_String]
+                ;  $4.inhSolvSorts = [Just sortIdString]
                 ;  $$ = case ( $2, $4 ) of
-                        { ( Offer chid choffs, [ Exclam vexp ] ) | sortOf vexp == sortId_String
+                        { ( Offer chid choffs, [ Exclam vexp ] ) | sortOf vexp == sortIdString
                             -> ConnDtoW chid "" (-1) [ vid | Quest vid <- choffs ] vexp
                         ; _ -> error $ "\nTXS0231: ENCODE range shall be one '!' of String\n"
                         }
@@ -1452,9 +1453,9 @@ Decoding        -- :: { ConnDef }
                 ;  $4.inhChanSigs  = Sigs.chan $$.inhSigs
                 ;  $2.inhVarSigs   = $4.synVarSigs
                 ;  $4.inhVarSigs   = []
-                ;  $4.inhSolvSorts = [Just sortId_String]
+                ;  $4.inhSolvSorts = [Just sortIdString]
                 ;  $$ = case ( $2, $4 ) of
-                        { ( Offer chid choffs, [ Quest vid ] ) | sortOf vid == sortId_String
+                        { ( Offer chid choffs, [ Quest vid ] ) | sortOf vid == sortIdString
                             -> ConnDfroW chid "" (-1) vid [ vexp | Exclam vexp <- choffs ]
                         ; _ -> error $ "\nTXS0241: DECODE domain shall be one '?' of String\n"
                         }
@@ -1662,7 +1663,7 @@ ExChannelDecls  -- :: { ( Int, [ChanId] ) }
                 --           : $$: [VEnv]: locally defined value definitions
               : SIGS UNID ChannelDecls
                 {  $3.inhSigs      = $1
-                ;  $3.inhNodeUid   = $2
+                ;  $3.inhNodeUid   = Id $2
                 ;  $$ = ( $3.synMaxUid, $3 )
                 }
 
@@ -1674,11 +1675,11 @@ ChannelDecls    -- :: { [ChanId] }
                 -- mirroring : -
                 -- constrs   : used sorts shall be defined
               : NeIdList
-                {  $$.synMaxUid    = $$.inhNodeUid + (length $1)
+                {  $$.synMaxUid    = $$.inhNodeUid + Id (length $1)
                 ;  $$ = [ ChanId nm uid [] | (nm,uid) <- zip $1 [$$.inhNodeUid..] ]
                 }
               | NeIdList "::" NeOfSorts
-                {  $3.inhNodeUid   = $$.inhNodeUid + (length $1)
+                {  $3.inhNodeUid   = $$.inhNodeUid + Id (length $1)
                 ;  $$.synMaxUid    = $3.synMaxUid
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $$ = [ ChanId nm uid $3 | (nm,uid) <- zip $1 [$$.inhNodeUid..] ]
@@ -1715,7 +1716,7 @@ ExVarDeclList   -- :: { ( Int, [VarId] ) }
                 --           : $$: [VEnv]: locally defined value definitions
               : SIGS UNID VarDeclList
                 {  $3.inhSigs      = $1
-                ;  $3.inhNodeUid   = $2
+                ;  $3.inhNodeUid   = Id $2
                 ;  $$ = ( $3.synMaxUid, $3 )
                 }
 
@@ -1749,7 +1750,7 @@ VarDecls        -- :: { [VarId] }
                 -- mirroring : -
                 -- constrs   : used sorts shall be defined
               : NeSmallIdList OfSort
-                {  $2.inhNodeUid   = $$.inhNodeUid + (length $1)
+                {  $2.inhNodeUid   = $$.inhNodeUid + Id (length $1)
                 ;  $$.synMaxUid    = $2.synMaxUid
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $$ = [ VarId nm uid $2 | (nm,uid) <- zip $1 [$$.inhNodeUid..] ]
@@ -1781,7 +1782,7 @@ ExBehaviourExpr -- :: { ( Int, BExpr ) }
                 {  $5.inhSigs      = $1
                 ;  $5.inhChanSigs  = $2
                 ;  $5.inhVarSigs   = $3
-                ;  $5.inhNodeUid   = $4
+                ;  $5.inhNodeUid   = Id $4
                 ;  $$ = ( $5.synMaxUid, $5 )
                 }
 
@@ -2039,8 +2040,8 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $$.synMaxUid    = $5.synMaxUid
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $5.inhSigs      = $$.inhSigs
-                ;  $2.inhSolvSorts = [ if sortId_Bool `elem` sids
-                                         then Just sortId_Bool
+                ;  $2.inhSolvSorts = [ if sortIdBool `elem` sids
+                                         then Just sortIdBool
                                          else error  ("\nTXS0312: " ++
                                                       "Sort of guard must be 'Bool'\n")
                                      | sids <- $2.synExpdSorts
@@ -2072,8 +2073,8 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $6.inhSigs      = $$.inhSigs
-                ;  $3.inhSolvSorts = [ if sortId_Bool `elem` sids
-                                         then Just sortId_Bool
+                ;  $3.inhSolvSorts = [ if sortIdBool `elem` sids
+                                         then Just sortIdBool
                                          else error  ("\nTXS0313: " ++
                                                       "Sort of constraint must be 'Bool'\n")
                                      | sids <- $3.synExpdSorts
@@ -2101,8 +2102,8 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $$.synMaxUid    = $3.synMaxUid
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $3.inhSigs      = $$.inhSigs
-                ;  $3.inhSolvSorts = [ if sortId_Bool `elem` sids
-                                         then Just sortId_Bool
+                ;  $3.inhSolvSorts = [ if sortIdBool `elem` sids
+                                         then Just sortIdBool
                                          else error  ("\nTXS0313: " ++
                                                       "Sort of constraint must be 'Bool'\n")
                                      | sids <- $3.synExpdSorts
@@ -2286,7 +2287,7 @@ ExPrefOfferList -- :: { ( Int, Set.Set Offer ) }
                 {  $5.inhSigs      = $1
                 ;  $5.inhChanSigs  = $2
                 ;  $5.inhVarSigs   = $3
-                ;  $5.inhNodeUid   = $4
+                ;  $5.inhNodeUid   = Id $4
                 ;  $$ = ( $5.synMaxUid, $5 )
                 }
 
@@ -2314,7 +2315,7 @@ PrefOfferList   -- :: { Set.Set Offer }
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synVarSigs   = []
                 ;  $$.synExitSorts = Hit
-                ;  $$ = Set.singleton $ Offer { chanid     = chanId_Qstep
+                ;  $$ = Set.singleton $ Offer { chanid     = chanIdQstep
                                               , chanoffers = []
                                               }
                 }
@@ -2322,7 +2323,7 @@ PrefOfferList   -- :: { Set.Set Offer }
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synVarSigs   = []
                 ;  $$.synExitSorts = Hit
-                ;  $$ = Set.singleton $ Offer { chanid     = chanId_Hit
+                ;  $$ = Set.singleton $ Offer { chanid     = chanIdHit
                                               , chanoffers = []
                                               }
                 }
@@ -2330,7 +2331,7 @@ PrefOfferList   -- :: { Set.Set Offer }
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synVarSigs   = []
                 ;  $$.synExitSorts = Hit
-                ;  $$ = Set.singleton $ Offer { chanid     = chanId_Miss
+                ;  $$ = Set.singleton $ Offer { chanid     = chanIdMiss
                                               , chanoffers = []
                                               }
                 }
@@ -2464,11 +2465,11 @@ Offer           -- :: { Offer }
                 ;  $$.synMaxUid    = $2.synMaxUid
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $2.inhSolvSorts = [ Nothing | s <- $2.synExpdSorts ]
-                ;  $$.synChanSigs  = [ chanId_Exit ]
+                ;  $$.synChanSigs  = [ chanIdExit ]
                 ;  $$.synVarSigs   = $2.synVarSigs
                 ;  $2.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = Exit (map sortOf $2)
-                ;  $$ = Offer chanId_Exit $2
+                ;  $$ = Offer chanIdExit $2
                 }
               | Id ChannelOffList
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
@@ -2627,7 +2628,7 @@ ExValExpr       -- :: { ( Int, VExpr ) }
                 {  $4.inhSigs      = $1
                 ;  $4.inhVarSigs   = $2
                 ;  $4.inhSolvSort  = Nothing
-                ;  $4.inhNodeUid   = $3
+                ;  $4.inhNodeUid   = Id $3
                 ;  $$ = ( $4.synMaxUid, $4 )
                 }
 
@@ -2706,8 +2707,8 @@ ValExpr1        -- :: { VExpr }
                 ;  $4.inhVarSigs   = $$.inhVarSigs
                 ;  $6.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExpdSort  = $4.synExpdSort `List.intersect` $6.synExpdSort
-                ;  $2.inhSolvSorts = [ if sortId_Bool `elem` sids
-                                         then Just sortId_Bool
+                ;  $2.inhSolvSorts = [ if sortIdBool `elem` sids
+                                         then Just sortIdBool
                                          else error ("\nTXS0421: " ++
                                                      "Sort of constraint must be 'Bool', "++
                                                      " instead of: "++(show sids)++"\n")
@@ -3124,7 +3125,7 @@ ExNeValueDefs   -- :: { ( Int, VEnv ) }
               : SIGS VARENV UNID NeValueDefs
                 {  $4.inhSigs      = $1
                 ;  $4.inhVarSigs   = $2
-                ;  $4.inhNodeUid   = $3
+                ;  $4.inhNodeUid   = Id $3
                 ;  $$ = ( $4.synMaxUid, $4 )
                 }
 
@@ -3212,66 +3213,66 @@ Constant        -- :: { Const }
                 -- constrs   : sort of constant must be solved sort
               : True
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synExpdSort  = [ sortId_Bool ]
+                ;  $$.synExpdSort  = [ sortIdBool ]
                 ;  $$ = case $$.inhSolvSort of
                         { Nothing                   -> Cbool True
-                        ; Just s | s == sortId_Bool -> Cbool True
+                        ; Just s | s == sortIdBool -> Cbool True
                         ; Just _                    -> error "\nTXS ERROR 0909\n"
                         }
                 ;  where case Map.lookup "Bool" (Sigs.sort $$.inhSigs) of
-                            {   Just s | s == sortId_Bool    -> ()
+                            {   Just s | s == sortIdBool    -> ()
                             ;   _                            -> error ("\nTXS0471: Bool constant but no sort 'Bool': True\n")
                             }
                 }
               | False
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synExpdSort  = [ sortId_Bool ]
+                ;  $$.synExpdSort  = [ sortIdBool ]
                 ;  $$ = case $$.inhSolvSort of
                         { Nothing                   -> Cbool False
-                        ; Just s | s == sortId_Bool -> Cbool False
+                        ; Just s | s == sortIdBool -> Cbool False
                         ; Just _                    -> error "\nTXS ERROR 0910\n"
                         }
                 ;  where case Map.lookup "Bool" (Sigs.sort $$.inhSigs) of
-                            {   Just s | s == sortId_Bool    -> ()
+                            {   Just s | s == sortIdBool    -> ()
                             ;   _                            -> error ("\nTXS0471: Bool constant but no sort 'Bool': False\n")
                             }
                 }
               | integer
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synExpdSort  = [ sortId_Int ]
+                ;  $$.synExpdSort  = [ sortIdInt ]
                 ;  $$ = case $$.inhSolvSort of
                         { Nothing                   -> Cint $1
-                        ; Just s | s == sortId_Int  -> Cint $1
+                        ; Just s | s == sortIdInt  -> Cint $1
                         ; Just _                    -> error "\nTXS ERROR 0911\n"
                         }
                 ;  where case Map.lookup "Int" (Sigs.sort $$.inhSigs) of
-                            {   Just s | s == sortId_Int     -> ()
+                            {   Just s | s == sortIdInt     -> ()
                             ;   _                            -> error ("\nTXS0472: Integer constant but no sort 'Int': "++ show $1 ++"\n")
                             }
                 }
               | string
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synExpdSort  = [ sortId_String ]
+                ;  $$.synExpdSort  = [ sortIdString ]
                 ;  $$ = case $$.inhSolvSort of
                         { Nothing                       -> Cstring $1
-                        ; Just s | s == sortId_String   -> Cstring $1
+                        ; Just s | s == sortIdString   -> Cstring $1
                         ; Just _                        -> error "\nTXS ERROR 0913\n"
                         }
                 ;  where case Map.lookup "String" (Sigs.sort $$.inhSigs) of
-                            {   Just s | s == sortId_String  -> ()
+                            {   Just s | s == sortIdString  -> ()
                             ;   _                            -> error ("\nTXS0476: String constant but no sort 'String': "++ show $1 ++"\n")
                             }
                 }
               | REGEX "(" regexval ")"
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synExpdSort  = [ sortId_Regex ]
+                ;  $$.synExpdSort  = [ sortIdRegex ]
                 ;  $$ = case $$.inhSolvSort of
                         { Nothing                       -> Cregex $3
-                        ; Just s |  s == sortId_Regex   -> Cregex $3
+                        ; Just s |  s == sortIdRegex   -> Cregex $3
                         ; Just _                        -> error "\nTXS ERROR 0915\n"
                         }
                 ;  where case Map.lookup "Regex" (Sigs.sort $$.inhSigs) of
-                            {   Just s | s == sortId_Regex   -> ()
+                            {   Just s | s == sortIdRegex   -> ()
                             ;   _                            -> error ("\nTXS0477: Regex constant but no sort 'Regex': REGEX("++ show $3 ++ ")\n")
                             }
                 }
@@ -3542,7 +3543,7 @@ StateItem       -- :: { [StatId] }
                 -- mirroring : -
                 -- constrs   : all defined states shall be unique
               : STATE NeIdList
-                {  $$.synMaxUid    = $$.inhNodeUid + (length $2)
+                {  $$.synMaxUid    = $$.inhNodeUid + Id (length $2)
                 ;  $$.synStateSigs = [ StatId nm uid pid
                                      | (nm,uid) <- zip $2 [$$.inhNodeUid ..]
                                      , pid <- Sigs.pro $$.inhSigs
@@ -3803,15 +3804,15 @@ Constraints     -- :: { [VExpr] }
                 ;  $$.synMaxUid    = $2.synMaxUid
                 ;  $2.inhSigs  = $$.inhSigs
                 ;  $2.inhVarSigs   = $$.inhVarSigs
-                ;  $2.inhSolvSorts = [ if sortId_Bool `elem` sids
-                                         then Just sortId_Bool
+                ;  $2.inhSolvSorts = [ if sortIdBool `elem` sids
+                                         then Just sortIdBool
                                          else Nothing
                                      | sids <- $2.synExpdSorts
                                      ]
                 ;  $$ = $2::[VExpr]
                 ;  where let notBools = [ vexp
                                         | (vexp,msid) <- zip $2 $2.inhSolvSorts
-                                        , not (msid == Just sortId_Bool)
+                                        , not (msid == Just sortIdBool)
                                         ]
                           in if null notBools then () else
                              error  $ "\nTXS1101: " ++ "Sort of constraint must be 'Bool': " ++

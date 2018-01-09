@@ -60,6 +60,7 @@ import qualified Utils
 import qualified VarId
 
 -- import from valexpr
+import           Id
 import qualified ValExpr
 
 -- import from front
@@ -227,7 +228,7 @@ cmdInit :: String -> IOS.IOS ()
 cmdInit args = do
      servhs             <- gets IOS.servhs
      unid               <- gets IOS.uid
-     tdefs              <- gets IOS.tdefs
+     tdefs              <- lift $ TxsCore.txsGetTDefs
      sigs               <- gets IOS.sigs
      srctxts            <- lift $ lift $ mapM readFile (words args)
      let srctxt          = List.intercalate "\n\n" srctxts
@@ -241,7 +242,6 @@ cmdInit args = do
                cmdsIntpr
        else do modify $ \env -> env { IOS.modus  = IOS.Inited
                                     , IOS.uid    = unid'
-                                    , IOS.tdefs  = tdefs'
                                     , IOS.sigs   = sigs'
                                     }
                lift $ TxsCore.txsInit tdefs' sigs' ( IFS.hmack servhs . map TxsShow.pshow )
@@ -253,7 +253,6 @@ cmdInit args = do
 cmdTermit :: String -> IOS.IOS ()
 cmdTermit _ = do
      modify $ \env -> env { IOS.modus  = IOS.Idled
-                          , IOS.tdefs  = TxsDefs.empty
                           , IOS.tow    = ( Nothing, Nothing, [] )
                           , IOS.frow   = ( Nothing, [],      [] )
                           }
@@ -355,7 +354,7 @@ cmdVar args = do
          ((uid',vars'),e) <- lift $ lift $ catch
                                ( let p = TxsHappy.vardeclsParser
                                            ( TxsAlex.Csigs sigs
-                                           : TxsAlex.Cunid (uid + 1)
+                                           : TxsAlex.Cunid (_id uid + 1)
                                            : TxsAlex.txsLexer args
                                            )
                                   in return $!! (p,"")
@@ -399,7 +398,7 @@ cmdVal args = do
                                ( let p = TxsHappy.valdefsParser
                                            ( TxsAlex.Csigs sigs
                                            : TxsAlex.Cvarenv []
-                                           : TxsAlex.Cunid (uid + 1)
+                                           : TxsAlex.Cunid (_id uid + 1)
                                            : TxsAlex.txsLexer args
                                            )
                                   in return $!! (p,"")
@@ -430,16 +429,16 @@ cmdVal args = do
 cmdEval :: String -> IOS.IOS ()
 cmdEval args = do
      env              <- get
-     let uid          = IOS.uid env
-         tdefs        = IOS.tdefs env
-         sigs         = IOS.sigs env
-         vals         = IOS.locvals env
-         vars         = IOS.locvars env
+     let uid           = IOS.uid env
+         sigs          = IOS.sigs env
+         vals          = IOS.locvals env
+         vars          = IOS.locvars env
+     tdefs            <- lift $ TxsCore.txsGetTDefs
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.vexprParser
                                         ( TxsAlex.Csigs    sigs
                                         : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-                                        : TxsAlex.Cunid   (uid + 1)
+                                        : TxsAlex.Cunid   (_id uid + 1)
                                         : TxsAlex.txsLexer args
                                         )
                               in return $!! (p,"")
@@ -464,16 +463,16 @@ cmdSolve args kind = do
                              "ran" -> ( "RANSOLVE", TxsCore.txsRanSolve )
                              _     -> error $ "cmdSolve - Illegal kind : " ++ show kind
      env              <- get
-     let uid          = IOS.uid env
-         tdefs        = IOS.tdefs env
-         sigs         = IOS.sigs env
-         vars         = IOS.locvars env
-         vals         = IOS.locvals env
+     let uid           = IOS.uid env
+         sigs          = IOS.sigs env
+         vars          = IOS.locvars env
+         vals          = IOS.locvals env
+     tdefs            <- lift $ TxsCore.txsGetTDefs
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.vexprParser
                                        ( TxsAlex.Csigs sigs
                                        : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-                                       : TxsAlex.Cunid (uid + 1)
+                                       : TxsAlex.Cunid (_id uid + 1)
                                        : TxsAlex.txsLexer args
                                        )
                               in return $!! (p,"")
@@ -485,14 +484,14 @@ cmdSolve args kind = do
                cmdsIntpr
        else do modify $ \env' -> env' { IOS.uid = uid' }
                sols  <- lift $ solver (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp')
-               IFS.pack cmd [ TxsShow.fshow sols ]
+               IFS.pack cmd [ show sols ]
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdTester :: String -> IOS.IOS ()
 cmdTester args = do
-     tdefs  <- gets IOS.tdefs
+     tdefs  <- lift $ TxsCore.txsGetTDefs
      case words args of
        [m,c] -> do
             let mdefs = [ mdef
@@ -627,7 +626,7 @@ isConsistentTester _
 
 cmdSimulator :: String -> IOS.IOS ()
 cmdSimulator args = do
-     tdefs  <- gets IOS.tdefs
+     tdefs  <- lift $ TxsCore.txsGetTDefs
      case words args of
        [m,c] -> do
             let mdefs  =  [ mdef
@@ -712,7 +711,7 @@ isConsistentSimulator _
 
 cmdStepper :: String -> IOS.IOS ()
 cmdStepper args = do
-     tdefs  <- gets IOS.tdefs
+     tdefs  <- lift $ TxsCore.txsGetTDefs
      let mdefs   = TxsDefs.modelDefs tdefs
      case words args of
       [m] -> do
@@ -784,7 +783,7 @@ cmdStep args =
                IFS.pack "STEP" [TxsShow.fshow verdict]
                cmdsIntpr
        _                                                          -- action arg: step action --
-         -> do tdefs  <- gets IOS.tdefs
+         -> do tdefs    <- lift $ TxsCore.txsGetTDefs
                let mdefs = TxsDefs.modelDefs tdefs
                    chids = Set.toList $ Set.unions
                                         [ Set.unions (chins ++ chouts ++ spls)
@@ -905,7 +904,7 @@ cmdMenu args =
 
 cmdMap :: String -> IOS.IOS ()
 cmdMap args = do
-     tdefs   <- gets IOS.tdefs
+     tdefs      <- lift $ TxsCore.txsGetTDefs
      let mdefs   = TxsDefs.mapperDefs tdefs
          inchids = concat [ chins
                           | ( _ , TxsDefs.MapperDef chins _ _ _ ) <- Map.toList mdefs
@@ -925,7 +924,7 @@ cmdMap args = do
 
 cmdNComp :: String -> IOS.IOS ()
 cmdNComp args = do
-     tdefs <- gets IOS.tdefs
+     tdefs <- lift $ TxsCore.txsGetTDefs
      case words args of
        [mname] -> case [ mdef
                        | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
@@ -950,19 +949,35 @@ cmdNComp args = do
 
 cmdLPE :: String -> IOS.IOS ()
 cmdLPE args = do
-     tdefs <- gets IOS.tdefs
+     tdefs <- lift $ TxsCore.txsGetTDefs
      let mdefs = TxsDefs.modelDefs tdefs
+         mids  = [ modelid | (modelid@(TxsDefs.ModelId nm _uid), _) <- Map.toList mdefs
+                           , T.unpack nm == args
+                 ]
          chids = Set.toList $ Set.unions [ Set.unions (chins ++ chouts ++ spls)
                                          | (_, TxsDefs.ModelDef chins chouts spls _)
                                            <- Map.toList mdefs
                                          ]
-     bexpr       <- readBExpr chids args
-     mayProcInst <- lift $ TxsCore.txsLPE bexpr
-     case mayProcInst of
-       Just procinst' -> do IFS.pack "LPE" [ "LPE generated:\n" ++ TxsShow.fshow procinst' ]
-                            cmdsIntpr
-       Nothing        -> do IFS.nack "LPE" [ "Could not generate LPE" ]
-                            cmdsIntpr
+     case mids of
+       [ modelId ]
+         -> do mayModelId' <- lift $ TxsCore.txsLPE (Right modelId)
+               case mayModelId' of
+                 Just (Right modelId') -> do IFS.pack "LPE" [ "LPE modeldef generated: "
+                                                            , (TxsShow.fshow modelId')
+                                                            ]
+                                             cmdsIntpr
+                 _                     -> do IFS.nack "LPE" [ "Could not generate LPE" ]
+                                             cmdsIntpr
+       _ -> do bexpr       <- readBExpr chids args
+               mayBexpr'   <- lift $ TxsCore.txsLPE (Left bexpr)
+               case mayBexpr' of
+                 Just (Left bexpr')    -> do IFS.pack "LPE" [ "LPE behaviour generated: "
+                                                            , TxsShow.fshow bexpr'
+                                                            ]
+                                             cmdsIntpr
+                 _                     -> do IFS.nack "LPE" [ "Could not generate LPE" ]
+                                             cmdsIntpr
+
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -981,7 +996,7 @@ readAction chids args = do
                                     ( TxsAlex.Csigs    sigs
                                     : TxsAlex.Cchanenv chids
                                     : TxsAlex.Cvarenv  (Map.keys vals)
-                                    : TxsAlex.Cunid    (uid + 1)
+                                    : TxsAlex.Cunid    (_id uid + 1)
                                     : TxsAlex.txsLexer args
                                     )
                               in return $!! (p,"")
@@ -1021,12 +1036,12 @@ readBExpr chids args = do
                                       ( TxsAlex.Csigs    sigs
                                       : TxsAlex.Cchanenv chids
                                       : TxsAlex.Cvarenv  (Map.keys vals)
-                                      : TxsAlex.Cunid    (uid + 1)
+                                      : TxsAlex.Cunid    (_id uid + 1)
                                       : TxsAlex.txsLexer args
                                       )
                                in return $!! (p,"")
                             )
-                            ( \e -> return ((uid,TxsDefs.Stop),show (e::ErrorCall)))
+                            ( \e -> return ((uid, TxsDefs.Stop),show (e::ErrorCall)))
      if  e /= ""
        then do IFS.nack "ERROR" [ "incorrect behaviour expression: " ++ e ]
                return TxsDefs.Stop

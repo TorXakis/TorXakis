@@ -9,10 +9,10 @@ See LICENSE at root directory of this repository.
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module Main where
 
-import qualified Data.Map            as Map
-import qualified Data.Set            as Set
-import qualified Data.String.Utils   as Utils
-import qualified Data.Text           as T
+import qualified Data.Map          as Map
+import qualified Data.Set          as Set
+import qualified Data.String.Utils as Utils
+import qualified Data.Text         as T
 import           System.Exit
 
 --import qualified Debug.Trace as Trace
@@ -23,6 +23,7 @@ import           TxsAlex
 import           TxsDefs
 import           TxsHappy
 
+import           Id
 import           Sigs
 import           SortDef
 import           SortId
@@ -102,12 +103,12 @@ capIds = [ "Aap"
          , "Geen"
          , "Int"
          , "Boolean"
+         , "Bool"
          , "Insert"
          , "NULL"
          , "Null"
          , "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"
          ]
-         -- "Bool" not accepted by TorXakis in structure due to cvc4 bug
          -- "REGEX" is a reserved capId
 
 
@@ -122,7 +123,7 @@ genUniqueCapIds = subset (Set.fromList (map CapId capIds) )
 
 predefSort :: [String]
 predefSort = [ "Int"
-             --, "Bool" not accepted by TorXakis in structure due to cvc4 bug
+             , "Bool"
              , "String"
              , "Regex"]
 
@@ -172,7 +173,7 @@ createGenSortDef (GenSortDef sdn@(CapId sortDefName) constrs) =
        Utils.join "\n\t| " (map (\(constrName, fields) -> createCstrId constrName fields sdn) constrs )
    ++ "\nENDDEF"
 
-toTorXakisDefs :: (Int, TxsDefs, Sigs VarId) -> TxsDefs
+toTorXakisDefs :: (Id, TxsDefs, Sigs VarId) -> TxsDefs
 toTorXakisDefs (_, b, _) = b
 
 parseTorXakis :: String -> TxsDefs

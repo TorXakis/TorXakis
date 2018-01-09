@@ -24,7 +24,6 @@ library
   
   build-depends:        base
                       , containers
-                      , mtl
                       , text
 
                       , coreenv

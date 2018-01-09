@@ -14,7 +14,6 @@ import           Data.String.Utils
 import qualified Data.Text         as T
 
 import           FreeMonoidX
-import           TxsDefs
 
 import           ConstDefs
 import           CstrId
@@ -26,7 +25,7 @@ import           VarId
 
 import           HelperToSMT
 
-data  TXS2SMTVExprTest         =  TXS2SMTVExprTest  { input    :: VExpr
+data  TXS2SMTVExprTest         =  TXS2SMTVExprTest  { input    :: ValExpr VarId
                                                     , expected :: String
                                                     }
      deriving (Eq,Ord,Read,Show)

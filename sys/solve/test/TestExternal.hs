@@ -16,13 +16,11 @@ import           Control.Monad.State
 import           SMT
 import           SMTData
 import           SMTInternal
-import           TxsDefs
-
 import           TestSolvers
 
 testExternalList :: Test
 testExternalList =
-    TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do smtEnv <- createSMTEnv s False TxsDefs.empty
+    TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) $ TestCase $ do smtEnv <- createSMTEnv s False
                                                                              evalStateT (snd e) smtEnv )
                                     ioeTestList
                          )

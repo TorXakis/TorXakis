@@ -4,6 +4,8 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
+
+{-# LANGUAGE FlexibleInstances #-}
 -- | TorXakis Core Environment (Internal State) Data Type Definitions.
 module EnvCore
   ( IOC -- IOC = StateT EnvC IO
@@ -31,6 +33,7 @@ import qualified Data.Map            as Map
 
 -- import from local
 import           Config
+import qualified EnvBasic    as EnvB
 import qualified EnvData
 import qualified ParamCore
 
@@ -39,23 +42,31 @@ import qualified BTree
 
 -- import from defs
 import qualified Sigs
-import qualified TxsDefs
 import qualified TxsDDefs
+import qualified TxsDefs
 
 -- import from valexpr
-import qualified VarId (VarId)
+import           Id
+import qualified VarId               (VarId)
 
 -- import from solve
 import qualified SMTData
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- IOC :  torxakis core state monad transformer
 
 type  IOC  = StateT EnvC IO
 
+instance EnvB.EnvB IOC     --  (StateT IOC.EnvC IO)
+  where
+     newUnid  =  newUnid
+     putMsgs  =  putMsgs
+ 
+
 data EnvC = EnvC
   { config :: Config           -- ^ Core configuration.
-  , unid   :: Int              -- ^ Last used unique number.
+  , unid   :: Id               -- ^ Last used unique number.
   , params :: ParamCore.Params
   , state  :: CoreState        -- ^ State specific information.
   }
@@ -186,10 +197,10 @@ setParam (prm,val) = do
 -- ----------------------------------------------------------------------------------------- --
 -- Unid :  unique (negative) number for identifiers
 
-initUnid :: IOC Int
+initUnid :: IOC Id
 initUnid = return (-1)
 
-newUnid :: IOC Int
+newUnid :: IOC Id
 newUnid = do
      uid <- gets unid
      modify $ \env -> env { unid = uid - 1 }

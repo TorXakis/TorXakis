@@ -25,7 +25,6 @@ import           CstrDef
 import           CstrId
 import           FuncId
 import           SortId
-import           StdTDefs
 import           TxsDefs
 
 
@@ -155,11 +154,11 @@ constFromXml tdefs sid s =
 
 pairNameConstFromXml :: TxsDefs -> SortId -> Node Text Text -> Text -> Const
 pairNameConstFromXml _ sid (Element nt [] list) n
-  | n == nt, sid == sortId_Bool = Cbool ("true" == stringFromList list)
+  | n == nt, sid == sortIdBool = Cbool ("true" == stringFromList list)
 pairNameConstFromXml _     sid     (Element nt [] list) n
-  | n == nt, sid == sortId_Int = Cint (read (T.unpack (stringFromList list)))
+  | n == nt, sid == sortIdInt = Cint (read (T.unpack (stringFromList list)))
 pairNameConstFromXml _ sid (Element nt [] list) n
-  | n == nt, sid == sortId_String = Cstring (stringFromList list)
+  | n == nt, sid == sortIdString = Cstring (stringFromList list)
 pairNameConstFromXml tdefs sid (Element nt [] [Element cname [] list]) n
   | n == nt =
     let cstrid = lookupConstructor tdefs sid cname
