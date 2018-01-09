@@ -1,0 +1,22 @@
+
+PROCDEF p [ A, B, C :: Int ] ()
+::=
+{-                A ?x >-> B ?y
+       |[ B ]|
+               B ?x >-> C !x
+ -}
+               B ?x [[x>0]] >-> C !x
+
+ENDDEF
+
+CHANDEF Chans
+ ::=
+       A, B, C :: Int
+ENDDEF
+
+MODELDEF Mod ::=
+   CHAN IN
+   CHAN OUT  A, B, C
+   BEHAVIOUR
+                   p [ A, B, C ] ()
+ENDDEF

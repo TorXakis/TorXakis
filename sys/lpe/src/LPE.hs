@@ -344,8 +344,8 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
 
                 -- combine action offers
                 --  union of offers, concatenation of constraints
-                offersLR = trace ("\ncombining: " ++ (show offersL) ++ " and " ++ (show offersR)) $ Set.union offersL offersR
-                constraintLR = trace ("\nconstraints: " ++ (show constraintL) ++ " and " ++ (show constraintR)) $ cstrAnd (Set.fromList [constraintL, constraintR])
+                offersLR = Set.union offersL offersR
+                constraintLR = cstrAnd (Set.fromList [constraintL, constraintR])
 
                 -- new ActOffers and ProcInst
                 actOfferLR = ActOffer { offers = offersLR,
@@ -461,7 +461,7 @@ lpeTransform procInst procDefs = let (procInst', procDefs') = lpe procInst empty
                                      -- put new ProcId in each step
                                      steps = map (substituteProcId procIdInst procIdInst') (extractSteps bexpr)
                                      procDef = ProcDef chans params (wrapSteps steps) in
-                                 trace (show procDef) $ Just (procInst'', procDef)
+                                 Just (procInst'', procDef)
     where
         substituteProcId :: ProcId -> ProcId -> BExpr -> BExpr
         substituteProcId orig new Stop = Stop
@@ -656,7 +656,7 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr =
         -- TODO: properly initialise funcDefs param of subst
         constraintOfOffer' = Subst.subst varMap' (Map.fromList []) constraintOfOffer
         constraintsList = constraintOfOffer' : constraints'
-        constraintPC = trace ("list: " ++ show constraintsList) $ cstrEqual (cstrVar varIdPC) (cstrConst (Cint pcValue))
+        constraintPC = cstrEqual (cstrVar varIdPC) (cstrConst (Cint pcValue))
 
         -- if there is a constraint other than just the program counter check
         --    i.e. the normal constraint is empty (just True)

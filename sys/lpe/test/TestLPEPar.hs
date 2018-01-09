@@ -1317,8 +1317,9 @@ testParams = TestCase $
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = [Quest varIdA1]
                                                       })
-                                                  , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int0
-                                                                                        , cstrEqual vexprA1 vexprOp1s
+                                                  , constraint =  cstrAnd (Set.fromList [cstrITE (cstrEqual vexprOp1pcQ int0)
+                                                                                             (cstrEqual vexprA1 vexprOp1s)
+                                                                                             (cstrConst (Cbool False))
                                                                                         ])
                                       }
                             (ProcInst procIdP' [chanIdA] [vexprMin1, anyInt, anyInt, vexprOp2pcR, vexprOp2s]))
@@ -1329,8 +1330,9 @@ testParams = TestCase $
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = [Quest varIdA1]
                                                       })
-                                                  , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp2pcR int0
-                                                                                        , cstrEqual vexprA1 vexprOp2s
+                                                  , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprOp2pcR int0)
+                                                                                             (cstrEqual vexprA1 vexprOp2s)
+                                                                                             (cstrConst (Cbool False))
                                                                                         ])
                                       }
                             (ProcInst procIdP' [chanIdA] [vexprOp1pcQ, vexprOp1s, vexprOp1x, vexprMin1, anyInt]))
@@ -1648,8 +1650,9 @@ testMultiSeq1 = TestCase $
                                                       Offer { chanid = chanIdB
                                                             , chanoffers = [Quest varIdB1]
                                                       })
-                                                  , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int1
-                                                                                        , cstrEqual vexprB1 vexprOp1QABx
+                                                  , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprOp1pcQ int1)
+                                                                                             (cstrEqual vexprB1 vexprOp1QABx)
+                                                                                             (cstrConst (Cbool False))
                                                                                         ])
                                       }
                             (ProcInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx]))
@@ -1671,8 +1674,9 @@ testMultiSeq1 = TestCase $
                                                         Offer { chanid = chanIdB
                                                               , chanoffers = [Quest varIdB1]
                                                         })
-                                                    , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp2pcQ int1
-                                                                                          , cstrEqual vexprB1 vexprOp2QABx
+                                                    , constraint =  cstrAnd (Set.fromList [cstrITE (cstrEqual vexprOp2pcQ int1)
+                                                                                               (cstrEqual vexprB1 vexprOp2QABx)
+                                                                                               (cstrConst (Cbool False))
                                                                                           ])
                                         }
                               (ProcInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt]))
@@ -1707,8 +1711,9 @@ testMultiSeq1 = TestCase $
                                                             }
                                                         ]
                                                       , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int0
-                                                                                            , cstrEqual vexprOp2pcQ int1
-                                                                                            , cstrEqual vexprB1 vexprOp2QABx
+                                                                                            , cstrITE (cstrEqual vexprOp2pcQ int1)
+                                                                                                 (cstrEqual vexprB1 vexprOp2QABx)
+                                                                                                 (cstrConst (Cbool False))
                                                                                             ])
                                           }
                                 (ProcInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprMin1, anyInt]))
@@ -1724,10 +1729,10 @@ testMultiSeq1 = TestCase $
                                                                   , chanoffers = [Quest varIdB1]
                                                             }
                                                         ]
-                                                      , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int1
-                                                                                            , cstrEqual vexprOp2pcQ int0
-                                                                                            , cstrEqual vexprB1 vexprOp1QABx
-                                                                                            ])
+                                                      , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprOp1pcQ int1)
+                                                                                                 (cstrEqual vexprB1 vexprOp1QABx)
+                                                                                                 (cstrConst (Cbool False))
+                                                                                            , cstrEqual vexprOp2pcQ int0])
                                           }
                                 (ProcInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, int1, vexprA1]))
 
@@ -1842,8 +1847,9 @@ testMultiSeq2 = TestCase $
                                                       Offer { chanid = chanIdB
                                                             , chanoffers = [Quest varIdB1]
                                                       })
-                                                  , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int1
-                                                                                        , cstrEqual vexprB1 vexprOp1QABx
+                                                  , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprOp1pcQ int1)
+                                                                                             (cstrEqual vexprB1 vexprOp1QABx)
+                                                                                             (cstrConst (Cbool False))
                                                                                         ])
                                       }
                             (ProcInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx]))
@@ -1865,8 +1871,9 @@ testMultiSeq2 = TestCase $
                                                         Offer { chanid = chanIdB
                                                               , chanoffers = [Quest varIdB1]
                                                         })
-                                                    , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp2pcQ int1
-                                                                                          , cstrEqual vexprB1 vexprOp2QABx
+                                                    , constraint =  cstrAnd (Set.fromList [  cstrITE (cstrEqual vexprOp2pcQ int1)
+                                                                                               (cstrEqual vexprB1 vexprOp2QABx)
+                                                                                               (cstrConst (Cbool False))
                                                                                           ])
                                         }
                               (ProcInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt]))
@@ -1965,7 +1972,7 @@ testMultiSeq2 = TestCase $
 --  with ProcInst = P[A,B](0, ANY, 0, ANY)
 testMultiSeq3 :: Test
 testMultiSeq3 = TestCase $
-   assertEqual "test multi-sequences" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertEqual "test multi-sequences 3" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
 
       -- P[A,B]() := Q[A,B]() |G| Q[A,B]()
@@ -2128,11 +2135,13 @@ testMultiSeq3 = TestCase $
                                                           Offer { chanid = chanIdB
                                                                 , chanoffers = [Quest varIdB1]
                                                           })
-                                                      , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int1
-                                                                                            , cstrEqual vexprOp2pcQ int1
-                                                                                            , cstrEqual vexprB1 vexprOp1QABx
-                                                                                            , cstrEqual vexprB1 vexprOp2QABx
-                                                                                            ])
+                                                      , constraint =  cstrAnd (Set.fromList [  cstrITE (cstrEqual vexprOp1pcQ int1)
+                                                                                                  (cstrEqual vexprB1 vexprOp1QABx)
+                                                                                                  (cstrConst (Cbool False)),
+                                                                                              cstrITE (cstrEqual vexprOp2pcQ int1)
+                                                                                                  (cstrEqual vexprB1 vexprOp2QABx)
+                                                                                                  (cstrConst (Cbool False))
+                                                                                              ])
                                           }
                                 (ProcInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt]))
 
@@ -2319,11 +2328,13 @@ testMultiSeq4 = TestCase $
                                                           Offer { chanid = chanIdB
                                                                 , chanoffers = [Quest varIdB1]
                                                           })
-                                                      , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int1
-                                                                                            , cstrEqual vexprOp2pcQ int1
-                                                                                            , cstrEqual vexprB1 vexprOp1QABx
-                                                                                            , cstrEqual vexprB1 vexprOp2QABx
-                                                                                            ])
+                                                      , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprOp1pcQ int1)
+                                                                                                  (cstrEqual vexprB1 vexprOp1QABx)
+                                                                                                  (cstrConst (Cbool False)),
+                                                                                              cstrITE (cstrEqual vexprOp2pcQ int1)
+                                                                                                  (cstrEqual vexprB1 vexprOp2QABx)
+                                                                                                  (cstrConst (Cbool False))
+                                                                                              ])
                                           }
                                 (ProcInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt]))
 
@@ -3257,6 +3268,75 @@ testChannelInst3 = TestCase $
 
       procInst' = ProcInst procIdP' [chanIdA, chanIdB] [int0, int0]
 
+
+
+-- -------------------------------------------------
+-- test loop detection (recursively nested PAR statements)
+-- -------------------------------------------------
+
+
+-- cycle detection
+--  P[]() :=      A >-> STOP
+--            ||| P[]()
+-- should fail
+-- testLoop1 :: Test
+-- testLoop1 = TestCase $
+--   let err =  "loop (LPEPar) detected in P" in
+--   // TODO: handle result with error
+--   assertEqual "test loop 1" (_, _) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+--  where
+--     procIdP = procIdGen "P" [] []
+--     procInst = ProcInst procIdP [] []
+--     procDefP = ProcDef [] [] (Parallel [] [
+--                                 (ActionPref actOfferA Stop),
+--                                 (ProcInst procIdP [] [])
+--                                 ])
+--     procDefs = Map.fromList  [  (procIdP, procDefP)]
+
+
+-- -- cycle detection
+-- --  P[]() :=      A >-> STOP
+-- --            ||| Q[]()
+-- --  Q[]() := P[]()
+-- -- should fail
+-- testLoop2 :: Test
+-- testLoop2 = TestCase $
+--   let err =  "loop (LPEPar) detected in P" in
+--   // TODO: handle result with error
+--   assertEqual "test loop 2" (_, _) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+--  where
+--     procIdP = procIdGen "P" [] []
+--     procIdQ = procIdGen "Q" [] []
+--     procInst = ProcInst procIdP [] []
+--     procDefP = ProcDef [] [] (Parallel [] [
+--                                 (ActionPref actOfferA Stop),
+--                                 (ProcInst procIdQ [] [])
+--                                 ])
+--     procDefQ = ProcDef [] [] (Choice [
+--                                 (ActionPref actOfferA Stop),
+--                                 (ProcInst procIdP [] [])
+--                                 ])
+--     procDefs = Map.fromList  [  (procIdP, procDefP),
+--                                 (procIdQ, procDefQ)]
+
+
+
+-- testLoop3 :: Test
+-- testLoop3 = TestCase $
+--   let err =  "loop (LPEPar) detected in P" in
+--   assertEqual "test loop 1" (procInst', procDefP', err) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+--  where
+--     procIdP = procIdGen "P" [] []
+--     procIdQ = procIdGen "Q" [] []
+--     procDefP = ProcDef [] [] (Choice [
+--                                 (ActionPref actOfferAx (ProcInst procIdP [] [])),
+--                                 (ProcInst procIdQ [] [])
+--                                 ])
+--     procDefQ = ProcDef [] [] (ProcInst procIdQ [] [])
+--     procDefs = Map.fromList  [  (procIdP, procDefP),
+--                                 (procIdQ, procDefQ)]
+--
+--
 
 
 

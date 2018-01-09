@@ -1,0 +1,25 @@
+( LPE_p, PROCESS
+[ A B ]
+[ pc$p p$gnf1$A$B$x p$gnf2$A$B$x ]
+::=
+( { A ? A1 :: Int}
+[[ (( 0 == pc$p ) /\ (not (( 0 <= ( 10 + (- A1 ) ) )) ) ) ]]
+>-> ( LPE_p [A,B] ( 1, A1, p$gnf2$A$B$x )
+) )
+##
+( { A ? A1 :: Int}
+[[ (( 0 == pc$p ) /\ ( 0 <= ( 10 + (- A1 ) ) ) ) ]]
+>-> ( LPE_p [A,B] ( 2, p$gnf1$A$B$x, A1 )
+) )
+##
+( { B ? B1 :: Int}
+[[ (( 1 == pc$p ) /\ ( B1 == p$gnf1$A$B$x ) ) ]]
+>-> ( LPE_p [A,B] ( 0, p$gnf1$A$B$x, p$gnf2$A$B$x )
+) )
+##
+( { B ? B1 :: Int}
+[[ (( 2 == pc$p ) /\ ( B1 == ( 1 + p$gnf2$A$B$x ) ) ) ]]
+>-> ( LPE_p [A,B] ( 0, p$gnf1$A$B$x, p$gnf2$A$B$x )
+) )
+)
+

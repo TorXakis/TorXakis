@@ -253,8 +253,9 @@ testActionPrefConstraints = TestCase $
                                                   Offer { chanid = chanIdA
                                                         , chanoffers = [Quest varIdA1]
                                                   })
-                                              , constraint = cstrAnd (Set.fromList [ cstrEqual vexprPcP int0
-                                                                                   , cstrEqual vexprA1 int1
+                                              , constraint = cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprPcP int0)
+                                                                                         (cstrEqual vexprA1 int1)
+                                                                                         (cstrConst (Cbool False))
                                                               ])
                                   }
                         (ProcInst procIdPlpe [chanIdA] [vexprMin1]))
@@ -557,8 +558,9 @@ testProcDefIdentity = TestCase $
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = [Quest varIdA1]
                                                       })
-                                                  , constraint = cstrAnd (Set.fromList [ cstrEqual vexprPcP int1
-                                                                                       , cstrEqual vexprA1 vexprQAx
+                                                  , constraint = cstrAnd (Set.fromList [cstrITE (cstrEqual vexprPcP int1)
+                                                                                             (cstrEqual vexprA1 vexprQAx)
+                                                                                             (cstrConst (Cbool False))
                                                                                         ])
                                       }
                             (ProcInst procIdPlpe [chanIdA, chanIdB] [vexprMin1, anyInt, anyInt]))
@@ -568,8 +570,9 @@ testProcDefIdentity = TestCase $
                                                       Offer { chanid = chanIdB
                                                             , chanoffers = [Quest varIdB1]
                                                       })
-                                                  , constraint = cstrAnd (Set.fromList [ cstrEqual vexprPcP int2
-                                                                                       , cstrEqual vexprB1 vexprQBx
+                                                  , constraint = cstrAnd (Set.fromList [ cstrITE (  cstrEqual vexprPcP int2)
+                                                                                             (cstrEqual vexprB1 vexprQBx)
+                                                                                             (cstrConst (Cbool False))
                                                                                         ])
                                       }
                             (ProcInst procIdPlpe [chanIdA, chanIdB] [vexprMin1, anyInt, anyInt]))
@@ -629,8 +632,9 @@ testParamsUnique = TestCase $
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = [Quest varIdA1]
                                                       })
-                                                  , constraint = cstrAnd (Set.fromList [ cstrEqual vexprPcP int1
-                                                                                       , cstrEqual vexprA1 vexprQAx
+                                                  , constraint = cstrAnd (Set.fromList [ cstrITE (  cstrEqual vexprPcP int1)
+                                                                                             (cstrEqual vexprA1 vexprQAx)
+                                                                                             (cstrConst (Cbool False))
                                                                                         ])
 
                                       }
@@ -641,8 +645,9 @@ testParamsUnique = TestCase $
                                                         Offer { chanid = chanIdA
                                                               , chanoffers = [Quest varIdA1]
                                                         })
-                                                    , constraint = cstrAnd (Set.fromList [ cstrEqual vexprPcP int2
-                                                                                         , cstrEqual vexprA1 vexprRAx
+                                                    , constraint = cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprPcP int2)
+                                                                                               (cstrEqual vexprA1 vexprRAx)
+                                                                                               (cstrConst (Cbool False))
                                                                                           ])
 
                                         }
@@ -681,8 +686,9 @@ testChannelSwitch = TestCase $
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = [Quest varIdA1]
                                                       })
-                                                  , constraint = cstrAnd (Set.fromList [ cstrEqual vexprPcP int0
-                                                                                       , cstrEqual vexprA1 int1
+                                                  , constraint = cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprPcP int0)
+                                                                                             (cstrEqual vexprA1 int1)
+                                                                                             (cstrConst (Cbool False))
                                                                                         ])
                                       }
                             (ProcInst procIdPlpe [chanIdA, chanIdB] [vexpr1]))
@@ -692,8 +698,9 @@ testChannelSwitch = TestCase $
                                                       Offer { chanid = chanIdB
                                                             , chanoffers = [Quest varIdB1]
                                                       })
-                                                  , constraint = cstrAnd (Set.fromList [ cstrEqual vexprPcP int1
-                                                                                       , cstrEqual vexprB1 int1
+                                                  , constraint = cstrAnd (Set.fromList [  cstrITE (cstrEqual vexprPcP int1)
+                                                                                             (cstrEqual vexprB1 int1)
+                                                                                             (cstrConst (Cbool False))
                                                                                         ])
 
                                       }
@@ -762,8 +769,9 @@ testMultiAction = TestCase $
                                                       Offer { chanid = chanIdB
                                                             , chanoffers = [Quest varIdB1]
                                                       })
-                                                  , constraint = cstrAnd (Set.fromList [ cstrEqual vexprPcP int1
-                                                                                       , cstrEqual vexprB1 vexprPgnf1ABs
+                                                  , constraint = cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprPcP int1)
+                                                                                             (cstrEqual vexprB1 vexprPgnf1ABs)
+                                                                                             (cstrConst (Cbool False))
                                                                                         ])
 
                                       }
@@ -891,11 +899,16 @@ testLPEPar = TestCase $
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = [Quest varIdA1]
                                                     })
-                                                , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprpcP int1
-                                                                                      , cstrEqual vexprOp1pc int0
-                                                                                      , cstrEqual vexprA1 vexprOp1x
-                                                                                      , cstrEqual vexprOp2pc int0
-                                                                                      , cstrEqual vexprA1 vexprOp2x
+                                                , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprpcP int1)
+                                                                                            (cstrAnd (Set.fromList [
+                                                                                                cstrITE (cstrEqual vexprOp1pc int0)
+                                                                                                   (cstrEqual vexprA1 vexprOp1x)
+                                                                                                   (cstrConst (Cbool False)),
+                                                                                                cstrITE (cstrEqual vexprOp2pc int0)
+                                                                                                  (cstrEqual vexprA1 vexprOp2x)
+                                                                                                  (cstrConst (Cbool False))
+                                                                                            ]))
+                                                                                           (cstrConst (Cbool False))
                                                                 ])
 
 

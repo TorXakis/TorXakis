@@ -26,6 +26,8 @@ import VarId
 import ConstDefs
 import ValExpr
 
+type ProcDefs = Map.Map TxsDefs.ProcId TxsDefs.ProcDef
+
 ---------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------
@@ -308,12 +310,70 @@ testNamingClash = TestCase $
                                 , (procIdPpre1, procDefPpre1) ]
 
 
--- ------------
--- TODO!
--- ------------
--- cycles should fail
--- P[]()  := P'[]()
--- P'[]() := P[]()
+
+-- create monad to run GNF
+-- return the resulting procDefs and the possible error
+gnfTestWrapper :: ProcId -> TranslatedProcDefs -> ProcDefs -> (ProcDefs, String)
+gnfTestWrapper procId translatedProcDefs procDefs =
+  let a = a
+  in (Map.fromList [], "loop (GNF) detected in P")
+
+
+
+-- cycle detection
+--  P[]() := P[]()
+-- should fail
+testLoop1 :: Test
+testLoop1 = TestCase $
+   -- result = gnf procIdP emptyTranslatedProcDefs procDefs
+   let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
+   assertEqual "loop 1" err "loop (GNF) detected in P"
+   where
+      procIdP = procIdGen "P" [] []
+      procDefP = ProcDef [] [] (ProcInst procIdP [] [])
+
+      procDefs = Map.fromList  [  (procIdP, procDefP)]
+
+-- cycle detection
+--  P[]() :=     A >-> P[]()
+--            ## P[]()
+-- should fail
+testLoop2 :: Test
+testLoop2 = TestCase $
+   let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
+   assertEqual "loop 2" err "loop (GNF) detected in P"
+   where
+      procIdP = procIdGen "P" [] []
+      procDefP = ProcDef [] [] (Choice [
+                                  (ActionPref actOfferAx (ProcInst procIdP [] [])),
+                                  (ProcInst procIdP [] [])
+                                  ])
+
+      procDefs = Map.fromList  [  (procIdP, procDefP)]
+
+
+-- cycle detection
+--  P[]() :=     A >-> P[]()
+--            ## Q[]()
+--  Q[]() :=  P[]()
+-- should fail
+testLoop3 :: Test
+testLoop3 = TestCase $
+   let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
+   assertEqual "loop 3" err "loop (GNF) detected in P"
+   where
+      procIdP = procIdGen "P" [] []
+      procIdQ = procIdGen "Q" [] []
+      procDefP = ProcDef [] [] (Choice [
+                                  (ActionPref actOfferAx (ProcInst procIdP [] [])),
+                                  (ProcInst procIdQ [] [])
+                                  ])
+      procDefQ = ProcDef [] [] (ProcInst procIdQ [] [])
+      procDefs = Map.fromList  [  (procIdP, procDefP),
+                                  (procIdQ, procDefQ)]
+
+
+
 
 
 ----------------------------------------------------------------------------------------
@@ -331,5 +391,7 @@ testGNFList = TestList [  TestLabel "preGNF translation is executed first" testP
                         , TestLabel "procInst is substituted 4" testProcInst4
 
                         , TestLabel "preGNF / GNF naming of new ProcDefs doesn't clash" testNamingClash
-
-                         ]
+                        , TestLabel "loop 1" testLoop1
+                        , TestLabel "loop 2" testLoop2
+                        , TestLabel "loop 3" testLoop3
+                      ]

@@ -1,0 +1,17 @@
+
+PROCDEF p [ A, B, C :: Int ] ()
+::= A ?x >-> STOP ||| B ?x >-> STOP
+
+ENDDEF
+
+CHANDEF Chans
+ ::=
+       A, B, C :: Int
+ENDDEF
+
+MODELDEF Mod ::=
+   CHAN IN
+   CHAN OUT  A, B, C
+   BEHAVIOUR
+                   p [ A, B, C ] ()
+ENDDEF
