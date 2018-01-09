@@ -21,12 +21,10 @@ specDir :: FilePath
 specDir = exampDir </> "spec"
 
 testModel :: TxsExample
-testModel = TxsExample
+testModel = emptyExample
   { exampleName = "Stepper 200"
   , txsModelFiles = map (txsFilePath specDir)  [luckyPeopleText]
   , txsCmdsFiles = [txsCmdPath exampDir "LuckyPeople_Stepper_Model"]
-  , txsServerArgs = []
-  , sutExample = Nothing
   , expectedResult = Pass
   }
 

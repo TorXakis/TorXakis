@@ -15,22 +15,18 @@ exampDir :: FilePath
 exampDir = "Queue"
 
 testModel :: TxsExample
-testModel = TxsExample
+testModel = emptyExample
   { exampleName = "Stepper Test 200"
   , txsModelFiles = [txsFilePath exampDir "Queue"]
   , txsCmdsFiles = [txsCmdPath exampDir "Queue_Stepper_Model"]
-  , txsServerArgs = []
-  , sutExample = Nothing
   , expectedResult = Pass
   }
 
 testLossyModel :: TxsExample
-testLossyModel = TxsExample
+testLossyModel = emptyExample
   { exampleName = "Stepper Test (Lossy) 200"
   , txsModelFiles = [txsFilePath exampDir "Queue"]
   , txsCmdsFiles = [txsCmdPath exampDir "Queue_Lossy_Stepper_Model"]
-  , txsServerArgs = []
-  , sutExample = Nothing
   , expectedResult = Pass
   }
 

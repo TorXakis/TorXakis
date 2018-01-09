@@ -20,62 +20,52 @@ modelFiles = [ txsFilePath BenchTest benchDir "Hiding"
              ]
 
 alt4hide1 :: TxsExample
-alt4hide1 = TxsExample
+alt4hide1 = emptyExample
     { exampleName = "alternate 4 hide 1 action"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "Alternate4Hide1Act"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 hideFirstSFA :: TxsExample
-hideFirstSFA = TxsExample
+hideFirstSFA = emptyExample
     { exampleName = "hide first of sync first alternate"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "HideFirstSFA"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 hideSecondSFA :: TxsExample
-hideSecondSFA = TxsExample
+hideSecondSFA = emptyExample
     { exampleName = "hide second of sync second alternate"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "HideSecondSFA"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 matchNoData :: TxsExample
-matchNoData = TxsExample
+matchNoData = emptyExample
     { exampleName = "match"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "Match"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 matchInt :: TxsExample
-matchInt = TxsExample
+matchInt = emptyExample
     { exampleName = "match Int"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "MatchInt"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 

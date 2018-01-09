@@ -18,11 +18,10 @@ adderJavaPath :: FilePath
 adderJavaPath = javaFilePath exampDir "Adder"
 
 test0 :: TxsExample
-test0 = TxsExample
+test0 = emptyExample
   { exampleName = "Basic"
   , txsModelFiles = [txsFilePath exampDir "Adder"]
   , txsCmdsFiles = [txsCmdPath exampDir "Adder_Tester"] -- saves trace to AdderPurpose.txs for testReplayTrace
-  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            adderJavaPath
@@ -32,11 +31,10 @@ test0 = TxsExample
   }
 
 test1 :: TxsExample
-test1 = TxsExample
+test1 = emptyExample
   { exampleName = "State Automation"
   , txsModelFiles = [txsFilePath exampDir "AdderStAut"]
   , txsCmdsFiles = [txsCmdPath exampDir "AdderStautTester"]
-  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            adderJavaPath
@@ -46,11 +44,10 @@ test1 = TxsExample
   }
 
 test2 :: TxsExample
-test2 = TxsExample
+test2 = emptyExample
   { exampleName = "Parallel Adders"
   , txsModelFiles = [txsFilePath exampDir "Adder"]
   , txsCmdsFiles = [txsCmdPath exampDir "Adder3_Tester"]
-  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            adderJavaPath
@@ -60,14 +57,13 @@ test2 = TxsExample
   }
 
 testReplayTrace :: TxsExample
-testReplayTrace = TxsExample
+testReplayTrace = emptyExample
   { exampleName = "Replay Adder Trace"
   , txsModelFiles = [ txsFilePath exampDir "Adder"
                     , txsFilePath exampDir "AdderReplay"
                     , txsPurposeFromTracePath "AdderPurpose"
                     ]
   , txsCmdsFiles = [txsCmdPath exampDir "AdderReplay"]
-  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            adderJavaPath
@@ -77,13 +73,12 @@ testReplayTrace = TxsExample
   }
 
 testPurp1 :: TxsExample
-testPurp1 = TxsExample
+testPurp1 = emptyExample
   { exampleName = "Purp1 - 4 goals"
   , txsModelFiles = [ txsFilePath exampDir "Adder"
                     , txsFilePath exampDir "AdderPurposes"
                     ]
   , txsCmdsFiles = [txsCmdPath exampDir "AdderPurp1"]
-  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            adderJavaPath
@@ -93,13 +88,12 @@ testPurp1 = TxsExample
   }
 
 testPurp2 :: TxsExample
-testPurp2 = TxsExample
+testPurp2 = emptyExample
   { exampleName = "Purp2 - Operand constraints"
   , txsModelFiles = [ txsFilePath exampDir "Adder"
                     , txsFilePath exampDir "AdderPurposes"
                     ]
   , txsCmdsFiles = [txsCmdPath exampDir "AdderPurp2"]
-  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            adderJavaPath
@@ -109,13 +103,12 @@ testPurp2 = TxsExample
   }
 
 testPurp3 :: TxsExample
-testPurp3 = TxsExample
+testPurp3 = emptyExample
   { exampleName = "Purp3 - Always +2"
   , txsModelFiles = [ txsFilePath exampDir "Adder"
                     , txsFilePath exampDir "AdderPurposes"
                     ]
   , txsCmdsFiles = [txsCmdPath exampDir "AdderPurp3"]
-  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            adderJavaPath
@@ -125,13 +118,12 @@ testPurp3 = TxsExample
   }
 
 testPurp4 :: TxsExample
-testPurp4 = TxsExample
+testPurp4 = emptyExample
   { exampleName = "Purp4 - Overlapping Steps"
   , txsModelFiles = [ txsFilePath exampDir "Adder"
                     , txsFilePath exampDir "AdderPurposes"
                     ]
   , txsCmdsFiles = [txsCmdPath exampDir "AdderPurp4"]
-  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
             adderJavaPath

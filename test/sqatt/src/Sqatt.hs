@@ -12,6 +12,7 @@ module Sqatt
   , checkSMTSolvers
   , checkCompilers
   , checkTxsInstall
+  , emptyExample
   , ExampleResult (..)
   , javaCmd
   , TxsExampleSet (..)
@@ -61,6 +62,8 @@ data TxsExample
   = TxsExample {
     -- | Name of the example.
     exampleName    :: String
+    -- | Action to run before testing the example.
+  , setupAction    :: IO ()
     -- | Paths to the TorXakis model files.
   , txsModelFiles  :: [FilePath]
     -- | Paths to the files containing the commands that will be passed to the
@@ -75,7 +78,10 @@ data TxsExample
   , sutExample     :: Maybe SutExample
     -- | Example's expected result.
   , expectedResult :: ExampleResult
-  } deriving (Show)
+  } -- deriving (Show)
+
+instance Show TxsExample where
+  show = undefined
 
 data SutExample
   -- | A Java SUT that must be compiled and executed.
@@ -531,3 +537,14 @@ mkLogDir strPrefix = do
         currDateStr = toFSSafeStr (show currDate)
     mktree logDir
     return logDir
+
+emptyExample :: TxsExample
+emptyExample = TxsExample
+  { exampleName = ""
+  , setupAction = return ()
+  , txsModelFiles = []
+  , txsCmdsFiles = []
+  , txsServerArgs = []
+  , sutExample = Nothing
+  , expectedResult = Message ""
+  }

@@ -15,44 +15,39 @@ exampDir :: FilePath
 exampDir = "MovingArms"
 
 test0 :: TxsExample
-test0 = TxsExample
+test0 = emptyExample
   { exampleName = "Stepper Test"
   , txsModelFiles = [txsFilePath exampDir "MovingArms"]
   , txsCmdsFiles = [txsCmdPath exampDir "MovingArms_Stepper"]
-  , txsServerArgs = []
-  , sutExample = Nothing
   , expectedResult = Pass
   }
 
 testSingleAxisPurpose :: TxsExample
-testSingleAxisPurpose = TxsExample
+testSingleAxisPurpose = emptyExample
   { exampleName = "Single Axis Purpose Test"
   , txsModelFiles = [ txsFilePath exampDir "MovingArms"
                     , txsFilePath exampDir "SingleAxisPurpose" ]
   , txsCmdsFiles = [txsCmdPath exampDir "MovingArms_SingleAxisPurpose_Tester"]
-  , txsServerArgs = []
   , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "MovingArms_Simulator")
   , expectedResult = Pass
   }
 
 testRestrictedAxisPurpose0 :: TxsExample
-testRestrictedAxisPurpose0 = TxsExample
+testRestrictedAxisPurpose0 = emptyExample
   { exampleName = "Restricted Axis Purpose Test (input eagerness 0)"
   , txsModelFiles = [ txsFilePath exampDir "MovingArms"
                     , txsFilePath exampDir "RestrictedAxisPurpose" ]
   , txsCmdsFiles = [txsCmdPath exampDir "MovingArms_RestrictedAxisPurpose_eager0_Tester"]
-  , txsServerArgs = []
   , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "MovingArms_Simulator")
   , expectedResult = Pass
   }
 
 testRestrictedAxisPurpose3 :: TxsExample
-testRestrictedAxisPurpose3 = TxsExample
+testRestrictedAxisPurpose3 = emptyExample
   { exampleName = "Restricted Axis Purpose Test (input eagerness 3)"
   , txsModelFiles = [ txsFilePath exampDir "MovingArms"
                     , txsFilePath exampDir "RestrictedAxisPurpose" ]
   , txsCmdsFiles = [txsCmdPath exampDir "MovingArms_RestrictedAxisPurpose_eager3_Tester"]
-  , txsServerArgs = []
   , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "MovingArms_Simulator")
   , expectedResult = Pass
   }

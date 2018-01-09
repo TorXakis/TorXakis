@@ -20,75 +20,63 @@ modelFiles = [ txsFilePath BenchTest benchDir "Parallel"
              ]
 
 parallel4 :: TxsExample
-parallel4 = TxsExample
+parallel4 = emptyExample
     { exampleName = "4 parallel sequential-processes"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "Parallel4"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 parallelIStep4 :: TxsExample
-parallelIStep4 = TxsExample
+parallelIStep4 = emptyExample
     { exampleName = "4 parallel sequential-processes, with internal step"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "Parallel4"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 
 parallelAlternate4 :: TxsExample
-parallelAlternate4 = TxsExample
+parallelAlternate4 = emptyExample
     { exampleName = "4 parallel sequential-processes, with alternating actions"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "ParallelAlternate4"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 parallelMultiact4 :: TxsExample
-parallelMultiact4 = TxsExample
+parallelMultiact4 = emptyExample
     { exampleName = "4 parallel sequential-processes, with multiple actions"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "ParallelMultiAct"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 parallelSync :: TxsExample
-parallelSync = TxsExample
+parallelSync = emptyExample
     { exampleName = "convoluted parallel-synchronous model"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "ParallelSync"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Fail
     }
 
 parallelNested :: TxsExample
-parallelNested = TxsExample
+parallelNested = emptyExample
     { exampleName = "4 parallel nested synchronizing sequences"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "ParallelNested"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 

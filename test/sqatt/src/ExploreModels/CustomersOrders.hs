@@ -19,12 +19,10 @@ import           Sqatt
 -- exampDir = "CustomersOrders"
 
 -- test :: TxsExample
--- test = TxsExample
+-- test = emptyExample
 --   { exampleName = "Stepper 50"
 --   , txsModelFiles = [txsFilePath exampDir customersOrdersText]
 --   , txsCmdsFiles = [txsCmdPath exampDir "CustomersOrders_Stepper_Model"]
---   , txsServerArgs = []
---   , sutExample = Nothing
 --   , expectedResult = Pass
 --   }
 
