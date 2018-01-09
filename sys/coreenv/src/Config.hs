@@ -11,12 +11,14 @@ module Config
   , defaultConfig
   , SolverId (..)
   , SolverConfig (..)
-  , ParameterName (..)
-  , ParameterValue (..)
+  , ParamName (..)
+  , ParamValue (..)
   , changeSolver
   , changeLog
   , addSolvers
-  , setParameters
+  , setParams
+  -- * update values in a Map of Params with a list of configured parameters
+  , updateParamVals
   , updateCfg
   )
 where
@@ -24,6 +26,8 @@ where
 import qualified Data.Map       as Map
 import           Data.Monoid
 import           System.Process
+
+import           ParamCore
 
 data SolverConfig = SolverConfig
   {
@@ -36,11 +40,9 @@ data SolverConfig = SolverConfig
 newtype SolverId = SolverId { solverId :: String }
   deriving (Eq, Ord, Show)
 
-newtype ParameterName = ParamName { getParamName :: String }
-  deriving (Eq, Ord, Show)
+newtype ParamName = ParamName String deriving (Eq, Ord, Show)
 
-newtype ParameterValue = ParamValue { getParamValue :: String }
-  deriving (Eq, Ord, Show)
+newtype ParamValue = ParamValue String deriving (Eq, Ord, Show)
 
 -- | TorXakis configuration options.
 data Config = Config
@@ -49,7 +51,7 @@ data Config = Config
     -- | Available solvers that can be chosen from.
   , availableSolvers     :: Map.Map SolverId SolverConfig
   , selectedSolver       :: SolverId
-  , configuredParameters :: [(ParameterName,ParameterValue)]
+  , configuredParameters :: [(ParamName,ParamValue)]
   } deriving (Eq, Show)
 
 changeSolver :: Config -> String -> Config
@@ -61,11 +63,25 @@ changeLog cfg b = cfg { smtLog = b }
 addSolvers :: Config -> Map.Map SolverId SolverConfig -> Config
 addSolvers cfg newSolvers = cfg { availableSolvers = newSolvers <> availableSolvers cfg }
 
-setParameters :: Config -> [(ParameterName,ParameterValue)] -> Config
-setParameters cfg newParams = cfg { configuredParameters = newParams }
+setParams :: Config -> [(ParamName,ParamValue)] -> Config
+setParams cfg newParams = cfg { configuredParameters = newParams }
 
 updateCfg :: Maybe a -> (Config -> a -> Config) -> Config -> Config
 updateCfg ma f cfg = maybe cfg (f cfg) ma
+
+-- | Updates a Map of parameters' values with given list of configured parameter
+updateParamVals :: Params -- ^ Map of parameters ( Map.Map String (String,String->Bool) )
+                   -> [(ParamName, ParamValue)] -- ^ List of configured parameters
+                   -> Params
+updateParamVals = foldl applyConfParam
+  where applyConfParam :: Params
+                       -> (ParamName, ParamValue)
+                       -> Params
+        applyConfParam allParams (ParamName pnStr, ParamValue pvStr) =
+          Map.adjust (updateOldParamWith pvStr) ("param_" ++ pnStr) allParams
+          where updateOldParamWith newValCandidate (oldVal, validate)
+                  | validate newValCandidate  = (newValCandidate, validate)
+                  | otherwise                 = (         oldVal, validate)
 
 -- | TorXakis default configuration
 defaultConfig :: Config

@@ -90,7 +90,9 @@ main = withSocketsDo $ do
               { IOS.host   = host
               , IOS.portNr = portNr
               , IOS.servhs = hs
-              , IOS.params = TxsCore.updateParams (IOS.params IOS.envsNone) $ SC.configuredParameters config
+              , IOS.params = SC.updateParamVals -- updating parameters...
+                              (IOS.params IOS.envsNone) -- ...defined in ServerEnv
+                              $ SC.configuredParameters config
               }
           coreConfig = config
       TxsCore.runTxsCore coreConfig cmdsIntpr initS

@@ -104,7 +104,6 @@ module TxsCore
 
   -- * LPE transformation
 , txsLPE
-, updateParams
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -176,7 +175,8 @@ runTxsCore initConfig ctrl s0  =  do
       _ <- runStateT (runTxsCtrl ctrl s0)
               IOC.EnvC { IOC.config = initConfig
                         , IOC.unid   = 0
-                        , IOC.params = updateParams initParams
+                        , IOC.params = Config.updateParamVals -- updating parameters...
+                                        initParams -- ...defined in EnvCore and SolveDefs
                                         $ Config.configuredParameters initConfig
                         , IOC.state  = initState
                         }
@@ -184,14 +184,6 @@ runTxsCore initConfig ctrl s0  =  do
       where initState = IOC.Noning
             initParams =
               Map.union ParamCore.initParams SolveDefs.Params.initParams
-
-updateParams :: ParamCore.Params -> [(Config.ParameterName,Config.ParameterValue)] -> ParamCore.Params
-updateParams = foldl applyConfParam
-  where applyConfParam allParams (Config.ParamName pnStr, Config.ParamValue pvStr) =
-          Map.adjust (updateOldParamWith pvStr) ("param_" ++ pnStr) allParams
-          where updateOldParamWith newValCandidate (oldVal, validate)
-                  | validate newValCandidate  = (newValCandidate, validate)
-                  | otherwise                 = (         oldVal, validate)
 
 runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()
 runTxsCtrl ctrl s0  =  do

@@ -11,8 +11,7 @@ module TxsServerConfig
   , Config (..)
   , UnintConfig(..)
   , loadConfigFromFile
-  , getParamName
-  , getParamValue
+  , updateParamVals
   )
 where
 
@@ -72,7 +71,7 @@ interpretConfig uCfg =
                      (fromMaybe [] . fcFlags $ solverFC)
       )
     fcChangeParam =
-      updateCfg (map toParamKV <$> (fileCfg uCfg >>= fcParameters)) setParameters
+      updateCfg (map toParamKV <$> (fileCfg uCfg >>= fcParameters)) setParams
     toParamKV paramFC =
       ( ParamName (fcParamName paramFC)
       , ParamValue (fcParamValue paramFC)

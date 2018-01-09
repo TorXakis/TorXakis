@@ -30,7 +30,7 @@ import qualified Data.Map            as Map
 
 
 -- import from local
-import           Config
+import           Config    hiding (setParams)
 import qualified EnvData
 import qualified ParamCore
 
