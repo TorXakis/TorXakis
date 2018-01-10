@@ -18,11 +18,12 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 
 module LPE
-( -- preGNF
--- , gnf
- lpeTransform
--- , lpe
--- , lpePar
+( ProcDefs
+, preGNF
+, gnf
+, lpeTransform
+, lpe
+, lpePar
 )
 
 where
@@ -498,9 +499,9 @@ lpeTransform' procInst procDefs = let (procInst', procDefs') = lpe procInst empt
                                       procIdInst' = procIdInst { ProcId.name = procIdName'}
                                       procInst'' = ProcInst procIdInst' chansInst paramsInst
 
-                                     -- put new ProcId in each step
-                                     steps = map (substituteProcId procIdInst procIdInst') (extractSteps bexpr)
-                                     procDef = ProcDef chans params (wrapSteps steps) in
+                                      -- put new ProcId in each step
+                                      steps = map (substituteProcId procIdInst procIdInst') (extractSteps bexpr)
+                                      procDef = ProcDef chans params (wrapSteps steps) in
                                  Just (procInst'', procDef)
     where
         substituteProcId :: ProcId -> ProcId -> BExpr -> BExpr
