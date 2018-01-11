@@ -27,6 +27,8 @@ import qualified Data.Text         as T
 import ConstDefs
 import ValExpr
 
+import LPEfunc
+
 ---------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------
@@ -100,20 +102,20 @@ testStop :: Test
 testStop = TestCase $
     let procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] Stop)]
         procIdP = procIdGen "P" [chanIdA] [varIdX]
-    in  assertEqual "STOP" procDefs (preGNF procIdP emptyTranslatedProcDefs procDefs)
+    in  assertBool "STOP" $ eq_procDefs  procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
 
 -- action prefix remains unchanged
 testActPref :: Test
 testActPref = TestCase $
     let procIdP = procIdGen "P" [chanIdA] [varIdX]
         procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] (ActionPref actOfferAx Stop))]
-    in  assertEqual "A?x >-> STOP" procDefs (preGNF procIdP emptyTranslatedProcDefs procDefs)
+    in  assertBool "A?x >-> STOP" $ eq_procDefs  procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
 
 testActPref2 :: Test
 testActPref2 = TestCase $
    let procIdP = procIdGen "P" [chanIdA] [varIdX]
        procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] (ActionPref actOfferAx (ActionPref actOfferB1 Stop)))]
-   in  assertEqual "A?x >-> B!1 >-> STOP" procDefs (preGNF procIdP emptyTranslatedProcDefs procDefs)
+   in  assertBool "A?x >-> B!1 >-> STOP" $ eq_procDefs  procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
 
 -- action prefix is translated recursively
 -- P[A]() = A?x >-> Q[A]()
@@ -124,7 +126,7 @@ testActPref2 = TestCase $
 -- Q$pre1[A](x) = STOP ## STOP
 testActPref3 :: Test
 testActPref3 = TestCase $
-   assertEqual "ActionPref is translated recursively" procDefs' (preGNF procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "ActionPref is translated recursively" $ eq_procDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
@@ -148,21 +150,21 @@ testProcInst :: Test
 testProcInst = TestCase $
    let procIdP = procIdGen "P" [chanIdA] []
        procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [] (ProcInst procIdP [chanIdA] []))]
-   in  assertEqual "P[]()" procDefs (preGNF procIdP emptyTranslatedProcDefs procDefs)
+   in  assertBool "P[]()"  $ eq_procDefs procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
 
 -- choices at top-level remain unchanged
 testChoice1 :: Test
 testChoice1 = TestCase $
    let procIdP = procIdGen "P" [chanIdA] []
        procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [] (Choice [Stop, Stop]))]
-   in  assertEqual "Stop ## Stop" procDefs (preGNF procIdP emptyTranslatedProcDefs procDefs)
+   in  assertBool "Stop ## Stop" $ eq_procDefs  procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
 
 -- choices at top-level remain unchanged
 testChoice2 :: Test
 testChoice2 = TestCase $
    let procIdP = procIdGen "P" [chanIdA] []
        procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [] (Choice [Stop, Stop, Stop]))]
-   in  assertEqual "Stop ## Stop ## Stop" procDefs (preGNF procIdP emptyTranslatedProcDefs procDefs)
+   in  assertBool "Stop ## Stop ## Stop"  $ eq_procDefs procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
 
 
 -- choices at a lower level are substituted with a process instance to a
@@ -173,7 +175,7 @@ testChoice2 = TestCase $
   -- P$pre1[A](x) = STOP ## STOP
 testChoice3 :: Test
 testChoice3 = TestCase $
-   assertEqual "choice (on lower level) is substituted" procDefs' (preGNF procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "choice (on lower level) is substituted" $ eq_procDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procDefP = ProcDef [chanIdA] [] (ActionPref actOfferAx (Choice [Stop, Stop]))
@@ -198,7 +200,7 @@ testChoice3 = TestCase $
   -- P$pre2[A](x) =   STOP ## STOP
 testChoice4 :: Test
 testChoice4 = TestCase $
-   assertEqual "choice (on lower level) is substituted 2" procDefs' (preGNF procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "choice (on lower level) is substituted 2"  $ eq_procDefs procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procDefP = ProcDef [chanIdA] [] (Choice [Stop, ActionPref actOfferAx (Choice [Stop, Stop])])
@@ -236,7 +238,7 @@ testChoice4 = TestCase $
 -- P$pre1$pre1[A](x,y)  = STOP ## STOP
 testChoice5 :: Test
 testChoice5 = TestCase $
-   assertEqual "choice (on lower level) is substituted 2" procDefs' (preGNF procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "choice (on lower level) is substituted 2"  $ eq_procDefs procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procDefP = ProcDef [chanIdA] [] bexprP

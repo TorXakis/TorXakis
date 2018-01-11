@@ -381,8 +381,11 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
 
                 -- combine action offers
                 --  union of offers, concatenation of constraints
-                offersLR = trace ("\ncombining: " ++ (show offersL) ++ " and " ++ (show offersR)) $ Set.union offersL offersR
-                constraintLR = trace ("\nconstraints: " ++ (show constraintL) ++ " and " ++ (show constraintR)) $ cstrAnd (Set.fromList [constraintL, constraintR])
+                -- offersLR = trace ("\ncombining: " ++ (show offersL) ++ " and " ++ (show offersR)) $ Set.union offersL offersR
+                offersLR = Set.union offersL offersR
+
+                -- constraintLR = trace ("\nconstraints: " ++ (show constraintL) ++ " and " ++ (show constraintR)) $ cstrAnd (Set.fromList [constraintL, constraintR])
+                constraintLR = cstrAnd (Set.fromList [constraintL, constraintR])
 
                 -- new ActOffers and ProcInst
                 actOfferLR = ActOffer { offers = offersLR,
@@ -639,9 +642,6 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
             let prefixedParams = map cstrVar $ prefixedParams'
                 paramMap = Map.fromList $ zip paramsDef prefixedParams
 
-            -- collect prefixed params for later usage
-            paramsPrefixed <- mapM (prefixVarId prefix) paramsDef
-
             let pcValue = case Map.lookup currentProc pcMapping of
                                  Just i   -> i
                                  Nothing  -> error "translateProcs: could not find the pcValue for given proc (should be impossible)"
@@ -653,8 +653,8 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
             (stepsRec, paramsRec, procToParamsRec) <- translateProcs procss varIdPC pcMapping procDefs
 
             -- add collected prefixed params for later usage
-            let params = paramsPrefixed ++ paramsRec
-            let procToParams = Map.insert currentProc paramsPrefixed procToParamsRec
+            let params = prefixedParams' ++ paramsRec
+            let procToParams = Map.insert currentProc prefixedParams' procToParamsRec
             return (steps'' ++ stepsRec, params, procToParams)
 
         -- update the original ProcInst, initialise with artifical values
@@ -741,7 +741,7 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
         -- TODO: properly initialise funcDefs param of subst
         constraintOfOffer' = Subst.subst varMap' (Map.fromList []) constraintOfOffer
         constraintsList = constraintOfOffer' : constraints'
-        constraintPC = trace ("list: " ++ show constraintsList) $ cstrEqual (cstrVar varIdPC) (cstrConst (Cint pcValue))
+        constraintPC = cstrEqual (cstrVar varIdPC) (cstrConst (Cint pcValue))
 
 
         -- if there is a constraint other than just the program counter check

@@ -26,7 +26,7 @@ import VarId
 import ConstDefs
 import ValExpr
 
-type ProcDefs = Map.Map TxsDefs.ProcId TxsDefs.ProcDef
+import LPEfunc
 
 ---------------------------------------------------------------------------
 -- Helper functions
@@ -96,7 +96,7 @@ chanIdB = ChanId    { ChanId.name = T.pack "B"
 -- Tests
 ---------------------------------------------------------------------------
 
--- check that things have been translated to preGNF first
+-- check that things have been translated to pregnfFunc first
 -- e.g. choice lower in the hierarchy is put in new ProcDef
 -- P[A]() = A?x >-> (STOP ## STOP)
 -- becomes
@@ -104,7 +104,7 @@ chanIdB = ChanId    { ChanId.name = T.pack "B"
   -- P$pre1[A](x) = STOP ## STOP
 testPreGNFFirst :: Test
 testPreGNFFirst = TestCase $
-   assertEqual "choice (on lower level) is substituted" procDefs' (gnf procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "choice (on lower level) is substituted" $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procDefP = ProcDef [chanIdA] [] (ActionPref actOfferAx (Choice [Stop, Stop]))
@@ -127,24 +127,24 @@ testStop :: Test
 testStop = TestCase $
     let procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] Stop)]
         procIdP = procIdGen "P" [chanIdA] [varIdX]
-    in  assertEqual "STOP" procDefs (gnf procIdP emptyTranslatedProcDefs procDefs)
+    in  assertBool "STOP"  $ eq_procDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
 
 -- A?X >-> STOP remains unchanged
 testASeqStop :: Test
 testASeqStop = TestCase $
     let procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [] (ActionPref actOfferAx Stop))]
         procIdP = procIdGen "P" [chanIdA] [varIdX]
-    in  assertEqual "STOP" procDefs (gnf procIdP emptyTranslatedProcDefs procDefs)
+    in  assertBool "STOP"  $ eq_procDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
 
 -- P[]() := A?x >-> P[A](x) remains unchanged
--- also checks that there are no infinite loops of valid GNF translations
--- checks for impossible GNF translations, see below
+-- also checks that there are no infinite loops of valid gnfFunc translations
+-- checks for impossible gnfFunc translations, see below
 testASeqProcInst :: Test
 testASeqProcInst = TestCase $
     let procIdP = procIdGen "P" [chanIdA] [varIdX]
         procInstP = ProcInst procIdP [chanIdA] [vexprX]
         procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] (ActionPref actOfferAx procInstP))]
-    in  assertEqual "STOP" procDefs (gnf procIdP emptyTranslatedProcDefs procDefs)
+    in  assertBool "STOP"  $ eq_procDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
 
 
 
@@ -153,7 +153,7 @@ testASeqProcInst = TestCase $
 -- P$gnf1[A,B](x) := B!1 >-> STOP
 testActPrefSplit :: Test
 testActPrefSplit = TestCase $
-   assertEqual "multi action sequence is split" procDefs' (gnf procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "multi action sequence is split"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
       procDefP = ProcDef [chanIdA, chanIdB] [] (ActionPref actOfferAx (ActionPref actOfferB1 Stop))
@@ -179,7 +179,7 @@ testActPrefSplit = TestCase $
 -- Q[B]() := B?x >-> STOP
 testProcInst1 :: Test
 testProcInst1 = TestCase $
-   assertEqual "procInst is substituted" procDefs' (gnf procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
@@ -202,7 +202,7 @@ testProcInst1 = TestCase $
 -- Q[A]() := A?X >-> STOP
 testProcInst2 :: Test
 testProcInst2 = TestCase $
-   assertEqual "procInst is substituted 2" procDefs' (gnf procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted 2"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
@@ -227,7 +227,7 @@ testProcInst2 = TestCase $
 -- R[A]()  := A?x -> STOP
 testProcInst3 :: Test
 testProcInst3 = TestCase $
-   assertEqual "procInst is substituted 3" procDefs' (gnf procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted 3"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
@@ -256,10 +256,10 @@ testProcInst3 = TestCase $
 --  P[]() := STOP ## STOP ## STOP
 --      NOTE the normalisation: choice is not nested after the substitution:
 --      STOP ## (STOP ## STOP) became  STOP ## STOP ## STOP
---      otherwise it would not be in preGNF (and thus not GNF) after the substitution!
+--      otherwise it would not be in pregnfFunc (and thus not GNF) after the substitution!
 testProcInst4 :: Test
 testProcInst4 = TestCase $
-   assertEqual "procInst is substituted and normalised" procDefs' (gnf procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted and normalised"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [] []
       procIdQ = procIdGen "Q" [] []
@@ -279,7 +279,7 @@ testProcInst4 = TestCase $
 
 
 
--- no name clash of newly created ProcDefs by preGNF and GNF:
+-- no name clash of newly created ProcDefs by pregnfFunc and GNF:
 -- P[A,B]() := A?x >-> B!1 >-> (STOP ## STOP)
 -- becomes after preGNF:
 -- P[A,B]() := A?x >-> B!1 >-> P$pre1[A,B](x)
@@ -291,7 +291,7 @@ testProcInst4 = TestCase $
 -- P$pre1[A,B](x) := STOP ## STOP
 testNamingClash :: Test
 testNamingClash = TestCase $
-   assertEqual "preGNF / GNF naming of new ProcDefs doesn't clash" procDefs' (gnf procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
       procIdPgnf1 = procIdGen "P$gnf1" [chanIdA, chanIdB] [varIdX]
@@ -310,69 +310,69 @@ testNamingClash = TestCase $
                                 , (procIdPpre1, procDefPpre1) ]
 
 
-
--- create monad to run GNF
--- return the resulting procDefs and the possible error
-gnfTestWrapper :: ProcId -> TranslatedProcDefs -> ProcDefs -> (ProcDefs, String)
-gnfTestWrapper procId translatedProcDefs procDefs =
-  let a = a
-  in (Map.fromList [], "loop (GNF) detected in P")
-
-
-
--- cycle detection
---  P[]() := P[]()
--- should fail
-testLoop1 :: Test
-testLoop1 = TestCase $
-   -- result = gnf procIdP emptyTranslatedProcDefs procDefs
-   let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
-   assertEqual "loop 1" err "loop (GNF) detected in P"
-   where
-      procIdP = procIdGen "P" [] []
-      procDefP = ProcDef [] [] (ProcInst procIdP [] [])
-
-      procDefs = Map.fromList  [  (procIdP, procDefP)]
-
--- cycle detection
---  P[]() :=     A >-> P[]()
---            ## P[]()
--- should fail
-testLoop2 :: Test
-testLoop2 = TestCase $
-   let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
-   assertEqual "loop 2" err "loop (GNF) detected in P"
-   where
-      procIdP = procIdGen "P" [] []
-      procDefP = ProcDef [] [] (Choice [
-                                  (ActionPref actOfferAx (ProcInst procIdP [] [])),
-                                  (ProcInst procIdP [] [])
-                                  ])
-
-      procDefs = Map.fromList  [  (procIdP, procDefP)]
+--
+-- -- create monad to run GNF
+-- -- return the resulting procDefs and the possible error
+-- gnfTestWrapper :: ProcId -> TranslatedProcDefs -> ProcDefs -> (ProcDefs, String)
+-- gnfTestWrapper procId translatedProcDefs procDefs =
+--   let a = a
+--   in (Map.fromList [], "loop (GNF) detected in P")
 
 
--- cycle detection
---  P[]() :=     A >-> P[]()
---            ## Q[]()
---  Q[]() :=  P[]()
--- should fail
-testLoop3 :: Test
-testLoop3 = TestCase $
-   let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
-   assertEqual "loop 3" err "loop (GNF) detected in P"
-   where
-      procIdP = procIdGen "P" [] []
-      procIdQ = procIdGen "Q" [] []
-      procDefP = ProcDef [] [] (Choice [
-                                  (ActionPref actOfferAx (ProcInst procIdP [] [])),
-                                  (ProcInst procIdQ [] [])
-                                  ])
-      procDefQ = ProcDef [] [] (ProcInst procIdQ [] [])
-      procDefs = Map.fromList  [  (procIdP, procDefP),
-                                  (procIdQ, procDefQ)]
-
-
+--
+-- -- cycle detection
+-- --  P[]() := P[]()
+-- -- should fail
+-- testLoop1 :: Test
+-- testLoop1 = TestCase $
+--    -- result = gnfFunc procIdP emptyTranslatedProcDefs procDefs
+--    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
+--    assertBool "loop 1" err "loop (GNF) detected in P"
+--    where
+--       procIdP = procIdGen "P" [] []
+--       procDefP = ProcDef [] [] (ProcInst procIdP [] [])
+--
+--       procDefs = Map.fromList  [  (procIdP, procDefP)]
+--
+-- -- cycle detection
+-- --  P[]() :=     A >-> P[]()
+-- --            ## P[]()
+-- -- should fail
+-- testLoop2 :: Test
+-- testLoop2 = TestCase $
+--    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
+--    assertBool "loop 2" err "loop (GNF) detected in P"
+--    where
+--       procIdP = procIdGen "P" [] []
+--       procDefP = ProcDef [] [] (Choice [
+--                                   (ActionPref actOfferAx (ProcInst procIdP [] [])),
+--                                   (ProcInst procIdP [] [])
+--                                   ])
+--
+--       procDefs = Map.fromList  [  (procIdP, procDefP)]
+--
+--
+-- -- cycle detection
+-- --  P[]() :=     A >-> P[]()
+-- --            ## Q[]()
+-- --  Q[]() :=  P[]()
+-- -- should fail
+-- testLoop3 :: Test
+-- testLoop3 = TestCase $
+--    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
+--    assertBool "loop 3" err "loop (GNF) detected in P"
+--    where
+--       procIdP = procIdGen "P" [] []
+--       procIdQ = procIdGen "Q" [] []
+--       procDefP = ProcDef [] [] (Choice [
+--                                   (ActionPref actOfferAx (ProcInst procIdP [] [])),
+--                                   (ProcInst procIdQ [] [])
+--                                   ])
+--       procDefQ = ProcDef [] [] (ProcInst procIdQ [] [])
+--       procDefs = Map.fromList  [  (procIdP, procDefP),
+--                                   (procIdQ, procDefQ)]
+--
+--
 
 
 
@@ -380,7 +380,7 @@ testLoop3 = TestCase $
 -- List of Tests
 ----------------------------------------------------------------------------------------
 testGNFList :: Test
-testGNFList = TestList [  TestLabel "preGNF translation is executed first" testPreGNFFirst
+testGNFList = TestList [  TestLabel "pregnfFunc translation is executed first" testPreGNFFirst
                         , TestLabel "Stop is unchanged" testStop
                         , TestLabel "A >-> STOP remains the same" testASeqStop
                         , TestLabel "A >-> P[]() remains the same" testASeqProcInst
@@ -390,8 +390,8 @@ testGNFList = TestList [  TestLabel "preGNF translation is executed first" testP
                         , TestLabel "procInst is substituted 3" testProcInst3
                         , TestLabel "procInst is substituted 4" testProcInst4
 
-                        , TestLabel "preGNF / GNF naming of new ProcDefs doesn't clash" testNamingClash
-                        , TestLabel "loop 1" testLoop1
-                        , TestLabel "loop 2" testLoop2
-                        , TestLabel "loop 3" testLoop3
+                        , TestLabel "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash" testNamingClash
+                        -- , TestLabel "loop 1" testLoop1
+                        -- , TestLabel "loop 2" testLoop2
+                        -- , TestLabel "loop 3" testLoop3
                       ]

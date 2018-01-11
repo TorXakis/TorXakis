@@ -10,6 +10,7 @@ testLPEList
 )
 where
 
+import Id
 import LPE
 import TranslatedProcDefs
 
@@ -26,6 +27,8 @@ import qualified Data.Text         as T
 import VarId
 import ConstDefs
 import ValExpr
+
+import LPEfunc
 
 ---------------------------------------------------------------------------
 -- Helper functions
@@ -139,9 +142,11 @@ anyInt = cstrConst $ Cany intSort
 -- becomes
 -- LPE_P[A](pc$P) := A?A1 [pc$P == 0] >-> LPE_P[A](-1)
 -- with procInst = LPE_P[A](0)
+
+
 testGNFFirst :: Test
 testGNFFirst = TestCase $
-   assertEqual "translation to GNF worked" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   assertBool "translation to GNF worked" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst procDefs))
    where
       procInst = ProcInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -175,7 +180,7 @@ testGNFFirst = TestCase $
 -- with procInst = LPE_P[](0)
 testStop :: Test
 testStop = TestCase $
-   assertEqual "STOP becomes empty Choice" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   assertBool "STOP becomes empty Choice" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst procDefs))
    where
       procInst = ProcInst procIdP [] []
       procIdP = procIdGen "P" [] []
@@ -197,7 +202,7 @@ testStop = TestCase $
 -- with procInst = LPE_P[A](0)
 testActionPrefStop :: Test
 testActionPrefStop = TestCase $
-   assertEqual "ActionPref Stop" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   assertBool "ActionPref Stop" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst procDefs))
    where
       procInst = ProcInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -229,7 +234,7 @@ testActionPrefStop = TestCase $
 -- with procInst = LPE_P[A](0)
 testActionPrefConstraints :: Test
 testActionPrefConstraints = TestCase $
-   assertEqual "Action Pref constraints are kept" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   assertBool "Action Pref constraints are kept" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst procDefs))
    where
       procInst = ProcInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -273,7 +278,7 @@ testActionPrefConstraints = TestCase $
 -- with procInst = LPE_P[A](0)
 testActionPrefProcInst :: Test
 testActionPrefProcInst = TestCase $
-   assertEqual "ActionPref ProcInst" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   assertBool "ActionPref ProcInst" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst procDefs))
    where
       procInst = ProcInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -306,7 +311,7 @@ testActionPrefProcInst = TestCase $
 -- with procInst = LPE_P[A](0)
 testChoice :: Test
 testChoice = TestCase $
-   assertEqual "Choice" (Just (procInst', procDefPlpe)) (lpeTransform procInst  procDefs)
+   assertBool "Choice" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst  procDefs))
    where
       procInst = ProcInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -344,7 +349,7 @@ testChoice = TestCase $
 -- with procInst = LPE_P[A](0)
 testMultipleProcDefs1 :: Test
 testMultipleProcDefs1 = TestCase $
-   assertEqual "multiple ProcDefs simple" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   assertBool "multiple ProcDefs simple" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst procDefs))
    where
       procInst = ProcInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -392,7 +397,7 @@ testMultipleProcDefs1 = TestCase $
 -- with procInst = LPE_P[A](0)
 testMultipleProcDefs2 :: Test
 testMultipleProcDefs2 = TestCase $
-   assertEqual "multiple ProcDefs simple" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   assertBool "multiple ProcDefs simple" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst procDefs))
    where
       procInst = ProcInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -446,7 +451,7 @@ testMultipleProcDefs2 = TestCase $
 --  // NOTE: there is no step for pc$P == 1, which means it's a dead end (i.e. STOP)
 testMultipleProcDefs3 :: Test
 testMultipleProcDefs3 = TestCase $
-   assertEqual "multiple ProcDefs simple" (Just (procInst', procDefPlpe)) (lpeTransform procInst  procDefs)
+   assertBool "multiple ProcDefs simple" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst  procDefs))
    where
       procInst = ProcInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -515,7 +520,7 @@ testMultipleProcDefs3 = TestCase $
 -- with procInst = LPE_P[A,B](0, ANY, ANY)
 testProcDefIdentity :: Test
 testProcDefIdentity = TestCase $
-   assertEqual "ProcDef identity" (Just (procInst', procDefPlpe)) (lpeTransform procInst  procDefs)
+   assertBool "ProcDef identity" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst  procDefs))
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA,chanIdB] []
@@ -598,7 +603,7 @@ testProcDefIdentity = TestCase $
 -- with procInst = LPE_P[A](0, ANY, ANY)
 testParamsUnique :: Test
 testParamsUnique = TestCase $
-   assertEqual "params unique" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   assertBool "params unique" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst procDefs))
    where
       procInst = ProcInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -669,7 +674,7 @@ testParamsUnique = TestCase $
 -- with procInst = LPE_P[A,B](0)
 testChannelSwitch :: Test
 testChannelSwitch = TestCase $
-   assertEqual "switching channels" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   assertBool "switching channels" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst procDefs))
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -725,7 +730,7 @@ testChannelSwitch = TestCase $
 -- with procInst = LPE_P[A,B](0,1,ANY,ANY)
 testMultiAction :: Test
 testMultiAction = TestCase $
-   assertEqual "multi action" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   assertBool "multi action" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst procDefs))
    where
       varIdS = VarId (T.pack "s") 33 intSort
       vexprS = cstrVar varIdS
@@ -790,7 +795,7 @@ testMultiAction = TestCase $
 -- with procInst = LPE_P[B](0)
 testChannelInstantiation :: Test
 testChannelInstantiation = TestCase $
-   assertEqual "ActionPref Stop" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
+   assertBool "ActionPref Stop" (eq_procDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst procDefs))
    where
       procInst = ProcInst procIdP [chanIdB] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -849,7 +854,8 @@ testChannelInstantiation = TestCase $
 
 testLPEPar :: Test
 testLPEPar = TestCase $
-   assertEqual "test LPEPar integration"  (Just (procInst', procDefP')) (lpeTransform procInst procDefs)
+   -- assertEqual "test LPEPar integration"  (Just (procInst', procDefP')) (lpeTransformFunc procInst procDefs)
+   assertBool "test LPEPar integration" $ eq_procDef (Just (procInst', procDefP')) (lpeTransformFunc procInst procDefs)
    where
       procInst = ProcInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []

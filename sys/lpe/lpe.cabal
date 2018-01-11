@@ -47,6 +47,7 @@ test-suite lpe-test
                       , LPE
                       , TestLPEPar
                       , TranslatedProcDefs
+                      , LPEfunc
 
   ghc-options:       -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
 

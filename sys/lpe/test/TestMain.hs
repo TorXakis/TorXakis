@@ -16,11 +16,10 @@ import TestLPEPar
 testList :: Test
 testList = TestList
     [
-      TestLabel "test1" test1
-       --  TestLabel "preGNF"          testPreGNFList
-       -- , TestLabel "GNF"             testGNFList
-       -- , TestLabel "LPE"             testLPEList
-       -- , TestLabel "LPEPar"          testLPEParList
+        TestLabel "preGNF"          testPreGNFList
+       , TestLabel "GNF"             testGNFList
+       , TestLabel "LPE"             testLPEList
+       , TestLabel "LPEPar"          testLPEParList
     ]
 
 main :: IO ()
@@ -29,12 +28,3 @@ main = do
     if 0 == e+f
         then exitSuccess
         else exitFailure
-
-
-test1 :: Test
-test1 = TestCase $
-   assertEqual "test1" (Just (procInst', procDefPlpe)) (lpeTransform procInst procDefs)
-   where
-      procInst = ProcInst procIdP [chanIdA] []
-      procIdP = procIdGen "P" [chanIdA] []
-      procIdQ = procIdGen "Q" [chanIdB] []

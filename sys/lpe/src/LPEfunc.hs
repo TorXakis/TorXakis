@@ -19,8 +19,13 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleInstances #-}
 
 module LPEfunc
-( 
-  lpeTransformFunc
+(
+  lpeTransformFunc,
+  lpeParFunc,
+  gnfFunc,
+  preGNFFunc,
+  eq_procDef,
+  eq_procDefs
 )
 
 where
@@ -37,6 +42,7 @@ import           Data.Maybe
 
 -- import TranslatedProcDefs
 
+import TranslatedProcDefs
 import TxsDefs
 -- import ConstDefs
 -- import StdTDefs (stdSortTable)
@@ -52,9 +58,10 @@ import TxsDefs
 
 import qualified EnvData
 import qualified EnvBasic            as EnvB
-import qualified Id
+import Id
 
 import LPE
+import qualified Data.Map as Map
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -90,7 +97,58 @@ lpeTransformFunc procInst procDefs
       in evalState (lpeTransform procInst procDefs) envl
 
 
+
+-- lpePar :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
+lpeParFunc :: BExpr -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
+lpeParFunc bexpr translatedProcDefs procDefs =
+  let envl = EnvL 0 []
+   in evalState (lpePar bexpr translatedProcDefs procDefs) envl
+
+
+
+-- gnf :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb (ProcDefs)
+gnfFunc :: ProcId -> TranslatedProcDefs -> ProcDefs -> ProcDefs
+gnfFunc procId translatedProcDefs procDefs =
+ let envl = EnvL 0 []
+  in evalState (gnf procId translatedProcDefs procDefs) envl
+
+
+-- preGNF :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb(ProcDefs)
+preGNFFunc :: ProcId -> TranslatedProcDefs -> ProcDefs -> ProcDefs
+preGNFFunc procId translatedProcDefs procDefs =
+ let envl = EnvL 0 []
+  in evalState (preGNF procId translatedProcDefs procDefs) envl
+
+
+
+
+eq_procDef :: Maybe(BExpr, ProcDef) -> Maybe(BExpr, ProcDef) -> Bool
+eq_procDef (Just(bexprL, procDefL)) (Just(bexprR, procDefR)) =
+    (bexprL ~~ bexprR) && (eq_procDef' procDefL procDefR)
+eq_procDef _ _ = False
+
+
+eq_procDef' :: ProcDef -> ProcDef -> Bool
+eq_procDef' procDefL procDefR =
+    (reset' procDefL) == (reset' procDefR)
+    where
+      reset' :: ProcDef -> ProcDef
+      reset' (ProcDef chanIds varIds bexpr) =
+        ProcDef (reset chanIds) (reset varIds) (reset bexpr)
+
+
+eq_procDefs :: ProcDefs -> ProcDefs -> Bool
+eq_procDefs procDefsL procDefsR =
+    let l = Map.toList procDefsL
+        r = Map.toList procDefsR
+        zipped = zip l r
+        compared = map comp zipped in
+    and compared
+    where
+      comp (l,r) = eq_elem l r
+      eq_elem (procIdL, procDefL) (procIdR, procDefR) =
+        (reset procIdL) == (reset procIdR) && eq_procDef' procDefL procDefR
+
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
-

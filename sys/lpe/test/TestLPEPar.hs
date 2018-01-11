@@ -27,20 +27,22 @@ import VarId
 import ConstDefs
 import ValExpr
 
-type ProcDefs = Map.Map TxsDefs.ProcId TxsDefs.ProcDef
+import LPEfunc
+
+-- type ProcDefs = Map.Map TxsDefs.ProcId TxsDefs.ProcDef
 
 ---------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------
 
 -- runs lpePar, but returns only the relevant translated ProcDef
-lpeParTestWrapper :: BExpr -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDef)
+lpeParTestWrapper :: BExpr -> TranslatedProcDefs -> ProcDefs -> Maybe (BExpr, ProcDef)
 lpeParTestWrapper procInst translatedProcDefs procDefs =
-  let (procInst'@(ProcInst procId' _ _), procDefs') = lpePar procInst translatedProcDefs procDefs
+  let (procInst'@(ProcInst procId' _ _), procDefs') = lpeParFunc procInst translatedProcDefs procDefs
       procDef' = case Map.lookup procId' procDefs' of
                     Just procDef   -> procDef
                     Nothing        -> error "lpeParTestWrapper: could not find the procId" in
-  (procInst', procDef')
+  Just (procInst', procDef')
 
 
 
@@ -155,7 +157,7 @@ anyInt = cstrConst $ Cany intSort
 -- with ProcInst := P[A,B](0,0)
 -- testSingleActionGEN :: Test
 -- testSingleActionGEN = TestCase $
---    assertEqual "test single actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+--    assertBool "test single actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
 --    where
 --       procInst = ProcInst procIdP [chanIdA, chanIdB] []
 --       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -227,7 +229,7 @@ anyInt = cstrConst $ Cany intSort
 -- with ProcInst := P[A,B](0,0)
 testSingleAction1 :: Test
 testSingleAction1 = TestCase $
-   assertEqual "test single actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test single actions" $ eq_procDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -281,7 +283,7 @@ testSingleAction1 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testSingleAction2 :: Test
 testSingleAction2 = TestCase $
-   assertEqual "test single actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test single actions" $ eq_procDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -332,7 +334,7 @@ testSingleAction2 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testSingleAction3 :: Test
 testSingleAction3 = TestCase $
-   assertEqual "test single actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test single actions" $ eq_procDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -390,7 +392,7 @@ testSingleAction3 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testSingleAction4 :: Test
 testSingleAction4 = TestCase $
-   assertEqual "test single actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test single actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -469,7 +471,7 @@ testSingleAction4 = TestCase $
 -- -- with ProcInst := P[A,B](0,0)
 -- testSingleActionDifferentActionsGEN :: Test
 -- testSingleActionDifferentActionsGEN = TestCase $
---    assertEqual "test single actions, different actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+--    assertBool "test single actions, different actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
 --    where
 --       procInst = ProcInst procIdP [chanIdA, chanIdB] []
 --       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -548,7 +550,7 @@ testSingleAction4 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testSingleActionDifferentActions1 :: Test
 testSingleActionDifferentActions1 = TestCase $
-   assertEqual "test single actions, different actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test single actions, different actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -622,7 +624,7 @@ testSingleActionDifferentActions1 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testSingleActionDifferentActions2 :: Test
 testSingleActionDifferentActions2 = TestCase $
-   assertEqual "test single actions, different actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test single actions, different actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -667,7 +669,7 @@ testSingleActionDifferentActions2 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testSingleActionDifferentActions3 :: Test
 testSingleActionDifferentActions3 = TestCase $
-   assertEqual "test single actions, different actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test single actions, different actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -712,7 +714,7 @@ testSingleActionDifferentActions3 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testSingleActionDifferentActions4 :: Test
 testSingleActionDifferentActions4 = TestCase $
-   assertEqual "test single actions, different actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test single actions, different actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -773,7 +775,7 @@ testSingleActionDifferentActions4 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 -- testMultiActionsGEN :: Test
 -- testMultiActionsGEN = TestCase $
---    assertEqual "test multi actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+--    assertBool "test multi actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
 --    where
 --       procInst = ProcInst procIdP [chanIdA, chanIdB] []
 --       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -858,7 +860,7 @@ testSingleActionDifferentActions4 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testMultiActions1 :: Test
 testMultiActions1 = TestCase $
-   assertEqual "test multi actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -918,7 +920,7 @@ testMultiActions1 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testMultiActions2 :: Test
 testMultiActions2 = TestCase $
-   assertEqual "test multi actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -972,7 +974,7 @@ testMultiActions2 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testMultiActions3 :: Test
 testMultiActions3 = TestCase $
-   assertEqual "test multi actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -1014,7 +1016,7 @@ testMultiActions3 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testMultiActions4 :: Test
 testMultiActions4 = TestCase $
-   assertEqual "test multi actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -1053,7 +1055,7 @@ testMultiActions4 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testMultiActions5 :: Test
 testMultiActions5 = TestCase $
-   assertEqual "test multi actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -1115,7 +1117,7 @@ testMultiActions5 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testMultiActions6 :: Test
 testMultiActions6 = TestCase $
-   assertEqual "test multi actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -1148,7 +1150,7 @@ testMultiActions6 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testMultiActions7 :: Test
 testMultiActions7 = TestCase $
-   assertEqual "test multi actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -1183,7 +1185,7 @@ testMultiActions7 = TestCase $
 -- with ProcInst := P[A,B](0,0)
 testMultiActions8 :: Test
 testMultiActions8 = TestCase $
-   assertEqual "test multi actions" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi actions"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -1253,7 +1255,9 @@ testMultiActions8 = TestCase $
 -- ProcInst := P[A](0, s, ANY, 0, s)
 testParams :: Test
 testParams = TestCase $
-   assertEqual "test params" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test params"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   -- assertEqual "test params"  (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+
    where
       procInst = ProcInst procIdP [chanIdA] [int1]
 
@@ -1380,7 +1384,7 @@ testParams = TestCase $
 --  with ProcInst = P[A,B](0, ANY, 0, ANY)
 testMultiSeqGEN :: Test
 testMultiSeqGEN = TestCase $
-   assertEqual "test multi-sequences" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi-sequences"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
 
       -- P[A,B]() := Q[A,B]() |G| Q[A,B]()
@@ -1577,7 +1581,7 @@ testMultiSeqGEN = TestCase $
 --  with ProcInst = P[A,B](0, ANY, 0, ANY)
 testMultiSeq1 :: Test
 testMultiSeq1 = TestCase $
-   assertEqual "test multi-sequences 1" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi-sequences 1"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
 
       -- P[A,B]() := Q[A,B]() |G| Q[A,B]()
@@ -1774,7 +1778,7 @@ testMultiSeq1 = TestCase $
 --  with ProcInst = P[A,B](0, ANY, 0, ANY)
 testMultiSeq2 :: Test
 testMultiSeq2 = TestCase $
-   assertEqual "test multi-sequences 2" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi-sequences 2"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
 
       -- P[A,B]() := Q[A,B]() |G| Q[A,B]()
@@ -1972,7 +1976,7 @@ testMultiSeq2 = TestCase $
 --  with ProcInst = P[A,B](0, ANY, 0, ANY)
 testMultiSeq3 :: Test
 testMultiSeq3 = TestCase $
-   assertEqual "test multi-sequences 3" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi-sequences 3"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
 
       -- P[A,B]() := Q[A,B]() |G| Q[A,B]()
@@ -2165,7 +2169,7 @@ testMultiSeq3 = TestCase $
 --  with ProcInst = P[A,B](0, ANY, 0, ANY)
 testMultiSeq4 :: Test
 testMultiSeq4 = TestCase $
-   assertEqual "test multi-sequences 4" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test multi-sequences 4"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
 
       -- P[A,B]() := Q[A,B]() |G| Q[A,B]()
@@ -2374,7 +2378,7 @@ testMultiSeq4 = TestCase $
 -- P[A](op1$pc$Q, op1$Q$s, op2$pc$Q, op2$Q$s, op3$pc$Q, op3$Q$s) :=
 testThreeOperands1 :: Test
 testThreeOperands1 = TestCase $
-   assertEqual "test three operands" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test three operands"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -2457,7 +2461,7 @@ testThreeOperands1 = TestCase $
 -- P[A](op1$pc$Q, op2$pc$Q, op3$pc$Q) :=
 testThreeOperands2 :: Test
 testThreeOperands2 = TestCase $
-   assertEqual "test three operands 2" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test three operands 2"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
      procInst = ProcInst procIdP [chanIdA] []
      procIdP = procIdGen "P" [chanIdA] []
@@ -2540,7 +2544,7 @@ testThreeOperands2 = TestCase $
 -- -------------------------------------------------
 testThreeOperandsDiffChannelsGEN :: Test
 testThreeOperandsDiffChannelsGEN = TestCase $
- assertEqual "test three operands - different channels" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+ assertBool "test three operands - different channels"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
  where
    procInst = ProcInst procIdP [chanIdA, chanIdB] []
    procIdP = procIdGen "P" [chanIdA] []
@@ -2701,7 +2705,7 @@ testThreeOperandsDiffChannelsGEN = TestCase $
 --  A | B [op2$pc$Q == 0, op3$pc$Q == 0] >-> P[A,B](op1$pc$Q, -1, -1)
 testThreeOperandsDiffChannels1 :: Test
 testThreeOperandsDiffChannels1 = TestCase $
- assertEqual "test three operands - different channels" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+ assertBool "test three operands - different channels"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
  where
    procInst = ProcInst procIdP [chanIdA, chanIdB] []
    procIdP = procIdGen "P" [chanIdA] []
@@ -2857,7 +2861,7 @@ testThreeOperandsDiffChannels1 = TestCase $
 -- -------------------------------------------------
 testThreeOperandsDiffChannels2 :: Test
 testThreeOperandsDiffChannels2 = TestCase $
- assertEqual "test three operands - different channels" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+ assertBool "test three operands - different channels"  $ eq_procDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
  where
    procInst = ProcInst procIdP [chanIdA, chanIdB] []
    procIdP = procIdGen "P" [chanIdA] []
@@ -2924,7 +2928,7 @@ testThreeOperandsDiffChannels2 = TestCase $
 -- // [1,2] AND 3: NO
 testThreeOperandsDiffChannels3 :: Test
 testThreeOperandsDiffChannels3 = TestCase $
- assertEqual "test three operands - different channels" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+ assertBool "test three operands - different channels" $ eq_procDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
  where
    procInst = ProcInst procIdP [chanIdA, chanIdB] []
    procIdP = procIdGen "P" [chanIdA] []
@@ -2997,7 +3001,7 @@ testThreeOperandsDiffChannels3 = TestCase $
 -- NONE
 testThreeOperandsDiffChannels4 :: Test
 testThreeOperandsDiffChannels4 = TestCase $
- assertEqual "test three operands - different channels" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+ assertBool "test three operands - different channels" $ eq_procDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
  where
    procInst = ProcInst procIdP [chanIdA, chanIdB] []
    procIdP = procIdGen "P" [chanIdA] []
@@ -3053,7 +3057,7 @@ testThreeOperandsDiffChannels4 = TestCase $
 
 testChannelInst :: Test
 testChannelInst = TestCase $
-   assertEqual "test channel instantiations" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test channel instantiations" $ eq_procDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdB] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -3117,7 +3121,7 @@ testChannelInst = TestCase $
 
 testChannelInst2 :: Test
 testChannelInst2 = TestCase $
-   assertEqual "test channel instantiations 2" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test channel instantiations 2" $ eq_procDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -3202,7 +3206,7 @@ testChannelInst2 = TestCase $
 
 testChannelInst3 :: Test
 testChannelInst3 = TestCase $
-   assertEqual "test channel instantiations 2" (procInst', procDefP') (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+   assertBool "test channel instantiations 2" $ eq_procDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
       procInst = ProcInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -3283,7 +3287,7 @@ testChannelInst3 = TestCase $
 -- testLoop1 = TestCase $
 --   let err =  "loop (LPEPar) detected in P" in
 --   // TODO: handle result with error
---   assertEqual "test loop 1" (_, _) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+--   assertBool "test loop 1" (_, _) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
 --  where
 --     procIdP = procIdGen "P" [] []
 --     procInst = ProcInst procIdP [] []
@@ -3303,7 +3307,7 @@ testChannelInst3 = TestCase $
 -- testLoop2 = TestCase $
 --   let err =  "loop (LPEPar) detected in P" in
 --   // TODO: handle result with error
---   assertEqual "test loop 2" (_, _) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+--   assertBool "test loop 2" (_, _) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
 --  where
 --     procIdP = procIdGen "P" [] []
 --     procIdQ = procIdGen "Q" [] []
@@ -3324,7 +3328,7 @@ testChannelInst3 = TestCase $
 -- testLoop3 :: Test
 -- testLoop3 = TestCase $
 --   let err =  "loop (LPEPar) detected in P" in
---   assertEqual "test loop 1" (procInst', procDefP', err) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+--   assertBool "test loop 1" (procInst', procDefP', err) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
 --  where
 --     procIdP = procIdGen "P" [] []
 --     procIdQ = procIdGen "Q" [] []
