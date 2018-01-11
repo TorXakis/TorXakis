@@ -18,19 +18,20 @@ import           Data.Data
 import           Data.Monoid
 import qualified Data.Text       as T
 import           GHC.Generics    (Generic)
-import           Id
 
 -- Local imports.
+import           Id
 import           Name
-import           SortId
+import           Ref
+import           SortDef
 import           SortOf
 import           Variable
 
 
 data VarId = VarId
-    { name    :: Name             --smallid
+    { name    :: Name             -- smallid
     , unid    :: Id
-    , varsort :: SortId
+    , varsort :: TRef SortDef
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Variable VarId where
@@ -43,4 +44,4 @@ instance Resettable VarId
 instance Identifiable VarId
 
 instance SortOf VarId  where
-  sortOf (VarId _nm _unid srt)                    = srt
+  sortOf (VarId _nm _unid srt) = srt

@@ -9,10 +9,11 @@ module Variable
 where
 
 import           Name
-import           SortId
+import           Ref
+import           SortDef
 
 class (Eq v, Ord v, Read v, Show v) => Variable v where
   vname  :: v -> Name
   vunid  :: v -> Int
-  vsort  :: v -> SortId
-  cstrVariable  :: String -> Int -> SortId -> v
+  vsort  :: v -> TRef SortDef
+  cstrVariable  :: String -> Int -> TRef SortDef -> v

@@ -31,9 +31,9 @@ import           Variable
 -- | Determine the free variables in Value Expression.
 freeVars :: (Variable v) => ValExpr v -> [v]
 freeVars (view -> Vfunc _fid vexps)        =  List.nub $ concatMap freeVars vexps
-freeVars (view -> Vcstr _cid vexps)        =  List.nub $ concatMap freeVars vexps
-freeVars (view -> Viscstr _cid vexp)       =  freeVars vexp
-freeVars (view -> Vaccess _cid _p vexp)    =  freeVars vexp
+freeVars (view -> Vcstr _adtRf _cRf vexps)        =  List.nub $ concatMap freeVars vexps
+freeVars (view -> Viscstr _adtRf _cRf vexp)       =  freeVars vexp
+freeVars (view -> Vaccess _adtRf _cRf _p _sortDef vexp)    =  freeVars vexp
 freeVars (view -> Vconst _const)           =  []
 freeVars (view -> Vvar vid)                =  [vid]
 freeVars (view -> Vite cond vexp1 vexp2)   =  List.nub $ freeVars cond ++

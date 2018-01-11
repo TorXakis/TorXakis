@@ -15,17 +15,24 @@ See LICENSE at root directory of this repository.
 --
 -- Sort Definition
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 module SortDef
 where
 
-import GHC.Generics (Generic)
 import Control.DeepSeq
+import Data.Data
+import GHC.Generics (Generic)
+
+import Id
 
 -- | SortDef has no information 
 data  SortDef        = SortDef
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
+     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+instance Identifiable SortDef where
+    getId _ = Nothing
+
+instance Resettable SortDef where
+    reset = id

@@ -58,7 +58,7 @@ data ParamIncrementChoice =
 randValExprsSolveIncrementChoice :: (Variable v) => ParamIncrementChoice -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
 randValExprsSolveIncrementChoice p freevars exprs  =
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
-    if all ( (sortIdBool == ) . sortOf ) exprs
+    if all ( (sortRefBool == ) . sortOf ) exprs
     then do
         push
         addDeclarations freevars
@@ -95,7 +95,7 @@ toRegexString   c = T.singleton (Char.chr c)
 randomSolve :: Variable v => ParamIncrementChoice -> [(v, Int)] -> Int -> SMT ()
 randomSolve _ []        _     = return ()                                         -- empty list -> done
 randomSolve _ ((_,0):_) _     = error "At maximum depth: should not be added"
-randomSolve p ((v,_):xs) i    | vsort v == sortIdBool =
+randomSolve p ((v,_):xs) i    | vsort v == sortRefBool =
     do
         b <- lift randomIO
         c <- randomSolveVar v (choicesFunc v b)
@@ -117,7 +117,7 @@ randomSolve p ((v,_):xs) i    | vsort v == sortIdBool =
                                                 ]
         choicesFunc _ _ _        = error "RandIncrementChoice: impossible choice - bool"
 
-randomSolve p ((v,_):xs) i    | vsort v == sortIdInt =
+randomSolve p ((v,_):xs) i    | vsort v == sortRefInt =
     do
         let range = intRange p
         b <- lift $ randomRIO (- range, range)
@@ -144,7 +144,7 @@ randomSolve p ((v,_):xs) i    | vsort v == sortIdInt =
                                                ]
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - int"
 
-randomSolve p ((v,-123):xs) i    | vsort v == sortIdString =                 -- abuse depth to encode char versus string
+randomSolve p ((v,-123):xs) i    | vsort v == sortRefString =                 -- abuse depth to encode char versus string
     do
         r <- lift $ randomRIO (0,127)
         s <- randomSolveVar v (choicesFunc v r)
@@ -177,7 +177,7 @@ randomSolve p ((v,-123):xs) i    | vsort v == sortIdString =                 -- 
         choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - char"
 
 
-randomSolve p ((v,d):xs) i    | vsort v == sortIdString =
+randomSolve p ((v,d):xs) i    | vsort v == sortRefString =
     do
         r <- lift $ randomRIO (0,maxGeneratedStringLength p)
         c <- randomSolveVar v (choicesFunc v r)
@@ -187,7 +187,7 @@ randomSolve p ((v,d):xs) i    | vsort v == sortIdString =
                                 addAssertions [cstrEqual (cstrLength (cstrVar v)) (cstrConst (Cint (toInteger l)))]
                                 if l > 0 && d > 1
                                 then do
-                                        let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortIdString) [i .. i+l-1]
+                                        let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortRefString) [i .. i+l-1]
                                         addDeclarations charVars
                                         let exprs = map (\(vNew,pos) -> cstrEqual (cstrVar vNew) (cstrAt (cstrVar v) (cstrConst (Cint pos)))) (zip charVars [0..])
                                         addAssertions exprs

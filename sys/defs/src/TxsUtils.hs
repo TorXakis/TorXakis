@@ -4,31 +4,19 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
--- ----------------------------------------------------------------------------------------- --
-module TxsUtils
-
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- Some Utilities for TxsDefs
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --
-
-where
+module TxsUtils where
 
 import qualified Data.Map    as Map
 import qualified Data.Set    as Set
 
-import           CstrId
 import qualified FreeMonoidX as FMX
 import           FuncDef
 import           FuncId
 import           Name
-import           SortId
 import           StdTDefs
 import           TxsDefs
 import           ValExpr
@@ -37,7 +25,6 @@ import           VarId
 
 -- ----------------------------------------------------------------------------------------- --
 -- identifiers: signatures, binding
-
 
 sig :: Ident -> Ident
 sig ( IdSort   (SortId nm _uid          ) ) = IdSort   (SortId nm 0          )

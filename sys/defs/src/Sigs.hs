@@ -32,7 +32,7 @@ import           GHC.Generics    (Generic)
 
 import           ChanId
 import           ProcId
-import           SortId
+import           SortDef
 
 import           Data.Text       (Text)
 import           FuncTable
@@ -40,7 +40,7 @@ import           FuncTable
 data Sigs v = Sigs  { chan :: [ChanId]
                     , func :: FuncTable v
                     , pro  :: [ProcId]
-                    , sort :: Map.Map Text SortId
+                    , sort :: Map.Map Text SortDef
                     } deriving (Show, Generic, NFData)
 
 empty :: Sigs v

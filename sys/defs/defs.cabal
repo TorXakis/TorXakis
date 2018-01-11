@@ -36,8 +36,6 @@ library
                       
   other-modules:        BehExprDefs
                       , ConnectionDefs
-                      , Ident
-                      , TxsDef
                       , CnectDef
                       , MapperDef
                       , ModelDef

@@ -39,11 +39,13 @@ import qualified Data.Map        as Map
 import           Data.Maybe
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
-import           SortId
+
+import           Identifier
+import           SortDef
 import           ValExpr
 
-data Signature = Signature  { sortArgs :: [SortId]
-                            , sortRet  :: SortId
+data Signature = Signature  { sortArgs :: [TRef SortDef]
+                            , sortRet  :: TRef SortDef
                             }
   deriving (Eq, Ord, Read, Show, Generic, NFData)
 

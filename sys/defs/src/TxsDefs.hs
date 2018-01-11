@@ -18,14 +18,13 @@ See LICENSE at root directory of this repository.
 module TxsDefs
 ( TxsDefs(..)
 , TxsDefs.empty
-, TxsDefs.fromList
-, TxsDefs.toList
-, TxsDefs.lookup
-, TxsDefs.keys
-, TxsDefs.elems
-, TxsDefs.union
-, TxsDefs.insert
-, TxsDef(..)
+-- , TxsDefs.fromList
+-- , TxsDefs.toList
+-- , TxsDefs.lookup
+-- , TxsDefs.keys
+-- , TxsDefs.elems
+-- , TxsDefs.union
+-- , TxsDefs.insert
 , VarEnv
 , VExpr
 , VEnv
@@ -47,21 +46,17 @@ module TxsDefs
 , module X
 )
 where
-import           Control.Arrow   ((***))
 import           Control.DeepSeq
 import qualified Data.Map        as Map
 import           GHC.Generics    (Generic)
 
 import           BehExprDefs     as X
-import           Ident           as X
-import           TxsDef          as X
 import           ConnectionDefs  as X
 
+import           ADTDef
 import           ChanId
 import           CnectDef
 import           CnectId
-import           CstrDef
-import           CstrId
 import           FuncDef
 import           FuncId
 import           GoalId
@@ -73,19 +68,11 @@ import           ProcDef
 import           ProcId
 import           PurpDef
 import           PurpId
-import           SortDef
-import           SortId
 import           StatId
 import           VarEnv
 import           VarId
 
-
--- ----------------------------------------------------------------------------------------- --
--- torxakis definitions
-
-
-data  TxsDefs  =  TxsDefs { sortDefs   :: Map.Map SortId SortDef
-                          , cstrDefs   :: Map.Map CstrId CstrDef
+data  TxsDefs  =  TxsDefs { adtDefs    :: ADTDefs
                           , funcDefs   :: Map.Map FuncId (FuncDef VarId)
                           , procDefs   :: Map.Map ProcId ProcDef
                           , chanDefs   :: Map.Map ChanId ()            -- only for parsing, not envisioned for computation
@@ -100,7 +87,7 @@ data  TxsDefs  =  TxsDefs { sortDefs   :: Map.Map SortId SortDef
                   deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 empty :: TxsDefs
-empty = TxsDefs  Map.empty
+empty = TxsDefs  ADTDef.empty
                  Map.empty
                  Map.empty
                  Map.empty
@@ -111,15 +98,8 @@ empty = TxsDefs  Map.empty
                  Map.empty
                  Map.empty
                  Map.empty
-                 Map.empty
-
+{-
 lookup :: Ident -> TxsDefs -> Maybe TxsDef
-lookup (IdSort s) txsdefs = case Map.lookup s (sortDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just d  -> Just (DefSort d)
-lookup (IdCstr s) txsdefs = case Map.lookup s (cstrDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just d  -> Just (DefCstr d)
 lookup (IdFunc s) txsdefs = case Map.lookup s (funcDefs txsdefs) of
                                 Nothing -> Nothing
                                 Just d  -> Just (DefFunc d)
@@ -152,8 +132,6 @@ lookup (IdCnect s) txsdefs = case Map.lookup s (cnectDefs txsdefs) of
                                 Just d  -> Just (DefCnect d)
 
 insert :: Ident -> TxsDef -> TxsDefs -> TxsDefs
-insert (IdSort s)   (DefSort d)   t     = t { sortDefs   = Map.insert s d  (sortDefs t)   }
-insert (IdCstr s)   (DefCstr d)   t     = t { cstrDefs   = Map.insert s d  (cstrDefs t)   }
 insert (IdFunc s)   (DefFunc d)   t     = t { funcDefs   = Map.insert s d  (funcDefs t)   }
 insert (IdProc s)   (DefProc d)   t     = t { procDefs   = Map.insert s d  (procDefs t)   }
 insert (IdChan s)   DefChan       t     = t { chanDefs   = Map.insert s () (chanDefs t)   }
@@ -174,9 +152,7 @@ fromList = foldl addElem empty
 
 
 toList :: TxsDefs -> [(Ident, TxsDef)]
-toList t =      map (IdSort Control.Arrow.*** DefSort)          (Map.toList (sortDefs t))
-            ++  map (IdCstr Control.Arrow.*** DefCstr)          (Map.toList (cstrDefs t))
-            ++  map (IdFunc Control.Arrow.*** DefFunc)          (Map.toList (funcDefs t))
+toList t =      map (IdFunc Control.Arrow.*** DefFunc)          (Map.toList (funcDefs t))
             ++  map (IdProc Control.Arrow.*** DefProc)          (Map.toList (procDefs t))
             ++  map (IdChan Control.Arrow.*** const DefChan)    (Map.toList (chanDefs t))
             ++  map (IdVar Control.Arrow.*** const DefVar)      (Map.toList (varDefs t))
@@ -189,9 +165,7 @@ toList t =      map (IdSort Control.Arrow.*** DefSort)          (Map.toList (sor
 
 
 keys :: TxsDefs -> [Ident]
-keys t =        map IdSort      (Map.keys (sortDefs t))
-            ++  map IdCstr      (Map.keys (cstrDefs t))
-            ++  map IdFunc      (Map.keys (funcDefs t))
+keys t =        map IdFunc      (Map.keys (funcDefs t))
             ++  map IdProc      (Map.keys (procDefs t))
             ++  map IdChan      (Map.keys (chanDefs t))
             ++  map IdVar       (Map.keys (varDefs t))
@@ -203,9 +177,7 @@ keys t =        map IdSort      (Map.keys (sortDefs t))
             ++  map IdCnect     (Map.keys (cnectDefs t))
 
 elems :: TxsDefs -> [TxsDef]
-elems t =       map DefSort         (Map.elems (sortDefs t))
-            ++  map DefCstr         (Map.elems (cstrDefs t))
-            ++  map DefFunc         (Map.elems (funcDefs t))
+elems t =       map DefFunc         (Map.elems (funcDefs t))
             ++  map DefProc         (Map.elems (procDefs t))
             ++  map (const DefChan) (Map.elems (chanDefs t))
             ++  map (const DefVar)  (Map.elems (varDefs t))
@@ -219,8 +191,6 @@ elems t =       map DefSort         (Map.elems (sortDefs t))
 
 union :: TxsDefs -> TxsDefs -> TxsDefs
 union a b = TxsDefs
-                (Map.union (sortDefs a)  (sortDefs b)   )
-                (Map.union (cstrDefs a)  (cstrDefs b)   )
                 (Map.union (funcDefs a)  (funcDefs b)   )
                 (Map.union (procDefs a)  (procDefs b)   )
                 (Map.union (chanDefs a)  (chanDefs b)   )
@@ -231,8 +201,4 @@ union a b = TxsDefs
                 (Map.union (goalDefs a)  (goalDefs b)   )
                 (Map.union (mapperDefs a)(mapperDefs b) )
                 (Map.union (cnectDefs a) (cnectDefs b)  )
-
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+-}

@@ -3,14 +3,23 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  StdTDefs
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+-- 
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Predefined, Standard TorXakis Data Types : Bool, Int, Char, String.
+-----------------------------------------------------------------------------
 
-
--- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE MonoLocalBinds    #-}
--- | Predefined, Standard TorXakis Data Types : Bool, Int, Char, String.
 module StdTDefs
 ( eqName
 , neqName
@@ -44,9 +53,7 @@ module StdTDefs
 , iscstrHandler
 , accessHandler
 
-, stdSortTable
 , stdFuncTable
-, stdTDefs
 
 , chanIdExit
 , chanIdIstep
@@ -57,43 +64,19 @@ module StdTDefs
 )
 where
 
-import           Control.Arrow         ((***))
 import qualified Data.Map              as Map
 import qualified Data.Set              as Set
 import           Data.Text             (Text)
 
 import           ChanId
-import           CstrId
-import           FuncDef
+import           ConstructorDef
 import           FuncId
 import           FuncTable
-import           Ident
+import           Identifier
 import           SortDef
-import           SortId
 import           SortOf
-import           TxsDef
+import           StandardSortRefs
 import           ValExpr
-import           VarId
-
-stdSortTable :: Map.Map Text SortId
-stdSortTable = Map.fromList [ ("Bool",   sortIdBool)
-                            , ("Int",    sortIdInt)
-                            , ("String", sortIdString)
-                            , ("Regex",  sortIdRegex)
-                            ]
-
-stdSortDefs' :: [ ( SortId,       SortDef  ) ]
-stdSortDefs' = [ (sortIdBool,   SortDef)
-               , (sortIdInt,    SortDef)
-               , (sortIdString, SortDef)
-               , (sortIdRegex,  SortDef)
-               ]
-
-stdSortDefs :: [ ( Ident,       TxsDef  ) ]
-stdSortDefs = map (IdSort Control.Arrow.*** DefSort) stdSortDefs'
-
--- ----------------------------------------------------------------------------------------- --
--- standard function names
 
 eqName, neqName :: Text
 eqName   =  "=="
@@ -106,9 +89,6 @@ fromStringName = "fromString"
 toXmlName, fromXmlName :: Text
 toXmlName   = "toXml"
 fromXmlName = "fromXml"
-
--- ----------------------------------------------------------------------------------------- --
--- Helper function
 
 oneArgumentHandler :: (ValExpr v -> ValExpr v) -> Handler v
 oneArgumentHandler f [a] = f a
@@ -124,202 +104,122 @@ equalHandler = twoArgumentHandler cstrEqual
 notEqualHandler :: Ord v => Handler v
 notEqualHandler = twoArgumentHandler (\a b -> cstrNot (cstrEqual a b))
 
-cstrHandler :: CstrId -> Handler v
+cstrHandler :: TRef SortDef -> TRef ConstructorDef -> Handler v
 cstrHandler = cstrCstr
 
-iscstrHandler :: CstrId -> Handler v
-iscstrHandler c = oneArgumentHandler (cstrIsCstr c)
+iscstrHandler :: TRef SortDef -> TRef ConstructorDef -> Handler v
+iscstrHandler a c = oneArgumentHandler (cstrIsCstr a c)
 
-accessHandler :: CstrId -> Int -> Handler v
-accessHandler c p = oneArgumentHandler (cstrAccess c p)
+accessHandler :: TRef SortDef -> TRef ConstructorDef -> Int -> TRef SortDef -> Handler v
+accessHandler a c p s = oneArgumentHandler (cstrAccess a c p s)
 
--- ----------------------------------------------------------------------------------------- --
--- FuncTable
 stdFuncTable :: (Ord v, Integral (ValExpr v)) => FuncTable v
 stdFuncTable = FuncTable ( Map.fromList
-    [ ( eqName , Map.fromList [ ( Signature [sortIdBool,     sortIdBool]    sortIdBool, equalHandler )
-                              , ( Signature [sortIdInt,      sortIdInt]     sortIdBool, equalHandler )
-                              , ( Signature [sortIdString,   sortIdString]  sortIdBool, equalHandler )
+    [ ( eqName , Map.fromList [ ( Signature [sortRefBool,     sortRefBool]    sortRefBool, equalHandler )
+                              , ( Signature [sortRefInt,      sortRefInt]     sortRefBool, equalHandler )
+                              , ( Signature [sortRefString,   sortRefString]  sortRefBool, equalHandler )
                               ] )
-    , ( neqName, Map.fromList [ ( Signature [sortIdBool,     sortIdBool]    sortIdBool, notEqualHandler )
-                              , ( Signature [sortIdInt,      sortIdInt]     sortIdBool, notEqualHandler )
-                              , ( Signature [sortIdString,   sortIdString]  sortIdBool, notEqualHandler )
+    , ( neqName, Map.fromList [ ( Signature [sortRefBool,     sortRefBool]    sortRefBool, notEqualHandler )
+                              , ( Signature [sortRefInt,      sortRefInt]     sortRefBool, notEqualHandler )
+                              , ( Signature [sortRefString,   sortRefString]  sortRefBool, notEqualHandler )
                               ] )
-    , (toStringName, Map.fromList [ ( Signature [sortIdBool]    sortIdString, cstrPredef SSB funcIdBoolToString )
-                                  , ( Signature [sortIdInt]     sortIdString, cstrPredef SSI funcIdIntToString )
-                                  , ( Signature [sortIdString]  sortIdString, cstrPredef SSS funcIdStringToString )
+    , (toStringName, Map.fromList [ ( Signature [sortRefBool]    sortRefString, cstrPredef SSB funcIdBoolToString )
+                                  , ( Signature [sortRefInt]     sortRefString, cstrPredef SSI funcIdIntToString )
+                                  , ( Signature [sortRefString]  sortRefString, cstrPredef SSS funcIdStringToString )
                                   ] )
-    , (fromStringName, Map.fromList [ ( Signature [sortIdString]  sortIdBool,   cstrPredef SSB funcIdBoolFromString )
-                                    , ( Signature [sortIdString]  sortIdInt,    cstrPredef SSI funcIdIntFromString )
-                                    , ( Signature [sortIdString]  sortIdString, cstrPredef SSS funcIdStringFromString )
+    , (fromStringName, Map.fromList [ ( Signature [sortRefString]  sortRefBool,   cstrPredef SSB funcIdBoolFromString )
+                                    , ( Signature [sortRefString]  sortRefInt,    cstrPredef SSI funcIdIntFromString )
+                                    , ( Signature [sortRefString]  sortRefString, cstrPredef SSS funcIdStringFromString )
                                     ] )
-    , (toXmlName, Map.fromList [ ( Signature [sortIdBool]    sortIdString, cstrPredef SSB funcIdBoolToXml )
-                               , ( Signature [sortIdInt]     sortIdString, cstrPredef SSI funcIdIntToXml )
-                               , ( Signature [sortIdString]  sortIdString, cstrPredef SSS funcIdStringToXml )
+    , (toXmlName, Map.fromList [ ( Signature [sortRefBool]    sortRefString, cstrPredef SSB funcIdBoolToXml )
+                               , ( Signature [sortRefInt]     sortRefString, cstrPredef SSI funcIdIntToXml )
+                               , ( Signature [sortRefString]  sortRefString, cstrPredef SSS funcIdStringToXml )
                                ] )
-    , (fromXmlName, Map.fromList [ ( Signature [sortIdString]  sortIdBool,     cstrPredef SSB funcIdBoolFromXml )
-                                 , ( Signature [sortIdString]  sortIdInt,      cstrPredef SSI funcIdIntFromXml )
-                                 , ( Signature [sortIdString]  sortIdString,   cstrPredef SSS funcIdStringFromXml )
+    , (fromXmlName, Map.fromList [ ( Signature [sortRefString]  sortRefBool,     cstrPredef SSB funcIdBoolFromXml )
+                                 , ( Signature [sortRefString]  sortRefInt,      cstrPredef SSI funcIdIntFromXml )
+                                 , ( Signature [sortRefString]  sortRefString,   cstrPredef SSS funcIdStringFromXml )
                                  ] )
-    , ("not",  Map.fromList [ ( Signature [sortIdBool] sortIdBool, oneArgumentHandler cstrNot ) ] )
-    , ("/\\",  Map.fromList [ ( Signature [sortIdBool,sortIdBool] sortIdBool, cstrAnd . Set.fromList ) ] )
-    , ("\\/",  Map.fromList [ ( Signature [sortIdBool,sortIdBool] sortIdBool, cstrOr . Set.fromList ) ] )
-    , ("\\|/", Map.fromList [ ( Signature [sortIdBool,sortIdBool] sortIdBool, twoArgumentHandler cstrXor) ] )
-    , ("=>",   Map.fromList [ ( Signature [sortIdBool,sortIdBool] sortIdBool, twoArgumentHandler cstrImplies ) ] )
-    , ("<=>",  Map.fromList [ ( Signature [sortIdBool,sortIdBool] sortIdBool, twoArgumentHandler cstrEqual ) ] )
+    , ("not",  Map.fromList [ ( Signature [sortRefBool] sortRefBool, oneArgumentHandler cstrNot ) ] )
+    , ("/\\",  Map.fromList [ ( Signature [sortRefBool,sortRefBool] sortRefBool, cstrAnd . Set.fromList ) ] )
+    , ("\\/",  Map.fromList [ ( Signature [sortRefBool,sortRefBool] sortRefBool, cstrOr . Set.fromList ) ] )
+    , ("\\|/", Map.fromList [ ( Signature [sortRefBool,sortRefBool] sortRefBool, twoArgumentHandler cstrXor) ] )
+    , ("=>",   Map.fromList [ ( Signature [sortRefBool,sortRefBool] sortRefBool, twoArgumentHandler cstrImplies ) ] )
+    , ("<=>",  Map.fromList [ ( Signature [sortRefBool,sortRefBool] sortRefBool, twoArgumentHandler cstrEqual ) ] )
 
-    , ("+",   Map.fromList [ ( Signature [sortIdInt] sortIdInt, oneArgumentHandler cstrUnaryPlus)
-                           , ( Signature [sortIdInt,sortIdInt] sortIdInt, twoArgumentHandler cstrPlus )
+    , ("+",   Map.fromList [ ( Signature [sortRefInt] sortRefInt, oneArgumentHandler cstrUnaryPlus)
+                           , ( Signature [sortRefInt,sortRefInt] sortRefInt, twoArgumentHandler cstrPlus )
                            ] )
-    , ("-",   Map.fromList [ ( Signature [sortIdInt] sortIdInt, oneArgumentHandler cstrUnaryMinus )
-                           , ( Signature [sortIdInt,sortIdInt] sortIdInt, twoArgumentHandler cstrMinus )
+    , ("-",   Map.fromList [ ( Signature [sortRefInt] sortRefInt, oneArgumentHandler cstrUnaryMinus )
+                           , ( Signature [sortRefInt,sortRefInt] sortRefInt, twoArgumentHandler cstrMinus )
                            ] )
-    , ("abs", Map.fromList [ ( Signature [sortIdInt] sortIdInt, oneArgumentHandler cstrAbs ) ] )
-    , ("*",   Map.fromList [ ( Signature [sortIdInt,sortIdInt] sortIdInt, twoArgumentHandler cstrTimes ) ] )
-    , ("/",   Map.fromList [ ( Signature [sortIdInt,sortIdInt] sortIdInt, twoArgumentHandler cstrDivide ) ] )
-    , ("%",   Map.fromList [ ( Signature [sortIdInt,sortIdInt] sortIdInt, twoArgumentHandler cstrModulo ) ] )
-    , ("<",   Map.fromList [ ( Signature [sortIdInt,sortIdInt] sortIdBool, twoArgumentHandler cstrLT ) ] )
-    , ("<=",  Map.fromList [ ( Signature [sortIdInt,sortIdInt] sortIdBool, twoArgumentHandler cstrLE ) ] )
-    , (">",   Map.fromList [ ( Signature [sortIdInt,sortIdInt] sortIdBool, twoArgumentHandler cstrGT ) ] )
-    , (">=",  Map.fromList [ ( Signature [sortIdInt,sortIdInt] sortIdBool, twoArgumentHandler cstrGE ) ] )
+    , ("abs", Map.fromList [ ( Signature [sortRefInt] sortRefInt, oneArgumentHandler cstrAbs ) ] )
+    , ("*",   Map.fromList [ ( Signature [sortRefInt,sortRefInt] sortRefInt, twoArgumentHandler cstrTimes ) ] )
+    , ("/",   Map.fromList [ ( Signature [sortRefInt,sortRefInt] sortRefInt, twoArgumentHandler cstrDivide ) ] )
+    , ("%",   Map.fromList [ ( Signature [sortRefInt,sortRefInt] sortRefInt, twoArgumentHandler cstrModulo ) ] )
+    , ("<",   Map.fromList [ ( Signature [sortRefInt,sortRefInt] sortRefBool, twoArgumentHandler cstrLT ) ] )
+    , ("<=",  Map.fromList [ ( Signature [sortRefInt,sortRefInt] sortRefBool, twoArgumentHandler cstrLE ) ] )
+    , (">",   Map.fromList [ ( Signature [sortRefInt,sortRefInt] sortRefBool, twoArgumentHandler cstrGT ) ] )
+    , (">=",  Map.fromList [ ( Signature [sortRefInt,sortRefInt] sortRefBool, twoArgumentHandler cstrGE ) ] )
 
-    , ("len",  Map.fromList [ ( Signature [sortIdString] sortIdInt, oneArgumentHandler cstrLength ) ] )
-    , ("at",   Map.fromList [ ( Signature [sortIdString,sortIdInt] sortIdString, twoArgumentHandler cstrAt ) ] )
-    , ("++",   Map.fromList [ ( Signature [sortIdString,sortIdString] sortIdString, cstrConcat ) ] )
-    , ("takeWhile",    Map.fromList [ ( Signature [sortIdString,sortIdString] sortIdString, cstrPredef SSS funcIdtakeWhile ) ] )
-    , ("takeWhileNot", Map.fromList [ ( Signature [sortIdString,sortIdString] sortIdString, cstrPredef SSS funcIdtakeWhileNot ) ] )
-    , ("dropWhile",    Map.fromList [ ( Signature [sortIdString,sortIdString] sortIdString, cstrPredef SSS funcIddropWhile ) ] )
-    , ("dropWhileNot", Map.fromList [ ( Signature [sortIdString,sortIdString] sortIdString, cstrPredef SSS funcIddropWhileNot ) ] )
+    , ("len",  Map.fromList [ ( Signature [sortRefString] sortRefInt, oneArgumentHandler cstrLength ) ] )
+    , ("at",   Map.fromList [ ( Signature [sortRefString,sortRefInt] sortRefString, twoArgumentHandler cstrAt ) ] )
+    , ("++",   Map.fromList [ ( Signature [sortRefString,sortRefString] sortRefString, cstrConcat ) ] )
+    , ("takeWhile",    Map.fromList [ ( Signature [sortRefString,sortRefString] sortRefString, cstrPredef SSS funcIdtakeWhile ) ] )
+    , ("takeWhileNot", Map.fromList [ ( Signature [sortRefString,sortRefString] sortRefString, cstrPredef SSS funcIdtakeWhileNot ) ] )
+    , ("dropWhile",    Map.fromList [ ( Signature [sortRefString,sortRefString] sortRefString, cstrPredef SSS funcIddropWhile ) ] )
+    , ("dropWhileNot", Map.fromList [ ( Signature [sortRefString,sortRefString] sortRefString, cstrPredef SSS funcIddropWhileNot ) ] )
 
-    , ("strinre",   Map.fromList [ ( Signature [sortIdString,sortIdRegex] sortIdBool, twoArgumentHandler cstrStrInRe ) ] )
+    , ("strinre",   Map.fromList [ ( Signature [sortRefString,sortRefRegex] sortRefBool, twoArgumentHandler cstrStrInRe ) ] )
 
     ] )
 
 -- ----------------------------------------------------------------------------------------- --
 -- SSB :  Standard Sort Bool
 
-
 funcIdBoolToString :: FuncId
-funcIdBoolToString     = FuncId toStringName   213 [sortIdBool]             sortIdString
+funcIdBoolToString     = FuncId toStringName   213 [sortRefBool]             sortRefString
 funcIdBoolFromString :: FuncId
-funcIdBoolFromString   = FuncId fromStringName 214 [sortIdString]           sortIdBool
+funcIdBoolFromString   = FuncId fromStringName 214 [sortRefString]           sortRefBool
 
 funcIdBoolToXml :: FuncId
-funcIdBoolToXml        = FuncId toXmlName      215 [sortIdBool]             sortIdString
+funcIdBoolToXml        = FuncId toXmlName      215 [sortRefBool]             sortRefString
 funcIdBoolFromXml :: FuncId
-funcIdBoolFromXml      = FuncId fromXmlName    216 [sortIdString]           sortIdBool
-
-stdFuncDefsBool' :: [ ( FuncId, FuncDef VarId) ]
-stdFuncDefsBool'
-  =  [ ( funcIdBoolToString,   let x = VarId "x" 243 sortIdBool
-                                    in FuncDef [x] (cstrPredef SSB funcIdBoolToString [cstrVar x]) )
-     , ( funcIdBoolFromString, let x = VarId "x" 244 sortIdString
-                                    in FuncDef [x] (cstrPredef SSB funcIdBoolFromString [cstrVar x]) )
-     , ( funcIdBoolToXml,      let x = VarId "x" 245 sortIdBool
-                                    in FuncDef [x] (cstrPredef SSB funcIdBoolToXml [cstrVar x]) )
-     , ( funcIdBoolFromXml,    let x = VarId "x" 246 sortIdString
-                                    in FuncDef [x] (cstrPredef SSB funcIdBoolFromXml [cstrVar x]) )
-     ]
-
-stdFuncDefsBool :: [ ( Ident, TxsDef ) ]
-stdFuncDefsBool = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsBool'
+funcIdBoolFromXml      = FuncId fromXmlName    216 [sortRefString]           sortRefBool
 
 -- ----------------------------------------------------------------------------------------- --
 -- SSI :  Standard Sort Int
 
 funcIdIntToString :: FuncId
-funcIdIntToString      = FuncId toStringName       301 [sortIdInt]            sortIdString
+funcIdIntToString      = FuncId toStringName       301 [sortRefInt]            sortRefString
 funcIdIntFromString :: FuncId
-funcIdIntFromString    = FuncId fromStringName     302 [sortIdString]         sortIdInt
+funcIdIntFromString    = FuncId fromStringName     302 [sortRefString]         sortRefInt
 
 funcIdIntToXml :: FuncId
-funcIdIntToXml         = FuncId toXmlName          303 [sortIdInt]            sortIdString
+funcIdIntToXml         = FuncId toXmlName          303 [sortRefInt]            sortRefString
 funcIdIntFromXml :: FuncId
-funcIdIntFromXml       = FuncId fromXmlName        304 [sortIdString]         sortIdInt
+funcIdIntFromXml       = FuncId fromXmlName        304 [sortRefString]         sortRefInt
 
-
-stdFuncDefsInt' :: [ ( FuncId, FuncDef VarId) ]
-stdFuncDefsInt'
-  =  [ ( funcIdIntToString,    let x = VarId "x" 341 sortIdInt
-                                    in FuncDef [x] (cstrPredef SSI funcIdIntToString [cstrVar x]) )
-     , ( funcIdIntFromString,  let x = VarId "x" 342 sortIdString
-                                    in FuncDef [x] (cstrPredef SSI funcIdIntFromString [cstrVar x]) )
-     , ( funcIdIntToXml,       let x = VarId "x" 343 sortIdInt
-                                    in FuncDef [x] (cstrPredef SSI funcIdIntToXml [cstrVar x]) )
-     , ( funcIdIntFromXml,     let x = VarId "x" 344 sortIdString
-                                    in FuncDef [x] (cstrPredef SSI funcIdIntFromXml [cstrVar x]) )
-     ]
-
-stdFuncDefsInt :: [ ( Ident, TxsDef ) ]
-stdFuncDefsInt = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsInt'
 -- ----------------------------------------------------------------------------------------- --
 -- SSS :  Standard Sort String
 
 funcIdStringToString :: FuncId
-funcIdStringToString       = FuncId toStringName       525 [sortIdString]                 sortIdString
+funcIdStringToString       = FuncId toStringName       525 [sortRefString]                 sortRefString
 funcIdStringFromString :: FuncId
-funcIdStringFromString     = FuncId fromStringName     526 [sortIdString]                 sortIdString
+funcIdStringFromString     = FuncId fromStringName     526 [sortRefString]                 sortRefString
  
 funcIdStringToXml :: FuncId
-funcIdStringToXml          = FuncId toXmlName          527 [sortIdString]                 sortIdString
+funcIdStringToXml          = FuncId toXmlName          527 [sortRefString]                 sortRefString
 funcIdStringFromXml :: FuncId
-funcIdStringFromXml        = FuncId fromXmlName        528 [sortIdString]                 sortIdString
+funcIdStringFromXml        = FuncId fromXmlName        528 [sortRefString]                 sortRefString
 
 funcIdtakeWhile :: FuncId
-funcIdtakeWhile            = FuncId "takeWhile"        533 [sortIdString,sortIdString]   sortIdString
+funcIdtakeWhile            = FuncId "takeWhile"        533 [sortRefString,sortRefString]   sortRefString
 funcIdtakeWhileNot:: FuncId
-funcIdtakeWhileNot         = FuncId "takeWhileNot"     534 [sortIdString,sortIdString]   sortIdString
+funcIdtakeWhileNot         = FuncId "takeWhileNot"     534 [sortRefString,sortRefString]   sortRefString
 funcIddropWhile :: FuncId
-funcIddropWhile            = FuncId "dropWhile"        535 [sortIdString,sortIdString]   sortIdString
+funcIddropWhile            = FuncId "dropWhile"        535 [sortRefString,sortRefString]   sortRefString
 funcIddropWhileNot :: FuncId
-funcIddropWhileNot         = FuncId "dropWhileNot"     536 [sortIdString,sortIdString]   sortIdString
-
-stdFuncDefsString' :: [ ( FuncId, FuncDef VarId) ]
-stdFuncDefsString'
-  =  [
-       ( funcIdStringToString,     let { s = VarId "s" 543 sortIdString }
-                                        in FuncDef [s] (cstrPredef SSS funcIdStringToString [cstrVar s]) )
-     , ( funcIdStringFromString,   let { r = VarId "r" 544 sortIdString }
-                                        in FuncDef [r] (cstrPredef SSS funcIdStringFromString [cstrVar r]) )
-     , ( funcIdStringToXml,        let { s = VarId "s" 545 sortIdString }
-                                        in FuncDef [s] (cstrPredef SSS funcIdStringToXml [cstrVar s]) )
-     , ( funcIdStringFromXml,      let { r = VarId "r" 546 sortIdString }
-                                        in FuncDef [r] (cstrPredef SSS funcIdStringFromXml [cstrVar r]) )
-     , ( funcIdtakeWhile
-       , let { x = VarId "x" 554 sortIdString
-             ; y = VarId "y" 555 sortIdString
-             }
-          in FuncDef [x,y] (cstrPredef SSS funcIdtakeWhile [cstrVar x,cstrVar y])
-       )
-     , ( funcIdtakeWhileNot
-       , let { x = VarId "x" 556 sortIdString
-             ; y = VarId "y" 557 sortIdString
-             }
-          in FuncDef [x,y] (cstrPredef SSS funcIdtakeWhileNot [cstrVar x,cstrVar y])
-       )
-     , ( funcIddropWhile
-       , let { x = VarId "x" 558 sortIdString
-             ; y = VarId "y" 559 sortIdString
-             }
-          in FuncDef [x,y] (cstrPredef SSS funcIddropWhile [cstrVar x,cstrVar y])
-       )
-     , ( funcIddropWhileNot
-       , let { x = VarId "x" 560 sortIdString
-             ; y = VarId "y" 561 sortIdString
-             }
-          in FuncDef [x,y] (cstrPredef SSS funcIddropWhileNot [cstrVar x,cstrVar y])
-       )
-     ]
-
-stdFuncDefsString :: [ ( Ident, TxsDef ) ]
-stdFuncDefsString = map (IdFunc Control.Arrow.*** DefFunc) stdFuncDefsString'
-
--- * Combined TorXakis standard type definitions
-stdTDefs :: [ ( Ident, TxsDef ) ]
-stdTDefs =    stdSortDefs
-           ++ stdFuncDefsBool
-           ++ stdFuncDefsInt
-           ++ stdFuncDefsString
+funcIddropWhileNot         = FuncId "dropWhileNot"     536 [sortRefString,sortRefString]   sortRefString
 
 -- * Standard channel identifiers
 chanIdExit :: ChanId
@@ -332,4 +232,3 @@ chanIdHit :: ChanId
 chanIdHit   = ChanId "HIT"   904 []
 chanIdMiss :: ChanId
 chanIdMiss  = ChanId "MISS"  905 []
- 

@@ -62,10 +62,10 @@ import           VarId
 
 initialEnvNames :: EnvNames
 initialEnvNames  = EnvNames
-    (Map.fromList [(sortIdBool,       "Bool"),
-                   (sortIdInt,        "Int"),
-                   (sortIdString,     "String"),
-                   (sortIdRegex,      error "Regex is not defined in SMT")])
+    (Map.fromList [(sortRefBool,       "Bool"),
+                   (sortRefInt,        "Int"),
+                   (sortRefString,     "String"),
+                   (sortRefRegex,      error "Regex is not defined in SMT")])
     Map.empty
     Map.empty
 

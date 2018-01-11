@@ -15,25 +15,28 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      ConstDefs
-                      , CstrDef
-                      , CstrId
+  exposed-modules:      ADTDef
+                      , ConstDefs
+                      , ConstructorDef
+                      , FieldDef
                       , FreeMonoidX
                       , FuncDef
                       , FuncId
+                      , Identifier
                       , Name
                       , Product
                       , RegexXSD2Posix
                       , SortDef
-                      , SortId
                       , SortOf
+                      , StandardSortRefs
                       , Sum
                       , ValExpr
                       , Variable
                       , VarId
                       , Id
 
-  other-modules:        ValExprDefs
+  other-modules:        Ref
+                      , ValExprDefs
                       , ValExprImpls
                       , ValExprImplsExtension
 
@@ -47,6 +50,7 @@ library
                       , deepseq
                       , regex-tdfa
                       , text
+                      , Unique
 
                       , lexregexxsd
                       

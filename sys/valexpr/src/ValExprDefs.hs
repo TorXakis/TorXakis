@@ -33,19 +33,19 @@ import           Data.Set        (Set)
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
+-- import           ADTDef
+import           ConstructorDef
 import           ConstDefs
-import           CstrId
+-- import           FieldDef
 import           FuncId
 import           Id
 import           Product
+import           Ref
 import           Sum
-import           SortId
+import           StandardSortRefs
+import           SortDef
 import           SortOf
 import           Variable
-
-
--- ----------------------------------------------------------------------------------------- --
--- value expression
 
 -- | ValExprView: the public view of value expression 'ValExpr'
 data  ValExprView v = Vconst  Const
@@ -79,9 +79,9 @@ data  ValExprView v = Vconst  Const
                                ,    regex  :: ValExpr v
                                }
                     -- ADT
-                    | Vcstr   CstrId [ValExpr v]
-                    | Viscstr CstrId (ValExpr v)
-                    | Vaccess CstrId Int (ValExpr v)
+                    | Vcstr   (TRef SortDef) (TRef ConstructorDef) [ValExpr v]
+                    | Viscstr (TRef SortDef) (TRef ConstructorDef) (ValExpr v)
+                    | Vaccess (TRef SortDef) (TRef ConstructorDef) Int (TRef SortDef) (ValExpr v)
 
                     | Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]
@@ -141,40 +141,38 @@ evalView x          = Left $ "Value Expression is not a constant value " ++ show
 -- | SortOf instance
 instance (Variable v) => SortOf (ValExpr v) where
   sortOf vexp = let s = sortOf' vexp in
-    if s == sortIdError
-    then sortIdString
+    if s == sortRefError
+    then sortRefString
     else s
 
-sortOf' :: (Variable v) => ValExpr v -> SortId
+sortOf' :: (Variable v) => ValExpr v -> TRef SortDef
 sortOf' (view -> Vfunc (FuncId _nm _uid _fa fs) _vexps)       = fs
-sortOf' (view -> Vcstr (CstrId _nm _uid _ca cs) _vexps)       = cs
-sortOf' (view -> Viscstr { })                                 = sortIdBool
-sortOf' (view -> Vaccess (CstrId _nm _uid ca _cs) p _vexps)   = ca!!p
+sortOf' (view -> Vcstr adtRf _cstrRef _vexps)                 = adtRf
+sortOf' (view -> Viscstr { })                                 = sortRefBool
+sortOf' (view -> Vaccess _adtRf _cstrRf _pos sortRf _cstrVexp)= sortRf
 sortOf' (view -> Vconst con)                                  = sortOf con
 sortOf' (view -> Vvar v)                                      = vsort v
 sortOf' (view -> Vite _cond vexp1 vexp2)                      = -- if the LHS is an error (Verror), we want to yield the type of the RHS which might be no error
                                                                   let sort' = sortOf' vexp1 in
-                                                                  if sort' == sortIdError
+                                                                  if sort' == sortRefError
                                                                     then sortOf' vexp2
                                                                     else sort'
-sortOf' (view -> Vequal { })                                  = sortIdBool
-sortOf' (view -> Vnot { })                                    = sortIdBool
-sortOf' (view -> Vand { })                                    = sortIdBool
-sortOf' (view -> Vsum { })                                    = sortIdInt
-sortOf' (view -> Vproduct { })                                = sortIdInt
-sortOf' (view -> Vmodulo { })                                 = sortIdInt
-sortOf' (view -> Vdivide { })                                 = sortIdInt
-sortOf' (view -> Vgez { })                                    = sortIdBool
-sortOf' (view -> Vlength { })                                 = sortIdInt
-sortOf' (view -> Vat { })                                     = sortIdString
-sortOf' (view -> Vconcat { })                                 = sortIdString
-sortOf' (view -> Vstrinre { })                                = sortIdBool
+sortOf' (view -> Vequal { })                                  = sortRefBool
+sortOf' (view -> Vnot { })                                    = sortRefBool
+sortOf' (view -> Vand { })                                    = sortRefBool
+sortOf' (view -> Vsum { })                                    = sortRefInt
+sortOf' (view -> Vproduct { })                                = sortRefInt
+sortOf' (view -> Vmodulo { })                                 = sortRefInt
+sortOf' (view -> Vdivide { })                                 = sortRefInt
+sortOf' (view -> Vgez { })                                    = sortRefBool
+sortOf' (view -> Vlength { })                                 = sortRefInt
+sortOf' (view -> Vat { })                                     = sortRefString
+sortOf' (view -> Vconcat { })                                 = sortRefString
+sortOf' (view -> Vstrinre { })                                = sortRefBool
 sortOf' (view -> Vpredef _kd (FuncId _nm _uid _fa fs) _vexps) = fs
 sortOf' (view -> Vpredef{})                                   = error "sortOf': Unexpected Ident with Vpredef"
-sortOf' (view -> Verror _str)                                 = sortIdError
+sortOf' (view -> Verror _str)                                 = sortRefError
 sortOf' _                                                     = error "sortOf': All items must be in view"
-
-
 
 -- | only needed for CNECTDEF
 data PredefKind     = AST     -- Algebraic To String
@@ -187,7 +185,3 @@ data PredefKind     = AST     -- Algebraic To String
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Resettable PredefKind
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --

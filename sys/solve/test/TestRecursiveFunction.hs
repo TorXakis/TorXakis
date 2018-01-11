@@ -60,21 +60,21 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
     let sortId_ListInt = SortId "ListInt" 1234
 
     let nilId = CstrId "Nil" 2345 [] sortId_ListInt
-    let isNil = FuncId "isNil" 9875 [sortId_ListInt] sortIdBool
+    let isNil = FuncId "isNil" 9875 [sortId_ListInt] sortRefBool
 
-    let constrId = CstrId "Constr" 2346 [sortIdInt, sortId_ListInt] sortId_ListInt
-    let isConstr = FuncId "isConstr" 9876 [sortId_ListInt] sortIdBool
+    let constrId = CstrId "Constr" 2346 [sortRefInt, sortId_ListInt] sortId_ListInt
+    let isConstr = FuncId "isConstr" 9876 [sortId_ListInt] sortRefBool
     let tl = FuncId "tail" 6565 [sortId_ListInt] sortId_ListInt
-    let hd = FuncId "head" 6566 [sortId_ListInt] sortIdInt
+    let hd = FuncId "head" 6566 [sortId_ListInt] sortRefInt
 
     -- ----------------------------------
     -- function
     -- ----------------------------------
-    let lengthList = FuncId "lengthList" 19876 [sortId_ListInt] sortIdInt
+    let lengthList = FuncId "lengthList" 19876 [sortId_ListInt] sortRefInt
 
     let maps = EnvNames (Map.fromList [ (sortId_ListInt, "ListInt")
-                                      , (sortIdInt, "Int")
-                                      , (sortIdBool, "Bool")
+                                      , (sortRefInt, "Int")
+                                      , (sortRefBool, "Bool")
                                       ])
                         (Map.fromList [ (nilId, "Nil")
                                       , (constrId, "Constr")
@@ -88,7 +88,7 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
     let varListIO = createVvar varList
     let ve = createVite (createIsConstructor nilId varListIO) (createVconst (Cint 0)) (createVsum [createVconst (Cint 1), createVfunc lengthList [createVfunc tl [varListIO]]])
 
-    let (TXS2SMTFuncTest fDefs e) = createFunctionDefRecursive maps lengthList [varList] sortIdInt ve
+    let (TXS2SMTFuncTest fDefs e) = createFunctionDefRecursive maps lengthList [varList] sortRefInt ve
 
     let sDefs = EnvDefs (Map.fromList [(sortId_ListInt,SortDef)])
                         (Map.fromList [(nilId,CstrDef isNil []), (constrId,CstrDef isConstr [hd, tl])])
