@@ -18,11 +18,12 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 
 module LPE
-( -- preGNF
--- , gnf
- lpeTransform
--- , lpe
--- , lpePar
+( ProcDefs
+, preGNF
+, gnf
+, lpeTransform
+, lpe
+, lpePar
 )
 
 where

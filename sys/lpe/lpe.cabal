@@ -15,6 +15,7 @@ library
   hs-source-dirs:       src
 
   exposed-modules:    LPE
+                      LPEfunc
 
   other-modules:      TranslatedProcDefs
 
