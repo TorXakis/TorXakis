@@ -75,9 +75,9 @@ openSockets  =  do
                            return Nothing
                  }
      ( towhdls, frowhdls ) <- case cnectdef of
-                              { Just (CnectDef ClientSocket conndefs)
+                              { Just (CnectDef _eworld ClientSocket conndefs)
                                   -> lift $ lift $ openCnectClientSockets conndefs
-                              ; Just (CnectDef ServerSocket conndefs)
+                              ; Just (CnectDef _eworld ServerSocket conndefs)
                                   -> lift $ lift $ openCnectServerSockets conndefs
                               ; Nothing
                                   -> do IfServer.nack "ERROR" [ "OpenCnect: no open" ]
