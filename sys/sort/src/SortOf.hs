@@ -10,9 +10,8 @@ module SortOf
 )
 where
 
-import           Ref
-import           SortDef
+import           Sort
 
 -- | Sort of a value expression
 class SortOf s where
-  sortOf :: s -> TRef SortDef
+  sortOf :: s -> Sort

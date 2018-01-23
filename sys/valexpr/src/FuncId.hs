@@ -18,14 +18,13 @@ import           GHC.Generics    (Generic)
 
 import           Id
 import           Name
-import           Ref
-import           SortDef
+import           Sort
 
 data FuncId = FuncId
     { name     :: Name            -- smallid
-    , unid     :: Id 
-    , funcargs :: [TRef SortDef]
-    , funcsort :: TRef SortDef
+    , unid     :: Id
+    , funcargs :: [Sort]
+    , funcsort :: Sort
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Resettable FuncId

@@ -18,19 +18,18 @@ See LICENSE at root directory of this repository.
 
 {-# LANGUAGE OverloadedStrings #-}
 module StandardSortRefs
-( sortRefBool
-, sortRefInt
-, sortRefString
-, sortRefRegex
-, sortRefError
-, initialSortRefs
+( initialSortRefs
+, boolIdentifier
+, intIdentifier
+, stringIdentifier
+, regexIdentifier
+, errorIdentifier
 )
 where
 
-import           Identifier as Identifer
-import           SortDef
+import           Identifier
 
--- | Structure containing references for standard 'SortDef's:
+-- | Structure containing identifiers for standard 'SortDef's:
 --
 --   * Error
 --
@@ -47,7 +46,7 @@ initialSortRefs = addIdentifier boolIdentifier $
                   addIdentifier stringIdentifier $
                   addIdentifier regexIdentifier $
                   addIdentifier errorIdentifier
-                  Identifer.empty
+                  Identifier.empty
 
 boolIdentifier :: Identifier
 boolIdentifier = Name "Bool"
@@ -63,24 +62,3 @@ regexIdentifier = Name "Regex"
 
 errorIdentifier :: Identifier
 errorIdentifier = Name "Error"
-
--- * standard sorts
--- | Reference for Sort Bool
-sortRefBool :: TRef SortDef
-sortRefBool = getReference boolIdentifier initialSortRefs
-
--- | Reference for Sort Int
-sortRefInt :: TRef SortDef
-sortRefInt = getReference intIdentifier initialSortRefs
-
--- | Reference for Sort String
-sortRefString :: TRef SortDef
-sortRefString = getReference stringIdentifier initialSortRefs
-
--- | Reference for Sort Regex
-sortRefRegex :: TRef SortDef
-sortRefRegex = getReference regexIdentifier initialSortRefs
-
--- | Reference for Sort Error
-sortRefError :: TRef SortDef
-sortRefError = getReference errorIdentifier initialSortRefs

@@ -47,7 +47,7 @@ empty = IdentifierToReference Map.empty 0
 
 -- | add 'Identifier' to 'IdentifierToReference'
 addIdentifier :: Identifier -> IdentifierToReference -> IdentifierToReference
-addIdentifier i IdentifierToReference{toMap = m, nextRef = nr} = IdentifierToReference (Map.insert i (Ref nr) m) $ nr+1
+addIdentifier i IdentifierToReference{toMap = m, nextRef = nr} = IdentifierToReference (Map.insert i (TRef $ Ref nr) m) $ nr+1
 
 -- | get reference of 'Identifier' earlier added to 'IdentifierToReference'
 getReference :: Identifier -> IdentifierToReference -> TRef Identifier

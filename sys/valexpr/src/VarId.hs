@@ -22,8 +22,7 @@ import           GHC.Generics    (Generic)
 -- Local imports.
 import           Id
 import           Name
-import           Ref
-import           SortDef
+import           Sort
 import           SortOf
 import           Variable
 
@@ -31,7 +30,7 @@ import           Variable
 data VarId = VarId
     { name    :: Name             -- smallid
     , unid    :: Id
-    , varsort :: TRef SortDef
+    , varsort :: Sort
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Variable VarId where

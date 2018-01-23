@@ -21,7 +21,7 @@ See LICENSE at root directory of this repository.
 
 module Ref
 ( Ref (..)
-, TRef
+, TRef(..)
 ) where
 
 import           Control.DeepSeq
@@ -34,11 +34,19 @@ newtype Ref = Ref { -- | A reference keeps an Int for fast comparison.
                   }
     deriving (Eq, Ord, Read, Show, NFData, Data)
 
--- | Typed Ref, for type-safety.
-type TRef t = Ref
-
 instance Identifiable Ref where
     getId = Just . Id . toInt
 
 instance Resettable Ref where
     reset _ = Ref 0
+
+-- | Typed Ref, for type-safety.
+newtype TRef t = TRef Ref
+    deriving (Eq, Ord, Read, Show, NFData, Data)
+
+instance Identifiable (TRef t) where
+    getId (TRef r)= Just $ Id $ toInt r
+
+instance Resettable (TRef t) where
+    reset _ = TRef $ Ref 0
+    
