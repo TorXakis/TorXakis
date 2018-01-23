@@ -125,15 +125,19 @@ emptyADTDefs = ADTDefs Map.empty
 
 -- | Smart constructor for 'ADTDefs'.
 --
---   TODO: Given a list of tuples of 'TRef' 'ADTDef' and 'ADTDef', and an 'ADTDefs'
+--   Preconditions:
 --
---   * either an error message about one or more of the following violations:
+--   * 'TRef's to 'ADTDef's should be unique
 --
---       * References and/or names of the definitions are not unique
+--   * Names of 'ADTDef's should be unique
 --
---       * References are not defined
+--   * TODO: References should be defined (?)
 --
---       * Data types cannot be constructed
+--   * TODO: Data types should be constructable
+--
+--   Given a list of tuples of 'TRef' 'ADTDef' and 'ADTDef', and an 'ADTDefs'
+--
+--   * either an error message indicating violations of preconditions
 --
 --   * or a structure containing all data types
 --
@@ -143,10 +147,19 @@ addADTDefs :: [(TRef ADTDef, ADTDef)]
             -> Either String ADTDefs
 addADTDefs l adfs =
     let adtMap = adtDefsToMap adfs
-        -- nonUniqueRefs  = repeated $ Prelude.map fst l
-        -- nonUniqueNames = repeated $ Prelude.map ( ADTDef.name . snd ) l
-    in  
-        Right $ ADTDefs $ Map.union adtMap $ Map.fromList l
+        nonUniqueRefs  = repeated $ Prelude.map fst l
+        nonUniqueNames = repeated $ Prelude.map ( adtName . snd ) l
+    in if null nonUniqueRefs && null nonUniqueNames
+        then Right $ ADTDefs $ Map.union adtMap $ Map.fromList l
+        else let refErr = if not $ null nonUniqueRefs
+                        then let nonUniqTuples = filter ((`elem` nonUniqueRefs) . fst) l
+                            in  "Refs are not unique: " ++ show nonUniqTuples
+                        else ""
+                 nameErr = if not $ null nonUniqueNames
+                        then let nonUniqTuples = filter ((`elem` nonUniqueNames) . adtName . snd) l
+                            in  "Names are not unique: " ++ show nonUniqTuples
+                        else ""
+             in  Left $ refErr ++ "\n" ++ nameErr
 
 -----------------------------------------------------------------------------
 -- Constructor
@@ -194,11 +207,11 @@ constructorDefs l = let nonUniqueRefs  = repeated $ map fst l
                                         then let nonUniqTuples = filter ((`elem` nonUniqueRefs) . fst) l
                                             in  "Refs are not unique: " ++ show nonUniqTuples
                                         else ""
-                                    nameErr= if not $ null nonUniqueNames
+                                    nameErr = if not $ null nonUniqueNames
                                         then let nonUniqTuples = filter ((`elem` nonUniqueNames) . constructorName . snd) l
                                             in  "Names are not unique: " ++ show nonUniqTuples
                                         else ""
-                                    fNameErr= if not $ null nonUniqueFieldNames
+                                    fNameErr = if not $ null nonUniqueFieldNames
                                         then "Field names are not unique: " ++ show nonUniqueFieldNames
                                         else ""
                         in  Left $ refErr ++ "\n" ++ nameErr ++ "\n" ++ fNameErr
@@ -224,9 +237,9 @@ data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of tuples of 
 --
 --   Preconditions:
 --
---   * 'TRef's to all 'FieldDef's should be unique
+--   * 'TRef's to 'FieldDef's should be unique
 --
---   * Names of all 'FieldDef's should be unique
+--   * Names of 'FieldDef's should be unique
 --
 --   Given a list of tuples of 'TRef' 'FieldDef' and 'FieldDef',
 --
@@ -248,7 +261,7 @@ fieldDefs l = let nonUniqueRefs  = repeated $ map fst l
                                     then let nonUniqTuples = filter ((`elem` nonUniqueRefs) . fst) l
                                          in  "Refs are not unique: " ++ show nonUniqTuples
                                     else ""
-                             nameErr=
+                             nameErr =
                                 if null nonUniqueNames
                                     then let nonUniqTuples = filter ((`elem` nonUniqueNames) . fieldName . snd) l
                                          in  "Names are not unique: " ++ show nonUniqTuples
