@@ -29,7 +29,7 @@ import           Data.Data
 import           Id
 
 -- | A reference that enables fast comparison.
-newtype Ref = Ref { -- | A reference keeps an Int for fast comparison.
+newtype Ref = Ref { -- | A reference keeps an 'Int' for fast comparison.
                     toInt :: Int
                   }
     deriving (Eq, Ord, Read, Show, NFData, Data)

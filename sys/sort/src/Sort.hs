@@ -22,21 +22,43 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
 module Sort
-( Sort (..)
+(
+  -- * 'Sort's of Value Expressions
+  Sort (..)
+
+  -- * Abstract Data Types
+  -- ** Data structure
 , ADTDef (..)
+
+  -- ** Collection
 , ADTDefs
+
+  -- ** Usage
 , adtDefsToMap
 , emptyADTDefs
 , addADTDefs
+
+  -- * Constructors
+  -- ** Data structure
 , ConstructorDef (..)
+
+  -- ** Collection
 , ConstructorDefs
-, constructorDefs
+
+  -- ** Usage
 , cDefsToMap
-, getConstructorDef
+, constructorDefs
+
+  -- * Fields
+  -- ** Data structure
 , FieldDef (..)
+
+  -- ** Collection
 , FieldDefs
-, fieldDefs
+
+  -- ** Usage
 , fDefsToList
+, fieldDefs
 , nrOfFieldDefs
 , sortsOfFieldDefs
 )
@@ -46,7 +68,6 @@ import           Control.DeepSeq
 import           Data.Data
 import           Data.List.Unique
 import qualified Data.Map  as Map
-import           Data.Maybe
 import qualified Data.Text as Text
 import           GHC.Generics (Generic)
 
@@ -56,7 +77,7 @@ import           Ref
 -----------------------------------------------------------------------------
 -- Sort
 -----------------------------------------------------------------------------
--- | Sort ...
+-- | The data type that represents 'Sort's for 'ValExpr.ValExpr's.
 data Sort = SortBool
           | SortInt
           | SortChar
@@ -81,15 +102,15 @@ data ADTDef = ADTDef
     }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
 
--- | Data structure for a collection of Abstract Data Type (ADT) definitions.
-newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a map from 'TRef' 'ADTDef' to 'ADTDef'.
+-- | Data structure for a collection of 'ADTDef's.
+newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a 'Data.Map.Map' from 'TRef' 'ADTDef' to 'ADTDef'.
                             adtDefsToMap :: Map.Map (TRef ADTDef) ADTDef
                             }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
 
 -- | Smart constructor for 'ADTDefs'.
 --
---   Creates an empty Abstract Data Type (ADT) collection.
+--   Creates an empty 'ADTDefs'.
 emptyADTDefs ::  ADTDefs
 emptyADTDefs = ADTDefs Map.empty
 
@@ -127,8 +148,8 @@ data ConstructorDef = ConstructorDef { constructorName :: Text.Text -- ^ Name of
                                      }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
--- | Data structure for a collection of constructor definitions.
-newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to a map from 'TRef' 'ConstructorDef' to 'ConstructorDef'.
+-- | Data structure for a collection of 'ConstructorDef's.
+newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to a 'Data.Map.Map' from 'TRef' 'ConstructorDef' to 'ConstructorDef'.
                                             cDefsToMap :: Map.Map (TRef ConstructorDef) ConstructorDef
                                           }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
@@ -159,11 +180,6 @@ constructorDefs l = let nonUniqueRefs  = repeated $ map fst l
                                         else ""
                         in  Left $ refErr ++ "\n" ++ nameErr
 
--- | TODO: Document
-getConstructorDef :: TRef ConstructorDef -> ConstructorDefs -> ConstructorDef
-getConstructorDef r = fromMaybe (error "ConstructorDef not found")
-                      . Map.lookup r . cDefsToMap
-
 -----------------------------------------------------------------------------
 -- Field
 -----------------------------------------------------------------------------
@@ -173,7 +189,7 @@ data FieldDef = FieldDef { fieldName :: Text.Text -- ^ Name of the field
                          }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
--- | Data structure for a collection of field definitions.
+-- | Data structure for a collection of 'FieldDef's.
 data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of tuples of 'TRef' 'FieldDef' and 'FieldDef'.
                               fDefsToList :: [(TRef FieldDef, FieldDef)]
                               -- | Number of field definitions
@@ -192,7 +208,8 @@ data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of tuples of 
 --
 --   is returned.
 --
---   Note, the position in the list is relevant for representations with implicit positions.
+--   Note that the position in the list is relevant as it represents implicit
+--   positions.
 fieldDefs :: [(TRef FieldDef, FieldDef)] -> Either String FieldDefs
 fieldDefs l = let nonUniqueRefs  = repeated $ map fst l
                   nonUniqueNames = repeated $ map ( fieldName . snd ) l
@@ -210,5 +227,6 @@ fieldDefs l = let nonUniqueRefs  = repeated $ map fst l
                                     else ""
                   in  Left $ refErr ++ "\n" ++ nameErr
 
+-- | Curates a list of 'Sort's of every field in a 'FieldDefs'.
 sortsOfFieldDefs :: FieldDefs -> [Sort]
 sortsOfFieldDefs = map (sort . snd) . fDefsToList
