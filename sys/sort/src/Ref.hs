@@ -40,7 +40,7 @@ instance Identifiable Ref where
 instance Resettable Ref where
     reset _ = Ref 0
 
--- | Typed Ref, for type-safety.
+-- | Typed 'Ref', for type-safety.
 newtype TRef t = TRef Ref
     deriving (Eq, Ord, Read, Show, NFData, Data)
 

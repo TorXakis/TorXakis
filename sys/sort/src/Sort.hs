@@ -14,7 +14,16 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Sort, Abstract Data Type (ADT), Constructor and Field definitions.
+-- Definitions for:
+--
+-- * 'Sort'
+--
+-- * Abstract Data Type - 'ADTDef'
+--
+-- * Constructor - 'ConstructorDef'
+--
+-- * Field - 'FieldDef'
+--
 -- We had to put everything into one file because of the circular dependency
 -- caused by the SortADT constructor.
 -----------------------------------------------------------------------------
@@ -156,10 +165,17 @@ newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to 
 
 -- | Smart constructor for 'ConstructorDefs'.
 --
+--   Preconditions:
+--
+--   * 'TRef's to 'ConstructorDef's should be unique
+--
+--   * Names of 'ConstructorDef's should be unique
+--
+--   * Names of 'FieldDef's should be unique across all 'ConstructorDef's
+--
 --   Given a list of tuples of 'TRef' 'ConstructorDef' and 'ConstructorDef',
 --
---   * either an error message, telling which references and/or names of the
---     definitions are not unique, (todo: Field names should also be unique across all Constructors)
+--   * either an error message indicating violations of preconditions
 --
 --   * or a structure containing the constructor definitions
 --
@@ -167,18 +183,25 @@ newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to 
 constructorDefs :: [(TRef ConstructorDef, ConstructorDef)]
                 -> Either String ConstructorDefs
 constructorDefs l = let nonUniqueRefs  = repeated $ map fst l
-                        nonUniqueNames = repeated $ map ( constructorName . snd ) l
-                    in if null nonUniqueRefs && null nonUniqueNames
+                        nonUniqueNames = repeated
+                            $ map ( constructorName . snd ) l
+                        nonUniqueFieldNames = repeated
+                            $ map (fieldName . snd)
+                            $ concatMap (fDefsToList . fields . snd) l
+                    in if null nonUniqueRefs && null nonUniqueNames && null nonUniqueFieldNames
                            then Right $ ConstructorDefs $ Map.fromList l
-                           else let refErr = if null nonUniqueRefs
-                                    then let nonUniqTuples = filter ((`elem` nonUniqueRefs) . fst) l
-                                        in  "Refs are not unique: " ++ show nonUniqTuples
-                                    else ""
-                                    nameErr= if null nonUniqueNames
+                           else let refErr = if not $ null nonUniqueRefs
+                                        then let nonUniqTuples = filter ((`elem` nonUniqueRefs) . fst) l
+                                            in  "Refs are not unique: " ++ show nonUniqTuples
+                                        else ""
+                                    nameErr= if not $ null nonUniqueNames
                                         then let nonUniqTuples = filter ((`elem` nonUniqueNames) . constructorName . snd) l
                                             in  "Names are not unique: " ++ show nonUniqTuples
                                         else ""
-                        in  Left $ refErr ++ "\n" ++ nameErr
+                                    fNameErr= if not $ null nonUniqueFieldNames
+                                        then "Field names are not unique: " ++ show nonUniqueFieldNames
+                                        else ""
+                        in  Left $ refErr ++ "\n" ++ nameErr ++ "\n" ++ fNameErr
 
 -----------------------------------------------------------------------------
 -- Field
@@ -192,24 +215,29 @@ data FieldDef = FieldDef { fieldName :: Text.Text -- ^ Name of the field
 -- | Data structure for a collection of 'FieldDef's.
 data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of tuples of 'TRef' 'FieldDef' and 'FieldDef'.
                               fDefsToList :: [(TRef FieldDef, FieldDef)]
-                              -- | Number of field definitions
+                              -- | Number of field definitions in a 'FieldDefs'.
                             , nrOfFieldDefs :: Int
                             }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Smart constructor for 'FieldDefs'.
 --
+--   Preconditions:
+--
+--   * 'TRef's to all 'FieldDef's should be unique
+--
+--   * Names of all 'FieldDef's should be unique
+--
 --   Given a list of tuples of 'TRef' 'FieldDef' and 'FieldDef',
 --
---   * either an error message, telling which references and/or names of the
---     definitions are not unique,
+--   * either an error message indicating violations of preconditions
 --
 --   * or a structure containing the field definitions
 --
 --   is returned.
 --
 --   Note that the position in the list is relevant as it represents implicit
---   positions.
+--   positions of the fields in a constructor.
 fieldDefs :: [(TRef FieldDef, FieldDef)] -> Either String FieldDefs
 fieldDefs l = let nonUniqueRefs  = repeated $ map fst l
                   nonUniqueNames = repeated $ map ( fieldName . snd ) l
