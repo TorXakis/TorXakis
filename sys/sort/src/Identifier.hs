@@ -22,7 +22,7 @@ module Identifier
 , Identifier.empty
 , addIdentifier
 , getReference
-, TRef
+, Ref
 , toInt
 )
 where
@@ -38,7 +38,7 @@ newtype Identifier = Name Text
     deriving (Eq, Ord)
 
 -- | Data structure for replacing identifiers by references.
-data IdentifierToReference = IdentifierToReference { toMap :: Map.Map Identifier (TRef Identifier)
+data IdentifierToReference = IdentifierToReference { toMap :: Map.Map Identifier Int
                                                    , nextRef :: Int
                                                    }
 
@@ -47,9 +47,9 @@ empty = IdentifierToReference Map.empty 0
 
 -- | add 'Identifier' to 'IdentifierToReference'
 addIdentifier :: Identifier -> IdentifierToReference -> IdentifierToReference
-addIdentifier i IdentifierToReference{toMap = m, nextRef = nr} = IdentifierToReference (Map.insert i (TRef $ Ref nr) m) $ nr+1
+addIdentifier i IdentifierToReference{toMap = m, nextRef = nr} = IdentifierToReference (Map.insert i nr m) $ nr+1
 
 -- | get reference of 'Identifier' earlier added to 'IdentifierToReference'
-getReference :: Identifier -> IdentifierToReference -> TRef Identifier
-getReference i IdentifierToReference{toMap = m} =
-    fromMaybe (error "Identifier not found") $ Map.lookup i m
+getReference :: t -> Identifier -> IdentifierToReference -> Ref t
+getReference _ i IdentifierToReference{toMap = m} =
+    Ref $ fromMaybe (error "Identifier not found") $ Map.lookup i m

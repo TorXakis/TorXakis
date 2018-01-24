@@ -18,24 +18,18 @@ import Test.HUnit
 
 -- generic TorXakis imports
 import Ref
-import Sort
 
 -- ----------------------------------------------------------------------------
 testADTList :: Test
-testADTList  = TestList [ -- TestLabel "Typed Refs Test" testTypedRef
+testADTList  = TestList [ TestLabel "Ref Test" testRef
                         ]
 
 ---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
--- | Does not compile; type-safety is OK!
--- testTypedRef :: Test
--- testTypedRef = TestCase $ do
---     let r = Ref 12
---         rInt :: TRef Int
---         rInt = TRef r
---         s = SortADT rInt
---         rADT :: TRef ADTDef
---         rADT = TRef r
---         sADT = SortADT rADT
---     assertEqual "Same ADT Reference?" s sADT
+testRef :: Test
+testRef = TestCase $ do
+    let expected = 12
+        rInt :: Ref Int
+        rInt = Ref expected
+    assertEqual "Same reference?" expected $ toInt rInt

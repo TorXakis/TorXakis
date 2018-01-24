@@ -30,12 +30,10 @@ import           Data.Text           (Text)
 import           System.IO
 import           System.Process
 
-import           ADTDef
 import qualified Data.Map            as Map
 import           FuncDef
 import           FuncId
-import           Identifier
-import           SortDef
+import           Sort
 import           VarId
 
 -- ----------------------------------------------------------------------------------------- --
@@ -46,7 +44,7 @@ data EnvDefs = EnvDefs { adtDefs    :: ADTDefs
                        }
                deriving (Eq,Ord,Read,Show)
 
-data EnvNames = EnvNames { sortNames   :: Map.Map (TRef SortDef) Text
+data EnvNames = EnvNames { sortNames   :: Map.Map Sort Text
                          , funcNames   :: Map.Map FuncId         Text
                          }
                 deriving (Eq,Ord,Read,Show)

@@ -14,15 +14,18 @@ cabal-version:  >= 1.10
 library
   hs-source-dirs:       src
   exposed-modules:      Id
-                      , Ref
+                      , Identifier
                       , Sort
                       , SortOf
+
+  other-modules:        Ref
 
   build-depends:        base
                       , containers
                       , deepseq
                       , text
                       , Unique
+
 
   ghc-options:          -Werror -Wall -O2 -optc-O3 -optc-ffast-math
   default-language:     Haskell2010
@@ -36,7 +39,7 @@ test-suite sort-test
   
   other-modules:        TestADT
 
-  ghc-options:       -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
+  ghc-options:        -Werror -Wall -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
   
   build-depends:       base
                      , containers

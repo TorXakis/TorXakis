@@ -43,16 +43,13 @@ import           Data.Text     (Text)
 import qualified Data.Text     as T
 
 import           ConstDefs
-import           CstrDef
-import           CstrId
 import           FreeMonoidX
 import           FuncDef
 import           FuncId
 import           RegexXSD2SMT
 import           SMTData
 import           SMTString
-import           SortDef
-import           SortId
+import           Sort
 import           ValExpr
 import           Variable
 import           VarId
@@ -62,10 +59,12 @@ import           VarId
 
 initialEnvNames :: EnvNames
 initialEnvNames  = EnvNames
-    (Map.fromList [(sortRefBool,       "Bool"),
-                   (sortRefInt,        "Int"),
-                   (sortRefString,     "String"),
-                   (sortRefRegex,      error "Regex is not defined in SMT")])
+    (Map.fromList [ (SortBool,   "Bool")
+                  , (SortInt,    "Int")
+                  , (SortString, "String")
+                  , (SortRegex,  error "Regex is not defined in SMT")
+                  , (SortError,  error "Error is not defined in SMT")
+                  ])
     Map.empty
     Map.empty
 

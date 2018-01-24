@@ -179,7 +179,7 @@ testNoVariables = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [] (
         check _  = error "No variable in problem"
 
 testBool :: SMT()
-testBool = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefBool] (const []) check
+testBool = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [SortBool] (const []) check
     where
         check :: [Const] -> SMT()
         check [value]   = case value of
@@ -188,7 +188,7 @@ testBool = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefBoo
         check _         = error "One variable in problem"
 
 testBoolTrue :: SMT()
-testBoolTrue = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefBool] createAssertions check
+testBoolTrue = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [SortBool] createAssertions check
     where
         createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrVar v]
@@ -201,7 +201,7 @@ testBoolTrue = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRe
         check _         = error "One variable in problem"
 
 testBoolFalse :: SMT()
-testBoolFalse = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefBool] createAssertions check
+testBoolFalse = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [SortBool] createAssertions check
     where
         createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrNot (cstrVar v)]
@@ -215,7 +215,7 @@ testBoolFalse = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortR
 
 
 testInt :: SMT()
-testInt = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefInt] (const []) check
+testInt = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [SortInt] (const []) check
     where
         check :: [Const] -> SMT()
         check [value] = case value of
@@ -226,7 +226,7 @@ testInt = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefInt]
 
 
 testIntNegative :: SMT()
-testIntNegative = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefInt] createAssertions check
+testIntNegative = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [SortInt] createAssertions check
     where
         createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrLT (cstrVar v) (cstrConst (Cint 0))]
@@ -245,16 +245,16 @@ absentCstrId :: CstrId
 absentCstrId = CstrId "_absent" 2345 [] conditionalIntSortId
 
 presentCstrId :: CstrId
-presentCstrId = CstrId "_present" 2346 [sortRefInt] conditionalIntSortId
+presentCstrId = CstrId "_present" 2346 [SortInt] conditionalIntSortId
 
 isAbsentCstrFunc :: FuncId
-isAbsentCstrFunc = FuncId "is_absent" 9876 [conditionalIntSortId] sortRefBool
+isAbsentCstrFunc = FuncId "is_absent" 9876 [conditionalIntSortId] SortBool
 
 isPresentCstrFunc :: FuncId
-isPresentCstrFunc = FuncId "is_present" 9877 [conditionalIntSortId] sortRefBool
+isPresentCstrFunc = FuncId "is_present" 9877 [conditionalIntSortId] SortBool
 
 valuePresentCstrFunc :: FuncId
-valuePresentCstrFunc = FuncId "value" 6565 [conditionalIntSortId] sortRefInt
+valuePresentCstrFunc = FuncId "value" 6565 [conditionalIntSortId] SortInt
 
 conditionalIntDef :: EnvDefs
 conditionalIntDef = EnvDefs (Map.fromList [(conditionalIntSortId, SortDef)]) (Map.fromList [(absentCstrId,CstrDef isAbsentCstrFunc []), (presentCstrId, CstrDef isPresentCstrFunc [valuePresentCstrFunc])]) Map.empty
@@ -343,11 +343,11 @@ testConditionalIntInstances = testTemplateValue conditionalIntDef
 testNestedConstructor :: SMT()
 testNestedConstructor = do
         let pairSortId = SortId "Pair" 12345
-        let pairCstrId = CstrId "Pair" 2344 [sortRefInt,sortRefInt] pairSortId
+        let pairCstrId = CstrId "Pair" 2344 [SortInt,SortInt] pairSortId
         let absentCstrId = CstrId "Absent" 2345 [] conditionalPairSortId
         let presentCstrId = CstrId "Present" 2346 [pairSortId] conditionalPairSortId
         let conditionalPairDefs = EnvDefs (Map.fromList [ (conditionalPairSortId, SortDef), (pairSortId, SortDef) ])
-                                          (Map.fromList [ (pairCstrId, CstrDef (FuncId "ignore" 9875 [] pairSortId) [FuncId "x" 6565 [] sortRefInt, FuncId "y" 6666 [] sortRefInt])
+                                          (Map.fromList [ (pairCstrId, CstrDef (FuncId "ignore" 9875 [] pairSortId) [FuncId "x" 6565 [] SortInt, FuncId "y" 6666 [] SortInt])
                                                         , (absentCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalPairSortId) [])
                                                         , (presentCstrId, CstrDef (FuncId "ignore" 9877 [] conditionalPairSortId) [FuncId "value" 6767 [] pairSortId])
                                                         ])        
@@ -369,8 +369,8 @@ testNestedConstructor = do
 
 testFunctions :: SMT()
 testFunctions = do
-        let varX = VarId "x" 645421 sortRefBool
-        let varY = VarId "y" 645422 sortRefBool
+        let varX = VarId "x" 645421 SortBool
+        let varY = VarId "y" 645422 SortBool
         let body1 = cstrEqual (cstrVar varX) (cstrVar varY)
         let fd1 = FuncDef [varX, varY] body1
         let fd2 = FuncDef [] const2
@@ -378,12 +378,12 @@ testFunctions = do
         let tDefs = EnvDefs Map.empty Map.empty (Map.fromList [(fid1, fd1), (fid2, fd2)])
 
         testTemplateValue tDefs
-                          [sortRefBool,sortRefBool,sortRefInt]
+                          [SortBool,SortBool,SortInt]
                           createAssertions
                           check
     where
-        fid1 = FuncId "multipleArgsFunction" 123454321 [sortRefBool, sortRefBool] sortRefBool
-        fid2 = FuncId "myConst" 12345678 [] sortRefInt
+        fid1 = FuncId "multipleArgsFunction" 123454321 [SortBool, SortBool] SortBool
+        fid2 = FuncId "myConst" 12345678 [] SortInt
         const2 = cstrConst (Cint 3) :: ValExpr VarId
 
         createAssertions :: [VarId] -> [ValExpr VarId]
@@ -399,7 +399,7 @@ testFunctions = do
         check _         = error "Three variable in problem"
 
 testString :: SMT()
-testString = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefString] (const []) check
+testString = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [SortString] (const []) check
     where
         check :: [Const] -> SMT()
         check [value]   = case value of
@@ -408,7 +408,7 @@ testString = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefS
         check _         = error "One variable in problem"
 
 testStringEquals :: Text -> SMT()
-testStringEquals str = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefString] createAssertions check
+testStringEquals str = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [SortString] createAssertions check
     where
         createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrEqual (cstrVar v) (cstrConst (Cstring str))]
@@ -422,7 +422,7 @@ testStringEquals str = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty)
         check _         = error "One variable in problem"
 
 testStringLength :: Int -> SMT()
-testStringLength n = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefString] createAssertions check
+testStringLength n = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [SortString] createAssertions check
     where
         createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrEqual (cstrConst (Cint (toInteger n))) (cstrLength (cstrVar v))]
@@ -436,7 +436,7 @@ testStringLength n = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [
 
 
 testRegex :: String -> SMT ()
-testRegex regexStr = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortRefString] createAssertions check
+testRegex regexStr = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [SortString] createAssertions check
     where
         createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrStrInRe (cstrVar v) (cstrConst (Cregex (T.pack regexStr)))]

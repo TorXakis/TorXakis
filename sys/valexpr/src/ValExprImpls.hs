@@ -88,14 +88,13 @@ import           Debug.Trace     as Trace
 import           Text.Regex.TDFA
 
 import           ConstDefs
-import           ConstructorDef
 import qualified FreeMonoidX     as FMX
 import           FuncDef
 import           FuncId
+import           Identifier
 import           Product
-import           Ref
 import           RegexXSD2Posix
-import           SortDef
+import           Sort
 import           Sum
 import           ValExprDefs
 import           Variable
@@ -119,33 +118,32 @@ cstrFunc fis fi arguments =
 
 -- | Apply ADT Constructor of constructor with CstrId and the provided
 -- arguments (the list of value expressions). Preconditions are /not/ checked.
-cstrCstr :: TRef SortDef -> TRef ConstructorDef -> [ValExpr v] -> ValExpr v
-cstrCstr adtRf cstrRf cstrArgs =
-    if all isConst cstrArgs
-        then cstrConst (Cstr adtRf cstrRf
-                        $ Map.fromList
-                        $ map (\(view -> Vconst v) -> (sort v, v)) cstrArgs) -- todo: how can this work??
-        else ValExpr (Vcstr adtRf cstrRf cstrArgs)
+cstrCstr :: Ref ADTDef -> Ref ConstructorDef -> [ValExpr v] -> ValExpr v
+cstrCstr adtRf cRef cArgs =
+    if all isConst cArgs
+        then cstrConst (Cstr adtRf cRef
+                        $ map (\(view -> Vconst constVal) -> constVal) cArgs)
+        else ValExpr (Vcstr adtRf cRef cArgs)
 
 -- | Is the provided value expression made by the ADT constructor with CstrId?
 -- Preconditions are /not/ checked.
-cstrIsCstr :: TRef SortDef -> TRef ConstructorDef -> ValExpr v -> ValExpr v
+cstrIsCstr :: Ref ADTDef -> Ref ConstructorDef -> ValExpr v -> ValExpr v
 cstrIsCstr _ c1 (view -> Vcstr _ c2 _)         = cstrConst (Cbool (c1 == c2) )
 cstrIsCstr _ c1 (view -> Vconst (Cstr _ c2 _)) = cstrConst (Cbool (c1 == c2) )
 cstrIsCstr a c e                               = ValExpr (Viscstr a c e)
 
 -- | Apply ADT Accessor of constructor with CstrId on field with given position on the provided value expression.
 -- Preconditions are /not/ checked.
-cstrAccess :: TRef SortDef -> TRef ConstructorDef -> Int -> TRef SortDef -> ValExpr v -> ValExpr v
-cstrAccess a1 c1 p1 s1 e@(view -> Vcstr _ c2 cstrFields) =
+cstrAccess :: Ref ADTDef -> Ref ConstructorDef -> Int -> Sort -> ValExpr v -> ValExpr v
+cstrAccess a1 c1 p1 s1 e@(view -> Vcstr _ c2 cFields) =
     if c1 == c2 -- prevent crashes due to model errors
-        then cstrFields!!p1
+        then cFields!!p1
         else Trace.trace ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on instance from constructor " ++ show c2) $
                 ValExpr (Vaccess a1 c1 p1 s1 e)
-cstrAccess a1 c1 p1 s1 e@(view -> Vconst (Cstr _ c2 cstrFieldsMap)) =
+cstrAccess a1 c1 p1 s1 e@(view -> Vconst (Cstr _ c2 cFields)) =
     let errMsg = "Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on value from constructor " ++ show c2
     in  if c1 == c2 -- prevent crashes due to model errors
-        then cstrConst $ fromMaybe (error errMsg) $ Map.lookup s1 cstrFieldsMap -- (fields!!p1)
+        then cstrConst $ cFields!!p1
         else Trace.trace errMsg $
                 ValExpr (Vaccess a1 c1 p1 s1 e)
 cstrAccess a c p s e = ValExpr (Vaccess a c p s e)

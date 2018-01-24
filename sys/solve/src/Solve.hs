@@ -68,10 +68,10 @@ empty :: Assertions v
 empty = Assertions (AssertSet Set.empty)
 
 add :: (Variable v) => ValExpr v -> Assertions v -> Assertions v
-add e (Assertions AssertFalse)    |  sortOf e == sortRefBool                                            = Assertions AssertFalse
-add e a                           |  sortOf e == sortRefBool  && (view e == Vconst (Cbool True))        = a
-add e _                           |  sortOf e == sortRefBool  && (view e == Vconst (Cbool False))       = Assertions AssertFalse
-add e (Assertions (AssertSet s) ) |  sortOf e == sortRefBool                                            = Assertions ( AssertSet (Set.insert e s) )
+add e (Assertions AssertFalse)    |  sortOf e == SortBool                                            = Assertions AssertFalse
+add e a                           |  sortOf e == SortBool  && (view e == Vconst (Cbool True))        = a
+add e _                           |  sortOf e == SortBool  && (view e == Vconst (Cbool False))       = Assertions AssertFalse
+add e (Assertions (AssertSet s) ) |  sortOf e == SortBool                                            = Assertions ( AssertSet (Set.insert e s) )
 add e _                                                                                                 = error ("Add - Can not add non-boolean expression " ++ show e)
 
 -- ----------------------------------------------------------------------------------------- --

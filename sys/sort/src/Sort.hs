@@ -76,9 +76,9 @@ where
 import           Control.DeepSeq
 import           Data.Data
 import           Data.List.Unique
-import qualified Data.Map  as Map
-import qualified Data.Text as Text
-import           GHC.Generics (Generic)
+import qualified Data.Map         as Map
+import           Data.Text        (Text)
+import           GHC.Generics     (Generic)
 
 import           Id
 import           Ref
@@ -87,12 +87,13 @@ import           Ref
 -- Sort
 -----------------------------------------------------------------------------
 -- | The data type that represents 'Sort's for 'ValExpr.ValExpr's.
-data Sort = SortBool
+data Sort = SortError
+          | SortBool
           | SortInt
           | SortChar
           | SortString
           | SortRegex
-          | SortADT (TRef ADTDef)
+          | SortADT (Ref ADTDef)
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 instance Identifiable Sort where
@@ -106,14 +107,14 @@ instance Resettable Sort where
 -----------------------------------------------------------------------------
 -- | Data structure for Abstract Data Type (ADT) definition.
 data ADTDef = ADTDef
-    { adtName      :: Text.Text       -- ^ Name of the ADT
+    { adtName      :: Text       -- ^ Name of the ADT
     , constructors :: ConstructorDefs -- ^ Constructor definitions of the ADT
     }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
 
 -- | Data structure for a collection of 'ADTDef's.
-newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a 'Data.Map.Map' from 'TRef' 'ADTDef' to 'ADTDef'.
-                            adtDefsToMap :: Map.Map (TRef ADTDef) ADTDef
+newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a 'Data.Map.Map' from 'Ref' 'ADTDef' to 'ADTDef'.
+                            adtDefsToMap :: Map.Map (Ref ADTDef) ADTDef
                             }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
 
@@ -127,28 +128,29 @@ emptyADTDefs = ADTDefs Map.empty
 --
 --   Preconditions:
 --
---   * 'TRef's to 'ADTDef's should be unique
+--   * 'Ref's to 'ADTDef's should be unique
 --
 --   * Names of 'ADTDef's should be unique
 --
---   * TODO: References should be defined (?)
+--   * TODO: All references should exist in 'ADTDefs' and given list
 --
 --   * TODO: Data types should be constructable
 --
---   Given a list of tuples of 'TRef' 'ADTDef' and 'ADTDef', and an 'ADTDefs'
+--   Given a list of tuples of 'Ref' 'ADTDef' and 'ADTDef', and an 'ADTDefs'
 --
 --   * either an error message indicating violations of preconditions
 --
 --   * or a structure containing all data types
 --
 --   is returned.
-addADTDefs :: [(TRef ADTDef, ADTDef)]
+addADTDefs :: [(Ref ADTDef, ADTDef)]
             -> ADTDefs
             -> Either String ADTDefs
 addADTDefs l adfs =
     let adtMap = adtDefsToMap adfs
         nonUniqueRefs  = repeated $ Prelude.map fst l
         nonUniqueNames = repeated $ Prelude.map ( adtName . snd ) l
+        -- (constructableTypes,nonConstructableTypes) = 
     in if null nonUniqueRefs && null nonUniqueNames
         then Right $ ADTDefs $ Map.union adtMap $ Map.fromList l
         else let refErr = if not $ null nonUniqueRefs
@@ -161,18 +163,31 @@ addADTDefs l adfs =
                         else ""
              in  Left $ refErr ++ "\n" ++ nameErr
 
+-- type ConstructableADTs = [ADTDef]
+-- type InconstructableADTs = [ADTDef]
+
+-- checkConstructable :: (ConstructableADTs,InconstructableADTs)
+--                    -> [ADTDef]
+--                    -> (ConstructableADTs,InconstructableADTs)
+-- checkConstructable result [] = result
+-- checkConstructable (cs, ics) (ad:ads)
+--     | any (==0) $ Prelude.map (nrOfFieldDefs . fields) $ Map.values $ cDefsToMap $ constructors ad =
+--         checkConstructable ((ad:cs), ics) ads
+-- checkConstructable (cs, ics) (ad:ads) =
+-- checkConstructable (cs, ics) (ad:ads) =
+
 -----------------------------------------------------------------------------
 -- Constructor
 -----------------------------------------------------------------------------
 -- | Data structure for constructor definition.
-data ConstructorDef = ConstructorDef { constructorName :: Text.Text -- ^ Name of the constructor
+data ConstructorDef = ConstructorDef { constructorName :: Text -- ^ Name of the constructor
                                      , fields :: FieldDefs          -- ^ Field definitions of the constructor
                                      }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 -- | Data structure for a collection of 'ConstructorDef's.
-newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to a 'Data.Map.Map' from 'TRef' 'ConstructorDef' to 'ConstructorDef'.
-                                            cDefsToMap :: Map.Map (TRef ConstructorDef) ConstructorDef
+newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to a 'Data.Map.Map' from 'Ref' 'ConstructorDef' to 'ConstructorDef'.
+                                            cDefsToMap :: Map.Map (Ref ConstructorDef) ConstructorDef
                                           }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
@@ -180,20 +195,20 @@ newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to 
 --
 --   Preconditions:
 --
---   * 'TRef's to 'ConstructorDef's should be unique
+--   * 'Ref's to 'ConstructorDef's should be unique
 --
 --   * Names of 'ConstructorDef's should be unique
 --
 --   * Names of 'FieldDef's should be unique across all 'ConstructorDef's
 --
---   Given a list of tuples of 'TRef' 'ConstructorDef' and 'ConstructorDef',
+--   Given a list of tuples of 'Ref' 'ConstructorDef' and 'ConstructorDef',
 --
 --   * either an error message indicating violations of preconditions
 --
 --   * or a structure containing the constructor definitions
 --
 --   is returned.
-constructorDefs :: [(TRef ConstructorDef, ConstructorDef)]
+constructorDefs :: [(Ref ConstructorDef, ConstructorDef)]
                 -> Either String ConstructorDefs
 constructorDefs l = let nonUniqueRefs  = repeated $ map fst l
                         nonUniqueNames = repeated
@@ -220,14 +235,14 @@ constructorDefs l = let nonUniqueRefs  = repeated $ map fst l
 -- Field
 -----------------------------------------------------------------------------
 -- | Data structure for a field definition.
-data FieldDef = FieldDef { fieldName :: Text.Text -- ^ Name of the field
+data FieldDef = FieldDef { fieldName :: Text -- ^ Name of the field
                          , sort      :: Sort      -- ^ Sort of the field
                          }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 -- | Data structure for a collection of 'FieldDef's.
-data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of tuples of 'TRef' 'FieldDef' and 'FieldDef'.
-                              fDefsToList :: [(TRef FieldDef, FieldDef)]
+data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of tuples of 'Ref' 'FieldDef' and 'FieldDef'.
+                              fDefsToList :: [(Ref FieldDef, FieldDef)]
                               -- | Number of field definitions in a 'FieldDefs'.
                             , nrOfFieldDefs :: Int
                             }
@@ -237,11 +252,11 @@ data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of tuples of 
 --
 --   Preconditions:
 --
---   * 'TRef's to 'FieldDef's should be unique
+--   * 'Ref's to 'FieldDef's should be unique
 --
 --   * Names of 'FieldDef's should be unique
 --
---   Given a list of tuples of 'TRef' 'FieldDef' and 'FieldDef',
+--   Given a list of tuples of 'Ref' 'FieldDef' and 'FieldDef',
 --
 --   * either an error message indicating violations of preconditions
 --
@@ -251,7 +266,7 @@ data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of tuples of 
 --
 --   Note that the position in the list is relevant as it represents implicit
 --   positions of the fields in a constructor.
-fieldDefs :: [(TRef FieldDef, FieldDef)] -> Either String FieldDefs
+fieldDefs :: [(Ref FieldDef, FieldDef)] -> Either String FieldDefs
 fieldDefs l = let nonUniqueRefs  = repeated $ map fst l
                   nonUniqueNames = repeated $ map ( fieldName . snd ) l
               in if null nonUniqueRefs && null nonUniqueNames

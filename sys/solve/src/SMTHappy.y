@@ -31,11 +31,8 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 import           Text.Regex.TDFA
 
-import           ConstructorDef
-import           Identifier
 import           SMTAlex (Token(..), smtLexer)
 import qualified SMTString as SMTString    -- Parse SMT string according to smtlib 2.5 standard
-import           SortDef
 }
     
 -- ----------------------------------------------------------------------------------------- --
@@ -195,7 +192,7 @@ parseError _ = error "Parse Error"
 noerror = ()
 
 -- | Data structure for SMTValues.
-data  SMTValue       = SMTConstructor (TRef SortDef) (TRef ConstructorDef) [SMTValue]
+data  SMTValue       = SMTConstructor Text [SMTValue]
                      | SMTBool Bool
                      | SMTInt Integer
                      | SMTString Text

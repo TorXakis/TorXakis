@@ -40,12 +40,11 @@ import           Data.Maybe
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
-import           Identifier
-import           SortDef
+import           Sort
 import           ValExpr
 
-data Signature = Signature  { sortArgs :: [TRef SortDef]
-                            , sortRet  :: TRef SortDef
+data Signature = Signature  { sortArgs :: [Sort]
+                            , sortRet  :: Sort
                             }
   deriving (Eq, Ord, Read, Show, Generic, NFData)
 

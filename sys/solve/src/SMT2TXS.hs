@@ -22,18 +22,13 @@ module SMT2TXS
 where
 
 import qualified Data.Map          as Map
-import           Data.Monoid
+import           Data.Maybe
 import           Data.Text         (Text)
-import qualified Data.Text         as T
 
-import           ADTDef
 import           ConstDefs
-import           ConstructorDef
-import           FieldDef
 import           Identifier
 import           SMTHappy
-import           SortDef
-import           StandardSortRefs
+import           Sort
 
 -- ---------------------------------------------------------
 -- Note:
@@ -44,38 +39,49 @@ import           StandardSortRefs
 
 -- | convert an SMT expression to a ValExpr given a varName the varName is the
 -- name of a SMT identifier that refers to a SMT variable.
-smtValueToValExpr :: SMTValue -> ADTDefs -> TRef SortDef -> Const
-smtValueToValExpr (SMTBool b) _ sortRef
-  =  if sortRefBool == sortRef
-       then Cbool b
-       else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
-                     "Bool expected, got " ++ show sortRef ++ "\n"
+smtValueToValExpr :: SMTValue -> ADTDefs -> Sort -> Const
+smtValueToValExpr (SMTBool b) _ srt
+  = case srt of
+        SortBool -> Cbool b
+        _        -> Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
+                        "Sort '" ++ show srt ++ "' expected, got Bool\n"
 
-smtValueToValExpr (SMTInt i) _ sortRef
-  =  if sortRefInt == sortRef
-       then Cint i
-       else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
-                     "Int expected, got " ++ show sortRef ++ "\n"
+smtValueToValExpr (SMTInt i) _ srt
+  = case srt of
+        SortInt -> Cint i
+        _       -> Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
+                        "Sort '" ++ show srt ++ "' expected, got Int\n"
 
-smtValueToValExpr (SMTString s) _ sortRef
-  =  if sortRefString == sortRef
-       then Cstring s
-       else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
-                     "String expected, got " ++ show sortRef ++ "\n"
+smtValueToValExpr (SMTString s) _ srt
+  =  case srt of
+       SortString -> Cstring s
+       _          -> Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
+                        "Sort '" ++ show srt ++ "' expected, got String\n"
 
-smtValueToValExpr (SMTConstructor adtRef cstrRef argValues) adtDefs sortRef =
-    if adtRef == sortRef
-        then let adtDef = getADTDef adtRef adtDefs
-                 cstrDef = getConstructorDef cstrRef $ constructors adtDef
-             in if FieldDef.nrOfFieldDefs $ fields cstrDef == length argValues
-                    then  -- recursively translate the arguments:
-                        let vexprArgs = map (\(argValue, sort') -> smtValueToValExpr argValue cstrMap sort')
-                                            (zip argValues (cstrargs cstrid)) in
-                            Cstr cstrid vexprArgs
-                    else Cerror $ "TXS SMT2TXS smtValueToValExpr: Number of arguments mismatch " ++
-                                "in constructor " ++ show cname ++ " of sort " ++ show nameSort ++
-                                " : definition " ++ show (length (cstrargs cstrid)) ++
-                                " vs actual " ++ show (length argValues) ++ "\n"
-                Cstr adtref cstRef veprargs
-            else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - "
-                        "ADTDef '" ++ show sortRef ++ "' expected, got ADTDef '" ++ show adtRef ++ "'\n" 
+smtValueToValExpr (SMTConstructor s argValues) adtDefs srt
+  =  case srt of
+        SortADT adtRf ->
+            let (rfAdt, refCstr) = decode s 
+            in  if adtRf == rfAdt 
+                    then let adtDef  = fromMaybe (error $ "error in encode/decode ADTDef: " ++ show s)
+                                        $ Map.lookup rfAdt
+                                        $ adtDefsToMap adtDefs
+                             cstrDef = fromMaybe (error $ "error in encode/decode ConstructorDef: " ++ show s)
+                                        $ Map.lookup refCstr
+                                        $ cDefsToMap $ constructors adtDef
+                         in  if nrOfFieldDefs (fields cstrDef) == length argValues
+                                then  -- recursively translate the arguments:
+                                    let vexprArgs = map (\(argValue, srt') -> smtValueToValExpr argValue adtDefs srt')
+                                                        (zip argValues $ sortsOfFieldDefs $ fields cstrDef)
+                                    in  Cstr adtRf refCstr vexprArgs
+                                else Cerror $ "TXS SMT2TXS smtValueToValExpr: Number of arguments mismatch " ++
+                                            "in constructor " ++ show (constructorName cstrDef) ++ " of srt " ++ show (adtName adtDef) ++
+                                            " : definition " ++ show (nrOfFieldDefs $ fields cstrDef) ++
+                                            " vs actual " ++ show (length argValues) ++ "\n"
+                    else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
+                            "Sort '" ++ show srt ++ "' expected, got ADTDef '" ++ show rfAdt ++ "'\n"
+        _ -> Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
+                "Sort '" ++ show srt ++ "' expected, got ADTDef '" ++ show s ++ "'\n" 
+
+decode :: Text -> (Ref ADTDef, Ref ConstructorDef)
+decode = undefined

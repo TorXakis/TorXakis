@@ -18,12 +18,12 @@ import           GHC.Generics    (Generic)
 
 import           Id
 import           Name
-import           SortDef
+import           Sort
 
 data ChanId = ChanId
     { name      :: Name
-    , unid      :: Id -- todo: Identifier? What about Identifiable (see below)?
-    , chansorts :: [SortDef] -- [SortId]
+    , unid      :: Id
+    , chansorts :: [Sort]
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Resettable ChanId

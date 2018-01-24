@@ -46,6 +46,7 @@ library
                       , text
 
                       , lexregexxsd
+                      , sort
                       , solvedefs
                       , valexpr
                       
@@ -101,6 +102,7 @@ test-suite SmtSolver-WhiteBox
 
                       , lexregexxsd
                       , solvedefs
+                      , sort
                       , valexpr
                       
   ghc-options:          -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall

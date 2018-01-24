@@ -22,7 +22,6 @@ module ConstDefs
 where
 
 import           Control.DeepSeq
-import           Data.Map as Map
 import           Data.Data
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
@@ -39,9 +38,9 @@ data Const = Cbool    { cBool :: Bool }
            | Cregex   { cRegex :: Text } -- ^ XSD input
                                          -- PvdL: performance gain: translate only once,
                                          --       storing SMT string as well
-           | Cstr     { adtRef  :: TRef ADTDef
-                      , cstrRef :: TRef ConstructorDef
-                      , args    :: Map.Map (TRef FieldDef) Const
+           | Cstr     { adtRef  :: Ref ADTDef
+                      , cstrRef :: Ref ConstructorDef
+                      , args    :: [Const]
                       }
            | Cerror   { msg  :: String }
            | Cany     { sort :: Sort }
@@ -58,4 +57,4 @@ instance SortOf Const where
   sortOf (Cregex _r)                       = SortRegex
   sortOf (Cstr adtRf _cstrRef _args)       = SortADT adtRf
   sortOf (Cany s)                          = s
-  sortOf (Cerror _)                        = SortString
+  sortOf (Cerror _)                        = SortError

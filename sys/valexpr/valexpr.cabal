@@ -19,7 +19,6 @@ library
                       , FreeMonoidX
                       , FuncDef
                       , FuncId
-                      , Identifier
                       , Name
                       , Product
                       , RegexXSD2Posix
@@ -33,7 +32,7 @@ library
                       , ValExprImpls
                       , ValExprImplsExtension
 
-  ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math -Wall
+  ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math
 
   build-tools:          happy
 
@@ -62,7 +61,7 @@ test-suite defs-BlackBox
                      , FreeMonoidXSpec
                      , XSD2PosixSpec
                        
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
+  ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
   
   build-depends:       base
                      , hspec

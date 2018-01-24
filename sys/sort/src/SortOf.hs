@@ -14,8 +14,7 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- SortOf class definition. Types that are instances of SortOf class provide
--- their 'Sort.Sort's.
+-- SortOf class definition.
 -----------------------------------------------------------------------------
 
 module SortOf
@@ -25,5 +24,6 @@ where
 
 import           Sort
 
+-- | Types that are instances of SortOf class provide their 'Sort.Sort's.
 class SortOf s where
   sortOf :: s -> Sort

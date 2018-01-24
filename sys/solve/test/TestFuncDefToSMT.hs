@@ -46,58 +46,58 @@ testConstant :: Test
 testConstant = TestCase $ do
     let ve = createVconst (Cint 3)
     let myConst = "myConst"
-    let fid = createFunctionId myConst 987654 [] sortRefInt
-    let mapI = EnvNames (Map.fromList [(sortRefInt, "Sort_Int")])
+    let fid = createFunctionId myConst 987654 [] SortInt
+    let mapI = EnvNames (Map.fromList [(SortInt, "Sort_Int")])
                         Map.empty
                         (Map.fromList [(fid,myConst)])
-    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [] sortRefInt ve
+    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [] SortInt ve
     assertEqual "Constant Function" e (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))
 
 testSingleArg :: Test
 testSingleArg = TestCase $ do
-    let v = VarId "x" 645421 sortRefInt
+    let v = VarId "x" 645421 SortInt
     let ve = createVvar v
     let fName = "singleArgFunction"
-    let fid = createFunctionId fName 987654 [v] sortRefInt
-    let mapI = EnvNames (Map.fromList [(sortRefInt, "Sort_Int")])
+    let fid = createFunctionId fName 987654 [v] SortInt
+    let mapI = EnvNames (Map.fromList [(SortInt, "Sort_Int")])
                         Map.empty
                         (Map.fromList [(fid, fName)])
-    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [v] sortRefInt ve
+    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [v] SortInt ve
     assertEqual "single Argument Function" e (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))
 
 testMultipleArgs :: Test
 testMultipleArgs = TestCase $ do
-    let varX = VarId "x" 645421 sortRefBool
-    let varY = VarId "y" 645422 sortRefBool
+    let varX = VarId "x" 645421 SortBool
+    let varY = VarId "y" 645422 SortBool
     let ve = createVequal (createVvar varX) (createVvar varY)
     let fName = "multipleArgsFunction"
-    let fid = createFunctionId fName 987654 [varX, varY] sortRefBool
-    let mapI = EnvNames (Map.fromList [(sortRefBool, "SortBoolean")])
+    let fid = createFunctionId fName 987654 [varX, varY] SortBool
+    let mapI = EnvNames (Map.fromList [(SortBool, "SortBoolean")])
                         Map.empty
                         (Map.fromList [(fid, fName)])
-    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [varX, varY] sortRefBool ve
+    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [varX, varY] SortBool ve
     assertEqual "multiple Arguments Function" e (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))
 
 testMultipleFunctions :: Test
 testMultipleFunctions = TestCase $ do
     let fName1 = "multipleArgsFunction"
-    let varX = VarId "x" 645421 sortRefBool
-    let varY = VarId "y" 645422 sortRefBool
-    let fid1 = createFunctionId fName1 987654 [varX, varY] sortRefBool
+    let varX = VarId "x" 645421 SortBool
+    let varY = VarId "y" 645422 SortBool
+    let fid1 = createFunctionId fName1 987654 [varX, varY] SortBool
     let vexpr1 = createVequal (createVvar varX) (createVvar varY)
 
     let fName2 = "myConst"
-    let fid2 = createFunctionId fName2 97531 [] sortRefInt
+    let fid2 = createFunctionId fName2 97531 [] SortInt
     let vexpr2 = createVconst (Cint 3)
 
-    let mapI = EnvNames (Map.fromList [(sortRefBool, "boolean")
-                                      ,(sortRefInt, "integer")
+    let mapI = EnvNames (Map.fromList [(SortBool, "boolean")
+                                      ,(SortInt, "integer")
                                       ])
                         Map.empty
                         (Map.fromList [(fid1, fName1)
                                       ,(fid2, fName2)
                                       ])
 
-    let (TXS2SMTFuncTest envdefs expected) = createFunctionDefsRecursive mapI [(fid1,[varX, varY],sortRefBool,vexpr1),(fid2,[],sortRefInt,vexpr2)]
+    let (TXS2SMTFuncTest envdefs expected) = createFunctionDefsRecursive mapI [(fid1,[varX, varY],SortBool,vexpr1),(fid2,[],SortInt,vexpr2)]
 
     assertEqual "multiple Functions" expected (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))

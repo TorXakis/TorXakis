@@ -59,7 +59,7 @@ data ParamPartition =
 randValExprsSolvePartition :: (Variable v) => ParamPartition -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
 randValExprsSolvePartition p vs exprs  = 
      -- if not all constraints are of type boolean: stop, otherwise solve the constraints
-     if all ( (sortRefBool == ) . sortOf ) exprs
+     if all ( (SortBool == ) . sortOf ) exprs
         then do
             push
             addDeclarations vs
@@ -87,7 +87,7 @@ randValExprsSolvePartition'' _ [] x           =  return x
 
 randValExprsSolvePartition'' vs (cnrs:cnrss) x = 
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
-    if all ( (sortRefBool == ) . sortOf) (Set.toList cnrs)
+    if all ( (SortBool == ) . sortOf) (Set.toList cnrs)
     then do
         push
         -- addDeclarations already added in randValExprsSolvePartition
@@ -206,11 +206,11 @@ randCnrsCstr p (cid, CstrDef{}) vexp depth  =  do
 randCnrs :: Variable v => ParamPartition -> ValExpr v -> Int -> SMT [ Set.Set (ValExpr v) ]
 randCnrs p vexp depth  =
      let srt = sortOf vexp
-      in if  srt == sortRefBool
+      in if  srt == SortBool
            then randCnrsBool vexp
-           else if  srt == sortRefInt
+           else if  srt == SortInt
                   then randCnrsInt p vexp
-                  else if  srt == sortRefString
+                  else if  srt == SortString
                          then randCnrsString vexp
                          else if  srt == sortRefRegex
                                 then do lift $ hPutStrLn stderr "TXS RandPartition randCnrs: Regex can't be solved\n"

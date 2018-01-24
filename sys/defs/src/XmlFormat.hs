@@ -154,11 +154,11 @@ constFromXml tdefs sid s =
 
 pairNameConstFromXml :: TxsDefs -> SortId -> Node Text Text -> Text -> Const
 pairNameConstFromXml _ sid (Element nt [] list) n
-  | n == nt, sid == sortRefBool = Cbool ("true" == stringFromList list)
+  | n == nt, sid == SortBool = Cbool ("true" == stringFromList list)
 pairNameConstFromXml _     sid     (Element nt [] list) n
-  | n == nt, sid == sortRefInt = Cint (read (T.unpack (stringFromList list)))
+  | n == nt, sid == SortInt = Cint (read (T.unpack (stringFromList list)))
 pairNameConstFromXml _ sid (Element nt [] list) n
-  | n == nt, sid == sortRefString = Cstring (stringFromList list)
+  | n == nt, sid == SortString = Cstring (stringFromList list)
 pairNameConstFromXml tdefs sid (Element nt [] [Element cname [] list]) n
   | n == nt =
     let cstrid = lookupConstructor tdefs sid cname
