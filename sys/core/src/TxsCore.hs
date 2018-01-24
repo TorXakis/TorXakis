@@ -58,8 +58,11 @@ module TxsCore
   -- *** go back to previous state
 , txsGoTo
 
-  -- ** stop testing, simulating, or stepping
-, txsStop
+  -- ** stop stepping
+, txsStopNW
+
+  -- ** stop testing, simulating
+, txsStopEW
 
   -- * Parameters
   -- ** get all parameter values
@@ -165,7 +168,7 @@ import qualified Eval
 
 -- import from valexpr
 import qualified SortId
-import qualified SortOf
+-- import qualified SortOf
 import ConstDefs
 import VarId
 
@@ -222,52 +225,77 @@ txsInit tdefs sigs putMsgs  =  do
                                  , IOC.putmsgs = putMsgs
                                  }
                  }
-       IOC.Initing {}
-         -> do TxsCore.txsTermit
-               TxsCore.txsInit tdefs sigs putMsgs
-       _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
-               TxsCore.txsTermit
-               TxsCore.txsInit tdefs sigs putMsgs
+       _ -> do                       -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "txsInit only in Noning mode" ]
+
 
 -- | terminate TorXakis core
 txsTermit :: IOC.IOC ()
 txsTermit  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning
-         -> return ()
        IOC.Initing { IOC.smts = smts, IOC.putmsgs = putmsgs }
          -> do lift $ mapM_ (runStateT SMT.close) (Map.elems smts)
                putmsgs [ EnvData.TXS_CORE_USER_INFO "Solver(s) closed"
                        , EnvData.TXS_CORE_USER_INFO "TxsCore terminated"
                        ]
                put envc { IOC.state = IOC.Noning }
-       _ -> do TxsCore.txsStop                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
-               TxsCore.txsTermit
+       _ -> do                        -- IOC.Noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "txsTermit only in Initing mode" ] 
 
 
 -- | stop testing, simulating, or stepping.
--- returns txscore to the initialized state.
--- See 'txsSetTest', 'txsSetSim', and 'txsSetStep', respectively.
-txsStop :: IOC.IOC ()
-txsStop  =  do
+-- returns txscore to the initialized state, when no External World running.
+-- See 'txsSetStep'.
+txsStopNOEW :: IOC.IOC ()
+txsStopNOEW  =  do
      envc <- get
-     case IOC.state envc of
-       IOC.Noning
-         -> return ()
-       IOC.Initing {}
-         -> return ()
-       _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulation/Testing/Stepping stopped" ]
-               let st = IOC.state envc
-               put envc {
-                 IOC.state =
-                     IOC.Initing { IOC.smts    = IOC.smts    st
-                                 , IOC.tdefs   = IOC.tdefs   st
-                                 , IOC.sigs    = IOC.sigs    st
-                                 , IOC.putmsgs = IOC.putmsgs st
-                                 }
-                 }
+     let cState = IOC.state envc
+     case cState of
+       IOC.Stepping { }
+         -> do put envc { IOC.state = IOC.Initing { IOC.smts    = IOC.smts    cState
+                                                  , IOC.tdefs   = IOC.tdefs   cState
+                                                  , IOC.sigs    = IOC.sigs    cState
+                                                  , IOC.putmsgs = IOC.putmsgs cState
+                        }                         }
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepping stopped" ]
+       _ -> do                         -- IOC.Noning, IOC.Initing IOC.Testing, IOC.Simuling --
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "txsStopNW only in Stepping mode" ]
+
+
+-- | stop testing, simulating.
+-- returns txscore to the initialized state, when External World running.
+-- See 'txsSetTest', 'txsSetSim', respectively.
+txsStopEW :: (IOC.EWorld ew)
+          => ew                                         -- ^ external world.
+          -> IOC.IOC ew                                 -- ^ modified external world.
+txsStopEW eWorld  =  do
+     envc <- get
+     let cState = IOC.state envc
+     case cState of
+       IOC.Testing { }
+         -> do put envc { IOC.state = IOC.Initing { IOC.smts    = IOC.smts    cState
+                                                  , IOC.tdefs   = IOC.tdefs   cState
+                                                  , IOC.sigs    = IOC.sigs    cState
+                                                  , IOC.putmsgs = IOC.putmsgs cState
+                        }                         }
+               eWorld' <- IOC.stopW eWorld
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Testing stopped" ]
+               return eWorld'
+       IOC.Simuling { }
+         -> do put envc { IOC.state = IOC.Initing { IOC.smts    = IOC.smts    cState
+                                                  , IOC.tdefs   = IOC.tdefs   cState
+                                                  , IOC.sigs    = IOC.sigs    cState
+                                                  , IOC.putmsgs = IOC.putmsgs cState
+                        }                         }
+               eWorld' <- IOC.stopW eWorld
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulation stopped" ]
+               return eWorld'
+       _ -> do                         -- IOC.Noning, IOC.Initing IOC.Testing, IOC.Simuling --
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "txsStopEW only in Testing or Simuling mode" ]
+               return eWorld
+
 
 -- | Get the values of all parameters.
 txsGetParams :: IOC.IOC [(String,String)]
@@ -420,60 +448,68 @@ txsRanSolve vexp  =  do
 -- | Start testing.
 --
 --   Only possible when txscore is initialized.
---
--- modus transition general.
-txsSetTest :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action)  -- ^ callback function for sending an input action to the SUT (world).
-                                                            --   The callback function is called with a proposed input action.
-                                                            --   When the SUT has produced an output action,
-                                                            --   the callback function must return that output action,
-                                                            --   otherwise the callback function must return the input action.
-           -> IOC.IOC TxsDDefs.Action                       -- ^ callback function for receiving an output action from the SUT (world).
-                                                            --   The callback function signals that the SUT has produced an output action.
-           -> TxsDefs.ModelDef                              -- ^ model definition.
-           -> Maybe TxsDefs.MapperDef                       -- ^ optional mapper definition.
-           -> Maybe TxsDefs.PurpDef                         -- ^ optional test purpose definition.
-           -> IOC.IOC ()
-txsSetTest putToW getFroW moddef mapdef purpdef  =  do
+txsSetTest :: IOC.EWorld ew
+           => ew                                         -- ^ external world.
+           -> TxsDefs.ModelDef                           -- ^ model definition.
+           -> Maybe TxsDefs.MapperDef                    -- ^ optional mapper definition.
+           -> Maybe TxsDefs.PurpDef                      -- ^ optional test purpose definition.
+           -> IOC.IOC ew                                 -- ^ modified external world.
+txsSetTest eWorld moddef mapdef purpdef  =  do
      envc <- get
-     case IOC.state envc of
-       IOC.Noning {} ->
-            IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester started without model file" ]
-       IOC.Initing { IOC.smts = smts
-                   , IOC.tdefs = tdefs
-                   , IOC.sigs = sigs
-                   , IOC.putmsgs = putmsgs} -> do
-            IOC.putCS IOC.Testing { IOC.smts      = smts
-                                 , IOC.tdefs     = tdefs
-                                 , IOC.sigs      = sigs
-                                 , IOC.modeldef  = moddef
-                                 , IOC.mapperdef = mapdef
-                                 , IOC.purpdef   = purpdef
-                                 , IOC.puttow    = putToW
-                                 , IOC.getfrow   = getFroW
-                                 , IOC.behtrie   = []
-                                 , IOC.inistate  = 0
-                                 , IOC.curstate  = 0
-                                 , IOC.modsts    = []
-                                 , IOC.mapsts    = []
-                                 , IOC.purpsts   = []
-                                 , IOC.putmsgs   = putmsgs
-                                 }
-            (maybt,mt,gls) <- startTester moddef mapdef purpdef
-            case maybt of
-              Nothing ->
-                   IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
-              Just bt -> do
-                   IOC.modifyCS $ \st -> st { IOC.modsts  = bt
-                                            , IOC.mapsts  = mt
-                                            , IOC.purpsts = fmap (second Left) gls
-                                            }
-                   unless
-                       (null gls)
-                       (IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Goals: " ++ List.intercalate "," (TxsShow.fshow . fst <$> gls) ])
-                   IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
-       _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
-            TxsCore.txsStop
-            TxsCore.txsSetTest putToW getFroW moddef mapdef purpdef
+     let cState = IOC.state envc
+     case cState of
+       IOC.Initing { IOC.smts    = smts
+                   , IOC.tdefs   = tdefs
+                   , IOC.sigs    = sigs
+                   , IOC.putmsgs = putmsgs
+                   }
+         -> do IOC.putCS IOC.Testing { IOC.smts      = smts
+                                     , IOC.tdefs     = tdefs
+                                     , IOC.sigs      = sigs
+                                     , IOC.modeldef  = moddef
+                                     , IOC.mapperdef = mapdef
+                                     , IOC.purpdef   = purpdef
+                                     , IOC.eworld    = eWorld
+                                     , IOC.behtrie   = []
+                                     , IOC.inistate  = 0
+                                     , IOC.curstate  = 0
+                                     , IOC.modsts    = []
+                                     , IOC.mapsts    = []
+                                     , IOC.purpsts   = []
+                                     , IOC.putmsgs   = putmsgs
+                                     }
+               (maybt,mt,gls) <- startTester moddef mapdef purpdef
+               case maybt of
+                 Nothing
+                   -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
+                         return eWorld 
+                 Just bt 
+                   -> do eWorld' <- IOC.restartW eWorld
+                         IOC.putCS IOC.Testing { IOC.smts      = smts
+                                               , IOC.tdefs     = tdefs
+                                               , IOC.sigs      = sigs
+                                               , IOC.modeldef  = moddef
+                                               , IOC.mapperdef = mapdef
+                                               , IOC.purpdef   = purpdef
+                                               , IOC.eworld    = eWorld'
+                                               , IOC.behtrie   = []
+                                               , IOC.inistate  = 0
+                                               , IOC.curstate  = 0
+                                               , IOC.modsts    = bt
+                                               , IOC.mapsts    = mt
+                                               , IOC.purpsts   = fmap (second Left) gls
+                                               , IOC.putmsgs   = putmsgs
+                                               } 
+                         unless                
+                           (null gls)        
+                           (IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Goals: " ++
+                                          List.intercalate "," (TxsShow.fshow . fst <$> gls) ])
+                         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
+                         return eWorld'
+       _ -> do                        -- IOC.Noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester must start in Initing mode" ]
+               return eWorld
+
 
 startTester :: TxsDefs.ModelDef ->
                Maybe TxsDefs.MapperDef ->
@@ -591,57 +627,63 @@ goalInit chsets (gid,bexp)  =  do
               ; Just pt' -> [ (gid, pt') ]
               }
 
+
 -- | Start simulating.
 --
 --   Only possible when txscore is initialized.
---
--- modus transition general.
-txsSetSim :: (TxsDDefs.Action -> IOC.IOC TxsDDefs.Action)   -- ^callback function for sending an output action to the environment (world).
-                                                            --   The callback function is called with a proposed output action.
-                                                            --   When the environment has produced an input action,
-                                                            --   the callback function must return that input action,
-                                                            --   otherwise the callback function must return the output action.
-          -> IOC.IOC TxsDDefs.Action                        -- ^ callback function for receiving an input action from the environment (world).
-                                                            --   The callback function signals that the environment has produced an input action.
-          -> TxsDefs.ModelDef                               -- ^ model definition.
-          -> Maybe TxsDefs.MapperDef                        -- ^ optional mapper definition.
-          -> IOC.IOC ()
-txsSetSim putToW getFroW moddef mapdef  =  do
+txsSetSim :: (IOC.EWorld ew)
+          => ew                                         -- ^ external world.
+          -> TxsDefs.ModelDef                           -- ^ model definition.
+          -> Maybe TxsDefs.MapperDef                    -- ^ optional mapper definition.
+          -> IOC.IOC ew                                 -- ^ modified external world.
+txsSetSim eWorld moddef mapdef  =  do
      envc <- get
-     case IOC.state envc of
-       IOC.Noning {} ->
-            IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator started without model file" ]
+     let cState = IOC.state envc
+     case cState of
        IOC.Initing { IOC.smts = smts
                    , IOC.tdefs = tdefs
                    , IOC.sigs = sigs
-                   , IOC.putmsgs = putmsgs} -> do
-            IOC.putCS IOC.Simuling { IOC.smts      = smts
-                                   , IOC.tdefs     = tdefs
-                                   , IOC.sigs      = sigs
-                                   , IOC.modeldef  = moddef
-                                   , IOC.mapperdef = mapdef
-                                   , IOC.puttow    = putToW
-                                   , IOC.getfrow   = getFroW
-                                   , IOC.behtrie   = []
-                                   , IOC.inistate  = 0
-                                   , IOC.curstate  = 0
-                                   , IOC.modsts    = []
-                                   , IOC.mapsts    = []
-                                   , IOC.putmsgs   = putmsgs
-                                   }
-            (maybt,mt) <- startSimulator moddef mapdef
-            case maybt of
-              Nothing ->
-                   IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator start failed" ]
-              Just bt -> do
-                   IOC.modifyCS $
-                     \st -> st { IOC.modsts = bt
-                               , IOC.mapsts = mt
-                               }
-                   IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulator started" ]
-       _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
-            TxsCore.txsStop
-            TxsCore.txsSetSim putToW getFroW moddef mapdef
+                   , IOC.putmsgs = putmsgs
+                   }
+         -> do IOC.putCS IOC.Simuling { IOC.smts      = smts
+                                      , IOC.tdefs     = tdefs
+                                      , IOC.sigs      = sigs
+                                      , IOC.modeldef  = moddef
+                                      , IOC.mapperdef = mapdef
+                                      , IOC.eworld    = eWorld
+                                      , IOC.behtrie   = []
+                                      , IOC.inistate  = 0
+                                      , IOC.curstate  = 0
+                                      , IOC.modsts    = []
+                                      , IOC.mapsts    = []
+                                      , IOC.putmsgs   = putmsgs
+                                      }
+               (maybt,mt) <- startSimulator moddef mapdef
+               case maybt of
+                 Nothing
+                   -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator start failed" ]
+                         return eWorld
+                 Just bt
+                   -> do eWorld' <- IOC.restartW eWorld
+                         IOC.putCS IOC.Simuling { IOC.smts      = smts
+                                                , IOC.tdefs     = tdefs
+                                                , IOC.sigs      = sigs
+                                                , IOC.modeldef  = moddef
+                                                , IOC.mapperdef = mapdef
+                                                , IOC.eworld    = eWorld'
+                                                , IOC.behtrie   = []
+                                                , IOC.inistate  = 0
+                                                , IOC.curstate  = 0
+                                                , IOC.modsts    = bt
+                                                , IOC.mapsts    = mt
+                                                , IOC.putmsgs   = putmsgs
+                                                }
+                         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulator started" ]
+                         return eWorld'
+       _ -> do                        -- IOC.noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator must start in Initing mode" ]
+               return eWorld
+
 
 startSimulator :: TxsDefs.ModelDef ->
                   Maybe TxsDefs.MapperDef ->
@@ -687,40 +729,35 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
 -- | Start stepping using the provided model definition.
 --
 --   Only possible when txscore is initialized.
---
--- modus transition general.
 txsSetStep :: TxsDefs.ModelDef              -- ^ model definition.
            -> IOC.IOC ()
 txsSetStep moddef  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning ->
-            IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper started without model file" ]
        IOC.Initing { IOC.smts = smts
                    , IOC.tdefs = tdefs
                    , IOC.sigs = sigs
-                   , IOC.putmsgs = putmsgs } -> do
-            IOC.putCS IOC.Stepping { IOC.smts      = smts
-                                   , IOC.tdefs     = tdefs
-                                   , IOC.sigs      = sigs
-                                   , IOC.modeldef  = moddef
-                                   , IOC.behtrie   = []
-                                   , IOC.inistate  = 0
-                                   , IOC.curstate  = 0
-                                   , IOC.maxstate  = 0
-                                   , IOC.modstss   = Map.empty
-                                   , IOC.putmsgs   = putmsgs
-                                   }
-            maybt <- startStepper moddef
-            case maybt of
-              Nothing ->
-                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper start failed" ]
-              Just bt -> do
-                   IOC.modifyCS $ \st -> st { IOC.modstss = Map.singleton 0 bt }
-                   IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepper started" ]
-       _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
-            TxsCore.txsStop
-            TxsCore.txsSetStep moddef
+                   , IOC.putmsgs = putmsgs }
+         -> do IOC.putCS IOC.Stepping { IOC.smts      = smts
+                                      , IOC.tdefs     = tdefs
+                                      , IOC.sigs      = sigs
+                                      , IOC.modeldef  = moddef
+                                      , IOC.behtrie   = []
+                                      , IOC.inistate  = 0
+                                      , IOC.curstate  = 0
+                                      , IOC.maxstate  = 0
+                                      , IOC.modstss   = Map.empty
+                                      , IOC.putmsgs   = putmsgs
+                                      }
+               maybt <- startStepper moddef
+               case maybt of
+                 Nothing
+                   -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper start failed" ]
+                 Just bt
+                   -> do IOC.modifyCS $ \st -> st { IOC.modstss = Map.singleton 0 bt }
+                         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepper started" ]
+       _ -> do                        -- IOC.noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper must start in Initing mode" ]
 
 
 startStepper :: TxsDefs.ModelDef ->

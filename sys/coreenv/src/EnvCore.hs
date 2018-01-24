@@ -4,12 +4,15 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
+{-# LANGUAGE ExistentialQuantification #-}
+
 -- | TorXakis Core Environment (Internal State) Data Type Definitions.
 module EnvCore
   ( IOC -- IOC = StateT EnvC IO
                   -- torxakis core main state monad transformer
   , EnvC(..)
   , CoreState(..)
+  , EWorld(..)
   , getSMT -- :: String -> IOC SMTData.SmtEnv
   , putSMT -- :: String -> SMTData.SmtEnv -> IOC ()
   , getParams -- :: [String] -> IOC [(String,String)]
@@ -67,14 +70,14 @@ data CoreState = Noning
                         , sigs    :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         }
-             | Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+             | forall ew . (EWorld ew) =>
+               Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
                         , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , mapperdef :: Maybe TxsDefs.MapperDef
                         , purpdef   :: Maybe TxsDefs.PurpDef
-                        , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
-                        , getfrow   :: IOC TxsDDefs.Action
+                        , eworld    :: ew
                         , behtrie   :: [ (EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr) ]
                                                                      -- behaviour trie
                         , inistate  :: EnvData.StateNr               -- initial beh statenr
@@ -84,13 +87,13 @@ data CoreState = Noning
                         , purpsts   :: [(TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)]   -- purpose state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         }
-             | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+             | forall ew . (EWorld ew) =>
+               Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
                         , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , modeldef  :: TxsDefs.ModelDef
                         , mapperdef :: Maybe TxsDefs.MapperDef
-                        , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
-                        , getfrow   :: IOC TxsDDefs.Action
+                        , eworld    :: ew
                         , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
                                                                      -- behaviour trie
                         , inistate  :: EnvData.StateNr               -- initial beh statenr
@@ -121,6 +124,19 @@ putCS newSt = modify $ \env -> env { state = newSt }
 
 incUnid :: IOC ()
 incUnid = modify $ \env -> env { unid = unid env + 1}
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- external world
+
+class EWorld w
+  where
+     startW    ::  w -> IOC w
+     restartW  ::  w -> IOC w
+     stopW     ::  w -> IOC w
+     putToW    ::  w -> TxsDDefs.Action -> IOC TxsDDefs.Action
+     getFroW   ::  w -> IOC TxsDDefs.Action
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- SMT :  getting and setting SMT solver

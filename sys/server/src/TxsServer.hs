@@ -165,25 +165,24 @@ cmdsIntpr = do
        ("LEARN"    , _ )   | IOS.isLearned  modus  ->  cmdLearn     args
        ("LEARN"    , _ )                           ->  cmdNoop      cmd
 -- ----------------------------------------------------------------------------- btree state --
-       ("SHOW"     , _ )       |       IOS.isGtIdled  modus  ->  cmdShow      args
-       ("SHOW"     , _ )       | not $ IOS.isGtIdled  modus  ->  cmdNoop      cmd
-       ("GOTO"     , _ )      |       IOS.isGtInited modus  ->  cmdGoTo      args
-       ("GOTO"     , _ )       | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
-       ("PATH"     , _ )       |       IOS.isGtInited modus  ->  cmdPath      args
-       ("PATH"     , _ )       | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
-       ("TRACE"    , _ )      |       IOS.isGtInited modus  ->  cmdTrace     args
-       ("TRACE"    , _ )      | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
-       ("MENU"     , _ )       |       IOS.isGtInited modus  ->  cmdMenu      args
-       ("MENU"     , _ )       | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
-       ("MAP"      , _ )        |       IOS.isTested   modus  ->  cmdMap       args
-       ("MAP"      , _ )        |       IOS.isSimuled  modus  ->  cmdMap       args
-       ("MAP"      , _ )        |       IOS.isStepped  modus  ->  cmdNoop      cmd
-       ("MAP"      , _ )        | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
-       ("NCOMP"    , _ )   |       IOS.isInited   modus  ->  cmdNComp     args
-       ("NCOMP"    , _ )      | not $ IOS.isInited   modus  ->  cmdNoop      cmd
-       ("LPE"      , _ )   |       IOS.isInited   modus  ->  cmdLPE       args
-       ("LPE"      , _ )    | not $ IOS.isInited   modus  ->  cmdNoop      cmd
-       (_          , _ )                                   ->  cmdUnknown   cmd
+       ("SHOW"     , _ )   | IOS.isGtIdled  modus  ->  cmdShow      args
+       ("SHOW"     , _ )                           ->  cmdNoop      cmd
+       ("GOTO"     , _ )   | IOS.isStepped  modus  ->  cmdGoTo      args
+       ("GOTO"     , _ )                           ->  cmdNoop      cmd
+       ("PATH"     , _ )   | IOS.isStepped  modus  ->  cmdPath      args
+       ("PATH"     , _ )                           ->  cmdNoop      cmd
+       ("TRACE"    , _ )   | IOS.isGtInited modus  ->  cmdTrace     args
+       ("TRACE"    , _ )                           ->  cmdNoop      cmd
+       ("MENU"     , _ )   | IOS.isGtInited modus  ->  cmdMenu      args
+       ("MENU"     , _ )                           ->  cmdNoop      cmd
+       ("MAP"      , _ )   | IOS.isTested   modus  ->  cmdMap       args
+       ("MAP"      , _ )   | IOS.isSimuled  modus  ->  cmdMap       cmd
+       ("MAP"      , _ )                           ->  cmdNoop      cmd
+       ("NCOMP"    , _ )   | IOS.isInited   modus  ->  cmdNComp     args
+       ("NCOMP"    , _ )                           ->  cmdNoop      cmd
+       ("LPE"      , _ )   | IOS.isInited   modus  ->  cmdLPE       args
+       ("LPE"      , _ )                           ->  cmdNoop      cmd
+       (_          , _ )                           ->  cmdUnknown   cmd
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -514,8 +513,15 @@ cmdSolve args = do                                                   -- PRE :  m
 -- ----------------------------------------------------------------------------------------- --
 
 cmdTester :: String -> IOS.IOS ()
-cmdTester args = do                                               -- PRE :  modus == Inited  --
-     tdefs  <- gets IOS.tdefs
+cmdTester args = do                                                -- PRE :  modus == Inited --
+     envs <- get 
+     let  tdefs     = IOS.tdefs envs
+          deltaTime = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
+                        Nothing      -> 2000                -- default 2 sec
+                        Just (val,_) -> read val
+          ioTime    = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
+                        Nothing      -> 10                  -- default 10 msec
+                        Just (val,_) -> read val
      case words args of
        [m,c] -> do
             let mdefs = [ mdef
@@ -529,91 +535,85 @@ cmdTester args = do                                               -- PRE :  modu
             case (mdefs,cdefs) of
               ([modeldef],[cnectdef])
                          | isConsistentTester modeldef Nothing Nothing cnectdef
-                -> do modify $ \env -> env { IOS.modus = IOS.Tested cnectdef }
-                      World.openSockets
-                      envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef Nothing Nothing
+                -> do ew  <- lift $ initSockWorld cnectdef deltaTime ioTime
+                      ew' <- lift $ TxsCore.txsSetTest ew modeldef Nothing Nothing
+                      modify $ \env -> env { IOS.modus = IOS.Tested ew' }
                       IFS.pack "TESTER" []
                       cmdsIntpr
               _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
                       cmdsIntpr
        [m,x,c] -> do
-            let mdefs  =  [ mdef
-                          | (TxsDefs.ModelId  nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                          , T.unpack nm == m
-                          ]
-                adefs  =  [ adef
-                          | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
-                          , T.unpack nm == x
-                          ]
-                pdefs  =  [ pdef
-                          | (TxsDefs.PurpId   nm _, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
-                          , T.unpack nm == x
-                          ]
-                cdefs  =  [ cdef
-                          | (TxsDefs.CnectId  nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
-                          , T.unpack nm == c
-                          ]
+            let mdefs = [ mdef
+                        | (TxsDefs.ModelId  nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
+                        , T.unpack nm == m
+                        ]
+                adefs = [ adef
+                        | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
+                        , T.unpack nm == x
+                        ]
+                pdefs = [ pdef
+                        | (TxsDefs.PurpId   nm _, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
+                        , T.unpack nm == x
+                        ]
+                cdefs = [ cdef
+                        | (TxsDefs.CnectId  nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
+                        , T.unpack nm == c
+                        ]
             case (mdefs,adefs,pdefs,cdefs) of
               ([modeldef],[mapperdef],[],[cnectdef])
                          | isConsistentTester modeldef (Just mapperdef) Nothing cnectdef
-                -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
-                      World.openSockets
-                      envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef (Just mapperdef) Nothing
+                -> do ew  <- lift $ initSockWorld cnectdef deltaTime ioTime
+                      ew' <- lift $ TxsCore.txsSetTest ew modeldef (Just mapperdef) Nothing
+                      modify $ \env -> env { IOS.modus  = IOS.Tested ew' }
                       IFS.pack "TESTER" []
                       cmdsIntpr
               ([modeldef],[],[purpdef],[cnectdef])
                          | isConsistentTester modeldef Nothing (Just purpdef) cnectdef
-                -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
-                      World.openSockets
-                      envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef Nothing (Just purpdef)
+                -> do ew  <- lift $ initSockWorld cnectdef deltaTime ioTime
+                      ew' <- lift $ TxsCore.txsSetTest ew modeldef Nothing (Just purpdef)
+                      modify $ \env -> env { IOS.modus  = IOS.Tested ew' }
                       IFS.pack "TESTER" [ ]
                       cmdsIntpr
               _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
                       cmdsIntpr
        [m,x,y,c] -> do
-            let mdefs  =  [ mdef
-                          | (TxsDefs.ModelId  nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                          , T.unpack nm == m
-                          ]
-                adefs  =  [ adef
-                          | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
-                          , T.unpack nm == x || T.unpack nm == y
-                          ]
-                pdefs  =  [ pdef
-                          | (TxsDefs.PurpId   nm _, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
-                          , T.unpack nm == x || T.unpack nm == y
-                          ]
-                cdefs  =  [ cdef
-                          | (TxsDefs.CnectId  nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
-                          , T.unpack nm == c
-                          ]
+            let mdefs = [ mdef
+                        | (TxsDefs.ModelId  nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
+                        , T.unpack nm == m
+                        ]
+                adefs = [ adef
+                        | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
+                        , T.unpack nm == x || T.unpack nm == y
+                        ]
+                pdefs = [ pdef
+                        | (TxsDefs.PurpId   nm _, pdef) <- Map.toList (TxsDefs.purpDefs tdefs)
+                        , T.unpack nm == x || T.unpack nm == y
+                        ]
+                cdefs = [ cdef
+                        | (TxsDefs.CnectId  nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
+                        , T.unpack nm == c
+                        ]
             case (mdefs,adefs,pdefs,cdefs) of
               ([modeldef],[mapperdef],[purpdef],[cnectdef])
                          | isConsistentTester modeldef (Just mapperdef) (Just purpdef) cnectdef
-                -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
-                      World.openSockets
-                      envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
-                                                modeldef (Just mapperdef) (Just purpdef)
+                -> do ew  <- lift $ initSockWorld cnectdef deltaTime ioTime
+                      ew' <- lift $ TxsCore.txsSetTest ew modeldef (Just mapperdef)
+                                                                   (Just purpdef)
+                      modify $ \env -> env { IOS.modus  = IOS.Tested ew' }
                       IFS.pack "TESTER" [ ]
                       cmdsIntpr
               _ -> do IFS.nack "TESTER" [ "Wrong or inconsistent parameters" ]
                       cmdsIntpr
        _ -> do
-            IFS.nack "TESTER" [ "Wrong parameters" ]
+            IFS.nack "TESTER" [ "Wrong number of parameters" ]
             cmdsIntpr
 
-isConsistentTester :: TxsDefs.ModelDef ->
-                      Maybe TxsDefs.MapperDef ->
-                      Maybe TxsDefs.PurpDef ->
-                      TxsDefs.CnectDef ->
-                      Bool
+
+isConsistentTester :: TxsDefs.ModelDef
+                   -> Maybe TxsDefs.MapperDef
+                   -> Maybe TxsDefs.PurpDef
+                   -> TxsDefs.CnectDef
+                   -> Bool
 
 isConsistentTester (TxsDefs.ModelDef minsyncs moutsyncs _ _)
                    Nothing
@@ -649,59 +649,67 @@ isConsistentTester _
 -- ----------------------------------------------------------------------------------------- --
 
 cmdSimulator :: String -> IOS.IOS ()
-cmdSimulator args = do                                              -- PRE :  modus == Inited  --
-
-     tdefs  <- gets IOS.tdefs
+cmdSimulator args = do                                             -- PRE :  modus == Inited --
+     envs <- get
+     let  tdefs     = IOS.tdefs envs
+          deltaTime = case Map.lookup "param_Sim_deltaTime" (IOS.params envs) of
+                        Nothing      -> 2000                -- default 2 sec
+                        Just (val,_) -> read val
+          ioTime    = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
+                        Nothing      -> 10                  -- default 10 msec
+                        Just (val,_) -> read val
      case words args of
        [m,c] -> do
-            let mdefs  =  [ mdef
-                          | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                          , T.unpack nm == m
-                          ]
-                cdefs  =  [ cdef
-                          | (TxsDefs.CnectId nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
-                          , T.unpack nm == c
-                          ]
+            let mdefs = [ mdef
+                        | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
+                        , T.unpack nm == m
+                        ]
+                cdefs = [ cdef
+                        | (TxsDefs.CnectId nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
+                        , T.unpack nm == c
+                        ]
             case (mdefs,cdefs) of
               ([modeldef],[cnectdef])
                          | isConsistentSimulator modeldef Nothing cnectdef
-                -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
-                      World.openSockets
-                      envs  <- get
-                      lift $ TxsCore.txsSetSim (World.putSocket envs) (World.getSocket envs)
-                                               modeldef Nothing
+                -> do ew  <- lift $ initSockWorld cnectdef deltaTime ioTime
+                      ew' <- lift $ TxsCore.txsSetSim ew modeldef Nothing
+                      modify $ \env -> env { IOS.modus = IOS.Simuled ew' }
                       IFS.pack "SIMULATOR" []
                       cmdsIntpr
               _ -> do IFS.nack "SIMULATOR" [ "Wrong or inconsistent parameters" ]
                       cmdsIntpr
        [m,a,c] -> do
-            let mdefs  =  [ mdef
-                          | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                          , T.unpack nm == m
-                          ]
-                adefs  =  [ adef
-                          | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
-                          , T.unpack nm == a
-                          ]
-                cdefs  =  [ cdef
-                          | (TxsDefs.CnectId nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
-                          , T.unpack nm == c
-                          ]
+            let mdefs = [ mdef
+                        | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
+                        , T.unpack nm == m
+                        ]
+                adefs = [ adef
+                        | (TxsDefs.MapperId nm _, adef) <- Map.toList (TxsDefs.mapperDefs tdefs)
+                        , T.unpack nm == a
+                        ]
+                cdefs = [ cdef
+                        | (TxsDefs.CnectId nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
+                        , T.unpack nm == c
+                        ]
             case (mdefs,adefs,cdefs) of
               ([modeldef],[mapperdef],[cnectdef])
                          | isConsistentSimulator modeldef (Just mapperdef) cnectdef
-                -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
-                      World.openSockets
-                      envs  <- get
-                      lift $ TxsCore.txsSetSim (World.putSocket envs) (World.getSocket envs)
-                                               modeldef (Just mapperdef)
+                -> do ew  <- lift $ initSockWorld cnectdef deltaTime ioTime
+                      ew' <- lift $ TxsCore.txsSetSim ew modeldef (Just mapperdef)
+                      modify $ \env -> env { IOS.modus = IOS.Simuled ew' }
                       IFS.pack "SIMULATOR" []
                       cmdsIntpr
               _ -> do IFS.nack "SIMULATOR" [ "Wrong or inconsistent parameters" ]
                       cmdsIntpr
-       _ -> error $ "cmdSimulator - Illegal arguments " ++ show args
+       _ -> do
+            IFS.nack "SIMULATOR" [ "Wrong number of parameters" ]
+            cmdsIntpr
 
-isConsistentSimulator :: TxsDefs.ModelDef -> Maybe TxsDefs.MapperDef -> TxsDefs.CnectDef -> Bool
+
+isConsistentSimulator :: TxsDefs.ModelDef
+                      -> Maybe TxsDefs.MapperDef
+                      -> TxsDefs.CnectDef
+                      -> Bool
 
 isConsistentSimulator (TxsDefs.ModelDef minsyncs moutsyncs _ _)
                       Nothing
@@ -731,98 +739,161 @@ isConsistentSimulator _
       in    cfrows `Set.isSubsetOf` ains
          && ctows  `Set.isSubsetOf` aouts
 
-
 -- ----------------------------------------------------------------------------------------- --
 
 cmdStepper :: String -> IOS.IOS ()
-cmdStepper args = do                                              -- PRE :  modus == Inited  --
-
-     tdefs  <- gets IOS.tdefs
-     let mdefs   = TxsDefs.modelDefs tdefs
+cmdStepper args = do                                               -- PRE :  modus == Inited --
+     envs <- get
+     let  tdefs = IOS.tdefs envs
      case words args of
-      [m] -> do
-         let mdefs'  =  [ mdef
-                        | (TxsDefs.ModelId nm _, mdef) <- Map.toList mdefs
+       [m] -> do
+            let mdefs = [ mdef
+                        | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
                         , T.unpack nm == m
                         ]
-         case mdefs' of
-           [modeldef] -> do modify $ \env -> env { IOS.modus = IOS.Stepped }
-                            lift $ TxsCore.txsSetStep modeldef
-                            IFS.pack "STEPPER" []
-                            cmdsIntpr
-           _          -> do IFS.nack "STEPPER" [ "Wrong or inconsistent parameters" ]
-                            cmdsIntpr
-      _  -> do IFS.nack "STEPPER" [ "Not single argument" ]
-               cmdsIntpr
+            case mdefs of
+              [modeldef]
+                -> do lift $ TxsCore.txsSetStep modeldef
+                      modify $ \env -> env { IOS.modus = IOS.Stepped }
+                      IFS.pack "STEPPER" []
+                      cmdsIntpr
+              _ -> do IFS.nack "STEPPER" [ "Wrong or inconsistent parameters" ]
+                      cmdsIntpr
+       _ -> do
+            IFS.nack "STEPPER" [ "Wrong number of parameters" ]
+            cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdLearner :: String -> IOS.IOS ()
-cmdLearner args = do                                              -- PRE :  modus == Inited  --
+cmdLearner args = do                                               -- PRE :  modus == Inited --
      IFS.nack "LEARNER" ["learner not implemented yet"]
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdTest :: String -> IOS.IOS ()
-cmdTest args =
-     case words args of
-       []                                                             -- observe one output --
-          -> do verdict <-lift TxsCore.txsTestOut
-                IFS.pack "TEST" [TxsShow.fshow verdict]
-                cmdsIntpr
-       [d] | all Char.isDigit d                              -- d::int i/o test steps --
-          -> do verdict <- lift $ TxsCore.txsTestN (read d)
-                IFS.pack "TEST" [TxsShow.fshow verdict]
-                cmdsIntpr
-       _  -> do                                                 -- do given action as input --
-                IOS.Tested (TxsDefs.CnectDef _ _ conndefs) <- gets IOS.modus
-                let ctows  =  [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
-                act <- readAction ctows args
-                if  act == TxsDDefs.ActQui
-                  then cmdsIntpr
-                  else do verdict <- lift $ TxsCore.txsTestIn act
-                          IFS.pack "TEST" [TxsShow.fshow verdict]
-                          cmdsIntpr
+cmdTest args                                                       -- PRE :  modus == Tested --
+  =  case words args of
+       []                                                              -- observe one output --
+         -> do verdict <-lift TxsCore.txsTestOut
+               IFS.pack "TEST" [TxsShow.fshow verdict]
+               cmdsIntpr
+       [d] | all Char.isDigit d                                     -- d::int i/o test steps --
+         -> do verdict <- lift $ TxsCore.txsTestN (read d)
+               IFS.pack "TEST" [TxsShow.fshow verdict]
+               cmdsIntpr
+       _                                                         -- do given action as input --
+         -> do modus <- gets IOS.modus                
+               conndefs <- case modus of              
+                             IOS.Tested (CtRunSW (TxsDefs.CnectDef _ _ conndefs) _ _ _ _ _)
+                               -> return conndefs
+                             IOS.Tested (UCtRunSW (TxsDefs.CnectDef _ _ conndefs) _ _ _ _)
+                               -> return conndefs 
+                             _ -> return []
+               let ctows = [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- conndefs ]
+               act <- readAction ctows args
+               if  act == TxsDDefs.ActQui
+                 then cmdsIntpr
+                 else do verdict <- lift $ TxsCore.txsTestIn act
+                         IFS.pack "TEST" [TxsShow.fshow verdict]
+                         cmdsIntpr
+
+{-
+  9          -> case words args of
+ 10               ["start"] 
+ 11                 -> do lift TxsCore.txsTestStart
+ 12                       IFS.pack "TEST" [ "External World started"]
+ 13                       cmdsIntpr
+ 14               ["stop"] 
+ 15                 -> do lift TxsCore.txsTestStop
+ 16                       IFS.pack "TEST" [ "External World stopped"]
+ 17                       cmdsIntpr
+ 18               ("step":args')
+ 19                 -> do verdict <- cmdTestStep args'
+ 20                       IFS.pack "TEST" [TxsShow.fshow verdict]
+ 21                       cmdsIntpr
+ 22               ("goal":args')
+ 23                 -> do verdict <- cmdTestGoal args'
+ 24                       IFS.pack "TEST" [TxsShow.fshow verdict]
+ 25                       cmdsIntpr
+ 26               ("purp":args')
+ 27                 -> do verdict <- cmdTestPurp args'
+ 28                       cmdsIntpr
+ 29               ("purps":args')
+ 30                 -> do verdict <- cmdTestPurps args'
+ 31                       IFS.pack "TEST" [TxsShow.fshow verdict]
+ 32                       cmdsIntpr
+ 33               _ -> do IFS.nack "TEST" [ "Not a TEST action: ", unwords args ]
+ 34                       cmdsIntpr
+
+ 5                
+  6 cmdTestStep :: String -> IOS.IOS TxsDDefs.Verdict
+  7 cmdTest args = do
+  8      case words args of
+  9        [] -> do                                                        -- observe one output --
+ 10                 verdict <-lift TxsCore.txsTestOut
+ 11                 return verdict 
+ 12        [d] | all Char.isDigit d                                     -- d::int i/o test steps --
+ 13           -> do verdict <- lift $ TxsCore.txsTestN (read d)
+ 14                 IFS.pack "TEST" [TxsShow.fshow verdict]
+ 15                 return verdict
+ 16        _  -> do                                                  -- do given action as input --
+ 17                 modus <- gets IOS.modus
+ 18                 conndefs <- case modus of
+ 19                               IOS.Tested (CtRunSW (TxsDefs.CnectDef _ _ conndefs) _ _ _ _ _)
+ 20                                 -> return conndefs
+ 21                               IOS.Tested (UCtRunSW (TxsDefs.CnectDef _ _ conndefs) _ _ _ _)
+ 22                                 -> return conndefs 
+ 23                               _ -> return []
+ 24                 let ctows = [ chan | TxsDefs.ConnDtoW chan _ _ _ _ <- conndefs ]
+ 25                 act <- readAction ctows args
+ 26                 if  act == TxsDDefs.ActQui
+ 27                   then cmdsIntpr
+ 28                   else do verdict <- lift $ TxsCore.txsTestIn act
+ 29                           IFS.pack "TEST" [TxsShow.fshow verdict]
+ 30                           cmdsIntpr
+ 31                           
+
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdSim :: String -> IOS.IOS ()
-cmdSim args =
+cmdSim args =                                                     -- PRE :  modus == Simuled --
      case words args of
-       []                                                           -- no arg: infinite sim --
+       []                                                            -- no arg: infinite sim --
          -> do verdict <- lift $ TxsCore.txsSimN (-1)
                IFS.pack "SIM" [TxsShow.fshow verdict]
                cmdsIntpr
-       [d] | all Char.isDigit d                                   -- d::int sim steps --
+       [d] | all Char.isDigit d                                          -- d::int sim steps --
          -> do verdict <- lift $ TxsCore.txsSimN (read d)
                IFS.pack "SIM" [TxsShow.fshow verdict]
                cmdsIntpr
-       _                                                                -- not a valid call --
+       _                                                                 -- not a valid call --
          -> do IFS.nack "SIM" ["wrong parameter"]
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdStep :: String -> IOS.IOS ()
-cmdStep args =
+cmdStep args =                                                    -- PRE :  modus == Stepped --
      case words args of
        []                                                                -- no arg: one step --
          -> do verdict <- lift $ TxsCore.txsStepN 1
                IFS.pack "STEP" [TxsShow.fshow verdict]
                cmdsIntpr
-       [d] | all Char.isDigit d                                       -- d::int steps --
+       [d] | all Char.isDigit d                                              -- d::int steps --
          -> do verdict <- lift $ TxsCore.txsStepN (read d)
                IFS.pack "STEP" [TxsShow.fshow verdict]
                cmdsIntpr
        _                                                          -- action arg: step action --
-         -> do tdefs  <- gets IOS.tdefs
+         -> do tdefs <- gets IOS.tdefs
                let mdefs = TxsDefs.modelDefs tdefs
-                   chids = Set.toList $ Set.unions
-                                        [ Set.unions (chins ++ chouts ++ spls)
-                                        | (_, TxsDefs.ModelDef chins chouts spls _)
-                                          <- Map.toList mdefs
-                                        ]
+                   chids = Set.toList $ Set.unions [ Set.unions (chins ++ chouts ++ spls)
+                                                   | (_, TxsDefs.ModelDef chins chouts spls _)
+                                                     <- Map.toList mdefs
+                                                   ]
                act <- readAction chids args
                if  act == TxsDDefs.ActQui
                  then cmdsIntpr
@@ -832,8 +903,15 @@ cmdStep args =
 
 -- ----------------------------------------------------------------------------------------- --
 
+cmdLearn :: String -> IOS.IOS ()
+cmdLearn args =                                                   -- PRE :  modus == Learned --
+     IFS.nack "LEARNER" ["learn not implemented yet"]
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
 cmdShow :: String -> IOS.IOS ()
-cmdShow args = do
+cmdShow args = do                                                    -- PRE :  modus > Idled --
      envs  <- get
      txt   <- case words args of
                 ["tdefs"             ] -> lift $ TxsCore.txsShow "tdefs"     ""
@@ -861,7 +939,7 @@ cmdShow args = do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdGoTo :: String -> IOS.IOS ()
-cmdGoTo args =
+cmdGoTo args =                                                    -- PRE :  modus == Stepped --
      case words args of
        []        -> do IFS.pack "GOTO" ["gone to current state"]
                        cmdsIntpr
@@ -886,7 +964,7 @@ cmdGoTo args =
 -- ----------------------------------------------------------------------------------------- --
 
 cmdPath :: String -> IOS.IOS ()
-cmdPath _ = do
+cmdPath _ = do                                                    -- PRE :  modus == Stepped --
      path <- lift TxsCore.txsPath
      IFS.mack [ TxsShow.showN n 6 ++ ": " ++ TxsShow.fshow s1 ++ " -> " ++
                 unwords (lines $ TxsShow.fshow a) ++ " -> " ++ TxsShow.fshow s2
@@ -898,7 +976,7 @@ cmdPath _ = do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdTrace :: String -> IOS.IOS ()
-cmdTrace args = do
+cmdTrace args = do                                                  -- PRE :  modus > Inited --
      path  <- lift TxsCore.txsPath
      let trace = [ a | (_, a ,_) <- path ]
      case words args of
@@ -919,7 +997,7 @@ cmdTrace args = do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdMenu :: String -> IOS.IOS ()
-cmdMenu args =
+cmdMenu args =                                                      -- PRE :  modus > Inited --
      let (kind,what) =
           case words args of
               ["in"]       -> ( "mod", "in" )
@@ -936,7 +1014,7 @@ cmdMenu args =
 -- ----------------------------------------------------------------------------------------- --
 
 cmdMap :: String -> IOS.IOS ()
-cmdMap args = do
+cmdMap args = do                                        -- PRE :  modus == tested \/ simuled --
      tdefs   <- gets IOS.tdefs
      let mdefs   = TxsDefs.mapperDefs tdefs
          inchids = concat [ chins
@@ -947,16 +1025,16 @@ cmdMap args = do
                cmdsIntpr
        else do act  <- readAction inchids args
                if  act == TxsDDefs.ActQui
-               then do IFS.nack "MAP" [ "Not a valid action" ]
-                       cmdsIntpr
-               else do act' <- lift $ TxsCore.txsMapper act
-                       IFS.pack "MAP" [TxsShow.fshow act']
-                       cmdsIntpr
+                 then do IFS.nack "MAP" [ "Not a valid action" ]
+                         cmdsIntpr
+                 else do act' <- lift $ TxsCore.txsMapper act
+                         IFS.pack "MAP" [TxsShow.fshow act']
+                         cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdNComp :: String -> IOS.IOS ()
-cmdNComp args = do
+cmdNComp args = do                                                 -- PRE :  modus == Inited --
      tdefs <- gets IOS.tdefs
      case words args of
        [mname] -> case [ mdef
@@ -981,7 +1059,7 @@ cmdNComp args = do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdLPE :: String -> IOS.IOS ()
-cmdLPE args = do
+cmdLPE args = do                                                   -- PRE :  modus == Inited --
      tdefs <- gets IOS.tdefs
      let mdefs = TxsDefs.modelDefs tdefs
          chids = Set.toList $ Set.unions [ Set.unions (chins ++ chouts ++ spls)
@@ -1060,7 +1138,7 @@ readBExpr chids args = do
                                       )
                                in return $!! (p,"")
                             )
-                            ( \e -> return ((uid, TxsDefs.Stop),show (e::ErrorCall)))
+                            ( \e -> return ((uid, TxsDefs.Stop), show (e::ErrorCall)))
      if  e /= ""
        then do IFS.nack "ERROR" [ "incorrect behaviour expression: " ++ e ]
                return TxsDefs.Stop
