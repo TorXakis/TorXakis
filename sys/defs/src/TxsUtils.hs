@@ -16,6 +16,7 @@ import qualified Data.Set    as Set
 import qualified FreeMonoidX as FMX
 import           FuncDef
 import           FuncId
+import           Ident
 import           Name
 import           StdTDefs
 import           TxsDefs
@@ -27,7 +28,7 @@ import           VarId
 -- identifiers: signatures, binding
 
 sig :: Ident -> Ident
-sig ( IdSort   (SortId nm _uid          ) ) = IdSort   (SortId nm 0          )
+sig ( IdADT    r                          ) = IdADT    (reset r              )
 sig ( IdCstr   (CstrId nm _uid ca cs    ) ) = IdCstr   (CstrId nm 0 ca cs    )
 sig ( IdFunc   (FuncId nm _uid fa fs    ) ) = IdFunc   (FuncId nm 0 fa fs    )
 sig ( IdProc   (ProcId nm _uid pc pv pe ) ) = IdProc   (ProcId nm 0 pc pv pe )

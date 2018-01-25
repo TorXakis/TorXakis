@@ -19,47 +19,35 @@ See LICENSE at root directory of this repository.
 module SMTData
 ( SMT
 , SmtEnv(..)
-, EnvNames(..)
-, EnvDefs (..)
 )
 where
 
 import           Control.Monad.State
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
 import           Data.Text           (Text)
-
 import           System.IO
 import           System.Process
 
-import qualified Data.Map            as Map
-import           FuncDef
 import           FuncId
+import           Identifier
 import           Sort
-import           VarId
 
 -- ----------------------------------------------------------------------------------------- --
 -- SMT state monad for smt solver
 
-data EnvDefs = EnvDefs { adtDefs    :: ADTDefs
-                       , funcDefs   :: Map.Map FuncId (FuncDef VarId)
-                       }
-               deriving (Eq,Ord,Read,Show)
-
-data EnvNames = EnvNames { sortNames   :: Map.Map Sort Text
-                         , funcNames   :: Map.Map FuncId         Text
-                         }
-                deriving (Eq,Ord,Read,Show)
-
-data  SmtEnv  =  SmtEnv     { inHandle          :: Handle
-                            , outHandle         :: Handle
-                            , errHandle         :: Handle
-                            , smtProcessHandle  :: ProcessHandle
-                            , logFileHandle     :: Maybe Handle
-                            , envNames          :: EnvNames
-                            , envDefs           :: EnvDefs
-                            }
+data  SmtEnv  =  SmtEnv { inHandle          :: Handle
+                        , outHandle         :: Handle
+                        , errHandle         :: Handle
+                        , smtProcessHandle  :: ProcessHandle
+                        , logFileHandle     :: Maybe Handle
+                        , adtRefs           :: Set.Set (Ref ADTDef)
+                        , funcIds           :: Set.Set FuncId
+                        , decoderMap        :: Map.Map Text (Ref ADTDef, Ref ConstructorDef)
+                        }
                | SmtEnvError
 
-type  SMT a   =  StateT SmtEnv IO a
-
 instance Show SmtEnv where
-  show smtEnv =  show $ envNames smtEnv
+  show smtEnv =  show $ decoderMap smtEnv
+
+type  SMT a   =  StateT SmtEnv IO a

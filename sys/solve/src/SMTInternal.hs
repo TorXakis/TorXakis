@@ -26,6 +26,7 @@ import           Control.Monad.State (gets, lift, modify)
 import qualified Data.List           as List
 import qualified Data.Map            as Map
 import           Data.Monoid
+import qualified Data.Set            as Set
 import           Data.String.Utils   (endswith, replace, startswith, strip)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
@@ -128,39 +129,34 @@ createSMTEnv cmd lgFlag =  do
     -- hSetNewlineMode hout ( NewlineMode { inputNL = CRLF, outputNL = LF   } )
 
 
-    return (SmtEnv hin
-                   hout
-                   herr
-                   ph
-                   lg
-                   initialEnvNames
-                   (EnvDefs Map.empty Map.empty Map.empty)
-            )
+    return $ SmtEnv hin
+                    hout
+                    herr
+                    ph
+                    lg
+                    Set.empty
+                    Set.empty
+                    Map.empty
 
 -- ----------------------------------------------------------------------------------------- --
 -- addDefinitions
 -- ----------------------------------------------------------------------------------------- --
-addDefinitions :: EnvDefs -> SMT ()
-addDefinitions edefs =  do
-    enames <- gets envNames
-    -- exclude earlier defined sorts, e.g. for the pre-defined data types,
-    -- such as Bool, Int, and String, because we use the equivalent SMTLIB built-in types
-    let newSorts = Map.filterWithKey (\k _ -> Map.notMember k (sortNames enames)) (sortDefs edefs)
-    let snames = foldr insertSort enames (Map.toList newSorts)
-    
-    -- constructors of sort introduce functions
-    let newCstrs = Map.filterWithKey (\k _ -> Map.notMember k (cstrNames snames)) (cstrDefs edefs)
-    let cnames = foldr insertCstr snames (Map.toList newCstrs)
-    
-    putT ( sortdefsToSMT cnames (EnvDefs newSorts newCstrs Map.empty) )
+addADTDefinitions :: ADTDefs -> SMT ()
+addADTDefinitions adtDefs =
+    let mapADTDefs = adtDefsToMap adtDefs in do
+    adtRefsInSmt <- gets adtRefs
+    -- add only new ADTs to SMT
+    let newADTDefs = Map.withoutKeys mapADTDefs adtRefsInSmt
+    putT ( adtDefsToSMT newADTDefs )
     put "\n\n"
-    
-    
+
+addFuncDefinitions :: FuncDefs -> SMT ()
+addFuncDefinitions adtDefs =
     let newFuncs = Map.filterWithKey (\k _ -> Map.notMember k (funcNames cnames)) (funcDefs edefs)
     let fnames = foldr insertFunc cnames (Map.toList newFuncs)
     putT ( funcdefsToSMT fnames newFuncs )
     put "\n\n"
-    
+
     original <- gets envDefs
     modify ( \e -> e { envNames = fnames
                      , envDefs = EnvDefs (Map.union (sortDefs original) (sortDefs edefs))

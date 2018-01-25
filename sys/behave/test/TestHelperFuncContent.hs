@@ -430,7 +430,7 @@ functionCall (FuncId "at" _ [sl,sr] s) [l,r] | identicalSortId sl SortString && 
     FuncContent (cstrAt (vexpr l) (vexpr r))
 functionCall (FuncId "++" _ [sl,sr] s) [l,r] | sl == sr && identicalSortId sl SortString && identicalSortId s SortString && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrConcat [vexpr l, vexpr r])
-functionCall (FuncId "strinre" _ [sl,sr] s) [l,r] | identicalSortId sl SortString && identicalSortId sr sortRefRegex && identicalSortId s SortBool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
+functionCall (FuncId "strinre" _ [sl,sr] s) [l,r] | identicalSortId sl SortString && identicalSortId sr SortRegex && identicalSortId s SortBool && identicalSortId sl (sortOf (vexpr l)) && identicalSortId sr (sortOf (vexpr r)) =
     FuncContent (cstrStrInRe (vexpr l) (vexpr r))
 
 functionCall funcKey args' = FuncContent (cstrFunc (Map.empty :: Map.Map FuncId (FuncDef VarId)) funcKey (map vexpr args'))

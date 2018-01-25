@@ -212,7 +212,7 @@ randCnrs p vexp depth  =
                   then randCnrsInt p vexp
                   else if  srt == SortString
                          then randCnrsString vexp
-                         else if  srt == sortRefRegex
+                         else if  srt == SortRegex
                                 then do lift $ hPutStrLn stderr "TXS RandPartition randCnrs: Regex can't be solved\n"
                                         return [ Set.empty ]
                                 else if  depth > 0

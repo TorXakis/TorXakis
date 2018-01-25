@@ -74,7 +74,6 @@ import           FuncTable
 import           Identifier
 import           Sort
 import           SortOf
-import           StandardSortRefs
 import           ValExpr
 
 eqName, neqName :: Text
@@ -168,7 +167,7 @@ stdFuncTable = FuncTable ( Map.fromList
     , ("dropWhile",    Map.fromList [ ( Signature [SortString,SortString] SortString, cstrPredef SSS funcIddropWhile ) ] )
     , ("dropWhileNot", Map.fromList [ ( Signature [SortString,SortString] SortString, cstrPredef SSS funcIddropWhileNot ) ] )
 
-    , ("strinre",   Map.fromList [ ( Signature [SortString,sortRefRegex] SortBool, twoArgumentHandler cstrStrInRe ) ] )
+    , ("strinre",   Map.fromList [ ( Signature [SortString,SortRegex] SortBool, twoArgumentHandler cstrStrInRe ) ] )
 
     ] )
 

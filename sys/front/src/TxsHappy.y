@@ -3265,14 +3265,14 @@ Constant        -- :: { Const }
                 }
               | REGEX "(" regexval ")"
                 {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synExpdSort  = [ sortRefRegex ]
+                ;  $$.synExpdSort  = [ SortRegex ]
                 ;  $$ = case $$.inhSolvSort of
                         { Nothing                       -> Cregex $3
-                        ; Just s |  s == sortRefRegex   -> Cregex $3
+                        ; Just s |  s == SortRegex   -> Cregex $3
                         ; Just _                        -> error "\nTXS ERROR 0915\n"
                         }
                 ;  where case Map.lookup "Regex" (Sigs.sort $$.inhSigs) of
-                            {   Just s | s == sortRefRegex   -> ()
+                            {   Just s | s == SortRegex   -> ()
                             ;   _                            -> error ("\nTXS0477: Regex constant but no sort 'Regex': REGEX("++ show $3 ++ ")\n")
                             }
                 }

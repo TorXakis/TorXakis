@@ -46,6 +46,7 @@ import           ConstDefs
 import           FreeMonoidX
 import           FuncDef
 import           FuncId
+import           Identifier
 import           RegexXSD2SMT
 import           SMTData
 import           SMTString
@@ -59,50 +60,36 @@ import           VarId
 
 initialEnvNames :: EnvNames
 initialEnvNames  = EnvNames
-    (Map.fromList [ (SortBool,   "Bool")
-                  , (SortInt,    "Int")
-                  , (SortString, "String")
-                  , (SortRegex,  error "Regex is not defined in SMT")
-                  , (SortError,  error "Error is not defined in SMT")
-                  ])
+    Map.empty
     Map.empty
     Map.empty
 
 -- ----------------------------------------------------------------------------------------- --
 -- initialEnvNames
 
-toFieldName :: CstrId -> Int -> Text
-toFieldName cstrid field  =  T.concat [toCstrName cstrid, "$", (T.pack . show) field]
+toFieldName :: Ref ADTDef -> Ref ConstructorDef -> Int -> Text
+toFieldName aRef cRef field  = toCstrName aRef cRef <> "$f" <> (T.pack . show) field
 
-toIsCstrName :: CstrId -> Text
-toIsCstrName cstrid  =  "is-" <> toCstrName cstrid
+toIsCstrName :: Ref ADTDef -> Ref ConstructorDef -> Text
+toIsCstrName aRef cRef  =  "is-" <> toCstrName aRef cRef
 
-toCstrName :: CstrId -> Text
-toCstrName cstrid  =  T.concat [SortId.name (cstrsort cstrid), "$", CstrId.name cstrid]
+toCstrName :: Ref ADTDef -> Ref ConstructorDef -> Text
+toCstrName aRef cRef  =  "a" <> (T.pack . show . toInt) aRef <> "$c" <> (T.pack . show . toInt) cRef
 
-toSortName :: SortId -> Text
-toSortName = SortId.name
+toSortName :: Sort -> Text
+toSortName SortError   = error "Error is not defined in SMT"
+toSortName SortBool    = "Bool"
+toSortName SortInt     = "Int"
+toSortName SortChar    = error "Char is not yet supported"
+toSortName SortString  = "String"
+toSortName SortRegex   = error "Regex is not defined in SMT"
+toSortname (SortADT r) = toADTName r
+
+toADTName :: Ref ADTDef -> Text
+toADTName = "A" <> (T.pack . show . toInt)
 
 toFuncName :: FuncId -> Text
 toFuncName funcId  =  T.concat ["f", (T.pack . show) (FuncId.unid funcId), "$", FuncId.name funcId]
-
-insertSort :: (SortId, SortDef) -> EnvNames -> EnvNames
-insertSort (sid, _) enames
-  = if sid `Map.member` sortNames enames
-       then error $ "TXS TXS2SMT insertMap: Sort " ++ show sid ++ " already defined\n"
-       else enames { sortNames = Map.insert sid (toSortName sid) (sortNames enames) }
-
-insertCstr :: (CstrId, CstrDef) -> EnvNames -> EnvNames
-insertCstr (cd, CstrDef c fs) enames
-  =  if cd `Map.member` cstrNames enames
-       then error $ "TXS TXS2SMT insertMap: Constructor (" ++ show cd ++ ", CstrDef " ++
-                    show c ++ " " ++ show fs ++  ") already defined\n"
-       else foldr ( \(f,p) enames -> enames { funcNames = Map.insert f (toFieldName cd p) (funcNames enames) } )
-                  ( enames { funcNames = Map.insert c (toIsCstrName cd) (funcNames enames)
-                           , cstrNames = Map.insert cd (toCstrName cd) (cstrNames enames)
-                           } 
-                  )
-                  (zip fs [0..])
 
 insertFunc :: (FuncId, FuncDef VarId) -> EnvNames -> EnvNames
 insertFunc (funcId, FuncDef x y) enames
@@ -110,7 +97,7 @@ insertFunc (funcId, FuncDef x y) enames
        then error $ "TXS TXS2SMT insertMap: Function  (" ++ show funcId ++ ", FuncDef " ++
                     show x ++ " " ++ show y ++  ") already defined\n"
        else enames { funcNames = Map.insert funcId (toFuncName funcId) (funcNames enames) }
-       
+
 -- ----------------------------------------------------------------------------------------- --
 -- basic definitions for SMT
 -- native Torxakis functions that are not natively supported in SMT
@@ -119,28 +106,26 @@ basicDefinitionsSMT :: Text
 basicDefinitionsSMT = ""
 
 -- | convert sort definitions to SMT type declarations (as multiple lines of commands)
-sortdefsToSMT :: EnvNames -> EnvDefs -> Text
-sortdefsToSMT enames edefs =
-    let sorts = Map.keys (sortDefs edefs) in
-        case sorts of
-            []      -> ""
-            _       -> "(declare-datatypes () (\n"
-                       <> foldMap (\s -> "    (" <> justLookupSort s enames <> foldMap cstrToSMT (getCstrs s) <> ")\n" )
-                                  sorts
+adtDefsToSMT :: Map.Map (Ref ADTDef) ADTDef -> Text
+adtDefsToSMT adtMap
+    | null adtMap = ""
+    | otherwise   = "(declare-datatypes () (\n"
+                       <> foldMap (\s -> "    (" <> toADTName s <> foldMap (cstrToSMT s) (getCstrs s) <> ")\n" )
+                                  adtList
                        <> ") )\n"
     where
         -- get the constructors of an ADT
-        getCstrs :: SortId -> [(CstrId, CstrDef)]
+        getCstrs :: SortId -> [(Ref ConstructorDef, CstrDef)]
         getCstrs s = [(cstrId', cstrDef) | (cstrId', cstrDef) <- Map.toList (cstrDefs edefs), cstrsort cstrId' == s]
 
         -- convert the given constructor to a SMT constructor declaration
-        cstrToSMT :: (CstrId, CstrDef) -> Text
+        cstrToSMT :: (Ref ConstructorDef, CstrDef) -> Text
         cstrToSMT (cstrId', CstrDef _ fields) = " (" <> justLookupCstr cstrId' enames
                                                      <> cstrFieldsToSMT cstrId' fields 
                                                      <> ")"
 
         -- convert the given constructor fields to a SMT constructor declaration
-        cstrFieldsToSMT :: CstrId -> [FuncId] -> Text
+        cstrFieldsToSMT :: Ref ConstructorDef -> [FuncId] -> Text
         cstrFieldsToSMT cstrId' fields =
             case fields of
                 []  -> ""
@@ -272,7 +257,7 @@ declarationsToSMT enames vs  =
 
 -- ------------------------------                                                                 
 
-justLookupCstr :: CstrId -> EnvNames -> Text
+justLookupCstr :: Ref ConstructorDef -> EnvNames -> Text
 justLookupCstr cd enames = fromMaybe (error $ "CstrId " ++ show cd ++ " not found in mapping with keys: " ++ show (Map.keys (cstrNames enames)) ++ "\n") (Map.lookup cd (cstrNames enames))
 
 justLookupSort :: SortId -> EnvNames -> Text

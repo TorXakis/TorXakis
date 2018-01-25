@@ -5,7 +5,6 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
 -- ----------------------------------------------------------------------------------------- --
 --
 -- TorXakis Interal Data Type Definitions:
@@ -53,13 +52,13 @@ import           GHC.Generics    (Generic)
 import           BehExprDefs     as X
 import           ConnectionDefs  as X
 
-import           ADTDef
 import           ChanId
 import           CnectDef
 import           CnectId
 import           FuncDef
 import           FuncId
 import           GoalId
+import           Identifier
 import           MapperDef
 import           MapperId
 import           ModelDef
@@ -68,11 +67,12 @@ import           ProcDef
 import           ProcId
 import           PurpDef
 import           PurpId
+import           Sort
 import           StatId
 import           VarEnv
 import           VarId
 
-data  TxsDefs  =  TxsDefs { adtDefs    :: ADTDefs
+data  TxsDefs  =  TxsDefs { adtDefs    :: Map.Map (Ref ADTDef) ADTDef
                           , funcDefs   :: Map.Map FuncId (FuncDef VarId)
                           , procDefs   :: Map.Map ProcId ProcDef
                           , chanDefs   :: Map.Map ChanId ()            -- only for parsing, not envisioned for computation
@@ -87,7 +87,7 @@ data  TxsDefs  =  TxsDefs { adtDefs    :: ADTDefs
                   deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 empty :: TxsDefs
-empty = TxsDefs  ADTDef.empty
+empty = TxsDefs  Map.empty
                  Map.empty
                  Map.empty
                  Map.empty

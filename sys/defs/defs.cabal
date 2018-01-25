@@ -15,25 +15,27 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      Params
+  exposed-modules:      ChanId
+                      , CnectId
+                      , FuncTable
+                      , GoalId
+                      , Ident
+                      , MapperId
+                      , ModelId
+                      , Params
+                      , ProcId
+                      , PurpId
+                      , Sigs
+                      , StatId
+                      , StdTDefs
                       , TxsDDefs
+                      , TxsDef
                       , TxsDefs
                       , TxsShow
                       , TxsUtils
-                      , StdTDefs
                       , Utils
                       , XmlFormat
-                      , ChanId
-                      , CnectId
-                      , GoalId
-                      , MapperId
-                      , ModelId
-                      , ProcId
-                      , PurpId
-                      , StatId
-                      , FuncTable
-                      , Sigs
-                      
+
   other-modules:        BehExprDefs
                       , ConnectionDefs
                       , CnectDef
