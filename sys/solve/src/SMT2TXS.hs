@@ -17,7 +17,7 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 module SMT2TXS
-( smtValueToValExpr   --  :: SMTValue -> TxsDefs -> SortId -> Walue
+( smtValueToValExpr
 )
 where
 

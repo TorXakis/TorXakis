@@ -139,7 +139,7 @@ createSMTEnv cmd lgFlag =  do
                     herr
                     ph
                     lg
-                    Set.empty
+                    emptyADTDefs
                     Set.empty
                     Map.empty
 
@@ -151,21 +151,26 @@ addADTDefinitions newADTDefs = do
     adtDefsInSmt <- gets adtDefs
     let newUniqueADTDefs = Map.withoutKeys (adtDefsToMap newADTDefs)
                                             $ Map.keysSet $ adtDefsToMap adtDefsInSmt
-    putT ( adtDefsToSMT newUniqueADTDefs )
+        (txt, newDec) = adtDefsToSMT newUniqueADTDefs
+    putT txt
     put "\n\n"
+    
     let allADTDefs = addADTDefs (Map.toList newUniqueADTDefs) adtDefsInSmt
     case allADTDefs of
-        Right aDefs -> puts adtDefs aDefs
+        Right aDefs -> do   dec <- gets decoderMap
+                            modify (\e -> e { adtDefs = aDefs
+                                            , decoderMap = Map.union dec newDec
+                                            } )
         Left  err   -> error $ "SMTInternal - addADTDefinitions: Expectation violated - ADTDEFS + newUnique is a valid ADTDEFS. Error:"
                              ++ T.unpack err
 
 addFuncDefinitions :: Map.Map FuncId (FuncDef VarId) -> SMT ()
 addFuncDefinitions funcDefs = do
     fIds <- gets funcIds
-    let newFuncs = Map.filterWithKey (\k _ -> Map.notMember k fIds) funcDefs
+    let newFuncs = Map.filterWithKey (\k _ -> Set.notMember k fIds) funcDefs
     putT $ funcdefsToSMT newFuncs
     put "\n\n"
-    puts funcIds $ Set.union fIds $ Map.keysSet funcDefs
+    modify (\e -> e { funcIds = Set.union fIds $ Map.keysSet funcDefs } )
 
 -- --------------------------------------------------------------------------------------------
 -- addDeclarations
@@ -173,8 +178,7 @@ addFuncDefinitions funcDefs = do
 addDeclarations :: (Variable v) => [v] -> SMT ()
 addDeclarations [] = return ()
 addDeclarations vs  =  do
-    mapI <- gets envNames
-    putT ( declarationsToSMT mapI vs )
+    putT ( declarationsToSMT vs )
     return ()
 
 -- ----------------------------------------------------------------------------------------- --
@@ -182,8 +186,7 @@ addDeclarations vs  =  do
 -- ----------------------------------------------------------------------------------------- --
 addAssertions :: (Variable v) => [ValExpr v] -> SMT ()
 addAssertions vexps  =  do
-    mapI <- gets envNames
-    putT ( assertionsToSMT mapI vexps )
+    putT ( assertionsToSMT vexps )
     return ()
 
 -- ----------------------------------------------------------------------------------------- --
@@ -210,14 +213,14 @@ getSolution vs    = do
     s <- getSMTresponse
     let vnameSMTValueMap = Map.mapKeys T.pack . smtParser . smtLexer $ s
     decoder <- gets decoderMap
-    return $ Map.fromList (map (toConst vnameSMTValueMap) vs)
+    return $ Map.fromList (map (toConst decoder vnameSMTValueMap) vs)
   where
     toConst :: (Variable v) => Map.Map Text (Ref ADTDef, Ref ConstructorDef)
                             -> Map.Map Text SMTValue
                             -> v
                             -> (v, Const)
     toConst dc mp v = case Map.lookup (vname v) mp of
-                            Just smtValue   -> (v, smtValueToValExpr smtValue (cstrDefs edefs) (vsort v))
+                            Just smtValue   -> (v, smtValueToValExpr decoder smtValue (vsort v))
                             Nothing         -> error "getSolution - SMT hasn't returned the value of requested variable."
 
 -- ------------------------------------------
@@ -276,8 +279,7 @@ putT = put . T.unpack
 -- | Transform value expression to an SMT string.
 valExprToString :: Variable v => ValExpr v -> SMT Text
 valExprToString v = do
-  mapI <- gets envNames
-  return $ valexprToSMT mapI v
+  return $ valexprToSMT v
 
 -- ----------------------------------------------------------------------------------------- --
 --  return error messages if any are present
