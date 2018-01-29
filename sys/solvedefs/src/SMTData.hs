@@ -41,7 +41,7 @@ data  SmtEnv  =  SmtEnv { inHandle          :: Handle
                         , errHandle         :: Handle
                         , smtProcessHandle  :: ProcessHandle
                         , logFileHandle     :: Maybe Handle
-                        , adtRefs           :: Set.Set (Ref ADTDef)
+                        , adtDefs           :: ADTDefs
                         , funcIds           :: Set.Set FuncId
                         , decoderMap        :: Map.Map Text (Ref ADTDef, Ref ConstructorDef)
                         }

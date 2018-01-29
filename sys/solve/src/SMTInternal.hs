@@ -35,14 +35,19 @@ import           System.IO
 import           System.Process
 
 import           ConstDefs
+import           FuncDef
+import           FuncId
+import           Identifier
 import           SMT2TXS
 import           SMTAlex
 import           SMTData
 import           SMTHappy
 import           SolveDefs
+import           Sort
 import           TXS2SMT
 import           ValExpr
 import           Variable
+import           VarId
 
 -- ----------------------------------------------------------------------------------------- --
 -- opens a connection to the SMTLIB interactive shell
@@ -142,29 +147,25 @@ createSMTEnv cmd lgFlag =  do
 -- addDefinitions
 -- ----------------------------------------------------------------------------------------- --
 addADTDefinitions :: ADTDefs -> SMT ()
-addADTDefinitions adtDefs =
-    let mapADTDefs = adtDefsToMap adtDefs in do
-    adtRefsInSmt <- gets adtRefs
-    -- add only new ADTs to SMT
-    let newADTDefs = Map.withoutKeys mapADTDefs adtRefsInSmt
-    putT ( adtDefsToSMT newADTDefs )
+addADTDefinitions newADTDefs = do
+    adtDefsInSmt <- gets adtDefs
+    let newUniqueADTDefs = Map.withoutKeys (adtDefsToMap newADTDefs)
+                                            $ Map.keysSet $ adtDefsToMap adtDefsInSmt
+    putT ( adtDefsToSMT newUniqueADTDefs )
     put "\n\n"
+    let allADTDefs = addADTDefs (Map.toList newUniqueADTDefs) adtDefsInSmt
+    case allADTDefs of
+        Right aDefs -> puts adtDefs aDefs
+        Left  err   -> error $ "SMTInternal - addADTDefinitions: Expectation violated - ADTDEFS + newUnique is a valid ADTDEFS. Error:"
+                             ++ T.unpack err
 
-addFuncDefinitions :: FuncDefs -> SMT ()
-addFuncDefinitions adtDefs =
-    let newFuncs = Map.filterWithKey (\k _ -> Map.notMember k (funcNames cnames)) (funcDefs edefs)
-    let fnames = foldr insertFunc cnames (Map.toList newFuncs)
-    putT ( funcdefsToSMT fnames newFuncs )
+addFuncDefinitions :: Map.Map FuncId (FuncDef VarId) -> SMT ()
+addFuncDefinitions funcDefs = do
+    fIds <- gets funcIds
+    let newFuncs = Map.filterWithKey (\k _ -> Map.notMember k fIds) funcDefs
+    putT $ funcdefsToSMT newFuncs
     put "\n\n"
-
-    original <- gets envDefs
-    modify ( \e -> e { envNames = fnames
-                     , envDefs = EnvDefs (Map.union (sortDefs original) (sortDefs edefs))
-                                         (Map.union (cstrDefs original) (cstrDefs edefs))
-                                         (Map.union (funcDefs original) (funcDefs edefs))
-                     } 
-           )
-       -- use union to be certain all definitions remain included
+    puts funcIds $ Set.union fIds $ Map.keysSet funcDefs
 
 -- --------------------------------------------------------------------------------------------
 -- addDeclarations
@@ -208,11 +209,14 @@ getSolution vs    = do
     putT ("(get-value (" <> T.intercalate " " (map vname vs) <>"))")
     s <- getSMTresponse
     let vnameSMTValueMap = Map.mapKeys T.pack . smtParser . smtLexer $ s
-    edefs <- gets envDefs
-    return $ Map.fromList (map (toConst edefs vnameSMTValueMap) vs)
+    decoder <- gets decoderMap
+    return $ Map.fromList (map (toConst vnameSMTValueMap) vs)
   where
-    toConst :: (Variable v) => EnvDefs -> Map.Map Text SMTValue -> v -> (v, Const)
-    toConst edefs mp v = case Map.lookup (vname v) mp of
+    toConst :: (Variable v) => Map.Map Text (Ref ADTDef, Ref ConstructorDef)
+                            -> Map.Map Text SMTValue
+                            -> v
+                            -> (v, Const)
+    toConst dc mp v = case Map.lookup (vname v) mp of
                             Just smtValue   -> (v, smtValueToValExpr smtValue (cstrDefs edefs) (vsort v))
                             Nothing         -> error "getSolution - SMT hasn't returned the value of requested variable."
 
