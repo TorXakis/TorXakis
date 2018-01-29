@@ -97,3 +97,5 @@ testADTAnalysis = TestCase $ do
         ncADTs   = [(adtARef, adtA),(adtBRef', adtB')]
     assertEqual "Only C should be constructable" (cADTs',reverse ncADTs)
         $ analyzeADTs (adtDefsToMap emptyADTDefs,[]) adtList'
+
+        -- todo: split these cases

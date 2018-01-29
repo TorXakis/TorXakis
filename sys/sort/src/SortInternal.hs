@@ -126,7 +126,7 @@ newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a 'Data.Map.Map' from 'R
 emptyADTDefs ::  ADTDefs
 emptyADTDefs = ADTDefs Map.empty
 
--- | Smart constructor for 'ADTDefs'.
+-- | Smart constructor for 'ADTDefs'. (TODO: ADTDefs may not be empty)
 --
 --   Preconditions:
 --
@@ -140,7 +140,7 @@ emptyADTDefs = ADTDefs Map.empty
 --
 --   Given a list of tuples of 'Ref' 'ADTDef' and 'ADTDef', and an 'ADTDefs'
 --
---   * either an error message indicating violations of preconditions
+--   * either an error message indicating some violations of preconditions
 --
 --   * or a structure containing all data types
 --
@@ -150,8 +150,8 @@ addADTDefs :: [(Ref ADTDef, ADTDef)]
             -> Either Text ADTDefs
 addADTDefs l adfs =
     let adtMap = adtDefsToMap adfs
-        nonUniqueRefs  = repeated $ map fst l
-        nonUniqueNames = repeated $ map ( adtName . snd ) l
+        nonUniqueRefs  = repeated $ map fst l -- TODO: also check ADTDefs
+        nonUniqueNames = repeated $ map ( adtName . snd ) l -- TODO: also check ADTDefs
         nonConstructableTypes = [] -- filter (isADTConstructable (adtDefsToMap adfs) []) $ map fst l
     in if null nonUniqueRefs && null nonUniqueNames && null nonConstructableTypes
         then Right $ ADTDefs $ Map.union adtMap $ Map.fromList l
@@ -170,6 +170,9 @@ addADTDefs l adfs =
              in  Left $ T.pack $ unlines [refErr, nameErr, adtErr]
 
 -- | TODO: Document
+-- | TODO: Can start with just cADTs and uADTs (unknown), without third list.
+--         If anything moved from uADTs to cADTs, start over.
+-- | TODO: Don't repeat previous checks
 analyzeADTs :: (Map.Map (Ref ADTDef) ADTDef, [(Ref ADTDef, ADTDef)])
             -> [(Ref ADTDef, ADTDef)]
             -> (Map.Map (Ref ADTDef) ADTDef, [(Ref ADTDef, ADTDef)])
@@ -181,13 +184,10 @@ analyzeADTs (cADTs,ncADTs) [] =
     in  if null nowConstructables
             then (cADTs,ncADTs)
             else analyzeADTs
-                 (foldl (\accM (r,a) -> Map.insert r a accM) cADTs nowConstructables,[])
+                 (foldl (\accM (r,a) -> Map.insert r a accM) cADTs nowConstructables,[]) -- Map.union
                  $ ncADTs \\ nowConstructables
 
-analyzeADTs (cADTs,ncADTs) ((adtRef,adtDef):as)
-    | Map.member adtRef cADTs      = analyzeADTs (cADTs,ncADTs) as
-    | elem adtRef $ map fst ncADTs = analyzeADTs (cADTs,ncADTs) as
-    | otherwise =
+analyzeADTs (cADTs,ncADTs) ((adtRef,adtDef):as) =
         let cDefs = Map.elems $ cDefsToMap $ constructors adtDef
         in  if any (allFieldsConstructable cADTs) cDefs
                 then analyzeADTs (Map.insert adtRef adtDef cADTs,ncADTs) as
