@@ -25,6 +25,7 @@ library
                       , text
 
                       , defs
+                      , tree
                       , valexpr
 
   default-language:     Haskell2010
