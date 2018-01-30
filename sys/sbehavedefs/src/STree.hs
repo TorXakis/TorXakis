@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 -- ----------------------------------------------------------------------------------------- --
 
-module BTree
+module STree
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -44,6 +44,7 @@ import           ConstDefs
 import           Id
 import           Name
 import           SortId
+--import           TreeMonad
 import           TxsDefs
 import           ValExpr
 import           Variable
@@ -172,7 +173,7 @@ type INode   =  BNode (WEnv VarId, IVEnv)                      --  Interactions 
 --
 -- valexp: = value expression over interaction variables. interaction variables
 -- must come from the hidden variables or offers.
-type  Menu  =  [ ( Set.Set BTree.CTOffer, [BTree.IVar], ValExpr BTree.IVar ) ]
+type  Menu  =  [ ( Set.Set STree.CTOffer, [STree.IVar], ValExpr STree.IVar ) ]
 
 
 -- ----------------------------------------------------------------------------------------- --

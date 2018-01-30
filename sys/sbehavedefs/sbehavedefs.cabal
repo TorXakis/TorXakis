@@ -1,11 +1,12 @@
-name:                   behavedefs
+name:                   sbehavedefs
 version:                0.2.1.0
 synopsis:               Behaviour Expressions for TorXakis
 license:                BSD3
 license-file:           license.txt
 author:                 Jan Tretmans
                       , Pierre van de Laar
-maintainer:             pierre.vandelaar@tno.nl
+                      , Ramon Janssen
+maintainer:             ramonjanssen@cs.ru.nl
 copyright:              TNO
 category:               Web
 build-type:             Simple
@@ -14,8 +15,8 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      BTree
-                      , BTShow
+  exposed-modules:      STree
+                      , STShow
 
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
 
@@ -25,6 +26,7 @@ library
                       , text
 
                       , defs
+                      , tree
                       , valexpr
 
   default-language:     Haskell2010
