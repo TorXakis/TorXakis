@@ -54,6 +54,7 @@ module SortInternal
  
   -- ** Private methods
 , analyzeADTs
+, verifyConstructableADTs
 
   -- * Constructors
   -- ** Data structure
@@ -186,6 +187,10 @@ refNotFoundPrefix = T.pack "ADT(s) are not : "
 -- Error message prefix: Some ADTDef's are not constructable
 notConstructablePrefix :: Text
 notConstructablePrefix = T.pack "ADT(s) are not constructable: "
+
+verifyConstructableADTs :: (Map.Map (Ref ADTDef) ADTDef, [(Ref ADTDef, ADTDef)])
+                        -> (Map.Map (Ref ADTDef) ADTDef, [(Ref ADTDef, ADTDef)]) 
+verifyConstructableADTs = undefined
 
 -- | TODO: Document
 -- | TODO: Can start with just cADTs and uADTs (unknown), without third list.

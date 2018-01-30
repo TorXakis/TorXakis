@@ -29,8 +29,10 @@ testADTList  = TestList [ TestLabel "References" testRef
                         , TestLabel "Adding ADTs with non-unique ref" testAddADTNonUniqueRef
                         , TestLabel "Adding ADTs with already defined name" testAddADTAlreadyDefinedName
                         , TestLabel "Adding ADTs with non-unique name" testAddADTNonUniqueName
-                        , TestLabel "Constructable ADTs" testADTAnalysisConstructable
-                        , TestLabel "Non-Constructable ADTs" testADTAnalysisNonConstructable
+                        -- , TestLabel "Constructable ADTs" testADTAnalysisConstructable
+                        -- , TestLabel "Non-Constructable ADTs" testADTAnalysisNonConstructable
+                        , TestLabel "Constructable ADTs 2" testConstructableADTs
+                        , TestLabel "Non-Constructable ADTs 2" testNonConstructableADTs
                         ]
 
 ---------------------------------------------------------------------------
@@ -78,24 +80,42 @@ testAddADTAlreadyDefinedName = TestCase $ do
         (Left $ namesNotUniquePrefix <> T.pack (show newADTList))
         $ addADTDefs newADTList existingADTs
 
-testADTAnalysisConstructable :: Test
-testADTAnalysisConstructable = TestCase $ do
+testConstructableADTs :: Test
+testConstructableADTs = TestCase $ do
     let adtList = [(adtARef, adtA),(adtBRef, adtB),(adtCRef, adtC)]
-        cADTs   = Map.fromList adtList
-    assertEqual "All data types should be constructable" (cADTs,[])
-        $ analyzeADTs (adtDefsToMap emptyADTDefs,[]) adtList
+    assertEqual "All data types should be constructable" (Map.fromList adtList,[])
+        $ verifyConstructableADTs (Map.empty, adtList)
 
-testADTAnalysisNonConstructable :: Test
-testADTAnalysisNonConstructable = TestCase $ do
+testNonConstructableADTs :: Test
+testNonConstructableADTs = TestCase $ do
     let -- B { a :: A }
         adtBRef' = Ref 4
         adtB' = ADTDef { adtName = "B", constructors = cDefsB' }
         Right cDefsB' = constructorDefs [(Ref 1, cstrB1)]
-        adtList' = [(adtARef, adtA),(adtBRef', adtB'),(adtCRef, adtC)]
-        cADTs'   = Map.fromList [(adtCRef, adtC)]
+        adtList = [(adtARef, adtA),(adtBRef', adtB'),(adtCRef, adtC)]
+        cADTs   = Map.fromList [(adtCRef, adtC)]
         ncADTs   = [(adtBRef', adtB'),(adtARef, adtA)]
-    assertEqual "Only C should be constructable" (cADTs',ncADTs)
-        $ analyzeADTs (adtDefsToMap emptyADTDefs,[]) adtList'
+    assertEqual "Only C should be constructable" (cADTs,ncADTs)
+        $ verifyConstructableADTs (Map.empty,adtList)
+
+-- testADTAnalysisConstructable :: Test
+-- testADTAnalysisConstructable = TestCase $ do
+--     let adtList = [(adtARef, adtA),(adtBRef, adtB),(adtCRef, adtC)]
+--         cADTs   = Map.fromList adtList
+--     assertEqual "All data types should be constructable" (cADTs,[])
+--         $ analyzeADTs (adtDefsToMap emptyADTDefs,[]) adtList
+
+-- testADTAnalysisNonConstructable :: Test
+-- testADTAnalysisNonConstructable = TestCase $ do
+--     let -- B { a :: A }
+--         adtBRef' = Ref 4
+--         adtB' = ADTDef { adtName = "B", constructors = cDefsB' }
+--         Right cDefsB' = constructorDefs [(Ref 1, cstrB1)]
+--         adtList' = [(adtARef, adtA),(adtBRef', adtB'),(adtCRef, adtC)]
+--         cADTs'   = Map.fromList [(adtCRef, adtC)]
+--         ncADTs   = [(adtBRef', adtB'),(adtARef, adtA)]
+--     assertEqual "Only C should be constructable" (cADTs',ncADTs)
+--         $ analyzeADTs (adtDefsToMap emptyADTDefs,[]) adtList'
 
 -- Test Data
 
