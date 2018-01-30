@@ -43,7 +43,7 @@ test-suite sort-test
                     , Ref
                     , SortInternal
 
-  ghc-options:        -Wall -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:        -Werror -Wall -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
   
   build-depends:      base
                     , containers

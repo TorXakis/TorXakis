@@ -46,6 +46,12 @@ module SortInternal
 , emptyADTDefs
 , addADTDefs
 
+ -- ** Error messages
+ , refsNotUniquePrefix
+ , namesNotUniquePrefix
+ , refNotFoundPrefix
+ , notConstructablePrefix
+ 
   -- ** Private methods
 , analyzeADTs
 
@@ -77,7 +83,7 @@ import           Data.Data
 import           Data.List.Unique
 import           Data.List        ((\\))
 import qualified Data.Map         as Map
--- import           Data.Maybe
+import           Data.Monoid
 import           Data.Text        (Text)
 import qualified Data.Text        as T
 import           GHC.Generics     (Generic)
@@ -148,26 +154,38 @@ emptyADTDefs = ADTDefs Map.empty
 addADTDefs :: [(Ref ADTDef, ADTDef)]
             -> ADTDefs
             -> Either Text ADTDefs
-addADTDefs l adfs =
-    let adtMap = adtDefsToMap adfs
-        nonUniqueRefs  = repeated $ map fst l -- TODO: also check ADTDefs
-        nonUniqueNames = repeated $ map ( adtName . snd ) l -- TODO: also check ADTDefs
+addADTDefs l adfs
+    | not $ null nonUniqueRefs         = let nonUniqTuples = filter ((`elem` nonUniqueRefs) . fst) l
+                                         in  Left $ refsNotUniquePrefix <> T.pack (show nonUniqTuples)
+    | not $ null nonUniqueNames        = let nonUniqTuples = filter ((`elem` nonUniqueNames) . adtName . snd) l
+                                         in  Left $ namesNotUniquePrefix <> T.pack (show nonUniqTuples)
+    | not $ null unknownRefs           = let todoHere = refNotFoundPrefix <> T.pack "TODO: build this message"
+                                         in  Left todoHere
+    | not $ null nonConstructableTypes = let ncADTNames = T.intercalate (T.pack ", ") $ map adtName nonConstructableTypes
+                                         in  Left $ notConstructablePrefix <> T.pack (show ncADTNames)
+    | otherwise = Right $ ADTDefs $ Map.union adtMap $ Map.fromList l
+    where
+        adtMap = adtDefsToMap adfs
+        nonUniqueRefs  = repeated (map fst l ++ Map.keys (adtDefsToMap adfs))
+        nonUniqueNames = repeated (map ( adtName . snd ) $ l ++ Map.toList (adtDefsToMap adfs))
+        unknownRefs = [] 
         nonConstructableTypes = [] -- filter (isADTConstructable (adtDefsToMap adfs) []) $ map fst l
-    in if null nonUniqueRefs && null nonUniqueNames && null nonConstructableTypes
-        then Right $ ADTDefs $ Map.union adtMap $ Map.fromList l
-        else let refErr = if not $ null nonUniqueRefs
-                        then let nonUniqTuples = filter ((`elem` nonUniqueRefs) . fst) l
-                            in  "Refs are not unique: " ++ show nonUniqTuples
-                        else ""
-                 nameErr = if not $ null nonUniqueNames
-                        then let nonUniqTuples = filter ((`elem` nonUniqueNames) . adtName . snd) l
-                            in  "Names are not unique: " ++ show nonUniqTuples
-                        else ""
-                 adtErr = if not $ null nonConstructableTypes
-                        then let ncADTNames = T.intercalate (T.pack ", ") $ map adtName nonConstructableTypes
-                            in  "ADT's are not constructable: " ++ show ncADTNames
-                        else ""
-             in  Left $ T.pack $ unlines [refErr, nameErr, adtErr]
+
+-- Error message prefixes: Not all ADTDef references are unique
+refsNotUniquePrefix :: Text
+refsNotUniquePrefix = T.pack "Refs are not unique: "
+
+-- Error message prefix: Not all ADTDef names are unique
+namesNotUniquePrefix :: Text
+namesNotUniquePrefix = T.pack "Names are not unique: "
+
+-- Error message prefix: Some ADTDef references do not exist
+refNotFoundPrefix :: Text
+refNotFoundPrefix = T.pack "ADT(s) are not : "
+
+-- Error message prefix: Some ADTDef's are not constructable
+notConstructablePrefix :: Text
+notConstructablePrefix = T.pack "ADT(s) are not constructable: "
 
 -- | TODO: Document
 -- | TODO: Can start with just cADTs and uADTs (unknown), without third list.
