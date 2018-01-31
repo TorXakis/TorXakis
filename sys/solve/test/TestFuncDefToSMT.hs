@@ -15,15 +15,13 @@ import qualified Data.Text          as T
 import           Test.HUnit
 
 import           ConstDefs
-import           SMTData
-import           SortId
+import           Sort
 import           TXS2SMT
 import           VarId
 
 import           HelperFuncDefToSMT
 import           HelperVexprToSMT
 
--- --------------------------------------------------------------
 testFuncDefToSMTList :: Test
 testFuncDefToSMTList = TestList [
         TestLabel "none"                testNoFuncDefs,
@@ -37,21 +35,15 @@ testFuncDefToSMTList = TestList [
 -- Tests
 ---------------------------------------------------------------------------
 testNoFuncDefs :: Test
-testNoFuncDefs = TestCase $ do
-    let envnames = EnvNames Map.empty Map.empty Map.empty
-    let envdefs = Map.empty
-    assertEqual "none" "" (funcdefsToSMT envnames envdefs)
+testNoFuncDefs = TestCase $ assertEqual "none" "" (funcdefsToSMT Map.empty)
 
 testConstant :: Test
 testConstant = TestCase $ do
     let ve = createVconst (Cint 3)
-    let myConst = "myConst"
+    let myConst = T.pack "myConst"
     let fid = createFunctionId myConst 987654 [] SortInt
-    let mapI = EnvNames (Map.fromList [(SortInt, "Sort_Int")])
-                        Map.empty
-                        (Map.fromList [(fid,myConst)])
-    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [] SortInt ve
-    assertEqual "Constant Function" e (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))
+    let (TXS2SMTFuncTest i e) = createFunctionDef fid [] SortInt ve
+    assertEqual "Constant Function" e (funcdefsToSMT i)
 
 testSingleArg :: Test
 testSingleArg = TestCase $ do
@@ -59,11 +51,8 @@ testSingleArg = TestCase $ do
     let ve = createVvar v
     let fName = "singleArgFunction"
     let fid = createFunctionId fName 987654 [v] SortInt
-    let mapI = EnvNames (Map.fromList [(SortInt, "Sort_Int")])
-                        Map.empty
-                        (Map.fromList [(fid, fName)])
-    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [v] SortInt ve
-    assertEqual "single Argument Function" e (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))
+    let (TXS2SMTFuncTest i e) = createFunctionDef fid [v] SortInt ve
+    assertEqual "single Argument Function" e (funcdefsToSMT i)
 
 testMultipleArgs :: Test
 testMultipleArgs = TestCase $ do
@@ -72,11 +61,8 @@ testMultipleArgs = TestCase $ do
     let ve = createVequal (createVvar varX) (createVvar varY)
     let fName = "multipleArgsFunction"
     let fid = createFunctionId fName 987654 [varX, varY] SortBool
-    let mapI = EnvNames (Map.fromList [(SortBool, "SortBoolean")])
-                        Map.empty
-                        (Map.fromList [(fid, fName)])
-    let (TXS2SMTFuncTest envdefs e) = createFunctionDef mapI fid [varX, varY] SortBool ve
-    assertEqual "multiple Arguments Function" e (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))
+    let (TXS2SMTFuncTest i e) = createFunctionDef fid [varX, varY] SortBool ve
+    assertEqual "multiple Arguments Function" e (funcdefsToSMT i)
 
 testMultipleFunctions :: Test
 testMultipleFunctions = TestCase $ do
@@ -89,15 +75,5 @@ testMultipleFunctions = TestCase $ do
     let fName2 = "myConst"
     let fid2 = createFunctionId fName2 97531 [] SortInt
     let vexpr2 = createVconst (Cint 3)
-
-    let mapI = EnvNames (Map.fromList [(SortBool, "boolean")
-                                      ,(SortInt, "integer")
-                                      ])
-                        Map.empty
-                        (Map.fromList [(fid1, fName1)
-                                      ,(fid2, fName2)
-                                      ])
-
-    let (TXS2SMTFuncTest envdefs expected) = createFunctionDefsRecursive mapI [(fid1,[varX, varY],SortBool,vexpr1),(fid2,[],SortInt,vexpr2)]
-
-    assertEqual "multiple Functions" expected (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))
+    let (TXS2SMTFuncTest i expected) = createFunctionDefsRecursive [(fid1,[varX, varY],SortBool,vexpr1),(fid2,[],SortInt,vexpr2)]
+    assertEqual "multiple Functions" expected (funcdefsToSMT i)

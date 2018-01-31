@@ -8,8 +8,7 @@ See LICENSE at root directory of this repository.
 module HelperFuncDefToSMT
 where
 import qualified Data.Map          as Map
-import           Data.Maybe
-import           Data.String.Utils
+import           Data.Monoid
 import           Data.Text         (Text)
 import qualified Data.Text         as T
 
@@ -17,44 +16,41 @@ import           FuncDef
 import           FuncId
 import           HelperVexprToSMT
 import           Id
-import           SMTData
-import           SortId
+import           Sort
 import           VarId
-------------------------------
--- Data types
----------------------------------------------------------------------------
-data  TXS2SMTFuncTest         =  TXS2SMTFuncTest { input    :: EnvDefs
-                                                 , expected :: String
+
+data  TXS2SMTFuncTest         =  TXS2SMTFuncTest { input    :: Map.Map FuncId (FuncDef VarId)
+                                                 , expected :: Text
                                                  }
      deriving (Eq,Ord,Read,Show)
----------------------------------------------------------------------------
--- Helpers
----------------------------------------------------------------------------
 
-createFunctionId :: Text -> Int -> [VarId] -> SortId -> FuncId
-createFunctionId n u vs = FuncId  n (Id u) (map varsort vs)
+toSortName :: Sort -> Text
+toSortName SortError   = error "Error is not defined in SMT"
+toSortName SortBool    = "Bool"
+toSortName SortInt     = "Int"
+toSortName SortChar    = error "Char is not yet supported"
+toSortName SortString  = "String"
+toSortName SortRegex   = error "Regex is not defined in SMT"
+toSortName (SortADT r) = toADTName r
+
+createFunctionId :: Text -> Int -> [VarId] -> Sort -> FuncId
+createFunctionId n u vs = FuncId n (Id u) (map varsort vs)
 
 -- non-recursive function (is mapped on recursive function)
-createFunctionDef :: EnvNames -> FuncId -> [VarId] -> SortId -> TXS2SMTVExprTest -> TXS2SMTFuncTest
+createFunctionDef :: FuncId -> [VarId] -> Sort -> TXS2SMTVExprTest -> TXS2SMTFuncTest
 createFunctionDef = createFunctionDefRecursive
 
 -- one recursive function
-createFunctionDefRecursive :: EnvNames -> FuncId -> [VarId] -> SortId -> TXS2SMTVExprTest -> TXS2SMTFuncTest
-createFunctionDefRecursive mapI fn vs sort expr =
-    createFunctionDefsRecursive mapI [(fn,vs,sort,expr)]
+createFunctionDefRecursive :: FuncId -> [VarId] -> Sort -> TXS2SMTVExprTest -> TXS2SMTFuncTest
+createFunctionDefRecursive fn vs sort expr =
+    createFunctionDefsRecursive [(fn,vs,sort,expr)]
 
 -- group of recusive functions
-createFunctionDefsRecursive :: EnvNames -> [(FuncId, [VarId], SortId, TXS2SMTVExprTest)] -> TXS2SMTFuncTest
-createFunctionDefsRecursive mapI l =
-    TXS2SMTFuncTest (EnvDefs Map.empty Map.empty (foldr insert Map.empty l) )
-                    ("(define-funs-rec\n  (\n" ++ concatMap define l ++ "  )\n  (\n" ++ concatMap body l ++ "  )\n)\n")
-  where
-    insert (fn, vs, _sort, expr) = Map.insert fn (FuncDef vs (HelperVexprToSMT.input expr))
-    define (fn, vs, sort, _expr) = "    (" ++ T.unpack (justLookupFunc fn mapI) ++ "(" ++ join " " (map (\vi -> "(" ++ toSMTVar vi ++ " " ++ T.unpack (justLookupSort (varsort vi) mapI) ++ ")") vs) ++ ") " ++ T.unpack (justLookupSort sort mapI) ++ ")\n"
-    body (_, _, _, expr)    = "    " ++ HelperVexprToSMT.expected expr ++ "\n"
-
-justLookupSort :: SortId -> EnvNames -> Text
-justLookupSort sd enames = fromMaybe (error $ "SortId " ++ show sd ++ " not found in mapping with keys: " ++ show (Map.keys (sortNames enames)) ++ "\n") (Map.lookup sd (sortNames enames))
-
-justLookupFunc :: FuncId -> EnvNames -> Text
-justLookupFunc fd enames = fromMaybe (error $ "FuncId " ++ show fd ++ " not found in mapping with keys: " ++ show (Map.keys (funcNames enames)) ++ "\n") (Map.lookup fd (funcNames enames))
+createFunctionDefsRecursive :: [(FuncId, [VarId], Sort, TXS2SMTVExprTest)] -> TXS2SMTFuncTest
+createFunctionDefsRecursive l =
+    TXS2SMTFuncTest (foldr insert Map.empty l)
+                    ("(define-funs-rec\n  (\n" <> T.concat (map define l) <> "  )\n  (\n" <> T.concat (map body l) <> "  )\n)\n")
+    where
+        insert (fn, vs, _sort, expr) = Map.insert fn (FuncDef vs (HelperVexprToSMT.input expr))
+        define (fn, vs, sort, _expr) = "    (" <> toFuncName fn <> "(" <> T.intercalate " " (map (\vi -> "(" <> toSMTVar vi <> " " <> toSortName (varsort vi) <> ")") vs) <> ") " <> toSortName sort <> ")\n"
+        body (_, _, _, expr)         = "    " <> HelperVexprToSMT.expected expr <> "\n"

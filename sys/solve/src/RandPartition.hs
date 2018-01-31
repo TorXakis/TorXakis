@@ -16,7 +16,7 @@ module RandPartition
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( randValExprsSolvePartition  --  :: (Variable v) => [v] -> [ValExpr v] -> SMT (Satisfaction v)
+( randValExprsSolvePartition
 , ParamPartition(..)
 )
 
@@ -26,15 +26,16 @@ module RandPartition
 where
 
 import           Control.Monad.State
+import qualified Data.List as List
+import qualified Data.Map  as Map
+import           Data.Maybe
+import qualified Data.Set  as Set
 import           System.IO
 import           System.Random
 import           System.Random.Shuffle
 
-import qualified Data.List as List
-import qualified Data.Set  as Set
-import qualified Data.Map  as Map
-
 import ConstDefs
+import Identifier
 import SMT
 import SMTData
 import SolveDefs
@@ -171,60 +172,48 @@ randCnrsString vexp  =
 -- give list of constraints forming a partitioning of ADT sort for vexp
 
 randCnrsADT :: Variable v => ParamPartition -> ValExpr v -> Int -> SMT [ Set.Set (ValExpr v) ]
-randCnrsADT p vexp depth  =  do
-    edefs <- gets envDefs
-    let cstrs = [ def
-                | def@( CstrId{cstrsort = srt}, _ ) <- Map.toList (cstrDefs edefs)
-                , srt == sortOf vexp
-                ]
-    cnrss <- sequence [ randCnrsCstr p cstr vexp depth | cstr <- cstrs ]
-    return $ concat cnrss
-
+randCnrsADT p vexp depth =
+    case sortOf vexp of
+        SortADT aRef -> do  aDefs <- gets adtDefs
+                            let cstrs = Map.toList $ cDefsToMap $ constructors
+                                            $ fromMaybe (error $ "RandPartition - randCnrsADT - Ref to ADT not found: " ++ show aRef)
+                                                        $ Map.lookup aRef $ adtDefsToMap aDefs
+                            cnrss <- sequence [ randCnrsCstr p aRef cstr vexp depth | cstr <- cstrs ]
+                            return $ concat cnrss
+        s   -> error $ "RandPartition - randCnrsADT - Impossible: " ++ show s
 
 -- ----------------------------------------------------------------------------------------- --
 -- give list of constraints for one constructor for vexp
 
-randCnrsCstr :: Variable v => ParamPartition -> (CstrId,CstrDef) -> ValExpr v -> Int
-                                -> SMT [ Set.Set (ValExpr v) ]
-randCnrsCstr p (cid, CstrDef{}) vexp depth  =  do
-     let ccCnr = cstrIsCstr cid vexp
-     recCnrs <- sequence [ randCnrs p (cstrAccess cid pos vexp) (depth-1) | (_,pos) <- zip (cstrargs cid) [0..] ]
+randCnrsCstr :: Variable v => ParamPartition -> Ref ADTDef -> (Ref ConstructorDef,ConstructorDef) -> ValExpr v -> Int
+                           -> SMT [ Set.Set (ValExpr v) ]
+randCnrsCstr p aRef (cRef, cDef) vexp depth  =  do
+     let ccCnr = cstrIsCstr aRef cRef vexp
+     recCnrs <- sequence [ randCnrs p (cstrAccess aRef cRef pos s vexp) (depth-1)
+                         | (s,pos) <- zip (map ( Sort.sort . snd ) ( (fDefsToList . fields) cDef ) ) [0..]
+                         ]
      return [ Set.insert ccCnr cnrs
             | cnrs <- map Set.unions (cartProd recCnrs)
             ]
 
-
--- ----------------------------------------------------------------------------------------- --
--- give list of constraints forming a partitioning of the sort for vexp
+-- | Give list of constraints forming a partitioning of the sort for vexp
 -- 
 -- Constraints are Sets of ValExpr, ie Sets are conjunctions
 -- Lists of ValExpr, or of Sets of ValExpr, are disjunctions
-
-
 randCnrs :: Variable v => ParamPartition -> ValExpr v -> Int -> SMT [ Set.Set (ValExpr v) ]
 randCnrs p vexp depth  =
-     let srt = sortOf vexp
-      in if  srt == SortBool
-           then randCnrsBool vexp
-           else if  srt == SortInt
-                  then randCnrsInt p vexp
-                  else if  srt == SortString
-                         then randCnrsString vexp
-                         else if  srt == SortRegex
-                                then do lift $ hPutStrLn stderr "TXS RandPartition randCnrs: Regex can't be solved\n"
-                                        return [ Set.empty ]
-                                else if  depth > 0
-                                       then randCnrsADT p vexp depth
-                                       else return [ Set.empty ]
+    let srt = sortOf vexp
+    in  case srt of
+            SortBool   -> randCnrsBool vexp
+            SortInt    -> randCnrsInt p vexp
+            SortString -> randCnrsString vexp
+            SortADT _  -> if  depth > 0
+                              then randCnrsADT p vexp depth
+                              else return [ Set.empty ]
+            s          -> error $ "RandPartition - randCnrs - Unexpected sort " ++ show s
 
--- ----------------------------------------------------------------------------------------- --
--- cartesian product
-
+-- | cartesian product
 cartProd :: [[t]] -> [[t]]
 cartProd =  foldr listProd [[]]
   where
     listProd sq acc  =  [ e:a | e <- sq, a <- acc ]
-
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --

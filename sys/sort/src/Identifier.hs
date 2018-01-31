@@ -47,9 +47,11 @@ empty = IdentifierToReference Map.empty 0
 
 -- | add 'Identifier' to 'IdentifierToReference'
 addIdentifier :: Identifier -> IdentifierToReference -> IdentifierToReference
-addIdentifier i IdentifierToReference{toMap = m, nextRef = nr} = IdentifierToReference (Map.insert i nr m) $ nr+1
+addIdentifier i i2r@IdentifierToReference{ toMap = m, nextRef = nr }
+    | Map.member i m = i2r
+    | otherwise      = IdentifierToReference (Map.insert i nr m) $ nr+1
 
 -- | get reference of 'Identifier' earlier added to 'IdentifierToReference'
-getReference :: t -> Identifier -> IdentifierToReference -> Ref t
-getReference _ i IdentifierToReference{toMap = m} =
+getReference :: Identifier -> IdentifierToReference -> Ref t
+getReference i IdentifierToReference{ toMap = m } =
     Ref $ fromMaybe (error "Identifier not found") $ Map.lookup i m

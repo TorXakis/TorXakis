@@ -17,7 +17,7 @@ import           Test.HUnit
 import           ConstDefs
 import           SMT
 import           SolveDefs
-import           SortId
+import           Sort
 import           ValExpr
 import           VarId
 
