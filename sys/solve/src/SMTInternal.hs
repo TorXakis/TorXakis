@@ -212,15 +212,17 @@ getSolution vs    = do
     putT ("(get-value (" <> T.intercalate " " (map vname vs) <>"))")
     s <- getSMTresponse
     let vnameSMTValueMap = Map.mapKeys T.pack . smtParser . smtLexer $ s
+    aDefs <- gets adtDefs
     decoder <- gets decoderMap
-    return $ Map.fromList (map (toConst decoder vnameSMTValueMap) vs)
+    return $ Map.fromList (map (toConst vnameSMTValueMap aDefs decoder) vs)
   where
-    toConst :: (Variable v) => Map.Map Text (Ref ADTDef, Ref ConstructorDef)
-                            -> Map.Map Text SMTValue
+    toConst :: (Variable v) => Map.Map Text SMTValue
+                            -> ADTDefs
+                            -> Map.Map Text (Ref ADTDef, Ref ConstructorDef)
                             -> v
                             -> (v, Const)
-    toConst dc mp v = case Map.lookup (vname v) mp of
-                            Just smtValue   -> (v, smtValueToValExpr decoder smtValue (vsort v))
+    toConst mp ad dc v = case Map.lookup (vname v) mp of
+                            Just smtValue   -> (v, smtValueToValExpr smtValue (vsort v) ad dc)
                             Nothing         -> error "getSolution - SMT hasn't returned the value of requested variable."
 
 -- ------------------------------------------

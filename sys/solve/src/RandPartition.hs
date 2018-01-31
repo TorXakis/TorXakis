@@ -35,12 +35,10 @@ import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
 import ConstDefs
-import CstrId
-import CstrDef
 import SMT
 import SMTData
 import SolveDefs
-import SortId
+import Sort
 import SortOf
 import ValExpr
 import Variable

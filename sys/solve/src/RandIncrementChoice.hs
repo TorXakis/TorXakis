@@ -32,12 +32,10 @@ import           Data.Text             (Text)
 import qualified Data.Text             as T
 
 import           ConstDefs
-import           CstrDef
-import           CstrId
 import           SMT
 import           SMTData
 import           SolveDefs
-import           SortId
+import           Sort
 import           SortOf
 import           ValExpr
 import           Variable
