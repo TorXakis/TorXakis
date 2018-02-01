@@ -95,13 +95,10 @@ adtDefsToSMT adtMap
         -- convert the given constructor to a SMT constructor declaration
         adtDefToSMT :: Ref ADTDef -> ADTDef -> Text
         adtDefToSMT adtRf adtDef = 
-            
-            
-            T.concat $ map
-                                    (\(r,d) -> " (" <> toCstrName adtRf r
-                                                    <> cstrFieldsToSMT adtRf r (fields d)
-                                                    <> ")" )
-                                    $ Map.toList . cDefsToMap $ constructors adtDef
+            T.concat $ map (\(r,d) -> " (" <> toCstrName adtRf r
+                                      <> cstrFieldsToSMT adtRf r (fields d)
+                                      <> ")" )
+                           $ Map.toList . cDefsToMap $ constructors adtDef
 
         -- convert the given constructor fields to a SMT constructor declaration
         cstrFieldsToSMT :: Ref ADTDef -> Ref ConstructorDef -> FieldDefs -> Text

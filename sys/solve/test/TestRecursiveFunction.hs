@@ -48,34 +48,27 @@ testList = [
 
 testRecursiveFunction :: CreateProcess -> Test
 testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
-    let i2r = Identifier.empty
+    let listIntId = Name "ListInt"
+        nilId = Name "Nil"
+        tailId = Name "tail"
+        headId = Name "head"
+        constrId = Name "Constr"
+        i2r = foldr addIdentifier Identifier.empty [listIntId,nilId,tailId,headId,constrId]
 
-        listIntId = Name "ListInt"
-    let i2r = addIdentifier listIntId i2r
         adtRf = getReference listIntId i2r
         sort_ListInt = SortADT adtRf
 
         Right nilFields = fieldDefs []
-        nilId = Name "Nil"
-    let i2r = addIdentifier nilId i2r
         nilRf = getReference nilId i2r
         nilCDef = ConstructorDef { constructorName="Nil", fields=nilFields}
 
-        tailId = Name "tail"
-    let i2r = addIdentifier tailId i2r
         tailRf = getReference tailId i2r
-
-        headId = Name "head"
-    let i2r = addIdentifier headId i2r
         headRf = getReference headId i2r
-
         Right constrFields = fieldDefs [(headRf, FieldDef "head" SortInt), (tailRf, FieldDef "tail" sort_ListInt)]
-        constrId = Name "Constr"
-    let i2r = addIdentifier constrId i2r
         constrRf = getReference constrId i2r
         constrCDef = ConstructorDef { constructorName="Constr", fields=constrFields}
-        Right cDefs = constructorDefs [(nilRf, nilCDef),(constrRf, constrCDef)]
 
+        Right cDefs = constructorDefs [(nilRf, nilCDef),(constrRf, constrCDef)]
         adtDef = ADTDef "ListInt" cDefs
         Right aDefs = addADTDefs [(adtRf,adtDef)] emptyADTDefs
 
