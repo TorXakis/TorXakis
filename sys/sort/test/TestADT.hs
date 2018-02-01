@@ -25,18 +25,20 @@ import SortInternal
 -- ----------------------------------------------------------------------------
 testADTList :: Test
 testADTList  = TestList [ TestLabel "References" testRef
+                        , TestLabel "Adding single ADT" testAddADTSingle
+                        , TestLabel "Adding multiple ADT" testAddADTMultiple
                         , TestLabel "Adding ADTs with already defined ref" testAddADTAlreadyDefinedRef
                         , TestLabel "Adding ADTs with non-unique ref" testAddADTNonUniqueRef
+                        , TestLabel "Adding ADTs with unknown ref" testAddADTUnknownRef
+                        , TestLabel "Adding ADT with empty name" testAddADTEmptyName
                         , TestLabel "Adding ADTs with already defined name" testAddADTAlreadyDefinedName
                         , TestLabel "Adding ADTs with non-unique name" testAddADTNonUniqueName
-                        -- , TestLabel "Constructable ADTs" testADTAnalysisConstructable
-                        -- , TestLabel "Non-Constructable ADTs" testADTAnalysisNonConstructable
                         , TestLabel "Constructable ADTs 2" testConstructableADTs
                         , TestLabel "Non-Constructable ADTs 2" testNonConstructableADTs
                         ]
 
 ---------------------------------------------------------------------------
--- Tests
+-- Success cases
 ---------------------------------------------------------------------------
 testRef :: Test
 testRef = TestCase $ do
@@ -44,6 +46,33 @@ testRef = TestCase $ do
         rInt :: Ref Int
         rInt = Ref expected
     assertEqual "Same reference?" expected $ toInt rInt
+
+testAddADTSingle :: Test
+testAddADTSingle = TestCase $ do
+    let newADTList = [(adtCRef, adtC)]
+    assertEqual "addADTDefs should succeed for single ADT"
+        (Right $ ADTDefs $ Map.fromList newADTList)
+        $ addADTDefs newADTList emptyADTDefs
+
+testAddADTMultiple :: Test
+testAddADTMultiple = TestCase $ do
+    let newADTList = [(adtCRef, adtC),(adtBRef, adtB')]
+        adtB' = ADTDef { adtName = "B", constructors = cDefsB' }
+        Right cDefsB' = constructorDefs [(Ref 1, cstrB2)]
+    assertEqual "addADTDefs should succeed for multiple ADTs"
+        (Right $ ADTDefs $ Map.fromList newADTList)
+        $ addADTDefs newADTList emptyADTDefs
+
+---------------------------------------------------------------------------
+-- ADT Reference conditions
+---------------------------------------------------------------------------
+testAddADTNonUniqueRef :: Test
+testAddADTNonUniqueRef = TestCase $ do
+    let adtTuple = (Ref 1, ADTDef T.empty $ ConstructorDefs Map.empty)
+        newADTList = [adtTuple, adtTuple]
+    assertEqual "addADTDefs should fail for non-unique references"
+        (Left $ refsNotUniquePrefix <> T.pack (show newADTList))
+        $ addADTDefs newADTList emptyADTDefs
 
 testAddADTAlreadyDefinedRef :: Test
 testAddADTAlreadyDefinedRef = TestCase $ do
@@ -53,23 +82,30 @@ testAddADTAlreadyDefinedRef = TestCase $ do
         (Left $ refsNotUniquePrefix <> T.pack (show newADTList))
         $ addADTDefs newADTList existingADTs
 
-testAddADTNonUniqueRef :: Test
-testAddADTNonUniqueRef = TestCase $ do
-    let adtTuple = (Ref 1, ADTDef T.empty $ ConstructorDefs Map.empty)
-        newADTList = [adtTuple, adtTuple]
-        existingADTs = emptyADTDefs
-    assertEqual "addADTDefs should fail for non-unique references"
-        (Left $ refsNotUniquePrefix <> T.pack (show newADTList))
-        $ addADTDefs newADTList existingADTs
+testAddADTUnknownRef :: Test
+testAddADTUnknownRef = TestCase $ do
+    let newADTList = [(adtARef, adtA)]
+    assertEqual "addADTDefs should fail for unknown references"
+        (Left $ refNotFoundError [([adtBRef],(adtARef,adtA))])
+        $ addADTDefs newADTList emptyADTDefs
+
+---------------------------------------------------------------------------
+-- ADT Name conditions
+---------------------------------------------------------------------------
+testAddADTEmptyName :: Test
+testAddADTEmptyName = TestCase $ do
+    let newADTList = [(Ref 1, ADTDef T.empty $ ConstructorDefs Map.empty)]
+    assertEqual "addADTDefs should fail for empty ADT name"
+        (Left $ emptyADTNamePrefix <> T.pack (show [Ref 1]))
+        $ addADTDefs newADTList emptyADTDefs
 
 testAddADTNonUniqueName :: Test
 testAddADTNonUniqueName = TestCase $ do
     let adt = ADTDef (T.pack "SameName") $ ConstructorDefs Map.empty
         newADTList = [(Ref 1, adt),(Ref 2, adt)]
-        existingADTs = emptyADTDefs
     assertEqual "addADTDefs should fail for already defined names"
         (Left $ namesNotUniquePrefix <> T.pack (show newADTList))
-        $ addADTDefs newADTList existingADTs
+        $ addADTDefs newADTList emptyADTDefs
 
 testAddADTAlreadyDefinedName :: Test
 testAddADTAlreadyDefinedName = TestCase $ do
@@ -80,6 +116,9 @@ testAddADTAlreadyDefinedName = TestCase $ do
         (Left $ namesNotUniquePrefix <> T.pack (show newADTList))
         $ addADTDefs newADTList existingADTs
 
+---------------------------------------------------------------------------
+-- Constructability
+---------------------------------------------------------------------------
 testConstructableADTs :: Test
 testConstructableADTs = TestCase $ do
     let adtList = [(adtARef, adtA),(adtBRef, adtB),(adtCRef, adtC)]
@@ -89,33 +128,15 @@ testConstructableADTs = TestCase $ do
 testNonConstructableADTs :: Test
 testNonConstructableADTs = TestCase $ do
     let -- B { a :: A }
-        adtBRef' = Ref 4
         adtB' = ADTDef { adtName = "B", constructors = cDefsB' }
         Right cDefsB' = constructorDefs [(Ref 1, cstrB1)]
-        adtList = [(adtARef, adtA),(adtBRef', adtB'),(adtCRef, adtC)]
-        cADTs   = Map.fromList [(adtCRef, adtC)]
-        ncADTs   = [(adtBRef', adtB'),(adtARef, adtA)]
-    assertEqual "Only C should be constructable" (cADTs,ncADTs)
-        $ verifyConstructableADTs (Map.empty,adtList)
-
--- testADTAnalysisConstructable :: Test
--- testADTAnalysisConstructable = TestCase $ do
---     let adtList = [(adtARef, adtA),(adtBRef, adtB),(adtCRef, adtC)]
---         cADTs   = Map.fromList adtList
---     assertEqual "All data types should be constructable" (cADTs,[])
---         $ analyzeADTs (adtDefsToMap emptyADTDefs,[]) adtList
-
--- testADTAnalysisNonConstructable :: Test
--- testADTAnalysisNonConstructable = TestCase $ do
---     let -- B { a :: A }
---         adtBRef' = Ref 4
---         adtB' = ADTDef { adtName = "B", constructors = cDefsB' }
---         Right cDefsB' = constructorDefs [(Ref 1, cstrB1)]
---         adtList' = [(adtARef, adtA),(adtBRef', adtB'),(adtCRef, adtC)]
---         cADTs'   = Map.fromList [(adtCRef, adtC)]
---         ncADTs   = [(adtBRef', adtB'),(adtARef, adtA)]
---     assertEqual "Only C should be constructable" (cADTs',ncADTs)
---         $ analyzeADTs (adtDefsToMap emptyADTDefs,[]) adtList'
+        adtList = [(adtARef, adtA),(adtBRef, adtB'),(adtCRef, adtC)]
+        expCADTs   = Map.fromList [(adtCRef, adtC)]
+        expNCADTs  = Map.fromList [(adtBRef, adtB'),(adtARef, adtA)]
+        (actCADTs,actNCADTs) = verifyConstructableADTs (Map.empty,adtList)
+    assertEqual "Only C should be constructable" expCADTs actCADTs
+    assertEqual "B' and A should be non-constructable" expNCADTs
+        $ Map.fromList actNCADTs
 
 -- Test Data
 

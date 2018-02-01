@@ -48,12 +48,12 @@ module SortInternal
 
  -- ** Error messages
  , refsNotUniquePrefix
+ , emptyADTNamePrefix
  , namesNotUniquePrefix
- , refNotFoundPrefix
+ , refNotFoundError
  , notConstructablePrefix
  
   -- ** Private methods
-, analyzeADTs
 , verifyConstructableADTs
 
   -- * Constructors
@@ -82,7 +82,7 @@ where
 import           Control.DeepSeq
 import           Data.Data
 import           Data.List.Unique
-import           Data.List        ((\\))
+import           Data.List        (partition)
 import qualified Data.Map         as Map
 import           Data.Monoid
 import           Data.Text        (Text)
@@ -158,63 +158,72 @@ addADTDefs :: [(Ref ADTDef, ADTDef)]
 addADTDefs l adfs
     | not $ null nonUniqueRefs         = let nonUniqTuples = filter ((`elem` nonUniqueRefs) . fst) l
                                          in  Left $ refsNotUniquePrefix <> T.pack (show nonUniqTuples)
+    | not $ null refsToEmptyNamedADTs  = Left $ emptyADTNamePrefix <> T.pack (show refsToEmptyNamedADTs)
     | not $ null nonUniqueNames        = let nonUniqTuples = filter ((`elem` nonUniqueNames) . adtName . snd) l
                                          in  Left $ namesNotUniquePrefix <> T.pack (show nonUniqTuples)
-    | not $ null unknownRefs           = let todoHere = refNotFoundPrefix <> T.pack "TODO: build this message"
-                                         in  Left todoHere
-    | not $ null nonConstructableTypes = let ncADTNames = T.intercalate (T.pack ", ") $ map adtName nonConstructableTypes
+    | not $ null unknownRefs           = Left $ refNotFoundError unknownRefs
+    | not $ null nonConstructableTypes = let ncADTNames = T.intercalate (T.pack ", ") $ map (adtName . snd) nonConstructableTypes
                                          in  Left $ notConstructablePrefix <> T.pack (show ncADTNames)
     | otherwise = Right $ ADTDefs $ Map.union adtMap $ Map.fromList l
     where
         adtMap = adtDefsToMap adfs
-        nonUniqueRefs  = repeated (map fst l ++ Map.keys (adtDefsToMap adfs))
-        nonUniqueNames = repeated (map ( adtName . snd ) $ l ++ Map.toList (adtDefsToMap adfs))
-        unknownRefs = [] 
-        nonConstructableTypes = [] -- filter (isADTConstructable (adtDefsToMap adfs) []) $ map fst l
+        nonUniqueRefs  = repeated (map fst l ++ Map.keys adtMap)
+        refsToEmptyNamedADTs = map fst $ filter (T.null . adtName . snd) l
+        nonUniqueNames = repeated (map ( adtName . snd ) $ l ++ Map.toList adtMap)
+        unknownRefs = filter (not . null . fst) $ map (\(r,adt) -> (getAbsentADTRefs $ fieldSorts adt,(r,adt))) l
 
--- Error message prefixes: Not all ADTDef references are unique
+        allRefs = map fst l ++ Map.keys adtMap
+        fieldSorts :: ADTDef -> [Sort]
+        fieldSorts adt = concatMap (sortsOfFieldDefs . fields) $ Map.elems $ cDefsToMap $ constructors adt
+        getAbsentADTRefs :: [Sort] -> [Ref ADTDef]
+        getAbsentADTRefs [] = []
+        getAbsentADTRefs (SortADT r : ss)
+            | r `notElem` allRefs = r : getAbsentADTRefs ss
+            | otherwise           = getAbsentADTRefs ss
+        getAbsentADTRefs (_:ss) = getAbsentADTRefs ss
+
+        nonConstructableTypes = snd $ verifyConstructableADTs (adtMap, l)
+
+-- | Error message prefixes: Not all ADTDef references are unique
 refsNotUniquePrefix :: Text
 refsNotUniquePrefix = T.pack "Refs are not unique: "
 
--- Error message prefix: Not all ADTDef names are unique
+-- | Error message prefix: Some ADTDef names are empty
+emptyADTNamePrefix :: Text
+emptyADTNamePrefix = T.pack "ADT names can't be empty: "
+
+-- | Error message prefix: Not all ADTDef names are unique
 namesNotUniquePrefix :: Text
 namesNotUniquePrefix = T.pack "Names are not unique: "
 
--- Error message prefix: Some ADTDef references do not exist
-refNotFoundPrefix :: Text
-refNotFoundPrefix = T.pack "ADT(s) are not : "
+-- | Error message prefix: Some ADTDef references do not exist
+refNotFoundError :: [([Ref ADTDef], (Ref ADTDef, ADTDef))] -> Text
+refNotFoundError [] = T.empty
+refNotFoundError ((uADTRfs,(kADTrf,kADT)):us) = T.pack "ADT(s) " <> T.pack (show uADTRfs)
+                                       <> T.pack " required by ADT '" <> adtName kADT  <> T.pack " - " <> T.pack (show kADTrf)
+                                       <> T.pack "' is not defined.\n"
+                                       <> refNotFoundError us
 
--- Error message prefix: Some ADTDef's are not constructable
+-- | Error message prefix: Some ADTDef's are not constructable
 notConstructablePrefix :: Text
-notConstructablePrefix = T.pack "ADT(s) are not constructable: "
+notConstructablePrefix = T.pack "ADTs are not constructable: "
 
+-- | Verifies if given list of 'ADTDef's are constructable.
+--   Input: A tuple consisting of:
+--
+--   * 'Map.Map' of Ref's to known constructable 'ADTDef's
+--
+--   * A list of Ref-ADTDef tuples to be verified
 verifyConstructableADTs :: (Map.Map (Ref ADTDef) ADTDef, [(Ref ADTDef, ADTDef)])
                         -> (Map.Map (Ref ADTDef) ADTDef, [(Ref ADTDef, ADTDef)]) 
-verifyConstructableADTs = undefined
-
--- | TODO: Document
--- | TODO: Can start with just cADTs and uADTs (unknown), without third list.
---         If anything moved from uADTs to cADTs, start over.
--- | TODO: Don't repeat previous checks
-analyzeADTs :: (Map.Map (Ref ADTDef) ADTDef, [(Ref ADTDef, ADTDef)])
-            -> [(Ref ADTDef, ADTDef)]
-            -> (Map.Map (Ref ADTDef) ADTDef, [(Ref ADTDef, ADTDef)])
-analyzeADTs (cADTs,[]) []     = (cADTs,[])
-analyzeADTs (cADTs,ncADTs) [] =
-    let nowConstructables = filter
-                            (any (allFieldsConstructable cADTs) . Map.elems . cDefsToMap . constructors . snd)
-                            ncADTs
-    in  if null nowConstructables
-            then (cADTs,ncADTs)
-            else analyzeADTs
-                 (foldl (\accM (r,a) -> Map.insert r a accM) cADTs nowConstructables,[]) -- Map.union
-                 $ ncADTs \\ nowConstructables
-
-analyzeADTs (cADTs,ncADTs) ((adtRef,adtDef):as) =
-        let cDefs = Map.elems $ cDefsToMap $ constructors adtDef
-        in  if any (allFieldsConstructable cADTs) cDefs
-                then analyzeADTs (Map.insert adtRef adtDef cADTs,ncADTs) as
-                else analyzeADTs (cADTs,(adtRef,adtDef):ncADTs) as
+verifyConstructableADTs (cADTs, uADTs) =
+    let (cs,ncs)  = partition
+                        (any (allFieldsConstructable cADTs) . Map.elems . cDefsToMap . constructors . snd)
+                        uADTs
+    in  if null cs
+            then (cADTs,uADTs)
+            else verifyConstructableADTs
+                 (foldl (\accM (r,a) -> Map.insert r a accM) cADTs cs, ncs)
 
 allFieldsConstructable :: Map.Map (Ref ADTDef) ADTDef -> ConstructorDef -> Bool
 allFieldsConstructable cADTs cDef = all (isSortConstructable cADTs) $ sortsOfFieldDefs $ fields cDef
