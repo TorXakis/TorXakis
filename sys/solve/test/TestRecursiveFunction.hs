@@ -17,9 +17,11 @@ import qualified Data.Map            as Map
 import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text           as T
+import           Debug.Trace         as Trace
 import           System.Process      (CreateProcess)
 
 import           ConstDefs
+import           FuncDef
 import           FuncId
 import           Identifier
 import           SMT
@@ -83,21 +85,24 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
                             ])
         (TXS2SMTFuncTest i e) = createFunctionDefRecursive lengthListId [varList] SortInt ve
         (resultTxt,_) = adtDefsToSMT $ adtDefsToMap aDefs
-    assertBool ("ListInt sortdef " ++ T.unpack resultTxt)
-               ("(declare-datatypes () (\n    (ListInt (Constr (ListInt$Constr$0 Int) (ListInt$Constr$1 ListInt)) (Nil))\n) )" `T.isInfixOf` resultTxt)
-    {-assertEqual "length function" e (T.unpack (funcdefsToSMT maps (funcDefs fDefs)))
+    let expected = "(declare-datatypes () (\n    (" <> toADTName adtRf <> " ("
+                                                 <> toCstrName adtRf constrRf <> " ("
+                                                        <> toFieldName adtRf constrRf 0 <> " " <> toSortName SortInt <> ") ("
+                                                        <> toFieldName adtRf constrRf 1 <> " " <> toSortName sort_ListInt <> ")) (" 
+                                                 <> toCstrName adtRf nilRf <> "))\n) )"
+    assertBool ("ListInt sortdef actual\n" ++ T.unpack resultTxt ++ "\nexpected\n" ++ T.unpack expected)
+               (expected `T.isInfixOf` resultTxt)
+    let funcDefs = Map.singleton lengthListId (FuncDef [varList] (HelperVexprToSMT.input ve))
+    assertEqual "length function" e (funcdefsToSMT $ funcDefs)
 
-    let txsDefs = EnvDefs (Map.union (sortDefs fDefs) (sortDefs sDefs))
-                          (Map.union (cstrDefs fDefs) (cstrDefs sDefs))
-                          (Map.union (funcDefs fDefs) (funcDefs sDefs))
-
-    let v = VarId "instance" 123456 sortId_ListInt
-    let (TXS2SMTVExprTest inputAssertion _) = createVgez (createVsum [createVfunc lengthList [createVvar v], createVconst (Cint 6)])
+    let v = VarId "instance" 123456 sort_ListInt
+    let (TXS2SMTVExprTest inputAssertion _) = createVgez (createVsum [createVfunc lengthListId [createVvar v], createVconst (Cint (-1))])
 
     smtEnv <- createSMTEnv s False
 
     (_,env1) <- runStateT SMT.openSolver smtEnv
-    env3 <- execStateT (addDefinitions txsDefs) env1
+    env2 <- execStateT (addADTDefinitions aDefs) env1
+    env3 <- execStateT (addFuncDefinitions funcDefs) env2
     env4 <- execStateT (addDeclarations [v]) env3
     env5 <- execStateT (addAssertions [inputAssertion]) env4
     (resp,env6) <- runStateT getSolvable env5
@@ -106,7 +111,11 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
 
     let m = Map.lookup v sol
     assertBool "Is Just" (isJust m)
-    -- let value = fromJust m
-    -- Trace.trace ("value = " ++ (show value)) $ do
-    _ <- execStateT close env7 -}
+    let value = fromJust m
+    assertBool ("value = " ++ (show value)) 
+               (case value of
+                    Cstr adtRf constrRf _   -> True
+                    _                       -> False
+               )
+    _ <- execStateT close env7
     return ()
