@@ -133,17 +133,20 @@ newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a 'Data.Map.Map' from 'R
 emptyADTDefs ::  ADTDefs
 emptyADTDefs = ADTDefs Map.empty
 
--- | Smart constructor for 'ADTDefs'. (TODO: ADTDefs may not be empty)
+-- | Smart constructor for 'ADTDefs'.
+--
+--   This function can be used to add new 'ADTDef's to an 'emptyADTDefs' or a
+--   non-empty 'ADTDefs'.
 --
 --   Preconditions:
 --
 --   * 'Ref's to 'ADTDef's should be unique
 --
---   * Names of 'ADTDef's should be unique
+--   * Names of 'ADTDef's should be unique and non-empty
 --
---   * TODO: All references should exist in 'ADTDefs' and given list
+--   * All references should exist in 'ADTDefs' or given list
 --
---   * TODO: Data types should be constructable
+--   * All data types should be constructable
 --
 --   Given a list of tuples of 'Ref' 'ADTDef' and 'ADTDef', and an 'ADTDefs'
 --
