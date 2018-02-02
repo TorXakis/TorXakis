@@ -33,8 +33,9 @@ testADTList  = TestList [ TestLabel "References" testRef
                         , TestLabel "Adding ADT with empty name" testAddADTEmptyName
                         , TestLabel "Adding ADTs with already defined name" testAddADTAlreadyDefinedName
                         , TestLabel "Adding ADTs with non-unique name" testAddADTNonUniqueName
-                        , TestLabel "Constructable ADTs 2" testConstructableADTs
-                        , TestLabel "Non-Constructable ADTs 2" testNonConstructableADTs
+                        , TestLabel "Constructable ADTs" testConstructableADTs
+                        , TestLabel "Non-Constructable ADTs" testNonConstructableADTs
+                        , TestLabel "ADT without constructor" testADTWithoutConstructor
                         ]
 
 ---------------------------------------------------------------------------
@@ -137,6 +138,13 @@ testNonConstructableADTs = TestCase $ do
     assertEqual "Only C should be constructable" expCADTs actCADTs
     assertEqual "B' and A should be non-constructable" expNCADTs
         $ Map.fromList actNCADTs
+
+testADTWithoutConstructor :: Test
+testADTWithoutConstructor = TestCase $ do
+    let adtList = [(Ref 1, ADTDef { adtName = "N", constructors = ConstructorDefs Map.empty })]
+    assertEqual "ADT without constructor should be non-constructable"
+        (Map.empty, adtList)
+        $ verifyConstructableADTs (Map.empty, adtList)
 
 -- Test Data
 
