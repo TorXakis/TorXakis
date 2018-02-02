@@ -4,9 +4,9 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings      #-}
-module TestADT
+module TestConstructorDefs
 (
-testADTList
+testConstructorList
 )
 where
 -- test specific Haskell imports
@@ -23,47 +23,39 @@ import qualified Data.Text as T
 import Ref
 import SortInternal
 -- ----------------------------------------------------------------------------
-testADTList :: Test
-testADTList  = TestList [ TestLabel "References" testRef
-                        , TestLabel "Adding single ADT" testAddADTSingle
-                        , TestLabel "Adding multiple ADT" testAddADTMultiple
-                        , TestLabel "Adding ADTs with already defined ref" testAddADTAlreadyDefinedRef
-                        , TestLabel "Adding ADTs with non-unique ref" testAddADTNonUniqueRef
-                        , TestLabel "Adding ADTs with unknown ref" testAddADTUnknownRef
-                        , TestLabel "Adding ADT with empty name" testAddADTEmptyName
-                        , TestLabel "Adding ADTs with already defined name" testAddADTAlreadyDefinedName
-                        , TestLabel "Adding ADTs with non-unique name" testAddADTNonUniqueName
-                        , TestLabel "Constructable ADTs" testConstructableADTs
-                        , TestLabel "Non-Constructable ADTs" testNonConstructableADTs
-                        , TestLabel "ADT without constructor" testADTWithoutConstructor
-                        ]
+testConstructorList :: Test
+testConstructorList =
+    TestList [ TestLabel "Single ConstructorDef" testCDefSingle
+             , TestLabel "Multiple ConstructorDefs" testCDefMultiple
+            -- , TestLabel "Adding multiple ADT" testAddADTMultiple
+            -- , TestLabel "Adding ADTs with already defined ref" testAddADTAlreadyDefinedRef
+            -- , TestLabel "Adding ADTs with non-unique ref" testAddADTNonUniqueRef
+            -- , TestLabel "Adding ADTs with unknown ref" testAddADTUnknownRef
+            -- , TestLabel "Adding ADT with empty name" testAddADTEmptyName
+            -- , TestLabel "Adding ADTs with already defined name" testAddADTAlreadyDefinedName
+            -- , TestLabel "Adding ADTs with non-unique name" testAddADTNonUniqueName
+            -- , TestLabel "Constructable ADTs" testConstructableADTs
+            -- , TestLabel "Non-Constructable ADTs" testNonConstructableADTs
+            -- , TestLabel "ADT without constructor" testADTWithoutConstructor
+            ]
 
 ---------------------------------------------------------------------------
 -- Success cases
 ---------------------------------------------------------------------------
-testRef :: Test
-testRef = TestCase $ do
-    let expected = 12
-        rInt :: Ref Int
-        rInt = Ref expected
-    assertEqual "Same reference?" expected $ toInt rInt
+testCDefSingle :: Test
+testCDefSingle = TestCase $ do
+    let cList = [cstrTuple 1]
+    assertEqual "constructorDefs should succeed for single constructorDef"
+        (Right $ ConstructorDefs $ Map.fromList cList)
+        $ constructorDefs cList
 
-testAddADTSingle :: Test
-testAddADTSingle = TestCase $ do
-    let newADTList = [(adtCRef, adtC)]
-    assertEqual "addADTDefs should succeed for single ADT"
-        (Right $ ADTDefs $ Map.fromList newADTList)
-        $ addADTDefs newADTList emptyADTDefs
-
-testAddADTMultiple :: Test
-testAddADTMultiple = TestCase $ do
-    let newADTList = [(adtCRef, adtC),(adtBRef, adtB')]
-        adtB' = ADTDef { adtName = "B", constructors = cDefsB' }
-        Right cDefsB' = constructorDefs [(Ref 1, cstrB2)]
-    assertEqual "addADTDefs should succeed for multiple ADTs"
-        (Right $ ADTDefs $ Map.fromList newADTList)
-        $ addADTDefs newADTList emptyADTDefs
-
+testCDefMultiple :: Test
+testCDefMultiple = TestCase $ do
+    let cList = map cstrTuple [1,2,3]
+    assertEqual "constructorDefs should succeed for single constructorDef"
+        (Right $ ConstructorDefs $ Map.fromList cList)
+        $ constructorDefs cList
+{-
 ---------------------------------------------------------------------------
 -- ADT Reference conditions
 ---------------------------------------------------------------------------
@@ -185,3 +177,12 @@ adtC = ADTDef { adtName = "C", constructors = cDefsC }
              cstrC = ConstructorDef { constructorName = "cstrC", fields = fDefsC }
              Right fDefsC = fieldDefs [(Ref 1, fieldInt)]
              fieldInt = FieldDef { fieldName = "fieldInt", sort = SortInt }
+-}
+
+cstrTuple :: Int -> (Ref ConstructorDef, ConstructorDef)
+cstrTuple i = (cRef, cDef)
+    where
+        cRef = Ref i
+        cDef = ConstructorDef { constructorName = "c" <> T.pack (show i), fields = fDefs }
+        Right fDefs = fieldDefs [(Ref 1, fieldInt)]
+        fieldInt = FieldDef { fieldName = "field" <> T.pack (show i), sort = SortInt }

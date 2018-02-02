@@ -6,11 +6,13 @@ See LICENSE at root directory of this repository.
 import System.Exit
 import Test.HUnit
 
-import TestADT
+import TestADTDefs
+import TestConstructorDefs
 
 testSortList :: Test
 testSortList = TestList
-    [ TestLabel "ADTs"      testADTList ]
+    [ TestLabel "ADTs"         testADTList
+    , TestLabel "Constructors" testConstructorList ]
 
 main :: IO ()
 main = do

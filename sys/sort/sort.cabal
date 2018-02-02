@@ -38,7 +38,8 @@ test-suite sort-test
 
   main-is:            TestMain.hs
   
-  other-modules:      TestADT
+  other-modules:      TestADTDefs
+                    , TestConstructorDefs
                     , Id
                     , Ref
                     , SortInternal
