@@ -153,11 +153,17 @@ testBoolTrue = testSMTValueTest "Bool true" (createSMTBool True)
 testBoolFalse :: Test
 testBoolFalse = testSMTValueTest "Bool false" (createSMTBool False)
 
+validConstructorName1 :: String
+validConstructorName1 = "a0$c0"
+
+validConstructorName2 :: String
+validConstructorName2 = "a0F$c0E"
+
 testConstructorEmpty :: Test
-testConstructorEmpty = testSMTValueTest "Constructor Empty" (createSMTConstructor "Aap" [])
+testConstructorEmpty = testSMTValueTest "Constructor Empty" (createSMTConstructor validConstructorName1 [])
 
 testConstructor :: Test
-testConstructor = testSMTValueTest "Constructor" (createSMTConstructor "Aap" [createSMTBool False, createSMTConstructor "Piet" [], createSMTInt 2])
+testConstructor = testSMTValueTest "Constructor" (createSMTConstructor validConstructorName1 [createSMTBool False, createSMTConstructor validConstructorName2 [], createSMTInt 2])
 
 testLetInt :: String -> Test
 testLetInt name = testSMTValueTest "Let Int" (createSMTLet (Map.fromList[(var,val)]) var)
@@ -190,16 +196,16 @@ testLetConstructor = testSMTValueTest "Let Constructor" (createSMTLet (Map.fromL
     where
         var = createSMTVar "a!"
         arg1 = createSMTBool False
-        arg2 = createSMTConstructor "Piet" []
+        arg2 = createSMTConstructor validConstructorName2 []
         arg3 = createSMTInt 2
-        val = createSMTConstructor "Aap" [arg1,arg2,arg3]
+        val = createSMTConstructor validConstructorName1 [arg1,arg2,arg3]
 
 testLetOnConstructor :: Test
 testLetOnConstructor = testSMTValueTest "Let On Constructor" (createSMTLet (Map.fromList[(var,val)]) constructor)
     where
         var = createSMTVar "a!"
         val = createSMTInt 2
-        constructor = createSMTConstructor "Aap" [var,var]
+        constructor = createSMTConstructor validConstructorName1 [var,var]
 
 testLetNesting :: Test
 testLetNesting = testSMTValueTest "Let Nesting" (createSMTLet (Map.fromList[(varA,valA),(varB,valB)]) let1)
@@ -208,18 +214,18 @@ testLetNesting = testSMTValueTest "Let Nesting" (createSMTLet (Map.fromList[(var
         valA = createSMTInt 4
         varB = createSMTVar "b!"
         valB = createSMTInt 3
-        constructor = createSMTConstructor "Aap" [varA,varB]
+        constructor = createSMTConstructor validConstructorName1 [varA,varB]
         let1 = createSMTLet (Map.fromList[(varA,varB),(varB,varA)]) constructor
 
 testLetPair4 :: Test
 testLetPair4 = testSMTValueTest "Let Pair 4" (createSMTLet (Map.fromList[(var,val)]) constructor4)
     where
         var = createSMTVar "a!1"
-        constructor4 = createSMTConstructor "Pair4$Pair4" [var,var]
-        constructor1a = createSMTConstructor "Pair1$Pair1" [createSMTInt 0,createSMTInt 1]
-        constructor1b = createSMTConstructor "Pair1$Pair1" [createSMTInt 2,createSMTInt 3]
-        constructor2a = createSMTConstructor "Pair2$Pair2" [constructor1a, constructor1b]
-        constructor1c = createSMTConstructor "Pair1$Pair1" [createSMTInt 4,createSMTInt 5]
-        constructor1d = createSMTConstructor "Pair1$Pair1" [createSMTInt 6,createSMTInt 7]
-        constructor2b = createSMTConstructor "Pair2$Pair2" [constructor1c, constructor1d]
-        val = createSMTConstructor "Pair3$Pair3" [constructor2a, constructor2b]
+        constructor4 = createSMTConstructor "a4$c4" [var,var]
+        constructor1a = createSMTConstructor "a1$c1" [createSMTInt 0,createSMTInt 1]
+        constructor1b = createSMTConstructor "a1$c1" [createSMTInt 2,createSMTInt 3]
+        constructor2a = createSMTConstructor "a2$c2" [constructor1a, constructor1b]
+        constructor1c = createSMTConstructor "a1$c1" [createSMTInt 4,createSMTInt 5]
+        constructor1d = createSMTConstructor "a1$c1" [createSMTInt 6,createSMTInt 7]
+        constructor2b = createSMTConstructor "a2$c2" [constructor1c, constructor1d]
+        val = createSMTConstructor "a3$c3" [constructor2a, constructor2b]
