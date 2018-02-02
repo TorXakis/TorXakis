@@ -96,14 +96,14 @@ testAddADTEmptyName :: Test
 testAddADTEmptyName = TestCase $ do
     let newADTList = [(Ref 1, ADTDef T.empty $ ConstructorDefs Map.empty)]
     assertEqual "addADTDefs should fail for empty ADT name"
-        (Left $ EmptyADTName [Ref 1])
+        (Left $ EmptyName [Ref 1])
         $ addADTDefs newADTList emptyADTDefs
 
 testAddADTNonUniqueName :: Test
 testAddADTNonUniqueName = TestCase $ do
     let adt = ADTDef (T.pack "SameName") $ ConstructorDefs Map.empty
         newADTList = [(Ref 1, adt),(Ref 2, adt)]
-    assertEqual "addADTDefs should fail for already defined names"
+    assertEqual "addADTDefs should fail for non-unique names"
         (Left $ NamesNotUnique newADTList)
         $ addADTDefs newADTList emptyADTDefs
 
@@ -112,7 +112,7 @@ testAddADTAlreadyDefinedName = TestCase $ do
     let adt = ADTDef (T.pack "SameName") $ ConstructorDefs Map.empty
         newADTList = [(Ref 1, adt)]
         existingADTs = ADTDefs $ Map.fromList [(Ref 2, adt)]
-    assertEqual "addADTDefs should fail for non-unique names"
+    assertEqual "addADTDefs should fail for already defined names"
         (Left $ NamesNotUnique newADTList)
         $ addADTDefs newADTList existingADTs
 

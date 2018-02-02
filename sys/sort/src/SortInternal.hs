@@ -154,12 +154,12 @@ emptyADTDefs = ADTDefs Map.empty
 --   is returned.
 addADTDefs :: [(Ref ADTDef, ADTDef)]
             -> ADTDefs
-            -> Either ADTError ADTDefs
+            -> Either (ADTError ADTDef) ADTDefs
 addADTDefs l adfs
-    | not $ null nuRefs         = let nonUniqTuples = filter ((`elem` nuRefs) . fst) l
+    | not $ null nuRefs                = let nonUniqTuples = filter ((`elem` nuRefs) . fst) l
                                          in  Left $ RefsNotUnique nonUniqTuples
-    | not $ null refsToEmptyNamedADTs  = Left $ EmptyADTName refsToEmptyNamedADTs
-    | not $ null nuNames        = let nonUniqTuples = filter ((`elem` nuNames) . adtName . snd) l
+    | not $ null refsToEmptyNamedADTs  = Left $ EmptyName refsToEmptyNamedADTs
+    | not $ null nuNames               = let nonUniqTuples = filter ((`elem` nuNames) . adtName . snd) l
                                          in  Left $ NamesNotUnique nonUniqTuples
     | not $ null unknownRefs           = Left $ RefsNotFound unknownRefs
     | not $ null nonConstructableTypes = let ncADTNames = map (adtName . snd) nonConstructableTypes
@@ -186,26 +186,29 @@ addADTDefs l adfs
 
         nonConstructableTypes = snd $ verifyConstructableADTs (adtMap, l)
 
-data ADTError = RefsNotUnique         { nonUniqueRefs        :: [(Ref ADTDef, ADTDef)] }
-              | EmptyADTName          { emptyNamedADTRfs     :: [Ref ADTDef] }
-              | NamesNotUnique        { nonUniqueNames       :: [(Ref ADTDef, ADTDef)] }
-              | RefsNotFound          { notFoundRefs         :: [([Ref ADTDef], (Ref ADTDef, ADTDef))] }
-              | NonConstructableTypes { nonConstructableADTNames :: [Text] }
+data ADTError t = RefsNotUnique         { nonUniqueRefs         :: [(Ref t, t)] }
+                | EmptyName             { emptyNamedRfs         :: [Ref t] }
+                | NamesNotUnique        { nonUniqueNames        :: [(Ref t, t)] }
+                | RefsNotFound          { notFoundRefs          :: [([Ref ADTDef], (Ref ADTDef, ADTDef))] }
+                | NonConstructableTypes { nonConstructableNames :: [Text] }
+                | SameFieldMultipleCstr { fieldNames            :: [Text] }
         deriving (Eq, Show)
 
 
-toErrorText :: ADTError -> Text
-toErrorText (RefsNotUnique  tuples) = T.pack "Refs are not unique: " <> T.pack (show tuples)
-toErrorText (EmptyADTName     refs) = T.pack "ADT names can't be empty: " <> T.pack (show refs)
-toErrorText (NamesNotUnique tuples) = T.pack "Names are not unique: " <> T.pack (show tuples)
-toErrorText (RefsNotFound   [])     = T.empty
+toErrorText :: (Show t) => ADTError t -> Text
+toErrorText (RefsNotUnique        tuples) = T.pack "Refs are not unique: " <> T.pack (show tuples)
+toErrorText (EmptyName              refs) = T.pack "Names can't be empty: " <> T.pack (show refs)
+toErrorText (NamesNotUnique       tuples) = T.pack "Names are not unique: " <> T.pack (show tuples)
+toErrorText (RefsNotFound             []) = T.empty
 toErrorText (RefsNotFound ((uRfs,(reqADTRf, reqADTDf)):ts)) =
-                                      T.pack "ADT(s) " <> T.pack (show uRfs)
-                                      <> T.pack " required by ADT '" <> adtName reqADTDf
-                                      <> T.pack " - " <> T.pack (show reqADTRf)
-                                      <> T.pack "' are not defined.\n"
-                                      <> toErrorText (RefsNotFound ts)
+                                            T.pack "ADT(s) " <> T.pack (show uRfs)
+                                            <> T.pack " required by ADT '" <> adtName reqADTDf
+                                            <> T.pack " - " <> T.pack (show reqADTRf)
+                                            <> T.pack "' are not defined.\n"
+                                            <> toErrorText (RefsNotFound ts :: ADTError ADTDef)
 toErrorText (NonConstructableTypes names) = T.pack "ADTs are not constructable: "
+                                            <> T.intercalate (T.pack ", ") names
+toErrorText (SameFieldMultipleCstr names) = T.pack "Field names in multiple constructors: "
                                             <> T.intercalate (T.pack ", ") names
 
 -- | Verifies if given list of 'ADTDef's are constructable.
@@ -265,23 +268,20 @@ newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to 
 --
 --   is returned.
 constructorDefs :: [(Ref ConstructorDef, ConstructorDef)]
-                -> Either Text ConstructorDefs
+                -> Either (ADTError ConstructorDef) ConstructorDefs
 constructorDefs l
-    | not $ null cnonUniqueRefs          = let nonUniqTuples = filter ((`elem` cnonUniqueRefs) . fst) l
-                                          in Left $ T.pack "refsNotUniquePrefix" <> T.pack (show nonUniqTuples)
-    | not $ null cnonUniqueNames         = let nonUniqTuples = filter ((`elem` cnonUniqueNames) . constructorName . snd) l
-                                          in Left $ T.pack "namesNotUniquePrefix" <> T.pack (show nonUniqTuples)
-    | not $ null cnonUniqueFieldNames    = Left $ fieldNamesNotUniquePrefix <> T.pack (show cnonUniqueFieldNames)
+    | not $ null nuRefs         = let nonUniqTuples = filter ((`elem` nuRefs) . fst) l
+                                  in  Left $ RefsNotUnique nonUniqTuples
+    | not $ null emptyNamedCRfs = Left $ EmptyName emptyNamedCRfs
+    | not $ null nuCstrNames    = let nonUniqTuples = filter ((`elem` nuCstrNames) . constructorName . snd) l
+                                  in  Left $ NamesNotUnique nonUniqTuples
+    | not $ null nuFieldNames   = Left $ SameFieldMultipleCstr nuFieldNames
     | otherwise = Right $ ConstructorDefs $ Map.fromList l
     where
-        cnonUniqueRefs       = repeated $ map fst l
-        cnonUniqueNames      = repeated $ map ( constructorName . snd ) l
-        cnonUniqueFieldNames = repeated $ map (fieldName . snd)
-                                $ concatMap (fDefsToList . fields . snd) l
-
--- | Error message prefix: Not all ADTDef names are unique
-fieldNamesNotUniquePrefix :: Text
-fieldNamesNotUniquePrefix = T.pack "Field names are not unique: "
+        nuRefs         = repeated $ map fst l
+        emptyNamedCRfs = map fst $ filter (T.null . constructorName . snd) l
+        nuCstrNames    = repeated $ map ( constructorName . snd ) l
+        nuFieldNames   = repeated $ map (fieldName . snd) $ concatMap (fDefsToList . fields . snd) l
 
 -----------------------------------------------------------------------------
 -- Field

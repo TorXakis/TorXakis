@@ -12,7 +12,8 @@ import TestConstructorDefs
 testSortList :: Test
 testSortList = TestList
     [ TestLabel "ADTs"         testADTList
-    , TestLabel "Constructors" testConstructorList ]
+    , TestLabel "Constructors" testConstructorList
+    ]
 
 main :: IO ()
 main = do
