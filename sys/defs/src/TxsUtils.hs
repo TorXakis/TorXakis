@@ -16,6 +16,7 @@ import qualified Data.Set    as Set
 import qualified FreeMonoidX as FMX
 import           FuncDef
 import           FuncId
+import           Id
 import           Ident
 import           Name
 import           StdTDefs
@@ -46,27 +47,22 @@ doubles []     =  []
 doubles (x:xs) =  if x `elem` xs then x:doubles xs else doubles xs
 
 bindOnName :: Name -> [Ident] -> [Ident]
-bindOnName nm =  filter (\i -> TxsDefs.name i == nm)
+bindOnName nm =  filter (\i -> Ident.name i == nm)
 
 bindOnSig :: Ident -> [Ident] -> [Ident]
 bindOnSig i  =  filter (\d -> sig d == sig i)
 
 bindOnUnid :: Int -> [Ident] -> [Ident]
-bindOnUnid uid =  filter (\i -> TxsDefs.unid i == uid)
+bindOnUnid uid =  filter (\i -> Ident.unid i == uid)
 
--- ----------------------------------------------------------------------------------------- --
--- scopeMerge globals locals: merge globals and locals; locals take prededence
-
-
+-- | scopeMerge globals locals: merge globals and locals; locals take prededence
 scopeMerge :: [Ident] -> [Ident] -> [Ident]
 scopeMerge []     ls  =  ls
 scopeMerge (g:gs) ls  =  if sig g `elem` map sig ls
                            then scopeMerge gs ls
                            else scopeMerge gs (g:ls)
 
--- ----------------------------------------------------------------------------------------- --
--- combineWEnv :  combine Walue Environments;  where second takes precedence
-
+-- | combineWEnv :  combine Walue Environments;  where second takes precedence
 combineWEnv :: (Variable v) => WEnv v -> WEnv v -> WEnv v
 combineWEnv we1 we2
   =  let  we1' = Map.toList we1
@@ -96,8 +92,6 @@ checkENDECdef tdefs tdef
          ; DefMapper (MapperDef _ _ _ bexp) -> Set.fromList (usedFids bexp) `Set.intersection` endecs
          ; _                                -> Set.empty
          }
-
--- ----------------------------------------------------------------------------------------- --
 
 baseENDECfuncs :: TxsDefs -> Set.Set FuncId
 baseENDECfuncs tdefs
@@ -178,9 +172,9 @@ instance UsedFids ChanOffer
 instance UsedFids VExpr
   where
     usedFids (view -> Vfunc fid vexps)          =  fid : usedFids vexps
-    usedFids (view -> Vcstr _cid vexps)         =  usedFids vexps
-    usedFids (view -> Viscstr _cid vexp)        =  usedFids vexp
-    usedFids (view -> Vaccess _cid _p vexp)     =  usedFids vexp
+    usedFids (view -> Vcstr _ _ vexps)          =  usedFids vexps
+    usedFids (view -> Viscstr _ _ vexp)         =  usedFids vexp
+    usedFids (view -> Vaccess _ _ _ _ vexp)     =  usedFids vexp
     usedFids (view -> Vconst _const)            =  []
     usedFids (view -> Vvar _v)                  =  []
     usedFids (view -> Vite cond tb fb)          =  usedFids [cond, tb, fb]

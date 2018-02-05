@@ -46,10 +46,6 @@ module SortInternal
 , emptyADTDefs
 , addADTDefs
 
- -- ** Error messages
- , ADTError (..)
- , toErrorText
- 
   -- ** Private methods
 , verifyConstructableADTs
 
@@ -73,6 +69,10 @@ module SortInternal
   -- ** Usage
 , fieldDefs
 , sortsOfFieldDefs
+
+ -- * Error messages
+ , ADTError (..)
+ , toErrorText
 )
 where
 
@@ -257,7 +257,7 @@ newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to 
 --
 --   * 'Ref's to 'ConstructorDef's should be unique
 --
---   * Names of 'ConstructorDef's should be unique
+--   * Names of 'ConstructorDef's should be unique and non-empty
 --
 --   * Names of 'FieldDef's should be unique across all 'ConstructorDef's
 --

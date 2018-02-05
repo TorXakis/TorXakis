@@ -56,6 +56,10 @@ module Sort
 , fieldDefs
 , nrOfFieldDefs
 , sortsOfFieldDefs
+
+ -- * Error messages
+ , ADTError
+ , toErrorText
 )
 where
 

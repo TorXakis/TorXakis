@@ -25,9 +25,8 @@ import PurpDef
 import Sort
 
 import VarId
--- ----------------------------------------------------------------------------------------- --
--- torxakis definitions
 
+-- | torxakis definitions
 data  TxsDef = DefADT       ADTDef
              | DefFunc      (FuncDef VarId)
              | DefProc      ProcDef
@@ -40,6 +39,3 @@ data  TxsDef = DefADT       ADTDef
              | DefStat
              | DefGoal
      deriving (Eq,Ord,Read,Show)
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --

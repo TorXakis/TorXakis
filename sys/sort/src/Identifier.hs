@@ -42,7 +42,7 @@ data IdentifierToReference = IdentifierToReference { toMap :: Map.Map Identifier
                                                    , nextRef :: Int
                                                    }
 
-empty :: IdentifierToReference
+empty :: IdentifierToReference -- TODO: Move to separate file
 empty = IdentifierToReference Map.empty 0
 
 -- | add 'Identifier' to 'IdentifierToReference'
