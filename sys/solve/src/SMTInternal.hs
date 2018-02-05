@@ -162,7 +162,7 @@ addADTDefinitions newADTDefs = do
                                             , decoderMap = Map.union dec newDec
                                             } )
         Left  err   -> error $ "SMTInternal - addADTDefinitions: Expectation violated - ADTDEFS + newUnique is a valid ADTDEFS. Error:"
-                             ++ T.unpack err
+                             ++ T.unpack $ toErrorText err
 
 addFuncDefinitions :: Map.Map FuncId (FuncDef VarId) -> SMT ()
 addFuncDefinitions funcDefs = do

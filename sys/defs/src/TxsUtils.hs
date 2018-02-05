@@ -19,6 +19,7 @@ import           FuncId
 import           Ident
 import           Name
 import           StdTDefs
+import           TxsDef
 import           TxsDefs
 import           ValExpr
 import           Variable
@@ -29,7 +30,6 @@ import           VarId
 
 sig :: Ident -> Ident
 sig ( IdADT    r                          ) = IdADT    (reset r              )
-sig ( IdCstr   (CstrId nm _uid ca cs    ) ) = IdCstr   (CstrId nm 0 ca cs    )
 sig ( IdFunc   (FuncId nm _uid fa fs    ) ) = IdFunc   (FuncId nm 0 fa fs    )
 sig ( IdProc   (ProcId nm _uid pc pv pe ) ) = IdProc   (ProcId nm 0 pc pv pe )
 sig ( IdChan   (ChanId nm _uid cs       ) ) = IdChan   (ChanId nm 0 cs       )

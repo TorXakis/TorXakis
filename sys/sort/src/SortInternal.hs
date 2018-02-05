@@ -186,10 +186,11 @@ addADTDefs l adfs
 
         nonConstructableTypes = snd $ verifyConstructableADTs (adtMap, l)
 
+        -- PvdL: Why use t? ADTError just uses an ADTDef.....
 data ADTError t = RefsNotUnique         { nonUniqueRefs         :: [(Ref t, t)] }
                 | EmptyName             { emptyNamedRfs         :: [Ref t] }
                 | NamesNotUnique        { nonUniqueNames        :: [(Ref t, t)] }
-                | RefsNotFound          { notFoundRefs          :: [([Ref ADTDef], (Ref ADTDef, ADTDef))] }
+                | RefsNotFound          { notFoundRefs          :: [([Ref ADTDef], (Ref ADTDef, ADTDef))] }  -- PvdL: why not t? --> adtName iso name
                 | NonConstructableTypes { nonConstructableNames :: [Text] }
                 | SameFieldMultipleCstr { fieldNames            :: [Text] }
         deriving (Eq, Show)
