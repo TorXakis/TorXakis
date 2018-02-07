@@ -25,16 +25,17 @@ module Ref
 
 import           Control.DeepSeq
 import           Data.Data
+import           Data.Text        (Text)
 import           Id
 
--- | A type-safe reference that enables fast comparison.
-newtype Ref t = Ref { -- | A reference keeps an 'Int' for fast comparison.
-                      toInt :: Int
+-- | A type-safe reference
+newtype Ref t = Ref { -- | This reference keeps a text that represents the entity.
+                      toText :: Text
                     }
     deriving (Eq, Ord, Read, Show, NFData, Data)
 
 instance Identifiable (Ref t) where
-    getId = Just . Id . toInt
+    getId _ = Nothing
 
 instance Resettable (Ref t) where
-    reset _ = Ref 0
+    reset = id

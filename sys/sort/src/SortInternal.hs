@@ -88,6 +88,7 @@ import           GHC.Generics     (Generic)
 
 import           Id
 import           Ref
+import           Name
 
 -----------------------------------------------------------------------------
 -- Sort
@@ -113,7 +114,7 @@ instance Resettable Sort where
 -----------------------------------------------------------------------------
 -- | Data structure for Abstract Data Type (ADT) definition.
 data ADTDef = ADTDef
-    { adtName      :: Text       -- ^ Name of the ADT
+    { adtName      :: Name       -- ^ Name of the ADT
     , constructors :: ConstructorDefs -- ^ Constructor definitions of the ADT
     }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
@@ -137,9 +138,7 @@ emptyADTDefs = ADTDefs Map.empty
 --
 --   Preconditions:
 --
---   * 'Ref's to 'ADTDef's should be unique
---
---   * Names of 'ADTDef's should be unique and non-empty
+--   * Names of 'ADTDef's should be unique
 --
 --   * All references should exist in 'ADTDefs' or given list
 --
@@ -152,82 +151,70 @@ emptyADTDefs = ADTDefs Map.empty
 --   * or a structure containing all data types
 --
 --   is returned.
-addADTDefs :: [(Ref ADTDef, ADTDef)]
+addADTDefs :: [ADTDef]
             -> ADTDefs
             -> Either (ADTError ADTDef) ADTDefs
 addADTDefs l adfs
-    | not $ null nuRefs                = let nonUniqTuples = filter ((`elem` nuRefs) . fst) l
-                                         in  Left $ RefsNotUnique nonUniqTuples
-    | not $ null refsToEmptyNamedADTs  = Left $ EmptyName refsToEmptyNamedADTs
-    | not $ null nuNames               = let nonUniqTuples = filter ((`elem` nuNames) . adtName . snd) l
+    | not $ null nuNames               = let nonUniqTuples = filter ((`elem` nuNames) . Name.toText . adtName) l
                                          in  Left $ NamesNotUnique nonUniqTuples
     | not $ null unknownRefs           = Left $ RefsNotFound unknownRefs
-    | not $ null nonConstructableTypes = let ncADTNames = map (adtName . snd) nonConstructableTypes
+    | not $ null nonConstructableTypes = let ncADTNames = map adtName nonConstructableTypes
                                          in  Left $ NonConstructableTypes ncADTNames
-    | otherwise = Right $ ADTDefs $ Map.union adtMap $ Map.fromList l
+    | otherwise = Right $ ADTDefs $ Map.union adtMap $ Map.fromList $ map (\ad -> (Ref $ Name.toText $ adtName ad, ad)) l
     where
         adtMap = adtDefsToMap adfs
-        nuRefs  = repeated (map fst l ++ Map.keys adtMap)
-        refsToEmptyNamedADTs = map fst $ filter (T.null . adtName . snd) l
-        nuNames = repeated (map ( adtName . snd ) $ l ++ Map.toList adtMap)
-        unknownRefs = filter (not . null . fst)
-                      $ map (\(r,adt) -> (getAbsentADTRefs $ fieldSorts adt,(r,adt))) l
+        nuNames = repeated allNames
+        unknownRefs = concatMap (getAbsentADTRefs . fieldSorts) l
 
-        allRefs = map fst l ++ Map.keys adtMap
+        allNames = map (Name.toText . adtName) l ++ map (Name.toText . adtName) (Map.elems adtMap)
         fieldSorts :: ADTDef -> [Sort]
         fieldSorts adt = concatMap (sortsOfFieldDefs . fields)
                          $ Map.elems $ cDefsToMap $ constructors adt
         getAbsentADTRefs :: [Sort] -> [Ref ADTDef]
         getAbsentADTRefs [] = []
         getAbsentADTRefs (SortADT r : ss)
-            | r `notElem` allRefs = r : getAbsentADTRefs ss
+            | Ref.toText r `notElem` allNames = r : getAbsentADTRefs ss
             | otherwise           = getAbsentADTRefs ss
         getAbsentADTRefs (_:ss) = getAbsentADTRefs ss
 
         nonConstructableTypes = snd $ verifyConstructableADTs (adtMap, l)
 
-        -- PvdL: Why use t? ADTError just uses an ADTDef.....
-data ADTError t = RefsNotUnique         { nonUniqueRefs         :: [(Ref t, t)] }
-                | EmptyName             { emptyNamedRfs         :: [Ref t] }
-                | NamesNotUnique        { nonUniqueNames        :: [(Ref t, t)] }
-                | RefsNotFound          { notFoundRefs          :: [([Ref ADTDef], (Ref ADTDef, ADTDef))] }  -- PvdL: why not t? --> adtName iso name
-                | NonConstructableTypes { nonConstructableNames :: [Text] }
-                | SameFieldMultipleCstr { fieldNames            :: [Text] }
+data ADTError t = RefsNotFound          { notFoundRefs          :: [Ref ADTDef] }
+                | EmptyName             { emptyNamedRfs         :: [t] }
+                | NamesNotUnique        { nonUniqueNames        :: [t] }
+                | NonConstructableTypes { nonConstructableNames :: [Name] }
+                | SameFieldMultipleCstr { fieldNames            :: [Name] }
+                | EmptyDefs            -- { entity                :: t }
         deriving (Eq, Show)
 
 
 toErrorText :: (Show t) => ADTError t -> Text
-toErrorText (RefsNotUnique        tuples) = T.pack "Refs are not unique: " <> T.pack (show tuples)
 toErrorText (EmptyName              refs) = T.pack "Names can't be empty: " <> T.pack (show refs)
 toErrorText (NamesNotUnique       tuples) = T.pack "Names are not unique: " <> T.pack (show tuples)
-toErrorText (RefsNotFound             []) = T.empty
-toErrorText (RefsNotFound ((uRfs,(reqADTRf, reqADTDf)):ts)) =
-                                            T.pack "ADT(s) " <> T.pack (show uRfs)
-                                            <> T.pack " required by ADT '" <> adtName reqADTDf
-                                            <> T.pack " - " <> T.pack (show reqADTRf)
-                                            <> T.pack "' are not defined.\n"
-                                            <> toErrorText (RefsNotFound ts :: ADTError ADTDef)
 toErrorText (NonConstructableTypes names) = T.pack "ADTs are not constructable: "
-                                            <> T.intercalate (T.pack ", ") names
+                                            <> T.intercalate (T.pack ", ") (map Name.toText names)
 toErrorText (SameFieldMultipleCstr names) = T.pack "Field names in multiple constructors: "
-                                            <> T.intercalate (T.pack ", ") names
+                                            <> T.intercalate (T.pack ", ") (map Name.toText names)
+toErrorText (EmptyDefs :: ADTError ConstructorDef) = T.pack "No constructors provided"
+toErrorText (EmptyDefs :: ADTError FieldDef)       = T.pack "No fields provided"
 
 -- | Verifies if given list of 'ADTDef's are constructable.
+--
 --   Input: A tuple consisting of:
 --
 --   * 'Map.Map' of Ref's to known constructable 'ADTDef's
 --
---   * A list of Ref-ADTDef tuples to be verified
-verifyConstructableADTs :: (Map.Map (Ref ADTDef) ADTDef, [(Ref ADTDef, ADTDef)])
-                        -> (Map.Map (Ref ADTDef) ADTDef, [(Ref ADTDef, ADTDef)]) 
+--   * A list of 'ADTDef's to be verified
+verifyConstructableADTs :: (Map.Map (Ref ADTDef) ADTDef, [ADTDef])
+                        -> (Map.Map (Ref ADTDef) ADTDef, [ADTDef]) 
 verifyConstructableADTs (cADTs, uADTs) =
     let (cs,ncs)  = partition
-                        (any (allFieldsConstructable cADTs) . Map.elems . cDefsToMap . constructors . snd)
+                        (any (allFieldsConstructable cADTs) . Map.elems . cDefsToMap . constructors)
                         uADTs
     in  if null cs
             then (cADTs,uADTs)
             else verifyConstructableADTs
-                 (foldl (\accM (r,a) -> Map.insert r a accM) cADTs cs, ncs)
+                 (foldl (\accM a -> Map.insert (Ref $ Name.toText $ adtName a) a accM) cADTs cs, ncs)
 
 allFieldsConstructable :: Map.Map (Ref ADTDef) ADTDef -> ConstructorDef -> Bool
 allFieldsConstructable cADTs cDef = all (isSortConstructable cADTs) $ sortsOfFieldDefs $ fields cDef
@@ -240,7 +227,7 @@ isSortConstructable _ _ = True
 -- Constructor
 -----------------------------------------------------------------------------
 -- | Data structure for constructor definition.
-data ConstructorDef = ConstructorDef { constructorName :: Text -- ^ Name of the constructor
+data ConstructorDef = ConstructorDef { constructorName :: Name -- ^ Name of the constructor
                                      , fields :: FieldDefs          -- ^ Field definitions of the constructor
                                      }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
@@ -255,9 +242,9 @@ newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to 
 --
 --   Preconditions:
 --
---   * 'Ref's to 'ConstructorDef's should be unique
+--   * List of 'ConstructorDef's should be non-empty.
 --
---   * Names of 'ConstructorDef's should be unique and non-empty
+--   * Names of 'ConstructorDef's should be unique
 --
 --   * Names of 'FieldDef's should be unique across all 'ConstructorDef's
 --
@@ -268,34 +255,30 @@ newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to 
 --   * or a structure containing the constructor definitions
 --
 --   is returned.
-constructorDefs :: [(Ref ConstructorDef, ConstructorDef)]
+constructorDefs :: [ConstructorDef]
                 -> Either (ADTError ConstructorDef) ConstructorDefs
+constructorDefs [] = Left EmptyDefs
 constructorDefs l
-    | not $ null nuRefs         = let nonUniqTuples = filter ((`elem` nuRefs) . fst) l
-                                  in  Left $ RefsNotUnique nonUniqTuples
-    | not $ null emptyNamedCRfs = Left $ EmptyName emptyNamedCRfs
-    | not $ null nuCstrNames    = let nonUniqTuples = filter ((`elem` nuCstrNames) . constructorName . snd) l
+    | not $ null nuCstrNames    = let nonUniqTuples = filter ((`elem` nuCstrNames) . constructorName) l
                                   in  Left $ NamesNotUnique nonUniqTuples
     | not $ null nuFieldNames   = Left $ SameFieldMultipleCstr nuFieldNames
-    | otherwise = Right $ ConstructorDefs $ Map.fromList l
+    | otherwise = Right $ ConstructorDefs $ Map.fromList $ map (\cd -> (Ref $ Name.toText $ constructorName cd, cd)) l
     where
-        nuRefs         = repeated $ map fst l
-        emptyNamedCRfs = map fst $ filter (T.null . constructorName . snd) l
-        nuCstrNames    = repeated $ map ( constructorName . snd ) l
-        nuFieldNames   = repeated $ map (fieldName . snd) $ concatMap (fDefsToList . fields . snd) l
+        nuCstrNames    = repeated $ map constructorName l
+        nuFieldNames   = repeated $ map fieldName $ concatMap (fDefsToList . fields) l
 
 -----------------------------------------------------------------------------
 -- Field
 -----------------------------------------------------------------------------
 -- | Data structure for a field definition.
-data FieldDef = FieldDef { fieldName :: Text -- ^ Name of the field
+data FieldDef = FieldDef { fieldName :: Name -- ^ Name of the field
                          , sort      :: Sort -- ^ Sort of the field
                          }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 -- | Data structure for a collection of 'FieldDef's.
-data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of tuples of 'Ref' 'FieldDef' and 'FieldDef'.
-                              fDefsToList :: [(Ref FieldDef, FieldDef)]
+data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of 'FieldDef's.
+                              fDefsToList :: [FieldDef]
                               -- | Number of field definitions in a 'FieldDefs'.
                             , nrOfFieldDefs :: Int
                             }
@@ -303,15 +286,15 @@ data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of tuples of 
 
 -- | Smart constructor for 'FieldDefs'.
 --
---   Preconditions:
+--   Precondition:
 --
---   * 'Ref's to 'FieldDef's should be unique
+--   * List of 'FieldDef's should be non-empty.
 --
 --   * Names of 'FieldDef's should be unique
 --
---   Given a list of tuples of 'Ref' 'FieldDef' and 'FieldDef',
+--   Given a list of 'FieldDef's,
 --
---   * either an error message indicating violations of preconditions
+--   * either an error message indicating violations of precondition
 --
 --   * or a structure containing the field definitions
 --
@@ -319,24 +302,16 @@ data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of tuples of 
 --
 --   Note that the position in the list is relevant as it represents implicit
 --   positions of the fields in a constructor.
-fieldDefs :: [(Ref FieldDef, FieldDef)] -> Either Text FieldDefs
-fieldDefs l = let fnonUniqueRefs  = repeated $ map fst l
-                  fnonUniqueNames = repeated $ map ( fieldName . snd ) l
-              in if null fnonUniqueRefs && null fnonUniqueNames
+fieldDefs :: [FieldDef] -> Either Text FieldDefs
+fieldDefs [] = Left $ T.pack ""
+fieldDefs l = let fnonUniqueNames = repeated $ map fieldName l
+              in if null fnonUniqueNames
                     then Right $ FieldDefs l $ length l
-                    else let 
-                            refErr =
-                                if null fnonUniqueRefs
-                                    then let nonUniqTuples = filter ((`elem` fnonUniqueRefs) . fst) l
-                                         in  "Refs are not unique: " ++ show nonUniqTuples
-                                    else ""
-                            nameErr =
-                                if null fnonUniqueNames
-                                    then let nonUniqTuples = filter ((`elem` fnonUniqueNames) . fieldName . snd) l
-                                         in  "Names are not unique: " ++ show nonUniqTuples
-                                    else ""
-                  in  Left $ T.pack $ unlines [refErr, nameErr]
+                    else
+                        let nonUniqTuples = filter ((`elem` fnonUniqueNames) . fieldName) l
+                            nameErr = "Names are not unique: " ++ show nonUniqTuples
+                        in  Left $ T.pack nameErr
 
--- | Curates a list of 'Sort's of every field in a 'FieldDefs'.
+-- | Creates a list of 'Sort's of every field in a 'FieldDefs'.
 sortsOfFieldDefs :: FieldDefs -> [Sort]
-sortsOfFieldDefs = map (sort . snd) . fDefsToList
+sortsOfFieldDefs = map sort . fDefsToList

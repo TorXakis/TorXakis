@@ -14,7 +14,7 @@ cabal-version:  >= 1.10
 library
   hs-source-dirs:     src
   exposed-modules:    Id
-                    , Identifier
+                    , Name
                     , Sort
                     , SortOf
 
@@ -41,6 +41,7 @@ test-suite sort-test
   other-modules:      TestADTDefs
                     , TestConstructorDefs
                     , Id
+                    , Name
                     , Ref
                     , SortInternal
 

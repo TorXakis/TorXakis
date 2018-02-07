@@ -222,7 +222,7 @@ getSolution vs    = do
                             -> v
                             -> (v, Const)
     toConst mp ad dc v = case Map.lookup (vname v) mp of
-                            Just smtValue   -> (v, smtValueToValExpr smtValue (vsort v) ad dc)
+                            Just smtValue   -> (v, smtValueToConst smtValue (vsort v) ad dc)
                             Nothing         -> error "getSolution - SMT hasn't returned the value of requested variable."
 
 -- ------------------------------------------
