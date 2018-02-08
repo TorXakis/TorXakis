@@ -163,10 +163,12 @@ addADTDefs l adfs
     | otherwise = Right $ ADTDefs $ Map.union adtMap $ Map.fromList $ map (\ad -> (Ref $ Name.toText $ adtName ad, ad)) l
     where
         adtMap = adtDefsToMap adfs
+        definedADTs = Map.elems adtMap
         nuNames = repeated allNames
-        unknownRefs = concatMap (getAbsentADTRefs . fieldSorts) l
+        unknownRefs = filter (not . null . fst)
+            $ map (\adt -> (getAbsentADTRefs $ fieldSorts adt, adt)) l
 
-        allNames = map (Name.toText . adtName) l ++ map (Name.toText . adtName) (Map.elems adtMap)
+        allNames = map (Name.toText . adtName) l ++ map (Name.toText . adtName) definedADTs
         fieldSorts :: ADTDef -> [Sort]
         fieldSorts adt = concatMap (sortsOfFieldDefs . fields)
                          $ Map.elems $ cDefsToMap $ constructors adt
@@ -177,27 +179,31 @@ addADTDefs l adfs
             | otherwise           = getAbsentADTRefs ss
         getAbsentADTRefs (_:ss) = getAbsentADTRefs ss
 
-        nonConstructableTypes = snd $ verifyConstructableADTs (adtMap, l)
 
-data ADTError t = RefsNotFound          { notFoundRefs          :: [Ref ADTDef] }
-                | EmptyName             { emptyNamedRfs         :: [t] }
+        nonConstructableTypes = snd $ verifyConstructableADTs (definedADTs, l)
+
+data ADTError t = RefsNotFound          { notFoundRefs          :: [([Ref ADTDef], ADTDef)] }
                 | NamesNotUnique        { nonUniqueNames        :: [t] }
                 | NonConstructableTypes { nonConstructableNames :: [Name] }
                 | SameFieldMultipleCstr { fieldNames            :: [Name] }
-                | EmptyDefs            -- { entity                :: t }
+                | EmptyDefs
         deriving (Eq, Show)
 
 
 toErrorText :: (Show t) => ADTError t -> Text
-toErrorText (EmptyName              refs) = T.pack "Names can't be empty: " <> T.pack (show refs)
+toErrorText EmptyDefs                     = T.pack "No definitions provided."
 toErrorText (NamesNotUnique       tuples) = T.pack "Names are not unique: " <> T.pack (show tuples)
 toErrorText (NonConstructableTypes names) = T.pack "ADTs are not constructable: "
                                             <> T.intercalate (T.pack ", ") (map Name.toText names)
 toErrorText (SameFieldMultipleCstr names) = T.pack "Field names in multiple constructors: "
                                             <> T.intercalate (T.pack ", ") (map Name.toText names)
-toErrorText (EmptyDefs :: ADTError ConstructorDef) = T.pack "No constructors provided"
-toErrorText (EmptyDefs :: ADTError FieldDef)       = T.pack "No fields provided"
-
+toErrorText (RefsNotFound             []) = T.empty
+toErrorText (RefsNotFound ( (uRfs,reqADTDf) : ts) ) =
+                                            T.pack "ADT(s) " <> T.pack (show uRfs)
+                                            <> T.pack " required by ADT '" <> (Name.toText . adtName) reqADTDf
+                                            <> T.pack "' are not defined.\n"
+                                            <> toErrorText (RefsNotFound ts :: ADTError ADTDef)
+                                            
 -- | Verifies if given list of 'ADTDef's are constructable.
 --
 --   Input: A tuple consisting of:
@@ -205,22 +211,21 @@ toErrorText (EmptyDefs :: ADTError FieldDef)       = T.pack "No fields provided"
 --   * 'Map.Map' of Ref's to known constructable 'ADTDef's
 --
 --   * A list of 'ADTDef's to be verified
-verifyConstructableADTs :: (Map.Map (Ref ADTDef) ADTDef, [ADTDef])
-                        -> (Map.Map (Ref ADTDef) ADTDef, [ADTDef]) 
+verifyConstructableADTs :: ([ADTDef], [ADTDef])
+                        -> ([ADTDef], [ADTDef]) 
 verifyConstructableADTs (cADTs, uADTs) =
     let (cs,ncs)  = partition
                         (any (allFieldsConstructable cADTs) . Map.elems . cDefsToMap . constructors)
                         uADTs
     in  if null cs
             then (cADTs,uADTs)
-            else verifyConstructableADTs
-                 (foldl (\accM a -> Map.insert (Ref $ Name.toText $ adtName a) a accM) cADTs cs, ncs)
+            else verifyConstructableADTs (cs ++ cADTs, ncs)
 
-allFieldsConstructable :: Map.Map (Ref ADTDef) ADTDef -> ConstructorDef -> Bool
+allFieldsConstructable :: [ADTDef] -> ConstructorDef -> Bool
 allFieldsConstructable cADTs cDef = all (isSortConstructable cADTs) $ sortsOfFieldDefs $ fields cDef
 
-isSortConstructable :: Map.Map (Ref ADTDef) ADTDef -> Sort -> Bool
-isSortConstructable cADTs (SortADT sortADTRef) = Map.member sortADTRef cADTs
+isSortConstructable :: [ADTDef] -> Sort -> Bool
+isSortConstructable cADTs (SortADT sortADTRef) = any (\a -> (Name.toText . adtName) a == Ref.toText sortADTRef) cADTs
 isSortConstructable _ _ = True
 
 -----------------------------------------------------------------------------

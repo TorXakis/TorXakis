@@ -27,6 +27,7 @@ where
 
 import           Control.DeepSeq
 import           Data.Data
+import           Data.String (IsString(..))
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           GHC.Generics     (Generic)
@@ -53,4 +54,9 @@ name :: Text -> Either Text Name
 name s | T.null s = Left $ T.pack "Illegal input: Empty String"
 name s            = Right $ Name s
 
+instance IsString Name where
+    fromString s =
+        case (name . T.pack) s of
+            Left err -> error $ T.unpack err
+            Right n  -> n
 

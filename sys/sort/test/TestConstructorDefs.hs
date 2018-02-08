@@ -15,11 +15,12 @@ import Test.HUnit
 -- test specific TorXakis imports
 
 -- generic Haskell imports
+import           Data.Either
 import qualified Data.Map  as Map
-import           Data.Monoid
 import qualified Data.Text as T
 
 -- generic TorXakis imports
+import Name
 import Ref
 import SortInternal
 -- ----------------------------------------------------------------------------
@@ -27,8 +28,6 @@ testConstructorList :: Test
 testConstructorList =
     TestList [ TestLabel "Single ConstructorDef" testCDefSingle
              , TestLabel "Multiple ConstructorDefs" testCDefMultiple
-             , TestLabel "ConstructorDefs with non-unique references" testNonUniqueRef
-             , TestLabel "ConstructorDef with empty name" testEmptyName
              , TestLabel "ConstructorDefs with same name" testNonUniqueName
              , TestLabel "ConstructorDefs with same field name" testNonUniqueFieldName
              ]
@@ -38,39 +37,28 @@ testConstructorList =
 ---------------------------------------------------------------------------
 testCDefSingle :: Test
 testCDefSingle = TestCase $ do
-    let cList = [cstrTuple 1]
+    let cList = [cstr 1]
     assertEqual "constructorDefs should succeed for single constructorDef"
-        (Right $ ConstructorDefs $ Map.fromList cList)
+        (Right $ mkConstructorDefs cList)
         $ constructorDefs cList
 
 testCDefMultiple :: Test
 testCDefMultiple = TestCase $ do
-    let cList = map cstrTuple [1,2,3]
-    assertEqual "constructorDefs should succeed for single constructorDef"
-        (Right $ ConstructorDefs $ Map.fromList cList)
+    let cList = map cstr [1,2,3]
+    assertEqual "constructorDefs should succeed for multiple constructorDefs"
+        (Right $ mkConstructorDefs cList)
         $ constructorDefs cList
+
+mkConstructorDefs :: [ConstructorDef] -> ConstructorDefs
+mkConstructorDefs = ConstructorDefs . Map.fromList . map (\c -> (Ref $ Name.toText $ constructorName c, c))
 
 ---------------------------------------------------------------------------
 -- Pre-condition violation tests
 ---------------------------------------------------------------------------
-testNonUniqueRef :: Test
-testNonUniqueRef = TestCase $ do
-    let cstrList = [cstrTuple 1, cstrTuple 1]
-    assertEqual "constructorDefs should fail for non-unique references"
-        (Left $ RefsNotUnique cstrList)
-        $ constructorDefs cstrList
-
-testEmptyName :: Test
-testEmptyName = TestCase $ do
-    let cstrList = [(Ref 1, ConstructorDef T.empty $ FieldDefs [] 0)]
-    assertEqual "constructorDefs should fail for empty constructor name"
-        (Left $ EmptyName [Ref 1])
-        $ constructorDefs cstrList
-
 testNonUniqueName :: Test
 testNonUniqueName = TestCase $ do
-    let cDef = ConstructorDef (T.pack "SameName") $ FieldDefs [] 0
-        cstrList = [(Ref 1, cDef),(Ref 2, cDef)]
+    let cDef = ConstructorDef "SameName" $ FieldDefs [] 0
+        cstrList = [cDef, cDef]
     assertEqual "constructorDefs should fail for non-unique names"
         (Left $ NamesNotUnique cstrList)
         $ constructorDefs cstrList 
@@ -78,26 +66,27 @@ testNonUniqueName = TestCase $ do
 
 testNonUniqueFieldName :: Test
 testNonUniqueFieldName = TestCase $ do
-    let (cRef2,cDef2) = cstrTuple 2
+    let cDef2 = cstr 2
         fields2 = fields cDef2
         cDef2' = cDef2 { fields =
                             fields2 {
                                 fDefsToList =
-                                    [( Ref 1
-                                    , FieldDef {fieldName = "field1", sort = SortInt}
-                                    )]
+                                    [FieldDef { fieldName = "field1"
+                                              , sort = SortInt}]
                                     }
                        }
-        cstrList = [cstrTuple 1,(cRef2, cDef2')]
+        cstrList = [cstr 1, cDef2']
     assertEqual "constructorDefs should fail for non-unique field names"
         (Left $ SameFieldMultipleCstr ["field1"])
         $ constructorDefs cstrList
 
 -- Helpers
-cstrTuple :: Int -> (Ref ConstructorDef, ConstructorDef)
-cstrTuple i = (cRef, cDef)
+cstr :: Int -> ConstructorDef
+cstr i = cDef
     where
-        cRef = Ref i
-        cDef = ConstructorDef { constructorName = "c" <> T.pack (show i), fields = fDefs }
-        Right fDefs = fieldDefs [(Ref 1, fieldInt)]
-        fieldInt = FieldDef { fieldName = "field" <> T.pack (show i), sort = SortInt }
+        cDef = ConstructorDef { constructorName = mkName ("c" ++ show i), fields = fDefs }
+        Right fDefs = fieldDefs [fieldInt]
+        fieldInt = FieldDef { fieldName = mkName ("field" ++ show i), sort = SortInt }
+
+mkName :: String -> Name
+mkName = fromRight "" . name . T.pack
