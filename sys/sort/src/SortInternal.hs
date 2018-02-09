@@ -140,7 +140,7 @@ emptyADTDefs = ADTDefs Map.empty
 --
 --   * Names of 'ADTDef's should be unique
 --
---   * All references should exist in 'ADTDefs' or given list
+--   * All referenced ADTs should exist in 'ADTDefs' or given list
 --
 --   * All data types should be constructable
 --
@@ -208,9 +208,15 @@ toErrorText (RefsNotFound ( (uRfs,reqADTDf) : ts) ) =
 --
 --   Input: A tuple consisting of:
 --
---   * 'Map.Map' of Ref's to known constructable 'ADTDef's
+--   * A list of known constructable 'ADTDef's
 --
 --   * A list of 'ADTDef's to be verified
+--
+--   Output: A tuple consisting of:
+--
+--   * A list of constructable 'ADTDef's
+--
+--   * A list of non-constructable 'ADTDef's
 verifyConstructableADTs :: ([ADTDef], [ADTDef])
                         -> ([ADTDef], [ADTDef]) 
 verifyConstructableADTs (cADTs, uADTs) =
@@ -253,11 +259,11 @@ newtype ConstructorDefs = ConstructorDefs { -- | Transform 'ConstructorDefs' to 
 --
 --   * Names of 'FieldDef's should be unique across all 'ConstructorDef's
 --
---   Given a list of tuples of 'Ref' 'ConstructorDef' and 'ConstructorDef',
+--   Given a list of 'ConstructorDef's,
 --
 --   * either an error message indicating violations of preconditions
 --
---   * or a structure containing the constructor definitions
+--   * or a 'ConstructorDefs' structure containing the constructor definitions
 --
 --   is returned.
 constructorDefs :: [ConstructorDef]

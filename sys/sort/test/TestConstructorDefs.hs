@@ -27,9 +27,10 @@ import SortInternal
 testConstructorList :: Test
 testConstructorList =
     TestList [ TestLabel "Single ConstructorDef" testCDefSingle
-             , TestLabel "Multiple ConstructorDefs" testCDefMultiple
-             , TestLabel "ConstructorDefs with same name" testNonUniqueName
-             , TestLabel "ConstructorDefs with same field name" testNonUniqueFieldName
+             , TestLabel "Multiple ConstructorDef's" testCDefMultiple
+             , TestLabel "No ConstructorDef's" testEmptyConstructorList
+             , TestLabel "ConstructorDef's with same name" testNonUniqueName
+             , TestLabel "ConstructorDef's with same field name" testNonUniqueFieldName
              ]
 
 ---------------------------------------------------------------------------
@@ -49,12 +50,14 @@ testCDefMultiple = TestCase $ do
         (Right $ mkConstructorDefs cList)
         $ constructorDefs cList
 
-mkConstructorDefs :: [ConstructorDef] -> ConstructorDefs
-mkConstructorDefs = ConstructorDefs . Map.fromList . map (\c -> (Ref $ Name.toText $ constructorName c, c))
-
 ---------------------------------------------------------------------------
 -- Pre-condition violation tests
 ---------------------------------------------------------------------------
+testEmptyConstructorList :: Test
+testEmptyConstructorList = TestCase $
+    assertEqual "constructorDefs should fail for emptyList"
+        (Left EmptyDefs) $ constructorDefs []
+
 testNonUniqueName :: Test
 testNonUniqueName = TestCase $ do
     let cDef = ConstructorDef "SameName" $ FieldDefs [] 0
@@ -62,7 +65,6 @@ testNonUniqueName = TestCase $ do
     assertEqual "constructorDefs should fail for non-unique names"
         (Left $ NamesNotUnique cstrList)
         $ constructorDefs cstrList 
-
 
 testNonUniqueFieldName :: Test
 testNonUniqueFieldName = TestCase $ do
@@ -80,7 +82,9 @@ testNonUniqueFieldName = TestCase $ do
         (Left $ SameFieldMultipleCstr ["field1"])
         $ constructorDefs cstrList
 
+---------------------------------------------------------------------------
 -- Helpers
+---------------------------------------------------------------------------
 cstr :: Int -> ConstructorDef
 cstr i = cDef
     where
@@ -90,3 +94,6 @@ cstr i = cDef
 
 mkName :: String -> Name
 mkName = fromRight "" . name . T.pack
+
+mkConstructorDefs :: [ConstructorDef] -> ConstructorDefs
+mkConstructorDefs = ConstructorDefs . Map.fromList . map (\c -> (Ref $ Name.toText $ constructorName c, c))

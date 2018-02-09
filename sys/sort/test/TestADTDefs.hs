@@ -121,8 +121,9 @@ testADTWithoutConstructor = TestCase $ do
         ([], adtList)
         $ verifyConstructableADTs ([], adtList)
 
+---------------------------------------------------------------------------
 -- Test Data
-
+---------------------------------------------------------------------------
 -- A { b :: B }
 adtARef :: Ref ADTDef
 adtARef = Ref $ T.pack "A"
@@ -161,7 +162,9 @@ adtC = ADTDef { adtName = "C", constructors = cDefsC }
              fDefsC = mkFieldDefs [fieldInt]
              fieldInt = FieldDef { fieldName = "fieldInt", sort = SortInt }
 
+---------------------------------------------------------------------------
 -- Helpers
+---------------------------------------------------------------------------
 mkADTDefs :: [ADTDef] -> ADTDefs
 mkADTDefs = ADTDefs . Map.fromList . map (\a -> (Ref $ Name.toText $ adtName a, a))
 
