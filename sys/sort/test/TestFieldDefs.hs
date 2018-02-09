@@ -55,7 +55,7 @@ testEmptyFieldList = TestCase $
 
 testNonUniqueName :: Test
 testNonUniqueName = TestCase $ do
-    let fDef = FieldDef "SameName" SortInt
+    let fDef = FieldDef "SameName" "Int"
         fldList = [fDef, fDef]
     assertEqual "fieldDefs should fail for non-unique names"
         (Left $ NamesNotUnique fldList) $ fieldDefs fldList 
@@ -63,13 +63,13 @@ testNonUniqueName = TestCase $ do
 ---------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------
-fld :: Int -> FieldDef
+fld :: Int -> FieldDef Name
 fld i = fDef
     where
-        fDef = FieldDef { fieldName = mkName ("field" ++ show i), sort = SortInt }
+        fDef = FieldDef { fieldName = mkName ("field" ++ show i), sort = "Int" }
 
 mkName :: String -> Name
 mkName = fromRight "" . name . T.pack
 
-mkFieldDefs :: [FieldDef] -> FieldDefs
+mkFieldDefs :: [FieldDef v] -> FieldDefs v
 mkFieldDefs fs = FieldDefs fs $ length fs

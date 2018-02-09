@@ -56,11 +56,11 @@ testCDefMultiple = TestCase $ do
 testEmptyConstructorList :: Test
 testEmptyConstructorList = TestCase $
     assertEqual "constructorDefs should fail for empty list"
-        (Left EmptyDefs) $ constructorDefs []
+        (Left EmptyDefs) $ constructorDefs ([] :: [ConstructorDef Name])
 
 testNonUniqueName :: Test
 testNonUniqueName = TestCase $ do
-    let cDef = ConstructorDef "SameName" $ FieldDefs [] 0
+    let cDef = (ConstructorDef "SameName" $ FieldDefs [] 0) :: ConstructorDef Name
         cstrList = [cDef, cDef]
     assertEqual "constructorDefs should fail for non-unique names"
         (Left $ NamesNotUnique cstrList)
@@ -74,7 +74,7 @@ testNonUniqueFieldName = TestCase $ do
                             fields2 {
                                 fDefsToList =
                                     [FieldDef { fieldName = "field1"
-                                              , sort = SortInt}]
+                                              , sort = mkName "2"}]
                                     }
                        }
         cstrList = [cstr 1, cDef2']
@@ -85,15 +85,15 @@ testNonUniqueFieldName = TestCase $ do
 ---------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------
-cstr :: Int -> ConstructorDef
+cstr :: Int -> ConstructorDef Name
 cstr i = cDef
     where
         cDef = ConstructorDef { constructorName = mkName ("c" ++ show i), fields = fDefs }
         Right fDefs = fieldDefs [fieldInt]
-        fieldInt = FieldDef { fieldName = mkName ("field" ++ show i), sort = SortInt }
+        fieldInt = FieldDef { fieldName = mkName ("field" ++ show i), sort = mkName $ show i }
 
 mkName :: String -> Name
 mkName = fromRight "" . name . T.pack
 
-mkConstructorDefs :: [ConstructorDef] -> ConstructorDefs
+mkConstructorDefs :: [ConstructorDef v] -> ConstructorDefs v
 mkConstructorDefs = ConstructorDefs . Map.fromList . map (\c -> (Ref $ Name.toText $ constructorName c, c))

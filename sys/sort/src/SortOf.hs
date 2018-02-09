@@ -26,4 +26,4 @@ import           Sort
 
 -- | Types that are instances of SortOf class provide their 'Sort.Sort's.
 class SortOf s where
-  sortOf :: s -> Sort
+  sortOf :: s -> Sort a
