@@ -40,6 +40,7 @@ test-suite sort-test
   
   other-modules:      TestADTDefs
                     , TestConstructorDefs
+                    , TestFieldDefs
                     , Id
                     , Name
                     , Ref

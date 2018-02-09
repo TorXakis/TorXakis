@@ -39,14 +39,14 @@ testConstructorList =
 testCDefSingle :: Test
 testCDefSingle = TestCase $ do
     let cList = [cstr 1]
-    assertEqual "constructorDefs should succeed for single constructorDef"
+    assertEqual "constructorDefs should succeed for single ConstructorDef"
         (Right $ mkConstructorDefs cList)
         $ constructorDefs cList
 
 testCDefMultiple :: Test
 testCDefMultiple = TestCase $ do
     let cList = map cstr [1,2,3]
-    assertEqual "constructorDefs should succeed for multiple constructorDefs"
+    assertEqual "constructorDefs should succeed for multiple ConstructorDef's"
         (Right $ mkConstructorDefs cList)
         $ constructorDefs cList
 
@@ -55,7 +55,7 @@ testCDefMultiple = TestCase $ do
 ---------------------------------------------------------------------------
 testEmptyConstructorList :: Test
 testEmptyConstructorList = TestCase $
-    assertEqual "constructorDefs should fail for emptyList"
+    assertEqual "constructorDefs should fail for empty list"
         (Left EmptyDefs) $ constructorDefs []
 
 testNonUniqueName :: Test

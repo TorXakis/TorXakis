@@ -15,89 +15,61 @@ import Test.HUnit
 -- test specific TorXakis imports
 
 -- generic Haskell imports
-import qualified Data.Map  as Map
-import           Data.Monoid
+import           Data.Either
 import qualified Data.Text as T
 
 -- generic TorXakis imports
-import Ref
+import Name
 import SortInternal
 -- ----------------------------------------------------------------------------
-testConstructorList :: Test
-testConstructorList =
-    TestList [ TestLabel "Single ConstructorDef" testCDefSingle
-             , TestLabel "Multiple ConstructorDefs" testCDefMultiple
-             , TestLabel "ConstructorDefs with non-unique references" testNonUniqueRef
-             , TestLabel "ConstructorDef with empty name" testEmptyName
-             , TestLabel "ConstructorDefs with same name" testNonUniqueName
-             , TestLabel "ConstructorDefs with same field name" testNonUniqueFieldName
+testFieldList :: Test
+testFieldList =
+    TestList [ TestLabel "Single FieldDef" testFDefSingle
+             , TestLabel "Multiple FieldDef's" testFDefMultiple
+             , TestLabel "No FieldDef's" testEmptyFieldList
+             , TestLabel "FieldDef's with same name" testNonUniqueName
              ]
-
+             
 ---------------------------------------------------------------------------
 -- Success cases
 ---------------------------------------------------------------------------
-testCDefSingle :: Test
-testCDefSingle = TestCase $ do
-    let cList = [cstrTuple 1]
-    assertEqual "constructorDefs should succeed for single constructorDef"
-        (Right $ ConstructorDefs $ Map.fromList cList)
-        $ constructorDefs cList
+testFDefSingle :: Test
+testFDefSingle = TestCase $ do
+    let fList = [fld 1]
+    assertEqual "fieldDefs should succeed for single FieldDef"
+        (Right $ mkFieldDefs fList) $ fieldDefs fList
 
-testCDefMultiple :: Test
-testCDefMultiple = TestCase $ do
-    let cList = map cstrTuple [1,2,3]
-    assertEqual "constructorDefs should succeed for single constructorDef"
-        (Right $ ConstructorDefs $ Map.fromList cList)
-        $ constructorDefs cList
+testFDefMultiple :: Test
+testFDefMultiple = TestCase $ do
+    let fList = map fld [1,2,3]
+    assertEqual "fieldDefs should succeed for multiple FieldDef's"
+        (Right $ mkFieldDefs fList) $ fieldDefs fList
 
 ---------------------------------------------------------------------------
 -- Pre-condition violation tests
 ---------------------------------------------------------------------------
-testNonUniqueRef :: Test
-testNonUniqueRef = TestCase $ do
-    let cstrList = [cstrTuple 1, cstrTuple 1]
-    assertEqual "constructorDefs should fail for non-unique references"
-        (Left $ RefsNotUnique cstrList)
-        $ constructorDefs cstrList
-
-testEmptyName :: Test
-testEmptyName = TestCase $ do
-    let cstrList = [(Ref 1, ConstructorDef T.empty $ FieldDefs [] 0)]
-    assertEqual "constructorDefs should fail for empty constructor name"
-        (Left $ EmptyName [Ref 1])
-        $ constructorDefs cstrList
+testEmptyFieldList :: Test
+testEmptyFieldList = TestCase $
+    assertEqual "fieldDefs should fail for empty list"
+        (Left EmptyDefs) $ fieldDefs []
 
 testNonUniqueName :: Test
 testNonUniqueName = TestCase $ do
-    let cDef = ConstructorDef (T.pack "SameName") $ FieldDefs [] 0
-        cstrList = [(Ref 1, cDef),(Ref 2, cDef)]
-    assertEqual "constructorDefs should fail for non-unique names"
-        (Left $ NamesNotUnique cstrList)
-        $ constructorDefs cstrList 
+    let fDef = FieldDef "SameName" SortInt
+        fldList = [fDef, fDef]
+    assertEqual "fieldDefs should fail for non-unique names"
+        (Left $ NamesNotUnique fldList) $ fieldDefs fldList 
 
-
-testNonUniqueFieldName :: Test
-testNonUniqueFieldName = TestCase $ do
-    let (cRef2,cDef2) = cstrTuple 2
-        fields2 = fields cDef2
-        cDef2' = cDef2 { fields =
-                            fields2 {
-                                fDefsToList =
-                                    [( Ref 1
-                                    , FieldDef {fieldName = "field1", sort = SortInt}
-                                    )]
-                                    }
-                       }
-        cstrList = [cstrTuple 1,(cRef2, cDef2')]
-    assertEqual "constructorDefs should fail for non-unique field names"
-        (Left $ SameFieldMultipleCstr ["field1"])
-        $ constructorDefs cstrList
-
+---------------------------------------------------------------------------
 -- Helpers
-cstrTuple :: Int -> (Ref ConstructorDef, ConstructorDef)
-cstrTuple i = (cRef, cDef)
+---------------------------------------------------------------------------
+fld :: Int -> FieldDef
+fld i = fDef
     where
-        cRef = Ref i
-        cDef = ConstructorDef { constructorName = "c" <> T.pack (show i), fields = fDefs }
-        Right fDefs = fieldDefs [(Ref 1, fieldInt)]
-        fieldInt = FieldDef { fieldName = "field" <> T.pack (show i), sort = SortInt }
+        fDef = FieldDef { fieldName = mkName ("field" ++ show i), sort = SortInt }
+
+mkName :: String -> Name
+mkName = fromRight "" . name . T.pack
+
+mkFieldDefs :: [FieldDef] -> FieldDefs
+mkFieldDefs fs = FieldDefs fs $ length fs

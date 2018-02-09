@@ -155,8 +155,8 @@ addADTDefs :: [ADTDef]
             -> ADTDefs
             -> Either (ADTError ADTDef) ADTDefs
 addADTDefs l adfs
-    | not $ null nuNames               = let nonUniqTuples = filter ((`elem` nuNames) . Name.toText . adtName) l
-                                         in  Left $ NamesNotUnique nonUniqTuples
+    | not $ null nuNames               = let nonUniqDefs = filter ((`elem` nuNames) . Name.toText . adtName) l
+                                         in  Left $ NamesNotUnique nonUniqDefs
     | not $ null unknownRefs           = Left $ RefsNotFound unknownRefs
     | not $ null nonConstructableTypes = let ncADTNames = map adtName nonConstructableTypes
                                          in  Left $ NonConstructableTypes ncADTNames
@@ -270,8 +270,8 @@ constructorDefs :: [ConstructorDef]
                 -> Either (ADTError ConstructorDef) ConstructorDefs
 constructorDefs [] = Left EmptyDefs
 constructorDefs l
-    | not $ null nuCstrNames    = let nonUniqTuples = filter ((`elem` nuCstrNames) . constructorName) l
-                                  in  Left $ NamesNotUnique nonUniqTuples
+    | not $ null nuCstrNames    = let nonUniqDefs = filter ((`elem` nuCstrNames) . constructorName) l
+                                  in  Left $ NamesNotUnique nonUniqDefs
     | not $ null nuFieldNames   = Left $ SameFieldMultipleCstr nuFieldNames
     | otherwise = Right $ ConstructorDefs $ Map.fromList $ map (\cd -> (Ref $ Name.toText $ constructorName cd, cd)) l
     where
@@ -313,15 +313,14 @@ data FieldDefs = FieldDefs  { -- | Transform 'FieldDefs' to a list of 'FieldDef'
 --
 --   Note that the position in the list is relevant as it represents implicit
 --   positions of the fields in a constructor.
-fieldDefs :: [FieldDef] -> Either Text FieldDefs
-fieldDefs [] = Left $ T.pack ""
-fieldDefs l = let fnonUniqueNames = repeated $ map fieldName l
-              in if null fnonUniqueNames
-                    then Right $ FieldDefs l $ length l
-                    else
-                        let nonUniqTuples = filter ((`elem` fnonUniqueNames) . fieldName) l
-                            nameErr = "Names are not unique: " ++ show nonUniqTuples
-                        in  Left $ T.pack nameErr
+fieldDefs :: [FieldDef] -> Either (ADTError FieldDef) FieldDefs
+fieldDefs [] = Left EmptyDefs
+fieldDefs l
+    | not $ null nuFieldNames = let nonUniqDefs = filter ((`elem` nuFieldNames) . fieldName) l
+                                in  Left $ NamesNotUnique nonUniqDefs
+    | otherwise = Right $ FieldDefs l $ length l
+    where
+        nuFieldNames = repeated $ map fieldName l
 
 -- | Creates a list of 'Sort's of every field in a 'FieldDefs'.
 sortsOfFieldDefs :: FieldDefs -> [Sort]

@@ -8,11 +8,13 @@ import Test.HUnit
 
 import TestADTDefs
 import TestConstructorDefs
+import TestFieldDefs
 
 testSortList :: Test
 testSortList = TestList
     [ TestLabel "ADTs"         testADTList
     , TestLabel "Constructors" testConstructorList
+    , TestLabel "Fields"       testFieldList
     ]
 
 main :: IO ()

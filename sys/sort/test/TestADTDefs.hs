@@ -27,7 +27,7 @@ import SortInternal
 testADTList :: Test
 testADTList  = TestList [ TestLabel "References" testRef
                         , TestLabel "Adding single ADT" testAddADTSingle
-                        , TestLabel "Adding multiple ADT" testAddADTMultiple
+                        , TestLabel "Adding multiple ADTs" testAddADTMultiple
                         , TestLabel "Adding ADTs with unknown ref" testAddADTUnknownRef
                         , TestLabel "Adding ADTs with already defined name" testAddADTAlreadyDefinedName
                         , TestLabel "Adding ADTs with non-unique name" testAddADTNonUniqueName
