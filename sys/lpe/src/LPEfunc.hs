@@ -15,8 +15,16 @@ See LICENSE at root directory of this repository.
 --
 -----------------------------------------------------------------------------
 
--- {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
+-- TODO: make sure these warnings are removed.
+-- TODO: also check the hlint warnings!
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-unused-matches #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-unused-local-binds #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
 
 module LPEfunc
 (

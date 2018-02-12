@@ -21,6 +21,7 @@ data TranslatedProcDefs = TranslatedProcDefs
   , lLPE     :: [ProcId]
   } deriving (Eq, Ord, Read, Show)
 
+emptyTranslatedProcDefs :: TranslatedProcDefs
 emptyTranslatedProcDefs = TranslatedProcDefs { TranslatedProcDefs.lPreGNF = []
                                              , TranslatedProcDefs.lGNF = []
                                              , TranslatedProcDefs.lLPE = [] }
