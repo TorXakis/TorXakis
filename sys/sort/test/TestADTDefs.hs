@@ -22,7 +22,7 @@ import qualified Data.Text as T
 -- generic TorXakis imports
 import Name
 import Ref
-import SortInternal
+import Sort.Internal
 -- ----------------------------------------------------------------------------
 testADTList :: Test
 testADTList  = TestList [ TestLabel "References" testRef
@@ -159,7 +159,7 @@ adtC s = ADTDef { adtName = "C", constructors = cDefsC }
 ---------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------
-mkADTDefs :: [ADTDef (Sort ADTDefs)] -> ADTDefs
+mkADTDefs :: [ADTDef Sort] -> ADTDefs
 mkADTDefs = ADTDefs . Map.fromList . map (\a -> (Ref $ Name.toText $ adtName a, a))
 
 mkConstructorDefs :: [ConstructorDef v] -> ConstructorDefs v

@@ -20,7 +20,7 @@ import qualified Data.Text as T
 
 -- generic TorXakis imports
 import Name
-import SortInternal
+import Sort.Internal
 -- ----------------------------------------------------------------------------
 testFieldList :: Test
 testFieldList =

@@ -63,4 +63,4 @@ module Sort
 )
 where
 
-import SortInternal
+import Sort.Internal

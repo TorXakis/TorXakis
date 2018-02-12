@@ -30,7 +30,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-module SortInternal
+module Sort.Internal
 (
   -- * 'Sort's of Value Expressions
   Sort (..)
@@ -94,19 +94,19 @@ import           Name
 -- Sort
 -----------------------------------------------------------------------------
 -- | The data type that represents 'Sort's for 'ValExpr.ValExpr's.
-data Sort v = SortError
-            | SortBool
-            | SortInt
-            | SortChar
-            | SortString
-            | SortRegex
-            | SortADT (Ref v)
+data Sort = SortError
+          | SortBool
+          | SortInt
+          | SortChar
+          | SortString
+          | SortRegex
+          | SortADT (Ref (ADTDef Sort))
      deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
 
-instance Identifiable (Sort v) where
+instance Identifiable Sort where
     getId _ = Nothing
 
-instance Resettable (Sort v) where
+instance Resettable Sort where
     reset = id
 
 -----------------------------------------------------------------------------
@@ -121,7 +121,7 @@ data ADTDef v = ADTDef
 
 -- | Data structure for a collection of 'ADTDef's.
 newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a 'Data.Map.Map' from 'Ref' 'ADTDef' to 'ADTDef'.
-                            adtDefsToMap :: Map.Map (Ref (ADTDef (Sort ADTDefs))) (ADTDef (Sort ADTDefs))
+                            adtDefsToMap :: Map.Map (Ref (ADTDef Sort)) (ADTDef Sort)
                             }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
 
@@ -183,14 +183,14 @@ addADTDefs l adfs
             | otherwise             = getAbsentADTRefs nms
         nonConstructableTypes = snd $ verifyConstructableADTs (definedNames, l)
 
-        fixADTSorts :: ADTDef Name -> ADTDef (Sort ADTDefs)
+        fixADTSorts :: ADTDef Name -> ADTDef Sort
         fixADTSorts (ADTDef nm (ConstructorDefs cDfsMap)) = 
             ADTDef nm $ ConstructorDefs $ Map.fromList $ map (fixConstructorSorts nm) $ Map.elems cDfsMap
-        fixConstructorSorts :: Name -> ConstructorDef Name -> (Ref (ConstructorDef (Sort ADTDefs)), ConstructorDef (Sort ADTDefs))
+        fixConstructorSorts :: Name -> ConstructorDef Name -> (Ref (ConstructorDef Sort), ConstructorDef Sort)
         fixConstructorSorts adtNm (ConstructorDef nm (FieldDefs fDfs nr)) =
             let cDef = ConstructorDef nm $ FieldDefs (map (fixFieldSorts adtNm) fDfs) nr
             in  (Ref $ Name.toText nm, cDef)
-        fixFieldSorts :: Name -> FieldDef Name -> FieldDef (Sort ADTDefs)
+        fixFieldSorts :: Name -> FieldDef Name -> FieldDef Sort
         fixFieldSorts adtNm (FieldDef nm _) = FieldDef nm (SortADT (Ref $ Name.toText adtNm))
 
 data ADTError t = RefsNotFound          { notFoundRefs          :: [([Ref Name], ADTDef Name)] }

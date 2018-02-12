@@ -22,7 +22,7 @@ import qualified Data.Text as T
 -- generic TorXakis imports
 import Name
 import Ref
-import SortInternal
+import Sort.Internal
 -- ----------------------------------------------------------------------------
 testConstructorList :: Test
 testConstructorList =
