@@ -59,8 +59,11 @@ module Sort
 
  -- * Error messages
  , ADTError
- , toErrorText
+ , ADTConstructorError
+ , ADTFieldError
 )
 where
 
-import Sort.Internal
+import Sort.ADTDefs
+import Sort.ConstructorDefs
+import Sort.FieldDefs

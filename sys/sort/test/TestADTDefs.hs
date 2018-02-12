@@ -22,7 +22,9 @@ import qualified Data.Text as T
 -- generic TorXakis imports
 import Name
 import Ref
-import Sort.Internal
+import Sort.ADTDefs
+import Sort.ConstructorDefs
+import Sort.FieldDefs
 -- ----------------------------------------------------------------------------
 testADTList :: Test
 testADTList  = TestList [ TestLabel "References" testRef

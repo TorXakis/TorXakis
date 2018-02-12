@@ -20,7 +20,7 @@ import qualified Data.Text as T
 
 -- generic TorXakis imports
 import Name
-import Sort.Internal
+import Sort.FieldDefs
 -- ----------------------------------------------------------------------------
 testFieldList :: Test
 testFieldList =
@@ -51,14 +51,14 @@ testFDefMultiple = TestCase $ do
 testEmptyFieldList :: Test
 testEmptyFieldList = TestCase $
     assertEqual "fieldDefs should fail for empty list"
-        (Left EmptyDefs) $ fieldDefs []
+        (Left EmptyFieldDefs) $ fieldDefs []
 
 testNonUniqueName :: Test
 testNonUniqueName = TestCase $ do
     let fDef = FieldDef "SameName" "Int"
         fldList = [fDef, fDef]
     assertEqual "fieldDefs should fail for non-unique names"
-        (Left $ NamesNotUnique fldList) $ fieldDefs fldList 
+        (Left $ FieldNamesNotUnique fldList) $ fieldDefs fldList 
 
 ---------------------------------------------------------------------------
 -- Helpers

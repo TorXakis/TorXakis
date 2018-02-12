@@ -22,7 +22,8 @@ import qualified Data.Text as T
 -- generic TorXakis imports
 import Name
 import Ref
-import Sort.Internal
+import Sort.ConstructorDefs
+import Sort.FieldDefs
 -- ----------------------------------------------------------------------------
 testConstructorList :: Test
 testConstructorList =
@@ -56,14 +57,14 @@ testCDefMultiple = TestCase $ do
 testEmptyConstructorList :: Test
 testEmptyConstructorList = TestCase $
     assertEqual "constructorDefs should fail for empty list"
-        (Left EmptyDefs) $ constructorDefs ([] :: [ConstructorDef Name])
+        (Left EmptyConstructorDefs) $ constructorDefs ([] :: [ConstructorDef Name])
 
 testNonUniqueName :: Test
 testNonUniqueName = TestCase $ do
     let cDef = (ConstructorDef "SameName" $ FieldDefs [] 0) :: ConstructorDef Name
         cstrList = [cDef, cDef]
     assertEqual "constructorDefs should fail for non-unique names"
-        (Left $ NamesNotUnique cstrList)
+        (Left $ ConstructorNamesNotUnique cstrList)
         $ constructorDefs cstrList 
 
 testNonUniqueFieldName :: Test
