@@ -495,7 +495,7 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
 
 
 -- | wrapper around lpe function, returning only the relevant ProcDef instead of all ProcDefs
-lpeTransform :: (EnvB.EnvB envb )    -- ^ Monad for unique identifiers and error messages
+lpeTransform :: (EnvB.EnvB envb )    --   Monad for unique identifiers and error messages
              => BExpr                -- ^ behaviour expression to be transformed,
                                      --   assumed to be a process instantiation
              -> ProcDefs             -- ^ context of process definitions in which process
@@ -520,7 +520,7 @@ lpeTransform procInst procDefs  =  do
 
 
 -- carsten original function for lpe
-lpeTransform' :: (EnvB.EnvB envb )    -- ^ Monad for unique identifiers and error messages
+lpeTransform' :: (EnvB.EnvB envb )   -- Monad for unique identifiers and error messages
              => BExpr                -- ^ behaviour expression to be transformed,
                                      --   assumed to be a process instantiation
              -> ProcDefs             -- ^ context of process definitions in which process
