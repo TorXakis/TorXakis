@@ -18,6 +18,8 @@ import ConnectionDefs
 data  CnectDef       = CnectDef (Maybe Text) CnectType [ConnDef]
      deriving (Eq,Ord,Read,Show, Generic, NFData)
 
+
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --
+

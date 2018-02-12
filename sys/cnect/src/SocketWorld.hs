@@ -17,14 +17,9 @@ module SocketWorld
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( openSockets   --  :: IOS.IOS ()
-                --  open socket connections to outside world
-, closeSockets  --  :: IOS.IOS ()
-                --  close connections to outside world
-, putSocket     --  :: IOS.EnvS -> Int -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
-                --  try to output to world, or observe earlier input (no quiescence)
-, getSocket     --  :: IOS.EnvS -> Int -> IOC.IOC TxsDDefs.Action
-                --  observe input from world on list of handles, or observe quiescence
+( initSockWorld      -- :: CnectDef -> Int -> Int -> IOC.IOC IOS.SockWorld
+, termitSockWorld    -- :: IOS.SockWorld -> IOC.IOC ()
+, SockWorld (..)
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -35,6 +30,12 @@ where
 import           Control.Concurrent
 import           Control.Concurrent.Async
 import           Control.Monad.State
+-- import           System.IO
+-- import           System.Process
+-- import GHC.Conc
+-- import qualified Data.Char           as Char
+
+
 import qualified Data.Text           as T
 import           System.Timeout
 import qualified Data.Map            as Map
@@ -46,8 +47,8 @@ import qualified Network.TextViaSockets as TVS
 import           EnDecode
 
 -- import from serverenv
-import qualified EnvServer           as IOS
-import qualified IfServer
+-- import qualified EnvServer           as IOS
+-- import qualified IfServer
 
 -- import from coreenv
 import qualified EnvCore             as IOC
@@ -55,15 +56,142 @@ import qualified EnvCore             as IOC
 -- import from defs
 import           TxsDDefs
 import           TxsDefs
-
--- ----------------------------------------------------------------------------------------- --
---
-
+-- import qualified Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
--- open connections
+-- socketworld as eworld
 
+type FroW      = ( Maybe (Chan TxsDDefs.SAction), [ThreadId], [TxsDDefs.ConnHandle] )
+
+-- noToW   :: ToW
+-- noFroW  :: FroW
+-- noToW   =  ( Nothing, Nothing, [] )
+-- noFroW  =  ( Nothing, [],      [] )
+
+instance IOC.EWorld SockWorld
+  where
+     startW    =  startSockWorld
+     restartW  =  restartSockWorld
+     stopW     =  stopSockWorld
+     putToW    =  putSockWorld
+     getFroW   =  getSockWorld
+
+data SockWorld =   IdleSW
+                 | InitSW   { cnectdef  :: TxsDefs.CnectDef
+                            , deltatime :: Int
+                            , iotime    :: Int
+                            }
+                 | CtRunSW  { cnectdef  :: TxsDefs.CnectDef
+                            , deltatime :: Int
+                            , iotime    :: Int
+                            , tow       :: ToW             -- ^ connections to external world
+                            , frow      :: FroW            -- ^ connections from external world
+                            , proch     :: ProcessHandle
+                            }
+                 | UCtRunSW { cnectdef  :: TxsDefs.CnectDef
+                            , deltatime :: Int
+                            , iotime    :: Int
+                            , tow       :: ToW              -- ^ connections to external world
+                            , frow      :: FroW             -- ^ connections from external world
+                             }
+
+-- ----------------------------------------------------------------------------------------- --
+-- initSockWorld :  initialize socket world
+
+initSockWorld :: CnectDef -> Int -> Int -> IOC.IOC SockWorld
+initSockWorld cnectDef deltaTime ioTime  =
+     return $ InitSW cnectDef deltaTime ioTime
+
+-- ----------------------------------------------------------------------------------------- --
+-- termitSockWorld :  terminate socket world
+
+termitSockWorld :: SockWorld -> IOC.IOC ()
+termitSockWorld _ = return ()
+
+-- ----------------------------------------------------------------------------------------- --
+-- startSockWorld :  start socket world, if not already started, otherwise do nothing
+
+startSockWorld :: SockWorld -> IOC.IOC SockWorld
+startSockWorld sockWorld  =
+ 85 >      case sockWorld of
+ 86 >        InitSW cnectDef@(CnectDef (Just ewCmd) cnectType connDefs) deltaTime ioTime
+ 87 >             | (not $ and $ map Char.isSpace $ T.unpack ewCmd)
+ 88 >          -> let cmdw = words $ T.unpack ewCmd
+ 89 >              in do (Just hin, Just hout, Just herr, procH) <- lift $ createProcess
+ 90 >                            ( proc (head cmdw) (tail cmdw) )
+ 91 >                            { std_out = CreatePipe, std_in = CreatePipe, std_err = CreatePipe }
+ 92 >                    lift $ hSetBuffering hin  NoBuffering
+ 93 >                    lift $ hSetBuffering hout NoBuffering
+ 94 >                    lift $ hSetBuffering herr NoBuffering
+ 95 >                    (toW,froW) <- openSockets cnectType connDefs
+ 96 >                    return $ CtRunSW cnectDef deltaTime ioTime toW froW procH
+ 97 >        InitSW cnectDef@(CnectDef Nothing cnectType connDefs) deltaTime ioTime
+ 98 >          -> do (toW,froW) <- openSockets cnectType connDefs
+ 99 >                return $ UCtRunSW cnectDef deltaTime ioTime toW froW
+100 >        _ -> return sockWorld
+101 >
+102 > -- ----------------------------------------------------------------------------------------- -    -
+103 > -- restartSockWorld :  restart socket world, also if already started
+104 >
+104 >
+105 > restartSockWorld :: SockWorld -> IOC.IOC SockWorld
+106 > restartSockWorld sockWorld  =
+107 >      case sockWorld of
+108 >        IdleSW
+109 >          -> return $ IdleSW
+110 >        InitSW cnectDef@(CnectDef (Just ewCmd) cnectType connDefs) deltaTime ioTime
+111 >             | (not $ and $ map Char.isSpace $ T.unpack ewCmd)
+112 >          -> let cmdw = words $ T.unpack ewCmd
+113 >              in do (Just hin, Just hout, Just herr, procH) <- lift $ createProcess
+114 >                            ( proc (head cmdw) (tail cmdw) )
+115 >                            { std_out = CreatePipe, std_in = CreatePipe, std_err = CreatePipe }
+116 >                    lift $ hSetBuffering hin  NoBuffering
+117 >                    lift $ hSetBuffering hout NoBuffering
+118 >                    lift $ hSetBuffering herr NoBuffering
+119 >                    (toW,froW) <- openSockets cnectType connDefs
+120 >                    return $ CtRunSW cnectDef deltaTime ioTime toW froW procH
+121 >        InitSW cnectDef@(CnectDef Nothing cnectType connDefs) deltaTime ioTime
+122 >          -> do (toW,froW) <- openSockets cnectType connDefs
+123 >                return $ UCtRunSW cnectDef deltaTime ioTime toW froW
+124 >        _ -> return sockWorld                                              -- already running -    -
+125 >
+126 > -- ----------------------------------------------------------------------------------------- -    -
+127 > -- stopSockWorld :  stop socket world
+128 >
+128 >
+129 > stopSockWorld :: SockWorld -> IOC.IOC SockWorld
+130 >
+131 > stopSockWorld sockWorld  =
+132 >      case sockWorld of
+133 >        IdleSW
+134 >          -> return $ IdleSW
+135 >        InitSW cnectDef deltaTime ioTime
+136 >          -> return $ InitSW cnectDef deltaTime ioTime
+137 >        CtRunSW cnectDef deltaTime ioTime toW froW procH
+138 >          -> do ec <- lift $ getProcessExitCode procH
+139 >                if isNothing ec
+140 >                  then lift $ terminateProcess procH
+141 >                  else return ()
+142 >                closeSockets toW froW
+143 >                return $ InitSW cnectDef deltaTime ioTime
+144 >        UCtRunSW cnectDef deltaTime ioTime toW froW
+145 >          -> do closeSockets toW froW
+146 >                return $ InitSW cnectDef deltaTime ioTime
+147 >
+148 > -- ----------------------------------------------------------------------------------------- -    -
+149 > -- openSockets ::  open connections
+150 >
+
+
+
+
+
+
+
+
+
+-- ----------------------------------------------------------------------------------------- --
 
 openSockets :: IOS.IOS ()
 openSockets  =  do
@@ -275,6 +403,8 @@ getSocket envs =
               Just SActQui    -> return ActQui
               Just (SAct h s) -> EnDecode.decode envs (SAct h s)
 
+
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
+
