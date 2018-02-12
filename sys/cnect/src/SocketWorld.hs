@@ -32,19 +32,15 @@ module SocketWorld
 
 where
 
-import           System.IO
--- import System.IO.Error
 import           Control.Concurrent
+import           Control.Concurrent.Async
 import           Control.Monad.State
 import qualified Data.Text           as T
-import           Network
 import           System.Timeout
--- import GHC.Conc
-
--- import qualified Data.Char as Char
--- import qualified Data.List as List
--- import qualified Data.Set  as Set
 import qualified Data.Map            as Map
+
+import           Network.TextViaSockets (Connection)
+import qualified Network.TextViaSockets as TVS
 
 -- import from local
 import           EnDecode
@@ -59,7 +55,6 @@ import qualified EnvCore             as IOC
 -- import from defs
 import           TxsDDefs
 import           TxsDefs
-import qualified Utils
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -105,17 +100,17 @@ towChanThread :: Chan SAction -> IO ()
 towChanThread towchan  =  do
      sact <- readChan towchan
      case sact of
-       SAct h s -> do hPutStrLn h (T.unpack s)
+       SAct c s -> do TVS.putLineTo c s
                       towChanThread towchan
        SActQui  -> towChanThread towchan
 
 -- ----------------------------------------------------------------------------------------- --
 
-frowChanThread :: Handle -> Chan SAction -> IO ()
-frowChanThread h frowchan  =  do
-     s <- T.pack <$> hGetLine h
-     writeChan frowchan (SAct h s)
-     frowChanThread h frowchan
+frowChanThread :: Connection -> Chan SAction -> IO ()
+frowChanThread c frowchan  =  do
+     s <- TVS.getLineFrom c
+     writeChan frowchan (SAct c s)
+     frowChanThread c frowchan
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -134,30 +129,27 @@ openCnectClientSockets conndefs = do
                        | ConnDfroW cfrow hfrow pfrow var'  vexps <- conndefs
                        , (hfrow,pfrow) `notElem` [(h,p)|(_,_,_,_,_,_,h,p)<-tofrosocks]
                        ]
-     tofrohandls <- sequence [ connectTo (T.unpack hst) (PortNumber (fromInteger prt))
+     tofroConns <- sequence [ TVS.connectTo (T.unpack hst) (show prt)
                              | (_, _, _, _, _, _, hst, prt) <- tofrosocks
                              ]
-     tohandls    <- sequence [ connectTo (T.unpack hst)(PortNumber (fromInteger prt))
+     toConns    <- sequence [ TVS.connectTo (T.unpack hst) (show prt)
                              | (_, _, _, hst, prt) <- tosocks
                              ]
-     frohandls   <- sequence [ connectTo (T.unpack hst) (PortNumber (fromInteger prt))
+     froConns   <- sequence [ TVS.connectTo (T.unpack hst) (show prt)
                              | (_, _, _, hst, prt) <- frosocks
                              ]
-     sequence_               [ hSetBuffering h NoBuffering | h <- tofrohandls ]
-     sequence_               [ hSetBuffering h NoBuffering | h <- tohandls    ]
-     sequence_               [ hSetBuffering h NoBuffering | h <- frohandls   ]
-     let towhdls  = [ ConnHtoW ctow h vars' vexp
-                    | ( (ctow, vars', vexp, _, _, _, _, _), h ) <- zip tofrosocks tofrohandls
+     let towhdls  = [ ConnHtoW ctow c vars' vexp
+                    | ( (ctow, vars', vexp, _, _, _, _, _), c ) <- zip tofrosocks tofroConns
                     ] ++
-                    [ ConnHtoW ctow h vars' vexp
-                    | ( (ctow, vars', vexp, _, _), h ) <- zip tosocks tohandls
+                    [ ConnHtoW ctow c vars' vexp
+                    | ( (ctow, vars', vexp, _, _), c ) <- zip tosocks toConns
                     ]
 
-         frowhdls = [ ConnHfroW cfrow h var' vexps
-                    | ( (_, _, _, cfrow, var', vexps, _, _), h ) <- zip tofrosocks tofrohandls
+         frowhdls = [ ConnHfroW cfrow c var' vexps
+                    | ( (_, _, _, cfrow, var', vexps, _, _), c ) <- zip tofrosocks tofroConns
                     ]++
-                    [ ConnHfroW cfrow h var' vexps
-                    | ( (cfrow, var', vexps, _, _), h ) <- zip frosocks frohandls
+                    [ ConnHfroW cfrow c var' vexps
+                    | ( (cfrow, var', vexps, _, _), c ) <- zip frosocks froConns
                     ]
      return ( towhdls, frowhdls )
 
@@ -178,52 +170,49 @@ openCnectServerSockets conndefs  =  do
                        | ConnDfroW cfrow hfrow pfrow var' vexps <- conndefs
                        , (hfrow,pfrow) `notElem` [(h,p)|(_,_,_,_,_,_,h,p)<-tofrosocks]
                        ]
-     tofrolistns <- sequence [ listenOn (PortNumber (fromInteger prt))
-                             | (_, _, _, _, _, _, _, prt) <- tofrosocks
-                             ]
-     tolistns    <- sequence [ listenOn (PortNumber (fromInteger prt))
-                             | (_, _, _, _, prt) <- tosocks
-                             ]
-     frolistns   <- sequence [ listenOn (PortNumber (fromInteger prt))
-                             | (_, _, _, _, prt) <- frosocks
-                             ]
-     tofrocnctns <- sequence [ accept listn | listn <- tofrolistns ]
-     tocnctns    <- sequence [ accept listn | listn <- tolistns ]
-     frocnctns   <- sequence [ accept listn | listn <- frolistns ]
-     let tofrohandls = map Utils.frst tofrocnctns
-         tohandls    = map Utils.frst tocnctns
-         frohandls   = map Utils.frst frocnctns
-     sequence_       [ hSetBuffering h NoBuffering | h <- tofrohandls ]
-     sequence_       [ hSetBuffering h NoBuffering | h <- tohandls    ]
-     sequence_       [ hSetBuffering h NoBuffering | h <- frohandls   ]
-     let towhdls   = [ ConnHtoW ctow h vars' vexp
-                     | ( (ctow, vars', vexp, _, _, _, _, _), h ) <- zip tofrosocks tofrohandls
+     tofroConnsA <- async $ mapConcurrently TVS.acceptOn
+                                   [fromInteger prt
+                                   | (_, _, _, _, _, _, _, prt) <- tofrosocks
+                                   ]
+     toConnsA    <- async $ mapConcurrently TVS.acceptOn
+                                   [fromInteger prt
+                                   | (_, _, _, _, prt) <- tosocks
+                                   ]
+     froConnsA   <- async $ mapConcurrently TVS.acceptOn
+                                   [fromInteger prt
+                                   | (_, _, _, _, prt) <- frosocks
+                                   ]
+     tofroConns <- wait tofroConnsA
+     toConns    <- wait toConnsA
+     froConns   <- wait froConnsA
+     let towConns   = [ ConnHtoW ctow c vars' vexp
+                     | ( (ctow, vars', vexp, _, _, _, _, _), c ) <- zip tofrosocks tofroConns
                      ]++
-                     [ ConnHtoW ctow h vars' vexp
-                     | ( (ctow, vars', vexp, _, _), h ) <- zip tosocks tohandls
+                     [ ConnHtoW ctow c vars' vexp
+                     | ( (ctow, vars', vexp, _, _), c ) <- zip tosocks toConns
                      ]
-         frowhdls  = [ ConnHfroW cfrow h var' vexps
-                     | ( (_, _, _, cfrow, var', vexps, _, _), h ) <- zip tofrosocks tofrohandls
+         frowConns  = [ ConnHfroW cfrow c var' vexps
+                     | ( (_, _, _, cfrow, var', vexps, _, _), c ) <- zip tofrosocks tofroConns
                      ]++
-                     [ ConnHfroW cfrow h var' vexps
-                     | ( (cfrow, var', vexps, _, _), h ) <- zip frosocks frohandls
+                     [ ConnHfroW cfrow c var' vexps
+                     | ( (cfrow, var', vexps, _, _), c ) <- zip frosocks froConns
                      ]
-     return ( towhdls, frowhdls )
+     return ( towConns, frowConns )
 
 -- ----------------------------------------------------------------------------------------- --
 -- close connections
 
 closeSockets :: IOS.IOS ()
 closeSockets  =  do
-     ( _, towThread,   towhdls  ) <- gets IOS.tow
-     ( _, frowThreads, frowhdls ) <- gets IOS.frow
+     ( _, towThread,   towConns  ) <- gets IOS.tow
+     ( _, frowThreads, frowConns ) <- gets IOS.frow
 
      lift $ lift $ case towThread of
                      Just thrd -> killThread thrd
                      Nothing   -> return ()
      lift $ lift $ mapM_ killThread frowThreads
-     lift $ lift $ mapM_ hClose [ h | ConnHtoW  _ h _ _ <- towhdls  ]
-     lift $ lift $ mapM_ hClose [ h | ConnHfroW _ h _ _ <- frowhdls ]
+     lift $ lift $ mapM_ TVS.close [ c | ConnHtoW  _ c _ _ <- towConns  ]
+     lift $ lift $ mapM_ TVS.close [ c | ConnHfroW _ c _ _ <- frowConns ]
 
      modify $ \env -> env { IOS.tow  = ( Nothing, Nothing, [] )
                           , IOS.frow = ( Nothing, [],      [] )

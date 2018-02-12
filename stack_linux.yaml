@@ -19,7 +19,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-9.13
+resolver: lts-10.0
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -44,7 +44,7 @@ packages:
 - location: sys/behavedefs
 - location: sys/behaveenv
 - location: sys/cnect
-- location: sys/core 
+- location: sys/core
 - location: sys/coreenv
 - location: sys/defs
 - location: sys/front
@@ -62,7 +62,9 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-  
+- git: https://github.com/TorXakis/text-via-sockets.git
+  commit: e3228cd0407ec0d7991a544e154ea2def184fcae
+
 # Extra package databases containing global packages
 extra-package-dbs: []
 

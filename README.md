@@ -59,8 +59,9 @@ available [here](https://torxakis.github.io/TorXakis/doc/index.html).
 
 ### Building
 
-Make sure that [`stack`][10] is installed, then clone this repository. To build
-and install `TorXakis` locally, if you are on a Windows system run:
+Make sure that [`stack`][10] is installed, then clone this repository.
+`TorXakis` requires a `stack` version `1.6.1` or greater. To build and install
+`TorXakis` locally, if you are on a Windows system run:
 
 ```sh
 stack setup
@@ -73,25 +74,6 @@ For Unix systems a different stack configuration is used:
 stack setup --stack-yaml stack_linux.yaml
 stack install --stack-yaml stack_linux.yaml
 ```
-
-The build might take an hour depending on the host system. There is
-an [issue][11] filed to improve this. Alternatively the `--fast` flag can be
-used:
-
-```sh
-stack install --fast
-```
-
-or on Unix systems:
-
-```sh
-stack install --fast --stack-yaml stack_linux.yaml
-```
-
-This disables all optimizations and takes the compile time down to
-around 5 minutes, however bear in mind that `TorXakis` will be slightly slower
-(for instance we experience a 10 seconds overhead when testing a model that
-took about `30` seconds with the optimized version).
 
 The reason for having two configuration files is that on Windows systems the
 libraries are linked statically, and thus we cannot use the `integer-gmp`
@@ -121,6 +103,32 @@ stack test
 
 See the [README](test/sqatt/README.md) in the `sqatt` folder for more
 information.
+
+### Benchmarking
+
+It is important to keep an eye on the performance of `TorXakis`. Currently
+there is no continuous benchmarking process in place, however you can check
+locally the performance by running the benchmarks for the (current) `develop`
+version, and the version that you are working on. To run the benchmarks and
+generate the reports on Unix systems you can run:
+
+```sh
+cd test/sqatt
+stack bench --ba "--output  `date +%s`-report-`git rev-parse HEAD`.html --csv `date +%s`-report-`git rev-parse HEAD`.csv"
+```
+
+On Windows PowerShell you can run:
+
+```posh
+cd test\sqatt
+stack bench --ba "--output
+$(get-date).ToString("yyyyMMdd-hhmmss")-report-$((git rev-parse
+HEAD).Substring(0,8)).html --csv $(get-date).ToString("yyyyMMdd-hhmmss")-report-$((git rev-parse HEAD).Substring(0,8)).csv"
+```
+
+See the [README](test/sqatt/README.md) in the `sqatt` folder for more
+information.
+
 
 ### Repository structure
 
