@@ -48,7 +48,7 @@ where
 import           Control.DeepSeq
 import           Data.Data
 import           Data.List.Unique
-import           Data.List        (intercalate,partition,stripPrefix)
+import           Data.List        (intercalate,partition)
 import qualified Data.Map.Strict  as Map
 import qualified Data.Text        as T
 import           GHC.Generics     (Generic)
@@ -205,31 +205,10 @@ data Sort = SortError
           | SortString
           | SortRegex
           | SortADT (Ref (ADTDef Sort))
-     deriving (Eq,Ord,Generic,NFData,Data)
+     deriving (Eq,Ord,Show,Read,Generic,NFData,Data)
 
 instance Identifiable Sort where
     getId _ = Nothing
 
 instance Resettable Sort where
     reset = id
-
--- | Show: Sort
-instance Show Sort where
-    show (SortADT r) = "ADT " ++ show r
-    show SortError   = "Error" 
-    show SortBool    = "Bool" 
-    show SortInt     = "Int" 
-    show SortChar    = "Char" 
-    show SortString  = "String" 
-    show SortRegex   = "Regex" 
-
-instance Read Sort where
-    readsPrec _ "Error"  = [(SortError, "")]
-    readsPrec _ "Bool"   = [(SortBool, "")]
-    readsPrec _ "Int"    = [(SortInt, "")]
-    readsPrec _ "Char"   = [(SortChar, "")]
-    readsPrec _ "String" = [(SortString, "")]
-    readsPrec _ "Regex"  = [(SortRegex, "")]
-    readsPrec _ s        = case stripPrefix "ADT " s of
-                                Nothing -> error $ "Invalid Sort: " ++ s
-                                Just refShow -> [(SortADT $ read refShow,"")]
