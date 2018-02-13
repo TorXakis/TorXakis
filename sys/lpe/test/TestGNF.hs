@@ -115,7 +115,7 @@ chanIdB = ChanId    { ChanId.name = T.pack "B"
   -- P$pre1[A](x) = STOP ## STOP
 testPreGNFFirst :: Test
 testPreGNFFirst = TestCase $
-   assertBool "choice (on lower level) is substituted" $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "choice (on lower level) is substituted" $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procDefP = ProcDef [chanIdA] [] (ActionPref actOfferAx (Choice [Stop, Stop]))
@@ -138,14 +138,14 @@ testStop :: Test
 testStop = TestCase $
     let procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] Stop)]
         procIdP = procIdGen "P" [chanIdA] [varIdX]
-    in  assertBool "STOP"  $ eq_procDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+    in  assertBool "STOP"  $ eqProcDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
 
 -- A?X >-> STOP remains unchanged
 testASeqStop :: Test
 testASeqStop = TestCase $
     let procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [] (ActionPref actOfferAx Stop))]
         procIdP = procIdGen "P" [chanIdA] [varIdX]
-    in  assertBool "STOP"  $ eq_procDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+    in  assertBool "STOP"  $ eqProcDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
 
 -- P[]() := A?x >-> P[A](x) remains unchanged
 -- also checks that there are no infinite loops of valid gnfFunc translations
@@ -155,7 +155,7 @@ testASeqProcInst = TestCase $
     let procIdP = procIdGen "P" [chanIdA] [varIdX]
         procInstP = ProcInst procIdP [chanIdA] [vexprX]
         procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] (ActionPref actOfferAx procInstP))]
-    in  assertBool "STOP"  $ eq_procDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+    in  assertBool "STOP"  $ eqProcDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
 
 
 
@@ -164,7 +164,7 @@ testASeqProcInst = TestCase $
 -- P$gnf1[A,B](x) := B!1 >-> STOP
 testActPrefSplit :: Test
 testActPrefSplit = TestCase $
-   assertBool "multi action sequence is split"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "multi action sequence is split"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
       procDefP = ProcDef [chanIdA, chanIdB] [] (ActionPref actOfferAx (ActionPref actOfferB1 Stop))
@@ -190,7 +190,7 @@ testActPrefSplit = TestCase $
 -- Q[B]() := B?x >-> STOP
 testProcInst1 :: Test
 testProcInst1 = TestCase $
-   assertBool "procInst is substituted"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
@@ -213,7 +213,7 @@ testProcInst1 = TestCase $
 -- Q[A]() := A?X >-> STOP
 testProcInst2 :: Test
 testProcInst2 = TestCase $
-   assertBool "procInst is substituted 2"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted 2"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
@@ -238,7 +238,7 @@ testProcInst2 = TestCase $
 -- R[A]()  := A?x -> STOP
 testProcInst3 :: Test
 testProcInst3 = TestCase $
-   assertBool "procInst is substituted 3"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted 3"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
@@ -270,7 +270,7 @@ testProcInst3 = TestCase $
 --      otherwise it would not be in pregnfFunc (and thus not GNF) after the substitution!
 testProcInst4 :: Test
 testProcInst4 = TestCase $
-   assertBool "procInst is substituted and normalised"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted and normalised"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [] []
       procIdQ = procIdGen "Q" [] []
@@ -302,7 +302,7 @@ testProcInst4 = TestCase $
 -- P$pre1[A,B](x) := STOP ## STOP
 testNamingClash :: Test
 testNamingClash = TestCase $
-   assertBool "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash"  $ eq_procDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
    where
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
       procIdPgnf1 = procIdGen "P$gnf1" [chanIdA, chanIdB] [varIdX]

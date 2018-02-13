@@ -32,8 +32,8 @@ module LPEfunc
   lpeParFunc,
   gnfFunc,
   preGNFFunc,
-  eq_procDef,
-  eq_procDefs
+  eqProcDef,
+  eqProcDefs
 )
 
 where
@@ -130,23 +130,23 @@ preGNFFunc procId translatedProcDefs procDefs =
 
 
 
-eq_procDef :: Maybe(BExpr, ProcDef) -> Maybe(BExpr, ProcDef) -> Bool
-eq_procDef (Just(bexprL, procDefL)) (Just(bexprR, procDefR)) =
-    (bexprL ~~ bexprR) && (eq_procDef' procDefL procDefR)
-eq_procDef _ _ = False
+eqProcDef :: Maybe(BExpr, ProcDef) -> Maybe(BExpr, ProcDef) -> Bool
+eqProcDef (Just(bexprL, procDefL)) (Just(bexprR, procDefR)) =
+    (bexprL ~~ bexprR) && eqProcDef' procDefL procDefR
+eqProcDef _ _ = False
 
 
-eq_procDef' :: ProcDef -> ProcDef -> Bool
-eq_procDef' procDefL procDefR =
-    (reset' procDefL) == (reset' procDefR)
+eqProcDef' :: ProcDef -> ProcDef -> Bool
+eqProcDef' procDefL procDefR =
+    reset' procDefL == reset' procDefR
     where
       reset' :: ProcDef -> ProcDef
       reset' (ProcDef chanIds varIds bexpr) =
         ProcDef (reset chanIds) (reset varIds) (reset bexpr)
 
 
-eq_procDefs :: ProcDefs -> ProcDefs -> Bool
-eq_procDefs procDefsL procDefsR =
+eqProcDefs :: ProcDefs -> ProcDefs -> Bool
+eqProcDefs procDefsL procDefsR =
     let l = Map.toList procDefsL
         r = Map.toList procDefsR
         zipped = zip l r
@@ -155,7 +155,7 @@ eq_procDefs procDefsL procDefsR =
     where
       comp (l,r) = eq_elem l r
       eq_elem (procIdL, procDefL) (procIdR, procDefR) =
-        (reset procIdL) == (reset procIdR) && eq_procDef' procDefL procDefR
+        reset procIdL == reset procIdR && eqProcDef' procDefL procDefR
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
