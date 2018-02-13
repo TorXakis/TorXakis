@@ -87,6 +87,8 @@ constructorDefs l
         nuCstrNames    = repeated $ map constructorName l
         nuFieldNames   = repeated $ map fieldName $ concatMap (fDefsToList . fields) l
 
+-- | Type of errors that are raised when it's not possible to build a
+--   'ConstructorDefs' structure via 'constructorDefs' function.
 data ADTConstructorError = ConstructorNamesNotUnique [ConstructorDef Name]
                          | EmptyConstructorDefs
                          | SameFieldMultipleCstr     [Name]

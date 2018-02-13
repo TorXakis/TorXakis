@@ -29,7 +29,6 @@ module Sort.FieldDefs
 
   -- ** Usage
 , fieldDefs
-, sortsOfFieldDefs
 
 -- * ADT Field Errors
 , ADTFieldError (..)
@@ -84,10 +83,8 @@ fieldDefs l
     where
         nuFieldNames = repeated $ map fieldName l
 
--- | Creates a list of 'FieldDef.sort's of every 'FieldDef' in a 'FieldDefs'.
-sortsOfFieldDefs :: FieldDefs v -> [v]
-sortsOfFieldDefs = map sort . fDefsToList
-
+-- | Type of errors that are raised when it's not possible to build a
+--   'FieldDefs' structure via 'fieldDefs' function.
 data ADTFieldError = FieldNamesNotUnique [FieldDef Name]
                    | EmptyFieldDefs
     deriving (Eq)

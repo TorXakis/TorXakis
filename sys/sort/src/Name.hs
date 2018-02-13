@@ -22,6 +22,7 @@ module Name
 ( Name
 , toText
 , name
+, nameOf
 )
 where
 
@@ -37,7 +38,7 @@ newtype Name = Name { toText :: Text -- ^ 'Data.Text'(ual) representation of Nam
                     }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
--- | smart constructor for Name
+-- | Smart constructor for Name
 --
 --   Precondition:
 --
@@ -53,6 +54,10 @@ newtype Name = Name { toText :: Text -- ^ 'Data.Text'(ual) representation of Nam
 name :: Text -> Either Text Name
 name s | T.null s = Left $ T.pack "Illegal input: Empty String"
 name s            = Right $ Name s
+
+-- | Creates a name from a given 'show'able entity.
+nameOf :: Show t => t -> Name
+nameOf = Name . T.pack . show
 
 instance IsString Name where
     fromString s =

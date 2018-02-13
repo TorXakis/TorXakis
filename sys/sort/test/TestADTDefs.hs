@@ -29,6 +29,7 @@ import Sort.FieldDefs
 testADTList :: Test
 testADTList  = TestList [ TestLabel "References" testRef
                         , TestLabel "Adding single ADT" testAddADTSingle
+                        , TestLabel "Adding ADT that depends on other ADT" testAddADTDependent
                         , TestLabel "Adding multiple ADTs" testAddADTMultiple
                         , TestLabel "Adding ADTs with unknown ref" testAddADTUnknownRef
                         , TestLabel "Adding ADTs with already defined name" testAddADTAlreadyDefinedName
@@ -50,30 +51,38 @@ testRef = TestCase $ do
 
 testAddADTSingle :: Test
 testAddADTSingle = TestCase $ do
-    let newADTList = [adtC "C"]
-        expADTList = [adtC SortInt]
+    let newADTList = [adtCName]
+        expADTList = [adtCSort]
     assertEqual "addADTDefs should succeed for single ADT"
+        (Right $ mkADTDefs expADTList)
+        $ addADTDefs newADTList emptyADTDefs
+
+testAddADTDependent :: Test
+testAddADTDependent = TestCase $ do
+    let newADTList = [adtCName, adtB' $ nameOf $ SortADT $ Ref "C"]
+        adtB' t = ADTDef { adtName = "B", constructors = cDefsB' t }
+        cDefsB' t = mkConstructorDefs [cstrB2 t]
+        expADTList = [adtCSort, adtB' $ SortADT $ Ref "C"]
+    assertEqual "addADTDefs should succeed for dependent ADTs"
         (Right $ mkADTDefs expADTList)
         $ addADTDefs newADTList emptyADTDefs
 
 testAddADTMultiple :: Test
 testAddADTMultiple = TestCase $ do
-    let newADTList = [adtC "C", adtB' "B"]
-        adtB' t = ADTDef { adtName = "B", constructors = cDefsB' t }
-        cDefsB' t = mkConstructorDefs [cstrB2 t]
-        expADTList = [adtC SortInt, adtB' $ SortADT $ Ref "C"]
+    let newADTList = [adtAName, adtBName, adtCName]
+        expADTList = [adtASort, adtBSort, adtCSort]
     assertEqual "addADTDefs should succeed for multiple ADTs"
         (Right $ mkADTDefs expADTList)
         $ addADTDefs newADTList emptyADTDefs
-
+        
 ---------------------------------------------------------------------------
 -- ADT Reference conditions
 ---------------------------------------------------------------------------
 testAddADTUnknownRef :: Test
 testAddADTUnknownRef = TestCase $ do
-    let newADTList = [adtA "A"]
+    let newADTList = [adtAName]
     assertEqual "addADTDefs should fail for unknown references"
-        (Left $ RefsNotFound [([Ref "B"], adtA "A")])
+        (Left $ RefsNotFound [([Ref "B"], adtAName)])
         $ addADTDefs newADTList emptyADTDefs
 
 ---------------------------------------------------------------------------
@@ -101,35 +110,41 @@ testAddADTAlreadyDefinedName = TestCase $ do
 ---------------------------------------------------------------------------
 testConstructableADTs :: Test
 testConstructableADTs = TestCase $ do
-    let adtList = [adtA "A", adtB "B", adtC "C"]
-        (actCADTs,actNCADTs) = verifyConstructableADTs ([], adtList)
-    assertEqual "All data types should be constructable" (Set.fromList ["A","B","C"], [])
-        (Set.fromList actCADTs,actNCADTs)
+    let adtList = [adtAName, adtBName, adtCName]
+        (actConstructableSorts,actNCADTs) = verifyConstructableADTs ([], adtList)
+    assertEqual "All data types should be constructable" (Set.fromList $ map (SortADT . Ref) ["A","B","C"], [])
+        (Set.fromList actConstructableSorts,actNCADTs)
 
 testNonConstructableADTs :: Test
 testNonConstructableADTs = TestCase $ do
     let -- B { a :: A }
         adtB' = ADTDef { adtName = "B", constructors = cDefsB' }
-        cDefsB' = mkConstructorDefs [cstrB1 "B"]
-        adtList = [adtA "A", adtB', adtC "C"]
-        expCADTs   = Set.fromList ["C"]
-        expNCADTs  = Set.fromList [adtB', adtA "A"]
-        (actCADTs,actNCADTs) = verifyConstructableADTs ([], adtList)
-    assertEqual "Only C should be constructable" expCADTs $ Set.fromList actCADTs
+        cDefsB' = mkConstructorDefs [cstrB1 $ nameOf $ SortADT $ Ref "B"]
+        adtList = [adtAName, adtB', adtCName]
+        expCADTSorts = Set.fromList [SortADT $ Ref "C"]
+        expNCADTs    = Set.fromList [adtB', adtAName]
+        (actCADTSorts,actNCADTs) = verifyConstructableADTs ([], adtList)
+    assertEqual "Only C should be constructable" expCADTSorts $ Set.fromList actCADTSorts
     assertEqual
         "B' and A should be non-constructable" expNCADTs $ Set.fromList actNCADTs
 
 testADTWithoutConstructor :: Test
 testADTWithoutConstructor = TestCase $ do
     let adtList = [ADTDef { adtName = "N", constructors = ConstructorDefs Map.empty }]
-        (actCADTs,actNCADTs) = verifyConstructableADTs ([], adtList)
+        (actCADTSorts,actNCADTs) = verifyConstructableADTs ([], adtList)
     assertEqual "ADT without constructor should be non-constructable"
-        ([], Set.fromList adtList) (actCADTs, Set.fromList actNCADTs)
+        ([], Set.fromList adtList) (actCADTSorts, Set.fromList actNCADTs)
 
 ---------------------------------------------------------------------------
 -- Test Data
 ---------------------------------------------------------------------------
 -- A { b :: B }
+adtAName :: ADTDef Name
+adtAName = adtA $ nameOf $ SortADT $ Ref "B"
+
+adtASort :: ADTDef Sort
+adtASort = adtA $ SortADT $ Ref "B"
+
 adtA :: v -> ADTDef v
 adtA s = ADTDef { adtName = "A", constructors = cDefsA }
          where cDefsA = mkConstructorDefs [cstrA]
@@ -137,9 +152,15 @@ adtA s = ADTDef { adtName = "A", constructors = cDefsA }
                fDefsA = mkFieldDefs [fieldB]
                fieldB = FieldDef { fieldName = "fieldB", sort = s }
 -- B { a :: A } | B { c :: C }
-adtB :: v -> ADTDef v
-adtB s = ADTDef { adtName = "B", constructors = cDefsB }
-         where cDefsB = mkConstructorDefs [cstrB1 s, cstrB2 s]
+adtBName :: ADTDef Name
+adtBName = adtB (nameOf $ SortADT $ Ref "A") (nameOf SortInt)
+
+adtBSort :: ADTDef Sort
+adtBSort = adtB (SortADT $ Ref "A") SortInt
+
+adtB :: v -> v -> ADTDef v
+adtB s1 s2 = ADTDef { adtName = "B", constructors = cDefsB }
+         where cDefsB = mkConstructorDefs [cstrB1 s1, cstrB2 s2]
 -- B { a :: A }
 cstrB1 :: v -> ConstructorDef v
 cstrB1 s = ConstructorDef { constructorName = "cstrB1", fields = fDefsB1 }
@@ -151,6 +172,12 @@ cstrB2 s = ConstructorDef { constructorName = "cstrB2", fields = fDefsB2 }
            where fDefsB2 = mkFieldDefs [fieldC]
                  fieldC = FieldDef { fieldName = "fieldC", sort = s }
 -- C { i :: Int }
+adtCName :: ADTDef Name
+adtCName = adtC $ nameOf SortInt
+
+adtCSort :: ADTDef Sort
+adtCSort = adtC SortInt
+
 adtC :: v -> ADTDef v
 adtC s = ADTDef { adtName = "C", constructors = cDefsC }
        where cDefsC = mkConstructorDefs [cstrC]

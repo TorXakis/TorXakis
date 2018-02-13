@@ -55,7 +55,6 @@ module Sort
 , fDefsToList
 , fieldDefs
 , nrOfFieldDefs
-, sortsOfFieldDefs
 
  -- * Error messages
  , ADTError
