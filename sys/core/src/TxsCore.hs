@@ -136,9 +136,9 @@ import           Config              (Config)
 import qualified Config
 
 -- import from behave(defs)
-import qualified Behave
-import qualified BTree
-import           Expand              (relabel)
+import qualified SBehave
+import qualified STree
+import           SExpand              (relabel)
 
 -- import from coreenv
 import qualified EnvCore             as IOC
@@ -299,7 +299,8 @@ txsSetSeed seed  =  do
 --   Only possible when txscore is initialized.
 txsEval :: TxsDefs.VExpr                    -- ^ value expression to be evaluated.
         -> IOC.IOC Const
-txsEval vexp  =  do
+txsEval vexp  =  error "not implemented yet!"
+{-txsEval vexp  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
@@ -315,7 +316,7 @@ txsEval vexp  =  do
                              (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
                              writeEnvBtoEnvC envb'
                              return wal'
-
+-}
 -- | Find a solution for the provided Boolean value expression.
 --
 --   Only possible when txscore is initialized.
@@ -453,6 +454,7 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
                                  , IOC.behtrie   = []
                                  , IOC.inistate  = 0
                                  , IOC.curstate  = 0
+                                 , IOC.actions   = []
                                  , IOC.modsts    = []
                                  , IOC.mapsts    = []
                                  , IOC.purpsts   = []
@@ -463,9 +465,10 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
               Nothing ->
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
               Just bt -> do
-                   IOC.modifyCS $ \st -> st { IOC.modsts  = bt
-                                            , IOC.mapsts  = mt
-                                            , IOC.purpsts = fmap (second Left) gls
+                   IOC.modifyCS $ \st -> st { IOC.actions = []
+                                            , IOC.modsts  = [[bt]]
+                                            , IOC.mapsts  = [[mt]]
+                                            , IOC.purpsts = second (Left . STree.treeToPath) <$> gls
                                             }
                    unless
                        (null gls)
@@ -478,15 +481,16 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
 startTester :: TxsDefs.ModelDef ->
                Maybe TxsDefs.MapperDef ->
                Maybe TxsDefs.PurpDef ->
-               IOC.IOC ( Maybe BTree.BTree, BTree.BTree, [(TxsDefs.GoalId,BTree.BTree)] )
-
+               IOC.IOC ( Maybe STree.STree, STree.STree, [(TxsDefs.GoalId,STree.STree)] )
+startTester _ _ _ = error "not implemented yet!"
+{-
 startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
             Nothing
             Nothing  =
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
      in do
        envb            <- filterEnvCtoEnvB
-       (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
+       (maybt', envb') <- lift $ runStateT (SBehave.behInit allSyncs mbexp) envb
        writeEnvBtoEnvC envb'
        return ( maybt', [], [] )
 
@@ -504,8 +508,8 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
              && mouts `Set.isSubsetOf` aouts
            then do let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
                    envb            <- filterEnvCtoEnvB
-                   (maybt',envb' ) <- lift $ runStateT (Behave.behInit allSyncs  mbexp) envb
-                   (maymt',envb'') <- lift $ runStateT (Behave.behInit asyncsets abexp) envb'
+                   (maybt',envb' ) <- lift $ runStateT (SBehave.behInit allSyncs  mbexp) envb
+                   (maymt',envb'') <- lift $ runStateT (SBehave.behInit asyncsets abexp) envb'
                    writeEnvBtoEnvC envb''
                    case (maybt',maymt') of
                      (Nothing , _       ) -> do
@@ -532,7 +536,7 @@ startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
            then do let allSyncs  = minsyncs ++ moutsyncs ++ msplsyncs
                        pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
                    envb           <- filterEnvCtoEnvB
-                   (maybt',envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
+                   (maybt',envb') <- lift $ runStateT (SBehave.behInit allSyncs mbexp) envb
                    writeEnvBtoEnvC envb'
                    case maybt' of
                      Nothing -> do
@@ -563,8 +567,8 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
            then do let allSyncs  = minsyncs ++ moutsyncs ++ msplsyncs
                        pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
                    envb            <- filterEnvCtoEnvB
-                   (maybt',envb')  <- lift $ runStateT (Behave.behInit allSyncs  mbexp) envb
-                   (maymt',envb'') <- lift $ runStateT (Behave.behInit asyncsets abexp) envb'
+                   (maybt',envb')  <- lift $ runStateT (SBehave.behInit allSyncs  mbexp) envb
+                   (maymt',envb'') <- lift $ runStateT (SBehave.behInit asyncsets abexp) envb'
                    writeEnvBtoEnvC envb''
                    case (maybt',maymt') of
                      (Nothing , _       ) -> do
@@ -578,19 +582,20 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
                           return ( maybt', mt', concat gls )
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return ( Nothing, [], [] )
-
+-}
 goalInit :: [ Set.Set TxsDefs.ChanId ] ->
             (TxsDefs.GoalId,TxsDefs.BExpr) ->
-            IOC.IOC [(TxsDefs.GoalId,BTree.BTree)]
-goalInit chsets (gid,bexp)  =  do
+            IOC.IOC [(TxsDefs.GoalId,STree.STree)]
+goalInit _ _ = error "not implemented yet!"
+{-goalInit chsets (gid,bexp)  =  do
      envb           <- filterEnvCtoEnvB
-     (maypt',envb') <- lift $ runStateT (Behave.behInit chsets bexp) envb
+     (maypt',envb') <- lift $ runStateT (SBehave.behInit chsets bexp) envb
      writeEnvBtoEnvC envb'
      return $ case maypt' of
               { Nothing  -> []
               ; Just pt' -> [ (gid, pt') ]
               }
-
+-}
 -- | Start simulating.
 --
 --   Only possible when txscore is initialized.
@@ -625,6 +630,7 @@ txsSetSim putToW getFroW moddef mapdef  =  do
                                    , IOC.behtrie   = []
                                    , IOC.inistate  = 0
                                    , IOC.curstate  = 0
+                                   , IOC.actions   = []
                                    , IOC.modsts    = []
                                    , IOC.mapsts    = []
                                    , IOC.putmsgs   = putmsgs
@@ -635,8 +641,9 @@ txsSetSim putToW getFroW moddef mapdef  =  do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator start failed" ]
               Just bt -> do
                    IOC.modifyCS $
-                     \st -> st { IOC.modsts = bt
-                               , IOC.mapsts = mt
+                     \st -> st { IOC.actions = []
+                               , IOC.modsts = STree.treeToPath bt
+                               , IOC.mapsts = STree.treeToPath mt
                                }
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulator started" ]
        _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
@@ -645,14 +652,15 @@ txsSetSim putToW getFroW moddef mapdef  =  do
 
 startSimulator :: TxsDefs.ModelDef ->
                   Maybe TxsDefs.MapperDef ->
-                  IOC.IOC ( Maybe BTree.BTree, BTree.BTree )
-
+                  IOC.IOC ( Maybe STree.STree, STree.STree )
+startSimulator = error "not implemented yet!"
+{-
 startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                Nothing  =
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
      in do
        envb            <- filterEnvCtoEnvB
-       (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
+       (maybt', envb') <- lift $ runStateT (SBehave.behInit allSyncs mbexp) envb
        writeEnvBtoEnvC envb'
        return ( maybt', [] )
 
@@ -669,8 +677,8 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
              && mins  `Set.isSubsetOf` aouts
            then do let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
                    envb            <- filterEnvCtoEnvB
-                   (maybt',envb' ) <- lift $ runStateT (Behave.behInit allSyncs  mbexp) envb
-                   (maymt',envb'') <- lift $ runStateT (Behave.behInit asyncsets abexp) envb'
+                   (maybt',envb' ) <- lift $ runStateT (SBehave.behInit allSyncs  mbexp) envb
+                   (maymt',envb'') <- lift $ runStateT (SBehave.behInit asyncsets abexp) envb'
                    writeEnvBtoEnvC envb''
                    case (maybt',maymt') of
                      (Nothing , _       ) -> do
@@ -683,7 +691,7 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                           return ( maybt', mt' )
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return ( Nothing, [] )
-
+-}
 -- | Start stepping using the provided model definition.
 --
 --   Only possible when txscore is initialized.
@@ -708,6 +716,7 @@ txsSetStep moddef  =  do
                                    , IOC.inistate  = 0
                                    , IOC.curstate  = 0
                                    , IOC.maxstate  = 0
+                                   , IOC.actions   = []
                                    , IOC.modstss   = Map.empty
                                    , IOC.putmsgs   = putmsgs
                                    }
@@ -716,7 +725,7 @@ txsSetStep moddef  =  do
               Nothing ->
                 IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper start failed" ]
               Just bt -> do
-                   IOC.modifyCS $ \st -> st { IOC.modstss = Map.singleton 0 bt }
+                   IOC.modifyCS $ \st -> st { IOC.modstss = Map.singleton 0 (STree.treeToPath bt) }
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepper started" ]
        _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
             TxsCore.txsStop
@@ -724,14 +733,16 @@ txsSetStep moddef  =  do
 
 
 startStepper :: TxsDefs.ModelDef ->
-                IOC.IOC ( Maybe BTree.BTree )
+                IOC.IOC ( Maybe STree.STree )
 
-startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
+startStepper = error "not implemented yet!"
+{-startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
      envb            <- filterEnvCtoEnvB
-     (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
+     (maybt', envb') <- lift $ runStateT (SBehave.behInit allSyncs mbexp) envb
      writeEnvBtoEnvC envb'
      return maybt'
+-}
 
 -- | Test SUT with the provided input action.
 -- core action.
@@ -954,7 +965,7 @@ txsPath  =  do
 -- | Return the menu, i.e., all possible actions.
 txsMenu :: String                               -- ^ kind (valid values are "mod", "purp", or "map")
         -> String                               -- ^ what (valid values are "all", "in", "out", or a <goal name>)
-        -> IOC.IOC BTree.Menu
+        -> IOC.IOC STree.Menu
 txsMenu kind what  =  do
      envSt <- gets IOC.state
      case (kind,envSt) of
@@ -1026,7 +1037,7 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
        -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
               Just (TxsDefs.ProcDef chids [] staut@(TxsDefs.StAut _ ve _)) | Map.null ve
                  -> do let chanmap                       = Map.fromList (zip chids chans)
-                           TxsDefs.StAut statid _ trans = Expand.relabel chanmap staut
+                           TxsDefs.StAut statid _ trans = SExpand.relabel chanmap staut
                        maypurp <- NComp.nComplete insyncs outsyncs statid trans
                        case maypurp of
                          Just purpdef -> do

@@ -16,9 +16,9 @@ module Next
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( nextNode      --  nextNode :: IWals -> INode -> CNode
-                --  nextNode iwals inode
-                --  makes step in BTree by instantatiating next inode with iwals into CNode
+( updateNode    --  updateNode :: Map.Map FuncId (FuncDef v) -> IWals -> SNode -> SNode
+                --  updateNode fdefs iwals node
+                --  instantiates symbolic vars in node by iwals
 )
 
 where
@@ -28,39 +28,61 @@ import Data.Maybe
 
 import STree
 import TxsUtils(combineWEnv)
+import FuncDef
+import FuncId
 import ValExpr
+import TxsDefs
+import Variable
 
+type AssignEnv = VarEnv IVar IVar
+
+{-
+SHOULD BE AFTER IN SBEHAVE
+newPath :: 
+    Map.Map FuncId (FuncDef v) -- function definitions
+    -> IWals                   -- values for IVars to substitute
+    -> [STree]                 -- current determinized state of STree
+    -> [STree]                 -- new determinized STree
+newPath fdefs iwals 
+-}
 
 -- ----------------------------------------------------------------------------------------- --
--- next node :  next step in BTree by instantatiating next INode with iwals into CNode
+-- update node :  substitute symbolic IVars in an SNode by a concrete value 
+
+updateNode :: Variable v =>
+    Map.Map FuncId (FuncDef v) -- function definitions
+    -> IWals                   -- values for IVars to substitute
+    -> SNode                   -- Snode in which the IVars will be substituted
+    -> SNode
+updateNode fdefs iwals = updateNode' fdefs (Map.map cstrConst iwals)
 
 
-nextNode :: IWals -> INode -> CNode
 
-nextNode iwals (BNbexpr (wenv,ivenv) bexp)
-  =  let we = Map.fromList [ ( vid
-                             , fromMaybe (error "TXS Next nextNode: Incomplete instance\n")
-                                         (Map.lookup ivar iwals)
-                             )
-                           | (vid, view -> Vvar ivar) <- Map.toList ivenv
-                           ]
-      in BNbexpr (combineWEnv we wenv) bexp
+updateNode' :: Variable v => Map.Map FuncId (FuncDef v) -> AssignEnv -> SNode -> SNode
 
-nextNode iwals (BNparallel chids inodes)
-  =  BNparallel chids (map (nextNode iwals) inodes)
+updateNode' fdefs ass (SNbexpr ve bexp)
+  = SNbexpr (Map.map (subst ass fdefs) ve) bexp
 
-nextNode iwals (BNenable inode1 choffs inode2)
-  =  BNenable (nextNode iwals inode1) choffs (nextNode iwals inode2)
+updateNode' fdefs ass (SNguard cond snode)
+  =  SNguard (subst ass fdefs cond) snode
 
-nextNode iwals (BNdisable inode1 inode2)
-  =  BNdisable (nextNode iwals inode1) (nextNode iwals inode2)
+updateNode' fdefs ass (SNchoice snodes)
+  =  SNchoice (updateNode' fdefs ass <$> snodes)
 
-nextNode iwals (BNinterrupt inode1 inode2)
-  =  BNinterrupt (nextNode iwals inode1) (nextNode iwals inode2)
+updateNode' fdefs ass (SNparallel chids snodes)
+  =  SNparallel chids (updateNode' fdefs ass <$> snodes)
 
-nextNode iwals (BNhide chids inode)
-  =  BNhide chids (nextNode iwals inode)
+updateNode' fdefs ass (SNenable snode1 choffs snode2)
+  =  SNenable (updateNode' fdefs ass snode1) choffs (updateNode' fdefs ass snode2)
 
+updateNode' fdefs ass (SNdisable snode1 snode2)
+  =  SNdisable (updateNode' fdefs ass snode1) (updateNode' fdefs ass snode2)
+
+updateNode' fdefs ass (SNinterrupt snode1 snode2)
+  =  SNinterrupt (updateNode' fdefs ass snode1) (updateNode' fdefs ass snode2)
+
+updateNode' fdefs ass (SNhide chids snode)
+  =  SNhide chids (updateNode' fdefs ass snode)
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

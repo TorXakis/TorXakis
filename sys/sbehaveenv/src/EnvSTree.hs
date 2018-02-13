@@ -48,7 +48,7 @@ import qualified SMTData
 
 -- | IOB : behaviour environment state monad transformer projection of IOC that
 -- are necessary in BTree manipulation
-type IOB a = StateT EnvB IO a
+type IOB a = State EnvB a
 
 data EnvB = EnvB { smts    :: Map.Map String SMTData.SmtEnv -- ^ Named smt solver envs
                  , tdefs   :: TxsDefs.TxsDefs               -- ^ TorXakis definitions

@@ -27,7 +27,7 @@ library
                       , Step
                       , Test
                       
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
+  ghc-options:         -O2 -optc-O3 -optc-ffast-math -Wall
   
   build-depends:        base
                       , containers
@@ -35,9 +35,9 @@ library
                       , random
                       , text
 
-                      , behavedefs
-                      , behaveenv
-                      , behave
+                      , sbehavedefs
+                      , sbehaveenv
+                      , sbehave
                       , coreenv
                       , defs
                       , solve

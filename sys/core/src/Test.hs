@@ -41,7 +41,7 @@ import qualified EnvData
 import qualified TxsDefs
 import qualified TxsDDefs
 import qualified TxsShow
-import BTShow()
+import STShow()
 
 -- ----------------------------------------------------------------------------------------- --
 -- testIn :  try to give input (Act acts), and give new environment

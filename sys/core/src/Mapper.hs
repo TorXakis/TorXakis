@@ -29,40 +29,41 @@ where
 
 import Control.Monad.State
 
-import qualified Data.Set  as Set
+--import qualified Data.Set  as Set
 
-import CoreUtils
+--import CoreUtils
 
 import qualified EnvCore   as IOC
-import qualified EnvData
-import qualified Behave
-import qualified BTree
+--import qualified EnvData
+--import qualified SBehave
+import qualified STree
 
-import qualified TxsDefs
+--import qualified TxsDefs
 import qualified TxsDDefs
-import ValExpr
+--import ValExpr
 
 -- ----------------------------------------------------------------------------------------- --
 -- mapper :  may only be called when in Testing or Simuling mode
 
 mapperMap :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
-mapperMap act@(TxsDDefs.Act acts)  =  do
+{-mapperMap act@(TxsDDefs.Act acts)  =  do
      maybeMapperDef <- gets (IOC.mapperdef . IOC.state)
      mapSts         <- gets (IOC.mapsts . IOC.state)
      case (maybeMapperDef, mapSts) of
        ( Nothing, _  ) -> return act
+       ( _, _) -> error "not implemented yet!" -- remove
        ( _      , [] ) -> return act
        ( Just (TxsDefs.MapperDef chins chouts syncs _), mtree) -> do
            let actchids = Set.map fst acts
                inchids  = Set.fromList chins
                outchids = Set.fromList chouts
-               allmenu  = Behave.behMayMenu syncs mtree
+               allmenu  = SBehave.behMayMenu syncs mtree
                mapmenu  = [ ( btoffs
                             , hidvars
                             , cstrAnd (Set.fromList (pred'
                                                     : [ cstrEqual (cstrVar ivar)
                                                                   (cstrConst wal)
-                                                      | BTree.CToffer chan choffs <- Set.toList btoffs
+                                                      | STree.CToffer chan choffs <- Set.toList btoffs
                                                       , (chid, wals)              <- Set.toList acts
                                                       , (ivar, wal)               <- zip choffs wals
                                                       , chan == chid
@@ -72,7 +73,7 @@ mapperMap act@(TxsDDefs.Act acts)  =  do
                             )
                           | (btoffs, hidvars, pred') <- allmenu
                           , actchids ==
-                            Set.filter (`Set.member` inchids) (Set.map BTree.ctchan btoffs)
+                            Set.filter (`Set.member` inchids) (Set.map STree.ctchan btoffs)
                           ]
            mact    <- randMenu mapmenu
            case mact of
@@ -82,7 +83,7 @@ mapperMap act@(TxsDDefs.Act acts)  =  do
                                         return act
              Just (TxsDDefs.Act macts) -> do
                envb           <- filterEnvCtoEnvB
-               (maymt',envb') <- lift $ runStateT (Behave.behAfterAct syncs mtree macts) envb
+               (maymt',envb') <- lift $ runStateT (SBehave.behAfterAct syncs mtree macts) envb
                writeEnvBtoEnvC envb'
                case maymt' of
                 Nothing  -> do
@@ -100,21 +101,22 @@ mapperMap act@(TxsDDefs.Act acts)  =  do
                      ( _, mouts )    -> return $ TxsDDefs.Act (Set.fromList mouts)
 
 mapperMap act@TxsDDefs.ActQui = return act
-
+-}
+mapperMap _ = error "not implemented yet!"
 
 -- ----------------------------------------------------------------------------------------- --
 -- mapperMenu :  menu of current mapper state
 
-mapperMenu :: IOC.IOC BTree.Menu
+mapperMenu :: IOC.IOC STree.Menu
 mapperMenu = do
   maybeMapperDef <- gets (IOC.mapperdef . IOC.state)
   mapSts         <- gets (IOC.mapsts . IOC.state)
   case (maybeMapperDef, mapSts) of
-    ( Nothing, _  ) -> return []
-    ( _      , [] ) -> return []
-    ( Just (TxsDefs.MapperDef _chins _chouts syncs _), mtree) ->
-        return $ Behave.behMayMenu syncs mtree
-
+--    ( Nothing, _  ) -> return []
+--    ( _      , [] ) -> return []
+--    ( Just (TxsDefs.MapperDef _chins _chouts syncs _), mtree) ->
+--        return $ SBehave.behMayMenu syncs mtree
+    _ -> error "not implemented yet!"
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

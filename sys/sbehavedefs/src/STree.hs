@@ -18,17 +18,23 @@ module STree
 -- export
 
 ( BehAction
-, BTree
-, BBranch (..)
-, CTree
-, CTBranch (..)
+--, BTree
+--, BBranch (..)
+--, CTree
+--, CTBranch (..)
+, STree (..)
+, STtrans (..)
+, ActionTrace
+, DPath
 , CTOffer (..)
 , BNode (..)
 , CNode
+, SNode (..)
 , INode
 , IVar (..)
 , IWals
 , Menu
+, treeToPath
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -105,10 +111,78 @@ type  IVEnv = VarEnv VarId IVar
 
 type  IWals = WEnv IVar
 
+
+-- ----------------------------------------------------------------------------------------- --
+-- STree :  communication tree over interaction variables
+--          may contain free variables
+
+
+-- unfolded STS, nodes are bexprs and edges are symbolic
+data STree = STree 
+    { stnode  :: SNode
+    , sttrans :: [STtrans]
+    }
+
+instance Eq STree where
+    (==) STree{stnode = node1} STree{stnode = node2} = node1 == node2
+
+instance Show STree where
+    show stree = show $ stnode stree
+
+instance Ord STree where
+    compare STree{stnode = node1} STree{stnode = node2} = compare node1 node2
+
+
+data STtrans
+    = STtrans
+    { stoffers  :: Set.Set CTOffer  -- set may be empty, representing tau-transition
+    , sthidvars :: [IVar]           -- hidden variables
+    , stpred    :: ValExpr IVar     -- predicates
+    , stnext    :: STree
+    }
+--    | STtau
+--    { sthidvars :: [IVar]
+--    , stpred    :: ValExpr IVar
+--    , stnext    :: STree
+--    }
+    deriving (Eq,Ord,Show)
+
+data  CTOffer   =  CToffer  { ctchan     :: ChanId
+                            , ctchoffers :: [IVar]
+                            }
+     deriving (Eq,Ord,Read,Show)
+
+-- List of observable actions
+type ActionTrace = [BehAction]
+
+type DPath = [[STree]] -- determinization of states after every step
+
+-- takes a tree as a starting point for a path
+treeToPath :: STree -> DPath
+treeToPath tree = [[tree]]
+
+{-
+-- if non-deterministically in the set of states, and every of those states
+-- should take any of the branches in its list, this function picks a
+-- concrete value, by symbolic execution
+solve :: (Set.Set [STBranch]) -> IOC.IOC DTree
+solve ndState =
+    let partitions = partition <$> ndState
+    in ...
+    where
+    -- partition transitions of every 
+    partitions :: [STBranch] -> Map.Map (Set.Set CTOffer) [STBranch]
+    partitions branches = foldr addToPartition Map.empty branches
+    addToPartition :: STBranch
+                      -> Map.Map (Set.Set CTOffer) [STBranch]
+                      -> Map.Map (Set.Set CTOffer) [STBranch]
+    addToPartition branch{stoffers=offs} map = insertWith (++) offs [branch]
+-}
+
 -- ----------------------------------------------------------------------------------------- --
 -- CTree :  communication tree over interaction variables
 --          closed, ie. no free variables
-
+{-
 type  CTree     =   [ CTBranch ]
 
 data  CTBranch  =  CTpref { ctoffers  :: Set.Set CTOffer              -- set may be empty
@@ -140,13 +214,24 @@ data  BBranch  =  BTpref   { btoffers  :: Set.Set CTOffer        -- set must be 
                 | BTtau    { btree        :: BTree
                            }
      deriving (Eq,Ord,Read,Show)
-
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 -- BNode :  general behaviour node
 -- CNode :  concrete, closed behaviour node, ie. without interaction variables
 -- INode :  interaction behaviour node, ie. with interaction variable environment
 
+--data SEnvNode = SNexpr IVEnv BExpr
+
+data SNode = SNbexpr      IVEnv BExpr
+           | SNchoice     [SNode]
+           | SNguard      (ValExpr IVar) SNode
+           | SNparallel   [ChanId] [SNode]
+           | SNenable     SNode [ChanOffer] SNode
+           | SNdisable    SNode SNode
+           | SNinterrupt  SNode SNode
+           | SNhide       [ChanId] SNode
+    deriving (Eq,Ord,Read,Show)
 
 data  BNode env =  BNbexpr      env BExpr                         -- env must be: (WEnv,IVEnv)
                  | BNparallel   [ChanId] [BNode env]
@@ -156,6 +241,7 @@ data  BNode env =  BNbexpr      env BExpr                         -- env must be
                  | BNhide       [ChanId] (BNode env)
      deriving (Eq,Ord,Read,Show,Functor)
 
+--data SNode   =  BNode IVEnv
 
 type CNode   =  BNode (WEnv VarId)                             --  Concrete Behaviour Node
 

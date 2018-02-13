@@ -18,8 +18,8 @@ module Step
 
 ( stepN            -- :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 , stepA            -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict 
-, stepModelMenuIn  -- :: IOC.IOC BTree.Menu
-, stepModelMenuOut -- :: IOC.IOC BTree.Menu
+, stepModelMenuIn  -- :: IOC.IOC STree.Menu
+, stepModelMenuOut -- :: IOC.IOC STree.Menu
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -27,26 +27,27 @@ module Step
 
 where
 
-import Control.Monad.State
-import qualified Data.Map  as Map
-import Data.Maybe
+--import Control.Monad.State
+--import qualified Data.Map  as Map
+--import Data.Maybe
 
-import CoreUtils
+--import CoreUtils
 import qualified EnvCore   as IOC
-import qualified EnvData
-import qualified TxsDefs
+--import qualified EnvData
+--import qualified TxsDefs
 import qualified TxsDDefs
-import qualified TxsShow
-import qualified Behave
-import qualified BTree
-import qualified Utils
+--import qualified TxsShow
+--import qualified SBehave
+import qualified STree
+--import qualified Utils
 
 -- ----------------------------------------------------------------------------------------- --
 -- stepN :  make 'depth' random steps (visible) from current mstate
 --       :  steps are input or output, no quiescence, i.e., trace semantics
 
 stepN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
-stepN depth step =
+stepN = error "not implemented yet!"
+{-stepN depth step =
      if  depth == 0
        then return TxsDDefs.Pass
        else do
@@ -87,13 +88,14 @@ stepN depth step =
             _ -> do
                 IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "Stepping not in Stepper mode" ]
                 return TxsDDefs.NoVerdict
-
+-}
 -- ----------------------------------------------------------------------------------------- --
 -- stepA :  make step with specified action
 --       :  step is input or output, no quiescence, i.e., trace semantics
 
 stepA :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
-stepA act = do
+stepA = error "not implemented yet!"
+{-stepA act = do
      envSt <- gets IOC.state
      case (act, envSt) of
        ( TxsDDefs.ActQui, _) -> do
@@ -122,11 +124,11 @@ stepA act = do
        ( _, _) -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "Stepping not in Stepper mode" ]
             return TxsDDefs.NoVerdict
-
+-}
 -- ----------------------------------------------------------------------------------------- --
 -- stepMenu
 
-stepModelMenu :: IOC.IOC BTree.Menu
+{-stepModelMenu :: IOC.IOC STree.Menu
 stepModelMenu  =  do
      envSt <- gets IOC.state
      case envSt of
@@ -137,17 +139,19 @@ stepModelMenu  =  do
          return $ Behave.behMayMenu allSyncs modSts
        _ -> do
          IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "stepModelMenu without valid model"     ]
-         return []
+         return []-}
 
-stepModelMenuIn :: IOC.IOC BTree.Menu
-stepModelMenuIn  =  do
+stepModelMenuIn :: IOC.IOC STree.Menu
+stepModelMenuIn = error "not implemented yet!"
+{-stepModelMenuIn  =  do
      menu <- stepModelMenu
-     filterM (isInCTOffers . Utils.frst) menu
+     filterM (isInCTOffers . Utils.frst) menu-}
 
-stepModelMenuOut :: IOC.IOC BTree.Menu
-stepModelMenuOut  =  do
+stepModelMenuOut :: IOC.IOC STree.Menu
+stepModelMenuOut = error "not implemented yet!"
+{-stepModelMenuOut  =  do
      menu <- stepModelMenu
-     filterM (isOutCTOffers . Utils.frst) menu
+     filterM (isOutCTOffers . Utils.frst) menu-}
 
 
 -- ----------------------------------------------------------------------------------------- --

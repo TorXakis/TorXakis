@@ -28,39 +28,40 @@ module Unfold
 
 where
 
-import Control.Monad.State
+--import Control.Monad.State
 import qualified Data.Set   as Set
-import qualified Data.Map   as Map
+--import qualified Data.Map   as Map
 
 import STree
-import ConstDefs
+--import ConstDefs
 import qualified EnvSTree   as IOB
-import qualified EnvData
+--import qualified EnvData
 import SExpand
-import Next
-import Reduce
-import qualified SolveDefs
-import qualified Solve
+--import Next
+--import Reduce
+--import qualified SolveDefs
+--import qualified Solve
 import qualified TxsDefs
-import           ValExpr
+--import           ValExpr
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- unfold :  unfold CNode ( = BNode () )  into BTree while reducing on the way
 
 
-unfold :: [ Set.Set TxsDefs.ChanId ] -> CNode -> IOB.IOB BTree
+unfold :: [ Set.Set TxsDefs.ChanId ] -> SNode -> IOB.IOB STree
 unfold chsets cnode = do
      ctree    <- expand chsets cnode
-     btree'   <- unfoldCT chsets ctree
-     btree''  <- filterBT chsets btree'
-     reduce btree''
+--     btree'   <- unfoldCT chsets ctree
+--     btree''  <- filterBT chsets btree'
+--     reduce btree''
+     return ctree
 
 -- ----------------------------------------------------------------------------------------- --
 -- unfoldCT :  transform a communication tree CTree  (without separate tau-branch)
 --             recursively, into a behaviour tree BTree (with separate tau-brach)
 
-
+{-
 unfoldCT :: [ Set.Set TxsDefs.ChanId ] -> CTree -> IOB.IOB BTree
 unfoldCT chsets ctree = do
      btrees <- mapM (unfoldCTbranch chsets) ctree
@@ -85,10 +86,14 @@ unfoldCTbranch chsets (CTpref ctoffs cthidvars' ctpred' ctnext')
                                                               ("unfoldCTbranch - ctpred' is not a value - " ++ show s)]
                                                 return []
           else
-            let assertion = Solve.add ctpred' Solve.empty
-              in do
+            --let assertion = Solve.add ctpred' Solve.empty
+              --in do
+              do
                 smtEnv <- IOB.getSMT "current"
-                (sp,smtEnv') <- lift $ runStateT (Solve.uniSolve cthidvars' assertion) smtEnv
+                --(sp,smtEnv') <- lift $ runStateT (Solve.uniSolve cthidvars' assertion) smtEnv
+                _ <- error "not implemented"
+                let smtEnv' = smtEnv
+                let sp = SolveDefs.UnableToSolve
                 IOB.putSMT "current" smtEnv'
                 case sp of
                   SolveDefs.Solved sol    -> do let nextcnode = nextNode sol ctnext'
@@ -99,12 +104,16 @@ unfoldCTbranch chsets (CTpref ctoffs cthidvars' ctpred' ctnext')
                   SolveDefs.UnableToSolve -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR "unfoldCTbranch: Not unique" ]
                                                 return [ BTpref ctoffs cthidvars' ctpred' ctnext' ]
    | otherwise =                                                  -- visible action or nothing
-       let assertion = Solve.add ctpred' Solve.empty
-           vvars = concatMap ctchoffers (Set.toList ctoffs)
-         in do
+       --let assertion = Solve.add ctpred' Solve.empty
+       --    vvars = concatMap ctchoffers (Set.toList ctoffs)
+         --in do
+         do
            smtEnv <- IOB.getSMT "current"
-           (sat,smtEnv') <- lift $ runStateT (Solve.satSolve (vvars++cthidvars') assertion)
-                                             smtEnv
+           --(sat,smtEnv') <- lift $ runStateT (Solve.satSolve (vvars++cthidvars') assertion)
+           --                                  smtEnv
+           _ <- error "not implemented"
+           let smtEnv' = smtEnv
+           let sat = SolveDefs.Unknown
            IOB.putSMT "current" smtEnv'
            case sat of
              SolveDefs.Sat     -> return [ BTpref ctoffs cthidvars' ctpred' ctnext' ]
@@ -130,7 +139,7 @@ filterBTbranch chsets btpref@(BTpref btoffs _ _ _) =
 filterBTbranch chsets (BTtau bt) = do
      btree' <- filterBT chsets bt
      return [ BTtau btree' ]
-
+-}
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --

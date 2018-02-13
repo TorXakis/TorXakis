@@ -21,11 +21,11 @@ library
 
   other-modules:        Equiv
                       , Next
-                      , Reduce
+--                      , Reduce
                       , Subst
                       , Unfold
 
-  ghc-options:        -Werror -O2 -optc-O3 -optc-ffast-math -Wall
+  ghc-options:        -O2 -optc-O3 -optc-ffast-math -Wall
   
   build-depends:        base
                       , containers
@@ -55,7 +55,7 @@ test-suite behave-test
   other-modules:        Equiv
                       , Expand
                       , Next
-                      , Reduce
+--                      , Reduce
                       , Subst
                       , Unfold
                       , TestBExpr

@@ -1,3 +1,4 @@
+
 {-
 TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
@@ -5,6 +6,7 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- ----------------------------------------------------------------------------------------- --
 
 module Equiv
@@ -78,21 +80,15 @@ instance Equiv BTree
 -- Equiv :  BBranch
 
 
-instance Equiv BBranch
+instance Equiv STtrans
   where
 
-    (BTpref offs1 hvars1 preds1 next1) ~=~ (BTpref offs2 hvars2 preds2 next2)  =  do
+    (STtrans offs1 hvars1 preds1 next1) ~=~ (STtrans offs2 hvars2 preds2 next2)  =  do
          let eq_offs = offs1 == offs2
          let eq_hvars = hvars1 == hvars2
          let eq_preds = preds1 == preds2
-         eq_next <- next1 ~=~ next2
+         eq_next <- stnode next1 ~=~ stnode next2
          return $ eq_offs && eq_hvars && eq_preds && eq_next
-
-    (BTtau btree1) ~=~ (BTtau btree2)  =
-         btree1 ~=~ btree2
-
-    _ ~=~ _  =
-         return False
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -136,6 +132,61 @@ instance Equiv INode
 
     _ ~=~ _  =  return False
 
+
+-- ----------------------------------------------------------------------------------------- --
+-- Equiv :  INode
+
+
+instance Equiv SNode
+  where
+
+    (SNbexpr ivenv1 bexp1) ~=~ (SNbexpr ivenv2 bexp2)  =  do
+         let eq_ivenv = ivenv1 == ivenv2
+         eq_bexp  <- bexp1 ~=~ bexp2
+         return $ eq_ivenv && eq_bexp
+    
+    --(SNguard cond1 node1) ~=~ (SNguard cond2 node2) = do
+    --    eq_conds <- cond1 ~=~ cond2
+    --    eq_nodes <- node1 ~=~ node2
+    --    return $ eq_conds && eq_nodes
+        
+    (SNchoice nodes1) ~=~ (SNchoice nodes2) = do
+        -- is node equivalent to any node' in nodes?
+        let anyEquiv :: SNode -> [SNode] -> IOB.IOB Bool = \node nodes -> or <$> mapM (\node' -> node ~=~ node') nodes
+        -- are all nodes equivalent to some node in nodes'?
+        let allEquiv = \nodes nodes' -> and <$> mapM (\node -> anyEquiv node nodes') nodes
+        -- every node in one set should be equivalent to some node in the other set
+        equiv1 <- allEquiv nodes1 nodes2
+        equiv2 <- allEquiv nodes2 nodes1
+        return $ equiv1 && equiv2
+    
+    (SNparallel chids1 inodes1) ~=~ (SNparallel chids2 inodes2)  =  do
+         let eq_chids = Set.fromList chids1 == Set.fromList chids2
+         eq_inodes <- inodes1 ~=~ inodes2
+         return $ eq_chids && eq_inodes
+
+    (SNenable inode11 choffs1 inode12) ~=~ (SNenable inode21 choffs2 inode22)  =  do
+         eq_inode1 <- inode11 ~=~ inode21
+         let eq_choffs = Set.fromList choffs1 == Set.fromList choffs2
+         eq_inode2 <- inode12 ~=~ inode22
+         return $ eq_inode1 && eq_choffs && eq_inode2
+
+    (SNdisable inode11 inode12) ~=~ (SNdisable inode21 inode22)  =  do
+         eq_inode1 <- inode11 ~=~ inode21
+         eq_inode2 <- inode12 ~=~ inode22
+         return $ eq_inode1 && eq_inode2
+
+    (SNinterrupt inode11 inode12) ~=~ (SNinterrupt inode21 inode22)  =  do
+         eq_inode1 <- inode11 ~=~ inode21
+         eq_inode2 <- inode12 ~=~ inode22
+         return $ eq_inode1 && eq_inode2
+
+    (SNhide chids1 inode1) ~=~ (SNhide chids2 inode2)  =  do
+         let eq_chids = Set.fromList chids1 == Set.fromList chids2
+         eq_inode <- inode1 ~=~ inode2
+         return $ eq_chids && eq_inode
+
+    _ ~=~ _  =  return False
 
 -- ----------------------------------------------------------------------------------------- --
 -- Equiv :  ValExpr

@@ -4,8 +4,10 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module SExpand
 
 -- ----------------------------------------------------------------------------------------- --
@@ -28,92 +30,103 @@ module SExpand
 
 where
 
-import           Control.Arrow
-import           Control.Monad.Extra
+import           Control.Arrow (first, second)
+--import           Control.Monad.Extra
 import           Control.Monad.State
 import           Data.Either
-import           Data.Monoid
+--import           Data.Monoid
 
-import qualified Data.List           as List
+--import qualified Data.List           as List
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
-import qualified Data.Text           as T
+--import qualified Data.Text           as T
 
 import           STree
 import           ChanId
-import           ConstDefs
+--import           ConstDefs
 import qualified EnvSTree           as IOB
 import qualified EnvData
 import           StdTDefs
 import           TxsDefs
-import           TxsUtils
-import           Utils
+--import           TxsUtils
+--import           Utils
 import           ValExpr
 import           Variable
 import           VarId
 
--- | transfer tuple containing an either to an either containing a tuple
-toEitherTuple :: (a, Either String b) -> Either String (a,b)
-toEitherTuple (_, Left s)  = Left s
-toEitherTuple (a, Right b) = Right (a,b)
 
+
+-- Read-parsing is the same as for INodes, and the resulting INode is expanded
+--instance Read STree where
+--    readsPrec i t = first expand <$> readsPrec i t
+
+{-instance Read STree where
+    readsPrec i t = toTree <$> readsPrec i t
+    where
+    toTree :: (INode,String) -> (STree,String)
+    toTree (node,s) -> (sexpand node,s)
+ 
+deriving instance Read STtrans-}
+
+-- | transfer tuple containing an either to an either containing a tuple
+--toEitherTuple :: (a, Either String b) -> Either String (a,b)
+--toEitherTuple (_, Left s)  = Left s
+--toEitherTuple (a, Right b) = Right (a,b)
+
+emptyTree :: SNode -> STree 
+emptyTree node = STree {stnode = node, sttrans = []}
 
 -- | Expansion of CNode into communication tree, recursively over CNode
 -- structure CNode must be closed and have no free, symbolic, or interaction
 -- variables.
 expand :: [ Set.Set TxsDefs.ChanId ] -- ^ Set of expected synchronization channels.
-       -> CNode
-       -> IOB.IOB CTree
+       -> SNode
+       -> IOB.IOB STree
 -- expand  :  for  BNbexpr WEnv BExpr
-expand _ (BNbexpr _ Stop)  = return []
+expand _ node@(SNbexpr _ Stop)  = return $ emptyTree node
 --
-expand chsets (BNbexpr we (ActionPref (ActOffer offs cnd) bexp))  =  do
-    (ctoffs, quests, exclams) <- expandOffers chsets offs
-    let ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
-        we'   = Map.fromList [ (vid, wal)
-                             | (vid, wal) <- Map.toList we
-                             , vid `Map.notMember` ivenv
-                             ]
-    tds <- gets IOB.tdefs
-    let exclams' = map toEitherTuple [ (ivar, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
-                                     | (ivar, vexp) <- exclams
-                                     ]
-    case Data.Either.partitionEithers exclams' of
-        ([],r) -> return [ CTpref { ctoffers  = ctoffs
-                              , cthidvars = []
-                              , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (funcDefs tds) (subst (Map.map cstrConst we') (funcDefs tds) cnd)
-                                                                  : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- r ]
-                                                                  )
-                                                    )
-                              , ctnext    = BNbexpr (we',ivenv) bexp
-                              }
-                     ]
-        (s,_) -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
-                                  ("Expand: Eval failed in expand - ActionPref" ++ show s) ]
-                    return []
+expand chsets node@(SNbexpr ve (ActionPref (ActOffer offs cnd) bexp))  =  do
+    statenr <- gets IOB.stateid
+    tdefs <- gets IOB.tdefs
+    let substitute :: VExpr -> ValExpr IVar = compSubst ve (funcDefs tdefs)
+        (stoffs, quests, exclams) = expandOffers statenr chsets offs
+        exclamConstraints = (uncurry cstrEqual . first cstrVar . second substitute) <$> exclams
+        pred = cstrAnd $ Set.fromList $ substitute cnd : exclamConstraints
+        questVe  = Map.fromList (second cstrVar <$> quests)
+        ve' = Map.union questVe ve
+    state <- get
+    let next = evalState (expand chsets (SNbexpr ve' bexp)) state{IOB.stateid = IOB.stateid state + 1}
+    let transNext = STtrans { stoffers = stoffs, sthidvars = [], stpred = pred, stnext = next }
+    return $ STree { stnode = node, sttrans = [transNext] }
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand chsets (BNbexpr we (Guard c bexp))  = do
-    tds <- gets IOB.tdefs
-    case ValExpr.eval $ subst (Map.map cstrConst we) (funcDefs tds) c of
-        Right (Cbool True)  -> expand chsets (BNbexpr we bexp)
-        Right (Cbool False) -> return []
-        _                   -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
-                                                "Expand: guard does not evaluate to a boolean" ]
-                                  return []
+expand chsets (SNbexpr ve (Guard cond bexp)) = do
+    tdefs <- gets IOB.tdefs
+    let substitute = compSubst ve (funcDefs tdefs)
+    expand chsets $ SNguard (substitute cond) (SNbexpr ve bexp)
+
+expand chsets node@(SNguard cond snode) = do
+    tree <- expand chsets snode
+    --tree <- expand chsets (BNbexpr ve bexp)
+    let addCond = \trans -> trans{stpred = cstrAnd $ Set.fromList [cond, stpred trans]}
+    return STree{stnode = node, sttrans = addCond <$> sttrans tree}
+
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand chsets (BNbexpr we (Choice bexps))  =  do
-     expands <- sequence [ expand chsets (BNbexpr we bexp) | bexp <- bexps ]
-     return $ concat expands
+expand chsets (SNbexpr ve (Choice bexps)) = 
+    expand chsets $ SNchoice (SNbexpr ve <$> bexps)
 
+expand chsets node@(SNchoice snodes) = do
+    strees <- sequence $ (expand chsets <$> snodes)
+    return STree{stnode = node, sttrans = concat (sttrans <$> strees)}
 -- ----------------------------------------------------------------------------------------- --
 
-expand chsets (BNbexpr we (Parallel chans bexps))  =
-     expand chsets $ BNparallel chans [ BNbexpr we bexp | bexp <- bexps ]
+expand chsets (SNbexpr we (Parallel chans bexps))  =
+     expand chsets $ SNparallel chans [ SNbexpr we bexp | bexp <- bexps ]
 
+{-
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (Enable bexp1 chanoffs bexp2))  =  do
@@ -147,23 +160,21 @@ expand chsets (BNbexpr we (Interrupt bexp1 bexp2))  =
      expand chsets $ BNinterrupt (BNbexpr we bexp1) (BNbexpr we bexp2)
 
 -- ----------------------------------------------------------------------------------------- --
-
-expand chsets (BNbexpr we (ProcInst procid chans vexps))  =  do
-     tdefs <- gets IOB.tdefs
-     case Map.lookup procid (procDefs tdefs) of
-       Just (ProcDef chids vids bexp)
-         -> do let chanmap = Map.fromList (zip chids chans)
-               let wals = map (ValExpr.eval . subst (Map.map cstrConst we) (funcDefs tdefs) ) vexps
-               case Data.Either.partitionEithers wals of
-                    ([], r) -> do let we' = Map.fromList (zip vids r)
-                                  expand chsets $ BNbexpr we' (relabel chanmap bexp)
-                    (s, _)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
-                                                ("Expand: Eval failed in expand - ProcInst " ++ show s) ]
-                                  return []
-       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+-}
+expand chsets node@(SNbexpr ve (ProcInst procid chans vexps)) = do
+    tdefs <- gets IOB.tdefs
+    case Map.lookup procid (procDefs tdefs) of
+        Just (ProcDef chids vids bexp) -> do
+            let chanmap = Map.fromList (zip chids chans)
+                substitute = compSubst ve (funcDefs tdefs)
+                ve' = Map.fromList $ zip vids (substitute <$> vexps)
+            expand chsets $ SNbexpr ve' (relabel chanmap bexp)
+        Nothing -> do
+            IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                "Expand: Undefined process name in expand" ]
-               return []
+            return $ emptyTree node
 
+{-
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (Hide chans bexp))  =
@@ -410,6 +421,8 @@ expand chsets (BNhide chans cnode)  =  do
      ctree   <- expand chsets cnode
      mapM (hideCTBranch chsets chans) ctree
 
+-}
+expand _ node = error $ "Symbolic expand not implemented yet!"
 
 -- ----------------------------------------------------------------------------------------- --
 -- helper functions
@@ -418,44 +431,43 @@ expand chsets (BNhide chans cnode)  =  do
 -- expand Offers
 
 
-expandOffers :: [ Set.Set TxsDefs.ChanId ] -> Set.Set Offer -> IOB.IOB ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
-expandOffers chsets offs  =  do
-     ctofftuples <- mapM (expandOffer chsets) (Set.toList offs)
-     let ( ctoffs, quests, exclams ) = unzip3 ctofftuples
-     return ( Set.fromList ctoffs, concat quests, concat exclams )
+expandOffers :: Int -> [ Set.Set TxsDefs.ChanId ] -> Set.Set Offer -> ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
+expandOffers statenr chsets offs  =
+     let ctofftuples = fmap (expandOffer statenr chsets) (Set.toList offs)
+         ( ctoffs, quests, exclams ) = unzip3 ctofftuples
+     in ( Set.fromList ctoffs, concat quests, concat exclams )
 
 
-expandOffer :: [ Set.Set TxsDefs.ChanId ] -> Offer -> IOB.IOB ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
-expandOffer _chsets (Offer chid choffs)  =  do
-     ctchoffs <- mapM (expandChanOffer chid) ( zip choffs [1..(length choffs)] )
-     let ( ivars, quests, exclams ) = unzip3 ctchoffs
-     return ( CToffer chid ivars, concat quests, concat exclams )
+expandOffer :: Int -> [ Set.Set TxsDefs.ChanId ] -> Offer -> ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
+expandOffer statenr _chsets (Offer chid choffs)  =
+     let ctchoffs = fmap (expandChanOffer statenr chid) ( zip choffs [1..(length choffs)] )
+         ( ivars, quests, exclams ) = unzip3 ctchoffs
+     in ( CToffer chid ivars, concat quests, concat exclams )
 
-
-expandChanOffer :: ChanId -> (ChanOffer,Int) -> IOB.IOB ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
-expandChanOffer chid (choff,pos)  =  do
-     curs <- gets IOB.stateid
-     case choff of
-       Quest  vid  -> do let ivar = IVar { ivname = ChanId.name chid
-                                         , ivuid  = ChanId.unid chid
-                                         , ivpos  = pos
-                                         , ivstat = curs
-                                         , ivsrt  = vsort vid
-                                         }
-                         return ( ivar, [(vid,ivar)], [] )
-       Exclam vexp -> do let ivar = IVar { ivname = ChanId.name chid
-                                         , ivuid  = ChanId.unid chid
-                                         , ivpos  = pos
-                                         , ivstat = curs
-                                         , ivsrt  = sortOf vexp
-                                         }
-                         return ( ivar, [], [(ivar,vexp)] )
+--curs <- gets IOB.stateid
+expandChanOffer :: Int -> ChanId -> (ChanOffer,Int) -> ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
+expandChanOffer curs chid (Quest vid,pos)  =
+     let ivar = IVar { ivname = ChanId.name chid
+                     , ivuid  = ChanId.unid chid
+                     , ivpos  = pos
+                     , ivstat = curs
+                     , ivsrt  = vsort vid
+                     }
+     in ( ivar, [(vid,ivar)], [] )
+expandChanOffer curs chid (Exclam vexp,pos)  =
+     let ivar = IVar { ivname = ChanId.name chid
+                     , ivuid  = ChanId.unid chid
+                     , ivpos  = pos
+                     , ivstat = curs
+                     , ivsrt  = sortOf vexp
+                     }
+     in ( ivar, [], [(ivar,vexp)] )
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- hide channels in CTBranch
 
-
+{-
 hideCTBranch :: [ Set.Set TxsDefs.ChanId ] -> [ChanId] -> CTBranch -> IOB.IOB CTBranch
 hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
     tds <- gets IOB.tdefs
@@ -475,7 +487,7 @@ hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
                   , ctnext    = let f (we, ivenv) = (we, Map.map (subst hvarenv (funcDefs tds)) ivenv)
                                   in fmap f ctnext1'
                   }
-
+-}
 -- ----------------------------------------------------------------------------------------- --
 -- relabel
 
@@ -547,14 +559,14 @@ instance Relabel Trans
 -- ----------------------------------------------------------------------------------------- --
 -- transform IVar into unique IVar (HVar)
 
-
+{-
 uniHVar :: IVar -> IOB.IOB IVar
 uniHVar (IVar ivname' ivuid' ivpos' ivstat' ivsrt')  =  do
      unid'   <- gets IOB.unid
      let newUnid = unid' + 1
      modify $ \env -> env { IOB.unid = newUnid }
      return $ IVar (ivname'<>"$$$"<> (T.pack . show) ivuid') newUnid ivpos' ivstat' ivsrt'
-
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

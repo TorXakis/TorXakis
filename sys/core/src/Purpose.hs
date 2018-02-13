@@ -15,8 +15,8 @@ module Purpose
 -- export
 
 
-( goalMenu          -- :: String -> IOC.IOC BTree.Menu
-, purpMenusIn       -- :: IOC.IOC [BTree.Menu]
+( goalMenu          -- :: String -> IOC.IOC STree.Menu
+, purpMenusIn       -- :: IOC.IOC [STree.Menu]
 , purpAfter         -- :: TxsDDefs.Action -> IOC.IOC (Bool,Bool)
 , purpVerdict       -- :: IOC.IOC ()
 )
@@ -28,29 +28,29 @@ module Purpose
 
 where
 
-import           Control.Monad.State
+--import           Control.Monad.State
 
-import qualified Data.Set            as Set
-import qualified Data.Text           as T
+--import qualified Data.Set            as Set
+--import qualified Data.Text           as T
 
 -- import from local
-import           CoreUtils
+--import           CoreUtils
 
-import qualified Behave
+--import qualified SBehave
 
 -- import from behavedef
-import qualified BTree
+import qualified STree
 
 -- import from coreenv
 import qualified EnvCore             as IOC
-import qualified EnvData
+--import qualified EnvData
 
 -- import from defs
-import qualified StdTDefs
+--import qualified StdTDefs
 import qualified TxsDDefs
-import qualified TxsDefs
-import qualified TxsShow
-import qualified Utils
+--import qualified TxsDefs
+--import qualified TxsShow
+--import qualified Utils
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -59,8 +59,9 @@ import qualified Utils
 -- ----------------------------------------------------------------------------------------- --
 -- goalMenu :  menu on current btree of goal with name
 
-goalMenu :: String -> IOC.IOC BTree.Menu
-goalMenu gnm = do
+goalMenu :: String -> IOC.IOC STree.Menu
+goalMenu _ = error "not implemented yet!"
+{-goalMenu gnm = do
   envc <- get
   case IOC.state envc of
     IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs _)
@@ -68,21 +69,22 @@ goalMenu gnm = do
                 } -> do
       let pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
       case [ (gid, gtree) | (gid@(TxsDefs.GoalId nm _), gtree) <- purpsts, nm == T.pack gnm ] of
-        [(_, Left bt)] -> return $ Behave.behMayMenu pAllSyncs bt
+        [(_, Left bt)] -> return $ SBehave.behMayMenu pAllSyncs bt
         [(_, Right _)] -> return []
         _ -> do
           IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "no (unique) goal given"]
           return []
     _ -> do
       IOC.putMsgs [EnvData.TXS_CORE_USER_ERROR "goalMenu: no test purpose given"]
-      return []
+      return []-}
 
 -- ----------------------------------------------------------------------------------------- --
 -- purpMenuIn :  menu of input actions of test purpose
 
 
-purpMenusIn :: IOC.IOC [BTree.Menu]
-purpMenusIn  =  do
+purpMenusIn :: IOC.IOC [STree.Menu]
+purpMenusIn = error "not implemented yet!"
+{-purpMenusIn  =  do
      envc <- get
      case IOC.state envc of
        IOC.Testing { IOC.purpdef = Just (TxsDefs.PurpDef pinsyncs poutsyncs psplsyncs _)
@@ -97,7 +99,8 @@ purpMenusIn  =  do
                                           ]
        _ -> return []
 
-goalMenuIn :: (TxsDefs.GoalId,BTree.BTree) -> IOC.IOC BTree.Menu
+
+goalMenuIn :: (TxsDefs.GoalId,STree.STree) -> IOC.IOC STree.Menu
 goalMenuIn (_,btree)  =  do
      envc <- get
      case IOC.state envc of
@@ -106,16 +109,18 @@ goalMenuIn (_,btree)  =  do
             let pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
                 chins     = Set.unions pinsyncs
             return [ (ctoffs, hvars, preds)
-                   | (ctoffs, hvars, preds) <- Behave.behMayMenu pAllSyncs btree
-                   , Set.map BTree.ctchan ctoffs `Set.isSubsetOf` chins
+                   | (ctoffs, hvars, preds) <- SBehave.behMayMenu pAllSyncs btree
+                   , Set.map STree.ctchan ctoffs `Set.isSubsetOf` chins
                    ]
        _ -> return []
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 -- purpAfter :  after state for test purpose
 
 purpAfter :: TxsDDefs.Action -> IOC.IOC Bool                                -- purpose ready --
-purpAfter act  =  do
+purpAfter = error "not implemented yet!"
+{-purpAfter act  =  do
      envc  <- get
      isInp <- isInAct act
      case IOC.state envc of
@@ -145,13 +150,13 @@ purpAfter act  =  do
             return True
 
 goalAfter :: [Set.Set TxsDefs.ChanId] -> [Set.Set TxsDefs.ChanId] -> TxsDDefs.Action ->
-             (TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict) ->
-             IOC.IOC (TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)
+             (TxsDefs.GoalId,Either STree.STree TxsDDefs.PurpVerdict) ->
+             IOC.IOC (TxsDefs.GoalId,Either STree.STree TxsDDefs.PurpVerdict)
 
 goalAfter allsyncs _ (TxsDDefs.Act acts) (gid,Left btree)  =  do
      envb           <- filterEnvCtoEnvB
      (maybt',envb') <- lift $
-       runStateT (Behave.behAfterAct allsyncs btree acts) envb
+       runStateT (SBehave.behAfterAct allsyncs btree acts) envb
      writeEnvBtoEnvC envb'
      case maybt' of
       Nothing  -> return (gid,Left [])
@@ -160,9 +165,9 @@ goalAfter allsyncs outsyncs TxsDDefs.ActQui (gid,Left btree)  =  do
      let qacts      = Set.singleton (StdTDefs.chanIdQstep, [])
      envb           <- filterEnvCtoEnvB
      (maybt1,envb1) <- lift $
-       runStateT (Behave.behAfterRef btree (Set.unions outsyncs)) envb
+       runStateT (SBehave.behAfterRef btree (Set.unions outsyncs)) envb
      (maybt2,envb2) <- lift $
-       runStateT (Behave.behAfterAct allsyncs btree qacts) envb1
+       runStateT (SBehave.behAfterAct allsyncs btree qacts) envb1
      writeEnvBtoEnvC envb2
      case (maybt1,maybt2) of
       (Nothing ,Nothing ) -> return (gid,Left [])
@@ -170,13 +175,14 @@ goalAfter allsyncs outsyncs TxsDDefs.ActQui (gid,Left btree)  =  do
       (Nothing ,Just bt2) -> return (gid,Left bt2)
       (Just bt1,Just bt2) -> return (gid,Left (bt1++bt2))
 goalAfter _ _ _ goal@(_, Right _) = return goal
-      
+     -} 
 
 -- ----------------------------------------------------------------------------------------- --
 -- purpVerdict :  output of  hit/miss verdicts
 
 purpVerdict :: IOC.IOC Bool -- did any goal hit?
-purpVerdict = do
+purpVerdict = error "not implemented yet!"
+{-purpVerdict = do
   envc <- get
   case IOC.state envc of
     IOC.Testing { IOC.purpsts = purpsts } -> do
@@ -190,8 +196,8 @@ purpVerdict = do
   where
     unzip3to2 = foldr (\(x, y, z) (xs, yzs) -> (x:xs, (y, z):yzs)) ([], [])
 
-goalVerdict :: (TxsDefs.GoalId, Either BTree.BTree TxsDDefs.PurpVerdict)
-    -> IOC.IOC (Bool, TxsDefs.GoalId, Either BTree.BTree TxsDDefs.PurpVerdict)
+goalVerdict :: (TxsDefs.GoalId, Either STree.STree TxsDDefs.PurpVerdict)
+    -> IOC.IOC (Bool, TxsDefs.GoalId, Either STree.STree TxsDDefs.PurpVerdict)
     -- (did the goal hit, updated goal/verdict)
 goalVerdict (gid, Right goal) = return (False, gid, Right goal)
 goalVerdict (gid, Left btree) = do
@@ -217,20 +223,20 @@ goalVerdict (gid, Left btree) = do
        _ -> do
             IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "goalVerdict incorrectly used" ]
             return (True, gid, Right TxsDDefs.PurpHalted)
-
+-}
 -- ----------------------------------------------------------------------------------------- --
 --  hit, miss
-isHit :: [ Set.Set TxsDefs.ChanId ] -> BTree.BTree -> Bool
+{-isHit :: [ Set.Set TxsDefs.ChanId ] -> STree.STree -> Bool
 isHit allsyncs btree
-  =  let menu = Behave.behMayMenu allsyncs btree
-         chanids = Set.map BTree.ctchan (Set.unions (map Utils.frst menu))
+  =  let menu = SBehave.behMayMenu allsyncs btree
+         chanids = Set.map STree.ctchan (Set.unions (map Utils.frst menu))
       in StdTDefs.chanIdHit `Set.member` chanids
 
-isMiss :: [ Set.Set TxsDefs.ChanId ] -> BTree.BTree -> Bool
+isMiss :: [ Set.Set TxsDefs.ChanId ] -> STree.STree -> Bool
 isMiss allsyncs btree
-  =  let menu = Behave.behMayMenu allsyncs btree
-         chanids = Set.map BTree.ctchan (Set.unions (map Utils.frst menu))
+  =  let menu = SBehave.behMayMenu allsyncs btree
+         chanids = Set.map STree.ctchan (Set.unions (map Utils.frst menu))
       in StdTDefs.chanIdMiss `Set.member` chanids
 
-isHalt :: BTree.BTree -> Bool
-isHalt = null
+isHalt :: STree.STree -> Bool
+isHalt = null-}

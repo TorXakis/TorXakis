@@ -47,7 +47,7 @@ class Reduce e where
     reduce :: e -> IOB.IOB e
     reduce = return
 
-instance Reduce BTree where
+instance Reduce STree where
 
     reduce bt = do
          btree1              <- nubMby (~=~) bt

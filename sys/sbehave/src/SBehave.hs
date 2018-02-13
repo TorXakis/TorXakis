@@ -3,7 +3,8 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -16,7 +17,7 @@ module SBehave
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( behInit      -- :: [ Set.Set TxsDefs.ChanId ] -> TxsDefs.BExpr -> IOB.IOB (Maybe BTree)
+( behInit      -- :: [ Set.Set TxsDefs.ChanId ] -> TxsDefs.BExpr -> IOC.IOC (Maybe BTree)
                -- initialize BTree
 , behMayMenu   -- :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
                -- may menu of BTree without quiescence
@@ -24,9 +25,9 @@ module SBehave
                -- must menu of BTree without quiescence
 , behRefusal   -- :: BTree -> Set.Set TxsDefs.ChanId -> Bool
                -- check refusal set on BTree
-, behAfterAct  -- :: [ Set.Set TxsDefs.ChanId ] -> BTree -> BehAction -> IOB.IOB (Maybe BTree)
+, behAfterAct  -- :: [ Set.Set TxsDefs.ChanId ] -> BTree -> BehAction -> IOC.IOC (Maybe BTree)
                -- perform after action on BTree
-, behAfterRef  -- :: BTree -> Set.Set TxsDefs.ChanId -> IOB.IOB (Maybe BTree)
+, behAfterRef  -- :: BTree -> Set.Set TxsDefs.ChanId -> IOC.IOC (Maybe BTree)
                -- perform after refusal on BTree
 )
 
@@ -42,8 +43,9 @@ import qualified Data.Set            as Set
 
 -- import from local
 import           Next
-import           Reduce
-import           Unfold
+--import           Reduce
+--import           Unfold
+import           SExpand
 
 -- import from behavedef
 import           STree
@@ -51,11 +53,16 @@ import           STree
 -- import from behaveenv
 import qualified EnvSTree            as IOB
 
+-- import from core
+-- import qualified CoreUtils
+
 -- import from coreenv
+import qualified EnvCore             as IOC
 import qualified EnvData
 
 -- import from defs
 import qualified TxsDefs
+import qualified Sigs
 
 -- import from solve
 import           Solve
@@ -69,10 +76,12 @@ import           ValExpr
 -- behInit :  initialize BTree
 
 
-behInit :: [ Set.Set TxsDefs.ChanId ] -> TxsDefs.BExpr -> IOB.IOB (Maybe BTree)
+behInit :: [ Set.Set TxsDefs.ChanId ] -> TxsDefs.BExpr -> IOC.IOC (Maybe DPath)
 behInit chsets bexp  =  do
-     btree' <- unfold chsets (BNbexpr Map.empty bexp)
-     return $ Just btree'
+    envb <- filterEnvCtoEnvB
+    let stree = evalState (expand chsets (SNbexpr Map.empty bexp)) envb
+    --writeEnvBtoEnvC envb'
+    return $ Just ([[stree]])
 
 
 
@@ -80,17 +89,20 @@ behInit chsets bexp  =  do
 --
 -- Returns the list of all possible *visible* symbolic-actions.
 behMayMenu :: [ Set.Set TxsDefs.ChanId ] -- ^
-           -> BTree
+           -> [STree]
            -> Menu
-behMayMenu chsets btree'
+behMayMenu _ _ = error "not implemented yet!"
+behMayMenu chsets trees
+    = [ (offs, hids, pred) | tree <- trees, (STtrans offs hids pred _) <- sttrans tree ]
+{-behMayMenu chsets btree'
   =  [ ( btoffs, hidvars, pred' ) | BTpref btoffs hidvars pred' _ <- btree' ]
      ++ concat [ behMayMenu chsets btree'' | BTtau btree'' <- btree' ]
-
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 -- behMustMenu :  must menu of BTree without quiescence
 
-behMustMenu :: [ Set.Set TxsDefs.ChanId ] -> BTree -> Menu
+behMustMenu :: [ Set.Set TxsDefs.ChanId ] -> STree -> Menu
 behMustMenu _ _
   =  []
 {-   case [ btree' | BTtau btree' <- btree ] of
@@ -102,13 +114,14 @@ behMustMenu _ _
 -- ----------------------------------------------------------------------------------------- --
 -- behRefusal :  check refusal set on BTree
 --
-behRefusal :: BTree -> Set.Set TxsDefs.ChanId -> Bool
+behRefusal :: STree -> Set.Set TxsDefs.ChanId -> Bool
+behRefusal = error "not implemented yet"
+{-behRefusal :: BTree -> Set.Set TxsDefs.ChanId -> Bool
 behRefusal bt refset
   =  case [ bt' | BTtau bt' <- bt ] of
      { []      -> and [ refBBranch bbranch refset | bbranch <- bt ]
      ; btrees' -> any (`behRefusal` refset) btrees'
      }
-
 
 refBBranch :: BBranch -> Set.Set TxsDefs.ChanId -> Bool
 
@@ -117,33 +130,36 @@ refBBranch (BTpref btoffs _ _ _) refset
 
 refBBranch (BTtau _) _
   =  False
-
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 -- behAfterAct :  perform after action on BTree
 --
 
-behAfterAct :: [ Set.Set TxsDefs.ChanId ] -> BTree -> BehAction -> IOB.IOB (Maybe BTree)
-behAfterAct chsets bt behact
+behAfterAct :: [ Set.Set TxsDefs.ChanId ] -> [STree] -> BehAction -> IOC.IOC (Maybe [STree])
+behAfterAct chsets strees behact
+--behAfterAct _ _ behact
  | Set.null behact  =  do
-     IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "behAfterAct: after empty set/tau action" ]
+     IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "behAfterAct: after empty set/tau action" ]
      return Nothing
+-- | otherwise = error "not implemented yet"
  | otherwise = do
-     afters <- afterActBTree chsets behact bt
-     if  null afters
-       then return Nothing
-       else do let newbtree  = map BTtau afters
-               newbtree' <- reduce newbtree
-               return $ Just newbtree'
-
+     afters <- mapM (afterSBranch chsets behact) $ concat (sttrans <$> strees)
+     return $ if null afters
+       then Nothing
+       else Just $ concat afters
+--       else do let newbtree  = map BTtau afters
+--               newbtree' <- reduce newbtree
+--               newbtree' <- return newbtree
+--               return $ Just newbtree'
 
 -- ----------------------------------------------------------------------------------------- --
 -- afterActBTree :  list of possible BTree states of btree after non-empty behact
 --               :  result list is empty: behact is not a possible action
 --               :  result contains empty list: STOP is possible after state
 
-
-afterActBTree :: [ Set.Set TxsDefs.ChanId ] -> BehAction -> BTree -> IOB.IOB [BTree]
+{-
+afterActBTree :: [ Set.Set TxsDefs.ChanId ] -> BehAction -> BTree -> IOC.IOC [BTree]
 afterActBTree chsets behact bt  =  do
      newbtrees <- mapM (afterActBBranch chsets behact) bt
      return $ concat newbtrees
@@ -153,51 +169,64 @@ afterActBTree chsets behact bt  =  do
 -- afterBBranch  :  list of possible BTree states of BBranch after non-empty behact
 --               :  result list is empty: behact is not a possible action
 --               :  result contains empty list: STOP is possible after state
+-}
 
+afterSBranch :: [ Set.Set TxsDefs.ChanId ] -> BehAction -> STtrans -> IOC.IOC [STree]
+afterSBranch chsets behact (STtrans offs [] pred next) = do
+    match <- matchAct2CTOffer behact offs
+    case match of
+        Nothing -> return []
+        Just iwals -> do
+            --tdefs <- gets IOC.tdefs
+            --let tstate = IOC.state 
+            --let fdefs = TxsDefs.funcDefs tdefs
+            fdefs <- (TxsDefs.funcDefs . IOC.tdefs) <$> gets IOC.state
+            let predVal = subst (Map.map cstrConst iwals) fdefs pred
+            case ValExpr.eval predVal of
+                Right (Cbool True)  -> do
+                    let next' = updateNode fdefs iwals (stnode next)
+                    envb <- filterEnvCtoEnvB
+                    let after = evalState (expand chsets next') envb
+                    return [after]
+                Right (Cbool False) -> return []
+                Right _             -> do
+                    IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                      "afterActBBranch - condition is not a Boolean value"]
+                    return []
+                Left s              -> do
+                    IOC.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
+                                     ("afterActBBranch - condition is not a value - " ++ show s)]
+                    return []
 
-afterActBBranch :: [ Set.Set TxsDefs.ChanId ] -> BehAction -> BBranch -> IOB.IOB [BTree]
+afterSBranch chsets behact (STtrans offs hids pred next)  =  do
+    match <- matchAct2CTOffer behact offs
+    case match of
+        Nothing    -> return []
+        Just iwals -> do
+            fdefs <- (TxsDefs.funcDefs . IOC.tdefs) <$> gets IOC.state
+            let predVal = subst (Map.map cstrConst iwals) fdefs pred
+                assertion = add predVal empty
+            smtEnv <- IOC.getSMT "current"
+            (sat,smtEnv') <- lift $ runStateT (uniSolve hids assertion) smtEnv
+            IOC.putSMT "current" smtEnv'
+            case sat of
+                Unsolvable -> return []
+                Solved sol -> do
+                    envb <- filterEnvCtoEnvB
+                    let update = updateNode fdefs (iwals `Map.union` sol)
+                        next' = update $ stnode next
+                        after = evalState (expand chsets next') envb
+                    return [after]
+                UnableToSolve -> do
+                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                    "after: cannot find unique value for hidden variables" ]
+                    return []
 
-afterActBBranch chsets behact (BTpref btoffs [] pred' next)  =  do
-     match <- matchAct2CTOffer behact btoffs
-     case match of
-       Nothing    -> return []
-       Just iwals -> do
-                      tds <- gets IOB.tdefs
-                      let pred'' = ValExpr.subst (Map.map cstrConst iwals) (TxsDefs.funcDefs tds) pred'
-                      case ValExpr.eval pred'' of
-                          Right (Cbool True)          -> do let cnode = nextNode iwals next
-                                                            after <- unfold chsets cnode
-                                                            return [after]
-                          Right (Cbool False)         -> return []
-                          Right _                     -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                                                          "afterActBBranch - condition is not a Boolean value"]
-                                                            return []
-                          Left s                      -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
-                                                                          ("afterActBBranch - condition is not a value - " ++ show s)]
-                                                            return []
-
-afterActBBranch chsets behact (BTpref btoffs hidvars pred' next)  =  do
-     match <- matchAct2CTOffer behact btoffs
-     case match of
-       Nothing    -> return []
-       Just iwals -> do
-                      tds <- gets IOB.tdefs
-                      let pred'' = subst (Map.map cstrConst iwals) (TxsDefs.funcDefs tds) pred'
-                          assertion = add pred'' empty
-                      smtEnv <- IOB.getSMT "current"
-                      (sat,smtEnv') <- lift $ runStateT (uniSolve hidvars assertion) smtEnv
-                      IOB.putSMT "current" smtEnv'
-                      case sat of
-                        Unsolvable -> return []
-                        Solved sol -> do let cnode = nextNode (iwals `Map.union` sol) next
-                                         after <- unfold chsets cnode
-                                         return [after]
-                        UnableToSolve -> do IOB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                                                          "after: cannot find unique value for hidden variables" ]
-                                            return []
+{-
 
 afterActBBranch chsets behact (BTtau bt)  =  afterActBTree chsets behact bt
 
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 -- matchAct2CTOffer     :  match a set of CTOffers with values of an action
@@ -205,11 +234,11 @@ afterActBBranch chsets behact (BTtau bt)  =  afterActBTree chsets behact bt
 --   result = Just map  :  matching map; can be empty: only gates, no values
 
 
-matchAct2CTOffer :: BehAction -> Set.Set CTOffer -> IOB.IOB (Maybe IWals)
+matchAct2CTOffer :: BehAction -> Set.Set CTOffer -> IOC.IOC (Maybe IWals)
 matchAct2CTOffer behact ctoffs
     | Set.null ctoffs =
         do
-          IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "matchAct2CTOffer: empty ctoffs" ]
+          IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "matchAct2CTOffer: empty ctoffs" ]
           return Nothing
     | Set.map fst behact == Set.map ctchan ctoffs =
         return $ Just $ Map.fromList
@@ -224,23 +253,28 @@ matchAct2CTOffer behact ctoffs
 -- ----------------------------------------------------------------------------------------- --
 -- behAfterRef :  perform after refusal on BTree
 
+behAfterRef :: STree -> Set.Set TxsDefs.ChanId -> IOB.IOB (Maybe STree)
+behAfterRef = error "not implemented yet"
 
-behAfterRef :: BTree -> Set.Set TxsDefs.ChanId -> IOB.IOB (Maybe BTree)
+{-
+behAfterRef :: BTree -> Set.Set TxsDefs.ChanId -> IOC.IOC (Maybe BTree)
 behAfterRef bt refset  =  do
      afters <- afterRefBTree refset bt
      if  null afters
        then return Nothing
        else do let newbtree = map BTtau afters
-               newbtree' <- reduce newbtree
+               --newbtree' <- reduce newbtree
+               newbtree' <- return newbtree
                return $ Just newbtree'
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 -- afterRefBTree :  list of possible BTree states after refusal
 --               :  result list is empty: refusal is not possible
 --               :  result contains empty list: STOP is possible after refusal
 
-
-afterRefBTree :: Set.Set TxsDefs.ChanId -> BTree -> IOB.IOB [BTree]
+{-
+afterRefBTree :: Set.Set TxsDefs.ChanId -> BTree -> IOC.IOC [BTree]
 afterRefBTree refset bt =
     case [ bt' | BTtau bt' <- bt ] of
       []      -> if and [ refBBranch bbranch refset | bbranch <- bt ]
@@ -248,7 +282,61 @@ afterRefBTree refset bt =
                    else return []
       btrees' -> do btrees'' <- mapM (afterRefBTree refset) btrees'
                     return $ concat btrees''
-
+-}
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
+
+-- ----------------------------------------------------------------------------------------- --
+-- filterEnvCtoEnvB
+
+filterEnvCtoEnvB :: IOC.IOC IOB.EnvB
+filterEnvCtoEnvB = do
+     envc <- get
+     case IOC.state envc of
+       IOC.Noning
+         -> return IOB.EnvB { IOB.smts     = Map.empty
+                            , IOB.tdefs    = TxsDefs.empty
+                            , IOB.sigs     = Sigs.empty
+                            , IOB.stateid  = 0
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
+       IOC.Initing{..}
+         -> return IOB.EnvB { IOB.smts     = smts
+                            , IOB.tdefs    = tdefs
+                            , IOB.sigs     = sigs
+                            , IOB.stateid  = 0
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
+       IOC.Testing{..}
+         -> return IOB.EnvB { IOB.smts     = smts
+                            , IOB.tdefs    = tdefs
+                            , IOB.sigs     = sigs
+                            , IOB.stateid  = curstate
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
+       IOC.Simuling{..}
+         -> return IOB.EnvB { IOB.smts     = smts
+                            , IOB.tdefs    = tdefs
+                            , IOB.sigs     = sigs
+                            , IOB.stateid  = curstate
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
+       IOC.Stepping{..}
+         -> return IOB.EnvB { IOB.smts     = smts
+                            , IOB.tdefs    = tdefs
+                            , IOB.sigs     = sigs
+                            , IOB.stateid  = curstate
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
+

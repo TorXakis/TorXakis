@@ -17,7 +17,7 @@ module CoreUtils
 -- export
 
 ( filterEnvCtoEnvB  -- :: IOC.IOC IOB.EnvB
-, writeEnvBtoEnvC   -- :: IOB.EnvB -> IOC.IOC ()
+--, writeEnvBtoEnvC   -- :: IOB.EnvB -> IOC.IOC ()
 , isInCTOffers      -- :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 , isOutCTOffers     -- :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 , isInAct           -- :: TxsDDefs.Action -> IOC.IOC Bool
@@ -41,11 +41,11 @@ import qualified Data.Map  as Map
 import           Data.Maybe
 
 -- import from behavedef
-import qualified BTree
+import qualified STree
 
 -- import from behaveenv
 import qualified EnvCore   as IOC
-import qualified EnvBTree  as IOB
+import qualified EnvSTree  as IOB
 
 -- import from defs
 import qualified TxsDefs
@@ -124,12 +124,12 @@ writeEnvBtoEnvC envb = do
 -- ----------------------------------------------------------------------------------------- --
 -- isInCTOffers  :  is input offer?
 
-isInCTOffers :: Set.Set BTree.CTOffer -> IOC.IOC Bool
+isInCTOffers :: Set.Set STree.CTOffer -> IOC.IOC Bool
 isInCTOffers ctoffers = do
      TxsDefs.ModelDef insyncs outsyncs _splsyncs _bexp <- gets (IOC.modeldef . IOC.state)
      let chinset  = Set.unions insyncs
          choutset = Set.unions outsyncs
-         chanids  = Set.map BTree.ctchan ctoffers
+         chanids  = Set.map STree.ctchan ctoffers
      return $    not (Set.null (chanids `Set.intersection` chinset))
               &&      Set.null (chanids `Set.intersection` choutset)
 
@@ -149,12 +149,12 @@ isInAct TxsDDefs.ActQui = return False
 -- ----------------------------------------------------------------------------------------- --
 -- isOutCTOffers :  is output offer?
 
-isOutCTOffers :: Set.Set BTree.CTOffer -> IOC.IOC Bool
+isOutCTOffers :: Set.Set STree.CTOffer -> IOC.IOC Bool
 isOutCTOffers ctoffers = do
      TxsDefs.ModelDef insyncs outsyncs _splsyncs _bexp <- gets (IOC.modeldef . IOC.state)
      let chinset  = Set.unions insyncs
          choutset = Set.unions outsyncs
-         chanids  = Set.map BTree.ctchan ctoffers
+         chanids  = Set.map STree.ctchan ctoffers
      return $         Set.null (chanids `Set.intersection` chinset)
               && not (Set.null (chanids `Set.intersection` choutset))
 
@@ -194,7 +194,7 @@ nextBehTrie act = do
 -- ----------------------------------------------------------------------------------------- --
 -- randMenu :  menu randomization
 
-randMenu :: BTree.Menu -> IOC.IOC (Maybe TxsDDefs.Action)
+randMenu :: STree.Menu -> IOC.IOC (Maybe TxsDDefs.Action)
 randMenu menu =
      if null menu
        then return Nothing
@@ -203,7 +203,7 @@ randMenu menu =
          let (pre, x:post) = splitAt relem menu
              (ctoffs, hvars, pred')  = x
              menu'                  = pre++post
-             vvars                  = concatMap BTree.ctchoffers (Set.toList ctoffs)
+             vvars                  = concatMap STree.ctchoffers (Set.toList ctoffs)
              ivars                  = vvars ++ hvars
              assertions             = Solve.add pred' Solve.empty
          smtEnv   <- IOC.getSMT "current"
@@ -217,12 +217,12 @@ randMenu menu =
            SolveDefs.Unsolvable    -> randMenu menu'
            SolveDefs.UnableToSolve -> randMenu menu'
 
-instantCTOffer :: Map.Map BTree.IVar Const -> BTree.CTOffer ->
+instantCTOffer :: Map.Map STree.IVar Const -> STree.CTOffer ->
                   (TxsDefs.ChanId, [Const])
-instantCTOffer sol (BTree.CToffer chan choffs)
+instantCTOffer sol (STree.CToffer chan choffs)
  = ( chan, map (instantIVar sol) choffs )
 
-instantIVar :: Map.Map BTree.IVar Const -> BTree.IVar -> Const
+instantIVar :: Map.Map STree.IVar Const -> STree.IVar -> Const
 instantIVar sol ivar
  =   fromMaybe
       (error "TXS Test ranMenuIn: No value for interaction variable\n")
@@ -231,7 +231,7 @@ instantIVar sol ivar
 -- ----------------------------------------------------------------------------------------- --
 -- combine menu with purpose menus
 
-randPurpMenu :: BTree.Menu -> [BTree.Menu] -> IOC.IOC (Maybe TxsDDefs.Action)
+randPurpMenu :: STree.Menu -> [STree.Menu] -> IOC.IOC (Maybe TxsDDefs.Action)
 randPurpMenu modmenu purpmenus =
      if null purpmenus
        then return Nothing
@@ -247,7 +247,7 @@ randPurpMenu modmenu purpmenus =
 -- ----------------------------------------------------------------------------------------- --
 -- conjunction of menus
 
-menuConjunct :: BTree.Menu -> BTree.Menu -> BTree.Menu
+menuConjunct :: STree.Menu -> STree.Menu -> STree.Menu
 menuConjunct menu1 menu2
  = [ (ctoffs1,hvars1 ++ hvars2, cstrAnd (Set.fromList [pred1,pred2]) )
    | (ctoffs1,hvars1,pred1) <- menu1
@@ -256,7 +256,7 @@ menuConjunct menu1 menu2
    ]
 
 
-menuConjuncts :: [BTree.Menu] -> BTree.Menu
+menuConjuncts :: [STree.Menu] -> STree.Menu
 menuConjuncts []           = []
 menuConjuncts [menu]       = menu
 menuConjuncts (menu:menus) = menuConjunct menu (menuConjuncts menus)

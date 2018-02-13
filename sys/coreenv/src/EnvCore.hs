@@ -35,7 +35,7 @@ import qualified EnvData
 import qualified ParamCore
 
 -- import from behavedefs
-import qualified BTree
+import qualified STree
 
 -- import from defs
 import qualified Sigs
@@ -79,9 +79,10 @@ data CoreState = Noning
                                                                      -- behaviour trie
                         , inistate  :: EnvData.StateNr               -- initial beh statenr
                         , curstate  :: EnvData.StateNr               -- current beh statenr
-                        , modsts    :: BTree.BTree                      -- model state
-                        , mapsts    :: BTree.BTree                      -- mapper state
-                        , purpsts   :: [(TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)]   -- purpose state
+                        , actions   :: STree.ActionTrace             -- actions observed so far
+                        , modsts    :: STree.DPath                   -- model state
+                        , mapsts    :: STree.DPath                   -- mapper state
+                        , purpsts   :: [(TxsDefs.GoalId,Either STree.DPath TxsDDefs.PurpVerdict)]   -- purpose state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         }
              | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
@@ -95,8 +96,9 @@ data CoreState = Noning
                                                                      -- behaviour trie
                         , inistate  :: EnvData.StateNr               -- initial beh statenr
                         , curstate  :: EnvData.StateNr               -- current beh statenr
-                        , modsts    :: BTree.BTree                   -- model state
-                        , mapsts    :: BTree.BTree                   -- mapper state
+                        , actions   :: STree.ActionTrace             -- actions observed so far
+                        , modsts    :: STree.DPath                   -- model state
+                        , mapsts    :: STree.DPath                   -- mapper state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         }
              | Stepping { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
@@ -108,7 +110,8 @@ data CoreState = Noning
                         , inistate  :: EnvData.StateNr               -- initial beh statenr
                         , curstate  :: EnvData.StateNr               -- current beh statenr
                         , maxstate  :: EnvData.StateNr               -- max beh statenr
-                        , modstss   :: Map.Map EnvData.StateNr BTree.BTree   -- model state
+                        , actions   :: STree.ActionTrace             -- actions observed so far
+                        , modstss   :: Map.Map EnvData.StateNr STree.DPath   -- model state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         }
 
