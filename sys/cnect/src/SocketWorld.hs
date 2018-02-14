@@ -17,9 +17,7 @@ module SocketWorld
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( initSockWorld      -- :: CnectDef -> Int -> Int -> IOC.IOC IOS.SockWorld
-, termitSockWorld    -- :: IOS.SockWorld -> IOC.IOC ()
-, SockWorld (..)
+(
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -71,35 +69,37 @@ type FroW      = ( Maybe (Chan TxsDDefs.SAction), [ThreadId], [TxsDDefs.ConnHand
 
 instance IOC.EWorld SockWorld
   where
+     initW     =  initSockWorld
      startW    =  startSockWorld
      restartW  =  restartSockWorld
      stopW     =  stopSockWorld
      putToW    =  putSockWorld
      getFroW   =  getSockWorld
+     termitW   =  termit getSockWorld
 
-data SockWorld =   IdleSW
-                 | InitSW   { cnectdef  :: TxsDefs.CnectDef
-                            , deltatime :: Int
-                            , iotime    :: Int
-                            }
-                 | CtRunSW  { cnectdef  :: TxsDefs.CnectDef
-                            , deltatime :: Int
-                            , iotime    :: Int
-                            , tow       :: ToW             -- ^ connections to external world
-                            , frow      :: FroW            -- ^ connections from external world
-                            , proch     :: ProcessHandle
-                            }
-                 | UCtRunSW { cnectdef  :: TxsDefs.CnectDef
-                            , deltatime :: Int
-                            , iotime    :: Int
-                            , tow       :: ToW              -- ^ connections to external world
-                            , frow      :: FroW             -- ^ connections from external world
-                             }
+data SockWorld =  IdleSockW
+                | InitSockW   { cnectdef  :: TxsDefs.CnectDef
+                              , deltatime :: Int
+                              , iotime    :: Int
+                              }
+                | CtRunSockW  { cnectdef  :: TxsDefs.CnectDef
+                              , deltatime :: Int
+                              , iotime    :: Int
+                              , tow       :: ToW          -- ^ connections to external world
+                              , frow      :: FroW         -- ^ connections from external world
+                              , proch     :: ProcessHandle
+                              }
+                | UCtRunSockW { cnectdef  :: TxsDefs.CnectDef
+                              , deltatime :: Int
+                              , iotime    :: Int
+                              , tow       :: ToW          -- ^ connections to external world
+                              , frow      :: FroW         -- ^ connections from external world
+                               }
 
 -- ----------------------------------------------------------------------------------------- --
 -- initSockWorld :  initialize socket world
 
-initSockWorld :: CnectDef -> Int -> Int -> IOC.IOC SockWorld
+initSockWorld :: CnectDef -> PParams -> IOC.IOC SockWorld
 initSockWorld cnectDef deltaTime ioTime  =
      return $ InitSW cnectDef deltaTime ioTime
 
@@ -107,15 +107,15 @@ initSockWorld cnectDef deltaTime ioTime  =
 -- termitSockWorld :  terminate socket world
 
 termitSockWorld :: SockWorld -> IOC.IOC ()
-termitSockWorld _ = return ()
+termitSockWorld _  =  return ()
 
 -- ----------------------------------------------------------------------------------------- --
 -- startSockWorld :  start socket world, if not already started, otherwise do nothing
 
 startSockWorld :: SockWorld -> IOC.IOC SockWorld
 startSockWorld sockWorld  =
- 85 >      case sockWorld of
- 86 >        InitSW cnectDef@(CnectDef (Just ewCmd) cnectType connDefs) deltaTime ioTime
+     case sockWorld of
+       InitSockW cnectDef@(CnectDef (Just ewCmd) cnectType connDefs) deltaTime ioTime
  87 >             | (not $ and $ map Char.isSpace $ T.unpack ewCmd)
  88 >          -> let cmdw = words $ T.unpack ewCmd
  89 >              in do (Just hin, Just hout, Just herr, procH) <- lift $ createProcess

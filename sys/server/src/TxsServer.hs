@@ -70,6 +70,9 @@ import qualified TxsHappy
 -- import from cnect
 import qualified SocketWorld         as World
 
+-- ----------------------------------------------------------------------------------------- --
+-- main
+
 main :: IO ()
 main = withSocketsDo $ do
   hSetBuffering stderr NoBuffering     -- alt: LineBuffering
