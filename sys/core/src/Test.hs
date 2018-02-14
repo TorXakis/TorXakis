@@ -123,7 +123,7 @@ testN depth step = do
       return TxsDDefs.NoVerdict
   where
     -- No test purpose.    
-    continue Nothing =
+    continue Nothing = do
       testIOCO depth False step 
     continue (Just (TxsDefs.PurpDef [] [] _ _)) =
       testIOCO depth False step
@@ -216,9 +216,6 @@ testIOCOfullPurp depth lastDelta step =
          input <- if null purpMenus
                     then randMenu modMenu
                     else randPurpMenu modMenu purpMenus
-         -- lift $ hPutStrLn stderr $ "\n***modMenu: " ++ (TxsShow.fshow modMenu)
-         -- lift $ hPutStrLn stderr $ "\n***purpMenus: " ++ (TxsShow.fshow purpMenus)
-         -- lift $ hPutStrLn stderr $ "\n***input: " ++ (TxsShow.fshow input)
          [(_,parval)] <- IOC.getParams ["param_Test_inputEager"]
          let iochoice = case (read parval::Integer) of             -- input (True) or output
                           0 -> isJust input && ( lastDelta || ioRand )
@@ -226,14 +223,11 @@ testIOCOfullPurp depth lastDelta step =
                           2 -> error "TXS: undefined input-eagerness level\n"
                           3 -> isJust input
                           _ -> error "TXS: undefined input-eagerness level\n"
-         -- lift $ hPutStrLn stderr $ "\n***iochoice: " ++ (show iochoice)
          if  iochoice
            then do                                                  -- try input, input/=Nothing
              let Just inp = input
-             -- lift $ hPutStrLn stderr $ "\n***inp: " ++ (show inp)
              (act, verdict) <- testIn inp step                      -- act can input or output
              anyHit <- purpAfter act
-             -- lift $ hPutStrLn stderr $ "\n***purpReady: " ++ (show purpReady)
              case (verdict, anyHit) of
                (TxsDDefs.Pass    , False) -> testIOCOfullPurp (depth-1) (act==TxsDDefs.ActQui) (step+1)
                (TxsDDefs.Pass    , True ) -> return TxsDDefs.Pass

@@ -35,9 +35,9 @@ library
                       , random
                       , text
 
-                      , sbehavedefs
-                      , sbehaveenv
-                      , sbehave
+                      , behavedefs
+                      , behaveenv
+                      , behave
                       , coreenv
                       , defs
                       , solve

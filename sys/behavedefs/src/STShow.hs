@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 -- ----------------------------------------------------------------------------------------- --
 
-module BTShow
+module STShow
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -21,77 +21,45 @@ where
 import qualified Data.Map          as Map
 import qualified Data.String.Utils as Utils
 
+import           STree
 import           TreeVarShow()
-import           BTree
 import           TxsDefs
 import           TxsShow
 
--- ----------------------------------------------------------------------------------------- --
--- PShow BNode
-
-instance PShow CNode where
-    pshow (BNbexpr we bexp)
-      =  "VALENV "
-         ++ Utils.join ";\n" (map (\(k,v) -> pshow k ++ " = " ++ pshow v) (Map.assocs we))
-         ++ " IN " ++ pshow bexp ++ " NI"
-    pshow (BNparallel chans bnodes)
-      =  case bnodes of
-           [] -> "STOP\n"
-           be -> "( " ++
-                 Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow chans) ++" ]|\n( ")
-                            (map pshow be)
-                 ++ " )"
-    pshow (BNenable bnode1 choffs bnode2)
-      =  "( " ++ pshow bnode1 ++ " )\n" ++ ">>>"
-         ++ case choffs of
-              [] -> "\n"
-              _  -> " ACCEPT\n" ++ Utils.join ",\n" (map pshow choffs) ++ "\n" ++ "IN\n"
-         ++ "( " ++ pshow bnode2 ++ " )"
-    pshow (BNdisable bnode1 bnode2)
-      =  "( " ++ pshow bnode1 ++ " )\n"
-         ++ "[>>\n" ++ "( " ++ pshow bnode2 ++ " )"
-    pshow (BNinterrupt bnode1 bnode2)
-      =  "( " ++ pshow bnode1 ++ " )\n" ++ "[><\n"
-         ++ "( " ++ pshow bnode2 ++ " )"
-    pshow (BNhide chans bnode)
-      =  "HIDE "
-         ++ Utils.join "; " [ show n ++ " :: " ++ Utils.join " # " (map pshow srts)
-                            | ChanId n _uid srts <- chans
-                            ]
-         ++ " IN\n"
-         ++ pshow bnode ++ "\n"
-         ++ "NI\n"
 
 -- ----------------------------------------------------------------------------------------- --
--- PShow INode
+-- PShow SNode
 
-instance PShow INode
+instance PShow SNode
   where
-    pshow (BNbexpr (we,ivals) bexp)
+    pshow (SNbexpr ivals bexp)
       =  "VALENV "
          ++ Utils.join ";\n" (map (\(k,v) -> pshow k ++ " = " ++ pshow v) (Map.assocs ivals))
-         ++ Utils.join ";\n" (map (\(k,v) -> pshow k ++ " = " ++ pshow v) (Map.assocs we))
          ++ " IN " ++ pshow bexp ++ " NI"
-    pshow (BNparallel chans snodes)
+    pshow (SNguard cond bnode)
+      =  "[[ " ++ pshow cond ++ " ]] =>> " ++ pshow bnode
+    pshow (SNchoice nodes)
+      =  Utils.join "\n" (pshow <$> nodes)
+    pshow (SNparallel chans snodes)
       =  case snodes of
            [] -> "STOP\n"
            be -> "( "
                  ++ Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow chans) ++" ]|\n( ")
                                (map pshow be)
                  ++ " )"
-    pshow (BNenable snode1 choffs snode2)
+    pshow (SNenable snode1 choffs snode2)
       =  "( " ++ pshow snode1 ++ " )\n" ++ ">>>"
          ++ case choffs of
               [] -> "\n"
               _  -> " ACCEPT\n" ++ Utils.join ",\n" (map pshow choffs) ++ "\n" ++ "IN\n"
          ++ "( " ++ pshow snode2 ++ " )"
-    pshow (BNdisable snode1 snode2)
+    pshow (SNdisable snode1 snode2)
       =  "( " ++ pshow snode1 ++ " )\n"
          ++ "[>>\n" ++ "( " ++ pshow snode2 ++ " )"
-    pshow (BNinterrupt snode1 snode2)
+    pshow (SNinterrupt snode1 snode2)
       =  "( " ++ pshow snode1 ++ " )\n" ++ "[><\n"
          ++ "( " ++ pshow snode2 ++ " )"
-    pshow (BNhide chans snode)
+    pshow (SNhide chans snode)
       =  "HIDE "
          ++ Utils.join "; " [ show n ++ " :: " ++ Utils.join " # " (map pshow srts)
                             | ChanId n _uid srts <- chans
@@ -103,17 +71,14 @@ instance PShow INode
 -- ----------------------------------------------------------------------------------------- --
 -- PShow BTree
 
-instance PShow CTBranch
+instance PShow STtrans
   where
-    pshow (CTpref btoffs _hidvars spreds snext)
-      =  " ## " ++ pshow btoffs ++ pshow spreds ++ pshow snext ++ "\n"
+    pshow (STtrans btoffs _hidvars spreds snext)
+      =  " ## " ++ pshow btoffs ++ pshow spreds ++ pshow (stnode snext) ++ "\n"
 
-instance PShow BBranch
-  where
-    pshow (BTpref btoffs hidvars spreds snext)
-      =  " ## " ++ pshow btoffs ++ pshow hidvars ++ pshow spreds ++ pshow snext ++ "\n"
-    pshow (BTtau bt)
-      =  " ## ISTEP " ++ pshow bt ++ "\n"
+
+instance PShow STree
+  where pshow = pshow . stnode
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

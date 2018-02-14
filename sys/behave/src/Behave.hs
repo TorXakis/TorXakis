@@ -47,6 +47,7 @@ import           Unfold
 
 -- import from behavedef
 import           BTree
+import           TreeVars
 
 -- import from behaveenv
 import qualified EnvBTree            as IOB

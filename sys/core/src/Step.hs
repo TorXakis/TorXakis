@@ -18,8 +18,8 @@ module Step
 
 ( stepN            -- :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 , stepA            -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict 
-, stepModelMenuIn  -- :: IOC.IOC STree.Menu
-, stepModelMenuOut -- :: IOC.IOC STree.Menu
+, stepModelMenuIn  -- :: IOC.IOC TreeVars.Menu
+, stepModelMenuOut -- :: IOC.IOC TreeVars.Menu
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -38,7 +38,7 @@ import qualified EnvCore   as IOC
 import qualified TxsDDefs
 --import qualified TxsShow
 --import qualified SBehave
-import qualified STree
+import qualified TreeVars
 --import qualified Utils
 
 -- ----------------------------------------------------------------------------------------- --
@@ -46,7 +46,7 @@ import qualified STree
 --       :  steps are input or output, no quiescence, i.e., trace semantics
 
 stepN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
-stepN = error "not implemented yet!"
+stepN = error "stepN: not implemented yet!"
 {-stepN depth step =
      if  depth == 0
        then return TxsDDefs.Pass
@@ -94,7 +94,7 @@ stepN = error "not implemented yet!"
 --       :  step is input or output, no quiescence, i.e., trace semantics
 
 stepA :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
-stepA = error "not implemented yet!"
+stepA = error "stepA: not implemented yet!"
 {-stepA act = do
      envSt <- gets IOC.state
      case (act, envSt) of
@@ -128,7 +128,7 @@ stepA = error "not implemented yet!"
 -- ----------------------------------------------------------------------------------------- --
 -- stepMenu
 
-{-stepModelMenu :: IOC.IOC STree.Menu
+{-stepModelMenu :: IOC.IOC TreeVars.Menu
 stepModelMenu  =  do
      envSt <- gets IOC.state
      case envSt of
@@ -141,14 +141,14 @@ stepModelMenu  =  do
          IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "stepModelMenu without valid model"     ]
          return []-}
 
-stepModelMenuIn :: IOC.IOC STree.Menu
-stepModelMenuIn = error "not implemented yet!"
+stepModelMenuIn :: IOC.IOC TreeVars.Menu
+stepModelMenuIn = error "stepModelMenuIn: not implemented yet!"
 {-stepModelMenuIn  =  do
      menu <- stepModelMenu
      filterM (isInCTOffers . Utils.frst) menu-}
 
-stepModelMenuOut :: IOC.IOC STree.Menu
-stepModelMenuOut = error "not implemented yet!"
+stepModelMenuOut :: IOC.IOC TreeVars.Menu
+stepModelMenuOut = error "stepModelMenuOut: not implemented yet!"
 {-stepModelMenuOut  =  do
      menu <- stepModelMenu
      filterM (isOutCTOffers . Utils.frst) menu-}

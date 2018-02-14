@@ -50,9 +50,6 @@ packages:
 - location: sys/defs
 - location: sys/front
 - location: sys/lexregexxsd
-- location: sys/sbehave
-- location: sys/sbehavedefs
-- location: sys/sbehaveenv
 - location: sys/server
 - location: sys/serverenv
 - location: sys/solve

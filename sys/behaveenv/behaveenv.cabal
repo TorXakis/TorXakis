@@ -17,6 +17,7 @@ library
 
   exposed-modules:
                         EnvBTree
+                      , EnvSTree
 
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
 

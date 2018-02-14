@@ -27,6 +27,7 @@ import qualified Data.Map  as Map
 import Data.Maybe
 
 import BTree
+import TreeVars
 import TxsUtils(combineWEnv)
 import ValExpr
 

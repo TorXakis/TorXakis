@@ -17,7 +17,7 @@ module SExpand
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( expand         -- :: [ Set.Set TxsDefs.ChanId ] -> CNode -> IOB.IOB CTree
+( expand         -- :: [ Set.Set TxsDefs.ChanId ] -> CNode -> SEE.SEE CTree
                  -- 'expand chsets cnode' expands 'cnode'
                  -- (concrete, closed, no interaction variables)
                  -- into a communication tree with interaction variables (closed)
@@ -33,7 +33,7 @@ where
 import           Control.Arrow (first, second)
 --import           Control.Monad.Extra
 import           Control.Monad.State
-import           Data.Either
+--import           Data.Either
 --import           Data.Monoid
 
 --import qualified Data.List           as List
@@ -44,9 +44,10 @@ import qualified Data.Set            as Set
 import           STree
 import           ChanId
 --import           ConstDefs
-import qualified EnvSTree           as IOB
+import qualified EnvSTree           as SEE
 import qualified EnvData
 import           StdTDefs
+import           TreeVars
 import           TxsDefs
 --import           TxsUtils
 --import           Utils
@@ -81,28 +82,28 @@ emptyTree node = STree {stnode = node, sttrans = []}
 -- variables.
 expand :: [ Set.Set TxsDefs.ChanId ] -- ^ Set of expected synchronization channels.
        -> SNode
-       -> IOB.IOB STree
+       -> SEE.SEE STree
 -- expand  :  for  BNbexpr WEnv BExpr
 expand _ node@(SNbexpr _ Stop)  = return $ emptyTree node
 --
 expand chsets node@(SNbexpr ve (ActionPref (ActOffer offs cnd) bexp))  =  do
-    statenr <- gets IOB.stateid
-    tdefs <- gets IOB.tdefs
-    let substitute :: VExpr -> ValExpr IVar = compSubst ve (funcDefs tdefs)
-        (stoffs, quests, exclams) = expandOffers statenr chsets offs
-        exclamConstraints = (uncurry cstrEqual . first cstrVar . second substitute) <$> exclams
-        pred = cstrAnd $ Set.fromList $ substitute cnd : exclamConstraints
+    statenr <- gets SEE.stateid
+    tdefs <- gets SEE.tdefs
+    let (stoffs, quests, exclams) = expandOffers statenr chsets offs
         questVe  = Map.fromList (second cstrVar <$> quests)
         ve' = Map.union questVe ve
-    state <- get
-    let next = evalState (expand chsets (SNbexpr ve' bexp)) state{IOB.stateid = IOB.stateid state + 1}
-    let transNext = STtrans { stoffers = stoffs, sthidvars = [], stpred = pred, stnext = next }
+        substitute = compSubst ve' (funcDefs tdefs)
+        exclamConstraints = (uncurry cstrEqual . first cstrVar . second substitute) <$> exclams
+        cnd' = cstrAnd $ Set.fromList $ substitute cnd : exclamConstraints
+    esstate <- get
+    let next = evalState (expand chsets (SNbexpr ve' bexp)) esstate{SEE.stateid = SEE.stateid esstate + 1}
+    let transNext = STtrans { stoffers = stoffs, sthidvars = [], stpred = cnd', stnext = next }
     return $ STree { stnode = node, sttrans = [transNext] }
 
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (SNbexpr ve (Guard cond bexp)) = do
-    tdefs <- gets IOB.tdefs
+    tdefs <- gets SEE.tdefs
     let substitute = compSubst ve (funcDefs tdefs)
     expand chsets $ SNguard (substitute cond) (SNbexpr ve bexp)
 
@@ -133,19 +134,19 @@ expand chsets (BNbexpr we (Enable bexp1 chanoffs bexp2))  =  do
      chanoffs' <- mapM (evalChanOffer we) chanoffs
      case Data.Either.partitionEithers chanoffs' of
         ([], r) -> expand chsets $ BNenable (BNbexpr we bexp1) r (BNbexpr we bexp2)
-        (s, _)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
+        (s, _)  -> do SEE.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                     ("Expand: Eval failed in expand - Enable" ++ show s) ]
                       return []
 
   where
 
-     evalChanOffer :: WEnv VarId -> ChanOffer -> IOB.IOB (Either String ChanOffer)
+     evalChanOffer :: WEnv VarId -> ChanOffer -> SEE.SEE (Either String ChanOffer)
 
      evalChanOffer _ (Quest vid) =
           return $ Right (Quest vid)
 
      evalChanOffer we' (Exclam vexp)  =  do
-          tds <- gets IOB.tdefs
+          tds <- gets SEE.tdefs
           let res = ValExpr.eval $ subst (Map.map cstrConst we') (funcDefs tds) vexp
           return $ right (Exclam . cstrConst) res
 
@@ -162,7 +163,7 @@ expand chsets (BNbexpr we (Interrupt bexp1 bexp2))  =
 -- ----------------------------------------------------------------------------------------- --
 -}
 expand chsets node@(SNbexpr ve (ProcInst procid chans vexps)) = do
-    tdefs <- gets IOB.tdefs
+    tdefs <- gets SEE.tdefs
     case Map.lookup procid (procDefs tdefs) of
         Just (ProcDef chids vids bexp) -> do
             let chanmap = Map.fromList (zip chids chans)
@@ -170,7 +171,7 @@ expand chsets node@(SNbexpr ve (ProcInst procid chans vexps)) = do
                 ve' = Map.fromList $ zip vids (substitute <$> vexps)
             expand chsets $ SNbexpr ve' (relabel chanmap bexp)
         Nothing -> do
-            IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+            SEE.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                "Expand: Undefined process name in expand" ]
             return $ emptyTree node
 
@@ -183,13 +184,13 @@ expand chsets (BNbexpr we (Hide chans bexp))  =
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (ValueEnv venv bexp))  =  do
-    tds   <- gets IOB.tdefs
+    tds   <- gets SEE.tdefs
     let we' = map toEitherTuple [ (vid, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp))
                                 | (vid, vexp) <- Map.toList venv
                                 ]
     case Data.Either.partitionEithers we' of
         ([],r) -> expand chsets $ BNbexpr (combineWEnv we (Map.fromList r)) bexp
-        (s,_)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
+        (s,_)  -> do SEE.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                    ("Expand:  Eval failed in expand - ValueEnv " ++ show s) ]
                      return []
 
@@ -200,23 +201,23 @@ expand chsets (BNbexpr we (StAut ini ve trns))  =  do
                                | (vid, wal) <- Map.toList we
                                , vid `Map.notMember` ve
                                ]
-    tds   <- gets IOB.tdefs
+    tds   <- gets SEE.tdefs
     let vewals = map toEitherTuple [ (vid, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
                                    | (vid, vexp) <- Map.toList ve
                                    ]
     case Data.Either.partitionEithers vewals of
         ([], r) -> concatMapM (expandTrans chsets envwals (Map.fromList r)) [ tr | tr <- trns, from tr == ini ]
-        (s,_)   -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
+        (s,_)   -> do SEE.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                    ("Expand:  Eval failed in expand - StAut - vewals " ++ show s ++ "\nCheck all your STAUTDEF VARs: Has a value been assigned to each variable (either in initialization or earlier steps)?") ]
                       return []
   where
     expandTrans :: [ Set.Set TxsDefs.ChanId ] -> WEnv VarId -> WEnv VarId -> Trans
-                   -> IOB.IOB CTree
+                   -> SEE.SEE CTree
     expandTrans chsets' envwals stswals (Trans _ (ActOffer offs cnd) update' to')  =  do
          (ctoffs, quests, exclams) <- expandOffers chsets' offs
          let we'   = envwals `combineWEnv` stswals
              ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
-         tds <- gets IOB.tdefs
+         tds <- gets SEE.tdefs
          let exclams' = map toEitherTuple [ ( ivar, ValExpr.eval (subst (Map.map cstrConst we') (funcDefs tds) vexp) )
                                           | (ivar, vexp) <- exclams
                                           ]
@@ -241,7 +242,7 @@ expand chsets (BNbexpr we (StAut ini ve trns))  =  do
                                          , ctnext    = BNbexpr (envwals',ivenv) (StAut to' (Map.union ve' ve) trns)
                                          }
                                  ]
-            (s,_)   -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
+            (s,_)   -> do SEE.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                         ("Expand:  Eval failed in expand - StAut - exclams " ++ show s ++ "\nCheck all your STAUTDEF VARs: Has a value been assigned to each variable (either in initialization or earlier steps)?") ]
                           return []
 -- ----------------------------------------------------------------------------------------- --
@@ -348,7 +349,7 @@ expand chsets (BNenable cnode1 chanoffs cnode2)  =  do
                                         | CTpref ctoffs1 cthidvars1 ctpreds1 ctnext1 <- noExits
                                         ]
                       return $ leftExits ++ leftNoExits
-        (s,_)   -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
+        (s,_)   -> do SEE.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                     ("Expand:  Eval failed in expand - BNenable - exclams " ++ show s) ]
                       return []
 -- ----------------------------------------------------------------------------------------- --
@@ -422,7 +423,7 @@ expand chsets (BNhide chans cnode)  =  do
      mapM (hideCTBranch chsets chans) ctree
 
 -}
-expand _ node = error $ "Symbolic expand not implemented yet!"
+expand _ _ = error $ "SExpand: not implemented yet!"
 
 -- ----------------------------------------------------------------------------------------- --
 -- helper functions
@@ -444,7 +445,7 @@ expandOffer statenr _chsets (Offer chid choffs)  =
          ( ivars, quests, exclams ) = unzip3 ctchoffs
      in ( CToffer chid ivars, concat quests, concat exclams )
 
---curs <- gets IOB.stateid
+--curs <- gets SEE.stateid
 expandChanOffer :: Int -> ChanId -> (ChanOffer,Int) -> ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
 expandChanOffer curs chid (Quest vid,pos)  =
      let ivar = IVar { ivname = ChanId.name chid
@@ -468,9 +469,9 @@ expandChanOffer curs chid (Exclam vexp,pos)  =
 -- hide channels in CTBranch
 
 {-
-hideCTBranch :: [ Set.Set TxsDefs.ChanId ] -> [ChanId] -> CTBranch -> IOB.IOB CTBranch
+hideCTBranch :: [ Set.Set TxsDefs.ChanId ] -> [ChanId] -> CTBranch -> SEE.SEE CTBranch
 hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
-    tds <- gets IOB.tdefs
+    tds <- gets SEE.tdefs
     let (hctoffs,vctoffs) = Set.partition ((`elem` chans).ctchan) ctoffs
         hvars             = concatMap ctchoffers (Set.toList hctoffs)
     hvarlist              <- sequence [ liftP2 (hvar, uniHVar hvar) | hvar <- hvars ]
@@ -560,11 +561,11 @@ instance Relabel Trans
 -- transform IVar into unique IVar (HVar)
 
 {-
-uniHVar :: IVar -> IOB.IOB IVar
+uniHVar :: IVar -> SEE.SEE IVar
 uniHVar (IVar ivname' ivuid' ivpos' ivstat' ivsrt')  =  do
-     unid'   <- gets IOB.unid
+     unid'   <- gets SEE.unid
      let newUnid = unid' + 1
-     modify $ \env -> env { IOB.unid = newUnid }
+     modify $ \env -> env { SEE.unid = newUnid }
      return $ IVar (ivname'<>"$$$"<> (T.pack . show) ivuid') newUnid ivpos' ivstat' ivsrt'
 -}
 

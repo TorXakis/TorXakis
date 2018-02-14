@@ -16,8 +16,8 @@ module Ioco
 -- export
 
 
-( iocoModelMenuIn    -- :: IOC.IOC STree.Menu
-, iocoModelMenuOut   -- :: IOC.IOC STree.Menu
+( iocoModelMenuIn    -- :: IOC.IOC TreeVars.Menu
+, iocoModelMenuOut   -- :: IOC.IOC TreeVars.Menu
 , iocoModelIsQui     -- :: IOC.IOC Bool
 , iocoModelAfter     -- :: TxsDDefs.Action -> IOC.IOC Bool
 )
@@ -36,6 +36,7 @@ import           CoreUtils
 
 -- import from behavedef
 import qualified STree
+import qualified TreeVars
 
 -- import from behaveenv
 import qualified SBehave
@@ -56,7 +57,7 @@ import qualified Utils
 -- iocoModelMenuOut :  output menu on current btree of model, no quiescence, according to ioco
 
 
-iocoModelMenu :: IOC.IOC STree.Menu
+iocoModelMenu :: IOC.IOC TreeVars.Menu
 iocoModelMenu  =  do
      validModel <- validModDef
      case validModel of
@@ -68,13 +69,13 @@ iocoModelMenu  =  do
             modSts   <- gets (head . IOC.modsts . IOC.state)
             return $ SBehave.behMayMenu allSyncs modSts
 
-iocoModelMenuIn :: IOC.IOC STree.Menu
+iocoModelMenuIn :: IOC.IOC TreeVars.Menu
 iocoModelMenuIn  =  do
      menu <- iocoModelMenu
      filterM (isInCTOffers . Utils.frst) menu
 
 
-iocoModelMenuOut :: IOC.IOC STree.Menu
+iocoModelMenuOut :: IOC.IOC TreeVars.Menu
 iocoModelMenuOut  =  do
      menu <- iocoModelMenu
      filterM (isOutCTOffers . Utils.frst) menu
@@ -91,7 +92,7 @@ iocoModelIsQui  =  do
             --modSts <- gets (IOC.modsts . IOC.state)
             --return $ SBehave.behRefusal modSts (Set.unions outsyncs)
        _ ->
-            error "not implemented yet!"
+            error "iocoModelIsQui: not implemented yet!"
 
 -- | iocoModelAfter : do action on current btree and change environment
 -- accordingly result gives success, ie. whether act can be done, if not

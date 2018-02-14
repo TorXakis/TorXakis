@@ -36,7 +36,7 @@ import Control.Monad.State
 import qualified EnvCore   as IOC
 --import qualified EnvData
 --import qualified SBehave
-import qualified STree
+import qualified TreeVars
 
 --import qualified TxsDefs
 import qualified TxsDDefs
@@ -102,12 +102,12 @@ mapperMap :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
 
 mapperMap act@TxsDDefs.ActQui = return act
 -}
-mapperMap _ = error "not implemented yet!"
+mapperMap act = return act --error "mapperMap not implemented yet!"
 
 -- ----------------------------------------------------------------------------------------- --
 -- mapperMenu :  menu of current mapper state
 
-mapperMenu :: IOC.IOC STree.Menu
+mapperMenu :: IOC.IOC TreeVars.Menu
 mapperMenu = do
   maybeMapperDef <- gets (IOC.mapperdef . IOC.state)
   mapSts         <- gets (IOC.mapsts . IOC.state)
@@ -116,7 +116,7 @@ mapperMenu = do
 --    ( _      , [] ) -> return []
 --    ( Just (TxsDefs.MapperDef _chins _chouts syncs _), mtree) ->
 --        return $ SBehave.behMayMenu syncs mtree
-    _ -> error "not implemented yet!"
+    _ -> error "mapperMenu: not implemented yet!"
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

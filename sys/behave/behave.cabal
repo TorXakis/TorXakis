@@ -17,9 +17,13 @@ library
 
   exposed-modules:      Behave
                       , Expand
+                      , SBehave
+                      , SExpand
 
   other-modules:        Equiv
+                      , SEquiv
                       , Next
+                      , SNext
                       , Reduce
                       , Subst
                       , Unfold

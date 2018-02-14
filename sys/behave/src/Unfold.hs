@@ -41,6 +41,7 @@ import Next
 import Reduce
 import qualified SolveDefs
 import qualified Solve
+import TreeVars
 import qualified TxsDefs
 import           ValExpr
 

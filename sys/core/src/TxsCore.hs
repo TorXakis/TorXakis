@@ -139,6 +139,7 @@ import qualified Config
 import qualified SBehave
 import qualified STree
 import           SExpand              (relabel)
+import qualified TreeVars
 
 -- import from coreenv
 import qualified EnvCore             as IOC
@@ -299,8 +300,7 @@ txsSetSeed seed  =  do
 --   Only possible when txscore is initialized.
 txsEval :: TxsDefs.VExpr                    -- ^ value expression to be evaluated.
         -> IOC.IOC Const
-txsEval vexp  =  error "not implemented yet!"
-{-txsEval vexp  =  do
+txsEval vexp  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
@@ -316,7 +316,7 @@ txsEval vexp  =  error "not implemented yet!"
                              (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
                              writeEnvBtoEnvC envb'
                              return wal'
--}
+
 -- | Find a solution for the provided Boolean value expression.
 --
 --   Only possible when txscore is initialized.
@@ -466,9 +466,9 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
               Just bt -> do
                    IOC.modifyCS $ \st -> st { IOC.actions = []
-                                            , IOC.modsts  = [[bt]]
-                                            , IOC.mapsts  = [[mt]]
-                                            , IOC.purpsts = second (Left . STree.treeToPath) <$> gls
+                                            , IOC.modsts  = bt
+                                            , IOC.mapsts  = mt
+                                            , IOC.purpsts = second Left <$> gls
                                             }
                    unless
                        (null gls)
@@ -481,18 +481,18 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
 startTester :: TxsDefs.ModelDef ->
                Maybe TxsDefs.MapperDef ->
                Maybe TxsDefs.PurpDef ->
-               IOC.IOC ( Maybe STree.STree, STree.STree, [(TxsDefs.GoalId,STree.STree)] )
-startTester _ _ _ = error "not implemented yet!"
-{-
+               IOC.IOC ( Maybe STree.DPath, STree.DPath, [(TxsDefs.GoalId,STree.DPath)] )
+
 startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
             Nothing
             Nothing  =
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
      in do
-       envb            <- filterEnvCtoEnvB
-       (maybt', envb') <- lift $ runStateT (SBehave.behInit allSyncs mbexp) envb
-       writeEnvBtoEnvC envb'
-       return ( maybt', [], [] )
+       --envb            <- filterEnvCtoEnvB
+       --(maybt', envb') <- lift $ runStateT (SBehave.behInit allSyncs mbexp) envb
+       maybt' <- SBehave.behInit allSyncs mbexp
+       --writeEnvBtoEnvC envb'
+       determinizeTuple maybt' []
 
 startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
             (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
@@ -507,21 +507,21 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
       in if     mins  `Set.isSubsetOf` ains
              && mouts `Set.isSubsetOf` aouts
            then do let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
-                   envb            <- filterEnvCtoEnvB
-                   (maybt',envb' ) <- lift $ runStateT (SBehave.behInit allSyncs  mbexp) envb
-                   (maymt',envb'') <- lift $ runStateT (SBehave.behInit asyncsets abexp) envb'
-                   writeEnvBtoEnvC envb''
-                   case (maybt',maymt') of
+                   maybt' <- SBehave.behInit allSyncs mbexp
+                   maymt' <- SBehave.behInit asyncsets abexp
+                   determinizeTriple maybt' maymt' []
+                   {-case (maybt',maymt') of
                      (Nothing , _       ) -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
-                          return ( Nothing, [], [] )
+                          return ( Nothing, fromTrees [], [] )
                      (_       , Nothing ) -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester mapper failed" ]
-                          return ( Nothing, [], [] )
-                     (Just _, Just mt') ->
-                          return ( maybt', mt', [] )
-           else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
-                   return ( Nothing, [], [] )
+                          return ( Nothing, Nothing, [] )
+                     (Just _, Just _) ->
+                          return ( maybt', maymt', [] )-}
+           else do
+             IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
+             determinizeTriple Nothing Nothing []
 
 startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
             Nothing
@@ -535,18 +535,19 @@ startTester (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
              && ( (pouts == Set.empty) || (pouts == mouts) )
            then do let allSyncs  = minsyncs ++ moutsyncs ++ msplsyncs
                        pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
-                   envb           <- filterEnvCtoEnvB
-                   (maybt',envb') <- lift $ runStateT (SBehave.behInit allSyncs mbexp) envb
-                   writeEnvBtoEnvC envb'
-                   case maybt' of
+                   maybt' <- SBehave.behInit allSyncs mbexp
+                   gls <- mapM (goalInit pAllSyncs) goals
+                   determinizeTuple maybt' gls
+                   {-case maybt' of
                      Nothing -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
-                          return ( Nothing, [], [] )
+                          return ( Nothing, STree.treesToPath [], [] )
                      Just _ -> do
                           gls <- mapM (goalInit pAllSyncs) goals
-                          return ( maybt', [], concat gls )
-           else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
-                   return ( Nothing, [], [] )
+                          return ( maybt', STree.treesToPath [], second STree.treeToPath <$> concat gls )-}
+           else do
+             IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
+             determinizeTriple Nothing Nothing []
 
 startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
             (Just (TxsDefs.MapperDef achins achouts asyncsets abexp))
@@ -566,27 +567,54 @@ startTester (TxsDefs.ModelDef  minsyncs moutsyncs msplsyncs mbexp)
              && mouts `Set.isSubsetOf` aouts
            then do let allSyncs  = minsyncs ++ moutsyncs ++ msplsyncs
                        pAllSyncs = pinsyncs ++ poutsyncs ++ psplsyncs
-                   envb            <- filterEnvCtoEnvB
-                   (maybt',envb')  <- lift $ runStateT (SBehave.behInit allSyncs  mbexp) envb
-                   (maymt',envb'') <- lift $ runStateT (SBehave.behInit asyncsets abexp) envb'
-                   writeEnvBtoEnvC envb''
-                   case (maybt',maymt') of
+                   maybt' <- SBehave.behInit allSyncs  mbexp
+                   maymt' <- SBehave.behInit asyncsets abexp
+                   gls <- mapM (goalInit pAllSyncs) goals
+                   determinizeTriple maybt' maymt' gls
+                   {-case (maybt',maymt') of
                      (Nothing , _       ) -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
-                          return ( Nothing, [], [] )
+                          return ( Nothing, STree.treesToPath [], [] )
                      (_       , Nothing ) -> do
                           IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester mapper failed" ]
-                          return ( Nothing, [], [] )
+                          return ( Nothing, STree.treesToPath [], [] )
                      (Just _, Just mt') -> do
                           gls <- mapM (goalInit pAllSyncs) goals
-                          return ( maybt', mt', concat gls )
-           else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
-                   return ( Nothing, [], [] )
--}
+                          return ( maybt', mt', second STree.treeToPath <$> concat gls )-}
+           else do
+             IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
+             determinizeTriple Nothing Nothing []
+
+determinizeTriple :: Maybe STree.Det -> Maybe STree.Det -> [[(TxsDefs.GoalId,STree.Det)]]
+    -> IOC.IOC ( Maybe STree.DPath, STree.DPath, [(TxsDefs.GoalId,STree.DPath)] )
+determinizeTriple Nothing  _  _ = do
+    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
+    return (Nothing, STree.detToPath [], [])
+determinizeTriple _ Nothing _ =  do
+    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester mapper failed" ]
+    return (Nothing, STree.detToPath [], [])
+determinizeTriple (Just spec) (Just mapper) goals = do
+    return (
+        Just $ STree.detToPath spec,
+        STree.detToPath mapper,
+        second STree.detToPath <$> concat goals)
+    
+determinizeTuple :: Maybe STree.Det -> [[(TxsDefs.GoalId,STree.Det)]]
+    -> IOC.IOC ( Maybe STree.DPath, STree.DPath, [(TxsDefs.GoalId,STree.DPath)] )
+determinizeTuple Nothing  _ = do
+    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester model failed" ]
+    return (Nothing, STree.detToPath [], [])
+determinizeTuple (Just spec) goals = do
+    return (
+        Just $ STree.detToPath spec,
+        STree.detToPath [],
+        second STree.detToPath <$> concat goals)
+        
+        
 goalInit :: [ Set.Set TxsDefs.ChanId ] ->
             (TxsDefs.GoalId,TxsDefs.BExpr) ->
-            IOC.IOC [(TxsDefs.GoalId,STree.STree)]
-goalInit _ _ = error "not implemented yet!"
+            IOC.IOC [(TxsDefs.GoalId,STree.Det)]
+goalInit _ _ = error "goalInit: not implemented yet!"
 {-goalInit chsets (gid,bexp)  =  do
      envb           <- filterEnvCtoEnvB
      (maypt',envb') <- lift $ runStateT (SBehave.behInit chsets bexp) envb
@@ -653,7 +681,7 @@ txsSetSim putToW getFroW moddef mapdef  =  do
 startSimulator :: TxsDefs.ModelDef ->
                   Maybe TxsDefs.MapperDef ->
                   IOC.IOC ( Maybe STree.STree, STree.STree )
-startSimulator = error "not implemented yet!"
+startSimulator = error "startSimulator: not implemented yet!"
 {-
 startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
                Nothing  =
@@ -735,7 +763,7 @@ txsSetStep moddef  =  do
 startStepper :: TxsDefs.ModelDef ->
                 IOC.IOC ( Maybe STree.STree )
 
-startStepper = error "not implemented yet!"
+startStepper = error "startStepper: not implemented yet!"
 {-startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
      envb            <- filterEnvCtoEnvB
@@ -965,7 +993,7 @@ txsPath  =  do
 -- | Return the menu, i.e., all possible actions.
 txsMenu :: String                               -- ^ kind (valid values are "mod", "purp", or "map")
         -> String                               -- ^ what (valid values are "all", "in", "out", or a <goal name>)
-        -> IOC.IOC STree.Menu
+        -> IOC.IOC TreeVars.Menu
 txsMenu kind what  =  do
      envSt <- gets IOC.state
      case (kind,envSt) of

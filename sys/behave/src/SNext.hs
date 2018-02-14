@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE ViewPatterns #-}
-module Next
+module SNext
 
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -24,13 +24,12 @@ module Next
 where
 
 import qualified Data.Map  as Map
-import Data.Maybe
 
 import STree
-import TxsUtils(combineWEnv)
 import FuncDef
 import FuncId
 import ValExpr
+import TreeVars
 import TxsDefs
 import Variable
 

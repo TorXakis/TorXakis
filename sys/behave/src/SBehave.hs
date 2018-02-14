@@ -42,7 +42,7 @@ import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 
 -- import from local
-import           Next
+import           SNext
 --import           Reduce
 --import           Unfold
 import           SExpand
@@ -51,7 +51,8 @@ import           SExpand
 import           STree
 
 -- import from behaveenv
-import qualified EnvSTree            as IOB
+import TreeVars
+import qualified EnvSTree            as SEE
 
 -- import from core
 -- import qualified CoreUtils
@@ -76,12 +77,12 @@ import           ValExpr
 -- behInit :  initialize BTree
 
 
-behInit :: [ Set.Set TxsDefs.ChanId ] -> TxsDefs.BExpr -> IOC.IOC (Maybe DPath)
+behInit :: [ Set.Set TxsDefs.ChanId ] -> TxsDefs.BExpr -> IOC.IOC (Maybe Det)
 behInit chsets bexp  =  do
-    envb <- filterEnvCtoEnvB
+    envb <- filterEnvCtoEnvE
     let stree = evalState (expand chsets (SNbexpr Map.empty bexp)) envb
-    --writeEnvBtoEnvC envb'
-    return $ Just ([[stree]])
+    --writeEnvEtoEnvC envb'
+    return $ Just (determinize stree)
 
 
 
@@ -91,9 +92,8 @@ behInit chsets bexp  =  do
 behMayMenu :: [ Set.Set TxsDefs.ChanId ] -- ^
            -> [STree]
            -> Menu
-behMayMenu _ _ = error "not implemented yet!"
-behMayMenu chsets trees
-    = [ (offs, hids, pred) | tree <- trees, (STtrans offs hids pred _) <- sttrans tree ]
+behMayMenu _ trees
+    = [ (offs, hids, cnd) | tree <- trees, (STtrans offs hids cnd _) <- sttrans tree ]
 {-behMayMenu chsets btree'
   =  [ ( btoffs, hidvars, pred' ) | BTpref btoffs hidvars pred' _ <- btree' ]
      ++ concat [ behMayMenu chsets btree'' | BTtau btree'' <- btree' ]
@@ -115,7 +115,7 @@ behMustMenu _ _
 -- behRefusal :  check refusal set on BTree
 --
 behRefusal :: STree -> Set.Set TxsDefs.ChanId -> Bool
-behRefusal = error "not implemented yet"
+behRefusal = error "behRefusal: not implemented yet"
 {-behRefusal :: BTree -> Set.Set TxsDefs.ChanId -> Bool
 behRefusal bt refset
   =  case [ bt' | BTtau bt' <- bt ] of
@@ -172,7 +172,7 @@ afterActBTree chsets behact bt  =  do
 -}
 
 afterSBranch :: [ Set.Set TxsDefs.ChanId ] -> BehAction -> STtrans -> IOC.IOC [STree]
-afterSBranch chsets behact (STtrans offs [] pred next) = do
+afterSBranch chsets behact (STtrans offs [] cnd next) = do
     match <- matchAct2CTOffer behact offs
     case match of
         Nothing -> return []
@@ -181,11 +181,11 @@ afterSBranch chsets behact (STtrans offs [] pred next) = do
             --let tstate = IOC.state 
             --let fdefs = TxsDefs.funcDefs tdefs
             fdefs <- (TxsDefs.funcDefs . IOC.tdefs) <$> gets IOC.state
-            let predVal = subst (Map.map cstrConst iwals) fdefs pred
-            case ValExpr.eval predVal of
+            let cndVal = subst (Map.map cstrConst iwals) fdefs cnd
+            case ValExpr.eval cndVal of
                 Right (Cbool True)  -> do
                     let next' = updateNode fdefs iwals (stnode next)
-                    envb <- filterEnvCtoEnvB
+                    envb <- filterEnvCtoEnvE
                     let after = evalState (expand chsets next') envb
                     return [after]
                 Right (Cbool False) -> return []
@@ -198,22 +198,23 @@ afterSBranch chsets behact (STtrans offs [] pred next) = do
                                      ("afterActBBranch - condition is not a value - " ++ show s)]
                     return []
 
-afterSBranch chsets behact (STtrans offs hids pred next)  =  do
+afterSBranch chsets behact (STtrans offs hids cnd next)  =  do
     match <- matchAct2CTOffer behact offs
     case match of
         Nothing    -> return []
         Just iwals -> do
             fdefs <- (TxsDefs.funcDefs . IOC.tdefs) <$> gets IOC.state
-            let predVal = subst (Map.map cstrConst iwals) fdefs pred
-                assertion = add predVal empty
+            let cndVal = subst (Map.map cstrConst iwals) fdefs cnd
+                assertion = add cndVal empty
             smtEnv <- IOC.getSMT "current"
             (sat,smtEnv') <- lift $ runStateT (uniSolve hids assertion) smtEnv
             IOC.putSMT "current" smtEnv'
             case sat of
                 Unsolvable -> return []
                 Solved sol -> do
-                    envb <- filterEnvCtoEnvB
-                    let update = updateNode fdefs (iwals `Map.union` sol)
+                    envb <- filterEnvCtoEnvE
+                    let iwals' = iwals `Map.union` sol
+                    let update = updateNode fdefs iwals'
                         next' = update $ stnode next
                         after = evalState (expand chsets next') envb
                     return [after]
@@ -253,8 +254,8 @@ matchAct2CTOffer behact ctoffs
 -- ----------------------------------------------------------------------------------------- --
 -- behAfterRef :  perform after refusal on BTree
 
-behAfterRef :: STree -> Set.Set TxsDefs.ChanId -> IOB.IOB (Maybe STree)
-behAfterRef = error "not implemented yet"
+behAfterRef :: STree -> Set.Set TxsDefs.ChanId -> SEE.SEE (Maybe STree)
+behAfterRef = error "behAfterRef: not implemented yet"
 
 {-
 behAfterRef :: BTree -> Set.Set TxsDefs.ChanId -> IOC.IOC (Maybe BTree)
@@ -288,55 +289,45 @@ afterRefBTree refset bt =
 -- ----------------------------------------------------------------------------------------- --
 
 -- ----------------------------------------------------------------------------------------- --
--- filterEnvCtoEnvB
+-- filterEnvCtoEnvE
 
-filterEnvCtoEnvB :: IOC.IOC IOB.EnvB
-filterEnvCtoEnvB = do
+filterEnvCtoEnvE :: IOC.IOC SEE.EnvE
+filterEnvCtoEnvE = do
      envc <- get
      case IOC.state envc of
        IOC.Noning
-         -> return IOB.EnvB { IOB.smts     = Map.empty
-                            , IOB.tdefs    = TxsDefs.empty
-                            , IOB.sigs     = Sigs.empty
-                            , IOB.stateid  = 0
-                            , IOB.params   = IOC.params envc
-                            , IOB.unid     = IOC.unid envc
-                            , IOB.msgs     = []
+         -> return SEE.EnvE { SEE.tdefs    = TxsDefs.empty
+                            , SEE.sigs     = Sigs.empty
+                            , SEE.stateid  = 0
+                            , SEE.params   = IOC.params envc
+                            , SEE.msgs     = []
                             }
        IOC.Initing{..}
-         -> return IOB.EnvB { IOB.smts     = smts
-                            , IOB.tdefs    = tdefs
-                            , IOB.sigs     = sigs
-                            , IOB.stateid  = 0
-                            , IOB.params   = IOC.params envc
-                            , IOB.unid     = IOC.unid envc
-                            , IOB.msgs     = []
+         -> return SEE.EnvE { SEE.tdefs    = tdefs
+                            , SEE.sigs     = sigs
+                            , SEE.stateid  = 0
+                            , SEE.params   = IOC.params envc
+                            , SEE.msgs     = []
                             }
        IOC.Testing{..}
-         -> return IOB.EnvB { IOB.smts     = smts
-                            , IOB.tdefs    = tdefs
-                            , IOB.sigs     = sigs
-                            , IOB.stateid  = curstate
-                            , IOB.params   = IOC.params envc
-                            , IOB.unid     = IOC.unid envc
-                            , IOB.msgs     = []
+         -> return SEE.EnvE { SEE.tdefs    = tdefs
+                            , SEE.sigs     = sigs
+                            , SEE.stateid  = curstate
+                            , SEE.params   = IOC.params envc
+                            , SEE.msgs     = []
                             }
        IOC.Simuling{..}
-         -> return IOB.EnvB { IOB.smts     = smts
-                            , IOB.tdefs    = tdefs
-                            , IOB.sigs     = sigs
-                            , IOB.stateid  = curstate
-                            , IOB.params   = IOC.params envc
-                            , IOB.unid     = IOC.unid envc
-                            , IOB.msgs     = []
+         -> return SEE.EnvE { SEE.tdefs    = tdefs
+                            , SEE.sigs     = sigs
+                            , SEE.stateid  = curstate
+                            , SEE.params   = IOC.params envc
+                            , SEE.msgs     = []
                             }
        IOC.Stepping{..}
-         -> return IOB.EnvB { IOB.smts     = smts
-                            , IOB.tdefs    = tdefs
-                            , IOB.sigs     = sigs
-                            , IOB.stateid  = curstate
-                            , IOB.params   = IOC.params envc
-                            , IOB.unid     = IOC.unid envc
-                            , IOB.msgs     = []
+         -> return SEE.EnvE { SEE.tdefs    = tdefs
+                            , SEE.sigs     = sigs
+                            , SEE.stateid  = curstate
+                            , SEE.params   = IOC.params envc
+                            , SEE.msgs     = []
                             }
 

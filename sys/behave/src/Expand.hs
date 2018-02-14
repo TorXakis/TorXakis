@@ -45,6 +45,7 @@ import           ConstDefs
 import qualified EnvBTree            as IOB
 import qualified EnvData
 import           StdTDefs
+import           TreeVars
 import           TxsDefs
 import           TxsUtils
 import           Utils

@@ -15,7 +15,11 @@ library
   hs-source-dirs:       src
 
   exposed-modules:      BTree
+                      , STree
+                      , TreeVars
                       , BTShow
+                      , STShow
+                      , TreeVarShow
 
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
 

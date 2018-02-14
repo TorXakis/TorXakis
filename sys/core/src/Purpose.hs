@@ -15,8 +15,8 @@ module Purpose
 -- export
 
 
-( goalMenu          -- :: String -> IOC.IOC STree.Menu
-, purpMenusIn       -- :: IOC.IOC [STree.Menu]
+( goalMenu          -- :: String -> IOC.IOC TreeVars.Menu
+, purpMenusIn       -- :: IOC.IOC [TreeVars.Menu]
 , purpAfter         -- :: TxsDDefs.Action -> IOC.IOC (Bool,Bool)
 , purpVerdict       -- :: IOC.IOC ()
 )
@@ -39,7 +39,7 @@ where
 --import qualified SBehave
 
 -- import from behavedef
-import qualified STree
+import qualified TreeVars
 
 -- import from coreenv
 import qualified EnvCore             as IOC
@@ -59,8 +59,8 @@ import qualified TxsDDefs
 -- ----------------------------------------------------------------------------------------- --
 -- goalMenu :  menu on current btree of goal with name
 
-goalMenu :: String -> IOC.IOC STree.Menu
-goalMenu _ = error "not implemented yet!"
+goalMenu :: String -> IOC.IOC TreeVars.Menu
+goalMenu _ = error "goalMenu: not implemented yet!"
 {-goalMenu gnm = do
   envc <- get
   case IOC.state envc of
@@ -82,8 +82,8 @@ goalMenu _ = error "not implemented yet!"
 -- purpMenuIn :  menu of input actions of test purpose
 
 
-purpMenusIn :: IOC.IOC [STree.Menu]
-purpMenusIn = error "not implemented yet!"
+purpMenusIn :: IOC.IOC [TreeVars.Menu]
+purpMenusIn = error "purpMenusIn: not implemented yet!"
 {-purpMenusIn  =  do
      envc <- get
      case IOC.state envc of
@@ -100,7 +100,7 @@ purpMenusIn = error "not implemented yet!"
        _ -> return []
 
 
-goalMenuIn :: (TxsDefs.GoalId,STree.STree) -> IOC.IOC STree.Menu
+goalMenuIn :: (TxsDefs.GoalId,STree.STree) -> IOC.IOC TreeVars.Menu
 goalMenuIn (_,btree)  =  do
      envc <- get
      case IOC.state envc of
@@ -119,7 +119,7 @@ goalMenuIn (_,btree)  =  do
 -- purpAfter :  after state for test purpose
 
 purpAfter :: TxsDDefs.Action -> IOC.IOC Bool                                -- purpose ready --
-purpAfter = error "not implemented yet!"
+purpAfter = error "purpAfter: not implemented yet!"
 {-purpAfter act  =  do
      envc  <- get
      isInp <- isInAct act
@@ -181,7 +181,7 @@ goalAfter _ _ _ goal@(_, Right _) = return goal
 -- purpVerdict :  output of  hit/miss verdicts
 
 purpVerdict :: IOC.IOC Bool -- did any goal hit?
-purpVerdict = error "not implemented yet!"
+purpVerdict = error "purpVerdict: not implemented yet!"
 {-purpVerdict = do
   envc <- get
   case IOC.state envc of

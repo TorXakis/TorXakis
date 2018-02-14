@@ -9,7 +9,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE ScopedTypeVariables #-}
 -- ----------------------------------------------------------------------------------------- --
 
-module Equiv
+module SEquiv
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
@@ -30,14 +30,14 @@ where
 import qualified Data.Set            as Set
 
 import           STree
-import qualified EnvSTree            as IOB
+import qualified EnvSTree            as SEE
 import           TxsDefs
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Equiv : equivalence
 class (Eq e) => Equiv e
   where
-    (~=~) :: e -> e -> IOB.IOB Bool
+    (~=~) :: e -> e -> SEE.SEE Bool
 
     x ~=~ y  =  return $ x == y
 
@@ -92,49 +92,7 @@ instance Equiv STtrans
 
 
 -- ----------------------------------------------------------------------------------------- --
--- Equiv :  INode
-
-
-instance Equiv INode
-  where
-
-    (BNbexpr (wenv1, ivenv1) bexp1) ~=~ (BNbexpr (wenv2, ivenv2) bexp2)  =  do
-         let eq_wenv = wenv1  == wenv2
-         let eq_ivenv = ivenv1 == ivenv2
-         eq_bexp  <- bexp1 ~=~ bexp2
-         return $ eq_wenv && eq_ivenv && eq_bexp
-
-    (BNparallel chids1 inodes1) ~=~ (BNparallel chids2 inodes2)  =  do
-         let eq_chids = Set.fromList chids1 == Set.fromList chids2
-         eq_inodes <- inodes1 ~=~ inodes2
-         return $ eq_chids && eq_inodes
-
-    (BNenable inode11 choffs1 inode12) ~=~ (BNenable inode21 choffs2 inode22)  =  do
-         eq_inode1 <- inode11 ~=~ inode21
-         let eq_choffs = Set.fromList choffs1 == Set.fromList choffs2
-         eq_inode2 <- inode12 ~=~ inode22
-         return $ eq_inode1 && eq_choffs && eq_inode2
-
-    (BNdisable inode11 inode12) ~=~ (BNdisable inode21 inode22)  =  do
-         eq_inode1 <- inode11 ~=~ inode21
-         eq_inode2 <- inode12 ~=~ inode22
-         return $ eq_inode1 && eq_inode2
-
-    (BNinterrupt inode11 inode12) ~=~ (BNinterrupt inode21 inode22)  =  do
-         eq_inode1 <- inode11 ~=~ inode21
-         eq_inode2 <- inode12 ~=~ inode22
-         return $ eq_inode1 && eq_inode2
-
-    (BNhide chids1 inode1) ~=~ (BNhide chids2 inode2)  =  do
-         let eq_chids = Set.fromList chids1 == Set.fromList chids2
-         eq_inode <- inode1 ~=~ inode2
-         return $ eq_chids && eq_inode
-
-    _ ~=~ _  =  return False
-
-
--- ----------------------------------------------------------------------------------------- --
--- Equiv :  INode
+-- Equiv :  SNode
 
 
 instance Equiv SNode
@@ -152,7 +110,7 @@ instance Equiv SNode
         
     (SNchoice nodes1) ~=~ (SNchoice nodes2) = do
         -- is node equivalent to any node' in nodes?
-        let anyEquiv :: SNode -> [SNode] -> IOB.IOB Bool = \node nodes -> or <$> mapM (\node' -> node ~=~ node') nodes
+        let anyEquiv = \node nodes -> or <$> mapM (\node' -> node ~=~ node') nodes
         -- are all nodes equivalent to some node in nodes'?
         let allEquiv = \nodes nodes' -> and <$> mapM (\node -> anyEquiv node nodes') nodes
         -- every node in one set should be equivalent to some node in the other set

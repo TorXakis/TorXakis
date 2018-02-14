@@ -16,8 +16,9 @@ module CoreUtils
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( filterEnvCtoEnvB  -- :: IOC.IOC IOB.EnvB
---, writeEnvBtoEnvC   -- :: IOB.EnvB -> IOC.IOC ()
+( filterEnvCtoEnvE  -- :: IOC.IOC SEE.EnvE
+, filterEnvCtoEnvB  -- :: IOC.IOC IOB.EnvB
+, writeEnvBtoEnvC -- :: IOB.EnvB -> IOC.IOC ()
 , isInCTOffers      -- :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 , isOutCTOffers     -- :: Set.Set BTree.CTOffer -> IOC.IOC Bool
 , isInAct           -- :: TxsDDefs.Action -> IOC.IOC Bool
@@ -42,10 +43,12 @@ import           Data.Maybe
 
 -- import from behavedef
 import qualified STree
+import qualified TreeVars
 
 -- import from behaveenv
+import qualified EnvBTree  as IOB
 import qualified EnvCore   as IOC
-import qualified EnvSTree  as IOB
+import qualified EnvSTree  as SEE
 
 -- import from defs
 import qualified TxsDefs
@@ -57,6 +60,9 @@ import qualified Solve
 -- import from valexpr
 import ConstDefs
 import ValExpr
+
+
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- filterEnvCtoEnvB
@@ -122,14 +128,58 @@ writeEnvBtoEnvC envb = do
   modify $ \env -> env { IOC.unid = IOB.unid envb }
 
 -- ----------------------------------------------------------------------------------------- --
+-- filterEnvCtoEnvE
+
+
+filterEnvCtoEnvE :: IOC.IOC SEE.EnvE
+filterEnvCtoEnvE = do
+     envc <- get
+     case IOC.state envc of
+       IOC.Noning
+         -> return SEE.EnvE { SEE.tdefs    = TxsDefs.empty
+                            , SEE.sigs     = Sigs.empty
+                            , SEE.stateid  = 0
+                            , SEE.params   = IOC.params envc
+                            , SEE.msgs     = []
+                            }
+       IOC.Initing{..}
+         -> return SEE.EnvE { SEE.tdefs    = tdefs
+                            , SEE.sigs     = sigs
+                            , SEE.stateid  = 0
+                            , SEE.params   = IOC.params envc
+                            , SEE.msgs     = []
+                            }
+       IOC.Testing{..}
+         -> return SEE.EnvE { SEE.tdefs    = tdefs
+                            , SEE.sigs     = sigs
+                            , SEE.stateid  = curstate
+                            , SEE.params   = IOC.params envc
+                            , SEE.msgs     = []
+                            }
+       IOC.Simuling{..}
+         -> return SEE.EnvE { SEE.tdefs    = tdefs
+                            , SEE.sigs     = sigs
+                            , SEE.stateid  = curstate
+                            , SEE.params   = IOC.params envc
+                            , SEE.msgs     = []
+                            }
+       IOC.Stepping{..}
+         -> return SEE.EnvE { SEE.tdefs    = tdefs
+                            , SEE.sigs     = sigs
+                            , SEE.stateid  = curstate
+                            , SEE.params   = IOC.params envc
+                            , SEE.msgs     = []
+                            }
+
+-- ----------------------------------------------------------------------------------------- --
 -- isInCTOffers  :  is input offer?
 
-isInCTOffers :: Set.Set STree.CTOffer -> IOC.IOC Bool
+isInCTOffers :: Set.Set TreeVars.CTOffer -> IOC.IOC Bool
 isInCTOffers ctoffers = do
      TxsDefs.ModelDef insyncs outsyncs _splsyncs _bexp <- gets (IOC.modeldef . IOC.state)
      let chinset  = Set.unions insyncs
          choutset = Set.unions outsyncs
-         chanids  = Set.map STree.ctchan ctoffers
+         chanids  = Set.map TreeVars.ctchan ctoffers
      return $    not (Set.null (chanids `Set.intersection` chinset))
               &&      Set.null (chanids `Set.intersection` choutset)
 
@@ -149,12 +199,12 @@ isInAct TxsDDefs.ActQui = return False
 -- ----------------------------------------------------------------------------------------- --
 -- isOutCTOffers :  is output offer?
 
-isOutCTOffers :: Set.Set STree.CTOffer -> IOC.IOC Bool
+isOutCTOffers :: Set.Set TreeVars.CTOffer -> IOC.IOC Bool
 isOutCTOffers ctoffers = do
      TxsDefs.ModelDef insyncs outsyncs _splsyncs _bexp <- gets (IOC.modeldef . IOC.state)
      let chinset  = Set.unions insyncs
          choutset = Set.unions outsyncs
-         chanids  = Set.map STree.ctchan ctoffers
+         chanids  = Set.map TreeVars.ctchan ctoffers
      return $         Set.null (chanids `Set.intersection` chinset)
               && not (Set.null (chanids `Set.intersection` choutset))
 
@@ -194,7 +244,7 @@ nextBehTrie act = do
 -- ----------------------------------------------------------------------------------------- --
 -- randMenu :  menu randomization
 
-randMenu :: STree.Menu -> IOC.IOC (Maybe TxsDDefs.Action)
+randMenu :: TreeVars.Menu -> IOC.IOC (Maybe TxsDDefs.Action)
 randMenu menu =
      if null menu
        then return Nothing
@@ -203,7 +253,7 @@ randMenu menu =
          let (pre, x:post) = splitAt relem menu
              (ctoffs, hvars, pred')  = x
              menu'                  = pre++post
-             vvars                  = concatMap STree.ctchoffers (Set.toList ctoffs)
+             vvars                  = concatMap TreeVars.ctchoffers (Set.toList ctoffs)
              ivars                  = vvars ++ hvars
              assertions             = Solve.add pred' Solve.empty
          smtEnv   <- IOC.getSMT "current"
@@ -217,12 +267,12 @@ randMenu menu =
            SolveDefs.Unsolvable    -> randMenu menu'
            SolveDefs.UnableToSolve -> randMenu menu'
 
-instantCTOffer :: Map.Map STree.IVar Const -> STree.CTOffer ->
+instantCTOffer :: Map.Map TreeVars.IVar Const -> TreeVars.CTOffer ->
                   (TxsDefs.ChanId, [Const])
-instantCTOffer sol (STree.CToffer chan choffs)
+instantCTOffer sol (TreeVars.CToffer chan choffs)
  = ( chan, map (instantIVar sol) choffs )
 
-instantIVar :: Map.Map STree.IVar Const -> STree.IVar -> Const
+instantIVar :: Map.Map TreeVars.IVar Const -> TreeVars.IVar -> Const
 instantIVar sol ivar
  =   fromMaybe
       (error "TXS Test ranMenuIn: No value for interaction variable\n")
@@ -231,7 +281,7 @@ instantIVar sol ivar
 -- ----------------------------------------------------------------------------------------- --
 -- combine menu with purpose menus
 
-randPurpMenu :: STree.Menu -> [STree.Menu] -> IOC.IOC (Maybe TxsDDefs.Action)
+randPurpMenu :: TreeVars.Menu -> [TreeVars.Menu] -> IOC.IOC (Maybe TxsDDefs.Action)
 randPurpMenu modmenu purpmenus =
      if null purpmenus
        then return Nothing
@@ -247,7 +297,7 @@ randPurpMenu modmenu purpmenus =
 -- ----------------------------------------------------------------------------------------- --
 -- conjunction of menus
 
-menuConjunct :: STree.Menu -> STree.Menu -> STree.Menu
+menuConjunct :: TreeVars.Menu -> TreeVars.Menu -> TreeVars.Menu
 menuConjunct menu1 menu2
  = [ (ctoffs1,hvars1 ++ hvars2, cstrAnd (Set.fromList [pred1,pred2]) )
    | (ctoffs1,hvars1,pred1) <- menu1
@@ -256,7 +306,7 @@ menuConjunct menu1 menu2
    ]
 
 
-menuConjuncts :: [STree.Menu] -> STree.Menu
+menuConjuncts :: [TreeVars.Menu] -> TreeVars.Menu
 menuConjuncts []           = []
 menuConjuncts [menu]       = menu
 menuConjuncts (menu:menus) = menuConjunct menu (menuConjuncts menus)
