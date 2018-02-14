@@ -1119,9 +1119,9 @@ txsLPE (Right modelid@(TxsDefs.ModelId modname _moduid))  =  do
       -> case Map.lookup modelid (TxsDefs.modelDefs tdefs) of
            Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexpr)
              -> do lpe' <- txsLPE (Left bexpr)
-                   lift $ hPutStrLn stderr $ (show lpe')
+                   lift $ hPrint stderr lpe'
                    case lpe' of
-                     Just (Left (procinst'@(TxsDefs.ProcInst (TxsDefs.ProcId _ _ _ _ _) _ _)))
+                     Just (Left (procinst'@(TxsDefs.ProcInst {})))
                        -> do uid'   <- IOC.newUnid
                              tdefs' <- gets (IOC.tdefs . IOC.state)
                              let modelid' = TxsDefs.ModelId ("LPE_"<>modname) uid'
@@ -1137,7 +1137,7 @@ txsLPE (Right modelid@(TxsDefs.ModelId modname _moduid))  =  do
                              return Nothing
            _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "LPE: model not defined" ]
                    return Nothing
-    _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $ "LPE: only allowed if initialized" ]
+    _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "LPE: only allowed if initialized" ]
             return Nothing
 
 

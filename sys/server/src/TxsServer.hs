@@ -228,7 +228,7 @@ cmdInit :: String -> IOS.IOS ()
 cmdInit args = do
      servhs             <- gets IOS.servhs
      unid               <- gets IOS.uid
-     tdefs              <- lift $ TxsCore.txsGetTDefs
+     tdefs              <- lift TxsCore.txsGetTDefs
      sigs               <- gets IOS.sigs
      srctxts            <- lift $ lift $ mapM readFile (words args)
      let srctxt          = List.intercalate "\n\n" srctxts
@@ -433,7 +433,7 @@ cmdEval args = do
          sigs          = IOS.sigs env
          vals          = IOS.locvals env
          vars          = IOS.locvars env
-     tdefs            <- lift $ TxsCore.txsGetTDefs
+     tdefs            <- lift TxsCore.txsGetTDefs
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.vexprParser
                                         ( TxsAlex.Csigs    sigs
@@ -467,7 +467,7 @@ cmdSolve args kind = do
          sigs          = IOS.sigs env
          vars          = IOS.locvars env
          vals          = IOS.locvals env
-     tdefs            <- lift $ TxsCore.txsGetTDefs
+     tdefs            <- lift TxsCore.txsGetTDefs
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let p = TxsHappy.vexprParser
                                        ( TxsAlex.Csigs sigs
@@ -491,7 +491,7 @@ cmdSolve args kind = do
 
 cmdTester :: String -> IOS.IOS ()
 cmdTester args = do
-     tdefs  <- lift $ TxsCore.txsGetTDefs
+     tdefs  <- lift TxsCore.txsGetTDefs
      case words args of
        [m,c] -> do
             let mdefs = [ mdef
@@ -626,7 +626,7 @@ isConsistentTester _
 
 cmdSimulator :: String -> IOS.IOS ()
 cmdSimulator args = do
-     tdefs  <- lift $ TxsCore.txsGetTDefs
+     tdefs  <- lift TxsCore.txsGetTDefs
      case words args of
        [m,c] -> do
             let mdefs  =  [ mdef
@@ -711,7 +711,7 @@ isConsistentSimulator _
 
 cmdStepper :: String -> IOS.IOS ()
 cmdStepper args = do
-     tdefs  <- lift $ TxsCore.txsGetTDefs
+     tdefs  <- lift TxsCore.txsGetTDefs
      let mdefs   = TxsDefs.modelDefs tdefs
      case words args of
       [m] -> do
@@ -783,7 +783,7 @@ cmdStep args =
                IFS.pack "STEP" [TxsShow.fshow verdict]
                cmdsIntpr
        _                                                          -- action arg: step action --
-         -> do tdefs    <- lift $ TxsCore.txsGetTDefs
+         -> do tdefs    <- lift TxsCore.txsGetTDefs
                let mdefs = TxsDefs.modelDefs tdefs
                    chids = Set.toList $ Set.unions
                                         [ Set.unions (chins ++ chouts ++ spls)
@@ -904,7 +904,7 @@ cmdMenu args =
 
 cmdMap :: String -> IOS.IOS ()
 cmdMap args = do
-     tdefs      <- lift $ TxsCore.txsGetTDefs
+     tdefs      <- lift TxsCore.txsGetTDefs
      let mdefs   = TxsDefs.mapperDefs tdefs
          inchids = concat [ chins
                           | ( _ , TxsDefs.MapperDef chins _ _ _ ) <- Map.toList mdefs
@@ -949,7 +949,7 @@ cmdNComp args = do
 
 cmdLPE :: String -> IOS.IOS ()
 cmdLPE args = do
-     tdefs <- lift $ TxsCore.txsGetTDefs
+     tdefs <- lift TxsCore.txsGetTDefs
      let mdefs = TxsDefs.modelDefs tdefs
          mids  = [ modelid | (modelid@(TxsDefs.ModelId nm _uid), _) <- Map.toList mdefs
                            , T.unpack nm == args
@@ -963,7 +963,7 @@ cmdLPE args = do
          -> do mayModelId' <- lift $ TxsCore.txsLPE (Right modelId)
                case mayModelId' of
                  Just (Right modelId') -> do IFS.pack "LPE" [ "LPE modeldef generated: "
-                                                            , (TxsShow.fshow modelId')
+                                                            , TxsShow.fshow modelId'
                                                             ]
                                              cmdsIntpr
                  _                     -> do IFS.nack "LPE" [ "Could not generate LPE" ]

@@ -161,7 +161,7 @@ expand chsets (BNbexpr we (ProcInst procid@(ProcId nm _ _ _ _) chans vexps))  = 
                                                 ("Expand: Eval failed in expand - ProcInst " ++ show s) ]
                                   return []
        _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $
-                             "Expand: Undefined process name: " ++ (T.unpack nm) ]
+                             "Expand: Undefined process name: " ++ T.unpack nm ]
                return []
 
 -- ----------------------------------------------------------------------------------------- --
