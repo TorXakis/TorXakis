@@ -54,7 +54,6 @@ packages:
 - location: sys/solve
 - location: sys/solvedefs
 - location: sys/testsel
-- location: sys/tree
 - location: sys/ui
 - location: sys/value
 - location: sys/valexpr
