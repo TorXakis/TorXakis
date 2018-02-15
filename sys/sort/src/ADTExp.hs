@@ -12,9 +12,14 @@ module ADTExp
 , mkFieldDecl
 , mkADTs
 , mkSort
+
+  -- * Examples
+  -- TODO: move them to a separate file.
 , tPerson
 , mADTDefs
-, tDup  
+, tDupF
+, tDupC
+, tDupADTs
 ) where
 
 import           Data.Text       (Text)
@@ -255,7 +260,11 @@ mADTDefs = mkADTs' [tPerson, tOperation, tStudent]
 
 -- ** Examples of data with duplicated fields
 
-tDup = "Dup" .::= [ "Dup" .= ["foo" .: "bar", "foo" .: "baz"]]
+tDupF = "DupF" .::= [ "DupF" .= ["foo" .: "bar", "foo" .: "baz"]]
+
+tDupC = "DupC" .::= [ "DupC" .= [], "DupC" .= []] 
+
+tDupADTs = mkADTs' [tPerson, tPerson]
 
 -- ** Examples of not-constructible data.
 
