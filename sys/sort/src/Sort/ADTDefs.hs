@@ -133,9 +133,16 @@ emptyADTDefs = ADTDefs Map.empty
 addADTDefs :: [ADTDef Name]
             -> ADTDefs
             -> Either ADTError ADTDefs
+-- QUESTION: don't we also have to check that the constructors are unique
+-- across all the ADT's? How do we disambiguate in TorXakis otherwise?
 addADTDefs l adfs
     | not $ null nuNames               = let nonUniqDefs = filter ((`elem` nuNames) . adtName) l
                                          in  Left $ NamesNotUnique nonUniqDefs
+    -- QUESTION: do we have a test case for:
+    --
+    -- TYPEDEF Int ::= ...
+    --
+    -- I.e.: an ADT named after an existing pre-defined sort.
     | not $ null unknownRefs           = Left $ RefsNotFound unknownRefs
     | not $ null nonConstructableTypes = let ncADTNames = map adtName nonConstructableTypes
                                          in  Left $ NonConstructableTypes ncADTNames
@@ -188,15 +195,22 @@ getSortADTs = map (SortADT . Ref . Name.toText . adtName)
 --   * A list of constructable 'Sort's
 --
 --   * A list of non-constructable 'ADTDef's
+--
 verifyConstructableADTs :: ([Sort], [ADTDef Name])
-                        -> ([Sort], [ADTDef Name]) 
+                        -> ([Sort], [ADTDef Name])
+-- QUESTION: Do we have a test to check whether the following type is constructible?
+--
+-- > TYPEDEF A ::= A { b :: B }
+--
+-- > TYPEDEF B ::= B { a :: A} | C
+--                        
 verifyConstructableADTs (constructableSorts, uADTDfs) =
-    let (cs,ncs)  = partition
-                        (any (allFieldsConstructable constructableSorts) . Map.elems . cDefsToMap . constructors)
-                        uADTDfs
-    in  if null cs
-            then (constructableSorts,uADTDfs)
-            else verifyConstructableADTs (getSortADTs cs ++ constructableSorts, ncs)
+    let (cs, ncs)  = partition
+                     (any (allFieldsConstructable constructableSorts) . Map.elems . cDefsToMap . constructors)
+                     uADTDfs
+    in if null cs
+       then (constructableSorts, uADTDfs)
+       else verifyConstructableADTs (getSortADTs cs ++ constructableSorts, ncs)
 
 allFieldsConstructable :: [Sort] -> ConstructorDef Name -> Bool
 allFieldsConstructable constructableSorts cDef = all (isSortConstructable constructableSorts) $ sortsOfFieldDefs $ fields cDef
@@ -208,6 +222,8 @@ isSortConstructable _                  _                     = True
 -- | Creates a list of 'FieldDef.sort's of every 'FieldDef' in a 'FieldDefs'.
 sortsOfFieldDefs :: FieldDefs Name -> [Sort]
 sortsOfFieldDefs fDefs = map (read . T.unpack . Name.toText . sort) $ fDefsToList fDefs
+-- QUESTION: actually a warning, we have to apply a lot of functions to get the
+-- information we need. Isn't this hinting a problem with our design?
 
 -- | Type of errors that are raised when it's not possible to add 'ADTDef's to
 --   'ADTDefs' structure via 'addADTDefs' function.

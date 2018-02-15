@@ -12,15 +12,22 @@ module ADTExp
 , mkFieldDecl
 , mkADTs
 , mkSort
+, tPerson
+, mADTDefs
+, tDup  
 ) where
 
 import           Data.Text       (Text)
-import qualified Data.Text        as T
+import qualified Data.Text       as T
 import           Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import           Data.Monoid
 import           Data.List.Unique
     
 newtype Sort = Sort { sortName :: Text } deriving (Show, Eq)
+
+instance HasName Sort where
+    name = sortName
 
 -- | Smart constructor for sort:
 --
@@ -48,7 +55,10 @@ predefSorts =
 data ADTDecl = ADTDecl
     { adtDeclName :: Text
     , adtDeclConstructors :: [ConstructorDecl]
-    }
+    } deriving (Show)
+
+instance HasName ADTDecl where
+    name = adtDeclName
 
 -- | Smart constructor for an ADT declaration:
 --
@@ -83,7 +93,7 @@ data ConstructorDecl = ConstructorDecl
     } deriving (Show)
 
 instance HasName ConstructorDecl where
-    name (ConstructorDecl n _) = n
+    name = constrDeclName
 
 -- | Smart constructor for a constructor declaration.
 --
@@ -99,7 +109,7 @@ mkConstructorDecl :: Text        -- ^ Constructor name.
 mkConstructorDecl cName fs
     | T.null cName        = Left $ Error EmptyName
                                          "Constructor name cannot be empty"
-    | not (null nuFields) = Left $ Error (DuplicatedNames nuFields) ""
+    | not (null nuFields) = Left $ Error (DuplicatedFields nuFields) ""
     | otherwise      = Right $ ConstructorDecl cName fs
     where
       nuFields :: [Text]
@@ -138,23 +148,17 @@ data Error = Error
     } deriving (Show)
 
 data ErrorType = EmptyName
-               | DuplicatedNames [Text]
+               | DuplicatedADTs [Text]
                | DuplicatedConstructors [Text]
                | DuplicatedFields [Text]
-               | UndefinedReference
+               | UndefinedRefs [FieldDecl]
                | EmptyConstructorDefs
                deriving (Show, Eq)
 
 data ADT = ADT
     { adtName :: Text
     , constructors :: LookupTable Constructor
-    }
-
--- | Smart constructor for an ADT:
---
---
-mkADTDefs :: [ADTDecl] -> Either Error (LookupTable ADT)
-mkADTDefs = undefined
+    } deriving (Show)
 
 -- type LookupTable v = Map (Ref v) v I think 'Ref's are not needed.
 type LookupTable v = Map Text v
@@ -164,12 +168,12 @@ type LookupTable v = Map Text v
 data Constructor = Constructor
     { constructorName :: Text
     , fields :: LookupTable Field
-    }
+    } deriving (Show)
 
 data Field = Field
     { fieldName :: Text
     , fieldSort :: Sort
-    }
+    } deriving (Show)
 
 -- | Smart constructor for ADT's.
 --
@@ -185,7 +189,31 @@ data Field = Field
 mkADTs :: [ADTDecl]
        -> [Sort] -- ^ List of available sorts.
        -> Either Error (LookupTable ADT)
-mkADTs = undefined
+mkADTs decls sorts
+    | not (null nuAdts)        = Left $ Error (DuplicatedADTs nuAdts) ""
+    | not (null undefinedRefs) = Left $ Error (UndefinedRefs undefinedRefs) ""
+    -- TODO: check that all ADT's are constructible.
+    | otherwise                = Right $ Map.fromList $ zip adtNames adts
+    where
+      adtNames = name <$> decls
+      adts = adtDeclToADT <$> decls
+      -- Here using the smart constructor will make things unecessary, since we
+      -- already checked in the smart constructor of 'FieldDecl' that all the
+      -- field types were not empty.
+      fieldDeclToField (FieldDecl n s) = Field n (Sort n)
+      cstrDeclToCstr (ConstructorDecl n fds) =
+          Constructor n $
+          Map.fromList $ zip (name <$> fds) (fieldDeclToField <$> fds)
+      adtDeclToADT (ADTDecl n cs) =
+          ADT n $
+          Map.fromList $ zip (name <$> cs) (cstrDeclToCstr <$> cs)
+      undefinedRefs = filter isUndefined allFields
+      isUndefined f = fieldDeclSort f `notElem` allSorts
+      allSorts = adtNames ++ sortNames
+      sortNames = name <$> sorts
+      allFields :: [FieldDecl]
+      allFields = concatMap constrFields (concatMap adtDeclConstructors decls)
+      nuAdts = repeated (adtNames ++ (name <$> sorts))
 
 -- | A more convenient version of the 'mkADTs' smart constructor that uses the
 -- predefined sorts by default.
@@ -198,10 +226,10 @@ mkADTs' eDecls = sequence eDecls >>= (`mkADTs` predefSorts)
 -----------------------------------------------------------------------------
 
 (.::=) :: Text -> [Either Error ConstructorDecl] -> Either Error ADTDecl
-(.::=) = undefined
+adtName .::= ecs = sequence ecs >>= mkADTDecl adtName
 
 (.=) :: Text -> [Either Error FieldDecl] -> Either Error ConstructorDecl
-(.=) = undefined
+cName .= efs = sequence efs >>= mkConstructorDecl cName
 
 -- "MyType" .::= 
 --     [ "Sum"  .= [ "name" .: "String", "age" .: "Int"]
@@ -225,7 +253,11 @@ tStudent = "Student" .::= [ "Student" .= ["who" .: "Person", "grade" .: "Int"]]
 mADTDefs :: Either Error (LookupTable ADT)
 mADTDefs = mkADTs' [tPerson, tOperation, tStudent] 
 
--- ** Example of not-constructible data.
+-- ** Examples of data with duplicated fields
+
+tDup = "Dup" .::= [ "Dup" .= ["foo" .: "bar", "foo" .: "baz"]]
+
+-- ** Examples of not-constructible data.
 
 tA :: Either Error ADTDecl
 tA = "A" .::= [ "A" .= ["b" .: "B"]]
