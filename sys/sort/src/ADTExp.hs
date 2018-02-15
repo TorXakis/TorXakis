@@ -63,12 +63,27 @@ data ADTDecl = ADTDecl
 mkADTDecl :: Text -- ^ Constructor name
           -> [ConstructorDecl]
           -> Either Error ADTDecl
-mkADTDecl = undefined
+mkADTDecl adtName cs
+    | T.null adtName    = Left $ Error EmptyName
+                          "ADT name cannot be empty"
+    | null cs           = Left $ Error EmptyConstructorDefs
+                          "ADT must have at least one constructor"
+    | not (null nuCtrs) = Left $ Error (DuplicatedConstructors nuCtrs)
+                          ""
+    | not (null nuFlds) = Left $ Error (DuplicatedFields nuFlds)
+                          ""
+    | otherwise         = Right $ ADTDecl adtName cs
+    where
+      nuCtrs = repeated $ name <$> cs
+      nuFlds = repeated $ name <$> concatMap constrFields cs
 
 data ConstructorDecl = ConstructorDecl
     { constrDeclName :: Text
     , constrFields :: [FieldDecl]
     } deriving (Show)
+
+instance HasName ConstructorDecl where
+    name (ConstructorDecl n _) = n
 
 -- | Smart constructor for a constructor declaration.
 --
@@ -82,12 +97,13 @@ mkConstructorDecl :: Text        -- ^ Constructor name.
                   -> [FieldDecl] -- ^ Fields
                   -> Either Error ConstructorDecl
 mkConstructorDecl cName fs
-    | T.null cName   = Left $ Error EmptyName "Constructor name cannot be empty"
-    | null dupFields = Left $ Error (DuplicatedNames dupFields) ""
+    | T.null cName        = Left $ Error EmptyName
+                                         "Constructor name cannot be empty"
+    | not (null nuFields) = Left $ Error (DuplicatedNames nuFields) ""
     | otherwise      = Right $ ConstructorDecl cName fs
     where
-      dupFields :: [Text]
-      dupFields = name <$> fs
+      nuFields :: [Text]
+      nuFields = repeated $ name <$> fs
 
 data FieldDecl = FieldDecl
     { fieldDeclName :: Text
@@ -123,7 +139,10 @@ data Error = Error
 
 data ErrorType = EmptyName
                | DuplicatedNames [Text]
+               | DuplicatedConstructors [Text]
+               | DuplicatedFields [Text]
                | UndefinedReference
+               | EmptyConstructorDefs
                deriving (Show, Eq)
 
 data ADT = ADT
