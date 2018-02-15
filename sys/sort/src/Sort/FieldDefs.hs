@@ -43,7 +43,8 @@ import           GHC.Generics     (Generic)
 import           Name
 
 -- | Data structure for a field definition.
-data FieldDef v = FieldDef { fieldName :: Name  -- ^ Name of the field
+-- QUESTION: What if we have field with no name?
+data FieldDef v = FieldDef { fieldName :: Name  -- ^ Name of the field 
                            , sort      :: v     -- ^ Sort of the field
                            }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
@@ -52,13 +53,16 @@ data FieldDef v = FieldDef { fieldName :: Name  -- ^ Name of the field
 data FieldDefs v = FieldDefs { -- | Transform 'FieldDefs' to a list of 'FieldDef's.
                                fDefsToList :: [FieldDef v]
                                -- | Number of field definitions in a 'FieldDefs'.
-                             , nrOfFieldDefs :: Int
+                             , nrOfFieldDefs :: Int -- QUESTION: Why do you
+                                                    -- need this? Isn't the
+                                                    -- number of field defs in
+                                                    -- the list above?
                              }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
 
 -- | Smart constructor for 'FieldDefs'.
 --
---   Precondition:
+--   Preconditions:
 --
 --   * List of 'FieldDef's should be non-empty.
 --

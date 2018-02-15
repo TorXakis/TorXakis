@@ -43,6 +43,7 @@ testADTList  = TestList [ TestLabel "References" testRef
 -- Success cases
 ---------------------------------------------------------------------------
 testRef :: Test
+-- QUESTION: what are we testing here? Isn't this true by construction?
 testRef = TestCase $ do
     let expected = T.pack "12"
         rInt :: Ref Int
@@ -50,6 +51,7 @@ testRef = TestCase $ do
     assertEqual "Same reference?" expected $ Ref.toText rInt
 
 testAddADTSingle :: Test
+-- NOTE: this seems to be testing that "data C = cstrC { fieldInt :: Int }" can be constructed.
 testAddADTSingle = TestCase $ do
     let newADTList = [adtCName]
         expADTList = [adtCSort]

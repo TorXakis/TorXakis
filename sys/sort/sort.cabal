@@ -17,6 +17,7 @@ library
                     , Name
                     , Sort
                     , SortOf
+                    , ADTExp
 
   other-modules:      Ref
                     , Sort.ADTDefs

@@ -52,6 +52,7 @@ newtype Name = Name { toText :: Text -- ^ 'Data.Text'(ual) representation of Nam
 --
 --   is returned.
 name :: Text -> Either Text Name
+-- QUESTION: What if we have field with no name?
 name s | T.null s = Left $ T.pack "Illegal input: Empty String"
 name s            = Right $ Name s
 
@@ -62,6 +63,9 @@ nameOf = Name . T.pack . show
 instance IsString Name where
     fromString s =
         case (name . T.pack) s of
+            -- QUESTION: I'm not sure this is right. If we declare an instance
+            -- of "IsString" I would expect an isomorphism between the literal
+            -- strings and the data-type that is an instance of this class...
             Left err -> error $ T.unpack err
             Right n  -> n
 

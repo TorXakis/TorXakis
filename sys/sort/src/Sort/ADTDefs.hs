@@ -60,6 +60,9 @@ import           Sort.ConstructorDefs
 import           Sort.FieldDefs
 
 -- | Data structure for Abstract Data Type (ADT) definition.
+
+-- QUESTION: why do we need a phantom type here?
+
 data ADTDef v = ADTDef
     { adtName      :: Name              -- ^ Name of the ADT
     , constructors :: ConstructorDefs v -- ^ Constructor definitions of the ADT
@@ -69,6 +72,35 @@ data ADTDef v = ADTDef
 -- | Data structure for a collection of 'ADTDef's.
 newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a 'Data.Map.Map' from 'Ref' 'ADTDef' to 'ADTDef'.
                             adtDefsToMap :: Map.Map (Ref (ADTDef Sort)) (ADTDef Sort)
+                              -- QUESTION: is this 'Ref' adding any type safety over just having just 'Text'?
+                              --
+                              -- I could always do something like:
+                              --
+                              -- > Map.lookup (Ref "ThisIsNotAnADT" :: Ref (ADTDef Sort)) adtDefs
+                              --
+                              -- And still write incorrect code ...
+                              --
+                              -- If we don't want this, we need make the 'Ref'
+                              -- constructor private (WITHOUT exposing a smart
+                              -- constructor either), which means that users of
+                              -- this library ('sort') will only be able to
+                              -- lookup references that exist (in which case I
+                              -- wonder why do we have a map...).
+                              --
+                              -- I think we DO NOT want to make 'Ref' private:
+                              -- consider what happens when we find a variable
+                              -- declaration:
+                              --
+                              -- > p :: Person
+                              --
+                              -- If the keys of the map are of type 'Text' we
+                              -- can readily perform the lookup. If they are
+                              -- 'Ref' and 'Ref' constructor is private, then we
+                              -- have no way of constructing a 'Ref' from the
+                              -- string "Person".
+                              --
+                              -- My conclusion will be: let the fields be just
+                              -- references.
                             }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
 
@@ -198,14 +230,32 @@ instance Show ADTError where
 -- Sort
 -----------------------------------------------------------------------------
 -- | The data type that represents 'Sort's for 'ValExpr.ValExpr's.
-data Sort = SortError
+data Sort = SortError -- QUESTION: why is Error a sort?
           | SortBool
           | SortInt
           | SortChar
           | SortString
           | SortRegex
-          | SortADT (Ref (ADTDef Sort))
-     deriving (Eq,Ord,Show,Read,Generic,NFData,Data)
+          | SortADT (Ref (ADTDef Sort)) -- QUESTION: why do you need a type here? Why not just "SortADT"             
+     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
+-- QUESTION: do we need this enumeration (sum) type at all? Why not having something like
+--
+-- > newtype Sort = Sort Text
+--
+-- And have
+--
+-- > predefSorts :: [Sort]
+-- > predefSorts = [Sort "Bool", Sort "Int", Sort "Char", ...]
+--
+-- If you define a ADT:
+--
+-- > TYPEDEF Whatever ::= ...
+--
+--
+-- Then we would introduce a new sort
+--
+-- > Sort "Whatever"
+--
 
 instance Identifiable Sort where
     getId _ = Nothing

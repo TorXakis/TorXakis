@@ -58,6 +58,12 @@ newtype ConstructorDefs v = ConstructorDefs { -- | Transform 'ConstructorDefs' t
                                             }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
 
+-- QUESTION: Do we need a smart constructor for 'ConstructorDefs' at all? Are
+-- our users going to manipulate constructors that are not associated to an
+-- ADT? If not, then we're making things difficult for ourselves. Let's define
+-- a smart constructor only for an ADT, and then all the structures below an
+-- ADT will be also correctly constructed.
+
 -- | Smart constructor for 'ConstructorDefs'.
 --
 --   Preconditions:
