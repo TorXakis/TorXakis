@@ -14,10 +14,13 @@ module ADTExp
 , mkSort
 ) where
 
-import           Data.Text        (Text)
-import           Data.Map.Strict  (Map)
-
-newtype Sort = Sort { sortName :: Text }
+import           Data.Text       (Text)
+import qualified Data.Text        as T
+import           Data.Map.Strict (Map)
+import           Data.Monoid
+import           Data.List.Unique
+    
+newtype Sort = Sort { sortName :: Text } deriving (Show, Eq)
 
 -- | Smart constructor for sort:
 --
@@ -25,11 +28,22 @@ newtype Sort = Sort { sortName :: Text }
 --
 -- * Sort names should be not empty.
 --
-mkSort :: Text -> Either Error Sort
-mkSort = undefined
+mkSort :: Text -- ^ SortName
+       -> Either Error Sort
+mkSort sName =
+    if T.null sName
+    then Left  $ Error EmptyName "Sort name cannot be empty"
+    else Right $ Sort sName
 
+-- | Predefined sorts.
 predefSorts :: [Sort]
-predefSorts = [Sort "Bool", Sort "Int", Sort "Char", Sort "Regex", Sort "String"]
+predefSorts =
+    [ Sort "Bool"
+    , Sort "Int"
+    , Sort "Char"
+    , Sort "Regex"
+    , Sort "String"
+    ]
 
 data ADTDecl = ADTDecl
     { adtDeclName :: Text
@@ -54,7 +68,7 @@ mkADTDecl = undefined
 data ConstructorDecl = ConstructorDecl
     { constrDeclName :: Text
     , constrFields :: [FieldDecl]
-    }
+    } deriving (Show)
 
 -- | Smart constructor for a constructor declaration.
 --
@@ -67,12 +81,18 @@ data ConstructorDecl = ConstructorDecl
 mkConstructorDecl :: Text        -- ^ Constructor name.
                   -> [FieldDecl] -- ^ Fields
                   -> Either Error ConstructorDecl
-mkConstructorDecl = undefined
+mkConstructorDecl cName fs
+    | T.null cName   = Left $ Error EmptyName "Constructor name cannot be empty"
+    | null dupFields = Left $ Error (DuplicatedNames dupFields) ""
+    | otherwise      = Right $ ConstructorDecl cName fs
+    where
+      dupFields :: [Text]
+      dupFields = name <$> fs
 
 data FieldDecl = FieldDecl
     { fieldDeclName :: Text
     , fieldDeclSort :: Text
-    }
+    } deriving (Show, Eq)
 
 -- | Smart constructor for a field declaration:
 --
@@ -85,9 +105,26 @@ data FieldDecl = FieldDecl
 mkFieldDecl :: Text -- ^ Field name.
             -> Text -- ^ Field type.
             -> Either Error FieldDecl
-mkFieldDecl = undefined
+mkFieldDecl fName fType
+    | T.null fName = Left $ Error EmptyName "Field name cannot be empty"
+    | T.null fType = Left $ Error EmptyName "Field type cannot be empty"
+    | otherwise    = Right $ FieldDecl fName fType
 
-type Error = String
+class HasName a where
+    name :: a -> Text
+
+instance HasName FieldDecl where
+    name (FieldDecl n _) = n
+
+data Error = Error
+    { errorType :: ErrorType
+    , errorMessage :: Text
+    } deriving (Show)
+
+data ErrorType = EmptyName
+               | DuplicatedNames [Text]
+               | UndefinedReference
+               deriving (Show, Eq)
 
 data ADT = ADT
     { adtName :: Text

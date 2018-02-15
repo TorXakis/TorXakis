@@ -82,6 +82,7 @@ fieldDefs :: [FieldDef Name] -> Either ADTFieldError (FieldDefs Name)
 fieldDefs [] = Left EmptyFieldDefs
 fieldDefs l
     | not $ null nuFieldNames = let nonUniqDefs = filter ((`elem` nuFieldNames) . fieldName) l
+    -- QUESTION: why not return nuFieldNames?
                                 in  Left $ FieldNamesNotUnique nonUniqDefs
     | otherwise = Right $ FieldDefs l $ length l
     where
