@@ -20,6 +20,8 @@ module ADTExp
 , tDupF
 , tDupC
 , tDupADTs
+, mCircularADTDefs
+, mNonCircular
 ) where
 
 import           Data.Text       (Text)
@@ -28,6 +30,7 @@ import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import           Data.Monoid
 import           Data.List.Unique
+import           Data.List
     
 newtype Sort = Sort { sortName :: Text } deriving (Show, Eq)
 
@@ -157,8 +160,9 @@ data ErrorType = EmptyName
                | DuplicatedConstructors [Text]
                | DuplicatedFields [Text]
                | UndefinedRefs [FieldDecl]
+               | NonConstructibleADT [ADTDecl]
                | EmptyConstructorDefs
-               deriving (Show, Eq)
+               deriving (Show)
 
 data ADT = ADT
     { adtName :: Text
@@ -195,30 +199,50 @@ mkADTs :: [ADTDecl]
        -> [Sort] -- ^ List of available sorts.
        -> Either Error (LookupTable ADT)
 mkADTs decls sorts
-    | not (null nuAdts)        = Left $ Error (DuplicatedADTs nuAdts) ""
+    | not (null nuADTs)        = Left $ Error (DuplicatedADTs nuADTs) ""
     | not (null undefinedRefs) = Left $ Error (UndefinedRefs undefinedRefs) ""
-    -- TODO: check that all ADT's are constructible.
+    | not (null ncADTs)        = Left $ Error (NonConstructibleADT ncADTs) ""
     | otherwise                = Right $ Map.fromList $ zip adtNames adts
     where
       adtNames = name <$> decls
+      sortNames = name <$> sorts
       adts = adtDeclToADT <$> decls
+      nuADTs = repeated $ adtNames ++ sortNames
+      undefinedRefs = filter isUndefined allFields
+      allFields :: [FieldDecl]
+      allFields = concatMap constrFields (concatMap adtDeclConstructors decls)
+      ncADTs = getNonConstructibleADTs decls sortNames
       -- Here using the smart constructor will make things unecessary, since we
       -- already checked in the smart constructor of 'FieldDecl' that all the
-      -- field types were not empty.
+      -- field types were not empty.      
       fieldDeclToField (FieldDecl n s) = Field n (Sort n)
       cstrDeclToCstr (ConstructorDecl n fds) =
           Constructor n $
           Map.fromList $ zip (name <$> fds) (fieldDeclToField <$> fds)
       adtDeclToADT (ADTDecl n cs) =
           ADT n $
-          Map.fromList $ zip (name <$> cs) (cstrDeclToCstr <$> cs)
-      undefinedRefs = filter isUndefined allFields
+          Map.fromList $ zip (name <$> cs) (cstrDeclToCstr <$> cs)      
       isUndefined f = fieldDeclSort f `notElem` allSorts
       allSorts = adtNames ++ sortNames
-      sortNames = name <$> sorts
-      allFields :: [FieldDecl]
-      allFields = concatMap constrFields (concatMap adtDeclConstructors decls)
-      nuAdts = repeated (adtNames ++ (name <$> sorts))
+
+-- | Return all the ADT's that are non-constructible.
+getNonConstructibleADTs :: [ADTDecl] -- ^ ADT declarations
+                        -> [Text]    -- ^ Names of the available sorts
+                        -> [ADTDecl]
+getNonConstructibleADTs decls aSorts = 
+    let (cs, ncs) = partition (isConstructible aSorts) decls in
+        if null cs
+        then ncs
+        else getNonConstructibleADTs ncs (aSorts ++ map name cs)
+
+-- | Determine whether an ADT is constructible using the available sorts.
+isConstructible :: [Text] -> ADTDecl -> Bool
+isConstructible aSorts decls =
+    any isConstructibleField (adtDeclConstructors decls)
+    where
+      isConstructibleField :: ConstructorDecl -> Bool
+      isConstructibleField c = 
+          all (`elem` aSorts) (fieldDeclSort <$> constrFields c)
 
 -- | A more convenient version of the 'mkADTs' smart constructor that uses the
 -- predefined sorts by default.
@@ -266,7 +290,7 @@ tDupC = "DupC" .::= [ "DupC" .= [], "DupC" .= []]
 
 tDupADTs = mkADTs' [tPerson, tPerson]
 
--- ** Examples of not-constructible data.
+-- ** Examples of non-constructible data.
 
 tA :: Either Error ADTDecl
 tA = "A" .::= [ "A" .= ["b" .: "B"]]
@@ -276,5 +300,15 @@ tB = "B" .::= [ "B" .= ["a" .: "A"]]
 
 mCircularADTDefs :: Either Error (LookupTable ADT)
 mCircularADTDefs = mkADTs' [tA, tB]
-    
+
+-- But this should be constructible
+tA' :: Either Error ADTDecl
+tA' = "A" .::= [ "A" .= ["b" .: "B"], "C" .= []]
+
+tB' :: Either Error ADTDecl
+tB' = "B" .::= [ "B" .= ["a" .: "A"]]
+
+mNonCircular :: Either Error (LookupTable ADT)
+mNonCircular = mkADTs' [tA', tB']
+
 -- This should give a circular dependency problem.
