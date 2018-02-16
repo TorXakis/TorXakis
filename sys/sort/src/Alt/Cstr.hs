@@ -7,6 +7,7 @@ See LICENSE at root directory of this repository.
 module Alt.Cstr where
 
 import           GHC.Generics
+import           Data.Text       (Text)
 
 import           Alt.Name
 import           Alt.Field
@@ -23,5 +24,4 @@ instance HasName CstrD
 data Cstr = Cstr
     { cName   :: Name
     , cFields :: LookupTable Field
-    }
-
+    } deriving (Show, Eq, Generic)

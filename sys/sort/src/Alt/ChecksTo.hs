@@ -18,6 +18,7 @@ import qualified Data.Map.Strict as Map
 import           Alt.Name
 import           Alt.Sort
 import           Alt.Field
+import           Alt.Cstr
 import           Alt.LookupTable
 
 -- | Can type 'a' be transformed to type 'b' after a consistency check?
@@ -27,11 +28,19 @@ class ChecksTo a b where
     default checkTo :: (Generic a, Generic b, GChecksTo (Rep a) (Rep b)) => a -> b
     checkTo = to . gCheckTo . from
 
-instance ChecksTo Text Text where
+instance ChecksTo a a where
     checkTo = id
+
+newtype Foo = Foo String deriving (Show, Generic)
+
+newtype Bar = Bar String deriving (Show, Generic)
+
+instance ChecksTo Foo Bar
 
 instance ChecksTo FieldD Field where
     checkTo (FieldD n s) = Field n (fromText s)
+
+instance ChecksTo CstrD Cstr
 
 instance (HasName a, ChecksTo a b) => ChecksTo [a] (LookupTable b) where
     checkTo xs = Map.fromList $ zip (name <$> xs) (checkTo <$> xs)
@@ -42,10 +51,10 @@ class GChecksTo f g where
 instance GChecksTo U1 U1 where
     gCheckTo U1 = U1
 
-instance GChecksTo a b => GChecksTo (M1 i c a) (M1 i c b) where
+instance GChecksTo a a' => GChecksTo (M1 i c a) (M1 i' c' a') where
     gCheckTo (M1 x) = M1 (gCheckTo x)
 
-instance ChecksTo a b => GChecksTo (K1 i a) (K1 i b) where
+instance ChecksTo a a' => GChecksTo (K1 i a) (K1 i' a') where
     gCheckTo (K1 a) = K1 (checkTo a)
 
 instance (GChecksTo a a', GChecksTo b b') => GChecksTo (a :*: b) (a' :*: b')
