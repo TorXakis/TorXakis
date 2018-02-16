@@ -123,6 +123,7 @@ mkConstructorDecl cName fs
       nuFields :: [Text]
       nuFields = repeated $ name <$> fs
 
+-- | Declaration of a field.
 data FieldDecl = FieldDecl
     { fieldDeclName :: Text
     , fieldDeclSort :: Text
