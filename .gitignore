@@ -1,6 +1,9 @@
 #stack working directory
 .stack-work
 
+#ignore the cabal files in projects that use hpack
+sys/sort/*.cabal
+
 # Compiled class file - test
 *.class
 
