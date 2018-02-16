@@ -260,11 +260,6 @@ adtName .::= ecs = sequence ecs >>= mkADTDecl adtName
 (.=) :: Text -> [Either Error FieldDecl] -> Either Error ConstructorDecl
 cName .= efs = sequence efs >>= mkConstructorDecl cName
 
--- "MyType" .::= 
---     [ "Sum"  .= [ "name" .: "String", "age" .: "Int"]
---     , "Prod" .= [ "p0" .: "Int"]
---     ]
-
 (.:) :: Text -> Text -> Either Error FieldDecl
 (.:) = mkFieldDecl
 

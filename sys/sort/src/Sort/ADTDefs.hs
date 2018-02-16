@@ -202,7 +202,7 @@ verifyConstructableADTs :: ([Sort], [ADTDef Name])
 --
 -- > TYPEDEF A ::= A { b :: B }
 --
--- > TYPEDEF B ::= B { a :: A} | C
+-- > TYPEDEF B ::= B { a :: A } | C
 --                        
 verifyConstructableADTs (constructableSorts, uADTDfs) =
     let (cs, ncs)  = partition
