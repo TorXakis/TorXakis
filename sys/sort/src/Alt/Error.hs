@@ -18,6 +18,7 @@ data ErrorType = EmptyName
                | NotUniqueCtrs
                | NotUniqueFields
                | UndefinedRefs
-               | NonCtrADT
-               | EmptyCtrDefs
+               | NonCstrADT
+               | NoCstr
+               | EmptyCstrDefs
                deriving (Show)

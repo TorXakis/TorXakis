@@ -19,6 +19,7 @@ import           Alt.Name
 import           Alt.Sort
 import           Alt.Field
 import           Alt.Cstr
+import           Alt.ADT
 import           Alt.LookupTable
 
 -- | Can type 'a' be transformed to type 'b' after a consistency check?
@@ -31,16 +32,12 @@ class ChecksTo a b where
 instance ChecksTo a a where
     checkTo = id
 
-newtype Foo = Foo String deriving (Show, Generic)
-
-newtype Bar = Bar String deriving (Show, Generic)
-
-instance ChecksTo Foo Bar
-
 instance ChecksTo FieldD Field where
     checkTo (FieldD n s) = Field n (fromText s)
 
 instance ChecksTo CstrD Cstr
+
+instance ChecksTo ADTD ADT
 
 instance (HasName a, ChecksTo a b) => ChecksTo [a] (LookupTable b) where
     checkTo xs = Map.fromList $ zip (name <$> xs) (checkTo <$> xs)

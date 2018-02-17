@@ -29,16 +29,21 @@ instance HasName FieldD
 --
 -- * The field type should be non-empty.
 --
-mkFieldDecl :: Text -- ^ Field name.
-            -> Text -- ^ Field type.
-            -> Either Error FieldD
-mkFieldDecl fName fType
-    | T.null fName = Left $ Error EmptyName "Field name cannot be empty"
+mkFieldD :: Text -- ^ Field name.
+         -> Text -- ^ Field type.
+         -> Either Error FieldD
+mkFieldD n fType
+    | T.null n = Left $ Error EmptyName "Field name cannot be empty"
     | T.null fType = Left $ Error EmptyName "Field type cannot be empty"
-    | otherwise    = Right $ FieldD (Name fName) fType
+    | otherwise    = Right $ FieldD (Name n) fType
+
+
+-- | Infix version of `mkFieldD`.
+(.:) :: Text -> Text -> Either Error FieldD
+(.:) = mkFieldD
 
 -- | Type-checked field.
 data Field = Field
     { fName :: Name
     , fSort :: Sort
-    } deriving (Show, Eq)
+    } deriving (Show, Eq, Generic)
