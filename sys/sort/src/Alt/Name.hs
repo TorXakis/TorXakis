@@ -10,11 +10,13 @@ module Alt.Name where
 
 import           GHC.Generics
 import           Data.Text       (Text)
+import qualified Data.Text as T
 import           Data.String
 
 newtype Name = Name Text deriving (Show, Eq, Generic)
 
-instance IsString Name
+instance IsString Name where
+    fromString = Name . T.pack
 
 class HasName a where
     name :: a -> Text

@@ -21,6 +21,8 @@ data ADTD = ADTD
     , adCstrs :: [CstrD]
     } deriving (Show, Eq, Generic)
 
+instance HasName ADTD
+
 -- | Smart constructor for an ADT declaration:
 --
 -- Preconditions:

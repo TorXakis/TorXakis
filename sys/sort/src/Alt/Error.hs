@@ -7,6 +7,7 @@ See LICENSE at root directory of this repository.
 module Alt.Error where
 
 import           Data.Text       (Text)
+import qualified Data.Text        as T
 
 data Error = Error
     { eType :: ErrorType
@@ -17,8 +18,12 @@ data ErrorType = EmptyName
                | NotUniqueADTs
                | NotUniqueCtrs
                | NotUniqueFields
-               | UndefinedRefs
+               | NotDefinedRefs
                | NonCstrADT
                | NoCstr
                | EmptyCstrDefs
                deriving (Show)
+
+
+errorWithTexts :: ErrorType -> [Text] -> Either Error a
+errorWithTexts e ts = Left $ Error e (T.intercalate " " ts)
