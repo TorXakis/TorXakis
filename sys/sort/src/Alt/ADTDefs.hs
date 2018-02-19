@@ -72,8 +72,8 @@ getNonConstructibleADTs decls aSorts =
 
 -- | Determine whether an ADT is constructible using the available sorts.
 isConstructible :: [Text] -> ADTD -> Bool
-isConstructible aSorts decls =
-    any isConstructibleField (adCstrs decls)
+isConstructible aSorts decl =
+    any isConstructibleField (adCstrs decl)
     where
       isConstructibleField :: CstrD -> Bool
       isConstructibleField c = 

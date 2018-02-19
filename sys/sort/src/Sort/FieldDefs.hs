@@ -43,28 +43,31 @@ import           GHC.Generics     (Generic)
 import           Name
 
 -- | Data structure for a field definition.
--- QUESTION: What if we have field with no name?
-data FieldDef v = FieldDef { fieldName :: Name  -- ^ Name of the field 
-                           , sort      :: v     -- ^ Sort of the field
-                           }
-    deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
+--   For simplicity, anonymous fields are not supported.
+data FieldDef v = FieldDef
+    { -- | Name of the field 
+      fieldName :: Name
+      -- | Sort of the field
+    , sort      :: v
+      -- TODO: Add meta-data like file name, line nr,
+      -- generator, etc. A Text field should be enough.
+    }
+    deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Data structure for a collection of 'FieldDef's.
 data FieldDefs v = FieldDefs { -- | Transform 'FieldDefs' to a list of 'FieldDef's.
                                fDefsToList :: [FieldDef v]
                                -- | Number of field definitions in a 'FieldDefs'.
-                             , nrOfFieldDefs :: Int -- QUESTION: Why do you
-                                                    -- need this? Isn't the
-                                                    -- number of field defs in
-                                                    -- the list above?
+                             , nrOfFieldDefs :: Int
+                             -- Implementation decision to store value i.s.o.
+                             -- calculating it, for performance.
+                             -- INVARIANT: length fDefsToList == nrOfFieldDefs
                              }
-    deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
+    deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Smart constructor for 'FieldDefs'.
 --
 --   Preconditions:
---
---   * List of 'FieldDef's should be non-empty.
 --
 --   * Names of 'FieldDef's should be unique
 --
@@ -79,10 +82,8 @@ data FieldDefs v = FieldDefs { -- | Transform 'FieldDefs' to a list of 'FieldDef
 --   Note that the position in the list is relevant as it represents implicit
 --   positions of the fields in a constructor.
 fieldDefs :: [FieldDef Name] -> Either ADTFieldError (FieldDefs Name)
-fieldDefs [] = Left EmptyFieldDefs
 fieldDefs l
     | not $ null nuFieldNames = let nonUniqDefs = filter ((`elem` nuFieldNames) . fieldName) l
-    -- QUESTION: why not return nuFieldNames?
                                 in  Left $ FieldNamesNotUnique nonUniqDefs
     | otherwise = Right $ FieldDefs l $ length l
     where

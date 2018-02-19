@@ -48,7 +48,7 @@ import           Sort.FieldDefs
 
 -- | Data structure for constructor definition.
 data ConstructorDef v = ConstructorDef { constructorName :: Name -- ^ Name of the constructor
-                                       , fields :: FieldDefs v     -- ^ Field definitions of the constructor
+                                       , fields :: FieldDefs v   -- ^ Field definitions of the constructor
                                        }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
 

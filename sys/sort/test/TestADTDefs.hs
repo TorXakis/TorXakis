@@ -62,6 +62,7 @@ testAddADTSingle = TestCase $ do
 testAddADTDependent :: Test
 testAddADTDependent = TestCase $ do
     let newADTList = [adtCName, adtB' $ nameOf $ SortADT $ Ref "C"]
+        -- Right nmB = name "B"
         adtB' t = ADTDef { adtName = "B", constructors = cDefsB' t }
         cDefsB' t = mkConstructorDefs [cstrB2 t]
         expADTList = [adtCSort, adtB' $ SortADT $ Ref "C"]
@@ -198,3 +199,6 @@ mkConstructorDefs = ConstructorDefs . Map.fromList . map (\c -> (Ref $ Name.toTe
 
 mkFieldDefs :: [FieldDef v] -> FieldDefs v
 mkFieldDefs fs = FieldDefs fs $ length fs
+
+instance IsString (Either Text Name)  where
+    fromString = name . T.pack

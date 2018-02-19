@@ -23,20 +23,24 @@ module Name
 , toText
 , name
 , nameOf
+, searchDuplicateNames
+, HasName (..)
 )
 where
 
 import           Control.DeepSeq
 import           Data.Data
-import           Data.String (IsString(..))
+import           Data.List.Unique
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           GHC.Generics     (Generic)
 
 -- | Definition of names of entities.
-newtype Name = Name { toText :: Text -- ^ 'Data.Text'(ual) representation of Name
-                    }
-    deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
+newtype Name = Name
+    { -- | 'Data.Text' representation of Name
+      toText :: Text
+    }
+    deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Smart constructor for Name
 --
@@ -52,7 +56,6 @@ newtype Name = Name { toText :: Text -- ^ 'Data.Text'(ual) representation of Nam
 --
 --   is returned.
 name :: Text -> Either Text Name
--- QUESTION: What if we have field with no name?
 name s | T.null s = Left $ T.pack "Illegal input: Empty String"
 name s            = Right $ Name s
 
@@ -60,12 +63,11 @@ name s            = Right $ Name s
 nameOf :: Show t => t -> Name
 nameOf = Name . T.pack . show
 
-instance IsString Name where
-    fromString s =
-        case (name . T.pack) s of
-            -- QUESTION: I'm not sure this is right. If we declare an instance
-            -- of "IsString" I would expect an isomorphism between the literal
-            -- strings and the data-type that is an instance of this class...
-            Left err -> error $ T.unpack err
-            Right n  -> n
+class HasName a where
+    getName :: a -> Name
 
+-- | Search values in first list that have non-unique names among combination
+--   of both lists.
+searchDuplicateNames :: (HasName a, HasName b) => [a] -> [b] -> [a]
+searchDuplicateNames xs ys = filter ((`elem` nuNames) . getName) xs
+    where nuNames = repeated $ map getName xs ++ map getName ys

@@ -60,14 +60,14 @@ import           Sort.ConstructorDefs
 import           Sort.FieldDefs
 
 -- | Data structure for Abstract Data Type (ADT) definition.
-
--- QUESTION: why do we need a phantom type here?
-
 data ADTDef v = ADTDef
     { adtName      :: Name              -- ^ Name of the ADT
     , constructors :: ConstructorDefs v -- ^ Constructor definitions of the ADT
     }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
+
+instance HasName (ADTDef v) where
+    getName = adtName
 
 -- | Data structure for a collection of 'ADTDef's.
 newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a 'Data.Map.Map' from 'Ref' 'ADTDef' to 'ADTDef'.
@@ -130,19 +130,14 @@ emptyADTDefs = ADTDefs Map.empty
 --   * or a structure containing all data types
 --
 --   is returned.
-addADTDefs :: [ADTDef Name]
-            -> ADTDefs
+--
+-- TorXakis does a simple type inference on the type of constructors, so there
+-- is no need to check for duplicated constructor names for different ADTs.
+addADTDefs :: [ADTDef Name] -- ^ Unchecked ADT definitions
+            -> ADTDefs      -- ^ Available checked ADT definitions
             -> Either ADTError ADTDefs
--- QUESTION: don't we also have to check that the constructors are unique
--- across all the ADT's? How do we disambiguate in TorXakis otherwise?
 addADTDefs l adfs
-    | not $ null nuNames               = let nonUniqDefs = filter ((`elem` nuNames) . adtName) l
-                                         in  Left $ NamesNotUnique nonUniqDefs
-    -- QUESTION: do we have a test case for:
-    --
-    -- TYPEDEF Int ::= ...
-    --
-    -- I.e.: an ADT named after an existing pre-defined sort.
+    | not $ null nuADTDefs             = Left $ NamesNotUnique nuADTDefs
     | not $ null unknownRefs           = Left $ RefsNotFound unknownRefs
     | not $ null nonConstructableTypes = let ncADTNames = map adtName nonConstructableTypes
                                          in  Left $ NonConstructableTypes ncADTNames
@@ -162,19 +157,20 @@ addADTDefs l adfs
     where
         adtMap = adtDefsToMap adfs
         definedADTs = Map.elems adtMap
-        nuNames = repeated allNames
+        nuADTDefs = searchDuplicateNames l definedADTs
         unknownRefs = filter (not . null . fst)
             $ map (\adt -> (getAbsentADTRefs $ fieldSorts adt, adt)) l
-            where fieldSorts adt = concatMap (sortsOfFieldDefs . fields) $ (Map.elems . cDefsToMap . constructors) adt
-
-        allNames = map adtName definedADTs ++ map adtName l
+            where
+                fieldSorts :: ADTDef Name -> [Sort]
+                fieldSorts adt = concatMap (sortsOfFieldDefs . fields)
+                                 $ (Map.elems . cDefsToMap . constructors) adt
 
         getAbsentADTRefs :: [Sort] -> [Ref Name]
         getAbsentADTRefs [] = []
         getAbsentADTRefs (SortADT (Ref txt) : ss)
             | txt `notElem` allNamesTxt = Ref txt : getAbsentADTRefs ss
             | otherwise                 = getAbsentADTRefs ss
-            where allNamesTxt = map Name.toText allNames
+            where allNamesTxt = map Name.toText (map adtName definedADTs ++ map adtName l)
         getAbsentADTRefs (_ : ss) = getAbsentADTRefs ss
 
         nonConstructableTypes = snd $ verifyConstructableADTs (getSortADTs definedADTs, l)
@@ -198,12 +194,6 @@ getSortADTs = map (SortADT . Ref . Name.toText . adtName)
 --
 verifyConstructableADTs :: ([Sort], [ADTDef Name])
                         -> ([Sort], [ADTDef Name])
--- QUESTION: Do we have a test to check whether the following type is constructible?
---
--- > TYPEDEF A ::= A { b :: B }
---
--- > TYPEDEF B ::= B { a :: A } | C
---                        
 verifyConstructableADTs (constructableSorts, uADTDfs) =
     let (cs, ncs)  = partition
                      (any (allFieldsConstructable constructableSorts) . Map.elems . cDefsToMap . constructors)
@@ -222,8 +212,6 @@ isSortConstructable _                  _                     = True
 -- | Creates a list of 'FieldDef.sort's of every 'FieldDef' in a 'FieldDefs'.
 sortsOfFieldDefs :: FieldDefs Name -> [Sort]
 sortsOfFieldDefs fDefs = map (read . T.unpack . Name.toText . sort) $ fDefsToList fDefs
--- QUESTION: actually a warning, we have to apply a lot of functions to get the
--- information we need. Isn't this hinting a problem with our design?
 
 -- | Type of errors that are raised when it's not possible to add 'ADTDef's to
 --   'ADTDefs' structure via 'addADTDefs' function.
@@ -246,32 +234,14 @@ instance Show ADTError where
 -- Sort
 -----------------------------------------------------------------------------
 -- | The data type that represents 'Sort's for 'ValExpr.ValExpr's.
-data Sort = SortError -- QUESTION: why is Error a sort?
+data Sort = SortError -- TODO - QUESTION: why is Error a sort?
           | SortBool
           | SortInt
           | SortChar
           | SortString
           | SortRegex
-          | SortADT (Ref (ADTDef Sort)) -- QUESTION: why do you need a type here? Why not just "SortADT"             
+          | SortADT (Ref (ADTDef Sort))
      deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
--- QUESTION: do we need this enumeration (sum) type at all? Why not having something like
---
--- > newtype Sort = Sort Text
---
--- And have
---
--- > predefSorts :: [Sort]
--- > predefSorts = [Sort "Bool", Sort "Int", Sort "Char", ...]
---
--- If you define a ADT:
---
--- > TYPEDEF Whatever ::= ...
---
---
--- Then we would introduce a new sort
---
--- > Sort "Whatever"
---
 
 instance Identifiable Sort where
     getId _ = Nothing
