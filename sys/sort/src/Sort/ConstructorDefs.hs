@@ -92,27 +92,25 @@ constructorDefs :: [ConstructorDef Name]
                 -> Either ADTConstructorError (ConstructorDefs Name)
 constructorDefs [] = Left EmptyConstructorDefs
 constructorDefs cs
-    | not $ null nuCstrNames    = let nonUniqDefs = filter ((`elem` nuCstrNames) . constructorName) cs
-                                  in  Left $ ConstructorNamesNotUnique nonUniqDefs
-    | not $ null nuFieldNames   = Left $ SameFieldMultipleCstr nuFieldNames
-    | otherwise = Right $ ConstructorDefs
-                  $ convertTo cs
+    | not $ null nuCstrDefs   = Left $ ConstructorNamesNotUnique nuCstrDefs
+    | not $ null nuFieldNames = Left $ SameFieldMultipleCstr nuFieldNames
+    | otherwise = Right $ ConstructorDefs $ convertTo cs
     where
-        nuCstrNames  = repeated $ map constructorName cs
-        nuFieldNames = repeated $ map fieldName $ concatMap (fDefsToList . fields) cs
+        nuCstrDefs   = searchDuplicateNames cs
+        nuFieldNames = searchDuplicateNames (concatMap (fDefsToList . fields) cs)
 
 -- | Type of errors that are raised when it's not possible to build a
 --   'ConstructorDefs' structure via 'constructorDefs' function.
 data ADTConstructorError = ConstructorNamesNotUnique [ConstructorDef Name]
                          | EmptyConstructorDefs
-                         | SameFieldMultipleCstr     [Name]
+                         | SameFieldMultipleCstr     [FieldDef Name]
     deriving (Eq)
 
 instance Show ADTConstructorError where
     show (ConstructorNamesNotUnique cDefs) = "Names of following constructor definitions are not unique: " ++ show cDefs
     show  EmptyConstructorDefs             = "No constructor definitions provided."
-    show (SameFieldMultipleCstr     names) = "Field names in multiple constructors: "
-                                                ++ intercalate ", " (map show names)
+    show (SameFieldMultipleCstr     fDefs) = "Field names in multiple constructors: "
+                                                ++ intercalate ", " (map (show . fieldName) fDefs)
 
 instance ConvertsTo a a' => ConvertsTo (ConstructorDef a) (ConstructorDef a') where
     convertTo (ConstructorDef n fs) = ConstructorDef n (convertTo fs)

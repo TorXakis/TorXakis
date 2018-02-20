@@ -154,7 +154,7 @@ addADTDefs as adfs
     where
         adtMap = adtDefsToMap adfs
         definedADTs = Map.elems adtMap
-        nuADTDefs = searchDuplicateNames as definedADTs
+        nuADTDefs = searchDuplicateNames2 as definedADTs
         unknownRefs = mapMaybe getUnknownADTRefs as
             where
                 getUnknownADTRefs :: ADTDef Name -> Maybe ([Name], ADTDef Name)

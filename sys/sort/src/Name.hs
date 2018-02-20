@@ -24,6 +24,7 @@ module Name
 , name
 , nameOf
 , searchDuplicateNames
+, searchDuplicateNames2
 , HasName (..)
 )
 where
@@ -66,8 +67,15 @@ nameOf = Name . T.pack . show
 class HasName a where
     getName :: a -> Name
 
--- | Search values in first list that have non-unique names among combination
+instance HasName Name where
+    getName = id
+
+-- | Search values in the first list that have non-unique names among combination
 --   of both lists.
-searchDuplicateNames :: (HasName a, HasName b) => [a] -> [b] -> [a]
-searchDuplicateNames xs ys = filter ((`elem` nuNames) . getName) xs
+searchDuplicateNames2 :: (HasName a, HasName b) => [a] -> [b] -> [a]
+searchDuplicateNames2 xs ys = filter ((`elem` nuNames) . getName) xs
     where nuNames = repeated $ map getName xs ++ map getName ys
+
+-- | Search values in the list that have non-unique names.
+searchDuplicateNames :: (HasName a) => [a] -> [a]
+searchDuplicateNames = (`searchDuplicateNames2` ([] :: [Name]))

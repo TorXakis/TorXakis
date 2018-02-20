@@ -54,6 +54,9 @@ data FieldDef v = FieldDef
     }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
+instance HasName (FieldDef v) where
+    getName = fieldName
+
 -- | Data structure for a collection of 'FieldDef's.
 data FieldDefs v = FieldDefs { -- | Transform 'FieldDefs' to a list of 'FieldDef's.
                                fDefsToList :: [FieldDef v]
@@ -82,12 +85,11 @@ data FieldDefs v = FieldDefs { -- | Transform 'FieldDefs' to a list of 'FieldDef
 --   Note that the position in the list is relevant as it represents implicit
 --   positions of the fields in a constructor.
 fieldDefs :: [FieldDef Name] -> Either ADTFieldError (FieldDefs Name)
-fieldDefs l
-    | not $ null nuFieldNames = let nonUniqDefs = filter ((`elem` nuFieldNames) . fieldName) l
-                                in  Left $ FieldNamesNotUnique nonUniqDefs
-    | otherwise = Right $ FieldDefs l $ length l
+fieldDefs fs
+    | not $ null nuFieldNames = Left $ FieldNamesNotUnique nuFieldNames
+    | otherwise = Right $ FieldDefs fs $ length fs
     where
-        nuFieldNames = repeated $ map fieldName l
+        nuFieldNames = searchDuplicateNames fs
 
 -- | Type of errors that are raised when it's not possible to build a
 --   'FieldDefs' structure via 'fieldDefs' function.
