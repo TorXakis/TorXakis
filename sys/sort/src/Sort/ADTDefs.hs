@@ -39,7 +39,7 @@ module Sort.ADTDefs
 , getConstructors
 
 -- ** Private methods
-, verifyConstructableADTs
+, verifyConstructibleADTs
 
 -- * ADT Errors
 , ADTError (..)
@@ -139,10 +139,9 @@ addADTDefs :: [ADTDef Name] -- ^ Unchecked ADT definitions
             -> ADTDefs      -- ^ Available checked ADT definitions
             -> Either ADTError ADTDefs
 addADTDefs as adfs
-    | not $ null nuADTDefs             = Left $ NamesNotUnique nuADTDefs
-    | not $ null unknownRefs           = Left $ RefsNotFound unknownRefs
-    | not $ null nonConstructableTypes = let ncADTNames = map adtName nonConstructableTypes
-                                         in  Left $ NonConstructableTypes ncADTNames
+    | not $ null nuADTDefs   = Left $ NamesNotUnique nuADTDefs
+    | not $ null unknownRefs = Left $ RefsNotFound unknownRefs
+    | not $ null ncADTs      = Left $ NonConstructableTypes ncADTs
     | otherwise =
         let fixADTSorts :: ADTDef Name -> ADTDef Sort
             fixADTSorts (ADTDef nm (ConstructorDefs cDfsMap)) = 
@@ -177,17 +176,14 @@ addADTDefs as adfs
                 isDefined n = n `elem` (primitiveSortNames ++ allADTNames)
                     where allADTNames = map adtName definedADTs ++ map adtName as
 
-        nonConstructableTypes = snd $ verifyConstructableADTs (getSortADTs definedADTs, as)
-
-getSortADTs :: [ADTDef v] -> [Sort]
-getSortADTs = map (SortADT . Ref . Name.toText . adtName)
+        ncADTs = verifyConstructibleADTs (map adtName definedADTs) as
 
 getConstructors :: ADTDef v -> [ConstructorDef v]
 getConstructors = Map.elems . cDefsToMap . constructors
 
 -- | Verifies if given list of 'ADTDef's are constructable.
 --
---   Input: A tuple consisting of:
+--   Input:
 --
 --   * A list of known constructable 'ADTDef's
 --
@@ -195,38 +191,31 @@ getConstructors = Map.elems . cDefsToMap . constructors
 --
 --   Output: A tuple consisting of:
 --
---   * A list of constructable 'Sort's
---
 --   * A list of non-constructable 'ADTDef's
 --
-verifyConstructableADTs :: ([Sort], [ADTDef Name])
-                        -> ([Sort], [ADTDef Name])
-verifyConstructableADTs (constructableSorts, uADTDfs) =
+verifyConstructibleADTs ::[Name] -> [ADTDef Name] -> [ADTDef Name]
+verifyConstructibleADTs constructableSortNames uADTDfs =
     let (cs, ncs)  = partition
-                     (any (allFieldsConstructable constructableSorts) . getConstructors)
+                     (any (allFieldsConstructable constructableSortNames) . getConstructors)
                      uADTDfs
     in if null cs
-       then (constructableSorts, uADTDfs)
-       else verifyConstructableADTs (getSortADTs cs ++ constructableSorts, ncs)
+       then uADTDfs
+       else verifyConstructibleADTs (map adtName cs ++ constructableSortNames) ncs
 
-allFieldsConstructable :: [Sort] -> ConstructorDef Name -> Bool
-allFieldsConstructable constructableSorts cDef =
-    all (isSortConstructable constructableSorts)
-        $ sortsOfFieldDefs $ fields cDef
+allFieldsConstructable :: [Name] -> ConstructorDef Name -> Bool
+allFieldsConstructable constructableSortNames cDef =
+    all (isSortConstructable constructableSortNames)
+        $ (map sort . fDefsToList . fields) cDef
     where
-        isSortConstructable :: [Sort] -> Sort -> Bool
-        isSortConstructable constructableSorts fieldSort@(SortADT _) = fieldSort `elem` constructableSorts
-        isSortConstructable _                  _                     = True
-
--- | Creates a list of 'FieldDef.sort's of every 'FieldDef' in a 'FieldDefs'.
-sortsOfFieldDefs :: FieldDefs Name -> [Sort]
-sortsOfFieldDefs fDefs = map (read . T.unpack . Name.toText . sort) $ fDefsToList fDefs
+        isSortConstructable :: [Name] -> Name -> Bool
+        isSortConstructable cSortNames sName =
+            sName `elem` (primitiveSortNames ++ cSortNames)
 
 -- | Type of errors that are raised when it's not possible to add 'ADTDef's to
 --   'ADTDefs' structure via 'addADTDefs' function.
 data ADTError = RefsNotFound          [([Name], ADTDef Name)]
               | NamesNotUnique        [ADTDef Name]
-              | NonConstructableTypes [Name]
+              | NonConstructableTypes [ADTDef Name]
         deriving (Eq)
 
 instance Show ADTError where
@@ -235,9 +224,10 @@ instance Show ADTError where
                                                 ++ " required by ADT '" ++ (show . adtName) reqADTDf
                                                 ++ "' are not defined.\n"
                                                 ++ show (RefsNotFound ts)
-    show (NamesNotUnique                  aDefs) = "Names of following ADT definitions are not unique: " ++ show aDefs
-    show (NonConstructableTypes           names) = "ADTs are not constructable: "
-                                                ++ intercalate ", " (map show names)
+    show (NamesNotUnique                  aDefs) = "Names of following ADT definitions are not unique: "
+                                                ++ show aDefs
+    show (NonConstructableTypes           aDefs) = "ADTs are not constructable: "
+                                                ++ intercalate ", " (map (show . adtName) aDefs)
     
 -----------------------------------------------------------------------------
 -- Sort

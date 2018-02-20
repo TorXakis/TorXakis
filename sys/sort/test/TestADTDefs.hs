@@ -201,5 +201,5 @@ mkConstructorDefs = ConstructorDefs . Map.fromList . map (\c -> (Ref $ Name.toTe
 mkFieldDefs :: [FieldDef v] -> FieldDefs v
 mkFieldDefs fs = FieldDefs fs $ length fs
 
-instance IsString (Either Text Name)  where
+instance IsString (Either T.Text Name)  where
     fromString = name . T.pack

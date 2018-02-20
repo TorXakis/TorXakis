@@ -61,7 +61,8 @@ testEmptyConstructorList = TestCase $
 
 testNonUniqueName :: Test
 testNonUniqueName = TestCase $ do
-    let cDef = (ConstructorDef "SameName" $ FieldDefs [] 0) :: ConstructorDef Name
+    let Right cName = name "SameName"
+        cDef = (ConstructorDef cName $ FieldDefs [] 0) :: ConstructorDef Name
         cstrList = [cDef, cDef]
     assertEqual "constructorDefs should fail for non-unique names"
         (Left $ ConstructorNamesNotUnique cstrList)
