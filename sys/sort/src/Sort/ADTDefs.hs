@@ -36,6 +36,7 @@ module Sort.ADTDefs
 -- ** Usage
 , emptyADTDefs
 , addADTDefs
+, getConstructors
 
 -- ** Private methods
 , verifyConstructableADTs
@@ -47,6 +48,7 @@ where
 
 import           Control.DeepSeq
 import           Data.Data
+import           Data.Maybe
 import           Data.List.Unique
 import           Data.List        (intercalate,partition)
 import qualified Data.Map.Strict  as Map
@@ -136,7 +138,7 @@ emptyADTDefs = ADTDefs Map.empty
 addADTDefs :: [ADTDef Name] -- ^ Unchecked ADT definitions
             -> ADTDefs      -- ^ Available checked ADT definitions
             -> Either ADTError ADTDefs
-addADTDefs l adfs
+addADTDefs as adfs
     | not $ null nuADTDefs             = Left $ NamesNotUnique nuADTDefs
     | not $ null unknownRefs           = Left $ RefsNotFound unknownRefs
     | not $ null nonConstructableTypes = let ncADTNames = map adtName nonConstructableTypes
@@ -153,30 +155,35 @@ addADTDefs l adfs
             fixFieldSorts (FieldDef nm s) = FieldDef nm $ (read . T.unpack . Name.toText) s
         in  Right $ ADTDefs
             $ Map.union adtMap
-            $ Map.fromList $ map ((\ ad -> (Ref $ Name.toText $ adtName ad, ad)) . fixADTSorts) l
+            $ Map.fromList $ map ((\ ad -> (Ref $ Name.toText $ adtName ad, ad)) . fixADTSorts) as
     where
         adtMap = adtDefsToMap adfs
         definedADTs = Map.elems adtMap
-        nuADTDefs = searchDuplicateNames l definedADTs
-        unknownRefs = filter (not . null . fst)
-            $ map (\adt -> (getAbsentADTRefs $ fieldSorts adt, adt)) l
+        nuADTDefs = searchDuplicateNames as definedADTs
+        unknownRefs = mapMaybe getUnknownADTRefs as
             where
-                fieldSorts :: ADTDef Name -> [Sort]
-                fieldSorts adt = concatMap (sortsOfFieldDefs . fields)
-                                 $ (Map.elems . cDefsToMap . constructors) adt
+                getUnknownADTRefs :: ADTDef Name -> Maybe ([Name], ADTDef Name)
+                getUnknownADTRefs aDef =
+                    let xs = filter (not . isDefined) $ fieldSortNames aDef in
+                        if null xs
+                        then Nothing
+                        else Just (xs, aDef)
 
-        getAbsentADTRefs :: [Sort] -> [Ref Name]
-        getAbsentADTRefs [] = []
-        getAbsentADTRefs (SortADT (Ref txt) : ss)
-            | txt `notElem` allNamesTxt = Ref txt : getAbsentADTRefs ss
-            | otherwise                 = getAbsentADTRefs ss
-            where allNamesTxt = map Name.toText (map adtName definedADTs ++ map adtName l)
-        getAbsentADTRefs (_ : ss) = getAbsentADTRefs ss
+                fieldSortNames :: ADTDef Name -> [Name]
+                fieldSortNames adt = map sort $ concatMap (fDefsToList . fields)
+                                    $ getConstructors adt
 
-        nonConstructableTypes = snd $ verifyConstructableADTs (getSortADTs definedADTs, l)
+                isDefined :: Name -> Bool
+                isDefined n = n `elem` (primitiveSortNames ++ allADTNames)
+                    where allADTNames = map adtName definedADTs ++ map adtName as
+
+        nonConstructableTypes = snd $ verifyConstructableADTs (getSortADTs definedADTs, as)
 
 getSortADTs :: [ADTDef v] -> [Sort]
 getSortADTs = map (SortADT . Ref . Name.toText . adtName)
+
+getConstructors :: ADTDef v -> [ConstructorDef v]
+getConstructors = Map.elems . cDefsToMap . constructors
 
 -- | Verifies if given list of 'ADTDef's are constructable.
 --
@@ -196,18 +203,20 @@ verifyConstructableADTs :: ([Sort], [ADTDef Name])
                         -> ([Sort], [ADTDef Name])
 verifyConstructableADTs (constructableSorts, uADTDfs) =
     let (cs, ncs)  = partition
-                     (any (allFieldsConstructable constructableSorts) . Map.elems . cDefsToMap . constructors)
+                     (any (allFieldsConstructable constructableSorts) . getConstructors)
                      uADTDfs
     in if null cs
        then (constructableSorts, uADTDfs)
        else verifyConstructableADTs (getSortADTs cs ++ constructableSorts, ncs)
 
 allFieldsConstructable :: [Sort] -> ConstructorDef Name -> Bool
-allFieldsConstructable constructableSorts cDef = all (isSortConstructable constructableSorts) $ sortsOfFieldDefs $ fields cDef
-
-isSortConstructable :: [Sort] -> Sort -> Bool
-isSortConstructable constructableSorts fieldSort@(SortADT _) = fieldSort `elem` constructableSorts
-isSortConstructable _                  _                     = True
+allFieldsConstructable constructableSorts cDef =
+    all (isSortConstructable constructableSorts)
+        $ sortsOfFieldDefs $ fields cDef
+    where
+        isSortConstructable :: [Sort] -> Sort -> Bool
+        isSortConstructable constructableSorts fieldSort@(SortADT _) = fieldSort `elem` constructableSorts
+        isSortConstructable _                  _                     = True
 
 -- | Creates a list of 'FieldDef.sort's of every 'FieldDef' in a 'FieldDefs'.
 sortsOfFieldDefs :: FieldDefs Name -> [Sort]
@@ -215,14 +224,14 @@ sortsOfFieldDefs fDefs = map (read . T.unpack . Name.toText . sort) $ fDefsToLis
 
 -- | Type of errors that are raised when it's not possible to add 'ADTDef's to
 --   'ADTDefs' structure via 'addADTDefs' function.
-data ADTError = RefsNotFound          [([Ref Name], ADTDef Name)]
+data ADTError = RefsNotFound          [([Name], ADTDef Name)]
               | NamesNotUnique        [ADTDef Name]
               | NonConstructableTypes [Name]
         deriving (Eq)
 
 instance Show ADTError where
     show (RefsNotFound                       []) = ""
-    show (RefsNotFound ( (uRfs,reqADTDf) : ts) ) = "ADT(s) " ++ show uRfs
+    show (RefsNotFound ( (uNms,reqADTDf) : ts) ) = "ADT(s) " ++ T.unpack (T.intercalate "," $ map Name.toText uNms)
                                                 ++ " required by ADT '" ++ (show . adtName) reqADTDf
                                                 ++ "' are not defined.\n"
                                                 ++ show (RefsNotFound ts)
@@ -243,6 +252,13 @@ data Sort = SortError -- TODO - QUESTION: why is Error a sort?
           | SortADT (Ref (ADTDef Sort))
      deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
+primitiveSortNames :: [Name]
+primitiveSortNames = getName <$> ["Int", "Bool", "Char", "String", "Regex"] -- TODO: Do we need "Error" ?
+    where
+        getName :: String -> Name
+        getName s = n
+            where Right n = name $ T.pack s
+        
 instance Identifiable Sort where
     getId _ = Nothing
 

@@ -17,6 +17,7 @@ import Test.HUnit
 -- generic Haskell imports
 import qualified Data.Map  as Map
 import qualified Data.Set  as Set
+import           Data.String (IsString (..))
 import qualified Data.Text as T
 
 -- generic TorXakis imports
