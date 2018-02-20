@@ -41,9 +41,6 @@ module Sort.ADTDefs
 , addADTDefs
 , getConstructors
 
--- ** Private methods
-, verifyConstructibleADTs
-
 -- * ADT Errors
 , ADTError (..)
 )
@@ -147,10 +144,7 @@ addADTDefs as adfs
     | not $ null nuADTDefs   = Left $ NamesNotUnique nuADTDefs
     | not $ null unknownRefs = Left $ RefsNotFound unknownRefs
     | not $ null ncADTs      = Left $ NonConstructableTypes ncADTs
-    | otherwise =
-            Right $ ADTDefs
-            $ Map.union adtMap
-            $ convertTo as
+    | otherwise              = Right $ ADTDefs $ Map.union adtMap $ convertTo as
     where
         adtMap = adtDefsToMap adfs
         definedADTs = Map.elems adtMap
@@ -173,39 +167,37 @@ addADTDefs as adfs
                     where allADTNames = map adtName definedADTs ++ map adtName as
 
         ncADTs = verifyConstructibleADTs (map adtName definedADTs) as
+            where
+                -- | Verifies if given list of 'ADTDef's are constructable.
+                --
+                --   Input:
+                --
+                --   * A list of known constructable 'ADTDef's
+                --
+                --   * A list of 'ADTDef's to be verified
+                --
+                --   Output: A tuple consisting of:
+                --
+                --   * A list of non-constructable 'ADTDef's
+                --
+                verifyConstructibleADTs ::[Name] -> [ADTDef Name] -> [ADTDef Name]
+                verifyConstructibleADTs constructableSortNames uADTDfs =
+                    let (cs, ncs)  = partition
+                                    (any (allFieldsConstructable constructableSortNames) . getConstructors)
+                                    uADTDfs
+                    in if null cs
+                    then uADTDfs
+                    else verifyConstructibleADTs (map adtName cs ++ constructableSortNames) ncs
+                allFieldsConstructable :: [Name] -> ConstructorDef Name -> Bool
+                allFieldsConstructable constructableSortNames cDef =
+                    all (isSortConstructable constructableSortNames)
+                        $ (map sort . fDefsToList . fields) cDef
+                isSortConstructable :: [Name] -> Name -> Bool
+                isSortConstructable cSortNames sName =
+                    sName `elem` (primitiveSortNames ++ cSortNames)
 
 getConstructors :: ADTDef v -> [ConstructorDef v]
 getConstructors = Map.elems . cDefsToMap . constructors
-
--- | Verifies if given list of 'ADTDef's are constructable.
---
---   Input:
---
---   * A list of known constructable 'ADTDef's
---
---   * A list of 'ADTDef's to be verified
---
---   Output: A tuple consisting of:
---
---   * A list of non-constructable 'ADTDef's
---
-verifyConstructibleADTs ::[Name] -> [ADTDef Name] -> [ADTDef Name]
-verifyConstructibleADTs constructableSortNames uADTDfs =
-    let (cs, ncs)  = partition
-                     (any (allFieldsConstructable constructableSortNames) . getConstructors)
-                     uADTDfs
-    in if null cs
-       then uADTDfs
-       else verifyConstructibleADTs (map adtName cs ++ constructableSortNames) ncs
-
-allFieldsConstructable :: [Name] -> ConstructorDef Name -> Bool
-allFieldsConstructable constructableSortNames cDef =
-    all (isSortConstructable constructableSortNames)
-        $ (map sort . fDefsToList . fields) cDef
-    where
-        isSortConstructable :: [Name] -> Name -> Bool
-        isSortConstructable cSortNames sName =
-            sName `elem` (primitiveSortNames ++ cSortNames)
 
 -- | Type of errors that are raised when it's not possible to add 'ADTDef's to
 --   'ADTDefs' structure via 'addADTDefs' function.
