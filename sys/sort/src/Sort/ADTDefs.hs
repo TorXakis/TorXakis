@@ -22,9 +22,12 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Sort.ADTDefs
 ( -- * 'Sort's of Value Expressions
   Sort (..)
+, sortFromName
 
   -- * Abstract Data Types
   -- ** Data structure
@@ -52,6 +55,7 @@ import           Data.Maybe
 import           Data.List.Unique
 import           Data.List        (intercalate,partition)
 import qualified Data.Map.Strict  as Map
+import           Data.Text        (Text)
 import qualified Data.Text        as T
 import           GHC.Generics     (Generic)
 
@@ -59,6 +63,7 @@ import           Id
 import           Ref
 import           Name
 import           Sort.ConstructorDefs
+import           Sort.ConvertsTo
 import           Sort.FieldDefs
 
 -- | Data structure for Abstract Data Type (ADT) definition.
@@ -143,18 +148,9 @@ addADTDefs as adfs
     | not $ null unknownRefs = Left $ RefsNotFound unknownRefs
     | not $ null ncADTs      = Left $ NonConstructableTypes ncADTs
     | otherwise =
-        let fixADTSorts :: ADTDef Name -> ADTDef Sort
-            fixADTSorts (ADTDef nm (ConstructorDefs cDfsMap)) = 
-                ADTDef nm $ ConstructorDefs $ Map.fromList $ map fixConstructorSorts $ Map.elems cDfsMap
-            fixConstructorSorts :: ConstructorDef Name -> (Ref (ConstructorDef Sort), ConstructorDef Sort)
-            fixConstructorSorts (ConstructorDef nm (FieldDefs fDfs nr)) =
-                let cDef = ConstructorDef nm $ FieldDefs (map fixFieldSorts fDfs) nr
-                in  (Ref $ Name.toText nm, cDef)
-            fixFieldSorts :: FieldDef Name -> FieldDef Sort
-            fixFieldSorts (FieldDef nm s) = FieldDef nm $ (read . T.unpack . Name.toText) s
-        in  Right $ ADTDefs
+            Right $ ADTDefs
             $ Map.union adtMap
-            $ Map.fromList $ map ((\ ad -> (Ref $ Name.toText $ adtName ad, ad)) . fixADTSorts) as
+            $ convertTo as
     where
         adtMap = adtDefsToMap adfs
         definedADTs = Map.elems adtMap
@@ -233,6 +229,7 @@ instance Show ADTError where
 -- Sort
 -----------------------------------------------------------------------------
 -- | The data type that represents 'Sort's for 'ValExpr.ValExpr's.
+-- TODO - QUESTION: why not SortPrim "Int" & SortADT "WhatEver"
 data Sort = SortError -- TODO - QUESTION: why is Error a sort?
           | SortBool
           | SortInt
@@ -249,8 +246,26 @@ primitiveSortNames = getName <$> ["Int", "Bool", "Char", "String", "Regex"] -- T
         getName s = n
             where Right n = name $ T.pack s
         
+sortFromName :: Name -> Sort
+sortFromName nm = sortFromString $ Name.toText nm
+    where
+        sortFromString :: Text -> Sort
+        sortFromString "Int" = SortInt
+        sortFromString "Bool" = SortBool
+        sortFromString "Char" = SortChar
+        sortFromString "String" = SortString
+        sortFromString "Regex" = SortRegex
+        sortFromString "Error" = SortError
+        sortFromString adtTxt = SortADT $ Ref adtTxt
+
 instance Identifiable Sort where
     getId _ = Nothing
 
 instance Resettable Sort where
     reset = id
+
+instance ConvertsTo Name Sort where
+    convertTo = sortFromName
+
+instance ConvertsTo a a' => ConvertsTo (ADTDef a) (ADTDef a') where
+    convertTo (ADTDef n cs) = ADTDef (convertTo n) (convertTo cs)

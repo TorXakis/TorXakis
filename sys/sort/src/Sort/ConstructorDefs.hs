@@ -19,6 +19,8 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Sort.ConstructorDefs
 ( -- * Constructors
   -- ** Data structure
@@ -35,6 +37,7 @@ module Sort.ConstructorDefs
 )
 where
 
+import           Control.Arrow
 import           Control.DeepSeq
 import           Data.Data
 import           Data.List.Unique
@@ -44,6 +47,7 @@ import           GHC.Generics     (Generic)
 
 import           Ref
 import           Name
+import           Sort.ConvertsTo
 import           Sort.FieldDefs
 
 -- | Data structure for constructor definition.
@@ -52,6 +56,9 @@ data ConstructorDef v = ConstructorDef { constructorName :: Name -- ^ Name of th
                                        }
     deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
 
+instance HasName (ConstructorDef v) where
+    getName = constructorName
+    
 -- | Data structure for a collection of 'ConstructorDef's.
 newtype ConstructorDefs v = ConstructorDefs { -- | Transform 'ConstructorDefs' to a 'Data.Map.Map' from 'Ref' 'ConstructorDef' to 'ConstructorDef'.
                                               cDefsToMap :: Map.Map (Ref (ConstructorDef v)) (ConstructorDef v)
@@ -84,14 +91,15 @@ newtype ConstructorDefs v = ConstructorDefs { -- | Transform 'ConstructorDefs' t
 constructorDefs :: [ConstructorDef Name]
                 -> Either ADTConstructorError (ConstructorDefs Name)
 constructorDefs [] = Left EmptyConstructorDefs
-constructorDefs l
-    | not $ null nuCstrNames    = let nonUniqDefs = filter ((`elem` nuCstrNames) . constructorName) l
+constructorDefs cs
+    | not $ null nuCstrNames    = let nonUniqDefs = filter ((`elem` nuCstrNames) . constructorName) cs
                                   in  Left $ ConstructorNamesNotUnique nonUniqDefs
     | not $ null nuFieldNames   = Left $ SameFieldMultipleCstr nuFieldNames
-    | otherwise = Right $ ConstructorDefs $ Map.fromList $ map (\cd -> (Ref $ Name.toText $ constructorName cd, cd)) l
+    | otherwise = Right $ ConstructorDefs
+                  $ convertTo cs
     where
-        nuCstrNames    = repeated $ map constructorName l
-        nuFieldNames   = repeated $ map fieldName $ concatMap (fDefsToList . fields) l
+        nuCstrNames  = repeated $ map constructorName cs
+        nuFieldNames = repeated $ map fieldName $ concatMap (fDefsToList . fields) cs
 
 -- | Type of errors that are raised when it's not possible to build a
 --   'ConstructorDefs' structure via 'constructorDefs' function.
@@ -105,3 +113,12 @@ instance Show ADTConstructorError where
     show  EmptyConstructorDefs             = "No constructor definitions provided."
     show (SameFieldMultipleCstr     names) = "Field names in multiple constructors: "
                                                 ++ intercalate ", " (map show names)
+
+instance ConvertsTo a a' => ConvertsTo (ConstructorDef a) (ConstructorDef a') where
+    convertTo (ConstructorDef n fs) = ConstructorDef n (convertTo fs)
+
+instance ConvertsTo a a' => ConvertsTo (ConstructorDefs a) (ConstructorDefs a') where
+    convertTo (ConstructorDefs csMap) =
+        let tuples = Map.toList csMap
+            newTuples = map (convertTo *** convertTo) tuples
+        in  ConstructorDefs $ Map.fromList newTuples

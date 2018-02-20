@@ -30,7 +30,7 @@ import           Id
 
 -- | A type-safe reference
 
--- QUESTION: why do we have references and names. Isn't a 'Name' enough? You
+-- TODO - QUESTION: why do we have references and names? Isn't a 'Name' enough? You
 -- could introduce a phantom type for 'Name' and have
 --
 -- > Name ADT
