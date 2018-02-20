@@ -40,8 +40,8 @@ import           CstrDef
 import           CstrId
 import           SMT
 import           SMTData
+import           Solve.Params
 import           SolveDefs
-import           SolveDefs.Params
 import           SortId
 import           SortOf
 import           ValExpr

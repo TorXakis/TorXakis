@@ -19,7 +19,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-10.0
+resolver: lts-10.5
 ghc-variant: integersimple
 
 # User packages to be built.
@@ -54,7 +54,6 @@ packages:
 - location: sys/server
 - location: sys/serverenv
 - location: sys/solve
-- location: sys/solvedefs
 - location: sys/testsel
 - location: sys/ui
 - location: sys/value

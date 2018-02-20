@@ -41,7 +41,6 @@ library
                       , coreenv
                       , defs
                       , solve
-                      , solvedefs
                       , testsel
                       , valexpr
                       , value
