@@ -22,6 +22,7 @@ module Name
 ( Name
 , toText
 , name
+, fromNonEmpty
 , nameOf
 , searchDuplicateNames
 , searchDuplicateNames2
@@ -31,6 +32,7 @@ where
 
 import           Control.DeepSeq
 import           Data.Data
+import           Data.List.NonEmpty (NonEmpty, toList)
 import           Data.List.Unique
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -63,6 +65,9 @@ name s            = Right $ Name s
 -- | Creates a name from a given 'show'able entity.
 nameOf :: Show t => t -> Name
 nameOf = Name . T.pack . show
+
+fromNonEmpty :: NonEmpty Char -> Name
+fromNonEmpty = Name . T.pack . toList
 
 class HasName a where
     getName :: a -> Name

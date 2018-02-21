@@ -1,0 +1,44 @@
+-- This file has been generated from package.yaml by hpack version 0.20.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 513169455fbcd68e682dd5b253a535bb5b4268cc7f5ca49c2be5b2d428ba8089
+
+name:           sort-gen
+version:        0.1.0.0
+synopsis:       Generators for TorXakis sorts.
+category:       Language
+homepage:       https://github.com/TorXakis/TorXakis#readme
+bug-reports:    https://github.com/TorXakis/TorXakis/issues
+author:         Damian Nadales,
+                Pierre van de Laar,
+                Kerem Ispirli
+maintainer:     damian.nadales@gmail.com
+license:        BSD3
+build-type:     Simple
+cabal-version:  >= 1.10
+
+source-repository head
+  type: git
+  location: https://github.com/TorXakis/TorXakis
+
+library
+  hs-source-dirs:
+    src
+  default-extensions: OverloadedStrings
+  ghc-options: -O2 -optc-O3 -Werror -Wall -optc-ffast-math
+  build-depends:
+    QuickCheck,
+    QuickCheck-GenT,
+    base >=4.7 && <5,
+    mtl,
+    sort,
+    text
+  exposed-modules:
+    NameGen
+    Sort.ADTDefsGen
+    Sort.ConstructorDefsGen
+    Sort.FieldGen
+  other-modules:
+    Paths_sort_gen
+  default-language: Haskell2010

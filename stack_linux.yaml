@@ -54,6 +54,7 @@ packages:
 - location: sys/solve
 - location: sys/solvedefs
 - location: sys/sort
+- location: sys/sort-gen
 - location: sys/testsel
 - location: sys/ui
 - location: sys/value
@@ -64,6 +65,7 @@ packages:
 extra-deps:
 - git: https://github.com/TorXakis/text-via-sockets.git
   commit: e3228cd0407ec0d7991a544e154ea2def184fcae
+- QuickCheck-GenT-0.2.0  
 
 # Extra package databases containing global packages
 extra-package-dbs: []
