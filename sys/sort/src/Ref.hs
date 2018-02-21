@@ -5,6 +5,8 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE DeriveDataTypeable         #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances     #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Ref
@@ -21,31 +23,33 @@ See LICENSE at root directory of this repository.
 
 module Ref
 ( Ref (..)
+, Referencable (..)
 ) where
 
 import           Control.DeepSeq
 import           Data.Data
-import           Data.Text        (Text)
+import           Data.Hashable
+
 import           Id
+import           Name
 
 -- | A type-safe reference
-
--- TODO - QUESTION: why do we have references and names? Isn't a 'Name' enough? You
--- could introduce a phantom type for 'Name' and have
---
--- > Name ADT
--- > Name Constructor
--- > Name Field
---
--- Etc ...
-
-newtype Ref t = Ref { -- | This reference keeps a text that represents the entity.
-                      toText :: Text
-                    }
-    deriving (Eq,Ord,Show,Read,NFData,Data)
+newtype Ref t = RefByName { -- | This reference keeps a text that represents the entity.
+                            toName :: Name
+                          }
+                -- We will introduce RefBySignature for functions; that's why
+                -- the constructor name is different than type name.
+    deriving (Eq, Ord, Show, Read, NFData, Data)
 
 instance Identifiable (Ref t) where
     getId _ = Nothing
 
 instance Resettable (Ref t) where
     reset = id
+
+instance Hashable (Ref t) where
+  hash = hash . toText . toName
+  hashWithSalt s = (*s) . hash . toText . toName
+
+class Referencable t where
+    mkRef :: t -> Ref t

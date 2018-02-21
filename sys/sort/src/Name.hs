@@ -9,11 +9,13 @@ See LICENSE at root directory of this repository.
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
--- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Maintainer  :  Pierre van de Laar <pierre.vandelaar@tno.nl> (Embedded Systems Innovation)
+--                Damian Nadales <damian.nadalesagut@tno.nl>
+--                Kerem Ispirli <kerem.ispirli@tno.nl>
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Name
+-- This module provides a Name for entities.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -23,7 +25,6 @@ module Name
 , toText
 , name
 , fromNonEmpty
-, nameOf
 , searchDuplicateNames
 , searchDuplicateNames2
 , HasName (..)
@@ -61,10 +62,6 @@ newtype Name = Name
 name :: Text -> Either Text Name
 name s | T.null s = Left $ T.pack "Illegal input: Empty String"
 name s            = Right $ Name s
-
--- | Creates a name from a given 'show'able entity.
-nameOf :: Show t => t -> Name
-nameOf = Name . T.pack . show
 
 fromNonEmpty :: NonEmpty Char -> Name
 fromNonEmpty = Name . T.pack . toList
