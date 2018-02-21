@@ -164,8 +164,8 @@ import           TxsUtils
 import qualified FreeVar
 import qualified SMT
 import qualified Solve
+import qualified Solve.Params
 import qualified SolveDefs
-import qualified SolveDefs.Params
 import qualified SMTData
 
 -- import from value
@@ -193,7 +193,7 @@ runTxsCore initConfig ctrl s0  =  do
      return ()
        where initState = IOC.Noning
              initParams =
-               Map.union ParamCore.initParams SolveDefs.Params.initParams
+               Map.union ParamCore.initParams Solve.Params.initParams
 
 runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()
 runTxsCtrl ctrl s0  =  do
