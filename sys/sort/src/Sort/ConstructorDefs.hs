@@ -40,10 +40,9 @@ where
 import           Control.Arrow
 import           Control.DeepSeq
 import           Data.Data
-import           Data.List.Unique
-import           Data.List        (intercalate)
-import qualified Data.Map.Strict  as Map
-import           GHC.Generics     (Generic)
+import           Data.List           (intercalate)
+import qualified Data.HashMap.Strict as Map
+import           GHC.Generics        (Generic)
 
 import           Ref
 import           Name
@@ -51,19 +50,24 @@ import           Sort.ConvertsTo
 import           Sort.FieldDefs
 
 -- | Data structure for constructor definition.
-data ConstructorDef v = ConstructorDef { constructorName :: Name -- ^ Name of the constructor
-                                       , fields :: FieldDefs v   -- ^ Field definitions of the constructor
-                                       }
-    deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
+data ConstructorDef sortRef = ConstructorDef
+                                { constructorName :: Name  -- ^ Name of the constructor
+                                , fields :: FieldDefs sortRef -- ^ Field definitions of the constructor
+                                }
+    deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance HasName (ConstructorDef v) where
+instance HasName (ConstructorDef sr) where
     getName = constructorName
-    
+
+instance Referencable (ConstructorDef sr) where
+    mkRef = RefByName . constructorName
+
 -- | Data structure for a collection of 'ConstructorDef's.
-newtype ConstructorDefs v = ConstructorDefs { -- | Transform 'ConstructorDefs' to a 'Data.Map.Map' from 'Ref' 'ConstructorDef' to 'ConstructorDef'.
-                                              cDefsToMap :: Map.Map (Ref (ConstructorDef v)) (ConstructorDef v)
-                                            }
-    deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
+newtype ConstructorDefs sr = ConstructorDefs
+                                { -- | Transform 'ConstructorDefs' to a 'Data.HashMap.HashMap' structure from 'Ref' 'ConstructorDef' to 'ConstructorDef'.
+                                cDefsToMap :: Map.HashMap (Ref (ConstructorDef sr)) (ConstructorDef sr)
+                                }
+    deriving (Eq, Read, Show, Generic, NFData, Data)
 
 -- QUESTION: Do we need a smart constructor for 'ConstructorDefs' at all? Are
 -- our users going to manipulate constructors that are not associated to an

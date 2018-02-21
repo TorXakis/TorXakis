@@ -49,12 +49,11 @@ where
 import           Control.DeepSeq
 import           Data.Data
 import           Data.Maybe
-import           Data.List.Unique
-import           Data.List        (intercalate,partition)
-import qualified Data.Map.Strict  as Map
-import           Data.Text        (Text)
-import qualified Data.Text        as T
-import           GHC.Generics     (Generic)
+import           Data.List           (intercalate,partition)
+import qualified Data.HashMap.Strict as Map
+import           Data.Text           (Text)
+import qualified Data.Text           as T
+import           GHC.Generics        (Generic)
 
 import           Id
 import           Ref
@@ -64,49 +63,23 @@ import           Sort.ConvertsTo
 import           Sort.FieldDefs
 
 -- | Data structure for Abstract Data Type (ADT) definition.
-data ADTDef v = ADTDef
-    { adtName      :: Name              -- ^ Name of the ADT
-    , constructors :: ConstructorDefs v -- ^ Constructor definitions of the ADT
+data ADTDef sortRef = ADTDef
+    { adtName      :: Name                    -- ^ Name of the ADT
+    , constructors :: ConstructorDefs sortRef -- ^ Constructor definitions of the ADT
     }
-    deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
+    deriving (Eq, Read, Show, Generic, NFData, Data)
 
-instance HasName (ADTDef v) where
+instance HasName (ADTDef sr) where
     getName = adtName
+
+instance Referencable (ADTDef sr) where
+    mkRef = RefByName . adtName
 
 -- | Data structure for a collection of 'ADTDef's.
 newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a 'Data.Map.Map' from 'Ref' 'ADTDef' to 'ADTDef'.
-                            adtDefsToMap :: Map.Map (Ref (ADTDef Sort)) (ADTDef Sort)
-                              -- QUESTION: is this 'Ref' adding any type safety over just having just 'Text'?
-                              --
-                              -- I could always do something like:
-                              --
-                              -- > Map.lookup (Ref "ThisIsNotAnADT" :: Ref (ADTDef Sort)) adtDefs
-                              --
-                              -- And still write incorrect code ...
-                              --
-                              -- If we don't want this, we need make the 'Ref'
-                              -- constructor private (WITHOUT exposing a smart
-                              -- constructor either), which means that users of
-                              -- this library ('sort') will only be able to
-                              -- lookup references that exist (in which case I
-                              -- wonder why do we have a map...).
-                              --
-                              -- I think we DO NOT want to make 'Ref' private:
-                              -- consider what happens when we find a variable
-                              -- declaration:
-                              --
-                              -- > p :: Person
-                              --
-                              -- If the keys of the map are of type 'Text' we
-                              -- can readily perform the lookup. If they are
-                              -- 'Ref' and 'Ref' constructor is private, then we
-                              -- have no way of constructing a 'Ref' from the
-                              -- string "Person".
-                              --
-                              -- My conclusion will be: let the fields be just
-                              -- references.
-                            }
-    deriving (Eq,Ord,Read,Show,Generic,NFData,Data)
+                          adtDefsToMap :: Map.HashMap (Ref (ADTDef Sort)) (ADTDef Sort)
+                          }
+    deriving (Eq, Read, Show, Generic, NFData, Data)
 
 -- | Smart constructor for 'ADTDefs'.
 --
@@ -221,34 +194,34 @@ instance Show ADTError where
 -- Sort
 -----------------------------------------------------------------------------
 -- | The data type that represents 'Sort's for 'ValExpr.ValExpr's.
--- TODO - QUESTION: why not SortPrim "Int" & SortADT "WhatEver"
-data Sort = SortError -- TODO - QUESTION: why is Error a sort?
+data Sort = SortError -- TODO: Make an issue about removing Error sort?
           | SortBool
           | SortInt
           | SortChar
           | SortString
           | SortRegex
           | SortADT (Ref (ADTDef Sort))
-     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
+    deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
+-- If we want to make Sort package more flexible, we can use SortPrim "Int" & SortADT "WhatEver".
 
 primitiveSortNames :: [Name]
-primitiveSortNames = getName <$> ["Int", "Bool", "Char", "String", "Regex"] -- TODO: Do we need "Error" ?
+primitiveSortNames = mkName <$> ["Int", "Bool", "Char", "String", "Regex"]
     where
-        getName :: String -> Name
-        getName s = n
+        mkName :: String -> Name
+        mkName s = n
             where Right n = name $ T.pack s
         
 sortFromName :: Name -> Sort
-sortFromName nm = sortFromString $ Name.toText nm
+sortFromName nm = sortFromText $ Name.toText nm
     where
-        sortFromString :: Text -> Sort
-        sortFromString "Int" = SortInt
-        sortFromString "Bool" = SortBool
-        sortFromString "Char" = SortChar
-        sortFromString "String" = SortString
-        sortFromString "Regex" = SortRegex
-        sortFromString "Error" = SortError
-        sortFromString adtTxt = SortADT $ Ref adtTxt
+        sortFromText :: Text -> Sort
+        sortFromText "Int" = SortInt
+        sortFromText "Bool" = SortBool
+        sortFromText "Char" = SortChar
+        sortFromText "String" = SortString
+        sortFromText "Regex" = SortRegex
+        sortFromText adtTxt = SortADT $ RefByName adtNm
+            where Right adtNm = name adtTxt
 
 instance Identifiable Sort where
     getId _ = Nothing

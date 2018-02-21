@@ -28,8 +28,7 @@ import Sort.ConstructorDefs
 import Sort.FieldDefs
 -- ----------------------------------------------------------------------------
 testADTList :: Test
-testADTList  = TestList [ TestLabel "References" testRef
-                        , TestLabel "Adding single ADT" testAddADTSingle
+testADTList  = TestList [ TestLabel "Adding single ADT" testAddADTSingle
                         , TestLabel "Adding ADT that depends on other ADT" testAddADTDependent
                         , TestLabel "Adding multiple ADTs" testAddADTMultiple
                         , TestLabel "Adding ADTs with unknown ref" testAddADTUnknownRef
@@ -43,14 +42,6 @@ testADTList  = TestList [ TestLabel "References" testRef
 ---------------------------------------------------------------------------
 -- Success cases
 ---------------------------------------------------------------------------
-testRef :: Test
--- QUESTION: what are we testing here? Isn't this true by construction?
-testRef = TestCase $ do
-    let expected = T.pack "12"
-        rInt :: Ref Int
-        rInt = Ref expected
-    assertEqual "Same reference?" expected $ Ref.toText rInt
-
 testAddADTSingle :: Test
 -- NOTE: this seems to be testing that "data C = cstrC { fieldInt :: Int }" can be constructed.
 testAddADTSingle = TestCase $ do

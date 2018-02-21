@@ -14,11 +14,15 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Definitions for fields ('FieldDef') of constructors ('ConstructorDef') of ADTs ('ADTDef').
+-- Definitions for fields ('FieldDef') of constructors ('ConstructorDef') of
+-- ADTs ('ADTDef'). For unchecked definitions, the type argument sortRef is a
+-- 'Name' that refers to a 'Sort'. For checked definitions, sortRef is a 'Sort'.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances     #-}
 module Sort.FieldDefs
 ( -- * Fields
   -- ** Data structure
@@ -37,35 +41,35 @@ where
 
 import           Control.DeepSeq
 import           Data.Data
-import           Data.List.Unique
 import           GHC.Generics     (Generic)
 
 import           Name
+import           Sort.ConvertsTo
 
 -- | Data structure for a field definition.
 --   For simplicity, anonymous fields are not supported.
-data FieldDef v = FieldDef
+data FieldDef sortRef = FieldDef
     { -- | Name of the field 
       fieldName :: Name
       -- | Sort of the field
-    , sort      :: v
+    , sort      :: sortRef
       -- TODO: Add meta-data like file name, line nr,
       -- generator, etc. A Text field should be enough.
     }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance HasName (FieldDef v) where
+instance HasName (FieldDef sr) where
     getName = fieldName
 
 -- | Data structure for a collection of 'FieldDef's.
-data FieldDefs v = FieldDefs { -- | Transform 'FieldDefs' to a list of 'FieldDef's.
-                               fDefsToList :: [FieldDef v]
-                               -- | Number of field definitions in a 'FieldDefs'.
-                             , nrOfFieldDefs :: Int
-                             -- Implementation decision to store value i.s.o.
-                             -- calculating it, for performance.
-                             -- INVARIANT: length fDefsToList == nrOfFieldDefs
-                             }
+data FieldDefs sr = FieldDefs { -- | Transform 'FieldDefs' to a list of 'FieldDef's.
+                                fDefsToList :: [FieldDef sr]
+                                -- | Number of field definitions in a 'FieldDefs'.
+                              , nrOfFieldDefs :: Int
+                              -- Implementation decision to store value i.s.o.
+                              -- calculating it, for performance.
+                              -- INVARIANT: length fDefsToList == nrOfFieldDefs
+                              }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Smart constructor for 'FieldDefs'.
@@ -100,3 +104,10 @@ data ADTFieldError = FieldNamesNotUnique [FieldDef Name]
 instance Show ADTFieldError where
     show (FieldNamesNotUnique fDefs) = "Names of following field definitions are not unique: " ++ show fDefs
     show  EmptyFieldDefs             = "No field definitions provided."
+
+instance ConvertsTo a a' => ConvertsTo (FieldDef a) (FieldDef a') where
+    convertTo (FieldDef n sNm) = FieldDef n (convertTo sNm)
+
+instance ConvertsTo a a' => ConvertsTo (FieldDefs a) (FieldDefs a') where
+    convertTo (FieldDefs fs nr) = FieldDefs (convertTo fs) nr
+    

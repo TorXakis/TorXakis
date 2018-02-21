@@ -21,8 +21,10 @@ dependencies:
 - base >= 4.7 && < 5
 - containers
 - deepseq
+- hashable
 - text
 - Unique
+- unordered-containers
 
 default-extensions:
 - OverloadedStrings
@@ -42,7 +44,6 @@ library:
   - Name
   - Sort
   - SortOf
-  - ADTExp
   dependencies:
 
 tests:
