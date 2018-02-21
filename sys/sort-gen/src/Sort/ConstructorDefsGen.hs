@@ -31,7 +31,7 @@ arbitraryConstructorDefList a as = do
             if typeIsInfinite a cs
                then lift $ arbitraryConstructorDefList a as
                else return cs
-    return $ evalState check (as, [])
+    return $ evalState mcs (as, [])
 
 typeIsInfinite :: Name -> [ConstructorDef Name] -> Bool
 typeIsInfinite = undefined
