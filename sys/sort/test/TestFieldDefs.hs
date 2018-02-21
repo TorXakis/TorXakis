@@ -6,10 +6,10 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings      #-}
 module TestFieldDefs
 (
-testFieldList
+-- testFieldList
 )
 where
--- test specific Haskell imports
+{-- test specific Haskell imports
 import Test.HUnit
 
 -- test specific TorXakis imports
@@ -71,3 +71,4 @@ fld i = fDef
 
 mkFieldDefs :: [FieldDef v] -> FieldDefs v
 mkFieldDefs fs = FieldDefs fs $ length fs
+-}

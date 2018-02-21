@@ -6,10 +6,10 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings      #-}
 module TestConstructorDefs
 (
-testConstructorList
+-- testConstructorList
 )
 where
--- test specific Haskell imports
+{-- test specific Haskell imports
 import Test.HUnit
 
 -- test specific TorXakis imports
@@ -99,3 +99,4 @@ mkName = fromRight "" . name . T.pack
 
 mkConstructorDefs :: [ConstructorDef v] -> ConstructorDefs v
 mkConstructorDefs = ConstructorDefs . Map.fromList . map (\c -> (Ref $ Name.toText $ constructorName c, c))
+-}
