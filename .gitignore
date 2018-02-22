@@ -3,6 +3,7 @@
 
 #ignore the cabal files in projects that use hpack
 sys/sort/*.cabal
+sys/sort-gen/*.cabal
 
 # Compiled class file - test
 *.class
