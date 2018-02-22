@@ -150,7 +150,7 @@ adtA s = ADTDef "A" cDefsA
          where cDefsA = ConstructorDefs $ Map.fromList [(RefByName $ constructorName cstrA, cstrA)]
                cstrA = ConstructorDef "cstrA" fDefsA
                fDefsA = mkFieldDefs [fieldB]
-               fieldB = FieldDef "fieldB" s T.empty
+               fieldB = noMetaField "fieldB" s
 -- B { a :: A } | B { c :: C }
 adtBName :: ADTDef Name
 adtBName = adtB "A" "Int"
@@ -170,12 +170,12 @@ adtB s1 s2 = ADTDef "B" cDefsB
 cstrB1 :: v -> ConstructorDef v
 cstrB1 s = ConstructorDef "cstrB1" fDefsB1
            where fDefsB1 = mkFieldDefs [fieldA]
-                 fieldA = FieldDef "fieldA" s T.empty
+                 fieldA = noMetaField "fieldA" s
 -- B { c :: C }
 cstrB2 :: v -> ConstructorDef v
 cstrB2 s = ConstructorDef "cstrB2" fDefsB2
            where fDefsB2 = mkFieldDefs [fieldC]
-                 fieldC = FieldDef "fieldC" s T.empty
+                 fieldC = noMetaField "fieldC" s
 -- C { i :: Int }
 adtCName :: ADTDef Name
 adtCName = adtC "Int"
@@ -188,13 +188,16 @@ adtC s = ADTDef "C" cDefsC
        where cDefsC = ConstructorDefs $ Map.fromList [(RefByName $ constructorName cstrC, cstrC)]
              cstrC = ConstructorDef "cstrC" fDefsC
              fDefsC = mkFieldDefs [fieldInt]
-             fieldInt = FieldDef "fieldInt" s T.empty
+             fieldInt = noMetaField "fieldInt" s
 
 ---------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------
 mkFieldDefs :: [FieldDef v] -> FieldDefs v
 mkFieldDefs fs = FieldDefs fs $ length fs
+
+noMetaField :: Name -> v -> FieldDef v
+noMetaField n s = FieldDef n s T.empty
 
 instance IsString Name where
     fromString s = n
