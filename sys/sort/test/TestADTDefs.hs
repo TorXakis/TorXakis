@@ -7,7 +7,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# OPTIONS_GHC -fno-warn-unused-top-binds #-}
 module TestADTDefs
 (
 testADTList
@@ -20,7 +19,7 @@ import Test.HUnit
 
 -- generic Haskell imports
 import qualified Data.HashMap.Strict as Map
--- import qualified Data.Set as Set
+import qualified Data.Set as Set
 import           Data.String (IsString (..))
 import qualified Data.Text as T
 
@@ -37,11 +36,10 @@ testADTList  = TestList [ TestLabel "Adding single ADT" testAddADTSingle
                         , TestLabel "Adding ADT that depends on other ADT" testAddADTDependent
                         , TestLabel "Adding multiple ADTs" testAddADTMultiple
                         , TestLabel "Adding ADTs with unknown ref" testAddADTUnknownRef
-                        -- , TestLabel "Adding ADTs with already defined name" testAddADTAlreadyDefinedName
-                        -- , TestLabel "Adding ADTs with non-unique name" testAddADTNonUniqueName
-                        -- , TestLabel "Constructable ADTs" testConstructableADTs
-                        -- , TestLabel "Non-Constructable ADTs" testNonConstructableADTs
-                        -- , TestLabel "ADT without constructor" testADTWithoutConstructor
+                        , TestLabel "Adding ADTs with already defined name" testAddADTAlreadyDefinedName
+                        , TestLabel "Adding ADTs with non-unique name" testAddADTNonUniqueName
+                        , TestLabel "Non-Constructable ADTs" testNonConstructableADTs
+                        , TestLabel "ADT without constructor" testADTWithoutConstructor
                         ]
 
 ---------------------------------------------------------------------------
@@ -89,8 +87,10 @@ testAddADTUnknownRef = TestCase $ do
 
 ---------------------------------------------------------------------------
 -- ADT Name conditions
+-- These conditions are evaluated before 'ConstructorDefs'' conditions. That's
+-- why test entities have empty 'ConstructorDefs'.
 ---------------------------------------------------------------------------
-{-testAddADTNonUniqueName :: Test
+testAddADTNonUniqueName :: Test
 testAddADTNonUniqueName = TestCase $ do
     let adt = ADTDef "SameName" $ ConstructorDefs Map.empty
         newADTList = [adt, adt]
@@ -102,7 +102,8 @@ testAddADTAlreadyDefinedName :: Test
 testAddADTAlreadyDefinedName = TestCase $ do
     let adt = ADTDef "SameName" $ ConstructorDefs Map.empty
         newADTList = [adt]
-        existingADTs = mkADTDefs [adt]
+        adtS = ADTDef "SameName" $ ConstructorDefs Map.empty
+        existingADTs = ADTDefs $ Map.fromList [(RefByName $ adtName adtS, adtS)]
     assertEqual "addADTDefs should fail for already defined names"
         (Left $ NamesNotUnique newADTList)
         $ addADTDefs newADTList existingADTs
@@ -110,33 +111,30 @@ testAddADTAlreadyDefinedName = TestCase $ do
 ---------------------------------------------------------------------------
 -- Constructability
 ---------------------------------------------------------------------------
-testConstructableADTs :: Test
-testConstructableADTs = TestCase $ do
-    let adtList = [adtAName, adtBName, adtCName]
-        (actConstructableSorts,actNCADTs) = verifyConstructableADTs ([], adtList)
-    assertEqual "All data types should be constructable" (Set.fromList $ map (SortADT . Ref) ["A","B","C"], [])
-        (Set.fromList actConstructableSorts,actNCADTs)
-
 testNonConstructableADTs :: Test
 testNonConstructableADTs = TestCase $ do
     let -- B { a :: A }
-        adtB' = ADTDef "B" cDefsB' }
-        cDefsB' = ConstructorDefs $ Map.fromList [(RefByName $ constructorName cstrB1 $ nameOf $ SortADT $ RefByName "B"]
-        adtList = [adtAName, adtB', adtCName]
-        expCADTSorts = Set.fromList [SortADT $ RefByName "C"]
-        expNCADTs    = Set.fromList [adtB', adtAName]
-        (actCADTSorts,actNCADTs) = verifyConstructableADTs ([], adtList)
-    assertEqual "Only C should be constructable" expCADTSorts $ Set.fromList actCADTSorts
-    assertEqual
-        "B' and A should be non-constructable" expNCADTs $ Set.fromList actNCADTs
+        adtB'Name = ADTDef "B" cDefsB'
+        cDefsB' = ConstructorDefs $ Map.fromList [(RefByName $ constructorName cstrB1Name, cstrB1Name)]
+        cstrB1Name = cstrB1 "A"
+        adtList = [adtAName, adtB'Name, adtCName]
+    case addADTDefs adtList emptyADTDefs of
+        Left (NonConstructableTypes ncs) ->
+                assertEqual "B' and A should be non-constructable"
+                    (Set.fromList ncs) $ Set.fromList [adtAName, adtB'Name]
+        r   ->  assertFailure $ "ADTDefs should be non-constructable but got '"
+                    ++ show r ++ "'"
 
 testADTWithoutConstructor :: Test
 testADTWithoutConstructor = TestCase $ do
-    let adtList = [ADTDef "N" ConstructorDefs Map.empty }]
-        (actCADTSorts,actNCADTs) = verifyConstructableADTs ([], adtList)
-    assertEqual "ADT without constructor should be non-constructable"
-        ([], Set.fromList adtList) (actCADTSorts, Set.fromList actNCADTs)
--}
+    let  adtList = [ADTDef "N" $ ConstructorDefs Map.empty]
+    case addADTDefs adtList emptyADTDefs of
+        Left (NonConstructableTypes ncs) ->
+                assertEqual "N should be non-constructable"
+                    (Set.fromList ncs) $ Set.fromList adtList
+        r   ->  assertFailure $ "ADT without constructor should be non-constructable but got '"
+                    ++ show r ++ "'"
+
 ---------------------------------------------------------------------------
 -- Test Data
 ---------------------------------------------------------------------------
@@ -152,7 +150,7 @@ adtA s = ADTDef "A" cDefsA
          where cDefsA = ConstructorDefs $ Map.fromList [(RefByName $ constructorName cstrA, cstrA)]
                cstrA = ConstructorDef "cstrA" fDefsA
                fDefsA = mkFieldDefs [fieldB]
-               fieldB = FieldDef "fieldB" s
+               fieldB = FieldDef "fieldB" s T.empty
 -- B { a :: A } | B { c :: C }
 adtBName :: ADTDef Name
 adtBName = adtB "A" "Int"
@@ -172,12 +170,12 @@ adtB s1 s2 = ADTDef "B" cDefsB
 cstrB1 :: v -> ConstructorDef v
 cstrB1 s = ConstructorDef "cstrB1" fDefsB1
            where fDefsB1 = mkFieldDefs [fieldA]
-                 fieldA = FieldDef "fieldA" s
+                 fieldA = FieldDef "fieldA" s T.empty
 -- B { c :: C }
 cstrB2 :: v -> ConstructorDef v
 cstrB2 s = ConstructorDef "cstrB2" fDefsB2
            where fDefsB2 = mkFieldDefs [fieldC]
-                 fieldC = FieldDef "fieldC" s
+                 fieldC = FieldDef "fieldC" s T.empty
 -- C { i :: Int }
 adtCName :: ADTDef Name
 adtCName = adtC "Int"
@@ -190,17 +188,11 @@ adtC s = ADTDef "C" cDefsC
        where cDefsC = ConstructorDefs $ Map.fromList [(RefByName $ constructorName cstrC, cstrC)]
              cstrC = ConstructorDef "cstrC" fDefsC
              fDefsC = mkFieldDefs [fieldInt]
-             fieldInt = FieldDef "fieldInt" s
+             fieldInt = FieldDef "fieldInt" s T.empty
 
 ---------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------
--- mkADTDefs :: [ADTDef Name] -> ADTDefs
--- mkADTDefs = ADTDefs . convertTo -- Map.fromList . map (\a -> (Ref $ adtName a, a))
-
--- mkConstructorDefs :: ConvertsTo v v => [ConstructorDef v] -> ConstructorDefs v
--- mkConstructorDefs = ConstructorDefs . convertTo -- Map.fromList . map (\c -> (Ref $ Name.toText $ constructorName c, c))
-
 mkFieldDefs :: [FieldDef v] -> FieldDefs v
 mkFieldDefs fs = FieldDefs fs $ length fs
 
@@ -210,3 +202,6 @@ instance IsString Name where
 
 instance ConvertsTo Sort Sort where
     convertTo = id
+
+instance Eq v => Ord (ADTDef v) where
+    compare a1 a2 = compare (adtName a1) (adtName a2)
