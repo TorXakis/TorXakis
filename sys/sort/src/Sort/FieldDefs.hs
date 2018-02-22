@@ -41,7 +41,7 @@ where
 
 import           Control.DeepSeq
 import           Data.Data
--- import           Data.Text           (Text)
+import           Data.Text           (Text)
 import           GHC.Generics     (Generic)
 
 import           Name
@@ -54,7 +54,7 @@ data FieldDef sortRef = FieldDef
       fieldName :: Name
       -- | Sort of the field
     , sort      :: sortRef
-    -- , metadata  :: Text
+    , metadata  :: Text
     }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
@@ -106,7 +106,7 @@ instance Show ADTFieldError where
     show  EmptyFieldDefs             = "No field definitions provided."
 
 instance ConvertsTo a a' => ConvertsTo (FieldDef a) (FieldDef a') where
-    convertTo (FieldDef n sNm) = FieldDef n (convertTo sNm)
+    convertTo (FieldDef n sNm meta) = FieldDef n (convertTo sNm) meta
 
 instance ConvertsTo a a' => ConvertsTo (FieldDefs a) (FieldDefs a') where
     convertTo (FieldDefs fs nr) = FieldDefs (convertTo fs) nr
