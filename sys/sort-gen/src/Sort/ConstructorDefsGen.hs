@@ -43,8 +43,8 @@ arbitraryConstructorDefs a = do
 arbitraryConstructorDef :: Maybe Name -- ^ Maybe the ADT name that contains this constructor.
                         -> GenT (State GenState) (ConstructorDef Name)
 arbitraryConstructorDef a = do
-    cn <- lift $ gets constructorNames
-    n  <- liftGen $ arbitraryReadableName cn
+    cs <- lift $ gets constructorNames
+    n  <- liftGen $ arbitraryReadableName cs
     fd <- arbitraryFieldDefs
     lift $ modify (addConstructor n)
     return $ ConstructorDef n fd
