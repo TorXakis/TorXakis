@@ -60,7 +60,6 @@ import           Ref
 import           Name
 import           Sort.ConstructorDefs
 import           Sort.ConvertsTo
-import           Sort.FieldDefs
 
 -- | Data structure for Abstract Data Type (ADT) definition.
 data ADTDef sortRef = ADTDef
@@ -132,8 +131,7 @@ addADTDefs as adfs
                         else Just (xs, aDef)
 
                 fieldSortNames :: ADTDef Name -> [Name]
-                fieldSortNames adt = map sort $ concatMap (fDefsToList . fields)
-                                    $ getConstructors adt
+                fieldSortNames adt = getAllFieldSortNames $ constructors adt
 
                 isDefined :: Name -> Bool
                 isDefined n = n `elem` (primitiveSortNames ++ allADTNames)
@@ -164,7 +162,7 @@ addADTDefs as adfs
                 allFieldsConstructable :: [Name] -> ConstructorDef Name -> Bool
                 allFieldsConstructable constructableSortNames cDef =
                     all (isSortConstructable constructableSortNames)
-                        $ (map sort . fDefsToList . fields) cDef
+                        $ getFieldSortNames cDef
                 isSortConstructable :: [Name] -> Name -> Bool
                 isSortConstructable cSortNames sName =
                     sName `elem` (primitiveSortNames ++ cSortNames)
