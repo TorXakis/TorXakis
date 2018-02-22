@@ -60,6 +60,9 @@ module Sort
  , ADTError
  , ADTConstructorError
  , ADTFieldError
+
+ -- TODO: maybe we need to put this in an Internal module.
+ , primitiveSortNames
 )
 where
 

@@ -45,7 +45,7 @@ arbitraryConstructorDef :: Maybe Name -- ^ Maybe the ADT name that contains this
 arbitraryConstructorDef a = do
     cs <- lift $ gets constructorNames
     n  <- liftGen $ arbitraryReadableName cs
-    fd <- arbitraryFieldDefs
+    fd <- arbitraryFieldDefs a
     lift $ modify (addConstructor n)
     return $ ConstructorDef n fd
 

@@ -16,18 +16,22 @@ import           Sort
 import           GenState
 import           NameGen
 
-arbitraryFieldDefs :: GenT (State GenState) (FieldDefs Name)
-arbitraryFieldDefs = do
-    fs <- listOf arbitraryFieldDef
+arbitraryFieldDefs :: Maybe Name -- ^ Whether we can use the name of the ADT
+                                 -- that contains this fields as type.
+                   -> GenT (State GenState) (FieldDefs Name)
+arbitraryFieldDefs mn = do
+    fs <- listOf $ arbitraryFieldDef mn
     let Right fd = fieldDefs fs
     return fd
     
-arbitraryFieldDef :: GenT (State GenState) (FieldDef Name)
-arbitraryFieldDef = do
+arbitraryFieldDef :: Maybe Name
+                  -> GenT (State GenState) (FieldDef Name)
+arbitraryFieldDef mn = do
     fs <- lift $ gets fieldNames
     n  <- liftGen $ arbitraryReadableName fs
     ts <- lift $ gets adtNames
-    t  <- elements (Set.toList ts)
+    let ts' = Set.toList ts
+    t  <- elements $ maybe ts' (:ts') mn
     let f = FieldDef n t "" -- WARNING: we don't generate metadata yet.
     lift $ modify (addField n)
     return f

@@ -14,6 +14,12 @@ import           GenState
 import           NameGen
 import           Sort.ConstructorDefsGen
 
+-- |
+--
+-- To get a small set of ADT definitions use the `resize` function:
+--
+-- > generate (Test.QuickCheck.resize 2 arbitraryADTDefs )
+-- 
 arbitraryADTDefs :: Gen ADTDefs
 arbitraryADTDefs = do
     ds <- arbitraryADTDefList

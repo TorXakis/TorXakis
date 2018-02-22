@@ -43,6 +43,9 @@ module Sort.ADTDefs
 
 -- * ADT Errors
 , ADTError (..)
+
+ -- TODO: maybe we need to put this in an Internal module.
+, primitiveSortNames
 )
 where
 
