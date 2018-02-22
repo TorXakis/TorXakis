@@ -118,8 +118,8 @@ data ADTConstructorError = ConstructorNamesNotUnique [ConstructorDef Name]
 instance Show ADTConstructorError where
     show (ConstructorNamesNotUnique cDefs) = "Names of following constructor definitions are not unique: " ++ show cDefs
     show  EmptyConstructorDefs             = "No constructor definitions provided."
-    show (SameFieldMultipleCstr     fDefs) = "Field names in multiple constructors: "
-                                                ++ intercalate ", " (map (show . fieldName) fDefs)
+    show (SameFieldMultipleCstr     fDefs) = "Field names in multiple constructors: '"
+                                                ++ intercalate ", " (map (show . toText . fieldName) fDefs) ++ "'"
 
 instance ConvertsTo a a' => ConvertsTo (ConstructorDef a) (ConstructorDef a') where
     convertTo (ConstructorDef n fs) = ConstructorDef n (convertTo fs)

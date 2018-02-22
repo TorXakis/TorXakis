@@ -4,26 +4,24 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings      #-}
-module TestConstructorDefs
+module Test.ConstructorDefs
 (
--- testConstructorList
+testConstructorList
 )
 where
-{-- test specific Haskell imports
+-- test specific Haskell imports
 import Test.HUnit
 
 -- test specific TorXakis imports
+import Test.CommonHelpers
 
 -- generic Haskell imports
-import           Data.Either
-import qualified Data.Map  as Map
-import qualified Data.Text as T
+import qualified Data.HashMap.Strict as Map
 
 -- generic TorXakis imports
 import Name
 import Ref
 import Sort.ConstructorDefs
-import Sort.FieldDefs
 -- ----------------------------------------------------------------------------
 testConstructorList :: Test
 testConstructorList =
@@ -39,17 +37,24 @@ testConstructorList =
 ---------------------------------------------------------------------------
 testCDefSingle :: Test
 testCDefSingle = TestCase $ do
-    let cList = [cstr 1]
+    let cList = [cstr1]
+        cstr1 = cstr 1
+        expCDefs = ConstructorDefs $ Map.fromList [(RefByName $ constructorName cstr1, cstr1)]
     assertEqual "constructorDefs should succeed for single ConstructorDef"
-        (Right $ mkConstructorDefs cList)
-        $ constructorDefs cList
+        (Right expCDefs) (constructorDefs cList)
 
 testCDefMultiple :: Test
 testCDefMultiple = TestCase $ do
-    let cList = map cstr [1,2,3]
+    let cList = [cstr1, cstr2, cstr3]
+        cstr1 = cstr 1
+        cstr2 = cstr 2
+        cstr3 = cstr 3
+        expCDefs = ConstructorDefs $ Map.fromList [(RefByName $ constructorName cstr1, cstr1)
+                                                  ,(RefByName $ constructorName cstr2, cstr2)
+                                                  ,(RefByName $ constructorName cstr3, cstr3)
+                                                  ]
     assertEqual "constructorDefs should succeed for multiple ConstructorDef's"
-        (Right $ mkConstructorDefs cList)
-        $ constructorDefs cList
+        (Right expCDefs) (constructorDefs cList)
 
 ---------------------------------------------------------------------------
 -- Pre-condition violation tests
@@ -57,32 +62,34 @@ testCDefMultiple = TestCase $ do
 testEmptyConstructorList :: Test
 testEmptyConstructorList = TestCase $
     assertEqual "constructorDefs should fail for empty list"
-        (Left EmptyConstructorDefs) $ constructorDefs ([] :: [ConstructorDef Name])
+        (Left EmptyConstructorDefs) (constructorDefs ([] :: [ConstructorDef Name]))
 
+-- These conditions are evaluated before 'FieldDefs'' conditions. That's
+-- why test entities have empty 'FieldDefs'.
 testNonUniqueName :: Test
 testNonUniqueName = TestCase $ do
     let Right cName = name "SameName"
-        cDef = (ConstructorDef cName $ FieldDefs [] 0) :: ConstructorDef Name
+        cDef = (ConstructorDef cName $ mkFieldDefs []) :: ConstructorDef Name
         cstrList = [cDef, cDef]
     assertEqual "constructorDefs should fail for non-unique names"
         (Left $ ConstructorNamesNotUnique cstrList)
-        $ constructorDefs cstrList 
+        (constructorDefs cstrList)
 
 testNonUniqueFieldName :: Test
 testNonUniqueFieldName = TestCase $ do
-    let cDef2 = cstr 2
-        fields2 = fields cDef2
-        cDef2' = cDef2 { fields =
-                            fields2 {
-                                fDefsToList =
-                                    [FieldDef { fieldName = "field1"
-                                              , sort = mkName "2"}]
-                                    }
-                       }
-        cstrList = [cstr 1, cDef2']
-    assertEqual "constructorDefs should fail for non-unique field names"
-        (Left $ SameFieldMultipleCstr ["field1"])
-        $ constructorDefs cstrList
+    let cstrList = [cstr1, cDef2']
+        cstr1 = cstr 1
+        cDef2' = ConstructorDef (mkName "c2") fDefs
+        fDefs = mkFieldDefs [field1WhatEver]
+        field1WhatEver = fieldNoMeta "field1" "WhatEver"
+        field1Int = fieldNoMeta "field1" "Int"
+    case constructorDefs cstrList of
+        Left (SameFieldMultipleCstr fs) ->
+                assertUnorderedEqual
+                    "constructorDefs should fail for non-unique field names"
+                    fs [field1WhatEver, field1Int]
+        r   ->  assertFailure $ "constructorDefs should fail but got '"
+                    ++ show r ++ "'"
 
 ---------------------------------------------------------------------------
 -- Helpers
@@ -90,13 +97,6 @@ testNonUniqueFieldName = TestCase $ do
 cstr :: Int -> ConstructorDef Name
 cstr i = cDef
     where
-        cDef = ConstructorDef { constructorName = mkName ("c" ++ show i), fields = fDefs }
-        Right fDefs = fieldDefs [fieldInt]
-        fieldInt = FieldDef { fieldName = mkName ("field" ++ show i), sort = mkName $ show i }
-
-mkName :: String -> Name
-mkName = fromRight "" . name . T.pack
-
-mkConstructorDefs :: [ConstructorDef v] -> ConstructorDefs v
-mkConstructorDefs = ConstructorDefs . Map.fromList . map (\c -> (Ref $ Name.toText $ constructorName c, c))
--}
+        cDef = ConstructorDef (mkName $ "c" ++ show i) fDefs
+        fDefs = mkFieldDefs [fieldInt]
+        fieldInt = mkIntField i

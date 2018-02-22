@@ -97,13 +97,11 @@ fieldDefs fs
 
 -- | Type of errors that are raised when it's not possible to build a
 --   'FieldDefs' structure via 'fieldDefs' function.
-data ADTFieldError = FieldNamesNotUnique [FieldDef Name]
-                   | EmptyFieldDefs
+newtype ADTFieldError = FieldNamesNotUnique [FieldDef Name]
     deriving (Eq)
 
 instance Show ADTFieldError where
     show (FieldNamesNotUnique fDefs) = "Names of following field definitions are not unique: " ++ show fDefs
-    show  EmptyFieldDefs             = "No field definitions provided."
 
 instance ConvertsTo a a' => ConvertsTo (FieldDef a) (FieldDef a') where
     convertTo (FieldDef n sNm meta) = FieldDef n (convertTo sNm) meta

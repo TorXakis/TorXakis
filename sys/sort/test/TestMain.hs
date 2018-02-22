@@ -6,15 +6,15 @@ See LICENSE at root directory of this repository.
 import System.Exit
 import Test.HUnit
 
-import TestADTDefs
--- import TestConstructorDefs
--- import TestFieldDefs
+import Test.ADTDefs
+import Test.ConstructorDefs
+import Test.FieldDefs
 
 testSortList :: Test
 testSortList = TestList
     [ TestLabel "ADTs"         testADTList
-    -- , TestLabel "Constructors" testConstructorList
-    -- , TestLabel "Fields"       testFieldList
+    , TestLabel "Constructors" testConstructorList
+    , TestLabel "Fields"       testFieldList
     ]
 
 main :: IO ()
