@@ -35,8 +35,8 @@ import Sort.FieldDefs
 testADTList :: Test
 testADTList  = TestList [ TestLabel "Adding single ADT" testAddADTSingle
                         , TestLabel "Adding ADT that depends on other ADT" testAddADTDependent
-                        -- , TestLabel "Adding multiple ADTs" testAddADTMultiple
-                        -- , TestLabel "Adding ADTs with unknown ref" testAddADTUnknownRef
+                        , TestLabel "Adding multiple ADTs" testAddADTMultiple
+                        , TestLabel "Adding ADTs with unknown ref" testAddADTUnknownRef
                         -- , TestLabel "Adding ADTs with already defined name" testAddADTAlreadyDefinedName
                         -- , TestLabel "Adding ADTs with non-unique name" testAddADTNonUniqueName
                         -- , TestLabel "Constructable ADTs" testConstructableADTs
@@ -66,12 +66,15 @@ testAddADTDependent = TestCase $ do
     assertEqual "addADTDefs should succeed for dependent ADTs"
         (Right expADTDefs)
         $ addADTDefs newADTList emptyADTDefs
-{-
+
 testAddADTMultiple :: Test
 testAddADTMultiple = TestCase $ do
     let newADTList = [adtAName, adtBName, adtCName]
+        expADTDefs = ADTDefs $ Map.fromList [(RefByName $ adtName adtCSort, adtCSort)
+                                            ,(RefByName $ adtName adtBSort, adtBSort)
+                                            ,(RefByName $ adtName adtASort, adtASort)]
     assertEqual "addADTDefs should succeed for multiple ADTs"
-        (Right $ mkADTDefs newADTList)
+        (Right expADTDefs)
         $ addADTDefs newADTList emptyADTDefs
 
 ---------------------------------------------------------------------------
@@ -81,13 +84,13 @@ testAddADTUnknownRef :: Test
 testAddADTUnknownRef = TestCase $ do
     let newADTList = [adtAName]
     assertEqual "addADTDefs should fail for unknown references"
-        (Left $ RefsNotFound [([RefByName "B"], adtAName)])
+        (Left $ RefsNotFound [(["B"], adtAName)])
         $ addADTDefs newADTList emptyADTDefs
 
 ---------------------------------------------------------------------------
 -- ADT Name conditions
 ---------------------------------------------------------------------------
-testAddADTNonUniqueName :: Test
+{-testAddADTNonUniqueName :: Test
 testAddADTNonUniqueName = TestCase $ do
     let adt = ADTDef "SameName" $ ConstructorDefs Map.empty
         newADTList = [adt, adt]
