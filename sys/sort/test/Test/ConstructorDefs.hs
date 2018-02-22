@@ -17,7 +17,6 @@ import Test.CommonHelpers
 
 -- generic Haskell imports
 import qualified Data.HashMap.Strict as Map
-import qualified Data.Text           as T
 
 -- generic TorXakis imports
 import Name
@@ -100,8 +99,4 @@ cstr i = cDef
     where
         cDef = ConstructorDef (mkName $ "c" ++ show i) fDefs
         fDefs = mkFieldDefs [fieldInt]
-        fieldInt = fieldNoMeta (mkName $ "field" ++ show i) "Int"
-
-mkName :: String -> Name
-mkName s = n
-    where Right n = name $ T.pack s
+        fieldInt = mkIntField i
