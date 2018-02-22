@@ -13,6 +13,7 @@ import           QuickCheck.GenT
 import           Name
 import           Sort
 
+import           GenState
 import           NameGen
 
 -- newtype ArbitraryFieldDef = ArbitraryFieldDef
@@ -29,5 +30,5 @@ import           NameGen
 
 -- instance Arbitrary ArbitraryFieldDefs 
 
-arbitraryFieldDefs :: GenT (State ([ADTDef Name], [FieldDef Name])) (ConstructorDefs Name)
+arbitraryFieldDefs :: GenT (State GenState) (FieldDefs Name)
 arbitraryFieldDefs = undefined

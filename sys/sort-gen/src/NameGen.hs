@@ -4,12 +4,22 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
+-- | Name generators.
+--
+-- The adjectives and famous people list were taken from:
+--
+-- https://github.com/bearjaws/docker-names/
+--
 module NameGen where
 
 import           Test.QuickCheck
 import           Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.Text as T
-
+import           Data.Char (toUpper)
+import           Data.Semigroup ((<>))
+import           Data.Set (Set)
+import qualified Data.Set as Set
+    
 import Name
 
 newtype ArbitraryName = ArbitraryName { arbitraryName :: Name }
@@ -22,9 +32,19 @@ instance Arbitrary ArbitraryName where
         s:str <- listOf1 arbitraryPrintableChar
         return $ ArbitraryName $ fromNonEmpty (s :| str)
 
-arbitraryReadableName :: Gen Name
-arbitraryReadableName = undefined
-
+-- TODO: for now the names begin with lowercase, and use camel case.
+-- TODO: replace list with set.
+arbitraryReadableName :: Set Name -- ^ Names already taken.
+                      -> Gen Name
+arbitraryReadableName ns = do
+    (adj, p :| pl) <- elements $ zip adjectives famousPeople
+    let n = fromNonEmpty $ adj <> (toUpper p :| pl)
+    if n `Set.member` ns
+        -- Try again.
+        -- TODO: fail after a given number of tries.
+        then arbitraryReadableName ns
+        else return n
+    
 adjectives :: [NonEmpty Char]
 adjectives = 
     [ 'a' :| "dmiring"
@@ -99,8 +119,8 @@ adjectives =
     , 'z' :| "en"
     ]
 
-scientists :: [NonEmpty Char]
-scientists = 
+famousPeople :: [NonEmpty Char]
+famousPeople = 
     [ -- Muhammad ibn Jābir al-Ḥarrānī al-Battānī was a founding father of
       -- astronomy.
       -- https:--en.wikipedia.org/wiki/Mu%E1%B8%A5ammad_ibn_J%C4%81bir_al-%E1%B8%A4arr%C4%81n%C4%AB_al-Batt%C4%81n%C4%AB

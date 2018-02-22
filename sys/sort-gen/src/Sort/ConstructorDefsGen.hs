@@ -4,37 +4,27 @@ module Sort.ConstructorDefsGen where
 
 import           Control.Monad.State
 import           Test.QuickCheck (Gen)
-import           QuickCheck.GenT (GenT, listOf, listOf1)
+import           QuickCheck.GenT (GenT, listOf, listOf1, liftGen, runGenT)
+import           Control.Arrow   (second)
+import           Data.Set (Set)
+import qualified Data.Set as Set
 
 import           Name
 import           Sort
 
+import           GenState
+import           NameGen
 import           Sort.FieldDefsGen
 
-arbitraryConstructorDefList :: Name          -- ^ Name of the ADT to which this constructor belongs to.
-                                             --   Might be useful to prevent ADT declarations like:
-                                             --
-                                             -- >  TYPEDEF Inf ::= Inf { x :: Inf }
-                                             --
-                            -> [ADTDef Name] -- ^ Set of available ADTs
-                            -> Gen [ConstructorDef Name]
-arbitraryConstructorDefList a as = undefined
-    -- do
-    -- mcs <- runGenT $ QuickCheck.GenT.listOf arbitraryConstructorDefST
-    -- return $ evalState mcs (a, as, [])
-
-arbitraryConstructorDefsST :: Name   -- ^ ADT that contains the constructor defs.
-                           -> [Name] -- ^ Available types.
-                           -> GenT (State [ConstructorDef Name]) (ConstructorDefs Name)
--- TODO: document the state of this monad. Why do we use these elements? What
--- do they represent?
-arbitraryConstructorDefsST a as = do
+arbitraryConstructorDefs :: Name -- ^ ADT that contains the constructor defs.
+                         -> GenT (State GenState) (ConstructorDefs Name)
+arbitraryConstructorDefs a = do
     -- The first list of constructors must contain at least one element, and
     -- may not use the type of the containing ADT.
-    cs0 <- listOf1 $ arbitraryConstructorDef as
+    cs0 <- listOf1 $ arbitraryConstructorDef Nothing
     -- The second list of constructors may be empty and may use the containing
     -- ADT (with name 'a') as type for the fields.
-    cs1 <- listOf  $ arbitraryConstructorDef (a:as)
+    cs1 <- listOf $ arbitraryConstructorDef (Just a)
     -- Here we will get an error if the smart constructor return left, however
     -- this should be OK because:
     --
@@ -45,11 +35,17 @@ arbitraryConstructorDefsST a as = do
     --
     -- - it makes it more convenient to work with generators.
     --
-    let Right cds = constructorDefs (cs0 ++ cs1)
-    return cds
-    
+    let Right cd = constructorDefs (cs0 ++ cs1)
+    -- Clear the field names.
+    lift $ modify clearFields
+    return cd
 
-arbitraryConstructorDef :: [Name] -- ^ Name of the types that are available as
-                                  -- types to be used in the fields.
-                        -> GenT (State [ConstructorDef Name]) (ConstructorDef Name)
-arbitraryConstructorDef = undefined
+arbitraryConstructorDef :: Maybe Name -- ^ Maybe the ADT name that contains this constructor.
+                        -> GenT (State GenState) (ConstructorDef Name)
+arbitraryConstructorDef a = do
+    cn <- lift $ gets constructorNames
+    n  <- liftGen $ arbitraryReadableName cn
+    fd <- arbitraryFieldDefs
+    lift $ modify (addConstructor n)
+    return $ ConstructorDef n fd
+
