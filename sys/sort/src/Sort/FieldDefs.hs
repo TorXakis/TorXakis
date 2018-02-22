@@ -41,6 +41,7 @@ where
 
 import           Control.DeepSeq
 import           Data.Data
+-- import           Data.Text           (Text)
 import           GHC.Generics     (Generic)
 
 import           Name
@@ -53,8 +54,7 @@ data FieldDef sortRef = FieldDef
       fieldName :: Name
       -- | Sort of the field
     , sort      :: sortRef
-      -- TODO: Add meta-data like file name, line nr,
-      -- generator, etc. A Text field should be enough.
+    -- , metadata  :: Text
     }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 

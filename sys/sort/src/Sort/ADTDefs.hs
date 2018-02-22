@@ -192,7 +192,7 @@ instance Show ADTError where
 -- Sort
 -----------------------------------------------------------------------------
 -- | The data type that represents 'Sort's for 'ValExpr.ValExpr's.
-data Sort = SortError -- TODO: Make an issue about removing Error sort?
+data Sort = SortError
           | SortBool
           | SortInt
           | SortChar
