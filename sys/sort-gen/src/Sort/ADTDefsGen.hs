@@ -14,13 +14,19 @@ import           GenState
 import           NameGen
 import           Sort.ConstructorDefsGen
 
+arbitraryADTDefs :: Gen ADTDefs
+arbitraryADTDefs = do
+    ds <- arbitraryADTDefList
+    let Right defs = addADTDefs ds emptyADTDefs
+    return defs
+
 arbitraryADTDefList :: Gen [ADTDef Name]
 arbitraryADTDefList = do
-    mas <- runGenT $ listOf arbitraryADTDefST
+    mas <- runGenT $ listOf arbitraryADTDef
     return $ evalState mas emptyState
 
-arbitraryADTDefST :: GenT (State GenState) (ADTDef Name)
-arbitraryADTDefST = do
+arbitraryADTDef :: GenT (State GenState) (ADTDef Name)
+arbitraryADTDef = do
     -- Get the available ADT's from the state.
     as <- adtNames <$> lift get
     n  <- liftGen $ arbitraryReadableName as
