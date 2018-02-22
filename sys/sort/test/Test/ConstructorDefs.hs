@@ -4,7 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings      #-}
-module TestConstructorDefs
+module Test.ConstructorDefs
 (
 testConstructorList
 )
@@ -13,17 +13,16 @@ where
 import Test.HUnit
 
 -- test specific TorXakis imports
+import Test.CommonHelpers
 
 -- generic Haskell imports
 import qualified Data.HashMap.Strict as Map
-import qualified Data.Set            as Set
 import qualified Data.Text           as T
 
 -- generic TorXakis imports
 import Name
 import Ref
 import Sort.ConstructorDefs
-import Sort.FieldDefs
 -- ----------------------------------------------------------------------------
 testConstructorList :: Test
 testConstructorList =
@@ -64,31 +63,32 @@ testCDefMultiple = TestCase $ do
 testEmptyConstructorList :: Test
 testEmptyConstructorList = TestCase $
     assertEqual "constructorDefs should fail for empty list"
-        (Left EmptyConstructorDefs) $ constructorDefs ([] :: [ConstructorDef Name])
+        (Left EmptyConstructorDefs) (constructorDefs ([] :: [ConstructorDef Name]))
 
 -- These conditions are evaluated before 'FieldDefs'' conditions. That's
 -- why test entities have empty 'FieldDefs'.
 testNonUniqueName :: Test
 testNonUniqueName = TestCase $ do
     let Right cName = name "SameName"
-        cDef = (ConstructorDef cName $ FieldDefs [] 0) :: ConstructorDef Name
+        cDef = (ConstructorDef cName $ mkFieldDefs []) :: ConstructorDef Name
         cstrList = [cDef, cDef]
     assertEqual "constructorDefs should fail for non-unique names"
         (Left $ ConstructorNamesNotUnique cstrList)
-        $ constructorDefs cstrList 
+        (constructorDefs cstrList)
 
 testNonUniqueFieldName :: Test
 testNonUniqueFieldName = TestCase $ do
     let cstrList = [cstr1, cDef2']
         cstr1 = cstr 1
         cDef2' = ConstructorDef (mkName "c2") fDefs
-        Right fDefs = fieldDefs [field1WhatEver]
-        field1WhatEver = FieldDef (mkName "field1") (mkName "WhatEver") T.empty
-        field1Int = FieldDef (mkName "field1") sortIntName T.empty
+        fDefs = mkFieldDefs [field1WhatEver]
+        field1WhatEver = fieldNoMeta "field1" "WhatEver"
+        field1Int = fieldNoMeta "field1" "Int"
     case constructorDefs cstrList of
         Left (SameFieldMultipleCstr fs) ->
-                assertEqual "constructorDefs should fail for non-unique field names"
-                    (Set.fromList fs) (Set.fromList [field1WhatEver, field1Int])
+                assertUnorderedEqual
+                    "constructorDefs should fail for non-unique field names"
+                    fs [field1WhatEver, field1Int]
         r   ->  assertFailure $ "constructorDefs should fail but got '"
                     ++ show r ++ "'"
 
@@ -99,11 +99,8 @@ cstr :: Int -> ConstructorDef Name
 cstr i = cDef
     where
         cDef = ConstructorDef (mkName $ "c" ++ show i) fDefs
-        Right fDefs = fieldDefs [fieldInt]
-        fieldInt = FieldDef (mkName $ "field" ++ show i) sortIntName T.empty
-
-sortIntName :: Name
-sortIntName = mkName "Int"
+        fDefs = mkFieldDefs [fieldInt]
+        fieldInt = fieldNoMeta (mkName $ "field" ++ show i) "Int"
 
 mkName :: String -> Name
 mkName s = n

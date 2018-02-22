@@ -6,9 +6,9 @@ See LICENSE at root directory of this repository.
 import System.Exit
 import Test.HUnit
 
-import TestADTDefs
-import TestConstructorDefs
--- import TestFieldDefs
+import Test.ADTDefs
+import Test.ConstructorDefs
+-- import Test.FieldDefs
 
 testSortList :: Test
 testSortList = TestList

@@ -4,7 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings      #-}
-module TestFieldDefs
+module Test.FieldDefs
 (
 -- testFieldList
 )
