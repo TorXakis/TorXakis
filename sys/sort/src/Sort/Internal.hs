@@ -14,59 +14,20 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Interface file for Sort.
+-- Internals of the Sort module.
 -----------------------------------------------------------------------------
-module Sort
+module Sort.Internal
 (
-  -- * 'Sort's of Value Expressions
-  Sort (..)
-
-  -- * Type-safe reference
-, Ref
-
--- * Abstract Data Types
-  -- ** Data structure
-, ADTDef (..)
-
-  -- ** Collection
-, ADTDefs
-
-  -- ** Usage
-, adtDefsToMap
-, emptyADTDefs
-, addADTDefs
-
-  -- * Constructors
-  -- ** Data structure
-, ConstructorDef (..)
-
-  -- ** Collection
-, ConstructorDefs
-
-  -- ** Usage
-, cDefsToMap
-, constructorDefs
-
-  -- * Fields
-  -- ** Data structure
-, FieldDef (..)
-
-  -- ** Collection
-, FieldDefs
-
-  -- ** Usage
-, fDefsToList
-, fieldDefs
-, nrOfFieldDefs
-
- -- * Error messages
- , ADTError
- , ADTConstructorError
- , ADTFieldError
+  module Ref,
+  module Sort.ADTDefs,
+  module Sort.ConstructorDefs,
+  module Sort.ConvertsTo,
+  module Sort.FieldDefs
 )
 where
 
 import Ref
 import Sort.ADTDefs
 import Sort.ConstructorDefs
+import Sort.ConvertsTo
 import Sort.FieldDefs

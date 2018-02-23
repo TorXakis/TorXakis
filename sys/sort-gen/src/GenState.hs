@@ -5,7 +5,7 @@ module GenState where
 import           Data.Set (Set)
 import qualified Data.Set as Set
 
-import           Sort
+import           Sort.Internal (primitiveSortNames)
 import           Name
 
 data GenState = GenState

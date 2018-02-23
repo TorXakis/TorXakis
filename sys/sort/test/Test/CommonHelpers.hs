@@ -20,7 +20,7 @@ import qualified Data.Text as T
 
 -- generic TorXakis imports
 import Name
-import Sort.FieldDefs
+import Sort.Internal (FieldDef (..), FieldDefs (..))
 
 instance IsString Name where
     fromString s = n

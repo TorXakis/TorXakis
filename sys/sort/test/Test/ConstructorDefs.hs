@@ -20,8 +20,7 @@ import qualified Data.HashMap.Strict as Map
 
 -- generic TorXakis imports
 import Name
-import Ref
-import Sort.ConstructorDefs
+import Sort.Internal
 -- ----------------------------------------------------------------------------
 testConstructorList :: Test
 testConstructorList =

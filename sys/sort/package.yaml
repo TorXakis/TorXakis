@@ -44,14 +44,13 @@ library:
   - Name
   - Sort
   - SortOf
+  - Sort.Internal
   dependencies:
 
 tests:
   sort-test:
     main: TestMain.hs
     source-dirs:
-    - src # TODO: We have to use the X.Internal convention to avoid having to
-          # recompile the sources in our tests!
     - test
     ghc-options:
     - -threaded

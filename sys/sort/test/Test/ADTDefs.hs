@@ -23,10 +23,7 @@ import qualified Data.HashMap.Strict as Map
 
 -- generic TorXakis imports
 import Name
-import Ref
-import Sort.ADTDefs
-import Sort.ConstructorDefs
-import Sort.ConvertsTo
+import Sort.Internal
 -- ----------------------------------------------------------------------------
 testADTList :: Test
 testADTList  = TestList [ TestLabel "Adding single ADT" testAddADTSingle

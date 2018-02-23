@@ -18,7 +18,7 @@ import Test.CommonHelpers
 -- generic Haskell imports
 
 -- generic TorXakis imports
-import Sort.FieldDefs
+import Sort.Internal
 -- ----------------------------------------------------------------------------
 testFieldList :: Test
 testFieldList =
