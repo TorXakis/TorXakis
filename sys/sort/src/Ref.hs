@@ -20,7 +20,6 @@ See LICENSE at root directory of this repository.
 --
 -- This module provides a generalized, type-safe reference.
 -----------------------------------------------------------------------------
-
 module Ref
 ( Ref (..)
 , Referencable (..)
@@ -33,8 +32,8 @@ import           Data.Hashable
 import           Id
 import           Name
 
--- | A type-safe reference
-newtype Ref t = RefByName { -- | This reference keeps a text that represents the entity.
+-- | A generalized, type-safe reference.
+newtype Ref t = RefByName { -- | This reference keeps a 'Name' that represents the entity.
                             toName :: Name
                           }
                 -- We will introduce RefBySignature for functions; that's why
@@ -48,8 +47,9 @@ instance Resettable (Ref t) where
     reset = id
 
 instance Hashable (Ref t) where
-  hash = hash . toText . toName
-  hashWithSalt s = (*s) . hash . toText . toName
+    hash = hash . toText . toName
+    hashWithSalt s = (*s) . hash . toText . toName
 
+-- | Enables creating 'Ref's to entities in a common way.
 class Referencable t where
     mkRef :: t -> Ref t

@@ -41,12 +41,12 @@ import           GHC.Generics     (Generic)
 
 -- | Definition of names of entities.
 newtype Name = Name
-    { -- | 'Data.Text' representation of Name
+    { -- | 'Data.Text' representation of Name.
       toText :: Text
     }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
--- | Smart constructor for Name
+-- | Smart constructor for Name.
 --
 --   Precondition:
 --
@@ -63,9 +63,12 @@ name :: Text -> Either Text Name
 name s | T.null s = Left $ T.pack "Illegal input: Empty String"
 name s            = Right $ Name s
 
+-- | Smart constructor to create a 'Name' from a 'Data.List.NonEmpty.NonEmpty'
+--   'Char' list.
 fromNonEmpty :: NonEmpty Char -> Name
 fromNonEmpty = Name . T.pack . toList
 
+-- | Enables 'Name's of entities to be accessed in a common way.
 class HasName a where
     getName :: a -> Name
 

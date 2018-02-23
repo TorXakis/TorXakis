@@ -20,7 +20,11 @@ module Sort
 (
   -- * 'Sort's of Value Expressions
   Sort (..)
+  -- TODO: maybe we need to put this in an Internal module.
+, primitiveSortNames
 
+  -- * Type-safe reference
+, Ref
   -- * Abstract Data Types
   -- ** Data structure
 , ADTDef (..)
@@ -60,12 +64,10 @@ module Sort
  , ADTError
  , ADTConstructorError
  , ADTFieldError
-
- -- TODO: maybe we need to put this in an Internal module.
- , primitiveSortNames
 )
 where
 
+import Ref
 import Sort.ADTDefs
 import Sort.ConstructorDefs
 import Sort.FieldDefs

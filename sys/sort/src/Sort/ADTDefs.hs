@@ -170,6 +170,7 @@ addADTDefs as adfs
                 isSortConstructable cSortNames sName =
                     sName `elem` (primitiveSortNames ++ cSortNames)
 
+-- | Returns the list of 'ConstructorDef's of a given 'ADTDef'.
 getConstructors :: ADTDef v -> [ConstructorDef v]
 getConstructors = Map.elems . cDefsToMap . constructors
 
@@ -205,13 +206,15 @@ data Sort = SortError
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 -- If we want to make Sort package more flexible, we can use SortPrim "Int" & SortADT "WhatEver".
 
+-- | List of 'Name's for primitive 'Sort's.
 primitiveSortNames :: [Name]
 primitiveSortNames = mkName <$> ["Int", "Bool", "Char", "String", "Regex"]
     where
         mkName :: String -> Name
         mkName s = n
             where Right n = name $ T.pack s
-        
+
+-- | Creates corresponding 'Sort' for a given 'Name'.
 sortFromName :: Name -> Sort
 sortFromName nm = sortFromText $ Name.toText nm
     where
