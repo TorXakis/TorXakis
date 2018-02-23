@@ -1,5 +1,5 @@
 name:                   solve
-version:                0.2.1.0
+version:                0.2.2.0
 synopsis:               SMT Solver
 license:                BSD3
 license-file:           license.txt
@@ -14,6 +14,7 @@ cabal-version:          >=1.10
 
 library
   hs-source-dirs:       src
+                      , src/Solve
 
   exposed-modules:      FreeVar
                       , RandPartition
@@ -21,8 +22,11 @@ library
                       , RandIncrementChoice
                       , RegexXSD2SMT
                       , SMT
+                      , SMTData
                       , SMTString
                       , Solve
+                      , Solve.Params
+                      , SolveDefs
 
   other-modules:        SMTInternal
                       , SMT2TXS
@@ -47,7 +51,6 @@ library
 
                       , lexregexxsd
                       , sort
-                      , solvedefs
                       , valexpr
                       
   build-tools:          alex
@@ -82,11 +85,13 @@ test-suite SmtSolver-WhiteBox
                       , SMT
                       , SMT2TXS
                       , SMTAlex
+                      , SMTData
                       , SMTHappy
                       , SMTInternal
                       , SMTString
                       , SMTStringAlex
                       , SMTStringHappy
+                      , SolveDefs
                       , TXS2SMT
 
   build-depends:        array
@@ -101,7 +106,6 @@ test-suite SmtSolver-WhiteBox
                       , text
 
                       , lexregexxsd
-                      , solvedefs
                       , sort
                       , valexpr
                       
@@ -130,7 +134,6 @@ test-suite SmtSolver-BlackBox
                       , text
 
                       , solve
-                      , solvedefs
                       , sort
                       , valexpr
                       

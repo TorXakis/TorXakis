@@ -61,6 +61,13 @@ module TxsCore
   -- ** stop testing, simulating, or stepping
 , txsStop
 
+  -- *  TorXakis definitions
+  -- ** get all torxakis definitions
+, txsGetTDefs
+
+  -- ** set all torxakis definitions
+, txsSetTDefs
+
   -- * Parameters
   -- ** get all parameter values
 , txsGetParams
@@ -120,6 +127,7 @@ import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
+import           System.IO
 import           System.Random
 
 -- import from local
@@ -156,12 +164,16 @@ import           TxsUtils
 import qualified FreeVar
 import qualified SMT
 import qualified Solve
+import qualified Solve.Params
 import qualified SolveDefs
-import qualified SolveDefs.Params
 import qualified SMTData
 
 -- import from value
 import qualified Eval
+
+-- import from lpe
+-- import qualified LPE
+import qualified LPE
 
 -- import from valexpr
 import qualified SortId
@@ -181,7 +193,7 @@ runTxsCore initConfig ctrl s0  =  do
      return ()
        where initState = IOC.Noning
              initParams =
-               Map.union ParamCore.initParams SolveDefs.Params.initParams
+               Map.union ParamCore.initParams Solve.Params.initParams
 
 runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()
 runTxsCtrl ctrl s0  =  do
@@ -268,6 +280,24 @@ txsStop  =  do
                                  , IOC.putmsgs = IOC.putmsgs st
                                  }
                  }
+
+-- | Get all torxakis definitions
+txsGetTDefs :: IOC.IOC TxsDefs.TxsDefs
+txsGetTDefs  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Noning -> return TxsDefs.empty
+       _                             -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
+                  -> return $ IOC.tdefs (IOC.state envc)
+
+-- | Set all torxakis definitions
+txsSetTDefs :: TxsDefs.TxsDefs -> IOC.IOC ()
+txsSetTDefs tdefs'  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Noning -> return ()
+       _                             -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
+                  -> IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs' }
 
 -- | Get the values of all parameters.
 txsGetParams :: IOC.IOC [(String,String)]
@@ -1041,10 +1071,9 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
                            return $ Just purpid
                          _ -> return Nothing
 
-              _ -> do
-                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                                "N-Complete requires a data-less STAUTDEF" ]
-                return Nothing
+              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                    "N-Complete requires a data-less STAUTDEF" ]
+                      return Nothing
     _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                           $ "N-Complete should be used after initialization, before testing, "
                             ++ "with a STAUTDEF with data-less, singleton channels" ]
@@ -1053,62 +1082,63 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
 -- ----------------------------------------------------------------------------------------- --
 
 -- | LPE transformation by Carsten Ruetz
-txsLPE :: TxsDefs.BExpr                     -- ^ behaviour expression, to be transformed;
-                                            --   shall be a process instantiation.
-       -> IOC.IOC (Maybe TxsDefs.BExpr)     -- ^ transformed process instantiation
-txsLPE bexpr  =  do
-  envc <- get
-  case (IOC.state envc, bexpr) of
-    (IOC.Initing {IOC.tdefs = tdefs}, TxsDefs.ProcInst procid _ _)
-      -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
-           Just TxsDefs.ProcDef{}
-             -> case lpeTransform bexpr (TxsDefs.procDefs tdefs) of
-                  Just (procinst'@(TxsDefs.ProcInst procid' _ _), procdef')
-                    -> case Map.lookup procid' (TxsDefs.procDefs tdefs) of
-                         Nothing
-                           -> do let tdefs' = tdefs
-                                       { TxsDefs.procDefs = Map.insert procid' procdef'
-                                                                       (TxsDefs.procDefs tdefs)
-                                       }
-                                 IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs' }
-                                 return $ Just procinst'
-                         _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                               "LPE: generated process id already exists" ]
-                                 return Nothing
+txsLPE :: Either TxsDefs.BExpr TxsDefs.ModelId   -- ^ either a behaviour expression (that shall
+                                                 --   be a process instantiation), or a model
+                                                 --   definition (that shall contain a process
+                                                 --   instantiation), to be tranformed
+       -> IOC.IOC (Maybe (Either TxsDefs.BExpr TxsDefs.ModelId))
+                                                 -- ^ transformed process instantiation
+                                                 --   or model definition
 
-                  _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                                        "LPE: transformation failed" ]
-                          return Nothing
-           _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                                 "LPE: process in process instantiation not defined" ]
-                   return Nothing
-    _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                          "LPE: only allowed when initialized and with process instantiation" ]
+txsLPE (Left bexpr)  =  do
+  envc <- get
+  case IOC.state envc of
+    IOC.Initing {IOC.tdefs = tdefs}
+      -> do lpe <- LPE.lpeTransform bexpr (TxsDefs.procDefs tdefs)
+            case lpe of
+              Just (procinst'@(TxsDefs.ProcInst procid' _ _), procdef')
+                -> case Map.lookup procid' (TxsDefs.procDefs tdefs) of
+                     Nothing
+                       -> do let tdefs' = tdefs { TxsDefs.procDefs = Map.insert
+                                                    procid' procdef' (TxsDefs.procDefs tdefs)
+                                                }
+                             IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs' }
+                             return $ Just (Left procinst')
+                     _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                           "LPE: generated process id already exists" ]
+                             return Nothing
+              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "LPE: transformation failed" ]
+                      return Nothing
+    _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "LPE: only allowed if initialized" ]
             return Nothing
 
--- ----------------------------------------------------------------------------------------- --
--- temp function for lpe                                                                     --
-
--- | placeholder for LPE tranformation
-lpeTransform :: TxsDefs.BExpr              -- ^ behaviour expression to be transformed,
-                                           --   assumed to be a process instantiation
-             -> Map.Map TxsDefs.ProcId TxsDefs.ProcDef  -- ^ context of process definitions
-                                                        --   in which process instantiation
-                                                        --   is assumed to be defined
-             -> Maybe (TxsDefs.BExpr, TxsDefs.ProcDef)  -- ^ transformed process instantiation
-                                                        --   with its LPE definition
-lpeTransform procinst procdefs
-  =  case procinst of
-       TxsDefs.ProcInst procid@(TxsDefs.ProcId nm uid chids vars ext) chans vexps
-         -> case Map.lookup procid procdefs of
-              Just procdef -> Just ( TxsDefs.ProcInst
-                                       (TxsDefs.ProcId ("LPE_"<>nm) uid chids vars ext)
-                                       chans
-                                       vexps
-                                   , procdef
-                                   )
-              __           -> error "LPE transformation: undefined process instantiation\n"
-       _ -> error "LPE transformation: only defined for process instantiation\n"
+txsLPE (Right modelid@(TxsDefs.ModelId modname _moduid))  =  do
+  envc <- get
+  case IOC.state envc of
+    IOC.Initing {IOC.tdefs = tdefs}
+      -> case Map.lookup modelid (TxsDefs.modelDefs tdefs) of
+           Just (TxsDefs.ModelDef insyncs outsyncs splsyncs bexpr)
+             -> do lpe' <- txsLPE (Left bexpr)
+                   lift $ hPrint stderr lpe'
+                   case lpe' of
+                     Just (Left (procinst'@TxsDefs.ProcInst{}))
+                       -> do uid'   <- IOC.newUnid
+                             tdefs' <- gets (IOC.tdefs . IOC.state)
+                             let modelid' = TxsDefs.ModelId ("LPE_"<>modname) uid'
+                                 modeldef'= TxsDefs.ModelDef insyncs outsyncs splsyncs procinst'
+                                 tdefs''  = tdefs'
+                                   { TxsDefs.modelDefs = Map.insert modelid' modeldef'
+                                                                    (TxsDefs.modelDefs tdefs')
+                                   }
+                             IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs'' }
+                             return $ Just (Right modelid')
+                     _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "LPE: " ++
+                                           "transformation on behaviour of modeldef failed" ]
+                             return Nothing
+           _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "LPE: model not defined" ]
+                   return Nothing
+    _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "LPE: only allowed if initialized" ]
+            return Nothing
 
 
 -- ----------------------------------------------------------------------------------------- --

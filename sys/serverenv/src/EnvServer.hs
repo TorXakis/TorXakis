@@ -75,7 +75,6 @@ data EnvS  = EnvS { host    :: String                    -- ^ host of server cli
                     , servhs  :: Handle                    -- ^ server socket handle
                     , modus   :: TxsModus                  -- ^ current modus of TXS operation
                     , uid     :: Id                       -- ^ last used unique id number
-                    , tdefs   :: TxsDefs.TxsDefs           -- ^ TorXakis definitions from file
                     , sigs    :: Sigs.Sigs VarId.VarId   -- ^ Signatures contained in TorXakis files
                     , locvars :: [VarId.VarId]           -- ^ local free variables
                     , locvals :: TxsDefs.VEnv              -- ^ local value environment
@@ -97,7 +96,6 @@ envsNone   = EnvS { host      = ""
                     , servhs    = stderr
                     , modus     = Noned
                     , uid       = 1000
-                    , tdefs     = TxsDefs.empty
                     , sigs      = Sigs.empty
                     , locvars   = []
                     , locvals   = Map.empty

@@ -156,8 +156,10 @@ isConst _                  = False
 -- | Get the integer value of a constant.
 getIntVal :: ValExpr v -> Integer
 getIntVal (view -> Vconst (Cint i)) = i
+getIntVal (view -> Vconst _)        =
+    error "ValExprImpls.hs - getIntVal - Unexpected Constant"
 getIntVal _                         =
-    error "ValExprImpls.hs - getIntVal - Unexpected ValExpr: "
+    error "ValExprImpls.hs - getIntVal - Unexpected ValExpr"
 
 -- | Create a constant as a value expression.
 cstrConst :: Const -> ValExpr v
@@ -169,10 +171,12 @@ cstrVar v = ValExpr (Vvar v)
 
 -- | Apply operator ITE (IF THEN ELSE) on the provided value expressions.
 -- Preconditions are /not/ checked.
-cstrITE :: ValExpr v -> ValExpr v -> ValExpr v -> ValExpr v
+cstrITE :: Eq v => ValExpr v -> ValExpr v -> ValExpr v -> ValExpr v
 cstrITE (view -> Vconst (Cbool True))  tb _ = tb
 cstrITE (view -> Vconst (Cbool False)) _ fb = fb
--- if (not b) then tb else fb == if b then fb else tb
+-- if c then a else a == a
+cstrITE _ tb fb | tb == fb = tb
+-- if (not c) then tb else fb == if c then fb else tb
 cstrITE (view -> Vnot n) tb fb              = ValExpr (Vite n fb tb)
 cstrITE cs tb fb                            = ValExpr (Vite cs tb fb)
 

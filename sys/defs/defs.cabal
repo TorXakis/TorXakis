@@ -5,7 +5,7 @@ license:                BSD3
 license-file:           license.txt
 author:                 Jan Tretmans
                       , Pierre van de Laar
-maintainer:          
+maintainer:
                       , pierre.vandelaar@tno.nl
 copyright:              TNO
 category:               Web
@@ -15,7 +15,8 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      ChanId
+  exposed-modules:      BehExprDefs
+                      , ChanId
                       , CnectId
                       , FuncTable
                       , GoalId
@@ -36,8 +37,7 @@ library
                       , Utils
                       , XmlFormat
 
-  other-modules:        BehExprDefs
-                      , ConnectionDefs
+  other-modules:        ConnectionDefs
                       , CnectDef
                       , MapperDef
                       , ModelDef
@@ -47,10 +47,10 @@ library
 
 
   ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math -Wall
-  
+
   build-tools:          happy
-  
-  build-depends:        base
+  build-depends:        array
+                      , base
                       , bytestring
                       , containers
                       , deepseq
@@ -58,7 +58,7 @@ library
                       , mtl
                       , text
                       , MissingH
-
+                      , lexregexxsd
                       , sort
                       , text-via-sockets
                       , valexpr

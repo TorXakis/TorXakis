@@ -18,7 +18,7 @@ where
 
 import qualified Data.Map  as Map
 
-import SolveDefs.Params(Params,SolveStrategy(..))
+import Solve.Params(Params,SolveStrategy(..))
 
 import RandPartition
 import RandTrueBins
