@@ -28,7 +28,6 @@ import           GHC.Generics    (Generic)
 
 import           Sort
 import           Id
-import           Identifier
 import           SortOf
 
 -- | Union of Boolean, Integer, String, and AlgebraicDataType constant values.
@@ -38,8 +37,8 @@ data Const = Cbool    { cBool :: Bool }
            | Cregex   { cRegex :: Text } -- ^ XSD input
                                          -- PvdL: performance gain: translate only once,
                                          --       storing SMT string as well
-           | Cstr     { adtRef  :: Ref ADTDef
-                      , cstrRef :: Ref ConstructorDef
+           | Cstr     { adtRef  :: Ref (ADTDef Sort)
+                      , cstrRef :: Ref (ConstructorDef Sort)
                       , args    :: [Const]
                       }
            | Cerror   { msg  :: String }

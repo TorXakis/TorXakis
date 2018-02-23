@@ -19,10 +19,8 @@ library
                       , FreeMonoidX
                       , FuncDef
                       , FuncId
-                      , Name
                       , Product
                       , RegexXSD2Posix
-                      , StandardSortRefs
                       , Sum
                       , ValExpr
                       , Variable

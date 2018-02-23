@@ -39,6 +39,8 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 import           GHC.Generics     (Generic)
 
+import           Id
+
 -- | Definition of names of entities.
 newtype Name = Name
     { -- | 'Data.Text' representation of Name.
@@ -46,6 +48,17 @@ newtype Name = Name
     }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
+instance Resettable Name
+instance Identifiable Name
+
+-- | Enables 'Name's of entities to be accessed in a common way.
+class HasName a where
+    getName :: a -> Name
+
+instance HasName Name where
+    getName = id
+
+    
 -- | Smart constructor for Name.
 --
 --   Precondition:
@@ -67,13 +80,6 @@ name s            = Right $ Name s
 --   'Char' list.
 fromNonEmpty :: NonEmpty Char -> Name
 fromNonEmpty = Name . T.pack . toList
-
--- | Enables 'Name's of entities to be accessed in a common way.
-class HasName a where
-    getName :: a -> Name
-
-instance HasName Name where
-    getName = id
 
 -- | Search values in the first list that have non-unique names among combination
 --   of both lists.

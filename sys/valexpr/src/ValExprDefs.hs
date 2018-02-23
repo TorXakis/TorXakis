@@ -36,7 +36,6 @@ import           GHC.Generics    (Generic)
 import           ConstDefs
 import           FuncId
 import           Id
-import           Identifier
 import           Product
 import           Sum
 import           Sort
@@ -75,9 +74,9 @@ data  ValExprView v = Vconst  Const
                                ,    regex  :: ValExpr v
                                }
                     -- ADT
-                    | Vcstr   (Ref ADTDef) (Ref ConstructorDef) [ValExpr v]
-                    | Viscstr (Ref ADTDef) (Ref ConstructorDef) (ValExpr v)
-                    | Vaccess (Ref ADTDef) (Ref ConstructorDef) Int Sort (ValExpr v)
+                    | Vcstr   (Ref (ADTDef Sort)) (Ref (ConstructorDef Sort)) [ValExpr v]
+                    | Viscstr (Ref (ADTDef Sort)) (Ref (ConstructorDef Sort)) (ValExpr v)
+                    | Vaccess (Ref (ADTDef Sort)) (Ref (ConstructorDef Sort)) Int Sort (ValExpr v)
 
                     | Vfunc   FuncId [ValExpr v]
                     | Vpredef PredefKind FuncId [ValExpr v]

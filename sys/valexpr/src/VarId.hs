@@ -34,13 +34,16 @@ data VarId = VarId
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Variable VarId where
-  vname v            = VarId.name v <> "$$" <> (T.pack . show) (VarId.unid v)
-  vunid              = _id . VarId.unid
-  vsort              = VarId.varsort
-  cstrVariable n i   = VarId (T.pack n) (Id i)
+      vname v            = nm
+          where Right nm = Name.name
+                           $ toText (VarId.name v) <> "$$" <> (T.pack . show) (VarId.unid v)
+      vunid              = _id . VarId.unid
+      vsort              = VarId.varsort
+      cstrVariable n i   = VarId nm (Id i)
+          where Right nm = Name.name $ T.pack n
 
 instance Resettable VarId
 instance Identifiable VarId
 
 instance SortOf VarId  where
-  sortOf (VarId _nm _unid srt) = srt
+    sortOf (VarId _nm _unid srt) = srt
