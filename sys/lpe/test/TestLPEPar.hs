@@ -81,9 +81,9 @@ vexpr1 = cstrConst (Cint 1)
 vexpr2 = cstrConst (Cint 2)
 vexprMin1 = cstrConst (Cint (-1))
 
-int0 = (cstrConst (Cint 0))
-int1 = (cstrConst (Cint 1))
-int2 = (cstrConst (Cint 2))
+int0 = cstrConst (Cint 0)
+int1 = cstrConst (Cint 1)
+int2 = cstrConst (Cint 2)
 varIdPcP = VarId (T.pack "pc$P") 0 intSort
 vexprPcP = cstrVar varIdPcP
 

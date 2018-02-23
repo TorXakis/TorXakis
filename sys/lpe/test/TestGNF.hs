@@ -59,34 +59,34 @@ vexpr1 = cstrConst (Cint 1)
 
 
 -- action: A!1
-actOfferA1   = ActOffer {  offers = Set.singleton(
+actOfferA1   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdA
                                               , chanoffers = [Exclam vexpr1]
-                                        })
+                                        }
                         , constraint = cstrConst (Cbool True)
             }
 
 -- action: A?x
-actOfferAx   = ActOffer {  offers = Set.singleton(
+actOfferAx   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdA
                                               , chanoffers = [Quest varIdX]
-                                        })
+                                        }
                         , constraint = cstrConst (Cbool True)
             }
 
 -- action: B!1
-actOfferB1   = ActOffer {  offers = Set.singleton(
+actOfferB1   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdB
                                               , chanoffers = [Exclam vexpr1]
-                                        })
+                                        }
                         , constraint = cstrConst (Cbool True)
             }
 
 -- action: B?x
-actOfferBx   = ActOffer {  offers = Set.singleton(
+actOfferBx   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdB
                                               , chanoffers = [Quest varIdX]
-                                        })
+                                        }
                         , constraint = cstrConst (Cbool True)
             }
 
@@ -221,7 +221,7 @@ testProcInst2 = TestCase $
       procDefQ = ProcDef [chanIdA] [] (ActionPref actOfferAx Stop)
 
 
-      procDefP' = ProcDef [chanIdA] [] (Choice [Stop, (ActionPref actOfferAx Stop)])
+      procDefP' = ProcDef [chanIdA] [] (Choice [Stop, ActionPref actOfferAx Stop])
 
       procDefs = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
@@ -247,7 +247,7 @@ testProcInst3 = TestCase $
       procDefQ = ProcDef [chanIdA] [] (ProcInst procIdR [chanIdA] [])
       procDefR = ProcDef [chanIdA] [] (ActionPref actOfferAx Stop)
 
-      procDefP' = ProcDef [chanIdA] [] (Choice [(ActionPref actOfferAx Stop), Stop])
+      procDefP' = ProcDef [chanIdA] [] (Choice [ActionPref actOfferAx Stop, Stop])
       procDefQ' = ProcDef [chanIdA] [] (ActionPref actOfferAx Stop)
 
 
