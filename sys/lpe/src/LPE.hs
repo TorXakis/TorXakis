@@ -580,7 +580,7 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
     where
         -- recursively collect all (ProcId, Channels)-combinations that are called
         calledProcDefs :: ProcDefs -> [Proc] -> [BExpr] -> [Proc]
-        calledProcDefs procDefs accu bexprs = foldl (processStep procDefs) accu bexprs
+        calledProcDefs procDefs = foldl (processStep procDefs)
           where
             processStep :: ProcDefs -> [Proc] -> BExpr -> [Proc]
             -- case bexpr == A >-> P'[]()
