@@ -1147,6 +1147,27 @@ lpeTransform procinst procdefs
               __           -> error "LPE transformation: undefined process instantiation\n"
        _ -> error "LPE transformation: only defined for process instantiation\n"
 
+-- ----------------------------------------------------------------------------------------- --
+
+-- | Start and Stop
+--
+txsSetW :: TxsDefs.CnectDef -> Int -> Int -> Int -> IOC.IOC ()
+txsSetW cnectDef connDelay deltaTime chReadTime  =  do
+      start
+     
+
+
+
+1035           -> IOC.IOC TxsDDefs.Action
+1036 txsMapper act  =  do
+1037      envc <- get
+1038      case IOC.state envc of
+1039        IOC.Testing {} -> mapperMap act
+1040        IOC.Simuling {} -> mapperMap act
+1041        _ -> do
+1042          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+1043                         "Mapping only allowed in Testing or Simulating mode" ]
+1044          return act
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

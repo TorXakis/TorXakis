@@ -185,6 +185,12 @@ cmdsIntpr = do
        ("NCOMP"    , _ )                           ->  cmdNoop      cmd
        ("LPE"      , _ )   | IOS.isInited   modus  ->  cmdLPE       args
        ("LPE"      , _ )                           ->  cmdNoop      cmd
+       ("SETW"     , _ )   | IOS.isInited   modus  ->  cmdSetW      args
+       ("SETW"     , _ )                           ->  cmdNoop      cmd
+       ("STARTW"   , _ )   | IOS.isInited   modus  ->  cmdStartW    args
+       ("STARTW"   , _ )                           ->  cmdNoop      cmd
+       ("STOPW"    , _ )   | IOS.isInited   modus  ->  cmdStopW     args
+       ("STOPW"    , _ )                           ->  cmdNoop      cmd
        (_          , _ )                           ->  cmdUnknown   cmd
 
 
@@ -538,7 +544,7 @@ cmdTester args = do                                                -- PRE :  mod
             case (mdefs,cdefs) of
               ([modeldef],[cnectdef])
                          | isConsistentTester modeldef Nothing Nothing cnectdef
-                -> do ew  <- lift $ initSockWorld cnectdef deltaTime ioTime
+                -> do ew  <- lift $ set-initSockWorld cnectdef deltaTime ioTime
                       ew' <- lift $ TxsCore.txsSetTest ew modeldef Nothing Nothing
                       modify $ \env -> env { IOS.modus = IOS.Tested ew' }
                       IFS.pack "TESTER" []
@@ -1076,6 +1082,56 @@ cmdLPE args = do                                                   -- PRE :  mod
                             cmdsIntpr
        Nothing        -> do IFS.nack "LPE" [ "Could not generate LPE" ]
                             cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdSetW :: String -> IOS.IOS ()
+cmdSetW args = do                                                  -- PRE :  modus == Inited --
+     envs <- get
+     let tdefs      = IOS.tdefs envs
+         connDelay  = case Map.lookup "param_EW_connDelay" (IOS.params envs) of
+                        Nothing      -> 1000                -- default 1 sec
+                        Just (val,_) -> read val
+         deltaTime  = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
+                        Nothing      -> 2000                -- default 2 sec
+                        Just (val,_) -> read val
+         chReadTime = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
+                        Nothing      -> 1                   -- default 1 msec
+                        Just (val,_) -> read val
+         cdefs      = [ cdef
+                      | (TxsDefs.CnectId nm _, cdef) <- Map.toList (TxsDefs.cnectDefs tdefs)
+                      , T.unpack nm == args
+                      ]
+     case cdefs of
+       [cnectdef]
+         -> do ew <- lift $ TxsCore.txsSetW cnectdef connDelay deltaTime chReadTime
+               modify $ \env -> env { IOS.modus = IOS.Simuled ew' }
+               IFS.pack "SETW" []
+               cmdsIntpr
+       _ -> do IFS.nack "SETW" [ "no (unique) cnectdef" ]
+               cmdsIntpr
+
+  -> do ew  <- lift $ initSockWorld cnectdef deltaTime ioTime
+ 684                       ew' <- lift $ TxsCore.txsSetSim ew modeldef Nothing
+ 685                       modify $ \env -> env { IOS.modus = IOS.Simuled ew' }
+ 686                       IFS.pack "SIMULATOR" []
+ 687                       cmdsIntpr
+ 688               _ -> do IFS.nack "SIMULATOR" [ "Wrong or inconsistent 
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdStartW :: String -> IOS.IOS ()
+cmdStartW args = do                                                -- PRE :  modus == Inited --
+     lift $ TxsCore.txsStartW
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdStopW :: String -> IOS.IOS ()
+cmdStopW args = do                                                -- PRE :  modus == Inited --
+     lift $ TxsCore.txsStopW
+     cmdsIntpr
+
 
 -- ----------------------------------------------------------------------------------------- --
 --

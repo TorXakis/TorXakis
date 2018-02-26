@@ -103,16 +103,15 @@ envsNone  = EnvS { host      = ""
 data  TxsModus =   Noned
                  | Idled
                  | Inited
-                 | Tested  SockWorld                 -- ^ connections to external world
-                 | Simuled SockWorld                 -- ^ connections to external world
-                 | Learned SockWorld                 -- ^ connections to external world
+                 | Manualed SockWorld                 -- ^ connections to external world
+                 | Tested   SockWorld                 -- ^ connections to external world
+                 | Simuled  SockWorld                 -- ^ connections to external world
+                 | Learned  SockWorld                 -- ^ connections to external world
                  | Stepped
 
-isNoned, isIdled, isInited                :: TxsModus -> Bool
-isTested, isSimuled, isStepped, isLearned :: TxsModus -> Bool
-isGtNoned, isGtIdled, isGtInited          :: TxsModus -> Bool
-
-isNoned Noned         = True
+isNoned, isIdled, isInited                            :: TxsModus -> Bool
+isManualed, isTested, isSimuled, isStepped, isLearned :: TxsModus -> Bool
+isGtNoned, isGtIdled, isGtInited                      :: TxsModus -> Bool
 isNoned _             = False
 isIdled Idled         = True
 isIdled _             = False

@@ -131,13 +131,11 @@ incUnid = modify $ \env -> env { unid = unid env + 1}
 
 class EWorld w
   where
-     initW     ::  TxsDefs.CnectDef -> PParams -> IOC w
-     startW    ::  w -> IOC w
-     restartW  ::  w -> IOC w
-     stopW     ::  w -> IOC w
-     putToW    ::  w -> TxsDDefs.Action -> IOC TxsDDefs.Action
-     getFroW   ::  w -> IOC TxsDDefs.Action
-     termitW   ::  w -> IOC ()
+     setW     ::  TxsDefs.CnectDef -> (Map.Map String String) -> IOC w
+     startW   ::  w -> IOC w
+     stopW    ::  w -> IOC w
+     putToW   ::  w -> TxsDDefs.Action -> IOC TxsDDefs.Action
+     getFroW  ::  w -> IOC TxsDDefs.Action
 
 
 -- ----------------------------------------------------------------------------------------- --

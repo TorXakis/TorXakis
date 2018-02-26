@@ -303,6 +303,10 @@ cmdIntpr cmdname args  =
          ; "map"           -> cmdMap        args
          ; "ncomp"         -> cmdNComp      args
          ; "lpe"           -> cmdLPE        args
+-- -------------------------------------------------------------------------- external world --
+         ; "setw"          -> cmdSetW       args
+         ; "startw"        -> cmdStartW     args
+         ; "stopw"         -> cmdStopW      args
 -- ---------------------------------------------------------------------------------- system --
          ; "systart"       -> cmdSyStart    args
          ; "systop"        -> cmdSyStop     args
@@ -583,6 +587,27 @@ cmdNComp args  =  do
 cmdLPE :: String -> UIO ()
 cmdLPE args  =  do
      doCmd "LPE" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdSetW :: String -> UIO ()
+cmdSetW args  =  do
+     doCmd "SETW" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdStartW :: String -> UIO ()
+cmdStartW args  =  do
+     doCmd "STARTW" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdStopW :: String -> UIO ()
+cmdStopW args  =  do
+     doCmd "STOPW" args
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
