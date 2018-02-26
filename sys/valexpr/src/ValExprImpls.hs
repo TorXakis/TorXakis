@@ -91,7 +91,6 @@ import           ConstDefs
 import qualified FreeMonoidX     as FMX
 import           FuncDef
 import           FuncId
-import           Identifier
 import           Product
 import           RegexXSD2Posix
 import           Sort
@@ -118,7 +117,7 @@ cstrFunc fis fi arguments =
 
 -- | Apply ADT Constructor of constructor with CstrId and the provided
 -- arguments (the list of value expressions). Preconditions are /not/ checked.
-cstrCstr :: Ref ADTDef -> Ref ConstructorDef -> [ValExpr v] -> ValExpr v
+cstrCstr :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> [ValExpr v] -> ValExpr v
 cstrCstr adtRf cRef cArgs =
     if all isConst cArgs
         then cstrConst (Cstr adtRf cRef
@@ -127,14 +126,14 @@ cstrCstr adtRf cRef cArgs =
 
 -- | Is the provided value expression made by the ADT constructor with CstrId?
 -- Preconditions are /not/ checked.
-cstrIsCstr :: Ref ADTDef -> Ref ConstructorDef -> ValExpr v -> ValExpr v
+cstrIsCstr :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> ValExpr v -> ValExpr v
 cstrIsCstr _ c1 (view -> Vcstr _ c2 _)         = cstrConst (Cbool (c1 == c2) )
 cstrIsCstr _ c1 (view -> Vconst (Cstr _ c2 _)) = cstrConst (Cbool (c1 == c2) )
 cstrIsCstr a c e                               = ValExpr (Viscstr a c e)
 
 -- | Apply ADT Accessor of constructor with CstrId on field with given position on the provided value expression.
 -- Preconditions are /not/ checked.
-cstrAccess :: Ref ADTDef -> Ref ConstructorDef -> Int -> Sort -> ValExpr v -> ValExpr v
+cstrAccess :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Int -> Sort -> ValExpr v -> ValExpr v
 cstrAccess a1 c1 p1 s1 e@(view -> Vcstr _ c2 cFields) =
     if c1 == c2 -- prevent crashes due to model errors
         then cFields!!p1
