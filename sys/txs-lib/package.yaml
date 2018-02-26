@@ -21,8 +21,6 @@ default-extensions:
 - OverloadedStrings
 
 dependencies:
-- base >= 4.7 && < 5
-- text
 
 ghc-options:
 - -O2
@@ -35,4 +33,12 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.Lib
-  dependencies: []
+  dependencies:
+  - base >= 4.7 && < 5
+  - text
+  - path
+  - stm
+  # `TorXakis` dependencies.
+  - defs
+  - valexpr
+  - front
