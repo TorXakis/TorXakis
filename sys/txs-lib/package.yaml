@@ -1,0 +1,38 @@
+name: txs-lib
+version: 0.1.0.0
+github: "TorXakis/TorXakis"
+license: BSD3
+author:
+- "Damian Nadales"
+maintainer:
+- "damian.nadales@gmail.com"
+copyright: "Copyright: (c) 2017 TNO"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+- license.txt
+
+synopsis: Interface to the `TorXakis` parser and core.
+maintainer:
+- "damian.nadales@gmail.com"
+
+default-extensions:
+- OverloadedStrings
+
+dependencies:
+- base >= 4.7 && < 5
+- text
+
+ghc-options:
+- -O2
+- -optc-O3
+- -Werror
+- -Wall
+- -optc-ffast-math
+
+library:
+  source-dirs: src
+  exposed-modules:
+  - TorXakis.Lib
+  dependencies: []
