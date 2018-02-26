@@ -22,7 +22,7 @@ module Sort
   Sort (..)
 
   -- * Type-safe reference
-, Ref
+, Ref (toName)
 
 -- * Abstract Data Types
   -- ** Data structure
@@ -35,6 +35,7 @@ module Sort
 , adtDefsToMap
 , emptyADTDefs
 , addADTDefs
+, mergeADTDefs
 
   -- * Constructors
   -- ** Data structure
@@ -46,6 +47,8 @@ module Sort
   -- ** Usage
 , cDefsToMap
 , constructorDefs
+, getFieldSorts
+-- , getAllFieldSortNames
 
   -- * Fields
   -- ** Data structure

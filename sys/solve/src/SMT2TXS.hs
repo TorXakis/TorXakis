@@ -21,17 +21,20 @@ module SMT2TXS
 )
 where
 
-import qualified Data.Map          as Map
+import qualified Data.HashMap.Strict as Map
 import           Data.Maybe
-import           Data.Text         (Text)
+import           Data.Text           (Text)
 
 import           ConstDefs
-import           Identifier
 import           SMTHappy
 import           Sort
 
 -- | convert an SMT expression to a Constant.
-smtValueToConst :: SMTValue -> Sort -> ADTDefs -> Map.Map Text (Ref ADTDef, Ref ConstructorDef) ->  Const
+smtValueToConst :: SMTValue
+                -> Sort
+                -> ADTDefs
+                -> Map.HashMap Text (Ref (ADTDef Sort), Ref (ConstructorDef Sort))
+                -> Const
 smtValueToConst (SMTBool b) srt _ _
   = case srt of
         SortBool -> Cbool b
@@ -65,7 +68,7 @@ smtValueToConst (SMTConstructor s argValues) srt aDefs decoder
                          in  if nrOfFieldDefs (fields cstrDef) == length argValues
                                 then  -- recursively translate the arguments:
                                     let vexprArgs = map (\(argValue, srt') -> smtValueToConst argValue srt' aDefs decoder)
-                                                        (zip argValues $ sortsOfFieldDefs $ fields cstrDef)
+                                                        (zip argValues $ getFieldSorts cstrDef)
                                     in Cstr adtRf refCstr vexprArgs
                                 else Cerror $ "TXS SMT2TXS smtValueToConst: Number of arguments mismatch " ++
                                             "in constructor " ++ show (constructorName cstrDef) ++ " of srt " ++ show (adtName adtDef) ++

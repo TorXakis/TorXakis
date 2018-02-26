@@ -23,14 +23,13 @@ module SMTData
 where
 
 import           Control.Monad.State
-import qualified Data.Map            as Map
+import qualified Data.HashMap.Strict as Map
 import qualified Data.Set            as Set
 import           Data.Text           (Text)
 import           System.IO
 import           System.Process
 
 import           FuncId
-import           Identifier
 import           Sort
 
 -- ----------------------------------------------------------------------------------------- --
@@ -43,7 +42,7 @@ data  SmtEnv  =  SmtEnv { inHandle          :: Handle
                         , logFileHandle     :: Maybe Handle
                         , adtDefs           :: ADTDefs
                         , funcIds           :: Set.Set FuncId
-                        , decoderMap        :: Map.Map Text (Ref ADTDef, Ref ConstructorDef)
+                        , decoderMap        :: Map.HashMap Text (Ref (ADTDef Sort), Ref (ConstructorDef Sort))
                         }
                | SmtEnvError
 

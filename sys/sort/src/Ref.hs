@@ -3,10 +3,11 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+{-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances     #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Ref
@@ -53,3 +54,5 @@ instance Hashable (Ref t) where
 -- | Enables creating 'Ref's to entities in a common way.
 class Referencable t where
     mkRef :: t -> Ref t
+    default mkRef :: HasName t => t -> Ref t
+    mkRef = RefByName . getName

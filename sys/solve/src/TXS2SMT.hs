@@ -30,17 +30,18 @@ module TXS2SMT
 )
 where
 
-import qualified Data.Map      as Map
+import qualified Data.HashMap.Strict as HMap
+import qualified Data.Map.Strict     as Map
 import           Data.Monoid
-import qualified Data.Set      as Set
-import           Data.Text     (Text)
-import qualified Data.Text     as T
+import qualified Data.Set            as Set
+import           Data.Text           (Text)
+import qualified Data.Text           as T
 
 import           ConstDefs
 import           FreeMonoidX
 import           FuncDef
 import           FuncId
-import           Identifier
+import           Name
 import           RegexXSD2SMT
 import           SMTString
 import           Sort
@@ -48,14 +49,14 @@ import           ValExpr
 import           Variable
 import           VarId
 
-toFieldName :: Ref ADTDef -> Ref ConstructorDef -> Int -> Text
-toFieldName aRef cRef field  = toCstrName aRef cRef <> "$f" <> (T.pack . show) field
+toFieldName :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Int -> Text
+toFieldName aRef cRef field  = toCstrName aRef cRef <> "$" <> (T.pack . show) field
 
-toIsCstrName :: Ref ADTDef -> Ref ConstructorDef -> Text
+toIsCstrName :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Text
 toIsCstrName aRef cRef  =  "is-" <> toCstrName aRef cRef
 
-toCstrName :: Ref ADTDef -> Ref ConstructorDef -> Text
-toCstrName aRef cRef  =  "a" <> (T.pack . show . toInt) aRef <> "$c" <> (T.pack . show . toInt) cRef
+toCstrName :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Text
+toCstrName aRef cRef  =  toRefName aRef <> "$" <> toRefName cRef
 
 toSortName :: Sort -> Text
 toSortName SortError   = error "Error is not defined in SMT"
@@ -64,13 +65,13 @@ toSortName SortInt     = "Int"
 toSortName SortChar    = error "Char is not yet supported"
 toSortName SortString  = "String"
 toSortName SortRegex   = error "Regex is not defined in SMT"
-toSortName (SortADT r) = toADTName r
+toSortName (SortADT r) = toRefName r
 
-toADTName :: Ref ADTDef -> Text
-toADTName r = "A" <> (T.pack . show . toInt) r
+toRefName :: Ref a -> Text
+toRefName = toText . toName
 
 toFuncName :: FuncId -> Text
-toFuncName funcId  =  T.concat ["f", (T.pack . show) (FuncId.unid funcId), "$", FuncId.name funcId]
+toFuncName funcId  =  T.concat ["f", (T.pack . show) (FuncId.unid funcId), "$", toText $ FuncId.name funcId]
 
 -- ----------------------------------------------------------------------------------------- --
 -- basic definitions for SMT
@@ -80,33 +81,36 @@ basicDefinitionsSMT :: Text
 basicDefinitionsSMT = ""
 
 -- | convert sort definitions to SMT type declarations (as multiple lines of commands)
-adtDefsToSMT :: Map.Map (Ref ADTDef) ADTDef -> (Text, Map.Map Text (Ref ADTDef, Ref ConstructorDef))
+adtDefsToSMT :: HMap.HashMap (Ref (ADTDef Sort)) (ADTDef Sort) -> (Text, HMap.HashMap Text (Ref (ADTDef Sort), Ref (ConstructorDef Sort)))
 adtDefsToSMT adtMap
-    | Map.null adtMap = ("", Map.empty)
+    | HMap.null adtMap = ("", HMap.empty)
     | otherwise       = ("(declare-datatypes () (\n"
                         <> T.concat (map
-                            (\(r,d) -> "    (" <> toADTName r <> adtDefToSMT r d <> ")\n" )
-                            $ Map.toList adtMap)
+                            (\(r,d) -> "    (" <> toRefName r <> adtDefToSMT r d <> ")\n" )
+                            $ HMap.toList adtMap)
                         <> ") )\n",
-                        Map.fromList $ concatMap (\(r,d) -> map (\k -> (toCstrName r k, (r,k))) $ Map.keys . cDefsToMap $ constructors d)
-                                                 $ Map.toList adtMap
+                        HMap.fromList $ concatMap (\(r,d) -> map (\k -> (toCstrName r k, (r,k))) $ HMap.keys . cDefsToMap $ constructors d)
+                                                 $ HMap.toList adtMap
                         )
     where
         -- convert the given constructor to a SMT constructor declaration
-        adtDefToSMT :: Ref ADTDef -> ADTDef -> Text
+        adtDefToSMT :: Ref (ADTDef Sort) -> ADTDef Sort -> Text
         adtDefToSMT adtRf adtDef = 
             T.concat $ map (\(r,d) -> " (" <> toCstrName adtRf r
                                       <> cstrFieldsToSMT adtRf r (fields d)
                                       <> ")" )
-                           $ Map.toList . cDefsToMap $ constructors adtDef
+                           $ HMap.toList . cDefsToMap $ constructors adtDef
 
         -- convert the given constructor fields to a SMT constructor declaration
-        cstrFieldsToSMT :: Ref ADTDef -> Ref ConstructorDef -> FieldDefs -> Text
+        cstrFieldsToSMT :: Ref (ADTDef Sort)
+                        -> Ref (ConstructorDef Sort)
+                        -> FieldDefs Sort
+                        -> Text
         cstrFieldsToSMT adtRf cRf fDefs =
             case nrOfFieldDefs fDefs of
                 0  -> ""
                 _   ->  " (" <> T.intercalate ") ("
-                        ( map (\((_,d),p) -> toFieldName adtRf cRf p <> " " <> toSortName (Sort.sort d))
+                        ( map (\(d,p) -> toFieldName adtRf cRf p <> " " <> toSortName (Sort.sort d))
                               (zip (fDefsToList fDefs) [0..]) )
                         <> ")"
 
@@ -124,7 +128,16 @@ funcdefsToSMT fdefs =
 
     toDT :: (FuncId, FuncDef VarId) -> (Text, Text)
     toDT (funcId, FuncDef vs expr)  = ("(" <> toFuncName funcId
-                                           <> "(" <> T.intercalate " " (map (\v -> "(" <> vname v <> " " <> toSortName (varsort v) <> ")") vs) <> ") " 
+                                           <> "("
+                                           <> T.intercalate
+                                                " "
+                                                (map (\v -> "("
+                                                            <> toText (vname v)
+                                                            <> " "
+                                                            <> toSortName (varsort v)
+                                                            <> ")")
+                                                     vs)
+                                           <> ") "
                                            <> toSortName (funcsort funcId)
                                            <> ")"
                                       , valexprToSMT expr
@@ -172,7 +185,7 @@ valexprToSMT (view -> Vaccess aRef cRef p _s arg)  = "(" <> toFieldName aRef cRe
 
 valexprToSMT (view -> Vconst c) = constToSMT c
 
-valexprToSMT (view -> Vvar varId)  =  vname varId
+valexprToSMT (view -> Vvar varId)  = toText $ vname varId
 
 valexprToSMT (view -> Vite c expr1 expr2) = "(ite " <> valexprToSMT c <> " "  <> valexprToSMT expr1 <> " " <> valexprToSMT expr2 <> ")"
 
@@ -230,4 +243,4 @@ declarationsToSMT vs  =
     T.intercalate "\n" (map declarationToSMT vs)
     where
       declarationToSMT :: (Variable v) => v -> Text
-      declarationToSMT v  =  "(declare-fun " <> vname v <> "() " <> toSortName (vsort v) <> ")"
+      declarationToSMT v  =  "(declare-fun " <> toText (vname v) <> "() " <> toSortName (vsort v) <> ")"

@@ -36,6 +36,7 @@ module Sort.ADTDefs
 
 -- ** Collection
 , ADTDefs (..)
+, mergeADTDefs
 
 -- ** Usage
 , emptyADTDefs
@@ -73,8 +74,7 @@ data ADTDef sortRef = ADTDef
 instance HasName (ADTDef sr) where
     getName = adtName
 
-instance Referencable (ADTDef sr) where
-    mkRef = RefByName . adtName
+instance Referencable (ADTDef sr)
 
 -- | Data structure for a collection of 'ADTDef's.
 newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a 'Data.Map.Map' from 'Ref' 'ADTDef' to 'ADTDef'.
@@ -164,10 +164,22 @@ addADTDefs as adfs
                 allFieldsConstructable :: [Name] -> ConstructorDef Name -> Bool
                 allFieldsConstructable constructableSortNames cDef =
                     all (isSortConstructable constructableSortNames)
-                        $ getFieldSortNames cDef
+                        $ getFieldSorts cDef
                 isSortConstructable :: [Name] -> Name -> Bool
                 isSortConstructable cSortNames sName =
                     sName `elem` (primitiveSortNames ++ cSortNames)
+
+-- | TODO: Add proper comment
+-- Since both parameters are ADTDefs, we don't have to do same verifications above.
+mergeADTDefs :: ADTDefs -> ADTDefs -> Either ADTError ADTDefs
+mergeADTDefs adts1@(ADTDefs dsMap1) adts2@(ADTDefs dsMap2)
+    | dsMap1 == Map.empty = Right adts2
+    | dsMap2 == Map.empty = Right adts1
+    | otherwise           = undefined
+    -- TODO: Check for conflicting ADTDef's via intersection: If names match,
+    --       EVERYTHING ELSE should also match so that one of them can be
+    --       dropped while combining.
+    -- TODO: You can use Map.Union to combine.
 
 -- | Returns the list of 'ConstructorDef's of a given 'ADTDef'.
 getConstructors :: ADTDef v -> [ConstructorDef v]

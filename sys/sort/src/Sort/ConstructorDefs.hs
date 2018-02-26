@@ -31,7 +31,7 @@ module Sort.ConstructorDefs
 
 -- ** Usage
 , constructorDefs
-, getFieldSortNames
+, getFieldSorts
 , getAllFieldSortNames
 
 -- * ADT Constructor Errors
@@ -61,8 +61,7 @@ data ConstructorDef sortRef = ConstructorDef
 instance HasName (ConstructorDef sr) where
     getName = constructorName
 
-instance Referencable (ConstructorDef sr) where
-    mkRef = RefByName . constructorName
+instance Referencable (ConstructorDef sr)
 
 -- | Data structure for a collection of 'ConstructorDef's.
 newtype ConstructorDefs sr = ConstructorDefs
@@ -99,14 +98,15 @@ constructorDefs cs
         nuCstrDefs   = searchDuplicateNames cs
         nuFieldNames = searchDuplicateNames (concatMap (fDefsToList . fields) cs)
 
--- | Extract 'Name's of sorts from 'FieldDef's of given 'ConstructorDef'.
-getFieldSortNames :: ConstructorDef Name -> [Name]
-getFieldSortNames = map sort . fDefsToList . fields
+-- | Extract sorts from 'FieldDef's of given 'ConstructorDef'; whether they ore
+--   'Name's or 'Sort's.
+getFieldSorts :: ConstructorDef v -> [v]
+getFieldSorts = map sort . fDefsToList . fields
 
 -- | Extract 'Name's of sorts from 'FieldDef's of all 'ConstructorDef's in given
 --  'ConstructDefs'.
 getAllFieldSortNames :: ConstructorDefs Name -> [Name]
-getAllFieldSortNames = concatMap getFieldSortNames . Map.elems . cDefsToMap
+getAllFieldSortNames = concatMap getFieldSorts . Map.elems . cDefsToMap
 
 -- | Type of errors that are raised when it's not possible to build a
 --   'ConstructorDefs' structure via 'constructorDefs' function.

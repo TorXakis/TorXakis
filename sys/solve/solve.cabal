@@ -40,14 +40,15 @@ library
   build-depends:        array
                       , base
                       , containers
+                      , MissingH
                       , mtl
                       , process
                       , random
                       , random-shuffle
                       , regex-tdfa
-                      , time
-                      , MissingH
                       , text
+                      , time
+                      , unordered-containers
 
                       , lexregexxsd
                       , sort
@@ -97,13 +98,13 @@ test-suite SmtSolver-WhiteBox
   build-depends:        array
                       , base
                       , containers
+                      , HUnit
+                      , MissingH
                       , mtl
                       , process
                       , regex-tdfa
-                      , time
-                      , HUnit
-                      , MissingH
                       , text
+                      , time
 
                       , lexregexxsd
                       , sort
@@ -127,10 +128,10 @@ test-suite SmtSolver-BlackBox
 
   build-depends:        base
                       , containers
+                      , HUnit
                       , mtl
                       , process
                       , regex-tdfa
-                      , HUnit
                       , text
 
                       , solve

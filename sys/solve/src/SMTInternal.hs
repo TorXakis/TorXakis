@@ -3,28 +3,31 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-
--- ----------------------------------------------------------------------------------------- --
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  SMTInternal
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+-- 
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- SMT Internal contains all non-interface SMT functions.
+-- SMT Internal should not be included directly in production code.
+-- Some of these functions are used for test purposes.
+-----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
-
 module SMTInternal
-
--- ------------------------------------------------------------
--- SMT Internal should not be included directly in production code.
--- SMT Internal contains all non-interface SMT functions.
--- Some of these functions are used for test purposes
--- ----------------------------------------------------------------------------------------- --
--- import
-
 where
 
 import           Control.Exception   (onException)
 import           Control.Monad.State (gets, lift, modify)
 
 import qualified Data.List           as List
-import qualified Data.Map            as Map
+import qualified Data.HashMap.Strict as HMap
+import qualified Data.Map.Strict     as Map
 import           Data.Monoid
 import qualified Data.Set            as Set
 import           Data.String.Utils   (endswith, replace, startswith, strip)
@@ -37,7 +40,6 @@ import           System.Process
 import           ConstDefs
 import           FuncDef
 import           FuncId
-import           Identifier
 import           SMT2TXS
 import           SMTAlex
 import           SMTData
@@ -141,28 +143,31 @@ createSMTEnv cmd lgFlag =  do
                     lg
                     emptyADTDefs
                     Set.empty
-                    Map.empty
+                    HMap.empty
 
 -- ----------------------------------------------------------------------------------------- --
 -- addDefinitions
 -- ----------------------------------------------------------------------------------------- --
-addADTDefinitions :: ADTDefs -> SMT ()
+addADTDefinitions :: ADTDefs -> SMT (Maybe Text)
 addADTDefinitions newADTDefs = do
     adtDefsInSmt <- gets adtDefs
-    let newUniqueADTDefs = Map.withoutKeys (adtDefsToMap newADTDefs)
-                                            $ Map.keysSet $ adtDefsToMap adtDefsInSmt
-        (txt, newDec) = adtDefsToSMT newUniqueADTDefs
-    putT txt
-    put "\n\n"
-    
-    let allADTDefs = addADTDefs (Map.toList newUniqueADTDefs) adtDefsInSmt
+    let allADTDefs = mergeADTDefs newADTDefs adtDefsInSmt
     case allADTDefs of
-        Right aDefs -> do   dec <- gets decoderMap
+        Right aDefs -> do   let newUniqueADTDefsMap = HMap.difference
+                                                            (adtDefsToMap   newADTDefs)
+                                                            (adtDefsToMap adtDefsInSmt)
+                                (txt, newDec) = adtDefsToSMT newUniqueADTDefsMap
+                            putT txt
+                            put "\n\n"
+        
+                            dec <- gets decoderMap
                             modify (\e -> e { adtDefs = aDefs
-                                            , decoderMap = Map.union dec newDec
+                                            , decoderMap = HMap.union dec newDec
                                             } )
-        Left  err   -> error $ "SMTInternal - addADTDefinitions: Expectation violated - ADTDEFS + newUnique is a valid ADTDEFS. Error:"
-                             ++ T.unpack (toErrorText err)
+                            return Nothing
+        Left  err   -> return $ Just
+                            $ "SMTInternal - addADTDefinitions: Can't merge new ADTDefs into existing ADTDefs. Error:"
+                            <> T.pack (show err)
 
 addFuncDefinitions :: Map.Map FuncId (FuncDef VarId) -> SMT ()
 addFuncDefinitions funcDefs = do
