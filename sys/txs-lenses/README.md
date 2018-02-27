@@ -8,8 +8,7 @@ stack ghci txs-lib:lib
 ```
 
 ```haskell
-cs <- readFile "examps/Echo/Echo.txs"
-s <- newSession 
-r <- load s cs
-stepper s "Boo"
+>>> cs <- readFile "path/to/your/torxakis/Model.txs"
+>>> s <- newSession 
+>>> r <- load s cs
 ```

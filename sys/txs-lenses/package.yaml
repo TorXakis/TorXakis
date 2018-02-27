@@ -1,4 +1,4 @@
-name: txs-lib
+name: txs-lenses
 version: 0.1.0.0
 github: "TorXakis/TorXakis"
 license: BSD3
@@ -13,7 +13,7 @@ extra-source-files:
 - ChangeLog.md
 - license.txt
 
-synopsis: Interface to the `TorXakis` parser and core.
+synopsis: Lenses for the structures used in `TorXakis`.
 maintainer:
 - "damian.nadales@gmail.com"
 
@@ -32,19 +32,12 @@ ghc-options:
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.Lib
+  - TorXakis.Lens.TxsDefs
   dependencies:
   - base >= 4.7 && < 5
   - text
-  - path
-  - stm
-  - deepseq
   - microlens
-  - mtl
+  - containers
   # `TorXakis` dependencies.
   - defs
   - valexpr
-  - front
-  - core
-  - coreenv
-  - txs-lenses

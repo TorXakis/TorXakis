@@ -3,7 +3,8 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE DeriveAnyClass    #-}
 -- | This module defines the options that can be passed to TorXakis.
 module Config
   ( Config (..)
@@ -21,6 +22,8 @@ where
 import qualified Data.Map       as Map
 import           Data.Monoid
 import           System.Process
+import           Control.DeepSeq (NFData)
+import           GHC.Generics    (Generic)
 
 data SolverConfig = SolverConfig
   {
@@ -28,10 +31,10 @@ data SolverConfig = SolverConfig
     execName :: FilePath
     -- | Arguments for to be passed to the smtSolver.
   , smtArgs  :: [String]
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Generic, NFData)
 
 newtype SolverId = SolverId { solverId :: String }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic, NFData)
 
 -- | TorXakis configuration options.
 data Config = Config
@@ -40,7 +43,7 @@ data Config = Config
     -- | Available solvers that can be chosen from.
   , availableSolvers :: Map.Map SolverId SolverConfig
   , selectedSolver   :: SolverId
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Generic, NFData)
 
 -- | Change the selected solver.
 changeSolver :: Config -> String -> Config

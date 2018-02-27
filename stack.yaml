@@ -58,6 +58,8 @@ packages:
 - location: sys/ui
 - location: sys/value
 - location: sys/valexpr
+- location: sys/txs-lib
+- location: sys/txs-lenses
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)

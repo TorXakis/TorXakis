@@ -1,7 +1,7 @@
 #stack working directory
 .stack-work
 
-sys/txs-lib/*.cabal
+sys/txs-*/*.cabal
 
 # Compiled class file - test
 *.class

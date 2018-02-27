@@ -27,6 +27,7 @@ library
                       , containers
                       , mtl
                       , process
+                      , deepseq
 
                       , behavedefs
                       , defs
