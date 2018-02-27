@@ -1,10 +1,13 @@
 -- |
-
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE DeriveAnyClass    #-}
 module TorXakis.Lib where
 
-import           Data.Text (Text)
-import           Control.Concurrent.STM.TVar (TVar, newTVarIO, modifyTVar)
+import           Control.Concurrent.STM.TVar (TVar, newTVarIO, modifyTVar')
 import           Control.Monad.STM (atomically)
+import           Control.DeepSeq (($!!), NFData)
+import           GHC.Generics    (Generic)
+import           Control.Exception (try, ErrorCall)
 -- See TODO below.
 -- import           Path
 
@@ -14,7 +17,7 @@ import           TxsDefs  (TxsDefs, empty)
 import           TxsAlex  (txsLexer)
 import           TxsHappy (txsParser)
 
-data Response = Success | Error { msg :: Text }
+data Response = Success | Error { msg :: String } deriving (Show)
 
 -- | For now file contents are represented as a string. This has to change in
 -- the future, since it is quite inefficient, but we start off simple since the
@@ -30,7 +33,7 @@ newtype Session = Session
 data SessionSt = SessionSt
     { _tdefs   :: TxsDefs
     , _sigs    :: Sigs VarId
-    }
+    } deriving (Generic, NFData)
 
 emptySessionState :: SessionSt
 emptySessionState = SessionSt TxsDefs.empty Sigs.empty 
@@ -49,9 +52,15 @@ newSession = Session <$> newTVarIO emptySessionState
 -- incremental, to give better error messages, and support more modularity.
 load :: Session -> FileContents -> IO Response 
 load s xs = do
-    let (_, ts, is) = txsParser . txsLexer $ xs 
-    atomically $ modifyTVar (_sessionState s) (const (SessionSt ts is))
-    return Success
+    r <- try $ do -- Since the 'TorXakis' parser currently just calls 'error'
+                  -- we have to catch a generic 'ErrorCall' exception.
+        let (_, ts', is') = txsParser . txsLexer $ xs 
+        atomically $ modifyTVar' (_sessionState s) (const $!! SessionSt ts' is')
+        return ()
+    case r of
+        Left err -> return $ Error $ show (err :: ErrorCall)
+        Right _  -> return Success
+    
 
 -- | Start the stepper with the current model.
 stepper :: Session -> ModelName -> IO Response

@@ -38,6 +38,7 @@ library:
   - text
   - path
   - stm
+  - deepseq
   # `TorXakis` dependencies.
   - defs
   - valexpr
