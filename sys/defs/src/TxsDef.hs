@@ -20,6 +20,7 @@ import CnectDef
 import FuncDef
 import MapperDef
 import ModelDef
+import Name
 import ProcDef
 import PurpDef
 import Sort
@@ -27,7 +28,8 @@ import Sort
 import VarId
 
 -- | torxakis definitions
-data  TxsDef = DefADT       ADTDef
+data  TxsDef = DefADT       (ADTDef Name)
+             | DefCstr      (ConstructorDef Name)
              | DefFunc      (FuncDef VarId)
              | DefProc      ProcDef
              | DefModel     ModelDef
@@ -38,4 +40,4 @@ data  TxsDef = DefADT       ADTDef
              | DefVar
              | DefStat
              | DefGoal
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Read,Show)

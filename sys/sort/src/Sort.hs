@@ -36,6 +36,7 @@ module Sort
 , emptyADTDefs
 , addADTDefs
 , mergeADTDefs
+, findConstructor
 
   -- * Constructors
   -- ** Data structure
@@ -47,6 +48,7 @@ module Sort
   -- ** Usage
 , cDefsToMap
 , constructorDefs
+, getFieldNames
 , getFieldSorts
 -- , getAllFieldSortNames
 

@@ -64,29 +64,30 @@ module StdTDefs
 )
 where
 
-import qualified Data.Map          as Map
-import qualified Data.Set          as Set
-import           Data.Text         (Text)
+import           Data.List.NonEmpty  (fromList)
+import qualified Data.HashMap.Strict as HMap
+import qualified Data.Map.Strict     as Map
+import qualified Data.Set            as Set
 
 import           ChanId
 import           FuncId
 import           FuncTable
-import           Identifier
+import           Name
 import           Sort
 import           SortOf
 import           ValExpr
 
-eqName, neqName :: Text
-eqName   =  "=="
-neqName  =  "<>"
+eqName, neqName :: Name
+eqName  = fromNonEmpty $ fromList "=="
+neqName = fromNonEmpty $ fromList "<>"
 
-toStringName, fromStringName :: Text
-toStringName   = "toString"
-fromStringName = "fromString"
+toStringName, fromStringName :: Name
+toStringName   = fromNonEmpty $ fromList "toString"
+fromStringName = fromNonEmpty $ fromList "fromString"
 
-toXmlName, fromXmlName :: Text
-toXmlName   = "toXml"
-fromXmlName = "fromXml"
+toXmlName, fromXmlName :: Name
+toXmlName   = fromNonEmpty $ fromList "toXml"
+fromXmlName = fromNonEmpty $ fromList "fromXml"
 
 oneArgumentHandler :: (ValExpr v -> ValExpr v) -> Handler v
 oneArgumentHandler f [a] = f a
@@ -102,41 +103,41 @@ equalHandler = twoArgumentHandler cstrEqual
 notEqualHandler :: Ord v => Handler v
 notEqualHandler = twoArgumentHandler (\a b -> cstrNot (cstrEqual a b))
 
-cstrHandler :: Ref ADTDef -> Ref ConstructorDef -> Handler v
+cstrHandler :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Handler v
 cstrHandler = cstrCstr
 
-iscstrHandler :: Ref ADTDef -> Ref ConstructorDef -> Handler v
+iscstrHandler :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Handler v
 iscstrHandler a c = oneArgumentHandler (cstrIsCstr a c)
 
-accessHandler :: Ref ADTDef -> Ref ConstructorDef -> Int -> Sort -> Handler v
+accessHandler :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Int -> Sort -> Handler v
 accessHandler a c p s = oneArgumentHandler (cstrAccess a c p s)
 
 stdFuncTable :: (Ord v, Integral (ValExpr v)) => FuncTable v
-stdFuncTable = FuncTable ( Map.fromList
-    [ ( eqName , Map.fromList [ ( Signature [SortBool,     SortBool]    SortBool, equalHandler )
-                              , ( Signature [SortInt,      SortInt]     SortBool, equalHandler )
-                              , ( Signature [SortString,   SortString]  SortBool, equalHandler )
-                              ] )
-    , ( neqName, Map.fromList [ ( Signature [SortBool,     SortBool]    SortBool, notEqualHandler )
-                              , ( Signature [SortInt,      SortInt]     SortBool, notEqualHandler )
-                              , ( Signature [SortString,   SortString]  SortBool, notEqualHandler )
-                              ] )
-    , (toStringName, Map.fromList [ ( Signature [SortBool]    SortString, cstrPredef SSB funcIdBoolToString )
-                                  , ( Signature [SortInt]     SortString, cstrPredef SSI funcIdIntToString )
-                                  , ( Signature [SortString]  SortString, cstrPredef SSS funcIdStringToString )
-                                  ] )
-    , (fromStringName, Map.fromList [ ( Signature [SortString]  SortBool,   cstrPredef SSB funcIdBoolFromString )
-                                    , ( Signature [SortString]  SortInt,    cstrPredef SSI funcIdIntFromString )
-                                    , ( Signature [SortString]  SortString, cstrPredef SSS funcIdStringFromString )
-                                    ] )
-    , (toXmlName, Map.fromList [ ( Signature [SortBool]    SortString, cstrPredef SSB funcIdBoolToXml )
-                               , ( Signature [SortInt]     SortString, cstrPredef SSI funcIdIntToXml )
-                               , ( Signature [SortString]  SortString, cstrPredef SSS funcIdStringToXml )
-                               ] )
-    , (fromXmlName, Map.fromList [ ( Signature [SortString]  SortBool,     cstrPredef SSB funcIdBoolFromXml )
-                                 , ( Signature [SortString]  SortInt,      cstrPredef SSI funcIdIntFromXml )
-                                 , ( Signature [SortString]  SortString,   cstrPredef SSS funcIdStringFromXml )
-                                 ] )
+stdFuncTable = FuncTable ( HMap.fromList
+    [ ( toText eqName , Map.fromList [ ( Signature [SortBool,     SortBool]    SortBool, equalHandler )
+                                     , ( Signature [SortInt,      SortInt]     SortBool, equalHandler )
+                                     , ( Signature [SortString,   SortString]  SortBool, equalHandler )
+                                     ] )
+    , ( toText neqName, Map.fromList [ ( Signature [SortBool,     SortBool]    SortBool, notEqualHandler )
+                                     , ( Signature [SortInt,      SortInt]     SortBool, notEqualHandler )
+                                     , ( Signature [SortString,   SortString]  SortBool, notEqualHandler )
+                                     ] )
+    , (toText toStringName, Map.fromList [ ( Signature [SortBool]    SortString, cstrPredef SSB funcIdBoolToString )
+                                         , ( Signature [SortInt]     SortString, cstrPredef SSI funcIdIntToString )
+                                         , ( Signature [SortString]  SortString, cstrPredef SSS funcIdStringToString )
+                                         ] )
+    , (toText fromStringName, Map.fromList [ ( Signature [SortString]  SortBool,   cstrPredef SSB funcIdBoolFromString )
+                                           , ( Signature [SortString]  SortInt,    cstrPredef SSI funcIdIntFromString )
+                                           , ( Signature [SortString]  SortString, cstrPredef SSS funcIdStringFromString )
+                                           ] )
+    , (toText toXmlName, Map.fromList [ ( Signature [SortBool]    SortString, cstrPredef SSB funcIdBoolToXml )
+                                      , ( Signature [SortInt]     SortString, cstrPredef SSI funcIdIntToXml )
+                                      , ( Signature [SortString]  SortString, cstrPredef SSS funcIdStringToXml )
+                                      ] )
+    , (toText fromXmlName, Map.fromList [ ( Signature [SortString]  SortBool,     cstrPredef SSB funcIdBoolFromXml )
+                                        , ( Signature [SortString]  SortInt,      cstrPredef SSI funcIdIntFromXml )
+                                        , ( Signature [SortString]  SortString,   cstrPredef SSS funcIdStringFromXml )
+                                        ] )
     , ("not",  Map.fromList [ ( Signature [SortBool] SortBool, oneArgumentHandler cstrNot ) ] )
     , ("/\\",  Map.fromList [ ( Signature [SortBool,SortBool] SortBool, cstrAnd . Set.fromList ) ] )
     , ("\\/",  Map.fromList [ ( Signature [SortBool,SortBool] SortBool, cstrOr . Set.fromList ) ] )
@@ -211,22 +212,22 @@ funcIdStringFromXml :: FuncId
 funcIdStringFromXml        = FuncId fromXmlName        528 [SortString]                 SortString
 
 funcIdtakeWhile :: FuncId
-funcIdtakeWhile            = FuncId "takeWhile"        533 [SortString,SortString]   SortString
+funcIdtakeWhile            = FuncId (fromNonEmpty $ fromList "takeWhile")    533 [SortString,SortString]   SortString
 funcIdtakeWhileNot:: FuncId
-funcIdtakeWhileNot         = FuncId "takeWhileNot"     534 [SortString,SortString]   SortString
+funcIdtakeWhileNot         = FuncId (fromNonEmpty $ fromList "takeWhileNot") 534 [SortString,SortString]   SortString
 funcIddropWhile :: FuncId
-funcIddropWhile            = FuncId "dropWhile"        535 [SortString,SortString]   SortString
+funcIddropWhile            = FuncId (fromNonEmpty $ fromList "dropWhile")    535 [SortString,SortString]   SortString
 funcIddropWhileNot :: FuncId
-funcIddropWhileNot         = FuncId "dropWhileNot"     536 [SortString,SortString]   SortString
+funcIddropWhileNot         = FuncId (fromNonEmpty $ fromList "dropWhileNot") 536 [SortString,SortString]   SortString
 
 -- * Standard channel identifiers
 chanIdExit :: ChanId
-chanIdExit  = ChanId "EXIT"  901 []
+chanIdExit  = ChanId (fromNonEmpty $ fromList "EXIT")  901 []
 chanIdIstep :: ChanId
-chanIdIstep = ChanId "ISTEP" 902 []
+chanIdIstep = ChanId (fromNonEmpty $ fromList "ISTEP") 902 []
 chanIdQstep :: ChanId
-chanIdQstep = ChanId "QSTEP" 903 []
+chanIdQstep = ChanId (fromNonEmpty $ fromList "QSTEP") 903 []
 chanIdHit :: ChanId
-chanIdHit   = ChanId "HIT"   904 []
+chanIdHit   = ChanId (fromNonEmpty $ fromList "HIT")   904 []
 chanIdMiss :: ChanId
-chanIdMiss  = ChanId "MISS"  905 []
+chanIdMiss  = ChanId (fromNonEmpty $ fromList "MISS")  905 []

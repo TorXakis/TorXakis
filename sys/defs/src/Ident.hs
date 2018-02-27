@@ -10,7 +10,6 @@ module Ident
 where
 
 import           Data.Maybe
-import qualified Data.Text    as T
 import           GHC.Generics
 
 -- TorXakis specific imports.
@@ -19,7 +18,6 @@ import           CnectId
 import           FuncId
 import           GoalId
 import           Id
-import           Identifier
 import           MapperId
 import           ModelId
 import           Name
@@ -31,7 +29,7 @@ import           Variable
 import           VarId
 
 -- | Identifiers
-data Ident = IdADT    (Ref ADTDef)
+data Ident = IdADT    (Ref (ADTDef Name))
            | IdFunc   FuncId
            | IdProc   ProcId
            | IdChan   ChanId
@@ -65,7 +63,7 @@ instance Variable Ident where
   cstrVariable s i t = IdVar (cstrVariable s i t)
 
 name :: Ident -> Name
-name (IdADT r)    = (T.pack . show . toInt) r
+name (IdADT r)    = toName r
 name (IdFunc i)   = FuncId.name i
 name (IdProc i)   = ProcId.name i
 name (IdChan i)   = ChanId.name i

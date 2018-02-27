@@ -31,6 +31,7 @@ module Sort.ConstructorDefs
 
 -- ** Usage
 , constructorDefs
+, getFieldNames
 , getFieldSorts
 , getAllFieldSortNames
 
@@ -97,6 +98,10 @@ constructorDefs cs
     where
         nuCstrDefs   = searchDuplicateNames cs
         nuFieldNames = searchDuplicateNames (concatMap (fDefsToList . fields) cs)
+
+-- | Extract 'Name's from 'FieldDef's of given 'ConstructorDef'.
+getFieldNames :: ConstructorDef v -> [Name]
+getFieldNames = map fieldName . fDefsToList . fields
 
 -- | Extract sorts from 'FieldDef's of given 'ConstructorDef'; whether they ore
 --   'Name's or 'Sort's.

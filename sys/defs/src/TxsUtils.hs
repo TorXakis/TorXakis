@@ -99,8 +99,8 @@ baseENDECfuncs tdefs
                     : funcIddropWhile : funcIddropWhileNot
                     : [ fid
                       | fid@FuncId{ FuncId.name = nm } <- Map.keys (funcDefs tdefs)
-                      , (nm == "toString") || (nm  == "fromString") ||
-                        (nm == "toXml") || (nm == "fromXml")
+                      , (toText nm == "toString") || (toText nm  == "fromString") ||
+                        (toText nm == "toXml") || (toText nm == "fromXml")
                       ]
 
 

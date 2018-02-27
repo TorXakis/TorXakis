@@ -41,7 +41,8 @@ module Sort.ADTDefs
 -- ** Usage
 , emptyADTDefs
 , addADTDefs
-, getConstructors
+, findConstructor
+-- , getConstructors
 
 -- * ADT Errors
 , ADTError (..)
@@ -180,6 +181,13 @@ mergeADTDefs adts1@(ADTDefs dsMap1) adts2@(ADTDefs dsMap2)
     --       EVERYTHING ELSE should also match so that one of them can be
     --       dropped while combining.
     -- TODO: You can use Map.Union to combine.
+
+-- | Returns the list of 'ConstructorDef's of a given 'ADTDef'.
+findConstructor :: Name -> ADTDef v -> Maybe (Ref (ConstructorDef v), ConstructorDef v)
+findConstructor nm ad = case Map.lookup r $ (cDefsToMap . constructors) ad of
+                            Nothing -> Nothing
+                            Just cd -> Just (r,cd)
+                    where r = RefByName nm
 
 -- | Returns the list of 'ConstructorDef's of a given 'ADTDef'.
 getConstructors :: ADTDef v -> [ConstructorDef v]

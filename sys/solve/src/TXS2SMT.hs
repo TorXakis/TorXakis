@@ -70,6 +70,9 @@ toSortName (SortADT r) = toRefName r
 toRefName :: Ref a -> Text
 toRefName = toText . toName
 
+toADTName :: Ref (ADTDef Sort) -> Text
+toADTName = toRefName
+
 toFuncName :: FuncId -> Text
 toFuncName funcId  =  T.concat ["f", (T.pack . show) (FuncId.unid funcId), "$", toText $ FuncId.name funcId]
 
@@ -86,7 +89,7 @@ adtDefsToSMT adtMap
     | HMap.null adtMap = ("", HMap.empty)
     | otherwise       = ("(declare-datatypes () (\n"
                         <> T.concat (map
-                            (\(r,d) -> "    (" <> toRefName r <> adtDefToSMT r d <> ")\n" )
+                            (\(r,d) -> "    (" <> toADTName r <> adtDefToSMT r d <> ")\n" )
                             $ HMap.toList adtMap)
                         <> ") )\n",
                         HMap.fromList $ concatMap (\(r,d) -> map (\k -> (toCstrName r k, (r,k))) $ HMap.keys . cDefsToMap $ constructors d)
