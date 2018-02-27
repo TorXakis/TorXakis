@@ -3,39 +3,37 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-
--- ----------------------------------------------------------------------------------------- --
-
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  RandPartition
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+-- 
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental (?)
+-- Portability :  portable
+--
+-- Module RandPartition
+--
+-- Randomization of SMT solutions
+-- Interval partitioning of types
+-----------------------------------------------------------------------------
 module RandPartition
-
--- ----------------------------------------------------------------------------------------- --
---
---   Module RandPartition :  Randomization of SMT solutions -  Interval partitioning of types
---
--- ----------------------------------------------------------------------------------------- --
--- export
-
 ( randValExprsSolvePartition
 , ParamPartition(..)
 )
-
--- ----------------------------------------------------------------------------------------- --
--- import
-
 where
 
 import           Control.Monad.State
-import qualified Data.List as List
-import qualified Data.Map  as Map
+import qualified Data.List           as List
+import qualified Data.HashMap.Strict as Map
 import           Data.Maybe
-import qualified Data.Set  as Set
+import qualified Data.Set            as Set
 import           System.IO
 import           System.Random
 import           System.Random.Shuffle
 
 import ConstDefs
-import Identifier
 import SMT
 import SMTData
 import SolveDefs
@@ -185,12 +183,12 @@ randCnrsADT p vexp depth =
 -- ----------------------------------------------------------------------------------------- --
 -- give list of constraints for one constructor for vexp
 
-randCnrsCstr :: Variable v => ParamPartition -> Ref ADTDef -> (Ref ConstructorDef,ConstructorDef) -> ValExpr v -> Int
+randCnrsCstr :: Variable v => ParamPartition -> Ref (ADTDef Sort) -> (Ref (ConstructorDef Sort), ConstructorDef Sort) -> ValExpr v -> Int
                            -> SMT [ Set.Set (ValExpr v) ]
 randCnrsCstr p aRef (cRef, cDef) vexp depth  =  do
      let ccCnr = cstrIsCstr aRef cRef vexp
      recCnrs <- sequence [ randCnrs p (cstrAccess aRef cRef pos s vexp) (depth-1)
-                         | (s,pos) <- zip (map ( Sort.sort . snd ) ( (fDefsToList . fields) cDef ) ) [0..]
+                         | (s,pos) <- zip (map Sort.sort ( (fDefsToList . fields) cDef ) ) [0..]
                          ]
      return [ Set.insert ccCnr cnrs
             | cnrs <- map Set.unions (cartProd recCnrs)

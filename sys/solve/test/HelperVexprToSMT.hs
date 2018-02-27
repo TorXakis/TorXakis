@@ -18,7 +18,7 @@ import           ConstDefs
 import           FreeMonoidX
 import           FuncDef
 import           FuncId
-import           Identifier
+import           Name
 import           Sort
 import           ValExpr
 import           VarId
@@ -30,33 +30,40 @@ data  TXS2SMTVExprTest         =  TXS2SMTVExprTest  { input    :: ValExpr VarId
                                                     }
      deriving (Eq,Ord,Read,Show)
 
-toFieldName :: Ref ADTDef -> Ref ConstructorDef -> Int -> Text
-toFieldName aRef cRef field  = toCstrName aRef cRef <> "$f" <> (T.pack . show) field
+-- QUESTION: These toXName converters are an exact copy from TXS2SMT.hs
+-- (Kerem)   Doesn't this defeat the purpose of test?
+--           Isn't it better to have these texts static within the tests,
+--           so we see what we expect?
+toFieldName :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Int -> Text
+toFieldName aRef cRef field  = toCstrName aRef cRef <> "$" <> (T.pack . show) field
 
-toIsCstrName :: Ref ADTDef -> Ref ConstructorDef -> Text
+toIsCstrName :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Text
 toIsCstrName aRef cRef  =  "is-" <> toCstrName aRef cRef
 
-toCstrName :: Ref ADTDef -> Ref ConstructorDef -> Text
-toCstrName aRef cRef  =  "a" <> (T.pack . show . toInt) aRef <> "$c" <> (T.pack . show . toInt) cRef
+toCstrName :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Text
+toCstrName aRef cRef  =  toRefName aRef <> "$" <> toRefName cRef
 
-toADTName :: Ref ADTDef -> Text
-toADTName r = "A" <> (T.pack . show . toInt) r
+toADTName :: Ref (ADTDef Sort) -> Text
+toADTName = toRefName
 
 toFuncName :: FuncId -> Text
-toFuncName funcId  =  T.concat ["f", (T.pack . show) (FuncId.unid funcId), "$", FuncId.name funcId]
+toFuncName funcId  =  T.concat ["f", (T.pack . show) (FuncId.unid funcId), "$", toText $ FuncId.name funcId]
+
+toRefName :: Ref a -> Text
+toRefName = toText . toName
 
 ---------------------------------------------------------------------------
 -- Vexpr constructors
 ---------------------------------------------------------------------------
 toSMTVar :: VarId -> Text
-toSMTVar v = VarId.name v <> "$$" <> T.pack (show $ VarId.unid v)
+toSMTVar v = toText (VarId.name v) <> "$$" <> T.pack (show $ VarId.unid v)
 
-createIsConstructor :: Ref ADTDef -> Ref ConstructorDef -> TXS2SMTVExprTest -> TXS2SMTVExprTest
+createIsConstructor :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> TXS2SMTVExprTest -> TXS2SMTVExprTest
 createIsConstructor aRef cRef ie =
     TXS2SMTVExprTest (cstrIsCstr aRef cRef (input ie))
                      ("(" <> toIsCstrName aRef cRef <> " " <> expected ie <> ")")
 
-createAccessor :: Ref ADTDef -> Ref ConstructorDef -> Int -> Sort -> TXS2SMTVExprTest -> TXS2SMTVExprTest
+createAccessor :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Int -> Sort -> TXS2SMTVExprTest -> TXS2SMTVExprTest
 createAccessor aRef cRef p s ie =
     TXS2SMTVExprTest (cstrAccess aRef cRef p s (input ie))
                      ("(" <> toFieldName aRef cRef p <> " " <> expected ie <> ")")

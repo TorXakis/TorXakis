@@ -39,6 +39,7 @@ import           System.Process
 
 import           ConstDefs
 import           FuncDef
+import           Name
 import           FuncId
 import           SMT2TXS
 import           SMTAlex
@@ -214,7 +215,7 @@ getSolvable = do
 getSolution :: (Variable v) => [v] -> SMT (Solution v)
 getSolution []    = return Map.empty
 getSolution vs    = do
-    putT ("(get-value (" <> T.intercalate " " (map vname vs) <>"))")
+    putT ("(get-value (" <> T.intercalate " " (map (toText . vname) vs) <>"))")
     s <- getSMTresponse
     let vnameSMTValueMap = Map.mapKeys T.pack . smtParser . smtLexer $ s
     aDefs <- gets adtDefs
@@ -223,10 +224,10 @@ getSolution vs    = do
   where
     toConst :: (Variable v) => Map.Map Text SMTValue
                             -> ADTDefs
-                            -> Map.Map Text (Ref ADTDef, Ref ConstructorDef)
+                            -> HMap.HashMap Text (Ref (ADTDef Sort), Ref (ConstructorDef Sort))
                             -> v
                             -> (v, Const)
-    toConst mp ad dc v = case Map.lookup (vname v) mp of
+    toConst mp ad dc v = case Map.lookup (toText $ vname v) mp of
                             Just smtValue   -> (v, smtValueToConst smtValue (vsort v) ad dc)
                             Nothing         -> error "getSolution - SMT hasn't returned the value of requested variable."
 

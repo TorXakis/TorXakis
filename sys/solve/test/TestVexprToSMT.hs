@@ -10,15 +10,15 @@ testVexprToSMTList
 )
 where
 import           Data.Char
-import qualified Data.Map         as Map
-import qualified Data.Set         as Set
+-- import qualified Data.Map         as Map
+-- import qualified Data.Set         as Set
 import qualified Data.Text        as T
 import           Test.HUnit
 
 import           ConstDefs
-import           SMTData
-import           Sort
-import           VarId
+-- import           SMTData
+-- import           Sort
+-- import           VarId
 
 import           HelperVexprToSMT
 import           TXS2SMT
@@ -50,6 +50,8 @@ testVconstCstringSingleChar c = TestCase $ do
     --Trace.trace ("char c = " ++ (show c)) $ do
     let (TXS2SMTVExprTest i e) = createVconst (Cstring (T.singleton c))
     assertEqual "Vconst Cstring Char" e (valexprToSMT i)
+
+-- TODO: Either update or remove these tests.
 {-
 testVvar :: Test
 testVvar = TestCase $ do

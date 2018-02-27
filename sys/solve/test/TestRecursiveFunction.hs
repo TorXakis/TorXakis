@@ -12,24 +12,22 @@ where
 import           Test.HUnit
 
 import           Control.Monad.State
-import qualified Data.List           as List
+import           Data.List.NonEmpty  (fromList)
 import qualified Data.Map            as Map
 import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Text           as T
-import           Debug.Trace         as Trace
 import           System.Process      (CreateProcess)
 
 import           ConstDefs
 import           FuncDef
-import           FuncId
-import           Identifier
+import           FuncId        hiding (name)
+import           Name
 import           SMT
-import           SMTData
-import           Sort
+import           Sort.Internal
 import           SolveDefs
 import           TXS2SMT
-import           VarId
+import           VarId         hiding (name)
 
 import           HelperFuncDefToSMT
 import           HelperVexprToSMT
@@ -50,32 +48,30 @@ testList = [
 
 testRecursiveFunction :: CreateProcess -> Test
 testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
-    let listIntId = Name "ListInt"
-        nilId = Name "Nil"
-        tailId = Name "tail"
-        headId = Name "head"
-        constrId = Name "Constr"
-        i2r = foldr addIdentifier Identifier.empty [listIntId,nilId,tailId,headId,constrId]
-
-        adtRf = getReference listIntId i2r
-        sort_ListInt = SortADT adtRf
+    let Right listIntName = name "ListInt"
+        Right intName = name "Int"
+        Right nilName = name "Nil"
+        Right tailName = name "tail"
+        Right headName = name "head"
+        Right constrName = name "Constr"
 
         Right nilFields = fieldDefs []
-        nilRf = getReference nilId i2r
-        nilCDef = ConstructorDef { constructorName="Nil", fields=nilFields}
+        nilRf = RefByName nilName
+        nilCDef = ConstructorDef nilName nilFields
 
-        tailRf = getReference tailId i2r
-        headRf = getReference headId i2r
-        Right constrFields = fieldDefs [(headRf, FieldDef "head" SortInt), (tailRf, FieldDef "tail" sort_ListInt)]
-        constrRf = getReference constrId i2r
-        constrCDef = ConstructorDef { constructorName="Constr", fields=constrFields}
+        Right constrFields = fieldDefs [ FieldDef headName intName T.empty
+                                       , FieldDef tailName listIntName T.empty ]
+        constrRf = RefByName constrName
+        constrCDef = ConstructorDef constrName constrFields
 
-        Right cDefs = constructorDefs [(nilRf, nilCDef),(constrRf, constrCDef)]
-        adtDef = ADTDef "ListInt" cDefs
-        Right aDefs = addADTDefs [(adtRf,adtDef)] emptyADTDefs
+        Right cDefs = constructorDefs [nilCDef, constrCDef]
+        adtDef = ADTDef listIntName cDefs
+        adtRf = RefByName listIntName
+        Right aDefs = addADTDefs [adtDef] emptyADTDefs
+        sort_ListInt = SortADT adtRf
 
-        lengthListId = FuncId "lengthList" 19876 [sort_ListInt] SortInt
-        varList = VarId "list" 645421 sort_ListInt
+        lengthListId = FuncId (fromNonEmpty $ fromList "lengthList") 19876 [sort_ListInt] SortInt
+        varList = VarId (fromNonEmpty $ fromList "list") 645421 sort_ListInt
         varListIO = createVvar varList
         ve = createVite
                 (createIsConstructor adtRf nilRf varListIO)
@@ -83,19 +79,19 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
                 (createVsum [ createVconst (Cint 1)
                             , createVfunc lengthListId [createAccessor adtRf constrRf 1 sort_ListInt varListIO]
                             ])
-        (TXS2SMTFuncTest i e) = createFunctionDefRecursive lengthListId [varList] SortInt ve
+        (TXS2SMTFuncTest _i e) = createFunctionDefRecursive lengthListId [varList] SortInt ve
         (resultTxt,_) = adtDefsToSMT $ adtDefsToMap aDefs
-    let expected = "(declare-datatypes () (\n    (" <> toADTName adtRf <> " ("
+    let expectedTxt = "(declare-datatypes () (\n    (" <> toADTName adtRf <> " ("
                                                  <> toCstrName adtRf constrRf <> " ("
                                                         <> toFieldName adtRf constrRf 0 <> " " <> toSortName SortInt <> ") ("
                                                         <> toFieldName adtRf constrRf 1 <> " " <> toSortName sort_ListInt <> ")) (" 
                                                  <> toCstrName adtRf nilRf <> "))\n) )"
-    assertBool ("ListInt sortdef actual\n" ++ T.unpack resultTxt ++ "\nexpected\n" ++ T.unpack expected)
-               (expected `T.isInfixOf` resultTxt)
+    assertBool ("ListInt sortdef actual\n" ++ T.unpack resultTxt ++ "\nexpected\n" ++ T.unpack expectedTxt)
+               (expectedTxt `T.isInfixOf` resultTxt)
     let funcDefs = Map.singleton lengthListId (FuncDef [varList] (HelperVexprToSMT.input ve))
-    assertEqual "length function" e (funcdefsToSMT $ funcDefs)
+    assertEqual "length function" e (funcdefsToSMT funcDefs)
 
-    let v = VarId "instance" 123456 sort_ListInt
+    let v = VarId (fromNonEmpty $ fromList "instance") 123456 sort_ListInt
     let (TXS2SMTVExprTest inputAssertion _) = createVgez (createVsum [createVfunc lengthListId [createVvar v], createVconst (Cint (-1))])
 
     smtEnv <- createSMTEnv s False
@@ -112,10 +108,10 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
     let m = Map.lookup v sol
     assertBool "Is Just" (isJust m)
     let value = fromJust m
-    assertBool ("value = " ++ (show value)) 
+    assertBool ("value = " ++ show value) 
                (case value of
-                    Cstr adtRf constrRf _   -> True
-                    _                       -> False
+                    Cstr{} -> True
+                    _      -> False
                )
     _ <- execStateT close env7
     return ()

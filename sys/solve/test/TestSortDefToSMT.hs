@@ -4,38 +4,39 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TestSortDefToSMT
 (
 testSortDefToSMTList
 )
 where
-import qualified Data.List  as List
-import qualified Data.Map   as Map
-import qualified Data.Text  as T
+-- import qualified Data.List           as List
+import qualified Data.HashMap.Strict as Map
+-- import qualified Data.Text           as T
 import           Test.HUnit
 
-import           FuncId
-import           SMTData
-import           Sort
+-- import           FuncId
+-- import           SMTData
+-- import           Sort
 
 import           TXS2SMT
 
 testSortDefToSMTList :: Test
 testSortDefToSMTList = TestList [
-        TestLabel "default"                 testDefaultConstructor
+        TestLabel "default"                 testDefaultConstructor ] --,
 {-        TestLabel "absent Conditional Int"  testAbsentConditionalInt,
         TestLabel "present Condition Int"   testPresentConditionalInt,
         TestLabel "Conditional Int"         testConditionalInt,
-        TestLabel "Pair"                    testPair -}
-    ]
+        TestLabel "Pair"                    testPair
+    ] -}
 ---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
 testDefaultConstructor :: Test
 testDefaultConstructor = TestCase $ assertEqual "default" "" (fst $ adtDefsToSMT Map.empty)
 
-{- testAbsentConditionalInt :: Test
+-- TODO: Either update or remove these tests.
+{-
+testAbsentConditionalInt :: Test
 testAbsentConditionalInt = TestCase $ do
     let conditionalIntSortId = SortId "ConditionalInt" 1234
     let absentCstrId    = CstrId "_absent" 2345 [] conditionalIntSortId

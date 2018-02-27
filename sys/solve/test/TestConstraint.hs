@@ -13,6 +13,7 @@ where
 -- general Haskell imports
 import           Control.Monad.State
 import           Data.Char
+import           Data.List.NonEmpty  (NonEmpty((:|)))
 import qualified Data.Map            as Map
 import           Data.Maybe
 import           Data.Text           (Text)
@@ -26,8 +27,7 @@ import           Test.HUnit
 -- general Torxakis imports
 import           ConstDefs
 import           FreeMonoidX
-import           FuncDef
-import           FuncId
+import           Name
 import           RegexXSD2Posix
 import           Sort
 import           ValExpr
@@ -138,8 +138,9 @@ testTemplateSat createAssertions = do
 testTemplateValue :: ADTDefs -> [Sort] -> ([VarId] -> [ValExpr VarId]) -> ([Const] -> SMT()) -> SMT()
 testTemplateValue aDefs types createAssertions check = do
     _ <- SMT.openSolver
-    addADTDefinitions aDefs
-    let v = map (\(x,t) -> VarId (T.pack ("i" ++ show x)) x t) (zip [1000..] types)
+    addErr <- addADTDefinitions aDefs
+    lift $ assertEqual ("Adding ADTDefs failed: " ++ T.unpack (fromJust addErr)) Nothing addErr 
+    let v = map (\(x,t) -> VarId (fromNonEmpty $ 'i' :| show x) x t) (zip [1000..] types)
     addDeclarations v
     addAssertions (createAssertions v)
     resp <- getSolvable

@@ -16,6 +16,7 @@ import           FuncDef
 import           FuncId
 import           HelperVexprToSMT
 import           Id
+import           Name
 import           Sort
 import           VarId
 
@@ -24,6 +25,11 @@ data  TXS2SMTFuncTest         =  TXS2SMTFuncTest { input    :: Map.Map FuncId (F
                                                  }
      deriving (Eq,Ord,Read,Show)
 
+
+-- QUESTION: This toSortName converters are an exact copy from TXS2SMT.hs
+-- (Kerem)   Doesn't this defeat the purpose of test?
+--           Isn't it better to have these texts static within the tests,
+--           so we see what we expect?
 toSortName :: Sort -> Text
 toSortName SortError   = error "Error is not defined in SMT"
 toSortName SortBool    = "Bool"
@@ -33,7 +39,7 @@ toSortName SortString  = "String"
 toSortName SortRegex   = error "Regex is not defined in SMT"
 toSortName (SortADT r) = toADTName r
 
-createFunctionId :: Text -> Int -> [VarId] -> Sort -> FuncId
+createFunctionId :: Name -> Int -> [VarId] -> Sort -> FuncId
 createFunctionId n u vs = FuncId n (Id u) (map varsort vs)
 
 -- non-recursive function (is mapped on recursive function)

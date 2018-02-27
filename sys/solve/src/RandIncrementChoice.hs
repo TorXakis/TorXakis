@@ -3,16 +3,23 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  RandIncrementChoice
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+-- 
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental (?)
+-- Portability :  portable
+--
+-- Module RandIncrementChoice
+--
+-- Randomization of SMT solutions
+-- Solving by incrementally fixing one choice at a time
+-----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 module RandIncrementChoice
--- ----------------------------------------------------------------------------------------- --
---
---   Module RandIncrementChoice :  Randomization of SMT solutions - Solving by incrementally fixing one choice at a time
---
--- ----------------------------------------------------------------------------------------- --
--- export
 ( randValExprsSolveIncrementChoice  --  :: (Variable v) => [v] -> [ValExpr v] -> SMT (Satisfaction v)
 , ParamIncrementChoice (..)
 )
@@ -21,7 +28,8 @@ where
 import           Control.Exception.Base
 import           Control.Monad.State
 import qualified Data.Char             as Char
-import qualified Data.Map              as Map
+import qualified Data.HashMap.Strict   as HMap
+import qualified Data.Map.Strict       as Map
 import           Data.Maybe
 import           Data.Monoid
 import           Data.Text             (Text)
@@ -31,7 +39,6 @@ import           System.Random
 import           System.Random.Shuffle
 
 import           ConstDefs
-import           Identifier
 import           SMT
 import           SMTData
 import           SolveDefs
@@ -50,8 +57,6 @@ data ParamIncrementChoice =
 
 -- ----------------------------------------------------------------------------------------- --
 -- give a random solution for constraint vexps with free variables vars
-
-
 randValExprsSolveIncrementChoice :: (Variable v) => ParamIncrementChoice -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
 randValExprsSolveIncrementChoice p freevars exprs  =
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
@@ -202,9 +207,9 @@ randomSolve p ((v,d):xs) i    =
                                                                     ]
                             choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - string"
         SortADT aRef -> do  aDefs <- gets adtDefs
-                            let cstrs = Map.toList $ cDefsToMap $ constructors
+                            let cstrs = HMap.toList $ cDefsToMap $ constructors
                                             $ fromMaybe (error $ "RandPartition - randCnrsADT - Ref to ADT not found: " ++ show aRef)
-                                                        $ Map.lookup aRef $ adtDefsToMap aDefs
+                                                        $ HMap.lookup aRef $ adtDefsToMap aDefs
                             case cstrs of
                                 []  -> error $ "Unexpected: no constructor for " ++ show v
                                 [(cRef,cDef)] -> -- no choice -- one constructor
@@ -251,8 +256,8 @@ randomSolve p ((v,d):xs) i    =
                                                 _                   -> error "RandIncrementChoice: impossible constant - ADT - n"
                         where
                             choicesFunc :: Variable v => v
-                                                      -> [Ref ConstructorDef]
-                                                      -> [Ref ConstructorDef]
+                                                      -> [Ref (ConstructorDef Sort)]
+                                                      -> [Ref (ConstructorDef Sort)]
                                                       -> Const
                                                       -> SMT [(Bool, Text)]
                             choicesFunc v' partA partB Cstr{adtRef = aRef', cstrRef = cRef} =
@@ -297,12 +302,12 @@ randomSolveVar v choicesFunc = do
                                                                         return c
         _       -> error "RandIncrementChoice: value not found - randomSolveVar"
 
-addIsConstructor :: (Variable v) => v -> Ref ADTDef -> Ref ConstructorDef -> SMT ()
+addIsConstructor :: (Variable v) => v -> Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> SMT ()
 addIsConstructor v aRef cRef = addAssertions [cstrIsCstr aRef cRef (cstrVar v)]
 
-addFields :: (Variable v) => v -> Int -> Ref ADTDef -> Ref ConstructorDef -> ConstructorDef -> SMT [v]
+addFields :: (Variable v) => v -> Int -> Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> ConstructorDef Sort -> SMT [v]
 addFields v i aRef cRef cDef = do
-    let sortVars  = map ( Sort.sort . snd ) $ (fDefsToList . fields) cDef
+    let sortVars  = map Sort.sort $ (fDefsToList . fields) cDef
         fieldVars = map (\(iNew,sNew) -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sNew)
                         $ zip [i .. ] sortVars
     addDeclarations fieldVars

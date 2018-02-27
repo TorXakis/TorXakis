@@ -13,12 +13,14 @@ where
 
 import           Control.Arrow       ((&&&))
 import           Control.Monad.State
+import           Data.List.NonEmpty  (NonEmpty((:|)))
 import qualified Data.Map            as Map
 import           Data.Maybe
 import qualified Data.Text           as T
 import           Test.HUnit
 
 import           ConstDefs
+import           Name
 import           SMT
 import           SMTData
 import           SolveDefs
@@ -66,8 +68,9 @@ testPushPopTemplate :: ([VarId] -> [([VarId] -> [ValExpr VarId], [Const] -> SMT(
                     -> SMT()
 testPushPopTemplate steps aDefs types (createInitialAssertions,checkInitial) pps = do
     _ <- SMT.openSolver
-    addADTDefinitions aDefs
-    let vs = map (\(x,t) -> VarId (T.pack ("i" ++ show x)) x t) (zip [1000..] types)
+    addErr <- addADTDefinitions aDefs
+    lift $ assertEqual ("Adding ADTDefs failed: " ++ T.unpack (fromJust addErr)) Nothing addErr
+    let vs = map (\(x,t) -> VarId (fromNonEmpty $ 'i' :| show x) x t) (zip [1000..] types)
     addDeclarations vs
     addAssertions (createInitialAssertions vs)
     initialValues <- getValues vs
