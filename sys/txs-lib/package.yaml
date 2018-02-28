@@ -41,6 +41,10 @@ library:
   - deepseq
   - microlens
   - mtl
+  - stm-chans  
+  - stm-conduit
+  - conduit
+  - conduit-combinators
   # `TorXakis` dependencies.
   - defs
   - valexpr

@@ -11,5 +11,5 @@ stack ghci txs-lib:lib
 cs <- readFile "examps/Echo/Echo.txs"
 s <- newSession 
 r <- load s cs
-stepper s "Boo"
+stepper s "Model"
 ```

@@ -1,11 +1,18 @@
 -- |
 module TorXakis.Lib where
 
-import           Control.Concurrent.STM.TVar (newTVarIO, readTVarIO, modifyTVar')
-import           Control.Monad.STM           (atomically)
-import           Control.Exception           (try, ErrorCall)
-import           Control.Monad.State         (runStateT, lift)
-import           Lens.Micro                  ((.~), (^.))
+import           Prelude hiding (take)
+
+import           Control.Concurrent.STM.TVar    (newTVarIO, readTVarIO, modifyTVar')
+import           Control.Monad.STM              (atomically)
+import           Control.Exception              (try, ErrorCall)
+import           Control.Monad.State            (runStateT, lift)
+import           Lens.Micro                     ((.~), (^.))
+import           Control.Concurrent.STM.TMQueue (TMQueue, newTMQueueIO, writeTMQueue)
+import           Data.Foldable                  (traverse_)
+import           Data.Conduit                   (runConduit, (.|))
+import           Data.Conduit.Combinators       (take, sinkList)
+import           Data.Conduit.TQueue            (sourceTMQueue)
     
 import           TxsAlex  (txsLexer)
 import           TxsHappy (txsParser)
@@ -26,7 +33,7 @@ type FileContents = String
 
 -- | Create a new session.
 newSession :: IO Session
-newSession = Session <$> newTVarIO emptySessionState
+newSession = Session <$> newTVarIO emptySessionState <*> newTMQueueIO
 
 -- | Load a TorXakis file, compile it, and return the response.
 --
@@ -56,7 +63,7 @@ stepper s mn = do
     st <- readTVarIO (_sessionState s)
     (res, nextState) <- flip runStateT initState $ do
         -- TODO: catch possible errors
-        txsInit (st ^. tdefs) (st ^. sigs) dummyHandler
+        txsInit (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
         -- Lookup the model definition that matches the name.
         let mMDef = st ^. tdefs . ix mn
         case mMDef of
@@ -68,6 +75,8 @@ stepper s mn = do
                 -- handler to put the errors it receives onto some shared
                 -- channel, and read them back from there here. Unless we want
                 -- to change the way TorXakis deals with errors.
+                --
+                -- For not let's use a conduit/pipe and put all the errors there.
                 txsSetStep mDef
                 return Success
     atomically $ modifyTVar' (_sessionState s) (envCore .~ nextState)
@@ -79,7 +88,15 @@ stepper s mn = do
 -- TODO: put these messages somewhere so that they can be retrieved whenever
 -- needed.
 dummyHandler :: [Msg] -> IOC ()
-dummyHandler = lift . putStrLn . show
+dummyHandler = lift . print
+
+msgHandler :: TMQueue Msg -> [Msg] -> IOC ()
+msgHandler q = lift . atomically . traverse_ (writeTMQueue q)
+
+-- | Get the next message in the session.
+getNextMsg :: Session -> IO [Msg]
+getNextMsg s =
+    runConduit $ sourceTMQueue (s ^. sessionMsgs) .| take 1 .| sinkList
 
 -- | How a step is described
 data StepType = Action ActionName
@@ -98,3 +115,9 @@ data Steps
 -- | step for n-steps
 step :: Session -> StepType -> IO Response -- | Or a conduit?
 step = undefined
+-- We need to use:
+-- 
+-- > txsStepN :: Int                                 -- ^ number of actions to step model.
+-- >         -> IOC.IOC TxsDDefs.Verdict
+--
+-- I think the actions will be reported to the dummyHandler, so we will only see strings as actions :/

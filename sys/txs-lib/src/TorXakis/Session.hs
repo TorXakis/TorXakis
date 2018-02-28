@@ -3,19 +3,23 @@
 {-# LANGUAGE DeriveAnyClass    #-}
 module TorXakis.Session where
 
-import           Control.Concurrent.STM.TVar (TVar)
-import           Control.DeepSeq (NFData)
-import           GHC.Generics    (Generic)
-import           Lens.Micro (Lens')
+import           Control.Concurrent.STM.TVar    (TVar)
+import           Control.DeepSeq                (NFData)
+import           GHC.Generics                   (Generic)
+import           Lens.Micro                     (Lens')
+import           Control.Concurrent.STM.TMQueue (TMQueue)
 
 import           Sigs     (Sigs, empty)
 import           VarId    (VarId)
 import           TxsDefs  (TxsDefs, empty)
 import           EnvCore  (EnvC, initState)
+import           EnvData  (Msg)
 
 -- | The session, which maintains the state of a TorXakis model.
-newtype Session = Session
-    { _sessionState :: TVar SessionSt }
+data Session = Session
+    { _sessionState :: TVar SessionSt
+    , _sessionMsgs  :: TMQueue Msg
+    }
 
 data SessionSt = SessionSt
     { _tdefs   :: TxsDefs
@@ -28,6 +32,10 @@ emptySessionState :: SessionSt
 emptySessionState = SessionSt TxsDefs.empty Sigs.empty initState
 
 -- * Lenses
+
+sessionMsgs :: Lens' Session (TMQueue Msg)
+sessionMsgs h (Session s m) = Session s <$> h m
+
 tdefs :: Lens' SessionSt TxsDefs
 -- Remember:
 --
