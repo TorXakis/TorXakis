@@ -3,115 +3,79 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-
--- ----------------------------------------------------------------------------------------- --
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  TXS2SMT
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+-- 
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Translate TorXakis definitions, declarations, and assertions into SMT.
+-----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TXS2SMT
+( basicDefinitionsSMT
 
--- ----------------------------------------------------------------------------------------- --
---
--- Translate TorXakis definitions, declarations, and assertions into SMT
---
--- ----------------------------------------------------------------------------------------- --
--- export
+, adtDefsToSMT
+, funcdefsToSMT
 
-( initialEnvNames    
-, insertSort
-, insertCstr
-, insertFunc
-, basicDefinitionsSMT
-, sortdefsToSMT      
-, funcdefsToSMT      
-, assertionsToSMT    
-, declarationsToSMT          
-, valexprToSMT       
+, declarationsToSMT
+, assertionsToSMT
+
+, valexprToSMT
 )
-
--- ----------------------------------------------------------------------------------------- --
---import
-
 where
 
-import qualified Data.Map      as Map
-import           Data.Maybe
+import qualified Data.HashMap.Strict as HMap
+import qualified Data.Map.Strict     as Map
 import           Data.Monoid
-import qualified Data.Set      as Set
-import           Data.Text     (Text)
-import qualified Data.Text     as T
+import qualified Data.Set            as Set
+import           Data.Text           (Text)
+import qualified Data.Text           as T
 
 import           ConstDefs
-import           CstrDef
-import           CstrId
 import           FreeMonoidX
 import           FuncDef
 import           FuncId
+import           Name
 import           RegexXSD2SMT
-import           SMTData
 import           SMTString
-import           SortDef
-import           SortId
+import           Sort
 import           ValExpr
 import           Variable
 import           VarId
 
--- ----------------------------------------------------------------------------------------- --
--- initialEnvNames
+toFieldName :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Int -> Text
+toFieldName aRef cRef field  = toCstrName aRef cRef <> "$" <> (T.pack . show) field
 
-initialEnvNames :: EnvNames
-initialEnvNames  = EnvNames
-    (Map.fromList [(sortIdBool,       "Bool"),
-                   (sortIdInt,        "Int"),
-                   (sortIdString,     "String"),
-                   (sortIdRegex,      error "Regex is not defined in SMT")])
-    Map.empty
-    Map.empty
+toIsCstrName :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Text
+toIsCstrName aRef cRef  =  "is-" <> toCstrName aRef cRef
 
--- ----------------------------------------------------------------------------------------- --
--- initialEnvNames
+toCstrName :: Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> Text
+toCstrName aRef cRef  =  toRefName aRef <> "$" <> toRefName cRef
 
-toFieldName :: CstrId -> Int -> Text
-toFieldName cstrid field  =  T.concat [toCstrName cstrid, "$", (T.pack . show) field]
+toSortName :: Sort -> Text
+toSortName SortError   = error "Error is not defined in SMT"
+toSortName SortBool    = "Bool"
+toSortName SortInt     = "Int"
+toSortName SortChar    = error "Char is not yet supported"
+toSortName SortString  = "String"
+toSortName SortRegex   = error "Regex is not defined in SMT"
+toSortName (SortADT r) = toRefName r
 
-toIsCstrName :: CstrId -> Text
-toIsCstrName cstrid  =  "is-" <> toCstrName cstrid
+toRefName :: Ref a -> Text
+toRefName = toText . toName
 
-toCstrName :: CstrId -> Text
-toCstrName cstrid  =  T.concat [SortId.name (cstrsort cstrid), "$", CstrId.name cstrid]
-
-toSortName :: SortId -> Text
-toSortName = SortId.name
+toADTName :: Ref (ADTDef Sort) -> Text
+toADTName = toRefName
 
 toFuncName :: FuncId -> Text
-toFuncName funcId  =  T.concat ["f", (T.pack . show) (FuncId.unid funcId), "$", FuncId.name funcId]
+toFuncName funcId  =  T.concat ["f", (T.pack . show) (FuncId.unid funcId), "$", toText $ FuncId.name funcId]
 
-insertSort :: (SortId, SortDef) -> EnvNames -> EnvNames
-insertSort (sid, _) enames
-  = if sid `Map.member` sortNames enames
-       then error $ "TXS TXS2SMT insertMap: Sort " ++ show sid ++ " already defined\n"
-       else enames { sortNames = Map.insert sid (toSortName sid) (sortNames enames) }
-
-insertCstr :: (CstrId, CstrDef) -> EnvNames -> EnvNames
-insertCstr (cd, CstrDef c fs) enames
-  =  if cd `Map.member` cstrNames enames
-       then error $ "TXS TXS2SMT insertMap: Constructor (" ++ show cd ++ ", CstrDef " ++
-                    show c ++ " " ++ show fs ++  ") already defined\n"
-       else foldr ( \(f,p) enames -> enames { funcNames = Map.insert f (toFieldName cd p) (funcNames enames) } )
-                  ( enames { funcNames = Map.insert c (toIsCstrName cd) (funcNames enames)
-                           , cstrNames = Map.insert cd (toCstrName cd) (cstrNames enames)
-                           } 
-                  )
-                  (zip fs [0..])
-
-insertFunc :: (FuncId, FuncDef VarId) -> EnvNames -> EnvNames
-insertFunc (funcId, FuncDef x y) enames
-  =  if funcId `Map.member` funcNames enames
-       then error $ "TXS TXS2SMT insertMap: Function  (" ++ show funcId ++ ", FuncDef " ++
-                    show x ++ " " ++ show y ++  ") already defined\n"
-       else enames { funcNames = Map.insert funcId (toFuncName funcId) (funcNames enames) }
-       
 -- ----------------------------------------------------------------------------------------- --
 -- basic definitions for SMT
 -- native Torxakis functions that are not natively supported in SMT
@@ -120,39 +84,44 @@ basicDefinitionsSMT :: Text
 basicDefinitionsSMT = ""
 
 -- | convert sort definitions to SMT type declarations (as multiple lines of commands)
-sortdefsToSMT :: EnvNames -> EnvDefs -> Text
-sortdefsToSMT enames edefs =
-    let sorts = Map.keys (sortDefs edefs) in
-        case sorts of
-            []      -> ""
-            _       -> "(declare-datatypes () (\n"
-                       <> foldMap (\s -> "    (" <> justLookupSort s enames <> foldMap cstrToSMT (getCstrs s) <> ")\n" )
-                                  sorts
-                       <> ") )\n"
+adtDefsToSMT :: HMap.HashMap (Ref (ADTDef Sort)) (ADTDef Sort) -> (Text, HMap.HashMap Text (Ref (ADTDef Sort), Ref (ConstructorDef Sort)))
+adtDefsToSMT adtMap
+    | HMap.null adtMap = ("", HMap.empty)
+    | otherwise       = ("(declare-datatypes () (\n"
+                        <> T.concat (map
+                            (\(r,d) -> "    (" <> toADTName r <> adtDefToSMT r d <> ")\n" )
+                            $ HMap.toList adtMap)
+                        <> ") )\n",
+                        HMap.fromList $ concatMap (\(r,d) -> map (\k -> (toCstrName r k, (r,k))) $ HMap.keys . cDefsToMap $ constructors d)
+                                                 $ HMap.toList adtMap
+                        )
     where
-        -- get the constructors of an ADT
-        getCstrs :: SortId -> [(CstrId, CstrDef)]
-        getCstrs s = [(cstrId', cstrDef) | (cstrId', cstrDef) <- Map.toList (cstrDefs edefs), cstrsort cstrId' == s]
-
         -- convert the given constructor to a SMT constructor declaration
-        cstrToSMT :: (CstrId, CstrDef) -> Text
-        cstrToSMT (cstrId', CstrDef _ fields) = " (" <> justLookupCstr cstrId' enames
-                                                     <> cstrFieldsToSMT cstrId' fields 
-                                                     <> ")"
+        adtDefToSMT :: Ref (ADTDef Sort) -> ADTDef Sort -> Text
+        adtDefToSMT adtRf adtDef = 
+            T.concat $ map (\(r,d) -> " (" <> toCstrName adtRf r
+                                      <> cstrFieldsToSMT adtRf r (fields d)
+                                      <> ")" )
+                           $ HMap.toList . cDefsToMap $ constructors adtDef
 
         -- convert the given constructor fields to a SMT constructor declaration
-        cstrFieldsToSMT :: CstrId -> [FuncId] -> Text
-        cstrFieldsToSMT cstrId' fields =
-            case fields of
-                []  -> ""
-                _   -> " (" <> T.intercalate ") (" (map (\(f,p) -> toFieldName cstrId' p <> " " <> justLookupSort (funcsort f) enames)
-                                                        (zip fields [0..]) ) <> ")"
+        cstrFieldsToSMT :: Ref (ADTDef Sort)
+                        -> Ref (ConstructorDef Sort)
+                        -> FieldDefs Sort
+                        -> Text
+        cstrFieldsToSMT adtRf cRf fDefs =
+            case nrOfFieldDefs fDefs of
+                0  -> ""
+                _   ->  " (" <> T.intercalate ") ("
+                        ( map (\(d,p) -> toFieldName adtRf cRf p <> " " <> toSortName (Sort.sort d))
+                              (zip (fDefsToList fDefs) [0..]) )
+                        <> ")"
 
 
 -- | Convert function definitions to SMT type declarations (as multiple lines
 -- of commands).
-funcdefsToSMT :: EnvNames -> Map.Map FuncId (FuncDef VarId) -> Text
-funcdefsToSMT enames fdefs =
+funcdefsToSMT :: Map.Map FuncId (FuncDef VarId) -> Text
+funcdefsToSMT fdefs =
     toTxs (map toDT (Map.toList fdefs))
   where
     toTxs :: [(Text ,Text)] -> Text
@@ -161,21 +130,30 @@ funcdefsToSMT enames fdefs =
                 "(define-funs-rec\n  (\n    " <> T.intercalate "\n    " lD <> "\n  )\n  (\n    " <> T.intercalate "\n    " lT <> "\n  )\n)\n"
 
     toDT :: (FuncId, FuncDef VarId) -> (Text, Text)
-    toDT (funcId, FuncDef vs expr)  = ("(" <> justLookupFunc funcId enames
-                                           <> "(" <> T.intercalate " " (map (\v -> "(" <> vname v <> " " <> justLookupSort (varsort v) enames <> ")") vs) <> ") " 
-                                           <> justLookupSort (funcsort funcId) enames
+    toDT (funcId, FuncDef vs expr)  = ("(" <> toFuncName funcId
+                                           <> "("
+                                           <> T.intercalate
+                                                " "
+                                                (map (\v -> "("
+                                                            <> toText (vname v)
+                                                            <> " "
+                                                            <> toSortName (varsort v)
+                                                            <> ")")
+                                                     vs)
+                                           <> ") "
+                                           <> toSortName (funcsort funcId)
                                            <> ")"
-                                      , valexprToSMT enames expr
+                                      , valexprToSMT expr
                                       )
 -- ----------------------------------------------------------------------------------------- --
 -- assertions to SMT
 -- ----------------------------------------------------------------------------------------- --
-assertionsToSMT :: (Variable v) => EnvNames -> [ValExpr v] -> Text
-assertionsToSMT enames assertions =
+assertionsToSMT :: (Variable v) => [ValExpr v] -> Text
+assertionsToSMT assertions =
         T.intercalate "\n" (map assertionToSMT assertions)
     where
         assertionToSMT :: (Variable v) => ValExpr v -> Text
-        assertionToSMT expr = "(assert " <> valexprToSMT enames expr <> ")"
+        assertionToSMT expr = "(assert " <> valexprToSMT expr <> ")"
 
 
 integer2smt :: Integer -> Text
@@ -184,38 +162,37 @@ integer2smt n = (T.pack . show) n
 -- ----------------------------------------------------------------------------------------- --
 -- constToSMT: translate a const to a SMT constraint
 -- ----------------------------------------------------------------------------------------- --
-constToSMT :: EnvNames -> Const -> Text
-constToSMT _ (Cbool b) = if b
-                            then "true"
-                            else "false"
-constToSMT _ (Cint n) = integer2smt n
-constToSMT _ (Cstring s)  =  "\"" <> stringToSMT s <> "\""
-constToSMT _ (Cregex r)  =  xsd2smt r
-constToSMT enames (Cstr cd [])   =         justLookupCstr cd enames
-constToSMT enames (Cstr cd args') = "(" <> justLookupCstr cd enames <> " " <> T.intercalate " " (map (constToSMT enames) args') <> ")"
-constToSMT _ x = error ("Illegal input constToSMT - " <> show x)
+constToSMT :: Const -> Text
+constToSMT (Cbool b) = if b
+                        then "true"
+                        else "false"
+constToSMT (Cint n) = integer2smt n
+constToSMT (Cstring s)  =  "\"" <> stringToSMT s <> "\""
+constToSMT (Cregex r)  =  xsd2smt r
+constToSMT (Cstr aRef cRef []) =         toCstrName aRef cRef
+constToSMT (Cstr aRef cRef args') = "(" <> toCstrName aRef cRef <> " " <> T.intercalate " " (map constToSMT args') <> ")"
+constToSMT x = error ("Illegal input constToSMT - " <> show x)
 
 -- ----------------------------------------------------------------------------------------- --
 -- valexprToSMT: translate a ValExpr to a SMT constraint
 -- ----------------------------------------------------------------------------------------- --
-valexprToSMT :: (Variable v) => EnvNames -> ValExpr v -> Text
-valexprToSMT enames (view -> Vfunc funcId [])   =         justLookupFunc funcId enames
-valexprToSMT enames (view -> Vfunc funcId args') = "(" <> justLookupFunc funcId enames <> " " <> T.intercalate " " (map (valexprToSMT enames) args') <> ")"
+valexprToSMT :: (Variable v) => ValExpr v -> Text
+valexprToSMT (view -> Vfunc funcId [])    =        toFuncName funcId
+valexprToSMT (view -> Vfunc funcId args') = "(" <> toFuncName funcId <> " " <> T.intercalate " " (map valexprToSMT args') <> ")"
 
-valexprToSMT enames (view -> Vcstr cd [])    =        justLookupCstr cd enames
-valexprToSMT enames (view -> Vcstr cd args') = "(" <> justLookupCstr cd enames <> " " <> T.intercalate " " (map (valexprToSMT enames) args') <> ")"
+valexprToSMT (view -> Vcstr aRef cRef [])    =        toCstrName aRef cRef
+valexprToSMT (view -> Vcstr aRef cRef args') = "(" <> toCstrName aRef cRef <> " " <> T.intercalate " " (map valexprToSMT args') <> ")"
 
-valexprToSMT enames (view -> Viscstr cd arg)    = "(" <> toIsCstrName cd <> " " <> valexprToSMT enames arg <> ")"
-valexprToSMT enames (view -> Vaccess cd p arg)  = "(" <> toFieldName cd p <> " " <> valexprToSMT enames arg <> ")"
+valexprToSMT (view -> Viscstr aRef cRef arg)       = "(" <> toIsCstrName aRef cRef <> " " <> valexprToSMT arg <> ")"
+valexprToSMT (view -> Vaccess aRef cRef p _s arg)  = "(" <> toFieldName aRef cRef p <> " " <> valexprToSMT arg <> ")"
 
+valexprToSMT (view -> Vconst c) = constToSMT c
 
-valexprToSMT enames (view -> Vconst c) = constToSMT enames c
+valexprToSMT (view -> Vvar varId)  = toText $ vname varId
 
-valexprToSMT _ (view -> Vvar varId)  =  vname varId
+valexprToSMT (view -> Vite c expr1 expr2) = "(ite " <> valexprToSMT c <> " "  <> valexprToSMT expr1 <> " " <> valexprToSMT expr2 <> ")"
 
-valexprToSMT enames (view -> Vite c expr1 expr2) = "(ite " <> valexprToSMT enames c <> " "  <> valexprToSMT enames expr1 <> " " <> valexprToSMT enames expr2 <> ")"
-
-valexprToSMT enames (view -> Vsum s) =
+valexprToSMT (view -> Vsum s) =
     let ol = toOccurListT s in
         case ol of
         {  [o] -> arg2smt o
@@ -223,12 +200,12 @@ valexprToSMT enames (view -> Vsum s) =
         }
     where
         arg2smt :: (Variable v) => (ValExpr v, Integer) -> Text
-        arg2smt (vexpr, 1)                              = valexprToSMT enames vexpr
-        arg2smt (vexpr, -1)                             = "(- " <> valexprToSMT enames vexpr <> ")"
-        arg2smt (vexpr, multiplier) |  multiplier /= 0  = "(* " <> integer2smt multiplier <> " " <> valexprToSMT enames vexpr <> ")"
+        arg2smt (vexpr, 1)                              = valexprToSMT vexpr
+        arg2smt (vexpr, -1)                             = "(- " <> valexprToSMT vexpr <> ")"
+        arg2smt (vexpr, multiplier) |  multiplier /= 0  = "(* " <> integer2smt multiplier <> " " <> valexprToSMT vexpr <> ")"
         arg2smt (_, multiplier)                         = error ("valexprToSMT - arg2smt - illegal multiplier " ++ show multiplier)
 
-valexprToSMT enames (view -> Vproduct p) =
+valexprToSMT (view -> Vproduct p) =
     let ol = toOccurListT p in
         case ol of
         {  [o] -> arg2smt o
@@ -236,51 +213,37 @@ valexprToSMT enames (view -> Vproduct p) =
         }
     where
         arg2smt :: (Variable v) => (ValExpr v, Integer) -> Text
-        arg2smt (vexpr, 1)                  = valexprToSMT enames vexpr
-        arg2smt (vexpr, power) |  power > 0 = "(^ " <> valexprToSMT enames vexpr <> " " <> integer2smt power <> ")"
+        arg2smt (vexpr, 1)                  = valexprToSMT vexpr
+        arg2smt (vexpr, power) |  power > 0 = "(^ " <> valexprToSMT vexpr <> " " <> integer2smt power <> ")"
         arg2smt (_, power)                  = error ("valexprToSMT - arg2smt - illegal power " ++ show power)
 
-valexprToSMT enames (view -> Vdivide t n) = "(div " <> valexprToSMT enames t <> " "  <> valexprToSMT enames n <> ")"
-valexprToSMT enames (view -> Vmodulo t n) = "(mod " <> valexprToSMT enames t <> " "  <> valexprToSMT enames n <> ")"
-valexprToSMT enames (view -> Vgez v)      = "(<= 0 " <> valexprToSMT enames v <> ")"
+valexprToSMT (view -> Vdivide t n) = "(div " <> valexprToSMT t <> " "  <> valexprToSMT n <> ")"
+valexprToSMT (view -> Vmodulo t n) = "(mod " <> valexprToSMT t <> " "  <> valexprToSMT n <> ")"
+valexprToSMT (view -> Vgez v)      = "(<= 0 " <> valexprToSMT v <> ")"
 
-valexprToSMT enames (view -> Vequal expr1 expr2)  =
-    "(= " <> valexprToSMT enames expr1 <> " " <> valexprToSMT enames expr2 <> ")"
+valexprToSMT (view -> Vequal expr1 expr2)  =
+    "(= " <> valexprToSMT expr1 <> " " <> valexprToSMT expr2 <> ")"
 
-valexprToSMT enames (view -> Vnot expr)  =
-    "(not " <> valexprToSMT enames expr <> ")"
+valexprToSMT (view -> Vnot expr)  =
+    "(not " <> valexprToSMT expr <> ")"
 
-valexprToSMT enames (view -> Vand exprs)  =
-    "(and " <> T.intercalate " " (map (valexprToSMT enames) (Set.toList exprs)) <> ")"
+valexprToSMT (view -> Vand exprs)  =
+    "(and " <> T.intercalate " " (map valexprToSMT (Set.toList exprs)) <> ")"
 
-valexprToSMT enames (view -> Vlength expr)  =
-    "(str.len " <> valexprToSMT enames expr <> ")"
-valexprToSMT enames (view -> Vat s p)  =
-    "(str.at " <> valexprToSMT enames s <> " " <> valexprToSMT enames p <> ")"
-valexprToSMT enames (view -> Vconcat vexprs)  =
-    "(str.++ " <> T.intercalate " " (map (valexprToSMT enames) vexprs) <> ")"
-valexprToSMT enames (view -> Vstrinre s r)  =
-    "(str.in.re " <> valexprToSMT enames s <> " " <> valexprToSMT enames r <> ")"
-valexprToSMT _ x = error ("Illegal input valexprToSMT - " ++ show x)
+valexprToSMT (view -> Vlength expr)  =
+    "(str.len " <> valexprToSMT expr <> ")"
+valexprToSMT (view -> Vat s p)  =
+    "(str.at " <> valexprToSMT s <> " " <> valexprToSMT p <> ")"
+valexprToSMT (view -> Vconcat vexprs)  =
+    "(str.++ " <> T.intercalate " " (map valexprToSMT vexprs) <> ")"
+valexprToSMT (view -> Vstrinre s r)  =
+    "(str.in.re " <> valexprToSMT s <> " " <> valexprToSMT r <> ")"
+valexprToSMT x = error ("Illegal input valexprToSMT - " ++ show x)
 
--- ----------------------------------------------------------------------------------------- --
-declarationsToSMT :: (Variable v) => EnvNames -> [v] -> Text
-declarationsToSMT enames vs  =
+
+declarationsToSMT :: (Variable v) => [v] -> Text
+declarationsToSMT vs  =
     T.intercalate "\n" (map declarationToSMT vs)
     where
       declarationToSMT :: (Variable v) => v -> Text
-      declarationToSMT v  =  "(declare-fun " <> vname v <> "() " <> justLookupSort (vsort v) enames <> ")"
-
--- ------------------------------                                                                 
-
-justLookupCstr :: CstrId -> EnvNames -> Text
-justLookupCstr cd enames = fromMaybe (error $ "CstrId " ++ show cd ++ " not found in mapping with keys: " ++ show (Map.keys (cstrNames enames)) ++ "\n") (Map.lookup cd (cstrNames enames))
-
-justLookupSort :: SortId -> EnvNames -> Text
-justLookupSort sd enames = fromMaybe (error $ "SortId " ++ show sd ++ " not found in mapping with keys: " ++ show (Map.keys (sortNames enames)) ++ "\n") (Map.lookup sd (sortNames enames))
-
-justLookupFunc :: FuncId -> EnvNames -> Text
-justLookupFunc fd enames = fromMaybe (error $ "FuncId " ++ show fd ++ " not found in mapping with keys: " ++ show (Map.keys (funcNames enames)) ++ "\n") (Map.lookup fd (funcNames enames))
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+      declarationToSMT v  =  "(declare-fun " <> toText (vname v) <> "() " <> toSortName (vsort v) <> ")"

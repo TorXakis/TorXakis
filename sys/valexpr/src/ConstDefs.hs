@@ -26,9 +26,8 @@ import           Data.Data
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
-import           CstrId
+import           Sort
 import           Id
-import           SortId
 import           SortOf
 
 -- | Union of Boolean, Integer, String, and AlgebraicDataType constant values.
@@ -38,9 +37,12 @@ data Const = Cbool    { cBool :: Bool }
            | Cregex   { cRegex :: Text } -- ^ XSD input
                                          -- PvdL: performance gain: translate only once,
                                          --       storing SMT string as well
-           | Cstr     { cstrId :: CstrId, args :: [Const] }
-           | Cerror   { msg :: String }
-           | Cany     { sort :: SortId }
+           | Cstr     { adtRef  :: Ref (ADTDef Sort)
+                      , cstrRef :: Ref (ConstructorDef Sort)
+                      , args    :: [Const]
+                      }
+           | Cerror   { msg  :: String }
+           | Cany     { sort :: Sort }
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | Const is Resettable
@@ -48,10 +50,10 @@ instance Resettable Const
 
 -- | Const has a Sort.
 instance SortOf Const where
-  sortOf (Cbool _b)                        = sortIdBool
-  sortOf (Cint _i)                         = sortIdInt
-  sortOf (Cstring _s)                      = sortIdString
-  sortOf (Cregex _r)                       = sortIdRegex
-  sortOf (Cstr (CstrId _nm _uid _ca cs) _) = cs
+  sortOf (Cbool _b)                        = SortBool
+  sortOf (Cint _i)                         = SortInt
+  sortOf (Cstring _s)                      = SortString
+  sortOf (Cregex _r)                       = SortRegex
+  sortOf (Cstr adtRf _cstrRef _args)       = SortADT adtRf
   sortOf (Cany s)                          = s
-  sortOf (Cerror _)                        = sortIdError
+  sortOf (Cerror _)                        = SortError

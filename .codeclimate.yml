@@ -11,3 +11,4 @@ engines:
 ratings:
   paths:
   - "**.hs"
+  - "**/test"

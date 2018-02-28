@@ -10,14 +10,16 @@ testMultipleInstancesList
 )
 where
 import           Control.Monad.State
+import           Data.List.NonEmpty  (fromList)
 import           System.Process      (CreateProcess)
 
 import           Test.HUnit
 
 import           ConstDefs
+import           Name
 import           SMT
 import           SolveDefs
-import           SortId
+import           Sort
 import           ValExpr
 import           VarId
 
@@ -37,7 +39,7 @@ testSolvers s1 s2 = TestLabel "Two instances" $ TestCase $ do
     smtEnv1 <- createSMTEnv s1 False
     smtEnv2 <- createSMTEnv s2 False
 
-    let v = VarId "instance" 1234 sortIdInt
+    let v = VarId (fromNonEmpty $ fromList "instance") 1234 SortInt
     smtEnv1' <- execStateT openSolver smtEnv1
     smtEnv2' <- execStateT openSolver smtEnv2
 

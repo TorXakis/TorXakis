@@ -18,29 +18,32 @@ import           Data.Data
 import           Data.Monoid
 import qualified Data.Text       as T
 import           GHC.Generics    (Generic)
-import           Id
 
 -- Local imports.
+import           Id
 import           Name
-import           SortId
+import           Sort
 import           SortOf
 import           Variable
 
 
 data VarId = VarId
-    { name    :: Name             --smallid
+    { name    :: Name             -- smallid
     , unid    :: Id
-    , varsort :: SortId
+    , varsort :: Sort
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Variable VarId where
-  vname v            = VarId.name v <> "$$" <> (T.pack . show) (VarId.unid v)
-  vunid              = _id . VarId.unid
-  vsort              = VarId.varsort
-  cstrVariable n i   = VarId (T.pack n) (Id i)
+      vname v            = nm
+          where Right nm = Name.name
+                           $ toText (VarId.name v) <> "$$" <> (T.pack . show) (VarId.unid v)
+      vunid              = _id . VarId.unid
+      vsort              = VarId.varsort
+      cstrVariable n i   = VarId nm (Id i)
+          where Right nm = Name.name $ T.pack n
 
 instance Resettable VarId
 instance Identifiable VarId
 
 instance SortOf VarId  where
-  sortOf (VarId _nm _unid srt)                    = srt
+    sortOf (VarId _nm _unid srt) = srt

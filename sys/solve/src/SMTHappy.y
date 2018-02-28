@@ -25,15 +25,14 @@ module SMTHappy
 , SMTValue(..)
 )
 where
-import SMTAlex (Token(..), smtLexer)
-import Data.Text (Text)
-import qualified Data.Text as T
-import qualified SMTString as SMTString    -- Parse SMT string according to smtlib 2.5 standard
-                                        
 import qualified Data.Map    as Map
-import Data.String.Utils
+import           Data.String.Utils
+import           Data.Text (Text)
+import qualified Data.Text as T
+import           Text.Regex.TDFA
 
-import Text.Regex.TDFA
+import           SMTAlex (Token(..), smtLexer)
+import qualified SMTString as SMTString    -- Parse SMT string according to smtlib 2.5 standard
 }
     
 -- ----------------------------------------------------------------------------------------- --
@@ -204,7 +203,7 @@ smtParser :: [Token] -> Map.Map String SMTValue
 smtParser = happySmt
 
 cstrRegex :: String
-cstrRegex = "[A-Z][A-Za-z0-9_$]*"
+cstrRegex = "a[0-9A-F]+\\$c[0-9A-F]+"
 }
 -- ----------------------------------------------------------------------------------------- --
 -- end uninterpreted haskell postamble

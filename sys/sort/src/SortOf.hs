@@ -5,27 +5,25 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  SortDef
+-- Module      :  SortOf
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+--                kerem.ispirli@tno.nl
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Sort Definition
+-- SortOf class definition.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-module SortDef
+
+module SortOf
+( SortOf(..)
+)
 where
 
-import GHC.Generics (Generic)
-import Control.DeepSeq
+import           Sort
 
--- | SortDef has no information 
-data  SortDef        = SortDef
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+-- | Types that are instances of SortOf class provide their 'Sort.Sort's.
+class SortOf s where
+  sortOf :: s -> Sort

@@ -3,30 +3,32 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
--- ----------------------------------------------------------------------------------------- --
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  RandTrueBins
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+-- 
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental (?)
+-- Portability :  portable
+--
+-- Module RandTrueBins
+--
+-- Randomization of SMT solutions
+-- Partitioning using True Bins
+-----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 module RandTrueBins
-
--- ----------------------------------------------------------------------------------------- --
---
---   Module RandTrueBins :  Randomization of SMT solutions -  Partitioning using True Bins
---
--- ----------------------------------------------------------------------------------------- --
--- export
-
 ( randValExprsSolveTrueBins  --  :: (Variable v) => [v] -> [ValExpr v] -> SMT (Satisfaction v)
 , ParamTrueBins(..)
 )
-
--- ----------------------------------------------------------------------------------------- --
--- import
-
 where
 
 import           Control.Monad.State
 import qualified Data.Char             as Char
-import qualified Data.Map              as Map
+import qualified Data.HashMap.Strict   as Map
+import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Set              as Set
 import           Data.Text             (Text)
@@ -36,13 +38,11 @@ import           System.Random
 import           System.Random.Shuffle
 
 import           ConstDefs
-import           CstrDef
-import           CstrId
 import           SMT
 import           SMTData
 import           Solve.Params
 import           SolveDefs
-import           SortId
+import           Sort
 import           SortOf
 import           ValExpr
 import           Variable
@@ -62,7 +62,7 @@ data ParamTrueBins =
 randValExprsSolveTrueBins :: (Variable v) => ParamTrueBins -> [v] -> [ValExpr v] -> SMT (SolveProblem v)
 randValExprsSolveTrueBins p freevars exprs  =
     -- if not all constraints are of type boolean: stop, otherwise solve the constraints
-    if all ( (sortIdBool == ) . sortOf ) exprs
+    if all ( (SortBool == ) . sortOf ) exprs
     then do
         push
         addDeclarations freevars
@@ -231,37 +231,34 @@ trueString p v =
 -- -----------------------------------------------------------------
 -- enable randomly draw constructors
 -- ---------------------------------------------------------------------
--- lookup a constructor given its sort and constructor name
-lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]
-lookupConstructors sid  =  do
-     edefs <- gets envDefs
-     return [ def | def@(CstrId{ cstrsort = sid' } , _) <- Map.toList (cstrDefs edefs), sid == sid']
 
-randomValue :: (Variable v) => ParamTrueBins -> SortId -> ValExpr v -> Int -> SMT Text
+randomValue :: (Variable v) => ParamTrueBins -> Sort -> ValExpr v -> Int -> SMT Text
 randomValue _ _sid _expr 0 = return "true"
 randomValue p sid expr n | n > 0 =
     case sid of
-        x | x == sortIdBool   -> trueBool expr
-        x | x == sortIdInt    -> trueBins expr (nrOfBins p) (nextFunction p)
-        x | x == sortIdString -> trueString p expr
-        _ -> do
-                cstrs <- lookupConstructors sid
-                orList <- processConstructors cstrs expr
+        SortBool     -> trueBool expr
+        SortInt      -> trueBins expr (nrOfBins p) (nextFunction p)
+        SortString   -> trueString p expr
+        SortADT aRef -> do
+                aDefs <- gets adtDefs
+                let aDef = fromMaybe (error "adtRef not in collection") (Map.lookup aRef (adtDefsToMap aDefs))
+                let cstrs = constructors aDef 
+                orList <- processConstructors (Map.toList $ cDefsToMap cstrs) expr
                 shuffledOrList <- shuffleM orList
                 return $ "(or " <> T.intercalate " " shuffledOrList <> ") "
             where
-                processConstructors :: (Variable v) => [(CstrId, CstrDef)] -> ValExpr v -> SMT [Text]
+                processConstructors :: (Variable v) => [(Ref (ConstructorDef Sort), ConstructorDef Sort)] -> ValExpr v -> SMT [Text]
                 processConstructors [] _ = return []
                 processConstructors (x:xs) expr' = do
                     r <- processConstructor x expr'
                     rr <- processConstructors xs expr'
                     return (r:rr)
 
-                processConstructor :: (Variable v) => (CstrId,CstrDef) -> ValExpr v -> SMT Text
-                processConstructor (cid, CstrDef _isX []) expr' = valExprToString $ cstrIsCstr cid expr'
-                processConstructor (cid, CstrDef _isX _accessors) expr' = do
-                    cstr <- valExprToString $ cstrIsCstr cid expr'
-                    args' <- processArguments cid (zip (cstrargs cid) [0..]) expr'
+                processConstructor :: (Variable v) => (Ref (ConstructorDef Sort), ConstructorDef Sort) -> ValExpr v -> SMT Text
+                processConstructor (cRef, cDef) expr' | nrOfFieldDefs (fields cDef) == 0 = valExprToString $ cstrIsCstr aRef cRef expr'
+                processConstructor (cRef, cDef) expr' = do
+                    cstr <- valExprToString $ cstrIsCstr aRef cRef expr'
+                    args' <- processArguments (zip (map Sort.sort ( (fDefsToList . fields) cDef ) ) [0..]) cRef expr'
                     case args' of
                         [arg]   -> return $ "(ite " <> cstr <> " " <> arg <> " false) "
                         _       -> do
@@ -269,10 +266,11 @@ randomValue p sid expr n | n > 0 =
                                     return $ "(ite " <> cstr <> " (and " <> T.intercalate " " shuffledAndList <> ") false) "
 
 
-                processArguments ::  (Variable v) => CstrId -> [(SortId,Int)] -> ValExpr v -> SMT [Text]
-                processArguments _   [] _ =  return []
-                processArguments cid ((sid',pos):xs) expr' = do
-                    r <- randomValue p sid' (cstrAccess cid pos expr') (n-1)
-                    rr <- processArguments cid xs expr'
+                processArguments ::  (Variable v) => [(Sort,Int)] -> Ref (ConstructorDef Sort) -> ValExpr v -> SMT [Text]
+                processArguments [] _ _ =  return []
+                processArguments ((s',pos):xs) cRef expr' = do
+                    r <- randomValue p s' (cstrAccess aRef cRef pos s' expr') (n-1)
+                    rr <- processArguments xs cRef expr'
                     return (r:rr)
+        s        -> error ("RandTrueBins - randomValue - unexpected sort " ++ show s)
 randomValue _p _sid _expr n = error ("Illegal argument n = " ++ show n)

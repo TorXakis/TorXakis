@@ -37,11 +37,11 @@ library
                       , coreenv
                       , defs
                       , solve
+                      , sort
                       , valexpr
 
-                      
   default-language:     Haskell2010
-  
+
 test-suite behave-test
   type:                 exitcode-stdio-1.0
   hs-source-dirs:       src
@@ -60,9 +60,7 @@ test-suite behave-test
                       , TestHelperFuncContent
                       , TestProcessBehaviour
 
-                      
-
-  ghc-options:       -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
+  ghc-options:       -Werror -Wall -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
   
   build-depends:       base
                      , containers
@@ -78,6 +76,7 @@ test-suite behave-test
                      , defs
                      , front
                      , solve
+                     , sort
                      , valexpr
-                     
+
   default-language:    Haskell2010

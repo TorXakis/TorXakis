@@ -1,0 +1,40 @@
+name: sort-gen
+version: 0.1.0.0
+github: "TorXakis/TorXakis"
+license: BSD3
+author:
+  - "Damian Nadales"
+  - "Pierre van de Laar"
+  - "Kerem Ispirli"
+maintainer:
+  - "damian.nadales@gmail.com"
+
+# Metadata used when publishing your package
+synopsis: Generators for TorXakis sorts.
+category: Language
+
+dependencies:
+- base >= 4.7 && < 5
+- text
+- mtl
+- containers
+  
+default-extensions:
+- OverloadedStrings
+- OverloadedLists
+
+ghc-options:
+  - -O2
+  - -optc-O3
+  - -Werror
+  - -Wall
+  - -optc-ffast-math
+
+library:
+  source-dirs: src
+  dependencies:
+  - sort
+  - QuickCheck
+  - QuickCheck-GenT
+
+

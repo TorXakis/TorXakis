@@ -5,20 +5,29 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Name
+-- Module      :  Sort.Internal
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+--                kerem.ispirli@tno.nl
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Name
+-- Internals of the Sort module.
 -----------------------------------------------------------------------------
-module Name
+module Sort.Internal
+(
+  module Ref,
+  module Sort.ADTDefs,
+  module Sort.ConstructorDefs,
+  module Sort.ConvertsTo,
+  module Sort.FieldDefs
+)
 where
 
-import           Data.Text (Text)
-
--- | Name of definition.
-type Name = Text
+import Ref
+import Sort.ADTDefs
+import Sort.ConstructorDefs
+import Sort.ConvertsTo
+import Sort.FieldDefs

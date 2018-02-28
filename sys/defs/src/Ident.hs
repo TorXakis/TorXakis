@@ -15,7 +15,6 @@ import           GHC.Generics
 -- TorXakis specific imports.
 import           ChanId
 import           CnectId
-import           CstrId
 import           FuncId
 import           GoalId
 import           Id
@@ -24,14 +23,13 @@ import           ModelId
 import           Name
 import           ProcId
 import           PurpId
-import           SortId
+import           Sort
 import           StatId
 import           Variable
 import           VarId
 
 -- | Identifiers
-data Ident = IdSort   SortId
-           | IdCstr   CstrId
+data Ident = IdADT    (Ref (ADTDef Sort))
            | IdFunc   FuncId
            | IdProc   ProcId
            | IdChan   ChanId
@@ -65,8 +63,7 @@ instance Variable Ident where
   cstrVariable s i t = IdVar (cstrVariable s i t)
 
 name :: Ident -> Name
-name (IdSort i)   = SortId.name i
-name (IdCstr i)   = CstrId.name i
+name (IdADT r)    = toName r
 name (IdFunc i)   = FuncId.name i
 name (IdProc i)   = ProcId.name i
 name (IdChan i)   = ChanId.name i

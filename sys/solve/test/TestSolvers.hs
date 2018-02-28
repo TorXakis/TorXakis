@@ -18,11 +18,12 @@ defaultSMTProcs :: [CreateProcess]
 defaultSMTProcs =
   [ cmdCVC4
   , cmdZ3
+  , cmdZ3Str3
   ]
 
 cmdCVC4 :: CreateProcess
 cmdCVC4 = proc "cvc4"
-                ["--lang=smt"
+                [ "--lang=smt"
                 , "--incremental"
                 , "--strings-exp"
                 , "--fmf-fun-rlv"
@@ -32,7 +33,14 @@ cmdCVC4 = proc "cvc4"
 
 cmdZ3 :: CreateProcess
 cmdZ3 = proc    "z3"
-                ["-smt2"
-                ,"-in"
+                [ "-smt2"
+                , "-in"
                 ]
+
+cmdZ3Str3 :: CreateProcess
+cmdZ3Str3 = proc "z3"
+                   [ "-smt2"
+                   , "-in"
+                   , "smt.string_solver=z3str3"
+                   ]
 

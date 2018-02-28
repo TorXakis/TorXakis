@@ -20,7 +20,7 @@ where
 import           Prelude           hiding (id)
 
 import qualified Data.List         as List
-import qualified Data.Map          as Map
+import qualified Data.Map.Strict   as Map
 import qualified Data.Set          as Set
 import qualified Data.String.Utils as Utils
 import qualified Data.Text         as T
@@ -28,21 +28,21 @@ import qualified Data.Text         as T
 import           ChanId
 import           CnectId
 import           ConstDefs
-import           CstrDef
-import           CstrId
 import qualified FreeMonoidX       as FMX
 import           FuncDef
 import           FuncId
 import           GoalId
+import           Ident
 import           MapperId
 import           ModelId
+import           Name
 import           ProcId
 import           Product
 import           PurpId
-import           SortDef
-import           SortId
+import           Sort
 import           StatId
 import           Sum
+import           TxsDef
 import           TxsDefs
 import           ValExpr
 import           VarId
@@ -51,11 +51,8 @@ specialOpChars :: String
 specialOpChars  =  "=+-*/\\^<>|@&%"                 -- must be equal to $special in TxsAlex
                                                     -- for use with PShow to show as infix
 
-
-
 -- ----------------------------------------------------------------------------------------- --
 -- class PShow
-
 
 class (Show t) => PShow t
   where
@@ -71,13 +68,19 @@ class (Show t) => PShow t
 
 isSpecialOp :: FuncId -> Bool
 isSpecialOp (FuncId nm _ _ _)
-  =  not $ null ( T.unpack nm `List.intersect` specialOpChars )
+  =  not $ null ( T.unpack (toText nm) `List.intersect` specialOpChars )
 
-
-
--- ----------------------------------------------------------------------------------------- --
--- PShow: TxsDefs
-
+-- | PShow: Sort
+instance PShow Sort where
+  pshow (SortADT r) = "ADT " ++ show r
+  pshow SortError   = "Error" 
+  pshow SortBool    = "Bool" 
+  pshow SortInt     = "Int" 
+  pshow SortChar    = "Char" 
+  pshow SortString  = "String" 
+  pshow SortRegex   = "Regex" 
+  
+-- | PShow: TxsDefs
 instance PShow TxsDefs where
   pshow tdefs = foldl showElem "\n" (TxsDefs.toList tdefs)
     where
@@ -90,15 +93,11 @@ instance PShow TxsDefs where
         s ++ "\n"
       showElem s ( _ , DefGoal ) =
         s ++ "\n"
-      showElem s (IdSort (SortId nm _), DefSort SortDef{} ) =
-        s ++ "\nSORTDEF " ++ T.unpack nm ++ " ;\n"
-      showElem s (IdCstr (CstrId nm _ a srt), DefCstr CstrDef{} ) =
-        s ++ "\nCSTRDEF " ++ T.unpack nm
-        ++ " :: " ++ Utils.join " # " (map pshow a)
-        ++ " -> " ++ pshow srt ++  " ;\n"
+      showElem s (_ , DefADT ADTDef{adtName=nm, constructors=cstrDfs}) =
+        s ++ "\nTYPEDEF " ++ T.unpack (toText nm) ++ " ::= " ++ show cstrDfs ++ " ENDDEF\n" -- todo: print cstrDfs pretty
       showElem s (IdFunc (FuncId nm _ a srt), DefFunc (FuncDef vids vexp) ) =
-        s ++ "\nFUNCDEF " ++ T.unpack nm
-        ++ " ( " ++ Utils.join "; " [ T.unpack n ++ " :: " ++ pshow vsrt
+        s ++ "\nFUNCDEF " ++ T.unpack (toText nm)
+        ++ " ( " ++ Utils.join "; " [ T.unpack (toText n) ++ " :: " ++ pshow vsrt
                                     | VarId n _ vsrt <- vids
                                     ]
         ++ " ) "
@@ -106,13 +105,13 @@ instance PShow TxsDefs where
         ++ " -> " ++ pshow srt ++ " ;\n"
         ++ "  ::=  " ++ pshow vexp ++ " ;\n"
       showElem s (IdProc (ProcId nm _ chans pvars xt), DefProc (ProcDef _ _ bexp) ) =
-        s ++ "\nPROCDEF " ++ T.unpack nm
+        s ++ "\nPROCDEF " ++ T.unpack (toText nm)
         ++ " [ " ++ Utils.join "; "
-        [ T.unpack n ++ " :: " ++ Utils.join " # " (map pshow srts)
+        [ T.unpack (toText n) ++ " :: " ++ Utils.join " # " (map pshow srts)
         | ChanId n _ srts <- chans
         ]
         ++ " ] "
-        ++ " ( " ++ Utils.join "; " [ T.unpack n ++ " :: " ++ pshow srt
+        ++ " ( " ++ Utils.join "; " [ T.unpack (toText n) ++ " :: " ++ pshow srt
                                     | VarId n _ srt <- pvars
                                     ]
         ++ " ) "
@@ -122,25 +121,25 @@ instance PShow TxsDefs where
              Hit        -> "HIT\n"
         ++ "  ::=\n" ++ pshow bexp ++  "\nENDDEF\n"
       showElem s (IdModel (ModelId nm _), DefModel (ModelDef chins chouts _ bexp) ) =
-        s ++ "\nMODELDEF " ++ T.unpack nm ++"  ::=\n"
+        s ++ "\nMODELDEF " ++ T.unpack (toText nm) ++"  ::=\n"
         ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
         ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
         ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
         ++ "ENDDEF\n"
       showElem s (IdPurp (PurpId nm _), DefPurp (PurpDef chins chouts _ goals) ) =
-        s ++ "\nPURPDEF " ++ T.unpack nm ++"  ::=\n"
+        s ++ "\nPURPDEF " ++ T.unpack (toText nm) ++"  ::=\n"
         ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
         ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
         ++ "  BEHAVIOUR " ++ pshow goals   ++ "\n"
         ++ "ENDDEF\n"
       showElem s (IdMapper (MapperId nm _), DefMapper (MapperDef chins chouts _ bexp) ) =
-        s ++ "\nMAPPERDEF " ++ T.unpack nm ++"  ::=\n"
+        s ++ "\nMAPPERDEF " ++ T.unpack (toText nm) ++"  ::=\n"
         ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
         ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
         ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
         ++ "ENDDEF\n"
       showElem s (IdCnect (CnectId nm _), DefCnect (CnectDef cnecttype conndefs) ) =
-        s ++ "\nCNECTDEF " ++ T.unpack nm ++"  ::=\n"
+        s ++ "\nCNECTDEF " ++ T.unpack (toText nm) ++"  ::=\n"
         ++ pshow cnecttype ++ "\n"
         ++ pshow conndefs ++ "\n"
         ++ "ENDDEF\n"
@@ -194,7 +193,7 @@ instance PShow BExpr
          ++ " ( " ++ Utils.join ", " (map pshow vexps) ++ " )\n"
     pshow (Hide chans bexp)
       =  "HIDE "
-         ++ Utils.join "; " [ T.unpack n ++ " :: " ++ Utils.join " # " (map pshow srts)
+         ++ Utils.join "; " [ T.unpack (toText n) ++ " :: " ++ Utils.join " # " (map pshow srts)
                             | ChanId n _ srts <- chans
                             ] ++ " IN\n"
          ++ pshow bexp ++ "\n"
@@ -229,13 +228,11 @@ instance PShow Offer where
 instance PShow ChanOffer
   where
     pshow (Quest (VarId nm _ vs))
-      =  " ? " ++ T.unpack nm ++ " :: " ++ pshow vs
+      =  " ? " ++ T.unpack (toText nm) ++ " :: " ++ pshow vs
     pshow (Exclam vexp)
       =  " ! " ++ pshow vexp
 
--- ----------------------------------------------------------------------------------------- --
--- PShow: ValExpr
-
+-- | PShow: ValExpr
 instance PShow v => PShow (ValExpr v) where
     pshow (view -> Vfunc fid vexps)
       =  if isSpecialOp fid
@@ -246,14 +243,14 @@ instance PShow v => PShow (ValExpr v) where
                _     -> error "TXS: Operator should have one or two arguments"
            else
              pshow fid ++ "( " ++ Utils.join ", " (map pshow vexps) ++ " )"
-    pshow (view -> Vcstr cid [])
-      =  pshow cid
-    pshow (view -> Vcstr cid vexps)
-      =  pshow cid ++ "(" ++ Utils.join "," (map pshow vexps) ++ ")"
-    pshow (view -> Viscstr cid vexp)
-      = "is"++ T.unpack (CstrId.name cid) ++ "(" ++ pshow vexp ++ ")"
-    pshow (view -> Vaccess cid p vexp)
-      =  "access "++ T.unpack (CstrId.name cid) ++ " " ++ show p
+    pshow (view -> Vcstr aRf cRf [])
+      =  show aRf ++ "-Cstr:" ++ show cRf -- TODO: new show will have available definitions; pshow will go
+    pshow (view -> Vcstr aRf cRf vexps)
+      =  show aRf  ++ "-Cstr:" ++ show cRf ++ "(" ++ Utils.join "," (map pshow vexps) ++ ")"
+    pshow (view -> Viscstr aRf cRf vexp)
+      = "is"++ show aRf  ++ "-Cstr:" ++ show cRf ++ "(" ++ pshow vexp ++ ")"
+    pshow (view -> Vaccess aRf cRf p _ vexp)
+      =  "access "++ show aRf  ++ "-Cstr:" ++ show cRf ++ " " ++ show p
       ++ " (" ++ pshow vexp ++ ")"
     pshow (view -> Vconst con)
       =  pshow con
@@ -325,15 +322,12 @@ instance PShow Const where
   pshow (Cint i) = show i
   pshow (Cstring s) = "\"" ++ T.unpack s ++ "\""
   pshow (Cregex r) = show r
-  pshow (Cstr cid []) = pshow cid
-  pshow (Cstr cid a) = pshow cid ++ "(" ++ Utils.join "," (map pshow a) ++ ")"
+  pshow (Cstr aRf cRf []) = show aRf ++ "-Cstr:" ++ show cRf -- TODO: Show cstr name
+  pshow (Cstr aRf cRf a) = show aRf ++ "-Cstr:" ++ show cRf ++ "(" ++ Utils.join "," (map pshow a) ++ ")"
   pshow (Cerror s) = "ERROR " ++ s
   pshow (Cany srt) = "(ANY :: " ++ pshow srt ++ ")"
 
--- ----------------------------------------------------------------------------------------- --
--- PShow: VarEnv
-
-
+-- |PShow: VarEnv
 instance (PShow v, PShow w) => PShow (VarEnv v w)
   where
     pshow venv
@@ -341,11 +335,7 @@ instance (PShow v, PShow w) => PShow (VarEnv v w)
                          | (vid,vexp) <- Map.toList venv
                          ]
 
-
--- ----------------------------------------------------------------------------------------- --
--- PShow: Staut
-
-
+-- | PShow: Staut
 instance PShow Trans
   where
     pshow (Trans from' actoff update' to')
@@ -369,10 +359,10 @@ instance PShow Trans
 
 instance PShow TxsDef
   where
-    pshow (DefCstr   (CstrDef fid fids))
+    pshow (DefADT (ADTDef nm cstrs))
       = "CONSTRUCTOR\n" ++
-        "      " ++ pshow fid  ++ "\n" ++
-        "      " ++ pshow fids  ++ "\n" ++ "\n"
+        "      " ++ T.unpack (toText nm)  ++ "\n" ++
+        "      " ++ show cstrs  ++ "\n" ++ "\n" -- TODO: show cstrs
 
     pshow (DefFunc   (FuncDef vids vexp))
       = "FUNCTION\n" ++
@@ -418,8 +408,7 @@ instance PShow TxsDef
 -- PShow: Ident
 
 instance PShow Ident where
-    pshow (IdSort   id) =  pshow id
-    pshow (IdCstr   id) =  pshow id
+    pshow (IdADT    r)  =  show r
     pshow (IdFunc   id) =  pshow id
     pshow (IdProc   id) =  pshow id
     pshow (IdChan   id) =  pshow id
@@ -432,51 +421,39 @@ instance PShow Ident where
     pshow (IdCnect  id) =  pshow id
 
 instance PShow ChanId where
-  pshow = T.unpack . ChanId.name
-
-instance PShow CstrId where
-  pshow = T.unpack . CstrId.name
+  pshow = T.unpack . toText . ChanId.name
 
 instance PShow FuncId where
-  pshow = T.unpack . FuncId.name
+  pshow = T.unpack . toText . FuncId.name
 
 instance PShow GoalId where
-  pshow = T.unpack . GoalId.name
+  pshow = T.unpack . toText . GoalId.name
 
 instance PShow ProcId where
-  pshow = T.unpack . ProcId.name
+  pshow = T.unpack . toText . ProcId.name
 
 instance PShow PurpId where
-  pshow = T.unpack . PurpId.name
-
-instance PShow SortId where
-  pshow = T.unpack . SortId.name
+  pshow = T.unpack . toText . PurpId.name
 
 instance PShow StatId where
-  pshow = T.unpack . StatId.name
+  pshow = T.unpack . toText . StatId.name
 
 instance PShow VarId where
-  pshow = T.unpack . VarId.name
+  pshow = T.unpack . toText . VarId.name
 
 instance PShow ModelId where
-  pshow = T.unpack . ModelId.name
+  pshow = T.unpack . toText . ModelId.name
 
 instance PShow MapperId where
-  pshow = T.unpack . MapperId.name
+  pshow = T.unpack . toText . MapperId.name
 
 instance PShow CnectId where
-  pshow = T.unpack . CnectId.name
-
-
--- ----------------------------------------------------------------------------------------- --
--- ----------------------------------------------------------------------------------------- --
-
+  pshow = T.unpack . toText . CnectId.name
 
 instance PShow ConnDef
   where
      pshow (ConnDtoW  chn _ _ _ _) =  pshow chn
      pshow (ConnDfroW chn _ _ _ _) =  pshow chn
-
 
 instance PShow CnectType
   where

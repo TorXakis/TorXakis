@@ -3,75 +3,50 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-
--- ----------------------------------------------------------------------------------------- --
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  SMTData
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+-- 
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Data structure for SMT Data.
+-----------------------------------------------------------------------------
 
 module SMTData
-
--- ----------------------------------------------------------------------------------------- --
---
--- SMT Data type
---
--- ----------------------------------------------------------------------------------------- --
--- export
-
 ( SMT
 , SmtEnv(..)
-, EnvNames(..)
-, EnvDefs (..)
 )
-
--- ----------------------------------------------------------------------------------------- --
--- import
-
 where
 
 import           Control.Monad.State
+import qualified Data.HashMap.Strict as Map
+import qualified Data.Set            as Set
 import           Data.Text           (Text)
-
 import           System.IO
 import           System.Process
 
-import qualified Data.Map            as Map
-import           CstrDef
-import           CstrId
-import           FuncDef
 import           FuncId
-import           SortDef
-import           SortId
-import           VarId
+import           Sort
 
 -- ----------------------------------------------------------------------------------------- --
 -- SMT state monad for smt solver
 
-data EnvDefs = EnvDefs { sortDefs   :: Map.Map SortId SortDef
-                       , cstrDefs   :: Map.Map CstrId CstrDef
-                       , funcDefs   :: Map.Map FuncId (FuncDef VarId)
-                       }
-               deriving (Eq,Ord,Read,Show)
-
-data EnvNames = EnvNames { sortNames   :: Map.Map SortId Text
-                         , cstrNames   :: Map.Map CstrId Text
-                         , funcNames   :: Map.Map FuncId Text
-                         }
-                deriving (Eq,Ord,Read,Show)
-
-data  SmtEnv  =  SmtEnv     { inHandle          :: Handle
-                            , outHandle         :: Handle
-                            , errHandle         :: Handle
-                            , smtProcessHandle  :: ProcessHandle
-                            , logFileHandle     :: Maybe Handle
-                            , envNames          :: EnvNames
-                            , envDefs           :: EnvDefs
-                            }
+data  SmtEnv  =  SmtEnv { inHandle          :: Handle
+                        , outHandle         :: Handle
+                        , errHandle         :: Handle
+                        , smtProcessHandle  :: ProcessHandle
+                        , logFileHandle     :: Maybe Handle
+                        , adtDefs           :: ADTDefs
+                        , funcIds           :: Set.Set FuncId
+                        , decoderMap        :: Map.HashMap Text (Ref (ADTDef Sort), Ref (ConstructorDef Sort))
+                        }
                | SmtEnvError
 
-type  SMT a   =  StateT SmtEnv IO a
-
 instance Show SmtEnv where
-  show smtEnv =  show $ envNames smtEnv
+  show smtEnv =  show $ decoderMap smtEnv
 
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --
+type  SMT a   =  StateT SmtEnv IO a

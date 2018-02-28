@@ -17,20 +17,17 @@ module TxsDef
 where
 
 import CnectDef
-import CstrDef
 import FuncDef
 import MapperDef
 import ModelDef
 import ProcDef
 import PurpDef
-import SortDef
+import Sort
 
 import VarId
--- ----------------------------------------------------------------------------------------- --
--- torxakis definitions
 
-data  TxsDef = DefSort      SortDef
-             | DefCstr      CstrDef
+-- | torxakis definitions
+data  TxsDef = DefADT       (ADTDef Sort)
              | DefFunc      (FuncDef VarId)
              | DefProc      ProcDef
              | DefModel     ModelDef
@@ -41,7 +38,4 @@ data  TxsDef = DefSort      SortDef
              | DefVar
              | DefStat
              | DefGoal
-     deriving (Eq,Ord,Read,Show)
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+     deriving (Eq,Read,Show)

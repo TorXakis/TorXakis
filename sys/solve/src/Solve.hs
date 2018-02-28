@@ -26,33 +26,24 @@ module Solve
 , toRandParam
 )
 
--- ----------------------------------------------------------------------------------------- --
--- import
-
 where
 import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 
 import ConstDefs
-
 import FreeVar
-
-import SolveDefs
-import SMTInternal
-import SMTData
-
 import RandPartition
 import RandTrueBins
 import RandIncrementChoice
-
+import SMTData
+import SMTInternal
+import SolveDefs
 import SolveRandParam
-import SortId
+import Sort
 import SortOf
-
 import ValExpr
 import Variable
--- ----------------------------------------------------------------------------------------- --
 
 data PrivateAssertions v  = AssertFalse
                           | AssertSet ( Set.Set (ValExpr v) )
@@ -68,20 +59,14 @@ empty :: Assertions v
 empty = Assertions (AssertSet Set.empty)
 
 add :: (Variable v) => ValExpr v -> Assertions v -> Assertions v
-add e (Assertions AssertFalse)    |  sortOf e == sortIdBool                                            = Assertions AssertFalse
-add e a                           |  sortOf e == sortIdBool  && (view e == Vconst (Cbool True))        = a
-add e _                           |  sortOf e == sortIdBool  && (view e == Vconst (Cbool False))       = Assertions AssertFalse
-add e (Assertions (AssertSet s) ) |  sortOf e == sortIdBool                                            = Assertions ( AssertSet (Set.insert e s) )
-add e _                                                                                                 = error ("Add - Can not add non-boolean expression " ++ show e)
+add e (Assertions AssertFalse)    |  sortOf e == SortBool                                            = Assertions AssertFalse
+add e a                           |  sortOf e == SortBool  && (view e == Vconst (Cbool True))        = a
+add e _                           |  sortOf e == SortBool  && (view e == Vconst (Cbool False))       = Assertions AssertFalse
+add e (Assertions (AssertSet s) ) |  sortOf e == SortBool                                            = Assertions ( AssertSet (Set.insert e s) )
+add e _                                                                                              = error ("Add - Can not add non-boolean expression " ++ show e)
 
--- ----------------------------------------------------------------------------------------- --
--- satSolve :  is set of constraints solvable?
--- solve    :  solve set of constraints and provide solution (as provided by smt solver), if satisfied
--- uniSolve :  solve set of constraints and provide solution, if uniquely satisfied
---             Unsat   :  0 solutions
---             Sat     :  1 solution
---             Unknown :  Unknown or >1 solutions
 
+-- | satSolve :  is set of constraints solvable?
 satSolve :: (Variable v) => [v] -> Assertions v -> SMT SolvableProblem
 satSolve _  (Assertions AssertFalse)                = return Unsat
 satSolve _  (Assertions (AssertSet s)) | Set.null s = return Sat
@@ -90,6 +75,7 @@ satSolve vs (Assertions (AssertSet s))              =
         let vs' = List.nub $ vs ++ concatMap freeVars vexps in
             valExprsSat vs' vexps
 
+-- | solve    :  solve set of constraints and provide solution (as provided by smt solver), if satisfied
 solve :: (Variable v) => [v] -> Assertions v -> SMT (SolveProblem v)
 solve _  (Assertions AssertFalse)                  = return Unsolvable
 solve [] (Assertions (AssertSet s))   | Set.null s = return $ Solved Map.empty
@@ -102,6 +88,10 @@ solve vs (Assertions (AssertSet s))                =
                     Unsolvable    -> Unsolvable
                     UnableToSolve -> UnableToSolve 
 
+-- | uniSolve :  solve set of constraints and provide solution, if uniquely satisfied
+--             Unsat   :  0 solutions
+--             Sat     :  1 solution
+--             Unknown :  Unknown or >1 solutions
 uniSolve :: (Variable v) => [v] -> Assertions v -> SMT (SolveProblem v)
 uniSolve _  (Assertions AssertFalse)                    = return Unsolvable
 uniSolve []   (Assertions (AssertSet s))   | Set.null s = return $ Solved Map.empty

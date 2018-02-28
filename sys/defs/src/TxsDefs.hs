@@ -5,7 +5,6 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
 -- ----------------------------------------------------------------------------------------- --
 --
 -- TorXakis Interal Data Type Definitions:
@@ -18,14 +17,11 @@ See LICENSE at root directory of this repository.
 module TxsDefs
 ( TxsDefs(..)
 , TxsDefs.empty
-, TxsDefs.fromList
 , TxsDefs.toList
 , TxsDefs.lookup
 , TxsDefs.keys
 , TxsDefs.elems
 , TxsDefs.union
-, TxsDefs.insert
-, TxsDef(..)
 , VarEnv
 , VExpr
 , VEnv
@@ -47,24 +43,22 @@ module TxsDefs
 , module X
 )
 where
-import           Control.Arrow   ((***))
+import           Control.Arrow
 import           Control.DeepSeq
-import qualified Data.Map        as Map
+import qualified Data.HashMap.Strict as HMap
+import qualified Data.Map.Strict     as Map
 import           GHC.Generics    (Generic)
 
 import           BehExprDefs     as X
-import           Ident           as X
-import           TxsDef          as X
 import           ConnectionDefs  as X
 
 import           ChanId
 import           CnectDef
 import           CnectId
-import           CstrDef
-import           CstrId
 import           FuncDef
 import           FuncId
 import           GoalId
+import           Ident
 import           MapperDef
 import           MapperId
 import           ModelDef
@@ -73,19 +67,13 @@ import           ProcDef
 import           ProcId
 import           PurpDef
 import           PurpId
-import           SortDef
-import           SortId
+import           Sort
 import           StatId
+import           TxsDef
 import           VarEnv
 import           VarId
 
-
--- ----------------------------------------------------------------------------------------- --
--- torxakis definitions
-
-
-data  TxsDefs  =  TxsDefs { sortDefs   :: Map.Map SortId SortDef
-                          , cstrDefs   :: Map.Map CstrId CstrDef
+data  TxsDefs  =  TxsDefs { adtDefs    :: ADTDefs
                           , funcDefs   :: Map.Map FuncId (FuncDef VarId)
                           , procDefs   :: Map.Map ProcId ProcDef
                           , chanDefs   :: Map.Map ChanId ()            -- only for parsing, not envisioned for computation
@@ -97,11 +85,10 @@ data  TxsDefs  =  TxsDefs { sortDefs   :: Map.Map SortId SortDef
                           , mapperDefs :: Map.Map MapperId MapperDef
                           , cnectDefs  :: Map.Map CnectId CnectDef
                           }
-                  deriving (Eq,Ord,Read,Show, Generic, NFData)
+                  deriving (Eq,Read,Show, Generic, NFData)
 
 empty :: TxsDefs
-empty = TxsDefs  Map.empty
-                 Map.empty
+empty = TxsDefs  emptyADTDefs
                  Map.empty
                  Map.empty
                  Map.empty
@@ -114,12 +101,9 @@ empty = TxsDefs  Map.empty
                  Map.empty
 
 lookup :: Ident -> TxsDefs -> Maybe TxsDef
-lookup (IdSort s) txsdefs = case Map.lookup s (sortDefs txsdefs) of
+lookup (IdADT r) txsdefs = case HMap.lookup r (adtDefsToMap $ adtDefs txsdefs) of
                                 Nothing -> Nothing
-                                Just d  -> Just (DefSort d)
-lookup (IdCstr s) txsdefs = case Map.lookup s (cstrDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just d  -> Just (DefCstr d)
+                                Just d  -> Just (DefADT d)
 lookup (IdFunc s) txsdefs = case Map.lookup s (funcDefs txsdefs) of
                                 Nothing -> Nothing
                                 Just d  -> Just (DefFunc d)
@@ -151,31 +135,9 @@ lookup (IdCnect s) txsdefs = case Map.lookup s (cnectDefs txsdefs) of
                                 Nothing -> Nothing
                                 Just d  -> Just (DefCnect d)
 
-insert :: Ident -> TxsDef -> TxsDefs -> TxsDefs
-insert (IdSort s)   (DefSort d)   t     = t { sortDefs   = Map.insert s d  (sortDefs t)   }
-insert (IdCstr s)   (DefCstr d)   t     = t { cstrDefs   = Map.insert s d  (cstrDefs t)   }
-insert (IdFunc s)   (DefFunc d)   t     = t { funcDefs   = Map.insert s d  (funcDefs t)   }
-insert (IdProc s)   (DefProc d)   t     = t { procDefs   = Map.insert s d  (procDefs t)   }
-insert (IdChan s)   DefChan       t     = t { chanDefs   = Map.insert s () (chanDefs t)   }
-insert (IdVar s)    DefVar        t     = t { varDefs    = Map.insert s () (varDefs t)    }
-insert (IdStat s)   DefStat       t     = t { statDefs   = Map.insert s () (statDefs t)   }
-insert (IdModel s)  (DefModel d)  t     = t { modelDefs  = Map.insert s d  (modelDefs t)  }
-insert (IdPurp s)   (DefPurp d)   t     = t { purpDefs   = Map.insert s d  (purpDefs t)   }
-insert (IdGoal s)   DefGoal       t     = t { goalDefs   = Map.insert s () (goalDefs t)   }
-insert (IdMapper s) (DefMapper d) t     = t { mapperDefs = Map.insert s d  (mapperDefs t) }
-insert (IdCnect s)  (DefCnect d)  t     = t { cnectDefs  = Map.insert s d  (cnectDefs t)  }
-insert i            d             _     = error $ "Unknown insert\nident = " ++ show i ++ "\ndefinition = " ++ show d
-
-fromList :: [(Ident, TxsDef)] -> TxsDefs
-fromList = foldl addElem empty
-  where
-    addElem :: TxsDefs -> (Ident,TxsDef) -> TxsDefs
-    addElem t (k,v) = insert k v t
-
-
+-- TODO: this is never used
 toList :: TxsDefs -> [(Ident, TxsDef)]
-toList t =      map (IdSort Control.Arrow.*** DefSort)          (Map.toList (sortDefs t))
-            ++  map (IdCstr Control.Arrow.*** DefCstr)          (Map.toList (cstrDefs t))
+toList t =      map (IdADT Control.Arrow.*** DefADT)            (HMap.toList (adtDefsToMap $ adtDefs t))
             ++  map (IdFunc Control.Arrow.*** DefFunc)          (Map.toList (funcDefs t))
             ++  map (IdProc Control.Arrow.*** DefProc)          (Map.toList (procDefs t))
             ++  map (IdChan Control.Arrow.*** const DefChan)    (Map.toList (chanDefs t))
@@ -189,8 +151,7 @@ toList t =      map (IdSort Control.Arrow.*** DefSort)          (Map.toList (sor
 
 
 keys :: TxsDefs -> [Ident]
-keys t =        map IdSort      (Map.keys (sortDefs t))
-            ++  map IdCstr      (Map.keys (cstrDefs t))
+keys t =        map IdADT       (HMap.keys (adtDefsToMap $ adtDefs t))
             ++  map IdFunc      (Map.keys (funcDefs t))
             ++  map IdProc      (Map.keys (procDefs t))
             ++  map IdChan      (Map.keys (chanDefs t))
@@ -203,8 +164,7 @@ keys t =        map IdSort      (Map.keys (sortDefs t))
             ++  map IdCnect     (Map.keys (cnectDefs t))
 
 elems :: TxsDefs -> [TxsDef]
-elems t =       map DefSort         (Map.elems (sortDefs t))
-            ++  map DefCstr         (Map.elems (cstrDefs t))
+elems t =       map DefADT          (HMap.elems (adtDefsToMap $ adtDefs t))
             ++  map DefFunc         (Map.elems (funcDefs t))
             ++  map DefProc         (Map.elems (procDefs t))
             ++  map (const DefChan) (Map.elems (chanDefs t))
@@ -219,8 +179,7 @@ elems t =       map DefSort         (Map.elems (sortDefs t))
 
 union :: TxsDefs -> TxsDefs -> TxsDefs
 union a b = TxsDefs
-                (Map.union (sortDefs a)  (sortDefs b)   )
-                (Map.union (cstrDefs a)  (cstrDefs b)   )
+                mergedADTDefs
                 (Map.union (funcDefs a)  (funcDefs b)   )
                 (Map.union (procDefs a)  (procDefs b)   )
                 (Map.union (chanDefs a)  (chanDefs b)   )
@@ -231,8 +190,5 @@ union a b = TxsDefs
                 (Map.union (goalDefs a)  (goalDefs b)   )
                 (Map.union (mapperDefs a)(mapperDefs b) )
                 (Map.union (cnectDefs a) (cnectDefs b)  )
-
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+            where
+                Right mergedADTDefs = mergeADTDefs (adtDefs a) (adtDefs b)

@@ -40,22 +40,24 @@ library
   build-depends:        array
                       , base
                       , containers
+                      , MissingH
                       , mtl
                       , process
                       , random
                       , random-shuffle
                       , regex-tdfa
-                      , time
-                      , MissingH
                       , text
+                      , time
+                      , unordered-containers
 
                       , lexregexxsd
+                      , sort
                       , valexpr
                       
   build-tools:          alex
                       , happy
 
-  ghc-options:          -Werror -O2 -optc-O3 -optc-ffast-math -Wall
+  ghc-options:          -Wall -Werror -O2 -optc-O3 -optc-ffast-math
   
   default-language:     Haskell2010
 
@@ -96,18 +98,20 @@ test-suite SmtSolver-WhiteBox
   build-depends:        array
                       , base
                       , containers
+                      , HUnit
+                      , MissingH
                       , mtl
                       , process
                       , regex-tdfa
-                      , time
-                      , HUnit
-                      , MissingH
                       , text
+                      , time
+                      , unordered-containers
 
                       , lexregexxsd
+                      , sort
                       , valexpr
                       
-  ghc-options:          -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
+  ghc-options:          -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
 
   default-language:     Haskell2010
 
@@ -125,15 +129,17 @@ test-suite SmtSolver-BlackBox
 
   build-depends:        base
                       , containers
+                      , HUnit
                       , mtl
                       , process
                       , regex-tdfa
-                      , HUnit
                       , text
+                      , unordered-containers
 
                       , solve
+                      , sort
                       , valexpr
                       
-  ghc-options:          -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
+  ghc-options:          -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
 
   default-language:     Haskell2010

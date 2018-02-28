@@ -12,30 +12,28 @@ where
 import           Test.HUnit
 
 import           Control.Monad.State
-import qualified Data.List           as List
+import           Data.List.NonEmpty  (fromList)
 import qualified Data.Map            as Map
 import           Data.Maybe
+import           Data.Monoid
 import qualified Data.Text           as T
 import           System.Process      (CreateProcess)
 
 import           ConstDefs
-import           CstrDef
-import           CstrId
-import           FuncId
+import           FuncDef
+import           FuncId        hiding (name)
+import           Name
 import           SMT
-import           SMTData
-import           SortDef
-import           SortId
+import           Sort.Internal
 import           SolveDefs
 import           TXS2SMT
-import           VarId
+import           VarId         hiding (name)
 
 import           HelperFuncDefToSMT
 import           HelperVexprToSMT
 
 import           TestSolvers
 
--- --------------------------------------------------------------
 testRecursiveFunctionList :: Test
 testRecursiveFunctionList =
     TestList $ concatMap (\s -> map (\e -> TestLabel (fst e) (snd e s) )
@@ -43,72 +41,64 @@ testRecursiveFunctionList =
                          )
                          defaultSMTProcs
 
-
-
 testList :: [(String, CreateProcess -> Test)]
 testList = [
         ("recursive function", testRecursiveFunction)
     ]
----------------------------------------------------------------------------
--- Tests
----------------------------------------------------------------------------
+
 testRecursiveFunction :: CreateProcess -> Test
 testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
-    -- -------------------
-    -- datatype
-    -- ---------------------
-    let sortId_ListInt = SortId "ListInt" 1234
+    let Right listIntName = name "ListInt"
+        Right intName = name "Int"
+        Right nilName = name "Nil"
+        Right tailName = name "tail"
+        Right headName = name "head"
+        Right constrName = name "Constr"
 
-    let nilId = CstrId "Nil" 2345 [] sortId_ListInt
-    let isNil = FuncId "isNil" 9875 [sortId_ListInt] sortIdBool
+        Right nilFields = fieldDefs []
+        nilRf = RefByName nilName
+        nilCDef = ConstructorDef nilName nilFields
 
-    let constrId = CstrId "Constr" 2346 [sortIdInt, sortId_ListInt] sortId_ListInt
-    let isConstr = FuncId "isConstr" 9876 [sortId_ListInt] sortIdBool
-    let tl = FuncId "tail" 6565 [sortId_ListInt] sortId_ListInt
-    let hd = FuncId "head" 6566 [sortId_ListInt] sortIdInt
+        Right constrFields = fieldDefs [ FieldDef headName intName T.empty
+                                       , FieldDef tailName listIntName T.empty ]
+        constrRf = RefByName constrName
+        constrCDef = ConstructorDef constrName constrFields
 
-    -- ----------------------------------
-    -- function
-    -- ----------------------------------
-    let lengthList = FuncId "lengthList" 19876 [sortId_ListInt] sortIdInt
+        Right cDefs = constructorDefs [nilCDef, constrCDef]
+        adtDef = ADTDef listIntName cDefs
+        adtRf = RefByName listIntName
+        Right aDefs = addADTDefs [adtDef] emptyADTDefs
+        sort_ListInt = SortADT adtRf
 
-    let maps = EnvNames (Map.fromList [ (sortId_ListInt, "ListInt")
-                                      , (sortIdInt, "Int")
-                                      , (sortIdBool, "Bool")
-                                      ])
-                        (Map.fromList [ (nilId, "Nil")
-                                      , (constrId, "Constr")
-                                      ])
-                        (Map.fromList [ (lengthList, "lengthList")
-                                      , (hd, "head")
-                                      , (tl, "tail")
-                                      ])
-    
-    let varList = VarId "list" 645421 sortId_ListInt
-    let varListIO = createVvar varList
-    let ve = createVite (createIsConstructor nilId varListIO) (createVconst (Cint 0)) (createVsum [createVconst (Cint 1), createVfunc lengthList [createVfunc tl [varListIO]]])
+        lengthListId = FuncId (fromNonEmpty $ fromList "lengthList") 19876 [sort_ListInt] SortInt
+        varList = VarId (fromNonEmpty $ fromList "list") 645421 sort_ListInt
+        varListIO = createVvar varList
+        ve = createVite
+                (createIsConstructor adtRf nilRf varListIO)
+                (createVconst (Cint 0))
+                (createVsum [ createVconst (Cint 1)
+                            , createVfunc lengthListId [createAccessor adtRf constrRf 1 sort_ListInt varListIO]
+                            ])
+        (TXS2SMTFuncTest _i e) = createFunctionDefRecursive lengthListId [varList] SortInt ve
+        (resultTxt,_) = adtDefsToSMT $ adtDefsToMap aDefs
+    let expectedTxt = "(declare-datatypes () (\n    (" <> toADTName adtRf <> " ("
+                                                 <> toCstrName adtRf constrRf <> " ("
+                                                        <> toFieldName adtRf constrRf 0 <> " " <> toSortName SortInt <> ") ("
+                                                        <> toFieldName adtRf constrRf 1 <> " " <> toSortName sort_ListInt <> ")) (" 
+                                                 <> toCstrName adtRf nilRf <> "))\n) )"
+    assertBool ("ListInt sortdef actual\n" ++ T.unpack resultTxt ++ "\nexpected\n" ++ T.unpack expectedTxt)
+               (expectedTxt `T.isInfixOf` resultTxt)
+    let funcDefs = Map.singleton lengthListId (FuncDef [varList] (HelperVexprToSMT.input ve))
+    assertEqual "length function" e (funcdefsToSMT funcDefs)
 
-    let (TXS2SMTFuncTest fDefs e) = createFunctionDefRecursive maps lengthList [varList] sortIdInt ve
-
-    let sDefs = EnvDefs (Map.fromList [(sortId_ListInt,SortDef)])
-                        (Map.fromList [(nilId,CstrDef isNil []), (constrId,CstrDef isConstr [hd, tl])])
-                        Map.empty
-    
-    let result = T.unpack (sortdefsToSMT maps sDefs)
-    assertBool ("ListInt sortdef " ++ show result) ("(declare-datatypes () (\n    (ListInt (Constr (ListInt$Constr$0 Int) (ListInt$Constr$1 ListInt)) (Nil))\n) )" `List.isInfixOf` result)
-    assertEqual "length function" e (T.unpack (funcdefsToSMT maps (funcDefs fDefs)))
-
-    let txsDefs = EnvDefs (Map.union (sortDefs fDefs) (sortDefs sDefs))
-                          (Map.union (cstrDefs fDefs) (cstrDefs sDefs))
-                          (Map.union (funcDefs fDefs) (funcDefs sDefs))
-
-    let v = VarId "instance" 123456 sortId_ListInt
-    let (TXS2SMTVExprTest inputAssertion _) = createVgez (createVsum [createVfunc lengthList [createVvar v], createVconst (Cint 6)])
+    let v = VarId (fromNonEmpty $ fromList "instance") 123456 sort_ListInt
+    let (TXS2SMTVExprTest inputAssertion _) = createVgez (createVsum [createVfunc lengthListId [createVvar v], createVconst (Cint (-1))])
 
     smtEnv <- createSMTEnv s False
 
     (_,env1) <- runStateT SMT.openSolver smtEnv
-    env3 <- execStateT (addDefinitions txsDefs) env1
+    env2 <- execStateT (addADTDefinitions aDefs) env1
+    env3 <- execStateT (addFuncDefinitions funcDefs) env2
     env4 <- execStateT (addDeclarations [v]) env3
     env5 <- execStateT (addAssertions [inputAssertion]) env4
     (resp,env6) <- runStateT getSolvable env5
@@ -117,9 +107,11 @@ testRecursiveFunction s = TestLabel "recursive function" $ TestCase $ do
 
     let m = Map.lookup v sol
     assertBool "Is Just" (isJust m)
-    -- let value = fromJust m
-    -- Trace.trace ("value = " ++ (show value)) $ do
+    let value = fromJust m
+    assertBool ("value = " ++ show value) 
+               (case value of
+                    Cstr{} -> True
+                    _      -> False
+               )
     _ <- execStateT close env7
     return ()
-
----------------------------------------------------------------------------

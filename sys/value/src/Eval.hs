@@ -247,7 +247,7 @@ evalSSB (FuncId nm _ _ _) vexps =
                                         str2txs $ constToXml tdefs wal
        ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
                                         tdefs <- gets IOB.tdefs
-                                        return $ constFromXml tdefs sortIdBool s
+                                        return $ constFromXml tdefs SortBool s
        ( s, _ )                   -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                                       $ "evalSSB: unknown standard Bool opn - " ++ show s ]
                                         return $ Cerror ("unknown " ++ show s)
@@ -267,7 +267,7 @@ evalSSI (FuncId nm _ _ _) vexps =
                                         str2txs $ constToXml tdefs wal
        ( "fromXml",     [v1]    ) -> do Cstring s <- eval v1
                                         tdefs <- gets IOB.tdefs
-                                        return $ constFromXml tdefs sortIdInt s
+                                        return $ constFromXml tdefs SortInt s
        _                          -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "evalSSI: standard Int opn" ]
                                         return $ Cerror ""
 
@@ -287,7 +287,7 @@ evalSSS (FuncId nm _ _ _) vexps =
                                    str2txs $ constToXml tdefs wal
        ( "fromXml",    [v] ) -> do Cstring s <- eval v
                                    tdefs <- gets IOB.tdefs
-                                   return $ constFromXml tdefs sortIdString s
+                                   return $ constFromXml tdefs SortString s
        ( "takeWhile",    [v1,v2] ) -> do s1 <- txs2str v1
                                          s2 <- txs2str v2
                                          str2txs $ T.takeWhile (`elemT` s1) s2

@@ -3,29 +3,33 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-
--- ----------------------------------------------------------------------------------------- --
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  SMTInternal
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+-- 
+-- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- SMT Internal contains all non-interface SMT functions.
+-- SMT Internal should not be included directly in production code.
+-- Some of these functions are used for test purposes.
+-----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
-
 module SMTInternal
-
--- ------------------------------------------------------------
--- SMT Internal should not be included directly in production code.
--- SMT Internal contains all non-interface SMT functions.
--- Some of these functions are used for test purposes
--- ----------------------------------------------------------------------------------------- --
--- import
-
 where
 
 import           Control.Exception   (onException)
 import           Control.Monad.State (gets, lift, modify)
 
 import qualified Data.List           as List
-import qualified Data.Map            as Map
+import qualified Data.HashMap.Strict as HMap
+import qualified Data.Map.Strict     as Map
 import           Data.Monoid
+import qualified Data.Set            as Set
 import           Data.String.Utils   (endswith, replace, startswith, strip)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
@@ -34,14 +38,19 @@ import           System.IO
 import           System.Process
 
 import           ConstDefs
+import           FuncDef
+import           Name
+import           FuncId
 import           SMT2TXS
 import           SMTAlex
 import           SMTData
 import           SMTHappy
 import           SolveDefs
+import           Sort
 import           TXS2SMT
 import           ValExpr
 import           Variable
+import           VarId
 
 -- ----------------------------------------------------------------------------------------- --
 -- opens a connection to the SMTLIB interactive shell
@@ -128,47 +137,46 @@ createSMTEnv cmd lgFlag =  do
     -- hSetNewlineMode hout ( NewlineMode { inputNL = CRLF, outputNL = LF   } )
 
 
-    return (SmtEnv hin
-                   hout
-                   herr
-                   ph
-                   lg
-                   initialEnvNames
-                   (EnvDefs Map.empty Map.empty Map.empty)
-            )
+    return $ SmtEnv hin
+                    hout
+                    herr
+                    ph
+                    lg
+                    emptyADTDefs
+                    Set.empty
+                    HMap.empty
 
 -- ----------------------------------------------------------------------------------------- --
 -- addDefinitions
 -- ----------------------------------------------------------------------------------------- --
-addDefinitions :: EnvDefs -> SMT ()
-addDefinitions edefs =  do
-    enames <- gets envNames
-    -- exclude earlier defined sorts, e.g. for the pre-defined data types,
-    -- such as Bool, Int, and String, because we use the equivalent SMTLIB built-in types
-    let newSorts = Map.filterWithKey (\k _ -> Map.notMember k (sortNames enames)) (sortDefs edefs)
-    let snames = foldr insertSort enames (Map.toList newSorts)
-    
-    -- constructors of sort introduce functions
-    let newCstrs = Map.filterWithKey (\k _ -> Map.notMember k (cstrNames snames)) (cstrDefs edefs)
-    let cnames = foldr insertCstr snames (Map.toList newCstrs)
-    
-    putT ( sortdefsToSMT cnames (EnvDefs newSorts newCstrs Map.empty) )
+addADTDefinitions :: ADTDefs -> SMT (Maybe Text)
+addADTDefinitions newADTDefs = do
+    adtDefsInSmt <- gets adtDefs
+    let allADTDefs = mergeADTDefs newADTDefs adtDefsInSmt
+    case allADTDefs of
+        Right aDefs -> do   let newUniqueADTDefsMap = HMap.difference
+                                                            (adtDefsToMap   newADTDefs)
+                                                            (adtDefsToMap adtDefsInSmt)
+                                (txt, newDec) = adtDefsToSMT newUniqueADTDefsMap
+                            putT txt
+                            put "\n\n"
+        
+                            dec <- gets decoderMap
+                            modify (\e -> e { adtDefs = aDefs
+                                            , decoderMap = HMap.union dec newDec
+                                            } )
+                            return Nothing
+        Left  err   -> return $ Just
+                            $ "SMTInternal - addADTDefinitions: Can't merge new ADTDefs into existing ADTDefs. Error:"
+                            <> T.pack (show err)
+
+addFuncDefinitions :: Map.Map FuncId (FuncDef VarId) -> SMT ()
+addFuncDefinitions funcDefs = do
+    fIds <- gets funcIds
+    let newFuncs = Map.filterWithKey (\k _ -> Set.notMember k fIds) funcDefs
+    putT $ funcdefsToSMT newFuncs
     put "\n\n"
-    
-    
-    let newFuncs = Map.filterWithKey (\k _ -> Map.notMember k (funcNames cnames)) (funcDefs edefs)
-    let fnames = foldr insertFunc cnames (Map.toList newFuncs)
-    putT ( funcdefsToSMT fnames newFuncs )
-    put "\n\n"
-    
-    original <- gets envDefs
-    modify ( \e -> e { envNames = fnames
-                     , envDefs = EnvDefs (Map.union (sortDefs original) (sortDefs edefs))
-                                         (Map.union (cstrDefs original) (cstrDefs edefs))
-                                         (Map.union (funcDefs original) (funcDefs edefs))
-                     } 
-           )
-       -- use union to be certain all definitions remain included
+    modify (\e -> e { funcIds = Set.union fIds $ Map.keysSet funcDefs } )
 
 -- --------------------------------------------------------------------------------------------
 -- addDeclarations
@@ -176,8 +184,7 @@ addDefinitions edefs =  do
 addDeclarations :: (Variable v) => [v] -> SMT ()
 addDeclarations [] = return ()
 addDeclarations vs  =  do
-    mapI <- gets envNames
-    putT ( declarationsToSMT mapI vs )
+    putT ( declarationsToSMT vs )
     return ()
 
 -- ----------------------------------------------------------------------------------------- --
@@ -185,8 +192,7 @@ addDeclarations vs  =  do
 -- ----------------------------------------------------------------------------------------- --
 addAssertions :: (Variable v) => [ValExpr v] -> SMT ()
 addAssertions vexps  =  do
-    mapI <- gets envNames
-    putT ( assertionsToSMT mapI vexps )
+    putT ( assertionsToSMT vexps )
     return ()
 
 -- ----------------------------------------------------------------------------------------- --
@@ -209,15 +215,20 @@ getSolvable = do
 getSolution :: (Variable v) => [v] -> SMT (Solution v)
 getSolution []    = return Map.empty
 getSolution vs    = do
-    putT ("(get-value (" <> T.intercalate " " (map vname vs) <>"))")
+    putT ("(get-value (" <> T.intercalate " " (map (toText . vname) vs) <>"))")
     s <- getSMTresponse
     let vnameSMTValueMap = Map.mapKeys T.pack . smtParser . smtLexer $ s
-    edefs <- gets envDefs
-    return $ Map.fromList (map (toConst edefs vnameSMTValueMap) vs)
+    aDefs <- gets adtDefs
+    decoder <- gets decoderMap
+    return $ Map.fromList (map (toConst vnameSMTValueMap aDefs decoder) vs)
   where
-    toConst :: (Variable v) => EnvDefs -> Map.Map Text SMTValue -> v -> (v, Const)
-    toConst edefs mp v = case Map.lookup (vname v) mp of
-                            Just smtValue   -> (v, smtValueToValExpr smtValue (cstrDefs edefs) (vsort v))
+    toConst :: (Variable v) => Map.Map Text SMTValue
+                            -> ADTDefs
+                            -> HMap.HashMap Text (Ref (ADTDef Sort), Ref (ConstructorDef Sort))
+                            -> v
+                            -> (v, Const)
+    toConst mp ad dc v = case Map.lookup (toText $ vname v) mp of
+                            Just smtValue   -> (v, smtValueToConst smtValue (vsort v) ad dc)
                             Nothing         -> error "getSolution - SMT hasn't returned the value of requested variable."
 
 -- ------------------------------------------
@@ -276,8 +287,7 @@ putT = put . T.unpack
 -- | Transform value expression to an SMT string.
 valExprToString :: Variable v => ValExpr v -> SMT Text
 valExprToString v = do
-  mapI <- gets envNames
-  return $ valexprToSMT mapI v
+  return $ valexprToSMT v
 
 -- ----------------------------------------------------------------------------------------- --
 --  return error messages if any are present

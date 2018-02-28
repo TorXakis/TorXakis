@@ -16,7 +16,8 @@ module SMT
 ( createSMTEnv
 , openSolver
 , close
-, addDefinitions
+, addADTDefinitions
+, addFuncDefinitions
 , addDeclarations
 , addAssertions
 , getSolvable

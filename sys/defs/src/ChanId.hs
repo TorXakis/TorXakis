@@ -18,12 +18,12 @@ import           GHC.Generics    (Generic)
 
 import           Id
 import           Name
-import           SortId
+import           Sort
 
 data ChanId = ChanId
     { name      :: Name
     , unid      :: Id
-    , chansorts :: [SortId]
+    , chansorts :: [Sort]
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Resettable ChanId

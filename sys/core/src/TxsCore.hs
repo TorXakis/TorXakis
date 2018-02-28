@@ -357,7 +357,7 @@ txsSolve vexp  =  do
        IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR  "No 'solve' without model" ]
                return Map.empty
-       _ -> if  SortOf.sortOf vexp /= SortId.sortIdBool
+       _ -> if  SortOf.sortOf vexp /= SortId.SortBool
                  then do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                  "Value expression for solve shall be Bool" ]
@@ -391,7 +391,7 @@ txsUniSolve vexp  =  do
        IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'solve' without model" ]
                return Map.empty
-       _ -> if  SortOf.sortOf vexp /= SortId.sortIdBool
+       _ -> if  SortOf.sortOf vexp /= SortId.SortBool
                  then do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Value expression shall be Bool" ]
                    return Map.empty
@@ -423,7 +423,7 @@ txsRanSolve vexp  =  do
        IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'solve' without model" ]
                return Map.empty
-       _ -> if  SortOf.sortOf vexp /= SortId.sortIdBool
+       _ -> if  SortOf.sortOf vexp /= SortId.SortBool
                  then do
                    IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Value expression shall be Bool" ]
                    return Map.empty

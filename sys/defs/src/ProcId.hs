@@ -19,11 +19,11 @@ import           GHC.Generics    (Generic)
 import           ChanId
 import           Id
 import           Name
-import           SortId
+import           Sort
 import           VarId
 
 data  ExitSort      =  NoExit
-                     | Exit [SortId]
+                     | Exit [Sort]
                      | Hit
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
