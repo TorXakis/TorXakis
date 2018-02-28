@@ -3,16 +3,16 @@ module TorXakis.Lib where
 
 import           Prelude hiding (take)
 
-import           Control.Concurrent.STM.TVar    (newTVarIO, readTVarIO, modifyTVar')
-import           Control.Monad.STM              (atomically)
-import           Control.Exception              (try, ErrorCall)
-import           Control.Monad.State            (runStateT, lift)
-import           Lens.Micro                     ((.~), (^.))
+import           Control.Concurrent.STM.TVar   (newTVarIO, readTVarIO, modifyTVar')
+import           Control.Monad.STM             (atomically)
+import           Control.Exception             (try, ErrorCall)
+import           Control.Monad.State           (runStateT, lift)
+import           Lens.Micro                    ((.~),(^.))
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, writeTQueue)
-import           Data.Foldable                  (traverse_)
-import           Data.Conduit                   (runConduit, (.|))
-import           Data.Conduit.Combinators       (take, sinkList)
-import           Data.Conduit.TQueue            (sourceTQueue)
+import           Data.Foldable                 (traverse_)
+import           Data.Conduit                  (runConduit,(.|))
+import           Data.Conduit.Combinators      (take, sinkList)
+import           Data.Conduit.TQueue           (sourceTQueue)
     
 import           TxsAlex  (txsLexer)
 import           TxsHappy (txsParser)
@@ -123,16 +123,13 @@ newtype StepType = NumberOfSteps Int
     --           | GoTo StateNumber
     --           | Reset -- ^ Go to the initial state.
     --           | Rewind Steps
+-- data StateNumber
+-- data ActionName
 
 -- TODO: discuss with Jan: do we need a `Tree` step here?
 
-data StateNumber
-data ActionName
--- | Number of steps
-data Steps
-
 -- | step for n-steps
-step :: Session -> StepType -> IO Response -- | Or a conduit?
+step :: Session -> StepType -> IO Response
 step s (NumberOfSteps n) = do
     st <- readTVarIO (s ^. sessionState)
     (_, nextState) <- -- TODO: make the call to `txsStepN` non-blocking.
