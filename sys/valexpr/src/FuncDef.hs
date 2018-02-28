@@ -29,8 +29,4 @@ import ValExprDefs
 -- * A list of variables
 -- * A body (possibly using the variables)
 data  FuncDef v      = FuncDef    [v] (ValExpr v)
-     deriving (Eq,Ord,Read,Show, Generic, NFData)
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
+     deriving (Eq, Ord, Read, Show, Generic, NFData)

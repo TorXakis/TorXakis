@@ -356,7 +356,6 @@ instance PShow Trans
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: TxsDef
 
-
 instance PShow TxsDef
   where
     pshow (DefADT (ADTDef nm cstrs))

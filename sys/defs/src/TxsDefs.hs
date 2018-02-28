@@ -17,11 +17,13 @@ See LICENSE at root directory of this repository.
 module TxsDefs
 ( TxsDefs(..)
 , TxsDefs.empty
-, TxsDefs.toList
-, TxsDefs.lookup
-, TxsDefs.keys
+, TxsDefs.fromList
+-- , TxsDefs.toList
+-- , TxsDefs.lookup
+-- , TxsDefs.keys
 , TxsDefs.elems
 , TxsDefs.union
+, TxsDefs.insert
 , VarEnv
 , VExpr
 , VEnv
@@ -43,9 +45,9 @@ module TxsDefs
 , module X
 )
 where
-import           Control.Arrow
+-- import           Control.Arrow
 import           Control.DeepSeq
-import qualified Data.HashMap.Strict as HMap
+-- import qualified Data.HashMap.Strict as HMap
 import qualified Data.Map.Strict     as Map
 import           GHC.Generics    (Generic)
 
@@ -63,6 +65,7 @@ import           MapperDef
 import           MapperId
 import           ModelDef
 import           ModelId
+-- import           Name
 import           ProcDef
 import           ProcId
 import           PurpDef
@@ -100,81 +103,101 @@ empty = TxsDefs  emptyADTDefs
                  Map.empty
                  Map.empty
 
-lookup :: Ident -> TxsDefs -> Maybe TxsDef
-lookup (IdADT r) txsdefs = case HMap.lookup r (adtDefsToMap $ adtDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just d  -> Just (DefADT d)
-lookup (IdFunc s) txsdefs = case Map.lookup s (funcDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just d  -> Just (DefFunc d)
-lookup (IdProc s) txsdefs = case Map.lookup s (procDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just d  -> Just (DefProc d)
-lookup (IdChan s) txsdefs = case Map.lookup s (chanDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just _  -> Just DefChan
-lookup (IdVar s) txsdefs = case Map.lookup s (varDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just _  -> Just DefVar
-lookup (IdStat s) txsdefs = case Map.lookup s (statDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just _  -> Just DefStat
-lookup (IdModel s) txsdefs = case Map.lookup s (modelDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just d  -> Just (DefModel d)
-lookup (IdPurp s) txsdefs = case Map.lookup s (purpDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just d  -> Just (DefPurp d)
-lookup (IdGoal s) txsdefs = case Map.lookup s (goalDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just _  -> Just DefGoal
-lookup (IdMapper s) txsdefs = case Map.lookup s (mapperDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just d  -> Just (DefMapper d)
-lookup (IdCnect s) txsdefs = case Map.lookup s (cnectDefs txsdefs) of
-                                Nothing -> Nothing
-                                Just d  -> Just (DefCnect d)
+-- lookup :: Ident -> TxsDefs -> Maybe TxsDef
+-- lookup (IdADT r) txsdefs = case HMap.lookup r (adtDefsToMap $ adtDefs txsdefs) of
+--                                 Nothing -> Nothing
+--                                 Just d  -> Just (DefADT d)
+-- lookup (IdFunc s) txsdefs = case Map.lookup s (funcDefs txsdefs) of
+--                                 Nothing -> Nothing
+--                                 Just d  -> Just (DefFunc d)
+-- lookup (IdProc s) txsdefs = case Map.lookup s (procDefs txsdefs) of
+--                                 Nothing -> Nothing
+--                                 Just d  -> Just (DefProc d)
+-- lookup (IdChan s) txsdefs = case Map.lookup s (chanDefs txsdefs) of
+--                                 Nothing -> Nothing
+--                                 Just _  -> Just DefChan
+-- lookup (IdVar s) txsdefs = case Map.lookup s (varDefs txsdefs) of
+--                                 Nothing -> Nothing
+--                                 Just _  -> Just DefVar
+-- lookup (IdStat s) txsdefs = case Map.lookup s (statDefs txsdefs) of
+--                                 Nothing -> Nothing
+--                                 Just _  -> Just DefStat
+-- lookup (IdModel s) txsdefs = case Map.lookup s (modelDefs txsdefs) of
+--                                 Nothing -> Nothing
+--                                 Just d  -> Just (DefModel d)
+-- lookup (IdPurp s) txsdefs = case Map.lookup s (purpDefs txsdefs) of
+--                                 Nothing -> Nothing
+--                                 Just d  -> Just (DefPurp d)
+-- lookup (IdGoal s) txsdefs = case Map.lookup s (goalDefs txsdefs) of
+--                                 Nothing -> Nothing
+--                                 Just _  -> Just DefGoal
+-- lookup (IdMapper s) txsdefs = case Map.lookup s (mapperDefs txsdefs) of
+--                                 Nothing -> Nothing
+--                                 Just d  -> Just (DefMapper d)
+-- lookup (IdCnect s) txsdefs = case Map.lookup s (cnectDefs txsdefs) of
+--                                 Nothing -> Nothing
+--                                 Just d  -> Just (DefCnect d)
 
--- TODO: this is never used
-toList :: TxsDefs -> [(Ident, TxsDef)]
-toList t =      map (IdADT Control.Arrow.*** DefADT)            (HMap.toList (adtDefsToMap $ adtDefs t))
-            ++  map (IdFunc Control.Arrow.*** DefFunc)          (Map.toList (funcDefs t))
-            ++  map (IdProc Control.Arrow.*** DefProc)          (Map.toList (procDefs t))
-            ++  map (IdChan Control.Arrow.*** const DefChan)    (Map.toList (chanDefs t))
-            ++  map (IdVar Control.Arrow.*** const DefVar)      (Map.toList (varDefs t))
-            ++  map (IdStat Control.Arrow.*** const DefStat)    (Map.toList (statDefs t))
-            ++  map (IdModel Control.Arrow.*** DefModel)        (Map.toList (modelDefs t))
-            ++  map (IdPurp Control.Arrow.*** DefPurp)          (Map.toList (purpDefs t))
-            ++  map (IdGoal Control.Arrow.*** const DefGoal)    (Map.toList (goalDefs t))
-            ++  map (IdMapper Control.Arrow.*** DefMapper)      (Map.toList (mapperDefs t))
-            ++  map (IdCnect Control.Arrow.*** DefCnect)        (Map.toList (cnectDefs t))
+insert :: Ident -> TxsDef -> TxsDefs -> TxsDefs
+insert (IdFunc s)   (DefFunc d)   t     = t { funcDefs   = Map.insert s d  (funcDefs t)   }
+insert (IdProc s)   (DefProc d)   t     = t { procDefs   = Map.insert s d  (procDefs t)   }
+insert (IdChan s)   DefChan       t     = t { chanDefs   = Map.insert s () (chanDefs t)   }
+insert (IdVar s)    DefVar        t     = t { varDefs    = Map.insert s () (varDefs t)    }
+insert (IdStat s)   DefStat       t     = t { statDefs   = Map.insert s () (statDefs t)   }
+insert (IdModel s)  (DefModel d)  t     = t { modelDefs  = Map.insert s d  (modelDefs t)  }
+insert (IdPurp s)   (DefPurp d)   t     = t { purpDefs   = Map.insert s d  (purpDefs t)   }
+insert (IdGoal s)   DefGoal       t     = t { goalDefs   = Map.insert s () (goalDefs t)   }
+insert (IdMapper s) (DefMapper d) t     = t { mapperDefs = Map.insert s d  (mapperDefs t) }
+insert (IdCnect s)  (DefCnect d)  t     = t { cnectDefs  = Map.insert s d  (cnectDefs t)  }
+insert (IdADT _)    (DefADT d)    t     = t { adtDefs    = newADTDefs   }
+                                          where Right newADTDefs = addADTDefs [d] (adtDefs  t)
+insert i            d             _     = error $ "Unknown insert\nident = " ++ show i ++ "\ndefinition = " ++ show d
+
+fromList :: [(Ident, TxsDef)] -> Either Text TxsDefs
+fromList = foldl addElem TxsDefs.empty
+  where
+    addElem :: TxsDefs -> (Ident,TxsDef) -> TxsDefs
+    addElem t (k,v) = insert k v t
+
+-- toList :: TxsDefs -> [(Ident, TxsDef)]
+-- toList t =      map (IdADT Control.Arrow.*** DefADT)            (HMap.toList (adtDefsToMap $ adtDefs t))
+--             ++  map (IdFunc Control.Arrow.*** DefFunc)          (Map.toList (funcDefs t))
+--             ++  map (IdProc Control.Arrow.*** DefProc)          (Map.toList (procDefs t))
+--             ++  map (IdChan Control.Arrow.*** const DefChan)    (Map.toList (chanDefs t))
+--             ++  map (IdVar Control.Arrow.*** const DefVar)      (Map.toList (varDefs t))
+--             ++  map (IdStat Control.Arrow.*** const DefStat)    (Map.toList (statDefs t))
+--             ++  map (IdModel Control.Arrow.*** DefModel)        (Map.toList (modelDefs t))
+--             ++  map (IdPurp Control.Arrow.*** DefPurp)          (Map.toList (purpDefs t))
+--             ++  map (IdGoal Control.Arrow.*** const DefGoal)    (Map.toList (goalDefs t))
+--             ++  map (IdMapper Control.Arrow.*** DefMapper)      (Map.toList (mapperDefs t))
+--             ++  map (IdCnect Control.Arrow.*** DefCnect)        (Map.toList (cnectDefs t))
 
 
-keys :: TxsDefs -> [Ident]
-keys t =        map IdADT       (HMap.keys (adtDefsToMap $ adtDefs t))
-            ++  map IdFunc      (Map.keys (funcDefs t))
-            ++  map IdProc      (Map.keys (procDefs t))
-            ++  map IdChan      (Map.keys (chanDefs t))
-            ++  map IdVar       (Map.keys (varDefs t))
-            ++  map IdStat      (Map.keys (statDefs t))
-            ++  map IdModel     (Map.keys (modelDefs t))
-            ++  map IdPurp      (Map.keys (purpDefs t))
-            ++  map IdGoal      (Map.keys (goalDefs t))
-            ++  map IdMapper    (Map.keys (mapperDefs t))
-            ++  map IdCnect     (Map.keys (cnectDefs t))
+-- keys :: TxsDefs -> [Ident]
+-- keys t =        map IdADT       (HMap.keys (adtDefsToMap $ adtDefs t))
+--             ++  map IdFunc      (Map.keys (funcDefs t))
+--             ++  map IdProc      (Map.keys (procDefs t))
+--             ++  map IdChan      (Map.keys (chanDefs t))
+--             ++  map IdVar       (Map.keys (varDefs t))
+--             ++  map IdStat      (Map.keys (statDefs t))
+--             ++  map IdModel     (Map.keys (modelDefs t))
+--             ++  map IdPurp      (Map.keys (purpDefs t))
+--             ++  map IdGoal      (Map.keys (goalDefs t))
+--             ++  map IdMapper    (Map.keys (mapperDefs t))
+--             ++  map IdCnect     (Map.keys (cnectDefs t))
 
 elems :: TxsDefs -> [TxsDef]
-elems t =       map DefADT          (HMap.elems (adtDefsToMap $ adtDefs t))
-            ++  map DefFunc         (Map.elems (funcDefs t))
-            ++  map DefProc         (Map.elems (procDefs t))
-            ++  map (const DefChan) (Map.elems (chanDefs t))
-            ++  map (const DefVar)  (Map.elems (varDefs t))
-            ++  map (const DefStat) (Map.elems (statDefs t))
+elems t =       --map DefADT          (HMap.elems (adtDefsToMap $ adtDefs t))
+            -- ++  map DefFunc         (Map.elems (funcDefs t))
+                map DefProc         (Map.elems (procDefs t))
+            -- ++  map (const DefChan) (Map.elems (chanDefs t))
+            -- ++  map (const DefVar)  (Map.elems (varDefs t))
+            -- ++  map (const DefStat) (Map.elems (statDefs t))
             ++  map DefModel        (Map.elems (modelDefs t))
             ++  map DefPurp         (Map.elems (purpDefs t))
-            ++  map (const DefGoal) (Map.elems (goalDefs t))
+            -- ++  map (const DefGoal) (Map.elems (goalDefs t))
             ++  map DefMapper       (Map.elems (mapperDefs t))
-            ++  map DefCnect        (Map.elems (cnectDefs t))
+            -- ++  map DefCnect        (Map.elems (cnectDefs t))
 
 
 union :: TxsDefs -> TxsDefs -> TxsDefs

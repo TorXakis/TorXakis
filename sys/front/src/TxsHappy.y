@@ -44,8 +44,6 @@ import TxsDefs                          -- types for parseVal main attribute
 import ChanId
 import CnectId
 import ConstDefs
-import CstrDef
-import CstrId
 import FuncDef
 import FuncId
 import GoalId
@@ -53,8 +51,7 @@ import MapperId
 import ModelId
 import ProcId
 import PurpId
-import SortDef
-import SortId
+import Sort
 import StatId
 import VarId
 import FuncTable
@@ -313,7 +310,7 @@ TxsRoot         -- :: { TxsDefs }
                                      (fshow fids) ++ "\n"
                 }
 
-TorXakisDefns   -- :: { [ (Ident,TxsDef) ] }
+TorXakisDefns   -- :: { ( [ADTDef Name], [(Ident, TxsDef)] ) }
                 -- list of TorXakis definitions with their identifiers
                 -- attrs inh : inhNodeUid : unique node identification
                 --           : inhSortSigs: usable sorts
@@ -332,7 +329,7 @@ TorXakisDefns   -- :: { [ (Ident,TxsDef) ] }
               : {- empty -}
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synSigs      = Sigs.empty
-                ;  $$ = []
+                ;  $$ = ([],[])
                 }
               | TorXakisDefns TorXakisDefn
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -341,10 +338,10 @@ TorXakisDefns   -- :: { [ (Ident,TxsDef) ] }
                 ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $2.synSigs
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $2.inhSigs      = $$.inhSigs
-                ;  $$ = $1 ++ $2
+                ;  $$ = (fst $1 ++ fst $2, snd $1 ++ snd $2)
                 }
 
-TorXakisDefn    -- :: { [ (Ident,TxsDef) ] }
+TorXakisDefn    -- :: { ( [ADTDef Name], [(Ident, TxsDef)] ) }
                 -- TorXakis definition with its identifier
                 -- attrs inh : inhNodeUid : unique node identification
                 --           : inhSortSigs: usable sorts

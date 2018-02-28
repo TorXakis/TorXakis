@@ -27,7 +27,6 @@ See LICENSE at root directory of this repository.
 module Sort.ADTDefs
 ( -- * 'Sort's of Value Expressions
   Sort (..)
-, sortFromName
 , primitiveSortNames
 
   -- * Abstract Data Types
@@ -37,6 +36,7 @@ module Sort.ADTDefs
 -- ** Collection
 , ADTDefs (..)
 , mergeADTDefs
+, isSortDefined
 
 -- ** Usage
 , emptyADTDefs
@@ -122,7 +122,6 @@ addADTDefs as adfs
     | otherwise              = Right $ ADTDefs $ Map.union adtMap $ convertTo as
     where
         adtMap = adtDefsToMap adfs
-        definedADTs = Map.elems adtMap
         nuADTDefs = searchDuplicateNames2 as definedADTs
         unknownRefs = mapMaybe getUnknownADTRefs as
             where
@@ -137,9 +136,11 @@ addADTDefs as adfs
                 fieldSortNames adt = getAllFieldSortNames $ constructors adt
 
                 isDefined :: Name -> Bool
-                isDefined n = n `elem` (primitiveSortNames ++ allADTNames)
-                    where allADTNames = map adtName definedADTs ++ map adtName as
+                isDefined n = Map.member (RefByName n) adtMap
+                            || n `elem` (primitiveSortNames ++ newADTNames)
+                            where newADTNames = map adtName as
 
+        definedADTs = Map.elems adtMap
         ncADTs = verifyConstructibleADTs (map adtName definedADTs) as
             where
                 -- | Verifies if given list of 'ADTDef's are constructable.
@@ -196,7 +197,8 @@ mergeADTDefs adts1@(ADTDefs dsMap1) adts2@(ADTDefs dsMap2)
     --       dropped while combining.
     -- TODO: You can use Map.Union to combine.
 
--- | Returns the list of 'ConstructorDef's of a given 'ADTDef'.
+-- | Returns a 'ConstructorDef' and its reference from a given 'ADTDef' based on
+--   its name.
 findConstructor :: Name -> ADTDef v -> Maybe (Ref (ConstructorDef v), ConstructorDef v)
 findConstructor nm ad = case Map.lookup r $ (cDefsToMap . constructors) ad of
                             Nothing -> Nothing
@@ -206,6 +208,12 @@ findConstructor nm ad = case Map.lookup r $ (cDefsToMap . constructors) ad of
 -- | Returns the list of 'ConstructorDef's of a given 'ADTDef'.
 getConstructors :: ADTDef v -> [ConstructorDef v]
 getConstructors = Map.elems . cDefsToMap . constructors
+
+-- | Checks if a given 'Sort' 'Name' is defined as a primitive sort or an ADT.
+isSortDefined :: ADTDefs -> Name -> Bool
+isSortDefined ads n = Map.member (RefByName n) (adtDefsToMap ads)
+                    || n `elem` primitiveSortNames
+
 
 -- | Type of errors that are raised when it's not possible to add 'ADTDef's to
 --   'ADTDefs' structure via 'addADTDefs' function.
@@ -270,4 +278,4 @@ instance ConvertsTo Name Sort where
     convertTo = sortFromName
 
 instance ConvertsTo a a' => ConvertsTo (ADTDef a) (ADTDef a') where
-    convertTo (ADTDef n cs) = ADTDef (convertTo n) (convertTo cs)
+    convertTo (ADTDef n cs) = ADTDef n (convertTo cs)

@@ -32,6 +32,7 @@ library
                       , text
 
                       , defs
+                      , sort
                       , valexpr
 
   default-language:     Haskell2010

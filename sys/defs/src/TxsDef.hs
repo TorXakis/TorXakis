@@ -20,6 +20,7 @@ import CnectDef
 import FuncDef
 import MapperDef
 import ModelDef
+import Name
 import ProcDef
 import PurpDef
 import Sort
@@ -27,7 +28,7 @@ import Sort
 import VarId
 
 -- | torxakis definitions
-data  TxsDef = DefADT       (ADTDef Sort)
+data  TxsDef = DefADT       (ADTDef Name)
              | DefFunc      (FuncDef VarId)
              | DefProc      ProcDef
              | DefModel     ModelDef
