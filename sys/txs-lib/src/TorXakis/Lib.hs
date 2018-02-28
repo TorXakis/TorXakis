@@ -8,17 +8,17 @@ import           Control.Monad.STM              (atomically)
 import           Control.Exception              (try, ErrorCall)
 import           Control.Monad.State            (runStateT, lift)
 import           Lens.Micro                     ((.~), (^.))
-import           Control.Concurrent.STM.TMQueue (TMQueue, newTMQueueIO, writeTMQueue)
+import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, writeTQueue)
 import           Data.Foldable                  (traverse_)
 import           Data.Conduit                   (runConduit, (.|))
 import           Data.Conduit.Combinators       (take, sinkList)
-import           Data.Conduit.TQueue            (sourceTMQueue)
+import           Data.Conduit.TQueue            (sourceTQueue)
     
 import           TxsAlex  (txsLexer)
 import           TxsHappy (txsParser)
 import           EnvCore  (IOC, initState)
-import           TxsCore  (txsInit, txsSetStep)
-import           EnvData  (Msg)
+import           TxsCore  (txsInit, txsSetStep, txsStepN)
+import           EnvData  (Msg (TXS_CORE_RESPONSE))
 import           TorXakis.Lens.TxsDefs (ix)
 import           Name     (Name)
 
@@ -33,7 +33,7 @@ type FileContents = String
 
 -- | Create a new session.
 newSession :: IO Session
-newSession = Session <$> newTVarIO emptySessionState <*> newTMQueueIO
+newSession = Session <$> newTVarIO emptySessionState <*> newTQueueIO
 
 -- | Load a TorXakis file, compile it, and return the response.
 --
@@ -60,10 +60,11 @@ stepper :: Session
         -> Name        -- ^ Model name
         -> IO Response
 stepper s mn = do
-    st <- readTVarIO (_sessionState s)
+    st <- readTVarIO (s ^. sessionState)
     (res, nextState) <- flip runStateT initState $ do
         -- TODO: catch possible errors
         txsInit (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
+        -- txsInit (st ^. tdefs) (st ^. sigs) dummyHandler
         -- Lookup the model definition that matches the name.
         let mMDef = st ^. tdefs . ix mn
         case mMDef of
@@ -79,7 +80,7 @@ stepper s mn = do
                 -- For not let's use a conduit/pipe and put all the errors there.
                 txsSetStep mDef
                 return Success
-    atomically $ modifyTVar' (_sessionState s) (envCore .~ nextState)
+    atomically $ modifyTVar' (s ^. sessionState) (envCore .~ nextState)
     return res
 
 -- | For now we define a dummy handler for the information, warning, and error
@@ -90,20 +91,38 @@ stepper s mn = do
 dummyHandler :: [Msg] -> IOC ()
 dummyHandler = lift . print
 
-msgHandler :: TMQueue Msg -> [Msg] -> IOC ()
-msgHandler q = lift . atomically . traverse_ (writeTMQueue q)
+msgHandler :: TQueue Msg -> [Msg] -> IOC ()
+msgHandler q = lift . atomically . traverse_ (writeTQueue q)
 
 -- | Get the next message in the session.
 getNextMsg :: Session -> IO [Msg]
 getNextMsg s =
-    runConduit $ sourceTMQueue (s ^. sessionMsgs) .| take 1 .| sinkList
+    runConduit $ sourceTQueue (s ^. sessionMsgs) .| take 1 .| sinkList
+
+-- | Get the next N messages in the session.
+--
+-- If no messages are available this call will block waiting for new messages.
+--
+-- TODO: I don't know if this will be used in practice, it is more for
+-- debugging purposes.
+getNextNMsgs :: Session -> Int -> IO [Msg]
+getNextNMsgs s n =
+    runConduit $ sourceTQueue (s ^. sessionMsgs) .| take n .| sinkList
+
+-- | TODO: this is also used for debugging purposes. Put this into an
+-- `Examples` or `Test` folder.
+--
+-- In such an example folder we might want to include a conduit version of it.
+printNextNMsgs :: Session -> Int -> IO ()
+printNextNMsgs s n = getNextNMsgs s n >>= traverse_ print
 
 -- | How a step is described
-data StepType = Action ActionName
-              | Run Steps
-              | GoTo StateNumber
-              | Reset -- ^ Go to the initial state.
-              | Rewind Steps
+newtype StepType = NumberOfSteps Int
+    -- Action ActionName
+    --           | 
+    --           | GoTo StateNumber
+    --           | Reset -- ^ Go to the initial state.
+    --           | Rewind Steps
 
 -- TODO: discuss with Jan: do we need a `Tree` step here?
 
@@ -114,7 +133,21 @@ data Steps
 
 -- | step for n-steps
 step :: Session -> StepType -> IO Response -- | Or a conduit?
-step = undefined
+step s (NumberOfSteps n) = do
+    st <- readTVarIO (s ^. sessionState)
+    (_, nextState) <- -- TODO: make the call to `txsStepN` non-blocking.
+        flip runStateT (st ^. envCore) $ do
+            verdict <- txsStepN n
+            msgHandler (s ^. sessionMsgs) [TXS_CORE_RESPONSE (show verdict)]
+    -- TODO: remove the duplication of reading, running some IOC action, and writing the state back.
+    atomically $ modifyTVar' (s ^. sessionState) (envCore .~ nextState)
+    return Success
+    
+-- data  Verdict  =  Pass
+--                 | Fail Action
+--                 | NoVerdict
+                
+    
 -- We need to use:
 -- 
 -- > txsStepN :: Int                                 -- ^ number of actions to step model.

@@ -7,7 +7,7 @@ import           Control.Concurrent.STM.TVar    (TVar)
 import           Control.DeepSeq                (NFData)
 import           GHC.Generics                   (Generic)
 import           Lens.Micro                     (Lens')
-import           Control.Concurrent.STM.TMQueue (TMQueue)
+import           Control.Concurrent.STM.TQueue (TQueue)
 
 import           Sigs     (Sigs, empty)
 import           VarId    (VarId)
@@ -18,7 +18,7 @@ import           EnvData  (Msg)
 -- | The session, which maintains the state of a TorXakis model.
 data Session = Session
     { _sessionState :: TVar SessionSt
-    , _sessionMsgs  :: TMQueue Msg
+    , _sessionMsgs  :: TQueue Msg
     }
 
 data SessionSt = SessionSt
@@ -33,7 +33,10 @@ emptySessionState = SessionSt TxsDefs.empty Sigs.empty initState
 
 -- * Lenses
 
-sessionMsgs :: Lens' Session (TMQueue Msg)
+sessionState :: Lens' Session (TVar SessionSt)
+sessionState h (Session s m) = (`Session` m) <$> h s
+
+sessionMsgs :: Lens' Session (TQueue Msg)
 sessionMsgs h (Session s m) = Session s <$> h m
 
 tdefs :: Lens' SessionSt TxsDefs

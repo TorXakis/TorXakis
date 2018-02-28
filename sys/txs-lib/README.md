@@ -12,4 +12,7 @@ cs <- readFile "examps/Echo/Echo.txs"
 s <- newSession 
 r <- load s cs
 stepper s "Model"
+getNextMsg s
+step s (NumberOfSteps 1)
+getNextMsg s
 ```
