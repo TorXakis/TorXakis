@@ -15,16 +15,15 @@ import           Data.ByteString          (pack)
 import           Data.ByteString.Internal (c2w)
 import           Data.Char                (chr, ord)
 import qualified Data.HashMap.Strict      as HMap
+import           Data.Maybe
 import           Data.String
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           Text.XML.Expat.Tree
 
 import           ConstDefs
-import           FuncId
 import           Name
 import           Sort
-import           TxsDef
 import           TxsDefs
 
 
@@ -78,25 +77,25 @@ encodeChar  c  =
 
 infixr 6 ~>
 
-lookupConstructorName :: TxsDefs -> Ref (ADTDef Sort) -> Name -> (Ref (ConstructorDef v), ConstructorDef v)
-lookupConstructorName txsdefs aRef cNm  =
+lookupConstructorName :: TxsDefs -> Ref (ADTDef Sort) -> Text -> (Ref (ConstructorDef Sort), ConstructorDef Sort)
+lookupConstructorName txsdefs aRef cNmTxt  =
     case HMap.lookup aRef (adtDefsToMap $ adtDefs txsdefs) of
         Nothing -> error $ "ADT " ++ show aRef ++ " not found in mapping"
         Just ad ->
             fromMaybe
-                (error $ "Constructor " ++ T.unpack (toText cNm) ++ " not found in ADT " ++ show aRef)
+                (error $ "Constructor " ++ T.unpack cNmTxt ++ " not found in ADT " ++ show aRef)
                 (findConstructor cNm ad)
-                -- Nothing      -> error $ "Constructor " ++ T.unpack (toText cNm) ++ " not found in ADT " ++ show aRef
-                -- Just crd -> crd
+            where
+                Right cNm = name cNmTxt
 
-lookupConstructorDef :: TxsDefs -> Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> TxsDef
+lookupConstructorDef :: TxsDefs -> Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> ConstructorDef Sort
 lookupConstructorDef txsdefs aRef cRef =
     case HMap.lookup aRef (adtDefsToMap $ adtDefs txsdefs) of
         Nothing -> error $ "ADT " ++ show aRef ++ " not found in mapping"
         Just ad ->
-            case HMap.lookup cRef (cDefToMap $ constructors ad) of
-                Nothing -> error $ "Constructor " ++ show cRef ++ " not found in ADT " ++ show aRef
-                Just cd -> DefCstr cd
+            fromMaybe
+                (error $ "Constructor " ++ show cRef ++ " not found in ADT " ++ show aRef)
+                (HMap.lookup cRef (cDefsToMap $ constructors ad))
 -- ----------------------------------------------------------------------------------------- --
 rootName :: Text
 rootName = "TorXakisMsg"
@@ -114,10 +113,11 @@ pairNameConstToXml _ (n, Cint i) =
   n ~> [XLeaf (T.pack (show i))]
 pairNameConstToXml _ (n, Cstring s) =
   n ~> [XLeaf (encodeString s)]
-pairNameConstToXml tdefs (n, Cstr aRef cRef args) =
+pairNameConstToXml tdefs (n, Cstr aRef cRef cArgs) =
   let cDef = lookupConstructorDef tdefs aRef cRef
       nodes = map (pairNameConstToXml tdefs)
-                  (zip (getFieldNames cDef) args)
+                  (zip (map toText $ getFieldNames cDef) cArgs)
+      cName = toText $ constructorName cDef
   in
     n ~> [cName ~> nodes]
 pairNameConstToXml _ (n, w) =
@@ -157,7 +157,7 @@ pairNameConstFromXml tdefs s@(SortADT aRef) (Element nt [] [Element cname [] lis
         sorts = getFieldSorts cDef
         vexprArgs =
           map (uncurry3 (pairNameConstFromXml tdefs))
-              (zip3 sorts list (getFieldNames cDef))
+              (zip3 sorts list (map toText $ getFieldNames cDef))
         uncurry3 f (a, b, c) = f a b c
     in
       if length sorts == length list

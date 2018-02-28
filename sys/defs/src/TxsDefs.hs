@@ -17,13 +17,11 @@ See LICENSE at root directory of this repository.
 module TxsDefs
 ( TxsDefs(..)
 , TxsDefs.empty
-, TxsDefs.fromList
 , TxsDefs.toList
 , TxsDefs.lookup
 , TxsDefs.keys
 , TxsDefs.elems
 , TxsDefs.union
-, TxsDefs.insert
 , VarEnv
 , VExpr
 , VEnv
@@ -65,7 +63,6 @@ import           MapperDef
 import           MapperId
 import           ModelDef
 import           ModelId
-import           Name
 import           ProcDef
 import           ProcId
 import           PurpDef
@@ -76,7 +73,7 @@ import           TxsDef
 import           VarEnv
 import           VarId
 
-data  TxsDefs  =  TxsDefs { adtDefs    :: HMap.HashMap (Ref (ADTDef Name)) (ADTDef Name)  -- TODO: Use ADTDefs?
+data  TxsDefs  =  TxsDefs { adtDefs    :: ADTDefs
                           , funcDefs   :: Map.Map FuncId (FuncDef VarId)
                           , procDefs   :: Map.Map ProcId ProcDef
                           , chanDefs   :: Map.Map ChanId ()            -- only for parsing, not envisioned for computation
@@ -91,7 +88,7 @@ data  TxsDefs  =  TxsDefs { adtDefs    :: HMap.HashMap (Ref (ADTDef Name)) (ADTD
                   deriving (Eq,Read,Show, Generic, NFData)
 
 empty :: TxsDefs
-empty = TxsDefs  HMap.empty
+empty = TxsDefs  emptyADTDefs
                  Map.empty
                  Map.empty
                  Map.empty
@@ -104,7 +101,7 @@ empty = TxsDefs  HMap.empty
                  Map.empty
 
 lookup :: Ident -> TxsDefs -> Maybe TxsDef
-lookup (IdADT r) txsdefs = case HMap.lookup r (adtDefs txsdefs) of
+lookup (IdADT r) txsdefs = case HMap.lookup r (adtDefsToMap $ adtDefs txsdefs) of
                                 Nothing -> Nothing
                                 Just d  -> Just (DefADT d)
 lookup (IdFunc s) txsdefs = case Map.lookup s (funcDefs txsdefs) of
@@ -138,29 +135,9 @@ lookup (IdCnect s) txsdefs = case Map.lookup s (cnectDefs txsdefs) of
                                 Nothing -> Nothing
                                 Just d  -> Just (DefCnect d)
 
-insert :: Ident -> TxsDef -> TxsDefs -> TxsDefs
-insert (IdADT r)    (DefADT d)    t     = t { adtDefs    = HMap.insert r d (adtDefs  t)   }
-insert (IdFunc s)   (DefFunc d)   t     = t { funcDefs   = Map.insert s d  (funcDefs t)   }
-insert (IdProc s)   (DefProc d)   t     = t { procDefs   = Map.insert s d  (procDefs t)   }
-insert (IdChan s)   DefChan       t     = t { chanDefs   = Map.insert s () (chanDefs t)   }
-insert (IdVar s)    DefVar        t     = t { varDefs    = Map.insert s () (varDefs t)    }
-insert (IdStat s)   DefStat       t     = t { statDefs   = Map.insert s () (statDefs t)   }
-insert (IdModel s)  (DefModel d)  t     = t { modelDefs  = Map.insert s d  (modelDefs t)  }
-insert (IdPurp s)   (DefPurp d)   t     = t { purpDefs   = Map.insert s d  (purpDefs t)   }
-insert (IdGoal s)   DefGoal       t     = t { goalDefs   = Map.insert s () (goalDefs t)   }
-insert (IdMapper s) (DefMapper d) t     = t { mapperDefs = Map.insert s d  (mapperDefs t) }
-insert (IdCnect s)  (DefCnect d)  t     = t { cnectDefs  = Map.insert s d  (cnectDefs t)  }
-insert i            d             _     = error $ "Unknown insert\nident = " ++ show i ++ "\ndefinition = " ++ show d
-
-fromList :: [(Ident, TxsDef)] -> TxsDefs
-fromList = foldl addElem TxsDefs.empty
-  where
-    addElem :: TxsDefs -> (Ident,TxsDef) -> TxsDefs
-    addElem t (k,v) = insert k v t
-
-
+-- TODO: this is never used
 toList :: TxsDefs -> [(Ident, TxsDef)]
-toList t =      map (IdADT Control.Arrow.*** DefADT)            (HMap.toList (adtDefs t))
+toList t =      map (IdADT Control.Arrow.*** DefADT)            (HMap.toList (adtDefsToMap $ adtDefs t))
             ++  map (IdFunc Control.Arrow.*** DefFunc)          (Map.toList (funcDefs t))
             ++  map (IdProc Control.Arrow.*** DefProc)          (Map.toList (procDefs t))
             ++  map (IdChan Control.Arrow.*** const DefChan)    (Map.toList (chanDefs t))
@@ -174,7 +151,7 @@ toList t =      map (IdADT Control.Arrow.*** DefADT)            (HMap.toList (ad
 
 
 keys :: TxsDefs -> [Ident]
-keys t =        map IdADT       (HMap.keys (adtDefs t))
+keys t =        map IdADT       (HMap.keys (adtDefsToMap $ adtDefs t))
             ++  map IdFunc      (Map.keys (funcDefs t))
             ++  map IdProc      (Map.keys (procDefs t))
             ++  map IdChan      (Map.keys (chanDefs t))
@@ -187,7 +164,7 @@ keys t =        map IdADT       (HMap.keys (adtDefs t))
             ++  map IdCnect     (Map.keys (cnectDefs t))
 
 elems :: TxsDefs -> [TxsDef]
-elems t =       map DefADT          (HMap.elems (adtDefs t))
+elems t =       map DefADT          (HMap.elems (adtDefsToMap $ adtDefs t))
             ++  map DefFunc         (Map.elems (funcDefs t))
             ++  map DefProc         (Map.elems (procDefs t))
             ++  map (const DefChan) (Map.elems (chanDefs t))
@@ -202,7 +179,7 @@ elems t =       map DefADT          (HMap.elems (adtDefs t))
 
 union :: TxsDefs -> TxsDefs -> TxsDefs
 union a b = TxsDefs
-                (HMap.union (adtDefs a)  (adtDefs b)    )
+                mergedADTDefs
                 (Map.union (funcDefs a)  (funcDefs b)   )
                 (Map.union (procDefs a)  (procDefs b)   )
                 (Map.union (chanDefs a)  (chanDefs b)   )
@@ -213,3 +190,5 @@ union a b = TxsDefs
                 (Map.union (goalDefs a)  (goalDefs b)   )
                 (Map.union (mapperDefs a)(mapperDefs b) )
                 (Map.union (cnectDefs a) (cnectDefs b)  )
+            where
+                Right mergedADTDefs = mergeADTDefs (adtDefs a) (adtDefs b)

@@ -43,11 +43,11 @@ import qualified Data.Text   as T
 import           ConstDefs
 import           Id
 import           Name
-import           SortId
+import           Sort
 import           TxsDefs
 import           ValExpr
 import           Variable
-import           VarId
+import           VarId    hiding (name)
 
 -- ----------------------------------------------------------------------------------------- --
 -- ----------------------------------------------------------------------------------------- --
@@ -88,17 +88,18 @@ data  IVar      =  IVar    { ivname :: Name       -- name of Channel
                            , ivuid  :: Id         -- uid of Channel
                            , ivpos  :: Int        -- 1..length (chansorts chan)
                            , ivstat :: Int        -- depth in the behaviour tree
-                           , ivsrt  :: SortId     -- (chansorts chan)!!(pos-1)
+                           , ivsrt  :: Sort       -- (chansorts chan)!!(pos-1)
                            }
      deriving (Eq,Ord,Read,Show)
 
-
 instance Variable IVar where
-    vname (IVar nm uid pos stat _srt) =
-      "$" <> nm <> "$" <> (T.pack . show) uid <> "$" <> (T.pack . show) stat <> "$" <> (T.pack . show) pos <> "$"
+    vname (IVar nm uid pos stat _srt) = n
+        where 
+            Right n = name $ "$" <> toText nm <> "$" <> (T.pack . show) uid <> "$" <> (T.pack . show) stat <> "$" <> (T.pack . show) pos <> "$"
     vunid IVar{ ivuid = uid } = _id uid
     vsort IVar{ ivsrt = srt } = srt
-    cstrVariable s i = IVar (T.pack s) (Id i) (-1) (-1)           -- PvdL for temporary variable
+    cstrVariable s i = IVar nm (Id i) (-1) (-1)           -- PvdL for temporary variable
+                       where Right nm = name $ T.pack s
 
 type  IVEnv = VarEnv VarId IVar
 

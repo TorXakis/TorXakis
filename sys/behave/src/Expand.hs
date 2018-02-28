@@ -44,6 +44,7 @@ import           ChanId
 import           ConstDefs
 import qualified EnvBTree            as IOB
 import qualified EnvData
+import           Name
 import           StdTDefs
 import           TxsDefs
 import           TxsUtils
@@ -161,7 +162,7 @@ expand chsets (BNbexpr we (ProcInst procid@(ProcId nm _ _ _ _) chans vexps))  = 
                                                 ("Expand: Eval failed in expand - ProcInst " ++ show s) ]
                                   return []
        _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $
-                             "Expand: Undefined process name: " ++ T.unpack nm ]
+                             "Expand: Undefined process name: " ++ T.unpack (toText nm) ]
                return []
 
 -- ----------------------------------------------------------------------------------------- --
@@ -547,16 +548,10 @@ instance Relabel Trans
 -- ----------------------------------------------------------------------------------------- --
 -- transform IVar into unique IVar (HVar)
 
-
 uniHVar :: IVar -> IOB.IOB IVar
 uniHVar (IVar ivname' ivuid' ivpos' ivstat' ivsrt')  =  do
      unid'   <- gets IOB.unid
      let newUnid = unid' + 1
+         Right vName = Name.name $ toText ivname'<>"$$$"<> (T.pack . show) ivuid'
      modify $ \env -> env { IOB.unid = newUnid }
-     return $ IVar (ivname'<>"$$$"<> (T.pack . show) ivuid') newUnid ivpos' ivstat' ivsrt'
-
-
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --
-
+     return $ IVar vName newUnid ivpos' ivstat' ivsrt'

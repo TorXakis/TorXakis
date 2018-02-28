@@ -37,11 +37,11 @@ library
                       , coreenv
                       , defs
                       , solve
+                      , sort
                       , valexpr
 
-                      
   default-language:     Haskell2010
-  
+
 test-suite behave-test
   type:                 exitcode-stdio-1.0
   hs-source-dirs:       src
@@ -76,6 +76,7 @@ test-suite behave-test
                      , defs
                      , front
                      , solve
+                     , sort
                      , valexpr
-                     
+
   default-language:    Haskell2010

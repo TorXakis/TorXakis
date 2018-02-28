@@ -29,7 +29,7 @@ import           Variable
 import           VarId
 
 -- | Identifiers
-data Ident = IdADT    (Ref (ADTDef Name))
+data Ident = IdADT    (Ref (ADTDef Sort))
            | IdFunc   FuncId
            | IdProc   ProcId
            | IdChan   ChanId

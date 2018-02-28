@@ -170,7 +170,21 @@ addADTDefs as adfs
                 isSortConstructable cSortNames sName =
                     sName `elem` (primitiveSortNames ++ cSortNames)
 
--- | TODO: Add proper comment
+-- | Merges two 'ADTDefs' structures.
+--
+--   Preconditions:
+--
+--   * If names of two 'ADTDef's match, their constructors' names and fields
+--     should also match.
+--
+--   Given two 'ADTDefs'
+--
+--   * either an error message indicating some violations of preconditions
+--
+--   * or an 'ADTDefs' structure
+--
+--   is returned.
+--
 -- Since both parameters are ADTDefs, we don't have to do same verifications above.
 mergeADTDefs :: ADTDefs -> ADTDefs -> Either ADTError ADTDefs
 mergeADTDefs adts1@(ADTDefs dsMap1) adts2@(ADTDefs dsMap2)
