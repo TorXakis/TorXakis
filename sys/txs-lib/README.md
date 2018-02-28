@@ -16,6 +16,24 @@ getNextMsg s
 step s (NumberOfSteps 1)
 getNextMsg s
 ```
+
+If you want to see the effects of the asynchronous behavior.
+
+```haskell
+cs <- readFile "examps/Echo/Echo.txs"
+s <- newSession 
+r <- load s cs
+stepper s "Model"
+step s (NumberOfSteps 1000)
+printNextNMsgs s 1
+putStrLn "I can do somehting in between"
+putStrLn "Get more messages"
+printNextNMsgs s 10
+putStrLn "Do something else"
+putStrLn "Get some more messages"
+printNextNMsgs s 90
+putStrLn "etc..."
+```
 ### Limitations
 
 When testing this at the REPL, hitting Ctrl+C will kill the different processes

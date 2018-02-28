@@ -13,10 +13,12 @@ import           Data.Foldable                 (traverse_)
 import           Data.Conduit                  (runConduit,(.|))
 import           Data.Conduit.Combinators      (take, sinkList)
 import           Data.Conduit.TQueue           (sourceTQueue)
-    
+import           Control.Concurrent            (forkIO)
+import           Control.Monad                 (void)
+
 import           TxsAlex  (txsLexer)
 import           TxsHappy (txsParser)
-import           EnvCore  (IOC, initState)
+import           EnvCore  (IOC)
 import           TxsCore  (txsInit, txsSetStep, txsStepN)
 import           EnvData  (Msg (TXS_CORE_RESPONSE))
 import           TorXakis.Lens.TxsDefs (ix)
@@ -59,37 +61,18 @@ load s xs = do
 stepper :: Session
         -> Name        -- ^ Model name
         -> IO Response
-stepper s mn = do
+stepper s mn =  do
     st <- readTVarIO (s ^. sessionState)
-    (res, nextState) <- flip runStateT initState $ do
-        -- TODO: catch possible errors
+    runIOC s $ do
         txsInit (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
-        -- txsInit (st ^. tdefs) (st ^. sigs) dummyHandler
         -- Lookup the model definition that matches the name.
         let mMDef = st ^. tdefs . ix mn
         case mMDef of
             Nothing ->
                 return $ Error $ "No model named " ++ show mn
             Just mDef -> do
-                -- TODO: this is a bit twisted. All the torxakis errors will be
-                -- reported to the dummy handler, so we have to force the dummy
-                -- handler to put the errors it receives onto some shared
-                -- channel, and read them back from there here. Unless we want
-                -- to change the way TorXakis deals with errors.
-                --
-                -- For not let's use a conduit/pipe and put all the errors there.
                 txsSetStep mDef
                 return Success
-    atomically $ modifyTVar' (s ^. sessionState) (envCore .~ nextState)
-    return res
-
--- | For now we define a dummy handler for the information, warning, and error
--- messages that come from TorXakis.
---
--- TODO: put these messages somewhere so that they can be retrieved whenever
--- needed.
-dummyHandler :: [Msg] -> IOC ()
-dummyHandler = lift . print
 
 msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
@@ -125,29 +108,27 @@ newtype StepType = NumberOfSteps Int
     --           | Rewind Steps
 -- data StateNumber
 -- data ActionName
-
 -- TODO: discuss with Jan: do we need a `Tree` step here?
 
 -- | step for n-steps
 step :: Session -> StepType -> IO Response
 step s (NumberOfSteps n) = do
-    st <- readTVarIO (s ^. sessionState)
-    (_, nextState) <- -- TODO: make the call to `txsStepN` non-blocking.
-        flip runStateT (st ^. envCore) $ do
-            verdict <- txsStepN n
-            msgHandler (s ^. sessionMsgs) [TXS_CORE_RESPONSE (show verdict)]
-    -- TODO: remove the duplication of reading, running some IOC action, and writing the state back.
-    atomically $ modifyTVar' (s ^. sessionState) (envCore .~ nextState)
+    void $ forkIO $ runIOC s $ do
+        verdict <- txsStepN n
+        msgHandler (s ^. sessionMsgs) [TXS_CORE_RESPONSE (show verdict)]
     return Success
-    
--- data  Verdict  =  Pass
---                 | Fail Action
---                 | NoVerdict
-                
-    
--- We need to use:
+
+-- | Run an IOC action, using the initial state provided at the session, and
+-- modifying the end-state accordingly.
 -- 
--- > txsStepN :: Int                                 -- ^ number of actions to step model.
--- >         -> IOC.IOC TxsDDefs.Verdict
---
--- I think the actions will be reported to the dummyHandler, so we will only see strings as actions :/
+-- TODO: Note that this function has a race condition since the session state
+-- might have been altered by the time the IOC action returns the new state.
+-- This seems to be a problem inherent to TorXakis, so to workaround this we
+-- might have to introduce a transactional variable which signals the fact that
+-- a state update operation is pending on the session.
+runIOC :: Session -> IOC a -> IO a
+runIOC s act = do
+    st <- readTVarIO (s ^. sessionState)
+    (r, st') <- runStateT act (st ^. envCore)
+    atomically $ modifyTVar' (s ^. sessionState) (envCore .~ st')
+    return r
