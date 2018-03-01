@@ -109,6 +109,8 @@ waitForVerdict s = atomically $ readTQueue (s ^. verdicts)
 -- 
 runIOC :: Session -> IOC a -> IO a
 runIOC s act = do
+    -- The GHC implementation of MVar's guarantees fairness in the access to
+    -- the critical sections delimited by `takeMVar` and `putMVar`.
     takeMVar (s ^. pendingIOC)
     st <- readTVarIO (s ^. sessionState)
     (r, st') <- runStateT act (st ^. envCore)
