@@ -1,8 +1,6 @@
 -- |
 module TorXakis.Lib where
 
-import           Prelude hiding (take)
-
 import           Control.Concurrent.STM.TVar   (newTVarIO, readTVarIO, modifyTVar')
 import           Control.Monad.STM             (atomically)
 import           Control.Exception             (try, ErrorCall)
@@ -10,9 +8,6 @@ import           Control.Monad.State           (runStateT, lift)
 import           Lens.Micro                    ((.~),(^.))
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, writeTQueue)
 import           Data.Foldable                 (traverse_)
-import           Data.Conduit                  (runConduit,(.|))
-import           Data.Conduit.Combinators      (take, sinkList)
-import           Data.Conduit.TQueue           (sourceTQueue)
 import           Control.Concurrent            (forkIO)
 import           Control.Monad                 (void)
 
@@ -76,28 +71,6 @@ stepper s mn =  do
 
 msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
-
--- | Get the next message in the session.
-getNextMsg :: Session -> IO [Msg]
-getNextMsg s =
-    runConduit $ sourceTQueue (s ^. sessionMsgs) .| take 1 .| sinkList
-
--- | Get the next N messages in the session.
---
--- If no messages are available this call will block waiting for new messages.
---
--- TODO: I don't know if this will be used in practice, it is more for
--- debugging purposes.
-getNextNMsgs :: Session -> Int -> IO [Msg]
-getNextNMsgs s n =
-    runConduit $ sourceTQueue (s ^. sessionMsgs) .| take n .| sinkList
-
--- | TODO: this is also used for debugging purposes. Put this into an
--- `Examples` or `Test` folder.
---
--- In such an example folder we might want to include a conduit version of it.
-printNextNMsgs :: Session -> Int -> IO ()
-printNextNMsgs s n = getNextNMsgs s n >>= traverse_ print
 
 -- | How a step is described
 newtype StepType = NumberOfSteps Int

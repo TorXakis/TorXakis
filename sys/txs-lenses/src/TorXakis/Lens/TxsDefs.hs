@@ -9,7 +9,7 @@ import           Data.Map   (Map)
 import qualified Data.Map   as Map
 import           Data.List  (find)
 
-import           TxsDefs    (TxsDefs, ModelDef, ModelId (ModelId))
+import           TxsDefs    (TxsDefs, ModelDef, ModelId (ModelId), PurpDef)
 import qualified TxsDefs
 import           Name       (Name)
 
@@ -26,8 +26,11 @@ instance IndexedBy TxsDefs Name ModelDef where
         where
           lookupModelByName :: TxsDefs -> Maybe ModelDef
           lookupModelByName defs =
-              snd <$> find (modelName . fst)
+              snd <$> find (eqModelName . fst)
                            (Map.toList (defs ^. modelDefs ))
               where
-                modelName :: ModelId -> Bool
-                modelName (ModelId mn _) =  mn == n
+                eqModelName :: ModelId -> Bool
+                eqModelName (ModelId mn _) =  mn == n
+
+instance IndexedBy TxsDefs Name PurpDef where
+    ix = undefined
