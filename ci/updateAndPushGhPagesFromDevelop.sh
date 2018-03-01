@@ -9,8 +9,10 @@ git checkout gh-pages;
 git rebase develop;
 rm ./doc/* -rf
 DOC_DIR=$(stack path --local-doc-root)
-cp --verbose -r $DOC_DIR/. ./doc/;
-git add .;
-commitMsg="Haddock @ $(date +%Y%m%d_%H%M%S)";
-git commit -m "$(echo $commitMsg)";
-git push -f "https://keremispirli:$GITHUB_TOKEN@github.com/TorXakis/TorXakis.git";
+echo $DOC_DIR
+ls $DOC_DIR
+# cp --verbose -r $DOC_DIR/. ./doc/;
+# git add .;
+# commitMsg="Haddock @ $(date +%Y%m%d_%H%M%S)";
+# git commit -m "$(echo $commitMsg)";
+# git push -f "https://keremispirli:$GITHUB_TOKEN@github.com/TorXakis/TorXakis.git";
