@@ -8,11 +8,11 @@ git fetch;
 git checkout gh-pages;
 git rebase develop;
 rm ./doc/* -rf
-DOC_DIR=$(stack path --local-doc-root --work-dir $CACHE_DIR_REL/test/.stack_work --stack-root $CACHE_DIR/.stack --allow-different-user)
+DOC_DIR=$(stack --work-dir .semaphore-cache/.stack-work --stack-root /home/runner/TorXakis/.semaphore-cache/.stack --allow-different-user --stack-yaml stack_linux.yaml path --local-doc-root)
 echo $DOC_DIR
 ls $DOC_DIR
-# cp --verbose -r $DOC_DIR/. ./doc/;
-# git add .;
-# commitMsg="Haddock @ $(date +%Y%m%d_%H%M%S)";
-# git commit -m "$(echo $commitMsg)";
-# git push -f "https://keremispirli:$GITHUB_TOKEN@github.com/TorXakis/TorXakis.git";
+cp -r $DOC_DIR/. ./doc/;
+git add .;
+commitMsg="Haddock @ $(date +%Y%m%d_%H%M%S)";
+git commit -m "$(echo $commitMsg)";
+git push -f "https://keremispirli:$GITHUB_TOKEN@github.com/TorXakis/TorXakis.git";
