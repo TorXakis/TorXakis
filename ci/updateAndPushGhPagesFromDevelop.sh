@@ -8,7 +8,7 @@ git fetch;
 git checkout gh-pages;
 git rebase develop;
 rm ./doc/* -rf
-DOC_DIR=$(stack path --local-doc-root)
+DOC_DIR=$(stack path --local-doc-root --work-dir $CACHE_DIR_REL/test/.stack_work --stack-root $CACHE_DIR/.stack --allow-different-user)
 echo $DOC_DIR
 ls $DOC_DIR
 # cp --verbose -r $DOC_DIR/. ./doc/;
