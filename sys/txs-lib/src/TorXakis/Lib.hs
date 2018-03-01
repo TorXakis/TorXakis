@@ -6,18 +6,20 @@ import           Control.Monad.STM             (atomically)
 import           Control.Exception             (try, ErrorCall)
 import           Control.Monad.State           (runStateT, lift)
 import           Lens.Micro                    ((.~),(^.))
-import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, writeTQueue)
+import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, writeTQueue, readTQueue)
 import           Data.Foldable                 (traverse_)
 import           Control.Concurrent            (forkIO)
 import           Control.Monad                 (void)
+import           Control.Concurrent.MVar       (takeMVar, putMVar, newMVar)
 
 import           TxsAlex  (txsLexer)
 import           TxsHappy (txsParser)
 import           EnvCore  (IOC)
 import           TxsCore  (txsInit, txsSetStep, txsStepN)
-import           EnvData  (Msg (TXS_CORE_RESPONSE))
+import           EnvData  (Msg)
 import           TorXakis.Lens.TxsDefs (ix)
 import           Name     (Name)
+import           TxsDDefs (Verdict)
 
 import           TorXakis.Session
 
@@ -30,7 +32,10 @@ type FileContents = String
 
 -- | Create a new session.
 newSession :: IO Session
-newSession = Session <$> newTVarIO emptySessionState <*> newTQueueIO
+newSession = Session <$> newTVarIO emptySessionState
+                     <*> newTQueueIO
+                     <*> newMVar ()
+                     <*> newTQueueIO
 
 -- | Load a TorXakis file, compile it, and return the response.
 --
@@ -83,25 +88,30 @@ newtype StepType = NumberOfSteps Int
 -- data ActionName
 -- TODO: discuss with Jan: do we need a `Tree` step here?
 
--- | step for n-steps
+-- | Step for n-steps
 step :: Session -> StepType -> IO Response
 step s (NumberOfSteps n) = do
     void $ forkIO $ runIOC s $ do
         verdict <- txsStepN n
-        msgHandler (s ^. sessionMsgs) [TXS_CORE_RESPONSE (show verdict)]
+        lift $ atomically $ writeTQueue (s ^. verdicts) verdict
     return Success
+
+-- | Wait for a verdict to be reached.
+waitForVerdict :: Session -> IO Verdict
+waitForVerdict s = atomically $ readTQueue (s ^. verdicts)
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.
+--
+-- Two `runIOC` action won't be run in parallel. If an IOC action is pending,
+-- then a subsequent call to `runIOC` will block till the operation is
+-- finished.
 -- 
--- TODO: Note that this function has a race condition since the session state
--- might have been altered by the time the IOC action returns the new state.
--- This seems to be a problem inherent to TorXakis, so to workaround this we
--- might have to introduce a transactional variable which signals the fact that
--- a state update operation is pending on the session.
 runIOC :: Session -> IOC a -> IO a
 runIOC s act = do
+    takeMVar (s ^. pendingIOC)
     st <- readTVarIO (s ^. sessionState)
     (r, st') <- runStateT act (st ^. envCore)
     atomically $ modifyTVar' (s ^. sessionState) (envCore .~ st')
+    putMVar (s ^. pendingIOC) ()
     return r

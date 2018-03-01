@@ -3,22 +3,26 @@
 {-# LANGUAGE DeriveAnyClass    #-}
 module TorXakis.Session where
 
-import           Control.Concurrent.STM.TVar    (TVar)
-import           Control.DeepSeq                (NFData)
-import           GHC.Generics                   (Generic)
-import           Lens.Micro                     (Lens')
+import           Control.Concurrent.STM.TVar   (TVar)
+import           Control.DeepSeq               (NFData)
+import           GHC.Generics                  (Generic)
+import           Lens.Micro                    (Lens')
 import           Control.Concurrent.STM.TQueue (TQueue)
+import           Control.Concurrent.MVar       (MVar)
 
 import           Sigs     (Sigs, empty)
 import           VarId    (VarId)
 import           TxsDefs  (TxsDefs, empty)
 import           EnvCore  (EnvC, initState)
 import           EnvData  (Msg)
+import           TxsDDefs (Verdict)
 
 -- | The session, which maintains the state of a TorXakis model.
 data Session = Session
     { _sessionState :: TVar SessionSt
     , _sessionMsgs  :: TQueue Msg
+    , _pendingIOC   :: MVar () -- ^ Signal that a pending IOC operation is taking place.
+    , _verdicts     :: TQueue Verdict
     }
 
 data SessionSt = SessionSt
@@ -34,10 +38,16 @@ emptySessionState = SessionSt TxsDefs.empty Sigs.empty initState
 -- * Lenses
 
 sessionState :: Lens' Session (TVar SessionSt)
-sessionState h (Session s m) = (`Session` m) <$> h s
+sessionState h (Session s m p v) = (\s' -> Session s' m p v) <$> h s
 
 sessionMsgs :: Lens' Session (TQueue Msg)
-sessionMsgs h (Session s m) = Session s <$> h m
+sessionMsgs h (Session s m p v) = (\m' -> Session s m' p v) <$> h m
+
+pendingIOC :: Lens' Session (MVar ())
+pendingIOC h (Session s m p v) = (\p' -> Session s m p' v) <$> h p
+
+verdicts :: Lens' Session (TQueue Verdict)
+verdicts h (Session s m p v) = (\v' -> Session s m p v') <$> h v
 
 tdefs :: Lens' SessionSt TxsDefs
 -- Remember:

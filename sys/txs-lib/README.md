@@ -12,9 +12,9 @@ cs <- readFile "examps/Echo/Echo.txs"
 s <- newSession 
 r <- load s cs
 stepper s "Model"
-getNextMsg s
+printNextNMsgs s 2
 step s (NumberOfSteps 1)
-getNextMsg s
+printNextNMsgs s 2
 ```
 
 If you want to see the effects of the asynchronous behavior.
