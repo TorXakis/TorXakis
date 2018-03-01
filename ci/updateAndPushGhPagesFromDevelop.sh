@@ -8,7 +8,8 @@ git fetch;
 git checkout gh-pages;
 git rebase develop;
 rm ./doc/* -rf
-cp -r $CACHE_DIR/.stack-work/install/x86_64-linux/lts-10.5/8.2.2/doc/. ./doc/;
+DOC_DIR=$(stack path --local-doc-root)
+cp --verbose -r $DOC_DIR/. ./doc/;
 git add .;
 commitMsg="Haddock @ $(date +%Y%m%d_%H%M%S)";
 git commit -m "$(echo $commitMsg)";
