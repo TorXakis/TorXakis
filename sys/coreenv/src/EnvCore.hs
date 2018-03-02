@@ -4,6 +4,8 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
+
+{-# LANGUAGE FlexibleInstances #-}
 -- | TorXakis Core Environment (Internal State) Data Type Definitions.
 module EnvCore
   ( IOC -- IOC = StateT EnvC IO
@@ -31,6 +33,7 @@ import qualified Data.Map            as Map
 
 -- import from local
 import           Config    hiding (setParams)
+import qualified EnvBasic    as EnvB
 import qualified EnvData
 import qualified ParamCore
 
@@ -53,6 +56,12 @@ import qualified SMTData
 -- IOC :  torxakis core state monad transformer
 
 type  IOC  = StateT EnvC IO
+
+instance EnvB.EnvB IOC     --  (StateT IOC.EnvC IO)
+  where
+     newUnid  =  newUnid
+     putMsgs  =  putMsgs
+ 
 
 data EnvC = EnvC
   { config :: Config           -- ^ Core configuration.

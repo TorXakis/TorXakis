@@ -158,7 +158,7 @@ txsServerCmd :: Text
 txsServerCmd = addExeSuffix "txsserver"
 
 txsUICmd :: Text
-txsUICmd = addExeSuffix "txsui"
+txsUICmd = addExeSuffix "torxakis"
 
 txsUILinePrefix :: Text
 txsUILinePrefix = "TXS >>  "
@@ -439,7 +439,7 @@ pathMustExist path =
 exampleInputFiles :: TxsExample -> [FilePath]
 exampleInputFiles ex =
   (txsCmdsFiles ex ++ txsModelFiles ex)
-  ++ fromMaybe [] (sutInputFiles <$> sutExample ex)
+  ++ maybe [] sutInputFiles (sutExample ex)
   where sutInputFiles (JavaExample jsp _)     = [jsp]
         sutInputFiles (TxsSimulator cmdsFile) = [cmdsFile]
 
