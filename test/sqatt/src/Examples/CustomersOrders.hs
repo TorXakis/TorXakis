@@ -18,11 +18,10 @@ exampDir :: FilePath
 exampDir = "CustomersOrders"
 
 test :: TxsExample
-test = TxsExample
+test = emptyExample
   { exampleName = "Customers & Orders Test"
   , txsModelFiles = [txsFilePath exampDir customersOrdersText]
   , txsCmdsFiles = [txsCmdPath exampDir "CustomersOrders_Tester"]
-  , txsServerArgs = []
   , sutExample =
     Just (JavaExample
            (javaFilePath exampDir customersOrdersText)

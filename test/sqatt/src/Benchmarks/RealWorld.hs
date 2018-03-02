@@ -15,48 +15,40 @@ benchDir :: FilePath
 benchDir = "RealWorld"
 
 multipleControlLoops :: TxsExample
-multipleControlLoops = TxsExample
+multipleControlLoops = emptyExample
     { exampleName = "Multiple Control Loops Stepper"
     , txsModelFiles = [ txsFilePath BenchTest benchDir "MultipleControlLoops" ]
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "MultipleControlLoops"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 customersAndOrders :: TxsExample
-customersAndOrders = TxsExample
+customersAndOrders = emptyExample
     { exampleName = "Customers and Orders"
     , txsModelFiles = [ txsFilePath BenchTest benchDir "CustomersOrders" ]
     , txsCmdsFiles = [ txsCmdPath BenchTest benchDir "CustomersOrders" ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 movingArms :: TxsExample
-movingArms = TxsExample
+movingArms = emptyExample
     { exampleName = "Moving Arms"
     , txsModelFiles = [ txsFilePath BenchTest benchDir "MovingArms" ]
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "MovingArms"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 movingArmsPurpose :: TxsExample
-movingArmsPurpose = TxsExample
+movingArmsPurpose = emptyExample
     { exampleName = "Moving Arms (Purpose)"
     , txsModelFiles = [ txsFilePath BenchTest benchDir "MovingArms" ]
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "MovingArmsPurpose"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 

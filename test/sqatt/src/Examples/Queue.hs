@@ -18,31 +18,26 @@ queueSUTPath :: FilePath
 queueSUTPath = javaFilePath exampDir "QueueServer"
 
 test0 :: TxsExample
-test0 = TxsExample
+test0 = emptyExample
   { exampleName = "Stepper Test"
   , txsModelFiles = [txsFilePath exampDir "Queue"]
   , txsCmdsFiles = [txsCmdPath exampDir "Queue_Stepper"]
-  , txsServerArgs = []
-  , sutExample = Nothing
   , expectedResult = Pass
   }
 
 test1 :: TxsExample
-test1 = TxsExample
+test1 = emptyExample
   { exampleName = "Stepper Test (Lossy)"
   , txsModelFiles = [txsFilePath exampDir "Queue"]
   , txsCmdsFiles = [txsCmdPath exampDir "Queue_Lossy_Stepper"]
-  , txsServerArgs = []
-  , sutExample = Nothing
   , expectedResult = Pass
   }
 
 test2 :: TxsExample
-test2 = TxsExample
+test2 = emptyExample
   { exampleName = "SUT Test"
   , txsModelFiles = [txsFilePath exampDir "Queue"]
   , txsCmdsFiles = [txsCmdPath exampDir "Queue_Tester"]
-  , txsServerArgs = []
   , sutExample = Just (JavaExample queueSUTPath ["7890"])
   , expectedResult = Pass
   }

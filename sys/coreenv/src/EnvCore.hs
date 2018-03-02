@@ -32,7 +32,7 @@ import qualified Data.Map            as Map
 
 
 -- import from local
-import           Config
+import           Config    hiding (setParams)
 import qualified EnvBasic    as EnvB
 import qualified EnvData
 import qualified ParamCore
@@ -51,7 +51,6 @@ import qualified VarId               (VarId)
 
 -- import from solve
 import qualified SMTData
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- IOC :  torxakis core state monad transformer

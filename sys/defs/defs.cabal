@@ -16,7 +16,6 @@ library
   hs-source-dirs:       src
 
   exposed-modules:      BehExprDefs
-                      , Params
                       , TxsDDefs
                       , TxsDefs
                       , TxsShow
