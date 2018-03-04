@@ -103,28 +103,30 @@ envsNone  = EnvS { host      = ""
 data  TxsModus =   Noned
                  | Idled
                  | Inited
-                 | Manualed SockWorld                 -- ^ connections to external world
-                 | Tested   SockWorld                 -- ^ connections to external world
-                 | Simuled  SockWorld                 -- ^ connections to external world
-                 | Learned  SockWorld                 -- ^ connections to external world
+                 | forall ew . (IOC.EWorld ew) => Tested   ew   -- ^ connections to eworld
+                 | forall ew . (IOC.EWorld ew) => Simuled  ew   -- ^ connections to eworld
                  | Stepped
+                 | forall ew . (IOC.EWorld ew) => Learned  ew   -- ^ connections to eworld
+                 | forall ew . (IOC.EWorld ew) => Manualed ew   -- ^ connections to eworld
 
 isNoned, isIdled, isInited                            :: TxsModus -> Bool
-isManualed, isTested, isSimuled, isStepped, isLearned :: TxsModus -> Bool
+isTested, isSimuled, isStepped, isLearned, isManualed :: TxsModus -> Bool
 isGtNoned, isGtIdled, isGtInited                      :: TxsModus -> Bool
-isNoned _             = False
-isIdled Idled         = True
-isIdled _             = False
-isInited Inited       = True
-isInited _            = False
-isTested  (Tested _)  = True
-isTested  _           = False
-isSimuled (Simuled _) = True
-isSimuled _           = False
-isStepped Stepped     = True
-isStepped _           = False
-isLearned (Learned _) = True
-isLearned _           = False
+isNoned    _            = False
+isIdled    Idled        = True
+isIdled    _            = False
+isInited   Inited       = True
+isInited   _            = False
+isTested   (Tested _)   = True
+isTested   _            = False
+isSimuled  (Simuled _)  = True
+isSimuled  _            = False
+isStepped  Stepped      = True
+isStepped  _            = False
+isLearned  (Learned _)  = True
+isLearned  _            = False
+isManualed (Manualed _) = True
+isManualed _            = False
 
 isGtNoned  m          = not (isNoned m)
 isGtIdled  m          = isGtNoned m && not (isIdled m)

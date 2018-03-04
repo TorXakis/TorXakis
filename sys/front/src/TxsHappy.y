@@ -1231,7 +1231,11 @@ CnectDef        -- :: { (Ident,TxsDef) }
                                           ]
                             }
                          in ( IdCnect (CnectId $2 $$.inhNodeUid)
-                            , DefCnect (CnectDef $4 $5 (conntows ++ connfrows) )
+                            , DefCnect $
+                                case $4 of
+                                { Just txt -> CnectSockExplW txt $5 (conntows++connfrows)
+                                ; Nothing  -> CnectSockImplW $5 (conntows++connfrows)
+                                }
                             )
                 ;  where let dbls = doubles $ map ChanId.name $6.synChanSigs
                           in if null dbls then () else

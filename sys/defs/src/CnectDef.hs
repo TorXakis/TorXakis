@@ -15,7 +15,8 @@ import Data.Text (Text)
 
 import ConnectionDefs
 
-data  CnectDef       = CnectDef (Maybe Text) CnectType [ConnDef]
+data  CnectDef       =  CnectSockExplW Text CnectType [ConnDef]
+                      | CnectSockImplW CnectType [ConnDef]
      deriving (Eq,Ord,Read,Show, Generic, NFData)
 
 

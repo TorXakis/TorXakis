@@ -63,7 +63,7 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
             -- param_Sut_deltaTime :: Int (>0)
             -- quiescence output time (millisec >0)
 
-  , ( "param_Sut_ioTime"         , "1"         , all Char.isDigit               )
+  , ( "param_Sut_ioTime"         , "10"        , all Char.isDigit               )
             -- param_Sut_ioTime :: Int (>0)
             -- timeout for input when trying output (msec, >0)
 

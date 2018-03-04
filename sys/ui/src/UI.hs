@@ -286,11 +286,15 @@ cmdIntpr cmdname args  =
          ; "tester"        -> cmdTester     args
          ; "simulator"     -> cmdSimulator  args
          ; "stepper"       -> cmdStepper    args
+         ; "learner"       -> cmdLearner    args
+         ; "manual"        -> cmdManual     args
          ; "stop"          -> cmdStop       args
 -- -------------------------------------------------------------------- test, simulate, step --
          ; "test"          -> cmdTest       args
          ; "sim"           -> cmdSim        args
          ; "step"          -> cmdStep       args
+         ; "learn"         -> cmdLearn      args
+         ; "man"           -> cmdMan        args
 -- --------------------------------------------------------------------------- btree state --
          ; "show"          -> cmdShow       args
          ; "state"         -> cmdState      args
@@ -304,10 +308,6 @@ cmdIntpr cmdname args  =
          ; "ncomp"         -> cmdNComp      args
          ; "lpe"           -> cmdLPE        args
 -- -------------------------------------------------------------------------- external world --
-         ; "setw"          -> cmdSetW       args
-         ; "startw"        -> cmdStartW     args
-         ; "stopw"         -> cmdStopW      args
--- ---------------------------------------------------------------------------------- system --
          ; "systart"       -> cmdSyStart    args
          ; "systop"        -> cmdSyStop     args
 -- ---------------------------------------------------------------------------- unrecognized --
@@ -493,6 +493,20 @@ cmdStepper args  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
+cmdLearner :: String -> UIO ()
+cmdLearner args  =  do
+     doCmd "LEARNER" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdManual :: String -> UIO ()
+cmdLearner args  =  do
+     doCmd "MANUAL" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
 cmdStop :: String -> UIO ()
 cmdStop args  =  do
      doCmd "STOP" args
@@ -517,6 +531,13 @@ cmdSim args  =  do
 cmdStep :: String -> UIO ()
 cmdStep args  =  do
      doCmd "STEP" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdMan :: String -> UIO ()
+cmdMan args  =  do
+     doCmd "MAN" args
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
@@ -587,27 +608,6 @@ cmdNComp args  =  do
 cmdLPE :: String -> UIO ()
 cmdLPE args  =  do
      doCmd "LPE" args
-     cmdsIntpr
-
--- ----------------------------------------------------------------------------------------- --
-
-cmdSetW :: String -> UIO ()
-cmdSetW args  =  do
-     doCmd "SETW" args
-     cmdsIntpr
-
--- ----------------------------------------------------------------------------------------- --
-
-cmdStartW :: String -> UIO ()
-cmdStartW args  =  do
-     doCmd "STARTW" args
-     cmdsIntpr
-
--- ----------------------------------------------------------------------------------------- --
-
-cmdStopW :: String -> UIO ()
-cmdStopW args  =  do
-     doCmd "STOPW" args
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
