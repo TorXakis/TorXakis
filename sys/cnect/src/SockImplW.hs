@@ -18,7 +18,8 @@ module SockImplW
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( setSockImplW   -- CnectDef -> Int -> Int -> Int -> SockImplW
+( SockImplW (..)
+, setSockImplW   -- CnectDef -> Int -> Int -> Int -> SockImplW
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -28,7 +29,7 @@ where
 
 -- import           Control.Concurrent
 -- import           Control.Concurrent.Async
--- import           Control.Monad.State
+import           Control.Monad.State
 -- import           System.IO
 -- import           System.Process
 -- import GHC.Conc
@@ -43,31 +44,27 @@ where
 -- import qualified Network.TextViaSockets as TVS
 
 -- import from local
--- import           EnDecode
+import           SockConnect
 
--- import from serverenv
--- import qualified EnvServer           as IOS
--- import qualified IfServer
+import qualified EnvData
 
 -- import from coreenv
--- import qualified EnvCore             as IOC
+import qualified EnvCore             as IOC
 
 -- import from defs
--- import           TxsDDefs
--- import           TxsDefs
--- import qualified Utils
+import qualified TxsDDefs            as DD
+import qualified TxsDefs             as D
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- socketworld as eworld
 
-data SockImplW  =  NoneSockImplW
-                 | IdleSockImplW { cnectdef   :: TxsDefs.CnectDef
+data SockImplW  =  IdleSockImplW { cnectdef   :: D.CnectDef
                                  , conndelay  :: Int -- ^ msec delay between start and connect
                                  , deltatime  :: Int -- ^ quiescence timer
                                  , chreadtime :: Int -- ^ channel delay before reading
                                  }
-                 | RunSockImplW  { cnectdef   :: TxsDefs.CnectDef
+                 | RunSockImplW  { cnectdef   :: D.CnectDef
                                  , conndelay  :: Int
                                  , deltatime  :: Int
                                  , chreadtime :: Int
@@ -86,9 +83,10 @@ instance IOC.EWorld SockImplW
 -- ----------------------------------------------------------------------------------------- --
 -- setSockWorld :  set and define, without starting socket world
 
-setSockImplW :: CnectDef -> Int -> Int -> Int -> SockImplW
-setSockImplW cnectdef connDelay deltaTime chReadTime
+setSockImplW :: D.CnectDef -> Int -> Int -> Int -> SockImplW
+setSockImplW cnectDef connDelay deltaTime chReadTime
   =  IdleSockImplW cnectDef connDelay deltaTime chReadTime
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- startSockWorld :  start socket world if Idle, otherwise do nothing
@@ -96,8 +94,8 @@ setSockImplW cnectdef connDelay deltaTime chReadTime
 startSockImplW :: SockImplW -> IOC.IOC SockImplW
 startSockImplW siw  =
      case siw of
-       IdleSockImplW cnectDef@(CnectSockImplW ctype cdefs) connDelay deltaTime chReadTime
-         -> do (toW,froW) <- openCnectSockets cnectType cdefs
+       IdleSockImplW cnectDef@(D.CnectSockImplW ctype cdefs) connDelay deltaTime chReadTime
+         -> do (toW,froW) <- lift $ openSockets ctype cdefs
                return $ RunSockImplW cnectDef connDelay deltaTime chReadTime toW froW
        _ -> return siw
 
@@ -117,36 +115,36 @@ stopSockImplW siw  =
 -- ----------------------------------------------------------------------------------------- --
 -- putSockWorld :  try to do output to world, or observe earlier input (no quiescence)
 
-putSockImplW :: SockImplW -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
+putSockImplW :: SockImplW -> DD.Action -> IOC.IOC DD.Action
 
-putSockImplW siw act@Act{}  =
+putSockImplW siw act@DD.Act{}  =
      case siw of
-       RunSockImplW _cdef _cdelay dtime chtime tow frow
-         -> putCnectSocket dtime chtime tow frow act
+       RunSockImplW _cdef _cdelay dtime chtime tw frw
+         -> putSocket dtime chtime tw frw act
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Sending action to world while no world running" ]
                return act
 
-putSockImplW siw ActQui  =
+putSockImplW siw DD.ActQui  =
      case siw of
-       RunSockImplW _cdef _cdelay dtime chtime tow frow
-         -> putCnectSocket dtime chtime tow frow ActQui
+       RunSockImplW _cdef _cdelay dtime chtime tw frw
+         -> putSocket dtime chtime tw frw DD.ActQui
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Sending action to world while no world running" ]
-               return ActQui
+               return DD.ActQui
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- getSockWorld :  observe input from world, or observe quiescence
 
-getSockImplW :: SockImplWorld -> IOC.IOC TxsDDefs.Action
+getSockImplW :: SockImplW -> IOC.IOC DD.Action
 getSockImplW siw  =
      case siw of
-       RunSockImplW _cnectdef _cdelay dtime _chtime _tow frow
-         -> getCnectSocket dtime frow
+       RunSockImplW _cnectdef _cdelay dtime _chtime _tw frw
+         -> getSocket dtime frw
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Observing action from world while no world running" ]
-               return ActQui
+               return DD.ActQui
 
 
 -- ----------------------------------------------------------------------------------------- --

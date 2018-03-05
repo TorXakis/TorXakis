@@ -139,10 +139,14 @@ instance PShow TxsDefs where
         ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
         ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
         ++ "ENDDEF\n"
-      showElem s (IdCnect (CnectId nm _), DefCnect (CnectDef eworld cnecttype conndefs) ) =
+      showElem s (IdCnect (CnectId nm _), DefCnect (CnectSockExplW eworld cnecttype conndefs) ) =
         s ++ "\nCNECTDEF " ++ T.unpack nm ++"  ::=\n"
-        ++ case eworld of Just eworldcmd -> T.unpack eworldcmd ++ "\n"
-                          Nothing        -> ""
+        ++ T.unpack eworld ++ "\n"
+        ++ pshow cnecttype ++ "\n"
+        ++ pshow conndefs ++ "\n"
+        ++ "ENDDEF\n"
+      showElem s (IdCnect (CnectId nm _), DefCnect (CnectSockImplW cnecttype conndefs) ) =
+        s ++ "\nCNECTDEF " ++ T.unpack nm ++"  ::=\n"
         ++ pshow cnecttype ++ "\n"
         ++ pshow conndefs ++ "\n"
         ++ "ENDDEF\n"

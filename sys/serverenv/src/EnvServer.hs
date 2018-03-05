@@ -4,6 +4,8 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
+{-# LANGUAGE ExistentialQuantification #-}
+
 -- ----------------------------------------------------------------------------------------- --
 
 module EnvServer
@@ -27,6 +29,7 @@ module EnvServer
 , isSimuled       --
 , isStepped       --
 , isLearned       --
+, isManualed      --
 , isGtNoned       -- isGtXX :: TxsModus -> Bool
 , isGtIdled       -- check whether torxakis modus is greater (further) than XX
 , isGtInited      --
@@ -39,7 +42,6 @@ module EnvServer
 
 where
 
-import           Control.Concurrent
 import           Control.Monad.State
 import           Network
 import           System.IO
@@ -54,7 +56,6 @@ import qualified EnvCore             as IOC
 
 -- import from defs
 import qualified Sigs
-import qualified TxsDDefs
 import qualified TxsDefs
 
 -- import from valexpr
@@ -103,11 +104,11 @@ envsNone  = EnvS { host      = ""
 data  TxsModus =   Noned
                  | Idled
                  | Inited
-                 | forall ew . (IOC.EWorld ew) => Tested   ew   -- ^ connections to eworld
-                 | forall ew . (IOC.EWorld ew) => Simuled  ew   -- ^ connections to eworld
+                 | Tested   TxsDefs.CnectDef   -- ^ cnectdef to eworld
+                 | Simuled  TxsDefs.CnectDef   -- ^ cnectdef to eworld
                  | Stepped
-                 | forall ew . (IOC.EWorld ew) => Learned  ew   -- ^ connections to eworld
-                 | forall ew . (IOC.EWorld ew) => Manualed ew   -- ^ connections to eworld
+                 | Learned  TxsDefs.CnectDef   -- ^ cnectdef to eworld
+                 | Manualed TxsDefs.CnectDef   -- ^ cnectdef to eworld
 
 isNoned, isIdled, isInited                            :: TxsModus -> Bool
 isTested, isSimuled, isStepped, isLearned, isManualed :: TxsModus -> Bool

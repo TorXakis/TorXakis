@@ -27,6 +27,8 @@ module TxsCore
   -- * terminate TorXakis core
 , txsTermit
 
+{-
+
   -- * Mode
   -- ** start testing
 , txsSetTest
@@ -55,14 +57,20 @@ module TxsCore
   -- *** step number of Actions
 , txsStepN
 
+-}
+
   -- *** go back to previous state
 , txsGoTo
+
+{-
 
   -- ** stop stepping
 , txsStopNW
 
   -- ** stop testing, simulating
 , txsStopEW
+
+-}
 
   -- * Parameters
   -- ** get all parameter values
@@ -90,14 +98,22 @@ module TxsCore
   -- ** finding a random solution for value expression
 , txsRanSolve
 
+{-
+
   -- * show item
 , txsShow
+
+-}
 
   -- * give path
 , txsPath
 
+{-
+
   -- * give menu
 , txsMenu
+
+-}
 
   -- * give action to mapper
 , txsMapper
@@ -114,33 +130,33 @@ module TxsCore
 
 where
 
-import           Control.Arrow
+-- import           Control.Arrow
 import           Control.Monad
 import           Control.Monad.State
-import qualified Data.List           as List
+-- import qualified Data.List           as List
 import qualified Data.Map            as Map
 import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Set            as Set
-import qualified Data.Text           as T
+-- import qualified Data.Text           as T
 import           System.Random
 
 -- import from local
 import           CoreUtils
-import           Ioco
+-- import           Ioco
 import           Mapper
 import           NComp
-import           Purpose
-import           Sim
-import           Step
-import           Test
+-- import           Purpose
+-- import           Sim
+-- import           Step
+-- import           Test
 
 import           Config              (Config)
 import qualified Config
 
 -- import from behave(defs)
-import qualified Behave
-import qualified BTree
+-- import qualified Behave
+-- import qualified BTree
 import           Expand              (relabel)
 
 -- import from coreenv
@@ -168,7 +184,7 @@ import qualified Eval
 
 -- import from valexpr
 import qualified SortId
--- import qualified SortOf
+import qualified SortOf
 import ConstDefs
 import VarId
 
@@ -243,6 +259,7 @@ txsTermit  =  do
        _ -> do                        -- IOC.Noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "txsTermit only in Initing mode" ] 
 
+{-
 
 -- | stop testing, simulating, or stepping.
 -- returns txscore to the initialized state, when no External World running.
@@ -295,6 +312,8 @@ txsStopEW eWorld  =  do
                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "txsStopEW only in Testing or Simuling mode" ]
                return eWorld
+
+-}
 
 
 -- | Get the values of all parameters.
@@ -444,6 +463,10 @@ txsRanSolve vexp  =  do
                                                                  "unknown" ]
                                                    return Map.empty
 
+-- ----------------------------------------------------------------------------------------- --
+
+{-
+
 
 -- | Start testing.
 --
@@ -484,7 +507,7 @@ txsSetTest eWorld moddef mapdef purpdef  =  do
                    -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
                          return eWorld 
                  Just bt 
-                   -> do eWorld' <- IOC.restartW eWorld
+                   -> do eWorld' <- IOC.startW eWorld
                          IOC.putCS IOC.Testing { IOC.smts      = smts
                                                , IOC.tdefs     = tdefs
                                                , IOC.sigs      = sigs
@@ -664,7 +687,7 @@ txsSetSim eWorld moddef mapdef  =  do
                    -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Simulator start failed" ]
                          return eWorld
                  Just bt
-                   -> do eWorld' <- IOC.restartW eWorld
+                   -> do eWorld' <- IOC.startW eWorld
                          IOC.putCS IOC.Simuling { IOC.smts      = smts
                                                 , IOC.tdefs     = tdefs
                                                 , IOC.sigs      = sigs
@@ -867,7 +890,12 @@ txsStepA act =  do
          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Stepper mode" ]
          return  TxsDDefs.NoVerdict
 
+-}
+
+
 -- ----------------------------------------------------------------------------------------- --
+
+{-
 
 -- | Show provided item.
 txsShow :: String               -- ^ kind of item to be shown.
@@ -925,6 +953,9 @@ txsShow item nm  = do
        in case defs of
             [(ident,txsdef)] -> TxsShow.fshow (ident,txsdef)
             _                -> "no (uniquely) defined item to be shown: " ++ nm' ++ "\n"
+
+-}
+
 
 -- | Go to state with the provided state number.
 -- core action.
@@ -992,6 +1023,8 @@ txsPath  =  do
            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "Path error" ]
            return []
 
+{-
+
 -- | Return the menu, i.e., all possible actions.
 txsMenu :: String                               -- ^ kind (valid values are "mod", "purp", or "map")
         -> String                               -- ^ what (valid values are "all", "in", "out", or a <goal name>)
@@ -1031,6 +1064,8 @@ txsMenu kind what  =  do
        ("purp",IOC.Testing {}) -> Purpose.goalMenu what
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
                return []
+
+-}
 
 -- | Give the provided action to the mapper.
 --

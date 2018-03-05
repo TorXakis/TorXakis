@@ -501,7 +501,7 @@ cmdLearner args  =  do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdManual :: String -> UIO ()
-cmdLearner args  =  do
+cmdManual args  =  do
      doCmd "MANUAL" args
      cmdsIntpr
 
@@ -531,6 +531,13 @@ cmdSim args  =  do
 cmdStep :: String -> UIO ()
 cmdStep args  =  do
      doCmd "STEP" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdLearn :: String -> UIO ()
+cmdLearn args  =  do
+     doCmd "LEARN" args
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --

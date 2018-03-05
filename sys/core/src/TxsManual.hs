@@ -19,20 +19,24 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 
 module TxsManual
+
 ( -- * set manual mode for external world
   txsSetMan
 
+  -- * stop manual mode for external world
+, txsStopMan
+
   -- * start external world manually
-, txsManStart
+, txsStartW
 
   -- * stop external world manually
-, txsManStop
+, txsStopW
 
   -- * send action to external world manually
-, txsManPutToW
+, txsPutToW
 
   -- * observe action from external world manually
-, txsManGetFroW
+, txsGetFroW
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -42,7 +46,7 @@ where
 
 -- import           Control.Arrow
 -- import           Control.Monad
--- import           Control.Monad.State
+import           Control.Monad.State
 -- import qualified Data.List           as List
 -- import qualified Data.Map            as Map
 -- import           Data.Maybe
@@ -70,13 +74,13 @@ where
 -- import           Expand              (relabel)
 
 -- import from coreenv
--- import qualified EnvCore             as IOC
--- -- import qualified EnvData
+import qualified EnvCore             as IOC
+import qualified EnvData
 -- import qualified ParamCore
 
 -- import from defs
 -- import qualified Sigs
--- import qualified TxsDDefs
+import qualified TxsDDefs
 -- import qualified TxsDefs
 -- import qualified TxsShow
 -- import           TxsUtils
@@ -106,7 +110,7 @@ where
 --   Only possible when txscore is initialized.
 txsSetMan :: IOC.EWorld ew
           => ew                             -- ^ external world.
-          -> IOC.IOC ew                     -- ^ modified external world.
+          -> IOC.IOC ()                     -- ^ modified external world.
 txsSetMan eWorld  =  do
      envc <- get
      let cState = IOC.state envc
@@ -122,18 +126,44 @@ txsSetMan eWorld  =  do
                                        , IOC.eworld    = eWorld
                                        , IOC.putmsgs   = putmsgs
                                        }
-       _ -> do                        -- IOC.Noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Manual mode started" ]
+       _ ->                           -- IOC.Noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Manual mode must start in Initing mode" ]
-               return eWorld
+
+-- ----------------------------------------------------------------------------------------- --
+
+-- | Stop manual mode
+--
+--   Only possible when txscore is in manual mode.
+txsStopMan :: IOC.IOC ()
+txsStopMan  =  do
+     envc <- get
+     let cState = IOC.state envc
+     case cState of
+       IOC.Manualing { IOC.smts      = smts
+                     , IOC.tdefs     = tdefs
+                     , IOC.sigs      = sigs
+                     , IOC.eworld    = _eWorld
+                     , IOC.putmsgs   = putmsgs
+                     }
+         -> do IOC.putCS  IOC.Initing { IOC.smts    = smts
+                                      , IOC.tdefs   = tdefs
+                                      , IOC.sigs    = sigs
+                                      , IOC.putmsgs = putmsgs
+                                      }
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Manual mode stopped" ]
+       _ ->                             -- IOC.Noning, IOC.Initing IOC.Testing, IOC.Simuling --
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Manual mode must stop from Manual mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
 
 -- | Start External World
 --
 --   Only possible when txscore is in manualing mode.
-txsManStartW :: IOC.IOC ()
-txsManStartW  =  do
+txsStartW :: IOC.IOC ()
+txsStartW  =  do
      envc <- get
      let cState = IOC.state envc
      case cState of
@@ -160,8 +190,8 @@ txsManStartW  =  do
 -- | Stop External World
 --
 --   Only possible when txscore is in manualing mode.
-txsManStopW :: IOC.IOC ()
-txsManStopW  =  do
+txsStopW :: IOC.IOC ()
+txsStopW  =  do
      envc <- get
      let cState = IOC.state envc
      case cState of
@@ -188,34 +218,36 @@ txsManStopW  =  do
 -- | Provide action to External World
 --
 --   Only possible when txscore is in manualing mode.
-txsManPutToW :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
-txsManPutToW act  =  do
+txsPutToW :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
+txsPutToW act  =  do
      envc <- get
      let cState = IOC.state envc
      case ( act, cState ) of
-       ( Act acts, IOC.Manualing { IOC.eworld  = eworld } )
+       ( TxsDDefs.Act _acts, IOC.Manualing { IOC.eworld  = eworld } )
          -> do act' <- IOC.putToW eworld act
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Action done: " ++ pshow act' ]
-       _ ->                           -- IOC.Noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               return act'
+       _ -> do                        -- IOC.Noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Manual action -no quiescence- on eworld only in Manualing Mode" ]
+               return TxsDDefs.ActQui
 
 -- ----------------------------------------------------------------------------------------- --
 
 -- | Observe action from External World
 --
 --   Only possible when txscore is in manualing mode.
-txsManGetFroW :: IOC.IOC TxsDDefs.Action
-txsManGetFroW  =  do
+txsGetFroW :: IOC.IOC TxsDDefs.Action
+txsGetFroW  =  do
      envc <- get
      let cState = IOC.state envc
      case cState of
        IOC.Manualing { IOC.eworld  = eworld }
          -> do act' <- IOC.getFroW eworld
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Action observed: " ++ pshow act' ]
-       _ ->                           -- IOC.Noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
+               return act'
+       _ -> do                        -- IOC.Noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Manual action -no quiescence- on eworld only in Manualing Mode" ]
+               return TxsDDefs.ActQui
 
 
 -- ----------------------------------------------------------------------------------------- --

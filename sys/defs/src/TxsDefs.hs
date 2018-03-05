@@ -41,7 +41,7 @@ module TxsDefs
 , GoalId(GoalId)
 , MapperDef(MapperDef)
 , MapperId(MapperId)
-, CnectDef(CnectDef)
+, CnectDef(..)
 , CnectId(CnectId)
 , ExitSort(..)
 , module X

@@ -111,6 +111,15 @@ filterEnvCtoEnvB = do
                             , IOB.unid     = IOC.unid envc
                             , IOB.msgs     = []
                             }
+       IOC.Manualing{..}
+         -> return IOB.EnvB { IOB.smts     = smts
+                            , IOB.tdefs    = tdefs
+                            , IOB.sigs     = sigs
+                            , IOB.stateid  = 0
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
 
 -- ----------------------------------------------------------------------------------------- --
 -- filterEnvCtoEnvB
@@ -190,6 +199,7 @@ nextBehTrie act = do
                      , IOC.curstate = maxstate+1
                      , IOC.maxstate = maxstate+1
                      }
+       IOC.Manualing {} -> return ()
 
 -- ----------------------------------------------------------------------------------------- --
 -- randMenu :  menu randomization
