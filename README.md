@@ -112,6 +112,21 @@ stack-linux.yaml` flag, but bear in mind that if you're in an Unix system you
 need to add it (or set the `STACK_YAML` environment variable to
 "stack-linux.yaml")
 
+If you experience problems when building from source, sometimes this could be
+due to Makefiles which do not handle parallel builds well. If problems appear
+while building, try setting the `MAKEFLAGS` variable to `" -j1 "` before
+running the build commands. For instance on Unix systems this can be achieved
+by running:
+
+```sh
+export MAKEFLAGS=" -j1 "
+stack setup
+stack install 
+```
+
+Note that the `MAKEFLAGS` variable does not affect the parallelism within
+`stack` itself.
+
 ### Testing
 
 When submitting a pull request, our continuous integration process will run a
