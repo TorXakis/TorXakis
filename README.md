@@ -47,31 +47,15 @@ sudo snap install torxakis_nightly_amd64.snap --dangerous
 
 ### macOS ###
 
-For macOS systems we provide a homebrew package. If you don't have the
-`homebrew` package manager installed on your macOS system follow the
-installation instruction on the [homebrew homepage](https://brew.sh/).
-
-To install `TorXakis` run:
+For macOS systems we provide a homebrew package. To install `TorXakis` run:
 
 ```sh
 brew tap torxakis/torxakis
 brew install torxakis
 ```
-Homebrew will fetch a pre-build binary and do a quick installation.
-Homebrew will also install [SMT][1] solver [Z3][3] as runtime dependency of the
-`TorXakis` package. On the [Homebrew tap for
-TorXakis](https://github.com/TorXakis/homebrew-TorXakis) are also instructions
-how to install the [SMT][1] solver [cvc4][2] and how to configure `TorXakis` to
-use it instead of [Z3][3].
 
-To install the latest HEAD source of `TorXakis` run:
-
-```sh
-brew tap torxakis/torxakis
-brew install --HEAD torxakis
-```
-There is no binary pre-build for the latest source, therefore homebrew will
-build and install `TorXakis` from that latest source itself.
+For more detailed instructions see the [Homebrew tap for
+TorXakis](https://github.com/TorXakis/homebrew-TorXakis).
 
 ## For Developers
 
