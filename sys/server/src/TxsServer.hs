@@ -29,7 +29,7 @@ import           Control.Concurrent
 import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad.State
-import qualified Data.Char           as Char
+-- import qualified Data.Char           as Char
 import qualified Data.List           as List
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
@@ -37,11 +37,10 @@ import qualified Data.Text           as T
 import           Network             hiding (socketPort)
 import           Network.Socket      hiding (accept, sClose)
 import           System.IO
-import           System.FilePath.Windows
 
 -- import from local
 import           CmdLineParser
-import           ToProcdef
+-- import           ToProcdef
 import qualified TxsServerConfig     as SC
 
 -- import from serverenv
@@ -60,11 +59,11 @@ import qualified TxsDefs
 import qualified Sigs
 import qualified TxsShow
 import qualified Utils
-import qualified VarId
+-- import qualified VarId
 
 -- import from valexpr
 import           Id
-import qualified ValExpr
+-- import qualified ValExpr
 
 -- import from front
 import qualified TxsAlex
@@ -139,7 +138,6 @@ cmdsIntpr = do
        ("STOP"     , "")   | IOS.isGtInited modus  ->  cmdStop
        ("STOP"     , _ )                           ->  cmdNoop      cmd
 -- -------------------------------------------------------------------------------- settings --
-{-
        ("INFO"     , "")   | IOS.isGtNoned  modus  ->  cmdInfo
        ("INFO"     , _ )                           ->  cmdNoop      cmd
        ("PARAM"    , _ )   | IOS.isGtNoned  modus  ->  cmdParam     args
@@ -147,6 +145,7 @@ cmdsIntpr = do
        ("SEED"     , _ )   | IOS.isGtNoned  modus  ->  cmdSeed      args
        ("SEED"     , _ )                           ->  cmdNoop      cmd
 -- ------------------------------------------------------------------------------------ data --
+{-
        ("VAR"      , _ )   | IOS.isGtIdled  modus  ->  cmdVar       args
        ("VAR"      , _ )                           ->  cmdNoop      cmd
        ("VAL"      , _ )   | IOS.isGtIdled  modus  ->  cmdVal       args
@@ -200,8 +199,8 @@ cmdsIntpr = do
        ("NCOMP"    , _ )                           ->  cmdNoop      cmd
        ("LPE"      , _ )   | IOS.isInited   modus  ->  cmdLPE       args
        ("LPE"      , _ )                           ->  cmdNoop      cmd
-       (_          , _ )                           ->  cmdUnknown   cmd
 -}
+       (_          , _ )                           ->  cmdUnknown   cmd
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -211,14 +210,14 @@ cmdsIntpr = do
 
 cmdNoop :: String -> IOS.IOS ()
 cmdNoop cmd = do
-     IFS.nack cmd [ "inopportune command"]
+     IFS.nack cmd [ "inopportune command: " ++ cmd ]
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdUnknown :: String -> IOS.IOS ()
 cmdUnknown cmd = do
-     IFS.nack cmd [ "unknown command" ]
+     IFS.nack cmd [ "unknown command: " ++ cmd ]
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
@@ -245,10 +244,31 @@ cmdQuit = do                                                             -- PRE 
 
 cmdInit :: String -> IOS.IOS ()
 cmdInit args = do                                                   -- PRE :  modus == Idled --
-     servhs  <- gets IOS.servhs
-     unid    <- gets IOS.uid
-     tdefs   <- gets IOS.tdefs
-     sigs    <- gets IOS.sigs
+     servhs             <- gets IOS.servhs
+     unid               <- gets IOS.uid
+     tdefs              <- gets IOS.tdefs
+     sigs               <- gets IOS.sigs
+     srctxts            <- lift $ lift $ mapM readFile (words args)
+     let srctxt          = List.intercalate "\n\n" srctxts
+     ((unid',tdefs', sigs'),e) <- lift $ lift $ catch
+                             ( let parsing = TxsHappy.txsParser (TxsAlex.txsLexer srctxt)
+                                in return $!! (parsing, "")
+                             )
+                             ( \e -> return ((unid, tdefs, sigs), show (e::ErrorCall)))
+     if e /= ""
+       then do IFS.nack "INIT" [e]
+               cmdsIntpr
+       else do modify $ \env -> env { IOS.modus  = IOS.Inited
+                                    , IOS.uid    = unid'
+                                    , IOS.tdefs  = tdefs'
+                                    , IOS.sigs   = sigs'
+                                    }
+               lift $ TxsCore.txsInit tdefs' sigs' ( IFS.hmack servhs . map TxsShow.pshow )
+               IFS.pack "INIT" ["input files parsed:", unwords (words args)]
+               cmdsIntpr
+
+{-
+
      srctxts <- lift $ lift $ sequence
                   [ catch ( do srctxt <- readFile fname
                                return (fname,srctxt, "")
@@ -286,6 +306,8 @@ cmdInit args = do                                                   -- PRE :  mo
                          IFS.pack "INIT" [ "input files parsed: " ++ fnames ]
                          cmdsIntpr
 
+-}
+
 -- ----------------------------------------------------------------------------------------- --
 
 cmdTermit :: IOS.IOS ()
@@ -304,30 +326,30 @@ cmdStop :: IOS.IOS ()
 cmdStop = do                  -- PRE :  modus == Tested, Simuled, Stepped, Learned, Manualed --
      modus <- gets IOS.modus
      case modus of
-       IOS.Tested cnectdef   -> do modify $ \env -> env { IOS.modus = IOS.Inited }
---                             _ <- lift $ TxsCore.txsStopEW ew 
---                             IFS.pack "STOP" []
-                                   cmdsIntpr
-       IOS.Simuled cnectdef  -> do modify $ \env -> env { IOS.modus = IOS.Inited }
---                             _ <- lift $ TxsCore.txsStopEW ew 
---                             IFS.pack "STOP" []
-                                   cmdsIntpr
+       IOS.Tested _   -> do modify $ \env -> env { IOS.modus = IOS.Inited }
+--                          _ <- lift $ TxsCore.txsStopEW ew 
+--                          IFS.pack "STOP" []
+                            cmdsIntpr
+       IOS.Simuled _  -> do modify $ \env -> env { IOS.modus = IOS.Inited }
+--                          _ <- lift $ TxsCore.txsStopEW ew 
+--                          IFS.pack "STOP" []
+                            cmdsIntpr
        IOS.Stepped           -> do -- modify $ \env -> env { IOS.modus = IOS.Inited }
 --                                    lift TxsCore.txsStopNW
 --                                    IFS.pack "STOP" []
                                    cmdsIntpr
-       IOS.Learned cnectdef  -> do modify $ \env -> env { IOS.modus = IOS.Inited }
---                             _ <- lift $ TxsCore.txsStopEW ew
---                             IFS.pack "STOP" []
-                                   cmdsIntpr
-       IOS.Manualed cnectdef -> do modify $ \env -> env { IOS.modus = IOS.Inited }
-                                   lift TxsManual.txsStopMan
-                                   IFS.pack "STOP" []
-                                   cmdsIntpr
+       IOS.Learned _  -> do modify $ \env -> env { IOS.modus = IOS.Inited }
+--                          _ <- lift $ TxsCore.txsStopEW ew
+--                          IFS.pack "STOP" []
+                            cmdsIntpr
+       IOS.Manualed _ -> do modify $ \env -> env { IOS.modus = IOS.Inited }
+                            lift TxsManual.txsStopMan
+                            IFS.pack "STOP" []
+                            cmdsIntpr
+       _              -> do IFS.nack "STOP" [ "cannot stop from current mode" ]
+                            cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
-
-{-
 
 cmdInfo :: IOS.IOS ()
 cmdInfo = do                                                         -- PRE :  modus > Noned --
@@ -379,6 +401,8 @@ cmdSeed args =                                                       -- PRE :  m
                    cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
+
+{-
 
 cmdVar :: String -> IOS.IOS ()
 cmdVar args = do                                                     -- PRE :  modus > Idled --
@@ -807,22 +831,22 @@ cmdManual args = do                                                -- PRE :  mod
      [(_,connDelayVal)]  <- IOS.getParams ["param_EW_connDelay"]
      [(_,deltaTimeVal)]  <- IOS.getParams ["param_Sut_deltaTime"]
      [(_,chReadTimeVal)] <- IOS.getParams ["param_Sut_ioTime"]
-     let connDelay = read connDelayVal
-         deltaTime = read deltaTimeVal
+     let connDelay  = read connDelayVal
+         deltaTime  = read deltaTimeVal
          chReadTime = read chReadTimeVal
-         cnectDefs = Map.toList $ TxsDefs.cnectDefs (IOS.tdefs envs)
-         cdefs     = [ cdef | (TxsDefs.CnectId nm _, cdef) <- cnectDefs , T.unpack nm == args ]
+         cnectDefs  = Map.toList $ TxsDefs.cnectDefs (IOS.tdefs envs)
+         cdefs      = [ cdef | (TxsDefs.CnectId nm _, cdef) <- cnectDefs, T.unpack nm == args ]
      case cdefs of
-       [ cnectdef@(TxsDefs.CnectSockExplW cmdw ctype conndefs) ]
-         -> do let ew = SockExplW.setSockExplW cnectdef connDelay deltaTime chReadTime
+       [ cdef@(TxsDefs.CnectSockExplW _ _ _) ]
+         -> do let ew = SockExplW.setSockExplW cdef connDelay deltaTime chReadTime
                lift $ TxsManual.txsSetMan ew
-               modify $ \env -> env { IOS.modus = IOS.Manualed cnectdef }
+               modify $ \env -> env { IOS.modus = IOS.Manualed cdef }
                IFS.pack "MANUAL" []
                cmdsIntpr
-       [ cnectdef@(TxsDefs.CnectSockImplW ctype conndefs) ]
-         -> do let ew = SockImplW.setSockImplW cnectdef connDelay deltaTime chReadTime
+       [ cdef@(TxsDefs.CnectSockImplW _ _) ]
+         -> do let ew = SockImplW.setSockImplW cdef connDelay deltaTime chReadTime
                lift $ TxsManual.txsSetMan ew
-               modify $ \env -> env { IOS.modus = IOS.Manualed cnectdef }
+               modify $ \env -> env { IOS.modus = IOS.Manualed cdef }
                IFS.pack "MANUAL" []
                cmdsIntpr
        _ -> do IFS.nack "MANUAL" [ "no (unique) cnectdef" ]
@@ -974,7 +998,7 @@ cmdLearn args =                                                   -- PRE :  modu
 
 cmdMan :: String -> IOS.IOS ()
 cmdMan args = do                                                 -- PRE :  modus == Manualed --
-     IOS.Manualed cnectdef <- gets IOS.modus
+     IOS.Manualed cdef <- gets IOS.modus
      case words args of
        ["start"]
          -> do lift $ TxsManual.txsStartW
@@ -985,18 +1009,17 @@ cmdMan args = do                                                 -- PRE :  modus
                IFS.pack "MAN" []
                cmdsIntpr
        ("act":args')
-         -> do let connDefs = case cnectdef of
+         -> do let connDefs = case cdef of
                                 TxsDefs.CnectSockExplW _ _ conndefs -> conndefs
                                 TxsDefs.CnectSockImplW _   conndefs -> conndefs
-                                _                           -> []
                    chanToWs = [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- connDefs ]
                act <- readAction chanToWs (unwords args')
-               lift $ TxsManual.txsPutToW act
-               IFS.pack "MAN" []
+               act' <- lift $ TxsManual.txsPutToW act
+               IFS.pack "MAN" [ "Action: " ++ (TxsShow.pshow act') ]
                cmdsIntpr
        ["obs"]
-         -> do act <- lift $ TxsManual.txsGetFroW
-               IFS.pack "MAN" []
+         -> do act' <- lift $ TxsManual.txsGetFroW
+               IFS.pack "MAN" [ "Action: " ++ (TxsShow.pshow act') ]
                cmdsIntpr
        _ -> do IFS.nack "MAN" [ "unknown manual operation" ]
                cmdsIntpr
@@ -1218,6 +1241,8 @@ readAction chids args = do
 -- ----------------------------------------------------------------------------------------- --
 -- readBExpr :  read BExpr from String
 
+{-
+
 readBExpr :: [TxsDefs.ChanId] -> String -> IOS.IOS TxsDefs.BExpr
 readBExpr chids args = do
      uid               <- gets IOS.uid
@@ -1240,6 +1265,8 @@ readBExpr chids args = do
        then do IFS.nack "ERROR" [ "incorrect behaviour expression: " ++ e ]
                return TxsDefs.Stop
        else return bexpr'
+
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

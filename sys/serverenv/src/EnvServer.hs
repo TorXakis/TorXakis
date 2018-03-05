@@ -109,10 +109,12 @@ data  TxsModus =   Noned
                  | Stepped
                  | Learned  TxsDefs.CnectDef   -- ^ cnectdef to eworld
                  | Manualed TxsDefs.CnectDef   -- ^ cnectdef to eworld
+     deriving Show
 
 isNoned, isIdled, isInited                            :: TxsModus -> Bool
 isTested, isSimuled, isStepped, isLearned, isManualed :: TxsModus -> Bool
 isGtNoned, isGtIdled, isGtInited                      :: TxsModus -> Bool
+isNoned    Noned        = True
 isNoned    _            = False
 isIdled    Idled        = True
 isIdled    _            = False

@@ -44,6 +44,10 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
             -- param_Sut_ioTime :: Int (>0)
             --  timeout for input when trying output (msec, >0)
 
+  , ( "param_EW_connDelay"       , "1000"      , all Char.isDigit               )
+            -- param_EW_connDelay :: Int (>0)
+            -- delay between starting EW and connecting sockets (msec, >0)
+
 -- ----------------------------------------------------------------------------------------- --
 -- simulation
 
