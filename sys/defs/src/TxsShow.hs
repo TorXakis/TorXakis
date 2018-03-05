@@ -42,6 +42,7 @@ import           PurpId
 import           SortDef
 import           SortId
 import           StatId
+import           StdTDefs
 import           Sum
 import           TxsDefs
 import           ValExpr
@@ -169,7 +170,7 @@ instance PShow BExpr
       =  case bexps of
          { [] -> "STOP\n"
          ; be -> "( " ++
-                  Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (delete chanIdExit chans)) ++" ]|\n( ")
+                  Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (List.delete chanIdExit chans)) ++" ]|\n( ")
                              (map pshow be)
                  ++ " )"
          }
