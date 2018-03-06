@@ -28,8 +28,10 @@ import Sort
 import VarId
 
 -- | torxakis definitions
-data  TxsDef = DefADT       (ADTDef Name)
-             | DefFunc      (FuncDef VarId)
+data  TxsDef = -- DefADT (ADTDef Name) TODO: this is an bad trick for making a
+               -- function polymorphic, and we should get rid of it. This ADT
+               -- should be removed as soon as possible.
+               DefFunc      (FuncDef VarId)
              | DefProc      ProcDef
              | DefModel     ModelDef
              | DefPurp      PurpDef

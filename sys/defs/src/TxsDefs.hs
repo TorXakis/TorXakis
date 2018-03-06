@@ -24,6 +24,7 @@ module TxsDefs
 , TxsDefs.elems
 , TxsDefs.union
 , TxsDefs.insert
+, TxsDef(..)
 , VarEnv
 , VExpr
 , VEnv
@@ -53,6 +54,7 @@ import           GHC.Generics    (Generic)
 
 import           BehExprDefs     as X
 import           ConnectionDefs  as X
+import           Ident           as X
 
 import           ChanId
 import           CnectDef
@@ -149,12 +151,10 @@ insert (IdPurp s)   (DefPurp d)   t     = t { purpDefs   = Map.insert s d  (purp
 insert (IdGoal s)   DefGoal       t     = t { goalDefs   = Map.insert s () (goalDefs t)   }
 insert (IdMapper s) (DefMapper d) t     = t { mapperDefs = Map.insert s d  (mapperDefs t) }
 insert (IdCnect s)  (DefCnect d)  t     = t { cnectDefs  = Map.insert s d  (cnectDefs t)  }
-insert (IdADT _)    (DefADT d)    t     = t { adtDefs    = newADTDefs   }
-                                          where Right newADTDefs = addADTDefs [d] (adtDefs  t)
 insert i            d             _     = error $ "Unknown insert\nident = " ++ show i ++ "\ndefinition = " ++ show d
 
-fromList :: [(Ident, TxsDef)] -> Either Text TxsDefs
-fromList = foldl addElem TxsDefs.empty
+fromList :: [(Ident, TxsDef)] -> TxsDefs
+fromList = foldl addElem empty
   where
     addElem :: TxsDefs -> (Ident,TxsDef) -> TxsDefs
     addElem t (k,v) = insert k v t

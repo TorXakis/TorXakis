@@ -23,6 +23,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE ExistentialQuantification     #-}
 module Sort.FieldDefs
 ( -- * Fields
   -- ** Data structure
@@ -88,7 +89,7 @@ data FieldDefs sr = FieldDefs { -- | Transform 'FieldDefs' to a list of 'FieldDe
 --
 --   Note that the position in the list is relevant as it represents implicit
 --   positions of the fields in a constructor.
-fieldDefs :: [FieldDef Name] -> Either ADTFieldError (FieldDefs Name)
+fieldDefs :: [FieldDef t] -> Either (ADTFieldError t) (FieldDefs t)
 fieldDefs fs
     | not $ null nuFieldNames = Left $ FieldNamesNotUnique nuFieldNames
     | otherwise = Right $ FieldDefs fs $ length fs
@@ -97,10 +98,10 @@ fieldDefs fs
 
 -- | Type of errors that are raised when it's not possible to build a
 --   'FieldDefs' structure via 'fieldDefs' function.
-newtype ADTFieldError = FieldNamesNotUnique [FieldDef Name]
+newtype ADTFieldError t = FieldNamesNotUnique [FieldDef t]
     deriving (Eq)
 
-instance Show ADTFieldError where
+instance Show t => Show (ADTFieldError t) where
     show (FieldNamesNotUnique fDefs) = "Names of following field definitions are not unique: " ++ show fDefs
 
 instance ConvertsTo a a' => ConvertsTo (FieldDef a) (FieldDef a') where

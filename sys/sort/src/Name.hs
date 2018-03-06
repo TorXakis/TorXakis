@@ -23,7 +23,7 @@ See LICENSE at root directory of this repository.
 module Name
 ( Name
 , toText
-, name
+, mkName
 , fromNonEmpty
 , searchDuplicateNames
 , searchDuplicateNames2
@@ -58,6 +58,8 @@ class HasName a where
 instance HasName Name where
     getName = id
 
+instance (HasName a, HasName b) => HasName (Either a b) where
+    getName = either getName getName
     
 -- | Smart constructor for Name.
 --
@@ -72,9 +74,13 @@ instance HasName Name where
 --   * or a 'Name' structure containing the 'Data.Text'
 --
 --   is returned.
-name :: Text -> Either Text Name
-name s | T.null s = Left $ T.pack "Illegal input: Empty String"
-name s            = Right $ Name s
+--
+-- TODO: change name into 'mkName' or something like that, since otherwise we
+-- have to use this as 'Sort.name' to avoid conflicts with the other multiple
+-- 'name's, and 'Sort.name' is confusing.
+mkName :: Text -> Either Text Name
+mkName s | T.null s = Left $ T.pack "Illegal input: Empty String"
+mkName s            = Right $ Name s
 
 -- | Smart constructor to create a 'Name' from a 'Data.List.NonEmpty.NonEmpty'
 --   'Char' list.

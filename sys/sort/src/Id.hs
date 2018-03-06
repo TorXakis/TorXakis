@@ -64,6 +64,9 @@ instance Resettable Char where
 instance Resettable Text where
     reset = id
 
+instance Resettable a => Resettable (Maybe a) where
+    reset = fmap reset
+
 -- | We don't want to reset @Integer@s, since they are not @Id@s.
 instance Resettable Integer where
     reset = id
@@ -123,6 +126,9 @@ instance Identifiable Id where
 
 instance Identifiable Text where
     getId = const Nothing
+
+instance Identifiable a => Identifiable (Maybe a) where
+    getId ma = ma >>= getId
 
 instance Identifiable a => Identifiable [a] where
     getId = asum . (getId <$>)

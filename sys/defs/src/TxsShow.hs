@@ -82,69 +82,70 @@ instance PShow Sort where
   
 -- | PShow: TxsDefs
 instance PShow TxsDefs where
-  pshow tdefs = foldl showElem "\n" (TxsDefs.toList tdefs)
-    where
-      showElem :: String ->  (Ident, TxsDef) -> String
-      showElem s ( _ , DefChan ) =
-        s ++ "\n"
-      showElem s ( _ , DefVar ) =
-        s ++ "\n"
-      showElem s ( _ , DefStat ) =
-        s ++ "\n"
-      showElem s ( _ , DefGoal ) =
-        s ++ "\n"
-      showElem s (_ , DefADT ADTDef{adtName=nm, constructors=cstrDfs}) =
-        s ++ "\nTYPEDEF " ++ T.unpack (toText nm) ++ " ::= " ++ show cstrDfs ++ " ENDDEF\n" -- todo: print cstrDfs pretty
-      showElem s (IdFunc (FuncId nm _ a srt), DefFunc (FuncDef vids vexp) ) =
-        s ++ "\nFUNCDEF " ++ T.unpack (toText nm)
-        ++ " ( " ++ Utils.join "; " [ T.unpack (toText n) ++ " :: " ++ pshow vsrt
-                                    | VarId n _ vsrt <- vids
-                                    ]
-        ++ " ) "
-        ++ " :: " ++ Utils.join " # " (map pshow a)
-        ++ " -> " ++ pshow srt ++ " ;\n"
-        ++ "  ::=  " ++ pshow vexp ++ " ;\n"
-      showElem s (IdProc (ProcId nm _ chans pvars xt), DefProc (ProcDef _ _ bexp) ) =
-        s ++ "\nPROCDEF " ++ T.unpack (toText nm)
-        ++ " [ " ++ Utils.join "; "
-        [ T.unpack (toText n) ++ " :: " ++ Utils.join " # " (map pshow srts)
-        | ChanId n _ srts <- chans
-        ]
-        ++ " ] "
-        ++ " ( " ++ Utils.join "; " [ T.unpack (toText n) ++ " :: " ++ pshow srt
-                                    | VarId n _ srt <- pvars
-                                    ]
-        ++ " ) "
-        ++ case xt of
-             NoExit     -> "NOEXIT\n"
-             Exit xsrts -> "EXIT " ++ Utils.join " # " (map pshow xsrts) ++ " \n"
-             Hit        -> "HIT\n"
-        ++ "  ::=\n" ++ pshow bexp ++  "\nENDDEF\n"
-      showElem s (IdModel (ModelId nm _), DefModel (ModelDef chins chouts _ bexp) ) =
-        s ++ "\nMODELDEF " ++ T.unpack (toText nm) ++"  ::=\n"
-        ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
-        ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
-        ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
-        ++ "ENDDEF\n"
-      showElem s (IdPurp (PurpId nm _), DefPurp (PurpDef chins chouts _ goals) ) =
-        s ++ "\nPURPDEF " ++ T.unpack (toText nm) ++"  ::=\n"
-        ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
-        ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
-        ++ "  BEHAVIOUR " ++ pshow goals   ++ "\n"
-        ++ "ENDDEF\n"
-      showElem s (IdMapper (MapperId nm _), DefMapper (MapperDef chins chouts _ bexp) ) =
-        s ++ "\nMAPPERDEF " ++ T.unpack (toText nm) ++"  ::=\n"
-        ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
-        ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
-        ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
-        ++ "ENDDEF\n"
-      showElem s (IdCnect (CnectId nm _), DefCnect (CnectDef cnecttype conndefs) ) =
-        s ++ "\nCNECTDEF " ++ T.unpack (toText nm) ++"  ::=\n"
-        ++ pshow cnecttype ++ "\n"
-        ++ pshow conndefs ++ "\n"
-        ++ "ENDDEF\n"
-      showElem _ _ =
-        error "illegal list"
+  pshow tdefs = "" -- TODO: show the TxsDefs. 
+      -- foldl showElem "\n" (TxsDefs.toList tdefs)
+    -- where
+    --   showElem :: String ->  (Ident, TxsDef) -> String
+    --   showElem s ( _ , DefChan ) =
+    --     s ++ "\n"
+    --   showElem s ( _ , DefVar ) =
+    --     s ++ "\n"
+    --   showElem s ( _ , DefStat ) =
+    --     s ++ "\n"
+    --   showElem s ( _ , DefGoal ) =
+    --     s ++ "\n"
+    --   showElem s (_ , DefADT ADTDef{adtName=nm, constructors=cstrDfs}) =
+    --     s ++ "\nTYPEDEF " ++ T.unpack (toText nm) ++ " ::= " ++ show cstrDfs ++ " ENDDEF\n" -- todo: print cstrDfs pretty
+    --   showElem s (IdFunc (FuncId nm _ a srt), DefFunc (FuncDef vids vexp) ) =
+    --     s ++ "\nFUNCDEF " ++ T.unpack (toText nm)
+    --     ++ " ( " ++ Utils.join "; " [ T.unpack (toText n) ++ " :: " ++ pshow vsrt
+    --                                 | VarId n _ vsrt <- vids
+    --                                 ]
+    --     ++ " ) "
+    --     ++ " :: " ++ Utils.join " # " (map pshow a)
+    --     ++ " -> " ++ pshow srt ++ " ;\n"
+    --     ++ "  ::=  " ++ pshow vexp ++ " ;\n"
+    --   showElem s (IdProc (ProcId nm _ chans pvars xt), DefProc (ProcDef _ _ bexp) ) =
+    --     s ++ "\nPROCDEF " ++ T.unpack (toText nm)
+    --     ++ " [ " ++ Utils.join "; "
+    --     [ T.unpack (toText n) ++ " :: " ++ Utils.join " # " (map pshow srts)
+    --     | ChanId n _ srts <- chans
+    --     ]
+    --     ++ " ] "
+    --     ++ " ( " ++ Utils.join "; " [ T.unpack (toText n) ++ " :: " ++ pshow srt
+    --                                 | VarId n _ srt <- pvars
+    --                                 ]
+    --     ++ " ) "
+    --     ++ case xt of
+    --          NoExit     -> "NOEXIT\n"
+    --          Exit xsrts -> "EXIT " ++ Utils.join " # " (map pshow xsrts) ++ " \n"
+    --          Hit        -> "HIT\n"
+    --     ++ "  ::=\n" ++ pshow bexp ++  "\nENDDEF\n"
+    --   showElem s (IdModel (ModelId nm _), DefModel (ModelDef chins chouts _ bexp) ) =
+    --     s ++ "\nMODELDEF " ++ T.unpack (toText nm) ++"  ::=\n"
+    --     ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
+    --     ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
+    --     ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
+    --     ++ "ENDDEF\n"
+    --   showElem s (IdPurp (PurpId nm _), DefPurp (PurpDef chins chouts _ goals) ) =
+    --     s ++ "\nPURPDEF " ++ T.unpack (toText nm) ++"  ::=\n"
+    --     ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
+    --     ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
+    --     ++ "  BEHAVIOUR " ++ pshow goals   ++ "\n"
+    --     ++ "ENDDEF\n"
+    --   showElem s (IdMapper (MapperId nm _), DefMapper (MapperDef chins chouts _ bexp) ) =
+    --     s ++ "\nMAPPERDEF " ++ T.unpack (toText nm) ++"  ::=\n"
+    --     ++ "  CHAN IN   " ++ Utils.join "," (map pshow chins)  ++ "\n"
+    --     ++ "  CHAN OUT  " ++ Utils.join "," (map pshow chouts) ++ "\n"
+    --     ++ "  BEHAVIOUR " ++ pshow bexp   ++ "\n"
+    --     ++ "ENDDEF\n"
+    --   showElem s (IdCnect (CnectId nm _), DefCnect (CnectDef cnecttype conndefs) ) =
+    --     s ++ "\nCNECTDEF " ++ T.unpack (toText nm) ++"  ::=\n"
+    --     ++ pshow cnecttype ++ "\n"
+    --     ++ pshow conndefs ++ "\n"
+    --     ++ "ENDDEF\n"
+    --   showElem _ _ =
+    --     error "illegal list"
 
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: BExpr
@@ -227,7 +228,8 @@ instance PShow Offer where
 
 instance PShow ChanOffer
   where
-    pshow (Quest (VarId nm _ vs))
+      -- TODO: we might need to add a case in case the variable name is empty
+    pshow (Quest (VarId (Just nm) _ vs))
       =  " ? " ++ T.unpack (toText nm) ++ " :: " ++ pshow vs
     pshow (Exclam vexp)
       =  " ! " ++ pshow vexp
@@ -358,11 +360,6 @@ instance PShow Trans
 
 instance PShow TxsDef
   where
-    pshow (DefADT (ADTDef nm cstrs))
-      = "CONSTRUCTOR\n" ++
-        "      " ++ T.unpack (toText nm)  ++ "\n" ++
-        "      " ++ show cstrs  ++ "\n" ++ "\n" -- TODO: show cstrs
-
     pshow (DefFunc   (FuncDef vids vexp))
       = "FUNCTION\n" ++
         "      " ++ pshow vids  ++ "\n" ++
@@ -438,7 +435,8 @@ instance PShow StatId where
   pshow = T.unpack . toText . StatId.name
 
 instance PShow VarId where
-  pshow = T.unpack . toText . VarId.name
+  -- TODO: we might need to add a case if the variable name is Nothing! 
+  pshow (VarId (Just n) _ _) = T.unpack . toText $ n
 
 instance PShow ModelId where
   pshow = T.unpack . toText . ModelId.name

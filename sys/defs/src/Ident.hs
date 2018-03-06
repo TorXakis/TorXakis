@@ -67,7 +67,7 @@ name (IdADT r)    = toName r
 name (IdFunc i)   = FuncId.name i
 name (IdProc i)   = ProcId.name i
 name (IdChan i)   = ChanId.name i
-name (IdVar i)    = VarId.name i
+name (IdVar i)    = let Just n = VarId.name i in n -- TODO: I don't know if name is ever called on an empty IdVar
 name (IdStat i)   = StatId.name i
 name (IdModel i)  = ModelId.name i
 name (IdPurp i)   = PurpId.name i

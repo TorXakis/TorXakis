@@ -103,14 +103,13 @@ constructorDefs cs
 getFieldNames :: ConstructorDef v -> [Name]
 getFieldNames = map fieldName . fDefsToList . fields
 
--- | Extract sorts from 'FieldDef's of given 'ConstructorDef'; whether they ore
---   'Name's or 'Sort's.
+-- | Extract sorts from 'FieldDef's of given 'ConstructorDef'.
 getFieldSorts :: ConstructorDef v -> [v]
 getFieldSorts = map sort . fDefsToList . fields
 
 -- | Extract 'Name's of sorts from 'FieldDef's of all 'ConstructorDef's in given
 --  'ConstructDefs'.
-getAllFieldSortNames :: ConstructorDefs Name -> [Name]
+getAllFieldSortNames :: ConstructorDefs t -> [t]
 getAllFieldSortNames = concatMap getFieldSorts . Map.elems . cDefsToMap
 
 -- | Type of errors that are raised when it's not possible to build a

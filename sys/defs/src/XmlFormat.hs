@@ -86,7 +86,7 @@ lookupConstructorName txsdefs aRef cNmTxt  =
                 (error $ "Constructor " ++ T.unpack cNmTxt ++ " not found in ADT " ++ show aRef)
                 (findConstructor cNm ad)
             where
-                Right cNm = name cNmTxt
+                Right cNm = mkName cNmTxt
 
 lookupConstructorDef :: TxsDefs -> Ref (ADTDef Sort) -> Ref (ConstructorDef Sort) -> ConstructorDef Sort
 lookupConstructorDef txsdefs aRef cRef =
