@@ -71,8 +71,8 @@ updateCfg ma f cfg = maybe cfg (f cfg) ma
 
 -- | Updates a Map of parameters' values with given list of configured parameter
 updateParamVals :: Params -- ^ Map of parameters ( Map.Map String (String,String->Bool) )
-                   -> [(ParamName, ParamValue)] -- ^ List of configured parameters
-                   -> Params
+                -> [(ParamName, ParamValue)] -- ^ List of configured parameters
+                -> Params
 updateParamVals = foldl applyConfParam
   where applyConfParam :: Params
                        -> (ParamName, ParamValue)
