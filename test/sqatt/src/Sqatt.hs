@@ -468,7 +468,6 @@ testExample logDir ex = it (exampleName ex) $ do
   let mLogDir = logDirOfExample (Just logDir) (exampleName ex)
   res <- runExceptT $ runTest $ execTest mLogDir ex
   tearDownAction ex
-  -- sleep 2.0 -- let the files be closed -- TODO: If necessary, do this in teardown
   unless (isRight res) (sh $ dumpToScreen $ fromJust mLogDir)
   res `shouldBe` Right ()
 
@@ -477,6 +476,7 @@ logDirOfExample topLogDir exmpName = (</> (fromString . toFSSafeStr) exmpName) <
 
 dumpToScreen :: FilePath -> Shell ()
 dumpToScreen logDir = do
+  sleep 2.0
   file <- ls logDir
   liftIO $ putStrLn $ "==> " ++ encodeString file
   stdout $ "> " <> input file

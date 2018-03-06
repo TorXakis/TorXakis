@@ -17,9 +17,10 @@ testDir :: Sqatt.FilePath
 testDir = "ConfigFile"
 
 testSet :: TxsExampleSet
-testSet = TxsExampleSet "ConfigFile" $ map newValTest   paramNewValues
-                                    ++ map emptyValTest paramDefaultValues
-                                    ++ map wrongValTest paramDefaultValues
+testSet = TxsExampleSet "ConfigFile #long"
+              $  map newValTest   paramNewValues
+              ++ map emptyValTest paramDefaultValues
+              ++ map wrongValTest paramDefaultValues
 
 paramNewValues :: [(Text, Text)]
 paramNewValues = [ ("IncrementChoice_IntPower", "14")
@@ -46,13 +47,7 @@ paramNewValues = [ ("IncrementChoice_IntPower", "14")
                  ]
 
 newValTest :: (Text, Text) -> TxsExample
-newValTest (pNm,pVl) = emptyExample
-    { exampleName = "New value for: " ++ T.unpack pNm
-    , setupAction = setupParamTest pNm pVl
-    , tearDownAction = tearDownParamTest pNm
-    , txsCmdsFiles = [ txsCmdPath ITest testDir pNm ]
-    , expectedResult = Message $ "param_" <> pNm <> " = " <> pVl
-    }
+newValTest (pNm,pVl) = templateTest "New" pNm pVl pVl
 
 paramDefaultValues :: [(Text, Text)]
 paramDefaultValues = [ ("ImpRel", "IOCO")
@@ -77,21 +72,18 @@ paramDefaultValues = [ ("ImpRel", "IOCO")
                      ]
 
 emptyValTest :: (Text, Text) -> TxsExample
-emptyValTest (pNm,defVal) = emptyExample
-    { exampleName = "Empty value for: " ++ T.unpack pNm
-    , setupAction = setupParamTest pNm T.empty
-    , tearDownAction = tearDownParamTest pNm
-    , txsCmdsFiles = [ txsCmdPath ITest testDir pNm ]
-    , expectedResult = Message $ "param_" <> pNm <> " = " <> defVal
-    }
+emptyValTest (pNm,defVal) = templateTest "Empty" pNm T.empty defVal
 
 wrongValTest :: (Text, Text) -> TxsExample
-wrongValTest (pNm,defVal) = emptyExample
-    { exampleName = "Wrong value for: " ++ T.unpack pNm
-    , setupAction = setupParamTest pNm "Wrong"
+wrongValTest (pNm,defVal) = templateTest "Wrong" pNm "WrongVal" defVal
+
+templateTest :: String -> Text -> Text -> Text -> TxsExample
+templateTest exPrefix pNm newVal expVal = emptyExample
+    { exampleName = exPrefix ++ " value for: " ++ T.unpack pNm
+    , setupAction = setupParamTest pNm newVal
     , tearDownAction = tearDownParamTest pNm
     , txsCmdsFiles = [ txsCmdPath ITest testDir pNm ]
-    , expectedResult = Message $ "param_" <> pNm <> " = " <> defVal
+    , expectedResult = Message $ "param_" <> pNm <> " = " <> expVal
     }
 
 txsConfigFileName :: Sqatt.FilePath
