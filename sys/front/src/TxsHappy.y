@@ -1924,10 +1924,10 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
                 ;  $$ = case $1 of
                         { Parallel chids bexps
-                            -> if (Set.fromList chids) == (Set.fromList $$.inhChanSigs)
-                                 then Parallel $$.inhChanSigs (bexps ++ [$3])
-                                 else Parallel $$.inhChanSigs [$1,$3]
-                        ; _ -> Parallel $$.inhChanSigs [$1,$3]
+                            -> if (Set.fromList chids) == (Set.fromList (chanIdExit:$$.inhChanSigs))
+                                 then Parallel (chanIdExit:$$.inhChanSigs) (bexps ++ [$3])
+                                 else Parallel (chanIdExit:$$.inhChanSigs) [$1,$3]
+                        ; _ -> Parallel (chanIdExit:$$.inhChanSigs) [$1,$3]
                         }
                 }
               | BehaviourExpr2 "|||" BehaviourExpr3
@@ -1942,8 +1942,8 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
                 ;  $$ = case $1 of
-                        { Parallel [] bexps -> Parallel [] (bexps ++ [$3])
-                        ; _                 -> Parallel [] [$1,$3]
+                        { Parallel [chanIdExit] bexps -> Parallel [chanIdExit] (bexps ++ [$3])
+                        ; _                           -> Parallel [chanIdExit] [$1,$3]
                         }
                 }
               | BehaviourExpr2 "|[" IdList "]|" BehaviourExpr3
@@ -1968,10 +1968,10 @@ BehaviourExpr2  -- :: { BExpr }
                                     ]
                          in case $1 of
                             { Parallel chids bexps
-                                -> if (Set.fromList chids) == (Set.fromList chans)
-                                     then Parallel chans (bexps ++ [$5])
-                                     else Parallel chans [$1,$5]
-                            ; _ -> Parallel chans [$1,$5]
+                                -> if (Set.fromList chids) == (Set.fromList (chanIdExit:chans))
+                                     then Parallel (chanIdExit:chans) (bexps ++ [$5])
+                                     else Parallel (chanIdExit:chans) [$1,$5]
+                            ; _ -> Parallel (chanIdExit:chans) [$1,$5]
                             }
                 }
               | BehaviourExpr3
