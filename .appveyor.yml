@@ -5,12 +5,11 @@
 build: off
 skip_tags: true
 
-version: pre-0.5.0.{build}.{branch}
+version: pre-0.6.0.{build}.{branch}
 # branches:
     # only:
     # - develop
     # - /^hotfix.*$/
-
 
 init:
 - ps: Write-Host Starting init at $(Get-Date)
@@ -23,7 +22,7 @@ init:
 
 install:
 - ps: Write-Host Starting install at $(Get-Date)
-- ps: if (-not (Test-Path ".cache")) { mkdir .cache} else { Write-Host ".cache found." }
+- ps: if (-not (Test-Path "$CACHE_DIR")) { mkdir $CACHE_DIR} else { Write-Host "$CACHE_DIR found." }
 # obtain the stack executable
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\stack.exe")) {
@@ -73,16 +72,16 @@ build_script:
 clone_folder: c:\TorXakis
 environment:
   global:
-    STACK_ROOT: c:\TorXakis\.stack
+    STACK_ROOT: c:\TorXakis\.stack-root
 
 cache:
-- .stack
-- .cache
+- .stack-root -> stack.yaml
+- .cache -> stack.yaml
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2.installed'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20150512'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20150512.installed'
-- .stack-work -> .stack.yaml
+- .stack-work -> stack.yaml
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
 
 test_script:
