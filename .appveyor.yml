@@ -95,7 +95,7 @@ test_script:
         $tryCount++
         cmd /c "stack build --install-ghc --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml 2>&1"
     } While ((!$?) -and ($tryCount -le 10))
-- stack test --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml
+# - stack test --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml
 - ps: popd
 
 # after_test:
