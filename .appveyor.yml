@@ -35,14 +35,14 @@ install:
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\cvc4.exe")) {
         # obtain the cvc4 executable
-        curl -OutFile $("$CACHE_DIR\cvc4.exe") https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.5/cvc4-1.5-win32-opt.exe -Verbose
+        curl -OutFile $("$CACHE_DIR\cvc4.exe") https://github.com/TorXakis/Dependencies/releases/download/cvc4-20180306/cvc4-20180306-win32-opt.exe -Verbose
     } else {
         Write-Host "cvc4.exe found.";
     }
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\z3")) {
         # install z3
-        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.5.1/z3-4.5.1.059bad909ad4-x64-win_20170905.zip -Verbose
+        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.6.0/z3-4.6.0-x64-win.zip -Verbose
         mkdir $CACHE_DIR\z3
         7z x $("-o${CACHE_DIR}\z3\") z3.zip
     } else {
