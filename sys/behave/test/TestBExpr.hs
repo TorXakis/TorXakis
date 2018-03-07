@@ -16,6 +16,7 @@ import qualified Data.Map as Map
 -- import Debug.Trace as Trace
 
 import ConstDefs
+import StdTDefs
 import TxsDefs
 import TxsShow
 import ValExpr
@@ -214,7 +215,7 @@ testSynchronization :: Test
 testSynchronization = TestCase $
     let chans = definedChannels
         bexpr :: BExpr
-        bexpr = Parallel (map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
+        bexpr = Parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in
@@ -224,7 +225,7 @@ testInterleaving :: Test
 testInterleaving = TestCase $
     let chans = []
         bexpr :: BExpr
-        bexpr = Parallel (map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
+        bexpr = Parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in
@@ -234,7 +235,7 @@ testCommunicate :: Test
 testCommunicate = TestCase $
     let chans = [([definedChannel1SortName], definedChannel1)]
         bexpr :: BExpr
-        bexpr = Parallel (map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
+        bexpr = Parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in

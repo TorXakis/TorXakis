@@ -34,7 +34,7 @@ import           Control.DeepSeq (NFData, rnf)
 import           GHC.Generics    (Generic)
 
 -- import from local
-import           Config
+import           Config    hiding (setParams)
 import qualified EnvBasic    as EnvB
 import qualified EnvData
 import qualified ParamCore

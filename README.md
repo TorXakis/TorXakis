@@ -1,7 +1,7 @@
 ![TorXakis logo](https://git.io/vFvfj "TorXakis")
 
 [![Build Status](https://semaphoreci.com/api/v1/capitanbatata/torxakis/branches/develop/badge.svg)](https://semaphoreci.com/capitanbatata/torxakis)
-[![Build status](https://ci.appveyor.com/api/projects/status/sv3e96co0019taf9?svg=true)](https://ci.appveyor.com/project/keremispirli/torxakis)
+[![Build status](https://ci.appveyor.com/api/projects/status/sv3e96co0019taf9/branch/develop?svg=true)](https://ci.appveyor.com/project/keremispirli/torxakis/branch/develop)
 [![Code Climate](https://codeclimate.com/github/TorXakis/TorXakis/badges/gpa.svg)](https://codeclimate.com/github/TorXakis/TorXakis)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
@@ -45,6 +45,18 @@ official Ubuntu repository.
 sudo snap install torxakis_nightly_amd64.snap --dangerous
 ```
 
+### macOS ###
+
+For macOS systems we provide a homebrew package. To install `TorXakis` run:
+
+```sh
+brew tap torxakis/torxakis
+brew install torxakis
+```
+
+For more detailed instructions see the [Homebrew tap for
+TorXakis](https://github.com/TorXakis/homebrew-TorXakis).
+
 ## For Developers
 
 TorXakis is written in [Haskell](https://www.haskell.org) and
@@ -83,6 +95,21 @@ In the instructions that follow we will omit the `--stack-yaml
 stack-linux.yaml` flag, but bear in mind that if you're in an Unix system you
 need to add it (or set the `STACK_YAML` environment variable to
 "stack-linux.yaml")
+
+If you experience problems when building from source, sometimes this could be
+due to Makefiles which do not handle parallel builds well. If problems appear
+while building, try setting the `MAKEFLAGS` variable to `" -j1 "` before
+running the build commands. For instance on Unix systems this can be achieved
+by running:
+
+```sh
+export MAKEFLAGS=" -j1 "
+stack setup
+stack install 
+```
+
+Note that the `MAKEFLAGS` variable does not affect the parallelism within
+`stack` itself.
 
 ### Testing
 

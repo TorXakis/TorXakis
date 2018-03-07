@@ -14,14 +14,12 @@ testDir :: FilePath
 testDir = "Any"
 
 anyTest :: TxsExample
-anyTest = TxsExample
-    { exampleName = "Test 0"
-    , txsModelFiles = [ txsFilePath ITest testDir "anyTest"]
-    , txsCmdsFiles = [ txsCmdPath ITest testDir "anyTest"]
-    , txsServerArgs = []
-    , sutExample = Nothing
-    , expectedResult = Pass
-    }
+anyTest = emptyExample
+  { exampleName = "Test 0"
+  , txsModelFiles = [ txsFilePath ITest testDir "anyTest"]
+  , txsCmdsFiles = [ txsCmdPath ITest testDir "anyTest"]
+  , expectedResult = Pass
+  }
 
 testSet :: TxsExampleSet
 testSet = TxsExampleSet "Any" [ anyTest ]

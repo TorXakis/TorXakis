@@ -21,22 +21,18 @@ exampDir :: FilePath
 exampDir = "ReadWriteConflict"
 
 testStepper :: TxsExample
-testStepper = TxsExample
+testStepper = emptyExample
   { exampleName = "Stepper 100"
   , txsModelFiles = [txsFilePath exampDir readWriteConflictText]
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper_Model"]
-  , txsServerArgs = []
-  , sutExample = Nothing
   , expectedResult = Pass
   }
 
 testAdvancedStepper :: TxsExample
-testAdvancedStepper = TxsExample
+testAdvancedStepper = emptyExample
   { exampleName = "Advanced Stepper 100"
   , txsModelFiles = [txsFilePath exampDir readWriteConflictAdvancedText]
   , txsCmdsFiles = [txsCmdPath exampDir "ReadWrite_Stepper_Model"]
-  , txsServerArgs = []
-  , sutExample = Nothing
   , expectedResult = Pass
   }
 

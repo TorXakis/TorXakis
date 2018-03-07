@@ -12,9 +12,14 @@ module Config
   , defaultConfig
   , SolverId (..)
   , SolverConfig (..)
+  , ParamName (..)
+  , ParamValue (..)
   , changeSolver
   , changeLog
   , addSolvers
+  , setParams
+  -- * update values in a Map of Params with a list of configured parameters
+  , updateParamVals
   , updateCfg
   )
 where
@@ -24,6 +29,8 @@ import           Data.Monoid
 import           System.Process
 import           Control.DeepSeq (NFData)
 import           GHC.Generics    (Generic)
+
+import           ParamCore
 
 data SolverConfig = SolverConfig
   {
@@ -36,16 +43,20 @@ data SolverConfig = SolverConfig
 newtype SolverId = SolverId { solverId :: String }
   deriving (Eq, Ord, Show, Generic, NFData)
 
+newtype ParamName = ParamName String deriving (Eq, Ord, Show)
+
+newtype ParamValue = ParamValue String deriving (Eq, Ord, Show)
+
 -- | TorXakis configuration options.
 data Config = Config
   { -- | Log all SMT commands?
     smtLog           :: Bool
     -- | Available solvers that can be chosen from.
-  , availableSolvers :: Map.Map SolverId SolverConfig
-  , selectedSolver   :: SolverId
+  , availableSolvers     :: Map.Map SolverId SolverConfig
+  , selectedSolver       :: SolverId
+  , configuredParameters :: [(ParamName,ParamValue)]
   } deriving (Eq, Show, Generic, NFData)
 
--- | Change the selected solver.
 changeSolver :: Config -> String -> Config
 changeSolver cfg solver = cfg { selectedSolver = SolverId solver }
 
@@ -55,9 +66,25 @@ changeLog cfg b = cfg { smtLog = b }
 addSolvers :: Config -> Map.Map SolverId SolverConfig -> Config
 addSolvers cfg newSolvers = cfg { availableSolvers = newSolvers <> availableSolvers cfg }
 
+setParams :: Config -> [(ParamName,ParamValue)] -> Config
+setParams cfg newParams = cfg { configuredParameters = newParams }
+
 updateCfg :: Maybe a -> (Config -> a -> Config) -> Config -> Config
-updateCfg ma f cfg =
-  maybe cfg (f cfg) ma
+updateCfg ma f cfg = maybe cfg (f cfg) ma
+
+-- | Updates a Map of parameters' values with given list of configured parameter
+updateParamVals :: Params -- ^ Map of parameters ( Map.Map String (String,String->Bool) )
+                -> [(ParamName, ParamValue)] -- ^ List of configured parameters
+                -> Params
+updateParamVals = foldl applyConfParam
+  where applyConfParam :: Params
+                       -> (ParamName, ParamValue)
+                       -> Params
+        applyConfParam allParams (ParamName pnStr, ParamValue pvStr) =
+          Map.adjust (updateOldParamWith pvStr) ("param_" ++ pnStr) allParams
+          where updateOldParamWith newValCandidate (oldVal, validate)
+                  | validate newValCandidate  = (newValCandidate, validate)
+                  | otherwise                 = (         oldVal, validate)
 
 -- | TorXakis default configuration
 defaultConfig :: Config
@@ -68,6 +95,7 @@ defaultConfig = Config
                        , (cvc4default, cvc4defaultConfig)
                        ]
   , selectedSolver = z3default
+  , configuredParameters = []
   }
 
 z3default :: SolverId

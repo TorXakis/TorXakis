@@ -15,14 +15,12 @@ benchDir :: FilePath
 benchDir = "Choice"
 
 do100Choices :: TxsExample
-do100Choices = TxsExample
+do100Choices = emptyExample
     { exampleName = "100 choices"
     , txsModelFiles = [txsFilePath BenchTest benchDir "Choice"]
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "ForeverChoice"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 

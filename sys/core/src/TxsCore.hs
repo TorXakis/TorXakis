@@ -184,15 +184,17 @@ import VarId
 -- | TorXakis core main api -- start
 runTxsCore :: Config -> StateT s IOC.IOC a -> s -> IO ()
 runTxsCore initConfig ctrl s0  =  do
-     _ <- runStateT (runTxsCtrl ctrl s0)
-               IOC.EnvC { IOC.config = initConfig
-                         , IOC.unid   = 0
-                         , IOC.params = initParams
-                         , IOC.state  = initState
-                         }
-     return ()
-       where initState = IOC.Noning
-             initParams =
+      _ <- runStateT (runTxsCtrl ctrl s0)
+              IOC.EnvC { IOC.config = initConfig
+                        , IOC.unid   = 0
+                        , IOC.params = Config.updateParamVals -- updating parameters...
+                                        initParams -- ...defined in EnvCore and SolveDefs
+                                        $ Config.configuredParameters initConfig
+                        , IOC.state  = initState
+                        }
+      return ()
+      where initState = IOC.Noning
+            initParams =
                Map.union ParamCore.initParams Solve.Params.initParams
 
 runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()

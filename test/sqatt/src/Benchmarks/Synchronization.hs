@@ -20,74 +20,62 @@ modelFiles = [ txsFilePath BenchTest benchDir "Synchronization"
              ]
 
 do100Acts3procs :: TxsExample
-do100Acts3procs = TxsExample
+do100Acts3procs = emptyExample
     { exampleName = "3 processes"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "ForeverSynchronized3"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 alternateTwoProcs :: TxsExample
-alternateTwoProcs = TxsExample
+alternateTwoProcs = emptyExample
     { exampleName = "alternate 2 processes"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "ForeverSyncAlt2"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 do100Acts3procsIStep :: TxsExample
-do100Acts3procsIStep = TxsExample
+do100Acts3procsIStep = emptyExample
     { exampleName = "3 processes with internal action"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "ForeverSynchronizedIStep3"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 manySeqSync :: TxsExample
-manySeqSync = TxsExample
+manySeqSync = emptyExample
     { exampleName = "6 sequential processes synchronizing in two actions"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "SyncAlternate6"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 manyActsSyncTop :: TxsExample
-manyActsSyncTop = TxsExample
+manyActsSyncTop = emptyExample
     { exampleName = "many processes synchronizing at the top"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "ManyActsSyncTop"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 manySyncPairs :: TxsExample
-manySyncPairs = TxsExample
+manySyncPairs = emptyExample
     { exampleName = "many processes synchronizing in pairs"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "ManySyncPairs"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 

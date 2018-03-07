@@ -32,10 +32,8 @@ import qualified Data.Set  as Set
 import           BTree
 import           ConstDefs
 import qualified EnvBTree  as IOB
-import           StdTDefs
 import           Subst
 import           TxsDefs
-import           Utils
 import           ValExpr
 
 -- ----------------------------------------------------------------------------------------- --
@@ -122,9 +120,9 @@ instance Reduce INode where
                                                   _              -> False
                                              )
                                              inodes'
-             chans'         = Set.unions $ map (Set.fromList . freeChans) nstops
-             chids'         = Set.fromList (chanIdExit:chids) `Set.intersection` chans'
-             chids''        = Set.toList chids' \\\ [chanIdExit]
+             chans'  = Set.unions $ map (Set.fromList . freeChans) nstops
+             chids'  = Set.fromList chids `Set.intersection` chans'
+             chids'' = Set.toList chids'
          case (stops,nstops) of
            ( _ , [] )       -> return stopINode
            ( [] , [inode] ) -> return inode
@@ -205,8 +203,8 @@ instance Reduce BExpr
          bexps' <- mapM reduce bexps
          let (stops,nstops) = List.partition (== Stop) bexps'
              chans'  = Set.unions $ map (Set.fromList . freeChans) nstops
-             chids'  = Set.fromList (chanIdExit:chids) `Set.intersection` chans'
-             chids'' = Set.toList chids' \\\ [chanIdExit]
+             chids'  = Set.fromList chids `Set.intersection` chans'
+             chids'' = Set.toList chids'
          case (stops,nstops) of
            ( _ , [] )      -> return Stop
            ( [] , [bexp] ) -> return bexp
