@@ -347,7 +347,7 @@ txsEval vexp  =  do
                      else do envb         <- filterEnvCtoEnvB
                              (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
                              writeEnvBtoEnvC envb'
-                             return $ wal'
+                             return wal'
 
 -- | Find a solution for the provided Boolean value expression.
 --

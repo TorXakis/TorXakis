@@ -115,8 +115,8 @@ eval (view -> Vaccess _cid1 p arg) = do
         
 eval (view -> Vconst const') = return $ Right const'
 
-eval (view -> Vvar _vid) = do
-    return $ Left $ "var - Evaluation of value expression with free variable(s)"
+eval (view -> Vvar _vid) =
+    return $ Left "var - Evaluation of value expression with free variable(s)"
 
 eval (view -> Vite cond vexp1 vexp2) = do
     mval <- eval cond
@@ -243,7 +243,7 @@ eval (view -> Vpredef kd fid vexps) =
                             case mval of
                                 Right wal   -> return $ Right $ Cstring $ T.pack (pshow wal)
                                 Left t      -> return $ Left t
-                _      -> return $ Left $ "eval: AST" 
+                _      -> return $ Left "eval: AST" 
        ASF -> case vexps of
                 [vexp] -> do
                             ms <- txs2str vexp
@@ -264,7 +264,7 @@ eval (view -> Vpredef kd fid vexps) =
                                                 Just exp -> eval exp
                                                 Nothing  -> return $ Left $ "eval: ASF\nvexpr: " ++ show s ++ "\nsignatures: " ++ show sigs ++ "\nerror: " ++ e
                                 Left t  -> return $ Left t
-                _      -> return $ Left $ "eval: ASF" 
+                _      -> return $ Left "eval: ASF" 
        AXT -> case vexps of
                 [vexp] -> do
                             mwal <- eval vexp
@@ -273,7 +273,7 @@ eval (view -> Vpredef kd fid vexps) =
                                                 tdefs <- gets IOB.tdefs
                                                 return $ Right $ Cstring $ constToXml tdefs wal
                                 Left t      -> return $ Left t
-                _      -> return $ Left $ "eval: AXT" 
+                _      -> return $ Left "eval: AXT" 
        AXF -> case vexps of
                   [vexp] -> do
                                 es <- txs2str vexp
@@ -282,7 +282,7 @@ eval (view -> Vpredef kd fid vexps) =
                                                 tdefs <- gets IOB.tdefs
                                                 return $ Right $ constFromXml tdefs (funcsort fid) s
                                     Left t  -> return $ Left t
-                  _      -> return $ Left $ "eval: AXF" 
+                  _      -> return $ Left "eval: AXF" 
        SSB -> evalSSB fid vexps
        SSI -> evalSSI fid vexps
        SSS -> evalSSS fid vexps
