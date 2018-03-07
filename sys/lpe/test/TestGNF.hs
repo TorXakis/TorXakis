@@ -26,6 +26,9 @@ import TranslatedProcDefs
 import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import Control.Exception
+import Control.Monad
+import Test.HUnit
 
 import TxsDefs
 import TxsShow
@@ -42,6 +45,13 @@ import LPEfunc
 ---------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------
+
+assertException :: (Exception e, Eq e) => e -> IO a -> IO ()
+assertException ex action =
+    handleJust isWanted (const $ return ()) $ do
+        _ <- action
+        assertFailure $ "Expected exception: " ++ show ex
+    where isWanted = guard . (== ex)
 
 procIdGen :: String -> [ChanId] -> [VarId] -> ProcId
 procIdGen name chans vars = ProcId   {    ProcId.name       = T.pack name
@@ -321,69 +331,66 @@ testNamingClash = TestCase $
                                 , (procIdPpre1, procDefPpre1) ]
 
 
---
--- -- create monad to run GNF
--- -- return the resulting procDefs and the possible error
--- gnfTestWrapper :: ProcId -> TranslatedProcDefs -> ProcDefs -> (ProcDefs, String)
--- gnfTestWrapper procId translatedProcDefs procDefs =
---   let a = a
---   in (Map.fromList [], "loop (GNF) detected in P")
 
-
---
--- -- cycle detection
--- --  P[]() := P[]()
--- -- should fail
--- testLoop1 :: Test
--- testLoop1 = TestCase $
---    -- result = gnfFunc procIdP emptyTranslatedProcDefs procDefs
---    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
+-- cycle detection
+--  P[]() := P[]()
+-- should fail
+testLoop1 :: Test
+testLoop1 = TestCase $
+   -- result = gnfFunc procIdP emptyTranslatedProcDefs procDefs
+--    let (result, err) = gnfFunc procIdP emptyTranslatedProcDefs procDefs in
 --    assertBool "loop 1" err "loop (GNF) detected in P"
---    where
---       procIdP = procIdGen "P" [] []
---       procDefP = ProcDef [] [] (ProcInst procIdP [] [])
---
---       procDefs = Map.fromList  [  (procIdP, procDefP)]
---
--- -- cycle detection
--- --  P[]() :=     A >-> P[]()
--- --            ## P[]()
--- -- should fail
--- testLoop2 :: Test
--- testLoop2 = TestCase $
---    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
---    assertBool "loop 2" err "loop (GNF) detected in P"
---    where
---       procIdP = procIdGen "P" [] []
---       procDefP = ProcDef [] [] (Choice [
---                                   (ActionPref actOfferAx (ProcInst procIdP [] [])),
---                                   (ProcInst procIdP [] [])
---                                   ])
---
---       procDefs = Map.fromList  [  (procIdP, procDefP)]
---
---
--- -- cycle detection
--- --  P[]() :=     A >-> P[]()
--- --            ## Q[]()
--- --  Q[]() :=  P[]()
--- -- should fail
--- testLoop3 :: Test
--- testLoop3 = TestCase $
---    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
---    assertBool "loop 3" err "loop (GNF) detected in P"
---    where
---       procIdP = procIdGen "P" [] []
---       procIdQ = procIdGen "Q" [] []
---       procDefP = ProcDef [] [] (Choice [
---                                   (ActionPref actOfferAx (ProcInst procIdP [] [])),
---                                   (ProcInst procIdQ [] [])
---                                   ])
---       procDefQ = ProcDef [] [] (ProcInst procIdQ [] [])
---       procDefs = Map.fromList  [  (procIdP, procDefP),
---                                   (procIdQ, procDefQ)]
---
---
+--    assertFailure "found a no-progress loop" (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+--    assertException (ErrorCall "found a no-progress loop") (evaluate $ gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+--    assertRaises "desc error..." (ErrorCall "found a no-progress loop") (evaluate $ gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+    assertBool "loop 1"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+    where
+      procIdP = procIdGen "P" [] []
+      procDefP = ProcDef [] [] (ProcInst procIdP [] [])
+
+      procDefs = Map.fromList  [  (procIdP, procDefP)]
+      procDefs' = procDefs
+
+-- cycle detection
+--  P[]() :=     A >-> P[]()
+--            ## P[]()
+-- should fail
+testLoop2 :: Test
+testLoop2 = TestCase $
+   assertBool "loop 2"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   where
+      procIdP = procIdGen "P" [] []
+      procDefP = ProcDef [] [] (Choice [
+                                  (ActionPref actOfferAx (ProcInst procIdP [] [])),
+                                  (ProcInst procIdP [] [])
+                                  ])
+
+      procDefs = Map.fromList  [  (procIdP, procDefP)]
+      procDefs' = procDefs
+
+
+-- cycle detection
+--  P[]() :=     A >-> P[]()
+--            ## Q[]()
+--  Q[]() :=  P[]()
+-- should fail
+testLoop3 :: Test
+testLoop3 = TestCase $
+    assertBool "loop 3"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+    where
+      procIdP = procIdGen "P" [] []
+      procIdQ = procIdGen "Q" [] []
+      procDefP = ProcDef [] [] (Choice [
+                                  (ActionPref actOfferAx (ProcInst procIdP [] [])),
+                                  (ProcInst procIdQ [] [])
+                                  ])
+      procDefQ = ProcDef [] [] (ProcInst procIdP [] [])
+      procDefs = Map.fromList  [  (procIdP, procDefP),
+                                  (procIdQ, procDefQ)]
+      procDefs' = procDefs
+
+
+
 
 
 
@@ -391,7 +398,8 @@ testNamingClash = TestCase $
 -- List of Tests
 ----------------------------------------------------------------------------------------
 testGNFList :: Test
-testGNFList = TestList [  TestLabel "pregnfFunc translation is executed first" testPreGNFFirst
+testGNFList = TestList [  
+                          TestLabel "pregnfFunc translation is executed first" testPreGNFFirst
                         , TestLabel "Stop is unchanged" testStop
                         , TestLabel "A >-> STOP remains the same" testASeqStop
                         , TestLabel "A >-> P[]() remains the same" testASeqProcInst
@@ -402,7 +410,7 @@ testGNFList = TestList [  TestLabel "pregnfFunc translation is executed first" t
                         , TestLabel "procInst is substituted 4" testProcInst4
 
                         , TestLabel "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash" testNamingClash
-                        -- , TestLabel "loop 1" testLoop1
-                        -- , TestLabel "loop 2" testLoop2
-                        -- , TestLabel "loop 3" testLoop3
+                        , TestLabel "loop 1" testLoop1
+                        , TestLabel "loop 2" testLoop2
+                        , TestLabel "loop 3" testLoop3
                       ]

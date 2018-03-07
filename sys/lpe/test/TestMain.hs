@@ -8,18 +8,18 @@ module Main where
 import System.Exit
 import Test.HUnit
 
-import TestPreGNF
-import TestGNF
-import TestLPE
+-- import TestPreGNF
+-- import TestGNF
+-- import TestLPE
 import TestLPEPar
 
 testList :: Test
 testList = TestList
     [
-        TestLabel "preGNF"          testPreGNFList
-       , TestLabel "GNF"             testGNFList
-       , TestLabel "LPE"             testLPEList
-       , TestLabel "LPEPar"          testLPEParList
+    --      TestLabel "preGNF"          testPreGNFList
+    --    , TestLabel "GNF"             testGNFList
+    --    , TestLabel "LPE"             testLPEList
+        TestLabel "LPEPar"          testLPEParList
     ]
 
 main :: IO ()

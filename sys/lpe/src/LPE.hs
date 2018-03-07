@@ -220,7 +220,9 @@ gnf procId translatedProcDefs procDefs = do
     procDefs' <- preGNF procId emptyTranslatedProcDefs procDefs
 
     -- remember the current ProcId to avoid recursive loops translating the same ProcId again
-    let translatedProcDefs' = translatedProcDefs { lGNF = lGNF translatedProcDefs ++ [procId]}
+    -- also remember a chain of direct calls (without progress, i.e. no ActionPref) to detect loops
+    let translatedProcDefs' = translatedProcDefs { lGNF = lGNF translatedProcDefs ++ [procId]
+                                                 , lGNFdirectcalls = lGNFdirectcalls translatedProcDefs ++ [procId]}
         ProcDef chansDef paramsDef bexpr = fromMaybe (error "GNF: could not find given procId (should be impossible)") (Map.lookup procId procDefs')
 
     (procDef, procDefs'') <- case bexpr of
@@ -249,9 +251,11 @@ gnfBExpr bexpr@(ActionPref actOffer Stop) choiceCnt procId translatedProcDefs pr
       return ([bexpr], procDefs)
 
 gnfBExpr bexpr@(ActionPref actOffer (ProcInst procIdInst _ _)) choiceCnt procId translatedProcDefs procDefs =
-  if procIdInst `notElem` lGNF translatedProcDefs
+    if procIdInst `notElem` lGNF translatedProcDefs
       then    do  -- recursively translate the called ProcDef
-                  procDefs' <- gnf procIdInst translatedProcDefs procDefs
+                  -- reset GNF loop detection: we made progress, thus we are breaking a possible chain of direct calls (ProcInsts)
+                  let translatedProcDefs' = translatedProcDefs { lGNFdirectcalls = []}
+                  procDefs' <- gnf procIdInst translatedProcDefs' procDefs
                   return ([bexpr], procDefs')
       else    return ([bexpr], procDefs)
 
@@ -277,33 +281,52 @@ gnfBExpr bexpr@(ActionPref actOffer bexpr') choiceCnt procId translatedProcDefs 
 
         -- put created ProcDefs in the ProcDefs
         procDefs' = Map.insert procId' procDef procDefs
+
+        -- reset GNF loop detection: we made progress, thus we are breaking a possible chain of direct calls (ProcInsts)
+        translatedProcDefs' = translatedProcDefs { lGNFdirectcalls = []}
+        
     -- recursively translate the created ProcDef
-    procDefs'' <- gnf procId' translatedProcDefs procDefs'
+    procDefs'' <- gnf procId' translatedProcDefs' procDefs'
     -- return bexpr with the original bexpr' replaced with the new ProcInst
     return ([ActionPref actOffer procInst'], procDefs'')
 
 
 gnfBExpr bexpr@(ProcInst procIdInst chansInst paramsInst) choiceCnt procId translatedProcDefs procDefs = do
     -- direct calls are not in GNF: need to instantiate
-    -- translate procIdInst to GNF first
-    procDefs' <- if procIdInst `notElem` lGNF translatedProcDefs
-                        then    -- recursively translate the called ProcDef
-                                gnf procIdInst translatedProcDefs procDefs
-                        else    -- if it has been translated already, leave procDefs as is
-                                return procDefs
+    -- translate procIdInst to GNF first            
+    --   -- we made progress (i.e. we have an ActionPref), thus reset no-progress-loop detection
+            --   translatedProcDefs' = translatedProcDefs { lGNFnoprogress = []}
+    
+        
+    -- check if we encounter a loop of direct calls
+    --  i.e. a chain of procInsts without any ActionPref, thus we would make no progress
+    --  this endless loop cannot be translated to GNF
+    -- trace ("\ndirect ProcInst case: " ++ (show bexpr) ++ "\n") $
+    if procIdInst `elem` lGNFdirectcalls translatedProcDefs
+        then do -- found a loop
+                let loop = map ProcId.name $ lGNFdirectcalls translatedProcDefs ++ [procIdInst]
+                -- trace ("\nfound GNF loop " ++ (show loop) ++ "\n") $ 
+                error ("found GNF loop of direct calls without progress: " ++ (show loop))
+        else do -- no loop
+                -- check if the called ProcDef has been translated to GNF already
+                procDefs' <- if procIdInst `notElem` lGNF translatedProcDefs
+                                    then    -- recursively translate the called ProcDef
+                                            gnf procIdInst translatedProcDefs procDefs
+                                    else    -- if it has been translated already, leave procDefs as is
+                                            return procDefs
 
-    let -- decompose translated ProcDef
-        ProcDef chansDef paramsDef bexprDef = fromMaybe (error "GNF: called with a non-existing procId") (Map.lookup procIdInst procDefs')
+                let -- decompose translated ProcDef
+                    ProcDef chansDef paramsDef bexprDef = fromMaybe (error "GNF: called with a non-existing procId") (Map.lookup procIdInst procDefs')
 
-        -- instantiate
-        -- substitute channels
-        chanmap = Map.fromList (zip chansDef chansInst)
-        bexprRelabeled = relabel chanmap bexprDef -- trace ("chanmap: " ++ show chanmap) relabel chanmap bexprProcDef
-        -- substitute params
-        parammap = Map.fromList (zip paramsDef paramsInst)
-        -- TODO: initialise funcDefs param properly
-        bexprSubstituted = Subst.subst parammap (Map.fromList []) bexprRelabeled
-    return (extractSteps bexprSubstituted, procDefs')
+                    -- instantiate
+                    -- substitute channels
+                    chanmap = Map.fromList (zip chansDef chansInst)
+                    bexprRelabeled = relabel chanmap bexprDef -- trace ("chanmap: " ++ show chanmap) relabel chanmap bexprProcDef
+                    -- substitute params
+                    parammap = Map.fromList (zip paramsDef paramsInst)
+                    -- TODO: initialise funcDefs param properly
+                    bexprSubstituted = Subst.subst parammap (Map.fromList []) bexprRelabeled
+                return (extractSteps bexprSubstituted, procDefs')
 
 
 gnfBExpr _ choiceCnt procId translatedProcDefs procDefs =
@@ -338,7 +361,8 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
         -- combine the steps of all operands according to parallel semantics
         -- stepOpParams is a list of pairs, one pair for each operand:
         --    pair = (steps, paramsDef)
-        (stepsPAR, _) = foldr1 (combineSteps syncChans procIdPAR chansDefPAR) stepsOpParams
+        stepsOpParams_out = concat $ map (\s -> (show s) ++ "\n") stepsOpParams
+        (stepsPAR, _) = trace ("\nstepsOpParams: \n" ++ stepsOpParams_out) $ foldr1 (combineSteps syncChans procIdPAR chansDefPAR) stepsOpParams
 
         -- create a new ProcId, ProcDef, ProcInst
         procDefPAR = ProcDef chansDefPAR paramsDefPAR (wrapSteps stepsPAR)
@@ -350,16 +374,16 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
       combineSteps :: [ChanId] -> ProcId -> [ChanId] -> ([BExpr], [VarId]) -> ([BExpr], [VarId]) ->  ([BExpr], [VarId])
       combineSteps syncChans procIdPAR chansDefPAR (stepsL, opParamsL) (stepsR, opParamsR) =
         let -- first only steps of the left operand
-            stepsLvalid = filter (isValidStep syncChans) stepsL
+            stepsLvalid = trace ("\nstepsL: " ++ (show stepsL)) $ filter (isValidStep syncChans) stepsL
             stepsL' = map (updateProcInstL opParamsR procIdPAR chansDefPAR) stepsLvalid
             -- second only steps of the right operand
-            stepsRvalid = filter (isValidStep syncChans) stepsR
+            stepsRvalid = trace ("\nstepsR: " ++ (show stepsR)) $ filter (isValidStep syncChans) stepsR
             stepsR' = map (updateProcInstR opParamsL procIdPAR chansDefPAR) stepsRvalid
             -- finally steps of both operands
             -- stepCombinations :: [(BExpr, BExpr)]
             stepCombinations = [(l,r) | l <- stepsL, r <- stepsR]
             -- stepCombinationsValid :: [(BExpr, BExpr)]
-            stepCombinationsValid = filter (isValidStepCombination syncChans) stepCombinations
+            stepCombinationsValid = trace ("\nstepCombinations: " ++ (show stepCombinations)) $ filter (isValidStepCombination syncChans) stepCombinations
             stepsLR = map (mergeStepsLR procIdPAR chansDefPAR opParamsL opParamsR) stepCombinationsValid
         in
         -- TODO: optimize complexity of this: might be MANY steps...
@@ -374,10 +398,10 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
                 -- combine action offers
                 --  union of offers, concatenation of constraints
                 -- offersLR = trace ("\ncombining: " ++ (show offersL) ++ " and " ++ (show offersR)) $ Set.union offersL offersR
-                offersLR = Set.union offersL offersR
+                offersLR = trace ("\n mergeSteps: \noffersL: " ++ (show offersL) ++ "\noffersR: " ++ (show offersR)) $ Set.union offersL offersR
 
                 -- constraintLR = trace ("\nconstraints: " ++ (show constraintL) ++ " and " ++ (show constraintR)) $ cstrAnd (Set.fromList [constraintL, constraintR])
-                constraintLR = cstrAnd (Set.fromList [constraintL, constraintR])
+                constraintLR = trace ("\nresult: " ++ (show offersLR)) $ cstrAnd (Set.fromList [constraintL, constraintR])
 
                 -- new ActOffers and ProcInst
                 actOfferLR = ActOffer { offers = offersLR,
