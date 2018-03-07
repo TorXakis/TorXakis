@@ -336,7 +336,7 @@ txsEval vexp  =  do
      case IOC.state envc of
        IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'eval' without model" ]
-               return $ Left $ "No 'eval' without model"
+               return $ Left "No 'eval' without model"
        _ -> let frees = FreeVar.freeVars vexp
             in if  not $ null frees
                      then do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
