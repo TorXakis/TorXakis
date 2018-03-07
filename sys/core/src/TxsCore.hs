@@ -330,23 +330,24 @@ txsSetSeed seed  =  do
 --
 --   Only possible when txscore is initialized.
 txsEval :: TxsDefs.VExpr                    -- ^ value expression to be evaluated.
-        -> IOC.IOC Const
+        -> IOC.IOC (Either String Const)
 txsEval vexp  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'eval' without model" ]
-               return $ Cerror ""
+               return $ Left $ "No 'eval' without model"
        _ -> let frees = FreeVar.freeVars vexp
             in if  not $ null frees
                      then do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                            $ "Value expression not closed: " ++
                                              TxsShow.fshow frees ]
-                             return $ Cerror ""
+                             return $ Left $ "Value expression not closed: " ++
+                                             TxsShow.fshow frees
                      else do envb         <- filterEnvCtoEnvB
                              (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
                              writeEnvBtoEnvC envb'
-                             return wal'
+                             return $ wal'
 
 -- | Find a solution for the provided Boolean value expression.
 --

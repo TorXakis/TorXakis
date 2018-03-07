@@ -217,7 +217,9 @@ getSolution vs    = do
   where
     toConst :: (Variable v) => EnvDefs -> Map.Map Text SMTValue -> v -> (v, Const)
     toConst edefs mp v = case Map.lookup (vname v) mp of
-                            Just smtValue   -> (v, smtValueToValExpr smtValue (cstrDefs edefs) (vsort v))
+                            Just smtValue   -> case smtValueToValExpr smtValue (cstrDefs edefs) (vsort v) of
+                                                    Left t -> error $ "getSolution - SMT parse error:\n" ++ t
+                                                    Right val -> (v,val)
                             Nothing         -> error "getSolution - SMT hasn't returned the value of requested variable."
 
 -- ------------------------------------------

@@ -170,7 +170,6 @@ import Id
     FI            { Tfi               pos }
     ISTEP         { Tistep            pos }
     QSTEP         { Tqstep            pos }
-    ERROR         { Terror            pos }
     REGEX         { Tregex            pos }
     ANY           { Tany              pos }
     True          { Tbool             posbool True }
@@ -3008,11 +3007,6 @@ ValExpr2        -- :: { VExpr }
                         ; Just srt -> cstrConst (Cany srt)
                         }
                 }
-              | ERROR string
-                {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synExpdSort  = Map.elems (Sigs.sort $$.inhSigs)
-                ;  $$ = cstrError $2
-                }
 
 ValExprs        -- :: { [ VExpr] }
                 -- list of value expressions
@@ -4048,7 +4042,6 @@ showToken t  =  case t of
                 ; Telse             pos     ->  (showPos pos) ++ "  ELSE"
                 ; Tfi               pos     ->  (showPos pos) ++ "  FI"
                 ; Tistep            pos     ->  (showPos pos) ++ "  ISTEP"
-                ; Terror            pos     ->  (showPos pos) ++ "  ERROR"
                 ; Tregex            pos     ->  (showPos pos) ++ "  REGEX"
                 ; Tarrow            pos     ->  (showPos pos) ++ "  '->'"
                 ; Tbarrow           pos     ->  (showPos pos) ++ "  '<-'"
