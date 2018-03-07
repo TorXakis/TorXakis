@@ -60,6 +60,7 @@ packages:
 - location: sys/valexpr
 - location: sys/txs-lib
 - location: sys/txs-lenses
+- location: sys/txs-webserver
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
@@ -79,6 +80,8 @@ flags:
     integer-gmp: false
   scientific:
     integer-simple: true
+  cryptonite:
+    integer-gmp: false
 
 # Extra package databases containing global packages
 extra-package-dbs:
