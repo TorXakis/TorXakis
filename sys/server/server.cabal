@@ -32,19 +32,19 @@ executable txsserver
                       , CmdLineParser
                       , TxsServerConfig
 
-  build-depends:        base
+  build-depends:        aeson
+                      , base
                       , containers
                       , deepseq
-                      , network
-                      , mtl
-                      , optparse-applicative
                       , directory
-                      , yaml
-                      , directory
-                      , filepath
-                      , aeson
                       , extra
+                      , filepath
+                      , mtl
+                      , network
+                      , optparse-applicative
                       , text
+                      , yaml
+                      , MissingH
 
                       , cnect
                       , core

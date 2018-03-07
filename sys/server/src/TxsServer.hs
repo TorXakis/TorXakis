@@ -30,10 +30,12 @@ import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad.State
 import qualified Data.Char           as Char
+import qualified Data.Either         as Either
 import qualified Data.List           as List
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
+import qualified Data.String.Utils   as Utils
 import           Network             hiding (socketPort)
 import           Network.Socket      hiding (accept, sClose)
 import           System.IO
@@ -60,6 +62,7 @@ import qualified Utils
 import qualified VarId
 
 -- import from valexpr
+import qualified ConstDefs
 import           Id
 import qualified ValExpr
 
@@ -438,23 +441,31 @@ cmdEval args = do
          vars          = IOS.locvars env
      tdefs            <- lift TxsCore.txsGetTDefs
      ((uid',vexp'),e) <- lift $ lift $ catch
-                           ( let p = TxsHappy.vexprParser
+                           ( let (i,p) = TxsHappy.vexprParser
                                         ( TxsAlex.Csigs    sigs
                                         : TxsAlex.Cvarenv (Map.keys vals ++ vars)
                                         : TxsAlex.Cunid   (_id uid + 1)
                                         : TxsAlex.txsLexer args
                                         )
-                              in return $!! (p,"")
+                              in return $!! ((i, Just p),"")
                            )
-                           ( \e -> return ((uid,ValExpr.cstrError "cmdEval parse failed"), show (e::ErrorCall)))
-     if  e /= ""
-       then do modify $ \env' -> env' { IOS.uid = uid' }
-               IFS.nack "EVAL" [ e ]
-               cmdsIntpr
-       else do modify $ \env' -> env' { IOS.uid = uid' }
-               walue <- lift $ TxsCore.txsEval (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp')
-               IFS.pack "EVAL" [ TxsShow.fshow walue ]
-               cmdsIntpr
+                           ( \ec -> return ((uid,Nothing), show (ec::ErrorCall)))
+     case vexp' of
+       Just vexp'' -> do 
+                        modify $ \env' -> env' { IOS.uid = uid' }
+                        mwalue <- lift $ TxsCore.txsEval (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp'')
+                        case mwalue of
+                            Right walue -> do 
+                                            IFS.pack "EVAL" [ TxsShow.fshow walue ]
+                                            cmdsIntpr
+                            Left t      -> do
+                                            IFS.nack "EVAL" [ "eval 2" ++ t ]
+                                            cmdsIntpr
+
+       Nothing -> do 
+                    modify $ \env' -> env' { IOS.uid = uid' }
+                    IFS.nack "EVAL" [ "eval 1" ++ e ]
+                    cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -472,23 +483,25 @@ cmdSolve args kind = do
          vals          = IOS.locvals env
      tdefs            <- lift TxsCore.txsGetTDefs
      ((uid',vexp'),e) <- lift $ lift $ catch
-                           ( let p = TxsHappy.vexprParser
-                                       ( TxsAlex.Csigs sigs
-                                       : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-                                       : TxsAlex.Cunid (_id uid + 1)
-                                       : TxsAlex.txsLexer args
-                                       )
-                              in return $!! (p,"")
+                           ( let (i,p) = TxsHappy.vexprParser
+                                           ( TxsAlex.Csigs sigs
+                                           : TxsAlex.Cvarenv (Map.keys vals ++ vars)
+                                           : TxsAlex.Cunid (_id uid + 1)
+                                           : TxsAlex.txsLexer args
+                                           )
+                              in return $!! ((i, Just p),"")
                            )
-                           ( \e -> return ((uid,ValExpr.cstrError "cmdSolve parse failed."),show (e::ErrorCall)))
-     if  e /= ""
-       then do modify $ \env' -> env' { IOS.uid = uid' }
-               IFS.nack cmd [ e ]
-               cmdsIntpr
-       else do modify $ \env' -> env' { IOS.uid = uid' }
-               sols  <- lift $ solver (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp')
-               IFS.pack cmd [ show sols ]
-               cmdsIntpr
+                           ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
+     case vexp' of
+        Just vexp'' -> do
+                        modify $ \env' -> env' { IOS.uid = uid' }
+                        sols  <- lift $ solver (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp'')
+                        IFS.pack cmd [ show sols ]
+                        cmdsIntpr
+        Nothing  -> do 
+                        modify $ \env' -> env' { IOS.uid = uid' }
+                        IFS.nack cmd [ e ]
+                        cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -1016,14 +1029,28 @@ readAction chids args = do
            then do IFS.nack "ERROR" [ "incorrect action: no question mark offer allowed" ]
                    return TxsDDefs.ActQui
            else do
-             acts <- lift $ sequence
+             pacts <- lift $ sequence
                             [ Utils.liftP2 (chid, sequence [ TxsCore.txsEval vexp
                                                            | TxsDefs.Exclam vexp <- choffs
                                                            ]
                                            )
                             | TxsDefs.Offer chid choffs <- Set.toList offs'
                             ]
-             return $ TxsDDefs.Act (Set.fromList acts)
+             let eacts = map makeEither pacts
+             case Either.partitionEithers eacts of
+                ([], acts) -> return $ TxsDDefs.Act (Set.fromList acts)
+                (es, _)    -> do
+                                IFS.nack "ERROR" [ "eval failed:\n  " ++ Utils.join "\n  " es ]
+                                return TxsDDefs.ActQui
+    where
+        makeEither :: (TxsDefs.ChanId, [Either String ConstDefs.Const]) -> Either String (TxsDefs.ChanId, [ConstDefs.Const])
+        makeEither (chid, macts) = 
+             case Either.partitionEithers macts of
+                ([], acts) -> Right (chid, acts)
+                (es, _)    -> Left $ "eval failed:\n  " ++ Utils.join "\n  " es
+                
+                                
+                
 
 
 -- ----------------------------------------------------------------------------------------- --
