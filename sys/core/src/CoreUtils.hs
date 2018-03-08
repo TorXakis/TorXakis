@@ -23,6 +23,7 @@ module CoreUtils
 , isInAct           -- :: TxsDDefs.Action -> IOC.IOC Bool
 , nextBehTrie       -- :: TxsDDefs.Action -> IOC.IOC ()
 , randMenu          -- :: BTree.Menu -> IOC.IOC (Maybe TxsDDefs.Action)
+, randOffAct
 , randAct           -- :: [TxsDefs.ChanId] -> IOC.IOC (Maybe TxsDDefs.Action)
 , randPurpMenu      -- :: BTree.Menu -> [BTree.Menu] -> IOC.IOC (Maybe TxsDDefs.Action)
 , menuConjunct      -- :: BTree.Menu -> BTree.Menu -> BTree.Menu
@@ -40,6 +41,7 @@ import Control.Monad.State
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 import           Data.Maybe
+import qualified Data.Text as T
 
 -- import from behavedef
 import qualified BTree
@@ -47,17 +49,23 @@ import qualified BTree
 -- import from behaveenv
 import qualified EnvCore   as IOC
 import qualified EnvBTree  as IOB
+import qualified EnvData
 
 -- import from defs
 import qualified TxsDefs
 import qualified TxsDDefs
+import qualified TxsShow
 import qualified Sigs
 import qualified SolveDefs
 import qualified Solve
 
 -- import from valexpr
 import ConstDefs
+import FreeVar
 import ValExpr
+import Variable
+import VarId
+import Eval
 
 -- ----------------------------------------------------------------------------------------- --
 -- filterEnvCtoEnvB
@@ -112,7 +120,16 @@ filterEnvCtoEnvB = do
                             , IOB.unid     = IOC.unid envc
                             , IOB.msgs     = []
                             }
-       IOC.Manualing{..}
+       IOC.ManualIdle{..}
+         -> return IOB.EnvB { IOB.smts     = smts
+                            , IOB.tdefs    = tdefs
+                            , IOB.sigs     = sigs
+                            , IOB.stateid  = 0
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
+       IOC.ManualActive{..}
          -> return IOB.EnvB { IOB.smts     = smts
                             , IOB.tdefs    = tdefs
                             , IOB.sigs     = sigs
@@ -200,7 +217,8 @@ nextBehTrie act = do
                      , IOC.curstate = maxstate+1
                      , IOC.maxstate = maxstate+1
                      }
-       IOC.Manualing {} -> return ()
+       IOC.ManualIdle{} -> return ()
+       IOC.ManualActive{} -> return ()
 
 -- ----------------------------------------------------------------------------------------- --
 -- randMenu :  menu randomization
@@ -212,7 +230,7 @@ randMenu menu =
        else do
          relem <- lift $ randomRIO (0, length menu - 1)
          let (pre, x:post) = splitAt relem menu
-             (ctoffs, hvars, pred')  = x
+             (ctoffs, hvars, pred') = x
              menu'                  = pre++post
              vvars                  = concatMap BTree.ctchoffers (Set.toList ctoffs)
              ivars                  = vvars ++ hvars
@@ -233,30 +251,31 @@ instantCTOffer :: Map.Map BTree.IVar Const -> BTree.CTOffer ->
 instantCTOffer sol (BTree.CToffer chan choffs)
  = ( chan, map (instantIVar sol) choffs )
 
-instantIVar :: Map.Map BTree.IVar Const -> BTree.IVar -> Const
-instantIVar sol ivar
+instantIVar :: (Variable.Variable v) => Map.Map v Const -> v -> Const
+instantIVar sol var
  =   fromMaybe
       (error "TXS Test ranMenuIn: No value for interaction variable\n")
-      (Map.lookup ivar sol)
+      (Map.lookup var sol)
 
 -- ----------------------------------------------------------------------------------------- --
 -- randAct :  random action
 
-randOffers :: (Set.Set TxsDefs.Offer) -> IOC.IOC (Maybe TxsDDefs.Action)
-randOffers offs =
-     sequence $ Set.map randOffer offs
+-- randOffsAct :: (Set.Set TxsDefs.Offer) -> IOC.IOC (Maybe TxsDDefs.Action)
+-- randOffsAct offs =
+--     sequence $ Set.map randOffer Set.toList offs
 
-randOffer :: Offer -> IOC.IOC (Maybe (ChanId,[Const]))
-randOffer (Offer chid choffs)  =  do
+randOffAct :: TxsDefs.Offer -> IOC.IOC (Maybe TxsDDefs.Action)
+randOffAct (TxsDefs.Offer chid choffs)  =  do
      consts <- mapM randChOffer choffs
-     if  all $ isJust consts  
-       then return $ Just (chid, map fromMaybe consts)
+     if  and $ map isJust consts  
+       then return $ Just $ TxsDDefs.Act $ Set.singleton
+                       (chid, map (fromMaybe (error "should not occur")) consts)
        else return Nothing
 
 randChOffer :: TxsDefs.ChanOffer -> IOC.IOC (Maybe Const)
 randChOffer choff  =  do
      case choff of
-       Exclam vexp
+       TxsDefs.Exclam vexp
          -> let frs = FreeVar.freeVars vexp
              in if  not $ null frs
                   then do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $
@@ -265,8 +284,8 @@ randChOffer choff  =  do
                   else do envb         <- filterEnvCtoEnvB
                           (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
                           writeEnvBtoEnvC envb'
-                          return wal'
-       Quest vid
+                          return $ Just wal'
+       TxsDefs.Quest vid
          -> do smtEnv   <- IOC.getSMT "current"
                parammap <- gets IOC.params
                let p = Solve.toRandParam parammap
@@ -286,9 +305,9 @@ randAct chans  =
        then return Nothing
        else do
          relem    <- lift $ randomRIO (0, length chans-1)
-         let (pre, chan@ChanId nm _uid srts :post) = splitAt relem chans
-         newunids <- mapM [ IOC.newUnid | srt <- srts ]
-         let ivars = [ TxsDefs.VarId (nm++"$"++(show unid)) unid srt
+         let (_pre, chan@(TxsDefs.ChanId nm _uid srts):_post) = splitAt relem chans
+         newunids <- sequence [ IOC.newUnid | _srt <- srts ]
+         let ivars = [ VarId.VarId (T.pack((T.unpack nm)++"$"++(show unid))) unid srt
                      | (unid,srt) <- zip newunids srts
                      ]
          smtEnv   <- IOC.getSMT "current"

@@ -68,10 +68,31 @@ data SockExplW  =  IdleSockExplW { cnectdef   :: D.CnectDef
 
 instance IOC.EWorld SockExplW
   where
-     startW    =  startSockExplW
-     stopW     =  stopSockExplW
-     putToW    =  putSockExplW
-     getFroW   =  getSockExplW
+     startW     =  startSockExplW
+     stopW      =  stopSockExplW
+     putToW     =  putSockExplW
+     getFroW    =  getSockExplW
+     chansToW   =  chansSockToW
+     chansFroW  =  chansSockFroW
+
+
+chansSockToW :: SockExplW -> [D.ChanId]
+chansSockToW sew
+  =  case sew of 
+       IdleSockExplW { cnectdef = D.CnectSockExplW _cmdw _ctype conndefs }
+         -> [ chan | D.ConnDtoW  chan _ _ _ _ <- conndefs ]
+       RunSockExplW  { cnectdef = D.CnectSockExplW _cmdw _ctype conndefs }
+         -> [ chan | D.ConnDtoW  chan _ _ _ _ <- conndefs ]
+       _ -> error "SockExplW function called with CnectSockImplW: should not have happened\n"
+
+chansSockFroW :: SockExplW -> [D.ChanId]
+chansSockFroW sew
+  =  case sew of 
+       IdleSockExplW { cnectdef = D.CnectSockExplW _cmdw _ctype conndefs }
+         -> [ chan | D.ConnDfroW chan _ _ _ _ <- conndefs ]
+       RunSockExplW  { cnectdef = D.CnectSockExplW _cmdw _ctype conndefs }
+         -> [ chan | D.ConnDfroW chan _ _ _ _ <- conndefs ]
+       _ -> error "SockExplW function called with CnectSockImplW: should not have happened\n"
 
 
 -- ----------------------------------------------------------------------------------------- --

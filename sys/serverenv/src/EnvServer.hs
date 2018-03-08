@@ -114,22 +114,22 @@ data  TxsModus =   Noned
 isNoned, isIdled, isInited                            :: TxsModus -> Bool
 isTested, isSimuled, isStepped, isLearned, isManualed :: TxsModus -> Bool
 isGtNoned, isGtIdled, isGtInited                      :: TxsModus -> Bool
-isNoned    Noned        = True
-isNoned    _            = False
-isIdled    Idled        = True
-isIdled    _            = False
-isInited   Inited       = True
-isInited   _            = False
-isTested   (Tested _)   = True
-isTested   _            = False
-isSimuled  (Simuled _)  = True
-isSimuled  _            = False
-isStepped  Stepped      = True
-isStepped  _            = False
-isLearned  (Learned _)  = True
-isLearned  _            = False
-isManualed (Manualed _) = True
-isManualed _            = False
+isNoned    Noned          = True
+isNoned    _              = False
+isIdled    Idled          = True
+isIdled    _              = False
+isInited   Inited         = True
+isInited   _              = False
+isTested   (Tested _ _)   = True
+isTested   _              = False
+isSimuled  (Simuled _ _)  = True
+isSimuled  _              = False
+isStepped  Stepped        = True
+isStepped  _              = False
+isLearned  (Learned _ _)  = True
+isLearned  _              = False
+isManualed (Manualed _ _) = True
+isManualed _              = False
 
 isGtNoned  m          = not (isNoned m)
 isGtIdled  m          = isGtNoned m && not (isIdled m)

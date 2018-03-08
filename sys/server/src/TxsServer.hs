@@ -29,7 +29,7 @@ import           Control.Concurrent
 import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad.State
--- import qualified Data.Char           as Char
+import qualified Data.Char           as Char
 import qualified Data.List           as List
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
@@ -326,26 +326,26 @@ cmdStop :: IOS.IOS ()  -- Shut
 cmdStop = do                  -- PRE :  modus == Tested, Simuled, Stepped, Learned, Manualed --
      modus <- gets IOS.modus
      case modus of
-       IOS.Tested _   -> do modify $ \env -> env { IOS.modus = IOS.Inited }
---                          _ <- lift $ TxsCore.txsStopEW ew 
---                          IFS.pack "STOP" []
-                            cmdsIntpr
-       IOS.Simuled _  -> do modify $ \env -> env { IOS.modus = IOS.Inited }
---                          _ <- lift $ TxsCore.txsStopEW ew 
---                          IFS.pack "STOP" []
-                            cmdsIntpr
+       IOS.Tested _ _   -> do modify $ \env -> env { IOS.modus = IOS.Inited }
+--                            _ <- lift $ TxsCore.txsStopEW ew 
+--                            IFS.pack "STOP" []
+                              cmdsIntpr
+       IOS.Simuled _ _  -> do modify $ \env -> env { IOS.modus = IOS.Inited }
+--                            _ <- lift $ TxsCore.txsStopEW ew 
+--                            IFS.pack "STOP" []
+                              cmdsIntpr
        IOS.Stepped           -> do -- modify $ \env -> env { IOS.modus = IOS.Inited }
 --                                    lift TxsCore.txsStopNW
 --                                    IFS.pack "STOP" []
                                    cmdsIntpr
-       IOS.Learned _  -> do modify $ \env -> env { IOS.modus = IOS.Inited }
---                          _ <- lift $ TxsCore.txsStopEW ew
---                          IFS.pack "STOP" []
-                            cmdsIntpr
-       IOS.Manualed _ -> do modify $ \env -> env { IOS.modus = IOS.Inited }
-                            lift TxsManual.stpShutManual
-                            IFS.pack "STOP" []
-                            cmdsIntpr
+       IOS.Learned _ _  -> do modify $ \env -> env { IOS.modus = IOS.Inited }
+--                            _ <- lift $ TxsCore.txsStopEW ew
+--                            IFS.pack "STOP" []
+                              cmdsIntpr
+       IOS.Manualed _ _ -> do modify $ \env -> env { IOS.modus = IOS.Inited }
+                              lift TxsManual.mnlShutManual
+                              IFS.pack "STOP" []
+                              cmdsIntpr
        _              -> do IFS.nack "STOP" [ "cannot stop from current mode" ]
                             cmdsIntpr
 
@@ -839,17 +839,17 @@ cmdManual args = do                                                -- PRE :  mod
      case cdefs of
        [ cdef@(TxsDefs.CnectSockExplW _ _ connDefs) ]
          -> do let ew = SockExplW.setSockExplW cdef connDelay deltaTime chReadTime
-               lift $ TxsManualstpSetManual ew
-               chanToWs  = [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- connDefs ]
-               chanFroWs = [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- connDefs ]
+               lift $ TxsManual.mnlSetManual ew
+               let chanToWs  = [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- connDefs ]
+                   chanFroWs = [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- connDefs ]
                modify $ \env -> env { IOS.modus = IOS.Manualed chanToWs chanFroWs }
                IFS.pack "MANUAL" []
                cmdsIntpr
        [ cdef@(TxsDefs.CnectSockImplW _ connDefs) ]
          -> do let ew = SockImplW.setSockImplW cdef connDelay deltaTime chReadTime
-               lift $ TxsManual.stpSetManual ew
-               chanToWs  = [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- connDefs ]
-               chanFroWs = [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- connDefs ]
+               lift $ TxsManual.mnlSetManual ew
+               let chanToWs  = [ chan | TxsDefs.ConnDtoW  chan _ _ _ _ <- connDefs ]
+                   chanFroWs = [ chan | TxsDefs.ConnDfroW chan _ _ _ _ <- connDefs ]
                modify $ \env -> env { IOS.modus = IOS.Manualed chanToWs chanFroWs }
                IFS.pack "MANUAL" []
                cmdsIntpr
@@ -1005,45 +1005,48 @@ cmdMan args = do                                                 -- PRE :  modus
      IOS.Manualed chansToW _chansFroW <- gets IOS.modus
      case words args of
        ["start"]
-         -> do lift $ TxsManual.stpStartW
+         -> do lift $ TxsManual.mnlStartW
                IFS.pack "MAN" []
                cmdsIntpr
        ["stop"] 
-         -> do lift $ TxsManual.stpStopW
+         -> do lift $ TxsManual.mnlStopW
                IFS.pack "MAN" []
                cmdsIntpr
        ("act":args')
-         -> do act     <- readAction chansToW (unwords args')
-               verdict <- lift $ TxsManual.stpPutToW act
-               IFS.pack "MAN" [ TxsShow.pshow verdict ]
+         -> do act   <- readAction chansToW (unwords args')
+               _act' <- lift $ TxsManual.mnlActToW act
+               IFS.pack "MAN" []
                cmdsIntpr
        ["obs"]
-         -> do verdict <- lift $ TxsManual.stpGetFroW
-               IFS.pack "MAN" [ TxsShow.pshow verdict ]
+         -> do _act' <- lift $ TxsManual.mnlObsFroW
+               IFS.pack "MAN" []
                cmdsIntpr
        ("offer":args')
-         -> do act     <- readOffer chansToW (unwords args')
-               verdict <- lift $ TxsManual.stpOffer PutToW act
-               IFS.pack "MAN" [ TxsShow.pshow verdict ]
-               cmdsIntpr
+         -> do offers  <- readOffers chansToW (unwords args')
+               case Set.toList offers of
+                 [offer]
+                   -> do _act' <- lift $ TxsManual.mnlOfferToW offer
+                         IFS.pack "MAN" []
+                         cmdsIntpr
+                 _ -> do IFS.nack "MAN" [ "To External Word only one offer allowed" ]
+                         cmdsIntpr
        ["run"]
-         -> do verdict <- lift $ TxsManual.stpRunW -1
+         -> do verdict <- lift $ TxsManual.mnlRunW (-1)
                IFS.pack "MAN" [ TxsShow.pshow verdict ]
                cmdsIntpr
        ["run",nrsteps] | all Char.isDigit nrsteps
-         -> do verdict <- lift $ TxsManual.stpRunW (read nrsteps)
+         -> do verdict <- lift $ TxsManual.mnlRunW (read nrsteps)
                IFS.pack "MAN" [ TxsShow.pshow verdict ]
                cmdsIntpr
-
-         -> do verdict <- lift $ TxsManual.stpRun -1
-               IFS.pack "MAN" [ TxsShow.pshow verdict ]
-               cmdsIntpr
-         -> do 
        ["stnr"]
-         -> do 
+         -> do stNr <- lift $ TxsManual.mnlGetStNr
+               IFS.pack "MAN" [ "State Nr: "++ TxsShow.pshow stNr ]
+               cmdsIntpr
        ["path"]
-         -> do 
-       _ -> do IFS.nack "MAN" [ "unknown manual operation: " ++ args ]
+         -> do path <- lift $ TxsManual.mnlGetPath
+               IFS.pack "MAN" [ "Path:", TxsShow.pshow path ]
+               cmdsIntpr
+       _ -> do IFS.nack "MAN" [ "Unknown manual operation: " ++ args ]
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
@@ -1254,7 +1257,7 @@ readAction :: [TxsDefs.ChanId] -> String -> IOS.IOS TxsDDefs.Action
 readAction chids args = do
      offs <- readOffers chids args
      let qstnoffs  =  [ q
-                      | q@TxsDefs.Quest{} <- concatMap TxsDefs.chanoffers (Set.toList offs')
+                      | q@TxsDefs.Quest{} <- concatMap TxsDefs.chanoffers (Set.toList offs)
                       ]
      if  not $ null qstnoffs
        then do IFS.nack "ERROR" [ "incorrect action: no question mark offer allowed" ]
@@ -1264,7 +1267,7 @@ readAction chids args = do
                                                                 | TxsDefs.Exclam vexp <- choffs 
                                                                 ]
                                                 )
-                                 | TxsDefs.Offer chid choffs <- Set.toList offs'
+                                 | TxsDefs.Offer chid choffs <- Set.toList offs
                                  ]
          return $ TxsDDefs.Act (Set.fromList acts)
 
