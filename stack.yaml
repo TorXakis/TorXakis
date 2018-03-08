@@ -67,8 +67,13 @@ packages:
 extra-deps:
 - git: https://github.com/TorXakis/text-via-sockets.git
   commit: e3228cd0407ec0d7991a544e154ea2def184fcae
-- servant-server-0.12
-- servant-0.12.1
+- servant-0.13
+- servant-server-0.13
+- servant-multipart-0.11.1
+- servant-docs-0.11.2
+- servant-swagger-1.1.5
+- http-types-0.12.1
+- text-1.2.3.0
 
 # Override default flag values for local packages and extra-deps
 flags:
