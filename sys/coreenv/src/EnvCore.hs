@@ -115,12 +115,24 @@ data CoreState = Noning
                          , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                          }
              | forall ew . (EWorld ew) =>
-               Manualing { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                         , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
-                         , eworld    :: ew
-                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                         }
+               ManualIdle
+                 { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , eworld    :: ew
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 }
+             | forall ew . (EWorld ew) =>
+               ManualActive
+                 { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)] -- beh tree
+                 , inistate  :: EnvData.StateNr               -- initial beh statenr
+                 , curstate  :: EnvData.StateNr               -- current beh statenr
+                 , eworld    :: ew
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 }
 
 
 modifyCS :: (CoreState -> CoreState) -> IOC ()
@@ -138,10 +150,12 @@ incUnid = modify $ \env -> env { unid = unid env + 1}
 
 class EWorld w
   where
-     startW   ::  w -> IOC w
-     stopW    ::  w -> IOC w
-     putToW   ::  w -> TxsDDefs.Action -> IOC TxsDDefs.Action
-     getFroW  ::  w -> IOC TxsDDefs.Action
+     startW     ::  w -> IOC w
+     stopW      ::  w -> IOC w
+     putToW     ::  w -> TxsDDefs.Action -> IOC TxsDDefs.Action
+     getFroW    ::  w -> IOC TxsDDefs.Action
+     chansToW   ::  w -> [TxsDefs.ChanId]
+     chansFroW  ::  w -> [TxsDefs.ChanId]
 
 
 -- ----------------------------------------------------------------------------------------- --

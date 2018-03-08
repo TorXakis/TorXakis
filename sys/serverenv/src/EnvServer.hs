@@ -104,11 +104,11 @@ envsNone  = EnvS { host      = ""
 data  TxsModus =   Noned
                  | Idled
                  | Inited
-                 | Tested   TxsDefs.CnectDef   -- ^ cnectdef to eworld
-                 | Simuled  TxsDefs.CnectDef   -- ^ cnectdef to eworld
+                 | Tested   [TxsDefs.ChanId] [TxsDefs.ChanId]   -- ^ cnectdef to eworld
+                 | Simuled  [TxsDefs.ChanId] [TxsDefs.ChanId]   -- ^ cnectdef to eworld
                  | Stepped
-                 | Learned  TxsDefs.CnectDef   -- ^ cnectdef to eworld
-                 | Manualed TxsDefs.CnectDef   -- ^ cnectdef to eworld
+                 | Learned  [TxsDefs.ChanId] [TxsDefs.ChanId]   -- ^ cnectdef to eworld
+                 | Manualed [TxsDefs.ChanId] [TxsDefs.ChanId]   -- ^ cnectdef to eworld
      deriving Show
 
 isNoned, isIdled, isInited                            :: TxsModus -> Bool

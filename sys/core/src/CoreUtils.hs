@@ -23,6 +23,7 @@ module CoreUtils
 , isInAct           -- :: TxsDDefs.Action -> IOC.IOC Bool
 , nextBehTrie       -- :: TxsDDefs.Action -> IOC.IOC ()
 , randMenu          -- :: BTree.Menu -> IOC.IOC (Maybe TxsDDefs.Action)
+, randAct           -- :: [TxsDefs.ChanId] -> IOC.IOC (Maybe TxsDDefs.Action)
 , randPurpMenu      -- :: BTree.Menu -> [BTree.Menu] -> IOC.IOC (Maybe TxsDDefs.Action)
 , menuConjunct      -- :: BTree.Menu -> BTree.Menu -> BTree.Menu
 , menuConjuncts     -- :: [BTree.Menu] -> BTree.Menu
@@ -237,6 +238,69 @@ instantIVar sol ivar
  =   fromMaybe
       (error "TXS Test ranMenuIn: No value for interaction variable\n")
       (Map.lookup ivar sol)
+
+-- ----------------------------------------------------------------------------------------- --
+-- randAct :  random action
+
+randOffers :: (Set.Set TxsDefs.Offer) -> IOC.IOC (Maybe TxsDDefs.Action)
+randOffers offs =
+     sequence $ Set.map randOffer offs
+
+randOffer :: Offer -> IOC.IOC (Maybe (ChanId,[Const]))
+randOffer (Offer chid choffs)  =  do
+     consts <- mapM randChOffer choffs
+     if  all $ isJust consts  
+       then return $ Just (chid, map fromMaybe consts)
+       else return Nothing
+
+randChOffer :: TxsDefs.ChanOffer -> IOC.IOC (Maybe Const)
+randChOffer choff  =  do
+     case choff of
+       Exclam vexp
+         -> let frs = FreeVar.freeVars vexp
+             in if  not $ null frs
+                  then do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $
+                                        "Value expr not closed: " ++ TxsShow.fshow frs ]
+                          return Nothing
+                  else do envb         <- filterEnvCtoEnvB
+                          (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
+                          writeEnvBtoEnvC envb'
+                          return wal'
+       Quest vid
+         -> do smtEnv   <- IOC.getSMT "current"
+               parammap <- gets IOC.params
+               let p = Solve.toRandParam parammap
+               (sat,smtEnv') <- lift $ runStateT (Solve.randSolve p [vid] Solve.empty) smtEnv
+               IOC.putSMT "current" smtEnv'
+               case sat of
+                 SolveDefs.Solved sol    -> return $ Map.lookup vid sol
+                 SolveDefs.Unsolvable    -> return Nothing
+                 SolveDefs.UnableToSolve -> return Nothing
+
+-- ----------------------------------------------------------------------------------------- --
+-- randAct :  random action
+
+randAct :: [TxsDefs.ChanId] -> IOC.IOC (Maybe TxsDDefs.Action)
+randAct chans  =
+     if null chans
+       then return Nothing
+       else do
+         relem    <- lift $ randomRIO (0, length chans-1)
+         let (pre, chan@ChanId nm _uid srts :post) = splitAt relem chans
+         newunids <- mapM [ IOC.newUnid | srt <- srts ]
+         let ivars = [ TxsDefs.VarId (nm++"$"++(show unid)) unid srt
+                     | (unid,srt) <- zip newunids srts
+                     ]
+         smtEnv   <- IOC.getSMT "current"
+         parammap <- gets IOC.params
+         let p = Solve.toRandParam parammap
+         (sat,smtEnv') <- lift $ runStateT (Solve.randSolve p ivars Solve.empty) smtEnv
+         IOC.putSMT "current" smtEnv'
+         case sat of
+           SolveDefs.Solved sol    -> return $ Just $ TxsDDefs.Act $ Set.singleton
+                                        ( chan, [ instantIVar sol ivar | ivar <- ivars ] )
+           SolveDefs.Unsolvable    -> return Nothing
+           SolveDefs.UnableToSolve -> return Nothing
 
 -- ----------------------------------------------------------------------------------------- --
 -- combine menu with purpose menus
