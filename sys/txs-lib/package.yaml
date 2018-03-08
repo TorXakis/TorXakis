@@ -35,6 +35,7 @@ library:
   exposed-modules:
   - TorXakis.Lib
   - TorXakis.Lib.Examples
+  - TorXakis.Session
   dependencies:
   - text
   - path

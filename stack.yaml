@@ -67,6 +67,8 @@ packages:
 extra-deps:
 - git: https://github.com/TorXakis/text-via-sockets.git
   commit: e3228cd0407ec0d7991a544e154ea2def184fcae
+- servant-server-0.12
+- servant-0.12.1
 
 # Override default flag values for local packages and extra-deps
 flags:
@@ -85,7 +87,7 @@ flags:
 
 # Extra package databases containing global packages
 extra-package-dbs:
-
+  
 # Control whether we use the GHC we find on the path
 # system-ghc: true
 #

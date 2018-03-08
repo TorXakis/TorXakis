@@ -47,7 +47,7 @@ pendingIOC :: Lens' Session (MVar ())
 pendingIOC h (Session s m p v) = (\p' -> Session s m p' v) <$> h p
 
 verdicts :: Lens' Session (TQueue Verdict)
-verdicts h (Session s m p v) = (\v' -> Session s m p v') <$> h v
+verdicts h (Session s m p v) = Session s m p <$> h v
 
 tdefs :: Lens' SessionSt TxsDefs
 -- Remember:

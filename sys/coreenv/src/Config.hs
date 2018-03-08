@@ -43,9 +43,9 @@ data SolverConfig = SolverConfig
 newtype SolverId = SolverId { solverId :: String }
   deriving (Eq, Ord, Show, Generic, NFData)
 
-newtype ParamName = ParamName String deriving (Eq, Ord, Show)
+newtype ParamName = ParamName String deriving (Eq, Ord, Show, Generic, NFData)
 
-newtype ParamValue = ParamValue String deriving (Eq, Ord, Show)
+newtype ParamValue = ParamValue String deriving (Eq, Ord, Show, Generic, NFData)
 
 -- | TorXakis configuration options.
 data Config = Config

@@ -8,15 +8,26 @@ module Lib
     , app
     ) where
 
-import Data.Aeson
-import Data.Aeson.TH
-import Data.Map.Strict
-import Data.Swagger
-import GHC.Generics
-import Network.Wai
-import Network.Wai.Handler.Warp
-import Servant
-import Servant.Swagger
+
+import           Control.Concurrent.STM.TVar (TVar, newTVarIO, readTVar, modifyTVar)
+import           Control.Monad.IO.Class      (liftIO)
+import           Control.Monad.STM           (atomically)
+import           Control.Monad.Trans.Reader  (ReaderT, ask, runReaderT)
+import           Data.Aeson                  (FromJSON, ToJSON)
+import           Data.Aeson.TH
+import qualified Data.Map.Strict             as Map
+import           Data.Swagger
+import           GHC.Generics                (Generic)
+import           Network.Wai
+import           Network.Wai.Handler.Warp
+import           Servant
+import           Servant.Server
+-- import Servant.Multipart
+import           Servant.Swagger
+
+import           TorXakis.Lib     (newSession)
+import           TorXakis.Session (Session)
+import           Swagger
 
 data User = User
   { userId        :: Int
@@ -29,37 +40,45 @@ $(deriveJSON defaultOptions ''User)
 type API = SwaggerAPI :<|> ServiceAPI
 
 type ServiceAPI = "users" :> Get '[JSON] [User] :<|> NewSessionEP
-type SwaggerAPI = "swagger.json" :> Get '[JSON] Swagger
 
 startApp :: IO ()
-startApp = run 8080 app
+startApp = do
+    sessionsMap <- newTVarIO Map.empty
+    run 8080 $ app $ Env sessionsMap
 
-app :: Application
-app = serve api server
+app :: Env -> Application
+app env = serve api $ hoistServer api (nt env) server
 
 api :: Proxy API
 api = Proxy
 
-server :: Server API
-server = return swaggerDocs :<|> return users :<|> return newSession
+server :: ServerT API TxsHandler
+server = return swaggerDocs
+        :<|> users
+        :<|> newSrvSession
+    where
+        users :: TxsHandler [User]
+        users = return [ User 1 "Isaac" "Newton"
+                       , User 2 "Albert" "Einstein"
+                       ]
+        newSrvSession :: TxsHandler SessionId
+        newSrvSession = do
+            Env{sessions = ssT} <- ask
+            s <- liftIO newSession
+            let sid = 42 -- TODO:
+            liftIO $ atomically $ modifyTVar ssT (Map.insert sid s)
+            return sid
 
-users :: [User]
-users = [ User 1 "Isaac" "Newton"
-        , User 2 "Albert" "Einstein"
-        ]
 
-swaggerDocs :: Swagger
-swaggerDocs = toSwagger serviceAPI
-    where serviceAPI :: Proxy ServiceAPI
-          serviceAPI = Proxy
+nt :: Env -> TxsHandler a -> Handler a
+nt env handler = runReaderT handler env
 
 type SessionId = Int
+newtype Env = Env {sessions :: TVar (Map.Map SessionId Session)}
+
+type TxsHandler = ReaderT Env Handler
+
 type NewSessionEP = "session" :> "new" :> PostCreated '[JSON] SessionId
-
-newSession :: SessionId
-newSession = undefined
-
-
 
 -- loadModel :: IO ()
 -- loadModel = undefined
@@ -74,4 +93,8 @@ newSession = undefined
 -- step sid steps = undefined
 
 
+swaggerDocs :: Swagger
+swaggerDocs = toSwagger serviceAPI
+    where serviceAPI :: Proxy ServiceAPI
+          serviceAPI = Proxy
 
