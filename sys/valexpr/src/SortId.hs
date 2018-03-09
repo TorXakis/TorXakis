@@ -59,6 +59,3 @@ sortIdString = SortId "String" 104
 sortIdRegex :: SortId
 sortIdRegex = SortId "Regex" 105
 
--- | Identifier for Sort Error
-sortIdError :: SortId
-sortIdError = SortId "_Error" (-1)

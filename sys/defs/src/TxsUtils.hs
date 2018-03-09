@@ -209,7 +209,6 @@ instance UsedFids VExpr
     usedFids (view -> Vconcat vexps)            =  concatMap usedFids vexps
     usedFids (view -> Vstrinre s r)             =  usedFids s ++ usedFids r
     usedFids (view -> Vpredef _k fid vexps)     =  fid : usedFids vexps
-    usedFids (view -> Verror _s)                =  []
     usedFids _                                  =  error "usedFids: item not in view"
 
 

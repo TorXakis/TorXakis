@@ -315,8 +315,6 @@ instance PShow v => PShow (ValExpr v) where
                _     -> error "TXS: Operator should have one or two arguments"
            else
              pshow fid ++ "( " ++ Utils.join ", " (map pshow vexps) ++ " )"
-    pshow (view -> Verror s)
-        = "ERROR " ++ show s
     pshow _
         = error "pshow: item not in view"
 
@@ -328,7 +326,6 @@ instance PShow Const where
   pshow (Cregex r) = show r
   pshow (Cstr cid []) = pshow cid
   pshow (Cstr cid a) = pshow cid ++ "(" ++ Utils.join "," (map pshow a) ++ ")"
-  pshow (Cerror s) = "ERROR " ++ s
   pshow (Cany srt) = "(ANY :: " ++ pshow srt ++ ")"
 
 -- ----------------------------------------------------------------------------------------- --

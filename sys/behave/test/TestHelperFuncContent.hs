@@ -138,7 +138,6 @@ identicalVExpr (view -> Vat s1 p1)              (view -> Vat s2 p2)             
 identicalVExpr (view -> Vconcat vs1)            (view -> Vconcat vs2)            = identicalLists identicalVExpr vs1 vs2
 identicalVExpr (view -> Vstrinre s1 r1)         (view -> Vstrinre s2 r2)         = identicalVExpr s1 s2 && identicalVExpr r1 r2
 identicalVExpr (view -> Vpredef p1 fid1 vexps1) (view -> Vpredef p2 fid2 vexps2) = p1 == p2 && identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2
-identicalVExpr (view -> Verror s1)              (view -> Verror s2)              = s1 == s2
 identicalVExpr _                                _                                = False                          -- different
 
 identicalActOffer :: ActOffer -> ActOffer -> Bool

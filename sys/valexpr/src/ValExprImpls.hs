@@ -70,7 +70,6 @@ module ValExprImpls
 
 -- to be documented
 , cstrPredef
-, cstrError
 -- * Substitution of var by value
 , subst
 , compSubst         -- changes type
@@ -82,7 +81,6 @@ import qualified Data.Map        as Map
 import           Data.Maybe      (fromMaybe)
 import           Data.Monoid     ((<>))
 import qualified Data.Set        as Set
-import           Data.Text       (Text)
 import qualified Data.Text       as T
 import           Debug.Trace     as Trace
 import           Text.Regex.TDFA
@@ -427,10 +425,6 @@ cstrStrInRe s r                                                      = ValExpr (
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
 cstrPredef p f a = ValExpr (Vpredef p f a)
 
--- | Create an error as a value expression.
-cstrError :: Text -> ValExpr v
-cstrError s = ValExpr (Verror s)
-
 -- | Substitute variables by value expressions in a value expression.
 --
 -- Preconditions are /not/ checked.
@@ -470,20 +464,19 @@ subst' ve fis (Vat s p)                = cstrAt ( (subst' ve fis . view) s) ( (s
 subst' ve fis (Vconcat vexps)          = cstrConcat $ map (subst' ve fis . view) vexps
 subst' ve fis (Vstrinre s r)           = cstrStrInRe ( (subst' ve fis . view) s) ( (subst' ve fis . view) r)
 subst' ve fis (Vpredef kd fid vexps)   = cstrPredef kd fid (map (subst' ve fis . view) vexps)
-subst' _  _   (Verror str)             = cstrError str
 
 -- | Substitute variables by value expressions in a value expression (change variable kind).
 -- Preconditions are /not/ checked.
 compSubst :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
           => Map.Map v (ValExpr w) -> Map.Map FuncId (FuncDef v) -> ValExpr v -> ValExpr w
--- compSubst ve _ _ | ve == Map.empty = cstrError "TXS Subst compSubst: variables must be substitute, yet varenv empty\n"
+-- compSubst ve _ _ | ve == Map.empty = error "TXS Subst compSubst: variables must be substitute, yet varenv empty\n"
 compSubst ve fis x                 = compSubst' ve fis (view x)
 
 compSubst' :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
            => Map.Map v (ValExpr w) -> Map.Map FuncId (FuncDef v) -> ValExprView v -> ValExpr w
 compSubst' _  _   (Vconst const')          = cstrConst const'
 compSubst' ve _   (Vvar vid)               = fromMaybe
-                                                    (cstrError "TXS Subst compSubst: incomplete\n")
+                                                    (error "TXS Subst compSubst: incomplete")
                                                     (Map.lookup vid ve)
 compSubst' ve fis (Vfunc fid vexps)        = cstrFunc fis fid (map (compSubst' ve fis . view) vexps)
 compSubst' ve fis (Vcstr cid vexps)        = cstrCstr cid (map (compSubst' ve fis . view) vexps)
@@ -503,7 +496,6 @@ compSubst' ve fis (Vat s p)                = cstrAt ( (compSubst' ve fis . view)
 compSubst' ve fis (Vconcat vexps)          = cstrConcat $ map (compSubst' ve fis . view) vexps
 compSubst' ve fis (Vstrinre s r)           = cstrStrInRe ( (compSubst' ve fis . view) s) ( (compSubst' ve fis . view) r)
 compSubst' ve fis (Vpredef kd fid vexps)   = cstrPredef kd fid (map (compSubst' ve fis . view) vexps)
-compSubst' _  _   (Verror str)             = cstrError str
 
 -- ----------------------------------------------------------------------------------------- --
 
