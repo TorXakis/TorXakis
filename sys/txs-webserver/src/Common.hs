@@ -16,4 +16,6 @@ import           TorXakis.Session (Session)
 type SessionId = Int
 
 type TxsHandler = ReaderT Env Handler
-newtype Env = Env {sessions :: TVar (Map.IntMap Session)}
+data Env = Env { sessions :: TVar (Map.IntMap Session)
+               , lastSid  :: TVar SessionId
+               }

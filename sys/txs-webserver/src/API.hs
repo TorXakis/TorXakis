@@ -40,7 +40,8 @@ type ServiceAPI = NewSessionEP :<|> UploadEP
 startApp :: IO ()
 startApp = do
     sessionsMap <- newTVarIO Map.empty
-    run 8080 $ app $ Env sessionsMap
+    zeroId      <- newTVarIO 0
+    run 8080 $ app $ Env sessionsMap zeroId
 
 app :: Env -> Application
 app env = serve api $ hoistServer api (nt env) server
