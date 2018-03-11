@@ -1,6 +1,3 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE TypeOperators   #-}
-
 module Endpoints.NewSession
     ( NewSessionEP
     , newSrvSession

@@ -1,5 +1,3 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE TypeOperators   #-}
 module Swagger where
 
 -- import           Data.Swagger

@@ -1,8 +1,6 @@
-{-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE DeriveAnyClass  #-}
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators   #-}
 module API
 ( startApp
 , app
