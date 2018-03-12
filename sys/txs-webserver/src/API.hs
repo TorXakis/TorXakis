@@ -1,19 +1,19 @@
-{-# LANGUAGE DeriveAnyClass  #-}
-{-# LANGUAGE DeriveGeneric   #-}
-{-# LANGUAGE TemplateHaskell #-}
+-- {-# LANGUAGE DeriveAnyClass  #-}
+-- {-# LANGUAGE DeriveGeneric   #-}
+-- {-# LANGUAGE TemplateHaskell #-}
 module API
 ( startApp
 , app
-, User (..)
+-- , User (..)
 ) where
 
 import           Control.Concurrent.STM.TVar (newTVarIO)
 import           Control.Monad.Trans.Reader  (runReaderT)
 -- import           Data.Aeson                  (FromJSON, ToJSON)
-import           Data.Aeson.TH
+-- import           Data.Aeson.TH
 import qualified Data.IntMap.Strict          as Map
-import           Data.Swagger
-import           GHC.Generics                (Generic)
+-- import           Data.Swagger
+-- import           GHC.Generics                (Generic)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Servant
@@ -25,17 +25,17 @@ import           Endpoints.NewSession (NewSessionEP, newSrvSession)
 import           Endpoints.Upload (UploadEP, upload)
 -- import           Swagger
 
-data User = User
-  { userId        :: Int
-  , userFirstName :: String
-  , userLastName  :: String
-  } deriving (Eq, Show, Generic, ToSchema)
+-- data User = User
+--   { userId        :: Int
+--   , userFirstName :: String
+--   , userLastName  :: String
+--   } deriving (Eq, Show, Generic, ToSchema)
 
-$(deriveJSON defaultOptions ''User)
+-- $(deriveJSON defaultOptions ''User)
 
 type API = ServiceAPI
 type ServiceAPI = NewSessionEP :<|> UploadEP
-                               :<|> "users" :> Get '[JSON] [User]
+                            --    :<|> "users" :> Get '[JSON] [User]
 
 startApp :: IO ()
 startApp = do
@@ -51,17 +51,16 @@ app env = serve api $ hoistServer api (nt env) server
         api :: Proxy API
         api = Proxy
 
-
 server :: ServerT API TxsHandler
 server = newSrvSession
     :<|> upload
-    :<|> users
+    -- :<|> users
     -- :<|> return swaggerDocs
-    where
-        users :: TxsHandler [User]
-        users = return [ User 1 "Isaac" "Newton"
-                       , User 2 "Albert" "Einstein"
-                       ]
+    -- where
+    --     users :: TxsHandler [User]
+    --     users = return [ User 1 "Isaac" "Newton"
+    --                    , User 2 "Albert" "Einstein"
+    --                    ]
 
         -- swaggerDocs :: Swagger
         -- swaggerDocs = toSwagger serviceAPI
