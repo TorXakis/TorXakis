@@ -1,0 +1,19 @@
+name:                txs-compiler
+version:             0.1.0.0
+github:              "TorXakis/TorXakis"
+license:             BSD3
+author:              "Damian Nadales"
+maintainer:          "damian.nadales@gmail.com"
+copyright:           "Copyright: (c) 2017 Damian Nadales"
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+  dependencies:
+  - text
+  - parsec
+  # TorXakis dependencies
+  - defs
+  - valexpr
