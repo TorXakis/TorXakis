@@ -36,3 +36,6 @@ prime
 stage
 snap/.snapcraft
 *.snap
+
+# Cabal files that are generated using hpack
+sys/txs-compiler/txs-compiler.cabal

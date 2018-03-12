@@ -2,7 +2,13 @@ module TorXakis.Parser where
 
 import           Text.ParserCombinators.Parsec.Language (haskell)
 import           Data.Text (Text)
-
+import qualified Data.Text as T
+import           Text.Parsec.String (Parser)
+import           Text.Parsec.Token (identifier)
+import           Text.Parsec.String (parseFromFile)
+import           Text.Parsec (parseTest, (<|>), many, (<?>), label)
+import           Text.Parsec.Char (lower, oneOf, alphaNum)
+    
 import           TorXakis.Compiler.Error (Error)
 
 parse :: String -> Either Error ParsedDefs
@@ -21,7 +27,7 @@ data ParsedDefs = ParsedDefs
 --
 -- > ADTDef (Either Sort Text)
 --
--- where if a field of an ADT has type Sort, it refers to a pre-existing type,
+-- where if a field of an ADT has type Sort, it refers to a pare-existing type,
 -- whereas if it has a type Text it refers to an ADT which does not exist yet
 -- at the parsing stage.
 --
@@ -38,3 +44,37 @@ data FuncDef sortRef = FuncDef
     deriving (Eq, Show)
 
 type UFuncDef = FuncDef UType
+
+-- * Fields
+
+fieldP :: Parser UFieldDef
+fieldP = undefined
+--    UFieldDef <$>  <*> identifier haskell
+
+txsIdentifier :: Parser Text
+txsIdentifier = T.pack <$> txsIdentifierStr
+
+txsIdentifierStr :: Parser String
+txsIdentifierStr = (:) <$> idStart <*> idEnd
+    where
+      idStart = lower <|> oneOf "_"
+                `label`
+                "Identifiers must start with a lowercase character or '_'"
+      idEnd   = many $ alphaNum <|> oneOf "_"
+                      `label`
+                      "Identifiers must contain only alpha-numeric characters or '_'"
+                       
+
+-- | Data structure for a field definition. For simplicity, anonymous fields
+--   are not supported.
+data FieldDef sortRef = FieldDef
+    { -- | Name of the field 
+      fieldName :: Name
+      -- | Sort of the field
+    , sort      :: sortRef
+    , metadata  :: Text
+    } deriving (Eq, Show)
+
+type UFieldDef = FieldDef UType
+
+type Name = Text
