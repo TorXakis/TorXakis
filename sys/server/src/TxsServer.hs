@@ -507,6 +507,11 @@ cmdSolve args kind = do
 
 cmdTester :: String -> IOS.IOS ()
 cmdTester args = do
+     envs'  <- get
+     let Just (ioString,_) = Map.lookup "param_Sut_ioTime" (IOS.params envs')
+         ioTime = read ioString
+         Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (IOS.params envs')
+         deltaTime = read deltaString
      tdefs  <- lift TxsCore.txsGetTDefs
      case words args of
        [m,c] -> do
@@ -524,10 +529,6 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      let Just (ioString,_) = Map.lookup "param_Sut_ioTime" (IOS.params envs)
-                          ioTime = read ioString
-                          Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (IOS.params envs)
-                          deltaTime = read deltaString
                       lift $ TxsCore.txsSetTest (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                 modeldef Nothing Nothing
                       IFS.pack "TESTER" []
@@ -557,10 +558,6 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      let Just (ioString,_) = Map.lookup "param_Sut_ioTime" (IOS.params envs)
-                          ioTime = read ioString
-                          Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (IOS.params envs)
-                          deltaTime = read deltaString
                       lift $ TxsCore.txsSetTest (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                 modeldef (Just mapperdef) Nothing
                       IFS.pack "TESTER" []
@@ -570,10 +567,6 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      let Just (ioString,_) = Map.lookup "param_Sut_ioTime" (IOS.params envs)
-                          ioTime = read ioString
-                          Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (IOS.params envs)
-                          deltaTime = read deltaString
                       lift $ TxsCore.txsSetTest (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                 modeldef Nothing (Just purpdef)
                       IFS.pack "TESTER" [ ]
@@ -603,10 +596,6 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      let Just (ioString,_) = Map.lookup "param_Sut_ioTime" (IOS.params envs)
-                          ioTime = read ioString
-                          Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (IOS.params envs)
-                          deltaTime = read deltaString
                       lift $ TxsCore.txsSetTest (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                 modeldef (Just mapperdef) (Just purpdef)
                       IFS.pack "TESTER" [ ]
@@ -658,6 +647,11 @@ isConsistentTester _
 
 cmdSimulator :: String -> IOS.IOS ()
 cmdSimulator args = do
+     envs'  <- get
+     let Just (ioString,_) = Map.lookup "param_Sim_ioTime" (IOS.params envs')
+         ioTime = read ioString
+         Just (deltaString,_) = Map.lookup "param_Sim_deltaTime" (IOS.params envs')
+         deltaTime = read deltaString                      
      tdefs  <- lift TxsCore.txsGetTDefs
      case words args of
        [m,c] -> do
@@ -675,10 +669,6 @@ cmdSimulator args = do
                 -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
                       World.openSockets
                       envs  <- get
-                      let Just (ioString,_) = Map.lookup "param_Sim_ioTime" (IOS.params envs)
-                          ioTime = read ioString
-                          Just (deltaString,_) = Map.lookup "param_Sim_deltaTime" (IOS.params envs)
-                          deltaTime = read deltaString
                       lift $ TxsCore.txsSetSim (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                modeldef Nothing
                       IFS.pack "SIMULATOR" []
@@ -704,10 +694,6 @@ cmdSimulator args = do
                 -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
                       World.openSockets
                       envs  <- get
-                      let Just (ioString,_) = Map.lookup "param_Sim_ioTime" (IOS.params envs)
-                          ioTime = read ioString
-                          Just (deltaString,_) = Map.lookup "param_Sim_deltaTime" (IOS.params envs)
-                          deltaTime = read deltaString
                       lift $ TxsCore.txsSetSim (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                modeldef (Just mapperdef)
                       IFS.pack "SIMULATOR" []
