@@ -39,3 +39,4 @@ snap/.snapcraft
 
 # Cabal files that are generated using hpack
 sys/txs-compiler/txs-compiler.cabal
+sys/txs-sort/txs-sort.cabal

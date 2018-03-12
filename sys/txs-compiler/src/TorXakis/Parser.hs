@@ -1,14 +1,20 @@
+{-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Parser where
 
 import           Text.ParserCombinators.Parsec.Language (haskell)
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Text.Parsec.String (Parser)
-import           Text.Parsec.Token (identifier)
+import           Text.Parsec.Token (identifier, lexeme)
 import           Text.Parsec.String (parseFromFile)
 import           Text.Parsec (parseTest, (<|>), many, (<?>), label)
-import           Text.Parsec.Char (lower, oneOf, alphaNum)
-    
+import           Text.Parsec.Char (lower, oneOf, alphaNum, string)
+import           Data.List.NonEmpty (NonEmpty ((:|)))
+
+import           TorXakis.Sort.FieldDefs (FieldDef (FieldDef))
+import           TorXakis.Sort.ADTDefs (Sort)
+import           TorXakis.Sort.Name (Name, fromNonEmpty)
+
 import           TorXakis.Compiler.Error (Error)
 
 parse :: String -> Either Error ParsedDefs
@@ -34,10 +40,8 @@ data ParsedDefs = ParsedDefs
 data ADTDef sortRef = ADTDef
     deriving (Eq, Show)
 
-type UType = Either Sort Text
+type UType = Either Sort Name
 type UADTDef = ADTDef UType
-
-data Sort
 
 -- | Function definition.
 data FuncDef sortRef = FuncDef
@@ -45,17 +49,24 @@ data FuncDef sortRef = FuncDef
 
 type UFuncDef = FuncDef UType
 
--- * Fields
+-- ** Fields
 
 fieldP :: Parser UFieldDef
-fieldP = undefined
+fieldP =  do
+    fn <- txsLexeme txsLowName
+    _  <- txsLexeme (string "::")
+    fs <- Right <$> txsLexeme txsLowName
+    return $ FieldDef fn fs ""
 --    UFieldDef <$>  <*> identifier haskell
 
-txsIdentifier :: Parser Text
-txsIdentifier = T.pack <$> txsIdentifierStr
+txsLexeme :: Parser a -> Parser a
+txsLexeme = lexeme haskell
 
-txsIdentifierStr :: Parser String
-txsIdentifierStr = (:) <$> idStart <*> idEnd
+txsLowName :: Parser Name
+txsLowName = fromNonEmpty <$> txsLowNameNE
+
+txsLowNameNE :: Parser (NonEmpty Char)
+txsLowNameNE = (:|) <$> idStart <*> idEnd
     where
       idStart = lower <|> oneOf "_"
                 `label`
@@ -65,16 +76,4 @@ txsIdentifierStr = (:) <$> idStart <*> idEnd
                       "Identifiers must contain only alpha-numeric characters or '_'"
                        
 
--- | Data structure for a field definition. For simplicity, anonymous fields
---   are not supported.
-data FieldDef sortRef = FieldDef
-    { -- | Name of the field 
-      fieldName :: Name
-      -- | Sort of the field
-    , sort      :: sortRef
-    , metadata  :: Text
-    } deriving (Eq, Show)
-
 type UFieldDef = FieldDef UType
-
-type Name = Text
