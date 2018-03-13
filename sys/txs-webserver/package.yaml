@@ -43,6 +43,7 @@ library:
   - servant-swagger
   - swagger2
   - stm
+  - text
   - transformers
   - wai
   - warp
