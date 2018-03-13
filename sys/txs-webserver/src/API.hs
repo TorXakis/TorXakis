@@ -22,6 +22,7 @@ import           Servant
 
 import           Common (TxsHandler, Env (..))
 import           Endpoints.NewSession (NewSessionEP, newSrvSession)
+import           Endpoints.Stepper (StartStepperEP, startStepper)
 import           Endpoints.Upload (UploadEP, upload)
 -- import           Swagger
 
@@ -34,7 +35,7 @@ import           Endpoints.Upload (UploadEP, upload)
 -- $(deriveJSON defaultOptions ''User)
 
 type API = ServiceAPI
-type ServiceAPI = NewSessionEP :<|> UploadEP
+type ServiceAPI = NewSessionEP :<|> UploadEP :<|> StartStepperEP
                             --    :<|> "users" :> Get '[JSON] [User]
 
 startApp :: IO ()
@@ -54,6 +55,7 @@ app env = serve api $ hoistServer api (nt env) server
 server :: ServerT API TxsHandler
 server = newSrvSession
     :<|> upload
+    :<|> startStepper
     -- :<|> users
     -- :<|> return swaggerDocs
     -- where
