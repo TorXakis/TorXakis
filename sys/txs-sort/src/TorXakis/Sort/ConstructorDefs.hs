@@ -88,8 +88,9 @@ newtype ConstructorDefs sr = ConstructorDefs
 --   * or a 'ConstructorDefs' structure containing the constructor definitions
 --
 --   is returned.
-constructorDefs :: [ConstructorDef Name]
-                -> Either ADTConstructorError (ConstructorDefs Name)
+constructorDefs :: ConvertsTo t t
+                => [ConstructorDef t]
+                -> Either (ADTConstructorError t) (ConstructorDefs t)
 constructorDefs [] = Left EmptyConstructorDefs
 constructorDefs cs
     | not $ null nuCstrDefs   = Left $ ConstructorNamesNotUnique nuCstrDefs
@@ -114,12 +115,12 @@ getAllFieldSortNames = concatMap getFieldSorts . Map.elems . cDefsToMap
 
 -- | Type of errors that are raised when it's not possible to build a
 --   'ConstructorDefs' structure via 'constructorDefs' function.
-data ADTConstructorError = ConstructorNamesNotUnique [ConstructorDef Name]
-                         | EmptyConstructorDefs
-                         | SameFieldMultipleCstr     [FieldDef Name]
+data ADTConstructorError t = ConstructorNamesNotUnique [ConstructorDef t]
+                           | EmptyConstructorDefs
+                           | SameFieldMultipleCstr     [FieldDef t]
     deriving (Eq)
 
-instance Show ADTConstructorError where
+instance Show t => Show (ADTConstructorError t) where
     show (ConstructorNamesNotUnique cDefs) = "Names of following constructor definitions are not unique: " ++ show cDefs
     show  EmptyConstructorDefs             = "No constructor definitions provided."
     show (SameFieldMultipleCstr     fDefs) = "Field names in multiple constructors: '"

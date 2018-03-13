@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 -- Module      :  Sort.ADTDefs
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 --                kerem.ispirli@tno.nl
 -- Stability   :  experimental
@@ -23,6 +23,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.Sort.ADTDefs
 ( -- * 'Sort's of Value Expressions
@@ -31,7 +32,8 @@ module TorXakis.Sort.ADTDefs
   -- * Abstract Data Types
   -- ** Data structure
 , ADTDef (..)
-
+, Unchecked
+, U (U)
 -- ** Collection
 , ADTDefs (..)
 , mergeADTDefs
@@ -56,7 +58,7 @@ import qualified Data.HashMap.Strict as Map
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
-    
+import           Control.Arrow       ((|||))
 import           TorXakis.Sort.Ref
 import           TorXakis.Sort.Name
 import           TorXakis.Sort.ConstructorDefs
@@ -109,7 +111,7 @@ emptyADTDefs = ADTDefs Map.empty
 --
 -- TorXakis does a simple type inference on the type of constructors, so there
 -- is no need to check for duplicated constructor names for different ADTs.
-addADTDefs :: [ADTDef (Either Sort Name)] -- ^ Unchecked ADT definitions
+addADTDefs :: [ADTDef Unchecked] -- ^ Unchecked ADT definitions
             -> ADTDefs      -- ^ Available checked ADT definitions
             -> Either ADTError ADTDefs
 addADTDefs as adfs
@@ -122,27 +124,27 @@ addADTDefs as adfs
         nuADTDefs = searchDuplicateNames2 as definedADTs
         unknownRefs = mapMaybe getUnknownADTRefs as
             where
-                getUnknownADTRefs :: ADTDef (Either Sort Name)
-                                  -> Maybe ([Either Sort Name], ADTDef (Either Sort Name))
+                getUnknownADTRefs :: ADTDef Unchecked
+                                  -> Maybe ([Unchecked], ADTDef Unchecked)
                 getUnknownADTRefs aDef =
                     let xs = filter (not . isDefined) $ fieldSortNames aDef in
                         if null xs
                         then Nothing
                         else Just (xs, aDef)
 
-                fieldSortNames :: ADTDef (Either Sort Name) -> [Either Sort Name]
+                fieldSortNames :: ADTDef Unchecked -> [Unchecked]
                 fieldSortNames adt = getAllFieldSortNames $ constructors adt
 
-                isDefined :: Either Sort Name -> Bool
-                isDefined (Left s)  = isPrim s
-                isDefined (Right n) = Map.member (RefByName n) adtMap
+                isDefined :: Unchecked -> Bool
+                isDefined (U (Left s))  = isPrim s
+                isDefined (U (Right n)) = Map.member (RefByName n) adtMap
                                       || n `elem` newADTNames
                     where newADTNames = map adtName as
 
         definedADTs = Map.elems adtMap
         -- TODO: discuss with Pierre and Kerem, having to construct a sort from
         -- name here seems plainly wrong.
-        ncADTs = verifyConstructibleADTs (map (Left . sortFromName . adtName) definedADTs) as
+        ncADTs = verifyConstructibleADTs (map (U . Left . sortFromName . adtName) definedADTs) as
             where
                 -- | Verifies if given list of 'ADTDef's are constructable.
                 --
@@ -156,9 +158,9 @@ addADTDefs as adfs
                 --
                 --   * A list of non-constructable 'ADTDef's
                 --
-                verifyConstructibleADTs ::[Either Sort Name]
-                                        -> [ADTDef (Either Sort Name)]
-                                        -> [ADTDef (Either Sort Name)]
+                verifyConstructibleADTs ::[Unchecked]
+                                        -> [ADTDef Unchecked]
+                                        -> [ADTDef Unchecked]
                 verifyConstructibleADTs constructableSortNames uADTDfs =
                     let (cs, ncs)  = partition
                                     (any (allFieldsConstructable constructableSortNames) . getConstructors)
@@ -166,18 +168,18 @@ addADTDefs as adfs
                     in if null cs
                     then uADTDfs
                     else verifyConstructibleADTs
-                         (map (Right . adtName) cs ++ constructableSortNames)
+                         (map (U . Right . adtName) cs ++ constructableSortNames)
                          ncs
-                allFieldsConstructable :: [Either Sort Name] -> ConstructorDef (Either Sort Name) -> Bool
+                allFieldsConstructable :: [Unchecked] -> ConstructorDef Unchecked -> Bool
                 allFieldsConstructable constructableSortNames cDef =
                     all (isSortConstructable constructableSortNames)
                         $ getFieldSorts cDef
-                isSortConstructable :: [Either Sort Name] -> Either Sort Name -> Bool
+                isSortConstructable :: [Unchecked] -> Unchecked -> Bool
                 isSortConstructable ns esn =
                     isPrimSort esn || esn `elem` ns
                     where
-                      isPrimSort (Left s)  = isPrim s
-                      isPrimSort (Right _) = False
+                      isPrimSort (U (Left s))  = isPrim s
+                      isPrimSort (U (Right _)) = False
 
 -- | Merges two 'ADTDefs' structures.
 --
@@ -229,9 +231,9 @@ getConstructors = Map.elems . cDefsToMap . constructors
 
 -- | Type of errors that are raised when it's not possible to add 'ADTDef's to
 --   'ADTDefs' structure via 'addADTDefs' function.
-data ADTError = RefsNotFound          [([Either Sort Name], ADTDef (Either Sort Name))]
-              | NamesNotUnique        [ADTDef (Either Sort Name)]
-              | NonConstructableTypes [ADTDef (Either Sort Name)]
+data ADTError = RefsNotFound          [([Unchecked], ADTDef Unchecked)]
+              | NamesNotUnique        [ADTDef Unchecked]
+              | NonConstructableTypes [ADTDef Unchecked]
         deriving (Eq)
 
 instance Show ADTError where
@@ -240,13 +242,13 @@ instance Show ADTError where
                                                 ++ " required by ADT '" ++ (show . adtName) reqADTDf
                                                 ++ "' are not defined.\n"
                                                 ++ show (RefsNotFound ts)
-        where showReqSorts = 
+        where showReqSorts =
                   T.unpack (T.intercalate "," $ map (T.pack . show) uNms)
     show (NamesNotUnique                  aDefs) = "Names of following ADT definitions are not unique: "
                                                 ++ show aDefs
     show (NonConstructableTypes           aDefs) = "ADTs are not constructable: "
                                                 ++ intercalate ", " (map (show . adtName) aDefs)
-    
+
 -----------------------------------------------------------------------------
 -- Sort
 -----------------------------------------------------------------------------
@@ -283,4 +285,17 @@ instance ConvertsTo Sort Sort where
 instance ConvertsTo a a' => ConvertsTo (ADTDef a) (ADTDef a') where
     convertTo (ADTDef n cs) = ADTDef n (convertTo cs)
 
+-- | Type of an unchecked field
+type Unchecked = U Sort Name
 
+-- | Type wrapper to avoid defining an orphan instance of 'ConvertsTo'.
+-- Defining this instance in the 'ConvertsTo' module won't work since this
+-- module depends on 'ConvertsTo' and importing 'Sort' will cause a circular
+-- dependency.
+newtype U a b = U { toEither :: Either a b } deriving (Show, Eq)
+
+instance ConvertsTo (U Sort Name) Sort where
+    convertTo = (convertTo ||| convertTo) . toEither
+
+instance ConvertsTo (U Sort Name) (U Sort Name) where
+    convertTo = id

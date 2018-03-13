@@ -5,15 +5,18 @@ import           Text.ParserCombinators.Parsec.Language (haskell)
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Text.Parsec.String (Parser)
-import           Text.Parsec.Token (identifier, lexeme)
+import           Text.Parsec.Token (identifier, lexeme, symbol)
 import           Text.Parsec.String (parseFromFile)
 import           Text.Parsec (parseTest, (<|>), many, (<?>), label)
-import           Text.Parsec.Char (lower, oneOf, alphaNum, string)
+import           Text.Parsec.Char (lower, upper, oneOf, alphaNum, string)
 import           Data.List.NonEmpty (NonEmpty ((:|)))
+import           Text.Parsec (unexpected, sepBy)
 
-import           TorXakis.Sort.FieldDefs (FieldDef (FieldDef))
-import           TorXakis.Sort.ADTDefs (Sort)
+import           TorXakis.Sort.FieldDefs (FieldDef (FieldDef), FieldDefs, fieldDefs)
 import           TorXakis.Sort.Name (Name, fromNonEmpty)
+import           TorXakis.Sort.ADTDefs (ADTDef, Sort, Unchecked, U (U))
+import           TorXakis.Sort.ConstructorDefs ( ConstructorDef (ConstructorDef)
+                                               , ConstructorDefs, constructorDefs)
 
 import           TorXakis.Compiler.Error (Error)
 
@@ -26,54 +29,88 @@ data ParsedDefs = ParsedDefs
     , fdefs :: [UFuncDef]
     } deriving (Eq, Show)
 
--- * TODO: take these types from the 'issue/565-newADTstructure' branch.
-
--- | Abstract data type definition. The parameter type represents the TorXakis
--- type of the ADT fields. For instance, the parser will return a
---
--- > ADTDef (Either Sort Text)
---
--- where if a field of an ADT has type Sort, it refers to a pare-existing type,
--- whereas if it has a type Text it refers to an ADT which does not exist yet
--- at the parsing stage.
---
-data ADTDef sortRef = ADTDef
-    deriving (Eq, Show)
-
-type UType = Either Sort Name
-type UADTDef = ADTDef UType
+type UADTDef = ADTDef Unchecked
 
 -- | Function definition.
 data FuncDef sortRef = FuncDef
     deriving (Eq, Show)
 
-type UFuncDef = FuncDef UType
+type UFuncDef = FuncDef Unchecked
+
+-- ** Sorts
+
+sortP :: Parser Name
+sortP = txsLexeme (ucIdentifier "Sorts")
+
+txsLexeme :: Parser a -> Parser a
+txsLexeme = lexeme haskell
+
+txsSymbol :: String -> Parser String
+txsSymbol = symbol haskell
 
 -- ** Fields
 
 fieldP :: Parser UFieldDef
 fieldP =  do
-    fn <- txsLexeme txsLowName
-    _  <- txsLexeme (string "::")
-    fs <- Right <$> txsLexeme txsLowName
+    fn <- txsLexeme lcIdentifier
+    _  <- txsSymbol "::"
+    fs <- U . Right <$> sortP
     return $ FieldDef fn fs ""
---    UFieldDef <$>  <*> identifier haskell
 
-txsLexeme :: Parser a -> Parser a
-txsLexeme = lexeme haskell
-
-txsLowName :: Parser Name
-txsLowName = fromNonEmpty <$> txsLowNameNE
-
-txsLowNameNE :: Parser (NonEmpty Char)
-txsLowNameNE = (:|) <$> idStart <*> idEnd
+lcIdentifier :: Parser Name
+lcIdentifier = fromNonEmpty <$> identifierNE idStart
     where
       idStart = lower <|> oneOf "_"
                 `label`
                 "Identifiers must start with a lowercase character or '_'"
-      idEnd   = many $ alphaNum <|> oneOf "_"
-                      `label`
-                      "Identifiers must contain only alpha-numeric characters or '_'"
-                       
 
-type UFieldDef = FieldDef UType
+ucIdentifier :: String -> Parser Name
+ucIdentifier what  = fromNonEmpty <$> identifierNE idStart
+    where
+      idStart = upper
+                `label`
+                (what ++ " must start with an uppercase character")
+
+identifierNE :: Parser Char -> Parser (NonEmpty Char)
+identifierNE idStart = (:|) <$> idStart <*> idEnd
+    where
+      idEnd  = many $
+          alphaNum <|> oneOf "_"
+          `label`
+          "Identifiers must contain only alpha-numeric characters or '_'"
+
+fieldsP :: Parser (FieldDefs Unchecked)
+fieldsP = aListOf fieldP ";" fieldDefs
+
+type UFieldDef = FieldDef Unchecked
+
+-- ** Constructors
+
+cstrP :: Parser (ConstructorDef Unchecked)
+cstrP = do
+    cn <- txsLexeme (ucIdentifier "Constructors")
+    txsSymbol "{"
+    fs <- fieldsP
+    txsSymbol "}"
+    return $ ConstructorDef cn fs
+
+cstrsP :: Parser (ConstructorDefs Unchecked)
+cstrsP = aListOf cstrP "|" constructorDefs
+    
+-- | Parsing via smart constructors.
+--
+--
+-- TODO: add some more details.
+aListOf :: Show e
+        => Parser a            -- ^ The parser for the items.
+        -> String              -- ^ String used to separate the items.
+        -> ([a] -> Either e b) -- ^ A smart constructor.
+        -> Parser b
+aListOf p sep f = do
+    as <- p `sepBy` txsSymbol sep
+    case f as of
+        Left err -> unexpected $ show err
+        Right val -> return val
+
+-- ** ADT's
+

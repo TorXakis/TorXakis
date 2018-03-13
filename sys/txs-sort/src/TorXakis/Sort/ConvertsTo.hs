@@ -24,7 +24,7 @@ module TorXakis.Sort.ConvertsTo where
 
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as Map
-import           Control.Arrow       ((+++), (|||))
+import           Control.Arrow       ((+++))
 
 import           TorXakis.Sort.Name
 import           TorXakis.Sort.Ref
@@ -46,10 +46,6 @@ instance ConvertsTo a a' => ConvertsTo [a] [a'] where
 instance (ConvertsTo a a', ConvertsTo b b') =>
     ConvertsTo (Either a b) (Either a' b') where
     convertTo = convertTo +++ convertTo
-
-instance (ConvertsTo a c, ConvertsTo b c) =>
-    ConvertsTo (Either a b) c where
-    convertTo = convertTo ||| convertTo    
 
 -- | Converting 'Ref' of a certain convertible type to 'Ref' of the target type,
 --   using the same data.
