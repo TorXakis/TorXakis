@@ -1,0 +1,13 @@
+TYPEDEF  IntList  ::=   Nil {- xxx -}
+                      | Cons  { hd ::  Int
+                              ; tl ::  IntList
+                              }
+ENDDEF
+
+TYPEDEF  QueueOp
+    ::=
+          Enq  { val :: Int }
+        | Deq
+        | Error
+ENDDEF
+

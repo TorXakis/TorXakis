@@ -8,13 +8,35 @@ copyright:           "Copyright: (c) 2017 Damian Nadales"
 
 dependencies:
 - base >= 4.7 && < 5
-
+  
 library:
   source-dirs: src
   dependencies:
   - text
-  - parsec
+  - parsec    
   # TorXakis dependencies
   - defs
   - valexpr
   - txs-sort
+  
+extra-source-files:
+- test/data/success/*.txs
+
+tests:
+  txs-compiler-test:
+    main: Spec.hs
+    source-dirs:
+    - test
+
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Werror
+    - -Wall
+    - -O
+    dependencies:
+    - hspec
+    - txs-compiler
+    - filemanip
+    - filepath

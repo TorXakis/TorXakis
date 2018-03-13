@@ -1,0 +1,1 @@
+TYPEDEF Point ::= Point { x, y :: Int } ENDDEF

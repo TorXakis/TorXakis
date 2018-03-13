@@ -1,0 +1,28 @@
+TYPEDEF BatchId ::= C_ProductId { value :: Int } ENDDEF
+
+TYPEDEF BatchSize ::= C_BatchSize { value :: Int } ENDDEF
+
+TYPEDEF BatchInfo ::= 
+    C_BatchInfo {
+        batchId                    :: BatchId;
+        batchSize                  :: BatchSize
+    }
+ENDDEF
+
+TYPEDEF RecipeId ::= C_RecipeId { id :: Int } ENDDEF
+
+TYPEDEF ProduceCmd ::= 
+    C_ProduceCmd {
+        batchId        :: BatchId;
+        recipeId       :: RecipeId
+    }
+ENDDEF
+
+
+TYPEDEF ListProduceCmd ::= NilProduceCmd
+                         | CstrProduceCmd { head :: ProduceCmd
+                                          ; tail :: ListProduceCmd
+                                          }                                 
+ENDDEF
+
+

@@ -24,6 +24,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE ExistentialQuantification     #-}
+{-# LANGUAGE ScopedTypeVariables     #-}
 module TorXakis.Sort.FieldDefs
 ( -- * Fields
   -- ** Data structure
@@ -33,7 +34,8 @@ module TorXakis.Sort.FieldDefs
 , FieldDefs (..)
 
   -- ** Usage
-, fieldDefs
+, emptyFieldDefs
+, fieldDefs  
 
 -- * ADT Field Errors
 , ADTFieldError (..)
@@ -73,6 +75,9 @@ data FieldDefs sr = FieldDefs { -- | Transform 'FieldDefs' to a list of 'FieldDe
                               -- INVARIANT: length fDefsToList == nrOfFieldDefs
                               }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+emptyFieldDefs :: FieldDefs sr
+emptyFieldDefs = FieldDefs [] 0 
 
 -- | Smart constructor for 'FieldDefs'.
 --
