@@ -33,6 +33,7 @@ library:
   source-dirs: src
   exposed-modules:
   - API
+  - Common
   dependencies:
   - aeson
   - bytestring
@@ -75,7 +76,9 @@ tests:
     dependencies:
     - base
     - aeson
+    - containers
     - hspec
     - hspec-wai
     - hspec-wai-json
+    - stm
     - txs-webserver
