@@ -2,8 +2,9 @@
 module TorXakis.Lib where
 
 import           Control.Concurrent.STM.TVar   (newTVarIO, readTVarIO, modifyTVar')
+import           Control.DeepSeq               (force)
 import           Control.Monad.STM             (atomically)
-import           Control.Exception             (try, ErrorCall)
+import           Control.Exception             (try, ErrorCall, evaluate)
 import           Control.Monad.State           (runStateT, lift)
 import           Lens.Micro                    ((.~),(^.))
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, writeTQueue, readTQueue)
@@ -49,7 +50,7 @@ load :: Session -> FileContents -> IO Response
 load s xs = do
     r <- try $ do -- Since the 'TorXakis' parser currently just calls 'error'
                   -- we have to catch a generic 'ErrorCall' exception.
-        let (_, ts, is) = txsParser . txsLexer $ xs
+        (_, ts, is) <- evaluate . force . txsParser . txsLexer $ xs
         atomically $ modifyTVar' (_sessionState s) ((tdefs .~ ts) . (sigs .~ is))
         return ()
     case r of

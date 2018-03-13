@@ -63,7 +63,19 @@ testEchoReactive = do
     -- Cancel the printer (we aren't interested in any more messages, as a
     -- verdict has been reached):
     cancel a
-    where
-      printer :: Session -> IO ()
-      printer s = runConduit $
-          sourceTQueue (s ^. sessionMsgs) .|  mapM_ print
+  where
+    printer :: Session -> IO ()
+    printer s = runConduit $
+        sourceTQueue (s ^. sessionMsgs) .|  mapM_ print
+
+-- | This example shows what happens when you load an invalid file.
+testWrongFile :: IO ()
+testWrongFile = do
+    cs <- readFile "test/data/wrong.txt"
+    s <- newSession
+    -- Load the model:
+    r <- load s cs
+    putStrLn $ "Result of `load wrong.txt`: " ++ show r
+    case r of
+        Success -> error "Wrong file should have failed."
+        Error _ -> return ()

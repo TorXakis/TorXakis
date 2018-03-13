@@ -4,5 +4,6 @@ import           Test.Hspec (Spec, it)
 import           TorXakis.Lib.Examples
 
 spec :: Spec
-spec =
+spec = do
     it "testEchoReactive" testEchoReactive
+    it "testWrongFile"    testWrongFile
