@@ -1,1 +1,1 @@
-This file includes text that can't be parsed by TorXakis.
+This file contains text that can't be parsed by TorXakis.

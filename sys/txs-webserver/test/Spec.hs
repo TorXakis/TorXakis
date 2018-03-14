@@ -33,10 +33,13 @@ spec = return $ with getApp $ do
                 it "Creates 2 sessions" $ do
                     post "/session/new" "" `shouldRespondWith` "1" {matchStatus = 201}
                     post "/session/new" "" `shouldRespondWith` "2" {matchStatus = 201}
-            describe "Upload files to a session" $
+            describe "Upload files to a session" $ do
                 it "Uploads valid files" $ do
                     post "/session/new" "" `shouldRespondWith` "1" {matchStatus = 201}
                     postPointTxs "/session/1/model" `shouldRespondWith` "\"Success\"" {matchStatus = 201}
+                it "Fails for parse error" $ do
+                    post "/session/new" "" `shouldRespondWith` "1" {matchStatus = 201}
+                    postWrongTxt "/session/1/model" `shouldRespondWith` "Something went wrong" {matchStatus = 500}
 
 getApp :: IO Application
 getApp = do
@@ -115,4 +118,17 @@ postPointTxs path = request methodPost
                         \         DECODE    In ! fromString(s)        <-   ? s\n\
                         \ ENDDEF\n\
                         \\n\
+                        \ -----------------------------18666290479101--\n"
+
+postWrongTxt :: ByteString -> WaiSession SResponse
+postWrongTxt path = request methodPost
+                        path
+                        [ (hContentType,   "multipart/form-data; boundary=---------------------------18666290479101")
+                        , (hContentLength, "253")
+                        ]
+                         "-----------------------------18666290479101\n\
+                        \ Content-Disposition: form-data; name=\"foo\"; filename=\"wrong.txt\"\n\
+                        \ Content-Type: application/octet-stream\n\
+                        \\n\
+                        \ This file contains text that can't be parsed by TorXakis.\n\
                         \ -----------------------------18666290479101--\n"

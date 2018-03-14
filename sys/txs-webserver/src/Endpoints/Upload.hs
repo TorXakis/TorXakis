@@ -1,11 +1,15 @@
+{-# LANGUAGE OverloadedStrings  #-}
 module Endpoints.Upload
 ( UploadEP
 , upload
 ) where
 
 import           Control.Monad.IO.Class      (liftIO)
+import           Data.ByteString.Lazy.Char8  (pack)
+import           Data.Monoid                 ((<>))
+import           Data.Text                   (Text)
 import qualified Data.Text                   as T
-import           Data.Text.Lazy              (unpack)
+import qualified Data.Text.Lazy              as LT
 import           Data.Text.Lazy.Encoding     (decodeUtf8)
 import           Servant
 import           Servant.Multipart           (MultipartForm, MultipartData, Mem, FileData, files, fdFileName, fdPayload) --  iName, iValue, inputs
@@ -20,26 +24,32 @@ type UploadEP = "session" :> Capture "sid" SessionId :> "model" :> MultipartForm
 upload :: SessionId -> MultipartData Mem -> TxsHandler String
 upload sid multipartData =  do
     s <- getSession sid
-    liftIO $ do
-        rs <- mapM (loadFile s) $ files multipartData
-        let errMsg = concatErrorMsgs rs
-        case errMsg of
-            []   -> return $ show Success
-            eMsg -> error eMsg
+    res <- liftIO $
+        case files multipartData of
+            [] -> return $ Left "No files received"
+            fs -> do
+                rs <- mapM (loadFile s) fs
+                let (errMsg,succMsg) = concatErrorMsgs rs T.empty T.empty
+                case T.unpack errMsg of
+                    []   -> return $ Right $ T.unpack succMsg
+                    eMsg -> return $ Left eMsg
+    case res of
+        Left  e -> throwError err400 { errBody = pack e }
+        Right m -> return m
 
-loadFile :: Session -> FileData Mem -> IO Response
+loadFile :: Session -> FileData Mem -> IO (Text,Response)
 loadFile s f = do
     let fnTxt = fdFileName f
-    if fnTxt == T.empty
-        then return Success
+        contentTxt = decodeUtf8 $ fdPayload f
+    if contentTxt == LT.empty
+        then return (fnTxt, Error "Empty file")
         else do
             putStrLn $ "Loading file: " ++ show fnTxt
-            let contentTxt = decodeUtf8 $ fdPayload f
-            r <- load s $ unpack contentTxt
+            r <- load s $ LT.unpack contentTxt
             print r
-            return r
+            return (fnTxt,r)
 
-concatErrorMsgs :: [Response] -> String
-concatErrorMsgs []               = []
-concatErrorMsgs (Error m : rs) = m ++ "\n" ++ concatErrorMsgs rs
-concatErrorMsgs (Success : rs)   = concatErrorMsgs rs
+concatErrorMsgs :: [(Text, Response)] -> Text -> Text -> (Text, Text)
+concatErrorMsgs []                   em sm = (em,sm)
+concatErrorMsgs ( (fn,Error m) : rs) em sm = concatErrorMsgs rs (em <> "\nError in " <> fn <> ": " <> T.pack m) sm
+concatErrorMsgs ( (fn,Success) : rs) em sm = concatErrorMsgs rs em (sm <> "\nLoaded: " <> fn)
