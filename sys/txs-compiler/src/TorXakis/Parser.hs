@@ -1,5 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
-module TorXakis.Parser where
+module TorXakis.Parser
+    ( ParsedDefs
+    , adts
+    , txsP
+    , parseFile
+    )
+where
 
 import           Text.ParserCombinators.Parsec.Language (haskell)
 import qualified Data.Text as T
@@ -13,8 +19,10 @@ import           Control.Arrow (left)
 import           Control.Monad (void)
 
 import           TorXakis.Sort.FieldDefs (FieldDef (FieldDef), FieldDefs, fieldDefs, emptyFieldDefs)
-import           TorXakis.Sort.Name (Name, fromNonEmpty)
-import           TorXakis.Sort.ADTDefs (ADTDef (ADTDef), Unchecked, U (U))
+import           TorXakis.Sort.Name (Name, fromNonEmpty, getName, toText)
+import           TorXakis.Sort.ADTDefs ( ADTDef (ADTDef), Unchecked, U (U)
+                                       , Sort (SortInt, SortBool)
+                                       )
 import           TorXakis.Sort.ConstructorDefs ( ConstructorDef (ConstructorDef)
                                                , ConstructorDefs, constructorDefs)
 
@@ -68,8 +76,14 @@ data Exp = Var Name
 
 -- ** Sorts
 
-sortP :: Parser Name
-sortP = txsLexeme (ucIdentifier "Sorts")
+sortP :: Parser Unchecked
+sortP = do
+    n <- txsLexeme (ucIdentifier "Sorts")
+    case toText (getName n) of
+        "Int"  -> return . U . Left  $ SortInt
+        "Bool" -> return . U . Left  $ SortBool
+        _      -> return . U . Right $ n
+
 
 txsLexeme :: Parser a -> Parser a
 txsLexeme = lexeme haskell
@@ -83,7 +97,7 @@ fieldListP :: Parser [UFieldDef]
 fieldListP =  do
     fns <- txsLexeme lcIdentifier `sepBy` txsSymbol ","
     _  <- txsSymbol "::"
-    fs <- U . Right <$> sortP
+    fs <- sortP
     return $ mkFieldWithSort fs <$> fns
     where
       mkFieldWithSort fs fn = FieldDef fn fs md
@@ -170,7 +184,7 @@ fdefP = do
     n  <- txsLexeme lcIdentifier
     ps <- fParamsP
     txsSymbol "::"
-    s  <- U . Right <$> sortP
+    s  <- sortP
     txsSymbol "::="
     b <- txsLexeme fBodyP
     txsSymbol "ENDDEF"

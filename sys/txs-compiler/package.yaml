@@ -18,7 +18,8 @@ library:
   source-dirs: src
   dependencies:
   - text
-  - parsec    
+  - parsec
+  - mtl
   # TorXakis dependencies
   - defs
   - valexpr

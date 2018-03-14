@@ -42,6 +42,7 @@ module TorXakis.Sort.ADTDefs
 , emptyADTDefs
 , addADTDefs
 , findConstructor
+, getDefs  
 -- , getConstructors
 
 -- * ADT Errors
@@ -140,7 +141,6 @@ addADTDefs as adfs
                 isDefined (U (Right n)) = Map.member (RefByName n) adtMap
                                       || n `elem` newADTNames
                     where newADTNames = map adtName as
-
         definedADTs = Map.elems adtMap
         -- TODO: discuss with Pierre and Kerem, having to construct a sort from
         -- name here seems plainly wrong.
@@ -180,6 +180,9 @@ addADTDefs as adfs
                     where
                       isPrimSort (U (Left s))  = isPrim s
                       isPrimSort (U (Right _)) = False
+
+getDefs :: ADTDefs -> [ADTDef Sort]
+getDefs = Map.elems . adtDefsToMap
 
 -- | Merges two 'ADTDefs' structures.
 --
