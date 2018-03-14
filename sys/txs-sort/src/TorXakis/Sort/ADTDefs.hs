@@ -42,7 +42,9 @@ module TorXakis.Sort.ADTDefs
 , emptyADTDefs
 , addADTDefs
 , findConstructor
-, getDefs  
+, getDefs
+, adtSort
+, adtDefsToList
 -- , getConstructors
 
 -- * ADT Errors
@@ -60,6 +62,7 @@ import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 import           Control.Arrow       ((|||))
+
 import           TorXakis.Sort.Ref
 import           TorXakis.Sort.Name
 import           TorXakis.Sort.ConstructorDefs
@@ -82,6 +85,12 @@ newtype ADTDefs = ADTDefs { -- | Transform 'ADTDefs' to a 'Data.Map.Map' from 'R
                           adtDefsToMap :: Map.HashMap (Ref (ADTDef Sort)) (ADTDef Sort)
                           }
     deriving (Eq, Read, Show, Generic, NFData, Data)
+
+adtSort :: ADTDef Sort -> Sort
+adtSort = SortADT . mkRef
+
+adtDefsToList :: ADTDefs -> [ADTDef Sort]
+adtDefsToList = Map.elems . adtDefsToMap
 
 -- | Smart constructor for 'ADTDefs'.
 --

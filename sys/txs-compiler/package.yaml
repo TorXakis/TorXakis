@@ -20,6 +20,9 @@ library:
   - text
   - parsec
   - mtl
+  - containers
+  - transformers
+  - unordered-containers
   # TorXakis dependencies
   - defs
   - valexpr

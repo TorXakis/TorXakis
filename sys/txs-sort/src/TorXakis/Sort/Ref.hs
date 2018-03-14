@@ -49,5 +49,3 @@ class Referencable t where
     mkRef :: t -> Ref t
     default mkRef :: HasName t => t -> Ref t
     mkRef = RefByName . getName
-
-
