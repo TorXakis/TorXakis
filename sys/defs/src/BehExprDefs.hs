@@ -19,12 +19,26 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
 module BehExprDefs
-( BExpr(..)
+( BExprView(..)
+, BExpr
+, view
 , ActOffer(..)
 , Offer(..)
 , ChanOffer(..)
 , Trans(..)
 , (~~)
+, stop
+, actionPref
+, guard
+, choice
+, parallel
+, enable
+, disable
+, interrupt
+, procInst
+, hide
+, valueEnv
+, stAut
 )
 where
 
@@ -42,22 +56,71 @@ import           StatId
 import           VarEnv
 import           VarId
 
--- | Behaviour Expression
-data BExpr = Stop
-           | ActionPref  ActOffer BExpr
-           | Guard       VExpr BExpr
-           | Choice      [BExpr]
-           | Parallel    [ChanId] [BExpr]
-           | Enable      BExpr [ChanOffer] BExpr
-           | Disable     BExpr BExpr
-           | Interrupt   BExpr BExpr
-           | ProcInst    ProcId [ChanId] [VExpr]
-           | Hide        [ChanId] BExpr
-           | ValueEnv    VEnv BExpr
-           | StAut       StatId VEnv [Trans]
+-- | BExprView: the public view of Behaviour Expression `BExpr`
+data BExprView = Stop
+               | ActionPref  ActOffer BExpr
+               | Guard       VExpr BExpr
+               | Choice      [BExpr]
+               | Parallel    [ChanId] [BExpr]
+               | Enable      BExpr [ChanOffer] BExpr
+               | Disable     BExpr BExpr
+               | Interrupt   BExpr BExpr
+               | ProcInst    ProcId [ChanId] [VExpr]
+               | Hide        [ChanId] BExpr
+               | ValueEnv    VEnv BExpr
+               | StAut       StatId VEnv [Trans]
   deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
+instance Resettable BExprView
 
+-- | BExpr: behaviour expression
+--
+-- 1. User can't directly construct BExpr (such that invariants will always hold)
+--
+-- 2. User can still pattern match on BExpr using 'BExprView'
+--
+-- 3. Overhead at run-time is zero. See https://wiki.haskell.org/Performance/Data_types#Newtypes
+newtype BExpr = BExpr {
+            -- | View on Behaviour Expression
+            view :: BExprView
+        }
+    deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 instance Resettable BExpr
+
+stop :: BExpr
+stop = BExpr Stop
+
+actionPref :: ActOffer -> BExpr -> BExpr
+actionPref a b = BExpr (ActionPref a b)
+
+guard :: VExpr -> BExpr -> BExpr
+guard v b = BExpr (Guard v b)
+
+choice :: [BExpr] -> BExpr
+choice bs = BExpr (Choice bs)
+
+parallel :: [ChanId] -> [BExpr] -> BExpr
+parallel cs bs = BExpr (Parallel cs bs)
+
+enable :: BExpr -> [ChanOffer] -> BExpr -> BExpr
+enable b1 cs b2 = BExpr (Enable b1 cs b2)
+
+disable :: BExpr -> BExpr -> BExpr
+disable b1 b2 = BExpr (Disable b1 b2)
+
+interrupt :: BExpr -> BExpr -> BExpr
+interrupt b1 b2 = BExpr (Interrupt b1 b2)
+
+procInst :: ProcId -> [ChanId] -> [VExpr] -> BExpr
+procInst p cs vs = BExpr (ProcInst p cs vs)
+
+hide :: [ChanId] -> BExpr -> BExpr
+hide cs b = BExpr (Hide cs b)
+
+valueEnv :: VEnv -> BExpr -> BExpr
+valueEnv v b = BExpr (ValueEnv v b)
+
+stAut :: StatId -> VEnv -> [Trans] -> BExpr
+stAut s v ts = BExpr (StAut s v ts)
 
 -- | ActOffer
 -- Offer on multiple channels with constraints

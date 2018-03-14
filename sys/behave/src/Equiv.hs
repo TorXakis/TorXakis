@@ -156,8 +156,11 @@ instance (Variable v) => Equiv (ValExpr v)
 -- ----------------------------------------------------------------------------------------- --
 -- Equiv :  BExpr
 
-
 instance Equiv BExpr
+    where
+        b1 ~=~ b2 = (TxsDefs.view b1) ~=~ (TxsDefs.view b2)
+
+instance Equiv BExprView
   where
 
     Stop ~=~ Stop = return True
