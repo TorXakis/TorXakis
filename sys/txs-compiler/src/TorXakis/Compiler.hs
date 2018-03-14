@@ -1,6 +1,6 @@
 module TorXakis.Compiler where
 
-import           Data.Text (Text)
+--import           Data.Text (Text)
 import           Control.Arrow ((|||))
     
 import           Id      (Id)

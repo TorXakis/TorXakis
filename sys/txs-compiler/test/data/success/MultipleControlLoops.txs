@@ -26,3 +26,8 @@ TYPEDEF ListProduceCmd ::= NilProduceCmd
 ENDDEF
 
 
+FUNCDEF containsProduceReport ( x :: ProduceReport ; l :: ListProduceReport ) :: Bool ::=
+  x
+ENDDEF
+
+

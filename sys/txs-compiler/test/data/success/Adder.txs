@@ -2,3 +2,7 @@ TYPEDEF  Operation ::=
       Plus  { p1, p2 :: Int }
     | Minus { m1, m2 :: Int }
 ENDDEF
+
+FUNCDEF overflow (x :: Int) :: Bool ::=
+        x
+ENDDEF

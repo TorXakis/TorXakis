@@ -2,20 +2,19 @@
 module TorXakis.Parser where
 
 import           Text.ParserCombinators.Parsec.Language (haskell)
-import           Data.Text (Text)
 import qualified Data.Text as T
 import           Text.Parsec.String (Parser)
-import           Text.Parsec.Token (identifier, lexeme, symbol)
+import           Text.Parsec.Token (lexeme, symbol)
 import           Text.Parsec.String (parseFromFile)
-import           Text.Parsec (parseTest, (<|>), many, (<?>), label, eof)
-import           Text.Parsec.Char (lower, upper, oneOf, alphaNum, string)
+import           Text.Parsec ((<|>), many, label, eof, unexpected, sepBy)
+import           Text.Parsec.Char (lower, upper, oneOf, alphaNum)
 import           Data.List.NonEmpty (NonEmpty ((:|)))
-import           Text.Parsec (unexpected, sepBy)
 import           Control.Arrow (left)
+import           Control.Monad (void)
 
 import           TorXakis.Sort.FieldDefs (FieldDef (FieldDef), FieldDefs, fieldDefs, emptyFieldDefs)
 import           TorXakis.Sort.Name (Name, fromNonEmpty)
-import           TorXakis.Sort.ADTDefs (ADTDef (ADTDef), Sort, Unchecked, U (U))
+import           TorXakis.Sort.ADTDefs (ADTDef (ADTDef), Unchecked, U (U))
 import           TorXakis.Sort.ConstructorDefs ( ConstructorDef (ConstructorDef)
                                                , ConstructorDefs, constructorDefs)
 
@@ -33,19 +32,39 @@ data ParsedDefs = ParsedDefs
     , fdefs :: [UFuncDef]
     } deriving (Eq, Show)
 
+-- | TorXakis top-level definitions
+data TLDef = TLADT UADTDef
+           | TLFun UFuncDef
+
+asParsedDefs :: [TLDef] -> ParsedDefs
+asParsedDefs ts = ParsedDefs as fs
+    where (as, fs) = foldr sep ([], []) ts
+          sep  (TLADT a) (xs, ys) = (a:xs, ys)
+          sep  (TLFun f) (xs, ys) = (xs, f:ys)
+
+topLevelDefP :: (a -> TLDef) -> Parser a -> Parser TLDef
+topLevelDefP f p = f <$> p
+
 txsP :: Parser ParsedDefs
 txsP = do
-    as <- many adtP
+    ts <- many $  fmap TLADT adtP
+              <|> fmap TLFun fdefP
     eof
-    return $ ParsedDefs as []
+    return $ asParsedDefs ts
 
 type UADTDef = ADTDef Unchecked
 
 -- | Function definition.
 data FuncDef sortRef = FuncDef
+    { name :: Name, params :: FieldDefs sortRef, retType :: sortRef, body :: Exp}
     deriving (Eq, Show)
 
 type UFuncDef = FuncDef Unchecked
+
+-- | Expressions
+
+data Exp = Var Name
+    deriving (Eq, Show)
 
 -- ** Sorts
 
@@ -55,8 +74,8 @@ sortP = txsLexeme (ucIdentifier "Sorts")
 txsLexeme :: Parser a -> Parser a
 txsLexeme = lexeme haskell
 
-txsSymbol :: String -> Parser String
-txsSymbol = symbol haskell
+txsSymbol :: String -> Parser ()
+txsSymbol = void . symbol haskell
 
 -- ** Fields
 
@@ -93,13 +112,15 @@ identifierNE idStart = (:|) <$> idStart <*> idEnd
           `label`
           "Identifiers must contain only alpha-numeric characters or '_'"
 
-fieldsP :: Parser (FieldDefs Unchecked)
-fieldsP = nonEmptyFieldsP <|> emptyFieldsP
+fieldsP :: String -- ^ Start symbol for the fields declaration.
+        -> String -- ^ End symbol for the fields declaration.
+        -> Parser (FieldDefs Unchecked)
+fieldsP op cl = nonEmptyFieldsP <|> emptyFieldsP
     where nonEmptyFieldsP = do
-              txsSymbol "{"
-              fdefs <- aListOf fieldListP ";" (fieldDefs . concat)
-              txsSymbol "}"
-              return fdefs
+              txsSymbol op
+              fd <- aListOf fieldListP ";" (fieldDefs . concat)
+              txsSymbol cl
+              return fd
           emptyFieldsP = return emptyFieldDefs
     
 type UFieldDef = FieldDef Unchecked
@@ -109,7 +130,7 @@ type UFieldDef = FieldDef Unchecked
 cstrP :: Parser (ConstructorDef Unchecked)
 cstrP = do
     cn <- txsLexeme (ucIdentifier "Constructors")
-    fs <- fieldsP
+    fs <- "{" `fieldsP` "}"
     return $ ConstructorDef cn fs
 
 cstrsP :: Parser (ConstructorDefs Unchecked)
@@ -140,3 +161,24 @@ adtP = do
     cs <- cstrsP
     txsSymbol "ENDDEF"
     return $ ADTDef an cs
+
+-- ** Function definitions
+
+fdefP :: Parser UFuncDef
+fdefP = do
+    txsSymbol "FUNCDEF"
+    n  <- txsLexeme lcIdentifier
+    ps <- fParamsP
+    txsSymbol "::"
+    s  <- U . Right <$> sortP
+    txsSymbol "::="
+    b <- txsLexeme fBodyP
+    txsSymbol "ENDDEF"
+    return $ FuncDef n ps s b
+
+fParamsP :: Parser (FieldDefs Unchecked)
+fParamsP = "(" `fieldsP` ")"
+
+fBodyP :: Parser Exp
+fBodyP =
+    Var <$> lcIdentifier
