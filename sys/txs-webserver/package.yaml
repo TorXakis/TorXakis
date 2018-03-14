@@ -79,10 +79,13 @@ tests:
     - bytestring
     - containers
     - hspec
+    - hspec-core
     - hspec-wai
-    - hspec-wai-json
+    # - hspec-wai-json
     - http-types
+    - lens
     - servant-server >= 0.12
     - stm
     - txs-webserver
-    - wai-extra
+    # - wai-extra
+    - wreq

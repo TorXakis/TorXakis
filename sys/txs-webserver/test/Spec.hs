@@ -2,19 +2,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 
-import           Control.Concurrent.STM.TVar (newTVarIO)
-import           Data.ByteString
-import qualified Data.IntMap.Strict          as Map
-import           Servant                     (Application)
+-- import           Control.Concurrent.STM.TVar (newTVarIO)
+import           Control.Lens                ((^.))
+-- -- import           Data.ByteString
+-- import qualified Data.IntMap.Strict          as Map
+-- import           Servant                     (Application)
 
-import API (app)
-import Common (Env (..))
+-- import API (app)
+-- import Common (Env (..))
 
-import Network.HTTP.Types (hContentType, hContentLength, methodPost)
-import Network.Wai.Test   (SResponse)
+-- import Network.HTTP.Types (hContentType, hContentLength, methodPost)
+-- import Network.Wai.Test   (SResponse)
 import Test.Hspec
-import Test.Hspec.Wai
+-- import Test.Hspec.Core.Hooks
+-- import Test.Hspec.Wai
 -- import Test.Hspec.Wai.JSON
+import Network.Wreq
 
 main :: IO ()
 main = do
@@ -22,37 +25,55 @@ main = do
     hspec s
 
 spec :: IO Spec
-spec = return $ with getApp $ do
-            describe "GET /users" $ do
-                it "responds with 200" $
-                    get "/users" `shouldRespondWith` 200
-                it "responds with [User]" $ do
+spec = return $ do -- before getApp $ do
+            describe "GET /users" $ -- do
+                it "responds with 200 and [Users]" $ do
+                    -- get "/users" `shouldRespondWith` 200
+                    r <- get "http://localhost:8080/users"
+                    r ^. responseStatus . statusCode `shouldBe` 200
+                -- it "responds with [User]" $ do
                     let users = "[{\"userId\":1,\"userFirstName\":\"Isaac\",\"userLastName\":\"Newton\"},{\"userId\":2,\"userFirstName\":\"Albert\",\"userLastName\":\"Einstein\"}]"
-                    get "/users" `shouldRespondWith` users
+                    -- get "/users" `shouldRespondWith` users
+                    -- r <- get "http://localhost:8080/users"
+                    r ^. responseBody `shouldBe` users
             describe "Create new TorXakis session" $
                 it "Creates 2 sessions" $ do
-                    post "/session/new" "" `shouldRespondWith` "1" {matchStatus = 201}
-                    post "/session/new" "" `shouldRespondWith` "2" {matchStatus = 201}
+                    -- post "/session/new" "" `shouldRespondWith` "1" {matchStatus = 201}
+                    -- post "/session/new" "" `shouldRespondWith` "2" {matchStatus = 201}
+                    r <- post "http://localhost:8080/session/new" [partText "" ""]
+                    r ^. responseStatus . statusCode `shouldBe` 201
+                    r ^. responseBody `shouldBe` "1"
+                    r2 <- post "http://localhost:8080/session/new" [partText "" ""]
+                    r2 ^. responseStatus . statusCode `shouldBe` 201
+                    r2 ^. responseBody `shouldBe` "2"
             describe "Upload files to a session" $ do
                 it "Uploads valid files" $ do
-                    post "/session/new" "" `shouldRespondWith` "1" {matchStatus = 201}
-                    postPointTxs "/session/1/model" `shouldRespondWith` "\"Success\"" {matchStatus = 201}
+                    -- post "/session/new" "" `shouldRespondWith` "1" {matchStatus = 201}
+                    -- postPointTxs "/session/1/model" `shouldRespondWith` "\"Success\"" {matchStatus = 201}
+                    _ <- post "http://localhost:8080/session/new" [partText "" ""]
+                    r <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "c:/Repos/TorXakis/examps/Point/Point.txs"]
+                    r ^. responseStatus . statusCode `shouldBe` 201
+                    r ^. responseBody `shouldBe` "\"\\nLoaded: Point.txs\""
                 it "Fails for parse error" $ do
-                    post "/session/new" "" `shouldRespondWith` "1" {matchStatus = 201}
-                    postWrongTxt "/session/1/model" `shouldRespondWith` "Something went wrong" {matchStatus = 500}
+                    -- post "/session/new" "" `shouldRespondWith` "1" {matchStatus = 201}
+                    -- postWrongTxt "/session/1/model" `shouldRespondWith` "Something went wrong" {matchStatus = 500}
+                    _ <- post "http://localhost:8080/session/new" [partText "" ""]
+                    r <- post "http://localhost:8080/session/1/model" [partFile "wrong.txt" "C:/Repos/TorXakis/sys/txs-lib/test/data/wrong.txt"]
+                    r ^. responseStatus . statusCode `shouldBe` 400
+                    r ^. responseBody `shouldBe` "\"\\nLoaded: Point.txs\""
 
-getApp :: IO Application
-getApp = do
-    e <- getEnv
-    return $ app e
+-- getApp :: IO Application
+-- getApp = do
+--     e <- getEnv
+--     return $ app e
 
-getEnv :: IO Env
-getEnv = do
-    sessionsMap <- newTVarIO Map.empty
-    zeroId      <- newTVarIO 0
-    return $ Env sessionsMap zeroId
+-- getEnv :: IO Env
+-- getEnv = do
+--     sessionsMap <- newTVarIO Map.empty
+--     zeroId      <- newTVarIO 0
+--     return $ Env sessionsMap zeroId
 
-
+{-
 postPointTxs :: ByteString -> WaiSession SResponse
 postPointTxs path = request methodPost
                         path
@@ -132,3 +153,4 @@ postWrongTxt path = request methodPost
                         \\n\
                         \ This file contains text that can't be parsed by TorXakis.\n\
                         \ -----------------------------18666290479101--\n"
+-}
