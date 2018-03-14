@@ -4,11 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
-
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
-
 -- |
 -- Module      :  BehExprDefs
 -- Copyright   :  (c) TNO and Radboud University
@@ -20,9 +15,17 @@ See LICENSE at root directory of this repository.
 --
 -- This module introduces definitions related to behaviour expressions.
 -----------------------------------------------------------------------------
-
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 module BehExprDefs
-
+( BExpr(..)
+, ActOffer(..)
+, Offer(..)
+, ChanOffer(..)
+, Trans(..)
+, (~~)
+)
 where
 
 import qualified Data.Set        as Set
