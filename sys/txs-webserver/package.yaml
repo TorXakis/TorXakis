@@ -76,9 +76,13 @@ tests:
     dependencies:
     - base
     - aeson
+    - bytestring
     - containers
     - hspec
     - hspec-wai
     - hspec-wai-json
+    - http-types
+    - servant-server >= 0.12
     - stm
     - txs-webserver
+    - wai-extra
