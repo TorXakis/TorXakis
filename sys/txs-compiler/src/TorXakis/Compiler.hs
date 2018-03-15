@@ -56,10 +56,11 @@ compileLegacy = (throwOnLeft ||| id) . compile
     where throwOnLeft = error . show
 
 toTxsDefs :: ParsedDefs -> Either Error TxsDefs
-toTxsDefs pd = right (\as -> evalState (adtDefsToTxsDefs as) 0) eas
-    where
-      eas :: Either Error ADTDefs
-      eas = left (T.pack . show) $ addADTDefs (adts pd) emptyADTDefs
+toTxsDefs = undefined
+-- toTxsDefs pd = right (\as -> evalState (adtDefsToTxsDefs as) 0) eas
+--     where
+--       eas :: Either Error ADTDefs
+      -- eas = left (T.pack . show) $ addADTDefs (adts pd) emptyADTDefs
 
 -- TODO: This function should be placed in a temporary module to allow
 -- transforming all the new definitions into the old ones. After we have smart
