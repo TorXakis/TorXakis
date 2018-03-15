@@ -41,13 +41,21 @@ spec = return $ do
                     r ^. responseStatus . statusCode `shouldBe` 201
                     r ^. responseBody `shouldBe` "\"\\nLoaded: Point.txs\""
                 it "Fails for parse error" $ do
-                    _ <- post "http://localhost:8080/session/new" [partText "" ""]
-                    r <- post "http://localhost:8080/session/1/model" [partFile "wrong.txt" "C:/Repos/TorXakis/sys/txs-lib/test/data/wrong.txt"]
-                            `catch` handler
-                    r ^. responseStatus . statusCode `shouldBe` 400
-                      where
-                        handler (CI.HttpExceptionRequest _ (C.StatusCodeException r body)) = do
+                    let handler (CI.HttpExceptionRequest _ (C.StatusCodeException r body)) = do
                             unpack body `shouldStartWith` "\nError in wrong.txt: \nParse Error:"
                             let s = r ^. responseStatus
                             return CI.Response{CI.responseStatus = s}
                         handler e = throwIO e
+                    _ <- post "http://localhost:8080/session/new" [partText "" ""]
+                    r <- post "http://localhost:8080/session/1/model" [partFile "wrong.txt" "C:/Repos/TorXakis/sys/txs-lib/test/data/wrong.txt"]
+                            `catch` handler
+                    r ^. responseStatus . statusCode `shouldBe` 400
+                it "Starts stepper and takes 3 steps" $ do
+                    _ <- post "http://localhost:8080/session/new" [partText "" ""]
+                    _ <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "c:/Repos/TorXakis/examps/Point/Point.txs"]
+                    r <- post "http://localhost:8080/stepper/start/1/Model" [partText "" ""]
+                    r ^. responseStatus . statusCode `shouldBe` 200
+                    r ^. responseBody `shouldBe` "\"Success\""
+                    r2 <- post "http://localhost:8080/stepper/step/1/3" [partText "" ""]
+                    r2 ^. responseStatus . statusCode `shouldBe` 200
+                    r2 ^. responseBody `shouldBe` "\"Success\""
