@@ -80,6 +80,7 @@ tests:
     - hspec
     - http-client
     - lens
+    - process
     - servant-server >= 0.12
     - txs-webserver
     - wreq

@@ -6,6 +6,7 @@ module Main (main) where
 import           Control.Exception           (catch, throwIO)
 import           Control.Lens                ((^.))
 import           Data.ByteString.Char8       (unpack)
+import           System.Process              (withCreateProcess, proc, std_out, StdStream(NoStream))
 
 import qualified Network.HTTP.Client          as C
 import qualified Network.HTTP.Client.Internal as CI
@@ -14,7 +15,7 @@ import           Network.Wreq                 as W
 import           Test.Hspec
 
 main :: IO ()
-main = do
+main = withCreateProcess (proc "txs-webserver-exe" []) {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
     s <- spec
     hspec s
 
