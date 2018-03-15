@@ -25,7 +25,7 @@ module TorXakis.Sort.ConstructorDefs
 ( -- * Constructors
   -- ** Data structure
   ConstructorDef (..)
-
+,  HasConstructors
 -- ** Collection
 , ConstructorDefs (..)
 
@@ -34,7 +34,7 @@ module TorXakis.Sort.ConstructorDefs
 , getFieldNames
 , getFieldSorts
 , getAllFieldSortNames
-, cDefsToList
+, constructors
 -- * ADT Constructor Errors
 , ADTConstructorError (..)
 )
@@ -71,8 +71,11 @@ newtype ConstructorDefs sr = ConstructorDefs
                                 }
     deriving (Eq, Read, Show, Generic, NFData, Data)
 
-cDefsToList :: ConstructorDefs sr -> [ConstructorDef sr]
-cDefsToList = Map.elems . cDefsToMap
+class HasConstructors a sr where
+    constructors :: a -> [ConstructorDef sr]
+
+instance HasConstructors (ConstructorDefs sr) sr where
+    constructors = Map.elems . cDefsToMap
 
 -- | Smart constructor for 'ConstructorDefs'.
 --

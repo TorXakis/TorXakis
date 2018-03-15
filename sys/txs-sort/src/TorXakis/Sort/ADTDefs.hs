@@ -45,7 +45,6 @@ module TorXakis.Sort.ADTDefs
 , getDefs
 , adtSort
 , adtDefsToList
--- , getConstructors
 
 -- * ADT Errors
 , ADTError (..)
@@ -71,7 +70,7 @@ import           TorXakis.Sort.ConvertsTo
 -- | Data structure for Abstract Data Type (ADT) definition.
 data ADTDef sortRef = ADTDef
     { adtName      :: Name                    -- ^ Name of the ADT
-    , constructors :: ConstructorDefs sortRef -- ^ Constructor definitions of the ADT
+    , adtConstructors :: ConstructorDefs sortRef -- ^ Constructor definitions of the ADT
     }
     deriving (Eq, Read, Show, Generic, NFData, Data)
 
@@ -143,7 +142,7 @@ addADTDefs as adfs
                         else Just (xs, aDef)
 
                 fieldSortNames :: ADTDef Unchecked -> [Unchecked]
-                fieldSortNames adt = getAllFieldSortNames $ constructors adt
+                fieldSortNames adt = getAllFieldSortNames $ adtConstructors adt
 
                 isDefined :: Unchecked -> Bool
                 isDefined (U (Left s))  = isPrim s
@@ -172,7 +171,7 @@ addADTDefs as adfs
                                         -> [ADTDef Unchecked]
                 verifyConstructibleADTs constructableSortNames uADTDfs =
                     let (cs, ncs)  = partition
-                                    (any (allFieldsConstructable constructableSortNames) . getConstructors)
+                                    (any (allFieldsConstructable constructableSortNames) . constructors)
                                     uADTDfs
                     in if null cs
                     then uADTDfs
@@ -226,14 +225,13 @@ mergeADTDefs adts1@(ADTDefs dsMap1) adts2@(ADTDefs dsMap2)
 -- | Returns a 'ConstructorDef' and its reference from a given 'ADTDef' based on
 --   its name.
 findConstructor :: Name -> ADTDef v -> Maybe (Ref (ConstructorDef v), ConstructorDef v)
-findConstructor nm ad = case Map.lookup r $ (cDefsToMap . constructors) ad of
+findConstructor nm ad = case Map.lookup r $ (cDefsToMap . adtConstructors) ad of
                             Nothing -> Nothing
                             Just cd -> Just (r,cd)
                     where r = RefByName nm
 
--- | Returns the list of 'ConstructorDef's of a given 'ADTDef'.
-getConstructors :: ADTDef v -> [ConstructorDef v]
-getConstructors = Map.elems . cDefsToMap . constructors
+instance HasConstructors (ADTDef sr) sr where
+    constructors = Map.elems . cDefsToMap . adtConstructors 
 
 -- | Checks if a given 'Sort' 'Name' is defined as a primitive sort or an ADT.
 -- isSortDefined :: ADTDefs -> Name -> Bool
