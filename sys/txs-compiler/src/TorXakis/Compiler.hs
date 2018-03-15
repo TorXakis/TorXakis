@@ -26,13 +26,14 @@ import           FuncId  (FuncId (FuncId))
 import           SortDef  (SortDef (SortDef))
 import           ValExpr (cstrAccess, cstrVar)
 import           TorXakis.Sort.ADTDefs ( ADTDefs, addADTDefs, emptyADTDefs, getDefs
-                                       , ADTDef, Sort, constructors, adtDefsToMap
+                                       , ADTDef, Sort, adtConstructors, adtDefsToMap
                                        , adtSort, adtDefsToList
                                        , Sort (SortBool, SortInt, SortString)
                                        )
 import           TorXakis.Sort.ConstructorDefs ( ConstructorDefs, ConstructorDef
                                                , constructorName, fields, cDefsToMap
-                                               , cDefsToList )
+                                               , constructors                                               
+                                               )
 import           TorXakis.Sort.FieldDefs (FieldDef, sort, fDefsToList)
 import           TorXakis.Sort.Name (Name, toText, getName)
 import           TorXakis.Sort.Ref  (Ref, mkRef)
@@ -108,7 +109,7 @@ cstrIds sm adfs = concat <$> traverse (cstrId sm) (adtDefsToList adfs)
 
 cstrId :: SortsMap -> ADTDef Sort -> State Int [CstrId]
 cstrId sm adf =
-    cstrIdFromCstrs sm adfSort (constructors adf)
+    cstrIdFromCstrs sm adfSort (adtConstructors adf)
     where
       Just adfSort = Map.lookup (adtSort adf) sm
 
@@ -124,7 +125,7 @@ cstrIdFromCstrs :: SortsMap
 --     }
 --
 cstrIdFromCstrs sm s cs =
-    traverse (cstrIdFromCstr sm s) (cDefsToList cs)
+    traverse (cstrIdFromCstr sm s) (constructors cs)
 
 cstrIdFromCstr :: SortsMap
                -> SortId                 -- ^ SortId of the ADT to which the constructor belongs to.
@@ -163,7 +164,7 @@ adtDefsToCstrDefs sm ads = concat <$>
 
 adtDefToCstrDef :: SortsMap -> ADTDef Sort -> State Int [CstrDef]
 adtDefToCstrDef sm adt =
-    traverse (cDefsToCstrDef sm s) (cDefsToList . constructors $ adt)
+    traverse (cDefsToCstrDef sm s) (constructors adt)
     where s = adtSort adt
 
 cDefsToCstrDef :: SortsMap

@@ -9,15 +9,26 @@ where
 
 import           Text.ParserCombinators.Parsec.Language (haskell)
 import qualified Data.Text as T
+import           Data.Text (Text)
+import           Text.Parsec ( ParsecT, (<|>), many, label, eof, unexpected, sepBy
+                             , getPosition, sourceLine, sourceColumn
+                             )
 import           Text.Parsec.String (Parser)
-import           Text.Parsec.Token (lexeme, symbol)
+import           Text.Parsec.Token ( lexeme, symbol
+                                   , GenLanguageDef (LanguageDef), commentStart, commentEnd
+                                   , commentLine
+                                   , nestedComments, identStart, identLetter
+                                   , opStart, opLetter, reservedNames, reservedOpNames
+                                   , caseSensitive
+                                   , GenTokenParser
+                                   , makeTokenParser )
 import           Text.Parsec.String (parseFromFile)
-import           Text.Parsec ((<|>), many, label, eof, unexpected, sepBy)
-import           Text.Parsec.Char (lower, upper, oneOf, alphaNum)
+import           Text.Parsec.Char (lower, upper, oneOf, alphaNum, letter)
 import           Data.List.NonEmpty (NonEmpty ((:|)))
 import           Control.Arrow (left)
 import           Control.Monad (void)
-
+import           Control.Monad.State (State, put, get)
+    
 import           TorXakis.Sort.FieldDefs (FieldDef (FieldDef), FieldDefs, fieldDefs, emptyFieldDefs)
 import           TorXakis.Sort.Name (Name, fromNonEmpty, getName, toText)
 import           TorXakis.Sort.ADTDefs ( ADTDef (ADTDef), Unchecked, U (U)
@@ -27,6 +38,8 @@ import           TorXakis.Sort.ConstructorDefs ( ConstructorDef (ConstructorDef)
                                                , ConstructorDefs, constructorDefs)
 
 import           TorXakis.Compiler.Error (Error)
+import           TorXakis.Parser.Data    (St (St), nextId, FieldDecl, Field (Field), ParseTree (ParseTree)
+                                         , Metadata (Metadata), SortRef (SortRef), OfSort)
 
 parse :: String -> Either Error ParsedDefs
 parse = undefined
@@ -84,9 +97,20 @@ sortP = do
         "Bool" -> return . U . Left  $ SortBool
         _      -> return . U . Right $ n
 
+sortP' :: TxsParser OfSort
+sortP' = do
+    m <- getMetadata
+    s <- txsLexeme' (ucIdentifier' "Sorts")
+    return $ ParseTree s SortRef m ()
 
 txsLexeme :: Parser a -> Parser a
 txsLexeme = lexeme haskell
+
+txsLexeme' :: TxsParser a -> TxsParser a
+txsLexeme' = lexeme txsTokenP
+
+txsSymbol' :: String -> TxsParser ()
+txsSymbol' = void . symbol txsTokenP
 
 txsSymbol :: String -> Parser ()
 txsSymbol = void . symbol haskell
@@ -103,6 +127,17 @@ fieldListP =  do
       mkFieldWithSort fs fn = FieldDef fn fs md
           where md = ""
 
+fieldListP' :: TxsParser [FieldDecl]
+fieldListP' =  do
+    fns <- txsLexeme' lcIdentifier' `sepBy` txsSymbol' ","
+    _  <- txsSymbol' "::"
+    fs <- sortP'
+    traverse (mkFieldWithSort fs) fns
+    where
+      mkFieldWithSort :: OfSort -> Text -> TxsParser FieldDecl
+      mkFieldWithSort fs fn = do
+          m <- getMetadata
+          return $ ParseTree fn Field m fs
 
 lcIdentifier :: Parser Name
 lcIdentifier = fromNonEmpty <$> identifierNE idStart
@@ -111,12 +146,27 @@ lcIdentifier = fromNonEmpty <$> identifierNE idStart
                 `label`
                 "Identifiers must start with a lowercase character or '_'"
 
+lcIdentifier' :: TxsParser Text
+lcIdentifier' = identifierNE' idStart
+    where
+      idStart = lower <|> oneOf "_"
+                `label`
+                "Identifiers must start with a lowercase character or '_'"
+
+
 ucIdentifier :: String -> Parser Name
 ucIdentifier what  = fromNonEmpty <$> identifierNE idStart
     where
       idStart = upper
                 `label`
                 (what ++ " must start with an uppercase character")
+
+ucIdentifier' :: String -> TxsParser Text
+ucIdentifier' what  = identifierNE' idStart
+    where
+      idStart = upper
+                `label`
+                (what ++ " must start with an uppercase character")                
 
 identifierNE :: Parser Char -> Parser (NonEmpty Char)
 identifierNE idStart = (:|) <$> idStart <*> idEnd
@@ -125,6 +175,11 @@ identifierNE idStart = (:|) <$> idStart <*> idEnd
           alphaNum <|> oneOf "_"
           `label`
           "Identifiers must contain only alpha-numeric characters or '_'"
+
+identifierNE' :: TxsParser Char -> TxsParser Text
+identifierNE' idStart = T.cons <$> idStart <*> idEnd
+    where
+      idEnd  = T.pack <$> many (identLetter txsLangDef)
 
 fieldsP :: String -- ^ Start symbol for the fields declaration.
         -> String -- ^ End symbol for the fields declaration.
@@ -196,3 +251,46 @@ fParamsP = "(" `fieldsP` ")"
 fBodyP :: Parser Exp
 fBodyP =
     Var <$> lcIdentifier
+
+fBodyP' :: TxsParser Exp
+fBodyP' =
+    Var <$> undefined 
+
+
+-- * Parser with a custom monad.
+
+type ParserInput = String
+
+type TxsParser = ParsecT ParserInput St (State St)
+
+txsLangDef :: GenLanguageDef ParserInput St (State St)
+txsLangDef = LanguageDef
+    { commentStart    = "{-"
+    , commentEnd      = "-}"
+    , commentLine     = "--"
+    , nestedComments  = True
+    , identStart      = letter
+    , identLetter     = alphaNum <|> oneOf "_'"
+    , opStart         = opLetter txsLangDef
+    , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
+    , reservedNames   = ["TYPEDEF", "ENDDEF", "FUNCDEF"]
+    , reservedOpNames = []
+    , caseSensitive   = True
+    }
+
+txsTokenP :: GenTokenParser ParserInput St (State St)
+txsTokenP = makeTokenParser txsLangDef
+
+-- ** Utility functions
+
+getMetadata :: TxsParser Metadata
+getMetadata = do
+    i <- getNextId
+    p <- getPosition
+    return $ Metadata (sourceLine p) (sourceColumn p) i
+
+getNextId :: TxsParser Int
+getNextId = do
+    St i <- get
+    put $ St (i + 1)
+    return i
