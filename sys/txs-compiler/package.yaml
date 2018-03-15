@@ -23,6 +23,8 @@ library:
   - containers
   - transformers
   - unordered-containers
+  - MissingH
+  - ilist
   # TorXakis dependencies
   - defs
   - valexpr

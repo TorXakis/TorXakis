@@ -42,7 +42,6 @@ data Func = Func deriving (Eq, Show)
 type ADTDecl   = ParseTree ADT     [CstrDecl]
 type CstrDecl  = ParseTree Cstr    [FieldDecl]
 type FieldDecl = ParseTree Field   OfSort
-
 type OfSort    = ParseTree SortRef ()
 
 -- | Components of a function

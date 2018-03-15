@@ -1,32 +1,87 @@
+{-# LANGUAGE OverloadedStrings #-}
 -- | This module defines functions to compile parsed definitions into
 -- functions.
 
 module TorXakis.Compiler.Functions where
 
 import           Data.Text (Text)
+import qualified Data.Map as Map
+import           Data.Semigroup ((<>))
+import           Data.List.Index (imapM)
 
+import           SortId                        (SortId, sortIdBool)
+import           CstrId                        (CstrId)
 import           Sigs                          (Sigs)
 import           VarId                         (VarId (VarId))
-import           FuncTable                     (FuncTable (FuncTable), SignHandler)
+import           FuncTable                     ( FuncTable (FuncTable), SignHandler, Handler
+                                               , Signature (Signature))
 import           TorXakis.Sort.Name            (getName)
 import           TorXakis.Sort.ADTDefs         (ADTDefs, Sort)
 import           TorXakis.Sort.ConstructorDefs (ConstructorDef)
+import           StdTDefs (iscstrHandler, accessHandler, cstrHandler)
 
-import           TorXakis.Compiler.Data (CompilerM)
+import           TorXakis.Parser.Data
+import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Error
 
--- > newtype FuncTable v = FuncTable { toMap :: Map.Map Text (SignHandler v) }
--- >
--- > type SignHandler v = Map.Map Signature (Handler v)
--- > data Signature = Signature  { sortArgs :: [SortId]
--- >                             , sortRet  :: SortId
--- >                             }
--- >
--- > type Handler v = [ValExpr v] -> ValExpr v
--- >
-adtDefsToFuncTable :: ADTDefs -> CompilerM (FuncTable VarId)
-adtDefsToFuncTable ds = undefined ds
-    
+-- | Make a function table 
+compileToFuncTable :: Env -> [ADTDecl] -> Either Error (FuncTable VarId)
+compileToFuncTable e ds =
+    -- TODO: the `FuncTable` should be replaced by a better one that checks
+    -- that there are no double definitions for instance. We could do this
+    -- check here for now...
+    FuncTable . Map.fromList . concat <$> traverse (adtsToHandlers e) ds
 
--- | Create a function from a constructor.
-cstrToCstrFunc :: ConstructorDef Sort -> CompilerM (Text, SignHandler VarId)
-cstrToCstrFunc c = undefined c
+adtsToHandlers :: Env -> ADTDecl -> Either Error [(Text, SignHandler VarId)]
+adtsToHandlers e a = do
+    sId <- findSort e (nodeName a)
+    concat <$> traverse (cstrToHandlers e sId) (child a)
+
+cstrToHandlers :: Env
+               -> SortId
+               -> CstrDecl
+               -> Either Error [(Text, SignHandler VarId)]
+cstrToHandlers e sId c = do
+    cId  <- findCstr e (nodeName c)
+    cTH  <- cstrToMkCstrHandler e sId c
+    iTH  <- cstrToIsCstrHandler e sId c
+    fTHs <- imapM (fieldToAccessCstrHandler e sId cId) (child c)    
+    return $ cTH:iTH:fTHs
+
+-- | Create a handler to create a constructor.
+cstrToMkCstrHandler :: Env
+                    -> SortId
+                    -> CstrDecl
+                    -> Either Error (Text, SignHandler VarId)
+cstrToMkCstrHandler e sId c = do
+    cId <- findCstr e n
+    return (n, Map.singleton (Signature fSids sId) (cstrHandler cId))
+    where
+      n = nodeName c
+      fSids = undefined
+
+-- | Create a "is-constructor"  function from a constructor.
+cstrToIsCstrHandler :: Env 
+                    -> SortId  -- ^ Sort id of the containing ADT.
+                    -> CstrDecl
+                    -> Either Error (Text, SignHandler VarId)
+cstrToIsCstrHandler e sId c = do
+    cId <- findCstr e n
+    return ("is"<> n, Map.singleton sign (iscstrHandler cId))
+    where
+      n = nodeName c
+      sign :: Signature
+      sign = Signature [sId] sortIdBool
+
+-- | Create an accessor handler from a field.
+fieldToAccessCstrHandler :: Env 
+                        -> SortId  -- ^ Sort id of the containing ADT.
+                        -> CstrId  -- ^ Id of the containing constructor.
+                        -> Int     -- ^ Position of the field in the constructor.
+                        -> FieldDecl
+                        -> Either Error (Text, SignHandler VarId)
+fieldToAccessCstrHandler e sId cId p f = do
+    fId <- findSort e n
+    return (n, Map.singleton (Signature [sId] fId) (accessHandler cId p))
+    where
+      n = nodeName f
