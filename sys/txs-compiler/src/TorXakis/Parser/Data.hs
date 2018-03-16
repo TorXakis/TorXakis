@@ -52,7 +52,7 @@ data FuncComps = FuncComps
     } deriving (Eq, Show)
 
 -- | Expressions.
-data Exp = Var Text
+data Exp = Var Text Metadata
     deriving (Eq, Show)
 
 type FuncDecl  = ParseTree Func FuncComps

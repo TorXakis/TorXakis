@@ -10,9 +10,11 @@ import           SortId (SortId, sortIdBool)
 import           CstrId (name, cstrsort, CstrId)
 import           FuncId (FuncId (FuncId))
 
-import           TorXakis.Parser.Data (CstrDecl, nodeName, FieldDecl, child)
+import           TorXakis.Parser.Data ( CstrDecl, nodeName, FieldDecl, child
+                                      , FuncDecl, funcParams, funcRetType)
 import           TorXakis.Compiler.Data (St, Env, getNextId, CompilerM, findSortM)
-import           TorXakis.Compiler.Error 
+import           TorXakis.Compiler.Error
+import           TorXakis.Compiler.SortId
     
 cstrToIsCstrFuncId :: CstrId -> CompilerM FuncId
 cstrToIsCstrFuncId cId = do
@@ -30,3 +32,10 @@ cstrToAccFuncId e cId f = do
     -- Here we could be looking up the name of anything.
     sId <- findSortM e (nodeName . child $ f)
     return $ FuncId (nodeName f) (Id fId) [cstrsort cId] sId
+
+funcDeclToFuncId :: Env -> FuncDecl -> CompilerM FuncId
+funcDeclToFuncId  e f = do
+    fId   <- getNextId
+    aSids <- traverse (fieldSort e) (funcParams . child $ f)
+    rSid  <- findSortM e (nodeName . funcRetType . child $ f)
+    return $ FuncId (nodeName f) (Id fId) aSids rSid

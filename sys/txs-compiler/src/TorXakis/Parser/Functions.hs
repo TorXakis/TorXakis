@@ -24,5 +24,5 @@ fParamsP = "(" `fieldsP` ")"
 
 fBodyP :: TxsParser Exp
 fBodyP =
-    Var <$> lcIdentifier
+    Var <$> lcIdentifier <*> getMetadata
     

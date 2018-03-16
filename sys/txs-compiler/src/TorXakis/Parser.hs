@@ -2,6 +2,7 @@
 module TorXakis.Parser
     ( ParsedDefs
     , adts
+    , fdefs
     , txsP
     , parseFile
     )

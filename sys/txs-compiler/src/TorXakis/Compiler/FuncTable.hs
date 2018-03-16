@@ -19,12 +19,13 @@ import           TorXakis.Sort.Name            (getName)
 import           TorXakis.Sort.ADTDefs         (ADTDefs, Sort)
 import           TorXakis.Sort.ConstructorDefs (ConstructorDef)
 import           StdTDefs (iscstrHandler, accessHandler, cstrHandler)
+import           ValExpr (cstrFunc)
 
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
 
--- | Make a function table 
+-- | Make a function table.
 compileToFuncTable :: Env -> [ADTDecl] -> Either Error (FuncTable VarId)
 compileToFuncTable e ds =
     -- TODO: the `FuncTable` should be replaced by a better one that checks
@@ -88,3 +89,20 @@ fieldToAccessCstrHandler e sId cId p f = do
     return (n, Map.singleton (Signature [sId] fId) (accessHandler cId p))
     where
       n = nodeName f
+
+funcDeclsToFuncTable :: Env -> [FuncDecl] -> Either Error (FuncTable VarId)
+funcDeclsToFuncTable e fs = FuncTable . Map.fromList <$>
+    traverse (funcDeclToFuncTable e) fs
+    
+
+funcDeclToFuncTable :: Env -> FuncDecl -> Either Error (Text, SignHandler VarId)
+funcDeclToFuncTable e f = do
+    sId   <- findSort e (nodeName . funcRetType . child $ f)
+    fSids <- traverse (fieldSort e) (funcParams . child $ f)
+    hdlr  <- fBodyToHandler e f
+    return (nodeName f, Map.singleton (Signature fSids sId) hdlr)
+
+fBodyToHandler :: Env -> FuncDecl -> Either Error (Handler VarId)
+fBodyToHandler e f = do
+    fId  <- findFuncId e (uid . nodeMdata $ f)
+    return $ cstrFunc (fDefMap e) fId
