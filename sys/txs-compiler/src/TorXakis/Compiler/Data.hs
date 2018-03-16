@@ -27,6 +27,9 @@ data Env = Env
     , cstrsMap :: Map Int  CstrId
     }
 
+emptyEnv :: Env
+emptyEnv = Env Map.empty Map.empty
+    
 findSort :: Env -> Text -> Either Error SortId
 findSort e s = maybeToEither err $
     Map.lookup s (sortsMap e)

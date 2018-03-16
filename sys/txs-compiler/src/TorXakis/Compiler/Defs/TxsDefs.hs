@@ -21,6 +21,7 @@ adtsToTxsDefs e ds = do
         , cstrDefs = lCstrDefs
         }
 
+-- TODO: put this in a sort package.
 envToSortDefs :: Env -> Map SortId SortDef    
 envToSortDefs e = Map.fromList $
     zip (Map.elems. sortsMap $ e) (repeat SortDef)
