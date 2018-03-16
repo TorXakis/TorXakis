@@ -13,7 +13,7 @@
 # to be used for project dependencies. For example:
 #
 # needed for cache space: same as torxakis
-resolver: lts-10.8
+resolver: lts-11.0
 ghc-variant: integersimple
 
 # User packages to be built.
