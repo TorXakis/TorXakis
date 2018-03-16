@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 -- | This module defines functions to compile parsed definitions into
--- functions.
+-- function tables ('FuncTable').
 
-module TorXakis.Compiler.Functions where
+module TorXakis.Compiler.FuncTable where
 
 import           Data.Text (Text)
 import qualified Data.Map as Map
@@ -30,10 +30,10 @@ compileToFuncTable e ds =
     -- TODO: the `FuncTable` should be replaced by a better one that checks
     -- that there are no double definitions for instance. We could do this
     -- check here for now...
-    FuncTable . Map.fromList . concat <$> traverse (adtsToHandlers e) ds
+    FuncTable . Map.fromList . concat <$> traverse (adtToHandlers e) ds
 
-adtsToHandlers :: Env -> ADTDecl -> Either Error [(Text, SignHandler VarId)]
-adtsToHandlers e a = do
+adtToHandlers :: Env -> ADTDecl -> Either Error [(Text, SignHandler VarId)]
+adtToHandlers e a = do
     sId <- findSort e (nodeName a)
     concat <$> traverse (cstrToHandlers e sId) (child a)
 
@@ -42,7 +42,7 @@ cstrToHandlers :: Env
                -> CstrDecl
                -> Either Error [(Text, SignHandler VarId)]
 cstrToHandlers e sId c = do
-    cId  <- findCstr e (nodeName c)
+    cId  <- findCstr e c
     cTH  <- cstrToMkCstrHandler e sId c
     iTH  <- cstrToIsCstrHandler e sId c
     fTHs <- imapM (fieldToAccessCstrHandler e sId cId) (child c)    
@@ -54,11 +54,14 @@ cstrToMkCstrHandler :: Env
                     -> CstrDecl
                     -> Either Error (Text, SignHandler VarId)
 cstrToMkCstrHandler e sId c = do
-    cId <- findCstr e n
+    cId <- findCstr e c
+    fSids <- traverse (fieldSort e) (child c)
     return (n, Map.singleton (Signature fSids sId) (cstrHandler cId))
     where
       n = nodeName c
-      fSids = undefined
+
+fieldSort :: Env -> FieldDecl -> Either Error SortId
+fieldSort e f = findSort e (nodeName . child $ f)    
 
 -- | Create a "is-constructor"  function from a constructor.
 cstrToIsCstrHandler :: Env 
@@ -66,7 +69,7 @@ cstrToIsCstrHandler :: Env
                     -> CstrDecl
                     -> Either Error (Text, SignHandler VarId)
 cstrToIsCstrHandler e sId c = do
-    cId <- findCstr e n
+    cId <- findCstr e c
     return ("is"<> n, Map.singleton sign (iscstrHandler cId))
     where
       n = nodeName c
