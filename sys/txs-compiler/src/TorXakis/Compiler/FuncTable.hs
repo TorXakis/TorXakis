@@ -12,7 +12,7 @@ import           Data.List.Index (imapM)
 import           SortId                        (SortId, sortIdBool)
 import           CstrId                        (CstrId)
 import           Sigs                          (Sigs)
-import           VarId                         (VarId (VarId))
+import           VarId                         (VarId)
 import           FuncTable                     ( FuncTable (FuncTable), SignHandler, Handler
                                                , Signature (Signature))
 import           TorXakis.Sort.Name            (getName)
