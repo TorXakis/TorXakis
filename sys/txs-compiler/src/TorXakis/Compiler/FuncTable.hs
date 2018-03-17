@@ -24,85 +24,93 @@ import           ValExpr (cstrFunc)
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
+import           TorXakis.Compiler.SortId
+import           TorXakis.Compiler.CstrId
 
 -- | Make a function table.
-compileToFuncTable :: Env -> [ADTDecl] -> Either Error (FuncTable VarId)
+compileToFuncTable :: (HasSortIds e, HasCstrIds e)
+                   => e -> [ADTDecl] -> Either Error (FuncTable VarId)
 compileToFuncTable e ds =
     -- TODO: the `FuncTable` should be replaced by a better one that checks
     -- that there are no double definitions for instance. We could do this
     -- check here for now...
     FuncTable . Map.fromList . concat <$> traverse (adtToHandlers e) ds
 
-adtToHandlers :: Env -> ADTDecl -> Either Error [(Text, SignHandler VarId)]
+adtToHandlers :: (HasSortIds e, HasCstrIds e)
+              => e -> ADTDecl -> Either Error [(Text, SignHandler VarId)]
 adtToHandlers e a = do
-    sId <- findSort e (nodeName a)
+    sId <- findSortId e (nodeNameT a)
     concat <$> traverse (cstrToHandlers e sId) (child a)
 
-cstrToHandlers :: Env
+cstrToHandlers :: (HasSortIds e, HasCstrIds e)
+               => e
                -> SortId
                -> CstrDecl
                -> Either Error [(Text, SignHandler VarId)]
 cstrToHandlers e sId c = do
-    cId  <- findCstr e c
+    cId  <- findCstrId e (getLoc c)
     cTH  <- cstrToMkCstrHandler e sId c
     iTH  <- cstrToIsCstrHandler e sId c
     fTHs <- imapM (fieldToAccessCstrHandler e sId cId) (child c)    
     return $ cTH:iTH:fTHs
 
 -- | Create a handler to create a constructor.
-cstrToMkCstrHandler :: Env
+cstrToMkCstrHandler :: (HasSortIds e, HasCstrIds e)
+                    => e
                     -> SortId
                     -> CstrDecl
                     -> Either Error (Text, SignHandler VarId)
 cstrToMkCstrHandler e sId c = do
-    cId <- findCstr e c
-    fSids <- traverse (fieldSort e) (child c)
+    cId <- findCstrId e (getLoc c)
+    fSids <- traverse (findSortId e . nodeNameT . child) (child c)
     return (n, Map.singleton (Signature fSids sId) (cstrHandler cId))
     where
-      n = nodeName c
-
-fieldSort :: Env -> FieldDecl -> Either Error SortId
-fieldSort e f = findSort e (nodeName . child $ f)    
+      n = nodeNameT c
 
 -- | Create a "is-constructor"  function from a constructor.
-cstrToIsCstrHandler :: Env 
+cstrToIsCstrHandler :: HasCstrIds e
+                    => e
                     -> SortId  -- ^ Sort id of the containing ADT.
                     -> CstrDecl
                     -> Either Error (Text, SignHandler VarId)
 cstrToIsCstrHandler e sId c = do
-    cId <- findCstr e c
+    cId <- findCstrId e (getLoc c)
     return ("is"<> n, Map.singleton sign (iscstrHandler cId))
     where
-      n = nodeName c
+      n = nodeNameT c
       sign :: Signature
       sign = Signature [sId] sortIdBool
 
 -- | Create an accessor handler from a field.
-fieldToAccessCstrHandler :: Env 
-                        -> SortId  -- ^ Sort id of the containing ADT.
-                        -> CstrId  -- ^ Id of the containing constructor.
-                        -> Int     -- ^ Position of the field in the constructor.
-                        -> FieldDecl
-                        -> Either Error (Text, SignHandler VarId)
+fieldToAccessCstrHandler :: HasSortIds e
+                         => e
+                         -> SortId  -- ^ Sort id of the containing ADT.
+                         -> CstrId  -- ^ Id of the containing constructor.
+                         -> Int     -- ^ Position of the field in the constructor.
+                         -> FieldDecl
+                         -> Either Error (Text, SignHandler VarId)
 fieldToAccessCstrHandler e sId cId p f = do
-    fId <- findSort e n
+    fId <- findSortId e (nodeNameT . child $ f)
     return (n, Map.singleton (Signature [sId] fId) (accessHandler cId p))
     where
-      n = nodeName f
+      n = nodeNameT f
 
-funcDeclsToFuncTable :: Env -> [FuncDecl] -> Either Error (FuncTable VarId)
+funcDeclsToFuncTable :: (HasSortIds e, HasFuncIds e, HasFuncDefs e)
+                     => e -> [FuncDecl] -> Either Error (FuncTable VarId)
 funcDeclsToFuncTable e fs = FuncTable . Map.fromList <$>
     traverse (funcDeclToFuncTable e) fs
     
 
-funcDeclToFuncTable :: Env -> FuncDecl -> Either Error (Text, SignHandler VarId)
+funcDeclToFuncTable :: (HasSortIds e, HasFuncIds e, HasFuncDefs e)
+                    => e -> FuncDecl -> Either Error (Text, SignHandler VarId)
 funcDeclToFuncTable e f = do
-    sId   <- findSort e (nodeName . funcRetType . child $ f)
-    fSids <- traverse (fieldSort e) (funcParams . child $ f)
+    sId   <- findSortId e (nodeNameT . funcRetType . child $ f)
+    fSids <- traverse (findSortId e . nodeNameT . child) (funcParams . child $ f)
     hdlr  <- fBodyToHandler e f
-    return (nodeName f, Map.singleton (Signature fSids sId) hdlr)
+    return (nodeNameT f, Map.singleton (Signature fSids sId) hdlr)
 
-fBodyToHandler :: Env -> FuncDecl -> Either Error (Handler VarId)
+fBodyToHandler :: (HasFuncIds e, HasFuncDefs e)
+               => e -> FuncDecl -> Either Error (Handler VarId)
 fBodyToHandler e f = do
-    fId  <- findFuncId e (uid . nodeMdata $ f)
-    return $ cstrFunc (fDefMap e) fId
+    fId  <- findFuncId e (getLoc f)
+    return $ cstrFunc (getFuncDefT e) fId

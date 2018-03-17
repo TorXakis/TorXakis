@@ -17,12 +17,12 @@ fdeclP = do
     txsSymbol "::="
     b <- txsLexeme fBodyP
     txsSymbol "ENDDEF"
-    return $ ParseTree n Func m (FuncComps ps s b)
+    return $ ParseTree (Name n) Func m (FuncComps ps s b)
 
 fParamsP :: TxsParser [FieldDecl]
 fParamsP = "(" `fieldsP` ")"
 
-fBodyP :: TxsParser Exp
+fBodyP :: TxsParser ExpDecl
 fBodyP =
     Var <$> lcIdentifier <*> getMetadata
     

@@ -1,17 +1,20 @@
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE FlexibleInstances          #-}
 module TorXakis.Compiler.Data where
 
+import           Prelude hiding (lookup)
 import           Control.Monad.Reader (ReaderT)
 import           Control.Monad.State  (State, MonadState, StateT)
 import           Data.Map             (Map)
 import qualified Data.Map as Map
 import           Data.Text            (Text)
+import qualified Data.Text as T
 import           Data.Semigroup ((<>))
 import           Data.Either.Utils (maybeToEither)
 import           Control.Monad.State (StateT, put, get)
-import           Control.Monad.Error.Class (MonadError, throwError)
+import           Control.Monad.Error.Class (MonadError, throwError, liftEither)
 
 import           FuncId                        (FuncId)
 import           FuncDef                        (FuncDef)
@@ -22,66 +25,94 @@ import           CstrId                        (CstrId (CstrId))
 import           TorXakis.Sort.ADTDefs         (Sort)
 import           TorXakis.Sort.ConstructorDefs (ConstructorDef)
 
-import           TorXakis.Parser.Data (CstrDecl, uid, nodeMdata, nodeName, FieldDecl)
+import           TorXakis.Parser.Data hiding (St, nextId)
 import           TorXakis.Compiler.Error
 
-data Env = Env
-    { sortsMap :: Map Text SortId
-    , cstrsMap :: Map Int  CstrId
-      -- | Map a variable-definition parser-location to a variable id.
-      -- 
-      -- TODO: make this type-safe!
-      -- Something like Map (Loc Var) VarId
-      -- So that you cannot use this with the location of anything else.
-    , varDefMap :: Map Int  VarId
-      -- | Map a variable usage parser-location to the variable-definition parse location.
-    , varUseMap :: Map Int FieldDecl
-      -- | Map a function definition location id to the function id.
-    , fIdMap :: Map Int FuncId
-    , fDefMap :: Map FuncId (FuncDef VarId)
+-- | Incremental environment, to allow the compiler to fill in the environment
+-- in several passes.
+data IEnv f0 f1 f2 f3 f4 f5 = IEnv
+    { sortIdT   :: f0
+    , cstrIdT   :: f1
+    , varIdT    :: f2
+    , varDeclT   :: f3
+    , funcIdT   :: f4
+    , funcDefT  :: f5
     }
 
-emptyEnv :: Env
-emptyEnv = Env Map.empty Map.empty Map.empty Map.empty Map.empty Map.empty
+emptyEnv :: IEnv () () () () () ()
+emptyEnv = IEnv () () () () () ()
+
+class HasSortIds e where
+    -- | Find the `SortId` that corresponds to the given name. This assumes
+    -- that sort names are unique.
+    findSortId  :: e -> Text -> Either Error SortId
+    findSortIdM :: e -> Text -> CompilerM SortId
+    findSortIdM e t = liftEither $ findSortId e t
+    getSortIdMap :: e -> Map Text SortId
+    allSortIds :: e -> [SortId]
+    allSortIds e = Map.elems $ getSortIdMap e
+class HasCstrIds e where
+    -- | Find the `CstrId` that correspond to the parser location of a
+    -- constructor declaration.
+    -- TODO: make this type-safe!
+    -- Something like Map (Loc Var) VarId
+    -- So that you cannot use this with the location of anything else.
+    findCstrId :: e -> Loc Cstr -> Either Error CstrId
+    findCstrIdM :: e -> Loc Cstr -> CompilerM CstrId
+    findCstrIdM e i = liftEither $ findCstrId e i
+
+class HasVarIds e where
+    -- | Find the variable id that corresponds to the given parser location.
+    --
+    -- For now only field id's can define new `VarId`s.
+    findVarId :: e -> Loc Field -> Either Error VarId
+    findVarIdM :: e -> Loc Field -> CompilerM VarId
+    findVarIdM e i = liftEither $ findVarId e i
+
+class HasVarDecls e where
+    -- | Find the field declaration that corresponds to parser-location of a
+    -- variable use.
+    --
+    -- For now variables only occur in expressions.
+    findVarDecl :: e -> Loc Exp -> Either Error FieldDecl
+    findVarDeclM :: e -> Loc Exp -> CompilerM  FieldDecl
+    findVarDeclM e i = liftEither $ findVarDecl e i
+
+class HasFuncIds e where
+    -- | Find the function id that corresponds to the given parser location.
+    --
+    findFuncId :: e -> Loc Func -> Either Error FuncId
+
+class HasFuncDefs e where
+    -- | Find the function definition that corresponds with a given function id.
+    findFuncDef :: e -> FuncId -> Either Error (FuncDef VarId)
+    getFuncDefT :: e -> Map FuncId (FuncDef VarId)
+
+instance HasSortIds (IEnv (Map Text SortId) f1 f2 f3 f4 f5) where
+    findSortId IEnv{sortIdT = sm} s = maybeToEither err . Map.lookup s $ sm
+        where err = "Could not find sort " <> s
+
+    getSortIdMap IEnv{sortIdT = sm} = sm
+
+lookup :: (Ord a, Show a) => a -> Map a b -> Text -> Either Error b
+lookup a ab what = maybeToEither err . Map.lookup a $ ab
+    where err = "Could not find " <> what <> "(" <> T.pack (show a) <> ")"
+
+instance HasCstrIds (IEnv f0 (Map (Loc Cstr) CstrId) f2 f3 f4 f5) where
+    findCstrId IEnv{cstrIdT = cm} i = lookup i cm "constructor by parser location id "
+
+instance HasVarIds (IEnv f0 f1 (Map (Loc Field) VarId) f3 f4 f5) where
+    findVarId IEnv{varIdT = vm} i = lookup i vm "variable by parser location id"
+
+instance HasVarDecls (IEnv f0 f1 f2 (Map (Loc Exp) FieldDecl) f4 f5) where
+    findVarDecl IEnv{varDeclT = vm} i = lookup i vm "variable declaration by parser location id" 
     
-findSort :: Env -> Text -> Either Error SortId
-findSort e s = maybeToEither err $
-    Map.lookup s (sortsMap e)
-    where err = "Could not find sort " <> s
+instance HasFuncIds (IEnv f0 f1 f2 f3 (Map (Loc Func) FuncId) f5) where
+    findFuncId IEnv {funcIdT = fm} i = lookup i fm "function id by parser location id"
 
-findSortM :: Env -> Text -> CompilerM SortId
-findSortM e s =
-    case Map.lookup s (sortsMap e) of
-        Nothing  -> throwError $ "Could not find sort " <> s
-        Just sId -> return sId
-
-findCstr :: Env -> CstrDecl -> Either Error CstrId
-findCstr e c = maybeToEither err $
-    Map.lookup (uid . nodeMdata $ c) (cstrsMap e)
-    where err = "Could not find constructor " <> nodeName c
-
-findCstrM :: Env -> CstrDecl -> CompilerM CstrId
-findCstrM e c =
-    case Map.lookup (uid . nodeMdata $ c) (cstrsMap e) of
-        Nothing  -> throwError $ "Could not find constructor " <> nodeName c
-        Just sId -> return sId
-
-findVarDefM :: Env -> FieldDecl -> CompilerM VarId
-findVarDefM e f =
-    case Map.lookup (uid . nodeMdata $ f) (varDefMap e) of
-        Nothing  -> throwError $ "Could not find variable " <> nodeName f
-        Just vId -> return vId
-
-findVarUseM :: Env -> Int -> CompilerM VarId
-findVarUseM e i =
-    case Map.lookup i (varUseMap e) of
-        Nothing -> throwError "Could not find variable "
-        Just f  -> findVarDefM e f
-
-findFuncId :: Env -> Int -> Either Error FuncId
-findFuncId e i = maybeToEither err $
-    Map.lookup i (fIdMap e)
-    where err =  "Could not find function id"
+instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 (Map FuncId (FuncDef VarId))) where
+    findFuncDef IEnv{funcDefT = fm} i = lookup i fm "function declaration by function id"
+    getFuncDefT IEnv{funcDefT = fm} = fm
 
 newtype St = St { nextId :: Int } deriving (Eq, Show)
 

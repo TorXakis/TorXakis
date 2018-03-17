@@ -47,11 +47,11 @@ txsSymbol = void . symbol txsTokenP
 txsLexeme :: TxsParser a -> TxsParser a
 txsLexeme = lexeme txsTokenP
 
-getMetadata :: TxsParser Metadata
+getMetadata :: TxsParser (Metadata t)
 getMetadata = do
     i <- getNextId
     p <- getPosition
-    return $ Metadata (sourceLine p) (sourceColumn p) i
+    return $ Metadata (sourceLine p) (sourceColumn p) (Loc i)
 
 getNextId :: TxsParser Int
 getNextId = do

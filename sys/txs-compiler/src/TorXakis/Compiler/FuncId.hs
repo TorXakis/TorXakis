@@ -10,9 +10,8 @@ import           SortId (SortId, sortIdBool)
 import           CstrId (name, cstrsort, CstrId)
 import           FuncId (FuncId (FuncId))
 
-import           TorXakis.Parser.Data ( CstrDecl, nodeName, FieldDecl, child
-                                      , FuncDecl, funcParams, funcRetType)
-import           TorXakis.Compiler.Data (St, Env, getNextId, CompilerM, findSortM)
+import           TorXakis.Parser.Data
+import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.SortId
     
@@ -22,7 +21,8 @@ cstrToIsCstrFuncId cId = do
     return $ FuncId ("is" <> name cId) (Id fId) [cstrsort cId] sortIdBool
 
 -- | Define the accessor function for a constructor, using the given field.
-cstrToAccFuncId :: Env
+cstrToAccFuncId :: HasSortIds e
+                => e
                 -> CstrId    -- ^ Id of the containing constructor
                 -> FieldDecl
                 -> CompilerM FuncId
@@ -30,12 +30,13 @@ cstrToAccFuncId e cId f = do
     fId <- getNextId
     -- TODO: you might consider making the parse tree a bit more type-safer.
     -- Here we could be looking up the name of anything.
-    sId <- findSortM e (nodeName . child $ f)
-    return $ FuncId (nodeName f) (Id fId) [cstrsort cId] sId
+    sId <- findSortIdM e (nodeNameT . child $ f)
+    return $ FuncId (nodeNameT f) (Id fId) [cstrsort cId] sId
 
-funcDeclToFuncId :: Env -> FuncDecl -> CompilerM FuncId
+funcDeclToFuncId :: HasSortIds e
+                 => e -> FuncDecl -> CompilerM FuncId
 funcDeclToFuncId  e f = do
     fId   <- getNextId
-    aSids <- traverse (fieldSort e) (funcParams . child $ f)
-    rSid  <- findSortM e (nodeName . funcRetType . child $ f)
-    return $ FuncId (nodeName f) (Id fId) aSids rSid
+    aSids <- traverse (sortIdOfFieldDeclM e) (funcParams . child $ f)
+    rSid  <- findSortIdM e (nodeNameT . funcRetType . child $ f)
+    return $ FuncId (nodeNameT f) (Id fId) aSids rSid

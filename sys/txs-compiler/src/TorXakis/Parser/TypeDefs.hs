@@ -13,7 +13,7 @@ import           TorXakis.Parser.Data    ( St (St), nextId, FieldDecl
                                          , Field (Field), ParseTree (ParseTree)
                                          , Metadata (Metadata), SortRef (SortRef), OfSort
                                          , ADTDecl, ADT (ADT)
-                                         , CstrDecl, Cstr (Cstr)
+                                         , CstrDecl, Cstr (Cstr), Name (Name)
                                          )
 
 -- | Parser of ADT's.
@@ -25,14 +25,14 @@ adtP = do
     txsSymbol "::="
     cs <- cstrP `sepBy` txsSymbol "|"
     txsSymbol "ENDDEF"
-    return $ ParseTree n ADT m cs
+    return $ ParseTree (Name n) ADT m cs
 
 cstrP :: TxsParser CstrDecl
 cstrP = do
     m  <- getMetadata
     n  <- txsLexeme (ucIdentifier "Constructors")
     fs <- "{" `fieldsP` "}"
-    return $ ParseTree n Cstr m fs
+    return $ ParseTree (Name n) Cstr m fs
 
 -- | Parser of a list of fields, delimited by the given symbols.
 --
@@ -62,11 +62,11 @@ fieldListP =  do
       mkFieldWithSort :: OfSort -> Text -> TxsParser FieldDecl
       mkFieldWithSort fs fn = do
           m <- getMetadata
-          return $ ParseTree fn Field m fs
+          return $ ParseTree (Name fn) Field m fs
 
 -- | Parser for Sorts.
 sortP :: TxsParser OfSort
 sortP = do
     m <- getMetadata
     s <- txsLexeme (ucIdentifier "Sorts")
-    return $ ParseTree s SortRef m ()
+    return $ ParseTree (Name s) SortRef m ()

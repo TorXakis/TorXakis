@@ -12,17 +12,20 @@ import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.FuncId
     
-compileToCstrDefs :: Env -> [ADTDecl] -> CompilerM (Map CstrId CstrDef)
+compileToCstrDefs :: (HasCstrIds e, HasSortIds e)
+                  => e -> [ADTDecl] -> CompilerM (Map CstrId CstrDef)
 compileToCstrDefs e ds = 
     Map.fromList . concat <$> traverse (adtToCstrDefs e) ds
 
-adtToCstrDefs :: Env -> ADTDecl -> CompilerM [(CstrId, CstrDef)]
+adtToCstrDefs :: (HasCstrIds e, HasSortIds e)
+               => e -> ADTDecl -> CompilerM [(CstrId, CstrDef)]
 adtToCstrDefs e a =
     traverse (cstrToCstrDefs e) (child a)
 
-cstrToCstrDefs :: Env -> CstrDecl -> CompilerM (CstrId, CstrDef)
+cstrToCstrDefs :: (HasCstrIds e, HasSortIds e)
+               => e -> CstrDecl -> CompilerM (CstrId, CstrDef)
 cstrToCstrDefs e c = do
-    cId <- findCstrM e c
+    cId <- findCstrIdM e (getLoc c)
     isCstrFid <- cstrToIsCstrFuncId cId
     cstrAccFids <- traverse (cstrToAccFuncId e cId) (child c)
     return (cId, CstrDef isCstrFid cstrAccFids)

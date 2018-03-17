@@ -16,7 +16,8 @@ import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.FuncTable
 
-adtDeclsToSigs :: Env -> [ADTDecl] -> CompilerM (Sigs VarId)
+adtDeclsToSigs :: (HasSortIds e, HasFuncIds e, HasFuncDefs e, HasCstrIds e)
+               => e -> [ADTDecl] -> CompilerM (Sigs VarId)
 -- > data Sigs v = Sigs  { chan :: [ChanId]
 -- >                     , func :: FuncTable v
 -- >                     , pro  :: [ProcId]
@@ -27,7 +28,8 @@ adtDeclsToSigs e ds =
     throwError ||| (\ft -> return $ empty { func = ft }) $
         compileToFuncTable e ds
 
-funDeclsToSigs :: Env -> [FuncDecl] -> CompilerM (Sigs VarId)
+funDeclsToSigs :: (HasSortIds e, HasFuncIds e, HasFuncDefs e, HasCstrIds e)
+               => e -> [FuncDecl] -> CompilerM (Sigs VarId)
 funDeclsToSigs e ds =  throwError ||| (\ft -> return $ empty { func = ft }) $
         funcDeclsToFuncTable e ds
 

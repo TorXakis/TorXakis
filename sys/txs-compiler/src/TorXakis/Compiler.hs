@@ -13,7 +13,7 @@ import qualified Data.HashMap.Strict  as HMap
 import           Control.Monad.Trans.Class (lift)
 import           Data.Semigroup ((<>))
 
-import           TxsDefs (TxsDefs, sortDefs, cstrDefs, union)
+import           TxsDefs (TxsDefs, sortDefs, cstrDefs, union, funcDefs, empty)
 import qualified TxsDefs
 import           Sigs    (Sigs, uniqueCombine)
 import           VarId   (VarId (VarId))
@@ -41,10 +41,14 @@ import           TorXakis.Sort.Ref  (Ref, mkRef)
 import           TorXakis.Compiler.Error (Error)
 import           TorXakis.Compiler.Data
 import           TorXakis.Parser (ParsedDefs, adts, fdefs)
+import           TorXakis.Parser.Data hiding (St)
 import           TorXakis.Compiler.SortId
 import           TorXakis.Compiler.CstrId
 import           TorXakis.Compiler.Defs.TxsDefs
 import           TorXakis.Compiler.Sigs
+import           TorXakis.Compiler.ValExpr.VarId
+import           TorXakis.Compiler.ValExpr.FuncDef
+import           TorXakis.Compiler.ExpDecl
 
 -- | Compile a string into a TorXakis model.
 --
@@ -65,23 +69,32 @@ compileParsedDefs pd = do
     -- First construct the @SortId@'s
     sMap <- compileToSortId (adts pd)
     -- Then construct the @CstrId@'s
-    cMap <- compileToCstrId (emptyEnv {sortsMap = sMap}) (adts pd)
+    let e0 = emptyEnv { sortIdT = sMap }
+    cMap <- compileToCstrId e0 (adts pd)
+    let e1 = e0 { cstrIdT = cMap }
+    vMap <- generateVarIds e1 (fdefs pd)
+    let e2 = e1 { varIdT = vMap }
+    dMap <- generateVarDecls e2 (fdefs pd)
+    let e3 = e2 { varDeclT = dMap }
+    (lFIdMap, lFDefMap) <- funcDeclsToFuncDefs e3 (fdefs pd)
+    let e4 = e3 { funcIdT = lFIdMap, funcDefT = lFDefMap }
     -- Finally construct the TxsDefs.
-    let e = Env sMap cMap undefined undefined undefined undefined
-    txsDefs <- toTxsDefs e pd 
-    sigs    <- toSigs    e pd
+    txsDefs <- toTxsDefs e4 pd 
+    sigs    <- toSigs    e4 pd
     St i    <- get
     return (Id i, txsDefs, sigs)
     
-toTxsDefs :: Env -> ParsedDefs -> CompilerM TxsDefs
+toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
+          => e -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs e pd = do
     ad <- adtsToTxsDefs e (adts pd)
-    fd <- funcsToTxsDef e (fdefs pd)
+    let fd = empty { funcDefs = getFuncDefT e }
     return $ union ad fd
 
-toSigs :: Env -> ParsedDefs -> CompilerM (Sigs VarId)
+toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
+       => e -> ParsedDefs -> CompilerM (Sigs VarId)
 toSigs e pd = do
-    let ts = sortsToSigs (sortsMap e)
+    let ts = sortsToSigs (getSortIdMap e)
     as <- adtDeclsToSigs e (adts pd)
     fs <- funDeclsToSigs e (fdefs pd)
     return $ uniqueCombine ts (uniqueCombine as fs)
