@@ -11,21 +11,15 @@ import           Data.List.Index (imapM)
 
 import           SortId                        (SortId, sortIdBool)
 import           CstrId                        (CstrId)
-import           Sigs                          (Sigs)
 import           VarId                         (VarId)
 import           FuncTable                     ( FuncTable (FuncTable), SignHandler, Handler
                                                , Signature (Signature))
-import           TorXakis.Sort.Name            (getName)
-import           TorXakis.Sort.ADTDefs         (ADTDefs, Sort)
-import           TorXakis.Sort.ConstructorDefs (ConstructorDef)
 import           StdTDefs (iscstrHandler, accessHandler, cstrHandler)
 import           ValExpr (cstrFunc)
 
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.ValExpr.SortId
-import           TorXakis.Compiler.ValExpr.CstrId
 
 -- | Make a function table.
 compileToFuncTable :: (HasSortIds e, HasCstrIds e)

@@ -5,45 +5,17 @@ module TorXakis.Parser
     , fdefs
     , txsP
     , parseFile
+    , parse
     )
 where
 
 import qualified Data.Text as T
-import           Data.Text (Text)
-import           Text.Parsec ( ParsecT, (<|>), many, label, eof, unexpected
-                             , sepBy, getPosition, sourceLine, sourceColumn
-                             , runParserT
-                             )
-import           Text.ParserCombinators.Parsec.Language (haskell)                 
-import           Text.Parsec.Token ( lexeme, symbol
-                                   , GenLanguageDef (LanguageDef), commentStart, commentEnd
-                                   , commentLine
-                                   , nestedComments, identStart, identLetter
-                                   , opStart, opLetter, reservedNames, reservedOpNames
-                                   , caseSensitive
-                                   , GenTokenParser
-                                   , makeTokenParser )
-import           Text.Parsec.String (parseFromFile)
-import           Text.Parsec.Char (lower, upper, oneOf, alphaNum, letter)
-import           Data.List.NonEmpty (NonEmpty ((:|)))
+import           Text.Parsec ( (<|>), many, eof, runParserT )
 import           Control.Arrow (left)
-import           Control.Monad (void)
 import           Control.Monad.Identity (runIdentity)
     
-import           TorXakis.Sort.FieldDefs (FieldDef (FieldDef), FieldDefs, fieldDefs, emptyFieldDefs)
-import           TorXakis.Sort.Name (Name, fromNonEmpty, getName, toText)
-import           TorXakis.Sort.ADTDefs ( ADTDef (ADTDef), Unchecked, U (U)
-                                       , Sort (SortInt, SortBool)
-                                       )
-import           TorXakis.Sort.ConstructorDefs ( ConstructorDef (ConstructorDef)
-                                               , ConstructorDefs, constructorDefs)
-
 import           TorXakis.Compiler.Error (Error)
-import           TorXakis.Parser.Data    (St (St), nextId, FieldDecl
-                                         , Field (Field), ParseTree (ParseTree)
-                                         , Metadata (Metadata)
-                                         , SortRef (SortRef), OfSort, FuncDecl
-                                         , ADTDecl )
+import           TorXakis.Parser.Data    (FuncDecl, ADTDecl, St (St))
 import           TorXakis.Parser.FuncDefs (fdeclP)
 import           TorXakis.Parser.TypeDefs (adtP)
 import           TorXakis.Parser.Common (TxsParser)

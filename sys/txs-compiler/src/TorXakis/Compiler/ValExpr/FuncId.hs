@@ -2,17 +2,15 @@
 module TorXakis.Compiler.ValExpr.FuncId where
 
 -- TODO: consider adding your own prelude.
-import           Control.Monad.State  (State, MonadState, StateT)
 import           Data.Semigroup ((<>))
 
 import           Id (Id (Id))
-import           SortId (SortId, sortIdBool)
+import           SortId (sortIdBool)
 import           CstrId (name, cstrsort, CstrId)
 import           FuncId (FuncId (FuncId))
 
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.ValExpr.SortId
     
 cstrToIsCstrFuncId :: CstrId -> CompilerM FuncId

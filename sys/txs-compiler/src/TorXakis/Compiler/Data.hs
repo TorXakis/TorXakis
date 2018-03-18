@@ -5,25 +5,21 @@
 module TorXakis.Compiler.Data where
 
 import           Prelude hiding (lookup)
-import           Control.Monad.Reader (ReaderT)
-import           Control.Monad.State  (State, MonadState, StateT)
+import           Control.Monad.State  (MonadState, StateT)
 import           Data.Map             (Map)
 import qualified Data.Map as Map
 import           Data.Text            (Text)
 import qualified Data.Text as T
 import           Data.Semigroup ((<>))
 import           Data.Either.Utils (maybeToEither)
-import           Control.Monad.State (StateT, put, get)
-import           Control.Monad.Error.Class (MonadError, throwError, liftEither)
+import           Control.Monad.State (put, get)
+import           Control.Monad.Error.Class (MonadError, liftEither)
 
 import           FuncId                        (FuncId)
-import           FuncDef                        (FuncDef)
+import           FuncDef                       (FuncDef)
 import           VarId                         (VarId)
-import           Id                            (Id (Id))
-import           SortId                        (SortId (SortId))
-import           CstrId                        (CstrId (CstrId))
-import           TorXakis.Sort.ADTDefs         (Sort)
-import           TorXakis.Sort.ConstructorDefs (ConstructorDef)
+import           SortId                        (SortId)
+import           CstrId                        (CstrId)
 
 import           TorXakis.Parser.Data hiding (St, nextId)
 import           TorXakis.Compiler.Error

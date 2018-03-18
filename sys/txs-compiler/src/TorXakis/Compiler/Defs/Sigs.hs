@@ -7,10 +7,9 @@ import           Data.Text (Text)
 import           Control.Arrow ((|||))
 import           Control.Monad.Error.Class (throwError)
     
-import           SortId (SortId, name)
-import           Sigs    (Sigs (Sigs), sort, empty, func)
-import           VarId   (VarId (VarId))
-import           FuncTable (FuncTable (FuncTable))
+import           SortId (SortId)
+import           Sigs    (Sigs, sort, empty, func)
+import           VarId   (VarId)
 
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data

@@ -3,15 +3,12 @@
 module TorXakis.Parser.TypeDefs where
 
 import           Data.Text (Text)
-import           Text.Parsec ( ParsecT, (<|>), many, label, eof, unexpected, sepBy
-                             , getPosition, sourceLine, sourceColumn
-                             )
-import           Text.Parsec.Char (lower, upper, oneOf, alphaNum, letter)
+import           Text.Parsec ( sepBy, (<|>) )
 
 import           TorXakis.Parser.Common
-import           TorXakis.Parser.Data    ( St (St), nextId, FieldDecl
+import           TorXakis.Parser.Data    ( FieldDecl
                                          , Field (Field), ParseTree (ParseTree)
-                                         , Metadata (Metadata), SortRef (SortRef), OfSort
+                                         , SortRef (SortRef), OfSort
                                          , ADTDecl, ADT (ADT)
                                          , CstrDecl, Cstr (Cstr), Name (Name)
                                          )

@@ -5,14 +5,13 @@ module TorXakis.Compiler.Defs.TxsDefs where
 import           Data.Map (Map)
 import qualified Data.Map as Map
 
-import           TxsDefs (TxsDefs, empty, sortDefs, cstrDefs, funcDefs)
+import           TxsDefs (TxsDefs, empty, sortDefs, cstrDefs)
 import           SortId (SortId)
 import           SortDef (SortDef (SortDef))
     
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.ValExpr.CstrDef
-import           TorXakis.Compiler.ValExpr.FuncDef
     
 adtsToTxsDefs :: (HasCstrIds e, HasSortIds e)
               => e -> [ADTDecl] -> CompilerM TxsDefs

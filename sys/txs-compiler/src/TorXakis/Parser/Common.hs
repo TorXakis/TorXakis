@@ -3,8 +3,7 @@ module TorXakis.Parser.Common where
 -- TODO: use selective imports.
 import qualified Data.Text as T
 import           Data.Text (Text)
-import           Control.Monad.State (State, put, get)
-import           Text.Parsec ( ParsecT, (<|>), many, label, eof, unexpected, sepBy
+import           Text.Parsec ( ParsecT, (<|>), many, label
                              , getPosition, sourceLine, sourceColumn
                              , getState
                              , putState
@@ -12,7 +11,7 @@ import           Text.Parsec ( ParsecT, (<|>), many, label, eof, unexpected, sep
 import           Text.Parsec.Token
 import           Text.Parsec.Char (lower, upper, oneOf, alphaNum, letter)
 import           Control.Monad (void)
-import           Control.Monad.Identity (Identity, runIdentity)
+import           Control.Monad.Identity (Identity)
 
 import           TorXakis.Parser.Data
 

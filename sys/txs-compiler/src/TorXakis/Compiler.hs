@@ -1,47 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Compiler where
 
-import           Data.Text            ( Text )
-import qualified Data.Text            as T
-import           Control.Arrow        ( (|||), left, right )
-import           Control.Monad        ( replicateM )
-import           Control.Monad.State  ( State, get, put, evalStateT )
-import           Control.Monad.Reader ( ReaderT, ask )
-import           Data.Map.Strict      (Map)
+import           Control.Arrow        ( (|||) )
+import           Control.Monad.State  ( get, evalStateT )
 import qualified Data.Map.Strict      as Map
-import qualified Data.HashMap.Strict  as HMap
-import           Control.Monad.Trans.Class (lift)
-import           Data.Semigroup ((<>))
 
-import           TxsDefs (TxsDefs, sortDefs, cstrDefs, union, funcDefs, empty)
-import qualified TxsDefs
+import           TxsDefs (TxsDefs, union, funcDefs, empty)
 import           Sigs    (Sigs, uniqueCombine)
-import           VarId   (VarId (VarId))
-import           SortId  (SortId (SortId), sortIdBool, sortIdInt, sortIdString)
-import           CstrId  (CstrId (CstrId))
-import           CstrDef (CstrDef (CstrDef))
-import           FuncDef (FuncDef (FuncDef))
 import           Id  (Id (Id))
-import           FuncId  (FuncId (FuncId))
-import           SortDef  (SortDef (SortDef))
-import           ValExpr (cstrAccess, cstrVar)
-import           TorXakis.Sort.ADTDefs ( ADTDefs, addADTDefs, emptyADTDefs, getDefs
-                                       , ADTDef, Sort, adtConstructors, adtDefsToMap
-                                       , adtSort, adtDefsToList
-                                       , Sort (SortBool, SortInt, SortString)
-                                       )
-import           TorXakis.Sort.ConstructorDefs ( ConstructorDefs, ConstructorDef
-                                               , constructorName, fields, cDefsToMap
-                                               , constructors                                               
-                                               )
-import           TorXakis.Sort.FieldDefs (FieldDef, sort, fDefsToList)
-import           TorXakis.Sort.Name (Name, toText, getName)
-import           TorXakis.Sort.Ref  (Ref, mkRef)
+import           SortId  (sortIdBool, sortIdInt)
+import           VarId   (VarId)
 
 import           TorXakis.Compiler.Error (Error)
 import           TorXakis.Compiler.Data
 import           TorXakis.Parser 
-import           TorXakis.Parser.Data hiding (St)
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.CstrId
 import           TorXakis.Compiler.Defs.TxsDefs

@@ -3,13 +3,11 @@ module TorXakis.Compiler.ValExpr.CstrDef where
 import           Data.Map (Map)
 import qualified Data.Map as Map
 
-import           SortId (SortId)
 import           CstrId (CstrId)
 import           CstrDef (CstrDef (CstrDef))
 
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.ValExpr.FuncId
     
 compileToCstrDefs :: (HasCstrIds e, HasSortIds e)
