@@ -73,7 +73,10 @@ compileParsedDefs pd = do
     -- First construct the @SortId@'s
     sMap <- compileToSortId (adts pd)
     -- Then construct the @CstrId@'s
-    let e0 = emptyEnv { sortIdT = sMap }
+    let pdsMap = Map.fromList [ ("Int", sortIdInt)
+                              , ("Bool", sortIdBool)
+                              ]
+        e0 = emptyEnv { sortIdT = Map.union pdsMap sMap }
     cMap <- compileToCstrId e0 (adts pd)
     let e1 = e0 { cstrIdT = cMap }
     vMap <- generateVarIds e1 (fdefs pd)

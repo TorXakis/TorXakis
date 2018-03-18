@@ -37,8 +37,7 @@ cstrToCstrId :: (HasSortIds e)
              -> CompilerM (Loc Cstr, CstrId)
 cstrToCstrId e sId c = do
     i <- getNextId
-    aSids <- traverse (findSortIdM e . nodeNameT) (child c)
-    -- TODO: here we might confuse i with the parser uid. We need to change this!
+    aSids <- traverse (findSortIdM e . nodeNameT . child) (child c)
     return (getLoc c, CstrId (nodeNameT c) (Id i) aSids sId)
 
 cstrIdOfCstrDecl :: HasCstrIds e => e -> CstrDecl -> Either Error CstrId
