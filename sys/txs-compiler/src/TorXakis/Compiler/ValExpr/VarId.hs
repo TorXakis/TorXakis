@@ -1,11 +1,12 @@
--- | 
+-- |
 
 module TorXakis.Compiler.ValExpr.VarId where
 
 import           Data.Map (Map)
 import qualified Data.Map as Map
 
-import           VarId (VarId)
+import           Id (Id (Id))
+import           VarId (VarId (VarId))
 
 import TorXakis.Parser.Data
 import TorXakis.Compiler.Data
@@ -13,13 +14,17 @@ import TorXakis.Compiler.Data
 
 generateVarIds :: (HasSortIds e)
                => e -> [FuncDecl] -> CompilerM (Map (Loc Field) VarId)
-generateVarIds = undefined
+generateVarIds e fs = Map.fromList . concat <$>
+    traverse (varIdsFromFuncDecl e) fs
 
--- fieldDeclToVarId :: Env -> FieldDecl -> CompilerM VarId
--- fieldDeclToVarId e f =
-    
--- findVarDefM :: Hase -> FieldDecl -> CompilerM VarId
--- findVarDefM e f = 
---     case Map.lookup (uid . nodeMdata $ f) (varDefMap e) of
---         Nothing  -> throwError $ "Could not find variable " <> nodeName f
---         Just vId -> return vId
+varIdsFromFuncDecl :: (HasSortIds e)
+                   => e -> FuncDecl -> CompilerM [(Loc Field, VarId)]
+varIdsFromFuncDecl e fd =
+    traverse (varIdsFromFieldDecl e) (funcParams . child $ fd)
+
+varIdsFromFieldDecl :: (HasSortIds e)
+                    => e -> FieldDecl -> CompilerM (Loc Field, VarId)
+varIdsFromFieldDecl e f = do
+    sId <- findSortIdM e (nodeNameT . child $ f)
+    vId <- getNextId
+    return (getLoc f, VarId (nodeNameT f) (Id vId) sId)
