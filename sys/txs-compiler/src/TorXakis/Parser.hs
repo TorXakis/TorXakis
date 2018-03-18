@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Parser
     ( ParsedDefs
     , adts

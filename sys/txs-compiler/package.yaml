@@ -28,7 +28,6 @@ library:
   # TorXakis dependencies
   - defs
   - valexpr
-  - txs-sort
   
 extra-source-files:
 - test/data/success/*.txs
