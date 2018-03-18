@@ -85,7 +85,7 @@ class HasFuncDefs e where
 
 instance HasSortIds (IEnv (Map Text SortId) f1 f2 f3 f4 f5) where
     findSortId IEnv{sortIdT = sm} (t, m) = maybeToEither err . Map.lookup t $ sm
-        where err = (T.pack . show) m <> "Could not find sort " <> t
+        where err = (T.pack . show) m <> ": Could not find sort " <> t
 
     getSortIdMap IEnv{sortIdT = sm} = sm
 
