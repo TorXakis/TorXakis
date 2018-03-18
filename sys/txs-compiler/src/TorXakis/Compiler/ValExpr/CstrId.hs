@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings          #-}
-module TorXakis.Compiler.CstrId where
+module TorXakis.Compiler.ValExpr.CstrId where
 
 import           Data.Text (Text)
 import           Data.Map (Map)
@@ -14,8 +14,8 @@ import           CstrId (CstrId (CstrId))
 
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.SortId
 import           TorXakis.Compiler.Error
+import           TorXakis.Compiler.ValExpr.SortId
 
 compileToCstrId :: (HasSortIds e, HasSortIds e)
                 => e -> [ADTDecl] -> CompilerM (Map (Loc Cstr) CstrId)

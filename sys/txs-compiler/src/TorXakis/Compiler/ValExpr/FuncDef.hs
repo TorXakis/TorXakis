@@ -12,7 +12,7 @@ import           ValExpr (cstrVar)
 
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.FuncId
+import           TorXakis.Compiler.ValExpr.FuncId
 
 funcDeclsToFuncDefs :: (HasSortIds e, HasVarDecls e, HasVarIds e)
                     => e

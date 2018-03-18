@@ -1,4 +1,4 @@
-module TorXakis.Parser.Functions where
+module TorXakis.Parser.FuncDefs where
 
 -- TODO: use selective imports.
 import           TorXakis.Parser.Common

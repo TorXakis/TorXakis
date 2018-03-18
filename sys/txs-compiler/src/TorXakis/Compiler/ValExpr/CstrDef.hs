@@ -1,4 +1,4 @@
-module TorXakis.Compiler.CstrDef where
+module TorXakis.Compiler.ValExpr.CstrDef where
 
 import           Data.Map (Map)
 import qualified Data.Map as Map
@@ -10,7 +10,7 @@ import           CstrDef (CstrDef (CstrDef))
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.FuncId
+import           TorXakis.Compiler.ValExpr.FuncId
     
 compileToCstrDefs :: (HasCstrIds e, HasSortIds e)
                   => e -> [ADTDecl] -> CompilerM (Map CstrId CstrDef)

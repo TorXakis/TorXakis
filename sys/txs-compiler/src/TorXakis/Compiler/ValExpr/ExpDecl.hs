@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings          #-}
-module TorXakis.Compiler.ExpDecl where
+module TorXakis.Compiler.ValExpr.ExpDecl where
 
 import           Data.Text (Text)
 import           Data.Map (Map)

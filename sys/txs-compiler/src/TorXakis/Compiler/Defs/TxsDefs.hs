@@ -11,7 +11,7 @@ import           SortDef (SortDef (SortDef))
     
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.CstrDef
+import           TorXakis.Compiler.ValExpr.CstrDef
 import           TorXakis.Compiler.ValExpr.FuncDef
     
 adtsToTxsDefs :: (HasCstrIds e, HasSortIds e)

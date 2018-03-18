@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings          #-}
-module TorXakis.Compiler.FuncId where
+module TorXakis.Compiler.ValExpr.FuncId where
 
 -- TODO: consider adding your own prelude.
 import           Control.Monad.State  (State, MonadState, StateT)
@@ -13,7 +13,7 @@ import           FuncId (FuncId (FuncId))
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.SortId
+import           TorXakis.Compiler.ValExpr.SortId
     
 cstrToIsCstrFuncId :: CstrId -> CompilerM FuncId
 cstrToIsCstrFuncId cId = do

@@ -1,6 +1,6 @@
 -- | 
 
-module TorXakis.Compiler.SortId where
+module TorXakis.Compiler.ValExpr.SortId where
 
 import           Data.Text (Text)
 import           Data.Map (Map)

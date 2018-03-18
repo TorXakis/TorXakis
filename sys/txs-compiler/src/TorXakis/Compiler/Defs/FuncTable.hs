@@ -2,7 +2,7 @@
 -- | This module defines functions to compile parsed definitions into
 -- function tables ('FuncTable').
 
-module TorXakis.Compiler.FuncTable where
+module TorXakis.Compiler.Defs.FuncTable where
 
 import           Data.Text (Text)
 import qualified Data.Map as Map
@@ -24,8 +24,8 @@ import           ValExpr (cstrFunc)
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.SortId
-import           TorXakis.Compiler.CstrId
+import           TorXakis.Compiler.ValExpr.SortId
+import           TorXakis.Compiler.ValExpr.CstrId
 
 -- | Make a function table.
 compileToFuncTable :: (HasSortIds e, HasCstrIds e)

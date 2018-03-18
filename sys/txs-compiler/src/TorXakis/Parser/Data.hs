@@ -44,17 +44,23 @@ instance HasLoc ExpDecl Exp where
 -- * Types of entities encountered when parsing.
 
 -- | ADT.
-data ADT   = ADT   deriving (Eq, Show)
+data ADT = ADT deriving (Eq, Show)
+
 -- | Constructor.
-data Cstr  = Cstr  deriving (Eq, Show)
+data Cstr = Cstr  deriving (Eq, Show)
+
 -- | Field.
 data Field = Field deriving (Eq, Show)
--- | Reference to an existing sort.
+
+-- | Reference to an existing (previously defined or primitive) sort.
 data SortRef = SortRef deriving (Eq, Show)
+
 -- | Function.
 data Func = Func deriving (Eq, Show)
+
 -- | An expression
 data Exp = Exp deriving (Eq, Show)
+
 -- | A variable.
 data Var = Var deriving (Eq, Show)
 

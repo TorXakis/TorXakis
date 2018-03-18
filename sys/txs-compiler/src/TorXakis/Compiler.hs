@@ -42,13 +42,13 @@ import           TorXakis.Compiler.Error (Error)
 import           TorXakis.Compiler.Data
 import           TorXakis.Parser 
 import           TorXakis.Parser.Data hiding (St)
-import           TorXakis.Compiler.SortId
-import           TorXakis.Compiler.CstrId
+import           TorXakis.Compiler.ValExpr.SortId
+import           TorXakis.Compiler.ValExpr.CstrId
 import           TorXakis.Compiler.Defs.TxsDefs
-import           TorXakis.Compiler.Sigs
+import           TorXakis.Compiler.Defs.Sigs
 import           TorXakis.Compiler.ValExpr.VarId
 import           TorXakis.Compiler.ValExpr.FuncDef
-import           TorXakis.Compiler.ExpDecl
+import           TorXakis.Compiler.ValExpr.ExpDecl
 
 -- | Compile a string into a TorXakis model.
 --
@@ -70,19 +70,22 @@ compileLegacy = (throwOnLeft ||| id) . compile
 
 compileParsedDefs :: ParsedDefs -> CompilerM (Id, TxsDefs, Sigs VarId)
 compileParsedDefs pd = do
-    -- First construct the @SortId@'s
+    -- Construct the @SortId@'s lookup table.
     sMap <- compileToSortId (adts pd)
-    -- Then construct the @CstrId@'s
+    -- Construct the @CstrId@'s lookup table.
     let pdsMap = Map.fromList [ ("Int", sortIdInt)
                               , ("Bool", sortIdBool)
                               ]
         e0 = emptyEnv { sortIdT = Map.union pdsMap sMap }
     cMap <- compileToCstrId e0 (adts pd)
     let e1 = e0 { cstrIdT = cMap }
+    -- Construct the @VarId@'s lookup table.
     vMap <- generateVarIds e1 (fdefs pd)
     let e2 = e1 { varIdT = vMap }
+    -- Construct the variable declarations table.
     dMap <- generateVarDecls (fdefs pd)
     let e3 = e2 { varDeclT = dMap }
+    -- Construct the function tables.
     (lFIdMap, lFDefMap) <- funcDeclsToFuncDefs e3 (fdefs pd)
     let e4 = e3 { funcIdT = lFIdMap, funcDefT = lFDefMap }
     -- Finally construct the TxsDefs.

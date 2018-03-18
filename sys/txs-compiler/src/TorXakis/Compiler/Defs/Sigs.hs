@@ -1,6 +1,6 @@
 -- | 
 
-module TorXakis.Compiler.Sigs where
+module TorXakis.Compiler.Defs.Sigs where
 
 import           Data.Map (Map)
 import           Data.Text (Text)
@@ -14,7 +14,7 @@ import           FuncTable (FuncTable (FuncTable))
 
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.FuncTable
+import           TorXakis.Compiler.Defs.FuncTable
 
 adtDeclsToSigs :: (HasSortIds e, HasFuncIds e, HasFuncDefs e, HasCstrIds e)
                => e -> [ADTDecl] -> CompilerM (Sigs VarId)
