@@ -1,5 +1,3 @@
--- |
-
 module TorXakis.Compiler.ValExpr.VarId where
 
 import           Data.Map (Map)
@@ -10,7 +8,6 @@ import           VarId (VarId (VarId))
 
 import TorXakis.Parser.Data
 import TorXakis.Compiler.Data
-
 
 generateVarIds :: (HasSortIds e)
                => e -> [FuncDecl] -> CompilerM (Map (Loc Field) VarId)

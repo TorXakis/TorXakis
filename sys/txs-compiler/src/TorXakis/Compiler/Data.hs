@@ -119,6 +119,9 @@ instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 (Map FuncId (FuncDef VarId))) where
 
 newtype St = St { nextId :: Int } deriving (Eq, Show)
 
+newState :: St
+newState = St 1000
+
 newtype CompilerM a = CompilerM { runCompiler :: StateT St (Either Error) a }
     deriving (Functor, Applicative, Monad, MonadState St, MonadError Error)
 

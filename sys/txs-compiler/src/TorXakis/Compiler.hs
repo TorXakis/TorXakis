@@ -5,7 +5,7 @@ import           Data.Text            ( Text )
 import qualified Data.Text            as T
 import           Control.Arrow        ( (|||), left, right )
 import           Control.Monad        ( replicateM )
-import           Control.Monad.State  ( State, get, put, evalState )
+import           Control.Monad.State  ( State, get, put, evalStateT )
 import           Control.Monad.Reader ( ReaderT, ask )
 import           Data.Map.Strict      (Map)
 import qualified Data.Map.Strict      as Map
@@ -40,7 +40,7 @@ import           TorXakis.Sort.Ref  (Ref, mkRef)
 
 import           TorXakis.Compiler.Error (Error)
 import           TorXakis.Compiler.Data
-import           TorXakis.Parser (ParsedDefs, adts, fdefs)
+import           TorXakis.Parser 
 import           TorXakis.Parser.Data hiding (St)
 import           TorXakis.Compiler.SortId
 import           TorXakis.Compiler.CstrId
@@ -52,17 +52,21 @@ import           TorXakis.Compiler.ExpDecl
 
 -- | Compile a string into a TorXakis model.
 --
--- TODO: for now we use String's to be able to leverage on the 'haskell' token
--- parser, in the future we might want to change this to text, and benchmark
--- what is the performance gain.
-compile :: String -> Either Error (Id, TxsDefs, Sigs VarId)
-compile = undefined
+compileFile :: String -> IO (Either Error (Id, TxsDefs, Sigs VarId))
+compileFile fp = do
+    ePd <- parseFile fp
+    case ePd of
+        Left err -> return . Left $ err
+        Right pd -> return $
+            evalStateT (runCompiler . compileParsedDefs $ pd) newState
 
 -- | Legacy compile function, used to comply with the old interface. It should
 -- be deprecated in favor of @compile@.
 compileLegacy :: String -> (Id, TxsDefs, Sigs VarId)
 compileLegacy = (throwOnLeft ||| id) . compile
     where throwOnLeft = error . show
+          compile :: String -> Either Error (Id, TxsDefs, Sigs VarId)
+          compile = undefined
 
 compileParsedDefs :: ParsedDefs -> CompilerM (Id, TxsDefs, Sigs VarId)
 compileParsedDefs pd = do

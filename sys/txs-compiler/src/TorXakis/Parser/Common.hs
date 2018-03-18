@@ -16,6 +16,11 @@ import           Control.Monad.Identity (Identity, runIdentity)
 
 import           TorXakis.Parser.Data
 
+-- | Type of the parser intput stream.
+--
+-- TODO: for now we use String's to be able to leverage on the 'haskell' token
+-- parser, in the future we might want to change this to text, and benchmark
+-- what is the performance gain.
 type ParserInput = String
 
 type TxsParser = ParsecT ParserInput St Identity
