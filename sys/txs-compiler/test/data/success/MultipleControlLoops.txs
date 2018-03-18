@@ -25,6 +25,21 @@ TYPEDEF ListProduceCmd ::= NilProduceCmd
                                           }                                 
 ENDDEF
 
+TYPEDEF Time ::= C_Time { value :: Int } ENDDEF
+
+TYPEDEF ListProduceReport ::= NilProduceReport
+                             | CstrProduceReport { head :: ProduceReport
+                                                  ; tail :: ListProduceReport
+                                                  }                                 
+ENDDEF
+
+TYPEDEF ProduceReport ::= 
+    C_ProduceReport {
+        batchInfo             :: BatchInfo;
+        recipeId              :: RecipeId;
+        batchStart            :: Time
+    }
+ENDDEF
 
 FUNCDEF containsProduceReport ( x :: ProduceReport ; l :: ListProduceReport ) :: Bool ::=
   x
