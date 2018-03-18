@@ -33,7 +33,7 @@ compileToFuncTable e ds =
 adtToHandlers :: (HasSortIds e, HasCstrIds e)
               => e -> ADTDecl -> Either Error [(Text, SignHandler VarId)]
 adtToHandlers e a = do
-    sId <- findSortId e (nodeNameT a)
+    sId <- findSortId e (nodeNameT a, nodeMdata a)
     concat <$> traverse (cstrToHandlers e sId) (child a)
 
 cstrToHandlers :: (HasSortIds e, HasCstrIds e)
@@ -56,7 +56,7 @@ cstrToMkCstrHandler :: (HasSortIds e, HasCstrIds e)
                     -> Either Error (Text, SignHandler VarId)
 cstrToMkCstrHandler e sId c = do
     cId <- findCstrId e (getLoc c)
-    fSids <- traverse (findSortId e . nodeNameT . child) (child c)
+    fSids <- traverse (findSortId e . fieldSort) (child c)
     return (n, Map.singleton (Signature fSids sId) (cstrHandler cId))
     where
       n = nodeNameT c
@@ -84,7 +84,7 @@ fieldToAccessCstrHandler :: HasSortIds e
                          -> FieldDecl
                          -> Either Error (Text, SignHandler VarId)
 fieldToAccessCstrHandler e sId cId p f = do
-    fId <- findSortId e (nodeNameT . child $ f)
+    fId <- findSortId e (fieldSort f)
     return (n, Map.singleton (Signature [sId] fId) (accessHandler cId p))
     where
       n = nodeNameT f
@@ -92,14 +92,13 @@ fieldToAccessCstrHandler e sId cId p f = do
 funcDeclsToFuncTable :: (HasSortIds e, HasFuncIds e, HasFuncDefs e)
                      => e -> [FuncDecl] -> Either Error (FuncTable VarId)
 funcDeclsToFuncTable e fs = FuncTable . Map.fromList <$>
-    traverse (funcDeclToFuncTable e) fs
-    
+    traverse (funcDeclToFuncTable e) fs    
 
 funcDeclToFuncTable :: (HasSortIds e, HasFuncIds e, HasFuncDefs e)
                     => e -> FuncDecl -> Either Error (Text, SignHandler VarId)
 funcDeclToFuncTable e f = do
-    sId   <- findSortId e (nodeNameT . funcRetType . child $ f)
-    fSids <- traverse (findSortId e . nodeNameT . child) (funcParams . child $ f)
+    sId   <- findSortId e (funcRetSort f)
+    fSids <- traverse (findSortId e . fieldSort) (funcParams . child $ f)
     hdlr  <- fBodyToHandler e f
     return (nodeNameT f, Map.singleton (Signature fSids sId) hdlr)
 

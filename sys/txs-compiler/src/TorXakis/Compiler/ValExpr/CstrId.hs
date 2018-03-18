@@ -25,7 +25,7 @@ adtToCstrId :: (HasSortIds e, HasSortIds e)
             -> ADTDecl
             -> CompilerM [(Loc Cstr, CstrId)]
 adtToCstrId e a = do
-    sId <- findSortIdM e (nodeNameT a)
+    sId <- findSortIdM e (nodeNameT a, nodeMdata a)
     traverse (cstrToCstrId e sId) (child a)
 
 cstrToCstrId :: (HasSortIds e)
@@ -35,7 +35,7 @@ cstrToCstrId :: (HasSortIds e)
              -> CompilerM (Loc Cstr, CstrId)
 cstrToCstrId e sId c = do
     i <- getNextId
-    aSids <- traverse (findSortIdM e . nodeNameT . child) (child c)
+    aSids <- traverse (findSortIdM e . fieldSort) (child c)
     return (getLoc c, CstrId (nodeNameT c) (Id i) aSids sId)
 
 cstrIdOfCstrDecl :: HasCstrIds e => e -> CstrDecl -> Either Error CstrId

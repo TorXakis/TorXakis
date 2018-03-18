@@ -67,7 +67,12 @@ data Var = Var deriving (Eq, Show)
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADT     [CstrDecl]
 type CstrDecl  = ParseTree Cstr    [FieldDecl]
+
 type FieldDecl = ParseTree Field   OfSort
+
+fieldSort :: FieldDecl -> (Text, Metadata SortRef)
+fieldSort f = (nodeNameT . child $ f, nodeMdata . child $ f)
+
 type OfSort    = ParseTree SortRef ()
 
 -- | Components of a function
@@ -82,3 +87,6 @@ data ExpDecl = VarExp (Name Var) (Metadata Exp)
     deriving (Eq, Show)
 
 type FuncDecl  = ParseTree Func FuncComps
+
+funcRetSort :: FuncDecl -> (Text, Metadata SortRef)
+funcRetSort f = (nodeNameT . funcRetType . child $ f, nodeMdata . funcRetType . child $ f)

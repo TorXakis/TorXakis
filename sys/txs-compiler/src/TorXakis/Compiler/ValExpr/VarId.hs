@@ -22,6 +22,6 @@ varIdsFromFuncDecl e fd =
 varIdsFromFieldDecl :: (HasSortIds e)
                     => e -> FieldDecl -> CompilerM (Loc Field, VarId)
 varIdsFromFieldDecl e f = do
-    sId <- findSortIdM e (nodeNameT . child $ f)
+    sId <- findSortIdM e (fieldSort f)
     vId <- getNextId
     return (getLoc f, VarId (nodeNameT f) (Id vId) sId)

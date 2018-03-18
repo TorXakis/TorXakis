@@ -27,7 +27,7 @@ adtDeclToSortId a = do
     return $ SortId (toText . nodeName $ a) (Id i)
 
 sortIdOfFieldDecl :: HasSortIds e => e -> FieldDecl -> Either Error SortId
-sortIdOfFieldDecl e f = findSortId e (toText . nodeName . child $ f)
+sortIdOfFieldDecl e = findSortId e . fieldSort
 
 sortIdOfFieldDeclM :: HasSortIds e => e -> FieldDecl -> CompilerM SortId
 sortIdOfFieldDeclM e f = liftEither $ sortIdOfFieldDecl e f

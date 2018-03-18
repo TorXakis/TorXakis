@@ -40,8 +40,8 @@ emptyEnv = IEnv () () () () () ()
 class HasSortIds e where
     -- | Find the `SortId` that corresponds to the given name. This assumes
     -- that sort names are unique.
-    findSortId  :: e -> Text -> Either Error SortId
-    findSortIdM :: e -> Text -> CompilerM SortId
+    findSortId  :: e -> (Text, Metadata t) -> Either Error SortId
+    findSortIdM :: e -> (Text, Metadata t) -> CompilerM SortId
     findSortIdM e t = liftEither $ findSortId e t
     getSortIdMap :: e -> Map Text SortId
     allSortIds :: e -> [SortId]
@@ -84,8 +84,8 @@ class HasFuncDefs e where
     getFuncDefT :: e -> Map FuncId (FuncDef VarId)
 
 instance HasSortIds (IEnv (Map Text SortId) f1 f2 f3 f4 f5) where
-    findSortId IEnv{sortIdT = sm} s = maybeToEither err . Map.lookup s $ sm
-        where err = "Could not find sort " <> s
+    findSortId IEnv{sortIdT = sm} (t, m) = maybeToEither err . Map.lookup t $ sm
+        where err = (T.pack . show) m <> "Could not find sort " <> t
 
     getSortIdMap IEnv{sortIdT = sm} = sm
 

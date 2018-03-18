@@ -6,3 +6,7 @@ ENDDEF
 FUNCDEF overflow (x :: Int) :: Bool ::=
         x
 ENDDEF
+
+FUNCDEF foo (op :: Operation) :: Boom ::=
+        op
+ENDDEF
