@@ -98,6 +98,9 @@ lookup :: (Ord a, Show a) => a -> Map a b -> Text -> Either Error b
 lookup a ab what = maybeToEither err . Map.lookup a $ ab
     where err = "Could not find " <> what <> "(" <> T.pack (show a) <> ")"
 
+lookupM :: (Ord a, Show a) => a -> Map a b -> Text -> CompilerM b
+lookupM a ab what = liftEither $ lookup a ab what
+    
 instance HasCstrIds (IEnv f0 (Map (Loc Cstr) CstrId) f2 f3 f4 f5) where
     findCstrId IEnv{cstrIdT = cm} i = lookup i cm "constructor by parser location id "
 

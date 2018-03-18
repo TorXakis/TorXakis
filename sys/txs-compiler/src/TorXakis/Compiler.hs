@@ -74,7 +74,7 @@ compileParsedDefs pd = do
     let e1 = e0 { cstrIdT = cMap }
     vMap <- generateVarIds e1 (fdefs pd)
     let e2 = e1 { varIdT = vMap }
-    dMap <- generateVarDecls e2 (fdefs pd)
+    dMap <- generateVarDecls (fdefs pd)
     let e3 = e2 { varDeclT = dMap }
     (lFIdMap, lFDefMap) <- funcDeclsToFuncDefs e3 (fdefs pd)
     let e4 = e3 { funcIdT = lFIdMap, funcDefT = lFDefMap }

@@ -39,7 +39,7 @@ instance HasLoc (ParseTree t c) t where
     getLoc = loc . nodeMdata
 
 instance HasLoc ExpDecl Exp where
-    getLoc (Var _ m) = loc m
+    getLoc (VarExp _ m) = loc m
 
 -- * Types of entities encountered when parsing.
 
@@ -55,6 +55,8 @@ data SortRef = SortRef deriving (Eq, Show)
 data Func = Func deriving (Eq, Show)
 -- | An expression
 data Exp = Exp deriving (Eq, Show)
+-- | A variable.
+data Var = Var deriving (Eq, Show)
 
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADT     [CstrDecl]
@@ -70,7 +72,7 @@ data FuncComps = FuncComps
     } deriving (Eq, Show)
 
 -- | Expressions.
-data ExpDecl = Var Text (Metadata Exp)
+data ExpDecl = VarExp (Name Var) (Metadata Exp)
     deriving (Eq, Show)
 
 type FuncDecl  = ParseTree Func FuncComps

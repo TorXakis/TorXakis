@@ -33,7 +33,7 @@ funcDeclToFuncDef :: (HasSortIds e, HasVarDecls e, HasVarIds e)
 funcDeclToFuncDef e f = do
     fId   <- funcDeclToFuncId e f
     aVids <- traverse (findVarIdM e . getLoc) (funcParams . child $ f)
-    let Var _ m = funcBody . child $ f
+    let VarExp _ m = funcBody . child $ f
     fDecl <- findVarDeclM e (loc m)
     vId   <- findVarIdM e (getLoc fDecl)
     return (loc . nodeMdata $ f, fId, FuncDef aVids (cstrVar vId))
