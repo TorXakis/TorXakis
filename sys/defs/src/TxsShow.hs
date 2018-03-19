@@ -5,8 +5,6 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ViewPatterns      #-}
--- ----------------------------------------------------------------------------------------- --
 module TxsShow
 
 -- ----------------------------------------------------------------------------------------- --

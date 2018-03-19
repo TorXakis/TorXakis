@@ -8,8 +8,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns      #-}
--- ----------------------------------------------------------------------------------------- --
 module TxsUtils
 
 -- ----------------------------------------------------------------------------------------- --
