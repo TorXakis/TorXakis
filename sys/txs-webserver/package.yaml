@@ -36,17 +36,23 @@ library:
   - Common
   dependencies:
   - aeson
+  - async
   - bytestring
+  - conduit
+  - conduit-combinators
   - containers
+  - microlens
   - mtl
   - servant-multipart
   - servant-server >= 0.12
   - servant-swagger
+  - stm-conduit
   - swagger2
   - stm
   - text
   - transformers
   - wai
+  - wai-cors
   - warp
   # `TorXakis` dependencies.
   - txs-lib

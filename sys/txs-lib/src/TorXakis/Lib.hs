@@ -1,26 +1,28 @@
 -- |
 module TorXakis.Lib where
 
-import           Control.Concurrent.STM.TVar   (newTVarIO, readTVarIO, modifyTVar')
-import           Control.DeepSeq               (force)
-import           Control.Monad.STM             (atomically)
-import           Control.Exception             (try, ErrorCall, evaluate)
-import           Control.Monad.State           (runStateT, lift)
-import           Lens.Micro                    ((.~),(^.))
-import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, writeTQueue, readTQueue)
-import           Data.Foldable                 (traverse_)
 import           Control.Concurrent            (forkIO)
+import           Control.Concurrent.MVar       (newMVar, putMVar, takeMVar)
+import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue,
+                                                writeTQueue)
+import           Control.Concurrent.STM.TVar   (modifyTVar', newTVarIO,
+                                                readTVarIO)
+import           Control.DeepSeq               (force)
+import           Control.Exception             (ErrorCall, evaluate, try)
 import           Control.Monad                 (void)
-import           Control.Concurrent.MVar       (takeMVar, putMVar, newMVar)
+import           Control.Monad.State           (lift, runStateT)
+import           Control.Monad.STM             (atomically)
+import           Data.Foldable                 (traverse_)
+import           Lens.Micro                    ((.~), (^.))
 
-import           TxsAlex  (txsLexer)
-import           TxsHappy (txsParser)
-import           EnvCore  (IOC)
-import           TxsCore  (txsInit, txsSetStep, txsStepN)
-import           EnvData  (Msg)
-import           TorXakis.Lens.TxsDefs (ix)
-import           Name     (Name)
-import           TxsDDefs (Verdict)
+import           EnvCore                       (IOC)
+import           EnvData                       (Msg)
+import           Name                          (Name)
+import           TorXakis.Lens.TxsDefs         (ix)
+import           TxsAlex                       (txsLexer)
+import           TxsCore                       (txsInit, txsSetStep, txsStepN)
+import           TxsDDefs                      (Verdict)
+import           TxsHappy                      (txsParser)
 
 import           TorXakis.Session
 
@@ -81,7 +83,7 @@ msgHandler q = lift . atomically . traverse_ (writeTQueue q)
 -- | How a step is described
 newtype StepType = NumberOfSteps Int
     -- Action ActionName
-    --           | 
+    --           |
     --           | GoTo StateNumber
     --           | Reset -- ^ Go to the initial state.
     --           | Rewind Steps
@@ -107,7 +109,7 @@ waitForVerdict s = atomically $ readTQueue (s ^. verdicts)
 -- Two `runIOC` action won't be run in parallel. If an IOC action is pending,
 -- then a subsequent call to `runIOC` will block till the operation is
 -- finished.
--- 
+--
 runIOC :: Session -> IOC a -> IO a
 runIOC s act = do
     -- The GHC implementation of MVar's guarantees fairness in the access to

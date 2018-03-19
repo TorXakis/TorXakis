@@ -1,4 +1,3 @@
--- {-# LANGUAGE OverloadedStrings  #-}
 module Endpoints.Stepper
 ( StartStepperEP
 , startStepper

@@ -1,6 +1,8 @@
+{-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE DeriveAnyClass  #-}
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeOperators   #-}
 module API
 ( startApp
 , app
@@ -20,10 +22,12 @@ import           Servant
 -- import           Servant.Server
 -- import           Servant.Swagger
 
-import           Common (TxsHandler, Env (..))
-import           Endpoints.NewSession (NewSessionEP, newSrvSession)
-import           Endpoints.Stepper (StartStepperEP, startStepper, TakeNStepsEP, takeNSteps)
-import           Endpoints.Upload (UploadEP, upload)
+import           Common                      (Env (..), TxsHandler)
+import           Endpoints.Messages          (MessagesEP, streamMessages)
+import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
+import           Endpoints.Stepper           (StartStepperEP, TakeNStepsEP,
+                                              startStepper, takeNSteps)
+import           Endpoints.Upload            (UploadEP, upload)
 -- import           Swagger
 
 data User = User
@@ -35,7 +39,7 @@ data User = User
 $(deriveJSON defaultOptions ''User)
 
 type API = ServiceAPI
-type ServiceAPI = NewSessionEP :<|> UploadEP :<|> StartStepperEP :<|> TakeNStepsEP
+type ServiceAPI = NewSessionEP :<|> UploadEP :<|> StartStepperEP :<|> TakeNStepsEP :<|> MessagesEP
                                :<|> "users" :> Get '[JSON] [User]
 
 startApp :: IO ()
@@ -57,6 +61,7 @@ server = newSrvSession
     :<|> upload
     :<|> startStepper
     :<|> takeNSteps
+    :<|> streamMessages
     :<|> users
     -- :<|> return swaggerDocs
     where
