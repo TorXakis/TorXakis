@@ -5,8 +5,6 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ViewPatterns      #-}
--- ----------------------------------------------------------------------------------------- --
 module TxsShow
 
 -- ----------------------------------------------------------------------------------------- --
@@ -151,8 +149,11 @@ instance PShow TxsDefs where
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: BExpr
 
-
 instance PShow BExpr
+    where
+        pshow = pshow . TxsDefs.view
+
+instance PShow BExprView
   where
     pshow Stop
       =  " STOP "
@@ -218,7 +219,7 @@ instance PShow ActOffer
   where
     pshow (ActOffer ofs c)
       =  "{ " ++ Utils.join " | " (map pshow (Set.toList ofs)) ++ "} "
-         ++ case view c of
+         ++ case ValExpr.view c of
             { Vconst (Cbool True) -> ""
             ; _                   -> "\n   [[ " ++ pshow c ++ " ]]"
             }
@@ -236,9 +237,11 @@ instance PShow ChanOffer
 
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: ValExpr
-
 instance PShow v => PShow (ValExpr v) where
-    pshow (view -> Vfunc fid vexps)
+    pshow = pshow . ValExpr.view
+
+instance PShow v => PShow (ValExprView v) where
+    pshow (Vfunc fid vexps)
       =  if isSpecialOp fid
            then
              case vexps of
@@ -247,31 +250,31 @@ instance PShow v => PShow (ValExpr v) where
                _     -> error "TXS: Operator should have one or two arguments"
            else
              pshow fid ++ "( " ++ Utils.join ", " (map pshow vexps) ++ " )"
-    pshow (view -> Vcstr cid [])
+    pshow (Vcstr cid [])
       =  pshow cid
-    pshow (view -> Vcstr cid vexps)
+    pshow (Vcstr cid vexps)
       =  pshow cid ++ "(" ++ Utils.join "," (map pshow vexps) ++ ")"
-    pshow (view -> Viscstr cid vexp)
+    pshow (Viscstr cid vexp)
       = "is"++ T.unpack (CstrId.name cid) ++ "(" ++ pshow vexp ++ ")"
-    pshow (view -> Vaccess cid p vexp)
+    pshow (Vaccess cid p vexp)
       =  "access "++ T.unpack (CstrId.name cid) ++ " " ++ show p
       ++ " (" ++ pshow vexp ++ ")"
-    pshow (view -> Vconst con)
+    pshow (Vconst con)
       =  pshow con
-    pshow (view -> Vvar vid)
+    pshow (Vvar vid)
       =  pshow vid
-    pshow (view -> Vite cond vexp1 vexp2)
+    pshow (Vite cond vexp1 vexp2)
       =  " ( IF " ++ pshow cond ++
          " THEN " ++ pshow vexp1 ++
          " ELSE " ++ pshow vexp2 ++
          " FI )"
-    pshow (view -> Vequal vexp1 vexp2)
+    pshow (Vequal vexp1 vexp2)
       =  "( " ++ pshow vexp1 ++ " == " ++ pshow vexp2 ++ " )"
-    pshow (view -> Vnot vexp)
+    pshow (Vnot vexp)
       =  "(not (" ++ pshow vexp ++ ") )"
-    pshow (view -> Vand vexps)
+    pshow (Vand vexps)
       =  "(" ++ Utils.join " /\\ " (map pshow (Set.toList vexps)) ++ " )"
-    pshow (view -> Vsum s)
+    pshow (Vsum s)
       = listShow (FMX.toOccurList s)
       where
         listShow []     = "0"
@@ -281,7 +284,7 @@ instance PShow v => PShow (ValExpr v) where
         elemShow (t,1)  = pshow t
         elemShow (t,-1) = "(- " ++ pshow t ++ " )"
         elemShow (t,p)  = "( " ++ show p ++ " * " ++ pshow t ++ " )"
-    pshow (view -> Vproduct s)
+    pshow (Vproduct s)
       = listShow (FMX.toDistinctAscOccurListT s)
       where
         listShow []     = "1"
@@ -292,21 +295,21 @@ instance PShow v => PShow (ValExpr v) where
         elemShow (t,p)  | p > 0 = "( " ++ pshow t ++ " ^ "  ++ show p ++ " )"
         elemShow (_,p)  = error ("TxsShow - pshow VExpr - illegal power: p = " ++ show p)
 
-    pshow (view -> Vdivide t n)
+    pshow (Vdivide t n)
       =  "(" ++ pshow t ++ " / " ++ pshow n ++ " )"
-    pshow (view -> Vmodulo t n)
+    pshow (Vmodulo t n)
       =  "(" ++ pshow t ++ " % " ++ pshow n ++ " )"
-    pshow (view -> Vgez v)
+    pshow (Vgez v)
       =  "( 0 <= " ++ pshow v ++ " )"
-    pshow (view -> Vlength v)
+    pshow (Vlength v)
       =  "len( " ++ pshow v ++ " )"
-    pshow (view -> Vat s p)
+    pshow (Vat s p)
       =  "at( " ++ pshow s ++ ", "++ pshow p ++ " )"
-    pshow (view -> Vconcat vexps)
+    pshow (Vconcat vexps)
       =  "( " ++ Utils.join " ++ " (map pshow vexps) ++ " )"
-    pshow (view -> Vstrinre s r)
+    pshow (Vstrinre s r)
       =  "strinre( " ++ pshow s ++ ", "++ pshow r ++ " )"
-    pshow (view -> Vpredef _ fid vexps)
+    pshow (Vpredef _ fid vexps)
       =  if isSpecialOp fid
            then
              case vexps of
@@ -315,8 +318,7 @@ instance PShow v => PShow (ValExpr v) where
                _     -> error "TXS: Operator should have one or two arguments"
            else
              pshow fid ++ "( " ++ Utils.join ", " (map pshow vexps) ++ " )"
-    pshow _
-        = error "pshow: item not in view"
+
 
 
 instance PShow Const where

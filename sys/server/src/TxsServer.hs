@@ -1081,10 +1081,10 @@ readBExpr chids args = do
                                       )
                                in return $!! (p,"")
                             )
-                            ( \e -> return ((uid, TxsDefs.Stop),show (e::ErrorCall)))
+                            ( \e -> return ((uid, TxsDefs.stop),show (e::ErrorCall)))
      if  e /= ""
        then do IFS.nack "ERROR" [ "incorrect behaviour expression: " ++ e ]
-               return TxsDefs.Stop
+               return TxsDefs.stop
        else return bexpr'
 
 -- ----------------------------------------------------------------------------------------- --

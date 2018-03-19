@@ -38,7 +38,7 @@ import qualified ValExpr
 -- ----------------------------------------------------------------------------------------- --
 -- nComplete
 
-nComplete :: [ Set.Set TxsDefs.ChanId] -> [ Set.Set TxsDefs.ChanId] ->
+nComplete :: [Set.Set TxsDefs.ChanId] -> [Set.Set TxsDefs.ChanId] ->
              TxsDefs.StatId -> [TxsDefs.Trans] ->
              IOC.IOC (Maybe TxsDefs.PurpDef)
 
@@ -66,10 +66,10 @@ isPath (TxsDefs.Trans _from _a _u to : TxsDefs.Trans from' a' u' to' : pp) =
     to == from' && isPath (TxsDefs.Trans from' a' u' to' : pp)
 
 path2bexpr :: [TxsDefs.Trans] -> TxsDefs.BExpr
-path2bexpr [] = TxsDefs.ActionPref
+path2bexpr [] = TxsDefs.actionPref
                     (TxsDefs.ActOffer (Set.singleton $ TxsDefs.Offer StdTDefs.chanIdHit []) (ValExpr.cstrConst (ConstDefs.Cbool True)))
-                    TxsDefs.Stop
-path2bexpr (TxsDefs.Trans _from a _u _to : pp) = TxsDefs.ActionPref a (path2bexpr pp)
+                    TxsDefs.stop
+path2bexpr (TxsDefs.Trans _from a _u _to : pp) = TxsDefs.actionPref a (path2bexpr pp)
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
