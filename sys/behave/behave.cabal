@@ -17,11 +17,11 @@ library
 
   exposed-modules:      Behave
                       , Expand
+                      , Subst
 
   other-modules:        Equiv
                       , Next
                       , Reduce
-                      , Subst
                       , Unfold
 
   ghc-options:        -Werror -O2 -optc-O3 -optc-ffast-math -Wall
@@ -37,7 +37,6 @@ library
                       , coreenv
                       , defs
                       , solve
-                      , solvedefs
                       , valexpr
 
                       
@@ -79,7 +78,6 @@ test-suite behave-test
                      , defs
                      , front
                      , solve
-                     , solvedefs
                      , valexpr
                      
   default-language:    Haskell2010

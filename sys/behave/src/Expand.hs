@@ -148,7 +148,7 @@ expand chsets (BNbexpr we (Interrupt bexp1 bexp2))  =
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand chsets (BNbexpr we (ProcInst procid chans vexps))  =  do
+expand chsets (BNbexpr we (ProcInst procid@(ProcId nm _ _ _ _) chans vexps))  =  do
      tdefs <- gets IOB.tdefs
      case Map.lookup procid (procDefs tdefs) of
        Just (ProcDef chids vids bexp)
@@ -160,8 +160,8 @@ expand chsets (BNbexpr we (ProcInst procid chans vexps))  =  do
                     (s, _)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                                 ("Expand: Eval failed in expand - ProcInst " ++ show s) ]
                                   return []
-       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
-                               "Expand: Undefined process name in expand" ]
+       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $
+                             "Expand: Undefined process name: " ++ T.unpack nm ]
                return []
 
 -- ----------------------------------------------------------------------------------------- --
@@ -239,26 +239,25 @@ expand chsets (BNbexpr we (StAut ini ve trns))  =  do
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNparallel chans cnodes)  = do
-    let chans'  = Set.fromList $ chanIdExit : chans
     ctpairs <- sequence [ liftP2 ( cnode, expand chsets cnode ) | cnode <- cnodes ]
-    return $ asyncs chans' ctpairs ++ syncs chans' ctpairs
+    return $ asyncs ctpairs ++ syncs ctpairs
   where
-    asyncs ::  Set.Set ChanId -> [(CNode,CTree)] -> CTree
-    asyncs chans' ctpairs
+    asyncs ::  [(CNode,CTree)] -> CTree
+    asyncs ctpairs
         = [ let ctprefs = map fst trees in
               CTpref ( Set.unions $ map ctoffers ctprefs )
                      ( concatMap cthidvars ctprefs )
                      ( cstrAnd (Set.fromList (map ctpred ctprefs) ) )
                      ( BNparallel chans $ map ctnext ctprefs ++ map (fmap (\we->(we,Map.empty))) nodes )
-          | (nodes, trees) <- snd ( foldl allAsyncs ([],[]) (map (calcSets chans') ctpairs) )
+          | (nodes, trees) <- snd ( foldl allAsyncs ([],[]) (map calcSets ctpairs) )
           -- not (null nodes)            -- handle not synchronizing, but all synchronous events as well
           ]
       where
-        calcSets :: Set.Set ChanId -> (CNode,CTree) -> (CNode, [(CTBranch, (Set.Set ChanId, Bool) )] )
-        calcSets chans'' (node, ctree) = (node, [ let set = Set.map ctchan ctoffs in
-                                                  (ctpref, (set, Set.null (set `Set.intersection` chans'') ) )
-                                              | ctpref@(CTpref ctoffs _ _ _) <- ctree
-                                              ])
+        calcSets :: (CNode,CTree) -> (CNode, [(CTBranch, (Set.Set ChanId, Bool) )] )
+        calcSets (node, ctree) = (node, [ let set = Set.map ctchan ctoffs in
+                                               (ctpref, (set, Set.null (set `Set.intersection` Set.fromList chans) ) )
+                                        | ctpref@(CTpref ctoffs _ _ _) <- ctree
+                                        ])
 
         allAsyncs ::    ([CNode], [([CNode],[(CTBranch, (Set.Set ChanId, Bool) )] )] )
                      -> (CNode, [(CTBranch, (Set.Set ChanId, Bool) )] )
@@ -283,21 +282,21 @@ expand chsets (BNparallel chans cnodes)  = do
                 pairwiseNull :: (CTBranch, (Set.Set ChanId, Bool) ) -> [(CTBranch, (Set.Set ChanId, Bool) )] -> Bool
                 pairwiseNull (_,(set,_)) list = and [Set.null (set `Set.intersection` elm) | (_,(elm,_)) <- list ]
 
-    syncs ::  Set.Set ChanId -> [(CNode,CTree)] -> CTree
-    syncs chans' ctpairs
+    syncs ::  [(CNode,CTree)] -> CTree
+    syncs ctpairs
         = [ let ctprefs = map fst zips in
               CTpref ( Set.unions $ map ctoffers ctprefs )
                      ( concatMap cthidvars ctprefs )
                      ( cstrAnd (Set.fromList (map ctpred ctprefs)) )
                      ( BNparallel chans $ map ctnext ctprefs )
-          | zips <- foldl allPairsMatch [[]] (map (calcSets chans' . snd ) ctpairs)
+          | zips <- foldl allPairsMatch [[]] (map (calcSets . snd ) ctpairs)
           ]
       where
-        calcSets :: Set.Set ChanId -> CTree -> [(CTBranch, (Set.Set ChanId, Set.Set ChanId) )]
-        calcSets chans'' ctree = [ let set = Set.map ctchan ctoffs in
-                                   (ctpref, (set, set `Set.intersection` chans''))
-                               | ctpref@(CTpref ctoffs _ _ _) <- ctree
-                               ]
+        calcSets :: CTree -> [(CTBranch, (Set.Set ChanId, Set.Set ChanId) )]
+        calcSets ctree = [ let set = Set.map ctchan ctoffs in
+                                   (ctpref, (set, set `Set.intersection` Set.fromList chans))
+                         | ctpref@(CTpref ctoffs _ _ _) <- ctree
+                         ]
 
         allPairsMatch :: [[(CTBranch, (Set.Set ChanId, Set.Set ChanId) )]] -> [(CTBranch, (Set.Set ChanId, Set.Set ChanId) )] -> [[(CTBranch, (Set.Set ChanId, Set.Set ChanId) )]]
         allPairsMatch acc branches = [ branch:a | branch <- branches, a <- acc, pairwiseMatch branch a]
@@ -559,3 +558,4 @@ uniHVar (IVar ivname' ivuid' ivpos' ivstat' ivsrt')  =  do
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
+

@@ -88,21 +88,24 @@ main = withSocketsDo $ do
       hPutStrLn stderr "Errors found while loading the configuration"
       hPrint stderr xs
     Right config -> do
-        (portNr, sock) <- txsListenOn $ (clPortNumber . SC.cmdLineCfg) uConfig
-        (hs, host, _) <- accept sock
-        hSetBuffering hs LineBuffering
-        hSetEncoding hs latin1
-        hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
-        let initS = IOS.envsNone
-                { IOS.host   = host
-                , IOS.portNr = portNr
-                , IOS.servhs = hs
-                }
-            coreConfig = config
-        TxsCore.runTxsCore coreConfig cmdsIntpr initS
-        threadDelay 1000000    -- 1 sec delay on closing
-        sClose sock
-        hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
+      (portNr, sock) <- txsListenOn $ (clPortNumber . SC.cmdLineCfg) uConfig
+      (hs, host, _) <- accept sock
+      hSetBuffering hs LineBuffering
+      hSetEncoding hs latin1
+      hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
+      let initS = IOS.envsNone
+              { IOS.host   = host
+              , IOS.portNr = portNr
+              , IOS.servhs = hs
+              , IOS.params = SC.updateParamVals -- updating parameters...
+                              (IOS.params IOS.envsNone) -- ...defined in ServerEnv
+                              $ SC.configuredParameters config
+              }
+          coreConfig = config
+      TxsCore.runTxsCore coreConfig cmdsIntpr initS
+      threadDelay 1000000    -- 1 sec delay on closing
+      sClose sock
+      hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
 
 -- | Listen on the given port. If no port number is given, then a free port is
 -- determined, and this port number is printed to the standard output.
@@ -246,7 +249,7 @@ cmdInit :: String -> IOS.IOS ()
 cmdInit args = do                                                   -- PRE :  modus == Idled --
      servhs             <- gets IOS.servhs
      unid               <- gets IOS.uid
-     tdefs              <- gets IOS.tdefs
+     tdefs              <- lift TxsCore.txsGetTDefs
      sigs               <- gets IOS.sigs
      srctxts            <- lift $ lift $ mapM readFile (words args)
      let srctxt          = List.intercalate "\n\n" srctxts
@@ -260,7 +263,6 @@ cmdInit args = do                                                   -- PRE :  mo
                cmdsIntpr
        else do modify $ \env -> env { IOS.modus  = IOS.Inited
                                     , IOS.uid    = unid'
-                                    , IOS.tdefs  = tdefs'
                                     , IOS.sigs   = sigs'
                                     }
                lift $ TxsCore.txsInit tdefs' sigs' ( IFS.hmack servhs . map TxsShow.pshow )
@@ -1205,17 +1207,33 @@ cmdLPE :: String -> IOS.IOS ()
 cmdLPE args = do                                                   -- PRE :  modus == Inited --
      tdefs <- gets IOS.tdefs
      let mdefs = TxsDefs.modelDefs tdefs
+         mids  = [ modelid | (modelid@(TxsDefs.ModelId nm _uid), _) <- Map.toList mdefs
+                           , T.unpack nm == args
+                 ]
          chids = Set.toList $ Set.unions [ Set.unions (chins ++ chouts ++ spls)
                                          | (_, TxsDefs.ModelDef chins chouts spls _)
                                            <- Map.toList mdefs
                                          ]
-     bexpr       <- readBExpr chids args
-     mayProcInst <- lift $ TxsCore.txsLPE bexpr
-     case mayProcInst of
-       Just procinst' -> do IFS.pack "LPE" [ "LPE generated:\n" ++ TxsShow.fshow procinst' ]
-                            cmdsIntpr
-       Nothing        -> do IFS.nack "LPE" [ "Could not generate LPE" ]
-                            cmdsIntpr
+     case mids of
+       [ modelId ]
+         -> do mayModelId' <- lift $ TxsCore.txsLPE (Right modelId)
+               case mayModelId' of
+                 Just (Right modelId') -> do IFS.pack "LPE" [ "LPE modeldef generated: "
+                                                            , TxsShow.fshow modelId'
+                                                            ]
+                                             cmdsIntpr
+                 _                     -> do IFS.nack "LPE" [ "Could not generate LPE" ]
+                                             cmdsIntpr
+       _ -> do bexpr       <- readBExpr chids args
+               mayBexpr'   <- lift $ TxsCore.txsLPE (Left bexpr)
+               case mayBexpr' of
+                 Just (Left bexpr')    -> do IFS.pack "LPE" [ "LPE behaviour generated: "
+                                                            , TxsShow.fshow bexpr'
+                                                            ]
+                                             cmdsIntpr
+                 _                     -> do IFS.nack "LPE" [ "Could not generate LPE" ]
+                                             cmdsIntpr
+
 
 -}
 
@@ -1280,13 +1298,11 @@ readAction chids args = do
 readBExpr :: [TxsDefs.ChanId] -> String -> IOS.IOS TxsDefs.BExpr
 readBExpr chids args = do
      uid               <- gets IOS.uid
-     tdefs             <- gets IOS.tdefs
      sigs              <- gets IOS.sigs
      vals              <- gets IOS.locvals
      ((_,bexpr'),e) <- lift $ lift $ catch
                             ( let p = TxsHappy.bexprParser
-                                      ( TxsAlex.Ctdefs   tdefs
-                                      : TxsAlex.Csigs    sigs
+                                      ( TxsAlex.Csigs    sigs
                                       : TxsAlex.Cchanenv chids
                                       : TxsAlex.Cvarenv  (Map.keys vals)
                                       : TxsAlex.Cunid    (_id uid + 1)

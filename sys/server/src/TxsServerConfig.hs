@@ -11,6 +11,7 @@ module TxsServerConfig
   , Config (..)
   , UnintConfig(..)
   , loadConfigFromFile
+  , updateParamVals
   )
 where
 
@@ -49,8 +50,8 @@ interpretConfig uCfg =
   where
     cfgMod :: Config -> Config
     cfgMod = appEndo $ foldMap Endo (clCfgMods ++ fcCfgMods)
-    clCfgMods = [clChangeSolver, clChangeSmtLog, fcChangeAvailableSolvers]
-    fcCfgMods = [fcChangeSolver, fcChangeSmtLog]
+    clCfgMods = [clChangeSolver, clChangeSmtLog]
+    fcCfgMods = [fcChangeParam, fcChangeAvailableSolvers, fcChangeSolver, fcChangeSmtLog]
     clChangeSolver =
       updateCfg ((clSmtSolver . cmdLineCfg) uCfg) changeSolver
     clChangeSmtLog  =
@@ -60,14 +61,20 @@ interpretConfig uCfg =
     fcChangeSmtLog =
       updateCfg (fileCfg uCfg >>= fcSmtLog) changeLog
     fcChangeAvailableSolvers =
-      updateCfg (Map.fromList . map toKV <$>
+      updateCfg (Map.fromList . map toSolverKV <$>
                   (fileCfg uCfg >>= fcAvailableSolvers)
                 )
                 addSolvers
-    toKV solverFC =
+    toSolverKV solverFC =
       ( SolverId (fcSolverId solverFC)
       , SolverConfig (fcExecutableName solverFC)
                      (fromMaybe [] . fcFlags $ solverFC)
+      )
+    fcChangeParam =
+      updateCfg (map toParamKV <$> (fileCfg uCfg >>= fcParameters)) setParams
+    toParamKV paramFC =
+      ( ParamName (fcParamName paramFC)
+      , ParamValue (fcParamValue paramFC)
       )
 
 -- | Load the configuration options. These options can be specified by
@@ -95,6 +102,7 @@ data FileConfig = FileConfig
     -- | Available solvers that can be chosen from.
   , fcAvailableSolvers :: Maybe [SolverFileConfig]
   , fcSelectedSolver   :: Maybe String
+  , fcParameters       :: Maybe [ParameterFileConfig]
   } deriving (Eq, Show, Generic)
 
 instance FromJSON FileConfig where
@@ -107,6 +115,7 @@ instance FromJSON FileConfig where
         fieldsMapping "fcSelectedSolver"   = "selected-solver"
         fieldsMapping "fcAvailableSolvers" = "available-solvers"
         fieldsMapping "fcSmtLog"           = "smt-log"
+        fieldsMapping "fcParameters"       = "parameters"
         fieldsMapping x                    = x
 
 data SolverFileConfig = SolverFileConfig
@@ -125,6 +134,21 @@ instance FromJSON SolverFileConfig where
           fieldsMapping "fcExecutableName" = "executable-name"
           fieldsMapping "fcFlags"          = "flags"
           fieldsMapping x                  = x
+
+data ParameterFileConfig = ParamFileConfig
+  { fcParamName  :: String
+  , fcParamValue :: String
+  } deriving (Eq, Show, Generic)
+
+instance FromJSON ParameterFileConfig where
+  parseJSON = genericParseJSON
+    defaultOptions
+    { fieldLabelModifier = fieldsMapping
+    , omitNothingFields  = True
+    }
+    where fieldsMapping "fcParamName"  = "name"
+          fieldsMapping "fcParamValue" = "value"
+          fieldsMapping x              = x
 
 -- | Create a `UnintConfig` value by trying to read the configuration options
 -- given in a configuration file. The configuration file is assumed to be named
@@ -158,5 +182,3 @@ findConfigFile :: IO (Maybe FilePath)
 findConfigFile = do
   home <- getHomeDirectory
   findM doesFileExist [configFileName, home </> configFileName]
-
-

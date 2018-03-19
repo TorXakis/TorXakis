@@ -1,0 +1,86 @@
+name: txs-webserver
+version: 0.1.0.0
+github: "TorXakis/TorXakis"
+license: BSD3
+author:
+- "Kerem Ispirli"
+- "Damian Nadales"
+maintainer:
+- "kerem.ispirli@tno.nl"
+- "damian.nadales@gmail.com"
+copyright: "Copyright: (c) 2018 TorXakis"
+
+extra-source-files:
+- README.md
+- license.txt
+
+synopsis: Web server for interface to the `TorXakis` parser and core.
+
+default-extensions:
+- DataKinds
+- TypeOperators
+
+dependencies:
+- base >= 4.7 && < 5
+  
+ghc-options:
+- -O2
+- -optc-O3
+- -Werror
+- -Wall
+
+library:
+  source-dirs: src
+  exposed-modules:
+  - API
+  - Common
+  dependencies:
+  - aeson
+  - bytestring
+  - containers
+  - mtl
+  - servant-multipart
+  - servant-server >= 0.12
+  - servant-swagger
+  - swagger2
+  - stm
+  - text
+  - transformers
+  - wai
+  - warp
+  # `TorXakis` dependencies.
+  - txs-lib
+
+executables:
+  txs-webserver-exe:
+    main: Main.hs
+    source-dirs:
+    - app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - base
+    - txs-webserver
+    
+tests:
+  txs-webserver-test:
+    main: Spec.hs
+    source-dirs:
+    - test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - base
+    - aeson
+    - bytestring
+    - hspec
+    - http-client
+    - lens
+    - process
+    - servant-server >= 0.12
+    - txs-webserver
+    - wreq

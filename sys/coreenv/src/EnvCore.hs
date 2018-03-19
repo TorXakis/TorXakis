@@ -5,12 +5,15 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 -- | TorXakis Core Environment (Internal State) Data Type Definitions.
 module EnvCore
   ( IOC -- IOC = StateT EnvC IO
                   -- torxakis core main state monad transformer
   , EnvC(..)
+  , initState
   , CoreState(..)
   , EWorld(..)
   , getSMT -- :: String -> IOC SMTData.SmtEnv
@@ -30,10 +33,12 @@ where
 import           Control.Monad.State hiding (state)
 
 import qualified Data.Map            as Map
-
+import           Control.DeepSeq (NFData, rnf)
+import           GHC.Generics    (Generic)
 
 -- import from local
-import           Config
+import           Config    hiding (setParams)
+import qualified EnvBasic    as EnvB
 import qualified EnvData
 import qualified ParamCore
 
@@ -51,18 +56,30 @@ import qualified VarId               (VarId)
 
 -- import from solve
 import qualified SMTData
+import qualified Solve.Params
 
 -- ----------------------------------------------------------------------------------------- --
 -- IOC :  torxakis core state monad transformer
 
 type  IOC  = StateT EnvC IO
 
+instance EnvB.EnvB IOC     --  (StateT IOC.EnvC IO)
+  where
+     newUnid  =  newUnid
+     putMsgs  =  putMsgs
+ 
+
 data EnvC = EnvC
   { config :: Config           -- ^ Core configuration.
   , unid   :: Id               -- ^ Last used unique number.
   , params :: ParamCore.Params
   , state  :: CoreState        -- ^ State specific information.
-  }
+  } deriving (Generic)
+
+instance NFData EnvC where
+    -- We don't fully evaluate the core state as it contains functions.
+    rnf (EnvC c u p _) =
+        rnf c `seq` rnf u `seq` rnf p `seq` ()
 
 data CoreState = Noning
              | Initing   { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
@@ -134,6 +151,12 @@ data CoreState = Noning
                  , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
 
+-- | Initial state for the core environment.
+initState :: EnvC
+initState = EnvC defaultConfig (Id 0) initParams Noning
+    where
+      -- TODO: remove duplication in TxsCore (see variable with the same name).
+      initParams = Map.union ParamCore.initParams Solve.Params.initParams
 
 modifyCS :: (CoreState -> CoreState) -> IOC ()
 modifyCS f  = modify $ \env -> env { state = f (state env) }

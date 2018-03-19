@@ -69,8 +69,7 @@ stepN depth step =
                        IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no step with quiescence" ]
                        return TxsDDefs.NoVerdict
                   Just act@(TxsDDefs.Act acts) -> do
-                       IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                                     $ TxsShow.showN step 6 ++ ": " ++ TxsShow.fshow act ]
+                       IOC.putMsgs [ EnvData.AnAction act ]
                        envb           <- filterEnvCtoEnvB
                        (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
                        writeEnvBtoEnvC envb'

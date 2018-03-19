@@ -30,6 +30,11 @@ import qualified Data.Set            as Set
 import           BTree
 import qualified EnvBTree            as IOB
 import           TxsDefs
+import           Variable
+import           ValExpr
+import           SortOf
+import           ConstDefs
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Equiv : equivalence
@@ -140,21 +145,12 @@ instance Equiv INode
 -- ----------------------------------------------------------------------------------------- --
 -- Equiv :  ValExpr
 
-{-
 
-instance (VarId v) => Equiv (ValExpr v)
+instance (Variable v) => Equiv (ValExpr v)
   where
-    vexp1 ~=~ vexp2  =  if sortOf vexp1 == Bool && sortOf vexp2 == Bool
-                             then if vexp1 == vexp2
-                                then True
-                                else  solvevexp1 => vexp2
-                                      case sol of
-                            nosolution: solve vexp2 => vexp1
-                                   case sol of
-                                  noslution ->< treu
-                                    _ -> False
-
--}
+    vexp1 ~=~ vexp2  = return $    vexp1 == cstrConst (Cany (sortOf vexp1))
+                                || vexp2 == cstrConst (Cany (sortOf vexp2))
+                                || vexp1 == vexp2
 
 
 -- ----------------------------------------------------------------------------------------- --

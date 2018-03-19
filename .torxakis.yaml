@@ -23,3 +23,42 @@ available-solvers:
   - "--fmf-fun-rlv"
   - "--uf-ss-fair"
   - "--no-strings-std-ascii"
+parameters:
+- name: "ImpRel"
+  value: "IOCO"       # IOCO
+- name: "IncrementChoice_IntPower"
+  value: "4"         # > 0
+- name: "IncrementChoice_IntRange"
+  value: "65536"       # > 0
+- name: "IncrementChoice_MaxGeneratedStringLength"
+  value: "10"       # > 0
+- name: "InputCompletion"
+  value: "ANGELIC"       # ANGELIC
+- name: "RandSolve_IntHalf"
+  value: "1000"          # > 0
+- name: "RandSolve_IntNum"
+  value: "5"         # > 0
+- name: "RandSolve_adtWidth"
+  value: "5"         # > 0
+- name: "Randomization"
+  value: "IncrementChoice" # No | Partition | TrueBins | IncrementChoice
+- name: "Sim_inputEager"
+  value: "0"       # 0-3
+- name: "Test_inputEager"
+  value: "3"       # 0-3
+- name: "TrueBins_Next"
+  value: "Linear"       # Linear |Power | Exponent
+- name: "TrueBins_NrOfBins"
+  value: "10"       # > 0
+- name: "TrueBins_StringLength"
+  value: "6"       # > 0
+- name: "TrueBins_StringMode"
+  value: "Regex"   # Length | Regex
+- name: "max_rand_depth"
+  value: "4"       # > 0
+- name: "Sim_deltaTime"
+  value: "200"        # > 0
+- name: "Sut_deltaTime"
+  value: "2000"       # > 0
+- name: "Sut_ioTime"
+  value: "10"       # > 0

@@ -36,11 +36,11 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
 -- ----------------------------------------------------------------------------------------- --
 -- sut observations
   
-  [ ( "param_Sut_deltaTime"      , "2000"      , all Char.isDigit)
+  [ ( "param_Sut_deltaTime"      , "2000"      , \s -> not (null s) && all Char.isDigit s)
             -- param_Sut_deltaTime :: Int (>0)
             -- quiescence output time (millisec >0)
 
-  , ( "param_Sut_ioTime"         , "10"        , all Char.isDigit)
+  , ( "param_Sut_ioTime"         , "10"        , \s -> not (null s) && all Char.isDigit s)
             -- param_Sut_ioTime :: Int (>0)
             --  timeout for input when trying output (msec, >0)
 
@@ -51,7 +51,7 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
 -- ----------------------------------------------------------------------------------------- --
 -- simulation
 
-  , ( "param_Sim_deltaTime"      , "200"       , all Char.isDigit)
+  , ( "param_Sim_deltaTime"      , "200"       , \s -> not (null s) && all Char.isDigit s)
             -- param_Sim_deltaTime :: Int (>0)
             -- quiescence input time (millisec >0)
   ]

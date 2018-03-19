@@ -30,21 +30,18 @@ echoTesterCmdPath :: FilePath
 echoTesterCmdPath = txsCmdPath exampDir "Echo_Tester"
 
 test0 :: TxsExample
-test0 = TxsExample
+test0 = emptyExample
   { exampleName = "Stepper"
   , txsModelFiles = [echoTxsPath]
   , txsCmdsFiles = [echoStepperCmdPath]
-  , txsServerArgs = []
-  , sutExample = Nothing
   , expectedResult = Pass
   }
 
 test1 :: TxsExample
-test1 = TxsExample
+test1 = emptyExample
   { exampleName = "Simulator"
   , txsModelFiles = [echoTxsPath]
   , txsCmdsFiles = [echoTesterCmdPath]
-  , txsServerArgs = []
   , sutExample = Just (TxsSimulator echoSimulatorCmdPath)
   , expectedResult = Pass
   }
