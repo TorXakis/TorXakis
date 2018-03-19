@@ -866,8 +866,8 @@ txsStepA act =  do
 txsShow :: String               -- ^ kind of item to be shown.
         -> String               -- ^ name of item to be shown.
                                 --   Valid items are "tdefs", "state",
-                                --   "model", "mapper", "purp", "modeldef" <name>,
-                                --   "mapperdef" <name>, "purpdef" <name>
+                                --   "model", "mapper", "purp", "modeldef" 'name',
+                                --   "mapperdef" 'name', "purpdef" 'name'
         -> IOC.IOC String
 txsShow item nm  = do
      envc  <- gets IOC.state
