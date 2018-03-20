@@ -46,22 +46,23 @@ class HasSortIds e where
     getSortIdMap :: e -> Map Text SortId
     allSortIds :: e -> [SortId]
     allSortIds e = Map.elems $ getSortIdMap e
+
 class HasCstrIds e where
     -- | Find the `CstrId` that correspond to the parser location of a
     -- constructor declaration.
     -- TODO: make this type-safe!
     -- Something like Map (Loc Var) VarId
     -- So that you cannot use this with the location of anything else.
-    findCstrId :: e -> Loc Cstr -> Either Error CstrId
-    findCstrIdM :: e -> Loc Cstr -> CompilerM CstrId
+    findCstrId :: e -> Loc CstrE -> Either Error CstrId
+    findCstrIdM :: e -> Loc CstrE -> CompilerM CstrId
     findCstrIdM e i = liftEither $ findCstrId e i
 
 class HasVarIds e where
     -- | Find the variable id that corresponds to the given parser location.
     --
     -- For now only field id's can define new `VarId`s.
-    findVarId :: e -> Loc Field -> Either Error VarId
-    findVarIdM :: e -> Loc Field -> CompilerM VarId
+    findVarId :: e -> Loc VarDeclE -> Either Error VarId
+    findVarIdM :: e -> Loc VarDeclE -> CompilerM VarId
     findVarIdM e i = liftEither $ findVarId e i
 
 class HasVarDecls e where
@@ -69,14 +70,14 @@ class HasVarDecls e where
     -- variable use.
     --
     -- For now variables only occur in expressions.
-    findVarDecl :: e -> Loc Exp -> Either Error FieldDecl
-    findVarDeclM :: e -> Loc Exp -> CompilerM  FieldDecl
+    findVarDecl :: e -> Loc ExpE -> Either Error VarDecl
+    findVarDeclM :: e -> Loc ExpE -> CompilerM VarDecl
     findVarDeclM e i = liftEither $ findVarDecl e i
 
 class HasFuncIds e where
     -- | Find the function id that corresponds to the given parser location.
     --
-    findFuncId :: e -> Loc Func -> Either Error FuncId
+    findFuncId :: e -> Loc FuncDeclE -> Either Error FuncId
 
 class HasFuncDefs e where
     -- | Find the function definition that corresponds with a given function id.
@@ -95,17 +96,17 @@ lookup a ab what = maybeToEither err . Map.lookup a $ ab
 
 lookupM :: (Ord a, Show a) => a -> Map a b -> Text -> CompilerM b
 lookupM a ab what = liftEither $ lookup a ab what
-    
-instance HasCstrIds (IEnv f0 (Map (Loc Cstr) CstrId) f2 f3 f4 f5) where
+
+instance HasCstrIds (IEnv f0 (Map (Loc CstrE) CstrId) f2 f3 f4 f5) where
     findCstrId IEnv{cstrIdT = cm} i = lookup i cm "constructor by parser location id "
 
-instance HasVarIds (IEnv f0 f1 (Map (Loc Field) VarId) f3 f4 f5) where
+instance HasVarIds (IEnv f0 f1 (Map (Loc VarDeclE) VarId) f3 f4 f5) where
     findVarId IEnv{varIdT = vm} i = lookup i vm "variable by parser location id"
 
-instance HasVarDecls (IEnv f0 f1 f2 (Map (Loc Exp) FieldDecl) f4 f5) where
-    findVarDecl IEnv{varDeclT = vm} i = lookup i vm "variable declaration by parser location id" 
-    
-instance HasFuncIds (IEnv f0 f1 f2 f3 (Map (Loc Func) FuncId) f5) where
+instance HasVarDecls (IEnv f0 f1 f2 (Map (Loc ExpE) VarDecl) f4 f5) where
+    findVarDecl IEnv{varDeclT = vm} i = lookup i vm "variable declaration by parser location id"
+
+instance HasFuncIds (IEnv f0 f1 f2 f3 (Map (Loc FuncDeclE) FuncId) f5) where
     findFuncId IEnv {funcIdT = fm} i = lookup i fm "function id by parser location id"
 
 instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 (Map FuncId (FuncDef VarId))) where

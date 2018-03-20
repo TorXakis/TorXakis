@@ -17,7 +17,7 @@ import           TorXakis.Compiler.ValExpr.FuncId
 funcDeclsToFuncDefs :: (HasSortIds e, HasVarDecls e, HasVarIds e)
                     => e
                     -> [FuncDecl]
-                    -> CompilerM (Map (Loc Func) FuncId, Map FuncId (FuncDef VarId))
+                    -> CompilerM (Map (Loc FuncDeclE) FuncId, Map FuncId (FuncDef VarId))
 funcDeclsToFuncDefs e fs = do
     iFidFds <- traverse (funcDeclToFuncDef e) fs
     return ( Map.fromList $ zip (fst' <$> iFidFds) (snd' <$> iFidFds)
@@ -29,11 +29,10 @@ funcDeclsToFuncDefs e fs = do
       thr (_, _, c) = c
 
 funcDeclToFuncDef :: (HasSortIds e, HasVarDecls e, HasVarIds e)
-                  => e -> FuncDecl -> CompilerM (Loc Func, FuncId, FuncDef VarId)
+                  => e -> FuncDecl -> CompilerM (Loc FuncDeclE, FuncId, FuncDef VarId)
 funcDeclToFuncDef e f = do
     fId   <- funcDeclToFuncId e f
-    aVids <- traverse (findVarIdM e . getLoc) (funcParams . child $ f)
-    let VarExp _ m = funcBody . child $ f
-    fDecl <- findVarDeclM e (loc m)
+    aVids <- traverse (findVarIdM e . getLoc) (funcParams f)
+    fDecl <- findVarDeclM e (getLoc (funcBody f))
     vId   <- findVarIdM e (getLoc fDecl)
-    return (loc . nodeMdata $ f, fId, FuncDef aVids (cstrVar vId))
+    return (getLoc f, fId, FuncDef aVids (cstrVar vId))

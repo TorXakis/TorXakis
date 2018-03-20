@@ -8,18 +8,18 @@ import qualified Data.Map as Map
 import TorXakis.Parser.Data
 import TorXakis.Compiler.Data
 
-generateVarDecls :: [FuncDecl] -> CompilerM (Map (Loc Exp) FieldDecl)
+generateVarDecls :: [FuncDecl] -> CompilerM (Map (Loc ExpE) VarDecl)
 generateVarDecls fs = Map.fromList . concat <$> 
     traverse generateVarDeclsForFD fs
 
-generateVarDeclsForFD :: FuncDecl -> CompilerM [(Loc Exp, FieldDecl)]
+generateVarDeclsForFD :: FuncDecl -> CompilerM [(Loc ExpE, VarDecl)]
 generateVarDeclsForFD f =
-    let VarExp n m = funcBody . child $ f
+    let VarExp n _ = funcBody f
     in do
-        fd <- lookupM (toText n) (fdMap (funcParams . child $ f))
+        fd <- lookupM (toText n) (fdMap (funcParams  f))
               "variable declaration for "
-        return [(loc m, fd)]
+        return [(getLoc (funcBody f), fd)]
 
-fdMap :: [FieldDecl] -> Map Text FieldDecl
+fdMap :: [VarDecl] -> Map Text VarDecl
 fdMap fs =
-    Map.fromList $ zip (nodeNameT <$> fs) fs
+    Map.fromList $ zip (varName <$> fs) fs

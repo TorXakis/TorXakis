@@ -18,12 +18,12 @@ compileToCstrDefs e ds =
 adtToCstrDefs :: (HasCstrIds e, HasSortIds e)
                => e -> ADTDecl -> CompilerM [(CstrId, CstrDef)]
 adtToCstrDefs e a =
-    traverse (cstrToCstrDefs e) (child a)
+    traverse (cstrToCstrDefs e) (constructors a)
 
 cstrToCstrDefs :: (HasCstrIds e, HasSortIds e)
                => e -> CstrDecl -> CompilerM (CstrId, CstrDef)
 cstrToCstrDefs e c = do
     cId <- findCstrIdM e (getLoc c)
     isCstrFid <- cstrToIsCstrFuncId cId
-    cstrAccFids <- traverse (cstrToAccFuncId e cId) (child c)
+    cstrAccFids <- traverse (cstrToAccFuncId e cId) (cstrFields c)
     return (cId, CstrDef isCstrFid cstrAccFids)

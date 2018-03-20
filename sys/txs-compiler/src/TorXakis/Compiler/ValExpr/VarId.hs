@@ -10,18 +10,18 @@ import TorXakis.Parser.Data
 import TorXakis.Compiler.Data
 
 generateVarIds :: (HasSortIds e)
-               => e -> [FuncDecl] -> CompilerM (Map (Loc Field) VarId)
+               => e -> [FuncDecl] -> CompilerM (Map (Loc VarDeclE) VarId)
 generateVarIds e fs = Map.fromList . concat <$>
     traverse (varIdsFromFuncDecl e) fs
 
 varIdsFromFuncDecl :: (HasSortIds e)
-                   => e -> FuncDecl -> CompilerM [(Loc Field, VarId)]
+                   => e -> FuncDecl -> CompilerM [(Loc VarDeclE, VarId)]
 varIdsFromFuncDecl e fd =
-    traverse (varIdsFromFieldDecl e) (funcParams . child $ fd)
+    traverse (varIdsFromFieldDecl e) (funcParams fd)
 
 varIdsFromFieldDecl :: (HasSortIds e)
-                    => e -> FieldDecl -> CompilerM (Loc Field, VarId)
+                    => e -> VarDecl -> CompilerM (Loc VarDeclE, VarId)
 varIdsFromFieldDecl e f = do
-    sId <- findSortIdM e (fieldSort f)
+    sId <- findSortIdM e (varDeclSort f)
     vId <- getNextId
-    return (getLoc f, VarId (nodeNameT f) (Id vId) sId)
+    return (getLoc f, VarId (varName f) (Id vId) sId)

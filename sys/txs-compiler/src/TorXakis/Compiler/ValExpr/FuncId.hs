@@ -26,15 +26,13 @@ cstrToAccFuncId :: HasSortIds e
                 -> CompilerM FuncId
 cstrToAccFuncId e cId f = do
     fId <- getNextId
-    -- TODO: you might consider making the parse tree a bit more type-safer.
-    -- Here we could be looking up the name of anything.
     sId <- findSortIdM e (fieldSort f)
-    return $ FuncId (nodeNameT f) (Id fId) [cstrsort cId] sId
+    return $ FuncId (fieldName f) (Id fId) [cstrsort cId] sId
 
 funcDeclToFuncId :: HasSortIds e
                  => e -> FuncDecl -> CompilerM FuncId
 funcDeclToFuncId  e f = do
     fId   <- getNextId
-    aSids <- traverse (sortIdOfFieldDeclM e) (funcParams . child $ f)
+    aSids <- traverse (sortIdOfVarDeclM e) (funcParams f)
     rSid  <- findSortIdM e (funcRetSort f)
-    return $ FuncId (nodeNameT f) (Id fId) aSids rSid
+    return $ FuncId (funcName f) (Id fId) aSids rSid

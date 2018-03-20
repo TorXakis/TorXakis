@@ -59,9 +59,9 @@ getMetadata = do
 
 getNextId :: TxsParser Int
 getNextId = do
-    St i <- getState
-    putState $ St (i + 1)
-    return i
+    st <- getState
+    putState $ incId st
+    return (nextId st)
 
 -- | Parser for upper case identifiers.
 ucIdentifier :: String -> TxsParser Text
@@ -83,3 +83,4 @@ identifierNE :: TxsParser Char -> TxsParser Text
 identifierNE idStart = T.cons <$> idStart <*> idEnd
     where
       idEnd  = T.pack <$> many txsIdentLetter
+

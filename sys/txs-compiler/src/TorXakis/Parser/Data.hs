@@ -1,12 +1,71 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances     #-}
-module TorXakis.Parser.Data where
+module TorXakis.Parser.Data
+    ( St
+    , mkState
+    , Metadata (Metadata)
+    , nodeMdata
+    , incId
+    , nextId
+    , Loc (Loc)
+    -- * Name
+    , Name
+    , toText
+    -- * Types of the entities.
+    , ADTE
+    , CstrE
+    , FieldE
+    , SortRefE
+    , FuncDeclE
+    , VarDeclE
+    , ExpE
+    -- * Declarations.
+    -- ** ADT's
+    , ADTDecl
+    , mkADTDecl
+    , adtName
+    , constructors
+    , CstrDecl
+    , mkCstrDecl
+    , cstrName
+    , cstrFields
+    , FieldDecl
+    , mkFieldDecl
+    , fieldName
+    , fieldSort
+    -- ** Type declarations
+    , OfSort
+    , mkOfSort
+    -- ** Functions
+    , FuncDecl
+    , mkFuncDecl
+    , funcName
+    , funcParams
+    , funcBody
+    , funcRetSort
+    , VarDecl
+    , mkVarDecl
+    , varDeclSort
+    , varName
+    -- ** Expressions
+    , ExpDecl (VarExp)
+    , mkVarExp
+    -- * Location of the entities.
+    , getLoc
+    )
+where
 
 import           Data.Text (Text)
 
 -- | State of the parser.
--- TODO: make the constructor private.
 newtype St = St { nextId :: Int } deriving (Eq, Show)
+
+mkState :: Int -> St
+mkState = St
+
+-- | Increment the id of the state.
+incId :: St -> St
+incId (St i) = St (i + 1)
 
 data ParseTree t c = ParseTree
     { nodeName  :: Name t
@@ -38,55 +97,122 @@ class HasLoc a t where
 instance HasLoc (ParseTree t c) t where
     getLoc = loc . nodeMdata
 
-instance HasLoc ExpDecl Exp where
+instance HasLoc ExpDecl ExpE where
     getLoc (VarExp _ m) = loc m
 
 -- * Types of entities encountered when parsing.
 
 -- | ADT.
-data ADT = ADT deriving (Eq, Show)
+data ADTE = ADTE deriving (Eq, Show)
 
 -- | Constructor.
-data Cstr = Cstr  deriving (Eq, Show)
+data CstrE = CstrE  deriving (Eq, Show)
 
--- | Field.
-data Field = Field deriving (Eq, Show)
+-- | Field of a constructor.
+data FieldE = FieldE deriving (Eq, Show)
 
 -- | Reference to an existing (previously defined or primitive) sort.
-data SortRef = SortRef deriving (Eq, Show)
+data SortRefE = SortRefE deriving (Eq, Show)
 
--- | Function.
-data Func = Func deriving (Eq, Show)
+-- | Function declaration.
+data FuncDeclE = FuncDeclE deriving (Eq, Show)
+
+-- | Function call.
+data FuncCallE = FuncCallE deriving (Eq, Show)
 
 -- | An expression
-data Exp = Exp deriving (Eq, Show)
+data ExpE = ExpE deriving (Eq, Show)
 
--- | A variable.
-data Var = Var deriving (Eq, Show)
+-- | A variable declaration.
+data VarDeclE = VarDeclE deriving (Eq, Show)
+
+-- | A variable occurrence in an expression. It is assumed to be a
+-- **reference** to an existing variable.
+data VarRefE = VarRefR deriving (Eq, Show)
 
 -- * Types of parse trees.
-type ADTDecl   = ParseTree ADT     [CstrDecl]
-type CstrDecl  = ParseTree Cstr    [FieldDecl]
+type ADTDecl   = ParseTree ADTE     [CstrDecl]
 
-type FieldDecl = ParseTree Field   OfSort
+mkADTDecl :: Text -> Metadata ADTE -> [CstrDecl] -> ADTDecl
+mkADTDecl n m cs = ParseTree (Name n) ADTE m cs
 
-fieldSort :: FieldDecl -> (Text, Metadata SortRef)
+adtName :: ADTDecl -> Text
+adtName = nodeNameT
+
+constructors :: ADTDecl -> [CstrDecl]
+constructors = child
+
+type CstrDecl  = ParseTree CstrE    [FieldDecl]
+
+mkCstrDecl :: Text -> Metadata CstrE -> [FieldDecl] -> CstrDecl
+mkCstrDecl n m fs = ParseTree (Name n) CstrE m fs
+
+cstrName :: CstrDecl -> Text
+cstrName = nodeNameT
+
+cstrFields :: CstrDecl -> [FieldDecl] 
+cstrFields = child
+
+type FieldDecl = ParseTree FieldE   OfSort
+
+mkFieldDecl :: Text -> Metadata FieldE -> OfSort -> FieldDecl
+mkFieldDecl n m s = ParseTree (Name n) FieldE m s
+
+fieldName :: FieldDecl -> Text
+fieldName = nodeNameT
+
+-- | Get the field of a sort, and the metadata associated to it.
+fieldSort :: FieldDecl -> (Text, Metadata SortRefE)
 fieldSort f = (nodeNameT . child $ f, nodeMdata . child $ f)
 
-type OfSort    = ParseTree SortRef ()
+-- | Reference to an existing type
+type OfSort    = ParseTree SortRefE ()
 
--- | Components of a function
+mkOfSort :: Text -> Metadata SortRefE -> OfSort 
+mkOfSort n m = ParseTree (Name n) SortRefE m ()
+
+-- | Components of a function.
 data FuncComps = FuncComps
-    { funcParams  :: [FieldDecl]
-    , funcRetType :: OfSort
-    , funcBody    :: ExpDecl
+    { funcCompsParams  :: [VarDecl]
+    , funcCompsRetSort :: OfSort
+    , funcCompsBody    :: ExpDecl
     } deriving (Eq, Show)
 
+-- | Variable declarations.
+type VarDecl = ParseTree VarDeclE OfSort
+
+mkVarDecl :: Text -> Metadata VarDeclE -> OfSort -> VarDecl
+mkVarDecl n m s = ParseTree (Name n) VarDeclE m s
+
+-- | Name of a variable
+varName :: VarDecl -> Text
+varName = nodeNameT
+
+varDeclSort :: VarDecl -> (Text, Metadata SortRefE)
+varDeclSort f = (nodeNameT . child $ f, nodeMdata . child $ f)
+
 -- | Expressions.
-data ExpDecl = VarExp (Name Var) (Metadata Exp)
+data ExpDecl = VarExp (Name VarRefE) (Metadata ExpE)
     deriving (Eq, Show)
 
-type FuncDecl  = ParseTree Func FuncComps
+mkVarExp :: Text -> Metadata ExpE -> ExpDecl
+mkVarExp n m = VarExp (Name n) m
 
-funcRetSort :: FuncDecl -> (Text, Metadata SortRef)
-funcRetSort f = (nodeNameT . funcRetType . child $ f, nodeMdata . funcRetType . child $ f)
+type FuncDecl  = ParseTree FuncDeclE FuncComps
+
+mkFuncDecl :: Text -> Metadata FuncDeclE -> [VarDecl] -> OfSort -> ExpDecl -> FuncDecl
+mkFuncDecl n m ps s b = ParseTree (Name n) FuncDeclE m (FuncComps ps s b)
+
+funcName :: FuncDecl -> Text
+funcName = nodeNameT
+
+funcParams :: FuncDecl -> [VarDecl]
+funcParams = funcCompsParams . child
+
+funcBody :: FuncDecl -> ExpDecl
+funcBody = funcCompsBody . child
+    
+funcRetSort :: FuncDecl -> (Text, Metadata SortRefE)
+funcRetSort f = ( nodeNameT . funcCompsRetSort . child $ f
+                , nodeMdata . funcCompsRetSort . child $ f
+                )
