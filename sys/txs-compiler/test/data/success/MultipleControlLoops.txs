@@ -45,4 +45,7 @@ FUNCDEF containsProduceReport ( x :: ProduceReport ; l :: ListProduceReport ) ::
   x
 ENDDEF
 
+FUNCDEF doSth ( y :: ListProduceReport; z :: Time ) :: Time ::=
+    z
+ENDDEF
 
