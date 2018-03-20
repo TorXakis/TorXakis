@@ -5,6 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -36,7 +37,7 @@ import           Data.Text           (Text)
 import           GHC.Generics
 
 newtype Id = Id { _id :: Int }
-    deriving (Eq, Ord, Enum, Num, Read, NFData, Data)
+    deriving (Eq, Ord, Enum, Num, Read, NFData, Data, Generic)
 
 instance Show Id where
     show (Id x) = show x

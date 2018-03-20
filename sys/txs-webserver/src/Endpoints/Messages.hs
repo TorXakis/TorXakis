@@ -1,5 +1,11 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE DataKinds     #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Endpoints.Messages
 (
   MessagesEP
@@ -10,26 +16,39 @@ import           Conduit                  (ZipSource (..), getZipSource,
                                            repeatC, runConduit, yield, (.|))
 import           Control.Concurrent       (threadDelay)
 import           Control.Concurrent.Async (race_)
--- import           Control.Monad            (void)
--- import           Data.Aeson                  (ToJSON)
+import           Control.Monad            (void)
+import           Data.Aeson               (ToJSON)
 import           Data.Conduit.Combinators (map, mapM_)
 import           Data.Conduit.TQueue      (sourceTQueue)
 import           Data.Text                (Text)
 import qualified Data.Text                as T
--- import           GHC.Generics                (Generic)
 import           Lens.Micro               ((^.))
--- import           Network.Wai.Middleware.Cors (simpleCors)
 import           Prelude                  hiding (map, mapM_)
 import           Servant                  ((:>), Capture, JSON, NewlineFraming,
                                            StreamGenerator,
                                            StreamGenerator (StreamGenerator),
                                            StreamGet)
 
+import           ChanId                   (ChanId)
 import           Common                   (SessionId, TxsHandler, getSession)
--- import           TorXakis.Lib             (waitForVerdict)
+import           ConstDefs                (Const)
+import           CstrId                   (CstrId)
+import           EnvData                  (Msg)
+import           Id                       (Id)
+import           SortId                   (SortId)
+import           TorXakis.Lib             (waitForVerdict)
 import           TorXakis.Session         (Session, sessionMsgs)
+import           TxsDDefs                 (Action)
 
 type MessagesEP = "session" :> Capture "sid" SessionId :> "messages" :> StreamGet NewlineFraming JSON (StreamGenerator Text)
+
+instance ToJSON Id
+instance ToJSON SortId
+instance ToJSON ChanId
+instance ToJSON CstrId
+instance ToJSON Const
+instance ToJSON Action
+instance ToJSON Msg
 
 streamMessages :: SessionId -> TxsHandler (StreamGenerator Text)
 streamMessages sid = do
@@ -37,18 +56,17 @@ streamMessages sid = do
     return $ StreamGenerator
            $ \sendFirst sendRest ->
                 race_ (dataSource sendFirst sendRest s)
-                    --   (void $ waitForVerdict s)
-                      wait5
+                      (void (waitForVerdict s) >> wait5)
       where
         dataSource f r s = runConduit $ getZipSource ((,) <$> isFirstSource <*> messagesSource s)
                         .| mapM_ (sendData f r)
         isFirstSource :: ZipSource IO Bool
-        isFirstSource = ZipSource $ yield True >> repeatC  False
+        isFirstSource = ZipSource $ yield True >> repeatC False
         messagesSource :: Session -> ZipSource IO Text
         messagesSource s = ZipSource $ sourceTQueue (s ^. sessionMsgs) .| map (T.pack . show)
-                -- .| mapM delayAndPass
+        --         .| mapM delayAndPass
         -- delayAndPass a =
-        --     threadDelay (10^(6::Int)) >> return a
+        --     threadDelay (10^(4::Int)) >> return a
         sendData :: (a -> IO ()) -> (a -> IO ()) -> (Bool, a) -> IO ()
         sendData f _ (True, a)=
             f a

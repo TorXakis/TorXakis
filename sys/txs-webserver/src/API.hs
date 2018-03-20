@@ -18,6 +18,7 @@ import qualified Data.IntMap.Strict          as Map
 import           GHC.Generics                (Generic)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
+import           Network.Wai.Middleware.Cors (simpleCors)
 import           Servant
 -- import           Servant.Server
 -- import           Servant.Swagger
@@ -49,7 +50,7 @@ startApp = do
     run 8080 $ app $ Env sessionsMap zeroId
 
 app :: Env -> Application
-app env = serve api $ hoistServer api (nt env) server
+app env = simpleCors $ serve api $ hoistServer api (nt env) server
     where
         nt :: Env -> TxsHandler a -> Handler a
         nt env2 handler = runReaderT handler env2

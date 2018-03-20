@@ -4,6 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
+{-# LANGUAGE DeriveGeneric #-}
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -25,9 +26,11 @@ module EnvData
 
 where
 
+import           GHC.Generics (Generic)
+
 -- import from defs
+import           TxsDDefs     (Action)
 import qualified TxsShow
-import           TxsDDefs (Action)
 
 -- ----------------------------------------------------------------------------------------- --
 -- StatNr :  state numbers
@@ -57,7 +60,7 @@ data Msg     =   TXS_CORE_SYSTEM_ERROR     { s :: String }
                | TXS_CORE_NOK              { s :: String }
                | TXS_CORE_ANY              { s :: String }
                | AnAction                  { act :: Action } -- ^ An action was performed.
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq, Ord, Read, Show, Generic)
 
 instance TxsShow.PShow Msg
   where
@@ -65,5 +68,5 @@ instance TxsShow.PShow Msg
 
 
 -- ----------------------------------------------------------------------------------------- --
--- 
+--
 -- ----------------------------------------------------------------------------------------- --

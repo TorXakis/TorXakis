@@ -3,10 +3,11 @@
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
 module Main (main) where
 
-import           Control.Exception           (catch, throwIO)
-import           Control.Lens                ((^.))
-import           Data.ByteString.Char8       (unpack)
-import           System.Process              (withCreateProcess, proc, std_out, StdStream(NoStream))
+import           Control.Exception            (catch, throwIO)
+import           Control.Lens                 ((^.))
+import           Data.ByteString.Char8        (unpack)
+import           System.Process               (StdStream (NoStream), proc,
+                                               std_out, withCreateProcess)
 
 import qualified Network.HTTP.Client          as C
 import qualified Network.HTTP.Client.Internal as CI
@@ -60,3 +61,6 @@ spec = return $ do
                 r2 <- post "http://localhost:8080/stepper/step/1/3" [partText "" ""]
                 r2 ^. responseStatus . statusCode `shouldBe` 200
                 r2 ^. responseBody `shouldBe` "\"Success\""
+                r3 <- get "http://localhost:8080/session/1/messages"
+                r3 ^. responseStatus . statusCode `shouldBe` 200
+                r3 ^. responseBody `shouldBe` "\"Success\""

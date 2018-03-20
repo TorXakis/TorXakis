@@ -55,7 +55,10 @@ library:
   - wai-cors
   - warp
   # `TorXakis` dependencies.
+  - coreenv
+  - defs
   - txs-lib
+  - valexpr
 
 executables:
   txs-webserver-exe:
