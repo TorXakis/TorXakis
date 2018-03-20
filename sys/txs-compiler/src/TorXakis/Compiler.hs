@@ -5,10 +5,11 @@ import           Control.Arrow        ( (|||) )
 import           Control.Monad.State  ( get, evalStateT )
 import qualified Data.Map.Strict      as Map
 
-import           TxsDefs (TxsDefs, union, funcDefs, empty)
+import           TxsDefs (TxsDefs, union, funcDefs, empty, fromList)
+import           StdTDefs (stdTDefs)
 import           Sigs    (Sigs, uniqueCombine)
 import           Id  (Id (Id))
-import           SortId  (sortIdBool, sortIdInt)
+import           SortId  (sortIdBool, sortIdInt, sortIdRegex, sortIdString)
 import           VarId   (VarId)
 
 import           TorXakis.Compiler.Error (Error)
@@ -45,8 +46,10 @@ compileParsedDefs pd = do
     -- Construct the @SortId@'s lookup table.
     sMap <- compileToSortId (adts pd)
     -- Construct the @CstrId@'s lookup table.
-    let pdsMap = Map.fromList [ ("Int", sortIdInt)
-                              , ("Bool", sortIdBool)
+    let pdsMap = Map.fromList [ ("Bool", sortIdBool)
+                              , ("Int", sortIdInt)
+                              , ("Regex", sortIdRegex)
+                              , ("String", sortIdString)                              
                               ]
         e0 = emptyEnv { sortIdT = Map.union pdsMap sMap }
     cMap <- compileToCstrId e0 (adts pd)
@@ -71,7 +74,7 @@ toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
 toTxsDefs e pd = do
     ad <- adtsToTxsDefs e (adts pd)
     let fd = empty { funcDefs = getFuncDefT e }
-    return $ union ad fd
+    return $ ad `union` fd `union` fromList stdTDefs
 
 toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
        => e -> ParsedDefs -> CompilerM (Sigs VarId)

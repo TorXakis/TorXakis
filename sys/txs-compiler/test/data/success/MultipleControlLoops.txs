@@ -41,7 +41,7 @@ TYPEDEF ProduceReport ::=
     }
 ENDDEF
 
-FUNCDEF containsProduceReport ( x :: ProduceReport ; l :: ListProduceReport ) :: Bool ::=
+FUNCDEF containsProduceReport ( x :: ProduceReport ; l :: ListProduceReport ) :: ProduceReport ::=
   x
 ENDDEF
 

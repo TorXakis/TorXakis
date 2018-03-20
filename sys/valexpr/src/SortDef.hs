@@ -22,9 +22,13 @@ where
 import GHC.Generics (Generic)
 import Control.DeepSeq
 
+import Id (Resettable)
+
 -- | SortDef has no information 
 data  SortDef        = SortDef
      deriving (Eq,Ord,Read,Show, Generic, NFData)
+
+instance Resettable SortDef
 
 -- ----------------------------------------------------------------------------------------- --
 --

@@ -3,10 +3,10 @@ TYPEDEF  Operation ::=
     | Minus { m1, m2 :: Int }
 ENDDEF
 
-FUNCDEF overflow (x :: Int) :: Bool ::=
+FUNCDEF overflow (x :: Bool) :: Bool ::=
         x
 ENDDEF
 
-FUNCDEF foo (op :: Operation) :: Int ::=
+FUNCDEF foo (op :: Operation) :: Operation ::=
         op
 ENDDEF

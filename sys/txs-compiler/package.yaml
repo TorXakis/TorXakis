@@ -48,6 +48,14 @@ tests:
     - -O
     dependencies:
     - hspec
-    - txs-compiler
     - filemanip
     - filepath
+    # TorXakis dependencies
+    - front # Temporary dependencies till the whole front is replaced.
+    - defs
+    - valexpr
+
+    # Local dependencies
+    - txs-compiler
+
+
