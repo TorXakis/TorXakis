@@ -6,7 +6,6 @@ See LICENSE at root directory of this repository.
 
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns      #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module Eval
 
@@ -77,8 +76,10 @@ evalTuple (v,i) = do
 --         eval shall only work on closed vexpr
 
 eval :: Variable v => ValExpr v -> IOB.IOB (Either String Const)
+eval = eval' . ValExpr.view
 
-eval (view -> Vfunc fid vexps) = do
+eval' :: Variable v => ValExprView v -> IOB.IOB (Either String Const)
+eval' (Vfunc fid vexps) = do
      envb <- get
      let tdefs = IOB.tdefs envb
      case Map.lookup fid (funcDefs tdefs) of
@@ -93,32 +94,32 @@ eval (view -> Vfunc fid vexps) = do
                                         eval (subst (Map.map cstrConst we) fdefs vexp)
                         (es, _)  -> return $ Left $ "eval - function args failed:\n" ++ Utils.join "\n" es
 
-eval (view -> Vcstr cid vexps) = do
+eval' (Vcstr cid vexps) = do
     mvals <- mapM eval vexps
     case partitionEithers mvals of
         ([], vals) -> return $ Right $ Cstr cid vals
         (es, _)    -> return $ Left $ Utils.join "\n" es
 
-eval (view -> Viscstr cid1 arg) = do
+eval' (Viscstr cid1 arg) = do
     mval <- eval arg
     case mval of
         Right (Cstr cid2 _) -> return $ Right $ Cbool ( cid1 == cid2 )
         Right t             -> return $ Left $ "iscstr : wrong value " ++ show t
         Left t              -> return $ Left $ "iscstr : " ++ t
         
-eval (view -> Vaccess _cid1 p arg) = do
+eval' (Vaccess _cid1 p arg) = do
     mval <- eval arg
     case mval of
         Right (Cstr _cid2 args') -> return $ Right $ args'!!p
         Right t                  -> return $ Left $ "access : wrong value " ++ show t
         Left t                   -> return $ Left $ "access : " ++ t
         
-eval (view -> Vconst const') = return $ Right const'
+eval' (Vconst const') = return $ Right const'
 
-eval (view -> Vvar _vid) =
+eval' (Vvar _vid) =
     return $ Left "var - Evaluation of value expression with free variable(s)"
 
-eval (view -> Vite cond vexp1 vexp2) = do
+eval' (Vite cond vexp1 vexp2) = do
     mval <- eval cond
     case mval of
         Right (Cbool val)   -> if val
@@ -128,20 +129,20 @@ eval (view -> Vite cond vexp1 vexp2) = do
         Left t              -> return $ Left $ "ite : " ++ t
         
 
-eval (view -> Vsum s) = do
+eval' (Vsum s) = do
     mconsts <- mapM evalTuple (toOccurListT s)
     case partitionEithers mconsts of
         ([], consts) -> eval (cstrSum $ fromOccurListT consts)       -- simplifies to integer
         (es, _)      -> return $ Left $ "Sum:\n" ++ Utils.join "\n  " es
 
-eval (view -> Vproduct p) = do
+eval' (Vproduct p) = do
     mconsts <- mapM evalTuple (toOccurListT p)
     case partitionEithers mconsts of
         ([], consts) -> eval (cstrProduct $ fromOccurListT consts)       -- simplifies to integer
         (es, _)      -> return $ Left $ "Product:\n" ++ Utils.join "\n  " es
 
 
-eval (view -> Vdivide t n) = do
+eval' (Vdivide t n) = do
     mvalT <- txs2int t
     case mvalT of
         Right valT -> do
@@ -151,7 +152,7 @@ eval (view -> Vdivide t n) = do
                             Left e -> return $ Left $ "divide n " ++ show e
         Left e -> return $ Left $ "divide t " ++ show e
     
-eval (view -> Vmodulo t n) = do
+eval' (Vmodulo t n) = do
     mvalT <- txs2int t
     case mvalT of
         Right valT -> do
@@ -161,14 +162,14 @@ eval (view -> Vmodulo t n) = do
                             Left e -> return $ Left $ "modulo n " ++ show e
         Left e -> return $ Left $ "modulo t " ++ show e
 
-eval (view -> Vgez vexp) = do
+eval' (Vgez vexp) = do
     mval <- eval vexp
     case mval of
         Right (Cint val) -> return $ Right $ Cbool ( 0 <= val)
         Right x           -> return $ Left $ "GEZ: not a int " ++ show x
         Left t     -> return $ Left $ "GEZ: not a int value" ++ show t
 
-eval (view -> Vequal vexp1 vexp2) = do
+eval' (Vequal vexp1 vexp2) = do
     mval1 <- eval vexp1
     case mval1 of
         Right val1 -> do
@@ -180,7 +181,7 @@ eval (view -> Vequal vexp1 vexp2) = do
     
     
 
-eval (view -> Vnot vexp) = do
+eval' (Vnot vexp) = do
     mexp <- eval vexp
     case mexp of 
         Right (Cbool val) -> return $ Right $ Cbool (not val)
@@ -188,7 +189,7 @@ eval (view -> Vnot vexp) = do
         Left t            -> return $ Left $ "not: not a boolean value " ++ show t
 
 
-eval (view -> Vand vexps) = do
+eval' (Vand vexps) = do
     mconsts <- mapM eval (Set.toList vexps)
     case partitionEithers mconsts of
         ([], consts) -> return $ Right $ Cbool $ all unBool consts
@@ -197,14 +198,14 @@ eval (view -> Vand vexps) = do
         unBool (Cbool b) = b
         unBool _         = error "unBool applied on non-Bool"
 
-eval (view -> Vlength vexp) = do
+eval' (Vlength vexp) = do
     mexp <- eval vexp
     case mexp of 
         Right (Cstring val) -> return $ Right $ Cint $ toInteger (T.length val)
         Right x           -> return $ Left $ "length: not a string " ++ show x
         Left t            -> return $ Left $ "length: not a string value " ++ show t
 
-eval (view -> Vat s p) = do
+eval' (Vat s p) = do
     ms <- eval s
     case ms of 
         Right (Cstring vs) -> do
@@ -216,14 +217,14 @@ eval (view -> Vat s p) = do
         Right x           -> return $ Left $ "at: not a string " ++ show x
         Left t            -> return $ Left $ "at: not a string value " ++ show t
 
-eval (view -> Vconcat vexprs) = do
+eval' (Vconcat vexprs) = do
     ms <- mapM eval vexprs
     case partitionEithers ms of
         ([], vs) ->  let vs' = map (\(Cstring s) -> s) vs in 
                         return $ Right $ Cstring (T.concat vs')
         (es, _)      -> return $ Left $ "Concat:\n" ++ Utils.join "\n  " es
 
-eval (view -> Vstrinre s r) = do
+eval' (Vstrinre s r) = do
     ms <- eval s
     case ms of 
         Right (Cstring vs) -> do
@@ -235,7 +236,7 @@ eval (view -> Vstrinre s r) = do
         Right x           -> return $ Left $ "strinre: not a string " ++ show x
         Left t            -> return $ Left $ "strinre: not a string value " ++ show t
 
-eval (view -> Vpredef kd fid vexps) =
+eval' (Vpredef kd fid vexps) =
      case kd of
        AST -> case vexps of
                 [vexp] -> do
@@ -287,7 +288,6 @@ eval (view -> Vpredef kd fid vexps) =
        SSI -> evalSSI fid vexps
        SSS -> evalSSS fid vexps
 
-eval _ = return $ Left "undefined"
 
 -- ----------------------------------------------------------------------------------------- --
 -- evaluation of value expression: evaluation of standard functions for Bool - SSB

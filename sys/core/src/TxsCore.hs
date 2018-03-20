@@ -16,7 +16,8 @@ See LICENSE at root directory of this repository.
 -- Core Module TorXakis API:
 -- API for TorXakis core functionality.
 -----------------------------------------------------------------------------
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ViewPatterns        #-}
 module TxsCore
 ( -- * run TorXakis core
   runTxsCore
@@ -865,8 +866,8 @@ txsStepA act =  do
 txsShow :: String               -- ^ kind of item to be shown.
         -> String               -- ^ name of item to be shown.
                                 --   Valid items are "tdefs", "state",
-                                --   "model", "mapper", "purp", "modeldef" <name>,
-                                --   "mapperdef" <name>, "purpdef" <name>
+                                --   "model", "mapper", "purp", "modeldef" 'name',
+                                --   "mapperdef" 'name', "purpdef" 'name'
         -> IOC.IOC String
 txsShow item nm  = do
      envc  <- gets IOC.state
@@ -1048,7 +1049,7 @@ txsNComp :: TxsDefs.ModelDef                   -- ^ model. Currently only
                                                -- succesful.
 txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
   envc <- get
-  case (IOC.state envc, bexp) of
+  case (IOC.state envc, TxsDefs.view bexp) of
     ( IOC.Initing {IOC.tdefs = tdefs}
       , TxsDefs.ProcInst procid@(TxsDefs.ProcId pnm _ _ _ _) chans []
       ) | and [ Set.size sync == 1 | sync <- insyncs ++ outsyncs ]
@@ -1057,9 +1058,9 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
                  ]
           && null splsyncs
        -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
-              Just (TxsDefs.ProcDef chids [] staut@(TxsDefs.StAut _ ve _)) | Map.null ve
+              Just (TxsDefs.ProcDef chids [] staut@(TxsDefs.view -> TxsDefs.StAut _ ve _)) | Map.null ve
                  -> do let chanmap                       = Map.fromList (zip chids chans)
-                           TxsDefs.StAut statid _ trans = Expand.relabel chanmap staut
+                           TxsDefs.StAut statid _ trans = TxsDefs.view $ Expand.relabel chanmap staut
                        maypurp <- NComp.nComplete insyncs outsyncs statid trans
                        case maypurp of
                          Just purpdef -> do
@@ -1099,7 +1100,7 @@ txsLPE (Left bexpr)  =  do
     IOC.Initing {IOC.tdefs = tdefs}
       -> do lpe <- LPE.lpeTransform bexpr (TxsDefs.procDefs tdefs)
             case lpe of
-              Just (procinst'@(TxsDefs.ProcInst procid' _ _), procdef')
+              Just (procinst'@(TxsDefs.view -> TxsDefs.ProcInst procid' _ _), procdef')
                 -> case Map.lookup procid' (TxsDefs.procDefs tdefs) of
                      Nothing
                        -> do let tdefs' = tdefs { TxsDefs.procDefs = Map.insert
@@ -1124,7 +1125,7 @@ txsLPE (Right modelid@(TxsDefs.ModelId modname _moduid))  =  do
              -> do lpe' <- txsLPE (Left bexpr)
                    lift $ hPrint stderr lpe'
                    case lpe' of
-                     Just (Left (procinst'@TxsDefs.ProcInst{}))
+                     Just (Left (procinst'@(TxsDefs.view -> TxsDefs.ProcInst{})))
                        -> do uid'   <- IOC.newUnid
                              tdefs' <- gets (IOC.tdefs . IOC.state)
                              let modelid' = TxsDefs.ModelId ("LPE_"<>modname) uid'
