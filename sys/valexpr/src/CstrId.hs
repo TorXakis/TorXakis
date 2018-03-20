@@ -25,6 +25,7 @@ where
 import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
+import           Data.Aeson                  (ToJSON)
 
 import           Id
 import           Name
@@ -37,6 +38,8 @@ data CstrId = CstrId
     , cstrargs :: [SortId]
     , cstrsort :: SortId
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance ToJSON CstrId
 
 -- | CstrId is Resettable
 instance Resettable CstrId

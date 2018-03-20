@@ -35,12 +35,15 @@ import           Data.Set            (Set)
 import qualified Data.Set            as Set
 import           Data.Text           (Text)
 import           GHC.Generics
+import           Data.Aeson                  (ToJSON)
 
 newtype Id = Id { _id :: Int }
     deriving (Eq, Ord, Enum, Num, Read, NFData, Data, Generic)
 
 instance Show Id where
     show (Id x) = show x
+
+instance ToJSON Id
 
 -- * Resettable
 

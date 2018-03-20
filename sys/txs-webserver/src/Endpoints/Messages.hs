@@ -40,17 +40,12 @@ import           TorXakis.Lib             (waitForVerdict)
 import           TorXakis.Session         (Session, sessionMsgs)
 import           TxsDDefs                 (Action)
 
-type MessagesEP = "session" :> Capture "sid" SessionId :> "messages" :> StreamGet NewlineFraming JSON (StreamGenerator Text)
+type MessagesEP = "session"
+               :> Capture "sid" SessionId
+               :> "messages"
+               :> StreamGet NewlineFraming JSON (StreamGenerator Msg)
 
-instance ToJSON Id
-instance ToJSON SortId
-instance ToJSON ChanId
-instance ToJSON CstrId
-instance ToJSON Const
-instance ToJSON Action
-instance ToJSON Msg
-
-streamMessages :: SessionId -> TxsHandler (StreamGenerator Text)
+streamMessages :: SessionId -> TxsHandler (StreamGenerator Msg)
 streamMessages sid = do
     s <- getSession sid
     return $ StreamGenerator
@@ -62,8 +57,8 @@ streamMessages sid = do
                         .| mapM_ (sendData f r)
         isFirstSource :: ZipSource IO Bool
         isFirstSource = ZipSource $ yield True >> repeatC False
-        messagesSource :: Session -> ZipSource IO Text
-        messagesSource s = ZipSource $ sourceTQueue (s ^. sessionMsgs) .| map (T.pack . show)
+        messagesSource :: Session -> ZipSource IO Msg
+        messagesSource s = ZipSource $ sourceTQueue (s ^. sessionMsgs)
         --         .| mapM delayAndPass
         -- delayAndPass a =
         --     threadDelay (10^(4::Int)) >> return a

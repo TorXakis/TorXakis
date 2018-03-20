@@ -24,6 +24,7 @@ module SortId where
 import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
+import           Data.Aeson                  (ToJSON)
 
 -- Local imports.
 import           Id
@@ -35,6 +36,8 @@ data SortId = SortId
     { name :: Name            -- capid
     , unid :: Id
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance ToJSON SortId
 
 -- | SortId is Resettable
 instance Resettable SortId

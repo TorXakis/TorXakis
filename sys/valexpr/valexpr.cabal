@@ -47,6 +47,7 @@ library
                       , deepseq
                       , regex-tdfa
                       , text
+                      , aeson
 
                       , lexregexxsd
                       

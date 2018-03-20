@@ -15,6 +15,7 @@ where
 import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
+import           Data.Aeson                  (ToJSON)
 
 import           Id
 import           Name
@@ -25,6 +26,8 @@ data ChanId = ChanId
     , unid      :: Id
     , chansorts :: [SortId]
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance ToJSON ChanId
 
 instance Resettable ChanId
 instance Identifiable ChanId

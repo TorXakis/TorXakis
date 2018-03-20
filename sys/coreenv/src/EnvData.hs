@@ -27,6 +27,7 @@ module EnvData
 where
 
 import           GHC.Generics (Generic)
+import           Data.Aeson                  (ToJSON)
 
 -- import from defs
 import           TxsDDefs     (Action)
@@ -61,6 +62,8 @@ data Msg     =   TXS_CORE_SYSTEM_ERROR     { s :: String }
                | TXS_CORE_ANY              { s :: String }
                | AnAction                  { act :: Action } -- ^ An action was performed.
      deriving (Eq, Ord, Read, Show, Generic)
+
+instance ToJSON Msg
 
 instance TxsShow.PShow Msg
   where

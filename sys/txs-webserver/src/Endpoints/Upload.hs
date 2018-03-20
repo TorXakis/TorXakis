@@ -19,7 +19,11 @@ import           TorXakis.Session            (Session)
 
 import           Common (SessionId, TxsHandler, getSession)
 
-type UploadEP = "session" :> Capture "sid" SessionId :> "model" :> MultipartForm Mem (MultipartData Mem) :> PostCreated '[JSON] String
+type UploadEP = "session"
+                :> Capture "sid" SessionId
+                :> "model"
+                :> MultipartForm Mem (MultipartData Mem)
+                :> PostCreated '[JSON] String
 
 upload :: SessionId -> MultipartData Mem -> TxsHandler String
 upload sid multipartData =  do

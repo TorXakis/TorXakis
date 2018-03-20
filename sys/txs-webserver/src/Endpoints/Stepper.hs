@@ -14,8 +14,17 @@ import           TorXakis.Lib                (stepper, Response (..), step, Step
 
 import           Common (SessionId, TxsHandler, getSession)
 
-type StartStepperEP = "stepper" :> "start" :> Capture "sid" SessionId :> Capture "model" Text :> Post '[JSON] String
-type TakeNStepsEP   = "stepper" :> "step"  :> Capture "sid" SessionId :> Capture "steps" Int  :> Post '[JSON] String
+type StartStepperEP = "stepper"
+                   :> "start"
+                   :> Capture "sid" SessionId
+                   :> Capture "model" Text
+                   :> Post '[JSON] String
+                      
+type TakeNStepsEP   = "stepper"
+                   :> "step"
+                   :> Capture "sid" SessionId
+                   :> Capture "steps" Int
+                   :> Post '[JSON] String
 
 startStepper :: SessionId -> Text -> TxsHandler String
 startStepper sid model = do

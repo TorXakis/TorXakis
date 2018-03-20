@@ -15,6 +15,7 @@ where
 import qualified Data.Set               as Set
 import           Data.Text              (Text)
 import           GHC.Generics           (Generic)
+import           Data.Aeson                  (ToJSON)
 
 import           Network.TextViaSockets (Connection)
 
@@ -30,6 +31,8 @@ import           VarId                  (VarId)
 data  Action   =  Act     ( Set.Set (ChanId,[Const]) )
                 | ActQui
      deriving (Eq,Ord,Read,Show,Generic)
+
+instance ToJSON Action
 
 -- ----------------------------------------------------------------------------------------- --
 

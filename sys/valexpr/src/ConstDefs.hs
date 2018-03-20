@@ -25,6 +25,7 @@ import           Control.DeepSeq
 import           Data.Data
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
+import           Data.Aeson                  (ToJSON)
 
 import           CstrId
 import           Id
@@ -42,6 +43,8 @@ data Const = Cbool    { cBool :: Bool }
            | Cerror   { msg :: String }
            | Cany     { sort :: SortId }
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance ToJSON Const
 
 -- | Const is Resettable
 instance Resettable Const
