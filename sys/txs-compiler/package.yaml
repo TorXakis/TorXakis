@@ -50,6 +50,7 @@ tests:
     - hspec
     - filemanip
     - filepath
+    - containers    
     # TorXakis dependencies
     - front # Temporary dependencies till the whole front is replaced.
     - defs

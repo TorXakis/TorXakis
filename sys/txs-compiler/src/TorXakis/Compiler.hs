@@ -5,9 +5,11 @@ import           Control.Arrow        ( (|||) )
 import           Control.Monad.State  ( get, evalStateT )
 import qualified Data.Map.Strict      as Map
 
-import           TxsDefs (TxsDefs, union, funcDefs, empty, fromList)
-import           StdTDefs (stdTDefs)
-import           Sigs    (Sigs, uniqueCombine)
+import           TxsDefs (TxsDefs, union, funcDefs, fromList)
+import qualified TxsDefs (empty)
+import           StdTDefs (stdTDefs, stdFuncTable)
+import           Sigs    (Sigs, uniqueCombine, func)
+import qualified Sigs (empty)
 import           Id  (Id (Id))
 import           SortId  (sortIdBool, sortIdInt, sortIdRegex, sortIdString)
 import           VarId   (VarId)
@@ -73,7 +75,7 @@ toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
           => e -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs e pd = do
     ad <- adtsToTxsDefs e (adts pd)
-    let fd = empty { funcDefs = getFuncDefT e }
+    let fd = TxsDefs.empty { funcDefs = getFuncDefT e }
     return $ ad `union` fd `union` fromList stdTDefs
 
 toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
@@ -82,4 +84,5 @@ toSigs e pd = do
     let ts = sortsToSigs (getSortIdMap e)
     as <- adtDeclsToSigs e (adts pd)
     fs <- funDeclsToSigs e (fdefs pd)
-    return $ uniqueCombine ts (uniqueCombine as fs)
+    let ss = Sigs.empty { func = stdFuncTable }
+    return $ ts `uniqueCombine` as `uniqueCombine` fs `uniqueCombine` ss

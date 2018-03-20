@@ -4,8 +4,6 @@ module TorXakis.Compiler.Defs.Sigs where
 
 import           Data.Map (Map)
 import           Data.Text (Text)
-import           Control.Arrow ((|||))
-import           Control.Monad.Error.Class (throwError)
     
 import           SortId (SortId)
 import           Sigs    (Sigs, sort, empty, func)
@@ -23,14 +21,16 @@ adtDeclsToSigs :: (HasSortIds e, HasFuncIds e, HasFuncDefs e, HasCstrIds e)
 -- >                     , sort :: Map.Map Text SortId
 -- >                     } 
 -- >
-adtDeclsToSigs e ds =
-    throwError ||| (\ft -> return $ empty { func = ft }) $
-        compileToFuncTable e ds
+adtDeclsToSigs e ds = do
+    ft <- compileToFuncTable e ds
+    return $ empty { func = ft }
+        
 
 funDeclsToSigs :: (HasSortIds e, HasFuncIds e, HasFuncDefs e, HasCstrIds e)
                => e -> [FuncDecl] -> CompilerM (Sigs VarId)
-funDeclsToSigs e ds =  throwError ||| (\ft -> return $ empty { func = ft }) $
-        funcDeclsToFuncTable e ds
+funDeclsToSigs e ds = do
+    ft <- funcDeclsToFuncTable e ds
+    return $ empty { func = ft }              
 
 sortsToSigs :: Map Text SortId -> Sigs VarId
 sortsToSigs sm = empty { sort = sm }

@@ -78,6 +78,8 @@ class HasFuncIds e where
     -- | Find the function id that corresponds to the given parser location.
     --
     findFuncId :: e -> Loc FuncDeclE -> Either Error FuncId
+    findFuncIdM :: e -> Loc FuncDeclE -> CompilerM FuncId
+    findFuncIdM e i = liftEither $ findFuncId e i
 
 class HasFuncDefs e where
     -- | Find the function definition that corresponds with a given function id.
@@ -107,7 +109,7 @@ instance HasVarDecls (IEnv f0 f1 f2 (Map (Loc ExpE) VarDecl) f4 f5) where
     findVarDecl IEnv{varDeclT = vm} i = lookup i vm "variable declaration by parser location id"
 
 instance HasFuncIds (IEnv f0 f1 f2 f3 (Map (Loc FuncDeclE) FuncId) f5) where
-    findFuncId IEnv {funcIdT = fm} i = lookup i fm "function id by parser location id"
+    findFuncId IEnv {funcIdT = fm} i = lookup i fm "function id by parser location id"    
 
 instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 (Map FuncId (FuncDef VarId))) where
     findFuncDef IEnv{funcDefT = fm} i = lookup i fm "function declaration by function id"

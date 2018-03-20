@@ -5,9 +5,10 @@ module TorXakis.Compiler.ValExpr.FuncId where
 import           Data.Semigroup ((<>))
 
 import           Id (Id (Id))
-import           SortId (sortIdBool)
+import           SortId (SortId, sortIdBool, sortIdString)
 import           CstrId (name, cstrsort, CstrId)
 import           FuncId (FuncId (FuncId))
+import           StdTDefs (toStringName, fromStringName)
 
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
@@ -36,3 +37,17 @@ funcDeclToFuncId  e f = do
     aSids <- traverse (sortIdOfVarDeclM e) (funcParams f)
     rSid  <- findSortIdM e (funcRetSort f)
     return $ FuncId (funcName f) (Id fId) aSids rSid
+
+
+-- | Make a 'FuncId' for a sort to string function.
+sortToStringFuncId :: SortId -> CompilerM FuncId 
+sortToStringFuncId sId = do
+    fId <- getNextId
+    return $ FuncId toStringName (Id fId) [sId] sortIdString
+
+-- | Make a 'FuncId' for a string to sort function.
+sortFromStringFuncId :: SortId -> CompilerM FuncId 
+sortFromStringFuncId sId = do
+    fId <- getNextId
+    return $ FuncId fromStringName (Id fId) [sortIdString] sId
+
