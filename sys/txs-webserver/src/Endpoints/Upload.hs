@@ -17,7 +17,7 @@ import           Servant.Multipart           (MultipartForm, MultipartData, Mem,
 import           TorXakis.Lib                (load, Response (..))
 import           TorXakis.Session            (Session)
 
-import           Common (SessionId, TxsHandler, getSession)
+import           Common (SessionId, getSession, Env)
 
 type UploadEP = "session"
                 :> Capture "sid" SessionId
@@ -25,9 +25,9 @@ type UploadEP = "session"
                 :> MultipartForm Mem (MultipartData Mem)
                 :> PostCreated '[JSON] String
 
-upload :: SessionId -> MultipartData Mem -> TxsHandler String
-upload sid multipartData =  do
-    s <- getSession sid
+upload :: Env -> SessionId -> MultipartData Mem -> Handler String
+upload env sid multipartData =  do
+    s <- getSession env sid
     res <- liftIO $
         case files multipartData of
             [] -> return $ Left "No files received"

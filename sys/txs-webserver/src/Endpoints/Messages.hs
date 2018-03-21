@@ -5,17 +5,19 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE DataKinds     #-}
 {-# LANGUAGE TypeOperators #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Endpoints.Messages
 (
   MessagesEP
 , streamMessages
+, SSMessagesEP
+, ssMessagesEP
 ) where
 
 import           Conduit                  (ZipSource (..), getZipSource,
                                            repeatC, runConduit, yield, (.|))
 import           Control.Concurrent       (threadDelay)
-import           Control.Concurrent.Async (race_)
+import           Control.Concurrent.Async (race_, async)
 import           Control.Monad            (void)
 import           Data.Aeson               (ToJSON)
 import           Data.Conduit.Combinators (map, mapM_)
@@ -24,13 +26,31 @@ import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           Lens.Micro               ((^.))
 import           Prelude                  hiding (map, mapM_)
-import           Servant                  ((:>), Capture, JSON, NewlineFraming,
-                                           StreamGenerator,
-                                           StreamGenerator (StreamGenerator),
-                                           StreamGet)
+import           Servant                  ((:>), Capture, JSON, NewlineFraming
+                                          , StreamGenerator
+                                          , StreamGenerator (StreamGenerator)
+                                          , StreamGet
+                                          , Raw, Tagged (Tagged), Application
+                                          , Handler)
+import           Network.Wai.EventSource (eventSourceAppChan, ServerEvent
+                                         , ServerEvent (ServerEvent)
+                                         , eventName
+                                         , eventId
+                                         , eventData
+                                         )
+import           Data.Binary.Builder (Builder, fromByteString)
+import qualified Data.Text.Lazy as TL
+import           Data.Text.Encoding as TE
+import           Data.Text.Lazy.Encoding as TLE
+import           Control.Concurrent.Chan (Chan, newChan, writeChan)
+import           Control.Monad.Trans.Class (lift)
+import           Data.Monoid ((<>))
+import           Network.Wai (responseLBS)
+import           Network.HTTP.Types.Status (status404)
+
 
 import           ChanId                   (ChanId)
-import           Common                   (SessionId, TxsHandler, getSession)
+import           Common                   (SessionId, getSessionIO, getSession, Env)
 import           ConstDefs                (Const)
 import           CstrId                   (CstrId)
 import           EnvData                  (Msg)
@@ -45,9 +65,9 @@ type MessagesEP = "session"
                :> "messages"
                :> StreamGet NewlineFraming JSON (StreamGenerator Msg)
 
-streamMessages :: SessionId -> TxsHandler (StreamGenerator Msg)
-streamMessages sid = do
-    s <- getSession sid
+streamMessages :: Env -> SessionId -> Handler (StreamGenerator Msg)
+streamMessages env sid = do
+    s <- getSession env sid
     return $ StreamGenerator
            $ \sendFirst sendRest ->
                 race_ (dataSource sendFirst sendRest s)
@@ -71,6 +91,45 @@ streamMessages sid = do
         -- messagesConduit = yieldMany [(1::Int) .. 10] .| map (T.pack . show)
         wait5 :: IO ()
         wait5 = threadDelay (10^(6::Int) * 5)
+
+
+type SSMessagesEP = "session" :> "sse"
+               :> Capture "sid" SessionId
+               :> "messages"
+               :> Raw
+
+-- | Server sent messages.
+ssMessagesEP :: Env -> SessionId -> Tagged Handler Application
+ssMessagesEP env sid = Tagged $ \req respond -> do
+    mS <- getSessionIO env sid
+    case mS of
+        Nothing -> do
+            let msg = "Could not find session with id: "
+                      <> TLE.encodeUtf8 (TL.pack (show sid))
+            respond $ responseLBS status404 [] msg
+        Just s  -> do
+            ch <- newChan
+            _ <- async $ runConduit $
+                 sourceTQueue (s ^. sessionMsgs) .| mapM_ (sendTo ch)
+            eventSourceAppChan ch req respond
+
+sendTo :: Chan ServerEvent -> Msg -> IO ()
+sendTo ch msg =
+    writeChan ch (asServerEvent msg)
+
+asServerEvent :: Msg -> ServerEvent
+asServerEvent msg = ServerEvent
+    { eventName = Just eName
+    , eventId = Nothing
+    , eventData = [msg']
+    }
+    where
+      eName :: Builder
+      eName = fromByteString "TorXakis Message"
+      msg'  :: Builder
+      -- TODO: encode msg as a JSON bytestring.
+      msg'  = fromByteString $ TE.encodeUtf8 $ T.pack $ show msg
+
 
 -- -- | Get the next N messages in the session.
 -- --

@@ -23,8 +23,8 @@ import           Servant
 -- import           Servant.Server
 -- import           Servant.Swagger
 
-import           Common                      (Env (..), TxsHandler)
-import           Endpoints.Messages          (MessagesEP, streamMessages)
+import           Common                      (Env (..))
+import           Endpoints.Messages          (MessagesEP, streamMessages, SSMessagesEP, ssMessagesEP)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
 import           Endpoints.Stepper           (StartStepperEP, TakeNStepsEP,
                                               startStepper, takeNSteps)
@@ -41,6 +41,7 @@ $(deriveJSON defaultOptions ''User)
 
 type API = ServiceAPI
 type ServiceAPI = NewSessionEP :<|> UploadEP :<|> StartStepperEP :<|> TakeNStepsEP :<|> MessagesEP
+                               :<|> SSMessagesEP
                                :<|> "users" :> Get '[JSON] [User]
 
 startApp :: IO ()
@@ -50,23 +51,22 @@ startApp = do
     run 8080 $ app $ Env sessionsMap zeroId
 
 app :: Env -> Application
-app env = simpleCors $ serve api $ hoistServer api (nt env) server
+app env = simpleCors $ serve api (server env)
     where
-        nt :: Env -> TxsHandler a -> Handler a
-        nt env2 handler = runReaderT handler env2
         api :: Proxy API
         api = Proxy
 
-server :: ServerT API TxsHandler
-server = newSrvSession
-    :<|> upload
-    :<|> startStepper
-    :<|> takeNSteps
-    :<|> streamMessages
+server :: Env -> ServerT API Handler
+server env = newSrvSession env 
+    :<|> upload env 
+    :<|> startStepper env
+    :<|> takeNSteps env
+    :<|> streamMessages env
+    :<|> ssMessagesEP env
     :<|> users
     -- :<|> return swaggerDocs
     where
-        users :: TxsHandler [User]
+        users :: Handler [User]
         users = return [ User 1 "Isaac" "Newton"
                        , User 2 "Albert" "Einstein"
                        ]

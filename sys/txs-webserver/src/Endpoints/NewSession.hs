@@ -12,13 +12,12 @@ import           Servant
 
 import           TorXakis.Lib     (newSession)
 
-import           Common (SessionId, TxsHandler, Env(..))
+import           Common (SessionId, Env(..))
 
 type NewSessionEP = "session" :> "new" :> PostCreated '[JSON] SessionId
 
-newSrvSession :: TxsHandler SessionId
-newSrvSession = do
-    Env{sessions = ssT, lastSid = pSidT} <- ask
+newSrvSession :: Env -> Handler SessionId
+newSrvSession Env{sessions = ssT, lastSid = pSidT} = do
     pSid       <- liftIO $ readTVarIO pSidT
     s <- liftIO newSession
     let sid = pSid + 1

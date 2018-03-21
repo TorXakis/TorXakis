@@ -12,7 +12,7 @@ import           Servant
 
 import           TorXakis.Lib                (stepper, Response (..), step, StepType (..))
 
-import           Common (SessionId, TxsHandler, getSession)
+import           Common (SessionId, getSession, Env)
 
 type StartStepperEP = "stepper"
                    :> "start"
@@ -26,9 +26,9 @@ type TakeNStepsEP   = "stepper"
                    :> Capture "steps" Int
                    :> Post '[JSON] String
 
-startStepper :: SessionId -> Text -> TxsHandler String
-startStepper sid model = do
-    s <- getSession sid
+startStepper :: Env -> SessionId -> Text -> Handler String
+startStepper env sid model = do
+    s <- getSession env sid
     r <- liftIO $ do
             putStrLn $ "Starting stepper for model " ++ show model ++ " in session " ++ show sid 
             r <- stepper s model
@@ -38,9 +38,9 @@ startStepper sid model = do
         Success -> return $ show Success
         Error m -> throwError $ err500 { errBody = pack m }
 
-takeNSteps :: SessionId -> Int -> TxsHandler String
-takeNSteps sid steps = do
-    s <- getSession sid
+takeNSteps :: Env -> SessionId -> Int -> Handler String
+takeNSteps env sid steps = do
+    s <- getSession env sid
     r <- liftIO $ do
             putStrLn $ "Taking " ++ show steps ++ " steps in session " ++ show sid 
             r <- step s $ NumberOfSteps steps

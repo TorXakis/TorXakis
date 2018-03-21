@@ -53,7 +53,10 @@ library:
   - transformers
   - wai
   - wai-cors
+  - wai-extra  
   - warp
+  - binary
+  - http-types
   # `TorXakis` dependencies.
   - coreenv
   - defs

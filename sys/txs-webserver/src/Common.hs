@@ -1,9 +1,9 @@
 module Common
 (
   SessionId
-, TxsHandler
 , Env (..)
 , getSession
+, getSessionIO
 )
 where
 
@@ -19,15 +19,18 @@ import           TorXakis.Session (Session)
 
 type SessionId = Int
 
-type TxsHandler = ReaderT Env Handler
 data Env = Env { sessions :: TVar (Map.IntMap Session)
                , lastSid  :: TVar SessionId
                }
 
-getSession :: SessionId -> TxsHandler Session
-getSession sid = do
-    Env{sessions = ssT} <- ask
-    sessionsMap <- liftIO $ readTVarIO ssT
-    case Map.lookup sid sessionsMap of
-        Nothing -> throwError $ err422 { errBody = pack $ "Session " ++ show sid ++ " not found." }
+getSessionIO :: Env -> SessionId -> IO  (Maybe Session)
+getSessionIO Env{sessions = ssT} sid = do
+    sessionsMap <-  readTVarIO ssT
+    return $ Map.lookup sid sessionsMap 
+
+getSession :: Env -> SessionId -> Handler Session
+getSession e sId = do
+    mSession <- liftIO $ getSessionIO e sId
+    case mSession of
+        Nothing -> throwError $ err422 { errBody = pack $ "Session " ++ show sId ++ " not found." }
         Just s  -> return s
