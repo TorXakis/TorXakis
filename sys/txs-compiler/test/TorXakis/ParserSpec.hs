@@ -12,11 +12,16 @@ import           TorXakis.Parser (parseFile)
 
 
 spec :: Spec
-spec = 
+spec = do
     describe "Correctly parses the examples" $ do
         fs <- runIO $ find (return True) (extension ==? ".txs")
               ("test" </> "data" </> "success")
         parallel $ traverse_ testParser fs
+
+    describe "Correctly parses complete TorXakis models" $ do
+        fs <- runIO $ find (return True) (extension ==? ".txs")
+              ("test" </> "data" </> "parser" </> "success")
+        parallel $ traverse_ testParser fs        
 
     where
         testParser fp = it (show fp) $ do

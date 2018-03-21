@@ -1,0 +1,5 @@
+TYPEDEF B ::= B
+ENDDEF
+
+TYPEDEF A ::= A
+ENDDEF

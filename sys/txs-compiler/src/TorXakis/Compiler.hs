@@ -4,6 +4,7 @@ module TorXakis.Compiler where
 import           Control.Arrow        ( (|||) )
 import           Control.Monad.State  ( get, evalStateT )
 import qualified Data.Map.Strict      as Map
+import           Lens.Micro ((^.))
 
 import           TxsDefs (TxsDefs, union, funcDefs, fromList)
 import qualified TxsDefs (empty)
@@ -46,7 +47,7 @@ compileLegacy = (throwOnLeft ||| id) . compile
 compileParsedDefs :: ParsedDefs -> CompilerM (Id, TxsDefs, Sigs VarId)
 compileParsedDefs pd = do
     -- Construct the @SortId@'s lookup table.
-    sMap <- compileToSortId (adts pd)
+    sMap <- compileToSortId (pd ^. adts)
     -- Construct the @CstrId@'s lookup table.
     let pdsMap = Map.fromList [ ("Bool", sortIdBool)
                               , ("Int", sortIdInt)
@@ -54,16 +55,16 @@ compileParsedDefs pd = do
                               , ("String", sortIdString)                              
                               ]
         e0 = emptyEnv { sortIdT = Map.union pdsMap sMap }
-    cMap <- compileToCstrId e0 (adts pd)
+    cMap <- compileToCstrId e0 (pd ^. adts)
     let e1 = e0 { cstrIdT = cMap }
     -- Construct the @VarId@'s lookup table.
-    vMap <- generateVarIds e1 (fdefs pd)
+    vMap <- generateVarIds e1 (pd ^. funcs)
     let e2 = e1 { varIdT = vMap }
     -- Construct the variable declarations table.
-    dMap <- generateVarDecls (fdefs pd)
+    dMap <- generateVarDecls (pd ^. funcs)
     let e3 = e2 { varDeclT = dMap }
     -- Construct the function tables.
-    (lFIdMap, lFDefMap) <- funcDeclsToFuncDefs e3 (fdefs pd)
+    (lFIdMap, lFDefMap) <- funcDeclsToFuncDefs e3 (pd ^. funcs)
     let e4 = e3 { funcIdT = lFIdMap, funcDefT = lFDefMap }
     -- Finally construct the TxsDefs.
     txsDefs <- toTxsDefs e4 pd 
@@ -74,7 +75,7 @@ compileParsedDefs pd = do
 toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
           => e -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs e pd = do
-    ad <- adtsToTxsDefs e (adts pd)
+    ad <- adtsToTxsDefs e (pd ^. adts)
     let fd = TxsDefs.empty { funcDefs = getFuncDefT e }
     return $ ad `union` fd `union` fromList stdTDefs
 
@@ -82,7 +83,7 @@ toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
        => e -> ParsedDefs -> CompilerM (Sigs VarId)
 toSigs e pd = do
     let ts = sortsToSigs (getSortIdMap e)
-    as <- adtDeclsToSigs e (adts pd)
-    fs <- funDeclsToSigs e (fdefs pd)
+    as <- adtDeclsToSigs e (pd ^. adts)
+    fs <- funDeclsToSigs e (pd ^. funcs)
     let ss = Sigs.empty { func = stdFuncTable }
     return $ ts `uniqueCombine` as `uniqueCombine` fs `uniqueCombine` ss

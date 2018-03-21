@@ -8,11 +8,11 @@ import qualified Data.Map as Map
 import TorXakis.Parser.Data
 import TorXakis.Compiler.Data
 
-generateVarDecls :: [FuncDecl] -> CompilerM (Map (Loc ExpE) VarDecl)
+generateVarDecls :: [FuncDecl] -> CompilerM (Map (Loc ExpDeclE) VarDecl)
 generateVarDecls fs = Map.fromList . concat <$> 
     traverse generateVarDeclsForFD fs
 
-generateVarDeclsForFD :: FuncDecl -> CompilerM [(Loc ExpE, VarDecl)]
+generateVarDeclsForFD :: FuncDecl -> CompilerM [(Loc ExpDeclE, VarDecl)]
 generateVarDeclsForFD f =
     let VarExp n _ = funcBody f
     in do

@@ -34,7 +34,7 @@ txsLangDef = LanguageDef
     , identLetter     = alphaNum <|> oneOf "_'"
     , opStart         = opLetter txsLangDef
     , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
-    , reservedNames   = ["TYPEDEF", "ENDDEF", "FUNCDEF"]
+    , reservedNames   = ["TYPEDEF", "ENDDEF", "FUNCDEF", "CONSTDEF"]
     , reservedOpNames = []
     , caseSensitive   = True
     }
@@ -50,6 +50,12 @@ txsSymbol = void . symbol txsTokenP
 
 txsLexeme :: TxsParser a -> TxsParser a
 txsLexeme = lexeme txsTokenP
+
+txsStringP :: TxsParser Text
+txsStringP = T.pack <$> stringLiteral txsTokenP
+
+txsIntP :: TxsParser Integer
+txsIntP = integer txsTokenP
 
 getMetadata :: TxsParser (Metadata t)
 getMetadata = do

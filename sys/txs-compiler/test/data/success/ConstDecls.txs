@@ -1,0 +1,5 @@
+CONSTDEF
+   x :: Int ::= 3;
+   y :: Bool ::= True;
+   z :: String ::= "Edward \"the great\" \x23 \x345 \x00"
+ENDDEF

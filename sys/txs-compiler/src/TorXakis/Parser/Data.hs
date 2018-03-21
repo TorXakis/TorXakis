@@ -18,7 +18,7 @@ module TorXakis.Parser.Data
     , SortRefE
     , FuncDeclE
     , VarDeclE
-    , ExpE
+    , ExpDeclE
     -- * Declarations.
     -- ** ADT's
     , ADTDecl
@@ -50,6 +50,9 @@ module TorXakis.Parser.Data
     -- ** Expressions
     , ExpDecl (VarExp)
     , mkVarExp
+    , mkBoolConstExp
+    , mkIntConstExp
+    , mkStringConstExp    
     -- * Location of the entities.
     , getLoc
     )
@@ -97,8 +100,9 @@ class HasLoc a t where
 instance HasLoc (ParseTree t c) t where
     getLoc = loc . nodeMdata
 
-instance HasLoc ExpDecl ExpE where
+instance HasLoc ExpDecl ExpDeclE where
     getLoc (VarExp _ m) = loc m
+    getLoc (ConstExp _ m) = loc m
 
 -- * Types of entities encountered when parsing.
 
@@ -121,7 +125,7 @@ data FuncDeclE = FuncDeclE deriving (Eq, Show)
 data FuncCallE = FuncCallE deriving (Eq, Show)
 
 -- | An expression
-data ExpE = ExpE deriving (Eq, Show)
+data ExpDeclE = ExpDeclE deriving (Eq, Show)
 
 -- | A variable declaration.
 data VarDeclE = VarDeclE deriving (Eq, Show)
@@ -129,6 +133,9 @@ data VarDeclE = VarDeclE deriving (Eq, Show)
 -- | A variable occurrence in an expression. It is assumed to be a
 -- **reference** to an existing variable.
 data VarRefE = VarRefR deriving (Eq, Show)
+
+-- | A constant declaration.
+data ConstE = ConstE deriving (Eq, Show)
 
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADTE     [CstrDecl]
@@ -150,7 +157,7 @@ mkCstrDecl n m fs = ParseTree (Name n) CstrE m fs
 cstrName :: CstrDecl -> Text
 cstrName = nodeNameT
 
-cstrFields :: CstrDecl -> [FieldDecl] 
+cstrFields :: CstrDecl -> [FieldDecl]
 cstrFields = child
 
 type FieldDecl = ParseTree FieldE   OfSort
@@ -168,7 +175,7 @@ fieldSort f = (nodeNameT . child $ f, nodeMdata . child $ f)
 -- | Reference to an existing type
 type OfSort    = ParseTree SortRefE ()
 
-mkOfSort :: Text -> Metadata SortRefE -> OfSort 
+mkOfSort :: Text -> Metadata SortRefE -> OfSort
 mkOfSort n m = ParseTree (Name n) SortRefE m ()
 
 -- | Components of a function.
@@ -192,11 +199,26 @@ varDeclSort :: VarDecl -> (Text, Metadata SortRefE)
 varDeclSort f = (nodeNameT . child $ f, nodeMdata . child $ f)
 
 -- | Expressions.
-data ExpDecl = VarExp (Name VarRefE) (Metadata ExpE)
+data ExpDecl = VarExp (Name VarRefE) (Metadata ExpDeclE)
+             | ConstExp Const (Metadata ExpDeclE)
     deriving (Eq, Show)
 
-mkVarExp :: Text -> Metadata ExpE -> ExpDecl
+data Const = BoolConst Bool
+           | IntConst Integer
+           | StringConst Text
+    deriving (Eq, Show)
+
+mkVarExp :: Text -> Metadata ExpDeclE -> ExpDecl
 mkVarExp n m = VarExp (Name n) m
+
+mkBoolConstExp :: Bool -> Metadata ExpDeclE -> ExpDecl
+mkBoolConstExp b m = ConstExp (BoolConst b) m
+
+mkIntConstExp :: Integer -> Metadata ExpDeclE -> ExpDecl
+mkIntConstExp i m = ConstExp (IntConst i) m
+
+mkStringConstExp :: Text -> Metadata ExpDeclE -> ExpDecl
+mkStringConstExp t m = ConstExp (StringConst t) m
 
 type FuncDecl  = ParseTree FuncDeclE FuncComps
 
@@ -211,7 +233,7 @@ funcParams = funcCompsParams . child
 
 funcBody :: FuncDecl -> ExpDecl
 funcBody = funcCompsBody . child
-    
+
 funcRetSort :: FuncDecl -> (Text, Metadata SortRefE)
 funcRetSort f = ( nodeNameT . funcCompsRetSort . child $ f
                 , nodeMdata . funcCompsRetSort . child $ f

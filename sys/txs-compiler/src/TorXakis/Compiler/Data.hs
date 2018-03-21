@@ -70,8 +70,8 @@ class HasVarDecls e where
     -- variable use.
     --
     -- For now variables only occur in expressions.
-    findVarDecl :: e -> Loc ExpE -> Either Error VarDecl
-    findVarDeclM :: e -> Loc ExpE -> CompilerM VarDecl
+    findVarDecl :: e -> Loc ExpDeclE -> Either Error VarDecl
+    findVarDeclM :: e -> Loc ExpDeclE -> CompilerM VarDecl
     findVarDeclM e i = liftEither $ findVarDecl e i
 
 class HasFuncIds e where
@@ -105,7 +105,7 @@ instance HasCstrIds (IEnv f0 (Map (Loc CstrE) CstrId) f2 f3 f4 f5) where
 instance HasVarIds (IEnv f0 f1 (Map (Loc VarDeclE) VarId) f3 f4 f5) where
     findVarId IEnv{varIdT = vm} i = lookup i vm "variable by parser location id"
 
-instance HasVarDecls (IEnv f0 f1 f2 (Map (Loc ExpE) VarDecl) f4 f5) where
+instance HasVarDecls (IEnv f0 f1 f2 (Map (Loc ExpDeclE) VarDecl) f4 f5) where
     findVarDecl IEnv{varDeclT = vm} i = lookup i vm "variable declaration by parser location id"
 
 instance HasFuncIds (IEnv f0 f1 f2 f3 (Map (Loc FuncDeclE) FuncId) f5) where

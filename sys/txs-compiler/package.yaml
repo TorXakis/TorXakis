@@ -25,14 +25,12 @@ library:
   - unordered-containers
   - MissingH
   - ilist
+  - microlens
+  - microlens-th  
   # TorXakis dependencies
   - defs
   - valexpr
   
-extra-source-files:
-- test/data/success/*.txs
-- test/data/parser/*/*.txs
-
 tests:
   txs-compiler-test:
     main: Spec.hs
@@ -59,4 +57,6 @@ tests:
     # Local dependencies
     - txs-compiler
 
-
+extra-source-files:
+- test/data/success/*.txs
+- test/data/parser/success/*.txs
