@@ -10,7 +10,7 @@ import           Control.Concurrent.STM.TVar   (modifyTVar', newTVarIO,
                                                 readTVarIO)
 import           Control.DeepSeq               (force)
 import           Control.Exception             (ErrorCall, evaluate, try)
-import           Control.Monad                 (void)
+import           Control.Monad                 (unless, void)
 import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically, retry)
 import           Data.Foldable                 (traverse_)
@@ -108,9 +108,7 @@ waitForVerdict s = atomically $ readTQueue (s ^. verdicts)
 waitForMessageQueue :: Session -> IO ()
 waitForMessageQueue s = atomically $ do
     b <- isEmptyTQueue (s ^. sessionMsgs)
-    if b
-    then return ()
-    else retry
+    unless b retry
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.

@@ -17,21 +17,20 @@ module Endpoints.Messages
 import           Conduit                   (ZipSource (..), getZipSource,
                                             repeatC, runConduit, yield, (.|))
 -- import           Control.Concurrent        (threadDelay)
-import           Control.Concurrent.Async  (race_, async)
+import           Control.Concurrent.Async  (async, race_)
 import           Control.Concurrent.Chan   (Chan, newChan, writeChan)
-import           Data.Binary.Builder       (Builder, fromByteString)
+import           Data.Aeson                (encode)
+import           Data.Binary.Builder       (Builder, fromByteString,
+                                            fromLazyByteString)
 import           Data.Conduit.Combinators  (mapM_)
 import           Data.Conduit.TQueue       (sourceTQueue)
 import           Data.Monoid               ((<>))
-import qualified Data.Text                 as T
-import           Data.Text.Encoding        as TE
 import qualified Data.Text.Lazy            as TL
 import           Data.Text.Lazy.Encoding   as TLE
 import           Lens.Micro                ((^.))
 import           Network.HTTP.Types.Status (status404)
 import           Network.Wai               (responseLBS)
-import           Network.Wai.EventSource   (ServerEvent,
-                                            ServerEvent (ServerEvent, CloseEvent),
+import           Network.Wai.EventSource   (ServerEvent (CloseEvent, ServerEvent),
                                             eventData, eventId, eventName,
                                             eventSourceAppChan)
 import           Prelude                   hiding (mapM_)
@@ -112,5 +111,4 @@ asServerEvent msg = ServerEvent
       eName :: Builder
       eName = fromByteString "TorXakis Message"
       msg'  :: Builder
-      -- TODO: encode msg as a JSON bytestring.
-      msg'  = fromByteString $ TE.encodeUtf8 $ T.pack $ show msg
+      msg'  = fromLazyByteString $ encode msg

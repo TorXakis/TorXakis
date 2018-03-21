@@ -5,7 +5,8 @@ module Main (main) where
 
 import           Control.Exception            (catch, throwIO)
 import           Control.Lens                 ((^.))
-import           Data.ByteString.Char8        (unpack)
+import           Data.ByteString.Char8        as BS
+import           Data.ByteString.Lazy.Char8   as BSL
 import           System.Process               (StdStream (NoStream), proc,
                                                std_out, withCreateProcess)
 
@@ -22,12 +23,12 @@ main = withCreateProcess (proc "txs-webserver-exe" []) {std_out = NoStream} $ \_
 
 spec :: IO Spec
 spec = return $ do
-        describe "GET /users" $
-            it "responds with 200 and [Users]" $ do
-                r <- get "http://localhost:8080/users"
-                r ^. responseStatus . statusCode `shouldBe` 200
-                let users = "[{\"userId\":1,\"userFirstName\":\"Isaac\",\"userLastName\":\"Newton\"},{\"userId\":2,\"userFirstName\":\"Albert\",\"userLastName\":\"Einstein\"}]"
-                r ^. responseBody `shouldBe` users
+        -- describe "GET /users" $
+        --     it "responds with 200 and [Users]" $ do
+        --         r <- get "http://localhost:8080/users"
+        --         r ^. responseStatus . statusCode `shouldBe` 200
+        --         let users = "[{\"userId\":1,\"userFirstName\":\"Isaac\",\"userLastName\":\"Newton\"},{\"userId\":2,\"userFirstName\":\"Albert\",\"userLastName\":\"Einstein\"}]"
+        --         r ^. responseBody `shouldBe` users
         describe "Create new TorXakis session" $
             it "Creates 2 sessions" $ do
                 r <- post "http://localhost:8080/session/new" [partText "" ""]
@@ -44,7 +45,7 @@ spec = return $ do
                 r ^. responseBody `shouldBe` "\"\\nLoaded: Point.txs\""
             it "Fails for parse error" $ do
                 let handler (CI.HttpExceptionRequest _ (C.StatusCodeException r body)) = do
-                        unpack body `shouldStartWith` "\nError in wrong.txt: \nParse Error:"
+                        BS.unpack body `shouldStartWith` "\nError in wrong.txt: \nParse Error:"
                         let s = r ^. responseStatus
                         return CI.Response{CI.responseStatus = s}
                     handler e = throwIO e
@@ -58,9 +59,9 @@ spec = return $ do
                 r <- post "http://localhost:8080/stepper/start/1/Model" [partText "" ""]
                 r ^. responseStatus . statusCode `shouldBe` 200
                 r ^. responseBody `shouldBe` "\"Success\""
-                r2 <- post "http://localhost:8080/stepper/step/1/30" [partText "" ""]
+                r2 <- post "http://localhost:8080/stepper/step/1/3" [partText "" ""]
                 r2 ^. responseStatus . statusCode `shouldBe` 200
                 r2 ^. responseBody `shouldBe` "\"Success\""
                 r3 <- get "http://localhost:8080/session/sse/1/messages"
                 r3 ^. responseStatus . statusCode `shouldBe` 200
-                r3 ^. responseBody `shouldBe` "\"Success\""
+                BSL.unpack (r3 ^. responseBody) `shouldStartWith` "event:TorXakis Message\ndata:{\"tag\":\""

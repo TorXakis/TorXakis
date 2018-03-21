@@ -1,12 +1,12 @@
-{-# LANGUAGE DataKinds       #-}
-{-# LANGUAGE DeriveAnyClass  #-}
-{-# LANGUAGE DeriveGeneric   #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators   #-}
+{-# LANGUAGE DataKinds     #-}
+-- {-# LANGUAGE DeriveAnyClass  #-}
+-- {-# LANGUAGE DeriveGeneric   #-}
+-- {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeOperators #-}
 module API
 ( startApp
 , app
-, User (..)
+-- , User (..)
 ) where
 
 import           Control.Concurrent.STM.TVar (newTVarIO)
@@ -30,18 +30,18 @@ import           Endpoints.Stepper           (StartStepperEP, TakeNStepsEP,
 import           Endpoints.Upload            (UploadEP, upload)
 -- import           Swagger
 
-data User = User
-  { userId        :: Int
-  , userFirstName :: String
-  , userLastName  :: String
-  } deriving (Eq, Show, Generic)
+-- data User = User
+--   { userId        :: Int
+--   , userFirstName :: String
+--   , userLastName  :: String
+--   } deriving (Eq, Show, Generic)
 
-$(deriveJSON defaultOptions ''User)
+-- $(deriveJSON defaultOptions ''User)
 
 type API = ServiceAPI
 type ServiceAPI = NewSessionEP :<|> UploadEP :<|> StartStepperEP :<|> TakeNStepsEP :<|> MessagesEP
                                :<|> SSMessagesEP
-                               :<|> "users" :> Get '[JSON] [User]
+                            --    :<|> "users" :> Get '[JSON] [User]
 
 startApp :: IO ()
 startApp = do
@@ -62,13 +62,13 @@ server env = newSrvSession env
     :<|> takeNSteps env
     :<|> streamMessages env
     :<|> ssMessagesEP env
-    :<|> users
+    -- :<|> users
     -- :<|> return swaggerDocs
-    where
-        users :: Handler [User]
-        users = return [ User 1 "Isaac" "Newton"
-                       , User 2 "Albert" "Einstein"
-                       ]
+    -- where
+    --     users :: Handler [User]
+    --     users = return [ User 1 "Isaac" "Newton"
+    --                    , User 2 "Albert" "Einstein"
+    --                    ]
 
         -- swaggerDocs :: Swagger
         -- swaggerDocs = toSwagger serviceAPI
