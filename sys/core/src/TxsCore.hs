@@ -232,6 +232,7 @@ txsInit tdefs sigs putMsgs  =  do
                                  , IOC.tdefs   = tdefs
                                  , IOC.sigs    = sigs
                                  , IOC.putmsgs = putMsgs
+                                 , IOC.chanoffers = Map.fromList []
                                  }
                  }
        IOC.Initing {}
@@ -278,6 +279,7 @@ txsStop  =  do
                                  , IOC.tdefs   = IOC.tdefs   st
                                  , IOC.sigs    = IOC.sigs    st
                                  , IOC.putmsgs = IOC.putmsgs st
+                                 , IOC.chanoffers = Map.fromList []
                                  }
                  }
 
@@ -487,6 +489,7 @@ txsSetTest putToW getFroW moddef mapdef purpdef  =  do
                                  , IOC.mapsts    = []
                                  , IOC.purpsts   = []
                                  , IOC.putmsgs   = putmsgs
+                                 , IOC.chanoffers = Map.fromList []
                                  }
             (maybt,mt,gls) <- startTester moddef mapdef purpdef
             case maybt of
@@ -658,6 +661,7 @@ txsSetSim putToW getFroW moddef mapdef  =  do
                                    , IOC.modsts    = []
                                    , IOC.mapsts    = []
                                    , IOC.putmsgs   = putmsgs
+                                   , IOC.chanoffers = Map.fromList []
                                    }
             (maybt,mt) <- startSimulator moddef mapdef
             case maybt of
@@ -740,6 +744,7 @@ txsSetStep moddef  =  do
                                    , IOC.maxstate  = 0
                                    , IOC.modstss   = Map.empty
                                    , IOC.putmsgs   = putmsgs
+                                   , IOC.chanoffers = Map.fromList []
                                    }
             maybt <- startStepper moddef
             case maybt of

@@ -33,6 +33,7 @@ module LPE
 , lpeTransform
 , lpe
 , lpePar
+, lpeHide
 )
 
 where
@@ -54,12 +55,13 @@ import TranslatedProcDefs
 
 import TxsDefs
 import ConstDefs
-import StdTDefs (stdSortTable)
+import StdTDefs (stdSortTable, chanIdIstep)
 
 import ChanId
 import ProcId
 import SortId
 import VarId
+import Name
 
 import BehExprDefs
 import ValExpr
@@ -205,6 +207,11 @@ preGNFBExpr bexpr@(Parallel syncChans operands) choiceCnt freeVarsInScope procId
     -- translate the created ProcDef with LPEPar
     (procInst'', procDefs'') <- lpePar procInst' translatedProcDefs procDefs'
     return (procInst'', procDefs'')
+
+
+preGNFBExpr bexpr@(Hide hiddenChans bexpr') choiceCnt freeVarsInScope procId translatedProcDefs procDefs = do
+    res <- lpeHide bexpr translatedProcDefs procDefs 
+    return $ res
 
 preGNFBExpr _ choiceCnt freeVarsInScope procId translatedProcDefs procDefs =
     error "unexpected type of bexpr"
@@ -362,7 +369,7 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
         -- stepOpParams is a list of pairs, one pair for each operand:
         --    pair = (steps, paramsDef)
         stepsOpParams_out = concat $ map (\s -> (show s) ++ "\n") stepsOpParams
-        (stepsPAR, _) = trace ("\nstepsOpParams: \n" ++ stepsOpParams_out) $ foldr1 (combineSteps syncChans procIdPAR chansDefPAR) stepsOpParams
+        (stepsPAR, _) = foldr1 (combineSteps syncChans procIdPAR chansDefPAR) stepsOpParams
 
         -- create a new ProcId, ProcDef, ProcInst
         procDefPAR = ProcDef chansDefPAR paramsDefPAR (wrapSteps stepsPAR)
@@ -374,16 +381,16 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
       combineSteps :: [ChanId] -> ProcId -> [ChanId] -> ([BExpr], [VarId]) -> ([BExpr], [VarId]) ->  ([BExpr], [VarId])
       combineSteps syncChans procIdPAR chansDefPAR (stepsL, opParamsL) (stepsR, opParamsR) =
         let -- first only steps of the left operand
-            stepsLvalid = trace ("\nstepsL: " ++ (show stepsL)) $ filter (isValidStep syncChans) stepsL
+            stepsLvalid = filter (isValidStep syncChans) stepsL
             stepsL' = map (updateProcInstL opParamsR procIdPAR chansDefPAR) stepsLvalid
             -- second only steps of the right operand
-            stepsRvalid = trace ("\nstepsR: " ++ (show stepsR)) $ filter (isValidStep syncChans) stepsR
+            stepsRvalid = filter (isValidStep syncChans) stepsR
             stepsR' = map (updateProcInstR opParamsL procIdPAR chansDefPAR) stepsRvalid
             -- finally steps of both operands
             -- stepCombinations :: [(BExpr, BExpr)]
             stepCombinations = [(l,r) | l <- stepsL, r <- stepsR]
             -- stepCombinationsValid :: [(BExpr, BExpr)]
-            stepCombinationsValid = trace ("\nstepCombinations: " ++ (show stepCombinations)) $ filter (isValidStepCombination syncChans) stepCombinations
+            stepCombinationsValid = filter (isValidStepCombination syncChans) stepCombinations
             stepsLR = map (mergeStepsLR procIdPAR chansDefPAR opParamsL opParamsR) stepCombinationsValid
         in
         -- TODO: optimize complexity of this: might be MANY steps...
@@ -398,10 +405,10 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
                 -- combine action offers
                 --  union of offers, concatenation of constraints
                 -- offersLR = trace ("\ncombining: " ++ (show offersL) ++ " and " ++ (show offersR)) $ Set.union offersL offersR
-                offersLR = trace ("\n mergeSteps: \noffersL: " ++ (show offersL) ++ "\noffersR: " ++ (show offersR)) $ Set.union offersL offersR
+                offersLR = Set.union offersL offersR
 
                 -- constraintLR = trace ("\nconstraints: " ++ (show constraintL) ++ " and " ++ (show constraintR)) $ cstrAnd (Set.fromList [constraintL, constraintR])
-                constraintLR = trace ("\nresult: " ++ (show offersLR)) $ cstrAnd (Set.fromList [constraintL, constraintR])
+                constraintLR = cstrAnd (Set.fromList [constraintL, constraintR])
 
                 -- new ActOffers and ProcInst
                 actOfferLR = ActOffer { offers = offersLR,
@@ -492,6 +499,56 @@ lpePar procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs pr
               return (procInst', procDefs')
 
 
+
+-- ----------------------------------------------------------------------------------------- --
+-- LPEHide :
+-- ----------------------------------------------------------------------------------------- --
+
+-- we assume that the top-level bexpr of the called ProcDef is HIDE
+lpeHide :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
+lpeHide procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procDefs = do
+    let -- 
+        ProcDef chansDef paramsDef bexpr = fromMaybe (error "lpePar: could not find the given procId") (Map.lookup procIdInst procDefs)
+        Hide hiddenChans bexpr' = bexpr
+        
+        -- translate bexpr of HIDE to LPE first
+        -- reuse current ProcDef: strip the HIDE operator, just leave the bexpr
+        procDef' = ProcDef chansDef paramsDef bexpr'
+        procDefs' = Map.insert procIdInst procDef' procDefs
+    (procInst_lpe@(ProcInst procId_lpe chansInst_lpe paramsInst_lpe), procDefs'') <- lpe procInst translatedProcDefs procDefs'
+
+    
+        
+    let -- decompose translated ProcDef
+        ProcDef chansDef_lpe paramsDef_lpe bexpr_lpe = fromMaybe (error "lpeHide: could not find the given procId") (Map.lookup procId_lpe procDefs'')
+        -- strip hidden chans and update ProcDef
+        steps = extractSteps bexpr_lpe
+        steps' = map (hideChans hiddenChans) steps
+        procDef_lpe = ProcDef chansDef_lpe paramsDef_lpe (wrapSteps steps')
+        procDefs''' = Map.insert procId_lpe procDef_lpe procDefs''
+    return $ (procInst_lpe, procDefs''')
+    where
+        hideChans :: [ChanId] -> BExpr -> BExpr
+        hideChans _ Stop = Stop
+        -- hideChans _ (ActionPref chanIdExit ) ??
+        hideChans hiddenChans (ActionPref actOffer bexpr) = 
+            let os = offers actOffer 
+                os' = hideChansOffer (Set.toList os) 
+            in ActionPref actOffer{ offers = Set.fromList os'} bexpr 
+            where
+                hideChansOffer :: [Offer] -> [Offer]
+                hideChansOffer [] = []
+                hideChansOffer (o:os) = 
+                    let -- recursion 
+                        os' = hideChansOffer os 
+                        -- current case
+                        chanid' = if (chanid o) `elem` hiddenChans 
+                                    then chanIdIstep  
+                                    else (chanid o)
+                        o' = o{ chanid = chanid' }
+                    in (o':os')
+
+    
 -- ----------------------------------------------------------------------------------------- --
 -- LPE :
 -- ----------------------------------------------------------------------------------------- --
@@ -528,7 +585,23 @@ lpeTransform' :: (EnvB.EnvB envb )   -- Monad for unique identifiers and error m
              -> ProcDefs             -- ^ context of process definitions in which process
                                      --   instantiation is assumed to be defined
              -> envb (Maybe (BExpr, ProcDef))
-lpeTransform' procInst procDefs = do  (procInst', procDefs') <- lpe procInst emptyTranslatedProcDefs procDefs
+lpeTransform' procInst procDefs = 
+                                  do  -- create mapping for channel offer substitution
+                                      -- decompose ProcDef, get channels
+                                      --    DO NOT use ProcInst's channels: we don't want to instantiate that top-level ProcInst! 
+                                      --    (and channels of ProcDef can be different)
+                                      let   ProcInst procIdInst _ _ = procInst
+                                            ProcDef chansOriginal _ _ =  fromMaybe (error "lpeTransform: could not find the given procId") (Map.lookup procIdInst procDefs)
+                                      -- create numbered channeloffer list like below
+                                      chanoffers_list <- mapM collectChanOffers chansOriginal
+                                      let chanoffers_map = Map.fromList $ concat chanoffers_list
+                                      -- add to monad
+                                      EnvB.setChanoffers chanoffers_map
+                                      mapping <- EnvB.getChanoffers 
+
+
+                                      -- translate to LPE
+                                      (procInst', procDefs') <- lpe procInst emptyTranslatedProcDefs procDefs
                                       procIdInstUid <- EnvB.newUnid
                                       let ProcInst procIdInst chansInst paramsInst = procInst'
                                           ProcDef chans params bexpr = fromMaybe (error "lpeTransform: could not find the given procId") (Map.lookup procIdInst procDefs')
@@ -546,6 +619,17 @@ lpeTransform' procInst procDefs = do  (procInst', procDefs') <- lpe procInst emp
                                        -- trace (show procDef) $
                                        return $ Just (procInst'', procDef)
     where
+        -- create new channoffers for ONE channel
+        collectChanOffers :: (EnvB.EnvB envb ) => ChanId -> envb [((Name, Int), VarId)]
+        collectChanOffers chanId = do   let list = zip [1..] (ChanId.chansorts chanId)
+                                        varIds <- mapM (createVarId (ChanId.name chanId)) list
+                                        return $ varIds
+            where
+                createVarId :: (EnvB.EnvB envb ) => Name -> (Int, SortId) -> envb ((Name, Int), VarId)
+                createVarId chanName (varNr, varSort) = do  let chanName' = (T.unpack chanName) ++ "$" ++ show varNr
+                                                            unid <- EnvB.newUnid 
+                                                            return $ ((chanName, varNr), (VarId (T.pack chanName') unid varSort))
+
         substituteProcId :: ProcId -> ProcId -> BExpr -> BExpr
         substituteProcId orig new Stop = Stop
         substituteProcId orig new (ActionPref actOffer (ProcInst procId chansInst paramsInst)) =
@@ -584,12 +668,6 @@ lpe procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs procD
                                    , ProcId.unid = procIdUnid
                                    , ProcId.procchans = chansDef
                                    , ProcId.procvars = paramsNew}
-
-          --
-          --
-          -- -- TODO: use predefined intSort
-          -- let intSort = SortId {  SortId.name = T.pack "Int"
-          --                       , SortId.unid = 1}
 
           -- update the ProcInsts in the steps
           steps' = map (stepsUpdateProcInsts calledProcs procToParams pcMapping procIdNew) steps
@@ -769,7 +847,7 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
                 chanOffers = chanoffers offer
 
                 chanOffersNumberedSorts = zip3 [1..] chanOffers (ChanId.chansorts chanId)
-                chanName = T.unpack $ ChanId.name chanId
+                chanName = ChanId.name chanId
 
             (chanOffers', constraints, varMap) <- translateChanOffers chanOffersNumberedSorts chanName
 
@@ -778,16 +856,23 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
 
             return (offer':offersRec, constraints ++ constraintsRec, varMap ++ varMapRec)
             where
-                translateChanOffers :: (EnvB.EnvB envb ) => [(Int, ChanOffer, SortId)] -> String -> envb ([ChanOffer], [VExpr], [(VarId, VarId)])
+                translateChanOffers :: (EnvB.EnvB envb ) => [(Int, ChanOffer, SortId)] -> Name -> envb ([ChanOffer], [VExpr], [(VarId, VarId)])
                 translateChanOffers [] _ = return ([], [], [])
                 translateChanOffers ((i, chanOffer, sort) : chanOffers) chanName = do
                     -- recursion first
                     (chanOffersRec, constraintsRec, varMapRec) <- translateChanOffers chanOffers chanName
                     -- transform current chanOffer
-                    let chanName' = chanName ++ "$" ++ show i
 
-                    unid <- EnvB.newUnid
-                    let varIdChani = VarId (T.pack chanName') unid sort
+                    -- redo next 3 lines
+                    -- just need to lookup the right varId in monad
+                    mapping <- EnvB.getChanoffers 
+                    -- let chanName' = trace ("mapping: " ++ (show mapping)) $ chanName ++ "$" ++ show i
+                    -- unid <- EnvB.newUnid
+
+                    -- let varIdChani = VarId (T.pack chanName') unid sort
+                    let varIdChani = case (Map.lookup (chanName, i) mapping) of
+                                        Just varId  -> varId
+                                        _           -> error "translateChanOffers: chanoffer not found "
                         chanOffer' = Quest varIdChani
                         constraints = case chanOffer of
                                         (Quest varId)  -> constraintsRec

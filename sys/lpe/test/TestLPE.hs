@@ -55,6 +55,7 @@ procIdGen name chans vars = ProcId   {    ProcId.name       = T.pack name
 
 varIdX = VarId (T.pack "x") 33 intSort
 varIdY = VarId (T.pack "y") 34 intSort
+varIdZ = VarId (T.pack "z") 34 intSort
 varIdA1 = VarId (T.pack "A$1") 34 intSort
 varIdB1 = VarId (T.pack "B$1") 34 intSort
 
@@ -935,6 +936,75 @@ testLPEPar = TestCase $
       procInst' = ProcInst procIdP' [chanIdA] [int0, anyInt, anyInt, anyInt, anyInt]
 
 
+
+
+-- -------------------------------------------------
+-- test 
+-- -------------------------------------------------
+
+
+chanIdA3 = ChanId    { ChanId.name = T.pack "A"
+                    , ChanId.unid = 2
+                    , ChanId.chansorts = [intSort, intSort, intSort]
+                    }
+
+-- action: A?x?y?z
+actOfferA3   = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdA3
+                                              , chanoffers = [Quest varIdX,
+                                                                  Quest varIdY,
+                                                                  Quest varIdZ]
+                                        }
+                        , constraint = cstrConst (Cbool True)
+            }
+            
+            
+testMultiChanOffer :: Test
+testMultiChanOffer = TestCase $
+      assertBool "multi chan offer" (eqProcDef (Just (procInst, procDefP)) (lpeTransformFunc procInst procDefs))
+      where
+      varIdS = VarId (T.pack "s") 33 intSort
+      vexprS = cstrVar varIdS
+      procInst = ProcInst procIdP [chanIdA3, chanIdB] [int1]
+      procIdP = procIdGen "P" [chanIdA3, chanIdB] [varIdS]
+
+      procDefP = ProcDef [chanIdA3, chanIdB] [varIdS] (ActionPref actOfferA3
+                                                (ActionPref
+                                                      ActOffer {  offers = Set.fromList [
+                                                                                    Offer { chanid = chanIdA3
+                                                                                          , chanoffers = [Exclam vexpr1,
+                                                                                                            Exclam vexpr2,
+                                                                                                            Exclam vexpr2]
+                                                                                    },
+                                                                                    Offer { chanid = chanIdB
+                                                                                          , chanoffers = [Exclam vexprS]
+                                                                                    }
+                                                                              ]     
+                                                      , constraint = cstrConst (Cbool True)
+                                                      }
+                                                      Stop
+                                                ))
+
+
+      -- procIdPlpe = procIdGen "LPE_P" [chanIdA, chanIdB] [varIdPcP, varIdPABs, varIdPgnf1ABs, varIdPgnf1ABx]
+      -- varIdPABs = VarId (T.pack "P$A$B$s") 33 intSort
+      -- varIdPgnf1ABs = VarId (T.pack "P$gnf1$A$B$s") 33 intSort
+      -- varIdPgnf1ABx = VarId (T.pack "P$gnf1$A$B$x") 33 intSort
+
+      -- vexprPABs = cstrVar varIdPABs
+      -- vexprPgnf1ABs = cstrVar varIdPgnf1ABs
+      -- vexprPgnf1ABx = cstrVar varIdPgnf1ABx
+
+
+
+      procDefs = Map.fromList  [  (procIdP, procDefP)]
+      -- procInst' = ProcInst procIdPlpe [chanIdA, chanIdB] [int0, int1, anyInt, anyInt]
+
+
+
+
+
+
 -- -------------------------------------------------
 -- test parallel nesting
 -- e.g. P[A]() := Q[A]() || Q[B]()
@@ -942,11 +1012,16 @@ testLPEPar = TestCase $
 -- -------------------------------------------------
 
 
+
+
+
+
 ----------------------------------------------------------------------------------------
 -- List of Tests
 ----------------------------------------------------------------------------------------
 testLPEList :: Test
 testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
+
                         , TestLabel "STOP becomes empty choice" testStop
                         , TestLabel "ActionPref Stop" testActionPrefStop
                         , TestLabel "ActionPref Constraints are kept" testActionPrefConstraints
@@ -955,6 +1030,7 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
                         , TestLabel "Multiple ProcDefs simple" testMultipleProcDefs1
                         , TestLabel "Multiple ProcDefs circular" testMultipleProcDefs2
                         , TestLabel "Multiple ProcDefs removal of STOP" testMultipleProcDefs3
+
                         , TestLabel "ProcDef Identity" testProcDefIdentity
                         , TestLabel "Params are made unique" testParamsUnique
                         , TestLabel "switching channels" testChannelSwitch
@@ -962,4 +1038,5 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
                         , TestLabel "channel instantiation not for top-level ProcInst" testChannelInstantiation
 
                         , TestLabel "lpePar integration" testLPEPar
+                        --, TestLabel "multi chanoffer translation" testMultiChanOffer
                         ]

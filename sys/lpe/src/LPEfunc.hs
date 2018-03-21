@@ -22,6 +22,7 @@ See LICENSE at root directory of this repository.
 {-# OPTIONS_GHC -Wno-unused-matches #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-unused-local-binds #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
@@ -30,6 +31,7 @@ module LPEfunc
 (
   lpeTransformFunc,
   lpeParFunc,
+  lpeHideFunc,
   gnfFunc,
   preGNFFunc,
   eqProcDef,
@@ -55,10 +57,11 @@ import TxsDefs
 -- import ConstDefs
 -- import StdTDefs (stdSortTable)
 
--- import ChanId
+import ChanId
 -- import ProcId
 -- import SortId
--- import VarId
+import VarId
+import Name
 
 -- import BehExprDefs
 -- import ValExpr
@@ -78,13 +81,16 @@ import qualified Data.Map as Map
 type IOL   =  StateT EnvL Identity
 
 data EnvL  =  EnvL { uniqid   :: Id.Id
+                   , chanofferss :: Map.Map (Name, Int) VarId
                    , messgs   :: [EnvData.Msg]
                    }
 
 instance EnvB.EnvB IOL
   where
-     newUnid  =  newUnid
-     putMsgs  =  putMsgs
+     newUnid        = newUnid
+     putMsgs        = putMsgs
+     setChanoffers  = setChanoffers
+     getChanoffers  = getChanoffers
 
 newUnid :: IOL Id.Id
 newUnid  =  do
@@ -97,34 +103,50 @@ putMsgs msg  =  do
      messgs' <- gets messgs
      modify $ \envl -> envl { messgs = messgs' ++ msg }
 
+setChanoffers :: Map.Map (Name, Int) VarId -> IOL ()
+setChanoffers map = do 
+    modify $ \envl -> envl { chanofferss = map }
+
+getChanoffers :: IOL (Map.Map (Name, Int) VarId)
+getChanoffers = do 
+    mapping <- gets chanofferss
+    return mapping
+
+
 lpeTransformFunc :: BExpr
                  -> ProcDefs
                  -> Maybe (BExpr, ProcDef)
 lpeTransformFunc procInst procDefs
-  =  let envl = EnvL 0 []
+  =  let envl = EnvL 0 (Map.fromList []) []
       in evalState (lpeTransform procInst procDefs) envl
 
 
 
 -- lpePar :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
-lpeParFunc :: BExpr -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
-lpeParFunc bexpr translatedProcDefs procDefs =
-  let envl = EnvL 0 []
+lpeParFunc :: BExpr -> (Map.Map (Name, Int) VarId) -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
+lpeParFunc bexpr chanOffers translatedProcDefs procDefs =
+  let envl = EnvL 0 chanOffers []
    in evalState (lpePar bexpr translatedProcDefs procDefs) envl
 
+
+-- lpeHide :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
+lpeHideFunc :: BExpr -> (Map.Map (Name, Int) VarId) -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
+lpeHideFunc bexpr chanOffers translatedProcDefs procDefs =
+  let envl = EnvL 0 chanOffers []
+   in evalState (lpeHide bexpr translatedProcDefs procDefs) envl
 
 
 -- gnf :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb (ProcDefs)
 gnfFunc :: ProcId -> TranslatedProcDefs -> ProcDefs -> ProcDefs
 gnfFunc procId translatedProcDefs procDefs =
- let envl = EnvL 0 []
+ let envl = EnvL 0 (Map.fromList []) []
   in evalState (gnf procId translatedProcDefs procDefs) envl
 
 
 -- preGNF :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb(ProcDefs)
 preGNFFunc :: ProcId -> TranslatedProcDefs -> ProcDefs -> ProcDefs
 preGNFFunc procId translatedProcDefs procDefs =
- let envl = EnvL 0 []
+ let envl = EnvL 0 (Map.fromList []) []
   in evalState (preGNF procId translatedProcDefs procDefs) envl
 
 

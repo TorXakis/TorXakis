@@ -49,7 +49,7 @@ import LPEfunc
 -- runs lpePar, but returns only the relevant translated ProcDef
 lpeParTestWrapper :: BExpr -> TranslatedProcDefs -> ProcDefs -> Maybe (BExpr, ProcDef)
 lpeParTestWrapper procInst translatedProcDefs procDefs =
-  let (procInst'@(ProcInst procId' _ _), procDefs') = lpeParFunc procInst translatedProcDefs procDefs
+  let (procInst'@(ProcInst procId' _ _), procDefs') = lpeParFunc procInst chanOffers translatedProcDefs procDefs
       procDef' = case Map.lookup procId' procDefs' of
                     Just procDef   -> procDef
                     Nothing        -> error "lpeParTestWrapper: could not find the procId" in
@@ -117,6 +117,27 @@ actOfferAB   = ActOffer {  offers = Set.fromList [
                                     ]
                         , constraint = cstrConst (Cbool True)
             }
+
+           
+-- action: A?x
+actOfferAx   = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdA
+                                              , chanoffers = [Quest varIdX]
+                                        }
+                        , constraint = cstrConst (Cbool True)
+            }
+
+-- action: A?y
+actOfferAy   = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdA
+                                              , chanoffers = [Quest varIdY]
+                                        }
+                        , constraint = cstrConst (Cbool True)
+            }
+
+chanOffers = Map.fromList [ ((T.pack "A", 1), VarId (T.pack "A$1") 34 intSort)
+                          , ((T.pack "B", 1), VarId (T.pack "B$1") 34 intSort)
+                          ]
 
 -- sorts, chanIds
 intSort = SortId {  SortId.name = T.pack "Int"
@@ -451,29 +472,27 @@ testSingleAction4 = TestCase $
 -- -------------------------------------------------
 -- testing parallel semantics for single-actions: same channels, different variable names
 --
--- P[A]() := A?x >-> Q[A](x) |[A]| A?y >-> R[A](y)
--- Q[A](z) := A!z >-> STOP
--- R[A](z) := A!z >-> STOP
+-- P[A]() := A?x >-> STOP |[A]| A?y >-> STOP
 -- -------------------------------------------------
 
 
--- CASE: A >-> STOP |[A]| A >-> STOP
+-- CASE: A?x >-> STOP |[A]| A?y >-> STOP
 -- becomes:
 -- P[A,B](op1$pc$P$op1, op2$pc$P$op2) :=
       -- // both sides
-      -- ## A [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A,B](-1, -1)
--- with ProcInst := P[A,B](0,0)
-testSingleAction2 :: Test
-testSingleAction2 = TestCase $
-   assertBool "test single actions" $ eqProcDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
+      -- ## A?A$1 [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A](-1, -1)
+-- with ProcInst := P[A](0,0)
+testSingleAction_differentVars :: Test
+testSingleAction_differentVars = TestCase $
+   assertBool "test single action - different vars" $ eqProcDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst emptyTranslatedProcDefs procDefs)
    where
-      procInst = ProcInst procIdP [chanIdA, chanIdB] []
-      procIdP = procIdGen "P" [chanIdA, chanIdB] []
+      procInst = ProcInst procIdP [chanIdA] []
+      procIdP = procIdGen "P" [chanIdA] []
 
-      procDefP = ProcDef [chanIdA, chanIdB] [] (
+      procDefP = ProcDef [chanIdA] [] (
             Parallel [chanIdA] [
-                ActionPref actOfferA Stop,
-                ActionPref actOfferA Stop
+                ActionPref actOfferAx Stop,
+                ActionPref actOfferAy Stop
               ]
             )
       procDefs = Map.fromList  [  (procIdP, procDefP)]
@@ -483,16 +502,15 @@ testSingleAction2 = TestCase $
       vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
       vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
 
-      -- with ProcInst := P[A,B](0,0)
-      procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
-      procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
-
+      -- with ProcInst := P[A](0,0)
+      procIdP' = procIdGen "P" [chanIdA] [varIdOp1pcPop1, varIdOp2pcPop2]
+      procDefP' = ProcDef [chanIdA] [varIdOp1pcPop1, varIdOp2pcPop2]
                         -- // both sides
-                        -- ## A [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A,B](-1, -1)
+                        -- ## A?A$1 [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A](-1, -1)
                         (ActionPref
                           ActOffer {  offers = Set.singleton(
                                                     Offer { chanid = chanIdA
-                                                          , chanoffers = []
+                                                          , chanoffers = [Quest varIdA1]
                                                     })
                                                 , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcPop1 int0
                                                                                       , cstrEqual vexprOp2pcPop2 int0
@@ -500,10 +518,10 @@ testSingleAction2 = TestCase $
 
 
                                     }
-                          (ProcInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1]))
+                          (ProcInst procIdP' [chanIdA] [vexprMin1, vexprMin1]))
 
 
-      procInst' = ProcInst procIdP' [chanIdA, chanIdB] [int0, int0]
+      procInst' = ProcInst procIdP' [chanIdA] [int0, int0]
 
 
 
@@ -3417,42 +3435,43 @@ testChannelInst3 = TestCase $
 ----------------------------------------------------------------------------------------
 testLPEParList :: Test
 testLPEParList = TestList [ 
-                              -- TestLabel "single actions 1" testSingleAction1
-                           TestLabel "single actions 2" testSingleAction2
-                        --   , TestLabel "single actions 3" testSingleAction3
-                        --   , TestLabel "single actions 4" testSingleAction4
+                            TestLabel "single actions 1" testSingleAction1
+                          , TestLabel "single actions 2" testSingleAction2
+                          , TestLabel "single actions 3" testSingleAction3
+                          , TestLabel "single actions 4" testSingleAction4
+                          , TestLabel "single action - different vars" testSingleAction_differentVars
 
-                        --   , TestLabel "single actions, different actions 1" testSingleActionDifferentActions1
-                        --   , TestLabel "single actions, different actions 2" testSingleActionDifferentActions2
-                        --   , TestLabel "single actions, different actions 3" testSingleActionDifferentActions3
-                        --   , TestLabel "single actions, different actions 4" testSingleActionDifferentActions4
+                          , TestLabel "single actions, different actions 1" testSingleActionDifferentActions1
+                          , TestLabel "single actions, different actions 2" testSingleActionDifferentActions2
+                          , TestLabel "single actions, different actions 3" testSingleActionDifferentActions3
+                          , TestLabel "single actions, different actions 4" testSingleActionDifferentActions4
 
-                        --   , TestLabel "multi actions 1" testMultiActions1
-                        --   , TestLabel "multi actions 2" testMultiActions2
-                        --   , TestLabel "multi actions 3" testMultiActions3
-                        --   , TestLabel "multi actions 4" testMultiActions4
-                        --   , TestLabel "multi actions 5" testMultiActions5
-                        --   , TestLabel "multi actions 6" testMultiActions6
-                        --   , TestLabel "multi actions 7" testMultiActions7
-                        --   , TestLabel "multi actions 8" testMultiActions8
+                          , TestLabel "multi actions 1" testMultiActions1
+                          , TestLabel "multi actions 2" testMultiActions2
+                          , TestLabel "multi actions 3" testMultiActions3
+                          , TestLabel "multi actions 4" testMultiActions4
+                          , TestLabel "multi actions 5" testMultiActions5
+                          , TestLabel "multi actions 6" testMultiActions6
+                          , TestLabel "multi actions 7" testMultiActions7
+                          , TestLabel "multi actions 8" testMultiActions8
 
-                        --   , TestLabel "params" testParams
+                          , TestLabel "params" testParams
 
-                        --   , TestLabel "multi-sequences 1" testMultiSeq1
-                        --   , TestLabel "multi-sequences 2" testMultiSeq2
-                        --   , TestLabel "multi-sequences 3" testMultiSeq3
-                        --   , TestLabel "multi-sequences 4" testMultiSeq4
+                          , TestLabel "multi-sequences 1" testMultiSeq1
+                          , TestLabel "multi-sequences 2" testMultiSeq2
+                          , TestLabel "multi-sequences 3" testMultiSeq3
+                          , TestLabel "multi-sequences 4" testMultiSeq4
 
-                        --   , TestLabel "three operands 1" testThreeOperands1
-                        --   , TestLabel "three operands 2" testThreeOperands2
+                          , TestLabel "three operands 1" testThreeOperands1
+                          , TestLabel "three operands 2" testThreeOperands2
 
-                        --   , TestLabel "channel instantiation: top-level" testChannelInst
-                        --   , TestLabel "channel instantiation: same operands different channels" testChannelInst2
-                        --   , TestLabel "channel instantiation: flipping channels in operands" testChannelInst3
+                          , TestLabel "channel instantiation: top-level" testChannelInst
+                          , TestLabel "channel instantiation: same operands different channels" testChannelInst2
+                          , TestLabel "channel instantiation: flipping channels in operands" testChannelInst3
 
-                        --   , TestLabel "channel instantiation: different channels 1" testThreeOperandsDiffChannels1
-                        --   , TestLabel "channel instantiation: different channels 2" testThreeOperandsDiffChannels2
-                        --   , TestLabel "channel instantiation: different channels 3" testThreeOperandsDiffChannels3
-                        --   , TestLabel "channel instantiation: different channels 4" testThreeOperandsDiffChannels4
+                          , TestLabel "channel instantiation: different channels 1" testThreeOperandsDiffChannels1
+                          , TestLabel "channel instantiation: different channels 2" testThreeOperandsDiffChannels2
+                          , TestLabel "channel instantiation: different channels 3" testThreeOperandsDiffChannels3
+                          , TestLabel "channel instantiation: different channels 4" testThreeOperandsDiffChannels4
 
                         ]
