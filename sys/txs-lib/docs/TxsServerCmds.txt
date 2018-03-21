@@ -8,7 +8,8 @@
 
 data TxsServerCmd
   =  
-       Quit                                            -- quit txsserver.exe
+       NewSession StartTXS/Session
+       KillSession QuitTXS/Session                     -- quit txsserver.exe
 
      | Load      filename     :: String                -- load <filename>.txs with TXS defs
      | UnLoad    filename     :: String                -- unload <filename>.txs with TXS defs

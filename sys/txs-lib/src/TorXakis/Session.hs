@@ -9,13 +9,16 @@ import           GHC.Generics                  (Generic)
 import           Lens.Micro                    (Lens')
 import           Control.Concurrent.STM.TQueue (TQueue)
 import           Control.Concurrent.MVar       (MVar)
+import qualified Data.Map                   as Map
 
 import           Sigs     (Sigs, empty)
+import           Id       (Id)
 import           VarId    (VarId)
-import           TxsDefs  (TxsDefs, empty)
-import           EnvCore  (EnvC, initState)
+import qualified TxsDefs                  as D
+import           EnvCore  (EnvC, initEnvC)
 import           EnvData  (Msg)
 import           TxsDDefs (Verdict)
+import           ParamServer
 
 -- | The session, which maintains the state of a TorXakis model.
 data Session = Session
@@ -26,17 +29,36 @@ data Session = Session
     }
 
 data SessionSt = SessionSt
-    { _tdefs   :: TxsDefs
-    , _sigs    :: Sigs VarId
+    { _uid     :: Id                      -- ^ last used unique id number
+    , _tdefs   :: D.TxsDefs               -- ^ TorXakis definitions from file
+    , _sigs    :: Sigs VarId              -- ^ signatures contained in TXS files
+    , _locvars :: [VarId]                 -- ^ local free variables
+    , _locvals :: D.VEnv                  -- ^ local value environment
+    , _params  :: Params                  -- ^ TorXakis parameters with checks
+    , _modus   :: SessionModus            -- ^ current modus of TXS operation
     , _envCore :: EnvC
     } deriving (Generic, NFData)
 
+data SessionModus =  Idled
+                   | Tested   [D.ChanId] [D.ChanId]   -- ^ cnectdef to eworld
+                   | Simuled  [D.ChanId] [D.ChanId]   -- ^ cnectdef to eworld
+                   | Stepped
+                   | Learned  [D.ChanId] [D.ChanId]   -- ^ cnectdef to eworld
+                   | Manualed [D.ChanId] [D.ChanId]   -- ^ cnectdef to eworld
+    deriving (Show, Generic, NFData)
+
 -- * Session state manipulation
-emptySessionState :: SessionSt
-emptySessionState = SessionSt TxsDefs.empty Sigs.empty initState
+initSessionState :: SessionSt
+initSessionState = SessionSt 10000           -- _uid
+                             D.empty         -- _tdefs 
+                             Sigs.empty      -- _sigs
+                             []              -- _locvars
+                             Map.empty       -- _locvals
+                             initParams      -- _params
+                             Idled           -- _modus
+                             initEnvC        -- _envCore
 
 -- * Lenses
-
 sessionState :: Lens' Session (TVar SessionSt)
 sessionState h (Session s m p v) = (\s' -> Session s' m p v) <$> h s
 
@@ -49,18 +71,19 @@ pendingIOC h (Session s m p v) = (\p' -> Session s m p' v) <$> h p
 verdicts :: Lens' Session (TQueue Verdict)
 verdicts h (Session s m p v) = Session s m p <$> h v
 
-tdefs :: Lens' SessionSt TxsDefs
+tdefs :: Lens' SessionSt D.TxsDefs
 -- Remember:
 --
 -- > Lens' s a = forall f. Functor f => (a -> f a) -> s -> f s
--- > h :: (TxsDefs -> f TxsDefs)
+-- > h :: (D.TxsDefs -> f D.TxsDefs)
 -- > x :: SessionSt
-tdefs h (SessionSt t s c) = (\t' -> SessionSt t' s c) <$> h t
+tdefs h (SessionSt u t s r v p m c) = (\t' -> SessionSt u t' s r v p m c) <$> h t
 
 sigs :: Lens' SessionSt (Sigs VarId)
 -- Defining the rest of the lenses is just the same. However we want to avoid
 -- depending on template Haskell to scrap the boilerplate.
-sigs h (SessionSt t s c) = (\s' -> SessionSt t s' c) <$> h s
+sigs h (SessionSt u t s r v p m c) = (\s' -> SessionSt u t s' r v p m c) <$> h s
 
 envCore :: Lens' SessionSt EnvC
-envCore h (SessionSt t s c) = SessionSt t s <$> h c
+envCore h (SessionSt u t s r v p m c) = SessionSt u t s r v p m <$> h c
+

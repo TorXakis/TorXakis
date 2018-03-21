@@ -111,6 +111,15 @@ filterEnvCtoEnvB = do
                             , IOB.unid     = IOC.unid envc
                             , IOB.msgs     = []
                             }
+       IOC.StepSet{..}
+         -> return IOB.EnvB { IOB.smts     = smts
+                            , IOB.tdefs    = tdefs
+                            , IOB.sigs     = sigs
+                            , IOB.stateid  = 0
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
        IOC.Stepping{..}
          -> return IOB.EnvB { IOB.smts     = smts
                             , IOB.tdefs    = tdefs
@@ -208,6 +217,7 @@ nextBehTrie act = do
            \st -> st { IOC.behtrie  = behtrie ++ [(curstate, act, curstate+1)]
                      , IOC.curstate = curstate + 1
                      }
+       IOC.StepSet {} -> return ()
        IOC.Stepping { IOC.behtrie = behtrie
                     , IOC.curstate = curstate
                     , IOC.maxstate = maxstate

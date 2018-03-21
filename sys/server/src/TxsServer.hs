@@ -4,7 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-{-# LANGUAGE OverloadedStrings #-}
+-- {-# LANGUAGE OverloadedStrings #-}
 
 module Main
 
@@ -25,6 +25,7 @@ module Main
 
 where
 
+{-
 import           Control.Concurrent
 import           Control.DeepSeq
 import           Control.Exception
@@ -73,12 +74,17 @@ import qualified TxsHappy
 import SockExplW
 import SockImplW
 
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 -- main
 
 main :: IO ()
-main = withSocketsDo $ do
+main = return ()
+
+{-
+
+ withSocketsDo $ do
   hSetBuffering stderr NoBuffering     -- alt: LineBuffering
   hSetBuffering stdout LineBuffering
   uConfig <- SC.loadConfig
@@ -124,6 +130,7 @@ txsListenOn (Just portNr) = do
 
 -- * TorXakis server commands processing
 
+
 cmdsIntpr :: IOS.IOS ()
 cmdsIntpr = do
      modus       <- gets IOS.modus
@@ -148,7 +155,6 @@ cmdsIntpr = do
        ("SEED"     , _ )   | IOS.isGtNoned  modus  ->  cmdSeed      args
        ("SEED"     , _ )                           ->  cmdNoop      cmd
 -- ------------------------------------------------------------------------------------ data --
-{-
        ("VAR"      , _ )   | IOS.isGtIdled  modus  ->  cmdVar       args
        ("VAR"      , _ )                           ->  cmdNoop      cmd
        ("VAL"      , _ )   | IOS.isGtIdled  modus  ->  cmdVal       args
@@ -157,9 +163,7 @@ cmdsIntpr = do
        ("EVAL"     , _ )                           ->  cmdNoop      cmd
        ("SOLVE"    , _ )   | IOS.isGtIdled  modus  ->  cmdSolve     args
        ("SOLVE"    , _ )                           ->  cmdNoop      cmd
--}
 -- ----- ------------------------------------------------------------------------------ exec --
-{-
        ("TESTER"   , _ )   | IOS.isInited   modus  ->  cmdTester    args
        ("TESTER"   , _ )                           ->  cmdNoop      cmd
        ("SIMULATOR", _ )   | IOS.isInited   modus  ->  cmdSimulator args
@@ -168,11 +172,9 @@ cmdsIntpr = do
        ("STEPPER"  , _ )                           ->  cmdNoop      cmd
        ("LEARNER"  , _ )   | IOS.isInited   modus  ->  cmdLearner   args
        ("LEARNER"  , _ )                           ->  cmdNoop      cmd
--}
        ("MANUAL"   , _ )   | IOS.isInited   modus  ->  cmdManual    args
        ("MANUAL"   , _ )                           ->  cmdNoop      cmd
 -- -------------------------------------------------------------------- test, simulate, step --
-{-
        ("TEST"     , _ )   | IOS.isTested   modus  ->  cmdTest      args
        ("TEST"     , _ )                           ->  cmdNoop      cmd
        ("SIM"      , _ )   | IOS.isSimuled  modus  ->  cmdSim       args
@@ -181,11 +183,9 @@ cmdsIntpr = do
        ("STEP"     , _ )                           ->  cmdNoop      cmd
        ("LEARN"    , _ )   | IOS.isLearned  modus  ->  cmdLearn     args
        ("LEARN"    , _ )                           ->  cmdNoop      cmd
--}
        ("MAN"      , _ )   | IOS.isManualed modus  ->  cmdMan       args
        ("MAN"      , _ )                           ->  cmdNoop      cmd
 -- ----------------------------------------------------------------------------- btree state --
-{-
        ("SHOW"     , _ )   | IOS.isGtIdled  modus  ->  cmdShow      args
        ("SHOW"     , _ )                           ->  cmdNoop      cmd
        ("GOTO"     , _ )   | IOS.isStepped  modus  ->  cmdGoTo      args
@@ -202,14 +202,18 @@ cmdsIntpr = do
        ("NCOMP"    , _ )                           ->  cmdNoop      cmd
        ("LPE"      , _ )   | IOS.isInited   modus  ->  cmdLPE       args
        ("LPE"      , _ )                           ->  cmdNoop      cmd
--}
        (_          , _ )                           ->  cmdUnknown   cmd
+
+-}
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- torxakis server individual command processing
 
 -- ----------------------------------------------------------------------------------------- --
+
+
+{-
 
 cmdNoop :: String -> IOS.IOS ()
 cmdNoop cmd = do
@@ -269,7 +273,6 @@ cmdInit args = do                                                   -- PRE :  mo
                IFS.pack "INIT" ["input files parsed:", unwords (words args)]
                cmdsIntpr
 
-{-
 
      srctxts <- lift $ lift $ sequence
                   [ catch ( do srctxt <- readFile fname
@@ -307,8 +310,6 @@ cmdInit args = do                                                   -- PRE :  mo
                                                 ( IFS.hmack servhs . map TxsShow.pshow )
                          IFS.pack "INIT" [ "input files parsed: " ++ fnames ]
                          cmdsIntpr
-
--}
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -403,8 +404,6 @@ cmdSeed args =                                                       -- PRE :  m
                    cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
-
-{-
 
 cmdVar :: String -> IOS.IOS ()
 cmdVar args = do                                                     -- PRE :  modus > Idled --
@@ -823,8 +822,6 @@ cmdLearner args = do                                               -- PRE :  mod
      IFS.nack "LEARNER" ["learner not implemented yet"]
      cmdsIntpr
 
--}
-
 -- ----------------------------------------------------------------------------------------- --
 
 cmdManual :: String -> IOS.IOS ()
@@ -860,7 +857,6 @@ cmdManual args = do                                                -- PRE :  mod
 
 -- ----------------------------------------------------------------------------------------- --
 
-{-
 
 cmdTest :: String -> IOS.IOS ()
 cmdTest args                                                       -- PRE :  modus == Tested --
@@ -889,7 +885,6 @@ cmdTest args                                                       -- PRE :  mod
                          IFS.pack "TEST" [TxsShow.fshow verdict]
                          cmdsIntpr
 
-{-
   9          -> case words args of
  10               ["start"] 
  11                 -> do lift TxsCore.txsTestStart
@@ -945,7 +940,6 @@ cmdTest args                                                       -- PRE :  mod
  30                           cmdsIntpr
  31                           
 
--}
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -997,8 +991,6 @@ cmdLearn :: String -> IOS.IOS ()
 cmdLearn args =                                                   -- PRE :  modus == Learned --
      IFS.nack "LEARNER" ["learn not implemented yet"]
      cmdsIntpr
-
--}
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -1052,8 +1044,6 @@ cmdMan args = do                                                 -- PRE :  modus
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
-
-{-
 
 cmdShow :: String -> IOS.IOS ()
 cmdShow args = do                                                    -- PRE :  modus > Idled --
@@ -1234,91 +1224,9 @@ cmdLPE args = do                                                   -- PRE :  mod
                  _                     -> do IFS.nack "LPE" [ "Could not generate LPE" ]
                                              cmdsIntpr
 
-
 -}
 
 -- ----------------------------------------------------------------------------------------- --
 --
--- Helper Functions
---
--- ----------------------------------------------------------------------------------------- --
--- readOffers :  read Offers from String
-
-readOffers :: [TxsDefs.ChanId] -> String -> IOS.IOS (Set.Set TxsDefs.Offer)
-readOffers chids args = do
-     uid              <- gets IOS.uid
-     sigs             <- gets IOS.sigs
-     vals             <- gets IOS.locvals
-     ((uid',offs'),e) <- lift $ lift $ catch
-                           ( let p = TxsHappy.prefoffsParser
-                                    ( TxsAlex.Csigs    sigs
-                                    : TxsAlex.Cchanenv chids
-                                    : TxsAlex.Cvarenv  (Map.keys vals)
-                                    : TxsAlex.Cunid    (_id uid + 1)
-                                    : TxsAlex.txsLexer args
-                                    )
-                              in return $!! (p,"")
-                           )
-                           ( \e -> return ((uid,Set.empty),show (e::ErrorCall)))
-     if  e /= ""
-       then do IFS.nack "ERROR" [ "incorrect action: " ++ e ]
-               return Set.empty
-       else do
-         modify $ \env -> env { IOS.uid = uid' }
-         return offs'
-
-
--- ----------------------------------------------------------------------------------------- --
--- readAction  :  read Action from String
-
-readAction :: [TxsDefs.ChanId] -> String -> IOS.IOS TxsDDefs.Action
-readAction chids args = do
-     offs <- readOffers chids args
-     let qstnoffs  =  [ q
-                      | q@TxsDefs.Quest{} <- concatMap TxsDefs.chanoffers (Set.toList offs)
-                      ]
-     if  not $ null qstnoffs
-       then do IFS.nack "ERROR" [ "incorrect action: no question mark offer allowed" ]
-               return TxsDDefs.ActQui
-       else do
-         acts <- lift $ sequence [ Utils.liftP2 (chid, sequence [ TxsCore.txsEval vexp
-                                                                | TxsDefs.Exclam vexp <- choffs 
-                                                                ]
-                                                )
-                                 | TxsDefs.Offer chid choffs <- Set.toList offs
-                                 ]
-         return $ TxsDDefs.Act (Set.fromList acts)
-
-
--- ----------------------------------------------------------------------------------------- --
--- readBExpr :  read BExpr from String
-
-{-
-
-readBExpr :: [TxsDefs.ChanId] -> String -> IOS.IOS TxsDefs.BExpr
-readBExpr chids args = do
-     uid               <- gets IOS.uid
-     sigs              <- gets IOS.sigs
-     vals              <- gets IOS.locvals
-     ((_,bexpr'),e) <- lift $ lift $ catch
-                            ( let p = TxsHappy.bexprParser
-                                      ( TxsAlex.Csigs    sigs
-                                      : TxsAlex.Cchanenv chids
-                                      : TxsAlex.Cvarenv  (Map.keys vals)
-                                      : TxsAlex.Cunid    (_id uid + 1)
-                                      : TxsAlex.txsLexer args
-                                      )
-                               in return $!! (p,"")
-                            )
-                            ( \e -> return ((uid, TxsDefs.Stop), show (e::ErrorCall)))
-     if  e /= ""
-       then do IFS.nack "ERROR" [ "incorrect behaviour expression: " ++ e ]
-               return TxsDefs.Stop
-       else return bexpr'
-
--}
-
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
 

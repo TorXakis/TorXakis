@@ -12,16 +12,22 @@ import           Data.Foldable                 (traverse_)
 import           Control.Concurrent            (forkIO)
 import           Control.Monad                 (void)
 import           Control.Concurrent.MVar       (takeMVar, putMVar, newMVar)
+import           System.IO
 
 import           TxsAlex  (txsLexer)
 import           TxsHappy (txsParser)
 import           EnvCore  (IOC)
-import           TxsCore  (txsInit, txsSetStep, txsStepN)
+import           TxsCore  (txsSetCore, txsInitCore, txsTermitCore)
+import           TxsStep  ( txsSetStep, txsShutStep
+                          , txsStartStep, txsStopStep
+                          , txsStepRun, txsStepAct
+                          )
 import           EnvData  (Msg)
 import           TorXakis.Lens.TxsDefs (ix)
 import           Name     (Name)
 import           TxsDDefs (Verdict)
 
+import qualified TxsServerConfig     as SC
 import           TorXakis.Session
 
 data Response = Success | Error { msg :: String } deriving (Show)
@@ -32,11 +38,30 @@ data Response = Success | Error { msg :: String } deriving (Show)
 type FileContents = String
 
 -- | Create a new session.
-newSession :: IO Session
-newSession = Session <$> newTVarIO emptySessionState
-                     <*> newTQueueIO
-                     <*> newMVar ()
-                     <*> newTQueueIO
+newSession :: IO Session 
+newSession = do
+    s <- Session <$> newTVarIO initSessionState
+                 <*> newTQueueIO
+                 <*> newMVar ()
+                 <*> newTQueueIO
+    uConfig <- SC.loadConfig
+    case SC.interpretConfig uConfig of
+      Left xs -> do
+        hPutStrLn stderr "Errors found while loading the configuration"
+        hPrint stderr xs
+        return s
+      Right config -> do
+        resp <- runIOC s (txsSetCore config)
+        case resp of
+          Right _ -> return s
+          Left  e -> do hPrint stderr e
+                        return s
+
+-- | Stop a session.
+killSession :: Session -> IO Response
+killSession _s  =  do
+    return $ Error "Kill Session: Not implemented (yet)"
+
 
 -- | Load a TorXakis file, compile it, and return the response.
 --
@@ -54,8 +79,23 @@ load s xs = do
         atomically $ modifyTVar' (_sessionState s) ((tdefs .~ ts) . (sigs .~ is))
         return ()
     case r of
-        Left err -> return $ Error $ show (err :: ErrorCall)
-        Right _  -> return Success
+        Left err
+          -> return $ Error $ show (err :: ErrorCall)
+        Right _
+          -> do st <- readTVarIO (s ^. sessionState)
+                runIOC s $ do
+                  resp <- txsInitCore (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
+                  case resp of 
+                    Right _ -> return Success
+                    Left  e -> return $ Error e
+
+unload :: Session -> IO Response
+unload s = do
+    -- update sessionState?
+    resp <- runIOC s txsTermitCore
+    case resp of
+      Right _ -> return Success
+      Left  e -> return $ Error e
 
 
 -- | Start the stepper with the given model.
@@ -65,23 +105,38 @@ stepper :: Session
 stepper s mn =  do
     st <- readTVarIO (s ^. sessionState)
     runIOC s $ do
-        txsInit (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
         -- Lookup the model definition that matches the name.
         let mMDef = st ^. tdefs . ix mn
         case mMDef of
             Nothing ->
                 return $ Error $ "No model named " ++ show mn
             Just mDef -> do
-                txsSetStep mDef
-                return Success
+                resp1 <- txsSetStep mDef
+                resp2 <- txsStartStep
+                case (resp1, resp2) of
+                  (Right _, Right _) -> return Success
+                  (Right _, Left e2) -> return $ Error e2
+                  (Left e1, Right _) -> return $ Error e1
+                  (Left e1, Left e2) -> return $ Error $ e1 ++ "\n" ++ e2
 
+-- | Leave the stepper.
+shutStepper :: Session -> IO Response
+shutStepper s  =  do
+    runIOC s $ do
+        resp1 <- txsStopStep
+        resp2 <- txsShutStep
+        case (resp1, resp2) of
+          (Right _, Right _) -> return Success
+          (Right _, Left e2) -> return $ Error e2
+          (Left e1, Right _) -> return $ Error e1
+          (Left e1, Left e2) -> return $ Error $ e1 ++ "\n" ++ e2
+    
 msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
 
 -- | How a step is described
-newtype StepType = NumberOfSteps Int
-    -- Action ActionName
-    --           | 
+data StepType =  NumberOfSteps Int
+               | ActionTxt String
     --           | GoTo StateNumber
     --           | Reset -- ^ Go to the initial state.
     --           | Rewind Steps
@@ -89,13 +144,19 @@ newtype StepType = NumberOfSteps Int
 -- data ActionName
 -- TODO: discuss with Jan: do we need a `Tree` step here?
 
--- | Step for n-steps
+-- | Step for n-steps or actions
 step :: Session -> StepType -> IO Response
+
 step s (NumberOfSteps n) = do
     void $ forkIO $ runIOC s $ do
-        verdict <- txsStepN n
-        lift $ atomically $ writeTQueue (s ^. verdicts) verdict
-    return Success
+        resp <- txsStepRun n
+        case resp of
+          Right v -> do lift $ atomically $ writeTQueue (s ^. verdicts) v
+                        return Success
+          Left  e -> return $ Error e
+
+step s (ActionTxt txt) = do
+    return $ Error "Step with actions not yet implemented: requires evaluation"
 
 -- | Wait for a verdict to be reached.
 waitForVerdict :: Session -> IO Verdict
@@ -118,3 +179,4 @@ runIOC s act = do
     atomically $ modifyTVar' (s ^. sessionState) (envCore .~ st')
     putMVar (s ^. pendingIOC) ()
     return r
+

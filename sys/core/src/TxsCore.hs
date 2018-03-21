@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  TxsCore
@@ -16,16 +15,19 @@ See LICENSE at root directory of this repository.
 -- Core Module TorXakis API:
 -- API for TorXakis core functionality.
 -----------------------------------------------------------------------------
-{-# LANGUAGE OverloadedStrings #-}
+
+-- {-# LANGUAGE OverloadedStrings #-}
+
 module TxsCore
-( -- * run TorXakis core
-  runTxsCore
+
+( -- * set up TorXakis core
+  txsSetCore
 
   -- * initialize TorXakis core
-, txsInit
+, txsInitCore
 
   -- * terminate TorXakis core
-, txsTermit
+, txsTermitCore
 
 {-
 
@@ -48,32 +50,11 @@ module TxsCore
   -- *** simulate number of Actions
 , txsSimN
 
--}
-
-  -- ** start stepping
-, txsSetStep
-
-{-
-  -- *** step Action
-, txsStepA
--}
-
-  -- *** step number of Actions
-, txsStepN
-
-
-  -- *** go back to previous state
-, txsGoTo
-
-{-
-
   -- ** stop stepping
 , txsStopNW
 
   -- ** stop testing, simulating
 , txsStopEW
-
--}
 
   -- *  TorXakis definitions
   -- ** get all torxakis definitions
@@ -95,8 +76,12 @@ module TxsCore
   -- * set random seed
 , txsSetSeed
 
+-}
+
   -- * evaluation of value expression
 , txsEval
+
+{-
 
   -- * Solving
   -- ** finding a solution for value expression
@@ -108,22 +93,17 @@ module TxsCore
   -- ** finding a random solution for value expression
 , txsRanSolve
 
-{-
-
   -- * show item
 , txsShow
 
--}
 
   -- * give path
 , txsPath
 
-{-
 
   -- * give menu
 , txsMenu
 
--}
 
   -- * give action to mapper
 , txsMapper
@@ -133,6 +113,9 @@ module TxsCore
 
   -- * LPE transformation
 , txsLPE
+
+-}
+
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -141,34 +124,34 @@ module TxsCore
 where
 
 -- import           Control.Arrow
-import           Control.Monad
+-- import           Control.Monad
 import           Control.Monad.State
 -- import qualified Data.List           as List
 import qualified Data.Map            as Map
 import           Data.Maybe
-import           Data.Monoid
+-- import           Data.Monoid
 import qualified Data.Set            as Set
 -- import qualified Data.Text           as T
-import           System.IO
-import           System.Random
+-- import           System.IO
+-- import           System.Random
 
 -- import from local
 import           CoreUtils
 -- import           Ioco
-import           Mapper
-import           NComp
+-- import           Mapper
+-- import           NComp
 -- import           Purpose
 -- import           Sim
-import           Step
+-- import           Step
 -- import           Test
 
 import           Config              (Config)
 import qualified Config
 
 -- import from behave(defs)
-import qualified Behave
-import qualified BTree
-import           Expand              (relabel)
+-- import qualified Behave
+-- import qualified BTree
+-- import           Expand              (relabel)
 
 -- import from coreenv
 import qualified EnvCore             as IOC
@@ -177,7 +160,7 @@ import qualified ParamCore
 
 -- import from defs
 import qualified Sigs
-import qualified TxsDDefs
+-- import qualified TxsDDefs
 import qualified TxsDefs
 import qualified TxsShow
 import           TxsUtils
@@ -185,9 +168,9 @@ import           TxsUtils
 -- import from solve
 import qualified FreeVar
 import qualified SMT
-import qualified Solve
+-- import qualified Solve
 import qualified Solve.Params
-import qualified SolveDefs
+-- import qualified SolveDefs
 import qualified SMTData
 
 -- import from value
@@ -195,41 +178,44 @@ import qualified Eval
 
 -- import from lpe
 -- import qualified LPE
-import qualified LPE
+-- import qualified LPE
 
 -- import from valexpr
-import qualified SortId
-import qualified SortOf
+-- import qualified SortId
+-- import qualified SortOf
 import ConstDefs
 import VarId
 
--- | TorXakis core main api -- start
-runTxsCore :: Config -> StateT s IOC.IOC a -> s -> IO ()
-runTxsCore initConfig ctrl s0  =  do
-      _ <- runStateT (runTxsCtrl ctrl s0)
-              IOC.EnvC { IOC.config = initConfig
-                        , IOC.unid   = 0
-                        , IOC.params = Config.updateParamVals -- updating parameters...
-                                        initParams -- ...defined in EnvCore and SolveDefs
-                                        $ Config.configuredParameters initConfig
-                        , IOC.state  = initState
-                        }
-      return ()
-      where initState = IOC.Noning
-            initParams =
-               Map.union ParamCore.initParams Solve.Params.initParams
 
-runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()
-runTxsCtrl ctrl s0  =  do
-     _ <- runStateT ctrl s0
-     return ()
+-- ----------------------------------------------------------------------------------------- --
+-- txsSetCore
+
+-- | TorXakis core main api -- start
+txsSetCore :: Config -> IOC.IOC (Either String ())
+txsSetCore config'  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Noning
+         -> do put envc { IOC.config = config'
+                        , IOC.params = Config.updateParamVals   -- updating parameters...
+                                         initParams   -- ...defined in EnvCore and SolveDefs
+                                         $ Config.configuredParameters config'
+                        }
+               return $ Right ()
+       _ -> return $ Left "'txsSetEnvCore' only allowed in 'Noning' core state"
+  where
+     initParams = Map.union ParamCore.initParams Solve.Params.initParams
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- txsInitCore
 
 -- | TorXakis core main api -- modus transition general
-txsInit :: TxsDefs.TxsDefs                  -- ^ Definitions for computations.
-        -> Sigs.Sigs VarId          -- ^ Signatures needed to parse.
-        -> ([EnvData.Msg] -> IOC.IOC ())    -- ^ Handler for info, warning, and error messages.
-        -> IOC.IOC ()
-txsInit tdefs sigs putMsgs  =  do
+txsInitCore :: TxsDefs.TxsDefs                 -- ^ Definitions for computations.
+            -> Sigs.Sigs VarId                 -- ^ Signatures needed to parse.
+            -> ([EnvData.Msg] -> IOC.IOC ())   -- ^ Handler for info, warning, error messages.
+            -> IOC.IOC (Either String ())
+txsInitCore tdefs sigs putMsgs  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
@@ -246,35 +232,53 @@ txsInit tdefs sigs putMsgs  =  do
                    smtProc = fromJust (Config.getProc cfg)
                smtEnv         <- lift $ SMT.createSMTEnv smtProc smtLog
                (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
-               (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions (SMTData.EnvDefs (TxsDefs.sortDefs tdefs) (TxsDefs.cstrDefs tdefs) (Set.foldr Map.delete (TxsDefs.funcDefs tdefs) (allENDECfuncs tdefs)))) smtEnv'
-               putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver " ++ show (Config.solverId (Config.selectedSolver cfg)) ++ " initialized : " ++ info
-                       , EnvData.TXS_CORE_USER_INFO   "TxsCore initialized"
+               (_,smtEnv'')   <- lift $ runStateT
+                                   (SMT.addDefinitions
+                                      (SMTData.EnvDefs (TxsDefs.sortDefs tdefs)
+                                                       (TxsDefs.cstrDefs tdefs)
+                                                       (Set.foldr Map.delete
+                                                          (TxsDefs.funcDefs tdefs)
+                                                          (allENDECfuncs tdefs)
+                                   )  )                )
+                                   smtEnv'
+               putMsgs [ EnvData.TXS_CORE_USER_INFO $
+                         "Solver " ++ show (Config.solverId (Config.selectedSolver cfg)) ++
+                         " initialized : " ++ info
+                       , EnvData.TXS_CORE_USER_INFO "TxsCore initialized"
                        ]
-               put envc {
-                 IOC.state =
-                     IOC.Initing { IOC.smts    = Map.singleton "current" smtEnv''
-                                 , IOC.tdefs   = tdefs
-                                 , IOC.sigs    = sigs
-                                 , IOC.putmsgs = putMsgs
-                                 }
-                 }
-       _ -> do                       -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "txsInit only in Noning mode" ]
+               put envc { IOC.state = IOC.Initing
+                                        { IOC.smts    = Map.singleton "current" smtEnv''
+                                        , IOC.tdefs   = tdefs
+                                        , IOC.sigs    = sigs
+                                        , IOC.putmsgs = putMsgs
+                                        }
+                        }
+               return $ Right ()
+       _ -> return $ Left "'txsInitCore' only allowed in 'Noning' core state"
 
 
--- | terminate TorXakis core
-txsTermit :: IOC.IOC ()
-txsTermit  =  do
+-- ----------------------------------------------------------------------------------------- --
+-- txsTermitCore
+
+-- | terminate TorXakis core without leaving
+txsTermitCore :: IOC.IOC (Either String ())
+txsTermitCore  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Initing { IOC.smts = smts, IOC.putmsgs = putmsgs }
+       IOC.Initing { IOC.smts = smts
+                   , IOC.putmsgs = putmsgs
+                   }
          -> do lift $ mapM_ (runStateT SMT.close) (Map.elems smts)
                putmsgs [ EnvData.TXS_CORE_USER_INFO "Solver(s) closed"
                        , EnvData.TXS_CORE_USER_INFO "TxsCore terminated"
                        ]
                put envc { IOC.state = IOC.Noning }
-       _ -> do                        -- IOC.Noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "txsTermit only in Initing mode" ] 
+               return $ Right ()
+       _ -> return $ Left "'txsTermitCore' only allowed in 'Initing' core state"
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- txs...
 
 {-
 
@@ -332,6 +336,7 @@ txsStopEW eWorld  =  do
 
 -}
 
+{-
 
 -- | Get all torxakis definitions
 txsGetTDefs :: IOC.IOC TxsDefs.TxsDefs
@@ -376,6 +381,8 @@ txsSetSeed seed  =  do
      lift $ setStdGen(mkStdGen seed)
      IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_INFO $ "Seed set to " ++ show seed ]
 
+-}
+
 -- | Evaluate the provided value expression.
 --
 --   Only possible when txscore is initialized.
@@ -397,6 +404,8 @@ txsEval vexp  =  do
                              (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
                              writeEnvBtoEnvC envb'
                              return wal'
+
+{-
 
 -- | Find a solution for the provided Boolean value expression.
 --
@@ -497,6 +506,8 @@ txsRanSolve vexp  =  do
                      SolveDefs.UnableToSolve -> do IOC.putMsgs [ EnvData.TXS_CORE_RESPONSE
                                                                  "unknown" ]
                                                    return Map.empty
+
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -786,52 +797,6 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
 
 -}
 
--- | Start stepping using the provided model definition.
---
---   Only possible when txscore is initialized.
-txsSetStep :: TxsDefs.ModelDef              -- ^ model definition.
-           -> IOC.IOC ()
-txsSetStep moddef  =  do
-     envc <- get
-     case IOC.state envc of
-       IOC.Initing { IOC.smts = smts
-                   , IOC.tdefs = tdefs
-                   , IOC.sigs = sigs
-                   , IOC.putmsgs = putmsgs }
-         -> do IOC.putCS IOC.Stepping { IOC.smts      = smts
-                                      , IOC.tdefs     = tdefs
-                                      , IOC.sigs      = sigs
-                                      , IOC.modeldef  = moddef
-                                      , IOC.behtrie   = []
-                                      , IOC.inistate  = 0
-                                      , IOC.curstate  = 0
-                                      , IOC.maxstate  = 0
-                                      , IOC.modstss   = Map.empty
-                                      , IOC.putmsgs   = putmsgs
-                                      }
-               maybt <- startStepper moddef
-               case maybt of
-                 Nothing
-                   -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper start failed" ]
-                 Just bt
-                   -> do IOC.modifyCS $ \st -> st { IOC.modstss = Map.singleton 0 bt }
-                         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepper started" ]
-       _ -> do                        -- IOC.noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Stepper must start in Initing mode" ]
-
-
-startStepper :: TxsDefs.ModelDef ->
-                IOC.IOC ( Maybe BTree.BTree )
-
-startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
-     let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
-     envb            <- filterEnvCtoEnvB
-     (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
-     writeEnvBtoEnvC envb'
-     return maybt'
-
--- ----------------------------------------------------------------------------------------- --
-
 {-
 
 -- | Test SUT with the provided input action.
@@ -903,39 +868,6 @@ txsSimN depth  =  do
 
 -}
 
--- | Step model with the provided number of actions.
--- core action.
---
--- Only possible in stepper modus (see 'txsSetStep').
-txsStepN :: Int                                 -- ^ number of actions to step model.
-         -> IOC.IOC TxsDDefs.Verdict            -- ^ Verdict of stepping with provided number of actions.
-txsStepN depth  =  do
-     envc <- get
-     case IOC.state envc of
-       IOC.Stepping {} -> Step.stepN depth 1
-       _ -> do
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Stepper mode" ]
-         return TxsDDefs.NoVerdict
-
-{-
-
--- | Step model with the provided action.
--- core action.
---
--- Only possible in stepper modus (see 'txsSetStep').
-txsStepA :: TxsDDefs.Action                         -- ^ action to step in model.
-         -> IOC.IOC TxsDDefs.Verdict                -- ^ Verdict of stepping with provided action.
-txsStepA act =  do
-     envc <- get
-     case IOC.state envc of
-       IOC.Stepping {} -> Step.stepA act
-       _ -> do
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Stepper mode" ]
-         return  TxsDDefs.NoVerdict
-
--}
-
-
 -- ----------------------------------------------------------------------------------------- --
 
 {-
@@ -1000,115 +932,7 @@ txsShow item nm  = do
 -}
 
 
--- | Go to state with the provided state number.
--- core action.
---
--- Only possible in stepper modus (see 'txsSetStep').
-txsGoTo :: EnvData.StateNr              -- ^ state to go to.
-        -> IOC.IOC ()
-txsGoTo stateNr  =
-  if  stateNr >= 0
-  then do
-    modStss <- gets (IOC.modstss . IOC.state)
-    case Map.lookup stateNr modStss of
-       Nothing -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "no such state" ]
-       Just _ ->
-         modify $
-           \env ->
-             env { IOC.state =
-                     (IOC.state env)
-                     { IOC.curstate = stateNr }
-                 }
-  else ltsBackN (-stateNr)
-  where
-     ltsBackN :: Int -> IOC.IOC ()
-     ltsBackN backsteps
-        | backsteps <= 0 = return ()
-        | otherwise  = do    -- backsteps > 0
-            st <- gets IOC.state
-            let iniState = IOC.inistate st
-                curState = IOC.curstate st
-                behTrie = IOC.behtrie st
-            case [ s | (s, _, s') <- behTrie, s' == curState ] of
-              [prev] -> do
-                modify $
-                  \env ->
-                    env { IOC.state =
-                            (IOC.state env) {
-                            IOC.curstate = prev
-                            }
-                        }
-                unless (prev == iniState) (ltsBackN (backsteps-1))
-              _      -> do
-                IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "LtsBack error" ]
-                return ()
-
--- | Provide the path.
-txsPath :: IOC.IOC [(EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr)]
-txsPath  =  do
-  st <- gets IOC.state
-  path (IOC.inistate st) (IOC.curstate st)
-  where
-     path :: EnvData.StateNr -> EnvData.StateNr ->
-             IOC.IOC [(EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr)]
-     path from to | from >= to = return []
-     path from to = do -- from < to
-       iniState <- gets (IOC.inistate . IOC.state)
-       behTrie  <- gets (IOC.behtrie . IOC.state)
-       case [ (s1,a,s2) | (s1,a,s2) <- behTrie, s2 == to ] of
-         [(s1,a,s2)] ->
-           if (s1 == from) || (s1 == iniState)
-           then return [(s1,a,s2)]
-           else do
-             pp <- path from s1
-             return $ pp ++ [(s1,a,s2)]
-         _           -> do
-           IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "Path error" ]
-           return []
-
 {-
-
--- | Return the menu, i.e., all possible actions.
-txsMenu :: String                               -- ^ kind (valid values are "mod", "purp", or "map")
-        -> String                               -- ^ what (valid values are "all", "in", "out", or a <goal name>)
-        -> IOC.IOC BTree.Menu
-txsMenu kind what  =  do
-     envSt <- gets IOC.state
-     case (kind,envSt) of
-       ("mod",IOC.Testing {})  -> do
-            menuIn   <- Ioco.iocoModelMenuIn
-            menuOut  <- Ioco.iocoModelMenuOut
-            case what of
-              "all" -> return $ menuIn ++ menuOut
-              "in"  -> return menuIn
-              "out" -> return menuOut
-              _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
-                          return []
-       ("mod",IOC.Simuling {}) -> do
-            menuIn   <- Ioco.iocoModelMenuIn
-            menuOut  <- Ioco.iocoModelMenuOut
-            case what of
-              "all" -> return $ menuIn ++ menuOut
-              "in"  -> return menuIn
-              "out" -> return menuOut
-              _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
-                          return []
-       ("mod",IOC.Stepping {}) -> do
-            menuIn  <- Step.stepModelMenuIn
-            menuOut <- Step.stepModelMenuOut
-            case what of
-              "all" -> return $ menuIn ++ menuOut
-              "in"  -> return menuIn
-              "out" -> return menuOut
-              _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
-                          return []
-       ("map",IOC.Testing {})  -> Mapper.mapperMenu
-       ("map",IOC.Simuling {}) -> Mapper.mapperMenu
-       ("purp",IOC.Testing {}) -> Purpose.goalMenu what
-       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
-               return []
-
--}
 
 -- | Give the provided action to the mapper.
 --
@@ -1229,6 +1053,7 @@ txsLPE (Right modelid@(TxsDefs.ModelId modname _moduid))  =  do
     _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "LPE: only allowed if initialized" ]
             return Nothing
 
+-}
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

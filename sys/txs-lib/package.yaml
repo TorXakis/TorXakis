@@ -37,6 +37,15 @@ library:
   - TorXakis.Lib.Examples
   - TorXakis.Session
   dependencies:
+  - mtl
+  - network
+  - directory
+  - optparse-applicative
+  - yaml
+  - filepath
+  - aeson
+  - extra
+  - containers
   - text
   - path
   - stm

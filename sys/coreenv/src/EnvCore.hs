@@ -13,7 +13,7 @@ module EnvCore
   ( IOC -- IOC = StateT EnvC IO
                   -- torxakis core main state monad transformer
   , EnvC(..)
-  , initState
+  , initEnvC
   , CoreState(..)
   , EWorld(..)
   , getSMT -- :: String -> IOC SMTData.SmtEnv
@@ -81,66 +81,73 @@ instance NFData EnvC where
     rnf (EnvC c u p _) =
         rnf c `seq` rnf u `seq` rnf p `seq` ()
 
-data CoreState = Noning
-             | Initing   { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                         , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
-                         , sigs    :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
-                         , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                         }
-             | forall ew . (EWorld ew) =>
-               Testing   { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                         , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
-                         , modeldef  :: TxsDefs.ModelDef
-                         , mapperdef :: Maybe TxsDefs.MapperDef
-                         , purpdef   :: Maybe TxsDefs.PurpDef
-                         , eworld    :: ew
-                         , behtrie   :: [ (EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr) ]
+data CoreState =
+       Noning
+     | Initing   { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs    :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 }
+     | forall ew . (EWorld ew) =>
+       Testing   { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , modeldef  :: TxsDefs.ModelDef
+                 , mapperdef :: Maybe TxsDefs.MapperDef
+                 , purpdef   :: Maybe TxsDefs.PurpDef
+                 , eworld    :: ew
+                 , behtrie   :: [ (EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr) ]
                                                                       -- behaviour trie
-                         , inistate  :: EnvData.StateNr               -- initial beh statenr
-                         , curstate  :: EnvData.StateNr               -- current beh statenr
-                         , modsts    :: BTree.BTree                      -- model state
-                         , mapsts    :: BTree.BTree                      -- mapper state
-                         , purpsts   :: [(TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)]   -- purpose state
-                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                         }
-             | forall ew . (EWorld ew) =>
-               Simuling  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                         , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
-                         , modeldef  :: TxsDefs.ModelDef
-                         , mapperdef :: Maybe TxsDefs.MapperDef
-                         , eworld    :: ew
-                         , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
-                                                                      -- behaviour trie
-                         , inistate  :: EnvData.StateNr               -- initial beh statenr
-                         , curstate  :: EnvData.StateNr               -- current beh statenr
-                         , modsts    :: BTree.BTree                   -- model state
-                         , mapsts    :: BTree.BTree                   -- mapper state
-                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                         }
-             | Stepping  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                         , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
-                         , modeldef  :: TxsDefs.ModelDef
-                         , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
-                                                                      -- behaviour trie
-                         , inistate  :: EnvData.StateNr               -- initial beh statenr
-                         , curstate  :: EnvData.StateNr               -- current beh statenr
-                         , maxstate  :: EnvData.StateNr               -- max beh statenr
-                         , modstss   :: Map.Map EnvData.StateNr BTree.BTree   -- model state
-                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                         }
-             | forall ew . (EWorld ew) =>
-               ManualIdle
+                 , inistate  :: EnvData.StateNr               -- initial beh statenr
+                 , curstate  :: EnvData.StateNr               -- current beh statenr
+                 , modsts    :: BTree.BTree                      -- model state
+                 , mapsts    :: BTree.BTree                      -- mapper state
+                 , purpsts   :: [(TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)]   -- purpose state
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 }
+     | forall ew . (EWorld ew) =>
+       Simuling  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , modeldef  :: TxsDefs.ModelDef
+                 , mapperdef :: Maybe TxsDefs.MapperDef
+                 , eworld    :: ew
+                 , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
+                 -- behaviour trie
+                 , inistate  :: EnvData.StateNr               -- initial beh statenr
+                 , curstate  :: EnvData.StateNr               -- current beh statenr
+                 , modsts    :: BTree.BTree                   -- model state
+                 , mapsts    :: BTree.BTree                   -- mapper state
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 }
+     | StepSet   { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , modeldef  :: TxsDefs.ModelDef
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 }
+     | Stepping  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , modeldef  :: TxsDefs.ModelDef
+                 , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
+                 -- behaviour trie
+                 , inistate  :: EnvData.StateNr               -- initial beh statenr
+                 , curstate  :: EnvData.StateNr               -- current beh statenr
+                 , maxstate  :: EnvData.StateNr               -- max beh statenr
+                 , modstss   :: Map.Map EnvData.StateNr BTree.BTree   -- model state
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 }
+     | forall ew . (EWorld ew) =>
+       ManualIdle
                  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                  , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
                  , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                  , eworld    :: ew
                  , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
-             | forall ew . (EWorld ew) =>
-               ManualActive
+     | forall ew . (EWorld ew) =>
+       ManualActive
                  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                  , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
                  , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
@@ -152,11 +159,10 @@ data CoreState = Noning
                  }
 
 -- | Initial state for the core environment.
-initState :: EnvC
-initState = EnvC defaultConfig (Id 0) initParams Noning
-    where
-      -- TODO: remove duplication in TxsCore (see variable with the same name).
-      initParams = Map.union ParamCore.initParams Solve.Params.initParams
+initEnvC :: EnvC
+initEnvC = EnvC defaultConfig (Id 0) initParams Noning
+   where
+     initParams = Map.union ParamCore.initParams Solve.Params.initParams
 
 modifyCS :: (CoreState -> CoreState) -> IOC ()
 modifyCS f  = modify $ \env -> env { state = f (state env) }
