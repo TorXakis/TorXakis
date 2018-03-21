@@ -824,6 +824,7 @@ ConstDef        -- :: { [(Ident,TxsDef)] }
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $4.inhSigs      = $$.inhSigs
                 ;  $4.inhSolvSort  = Just $2
+                ;  $4.inhVarSigs   = []
                 ;  $$.synSigs      = Sigs.empty { Sigs.func = FuncTable (Map.singleton $1 (Map.singleton (Signature [] $2) (const $4) ) ) }
                 ;  $$ = []
                 }

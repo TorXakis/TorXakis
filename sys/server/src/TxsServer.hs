@@ -459,12 +459,12 @@ cmdEval args = do
                                             IFS.pack "EVAL" [ TxsShow.fshow walue ]
                                             cmdsIntpr
                             Left t      -> do
-                                            IFS.nack "EVAL" [ "eval 2" ++ t ]
+                                            IFS.nack "EVAL" [ "eval 2 - " ++ t ]
                                             cmdsIntpr
 
        Nothing -> do 
                     modify $ \env' -> env' { IOS.uid = uid' }
-                    IFS.nack "EVAL" [ "eval 1" ++ e ]
+                    IFS.nack "EVAL" [ "eval 1 - " ++ e ]
                     cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
