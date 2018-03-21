@@ -10,8 +10,6 @@ module API
 ) where
 
 import           Control.Concurrent.STM.TVar (newTVarIO)
-import           Control.Monad.Trans.Reader  (runReaderT)
--- import           Data.Aeson                  (FromJSON, ToJSON)
 import           Data.Aeson.TH
 import qualified Data.IntMap.Strict          as Map
 -- import           Data.Swagger
@@ -24,7 +22,8 @@ import           Servant
 -- import           Servant.Swagger
 
 import           Common                      (Env (..))
-import           Endpoints.Messages          (MessagesEP, streamMessages, SSMessagesEP, ssMessagesEP)
+import           Endpoints.Messages          (MessagesEP, SSMessagesEP,
+                                              ssMessagesEP, streamMessages)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
 import           Endpoints.Stepper           (StartStepperEP, TakeNStepsEP,
                                               startStepper, takeNSteps)
@@ -57,8 +56,8 @@ app env = simpleCors $ serve api (server env)
         api = Proxy
 
 server :: Env -> ServerT API Handler
-server env = newSrvSession env 
-    :<|> upload env 
+server env = newSrvSession env
+    :<|> upload env
     :<|> startStepper env
     :<|> takeNSteps env
     :<|> streamMessages env

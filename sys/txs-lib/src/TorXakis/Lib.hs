@@ -3,7 +3,8 @@ module TorXakis.Lib where
 
 import           Control.Concurrent            (forkIO)
 import           Control.Concurrent.MVar       (newMVar, putMVar, takeMVar)
-import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue,
+import           Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue,
+                                                newTQueueIO, readTQueue,
                                                 writeTQueue)
 import           Control.Concurrent.STM.TVar   (modifyTVar', newTVarIO,
                                                 readTVarIO)
@@ -102,6 +103,10 @@ step s (NumberOfSteps n) = do
 -- | Wait for a verdict to be reached.
 waitForVerdict :: Session -> IO Verdict
 waitForVerdict s = atomically $ readTQueue (s ^. verdicts)
+
+-- | Wait for the message queue to be consumed.
+waitForMessageQueue :: Session -> IO ()
+waitForMessageQueue s = void $ atomically $ isEmptyTQueue (s ^. sessionMsgs)
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.

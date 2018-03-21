@@ -58,9 +58,9 @@ spec = return $ do
                 r <- post "http://localhost:8080/stepper/start/1/Model" [partText "" ""]
                 r ^. responseStatus . statusCode `shouldBe` 200
                 r ^. responseBody `shouldBe` "\"Success\""
-                r2 <- post "http://localhost:8080/stepper/step/1/3" [partText "" ""]
+                r2 <- post "http://localhost:8080/stepper/step/1/30" [partText "" ""]
                 r2 ^. responseStatus . statusCode `shouldBe` 200
                 r2 ^. responseBody `shouldBe` "\"Success\""
-                r3 <- get "http://localhost:8080/session/1/messages"
+                r3 <- get "http://localhost:8080/session/sse/1/messages"
                 r3 ^. responseStatus . statusCode `shouldBe` 200
                 r3 ^. responseBody `shouldBe` "\"Success\""

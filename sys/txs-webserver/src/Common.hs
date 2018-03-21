@@ -9,13 +9,12 @@ where
 
 import           Control.Concurrent.STM.TVar (TVar, readTVarIO)
 import           Control.Monad.IO.Class      (liftIO)
-import           Control.Monad.Trans.Reader  (ask, ReaderT)
 import           Data.ByteString.Lazy.Char8  (pack)
 import qualified Data.IntMap.Strict          as Map
 import           Servant                     (throwError)
 import           Servant.Server
 
-import           TorXakis.Session (Session)
+import           TorXakis.Session            (Session)
 
 type SessionId = Int
 
@@ -26,7 +25,7 @@ data Env = Env { sessions :: TVar (Map.IntMap Session)
 getSessionIO :: Env -> SessionId -> IO  (Maybe Session)
 getSessionIO Env{sessions = ssT} sid = do
     sessionsMap <-  readTVarIO ssT
-    return $ Map.lookup sid sessionsMap 
+    return $ Map.lookup sid sessionsMap
 
 getSession :: Env -> SessionId -> Handler Session
 getSession e sId = do

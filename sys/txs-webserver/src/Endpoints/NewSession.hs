@@ -6,7 +6,6 @@ module Endpoints.NewSession
 import           Control.Concurrent.STM.TVar (modifyTVar, readTVarIO, writeTVar)
 import           Control.Monad.IO.Class      (liftIO)
 import           Control.Monad.STM           (atomically)
-import           Control.Monad.Trans.Reader  (ask)
 import qualified Data.IntMap.Strict          as Map
 import           Servant
 
