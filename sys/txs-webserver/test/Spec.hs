@@ -40,7 +40,7 @@ spec = return $ do
         describe "Upload files to a session" $ do
             it "Uploads valid files" $ do
                 _ <- post "http://localhost:8080/session/new" [partText "" ""]
-                r <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "c:/Repos/TorXakis/examps/Point/Point.txs"]
+                r <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
                 r ^. responseStatus . statusCode `shouldBe` 201
                 r ^. responseBody `shouldBe` "\"\\nLoaded: Point.txs\""
             it "Fails for parse error" $ do
@@ -50,12 +50,12 @@ spec = return $ do
                         return CI.Response{CI.responseStatus = s}
                     handler e = throwIO e
                 _ <- post "http://localhost:8080/session/new" [partText "" ""]
-                r <- post "http://localhost:8080/session/1/model" [partFile "wrong.txt" "C:/Repos/TorXakis/sys/txs-lib/test/data/wrong.txt"]
+                r <- post "http://localhost:8080/session/1/model" [partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"]
                         `catch` handler
                 r ^. responseStatus . statusCode `shouldBe` 400
             it "Starts stepper and takes 3 steps" $ do
                 _ <- post "http://localhost:8080/session/new" [partText "" ""]
-                _ <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "c:/Repos/TorXakis/examps/Point/Point.txs"]
+                _ <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
                 r <- post "http://localhost:8080/stepper/start/1/Model" [partText "" ""]
                 r ^. responseStatus . statusCode `shouldBe` 200
                 r ^. responseBody `shouldBe` "\"Success\""
