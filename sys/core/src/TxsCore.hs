@@ -48,16 +48,19 @@ module TxsCore
   -- *** simulate number of Actions
 , txsSimN
 
+-}
+
   -- ** start stepping
 , txsSetStep
 
+{-
   -- *** step Action
 , txsStepA
+-}
 
   -- *** step number of Actions
 , txsStepN
 
--}
 
   -- *** go back to previous state
 , txsGoTo
@@ -145,7 +148,7 @@ import qualified Data.Map            as Map
 import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Set            as Set
-import qualified Data.Text           as T
+-- import qualified Data.Text           as T
 import           System.IO
 import           System.Random
 
@@ -156,15 +159,15 @@ import           Mapper
 import           NComp
 -- import           Purpose
 -- import           Sim
--- import           Step
+import           Step
 -- import           Test
 
 import           Config              (Config)
 import qualified Config
 
 -- import from behave(defs)
--- import qualified Behave
--- import qualified BTree
+import qualified Behave
+import qualified BTree
 import           Expand              (relabel)
 
 -- import from coreenv
@@ -781,6 +784,8 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
            else do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Inconsistent definitions" ]
                    return ( Nothing, [] )
 
+-}
+
 -- | Start stepping using the provided model definition.
 --
 --   Only possible when txscore is initialized.
@@ -826,6 +831,8 @@ startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
      return maybt'
 
 -- ----------------------------------------------------------------------------------------- --
+
+{-
 
 -- | Test SUT with the provided input action.
 -- core action.
@@ -894,6 +901,8 @@ txsSimN depth  =  do
          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Simulator mode" ]
          return TxsDDefs.NoVerdict
 
+-}
+
 -- | Step model with the provided number of actions.
 -- core action.
 --
@@ -907,6 +916,8 @@ txsStepN depth  =  do
        _ -> do
          IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Stepper mode" ]
          return TxsDDefs.NoVerdict
+
+{-
 
 -- | Step model with the provided action.
 -- core action.

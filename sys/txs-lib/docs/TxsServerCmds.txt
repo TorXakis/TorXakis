@@ -42,10 +42,10 @@ data TxsServerCmd
                  mappername   :: Maybe String          -- mapper (optionally),
                  cnectname    :: String                -- and cnect
      | Stepper     Model    modelname    :: String     -- start stepper with model
-                 | Mapper   mappername   :: String     -- start stepper with mapper
-                 | Purp     purpname     :: String     -- start stepper with goal <goalname>
-                            goalname     :: String     -- of purpose <purpname>
-                 | Proc     procname     :: String     -- start stepper with process
+--               | Mapper   mappername   :: String     -- start stepper with mapper
+--               | Purp     purpname     :: String     -- start stepper with goal <goalname>
+--                          goalname     :: String     -- of purpose <purpname>
+--               | Proc     procname     :: String     -- start stepper with process
      | Learner   modelname    :: String                -- start learner with model, 
                  mappername   :: Maybe String          -- mapper (optionally), 
                  cnectname    :: String                -- and cnect
