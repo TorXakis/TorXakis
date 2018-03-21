@@ -837,7 +837,7 @@ txsSimN depth  =  do
 -- | Step model with the provided number of actions.
 -- core action.
 --
-- Only possible in stepper modus (see 'txsSetStep').
+-- Only possible in stepper modus (see 'txsSetStep').
 txsStepN :: Int                                 -- ^ number of actions to step model.
          -> IOC.IOC TxsDDefs.Verdict            -- ^ Verdict of stepping with provided number of actions.
 txsStepN depth  =  do
