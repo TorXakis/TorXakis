@@ -12,7 +12,7 @@ import           Control.DeepSeq               (force)
 import           Control.Exception             (ErrorCall, evaluate, try)
 import           Control.Monad                 (void)
 import           Control.Monad.State           (lift, runStateT)
-import           Control.Monad.STM             (atomically)
+import           Control.Monad.STM             (atomically, retry)
 import           Data.Foldable                 (traverse_)
 import           Lens.Micro                    ((.~), (^.))
 
@@ -106,7 +106,11 @@ waitForVerdict s = atomically $ readTQueue (s ^. verdicts)
 
 -- | Wait for the message queue to be consumed.
 waitForMessageQueue :: Session -> IO ()
-waitForMessageQueue s = void $ atomically $ isEmptyTQueue (s ^. sessionMsgs)
+waitForMessageQueue s = atomically $ do
+    b <- isEmptyTQueue (s ^. sessionMsgs)
+    if b
+    then return ()
+    else retry
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.

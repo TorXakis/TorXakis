@@ -17,7 +17,7 @@ module Endpoints.Messages
 import           Conduit                   (ZipSource (..), getZipSource,
                                             repeatC, runConduit, yield, (.|))
 -- import           Control.Concurrent        (threadDelay)
-import           Control.Concurrent.Async  (race_)
+import           Control.Concurrent.Async  (race_, async)
 import           Control.Concurrent.Chan   (Chan, newChan, writeChan)
 import           Data.Binary.Builder       (Builder, fromByteString)
 import           Data.Conduit.Combinators  (mapM_)
@@ -31,7 +31,7 @@ import           Lens.Micro                ((^.))
 import           Network.HTTP.Types.Status (status404)
 import           Network.Wai               (responseLBS)
 import           Network.Wai.EventSource   (ServerEvent,
-                                            ServerEvent (ServerEvent),
+                                            ServerEvent (ServerEvent, CloseEvent),
                                             eventData, eventId, eventName,
                                             eventSourceAppChan)
 import           Prelude                   hiding (mapM_)
@@ -94,8 +94,8 @@ ssMessagesEP env sid = Tagged $ \req respond -> do
             respond $ responseLBS status404 [] msg
         Just s  -> do
             ch <- newChan
-            race_ (runConduit $ sourceTQueue (s ^. sessionMsgs) .| mapM_ (sendTo ch))
-                  (waitForVerdict s >> waitForMessageQueue s)
+            _ <- async $ race_ (runConduit $ sourceTQueue (s ^. sessionMsgs) .| mapM_ (sendTo ch))
+                               (waitForVerdict s >> waitForMessageQueue s >> writeChan ch CloseEvent)
             eventSourceAppChan ch req respond
 
 sendTo :: Chan ServerEvent -> Msg -> IO ()
