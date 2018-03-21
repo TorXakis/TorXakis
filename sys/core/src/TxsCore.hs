@@ -866,8 +866,8 @@ txsStepA act =  do
 txsShow :: String               -- ^ kind of item to be shown.
         -> String               -- ^ name of item to be shown.
                                 --   Valid items are "tdefs", "state",
-                                --   "model", "mapper", "purp", "modeldef" 'name',
-                                --   "mapperdef" 'name', "purpdef" 'name'
+                                --   "model", "mapper", "purp", "modeldef" \<name>,
+                                --   "mapperdef" \<name>, "purpdef" \<name>
         -> IOC.IOC String
 txsShow item nm  = do
      envc  <- gets IOC.state
@@ -987,7 +987,7 @@ txsPath  =  do
 
 -- | Return the menu, i.e., all possible actions.
 txsMenu :: String                               -- ^ kind (valid values are "mod", "purp", or "map")
-        -> String                               -- ^ what (valid values are "all", "in", "out", or a <goal name>)
+        -> String                               -- ^ what (valid values are "all", "in", "out", or a \<goal name>)
         -> IOC.IOC BTree.Menu
 txsMenu kind what  =  do
      envSt <- gets IOC.state
