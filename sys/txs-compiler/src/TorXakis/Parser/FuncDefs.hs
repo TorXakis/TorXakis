@@ -3,13 +3,14 @@ module TorXakis.Parser.FuncDefs where
 
 -- TODO: use selective imports.
 import           TorXakis.Parser.Common
-import           TorXakis.Parser.TypeDefs
 import           TorXakis.Parser.Data
+import           TorXakis.Parser.TypeDefs
 import           TorXakis.Parser.ValExprDecl
 
 -- | Function declarations.
 fdeclP :: TxsParser FuncDecl
 fdeclP = do
+    txsWhitespace
     txsSymbol "FUNCDEF" --TODO: adapt this so that function declarations can be separated by ';'.
     m  <- getMetadata
     n  <- txsLexeme lcIdentifier
@@ -23,4 +24,4 @@ fdeclP = do
 
 fParamsP :: TxsParser [VarDecl]
 fParamsP = idOfSortsP "(" ")" mkVarDecl
-    
+

@@ -2,11 +2,11 @@
 
 module TorXakis.Parser.TypeDefs where
 
-import           Data.Text (Text)
-import           Text.Parsec ( sepBy, (<|>) )
+import           Data.Text              (Text)
+import           Text.Parsec            (sepBy, (<|>))
 
 import           TorXakis.Parser.Common
-import           TorXakis.Parser.Data    -- ( FieldDecl
+import           TorXakis.Parser.Data
                                          -- , Field (Field), ParseTree (ParseTree)
                                          -- , SortRef (SortRef), OfSort
                                          -- , ADTDecl, ADT (ADT)
@@ -16,6 +16,7 @@ import           TorXakis.Parser.Data    -- ( FieldDecl
 -- | Parser of ADT's.
 adtP :: TxsParser ADTDecl
 adtP = do
+    txsWhitespace
     txsSymbol "TYPEDEF"
     m  <- getMetadata
     n  <- txsLexeme (ucIdentifier "ADT's")

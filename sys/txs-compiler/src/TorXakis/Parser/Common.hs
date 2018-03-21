@@ -1,17 +1,15 @@
 module TorXakis.Parser.Common where
 
 -- TODO: use selective imports.
-import qualified Data.Text as T
-import           Data.Text (Text)
-import           Text.Parsec ( ParsecT, (<|>), many, label
-                             , getPosition, sourceLine, sourceColumn
-                             , getState
-                             , putState
-                             )
-import           Text.Parsec.Token
-import           Text.Parsec.Char (lower, upper, oneOf, alphaNum, letter)
-import           Control.Monad (void)
+import           Control.Monad          (void)
 import           Control.Monad.Identity (Identity)
+import           Data.Text              (Text)
+import qualified Data.Text              as T
+import           Text.Parsec            (ParsecT, getPosition, getState, label,
+                                         many, putState, sourceColumn,
+                                         sourceLine, (<|>))
+import           Text.Parsec.Char       (alphaNum, letter, lower, oneOf, upper)
+import           Text.Parsec.Token
 
 import           TorXakis.Parser.Data
 
@@ -50,6 +48,9 @@ txsSymbol = void . symbol txsTokenP
 
 txsLexeme :: TxsParser a -> TxsParser a
 txsLexeme = lexeme txsTokenP
+
+txsWhitespace :: TxsParser ()
+txsWhitespace = whiteSpace txsTokenP
 
 txsStringP :: TxsParser Text
 txsStringP = T.pack <$> stringLiteral txsTokenP
