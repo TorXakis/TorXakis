@@ -1,5 +1,6 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 module TorXakis.Parser.Data
     ( St
     , mkState
@@ -48,11 +49,11 @@ module TorXakis.Parser.Data
     , varDeclSort
     , varName
     -- ** Expressions
-    , ExpDecl (VarExp)
+    , ExpDecl
     , mkVarExp
     , mkBoolConstExp
     , mkIntConstExp
-    , mkStringConstExp    
+    , mkStringConstExp
     -- * Location of the entities.
     , getLoc
     )
@@ -85,14 +86,20 @@ nodeNameT = toText . nodeName
 -- | Metadata associated to the elements being parsed.
 data Metadata t = Metadata
     {  -- | Line in which a declaration occurs.
-      line   :: Int
+      line  :: Int
        -- | Start column.
-    , start  :: Int
+    , start :: Int
        -- | Unique identifier.
-    , loc    :: Loc t
+    , loc   :: Loc t
     } deriving (Show, Eq)
 
-newtype Loc t = Loc Int deriving (Show, Eq, Ord)
+newtype Loc t = Loc { intVal :: Int} deriving (Show, Eq, Ord)
+
+-- | Change extract the location of the metadata, and change its type from 't'
+-- to 'u'. This is useful when defining parsed entities whose locations
+-- coincide, like expressions and variable-references or constant-literals.
+locFromMetadata :: Metadata t -> Loc u
+locFromMetadata m = let Loc i = loc m in Loc i
 
 class HasLoc a t where
     getLoc :: a -> Loc t
@@ -100,9 +107,10 @@ class HasLoc a t where
 instance HasLoc (ParseTree t c) t where
     getLoc = loc . nodeMdata
 
-instance HasLoc ExpDecl ExpDeclE where
-    getLoc (VarExp _ m) = loc m
-    getLoc (ConstExp _ m) = loc m
+-- instance HasLoc ExpDecl ExpDeclE where
+--     getLoc (LetExp _ _ m) = loc m
+--     getLoc (VarExp _ m)   = loc m
+--     getLoc (ConstExp _ m) = loc m
 
 -- * Types of entities encountered when parsing.
 
@@ -132,10 +140,10 @@ data VarDeclE = VarDeclE deriving (Eq, Show)
 
 -- | A variable occurrence in an expression. It is assumed to be a
 -- **reference** to an existing variable.
-data VarRefE = VarRefR deriving (Eq, Show)
+data VarRefE = VarRefE deriving (Eq, Show)
 
--- | A constant declaration.
-data ConstE = ConstE deriving (Eq, Show)
+-- | A constant literal
+data ConstLitE = ConstLitE deriving (Eq, Show)
 
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADTE     [CstrDecl]
@@ -199,26 +207,43 @@ varDeclSort :: VarDecl -> (Text, Metadata SortRefE)
 varDeclSort f = (nodeNameT . child $ f, nodeMdata . child $ f)
 
 -- | Expressions.
-data ExpDecl = VarExp (Name VarRefE) (Metadata ExpDeclE)
-             | ConstExp Const (Metadata ExpDeclE)
+type ExpDecl = ParseTree ExpDeclE ExpChild
+
+data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)-- (Name VarRefE) (Metadata ExpDeclE)
+              | ConstLit Const
+ -- LetExp [LetValDecl] ExpDecl
     deriving (Eq, Show)
+
+-- mkLetExp :: [LetValDecl] -> ExpDecl -> Metadata ExpDecl -> ExpDecl
+-- mkLetExp = undefined
+
+data LetValDecl = LetValDecl (Name VarDeclE) (Maybe SortRefE) ExpDecl (Metadata VarDeclE)
+    deriving (Eq, Show)
+
+-- mkLetValDecl :: Name VarDeclE -> Maybe SortRefE -> ExpDecl -> Metadata VarDeclE -> LetValDecl
+-- mkLetValDecl = undefined
 
 data Const = BoolConst Bool
            | IntConst Integer
            | StringConst Text
     deriving (Eq, Show)
 
+mkExpDecl :: Metadata ExpDeclE -> ExpChild -> ExpDecl
+mkExpDecl m c = ParseTree (Name "") ExpDeclE m c
+
+-- | Make a variable expression. The location of the expression will become the
+-- location of the variable.
 mkVarExp :: Text -> Metadata ExpDeclE -> ExpDecl
-mkVarExp n m = VarExp (Name n) m
+mkVarExp n m = mkExpDecl m (VarRef (Name n) (locFromMetadata m))
 
 mkBoolConstExp :: Bool -> Metadata ExpDeclE -> ExpDecl
-mkBoolConstExp b m = ConstExp (BoolConst b) m
+mkBoolConstExp b m = mkExpDecl m (ConstLit (BoolConst b))
 
 mkIntConstExp :: Integer -> Metadata ExpDeclE -> ExpDecl
-mkIntConstExp i m = ConstExp (IntConst i) m
+mkIntConstExp i m = mkExpDecl m (ConstLit (IntConst i))
 
 mkStringConstExp :: Text -> Metadata ExpDeclE -> ExpDecl
-mkStringConstExp t m = ConstExp (StringConst t) m
+mkStringConstExp t m = mkExpDecl m (ConstLit (StringConst t))
 
 type FuncDecl  = ParseTree FuncDeclE FuncComps
 

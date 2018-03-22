@@ -1,0 +1,9 @@
+FUNCDEF f(x, y :: Int) :: Int ::=
+    -- LET x = 10; y :: Bool = True IN x NI
+    x
+ENDDEF
+
+FUNCDEF f(x, y :: Int) :: Int ::=
+    -- LET z = 10; b = True IN x NI
+    y
+ENDDEF

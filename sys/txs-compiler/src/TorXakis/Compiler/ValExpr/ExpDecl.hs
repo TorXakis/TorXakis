@@ -1,15 +1,17 @@
-{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Compiler.ValExpr.ExpDecl where
 
-import           Data.Text (Text)
-import           Data.Map (Map)
-import qualified Data.Map as Map
+import           Data.Map               (Map)
+import qualified Data.Map               as Map
+import           Data.Text              (Text)
 
-import TorXakis.Parser.Data
-import TorXakis.Compiler.Data
+import           TorXakis.Compiler.Data
+import           TorXakis.Parser.Data
 
+-- | Generate a map from locations of variable references, the declarations of
+-- those variables.
 generateVarDecls :: [FuncDecl] -> CompilerM (Map (Loc ExpDeclE) VarDecl)
-generateVarDecls fs = Map.fromList . concat <$> 
+generateVarDecls fs = Map.fromList . concat <$>
     traverse generateVarDeclsForFD fs
 
 generateVarDeclsForFD :: FuncDecl -> CompilerM [(Loc ExpDeclE, VarDecl)]

@@ -39,13 +39,16 @@ sortP = do
     n <- txsLexeme (ucIdentifier "Sorts")
     return $ mkOfSort n m
 
--- | Parser of a list of @identifiers :: Sort@ declarations, delimited by the
--- given symbols.
+-- | Parser of a list of identifiers declarations, with an associated sort. The
+-- list of identifiers is delimited by the given start and end symbols, and
+-- separated by a semi-colon.
+--
+-- > identifiers :: Sort
 --
 idOfSortsP :: String -- ^ Start symbol for the fields declaration.
-          -> String -- ^ End symbol for the fields declaration.
-          -> (Text -> Metadata t -> OfSort -> d)
-          -> TxsParser [d]
+           -> String -- ^ End symbol for the fields declaration.
+           -> (Text -> Metadata t -> OfSort -> d)
+           -> TxsParser [d]
 idOfSortsP op cl f = nonEmptyIdOfSortsP <|> emptyDeclsP
     where nonEmptyIdOfSortsP = do
               txsSymbol op
