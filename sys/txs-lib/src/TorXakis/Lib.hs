@@ -20,7 +20,7 @@ import           EnvCore  (IOC)
 import           TxsCore  (txsSetCore, txsInitCore, txsTermitCore)
 import           TxsStep  ( txsSetStep, txsShutStep
                           , txsStartStep, txsStopStep
-                          , txsStepRun, txsStepAct
+                          , txsStepRun 
                           )
 import           EnvData  (Msg)
 import           TorXakis.Lens.TxsDefs (ix)
@@ -152,10 +152,22 @@ step s (NumberOfSteps n) = do
         resp <- txsStepRun n
         case resp of
           Right v -> do lift $ atomically $ writeTQueue (s ^. verdicts) v
-                        return Success
-          Left  e -> return $ Error e
+                        return ()
+          Left  _ -> return ()
+    return Success
 
-step s (ActionTxt txt) = do
+{-
+ step :: Session -> StepType -> IO Response
+ step s (NumberOfSteps n) = do
+     void $ forkIO $ runIOC s $ do
+         verdict <- txsStepN n
+         lift $ atomically $ writeTQueue (s ^. verdicts) verdict
+     return Success
+ 
+-}
+
+
+step _s (ActionTxt _txt) = do
     return $ Error "Step with actions not yet implemented: requires evaluation"
 
 -- | Wait for a verdict to be reached.
