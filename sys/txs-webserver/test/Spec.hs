@@ -64,4 +64,4 @@ spec = return $ do
                 r2 ^. responseBody `shouldBe` "\"Success\""
                 r3 <- get "http://localhost:8080/session/sse/1/messages"
                 r3 ^. responseStatus . statusCode `shouldBe` 200
-                BSL.unpack (r3 ^. responseBody) `shouldStartWith` "event:TorXakis Message\ndata:{\"tag\":\""
+                BSL.unpack (r3 ^. responseBody) `shouldStartWith` "data:{\"tag\":\""

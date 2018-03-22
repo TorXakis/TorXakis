@@ -20,8 +20,7 @@ import           Conduit                   (ZipSource (..), getZipSource,
 import           Control.Concurrent.Async  (async, race_)
 import           Control.Concurrent.Chan   (Chan, newChan, writeChan)
 import           Data.Aeson                (encode)
-import           Data.Binary.Builder       (Builder, fromByteString,
-                                            fromLazyByteString)
+import           Data.Binary.Builder       (Builder, fromLazyByteString)
 import           Data.Conduit.Combinators  (mapM_)
 import           Data.Conduit.TQueue       (sourceTQueue)
 import           Data.Monoid               ((<>))
@@ -103,12 +102,12 @@ sendTo ch msg =
 
 asServerEvent :: Msg -> ServerEvent
 asServerEvent msg = ServerEvent
-    { eventName = Just eName
+    { eventName = Nothing
     , eventId = Nothing
     , eventData = [msg']
     }
     where
-      eName :: Builder
-      eName = fromByteString "TorXakis Message"
+    --   eName :: Builder
+    --   eName = fromByteString "TorXakis Message"
       msg'  :: Builder
       msg'  = fromLazyByteString $ encode msg

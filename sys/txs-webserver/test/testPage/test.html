@@ -1,5 +1,6 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,30 +8,111 @@
     <link rel="stylesheet" href="bootstrap.min.css">
     <title>TorXakis Library - Testing Stepper</title>
 </head>
-<body>
-    <input type="button" onClick="CreateSession()" value="Create Session" />
-    <span id="ok"></span>
-    <script>
-    function CreateSession() {
-        var xhttp = new XMLHttpRequest();
-        xhttp.open("POST", "http://localhost:8080/session/new", true);
-        xhttp.setRequestHeader("Content-type", "application/json");
-        xhttp.setRequestHeader("Access-Control-Allow-Origin", "*");
-        xhttp.send();
-        var response = JSON.parse(xhttp.responseText);
-        getElementById('ok').innerHTML = "Session created: " + response;
-    }
-    </script>
-    <form action="http://localhost:8080/session/1/model" method="post" enctype="multipart/form-data">
-        Select a file: <input type="file" name="blah" />
-        Select another one: <input type="file" name="foo" />
-        <input name="test1" value="1" />
-        <input name="test2" value="2" />
-        <hr />
-        <input type="submit" value="Upload" />
-    </form>
 
-    <script src="jquery-3.3.1.min.js"></script>
-    <script src="bootstrap.bundle.min.js"></script>
+<body>
+    <div class="container mt-3">
+        <div class="row">
+            <div class="col">
+                <input type="button" class="btn" onClick="CreateSession()" value="Create Session" />
+                <span id="sessionCreated"></span>
+                <script>
+                    function CreateSession() {
+                        var xhttp = new XMLHttpRequest();
+                        xhttp.open("POST", "http://localhost:8080/session/new", false);
+                        xhttp.setRequestHeader("Content-type", "application/json");
+                        xhttp.setRequestHeader("Access-Control-Allow-Origin", "*");
+                        xhttp.send();
+                        var response = xhttp.responseText;
+                        document.getElementById('sessionCreated').innerText = "Session created: " + response;
+                    }
+                </script>
+                <hr />
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <form id="uploadForm" action="http://localhost:8080/session/1/model" method="post" enctype="multipart/form-data">
+                    Select a file:
+                    <input type="file" name="modelFile" class="form-control-file" />
+                    <input type="submit" value="Upload" class="btn" />
+                </form>
+                <div id="uploadRresult"></div>
+                <hr />
+
+                <script src="jquery-3.3.1.min.js"></script>
+                <script src="bootstrap.bundle.min.js"></script>
+                <script>
+                    $("#uploadForm").submit(function (event) {
+                        // Stop form from submitting normally
+                        event.preventDefault();
+
+                        var $form = $(this),
+                            file = $form.find("input[name='modelFile']")[0].files[0],
+                            url = $form.attr("action");
+                        var formData = new FormData();
+                        formData.append('modelFile', file, file.name);
+
+                        var xhttp = new XMLHttpRequest();
+                        xhttp.open("POST", url, true);
+
+                        xhttp.onload = function (data) {
+                            if (xhttp.status === 201) {
+                                $("#uploadRresult").append(data.target.responseText);
+                            } else {
+                                alert('An error occurred!');
+                            }
+                        };
+                        $("#uploadRresult").empty();
+                        xhttp.send(formData);
+                    });
+                </script>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <input type="button" class="btn" onClick="StartStepper()" value="Start Stepper" />
+                <span id="stepperStarted"></span>
+                <script>
+                    function StartStepper() {
+                        var xhttp = new XMLHttpRequest();
+                        xhttp.open("POST", "http://localhost:8080/stepper/start/1/Model", false);
+                        xhttp.setRequestHeader("Content-type", "application/json");
+                        xhttp.setRequestHeader("Access-Control-Allow-Origin", "*");
+                        xhttp.send();
+                        var response = xhttp.responseText;
+                        document.getElementById('stepperStarted').innerText = "Stepper started for session 1";
+                    }
+                </script>
+                <hr />
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <input type="button" class="btn" onClick="TakeSteps($('#steps').val())" value="Take Steps" />
+                <input type="number" id="steps" value="3" />
+                <div id="output">Messages from server:</div>
+                <script>
+                    var source;
+                    function TakeSteps(steps) {
+                        var xhttp = new XMLHttpRequest();
+                        xhttp.open("POST", "http://localhost:8080/stepper/step/1/" + steps, false);
+                        xhttp.setRequestHeader("Content-type", "application/json");
+                        xhttp.setRequestHeader("Access-Control-Allow-Origin", "*");
+                        xhttp.send();
+                        // var response = xhttp.responseText;
+                        // document.getElementById('stepperStarted').innerText = "Stepper started for session 1";
+                        if (!source) {
+                            source = new EventSource("http://localhost:8080/session/sse/1/messages");
+                            source.onmessage = function (event) {
+                                document.getElementById("output").innerHTML += event.data + "<br>";
+                            };
+                        }
+                    }
+                </script>
+                <hr />
+            </div>
+        </div>
+    </div>
 </body>
+
 </html>

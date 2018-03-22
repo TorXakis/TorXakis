@@ -21,7 +21,6 @@ import           Network.Wai.Middleware.Cors (simpleCors)
 import           Servant
 -- import           Servant.Server
 -- import           Servant.Swagger
-import           Turtle
 
 import           Common                      (Env (..))
 import           Endpoints.Messages          (MessagesEP, SSMessagesEP,
@@ -54,19 +53,10 @@ startApp = do
     run 8080 $ app $ Env sessionsMap zeroId
 
 app :: Env -> Application
-app env = do
-    sh printFolderContents
-    simpleCors $ serve api (server env)
+app env = simpleCors $ serve api (server env)
     where
         api :: Proxy API
         api = Proxy
-
-printNameAndContents = do
-    file <- ls "./"
-    -- liftIO $ print $ encodeString file
-    liftIO $ putStrLn $ "==> " ++ encodeString file
-    stdout $ "> " <> input file
-    printf "\n"
 
 server :: Env -> ServerT API Handler
 server env = newSrvSession env
@@ -75,7 +65,7 @@ server env = newSrvSession env
     :<|> takeNSteps env
     :<|> streamMessages env
     :<|> ssMessagesEP env
-    :<|> serveDirectoryWebApp "test/testPage"
+    :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"
     -- :<|> users
     -- :<|> return swaggerDocs
     -- where
