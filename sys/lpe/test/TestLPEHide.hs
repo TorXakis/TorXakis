@@ -55,7 +55,8 @@ lpeHideTestWrapper procInst translatedProcDefs procDefs =
       procDef' = case Map.lookup procId' procDefs' of
                     Just procDef   -> procDef
                     Nothing        -> error "lpeHideTestWrapper: could not find the procId" in
-  trace ("\nresult procInst: " ++ show procInst' ++ "\nprocDef': " ++ show procDef') $  Just (procInst', procDef')
+  --trace ("\nresult procInst: " ++ show procInst' ++ "\nprocDef': " ++ show procDef') $  
+  Just (procInst', procDef')
 
 
 
@@ -349,6 +350,9 @@ testActionPref4 = TestCase $
                                                       (ProcInst procIdPlpe [chanIdA] [vexprMin1]))
       procInst' = ProcInst procIdPlpe [chanIdA] [int0]
 
+
+
+        
 ----------------------------------------------------------------------------------------
 -- List of Tests
 ----------------------------------------------------------------------------------------

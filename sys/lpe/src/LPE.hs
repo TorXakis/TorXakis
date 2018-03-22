@@ -164,29 +164,32 @@ preGNFBExpr bexpr@(ProcInst procIdInst chansInst paramsInst) choiceCnt freeVarsI
 
 preGNFBExpr bexpr@(Choice bexprs) choiceCnt freeVarsInScope procId translatedProcDefs procDefs = do
     -- choice at lower level not allowed
-    unid <- EnvB.newUnid
-    let   -- decompose the ProcDef of ProcId
-          ProcDef chansDef paramsDef _ = fromMaybe (error "called preGNFBExpr with a non-existing procId") (Map.lookup procId procDefs)
-
-          -- create new ProcDef
-          procDef' = ProcDef chansDef (paramsDef ++ freeVarsInScope) bexpr
-          -- create ProcInst calling that ProcDef
-          name' = T.append (ProcId.name procId) (T.pack ("$pre" ++ show choiceCnt))
-          procId' = procId { ProcId.name = name',
-                              ProcId.unid = unid,
-                              ProcId.procvars = paramsDef ++ freeVarsInScope}
-          -- create ProcInst, translate params to VExprs
-          paramsDef' = map cstrVar paramsDef
-          paramsFreeVars = map cstrVar freeVarsInScope
-          procInst' = ProcInst procId' chansDef (paramsDef' ++ paramsFreeVars)
-          -- put created ProcDefs in the ProcDefs
-          procDefs' = Map.insert procId' procDef' procDefs
-          -- recursively translate the created ProcDef
+    (procInst'@(ProcInst procId' _ _), procDefs') <- preGNFBExprCreateProcDef bexpr choiceCnt freeVarsInScope procId procDefs
+    -- recursively translate the created ProcDef
     procDefs'' <- preGNF procId' translatedProcDefs procDefs'
     return (procInst', procDefs'')
 
 preGNFBExpr bexpr@(Parallel syncChans operands) choiceCnt freeVarsInScope procId translatedProcDefs procDefs = do
     -- parallel at lower level not allowed
+    (procInst', procDefs') <- preGNFBExprCreateProcDef bexpr choiceCnt freeVarsInScope procId procDefs
+    -- translate the created ProcDef with LPEPar
+    (procInst'', procDefs'') <- lpePar procInst' translatedProcDefs procDefs'
+    return (procInst'', procDefs'')
+
+
+preGNFBExpr bexpr@(Hide hiddenChans bexpr') choiceCnt freeVarsInScope procId translatedProcDefs procDefs = do
+    -- HIDE at lower level not allowed
+    (procInst', procDefs') <- preGNFBExprCreateProcDef bexpr choiceCnt freeVarsInScope procId procDefs
+    -- translate the created ProcDef with LPEHide
+    res <- lpeHide procInst' translatedProcDefs procDefs' 
+    trace ("\n\nres: " ++ show res) $ return $ res
+
+preGNFBExpr _ choiceCnt freeVarsInScope procId translatedProcDefs procDefs =
+    error "unexpected type of bexpr"
+
+
+preGNFBExprCreateProcDef :: (EnvB.EnvB envb) => BExpr -> Int -> [VarId] -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
+preGNFBExprCreateProcDef bexpr choiceCnt freeVarsInScope procId procDefs = do
     unid <- EnvB.newUnid
     let -- decompose the ProcDef of ProcId
         ProcDef chansDef paramsDef _ = fromMaybe (error "called preGNFBExpr with a non-existing procId") (Map.lookup procId procDefs)
@@ -204,18 +207,7 @@ preGNFBExpr bexpr@(Parallel syncChans operands) choiceCnt freeVarsInScope procId
         procInst' = ProcInst procId' chansDef (paramsDef' ++ paramsFreeVars)
         -- put created ProcDefs in the ProcDefs
         procDefs' = Map.insert procId' procDef' procDefs
-    -- translate the created ProcDef with LPEPar
-    (procInst'', procDefs'') <- lpePar procInst' translatedProcDefs procDefs'
-    return (procInst'', procDefs'')
-
-
-preGNFBExpr bexpr@(Hide hiddenChans bexpr') choiceCnt freeVarsInScope procId translatedProcDefs procDefs = do
-    res <- lpeHide bexpr translatedProcDefs procDefs 
-    return $ res
-
-preGNFBExpr _ choiceCnt freeVarsInScope procId translatedProcDefs procDefs =
-    error "unexpected type of bexpr"
-
+    return (procInst', procDefs')
 
 -- ----------------------------------------------------------------------------------------- --
 -- GNF :
@@ -524,9 +516,9 @@ lpeHide procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs p
         -- strip hidden chans and update ProcDef
         steps = extractSteps bexpr_lpe
         steps' = map (hideChans hiddenChans) steps
-        procDef_lpe = ProcDef chansDef_lpe paramsDef_lpe (wrapSteps steps')
+        procDef_lpe = trace ("\nlpeHide: steps: " ++ show steps') $ ProcDef chansDef_lpe paramsDef_lpe (wrapSteps steps')
         procDefs''' = Map.insert procId_lpe procDef_lpe procDefs''
-    return $ (procInst_lpe, procDefs''')
+    trace ("\n\nprocDefs: " ++ show procDefs''') $ return $ (procInst_lpe, procDefs''')
     where
         hideChans :: [ChanId] -> BExpr -> BExpr
         hideChans _ Stop = Stop
@@ -534,7 +526,7 @@ lpeHide procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs p
         hideChans hiddenChans (ActionPref actOffer bexpr) = 
             let os = offers actOffer 
                 os' = hideChansOffer (Set.toList os) 
-            in ActionPref actOffer{ offers = Set.fromList os'} bexpr 
+            in trace ("\nhideChans: offer: " ++ show os') $ ActionPref actOffer{ offers = Set.fromList os'} bexpr 
             where
                 hideChansOffer :: [Offer] -> [Offer]
                 hideChansOffer [] = []
@@ -548,6 +540,7 @@ lpeHide procInst@(ProcInst procIdInst chansInst paramsInst) translatedProcDefs p
                         o' = o{ chanid = chanid' }
                     in (o':os')
 
+lpeHide _ _ _ = error "lpeHide: was called with something other than a ProcInst"
     
 -- ----------------------------------------------------------------------------------------- --
 -- LPE :
