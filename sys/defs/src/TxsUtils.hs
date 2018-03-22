@@ -8,8 +8,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns      #-}
--- ----------------------------------------------------------------------------------------- --
 module TxsUtils
 
 -- ----------------------------------------------------------------------------------------- --
@@ -152,8 +150,11 @@ class UsedFids t
   where
     usedFids :: t -> [FuncId]
 
-
 instance UsedFids BExpr
+  where
+    usedFids = usedFids . TxsDefs.view 
+
+instance UsedFids BExprView
   where
     usedFids  Stop                          =  []
     usedFids (ActionPref actoff bexp)       =  usedFids actoff ++ usedFids bexp
@@ -186,31 +187,32 @@ instance UsedFids ChanOffer
     usedFids (Quest _vid)  =  []
     usedFids (Exclam vexp) =  usedFids vexp
 
-
 instance UsedFids VExpr
   where
-    usedFids (view -> Vfunc fid vexps)          =  fid : usedFids vexps
-    usedFids (view -> Vcstr _cid vexps)         =  usedFids vexps
-    usedFids (view -> Viscstr _cid vexp)        =  usedFids vexp
-    usedFids (view -> Vaccess _cid _p vexp)     =  usedFids vexp
-    usedFids (view -> Vconst _const)            =  []
-    usedFids (view -> Vvar _v)                  =  []
-    usedFids (view -> Vite cond tb fb)          =  usedFids [cond, tb, fb]
-    usedFids (view -> Vsum s)                   =  concatMap usedFids (FMX.distinctTermsT s)
-    usedFids (view -> Vproduct p)               =  concatMap usedFids (FMX.distinctTermsT p)
-    usedFids (view -> Vdivide t n)              =  usedFids t ++ usedFids n
-    usedFids (view -> Vmodulo t n)              =  usedFids t ++ usedFids n
-    usedFids (view -> Vgez v)                   =  usedFids v
-    usedFids (view -> Vequal vexp1 vexp2)       =  usedFids vexp1 ++ usedFids vexp2
-    usedFids (view -> Vand vexps)               =  concatMap usedFids (Set.toList vexps)
-    usedFids (view -> Vnot vexp)                =  usedFids vexp
-    usedFids (view -> Vlength vexp)             =  usedFids vexp
-    usedFids (view -> Vat s p)                  =  usedFids s ++ usedFids p
-    usedFids (view -> Vconcat vexps)            =  concatMap usedFids vexps
-    usedFids (view -> Vstrinre s r)             =  usedFids s ++ usedFids r
-    usedFids (view -> Vpredef _k fid vexps)     =  fid : usedFids vexps
-    usedFids (view -> Verror _s)                =  []
-    usedFids _                                  =  error "usedFids: item not in view"
+    usedFids = usedFids . ValExpr.view
+
+instance UsedFids (ValExprView VarId)
+  where
+    usedFids (Vfunc fid vexps)          =  fid : usedFids vexps
+    usedFids (Vcstr _cid vexps)         =  usedFids vexps
+    usedFids (Viscstr _cid vexp)        =  usedFids vexp
+    usedFids (Vaccess _cid _p vexp)     =  usedFids vexp
+    usedFids (Vconst _const)            =  []
+    usedFids (Vvar _v)                  =  []
+    usedFids (Vite cond tb fb)          =  usedFids [cond, tb, fb]
+    usedFids (Vsum s)                   =  concatMap usedFids (FMX.distinctTermsT s)
+    usedFids (Vproduct p)               =  concatMap usedFids (FMX.distinctTermsT p)
+    usedFids (Vdivide t n)              =  usedFids t ++ usedFids n
+    usedFids (Vmodulo t n)              =  usedFids t ++ usedFids n
+    usedFids (Vgez v)                   =  usedFids v
+    usedFids (Vequal vexp1 vexp2)       =  usedFids vexp1 ++ usedFids vexp2
+    usedFids (Vand vexps)               =  concatMap usedFids (Set.toList vexps)
+    usedFids (Vnot vexp)                =  usedFids vexp
+    usedFids (Vlength vexp)             =  usedFids vexp
+    usedFids (Vat s p)                  =  usedFids s ++ usedFids p
+    usedFids (Vconcat vexps)            =  concatMap usedFids vexps
+    usedFids (Vstrinre s r)             =  usedFids s ++ usedFids r
+    usedFids (Vpredef _k fid vexps)     =  fid : usedFids vexps
 
 
 instance (UsedFids t) => UsedFids [t]

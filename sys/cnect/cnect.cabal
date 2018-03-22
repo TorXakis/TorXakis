@@ -22,12 +22,13 @@ library
 
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
 
-  build-depends:        base
+  build-depends:        async
+                      , base
                       , containers
-                      , network
                       , mtl
+                      , network
                       , text
-                      , async
+                      , MissingH
 
                       , text-via-sockets
 

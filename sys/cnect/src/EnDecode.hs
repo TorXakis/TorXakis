@@ -30,8 +30,10 @@ where
 
 import           Control.Monad.State
 
+import           Data.Either
 import qualified Data.Map  as Map
 import qualified Data.Set  as Set
+import qualified Data.String.Utils  as Utils
 
 -- import from serverenv
 import qualified EnvServer as IOS
@@ -70,10 +72,10 @@ encode envs (Act offs)  =  do
                         _                     -> error $ "Encode 2: No (unique) action: " ++ fshow offs
      let wenv = Map.fromList $ zip vars' walues
      st <- gets IOC.state
-     sval     <- TxsCore.txsEval $ subst (Map.map cstrConst wenv) (funcDefs (IOC.tdefs st)) vexp
-     return $ case sval of
-                Cstring s -> SAct h s
-                _         -> error "Encode 3: No encoding to String\n"
+     mval     <- TxsCore.txsEval $ subst (Map.map cstrConst wenv) (funcDefs (IOC.tdefs st)) vexp
+     return $ case mval of
+                Right (Cstring s) -> SAct h s
+                _                 -> error "Encode 3: No encoding to String\n"
 
 encode _envs ActQui  =
      return SActQui
@@ -96,8 +98,10 @@ decode envs (SAct hdl sval)  =
                                           }
       in do let senv = Map.fromList [ (var', cstrConst (Cstring sval)) ]
             st <- gets IOC.state
-            wals     <- mapM (TxsCore.txsEval . subst senv (funcDefs (IOC.tdefs st))) vexps
-            return $ Act ( Set.singleton (chan',wals) )
+            mwals     <- mapM (TxsCore.txsEval . subst senv (funcDefs (IOC.tdefs st))) vexps
+            case partitionEithers mwals of
+                ([], wals) -> return $ Act ( Set.singleton (chan',wals) )
+                (es, _)    -> error $ "Decode: eval failed\n  " ++ Utils.join "\n  " es
 
 decode _envs SActQui  =
      return ActQui

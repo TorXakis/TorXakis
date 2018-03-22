@@ -15,22 +15,19 @@ exampDir :: FilePath
 exampDir = "Point"
 
 test0 :: TxsExample
-test0 = TxsExample
+test0 = emptyExample
   { exampleName = "Stepper Test"
   , txsModelFiles = [txsFilePath exampDir "Point"]
   , txsCmdsFiles = [txsCmdPath exampDir "Point_Stepper"]
-  , txsServerArgs = []
-  , sutExample = Nothing
   , expectedResult = Pass
   }
 
 test1 :: TxsExample
-test1 = TxsExample
+test1 = emptyExample
   { exampleName = "First Quadrant Test Purpose"
   , txsModelFiles = [ txsFilePath exampDir "Point"
                     , txsFilePath exampDir "InFirstQuadrantTestPurpose" ]
   , txsCmdsFiles = [txsCmdPath exampDir "Point_FirstQuadrant_Tester"]
-  , txsServerArgs = []
   , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "Point_Simulator")
   , expectedResult = Pass
   }

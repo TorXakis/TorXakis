@@ -37,7 +37,6 @@ import           Control.Concurrent.Async
 import           Control.Monad.State
 import qualified Data.Text           as T
 import           System.Timeout
-import qualified Data.Map            as Map
 
 import           Network.TextViaSockets (Connection)
 import qualified Network.TextViaSockets as TVS
@@ -220,17 +219,12 @@ closeSockets  =  do
      return ()
 
 
--- ----------------------------------------------------------------------------------------- --
--- putSocket :  try to do output to world on time, or observe earlier input (no quiescence)
+-- | putSocket :  try to do output to world on time, or observe earlier input (no quiescence)
+putSocket :: Int -> Int -> IOS.EnvS -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
 
-putSocket :: IOS.EnvS -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
-
-putSocket envs act@Act{} =
+putSocket ioTime _ envs act@Act{} =
      let ( Just towChan, _,  _ )  = IOS.tow envs
          ( Just frowChan, _,  _ ) = IOS.frow envs
-         ioTime                   = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
-                                      Nothing      -> 10                -- default 10 msec
-                                      Just (val,_) -> read val
       in do sact <- EnDecode.encode envs act
             obs  <- lift $ timeout (ioTime*1000) (readChan frowChan)       -- timeout in musec
             case obs of
@@ -240,15 +234,9 @@ putSocket envs act@Act{} =
                                     return act
               Just (SAct h s) -> EnDecode.decode envs (SAct h s)
 
-putSocket envs ActQui =
+putSocket ioTime deltaTime envs ActQui =
      let ( Just towChan, _,  _ )  = IOS.tow envs
          ( Just frowChan, _,  _ ) = IOS.frow envs
-         deltaTime                = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
-                                      Nothing      -> 2000                -- default 2 sec
-                                      Just (val,_) -> read val
-         ioTime                   = case Map.lookup "param_Sut_ioTime" (IOS.params envs) of
-                                      Nothing      -> 10                -- default 10 msec
-                                      Just (val,_) -> read val
       in do sact <- EnDecode.encode envs ActQui
             obs <- lift $ timeout (ioTime*1000) (readChan frowChan)
             case obs of
@@ -260,15 +248,10 @@ putSocket envs ActQui =
                                     return ActQui
               Just (SAct h s) -> EnDecode.decode envs (SAct h s)
 
--- ----------------------------------------------------------------------------------------- --
--- getSocket :  observe input from world, or observe quiescence
-
-getSocket :: IOS.EnvS -> IOC.IOC TxsDDefs.Action
-getSocket envs =
+-- | getSocket :  observe input from world, or observe quiescence
+getSocket :: Int -> IOS.EnvS -> IOC.IOC TxsDDefs.Action
+getSocket deltaTime envs =
      let ( Just frowChan, _,  _ ) = IOS.frow envs
-         deltaTime                = case Map.lookup "param_Sut_deltaTime" (IOS.params envs) of
-                                      Nothing      -> 2000                -- default 2 sec
-                                      Just (val,_) -> read val
       in do obs <- lift $ timeout (deltaTime*1000) (readChan frowChan)
             case obs of
               Nothing         -> return ActQui

@@ -30,10 +30,12 @@ import           Control.DeepSeq
 import           Control.Exception
 import           Control.Monad.State
 import qualified Data.Char           as Char
+import qualified Data.Either         as Either
 import qualified Data.List           as List
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import qualified Data.Text           as T
+import qualified Data.String.Utils   as Utils
 import           Network             hiding (socketPort)
 import           Network.Socket      hiding (accept, sClose)
 import           System.IO
@@ -60,6 +62,7 @@ import qualified Utils
 import qualified VarId
 
 -- import from valexpr
+import qualified ConstDefs
 import           Id
 import qualified ValExpr
 
@@ -81,21 +84,24 @@ main = withSocketsDo $ do
       hPutStrLn stderr "Errors found while loading the configuration"
       hPrint stderr xs
     Right config -> do
-        (portNr, sock) <- txsListenOn $ (clPortNumber . SC.cmdLineCfg) uConfig
-        (hs, host, _) <- accept sock
-        hSetBuffering hs LineBuffering
-        hSetEncoding hs latin1
-        hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
-        let initS = IOS.envsNone
-                { IOS.host   = host
-                , IOS.portNr = portNr
-                , IOS.servhs = hs
-                }
-            coreConfig = config
-        TxsCore.runTxsCore coreConfig cmdsIntpr initS
-        threadDelay 1000000    -- 1 sec delay on closing
-        sClose sock
-        hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
+      (portNr, sock) <- txsListenOn $ (clPortNumber . SC.cmdLineCfg) uConfig
+      (hs, host, _) <- accept sock
+      hSetBuffering hs LineBuffering
+      hSetEncoding hs latin1
+      hPutStrLn stderr "\nTXSSERVER >>  Starting  ..... \n"
+      let initS = IOS.envsNone
+              { IOS.host   = host
+              , IOS.portNr = portNr
+              , IOS.servhs = hs
+              , IOS.params = SC.updateParamVals -- updating parameters...
+                              (IOS.params IOS.envsNone) -- ...defined in ServerEnv
+                              $ SC.configuredParameters config
+              }
+          coreConfig = config
+      TxsCore.runTxsCore coreConfig cmdsIntpr initS
+      threadDelay 1000000    -- 1 sec delay on closing
+      sClose sock
+      hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
 
 -- | Listen on the given port. If no port number is given, then a free port is
 -- determined, and this port number is printed to the standard output.
@@ -435,23 +441,31 @@ cmdEval args = do
          vars          = IOS.locvars env
      tdefs            <- lift TxsCore.txsGetTDefs
      ((uid',vexp'),e) <- lift $ lift $ catch
-                           ( let p = TxsHappy.vexprParser
+                           ( let (i,p) = TxsHappy.vexprParser
                                         ( TxsAlex.Csigs    sigs
                                         : TxsAlex.Cvarenv (Map.keys vals ++ vars)
                                         : TxsAlex.Cunid   (_id uid + 1)
                                         : TxsAlex.txsLexer args
                                         )
-                              in return $!! (p,"")
+                              in return $!! ((i, Just p),"")
                            )
-                           ( \e -> return ((uid,ValExpr.cstrError "cmdEval parse failed"), show (e::ErrorCall)))
-     if  e /= ""
-       then do modify $ \env' -> env' { IOS.uid = uid' }
-               IFS.nack "EVAL" [ e ]
-               cmdsIntpr
-       else do modify $ \env' -> env' { IOS.uid = uid' }
-               walue <- lift $ TxsCore.txsEval (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp')
-               IFS.pack "EVAL" [ TxsShow.fshow walue ]
-               cmdsIntpr
+                           ( \ec -> return ((uid,Nothing), show (ec::ErrorCall)))
+     case vexp' of
+       Just vexp'' -> do 
+                        modify $ \env' -> env' { IOS.uid = uid' }
+                        mwalue <- lift $ TxsCore.txsEval (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp'')
+                        case mwalue of
+                            Right walue -> do 
+                                            IFS.pack "EVAL" [ TxsShow.fshow walue ]
+                                            cmdsIntpr
+                            Left t      -> do
+                                            IFS.nack "EVAL" [ "eval 2" ++ t ]
+                                            cmdsIntpr
+
+       Nothing -> do 
+                    modify $ \env' -> env' { IOS.uid = uid' }
+                    IFS.nack "EVAL" [ "eval 1" ++ e ]
+                    cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -469,28 +483,35 @@ cmdSolve args kind = do
          vals          = IOS.locvals env
      tdefs            <- lift TxsCore.txsGetTDefs
      ((uid',vexp'),e) <- lift $ lift $ catch
-                           ( let p = TxsHappy.vexprParser
-                                       ( TxsAlex.Csigs sigs
-                                       : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-                                       : TxsAlex.Cunid (_id uid + 1)
-                                       : TxsAlex.txsLexer args
-                                       )
-                              in return $!! (p,"")
+                           ( let (i,p) = TxsHappy.vexprParser
+                                           ( TxsAlex.Csigs sigs
+                                           : TxsAlex.Cvarenv (Map.keys vals ++ vars)
+                                           : TxsAlex.Cunid (_id uid + 1)
+                                           : TxsAlex.txsLexer args
+                                           )
+                              in return $!! ((i, Just p),"")
                            )
-                           ( \e -> return ((uid,ValExpr.cstrError "cmdSolve parse failed."),show (e::ErrorCall)))
-     if  e /= ""
-       then do modify $ \env' -> env' { IOS.uid = uid' }
-               IFS.nack cmd [ e ]
-               cmdsIntpr
-       else do modify $ \env' -> env' { IOS.uid = uid' }
-               sols  <- lift $ solver (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp')
-               IFS.pack cmd [ show sols ]
-               cmdsIntpr
+                           ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
+     case vexp' of
+        Just vexp'' -> do
+                        modify $ \env' -> env' { IOS.uid = uid' }
+                        sols  <- lift $ solver (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp'')
+                        IFS.pack cmd [ show sols ]
+                        cmdsIntpr
+        Nothing  -> do 
+                        modify $ \env' -> env' { IOS.uid = uid' }
+                        IFS.nack cmd [ e ]
+                        cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdTester :: String -> IOS.IOS ()
 cmdTester args = do
+     envs'  <- get
+     let Just (ioString,_) = Map.lookup "param_Sut_ioTime" (IOS.params envs')
+         ioTime = read ioString
+         Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (IOS.params envs')
+         deltaTime = read deltaString
      tdefs  <- lift TxsCore.txsGetTDefs
      case words args of
        [m,c] -> do
@@ -508,7 +529,7 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
+                      lift $ TxsCore.txsSetTest (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                 modeldef Nothing Nothing
                       IFS.pack "TESTER" []
                       cmdsIntpr
@@ -537,7 +558,7 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
+                      lift $ TxsCore.txsSetTest (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                 modeldef (Just mapperdef) Nothing
                       IFS.pack "TESTER" []
                       cmdsIntpr
@@ -546,7 +567,7 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
+                      lift $ TxsCore.txsSetTest (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                 modeldef Nothing (Just purpdef)
                       IFS.pack "TESTER" [ ]
                       cmdsIntpr
@@ -575,7 +596,7 @@ cmdTester args = do
                 -> do modify $ \env -> env { IOS.modus  = IOS.Tested cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetTest (World.putSocket envs) (World.getSocket envs)
+                      lift $ TxsCore.txsSetTest (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                 modeldef (Just mapperdef) (Just purpdef)
                       IFS.pack "TESTER" [ ]
                       cmdsIntpr
@@ -626,6 +647,11 @@ isConsistentTester _
 
 cmdSimulator :: String -> IOS.IOS ()
 cmdSimulator args = do
+     envs'  <- get
+     let Just (ioString,_) = Map.lookup "param_Sim_ioTime" (IOS.params envs')
+         ioTime = read ioString
+         Just (deltaString,_) = Map.lookup "param_Sim_deltaTime" (IOS.params envs')
+         deltaTime = read deltaString                      
      tdefs  <- lift TxsCore.txsGetTDefs
      case words args of
        [m,c] -> do
@@ -643,7 +669,7 @@ cmdSimulator args = do
                 -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetSim (World.putSocket envs) (World.getSocket envs)
+                      lift $ TxsCore.txsSetSim (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                modeldef Nothing
                       IFS.pack "SIMULATOR" []
                       cmdsIntpr
@@ -668,7 +694,7 @@ cmdSimulator args = do
                 -> do modify $ \env -> env { IOS.modus = IOS.Simuled cnectdef }
                       World.openSockets
                       envs  <- get
-                      lift $ TxsCore.txsSetSim (World.putSocket envs) (World.getSocket envs)
+                      lift $ TxsCore.txsSetSim (World.putSocket ioTime deltaTime envs) (World.getSocket deltaTime envs)
                                                modeldef (Just mapperdef)
                       IFS.pack "SIMULATOR" []
                       cmdsIntpr
@@ -1013,14 +1039,28 @@ readAction chids args = do
            then do IFS.nack "ERROR" [ "incorrect action: no question mark offer allowed" ]
                    return TxsDDefs.ActQui
            else do
-             acts <- lift $ sequence
+             pacts <- lift $ sequence
                             [ Utils.liftP2 (chid, sequence [ TxsCore.txsEval vexp
                                                            | TxsDefs.Exclam vexp <- choffs
                                                            ]
                                            )
                             | TxsDefs.Offer chid choffs <- Set.toList offs'
                             ]
-             return $ TxsDDefs.Act (Set.fromList acts)
+             let eacts = map makeEither pacts
+             case Either.partitionEithers eacts of
+                ([], acts) -> return $ TxsDDefs.Act (Set.fromList acts)
+                (es, _)    -> do
+                                IFS.nack "ERROR" [ "eval failed:\n  " ++ Utils.join "\n  " es ]
+                                return TxsDDefs.ActQui
+    where
+        makeEither :: (TxsDefs.ChanId, [Either String ConstDefs.Const]) -> Either String (TxsDefs.ChanId, [ConstDefs.Const])
+        makeEither (chid, macts) = 
+             case Either.partitionEithers macts of
+                ([], acts) -> Right (chid, acts)
+                (es, _)    -> Left $ "eval failed:\n  " ++ Utils.join "\n  " es
+                
+                                
+                
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -1041,10 +1081,10 @@ readBExpr chids args = do
                                       )
                                in return $!! (p,"")
                             )
-                            ( \e -> return ((uid, TxsDefs.Stop),show (e::ErrorCall)))
+                            ( \e -> return ((uid, TxsDefs.stop),show (e::ErrorCall)))
      if  e /= ""
        then do IFS.nack "ERROR" [ "incorrect behaviour expression: " ++ e ]
-               return TxsDefs.Stop
+               return TxsDefs.stop
        else return bexpr'
 
 -- ----------------------------------------------------------------------------------------- --

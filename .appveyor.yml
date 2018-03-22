@@ -5,12 +5,11 @@
 build: off
 skip_tags: true
 
-version: pre-0.5.0.{build}.{branch}
+version: pre-0.6.0.{build}.{branch}
 # branches:
     # only:
     # - develop
     # - /^hotfix.*$/
-
 
 init:
 - ps: Write-Host Starting init at $(Get-Date)
@@ -23,7 +22,7 @@ init:
 
 install:
 - ps: Write-Host Starting install at $(Get-Date)
-- ps: if (-not (Test-Path ".cache")) { mkdir .cache} else { Write-Host ".cache found." }
+- ps: if (-not (Test-Path "$CACHE_DIR")) { mkdir $CACHE_DIR} else { Write-Host "$CACHE_DIR found." }
 # obtain the stack executable
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\stack.exe")) {
@@ -36,14 +35,14 @@ install:
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\cvc4.exe")) {
         # obtain the cvc4 executable
-        curl -OutFile $("$CACHE_DIR\cvc4.exe") https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.5/cvc4-1.5-win32-opt.exe -Verbose
+        curl -OutFile $("$CACHE_DIR\cvc4.exe") https://github.com/TorXakis/Dependencies/releases/download/cvc4-20180306/cvc4-20180306-win32-opt.exe -Verbose
     } else {
         Write-Host "cvc4.exe found.";
     }
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\z3")) {
         # install z3
-        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.5.1/z3-4.5.1.059bad909ad4-x64-win_20170905.zip -Verbose
+        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.6.0/z3-4.6.0-x64-win.zip -Verbose
         mkdir $CACHE_DIR\z3
         7z x $("-o${CACHE_DIR}\z3\") z3.zip
     } else {
@@ -73,16 +72,16 @@ build_script:
 clone_folder: c:\TorXakis
 environment:
   global:
-    STACK_ROOT: c:\TorXakis\.stack
+    STACK_ROOT: c:\TorXakis\.stack-root
 
 cache:
-- .stack
-- .cache
+- .stack-root -> stack.yaml
+- .cache -> stack.yaml
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2.installed'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20150512'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20150512.installed'
-- .stack-work -> .stack.yaml
+- .stack-work -> stack.yaml
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
 
 test_script:
@@ -93,8 +92,9 @@ test_script:
     do {
         Write-Host Try $tryCount
         $tryCount++
-        cmd /c "stack test --install-ghc --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml 2>&1"
+        cmd /c "stack build --install-ghc --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml 2>&1"
     } While ((!$?) -and ($tryCount -le 10))
+- stack test --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml
 - ps: popd
 
 # after_test:

@@ -20,38 +20,32 @@ modelFiles = [ txsFilePath BenchTest benchDir "Enable"
              ]
 
 seqEnable :: TxsExample
-seqEnable = TxsExample
+seqEnable = emptyExample
     { exampleName = "sequence of enable operators, without data"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "SeqEnable"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 seqEnableInt :: TxsExample
-seqEnableInt = TxsExample
+seqEnableInt = emptyExample
     { exampleName = "sequence of enable operators, with integers"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "SeqEnableInt"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 
 seqEnableTwoInts :: TxsExample
-seqEnableTwoInts = TxsExample
+seqEnableTwoInts = emptyExample
     { exampleName = "sequence of enable operators, with integers and two outputs"
     , txsModelFiles = modelFiles
     , txsCmdsFiles = [ seedSetupCmdFile
                      , txsCmdPath BenchTest benchDir "SeqEnableTwoInts"
                      ]
-    , txsServerArgs = []
-    , sutExample = Nothing
     , expectedResult = Pass
     }
 

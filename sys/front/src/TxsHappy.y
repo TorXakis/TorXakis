@@ -170,7 +170,6 @@ import Id
     FI            { Tfi               pos }
     ISTEP         { Tistep            pos }
     QSTEP         { Tqstep            pos }
-    ERROR         { Terror            pos }
     REGEX         { Tregex            pos }
     ANY           { Tany              pos }
     True          { Tbool             posbool True }
@@ -1215,7 +1214,7 @@ CnectDef        -- :: { (Ident,TxsDef) }
                 ;  $5.inhSigs      = $$.inhSigs
                 ;  $$.synSigs      = Sigs.empty
                 ;  $$ = let { conntows  = [ ConnDtoW chid hsn prn vars vexp
-                                          | ConnDtoW chid hsn prn [] (view -> Vconst (Cstring "")) <- $5
+                                          | ConnDtoW chid hsn prn [] (ValExpr.view -> Vconst (Cstring "")) <- $5
                                           , ConnDtoW chid' "" (-1) vars vexp <- $5
                                           , not $ prn == (-1)
                                           , chid == chid'
@@ -1233,7 +1232,7 @@ CnectDef        -- :: { (Ident,TxsDef) }
                              error $ "\nTXS0221: "++
                                "Double channels in Connection definition:"++(show dbls)++"\n"
                 ;  where let dbls = doubles [ (hs,pr)
-                                            | ConnDtoW chid hs pr [] (view -> Vconst (Cstring "")) <- $5
+                                            | ConnDtoW chid hs pr [] (ValExpr.view -> Vconst (Cstring "")) <- $5
                                             , not $ pr == (-1)
                                             ]
                           in if null dbls then () else 
@@ -1247,7 +1246,7 @@ CnectDef        -- :: { (Ident,TxsDef) }
                              error $ "\nTXS0223: "++ 
                                "Double (hostname,portnr) for IN: "++(show dbls)++"\n"
 	        ;  where let { towchids  = [ chid
-                                           | ConnDtoW chid hs pr [] (view -> Vconst (Cstring "")) <- $5
+                                           | ConnDtoW chid hs pr [] (ValExpr.view -> Vconst (Cstring "")) <- $5
                                            , not $ pr == (-1)
                                            ]
                              ; encchids  = [ chid
@@ -1836,7 +1835,7 @@ BehaviourExpr1  -- :: { BExpr }
                                        then $3.synExitSorts
                                        else error ("\nTXS2231: " ++
                                                    "Exit does not match in Enable\n")
-                ;  $$ = Enable $1 [] $3
+                ;  $$ = enable $1 [] $3
                 }
               | BehaviourExpr1 ">>>" ACCEPT ChannelOffList IN BehaviourExpr2 EndIn
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1857,7 +1856,7 @@ BehaviourExpr1  -- :: { BExpr }
                 ;  $4.inhVarSigs   = $$.inhVarSigs
                 ;  $6.inhVarSigs   = map (\(IdVar v) -> v ) $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $4.synVarSigs)
                 ;  $$.synExitSorts = $6.synExitSorts
-                ;  $$ = Enable $1 $4 $6
+                ;  $$ = enable $1 $4 $6
                 }
               | BehaviourExpr1 "[>>" BehaviourExpr2
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1870,7 +1869,7 @@ BehaviourExpr1  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $3.synExitSorts
-                ;  $$ = Disable $1 $3
+                ;  $$ = disable $1 $3
                 }
               | BehaviourExpr1 "[><" BehaviourExpr2
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1886,7 +1885,7 @@ BehaviourExpr1  -- :: { BExpr }
                                        then $1.synExitSorts
                                        else error ("\nTXS2233: " ++
                                                    "Exit sorts do not match in Interrupt\n")
-                ;  $$ = Interrupt $1 $3
+                ;  $$ = interrupt $1 $3
                 }
               | BehaviourExpr2
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1922,12 +1921,12 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
-                ;  $$ = case $1 of
+                ;  $$ = case TxsDefs.view $1 of
                         { Parallel chids bexps
-                            -> if (Set.fromList chids) == (Set.fromList $$.inhChanSigs)
-                                 then Parallel $$.inhChanSigs (bexps ++ [$3])
-                                 else Parallel $$.inhChanSigs [$1,$3]
-                        ; _ -> Parallel $$.inhChanSigs [$1,$3]
+                            -> if (Set.fromList chids) == (Set.fromList (chanIdExit:$$.inhChanSigs))
+                                 then parallel (chanIdExit:$$.inhChanSigs) (bexps ++ [$3])
+                                 else parallel (chanIdExit:$$.inhChanSigs) [$1,$3]
+                        ; _ -> parallel (chanIdExit:$$.inhChanSigs) [$1,$3]
                         }
                 }
               | BehaviourExpr2 "|||" BehaviourExpr3
@@ -1941,9 +1940,9 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
-                ;  $$ = case $1 of
-                        { Parallel [] bexps -> Parallel [] (bexps ++ [$3])
-                        ; _                 -> Parallel [] [$1,$3]
+                ;  $$ = case TxsDefs.view $1 of
+                        { Parallel [chanIdExit] bexps -> parallel [chanIdExit] (bexps ++ [$3])
+                        ; _                           -> parallel [chanIdExit] [$1,$3]
                         }
                 }
               | BehaviourExpr2 "|[" IdList "]|" BehaviourExpr3
@@ -1966,12 +1965,12 @@ BehaviourExpr2  -- :: { BExpr }
                                       }
                                     | nm <- $3
                                     ]
-                         in case $1 of
+                         in case TxsDefs.view $1 of
                             { Parallel chids bexps
-                                -> if (Set.fromList chids) == (Set.fromList chans)
-                                     then Parallel chans (bexps ++ [$5])
-                                     else Parallel chans [$1,$5]
-                            ; _ -> Parallel chans [$1,$5]
+                                -> if (Set.fromList chids) == (Set.fromList (chanIdExit:chans))
+                                     then parallel (chanIdExit:chans) (bexps ++ [$5])
+                                     else parallel (chanIdExit:chans) [$1,$5]
+                            ; _ -> parallel (chanIdExit:chans) [$1,$5]
                             }
                 }
               | BehaviourExpr3
@@ -2008,7 +2007,7 @@ BehaviourExpr3  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $3.synExitSorts
-                ;  $$ = Choice [$1,$3]
+                ;  $$ = choice [$1,$3]
                 }  
               | BehaviourExpr4
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -2050,7 +2049,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $2.inhVarSigs   = $$.inhVarSigs
                 ;  $5.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $5.synExitSorts
-                ;  $$ = Guard (cstrAnd (Set.fromList $2)) $5
+                ;  $$ = guard (cstrAnd (Set.fromList $2)) $5
                 }
               | PrefOfferList ">->" BehaviourExpr4
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -2063,7 +2062,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = map (\(IdVar v) -> v ) $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $1.synVarSigs)
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $3.synExitSorts
-                ;  $$ = ActionPref (ActOffer $1 (cstrConst (Cbool True))) $3
+                ;  $$ = actionPref (ActOffer $1 (cstrConst (Cbool True))) $3
                 }
               | PrefOfferList "[[" NeValExprs "]]" ">->" BehaviourExpr4
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -2085,7 +2084,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $3.inhVarSigs   = map (\(IdVar v) -> v ) $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $1.synVarSigs)
                 ;  $6.inhVarSigs   = map (\(IdVar v) -> v ) $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $1.synVarSigs)
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $6.synExitSorts
-                ;  $$ = ActionPref (ActOffer $1 (cstrAnd (Set.fromList $3))) $6
+                ;  $$ = actionPref (ActOffer $1 (cstrAnd (Set.fromList $3))) $6
                 }
               | PrefOfferList
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -2094,7 +2093,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $1.inhChanSigs  = $$.inhChanSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts
-                ;  $$ = ActionPref (ActOffer $1 (cstrConst (Cbool True))) Stop
+                ;  $$ = actionPref (ActOffer $1 (cstrConst (Cbool True))) stop
                 }
               | PrefOfferList "[[" NeValExprs "]]"
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -2112,12 +2111,12 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = map (\(IdVar v) -> v ) $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $1.synVarSigs)
                 ;  $$.synExitSorts = $1.synExitSorts
-                ;  $$ = ActionPref (ActOffer $1 (cstrAnd (Set.fromList $3))) Stop
+                ;  $$ = actionPref (ActOffer $1 (cstrAnd (Set.fromList $3))) stop
                 }
               | STOP
                 {  $$.synMaxUid    = $$.inhNodeUid
                 ;  $$.synExitSorts = NoExit
-                ;  $$ = Stop
+                ;  $$ = stop
                 }
               | Id ActualChannels ActualValExprs
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
@@ -2167,7 +2166,7 @@ BehaviourExpr4  -- :: { BExpr }
                                                "Processes with the same name are\n* " ++ 
                                                Utils.join "\n* " (map show [pid | pid@(ProcId nm _ _ _ _) <- Sigs.pro $$.inhSigs
                                                                                 , nm == $1 ])
-                            ; [pid] -> ProcInst pid $2 $3
+                            ; [pid] -> procInst pid $2 $3
                             ; _     -> error $ "\nTXS0324: "++ "Process "++
                                                "not uniquely resolved: "++ show $1 ++"\n"  ++
                                                "Possible processes are\n* " ++ 
@@ -2184,7 +2183,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $2.inhVarSigs   = $$.inhVarSigs
                 ;  $4.inhVarSigs   = map (\(IdVar v) -> v ) $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $2.synVarSigs)
                 ;  $$.synExitSorts = $4.synExitSorts
-                ;  $$ = foldr ValueEnv $4 $2
+                ;  $$ = foldr valueEnv $4 $2
                 }
               | HIDE FormalChannels IN BehaviourExpr1 EndIn
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
@@ -2195,7 +2194,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $4.inhChanSigs  = map (\(IdChan c) -> c ) $ scopeMerge (map IdChan $$.inhChanSigs) (map IdChan $2)
                 ;  $4.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $4.synExitSorts
-                ;  $$ = Hide $2 $4
+                ;  $$ = hide $2 $4
                 }
               | "(" BehaviourExpr1 ")"
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
@@ -3008,11 +3007,6 @@ ValExpr2        -- :: { VExpr }
                         ; Just srt -> cstrConst (Cany srt)
                         }
                 }
-              | ERROR string
-                {  $$.synMaxUid    = $$.inhNodeUid
-                ;  $$.synExpdSort  = Map.elems (Sigs.sort $$.inhSigs)
-                ;  $$ = cstrError $2
-                }
 
 ValExprs        -- :: { [ VExpr] }
                 -- list of value expressions
@@ -3405,7 +3399,7 @@ StautItemList   -- :: { BExpr }
                 ;  $$.synExitSorts = $1.synExitSorts
                 ;  $$ = case $1 of
                         { ( sts, vars, trs, [init], [venv] )
-                            -> StAut init venv trs
+                            -> stAut init venv trs
                         ; _ -> error $ "\nTXS1010: " ++ "error in state atomaton def: " ++
                                        (show (Sigs.pro $$.inhSigs)) ++ "\n"
                         }
@@ -4048,7 +4042,6 @@ showToken t  =  case t of
                 ; Telse             pos     ->  (showPos pos) ++ "  ELSE"
                 ; Tfi               pos     ->  (showPos pos) ++ "  FI"
                 ; Tistep            pos     ->  (showPos pos) ++ "  ISTEP"
-                ; Terror            pos     ->  (showPos pos) ++ "  ERROR"
                 ; Tregex            pos     ->  (showPos pos) ++ "  REGEX"
                 ; Tarrow            pos     ->  (showPos pos) ++ "  '->'"
                 ; Tbarrow           pos     ->  (showPos pos) ++ "  '<-'"

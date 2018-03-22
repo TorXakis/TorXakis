@@ -15,6 +15,8 @@ See LICENSE at root directory of this repository.
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
+{-# LANGUAGE ViewPatterns        #-}
+
 module TestLPEHide
 (
 testLPEHideList
@@ -50,8 +52,8 @@ import Debug.Trace
 
 -- runs lpeHide, but returns only the relevant translated ProcDef
 lpeHideTestWrapper :: BExpr -> TranslatedProcDefs -> ProcDefs -> Maybe (BExpr, ProcDef)
-lpeHideTestWrapper procInst translatedProcDefs procDefs =
-  let (procInst'@(ProcInst procId' _ _), procDefs') = lpeHideFunc procInst chanOffers translatedProcDefs procDefs
+lpeHideTestWrapper procInst'' translatedProcDefs procDefs =
+  let (procInst'@(TxsDefs.view -> ProcInst procId' _ _), procDefs') = lpeHideFunc procInst'' chanOffers translatedProcDefs procDefs
       procDef' = case Map.lookup procId' procDefs' of
                     Just procDef   -> procDef
                     Nothing        -> error "lpeHideTestWrapper: could not find the procId" in
@@ -192,42 +194,42 @@ anyInt = cstrConst $ Cany intSort
 -- P[A]() := HIDE [] IN STOP NI 
 -- with procInst = P[A]()
 -- becomes
--- P[A](pc$P) :=                    // technically: Choice []
+-- P[A](pc$P) :=                    // technically: choice[]
 -- with procInst = P[A](0)
 
 testStop1 :: Test
 testStop1 = TestCase $
-   assertBool "simple STOP" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst emptyTranslatedProcDefs procDefs))
+   assertBool "simple STOP" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst'' emptyTranslatedProcDefs procDefs))
    where
-      procInst = ProcInst procIdP [chanIdA] []
+      procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (Hide [] Stop)
+      procDefP = ProcDef [chanIdA] [] (hide [] stop)
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
       procIdPlpe = procIdGen "P" [chanIdA] [varIdPcP]
-      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (Choice [])
-      procInst' = ProcInst procIdPlpe [chanIdA] [int0]
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (choice[])
+      procInst' = procInst procIdPlpe [chanIdA] [int0]
 
 
 
 -- P[A]() := HIDE [A] IN STOP NI 
 -- with procInst = P[A]()
 -- becomes
--- P[A](pc$P) :=                    // technically: Choice []
+-- P[A](pc$P) :=                    // technically: choice[]
 -- with procInst = P[A](0)
 
 testStop2 :: Test
 testStop2 = TestCase $
-   assertBool "simple STOP 2" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst emptyTranslatedProcDefs procDefs))
+   assertBool "simple STOP 2" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst'' emptyTranslatedProcDefs procDefs))
    where
-      procInst = ProcInst procIdP [chanIdA] []
+      procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (Hide [chanIdA] Stop)
+      procDefP = ProcDef [chanIdA] [] (hide [chanIdA] stop)
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
       procIdPlpe = procIdGen "P" [chanIdA] [varIdPcP]
-      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (Choice [])
-      procInst' = ProcInst procIdPlpe [chanIdA] [int0]
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (choice[])
+      procInst' = procInst procIdPlpe [chanIdA] [int0]
 
 
 
@@ -239,15 +241,15 @@ testStop2 = TestCase $
 
 testActionPref1 :: Test
 testActionPref1 = TestCase $
-   assertBool "actionPref 1" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst emptyTranslatedProcDefs procDefs))
+   assertBool "actionPref 1" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst'' emptyTranslatedProcDefs procDefs))
    where
-      procInst = ProcInst procIdP [chanIdA0] []
+      procInst'' = procInst procIdP [chanIdA0] []
       procIdP = procIdGen "P" [chanIdA0] []
-      procDefP = ProcDef [chanIdA0] [] (Hide [] (ActionPref actOfferA Stop))
+      procDefP = ProcDef [chanIdA0] [] (hide [] (actionPref actOfferA stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
       procIdPlpe = procIdGen "P" [chanIdA0] [varIdPcP]
-      procDefPlpe = ProcDef [chanIdA0] [varIdPcP] (ActionPref                         
+      procDefPlpe = ProcDef [chanIdA0] [varIdPcP] (actionPref                         
                                                       -- action: A [pc$P == 0]
                                                       ActOffer {  offers = Set.singleton
                                                                               Offer { chanid = chanIdA0
@@ -255,8 +257,8 @@ testActionPref1 = TestCase $
                                                                               }
                                                                   , constraint = cstrEqual vexprPcP int0
                                                                   } 
-                                                      (ProcInst procIdPlpe [chanIdA0] [vexprMin1]))
-      procInst' = ProcInst procIdPlpe [chanIdA0] [int0]
+                                                      (procInst procIdPlpe [chanIdA0] [vexprMin1]))
+      procInst' = procInst procIdPlpe [chanIdA0] [int0]
 
 
 -- P[A]() := HIDE [A] IN A -> STOP NI 
@@ -267,15 +269,15 @@ testActionPref1 = TestCase $
 
 testActionPref2 :: Test
 testActionPref2 = TestCase $
-   assertBool "actionPref 2" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst emptyTranslatedProcDefs procDefs))
+   assertBool "actionPref 2" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst'' emptyTranslatedProcDefs procDefs))
    where
-      procInst = ProcInst procIdP [chanIdA0] []
+      procInst'' = procInst procIdP [chanIdA0] []
       procIdP = procIdGen "P" [chanIdA0] []
-      procDefP = ProcDef [chanIdA0] [] (Hide [chanIdA0] (ActionPref actOfferA Stop))
+      procDefP = ProcDef [chanIdA0] [] (hide [chanIdA0] (actionPref actOfferA stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
       procIdPlpe = procIdGen "P" [chanIdA0] [varIdPcP]
-      procDefPlpe = ProcDef [chanIdA0] [varIdPcP] (ActionPref                         
+      procDefPlpe = ProcDef [chanIdA0] [varIdPcP] (actionPref                         
                                                       -- action: ISTEP [pc$P == 0]
                                                       ActOffer {  offers = Set.singleton
                                                                               Offer { chanid = chanIdIstep
@@ -283,8 +285,8 @@ testActionPref2 = TestCase $
                                                                               }
                                                                   , constraint = cstrEqual vexprPcP int0
                                                                   } 
-                                                      (ProcInst procIdPlpe [chanIdA0] [vexprMin1]))
-      procInst' = ProcInst procIdPlpe [chanIdA0] [int0]
+                                                      (procInst procIdPlpe [chanIdA0] [vexprMin1]))
+      procInst' = procInst procIdPlpe [chanIdA0] [int0]
 
 
 
@@ -297,15 +299,15 @@ testActionPref2 = TestCase $
 
 testActionPref3 :: Test
 testActionPref3 = TestCase $
-   assertBool "actionPref 3" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst emptyTranslatedProcDefs procDefs))
+   assertBool "actionPref 3" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst'' emptyTranslatedProcDefs procDefs))
    where
-      procInst = ProcInst procIdP [chanIdA] []
+      procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (Hide [] (ActionPref actOfferAx Stop))
+      procDefP = ProcDef [chanIdA] [] (hide [] (actionPref actOfferAx stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
       procIdPlpe = procIdGen "P" [chanIdA] [varIdPcP]
-      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (ActionPref                         
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (actionPref                         
                                                       -- action: A?x [pc$P == 0]
                                                       ActOffer {  offers = Set.singleton
                                                                               Offer { chanid = chanIdA
@@ -313,8 +315,8 @@ testActionPref3 = TestCase $
                                                                               }
                                                                   , constraint = cstrEqual vexprPcP int0
                                                                   } 
-                                                      (ProcInst procIdPlpe [chanIdA] [vexprMin1]))
-      procInst' = ProcInst procIdPlpe [chanIdA] [int0]
+                                                      (procInst procIdPlpe [chanIdA] [vexprMin1]))
+      procInst' = procInst procIdPlpe [chanIdA] [int0]
 
 
 -- P[A]() := HIDE [A] IN A?x -> STOP NI 
@@ -325,11 +327,11 @@ testActionPref3 = TestCase $
 
 testActionPref4 :: Test
 testActionPref4 = TestCase $
-   assertBool "actionPref 3" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst emptyTranslatedProcDefs procDefs))
+   assertBool "actionPref 3" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst'' emptyTranslatedProcDefs procDefs))
    where
-      procInst = ProcInst procIdP [chanIdA] []
+      procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (Hide [chanIdA] (ActionPref actOfferAx Stop))
+      procDefP = ProcDef [chanIdA] [] (hide [chanIdA] (actionPref actOfferAx stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
 
@@ -339,7 +341,7 @@ testActionPref4 = TestCase $
       chanIdIstepX = ChanId (T.pack "ISTEP") 902 []
                                                                                                       
       procIdPlpe = procIdGen "P" [chanIdA] [varIdPcP]
-      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (ActionPref                         
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (actionPref                         
                                                       -- action: ISTEP ?x [pc$P == 0]
                                                       ActOffer {  offers = Set.singleton
                                                                               Offer { chanid = chanIdIstepX
@@ -347,8 +349,8 @@ testActionPref4 = TestCase $
                                                                               }
                                                                   , constraint = cstrEqual vexprPcP int0
                                                                   } 
-                                                      (ProcInst procIdPlpe [chanIdA] [vexprMin1]))
-      procInst' = ProcInst procIdPlpe [chanIdA] [int0]
+                                                      (procInst procIdPlpe [chanIdA] [vexprMin1]))
+      procInst' = procInst procIdPlpe [chanIdA] [int0]
 
 
 
