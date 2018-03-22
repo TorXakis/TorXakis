@@ -1,8 +1,9 @@
-{-# LANGUAGE DataKinds     #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- {-# LANGUAGE DeriveAnyClass  #-}
 -- {-# LANGUAGE DeriveGeneric   #-}
 -- {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators     #-}
 module API
 ( startApp
 , app
@@ -10,16 +11,17 @@ module API
 ) where
 
 import           Control.Concurrent.STM.TVar (newTVarIO)
-import           Data.Aeson.TH
+-- import           Data.Aeson.TH
 import qualified Data.IntMap.Strict          as Map
 -- import           Data.Swagger
-import           GHC.Generics                (Generic)
+-- import           GHC.Generics                (Generic)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.Cors (simpleCors)
 import           Servant
 -- import           Servant.Server
 -- import           Servant.Swagger
+import           Turtle
 
 import           Common                      (Env (..))
 import           Endpoints.Messages          (MessagesEP, SSMessagesEP,
@@ -41,7 +43,9 @@ import           Endpoints.Upload            (UploadEP, upload)
 type API = ServiceAPI
 type ServiceAPI = NewSessionEP :<|> UploadEP :<|> StartStepperEP :<|> TakeNStepsEP :<|> MessagesEP
                                :<|> SSMessagesEP
+                               :<|> TestPageAPI
                             --    :<|> "users" :> Get '[JSON] [User]
+type TestPageAPI = "test" :> Raw
 
 startApp :: IO ()
 startApp = do
@@ -50,10 +54,19 @@ startApp = do
     run 8080 $ app $ Env sessionsMap zeroId
 
 app :: Env -> Application
-app env = simpleCors $ serve api (server env)
+app env = do
+    sh printFolderContents
+    simpleCors $ serve api (server env)
     where
         api :: Proxy API
         api = Proxy
+
+printNameAndContents = do
+    file <- ls "./"
+    -- liftIO $ print $ encodeString file
+    liftIO $ putStrLn $ "==> " ++ encodeString file
+    stdout $ "> " <> input file
+    printf "\n"
 
 server :: Env -> ServerT API Handler
 server env = newSrvSession env
@@ -62,6 +75,7 @@ server env = newSrvSession env
     :<|> takeNSteps env
     :<|> streamMessages env
     :<|> ssMessagesEP env
+    :<|> serveDirectoryWebApp "test/testPage"
     -- :<|> users
     -- :<|> return swaggerDocs
     -- where

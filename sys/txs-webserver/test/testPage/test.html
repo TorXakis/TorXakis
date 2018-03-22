@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="bootstrap.min.css">
+    <title>TorXakis Library - Testing Stepper</title>
+</head>
+<body>
+    <input type="button" onClick="CreateSession()" value="Create Session" />
+    <span id="ok"></span>
+    <script>
+    function CreateSession() {
+        var xhttp = new XMLHttpRequest();
+        xhttp.open("POST", "http://localhost:8080/session/new", true);
+        xhttp.setRequestHeader("Content-type", "application/json");
+        xhttp.setRequestHeader("Access-Control-Allow-Origin", "*");
+        xhttp.send();
+        var response = JSON.parse(xhttp.responseText);
+        getElementById('ok').innerHTML = "Session created: " + response;
+    }
+    </script>
+    <form action="http://localhost:8080/session/1/model" method="post" enctype="multipart/form-data">
+        Select a file: <input type="file" name="blah" />
+        Select another one: <input type="file" name="foo" />
+        <input name="test1" value="1" />
+        <input name="test2" value="2" />
+        <hr />
+        <input type="submit" value="Upload" />
+    </form>
+
+    <script src="jquery-3.3.1.min.js"></script>
+    <script src="bootstrap.bundle.min.js"></script>
+</body>
+</html>

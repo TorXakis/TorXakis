@@ -37,10 +37,12 @@ library:
   dependencies:
   - aeson
   - async
+  - binary
   - bytestring
   - conduit
   - conduit-combinators
   - containers
+  - http-types
   - microlens
   - mtl
   - servant-multipart
@@ -51,12 +53,11 @@ library:
   - stm
   - text
   - transformers
+  - turtle
   - wai
   - wai-cors
   - wai-extra  
   - warp
-  - binary
-  - http-types
   # `TorXakis` dependencies.
   - coreenv
   - defs
