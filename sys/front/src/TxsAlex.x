@@ -99,7 +99,6 @@ tokens :-                                           -- Each right-hand side has 
     FI                        { tok ( \p _s -> Tfi p ) }
     ISTEP                     { tok ( \p _s -> Tistep p ) }
     QSTEP                     { tok ( \p _s -> Tqstep p ) }
-    ERROR                     { tok ( \p _s -> Terror p ) }
     REGEX                     { tok ( \p _s -> Tregex p ) }
     ANY                       { tok ( \p _s -> Tany p ) }
     True                      { tok ( \p _s -> Tbool p True) }

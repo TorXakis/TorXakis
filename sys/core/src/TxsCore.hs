@@ -16,7 +16,8 @@ See LICENSE at root directory of this repository.
 -- Core Module TorXakis API:
 -- API for TorXakis core functionality.
 -----------------------------------------------------------------------------
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ViewPatterns        #-}
 module TxsCore
 ( -- * run TorXakis core
   runTxsCore
@@ -330,19 +331,20 @@ txsSetSeed seed  =  do
 --
 --   Only possible when txscore is initialized.
 txsEval :: TxsDefs.VExpr                    -- ^ value expression to be evaluated.
-        -> IOC.IOC Const
+        -> IOC.IOC (Either String Const)
 txsEval vexp  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'eval' without model" ]
-               return $ Cerror ""
+               return $ Left "No 'eval' without model"
        _ -> let frees = FreeVar.freeVars vexp
             in if  not $ null frees
                      then do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                            $ "Value expression not closed: " ++
                                              TxsShow.fshow frees ]
-                             return $ Cerror ""
+                             return $ Left $ "Value expression not closed: " ++
+                                             TxsShow.fshow frees
                      else do envb         <- filterEnvCtoEnvB
                              (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
                              writeEnvBtoEnvC envb'
@@ -864,8 +866,8 @@ txsStepA act =  do
 txsShow :: String               -- ^ kind of item to be shown.
         -> String               -- ^ name of item to be shown.
                                 --   Valid items are "tdefs", "state",
-                                --   "model", "mapper", "purp", "modeldef" <name>,
-                                --   "mapperdef" <name>, "purpdef" <name>
+                                --   "model", "mapper", "purp", "modeldef" \<name>,
+                                --   "mapperdef" \<name>, "purpdef" \<name>
         -> IOC.IOC String
 txsShow item nm  = do
      envc  <- gets IOC.state
@@ -985,7 +987,7 @@ txsPath  =  do
 
 -- | Return the menu, i.e., all possible actions.
 txsMenu :: String                               -- ^ kind (valid values are "mod", "purp", or "map")
-        -> String                               -- ^ what (valid values are "all", "in", "out", or a <goal name>)
+        -> String                               -- ^ what (valid values are "all", "in", "out", or a \<goal name>)
         -> IOC.IOC BTree.Menu
 txsMenu kind what  =  do
      envSt <- gets IOC.state
@@ -1047,7 +1049,7 @@ txsNComp :: TxsDefs.ModelDef                   -- ^ model. Currently only
                                                -- succesful.
 txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
   envc <- get
-  case (IOC.state envc, bexp) of
+  case (IOC.state envc, TxsDefs.view bexp) of
     ( IOC.Initing {IOC.tdefs = tdefs}
       , TxsDefs.ProcInst procid@(TxsDefs.ProcId pnm _ _ _ _) chans []
       ) | and [ Set.size sync == 1 | sync <- insyncs ++ outsyncs ]
@@ -1056,9 +1058,9 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
                  ]
           && null splsyncs
        -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
-              Just (TxsDefs.ProcDef chids [] staut@(TxsDefs.StAut _ ve _)) | Map.null ve
+              Just (TxsDefs.ProcDef chids [] staut@(TxsDefs.view -> TxsDefs.StAut _ ve _)) | Map.null ve
                  -> do let chanmap                       = Map.fromList (zip chids chans)
-                           TxsDefs.StAut statid _ trans = Expand.relabel chanmap staut
+                           TxsDefs.StAut statid _ trans = TxsDefs.view $ Expand.relabel chanmap staut
                        maypurp <- NComp.nComplete insyncs outsyncs statid trans
                        case maypurp of
                          Just purpdef -> do
@@ -1098,7 +1100,7 @@ txsLPE (Left bexpr)  =  do
     IOC.Initing {IOC.tdefs = tdefs}
       -> do lpe <- LPE.lpeTransform bexpr (TxsDefs.procDefs tdefs)
             case lpe of
-              Just (procinst'@(TxsDefs.ProcInst procid' _ _), procdef')
+              Just (procinst'@(TxsDefs.view -> TxsDefs.ProcInst procid' _ _), procdef')
                 -> case Map.lookup procid' (TxsDefs.procDefs tdefs) of
                      Nothing
                        -> do let tdefs' = tdefs { TxsDefs.procDefs = Map.insert
@@ -1123,7 +1125,7 @@ txsLPE (Right modelid@(TxsDefs.ModelId modname _moduid))  =  do
              -> do lpe' <- txsLPE (Left bexpr)
                    lift $ hPrint stderr lpe'
                    case lpe' of
-                     Just (Left (procinst'@TxsDefs.ProcInst{}))
+                     Just (Left (procinst'@(TxsDefs.view -> TxsDefs.ProcInst{})))
                        -> do uid'   <- IOC.newUnid
                              tdefs' <- gets (IOC.tdefs . IOC.state)
                              let modelid' = TxsDefs.ModelId ("LPE_"<>modname) uid'

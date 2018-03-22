@@ -56,9 +56,11 @@ parameters:
   value: "Regex"   # Length | Regex
 - name: "max_rand_depth"
   value: "4"       # > 0
-- name: "Sim_deltaTime"
-  value: "200"        # > 0
 - name: "Sut_deltaTime"
   value: "2000"       # > 0
 - name: "Sut_ioTime"
+  value: "10"       # > 0
+- name: "Sim_deltaTime"
+  value: "2000"        # > 0
+- name: "Sim_ioTime"
   value: "10"       # > 0

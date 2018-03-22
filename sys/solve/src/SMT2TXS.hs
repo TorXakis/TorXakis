@@ -24,8 +24,10 @@ module SMT2TXS
 
 where
 
+import           Data.Either
 import qualified Data.Map          as Map
 import           Data.Monoid
+import qualified Data.String.Utils as Utils
 import           Data.Text         (Text)
 import qualified Data.Text         as T
 
@@ -61,23 +63,23 @@ lookupConstructor cstrMap sid n
 
 -- | convert an SMT expression to a ValExpr given a varName the varName is the
 -- name of a SMT identifier that refers to a SMT variable.
-smtValueToValExpr :: SMTValue -> Map.Map CstrId CstrDef -> SortId -> Const
+smtValueToValExpr :: SMTValue -> Map.Map CstrId CstrDef -> SortId -> Either String Const
 smtValueToValExpr (SMTBool b) _ srt
   =  if sortIdBool == srt
-       then Cbool b
-       else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
+       then Right $ Cbool b
+       else Left $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
                      "Bool expected, got " ++ show srt ++ "\n"
 
 smtValueToValExpr (SMTInt i) _ srt
   =  if sortIdInt == srt
-       then Cint i
-       else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
+       then Right $ Cint i
+       else Left $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
                      "Int expected, got " ++ show srt ++ "\n"
 
 smtValueToValExpr (SMTString s) _ srt
   =  if sortIdString == srt
-       then Cstring s
-       else Cerror $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
+       then Right $ Cstring s
+       else Left $ "TXS SMT2TXS smtValueToValExpr: Type mismatch - " ++
                      "String expected, got " ++ show srt ++ "\n"
 
 smtValueToValExpr (SMTConstructor cname argValues) cstrMap srt =
@@ -87,12 +89,16 @@ smtValueToValExpr (SMTConstructor cname argValues) cstrMap srt =
                 let cstrid = lookupConstructor cstrMap srt (T.drop (1 + T.length nameSort) cname) in
                     if length (cstrargs cstrid) == length argValues
                         then  -- recursively translate the arguments:
-                            let vexprArgs = map (\(argValue, sort') -> smtValueToValExpr argValue cstrMap sort')
-                                                (zip argValues (cstrargs cstrid)) in
-                                Cstr cstrid vexprArgs
-                        else Cerror $ "TXS SMT2TXS smtValueToValExpr: Number of arguments mismatch " ++
+                            let mexprArgs = map (\(argValue, sort') -> smtValueToValExpr argValue cstrMap sort')
+                                                (zip argValues (cstrargs cstrid))
+                                (es, vexprArgs) = partitionEithers mexprArgs 
+                              in
+                                case es of 
+                                    [] -> Right $ Cstr cstrid vexprArgs
+                                    _  -> Left $ Utils.join "\n" es
+                        else Left $ "TXS SMT2TXS smtValueToValExpr: Number of arguments mismatch " ++
                                       "in constructor " ++ show cname ++ " of sort " ++ show nameSort ++
                                       " : definition " ++ show (length (cstrargs cstrid)) ++
                                       " vs actual " ++ show (length argValues) ++ "\n"
-            else Cerror $ "TXS SMT2TXS smtValueToValExpr: CstrName " ++ show cname ++
+            else Left $ "TXS SMT2TXS smtValueToValExpr: CstrName " ++ show cname ++
                           " does not start with sort " ++ show nameSort ++ "\n"

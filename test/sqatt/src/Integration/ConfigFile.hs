@@ -41,10 +41,12 @@ paramNewValues = [ ("IncrementChoice_IntPower", "14")
                  , ("TrueBins_StringLength", "16")
                  , ("TrueBins_StringMode", "Length")
                  , ("max_rand_depth", "14")
-                 , ("Sim_deltaTime", "11000")
                  , ("Sut_deltaTime", "15000")
                  , ("Sut_ioTime", "110")
+                 , ("Sim_deltaTime", "11000")
+                 , ("Sim_ioTime", "110")
                  ]
+                 
 
 newValTest :: (Text, Text) -> TxsExample
 newValTest (pNm,pVl) = templateTest "New" pNm pVl pVl
@@ -66,9 +68,10 @@ paramDefaultValues = [ ("ImpRel", "IOCO")
                      , ("TrueBins_StringLength", "6")
                      , ("TrueBins_StringMode", "Regex")
                      , ("max_rand_depth", "4")
-                     , ("Sim_deltaTime", "200")
                      , ("Sut_deltaTime", "2000")
                      , ("Sut_ioTime", "10")
+                     , ("Sim_deltaTime", "2000")
+                     , ("Sim_ioTime", "10")
                      ]
 
 emptyValTest :: (Text, Text) -> TxsExample

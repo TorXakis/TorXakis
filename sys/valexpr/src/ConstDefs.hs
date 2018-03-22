@@ -25,7 +25,7 @@ import           Control.DeepSeq
 import           Data.Data
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
-import           Data.Aeson                  (ToJSON)
+import           Data.Aeson      (ToJSON)
 
 import           CstrId
 import           Id
@@ -40,7 +40,6 @@ data Const = Cbool    { cBool :: Bool }
                                          -- PvdL: performance gain: translate only once,
                                          --       storing SMT string as well
            | Cstr     { cstrId :: CstrId, args :: [Const] }
-           | Cerror   { msg :: String }
            | Cany     { sort :: SortId }
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
@@ -57,4 +56,3 @@ instance SortOf Const where
   sortOf (Cregex _r)                       = sortIdRegex
   sortOf (Cstr (CstrId _nm _uid _ca cs) _) = cs
   sortOf (Cany s)                          = s
-  sortOf (Cerror _)                        = sortIdError

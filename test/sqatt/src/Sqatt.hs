@@ -317,6 +317,7 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
     txsUIProc mUiLogDir imf port =
       Concurrently $ do
         eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
+        sleep 5.0       -- take time to write results to log files (in case of error)
         case eRes of
           Left exception -> return $ Left exception
           Right res -> return $ unless res $ Left tErr
