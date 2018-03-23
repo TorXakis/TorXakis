@@ -23,9 +23,7 @@ data Env = Env { sessions :: TVar (Map.IntMap Session)
                }
 
 getSessionIO :: Env -> SessionId -> IO  (Maybe Session)
-getSessionIO Env{sessions = ssT} sid = do
-    sessionsMap <-  readTVarIO ssT
-    return $ Map.lookup sid sessionsMap
+getSessionIO Env{sessions = ssT} sid = Map.lookup sid <$> readTVarIO ssT
 
 getSession :: Env -> SessionId -> Handler Session
 getSession e sId = do
