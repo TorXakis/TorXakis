@@ -44,7 +44,6 @@ library:
   - binary
   - bytestring
   - conduit
-  - conduit-combinators
   - containers
   - http-types
   - microlens
@@ -56,16 +55,13 @@ library:
   - swagger2
   - stm
   - text
-  - transformers
   - wai
   - wai-cors
   - wai-extra  
   - warp
   # `TorXakis` dependencies.
   - coreenv
-  - defs
   - txs-lib
-  - valexpr
   
 executables:
   txs-webserver-exe:
@@ -91,12 +87,9 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - base
-    - aeson
     - bytestring
     - hspec
     - http-client
     - lens
     - process
-    - servant-server >= 0.12
-    - txs-webserver
     - wreq
