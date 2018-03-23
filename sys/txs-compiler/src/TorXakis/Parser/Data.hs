@@ -20,6 +20,7 @@ module TorXakis.Parser.Data
     , FuncDeclE
     , VarDeclE
     , ExpDeclE
+    , VarRefE
     -- * Declarations.
     -- ** ADT's
     , ADTDecl
@@ -50,10 +51,14 @@ module TorXakis.Parser.Data
     , varName
     -- ** Expressions
     , ExpDecl
+    , ExpChild (..)
+    , Const (..)
+    , expChild
     , mkVarExp
     , mkBoolConstExp
     , mkIntConstExp
     , mkStringConstExp
+    , expVars
     -- * Location of the entities.
     , getLoc
     )
@@ -209,7 +214,18 @@ varDeclSort f = (nodeNameT . child $ f, nodeMdata . child $ f)
 -- | Expressions.
 type ExpDecl = ParseTree ExpDeclE ExpChild
 
-data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)-- (Name VarRefE) (Metadata ExpDeclE)
+expChild :: ExpDecl -> ExpChild
+expChild = child
+
+-- | Find the variables of an expression.
+expVars :: ExpDecl -> [(Name VarRefE, Loc VarRefE)]
+expVars (ParseTree _ _ _ (VarRef n l))  = [(n, l)]
+expVars (ParseTree _ _ _ (ConstLit _ )) = []
+
+-- foldExp :: (b -> ExpChild -> b) -> b -> ExpDecl -> b
+-- foldExp f b (ParseTree _ _ _ c) = f b c
+
+data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)
               | ConstLit Const
  -- LetExp [LetValDecl] ExpDecl
     deriving (Eq, Show)

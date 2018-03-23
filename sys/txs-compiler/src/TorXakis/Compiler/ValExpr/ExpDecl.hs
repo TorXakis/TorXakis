@@ -10,18 +10,21 @@ import           TorXakis.Parser.Data
 
 -- | Generate a map from locations of variable references, the declarations of
 -- those variables.
-generateVarDecls :: [FuncDecl] -> CompilerM (Map (Loc ExpDeclE) VarDecl)
+generateVarDecls :: [FuncDecl] -> CompilerM (Map (Loc VarRefE) VarDecl)
 generateVarDecls fs = Map.fromList . concat <$>
     traverse generateVarDeclsForFD fs
 
-generateVarDeclsForFD :: FuncDecl -> CompilerM [(Loc ExpDeclE, VarDecl)]
-generateVarDeclsForFD f =
-    let VarExp n _ = funcBody f
-    in do
-        fd <- lookupM (toText n) (fdMap (funcParams  f))
+generateVarDeclsForFD :: FuncDecl -> CompilerM [(Loc VarRefE, VarDecl)]
+generateVarDeclsForFD f = traverse getVarDecl $ expVars (funcBody f)
+    where
+      funcParmsMap = fdMap (funcParams  f)
+      fdMap :: [VarDecl] -> Map Text VarDecl
+      fdMap fs =
+          Map.fromList $ zip (varName <$> fs) fs
+      getVarDecl :: (Name VarRefE, Loc VarRefE) -> CompilerM (Loc VarRefE, VarDecl)
+      getVarDecl (n, l) = do
+        fd <- lookupM (toText n) funcParmsMap
               "variable declaration for "
-        return [(getLoc (funcBody f), fd)]
+        return (l, fd)
 
-fdMap :: [VarDecl] -> Map Text VarDecl
-fdMap fs =
-    Map.fromList $ zip (varName <$> fs) fs
+

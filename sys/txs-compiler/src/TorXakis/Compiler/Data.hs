@@ -1,37 +1,37 @@
 {-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE FlexibleInstances          #-}
 module TorXakis.Compiler.Data where
 
-import           Prelude hiding (lookup)
-import           Control.Monad.State  (MonadState, StateT, put, get)
-import           Data.Map             (Map)
-import qualified Data.Map as Map
-import           Data.Text            (Text)
-import qualified Data.Text as T
-import           Data.Semigroup ((<>))
-import           Data.Either.Utils (maybeToEither)
 import           Control.Monad.Error.Class (MonadError, liftEither)
+import           Control.Monad.State       (MonadState, StateT, get, put)
+import           Data.Either.Utils         (maybeToEither)
+import           Data.Map                  (Map)
+import qualified Data.Map                  as Map
+import           Data.Semigroup            ((<>))
+import           Data.Text                 (Text)
+import qualified Data.Text                 as T
+import           Prelude                   hiding (lookup)
 
-import           FuncId                        (FuncId)
-import           FuncDef                       (FuncDef)
-import           VarId                         (VarId)
-import           SortId                        (SortId)
-import           CstrId                        (CstrId)
+import           CstrId                    (CstrId)
+import           FuncDef                   (FuncDef)
+import           FuncId                    (FuncId)
+import           SortId                    (SortId)
+import           VarId                     (VarId)
 
-import           TorXakis.Parser.Data hiding (St, nextId)
 import           TorXakis.Compiler.Error
+import           TorXakis.Parser.Data      hiding (St, nextId)
 
 -- | Incremental environment, to allow the compiler to fill in the environment
 -- in several passes.
 data IEnv f0 f1 f2 f3 f4 f5 = IEnv
-    { sortIdT   :: f0
-    , cstrIdT   :: f1
-    , varIdT    :: f2
-    , varDeclT   :: f3
-    , funcIdT   :: f4
-    , funcDefT  :: f5
+    { sortIdT  :: f0
+    , cstrIdT  :: f1
+    , varIdT   :: f2
+    , varDeclT :: f3
+    , funcIdT  :: f4
+    , funcDefT :: f5
     }
 
 emptyEnv :: IEnv () () () () () ()
@@ -70,8 +70,8 @@ class HasVarDecls e where
     -- variable use.
     --
     -- For now variables only occur in expressions.
-    findVarDecl :: e -> Loc ExpDeclE -> Either Error VarDecl
-    findVarDeclM :: e -> Loc ExpDeclE -> CompilerM VarDecl
+    findVarDecl :: e -> Loc VarRefE -> Either Error VarDecl
+    findVarDeclM :: e -> Loc VarRefE -> CompilerM VarDecl
     findVarDeclM e i = liftEither $ findVarDecl e i
 
 class HasFuncIds e where
@@ -105,11 +105,11 @@ instance HasCstrIds (IEnv f0 (Map (Loc CstrE) CstrId) f2 f3 f4 f5) where
 instance HasVarIds (IEnv f0 f1 (Map (Loc VarDeclE) VarId) f3 f4 f5) where
     findVarId IEnv{varIdT = vm} i = lookup i vm "variable by parser location id"
 
-instance HasVarDecls (IEnv f0 f1 f2 (Map (Loc ExpDeclE) VarDecl) f4 f5) where
+instance HasVarDecls (IEnv f0 f1 f2 (Map (Loc VarRefE) VarDecl) f4 f5) where
     findVarDecl IEnv{varDeclT = vm} i = lookup i vm "variable declaration by parser location id"
 
 instance HasFuncIds (IEnv f0 f1 f2 f3 (Map (Loc FuncDeclE) FuncId) f5) where
-    findFuncId IEnv {funcIdT = fm} i = lookup i fm "function id by parser location id"    
+    findFuncId IEnv {funcIdT = fm} i = lookup i fm "function id by parser location id"
 
 instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 (Map FuncId (FuncDef VarId))) where
     findFuncDef IEnv{funcDefT = fm} i = lookup i fm "function declaration by function id"

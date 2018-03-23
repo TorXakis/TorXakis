@@ -1,30 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Compiler where
 
-import           Control.Arrow        ( (|||) )
-import           Control.Monad.State  ( get, evalStateT )
-import qualified Data.Map.Strict      as Map
-import           Lens.Micro ((^.))
+import           Control.Arrow                     ((|||))
+import           Control.Monad.State               (evalStateT, get)
+import qualified Data.Map.Strict                   as Map
+import           Lens.Micro                        ((^.))
 
-import           TxsDefs (TxsDefs, union, funcDefs, fromList)
-import qualified TxsDefs (empty)
-import           StdTDefs (stdTDefs, stdFuncTable)
-import           Sigs    (Sigs, uniqueCombine, func)
-import qualified Sigs (empty)
-import           Id  (Id (Id))
-import           SortId  (sortIdBool, sortIdInt, sortIdRegex, sortIdString)
-import           VarId   (VarId)
+import           Id                                (Id (Id))
+import           Sigs                              (Sigs, func, uniqueCombine)
+import qualified Sigs                              (empty)
+import           SortId                            (sortIdBool, sortIdInt,
+                                                    sortIdRegex, sortIdString)
+import           StdTDefs                          (stdFuncTable, stdTDefs)
+import           TxsDefs                           (TxsDefs, fromList, funcDefs,
+                                                    union)
+import qualified TxsDefs                           (empty)
+import           VarId                             (VarId)
 
-import           TorXakis.Compiler.Error (Error)
 import           TorXakis.Compiler.Data
-import           TorXakis.Parser 
-import           TorXakis.Compiler.ValExpr.SortId
-import           TorXakis.Compiler.ValExpr.CstrId
-import           TorXakis.Compiler.Defs.TxsDefs
 import           TorXakis.Compiler.Defs.Sigs
-import           TorXakis.Compiler.ValExpr.VarId
-import           TorXakis.Compiler.ValExpr.FuncDef
+import           TorXakis.Compiler.Defs.TxsDefs
+import           TorXakis.Compiler.Error           (Error)
+import           TorXakis.Compiler.ValExpr.CstrId
 import           TorXakis.Compiler.ValExpr.ExpDecl
+import           TorXakis.Compiler.ValExpr.FuncDef
+import           TorXakis.Compiler.ValExpr.SortId
+import           TorXakis.Compiler.ValExpr.VarId
+import           TorXakis.Parser
 
 -- | Compile a string into a TorXakis model.
 --
@@ -52,26 +54,26 @@ compileParsedDefs pd = do
     let pdsMap = Map.fromList [ ("Bool", sortIdBool)
                               , ("Int", sortIdInt)
                               , ("Regex", sortIdRegex)
-                              , ("String", sortIdString)                              
+                              , ("String", sortIdString)
                               ]
         e0 = emptyEnv { sortIdT = Map.union pdsMap sMap }
     cMap <- compileToCstrId e0 (pd ^. adts)
     let e1 = e0 { cstrIdT = cMap }
     -- Construct the @VarId@'s lookup table.
-    vMap <- generateVarIds e1 (pd ^. funcs)
+    vMap <- generateVarIds e1 (pd ^. funcs ++ pd ^. consts)
     let e2 = e1 { varIdT = vMap }
     -- Construct the variable declarations table.
-    dMap <- generateVarDecls (pd ^. funcs)
+    dMap <- generateVarDecls (pd ^. funcs ++ pd ^. consts)
     let e3 = e2 { varDeclT = dMap }
     -- Construct the function tables.
-    (lFIdMap, lFDefMap) <- funcDeclsToFuncDefs e3 (pd ^. funcs)
+    (lFIdMap, lFDefMap) <- funcDeclsToFuncDefs e3 (pd ^. funcs ++ pd ^. consts)
     let e4 = e3 { funcIdT = lFIdMap, funcDefT = lFDefMap }
     -- Finally construct the TxsDefs.
-    txsDefs <- toTxsDefs e4 pd 
+    txsDefs <- toTxsDefs e4 pd
     sigs    <- toSigs    e4 pd
     St i    <- get
     return (Id i, txsDefs, sigs)
-    
+
 toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
           => e -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs e pd = do
@@ -85,5 +87,9 @@ toSigs e pd = do
     let ts = sortsToSigs (getSortIdMap e)
     as <- adtDeclsToSigs e (pd ^. adts)
     fs <- funDeclsToSigs e (pd ^. funcs)
+    cs <- funDeclsToSigs e (pd ^. consts)
     let ss = Sigs.empty { func = stdFuncTable }
-    return $ ts `uniqueCombine` as `uniqueCombine` fs `uniqueCombine` ss
+    return $ ts `uniqueCombine` as
+        `uniqueCombine` fs
+        `uniqueCombine` cs
+        `uniqueCombine` ss

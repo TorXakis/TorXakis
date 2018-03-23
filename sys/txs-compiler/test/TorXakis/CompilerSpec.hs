@@ -1,28 +1,29 @@
 module TorXakis.CompilerSpec where
 
-import           Test.Hspec ( Spec, it, shouldSatisfy, runIO
-                            , describe, parallel, shouldBe, Expectation)
-import           System.FilePath.Find (find, extension, (==?))
-import           System.FilePath ((</>))
-import           Data.Either (isRight)
-import           Data.Foldable (traverse_)
-import qualified Data.Map as Map
-import           Data.Set (Set)
-import qualified Data.Set as Set
+import           Data.Either          (isRight)
+import           Data.Foldable        (traverse_)
+import qualified Data.Map             as Map
+import           Data.Set             (Set)
+import qualified Data.Set             as Set
+import           System.FilePath      ((</>))
+import           System.FilePath.Find (extension, find, (==?))
+import           Test.Hspec           (Expectation, Spec, describe, it,
+                                       parallel, runIO, shouldBe, shouldSatisfy)
 
-import           TxsAlex (txsLexer)
-import           TxsHappy (txsParser)
-import           Id (Id, Resettable, reset)
-import           VarId (VarId)
-import           Sigs (Sigs, sort, func)
-import           FuncTable (toMap, Signature)
-import           TxsDefs (TxsDefs, sortDefs, cstrDefs, funcDefs, varDefs)
+import           FuncTable            (Signature, toMap)
+import           Id                   (Id, Resettable, reset)
+import           Sigs                 (Sigs, func, sort)
+import           TxsAlex              (txsLexer)
+import           TxsDefs              (TxsDefs, cstrDefs, funcDefs, sortDefs,
+                                       varDefs)
+import           TxsHappy             (txsParser)
+import           VarId                (VarId)
 
-import           TorXakis.Compiler (compileFile)
+import           TorXakis.Compiler    (compileFile)
 
 spec :: Spec
-spec = 
-    describe "Correctly compiles the examples" $ do
+spec =
+    describe "Correctly compiles the incremental" $ do
         fs <- runIO $ find (return True) (extension ==? ".txs")
               ("test" </> "data" </> "success")
         parallel $ traverse_ testParser fs
@@ -45,7 +46,7 @@ spec =
             -- equality, since they are functions.
             sort sigs ~==~ sort sigs'
             (Map.keys . toMap . func) sigs `shouldBe` (Map.keys . toMap . func) sigs'
-            signatures sigs ~==~  signatures sigs'            
+            signatures sigs ~==~  signatures sigs'
 
                 where
                   signatures :: Sigs VarId -> Set Signature
@@ -57,4 +58,4 @@ e0 ~==~ e1 = reset e0 `shouldBe` reset e1
 
 txsCompile :: FilePath -> IO (Id, TxsDefs, Sigs VarId)
 txsCompile = (txsParser . txsLexer <$>) . readFile
-        
+

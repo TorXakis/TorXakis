@@ -3,7 +3,12 @@ FUNCDEF f(x, y :: Int) :: Int ::=
     x
 ENDDEF
 
-FUNCDEF f(x, y :: Int) :: Int ::=
+FUNCDEF f(x :: Int) :: Int ::=
     -- LET z = 10; b = True IN x NI
-    y
+    20
+ENDDEF
+
+FUNCDEF g() :: String ::=
+    -- LET z = 10; b = True IN x NI
+    "Hello"
 ENDDEF
