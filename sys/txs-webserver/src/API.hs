@@ -5,26 +5,17 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE OverloadedStrings #-}
--- {-# LANGUAGE DeriveAnyClass  #-}
--- {-# LANGUAGE DeriveGeneric   #-}
--- {-# LANGUAGE TemplateHaskell #-}
 module API
 ( startApp
 , app
--- , User (..)
 ) where
 
 import           Control.Concurrent.STM.TVar (newTVarIO)
--- import           Data.Aeson.TH
 import qualified Data.IntMap.Strict          as Map
--- import           Data.Swagger
--- import           GHC.Generics                (Generic)
 import           Network.Wai
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.Cors (simpleCors)
 import           Servant
--- import           Servant.Server
--- import           Servant.Swagger
 
 import           Common                      (Env (..))
 import           Endpoints.Messages          (MessagesEP, SSMessagesEP,
@@ -35,19 +26,10 @@ import           Endpoints.Stepper           (StartStepperEP, TakeNStepsEP,
 import           Endpoints.Upload            (UploadEP, upload)
 -- import           Swagger
 
--- data User = User
---   { userId        :: Int
---   , userFirstName :: String
---   , userLastName  :: String
---   } deriving (Eq, Show, Generic)
-
--- $(deriveJSON defaultOptions ''User)
-
 type API = ServiceAPI
 type ServiceAPI = NewSessionEP :<|> UploadEP :<|> StartStepperEP :<|> TakeNStepsEP :<|> MessagesEP
                                :<|> SSMessagesEP
                                :<|> TestPageAPI
-                            --    :<|> "users" :> Get '[JSON] [User]
 type TestPageAPI = "test" :> Raw
 
 startApp :: IO ()
@@ -70,30 +52,9 @@ server env = newSrvSession env
     :<|> streamMessages env
     :<|> ssMessagesEP env
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"
-    -- :<|> users
     -- :<|> return swaggerDocs
     -- where
-    --     users :: Handler [User]
-    --     users = return [ User 1 "Isaac" "Newton"
-    --                    , User 2 "Albert" "Einstein"
-    --                    ]
-
         -- swaggerDocs :: Swagger
         -- swaggerDocs = toSwagger serviceAPI
         --     where serviceAPI :: Proxy ServiceAPI
         --           serviceAPI = Proxy
-
-
--- loadModel :: IO ()
--- loadModel = undefined
-
--- loadSession :: SessionId -> IO ()
--- loadSession sid = undefined
-
--- startStepper :: SessionId -> Text -> IO ()
--- startStepper sid modelNm = undefined
-
--- step :: SessionId -> Int -> IO ()
--- step sid steps = undefined
-
-

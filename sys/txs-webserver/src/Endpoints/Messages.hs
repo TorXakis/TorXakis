@@ -105,7 +105,5 @@ asServerEvent msg = ServerEvent
     , eventData = [msg']
     }
     where
-    --   eName :: Builder
-    --   eName = fromByteString "TorXakis Message"
       msg'  :: Builder
       msg'  = fromLazyByteString $ encode msg
