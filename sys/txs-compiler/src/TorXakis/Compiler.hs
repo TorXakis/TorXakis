@@ -4,7 +4,8 @@ module TorXakis.Compiler where
 import           Control.Arrow                     ((|||))
 import           Control.Monad.State               (evalStateT, get)
 import qualified Data.Map.Strict                   as Map
-import           Lens.Micro                        ((^.))
+import qualified Data.Set                          as Set
+import           Lens.Micro                        ((^.), (^..))
 
 import           Id                                (Id (Id))
 import           Sigs                              (Sigs, func, uniqueCombine)
@@ -24,9 +25,11 @@ import           TorXakis.Compiler.Error           (Error)
 import           TorXakis.Compiler.ValExpr.CstrId
 import           TorXakis.Compiler.ValExpr.ExpDecl
 import           TorXakis.Compiler.ValExpr.FuncDef
+import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.VarId
 import           TorXakis.Parser
+import           TorXakis.Parser.Data
 
 -- | Compile a string into a TorXakis model.
 --
@@ -60,17 +63,21 @@ compileParsedDefs pd = do
     cMap <- compileToCstrId e0 (pd ^. adts)
     let e1 = e0 { cstrIdT = cMap }
     -- Construct the @VarId@'s lookup table.
-    vMap <- generateVarIds e1 (pd ^. funcs ++ pd ^. consts)
+    let allFuncs = pd ^. funcs ++ pd ^. consts
+    vMap <- generateVarIds e1 allFuncs
     let e2 = e1 { varIdT = vMap }
     -- Construct the variable declarations table.
-    dMap <- generateVarDecls (pd ^. funcs ++ pd ^. consts)
+    dMap <- generateVarDecls allFuncs
     let e3 = e2 { varDeclT = dMap }
-    -- Construct the function tables.
-    (lFIdMap, lFDefMap) <- funcDeclsToFuncDefs e3 (pd ^. funcs ++ pd ^. consts)
-    let e4 = e3 { funcIdT = lFIdMap, funcDefT = lFDefMap }
+    -- Construct the function declaration to function id table.
+    lFIdMap <- funcDeclsToFuncIds e3 allFuncs
+    let e4 = e3 { funcIdT = lFIdMap }
+    lFDefMap <- funcDeclsToFuncDefs e4 allFuncs
+    -- Construct the function id to function definition table.
+    let e5 = e4 { funcDefT = lFDefMap }
     -- Finally construct the TxsDefs.
-    txsDefs <- toTxsDefs e4 pd
-    sigs    <- toSigs    e4 pd
+    txsDefs <- toTxsDefs e5 pd
+    sigs    <- toSigs    e5 pd
     St i    <- get
     return (Id i, txsDefs, sigs)
 
@@ -78,7 +85,12 @@ toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
           => e -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs e pd = do
     ad <- adtsToTxsDefs e (pd ^. adts)
-    let fd = TxsDefs.empty { funcDefs = getFuncDefT e }
+    -- Get the function id's of all the constants.
+    cfIds <- traverse (findFuncIdM e) (pd ^.. consts . traverse . loc')
+    let fd = TxsDefs.empty {
+            -- TODO: we have to remove the constants to comply with what TorXakis generates :/
+            funcDefs = Map.withoutKeys (getFuncDefT e) (Set.fromList cfIds)
+            }
     return $ ad `union` fd `union` fromList stdTDefs
 
 toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)

@@ -1,19 +1,22 @@
-{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Compiler.ValExpr.FuncId where
 
 -- TODO: consider adding your own prelude.
-import           Data.Semigroup ((<>))
+import           Data.Map                         (Map)
+import qualified Data.Map                         as Map
+import           Data.Semigroup                   ((<>))
 
-import           Id (Id (Id))
-import           SortId (SortId, sortIdBool, sortIdString)
-import           CstrId (name, cstrsort, CstrId)
-import           FuncId (FuncId (FuncId))
-import           StdTDefs (toStringName, fromStringName)
+import           CstrId                           (CstrId, cstrsort, name)
+import           FuncId                           (FuncId (FuncId))
+import           Id                               (Id (Id))
+import           SortId                           (SortId, sortIdBool,
+                                                   sortIdString)
+import           StdTDefs                         (fromStringName, toStringName)
 
-import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.ValExpr.SortId
-    
+import           TorXakis.Parser.Data
+
 cstrToIsCstrFuncId :: CstrId -> CompilerM FuncId
 cstrToIsCstrFuncId cId = do
     fId <- getNextId
@@ -30,6 +33,12 @@ cstrToAccFuncId e cId f = do
     sId <- findSortIdM e (fieldSort f)
     return $ FuncId (fieldName f) (Id fId) [cstrsort cId] sId
 
+funcDeclsToFuncIds :: HasSortIds e
+                   => e -> [FuncDecl] -> CompilerM (Map (Loc FuncDeclE) FuncId)
+funcDeclsToFuncIds e fs = do
+    fIds <- traverse (funcDeclToFuncId e) fs
+    return $ Map.fromList $ zip (getLoc <$> fs) fIds
+
 funcDeclToFuncId :: HasSortIds e
                  => e -> FuncDecl -> CompilerM FuncId
 funcDeclToFuncId  e f = do
@@ -40,13 +49,13 @@ funcDeclToFuncId  e f = do
 
 
 -- | Make a 'FuncId' for a sort to string function.
-sortToStringFuncId :: SortId -> CompilerM FuncId 
+sortToStringFuncId :: SortId -> CompilerM FuncId
 sortToStringFuncId sId = do
     fId <- getNextId
     return $ FuncId toStringName (Id fId) [sId] sortIdString
 
 -- | Make a 'FuncId' for a string to sort function.
-sortFromStringFuncId :: SortId -> CompilerM FuncId 
+sortFromStringFuncId :: SortId -> CompilerM FuncId
 sortFromStringFuncId sId = do
     fId <- getNextId
     return $ FuncId fromStringName (Id fId) [sortIdString] sId

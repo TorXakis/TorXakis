@@ -8,7 +8,12 @@ FUNCDEF f(x :: Int) :: Int ::=
     20
 ENDDEF
 
+FUNCDEF h() :: String ::=
+    g
+ENDDEF
+
 FUNCDEF g() :: String ::=
-    -- LET z = 10; b = True IN x NI
     "Hello"
 ENDDEF
+
+

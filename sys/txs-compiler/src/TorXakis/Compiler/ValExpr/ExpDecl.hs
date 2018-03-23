@@ -1,30 +1,36 @@
 {-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Compiler.ValExpr.ExpDecl where
 
-import           Data.Map               (Map)
-import qualified Data.Map               as Map
-import           Data.Text              (Text)
+import           Control.Monad.Error.Class (catchError)
+import           Data.Map                  (Map)
+import qualified Data.Map                  as Map
+import           Data.Text                 (Text)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Parser.Data
 
 -- | Generate a map from locations of variable references, the declarations of
 -- those variables.
-generateVarDecls :: [FuncDecl] -> CompilerM (Map (Loc VarRefE) VarDecl)
+generateVarDecls :: [FuncDecl] -> CompilerM (Map (Loc VarRefE) (Either VarDecl FuncDecl))
 generateVarDecls fs = Map.fromList . concat <$>
-    traverse generateVarDeclsForFD fs
-
-generateVarDeclsForFD :: FuncDecl -> CompilerM [(Loc VarRefE, VarDecl)]
-generateVarDeclsForFD f = traverse getVarDecl $ expVars (funcBody f)
+    traverse (generateVarDeclsForFD fdMap) fs
     where
-      funcParmsMap = fdMap (funcParams  f)
-      fdMap :: [VarDecl] -> Map Text VarDecl
-      fdMap fs =
-          Map.fromList $ zip (varName <$> fs) fs
-      getVarDecl :: (Name VarRefE, Loc VarRefE) -> CompilerM (Loc VarRefE, VarDecl)
+      fdMap :: Map Text FuncDecl
+      fdMap = Map.fromList $ zip (funcName <$> fs) fs
+
+generateVarDeclsForFD :: Map Text FuncDecl -- ^ Existing function declarations.
+                      -> FuncDecl
+                      -> CompilerM [(Loc VarRefE, Either VarDecl FuncDecl)]
+generateVarDeclsForFD fdMap f = traverse getVarDecl $ expVars (funcBody f)
+    where
+      fpMap = vdMap (funcParams  f)
+      vdMap :: [VarDecl] -> Map Text VarDecl
+      vdMap vs =
+          Map.fromList $ zip (varName <$> vs) vs
+      getVarDecl :: (Name VarRefE, Loc VarRefE)
+                 -> CompilerM (Loc VarRefE, Either VarDecl FuncDecl)
       getVarDecl (n, l) = do
-        fd <- lookupM (toText n) funcParmsMap
-              "variable declaration for "
+        fd <- fmap Left  (lookupM (toText n) fpMap "variable declaration for ")
+              `catchError`
+              const (fmap Right (lookupM (toText n) fdMap "function declaration for "))
         return (l, fd)
-
-

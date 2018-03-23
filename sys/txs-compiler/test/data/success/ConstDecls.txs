@@ -1,5 +1,17 @@
 CONSTDEF
-   x :: Int ::= 3
-   -- y :: Bool ::= True;
-   -- z :: String ::= "Edward \"the great\" \x23 \x345 \x00"
+    x :: Int ::= 3;
+    y :: Bool ::= True;
+    z :: String ::= "Edward \"the great\" \x23 \x345 \x00"
 ENDDEF
+
+CONSTDEF
+    a :: Int ::= 2;
+    b :: Bool ::= True;
+    c :: Int ::= a;
+    d :: Bool ::= b
+ENDDEF
+
+
+
+
+

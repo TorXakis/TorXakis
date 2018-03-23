@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE TypeFamilies               #-}
 module TorXakis.Compiler.Data where
 
 import           Control.Monad.Error.Class (MonadError, liftEither)
@@ -9,10 +11,12 @@ import           Control.Monad.State       (MonadState, StateT, get, put)
 import           Data.Either.Utils         (maybeToEither)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
-import           Data.Semigroup            ((<>))
+import           Data.Monoid               (Monoid, (<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
+import           GHC.Exts                  (IsList, Item, fromList, toList)
 import           Prelude                   hiding (lookup)
+
 
 import           CstrId                    (CstrId)
 import           FuncDef                   (FuncDef)
@@ -22,6 +26,9 @@ import           VarId                     (VarId)
 
 import           TorXakis.Compiler.Error
 import           TorXakis.Parser.Data      hiding (St, nextId)
+
+-- | Single environment
+newtype SEnv t = SEnv { fromSEnv :: t}
 
 -- | Incremental environment, to allow the compiler to fill in the environment
 -- in several passes.
@@ -66,12 +73,16 @@ class HasVarIds e where
     findVarIdM e i = liftEither $ findVarId e i
 
 class HasVarDecls e where
-    -- | Find the field declaration that corresponds to parser-location of a
-    -- variable use.
+    -- | Find the variable declaration or function declaration that corresponds
+    -- to parser-location of a variable reference.
+    --
+    -- An identifier "x" could refer to a function (for instance in the case of
+    -- a constant), and that's why this function can return a 'FuncDecl' as
+    -- well as a 'VarDecl'.
     --
     -- For now variables only occur in expressions.
-    findVarDecl :: e -> Loc VarRefE -> Either Error VarDecl
-    findVarDeclM :: e -> Loc VarRefE -> CompilerM VarDecl
+    findVarDecl :: e -> Loc VarRefE -> Either Error (Either VarDecl FuncDecl)
+    findVarDeclM :: e -> Loc VarRefE -> CompilerM (Either VarDecl FuncDecl)
     findVarDeclM e i = liftEither $ findVarDecl e i
 
 class HasFuncIds e where
@@ -105,7 +116,7 @@ instance HasCstrIds (IEnv f0 (Map (Loc CstrE) CstrId) f2 f3 f4 f5) where
 instance HasVarIds (IEnv f0 f1 (Map (Loc VarDeclE) VarId) f3 f4 f5) where
     findVarId IEnv{varIdT = vm} i = lookup i vm "variable by parser location id"
 
-instance HasVarDecls (IEnv f0 f1 f2 (Map (Loc VarRefE) VarDecl) f4 f5) where
+instance HasVarDecls (IEnv f0 f1 f2 (Map (Loc VarRefE) (Either VarDecl FuncDecl)) f4 f5) where
     findVarDecl IEnv{varDeclT = vm} i = lookup i vm "variable declaration by parser location id"
 
 instance HasFuncIds (IEnv f0 f1 f2 f3 (Map (Loc FuncDeclE) FuncId) f5) where
@@ -114,6 +125,20 @@ instance HasFuncIds (IEnv f0 f1 f2 f3 (Map (Loc FuncDeclE) FuncId) f5) where
 instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 (Map FuncId (FuncDef VarId))) where
     findFuncDef IEnv{funcDefT = fm} i = lookup i fm "function declaration by function id"
     getFuncDefT IEnv{funcDefT = fm} = fm
+
+instance HasFuncDefs (SEnv (Map FuncId (FuncDef VarId))) where
+    findFuncDef (SEnv fm) i = lookup i fm "function declaration by function id"
+    getFuncDefT (SEnv fm) = fm
+
+instance Monoid (SEnv (Map FuncId (FuncDef VarId))) where
+    mempty = SEnv Map.empty
+    SEnv fm0 `mappend` SEnv fm1 = SEnv (fm0 `mappend` fm1)
+
+instance IsList (SEnv (Map FuncId (FuncDef VarId))) where
+    type Item (SEnv (Map FuncId (FuncDef VarId))) = (FuncId, FuncDef VarId)
+
+    fromList = SEnv . fromList
+    toList   = toList . fromSEnv
 
 newtype St = St { nextId :: Int } deriving (Eq, Show)
 

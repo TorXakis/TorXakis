@@ -42,6 +42,7 @@ module TorXakis.Parser.Data
     , FuncDecl
     , mkFuncDecl
     , funcName
+    , funcNameL
     , funcParams
     , funcBody
     , funcRetSort
@@ -61,10 +62,12 @@ module TorXakis.Parser.Data
     , expVars
     -- * Location of the entities.
     , getLoc
+    , loc'
     )
 where
 
-import           Data.Text (Text)
+import           Data.Text  (Text)
+import           Lens.Micro (Lens')
 
 -- | State of the parser.
 newtype St = St { nextId :: Int } deriving (Eq, Show)
@@ -108,9 +111,13 @@ locFromMetadata m = let Loc i = loc m in Loc i
 
 class HasLoc a t where
     getLoc :: a -> Loc t
+    setLoc :: a -> Loc t -> a
+    loc' :: Lens' a (Loc t)
+    loc' f a = setLoc a <$> f (getLoc a)
 
 instance HasLoc (ParseTree t c) t where
     getLoc = loc . nodeMdata
+    setLoc (ParseTree n t m c) l = ParseTree n t (m {loc = l}) c
 
 -- instance HasLoc ExpDecl ExpDeclE where
 --     getLoc (LetExp _ _ m) = loc m
@@ -268,6 +275,9 @@ mkFuncDecl n m ps s b = ParseTree (Name n) FuncDeclE m (FuncComps ps s b)
 
 funcName :: FuncDecl -> Text
 funcName = nodeNameT
+
+funcNameL :: Lens' FuncDecl Text
+funcNameL = undefined
 
 funcParams :: FuncDecl -> [VarDecl]
 funcParams = funcCompsParams . child

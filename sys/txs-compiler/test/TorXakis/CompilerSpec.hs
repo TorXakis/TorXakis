@@ -1,5 +1,6 @@
 module TorXakis.CompilerSpec where
 
+import           GHC.Stack
 import           Data.Either          (isRight)
 import           Data.Foldable        (traverse_)
 import qualified Data.Map             as Map
@@ -53,7 +54,7 @@ spec =
                   signatures = Set.fromList . concat . (Map.keys <$>) . Map.elems . toMap . func
 
 -- | Equality modulo unique id's.
-(~==~) :: (Resettable e, Show e, Eq e) => e -> e -> Expectation
+(~==~) :: (HasCallStack, Resettable e, Show e, Eq e) => e -> e -> Expectation
 e0 ~==~ e1 = reset e0 `shouldBe` reset e1
 
 txsCompile :: FilePath -> IO (Id, TxsDefs, Sigs VarId)
