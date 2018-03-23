@@ -44,7 +44,7 @@ import           Common                    (Env, SessionId, getSession,
                                             getSessionIO)
 import           EnvData                   (Msg)
 import           TorXakis.Lib              (waitForMessageQueue, waitForVerdict)
-import           TorXakis.Session          (Session, sessionMsgs)
+import           TorXakis.Lib.Session      (Session, sessionMsgs)
 
 type MessagesEP = "session"
                :> Capture "sid" SessionId

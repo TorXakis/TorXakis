@@ -21,7 +21,7 @@ import           Servant
 import           Servant.Multipart           (MultipartForm, MultipartData, Mem, FileData, files, fdFileName, fdPayload) --  iName, iValue, inputs
 
 import           TorXakis.Lib                (load, Response (..))
-import           TorXakis.Session            (Session)
+import           TorXakis.Lib.Session            (Session)
 
 import           Common (SessionId, getSession, Env)
 

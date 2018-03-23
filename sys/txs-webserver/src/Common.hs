@@ -20,7 +20,7 @@ import qualified Data.IntMap.Strict          as Map
 import           Servant                     (throwError)
 import           Servant.Server
 
-import           TorXakis.Session            (Session)
+import           TorXakis.Lib.Session        (Session)
 
 type SessionId = Int
 

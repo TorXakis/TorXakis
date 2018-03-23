@@ -4,24 +4,24 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
--- | 
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE DeriveAnyClass    #-}
-module TorXakis.Session where
+-- |
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
+module TorXakis.Lib.Session where
 
+import           Control.Concurrent.MVar       (MVar)
+import           Control.Concurrent.STM.TQueue (TQueue)
 import           Control.Concurrent.STM.TVar   (TVar)
 import           Control.DeepSeq               (NFData)
 import           GHC.Generics                  (Generic)
 import           Lens.Micro                    (Lens')
-import           Control.Concurrent.STM.TQueue (TQueue)
-import           Control.Concurrent.MVar       (MVar)
 
-import           Sigs     (Sigs, empty)
-import           VarId    (VarId)
-import           TxsDefs  (TxsDefs, empty)
-import           EnvCore  (EnvC, initState)
-import           EnvData  (Msg)
-import           TxsDDefs (Verdict)
+import           EnvCore                       (EnvC, initState)
+import           EnvData                       (Msg)
+import           Sigs                          (Sigs, empty)
+import           TxsDDefs                      (Verdict)
+import           TxsDefs                       (TxsDefs, empty)
+import           VarId                         (VarId)
 
 -- | The session, which maintains the state of a TorXakis model.
 data Session = Session

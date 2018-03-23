@@ -12,20 +12,20 @@ See LICENSE at root directory of this repository.
 
 module TorXakis.Lib.Examples where
 
-import           Prelude hiding (take, mapM_)
+import           Prelude                  hiding (mapM_, take)
 
-import           Lens.Micro                    ((^.))
-import           Data.Conduit                  (runConduit, (.|))
-import           Data.Conduit.Combinators      (take, sinkList, mapM_)
-import           Data.Conduit.TQueue           (sourceTQueue)
-import           Data.Foldable                 (traverse_)
-import           Control.Monad                 (void)
-import           Control.Concurrent.Async      (async, cancel)
+import           Control.Concurrent.Async (async, cancel)
+import           Control.Monad            (void)
+import           Data.Conduit             (runConduit, (.|))
+import           Data.Conduit.Combinators (mapM_, sinkList, take)
+import           Data.Conduit.TQueue      (sourceTQueue)
+import           Data.Foldable            (traverse_)
+import           Lens.Micro               ((^.))
 
-import           EnvData  (Msg)
+import           EnvData                  (Msg)
 
 import           TorXakis.Lib
-import           TorXakis.Session
+import           TorXakis.Lib.Session
 
 -- | Get the next N messages in the session.
 --

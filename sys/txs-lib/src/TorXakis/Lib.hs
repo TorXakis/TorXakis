@@ -31,7 +31,7 @@ import           TxsCore                       (txsInit, txsSetStep, txsStepN)
 import           TxsDDefs                      (Verdict)
 import           TxsHappy                      (txsParser)
 
-import           TorXakis.Session
+import           TorXakis.Lib.Session
 
 data Response = Success | Error { msg :: String } deriving (Show)
 
