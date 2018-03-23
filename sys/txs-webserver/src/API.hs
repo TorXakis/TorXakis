@@ -4,12 +4,10 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- {-# LANGUAGE DeriveAnyClass  #-}
 -- {-# LANGUAGE DeriveGeneric   #-}
 -- {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeOperators     #-}
 module API
 ( startApp
 , app
