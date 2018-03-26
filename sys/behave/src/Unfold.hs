@@ -62,9 +62,7 @@ unfold chsets cnode = do
 
 
 unfoldCT :: [ Set.Set TxsDefs.ChanId ] -> CTree -> IOB.IOB BTree
-unfoldCT chsets ctree = do
-     btrees <- mapM (unfoldCTbranch chsets) ctree
-     return $ concat btrees
+unfoldCT chsets ctree = concat <$> mapM (unfoldCTbranch chsets) ctree
 
 
 unfoldCTbranch :: [ Set.Set TxsDefs.ChanId ] -> CTBranch -> IOB.IOB BTree
@@ -116,9 +114,7 @@ unfoldCTbranch chsets (CTpref ctoffs cthidvars' ctpred' ctnext')
 -- filterBT :  filter behaviour tree BTree on visible action-sets from Specification
 
 filterBT :: [ Set.Set TxsDefs.ChanId ] -> BTree -> IOB.IOB BTree
-filterBT chsets btree' = do
-     btrees <- mapM (filterBTbranch chsets) btree'
-     return $ concat btrees
+filterBT chsets btree' = concat <$> mapM (filterBTbranch chsets) btree'
 
 filterBTbranch :: [ Set.Set TxsDefs.ChanId ] -> BBranch -> IOB.IOB BTree
 

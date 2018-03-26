@@ -14,6 +14,7 @@ import           Control.Monad.State
 import           Data.ByteString          (pack)
 import           Data.ByteString.Internal (c2w)
 import           Data.Char                (chr, ord)
+import           Data.Foldable (traverse_)
 import qualified Data.Map                 as Map
 import           Data.String
 import           Data.Text                (Text)
@@ -40,7 +41,7 @@ xmlTreeToText tree = T.concat $ reverse $ execState (xmlTreeToList tree) []
     xmlTreeToList (XLeaf text) = modify (text:)
     xmlTreeToList (XNode text ts) = do
       modify (T.concat ["<", text, ">" ]:)
-      _ <- traverse xmlTreeToList ts
+      traverse_ xmlTreeToList ts
       modify (T.concat ["</", text, ">" ]:)
 
 instance IsString XMLTree where

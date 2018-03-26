@@ -354,11 +354,11 @@ runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @
           -> [Text]           -- ^ Command arguments.
           -> Shell Line       -- ^ Lines to be input to the command.
           -> IO (Either SqattError ())
-runInproc mLogDir cmd cmdArgs procInput = do
-  testResult <- case mLogDir of
-    Nothing -> try $ sh $ inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
-    Just logDir -> try $ output logDir $ either id id <$> inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
-  return $ left (UnexpectedException . T.pack . show) testResult
+runInproc mLogDir cmd cmdArgs procInput =
+  left (UnexpectedException . T.pack . show) <$> 
+    case mLogDir of
+        Nothing -> try $ sh $ inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
+        Just logDir -> try $ output logDir $ either id id <$> inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
 
 -- | Run a process without input. See `runInproc`.
 --
