@@ -76,9 +76,7 @@ randValExprsSolveTrueBins p freevars exprs  =
         addAssertions exprs
         sat <- getSolvable
         sp <- case sat of
-                Sat     -> do
-                            sol <- getSolution freevars
-                            return $ Solved sol
+                Sat     -> Solved <$> getSolution freevars
                 Unsat   -> return Unsolvable
                 Unknown -> return UnableToSolve
         pop
