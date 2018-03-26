@@ -1,0 +1,43 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+TYPEDEF Cmd ::= CmdInfo
+              | CmdLoad    {filePath    :: String}
+              | CmdStepper {model       :: String}
+              | CmdStep    {nrofSteps   :: Int}
+ENDDEF
+
+TYPEDEF Response ::= ResponseInfo       {info       :: String}
+                   | ResponseFailure    {failure    :: String}
+                   | ResponseSuccess
+ENDDEF
+                   
+            
+-- ----------------------------------------------------------------------------------------- --
+-- channels
+
+CHANDEF  ChanDefs   ::=  Cmd :: Cmd; 
+                         Response  :: Response
+ENDDEF
+
+
+PROCDEF  torxakis  [ Cmd :: Cmd ; Response :: Response]  ( ) ::=
+        Cmd ! CmdInfo
+    >-> Response ! ResponseInfo ("Boe")
+    >-> torxakis [ Cmd, Response ] ( )
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+-- model
+
+
+MODELDEF  Model ::=
+        CHAN IN     Cmd
+        CHAN OUT    Response
+
+        BEHAVIOUR   torxakis [ Cmd, Response ] ( )
+ENDDEF
+
