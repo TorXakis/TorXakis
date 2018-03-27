@@ -55,7 +55,7 @@ PROCDEF steppingEzelState [ Cmd :: Cmd ; Response :: Response ; Synchronize :: S
 ENDDEF
 
 PROCDEF stepperWezelState [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore]  ( ) ::=
-        Cmd ? cs [[ IF isCmdStep(cs) THEN nrofSteps (cs) > 0 ELSE False FI ]]
+        Synchronize ! Acquire | Cmd ? cs [[ IF isCmdStep(cs) THEN nrofSteps (cs) > 0 ELSE False FI ]]
     >-> steppingWezelState [Cmd, Response, Synchronize] ( nrofSteps (cs) )
 ENDDEF
 
@@ -100,18 +100,12 @@ MODELDEF Model ::=
         CHAN IN     Cmd
         CHAN OUT    Response
 
-        BEHAVIOUR   torxakis [ Cmd, Response ] ( )
+        BEHAVIOUR   torxakis [ Cmd, Response ] ( ) |[ Cmd, Response ]| purpose [ Cmd, Response ] ()
 ENDDEF
 
-PROCDEF stepControl [ Cmd :: Cmd ; Response :: Response ] ( ) HIT ::=
-        Response ? x >-> stepControl [Cmd,Response]()
+PROCDEF purpose [ Cmd :: Cmd ; Response :: Response ] ( ) ::=
+        Response ? r [[ IF isResponseFailure(r) THEN strinre (failure(r), REGEX('[ -~]+')) ELSE True FI ]]  >-> purpose [Cmd,Response]()
+                                                                                                                -- avoid TorXakis bug: non-printable characters
     ##
-        Cmd ? c [[ IF isCmdStep(c) THEN nrofSteps(c) <= 123 ELSE True FI ]] >-> stepControl [Cmd,Response]()
-ENDDEF
-
-PURPDEF Purpose ::=
-    CHAN IN    Cmd
-    CHAN OUT   Response
-
-    GOAL stepControl ::= stepControl [Cmd,Response]()
+        Cmd ? c [[ IF isCmdStep(c) THEN nrofSteps(c) <= 123 ELSE True FI ]] >-> purpose [Cmd,Response]()        -- prevent one long step response
 ENDDEF
