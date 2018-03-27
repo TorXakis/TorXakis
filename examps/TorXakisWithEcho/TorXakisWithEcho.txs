@@ -10,34 +10,36 @@ TYPEDEF Cmd ::= CmdInfo
               | CmdStep    {nrofSteps   :: Int}
 ENDDEF
 
-TYPEDEF Response ::= ResponseInfo       {info       :: String}
-                   | ResponseFailure    {failure    :: String}
+TYPEDEF Response ::= ResponseInfo       {version, buildTime :: String}
+                   | ResponseFailure    {failure            :: String}
                    | ResponseSuccess
 ENDDEF
-                   
-            
--- ----------------------------------------------------------------------------------------- --
--- channels
 
-CHANDEF  ChanDefs   ::=  Cmd :: Cmd; 
+CHANDEF ChanDefs   ::=  Cmd :: Cmd; 
                          Response  :: Response
 ENDDEF
 
-
-PROCDEF  torxakis  [ Cmd :: Cmd ; Response :: Response]  ( ) ::=
+PROCDEF cmdInfo  [ Cmd :: Cmd ; Response :: Response]  ( expected :: Response) ::=
         Cmd ! CmdInfo
-    >-> Response ! ResponseInfo ("Boe")
-    >-> torxakis [ Cmd, Response ] ( )
+    >-> Response ! expected
+    >-> cmdInfo [ Cmd, Response ] ( expected )
 ENDDEF
 
--- ----------------------------------------------------------------------------------------- --
--- model
+PROCDEF cmdInfoInit  [ Cmd :: Cmd ; Response :: Response]  ( ) ::=
+        Cmd ! CmdInfo
+    >-> Response ? ri [[ IF isResponseInfo(ri) THEN (strinre (version(ri), REGEX('(UNVERSIONED)|([0-9]+\.[0-9]+\.[0-9]+)'))) /\ (strinre (buildTime(ri), REGEX('[ -~]+')))
+                                               ELSE False 
+                                               FI]]
+    >-> cmdInfo [ Cmd, Response ] ( ri )
+ENDDEF
 
+PROCDEF torxakis [ Cmd :: Cmd ; Response :: Response]  ( ) ::=
+    cmdInfoInit [Cmd, Response] ()
+ENDDEF
 
-MODELDEF  Model ::=
+MODELDEF Model ::=
         CHAN IN     Cmd
         CHAN OUT    Response
 
         BEHAVIOUR   torxakis [ Cmd, Response ] ( )
 ENDDEF
-
