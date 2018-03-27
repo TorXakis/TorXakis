@@ -107,8 +107,6 @@ PROCDEF stepControl [ Cmd :: Cmd ; Response :: Response ] ( ) HIT ::=
         Response ? x >-> stepControl [Cmd,Response]()
     ##
         Cmd ? c [[ IF isCmdStep(c) THEN nrofSteps(c) <= 123 ELSE True FI ]] >-> stepControl [Cmd,Response]()
-ENDDEF
-
 PURPDEF Purpose ::=
     CHAN IN    Cmd
     CHAN OUT   Response
