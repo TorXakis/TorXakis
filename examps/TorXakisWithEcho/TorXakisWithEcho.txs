@@ -20,8 +20,8 @@ TYPEDEF Response ::= ResponseInfo       {version, buildTime :: String}
                    | ResponseAction     { channelName :: String ; value :: Int }
 ENDDEF
 
-CHANDEF ChanDefs   ::=  Cmd :: Cmd; 
-                         Response  :: Response
+CHANDEF ChanDefs   ::= Cmd :: Cmd 
+                     ; Response  :: Response
 ENDDEF
 
 PROCDEF cmdInfo  [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore]  ( expected :: Response) ::=
@@ -82,7 +82,7 @@ PROCDEF initState [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore
         )
 ENDDEF
 
-PROCDEF sequencer [ Synchronize :: Semaphore] ( ) ::=
+PROCDEF sequencer [ Synchronize :: Semaphore ] ( ) ::=
         Synchronize ! Acquire
     >-> Synchronize ! Release
     >-> sequencer [Synchronize]()
