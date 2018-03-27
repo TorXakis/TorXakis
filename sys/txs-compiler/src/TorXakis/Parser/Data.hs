@@ -9,6 +9,8 @@ module TorXakis.Parser.Data
     , incId
     , nextId
     , Loc (Loc)
+    , HasLoc
+    , IsVariable
     -- * Name
     , Name
     , toText
@@ -60,6 +62,10 @@ module TorXakis.Parser.Data
     , mkIntConstExp
     , mkStringConstExp
     , expVars
+    , expLetVarDecls
+    , LetVarDecl
+    , varDeclExp
+    , letVarDeclSortName
     -- * Location of the entities.
     , getLoc
     , loc'
@@ -84,7 +90,7 @@ data ParseTree t c = ParseTree
     , nodeType  :: t
     , nodeMdata :: Metadata t
     , child     :: c
-    } deriving (Show, Eq)
+    } deriving (Show, Eq, Ord)
 
 newtype Name t = Name { toText :: Text } deriving (Show, Eq, Ord)
 
@@ -99,7 +105,7 @@ data Metadata t = Metadata
     , start :: Int
        -- | Unique identifier.
     , loc   :: Loc t
-    } deriving (Show, Eq)
+    } deriving (Show, Eq, Ord)
 
 newtype Loc t = Loc { intVal :: Int} deriving (Show, Eq, Ord)
 
@@ -127,35 +133,35 @@ instance HasLoc (ParseTree t c) t where
 -- * Types of entities encountered when parsing.
 
 -- | ADT.
-data ADTE = ADTE deriving (Eq, Show)
+data ADTE = ADTE deriving (Eq, Ord, Show)
 
 -- | Constructor.
-data CstrE = CstrE  deriving (Eq, Show)
+data CstrE = CstrE  deriving (Eq, Ord, Show)
 
 -- | Field of a constructor.
-data FieldE = FieldE deriving (Eq, Show)
+data FieldE = FieldE deriving (Eq, Ord, Show)
 
 -- | Reference to an existing (previously defined or primitive) sort.
-data SortRefE = SortRefE deriving (Eq, Show)
+data SortRefE = SortRefE deriving (Eq, Ord, Show)
 
 -- | Function declaration.
-data FuncDeclE = FuncDeclE deriving (Eq, Show)
+data FuncDeclE = FuncDeclE deriving (Eq, Ord, Show)
 
 -- | Function call.
-data FuncCallE = FuncCallE deriving (Eq, Show)
+data FuncCallE = FuncCallE deriving (Eq, Ord, Show)
 
 -- | An expression
-data ExpDeclE = ExpDeclE deriving (Eq, Show)
+data ExpDeclE = ExpDeclE deriving (Eq, Ord, Show)
 
 -- | A variable declaration.
-data VarDeclE = VarDeclE deriving (Eq, Show)
+data VarDeclE = VarDeclE deriving (Eq, Ord, Show)
 
 -- | A variable occurrence in an expression. It is assumed to be a
 -- **reference** to an existing variable.
-data VarRefE = VarRefE deriving (Eq, Show)
+data VarRefE = VarRefE deriving (Eq, Ord, Show)
 
 -- | A constant literal
-data ConstLitE = ConstLitE deriving (Eq, Show)
+data ConstLitE = ConstLitE deriving (Eq, Ord, Show)
 
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADTE     [CstrDecl]
@@ -203,7 +209,7 @@ data FuncComps = FuncComps
     { funcCompsParams  :: [VarDecl]
     , funcCompsRetSort :: OfSort
     , funcCompsBody    :: ExpDecl
-    } deriving (Eq, Show)
+    } deriving (Eq, Show, Ord)
 
 -- | Variable declarations.
 type VarDecl = ParseTree VarDeclE OfSort
@@ -211,9 +217,12 @@ type VarDecl = ParseTree VarDeclE OfSort
 mkVarDecl :: Text -> Metadata VarDeclE -> OfSort -> VarDecl
 mkVarDecl n m s = ParseTree (Name n) VarDeclE m s
 
--- | Name of a variable
-varName :: VarDecl -> Text
-varName = nodeNameT
+class IsVariable v where
+    -- | Name of a variable
+    varName :: v -> Text
+
+instance IsVariable VarDecl where
+    varName = nodeNameT
 
 varDeclSort :: VarDecl -> (Text, Metadata SortRefE)
 varDeclSort f = (nodeNameT . child $ f, nodeMdata . child $ f)
@@ -228,28 +237,47 @@ expChild = child
 expVars :: ExpDecl -> [(Name VarRefE, Loc VarRefE)]
 expVars (ParseTree _ _ _ (VarRef n l))  = [(n, l)]
 expVars (ParseTree _ _ _ (ConstLit _ )) = []
+expVars (ParseTree _ _ _ (LetExp vs e)) =
+    concatMap (expVars . snd . child) vs ++ expVars e
+
+-- | Extract all the expression declarations of an expression.
+expLetVarDecls :: ExpDecl -> [LetVarDecl]
+expLetVarDecls (ParseTree _ _ _ (VarRef _ _))  = []
+expLetVarDecls (ParseTree _ _ _ (ConstLit _ )) = []
+expLetVarDecls (ParseTree _ _ _ (LetExp vs e)) =
+    vs ++ expLetVarDecls e
 
 -- foldExp :: (b -> ExpChild -> b) -> b -> ExpDecl -> b
 -- foldExp f b (ParseTree _ _ _ c) = f b c
 
 data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)
               | ConstLit Const
- -- LetExp [LetValDecl] ExpDecl
-    deriving (Eq, Show)
+              | LetExp [LetVarDecl] ExpDecl
+    deriving (Eq, Ord, Show)
 
--- mkLetExp :: [LetValDecl] -> ExpDecl -> Metadata ExpDecl -> ExpDecl
+-- mkLetExp :: [LetVarDecl] -> ExpDecl -> Metadata ExpDecl -> ExpDecl
 -- mkLetExp = undefined
 
-data LetValDecl = LetValDecl (Name VarDeclE) (Maybe SortRefE) ExpDecl (Metadata VarDeclE)
-    deriving (Eq, Show)
+type LetVarDecl = ParseTree VarDeclE (Maybe OfSort, ExpDecl)
 
--- mkLetValDecl :: Name VarDeclE -> Maybe SortRefE -> ExpDecl -> Metadata VarDeclE -> LetValDecl
--- mkLetValDecl = undefined
+varDeclExp :: LetVarDecl -> ExpDecl
+varDeclExp = snd . child
+
+instance IsVariable LetVarDecl where
+    varName = nodeNameT
+
+letVarDeclSortName :: LetVarDecl -> Maybe (Text, Metadata SortRefE)
+letVarDeclSortName vd = do
+    srt <- fst . child $ vd
+    return (nodeNameT srt, nodeMdata srt)
+
+-- mkLetVarDecl :: Name VarDeclE -> Maybe SortRefE -> ExpDecl -> Metadata VarDeclE -> LetVarDecl
+-- mkLetVarDecl = undefined
 
 data Const = BoolConst Bool
            | IntConst Integer
            | StringConst Text
-    deriving (Eq, Show)
+    deriving (Eq, Show, Ord)
 
 mkExpDecl :: Metadata ExpDeclE -> ExpChild -> ExpDecl
 mkExpDecl m c = ParseTree (Name "") ExpDeclE m c

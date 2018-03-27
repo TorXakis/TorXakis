@@ -35,7 +35,7 @@ funcDeclsToFuncDefs e fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
           case partitionEithers (funcDeclToFuncDef e e' <$> gs) of
               ([], rs) -> Right $ fromSEnv $ fromList rs <> e'
               (ls, []) -> Left  $ T.pack $ "Could not resolve " ++ show ls
-              (ls, rs) -> gFuncDeclsToFuncDefs (e' <> fromList rs) ls
+              (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> e') ls
 
 -- | TODO: we pass two environments, since e cannot be extended. We should try
 -- to solve this by trying to replace IEnv with types like:

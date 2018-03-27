@@ -62,18 +62,20 @@ compileParsedDefs pd = do
         e0 = emptyEnv { sortIdT = Map.union pdsMap sMap }
     cMap <- compileToCstrId e0 (pd ^. adts)
     let e1 = e0 { cstrIdT = cMap }
-    -- Construct the @VarId@'s lookup table.
-    let allFuncs = pd ^. funcs ++ pd ^. consts
-    vMap <- generateVarIds e1 allFuncs
-    let e2 = e1 { varIdT = vMap }
+        allFuncs = pd ^. funcs ++ pd ^. consts
     -- Construct the variable declarations table.
     dMap <- generateVarDecls allFuncs
-    let e3 = e2 { varDeclT = dMap }
     -- Construct the function declaration to function id table.
-    lFIdMap <- funcDeclsToFuncIds e3 allFuncs
-    let e4 = e3 { funcIdT = lFIdMap }
+    lFIdMap <- funcDeclsToFuncIds e1 allFuncs
+    let e2 = e1 { varDeclT = dMap}
+    -- Infer the types of all variable declarations.
+    vdSortMap <- inferTypes e2 allFuncs
+    let e3 = e2 { varSortIdT = vdSortMap }
+    -- Construct the variable declarations to @VarId@'s lookup table.
+    vMap <- generateVarIds e3 allFuncs
+    let e4 = e3 { varIdT = vMap
+                , funcIdT = lFIdMap }
     lFDefMap <- funcDeclsToFuncDefs e4 allFuncs
-    -- Construct the function id to function definition table.
     let e5 = e4 { funcDefT = lFDefMap }
     -- Finally construct the TxsDefs.
     txsDefs <- toTxsDefs e5 pd

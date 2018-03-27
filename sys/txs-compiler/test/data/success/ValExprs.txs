@@ -1,11 +1,14 @@
-FUNCDEF f(x, y :: Int) :: Int ::=
-    -- LET x = 10; y :: Bool = True IN x NI
+FUNCDEF const(x, y :: Int) :: Int ::=   
     x
 ENDDEF
 
-FUNCDEF f(x :: Int) :: Int ::=
+FUNCDEF twenty(x :: Int) :: Int ::=
     -- LET z = 10; b = True IN x NI
     20
+ENDDEF
+
+FUNCDEF let(x :: Int) :: Int ::=
+    LET x = 10; y :: Bool = True IN x NI
 ENDDEF
 
 FUNCDEF h() :: String ::=
@@ -15,5 +18,11 @@ ENDDEF
 FUNCDEF g() :: String ::=
     "Hello"
 ENDDEF
+
+-- TODO: it seems TorXakis cannot handle this. Could the new compiler?
+-- FUNCDEF j(g :: String) :: String ::=
+--     g
+-- ENDDEF
+
 
 

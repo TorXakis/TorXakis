@@ -32,17 +32,18 @@ newtype SEnv t = SEnv { fromSEnv :: t}
 
 -- | Incremental environment, to allow the compiler to fill in the environment
 -- in several passes.
-data IEnv f0 f1 f2 f3 f4 f5 = IEnv
-    { sortIdT  :: f0
-    , cstrIdT  :: f1
-    , varIdT   :: f2
-    , varDeclT :: f3
-    , funcIdT  :: f4
-    , funcDefT :: f5
+data IEnv f0 f1 f2 f3 f4 f5 f6 = IEnv
+    { sortIdT    :: f0
+    , cstrIdT    :: f1
+    , varSortIdT :: f2
+    , varIdT     :: f3
+    , varDeclT   :: f4
+    , funcIdT    :: f5
+    , funcDefT   :: f6
     }
 
-emptyEnv :: IEnv () () () () () ()
-emptyEnv = IEnv () () () () () ()
+emptyEnv :: IEnv () () () () () () ()
+emptyEnv = IEnv () () () () () () ()
 
 class HasSortIds e where
     -- | Find the `SortId` that corresponds to the given name. This assumes
@@ -64,6 +65,12 @@ class HasCstrIds e where
     findCstrIdM :: e -> Loc CstrE -> CompilerM CstrId
     findCstrIdM e i = liftEither $ findCstrId e i
 
+-- | The environment has the @SortId@'s of the variable declarations.
+class HasVarSortIds e where
+    findVarDeclSortId :: e -> Loc VarDeclE -> Either Error SortId
+    findVarDeclSortIdM :: e -> Loc VarDeclE -> CompilerM SortId
+    findVarDeclSortIdM e l = liftEither $ findVarDeclSortId e l
+
 class HasVarIds e where
     -- | Find the variable id that corresponds to the given parser location.
     --
@@ -81,6 +88,7 @@ class HasVarDecls e where
     -- well as a 'VarDecl'.
     --
     -- For now variables only occur in expressions.
+    --
     findVarDecl :: e -> Loc VarRefE -> Either Error (Either VarDecl FuncDecl)
     findVarDeclM :: e -> Loc VarRefE -> CompilerM (Either VarDecl FuncDecl)
     findVarDeclM e i = liftEither $ findVarDecl e i
@@ -97,7 +105,7 @@ class HasFuncDefs e where
     findFuncDef :: e -> FuncId -> Either Error (FuncDef VarId)
     getFuncDefT :: e -> Map FuncId (FuncDef VarId)
 
-instance HasSortIds (IEnv (Map Text SortId) f1 f2 f3 f4 f5) where
+instance HasSortIds (IEnv (Map Text SortId) f1 f2 f3 f4 f5 f6) where
     findSortId IEnv{sortIdT = sm} (t, m) = maybeToEither err . Map.lookup t $ sm
         where err = (T.pack . show) m <> ": Could not find sort " <> t
 
@@ -110,19 +118,23 @@ lookup a ab what = maybeToEither err . Map.lookup a $ ab
 lookupM :: (Ord a, Show a) => a -> Map a b -> Text -> CompilerM b
 lookupM a ab what = liftEither $ lookup a ab what
 
-instance HasCstrIds (IEnv f0 (Map (Loc CstrE) CstrId) f2 f3 f4 f5) where
+instance HasCstrIds (IEnv f0 (Map (Loc CstrE) CstrId) f2 f3 f4 f5 f6) where
     findCstrId IEnv{cstrIdT = cm} i = lookup i cm "constructor by parser location id "
 
-instance HasVarIds (IEnv f0 f1 (Map (Loc VarDeclE) VarId) f3 f4 f5) where
+instance HasVarSortIds (IEnv f0 f1 (Map (Loc VarDeclE) SortId) f3 f4 f5 f6) where
+    -- TODO: remove duplication WRT to @instance HasVarSortIds (SEnv (Map (Loc VarDeclE) SortId))@
+    findVarDeclSortId IEnv{varSortIdT = vsm} l = lookup l vsm "sort of variable at location "
+
+instance HasVarIds (IEnv f0 f1 f2 (Map (Loc VarDeclE) VarId) f4 f5 f6) where
     findVarId IEnv{varIdT = vm} i = lookup i vm "variable by parser location id"
 
-instance HasVarDecls (IEnv f0 f1 f2 (Map (Loc VarRefE) (Either VarDecl FuncDecl)) f4 f5) where
+instance HasVarDecls (IEnv f0 f1 f2 f3 (Map (Loc VarRefE) (Either VarDecl FuncDecl)) f5 f6) where
     findVarDecl IEnv{varDeclT = vm} i = lookup i vm "variable declaration by parser location id"
 
-instance HasFuncIds (IEnv f0 f1 f2 f3 (Map (Loc FuncDeclE) FuncId) f5) where
+instance HasFuncIds (IEnv f0 f1 f2 f3 f4 (Map (Loc FuncDeclE) FuncId) f6) where
     findFuncId IEnv {funcIdT = fm} i = lookup i fm "function id by parser location id"
 
-instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 (Map FuncId (FuncDef VarId))) where
+instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 f5 (Map FuncId (FuncDef VarId))) where
     findFuncDef IEnv{funcDefT = fm} i = lookup i fm "function declaration by function id"
     getFuncDefT IEnv{funcDefT = fm} = fm
 
@@ -130,15 +142,29 @@ instance HasFuncDefs (SEnv (Map FuncId (FuncDef VarId))) where
     findFuncDef (SEnv fm) i = lookup i fm "function declaration by function id"
     getFuncDefT (SEnv fm) = fm
 
-instance Monoid (SEnv (Map FuncId (FuncDef VarId))) where
+instance Ord a => Monoid (SEnv (Map a b)) where
     mempty = SEnv Map.empty
     SEnv fm0 `mappend` SEnv fm1 = SEnv (fm0 `mappend` fm1)
 
-instance IsList (SEnv (Map FuncId (FuncDef VarId))) where
-    type Item (SEnv (Map FuncId (FuncDef VarId))) = (FuncId, FuncDef VarId)
+instance Ord a => IsList (SEnv (Map a b)) where
+    type Item (SEnv (Map a b)) = (a, b)
 
     fromList = SEnv . fromList
     toList   = toList . fromSEnv
+
+isMemberOf :: Ord a => a -> SEnv (Map a b) -> Bool
+isMemberOf a (SEnv ab) = Map.member a ab
+
+instance HasVarSortIds (SEnv (Map (Loc VarDeclE) SortId)) where
+    findVarDeclSortId (SEnv vsm) l = lookup l vsm "sort of variable at location "
+
+-- class HasExpSortIds e where
+--     findExpSortId :: e -> Loc ExpDeclE -> Either Error SortId
+--     findExpSortIdM :: e -> Loc ExpDeclE -> CompilerM SortId
+--     findExpSortIdM e l = liftEither $ findExpSortId e l
+
+-- instance HasExpSortIds (SEnv (Map (Loc ExpDeclE) SortId)) where
+--     findExpSortId (SEnv em) l = lookup l em "expression type for expression at location"
 
 newtype St = St { nextId :: Int } deriving (Eq, Show)
 
