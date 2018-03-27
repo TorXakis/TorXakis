@@ -4,6 +4,10 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
+TYPEDEF Semaphore ::= Acquire
+                    | Release
+ENDDEF
+
 TYPEDEF Cmd ::= CmdInfo
               | CmdLoad    {filePath    :: String}
               | CmdStepper {model       :: String}
@@ -13,28 +17,83 @@ ENDDEF
 TYPEDEF Response ::= ResponseInfo       {version, buildTime :: String}
                    | ResponseFailure    {failure            :: String}
                    | ResponseSuccess
+                   | ResponseAction     { channelName :: String ; value :: Int }
 ENDDEF
 
 CHANDEF ChanDefs   ::=  Cmd :: Cmd; 
                          Response  :: Response
 ENDDEF
 
-PROCDEF cmdInfo  [ Cmd :: Cmd ; Response :: Response]  ( expected :: Response) ::=
-        Cmd ! CmdInfo
-    >-> Response ! expected
-    >-> cmdInfo [ Cmd, Response ] ( expected )
+PROCDEF cmdInfo  [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore]  ( expected :: Response) ::=
+        Synchronize ! Acquire | Cmd ! CmdInfo
+    >-> Synchronize ! Release | Response ! expected
+    >-> cmdInfo [ Cmd, Response, Synchronize ] ( expected )
 ENDDEF
 
-PROCDEF cmdInfoInit  [ Cmd :: Cmd ; Response :: Response]  ( ) ::=
-        Cmd ! CmdInfo
-    >-> Response ? ri [[ IF isResponseInfo(ri) THEN (strinre (version(ri), REGEX('(UNVERSIONED)|([0-9]+\.[0-9]+\.[0-9]+)'))) /\ (strinre (buildTime(ri), REGEX('[ -~]+')))
-                                               ELSE False 
-                                               FI]]
-    >-> cmdInfo [ Cmd, Response ] ( ri )
+PROCDEF cmdInfoInit  [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore]  ( ) ::=
+        Synchronize ! Acquire | Cmd ! CmdInfo
+    >-> Synchronize ! Release | Response ? ri [[ IF isResponseInfo(ri) THEN (strinre (version(ri), REGEX('(UNVERSIONED)|([0-9]+\.[0-9]+\.[0-9]+)'))) /\ (strinre (buildTime(ri), REGEX('[ -~]+')))
+                                                                       ELSE False 
+                                                 FI]]
+    >-> cmdInfo [ Cmd, Response, Synchronize ] ( ri )
 ENDDEF
 
-PROCDEF torxakis [ Cmd :: Cmd ; Response :: Response]  ( ) ::=
-    cmdInfoInit [Cmd, Response] ()
+PROCDEF steppingWezelState [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore]  ( nrofSteps :: Int ) ::=
+        ([[ nrofSteps > 1 ]] =>> Response ? ra [[ IF isResponseAction(ra) THEN channelName(ra) == "In" ELSE False FI ]]
+                             >-> steppingEzelState [Cmd, Response, Synchronize] (nrofSteps -1, value(ra)))
+    ##
+        ([[ nrofSteps == 1 ]] =>> Synchronize ! Release | Response ? ra [[ IF isResponseAction(ra) THEN channelName(ra) == "In" ELSE False FI ]]
+                              >-> stepperEzelState [Cmd, Response, Synchronize] (value(ra)))
+ENDDEF
+
+PROCDEF steppingEzelState [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore]  ( nrofSteps, expected :: Int) ::=
+        ([[ nrofSteps > 1 ]] =>> Response ? ra [[ IF isResponseAction(ra) THEN (channelName(ra) == "Out") /\ (value(ra) == expected) ELSE False FI ]]
+                             >-> steppingWezelState [Cmd, Response, Synchronize] (nrofSteps -1))
+    ##
+        ([[ nrofSteps == 1 ]] =>> Synchronize ! Release | Response ? ra [[ IF isResponseAction(ra) THEN (channelName(ra) == "Out") /\ (value(ra) == expected) ELSE False FI ]]
+                             >-> stepperWezelState [Cmd, Response, Synchronize] ())
+ENDDEF
+
+PROCDEF stepperWezelState [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore]  ( ) ::=
+        Cmd ? cs [[ IF isCmdStep(cs) THEN nrofSteps (cs) > 0 ELSE False FI ]]
+    >-> steppingWezelState [Cmd, Response, Synchronize] ( nrofSteps (cs) )
+ENDDEF
+
+PROCDEF stepperEzelState [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore]  ( expected :: Int ) ::=
+        Synchronize ! Acquire | Cmd ? cs [[ IF isCmdStep(cs) THEN nrofSteps (cs) > 0 ELSE False FI ]]
+    >-> steppingEzelState [Cmd, Response, Synchronize] ( nrofSteps (cs), expected )
+ENDDEF
+
+PROCDEF loadedState [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore]  ( ) ::=
+        Synchronize ! Acquire | Cmd ! CmdStepper ("Model")
+    >-> (
+            Synchronize ! Release | Response ! ResponseSuccess >-> stepperWezelState [ Cmd, Response, Synchronize ] ()
+        ##
+            Synchronize ! Release | Response ? rf [[ isResponseFailure(rf) ]] >-> loadedState [Cmd, Response, Synchronize ] ()  -- should happen with the correct Echo.txs file...
+        )
+ENDDEF
+
+PROCDEF initState [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore]  ( ) ::=
+        Synchronize ! Acquire | Cmd ! CmdLoad("examps\\Echo\\Echo.txs")
+    >-> (
+                Synchronize ! Release | Response ! ResponseSuccess >-> loadedState [ Cmd, Response, Synchronize ] ()
+            ##
+                Synchronize ! Release | Response ? rf [[ isResponseFailure(rf) ]] >-> initState [Cmd, Response, Synchronize ] ()  -- retry
+        )
+ENDDEF
+
+PROCDEF sequencer [ Synchronize :: Semaphore] ( ) ::=
+        Synchronize ! Acquire
+    >-> Synchronize ! Release
+    >-> sequencer [Synchronize]()
+ENDDEF
+
+PROCDEF torxakis [ Cmd :: Cmd ; Response :: Response ]  ( ) ::=
+    HIDE [ Synchronize :: Semaphore ] IN
+            (cmdInfoInit [Cmd, Response, Synchronize] () ||| initState [ Cmd, Response, Synchronize ] ())
+        |[ Synchronize ]|
+            sequencer [Synchronize]()
+    NI
 ENDDEF
 
 MODELDEF Model ::=
