@@ -20,8 +20,6 @@ See LICENSE at root directory of this repository.
 -- TODO: make sure these warnings are removed.
 -- TODO: also check the hlint warnings!
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module LPE
 ( ProcDefs
@@ -391,6 +389,7 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
                 chanIds = Set.foldl (\accu offer -> (chanid offer : accu)) [] os in
             -- if there are no common channels with the synchronisation channels: return true
             Set.null $ Set.intersection (Set.fromList syncChans) (Set.fromList chanIds)
+          isValidStep _ _ = error "only allowed with ActionPref"
 
           -- check if given step combination can be executed according to parallel semantics
           isValidStepCombination :: [ChanId] -> (BExpr, BExpr) -> Bool
@@ -405,15 +404,18 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
                 intersectionRsyncChans = Set.intersection chanIdsRSet syncChansSet
             in
             (intersectionLR == intersectionLsyncChans) && (intersectionLsyncChans == intersectionRsyncChans)
-
+          isValidStepCombination _ _ = error "only allowed with tuple of ActionPrefs"
 
           updateProcInstL :: [VarId] -> ProcId -> [ChanId] -> BExpr -> BExpr
           updateProcInstL opParamsR procIdPAR chansDefPar (TxsDefs.view -> ActionPref actOfferL (TxsDefs.view -> ProcInst _procIdInstL _chansInstL paramsInstL)) =
               actionPref actOfferL (procInst procIdPAR chansDefPar (paramsInstL ++ map cstrVar opParamsR))
+          updateProcInstL _ _ _ _ = error "only allowed with ActionPref >-> ProcInst"
+          
           updateProcInstR :: [VarId] -> ProcId -> [ChanId] -> BExpr -> BExpr
           updateProcInstR opParamsL procIdPAR chansDefPar (TxsDefs.view -> ActionPref actOfferR (TxsDefs.view -> ProcInst _procIdInstR _chansInstR paramsInstR)) =
               actionPref actOfferR (procInst procIdPAR chansDefPar (map cstrVar opParamsL ++ paramsInstR))
-
+          updateProcInstR _ _ _ _ = error "only allowed with ActionPref >-> ProcInst"
+          
       -- accu = (opNr, steps, params, procDefs)
       -- foldl : (a -> b -> a) -> a -> [b] -> a
       -- a = (opNr, steps, params, procDefs)
@@ -464,7 +466,7 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
 
                   procInst' = procInst procIdNew chansDef (map cstrVar paramsDef)
               return (procInst', procDefs')
-
+lpePar _ _ _ = error "only allowed with ProcInst"
 
 -- ----------------------------------------------------------------------------------------- --
 -- LPE :
@@ -526,7 +528,8 @@ lpeTransform' procInst''' procDefs = do (procInst', procDefs') <- lpe procInst''
           if procId == orig
               then actionPref actOffer (procInst new chansInst paramsInst)
               else error "Found a different ProcId, thus the given BExpr is probably not in LPE format"
-
+        substituteProcId _ _ _ = error "Only allowed with Stop or (ActionPref >-> ProcInst)"
+        
 lpe :: (EnvB.EnvB envb ) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb (BExpr, ProcDefs)
 lpe procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) translatedProcDefs procDefs = do
       -- remember the current ProcId to avoid recursive loops translating the same ProcId again
@@ -643,7 +646,8 @@ lpe procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) trans
                 paramsANYs = map (cstrConst . Cany) paramsSorts
                 paramsNew = (pcValue : paramsInst) ++ paramsANYs in
             procInst procIdNew chansInst paramsNew
-
+        updateProcInst _ _ _ = error "Only allowed with ProcInst"
+        
         -- update the ProcInsts in the steps to the new ProcId
         stepsUpdateProcInsts :: [Proc] -> ProcToParams -> PCMapping -> ProcId -> BExpr -> BExpr
         stepsUpdateProcInsts _procs _procToParams _pcMap procIdNew (TxsDefs.view -> ActionPref actOffer (TxsDefs.view -> Stop)) =
@@ -676,7 +680,8 @@ lpe procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) trans
                                              Nothing   -> error "createParams: no params found for given proc (should be impossible)"
                     in
                     params ++ paramsRec
-
+                createParams _ _ = error "Only allowed with list of tuples and ProcInst"
+                
         stepsUpdateProcInsts _ _ _ _ bexpr = bexpr
 
 
@@ -689,7 +694,7 @@ lpe procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) trans
             unid <- EnvB.newUnid
             let name' = T.pack $ prefix ++ T.unpack name
             return $ VarId name' unid sort
-
+lpe _ _ _ = error "Only allowed with ProcInst"
 
 lpeBExpr :: (EnvB.EnvB envb ) => ChanMapping -> ParamMapping -> VarId -> Integer -> BExpr -> envb BExpr
 lpeBExpr _chanMap _paramMap _varIdPC _pcValue (TxsDefs.view -> Stop) = return stop
