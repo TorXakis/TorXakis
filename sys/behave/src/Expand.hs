@@ -109,9 +109,8 @@ expand chsets (BNbexpr we (TxsDefs.view -> Guard c bexp))  = do
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand chsets (BNbexpr we (TxsDefs.view -> Choice bexps))  =  do
-     expands <- sequence [ expand chsets (BNbexpr we bexp) | bexp <- bexps ]
-     return $ concat expands
+expand chsets (BNbexpr we (TxsDefs.view -> Choice bexps))  =
+     concat <$> sequence [ expand chsets (BNbexpr we bexp) | bexp <- bexps ]
 
 -- ----------------------------------------------------------------------------------------- --
 

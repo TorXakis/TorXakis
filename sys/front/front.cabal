@@ -17,6 +17,8 @@ library
 
   exposed-modules:      TxsAlex
                       , TxsHappy
+                      
+  other-modules:        ShowToken
   
   ghc-options:         -Werror -Wall -O0 -optc-O3 -optc-ffast-math
   
