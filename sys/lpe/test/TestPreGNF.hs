@@ -61,34 +61,34 @@ vexpr1 = cstrConst (Cint 1)
 
 
 -- action: A!1
-actOfferA1   = ActOffer {  offers = Set.singleton(
+actOfferA1   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdA
                                               , chanoffers = [Exclam vexpr1]
-                                        })
+                                              }
                         , constraint = cstrConst (Cbool True)
             }
 
 -- action: A?x
-actOfferAx   = ActOffer {  offers = Set.singleton(
+actOfferAx   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdA
                                               , chanoffers = [Quest varIdX]
-                                        })
+                                              }
                         , constraint = cstrConst (Cbool True)
             }
 
 -- action: B!1
-actOfferB1   = ActOffer {  offers = Set.singleton(
+actOfferB1   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdB
                                               , chanoffers = [Exclam vexpr1]
-                                        })
+                                              }
                         , constraint = cstrConst (Cbool True)
             }
 
 -- action: B?y
-actOfferBy   = ActOffer {  offers = Set.singleton(
+actOfferBy   = ActOffer {  offers = Set.singleton 
                                         Offer { chanid = chanIdB
                                               , chanoffers = [Quest varIdY]
-                                        })
+                                              }
                         , constraint = cstrConst (Cbool True)
             }
 
