@@ -1,0 +1,61 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+TYPEDEF Cmd ::= CmdInfo
+ENDDEF
+
+TYPEDEF Response ::= ResponseInfo { version, buildTime :: String }
+ENDDEF
+
+CHANDEF ChanDefs ::= C :: Cmd 
+                   ; R :: Response
+ENDDEF
+
+MODELDEF Model ::=
+    CHAN IN  C
+    CHAN OUT R
+
+    BEHAVIOUR torxakis [ C, R ] ()
+              |[ C, R ]|
+              purpose [ C, R ] ()
+ENDDEF
+
+
+PROCDEF torxakis [ C :: Cmd ; R :: Response ] () ::=
+    -- For now TorXakis can only respond to the 'info' command.
+    cmdInfoInit [C, R] ()
+ENDDEF
+
+PROCDEF cmdInfoInit [ C :: Cmd; R :: Response] () ::=
+    C ! CmdInfo
+    >->
+    R ? ri [[ IF isResponseInfo(ri)
+              THEN ( strinre ( version(ri)
+                   , REGEX('(UNVERSIONED)|([0-9]+\.[0-9]+\.[0-9]+)'))
+                   ) /\ (strinre (buildTime(ri), REGEX('[ -~]+')))
+              ELSE False 
+              FI ]]
+    >-> cmdInfo [ C, R ] (ri)
+ENDDEF
+
+PROCDEF cmdInfo [ C :: Cmd; R :: Response]  (expected :: Response) ::=
+    C ! CmdInfo
+    >->
+    R ! expected
+    >->
+    cmdInfo [C, R] (expected)
+ENDDEF
+
+PROCDEF purpose [ C :: Cmd; R :: Response ] ( ) ::=
+    R ? r
+    >->
+    purpose [C, R]() 
+    ##
+    C ? c
+    >->
+    purpose [C, R]() 
+ENDDEF
+
