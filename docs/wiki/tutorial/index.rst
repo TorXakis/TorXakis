@@ -8,3 +8,4 @@ TODO.
 
   trace-replay.rst
   command-line.rst
+  connect-via-http.rst
