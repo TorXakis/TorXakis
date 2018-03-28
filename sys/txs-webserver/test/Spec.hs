@@ -29,12 +29,13 @@ main = withCreateProcess (proc "txs-webserver-exe" []) {std_out = NoStream} $ \_
 
 spec :: IO Spec
 spec = return $ do
-        -- describe "GET /users" $
-        --     it "responds with 200 and [Users]" $ do
-        --         r <- get "http://localhost:8080/users"
-        --         r ^. responseStatus . statusCode `shouldBe` 200
-        --         let users = "[{\"userId\":1,\"userFirstName\":\"Isaac\",\"userLastName\":\"Newton\"},{\"userId\":2,\"userFirstName\":\"Albert\",\"userLastName\":\"Einstein\"}]"
-        --         r ^. responseBody `shouldBe` users
+        describe "Get TorXakis info" $
+            it "Info responds with 200 and info" $ do
+                r <- get "http://localhost:8080/info"
+                r ^. responseStatus . statusCode `shouldBe` 200
+                let bodyStr = BSL.unpack $ r ^. responseBody
+                bodyStr `shouldContain` "\"version\""
+                bodyStr `shouldContain` "\"buildTime\""
         describe "Create new TorXakis session" $
             it "Creates 2 sessions" $ do
                 r <- post "http://localhost:8080/session/new" [partText "" ""]

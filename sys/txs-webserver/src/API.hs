@@ -18,6 +18,7 @@ import           Network.Wai.Middleware.Cors (simpleCors)
 import           Servant
 
 import           Common                      (Env (..))
+import           Endpoints.Info              (InfoEP, getInfo)
 import           Endpoints.Messages          (MessagesEP, SSMessagesEP,
                                               ssMessagesEP, streamMessages)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
@@ -29,6 +30,7 @@ import           Endpoints.Upload            (UploadEP, upload)
 type API = ServiceAPI
 type ServiceAPI = NewSessionEP :<|> UploadEP :<|> StartStepperEP :<|> TakeNStepsEP :<|> MessagesEP
                                :<|> SSMessagesEP
+                               :<|> InfoEP
                                :<|> TestPageAPI
 type TestPageAPI = "test" :> Raw
 
@@ -51,6 +53,7 @@ server env = newSrvSession env
     :<|> takeNSteps env
     :<|> streamMessages env
     :<|> ssMessagesEP env
+    :<|> getInfo
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"
     -- :<|> return swaggerDocs
     -- where
