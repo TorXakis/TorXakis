@@ -26,6 +26,7 @@ import LPE
 import TranslatedProcDefs
 
 import Test.HUnit
+import           Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
@@ -51,9 +52,7 @@ import LPEfunc
 lpeParTestWrapper :: BExpr -> TranslatedProcDefs -> ProcDefs -> Maybe (BExpr, ProcDef)
 lpeParTestWrapper procInst'' translatedProcDefs procDefs =
   let (procInst'@(TxsDefs.view -> ProcInst procId' _ _), procDefs') = lpeParFunc procInst'' translatedProcDefs procDefs
-      procDef' = case Map.lookup procId' procDefs' of
-                    Just procDef   -> procDef
-                    Nothing        -> error "lpeParTestWrapper: could not find the procId" in
+      procDef' = fromMaybe (error "lpeParTestWrapper: could not find the procId") (Map.lookup procId' procDefs') in
   Just (procInst', procDef')
 
 
@@ -90,18 +89,18 @@ vexprPcP = cstrVar varIdPcP
 
 
 -- action: A    // no chanoffers!
-actOfferA   = ActOffer {  offers = Set.singleton(
+actOfferA   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdA
                                               , chanoffers = []
-                                        })
+                                        }
                         , constraint = cstrConst (Cbool True)
             }
 
 -- action: B    // no chanoffers!
-actOfferB   = ActOffer {  offers = Set.singleton(
+actOfferB   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdB
                                               , chanoffers = []
-                                        })
+                                              }
                         , constraint = cstrConst (Cbool True)
             }
 
@@ -193,38 +192,38 @@ anyInt = cstrConst $ Cany intSort
 --                       (choice [
 --                           -- // only left side
 --                           -- A [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
---                           (actionPref
---                             ActOffer {  offers = Set.singleton(
+--                           actionPref
+--                             ActOffer {  offers = Set.singleton
 --                                                       Offer { chanid = chanIdA
 --                                                             , chanoffers = []
---                                                       })
+--                                                       }
 --                                                   , constraint = cstrEqual vexprOp1pcPop1 int0
 --                                       }
---                             (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2]))
+--                             (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2])
 --                       , -- // only right side
 --                         -- ## A [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
---                         (actionPref
---                           ActOffer {  offers = Set.singleton(
+--                         actionPref
+--                           ActOffer {  offers = Set.singleton
 --                                                     Offer { chanid = chanIdA
 --                                                           , chanoffers = []
---                                                     })
+--                                                     }
 --                                                 , constraint = cstrEqual vexprOp2pcPop2 int0
 --                                     }
---                           (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1]))
+--                           (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1])
 --                       , -- // both sides
 --                         -- ## A [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A,B](-1, -1)
---                         (actionPref
---                           ActOffer {  offers = Set.singleton(
+--                         actionPref
+--                           ActOffer {  offers = Set.singleton
 --                                                     Offer { chanid = chanIdA
 --                                                           , chanoffers = []
---                                                     })
+--                                                     }
 --                                                 , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcPop1 int0
 --                                                                                       , cstrEqual vexprOp2pcPop2 int0
 --                                                                 ])
 --
 --
 --                                     }
---                           (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1]))
+--                           (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1])
 --                       ])
 --
 --       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
@@ -265,24 +264,24 @@ testSingleAction1 = TestCase $
                       (choice [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                          actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = []
-                                                      })
+                                                            }
                                                   , constraint = cstrEqual vexprOp1pcPop1 int0
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2]))
+                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2])
                       , -- // only right side
                         -- ## A [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
-                        (actionPref
-                          ActOffer {  offers = Set.singleton(
+                        actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
-                                                    })
+                                                          }
                                                 , constraint = cstrEqual vexprOp2pcPop2 int0
                                     }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1]))
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1])
                       ])
 
       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
@@ -320,10 +319,10 @@ testSingleAction2 = TestCase $
                         -- // both sides
                         -- ## A [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A,B](-1, -1)
                         (actionPref
-                          ActOffer {  offers = Set.singleton(
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
-                                                    })
+                                                          }
                                                 , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcPop1 int0
                                                                                       , cstrEqual vexprOp2pcPop2 int0
                                                                 ])
@@ -370,24 +369,24 @@ testSingleAction3 = TestCase $
                       (choice [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                          actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = []
-                                                      })
+                                                            }
                                                   , constraint = cstrEqual vexprOp1pcPop1 int0
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2]))
+                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2])
                       , -- // only right side
                         -- ## A [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
-                        (actionPref
-                          ActOffer {  offers = Set.singleton(
+                        actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
-                                                    })
+                                                          }
                                                 , constraint = cstrEqual vexprOp2pcPop2 int0
                                     }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1]))
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1])
 
                       ])
 
@@ -429,10 +428,10 @@ testSingleAction4 = TestCase $
                        -- // both sides
                         -- ## A [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A,B](-1, -1)
                         (actionPref
-                          ActOffer {  offers = Set.singleton(
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
-                                                    })
+                                                          }
                                                 , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcPop1 int0
                                                                                       , cstrEqual vexprOp2pcPop2 int0
                                                                 ])
@@ -507,27 +506,27 @@ testSingleAction4 = TestCase $
 --                       (choice [
 --                           -- // only left side
 --                           -- A [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
---                           (actionPref
---                             ActOffer {  offers = Set.singleton(
+--                           actionPref
+--                             ActOffer {  offers = Set.singleton
 --                                                       Offer { chanid = chanIdA
 --                                                             , chanoffers = []
---                                                       })
+--                                                             }
 --                                                   , constraint = cstrEqual vexprOp1pcPop1 int0
 --                                       }
---                             (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2]))
+--                             (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2])
 --                       , -- // only right side
 --                         -- ## B [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
---                         (actionPref
---                           ActOffer {  offers = Set.singleton(
+--                         actionPref
+--                           ActOffer {  offers = Set.singleton
 --                                                     Offer { chanid = chanIdB
 --                                                           , chanoffers = []
---                                                     })
+--                                                     }
 --                                                 , constraint = cstrEqual vexprOp2pcPop2 int0
 --                                     }
---                           (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1]))
+--                           (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1])
 --                       , -- // both sides: ONLY IF G = []
 --                         -- ## A|B [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A,B](-1, -1)
---                         (actionPref
+--                         actionPref
 --                           ActOffer {  offers = Set.fromList [
 --                                                     Offer { chanid = chanIdA
 --                                                           , chanoffers = []
@@ -542,7 +541,7 @@ testSingleAction4 = TestCase $
 --
 --
 --                                     }
---                           (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1]))
+--                           (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1])
 --                       ])
 --
 --       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
@@ -586,27 +585,27 @@ testSingleActionDifferentActions1 = TestCase $
                       (choice [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                          actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = []
-                                                      })
+                                                            }
                                                   , constraint = cstrEqual vexprOp1pcPop1 int0
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2]))
+                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2])
                       , -- // only right side
                         -- ## B [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
-                        (actionPref
-                          ActOffer {  offers = Set.singleton(
+                        actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdB
                                                           , chanoffers = []
-                                                    })
+                                                          }
                                                 , constraint = cstrEqual vexprOp2pcPop2 int0
                                     }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1]))
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1])
                       , -- // both sides: ONLY IF G = []
                         -- ## A|B [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A,B](-1, -1)
-                        (actionPref
+                        actionPref
                           ActOffer {  offers = Set.fromList [
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
@@ -621,7 +620,7 @@ testSingleActionDifferentActions1 = TestCase $
 
 
                                     }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1]))
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1])
                       ])
 
       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
@@ -661,10 +660,10 @@ testSingleActionDifferentActions2 = TestCase $
                        -- // only right side
                         -- ## B [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
                         (actionPref
-                          ActOffer {  offers = Set.singleton(
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdB
                                                           , chanoffers = []
-                                                    })
+                                                          }
                                                 , constraint = cstrEqual vexprOp2pcPop2 int0
                                     }
                           (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1]))
@@ -706,10 +705,10 @@ testSingleActionDifferentActions3 = TestCase $
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
                           (actionPref
-                            ActOffer {  offers = Set.singleton(
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = []
-                                                      })
+                                                            }
                                                   , constraint = cstrEqual vexprOp1pcPop1 int0
                                       }
                             (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2]))
@@ -896,7 +895,7 @@ testMultiActions1 = TestCase $
                       (choice [
                           -- // only left side: ONLY IF G = []
                           --    A | B [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
-                          (actionPref
+                          actionPref
                             ActOffer {  offers = Set.fromList [
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
@@ -907,17 +906,17 @@ testMultiActions1 = TestCase $
                                                   ]
                                                   , constraint = cstrEqual vexprOp1pcPop1 int0
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2]))
+                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2])
                       , -- // only right side: ONLY IF G = [], [B]
                         -- ## A [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
-                        (actionPref
-                          ActOffer {  offers = Set.singleton(
+                        actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
-                                                    })
+                                                    }
                                                 , constraint = cstrEqual vexprOp2pcPop2 int0
                                     }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1]))
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1])
 
                       ])
 
@@ -1011,10 +1010,10 @@ testMultiActions3 = TestCase $
                         -- // only right side: ONLY IF G = [], [B]
                         -- ## A [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
                         (actionPref
-                          ActOffer {  offers = Set.singleton(
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
-                                                    })
+                                                          }
                                                 , constraint = cstrEqual vexprOp2pcPop2 int0
                                     }
                           (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1]))
@@ -1091,7 +1090,7 @@ testMultiActions5 = TestCase $
                       (choice [
                           -- // only left side: ONLY IF G = []
                           --    A | B [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
-                          (actionPref
+                          actionPref
                             ActOffer {  offers = Set.fromList [
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
@@ -1102,10 +1101,10 @@ testMultiActions5 = TestCase $
                                                   ]
                                                   , constraint = cstrEqual vexprOp1pcPop1 int0
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2]))
+                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2])
                       , -- // only right side: ONLY IF G = []
                         -- ## A | B [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
-                        (actionPref
+                        actionPref
                           ActOffer {  offers =Set.fromList [
                                                   Offer { chanid = chanIdA
                                                         , chanoffers = []
@@ -1116,7 +1115,7 @@ testMultiActions5 = TestCase $
                                                 ]
                                                 , constraint = cstrEqual vexprOp2pcPop2 int0
                                     }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1]))
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1])
                       ])
 
       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
@@ -1286,24 +1285,24 @@ testParams = TestCase $
             )
 
       procDefQ = ProcDef [chanIdA] [varIdS, varIdX] (
-                    (actionPref
-                          ActOffer {  offers = Set.singleton(
+                    actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = [Exclam vexprS]
-                                                    })
+                                                          }
                                                 , constraint = cstrConst (Cbool True)
                                     }
-                          stop))
+                          stop)
 
       procDefR = ProcDef [chanIdA] [varIdS] (
-                    (actionPref
-                          ActOffer {  offers = Set.singleton(
+                    actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = [Exclam vexprS]
-                                                    })
+                                                          }
                                                 , constraint = cstrConst (Cbool True)
                                     }
-                          stop))
+                          stop)
 
       procDefs = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)
@@ -1328,30 +1327,30 @@ testParams = TestCase $
                       (choice [
                           -- // only left side:
                           --    A?A1 [op1$pc$Q == 0, A1 == op1$Q$A$s] >->  P[A](-1, ANY?, ANY?, op2$pc$R, op2$R$A$s)
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                          actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = [Quest varIdA1]
-                                                      })
+                                                            }
                                                   , constraint =  cstrAnd (Set.fromList [cstrITE (cstrEqual vexprOp1pcQ int0)
                                                                                              (cstrEqual vexprA1 vexprOp1s)
                                                                                              (cstrConst (Cbool False))
                                                                                         ])
                                       }
-                            (procInst procIdP' [chanIdA] [vexprMin1, anyInt, anyInt, vexprOp2pcR, vexprOp2s]))
+                            (procInst procIdP' [chanIdA] [vexprMin1, anyInt, anyInt, vexprOp2pcR, vexprOp2s])
                         , -- // only right side:
                           -- ## A?A1 [op2$pc$R == 0, A1 == op2$R$A$s] >->  P[A](op1$pc$Q, op1$Q$A$s, op1$Q$A$x, -1, ANY?)
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                          actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = [Quest varIdA1]
-                                                      })
+                                                            }
                                                   , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprOp2pcR int0)
                                                                                              (cstrEqual vexprA1 vexprOp2s)
                                                                                              (cstrConst (Cbool False))
                                                                                         ])
                                       }
-                            (procInst procIdP' [chanIdA] [vexprOp1pcQ, vexprOp1s, vexprOp1x, vexprMin1, anyInt]))
+                            (procInst procIdP' [chanIdA] [vexprOp1pcQ, vexprOp1s, vexprOp1x, vexprMin1, anyInt])
 
                       ])
 
@@ -1414,21 +1413,21 @@ testMultiSeqGEN = TestCase $
             )
 
       procDefQ = ProcDef [chanIdA, chanIdB] [] (
-                    (actionPref
-                          ActOffer {  offers = Set.singleton(
+                    actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = [Quest varIdX]
-                                                    })
+                                                          }
                                                 , constraint = cstrConst (Cbool True)
                                     }
                           (actionPref
-                              ActOffer {  offers = Set.singleton(
+                              ActOffer {  offers = Set.singleton
                                                         Offer { chanid = chanIdB
                                                               , chanoffers = [Exclam vexprX]
-                                                        })
+                                                              }
                                                     , constraint = cstrConst (Cbool True)
                                         }
-                              stop)))
+                              stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
 
@@ -1456,47 +1455,47 @@ testMultiSeqGEN = TestCase $
                           --        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --                                // note: the right side is still allowed to continue! that's intended behaviour.
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                            actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = [Quest varIdA1]
-                                                      })
+                                                            }
                                                   , constraint = cstrEqual vexprOp1pcQ int0
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprOp2pcQ, vexprOp2QABx]))
-                          ,(actionPref
-                            ActOffer {  offers = Set.singleton(
+                            (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprOp2pcQ, vexprOp2QABx])
+                          , actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdB
                                                             , chanoffers = [Quest varIdB1]
-                                                      })
+                                                            }
                                                   , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int1
                                                                                         , cstrEqual vexprB1 vexprOp1QABx
                                                                                         ])
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx]))
+                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx])
 
 
                             --        // only op2
                             --        A?A1 [op2$pc$Q == 0]                    >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
                             --        B?B1 [op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, -1, ANY)
-                            ,(actionPref
-                              ActOffer {  offers = Set.singleton(
+                            , actionPref
+                              ActOffer {  offers = Set.singleton
                                                         Offer { chanid = chanIdA
                                                               , chanoffers = [Quest varIdA1]
-                                                        })
+                                                              }
                                                     , constraint = cstrEqual vexprOp2pcQ int0
                                         }
-                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, int1, vexprA1]))
-                            ,(actionPref
-                              ActOffer {  offers = Set.singleton(
+                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, int1, vexprA1])
+                            , actionPref
+                              ActOffer {  offers = Set.singleton
                                                         Offer { chanid = chanIdB
                                                               , chanoffers = [Quest varIdB1]
-                                                        })
+                                                              }
                                                     , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp2pcQ int1
                                                                                           , cstrEqual vexprB1 vexprOp2QABx
                                                                                           ])
                                         }
-                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt]))
+                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt])
 
 
 
@@ -1504,21 +1503,21 @@ testMultiSeqGEN = TestCase $
 
                               --        // 1,1 : only if A \in G, but G could be more
                               --        A?A1 [op1$pc$Q == 0, op2$pc$Q == 0]                           >-> P[A,B](1, A1, 1, A1)
-                              ,(actionPref
-                                ActOffer {  offers = Set.singleton(
+                              , actionPref
+                                ActOffer {  offers = Set.singleton
                                                           Offer { chanid = chanIdA
                                                                 , chanoffers = [Quest varIdA1]
-                                                          })
+                                                                }
                                                       , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int0
                                                                                             , cstrEqual vexprOp2pcQ int0
                                                                                             ])
                                           }
-                                (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, int1, vexprA1]))
+                                (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, int1, vexprA1])
 
 
                               --        // 1,2 : only if G is empty: |[]|
                               --        A?A1 | B?B1 [op1$pc$Q == 0, op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](1, A1, -1, ANY)
-                              ,(actionPref
+                              , actionPref
                                 ActOffer {  offers = Set.fromList [
                                                             Offer { chanid = chanIdA
                                                                   , chanoffers = [Quest varIdA1]
@@ -1532,11 +1531,11 @@ testMultiSeqGEN = TestCase $
                                                                                             , cstrEqual vexprB1 vexprOp2QABx
                                                                                             ])
                                           }
-                                (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprMin1, anyInt]))
+                                (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprMin1, anyInt])
 
                               --        // 2,1 : only if G is empty: |[]|
                               --        B?B1 | A?A1 [op1$pc$Q == 1, op2$pc$Q == 0, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, 1, A1)
-                              ,(actionPref
+                              , actionPref
                                 ActOffer {  offers = Set.fromList [
                                                             Offer { chanid = chanIdA
                                                                   , chanoffers = [Quest varIdA1]
@@ -1550,22 +1549,22 @@ testMultiSeqGEN = TestCase $
                                                                                             , cstrEqual vexprB1 vexprOp1QABx
                                                                                             ])
                                           }
-                                (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, int1, vexprA1]))
+                                (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, int1, vexprA1])
 
                               --        // 2,2 : only if B \in G, but G could be more...
                               --        B?B1 [op1$pc$Q == 1, op2$pc$Q == 1, B1 ==op1$Q$gnf1$A$B$x, B1 ==op2$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, -1, ANY)
-                              ,(actionPref
-                                ActOffer {  offers = Set.singleton(
+                              , actionPref
+                                ActOffer {  offers = Set.singleton
                                                           Offer { chanid = chanIdB
                                                                 , chanoffers = [Quest varIdB1]
-                                                          })
+                                                                }
                                                       , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int1
                                                                                             , cstrEqual vexprOp2pcQ int1
                                                                                             , cstrEqual vexprB1 vexprOp1QABx
                                                                                             , cstrEqual vexprB1 vexprOp2QABx
                                                                                             ])
                                           }
-                                (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt]))
+                                (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt])
 
 
                       ])
@@ -1611,21 +1610,21 @@ testMultiSeq1 = TestCase $
             )
 
       procDefQ = ProcDef [chanIdA, chanIdB] [] (
-                    (actionPref
-                          ActOffer {  offers = Set.singleton(
+                    actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = [Quest varIdX]
-                                                    })
+                                                          }
                                                 , constraint = cstrConst (Cbool True)
                                     }
                           (actionPref
-                              ActOffer {  offers = Set.singleton(
+                              ActOffer {  offers = Set.singleton
                                                         Offer { chanid = chanIdB
                                                               , chanoffers = [Exclam vexprX]
-                                                        })
+                                                              }
                                                     , constraint = cstrConst (Cbool True)
                                         }
-                              stop)))
+                              stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
 
@@ -1653,49 +1652,49 @@ testMultiSeq1 = TestCase $
                           --        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --                                // note: the right side is still allowed to continue! that's intended behaviour.
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                          actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = [Quest varIdA1]
-                                                      })
+                                                            }
                                                   , constraint = cstrEqual vexprOp1pcQ int0
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprOp2pcQ, vexprOp2QABx]))
-                          ,(actionPref
-                            ActOffer {  offers = Set.singleton(
+                            (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprOp2pcQ, vexprOp2QABx])
+                          , actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdB
                                                             , chanoffers = [Quest varIdB1]
-                                                      })
+                                                            }
                                                   , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprOp1pcQ int1)
                                                                                              (cstrEqual vexprB1 vexprOp1QABx)
                                                                                              (cstrConst (Cbool False))
                                                                                         ])
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx]))
+                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx])
 
 
                             --        // only op2
                             --        A?A1 [op2$pc$Q == 0]                    >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
                             --        B?B1 [op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, -1, ANY)
-                            ,(actionPref
-                              ActOffer {  offers = Set.singleton(
+                            , actionPref
+                              ActOffer {  offers = Set.singleton
                                                         Offer { chanid = chanIdA
                                                               , chanoffers = [Quest varIdA1]
-                                                        })
+                                                              }
                                                     , constraint = cstrEqual vexprOp2pcQ int0
                                         }
-                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, int1, vexprA1]))
-                            ,(actionPref
-                              ActOffer {  offers = Set.singleton(
+                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, int1, vexprA1])
+                            , actionPref
+                              ActOffer {  offers = Set.singleton
                                                         Offer { chanid = chanIdB
                                                               , chanoffers = [Quest varIdB1]
-                                                        })
+                                                              }
                                                     , constraint =  cstrAnd (Set.fromList [cstrITE (cstrEqual vexprOp2pcQ int1)
                                                                                                (cstrEqual vexprB1 vexprOp2QABx)
                                                                                                (cstrConst (Cbool False))
                                                                                           ])
                                         }
-                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt]))
+                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt])
 
 
 
@@ -1703,21 +1702,21 @@ testMultiSeq1 = TestCase $
                               --
                               -- --        // 1,1 : only if A \in G, but G could be more
                               -- --        A?A1 [op1$pc$Q == 0, op2$pc$Q == 0]                           >-> P[A,B](1, A1, 1, A1)
-                              -- ,(actionPref
-                              --   ActOffer {  offers = Set.singleton(
+                              -- , actionPref
+                              --   ActOffer {  offers = Set.singleton
                               --                             Offer { chanid = chanIdA
                               --                                   , chanoffers = [Quest varIdA1]
-                              --                             })
+                              --                                   }
                               --                         , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int0
                               --                                                               , cstrEqual vexprOp2pcQ int0
                               --                                                               ])
                               --             }
-                              --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, int1, vexprA1]))
+                              --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, int1, vexprA1])
                               --
 
                               --        // 1,2 : only if G is empty: |[]|
                               --        A?A1 | B?B1 [op1$pc$Q == 0, op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](1, A1, -1, ANY)
-                              ,(actionPref
+                              , actionPref
                                 ActOffer {  offers = Set.fromList [
                                                             Offer { chanid = chanIdA
                                                                   , chanoffers = [Quest varIdA1]
@@ -1732,11 +1731,11 @@ testMultiSeq1 = TestCase $
                                                                                                  (cstrConst (Cbool False))
                                                                                             ])
                                           }
-                                (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprMin1, anyInt]))
+                                (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprMin1, anyInt])
 
                               --        // 2,1 : only if G is empty: |[]|
                               --        B?B1 | A?A1 [op1$pc$Q == 1, op2$pc$Q == 0, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, 1, A1)
-                              ,(actionPref
+                              , actionPref
                                 ActOffer {  offers = Set.fromList [
                                                             Offer { chanid = chanIdA
                                                                   , chanoffers = [Quest varIdA1]
@@ -1750,11 +1749,11 @@ testMultiSeq1 = TestCase $
                                                                                                  (cstrConst (Cbool False))
                                                                                             , cstrEqual vexprOp2pcQ int0])
                                           }
-                                (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, int1, vexprA1]))
+                                (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, int1, vexprA1])
 
                               --        // 2,2 : only if B \in G, but G could be more...
                               --        B?B1 [op1$pc$Q == 1, op2$pc$Q == 1, B1 ==op1$Q$gnf1$A$B$x, B1 ==op2$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, -1, ANY)
-                              -- ,(actionPref
+                              -- , actionPref
                               --   ActOffer {  offers = Set.singleton(
                               --                             Offer { chanid = chanIdB
                               --                                   , chanoffers = [Quest varIdB1]
@@ -1765,7 +1764,7 @@ testMultiSeq1 = TestCase $
                               --                                                               , cstrEqual vexprB1 vexprOp2QABx
                               --                                                               ])
                               --             }
-                              --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt]))
+                              --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt])
 
 
                       ])
@@ -1808,21 +1807,21 @@ testMultiSeq2 = TestCase $
             )
 
       procDefQ = ProcDef [chanIdA, chanIdB] [] (
-                    (actionPref
-                          ActOffer {  offers = Set.singleton(
+                    actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = [Quest varIdX]
-                                                    })
+                                                          }
                                                 , constraint = cstrConst (Cbool True)
                                     }
                           (actionPref
-                              ActOffer {  offers = Set.singleton(
+                              ActOffer {  offers = Set.singleton
                                                         Offer { chanid = chanIdB
                                                               , chanoffers = [Exclam vexprX]
-                                                        })
+                                                              }
                                                     , constraint = cstrConst (Cbool True)
                                         }
-                              stop)))
+                              stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
 
@@ -1850,49 +1849,49 @@ testMultiSeq2 = TestCase $
                           --        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --                                // note: the right side is still allowed to continue! that's intended behaviour.
-                          -- (actionPref
-                          --   ActOffer {  offers = Set.singleton(
+                          -- actionPref
+                          --   ActOffer {  offers = Set.singleton
                           --                             Offer { chanid = chanIdA
                           --                                   , chanoffers = [Quest varIdA1]
-                          --                             })
+                          --                                   }
                           --                         , constraint = cstrEqual vexprOp1pcQ int0
                           --             }
-                          --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprOp2pcQ, vexprOp2QABx])),
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                          --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprOp2pcQ, vexprOp2QABx]),
+                           actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdB
                                                             , chanoffers = [Quest varIdB1]
-                                                      })
+                                                            }
                                                   , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprOp1pcQ int1)
                                                                                              (cstrEqual vexprB1 vexprOp1QABx)
                                                                                              (cstrConst (Cbool False))
                                                                                         ])
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx]))
+                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx])
 
 
                             --        // only op2
                             --        A?A1 [op2$pc$Q == 0]                    >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
                             --        B?B1 [op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, -1, ANY)
-                            -- ,(actionPref
-                            --   ActOffer {  offers = Set.singleton(
+                            -- , actionPref
+                            --   ActOffer {  offers = Set.singleton
                             --                             Offer { chanid = chanIdA
                             --                                   , chanoffers = [Quest varIdA1]
-                            --                             })
+                            --                                   }
                             --                         , constraint = cstrEqual vexprOp2pcQ int0
                             --             }
-                            --   (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, int1, vexprA1]))
-                            ,(actionPref
-                              ActOffer {  offers = Set.singleton(
+                            --   (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, int1, vexprA1])
+                            , actionPref
+                              ActOffer {  offers = Set.singleton
                                                         Offer { chanid = chanIdB
                                                               , chanoffers = [Quest varIdB1]
-                                                        })
+                                                              }
                                                     , constraint =  cstrAnd (Set.fromList [  cstrITE (cstrEqual vexprOp2pcQ int1)
                                                                                                (cstrEqual vexprB1 vexprOp2QABx)
                                                                                                (cstrConst (Cbool False))
                                                                                           ])
                                         }
-                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt]))
+                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt])
 
 
 
@@ -1900,21 +1899,21 @@ testMultiSeq2 = TestCase $
 
                               --        // 1,1 : only if A \in G, but G could be more
                               --        A?A1 [op1$pc$Q == 0, op2$pc$Q == 0]                           >-> P[A,B](1, A1, 1, A1)
-                              ,(actionPref
-                                ActOffer {  offers = Set.singleton(
+                              , actionPref
+                                ActOffer {  offers = Set.singleton
                                                           Offer { chanid = chanIdA
                                                                 , chanoffers = [Quest varIdA1]
-                                                          })
+                                                                }
                                                       , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int0
                                                                                             , cstrEqual vexprOp2pcQ int0
                                                                                             ])
                                           }
-                                (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, int1, vexprA1]))
+                                (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, int1, vexprA1])
 
 
                               --        // 1,2 : only if G is empty: |[]|
                               --        A?A1 | B?B1 [op1$pc$Q == 0, op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](1, A1, -1, ANY)
-                              -- ,(actionPref
+                              -- ,actionPref
                               --   ActOffer {  offers = Set.fromList [
                               --                               Offer { chanid = chanIdA
                               --                                     , chanoffers = [Quest varIdA1]
@@ -1928,11 +1927,11 @@ testMultiSeq2 = TestCase $
                               --                                                               , cstrEqual vexprB1 vexprOp2QABx
                               --                                                               ])
                               --             }
-                              --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprMin1, anyInt]))
+                              --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprMin1, anyInt])
 
                               --        // 2,1 : only if G is empty: |[]|
                               --        B?B1 | A?A1 [op1$pc$Q == 1, op2$pc$Q == 0, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, 1, A1)
-                              -- ,(actionPref
+                              -- ,actionPref
                               --   ActOffer {  offers = Set.fromList [
                               --                               Offer { chanid = chanIdA
                               --                                     , chanoffers = [Quest varIdA1]
@@ -1946,22 +1945,22 @@ testMultiSeq2 = TestCase $
                               --                                                               , cstrEqual vexprB1 vexprOp1QABx
                               --                                                               ])
                               --             }
-                              --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, int1, vexprA1]))
+                              --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, int1, vexprA1])
 
                               --        // 2,2 : only if B \in G, but G could be more...
                               --        B?B1 [op1$pc$Q == 1, op2$pc$Q == 1, B1 ==op1$Q$gnf1$A$B$x, B1 ==op2$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, -1, ANY)
-                              -- ,(actionPref
-                              -- ActOffer {  offers = Set.singleton(
+                              -- , actionPref
+                              -- ActOffer {  offers = Set.singleton
                               --                           Offer { chanid = chanIdB
                               --                                 , chanoffers = [Quest varIdB1]
-                              --                           })
+                              --                                 }
                               --                       , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int1
                               --                                     , cstrEqual vexprOp2pcQ int1
                               --                                     , cstrEqual vexprB1 vexprOp1QABx
                               --                                     , cstrEqual vexprB1 vexprOp2QABx
                               --                                     ])
                               --             }
-                              --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt]))
+                              --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt])
 
 
                       ])
@@ -2006,21 +2005,21 @@ testMultiSeq3 = TestCase $
             )
 
       procDefQ = ProcDef [chanIdA, chanIdB] [] (
-                    (actionPref
-                          ActOffer {  offers = Set.singleton(
+                    actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = [Quest varIdX]
-                                                    })
+                                                          }
                                                 , constraint = cstrConst (Cbool True)
                                     }
-                          (actionPref
-                              ActOffer {  offers = Set.singleton(
+                           (actionPref
+                              ActOffer {  offers = Set.singleton
                                                         Offer { chanid = chanIdB
                                                               , chanoffers = [Exclam vexprX]
-                                                        })
+                                                              }
                                                     , constraint = cstrConst (Cbool True)
                                         }
-                              stop)))
+                              stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
 
@@ -2048,15 +2047,15 @@ testMultiSeq3 = TestCase $
                           --        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --                                // note: the right side is still allowed to continue! that's intended behaviour.
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                           actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = [Quest varIdA1]
-                                                      })
+                                                            }
                                                   , constraint = cstrEqual vexprOp1pcQ int0
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprOp2pcQ, vexprOp2QABx]))
-                          -- ,(actionPref
+                            (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprOp2pcQ, vexprOp2QABx])
+                          -- , actionPref
                           --   ActOffer {  offers = Set.singleton(
                           --                             Offer { chanid = chanIdB
                           --                                   , chanoffers = [Quest varIdB1]
@@ -2065,21 +2064,21 @@ testMultiSeq3 = TestCase $
                           --                                                               , cstrEqual vexprB1 vexprOp1QABx
                           --                                                               ])
                           --             }
-                          --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx]))
+                          --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx])
 
 
                             --        // only op2
                             --        A?A1 [op2$pc$Q == 0]                    >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
                             --        B?B1 [op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, -1, ANY)
-                            ,(actionPref
-                              ActOffer {  offers = Set.singleton(
+                            , actionPref
+                              ActOffer {  offers = Set.singleton
                                                         Offer { chanid = chanIdA
                                                               , chanoffers = [Quest varIdA1]
-                                                        })
+                                                              }
                                                     , constraint = cstrEqual vexprOp2pcQ int0
                                         }
-                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, int1, vexprA1]))
-                            -- ,(actionPref
+                              (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, int1, vexprA1])
+                            -- , actionPref
                             --   ActOffer {  offers = Set.singleton(
                             --                             Offer { chanid = chanIdB
                             --                                   , chanoffers = [Quest varIdB1]
@@ -2088,7 +2087,7 @@ testMultiSeq3 = TestCase $
                             --                                                               , cstrEqual vexprB1 vexprOp2QABx
                             --                                                               ])
                             --             }
-                            --   (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt]))
+                            --   (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt])
 
 
 
@@ -2096,7 +2095,7 @@ testMultiSeq3 = TestCase $
 
                               --        // 1,1 : only if A \in G, but G could be more
                               --        A?A1 [op1$pc$Q == 0, op2$pc$Q == 0]                           >-> P[A,B](1, A1, 1, A1)
-                              -- ,(actionPref
+                              -- , actionPref
                               --   ActOffer {  offers = Set.singleton(
                               --                             Offer { chanid = chanIdA
                               --                                   , chanoffers = [Quest varIdA1]
@@ -2105,12 +2104,12 @@ testMultiSeq3 = TestCase $
                               --                                                               , cstrEqual vexprOp2pcQ int0
                               --                                                               ])
                               --             }
-                              --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, int1, vexprA1]))
+                              --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, int1, vexprA1])
 
 
                               --        // 1,2 : only if G is empty: |[]|
                               --        A?A1 | B?B1 [op1$pc$Q == 0, op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](1, A1, -1, ANY)
-                              -- ,(actionPref
+                              -- , actionPref
                               --   ActOffer {  offers = Set.fromList [
                               --                               Offer { chanid = chanIdA
                               --                                     , chanoffers = [Quest varIdA1]
@@ -2124,11 +2123,11 @@ testMultiSeq3 = TestCase $
                               --                                                               , cstrEqual vexprB1 vexprOp2QABx
                               --                                                               ])
                               --             }
-                              --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprMin1, anyInt]))
+                              --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprMin1, anyInt])
 
                               --        // 2,1 : only if G is empty: |[]|
                               --        B?B1 | A?A1 [op1$pc$Q == 1, op2$pc$Q == 0, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, 1, A1)
-                              -- ,(actionPref
+                              -- , actionPref
                               --   ActOffer {  offers = Set.fromList [
                               --                               Offer { chanid = chanIdA
                               --                                     , chanoffers = [Quest varIdA1]
@@ -2142,15 +2141,15 @@ testMultiSeq3 = TestCase $
                               --                                                               , cstrEqual vexprB1 vexprOp1QABx
                               --                                                               ])
                               --             }
-                              --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, int1, vexprA1]))
+                              --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, int1, vexprA1])
 
                               --        // 2,2 : only if B \in G, but G could be more...
                               --        B?B1 [op1$pc$Q == 1, op2$pc$Q == 1, B1 ==op1$Q$gnf1$A$B$x, B1 ==op2$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, -1, ANY)
-                              ,(actionPref
-                                ActOffer {  offers = Set.singleton(
+                              , actionPref
+                                ActOffer {  offers = Set.singleton
                                                           Offer { chanid = chanIdB
                                                                 , chanoffers = [Quest varIdB1]
-                                                          })
+                                                                }
                                                       , constraint =  cstrAnd (Set.fromList [  cstrITE (cstrEqual vexprOp1pcQ int1)
                                                                                                   (cstrEqual vexprB1 vexprOp1QABx)
                                                                                                   (cstrConst (Cbool False)),
@@ -2159,7 +2158,7 @@ testMultiSeq3 = TestCase $
                                                                                                   (cstrConst (Cbool False))
                                                                                               ])
                                           }
-                                (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt]))
+                                (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt])
 
 
                       ])
@@ -2199,21 +2198,21 @@ testMultiSeq4 = TestCase $
             )
 
       procDefQ = ProcDef [chanIdA, chanIdB] [] (
-                    (actionPref
-                          ActOffer {  offers = Set.singleton(
+                    actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = [Quest varIdX]
-                                                    })
+                                                          }
                                                 , constraint = cstrConst (Cbool True)
                                     }
                           (actionPref
-                              ActOffer {  offers = Set.singleton(
+                              ActOffer {  offers = Set.singleton
                                                         Offer { chanid = chanIdB
                                                               , chanoffers = [Exclam vexprX]
-                                                        })
+                                                              }
                                                     , constraint = cstrConst (Cbool True)
                                         }
-                              stop)))
+                              stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
 
@@ -2241,15 +2240,15 @@ testMultiSeq4 = TestCase $
                           --        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --                                // note: the right side is still allowed to continue! that's intended behaviour.
-                          -- (actionPref
+                          -- actionPref
                           --   ActOffer {  offers = Set.singleton(
                           --                             Offer { chanid = chanIdA
                           --                                   , chanoffers = [Quest varIdA1]
                           --                             })
                           --                         , constraint = cstrEqual vexprOp1pcQ int0
                           --             }
-                          --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprOp2pcQ, vexprOp2QABx]))
-                          -- ,(actionPref
+                          --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprOp2pcQ, vexprOp2QABx])
+                          -- , actionPref
                           --   ActOffer {  offers = Set.singleton(
                           --                             Offer { chanid = chanIdB
                           --                                   , chanoffers = [Quest varIdB1]
@@ -2258,21 +2257,21 @@ testMultiSeq4 = TestCase $
                           --                                                               , cstrEqual vexprB1 vexprOp1QABx
                           --                                                               ])
                           --             }
-                          --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx]))
+                          --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QABx])
 
 
                             --        // only op2
                             --        A?A1 [op2$pc$Q == 0]                    >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
                             --        B?B1 [op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, -1, ANY)
-                            -- ,(actionPref
+                            -- ,actionPref
                             --   ActOffer {  offers = Set.singleton(
                             --                             Offer { chanid = chanIdA
                             --                                   , chanoffers = [Quest varIdA1]
                             --                             })
                             --                         , constraint = cstrEqual vexprOp2pcQ int0
                             --             }
-                            --   (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, int1, vexprA1]))
-                            -- ,(actionPref
+                            --   (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, int1, vexprA1])
+                            -- , actionPref
                             --   ActOffer {  offers = Set.singleton(
                             --                             Offer { chanid = chanIdB
                             --                                   , chanoffers = [Quest varIdB1]
@@ -2281,7 +2280,7 @@ testMultiSeq4 = TestCase $
                             --                                                               , cstrEqual vexprB1 vexprOp2QABx
                             --                                                               ])
                             --             }
-                            --   (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt]))
+                            --   (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp1QABx, vexprMin1, anyInt])
 
 
 
@@ -2289,21 +2288,21 @@ testMultiSeq4 = TestCase $
 
                               --        // 1,1 : only if A \in G, but G could be more
                               --        A?A1 [op1$pc$Q == 0, op2$pc$Q == 0]                           >-> P[A,B](1, A1, 1, A1)
-                              (actionPref
-                                ActOffer {  offers = Set.singleton(
+                              actionPref
+                                ActOffer {  offers = Set.singleton
                                                           Offer { chanid = chanIdA
                                                                 , chanoffers = [Quest varIdA1]
-                                                          })
+                                                          }
                                                       , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcQ int0
                                                                                             , cstrEqual vexprOp2pcQ int0
                                                                                             ])
                                           }
-                                (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, int1, vexprA1]))
+                                (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, int1, vexprA1])
 
 
                               --        // 1,2 : only if G is empty: |[]|
                               --        A?A1 | B?B1 [op1$pc$Q == 0, op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](1, A1, -1, ANY)
-                              -- ,(actionPref
+                              -- , actionPref
                               --   ActOffer {  offers = Set.fromList [
                               --                               Offer { chanid = chanIdA
                               --                                     , chanoffers = [Quest varIdA1]
@@ -2317,11 +2316,11 @@ testMultiSeq4 = TestCase $
                               --                                                               , cstrEqual vexprB1 vexprOp2QABx
                               --                                                               ])
                               --             }
-                              --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprMin1, anyInt]))
+                              --   (procInst procIdP' [chanIdA, chanIdB] [int1, vexprA1, vexprMin1, anyInt])
 
                               --        // 2,1 : only if G is empty: |[]|
                               --        B?B1 | A?A1 [op1$pc$Q == 1, op2$pc$Q == 0, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, 1, A1)
-                              -- ,(actionPref
+                              -- , actionPref
                               --   ActOffer {  offers = Set.fromList [
                               --                               Offer { chanid = chanIdA
                               --                                     , chanoffers = [Quest varIdA1]
@@ -2335,15 +2334,15 @@ testMultiSeq4 = TestCase $
                               --                                                               , cstrEqual vexprB1 vexprOp1QABx
                               --                                                               ])
                               --             }
-                              --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, int1, vexprA1]))
+                              --   (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, int1, vexprA1])
 
                               --        // 2,2 : only if B \in G, but G could be more...
                               --        B?B1 [op1$pc$Q == 1, op2$pc$Q == 1, B1 ==op1$Q$gnf1$A$B$x, B1 ==op2$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, -1, ANY)
-                              ,(actionPref
-                                ActOffer {  offers = Set.singleton(
+                              , actionPref
+                                ActOffer {  offers = Set.singleton
                                                           Offer { chanid = chanIdB
                                                                 , chanoffers = [Quest varIdB1]
-                                                          })
+                                                                }
                                                       , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprOp1pcQ int1)
                                                                                                   (cstrEqual vexprB1 vexprOp1QABx)
                                                                                                   (cstrConst (Cbool False)),
@@ -2352,7 +2351,7 @@ testMultiSeq4 = TestCase $
                                                                                                   (cstrConst (Cbool False))
                                                                                               ])
                                           }
-                                (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt]))
+                                (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, anyInt, vexprMin1, anyInt])
 
 
                       ])
@@ -2429,7 +2428,7 @@ testThreeOperands1 = TestCase $
                         --  A [op1$pc$Q == 0] >-> P[A](-1, op2$pc$Q, op3$pc$Q)
                         --  // only 2
                         --  A [op2$pc$Q == 0] >-> P[A](op1$pc$Q, -1, op3$pc$Q)
-                        (actionPref
+                        actionPref
                           ActOffer {  offers = Set.fromList [
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
@@ -2437,8 +2436,8 @@ testThreeOperands1 = TestCase $
                                                 , constraint =  cstrEqual vexprOp1pcQ int0
 
                                     }
-                          (procInst procIdP' [chanIdA] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QAs, vexprOp3pcQ, vexprOp3QAs]))
-                          ,(actionPref
+                          (procInst procIdP' [chanIdA] [vexprMin1, anyInt, vexprOp2pcQ, vexprOp2QAs, vexprOp3pcQ, vexprOp3QAs])
+                          , actionPref
                             ActOffer {  offers = Set.fromList [
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = []
@@ -2447,13 +2446,13 @@ testThreeOperands1 = TestCase $
 
 
                                       }
-                            (procInst procIdP' [chanIdA] [vexprOp1pcQ, vexprOp1QAs, vexprMin1, anyInt, vexprOp3pcQ, vexprOp3QAs]))
+                            (procInst procIdP' [chanIdA] [vexprOp1pcQ, vexprOp1QAs, vexprMin1, anyInt, vexprOp3pcQ, vexprOp3QAs])
 
                               -- combination of [op1, op2] and op3
                               -- // only [1,2] is already given above
                               -- // only 3
                               --  A [op3$pc$Q == 0] >-> P[A](op1$pc$Q, op2$pc$Q, -1)
-                              ,(actionPref
+                              , actionPref
                                 ActOffer {  offers = Set.fromList [
                                                           Offer { chanid = chanIdA
                                                                 , chanoffers = []
@@ -2462,7 +2461,7 @@ testThreeOperands1 = TestCase $
 
 
                                           }
-                                (procInst procIdP' [chanIdA] [vexprOp1pcQ, vexprOp1QAs, vexprOp2pcQ, vexprOp2QAs, vexprMin1, anyInt]))])
+                                (procInst procIdP' [chanIdA] [vexprOp1pcQ, vexprOp1QAs, vexprOp2pcQ, vexprOp2QAs, vexprMin1, anyInt])])
 
 
       procInst' = procInst procIdP' [chanIdA] [int0, int1, int0, int1, int0, int1]
@@ -2597,7 +2596,7 @@ testThreeOperandsDiffChannelsGEN = TestCase $
                               --  A [op2$pc$Q == 0] >-> P[A,B](op1$pc$Q, -1, op3$pc$Q)
                               --  // 1 and 2
                               --  A [op1$pc$Q == 0, op2$pc$Q == 0] >-> P[A,B](-1, -1, op3$pc$Q)
-                              (actionPref
+                              actionPref
                                   ActOffer {  offers = Set.fromList [
                                                             Offer { chanid = chanIdA
                                                                   , chanoffers = []
@@ -2606,8 +2605,8 @@ testThreeOperandsDiffChannelsGEN = TestCase $
 
 
                                             }
-                                  (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ, vexprOp3pcR]))
-                              , (actionPref
+                                  (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ, vexprOp3pcR])
+                              , actionPref
                                     ActOffer {  offers = Set.fromList [
                                                               Offer { chanid = chanIdA
                                                                     , chanoffers = []
@@ -2616,8 +2615,8 @@ testThreeOperandsDiffChannelsGEN = TestCase $
 
 
                                               }
-                                    (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1, vexprOp3pcR]))
-                                , (actionPref
+                                    (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1, vexprOp3pcR])
+                                , actionPref
                                           ActOffer {  offers = Set.fromList [
                                                                     Offer { chanid = chanIdA
                                                                           , chanoffers = []
@@ -2626,14 +2625,14 @@ testThreeOperandsDiffChannelsGEN = TestCase $
                                                                                                         cstrEqual vexprOp2pcQ int0
                                                                                 ])
                                                     }
-                                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1, vexprOp3pcR]))
+                                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1, vexprOp3pcR])
 
 
                                 -- combination of [op1, op2] and op3
                                 -- // only [1,2] is already given above
                                 -- // only 3
                                 --  B [op3$pc$R == 0] >-> P[A,B](op1$pc$Q, op2$pc$Q, -1)
-                                , (actionPref
+                                , actionPref
                                           ActOffer {  offers = Set.fromList [
                                                                     Offer { chanid = chanIdB
                                                                           , chanoffers = []
@@ -2642,7 +2641,7 @@ testThreeOperandsDiffChannelsGEN = TestCase $
 
 
                                                     }
-                                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp2pcQ, vexprMin1]))
+                                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp2pcQ, vexprMin1])
 
 
                                 -- // [1,2] AND 3
@@ -2650,7 +2649,7 @@ testThreeOperandsDiffChannelsGEN = TestCase $
                                 --  A | B [op2$pc$Q == 0, op3$pc$Q == 0] >-> P[A,B](op1$pc$Q, -1, -1)
                                 --  A | B [op1$pc$Q == 0, op2$pc$Q == 0, op3$pc$Q == 0] >-> P[A,B](-1, -1, -1)
                                 --
-                                , (actionPref
+                                , actionPref
                                           ActOffer {  offers = Set.fromList [
                                                                     Offer { chanid = chanIdA
                                                                           , chanoffers = []
@@ -2662,8 +2661,8 @@ testThreeOperandsDiffChannelsGEN = TestCase $
                                                                                                         cstrEqual vexprOp3pcR int0
                                                                                 ])
                                                     }
-                                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ, vexprMin1]))
-                                          , (actionPref
+                                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ, vexprMin1])
+                                          , actionPref
                                                     ActOffer {  offers = Set.fromList [
                                                                               Offer { chanid = chanIdA
                                                                                     , chanoffers = []
@@ -2675,8 +2674,8 @@ testThreeOperandsDiffChannelsGEN = TestCase $
                                                                                                                   cstrEqual vexprOp3pcR int0
                                                                                           ])
                                                               }
-                                                    (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1, vexprMin1]))
-                                            , (actionPref
+                                                    (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1, vexprMin1])
+                                            , actionPref
                                                       ActOffer {  offers = Set.fromList [
                                                                                 Offer { chanid = chanIdA
                                                                                       , chanoffers = []
@@ -2689,7 +2688,7 @@ testThreeOperandsDiffChannelsGEN = TestCase $
                                                                                                                     cstrEqual vexprOp3pcR int0
                                                                                             ])
                                                                 }
-                                                      (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1, vexprMin1]))
+                                                      (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1, vexprMin1])
                                 ])
    procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0, int0]
 
@@ -2758,7 +2757,7 @@ testThreeOperandsDiffChannels1 = TestCase $
                               --  A [op2$pc$Q == 0] >-> P[A,B](op1$pc$Q, -1, op3$pc$Q)
                               --  // 1 and 2
                               --  A [op1$pc$Q == 0, op2$pc$Q == 0] >-> P[A,B](-1, -1, op3$pc$Q)
-                              (actionPref
+                              actionPref
                                   ActOffer {  offers = Set.fromList [
                                                             Offer { chanid = chanIdA
                                                                   , chanoffers = []
@@ -2767,8 +2766,8 @@ testThreeOperandsDiffChannels1 = TestCase $
 
 
                                             }
-                                  (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ, vexprOp3pcR]))
-                              , (actionPref
+                                  (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ, vexprOp3pcR])
+                              , actionPref
                                     ActOffer {  offers = Set.fromList [
                                                               Offer { chanid = chanIdA
                                                                     , chanoffers = []
@@ -2777,8 +2776,8 @@ testThreeOperandsDiffChannels1 = TestCase $
 
 
                                               }
-                                    (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1, vexprOp3pcR]))
-                                -- , (actionPref
+                                    (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1, vexprOp3pcR])
+                                -- , actionPref
                                 --           ActOffer {  offers = Set.fromList [
                                 --                                     Offer { chanid = chanIdA
                                 --                                           , chanoffers = []
@@ -2787,14 +2786,14 @@ testThreeOperandsDiffChannels1 = TestCase $
                                 --                                                                         cstrEqual vexprOp2pcQ int0
                                 --                                                 ])
                                 --                     }
-                                --           (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1, vexprOp3pcR]))
+                                --           (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1, vexprOp3pcR])
 
 
                                 -- combination of [op1, op2] and op3
                                 -- // only [1,2] is already given above
                                 -- // only 3
                                 --  B [op3$pc$R == 0] >-> P[A,B](op1$pc$Q, op2$pc$Q, -1)
-                                , (actionPref
+                                , actionPref
                                           ActOffer {  offers = Set.fromList [
                                                                     Offer { chanid = chanIdB
                                                                           , chanoffers = []
@@ -2803,7 +2802,7 @@ testThreeOperandsDiffChannels1 = TestCase $
 
 
                                                     }
-                                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp2pcQ, vexprMin1]))
+                                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprOp2pcQ, vexprMin1])
 
 
                                 -- // [1,2] AND 3
@@ -2812,7 +2811,7 @@ testThreeOperandsDiffChannels1 = TestCase $
                                 --  A | B [op1$pc$Q == 0, op2$pc$Q == 0, op3$pc$Q == 0] >-> P[A,B](-1, -1, -1)
                                 --
 
-                                , (actionPref
+                                , actionPref
                                           ActOffer {  offers = Set.fromList [
                                                                     Offer { chanid = chanIdA
                                                                           , chanoffers = []
@@ -2824,8 +2823,8 @@ testThreeOperandsDiffChannels1 = TestCase $
                                                                                               cstrEqual vexprOp3pcR int0
                                                                       ])
                                                     }
-                                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1, vexprMin1]))
-                                  , (actionPref
+                                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1, vexprMin1])
+                                  , actionPref
                                             ActOffer {  offers = Set.fromList [
                                                                       Offer { chanid = chanIdA
                                                                             , chanoffers = []
@@ -2837,8 +2836,8 @@ testThreeOperandsDiffChannels1 = TestCase $
                                                                                                           cstrEqual vexprOp3pcR int0
                                                                                   ])
                                                       }
-                                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ, vexprMin1]))
-                                  -- , (actionPref
+                                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ, vexprMin1])
+                                  -- , actionPref
                                   --           ActOffer {  offers = Set.fromList [
                                   --                                     Offer { chanid = chanIdA
                                   --                                           , chanoffers = []
@@ -2851,7 +2850,7 @@ testThreeOperandsDiffChannels1 = TestCase $
                                   --                                                                         cstrEqual vexprOp3pcR int0
                                   --                                                 ])
                                   --                     }
-                                  --           (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1, vexprMin1]))
+                                  --           (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1, vexprMin1])
                                 ])
    procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0, int0]
 
@@ -2981,7 +2980,7 @@ testThreeOperandsDiffChannels3 = TestCase $
                               --  A [op2$pc$Q == 0] >-> P[A,B](op1$pc$Q, -1, op3$pc$Q)
                               --  // 1 and 2
                               --  A [op1$pc$Q == 0, op2$pc$Q == 0] >-> P[A,B](-1, -1, op3$pc$Q)
-                              (actionPref
+                              actionPref
                                   ActOffer {  offers = Set.fromList [
                                                             Offer { chanid = chanIdA
                                                                   , chanoffers = []
@@ -2990,8 +2989,8 @@ testThreeOperandsDiffChannels3 = TestCase $
 
 
                                             }
-                                  (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ, vexprOp3pcR]))
-                              , (actionPref
+                                  (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ, vexprOp3pcR])
+                              , actionPref
                                     ActOffer {  offers = Set.fromList [
                                                               Offer { chanid = chanIdA
                                                                     , chanoffers = []
@@ -3000,7 +2999,7 @@ testThreeOperandsDiffChannels3 = TestCase $
 
 
                                               }
-                                    (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1, vexprOp3pcR]))
+                                    (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1, vexprOp3pcR])
                               ])
    procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0, int0]
 
@@ -3092,24 +3091,24 @@ testChannelInst = TestCase $
                       (choice [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A](-1, op2$pc$P$op2)
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                          actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = []
-                                                      })
+                                                      }
                                                   , constraint = cstrEqual vexprOp1pcPop1 int0
                                       }
-                            (procInst procIdP' [chanIdA] [vexprMin1, vexprOp2pcPop2]))
+                            (procInst procIdP' [chanIdA] [vexprMin1, vexprOp2pcPop2])
                       , -- // only right side
                         -- ## A [op2$pc$P$op2 == 0] >->  P[A](op1$pc$P$op1, -1)
-                        (actionPref
-                          ActOffer {  offers = Set.singleton(
+                        actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
-                                                    })
+                                                          }
                                                 , constraint = cstrEqual vexprOp2pcPop2 int0
                                     }
-                          (procInst procIdP' [chanIdA] [vexprOp1pcPop1, vexprMin1]))
+                          (procInst procIdP' [chanIdA] [vexprOp1pcPop1, vexprMin1])
                       ])
 
       procInst' = procInst procIdP' [chanIdB] [int0, int0]
@@ -3161,25 +3160,25 @@ testChannelInst2 = TestCase $
                       (choice [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A](-1, op2$pc$P$op2)
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                          actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = []
-                                                      })
+                                                            }
                                                   , constraint = cstrEqual vexprOp1pcQ int0
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ]))
+                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ])
                       , -- // only right side
                         -- ## A [op2$pc$P$op2 == 0] >->  P[A](op1$pc$P$op1, -1)
-                        (actionPref
-                          ActOffer {  offers = Set.singleton(
+                        actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdB
                                                           , chanoffers = []
-                                                    })
+                                                          }
                                                 , constraint = cstrEqual vexprOp2pcQ int0
                                     }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1]))
-                      ,  (actionPref
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1])
+                      ,  actionPref
                           ActOffer {  offers = Set.fromList [
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
@@ -3194,7 +3193,7 @@ testChannelInst2 = TestCase $
 
 
                                     }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1]))
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1])
                       ])
 
       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
@@ -3246,25 +3245,25 @@ testChannelInst3 = TestCase $
                       (choice [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A](-1, op2$pc$P$op2)
-                          (actionPref
-                            ActOffer {  offers = Set.singleton(
+                          actionPref
+                            ActOffer {  offers = Set.singleton
                                                       Offer { chanid = chanIdA
                                                             , chanoffers = []
-                                                      })
+                                                            }
                                                   , constraint = cstrEqual vexprOp1pcQ int0
                                       }
-                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ]))
+                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcQ])
                       , -- // only right side
                         -- ## A [op2$pc$P$op2 == 0] >->  P[A](op1$pc$P$op1, -1)
-                        (actionPref
-                          ActOffer {  offers = Set.singleton(
+                        actionPref
+                          ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdB
                                                           , chanoffers = []
-                                                    })
+                                                          }
                                                 , constraint = cstrEqual vexprOp2pcQ int0
                                     }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1]))
-                      ,  (actionPref
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcQ, vexprMin1])
+                      ,  actionPref
                           ActOffer {  offers = Set.fromList [
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = []
@@ -3279,7 +3278,7 @@ testChannelInst3 = TestCase $
 
 
                                     }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1]))
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprMin1])
                       ])
 
       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
