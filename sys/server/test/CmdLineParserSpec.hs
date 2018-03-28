@@ -33,7 +33,7 @@ instance Arbitrary CmdLineConfig where
   arbitrary = CmdLineConfig <$> arbitrary <*> arbitrary <*> arbitrary
 
 instance Arbitrary PortNumber where
-  arbitrary = (fromInteger . abs) <$> arbitrary
+  arbitrary = fromInteger . abs <$> arbitrary
 
 spec :: Spec
 spec =

@@ -70,9 +70,8 @@ import           ValExpr
 
 
 behInit :: [ Set.Set TxsDefs.ChanId ] -> TxsDefs.BExpr -> IOB.IOB (Maybe BTree)
-behInit chsets bexp  =  do
-     btree' <- unfold chsets (BNbexpr Map.empty bexp)
-     return $ Just btree'
+behInit chsets bexp  =
+     Just <$> unfold chsets (BNbexpr Map.empty bexp)
 
 
 
@@ -132,9 +131,7 @@ behAfterAct chsets bt behact
      afters <- afterActBTree chsets behact bt
      if  null afters
        then return Nothing
-       else do let newbtree  = map BTtau afters
-               newbtree' <- reduce newbtree
-               return $ Just newbtree'
+       else Just <$> reduce (map BTtau afters)
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -144,9 +141,8 @@ behAfterAct chsets bt behact
 
 
 afterActBTree :: [ Set.Set TxsDefs.ChanId ] -> BehAction -> BTree -> IOB.IOB [BTree]
-afterActBTree chsets behact bt  =  do
-     newbtrees <- mapM (afterActBBranch chsets behact) bt
-     return $ concat newbtrees
+afterActBTree chsets behact bt  =
+     concat <$> mapM (afterActBBranch chsets behact) bt
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -246,8 +242,7 @@ afterRefBTree refset bt =
       []      -> if and [ refBBranch bbranch refset | bbranch <- bt ]
                    then return [bt]
                    else return []
-      btrees' -> do btrees'' <- mapM (afterRefBTree refset) btrees'
-                    return $ concat btrees''
+      btrees' -> concat <$> mapM (afterRefBTree refset) btrees'
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
