@@ -26,8 +26,8 @@ module EnvData
 
 where
 
+import           Data.Aeson   (ToJSON)
 import           GHC.Generics (Generic)
-import           Data.Aeson                  (ToJSON)
 
 -- import from defs
 import           TxsDDefs     (Action)
@@ -67,8 +67,8 @@ instance ToJSON Msg
 
 instance TxsShow.PShow Msg
   where
-    pshow = s
-
+    pshow (AnAction a) = TxsShow.pshow a
+    pshow x            = s x
 
 -- ----------------------------------------------------------------------------------------- --
 --
