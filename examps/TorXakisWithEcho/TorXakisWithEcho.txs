@@ -69,7 +69,7 @@ PROCDEF loadedState [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semapho
     >-> (
             Synchronize ! Release | Response ! ResponseSuccess >-> stepperWezelState [ Cmd, Response, Synchronize ] ()
         ##
-            Synchronize ! Release | Response ? rf [[ isResponseFailure(rf) ]] >-> loadedState [Cmd, Response, Synchronize ] ()  -- should happen with the correct Echo.txs file...
+            Synchronize ! Release | Response ? rf [[ isResponseFailure(rf) ]] >-> loadedState [Cmd, Response, Synchronize ] ()  -- should not happen with the correct Echo.txs file...
         )
 ENDDEF
 
@@ -77,8 +77,8 @@ PROCDEF initState [ Cmd :: Cmd ; Response :: Response ; Synchronize :: Semaphore
         Synchronize ! Acquire | Cmd ! CmdLoad("examps\\Echo\\Echo.txs")
     >-> (
                 Synchronize ! Release | Response ! ResponseSuccess >-> loadedState [ Cmd, Response, Synchronize ] ()
-            ##
-                Synchronize ! Release | Response ? rf [[ isResponseFailure(rf) ]] >-> initState [Cmd, Response, Synchronize ] ()  -- retry
+           ##
+               Synchronize ! Release | Response ? rf [[ isResponseFailure(rf) ]] >-> initState [Cmd, Response, Synchronize ] ()  -- retry
         )
 ENDDEF
 
