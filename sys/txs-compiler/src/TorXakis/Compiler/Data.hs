@@ -90,8 +90,8 @@ class HasVarDecls e where
     -- For now variables only occur in expressions.
     --
     findVarDecl :: e -> Loc VarRefE -> Either Error (Either VarDecl FuncDecl)
-    findVarDeclM :: e -> Loc VarRefE -> CompilerM (Either VarDecl FuncDecl)
-    findVarDeclM e i = liftEither $ findVarDecl e i
+    -- findVarDeclM :: e -> Loc VarRefE -> CompilerM (Either VarDecl FuncDecl)
+    -- findVarDeclM e i = liftEither $ findVarDecl e i
 
 class HasFuncIds e where
     -- | Find the function id that corresponds to the given parser location.
