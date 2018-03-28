@@ -41,17 +41,18 @@ library:
   - TorXakis.Lib.Examples
   - TorXakis.Lib.Session
   dependencies:
-  - text
-  - path
-  - stm
+  - aeson
+  - async
+  - conduit
+  - conduit-combinators
   - deepseq
   - microlens
   - mtl
+  - path
+  - stm
   - stm-chans  
   - stm-conduit
-  - conduit
-  - conduit-combinators
-  - async
+  - text
   # `TorXakis` dependencies.
   - defs
   - valexpr

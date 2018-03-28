@@ -85,3 +85,7 @@ testWrongFile = do
     case r of
         Success -> error "Wrong file should have failed."
         Error _ -> return ()
+
+testInfo :: IO ()
+testInfo = case info of
+                Info _v _b -> return ()

@@ -3,6 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+{-# LANGUAGE DeriveGeneric #-}
 
 -- |
 module TorXakis.Lib where
@@ -19,8 +20,13 @@ import           Control.Exception             (ErrorCall, evaluate, try)
 import           Control.Monad                 (unless, void)
 import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically, retry)
+import           Data.Aeson   (ToJSON)
 import           Data.Foldable                 (traverse_)
+import           GHC.Generics                  (Generic)
 import           Lens.Micro                    ((.~), (^.))
+
+import qualified BuildInfo
+import qualified VersionInfo
 
 import           EnvCore                       (IOC)
 import           EnvData                       (Msg)
@@ -33,12 +39,19 @@ import           TxsHappy                      (txsParser)
 
 import           TorXakis.Lib.Session
 
-data Response = Success | Error { msg :: String } deriving (Show)
-
 -- | For now file contents are represented as a string. This has to change in
 -- the future, since it is quite inefficient, but we start off simple since the
 -- current 'TorXakis' parser parses @String@s.
 type FileContents = String
+
+data Response = Success | Error { msg :: String } deriving (Show)
+
+data TorXakisInfo = Info { version :: String, buildTime :: String }
+    deriving (Generic)
+instance ToJSON TorXakisInfo
+
+info :: TorXakisInfo
+info = Info VersionInfo.version BuildInfo.buildTime
 
 -- | Create a new session.
 newSession :: IO Session

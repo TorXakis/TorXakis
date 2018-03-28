@@ -13,3 +13,4 @@ spec :: Spec
 spec = do
     it "testEchoReactive" testEchoReactive
     it "testWrongFile"    testWrongFile
+    it "testInfo"         testInfo
