@@ -34,8 +34,8 @@ import qualified Data.Either         as Either
 import qualified Data.List           as List
 import qualified Data.Map            as Map
 import qualified Data.Set            as Set
-import qualified Data.Text           as T
 import qualified Data.String.Utils   as Utils
+import qualified Data.Text           as T
 import           Network             hiding (socketPort)
 import           Network.Socket      hiding (accept, sClose)
 import           System.IO
@@ -451,18 +451,18 @@ cmdEval args = do
                            )
                            ( \ec -> return ((uid,Nothing), show (ec::ErrorCall)))
      case vexp' of
-       Just vexp'' -> do 
+       Just vexp'' -> do
                         modify $ \env' -> env' { IOS.uid = uid' }
                         mwalue <- lift $ TxsCore.txsEval (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp'')
                         case mwalue of
-                            Right walue -> do 
+                            Right walue -> do
                                             IFS.pack "EVAL" [ TxsShow.fshow walue ]
                                             cmdsIntpr
                             Left t      -> do
                                             IFS.nack "EVAL" [ "eval 2 - " ++ t ]
                                             cmdsIntpr
 
-       Nothing -> do 
+       Nothing -> do
                     modify $ \env' -> env' { IOS.uid = uid' }
                     IFS.nack "EVAL" [ "eval 1 - " ++ e ]
                     cmdsIntpr
@@ -498,7 +498,7 @@ cmdSolve args kind = do
                         sols  <- lift $ solver (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp'')
                         IFS.pack cmd [ show sols ]
                         cmdsIntpr
-        Nothing  -> do 
+        Nothing  -> do
                         modify $ \env' -> env' { IOS.uid = uid' }
                         IFS.nack cmd [ e ]
                         cmdsIntpr
@@ -651,7 +651,7 @@ cmdSimulator args = do
      let Just (ioString,_) = Map.lookup "param_Sim_ioTime" (IOS.params envs')
          ioTime = read ioString
          Just (deltaString,_) = Map.lookup "param_Sim_deltaTime" (IOS.params envs')
-         deltaTime = read deltaString                      
+         deltaTime = read deltaString
      tdefs  <- lift TxsCore.txsGetTDefs
      case words args of
        [m,c] -> do
@@ -1054,13 +1054,13 @@ readAction chids args = do
                                 return TxsDDefs.ActQui
     where
         makeEither :: (TxsDefs.ChanId, [Either String ConstDefs.Const]) -> Either String (TxsDefs.ChanId, [ConstDefs.Const])
-        makeEither (chid, macts) = 
+        makeEither (chid, macts) =
              case Either.partitionEithers macts of
                 ([], acts) -> Right (chid, acts)
                 (es, _)    -> Left $ "eval failed:\n  " ++ Utils.join "\n  " es
-                
-                                
-                
+
+
+
 
 
 -- ----------------------------------------------------------------------------------------- --

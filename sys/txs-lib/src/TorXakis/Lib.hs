@@ -8,6 +8,7 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib where
 
+import           Control.Arrow                 ((|||))
 import           Control.Concurrent            (forkIO)
 import           Control.Concurrent.MVar       (newMVar, putMVar, takeMVar)
 import           Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue,
@@ -20,8 +21,13 @@ import           Control.Exception             (ErrorCall, evaluate, try)
 import           Control.Monad                 (unless, void)
 import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically, retry)
-import           Data.Aeson   (ToJSON)
+import           Control.Monad.Trans.Except    (ExceptT, runExceptT, throwE)
+import           Data.Aeson                    (ToJSON)
 import           Data.Foldable                 (traverse_)
+import           Data.Maybe                    (fromMaybe)
+import           Data.Semigroup                ((<>))
+import           Data.Text                     (Text)
+import qualified Data.Text                     as T
 import           GHC.Generics                  (Generic)
 import           Lens.Micro                    ((.~), (^.))
 
@@ -33,8 +39,10 @@ import           EnvData                       (Msg)
 import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
-import           TxsCore                       (txsInit, txsSetStep, txsStepN)
+import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
+                                                txsStepN)
 import           TxsDDefs                      (Verdict)
+import           TxsDefs                       (ModelDef)
 import           TxsHappy                      (txsParser)
 
 import           TorXakis.Lib.Session
@@ -44,7 +52,12 @@ import           TorXakis.Lib.Session
 -- current 'TorXakis' parser parses @String@s.
 type FileContents = String
 
-data Response = Success | Error { msg :: String } deriving (Show)
+-- TODO: do we need a String here?
+data Response = Success | Error { msg :: String } deriving (Eq, Show)
+
+isError :: Response -> Bool
+isError (Error _) = True
+isError _         = False
 
 data TorXakisInfo = Info { version :: String, buildTime :: String }
     deriving (Generic)
@@ -77,25 +90,29 @@ load s xs = do
         return ()
     case r of
         Left err -> return $ Error $ show (err :: ErrorCall)
-        Right _  -> return Success
-
+        Right _  -> do
+            -- Initialize the TorXakis core with the definitions we just loaded.
+            st <- readTVarIO (s ^. sessionState)
+            runIOC s $
+                txsInit (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
+            return Success
 
 -- | Start the stepper with the given model.
 stepper :: Session
         -> Name        -- ^ Model name
         -> IO Response
-stepper s mn =  do
-    st <- readTVarIO (s ^. sessionState)
-    runIOC s $ do
-        txsInit (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
-        -- Lookup the model definition that matches the name.
-        let mMDef = st ^. tdefs . ix mn
-        case mMDef of
-            Nothing ->
-                return $ Error $ "No model named " ++ show mn
-            Just mDef -> do
-                txsSetStep mDef
-                return Success
+stepper s mn =
+    runResponse $ do
+    mDef <- lookupModel s mn
+    lift $ runIOC s $
+        txsSetStep mDef
+
+lookupModel :: Session -> Name -> ExceptT Text IO ModelDef
+lookupModel s mn = do
+    st <- lift $ readTVarIO (s ^. sessionState)
+    fromMaybe
+        (throwE $ "No model named " <> mn)
+        (return <$> st ^. tdefs . ix mn)
 
 msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
@@ -128,6 +145,21 @@ waitForMessageQueue :: Session -> IO ()
 waitForMessageQueue s = atomically $ do
     b <- isEmptyTQueue (s ^. sessionMsgs)
     unless b retry
+
+eitherToResponse :: Either Text () -> Response
+eitherToResponse = Error . T.unpack ||| const Success
+
+runResponse :: ExceptT Text IO () -> IO Response
+runResponse act = eitherToResponse <$> runExceptT act
+
+-- | Start the tester
+tester :: Session
+       -> Name
+       -> IO Response
+tester s mn = runResponse $ do
+    mDef <- lookupModel s mn
+    lift $ runIOC s $
+        txsSetTest undefined undefined mDef Nothing Nothing
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.

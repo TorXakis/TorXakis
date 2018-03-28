@@ -75,17 +75,30 @@ testEchoReactive = do
         sourceTQueue (s ^. sessionMsgs) .|  mapM_ print
 
 -- | This example shows what happens when you load an invalid file.
-testWrongFile :: IO ()
+testWrongFile :: IO Response
 testWrongFile = do
     cs <- readFile "test/data/wrong.txt"
     s <- newSession
     -- Load the model:
     r <- load s cs
     putStrLn $ "Result of `load wrong.txt`: " ++ show r
-    case r of
-        Success -> error "Wrong file should have failed."
-        Error _ -> return ()
+    return r
 
 testInfo :: IO ()
 testInfo = case info of
-                Info _v _b -> return ()
+    Info _v _b -> return ()
+
+-- | Test info
+--
+-- TODO: for now I'm putting this test here. We should find the right place for
+-- this test. Once a new command line interface for TorXakis which uses
+-- 'txs-lib' is ready we can proceed with removing this test.
+testTorXakisWithInfo :: IO Response
+testTorXakisWithInfo = do
+    -- TODO: We should start the web server at this point.
+    s <- newSession
+    cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEchoInfoOnly.txs"
+    r <- load s cs
+    _ <- tester s "Model"
+    -- test s 100
+    return r
