@@ -156,8 +156,7 @@ valExprsSolve :: (Variable v) => [v] -> [ValExpr v] -> SMT (SolveProblem v)
 valExprsSolve vs vexps  =  do
     sat <- valExprsSat' vs vexps  
     sp <- case sat of 
-              { Sat     -> do sol <- getSolution vs
-                              return $ Solved $ Map.filterWithKey (\k _ -> k `elem` vs) sol
+              { Sat     -> Solved . Map.filterWithKey (\k _ -> k `elem` vs) <$> getSolution vs
               ; Unsat   -> return Unsolvable
               ; Unknown -> return UnableToSolve 
               }         

@@ -211,8 +211,7 @@ cmdsIntpr  =  do
      (cmdhin:_cmdhins) <- lift $ gets uihins
      line <- if cmdhin /= stdin
              then liftIO $ hGetLine cmdhin
-             else (filter (/= '\r') . fromMaybe "")
-                  <$> getInputLine txsPrompt
+             else filter (/= '\r') . fromMaybe "" <$> getInputLine txsPrompt
      unless (cmdhin /= stdin || null line) $
          -- Add the line to the history, removing the duplicates, and trimming
          -- leading and trailing white-spaces.
@@ -323,10 +322,8 @@ cmdIntpr cmdname args  =
 cmdQuit :: String -> UIO ()
 cmdQuit _  =  do
      systems  <- lift $ gets uisystems
-     runprocs <- liftIO $ filterM ( \ph -> do { ec <- getProcessExitCode ph
-                                            ; return (isNothing ec)
-                                            }
-                                ) ( Map.elems systems )
+     runprocs <- liftIO $ filterM ( fmap isNothing . getProcessExitCode )
+                                  ( Map.elems systems )
      _ <- ($) liftIO $ mapM terminateProcess runprocs
      doCmd "QUIT" ""
      return ()

@@ -94,9 +94,7 @@ randValExprsSolvePartition'' vs (cnrs:cnrss) x =
         addAssertions (Set.toList cnrs)
         sat <- getSolvable
         sp <- case sat of 
-                    Sat     -> do
-                                    sol <- getSolution vs
-                                    return $ Solved sol
+                    Sat     -> Solved <$> getSolution vs
                     Unsat   -> return Unsolvable
                     Unknown -> return UnableToSolve
         pop
