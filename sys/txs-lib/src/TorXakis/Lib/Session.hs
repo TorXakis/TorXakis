@@ -13,8 +13,10 @@ import           Control.Concurrent.MVar       (MVar)
 import           Control.Concurrent.STM.TQueue (TQueue)
 import           Control.Concurrent.STM.TVar   (TVar)
 import           Control.DeepSeq               (NFData)
+import           Control.Exception             (SomeException, catch)
 import           GHC.Generics                  (Generic)
 import           Lens.Micro                    (Lens')
+
 
 import           EnvCore                       (EnvC, initState)
 import           EnvData                       (Msg)
@@ -28,7 +30,7 @@ data Session = Session
     { _sessionState :: TVar SessionSt
     , _sessionMsgs  :: TQueue Msg
     , _pendingIOC   :: MVar () -- ^ Signal that a pending IOC operation is taking place.
-    , _verdicts     :: TQueue Verdict
+    , _verdicts     :: TQueue (Either SomeException Verdict)
     }
 
 data SessionSt = SessionSt
@@ -52,7 +54,7 @@ sessionMsgs h (Session s m p v) = (\m' -> Session s m' p v) <$> h m
 pendingIOC :: Lens' Session (MVar ())
 pendingIOC h (Session s m p v) = (\p' -> Session s m p' v) <$> h p
 
-verdicts :: Lens' Session (TQueue Verdict)
+verdicts :: Lens' Session (TQueue (Either SomeException Verdict))
 verdicts h (Session s m p v) = Session s m p <$> h v
 
 tdefs :: Lens' SessionSt TxsDefs

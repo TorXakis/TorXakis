@@ -15,6 +15,7 @@ module TorXakis.Lib.Examples where
 import           Prelude                  hiding (mapM_, take)
 
 import           Control.Concurrent.Async (async, cancel)
+import           Control.Exception        (SomeException, catch)
 import           Control.Monad            (void)
 import           Data.Conduit             (runConduit, (.|))
 import           Data.Conduit.Combinators (mapM_, sinkList, take)
@@ -70,10 +71,11 @@ testEchoReactive = do
     -- Cancel the printer (we aren't interested in any more messages, as a
     -- verdict has been reached):
     cancel a
-  where
-    printer :: Session -> IO ()
-    printer s = runConduit $
-        sourceTQueue (s ^. sessionMsgs) .|  mapM_ print
+
+printer :: Session -> IO ()
+printer s = runConduit $
+    sourceTQueue (s ^. sessionMsgs) .|  mapM_ print
+
 
 -- | This example shows what happens when you load an invalid file.
 testWrongFile :: IO Response
@@ -94,13 +96,17 @@ testInfo = case info of
 -- TODO: for now I'm putting this test here. We should find the right place for
 -- this test. Once a new command line interface for TorXakis which uses
 -- 'txs-lib' is ready we can proceed with removing this test.
-testTorXakisWithInfo :: IO Verdict
+testTorXakisWithInfo :: IO (Either SomeException Verdict)
 testTorXakisWithInfo = do
     -- TODO: We should start the web server at this point.
     s <- newSession
     cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEchoInfoOnly.txs"
+--    cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEcho.txs"
     _ <- load s cs
     _ <- tester s "Model"
-    _ <- test s (NumberOfSteps 100)
-    waitForVerdict s
+    _ <- test s (NumberOfSteps 10)
+    a <- async (printer s)
+    v <- waitForVerdict s
+    cancel a
+    return v
 

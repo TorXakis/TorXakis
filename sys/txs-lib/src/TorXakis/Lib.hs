@@ -42,7 +42,7 @@ import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
 import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
                                                 txsStepN, txsTestN)
-import           TxsDDefs                      (Action, Verdict)
+import           TxsDDefs                      (Action (Act, ActQui), Verdict)
 import           TxsDefs                       (ModelDef)
 import           TxsHappy                      (txsParser)
 
@@ -132,13 +132,13 @@ newtype StepType = NumberOfSteps Int
 -- | Step for n-steps
 step :: Session -> StepType -> IO Response
 step s (NumberOfSteps n) = do
-    void $ forkIO $ runIOC s $ do
-        verdict <- txsStepN n
-        lift $ atomically $ writeTQueue (s ^. verdicts) verdict
+    void $ forkIO $ do
+        verdict <- try $ runIOC s $ txsStepN n
+        atomically $ writeTQueue (s ^. verdicts) verdict
     return Success
 
 -- | Wait for a verdict to be reached.
-waitForVerdict :: Session -> IO Verdict
+waitForVerdict :: Session -> IO (Either SomeException Verdict)
 waitForVerdict s = atomically $ readTQueue (s ^. verdicts)
 
 -- | Wait for the message queue to be consumed.
@@ -163,16 +163,27 @@ tester s mn = runResponse $ do
         txsSetTest putToW getFromW mDef Nothing Nothing
     where
       putToW :: Action -> IOC Action
-      putToW = undefined
+      -- putToW = return
+      putToW act = do
+          lift $ putStrLn $ "TorXakis core put: " ++ show act
+          return ActQui
       getFromW :: IOC Action
-      getFromW = undefined
+      getFromW = do
+          -- TODO: return a bogus action to make TorXakis fail. Something like:
+          --
+          -- > R ! responseInfo "Boo" "Hoo"
+          --
+          -- Retrieve the 'ChanId' from the 'SessionSt' ('chanDefs' accessors).
+          --
+          return ActQui
+
 
 -- | Test for n-steps
 test :: Session -> StepType -> IO Response
 test s (NumberOfSteps n) = do
-    void $ forkIO $ runIOC s $ do
-        verdict <- txsTestN n
-        lift $ atomically $ writeTQueue (s ^. verdicts) verdict
+    void $ forkIO $ do
+        verdict <- try $ runIOC s $ txsTestN n
+        atomically $ writeTQueue (s ^. verdicts) verdict
     return Success
 
 -- | Run an IOC action, using the initial state provided at the session, and
@@ -196,6 +207,8 @@ runIOC s act = runIOC' `catch` reportError
           return r
       reportError :: SomeException -> IO a
       reportError err = do
+          -- There's no pending IOC anymore, we release the lock.
+          putMVar (s ^. pendingIOC) ()
           atomically $ writeTQueue (s ^. sessionMsgs) (TXS_CORE_SYSTEM_ERROR (show err))
           error (show err)
 

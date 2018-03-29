@@ -6,6 +6,7 @@ See LICENSE at root directory of this repository.
 
 module TorXakis.Lib.ExamplesSpec where
 
+import           Data.Either           (isRight)
 import           Test.Hspec            (Spec, it, shouldReturn, shouldSatisfy)
 
 import           TxsDDefs              (Verdict (Pass))
@@ -20,5 +21,4 @@ spec = do
         r <- testWrongFile
         r `shouldSatisfy` isError
     it "testInfo"         testInfo
-    it "testTorXakisWithInfo" $
-        testTorXakisWithInfo `shouldReturn` Pass
+    it "testTorXakisWithInfo" $ testTorXakisWithInfo >>= (`shouldSatisfy` isRight)
