@@ -67,14 +67,14 @@ compileParsedDefs pd = do
     dMap <- generateVarDecls allFuncs
     -- Construct the function declaration to function id table.
     lFIdMap <- funcDeclsToFuncIds e1 allFuncs
-    let e2 = e1 { varDeclT = dMap}
+    let e2 = e1 { varDeclT = dMap
+                , funcIdT = lFIdMap }
     -- Infer the types of all variable declarations.
     vdSortMap <- inferTypes e2 allFuncs
     let e3 = e2 { varSortIdT = vdSortMap }
     -- Construct the variable declarations to @VarId@'s lookup table.
     vMap <- generateVarIds e3 allFuncs
-    let e4 = e3 { varIdT = vMap
-                , funcIdT = lFIdMap }
+    let e4 = e3 { varIdT = vMap }
     lFDefMap <- funcDeclsToFuncDefs e4 allFuncs
     let e5 = e4 { funcDefT = lFDefMap }
     -- Finally construct the TxsDefs.

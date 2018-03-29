@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Compiler.ValExpr.ExpDecl where
 
+import           Control.Arrow             ((+++))
 import           Control.Monad.Error.Class (catchError)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
@@ -11,7 +12,8 @@ import           TorXakis.Parser.Data
 
 -- | Generate a map from locations of variable references, the declarations of
 -- those variables.
-generateVarDecls :: [FuncDecl] -> CompilerM (Map (Loc VarRefE) (Either VarDecl FuncDecl))
+generateVarDecls :: [FuncDecl]
+                 -> CompilerM (Map (Loc VarRefE) (Either (Loc VarDeclE) (Loc FuncDeclE)))
 generateVarDecls fs = Map.fromList . concat <$>
     traverse (generateVarDeclsForFD fdMap) fs
     where
@@ -20,7 +22,7 @@ generateVarDecls fs = Map.fromList . concat <$>
 
 generateVarDeclsForFD :: Map Text FuncDecl -- ^ Existing function declarations.
                       -> FuncDecl
-                      -> CompilerM [(Loc VarRefE, Either VarDecl FuncDecl)]
+                      -> CompilerM [(Loc VarRefE, Either (Loc VarDeclE) (Loc FuncDeclE))]
 generateVarDeclsForFD fdMap f = traverse getVarDecl $ expVars (funcBody f)
     where
       fpMap = vdMap (funcParams  f)
@@ -28,12 +30,12 @@ generateVarDeclsForFD fdMap f = traverse getVarDecl $ expVars (funcBody f)
       vdMap vs =
           Map.fromList $ zip (varName <$> vs) vs
       getVarDecl :: (Name VarRefE, Loc VarRefE)
-                 -> CompilerM (Loc VarRefE, Either VarDecl FuncDecl)
+                 -> CompilerM (Loc VarRefE, Either (Loc VarDeclE) (Loc FuncDeclE))
       getVarDecl (n, l) = do
         fd <- fmap Left  (lookupM (toText n) fpMap "variable declaration for ")
               `catchError`
               const (fmap Right (lookupM (toText n) fdMap "function declaration for "))
-        return (l, fd)
+        return (l, getLoc +++ getLoc $ fd)
 
 -- varDeclsFromExpDecl :: Map Text FuncDecl
 --                     -> Map Text VarDecl

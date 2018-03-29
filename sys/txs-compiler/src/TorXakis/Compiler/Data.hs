@@ -20,7 +20,7 @@ import           Prelude                   hiding (lookup)
 
 import           CstrId                    (CstrId)
 import           FuncDef                   (FuncDef)
-import           FuncId                    (FuncId)
+import           FuncId                    (FuncId, funcsort)
 import           SortId                    (SortId)
 import           VarId                     (VarId)
 
@@ -89,7 +89,7 @@ class HasVarDecls e where
     --
     -- For now variables only occur in expressions.
     --
-    findVarDecl :: e -> Loc VarRefE -> Either Error (Either VarDecl FuncDecl)
+    findVarDecl :: e -> Loc VarRefE -> Either Error (Either (Loc VarDeclE) (Loc FuncDeclE))
     -- findVarDeclM :: e -> Loc VarRefE -> CompilerM (Either VarDecl FuncDecl)
     -- findVarDeclM e i = liftEither $ findVarDecl e i
 
@@ -128,11 +128,14 @@ instance HasVarSortIds (IEnv f0 f1 (Map (Loc VarDeclE) SortId) f3 f4 f5 f6) wher
 instance HasVarIds (IEnv f0 f1 f2 (Map (Loc VarDeclE) VarId) f4 f5 f6) where
     findVarId IEnv{varIdT = vm} i = lookup i vm "variable by parser location id"
 
-instance HasVarDecls (IEnv f0 f1 f2 f3 (Map (Loc VarRefE) (Either VarDecl FuncDecl)) f5 f6) where
+instance HasVarDecls (IEnv f0 f1 f2 f3 (Map (Loc VarRefE) (Either (Loc VarDeclE) (Loc FuncDeclE))) f5 f6) where
     findVarDecl IEnv{varDeclT = vm} i = lookup i vm "variable declaration by parser location id"
 
 instance HasFuncIds (IEnv f0 f1 f2 f3 f4 (Map (Loc FuncDeclE) FuncId) f6) where
     findFuncId IEnv {funcIdT = fm} i = lookup i fm "function id by parser location id"
+
+findFuncSorIdByLoc :: HasFuncIds e => e -> Loc FuncDeclE -> Either Error SortId
+findFuncSorIdByLoc e l = funcsort <$> findFuncId e l
 
 instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 f5 (Map FuncId (FuncDef VarId))) where
     findFuncDef IEnv{funcDefT = fm} i = lookup i fm "function declaration by function id"

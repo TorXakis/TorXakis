@@ -2,7 +2,7 @@
 
 module TorXakis.Compiler.ValExpr.SortId where
 
-import           Control.Arrow             (left, (|||))
+import           Control.Arrow             (left, (+++), (|||))
 import           Control.Monad.Error.Class (liftEither)
 import           Data.Either               (partitionEithers)
 import           Data.Map                  (Map)
@@ -50,7 +50,7 @@ sortIdOfVarDeclM e f = liftEither $ sortIdOfVarDecl e f
 -- couldn't be inferred, or do we leave the error occur when some other
 -- function asks for the type of the variable later on?
 
-inferTypes :: (HasSortIds e, HasVarDecls e)
+inferTypes :: (HasSortIds e, HasVarDecls e, HasFuncIds e)
            => e -> [FuncDecl] -> CompilerM (Map (Loc VarDeclE) SortId)
 inferTypes e fs = liftEither $ do
     letVdSid    <- gInferTypes mempty allLetVarDecls
@@ -76,7 +76,7 @@ inferTypes e fs = liftEither $ do
 letVarDeclsInFunc :: FuncDecl -> [LetVarDecl]
 letVarDeclsInFunc fd = expLetVarDecls (funcBody fd)
 
-inferVarDeclType :: (HasSortIds e, HasVarDecls e)
+inferVarDeclType :: (HasSortIds e, HasVarDecls e, HasFuncIds e)
                  => e
                  -> SEnv (Map (Loc VarDeclE) SortId)
                  -> LetVarDecl -> Either LetVarDecl (Loc VarDeclE, SortId)
@@ -89,19 +89,18 @@ inferVarDeclType e vdSid vd = left (const vd) $
         expSid <- inferExpType e vdSid (varDeclExp vd)
         return (getLoc vd, expSid)
 
-inferExpType :: (HasSortIds e, HasVarDecls e)
+inferExpType :: (HasSortIds e, HasVarDecls e, HasFuncIds e)
              => e
              -> SEnv (Map (Loc VarDeclE) SortId)
              -> ExpDecl
              -> Either Error SortId
 inferExpType e vdSid ex =
     case expChild ex of
-    VarRef _ l -> do
+    VarRef _ l ->
         -- Find the location of the variable reference
-        vdL <- findVarDecl e l
         -- If it is a variable, return the sort id of the variable declaration.
         -- If it is a function, return the sort id of the function.
-        findVarDeclSortId vdSid . getLoc ||| findSortId e . funcRetSort $ vdL
+        (findVarDeclSortId vdSid ||| findFuncSorIdByLoc e) =<< findVarDecl e l
     ConstLit c ->
         return $ sortIdConst c
     LetExp _ subEx ->

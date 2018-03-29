@@ -21,13 +21,13 @@ expDeclToValExpr :: (HasVarDecls e, HasVarIds e, HasFuncIds e, HasFuncDefs e')
                  => e -> e' -> ExpDecl -> Either Error (ValExpr VarId)
 expDeclToValExpr e e' ex = case expChild ex of
     VarRef _ l -> do
-        vDecldfDecl <- findVarDecl e l
-        case vDecldfDecl of
-            Left vDecl -> do
-                vId   <- findVarId e (getLoc vDecl)
+        vLocfLoc <- findVarDecl e l
+        case vLocfLoc of
+            Left vLoc -> do
+                vId   <- findVarId e vLoc
                 return $ cstrVar vId
-            Right fDecl -> do
-                fId <- findFuncId e (getLoc fDecl)
+            Right fLoc -> do
+                fId <- findFuncId e fLoc
                 -- TODO: check that the function with id 'fId' takes no arguments!
                 return $ cstrFunc (getFuncDefT e') fId []
     ConstLit c ->
