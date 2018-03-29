@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
 module TorXakis.Compiler.ValExpr.ExpDecl where
 
 import           Control.Arrow             ((+++))
@@ -17,37 +18,29 @@ generateVarDecls :: [FuncDecl]
 generateVarDecls fs = Map.fromList . concat <$>
     traverse (generateVarDeclsForFD fdMap) fs
     where
-      fdMap :: Map Text FuncDecl
-      fdMap = Map.fromList $ zip (funcName <$> fs) fs
+      fdMap :: Map Text (Loc FuncDeclE)
+      fdMap = Map.fromList $ zip (funcName <$> fs) (getLoc <$> fs)
 
-generateVarDeclsForFD :: Map Text FuncDecl -- ^ Existing function declarations.
+generateVarDeclsForFD :: Map Text (Loc FuncDeclE) -- ^ Existing function declarations.
                       -> FuncDecl
                       -> CompilerM [(Loc VarRefE, Either (Loc VarDeclE) (Loc FuncDeclE))]
-generateVarDeclsForFD fdMap f = traverse getVarDecl $ expVars (funcBody f)
+generateVarDeclsForFD fdMap f = varDeclsFromExpDecl (mkVdMap (funcParams  f)) (funcBody f)
     where
-      fpMap = vdMap (funcParams  f)
-      vdMap :: [VarDecl] -> Map Text VarDecl
-      vdMap vs =
-          Map.fromList $ zip (varName <$> vs) vs
-      getVarDecl :: (Name VarRefE, Loc VarRefE)
-                 -> CompilerM (Loc VarRefE, Either (Loc VarDeclE) (Loc FuncDeclE))
-      getVarDecl (n, l) = do
-        fd <- fmap Left  (lookupM (toText n) fpMap "variable declaration for ")
-              `catchError`
-              const (fmap Right (lookupM (toText n) fdMap "function declaration for "))
-        return (l, getLoc +++ getLoc $ fd)
-
--- varDeclsFromExpDecl :: Map Text FuncDecl
---                     -> Map Text VarDecl
---                     -> ExpDecl
---                     -> CompilerM [(Loc VarRefE, Either VarDecl FuncDecl)]
--- varDeclsFromExpDecl fdMap vdMap ex = case expChild of
---     VarRef n l -> do
---         fd <- fmap Left  (lookupM (toText n) fpMap "variable declaration for ")
---               `catchError`
---               const (fmap Right (lookupM (toText n) fdMap "function declaration for "))
---         return [(l, fd)]
---     ConstLit _ -> return []
---     LetExp vs subEx -> do
---         let Map.fromList $ zip (varName <$> vs) -- PROBLEM: there's no variable declaration!
---                                                 -- VarDecl /= LetValDecl
+      mkVdMap :: (IsVariable v, HasLoc v VarDeclE)
+              => [v] -> Map Text (Loc VarDeclE)
+      mkVdMap vs =
+          Map.fromList $ zip (varName <$> vs) (getLoc <$> vs)
+      varDeclsFromExpDecl :: Map Text (Loc VarDeclE)
+                          -> ExpDecl
+                          -> CompilerM [(Loc VarRefE, Either (Loc VarDeclE) (Loc FuncDeclE))]
+      varDeclsFromExpDecl vdMap ex = case expChild ex of
+          VarRef n rLoc -> do
+              dLoc <- fmap Left  (lookupM (toText n) vdMap "variable declaration for ")
+                  `catchError`
+                  const (fmap Right (lookupM (toText n) fdMap "function declaration for "))
+              return [(rLoc, dLoc)]
+          ConstLit _ -> return []
+          LetExp vs subEx -> 
+              let vdMap' = vdMap `Map.union` mkVdMap vs in
+                  varDeclsFromExpDecl vdMap' subEx
+              

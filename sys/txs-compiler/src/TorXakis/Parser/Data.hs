@@ -61,7 +61,7 @@ module TorXakis.Parser.Data
     , mkBoolConstExp
     , mkIntConstExp
     , mkStringConstExp
-    , expVars
+--    , expVars
     , expLetVarDecls
     , LetVarDecl
     , varDeclExp
@@ -234,11 +234,11 @@ expChild :: ExpDecl -> ExpChild
 expChild = child
 
 -- | Find the variables of an expression.
-expVars :: ExpDecl -> [(Name VarRefE, Loc VarRefE)]
-expVars (ParseTree _ _ _ (VarRef n l))  = [(n, l)]
-expVars (ParseTree _ _ _ (ConstLit _ )) = []
-expVars (ParseTree _ _ _ (LetExp vs e)) =
-    concatMap (expVars . snd . child) vs ++ expVars e
+-- expVars :: ExpDecl -> [(Name VarRefE, Loc VarRefE)]
+-- expVars (ParseTree _ _ _ (VarRef n l))  = [(n, l)]
+-- expVars (ParseTree _ _ _ (ConstLit _ )) = []
+-- expVars (ParseTree _ _ _ (LetExp vs e)) =
+--     concatMap (expVars . snd . child) vs ++ expVars e
 
 -- | Extract all the expression declarations of an expression.
 expLetVarDecls :: ExpDecl -> [LetVarDecl]
