@@ -61,7 +61,8 @@ module TorXakis.Parser.Data
     , mkBoolConstExp
     , mkIntConstExp
     , mkStringConstExp
---    , expVars
+    , mkLetExpDecl
+    , mkLetVarDecl
     , expLetVarDecls
     , LetVarDecl
     , varDeclExp
@@ -255,8 +256,8 @@ data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)
               | LetExp [LetVarDecl] ExpDecl
     deriving (Eq, Ord, Show)
 
--- mkLetExp :: [LetVarDecl] -> ExpDecl -> Metadata ExpDecl -> ExpDecl
--- mkLetExp = undefined
+mkLetExpDecl :: [LetVarDecl] -> ExpDecl -> Metadata ExpDeclE -> ExpDecl
+mkLetExpDecl vs subEx m = mkExpDecl m (LetExp vs subEx)
 
 type LetVarDecl = ParseTree VarDeclE (Maybe OfSort, ExpDecl)
 
@@ -271,8 +272,8 @@ letVarDeclSortName vd = do
     srt <- fst . child $ vd
     return (nodeNameT srt, nodeMdata srt)
 
--- mkLetVarDecl :: Name VarDeclE -> Maybe SortRefE -> ExpDecl -> Metadata VarDeclE -> LetVarDecl
--- mkLetVarDecl = undefined
+mkLetVarDecl :: Text -> Maybe OfSort -> ExpDecl -> Metadata VarDeclE -> LetVarDecl
+mkLetVarDecl n ms subEx m = ParseTree (Name n) VarDeclE m (ms, subEx)
 
 data Const = BoolConst Bool
            | IntConst Integer

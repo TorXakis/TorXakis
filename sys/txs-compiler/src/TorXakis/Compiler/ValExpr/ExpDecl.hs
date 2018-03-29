@@ -40,7 +40,10 @@ generateVarDeclsForFD fdMap f = varDeclsFromExpDecl (mkVdMap (funcParams  f)) (f
                   const (fmap Right (lookupM (toText n) fdMap "function declaration for "))
               return [(rLoc, dLoc)]
           ConstLit _ -> return []
-          LetExp vs subEx -> 
-              let vdMap' = vdMap `Map.union` mkVdMap vs in
+          LetExp vs subEx ->
+              -- If there are variables in the let expression that shadows a
+              -- more global variable, then we overwrite this global occurrence
+              -- with the one at the let expression.
+              let vdMap' = Map.unionWith (flip const) vdMap (mkVdMap vs) in
                   varDeclsFromExpDecl vdMap' subEx
               

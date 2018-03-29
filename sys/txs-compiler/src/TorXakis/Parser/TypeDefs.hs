@@ -16,7 +16,6 @@ import           TorXakis.Parser.Data
 -- | Parser of ADT's.
 adtP :: TxsParser ADTDecl
 adtP = do
-    txsWhitespace
     txsSymbol "TYPEDEF"
     m  <- getMetadata
     n  <- txsLexeme (ucIdentifier "ADT's")
@@ -64,10 +63,13 @@ idOfSortsP op cl f = nonEmptyIdOfSortsP <|> emptyDeclsP
 idOfSortsListP :: (Text -> Metadata t -> OfSort -> d) -> TxsParser [d]
 idOfSortsListP f =  do
     fns <- txsLexeme lcIdentifier `sepBy` txsSymbol ","
-    _  <- txsSymbol "::"
-    fs <- sortP
+    fs <- ofSortP
     traverse (mkIdWithSort fs) fns
     where
       mkIdWithSort s n = do
           m <- getMetadata
           return $ f n m s
+
+-- | Parse the declaration of a sort
+ofSortP :: TxsParser OfSort
+ofSortP = txsSymbol "::" >> sortP

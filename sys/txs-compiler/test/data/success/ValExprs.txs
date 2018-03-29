@@ -11,6 +11,14 @@ FUNCDEF let(x :: Int) :: Int ::=
     LET x = 10; y :: Bool = True IN x NI
 ENDDEF
 
+FUNCDEF let2(x :: Int; z :: Bool) :: Int ::=
+    LET x = 10; y :: Bool = True; z = 9 IN z NI
+ENDDEF
+
+FUNCDEF let3(x :: Int; z :: Int) :: Int ::=
+    LET x = 10; y :: Bool = True; z = 9 IN z NI
+ENDDEF
+
 FUNCDEF h() :: String ::=
     g
 ENDDEF

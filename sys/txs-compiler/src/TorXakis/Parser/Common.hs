@@ -72,14 +72,14 @@ getNextId = do
 
 -- | Parser for upper case identifiers.
 ucIdentifier :: String -> TxsParser Text
-ucIdentifier what = identifierNE idStart
+ucIdentifier what = txsLexeme (identifierNE idStart)
     where
       idStart = upper
                 `label`
                 (what ++ " must start with an uppercase character")
 
 lcIdentifier :: TxsParser Text
-lcIdentifier = identifierNE idStart
+lcIdentifier = txsLexeme (identifierNE idStart)
     where
       idStart = lower <|> oneOf "_"
                 `label`

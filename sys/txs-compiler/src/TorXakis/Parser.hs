@@ -18,7 +18,7 @@ import           Lens.Micro.TH             (makeLenses)
 import           Text.Parsec               (eof, many, runParserT, (<|>))
 
 import           TorXakis.Compiler.Error   (Error)
-import           TorXakis.Parser.Common    (TxsParser)
+import           TorXakis.Parser.Common    (TxsParser, txsWhitespace)
 import           TorXakis.Parser.ConstDecl (constDeclsP)
 import           TorXakis.Parser.Data
 import           TorXakis.Parser.FuncDefs  (fdeclP)
@@ -58,6 +58,7 @@ asParsedDefs = foldr sep empty
 -- | Root parser for the TorXakis language.
 txsP :: TxsParser ParsedDefs
 txsP = do
+    txsWhitespace
     ts <- many $  fmap TLADT    adtP
               <|> fmap TLFunc   fdeclP
               <|> fmap TLConsts constDeclsP
