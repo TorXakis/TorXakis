@@ -23,6 +23,7 @@ import           Data.Foldable            (traverse_)
 import           Lens.Micro               ((^.))
 
 import           EnvData                  (Msg)
+import           TxsDDefs                 (Verdict)
 
 import           TorXakis.Lib
 import           TorXakis.Lib.Session
@@ -93,12 +94,13 @@ testInfo = case info of
 -- TODO: for now I'm putting this test here. We should find the right place for
 -- this test. Once a new command line interface for TorXakis which uses
 -- 'txs-lib' is ready we can proceed with removing this test.
-testTorXakisWithInfo :: IO Response
+testTorXakisWithInfo :: IO Verdict
 testTorXakisWithInfo = do
     -- TODO: We should start the web server at this point.
     s <- newSession
     cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEchoInfoOnly.txs"
-    r <- load s cs
+    _ <- load s cs
     _ <- tester s "Model"
-    -- test s 100
-    return r
+    _ <- test s (NumberOfSteps 100)
+    waitForVerdict s
+

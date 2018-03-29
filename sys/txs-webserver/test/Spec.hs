@@ -63,9 +63,9 @@ spec = return $ do
             it "Starts stepper and takes 3 steps" $ do
                 _ <- post "http://localhost:8080/session/new" [partText "" ""]
                 _ <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
-                _ <- checkSuccess <$> post "http://localhost:8080/stepper/start/1/Model" [partText "" ""]
-                _ <- checkSuccess <$> post "http://localhost:8080/stepper/step/1/3" [partText "" ""]
-                checkJSON <$> get "http://localhost:8080/session/sse/1/messages"
+                post "http://localhost:8080/stepper/start/1/Model" [partText "" ""] >>= checkSuccess
+                post "http://localhost:8080/stepper/step/1/3" [partText "" ""] >>= checkSuccess
+                get "http://localhost:8080/session/sse/1/messages" >>= checkJSON
             -- it "Starts tester and tests 3 steps" $ do
             --     _ <- post "http://localhost:8080/session/new" [partText "" ""]
             --     _ <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]

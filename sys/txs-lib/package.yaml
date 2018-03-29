@@ -77,3 +77,4 @@ tests:
     dependencies:
     - hspec
     - txs-lib
+    - defs

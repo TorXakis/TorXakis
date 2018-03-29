@@ -18,6 +18,7 @@ import           Control.Concurrent.STM.TVar   (modifyTVar', newTVarIO,
                                                 readTVarIO)
 import           Control.DeepSeq               (force)
 import           Control.Exception             (ErrorCall, evaluate, try)
+import           Control.Exception             (SomeException, catch)
 import           Control.Monad                 (unless, void)
 import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically, retry)
@@ -35,7 +36,7 @@ import qualified BuildInfo
 import qualified VersionInfo
 
 import           EnvCore                       (IOC)
-import           EnvData                       (Msg)
+import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
@@ -182,12 +183,19 @@ test s (NumberOfSteps n) = do
 -- finished.
 --
 runIOC :: Session -> IOC a -> IO a
-runIOC s act = do
-    -- The GHC implementation of MVar's guarantees fairness in the access to
-    -- the critical sections delimited by `takeMVar` and `putMVar`.
-    takeMVar (s ^. pendingIOC)
-    st <- readTVarIO (s ^. sessionState)
-    (r, st') <- runStateT act (st ^. envCore)
-    atomically $ modifyTVar' (s ^. sessionState) (envCore .~ st')
-    putMVar (s ^. pendingIOC) ()
-    return r
+runIOC s act = runIOC' `catch` reportError
+    where
+      runIOC' = do
+          -- The GHC implementation of MVar's guarantees fairness in the access to
+          -- the critical sections delimited by `takeMVar` and `putMVar`.
+          takeMVar (s ^. pendingIOC)
+          st <- readTVarIO (s ^. sessionState)
+          (r, st') <- runStateT act (st ^. envCore)
+          atomically $ modifyTVar' (s ^. sessionState) (envCore .~ st')
+          putMVar (s ^. pendingIOC) ()
+          return r
+      reportError :: SomeException -> IO a
+      reportError err = do
+          atomically $ writeTQueue (s ^. sessionMsgs) (TXS_CORE_SYSTEM_ERROR (show err))
+          error (show err)
+

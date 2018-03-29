@@ -7,7 +7,10 @@ See LICENSE at root directory of this repository.
 module TorXakis.Lib.ExamplesSpec where
 
 import           Test.Hspec            (Spec, it, shouldReturn, shouldSatisfy)
-import           TorXakis.Lib          (Response (Success), isError)
+
+import           TxsDDefs              (Verdict (Pass))
+
+import           TorXakis.Lib          (isError)
 import           TorXakis.Lib.Examples
 
 spec :: Spec
@@ -18,4 +21,4 @@ spec = do
         r `shouldSatisfy` isError
     it "testInfo"         testInfo
     it "testTorXakisWithInfo" $
-        testTorXakisWithInfo `shouldReturn` Success
+        testTorXakisWithInfo `shouldReturn` Pass
