@@ -63,12 +63,22 @@ spec = return $ do
             it "Starts stepper and takes 3 steps" $ do
                 _ <- post "http://localhost:8080/session/new" [partText "" ""]
                 _ <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
-                r <- post "http://localhost:8080/stepper/start/1/Model" [partText "" ""]
-                r ^. responseStatus . statusCode `shouldBe` 200
-                r ^. responseBody `shouldBe` "\"Success\""
-                r2 <- post "http://localhost:8080/stepper/step/1/3" [partText "" ""]
-                r2 ^. responseStatus . statusCode `shouldBe` 200
-                r2 ^. responseBody `shouldBe` "\"Success\""
-                r3 <- get "http://localhost:8080/session/sse/1/messages"
-                r3 ^. responseStatus . statusCode `shouldBe` 200
-                BSL.unpack (r3 ^. responseBody) `shouldStartWith` "data:{\"tag\":\""
+                _ <- checkSuccess <$> post "http://localhost:8080/stepper/start/1/Model" [partText "" ""]
+                _ <- checkSuccess <$> post "http://localhost:8080/stepper/step/1/3" [partText "" ""]
+                checkJSON <$> get "http://localhost:8080/session/sse/1/messages"
+            -- it "Starts tester and tests 3 steps" $ do
+            --     _ <- post "http://localhost:8080/session/new" [partText "" ""]
+            --     _ <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
+            --     _ <- checkSuccess <$> post "http://localhost:8080/tester/start/1/Model" [partText "" ""]
+            --     _ <- checkSuccess <$> post "http://localhost:8080/tester/test/1/3" [partText "" ""]
+            --     checkJSON    <$> get "http://localhost:8080/session/sse/1/messages"
+
+checkSuccess :: Response BSL.ByteString -> IO ()
+checkSuccess r = do
+    r ^. responseStatus . statusCode `shouldBe` 200
+    r ^. responseBody `shouldBe` "\"Success\""
+
+checkJSON :: Response BSL.ByteString -> IO ()
+checkJSON r = do
+    r ^. responseStatus . statusCode `shouldBe` 200
+    BSL.unpack (r ^. responseBody) `shouldStartWith` "data:{\"tag\":\""
