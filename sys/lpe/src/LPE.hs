@@ -89,7 +89,7 @@ extractVars actOffer = let  set = offers actOffer in
                        Set.foldr collect [] set
     where
         collect :: Offer -> [VarId] -> [VarId]
-        collect Offer{chanoffers = coffers} _varIds = foldr extractVarIds [] coffers    -- PvdL: why is accumulation missing?
+        collect Offer{chanoffers = coffers} varIds = varIds ++ foldr extractVarIds [] coffers
 
         extractVarIds :: ChanOffer -> [VarId] -> [VarId]
         extractVarIds (Quest varId) varIds  = varId:varIds
