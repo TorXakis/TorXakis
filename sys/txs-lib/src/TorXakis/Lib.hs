@@ -41,7 +41,7 @@ import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
 import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
                                                 txsStepN)
-import           TxsDDefs                      (Verdict)
+import           TxsDDefs                      (Action, Verdict)
 import           TxsDefs                       (ModelDef)
 import           TxsHappy                      (txsParser)
 
@@ -159,7 +159,12 @@ tester :: Session
 tester s mn = runResponse $ do
     mDef <- lookupModel s mn
     lift $ runIOC s $
-        txsSetTest undefined undefined mDef Nothing Nothing
+        txsSetTest putToW getFromW mDef Nothing Nothing
+    where
+      putToW :: Action -> IOC Action
+      putToW = undefined
+      getFromW :: IOC Action
+      getFromW = undefined
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.
