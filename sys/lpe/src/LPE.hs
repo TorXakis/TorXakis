@@ -150,7 +150,7 @@ preGNFBExpr bexpr@(TxsDefs.view -> Choice{}) choiceCnt freeVarsInScope procId tr
     -- choice at lower level not allowed
     unid' <- EnvB.newUnid
     let   -- decompose the ProcDef of ProcId
-          ProcDef chansDef paramsDef _ = fromMaybe (error "called preGNFBExpr with a non-existing procId") (Map.lookup procId procDefs')
+          ProcDef chansDef paramsDef _ = fromMaybe (error "called preGNFBExpr with a non-existing procId - Choice") (Map.lookup procId procDefs')
 
           -- create new ProcDef
           procDef' = ProcDef chansDef (paramsDef ++ freeVarsInScope) bexpr
@@ -173,7 +173,7 @@ preGNFBExpr bexpr@(TxsDefs.view -> Parallel{}) choiceCnt freeVarsInScope procId 
     -- parallel at lower level not allowed
     unid' <- EnvB.newUnid
     let -- decompose the ProcDef of ProcId
-        ProcDef chansDef paramsDef _ = fromMaybe (error "called preGNFBExpr with a non-existing procId") (Map.lookup procId procDefs')
+        ProcDef chansDef paramsDef _ = fromMaybe (error "called preGNFBExpr with a non-existing procId - Parallel") (Map.lookup procId procDefs')
 
         -- create new ProcDef
         procDef' = ProcDef chansDef (paramsDef ++ freeVarsInScope) bexpr
