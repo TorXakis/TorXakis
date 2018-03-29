@@ -24,11 +24,16 @@ import           Endpoints.Messages          (MessagesEP, SSMessagesEP,
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
 import           Endpoints.Stepper           (StartStepperEP, TakeNStepsEP,
                                               startStepper, takeNSteps)
+import           Endpoints.Tester           (StartTesterEP, TestNStepsEP,
+                                              startTester, testNSteps)
 import           Endpoints.Upload            (UploadEP, upload)
 -- import           Swagger
 
 type API = ServiceAPI
-type ServiceAPI = NewSessionEP :<|> UploadEP :<|> StartStepperEP :<|> TakeNStepsEP :<|> MessagesEP
+type ServiceAPI = NewSessionEP :<|> UploadEP
+                               :<|> StartStepperEP :<|> TakeNStepsEP
+                               :<|> StartTesterEP  :<|> TestNStepsEP
+                               :<|> MessagesEP
                                :<|> SSMessagesEP
                                :<|> InfoEP
                                :<|> TestPageAPI
@@ -49,8 +54,8 @@ app env = simpleCors $ serve api (server env)
 server :: Env -> ServerT API Handler
 server env = newSrvSession env
     :<|> upload env
-    :<|> startStepper env
-    :<|> takeNSteps env
+    :<|> startStepper env :<|> takeNSteps env
+    :<|> startTester env  :<|> testNSteps env
     :<|> streamMessages env
     :<|> ssMessagesEP env
     :<|> getInfo

@@ -40,7 +40,7 @@ import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
 import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
-                                                txsStepN)
+                                                txsStepN, txsTestN)
 import           TxsDDefs                      (Verdict)
 import           TxsDefs                       (ModelDef)
 import           TxsHappy                      (txsParser)
@@ -160,6 +160,14 @@ tester s mn = runResponse $ do
     mDef <- lookupModel s mn
     lift $ runIOC s $
         txsSetTest undefined undefined mDef Nothing Nothing
+
+-- | Test for n-steps
+test :: Session -> StepType -> IO Response
+test s (NumberOfSteps n) = do
+    void $ forkIO $ runIOC s $ do
+        verdict <- txsTestN n
+        lift $ atomically $ writeTQueue (s ^. verdicts) verdict
+    return Success
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.
