@@ -4,8 +4,7 @@
 module TorXakis.Parser.Data
     ( St
     , mkState
-    , Metadata (Metadata)
-    , nodeMdata
+    , nodeLoc
     , incId
     , nextId
     , Loc (Loc)
@@ -62,6 +61,7 @@ module TorXakis.Parser.Data
     , mkIntConstExp
     , mkStringConstExp
     , mkLetExpDecl
+    , mkITEExpDecl
     , mkLetVarDecl
     , expLetVarDecls
     , LetVarDecl
@@ -73,8 +73,10 @@ module TorXakis.Parser.Data
     )
 where
 
-import           Data.Text  (Text)
-import           Lens.Micro (Lens')
+import           Data.Text               (Text)
+import           Lens.Micro              (Lens')
+
+import           TorXakis.Compiler.Error
 
 -- | State of the parser.
 newtype St = St { nextId :: Int } deriving (Eq, Show)
@@ -87,10 +89,10 @@ incId :: St -> St
 incId (St i) = St (i + 1)
 
 data ParseTree t c = ParseTree
-    { nodeName  :: Name t
-    , nodeType  :: t
-    , nodeMdata :: Metadata t
-    , child     :: c
+    { nodeName :: Name t
+    , nodeType :: t
+    , nodeLoc  :: Loc t
+    , child    :: c
     } deriving (Show, Eq, Ord)
 
 newtype Name t = Name { toText :: Text } deriving (Show, Eq, Ord)
@@ -98,23 +100,21 @@ newtype Name t = Name { toText :: Text } deriving (Show, Eq, Ord)
 nodeNameT :: ParseTree t c -> Text
 nodeNameT = toText . nodeName
 
--- | Metadata associated to the elements being parsed.
-data Metadata t = Metadata
+-- | Location associated to the elements being parsed.
+data Loc t = Loc
     {  -- | Line in which a declaration occurs.
-      line  :: Int
+      line   :: Int
        -- | Start column.
-    , start :: Int
+    , start  :: Int
        -- | Unique identifier.
-    , loc   :: Loc t
+    , locUid :: Int
     } deriving (Show, Eq, Ord)
-
-newtype Loc t = Loc { intVal :: Int} deriving (Show, Eq, Ord)
 
 -- | Change extract the location of the metadata, and change its type from 't'
 -- to 'u'. This is useful when defining parsed entities whose locations
 -- coincide, like expressions and variable-references or constant-literals.
-locFromMetadata :: Metadata t -> Loc u
-locFromMetadata m = let Loc i = loc m in Loc i
+locFromLoc :: Loc t -> Loc u
+locFromLoc (Loc l c i) = Loc l c i
 
 class HasLoc a t where
     getLoc :: a -> Loc t
@@ -123,13 +123,8 @@ class HasLoc a t where
     loc' f a = setLoc a <$> f (getLoc a)
 
 instance HasLoc (ParseTree t c) t where
-    getLoc = loc . nodeMdata
-    setLoc (ParseTree n t m c) l = ParseTree n t (m {loc = l}) c
-
--- instance HasLoc ExpDecl ExpDeclE where
---     getLoc (LetExp _ _ m) = loc m
---     getLoc (VarExp _ m)   = loc m
---     getLoc (ConstExp _ m) = loc m
+    getLoc = nodeLoc
+    setLoc (ParseTree n t _ c) l' = ParseTree n t l' c
 
 -- * Types of entities encountered when parsing.
 
@@ -167,7 +162,7 @@ data ConstLitE = ConstLitE deriving (Eq, Ord, Show)
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADTE     [CstrDecl]
 
-mkADTDecl :: Text -> Metadata ADTE -> [CstrDecl] -> ADTDecl
+mkADTDecl :: Text -> Loc ADTE -> [CstrDecl] -> ADTDecl
 mkADTDecl n m cs = ParseTree (Name n) ADTE m cs
 
 adtName :: ADTDecl -> Text
@@ -178,7 +173,7 @@ constructors = child
 
 type CstrDecl  = ParseTree CstrE    [FieldDecl]
 
-mkCstrDecl :: Text -> Metadata CstrE -> [FieldDecl] -> CstrDecl
+mkCstrDecl :: Text -> Loc CstrE -> [FieldDecl] -> CstrDecl
 mkCstrDecl n m fs = ParseTree (Name n) CstrE m fs
 
 cstrName :: CstrDecl -> Text
@@ -189,20 +184,20 @@ cstrFields = child
 
 type FieldDecl = ParseTree FieldE   OfSort
 
-mkFieldDecl :: Text -> Metadata FieldE -> OfSort -> FieldDecl
+mkFieldDecl :: Text -> Loc FieldE -> OfSort -> FieldDecl
 mkFieldDecl n m s = ParseTree (Name n) FieldE m s
 
 fieldName :: FieldDecl -> Text
 fieldName = nodeNameT
 
 -- | Get the field of a sort, and the metadata associated to it.
-fieldSort :: FieldDecl -> (Text, Metadata SortRefE)
-fieldSort f = (nodeNameT . child $ f, nodeMdata . child $ f)
+fieldSort :: FieldDecl -> (Text, Loc SortRefE)
+fieldSort f = (nodeNameT . child $ f, nodeLoc . child $ f)
 
 -- | Reference to an existing type
 type OfSort    = ParseTree SortRefE ()
 
-mkOfSort :: Text -> Metadata SortRefE -> OfSort
+mkOfSort :: Text -> Loc SortRefE -> OfSort
 mkOfSort n m = ParseTree (Name n) SortRefE m ()
 
 -- | Components of a function.
@@ -215,7 +210,7 @@ data FuncComps = FuncComps
 -- | Variable declarations.
 type VarDecl = ParseTree VarDeclE OfSort
 
-mkVarDecl :: Text -> Metadata VarDeclE -> OfSort -> VarDecl
+mkVarDecl :: Text -> Loc VarDeclE -> OfSort -> VarDecl
 mkVarDecl n m s = ParseTree (Name n) VarDeclE m s
 
 class IsVariable v where
@@ -225,8 +220,8 @@ class IsVariable v where
 instance IsVariable VarDecl where
     varName = nodeNameT
 
-varDeclSort :: VarDecl -> (Text, Metadata SortRefE)
-varDeclSort f = (nodeNameT . child $ f, nodeMdata . child $ f)
+varDeclSort :: VarDecl -> (Text, Loc SortRefE)
+varDeclSort f = (nodeNameT . child $ f, nodeLoc . child $ f)
 
 -- | Expressions.
 type ExpDecl = ParseTree ExpDeclE ExpChild
@@ -243,10 +238,12 @@ expChild = child
 
 -- | Extract all the expression declarations of an expression.
 expLetVarDecls :: ExpDecl -> [LetVarDecl]
-expLetVarDecls (ParseTree _ _ _ (VarRef _ _))  = []
-expLetVarDecls (ParseTree _ _ _ (ConstLit _ )) = []
-expLetVarDecls (ParseTree _ _ _ (LetExp vs e)) =
-    vs ++ expLetVarDecls e
+expLetVarDecls ParseTree { child = VarRef _ _  } = []
+expLetVarDecls ParseTree { child = ConstLit _  } = []
+expLetVarDecls ParseTree { child = LetExp vs e } =
+    vs ++ expLetVarDecls e ++ concatMap (expLetVarDecls . varDeclExp) vs
+expLetVarDecls ParseTree { child = If e0 e1 e2 } =
+    expLetVarDecls e0 ++ expLetVarDecls e1 ++ expLetVarDecls e2
 
 -- foldExp :: (b -> ExpChild -> b) -> b -> ExpDecl -> b
 -- foldExp f b (ParseTree _ _ _ c) = f b c
@@ -254,10 +251,19 @@ expLetVarDecls (ParseTree _ _ _ (LetExp vs e)) =
 data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)
               | ConstLit Const
               | LetExp [LetVarDecl] ExpDecl
+              | If ExpDecl ExpDecl ExpDecl
     deriving (Eq, Ord, Show)
 
-mkLetExpDecl :: [LetVarDecl] -> ExpDecl -> Metadata ExpDeclE -> ExpDecl
-mkLetExpDecl vs subEx m = mkExpDecl m (LetExp vs subEx)
+data Const = BoolConst Bool
+           | IntConst Integer
+           | StringConst Text
+    deriving (Eq, Show, Ord)
+
+mkLetExpDecl :: [LetVarDecl] -> ExpDecl -> Loc ExpDeclE -> ExpDecl
+mkLetExpDecl vs subEx l = mkExpDecl l (LetExp vs subEx)
+
+mkExpDecl :: Loc ExpDeclE -> ExpChild -> ExpDecl
+mkExpDecl l c = ParseTree (Name "") ExpDeclE l c
 
 type LetVarDecl = ParseTree VarDeclE (Maybe OfSort, ExpDecl)
 
@@ -267,39 +273,34 @@ varDeclExp = snd . child
 instance IsVariable LetVarDecl where
     varName = nodeNameT
 
-letVarDeclSortName :: LetVarDecl -> Maybe (Text, Metadata SortRefE)
+letVarDeclSortName :: LetVarDecl -> Maybe (Text, Loc SortRefE)
 letVarDeclSortName vd = do
     srt <- fst . child $ vd
-    return (nodeNameT srt, nodeMdata srt)
+    return (nodeNameT srt, nodeLoc srt)
 
-mkLetVarDecl :: Text -> Maybe OfSort -> ExpDecl -> Metadata VarDeclE -> LetVarDecl
+mkLetVarDecl :: Text -> Maybe OfSort -> ExpDecl -> Loc VarDeclE -> LetVarDecl
 mkLetVarDecl n ms subEx m = ParseTree (Name n) VarDeclE m (ms, subEx)
 
-data Const = BoolConst Bool
-           | IntConst Integer
-           | StringConst Text
-    deriving (Eq, Show, Ord)
-
-mkExpDecl :: Metadata ExpDeclE -> ExpChild -> ExpDecl
-mkExpDecl m c = ParseTree (Name "") ExpDeclE m c
+mkITEExpDecl :: Loc ExpDeclE -> ExpDecl -> ExpDecl -> ExpDecl -> ExpDecl
+mkITEExpDecl l ex0 ex1 ex2 = mkExpDecl l (If ex0 ex1 ex2)
 
 -- | Make a variable expression. The location of the expression will become the
 -- location of the variable.
-mkVarExp :: Text -> Metadata ExpDeclE -> ExpDecl
-mkVarExp n m = mkExpDecl m (VarRef (Name n) (locFromMetadata m))
+mkVarExp :: Loc ExpDeclE -> Text -> ExpDecl
+mkVarExp l n = mkExpDecl l (VarRef (Name n) (locFromLoc l))
 
-mkBoolConstExp :: Bool -> Metadata ExpDeclE -> ExpDecl
-mkBoolConstExp b m = mkExpDecl m (ConstLit (BoolConst b))
+mkBoolConstExp :: Loc ExpDeclE -> Bool -> ExpDecl
+mkBoolConstExp l b = mkExpDecl l (ConstLit (BoolConst b))
 
-mkIntConstExp :: Integer -> Metadata ExpDeclE -> ExpDecl
-mkIntConstExp i m = mkExpDecl m (ConstLit (IntConst i))
+mkIntConstExp :: Loc ExpDeclE -> Integer -> ExpDecl
+mkIntConstExp l i = mkExpDecl l (ConstLit (IntConst i))
 
-mkStringConstExp :: Text -> Metadata ExpDeclE -> ExpDecl
-mkStringConstExp t m = mkExpDecl m (ConstLit (StringConst t))
+mkStringConstExp :: Loc ExpDeclE -> Text -> ExpDecl
+mkStringConstExp l t = mkExpDecl l (ConstLit (StringConst t))
 
 type FuncDecl  = ParseTree FuncDeclE FuncComps
 
-mkFuncDecl :: Text -> Metadata FuncDeclE -> [VarDecl] -> OfSort -> ExpDecl -> FuncDecl
+mkFuncDecl :: Text -> Loc FuncDeclE -> [VarDecl] -> OfSort -> ExpDecl -> FuncDecl
 mkFuncDecl n m ps s b = ParseTree (Name n) FuncDeclE m (FuncComps ps s b)
 
 funcName :: FuncDecl -> Text
@@ -314,7 +315,16 @@ funcParams = funcCompsParams . child
 funcBody :: FuncDecl -> ExpDecl
 funcBody = funcCompsBody . child
 
-funcRetSort :: FuncDecl -> (Text, Metadata SortRefE)
+funcRetSort :: FuncDecl -> (Text, Loc SortRefE)
 funcRetSort f = ( nodeNameT . funcCompsRetSort . child $ f
-                , nodeMdata . funcCompsRetSort . child $ f
+                , nodeLoc . funcCompsRetSort . child $ f
                 )
+
+instance HasErrorLoc (Loc t) where
+    -- TODO: add line and column numbers to location. Remove the metadata.
+    getErrorLoc (Loc l c _)  = ErrorLoc {errorLine = l, errorColumn = c}
+
+instance HasErrorLoc (ParseTree t c) where
+    getErrorLoc pt = ErrorLoc { errorLine = l, errorColumn = c }
+        where Loc l c _ = nodeLoc pt
+

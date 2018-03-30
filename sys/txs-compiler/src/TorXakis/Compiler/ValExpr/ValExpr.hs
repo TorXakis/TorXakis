@@ -4,11 +4,13 @@ module TorXakis.Compiler.ValExpr.ValExpr where
 
 import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
+import qualified Data.Set                            as Set
 
 import           FuncDef                             (FuncDef)
 import           FuncId                              (FuncId)
-import           ValExpr                             (ValExpr, cstrConst,
-                                                      cstrFunc, cstrVar, subst)
+import           ValExpr                             (ValExpr, cstrAnd,
+                                                      cstrConst, cstrFunc,
+                                                      cstrITE, cstrVar, subst)
 import qualified ValExpr
 import           VarId                               (VarId)
 
@@ -33,29 +35,6 @@ expDeclToValExpr e e' ex = case expChild ex of
     ConstLit c ->
         return $ cstrConst (constToConstDef c)
     LetExp vs subEx -> do
-        -- TODO: Do we need to use vs here? My guess is **no**! We resolved the
-        -- variable scope in previous steps!
-
-        -- If you look at what is done at TxsHappy@2686, the LET clause is
-        -- translated as a substitution! Considering that having a LET
-        -- expression here might get confusing, we might consider doing a
-        -- previous step that transforms a ExpDecl with LET clauses into a
-        -- ExpDecl without.
-        --
-        -- > LET NeValueDefList IN ValExpr1 EndIn
-        -- > $$ = foldr (\x -> subst x (Map.empty :: Map.Map FuncId (FuncDef VarId)) ) $4 $2
-        --
-        -- > subst :: (Variable v, Integral (ValExpr v), Variable w, Integral (ValExpr w))
-        -- > => Map.Map v (ValExpr v)
-        -- > -> Map.Map FuncId (FuncDef w)
-        -- > -> ValExpr v
-        -- > -> ValExpr v
-        -- QUESTION: why is the following line needed:
-        --
-        -- > $4.inhVarSigs = map (\(IdVar v) -> v )
-        -- >                     $ scopeMerge (map IdVar $$.inhVarSigs) (map IdVar $2.synVarSigs)
-        --
-        -- If a substitution (via 'subst' above) took place.
         let
             letValDeclsToMaps :: Either Error [Map VarId (ValExpr VarId)]
             letValDeclsToMaps = traverse letValDeclToMap vs
@@ -70,3 +49,8 @@ expDeclToValExpr e e' ex = case expChild ex of
         subValExpr <- expDeclToValExpr e e' subEx
         vsM <- letValDeclsToMaps
         return $ foldr (`subst` fsM) subValExpr vsM
+    If e0 e1 e2 -> do
+        ve0 <- expDeclToValExpr e e' e0
+        ve1 <- expDeclToValExpr e e' e1
+        ve2 <- expDeclToValExpr e e' e2
+        return $ cstrITE (cstrAnd (Set.fromList [ve0])) ve1 ve2

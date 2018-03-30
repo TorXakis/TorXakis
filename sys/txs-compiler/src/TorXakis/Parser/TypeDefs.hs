@@ -7,17 +7,13 @@ import           Text.Parsec            (sepBy, (<|>))
 
 import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
-                                         -- , Field (Field), ParseTree (ParseTree)
-                                         -- , SortRef (SortRef), OfSort
-                                         -- , ADTDecl, ADT (ADT)
-                                         -- , CstrDecl, Cstr (Cstr), Name (Name)
-                                         -- )
+
 
 -- | Parser of ADT's.
 adtP :: TxsParser ADTDecl
 adtP = do
     txsSymbol "TYPEDEF"
-    m  <- getMetadata
+    m  <- mkLoc
     n  <- txsLexeme (ucIdentifier "ADT's")
     txsSymbol "::="
     cs <- cstrP `sepBy` txsSymbol "|"
@@ -26,7 +22,7 @@ adtP = do
 
 cstrP :: TxsParser CstrDecl
 cstrP = do
-    m  <- getMetadata
+    m  <- mkLoc
     n  <- txsLexeme (ucIdentifier "Constructors")
     fs <- idOfSortsP "{" "}" mkFieldDecl
     return $ mkCstrDecl n m fs
@@ -34,7 +30,7 @@ cstrP = do
 -- | Parser for Sorts.
 sortP :: TxsParser OfSort
 sortP = do
-    m <- getMetadata
+    m <- mkLoc
     n <- txsLexeme (ucIdentifier "Sorts")
     return $ mkOfSort n m
 
@@ -46,7 +42,7 @@ sortP = do
 --
 idOfSortsP :: String -- ^ Start symbol for the fields declaration.
            -> String -- ^ End symbol for the fields declaration.
-           -> (Text -> Metadata t -> OfSort -> d)
+           -> (Text -> Loc t -> OfSort -> d)
            -> TxsParser [d]
 idOfSortsP op cl f = nonEmptyIdOfSortsP <|> emptyDeclsP
     where nonEmptyIdOfSortsP = do
@@ -60,14 +56,14 @@ idOfSortsP op cl f = nonEmptyIdOfSortsP <|> emptyDeclsP
 --
 -- > x, y, z :: T
 --
-idOfSortsListP :: (Text -> Metadata t -> OfSort -> d) -> TxsParser [d]
+idOfSortsListP :: (Text -> Loc t -> OfSort -> d) -> TxsParser [d]
 idOfSortsListP f =  do
     fns <- txsLexeme lcIdentifier `sepBy` txsSymbol ","
     fs <- ofSortP
     traverse (mkIdWithSort fs) fns
     where
       mkIdWithSort s n = do
-          m <- getMetadata
+          m <- mkLoc
           return $ f n m s
 
 -- | Parse the declaration of a sort

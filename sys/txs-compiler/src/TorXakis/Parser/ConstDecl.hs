@@ -1,8 +1,8 @@
--- | 
+-- |
 
 module TorXakis.Parser.ConstDecl where
 
-import           Text.Parsec ( sepBy )
+import           Text.Parsec                 (sepBy)
 
 import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
@@ -15,13 +15,13 @@ constDeclsP = do
     cs <- constDeclP `sepBy` txsSymbol ";"
     txsSymbol "ENDDEF"
     return cs
-    
+
 constDeclP :: TxsParser FuncDecl
 constDeclP = do
-    m  <- getMetadata
+    l  <- mkLoc
     n  <- txsLexeme lcIdentifier
     txsSymbol "::"
     s  <- sortP
     txsSymbol "::="
     b <- txsLexeme valExpP
-    return $ mkFuncDecl n m [] s b
+    return $ mkFuncDecl n l [] s b

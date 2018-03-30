@@ -15,9 +15,14 @@ import           Control.Monad.Identity    (runIdentity)
 import qualified Data.Text                 as T
 import           Lens.Micro                (Lens', to, (%~), (^.))
 import           Lens.Micro.TH             (makeLenses)
-import           Text.Parsec               (eof, many, runParserT, (<|>))
+import           Text.Parsec               (ParseError, eof, errorPos, many,
+                                            runParserT, sourceColumn,
+                                            sourceLine, (<|>))
 
-import           TorXakis.Compiler.Error   (Error)
+import           TorXakis.Compiler.Error   (Error (Error), ErrorLoc (ErrorLoc),
+                                            ErrorType (ParseError), errorColumn,
+                                            errorLine, errorLoc, errorMsg,
+                                            errorType)
 import           TorXakis.Parser.Common    (TxsParser, txsWhitespace)
 import           TorXakis.Parser.ConstDecl (constDeclsP)
 import           TorXakis.Parser.Data
@@ -36,10 +41,19 @@ parse :: String -> Either Error ParsedDefs
 parse = undefined
 
 parseFile :: FilePath -> IO (Either Error ParsedDefs)
-parseFile fp =  left (T.pack . show) <$> do
+parseFile fp = left parseErrorAsError <$> do
     input <- readFile fp
     return $ runIdentity (runParserT txsP (mkState 1000) fp input)
-
+    where
+      parseErrorAsError :: ParseError -> Error
+      parseErrorAsError err = Error
+          { errorType = ParseError
+          , errorLoc = ErrorLoc
+              { errorLine   = sourceLine (errorPos err)
+              , errorColumn = sourceColumn (errorPos err)
+              }
+          , errorMsg = T.pack (show err)
+          }
 
 -- | TorXakis top-level definitions
 data TLDef = TLADT ADTDecl

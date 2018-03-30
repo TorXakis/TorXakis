@@ -1,5 +1,5 @@
--- |
-
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 module TorXakis.Compiler.ValExpr.FuncDef where
 
 import           Control.Arrow                     (left)
@@ -34,8 +34,15 @@ funcDeclsToFuncDefs e fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
       gFuncDeclsToFuncDefs e' gs =
           case partitionEithers (funcDeclToFuncDef e e' <$> gs) of
               ([], rs) -> Right $ fromSEnv $ fromList rs <> e'
-              (ls, []) -> Left  $ T.pack $ "Could not resolve " ++ show ls
-              (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> e') ls
+              (ls, []) -> Left Error
+                          { errorType = FunctionNotDefined
+                          , errorLoc  = NoErrorLoc -- TODO: we could generate
+                                                   -- multiple errors, giving
+                                                   -- all the locations in 'ls'
+                          , errorMsg  = "Errors: "
+                                        <> T.pack (show (fst <$> ls))
+                          }
+              (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> e') (snd <$> ls)
 
 -- | TODO: we pass two environments, since e cannot be extended. We should try
 -- to solve this by trying to replace IEnv with types like:
@@ -49,8 +56,8 @@ funcDeclToFuncDef :: (HasSortIds e, HasVarDecls e, HasVarIds e, HasFuncIds e, Ha
                   => e
                   -> e'
                   -> FuncDecl
-                  -> Either FuncDecl (FuncId, FuncDef VarId)
-funcDeclToFuncDef e e' f = left (const f) $ do
+                  -> Either (Error, FuncDecl) (FuncId, FuncDef VarId)
+funcDeclToFuncDef e e' f = left (,f) $ do
     fId  <- findFuncId e (getLoc f)
     pIds <- traverse (findVarId e . getLoc) (funcParams f)
     vExp <- expDeclToValExpr e e' (funcBody f)

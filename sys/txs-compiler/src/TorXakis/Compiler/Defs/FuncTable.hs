@@ -4,28 +4,35 @@
 
 module TorXakis.Compiler.Defs.FuncTable where
 
-import           Data.Text (Text)
-import           Data.Map (Map)
-import qualified Data.Map as Map
-import           Data.Semigroup ((<>))
-import           Data.List.Index (imapM)
-import           Data.Foldable (foldl')
-    
-import           Id (Id(Id))-- TODO: remove the this import we need to change the either to a 'CompilerM'
-import           SortId                        (SortId, sortIdBool, sortIdString)
-import           CstrId                        (CstrId)
-import           VarId                         (VarId)
-import           FuncTable                     ( FuncTable (FuncTable), SignHandler, Handler
-                                               , Signature (Signature))
-import           StdTDefs ( iscstrHandler, accessHandler, cstrHandler
-                          , eqName, equalHandler, neqName, notEqualHandler
-                          , toStringName, fromStringName, toStringName, fromXmlName, toXmlName)
-import           ValExpr (cstrFunc, PredefKind (AST, ASF, AXT, AXF), cstrPredef)
+import           Data.Foldable                    (foldl')
+import           Data.List.Index                  (imapM)
+import           Data.Map                         (Map)
+import qualified Data.Map                         as Map
+import           Data.Semigroup                   ((<>))
+import           Data.Text                        (Text)
 
-import           TorXakis.Parser.Data
+import           CstrId                           (CstrId)
+import           FuncTable                        (FuncTable (FuncTable),
+                                                   Handler, SignHandler,
+                                                   Signature (Signature))
+import           Id                               (Id (Id))
+import           SortId                           (SortId, sortIdBool,
+                                                   sortIdString)
+import           StdTDefs                         (accessHandler, cstrHandler,
+                                                   eqName, equalHandler,
+                                                   fromStringName, fromXmlName,
+                                                   iscstrHandler, neqName,
+                                                   notEqualHandler,
+                                                   toStringName, toStringName,
+                                                   toXmlName)
+import           ValExpr                          (PredefKind (ASF, AST, AXF, AXT),
+                                                   cstrFunc, cstrPredef)
+import           VarId                            (VarId)
+
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.ValExpr.FuncId
+import           TorXakis.Parser.Data
 
 -- | Make a function table.
 compileToFuncTable :: (HasSortIds e, HasCstrIds e)
@@ -43,11 +50,11 @@ compileToFuncTable e ds =
       -- for instance), we cannot overwrite the handlers, but we have to take
       -- both handlers along.
       textToHandler = foldl' (Map.unionWith Map.union) Map.empty <$> textToHandlers
-      
+
 adtToHandlers :: (HasSortIds e, HasCstrIds e)
               => e -> ADTDecl -> CompilerM [(Text, SignHandler VarId)]
 adtToHandlers e a = do
-    sId <- findSortIdM e (adtName a, nodeMdata a)
+    sId <- findSortIdM e (adtName a, nodeLoc a)
     concat <$> traverse (cstrToHandlers e sId) (constructors a)
 
 cstrToHandlers :: (HasSortIds e, HasCstrIds e)
@@ -64,11 +71,11 @@ cstrToHandlers e sId c = do
     astFid <- sortToStringFuncId sId
     asfFid <- sortFromStringFuncId sId
     axtFid <- sortToStringFuncId sId
-    axfFid <- sortFromStringFuncId sId    
+    axfFid <- sortFromStringFuncId sId
     let stdHs =
             [ (eqName, Map.singleton
                        (Signature [sId, sId] sortIdBool) equalHandler)
-            , (neqName, Map.singleton 
+            , (neqName, Map.singleton
                         (Signature [sId,sId] sortIdBool) notEqualHandler)
             , (toStringName, Map.singleton
                              (Signature [sId] sortIdString)

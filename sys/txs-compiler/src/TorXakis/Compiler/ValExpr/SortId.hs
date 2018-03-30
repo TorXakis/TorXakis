@@ -1,8 +1,9 @@
--- |
-
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 module TorXakis.Compiler.ValExpr.SortId where
 
 import           Control.Arrow             (left, (+++), (|||))
+import           Control.Monad             (when)
 import           Control.Monad.Error.Class (liftEither)
 import           Data.Either               (partitionEithers)
 import           Data.Map                  (Map)
@@ -44,18 +45,14 @@ sortIdOfVarDecl e = findSortId e . varDeclSort
 sortIdOfVarDeclM :: HasSortIds e => e -> VarDecl -> CompilerM SortId
 sortIdOfVarDeclM e f = liftEither $ sortIdOfVarDecl e f
 
--- TODO: let's infer some types...
-
 -- | TODO: QUESTION: do we return an error when there are variables whose types
 -- couldn't be inferred, or do we leave the error occur when some other
 -- function asks for the type of the variable later on?
-
 inferTypes :: (HasSortIds e, HasVarDecls e, HasFuncIds e)
            => e -> [FuncDecl] -> CompilerM (Map (Loc VarDeclE) SortId)
 inferTypes e fs = liftEither $ do
-    letVdSid    <- gInferTypes mempty allLetVarDecls
     paramsVdSid <- Map.fromList . concat <$> traverse fParamLocSorts fs
-    -- TODO: join this with the sort of the function parameters
+    letVdSid    <- gInferTypes (SEnv paramsVdSid) allLetVarDecls
     return $ Map.union letVdSid paramsVdSid
     where
       allLetVarDecls = concatMap letVarDeclsInFunc fs
@@ -65,8 +62,14 @@ inferTypes e fs = liftEither $ do
       gInferTypes e' vs =
           case partitionEithers (inferVarDeclType e e' <$> vs) of
               ([], rs) -> Right $ fromSEnv $ fromList rs <> e'
-              (ls, []) -> Left  $ T.pack $ "Could not infer the types of" ++ show ls
-              (ls, rs) -> gInferTypes (fromList rs <> e') ls
+              (ls, []) -> Left  Error
+                          { errorType = UndefinedType
+                          , errorLoc  = NoErrorLoc -- TODO: we could generate
+                                                   -- multiple errors, giving
+                                                   -- all the locations in 'ls'
+                          , errorMsg  =  "Could not infer the types: " <> (T.pack . show . (fst <$>)) ls
+                          }
+              (ls, rs) -> gInferTypes (fromList rs <> e') (snd <$> ls)
       fParamLocSorts :: FuncDecl -> Either Error [(Loc VarDeclE, SortId)]
       fParamLocSorts fd = zip (getLoc <$> funcParams fd) <$> fParamSorts
           where
@@ -79,8 +82,8 @@ letVarDeclsInFunc fd = expLetVarDecls (funcBody fd)
 inferVarDeclType :: (HasSortIds e, HasVarDecls e, HasFuncIds e)
                  => e
                  -> SEnv (Map (Loc VarDeclE) SortId)
-                 -> LetVarDecl -> Either LetVarDecl (Loc VarDeclE, SortId)
-inferVarDeclType e vdSid vd = left (const vd) $
+                 -> LetVarDecl -> Either (Error, LetVarDecl) (Loc VarDeclE, SortId)
+inferVarDeclType e vdSid vd = left (,vd) $
     case letVarDeclSortName vd of
     Just sn -> do -- If the sort is declared, we just return it.
         sId <- findSortId e sn
@@ -103,13 +106,41 @@ inferExpType e vdSid ex =
         (findVarDeclSortId vdSid ||| findFuncSorIdByLoc e) =<< findVarDecl e l
     ConstLit c ->
         return $ sortIdConst c
-    LetExp _ subEx ->
-        -- We don't use the information contained in the (let) variable
-        -- declarations, since we assume this information will be eventually
-        -- present in the 'vdSid' map.
-        inferExpType e vdSid subEx
+    LetExp vs subEx -> do
+        vsSids <- traverse (inferExpType e vdSid) (varDeclExp <$> vs)
+        let vdSid' = fromList (zip (getLoc <$> vs) vsSids) <> vdSid
+        inferExpType e vdSid' subEx
+    If e0 e1 e2 -> do
+        [se0, se1, se2] <- traverse (inferExpType e vdSid) [e0, e1, e2]
+        when (se0 /= sortIdBool)
+            (Left Error
+                { errorType = TypeMismatch
+                , errorLoc  = getErrorLoc e0
+                , errorMsg  = "Guard expression must be a boolean."
+                           <> " Got " <> T.pack (show se0)
+                })
+        when (se1 /= se2)
+            (Left Error
+                { errorType = TypeMismatch
+                , errorLoc  = getErrorLoc ex
+                , errorMsg  = "The sort of the two IF branches don't match."
+                           <> "(" <> T.pack (show se1)
+                           <>" and " <> T.pack (show se2) <> ")"
+                }
+             )
+        return se1
 
 sortIdConst :: Const -> SortId
 sortIdConst (BoolConst _)   = sortIdBool
 sortIdConst (IntConst _ )   = sortIdInt
 sortIdConst (StringConst _) = sortIdString
+
+
+
+
+
+
+
+
+
+

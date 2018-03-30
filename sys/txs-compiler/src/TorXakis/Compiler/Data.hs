@@ -48,8 +48,8 @@ emptyEnv = IEnv () () () () () () ()
 class HasSortIds e where
     -- | Find the `SortId` that corresponds to the given name. This assumes
     -- that sort names are unique.
-    findSortId  :: e -> (Text, Metadata t) -> Either Error SortId
-    findSortIdM :: e -> (Text, Metadata t) -> CompilerM SortId
+    findSortId  :: e -> (Text, Loc t) -> Either Error SortId
+    findSortIdM :: e -> (Text, Loc t) -> CompilerM SortId
     findSortIdM e t = liftEither $ findSortId e t
     getSortIdMap :: e -> Map Text SortId
     allSortIds :: e -> [SortId]
@@ -106,43 +106,62 @@ class HasFuncDefs e where
     getFuncDefT :: e -> Map FuncId (FuncDef VarId)
 
 instance HasSortIds (IEnv (Map Text SortId) f1 f2 f3 f4 f5 f6) where
-    findSortId IEnv{sortIdT = sm} (t, m) = maybeToEither err . Map.lookup t $ sm
-        where err = (T.pack . show) m <> ": Could not find sort " <> t
+    findSortId IEnv{sortIdT = sm} (t, l) = maybeToEither err . Map.lookup t $ sm
+        where err = Error
+                  { errorType = UndefinedRef
+                  , errorLoc = getErrorLoc l
+                  , errorMsg = "Could not find sort " <> t
+                  }
 
     getSortIdMap IEnv{sortIdT = sm} = sm
 
 lookup :: (Ord a, Show a) => a -> Map a b -> Text -> Either Error b
-lookup a ab what = maybeToEither err . Map.lookup a $ ab
-    where err = "Could not find " <> what <> "(" <> T.pack (show a) <> ")"
+lookup a ab what =  maybeToEither err . Map.lookup a $ ab
+        where err = Error
+                  { errorType = UndefinedRef
+                  , errorLoc  = NoErrorLoc-- TODO: is it OK that we cannot give a location error here?
+                  , errorMsg  = "Could not find " <> what
+                  }
 
 lookupM :: (Ord a, Show a) => a -> Map a b -> Text -> CompilerM b
 lookupM a ab what = liftEither $ lookup a ab what
 
+lookupWithLoc :: (Ord a, Show a, HasErrorLoc a) => a -> Map a b -> Text -> Either Error b
+lookupWithLoc a ab what = maybeToEither err . Map.lookup a $ ab
+    where err = Error
+              { errorType = UndefinedRef
+              , errorLoc  = getErrorLoc a
+              , errorMsg  = "Could not find " <> what
+              }
+
+lookupWithLocM :: (Ord a, Show a, HasErrorLoc a) => a -> Map a b -> Text -> CompilerM b
+lookupWithLocM a ab what = liftEither $ lookupWithLoc a ab what
+
 instance HasCstrIds (IEnv f0 (Map (Loc CstrE) CstrId) f2 f3 f4 f5 f6) where
-    findCstrId IEnv{cstrIdT = cm} i = lookup i cm "constructor by parser location id "
+    findCstrId IEnv{cstrIdT = cm} i = lookupWithLoc i cm "constructor by parser location id "
 
 instance HasVarSortIds (IEnv f0 f1 (Map (Loc VarDeclE) SortId) f3 f4 f5 f6) where
     -- TODO: remove duplication WRT to @instance HasVarSortIds (SEnv (Map (Loc VarDeclE) SortId))@
-    findVarDeclSortId IEnv{varSortIdT = vsm} l = lookup l vsm "sort of variable at location "
+    findVarDeclSortId IEnv{varSortIdT = vsm} l = lookupWithLoc l vsm "sort of variable at location "
 
 instance HasVarIds (IEnv f0 f1 f2 (Map (Loc VarDeclE) VarId) f4 f5 f6) where
-    findVarId IEnv{varIdT = vm} i = lookup i vm "variable by parser location id"
+    findVarId IEnv{varIdT = vm} i = lookupWithLoc i vm "variable by parser location id"
 
 instance HasVarDecls (IEnv f0 f1 f2 f3 (Map (Loc VarRefE) (Either (Loc VarDeclE) (Loc FuncDeclE))) f5 f6) where
-    findVarDecl IEnv{varDeclT = vm} i = lookup i vm "variable declaration by parser location id"
+    findVarDecl IEnv{varDeclT = vm} i = lookupWithLoc i vm "variable declaration by parser location id"
 
 instance HasFuncIds (IEnv f0 f1 f2 f3 f4 (Map (Loc FuncDeclE) FuncId) f6) where
-    findFuncId IEnv {funcIdT = fm} i = lookup i fm "function id by parser location id"
+    findFuncId IEnv {funcIdT = fm} i = lookupWithLoc i fm "function id by parser location id"
 
 findFuncSorIdByLoc :: HasFuncIds e => e -> Loc FuncDeclE -> Either Error SortId
 findFuncSorIdByLoc e l = funcsort <$> findFuncId e l
 
 instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 f5 (Map FuncId (FuncDef VarId))) where
-    findFuncDef IEnv{funcDefT = fm} i = lookup i fm "function declaration by function id"
-    getFuncDefT IEnv{funcDefT = fm} = fm
+    findFuncDef IEnv{funcDefT = fm} = findFuncDef (SEnv fm)
+    getFuncDefT IEnv{funcDefT = fm} = getFuncDefT (SEnv fm)
 
 instance HasFuncDefs (SEnv (Map FuncId (FuncDef VarId))) where
-    findFuncDef (SEnv fm) i = lookup i fm "function declaration by function id"
+    findFuncDef (SEnv fm) i = lookup i fm (T.pack . show $ i )
     getFuncDefT (SEnv fm) = fm
 
 instance Ord a => Monoid (SEnv (Map a b)) where
@@ -159,7 +178,7 @@ isMemberOf :: Ord a => a -> SEnv (Map a b) -> Bool
 isMemberOf a (SEnv ab) = Map.member a ab
 
 instance HasVarSortIds (SEnv (Map (Loc VarDeclE) SortId)) where
-    findVarDeclSortId (SEnv vsm) l = lookup l vsm "sort of variable at location "
+    findVarDeclSortId (SEnv vsm) l = lookupWithLoc l vsm "sort of variable at location "
 
 -- class HasExpSortIds e where
 --     findExpSortId :: e -> Loc ExpDeclE -> Either Error SortId
@@ -167,7 +186,7 @@ instance HasVarSortIds (SEnv (Map (Loc VarDeclE) SortId)) where
 --     findExpSortIdM e l = liftEither $ findExpSortId e l
 
 -- instance HasExpSortIds (SEnv (Map (Loc ExpDeclE) SortId)) where
---     findExpSortId (SEnv em) l = lookup l em "expression type for expression at location"
+--     findExpSortId (SEnv em) l = lookupWithLoc l em "expression type for expression at location"
 
 newtype St = St { nextId :: Int } deriving (Eq, Show)
 

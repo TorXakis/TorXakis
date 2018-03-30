@@ -34,8 +34,11 @@ varIdsFromExpDecl :: (HasVarSortIds e)
 varIdsFromExpDecl e ex = case expChild ex of
     LetExp vs subEx -> do
         vdMap  <- traverse (varIdsFromVarDecl e) vs
+        vdExpMap <- concat <$> traverse (varIdsFromExpDecl e) (varDeclExp <$> vs)
         subMap <- varIdsFromExpDecl e subEx
-        return $ vdMap ++ subMap
+        return $ vdMap ++ subMap ++ vdExpMap
+    If ex0 ex1 ex2 ->
+        concat <$> traverse (varIdsFromExpDecl e) [ ex0, ex1, ex2 ]
     VarRef _ _      ->
          -- No variables are declared when a variable is referred in an
          -- expression.

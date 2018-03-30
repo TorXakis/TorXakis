@@ -19,6 +19,18 @@ FUNCDEF let3(x :: Int; z :: Int) :: Int ::=
     LET x = 10; y :: Bool = True; z = 9 IN z NI
 ENDDEF
 
+FUNCDEF let4(x :: Bool; y :: Int; z :: Int) :: Int ::=
+    LET a :: Int = y
+    IN a
+    NI
+ENDDEF
+
+FUNCDEF let5(x :: Bool; y :: Int; z :: Int) :: Int ::=
+    LET a = y
+    IN a
+    NI
+ENDDEF
+
 FUNCDEF h() :: String ::=
     g
 ENDDEF
@@ -27,10 +39,94 @@ FUNCDEF g() :: String ::=
     "Hello"
 ENDDEF
 
+FUNCDEF if(x :: Bool; y :: Int; z :: Int) :: Int ::=
+    IF x THEN y ELSE z FI
+ENDDEF
+
+FUNCDEF if2(x :: Bool; y :: Int; z :: Int) :: Int ::=
+    LET a :: Int = IF x THEN y ELSE z FI
+    IN a
+    NI
+ENDDEF
+
+FUNCDEF if3(x :: Bool; y :: Int; z :: Int) :: Int ::=
+    LET a = IF x THEN y ELSE z FI
+    IN a
+    NI
+ENDDEF
+
+FUNCDEF if5(x :: Bool; y :: Int; z :: Int) :: Int ::=
+    IF x THEN
+        LET z = 10 IN z NI
+    ELSE
+        LET z = 20 IN z NI
+    FI
+ENDDEF
+
+FUNCDEF if6(x :: Bool; y :: Int; z :: Int) :: Int ::=
+    LET a = LET b = 10 IN b NI
+    IN a
+    NI
+ENDDEF
+
+FUNCDEF if7(x :: Bool; y :: Int; z :: Int) :: Int ::=
+    LET a = IF x THEN
+               LET z = 10 IN z NI
+            ELSE
+                LET z = 20 IN z NI
+            FI
+    IN a
+    NI
+ENDDEF
+
+FUNCDEF if9(x :: Bool; y :: Int; z :: Int; w :: Bool) :: Int ::=
+    IF x THEN
+        LET a = IF x THEN
+                   LET z = 10 IN z NI
+                ELSE
+                    IF LET g = 20 IN x NI THEN
+                        LET z = 20 IN z NI
+                    ELSE
+                       33
+                    FI
+                FI
+        IN a NI
+    ELSE
+        LET q = IF w THEN y ELSE LET b = 10 IN b NI FI
+        IN q NI
+    FI
+ENDDEF
+
 -- TODO: it seems TorXakis cannot handle this. Could the new compiler?
 -- FUNCDEF j(g :: String) :: String ::=
 --     g
 -- ENDDEF
 
 
+-- TODO: this will fail since the types of v and w will be inferred in
+-- parallel. If the `;` separator is kept we need to correct this. If the `,`
+-- will be used instead, then a type-not-inferred error is the right semantics
+-- (the identifier `v` is not yet in scope when `w` is declared).
+--
+-- FUNCDEF let4(x :: Int) :: Int ::=
+--     LET v = x; w = v IN
+--         w
+--     NI
+-- ENDDEF
 
+-- This results in an:
+--
+-- >>  error, called at .stack-work/dist/x86_64-linux-nopie/Cabal-2.0.1.0/build/TxsHappy.hs:2593:541 in front-0.2.1.0-IN8pwRKbkji3Hd0yYBRsG1:TxsHappy
+--
+-- in TorXakis.
+-- FUNCDEF letParallel(x :: Int) :: Int ::=
+--     LET v = x, w = v IN
+--         w
+--     NI
+-- ENDDEF
+-- 
+-- FUNCDEF swap(x :: Int) :: Int ::=
+--     LET a = b, b = a IN
+--         a
+--     NI
+-- ENDDEF

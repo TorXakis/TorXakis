@@ -58,11 +58,11 @@ txsStringP = T.pack <$> stringLiteral txsTokenP
 txsIntP :: TxsParser Integer
 txsIntP = integer txsTokenP
 
-getMetadata :: TxsParser (Metadata t)
-getMetadata = do
+mkLoc :: TxsParser (Loc t)
+mkLoc = do
     i <- getNextId
     p <- getPosition
-    return $ Metadata (sourceLine p) (sourceColumn p) (Loc i)
+    return $ Loc (sourceLine p) (sourceColumn p) i
 
 getNextId :: TxsParser Int
 getNextId = do

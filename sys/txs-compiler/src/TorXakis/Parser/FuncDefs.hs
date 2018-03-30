@@ -12,7 +12,7 @@ fdeclP :: TxsParser FuncDecl
 fdeclP = do
     txsWhitespace
     txsSymbol "FUNCDEF" --TODO: adapt this so that function declarations can be separated by ';'.
-    m  <- getMetadata
+    l  <- mkLoc
     n  <- txsLexeme lcIdentifier
     ps <- fParamsP
     txsSymbol "::"
@@ -20,7 +20,7 @@ fdeclP = do
     txsSymbol "::="
     b <- txsLexeme valExpP
     txsSymbol "ENDDEF"
-    return $ mkFuncDecl n m ps s b
+    return $ mkFuncDecl n l ps s b
 
 fParamsP :: TxsParser [VarDecl]
 fParamsP = idOfSortsP "(" ")" mkVarDecl
