@@ -35,21 +35,21 @@ where
 import           Control.Concurrent
 import           Control.Concurrent.Async
 import           Control.Monad.State
-import qualified Data.Text           as T
+import qualified Data.Text                as T
 import           System.Timeout
 
-import           Network.TextViaSockets (Connection)
-import qualified Network.TextViaSockets as TVS
+import           Network.TextViaSockets   (Connection)
+import qualified Network.TextViaSockets   as TVS
 
 -- import from local
 import           EnDecode
 
 -- import from serverenv
-import qualified EnvServer           as IOS
+import qualified EnvServer                as IOS
 import qualified IfServer
 
 -- import from coreenv
-import qualified EnvCore             as IOC
+import qualified EnvCore                  as IOC
 
 -- import from defs
 import           TxsDDefs
@@ -86,8 +86,8 @@ openSockets  =  do
      towChan     <- lift $ lift newChan
      frowChan    <- lift $ lift newChan
      towThread   <- lift $ lift $ forkIO $ towChanThread towChan
-     frowThreads <- sequence [ lift $ lift $ forkIO $ frowChanThread h frowChan
-                             | ConnHfroW _ h _ _ <- frowhdls
+     frowThreads <- sequence [ lift $ lift $ forkIO $ frowChanThread conn frowChan
+                             | ConnHfroW _ conn _ _ <- frowhdls
                              ]
      modify $ \env -> env { IOS.tow  = ( Just towChan,  Just towThread, towhdls  )
                           , IOS.frow = ( Just frowChan, frowThreads,    frowhdls )
@@ -99,17 +99,17 @@ towChanThread :: Chan SAction -> IO ()
 towChanThread towchan  =  do
      sact <- readChan towchan
      case sact of
-       SAct c s -> do TVS.putLineTo c s
-                      towChanThread towchan
+       SAct conn s -> do TVS.putLineTo conn s
+                         towChanThread towchan
        SActQui  -> towChanThread towchan
 
 -- ----------------------------------------------------------------------------------------- --
 
 frowChanThread :: Connection -> Chan SAction -> IO ()
-frowChanThread c frowchan  =  do
-     s <- TVS.getLineFrom c
-     writeChan frowchan (SAct c s)
-     frowChanThread c frowchan
+frowChanThread conn frowchan  =  do
+     s <- TVS.getLineFrom conn
+     writeChan frowchan (SAct conn s)
+     frowChanThread conn frowchan
 
 -- ----------------------------------------------------------------------------------------- --
 

@@ -38,10 +38,13 @@ import qualified BuildInfo
 import qualified VersionInfo
 
 import           ChanId
-import           ConstDefs                     (Const (Cbool))
+import           ConnectionDefs                (ConnDef (..), EndPoint (..),
+                                                Method (..))
+import           ConstDefs                     (Const (Cany))
 import           EnvCore                       (IOC)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
+import           SortId
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
 import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
@@ -162,13 +165,17 @@ tester :: Session
        -> Name
        -> IO Response
 tester s mn = runResponse $ do
-    mDef <- lookupModel s mn
+    mDef@(ModelDef inChans outChans _splChans _bexp) <- lookupModel s mn
+    let outConnDefs = [ HttpDtoW (head inChans) (EndPoint "http://localhost:8080/info") Post
+                        (VarId "" (-1) (SortId "" (-1))) [] ]
+    let inConnDefs = [ HttpDtoW (head outChans) (EndPoint "http://localhost:8080/session/sse/1/messages") Get
+                        (VarId "" (-1) (SortId "" (-1))) [] ]
     lift $ runIOC s $
-        txsSetTest putToW getFromW mDef Nothing Nothing
+        txsSetTest (putToW outConnDefs) (getFromW inConnDefs) mDef Nothing Nothing
     where
-        putToW :: Action -> IOC Action
+        putToW :: [ConnDef] -> Action -> IOC Action
         -- putToW = return
-        putToW act = do
+        putToW cDefs act = do
             lift $ putStrLn $ "TorXakis core put: " ++ show act
             return act
         -- TODO: return a bogus action to make TorXakis fail. Something like:
@@ -177,15 +184,18 @@ tester s mn = runResponse $ do
         --
         -- Retrieve the 'ChanId' from the 'SessionSt' ('chanDefs' accessors).
         --
-        getFromW :: IOC Action
-        getFromW = -- return ActQui
-            do  st <- lift $ readTVarIO (s ^. sessionState)
-                let chMap = chanDefs (st ^. tdefs)
-                    chIds = Map.keys chMap
-                    chIdR = head $ Prelude.filter getR chIds
-                    getR (ChanId "R" _ _) = True
-                    getR _                = False
-                return $ Act $ Set.singleton (chIdR, [Cbool True])
+        getFromW :: [ConnDef] -> IOC Action
+        getFromW cDefs = -- return ActQui
+            -- do  st <- lift $ readTVarIO (s ^. sessionState)
+                -- let chMap = chanDefs (st ^. tdefs)
+                --     chIds = Map.keys chMap
+                --     chIdR = head $ Prelude.filter getR chIds
+                --     getR (ChanId "R" _ _) = True
+                --     getR _                = False
+                -- lift $ do
+                --     putStrLn "Defined tdefs: "
+                --     print (st ^. tdefs)
+                return $ Act $ Set.singleton (ChanId "R" 1068 [SortId "Response" 1036], [Cany $ SortId "Response" 1036])
 
 
 -- | Test for n-steps

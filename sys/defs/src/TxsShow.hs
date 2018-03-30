@@ -476,6 +476,8 @@ instance PShow ConnDef
   where
      pshow (ConnDtoW  chn _ _ _ _) =  pshow chn
      pshow (ConnDfroW chn _ _ _ _) =  pshow chn
+     pshow (HttpDtoW  chn _ _ _ _) =  pshow chn
+     pshow (HttpDfroW chn _ _ _ _) =  pshow chn
 
 
 instance PShow CnectType

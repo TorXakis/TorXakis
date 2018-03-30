@@ -31,15 +31,15 @@ where
 import           Control.Monad.State
 
 import           Data.Either
-import qualified Data.Map  as Map
-import qualified Data.Set  as Set
-import qualified Data.String.Utils  as Utils
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
+import qualified Data.String.Utils   as Utils
 
 -- import from serverenv
-import qualified EnvServer as IOS
+import qualified EnvServer           as IOS
 
 -- import from core
-import qualified EnvCore   as IOC
+import qualified EnvCore             as IOC
 import qualified TxsCore
 
 --import from defs
@@ -60,10 +60,10 @@ encode :: IOS.EnvS -> Action -> IOC.IOC SAction
 encode envs (Act offs)  =  do
      let ( _, _, towhdls ) = IOS.tow envs
      let ss = [ tow
-              | tow@(ConnHtoW chan' _h _vars _vexp) <- towhdls
+              | tow@(ConnHtoW chan' _conn _vars _vexp) <- towhdls
               , Set.singleton chan' == Set.map fst offs
               ]
-     let ConnHtoW _chan h vars' vexp =
+     let ConnHtoW _chan conn vars' vexp =
                              case ss of
                                [ tow ] -> tow
                                _       -> error $ "Encode 1: No (unique) action: " ++ fshow ss
@@ -74,7 +74,7 @@ encode envs (Act offs)  =  do
      st <- gets IOC.state
      mval     <- TxsCore.txsEval $ subst (Map.map cstrConst wenv) (funcDefs (IOC.tdefs st)) vexp
      return $ case mval of
-                Right (Cstring s) -> SAct h s
+                Right (Cstring s) -> SAct conn s
                 _                 -> error "Encode 3: No encoding to String\n"
 
 encode _envs ActQui  =

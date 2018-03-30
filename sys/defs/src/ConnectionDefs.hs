@@ -13,8 +13,8 @@ import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
 import           ChanId
-import           VarId
 import           VarEnv
+import           VarId
 
 -- | Connection Definitions
 data CnectType =  ClientSocket
@@ -33,4 +33,22 @@ data  ConnDef = ConnDtoW  { chan     :: ChanId
                           , var      :: VarId   -- ^ Decoding domain of String
                           , vexprs   :: [VExpr] -- ^ Decoding range
                           }
-  deriving (Eq,Ord,Read,Show, Generic, NFData)
+              | HttpDtoW  { chan     :: ChanId
+                          , endpoint :: EndPoint
+                          , method   :: Method
+                          , var      :: VarId   -- ^ Decoding domain of String
+                          , vexprs   :: [VExpr] -- ^ Decoding range
+                          }
+              | HttpDfroW { chan     :: ChanId
+                          , endpoint :: EndPoint
+                          , method   :: Method
+                          , var      :: VarId   -- ^ Decoding domain of String
+                          , vexprs   :: [VExpr] -- ^ Decoding range
+                          }
+  deriving (Eq, Ord, Read, Show, Generic, NFData)
+
+data Method = Get | Post -- | Put | Delete | Options -- ... See https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
+  deriving (Eq, Ord, Read, Show, Generic, NFData)
+
+newtype EndPoint = EndPoint { toText :: Text}
+  deriving (Eq, Ord, Read, Show, Generic, NFData)
