@@ -13,7 +13,7 @@ import           Control.Concurrent.MVar       (MVar)
 import           Control.Concurrent.STM.TQueue (TQueue)
 import           Control.Concurrent.STM.TVar   (TVar)
 import           Control.DeepSeq               (NFData)
-import           Control.Exception             (SomeException, catch)
+import           Control.Exception             (SomeException)
 import           GHC.Generics                  (Generic)
 import           Lens.Micro                    (Lens')
 

@@ -17,16 +17,18 @@ import           Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue,
 import           Control.Concurrent.STM.TVar   (modifyTVar', newTVarIO,
                                                 readTVarIO)
 import           Control.DeepSeq               (force)
-import           Control.Exception             (ErrorCall, evaluate, try)
-import           Control.Exception             (SomeException, catch)
+import           Control.Exception             (ErrorCall, SomeException, catch,
+                                                evaluate, try)
 import           Control.Monad                 (unless, void)
 import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically, retry)
 import           Control.Monad.Trans.Except    (ExceptT, runExceptT, throwE)
 import           Data.Aeson                    (ToJSON)
 import           Data.Foldable                 (traverse_)
+import           Data.Map.Strict               as Map
 import           Data.Maybe                    (fromMaybe)
 import           Data.Semigroup                ((<>))
+import           Data.Set                      as Set
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import           GHC.Generics                  (Generic)
@@ -35,6 +37,8 @@ import           Lens.Micro                    ((.~), (^.))
 import qualified BuildInfo
 import qualified VersionInfo
 
+import           ChanId
+import           ConstDefs                     (Const (Cbool))
 import           EnvCore                       (IOC)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
@@ -43,7 +47,7 @@ import           TxsAlex                       (txsLexer)
 import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
                                                 txsStepN, txsTestN)
 import           TxsDDefs                      (Action (Act, ActQui), Verdict)
-import           TxsDefs                       (ModelDef)
+import           TxsDefs                       (ModelDef, chanDefs)
 import           TxsHappy                      (txsParser)
 
 import           TorXakis.Lib.Session
@@ -111,9 +115,9 @@ stepper s mn =
 lookupModel :: Session -> Name -> ExceptT Text IO ModelDef
 lookupModel s mn = do
     st <- lift $ readTVarIO (s ^. sessionState)
-    fromMaybe
+    maybe
         (throwE $ "No model named " <> mn)
-        (return <$> st ^. tdefs . ix mn)
+        return (st ^. tdefs . ix mn)
 
 msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
@@ -162,20 +166,26 @@ tester s mn = runResponse $ do
     lift $ runIOC s $
         txsSetTest putToW getFromW mDef Nothing Nothing
     where
-      putToW :: Action -> IOC Action
-      -- putToW = return
-      putToW act = do
-          lift $ putStrLn $ "TorXakis core put: " ++ show act
-          return ActQui
-      getFromW :: IOC Action
-      getFromW = do
-          -- TODO: return a bogus action to make TorXakis fail. Something like:
-          --
-          -- > R ! responseInfo "Boo" "Hoo"
-          --
-          -- Retrieve the 'ChanId' from the 'SessionSt' ('chanDefs' accessors).
-          --
-          return ActQui
+        putToW :: Action -> IOC Action
+        -- putToW = return
+        putToW act = do
+            lift $ putStrLn $ "TorXakis core put: " ++ show act
+            return act
+        -- TODO: return a bogus action to make TorXakis fail. Something like:
+        --
+        -- > R ! responseInfo "Boo" "Hoo"
+        --
+        -- Retrieve the 'ChanId' from the 'SessionSt' ('chanDefs' accessors).
+        --
+        getFromW :: IOC Action
+        getFromW = -- return ActQui
+            do  st <- lift $ readTVarIO (s ^. sessionState)
+                let chMap = chanDefs (st ^. tdefs)
+                    chIds = Map.keys chMap
+                    chIdR = head $ Prelude.filter getR chIds
+                    getR (ChanId "R" _ _) = True
+                    getR _                = False
+                return $ Act $ Set.singleton (chIdR, [Cbool True])
 
 
 -- | Test for n-steps
@@ -211,4 +221,3 @@ runIOC s act = runIOC' `catch` reportError
           putMVar (s ^. pendingIOC) ()
           atomically $ writeTQueue (s ^. sessionMsgs) (TXS_CORE_SYSTEM_ERROR (show err))
           error (show err)
-
