@@ -9,8 +9,12 @@ See LICENSE at root directory of this repository.
 module TorXakis.Lib where
 
 import           Control.Arrow                 ((|||))
-import           Control.Concurrent            (forkIO)
+import           Control.Concurrent            (forkIO, threadDelay)
+import           Control.Concurrent.Async      (race)
 import           Control.Concurrent.MVar       (newMVar, putMVar, takeMVar)
+import           Control.Concurrent.STM.TChan  (TChan, isEmptyTChan, newTChanIO,
+                                                readTChan, tryReadTChan,
+                                                writeTChan)
 import           Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue,
                                                 newTQueueIO, readTQueue,
                                                 writeTQueue)
@@ -24,6 +28,8 @@ import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically, retry)
 import           Control.Monad.Trans.Except    (ExceptT, runExceptT, throwE)
 import           Data.Aeson                    (ToJSON)
+import           Data.Aeson.Types              (Value)
+import           Data.ByteString               (ByteString)
 import           Data.Foldable                 (traverse_)
 import           Data.Map.Strict               as Map
 import           Data.Maybe                    (fromMaybe)
@@ -33,13 +39,14 @@ import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import           GHC.Generics                  (Generic)
 import           Lens.Micro                    ((.~), (^.))
+import           Network.Wreq                  (get, post)
+import qualified Network.Wreq                  as Wreq
+import           Network.Wreq.Types            (Postable)
 
 import qualified BuildInfo
 import qualified VersionInfo
 
 import           ChanId
-import           ConnectionDefs                (ConnDef (..), EndPoint (..),
-                                                Method (..))
 import           ConstDefs                     (Const (Cany))
 import           EnvCore                       (IOC)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
@@ -50,7 +57,8 @@ import           TxsAlex                       (txsLexer)
 import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
                                                 txsStepN, txsTestN)
 import           TxsDDefs                      (Action (Act, ActQui), Verdict)
-import           TxsDefs                       (ModelDef, chanDefs)
+import           TxsDefs                       (ConnDef (..), EndPoint (..),
+                                                Method (..), ModelDef, chanDefs)
 import           TxsHappy                      (txsParser)
 
 import           TorXakis.Lib.Session
@@ -80,6 +88,8 @@ newSession = Session <$> newTVarIO emptySessionState
                      <*> newTQueueIO
                      <*> newMVar ()
                      <*> newTQueueIO
+                     <*> newTChanIO
+                     <*> return (WorldConnDef Map.empty)
 
 -- | Load a TorXakis file, compile it, and return the response.
 --
@@ -165,38 +175,38 @@ tester :: Session
        -> Name
        -> IO Response
 tester s mn = runResponse $ do
-    mDef@(ModelDef inChans outChans _splChans _bexp) <- lookupModel s mn
-    let outConnDefs = [ HttpDtoW (head inChans) (EndPoint "http://localhost:8080/info") Post
-                        (VarId "" (-1) (SortId "" (-1))) [] ]
-    let inConnDefs = [ HttpDtoW (head outChans) (EndPoint "http://localhost:8080/session/sse/1/messages") Get
-                        (VarId "" (-1) (SortId "" (-1))) [] ]
+    -- mDef@(ModelDef inChans outChans _splChans _bexp) <- lookupModel s mn
+    mDef <- lookupModel s mn
+    -- let outConnDefs = [ HttpDtoW (head inChans) (EndPoint "http://localhost:8080/info") Post
+    --                     (VarId "" (-1) (SortId "" (-1))) [] ]
+    -- let inConnDefs = [ HttpDtoW (head outChans) (EndPoint "http://localhost:8080/session/sse/1/messages") Get
+    --                     (VarId "" (-1) (SortId "" (-1))) [] ]
     lift $ runIOC s $
-        txsSetTest (putToW outConnDefs) (getFromW inConnDefs) mDef Nothing Nothing
+        txsSetTest putToW getFromW mDef Nothing Nothing
     where
-        putToW :: [ConnDef] -> Action -> IOC Action
+        putToW :: Action -> IOC Action
         -- putToW = return
-        putToW cDefs act = do
-            lift $ putStrLn $ "TorXakis core put: " ++ show act
-            return act
-        -- TODO: return a bogus action to make TorXakis fail. Something like:
-        --
-        -- > R ! responseInfo "Boo" "Hoo"
-        --
-        -- Retrieve the 'ChanId' from the 'SessionSt' ('chanDefs' accessors).
-        --
-        getFromW :: [ConnDef] -> IOC Action
-        getFromW cDefs = -- return ActQui
-            -- do  st <- lift $ readTVarIO (s ^. sessionState)
-                -- let chMap = chanDefs (st ^. tdefs)
-                --     chIds = Map.keys chMap
-                --     chIdR = head $ Prelude.filter getR chIds
-                --     getR (ChanId "R" _ _) = True
-                --     getR _                = False
-                -- lift $ do
-                --     putStrLn "Defined tdefs: "
-                --     print (st ^. tdefs)
-                return $ Act $ Set.singleton (ChanId "R" 1068 [SortId "Response" 1036], [Cany $ SortId "Response" 1036])
-
+        putToW act@(Act cs) = lift $ do
+            mAct <- atomically $ tryReadTChan (s ^. fromWorldChan)
+            case mAct of
+                Just sutAct -> return sutAct -- We got an action from the SUT, so we return that.
+                Nothing  -> do
+                    _ <- forkIO $ do
+                        let -- TODO: turn this into an error if the action contains multiple channels.
+                            [(cId, xs)] = Set.toList cs
+                            -- TODO: Handle the nothing case!
+                            Just toWorldMap = Map.lookup cId (s ^. wConnDef . toWorldMappings)
+                            -- TODO: look how to do logging properly in Haskell
+                        mAct' <- toWorldMap ^. sendToW $ xs
+                        traverse_ (atomically . writeTChan (s ^. fromWorldChan)) mAct'
+                    return act
+        putToW ActQui = error "Is it OK to put quiescence into world?" -- TODO: handle this properly.
+        getFromW :: IOC Action
+        getFromW = (id ||| id) <$> lift (sutAct `race` quiAct)
+            where
+              sutAct = atomically $ readTChan (s ^. fromWorldChan)
+              -- TODO: extract the delay from the SUT delta time parameter.
+              quiAct = threadDelay (10 ^ (6 :: Int)) >> return ActQui
 
 -- | Test for n-steps
 test :: Session -> StepType -> IO Response

@@ -10,6 +10,10 @@ ENDDEF
 TYPEDEF Response ::= ResponseInfo { version, buildTime :: String }
 ENDDEF
 
+FUNCDEF mkResponse( v :: String; t :: String) :: Response ::=
+    ResponseInfo(v, t)
+ENDDEF
+
 CHANDEF ChanDefs ::= C :: Cmd 
                    ; R :: Response
 ENDDEF

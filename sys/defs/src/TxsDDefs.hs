@@ -5,17 +5,16 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE DeriveGeneric #-}
-
 -- ----------------------------------------------------------------------------------------- --
 
 module TxsDDefs
 
 where
 
+import           Data.Aeson             (ToJSON)
 import qualified Data.Set               as Set
 import           Data.Text              (Text)
 import           GHC.Generics           (Generic)
-import           Data.Aeson                  (ToJSON)
 
 import           Network.TextViaSockets (Connection)
 

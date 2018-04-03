@@ -48,6 +48,7 @@ library:
   - containers
   - deepseq
   - microlens
+  - microlens-th  
   - mtl
   - path
   - stm
@@ -55,9 +56,13 @@ library:
   - stm-conduit
   - text
   - transformers
+  - bytestring
+  - wreq
   # `TorXakis` dependencies.
   - defs
   - valexpr
+  - value
+  - behaveenv
   - front
   - core
   - coreenv

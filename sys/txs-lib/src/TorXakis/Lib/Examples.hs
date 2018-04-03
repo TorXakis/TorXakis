@@ -3,7 +3,8 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
+{-# LANGUAGE OverloadedLists   #-}
+{-# LANGUAGE OverloadedStrings #-}
 -- | Examples of usage of 'TorXakis.Lib'.
 --
 -- This file is meant to server as an example of usage of the 'TorXakis.Lib'.
@@ -12,22 +13,44 @@ See LICENSE at root directory of this repository.
 
 module TorXakis.Lib.Examples where
 
-import           Prelude                  hiding (mapM_, take)
+import           Control.Concurrent.Async    (async, cancel)
+import           Control.Concurrent.STM.TVar (readTVarIO)
+import           Control.Exception           (SomeException, catch)
+import           Control.Monad               (void)
+import           Control.Monad.State         (StateT, evalStateT)
+import           Data.Conduit                (runConduit, (.|))
+import           Data.Conduit.Combinators    (mapM_, sinkList, take)
+import           Data.Conduit.TQueue         (sourceTQueue)
+import           Data.Foldable               (traverse_)
+import           Data.Map                    (Map)
+import qualified Data.Map                    as Map
+import qualified Data.Set                    as Set
+import           Data.Text                   (Text)
+import           Lens.Micro                  ((&), (.~), (^.))
+import           Prelude                     hiding (mapM_, take)
 
-import           Control.Concurrent.Async (async, cancel)
-import           Control.Exception        (SomeException, catch)
-import           Control.Monad            (void)
-import           Data.Conduit             (runConduit, (.|))
-import           Data.Conduit.Combinators (mapM_, sinkList, take)
-import           Data.Conduit.TQueue      (sourceTQueue)
-import           Data.Foldable            (traverse_)
-import           Lens.Micro               ((^.))
+import           ChanId                      (ChanId)
+import           ConstDefs                   (Const (Cstr, Cstring), cstrId)
+import           CstrId                      (CstrId (CstrId), name)
+import           EnvBTree                    (EnvB (EnvB), msgs, smts, stateid)
+import           TxsDefs                     (sortDefs)
 
-import           EnvData                  (Msg)
-import           TxsDDefs                 (Verdict)
-
+import qualified EnvBTree                    as E
+import           EnvData                     (Msg)
+import           Eval                        (eval)
+import           FuncTable                   (FuncTable, Signature (Signature),
+                                              signHandler)
+import           Name                        (Name)
+import           SortId                      (SortId (SortId))
+import           SortOf                      (sortOf)
+import           TorXakis.Lens.ModelDef
+import           TorXakis.Lens.Sigs          (funcTable)
+import           TorXakis.Lens.TxsDefs
 import           TorXakis.Lib
 import           TorXakis.Lib.Session
+import           TxsDDefs                    (Action (Act), Verdict)
+import           ValExpr                     (ValExpr, cstrConst)
+import           VarId                       (VarId)
 
 -- | Get the next N messages in the session.
 --
@@ -103,10 +126,68 @@ testTorXakisWithInfo = do
     cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEchoInfoOnly.txs"
 --    cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEcho.txs"
     _ <- load s cs
-    _ <- tester s "Model"
-    _ <- test s (NumberOfSteps 10)
-    a <- async (printer s)
-    v <- waitForVerdict s
+    st <- readTVarIO (s ^. sessionState)
+    let
+        Just mDef = st ^. tdefs . ix ("Model" :: Name)
+        mSendToW :: ToWorldMapping -- [Const] -> IO (Maybe Action)
+        mSendToW = ToWorldMapping $ \xs ->
+            case xs of
+                [Cstr {cstrId = CstrId { name = "CmdInfo"}} ] -> do
+                    let [setChId] = mDef ^. modelOutChans
+                        [outChId] = Set.toList setChId
+                        ft = st ^. sigs . funcTable
+                        params :: [ValExpr VarId]
+                        params = [ cstrConst (Cstring "0.0.1"), cstrConst (Cstring "Today")]
+                        [sId] = [ SortId n i
+                                | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
+                                ,  n == "Response" ]
+                    Right res <- apply st ft "ResponseInfo" params sId
+                    return $ Just $ Act [(outChId, [res])]
+                _   -> error $ "Didn't expect this data on channel " ++ show chanId
+                            ++ " (got " ++ show xs ++ ")"
+        chanId :: ChanId
+        chanId = let [setChId] = mDef ^. modelInChans
+                     [res] = Set.toList setChId
+                 in res
+        s' :: Session
+        s' = s & wConnDef . toWorldMappings .~ Map.singleton chanId mSendToW
+    _ <- tester s' "Model"
+    _ <- test s' (NumberOfSteps 10)
+    a <- async (printer s')
+    v <- waitForVerdict s'
     cancel a
     return v
 
+-- | TODO: look whether this isn't defined somewhere else. If not make it safer
+-- by not throwing an error if the lookup returns nothing.
+apply :: SessionSt -> FuncTable VarId -> Text -> [ValExpr VarId] -> SortId -> IO (Either String Const)
+apply st ft fn vs sId = do
+    let Just f = Map.lookup sig (signHandler fn ft)
+        sig = Signature (sortOf <$> vs) sId
+        envB = EnvB
+            { smts = Map.empty
+            , E.tdefs = st ^. tdefs
+            , E.sigs = st ^. sigs
+            , stateid = -1
+            , E.unid = 10000
+            , E.params = Map.empty
+            , msgs = []
+            }
+    evalStateT (eval (f vs)) envB
+
+-- import           Lens.Micro
+-- import           Control.Concurrent.STM.TVar (readTVarIO)
+-- import FuncTable
+-- import ValExpr
+-- import ConstDefs
+-- import TorXakis.Lens.Sigs
+-- import qualified Data.Map as Map
+
+-- s <- newSession
+-- cs <- readFile "examps/TorXakisWithEcho/TorXakisWithEchoInfoOnly.txs"
+-- load s cs
+-- st <- readTVarIO (s ^. sessionState)
+-- let ft = st ^. sigs . funcTable
+-- let params = [ cstrConst (Cstring "Foo"), cstrConst (Cstring "Bar")]
+-- let [sId] = [ SortId n id | (SortId n id, _) <- Map.toList $ sortDefs (st ^. tdefs) ,  n == "Response" ]
+-- res <- apply st ft params sId
