@@ -221,32 +221,32 @@ closeSockets  =  do
 
 -- | putSocket :  try to do output to world on time, or observe earlier input (no quiescence)
 putSocket :: Int -> Int -> IOS.EnvS -> TxsDDefs.Action -> IOC.IOC TxsDDefs.Action
-
 putSocket ioTime _ envs act@Act{} =
-     let ( Just towChan, _,  _ )  = IOS.tow envs
-         ( Just frowChan, _,  _ ) = IOS.frow envs
+     let ( Just towChan,  _, _ ) = IOS.tow  envs
+         ( Just frowChan, _, _ ) = IOS.frow envs
       in do sact <- EnDecode.encode envs act
             obs  <- lift $ timeout (ioTime*1000) (readChan frowChan)       -- timeout in musec
             case obs of
-              Nothing         -> do lift $ writeChan towChan sact
-                                    return act
-              Just SActQui    -> do lift $ writeChan towChan sact
-                                    return act
+              Nothing         -> writeAct
+              Just SActQui    -> writeAct
               Just (SAct h s) -> EnDecode.decode envs (SAct h s)
+            where
+              writeAct = do lift $ writeChan towChan sact
+                            return act
 
 putSocket ioTime deltaTime envs ActQui =
-     let ( Just towChan, _,  _ )  = IOS.tow envs
-         ( Just frowChan, _,  _ ) = IOS.frow envs
+     let ( Just towChan,  _, _ ) = IOS.tow  envs
+         ( Just frowChan, _, _ ) = IOS.frow envs
       in do sact <- EnDecode.encode envs ActQui
             obs <- lift $ timeout (ioTime*1000) (readChan frowChan)
             case obs of
-              Nothing         -> do lift $ threadDelay (deltaTime*1000)
-                                    lift $ writeChan towChan sact
-                                    return ActQui
-              Just SActQui    -> do lift $ threadDelay (deltaTime*1000)
-                                    lift $ writeChan towChan sact
-                                    return ActQui
+              Nothing         -> writeQui
+              Just SActQui    -> writeQui
               Just (SAct h s) -> EnDecode.decode envs (SAct h s)
+            where
+              writeQui = do lift $ threadDelay (deltaTime*1000)
+                            lift $ writeChan towChan sact
+                            return ActQui
 
 -- | getSocket :  observe input from world, or observe quiescence
 getSocket :: Int -> IOS.EnvS -> IOC.IOC TxsDDefs.Action

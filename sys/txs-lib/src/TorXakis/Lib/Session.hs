@@ -18,7 +18,6 @@ import           Control.DeepSeq               (NFData)
 import           Control.Exception             (SomeException)
 import           Data.Map                      (Map)
 import           GHC.Generics                  (Generic)
-import           Lens.Micro                    (Lens')
 import           Lens.Micro.TH                 (makeLenses)
 
 import           ChanId                        (ChanId)
@@ -26,8 +25,7 @@ import           ConstDefs                     (Const)
 import           EnvCore                       (EnvC, initState)
 import           EnvData                       (Msg)
 import           Sigs                          (Sigs, empty)
-import           TxsDDefs                      (Verdict)
-import           TxsDDefs                      (Action)
+import           TxsDDefs                      (Action, Verdict)
 import           TxsDefs                       (TxsDefs, empty)
 import           VarId                         (VarId)
 
@@ -35,7 +33,7 @@ newtype ToWorldMapping = ToWorldMapping
     { -- Send some data to the external world, getting some action as a response
       _sendToW   :: [Const] -> IO (Maybe Action)
     }
-
+    deriving (Generic, NFData)
 makeLenses ''ToWorldMapping
 
 -- | TODO: put in the right place:
