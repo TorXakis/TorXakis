@@ -137,7 +137,7 @@ lookup :: (Ord a, Show a) => a -> Map a b -> Text -> Either Error b
 lookup a ab what =  maybeToEither err . Map.lookup a $ ab
         where err = Error
                   { errorType = UndefinedRef
-                  , errorLoc  = NoErrorLoc-- TODO: is it OK that we cannot give a location error here?
+                  , errorLoc  = NoErrorLoc -- TODO: is it OK that we cannot give a location error here?
                   , errorMsg  = "Could not find " <> what
                   }
 

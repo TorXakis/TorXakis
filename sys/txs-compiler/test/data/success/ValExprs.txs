@@ -97,9 +97,9 @@ FUNCDEF if9(x :: Bool; y :: Int; z :: Int; w :: Bool) :: Int ::=
     FI
 ENDDEF
 
-FUNCDEF plus(x :: Int; y :: Int) :: Int ::=
-    x + y
-ENDDEF
+-- FUNCDEF plus(x :: Int; y :: Int) :: Int ::=
+--     x + y
+-- ENDDEF
 
 -- TODO: add these test cases as well, depending on which kind of let
 -- expressions we support.

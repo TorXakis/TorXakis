@@ -8,7 +8,8 @@ import           Control.Monad.Error.Class (catchError)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
 import           Data.Text                 (Text)
-
+import Data.Semigroup ((<>))
+    
 import           TorXakis.Compiler.Data
 import           TorXakis.Parser.Data
 
@@ -52,9 +53,9 @@ generateVarDeclsForFD fdMap f = varDeclsFromExpDecl (mkVdMap (funcParams f)) (fu
                           -> CompilerM [(Loc VarRefE, Loc VarDeclE :| Loc FuncDeclE :| PredefName)]
       varDeclsFromExpDecl vdMap ex = case expChild ex of
           VarRef n rLoc -> do
-              dLoc <- fmap Left (lookupM (toText n) vdMap "variable declaration for ")
+              dLoc <- fmap Left (lookupM (toText n) vdMap "")
                   `catchError`
-                  const (fmap Right (lookupM (toText n) fdMap "function declaration for "))
+                  const (fmap Right (lookupM (toText n) fdMap ("identifier declaration for " <> toText n)))
               return [(rLoc, dLoc)]
           ConstLit _ -> return []
           LetExp vs subEx -> do
@@ -68,6 +69,8 @@ generateVarDeclsForFD fdMap f = varDeclsFromExpDecl (mkVdMap (funcParams f)) (fu
                   
           If ex0 ex1 ex2 ->
               concat <$> traverse (varDeclsFromExpDecl vdMap) [ex0, ex1, ex2]
-          Fappl _ _ exs ->
+          Fappl n rLoc exs -> do
+              dLoc <- lookupM (toText n) fdMap ("function declaration for " <> toText n)
               -- TODO: factor out the duplication w.r.t. `If`
-              concat <$> traverse (varDeclsFromExpDecl vdMap) exs
+              vrVDExs <- concat <$> traverse (varDeclsFromExpDecl vdMap) exs
+              return $ (rLoc, Right dLoc) : vrVDExs 
