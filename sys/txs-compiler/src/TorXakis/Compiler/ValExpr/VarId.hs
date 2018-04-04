@@ -29,6 +29,13 @@ varIdsFromVarDecl e v = do
     vId <- getNextId
     return (getLoc v, VarId (varName v) (Id vId) sId)
 
+-- | Generate 'VarId''s for each variable declaration.
+--
+-- TODO: property to check:
+--
+-- the number of 'Loc VarDeclE' equals the length of the list returned by this function.
+--
+-- This will imply that each location of a variable declaration introduces a 'VarId'.
 varIdsFromExpDecl :: (HasVarSortIds e)
                   => e -> ExpDecl -> CompilerM [(Loc VarDeclE, VarId)]
 varIdsFromExpDecl e ex = case expChild ex of
@@ -37,13 +44,7 @@ varIdsFromExpDecl e ex = case expChild ex of
         vdExpMap <- concat <$> traverse (varIdsFromExpDecl e) (varDeclExp <$> vs)
         subMap <- varIdsFromExpDecl e subEx
         return $ vdMap ++ subMap ++ vdExpMap
-    If ex0 ex1 ex2 ->
-        concat <$> traverse (varIdsFromExpDecl e) [ ex0, ex1, ex2 ]
-    VarRef _ _      ->
-         -- No variables are declared when a variable is referred in an
-         -- expression.
-        return []
-    ConstLit _      ->
-        -- No variable is declared in a constant.
-        return []
+    _ ->
+        concat <$> traverse (varIdsFromExpDecl e) (childExps ex)
+
 

@@ -2,17 +2,18 @@
 {-# LANGUAGE TupleSections     #-}
 module TorXakis.Compiler.ValExpr.SortId where
 
-import           Control.Arrow             (left, (+++), (|||))
+import           Control.Arrow             (left, (|||))
 import           Control.Monad             (when)
 import           Control.Monad.Error.Class (liftEither)
 import           Data.Either               (partitionEithers)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
-import           Data.Monoid               (mempty, (<>))
+import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           GHC.Exts                  (fromList)
 
+import           FuncId                    (funcargs, funcsort)
 import           Id                        (Id (Id))
 import           SortId                    (SortId (SortId), sortIdBool,
                                             sortIdInt, sortIdString)
@@ -103,13 +104,14 @@ inferExpType e vdSid ex =
         -- Find the location of the variable reference
         -- If it is a variable, return the sort id of the variable declaration.
         -- If it is a function, return the sort id of the function.
-        (findVarDeclSortId vdSid ||| findFuncSorIdByLoc e) =<< findVarDecl e l
+        (findVarDeclSortId vdSid ||| findFuncSortIdByLoc e) =<< findVarDecl e l
     ConstLit c ->
         return $ sortIdConst c
     LetExp vs subEx -> do
         vsSids <- traverse (inferExpType e vdSid) (varDeclExp <$> vs)
         let vdSid' = fromList (zip (getLoc <$> vs) vsSids) <> vdSid
         inferExpType e vdSid' subEx
+    -- TODO: shouldn't if be also a function? Defined in terms of the Haskell's @if@ operator.
     If e0 e1 e2 -> do
         [se0, se1, se2] <- traverse (inferExpType e vdSid) [e0, e1, e2]
         when (se0 /= sortIdBool)
@@ -129,6 +131,20 @@ inferExpType e vdSid ex =
                 }
              )
         return se1
+    Fappl _ l exs -> do
+        ses <- traverse (inferExpType e vdSid) exs
+        -- TODO: check the return type fo the fnuction.
+        fdl  <- findFuncDecl e l
+        fId  <- findFuncId e fdl
+        when (ses /= funcargs fId)
+            (Left Error
+             { errorType = TypeMismatch
+             , errorLoc  = getErrorLoc l
+             , errorMsg  = "Function arguments sorts do not match "
+                        <> T.pack (show ses)
+             })
+        return $ funcsort fId
+
 
 sortIdConst :: Const -> SortId
 sortIdConst (BoolConst _)   = sortIdBool

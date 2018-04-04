@@ -145,5 +145,5 @@ funcDeclToFuncTable e f = do
 fBodyToHandler :: (HasFuncIds e, HasFuncDefs e)
                => e -> FuncDecl -> CompilerM (Handler VarId)
 fBodyToHandler e f = do
-    fId  <- findFuncIdM e (getLoc f)
+    fId  <- findFuncIdM e (Left $ getLoc f)
     return $ cstrFunc (getFuncDefT e) fId

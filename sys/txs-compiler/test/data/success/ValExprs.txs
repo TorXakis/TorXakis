@@ -97,11 +97,28 @@ FUNCDEF if9(x :: Bool; y :: Int; z :: Int; w :: Bool) :: Int ::=
     FI
 ENDDEF
 
+FUNCDEF plus(x :: Int; y :: Int) :: Int ::=
+    x + y
+ENDDEF
+
+-- TODO: add these test cases as well, depending on which kind of let
+-- expressions we support.
+--
+-- FUNCDEF swap (a,b :: Int) :: Int ::=
+--     LET a = b, b = a IN 2*a + b NI
+-- ENDDEF
+-- will return the value 2*b + a where a and b refer to the parameters
+--
+--
+-- FUNCDEF swap (a,b :: Int) :: Int ::=
+--     LET a = b; b = a IN 2*a + b NI
+-- ENDDEF
+-- will return the value 3* b where b refers to the second parameter
+
 -- TODO: it seems TorXakis cannot handle this. Could the new compiler?
 -- FUNCDEF j(g :: String) :: String ::=
 --     g
 -- ENDDEF
-
 
 -- TODO: this will fail since the types of v and w will be inferred in
 -- parallel. If the `;` separator is kept we need to correct this. If the `,`

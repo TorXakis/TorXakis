@@ -44,21 +44,20 @@ funcDeclsToFuncDefs e fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
                           }
               (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> e') (snd <$> ls)
 
--- | TODO: we pass two environments, since e cannot be extended. We should try
--- to solve this by trying to replace IEnv with types like:
+-- | Create a function definition for the given function declaration.
 --
--- > newtype SEnv t = SEnv t
--- > data CEnv t w  = CEnv t w
+-- TODO: we pass two environments, since e cannot be extended. We should try
+-- to solve this by implementing this:
 --
--- And use type-families (or some other type-level) trick to avoid the
--- overlapping instances problem.
+-- https://stackoverflow.com/a/49546517/2289983
+--
 funcDeclToFuncDef :: (HasSortIds e, HasVarDecls e, HasVarIds e, HasFuncIds e, HasFuncDefs e')
                   => e
                   -> e'
                   -> FuncDecl
                   -> Either (Error, FuncDecl) (FuncId, FuncDef VarId)
 funcDeclToFuncDef e e' f = left (,f) $ do
-    fId  <- findFuncId e (getLoc f)
+    fId  <- findFuncId e (Left $ getLoc f)
     pIds <- traverse (findVarId e . getLoc) (funcParams f)
     vExp <- expDeclToValExpr e e' (funcBody f)
     return (fId, FuncDef pIds vExp)

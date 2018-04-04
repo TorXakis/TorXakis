@@ -56,6 +56,7 @@ module TorXakis.Parser.Data
     , ExpChild (..)
     , Const (..)
     , expChild
+    , childExps
     , mkVarExp
     , mkBoolConstExp
     , mkIntConstExp
@@ -102,13 +103,13 @@ nodeNameT = toText . nodeName
 
 -- | Location associated to the elements being parsed.
 data Loc t = Loc
-    {  -- | Line in which a declaration occurs.
+    { -- | Line in which a declaration occurs.
       line   :: Int
-       -- | Start column.
+      -- | Start column.
     , start  :: Int
-       -- | Unique identifier.
+      -- | Unique identifier.
     , locUid :: Int
-    } deriving (Show, Eq, Ord)
+    }  deriving (Show, Eq, Ord)
 
 -- | Change extract the location of the metadata, and change its type from 't'
 -- to 'u'. This is useful when defining parsed entities whose locations
@@ -236,15 +237,6 @@ expChild = child
 -- expVars (ParseTree _ _ _ (LetExp vs e)) =
 --     concatMap (expVars . snd . child) vs ++ expVars e
 
--- | Extract all the expression declarations of an expression.
-expLetVarDecls :: ExpDecl -> [LetVarDecl]
-expLetVarDecls ParseTree { child = VarRef _ _  } = []
-expLetVarDecls ParseTree { child = ConstLit _  } = []
-expLetVarDecls ParseTree { child = LetExp vs e } =
-    vs ++ expLetVarDecls e ++ concatMap (expLetVarDecls . varDeclExp) vs
-expLetVarDecls ParseTree { child = If e0 e1 e2 } =
-    expLetVarDecls e0 ++ expLetVarDecls e1 ++ expLetVarDecls e2
-
 -- foldExp :: (b -> ExpChild -> b) -> b -> ExpDecl -> b
 -- foldExp f b (ParseTree _ _ _ c) = f b c
 
@@ -252,12 +244,36 @@ data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)
               | ConstLit Const
               | LetExp [LetVarDecl] ExpDecl
               | If ExpDecl ExpDecl ExpDecl
+              | Fappl (Name VarRefE) (Loc VarRefE) [ExpDecl] -- ^ Function application. A function is applied
+                                                             -- to a list of expressions.
     deriving (Eq, Ord, Show)
 
 data Const = BoolConst Bool
            | IntConst Integer
            | StringConst Text
     deriving (Eq, Show, Ord)
+
+-- | Extract all the let-variable declarations of an expression.
+--
+expLetVarDecls :: ExpDecl -> [LetVarDecl]
+expLetVarDecls ParseTree { child = VarRef _ _  } = []
+expLetVarDecls ParseTree { child = ConstLit _  } = []
+expLetVarDecls ParseTree { child = LetExp vs e } =
+    vs ++ expLetVarDecls e ++ concatMap (expLetVarDecls . varDeclExp) vs
+expLetVarDecls ParseTree { child = If e0 e1 e2 } =
+    expLetVarDecls e0 ++ expLetVarDecls e1 ++ expLetVarDecls e2
+expLetVarDecls ParseTree { child = Fappl _ _ exs } =
+    concatMap expLetVarDecls exs
+
+-- | Get the child-expressions of an expression.
+--
+-- TODO: see if you can use traversals instead.
+childExps :: ExpDecl -> [ExpDecl]
+childExps ParseTree { child = VarRef _ _  }    = []
+childExps ParseTree { child = ConstLit _  }    = []
+childExps ParseTree { child = LetExp _ e }     = [e]
+childExps ParseTree { child = If ex0 ex1 ex2 } = [ex0, ex1, ex2]
+childExps ParseTree { child = Fappl _ _ exs }  = exs
 
 mkLetExpDecl :: [LetVarDecl] -> ExpDecl -> Loc ExpDeclE -> ExpDecl
 mkLetExpDecl vs subEx l = mkExpDecl l (LetExp vs subEx)

@@ -4,8 +4,10 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TypeOperators              #-}
 module TorXakis.Compiler.Data where
 
+import           Control.Arrow             ((|||))
 import           Control.Monad.Error.Class (MonadError, liftEither)
 import           Control.Monad.State       (MonadState, StateT, get, put)
 import           Data.Either.Utils         (maybeToEither)
@@ -16,7 +18,6 @@ import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           GHC.Exts                  (IsList, Item, fromList, toList)
 import           Prelude                   hiding (lookup)
-
 
 import           CstrId                    (CstrId)
 import           FuncDef                   (FuncDef)
@@ -89,15 +90,32 @@ class HasVarDecls e where
     --
     -- For now variables only occur in expressions.
     --
-    findVarDecl :: e -> Loc VarRefE -> Either Error (Either (Loc VarDeclE) (Loc FuncDeclE))
-    -- findVarDeclM :: e -> Loc VarRefE -> CompilerM (Either VarDecl FuncDecl)
-    -- findVarDeclM e i = liftEither $ findVarDecl e i
+    -- TODO: rename this to something like 'findIdentDecl' or something like that
+    findVarDecl :: e -> Loc VarRefE
+                -> Either Error (Loc VarDeclE :| Loc FuncDeclE :| PredefName)
+    -- findVarDecl :: e -> Loc VarRefE -> Either Error (Either (Loc VarDeclE) (Loc FuncDeclE))
+
+    findFuncDecl :: e -> Loc VarRefE -> Either Error (Loc FuncDeclE :| PredefName)
+    findFuncDecl e l =
+        Left ||| const (Left err) ||| Right $ findVarDecl e l
+       where
+         err = Error
+             { errorType = FunctionNotDefined
+             , errorLoc  = getErrorLoc l
+             , errorMsg  = "Could not function declaration."
+             }
+
+-- TODO determine the right kind of precedence.
+infixr 5 :|
+ -- TODO: you might want to replace the 'Either's by ':|'.
+type (:|) = Either
 
 class HasFuncIds e where
     -- | Find the function id that corresponds to the given parser location.
     --
-    findFuncId :: e -> Loc FuncDeclE -> Either Error FuncId
-    findFuncIdM :: e -> Loc FuncDeclE -> CompilerM FuncId
+    -- findFuncId :: e -> Loc FuncDeclE -> Either Error FuncId
+    findFuncId :: e -> Loc FuncDeclE :| PredefName -> Either Error FuncId
+    findFuncIdM :: e -> Loc FuncDeclE :| PredefName -> CompilerM FuncId
     findFuncIdM e i = liftEither $ findFuncId e i
 
 class HasFuncDefs e where
@@ -147,14 +165,14 @@ instance HasVarSortIds (IEnv f0 f1 (Map (Loc VarDeclE) SortId) f3 f4 f5 f6) wher
 instance HasVarIds (IEnv f0 f1 f2 (Map (Loc VarDeclE) VarId) f4 f5 f6) where
     findVarId IEnv{varIdT = vm} i = lookupWithLoc i vm "variable by parser location id"
 
-instance HasVarDecls (IEnv f0 f1 f2 f3 (Map (Loc VarRefE) (Either (Loc VarDeclE) (Loc FuncDeclE))) f5 f6) where
+instance HasVarDecls (IEnv f0 f1 f2 f3 (Map (Loc VarRefE) (Loc VarDeclE :| Loc FuncDeclE :| PredefName)) f5 f6) where
     findVarDecl IEnv{varDeclT = vm} i = lookupWithLoc i vm "variable declaration by parser location id"
 
-instance HasFuncIds (IEnv f0 f1 f2 f3 f4 (Map (Loc FuncDeclE) FuncId) f6) where
+instance HasFuncIds (IEnv f0 f1 f2 f3 f4 (Map (Loc FuncDeclE :| PredefName) FuncId) f6) where
     findFuncId IEnv {funcIdT = fm} i = lookupWithLoc i fm "function id by parser location id"
 
-findFuncSorIdByLoc :: HasFuncIds e => e -> Loc FuncDeclE -> Either Error SortId
-findFuncSorIdByLoc e l = funcsort <$> findFuncId e l
+findFuncSortIdByLoc :: HasFuncIds e => e -> Loc FuncDeclE :| PredefName -> Either Error SortId
+findFuncSortIdByLoc e l = funcsort <$> findFuncId e l
 
 instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 f5 (Map FuncId (FuncDef VarId))) where
     findFuncDef IEnv{funcDefT = fm} = findFuncDef (SEnv fm)
@@ -180,17 +198,14 @@ isMemberOf a (SEnv ab) = Map.member a ab
 instance HasVarSortIds (SEnv (Map (Loc VarDeclE) SortId)) where
     findVarDeclSortId (SEnv vsm) l = lookupWithLoc l vsm "sort of variable at location "
 
--- class HasExpSortIds e where
---     findExpSortId :: e -> Loc ExpDeclE -> Either Error SortId
---     findExpSortIdM :: e -> Loc ExpDeclE -> CompilerM SortId
---     findExpSortIdM e l = liftEither $ findExpSortId e l
-
--- instance HasExpSortIds (SEnv (Map (Loc ExpDeclE) SortId)) where
---     findExpSortId (SEnv em) l = lookupWithLoc l em "expression type for expression at location"
+-- | Name of the pre-defined functions. We're using the name of the function as unique identifier.
+--
+newtype PredefName = PredefName { predefName :: Text } deriving (Eq, Ord, Show)
 
 newtype St = St { nextId :: Int } deriving (Eq, Show)
 
 newState :: St
+-- TODO: document why '1000' was chosen.
 newState = St 1000
 
 newtype CompilerM a = CompilerM { runCompiler :: StateT St (Either Error) a }

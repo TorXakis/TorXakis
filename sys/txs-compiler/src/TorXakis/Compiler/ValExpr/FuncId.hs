@@ -1,17 +1,24 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 module TorXakis.Compiler.ValExpr.FuncId where
 
 -- TODO: consider adding your own prelude.
+import           Control.Arrow                    ((***))
 import           Data.Map                         (Map)
 import qualified Data.Map                         as Map
 import           Data.Semigroup                   ((<>))
+import           Data.Text                        (Text)
 
 import           CstrId                           (CstrId, cstrsort, name)
 import           FuncId                           (FuncId (FuncId))
+import           FuncTable                        (SignHandler,
+                                                   Signature (Signature), toMap)
 import           Id                               (Id (Id))
 import           SortId                           (SortId, sortIdBool,
                                                    sortIdString)
-import           StdTDefs                         (fromStringName, toStringName)
+import           StdTDefs                         (fromStringName, stdFuncTable,
+                                                   toStringName)
+import           VarId                            (VarId)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.ValExpr.SortId
@@ -60,3 +67,18 @@ sortFromStringFuncId sId = do
     fId <- getNextId
     return $ FuncId fromStringName (Id fId) [sortIdString] sId
 
+-- | Generate the function id's that correspond to the functions in the
+-- standard function table (@stdFuncTable@)
+getStdFuncIds :: CompilerM [(PredefName, FuncId)]
+getStdFuncIds = concat <$>
+    traverse signHandlerTofuncIds (Map.toList (toMap stdFuncTable))
+
+signHandlerTofuncIds :: (Text, SignHandler VarId) -> CompilerM [(PredefName, FuncId)]
+signHandlerTofuncIds (n, sh) = fmap (PredefName n,) <$>
+    traverse (signatureToFuncId n) (Map.keys sh)
+
+
+signatureToFuncId :: Text -> Signature -> CompilerM FuncId
+signatureToFuncId n (Signature aSids rSid) = do
+    fId <- getNextId
+    return $ FuncId n (Id fId) aSids rSid

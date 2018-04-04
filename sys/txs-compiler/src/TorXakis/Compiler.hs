@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Compiler where
 
-import           Control.Arrow                     ((|||))
+import           Control.Arrow                     (first, (|||))
 import           Control.Monad.State               (evalStateT, get)
 import qualified Data.Map.Strict                   as Map
 import qualified Data.Set                          as Set
@@ -63,12 +63,18 @@ compileParsedDefs pd = do
     cMap <- compileToCstrId e0 (pd ^. adts)
     let e1 = e0 { cstrIdT = cMap }
         allFuncs = pd ^. funcs ++ pd ^. consts
+    stdFuncIds <- getStdFuncIds
     -- Construct the variable declarations table.
-    dMap <- generateVarDecls allFuncs
+    dMap <- generateVarDecls (fst <$> stdFuncIds) allFuncs
     -- Construct the function declaration to function id table.
+    -- TODO: here it seems wd'd need to generate mappings for the standard operators like "+", "==", etc...
     lFIdMap <- funcDeclsToFuncIds e1 allFuncs
-    let e2 = e1 { varDeclT = dMap
-                , funcIdT = lFIdMap }
+    -- Join `lFIdMap` and  `stdFuncIds`.
+    let completeFidMap = Map.fromList $ --
+            fmap (first Left) (Map.toList lFIdMap)
+            ++ fmap (first Right) stdFuncIds
+        e2 = e1 { varDeclT = dMap
+                , funcIdT = completeFidMap }
     -- Infer the types of all variable declarations.
     vdSortMap <- inferTypes e2 allFuncs
     let e3 = e2 { varSortIdT = vdSortMap }
@@ -88,7 +94,7 @@ toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
 toTxsDefs e pd = do
     ad <- adtsToTxsDefs e (pd ^. adts)
     -- Get the function id's of all the constants.
-    cfIds <- traverse (findFuncIdM e) (pd ^.. consts . traverse . loc')
+    cfIds <- traverse (findFuncIdM e . Left) (pd ^.. consts . traverse . loc')
     let fd = TxsDefs.empty {
             -- TODO: we have to remove the constants to comply with what TorXakis generates :/
             funcDefs = Map.withoutKeys (getFuncDefT e) (Set.fromList cfIds)

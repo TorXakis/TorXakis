@@ -32,3 +32,7 @@ data ErrorLoc
 
 class HasErrorLoc l where
     getErrorLoc :: l -> ErrorLoc
+
+instance HasErrorLoc l => HasErrorLoc (Either l b) where
+    getErrorLoc (Left l) = getErrorLoc l
+    getErrorLoc _        = NoErrorLoc
