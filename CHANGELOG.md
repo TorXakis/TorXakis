@@ -1,8 +1,60 @@
 # Torxakis Changelog
 
+## v0.6.0
+
+removed warnings from TestGNF + TestPreGNF (#632)
+
+LPEfunc without warnings (#631)
+
+re-enabled all warnings in LPE.hs (#627)
+
+Issue #576 warnings lpe (#626)
+
+removed hlint warnings (#624)
+
+Added missed tokens from TxsAlex.x in TxsHappy.y (#622)
+
+New Hlint warnings (#612)
+
+solved bug: CONSTDEF of const ValExpr fails (#608)
+
+Issue #543 (#606)
+
+moved to lts 11.0 (#603)
+
+change \<name\> to 'name' (#605)
+
+Issue #589 (#604)
+
+Parametrized Sut/Sim delta times (#600)
+
+Issue #582 remove sort error (#597)
+
+Updated Z3 to 4.6.0 and CVC4 to 20180306-nightly (#596)
+
+Added tests for params from config file (#594)
+
+Reset AppVeyor cache (#595)
+
+Add the instructions for installing `TorXakis` on macOS (#591)
+
+solve issue (#590)
+
+Configure parameters from config file (#564)
+
+Fixed path for haddock output (#586)
+
+solved some hlint errors (#583)
+
+improved cstrITE based on LPE experience (#581)
+
+merged solve and solvedefs packages (#577)
+
+Lpe (#574)
+
 ## v0.5.0
 
-Changed the location of the `text-via-sockets` repository. (#566) (HEAD -> de
+Changed the location of the `text-via-sockets` repository. (#566)
 
 Issue/532 stop sut (#563)
 
