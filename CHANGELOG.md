@@ -1,8 +1,40 @@
 # Torxakis Changelog
 
+## v0.6.0
+
+Removed hlint warnings from LPE
+
+Added missed tokens from TxsAlex.x in TxsHappy.y (#622)
+
+Updated Hlint to 2.1 (#612)
+
+solved bug: CONSTDEF of const ValExpr fails (#608)
+
+Fixed haddock docs (#606)
+
+Moved to lts 11.1 (#603)
+
+Parametrized Sut/Sim delta times (#600)
+
+- This fixes long standing bug that Sim_deltaTime being ignored (#30)
+
+SortError is removed (#597)
+
+Updated Z3 to 4.6.0 and CVC4 to 20180306-nightly (#596)
+
+Add a macOS installer for `TorXakis`. Thanks to Harco Kuppens. (#591)
+
+All TorXakis parameters now can be configured from config (`.torxakis.yaml`) file (#564)
+
+improved cstrITE based on LPE experience (#581)
+
+merged solve and solvedefs packages (#577)
+
+Merged Lpe (#574)
+
 ## v0.5.0
 
-Changed the location of the `text-via-sockets` repository. (#566) (HEAD -> de
+Changed the location of the `text-via-sockets` repository. (#566)
 
 Issue/532 stop sut (#563)
 
