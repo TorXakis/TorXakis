@@ -129,6 +129,18 @@ FUNCDEF composedOps(x :: Int; y :: Int; z :: Int) :: Int ::=
     x + x * y + z / x - 10 
 ENDDEF
 
+FUNCDEF composedOps2(x :: Int; y :: Int; z :: Int) :: Int ::=
+    IF x == y
+    THEN x + x * y + z / x - 10
+    ELSE 203
+    FI
+ENDDEF
+
+TYPEDEF Pair ::= Pair { fst, snd :: Int } ENDDEF
+
+FUNCDEF composedOps3(x :: Int; y :: Int; z :: Int) :: Int ::=
+    x + x * y 
+ENDDEF
 
 
 -- TODO: add these test cases as well, depending on which kind of let
