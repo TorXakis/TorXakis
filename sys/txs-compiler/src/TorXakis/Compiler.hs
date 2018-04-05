@@ -107,7 +107,7 @@ simplify' :: FuncTable VarId -> ValExpr VarId -> ValExpr VarId
 simplify' ft (view -> Vfunc (FuncId n@"+" _ aSids rSid) vs) = fromMaybe (error "Could not apply handler") $ do
     sh <- Map.lookup n (toMap ft)
     h  <- Map.lookup (Signature aSids rSid) sh
-    return $ h vs
+    return $ h (simplify' ft <$> vs)
 -- TODO: traverse the subexpressions (if needed)
 simplify' _ x                                              = x
 

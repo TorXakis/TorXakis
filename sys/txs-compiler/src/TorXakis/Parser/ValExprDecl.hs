@@ -11,14 +11,17 @@ import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
 import           TorXakis.Parser.TypeDefs
 
--- Compound value expressions.
+-- | Compound value expressions parser.
+--
+-- TODO: Consider using https://www.stackage.org/haddock/lts-11.3/parsec-3.1.13.0/Text-Parsec-Expr.html#v:buildExpressionParser.
+--
 valExpP :: TxsParser ExpDecl
-valExpP =  try (atomValExpP <* notFollowedBy txsBopSymbolP)
-       <|> letExpP
+valExpP =  letExpP
        <|> txsITEP
-       <|> txsBopP
+       <|> try txsBopP
+       <|> atomValExpP
 
--- Atomic value expressions
+-- | Atomic value expressions parser.
 atomValExpP :: TxsParser ExpDecl
 atomValExpP =  mkVarExp <$> mkLoc <*> lcIdentifier
            <|> mkBoolConstExp <$> mkLoc <*> txsBoolP
@@ -66,10 +69,10 @@ txsITEP = do
 txsBopP :: TxsParser ExpDecl
 txsBopP = do
     le  <- mkLoc -- Location of the expression
-    ex0 <- atomValExpP <|> valExpP
+    ex0 <- try atomValExpP <|> valExpP
     lr  <- mkLoc -- Location of the reference to the operator name.
     opN <- txsBopSymbolP
-    ex1 <- atomValExpP <|> valExpP
+    ex1 <- valExpP
     return $ mkFappl le lr opN ex0 ex1
 
 txsBopSymbolP :: TxsParser Text
