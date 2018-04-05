@@ -13,44 +13,48 @@ See LICENSE at root directory of this repository.
 
 module TorXakis.Lib.Examples where
 
-import           Control.Concurrent.Async    (async, cancel)
-import           Control.Concurrent.STM.TVar (readTVarIO)
-import           Control.Exception           (SomeException, catch)
-import           Control.Monad               (void)
-import           Control.Monad.State         (StateT, evalStateT)
-import           Data.Conduit                (runConduit, (.|))
-import           Data.Conduit.Combinators    (mapM_, sinkList, take)
-import           Data.Conduit.TQueue         (sourceTQueue)
-import           Data.Foldable               (traverse_)
-import           Data.Map                    (Map)
-import qualified Data.Map                    as Map
-import qualified Data.Set                    as Set
-import           Data.Text                   (Text)
-import           Lens.Micro                  ((&), (.~), (^.))
-import           Prelude                     hiding (mapM_, take)
+import           Control.Concurrent.Async     (async, cancel)
+import           Control.Concurrent.STM.TChan (TChan, readTChan, writeTChan)
+import           Control.Concurrent.STM.TVar  (readTVarIO)
+import           Control.Exception            (SomeException, catch)
+import           Control.Monad                (void)
+import           Control.Monad.State          (StateT, evalStateT, lift)
+import           Control.Monad.STM            (atomically)
+import           Data.Conduit                 (runConduit, (.|))
+import           Data.Conduit.Combinators     (mapM_, sinkList, take)
+import           Data.Conduit.TQueue          (sourceTQueue)
+import           Data.Foldable                (traverse_)
+import           Data.Map                     (Map)
+import qualified Data.Map                     as Map
+import qualified Data.Set                     as Set
+import           Data.Text                    (Text)
+import           Lens.Micro                   ((&), (.~), (^.))
+import           Prelude                      hiding (mapM_, take)
 
-import           ChanId                      (ChanId)
-import           ConstDefs                   (Const (Cstr, Cstring), cstrId)
-import           CstrId                      (CstrId (CstrId), name)
-import           EnvBTree                    (EnvB (EnvB), msgs, smts, stateid)
-import           TxsDefs                     (sortDefs)
+import           ChanId                       (ChanId (ChanId))
+import           ConstDefs                    (Const (Cstr, Cstring), cstrId)
+import           CstrId                       (CstrId (CstrId), name)
+import           EnvBTree                     (EnvB (EnvB), msgs, smts, stateid)
+import           TxsDefs                      (sortDefs)
 
-import qualified EnvBTree                    as E
-import           EnvData                     (Msg)
-import           Eval                        (eval)
-import           FuncTable                   (FuncTable, Signature (Signature),
-                                              signHandler)
-import           Name                        (Name)
-import           SortId                      (SortId (SortId))
-import           SortOf                      (sortOf)
+import qualified EnvBTree                     as E
+import           EnvData                      (Msg)
+import           Eval                         (eval)
+import           FuncTable                    (FuncTable, Signature (Signature),
+                                               signHandler)
+import           Id                           (Id (Id))
+import           Name                         (Name)
+import           SortId                       (SortId (SortId))
+import           SortOf                       (sortOf)
 import           TorXakis.Lens.ModelDef
-import           TorXakis.Lens.Sigs          (funcTable)
+import           TorXakis.Lens.Sigs           (funcTable)
 import           TorXakis.Lens.TxsDefs
 import           TorXakis.Lib
+import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
-import           TxsDDefs                    (Action (Act), Verdict)
-import           ValExpr                     (ValExpr, cstrConst)
-import           VarId                       (VarId)
+import           TxsDDefs                     (Action (Act), Verdict)
+import           ValExpr                      (ValExpr, cstrConst)
+import           VarId                        (VarId)
 
 -- | Get the next N messages in the session.
 --
@@ -191,3 +195,18 @@ apply st ft fn vs sId = do
 -- let params = [ cstrConst (Cstring "Foo"), cstrConst (Cstring "Bar")]
 -- let [sId] = [ SortId n id | (SortId n id, _) <- Map.toList $ sortDefs (st ^. tdefs) ,  n == "Response" ]
 -- res <- apply st ft params sId
+
+testPutToWReadsWorld :: IO Bool
+testPutToWReadsWorld = do
+    s <- newSession
+    let fWCh = s ^. fromWorldChan
+        txsChanId = ChanId "DummyChan" (Id 42) [SortId "DummySort" (Id 43)]
+        actP = Act $ Set.fromList [(txsChanId, [Cstring "Action NOT to be put"])]
+        actG = Act $ Set.fromList [(txsChanId, [Cstring "Action to be gotten"])]
+        fakeSendToW :: ToWorldMapping
+        fakeSendToW = error "This function should not be called in testPutToWReadsWorld, since there's an action waiting in fromWorldChan."
+        toWMMs = Map.singleton txsChanId fakeSendToW
+    atomically $ writeTChan fWCh actG
+    act <- runIOC s $ putToW fWCh toWMMs actP
+    return $ act == actG
+

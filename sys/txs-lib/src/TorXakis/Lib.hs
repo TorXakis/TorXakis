@@ -49,6 +49,7 @@ import qualified VersionInfo
 import           ChanId
 import           ConstDefs                     (Const (Cany))
 import           EnvCore                       (IOC)
+import qualified EnvCore                       as EnvC
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
 import           SortId
@@ -61,6 +62,7 @@ import           TxsDefs                       (ConnDef (..), EndPoint (..),
                                                 Method (..), ModelDef, chanDefs)
 import           TxsHappy                      (txsParser)
 
+import           TorXakis.Lib.Internal         (getFromW, putToW)
 import           TorXakis.Lib.Session
 
 -- | For now file contents are represented as a string. This has to change in
@@ -180,37 +182,13 @@ tester s mn = runResponse $ do
     --                     (VarId "" (-1) (SortId "" (-1))) [] ]
     -- let inConnDefs = [ HttpDtoW (head outChans) (EndPoint "http://localhost:8080/session/sse/1/messages") Get
     --                     (VarId "" (-1) (SortId "" (-1))) [] ]
+    st <- lift $ readTVarIO (s ^. sessionState)
+    let fWCh = s ^. fromWorldChan
+        ps = EnvC.params (st ^. envCore)
+        Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" ps
+        deltaTime = read deltaString
     lift $ runIOC s $
-        txsSetTest putToW getFromW mDef Nothing Nothing
-    where
-        putToW :: Action -> IOC Action
-        putToW act@(Act cs) =
-            do
-                actOrWorldMap <- lift (readAct `race` (evaluate . force) getWorldMap)
-                case actOrWorldMap of
-                    Right (toWorldMapping, constants) -> do
-                        _ <- lift $ forkIO $ do
-                            mAct' <- toWorldMapping ^. sendToW $ constants
-                            traverse_ (atomically . writeTChan (s ^. fromWorldChan)) mAct'
-                        return act
-                    Left sutAct -> return sutAct
-          where
-            readAct     = atomically $ readTChan (s ^. fromWorldChan)
-            getWorldMap =
-                let -- TODO: turn this into an error if the action contains multiple channels.
-                    [(cId, xs)] = Set.toList cs
-                    -- TODO: Handle the nothing case!
-                    Just twm = Map.lookup cId (s ^. wConnDef . toWorldMappings)
-                    -- TODO: look how to do logging properly in Haskell
-                in (twm, xs)
-        putToW ActQui = error "Is it OK to put quiescence into world?" -- TODO: handle this properly.
-
-        getFromW :: IOC Action
-        getFromW = (id ||| id) <$> lift (sutAct `race` quiAct)
-            where
-              sutAct = atomically $ readTChan (s ^. fromWorldChan)
-              -- TODO: extract the delay from the SUT delta time parameter.
-              quiAct = threadDelay (10 ^ (6 :: Int)) >> return ActQui
+        txsSetTest (putToW fWCh (s ^. wConnDef . toWorldMappings)) (getFromW deltaTime fWCh) mDef Nothing Nothing
 
 -- | Test for n-steps
 test :: Session -> StepType -> IO Response

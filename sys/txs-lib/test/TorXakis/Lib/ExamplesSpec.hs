@@ -13,6 +13,7 @@ import           TxsDDefs              (Verdict (Pass))
 
 import           TorXakis.Lib          (isError)
 import           TorXakis.Lib.Examples
+import           TorXakis.Lib.Internal
 
 spec :: Spec
 spec = do
@@ -24,3 +25,6 @@ spec = do
     it "testTorXakisWithInfo" $ do
         Right res <- testTorXakisWithInfo
         res `shouldBe` Pass
+    it "testPutToWReadsWorld" $ do
+        res <- testPutToWReadsWorld
+        res `shouldBe` True
