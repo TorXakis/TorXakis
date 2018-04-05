@@ -75,8 +75,8 @@ module TorXakis.Parser.Data
     )
 where
 
+import           Control.Lens            (Lens')
 import           Data.Text               (Text)
-import           Lens.Micro              (Lens')
 
 import           TorXakis.Compiler.Error
 

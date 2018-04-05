@@ -125,9 +125,10 @@ FUNCDEF concat2(xs :: String; ys :: String) :: String ::=
      ys ++ concat (xs, ys)
 ENDDEF
 
-FUNCDEF plusTimes(x :: Int; y :: Int; z :: Int) :: Int ::=
-    x + x * y + z / x
+FUNCDEF composedOps(x :: Int; y :: Int; z :: Int) :: Int ::=
+    x + x * y + z / x - 10 
 ENDDEF
+
 
 
 -- TODO: add these test cases as well, depending on which kind of let

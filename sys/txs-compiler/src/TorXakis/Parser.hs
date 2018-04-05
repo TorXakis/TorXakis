@@ -11,10 +11,10 @@ module TorXakis.Parser
 where
 
 import           Control.Arrow             (left)
+import           Control.Lens              (Lens', to, (%~), (^.))
+import           Control.Lens.TH           (makeLenses)
 import           Control.Monad.Identity    (runIdentity)
 import qualified Data.Text                 as T
-import           Lens.Micro                (Lens', to, (%~), (^.))
-import           Lens.Micro.TH             (makeLenses)
 import           Text.Parsec               (ParseError, eof, errorPos, many,
                                             runParserT, sourceColumn,
                                             sourceLine, (<|>))

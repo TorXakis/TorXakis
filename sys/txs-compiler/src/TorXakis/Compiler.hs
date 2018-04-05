@@ -3,11 +3,12 @@
 module TorXakis.Compiler where
 
 import           Control.Arrow                     (first, (|||))
+import           Control.Lens                      (over, (^.), (^..))
 import           Control.Monad.State               (evalStateT, get)
+import           Data.Data.Lens                    (uniplate)
 import qualified Data.Map.Strict                   as Map
 import           Data.Maybe                        (fromMaybe)
 import qualified Data.Set                          as Set
-import           Lens.Micro                        ((^.), (^..))
 
 import           FuncDef                           (FuncDef (FuncDef))
 import           FuncId                            (FuncId (FuncId))
@@ -113,8 +114,7 @@ simplify' ft ex@(view -> Vfunc (FuncId n _ aSids rSid) vs) =
         h  <- Map.lookup (Signature aSids rSid) sh
         return $ h (simplify' ft <$> vs)
     else ex
--- TODO: traverse the subexpressions (if needed)
-simplify' _ x                                              = x
+simplify' ft x                                              = over uniplate (simplify' ft) x
 
 simplify :: FuncTable VarId ->  (FuncId, FuncDef VarId) -> (FuncId, FuncDef VarId)
 -- TODO: return an either instead.

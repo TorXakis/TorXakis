@@ -25,8 +25,7 @@ library:
   - unordered-containers
   - MissingH
   - ilist
-  - microlens
-  - microlens-th  
+  - lens
   # TorXakis dependencies
   - defs
   - valexpr
