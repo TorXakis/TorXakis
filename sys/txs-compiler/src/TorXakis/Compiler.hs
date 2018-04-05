@@ -25,8 +25,8 @@ import           TxsDefs                           (TxsDefs, fromList, funcDefs,
                                                     union)
 import qualified TxsDefs                           (empty)
 import           ValExpr                           (ValExpr,
-                                                    ValExprView (Vfunc),
-                                                    cstrVar, view)
+                                                    ValExprView (Vfunc, Vite),
+                                                    cstrITE, cstrVar, view)
 import           VarId                             (VarId)
 
 import           TorXakis.Compiler.Data
@@ -114,7 +114,8 @@ simplify' ft ex@(view -> Vfunc (FuncId n _ aSids rSid) vs) =
         h  <- Map.lookup (Signature aSids rSid) sh
         return $ h (simplify' ft <$> vs)
     else ex
-simplify' ft x                                              = over uniplate (simplify' ft) x
+simplify' ft (view -> Vite ex0 ex1 ex2) = cstrITE (simplify' ft ex0) (simplify' ft ex1) (simplify' ft ex2)
+simplify' ft x                          = over uniplate (simplify' ft) x
 
 simplify :: FuncTable VarId ->  (FuncId, FuncDef VarId) -> (FuncId, FuncDef VarId)
 -- TODO: return an either instead.

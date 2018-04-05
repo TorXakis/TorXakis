@@ -31,7 +31,8 @@ valExpP =  buildExpressionParser table termP
 
 -- | Terms of the TorXakis value expressions.
 termP :: TxsParser ExpDecl
-termP = txsFapplP
+termP = txsSymbol "(" *> ( valExpP <* txsSymbol ")")
+    <|> txsFapplP
     <|> letExpP
     <|> txsITEP
     <|> mkVarExp         <$> mkLoc <*> lcIdentifier

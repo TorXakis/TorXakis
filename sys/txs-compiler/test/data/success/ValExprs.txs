@@ -136,12 +136,23 @@ FUNCDEF composedOps2(x :: Int; y :: Int; z :: Int) :: Int ::=
     FI
 ENDDEF
 
-TYPEDEF Pair ::= Pair { fst, snd :: Int } ENDDEF
-
 FUNCDEF composedOps3(x :: Int; y :: Int; z :: Int) :: Int ::=
-    x + x * y 
+    x + x * (y + (z + y))
 ENDDEF
 
+FUNCDEF composedOps4(x :: Int; y :: Int; z :: Int) :: Int ::=
+    x + x * (y + (IF x < y THEN z + y ELSE x - y FI))
+ENDDEF
+
+FUNCDEF composedOps5(x :: Int; y :: Int; z :: Int) :: Int ::=
+    x + x * (y + (
+      IF x < y THEN
+           LET q = IF z > 1 THEN 10 ELSE 0 FI; p = 20 IN z + y + p * q NI
+      ELSE
+          x - y
+      FI
+      ))
+ENDDEF
 
 -- TODO: add these test cases as well, depending on which kind of let
 -- expressions we support.
