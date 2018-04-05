@@ -2,55 +2,35 @@
 
 ## v0.6.0
 
-removed warnings from TestGNF + TestPreGNF (#632)
-
-LPEfunc without warnings (#631)
-
-re-enabled all warnings in LPE.hs (#627)
-
-Issue #576 warnings lpe (#626)
-
-removed hlint warnings (#624)
+Removed hlint warnings from LPE
 
 Added missed tokens from TxsAlex.x in TxsHappy.y (#622)
 
-New Hlint warnings (#612)
+Updated Hlint to 2.1 (#612)
 
 solved bug: CONSTDEF of const ValExpr fails (#608)
 
-Issue #543 (#606)
+Fixed haddock docs (#606)
 
-moved to lts 11.0 (#603)
-
-change \<name\> to 'name' (#605)
-
-Issue #589 (#604)
+Moved to lts 11.1 (#603)
 
 Parametrized Sut/Sim delta times (#600)
 
-Issue #582 remove sort error (#597)
+- This fixes long standing bug that Sim_deltaTime being ignored (#30)
+
+SortError is removed (#597)
 
 Updated Z3 to 4.6.0 and CVC4 to 20180306-nightly (#596)
 
-Added tests for params from config file (#594)
+Add a macOS installer for `TorXakis`. Thanks to Harco Kuppens. (#591)
 
-Reset AppVeyor cache (#595)
-
-Add the instructions for installing `TorXakis` on macOS (#591)
-
-solve issue (#590)
-
-Configure parameters from config file (#564)
-
-Fixed path for haddock output (#586)
-
-solved some hlint errors (#583)
+All TorXakis parameters now can be configured from config (`.torxakis.yaml`) file (#564)
 
 improved cstrITE based on LPE experience (#581)
 
 merged solve and solvedefs packages (#577)
 
-Lpe (#574)
+Merged Lpe (#574)
 
 ## v0.5.0
 
