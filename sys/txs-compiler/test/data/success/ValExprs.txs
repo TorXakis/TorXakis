@@ -105,6 +105,31 @@ FUNCDEF plus2(x :: Int; y :: Int) :: Int ::=
     x + y + x
 ENDDEF
 
+FUNCDEF plus3(x :: Int; y :: Int) :: Int ::=
+    x + plus(y, x)
+ENDDEF
+
+FUNCDEF plus4(x :: Int; y :: Int) :: Int ::=
+    plus(y, x) + x
+ENDDEF
+
+FUNCDEF op(x :: Int; y :: Int) :: Int ::=
+    x + y - x
+ENDDEF
+
+FUNCDEF concat(xs :: String; ys :: String) :: String ::=
+    xs ++ ys
+ENDDEF
+
+FUNCDEF concat2(xs :: String; ys :: String) :: String ::=
+     ys ++ concat (xs, ys)
+ENDDEF
+
+FUNCDEF plusTimes(x :: Int; y :: Int; z :: Int) :: Int ::=
+    x + x * y + z / x
+ENDDEF
+
+
 -- TODO: add these test cases as well, depending on which kind of let
 -- expressions we support.
 --

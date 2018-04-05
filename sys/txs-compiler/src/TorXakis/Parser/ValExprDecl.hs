@@ -5,8 +5,11 @@ module TorXakis.Parser.ValExprDecl where
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           Text.Parsec              (many1, notFollowedBy, oneOf,
-                                           optionMaybe, sepBy, try, (<|>))
+                                           optionMaybe, sepBy, try, (<?>),
+                                           (<|>))
 
+import           Text.Parsec.Expr         (Assoc (AssocLeft), Operator (Infix),
+                                           buildExpressionParser)
 import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
 import           TorXakis.Parser.TypeDefs
@@ -16,17 +19,25 @@ import           TorXakis.Parser.TypeDefs
 -- TODO: Consider using https://www.stackage.org/haddock/lts-11.3/parsec-3.1.13.0/Text-Parsec-Expr.html#v:buildExpressionParser.
 --
 valExpP :: TxsParser ExpDecl
-valExpP =  letExpP
-       <|> txsITEP
-       <|> try txsBopP
-       <|> atomValExpP
+valExpP =  buildExpressionParser table termP
+       <?> "Value expression"
+    where
+      table = [[Infix f AssocLeft]]
+      f = do
+          le  <- mkLoc
+          lr  <- mkLoc
+          opN <- txsBopSymbolP
+          return $ \ex0 ex1 -> (mkFappl le lr opN [ex0, ex1])
 
--- | Atomic value expressions parser.
-atomValExpP :: TxsParser ExpDecl
-atomValExpP =  mkVarExp <$> mkLoc <*> lcIdentifier
-           <|> mkBoolConstExp <$> mkLoc <*> txsBoolP
-           <|> mkIntConstExp <$> mkLoc <*> txsIntP
-           <|> mkStringConstExp <$> mkLoc <*> txsStringP
+-- | Terms of the TorXakis value expressions.
+termP :: TxsParser ExpDecl
+termP = txsFapplP
+    <|> letExpP
+    <|> txsITEP
+    <|> mkVarExp         <$> mkLoc <*> lcIdentifier
+    <|> mkBoolConstExp   <$> mkLoc <*> txsBoolP
+    <|> mkIntConstExp    <$> mkLoc <*> txsIntP
+    <|> mkStringConstExp <$> mkLoc <*> txsStringP
 
 letExpP :: TxsParser ExpDecl
 letExpP = do
@@ -66,15 +77,6 @@ txsITEP = do
     txsSymbol "FI"
     return $ mkITEExpDecl l ex0 ex1 ex2
 
-txsBopP :: TxsParser ExpDecl
-txsBopP = do
-    le  <- mkLoc -- Location of the expression
-    ex0 <- try atomValExpP <|> valExpP
-    lr  <- mkLoc -- Location of the reference to the operator name.
-    opN <- txsBopSymbolP
-    ex1 <- valExpP
-    return $ mkFappl le lr opN ex0 ex1
-
 txsBopSymbolP :: TxsParser Text
 txsBopSymbolP = T.pack <$> txsLexeme (many1 txsSpecialCOp)
 
@@ -94,3 +96,16 @@ txsSpecialCOp = oneOf [ '='
                       , '&'
                       , '%'
                       ]
+
+-- | Function application parser.
+--
+txsFapplP :: TxsParser ExpDecl
+txsFapplP = do
+    le <- mkLoc
+    lr <- mkLoc
+    fN <- try (lcIdentifier <* txsSymbol "(")
+    exs <- valExpP `sepBy` txsSymbol ","
+    txsSymbol ")"
+    return $ mkFappl le lr fN exs
+
+

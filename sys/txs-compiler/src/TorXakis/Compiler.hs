@@ -102,12 +102,17 @@ compileParsedDefs pd = do
 -- | Try to apply a handler to the given function definition (which is described by a pair).
 --
 -- TODO: Return an Either instead of throwing an error.
--- TODO: For now make the simplification only if "n" is a predefined symbol.
 simplify' :: FuncTable VarId -> ValExpr VarId -> ValExpr VarId
-simplify' ft (view -> Vfunc (FuncId n@"+" _ aSids rSid) vs) = fromMaybe (error "Could not apply handler") $ do
-    sh <- Map.lookup n (toMap ft)
-    h  <- Map.lookup (Signature aSids rSid) sh
-    return $ h (simplify' ft <$> vs)
+simplify' ft ex@(view -> Vfunc (FuncId n _ aSids rSid) vs) =
+    -- TODO: For now make the simplification only if "n" is a predefined
+    -- symbol. Once compliance with the current `TorXakis` compiler is not
+    -- needed we can remove this constraint and simplify further.
+    if n `elem` Map.keys (toMap (stdFuncTable :: FuncTable VarId))
+    then fromMaybe (error "Could not apply handler") $ do
+        sh <- Map.lookup n (toMap ft)
+        h  <- Map.lookup (Signature aSids rSid) sh
+        return $ h (simplify' ft <$> vs)
+    else ex
 -- TODO: traverse the subexpressions (if needed)
 simplify' _ x                                              = x
 

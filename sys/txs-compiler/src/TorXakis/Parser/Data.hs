@@ -301,8 +301,8 @@ mkLetVarDecl n ms subEx m = ParseTree (Name n) VarDeclE m (ms, subEx)
 mkITEExpDecl :: Loc ExpDeclE -> ExpDecl -> ExpDecl -> ExpDecl -> ExpDecl
 mkITEExpDecl l ex0 ex1 ex2 = mkExpDecl l (If ex0 ex1 ex2)
 
-mkFappl :: Loc ExpDeclE -> Loc VarRefE -> Text -> ExpDecl -> ExpDecl -> ExpDecl
-mkFappl le lr n ex0 ex1 = mkExpDecl le (Fappl (Name n) lr [ex0, ex1])
+mkFappl :: Loc ExpDeclE -> Loc VarRefE -> Text -> [ExpDecl] -> ExpDecl
+mkFappl le lr n exs = mkExpDecl le (Fappl (Name n) lr exs)
 
 -- | Make a variable expression. The location of the expression will become the
 -- location of the variable.
