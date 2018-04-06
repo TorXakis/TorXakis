@@ -32,7 +32,6 @@ import           TorXakis.Lib.Session
 --
 -- In case of an 'Action' coming from the world before given action can be put,
 -- given 'Action' will be skipped and received 'Action' will be returned.
---
 putToW :: TChan Action -> Map ChanId ToWorldMapping -> Action -> IOC Action
 putToW fromWorldCh toWorldMMap act@(Act cs) = do
     let (toWorldMapping, constants) = force getWorldMap

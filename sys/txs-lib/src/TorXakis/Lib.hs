@@ -178,10 +178,6 @@ tester :: Session
        -> IO Response
 tester s mn = runResponse $ do
     mDef <- lookupModel s mn
-    -- let outConnDefs = [ HttpDtoW (head inChans) (EndPoint "http://localhost:8080/info") Post
-    --                     (VarId "" (-1) (SortId "" (-1))) [] ]
-    -- let inConnDefs = [ HttpDtoW (head outChans) (EndPoint "http://localhost:8080/session/sse/1/messages") Get
-    --                     (VarId "" (-1) (SortId "" (-1))) [] ]
     st <- lift $ readTVarIO (s ^. sessionState)
     let fWCh = s ^. fromWorldChan
         ps = EnvC.params (st ^. envCore)

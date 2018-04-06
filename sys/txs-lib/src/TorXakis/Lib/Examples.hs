@@ -133,6 +133,10 @@ testTorXakisWithInfo = do
     st <- readTVarIO (s ^. sessionState)
     let
         Just mDef = st ^. tdefs . ix ("Model" :: Name)
+        -- outConnDefs = [ HttpDtoW (head inChans) (EndPoint "http://localhost:8080/info") Post
+        --                 (VarId "" (-1) (SortId "" (-1))) [] ]
+        -- inConnDefs = [ HttpDtoW (head outChans) (EndPoint "http://localhost:8080/session/sse/1/messages") Get
+        --                 (VarId "" (-1) (SortId "" (-1))) [] ]
         mSendToW :: ToWorldMapping -- [Const] -> IO (Maybe Action)
         mSendToW = ToWorldMapping $ \xs ->
             case xs of
@@ -142,6 +146,7 @@ testTorXakisWithInfo = do
                         ft = st ^. sigs . funcTable
                         params :: [ValExpr VarId]
                         params = [ cstrConst (Cstring "0.0.1"), cstrConst (Cstring "Today")]
+                            -- map cstrConst xs
                         [sId] = [ SortId n i
                                 | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
                                 ,  n == "Response" ]
