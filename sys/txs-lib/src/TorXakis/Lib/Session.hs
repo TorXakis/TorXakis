@@ -16,7 +16,8 @@ import           Control.Concurrent.STM.TQueue (TQueue)
 import           Control.Concurrent.STM.TVar   (TVar)
 import           Control.DeepSeq               (NFData)
 import           Control.Exception             (SomeException)
-import           Data.Map                      (Map)
+import qualified Data.Char                     as Char
+import qualified Data.Map                      as Map
 import           GHC.Generics                  (Generic)
 import           Lens.Micro.TH                 (makeLenses)
 
@@ -24,6 +25,7 @@ import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
 import           EnvCore                       (EnvC, initState)
 import           EnvData                       (Msg)
+import           ParamCore                     (Params)
 import           Sigs                          (Sigs, empty)
 import           TxsDDefs                      (Action, Verdict)
 import           TxsDefs                       (TxsDefs, empty)
@@ -38,7 +40,7 @@ makeLenses ''ToWorldMapping
 
 -- | TODO: put in the right place:
 newtype WorldConnDef = WorldConnDef
-    { _toWorldMappings :: Map ChanId ToWorldMapping
+    { _toWorldMappings :: Map.Map ChanId ToWorldMapping
     }
 
 makeLenses ''WorldConnDef
@@ -50,6 +52,7 @@ data SessionSt = SessionSt
     { _tdefs   :: TxsDefs
     , _sigs    :: Sigs VarId
     , _envCore :: EnvC
+    , _prms    :: Params
     } deriving (Generic, NFData)
 
 makeLenses ''SessionSt
@@ -68,4 +71,18 @@ makeLenses ''Session
 
 -- * Session state manipulation
 emptySessionState :: SessionSt
-emptySessionState = SessionSt TxsDefs.empty Sigs.empty initState
+emptySessionState = SessionSt TxsDefs.empty Sigs.empty initState initParams
+-- TODO: coreenv can be used to read from config file, and
+--       some of TxsServerConfig.hs might be extracted to a common package
+                        -- $ Config.updateParamVals initParams
+                        --     $ Config.configuredParameters initConfig
+    where
+        initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
+            [ ( "param_Sut_deltaTime"      , "2000"      , \s -> not (null s) && all Char.isDigit s)
+                        -- param_Sut_deltaTime :: Int (>0)
+                        -- quiescence output time (millisec >0)
+            , ( "param_Sim_deltaTime"      , "2000"       , \s -> not (null s) && all Char.isDigit s)
+                        -- param_Sim_deltaTime :: Int (>0)
+                        -- quiescence input time (millisec >0)
+            ]
+

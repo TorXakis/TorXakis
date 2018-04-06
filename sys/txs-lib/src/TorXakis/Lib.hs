@@ -180,8 +180,7 @@ tester s mn = runResponse $ do
     mDef <- lookupModel s mn
     st <- lift $ readTVarIO (s ^. sessionState)
     let fWCh = s ^. fromWorldChan
-        ps = EnvC.params (st ^. envCore)
-        Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" ps
+        Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (st ^. prms)
         deltaTime = read deltaString
     lift $ runIOC s $
         txsSetTest (putToW fWCh (s ^. wConnDef . toWorldMappings)) (getFromW deltaTime fWCh) mDef Nothing Nothing

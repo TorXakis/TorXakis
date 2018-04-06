@@ -15,8 +15,6 @@ module TxsServerConfig
   )
 where
 
-import           CmdLineParser
-import           Config
 import           Control.Monad.Extra
 import           Data.Aeson.Types
 import qualified Data.Map            as Map
@@ -27,6 +25,9 @@ import           GHC.Generics
 import           System.Directory
 import           System.FilePath
 import           System.IO
+
+import           CmdLineParser
+import           Config
 
 -- | Uninterpreted configuration options.
 data UnintConfig = UnintConfig
