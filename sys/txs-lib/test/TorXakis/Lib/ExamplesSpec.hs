@@ -6,6 +6,7 @@ See LICENSE at root directory of this repository.
 
 module TorXakis.Lib.ExamplesSpec where
 
+import           Control.Monad         (replicateM)
 import           Data.Either           (isRight)
 import           Test.Hspec            (Spec, it, shouldBe, shouldSatisfy)
 
@@ -26,5 +27,5 @@ spec = do
         Right res <- testTorXakisWithInfo
         res `shouldBe` Pass
     it "testPutToWReadsWorld" $ do
-        res <- testPutToWReadsWorld
-        res `shouldBe` True
+        res <- replicateM 100 testPutToWReadsWorld
+        res `shouldSatisfy` all (True ==)
