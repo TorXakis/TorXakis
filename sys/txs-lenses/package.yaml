@@ -13,8 +13,6 @@ maintainer:
 copyright: "Copyright: (c) 2017 TNO"
 
 extra-source-files:
-- README.md
-- ChangeLog.md
 - license.txt
 
 synopsis: Lenses for the structures used in `TorXakis`.
