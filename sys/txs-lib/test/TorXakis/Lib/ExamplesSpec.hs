@@ -27,7 +27,7 @@ spec = do
         Right res <- testTorXakisWithInfo
         res `shouldBe` Pass
     it "testPutToWReadsWorld" $ do
-        res <- testPutToWReadsWorld
-        res `shouldBe` True
-        -- res <- replicateM 100 testPutToWReadsWorld
-        -- res `shouldSatisfy` all (True ==)
+        -- res <- testPutToWReadsWorld
+        -- res `shouldBe` True
+        res <- replicateM 100 testPutToWReadsWorld
+        res `shouldSatisfy` all (True ==)

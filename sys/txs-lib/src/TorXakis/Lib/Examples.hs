@@ -52,7 +52,7 @@ import           TorXakis.Lens.TxsDefs
 import           TorXakis.Lib
 import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
-import           TxsDDefs                     (Action (Act), Verdict)
+import           TxsDDefs                     (Action (Act, ActQui), Verdict)
 import           ValExpr                      (ValExpr, cstrConst)
 import           VarId                        (VarId)
 
@@ -208,5 +208,7 @@ testPutToWReadsWorld = do
         toWMMs = Map.singleton txsChanId fakeSendToW
     atomically $ writeTChan fWCh actG
     act <- runIOC s $ putToW fWCh toWMMs actP
-    return $ act == actG
+    atomically $ writeTChan fWCh actG
+    act' <- runIOC s $ putToW fWCh Map.empty ActQui
+    return $ act == actG && act' == actG
 
