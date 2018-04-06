@@ -7,14 +7,12 @@ See LICENSE at root directory of this repository.
 module TorXakis.Lib.ExamplesSpec where
 
 import           Control.Monad         (replicateM)
-import           Data.Either           (isRight)
 import           Test.Hspec            (Spec, it, shouldBe, shouldSatisfy)
 
 import           TxsDDefs              (Verdict (Pass))
 
 import           TorXakis.Lib          (isError)
 import           TorXakis.Lib.Examples
-import           TorXakis.Lib.Internal
 
 spec :: Spec
 spec = do

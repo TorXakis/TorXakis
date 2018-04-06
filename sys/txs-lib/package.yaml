@@ -47,16 +47,17 @@ library:
   - conduit-combinators
   - containers
   - deepseq
+  - lens-aeson
   - microlens
   - microlens-th  
   - mtl
   - path
+  - process
   - stm
   - stm-chans  
   - stm-conduit
   - text
   - transformers
-  - bytestring
   - wreq
   # `TorXakis` dependencies.
   - defs

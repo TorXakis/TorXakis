@@ -9,12 +9,9 @@ See LICENSE at root directory of this repository.
 module TorXakis.Lib where
 
 import           Control.Arrow                 ((|||))
-import           Control.Concurrent            (forkIO, threadDelay)
-import           Control.Concurrent.Async      (race)
+import           Control.Concurrent            (forkIO)
 import           Control.Concurrent.MVar       (newMVar, putMVar, takeMVar)
-import           Control.Concurrent.STM.TChan  (TChan, isEmptyTChan, newTChanIO,
-                                                readTChan, tryReadTChan,
-                                                writeTChan)
+import           Control.Concurrent.STM.TChan  (newTChanIO)
 import           Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue,
                                                 newTQueueIO, readTQueue,
                                                 writeTQueue)
@@ -28,38 +25,26 @@ import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically, retry)
 import           Control.Monad.Trans.Except    (ExceptT, runExceptT, throwE)
 import           Data.Aeson                    (ToJSON)
-import           Data.Aeson.Types              (Value)
-import           Data.ByteString               (ByteString)
 import           Data.Foldable                 (traverse_)
 import           Data.Map.Strict               as Map
-import           Data.Maybe                    (fromMaybe)
 import           Data.Semigroup                ((<>))
-import           Data.Set                      as Set
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import           GHC.Generics                  (Generic)
 import           Lens.Micro                    ((.~), (^.))
-import           Network.Wreq                  (get, post)
-import qualified Network.Wreq                  as Wreq
-import           Network.Wreq.Types            (Postable)
 
 import qualified BuildInfo
 import qualified VersionInfo
 
-import           ChanId
-import           ConstDefs                     (Const (Cany))
 import           EnvCore                       (IOC)
-import qualified EnvCore                       as EnvC
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
-import           SortId
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
 import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
                                                 txsStepN, txsTestN)
-import           TxsDDefs                      (Action (Act, ActQui), Verdict)
-import           TxsDefs                       (ConnDef (..), EndPoint (..),
-                                                Method (..), ModelDef, chanDefs)
+import           TxsDDefs                      (Verdict)
+import           TxsDefs                       (ModelDef)
 import           TxsHappy                      (txsParser)
 
 import           TorXakis.Lib.Internal         (getFromW, putToW)

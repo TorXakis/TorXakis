@@ -5,6 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies      #-}
 -- | Examples of usage of 'TorXakis.Lib'.
 --
 -- This file is meant to server as an example of usage of the 'TorXakis.Lib'.
@@ -14,22 +15,25 @@ See LICENSE at root directory of this repository.
 module TorXakis.Lib.Examples where
 
 import           Control.Concurrent.Async     (async, cancel)
-import           Control.Concurrent.STM.TChan (TChan, readTChan, writeTChan)
+import           Control.Concurrent.STM.TChan (writeTChan)
 import           Control.Concurrent.STM.TVar  (readTVarIO)
-import           Control.Exception            (SomeException, catch)
+import           Control.Exception            (SomeException)
 import           Control.Monad                (void)
-import           Control.Monad.State          (StateT, evalStateT, lift)
+import           Control.Monad.State          (evalStateT)
 import           Control.Monad.STM            (atomically)
+import           Data.Aeson.Lens              (key)
+import           Data.Aeson.Types             (Value (String))
 import           Data.Conduit                 (runConduit, (.|))
 import           Data.Conduit.Combinators     (mapM_, sinkList, take)
 import           Data.Conduit.TQueue          (sourceTQueue)
 import           Data.Foldable                (traverse_)
-import           Data.Map                     (Map)
 import qualified Data.Map                     as Map
 import qualified Data.Set                     as Set
 import           Data.Text                    (Text)
-import           Lens.Micro                   ((&), (.~), (^.))
+import           Lens.Micro                   ((&), (.~), (^.), (^?))
 import           Prelude                      hiding (mapM_, take)
+import           System.Process               (StdStream (NoStream), proc,
+                                               std_out, withCreateProcess)
 
 import           ChanId                       (ChanId (ChanId))
 import           ConstDefs                    (Const (Cstr, Cstring), cstrId)
@@ -55,6 +59,9 @@ import           TorXakis.Lib.Session
 import           TxsDDefs                     (Action (Act, ActQui), Verdict)
 import           ValExpr                      (ValExpr, cstrConst)
 import           VarId                        (VarId)
+
+import           Network.Wreq                 (get, responseBody,
+                                               responseStatus, statusCode)
 
 -- | Get the next N messages in the session.
 --
@@ -124,34 +131,40 @@ testInfo = case info of
 -- this test. Once a new command line interface for TorXakis which uses
 -- 'txs-lib' is ready we can proceed with removing this test.
 testTorXakisWithInfo :: IO (Either SomeException Verdict)
-testTorXakisWithInfo = do
-    -- TODO: We should start the web server at this point.
+testTorXakisWithInfo = withCreateProcess (proc "txs-webserver-exe" []) {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
     s <- newSession
     cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEchoInfoOnly.txs"
---    cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEcho.txs"
     _ <- load s cs
     st <- readTVarIO (s ^. sessionState)
     let
         Just mDef = st ^. tdefs . ix ("Model" :: Name)
-        -- outConnDefs = [ HttpDtoW (head inChans) (EndPoint "http://localhost:8080/info") Post
-        --                 (VarId "" (-1) (SortId "" (-1))) [] ]
-        -- inConnDefs = [ HttpDtoW (head outChans) (EndPoint "http://localhost:8080/session/sse/1/messages") Get
-        --                 (VarId "" (-1) (SortId "" (-1))) [] ]
         mSendToW :: ToWorldMapping -- [Const] -> IO (Maybe Action)
         mSendToW = ToWorldMapping $ \xs ->
             case xs of
                 [Cstr {cstrId = CstrId { name = "CmdInfo"}} ] -> do
-                    let [setChId] = mDef ^. modelOutChans
-                        [outChId] = Set.toList setChId
-                        ft = st ^. sigs . funcTable
-                        params :: [ValExpr VarId]
-                        params = [ cstrConst (Cstring "0.0.1"), cstrConst (Cstring "Today")]
-                            -- map cstrConst xs
-                        [sId] = [ SortId n i
-                                | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
-                                ,  n == "Response" ]
-                    Right res <- apply st ft "ResponseInfo" params sId
-                    return $ Just $ Act [(outChId, [res])]
+                    -- This is where we send the command through HTTP
+                    -- In this case it's just a GET request
+                    -- TODO: This address should be extracted from Model CNECTDEF
+                    resp <- get "http://localhost:8080/info"
+                    let status = resp ^. responseStatus . statusCode
+                    if status /= 200
+                        then return Nothing
+                        else do
+                            let params = infoParams resp
+                                [sId] = [ SortId n i
+                                    | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
+                                    ,  n == "Response" ]
+                                [setChId] = mDef ^. modelOutChans
+                                [outChId] = Set.toList setChId
+                                ft = st ^. sigs . funcTable
+                            Right res <- apply st ft "ResponseInfo" params sId
+                            return $ Just $ Act [(outChId, [res])]
+                              where
+                                infoParams r =
+                                    let Just (String version'  ) = r ^? responseBody . key "version"
+                                        Just (String buildTime') = r ^? responseBody . key "buildTime"
+                                    in  [cstrConst (Cstring version')
+                                        , cstrConst (Cstring buildTime')]
                 _   -> error $ "Didn't expect this data on channel " ++ show chanId
                             ++ " (got " ++ show xs ++ ")"
         chanId :: ChanId
@@ -167,8 +180,7 @@ testTorXakisWithInfo = do
     cancel a
     return v
 
--- | TODO: look whether this isn't defined somewhere else. If not make it safer
--- by not throwing an error if the lookup returns nothing.
+-- | TODO: Make this safer by not throwing an error if the lookup returns nothing.
 apply :: SessionSt -> FuncTable VarId -> Text -> [ValExpr VarId] -> SortId -> IO (Either String Const)
 apply st ft fn vs sId = do
     let Just f = Map.lookup sig (signHandler fn ft)
@@ -182,7 +194,7 @@ apply st ft fn vs sId = do
             , E.params = Map.empty
             , msgs = []
             }
-    evalStateT (eval (f vs)) envB
+    evalStateT (eval (f vs)) envB -- TODO: Should not use eval, just parse a Response with new ADTDefs.
 
 -- import           Lens.Micro
 -- import           Control.Concurrent.STM.TVar (readTVarIO)

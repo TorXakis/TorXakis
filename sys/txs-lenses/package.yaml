@@ -35,9 +35,9 @@ library:
   source-dirs: src
   dependencies:
   - base >= 4.7 && < 5
-  - text
-  - microlens
   - containers
+  - microlens
+  - text
   # `TorXakis` dependencies.
   - defs
   - valexpr
