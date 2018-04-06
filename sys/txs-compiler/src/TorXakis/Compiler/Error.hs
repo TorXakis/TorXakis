@@ -15,6 +15,7 @@ data ErrorType
     | TypeMismatch
     | UndefinedType
     | FunctionNotDefined
+    | UnresolvedIdentifier
     deriving (Eq, Show)
 
 data Decl

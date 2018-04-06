@@ -11,7 +11,7 @@ import qualified Data.Text                         as T
 import           GHC.Exts                          (fromList)
 
 import           FuncDef                           (FuncDef (FuncDef))
-import           FuncId                            (FuncId)
+import           FuncId                            (FuncId, funcsort)
 import           ValExpr                           (cstrVar)
 import           VarId                             (VarId)
 
@@ -59,6 +59,6 @@ funcDeclToFuncDef :: (HasSortIds e, HasVarDecls e, HasVarIds e, HasFuncIds e, Ha
 funcDeclToFuncDef e e' f = left (,f) $ do
     fId  <- findFuncIdForDecl e (getLoc f)
     pIds <- traverse (findVarId e . getLoc) (funcParams f)
-    vExp <- expDeclToValExpr e e' (funcBody f)
+    vExp <- expDeclToValExpr e e' (Just $ funcsort fId) (funcBody f)
     return (fId, FuncDef pIds vExp)
 

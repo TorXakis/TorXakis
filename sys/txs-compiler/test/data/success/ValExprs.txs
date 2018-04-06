@@ -183,6 +183,10 @@ FUNCDEF composedOps5(p :: TriPair) :: Int ::=
         fst(p) + snd(p) + trd(p)
 ENDDEF
 
+FUNCDEF stringy() :: String ::=
+        fromXml("Hello")
+ENDDEF
+
 -- TODO: add these test cases as well, depending on which kind of let
 -- expressions we support.
 --

@@ -34,12 +34,6 @@ adtDeclToSortId a = do
     i <- getNextId
     return $ SortId (adtName a) (Id i)
 
--- sortIdOfFieldDecl :: HasSortIds e => e -> FieldDecl -> Either Error SortId
--- sortIdOfFieldDecl e = findSortId e . fieldSort
-
--- sortIdOfFieldDeclM :: HasSortIds e => e -> FieldDecl -> CompilerM SortId
--- sortIdOfFieldDeclM e f = liftEither $ sortIdOfFieldDecl e f
-
 sortIdOfVarDecl :: HasSortIds e => e -> VarDecl -> Either Error SortId
 sortIdOfVarDecl e = findSortId e . varDeclSort
 

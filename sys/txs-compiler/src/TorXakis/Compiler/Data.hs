@@ -161,8 +161,6 @@ fdiName :: FuncDefInfo -> Maybe Text
 fdiName (IDefUid t _) = Just t
 fdiName (FDefLoc _)   = Nothing
 
--- [FuncDefInfo] -> Map Text [FuncDefInfo]
-
 -- TODO determine the right kind of precedence.
 infixr 5 :|
  -- TODO: you might want to replace the 'Either's by ':|'.
@@ -180,7 +178,6 @@ class HasFuncIds e where
                -> Either Error FuncId
     findFuncIdM :: e
                 -> FuncDefInfo
-                -- -> Loc FuncDeclE :| [ImplicitFunDef]
                 -> CompilerM FuncId
     findFuncIdM e i = liftEither $ findFuncId e i
 
@@ -267,7 +264,7 @@ instance HasFuncIds (IEnv f0 f1 f2 f3 f4 (Map FuncDefInfo FuncId) f6) where
 --                -> Either Error SortId
 -- findFuncSortId e l aSids rSid = funcsort <$> findFuncId e (l, aSids, rSid)
 --
--- TODO: for now we'd have to expect an empty list here. If we want to do a
+-- TODO: for now we'd have to expect a singleton list here. If we want to do a
 -- more complex type inference, this functions and @inferExpType@ will have to
 -- return a list of SortId, which are the sort id's of the nullary functions
 -- that match that location.
