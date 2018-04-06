@@ -15,21 +15,22 @@ import           TorXakis.Parser.Data
 
 -- | Generate a map from the locations of variable references to the declarations of
 -- those variables.
-generateVarDecls :: [PredefName] -- Predefined functions
+generateVarDecls :: Map Text [FuncDefInfo] -- ^ Predefined functions
                  -> [FuncDecl]
-                 -> CompilerM (Map (Loc VarRefE) (Loc VarDeclE :| Loc FuncDeclE :| PredefName))
+                 -> CompilerM (Map (Loc VarRefE) (Loc VarDeclE :| [FuncDefInfo]))
 generateVarDecls ps fs = Map.fromList . concat <$>
     traverse (generateVarDeclsForFD fdMap) fs
     where
-      -- | Map of function names to the location where they are defined. The
-      -- function defined by the user have precedence over the predefined functions.
-      fdMap :: Map Text (Loc FuncDeclE :| PredefName)
+      -- | Map of function names to the locations where they are defined.
+      fdMap :: Map Text [FuncDefInfo]
       fdMap =
           -- Note the union is left biased, so functions defined by the user
-          -- will have precedence over predefined functions.
-          Map.fromList (zip (funcName <$> fs) (Left . getLoc <$> fs))
-          `Map.union`
-          Map.fromList (zip (predefName <$> ps) (Right <$> ps))
+          -- will have precedence over predefined functions.          
+          Map.fromList (zip (funcName <$> fs) (return . FDefLoc . getLoc <$> fs))
+          `union`
+          ps
+          where
+            union = Map.unionWith (++)
 
 -- | Map a variable reference to a variable declaration, for a function declaration.
 --
@@ -39,9 +40,9 @@ generateVarDecls ps fs = Map.fromList . concat <$>
 -- length of the list returned by this function.
 --
 -- This ensures that the mapping returned is complete.
-generateVarDeclsForFD :: Map Text (Loc FuncDeclE :| PredefName) -- ^ Existing function declarations.
+generateVarDeclsForFD :: Map Text [FuncDefInfo] -- ^ Existing function declarations.
                       -> FuncDecl
-                      -> CompilerM [(Loc VarRefE, Loc VarDeclE :| Loc FuncDeclE :| PredefName)]
+                      -> CompilerM [(Loc VarRefE, Loc VarDeclE :| [FuncDefInfo])]
 generateVarDeclsForFD fdMap f = varDeclsFromExpDecl (mkVdMap (funcParams f)) (funcBody f)
     where
       mkVdMap :: (IsVariable v, HasLoc v VarDeclE)
@@ -50,7 +51,7 @@ generateVarDeclsForFD fdMap f = varDeclsFromExpDecl (mkVdMap (funcParams f)) (fu
           Map.fromList $ zip (varName <$> vs) (getLoc <$> vs)
       varDeclsFromExpDecl :: Map Text (Loc VarDeclE)
                           -> ExpDecl
-                          -> CompilerM [(Loc VarRefE, Loc VarDeclE :| Loc FuncDeclE :| PredefName)]
+                          -> CompilerM [(Loc VarRefE, Loc VarDeclE :| [FuncDefInfo])]
       varDeclsFromExpDecl vdMap ex = case expChild ex of
           VarRef n rLoc -> do
               dLoc <- fmap Left (lookupM (toText n) vdMap "")
@@ -70,7 +71,7 @@ generateVarDeclsForFD fdMap f = varDeclsFromExpDecl (mkVdMap (funcParams f)) (fu
           If ex0 ex1 ex2 ->
               concat <$> traverse (varDeclsFromExpDecl vdMap) [ex0, ex1, ex2]
           Fappl n rLoc exs -> do
-              dLoc <- lookupM (toText n) fdMap ("function declaration for " <> toText n)
+              dLocs   <- lookupM (toText n) fdMap ("function declaration for " <> toText n)
               -- TODO: factor out the duplication w.r.t. `If`
               vrVDExs <- concat <$> traverse (varDeclsFromExpDecl vdMap) exs
-              return $ (rLoc, Right dLoc) : vrVDExs 
+              return $ (rLoc, Right dLocs) : vrVDExs 

@@ -8,6 +8,7 @@ import qualified Data.Set                            as Set
 
 import           FuncDef                             (FuncDef)
 import           FuncId                              (FuncId)
+import           SortOf                              (sortOf)
 import           ValExpr                             (ValExpr, cstrAnd,
                                                       cstrConst, cstrFunc,
                                                       cstrITE, cstrVar, subst)
@@ -21,7 +22,9 @@ import           TorXakis.Parser.Data
 -- | Make a 'ValExpr' from the given expression-declaration.
 --
 expDeclToValExpr :: (HasVarDecls e, HasVarIds e, HasFuncIds e, HasFuncDefs e')
-                 => e -> e' -> ExpDecl -> Either Error (ValExpr VarId)
+                 => e -> e'
+                 -> ExpDecl
+                 -> Either Error (ValExpr VarId)
 expDeclToValExpr e e' ex = case expChild ex of
     VarRef _ l -> do
         vLocfLoc <- findVarDecl e l
@@ -29,9 +32,9 @@ expDeclToValExpr e e' ex = case expChild ex of
             Left vLoc -> do
                 vId   <- findVarId e vLoc
                 return $ cstrVar vId
-            Right fLoc -> do
-                fId <- findFuncId e fLoc
-                -- TODO: check that the function with id 'fId' takes no arguments!
+            Right fdis -> do
+                fdi <- determineF e fdis [] Nothing
+                fId <- findFuncId e fdi
                 return $ cstrFunc (getFuncDefT e') fId []
     ConstLit c ->
         return $ cstrConst (constToConstDef c)
@@ -78,7 +81,8 @@ expDeclToValExpr e e' ex = case expChild ex of
         --
         -- BUT this requires that we use the operator 'op' to lookup the
         -- 'FuncId' in 'e'. So we need to make sure that is is present.
-        lfd  <- findFuncDecl e l
-        fId  <- findFuncId e lfd
         vexs <- traverse (expDeclToValExpr e e') exs
+        fdis <- findFuncDecl e l
+        fdi  <- determineF e fdis (sortOf <$> vexs) Nothing
+        fId  <- findFuncId e fdi
         return $ cstrFunc (getFuncDefT e') fId vexs

@@ -33,6 +33,13 @@ data ErrorLoc
 class HasErrorLoc l where
     getErrorLoc :: l -> ErrorLoc
 
+-- | TODO: for now we define these ad-hoc instances. Maybe we want to define a
+-- more general mechanism. These instances are coupled to the design decisions
+-- taken at `TorXakis.Compiler.Data`, which shouldn't. Maybe we need to define
+-- a type wrapper, instead of using a tuple.
 instance HasErrorLoc l => HasErrorLoc (Either l b) where
     getErrorLoc (Left l) = getErrorLoc l
     getErrorLoc _        = NoErrorLoc
+
+instance HasErrorLoc l => HasErrorLoc (l, c, d) where
+    getErrorLoc (l, _, _) = getErrorLoc l

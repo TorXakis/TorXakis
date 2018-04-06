@@ -35,9 +35,9 @@ import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Parser.Data
 
 -- | Make a function table.
-compileToFuncTable :: (HasSortIds e, HasCstrIds e)
+adtsToFuncTable :: (HasSortIds e, HasCstrIds e)
                    => e -> [ADTDecl] -> CompilerM (FuncTable VarId)
-compileToFuncTable e ds =
+adtsToFuncTable e ds =
     -- TODO: the `FuncTable` should be replaced by a better one that checks
     -- that there are no double definitions for instance. We could do this
     -- check here for now...
@@ -67,7 +67,7 @@ cstrToHandlers e sId c = do
     cTH  <- cstrToMkCstrHandler e sId c
     iTH  <- cstrToIsCstrHandler e sId c
     fTHs <- imapM (fieldToAccessCstrHandler e sId cId) (cstrFields c)
-    -- Taken from TxsHappy#949:
+    -- Taken from TxsHappy@949:
     astFid <- sortToStringFuncId sId
     asfFid <- sortFromStringFuncId sId
     axtFid <- sortToStringFuncId sId
@@ -145,5 +145,5 @@ funcDeclToFuncTable e f = do
 fBodyToHandler :: (HasFuncIds e, HasFuncDefs e)
                => e -> FuncDecl -> CompilerM (Handler VarId)
 fBodyToHandler e f = do
-    fId  <- findFuncIdM e (Left $ getLoc f)
+    fId  <- findFuncIdForDeclM e (getLoc f)
     return $ cstrFunc (getFuncDefT e) fId

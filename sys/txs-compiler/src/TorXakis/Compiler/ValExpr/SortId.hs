@@ -104,7 +104,7 @@ inferExpType e vdSid ex =
         -- Find the location of the variable reference
         -- If it is a variable, return the sort id of the variable declaration.
         -- If it is a function, return the sort id of the function.
-        (findVarDeclSortId vdSid ||| findFuncSortIdByLoc e) =<< findVarDecl e l
+        (findVarDeclSortId vdSid ||| findFuncSortId e) =<< findVarDecl e l
     ConstLit c ->
         return $ sortIdConst c
     LetExp vs subEx -> do
@@ -133,9 +133,10 @@ inferExpType e vdSid ex =
         return se1
     Fappl _ l exs -> do
         ses <- traverse (inferExpType e vdSid) exs
-        -- TODO: check the return type fo the fnuction.
-        fdl  <- findFuncDecl e l
-        fId  <- findFuncId e fdl
+        -- TODO: check the return type of the function.
+        fdis <- findFuncDecl e l
+        fdi  <- determineF e fdis ses Nothing
+        fId  <- findFuncId e fdi
         when (ses /= funcargs fId)
             (Left Error
              { errorType = TypeMismatch

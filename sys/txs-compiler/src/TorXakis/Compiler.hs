@@ -1,14 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 {-# LANGUAGE ViewPatterns      #-}
 module TorXakis.Compiler where
 
-import           Control.Arrow                     (first, (|||))
+import           Control.Arrow                     (first, second, (|||))
 import           Control.Lens                      (over, (^.), (^..))
 import           Control.Monad.State               (evalStateT, get)
 import           Data.Data.Lens                    (uniplate)
+import           Data.Map.Strict                   (Map)
 import qualified Data.Map.Strict                   as Map
-import           Data.Maybe                        (fromMaybe)
+import           Data.Maybe                        (catMaybes, fromMaybe)
 import qualified Data.Set                          as Set
+import           Data.Text                         (Text)
 
 import           FuncDef                           (FuncDef (FuncDef))
 import           FuncId                            (FuncId (FuncId))
@@ -75,15 +78,18 @@ compileParsedDefs pd = do
     let e1 = e0 { cstrIdT = cMap }
         allFuncs = pd ^. funcs ++ pd ^. consts
     stdFuncIds <- getStdFuncIds
+    cstrFuncIds <- adtsToFuncIds e1 (pd ^. adts)
     -- Construct the variable declarations table.
-    dMap <- generateVarDecls (fst <$> stdFuncIds) allFuncs
+    let predefFuncs = funcDefInfoNamesMap $
+            (fst <$> stdFuncIds) ++ (fst <$> cstrFuncIds)
+    dMap <- generateVarDecls predefFuncs allFuncs
     -- Construct the function declaration to function id table.
-    -- TODO: here it seems wd'd need to generate mappings for the standard operators like "+", "==", etc...
     lFIdMap <- funcDeclsToFuncIds e1 allFuncs
     -- Join `lFIdMap` and  `stdFuncIds`.
     let completeFidMap = Map.fromList $ --
-            fmap (first Left) (Map.toList lFIdMap)
-            ++ fmap (first Right) stdFuncIds
+            fmap (first FDefLoc) (Map.toList lFIdMap)
+            ++ stdFuncIds
+            ++ cstrFuncIds
         e2 = e1 { varDeclT = dMap
                 , funcIdT = completeFidMap }
     -- Infer the types of all variable declarations.
@@ -103,35 +109,43 @@ compileParsedDefs pd = do
 -- | Try to apply a handler to the given function definition (which is described by a pair).
 --
 -- TODO: Return an Either instead of throwing an error.
-simplify' :: FuncTable VarId -> ValExpr VarId -> ValExpr VarId
-simplify' ft ex@(view -> Vfunc (FuncId n _ aSids rSid) vs) =
+simplify' :: FuncTable VarId
+          -> [Text] -- ^ Only simplify these function calls. Once we do not
+                    -- need to be compliant with the old TorXakis compiler we
+                    -- can optimize further.
+          -> ValExpr VarId -> ValExpr VarId
+simplify' ft fns ex@(view -> Vfunc (FuncId n _ aSids rSid) vs) =
     -- TODO: For now make the simplification only if "n" is a predefined
     -- symbol. Once compliance with the current `TorXakis` compiler is not
     -- needed we can remove this constraint and simplify further.
-    if n `elem` Map.keys (toMap (stdFuncTable :: FuncTable VarId))
+    if n `elem` fns
     then fromMaybe (error "Could not apply handler") $ do
         sh <- Map.lookup n (toMap ft)
         h  <- Map.lookup (Signature aSids rSid) sh
-        return $ h (simplify' ft <$> vs)
+        return $ h (simplify' ft fns <$> vs)
     else ex
-simplify' ft (view -> Vite ex0 ex1 ex2) = cstrITE (simplify' ft ex0) (simplify' ft ex1) (simplify' ft ex2)
-simplify' ft x                          = over uniplate (simplify' ft) x
+simplify' ft fns (view -> Vite ex0 ex1 ex2) = cstrITE
+                                             (simplify' ft fns ex0)
+                                             (simplify' ft fns ex1)
+                                             (simplify' ft fns ex2)
+simplify' ft fns x                          = over uniplate (simplify' ft fns) x
 
-simplify :: FuncTable VarId ->  (FuncId, FuncDef VarId) -> (FuncId, FuncDef VarId)
+simplify :: FuncTable VarId -> [Text] -> (FuncId, FuncDef VarId) -> (FuncId, FuncDef VarId)
 -- TODO: return an either instead.
-simplify ft (fId, FuncDef vs ex) = (fId, FuncDef vs (simplify' ft ex))
+simplify ft fns (fId, FuncDef vs ex) = (fId, FuncDef vs (simplify' ft fns ex))
 
 toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
           => FuncTable VarId -> e -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs ft e pd = do
     ad <- adtsToTxsDefs e (pd ^. adts)
     -- Get the function id's of all the constants.
-    cfIds <- traverse (findFuncIdM e . Left) (pd ^.. consts . traverse . loc')
+    cfIds <- traverse (findFuncIdForDeclM e) (pd ^.. consts . traverse . loc')
     let
         -- TODO: we have to remove the constants to comply with what TorXakis generates :/
         funcDefsNoConsts = Map.withoutKeys (getFuncDefT e) (Set.fromList cfIds)
         -- TODO: we have so simplify to comply with what TorXakis generates.
-        funcDefsSimpl = Map.fromList (simplify ft <$> Map.toList funcDefsNoConsts)
+        fn = idefsNames e
+        funcDefsSimpl = Map.fromList (simplify ft fn <$> Map.toList funcDefsNoConsts)
         fd = TxsDefs.empty {
             funcDefs = funcDefsSimpl
             }
@@ -149,3 +163,12 @@ toSigs e pd = do
         `uniqueCombine` fs
         `uniqueCombine` cs
         `uniqueCombine` ss
+
+funcDefInfoNamesMap :: [FuncDefInfo] -> Map Text [FuncDefInfo]
+funcDefInfoNamesMap fdis =
+    groupByName $ catMaybes $ asPair <$> fdis
+    where
+      asPair :: FuncDefInfo -> Maybe (Text, FuncDefInfo)
+      asPair fdi = (, fdi) <$> fdiName fdi
+      groupByName :: [(Text, FuncDefInfo)] -> Map Text [FuncDefInfo]
+      groupByName = Map.fromListWith (++) . fmap (second pure)

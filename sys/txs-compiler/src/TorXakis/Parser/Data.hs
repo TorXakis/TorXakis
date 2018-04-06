@@ -184,7 +184,7 @@ cstrName = nodeNameT
 cstrFields :: CstrDecl -> [FieldDecl]
 cstrFields = child
 
-type FieldDecl = ParseTree FieldE   OfSort
+type FieldDecl = ParseTree FieldE OfSort
 
 mkFieldDecl :: Text -> Loc FieldE -> OfSort -> FieldDecl
 mkFieldDecl n m s = ParseTree (Name n) FieldE m s
