@@ -34,32 +34,25 @@ import           TorXakis.Lib.Session
 -- In case of an 'Action' coming from the world before given action can be put,
 -- given 'Action' will be skipped and received 'Action' will be returned.
 putToW :: TChan Action -> Map ChanId ToWorldMapping -> Action -> IOC Action
-putToW fromWorldCh toWorldMMap act@(Act cs) =
-    do
-        mAct <- lift $ atomically $ tryReadTChan fromWorldCh
+putToW fromWorldCh toWorldMMap act@(Act cs) = lift $
+    do  (toWorldMapping, constants) <- (evaluate . force) getWorldMap
+        toWFunc <- (evaluate . force) (toWorldMapping ^. sendToW)
+        mAct <- atomically $ tryReadTChan fromWorldCh
         case mAct of
             Just sutAct -> return sutAct -- We got an action from the SUT, so we return that.
             Nothing  ->
-                do  actOrWorldMap <- lift (readAct `race` (evaluate . force) getWorldMap)
-                    case actOrWorldMap of
-                        Right (toWorldMapping, constants) -> do
-                            _ <- lift $ forkIO $ do
-                                mAct' <- toWorldMapping ^. sendToW $ constants
-                                traverse_ (atomically . writeTChan fromWorldCh) mAct'
-                            return act
-                        Left sutAct -> return sutAct
-                  where
-                    -- QUESTION: Is the side effect of readTChan in a race condition here?
-                    --           I.e. is it possible to for readAct thread to remove Act
-                    --           from the channel but get killed before finishing successfully?
-                    readAct     = atomically $ readTChan fromWorldCh
-                    getWorldMap =
-                        case Set.toList cs of
-                            [(cId, xs)] -> case Map.lookup cId toWorldMMap of
-                                                Just twm -> (twm, xs)
-                                                Nothing  -> error $ "No mapping to world for ChanId: " ++ fshow cId
-                            _           -> error $ "No (unique) action: " ++ fshow cs
-                            -- TODO: look how to do logging properly in Haskell
+                do  _ <- forkIO $ do
+                        mAct' <- toWFunc constants
+                        traverse_ (atomically . writeTChan fromWorldCh) mAct'
+                    return act
+      where
+        getWorldMap =
+            case Set.toList cs of
+                [(cId, xs)] -> case Map.lookup cId toWorldMMap of
+                                    Just twm -> (twm, xs)
+                                    Nothing  -> error $ "No mapping to world for ChanId: " ++ fshow cId
+                _           -> error $ "No (unique) action: " ++ fshow cs
+                -- TODO: look how to do logging properly in Haskell
 putToW _ _ ActQui = error "Is it OK to put quiescence into world?" -- TODO: handle this properly.
 
 -- | Generic functionality for getting an action from world AKA output of the SUT.
