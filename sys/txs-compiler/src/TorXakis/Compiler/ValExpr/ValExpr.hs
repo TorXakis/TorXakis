@@ -9,24 +9,26 @@ import qualified Data.Set                            as Set
 import qualified Data.Text                           as T
 
 import           FuncDef                             (FuncDef)
-import           FuncId                              (FuncId, funcargs)
+import           FuncId                              (FuncId, funcargs,
+                                                      funcsort)
 import           SortId                              (SortId, sortIdBool)
 import           SortOf                              (sortOf)
 import           ValExpr                             (ValExpr, cstrAnd,
                                                       cstrConst, cstrFunc,
                                                       cstrITE, cstrVar, subst)
-import           VarId                               (VarId)
+import           VarId                               (VarId, varsort)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.ValExpr.ConstDefs
+import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Parser.Data
 
 -- | Make a 'ValExpr' from the given expression-declaration.
 --
 expDeclToValExpr :: (HasVarDecls e, HasVarIds e, HasFuncIds e, HasFuncDefs e')
                  => e -> e'
-                 -> Maybe SortId -- ^ Expected SortId for the expression (if known).
+                 -> SortId -- ^ Expected SortId for the expression.
                  -> ExpDecl
                  -> Either Error (ValExpr VarId)
 expDeclToValExpr e e' eSid ex = case expChild ex of
@@ -35,12 +37,16 @@ expDeclToValExpr e e' eSid ex = case expChild ex of
         case vLocfLoc of
             Left vLoc -> do
                 vId   <- findVarId e vLoc
+                checkSortIds (varsort vId) eSid
                 return $ cstrVar vId
             Right fdis -> do
-                fdi <- determineF e fdis [] eSid
-                fId <- findFuncId e fdi
+                let matchingFdis = determineF e fdis [] (Just eSid)
+                fdi  <- getUniqueElement matchingFdis
+                fId  <- findFuncId e fdi
+                checkSortIds (funcsort fId) eSid
                 return $ cstrFunc (getFuncDefT e') fId []
-    ConstLit c ->
+    ConstLit c -> do
+        checkSortIds (sortIdConst c) eSid
         return $ cstrConst (constToConstDef c)
     LetExp vs subEx -> do
         let
@@ -50,7 +56,7 @@ expDeclToValExpr e e' eSid ex = case expChild ex of
                   letValDeclToMap :: LetVarDecl -> Either Error (Map VarId (ValExpr VarId))
                   letValDeclToMap vd = do
                       vId   <- findVarId e (getLoc vd)
-                      vdExp <- expDeclToValExpr e e' eSid (varDeclExp vd)
+                      vdExp <- expDeclToValExpr e e' (varsort vId) (varDeclExp vd)
                       return $ Map.singleton vId vdExp
             fsM :: Map.Map FuncId (FuncDef VarId)
             fsM = Map.empty
@@ -58,33 +64,36 @@ expDeclToValExpr e e' eSid ex = case expChild ex of
         vsM <- letValDeclsToMaps
         return $ foldr (`subst` fsM) subValExpr vsM
     If ex0 ex1 ex2 -> do
-        ve0 <- expDeclToValExpr e e' (Just sortIdBool) ex0
+        ve0 <- expDeclToValExpr e e' sortIdBool ex0
         ve1 <- expDeclToValExpr e e' eSid ex1
         ve2 <- expDeclToValExpr e e' eSid ex2
         return $ cstrITE (cstrAnd (Set.fromList [ve0])) ve1 ve2
     Fappl _ l exs -> do
         fdis <- findFuncDecl e l
-
-        -- case partitionEithers (tryMkValExpr <$> fdis) of
-        --     (ls, []) -> Left Error
-        --         { errorType = UndefinedRef
-        --         , errorLoc  = getErrorLoc l
-        --         , errorMsg   = "Could not resolve function: " <> T.pack (show ls)}
-        --     (_, [vex]) -> Right vex
-        --     (_, vexs)  -> Left Error
-        --         { errorType = UnresolvedIdentifier
-        --         , errorLoc  = getErrorLoc l
-        --         , errorMsg   = "Function not uniquely resolved: " <> T.pack (show vexs)}
-
-        vexs <- traverse (expDeclToValExpr e e' Nothing) exs
-        fdi  <- determineF e fdis (sortOf <$> vexs) eSid
-        fId  <- findFuncId e fdi
-        return $ cstrFunc (getFuncDefT e') fId vexs
-
-        -- where
-        --   tryMkValExpr :: FuncDefInfo -> Either Error (ValExpr VarId)
-        --   tryMkValExpr fdi = do
-        --       fId  <- findFuncId e fdi
-        --       vexs <- traverse (uncurry $ expDeclToValExpr e e') $
-        --                        zip (Just <$> funcargs fId) exs
-        --       return $ cstrFunc (getFuncDefT e') fId vexs
+        case partitionEithers (tryMkValExpr <$> fdis) of
+            (ls, []) -> Left Error
+                        { errorType = UndefinedRef
+                        , errorLoc  = getErrorLoc l
+                        , errorMsg   = "Could not resolve function: " <> T.pack (show ls)}
+            (_, [vex]) -> Right vex
+            (_, vexs)  -> error $ show Error -- TODO: Change this back to a 'Left'
+                          { errorType = UnresolvedIdentifier
+                          , errorLoc  = getErrorLoc l
+                          , errorMsg   = "Function not uniquely resolved: " <> T.pack (show vexs)
+                          }
+        where
+          tryMkValExpr :: FuncDefInfo -> Either Error (ValExpr VarId)
+          tryMkValExpr fdi = do
+              fId  <- findFuncId e fdi
+              checkSortIds (funcsort fId) eSid
+              if length (funcargs fId) /= length exs
+                  then Left Error
+                       { errorType = UndefinedRef
+                       , errorLoc  = NoErrorLoc
+                       , errorMsg  = "Length of arguments don't match"
+                                     <> T.pack (show fId) <> T.pack (show exs)
+                       }
+                  else do
+                  vexs <- traverse (uncurry $ expDeclToValExpr e e') $
+                                zip (funcargs fId) exs
+                  return $ cstrFunc (getFuncDefT e') fId vexs

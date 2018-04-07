@@ -59,6 +59,6 @@ funcDeclToFuncDef :: (HasSortIds e, HasVarDecls e, HasVarIds e, HasFuncIds e, Ha
 funcDeclToFuncDef e e' f = left (,f) $ do
     fId  <- findFuncIdForDecl e (getLoc f)
     pIds <- traverse (findVarId e . getLoc) (funcParams f)
-    vExp <- expDeclToValExpr e e' (Just $ funcsort fId) (funcBody f)
+    vExp <- expDeclToValExpr e e' (funcsort fId) (funcBody f)
     return (fId, FuncDef pIds vExp)
 

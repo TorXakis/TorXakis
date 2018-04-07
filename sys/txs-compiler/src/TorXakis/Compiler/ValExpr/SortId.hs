@@ -127,9 +127,9 @@ inferExpType e vdSid ex =
         return se1
     Fappl _ l exs -> do
         ses <- traverse (inferExpType e vdSid) exs
-        -- TODO: check the return type of the function.
         fdis <- findFuncDecl e l
-        fdi  <- determineF e fdis ses Nothing
+        let matchingFdis = determineF e fdis ses Nothing
+        fdi  <- getUniqueElement matchingFdis
         fId  <- findFuncId e fdi
         when (ses /= funcargs fId)
             (Left Error
@@ -146,12 +146,12 @@ sortIdConst (BoolConst _)   = sortIdBool
 sortIdConst (IntConst _ )   = sortIdInt
 sortIdConst (StringConst _) = sortIdString
 
-
-
-
-
-
-
-
-
+checkSortIds :: SortId -> SortId -> Either Error ()
+checkSortIds sId0 sId1 =
+    when (sId0 /= sId1) $ Left Error
+    { errorType = TypeMismatch
+    , errorLoc  = NoErrorLoc
+    , errorMsg  = "Sorts do not match "
+                  <> T.pack (show sId0) <> T.pack (show sId1)
+    }
 

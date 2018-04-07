@@ -110,29 +110,61 @@ class HasVarDecls e where
              , errorMsg  = "Could not function declaration."
              }
 
--- | Select the function definition that matches the given arguments and return
+filterByReturnSort :: HasFuncIds e
+                   => e
+                   -> SortId
+                   -> [FuncDefInfo]
+                   -> [FuncDefInfo]
+filterByReturnSort e sId fdis = filter (fidHasReturnSort e sId) fdis
+
+fidHasReturnSort :: HasFuncIds e
+                   => e
+                   -> SortId
+                   -> FuncDefInfo
+                   -> Bool
+fidHasReturnSort e sId fdi = const False ||| id $ do
+    fId <- findFuncId e fdi
+    return $ funcsort fId == sId
+
+
+-- | Get the function definition if the given list is a singleton, return an
+-- error otherwise.
+getUniqueElement :: [FuncDefInfo] -> Either Error FuncDefInfo
+getUniqueElement [fdi] = Right fdi
+getUniqueElement [] = Left Error
+    { errorType = UndefinedRef
+    , errorLoc  = NoErrorLoc
+    , errorMsg  = "Could not find any function definition."
+    }
+getUniqueElement xs = Left Error
+    { errorType = UnresolvedIdentifier
+    , errorLoc  = NoErrorLoc
+    , errorMsg  = "Found multiple function definitions: " <> T.pack (show xs)
+    }
+
+-- | Select the function definitions that matches the given arguments and return
 -- types.
 determineF :: HasFuncIds e
            => e
            -> [FuncDefInfo]
            -> [SortId]
            -> Maybe SortId  -- ^ Return Sort, if known.
-           -> Either Error FuncDefInfo
+           -> [FuncDefInfo]
 determineF e fdis aSids mRSid =
-    fromMaybe (Left err) $ Right <$> find funcMatches fdis
+    filter funcMatches fdis
     where
       funcMatches :: FuncDefInfo -> Bool
       funcMatches fdi = const False ||| id $ do
           fId <- findFuncId e fdi
           return $ funcargs fId == aSids &&
                    fromMaybe True ((funcsort fId ==) <$> mRSid)
-      err = Error
-          { errorType = UndefinedRef
-          , errorLoc  = NoErrorLoc
-          , errorMsg  = "Could not find a function with arguments of type "
-                      <> T.pack (show aSids)
-                      <> maybe "" ((" and return type of " <>) . T.pack . show) mRSid
-          }
+      -- err = Error
+      --     { errorType = UndefinedRef
+      --     , errorLoc  = NoErrorLoc
+      --     , errorMsg  = "Could not find a function with arguments of type "
+      --                 <> T.pack (show aSids)
+      --                 <> maybe "" ((" and return type of " <>) . T.pack . show) mRSid
+      --     }
 
 -- | Information about a function definition. Functions are defined either
 -- explicitly by the user, or by the compiler.

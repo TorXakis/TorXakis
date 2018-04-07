@@ -187,6 +187,11 @@ FUNCDEF stringy() :: String ::=
         fromXml("Hello")
 ENDDEF
 
+FUNCDEF stringyPair() :: String ::=
+    fromXml("Hello") ++ fromXml("World")
+ENDDEF
+
+
 -- TODO: add these test cases as well, depending on which kind of let
 -- expressions we support.
 --
