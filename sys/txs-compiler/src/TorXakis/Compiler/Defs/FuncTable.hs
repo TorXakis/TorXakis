@@ -4,6 +4,7 @@
 
 module TorXakis.Compiler.Defs.FuncTable where
 
+import           Control.Arrow                    (second)
 import           Data.Foldable                    (foldl')
 import           Data.List.Index                  (imapM)
 import           Data.Map                         (Map)
@@ -38,9 +39,6 @@ import           TorXakis.Parser.Data
 adtsToFuncTable :: (HasSortIds e, HasCstrIds e)
                    => e -> [ADTDecl] -> CompilerM (FuncTable VarId)
 adtsToFuncTable e ds =
-    -- TODO: the `FuncTable` should be replaced by a better one that checks
-    -- that there are no double definitions for instance. We could do this
-    -- check here for now...
     FuncTable <$> textToHandler
     where
       textToHandlers :: CompilerM [Map Text (SignHandler VarId)]
@@ -131,7 +129,7 @@ fieldToAccessCstrHandler e sId cId p f = do
 
 funcDeclsToFuncTable :: (HasSortIds e, HasFuncIds e, HasFuncDefs e)
                      => e -> [FuncDecl] -> CompilerM (FuncTable VarId)
-funcDeclsToFuncTable e fs = FuncTable . Map.fromList <$>
+funcDeclsToFuncTable e fs = FuncTable . Map.fromListWith Map.union <$>
     traverse (funcDeclToFuncTable e) fs
 
 funcDeclToFuncTable :: (HasSortIds e, HasFuncIds e, HasFuncDefs e)
