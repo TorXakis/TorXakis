@@ -3,11 +3,14 @@ module TorXakis.Compiler.Error where
 import           Data.Text (Text)
 
 -- | For now we use this simple error type.
-data Error = Error
+data Error
+    = Error
     { errorType :: ErrorType
     , errorLoc  :: ErrorLoc
     , errorMsg  :: Text
-    } deriving (Eq, Show)
+    }
+    | Errors [Error]
+    deriving (Eq, Show)
 
 data ErrorType
     = ParseError
@@ -16,6 +19,7 @@ data ErrorType
     | UndefinedType
     | FunctionNotDefined
     | UnresolvedIdentifier
+    | MultipleDefinitions
     deriving (Eq, Show)
 
 data Decl

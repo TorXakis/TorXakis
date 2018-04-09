@@ -14,7 +14,7 @@ import qualified Data.Set                          as Set
 import           Data.Text                         (Text)
 
 import           FuncDef                           (FuncDef (FuncDef))
-import           FuncId                            (FuncId (FuncId))
+import           FuncId                            (FuncId (FuncId), name)
 import           FuncTable                         (FuncTable,
                                                     Signature (Signature),
                                                     toMap)
@@ -124,6 +124,7 @@ simplify' ft fns ex@(view -> Vfunc (FuncId n _ aSids rSid) vs) =
         h  <- Map.lookup (Signature aSids rSid) sh
         return $ h (simplify' ft fns <$> vs)
     else ex
+
 simplify' ft fns (view -> Vite ex0 ex1 ex2) = cstrITE
                                              (simplify' ft fns ex0)
                                              (simplify' ft fns ex1)
@@ -143,8 +144,8 @@ toTxsDefs ft e pd = do
     let
         -- TODO: we have to remove the constants to comply with what TorXakis generates :/
         funcDefsNoConsts = Map.withoutKeys (getFuncDefT e) (Set.fromList cfIds)
-        -- TODO: we have so simplify to comply with what TorXakis generates.
-        fn = idefsNames e
+        -- TODO: we have to simplify to comply with what TorXakis generates.
+        fn = idefsNames e ++ fmap name cfIds
         funcDefsSimpl = Map.fromList (simplify ft fn <$> Map.toList funcDefsNoConsts)
         fd = TxsDefs.empty {
             funcDefs = funcDefsSimpl

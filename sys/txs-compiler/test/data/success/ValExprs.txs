@@ -191,6 +191,75 @@ FUNCDEF stringyPair() :: String ::=
     fromXml("Hello") ++ fromXml("World")
 ENDDEF
 
+FUNCDEF foo() :: Int ::=
+   0
+ENDDEF
+
+FUNCDEF foo() :: String ::=
+   "bar"
+ENDDEF
+
+CONSTDEF
+    xx :: Int ::= 3
+ENDDEF
+
+FUNCDEF f():: Int ::=
+    xx + xx + (LET y = IF gg < 100 THEN gg ELSE xx FI IN 10 * gg NI)
+ENDDEF
+
+FUNCDEF gg() :: Int ::=
+    xx * 10
+ENDDEF
+
+FUNCDEF if10(x :: Bool; y :: Int; z :: Int; w :: Bool) :: Int ::=
+    LET a = IF x THEN 44
+            ELSE fromString("33")
+            FI
+    IN a NI
+ENDDEF
+
+
+FUNCDEF if11(x :: Bool; y :: Int; z :: Int; w :: Bool) :: Int ::=
+    LET t = LET a = IF x THEN 44
+                    ELSE fromString("33")
+                    FI
+            IN a NI
+    IN t + fromString("Boom!") NI
+ENDDEF
+
+FUNCDEF composedOps50(x :: Int; y :: Int; z :: Int) :: Int ::=
+    LET q = IF t() THEN 10 ELSE 0 FI
+    IN q NI
+ENDDEF
+
+FUNCDEF t() :: Bool ::= True ENDDEF
+
+FUNCDEF if12() :: String ::=
+    overloaded("Boom!")
+ENDDEF
+
+FUNCDEF overloaded(x :: Int) :: String ::=
+    "Is an integer!"
+ENDDEF
+
+FUNCDEF overloaded(x :: String) :: String ::=
+    "Is a string!"
+ENDDEF
+
+FUNCDEF if13() :: Int ::=
+    IF fromString("True") \/ False
+    THEN 1 + coerce("Boom!") + fromString("22")
+    ELSE 845
+    FI
+ENDDEF
+
+FUNCDEF coerce(x :: String) :: Int ::=
+    33
+ENDDEF
+
+FUNCDEF coerce(x :: String) :: String ::=
+    x
+ENDDEF
 
 -- TODO: add these test cases as well, depending on which kind of let
 -- expressions we support.

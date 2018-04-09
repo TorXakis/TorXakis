@@ -107,8 +107,8 @@ inferExpTypes e vdSid ex =
     VarRef _ l ->
         -- Find the location of the variable reference
         -- If it is a variable, return the sort id of the variable declaration.
-        -- If it is a function, return the sort id of the function.
-        pure <$> ((findVarDeclSortId vdSid ||| findFuncSortId e) =<< findVarDecl e l)
+        -- If it is a function, return the sort id's of the functions.
+        (fmap pure . findVarDeclSortId vdSid ||| findFuncSortIds e) =<< findVarDecl e l
     ConstLit c ->
         return [sortIdConst c]
     LetExp vs subEx -> do

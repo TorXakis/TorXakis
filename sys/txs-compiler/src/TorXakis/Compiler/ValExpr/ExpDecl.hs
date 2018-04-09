@@ -3,14 +3,17 @@
 {-# LANGUAGE TypeOperators #-}
 module TorXakis.Compiler.ValExpr.ExpDecl where
 
-import           Control.Arrow             ((+++))
+import           Control.Monad.Error.Class (liftEither)
+import           Control.Arrow             ((+++), second)
 import           Control.Monad.Error.Class (catchError)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
 import           Data.Text                 (Text)
 import Data.Semigroup ((<>))
+import           Data.Either               (partitionEithers)
     
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Error
 import           TorXakis.Parser.Data
 
 -- | Generate a map from the locations of variable references to the declarations of
@@ -26,7 +29,7 @@ generateVarDecls ps fs = Map.fromList . concat <$>
       fdMap =
           -- Note the union is left biased, so functions defined by the user
           -- will have precedence over predefined functions.          
-          Map.fromList (zip (funcName <$> fs) (return . FDefLoc . getLoc <$> fs))
+          Map.fromListWith (++) (zip (funcName <$> fs) (return . FDefLoc . getLoc <$> fs))
           `union`
           ps
           where

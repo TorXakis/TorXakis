@@ -91,7 +91,7 @@ expDeclToValExpr e e' eSid ex = case expChild ex of
                        { errorType = UndefinedRef
                        , errorLoc  = NoErrorLoc
                        , errorMsg  = "Length of arguments don't match"
-                                     <> T.pack (show fId) <> T.pack (show exs)
+                                     <> T.pack (show fId)
                        }
                   else do
                   vexs <- traverse (uncurry $ expDeclToValExpr e e') $

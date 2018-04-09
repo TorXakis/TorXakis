@@ -134,7 +134,7 @@ getUniqueElement [fdi] = Right fdi
 getUniqueElement [] = Left Error
     { errorType = UndefinedRef
     , errorLoc  = NoErrorLoc
-    , errorMsg  = "Could not find a matching element."
+    , errorMsg  = "Could not find an element."
     }
 getUniqueElement xs = Left Error
     { errorType = UnresolvedIdentifier
@@ -288,20 +288,9 @@ instance HasFuncIds (IEnv f0 f1 f2 f3 f4 (Map FuncDefInfo FuncId) f6) where
             Just fdi -> findFuncId e fdi
     idefsNames IEnv {funcIdT = fm} = catMaybes $ fdiName <$> Map.keys fm
 
--- findFuncSortId :: HasFuncIds e
---                => e
---                -> Loc FuncDeclE :| [ImplicitFunDef]
---                -> [SortId] -- ^ Actual arguments sort id.
---                -> SortId   -- ^ Actual return type sort id.
---                -> Either Error SortId
--- findFuncSortId e l aSids rSid = funcsort <$> findFuncId e (l, aSids, rSid)
---
--- TODO: for now we'd have to expect a singleton list here. If we want to do a
--- more complex type inference, this functions and @inferExpType@ will have to
--- return a list of SortId, which are the sort id's of the nullary functions
--- that match that location.
-findFuncSortId :: HasFuncIds e => e -> [FuncDefInfo] -> Either Error SortId
-findFuncSortId = undefined
+findFuncSortIds :: HasFuncIds e => e -> [FuncDefInfo] -> Either Error [SortId]
+findFuncSortIds e fdis = fmap funcsort <$> traverse (findFuncId e) fdis
+-- findFuncSortIds  = error "Boom!" -- fmap funcsort <$> traverse (findFuncId e) fdis
 
 instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 f5 (Map FuncId (FuncDef VarId))) where
     findFuncDef IEnv{funcDefT = fm} = findFuncDef (SEnv fm)
