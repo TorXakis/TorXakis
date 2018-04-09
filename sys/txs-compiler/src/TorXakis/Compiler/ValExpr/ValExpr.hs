@@ -76,7 +76,7 @@ expDeclToValExpr e e' eSid ex = case expChild ex of
                         , errorLoc  = getErrorLoc l
                         , errorMsg   = "Could not resolve function: " <> T.pack (show ls)}
             (_, [vex]) -> Right vex
-            (_, vexs)  -> error $ show Error -- TODO: Change this back to a 'Left'
+            (_, vexs)  -> Left Error
                           { errorType = UnresolvedIdentifier
                           , errorLoc  = getErrorLoc l
                           , errorMsg   = "Function not uniquely resolved: " <> T.pack (show vexs)

@@ -6,11 +6,13 @@ import           Control.Arrow             (left, (|||))
 import           Control.Monad             (when)
 import           Control.Monad.Error.Class (liftEither)
 import           Data.Either               (partitionEithers)
+import           Data.List                 (intersect)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
 import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
+import           Data.Traversable          (for)
 import           GHC.Exts                  (fromList)
 
 import           FuncId                    (funcargs, funcsort)
@@ -84,62 +86,73 @@ inferVarDeclType e vdSid vd = left (,vd) $
         sId <- findSortId e sn
         return (getLoc vd, sId)
     Nothing -> do -- If the sort is not declared, we try to infer it from the expression.
-        expSid <- inferExpType e vdSid (varDeclExp vd)
+        expSids <- inferExpTypes e vdSid (varDeclExp vd)
+        expSid <- getUniqueElement expSids
         return (getLoc vd, expSid)
 
-inferExpType :: (HasSortIds e, HasVarDecls e, HasFuncIds e)
+-- | Infer the type of an expression. Due to function overloading an expression
+-- could have multiple types, e.g.:
+--
+-- > fromString("33")
+--
+-- Could be a TorXakis 'Int', 'String', 'Bool', or even an 'ADT'.
+--
+inferExpTypes :: (HasSortIds e, HasVarDecls e, HasFuncIds e)
              => e
              -> SEnv (Map (Loc VarDeclE) SortId)
              -> ExpDecl
-             -> Either Error SortId
-inferExpType e vdSid ex =
+             -> Either Error [SortId]
+inferExpTypes e vdSid ex =
     case expChild ex of
     VarRef _ l ->
         -- Find the location of the variable reference
         -- If it is a variable, return the sort id of the variable declaration.
         -- If it is a function, return the sort id of the function.
-        (findVarDeclSortId vdSid ||| findFuncSortId e) =<< findVarDecl e l
+        pure <$> ((findVarDeclSortId vdSid ||| findFuncSortId e) =<< findVarDecl e l)
     ConstLit c ->
-        return $ sortIdConst c
+        return [sortIdConst c]
     LetExp vs subEx -> do
-        vsSids <- traverse (inferExpType e vdSid) (varDeclExp <$> vs)
+        vsSidss <- traverse (inferExpTypes e vdSid) (varDeclExp <$> vs)
+        -- Here we make sure that each variable expression has a unique type.
+        vsSids <- traverse getUniqueElement vsSidss
         let vdSid' = fromList (zip (getLoc <$> vs) vsSids) <> vdSid
-        inferExpType e vdSid' subEx
+        inferExpTypes e vdSid' subEx
     -- TODO: shouldn't if be also a function? Defined in terms of the Haskell's @if@ operator.
     If e0 e1 e2 -> do
-        [se0, se1, se2] <- traverse (inferExpType e vdSid) [e0, e1, e2]
-        when (se0 /= sortIdBool)
+        [se0s, se1s, se2s] <- traverse (inferExpTypes e vdSid) [e0, e1, e2]
+        when (sortIdBool `notElem` se0s)
             (Left Error
                 { errorType = TypeMismatch
                 , errorLoc  = getErrorLoc e0
-                , errorMsg  = "Guard expression must be a boolean."
-                           <> " Got " <> T.pack (show se0)
+                , errorMsg  = "Guard expression must be a Boolean."
+                           <> " Got " <> T.pack (show se0s)
                 })
-        when (se1 /= se2)
+        let ses = se1s `intersect` se2s
+        when (null ses)
             (Left Error
                 { errorType = TypeMismatch
                 , errorLoc  = getErrorLoc ex
                 , errorMsg  = "The sort of the two IF branches don't match."
-                           <> "(" <> T.pack (show se1)
-                           <>" and " <> T.pack (show se2) <> ")"
+                           <> "(" <> T.pack (show se1s)
+                           <>" and " <> T.pack (show se2s) <> ")"
                 }
              )
-        return se1
-    Fappl _ l exs -> do
-        ses <- traverse (inferExpType e vdSid) exs
-        fdis <- findFuncDecl e l
-        let matchingFdis = determineF e fdis ses Nothing
-        fdi  <- getUniqueElement matchingFdis
-        fId  <- findFuncId e fdi
-        when (ses /= funcargs fId)
-            (Left Error
-             { errorType = TypeMismatch
-             , errorLoc  = getErrorLoc l
-             , errorMsg  = "Function arguments sorts do not match "
-                        <> T.pack (show ses)
-             })
-        return $ funcsort fId
-
+        return ses
+    Fappl _ l exs -> concat <$> do
+        sess <- traverse (inferExpTypes e vdSid) exs
+        for (sequence sess) $ \ses -> do
+              fdis <- findFuncDecl e l
+              let matchingFdis = determineF e fdis ses Nothing
+              for matchingFdis $ \fdi -> do
+                  fId  <- findFuncId e fdi
+                  when (ses /= funcargs fId)
+                      (Left Error
+                       { errorType = TypeMismatch
+                       , errorLoc  = getErrorLoc l
+                       , errorMsg  = "Function arguments sorts do not match "
+                                     <> T.pack (show ses)
+                       })
+                  return $ funcsort fId
 
 sortIdConst :: Const -> SortId
 sortIdConst (BoolConst _)   = sortIdBool

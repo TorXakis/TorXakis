@@ -129,17 +129,17 @@ fidHasReturnSort e sId fdi = const False ||| id $ do
 
 -- | Get the function definition if the given list is a singleton, return an
 -- error otherwise.
-getUniqueElement :: [FuncDefInfo] -> Either Error FuncDefInfo
+getUniqueElement :: Show a => [a] -> Either Error a
 getUniqueElement [fdi] = Right fdi
 getUniqueElement [] = Left Error
     { errorType = UndefinedRef
     , errorLoc  = NoErrorLoc
-    , errorMsg  = "Could not find any function definition."
+    , errorMsg  = "Could not find a matching element."
     }
 getUniqueElement xs = Left Error
     { errorType = UnresolvedIdentifier
     , errorLoc  = NoErrorLoc
-    , errorMsg  = "Found multiple function definitions: " <> T.pack (show xs)
+    , errorMsg  = "Found multiple elements: " <> T.pack (show xs)
     }
 
 -- | Select the function definitions that matches the given arguments and return
