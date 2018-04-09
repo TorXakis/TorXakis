@@ -85,7 +85,6 @@ MODELDEF  Lossy ::=
       CHAN OUT   Value
 
       BEHAVIOUR  lossyQueue  [ Enq, Value, Deq ] ( )
-
 ENDDEF
 
 
