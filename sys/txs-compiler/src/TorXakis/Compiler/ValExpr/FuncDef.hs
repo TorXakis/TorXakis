@@ -34,14 +34,7 @@ funcDeclsToFuncDefs e fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
       gFuncDeclsToFuncDefs e' gs =
           case partitionEithers (funcDeclToFuncDef e e' <$> gs) of
               ([], rs) -> Right $ fromSEnv $ fromList rs <> e'
-              (ls, []) -> Left Error
-                          { errorType = FunctionNotDefined
-                          , errorLoc  = NoErrorLoc -- TODO: we could generate
-                                                   -- multiple errors, giving
-                                                   -- all the locations in 'ls'
-                          , errorMsg  = "Errors: "
-                                        <> T.pack (show (fst <$> ls))
-                          }
+              (ls, []) -> Left $ Errors (fst <$> ls)
               (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> e') (snd <$> ls)
 
 -- | Create a function definition for the given function declaration.

@@ -61,6 +61,7 @@ module TorXakis.Parser.Data
     , mkBoolConstExp
     , mkIntConstExp
     , mkStringConstExp
+    , mkRegexConstExp
     , mkLetExpDecl
     , mkITEExpDecl
     , mkFappl
@@ -252,6 +253,7 @@ data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)
 data Const = BoolConst Bool
            | IntConst Integer
            | StringConst Text
+           | RegexConst Text
     deriving (Eq, Show, Ord)
 
 -- | Extract all the let-variable declarations of an expression.
@@ -317,6 +319,9 @@ mkIntConstExp l i = mkExpDecl l (ConstLit (IntConst i))
 
 mkStringConstExp :: Loc ExpDeclE -> Text -> ExpDecl
 mkStringConstExp l t = mkExpDecl l (ConstLit (StringConst t))
+
+mkRegexConstExp :: Loc ExpDeclE -> Text -> ExpDecl
+mkRegexConstExp l t = mkExpDecl l (ConstLit (RegexConst t))
 
 type FuncDecl  = ParseTree FuncDeclE FuncComps
 

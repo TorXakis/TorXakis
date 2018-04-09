@@ -1,0 +1,258 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+CONSTDEF nProduce  :: Int  ::= 3
+       ; nMeasure  :: Int  ::= 2
+       ; nCorrect  :: Int  ::= 1
+       ; nFlow     :: Int  ::= 3
+ENDDEF
+
+-- ----------------------------------------------------------------------
+-- generic typedefs and isValid functions
+-- ----------------------------------------------------------------------
+
+FUNCDEF isValid_string ( s :: String ) :: Bool ::= True ENDDEF
+FUNCDEF isValid_integer ( i :: Int ) :: Bool ::= True ENDDEF
+
+-- -----------------------------------------------------------------------------------
+-- material typedefs and isValid functions
+-- -----------------------------------------------------------------------------------
+TYPEDEF BatchId ::= C_ProductId { value :: Int } ENDDEF
+FUNCDEF isValid_BatchId ( x :: BatchId ) :: Bool ::= isValid_integer(value(x)) /\ (value(x) >= 0) /\ (value(x) <= 9876543210) ENDDEF
+
+TYPEDEF BatchSize ::= C_BatchSize { value :: Int } ENDDEF
+FUNCDEF isValid_BatchSize ( x :: BatchSize ) :: Bool ::= isValid_integer(value(x)) /\  (0 < value(x)) /\ (value(x) < 72) ENDDEF
+
+TYPEDEF BatchInfo ::= 
+    C_BatchInfo {
+        batchId                    :: BatchId;
+        batchSize                  :: BatchSize
+    }
+ENDDEF
+FUNCDEF isValid_BatchInfo ( x :: BatchInfo ) :: Bool ::= 
+        isValid_BatchId(batchId(x))
+     /\ isValid_BatchSize(batchSize(x))
+ENDDEF
+
+-- -----------------------------------------------------------------------------------
+-- Produce typedefs and isValid functions
+-- -----------------------------------------------------------------------------------
+TYPEDEF RecipeId ::= C_RecipeId { id :: Int } ENDDEF
+FUNCDEF isValid_RecipeId ( x :: RecipeId ) :: Bool ::= isValid_integer(id(x)) ENDDEF
+
+TYPEDEF ProduceCmd ::= 
+    C_ProduceCmd {
+        batchId        :: BatchId;
+        recipeId       :: RecipeId
+    }
+ENDDEF
+FUNCDEF isValid_ProduceCmd ( x :: ProduceCmd ) :: Bool ::= 
+        isValid_BatchId(batchId(x))
+     /\ isValid_RecipeId(recipeId(x))
+ENDDEF
+
+TYPEDEF Time ::= C_Time { value :: Int } ENDDEF
+FUNCDEF isValid_Time ( x :: Time ) :: Bool ::= isValid_integer(value(x)) /\ (value(x)>0) ENDDEF
+
+TYPEDEF ProduceReport ::= 
+    C_ProduceReport {
+        batchInfo             :: BatchInfo;
+        recipeId              :: RecipeId;
+        batchStart            :: Time
+    }
+ENDDEF
+FUNCDEF isValid_ProduceReport ( x :: ProduceReport ) :: Bool ::= 
+        isValid_BatchInfo(batchInfo(x))
+     /\ isValid_RecipeId(recipeId(x))
+     /\ isValid_Time(batchStart(x))
+ENDDEF
+
+TYPEDEF ListProduceCmd ::= NilProduceCmd
+                         | CstrProduceCmd { head :: ProduceCmd
+                                          ; tail :: ListProduceCmd
+                                          }                                 
+ENDDEF
+
+FUNCDEF containsProduceCmd ( x :: ProduceCmd ; l :: ListProduceCmd ) :: Bool ::= 
+    IF isNilProduceCmd(l) 
+    THEN False
+    ELSE (x == head(l)) \/ containsProduceCmd(x,tail(l))
+    FI
+ENDDEF
+
+FUNCDEF removeProduceCmd ( x :: ProduceCmd ; l :: ListProduceCmd ) :: ListProduceCmd ::= 
+    IF isNilProduceCmd(l) 
+    THEN NilProduceCmd             -- thus l
+    ELSE IF (x == head(l)) 
+            THEN tail(l)
+            ELSE CstrProduceCmd(head(l), removeProduceCmd(x,tail(l)))
+         FI
+    FI
+ENDDEF
+
+FUNCDEF containsBatchIdProduceCmd ( b :: BatchId; l :: ListProduceCmd ) :: Bool ::=
+    IF isNilProduceCmd(l) 
+    THEN False
+    ELSE (b == batchId(head(l))) \/ containsBatchIdProduceCmd(b,tail(l))
+    FI
+ENDDEF
+
+TYPEDEF MeasureCmd ::= 
+    C_MeasureCmd {
+        batchId                  :: BatchId
+    }
+ENDDEF
+FUNCDEF isValid_MeasureCmd ( x :: MeasureCmd ) :: Bool ::= 
+        isValid_BatchId(batchId(x))
+ENDDEF
+
+TYPEDEF MeasureReport ::= 
+    C_MeasureReport {
+        batchInfo                  :: BatchInfo
+    }
+ENDDEF
+FUNCDEF isValid_MeasureReport ( x :: MeasureReport ) :: Bool ::= 
+        isValid_BatchInfo(batchInfo(x))
+ENDDEF
+
+TYPEDEF ListMeasureCmd ::= NilMeasureCmd
+                         | CstrMeasureCmd { head :: MeasureCmd
+                                          ; tail :: ListMeasureCmd
+                                          }                                 
+ENDDEF
+
+FUNCDEF containsMeasureCmd ( x :: MeasureCmd ; l :: ListMeasureCmd ) :: Bool ::= 
+    IF isNilMeasureCmd(l) 
+    THEN False
+    ELSE (x == head(l)) \/ containsMeasureCmd(x,tail(l))
+    FI
+ENDDEF
+
+FUNCDEF removeMeasureCmd ( x :: MeasureCmd ; l :: ListMeasureCmd ) :: ListMeasureCmd ::= 
+    IF isNilMeasureCmd(l) 
+    THEN NilMeasureCmd             -- thus l
+    ELSE IF (x == head(l)) 
+            THEN tail(l)
+            ELSE CstrMeasureCmd(head(l), removeMeasureCmd(x,tail(l)))
+         FI
+    FI
+ENDDEF
+
+FUNCDEF containsBatchIdMeasureCmd ( b :: BatchId; l :: ListMeasureCmd ) :: Bool ::=
+    IF isNilMeasureCmd(l) 
+    THEN False
+    ELSE (b == batchId(head(l))) \/ containsBatchIdMeasureCmd(b,tail(l))
+    FI
+ENDDEF
+
+-- -----------------------------------------------------------------------------------
+-- Correct typedefs and isValid functions
+-- -----------------------------------------------------------------------------------
+TYPEDEF CorrectCmd ::= 
+    C_CorrectCmd {
+        batchId                  :: BatchId
+    }
+ENDDEF
+FUNCDEF isValid_CorrectCmd ( x :: CorrectCmd ) :: Bool ::= 
+        isValid_BatchId(batchId(x))
+ENDDEF
+
+-- ------------------------------------------------------------------------------------------------
+-- correct procdefs
+-- ------------------------------------------------------------------------------------------------
+
+TYPEDEF ListProduceReport ::= NilProduceReport
+                             | CstrProduceReport { head :: ProduceReport
+                                                  ; tail :: ListProduceReport
+                                                  }                                 
+ENDDEF
+
+FUNCDEF containsProduceReport ( x :: ProduceReport ; l :: ListProduceReport ) :: Bool ::= 
+    IF isNilProduceReport(l) 
+    THEN False
+    ELSE (x == head(l)) \/ containsProduceReport(x,tail(l))
+    FI
+ENDDEF
+
+FUNCDEF removeProduceReport ( x :: ProduceReport ; l :: ListProduceReport ) :: ListProduceReport ::= 
+    IF isNilProduceReport(l) 
+    THEN NilProduceReport             -- thus l
+    ELSE IF (x == head(l)) 
+            THEN tail(l)
+            ELSE CstrProduceReport(head(l), removeProduceReport(x,tail(l)))
+         FI
+    FI
+ENDDEF
+
+FUNCDEF containsBatchIdProduceReport ( b :: BatchId; l :: ListProduceReport ) :: Bool ::=
+    IF isNilProduceReport(l) 
+    THEN False
+    ELSE (b == batchId(batchInfo(head(l)))) \/ containsBatchIdProduceReport(b,tail(l))
+    FI
+ENDDEF
+
+
+TYPEDEF ListMeasureReport ::= NilMeasureReport
+                            | CstrMeasureReport { head :: MeasureReport
+                                                ; tail :: ListMeasureReport
+                                                }                                 
+ENDDEF
+
+FUNCDEF containsMeasureReport ( x :: MeasureReport ; l :: ListMeasureReport ) :: Bool ::= 
+    IF isNilMeasureReport(l) 
+    THEN False
+    ELSE (x == head(l)) \/ containsMeasureReport(x,tail(l))
+    FI
+ENDDEF
+
+FUNCDEF removeMeasureReport ( x :: MeasureReport ; l :: ListMeasureReport ) :: ListMeasureReport ::= 
+    IF isNilMeasureReport(l) 
+    THEN NilMeasureReport             -- thus l
+    ELSE IF (x == head(l)) 
+            THEN tail(l)
+            ELSE CstrMeasureReport(head(l), removeMeasureReport(x,tail(l)))
+         FI
+    FI
+ENDDEF
+
+FUNCDEF containsBatchIdMeasureReport ( b :: BatchId; l :: ListMeasureReport ) :: Bool ::=
+    IF isNilMeasureReport(l) 
+    THEN False
+    ELSE (b == batchId(batchInfo(head(l)))) \/ containsBatchIdMeasureReport(b,tail(l))
+    FI
+ENDDEF
+
+
+-- -------------------------------------------------------------
+-- material procdefs
+-- --------------------------------------------------------------
+TYPEDEF ListBatchId ::= NilBatchId
+                      | CstrBatchId { head :: BatchId
+                                    ; tail :: ListBatchId
+                                    }                                 
+ENDDEF
+
+FUNCDEF containsBatchId ( b :: BatchId ; l :: ListBatchId ) :: Bool ::= 
+    IF isNilBatchId(l) 
+    THEN False
+    ELSE (b == head(l)) \/ containsBatchId(b,tail(l))
+    FI
+ENDDEF
+
+FUNCDEF removeBatchId ( b :: BatchId ; l :: ListBatchId ) :: ListBatchId ::= 
+    IF isNilBatchId(l) 
+    THEN NilBatchId             -- thus l
+    ELSE IF (b == head(l)) 
+            THEN tail(l)
+            ELSE CstrBatchId(head(l), removeBatchId(b,tail(l)))
+         FI
+    FI
+ENDDEF
+
+CONSTDEF
+      separator       :: String   ::= "@"  
+ENDDEF
+

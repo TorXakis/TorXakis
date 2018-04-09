@@ -247,9 +247,9 @@ FUNCDEF overloaded(x :: String) :: String ::=
 ENDDEF
 
 FUNCDEF if13() :: Int ::=
-    IF fromString("True") \/ False
+    IF LET s = "True"; f = False IN fromString(s) \/ f NI
     THEN 1 + coerce("Boom!") + fromString("22")
-    ELSE 845
+    ELSE 845 + fromString(toString(if13()) ++ "934")
     FI
 ENDDEF
 
@@ -260,6 +260,54 @@ ENDDEF
 FUNCDEF coerce(x :: String) :: String ::=
     x
 ENDDEF
+
+
+FUNCDEF isValid_Person (p :: Person) :: Bool ::=
+       strinre (firstName(p), REGEX ('[A-Z][a-z]*'))
+    /\ strinre (lastName(p), REGEX ('[A-Z][a-z]*'))
+    /\ (1 <= dayOfBirth(p)) /\ (dayOfBirth(p) <= 31)
+    /\ (1 <= monthOfBirth(p)) /\ (monthOfBirth(p) <= 12)
+ENDDEF
+
+TYPEDEF Person ::=
+    Person { sex :: Sex 
+           ; firstName, lastName :: String
+           ; dayOfBirth, monthOfBirth :: Int
+           }
+ENDDEF
+
+TYPEDEF Sex ::= Male | Female ENDDEF
+
+FUNCDEF isValid_string ( x :: String ) :: Bool ::= strinre(x,REGEX('[A-Z]*')) ENDDEF  -- newline not allowed in socket communication, non printable characters are problematic 
+
+
+TYPEDEF  JobData  ::=  JobData  {  jobId          :: Int
+                                ;  jobDescription :: String
+                                ;  x, y           :: Int
+                                }
+ENDDEF
+
+
+FUNCDEF  isValidJob ( jobdata :: JobData )  :: Bool ::=
+           ( jobId(jobdata) > 0 ) /\ ( ( jobId(jobdata) % 2 ) == 0 )
+       /\  strinre ( jobDescription(jobdata), REGEX('[A-Z]{2}[0-9][a-z]*') )
+       /\  ( x(jobdata) > 0 )
+       /\  ( y(jobdata) > 0 )
+ENDDEF
+
+-- | TODO: both compilers cannot handle this. Do we want to handle this case as
+-- | well? It is going to be very challenging.
+--
+-- FUNCDEF if10(x :: Bool; y :: Int; z :: Int; w :: Bool) :: String ::=
+--     LET a = IF x THEN fromString("33")
+--             ELSE fromString("33")
+--             FI;
+--         b = IF x THEN "Foo"
+--             ELSE fromString("33")
+--             FI
+--     IN a ++ b NI
+-- ENDDEF
+
 
 -- TODO: add these test cases as well, depending on which kind of let
 -- expressions we support.

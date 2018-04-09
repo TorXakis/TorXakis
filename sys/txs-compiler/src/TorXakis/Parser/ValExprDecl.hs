@@ -2,13 +2,15 @@
 
 module TorXakis.Parser.ValExprDecl where
 
+import           Data.Char                (isPrint)
 import           Data.Text                (Text)
 import qualified Data.Text                as T
-import           Text.Parsec              (many1, notFollowedBy, oneOf,
-                                           optionMaybe, sepBy, try, (<?>),
-                                           (<|>))
+import           Text.Parsec              (many, many1, notFollowedBy, oneOf,
+                                           optionMaybe, satisfy, sepBy, try,
+                                           (<?>), (<|>))
 
-import           Text.Parsec.Expr         (Assoc (AssocLeft), Operator (Infix),
+import           Text.Parsec.Expr         (Assoc (AssocLeft),
+                                           Operator (Infix, Prefix),
                                            buildExpressionParser)
 import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
@@ -16,29 +18,37 @@ import           TorXakis.Parser.TypeDefs
 
 -- | Compound value expressions parser.
 --
--- TODO: Consider using https://www.stackage.org/haddock/lts-11.3/parsec-3.1.13.0/Text-Parsec-Expr.html#v:buildExpressionParser.
---
 valExpP :: TxsParser ExpDecl
 valExpP =  buildExpressionParser table termP
        <?> "Value expression"
     where
-      table = [[Infix f AssocLeft]]
-      f = do
+      table = [ [Prefix uop]
+              , [Infix bop AssocLeft]
+              ]
+      uop = do
+          le  <- mkLoc
+          lr  <- mkLoc
+          opN <- txsBopSymbolP
+          return $ \ex0 -> mkFappl le lr opN [ex0]
+      bop = do
           le  <- mkLoc
           lr  <- mkLoc
           opN <- txsBopSymbolP
           return $ \ex0 ex1 -> (mkFappl le lr opN [ex0, ex1])
 
+
 -- | Terms of the TorXakis value expressions.
 termP :: TxsParser ExpDecl
 termP = txsSymbol "(" *> ( valExpP <* txsSymbol ")")
-    <|> txsFapplP
-    <|> letExpP
-    <|> txsITEP
-    <|> mkVarExp         <$> mkLoc <*> lcIdentifier
+    <|> try (mkRegexConstExp  <$> mkLoc <*> txsRegexP)
+    <|> try letExpP
+    <|> try txsITEP
+    <|> try txsFapplP
     <|> mkBoolConstExp   <$> mkLoc <*> txsBoolP
     <|> mkIntConstExp    <$> mkLoc <*> txsIntP
     <|> mkStringConstExp <$> mkLoc <*> txsStringP
+    <|> mkVarExp         <$> mkLoc <*> (lcIdentifier <|> ucIdentifier "")
+
 
 letExpP :: TxsParser ExpDecl
 letExpP = do
@@ -65,6 +75,16 @@ letVarDeclP = do
 txsBoolP :: TxsParser Bool
 txsBoolP =  (txsSymbol "True" >> return True)
         <|> (txsSymbol "False" >> return False)
+
+txsRegexP :: TxsParser Text
+txsRegexP = do
+    txsSymbol "REGEX"
+    txsLexeme $ txsSymbol "('"
+    res <- T.pack <$> many (satisfy regexChar)
+    txsLexeme $ txsSymbol "')"
+    return res
+    where
+      regexChar c = (isPrint c && c /= '\'') || c == ' '
 
 txsITEP :: TxsParser ExpDecl
 txsITEP = do
@@ -104,7 +124,7 @@ txsFapplP :: TxsParser ExpDecl
 txsFapplP = do
     le <- mkLoc
     lr <- mkLoc
-    fN <- try (lcIdentifier <* txsSymbol "(")
+    fN <- try ((lcIdentifier <|> ucIdentifier "") <* txsSymbol "(")
     exs <- valExpP `sepBy` txsSymbol ","
     txsSymbol ")"
     return $ mkFappl le lr fN exs

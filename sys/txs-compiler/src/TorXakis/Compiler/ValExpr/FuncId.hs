@@ -83,7 +83,7 @@ signatureToFuncId n (Signature aSids rSid) = do
     fId  <- getNextId
     return (IDefUid n fId, FuncId n (Id fId) aSids rSid)
 
--- | Create the function id's that the ADT implicitly define.
+-- | Create the function id's that the ADT implicitly defines.
 adtsToFuncIds :: (HasSortIds e)
               => e -> [ADTDecl] -> CompilerM [(FuncDefInfo, FuncId)]
 adtsToFuncIds e ds = concat <$> traverse (adtToFuncIds e) ds
@@ -92,7 +92,32 @@ adtToFuncIds :: (HasSortIds e)
              => e -> ADTDecl -> CompilerM [(FuncDefInfo, FuncId)]
 adtToFuncIds e a = do
     sId <- findSortIdM e (adtName a, nodeLoc a)
-    concat <$> traverse (cstrToFuncIds e sId) (constructors a)
+    cstrFIds <- concat <$> traverse (cstrToFuncIds e sId) (constructors a)
+    adtFIds  <- concat <$> sequence [ eqFdiFid sId
+                                    , neqFdiFid sId
+                                    , toStrFdiFid sId
+                                    , fromStrFdiFid sId
+                                    , toXMLFdiFid sId
+                                    , fromXMLFdiFid sId
+                                    ]
+    return $ cstrFIds ++ adtFIds
+    where
+      eqFdiFid sId =
+          mkPredef eqName [sId, sId] sortIdBool
+      neqFdiFid sId =
+          mkPredef neqName [sId, sId] sortIdBool
+      toStrFdiFid sId =
+          mkPredef toStringName [sId] sortIdString
+      fromStrFdiFid sId =
+          mkPredef fromStringName [sortIdString] sId
+      toXMLFdiFid sId =
+          mkPredef toXmlName [sId] sortIdString
+      fromXMLFdiFid sId =
+          mkPredef fromXmlName [sortIdString] sId
+
+mkPredef :: Text -> [SortId] -> SortId -> CompilerM [(FuncDefInfo, FuncId)]
+mkPredef n aSids rSid =
+    (\i -> [(IDefUid n i, FuncId n (Id i) aSids rSid)]) <$> getNextId
 
 cstrToFuncIds :: (HasSortIds e)
               => e -> SortId -> CstrDecl -> CompilerM [(FuncDefInfo, FuncId)]
@@ -100,12 +125,6 @@ cstrToFuncIds e sId c =
     concat <$> sequence [ mkCstrFdiFid
                         , isCstrFdiFid
                         , cstrAccessFdiFid
-                        , eqFdiFid
-                        , neqFdiFid
-                        , toStrFdiFid
-                        , fromStrFdiFid
-                        , toXMLFdiFid
-                        , fromXMLFdiFid
                         ]
     where
       cn = cstrName c
@@ -128,18 +147,3 @@ cstrToFuncIds e sId c =
                 accSid <- getNextId
                 fSid   <- findSortIdM e (fieldSort f)
                 return (IDefUid accN accSid, FuncId accN (Id accSid) [sId] fSid)
-      eqFdiFid =
-          mkPredef eqName [sId, sId] sortIdBool
-      mkPredef n aSids rSid =
-          (\i -> [(IDefUid n i, FuncId n (Id i) aSids rSid)]) <$> getNextId
-      neqFdiFid =
-          mkPredef neqName [sId, sId] sortIdBool
-      toStrFdiFid =
-          mkPredef toStringName [sId] sortIdString
-      fromStrFdiFid =
-          mkPredef fromStringName [sortIdString] sId
-      toXMLFdiFid =
-          mkPredef toXmlName [sId] sortIdString
-      fromXMLFdiFid =
-          mkPredef fromXmlName [sortIdString] sId
-

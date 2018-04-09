@@ -1,0 +1,33 @@
+TYPEDEF Sex ::= Male | Female ENDDEF
+
+TYPEDEF Person ::=
+    Person { sex :: Sex 
+           ; firstName, lastName :: String
+           ; dayOfBirth, monthOfBirth :: Int
+           }
+ENDDEF
+
+FUNCDEF isValid_Person (p :: Person) :: Bool ::=
+       strinre (firstName(p), REGEX ('[A-Z][a-z]*'))
+    /\ strinre (lastName(p), REGEX ('[A-Z][a-z]*'))
+    /\ (1 <= dayOfBirth(p)) /\ (dayOfBirth(p) <= 31)
+    /\ (1 <= monthOfBirth(p)) /\ (monthOfBirth(p) <= 12)
+ENDDEF
+
+FUNCDEF isLuckyPerson (p :: Person; last :: Sex; n :: Int) :: Bool ::=
+       isLuckyByGender(p, last, n)
+    \/ isLuckyByName(p)
+    \/ isLuckyByBirthday(p)
+ENDDEF
+
+FUNCDEF isLuckyByGender (p :: Person; last :: Sex; n :: Int) :: Bool ::=
+    ( sex(p) <> last ) /\ ( n >= 5 )
+ENDDEF
+
+FUNCDEF isLuckyByName (p :: Person) :: Bool ::=
+    at(firstName(p), 0 ) == at(lastName(p), 0 )
+ENDDEF
+
+FUNCDEF isLuckyByBirthday (p :: Person) :: Bool ::=
+    dayOfBirth(p) == monthOfBirth(p)
+ENDDEF

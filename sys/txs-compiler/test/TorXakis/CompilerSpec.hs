@@ -23,14 +23,20 @@ import           VarId                (VarId)
 import           TorXakis.Compiler    (compileFile)
 
 spec :: Spec
-spec =
+spec = do
     describe "Correctly compiles the incremental" $ do
         fs <- runIO $ find (return True) (extension ==? ".txs")
               ("test" </> "data" </> "success")
-        parallel $ traverse_ testParser fs
-
+        parallel $ traverse_ compareWithCurrent fs
+    describe "Compiles the examples in `examps` folder" $ do
+        fs <- runIO $ find (return True) (extension ==? ".txs")
+              ("test" </> "data" </> "examps")
+        parallel $ traverse_ testCompiler fs
     where
-        testParser fp = it (show fp) $ do
+        testCompiler fp = it (show fp) $ do
+            r <- compileFile fp
+            r `shouldSatisfy` isRight
+        compareWithCurrent fp = it (show fp) $ do
             r <- compileFile fp
             -- First sanity check, the models are successfully compiled.
             r `shouldSatisfy` isRight

@@ -18,7 +18,8 @@ import           GHC.Exts                  (fromList)
 import           FuncId                    (funcargs, funcsort)
 import           Id                        (Id (Id))
 import           SortId                    (SortId (SortId), sortIdBool,
-                                            sortIdInt, sortIdString)
+                                            sortIdInt, sortIdRegex,
+                                            sortIdString)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
@@ -158,6 +159,7 @@ sortIdConst :: Const -> SortId
 sortIdConst (BoolConst _)   = sortIdBool
 sortIdConst (IntConst _ )   = sortIdInt
 sortIdConst (StringConst _) = sortIdString
+sortIdConst (RegexConst _)  = sortIdRegex
 
 checkSortIds :: SortId -> SortId -> Either Error ()
 checkSortIds sId0 sId1 =

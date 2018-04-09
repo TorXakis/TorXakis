@@ -1,0 +1,538 @@
+TYPEDEF Conditional_Int ::=  CAbsent_Int | CPresent_Int { value :: Int } ENDDEF
+TYPEDEF Double ::= CINF | CNINF | CNaN | CVal { val :: Int } ENDDEF
+
+FUNCDEF isValid_integer ( x :: Int ) :: Bool ::= True ENDDEF
+FUNCDEF isValid_positiveInteger ( x :: Int ) :: Bool ::= (x > 0) ENDDEF
+FUNCDEF isValid_nonPositiveInteger ( x :: Int ) :: Bool ::= (x <= 0) ENDDEF
+FUNCDEF isValid_negativeInteger ( x :: Int ) :: Bool ::= (x < 0) ENDDEF
+FUNCDEF isValid_nonNegativeInteger ( x :: Int ) :: Bool ::= (x >= 0) ENDDEF
+FUNCDEF isValid_long ( x :: Int ) :: Bool ::= (-9223372036854775808 <= x) /\ (x <= 9223372036854775807) ENDDEF
+FUNCDEF isValid_unsignedLong ( x :: Int ) :: Bool ::= (0 <= x) /\ (x <= 18446744073709551615) ENDDEF
+FUNCDEF isValid_int ( x :: Int ) :: Bool ::= (-2147483648 <= x) /\ (x <= 2147483647) ENDDEF
+FUNCDEF isValid_unsignedInt ( x :: Int ) :: Bool ::= (0 <= x) /\ (x <= 4294967295) ENDDEF
+FUNCDEF isValid_short ( x :: Int ) :: Bool ::= (-32768 <= x) /\ (x <= 32767 ) ENDDEF
+FUNCDEF isValid_unsignedShort ( x :: Int ) :: Bool ::= (0 <= x) /\ (x <= 65535) ENDDEF
+FUNCDEF isValid_byte ( x :: Int ) :: Bool ::= (-128 <= x) /\ (x <= 127 ) ENDDEF
+FUNCDEF isValid_unsignedByte ( x :: Int ) :: Bool ::= (0 <= x) /\ (x <= 255) ENDDEF
+FUNCDEF isValid_string ( x :: String ) :: Bool ::= strinre(x, REGEX('[\t\r\n -^?]*')) ENDDEF
+FUNCDEF isValid_date ( x :: Int ) :: Bool ::= True ENDDEF
+FUNCDEF isValid_dateTime ( x :: Int ) :: Bool ::= True ENDDEF
+FUNCDEF isValid_decimal  ( x :: Int ) :: Bool ::= True ENDDEF
+FUNCDEF isValid_double ( x :: Double ) :: Bool ::= IF isCVal (x) THEN (-256 <= val(x)) /\ (val(x) <= 255) ELSE True FI ENDDEF
+
+TYPEDEF Conditional_integer ::=  CAbsent_integer | CPresent_integer { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_integer( x :: Conditional_integer ) :: Bool ::= IF isCPresent_integer(x) THEN isValid_integer(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_integer ::= CNil_integer | Cstr_integer { head :: Int; tail :: List_integer } ENDDEF
+FUNCDEF isValidElementsList_integer ( x :: List_integer ) :: Bool ::= IF isCstr_integer(x) THEN isValid_integer(head(x)) /\ isValidElementsList_integer(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_integer ( x :: List_integer ) :: Int ::= IF isCNil_integer(x) THEN 0 ELSE 1 + lengthList_integer(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_integer ( x :: List_integer; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_integer(x) /\ (min <= lengthList_integer(x)) /\ (IF isCPresent_Int(max) THEN lengthList_integer(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_positiveInteger ::=  CAbsent_positiveInteger | CPresent_positiveInteger { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_positiveInteger( x :: Conditional_positiveInteger ) :: Bool ::= IF isCPresent_positiveInteger(x) THEN isValid_positiveInteger(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_positiveInteger ::= CNil_positiveInteger | Cstr_positiveInteger { head :: Int; tail :: List_positiveInteger } ENDDEF
+FUNCDEF isValidElementsList_positiveInteger ( x :: List_positiveInteger ) :: Bool ::= IF isCstr_positiveInteger(x) THEN isValid_positiveInteger(head(x)) /\ isValidElementsList_positiveInteger(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_positiveInteger ( x :: List_positiveInteger ) :: Int ::= IF isCNil_positiveInteger(x) THEN 0 ELSE 1 + lengthList_positiveInteger(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_positiveInteger ( x :: List_positiveInteger; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_positiveInteger(x) /\ (min <= lengthList_positiveInteger(x)) /\ (IF isCPresent_Int(max) THEN lengthList_positiveInteger(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_nonPositiveInteger ::=  CAbsent_nonPositiveInteger | CPresent_nonPositiveInteger { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_nonPositiveInteger( x :: Conditional_nonPositiveInteger ) :: Bool ::= IF isCPresent_nonPositiveInteger(x) THEN isValid_nonPositiveInteger(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_nonPositiveInteger ::= CNil_nonPositiveInteger | Cstr_nonPositiveInteger { head :: Int; tail :: List_nonPositiveInteger } ENDDEF
+FUNCDEF isValidElementsList_nonPositiveInteger ( x :: List_nonPositiveInteger ) :: Bool ::= IF isCstr_nonPositiveInteger(x) THEN isValid_nonPositiveInteger(head(x)) /\ isValidElementsList_nonPositiveInteger(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_nonPositiveInteger ( x :: List_nonPositiveInteger ) :: Int ::= IF isCNil_nonPositiveInteger(x) THEN 0 ELSE 1 + lengthList_nonPositiveInteger(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_nonPositiveInteger ( x :: List_nonPositiveInteger; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_nonPositiveInteger(x) /\ (min <= lengthList_nonPositiveInteger(x)) /\ (IF isCPresent_Int(max) THEN lengthList_nonPositiveInteger(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_negativeInteger ::=  CAbsent_negativeInteger | CPresent_negativeInteger { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_negativeInteger( x :: Conditional_negativeInteger ) :: Bool ::= IF isCPresent_negativeInteger(x) THEN isValid_negativeInteger(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_negativeInteger ::= CNil_negativeInteger | Cstr_negativeInteger { head :: Int; tail :: List_negativeInteger } ENDDEF
+FUNCDEF isValidElementsList_negativeInteger ( x :: List_negativeInteger ) :: Bool ::= IF isCstr_negativeInteger(x) THEN isValid_negativeInteger(head(x)) /\ isValidElementsList_negativeInteger(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_negativeInteger ( x :: List_negativeInteger ) :: Int ::= IF isCNil_negativeInteger(x) THEN 0 ELSE 1 + lengthList_negativeInteger(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_negativeInteger ( x :: List_negativeInteger; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_negativeInteger(x) /\ (min <= lengthList_negativeInteger(x)) /\ (IF isCPresent_Int(max) THEN lengthList_negativeInteger(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_nonNegativeInteger ::=  CAbsent_nonNegativeInteger | CPresent_nonNegativeInteger { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_nonNegativeInteger( x :: Conditional_nonNegativeInteger ) :: Bool ::= IF isCPresent_nonNegativeInteger(x) THEN isValid_nonNegativeInteger(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_nonNegativeInteger ::= CNil_nonNegativeInteger | Cstr_nonNegativeInteger { head :: Int; tail :: List_nonNegativeInteger } ENDDEF
+FUNCDEF isValidElementsList_nonNegativeInteger ( x :: List_nonNegativeInteger ) :: Bool ::= IF isCstr_nonNegativeInteger(x) THEN isValid_nonNegativeInteger(head(x)) /\ isValidElementsList_nonNegativeInteger(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_nonNegativeInteger ( x :: List_nonNegativeInteger ) :: Int ::= IF isCNil_nonNegativeInteger(x) THEN 0 ELSE 1 + lengthList_nonNegativeInteger(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_nonNegativeInteger ( x :: List_nonNegativeInteger; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_nonNegativeInteger(x) /\ (min <= lengthList_nonNegativeInteger(x)) /\ (IF isCPresent_Int(max) THEN lengthList_nonNegativeInteger(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_long ::=  CAbsent_long | CPresent_long { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_long( x :: Conditional_long ) :: Bool ::= IF isCPresent_long(x) THEN isValid_long(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_long ::= CNil_long | Cstr_long { head :: Int; tail :: List_long } ENDDEF
+FUNCDEF isValidElementsList_long ( x :: List_long ) :: Bool ::= IF isCstr_long(x) THEN isValid_long(head(x)) /\ isValidElementsList_long(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_long ( x :: List_long ) :: Int ::= IF isCNil_long(x) THEN 0 ELSE 1 + lengthList_long(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_long ( x :: List_long; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_long(x) /\ (min <= lengthList_long(x)) /\ (IF isCPresent_Int(max) THEN lengthList_long(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_unsignedLong ::=  CAbsent_unsignedLong | CPresent_unsignedLong { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_unsignedLong( x :: Conditional_unsignedLong ) :: Bool ::= IF isCPresent_unsignedLong(x) THEN isValid_unsignedLong(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_unsignedLong ::= CNil_unsignedLong | Cstr_unsignedLong { head :: Int; tail :: List_unsignedLong } ENDDEF
+FUNCDEF isValidElementsList_unsignedLong ( x :: List_unsignedLong ) :: Bool ::= IF isCstr_unsignedLong(x) THEN isValid_unsignedLong(head(x)) /\ isValidElementsList_unsignedLong(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_unsignedLong ( x :: List_unsignedLong ) :: Int ::= IF isCNil_unsignedLong(x) THEN 0 ELSE 1 + lengthList_unsignedLong(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_unsignedLong ( x :: List_unsignedLong; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_unsignedLong(x) /\ (min <= lengthList_unsignedLong(x)) /\ (IF isCPresent_Int(max) THEN lengthList_unsignedLong(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_int ::=  CAbsent_int | CPresent_int { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_int( x :: Conditional_int ) :: Bool ::= IF isCPresent_int(x) THEN isValid_int(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_int ::= CNil_int | Cstr_int { head :: Int; tail :: List_int } ENDDEF
+FUNCDEF isValidElementsList_int ( x :: List_int ) :: Bool ::= IF isCstr_int(x) THEN isValid_int(head(x)) /\ isValidElementsList_int(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_int ( x :: List_int ) :: Int ::= IF isCNil_int(x) THEN 0 ELSE 1 + lengthList_int(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_int ( x :: List_int; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_int(x) /\ (min <= lengthList_int(x)) /\ (IF isCPresent_Int(max) THEN lengthList_int(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_unsignedInt ::=  CAbsent_unsignedInt | CPresent_unsignedInt { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_unsignedInt( x :: Conditional_unsignedInt ) :: Bool ::= IF isCPresent_unsignedInt(x) THEN isValid_unsignedInt(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_unsignedInt ::= CNil_unsignedInt | Cstr_unsignedInt { head :: Int; tail :: List_unsignedInt } ENDDEF
+FUNCDEF isValidElementsList_unsignedInt ( x :: List_unsignedInt ) :: Bool ::= IF isCstr_unsignedInt(x) THEN isValid_unsignedInt(head(x)) /\ isValidElementsList_unsignedInt(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_unsignedInt ( x :: List_unsignedInt ) :: Int ::= IF isCNil_unsignedInt(x) THEN 0 ELSE 1 + lengthList_unsignedInt(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_unsignedInt ( x :: List_unsignedInt; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_unsignedInt(x) /\ (min <= lengthList_unsignedInt(x)) /\ (IF isCPresent_Int(max) THEN lengthList_unsignedInt(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_short ::=  CAbsent_short | CPresent_short { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_short( x :: Conditional_short ) :: Bool ::= IF isCPresent_short(x) THEN isValid_short(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_short ::= CNil_short | Cstr_short { head :: Int; tail :: List_short } ENDDEF
+FUNCDEF isValidElementsList_short ( x :: List_short ) :: Bool ::= IF isCstr_short(x) THEN isValid_short(head(x)) /\ isValidElementsList_short(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_short ( x :: List_short ) :: Int ::= IF isCNil_short(x) THEN 0 ELSE 1 + lengthList_short(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_short ( x :: List_short; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_short(x) /\ (min <= lengthList_short(x)) /\ (IF isCPresent_Int(max) THEN lengthList_short(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_unsignedShort ::=  CAbsent_unsignedShort | CPresent_unsignedShort { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_unsignedShort( x :: Conditional_unsignedShort ) :: Bool ::= IF isCPresent_unsignedShort(x) THEN isValid_unsignedShort(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_unsignedShort ::= CNil_unsignedShort | Cstr_unsignedShort { head :: Int; tail :: List_unsignedShort } ENDDEF
+FUNCDEF isValidElementsList_unsignedShort ( x :: List_unsignedShort ) :: Bool ::= IF isCstr_unsignedShort(x) THEN isValid_unsignedShort(head(x)) /\ isValidElementsList_unsignedShort(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_unsignedShort ( x :: List_unsignedShort ) :: Int ::= IF isCNil_unsignedShort(x) THEN 0 ELSE 1 + lengthList_unsignedShort(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_unsignedShort ( x :: List_unsignedShort; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_unsignedShort(x) /\ (min <= lengthList_unsignedShort(x)) /\ (IF isCPresent_Int(max) THEN lengthList_unsignedShort(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_byte ::=  CAbsent_byte | CPresent_byte { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_byte( x :: Conditional_byte ) :: Bool ::= IF isCPresent_byte(x) THEN isValid_byte(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_byte ::= CNil_byte | Cstr_byte { head :: Int; tail :: List_byte } ENDDEF
+FUNCDEF isValidElementsList_byte ( x :: List_byte ) :: Bool ::= IF isCstr_byte(x) THEN isValid_byte(head(x)) /\ isValidElementsList_byte(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_byte ( x :: List_byte ) :: Int ::= IF isCNil_byte(x) THEN 0 ELSE 1 + lengthList_byte(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_byte ( x :: List_byte; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_byte(x) /\ (min <= lengthList_byte(x)) /\ (IF isCPresent_Int(max) THEN lengthList_byte(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_unsignedByte ::=  CAbsent_unsignedByte | CPresent_unsignedByte { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_unsignedByte( x :: Conditional_unsignedByte ) :: Bool ::= IF isCPresent_unsignedByte(x) THEN isValid_unsignedByte(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_unsignedByte ::= CNil_unsignedByte | Cstr_unsignedByte { head :: Int; tail :: List_unsignedByte } ENDDEF
+FUNCDEF isValidElementsList_unsignedByte ( x :: List_unsignedByte ) :: Bool ::= IF isCstr_unsignedByte(x) THEN isValid_unsignedByte(head(x)) /\ isValidElementsList_unsignedByte(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_unsignedByte ( x :: List_unsignedByte ) :: Int ::= IF isCNil_unsignedByte(x) THEN 0 ELSE 1 + lengthList_unsignedByte(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_unsignedByte ( x :: List_unsignedByte; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_unsignedByte(x) /\ (min <= lengthList_unsignedByte(x)) /\ (IF isCPresent_Int(max) THEN lengthList_unsignedByte(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_string ::=  CAbsent_string | CPresent_string { value :: String } ENDDEF
+FUNCDEF isValid_Conditional_string( x :: Conditional_string ) :: Bool ::= IF isCPresent_string(x) THEN isValid_string(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_string ::= CNil_string | Cstr_string { head :: String; tail :: List_string } ENDDEF
+FUNCDEF isValidElementsList_string ( x :: List_string ) :: Bool ::= IF isCstr_string(x) THEN isValid_string(head(x)) /\ isValidElementsList_string(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_string ( x :: List_string ) :: Int ::= IF isCNil_string(x) THEN 0 ELSE 1 + lengthList_string(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_string ( x :: List_string; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_string(x) /\ (min <= lengthList_string(x)) /\ (IF isCPresent_Int(max) THEN lengthList_string(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_date ::=  CAbsent_date | CPresent_date { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_date( x :: Conditional_date ) :: Bool ::= IF isCPresent_date(x) THEN isValid_date(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_date ::= CNil_date | Cstr_date { head :: Int; tail :: List_date } ENDDEF
+FUNCDEF isValidElementsList_date ( x :: List_date ) :: Bool ::= IF isCstr_date(x) THEN isValid_date(head(x)) /\ isValidElementsList_date(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_date ( x :: List_date ) :: Int ::= IF isCNil_date(x) THEN 0 ELSE 1 + lengthList_date(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_date ( x :: List_date; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_date(x) /\ (min <= lengthList_date(x)) /\ (IF isCPresent_Int(max) THEN lengthList_date(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_dateTime ::=  CAbsent_dateTime | CPresent_dateTime { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_dateTime( x :: Conditional_dateTime ) :: Bool ::= IF isCPresent_dateTime(x) THEN isValid_dateTime(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_dateTime ::= CNil_dateTime | Cstr_dateTime { head :: Int; tail :: List_dateTime } ENDDEF
+FUNCDEF isValidElementsList_dateTime ( x :: List_dateTime ) :: Bool ::= IF isCstr_dateTime(x) THEN isValid_dateTime(head(x)) /\ isValidElementsList_dateTime(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_dateTime ( x :: List_dateTime ) :: Int ::= IF isCNil_dateTime(x) THEN 0 ELSE 1 + lengthList_dateTime(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_dateTime ( x :: List_dateTime; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_dateTime(x) /\ (min <= lengthList_dateTime(x)) /\ (IF isCPresent_Int(max) THEN lengthList_dateTime(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_decimal ::=  CAbsent_decimal | CPresent_decimal { value :: Int } ENDDEF
+FUNCDEF isValid_Conditional_decimal( x :: Conditional_decimal ) :: Bool ::= IF isCPresent_decimal(x) THEN isValid_decimal(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_decimal ::= CNil_decimal | Cstr_decimal { head :: Int; tail :: List_decimal } ENDDEF
+FUNCDEF isValidElementsList_decimal ( x :: List_decimal ) :: Bool ::= IF isCstr_decimal(x) THEN isValid_decimal(head(x)) /\ isValidElementsList_decimal(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_decimal ( x :: List_decimal ) :: Int ::= IF isCNil_decimal(x) THEN 0 ELSE 1 + lengthList_decimal(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_decimal ( x :: List_decimal; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_decimal(x) /\ (min <= lengthList_decimal(x)) /\ (IF isCPresent_Int(max) THEN lengthList_decimal(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF Conditional_double ::=  CAbsent_double | CPresent_double { value :: Double } ENDDEF
+FUNCDEF isValid_Conditional_double( x :: Conditional_double ) :: Bool ::= IF isCPresent_double(x) THEN isValid_double(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_double ::= CNil_double | Cstr_double { head :: Double; tail :: List_double } ENDDEF
+FUNCDEF isValidElementsList_double ( x :: List_double ) :: Bool ::= IF isCstr_double(x) THEN isValid_double(head(x)) /\ isValidElementsList_double(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_double ( x :: List_double ) :: Int ::= IF isCNil_double(x) THEN 0 ELSE 1 + lengthList_double(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_double ( x :: List_double; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_double(x) /\ (min <= lengthList_double(x)) /\ (IF isCPresent_Int(max) THEN lengthList_double(x) <= value(max) ELSE True FI) ENDDEF
+
+TYPEDEF AT_2580 ::= C_AT_2580 { v_room :: List_T_roomType } ENDDEF
+FUNCDEF isValid_AT_2580 ( t :: AT_2580 ) :: Bool ::= 
+       isValid_List_T_roomType(v_room(t), 0, CAbsent_Int)
+    /\ allUnique(speciesInRooms(v_room(t)))
+ENDDEF
+TYPEDEF T_loadType ::= C_T_loadType { base0 :: AT_2580 } ENDDEF
+FUNCDEF isValid_T_loadType ( t :: T_loadType ) :: Bool ::= isValid_AT_2580(base0(t)) ENDDEF
+TYPEDEF Conditional_T_loadType ::=  CAbsent_T_loadType | CPresent_T_loadType { value :: T_loadType } ENDDEF
+FUNCDEF isValid_Conditional_T_loadType( x :: Conditional_T_loadType ) :: Bool ::= IF isCPresent_T_loadType(x) THEN isValid_T_loadType(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_T_loadType ::= CNil_T_loadType | Cstr_T_loadType { head :: T_loadType; tail :: List_T_loadType } ENDDEF
+FUNCDEF isValidElementsList_T_loadType ( x :: List_T_loadType ) :: Bool ::= IF isCstr_T_loadType(x) THEN isValid_T_loadType(head(x)) /\ isValidElementsList_T_loadType(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_T_loadType ( x :: List_T_loadType ) :: Int ::= IF isCNil_T_loadType(x) THEN 0 ELSE 1 + lengthList_T_loadType(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_T_loadType ( x :: List_T_loadType; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_T_loadType(x) /\ (min <= lengthList_T_loadType(x)) /\ (IF isCPresent_Int(max) THEN lengthList_T_loadType(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF AT_2582 ::= C_AT_2582 { a_load :: T_loadType; a_maxReproductionAge :: T_maxReproductionAgeType; a_loadingCapacity :: Int } ENDDEF
+FUNCDEF isValid_AT_2582 ( t :: AT_2582 ) :: Bool ::= 
+       isValid_T_loadType(a_load(t))
+    /\ isValid_T_maxReproductionAgeType(a_maxReproductionAge(t))
+    /\ isValid_positiveInteger(a_loadingCapacity(t))
+    /\ definedAnimals ( v_room(base0(a_load(t))), v_animal_species(base0(a_maxReproductionAge(t))) )
+    /\ allAnimalsCanReproduce ( v_room(base0(a_load(t))), v_animal_species(base0(a_maxReproductionAge(t))) )
+    /\ (totalWeight ( v_room(base0(a_load(t))) ) <= a_loadingCapacity(t))
+    -- <pattern>                                              (2)
+    --   <rule context="ark:loadingCapacity">
+    --     <report test=". &lt; sum(//ark:weight)">
+    --       Noah, there are too many animals on board.
+    --       The load exceeds the loading capacity of your Ark.
+    --     </report>
+    --   </rule>
+    -- </pattern> 
+ENDDEF
+TYPEDEF AT_2581 ::= C_AT_2581 { base0 :: AT_2582 } ENDDEF
+FUNCDEF isValid_AT_2581 ( t :: AT_2581 ) :: Bool ::= isValid_AT_2582(base0(t)) ENDDEF
+TYPEDEF AT_2584 ::= C_AT_2584 { v_animal_species :: List_T_animal_speciesType } ENDDEF
+FUNCDEF isValid_AT_2584 ( t :: AT_2584 ) :: Bool ::= isValid_List_T_animal_speciesType(v_animal_species(t), 1, CAbsent_Int) ENDDEF
+TYPEDEF T_maxReproductionAgeType ::= C_T_maxReproductionAgeType { base0 :: AT_2584 } ENDDEF
+FUNCDEF isValid_T_maxReproductionAgeType ( t :: T_maxReproductionAgeType ) :: Bool ::= isValid_AT_2584(base0(t)) ENDDEF
+TYPEDEF Conditional_T_maxReproductionAgeType ::=  CAbsent_T_maxReproductionAgeType | CPresent_T_maxReproductionAgeType { value :: T_maxReproductionAgeType } ENDDEF
+FUNCDEF isValid_Conditional_T_maxReproductionAgeType( x :: Conditional_T_maxReproductionAgeType ) :: Bool ::= IF isCPresent_T_maxReproductionAgeType(x) THEN isValid_T_maxReproductionAgeType(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_T_maxReproductionAgeType ::= CNil_T_maxReproductionAgeType | Cstr_T_maxReproductionAgeType { head :: T_maxReproductionAgeType; tail :: List_T_maxReproductionAgeType } ENDDEF
+FUNCDEF isValidElementsList_T_maxReproductionAgeType ( x :: List_T_maxReproductionAgeType ) :: Bool ::= IF isCstr_T_maxReproductionAgeType(x) THEN isValid_T_maxReproductionAgeType(head(x)) /\ isValidElementsList_T_maxReproductionAgeType(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_T_maxReproductionAgeType ( x :: List_T_maxReproductionAgeType ) :: Int ::= IF isCNil_T_maxReproductionAgeType(x) THEN 0 ELSE 1 + lengthList_T_maxReproductionAgeType(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_T_maxReproductionAgeType ( x :: List_T_maxReproductionAgeType; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_T_maxReproductionAgeType(x) /\ (min <= lengthList_T_maxReproductionAgeType(x)) /\ (IF isCPresent_Int(max) THEN lengthList_T_maxReproductionAgeType(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF T_sexType ::= C_T_sexType { base :: String } ENDDEF
+FUNCDEF isValid_T_sexType ( t :: T_sexType ) :: Bool ::= ( (base(t) == "male") \/ (base(t) == "female") ) /\ isValid_string(base(t)) ENDDEF
+TYPEDEF Conditional_T_sexType ::=  CAbsent_T_sexType | CPresent_T_sexType { value :: T_sexType } ENDDEF
+FUNCDEF isValid_Conditional_T_sexType( x :: Conditional_T_sexType ) :: Bool ::= IF isCPresent_T_sexType(x) THEN isValid_T_sexType(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_T_sexType ::= CNil_T_sexType | Cstr_T_sexType { head :: T_sexType; tail :: List_T_sexType } ENDDEF
+FUNCDEF isValidElementsList_T_sexType ( x :: List_T_sexType ) :: Bool ::= IF isCstr_T_sexType(x) THEN isValid_T_sexType(head(x)) /\ isValidElementsList_T_sexType(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_T_sexType ( x :: List_T_sexType ) :: Int ::= IF isCNil_T_sexType(x) THEN 0 ELSE 1 + lengthList_T_sexType(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_T_sexType ( x :: List_T_sexType; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_T_sexType(x) /\ (min <= lengthList_T_sexType(x)) /\ (IF isCPresent_Int(max) THEN lengthList_T_sexType(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF T_carnivoreType ::= C_T_carnivoreType { base :: String } ENDDEF
+FUNCDEF isValid_T_carnivoreType ( t :: T_carnivoreType ) :: Bool ::= ( (base(t) == "yes") \/ (base(t) == "no") ) /\ isValid_string(base(t)) ENDDEF
+TYPEDEF Conditional_T_carnivoreType ::=  CAbsent_T_carnivoreType | CPresent_T_carnivoreType { value :: T_carnivoreType } ENDDEF
+FUNCDEF isValid_Conditional_T_carnivoreType( x :: Conditional_T_carnivoreType ) :: Bool ::= IF isCPresent_T_carnivoreType(x) THEN isValid_T_carnivoreType(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_T_carnivoreType ::= CNil_T_carnivoreType | Cstr_T_carnivoreType { head :: T_carnivoreType; tail :: List_T_carnivoreType } ENDDEF
+FUNCDEF isValidElementsList_T_carnivoreType ( x :: List_T_carnivoreType ) :: Bool ::= IF isCstr_T_carnivoreType(x) THEN isValid_T_carnivoreType(head(x)) /\ isValidElementsList_T_carnivoreType(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_T_carnivoreType ( x :: List_T_carnivoreType ) :: Int ::= IF isCNil_T_carnivoreType(x) THEN 0 ELSE 1 + lengthList_T_carnivoreType(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_T_carnivoreType ( x :: List_T_carnivoreType; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_T_carnivoreType(x) /\ (min <= lengthList_T_carnivoreType(x)) /\ (IF isCPresent_Int(max) THEN lengthList_T_carnivoreType(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF AT_2588 ::= C_AT_2588 { a_species :: String; a_weight :: Int; a_age :: Int } ENDDEF
+FUNCDEF isValid_AT_2588 ( t :: AT_2588 ) :: Bool ::= isValid_string(a_species(t)) /\ isValid_positiveInteger(a_weight(t)) /\ isValid_positiveInteger(a_age(t)) ENDDEF
+TYPEDEF T_animalType ::= C_T_animalType { base0 :: AT_2588; z_sex :: T_sexType; z_carnivore :: T_carnivoreType } ENDDEF
+FUNCDEF isValid_T_animalType ( t :: T_animalType ) :: Bool ::= isValid_AT_2588(base0(t)) /\ isValid_T_sexType(z_sex(t)) /\ isValid_T_carnivoreType(z_carnivore(t)) ENDDEF
+TYPEDEF Conditional_T_animalType ::=  CAbsent_T_animalType | CPresent_T_animalType { value :: T_animalType } ENDDEF
+FUNCDEF isValid_Conditional_T_animalType( x :: Conditional_T_animalType ) :: Bool ::= IF isCPresent_T_animalType(x) THEN isValid_T_animalType(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_T_animalType ::= CNil_T_animalType | Cstr_T_animalType { head :: T_animalType; tail :: List_T_animalType } ENDDEF
+FUNCDEF isValidElementsList_T_animalType ( x :: List_T_animalType ) :: Bool ::= IF isCstr_T_animalType(x) THEN isValid_T_animalType(head(x)) /\ isValidElementsList_T_animalType(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_T_animalType ( x :: List_T_animalType ) :: Int ::= IF isCNil_T_animalType(x) THEN 0 ELSE 1 + lengthList_T_animalType(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_T_animalType ( x :: List_T_animalType; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_T_animalType(x) /\ (min <= lengthList_T_animalType(x)) /\ (IF isCPresent_Int(max) THEN lengthList_T_animalType(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF AT_2590 ::= C_AT_2590 { a_name :: String; a_male :: Int; a_female :: Int } ENDDEF
+FUNCDEF isValid_AT_2590 ( t :: AT_2590 ) :: Bool ::= isValid_string(a_name(t)) /\ isValid_positiveInteger(a_male(t)) /\ isValid_positiveInteger(a_female(t)) ENDDEF
+TYPEDEF T_animal_speciesType ::= C_T_animal_speciesType { base0 :: AT_2590 } ENDDEF
+FUNCDEF isValid_T_animal_speciesType ( t :: T_animal_speciesType ) :: Bool ::= isValid_AT_2590(base0(t)) ENDDEF
+TYPEDEF Conditional_T_animal_speciesType ::=  CAbsent_T_animal_speciesType | CPresent_T_animal_speciesType { value :: T_animal_speciesType } ENDDEF
+FUNCDEF isValid_Conditional_T_animal_speciesType( x :: Conditional_T_animal_speciesType ) :: Bool ::= IF isCPresent_T_animal_speciesType(x) THEN isValid_T_animal_speciesType(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_T_animal_speciesType ::= CNil_T_animal_speciesType | Cstr_T_animal_speciesType { head :: T_animal_speciesType; tail :: List_T_animal_speciesType } ENDDEF
+FUNCDEF isValidElementsList_T_animal_speciesType ( x :: List_T_animal_speciesType ) :: Bool ::= IF isCstr_T_animal_speciesType(x) THEN isValid_T_animal_speciesType(head(x)) /\ isValidElementsList_T_animal_speciesType(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_T_animal_speciesType ( x :: List_T_animal_speciesType ) :: Int ::= IF isCNil_T_animal_speciesType(x) THEN 0 ELSE 1 + lengthList_T_animal_speciesType(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_T_animal_speciesType ( x :: List_T_animal_speciesType; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_T_animal_speciesType(x) /\ (min <= lengthList_T_animal_speciesType(x)) /\ (IF isCPresent_Int(max) THEN lengthList_T_animal_speciesType(x) <= value(max) ELSE True FI) ENDDEF
+TYPEDEF AT_2592 ::= C_AT_2592 { v_animal :: List_T_animalType } ENDDEF
+FUNCDEF isValid_AT_2592 ( t :: AT_2592 ) :: Bool ::=
+    isValid_List_T_animalType(v_animal(t), 0, CAbsent_Int) 
+    
+    -- <pattern>                                                        (9)
+    --   <rule context="ark:room">
+    --     <report test="count(ark:animal) &gt; 6">
+    --       Noah, if you accommodate too many animals in the same room, it could have a
+    --       negative effect on the room community! You should not accommodate
+    --       more than 6 animals in one room.
+    --     </report>
+    --   </rule>
+    -- </pattern> 
+    /\ sameCarnivoreType(v_animal(t))
+    -- requirement "3. Herbivores and carnivores must not be accommodated in the same room." has imho a room context
+    -- <pattern>                                                        (3)
+    --   <rule context="ark:animal[@carnivore='yes']">       
+    --     <report test="parent::*/ark:animal[@carnivore='no']">
+    --       There are carnivores and herbivores in one accommodation/room.
+    --       The animals are not a food source!
+    --     </report> 
+    --   </rule>
+    -- </pattern> 
+    /\ allWeightCompatible (v_animal(t), v_animal(t))
+    -- requirements "4. A carnivorous animal shall be no more than twice as heavy as its roommates." and
+    --              "5. A herbivorous animal shall be no more than ten times as heavy as its roommates."
+    -- have imho a room context
+    /\ allPairSpecies ( species(v_animal(t)), v_animal(t) )
+ENDDEF
+TYPEDEF T_roomType ::= C_T_roomType { base0 :: AT_2592 } ENDDEF
+FUNCDEF isValid_T_roomType ( t :: T_roomType ) :: Bool ::= isValid_AT_2592(base0(t)) ENDDEF
+TYPEDEF Conditional_T_roomType ::=  CAbsent_T_roomType | CPresent_T_roomType { value :: T_roomType } ENDDEF
+FUNCDEF isValid_Conditional_T_roomType( x :: Conditional_T_roomType ) :: Bool ::= IF isCPresent_T_roomType(x) THEN isValid_T_roomType(value(x)) ELSE True FI ENDDEF
+TYPEDEF List_T_roomType ::= CNil_T_roomType | Cstr_T_roomType { head :: T_roomType; tail :: List_T_roomType } ENDDEF
+FUNCDEF isValidElementsList_T_roomType ( x :: List_T_roomType ) :: Bool ::= IF isCstr_T_roomType(x) THEN isValid_T_roomType(head(x)) /\ isValidElementsList_T_roomType(tail(x)) ELSE True FI ENDDEF
+FUNCDEF lengthList_T_roomType ( x :: List_T_roomType ) :: Int ::= IF isCNil_T_roomType(x) THEN 0 ELSE 1 + lengthList_T_roomType(tail(x)) FI ENDDEF
+FUNCDEF isValid_List_T_roomType ( x :: List_T_roomType; min :: Int; max :: Conditional_Int ) :: Bool ::= isValidElementsList_T_roomType(x) /\ (min <= lengthList_T_roomType(x)) /\ (IF isCPresent_Int(max) THEN lengthList_T_roomType(x) <= value(max) ELSE True FI) ENDDEF
+
+FUNCDEF totalWeight ( x :: List_T_animalType ) :: Int ::= IF isCNil_T_animalType(x) THEN 0 ELSE a_weight(base0(head(x))) + totalWeight(tail(x)) FI ENDDEF
+FUNCDEF totalWeight ( x :: List_T_roomType ) :: Int ::= IF isCNil_T_roomType(x) THEN 0 ELSE totalWeight(v_animal(base0(head(x)))) + totalWeight(tail(x)) FI ENDDEF
+
+FUNCDEF definedAnimals ( rooms :: List_T_roomType; animal_species :: List_T_animal_speciesType ) :: Bool ::=
+    IF isCNil_T_roomType(rooms) 
+    THEN True
+    ELSE defined ( v_animal(base0(head(rooms))) , animal_species ) /\ definedAnimals ( tail(rooms), animal_species )
+    FI
+ENDDEF    
+
+FUNCDEF defined ( animals :: List_T_animalType; animal_species :: List_T_animal_speciesType ) :: Bool ::=
+    IF isCNil_T_animalType(animals) 
+    THEN True
+    ELSE contains ( a_species(base0(head(animals))) , animal_species ) /\ defined ( tail(animals), animal_species )
+    FI
+ENDDEF    
+    
+FUNCDEF contains ( speciesName :: String; animal_species :: List_T_animal_speciesType ) :: Bool ::= 
+    IF isCNil_T_animal_speciesType(animal_species) 
+    THEN False 
+    ELSE (speciesName == a_name(base0(head(animal_species)))) \/ contains ( speciesName, tail(animal_species) ) 
+    FI
+ENDDEF
+
+FUNCDEF allAnimalsCanReproduce ( rooms :: List_T_roomType; animal_species :: List_T_animal_speciesType ) :: Bool ::=
+    IF isCNil_T_roomType(rooms) 
+    THEN True
+    ELSE allCanReproduce ( v_animal(base0(head(rooms))) , animal_species ) /\ allAnimalsCanReproduce ( tail(rooms), animal_species )
+    FI
+ENDDEF    
+
+FUNCDEF allCanReproduce ( animals :: List_T_animalType; animal_species :: List_T_animal_speciesType ) :: Bool ::=
+    IF isCNil_T_animalType(animals) 
+    THEN True
+    ELSE canReproduce ( head(animals) , animal_species ) /\ allCanReproduce ( tail(animals), animal_species )
+    FI
+ENDDEF    
+
+FUNCDEF canReproduce ( animal :: T_animalType; animal_species :: List_T_animal_speciesType ) :: Bool ::= 
+    IF isCNil_T_animal_speciesType(animal_species) 
+    THEN False                                          -- UNKNOWN 
+    ELSE 
+        LET species = base0(head(animal_species)) IN
+            IF a_species(base0(animal)) == a_name(species)
+            THEN
+                -- <pattern>                                                   (1)
+                --   <rule context="ark:animal[@sex='male']">                  (1a)
+                --     <report test="number(ark:age) &gt; number(//ark:maxReproductionAge/ark:animal_species[ark:name=current()/ark:species]/ark:male)"> (1b)
+                --       The male is too old, Noah! It is probably no longer able to reproduce.
+                --       You have to enforce the natural selection.
+                --     </report>
+                --   </rule>
+                --   <rule context="ark:animal[@sex='female']">                (1a)
+                --     <report test="number(ark:age) &gt; number(//ark:maxReproductionAge/ark:animal_species[ark:name=current()/ark:species]/ark:female)"> (1b)
+                --       The female is too old, Noah! It is probably no longer able to reproduce.
+                --       You have to enforce the natural selection.
+                --     </report>
+                --   </rule>
+                -- </pattern> 
+                LET age = a_age(base0(animal)) IN
+                    IF base(z_sex(animal)) == "male"
+                    THEN
+                        age <= a_male(species)
+                    ELSE
+                        age <= a_female(species)
+                    FI
+                NI
+            ELSE
+                canReproduce ( animal, tail(animal_species) )
+            FI
+        NI
+    FI
+ENDDEF
+
+FUNCDEF sameCarnivoreType ( animals :: List_T_animalType ) :: Bool ::=
+    IF isCNil_T_animalType(animals) 
+    THEN True
+    ELSE
+        IF isCNil_T_animalType(tail(animals)) 
+        THEN True
+        ELSE
+            (z_carnivore(head(animals)) == z_carnivore(head(tail(animals)))) /\ sameCarnivoreType (tail(animals))
+        FI
+    FI
+ENDDEF    
+
+FUNCDEF allWeightCompatible ( animals :: List_T_animalType; roommates :: List_T_animalType ) :: Bool ::=
+    IF isCNil_T_animalType(animals) 
+    THEN True
+    ELSE weightCompatible( head(animals), roommates ) /\ allWeightCompatible (tail(animals), roommates)
+    FI
+ENDDEF    
+
+FUNCDEF weightCompatible ( animal :: T_animalType; roommates :: List_T_animalType ) :: Bool ::=
+    IF isCNil_T_animalType(roommates) 
+    THEN True
+    ELSE
+        -- <pattern>                                                    
+        --   <rule context="ark:animal[@carnivore='yes']">
+        --     <report test="parent::*/ark:animal/ark:weight &lt; (ark:weight div 2)">     (4)
+        --       Noah, this carnivore is too strong (heavy) for its roommate.
+        --       The carnivore could use it as a food source.
+        --     </report>
+        --   </rule>
+        --   <rule context="ark:animal">
+        --     <report test="parent::*/ark:animal/ark:weight &lt; (ark:weight div 10)">    (5)
+        --       Noah, the animal is too heavy for its roommates! 
+        --       It could trample down one of them.</report>
+        --   </rule>
+        -- </pattern>
+        LET weight = a_weight(base0(animal)); weightRoommate = a_weight(base0(head(roommates))) IN
+            IF base(z_carnivore(animal)) == "yes" 
+            THEN ((weightRoommate* 2) >= weight) /\ weightCompatible ( animal, tail (roommates) )
+            ELSE ((weightRoommate*10) >= weight) /\ weightCompatible ( animal, tail (roommates) )
+            FI
+        NI
+    FI
+ENDDEF
+
+
+TYPEDEF Set_string ::= CSet_string { elements :: List_string } ENDDEF
+
+FUNCDEF toListSet_string ( s :: Set_string ) :: List_string ::= elements(s) ENDDEF
+
+FUNCDEF isEmptySet_string ( s :: Set_string ) :: Bool ::= isCNil_string(elements(s)) ENDDEF
+
+FUNCDEF containsSet_string ( s :: String; set :: Set_string ) :: Bool ::=
+    IF isEmptySet_string(set) 
+    THEN False
+    ELSE 
+        LET list = toListSet_string(set) IN
+            (s == head(list)) \/ containsSet_string ( s, CSet_string(tail(list)) )
+        NI
+    FI
+ENDDEF
+
+FUNCDEF addSet_string ( s :: String; set :: Set_string ) :: Set_string ::=
+    IF containsSet_string ( s, set ) 
+    THEN set
+    ELSE CSet_string(Cstr_string(s, toListSet_string(set)))
+    FI
+ENDDEF
+
+FUNCDEF unionSet_string ( a, b :: Set_string ) :: Set_string ::=
+    IF isEmptySet_string(a) 
+    THEN b
+    ELSE
+        LET list = toListSet_string(a) IN
+            LET elem = head(list) IN
+                addSet_string (elem, unionSet_string(CSet_string(tail(list)), b))
+            NI
+        NI
+    FI
+ENDDEF
+
+FUNCDEF intersectionSet_string ( a, b :: Set_string ) :: Set_string ::=
+    IF isEmptySet_string(a) 
+    THEN a
+    ELSE
+        LET list = toListSet_string(a) IN
+            LET elem = head(list); rest = intersectionSet_string (CSet_string(tail(list)), b) IN
+                IF containsSet_string(elem, b) THEN
+                    addSet_string (elem, rest)
+                ELSE
+                    rest
+                FI
+            NI
+        NI
+    FI
+ENDDEF
+
+TYPEDEF List_Set_string ::= CNil_Set_string | Cstr_Set_string { head :: Set_string; tail :: List_Set_string } ENDDEF
+FUNCDEF unique ( x :: Set_string; list :: List_Set_string ) :: Bool ::=
+    IF isCNil_Set_string(list)
+    THEN True
+    ELSE isEmptySet_string(intersectionSet_string(x, head(list))) /\ unique(x,tail(list))
+    FI
+ENDDEF
+
+FUNCDEF allUnique (list :: List_Set_string ) :: Bool ::=
+    IF isCNil_Set_string(list)
+    THEN True
+    ELSE unique(head(list),tail(list)) /\ allUnique(tail(list))
+    FI
+ENDDEF
+
+FUNCDEF species ( animals :: List_T_animalType ) :: Set_string ::=
+    IF isCNil_T_animalType(animals)
+    THEN CSet_string(CNil_string)
+    ELSE addSet_string(a_species(base0(head(animals))), species(tail(animals)) )
+    FI
+ENDDEF
+
+FUNCDEF speciesInRooms ( rooms :: List_T_roomType ) :: List_Set_string ::=
+    IF isCNil_T_roomType(rooms)
+    THEN CNil_Set_string
+    ELSE Cstr_Set_string ( species(v_animal(base0(head(rooms)))), speciesInRooms(tail(rooms)) )
+    FI
+ENDDEF
+
+FUNCDEF count ( species :: String; sex :: T_sexType; animals :: List_T_animalType ) :: Int ::=
+    IF isCNil_T_animalType(animals) 
+    THEN 0
+    ELSE 
+        LET rest = count (species, sex, tail(animals)); animal = head(animals) IN
+            IF (a_species(base0(animal)) == species) /\ (z_sex(animal) == sex)
+            THEN 1 + rest
+            ELSE rest
+            FI
+        NI
+    FI
+ENDDEF
+
+FUNCDEF pairSpecies ( species :: String; animals :: List_T_animalType ) :: Bool ::=
+       ( 1 == count (species, C_T_sexType("male"), animals) )
+    /\ ( 1 == count (species, C_T_sexType("female"), animals) )
+ENDDEF
+
+FUNCDEF allPairSpecies ( species :: Set_string; animals :: List_T_animalType ) :: Bool ::=
+    IF isEmptySet_string(species) 
+    THEN True
+    ELSE 
+        LET list = toListSet_string(species) IN
+            pairSpecies (head(list), animals) /\ allPairSpecies(CSet_string(tail(list)), animals)
+        NI
+    FI
+ENDDEF
+
+TYPEDEF  Operation ::=
+      Plus  { p1, p2 :: Int }
+    | Minus { m1, m2 :: Int }
+ENDDEF
+
+FUNCDEF overflow (x :: Int) :: Bool ::=
+    (x < -2147483648) \/ ( x > +2147483647)
+ENDDEF
+-- ----------------------------------------------------------------------------------------- --
+TYPEDEF ProduceReport ::= ProduceReport { id, value :: Int } ENDDEF
+TYPEDEF MeasureReport ::= MeasureReport { id, value :: Int } ENDDEF
+TYPEDEF Correction    ::= Correction    { id, value :: Int } ENDDEF
+
+FUNCDEF sgn ( x :: Int ) :: Int ::=
+    IF x > 0 
+        THEN 1
+        ELSE IF x < 0
+                THEN -1
+                ELSE 0 
+             FI
+    FI
+ENDDEF
+
+CONSTDEF nProduce  :: Int  ::= 3
+       ; nMeasure  :: Int  ::= 2
+       ; nCorrect  :: Int  ::= 1
+       ; nFlow     :: Int  ::= 3
+ENDDEF
+
+TYPEDEF BatchId ::= C_ProductId { value :: Int } ENDDEF
+FUNCDEF isValid_BatchId ( x :: BatchId ) :: Bool ::= isValid_integer(value(x)) /\ (value(x) >= 0) /\ (value(x) <= 9876543210) ENDDEF
+
+TYPEDEF BatchSize ::= C_BatchSize { value :: Int } ENDDEF
+FUNCDEF isValid_BatchSize ( x :: BatchSize ) :: Bool ::= isValid_integer(value(x)) /\  (0 < value(x)) /\ (value(x) < 72) ENDDEF
+
+TYPEDEF BatchInfo ::= 
+    C_BatchInfo {
+        batchId                    :: BatchId;
+        batchSize                  :: BatchSize
+    }
+ENDDEF
+FUNCDEF isValid_BatchInfo ( x :: BatchInfo ) :: Bool ::= 
+        isValid_BatchId(batchId(x))
+     /\ isValid_BatchSize(batchSize(x))
+ENDDEF
+
+TYPEDEF RecipeId ::= C_RecipeId { id :: Int } ENDDEF
+FUNCDEF isValid_RecipeId ( x :: RecipeId ) :: Bool ::= isValid_integer(id(x)) ENDDEF
+
+TYPEDEF ProduceCmd ::= 
+    C_ProduceCmd {
+        batchId        :: BatchId;
+        recipeId       :: RecipeId
+    }
+ENDDEF
+FUNCDEF isValid_ProduceCmd ( x :: ProduceCmd ) :: Bool ::= 
+        isValid_BatchId(batchId(x))
+     /\ isValid_RecipeId(recipeId(x))
+ENDDEF
+
+TYPEDEF Time ::= C_Time { value :: Int } ENDDEF
+FUNCDEF isValid_Time ( x :: Time ) :: Bool ::= isValid_integer(value(x)) /\ (value(x)>0) ENDDEF
+

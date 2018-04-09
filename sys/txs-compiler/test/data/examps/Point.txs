@@ -1,0 +1,13 @@
+TYPEDEF Point ::= Point { x, y :: Int } ENDDEF
+
+FUNCDEF validPoint (p :: Point) :: Bool ::=
+    ( x(p) <> 0 ) /\ ( y(p) <> 0 ) 
+ENDDEF
+
+FUNCDEF inRange (p1, p2 :: Point) :: Bool ::=
+    (x(p1) == x(p2)) \/ (y(p1) == y(p2))
+ENDDEF
+
+FUNCDEF inFirstQuadrant (p :: Point) :: Bool ::=
+    ( x(p) > 0 ) /\ ( y(p) > 0 ) 
+ENDDEF

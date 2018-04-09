@@ -1,0 +1,27 @@
+TYPEDEF  IntList  ::=   Nil
+                      | Cons  { hd ::  Int
+                              ; tl ::  IntList
+                              }
+ENDDEF
+
+
+FUNCDEF  add ( x :: Int; l :: IntList ) :: IntList
+         ::= IF    isNil(l)
+             THEN  Cons(x,Nil)
+             ELSE  Cons(hd(l),add(x,tl(l)))
+             FI
+ENDDEF
+
+FUNCDEF overflow (x :: Int) :: Bool ::=
+    True -- (x < -2147483648) \/ ( x > +2147483647)
+ENDDEF
+-- ----------------------------------------------------------------------------------------- --
+
+
+TYPEDEF  QueueOp
+    ::=
+          Enq  { val :: Int }
+        | Deq
+        | Error
+ENDDEF
+
