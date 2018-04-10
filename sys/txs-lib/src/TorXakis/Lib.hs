@@ -31,7 +31,7 @@ import           Data.Semigroup                ((<>))
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import           GHC.Generics                  (Generic)
-import           Lens.Micro                    ((.~), (^.))
+import           Lens.Micro                    ((&), (.~), (^.))
 
 import qualified BuildInfo
 import qualified VersionInfo
@@ -76,7 +76,8 @@ newSession = Session <$> newTVarIO emptySessionState
                      <*> newMVar ()
                      <*> newTQueueIO
                      <*> newTChanIO
-                     <*> return (WorldConnDef Map.empty)
+                     <*> return (WorldConnDef Map.empty (\_ -> return []))
+                     <*> return []
 
 -- | Load a TorXakis file, compile it, and return the response.
 --
@@ -163,12 +164,17 @@ tester :: Session
        -> IO Response
 tester s mn = runResponse $ do
     mDef <- lookupModel s mn
-    st <- lift $ readTVarIO (s ^. sessionState)
-    let fWCh = s ^. fromWorldChan
-        Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (st ^. prms)
-        deltaTime = read deltaString
-    lift $ runIOC s $
-        txsSetTest (putToW fWCh (s ^. wConnDef . toWorldMappings)) (getFromW deltaTime fWCh) mDef Nothing Nothing
+    lift $ do
+        let fWCh = s ^. fromWorldChan
+        st <- readTVarIO (s ^. sessionState)
+        tids <- (s ^. wConnDef . initWorld) fWCh
+        let Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (st ^. prms)
+            deltaTime = read deltaString
+            s' = s & worldListeners .~ tids
+        runIOC s' $
+            txsSetTest (putToW fWCh (s' ^. wConnDef . toWorldMappings))
+                       (getFromW deltaTime fWCh)
+                       mDef Nothing Nothing
 
 -- | Test for n-steps
 test :: Session -> StepType -> IO Response

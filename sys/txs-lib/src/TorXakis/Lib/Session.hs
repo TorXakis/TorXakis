@@ -10,6 +10,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE TemplateHaskell #-}
 module TorXakis.Lib.Session where
 
+import           Control.Concurrent            (ThreadId)
 import           Control.Concurrent.MVar       (MVar)
 import           Control.Concurrent.STM.TChan  (TChan)
 import           Control.Concurrent.STM.TQueue (TQueue)
@@ -39,10 +40,11 @@ newtype ToWorldMapping = ToWorldMapping
 makeLenses ''ToWorldMapping
 
 -- | TODO: put in the right place:
-newtype WorldConnDef = WorldConnDef
+data WorldConnDef = WorldConnDef
     { _toWorldMappings :: Map.Map ChanId ToWorldMapping
+    , _initWorld       :: TChan Action -> IO [ThreadId]
+    -- , _closeWorld      :: [ThreadId] -> IO ()
     }
-
 makeLenses ''WorldConnDef
 
 -- TODO: '_tdefs' '_sigs', and '_wConnDef' should be placed in a data structure
@@ -59,12 +61,13 @@ makeLenses ''SessionSt
 
 -- | The session, which maintains the state of a TorXakis model.
 data Session = Session
-    { _sessionState  :: TVar SessionSt
-    , _sessionMsgs   :: TQueue Msg
-    , _pendingIOC    :: MVar () -- ^ Signal that a pending IOC operation is taking place.
-    , _verdicts      :: TQueue (Either SomeException Verdict)
-    , _fromWorldChan :: TChan Action
-    , _wConnDef      :: WorldConnDef
+    { _sessionState   :: TVar SessionSt
+    , _sessionMsgs    :: TQueue Msg
+    , _pendingIOC     :: MVar () -- ^ Signal that a pending IOC operation is taking place.
+    , _verdicts       :: TQueue (Either SomeException Verdict)
+    , _fromWorldChan  :: TChan Action
+    , _wConnDef       :: WorldConnDef
+    , _worldListeners :: [ThreadId]
     }
 
 makeLenses ''Session

@@ -3,9 +3,8 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE OverloadedLists   #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-missing-fields #-}
 -- | Examples of usage of 'TorXakis.Lib'.
 --
 -- This file is meant to server as an example of usage of the 'TorXakis.Lib'.
@@ -14,33 +13,37 @@ See LICENSE at root directory of this repository.
 
 module TorXakis.Lib.Examples where
 
+import           Control.Concurrent           (ThreadId, forkIO)
 import           Control.Concurrent.Async     (async, cancel)
-import           Control.Concurrent.STM.TChan (writeTChan)
+import           Control.Concurrent.STM.TChan (TChan, writeTChan)
 import           Control.Concurrent.STM.TVar  (readTVarIO)
 import           Control.Exception            (SomeException)
-import           Control.Monad                (void)
+import           Control.Monad                (void, when)
 import           Control.Monad.State          (evalStateT)
 import           Control.Monad.STM            (atomically)
+import           Data.Aeson                   (decode)
 import           Data.Aeson.Lens              (key)
 import           Data.Aeson.Types             (Value (String))
+import qualified Data.ByteString.Lazy.Char8   as BSL
 import           Data.Conduit                 (runConduit, (.|))
 import           Data.Conduit.Combinators     (mapM_, sinkList, take)
 import           Data.Conduit.TQueue          (sourceTQueue)
 import           Data.Foldable                (traverse_)
 import qualified Data.Map                     as Map
+import           Data.Monoid                  ((<>))
 import qualified Data.Set                     as Set
 import           Data.Text                    (Text)
+import qualified Data.Text                    as T
 import           Lens.Micro                   ((&), (.~), (^.), (^?))
 import           Prelude                      hiding (mapM_, take)
 import           System.Process               (StdStream (NoStream), proc,
                                                std_out, withCreateProcess)
 
 import           ChanId                       (ChanId (ChanId))
-import           ConstDefs                    (Const (Cstr, Cstring), cstrId)
+import           ConstDefs                    (Const (Cstr, Cstring), args,
+                                               cString, cstrId)
 import           CstrId                       (CstrId (CstrId), name)
 import           EnvBTree                     (EnvB (EnvB), msgs, smts, stateid)
-import           TxsDefs                      (sortDefs)
-
 import qualified EnvBTree                     as E
 import           EnvData                      (Msg)
 import           Eval                         (eval)
@@ -57,10 +60,14 @@ import           TorXakis.Lib
 import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
 import           TxsDDefs                     (Action (Act, ActQui), Verdict)
+import           TxsDefs                      (ModelDef, sortDefs)
 import           ValExpr                      (ValExpr, cstrConst)
 import           VarId                        (VarId)
 
-import           Network.Wreq                 (get, responseBody,
+import qualified Data.ByteString              as BS
+-- import           Network.Http.Client          (foldGet)
+import           Network.Wreq                 (foldGet, get, partFile, partText,
+                                               post, responseBody,
                                                responseStatus, statusCode)
 
 -- | Get the next N messages in the session.
@@ -110,7 +117,6 @@ printer :: Session -> IO ()
 printer s = runConduit $
     sourceTQueue (s ^. sessionMsgs) .|  mapM_ print
 
-
 -- | This example shows what happens when you load an invalid file.
 testWrongFile :: IO Response
 testWrongFile = do
@@ -141,32 +147,9 @@ testTorXakisWithInfo = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
         mSendToW :: ToWorldMapping -- [Const] -> IO (Maybe Action)
         mSendToW = ToWorldMapping $ \xs ->
             case xs of
-                [Cstr {cstrId = CstrId { name = "CmdInfo"}} ] -> do
+                [Cstr {cstrId = CstrId { name = "CmdInfo"}} ] ->
                     -- This is where we send the command through HTTP
-                    -- In this case it's just a GET request
-                    -- TODO: This address should be extracted from Model CNECTDEF
-                    resp <- get "http://localhost:8080/info"
-                    let status = resp ^. responseStatus . statusCode
-                    if status /= 200
-                        then return Nothing
-                        else do
-                            let params = infoParams resp
-                                [sId] = [ SortId n i
-                                    | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
-                                    ,  n == "Response" ]
-                                [setChId] = mDef ^. modelOutChans
-                                [outChId] = Set.toList setChId
-                                ft = st ^. sigs . funcTable
-                            res <- apply st ft "ResponseInfo" params sId
-                            case res of
-                                Right cnst -> return $ Just $ Act [(outChId, [cnst])]
-                                Left  err   -> error $ "Can't create Action because: " ++ err
-                              where
-                                infoParams r =
-                                    let Just (String version'  ) = r ^? responseBody . key "version"
-                                        Just (String buildTime') = r ^? responseBody . key "buildTime"
-                                    in  [cstrConst (Cstring version')
-                                        , cstrConst (Cstring buildTime')]
+                    Just <$> actInfo st mDef
                 _   -> error $ "Didn't expect this data on channel " ++ show chanId
                             ++ " (got " ++ show xs ++ ")"
         chanId :: ChanId
@@ -175,6 +158,52 @@ testTorXakisWithInfo = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
                  in res
         s' :: Session
         s' = s & wConnDef . toWorldMappings .~ Map.singleton chanId mSendToW
+    _ <- tester s' "Model"
+    _ <- test s' (NumberOfSteps 10)
+    a <- async (printer s')
+    v <- waitForVerdict s'
+    cancel a
+    return v
+
+testTorXakisWithEcho :: IO (Either SomeException Verdict)
+testTorXakisWithEcho = withCreateProcess (proc "txs-webserver-exe" []) {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
+    s <- newSession
+    cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEcho.txs"
+    _ <- load s cs
+    st <- readTVarIO (s ^. sessionState)
+    let Just mDef = st ^. tdefs . ix ("Model" :: Name)
+        chanId :: ChanId
+        chanId = let [setChId] = mDef ^. modelInChans
+                     [res] = Set.toList setChId
+                 in res
+        mSendToW :: ToWorldMapping -- [Const] -> IO (Maybe Action)
+        mSendToW = ToWorldMapping $ \xs ->
+            case xs of
+                [Cstr { cstrId = CstrId { name = "CmdInfo" }} ] -> Just <$> actInfo st mDef
+                [Cstr { cstrId = CstrId { name = "CmdLoad" }
+                      , args = [Cstring { cString = fileToLoad }]
+                      }] -> -- Just <$> actLoad fileToLoad
+                            do actLoad fileToLoad
+                               return Nothing
+
+                _   -> error $ "Didn't expect this data on channel " ++ show chanId
+                            ++ " (got " ++ show xs ++ ")"
+        mInitWorld :: TChan Action -> IO [ThreadId]
+        mInitWorld fWCh = do
+            tid <- forkIO $ do
+                let
+                    writeToChan :: TChan Action -> BS.ByteString -> IO (TChan Action)
+                    writeToChan ch bs = do
+                        putStrLn $ "SSE says: " ++ BS.unpack bs
+                        return ch
+                putStrLn "mInitWorld is called"
+                actInit
+                _ <- foldGet writeToChan fWCh "http://localhost:8080/session/sse/1/messages"
+                return ()
+            return [tid]
+        s' :: Session
+        s' = s & wConnDef . toWorldMappings .~ Map.singleton chanId mSendToW
+               & wConnDef . initWorld .~ mInitWorld
     _ <- tester s' "Model"
     _ <- test s' (NumberOfSteps 10)
     a <- async (printer s')
@@ -199,22 +228,50 @@ apply st ft fn vs sId = do
                         }
             in evalStateT (eval (f vs)) envB -- TODO: Should not use eval, just parse a Response with new ADTDefs.
 
--- import           Lens.Micro
--- import           Control.Concurrent.STM.TVar (readTVarIO)
--- import FuncTable
--- import ValExpr
--- import ConstDefs
--- import TorXakis.Lens.Sigs
--- import qualified Data.Map as Map
+actInfo :: SessionSt -> ModelDef -> IO Action
+actInfo st mDef = do
+    -- In this case it's just a GET request
+    -- TODO: This address should be extracted from Model CNECTDEF
+    resp <- get "http://localhost:8080/info"
+    let status = resp ^. responseStatus . statusCode
+    if status /= 200
+        then error $ "/info returned unxpected status: " ++ show status
+        else do
+            let params = infoParams resp
+                [sId] = [ SortId n i
+                    | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
+                    ,  n == "Response" ]
+                [setChId] = mDef ^. modelOutChans
+                [outChId] = Set.toList setChId
+                ft = st ^. sigs . funcTable
+            res <- apply st ft "ResponseInfo" params sId
+            case res of
+                Right cnst -> return $ Act $ Set.fromList [(outChId, [cnst])]
+                Left  err  -> error $ "Can't create Action because: " ++ err
+              where
+                infoParams r =
+                    let Just (String version'  ) = r ^? responseBody . key "version"
+                        Just (String buildTime') = r ^? responseBody . key "buildTime"
+                    in  [cstrConst (Cstring version')
+                        , cstrConst (Cstring buildTime')]
 
--- s <- newSession
--- cs <- readFile "examps/TorXakisWithEcho/TorXakisWithEchoInfoOnly.txs"
--- load s cs
--- st <- readTVarIO (s ^. sessionState)
--- let ft = st ^. sigs . funcTable
--- let params = [ cstrConst (Cstring "Foo"), cstrConst (Cstring "Bar")]
--- let [sId] = [ SortId n id | (SortId n id, _) <- Map.toList $ sortDefs (st ^. tdefs) ,  n == "Response" ]
--- res <- apply st ft params sId
+actLoad :: Text -> IO ()
+actLoad path = do
+    putStrLn $ "actLoad POST request to upload: " ++ T.unpack path
+    -- TODO: This address should be extracted from Model CNECTDEF
+    resp <- post "http://localhost:8080/session/1/model" [partFile "txs" (T.unpack $ "..\\..\\" <> path)]
+    case resp ^. responseStatus . statusCode of
+        201 -> return ()
+        s   -> error $ "/session/1/model returned unxpected status: " ++ show s
+
+actInit :: IO ()
+actInit = do
+    putStrLn "actInit POST request to create new session"
+    resp <- post "http://localhost:8080/session/new" [partText "" ""]
+    let status = resp ^. responseStatus . statusCode
+    when (status /= 201) $
+        error $ "/session/new returned unxpected status: " ++ show status
+    putStrLn $ "actInit /session/new received: " ++ show resp
 
 testPutToWReadsWorld :: IO Bool
 testPutToWReadsWorld = do
@@ -231,4 +288,3 @@ testPutToWReadsWorld = do
     atomically $ writeTChan fWCh actG
     act' <- runIOC s $ putToW fWCh Map.empty ActQui
     return $ act == actG && act' == actG
-

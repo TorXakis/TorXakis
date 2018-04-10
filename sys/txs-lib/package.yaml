@@ -43,10 +43,12 @@ library:
   dependencies:
   - aeson
   - async
+  - bytestring
   - conduit
   - conduit-combinators
   - containers
   - deepseq
+  - http-client
   - lens-aeson
   - microlens
   - microlens-th  
