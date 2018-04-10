@@ -2,6 +2,7 @@
 module TorXakis.Compiler.ValExpr.ValExpr where
 
 import           Data.Either                         (partitionEithers)
+import           Data.Foldable                       (traverse_)
 import           Data.Map                            (Map)
 import qualified Data.Map                            as Map
 import           Data.Semigroup                      ((<>))
@@ -46,8 +47,8 @@ expDeclToValExpr e e' eSid ex = case expChild ex of
                 checkSortIds (funcsort fId) eSid
                 return $ cstrFunc (getFuncDefT e') fId []
     ConstLit c -> do
-        checkSortIds (sortIdConst c) eSid
-        return $ cstrConst (constToConstDef c)
+        traverse_ (checkSortIds eSid) (sortIdConst c)
+        return $ cstrConst (constToConstDef eSid c)
     LetExp vs subEx -> do
         let
             letValDeclsToMaps :: Either Error [Map VarId (ValExpr VarId)]

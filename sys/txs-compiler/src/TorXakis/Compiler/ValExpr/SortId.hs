@@ -111,7 +111,8 @@ inferExpTypes e vdSid ex =
         -- If it is a function, return the sort id's of the functions.
         (fmap pure . findVarDeclSortId vdSid ||| findFuncSortIds e) =<< findVarDecl e l
     ConstLit c ->
-        return [sortIdConst c]
+        return $ -- The type of any is any sort known!
+            maybe (allSortIds e) pure (sortIdConst c)
     LetExp vs subEx -> do
         vsSidss <- traverse (inferExpTypes e vdSid) (varDeclExp <$> vs)
         -- Here we make sure that each variable expression has a unique type.
@@ -155,11 +156,17 @@ inferExpTypes e vdSid ex =
                        })
                   return $ funcsort fId
 
-sortIdConst :: Const -> SortId
-sortIdConst (BoolConst _)   = sortIdBool
-sortIdConst (IntConst _ )   = sortIdInt
-sortIdConst (StringConst _) = sortIdString
-sortIdConst (RegexConst _)  = sortIdRegex
+sortIdConst :: Const -> Maybe SortId
+sortIdConst (BoolConst _)   = Just sortIdBool
+sortIdConst (IntConst _ )   = Just sortIdInt
+sortIdConst (StringConst _) = Just sortIdString
+sortIdConst (RegexConst _)  = Just sortIdRegex
+-- Any does not have a sort id associated with it.
+--
+-- Note that it seems like a bad design decision to change 'AnyConst' to
+-- include the 'SortId', since the parser does not need to know anything about
+-- the internal representations used by 'TorXakis'.
+sortIdConst AnyConst        = Nothing
 
 checkSortIds :: SortId -> SortId -> Either Error ()
 checkSortIds sId0 sId1 =

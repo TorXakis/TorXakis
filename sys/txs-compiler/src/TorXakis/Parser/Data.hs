@@ -254,6 +254,7 @@ data Const = BoolConst Bool
            | IntConst Integer
            | StringConst Text
            | RegexConst Text
+           | AnyConst
     deriving (Eq, Show, Ord)
 
 -- | Extract all the let-variable declarations of an expression.
@@ -322,6 +323,9 @@ mkStringConstExp l t = mkExpDecl l (ConstLit (StringConst t))
 
 mkRegexConstExp :: Loc ExpDeclE -> Text -> ExpDecl
 mkRegexConstExp l t = mkExpDecl l (ConstLit (RegexConst t))
+
+mkAnyConstExp :: Loc ExpDeclE -> ExpDecl
+mkAnyConstExp l = mkExpDecl l (ConstLit AnyConst)
 
 type FuncDecl  = ParseTree FuncDeclE FuncComps
 
