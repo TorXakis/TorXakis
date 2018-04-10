@@ -14,7 +14,7 @@ import           TorXakis.Parser      (parseFile)
 
 spec :: Spec
 spec = do
-    describe "Correctly parses the incremental examples" $ do
+    describe "Correctly parses the incremental examples (WIP)" $ do
         fs <- runIO $ find (return True) (extension ==? ".txs")
               ("test" </> "data" </> "success")
         parallel $ traverse_ testParser fs
