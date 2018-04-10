@@ -3,3 +3,11 @@ MODELDEF Stopper ::=
     CHAN OUT
     BEHAVIOUR STOP
 ENDDEF
+
+TYPEDEF Pair ::= Pair { x, y :: Int } ENDDEF
+
+CHANDEF Another ::=
+   X :: Int;
+   XY :: Int # Int;
+   P :: Pair
+ENDDEF

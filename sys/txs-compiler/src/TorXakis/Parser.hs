@@ -5,6 +5,7 @@ module TorXakis.Parser
     , funcs
     , consts
     , models
+    , chdecls
     , txsP
     , parseFile
     , parse

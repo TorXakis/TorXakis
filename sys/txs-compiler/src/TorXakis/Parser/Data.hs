@@ -80,6 +80,8 @@ module TorXakis.Parser.Data
     -- ** Channels
     , ChanDecl
     , mkChanDecl
+    , chanDeclName
+    , chanDeclSorts
     , ChanRef
     , mkChanRef
     -- * Location of the entities.
@@ -421,3 +423,10 @@ type ChanDecl = ParseTree ChanDeclE [OfSort]
 -- | Make a channel declaration.
 mkChanDecl :: Text -> Loc ChanDeclE -> [OfSort] -> ChanDecl
 mkChanDecl n = ParseTree (Name n) ChanDeclE
+
+chanDeclName :: ChanDecl -> Text
+chanDeclName = nodeNameT
+
+chanDeclSorts :: ChanDecl -> [(Text, Loc SortRefE)]
+chanDeclSorts ch = zip (fmap nodeNameT . child $ ch)
+                       (fmap nodeLoc . child $ ch)

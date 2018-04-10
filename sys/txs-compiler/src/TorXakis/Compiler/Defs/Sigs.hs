@@ -15,12 +15,6 @@ import           TorXakis.Parser.Data
 
 adtDeclsToSigs :: (HasSortIds e, HasFuncIds e, HasFuncDefs e, HasCstrIds e)
                => e -> [ADTDecl] -> CompilerM (Sigs VarId)
--- > data Sigs v = Sigs  { chan :: [ChanId]
--- >                     , func :: FuncTable v
--- >                     , pro  :: [ProcId]
--- >                     , sort :: Map.Map Text SortId
--- >                     }
--- >
 adtDeclsToSigs e ds = do
     ft <- adtsToFuncTable e ds
     return $ empty { func = ft }

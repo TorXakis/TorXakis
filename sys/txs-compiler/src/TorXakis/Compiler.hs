@@ -19,7 +19,8 @@ import           FuncTable                         (FuncTable,
                                                     Signature (Signature),
                                                     toMap)
 import           Id                                (Id (Id))
-import           Sigs                              (Sigs, func, uniqueCombine)
+import           Sigs                              (Sigs, chan, func,
+                                                    uniqueCombine)
 import qualified Sigs                              (empty)
 import           SortId                            (sortIdBool, sortIdInt,
                                                     sortIdRegex, sortIdString)
@@ -33,6 +34,7 @@ import           ValExpr                           (ValExpr,
 import           VarId                             (VarId)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Compiler.Defs.Sigs
 import           TorXakis.Compiler.Defs.TxsDefs
 import           TorXakis.Compiler.Error           (Error)
@@ -42,6 +44,7 @@ import           TorXakis.Compiler.ValExpr.FuncDef
 import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.VarId
+
 import           TorXakis.Parser
 import           TorXakis.Parser.Data
 
@@ -160,11 +163,12 @@ toTxsDefs ft e pd = do
 toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
        => e -> ParsedDefs -> CompilerM (Sigs VarId)
 toSigs e pd = do
-    let ts  = sortsToSigs (getSortIdMap e)
+    let ts   = sortsToSigs (getSortIdMap e)
     as  <- adtDeclsToSigs e (pd ^. adts)
     fs  <- funDeclsToSigs e (pd ^. funcs)
     cs  <- funDeclsToSigs e (pd ^. consts)
-    let ss = Sigs.empty { func = stdFuncTable }
+    chs <- chanDeclsToChanIds e (pd ^. chdecls)
+    let ss = Sigs.empty { func = stdFuncTable, chan = Map.elems chs }
     return $ ts `uniqueCombine` as
         `uniqueCombine` fs
         `uniqueCombine` cs
