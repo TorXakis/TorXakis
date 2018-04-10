@@ -52,4 +52,3 @@ syncSetP = do
     syncChs <- channelRefP `sepBy` txsSymbol "|"
     txsSymbol "}"
     return $ Set.fromList syncChs
-

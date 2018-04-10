@@ -160,10 +160,10 @@ toTxsDefs ft e pd = do
 toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
        => e -> ParsedDefs -> CompilerM (Sigs VarId)
 toSigs e pd = do
-    let ts = sortsToSigs (getSortIdMap e)
-    as <- adtDeclsToSigs e (pd ^. adts)
-    fs <- funDeclsToSigs e (pd ^. funcs)
-    cs <- funDeclsToSigs e (pd ^. consts)
+    let ts  = sortsToSigs (getSortIdMap e)
+    as  <- adtDeclsToSigs e (pd ^. adts)
+    fs  <- funDeclsToSigs e (pd ^. funcs)
+    cs  <- funDeclsToSigs e (pd ^. consts)
     let ss = Sigs.empty { func = stdFuncTable }
     return $ ts `uniqueCombine` as
         `uniqueCombine` fs

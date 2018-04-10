@@ -22,6 +22,7 @@ module TorXakis.Parser.Data
     , VarDeclE
     , ExpDeclE
     , VarRefE
+    , ChanDeclE
     -- * Declarations.
     -- ** ADT's
     , ADTDecl
@@ -77,6 +78,8 @@ module TorXakis.Parser.Data
     , modelBExp
     , BExpDecl (..)
     -- ** Channels
+    , ChanDecl
+    , mkChanDecl
     , ChanRef
     , mkChanRef
     -- * Location of the entities.
@@ -412,3 +415,9 @@ data ModelComps = ModelComps
 
 data BExpDecl = Stop
     deriving (Eq, Ord, Show)
+
+type ChanDecl = ParseTree ChanDeclE [OfSort]
+
+-- | Make a channel declaration.
+mkChanDecl :: Text -> Loc ChanDeclE -> [OfSort] -> ChanDecl
+mkChanDecl n = ParseTree (Name n) ChanDeclE
