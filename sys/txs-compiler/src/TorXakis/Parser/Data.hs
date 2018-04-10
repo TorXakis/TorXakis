@@ -73,6 +73,8 @@ module TorXakis.Parser.Data
     -- ** Models
     , ModelDecl
     , mkModelDecl
+    , modelName
+    , modelBExp
     , BExpDecl (..)
     -- ** Channels
     , ChanRef
@@ -84,6 +86,7 @@ module TorXakis.Parser.Data
 where
 
 import           Control.Lens            (Lens')
+import           Data.Set                (Set)
 import           Data.Text               (Text)
 
 import           TorXakis.Compiler.Error
@@ -376,15 +379,21 @@ instance HasErrorLoc (ParseTree t c) where
 type ModelDecl = ParseTree ModelDeclE ModelComps
 
 -- | Make a model declaration.
-mkModelDecl :: Text           -- ^ Model name.
-            -> Loc ModelDeclE -- ^ Location of the model.
-            -> [ChanRef]      -- ^ References to input channels.
-            -> [ChanRef]      -- ^ References to output channels.
-            -> [ChanRef]      -- ^ References to synchronized channels.
-            -> BExpDecl       -- ^ Behavior expression that defines the model.
+mkModelDecl :: Text                -- ^ Model name.
+            -> Loc ModelDeclE      -- ^ Location of the model.
+            -> [ChanRef]           -- ^ References to input channels.
+            -> [ChanRef]           -- ^ References to output channels.
+            -> Maybe [Set ChanRef] -- ^ References to sets of synchronized channels.
+            -> BExpDecl            -- ^ Behavior expression that defines the model.
             -> ModelDecl
 mkModelDecl n l is os ys be =
     ParseTree (Name n) ModelDeclE l (ModelComps is os ys be)
+
+modelName :: ModelDecl -> Text
+modelName = nodeNameT
+
+modelBExp :: ModelDecl -> BExpDecl
+modelBExp = bexp . child
 
 type ChanRef = ParseTree ChanRefE ()
 
@@ -397,7 +406,7 @@ mkChanRef n l = ParseTree (Name n) ChanRefE l ()
 data ModelComps = ModelComps
     { inchs  :: [ChanRef]
     , outchs :: [ChanRef]
-    , synchs :: [ChanRef]
+    , synchs :: Maybe [Set ChanRef]
     , bexp   :: BExpDecl
     } deriving (Eq, Ord, Show)
 

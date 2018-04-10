@@ -138,7 +138,7 @@ simplify ft fns (fId, FuncDef vs ex) = (fId, FuncDef vs (simplify' ft fns ex))
 toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
           => FuncTable VarId -> e -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs ft e pd = do
-    ad <- adtsToTxsDefs e (pd ^. adts)
+    ads <- adtsToTxsDefs e (pd ^. adts)
     -- Get the function id's of all the constants.
     cfIds <- traverse (findFuncIdForDeclM e) (pd ^.. consts . traverse . loc')
     let
@@ -147,10 +147,15 @@ toTxsDefs ft e pd = do
         -- TODO: we have to simplify to comply with what TorXakis generates.
         fn = idefsNames e ++ fmap name cfIds
         funcDefsSimpl = Map.fromList (simplify ft fn <$> Map.toList funcDefsNoConsts)
-        fd = TxsDefs.empty {
+        fds = TxsDefs.empty {
             funcDefs = funcDefsSimpl
             }
-    return $ ad `union` fd `union` fromList stdTDefs
+    -- Extract the model definitions
+    mds <- modelDeclsToTxsDefs (pd ^. models)
+    return $ ads
+        `union` fds
+        `union` fromList stdTDefs
+        `union` mds
 
 toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
        => e -> ParsedDefs -> CompilerM (Sigs VarId)
