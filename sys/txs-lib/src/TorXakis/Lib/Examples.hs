@@ -157,8 +157,10 @@ testTorXakisWithInfo = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
                                 [setChId] = mDef ^. modelOutChans
                                 [outChId] = Set.toList setChId
                                 ft = st ^. sigs . funcTable
-                            Right res <- apply st ft "ResponseInfo" params sId
-                            return $ Just $ Act [(outChId, [res])]
+                            res <- apply st ft "ResponseInfo" params sId
+                            case res of
+                                Right cnst -> return $ Just $ Act [(outChId, [cnst])]
+                                Left  err   -> error $ "Can't create Action because: " ++ err
                               where
                                 infoParams r =
                                     let Just (String version'  ) = r ^? responseBody . key "version"
@@ -180,21 +182,22 @@ testTorXakisWithInfo = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
     cancel a
     return v
 
--- | TODO: Make this safer by not throwing an error if the lookup returns nothing.
 apply :: SessionSt -> FuncTable VarId -> Text -> [ValExpr VarId] -> SortId -> IO (Either String Const)
 apply st ft fn vs sId = do
-    let Just f = Map.lookup sig (signHandler fn ft)
-        sig = Signature (sortOf <$> vs) sId
-        envB = EnvB
-            { smts = Map.empty
-            , E.tdefs = st ^. tdefs
-            , E.sigs = st ^. sigs
-            , stateid = -1
-            , E.unid = 10000
-            , E.params = Map.empty
-            , msgs = []
-            }
-    evalStateT (eval (f vs)) envB -- TODO: Should not use eval, just parse a Response with new ADTDefs.
+    let sig = Signature (sortOf <$> vs) sId
+    case Map.lookup sig (signHandler fn ft) of
+        Nothing -> return $ Left $ "No handler found for sig:" ++ show sig
+        Just f  ->
+            let envB = EnvB
+                        { smts = Map.empty
+                        , E.tdefs = st ^. tdefs
+                        , E.sigs = st ^. sigs
+                        , stateid = -1
+                        , E.unid = 10000
+                        , E.params = Map.empty
+                        , msgs = []
+                        }
+            in evalStateT (eval (f vs)) envB -- TODO: Should not use eval, just parse a Response with new ADTDefs.
 
 -- import           Lens.Micro
 -- import           Control.Concurrent.STM.TVar (readTVarIO)
