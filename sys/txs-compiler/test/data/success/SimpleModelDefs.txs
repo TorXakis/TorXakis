@@ -1,0 +1,5 @@
+MODELDEF Stopper ::=
+    CHAN IN
+    CHAN OUT
+    BEHAVIOUR STOP
+ENDDEF
