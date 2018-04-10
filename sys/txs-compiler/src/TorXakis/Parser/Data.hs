@@ -70,6 +70,13 @@ module TorXakis.Parser.Data
     , LetVarDecl
     , varDeclExp
     , letVarDeclSortName
+    -- ** Models
+    , ModelDecl
+    , mkModelDecl
+    , BExpDecl (..)
+    -- ** Channels
+    , ChanRef
+    , mkChanRef
     -- * Location of the entities.
     , getLoc
     , loc'
@@ -162,11 +169,20 @@ data VarRefE = VarRefE deriving (Eq, Ord, Show)
 -- | A constant literal
 data ConstLitE = ConstLitE deriving (Eq, Ord, Show)
 
+-- | Channel declaration.
+data ChanDeclE = ChanDeclE deriving (Eq, Ord, Show)
+
+-- | Channel  reference.
+data ChanRefE = ChanRefE deriving (Eq, Ord, Show)
+
+-- | Model declaration.
+data ModelDeclE = ModelDeclE deriving (Eq, Ord, Show)
+
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADTE     [CstrDecl]
 
 mkADTDecl :: Text -> Loc ADTE -> [CstrDecl] -> ADTDecl
-mkADTDecl n m cs = ParseTree (Name n) ADTE m cs
+mkADTDecl n l = ParseTree (Name n) ADTE l
 
 adtName :: ADTDecl -> Text
 adtName = nodeNameT
@@ -357,3 +373,33 @@ instance HasErrorLoc (ParseTree t c) where
     getErrorLoc pt = ErrorLoc { errorLine = l, errorColumn = c }
         where Loc l c _ = nodeLoc pt
 
+type ModelDecl = ParseTree ModelDeclE ModelComps
+
+-- | Make a model declaration.
+mkModelDecl :: Text           -- ^ Model name.
+            -> Loc ModelDeclE -- ^ Location of the model.
+            -> [ChanRef]      -- ^ References to input channels.
+            -> [ChanRef]      -- ^ References to output channels.
+            -> [ChanRef]      -- ^ References to synchronized channels.
+            -> BExpDecl       -- ^ Behavior expression that defines the model.
+            -> ModelDecl
+mkModelDecl n l is os ys be =
+    ParseTree (Name n) ModelDeclE l (ModelComps is os ys be)
+
+type ChanRef = ParseTree ChanRefE ()
+
+-- | Make a channel reference.
+mkChanRef :: Text         -- ^ Name of the channel that is being referred.
+          -> Loc ChanRefE -- ^ Location where the reference took place.
+          -> ChanRef
+mkChanRef n l = ParseTree (Name n) ChanRefE l ()
+
+data ModelComps = ModelComps
+    { inchs  :: [ChanRef]
+    , outchs :: [ChanRef]
+    , synchs :: [ChanRef]
+    , bexp   :: BExpDecl
+    } deriving (Eq, Ord, Show)
+
+data BExpDecl = Stop
+    deriving (Eq, Ord, Show)

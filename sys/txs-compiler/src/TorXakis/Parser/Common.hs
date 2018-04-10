@@ -76,14 +76,22 @@ ucIdentifier what = txsLexeme (identifierNE idStart)
     where
       idStart = upper
                 `label`
-                (what ++ " must start with an uppercase character")
+                (what ++ " must start with an uppercase letter")
 
 lcIdentifier :: TxsParser Text
 lcIdentifier = txsLexeme (identifierNE idStart)
     where
       idStart = lower <|> oneOf "_"
                 `label`
-                "Identifiers must start with a lowercase character or '_'"
+                "Identifiers must start with a lowercase letter or '_'"
+
+-- | Parser for identifiers, which may start with lower or upper case letters.
+identifier :: TxsParser Text
+identifier = txsLexeme (identifierNE idStart)
+    where
+      idStart = lower <|> upper <|> oneOf "_"
+                `label`
+                "Identifiers must start with a letter or '_'"
 
 -- | Parser for non-empty identifiers.
 identifierNE :: TxsParser Char -> TxsParser Text
