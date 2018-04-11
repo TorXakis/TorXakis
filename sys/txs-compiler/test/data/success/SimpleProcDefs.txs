@@ -1,0 +1,16 @@
+PROCDEF stopper[X :: Int]() ::=
+    STOP
+ENDDEF
+
+PROCDEF foo[X, Y :: Int; Z :: String; A, B, C](x :: Int; b, c :: Bool) ::=
+    STOP
+ENDDEF
+
+PROCDEF funcLike[Uh](x :: Int; b, c :: Bool) ::=
+    STOP
+ENDDEF
+
+PROCDEF boring[Boh]() ::=
+    STOP
+ENDDEF
+

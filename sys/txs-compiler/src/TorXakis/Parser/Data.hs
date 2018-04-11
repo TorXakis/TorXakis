@@ -23,6 +23,7 @@ module TorXakis.Parser.Data
     , ExpDeclE
     , VarRefE
     , ChanDeclE
+    , ProcDeclE
     -- * Declarations.
     -- ** ADT's
     , ADTDecl
@@ -84,6 +85,10 @@ module TorXakis.Parser.Data
     , chanDeclSorts
     , ChanRef
     , mkChanRef
+    -- ** Processes
+    , ProcDecl
+    , mkProcDecl
+    , ExitSortDecl (..)
     -- * Location of the entities.
     , getLoc
     , loc'
@@ -185,6 +190,9 @@ data ChanRefE = ChanRefE deriving (Eq, Ord, Show)
 
 -- | Model declaration.
 data ModelDeclE = ModelDeclE deriving (Eq, Ord, Show)
+
+-- | Process declaration.
+data ProcDeclE = ProcDeclE  deriving (Eq, Ord, Show)
 
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADTE     [CstrDecl]
@@ -354,7 +362,7 @@ mkAnyConstExp l = mkExpDecl l (ConstLit AnyConst)
 type FuncDecl  = ParseTree FuncDeclE FuncComps
 
 mkFuncDecl :: Text -> Loc FuncDeclE -> [VarDecl] -> OfSort -> ExpDecl -> FuncDecl
-mkFuncDecl n m ps s b = ParseTree (Name n) FuncDeclE m (FuncComps ps s b)
+mkFuncDecl n l ps s b = ParseTree (Name n) FuncDeclE l (FuncComps ps s b)
 
 funcName :: FuncDecl -> Text
 funcName = nodeNameT
@@ -430,3 +438,31 @@ chanDeclName = nodeNameT
 chanDeclSorts :: ChanDecl -> [(Text, Loc SortRefE)]
 chanDeclSorts ch = zip (fmap nodeNameT . child $ ch)
                        (fmap nodeLoc . child $ ch)
+
+-- | Process declaration.
+type ProcDecl = ParseTree ProcDeclE ProcComps
+
+-- | Make a process declaration.
+mkProcDecl :: Text
+           -> Loc ProcDeclE
+           -> [ChanDecl]
+           -> [VarDecl]
+           -> ExitSortDecl
+           -> BExpDecl
+           -> ProcDecl
+mkProcDecl n l cs vs e b = ParseTree (Name n) ProcDeclE l (ProcComps cs vs e b)
+
+-- | Components of a process.
+data ProcComps = ProcComps
+    { procChParams :: [ChanDecl]
+    , procParams   :: [VarDecl]
+    , procRetSort  :: ExitSortDecl
+    , procBody     :: BExpDecl
+    } deriving (Eq, Show, Ord)
+
+-- | Possible exit sorts of a process.
+data ExitSortDecl = NoExitD
+                  | ExitD [OfSort]
+                  | HitD
+    deriving (Eq, Show, Ord)
+
