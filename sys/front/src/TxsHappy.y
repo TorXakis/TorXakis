@@ -35,7 +35,8 @@ import qualified Data.List   as List
 import qualified Data.Map    as Map
 import qualified Data.Set    as Set
 import qualified Data.String.Utils as Utils
-import Data.Monoid
+import qualified Data.Text          as T
+import           Data.Monoid
 
 import ShowToken
 import TxsAlex                          -- importing
@@ -57,6 +58,7 @@ import PurpId
 import SortDef
 import SortId
 import StatId
+import StautDef
 import VarId
 import FuncTable
 import TxsUtils                         -- some utilities on TxsDefs 
@@ -393,7 +395,7 @@ TorXakisDefn    -- :: { [ (Ident,TxsDef) ] }
                 ;  $$.synMaxUid    = $1.synMaxUid
                 ;  $$.synSigs      = $1.synSigs
                 ;  $1.inhSigs      = $$.inhSigs
-                ;  $$ = [ $1 ]
+                ;  $$ = $1
                 }
               | ChannelDef
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -910,7 +912,7 @@ ProcDef         -- :: { (Ident,TxsDef) }
                                  "Defined exit kind does not match actual one: "++ show $1 ++"\n"
                 }
 
-StautDef        -- :: { (Ident,TxsDef) }
+StautDef        -- :: { [(Ident,TxsDef)] }
                 -- definition of a state automaton;
                 -- attrs inh : inhNodeUid : unique node identification
                 --           : inhSortSigs: usable sorts
@@ -928,7 +930,7 @@ StautDef        -- :: { (Ident,TxsDef) }
                 --  PVDL: are global procdefs not available in the stautdef context?? 
 
               : STAUTDEF Id FormalChannels FormalVars ExitKind "::=" StautItemList EndDef
-                {  $3.inhNodeUid   = $$.inhNodeUid + 1
+                {  $3.inhNodeUid   = $$.inhNodeUid + 4
                 ;  $4.inhNodeUid   = $3.synMaxUid + 1
                 ;  $5.inhNodeUid   = $4.synMaxUid + 1
                 ;  $7.inhNodeUid   = $5.synMaxUid + 1
@@ -936,12 +938,25 @@ StautDef        -- :: { (Ident,TxsDef) }
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $4.inhSigs      = $$.inhSigs
                 ;  $5.inhSigs      = $$.inhSigs
-                ;  $7.inhSigs      = $$.inhSigs { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] } 
+                ;  $7.inhSigs      = let (_, vars, _, _, _, _) = $7 in
+                                        $$.inhSigs { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 
+                                                                , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5
+                                                                , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 1) $3 (combineParameters $4 (VarId (T.pack "$s") ($$.inhNodeUid + 2) sortIdInt) vars) $5
+                                                                ] }
+                                                                 { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] } 
                 ;  $7.inhChanSigs  = $3
                 ;  $7.inhVarSigs   = $4
-                ;  $$.synSigs      = Sigs.empty { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] }
-                ;  $$ = ( IdProc (ProcId $2 $$.inhNodeUid $3 $4 $5), 
-                          DefProc (ProcDef $3 $4 $7) )
+                ;  $$.synSigs      = let (_, vars, _, _, _, _) = $7 in
+                                        Sigs.empty { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 
+                                                                , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5
+                                                                , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 1) $3 (combineParameters $4 (VarId (T.pack "$s") ($$.inhNodeUid + 2) sortIdInt) vars) $5
+                                                                ] }
+                ;  $$ = let (sts, vars, trs, init, venv, bexpr) = $7 in
+                        let (pd, pi) = translate (Map.empty :: Map.Map FuncId (FuncDef VarId)) ($$.inhNodeUid + 1) ($$.inhNodeUid + 2) $2 $3 $4 $5 sts vars trs init venv in
+                            [ ( IdProc (ProcId $2 $$.inhNodeUid $3 $4 $5), DefProc (ProcDef $3 $4 bexpr) )
+                            , ( IdProc (ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5), DefProc (ProcDef $3 $4 pi) )
+                            , ( IdProc (ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 1) $3 (combineParameters $4 (VarId (T.pack "$s") ($$.inhNodeUid + 2) sortIdInt) vars) $5), DefProc pd)
+                            ]
                 ;  where if $7.synExitSorts == $5 then () else
                          error $ "\nTXS2244: " ++
                                 "Defined exit kind does not match actual one: "++ show $2 ++"\n"
@@ -1247,7 +1262,7 @@ CnectDef        -- :: { (Ident,TxsDef) }
                           in if null dbls then () else 
                              error $ "\nTXS0223: "++ 
                                "Double (hostname,portnr) for IN: "++(show dbls)++"\n"
-	        ;  where let { towchids  = [ chid
+            ;  where let { towchids  = [ chid
                                            | ConnDtoW chid hs pr [] (ValExpr.view -> Vconst (Cstring "")) <- $5
                                            , not $ pr == (-1)
                                            ]
@@ -1259,7 +1274,7 @@ CnectDef        -- :: { (Ident,TxsDef) }
                                     then ()
                                     else error $ "\nTXS0224: "++
                                            "No bijection between OUT channels and Encodings\n"
-	        ;  where let { frowchids = [ chid
+            ;  where let { frowchids = [ chid
                                            | ConnDfroW chid hs pr (VarId "" (-1) srt) [] <- $5
                                            , not $ pr == (-1)
                                            ]
@@ -3373,7 +3388,7 @@ NeSmallIdList   -- :: { [String] }
 -- state automaton (symbolic transition system) items
 
 
-StautItemList   -- :: { BExpr }
+StautItemList   -- :: { (sts,vars,trs, init, venv, BExpr) }
                 -- top-level state automaton behaviour expression;
                 -- attrs inh : inhNodeUid  : unique node identification
                 --           : inhSortSigs : usable sorts        = global sorts
@@ -3401,7 +3416,7 @@ StautItemList   -- :: { BExpr }
                 ;  $$.synExitSorts = $1.synExitSorts
                 ;  $$ = case $1 of
                         { ( sts, vars, trs, [init], [venv] )
-                            -> stAut init venv trs
+                            -> (sts, vars, trs, init, venv, stAut init venv trs)
                         ; _ -> error $ "\nTXS1010: " ++ "error in state atomaton def: " ++
                                        (show (Sigs.pro $$.inhSigs)) ++ "\n"
                         }
@@ -3540,15 +3555,14 @@ StateItem       -- :: { [StatId] }
                 -- constrs   : all defined states shall be unique
               : STATE NeIdList
                 {  $$.synMaxUid    = $$.inhNodeUid + Id (length $2)
-                ;  $$.synStateSigs = [ StatId nm uid pid
+                ;  $$.synStateSigs = [ StatId nm uid (head $ Sigs.pro $$.inhSigs)
                                      | (nm,uid) <- zip $2 [$$.inhNodeUid ..]
-                                     , pid <- Sigs.pro $$.inhSigs
                                      ]
                 ;  $$ = $$.synStateSigs
                 ;  where let dbls = doubles $2
-                          in if (null dbls) && (length (Sigs.pro $$.inhSigs) == 1) then () else
-                             error $ "\nTXS1031: " ++
-                                     "Double defined states: " ++ (show dbls) ++ "\n"
+                          in if (null dbls) then () 
+                                            else error $ "\nTXS1031: " ++
+                                                         "Double defined states: " ++ (show dbls) ++ "\n"
                 }
 
 VarItem         -- :: { [VarId] }

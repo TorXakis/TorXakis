@@ -33,6 +33,7 @@ library
                       , MissingH
                       , text
 
+                      , behave
                       , defs
                       , valexpr
 
