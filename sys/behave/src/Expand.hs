@@ -71,7 +71,7 @@ expand _ (BNbexpr _ (TxsDefs.view -> Stop))  = return []
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs cnd) bexp))  =  do
+expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs hvars cnd) bexp))  =  do
     (ctoffs, quests, exclams) <- expandOffers chsets offs
     let ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
         we'   = Map.fromList [ (vid, wal)
@@ -79,22 +79,23 @@ expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs cnd) bexp))
                              , vid `Map.notMember` ivenv
                              ]
     tds <- gets IOB.tdefs
-    let exclams' = map toEitherTuple [ (ivar, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
-                                     | (ivar, vexp) <- exclams
-                                     ]
-    case Data.Either.partitionEithers exclams' of
-        ([],r) -> return [ CTpref { ctoffers  = ctoffs
-                              , cthidvars = []
-                              , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (funcDefs tds) (subst (Map.map cstrConst we') (funcDefs tds) cnd)
-                                                                  : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- r ]
-                                                                  )
-                                                    )
-                              , ctnext    = BNbexpr (we',ivenv) bexp
-                              }
+    let exclams' = map toEitherTuple
+                     [ (ivar, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
+                     | (ivar, vexp) <- exclams
                      ]
-        (s,_) -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
-                                  ("Expand: Eval failed in expand - ActionPref" ++ show s) ]
-                    return []
+    case Data.Either.partitionEithers exclams' of
+      ([],r) -> return [ CTpref
+                  { ctoffers  = ctoffs
+                  , cthidvars = Set.toList hvars XXX
+                  , ctpred    = cstrAnd (Set.fromList
+                                  ( compSubst ivenv (funcDefs tds) (subst (Map.map cstrConst we') (funcDefs tds) cnd)
+                                  : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- r ]
+                                  )     )
+                  , ctnext    = BNbexpr (we',ivenv) bexp
+                  }    ]
+      (s,_)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
+                                 ("Expand: Eval failed in expand - ActionPref" ++ show s) ]
+                   return []
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -204,7 +205,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
   where
     expandTrans :: [ Set.Set TxsDefs.ChanId ] -> WEnv VarId -> WEnv VarId -> Trans
                    -> IOB.IOB CTree
-    expandTrans chsets' envwals stswals (Trans _ (ActOffer offs cnd) update' to')  =  do
+    expandTrans chsets' envwals stswals (Trans _ (ActOffer offs havrs cnd) update' to')  =  do
          (ctoffs, quests, exclams) <- expandOffers chsets' offs
          let we'   = envwals `combineWEnv` stswals
              ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
@@ -225,7 +226,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
                                                  | (vid, vexp) <- Map.toList update'
                                                  ]
                           return [CTpref { ctoffers  = ctoffs
-                                         , cthidvars = []
+                                         , cthidvars = Set.toList hvars
                                          , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (funcDefs tds) (subst (Map.map cstrConst we'') (funcDefs tds) cnd)
                                                                              : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- r ]
                                                                              )
@@ -421,21 +422,27 @@ expand _ _  = error "not in view"
 -- expand Offers
 
 
-expandOffers :: [ Set.Set TxsDefs.ChanId ] -> Set.Set Offer -> IOB.IOB ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
+expandOffers :: [ Set.Set TxsDefs.ChanId ]
+             -> Set.Set Offer
+             -> IOB.IOB ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
 expandOffers chsets offs  =  do
      ctofftuples <- mapM (expandOffer chsets) (Set.toList offs)
      let ( ctoffs, quests, exclams ) = unzip3 ctofftuples
      return ( Set.fromList ctoffs, concat quests, concat exclams )
 
 
-expandOffer :: [ Set.Set TxsDefs.ChanId ] -> Offer -> IOB.IOB ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
+expandOffer :: [ Set.Set TxsDefs.ChanId ]
+            -> Offer
+            -> IOB.IOB ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
 expandOffer _chsets (Offer chid choffs)  =  do
      ctchoffs <- mapM (expandChanOffer chid) ( zip choffs [1..(length choffs)] )
      let ( ivars, quests, exclams ) = unzip3 ctchoffs
      return ( CToffer chid ivars, concat quests, concat exclams )
 
 
-expandChanOffer :: ChanId -> (ChanOffer,Int) -> IOB.IOB ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
+expandChanOffer :: ChanId
+                -> (ChanOffer,Int)
+                -> IOB.IOB ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
 expandChanOffer chid (choff,pos)  =  do
      curs <- gets IOB.stateid
      case choff of
@@ -495,8 +502,8 @@ relabel' :: Map.Map ChanId ChanId -> BExprView -> BExpr
 relabel' _ Stop
   =  stop
 
-relabel' chanmap (ActionPref (ActOffer offs cnrs) bexp)
-  =  actionPref (ActOffer (Set.map (relabel chanmap) offs) cnrs) (relabel chanmap bexp)
+relabel' chanmap (ActionPref (ActOffer offs hvars cnrs) bexp)
+  =  actionPref (ActOffer (Set.map (relabel chanmap) offs) hvars cnrs) (relabel chanmap bexp)
 
 relabel' chanmap (Guard cnrs bexp)
   =  TxsDefs.guard cnrs (relabel chanmap bexp)
@@ -543,8 +550,8 @@ instance Relabel ChanId
 
 instance Relabel Trans
   where
-    relabel chanmap (Trans from' (ActOffer offs cnrs) venv to')
-      =  Trans from' (ActOffer (Set.map (relabel chanmap) offs) cnrs) venv to'
+    relabel chanmap (Trans from' (ActOffer offs hvars cnrs) venv to')
+      =  Trans from' (ActOffer (Set.map (relabel chanmap) offs) hvars cnrs) venv to'
 
 
 -- ----------------------------------------------------------------------------------------- --

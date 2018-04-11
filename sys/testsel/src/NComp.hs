@@ -67,7 +67,7 @@ isPath (TxsDefs.Trans _from _a _u to : TxsDefs.Trans from' a' u' to' : pp) =
 
 path2bexpr :: [TxsDefs.Trans] -> TxsDefs.BExpr
 path2bexpr [] = TxsDefs.actionPref
-                    (TxsDefs.ActOffer (Set.singleton $ TxsDefs.Offer StdTDefs.chanIdHit []) (ValExpr.cstrConst (ConstDefs.Cbool True)))
+                    (TxsDefs.ActOffer (Set.singleton $ TxsDefs.Offer StdTDefs.chanIdHit []) Set.empty (ValExpr.cstrConst (ConstDefs.Cbool True)))
                     TxsDefs.stop
 path2bexpr (TxsDefs.Trans _from a _u _to : pp) = TxsDefs.actionPref a (path2bexpr pp)
 
