@@ -53,9 +53,9 @@ instance Subst BExpr where
 subst' :: TxsDefs.VEnv -> Map FuncId (FuncDef VarId) -> BExprView -> BExpr
 subst' _ _ Stop = stop
 
-subst' ve fdefs (ActionPref (ActOffer offs hvars cnrs) bexp) =
+subst' ve fdefs (ActionPref (ActOffer offs hidvars cnrs) bexp) =
     actionPref (ActOffer (subst ve fdefs offs)
-                         hvars
+                         hidvars
                          (subst ve fdefs cnrs))
                (subst ve fdefs bexp)
 

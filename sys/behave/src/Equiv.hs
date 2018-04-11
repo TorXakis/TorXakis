@@ -163,9 +163,9 @@ instance Equiv BExprView
 
     Stop ~=~ Stop = return True
 
-    (ActionPref (ActOffer offs1 hvars1 c1) bexp1) ~=~ (ActionPref (ActOffer offs2 hvars2 c2) bexp2) = do
+    (ActionPref (ActOffer offs1 hidvars1 c1) bexp1) ~=~ (ActionPref (ActOffer offs2 hidvars2 c2) bexp2) = do
          eq_bexp <- bexp1 ~=~ bexp2
-         return $ offs1 == offs2 && null hvars1 && null hvars2 && c1 == c2 && eq_bexp
+         return $ offs1 == offs2 && null hidvars1 && null hidvars2 && c1 == c2 && eq_bexp
 
     (Guard c1 bexp1) ~=~ (Guard c2 bexp2)  =  do
          eq_bexp <- bexp1 ~=~ bexp2

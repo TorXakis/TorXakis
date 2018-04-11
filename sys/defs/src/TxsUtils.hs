@@ -178,8 +178,8 @@ instance UsedFids Trans
 
 instance UsedFids ActOffer
   where
-    usedFids (ActOffer offs _hvars cnrs)  =  usedFids (concatMap chanoffers (Set.toList offs))
-                                           ++ usedFids cnrs
+    usedFids (ActOffer offs _hidvars cnrs)  =  usedFids (concatMap chanoffers (Set.toList offs))
+                                             ++ usedFids cnrs
 
 
 instance UsedFids ChanOffer

@@ -368,6 +368,7 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
 
                 -- new ActOffers and ProcInst
                 actOfferLR = ActOffer { offers = offersLR,
+                                        hiddenvars = Set.empty,
                                         constraint = constraintLR}
                 procInstLR = procInst procIdPAR' chansDefPar (paramsL ++ paramsR)
             in
@@ -722,6 +723,7 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
                         else cstrITE constraintPC (cstrAnd (Set.fromList constraintsList)) (cstrConst (Cbool False))
 
         actOffer' = ActOffer { offers = Set.fromList offers'
+                             , hiddenvars = Set.empty
                              , constraint = constraint' }
 
         bexpr'' = case TxsDefs.view bexpr' of

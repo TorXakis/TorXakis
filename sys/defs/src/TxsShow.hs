@@ -217,11 +217,11 @@ instance PShow BExprView
 
 instance PShow ActOffer
   where
-    pshow (ActOffer ofs hvars c)
+    pshow (ActOffer ofs hidvars c)
       =  "{ " ++ Utils.join " | " (map pshow (Set.toList ofs)) ++ "} "
-         ++ if  null hvars
+         ++ if  null hidvars
               then ""
-              else  "{{ " ++ Utils.join " | " (map pshow (Set.toList hvars)) ++ " }} "
+              else  "{/ " ++ Utils.join " | " (map pshow (Set.toList hidvars)) ++ " /} "
          ++ case ValExpr.view c of
             { Vconst (Cbool True) -> ""
             ; _                   -> "\n   [[ " ++ pshow c ++ " ]]"
