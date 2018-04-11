@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module TorXakis.Compiler.MapsToSpec where
 
+import Prelude hiding (lookup)
 import           Data.Map   (Map)
 import qualified Data.Map   as Map
 import           Test.Hspec (Spec, it, pending, shouldBe)
@@ -22,7 +23,7 @@ fruitNumbers = [(0, Orange), (1, Pear), (2, Apple)]
 
 fruitWithName :: MapsTo String Fruit m => String -> m -> Either Error Fruit
 fruitWithName n m =
-    m .? n
+    lookup n m
 
 spec :: Spec
 spec = do

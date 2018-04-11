@@ -6,6 +6,7 @@ module TorXakis.Parser
     , consts
     , models
     , chdecls
+    , procs
     , txsP
     , parseFile
     , parse
@@ -23,8 +24,8 @@ import           Text.Parsec               (ParseError, eof, errorPos, many,
 
 import           TorXakis.Compiler.Error   (Error (Error), ErrorLoc (ErrorLoc),
                                             ErrorType (ParseError), errorColumn,
-                                            errorLine, errorLoc, errorMsg,
-                                            errorType)
+                                            errorLine, _errorLoc, _errorMsg,
+                                            _errorType)
 import           TorXakis.Parser.ChanDecl
 import           TorXakis.Parser.Common    (TxsParser, txsWhitespace)
 import           TorXakis.Parser.ConstDecl (constDeclsP)
@@ -55,12 +56,12 @@ parseFile fp = left parseErrorAsError <$> do
     where
       parseErrorAsError :: ParseError -> Error
       parseErrorAsError err = Error
-          { errorType = ParseError
-          , errorLoc = ErrorLoc
+          { _errorType = ParseError
+          , _errorLoc = ErrorLoc
               { errorLine   = sourceLine (errorPos err)
               , errorColumn = sourceColumn (errorPos err)
               }
-          , errorMsg = T.pack (show err)
+          , _errorMsg = T.pack (show err)
           }
 
 -- | TorXakis top-level definitions

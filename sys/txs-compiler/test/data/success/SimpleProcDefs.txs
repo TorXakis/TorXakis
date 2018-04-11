@@ -1,4 +1,4 @@
-PROCDEF stopper[X :: Int]() ::=
+PROCDEF stopper[X :: Int; A]() ::=
     STOP
 ENDDEF
 

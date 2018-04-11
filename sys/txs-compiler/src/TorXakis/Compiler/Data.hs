@@ -105,9 +105,9 @@ class HasVarDecls e where
         Left ||| const (Left err) ||| Right $ findVarDecl e l
        where
          err = Error
-             { errorType = FunctionNotDefined
-             , errorLoc  = getErrorLoc l
-             , errorMsg  = "Could not function declaration."
+             { _errorType = FunctionNotDefined
+             , _errorLoc  = getErrorLoc l
+             , _errorMsg  = "Could not function declaration."
              }
 
 filterByReturnSort :: HasFuncIds e
@@ -132,14 +132,14 @@ fidHasReturnSort e sId fdi = const False ||| id $ do
 getUniqueElement :: Show a => [a] -> Either Error a
 getUniqueElement [fdi] = Right fdi
 getUniqueElement [] = Left Error
-    { errorType = UndefinedRef
-    , errorLoc  = NoErrorLoc
-    , errorMsg  = "Could not find an element."
+    { _errorType = UndefinedRef
+    , _errorLoc  = NoErrorLoc
+    , _errorMsg  = "Could not find an element."
     }
 getUniqueElement xs = Left Error
-    { errorType = UnresolvedIdentifier
-    , errorLoc  = NoErrorLoc
-    , errorMsg  = "Found multiple elements: " <> T.pack (show xs)
+    { _errorType = UnresolvedIdentifier
+    , _errorLoc  = NoErrorLoc
+    , _errorMsg  = "Found multiple elements: " <> T.pack (show xs)
     }
 
 -- | Select the function definitions that matches the given arguments and return
@@ -159,9 +159,9 @@ determineF e fdis aSids mRSid =
           return $ funcargs fId == aSids &&
                    fromMaybe True ((funcsort fId ==) <$> mRSid)
       -- err = Error
-      --     { errorType = UndefinedRef
-      --     , errorLoc  = NoErrorLoc
-      --     , errorMsg  = "Could not find a function with arguments of type "
+      --     { _errorType = UndefinedRef
+      --     , _errorLoc  = NoErrorLoc
+      --     , _errorMsg  = "Could not find a function with arguments of type "
       --                 <> T.pack (show aSids)
       --                 <> maybe "" ((" and return type of " <>) . T.pack . show) mRSid
       --     }
@@ -234,9 +234,9 @@ class HasFuncDefs e where
 instance HasSortIds (IEnv (Map Text SortId) f1 f2 f3 f4 f5 f6) where
     findSortId IEnv{sortIdT = sm} (t, l) = maybeToEither err . Map.lookup t $ sm
         where err = Error
-                  { errorType = UndefinedRef
-                  , errorLoc = getErrorLoc l
-                  , errorMsg = "Could not find sort " <> t
+                  { _errorType = UndefinedRef
+                  , _errorLoc = getErrorLoc l
+                  , _errorMsg = "Could not find sort " <> t
                   }
 
     getSortIdMap IEnv{sortIdT = sm} = sm
@@ -244,9 +244,9 @@ instance HasSortIds (IEnv (Map Text SortId) f1 f2 f3 f4 f5 f6) where
 lookup :: (Ord a, Show a) => a -> Map a b -> Text -> Either Error b
 lookup a ab what =  maybeToEither err . Map.lookup a $ ab
         where err = Error
-                  { errorType = UndefinedRef
-                  , errorLoc  = NoErrorLoc -- TODO: is it OK that we cannot give a location error here?
-                  , errorMsg  = "Could not find " <> what
+                  { _errorType = UndefinedRef
+                  , _errorLoc  = NoErrorLoc -- TODO: is it OK that we cannot give a location error here?
+                  , _errorMsg  = "Could not find " <> what
                   }
 
 lookupM :: (Ord a, Show a) => a -> Map a b -> Text -> CompilerM b
@@ -255,9 +255,9 @@ lookupM a ab what = liftEither $ lookup a ab what
 lookupWithLoc :: (Ord a, Show a, HasErrorLoc a) => a -> Map a b -> Text -> Either Error b
 lookupWithLoc a ab what = maybeToEither err . Map.lookup a $ ab
     where err = Error
-              { errorType = UndefinedRef
-              , errorLoc  = getErrorLoc a
-              , errorMsg  = "Could not find " <> what
+              { _errorType = UndefinedRef
+              , _errorLoc  = getErrorLoc a
+              , _errorMsg  = "Could not find " <> what
               }
 
 lookupWithLocM :: (Ord a, Show a, HasErrorLoc a) => a -> Map a b -> Text -> CompilerM b
@@ -281,9 +281,9 @@ instance HasFuncIds (IEnv f0 f1 f2 f3 f4 (Map FuncDefInfo FuncId) f6) where
     findFuncIdForDecl e@IEnv{funcIdT = fm} fl =
         case find ((Just fl ==) . fdiLoc) (Map.keys fm) of
             Nothing  -> Left Error
-                { errorType = UndefinedRef
-                , errorLoc  = getErrorLoc fl
-                , errorMsg  = "Could not find function definition for the given location"
+                { _errorType = UndefinedRef
+                , _errorLoc  = getErrorLoc fl
+                , _errorMsg  = "Could not find function definition for the given location"
                 }
             Just fdi -> findFuncId e fdi
     idefsNames IEnv {funcIdT = fm} = catMaybes $ fdiName <$> Map.keys fm

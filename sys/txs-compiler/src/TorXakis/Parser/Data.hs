@@ -41,6 +41,7 @@ module TorXakis.Parser.Data
     -- ** Type declarations
     , OfSort
     , mkOfSort
+    , sortRefName
     -- ** Functions
     , FuncDecl
     , mkFuncDecl
@@ -88,6 +89,13 @@ module TorXakis.Parser.Data
     -- ** Processes
     , ProcDecl
     , mkProcDecl
+    , procDeclName
+    , procDeclComps
+    , ProcComps
+    , procChParams
+    , procParams
+    , procRetSort
+    , procBody
     , ExitSortDecl (..)
     -- * Location of the entities.
     , getLoc
@@ -234,6 +242,9 @@ type OfSort    = ParseTree SortRefE ()
 
 mkOfSort :: Text -> Loc SortRefE -> OfSort
 mkOfSort n m = ParseTree (Name n) SortRefE m ()
+
+sortRefName :: OfSort -> Text
+sortRefName = nodeNameT
 
 -- | Components of a function.
 data FuncComps = FuncComps
@@ -451,6 +462,12 @@ mkProcDecl :: Text
            -> BExpDecl
            -> ProcDecl
 mkProcDecl n l cs vs e b = ParseTree (Name n) ProcDeclE l (ProcComps cs vs e b)
+
+procDeclName :: ProcDecl -> Text
+procDeclName = nodeNameT
+
+procDeclComps :: ProcDecl -> ProcComps
+procDeclComps = child
 
 -- | Components of a process.
 data ProcComps = ProcComps

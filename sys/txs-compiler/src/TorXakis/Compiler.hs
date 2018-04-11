@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
 {-# LANGUAGE ViewPatterns      #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
 module TorXakis.Compiler where
 
 import           Control.Arrow                     (first, second, (|||))
@@ -19,14 +21,14 @@ import           FuncTable                         (FuncTable,
                                                     Signature (Signature),
                                                     toMap)
 import           Id                                (Id (Id))
-import           Sigs                              (Sigs, chan, func,
+import           Sigs                              (Sigs, chan, func, pro,
                                                     uniqueCombine)
 import qualified Sigs                              (empty)
 import           SortId                            (sortIdBool, sortIdInt,
                                                     sortIdRegex, sortIdString)
 import           StdTDefs                          (stdFuncTable, stdTDefs)
-import           TxsDefs                           (TxsDefs, fromList, funcDefs,
-                                                    union)
+import           TxsDefs                           (TxsDefs, fromList, funcDefs, procDefs,
+                                                    union, ProcDef, ProcId)
 import qualified TxsDefs                           (empty)
 import           ValExpr                           (ValExpr,
                                                     ValExprView (Vfunc, Vite),
@@ -44,7 +46,9 @@ import           TorXakis.Compiler.ValExpr.FuncDef
 import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.VarId
-
+import           TorXakis.Compiler.MapsTo
+import           TorXakis.Compiler.Defs.ProcDef
+ 
 import           TorXakis.Parser
 import           TorXakis.Parser.Data
 
@@ -76,7 +80,8 @@ compileParsedDefs pd = do
                               , ("Regex", sortIdRegex)
                               , ("String", sortIdString)
                               ]
-        e0 = emptyEnv { sortIdT = Map.union pdsMap sMap }
+        allSortsMap = Map.union pdsMap sMap
+        e0 = emptyEnv { sortIdT = allSortsMap}
     cMap <- compileToCstrId e0 (pd ^. adts)
     let e1 = e0 { cstrIdT = cMap }
         allFuncs = pd ^. funcs ++ pd ^. consts
@@ -103,9 +108,11 @@ compileParsedDefs pd = do
     let e4 = e3 { varIdT = vMap }
     lFDefMap <- funcDeclsToFuncDefs e4 allFuncs
     let e5 = e4 { funcDefT = lFDefMap }
+    -- Construct the @ProcId@ to @ProcDef@ map:
+    pdefMap <- procDeclsToProcDefMap allSortsMap (pd ^. procs)
     -- Finally construct the TxsDefs.
-    sigs    <- toSigs    e5 pd
-    txsDefs <- toTxsDefs (func sigs) e5 pd
+    sigs    <- toSigs                e5 pdefMap pd
+    txsDefs <- toTxsDefs (func sigs) e5 pdefMap pd
     St i    <- get
     return (Id i, txsDefs, sigs)
 
@@ -138,9 +145,10 @@ simplify :: FuncTable VarId -> [Text] -> (FuncId, FuncDef VarId) -> (FuncId, Fun
 -- TODO: return an either instead.
 simplify ft fns (fId, FuncDef vs ex) = (fId, FuncDef vs (simplify' ft fns ex))
 
-toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
-          => FuncTable VarId -> e -> ParsedDefs -> CompilerM TxsDefs
-toTxsDefs ft e pd = do
+toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e
+             , MapsTo ProcId ProcDef mm)
+          => FuncTable VarId -> e -> mm -> ParsedDefs -> CompilerM TxsDefs
+toTxsDefs ft e mm pd = do
     ads <- adtsToTxsDefs e (pd ^. adts)
     -- Get the function id's of all the constants.
     cfIds <- traverse (findFuncIdForDeclM e) (pd ^.. consts . traverse . loc')
@@ -151,24 +159,35 @@ toTxsDefs ft e pd = do
         fn = idefsNames e ++ fmap name cfIds
         funcDefsSimpl = Map.fromList (simplify ft fn <$> Map.toList funcDefsNoConsts)
         fds = TxsDefs.empty {
-            funcDefs = funcDefsSimpl
+            funcDefs = funcDefsSimpl            
             }
+        pds = TxsDefs.empty {
+            procDefs = innerMap mm
+            }    
     -- Extract the model definitions
     mds <- modelDeclsToTxsDefs (pd ^. models)
     return $ ads
         `union` fds
-        `union` fromList stdTDefs
+        `union` pds        
+        `union` fromList stdTDefs        
         `union` mds
 
-toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e)
-       => e -> ParsedDefs -> CompilerM (Sigs VarId)
-toSigs e pd = do
+toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e
+          , MapsTo ProcId ProcDef mm)
+       => e -> mm -> ParsedDefs -> CompilerM (Sigs VarId)
+toSigs e mm pd = do
     let ts   = sortsToSigs (getSortIdMap e)
     as  <- adtDeclsToSigs e (pd ^. adts)
     fs  <- funDeclsToSigs e (pd ^. funcs)
     cs  <- funDeclsToSigs e (pd ^. consts)
-    chs <- chanDeclsToChanIds e (pd ^. chdecls)
-    let ss = Sigs.empty { func = stdFuncTable, chan = Map.elems chs }
+    -- TODO: I'm dumping the map here till we get rid of all these 'Has'X type classes.
+    chs <- chanDeclsToChanIds (getSortIdMap e) (pd ^. chdecls)
+    let pidMap :: Map ProcId ProcDef
+        pidMap = innerMap mm
+        ss = Sigs.empty { func = stdFuncTable
+                        , chan = snd <$> chs
+                        , pro  = Map.keys pidMap
+                        }
     return $ ts `uniqueCombine` as
         `uniqueCombine` fs
         `uniqueCombine` cs

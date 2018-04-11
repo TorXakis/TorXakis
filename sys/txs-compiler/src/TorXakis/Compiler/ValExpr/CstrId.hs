@@ -41,9 +41,9 @@ cstrToCstrId e sId c = do
 cstrIdOfCstrDecl :: HasCstrIds e => e -> CstrDecl -> Either Error CstrId
 cstrIdOfCstrDecl e c = left (const err) $ findCstrId e (getLoc c)
     where err = Error
-              { errorType = UndefinedRef
-              , errorLoc = getErrorLoc c
-              , errorMsg = "Could not find constructor " <> cstrName c
+              { _errorType = UndefinedRef
+              , _errorLoc = getErrorLoc c
+              , _errorMsg = "Could not find constructor " <> cstrName c
               }
 
 cstrIdOfCstrDeclM :: HasCstrIds e => e -> CstrDecl -> CompilerM CstrId

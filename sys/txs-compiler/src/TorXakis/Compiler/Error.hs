@@ -1,16 +1,8 @@
+{-# LANGUAGE TemplateHaskell #-}
 module TorXakis.Compiler.Error where
 
-import           Data.Text (Text)
-
--- | For now we use this simple error type.
-data Error
-    = Error
-    { errorType :: ErrorType
-    , errorLoc  :: ErrorLoc
-    , errorMsg  :: Text
-    }
-    | Errors [Error]
-    deriving (Eq, Show)
+import           Control.Lens.TH (makeLenses)
+import           Data.Text       (Text)
 
 data ErrorType
     = ParseError
@@ -48,3 +40,15 @@ instance HasErrorLoc l => HasErrorLoc (Either l b) where
 
 instance HasErrorLoc l => HasErrorLoc (l, c, d) where
     getErrorLoc (l, _, _) = getErrorLoc l
+
+-- | For now we use this simple error type.
+data Error
+    = Error
+    { _errorType :: ErrorType
+    , _errorLoc  :: ErrorLoc
+    , _errorMsg  :: Text
+    }
+    | Errors [Error]
+    deriving (Eq, Show)
+
+makeLenses ''Error

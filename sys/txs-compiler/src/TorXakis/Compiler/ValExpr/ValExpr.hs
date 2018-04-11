@@ -73,14 +73,14 @@ expDeclToValExpr e e' eSid ex = case expChild ex of
         fdis <- findFuncDecl e l
         case partitionEithers (tryMkValExpr <$> fdis) of
             (ls, []) -> Left Error
-                        { errorType = UndefinedRef
-                        , errorLoc  = getErrorLoc l
-                        , errorMsg   = "Could not resolve function: " <> T.pack (show ls)}
+                        { _errorType = UndefinedRef
+                        , _errorLoc  = getErrorLoc l
+                        , _errorMsg   = "Could not resolve function: " <> T.pack (show ls)}
             (_, [vex]) -> Right vex
             (_, vexs)  -> Left Error
-                          { errorType = UnresolvedIdentifier
-                          , errorLoc  = getErrorLoc l
-                          , errorMsg   = "Function not uniquely resolved: " <> T.pack (show vexs)
+                          { _errorType = UnresolvedIdentifier
+                          , _errorLoc  = getErrorLoc l
+                          , _errorMsg   = "Function not uniquely resolved: " <> T.pack (show vexs)
                           }
         where
           tryMkValExpr :: FuncDefInfo -> Either Error (ValExpr VarId)
@@ -89,9 +89,9 @@ expDeclToValExpr e e' eSid ex = case expChild ex of
               checkSortIds (funcsort fId) eSid
               if length (funcargs fId) /= length exs
                   then Left Error
-                       { errorType = UndefinedRef
-                       , errorLoc  = NoErrorLoc
-                       , errorMsg  = "Length of arguments don't match"
+                       { _errorType = UndefinedRef
+                       , _errorLoc  = NoErrorLoc
+                       , _errorMsg  = "Length of arguments don't match"
                                      <> T.pack (show fId)
                        }
                   else do

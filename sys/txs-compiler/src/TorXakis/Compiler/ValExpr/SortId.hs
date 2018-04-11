@@ -61,11 +61,11 @@ inferTypes e fs = liftEither $ do
           case partitionEithers (inferVarDeclType e e' <$> vs) of
               ([], rs) -> Right $ fromSEnv $ fromList rs <> e'
               (ls, []) -> Left  Error
-                          { errorType = UndefinedType
-                          , errorLoc  = NoErrorLoc -- TODO: we could generate
+                          { _errorType = UndefinedType
+                          , _errorLoc  = NoErrorLoc -- TODO: we could generate
                                                    -- multiple errors, giving
                                                    -- all the locations in 'ls'
-                          , errorMsg  =  "Could not infer the types: " <> (T.pack . show . (fst <$>)) ls
+                          , _errorMsg  =  "Could not infer the types: " <> (T.pack . show . (fst <$>)) ls
                           }
               (ls, rs) -> gInferTypes (fromList rs <> e') (snd <$> ls)
       fParamLocSorts :: FuncDecl -> Either Error [(Loc VarDeclE, SortId)]
@@ -124,17 +124,17 @@ inferExpTypes e vdSid ex =
         [se0s, se1s, se2s] <- traverse (inferExpTypes e vdSid) [e0, e1, e2]
         when (sortIdBool `notElem` se0s)
             (Left Error
-                { errorType = TypeMismatch
-                , errorLoc  = getErrorLoc e0
-                , errorMsg  = "Guard expression must be a Boolean."
+                { _errorType = TypeMismatch
+                , _errorLoc  = getErrorLoc e0
+                , _errorMsg  = "Guard expression must be a Boolean."
                            <> " Got " <> T.pack (show se0s)
                 })
         let ses = se1s `intersect` se2s
         when (null ses)
             (Left Error
-                { errorType = TypeMismatch
-                , errorLoc  = getErrorLoc ex
-                , errorMsg  = "The sort of the two IF branches don't match."
+                { _errorType = TypeMismatch
+                , _errorLoc  = getErrorLoc ex
+                , _errorMsg  = "The sort of the two IF branches don't match."
                            <> "(" <> T.pack (show se1s)
                            <>" and " <> T.pack (show se2s) <> ")"
                 }
@@ -149,9 +149,9 @@ inferExpTypes e vdSid ex =
                   fId  <- findFuncId e fdi
                   when (ses /= funcargs fId)
                       (Left Error
-                       { errorType = TypeMismatch
-                       , errorLoc  = getErrorLoc l
-                       , errorMsg  = "Function arguments sorts do not match "
+                       { _errorType = TypeMismatch
+                       , _errorLoc  = getErrorLoc l
+                       , _errorMsg  = "Function arguments sorts do not match "
                                      <> T.pack (show ses)
                        })
                   return $ funcsort fId
@@ -171,9 +171,9 @@ sortIdConst AnyConst        = Nothing
 checkSortIds :: SortId -> SortId -> Either Error ()
 checkSortIds sId0 sId1 =
     when (sId0 /= sId1) $ Left Error
-    { errorType = TypeMismatch
-    , errorLoc  = NoErrorLoc
-    , errorMsg  = "Sorts do not match "
+    { _errorType = TypeMismatch
+    , _errorLoc  = NoErrorLoc
+    , _errorMsg  = "Sorts do not match "
                   <> T.pack (show sId0) <> T.pack (show sId1)
     }
 

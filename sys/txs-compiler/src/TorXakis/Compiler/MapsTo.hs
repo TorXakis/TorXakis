@@ -8,22 +8,26 @@
 {-# LANGUAGE UndecidableInstances  #-}
 module TorXakis.Compiler.MapsTo where
 
-import           Data.Either.Utils       (maybeToEither)
-import           Data.Map                (Map)
-import qualified Data.Map                as Map
-import           Data.Semigroup          ((<>))
-import qualified Data.Text               as T
+import           Control.Monad.Error.Class (liftEither)
+import           Data.Either.Utils         (maybeToEither)
+import           Data.Map                  (Map)
+import qualified Data.Map                  as Map
+import           Data.Semigroup            ((<>))
+import qualified Data.Text                 as T
 import           Data.Type.Bool
-import           GHC.TypeLits            (ErrorMessage ((:<>:), ShowType, Text),
-                                          TypeError)
+import           GHC.TypeLits              (ErrorMessage ((:<>:), ShowType, Text),
+                                            TypeError)
+import           Prelude                   hiding (lookup)
 
-import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Data    hiding (lookup, lookupWithLoc,
+                                            lookupWithLocM)
 import           TorXakis.Compiler.Error
 
 -- | 'm' maps keys of type 'k' onto values of type 'v'.
 class (In (k, v) (Contents m) ~ 'True) => MapsTo k v m where
-    (.?) :: (Ord k, Show k) => m -> k -> Either Error v
---    (.??) :: e -> k -> CompilerM v
+    lookup  :: (Ord k, Show k) => k -> m -> Either Error v
+    lookupM :: (Ord k, Show k) => k -> m -> CompilerM v
+    lookupM k m = liftEither $ lookup k m
     innerMap :: m -> Map k v
 
 -- | Compute when a type is in a tree.
@@ -45,13 +49,23 @@ type instance Contents (Map k v) = 'Leaf (k, v)
 type instance Contents [a] = 'Leaf a
 
 instance MapsTo k v (Map k v) where
-    m .? k = maybeToEither err . Map.lookup k $ m
+    lookup k m = maybeToEither err . Map.lookup k $ m
         where err = Error
-                  { errorType = UndefinedRef
-                  , errorLoc  = NoErrorLoc
-                  , errorMsg  = "Could not find " <> T.pack (show k)
+                  { _errorType = UndefinedRef
+                  , _errorLoc  = NoErrorLoc
+                  , _errorMsg  = "Could not find " <> T.pack (show k)
                   }
     innerMap = id
+
+
+lookupWithLoc :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
+              => (k, l) -> mm -> Either Error v
+lookupWithLoc (k, _) mm = lookup k mm -- TODO: Use lenses here to overwrite the error location.
+                                      -- TODO: maybe rename this to (.?)
+
+lookupWithLocM :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
+               => (k, l) -> mm -> CompilerM v
+lookupWithLocM p mm = liftEither $ lookupWithLoc p mm
 
 -- | Combinator for maps.
 data a :& b = a :& b
@@ -64,21 +78,21 @@ class ( In (k, v) (Contents m0) ~ inM0
       , (inM0 || inM1) ~ 'True
       ) =>
       PairMapsTo k v m0 m1 inM0 inM1 where
-    lookupPair :: (Ord k, Show k) => m0 :& m1 -> k -> Either Error v
+    lookupPair :: (Ord k, Show k) => k -> m0 :& m1 -> Either Error v
     innerMapPair  :: m0 :& m1 -> Map k v
 
 instance ( MapsTo k v m0, In (k, v) (Contents m1) ~ 'False
          ) => PairMapsTo k v m0 m1 'True 'False where
-    lookupPair (m0 :& _) = (m0 .?)
+    lookupPair k (m0 :& _) = lookup k m0
     innerMapPair (m0 :& _) = innerMap m0
 
 instance ( In (k, v) (Contents m0) ~ 'False, MapsTo k v m1
          ) => PairMapsTo k v m0 m1 'False 'True where
-    lookupPair (_ :& m1) = (m1 .?)
+    lookupPair k (_ :& m1) = lookup k m1
     innerMapPair (_ :& m1) = innerMap m1
 
 instance PairMapsTo k v m0 m1 inM0 inM1 => MapsTo k v (m0 :& m1) where
-    (.?) = lookupPair
+    lookup = lookupPair
     innerMap = innerMapPair
 
 instance ( TypeError (      'Text "No map found: \""
