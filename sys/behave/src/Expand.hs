@@ -84,17 +84,27 @@ expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs hvars cnd) 
                      | (ivar, vexp) <- exclams
                      ]
     case Data.Either.partitionEithers exclams' of
-      ([],r) -> return [ CTpref
-                  { ctoffers  = ctoffs
-                  , cthidvars = Set.toList hvars XXX
-                  , ctpred    = cstrAnd (Set.fromList
-                                  ( compSubst ivenv (funcDefs tds) (subst (Map.map cstrConst we') (funcDefs tds) cnd)
-                                  : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- r ]
-                                  )     )
-                  , ctnext    = BNbexpr (we',ivenv) bexp
-                  }    ]
+      ([],r) -> do hvarlist <- sequence [ liftP2 (hvid, uniIVar hvid ) | hvid <- Set.toList hvars ]
+                   let hvarmap  = Map.fromList hvarlist
+                       unihvars = Map.elems hvarmap
+                       hvarenv  = Map.map cstrVar hvarmap
+                       cnd'     = cstrAnd $ Set.fromList
+                                      ( compSubst ivenv (funcDefs tds)
+                                           (subst (Map.map cstrConst we') (funcDefs tds) cnd)
+                                      : [ cstrEqual (cstrVar ivar) (cstrConst wal)
+                                        | (ivar, wal) <- r
+                                        ]
+                                      )
+                       bexp'    = BNbexpr (we',ivenv) bexp
+                   return [ CTpref { ctoffers  = ctoffs
+                                   , cthidvars = unihvars
+                                   , ctpred    = subst hvarenv (funcDefs tds) cnd'
+                                   , ctnext    = let f(we,ev) = (we, Map.map (subst hvarenv (funcDefs tds)) ev)
+                                                  in fmap f bexp'
+                                   }
+                          ]
       (s,_)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
-                                 ("Expand: Eval failed in expand - ActionPref" ++ show s) ]
+                                 $ "Expand: Eval failed in expand - ActionPref" ++ show s ]
                    return []
 
 -- ----------------------------------------------------------------------------------------- --
@@ -205,7 +215,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
   where
     expandTrans :: [ Set.Set TxsDefs.ChanId ] -> WEnv VarId -> WEnv VarId -> Trans
                    -> IOB.IOB CTree
-    expandTrans chsets' envwals stswals (Trans _ (ActOffer offs havrs cnd) update' to')  =  do
+    expandTrans chsets' envwals stswals (Trans _ (ActOffer offs hvars cnd) update' to')  =  do
          (ctoffs, quests, exclams) <- expandOffers chsets' offs
          let we'   = envwals `combineWEnv` stswals
              ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
@@ -482,8 +492,9 @@ hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
     return CTpref { ctoffers  = vctoffs
                   , cthidvars = hidvars ++ unihvars
                   , ctpred    = subst hvarenv (funcDefs tds) pred'
-                  , ctnext    = let f (we, ivenv) = (we, Map.map (subst hvarenv (funcDefs tds)) ivenv)
-                                  in fmap f ctnext1'
+                  , ctnext    = let f (we, ivenv) =
+                                        (we, Map.map (subst hvarenv (funcDefs tds)) ivenv)
+                                 in fmap f ctnext1'
                   }
 
 -- ----------------------------------------------------------------------------------------- --
@@ -555,7 +566,7 @@ instance Relabel Trans
 
 
 -- ----------------------------------------------------------------------------------------- --
--- transform IVar into unique IVar (HVar)
+-- transform IVar/VarId into unique IVar (HVar)
 
 
 uniHVar :: IVar -> IOB.IOB IVar
@@ -564,6 +575,14 @@ uniHVar (IVar ivname' ivuid' ivpos' ivstat' ivsrt')  =  do
      let newUnid = unid' + 1
      modify $ \env -> env { IOB.unid = newUnid }
      return $ IVar (ivname'<>"$$$"<> (T.pack . show) ivuid') newUnid ivpos' ivstat' ivsrt'
+
+
+uniIVar :: VarId -> IOB.IOB IVar
+uniIVar (VarId nm uid srt)  =  do
+     unid'   <- gets IOB.unid
+     let newUnid = unid' + 1
+     modify $ \env -> env { IOB.unid = newUnid }
+     return $ IVar (nm<>"$H$"<>(T.pack . show) uid) newUnid 0 0 srt
 
 
 -- ----------------------------------------------------------------------------------------- --
