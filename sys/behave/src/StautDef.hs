@@ -12,6 +12,7 @@ module StautDef
 where
 
 import qualified Data.Map           as Map
+import qualified Data.Set           as Set
 import qualified Data.Text          as T
 import           Data.Monoid
 
@@ -57,8 +58,8 @@ translate fdefs unidProc unidS name' chans params exitSort states vars' trans st
         args' = map cstrVar params
         
         alternative :: Trans -> BExpr
-        alternative (Trans from' (ActOffer offers' cond) update' to') =
+        alternative (Trans from' (ActOffer offers' _hidvars cond) update' to') =
             let Just fromIndex = Map.lookup from' stateMap
                 Just toIndex   = Map.lookup to'   stateMap in
-            actionPref (ActOffer offers' (cstrITE (cstrEqual (cstrVar stateId) (cstrConst (Cint fromIndex))) cond (cstrConst (Cbool False))))
+            actionPref (ActOffer offers' Set.empty (cstrITE (cstrEqual (cstrVar stateId) (cstrConst (Cint fromIndex))) cond (cstrConst (Cbool False))))
                        (procInst procId chans (combineArguments args' (cstrConst (Cint toIndex)) (map ( subst update' fdefs . cstrVar ) vars')))
