@@ -114,7 +114,7 @@ instance Resettable BExpr
 isStop :: BExpr -> Bool
 isStop (BehExprDefs.view -> Choice []) = True
 isStop _                               = False
-
+-- see https://downloads.haskell.org/~ghc/7.0.2/docs/html/users_guide/pragmas.html for inlining differences of function definitions
 -- | Create a Stop behaviour expression.
 --   The Stop behaviour is equal to dead lock.
 stop :: BExpr
@@ -122,13 +122,13 @@ stop = BExpr (Choice [])
 
 -- | Create an ActionPrefix behaviour expression.
 actionPref :: ActOffer -> BExpr -> BExpr
-actionPref a b = case ValExpr.view (constraint a) of
+actionPref a b = BExpr (ActionPref a b)
                     Vconst (Cbool False)    -> stop
                     _                       -> BExpr (ActionPref a b)
 
 -- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
-guard v b = BExpr (Guard v b)
+guard = \v b -> BExpr (Guard v b)
 
 -- | Create a choice behaviour expression.
 --  A choice combines zero or more behaviour expressions.
@@ -169,37 +169,34 @@ parallel cs bs = let fbs = flattenParallel bs
         fromBExpr (BehExprDefs.view -> Parallel pcs pbs) | Set.fromList cs == Set.fromList pcs  = pbs
         fromBExpr bexpr                                                                         = [bexpr]
 
-
-
-
 -- | Create an enable behaviour expression.
 enable :: BExpr -> [ChanOffer] -> BExpr -> BExpr
-enable b1 cs b2 = BExpr (Enable b1 cs b2)
+enable = \b1 cs b2 -> BExpr (Enable b1 cs b2)
 
 -- | Create a disable behaviour expression.
 disable :: BExpr -> BExpr -> BExpr
-disable b1 b2 = BExpr (Disable b1 b2)
+disable = \b1 b2 -> BExpr (Disable b1 b2)
 
 -- | Create an interrupt behaviour expression.
 interrupt :: BExpr -> BExpr -> BExpr
-interrupt b1 b2 = BExpr (Interrupt b1 b2)
+interrupt = \b1 b2 -> BExpr (Interrupt b1 b2)
 
 -- | Create a process instantiation behaviour expression.
 procInst :: ProcId -> [ChanId] -> [VExpr] -> BExpr
-procInst p cs vs = BExpr (ProcInst p cs vs)
+procInst = \p cs vs -> BExpr (ProcInst p cs vs)
 
 -- | Create a hide behaviour expression.
 --   The given set of channels is hidden for its environment.
 hide :: [ChanId] -> BExpr -> BExpr
-hide cs b = BExpr (Hide cs b)
+hide = \cs b -> BExpr (Hide cs b)
 
 -- | Create a Value Environment behaviour expression.
 valueEnv :: VEnv -> BExpr -> BExpr
-valueEnv v b = BExpr (ValueEnv v b)
+valueEnv = \v b -> BExpr (ValueEnv v b)
 
 -- | Create a State Automaton behaviour expression.
 stAut :: StatId -> VEnv -> [Trans] -> BExpr
-stAut s v ts = BExpr (StAut s v ts)
+stAut = \s v ts -> BExpr (StAut s v ts)
 
 -- | ActOffer
 -- Offer on multiple channels with constraints
