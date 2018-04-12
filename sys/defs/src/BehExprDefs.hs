@@ -126,6 +126,7 @@ stAut s v ts = BExpr (StAut s v ts)
 -- Offer on multiple channels with constraints
 data ActOffer = ActOffer
   { offers     :: Set.Set Offer      -- PvdL -- why not? -- Map ChanId [ChanOffer]
+  , hiddenvars :: Set.Set VarId
   , constraint :: VExpr
   } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 

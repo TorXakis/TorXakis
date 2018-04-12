@@ -52,6 +52,7 @@ actOfferAx   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdA
                                               , chanoffers = [Quest varIdX]
                                         }
+                        , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
 
@@ -61,6 +62,7 @@ actOfferB1   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdB
                                               , chanoffers = [Exclam vexpr1]
                                         }
+                        , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
 
@@ -70,6 +72,7 @@ actOfferBx   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdB
                                               , chanoffers = [Quest varIdX]
                                         }
+                        , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
 

@@ -172,13 +172,13 @@ instance Reduce BExpr
 reduce' :: BExprView -> IOB.IOB BExpr
 reduce' Stop = return stop
 
-reduce' (ActionPref (ActOffer offs c) bexp) = do
+reduce' (ActionPref (ActOffer offs hidvars c) bexp) = do
      c'  <- reduce c
      case ValExpr.view c' of
         Vconst (Cbool False) -> return stop
         _                    -> do offs' <- mapM reduce (Set.toList offs)
                                    bexp' <- reduce bexp
-                                   return $ actionPref (ActOffer (Set.fromList offs') c') bexp'
+                                   return $ actionPref (ActOffer (Set.fromList offs') hidvars c') bexp'
 
 reduce' (Guard c bexp) = do
      c'  <- reduce c
@@ -313,7 +313,7 @@ instance FreeChan BExpr
 
 instance FreeChan ActOffer
   where
-    freeChans (ActOffer offs _) = map chanid $ Set.toList offs
+    freeChans (ActOffer offs _ _) = map chanid $ Set.toList offs
 
 instance FreeChan Trans
   where

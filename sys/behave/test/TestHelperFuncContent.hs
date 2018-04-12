@@ -141,7 +141,7 @@ identicalVExpr (ValExpr.view -> Vpredef p1 fid1 vexps1) (ValExpr.view -> Vpredef
 identicalVExpr _                                _                                                = False                          -- different
 
 identicalActOffer :: ActOffer -> ActOffer -> Bool
-identicalActOffer (ActOffer offers1 vexpr1) (ActOffer offers2 vexpr2) =    identicalLists identicalOffer (Set.toAscList offers1) (Set.toAscList offers2)
+identicalActOffer (ActOffer offers1 _hidvars1 vexpr1) (ActOffer offers2 _hidvars2 vexpr2) =    identicalLists identicalOffer (Set.toAscList offers1) (Set.toAscList offers2)
                                                                         && identicalVExpr vexpr1 vexpr2
 identicalOffer :: Offer -> Offer -> Bool
 identicalOffer (Offer cid1 chanoffers1) (Offer cid2 chanoffers2)        =    identicalChanId cid1 cid2
