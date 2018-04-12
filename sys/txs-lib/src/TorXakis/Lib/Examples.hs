@@ -41,8 +41,8 @@ import           System.Process               (StdStream (NoStream), proc,
                                                std_out, withCreateProcess)
 
 import           ChanId                       (ChanId (ChanId))
-import           ConstDefs                    (Const (Cstr, Cstring), args,
-                                               cString, cstrId)
+import           ConstDefs                    (Const (Cint, Cstr, Cstring),
+                                               args, cInt, cString, cstrId)
 import           CstrId                       (CstrId (CstrId), name)
 import           EnvBTree                     (EnvB (EnvB), msgs, smts, stateid)
 import qualified EnvBTree                     as E
@@ -193,6 +193,12 @@ testTorXakisWithEcho = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
                 [Cstr { cstrId = CstrId { name = "CmdLoad" }
                       , args = [Cstring { cString = fileToLoad }]
                       }] -> Just <$> actLoad st outChId fileToLoad
+                [Cstr { cstrId = CstrId { name = "CmdStepper" }
+                      , args = [Cstring { cString = modelToStep }]
+                      }] -> Just <$> actStepper st outChId modelToStep
+                [Cstr { cstrId = CstrId { name = "CmdStep" }
+                      , args = [Cint { cInt = stepCount }]
+                      }] -> actStep st outChId stepCount
                 _   -> do putStrLn $ "Didn't expect this data on channel " ++ show inChId ++ " (got " ++ show xs ++ ")"
                           return $ Just ActQui
         mInitWorld :: TChan Action -> IO [ThreadId]
@@ -201,7 +207,7 @@ testTorXakisWithEcho = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
                 let
                     writeToChan :: TChan Action -> BS.ByteString -> IO (TChan Action)
                     writeToChan ch bs = do -- TODO: convert json to Msg, extract Act and write to chan
-                        putStrLn $ "SSE says: " ++ (head . lines . BS.unpack) bs
+                        putStrLn $ " ==>> SSE says: " ++ (head . lines . BS.unpack) bs
                         return ch
                 putStrLn "mInitWorld is called"
                 initSession
@@ -242,6 +248,22 @@ actLoad st outChId path = do
     case resp ^. responseStatus . statusCode of
         201 -> createResponseAction st outChId "ResponseSuccess" []
         s   -> createResponseAction st outChId "ResponseFailure" [cstrConst (Cstring $ T.pack $ "/session/1/model returned unxpected status: " ++ show s)]
+
+actStepper ::  SessionSt -> ChanId -> Text -> IO Action
+actStepper st outChId model = do
+    -- TODO: This address should be extracted from Model CNECTDEF
+    resp <- post (T.unpack $ "http://localhost:8080/stepper/start/1/" <> model) [partText "" ""]
+    case resp ^. responseStatus . statusCode of
+        200 -> createResponseAction st outChId "ResponseSuccess" []
+        s   -> createResponseAction st outChId "ResponseFailure" [cstrConst (Cstring $ "/stepper/start/1/" <> model <> " returned unxpected status: " <> T.pack (show s))]
+
+actStep ::  SessionSt -> ChanId -> Integer -> IO (Maybe Action)
+actStep st outChId n = do
+    -- TODO: This address should be extracted from Model CNECTDEF
+    resp <- post ("http://localhost:8080/stepper/step/1/" ++ show n) [partText "" ""]
+    case resp ^. responseStatus . statusCode of
+        200 -> return Nothing --createResponseAction st outChId "ResponseSuccess" []
+        s   -> Just <$> createResponseAction st outChId "ResponseFailure" [cstrConst (Cstring $ T.pack $ "/stepper/step/1/" ++ show n ++ " returned unxpected status: " ++ show s)]
 
 initSession :: IO ()
 initSession = do
