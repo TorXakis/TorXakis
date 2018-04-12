@@ -57,7 +57,7 @@ ENDDEF
 MODELDEF  STD_Adder ::=  -- TODO remove in final version
     CHAN IN    Action
     CHAN OUT   Result
-    BEHAVIOUR  std_adder [ Action, Result ] ( )
+    BEHAVIOUR  stdi_adder [ Action, Result ] ( )
 ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
