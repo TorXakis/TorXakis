@@ -6,4 +6,5 @@ import           TorXakis.Compiler.Data
 import           TorXakis.Parser.Data
 
 bexpDeclToExprDefs :: BExpDecl -> CompilerM BExpr
-bexpDeclToExprDefs Stop = return stop
+bexpDeclToExprDefs Stop          = return stop
+bexpDeclToExprDefs (ActPref _ _) = undefined

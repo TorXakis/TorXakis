@@ -52,6 +52,7 @@ module TorXakis.Parser.Data
     , funcRetSort
     , VarDecl
     , mkVarDecl
+    , mkVarRef
     , varDeclSort
     , varName
     -- ** Expressions
@@ -79,6 +80,9 @@ module TorXakis.Parser.Data
     , modelName
     , modelBExp
     , BExpDecl (..)
+    , ActOffer (..)
+    , Offer (..)
+    , ChanOffer (..)
     -- ** Channels
     , ChanDecl
     , mkChanDecl
@@ -257,7 +261,7 @@ data FuncComps = FuncComps
 type VarDecl = ParseTree VarDeclE OfSort
 
 mkVarDecl :: Text -> Loc VarDeclE -> OfSort -> VarDecl
-mkVarDecl n m s = ParseTree (Name n) VarDeclE m s
+mkVarDecl n l s = ParseTree (Name n) VarDeclE l s
 
 class IsVariable v where
     -- | Name of a variable
@@ -274,16 +278,6 @@ type ExpDecl = ParseTree ExpDeclE ExpChild
 
 expChild :: ExpDecl -> ExpChild
 expChild = child
-
--- | Find the variables of an expression.
--- expVars :: ExpDecl -> [(Name VarRefE, Loc VarRefE)]
--- expVars (ParseTree _ _ _ (VarRef n l))  = [(n, l)]
--- expVars (ParseTree _ _ _ (ConstLit _ )) = []
--- expVars (ParseTree _ _ _ (LetExp vs e)) =
---     concatMap (expVars . snd . child) vs ++ expVars e
-
--- foldExp :: (b -> ExpChild -> b) -> b -> ExpDecl -> b
--- foldExp f b (ParseTree _ _ _ c) = f b c
 
 data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)
               | ConstLit Const
@@ -435,7 +429,25 @@ data ModelComps = ModelComps
     } deriving (Eq, Ord, Show)
 
 data BExpDecl = Stop
+              | ActPref ActOffer BExpDecl
     deriving (Eq, Ord, Show)
+
+data ActOffer = ActOffer
+    { _offers     :: [Offer]
+    , _constraint :: Maybe ExpDecl
+    } deriving (Eq, Ord, Show)
+
+data Offer = Offer ChanRef [ChanOffer]
+    deriving (Eq, Ord, Show)
+
+data ChanOffer = Quest (Either VarRef VarDecl)
+               | Excl  ExpDecl
+    deriving (Eq, Ord, Show)
+
+type VarRef = ParseTree VarRefE ()
+
+mkVarRef :: Text -> Loc VarRefE -> VarRef
+mkVarRef n l = ParseTree (Name n) VarRefE l ()
 
 type ChanDecl = ParseTree ChanDeclE [OfSort]
 
@@ -448,7 +460,7 @@ chanDeclName = nodeNameT
 
 chanDeclSorts :: ChanDecl -> [(Text, Loc SortRefE)]
 chanDeclSorts ch = zip (fmap nodeNameT . child $ ch)
-                       (fmap nodeLoc . child $ ch)
+                       (fmap nodeLoc   . child $ ch)
 
 -- | Process declaration.
 type ProcDecl = ParseTree ProcDeclE ProcComps

@@ -44,13 +44,12 @@ idOfSortsP :: String -- ^ Start symbol for the fields declaration.
            -> String -- ^ End symbol for the fields declaration.
            -> (Text -> Loc t -> OfSort -> d)
            -> TxsParser [d]
-idOfSortsP op cl f = nonEmptyIdOfSortsP <|> emptyDeclsP
+idOfSortsP op cl f = nonEmptyIdOfSortsP <|> return []
     where nonEmptyIdOfSortsP = do
               txsSymbol op
               fd <- idOfSortsListP f `sepBy` txsSymbol ";"
               txsSymbol cl
               return $ concat fd
-          emptyDeclsP = return []
 
 -- | Parser of a list of field declarations of the form:
 --
