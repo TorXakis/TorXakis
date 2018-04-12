@@ -21,10 +21,11 @@ import           Control.Exception            (SomeException)
 import           Control.Monad                (void, when)
 import           Control.Monad.State          (evalStateT)
 import           Control.Monad.STM            (atomically)
-import           Data.Aeson                   (decode)
+-- import           Data.Aeson                   (decode)
 import           Data.Aeson.Lens              (key)
 import           Data.Aeson.Types             (Value (String))
-import qualified Data.ByteString.Lazy.Char8   as BSL
+import qualified Data.ByteString.Char8        as BS
+-- import qualified Data.ByteString.Lazy.Char8   as BSL
 import           Data.Conduit                 (runConduit, (.|))
 import           Data.Conduit.Combinators     (mapM_, sinkList, take)
 import           Data.Conduit.TQueue          (sourceTQueue)
@@ -64,8 +65,6 @@ import           TxsDefs                      (ModelDef, sortDefs)
 import           ValExpr                      (ValExpr, cstrConst)
 import           VarId                        (VarId)
 
-import qualified Data.ByteString              as BS
--- import           Network.Http.Client          (foldGet)
 import           Network.Wreq                 (foldGet, get, partFile, partText,
                                                post, responseBody,
                                                responseStatus, statusCode)
@@ -131,6 +130,22 @@ testInfo :: IO ()
 testInfo = case info of
     Info _v _b -> return ()
 
+testPutToWReadsWorld :: IO Bool
+testPutToWReadsWorld = do
+    s <- newSession
+    let fWCh = s ^. fromWorldChan
+        txsChanId = ChanId "DummyChan" (Id 42) [SortId "DummySort" (Id 43)]
+        actP = Act $ Set.fromList [(txsChanId, [Cstring "Action NOT to be put"])]
+        actG = Act $ Set.fromList [(txsChanId, [Cstring "Action to be gotten"])]
+        fakeSendToW :: ToWorldMapping
+        fakeSendToW = error "This function should not be called in testPutToWReadsWorld, since there's an action waiting in fromWorldChan."
+        toWMMs = Map.singleton txsChanId fakeSendToW
+    atomically $ writeTChan fWCh actG
+    act <- runIOC s $ putToW fWCh toWMMs actP
+    atomically $ writeTChan fWCh actG
+    act' <- runIOC s $ putToW fWCh Map.empty ActQui
+    return $ act == actG && act' == actG
+
 -- | Test info
 --
 -- TODO: for now I'm putting this test here. We should find the right place for
@@ -142,22 +157,19 @@ testTorXakisWithInfo = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
     cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEchoInfoOnly.txs"
     _ <- load s cs
     st <- readTVarIO (s ^. sessionState)
-    let
-        Just mDef = st ^. tdefs . ix ("Model" :: Name)
+    let Just mDef = st ^. tdefs . ix ("Model" :: Name)
+        outChId = getOutChanId mDef
+        inChId  = getInChanId  mDef
         mSendToW :: ToWorldMapping -- [Const] -> IO (Maybe Action)
         mSendToW = ToWorldMapping $ \xs ->
             case xs of
                 [Cstr {cstrId = CstrId { name = "CmdInfo"}} ] ->
                     -- This is where we send the command through HTTP
-                    Just <$> actInfo st mDef
-                _   -> error $ "Didn't expect this data on channel " ++ show chanId
+                    Just <$> actInfo st outChId
+                _   -> error $ "Didn't expect this data on channel " ++ show inChId
                             ++ " (got " ++ show xs ++ ")"
-        chanId :: ChanId
-        chanId = let [setChId] = mDef ^. modelInChans
-                     [res] = Set.toList setChId
-                 in res
         s' :: Session
-        s' = s & wConnDef . toWorldMappings .~ Map.singleton chanId mSendToW
+        s' = s & wConnDef . toWorldMappings .~ Map.singleton inChId mSendToW
     _ <- tester s' "Model"
     _ <- test s' (NumberOfSteps 10)
     a <- async (printer s')
@@ -172,29 +184,24 @@ testTorXakisWithEcho = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
     _ <- load s cs
     st <- readTVarIO (s ^. sessionState)
     let Just mDef = st ^. tdefs . ix ("Model" :: Name)
-        chanId :: ChanId
-        chanId = let [setChId] = mDef ^. modelInChans
-                     [res] = Set.toList setChId
-                 in res
+        outChId = getOutChanId mDef
+        inChId  = getInChanId  mDef
         mSendToW :: ToWorldMapping -- [Const] -> IO (Maybe Action)
         mSendToW = ToWorldMapping $ \xs ->
             case xs of
-                [Cstr { cstrId = CstrId { name = "CmdInfo" }} ] -> Just <$> actInfo st mDef
+                [Cstr { cstrId = CstrId { name = "CmdInfo" }} ] -> Just <$> actInfo st outChId
                 [Cstr { cstrId = CstrId { name = "CmdLoad" }
                       , args = [Cstring { cString = fileToLoad }]
-                      }] -> -- Just <$> actLoad fileToLoad
-                            do actLoad fileToLoad
-                               return Nothing
-
-                _   -> error $ "Didn't expect this data on channel " ++ show chanId
+                      }] -> Just <$> actLoad st outChId fileToLoad
+                _   -> error $ "Didn't expect this data on channel " ++ show inChId
                             ++ " (got " ++ show xs ++ ")"
         mInitWorld :: TChan Action -> IO [ThreadId]
         mInitWorld fWCh = do
             tid <- forkIO $ do
                 let
                     writeToChan :: TChan Action -> BS.ByteString -> IO (TChan Action)
-                    writeToChan ch bs = do
-                        putStrLn $ "SSE says: " ++ BS.unpack bs
+                    writeToChan ch bs = do -- TODO: convert json to Msg, extract Act and write to chan
+                        putStrLn $ "SSE says: " ++ (head . lines . BS.unpack) bs
                         return ch
                 putStrLn "mInitWorld is called"
                 actInit
@@ -202,14 +209,65 @@ testTorXakisWithEcho = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
                 return ()
             return [tid]
         s' :: Session
-        s' = s & wConnDef . toWorldMappings .~ Map.singleton chanId mSendToW
+        s' = s & wConnDef . toWorldMappings .~ Map.singleton inChId mSendToW
                & wConnDef . initWorld .~ mInitWorld
     _ <- tester s' "Model"
-    _ <- test s' (NumberOfSteps 10)
+    _ <- test s' (NumberOfSteps 20)
     a <- async (printer s')
     v <- waitForVerdict s'
     cancel a
     return v
+
+actInfo :: SessionSt -> ChanId -> IO Action
+actInfo st outChId = do
+    -- In this case it's just a GET request
+    -- TODO: This address should be extracted from Model CNECTDEF
+    resp <- get "http://localhost:8080/info"
+    let status = resp ^. responseStatus . statusCode
+    if status /= 200
+        then error $ "/info returned unxpected status: " ++ show status
+        else do -- TODO: This ResponseInfo should be in responseBody as JSON
+            let params = infoParams resp
+                [sId] = [ SortId n i
+                    | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
+                    ,  n == "Response" ]
+                ft = st ^. sigs . funcTable
+            res <- apply st ft "ResponseInfo" params sId
+            case res of
+                Right cnst -> return $ Act $ Set.fromList [(outChId, [cnst])]
+                Left  err  -> error $ "Can't create Action because: " ++ err
+              where
+                infoParams r =
+                    let Just (String version'  ) = r ^? responseBody . key "version"
+                        Just (String buildTime') = r ^? responseBody . key "buildTime"
+                    in  [cstrConst (Cstring version')
+                        , cstrConst (Cstring buildTime')]
+
+actLoad ::  SessionSt -> ChanId -> Text -> IO Action
+actLoad st outChId path = do
+    putStrLn $ "actLoad POST request to upload: " ++ T.unpack path
+    -- TODO: This address should be extracted from Model CNECTDEF
+    resp <- post "http://localhost:8080/session/1/model" [partFile "txs" (T.unpack $ "..\\..\\" <> path)]
+    case resp ^. responseStatus . statusCode of
+        201 -> do putStrLn $ "actLoad /session/1/model received: " ++ show resp
+                  let [sId] = [ SortId n i
+                                | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
+                              ,  n == "Response" ]
+                      ft = st ^. sigs . funcTable
+                  res <- apply st ft "ResponseSuccess" [] sId
+                  case res of
+                        Right cnst -> return $ Act $ Set.fromList [(outChId, [cnst])]
+                        Left  err  -> error $ "Can't create Action because: " ++ err
+        s   -> error $ "/session/1/model returned unxpected status: " ++ show s
+
+actInit :: IO ()
+actInit = do
+    putStrLn "actInit POST request to create new session"
+    resp <- post "http://localhost:8080/session/new" [partText "" ""]
+    let status = resp ^. responseStatus . statusCode
+    when (status /= 201) $
+        error $ "/session/new returned unxpected status: " ++ show status
+    putStrLn $ "actInit /session/new received: " ++ show resp
 
 apply :: SessionSt -> FuncTable VarId -> Text -> [ValExpr VarId] -> SortId -> IO (Either String Const)
 apply st ft fn vs sId = do
@@ -228,63 +286,14 @@ apply st ft fn vs sId = do
                         }
             in evalStateT (eval (f vs)) envB -- TODO: Should not use eval, just parse a Response with new ADTDefs.
 
-actInfo :: SessionSt -> ModelDef -> IO Action
-actInfo st mDef = do
-    -- In this case it's just a GET request
-    -- TODO: This address should be extracted from Model CNECTDEF
-    resp <- get "http://localhost:8080/info"
-    let status = resp ^. responseStatus . statusCode
-    if status /= 200
-        then error $ "/info returned unxpected status: " ++ show status
-        else do
-            let params = infoParams resp
-                [sId] = [ SortId n i
-                    | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
-                    ,  n == "Response" ]
-                [setChId] = mDef ^. modelOutChans
-                [outChId] = Set.toList setChId
-                ft = st ^. sigs . funcTable
-            res <- apply st ft "ResponseInfo" params sId
-            case res of
-                Right cnst -> return $ Act $ Set.fromList [(outChId, [cnst])]
-                Left  err  -> error $ "Can't create Action because: " ++ err
-              where
-                infoParams r =
-                    let Just (String version'  ) = r ^? responseBody . key "version"
-                        Just (String buildTime') = r ^? responseBody . key "buildTime"
-                    in  [cstrConst (Cstring version')
-                        , cstrConst (Cstring buildTime')]
+getOutChanId :: ModelDef -> ChanId
+getOutChanId mDef =
+    let [setChId] = mDef ^. modelOutChans
+        [outChId] = Set.toList setChId
+    in  outChId
 
-actLoad :: Text -> IO ()
-actLoad path = do
-    putStrLn $ "actLoad POST request to upload: " ++ T.unpack path
-    -- TODO: This address should be extracted from Model CNECTDEF
-    resp <- post "http://localhost:8080/session/1/model" [partFile "txs" (T.unpack $ "..\\..\\" <> path)]
-    case resp ^. responseStatus . statusCode of
-        201 -> return ()
-        s   -> error $ "/session/1/model returned unxpected status: " ++ show s
-
-actInit :: IO ()
-actInit = do
-    putStrLn "actInit POST request to create new session"
-    resp <- post "http://localhost:8080/session/new" [partText "" ""]
-    let status = resp ^. responseStatus . statusCode
-    when (status /= 201) $
-        error $ "/session/new returned unxpected status: " ++ show status
-    putStrLn $ "actInit /session/new received: " ++ show resp
-
-testPutToWReadsWorld :: IO Bool
-testPutToWReadsWorld = do
-    s <- newSession
-    let fWCh = s ^. fromWorldChan
-        txsChanId = ChanId "DummyChan" (Id 42) [SortId "DummySort" (Id 43)]
-        actP = Act $ Set.fromList [(txsChanId, [Cstring "Action NOT to be put"])]
-        actG = Act $ Set.fromList [(txsChanId, [Cstring "Action to be gotten"])]
-        fakeSendToW :: ToWorldMapping
-        fakeSendToW = error "This function should not be called in testPutToWReadsWorld, since there's an action waiting in fromWorldChan."
-        toWMMs = Map.singleton txsChanId fakeSendToW
-    atomically $ writeTChan fWCh actG
-    act <- runIOC s $ putToW fWCh toWMMs actP
-    atomically $ writeTChan fWCh actG
-    act' <- runIOC s $ putToW fWCh Map.empty ActQui
-    return $ act == actG && act' == actG
+getInChanId :: ModelDef -> ChanId
+getInChanId mDef =
+    let [setChId] = mDef ^. modelInChans
+        [inChId] = Set.toList setChId
+    in inChId
