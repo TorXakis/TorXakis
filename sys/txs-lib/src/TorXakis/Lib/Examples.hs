@@ -193,8 +193,8 @@ testTorXakisWithEcho = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
                 [Cstr { cstrId = CstrId { name = "CmdLoad" }
                       , args = [Cstring { cString = fileToLoad }]
                       }] -> Just <$> actLoad st outChId fileToLoad
-                _   -> error $ "Didn't expect this data on channel " ++ show inChId
-                            ++ " (got " ++ show xs ++ ")"
+                _   -> do putStrLn $ "Didn't expect this data on channel " ++ show inChId ++ " (got " ++ show xs ++ ")"
+                          return $ Just ActQui
         mInitWorld :: TChan Action -> IO [ThreadId]
         mInitWorld fWCh = do
             tid <- forkIO $ do
@@ -204,7 +204,7 @@ testTorXakisWithEcho = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
                         putStrLn $ "SSE says: " ++ (head . lines . BS.unpack) bs
                         return ch
                 putStrLn "mInitWorld is called"
-                actInit
+                initSession
                 _ <- foldGet writeToChan fWCh "http://localhost:8080/session/sse/1/messages"
                 return ()
             return [tid]
@@ -225,17 +225,9 @@ actInfo st outChId = do
     resp <- get "http://localhost:8080/info"
     let status = resp ^. responseStatus . statusCode
     if status /= 200
-        then error $ "/info returned unxpected status: " ++ show status
-        else do -- TODO: This ResponseInfo should be in responseBody as JSON
-            let params = infoParams resp
-                [sId] = [ SortId n i
-                    | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
-                    ,  n == "Response" ]
-                ft = st ^. sigs . funcTable
-            res <- apply st ft "ResponseInfo" params sId
-            case res of
-                Right cnst -> return $ Act $ Set.fromList [(outChId, [cnst])]
-                Left  err  -> error $ "Can't create Action because: " ++ err
+        then createResponseAction st outChId "ResponseFailure" [cstrConst (Cstring $ T.pack $ "/info returned unxpected status: " ++ show status)]
+        else -- TODO: This ResponseInfo should be in responseBody as JSON
+            createResponseAction st outChId "ResponseInfo" $ infoParams resp
               where
                 infoParams r =
                     let Just (String version'  ) = r ^? responseBody . key "version"
@@ -245,29 +237,43 @@ actInfo st outChId = do
 
 actLoad ::  SessionSt -> ChanId -> Text -> IO Action
 actLoad st outChId path = do
-    putStrLn $ "actLoad POST request to upload: " ++ T.unpack path
     -- TODO: This address should be extracted from Model CNECTDEF
     resp <- post "http://localhost:8080/session/1/model" [partFile "txs" (T.unpack $ "..\\..\\" <> path)]
     case resp ^. responseStatus . statusCode of
-        201 -> do putStrLn $ "actLoad /session/1/model received: " ++ show resp
-                  let [sId] = [ SortId n i
-                                | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
-                              ,  n == "Response" ]
-                      ft = st ^. sigs . funcTable
-                  res <- apply st ft "ResponseSuccess" [] sId
-                  case res of
-                        Right cnst -> return $ Act $ Set.fromList [(outChId, [cnst])]
-                        Left  err  -> error $ "Can't create Action because: " ++ err
-        s   -> error $ "/session/1/model returned unxpected status: " ++ show s
+        201 -> createResponseAction st outChId "ResponseSuccess" []
+        s   -> createResponseAction st outChId "ResponseFailure" [cstrConst (Cstring $ T.pack $ "/session/1/model returned unxpected status: " ++ show s)]
 
-actInit :: IO ()
-actInit = do
-    putStrLn "actInit POST request to create new session"
+initSession :: IO ()
+initSession = do
+    putStrLn "initSession POST request to create new session"
     resp <- post "http://localhost:8080/session/new" [partText "" ""]
     let status = resp ^. responseStatus . statusCode
     when (status /= 201) $
         error $ "/session/new returned unxpected status: " ++ show status
-    putStrLn $ "actInit /session/new received: " ++ show resp
+    putStrLn $ "initSession /session/new received: " ++ show resp
+
+getOutChanId :: ModelDef -> ChanId
+getOutChanId mDef =
+    let [setChId] = mDef ^. modelOutChans
+        [outChId] = Set.toList setChId
+    in  outChId
+
+getInChanId :: ModelDef -> ChanId
+getInChanId mDef =
+    let [setChId] = mDef ^. modelInChans
+        [inChId] = Set.toList setChId
+    in inChId
+
+createResponseAction :: SessionSt -> ChanId -> Text -> [ValExpr VarId] -> IO Action
+createResponseAction st outChId rNm params = do
+    let [sId] = [ SortId n i
+                | (SortId n i, _) <- Map.toList $ sortDefs (st ^. tdefs)
+                ,  n == "Response" ]
+        ft = st ^. sigs . funcTable
+    res <- apply st ft rNm params sId
+    case res of
+        Right cnst -> return $ Act $ Set.fromList [(outChId, [cnst])]
+        Left  err  -> error $ "Can't create ResponseAction " ++ T.unpack rNm ++ " because: " ++ err
 
 apply :: SessionSt -> FuncTable VarId -> Text -> [ValExpr VarId] -> SortId -> IO (Either String Const)
 apply st ft fn vs sId = do
@@ -285,15 +291,3 @@ apply st ft fn vs sId = do
                         , msgs = []
                         }
             in evalStateT (eval (f vs)) envB -- TODO: Should not use eval, just parse a Response with new ADTDefs.
-
-getOutChanId :: ModelDef -> ChanId
-getOutChanId mDef =
-    let [setChId] = mDef ^. modelOutChans
-        [outChId] = Set.toList setChId
-    in  outChId
-
-getInChanId :: ModelDef -> ChanId
-getInChanId mDef =
-    let [setChId] = mDef ^. modelInChans
-        [inChId] = Set.toList setChId
-    in inChId
