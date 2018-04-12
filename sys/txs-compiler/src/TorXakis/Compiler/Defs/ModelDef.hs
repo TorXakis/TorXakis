@@ -10,5 +10,5 @@ import           TorXakis.Parser.Data
 
 modelDeclToModelDef :: ModelDecl -> CompilerM ModelDef
 modelDeclToModelDef md = do
-    be <- bexpDeclToExprDefs (modelBExp md)
+    be <- toBExpr undefined (modelBExp md)
     return $ ModelDef  [] [] [] be

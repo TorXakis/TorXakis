@@ -24,4 +24,3 @@ chanDeclsToChanIds mm chs = do
           chId   <- getNextId
           chSids <- traverse (`lookupWithLocM` mm) (chanDeclSorts ch)
           return $ ChanId (chanDeclName ch) (Id chId) chSids
-

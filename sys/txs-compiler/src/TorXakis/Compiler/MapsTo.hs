@@ -46,7 +46,7 @@ type family Contents m :: Tree *
 data Tree a = Leaf a | Node (Tree a) (Tree a)
 
 type instance Contents (Map k v) = 'Leaf (k, v)
-type instance Contents [a] = 'Leaf a
+type instance Contents [a] = 'Leaf ()
 
 instance MapsTo k v (Map k v) where
     lookup k m = maybeToEither err . Map.lookup k $ m
@@ -69,6 +69,11 @@ lookupWithLocM p mm = liftEither $ lookupWithLoc p mm
 
 -- | Combinator for maps.
 data a :& b = a :& b
+
+-- | Combine lists of key values pairs into a pair of maps.
+(.&.) :: (Ord k0, Ord k1)
+      => [(k0, v0)] -> [(k1, v1)] -> Map k0 v0 :& Map k1 v1
+kv0 .&. kv1 = Map.fromList kv0 :& Map.fromList kv1
 
 type instance Contents (a :& b) = 'Node (Contents a) (Contents b)
 

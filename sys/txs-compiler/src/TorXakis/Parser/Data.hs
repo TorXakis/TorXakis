@@ -23,6 +23,7 @@ module TorXakis.Parser.Data
     , ExpDeclE
     , VarRefE
     , ChanDeclE
+    , ChanRefE
     , ProcDeclE
     -- * Declarations.
     -- ** ADT's
@@ -52,6 +53,8 @@ module TorXakis.Parser.Data
     , funcRetSort
     , VarDecl
     , mkVarDecl
+    , IVarDecl
+    , mkIVarDecl
     , mkVarRef
     , varDeclSort
     , varName
@@ -80,9 +83,9 @@ module TorXakis.Parser.Data
     , modelName
     , modelBExp
     , BExpDecl (..)
-    , ActOffer (..)
-    , Offer (..)
-    , ChanOffer (..)
+    , ActOfferDecl (..)
+    , OfferDecl (..)
+    , ChanOfferDecl (..)
     -- ** Channels
     , ChanDecl
     , mkChanDecl
@@ -90,6 +93,7 @@ module TorXakis.Parser.Data
     , chanDeclSorts
     , ChanRef
     , mkChanRef
+    , chanRefName
     -- ** Processes
     , ProcDecl
     , mkProcDecl
@@ -263,6 +267,12 @@ type VarDecl = ParseTree VarDeclE OfSort
 mkVarDecl :: Text -> Loc VarDeclE -> OfSort -> VarDecl
 mkVarDecl n l s = ParseTree (Name n) VarDeclE l s
 
+-- | Implicit variable declaration (with no sort associated to it)
+type IVarDecl = ParseTree VarDeclE ()
+
+mkIVarDecl :: Text -> Loc VarDeclE -> IVarDecl
+mkIVarDecl n l = ParseTree (Name n) VarDeclE l ()
+
 class IsVariable v where
     -- | Name of a variable
     varName :: v -> Text
@@ -421,6 +431,9 @@ mkChanRef :: Text         -- ^ Name of the channel that is being referred.
           -> ChanRef
 mkChanRef n l = ParseTree (Name n) ChanRefE l ()
 
+chanRefName :: ChanRef -> Text
+chanRefName = nodeNameT
+
 data ModelComps = ModelComps
     { inchs  :: [ChanRef]
     , outchs :: [ChanRef]
@@ -429,19 +442,19 @@ data ModelComps = ModelComps
     } deriving (Eq, Ord, Show)
 
 data BExpDecl = Stop
-              | ActPref ActOffer BExpDecl
+              | ActPref ActOfferDecl BExpDecl
     deriving (Eq, Ord, Show)
 
-data ActOffer = ActOffer
-    { _offers     :: [Offer]
+data ActOfferDecl = ActOfferDecl
+    { _offers     :: [OfferDecl]
     , _constraint :: Maybe ExpDecl
     } deriving (Eq, Ord, Show)
 
-data Offer = Offer ChanRef [ChanOffer]
+data OfferDecl = OfferDecl ChanRef [ChanOfferDecl]
     deriving (Eq, Ord, Show)
 
-data ChanOffer = Quest (Either VarRef VarDecl)
-               | Excl  ExpDecl
+data ChanOfferDecl = QuestD IVarDecl
+                   | ExclD  ExpDecl
     deriving (Eq, Ord, Show)
 
 type VarRef = ParseTree VarRefE ()

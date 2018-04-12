@@ -18,7 +18,10 @@ import TorXakis.Compiler.Defs.ChanId
 import TorXakis.Compiler.ValExpr.VarId
 import TorXakis.Compiler.Defs.BehExprDefs
 
-procDeclsToProcDefMap :: ( MapsTo Text SortId mm)
+procDeclsToProcDefMap :: ( MapsTo Text SortId mm )
+-- TODO: from the environment we need:
+--
+-- - the Loc VarDeclE to VarId map 
                      => mm
                      -> [ProcDecl]
                      -> CompilerM (Map ProcId ProcDef)
@@ -28,14 +31,16 @@ procDeclsToProcDefMap mm ps = Map.fromList <$>
       procDeclToProcDefMap :: ProcDecl -> CompilerM (ProcId, ProcDef)
       procDeclToProcDefMap pd = do
           pId   <- getNextId
-          chIds <- fmap snd <$>
+          chIdsMap <- 
               chanDeclsToChanIds mm (procChParams . procDeclComps $ pd)
           pdVdSortMap <- procDefVdSortMap
-          vIds  <- fmap snd <$>
+          vIdsMap  <- 
               let e = SEnv pdVdSortMap  in 
-                  traverse (varIdsFromVarDecl e) vdecls
+                  traverse (varIdsFromVarDecl e) vdecls                  
           e <- exitSort (procRetSort . procDeclComps $ pd)
-          b <- bexpDeclToExprDefs (procBody . procDeclComps $ pd)
+          b <- toBExpr (chIdsMap .&. vIdsMap) (procBody . procDeclComps $ pd)
+          let chIds = snd <$> chIdsMap
+              vIds  = snd <$> vIdsMap
           return ( ProcId (procDeclName pd) (Id pId) chIds vIds e
                  , ProcDef chIds vIds b
                  )
