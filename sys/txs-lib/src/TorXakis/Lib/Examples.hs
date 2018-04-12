@@ -207,7 +207,7 @@ testTorXakisWithEcho = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
                 let
                     writeToChan :: TChan Action -> BS.ByteString -> IO (TChan Action)
                     writeToChan ch bs = do -- TODO: convert json to Msg, extract Act and write to chan
-                        putStrLn $ " ==>> SSE says: " ++ (head . lines . BS.unpack) bs
+                        putStrLn $ " ==>> SSE says: " ++ (head . lines . BS.unpack) bs -- Q: does this take everything from the string or just first line?
                         return ch
                 putStrLn "mInitWorld is called"
                 initSession
