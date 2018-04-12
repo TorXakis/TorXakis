@@ -940,7 +940,7 @@ StautDef        -- :: { [(Ident,TxsDef)] }
                 ;  $5.inhSigs      = $$.inhSigs
                 ;  $7.inhSigs      = let (_, vars, _, _, _, _) = $7 in
                                         $$.inhSigs { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 
-                                                                , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5
+                                                                , ProcId (T.pack "stdi_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5
                                                                 , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 1) $3 (combineParameters $4 (VarId (T.pack "$s") ($$.inhNodeUid + 2) sortIdInt) vars) $5
                                                                 ] }
                                                                  { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] } 
@@ -948,13 +948,13 @@ StautDef        -- :: { [(Ident,TxsDef)] }
                 ;  $7.inhVarSigs   = $4
                 ;  $$.synSigs      = let (_, vars, _, _, _, _) = $7 in
                                         Sigs.empty { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 
-                                                                , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5
+                                                                , ProcId (T.pack "stdi_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5
                                                                 , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 1) $3 (combineParameters $4 (VarId (T.pack "$s") ($$.inhNodeUid + 2) sortIdInt) vars) $5
                                                                 ] }
                 ;  $$ = let (sts, vars, trs, init, venv, bexpr) = $7 in
                         let (pd, pi) = translate (Map.empty :: Map.Map FuncId (FuncDef VarId)) ($$.inhNodeUid + 1) ($$.inhNodeUid + 2) $2 $3 $4 $5 sts vars trs init venv in
                             [ ( IdProc (ProcId $2 $$.inhNodeUid $3 $4 $5), DefProc (ProcDef $3 $4 bexpr) )
-                            , ( IdProc (ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5), DefProc (ProcDef $3 $4 pi) )
+                            , ( IdProc (ProcId (T.pack "stdi_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5), DefProc (ProcDef $3 $4 pi) )
                             , ( IdProc (ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 1) $3 (combineParameters $4 (VarId (T.pack "$s") ($$.inhNodeUid + 2) sortIdInt) vars) $5), DefProc pd)
                             ]
                 ;  where if $7.synExitSorts == $5 then () else
