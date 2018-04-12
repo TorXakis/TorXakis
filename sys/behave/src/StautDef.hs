@@ -3,7 +3,6 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE ViewPatterns #-}
 module StautDef
 ( translate
 , combineParameters   -- TODO for comparison only (should not be exposed in final release)
@@ -63,9 +62,9 @@ translate fdefs unidProc unidS name' chans params exitSort states vars' trans st
               Just toIndex   = Map.lookup to'   stateMap
               vexprEqualStateFrom = cstrEqual (cstrVar stateId) (cstrConst (Cint fromIndex))
               ActOffer offers' hidvars cond = ao
-              cond' = case cond of 
-                        ValExpr.view -> Vconst (Cbool True) -> vexprEqualStateFrom
-                        _                                   -> cstrITE vexprEqualStateFrom cond (cstrConst (Cbool False))
+              cond' = case ValExpr.view cond of 
+                        Vconst (Cbool True) -> vexprEqualStateFrom
+                        _                   -> cstrITE vexprEqualStateFrom cond (cstrConst (Cbool False))
             in
               actionPref (ActOffer offers' hidvars cond')
                          (procInst procId chans (combineArguments args' (cstrConst (Cint toIndex)) (map ( subst update' fdefs . cstrVar ) vars')))
