@@ -45,6 +45,7 @@ import           ChanId
 import           ConstDefs
 import qualified EnvBTree            as IOB
 import qualified EnvData
+import           Id
 import           StdTDefs
 import           TxsDefs
 import           TxsUtils
@@ -77,7 +78,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs hidvars cnd
      let ivenv = if null $ Set.intersection hidvars (Set.fromList (map fst quests))
                    then Map.fromList $   [ (vid,  cstrVar ivar) | (vid,  ivar) <- quests   ]
                                       ++ [ (hvid, cstrVar hvar) | (hvid, hvar) <- hvarlist ]
-                   else error $ "ERROR: interaction and hidden variables shall be disjoint\n"
+                   else error "ERROR: interaction and hidden variables shall be disjoint\n"
          we'   = Map.fromList [ (vid, wal)
                               | (vid, wal) <- Map.toList we
                               , vid `Map.notMember` ivenv
@@ -88,7 +89,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs hidvars cnd
                       | (ivar, vexp) <- exclams
                       ]
      case Data.Either.partitionEithers exclams' of
-       ([],r) -> do return
+       ([],r) ->    return
                       [ CTpref { ctoffers  = ctoffs
                                , cthidvars = map snd hvarlist
                                , ctpred    = cstrAnd $ Set.fromList
@@ -223,7 +224,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
          let ivenv = if null $ Set.intersection hidvars (Set.fromList (map fst quests))
                        then Map.fromList $   [ (vid,  cstrVar ivar) | (vid,  ivar) <- quests   ]
                                           ++ [ (hvid, cstrVar hvar) | (hvid, hvar) <- hvarlist ]
-                       else error $ "ERROR: interaction and hidden variables shall be disjoint\n"
+                       else error "ERROR: interaction and hidden variables shall be disjoint\n"
              we'   = envwals `combineWEnv` stswals
          tds <- gets IOB.tdefs
          let exclams' = map toEitherTuple
@@ -582,20 +583,22 @@ instance Relabel Trans
 -- ----------------------------------------------------------------------------------------- --
 -- transform IVar/VarId into unique IVar (HVar)
 
+getUnid :: IOB.IOB Id
+getUnid = do
+    unid'   <- gets IOB.unid
+    let newUnid = unid' + 1
+    modify $ \env -> env { IOB.unid = newUnid }
+    return newUnid
 
 uniHVar :: IVar -> IOB.IOB IVar
 uniHVar (IVar ivname' ivuid' ivpos' ivstat' ivsrt')  =  do
-     unid'   <- gets IOB.unid
-     let newUnid = unid' + 1
-     modify $ \env -> env { IOB.unid = newUnid }
+     newUnid <- getUnid
      return $ IVar (ivname'<>"$$$"<> (T.pack . show) ivuid') newUnid ivpos' ivstat' ivsrt'
 
 
 uniIVar :: VarId -> IOB.IOB IVar
 uniIVar (VarId nm uid srt)  =  do
-     unid'   <- gets IOB.unid
-     let newUnid = unid' + 1
-     modify $ \env -> env { IOB.unid = newUnid }
+     newUnid <- getUnid
      return $ IVar (nm<>"$H$"<>(T.pack . show) uid) newUnid 0 0 srt
 
 
