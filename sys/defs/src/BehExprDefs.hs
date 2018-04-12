@@ -96,7 +96,7 @@ guard :: VExpr -> BExpr -> BExpr
 guard v b = BExpr (Guard v b)
 
 choice :: [BExpr] -> BExpr
-choice bs = BExpr (Choice bs)
+choice = BExpr . Choice
 
 parallel :: [ChanId] -> [BExpr] -> BExpr
 parallel cs bs = BExpr (Parallel cs bs)

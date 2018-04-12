@@ -157,11 +157,11 @@ getIntVal _                         =
 
 -- | Create a constant as a value expression.
 cstrConst :: Const -> ValExpr v
-cstrConst c = ValExpr (Vconst c)
+cstrConst = ValExpr . Vconst
 
 -- | Create a variable as a value expression.
 cstrVar :: v -> ValExpr v
-cstrVar v = ValExpr (Vvar v)
+cstrVar = ValExpr . Vvar
 
 -- | Apply operator ITE (IF THEN ELSE) on the provided value expressions.
 -- Preconditions are /not/ checked.
@@ -496,8 +496,6 @@ compSubst' ve fis (Vat s p)                = cstrAt ( (compSubst' ve fis . view)
 compSubst' ve fis (Vconcat vexps)          = cstrConcat $ map (compSubst' ve fis . view) vexps
 compSubst' ve fis (Vstrinre s r)           = cstrStrInRe ( (compSubst' ve fis . view) s) ( (compSubst' ve fis . view) r)
 compSubst' ve fis (Vpredef kd fid vexps)   = cstrPredef kd fid (map (compSubst' ve fis . view) vexps)
-
--- ----------------------------------------------------------------------------------------- --
 
 -- ----------------------------------------------------------------------------------------- --
 --

@@ -3,7 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
+{-# LANGUAGE ViewPatterns #-}
 module StautDef
 ( translate
 , combineParameters   -- TODO for comparison only (should not be exposed in final release)
@@ -11,6 +11,7 @@ module StautDef
 
 where
 
+import           Control.Arrow ((&&&))
 import qualified Data.Map           as Map
 import qualified Data.Text          as T
 import           Data.Monoid
@@ -42,7 +43,7 @@ translate fdefs unidProc unidS name' chans params exitSort states vars' trans st
          procInst procId chans (combineArguments args' (cstrConst (Cint initIndex)) (map (subst defaultMap fdefs . cstrVar) vars')))
   where
         defaultMap :: VEnv
-        defaultMap = Map.union initialization $ Map.fromList (map (\x -> (x, cstrConst (Cany (varsort x)))) vars')
+        defaultMap = Map.union initialization $ Map.fromList (map (id &&& (cstrConst . Cany . varsort) ) vars')
         
         stateMap :: Map.Map StatId Integer
         stateMap = Map.fromList $ zip states [0..]
@@ -57,8 +58,13 @@ translate fdefs unidProc unidS name' chans params exitSort states vars' trans st
         args' = map cstrVar params
         
         alternative :: Trans -> BExpr
-        alternative (Trans from' (ActOffer offers' cond) update' to') =
-            let Just fromIndex = Map.lookup from' stateMap
-                Just toIndex   = Map.lookup to'   stateMap in
-            actionPref (ActOffer offers' (cstrITE (cstrEqual (cstrVar stateId) (cstrConst (Cint fromIndex))) cond (cstrConst (Cbool False))))
-                       (procInst procId chans (combineArguments args' (cstrConst (Cint toIndex)) (map ( subst update' fdefs . cstrVar ) vars')))
+        alternative (Trans from' ao update' to') =
+          let Just fromIndex = Map.lookup from' stateMap
+              Just toIndex   = Map.lookup to'   stateMap
+              vexprEqualStateFrom = cstrEqual (cstrVar stateId) (cstrConst (Cint fromIndex))
+              (offers'', cond') = case ao of 
+                                    (ActOffer offers' (ValExpr.view -> Vconst (Cbool True))) -> (offers', vexprEqualStateFrom)
+                                    (ActOffer offers' cond)                                  -> (offers', cstrITE vexprEqualStateFrom cond (cstrConst (Cbool False)))
+            in
+              actionPref (ActOffer offers'' cond')
+                         (procInst procId chans (combineArguments args' (cstrConst (Cint toIndex)) (map ( subst update' fdefs . cstrVar ) vars')))
