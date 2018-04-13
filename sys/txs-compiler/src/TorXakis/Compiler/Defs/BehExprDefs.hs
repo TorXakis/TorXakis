@@ -42,6 +42,7 @@ toOffer :: ( MapsTo Text ChanId mm
         => mm -> OfferDecl -> CompilerM Offer
 toOffer mm (OfferDecl cr cods) = do
     cId  <- lookupM (chanRefName cr) mm
+            <!!> cr
     ofrs <- traverse (uncurry (toChanOffer mm))
                      (zip (chansorts cId) cods)
     return $ Offer cId ofrs

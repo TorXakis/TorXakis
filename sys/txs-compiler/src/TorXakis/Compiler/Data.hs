@@ -7,8 +7,10 @@
 {-# LANGUAGE TypeOperators              #-}
 module TorXakis.Compiler.Data where
 
-import           Control.Arrow             ((|||))
-import           Control.Monad.Error.Class (MonadError, liftEither)
+import           Control.Arrow             (left, (|||))
+import           Control.Lens              ((&), (.~))
+import           Control.Monad.Error.Class (MonadError, catchError, liftEither,
+                                            throwError)
 import           Control.Monad.State       (MonadState, StateT, get, put)
 import           Data.Either.Utils         (maybeToEither)
 import           Data.List                 (find)
@@ -333,3 +335,11 @@ getNextId = do
 
 instance HasErrorLoc FuncDefInfo where
     getErrorLoc fdi = fromMaybe NoErrorLoc (getErrorLoc <$> fdiLoc fdi)
+
+-- | Set the error location.
+(<!>) :: HasErrorLoc l => Either Error a -> l -> Either Error a
+(<!>) ea l = left (errorLoc .~ getErrorLoc l) ea
+
+-- | Set the error location (monadic version).
+(<!!>) :: HasErrorLoc l => CompilerM a -> l -> CompilerM a
+m <!!> l = catchError m $ throwError . (errorLoc .~ getErrorLoc l)

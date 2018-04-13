@@ -10,6 +10,8 @@
 {-# LANGUAGE UndecidableInstances  #-}
 module TorXakis.Compiler.MapsTo where
 
+import           Control.Arrow             (left)
+import           Control.Lens              (Lens', to, (%~), (.~), (^.))
 import           Control.Monad.Error.Class (liftEither)
 import           Data.Either.Utils         (maybeToEither)
 import           Data.Map                  (Map)
@@ -75,8 +77,7 @@ instance MapsTo k v (Map k v) where
 
 lookupWithLoc :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
               => (k, l) -> mm -> Either Error v
-lookupWithLoc (k, _) mm = lookup k mm -- TODO: Use lenses here to overwrite the error location.
-                                      -- TODO: maybe rename this to (.?)
+lookupWithLoc (k, l) mm = lookup k mm <!> l
 
 lookupWithLocM :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
                => (k, l) -> mm -> CompilerM v

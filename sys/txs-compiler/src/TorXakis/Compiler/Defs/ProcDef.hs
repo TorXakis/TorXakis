@@ -17,6 +17,7 @@ import TorXakis.Parser.Data
 import TorXakis.Compiler.Defs.ChanId
 import TorXakis.Compiler.ValExpr.VarId
 import TorXakis.Compiler.Defs.BehExprDefs
+import TorXakis.Compiler.Error
 
 procDeclsToProcDefMap :: ( MapsTo Text SortId mm )
 -- TODO: from the environment we need:
@@ -37,7 +38,7 @@ procDeclsToProcDefMap mm ps = Map.fromList <$>
           vIdsMap  <- 
               let e = SEnv pdVdSortMap  in 
                   traverse (varIdsFromVarDecl e) vdecls                  
-          e <- exitSort (procRetSort . procDeclComps $ pd)
+          e <- exitSort (procRetSort . procDeclComps $ pd) <!!> pd              
           b <- toBExpr (chIdsMap .&. vIdsMap) (procBody . procDeclComps $ pd)
           let chIds = snd <$> chIdsMap
               vIds  = snd <$> vIdsMap

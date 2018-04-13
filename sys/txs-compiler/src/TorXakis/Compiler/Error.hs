@@ -1,6 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 module TorXakis.Compiler.Error where
 
+import           Control.Arrow   (left)
+import           Control.Lens    ((.~))
 import           Control.Lens.TH (makeLenses)
 import           Data.Text       (Text)
 
