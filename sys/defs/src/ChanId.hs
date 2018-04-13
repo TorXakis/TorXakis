@@ -13,9 +13,9 @@ module ChanId
 where
 
 import           Control.DeepSeq
+import           Data.Aeson      (FromJSON, ToJSON)
 import           Data.Data
 import           GHC.Generics    (Generic)
-import           Data.Aeson                  (ToJSON)
 
 import           Id
 import           Name
@@ -28,6 +28,7 @@ data ChanId = ChanId
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance ToJSON ChanId
+instance FromJSON ChanId
 
 instance Resettable ChanId
 instance Identifiable ChanId

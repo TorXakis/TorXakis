@@ -48,6 +48,7 @@ library:
   - conduit-combinators
   - containers
   - deepseq
+  - extra
   - http-client
   - lens-aeson
   - microlens

@@ -26,7 +26,7 @@ module EnvData
 
 where
 
-import           Data.Aeson   (ToJSON)
+import           Data.Aeson   (FromJSON, ToJSON)
 import           GHC.Generics (Generic)
 
 -- import from defs
@@ -64,6 +64,7 @@ data Msg     =   TXS_CORE_SYSTEM_ERROR     { s :: String }
      deriving (Eq, Ord, Read, Show, Generic)
 
 instance ToJSON Msg
+instance FromJSON Msg
 
 instance TxsShow.PShow Msg
   where

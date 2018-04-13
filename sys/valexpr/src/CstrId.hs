@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 -- Module      :  CstrId
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
@@ -23,9 +23,9 @@ module CstrId
 where
 
 import           Control.DeepSeq
+import           Data.Aeson      (FromJSON, ToJSON)
 import           Data.Data
 import           GHC.Generics    (Generic)
-import           Data.Aeson                  (ToJSON)
 
 import           Id
 import           Name
@@ -40,6 +40,7 @@ data CstrId = CstrId
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance ToJSON CstrId
+instance FromJSON CstrId
 
 -- | CstrId is Resettable
 instance Resettable CstrId

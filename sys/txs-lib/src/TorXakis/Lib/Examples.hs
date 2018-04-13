@@ -18,18 +18,19 @@ import           Control.Concurrent.Async     (async, cancel)
 import           Control.Concurrent.STM.TChan (TChan, writeTChan)
 import           Control.Concurrent.STM.TVar  (readTVarIO)
 import           Control.Exception            (SomeException)
-import           Control.Monad                (void, when)
+import           Control.Monad                (forever, void, when)
 import           Control.Monad.State          (evalStateT)
 import           Control.Monad.STM            (atomically)
--- import           Data.Aeson                   (decode)
+import           Data.Aeson                   (decode)
 import           Data.Aeson.Lens              (key)
 import           Data.Aeson.Types             (Value (String))
 import qualified Data.ByteString.Char8        as BS
--- import qualified Data.ByteString.Lazy.Char8   as BSL
+import qualified Data.ByteString.Lazy.Char8   as BSL
 import           Data.Conduit                 (runConduit, (.|))
 import           Data.Conduit.Combinators     (mapM_, sinkList, take)
 import           Data.Conduit.TQueue          (sourceTQueue)
 import           Data.Foldable                (traverse_)
+import           Data.List.Extra              (dropPrefix)
 import qualified Data.Map                     as Map
 import           Data.Monoid                  ((<>))
 import qualified Data.Set                     as Set
@@ -41,12 +42,13 @@ import           System.Process               (StdStream (NoStream), proc,
                                                std_out, withCreateProcess)
 
 import           ChanId                       (ChanId (ChanId))
+import qualified ChanId
 import           ConstDefs                    (Const (Cint, Cstr, Cstring),
                                                args, cInt, cString, cstrId)
 import           CstrId                       (CstrId (CstrId), name)
 import           EnvBTree                     (EnvB (EnvB), msgs, smts, stateid)
 import qualified EnvBTree                     as E
-import           EnvData                      (Msg)
+import           EnvData                      (Msg (AnAction), act)
 import           Eval                         (eval)
 import           FuncTable                    (FuncTable, Signature (Signature),
                                                signHandler)
@@ -141,10 +143,10 @@ testPutToWReadsWorld = do
         fakeSendToW = error "This function should not be called in testPutToWReadsWorld, since there's an action waiting in fromWorldChan."
         toWMMs = Map.singleton txsChanId fakeSendToW
     atomically $ writeTChan fWCh actG
-    act <- runIOC s $ putToW fWCh toWMMs actP
+    action <- runIOC s $ putToW fWCh toWMMs actP
     atomically $ writeTChan fWCh actG
-    act' <- runIOC s $ putToW fWCh Map.empty ActQui
-    return $ act == actG && act' == actG
+    action' <- runIOC s $ putToW fWCh Map.empty ActQui
+    return $ action == actG && action' == actG
 
 -- | Test info
 --
@@ -206,12 +208,21 @@ testTorXakisWithEcho = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
             tid <- forkIO $ do
                 let
                     writeToChan :: TChan Action -> BS.ByteString -> IO (TChan Action)
-                    writeToChan ch bs = do -- TODO: convert json to Msg, extract Act and write to chan
-                        putStrLn $ " ==>> SSE says: " ++ (head . lines . BS.unpack) bs -- Q: does this take everything from the string or just first line?
+                    writeToChan ch bs = do
+                        let nextLine = BS.unpack bs -- `head . lines` is not necessary, because every bs chunk is one line
+                            jsonStr = dropPrefix "data:" nextLine
+                        case decode $ BSL.pack jsonStr of
+                            Just AnAction{act = Act pairSet } -> do
+                                let [(ChanId{ChanId.name=chNm},[prm])] = Set.toList pairSet
+                                a <- createResponseAction st outChId "ResponseAction"
+                                                [ cstrConst (Cstring chNm)
+                                                , cstrConst prm
+                                                ]
+                                atomically $ writeTChan ch a
+                            _ -> return ()
                         return ch
-                putStrLn "mInitWorld is called"
                 initSession
-                _ <- foldGet writeToChan fWCh "http://localhost:8080/session/sse/1/messages"
+                _ <- forever $ foldGet writeToChan fWCh "http://localhost:8080/session/sse/1/messages"
                 return ()
             return [tid]
         s' :: Session
@@ -263,16 +274,15 @@ actStep st outChId n = do
     resp <- post ("http://localhost:8080/stepper/step/1/" ++ show n) [partText "" ""]
     case resp ^. responseStatus . statusCode of
         200 -> return Nothing --createResponseAction st outChId "ResponseSuccess" []
-        s   -> Just <$> createResponseAction st outChId "ResponseFailure" [cstrConst (Cstring $ T.pack $ "/stepper/step/1/" ++ show n ++ " returned unxpected status: " ++ show s)]
+        s   -> Just <$> createResponseAction st outChId "ResponseFailure"
+                            [cstrConst (Cstring $ T.pack $ "/stepper/step/1/" ++ show n ++ " returned unxpected status: " ++ show s)]
 
 initSession :: IO ()
 initSession = do
-    putStrLn "initSession POST request to create new session"
     resp <- post "http://localhost:8080/session/new" [partText "" ""]
     let status = resp ^. responseStatus . statusCode
     when (status /= 201) $
         error $ "/session/new returned unxpected status: " ++ show status
-    putStrLn $ "initSession /session/new received: " ++ show resp
 
 getOutChanId :: ModelDef -> ChanId
 getOutChanId mDef =

@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 -- Module      :  SortId
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
@@ -18,13 +18,13 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings  #-}
 module SortId where
 
 import           Control.DeepSeq
+import           Data.Aeson      (FromJSON, ToJSON)
 import           Data.Data
 import           GHC.Generics    (Generic)
-import           Data.Aeson                  (ToJSON)
 
 -- Local imports.
 import           Id
@@ -38,6 +38,7 @@ data SortId = SortId
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance ToJSON SortId
+instance FromJSON SortId
 
 -- | SortId is Resettable
 instance Resettable SortId

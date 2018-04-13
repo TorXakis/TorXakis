@@ -11,7 +11,7 @@ module TxsDDefs
 
 where
 
-import           Data.Aeson             (ToJSON)
+import           Data.Aeson             (FromJSON, ToJSON)
 import qualified Data.Set               as Set
 import           Data.Text              (Text)
 import           GHC.Generics           (Generic)
@@ -32,6 +32,7 @@ data  Action   =  Act     ( Set.Set (ChanId,[Const]) )
      deriving (Eq,Ord,Read,Show,Generic)
 
 instance ToJSON Action
+instance FromJSON Action
 
 -- ----------------------------------------------------------------------------------------- --
 
