@@ -1,4 +1,4 @@
--- |
+{-# LANGUAGE FlexibleContexts  #-}
 
 module TorXakis.Compiler.Defs.Sigs where
 
@@ -10,19 +10,20 @@ import           SortId                           (SortId)
 import           VarId                            (VarId)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Defs.FuncTable
 import           TorXakis.Parser.Data
 
-adtDeclsToSigs :: (HasSortIds e, HasFuncIds e, HasFuncDefs e, HasCstrIds e)
-               => e -> [ADTDecl] -> CompilerM (Sigs VarId)
-adtDeclsToSigs e ds = do
-    ft <- adtsToFuncTable e ds
+adtDeclsToSigs :: (MapsTo Text SortId mm, HasFuncIds e, HasFuncDefs e, HasCstrIds e)
+               => mm -> e -> [ADTDecl] -> CompilerM (Sigs VarId)
+adtDeclsToSigs mm e ds = do
+    ft <- adtsToFuncTable mm e ds
     return $ empty { func = ft }
 
-funDeclsToSigs :: (HasSortIds e, HasFuncIds e, HasFuncDefs e, HasCstrIds e)
-               => e -> [FuncDecl] -> CompilerM (Sigs VarId)
-funDeclsToSigs e ds = do
-    ft <- funcDeclsToFuncTable e ds
+funDeclsToSigs :: (MapsTo Text SortId mm, HasFuncIds e, HasFuncDefs e, HasCstrIds e)
+               => mm -> e -> [FuncDecl] -> CompilerM (Sigs VarId)
+funDeclsToSigs mm e ds = do
+    ft <- funcDeclsToFuncTable mm e ds
     return $ empty { func = ft }
 
 sortsToSigs :: Map Text SortId -> Sigs VarId

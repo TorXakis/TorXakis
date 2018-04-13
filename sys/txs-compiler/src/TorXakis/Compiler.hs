@@ -35,6 +35,8 @@ import           ValExpr                           (ValExpr,
                                                     ValExprView (Vfunc, Vite),
                                                     cstrITE, cstrVar, view)
 import           VarId                             (VarId)
+import           SortId                             (SortId)
+
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.ChanId
@@ -85,17 +87,17 @@ compileParsedDefs pd = do
         e0 = emptyEnv { sortIdT = allSortsMap}
     -- TODO: I'm dumping the map here till we get rid of all these 'Has'X type classes.
     chs <- Map.fromList <$> chanDeclsToChanIds allSortsMap (pd ^. chdecls)        
-    cMap <- compileToCstrId e0 (pd ^. adts)
+    cMap <- compileToCstrId allSortsMap (pd ^. adts)
     let e1 = e0 { cstrIdT = cMap }
         allFuncs = pd ^. funcs ++ pd ^. consts
     stdFuncIds <- getStdFuncIds
-    cstrFuncIds <- adtsToFuncIds e1 (pd ^. adts)
+    cstrFuncIds <- adtsToFuncIds allSortsMap (pd ^. adts)
     -- Construct the variable declarations table.
     let predefFuncs = funcDefInfoNamesMap $
             (fst <$> stdFuncIds) ++ (fst <$> cstrFuncIds)
     dMap <- generateVarDecls predefFuncs allFuncs
     -- Construct the function declaration to function id table.
-    lFIdMap <- funcDeclsToFuncIds e1 allFuncs
+    lFIdMap <- funcDeclsToFuncIds allSortsMap allFuncs
     -- Join `lFIdMap` and  `stdFuncIds`.
     let completeFidMap = Map.fromList $ --
             fmap (first FDefLoc) (Map.toList lFIdMap)
@@ -104,7 +106,7 @@ compileParsedDefs pd = do
         e2 = e1 { varDeclT = dMap
                 , funcIdT = completeFidMap }
     -- Infer the types of all variable declarations.
-    vdSortMap <- inferTypes e2 allFuncs
+    vdSortMap <- inferTypes allSortsMap e2 allFuncs
     let e3 = e2 { varSortIdT = vdSortMap }
     -- Construct the variable declarations to @VarId@'s lookup table.
     vMap <- generateVarIds e3 allFuncs
@@ -114,8 +116,8 @@ compileParsedDefs pd = do
     -- Construct the @ProcId@ to @ProcDef@ map:
     pdefMap <- procDeclsToProcDefMap allSortsMap (pd ^. procs)
     -- Finally construct the TxsDefs.
-    sigs    <- toSigs                e5 (pdefMap :& chs) pd
-    txsDefs <- toTxsDefs (func sigs) e5 (pdefMap :& chs) pd
+    sigs    <- toSigs                (allSortsMap :& pdefMap :& chs) e5 pd
+    txsDefs <- toTxsDefs (func sigs) (allSortsMap :& pdefMap :& chs) e5 pd
     St i    <- get
     return (Id i, txsDefs, sigs)
 
@@ -148,13 +150,13 @@ simplify :: FuncTable VarId -> [Text] -> (FuncId, FuncDef VarId) -> (FuncId, Fun
 -- TODO: return an either instead.
 simplify ft fns (fId, FuncDef vs ex) = (fId, FuncDef vs (simplify' ft fns ex))
 
-toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e
+toTxsDefs :: (MapsTo Text SortId mm, HasCstrIds e, HasFuncIds e, HasFuncDefs e
              , MapsTo ProcId ProcDef mm
              , MapsTo Text ChanId mm
              )
-          => FuncTable VarId -> e -> mm -> ParsedDefs -> CompilerM TxsDefs
-toTxsDefs ft e mm pd = do
-    ads <- adtsToTxsDefs e (pd ^. adts)
+          => FuncTable VarId -> mm -> e -> ParsedDefs -> CompilerM TxsDefs
+toTxsDefs ft mm e pd = do
+    ads <- adtsToTxsDefs mm e (pd ^. adts)
     -- Get the function id's of all the constants.
     cfIds <- traverse (findFuncIdForDeclM e) (pd ^.. consts . traverse . loc')
     let
@@ -179,15 +181,15 @@ toTxsDefs ft e mm pd = do
         `union` fromList stdTDefs        
         `union` mds
 
-toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e
+toSigs :: (MapsTo Text SortId mm, HasCstrIds e, HasFuncIds e, HasFuncDefs e
           , MapsTo ProcId ProcDef mm
           , MapsTo Text ChanId mm)
-       => e -> mm -> ParsedDefs -> CompilerM (Sigs VarId)
-toSigs e mm pd = do
-    let ts   = sortsToSigs (getSortIdMap e)
-    as  <- adtDeclsToSigs e (pd ^. adts)
-    fs  <- funDeclsToSigs e (pd ^. funcs)
-    cs  <- funDeclsToSigs e (pd ^. consts)
+       => mm -> e -> ParsedDefs -> CompilerM (Sigs VarId)
+toSigs mm e pd = do
+    let ts   = sortsToSigs (innerMap mm)
+    as  <- adtDeclsToSigs mm e (pd ^. adts)
+    fs  <- funDeclsToSigs mm e (pd ^. funcs)
+    cs  <- funDeclsToSigs mm e (pd ^. consts)
     let pidMap :: Map ProcId ProcDef
         pidMap = innerMap mm
         ss = Sigs.empty { func = stdFuncTable

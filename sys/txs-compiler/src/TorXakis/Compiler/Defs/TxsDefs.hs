@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeApplications          #-}
 module TorXakis.Compiler.Defs.TxsDefs where
 
 import           Data.Map                          (Map)
@@ -21,19 +22,20 @@ import           TorXakis.Compiler.ValExpr.CstrDef
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.MapsTo
 
-adtsToTxsDefs :: (HasCstrIds e, HasSortIds e)
-              => e -> [ADTDecl] -> CompilerM TxsDefs
-adtsToTxsDefs e ds = do
-    lCstrDefs <- compileToCstrDefs e ds
+adtsToTxsDefs :: ( MapsTo Text SortId mm
+                 , HasCstrIds e)
+              => mm -> e -> [ADTDecl] -> CompilerM TxsDefs
+adtsToTxsDefs mm e ds = do
+    lCstrDefs <- compileToCstrDefs mm e ds
     return $ empty
-        { sortDefs = envToSortDefs e
+        { sortDefs = envToSortDefs mm
         , cstrDefs = lCstrDefs
         }
 
-envToSortDefs :: (HasCstrIds e, HasSortIds e)
-              => e -> Map SortId SortDef
-envToSortDefs e = Map.fromList $
-    zip (allSortIds e) (repeat SortDef)
+envToSortDefs :: ( MapsTo Text SortId mm )
+              => mm -> Map SortId SortDef
+envToSortDefs mm = Map.fromList $
+    zip (values @Text mm) (repeat SortDef)
 
 modelDeclsToTxsDefs :: ( MapsTo Text ChanId mm
                        , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False

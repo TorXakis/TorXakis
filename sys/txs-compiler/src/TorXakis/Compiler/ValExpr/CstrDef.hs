@@ -1,29 +1,37 @@
+{-# LANGUAGE FlexibleContexts  #-}
 module TorXakis.Compiler.ValExpr.CstrDef where
 
 import           Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Text (Text)
 
+import           SortId (SortId)
 import           CstrId (CstrId)
 import           CstrDef (CstrDef (CstrDef))
 
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.MapsTo
+import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.ValExpr.FuncId
     
-compileToCstrDefs :: (HasCstrIds e, HasSortIds e)
-                  => e -> [ADTDecl] -> CompilerM (Map CstrId CstrDef)
-compileToCstrDefs e ds = 
-    Map.fromList . concat <$> traverse (adtToCstrDefs e) ds
+compileToCstrDefs :: ( MapsTo Text SortId mm
+                     , HasCstrIds e )
+                  => mm -> e -> [ADTDecl] -> CompilerM (Map CstrId CstrDef)
+compileToCstrDefs mm e ds = 
+    Map.fromList . concat <$> traverse (adtToCstrDefs mm e) ds
 
-adtToCstrDefs :: (HasCstrIds e, HasSortIds e)
-               => e -> ADTDecl -> CompilerM [(CstrId, CstrDef)]
-adtToCstrDefs e a =
-    traverse (cstrToCstrDefs e) (constructors a)
+adtToCstrDefs :: ( MapsTo Text SortId mm
+                 , HasCstrIds e )
+               => mm -> e -> ADTDecl -> CompilerM [(CstrId, CstrDef)]
+adtToCstrDefs mm e a =
+    traverse (cstrToCstrDefs mm e) (constructors a)
 
-cstrToCstrDefs :: (HasCstrIds e, HasSortIds e)
-               => e -> CstrDecl -> CompilerM (CstrId, CstrDef)
-cstrToCstrDefs e c = do
+cstrToCstrDefs :: (MapsTo Text SortId mm
+                  , HasCstrIds e )
+               => mm -> e -> CstrDecl -> CompilerM (CstrId, CstrDef)
+cstrToCstrDefs mm e c = do
     cId <- findCstrIdM e (getLoc c)
     isCstrFid <- cstrToIsCstrFuncId cId
-    cstrAccFids <- traverse (cstrToAccFuncId e cId) (cstrFields c)
+    cstrAccFids <- traverse (cstrToAccFuncId mm cId) (cstrFields c)
     return (cId, CstrDef isCstrFid cstrAccFids)

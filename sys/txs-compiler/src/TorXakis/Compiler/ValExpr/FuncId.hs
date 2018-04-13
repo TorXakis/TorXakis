@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections     #-}
 module TorXakis.Compiler.ValExpr.FuncId where
 
@@ -23,6 +24,8 @@ import           StdTDefs                         (eqName, fromStringName,
 import           VarId                            (VarId)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Maps
+import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Parser.Data
 
@@ -32,28 +35,28 @@ cstrToIsCstrFuncId cId = do
     return $ FuncId ("is" <> name cId) (Id fId) [cstrsort cId] sortIdBool
 
 -- | Define the accessor function for a constructor, using the given field.
-cstrToAccFuncId :: HasSortIds e
-                => e
+cstrToAccFuncId :: MapsTo Text SortId mm
+                => mm
                 -> CstrId    -- ^ Id of the containing constructor
                 -> FieldDecl
                 -> CompilerM FuncId
-cstrToAccFuncId e cId f = do
+cstrToAccFuncId mm cId f = do
     fId <- getNextId
-    sId <- findSortIdM e (fieldSort f)
+    sId <- findSortIdM mm (fieldSort f)
     return $ FuncId (fieldName f) (Id fId) [cstrsort cId] sId
 
-funcDeclsToFuncIds :: HasSortIds e
-                   => e -> [FuncDecl] -> CompilerM (Map (Loc FuncDeclE) FuncId)
-funcDeclsToFuncIds e fs = do
-    fIds <- traverse (funcDeclToFuncId e) fs
+funcDeclsToFuncIds :: MapsTo Text SortId mm
+                   => mm -> [FuncDecl] -> CompilerM (Map (Loc FuncDeclE) FuncId)
+funcDeclsToFuncIds mm fs = do
+    fIds <- traverse (funcDeclToFuncId mm) fs
     return $ Map.fromList $ zip (getLoc <$> fs) fIds
 
-funcDeclToFuncId :: HasSortIds e
-                 => e -> FuncDecl -> CompilerM FuncId
-funcDeclToFuncId  e f = do
+funcDeclToFuncId :: MapsTo Text SortId mm
+                 => mm -> FuncDecl -> CompilerM FuncId
+funcDeclToFuncId mm f = do
     fId   <- getNextId
-    aSids <- traverse (sortIdOfVarDeclM e) (funcParams f)
-    rSid  <- findSortIdM e (funcRetSort f)
+    aSids <- traverse (sortIdOfVarDeclM mm) (funcParams f)
+    rSid  <- findSortIdM mm (funcRetSort f)
     return $ FuncId (funcName f) (Id fId) aSids rSid
 
 -- | Make a 'FuncId' for a sort to string function.
@@ -84,15 +87,15 @@ signatureToFuncId n (Signature aSids rSid) = do
     return (IDefUid n fId, FuncId n (Id fId) aSids rSid)
 
 -- | Create the function id's that the ADT implicitly defines.
-adtsToFuncIds :: (HasSortIds e)
-              => e -> [ADTDecl] -> CompilerM [(FuncDefInfo, FuncId)]
-adtsToFuncIds e ds = concat <$> traverse (adtToFuncIds e) ds
+adtsToFuncIds :: (MapsTo Text SortId mm)
+              => mm -> [ADTDecl] -> CompilerM [(FuncDefInfo, FuncId)]
+adtsToFuncIds mm ds = concat <$> traverse (adtToFuncIds mm) ds
 
-adtToFuncIds :: (HasSortIds e)
-             => e -> ADTDecl -> CompilerM [(FuncDefInfo, FuncId)]
-adtToFuncIds e a = do
-    sId <- findSortIdM e (adtName a, nodeLoc a)
-    cstrFIds <- concat <$> traverse (cstrToFuncIds e sId) (constructors a)
+adtToFuncIds :: (MapsTo Text SortId mm)
+             => mm -> ADTDecl -> CompilerM [(FuncDefInfo, FuncId)]
+adtToFuncIds mm a = do
+    sId <- findSortIdM mm (adtName a, nodeLoc a)
+    cstrFIds <- concat <$> traverse (cstrToFuncIds mm sId) (constructors a)
     adtFIds  <- concat <$> sequence [ eqFdiFid sId
                                     , neqFdiFid sId
                                     , toStrFdiFid sId
@@ -119,9 +122,9 @@ mkPredef :: Text -> [SortId] -> SortId -> CompilerM [(FuncDefInfo, FuncId)]
 mkPredef n aSids rSid =
     (\i -> [(IDefUid n i, FuncId n (Id i) aSids rSid)]) <$> getNextId
 
-cstrToFuncIds :: (HasSortIds e)
-              => e -> SortId -> CstrDecl -> CompilerM [(FuncDefInfo, FuncId)]
-cstrToFuncIds e sId c =
+cstrToFuncIds :: (MapsTo Text SortId mm)
+              => mm -> SortId -> CstrDecl -> CompilerM [(FuncDefInfo, FuncId)]
+cstrToFuncIds mm sId c =
     concat <$> sequence [ mkCstrFdiFid
                         , isCstrFdiFid
                         , cstrAccessFdiFid
@@ -130,7 +133,7 @@ cstrToFuncIds e sId c =
       cn = cstrName c
       mkCstrFdiFid = do
           mkCstrId <- getNextId
-          fSids <- traverse (findSortIdM e . fieldSort) (cstrFields c)
+          fSids <- traverse (findSortIdM mm . fieldSort) (cstrFields c)
           -- Create a function id for the constructor function.
           -- TODO: sharing the ID should be fine.
           return [(IDefUid cn mkCstrId, FuncId cn (Id mkCstrId) fSids sId)]
@@ -145,5 +148,5 @@ cstrToFuncIds e sId c =
             accessFdiFid f = do
                 let accN = fieldName f
                 accSid <- getNextId
-                fSid   <- findSortIdM e (fieldSort f)
+                fSid   <- findSortIdM mm (fieldSort f)
                 return (IDefUid accN accSid, FuncId accN (Id accSid) [sId] fSid)

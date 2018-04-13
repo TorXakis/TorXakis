@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts  #-}
 module TorXakis.Compiler.ValExpr.CstrId where
 
 import           Control.Arrow             (left)
@@ -6,36 +7,39 @@ import           Control.Monad.Error.Class (liftEither)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
 import           Data.Semigroup            ((<>))
+import Data.Text (Text)
 
 import           CstrId                    (CstrId (CstrId))
 import           Id                        (Id (Id))
 import           SortId                    (SortId)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Maps
+import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Error
 import           TorXakis.Parser.Data
 
-compileToCstrId :: (HasSortIds e, HasSortIds e)
-                => e -> [ADTDecl] -> CompilerM (Map (Loc CstrE) CstrId)
-compileToCstrId e ds = Map.fromList . concat <$>
-    traverse (adtToCstrId e) ds
+compileToCstrId :: (MapsTo Text SortId mm)
+                => mm -> [ADTDecl] -> CompilerM (Map (Loc CstrE) CstrId)
+compileToCstrId mm ds = Map.fromList . concat <$>
+    traverse (adtToCstrId mm) ds
 
-adtToCstrId :: (HasSortIds e, HasSortIds e)
-            => e
+adtToCstrId :: (MapsTo Text SortId mm)
+            => mm
             -> ADTDecl
             -> CompilerM [(Loc CstrE, CstrId)]
-adtToCstrId e a = do
-    sId <- findSortIdM e (adtName a, nodeLoc a)
-    traverse (cstrToCstrId e sId) (constructors a)
+adtToCstrId mm a = do
+    sId <- findSortIdM mm (adtName a, nodeLoc a)
+    traverse (cstrToCstrId mm sId) (constructors a)
 
-cstrToCstrId :: (HasSortIds e)
-             => e
+cstrToCstrId :: (MapsTo Text SortId mm)
+             => mm
              -> SortId -- ^ SortId of the containing ADT.
              -> CstrDecl
              -> CompilerM (Loc CstrE, CstrId)
-cstrToCstrId e sId c = do
+cstrToCstrId mm sId c = do
     i <- getNextId
-    aSids <- traverse (findSortIdM e . fieldSort) (cstrFields c)
+    aSids <- traverse (findSortIdM mm . fieldSort) (cstrFields c)
     return (getLoc c, CstrId (cstrName c) (Id i) aSids sId)
 
 cstrIdOfCstrDecl :: HasCstrIds e => e -> CstrDecl -> Either Error CstrId

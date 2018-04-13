@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
 module TorXakis.Compiler.ValExpr.FuncDef where
@@ -7,22 +8,26 @@ import           Data.Either                       (partitionEithers)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
 import           Data.Monoid                       (mempty, (<>))
+import           Data.Text                         (Text)
 import qualified Data.Text                         as T
 import           GHC.Exts                          (fromList)
 
 import           FuncDef                           (FuncDef (FuncDef))
 import           FuncId                            (FuncId, funcsort)
+import           SortId                            (SortId)
 import           ValExpr                           (cstrVar)
 import           VarId                             (VarId)
 
 import           Control.Monad.Error.Class         (liftEither)
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
+import           TorXakis.Compiler.Maps
+import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Parser.Data
 
-funcDeclsToFuncDefs :: (HasSortIds e, HasVarDecls e, HasVarIds e, HasFuncIds e)
+funcDeclsToFuncDefs :: (HasVarDecls e, HasVarIds e, HasFuncIds e)
                     => e
                     -> [FuncDecl]
                     -> CompilerM (Map FuncId (FuncDef VarId))
@@ -44,7 +49,7 @@ funcDeclsToFuncDefs e fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
 --
 -- https://stackoverflow.com/a/49546517/2289983
 --
-funcDeclToFuncDef :: (HasSortIds e, HasVarDecls e, HasVarIds e, HasFuncIds e, HasFuncDefs e')
+funcDeclToFuncDef :: (HasVarDecls e, HasVarIds e, HasFuncIds e, HasFuncDefs e')
                   => e
                   -> e'
                   -> FuncDecl

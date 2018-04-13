@@ -50,15 +50,15 @@ data IEnv f0 f1 f2 f3 f4 f5 f6 = IEnv
 emptyEnv :: IEnv () () () () () () ()
 emptyEnv = IEnv () () () () () () ()
 
-class HasSortIds e where
-    -- | Find the `SortId` that corresponds to the given name. This assumes
-    -- that sort names are unique.
-    findSortId  :: e -> (Text, Loc t) -> Either Error SortId
-    findSortIdM :: e -> (Text, Loc t) -> CompilerM SortId
-    findSortIdM e t = liftEither $ findSortId e t
-    getSortIdMap :: e -> Map Text SortId
-    allSortIds :: e -> [SortId]
-    allSortIds e = Map.elems $ getSortIdMap e
+-- class HasSortIds e where
+--     -- | Find the `SortId` that corresponds to the given name. This assumes
+--     -- that sort names are unique.
+--     findSortId  :: e -> (Text, Loc t) -> Either Error SortId
+--     findSortIdM :: e -> (Text, Loc t) -> CompilerM SortId
+--     findSortIdM e t = liftEither $ findSortId e t
+--     getSortIdMap :: e -> Map Text SortId
+--     allSortIds :: e -> [SortId]
+--     allSortIds e = Map.elems $ getSortIdMap e
 
 class HasCstrIds e where
     -- | Find the `CstrId` that correspond to the parser location of a
@@ -233,15 +233,15 @@ class HasFuncDefs e where
     findFuncDef :: e -> FuncId -> Either Error (FuncDef VarId)
     getFuncDefT :: e -> Map FuncId (FuncDef VarId)
 
-instance HasSortIds (IEnv (Map Text SortId) f1 f2 f3 f4 f5 f6) where
-    findSortId IEnv{sortIdT = sm} (t, l) = maybeToEither err . Map.lookup t $ sm
-        where err = Error
-                  { _errorType = UndefinedRef
-                  , _errorLoc = getErrorLoc l
-                  , _errorMsg = "Could not find sort " <> t
-                  }
+-- instance HasSortIds (IEnv (Map Text SortId) f1 f2 f3 f4 f5 f6) where
+--     findSortId IEnv{sortIdT = sm} (t, l) = maybeToEither err . Map.lookup t $ sm
+--         where err = Error
+--                   { _errorType = UndefinedRef
+--                   , _errorLoc = getErrorLoc l
+--                   , _errorMsg = "Could not find sort " <> t
+--                   }
 
-    getSortIdMap IEnv{sortIdT = sm} = sm
+--     getSortIdMap IEnv{sortIdT = sm} = sm
 
 lookup :: (Ord a, Show a) => a -> Map a b -> Text -> Either Error b
 lookup a ab what =  maybeToEither err . Map.lookup a $ ab

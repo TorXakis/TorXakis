@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | This module defines functions to compile parsed definitions into
 -- function tables ('FuncTable').
@@ -31,40 +32,43 @@ import           ValExpr                          (PredefKind (ASF, AST, AXF, AX
 import           VarId                            (VarId)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Maps
+import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Parser.Data
 
 -- | Make a function table.
-adtsToFuncTable :: (HasSortIds e, HasCstrIds e)
-                   => e -> [ADTDecl] -> CompilerM (FuncTable VarId)
-adtsToFuncTable e ds =
+adtsToFuncTable :: (MapsTo Text SortId mm, HasCstrIds e)
+                   => mm -> e -> [ADTDecl] -> CompilerM (FuncTable VarId)
+adtsToFuncTable mm e ds =
     FuncTable <$> textToHandler
     where
       textToHandlers :: CompilerM [Map Text (SignHandler VarId)]
-      textToHandlers = (Map.fromList <$>) <$> traverse (adtToHandlers e) ds
+      textToHandlers = (Map.fromList <$>) <$> traverse (adtToHandlers mm e) ds
       textToHandler :: CompilerM (Map Text (SignHandler VarId))
       -- In case we have two functions with the same name (like @fromString@
       -- for instance), we cannot overwrite the handlers, but we have to take
       -- both handlers along.
       textToHandler = foldl' (Map.unionWith Map.union) Map.empty <$> textToHandlers
 
-adtToHandlers :: (HasSortIds e, HasCstrIds e)
-              => e -> ADTDecl -> CompilerM [(Text, SignHandler VarId)]
-adtToHandlers e a = do
-    sId <- findSortIdM e (adtName a, nodeLoc a)
-    concat <$> traverse (cstrToHandlers e sId) (constructors a)
+adtToHandlers :: (MapsTo Text SortId mm, HasCstrIds e)
+              => mm -> e -> ADTDecl -> CompilerM [(Text, SignHandler VarId)]
+adtToHandlers mm e a = do
+    sId <- findSortIdM mm (adtName a, nodeLoc a)
+    concat <$> traverse (cstrToHandlers mm e sId) (constructors a)
 
-cstrToHandlers :: (HasSortIds e, HasCstrIds e)
-               => e
+cstrToHandlers :: (MapsTo Text SortId mm, HasCstrIds e)
+               => mm
+               -> e
                -> SortId
                -> CstrDecl
                -> CompilerM [(Text, SignHandler VarId)]
-cstrToHandlers e sId c = do
+cstrToHandlers mm e sId c = do
     cId  <- findCstrIdM e (getLoc c)
-    cTH  <- cstrToMkCstrHandler e sId c
+    cTH  <- cstrToMkCstrHandler mm e sId c
     iTH  <- cstrToIsCstrHandler e sId c
-    fTHs <- imapM (fieldToAccessCstrHandler e sId cId) (cstrFields c)
+    fTHs <- imapM (fieldToAccessCstrHandler mm sId cId) (cstrFields c)
     -- Taken from TxsHappy@949:
     astFid <- sortToStringFuncId sId
     asfFid <- sortFromStringFuncId sId
@@ -91,14 +95,15 @@ cstrToHandlers e sId c = do
     return $ cTH:iTH:(fTHs++stdHs)
 
 -- | Create a handler to create a constructor.
-cstrToMkCstrHandler :: (HasSortIds e, HasCstrIds e)
-                    => e
+cstrToMkCstrHandler :: (MapsTo Text SortId mm, HasCstrIds e)
+                    => mm
+                    -> e
                     -> SortId
                     -> CstrDecl
                     -> CompilerM (Text, SignHandler VarId)
-cstrToMkCstrHandler e sId c = do
+cstrToMkCstrHandler mm e sId c = do
     cId <- findCstrIdM e (getLoc c)
-    fSids <- traverse (findSortIdM e . fieldSort) (cstrFields c)
+    fSids <- traverse (findSortIdM mm . fieldSort) (cstrFields c)
     return (cstrName c, Map.singleton (Signature fSids sId) (cstrHandler cId))
 
 -- | Create a "is-constructor"  function from a constructor.
@@ -115,28 +120,28 @@ cstrToIsCstrHandler e sId c = do
       sign = Signature [sId] sortIdBool
 
 -- | Create an accessor handler from a field.
-fieldToAccessCstrHandler :: HasSortIds e
-                         => e
+fieldToAccessCstrHandler :: MapsTo Text SortId mm
+                         => mm
                          -> SortId  -- ^ Sort id of the containing ADT.
                          -> CstrId  -- ^ Id of the containing constructor.
                          -> Int     -- ^ Position of the field in the constructor.
                          -> FieldDecl
                          -> CompilerM (Text, SignHandler VarId)
-fieldToAccessCstrHandler e sId cId p f = do
-    fId <- findSortIdM e (fieldSort f)
+fieldToAccessCstrHandler mm sId cId p f = do
+    fId <- findSortIdM mm (fieldSort f)
     return ( fieldName f
            , Map.singleton (Signature [sId] fId) (accessHandler cId p))
 
-funcDeclsToFuncTable :: (HasSortIds e, HasFuncIds e, HasFuncDefs e)
-                     => e -> [FuncDecl] -> CompilerM (FuncTable VarId)
-funcDeclsToFuncTable e fs = FuncTable . Map.fromListWith Map.union <$>
-    traverse (funcDeclToFuncTable e) fs
+funcDeclsToFuncTable :: (MapsTo Text SortId mm, HasFuncIds e, HasFuncDefs e)
+                     => mm -> e -> [FuncDecl] -> CompilerM (FuncTable VarId)
+funcDeclsToFuncTable mm e fs = FuncTable . Map.fromListWith Map.union <$>
+    traverse (funcDeclToFuncTable mm e) fs
 
-funcDeclToFuncTable :: (HasSortIds e, HasFuncIds e, HasFuncDefs e)
-                    => e -> FuncDecl -> CompilerM (Text, SignHandler VarId)
-funcDeclToFuncTable e f = do
-    sId   <- findSortIdM e (funcRetSort f)
-    fSids <- traverse (findSortIdM e . varDeclSort) (funcParams f)
+funcDeclToFuncTable :: (MapsTo Text SortId mm, HasFuncIds e, HasFuncDefs e)
+                    => mm -> e -> FuncDecl -> CompilerM (Text, SignHandler VarId)
+funcDeclToFuncTable mm e f = do
+    sId   <- findSortIdM mm (funcRetSort f)
+    fSids <- traverse (findSortIdM mm . varDeclSort) (funcParams f)
     hdlr  <- fBodyToHandler e f
     return (funcName f, Map.singleton (Signature fSids sId) hdlr)
 
