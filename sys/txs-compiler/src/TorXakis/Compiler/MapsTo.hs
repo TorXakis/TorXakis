@@ -1,8 +1,10 @@
+{-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
@@ -12,6 +14,7 @@ import           Control.Monad.Error.Class (liftEither)
 import           Data.Either.Utils         (maybeToEither)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
+import           Data.Proxy                (Proxy)
 import           Data.Semigroup            ((<>))
 import qualified Data.Text                 as T
 import           Data.Type.Bool
@@ -29,6 +32,18 @@ class (In (k, v) (Contents m) ~ 'True) => MapsTo k v m where
     lookupM :: (Ord k, Show k) => k -> m -> CompilerM v
     lookupM k m = liftEither $ lookup k m
     innerMap :: m -> Map k v
+
+keys :: forall k v m . MapsTo k v m => m -> [k]
+keys m = Map.keys im
+    where
+      im :: Map k v
+      im = innerMap m
+
+values :: forall k v m . MapsTo k v m => m -> [v]
+values m = Map.elems im
+    where
+      im :: Map k v
+      im = innerMap m
 
 -- | Compute when a type is in a tree.
 type family In (x :: *) (ys :: Tree *) :: Bool where

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleContexts #-}
 module TorXakis.Compiler.MapsToSpec where
 
@@ -6,6 +7,7 @@ import Prelude hiding (lookup)
 import           Data.Map   (Map)
 import qualified Data.Map   as Map
 import           Test.Hspec (Spec, it, pending, shouldBe)
+import Data.Proxy (Proxy (Proxy))
 
 import TorXakis.Compiler.Error
 
@@ -44,8 +46,19 @@ spec = do
        let Right res = fruitWithName "Orange" (fruitNumbers :& fruitNames) in
            res `shouldBe` Orange
     it "It gets the right vegetable in a composite map" $
-       let Right res = vegetableWithName "Spinach" (fruitNames :& vegetableNames) in
+       let Right res = vegetableWithName "Spinach" (fruitNames :& vegetableNames :& fruitNumbers) in
            res `shouldBe` Spinach
+    it "It gets all the vegetables names in a composite map" $
+        keys @String @Vegetable
+            (fruitNames :& vegetableNames :& fruitNumbers)
+        `shouldBe`
+        ["Carrot", "Cucumber", "Spinach"]
+    it "It gets all the vegetables in a composite map" $
+        values @String
+            (fruitNames :& vegetableNames :& fruitNumbers)
+        `shouldBe`
+        [Carrot, Cucumber, Spinach]        
+           
     -- Uncomment these to test for the type errors of the compiler:
     --
     -- it "Fails when no map is found)" $

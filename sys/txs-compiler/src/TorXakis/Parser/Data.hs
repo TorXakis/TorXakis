@@ -81,6 +81,9 @@ module TorXakis.Parser.Data
     , ModelDecl
     , mkModelDecl
     , modelName
+    , modelIns
+    , modelOuts
+    , modelSyncs
     , modelBExp
     , BExpDecl (..)
     , ActOfferDecl (..)
@@ -422,6 +425,15 @@ modelName = nodeNameT
 
 modelBExp :: ModelDecl -> BExpDecl
 modelBExp = bexp . child
+
+modelIns :: ModelDecl -> [ChanRef]
+modelIns = inchs . child
+
+modelOuts :: ModelDecl -> [ChanRef]
+modelOuts = outchs . child
+
+modelSyncs :: ModelDecl -> Maybe [Set ChanRef]
+modelSyncs = synchs . child
 
 type ChanRef = ParseTree ChanRefE ()
 

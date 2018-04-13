@@ -26,6 +26,7 @@ import           Sigs                              (Sigs, chan, func, pro,
 import qualified Sigs                              (empty)
 import           SortId                            (sortIdBool, sortIdInt,
                                                     sortIdRegex, sortIdString)
+import           ChanId                 (ChanId)                 
 import           StdTDefs                          (stdFuncTable, stdTDefs)
 import           TxsDefs                           (TxsDefs, fromList, funcDefs, procDefs,
                                                     union, ProcDef, ProcId)
@@ -82,6 +83,8 @@ compileParsedDefs pd = do
                               ]
         allSortsMap = Map.union pdsMap sMap
         e0 = emptyEnv { sortIdT = allSortsMap}
+    -- TODO: I'm dumping the map here till we get rid of all these 'Has'X type classes.
+    chs <- Map.fromList <$> chanDeclsToChanIds allSortsMap (pd ^. chdecls)        
     cMap <- compileToCstrId e0 (pd ^. adts)
     let e1 = e0 { cstrIdT = cMap }
         allFuncs = pd ^. funcs ++ pd ^. consts
@@ -111,8 +114,8 @@ compileParsedDefs pd = do
     -- Construct the @ProcId@ to @ProcDef@ map:
     pdefMap <- procDeclsToProcDefMap allSortsMap (pd ^. procs)
     -- Finally construct the TxsDefs.
-    sigs    <- toSigs                e5 pdefMap pd
-    txsDefs <- toTxsDefs (func sigs) e5 pdefMap pd
+    sigs    <- toSigs                e5 (pdefMap :& chs) pd
+    txsDefs <- toTxsDefs (func sigs) e5 (pdefMap :& chs) pd
     St i    <- get
     return (Id i, txsDefs, sigs)
 
@@ -146,7 +149,9 @@ simplify :: FuncTable VarId -> [Text] -> (FuncId, FuncDef VarId) -> (FuncId, Fun
 simplify ft fns (fId, FuncDef vs ex) = (fId, FuncDef vs (simplify' ft fns ex))
 
 toTxsDefs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e
-             , MapsTo ProcId ProcDef mm)
+             , MapsTo ProcId ProcDef mm
+             , MapsTo Text ChanId mm
+             )
           => FuncTable VarId -> e -> mm -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs ft e mm pd = do
     ads <- adtsToTxsDefs e (pd ^. adts)
@@ -165,7 +170,9 @@ toTxsDefs ft e mm pd = do
             procDefs = innerMap mm
             }    
     -- Extract the model definitions
-    mds <- modelDeclsToTxsDefs (pd ^. models)
+    let chIdsMap :: Map Text ChanId
+        chIdsMap = innerMap mm
+    mds <- modelDeclsToTxsDefs chIdsMap (pd ^. models)
     return $ ads
         `union` fds
         `union` pds        
@@ -173,19 +180,18 @@ toTxsDefs ft e mm pd = do
         `union` mds
 
 toSigs :: (HasSortIds e, HasCstrIds e, HasFuncIds e, HasFuncDefs e
-          , MapsTo ProcId ProcDef mm)
+          , MapsTo ProcId ProcDef mm
+          , MapsTo Text ChanId mm)
        => e -> mm -> ParsedDefs -> CompilerM (Sigs VarId)
 toSigs e mm pd = do
     let ts   = sortsToSigs (getSortIdMap e)
     as  <- adtDeclsToSigs e (pd ^. adts)
     fs  <- funDeclsToSigs e (pd ^. funcs)
     cs  <- funDeclsToSigs e (pd ^. consts)
-    -- TODO: I'm dumping the map here till we get rid of all these 'Has'X type classes.
-    chs <- chanDeclsToChanIds (getSortIdMap e) (pd ^. chdecls)
     let pidMap :: Map ProcId ProcDef
         pidMap = innerMap mm
         ss = Sigs.empty { func = stdFuncTable
-                        , chan = snd <$> chs
+                        , chan = Map.elems (innerMap mm :: Map Text ChanId)
                         , pro  = Map.keys pidMap
                         }
     return $ ts `uniqueCombine` as

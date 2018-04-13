@@ -49,12 +49,12 @@ actOfferP = ActOfferDecl <$> offersP <*> actConstP
           return $ OfferDecl (mkChanRef n l) chOfs
 
       chanOffersP :: TxsParser [ChanOfferDecl]
-      chanOffersP = many (try questOfferVDP <|> questOfferP <|> exclOfferP)
+      chanOffersP = many (try questOfferVDP <|> exclOfferP)
           where
             questOfferVDP = do
                 txsSymbol "?"
-                vn <- indentifier
-                l  <- mkLoc -- This offer always introduce a new implicit variable
+                n <- identifier
+                l <- mkLoc -- This offer always introduce a new implicit variable
                 return $ QuestD (mkIVarDecl n l)
             -- TODO: it is better if we just infer the types of the variables.
             -- questOfferP = do
