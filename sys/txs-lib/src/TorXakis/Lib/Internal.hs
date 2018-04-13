@@ -60,7 +60,7 @@ actIfNothingRead fromWorldCh ioAct = lift $
 
 -- | Generic functionality for getting an action from world AKA output of the SUT.
 --
--- If no 'Action' is received during given(TODO) timeout period,
+-- If no 'Action' is received during given timeout period,
 -- a Quiescence 'Action' is returned.
 getFromW :: Int -> TChan Action -> IOC Action
 getFromW deltaTime fromWorldCh = (id ||| id) <$> lift (sutAct `race` quiAct)

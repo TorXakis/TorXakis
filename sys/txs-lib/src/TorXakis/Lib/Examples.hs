@@ -243,8 +243,7 @@ actInfo st outChId = do
     let status = resp ^. responseStatus . statusCode
     if status /= 200
         then createResponseAction st outChId "ResponseFailure" [cstrConst (Cstring $ T.pack $ "/info returned unxpected status: " ++ show status)]
-        else -- TODO: This ResponseInfo should be in responseBody as JSON
-            createResponseAction st outChId "ResponseInfo" $ infoParams resp
+        else createResponseAction st outChId "ResponseInfo" $ infoParams resp
               where
                 infoParams r =
                     let Just (String version'  ) = r ^? responseBody . key "version"
@@ -254,7 +253,6 @@ actInfo st outChId = do
 
 actLoad ::  SessionSt -> ChanId -> Text -> IO Action
 actLoad st outChId path = do
-    -- TODO: This address should be extracted from Model CNECTDEF
     resp <- post "http://localhost:8080/session/1/model" [partFile "txs" (T.unpack $ "..\\..\\" <> path)]
     case resp ^. responseStatus . statusCode of
         201 -> createResponseAction st outChId "ResponseSuccess" []
@@ -262,7 +260,6 @@ actLoad st outChId path = do
 
 actStepper ::  SessionSt -> ChanId -> Text -> IO Action
 actStepper st outChId model = do
-    -- TODO: This address should be extracted from Model CNECTDEF
     resp <- post (T.unpack $ "http://localhost:8080/stepper/start/1/" <> model) [partText "" ""]
     case resp ^. responseStatus . statusCode of
         200 -> createResponseAction st outChId "ResponseSuccess" []
@@ -270,10 +267,9 @@ actStepper st outChId model = do
 
 actStep ::  SessionSt -> ChanId -> Integer -> IO (Maybe Action)
 actStep st outChId n = do
-    -- TODO: This address should be extracted from Model CNECTDEF
     resp <- post ("http://localhost:8080/stepper/step/1/" ++ show n) [partText "" ""]
     case resp ^. responseStatus . statusCode of
-        200 -> return Nothing --createResponseAction st outChId "ResponseSuccess" []
+        200 -> return Nothing
         s   -> Just <$> createResponseAction st outChId "ResponseFailure"
                             [cstrConst (Cstring $ T.pack $ "/stepper/step/1/" ++ show n ++ " returned unxpected status: " ++ show s)]
 
