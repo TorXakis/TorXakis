@@ -4,24 +4,12 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
--- TODO: make sure these warnings are removed.
--- TODO: also check the hlint warnings!
-{-# OPTIONS_GHC -Wno-name-shadowing #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# OPTIONS_GHC -Wno-unused-local-binds #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-
 module TestPreGNF
 (
 testPreGNFList
 )
 where
 
-import LPE
 import TranslatedProcDefs
 
 import Test.HUnit
@@ -29,7 +17,6 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 
 import TxsDefs
-import TxsShow
 import ProcId
 import ChanId
 import SortId
@@ -45,61 +32,66 @@ import LPEfunc
 ---------------------------------------------------------------------------
 
 procIdGen :: String -> [ChanId] -> [VarId] -> ProcId
-procIdGen name chans vars = ProcId   {    ProcId.name       = T.pack name
+procIdGen name' chans vars' = ProcId   {  ProcId.name       = T.pack name'
                                         , ProcId.unid       = 111
                                         , ProcId.procchans  = chans
-                                        , ProcId.procvars   = vars
+                                        , ProcId.procvars   = vars'
                                         , ProcId.procexit   = NoExit
                                     }
-
+varIdX :: VarId
 varIdX = VarId (T.pack "x") 33 intSort
+varIdY :: VarId
 varIdY = VarId (T.pack "y") 34 intSort
--- vexprX :: VExpr
+vexprX :: VExpr
 vexprX = cstrVar varIdX
+vexprY :: VExpr
 vexprY = cstrVar varIdY
+vexpr1 :: VExpr
 vexpr1 = cstrConst (Cint 1)
 
 
--- action: A!1
-actOfferA1   = ActOffer {  offers = Set.singleton(
-                                        Offer { chanid = chanIdA
-                                              , chanoffers = [Exclam vexpr1]
-                                        })
-                        , constraint = cstrConst (Cbool True)
-            }
-
 -- action: A?x
-actOfferAx   = ActOffer {  offers = Set.singleton(
+actOfferAx :: ActOffer
+actOfferAx   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdA
                                               , chanoffers = [Quest varIdX]
-                                        })
+                                              }
+                        , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
-            }
+                        }
+
 
 -- action: B!1
-actOfferB1   = ActOffer {  offers = Set.singleton(
+actOfferB1 :: ActOffer
+actOfferB1   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdB
                                               , chanoffers = [Exclam vexpr1]
-                                        })
+                                              }
+                        , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
-            }
+                        }
 
 -- action: B?y
-actOfferBy   = ActOffer {  offers = Set.singleton(
+actOfferBy :: ActOffer
+actOfferBy   = ActOffer {  offers = Set.singleton 
                                         Offer { chanid = chanIdB
                                               , chanoffers = [Quest varIdY]
-                                        })
+                                              }
+                        , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
-            }
+                        }
 
 -- sorts, chanIds
+intSort :: SortId
 intSort = SortId {  SortId.name = T.pack "Int"
                   , SortId.unid = 1}
 
+chanIdA :: ChanId
 chanIdA = ChanId    { ChanId.name = T.pack "A"
                     , ChanId.unid = 2
                     , ChanId.chansorts = [intSort]
                     }
+chanIdB :: ChanId
 chanIdB = ChanId    { ChanId.name = T.pack "B"
                     , ChanId.unid = 3
                     , ChanId.chansorts = [intSort]
@@ -111,22 +103,22 @@ chanIdB = ChanId    { ChanId.name = T.pack "B"
 -- Stop remains unchanged
 testStop :: Test
 testStop = TestCase $
-    let procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] stop)]
+    let procDefs' = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] stop)]
         procIdP = procIdGen "P" [chanIdA] [varIdX]
-    in  assertBool "STOP" $ eqProcDefs  procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
+    in  assertBool "STOP" $ eqProcDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
 
 -- action prefix remains unchanged
 testActPref :: Test
 testActPref = TestCase $
     let procIdP = procIdGen "P" [chanIdA] [varIdX]
-        procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] (actionPref actOfferAx stop))]
-    in  assertBool "A?x >-> STOP" $ eqProcDefs  procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
+        procDefs' = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] (actionPref actOfferAx stop))]
+    in  assertBool "A?x >-> STOP" $ eqProcDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
 
 testActPref2 :: Test
 testActPref2 = TestCase $
    let procIdP = procIdGen "P" [chanIdA] [varIdX]
-       procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] (actionPref actOfferAx (actionPref actOfferB1 stop)))]
-   in  assertBool "A?x >-> B!1 >-> STOP" $ eqProcDefs  procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
+       procDefs' = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] (actionPref actOfferAx (actionPref actOfferB1 stop)))]
+   in  assertBool "A?x >-> B!1 >-> STOP" $ eqProcDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
 
 -- action prefix is translated recursively
 -- P[A]() = A?x >-> Q[A]()
@@ -137,7 +129,7 @@ testActPref2 = TestCase $
 -- Q$pre1[A](x) = STOP ## STOP
 testActPref3 :: Test
 testActPref3 = TestCase $
-   assertBool "ActionPref is translated recursively" $ eqProcDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "ActionPref is translated recursively" $ eqProcDefs  procDefs'' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
@@ -150,9 +142,9 @@ testActPref3 = TestCase $
       procDefQ' = ProcDef [chanIdA] [] (actionPref actOfferAx (procInst procIdQpre1 [chanIdA] [vexprX]))
       procDefQpre1 = ProcDef [chanIdA] [varIdX] (choice [stop, stop])
 
-      procDefs = Map.fromList  [  (procIdP, procDefP)
+      procDefs' = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
-      procDefs' = Map.fromList  [ (procIdP, procDefP)
+      procDefs'' = Map.fromList  [ (procIdP, procDefP)
                                 , (procIdQ, procDefQ')
                                 , (procIdQpre1, procDefQpre1) ]
 
@@ -160,22 +152,22 @@ testActPref3 = TestCase $
 testProcInst :: Test
 testProcInst = TestCase $
    let procIdP = procIdGen "P" [chanIdA] []
-       procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [] (procInst procIdP [chanIdA] []))]
-   in  assertBool "P[]()"  $ eqProcDefs procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
+       procDefs' = Map.fromList [(procIdP, ProcDef [chanIdA] [] (procInst procIdP [chanIdA] []))]
+   in  assertBool "P[]()"  $ eqProcDefs procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
 
 -- choices at top-level remain unchanged
 testChoice1 :: Test
 testChoice1 = TestCase $
    let procIdP = procIdGen "P" [chanIdA] []
-       procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [] (choice [stop, stop]))]
-   in  assertBool "Stop ## Stop" $ eqProcDefs  procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
+       procDefs' = Map.fromList [(procIdP, ProcDef [chanIdA] [] (choice [stop, stop]))]
+   in  assertBool "Stop ## Stop" $ eqProcDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
 
 -- choices at top-level remain unchanged
 testChoice2 :: Test
 testChoice2 = TestCase $
    let procIdP = procIdGen "P" [chanIdA] []
-       procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [] (choice [stop, stop, stop]))]
-   in  assertBool "Stop ## Stop ## Stop"  $ eqProcDefs procDefs (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
+       procDefs' = Map.fromList [(procIdP, ProcDef [chanIdA] [] (choice [stop, stop, stop]))]
+   in  assertBool "Stop ## Stop ## Stop"  $ eqProcDefs procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
 
 
 -- choices at a lower level are substituted with a process instance to a
@@ -186,7 +178,7 @@ testChoice2 = TestCase $
   -- P$pre1[A](x) = STOP ## STOP
 testChoice3 :: Test
 testChoice3 = TestCase $
-   assertBool "choice (on lower level) is substituted" $ eqProcDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "choice (on lower level) is substituted" $ eqProcDefs  procDefs'' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP = procIdGen "P" [chanIdA] []
       procDefP = ProcDef [chanIdA] [] (actionPref actOfferAx (choice [stop, stop]))
@@ -195,8 +187,8 @@ testChoice3 = TestCase $
       procDefP' = ProcDef [chanIdA] [] (actionPref actOfferAx (procInst procIdPpre1 [chanIdA] [vexprX]))
       procDefPpre1 = ProcDef [chanIdA] [varIdX] (choice [stop, stop])
 
-      procDefs = Map.fromList  [  (procIdP, procDefP)]
-      procDefs' = Map.fromList  [ (procIdP, procDefP')
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
                                 , (procIdPpre1, procDefPpre1) ]
 
 
@@ -211,7 +203,7 @@ testChoice3 = TestCase $
   -- P$pre2[A](x) =   STOP ## STOP
 testChoice4 :: Test
 testChoice4 = TestCase $
-   assertBool "choice (on lower level) is substituted 2"  $ eqProcDefs procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "choice (on lower level) is substituted 2"  $ eqProcDefs procDefs'' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP = procIdGen "P" [chanIdA] []
       procDefP = ProcDef [chanIdA] [] (choice [stop, actionPref actOfferAx (choice [stop, stop])])
@@ -221,8 +213,8 @@ testChoice4 = TestCase $
       procDefP' = ProcDef [chanIdA] [] (choice [stop, actionPref actOfferAx procInstPpre2])
       procDefPpre2 = ProcDef [chanIdA] [varIdX] (choice [stop, stop])
 
-      procDefs = Map.fromList  [  (procIdP, procDefP)]
-      procDefs' = Map.fromList  [ (procIdP, procDefP')
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
                                 , (procIdPpre2, procDefPpre2) ]
 
 
@@ -249,7 +241,7 @@ testChoice4 = TestCase $
 -- P$pre1$pre1[A](x,y)  = STOP ## STOP
 testChoice5 :: Test
 testChoice5 = TestCase $
-   assertBool "choice (on lower level) is substituted 2"  $ eqProcDefs procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "choice (on lower level) is substituted 2"  $ eqProcDefs procDefs'' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP = procIdGen "P" [chanIdA] []
       procDefP = ProcDef [chanIdA] [] bexprP
@@ -270,8 +262,8 @@ testChoice5 = TestCase $
                                                          stop])
       procDefPpre1pre1 = ProcDef [chanIdA] [varIdX, varIdY] (choice [stop, stop])
 
-      procDefs = Map.fromList  [ (procIdP,procDefP) ]
-      procDefs' = Map.fromList  [ (procIdP, procDefP')
+      procDefs' = Map.fromList  [ (procIdP,procDefP) ]
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
                                 , (procIdPpre1, procDefPpre1)
                                 , (procIdPpre1pre1, procDefPpre1pre1)]
 

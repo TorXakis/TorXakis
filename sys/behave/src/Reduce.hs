@@ -94,13 +94,11 @@ instance Reduce BBranch
 
     reduce (BTpref btoffs bthidvars' btpreds' btnext') =
          if  null bthidvars'
-           then do reducedBtnext <- reduce btnext'
-                   return $ BTpref btoffs bthidvars' btpreds' reducedBtnext
+           then             BTpref btoffs bthidvars' btpreds' <$> reduce btnext'
            else    return $ BTpref btoffs bthidvars' btpreds' btnext'
 
-    reduce (BTtau bt) = do
-         btree' <- reduce bt
-         return $ BTtau btree'
+    reduce (BTtau bt) =
+         BTtau <$> reduce bt
 
 -- ----------------------------------------------------------------------------------------- --
 -- Reduce :  INode  --  assumption: no hidvars (?)
@@ -174,13 +172,13 @@ instance Reduce BExpr
 reduce' :: BExprView -> IOB.IOB BExpr
 reduce' Stop = return stop
 
-reduce' (ActionPref (ActOffer offs c) bexp) = do
+reduce' (ActionPref (ActOffer offs hidvars c) bexp) = do
      c'  <- reduce c
      case ValExpr.view c' of
         Vconst (Cbool False) -> return stop
         _                    -> do offs' <- mapM reduce (Set.toList offs)
                                    bexp' <- reduce bexp
-                                   return $ actionPref (ActOffer (Set.fromList offs') c') bexp'
+                                   return $ actionPref (ActOffer (Set.fromList offs') hidvars c') bexp'
 
 reduce' (Guard c bexp) = do
      c'  <- reduce c
@@ -238,9 +236,8 @@ reduce' (Interrupt bexp1 bexp2) = do
        ( Stop , Stop ) -> return stop
        ( _    , _    ) -> return $ interrupt bexp1' bexp2'
 
-reduce' (ProcInst pid chans vexps) = do
-     vexps' <- mapM reduce vexps
-     return $ procInst pid chans vexps'
+reduce' (ProcInst pid chans vexps) =
+     procInst pid chans <$> mapM reduce vexps
 
 reduce' (Hide chids bexp) = do
      bexp' <- reduce bexp
@@ -261,15 +258,14 @@ reduce' (StAut stid ve trns) = return $ stAut stid ve trns
 
 instance Reduce Offer
   where
-    reduce (Offer chid choffs) = do
-         choffs' <- mapM reduce choffs
-         return $ Offer chid choffs'
+    reduce (Offer chid choffs) =
+         Offer chid <$> mapM reduce choffs
 
 
 instance Reduce ChanOffer
   where
     reduce (Quest vid)   = return $ Quest vid
-    reduce (Exclam vexp) = do { vexp' <- reduce vexp ; return $ Exclam vexp' }
+    reduce (Exclam vexp) = Exclam <$> reduce vexp
 
 -- ----------------------------------------------------------------------------------------- --
 -- Reduce :  VExpr
@@ -317,7 +313,7 @@ instance FreeChan BExpr
 
 instance FreeChan ActOffer
   where
-    freeChans (ActOffer offs _) = map chanid $ Set.toList offs
+    freeChans (ActOffer offs _ _) = map chanid $ Set.toList offs
 
 instance FreeChan Trans
   where

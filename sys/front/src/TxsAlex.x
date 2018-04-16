@@ -243,7 +243,6 @@ data  Token  =  Ttypedef          AlexPosn
               | Tfi               AlexPosn
               | Tistep            AlexPosn
               | Tqstep            AlexPosn
-              | Terror            AlexPosn
               | Tregex            AlexPosn
               | Tany              AlexPosn
               | Tarrow            AlexPosn

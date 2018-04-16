@@ -45,6 +45,7 @@ import           ChanId
 import           ConstDefs
 import qualified EnvBTree            as IOB
 import qualified EnvData
+import           Id
 import           StdTDefs
 import           TxsDefs
 import           TxsUtils
@@ -71,29 +72,38 @@ expand _ (BNbexpr _ (TxsDefs.view -> Stop))  = return []
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs cnd) bexp))  =  do
-    (ctoffs, quests, exclams) <- expandOffers chsets offs
-    let ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
-        we'   = Map.fromList [ (vid, wal)
-                             | (vid, wal) <- Map.toList we
-                             , vid `Map.notMember` ivenv
-                             ]
-    tds <- gets IOB.tdefs
-    let exclams' = map toEitherTuple [ (ivar, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
-                                     | (ivar, vexp) <- exclams
-                                     ]
-    case Data.Either.partitionEithers exclams' of
-        ([],r) -> return [ CTpref { ctoffers  = ctoffs
-                              , cthidvars = []
-                              , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (funcDefs tds) (subst (Map.map cstrConst we') (funcDefs tds) cnd)
-                                                                  : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- r ]
-                                                                  )
-                                                    )
-                              , ctnext    = BNbexpr (we',ivenv) bexp
-                              }
-                     ]
-        (s,_) -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
-                                  ("Expand: Eval failed in expand - ActionPref" ++ show s) ]
+expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs hidvars cnd) bexp))  =  do
+     (ctoffs, quests, exclams) <- expandOffers chsets offs
+     hvarlist <- sequence [ liftP2 (hvid, uniIVar hvid) | hvid <- Set.toList hidvars ]
+     let ivenv = if null $ Set.intersection hidvars (Set.fromList (map fst quests))
+                   then Map.fromList $   [ (vid,  cstrVar ivar) | (vid,  ivar) <- quests   ]
+                                      ++ [ (hvid, cstrVar hvar) | (hvid, hvar) <- hvarlist ]
+                   else error "ERROR: interaction and hidden variables shall be disjoint\n"
+         we'   = Map.fromList [ (vid, wal)
+                              | (vid, wal) <- Map.toList we
+                              , vid `Map.notMember` ivenv
+                              ]
+     tds <- gets IOB.tdefs
+     let exclams' = map toEitherTuple
+                      [ (ivar, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
+                      | (ivar, vexp) <- exclams
+                      ]
+     case Data.Either.partitionEithers exclams' of
+       ([],r) ->    return
+                      [ CTpref { ctoffers  = ctoffs
+                               , cthidvars = map snd hvarlist
+                               , ctpred    = cstrAnd $ Set.fromList
+                                               ( compSubst ivenv (funcDefs tds)
+                                                   (subst (Map.map cstrConst we') (funcDefs tds) cnd)
+                                               : [ cstrEqual (cstrVar ivar) (cstrConst wal)
+                                                 | (ivar, wal) <- r
+                                                 ]
+                                               )
+                               , ctnext    = BNbexpr (we',ivenv) bexp
+                               }
+                      ]
+       (s,_)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
+                                  $ "Expand: Eval failed in expand - ActionPref" ++ show s ]
                     return []
 
 -- ----------------------------------------------------------------------------------------- --
@@ -109,9 +119,8 @@ expand chsets (BNbexpr we (TxsDefs.view -> Guard c bexp))  = do
 
 -- ----------------------------------------------------------------------------------------- --
 
-expand chsets (BNbexpr we (TxsDefs.view -> Choice bexps))  =  do
-     expands <- sequence [ expand chsets (BNbexpr we bexp) | bexp <- bexps ]
-     return $ concat expands
+expand chsets (BNbexpr we (TxsDefs.view -> Choice bexps))  =
+     concat <$> sequence [ expand chsets (BNbexpr we bexp) | bexp <- bexps ]
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -200,19 +209,28 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
     case Data.Either.partitionEithers vewals of
         ([], r) -> concatMapM (expandTrans chsets envwals (Map.fromList r)) [ tr | tr <- trns, from tr == ini ]
         (s,_)   -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
-                                   ("Expand:  Eval failed in expand - StAut - vewals " ++ show s ++ "\nCheck all your STAUTDEF VARs: Has a value been assigned to each variable (either in initialization or earlier steps)?") ]
+                                  $ "Expand:  Eval failed in expand - StAut - vewals " ++ show s ++
+                                    "\nCheck all your STAUTDEF VARs: Has a value been assigned to each " ++
+                                    "variable (either in initialization or earlier steps)?"
+                                  ]
                       return []
+
   where
     expandTrans :: [ Set.Set TxsDefs.ChanId ] -> WEnv VarId -> WEnv VarId -> Trans
-                   -> IOB.IOB CTree
-    expandTrans chsets' envwals stswals (Trans _ (ActOffer offs cnd) update' to')  =  do
+                -> IOB.IOB CTree
+    expandTrans chsets' envwals stswals (Trans _ (ActOffer offs hidvars cnd) update' to')  =  do
          (ctoffs, quests, exclams) <- expandOffers chsets' offs
-         let we'   = envwals `combineWEnv` stswals
-             ivenv = Map.fromList [ (vid, cstrVar ivar) | (vid, ivar) <- quests ]
+         hvarlist <- sequence [ liftP2 (hvid, uniIVar hvid) | hvid <- Set.toList hidvars ]
+         let ivenv = if null $ Set.intersection hidvars (Set.fromList (map fst quests))
+                       then Map.fromList $   [ (vid,  cstrVar ivar) | (vid,  ivar) <- quests   ]
+                                          ++ [ (hvid, cstrVar hvar) | (hvid, hvar) <- hvarlist ]
+                       else error "ERROR: interaction and hidden variables shall be disjoint\n"
+             we'   = envwals `combineWEnv` stswals
          tds <- gets IOB.tdefs
-         let exclams' = map toEitherTuple [ ( ivar, ValExpr.eval (subst (Map.map cstrConst we') (funcDefs tds) vexp) )
-                                          | (ivar, vexp) <- exclams
-                                          ]
+         let exclams' = map toEitherTuple
+                          [ (ivar, ValExpr.eval (subst (Map.map cstrConst we') (funcDefs tds) vexp) )
+                          | (ivar, vexp) <- exclams
+                          ]
          case Data.Either.partitionEithers exclams' of
             ([], r) -> do let we'' = Map.fromList [ (vid, wal)
                                                   | (vid, wal) <- Map.toList we'
@@ -225,18 +243,25 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
                               ve' = Map.fromList [ (vid, subst (Map.map cstrConst we'') (funcDefs tds) vexp)
                                                  | (vid, vexp) <- Map.toList update'
                                                  ]
-                          return [CTpref { ctoffers  = ctoffs
-                                         , cthidvars = []
-                                         , ctpred    = cstrAnd (Set.fromList ( compSubst ivenv (funcDefs tds) (subst (Map.map cstrConst we'') (funcDefs tds) cnd)
-                                                                             : [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- r ]
-                                                                             )
-                                                               )
-                                         , ctnext    = BNbexpr (envwals',ivenv) (stAut to' (Map.union ve' ve) trns)
-                                         }
-                                 ]
+                          return
+                            [ CTpref { ctoffers  = ctoffs
+                                     , cthidvars = map snd hvarlist
+                                     , ctpred    = cstrAnd $ Set.fromList
+                                                     ( compSubst ivenv (funcDefs tds)
+                                                         (subst (Map.map cstrConst we'') (funcDefs tds) cnd)
+                                                     : [ cstrEqual (cstrVar ivar) (cstrConst wal)
+                                                       | (ivar, wal) <- r
+                                                       ]
+                                                     )
+                                     , ctnext    = BNbexpr (envwals',ivenv) (stAut to' (Map.union ve' ve) trns)
+                                     }
+                            ]
             (s,_)   -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
-                                        ("Expand:  Eval failed in expand - StAut - exclams " ++ show s ++ "\nCheck all your STAUTDEF VARs: Has a value been assigned to each variable (either in initialization or earlier steps)?") ]
+                                      $ "Expand: Eval failed in expand - StAut - exclams " ++ show s ++
+                                        "\nCheck all your STAUTDEF VARs: Has a value been assigned to each "++
+                                        "variable (either in initialization or earlier steps)?" ]
                           return []
+
 -- ----------------------------------------------------------------------------------------- --
 -- expand  :  for genuine BNode
 --
@@ -422,21 +447,27 @@ expand _ _  = error "not in view"
 -- expand Offers
 
 
-expandOffers :: [ Set.Set TxsDefs.ChanId ] -> Set.Set Offer -> IOB.IOB ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
+expandOffers :: [ Set.Set TxsDefs.ChanId ]
+             -> Set.Set Offer
+             -> IOB.IOB ( Set.Set CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
 expandOffers chsets offs  =  do
      ctofftuples <- mapM (expandOffer chsets) (Set.toList offs)
      let ( ctoffs, quests, exclams ) = unzip3 ctofftuples
      return ( Set.fromList ctoffs, concat quests, concat exclams )
 
 
-expandOffer :: [ Set.Set TxsDefs.ChanId ] -> Offer -> IOB.IOB ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
+expandOffer :: [ Set.Set TxsDefs.ChanId ]
+            -> Offer
+            -> IOB.IOB ( CTOffer, [(VarId,IVar)], [(IVar,VExpr)] )
 expandOffer _chsets (Offer chid choffs)  =  do
      ctchoffs <- mapM (expandChanOffer chid) ( zip choffs [1..(length choffs)] )
      let ( ivars, quests, exclams ) = unzip3 ctchoffs
      return ( CToffer chid ivars, concat quests, concat exclams )
 
 
-expandChanOffer :: ChanId -> (ChanOffer,Int) -> IOB.IOB ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
+expandChanOffer :: ChanId
+                -> (ChanOffer,Int)
+                -> IOB.IOB ( IVar, [(VarId,IVar)], [(IVar,VExpr)] )
 expandChanOffer chid (choff,pos)  =  do
      curs <- gets IOB.stateid
      case choff of
@@ -476,8 +507,9 @@ hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
     return CTpref { ctoffers  = vctoffs
                   , cthidvars = hidvars ++ unihvars
                   , ctpred    = subst hvarenv (funcDefs tds) pred'
-                  , ctnext    = let f (we, ivenv) = (we, Map.map (subst hvarenv (funcDefs tds)) ivenv)
-                                  in fmap f ctnext1'
+                  , ctnext    = let f (we, ivenv) =
+                                        (we, Map.map (subst hvarenv (funcDefs tds)) ivenv)
+                                 in fmap f ctnext1'
                   }
 
 -- ----------------------------------------------------------------------------------------- --
@@ -496,8 +528,8 @@ relabel' :: Map.Map ChanId ChanId -> BExprView -> BExpr
 relabel' _ Stop
   =  stop
 
-relabel' chanmap (ActionPref (ActOffer offs cnrs) bexp)
-  =  actionPref (ActOffer (Set.map (relabel chanmap) offs) cnrs) (relabel chanmap bexp)
+relabel' chanmap (ActionPref (ActOffer offs hidvars cnrs) bexp)
+  =  actionPref (ActOffer (Set.map (relabel chanmap) offs) hidvars cnrs) (relabel chanmap bexp)
 
 relabel' chanmap (Guard cnrs bexp)
   =  TxsDefs.guard cnrs (relabel chanmap bexp)
@@ -544,20 +576,30 @@ instance Relabel ChanId
 
 instance Relabel Trans
   where
-    relabel chanmap (Trans from' (ActOffer offs cnrs) venv to')
-      =  Trans from' (ActOffer (Set.map (relabel chanmap) offs) cnrs) venv to'
+    relabel chanmap (Trans from' (ActOffer offs hidvars cnrs) venv to')
+      =  Trans from' (ActOffer (Set.map (relabel chanmap) offs) hidvars cnrs) venv to'
 
 
 -- ----------------------------------------------------------------------------------------- --
--- transform IVar into unique IVar (HVar)
+-- transform IVar/VarId into unique IVar (HVar)
 
+getUnid :: IOB.IOB Id
+getUnid = do
+    unid'   <- gets IOB.unid
+    let newUnid = unid' + 1
+    modify $ \env -> env { IOB.unid = newUnid }
+    return newUnid
 
 uniHVar :: IVar -> IOB.IOB IVar
 uniHVar (IVar ivname' ivuid' ivpos' ivstat' ivsrt')  =  do
-     unid'   <- gets IOB.unid
-     let newUnid = unid' + 1
-     modify $ \env -> env { IOB.unid = newUnid }
+     newUnid <- getUnid
      return $ IVar (ivname'<>"$$$"<> (T.pack . show) ivuid') newUnid ivpos' ivstat' ivsrt'
+
+
+uniIVar :: VarId -> IOB.IOB IVar
+uniIVar (VarId nm uid srt)  =  do
+     newUnid <- getUnid
+     return $ IVar (nm<>"$H$"<>(T.pack . show) uid) newUnid 0 0 srt
 
 
 -- ----------------------------------------------------------------------------------------- --

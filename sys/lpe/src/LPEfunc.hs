@@ -16,17 +16,6 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE FlexibleInstances #-}
--- TODO: make sure these warnings are removed.
--- TODO: also check the hlint warnings!
-{-# OPTIONS_GHC -Wno-name-shadowing #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# OPTIONS_GHC -Wno-unused-local-binds #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
-
 module LPEfunc
 (
   lpeTransformFunc,
@@ -46,33 +35,19 @@ where
 
 import Control.Monad.State
 import Data.Functor.Identity
-
-import           Data.Maybe
--- import           Data.Monoid
-
--- import TranslatedProcDefs
+import qualified Data.Map as Map
 
 import TranslatedProcDefs
 import TxsDefs
--- import ConstDefs
--- import StdTDefs (stdSortTable)
 
-import ChanId
--- import ProcId
--- import SortId
 import VarId
 import Name
-
--- import BehExprDefs
--- import ValExpr
--- import qualified TxsUtils
 
 import qualified EnvData
 import qualified EnvBasic            as EnvB
 import Id
 
 import LPE
-import qualified Data.Map as Map
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -104,8 +79,8 @@ putMsgs msg  =  do
      modify $ \envl -> envl { messgs = messgs' ++ msg }
 
 setChanoffers :: Map.Map (Name, Int) VarId -> IOL ()
-setChanoffers map = do 
-    modify $ \envl -> envl { chanofferss = map }
+setChanoffers map' = do 
+    modify $ \envl -> envl { chanofferss = map' }
 
 getChanoffers :: IOL (Map.Map (Name, Int) VarId)
 getChanoffers = do 
@@ -116,38 +91,40 @@ getChanoffers = do
 lpeTransformFunc :: BExpr
                  -> ProcDefs
                  -> Maybe (BExpr, ProcDef)
-lpeTransformFunc procInst procDefs
+lpeTransformFunc procInst' procDefs'
   =  let envl = EnvL 0 (Map.fromList []) []
-      in evalState (lpeTransform procInst procDefs) envl
+      in evalState (lpeTransform procInst' procDefs') envl
 
 
 
 -- lpePar :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
-lpeParFunc :: BExpr -> (Map.Map (Name, Int) VarId) -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
-lpeParFunc bexpr chanOffers translatedProcDefs procDefs =
-  let envl = EnvL 0 chanOffers []
-   in evalState (lpePar bexpr translatedProcDefs procDefs) envl
+lpeParFunc :: BExpr -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
+lpeParFunc bexpr translatedProcDefs procDefs' =
+  let envl = EnvL 0 (Map.fromList []) []
+   in evalState (lpePar bexpr translatedProcDefs procDefs') envl
 
 
 -- lpeHide :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
 lpeHideFunc :: BExpr -> (Map.Map (Name, Int) VarId) -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
-lpeHideFunc bexpr chanOffers translatedProcDefs procDefs =
-  let envl = EnvL 0 chanOffers []
-   in evalState (lpeHide bexpr translatedProcDefs procDefs) envl
+lpeHideFunc bexpr _chanOffers translatedProcDefs procDefs' =
+  let envl = EnvL 0 (Map.fromList []) []
+   in evalState (lpeHide bexpr translatedProcDefs procDefs') envl
 
 
 -- gnf :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb (ProcDefs)
 gnfFunc :: ProcId -> TranslatedProcDefs -> ProcDefs -> ProcDefs
-gnfFunc procId translatedProcDefs procDefs =
+gnfFunc procId translatedProcDefs procDefs' =
  let envl = EnvL 0 (Map.fromList []) []
-  in evalState (gnf procId translatedProcDefs procDefs) envl
+  in evalState (gnf procId translatedProcDefs procDefs') envl
 
 
+  -- preGNF :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb ProcDefs
+  -- preGNF procId translatedProcDefs procDefs' = do
 -- preGNF :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb(ProcDefs)
 preGNFFunc :: ProcId -> TranslatedProcDefs -> ProcDefs -> ProcDefs
-preGNFFunc procId translatedProcDefs procDefs =
+preGNFFunc procId translatedProcDefs procDefs' =
  let envl = EnvL 0 (Map.fromList []) []
-  in evalState (preGNF procId translatedProcDefs procDefs) envl
+  in evalState (preGNF procId translatedProcDefs procDefs') envl
 
 
 

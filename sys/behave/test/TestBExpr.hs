@@ -115,7 +115,7 @@ testStop = TestCase $
 testExit :: Test
 testExit = TestCase $
     let bexpr :: BExpr
-        bexpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" []) [])) (cstrConst (Cbool True)) ) stop 
+        bexpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" []) [])) Set.empty (cstrConst (Cbool True)) ) stop 
         actual :: BExpr
         actual = parseBexpr (Just []) bexpr
       in
@@ -125,7 +125,7 @@ testExit = TestCase $
 testExitValue :: Test
 testExitValue = TestCase $
     let bexpr :: BExpr
-        bexpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" [intSortName]) [Exclam (cstrConst (Cint 8978))])) (cstrConst (Cbool True)) ) stop 
+        bexpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" [intSortName]) [Exclam (cstrConst (Cint 8978))])) Set.empty (cstrConst (Cbool True)) ) stop 
         actual :: BExpr
         actual = parseBexpr (Just [intSortName]) bexpr
       in
@@ -136,7 +136,7 @@ testExclam :: Test
 testExclam = TestCase $
     let value = 10
         bexpr :: BExpr
-        bexpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrConst (Cint value))])) (cstrConst (Cbool True))) stop
+        bexpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrConst (Cint value))])) Set.empty (cstrConst (Cbool True))) stop
         actual :: BExpr
         actual = parseBexpr Nothing bexpr
       in
@@ -145,7 +145,7 @@ testExclam = TestCase $
 testExclamArgument :: Test
 testExclamArgument = TestCase $
     let bexpr :: BExpr
-        bexpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrVar (expectVarId definedInt1 intSortName))])) (cstrConst (Cbool True))) stop
+        bexpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrVar (expectVarId definedInt1 intSortName))])) Set.empty (cstrConst (Cbool True))) stop
         actual :: BExpr
         actual = parseBexpr Nothing bexpr
       in
@@ -156,7 +156,7 @@ testQuest = TestCase $
     let varName = "v"
         varSortName = definedChannel3SortName
         bexpr :: BExpr
-        bexpr = actionPref (ActOffer (Set.singleton (Offer (expectChanId definedChannel3 [definedChannel3SortName]) [Quest (expectVarId varName varSortName)])) (cstrConst (Cbool True))) stop
+        bexpr = actionPref (ActOffer (Set.singleton (Offer (expectChanId definedChannel3 [definedChannel3SortName]) [Quest (expectVarId varName varSortName)])) Set.empty (cstrConst (Cbool True))) stop
         actual :: BExpr
         actual = parseBexpr Nothing bexpr
       in
@@ -165,7 +165,7 @@ testQuest = TestCase $
 testQuestScope :: Test
 testQuestScope = TestCase $
     let bexpr :: BExpr
-        bexpr = actionPref (ActOffer (Set.singleton (Offer (expectChanId definedChannel2 [definedChannel2SortName]) [Quest (expectVarId definedInt1 intSortName)])) (cstrConst (Cbool True))) stop
+        bexpr = actionPref (ActOffer (Set.singleton (Offer (expectChanId definedChannel2 [definedChannel2SortName]) [Quest (expectVarId definedInt1 intSortName)])) Set.empty (cstrConst (Cbool True))) stop
         actual :: BExpr
         actual = parseBexpr Nothing bexpr
       in
@@ -176,17 +176,17 @@ aDefinedExit :: Maybe [String]
 aDefinedExit = Just [intSortName, stringSortName]
         
 aBExpr :: BExpr
-aBExpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrConst (Cint 123))])) (cstrConst (Cbool True)) )
+aBExpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrConst (Cint 123))])) Set.empty (cstrConst (Cbool True)) )
           (actionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" [ intSortName, stringSortName]) 
                                                                           [ Exclam (cstrVar (expectVarId definedInt1 intSortName))
-                                                                          , Exclam (cstrVar (expectVarId definedString3 stringSortName))]) ) (cstrConst (Cbool True)) ) 
+                                                                          , Exclam (cstrVar (expectVarId definedString3 stringSortName))]) ) Set.empty (cstrConst (Cbool True)) ) 
            stop)
 
 anotherBExpr :: BExpr
 anotherBExpr = guard (cstrVar (expectVarId definedBool1 boolSortName))
                      (actionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT"  [ intSortName, stringSortName])
                                                                                       [ Exclam (cstrVar (expectVarId definedInt2 intSortName))
-                                                                                      , Exclam (cstrVar (expectVarId definedString2 stringSortName))]) ) (cstrConst (Cbool True)) ) 
+                                                                                      , Exclam (cstrVar (expectVarId definedString2 stringSortName))]) ) Set.empty (cstrConst (Cbool True)) ) 
                       stop)
 
 
@@ -245,7 +245,7 @@ testCommunicate = TestCase $
 testEnable :: Test
 testEnable = TestCase $
     let bexpr :: BExpr
-        bexpr = enable (actionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" []) [])) (cstrConst (Cbool True)) ) stop) 
+        bexpr = enable (actionPref (ActOffer (Set.singleton(Offer (expectChanId "EXIT" []) [])) Set.empty (cstrConst (Cbool True)) ) stop) 
                        [] 
                        anotherBExpr
         actual :: BExpr

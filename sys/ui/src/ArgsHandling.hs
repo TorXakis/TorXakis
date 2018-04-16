@@ -45,7 +45,7 @@ getTxsUIArgs = do
     return $ Right uiArgs
     where
       getPortId []    = Nothing
-      getPortId (x:_) = (PortNumber . fromInteger) <$> readMaybe x
+      getPortId (x:_) = PortNumber . fromInteger <$> readMaybe x
       removePort Nothing xs = xs
       removePort (Just _) (_:xs) = xs
       removePort _ _ = error $  "This shouldn't happen: pattern 'Just x' "
