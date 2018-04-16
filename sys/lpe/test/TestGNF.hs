@@ -46,13 +46,6 @@ import LPEfunc
 -- Helper functions
 ---------------------------------------------------------------------------
 
-assertException :: (Exception e, Eq e) => e -> IO a -> IO ()
-assertException ex action =
-    handleJust isWanted (const $ return ()) $ do
-        _ <- action
-        assertFailure $ "Expected exception: " ++ show ex
-    where isWanted = Control.Monad.guard . (== ex)
-
 procIdGen :: String -> [ChanId] -> [VarId] -> ProcId
 procIdGen name chans vars = ProcId   {    ProcId.name       = T.pack name
                                         , ProcId.unid       = 111
@@ -331,6 +324,20 @@ testNamingClash = TestCase $
                                 , (procIdPpre1, procDefPpre1) ]
 
 
+assertException :: (Exception e, Eq e) => e -> ProcDefs -> IO ()
+assertException ex action =
+    handleJust isWanted (const $ return ()) $ do
+        _ <- evaluate action
+        assertFailure $ "Expected exception: " ++ show ex
+    where isWanted = Control.Monad.guard . (== ex)
+
+-- assertException :: (Exception e, Eq e) => e -> IO a -> IO ()
+-- assertException ex action =
+--     handleJust isWanted (const $ return ()) $ do
+--         _ <- action
+--         assertFailure $ "Expected exception: " ++ show ex
+--     where isWanted = Control.Monad.guard . (== ex)
+
 
 -- cycle detection
 --  P[]() := P[]()
@@ -343,7 +350,8 @@ testLoop1 = TestCase $
 --    assertFailure "found a no-progress loop" (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
 --    assertException (ErrorCall "found a no-progress loop") (evaluate $ gnfFunc procIdP emptyTranslatedProcDefs procDefs)
 --    assertRaises "desc error..." (ErrorCall "found a no-progress loop") (evaluate $ gnfFunc procIdP emptyTranslatedProcDefs procDefs)
-    assertBool "loop 1"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+    -- assertBool "loop 1"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+    assertException (ErrorCall "found a no-progress loop") (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
     where
       procIdP = procIdGen "P" [] []
       procDefP = ProcDef [] [] (procInst procIdP [] [])

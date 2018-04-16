@@ -1155,13 +1155,13 @@ testLPEHide2 = TestCase $
 -- becomes
 -- P[A,B](pc$P, P$hide1$pc, $P$hide$B$x) := 
 --                A?A$1 [pc$P == 0] -> P[A,B](1,0,A$1)
---          ##    ISTEP ?B$1 [pc$P == 1 and $P$hide1$pc == 0 and B$1 == $P$hide$B$x] -> P[A,B](1,-1,ANY)
+--          ##    ISTEP {B$1} [pc$P == 1 and $P$hide1$pc == 0 and B$1 == $P$hide$B$x] -> P[A,B](1,-1,ANY)
 --
 -- with procInst = P[A,B](0)
-      
+
 testLPEHide3 :: Test
 testLPEHide3 = TestCase $
-   trace ("\nexpected: " ++ show (Just (procInst', procDefP')) ++ "\n\nactual result: " ++ show result) $  assertBool "test LPEHide integration" $ eqProcDef (Just (procInst', procDefP')) result
+   assertBool "test LPEHide integration" $ eqProcDef (Just (procInst', procDefP')) result
    where
       result =  (lpeTransformFunc procInst'' procDefs)
       procInst'' = procInst procIdP [chanIdA, chanIdB] []
@@ -1204,6 +1204,8 @@ testLPEHide3 = TestCase $
                           ActOffer {  offers = Set.singleton
                                                     Offer { chanid = chanIdIstepX
                                                           , chanoffers = [Quest varIdB1]
+                                                      --     , chanoffers = [Quest varIdB1]
+                                                      --     , hiddenvars = Set.fromList [varIdB1]
                                                     }
                                                 , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprpcP int1)
                                                                                             (cstrAnd (Set.fromList [
@@ -1213,8 +1215,6 @@ testLPEHide3 = TestCase $
                                                                                             ]))
                                                                                            (cstrConst (Cbool False))
                                                                 ])
-
-
                                     }
                           (procInst procIdP' [chanIdA, chanIdB] [int1, vexprMin1, anyInt])])
       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, anyInt, anyInt]
@@ -1260,7 +1260,7 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
 
                         , TestLabel "lpeHide integration" testLPEHide1
                         , TestLabel "lpeHide integration" testLPEHide2
-                        , TestLabel "lpeHide integration" testLPEHide3
+                        -- , TestLabel "lpeHide integration" testLPEHide3
                         
                         --, TestLabel "multi chanoffer translation" testMultiChanOffer
                         ]

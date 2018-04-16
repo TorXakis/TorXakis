@@ -322,7 +322,7 @@ testActionPref3 = TestCase $
 -- P[A]() := HIDE [A] IN A?x -> STOP NI 
 -- with procInst = P[A]()
 -- becomes
--- P[A](pc$P) := ISTEP ?x -> P[A](-1)
+-- P[A](pc$P) := ISTEP {hidvars: ?x} -> P[A](-1)
 -- with procInst = P[A](0)
 
 testActionPref4 :: Test
@@ -347,6 +347,7 @@ testActionPref4 = TestCase $
                                                                               Offer { chanid = chanIdIstepX
                                                                                     , chanoffers = [Quest varIdA1]
                                                                               }
+                                                                  -- , hidvars = Set.fromList [varIdA1]
                                                                   , constraint = cstrEqual vexprPcP int0
                                                                   } 
                                                       (procInst procIdPlpe [chanIdA] [vexprMin1]))
