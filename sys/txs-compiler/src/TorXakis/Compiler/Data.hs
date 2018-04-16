@@ -50,29 +50,6 @@ data IEnv f0 f1 f2 f3 f4 f5 f6 = IEnv
 emptyEnv :: IEnv () () () () () () ()
 emptyEnv = IEnv () () () () () () ()
 
--- class HasSortIds e where
---     -- | Find the `SortId` that corresponds to the given name. This assumes
---     -- that sort names are unique.
---     findSortId  :: e -> (Text, Loc t) -> Either Error SortId
---     findSortIdM :: e -> (Text, Loc t) -> CompilerM SortId
---     findSortIdM e t = liftEither $ findSortId e t
---     getSortIdMap :: e -> Map Text SortId
---     allSortIds :: e -> [SortId]
---     allSortIds e = Map.elems $ getSortIdMap e
-
--- class HasCstrIds e where
---     -- | Find the `CstrId` that correspond to the parser location of a
---     -- constructor declaration.
---     findCstrId :: e -> Loc CstrE -> Either Error CstrId
---     findCstrIdM :: e -> Loc CstrE -> CompilerM CstrId
---     findCstrIdM e i = liftEither $ findCstrId e i
-
--- | The environment has the @SortId@'s of the variable declarations.
-class HasVarSortIds e where
-    findVarDeclSortId :: e -> Loc VarDeclE -> Either Error SortId
-    findVarDeclSortIdM :: e -> Loc VarDeclE -> CompilerM SortId
-    findVarDeclSortIdM e l = liftEither $ findVarDeclSortId e l
-
 class HasVarIds e where
     -- | Find the variable id that corresponds to the given parser location.
     --
@@ -230,16 +207,6 @@ class HasFuncDefs e where
     findFuncDef :: e -> FuncId -> Either Error (FuncDef VarId)
     getFuncDefT :: e -> Map FuncId (FuncDef VarId)
 
--- instance HasSortIds (IEnv (Map Text SortId) f1 f2 f3 f4 f5 f6) where
---     findSortId IEnv{sortIdT = sm} (t, l) = maybeToEither err . Map.lookup t $ sm
---         where err = Error
---                   { _errorType = UndefinedRef
---                   , _errorLoc = getErrorLoc l
---                   , _errorMsg = "Could not find sort " <> t
---                   }
-
---     getSortIdMap IEnv{sortIdT = sm} = sm
-
 lookup :: (Ord a, Show a) => a -> Map a b -> Text -> Either Error b
 lookup a ab what =  maybeToEither err . Map.lookup a $ ab
         where err = Error
@@ -262,13 +229,6 @@ lookupWithLoc a ab what = maybeToEither err . Map.lookup a $ ab
 lookupWithLocM :: (Ord a, Show a, HasErrorLoc a) => a -> Map a b -> Text -> CompilerM b
 lookupWithLocM a ab what = liftEither $ lookupWithLoc a ab what
 
--- instance HasCstrIds (IEnv f0 (Map (Loc CstrE) CstrId) f2 f3 f4 f5 f6) where
---     findCstrId IEnv{cstrIdT = cm} i = lookupWithLoc i cm "constructor by parser location id "
-
-instance HasVarSortIds (IEnv f0 f1 (Map (Loc VarDeclE) SortId) f3 f4 f5 f6) where
-    -- TODO: remove duplication WRT to @instance HasVarSortIds (SEnv (Map (Loc VarDeclE) SortId))@
-    findVarDeclSortId IEnv{varSortIdT = vsm} l = lookupWithLoc l vsm "sort of variable at location "
-
 instance HasVarIds (IEnv f0 f1 f2 (Map (Loc VarDeclE) VarId) f4 f5 f6) where
     findVarId IEnv{varIdT = vm} i = lookupWithLoc i vm "variable by parser location id"
 
@@ -289,7 +249,6 @@ instance HasFuncIds (IEnv f0 f1 f2 f3 f4 (Map FuncDefInfo FuncId) f6) where
 
 findFuncSortIds :: HasFuncIds e => e -> [FuncDefInfo] -> Either Error [SortId]
 findFuncSortIds e fdis = fmap funcsort <$> traverse (findFuncId e) fdis
--- findFuncSortIds  = error "Boom!" -- fmap funcsort <$> traverse (findFuncId e) fdis
 
 instance HasFuncDefs (IEnv f0 f1 f2 f3 f4 f5 (Map FuncId (FuncDef VarId))) where
     findFuncDef IEnv{funcDefT = fm} = findFuncDef (SEnv fm)
@@ -312,13 +271,10 @@ instance Ord a => IsList (SEnv (Map a b)) where
 isMemberOf :: Ord a => a -> SEnv (Map a b) -> Bool
 isMemberOf a (SEnv ab) = Map.member a ab
 
-instance HasVarSortIds (SEnv (Map (Loc VarDeclE) SortId)) where
-    findVarDeclSortId (SEnv vsm) l = lookupWithLoc l vsm "sort of variable at location "
-
 newtype St = St { nextId :: Int } deriving (Eq, Show)
 
 newState :: St
--- TODO: document why '1000' was chosen: compatibility with the current TorXakis compiler.
+-- '1000' was chosen for compatibility with the current TorXakis compiler.
 newState = St 1000
 
 newtype CompilerM a = CompilerM { runCompiler :: StateT St (Either Error) a }

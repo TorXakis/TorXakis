@@ -109,7 +109,7 @@ compileParsedDefs pd = do
     vdSortMap <- inferTypes allSortsMap e2 allFuncs
     let e3 = e2 { varSortIdT = vdSortMap }
     -- Construct the variable declarations to @VarId@'s lookup table.
-    vMap <- generateVarIds e3 allFuncs
+    vMap <- generateVarIds vdSortMap allFuncs
     let e4 = e3 { varIdT = vMap }
     lFDefMap <- funcDeclsToFuncDefs e4 allFuncs
     let e5 = e4 { funcDefT = lFDefMap }

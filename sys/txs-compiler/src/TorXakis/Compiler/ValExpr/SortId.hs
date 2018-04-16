@@ -1,9 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE FlexibleContexts  #-}
 module TorXakis.Compiler.ValExpr.SortId where
 
+import           Prelude                   hiding (lookup)
 import           Control.Arrow             (left, (|||))
 import           Control.Monad             (when)
 import           Control.Monad.Error.Class (liftEither)
@@ -23,11 +26,11 @@ import           SortId                    (SortId (SortId), sortIdBool,
                                             sortIdInt, sortIdRegex,
                                             sortIdString)
 
-import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Data   hiding (lookup)
 import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.MapsTo
+import           TorXakis.Compiler.MapsTo 
 import           TorXakis.Compiler.Maps
-import           TorXakis.Parser.Data
+import           TorXakis.Parser.Data 
 
 -- | Construct a list of sort ID's from a list of ADT declarations.
 --
@@ -47,26 +50,27 @@ sortIdOfVarDecl mm = findSortId mm . varDeclSort
 sortIdOfVarDeclM :: MapsTo Text SortId mm => mm -> VarDecl -> CompilerM SortId
 sortIdOfVarDeclM mm f = liftEither $ sortIdOfVarDecl mm f
 
--- | TODO: QUESTION: do we return an error when there are variables whose types
--- couldn't be inferred, or do we leave the error occur when some other
--- function asks for the type of the variable later on?
-inferTypes :: (MapsTo Text SortId mm, HasVarDecls e, HasFuncIds e)
+-- | Infer the types in a list of function declaration.
+inferTypes :: ( MapsTo Text SortId mm
+              , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
+              , HasVarDecls e
+              , HasFuncIds e)
            => mm
            -> e
            -> [FuncDecl]
            -> CompilerM (Map (Loc VarDeclE) SortId)
 inferTypes mm e fs = liftEither $ do
     paramsVdSid <- Map.fromList . concat <$> traverse fParamLocSorts fs
-    letVdSid    <- gInferTypes (SEnv paramsVdSid) allLetVarDecls
+    letVdSid    <- gInferTypes paramsVdSid allLetVarDecls
     return $ Map.union letVdSid paramsVdSid
     where
       allLetVarDecls = concatMap letVarDeclsInFunc fs
-      gInferTypes :: SEnv (Map (Loc VarDeclE) SortId)
+      gInferTypes :: Map (Loc VarDeclE) SortId
                   -> [LetVarDecl]
                   -> Either Error (Map (Loc VarDeclE) SortId)
-      gInferTypes e' vs =
-          case partitionEithers (inferVarDeclType mm e e' <$> vs) of
-              ([], rs) -> Right $ fromSEnv $ fromList rs <> e'
+      gInferTypes mVdSid vs =
+          case partitionEithers (inferVarDeclType (mm :& mVdSid) e <$> vs) of
+              ([], rs) -> Right $ fromList rs <> mVdSid
               (ls, []) -> Left  Error
                           { _errorType = UndefinedType
                           , _errorLoc  = NoErrorLoc -- TODO: we could generate
@@ -74,7 +78,7 @@ inferTypes mm e fs = liftEither $ do
                                                    -- all the locations in 'ls'
                           , _errorMsg  =  "Could not infer the types: " <> (T.pack . show . (fst <$>)) ls
                           }
-              (ls, rs) -> gInferTypes (fromList rs <> e') (snd <$> ls)
+              (ls, rs) -> gInferTypes (fromList rs <> mVdSid) (snd <$> ls)
       fParamLocSorts :: FuncDecl -> Either Error [(Loc VarDeclE, SortId)]
       fParamLocSorts fd = zip (getLoc <$> funcParams fd) <$> fParamSorts
           where
@@ -84,18 +88,19 @@ inferTypes mm e fs = liftEither $ do
 letVarDeclsInFunc :: FuncDecl -> [LetVarDecl]
 letVarDeclsInFunc fd = expLetVarDecls (funcBody fd)
 
-inferVarDeclType :: (MapsTo Text SortId mm, HasVarDecls e, HasFuncIds e)
+inferVarDeclType :: ( MapsTo Text SortId mm
+                    , MapsTo (Loc VarDeclE) SortId mm
+                    , HasVarDecls e, HasFuncIds e)
                  => mm
                  -> e
-                 -> SEnv (Map (Loc VarDeclE) SortId)
                  -> LetVarDecl -> Either (Error, LetVarDecl) (Loc VarDeclE, SortId)
-inferVarDeclType mm e vdSid vd = left (,vd) $
+inferVarDeclType mm e vd = left (,vd) $
     case letVarDeclSortName vd of
     Just sn -> do -- If the sort is declared, we just return it.
         sId <- findSortId mm sn
         return (getLoc vd, sId)
     Nothing -> do -- If the sort is not declared, we try to infer it from the expression.
-        expSids <- inferExpTypes mm e vdSid (varDeclExp vd)
+        expSids <- inferExpTypes mm e (varDeclExp vd)
         expSid <- getUniqueElement expSids
         return (getLoc vd, expSid)
 
@@ -106,31 +111,32 @@ inferVarDeclType mm e vdSid vd = left (,vd) $
 --
 -- Could be a TorXakis 'Int', 'String', 'Bool', or even an 'ADT'.
 --
-inferExpTypes :: (MapsTo Text SortId mm, HasVarDecls e, HasFuncIds e)
+inferExpTypes :: ( MapsTo Text SortId mm
+                 , MapsTo (Loc VarDeclE) SortId mm
+                 , HasVarDecls e, HasFuncIds e)
               => mm
               -> e
-              -> SEnv (Map (Loc VarDeclE) SortId)
               -> ExpDecl
               -> Either Error [SortId]
-inferExpTypes mm e vdSid ex =
+inferExpTypes mm e ex =
     case expChild ex of
     VarRef _ l ->
         -- Find the location of the variable reference
         -- If it is a variable, return the sort id of the variable declaration.
         -- If it is a function, return the sort id's of the functions.
-        (fmap pure . findVarDeclSortId vdSid ||| findFuncSortIds e) =<< findVarDecl e l
+        (fmap pure . (`lookup` mm) ||| findFuncSortIds e) =<< findVarDecl e l
     ConstLit c ->
         return $ -- The type of any is any sort known!
             maybe (values @Text mm) pure (sortIdConst c)
     LetExp vs subEx -> do
-        vsSidss <- traverse (inferExpTypes mm e vdSid) (varDeclExp <$> vs)
+        vsSidss <- traverse (inferExpTypes mm e) (varDeclExp <$> vs)
         -- Here we make sure that each variable expression has a unique type.
         vsSids <- traverse getUniqueElement vsSidss
-        let vdSid' = fromList (zip (getLoc <$> vs) vsSids) <> vdSid
-        inferExpTypes mm e vdSid' subEx
+        let vdSid = fromList (zip (getLoc <$> vs) vsSids)
+        inferExpTypes (vdSid <.+> mm) e subEx
     -- TODO: shouldn't if be also a function? Defined in terms of the Haskell's @if@ operator.
     If e0 e1 e2 -> do
-        [se0s, se1s, se2s] <- traverse (inferExpTypes mm e vdSid) [e0, e1, e2]
+        [se0s, se1s, se2s] <- traverse (inferExpTypes mm e) [e0, e1, e2]
         when (sortIdBool `notElem` se0s)
             (Left Error
                 { _errorType = TypeMismatch
@@ -150,7 +156,7 @@ inferExpTypes mm e vdSid ex =
              )
         return ses
     Fappl _ l exs -> concat <$> do
-        sess <- traverse (inferExpTypes mm e vdSid) exs
+        sess <- traverse (inferExpTypes mm e) exs
         for (sequence sess) $ \ses -> do
               fdis <- findFuncDecl e l
               let matchingFdis = determineF e fdis ses Nothing

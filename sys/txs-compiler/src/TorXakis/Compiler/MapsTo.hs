@@ -30,10 +30,17 @@ import           TorXakis.Compiler.Error
 
 -- | 'm' maps keys of type 'k' onto values of type 'v'.
 class (In (k, v) (Contents m) ~ 'True) => MapsTo k v m where
+    -- | Lookup a key in the map.
     lookup  :: (Ord k, Show k) => k -> m -> Either Error v
+    -- | Monadic version of @lookup@.
     lookupM :: (Ord k, Show k) => k -> m -> CompilerM v
     lookupM k m = liftEither $ lookup k m
+    -- | Get the inner map.
     innerMap :: m -> Map k v
+    -- | Add a map. The addition is biased towards the new map. If the two maps
+    -- have the same key, then the value of the right map is discarded, and the
+    -- value of the left map is kept.
+    (<.+>) :: Ord k => Map k v -> m -> m
 
 keys :: forall k v m . MapsTo k v m => m -> [k]
 keys m = Map.keys im
@@ -73,6 +80,9 @@ instance MapsTo k v (Map k v) where
                   , _errorMsg  = "Could not find " <> T.pack (show k)
                   }
     innerMap = id
+    -- Note that here we're using the monoidal implementation of <> for maps,
+    -- which overwrites the keys of 'm1'.
+    (<.+>) = (<>)
 
 
 lookupWithLoc :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
@@ -100,21 +110,25 @@ class ( In (k, v) (Contents m0) ~ inM0
       ) =>
       PairMapsTo k v m0 m1 inM0 inM1 where
     lookupPair :: (Ord k, Show k) => k -> m0 :& m1 -> Either Error v
-    innerMapPair  :: m0 :& m1 -> Map k v
+    innerMapPair :: m0 :& m1 -> Map k v
+    addMapPair :: Ord k => Map k v -> m0 :& m1 -> m0 :& m1
 
 instance ( MapsTo k v m0, In (k, v) (Contents m1) ~ 'False
          ) => PairMapsTo k v m0 m1 'True 'False where
     lookupPair k (m0 :& _) = lookup k m0
     innerMapPair (m0 :& _) = innerMap m0
+    addMapPair m (m0 :& m1) = (m <.+> m0) :& m1
 
 instance ( In (k, v) (Contents m0) ~ 'False, MapsTo k v m1
          ) => PairMapsTo k v m0 m1 'False 'True where
     lookupPair k (_ :& m1) = lookup k m1
     innerMapPair (_ :& m1) = innerMap m1
+    addMapPair m (m0 :& m1) = m0 :& (m <.+> m1)
 
 instance PairMapsTo k v m0 m1 inM0 inM1 => MapsTo k v (m0 :& m1) where
     lookup = lookupPair
     innerMap = innerMapPair
+    (<.+>) = addMapPair
 
 instance ( TypeError (      'Text "No map found: \""
                       ':<>: 'ShowType (m0 :& m1)
@@ -129,7 +143,7 @@ instance ( TypeError (      'Text "No map found: \""
          => PairMapsTo k v m0 m1 'False 'False where
     lookupPair _ = undefined
     innerMapPair _ = undefined
-
+    addMapPair _ _ = undefined
 
 instance ( TypeError (     'Text "Map is not unique: \""
                       ':<>: 'ShowType (m0 :& m1)
@@ -144,3 +158,4 @@ instance ( TypeError (     'Text "Map is not unique: \""
          => PairMapsTo k v m0 m1 'True 'True where
     lookupPair _ = undefined
     innerMapPair _ = undefined
+    addMapPair _ _ = undefined

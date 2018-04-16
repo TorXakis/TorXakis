@@ -6,26 +6,29 @@ import qualified Data.Map               as Map
 
 import           Id                     (Id (Id))
 import           VarId                  (VarId (VarId))
+import           SortId                 (SortId)
 
-import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Data hiding (lookupM)
 import           TorXakis.Parser.Data
+import           TorXakis.Compiler.MapsTo
 
-generateVarIds :: (HasVarSortIds e)
-               => e -> [FuncDecl] -> CompilerM (Map (Loc VarDeclE) VarId)
-generateVarIds e fs = Map.fromList . concat <$>
-    traverse (varIdsFromFuncDecl e) fs
+generateVarIds :: (MapsTo (Loc VarDeclE) SortId mm)
+               => mm -> [FuncDecl] -> CompilerM (Map (Loc VarDeclE) VarId)
+generateVarIds mm fs = Map.fromList . concat <$>
+    traverse (varIdsFromFuncDecl mm) fs
 
-varIdsFromFuncDecl :: (HasVarSortIds e)
-                   => e -> FuncDecl -> CompilerM [(Loc VarDeclE, VarId)]
+varIdsFromFuncDecl :: (MapsTo (Loc VarDeclE) SortId mm)
+                   => mm -> FuncDecl -> CompilerM [(Loc VarDeclE, VarId)]
 varIdsFromFuncDecl e fd = do
     pVids <- traverse (varIdsFromVarDecl e) (funcParams fd)
     bVids <- varIdsFromExpDecl e (funcBody fd)
     return $ pVids ++ bVids
 
-varIdsFromVarDecl :: (HasVarSortIds e, IsVariable v, HasLoc v VarDeclE)
-                  => e -> v -> CompilerM (Loc VarDeclE, VarId)
-varIdsFromVarDecl e v = do
-    sId <- findVarDeclSortIdM e (getLoc v)
+varIdsFromVarDecl :: ( MapsTo (Loc VarDeclE) SortId mm
+                     , IsVariable v, HasLoc v VarDeclE)
+                  => mm -> v -> CompilerM (Loc VarDeclE, VarId)
+varIdsFromVarDecl mm v = do
+    sId <- lookupM (getLoc v) mm
     vId <- getNextId
     return (getLoc v, VarId (varName v) (Id vId) sId)
 
@@ -36,15 +39,15 @@ varIdsFromVarDecl e v = do
 -- the number of 'Loc VarDeclE' equals the length of the list returned by this function.
 --
 -- This will imply that each location of a variable declaration introduces a 'VarId'.
-varIdsFromExpDecl :: (HasVarSortIds e)
-                  => e -> ExpDecl -> CompilerM [(Loc VarDeclE, VarId)]
-varIdsFromExpDecl e ex = case expChild ex of
+varIdsFromExpDecl :: (MapsTo (Loc VarDeclE) SortId mm)
+                  => mm -> ExpDecl -> CompilerM [(Loc VarDeclE, VarId)]
+varIdsFromExpDecl mm ex = case expChild ex of
     LetExp vs subEx -> do
-        vdMap  <- traverse (varIdsFromVarDecl e) vs
-        vdExpMap <- concat <$> traverse (varIdsFromExpDecl e) (varDeclExp <$> vs)
-        subMap <- varIdsFromExpDecl e subEx
+        vdMap  <- traverse (varIdsFromVarDecl mm) vs
+        vdExpMap <- concat <$> traverse (varIdsFromExpDecl mm) (varDeclExp <$> vs)
+        subMap <- varIdsFromExpDecl mm subEx
         return $ vdMap ++ subMap ++ vdExpMap
     _ ->
-        concat <$> traverse (varIdsFromExpDecl e) (childExps ex)
+        concat <$> traverse (varIdsFromExpDecl mm) (childExps ex)
 
 
