@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 module TorXakis.Compiler.ValExpr.CstrId where
 
+import Prelude hiding (lookup)
 import           Control.Arrow             (left)
 import           Control.Monad.Error.Class (liftEither)
 import           Data.Map                  (Map)
@@ -13,7 +14,7 @@ import           CstrId                    (CstrId (CstrId))
 import           Id                        (Id (Id))
 import           SortId                    (SortId)
 
-import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Data hiding (lookup)
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Error
@@ -42,13 +43,8 @@ cstrToCstrId mm sId c = do
     aSids <- traverse (findSortIdM mm . fieldSort) (cstrFields c)
     return (getLoc c, CstrId (cstrName c) (Id i) aSids sId)
 
-cstrIdOfCstrDecl :: HasCstrIds e => e -> CstrDecl -> Either Error CstrId
-cstrIdOfCstrDecl e c = left (const err) $ findCstrId e (getLoc c)
-    where err = Error
-              { _errorType = UndefinedRef
-              , _errorLoc = getErrorLoc c
-              , _errorMsg = "Could not find constructor " <> cstrName c
-              }
+cstrIdOfCstrDecl :: MapsTo (Loc CstrE) CstrId mm => mm -> CstrDecl -> Either Error CstrId
+cstrIdOfCstrDecl mm c = lookup (getLoc c) mm
 
-cstrIdOfCstrDeclM :: HasCstrIds e => e -> CstrDecl -> CompilerM CstrId
-cstrIdOfCstrDeclM e c = liftEither $ cstrIdOfCstrDecl e c
+cstrIdOfCstrDeclM :: MapsTo (Loc CstrE) CstrId mm => mm -> CstrDecl -> CompilerM CstrId
+cstrIdOfCstrDeclM mm c = liftEither $ cstrIdOfCstrDecl mm c

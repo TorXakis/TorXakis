@@ -1,6 +1,7 @@
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE OverloadedStrings      #-}
 module TorXakis.Parser.Data
     ( St
     , mkState
@@ -158,7 +159,7 @@ data Loc t = Loc
 locFromLoc :: Loc t -> Loc u
 locFromLoc (Loc l c i) = Loc l c i
 
-class HasLoc a t where
+class HasLoc a t | a -> t where
     getLoc :: a -> Loc t
     setLoc :: a -> Loc t -> a
     loc' :: Lens' a (Loc t)

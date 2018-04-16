@@ -5,6 +5,7 @@
 
 module TorXakis.Compiler.Defs.FuncTable where
 
+import Prelude hiding (lookup)
 import           Control.Arrow                    (second)
 import           Data.Foldable                    (foldl')
 import           Data.List.Index                  (imapM)
@@ -31,43 +32,45 @@ import           ValExpr                          (PredefKind (ASF, AST, AXF, AX
                                                    cstrFunc, cstrPredef)
 import           VarId                            (VarId)
 
-import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Data hiding (lookup, lookupM)
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Parser.Data
 
--- | Make a function table.
-adtsToFuncTable :: (MapsTo Text SortId mm, HasCstrIds e)
-                   => mm -> e -> [ADTDecl] -> CompilerM (FuncTable VarId)
-adtsToFuncTable mm e ds =
+-- | Make a function table from a list of ADT's declarations.
+adtsToFuncTable :: ( MapsTo Text        SortId mm
+                   , MapsTo (Loc CstrE) CstrId mm)
+                => mm -> [ADTDecl] -> CompilerM (FuncTable VarId)
+adtsToFuncTable mm ds =
     FuncTable <$> textToHandler
     where
       textToHandlers :: CompilerM [Map Text (SignHandler VarId)]
-      textToHandlers = (Map.fromList <$>) <$> traverse (adtToHandlers mm e) ds
+      textToHandlers = (Map.fromList <$>) <$> traverse (adtToHandlers mm) ds
       textToHandler :: CompilerM (Map Text (SignHandler VarId))
       -- In case we have two functions with the same name (like @fromString@
       -- for instance), we cannot overwrite the handlers, but we have to take
       -- both handlers along.
       textToHandler = foldl' (Map.unionWith Map.union) Map.empty <$> textToHandlers
 
-adtToHandlers :: (MapsTo Text SortId mm, HasCstrIds e)
-              => mm -> e -> ADTDecl -> CompilerM [(Text, SignHandler VarId)]
-adtToHandlers mm e a = do
+adtToHandlers :: ( MapsTo Text        SortId mm
+                 , MapsTo (Loc CstrE) CstrId mm)
+              => mm -> ADTDecl -> CompilerM [(Text, SignHandler VarId)]
+adtToHandlers mm a = do
     sId <- findSortIdM mm (adtName a, nodeLoc a)
-    concat <$> traverse (cstrToHandlers mm e sId) (constructors a)
+    concat <$> traverse (cstrToHandlers mm sId) (constructors a)
 
-cstrToHandlers :: (MapsTo Text SortId mm, HasCstrIds e)
+cstrToHandlers :: ( MapsTo Text        SortId mm
+                  , MapsTo (Loc CstrE) CstrId mm)
                => mm
-               -> e
                -> SortId
                -> CstrDecl
                -> CompilerM [(Text, SignHandler VarId)]
-cstrToHandlers mm e sId c = do
-    cId  <- findCstrIdM e (getLoc c)
-    cTH  <- cstrToMkCstrHandler mm e sId c
-    iTH  <- cstrToIsCstrHandler e sId c
+cstrToHandlers mm sId c = do
+    cId  <- lookupM (getLoc c) mm
+    cTH  <- cstrToMkCstrHandler mm sId c
+    iTH  <- cstrToIsCstrHandler mm sId c
     fTHs <- imapM (fieldToAccessCstrHandler mm sId cId) (cstrFields c)
     -- Taken from TxsHappy@949:
     astFid <- sortToStringFuncId sId
@@ -95,25 +98,25 @@ cstrToHandlers mm e sId c = do
     return $ cTH:iTH:(fTHs++stdHs)
 
 -- | Create a handler to create a constructor.
-cstrToMkCstrHandler :: (MapsTo Text SortId mm, HasCstrIds e)
+cstrToMkCstrHandler :: ( MapsTo Text        SortId mm
+                       , MapsTo (Loc CstrE) CstrId mm)
                     => mm
-                    -> e
                     -> SortId
                     -> CstrDecl
                     -> CompilerM (Text, SignHandler VarId)
-cstrToMkCstrHandler mm e sId c = do
-    cId <- findCstrIdM e (getLoc c)
+cstrToMkCstrHandler mm sId c = do
+    cId <- lookupM (getLoc c) mm
     fSids <- traverse (findSortIdM mm . fieldSort) (cstrFields c)
     return (cstrName c, Map.singleton (Signature fSids sId) (cstrHandler cId))
 
 -- | Create a "is-constructor"  function from a constructor.
-cstrToIsCstrHandler :: HasCstrIds e
-                    => e
+cstrToIsCstrHandler :: MapsTo (Loc CstrE) CstrId mm
+                    => mm
                     -> SortId  -- ^ Sort id of the containing ADT.
                     -> CstrDecl
                     -> CompilerM (Text, SignHandler VarId)
-cstrToIsCstrHandler e sId c = do
-    cId <- findCstrIdM e (getLoc c)
+cstrToIsCstrHandler mm sId c = do
+    cId <- lookupM (getLoc c) mm
     return ("is"<> cstrName c, Map.singleton sign (iscstrHandler cId))
     where
       sign :: Signature

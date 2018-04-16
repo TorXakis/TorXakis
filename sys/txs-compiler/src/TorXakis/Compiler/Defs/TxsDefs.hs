@@ -6,14 +6,15 @@ module TorXakis.Compiler.Defs.TxsDefs where
 
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
+import           Data.Text              (Text)
 
 import           SortDef                           (SortDef (SortDef))
 import           SortId                            (SortId)
 import           TxsDefs                           (TxsDefs, cstrDefs, empty,
                                                     modelDefs, sortDefs)
-import           Data.Text              (Text)
 import           ChanId                 (ChanId)
 import           VarId (VarId)
+import           CstrId (CstrId)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.ModelDef
@@ -23,10 +24,10 @@ import           TorXakis.Parser.Data
 import           TorXakis.Compiler.MapsTo
 
 adtsToTxsDefs :: ( MapsTo Text SortId mm
-                 , HasCstrIds e)
-              => mm -> e -> [ADTDecl] -> CompilerM TxsDefs
-adtsToTxsDefs mm e ds = do
-    lCstrDefs <- compileToCstrDefs mm e ds
+                 , MapsTo (Loc CstrE) CstrId mm)
+              => mm -> [ADTDecl] -> CompilerM TxsDefs
+adtsToTxsDefs mm ds = do
+    lCstrDefs <- compileToCstrDefs mm ds
     return $ empty
         { sortDefs = envToSortDefs mm
         , cstrDefs = lCstrDefs

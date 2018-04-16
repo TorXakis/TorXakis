@@ -36,7 +36,7 @@ import           ValExpr                           (ValExpr,
                                                     cstrITE, cstrVar, view)
 import           VarId                             (VarId)
 import           SortId                             (SortId)
-
+import           CstrId (CstrId)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.ChanId
@@ -116,8 +116,9 @@ compileParsedDefs pd = do
     -- Construct the @ProcId@ to @ProcDef@ map:
     pdefMap <- procDeclsToProcDefMap allSortsMap (pd ^. procs)
     -- Finally construct the TxsDefs.
-    sigs    <- toSigs                (allSortsMap :& pdefMap :& chs) e5 pd
-    txsDefs <- toTxsDefs (func sigs) (allSortsMap :& pdefMap :& chs) e5 pd
+    let mm = allSortsMap :& pdefMap :& chs :& cMap
+    sigs    <- toSigs                mm e5 pd
+    txsDefs <- toTxsDefs (func sigs) mm e5 pd
     St i    <- get
     return (Id i, txsDefs, sigs)
 
@@ -150,13 +151,15 @@ simplify :: FuncTable VarId -> [Text] -> (FuncId, FuncDef VarId) -> (FuncId, Fun
 -- TODO: return an either instead.
 simplify ft fns (fId, FuncDef vs ex) = (fId, FuncDef vs (simplify' ft fns ex))
 
-toTxsDefs :: (MapsTo Text SortId mm, HasCstrIds e, HasFuncIds e, HasFuncDefs e
+toTxsDefs :: ( MapsTo Text        SortId mm
+             , MapsTo (Loc CstrE) CstrId mm
+             , HasFuncIds e
+             , HasFuncDefs e
              , MapsTo ProcId ProcDef mm
-             , MapsTo Text ChanId mm
-             )
+             , MapsTo Text ChanId mm )
           => FuncTable VarId -> mm -> e -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs ft mm e pd = do
-    ads <- adtsToTxsDefs mm e (pd ^. adts)
+    ads <- adtsToTxsDefs mm (pd ^. adts)
     -- Get the function id's of all the constants.
     cfIds <- traverse (findFuncIdForDeclM e) (pd ^.. consts . traverse . loc')
     let
@@ -181,13 +184,16 @@ toTxsDefs ft mm e pd = do
         `union` fromList stdTDefs        
         `union` mds
 
-toSigs :: (MapsTo Text SortId mm, HasCstrIds e, HasFuncIds e, HasFuncDefs e
+toSigs :: ( MapsTo Text        SortId mm
+          , MapsTo (Loc CstrE) CstrId mm
+          , HasFuncIds e
+          , HasFuncDefs e
           , MapsTo ProcId ProcDef mm
           , MapsTo Text ChanId mm)
        => mm -> e -> ParsedDefs -> CompilerM (Sigs VarId)
 toSigs mm e pd = do
     let ts   = sortsToSigs (innerMap mm)
-    as  <- adtDeclsToSigs mm e (pd ^. adts)
+    as  <- adtDeclsToSigs mm   (pd ^. adts)
     fs  <- funDeclsToSigs mm e (pd ^. funcs)
     cs  <- funDeclsToSigs mm e (pd ^. consts)
     let pidMap :: Map ProcId ProcDef

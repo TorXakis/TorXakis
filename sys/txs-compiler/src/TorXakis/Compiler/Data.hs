@@ -60,15 +60,12 @@ emptyEnv = IEnv () () () () () () ()
 --     allSortIds :: e -> [SortId]
 --     allSortIds e = Map.elems $ getSortIdMap e
 
-class HasCstrIds e where
-    -- | Find the `CstrId` that correspond to the parser location of a
-    -- constructor declaration.
-    -- TODO: make this type-safe!
-    -- Something like Map (Loc Var) VarId
-    -- So that you cannot use this with the location of anything else.
-    findCstrId :: e -> Loc CstrE -> Either Error CstrId
-    findCstrIdM :: e -> Loc CstrE -> CompilerM CstrId
-    findCstrIdM e i = liftEither $ findCstrId e i
+-- class HasCstrIds e where
+--     -- | Find the `CstrId` that correspond to the parser location of a
+--     -- constructor declaration.
+--     findCstrId :: e -> Loc CstrE -> Either Error CstrId
+--     findCstrIdM :: e -> Loc CstrE -> CompilerM CstrId
+--     findCstrIdM e i = liftEither $ findCstrId e i
 
 -- | The environment has the @SortId@'s of the variable declarations.
 class HasVarSortIds e where
@@ -265,8 +262,8 @@ lookupWithLoc a ab what = maybeToEither err . Map.lookup a $ ab
 lookupWithLocM :: (Ord a, Show a, HasErrorLoc a) => a -> Map a b -> Text -> CompilerM b
 lookupWithLocM a ab what = liftEither $ lookupWithLoc a ab what
 
-instance HasCstrIds (IEnv f0 (Map (Loc CstrE) CstrId) f2 f3 f4 f5 f6) where
-    findCstrId IEnv{cstrIdT = cm} i = lookupWithLoc i cm "constructor by parser location id "
+-- instance HasCstrIds (IEnv f0 (Map (Loc CstrE) CstrId) f2 f3 f4 f5 f6) where
+--     findCstrId IEnv{cstrIdT = cm} i = lookupWithLoc i cm "constructor by parser location id "
 
 instance HasVarSortIds (IEnv f0 f1 (Map (Loc VarDeclE) SortId) f3 f4 f5 f6) where
     -- TODO: remove duplication WRT to @instance HasVarSortIds (SEnv (Map (Loc VarDeclE) SortId))@
