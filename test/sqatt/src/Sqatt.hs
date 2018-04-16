@@ -49,8 +49,8 @@ import qualified Data.Text.IO              as TIO
 import           Filesystem.Path
 import           Filesystem.Path.CurrentOS
 import           Prelude                   hiding (FilePath)
-import qualified System.IO                 as IO
 import           System.Info
+import qualified System.IO                 as IO
 import           System.Random
 import           Test.Hspec
 import           Turtle
@@ -317,9 +317,9 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
     txsUIProc mUiLogDir imf port =
       Concurrently $ do
         eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
-        sleep 5.0       -- take time to write results to log files (in case of error)
         case eRes of
-          Left exception -> return $ Left exception
+          Left exception -> do sleep 5.0       -- take time to write results to log files
+                               return $ Left exception
           Right res -> return $ unless res $ Left tErr
       where
         inLines :: Shell Line
@@ -355,7 +355,7 @@ runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @
           -> Shell Line       -- ^ Lines to be input to the command.
           -> IO (Either SqattError ())
 runInproc mLogDir cmd cmdArgs procInput =
-  left (UnexpectedException . T.pack . show) <$> 
+  left (UnexpectedException . T.pack . show) <$>
     case mLogDir of
         Nothing -> try $ sh $ inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
         Just logDir -> try $ output logDir $ either id id <$> inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
