@@ -3,6 +3,7 @@
 {-# LANGUAGE TupleSections     #-}
 module TorXakis.Compiler.ValExpr.FuncDef where
 
+import           Prelude hiding (lookup)
 import           Control.Arrow                     (left)
 import           Data.Either                       (partitionEithers)
 import           Data.Map                          (Map)
@@ -19,7 +20,7 @@ import           ValExpr                           (cstrVar)
 import           VarId                             (VarId)
 
 import           Control.Monad.Error.Class         (liftEither)
-import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Data            hiding (lookup)
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
@@ -27,17 +28,19 @@ import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Parser.Data
 
-funcDeclsToFuncDefs :: (HasVarDecls e, HasVarIds e, HasFuncIds e)
-                    => e
+funcDeclsToFuncDefs :: ( HasVarDecls e, HasFuncIds e
+                       , MapsTo (Loc VarDeclE) VarId mm )
+                    => mm
+                    -> e
                     -> [FuncDecl]
                     -> CompilerM (Map FuncId (FuncDef VarId))
-funcDeclsToFuncDefs e fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
+funcDeclsToFuncDefs mm e fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
     where
       gFuncDeclsToFuncDefs :: SEnv (Map FuncId (FuncDef VarId))
                            -> [FuncDecl]
                            -> Either Error (Map FuncId (FuncDef VarId))
       gFuncDeclsToFuncDefs e' gs =
-          case partitionEithers (funcDeclToFuncDef e e' <$> gs) of
+          case partitionEithers (funcDeclToFuncDef mm e e' <$> gs) of
               ([], rs) -> Right $ fromSEnv $ fromList rs <> e'
               (ls, []) -> Left $ Errors (fst <$> ls)
               (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> e') (snd <$> ls)
@@ -49,14 +52,16 @@ funcDeclsToFuncDefs e fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
 --
 -- https://stackoverflow.com/a/49546517/2289983
 --
-funcDeclToFuncDef :: (HasVarDecls e, HasVarIds e, HasFuncIds e, HasFuncDefs e')
-                  => e
+funcDeclToFuncDef :: ( MapsTo (Loc VarDeclE) VarId mm
+                     , HasVarDecls e, HasFuncIds e, HasFuncDefs e')
+                  => mm
+                  -> e
                   -> e'
                   -> FuncDecl
                   -> Either (Error, FuncDecl) (FuncId, FuncDef VarId)
-funcDeclToFuncDef e e' f = left (,f) $ do
+funcDeclToFuncDef mm e e' f = left (,f) $ do
     fId  <- findFuncIdForDecl e (getLoc f)
-    pIds <- traverse (findVarId e . getLoc) (funcParams f)
-    vExp <- expDeclToValExpr e e' (funcsort fId) (funcBody f)
+    pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
+    vExp <- expDeclToValExpr mm e e' (funcsort fId) (funcBody f)
     return (fId, FuncDef pIds vExp)
 

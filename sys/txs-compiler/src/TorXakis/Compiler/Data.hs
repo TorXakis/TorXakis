@@ -50,14 +50,6 @@ data IEnv f0 f1 f2 f3 f4 f5 f6 = IEnv
 emptyEnv :: IEnv () () () () () () ()
 emptyEnv = IEnv () () () () () () ()
 
-class HasVarIds e where
-    -- | Find the variable id that corresponds to the given parser location.
-    --
-    -- For now only field id's can define new `VarId`s.
-    findVarId :: e -> Loc VarDeclE -> Either Error VarId
-    findVarIdM :: e -> Loc VarDeclE -> CompilerM VarId
-    findVarIdM e i = liftEither $ findVarId e i
-
 class HasVarDecls e where
     -- | Find the variable declaration or function declaration that corresponds
     -- to parser-location of a variable reference.
@@ -74,7 +66,6 @@ class HasVarDecls e where
     -- TODO: rename this to something like 'findIdentDecl' or something like that
     findVarDecl :: e -> Loc VarRefE
                 -> Either Error (Loc VarDeclE :| [FuncDefInfo])
-    -- findVarDecl :: e -> Loc VarRefE -> Either Error (Either (Loc VarDeclE) (Loc FuncDeclE))
 
     findFuncDecl :: e -> Loc VarRefE -> Either Error [FuncDefInfo]
     findFuncDecl e l =
@@ -228,9 +219,6 @@ lookupWithLoc a ab what = maybeToEither err . Map.lookup a $ ab
 
 lookupWithLocM :: (Ord a, Show a, HasErrorLoc a) => a -> Map a b -> Text -> CompilerM b
 lookupWithLocM a ab what = liftEither $ lookupWithLoc a ab what
-
-instance HasVarIds (IEnv f0 f1 f2 (Map (Loc VarDeclE) VarId) f4 f5 f6) where
-    findVarId IEnv{varIdT = vm} i = lookupWithLoc i vm "variable by parser location id"
 
 instance HasVarDecls (IEnv f0 f1 f2 f3 (Map (Loc VarRefE) (Loc VarDeclE :| [FuncDefInfo])) f5 f6) where
     findVarDecl IEnv{varDeclT = vm} i = lookupWithLoc i vm "variable declaration by parser location id"

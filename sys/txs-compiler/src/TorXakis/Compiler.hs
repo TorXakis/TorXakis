@@ -111,7 +111,7 @@ compileParsedDefs pd = do
     -- Construct the variable declarations to @VarId@'s lookup table.
     vMap <- generateVarIds vdSortMap allFuncs
     let e4 = e3 { varIdT = vMap }
-    lFDefMap <- funcDeclsToFuncDefs e4 allFuncs
+    lFDefMap <- funcDeclsToFuncDefs vMap e4 allFuncs
     let e5 = e4 { funcDefT = lFDefMap }
     -- Construct the @ProcId@ to @ProcDef@ map:
     pdefMap <- procDeclsToProcDefMap allSortsMap (pd ^. procs)
