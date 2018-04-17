@@ -73,3 +73,56 @@ SUT. For instance:
 
 In the code above an action on channel ``R`` will be generated every time a new
 message is sent from the web-server.
+
+
+New proposal (less general)
+===========================
+
+.. code-block:: text
+
+    CNECTDEF WebService ::=
+        HTTP "http://localhost:8080"
+    
+        Cmd ! CmdInfo ->
+           GET "/info"
+           WITH RESPONSE STATUS 200 AND BODY body:
+               Response ! ResponseInfo (body.version, body.buildTime)
+           OTHERWISE:
+               Response ! ResponseFailure ("Unexpected status")
+    
+        Cmd ! CmdLoad n ->
+           POST "/session/1/model"
+           FILE "${n}" -- This will be parsed in a platform specific way.
+           WITH RESPONSE STATUS 201:
+               Response ! ResponseSuccess
+           OTHERWISE:
+               Response ! ResponseFailure ("Unexpected status")
+    
+        Cmd ! CmdStepper model ->
+            POST "/stepper/start/1/${model}"
+            WITH RESPONSE STATUS 200:
+               Response ! ResponseSuccess
+            OTHERWISE:
+               Response ! ResponseFailure ("Unexpected status")
+    
+        Cmd ! CmdStep n ->
+            POST "/stepper/step/1/${n}"
+            IGNORE RESPONSE STATUS 200:
+    
+            OTHERWISE:
+               Response ! ResponseFailure ("Unexpected status")
+    
+        -- If the message (msg) cannot be parsed we just ignore it.
+        -> "/sse/1/messages" WITH msg:
+            -- msg.act.contents[0][0].name and msg.act.contents[0][1][0].cInt
+            -- will be casted from JSON to the same type of the arguments.
+            Response ! ResponseAction( msg.act.contents[0][0].name -- Casted to a TorXakis String
+                                     , msg.act.contents[0][1][0].cInt -- Casted to a TorXakis Int
+                                     )
+        
+    
+    ENDDEF                
+
+Limitations:
+
+- We cannot handle arrays.

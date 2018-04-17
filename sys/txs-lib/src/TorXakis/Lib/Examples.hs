@@ -38,6 +38,7 @@ import           Data.Text                    (Text)
 import qualified Data.Text                    as T
 import           Lens.Micro                   ((&), (.~), (^.), (^?))
 import           Prelude                      hiding (mapM_, take)
+import           System.FilePath              ((</>))
 import           System.Process               (StdStream (NoStream), proc,
                                                std_out, withCreateProcess)
 
@@ -90,7 +91,7 @@ printNextNMsgs s n = getNextNMsgs s n >>= traverse_ print
 -- they become available.
 testEchoReactive :: IO ()
 testEchoReactive = do
-    cs <- readFile "test/data/Echo.txs"
+    cs <- readFile $ "test" </> "data" </> "Echo.txs"
     s <- newSession
     -- Spawn off the printer process:
     a <- async (printer s)
@@ -121,7 +122,7 @@ printer s = runConduit $
 -- | This example shows what happens when you load an invalid file.
 testWrongFile :: IO Response
 testWrongFile = do
-    cs <- readFile "test/data/wrong.txt"
+    cs <- readFile $ "test" </> "data" </> "wrong.txt"
     s <- newSession
     -- Load the model:
     r <- load s cs
@@ -156,7 +157,9 @@ testPutToWReadsWorld = do
 testTorXakisWithInfo :: IO (Either SomeException Verdict)
 testTorXakisWithInfo = withCreateProcess (proc "txs-webserver-exe" []) {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
     s <- newSession
-    cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEchoInfoOnly.txs"
+    cs <- readFile $   ".." </> ".."
+                   </> "examps" </> "TorXakisWithEcho"
+                   </> "TorXakisWithEchoInfoOnly.txs"
     _ <- load s cs
     st <- readTVarIO (s ^. sessionState)
     let Just mDef = st ^. tdefs . ix ("Model" :: Name)
@@ -182,7 +185,8 @@ testTorXakisWithInfo = withCreateProcess (proc "txs-webserver-exe" []) {std_out 
 testTorXakisWithEcho :: IO (Either SomeException Verdict)
 testTorXakisWithEcho = withCreateProcess (proc "txs-webserver-exe" []) {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
     s <- newSession
-    cs <- readFile "../../examps/TorXakisWithEcho/TorXakisWithEcho.txs"
+    cs <- readFile $  ".." </> ".." </> "examps"
+                  </> "TorXakisWithEcho" </> "TorXakisWithEcho.txs"
     _ <- load s cs
     st <- readTVarIO (s ^. sessionState)
     let Just mDef = st ^. tdefs . ix ("Model" :: Name)
