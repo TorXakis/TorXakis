@@ -14,7 +14,7 @@ import           ValExpr                           (cstrConst)
 import           ChanId (ChanId, chansorts)
 import           VarId (VarId)
 
-import           TorXakis.Compiler.Data hiding (lookupM)
+import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Parser.Data

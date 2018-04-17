@@ -24,8 +24,7 @@ import           GHC.TypeLits              (ErrorMessage ((:<>:), ShowType, Text
                                             TypeError)
 import           Prelude                   hiding (lookup)
 
-import           TorXakis.Compiler.Data    hiding (lookup, lookupWithLoc,
-                                            lookupWithLocM)
+import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
 
 -- | 'm' maps keys of type 'k' onto values of type 'v'.
@@ -71,6 +70,7 @@ data Tree a = Leaf a | Node (Tree a) (Tree a)
 
 type instance Contents (Map k v) = 'Leaf (k, v)
 type instance Contents [a] = 'Leaf ()
+type instance Contents (Either a b) = 'Leaf ()
 
 instance MapsTo k v (Map k v) where
     lookup k m = maybeToEither err . Map.lookup k $ m

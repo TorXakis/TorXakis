@@ -13,6 +13,8 @@ import Data.Semigroup ((<>))
 import           Data.Either               (partitionEithers)
     
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Maps
+import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Error
 import           TorXakis.Parser.Data
 
@@ -57,9 +59,9 @@ generateVarDeclsForFD fdMap f = varDeclsFromExpDecl (mkVdMap (funcParams f)) (fu
                           -> CompilerM [(Loc VarRefE, Loc VarDeclE :| [FuncDefInfo])]
       varDeclsFromExpDecl vdMap ex = case expChild ex of
           VarRef n rLoc -> do
-              dLoc <- fmap Left (lookupM (toText n) vdMap "")
+              dLoc <- fmap Left (lookupM (toText n) vdMap)
                   `catchError`
-                  const (fmap Right (lookupM (toText n) fdMap ("identifier declaration for " <> toText n)))
+                  const (fmap Right (lookupM (toText n) fdMap)) -- ("identifier declaration for " <> toText n)
               return [(rLoc, dLoc)]
           ConstLit _ -> return []
           LetExp vs subEx -> do
@@ -74,7 +76,7 @@ generateVarDeclsForFD fdMap f = varDeclsFromExpDecl (mkVdMap (funcParams f)) (fu
           If ex0 ex1 ex2 ->
               concat <$> traverse (varDeclsFromExpDecl vdMap) [ex0, ex1, ex2]
           Fappl n rLoc exs -> do
-              dLocs   <- lookupM (toText n) fdMap ("function declaration for " <> toText n)
+              dLocs   <- lookupM (toText n) fdMap -- ("function declaration for " <> toText n)
               -- TODO: factor out the duplication w.r.t. `If`
               vrVDExs <- concat <$> traverse (varDeclsFromExpDecl vdMap) exs
               return $ (rLoc, Right dLocs) : vrVDExs 

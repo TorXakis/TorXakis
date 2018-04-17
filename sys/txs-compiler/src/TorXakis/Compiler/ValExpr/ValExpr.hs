@@ -21,7 +21,8 @@ import           ValExpr                             (ValExpr, cstrAnd,
                                                       cstrITE, cstrVar, subst)
 import           VarId                               (VarId, varsort)
 
-import           TorXakis.Compiler.Data hiding (lookup)
+import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.ValExpr.ConstDefs
@@ -30,30 +31,28 @@ import           TorXakis.Parser.Data
 
 -- | Make a 'ValExpr' from the given expression-declaration.
 --
-expDeclToValExpr :: ( HasVarDecls e
-                    , HasFuncIds e
-                    , HasFuncDefs e'
+expDeclToValExpr :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
+                    , MapsTo FuncDefInfo FuncId mm
+                    , MapsTo FuncId (FuncDef VarId) mm
                     , MapsTo (Loc VarDeclE) VarId mm)
                  => mm
-                 -> e
-                 -> e'
                  -> SortId -- ^ Expected SortId for the expression.
                  -> ExpDecl
                  -> Either Error (ValExpr VarId)
-expDeclToValExpr mm e e' eSid ex = case expChild ex of
+expDeclToValExpr mm eSid ex = case expChild ex of
     VarRef _ l -> do
-        vLocfLoc <- findVarDecl e l
+        vLocfLoc <- lookup (l :: Loc VarRefE) mm
         case vLocfLoc of
             Left vLoc -> do
-                vId <- lookup vLoc mm
+                vId <- lookup (vLoc :: Loc VarDeclE) mm
                 checkSortIds (varsort vId) eSid
                 return $ cstrVar vId
             Right fdis -> do
-                let matchingFdis = determineF e fdis [] (Just eSid)
+                let matchingFdis = determineF mm fdis [] (Just eSid)
                 fdi  <- getUniqueElement matchingFdis
-                fId  <- findFuncId e fdi
+                fId  <- lookup fdi mm
                 checkSortIds (funcsort fId) eSid
-                return $ cstrFunc (getFuncDefT e') fId []
+                return $ cstrFunc (innerMap mm :: Map FuncId (FuncDef VarId)) fId []
     ConstLit c -> do
         traverse_ (checkSortIds eSid) (sortIdConst c)
         return $ cstrConst (constToConstDef eSid c)
@@ -65,20 +64,20 @@ expDeclToValExpr mm e e' eSid ex = case expChild ex of
                   letValDeclToMap :: LetVarDecl -> Either Error (Map VarId (ValExpr VarId))
                   letValDeclToMap vd = do
                       vId   <- lookup (getLoc vd) mm
-                      vdExp <- expDeclToValExpr mm e e' (varsort vId) (varDeclExp vd)
+                      vdExp <- expDeclToValExpr mm (varsort vId) (varDeclExp vd)
                       return $ Map.singleton vId vdExp
             fsM :: Map.Map FuncId (FuncDef VarId)
             fsM = Map.empty
-        subValExpr <- expDeclToValExpr mm e e' eSid subEx
+        subValExpr <- expDeclToValExpr mm eSid subEx
         vsM <- letValDeclsToMaps
         return $ foldr (`subst` fsM) subValExpr vsM
     If ex0 ex1 ex2 -> do
-        ve0 <- expDeclToValExpr mm e e' sortIdBool ex0
-        ve1 <- expDeclToValExpr mm e e' eSid ex1
-        ve2 <- expDeclToValExpr mm e e' eSid ex2
+        ve0 <- expDeclToValExpr mm sortIdBool ex0
+        ve1 <- expDeclToValExpr mm eSid ex1
+        ve2 <- expDeclToValExpr mm eSid ex2
         return $ cstrITE (cstrAnd (Set.fromList [ve0])) ve1 ve2
     Fappl _ l exs -> do
-        fdis <- findFuncDecl e l
+        fdis <- findFuncDecl mm l
         case partitionEithers (tryMkValExpr <$> fdis) of
             (ls, []) -> Left Error
                         { _errorType = UndefinedRef
@@ -93,7 +92,7 @@ expDeclToValExpr mm e e' eSid ex = case expChild ex of
         where
           tryMkValExpr :: FuncDefInfo -> Either Error (ValExpr VarId)
           tryMkValExpr fdi = do
-              fId  <- findFuncId e fdi
+              fId  <- lookup fdi mm
               checkSortIds (funcsort fId) eSid
               if length (funcargs fId) /= length exs
                   then Left Error
@@ -103,6 +102,6 @@ expDeclToValExpr mm e e' eSid ex = case expChild ex of
                                      <> T.pack (show fId)
                        }
                   else do
-                  vexs <- traverse (uncurry $ expDeclToValExpr mm e e') $
+                  vexs <- traverse (uncurry $ expDeclToValExpr mm) $
                                 zip (funcargs fId) exs
-                  return $ cstrFunc (getFuncDefT e') fId vexs
+                  return $ cstrFunc (innerMap mm :: Map FuncId (FuncDef VarId)) fId vexs

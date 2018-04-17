@@ -12,7 +12,7 @@ import qualified SortId
 import Id (Id (Id))
 
 import TorXakis.Compiler.MapsTo
-import TorXakis.Compiler.Data hiding (lookupWithLocM, lookupM)
+import TorXakis.Compiler.Data
 import TorXakis.Parser.Data
 import TorXakis.Compiler.Defs.ChanId
 import TorXakis.Compiler.ValExpr.VarId

@@ -14,7 +14,7 @@ import           ChanId                 (ChanId)
 import           TxsDefs                            (ModelDef (ModelDef))
 import           VarId (VarId)
 
-import           TorXakis.Compiler.Data hiding (lookupM)
+import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.BehExprDefs
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.MapsTo

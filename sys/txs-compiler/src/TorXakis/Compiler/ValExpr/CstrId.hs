@@ -14,7 +14,7 @@ import           CstrId                    (CstrId (CstrId))
 import           Id                        (Id (Id))
 import           SortId                    (SortId)
 
-import           TorXakis.Compiler.Data hiding (lookup)
+import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Error

@@ -11,7 +11,7 @@ import           CstrId (CstrId)
 import           CstrDef (CstrDef (CstrDef))
 
 import           TorXakis.Parser.Data
-import           TorXakis.Compiler.Data hiding (lookup, lookupM)
+import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.ValExpr.FuncId

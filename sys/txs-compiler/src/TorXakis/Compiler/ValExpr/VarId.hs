@@ -8,7 +8,7 @@ import           Id                     (Id (Id))
 import           VarId                  (VarId (VarId))
 import           SortId                 (SortId)
 
-import           TorXakis.Compiler.Data hiding (lookupM)
+import           TorXakis.Compiler.Data
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.MapsTo
 

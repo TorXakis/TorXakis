@@ -50,6 +50,7 @@ import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.VarId
 import           TorXakis.Compiler.MapsTo
+import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Defs.ProcDef
  
 import           TorXakis.Parser
@@ -84,11 +85,9 @@ compileParsedDefs pd = do
                               , ("String", sortIdString)
                               ]
         allSortsMap = Map.union pdsMap sMap
-        e0 = emptyEnv { sortIdT = allSortsMap}
-    -- TODO: I'm dumping the map here till we get rid of all these 'Has'X type classes.
     chs <- Map.fromList <$> chanDeclsToChanIds allSortsMap (pd ^. chdecls)        
     cMap <- compileToCstrId allSortsMap (pd ^. adts)
-    let e1 = e0 { cstrIdT = cMap }
+    let --  e1 = e0 { cstrIdT = cMap }
         allFuncs = pd ^. funcs ++ pd ^. consts
     stdFuncIds <- getStdFuncIds
     cstrFuncIds <- adtsToFuncIds allSortsMap (pd ^. adts)
@@ -103,22 +102,17 @@ compileParsedDefs pd = do
             fmap (first FDefLoc) (Map.toList lFIdMap)
             ++ stdFuncIds
             ++ cstrFuncIds
-        e2 = e1 { varDeclT = dMap
-                , funcIdT = completeFidMap }
     -- Infer the types of all variable declarations.
-    vdSortMap <- inferTypes allSortsMap e2 allFuncs
-    let e3 = e2 { varSortIdT = vdSortMap }
+    vdSortMap <- inferTypes (allSortsMap :& dMap :& completeFidMap) allFuncs
     -- Construct the variable declarations to @VarId@'s lookup table.
-    vMap <- generateVarIds vdSortMap allFuncs
-    let e4 = e3 { varIdT = vMap }
-    lFDefMap <- funcDeclsToFuncDefs vMap e4 allFuncs
-    let e5 = e4 { funcDefT = lFDefMap }
+    vMap <- generateVarIds (vdSortMap :& completeFidMap ) allFuncs
+    lFDefMap <- funcDeclsToFuncDefs (vMap :& completeFidMap :& dMap) allFuncs
     -- Construct the @ProcId@ to @ProcDef@ map:
     pdefMap <- procDeclsToProcDefMap allSortsMap (pd ^. procs)
     -- Finally construct the TxsDefs.
-    let mm = allSortsMap :& pdefMap :& chs :& cMap
-    sigs    <- toSigs                mm e5 pd
-    txsDefs <- toTxsDefs (func sigs) mm e5 pd
+    let mm = allSortsMap :& pdefMap :& chs :& cMap :& completeFidMap :& lFDefMap
+    sigs    <- toSigs                mm pd
+    txsDefs <- toTxsDefs (func sigs) mm pd
     St i    <- get
     return (Id i, txsDefs, sigs)
 
@@ -153,20 +147,20 @@ simplify ft fns (fId, FuncDef vs ex) = (fId, FuncDef vs (simplify' ft fns ex))
 
 toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo (Loc CstrE) CstrId mm
-             , HasFuncIds e
-             , HasFuncDefs e
+             , MapsTo FuncDefInfo FuncId mm
+             , MapsTo FuncId (FuncDef VarId) mm 
              , MapsTo ProcId ProcDef mm
              , MapsTo Text ChanId mm )
-          => FuncTable VarId -> mm -> e -> ParsedDefs -> CompilerM TxsDefs
-toTxsDefs ft mm e pd = do
+          => FuncTable VarId -> mm -> ParsedDefs -> CompilerM TxsDefs
+toTxsDefs ft mm pd = do
     ads <- adtsToTxsDefs mm (pd ^. adts)
     -- Get the function id's of all the constants.
-    cfIds <- traverse (findFuncIdForDeclM e) (pd ^.. consts . traverse . loc')
+    cfIds <- traverse (findFuncIdForDeclM mm) (pd ^.. consts . traverse . loc')
     let
         -- TODO: we have to remove the constants to comply with what TorXakis generates :/
-        funcDefsNoConsts = Map.withoutKeys (getFuncDefT e) (Set.fromList cfIds)
+        funcDefsNoConsts = Map.withoutKeys (innerMap mm) (Set.fromList cfIds)
         -- TODO: we have to simplify to comply with what TorXakis generates.
-        fn = idefsNames e ++ fmap name cfIds
+        fn = idefsNames mm ++ fmap name cfIds
         funcDefsSimpl = Map.fromList (simplify ft fn <$> Map.toList funcDefsNoConsts)
         fds = TxsDefs.empty {
             funcDefs = funcDefsSimpl            
@@ -186,16 +180,16 @@ toTxsDefs ft mm e pd = do
 
 toSigs :: ( MapsTo Text        SortId mm
           , MapsTo (Loc CstrE) CstrId mm
-          , HasFuncIds e
-          , HasFuncDefs e
+          , MapsTo FuncDefInfo FuncId mm
+          , MapsTo FuncId (FuncDef VarId) mm
           , MapsTo ProcId ProcDef mm
           , MapsTo Text ChanId mm)
-       => mm -> e -> ParsedDefs -> CompilerM (Sigs VarId)
-toSigs mm e pd = do
+       => mm -> ParsedDefs -> CompilerM (Sigs VarId)
+toSigs mm pd = do
     let ts   = sortsToSigs (innerMap mm)
-    as  <- adtDeclsToSigs mm   (pd ^. adts)
-    fs  <- funDeclsToSigs mm e (pd ^. funcs)
-    cs  <- funDeclsToSigs mm e (pd ^. consts)
+    as  <- adtDeclsToSigs mm (pd ^. adts)
+    fs  <- funDeclsToSigs mm (pd ^. funcs)
+    cs  <- funDeclsToSigs mm (pd ^. consts)
     let pidMap :: Map ProcId ProcDef
         pidMap = innerMap mm
         ss = Sigs.empty { func = stdFuncTable

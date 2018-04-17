@@ -9,7 +9,7 @@ import           ChanId                 (ChanId (ChanId))
 import           Id                     (Id (Id))
 import           SortId (SortId)
 
-import           TorXakis.Compiler.Data hiding (lookupWithLoc, lookupWithLocM)
+import           TorXakis.Compiler.Data
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.MapsTo
 

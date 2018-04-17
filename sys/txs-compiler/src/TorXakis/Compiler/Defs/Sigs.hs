@@ -9,8 +9,11 @@ import           Sigs                             (Sigs, empty, func, sort)
 import           SortId                           (SortId)
 import           VarId                            (VarId)
 import           CstrId (CstrId)
+import FuncId (FuncId)
+import FuncDef (FuncDef)
     
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Defs.FuncTable
 import           TorXakis.Parser.Data
@@ -24,11 +27,11 @@ adtDeclsToSigs mm ds = do
 
 funDeclsToSigs :: ( MapsTo Text SortId mm
                   , MapsTo (Loc CstrE) CstrId mm
-                  , HasFuncIds e
-                  , HasFuncDefs e)
-               => mm -> e -> [FuncDecl] -> CompilerM (Sigs VarId)
-funDeclsToSigs mm e ds = do
-    ft <- funcDeclsToFuncTable mm e ds
+                  , MapsTo FuncDefInfo FuncId mm
+                  , MapsTo FuncId (FuncDef VarId) mm )
+               => mm -> [FuncDecl] -> CompilerM (Sigs VarId)
+funDeclsToSigs mm ds = do
+    ft <- funcDeclsToFuncTable mm ds
     return $ empty { func = ft }
 
 sortsToSigs :: Map Text SortId -> Sigs VarId

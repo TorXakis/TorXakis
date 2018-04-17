@@ -31,8 +31,10 @@ import           StdTDefs                         (accessHandler, cstrHandler,
 import           ValExpr                          (PredefKind (ASF, AST, AXF, AXT),
                                                    cstrFunc, cstrPredef)
 import           VarId                            (VarId)
+import FuncId (FuncId)
+import FuncDef (FuncDef)
 
-import           TorXakis.Compiler.Data hiding (lookup, lookupM)
+import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Error
@@ -135,21 +137,29 @@ fieldToAccessCstrHandler mm sId cId p f = do
     return ( fieldName f
            , Map.singleton (Signature [sId] fId) (accessHandler cId p))
 
-funcDeclsToFuncTable :: (MapsTo Text SortId mm, HasFuncIds e, HasFuncDefs e)
-                     => mm -> e -> [FuncDecl] -> CompilerM (FuncTable VarId)
-funcDeclsToFuncTable mm e fs = FuncTable . Map.fromListWith Map.union <$>
-    traverse (funcDeclToFuncTable mm e) fs
+funcDeclsToFuncTable :: ( MapsTo Text SortId mm
+                        , MapsTo FuncDefInfo FuncId mm
+                        , MapsTo FuncId (FuncDef VarId) mm )
+                     => mm -> [FuncDecl] -> CompilerM (FuncTable VarId)
+funcDeclsToFuncTable mm fs = FuncTable . Map.fromListWith Map.union <$>
+    traverse (funcDeclToFuncTable mm) fs
 
-funcDeclToFuncTable :: (MapsTo Text SortId mm, HasFuncIds e, HasFuncDefs e)
-                    => mm -> e -> FuncDecl -> CompilerM (Text, SignHandler VarId)
-funcDeclToFuncTable mm e f = do
+funcDeclToFuncTable :: ( MapsTo Text SortId mm
+                        , MapsTo FuncDefInfo FuncId mm
+                        , MapsTo FuncId (FuncDef VarId) mm )
+                    => mm -> FuncDecl -> CompilerM (Text, SignHandler VarId)
+funcDeclToFuncTable mm f = do
     sId   <- findSortIdM mm (funcRetSort f)
     fSids <- traverse (findSortIdM mm . varDeclSort) (funcParams f)
-    hdlr  <- fBodyToHandler e f
+    hdlr  <- fBodyToHandler mm f
     return (funcName f, Map.singleton (Signature fSids sId) hdlr)
 
-fBodyToHandler :: (HasFuncIds e, HasFuncDefs e)
-               => e -> FuncDecl -> CompilerM (Handler VarId)
-fBodyToHandler e f = do
-    fId  <- findFuncIdForDeclM e (getLoc f)
-    return $ cstrFunc (getFuncDefT e) fId
+fBodyToHandler :: ( MapsTo FuncDefInfo FuncId mm
+                  , MapsTo FuncId (FuncDef VarId) mm )
+               => mm -> FuncDecl -> CompilerM (Handler VarId)
+fBodyToHandler mm f = do
+    fId  <- findFuncIdForDeclM mm (getLoc f)
+    let
+        im :: Map FuncId (FuncDef VarId)
+        im = innerMap mm
+    return $ cstrFunc im fId

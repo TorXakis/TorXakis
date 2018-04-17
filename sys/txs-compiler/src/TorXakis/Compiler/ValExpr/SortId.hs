@@ -20,13 +20,13 @@ import qualified Data.Text                 as T
 import           Data.Traversable          (for)
 import           GHC.Exts                  (fromList)
 
-import           FuncId                    (funcargs, funcsort)
+import           FuncId                    (funcargs, funcsort, FuncId)
 import           Id                        (Id (Id))
 import           SortId                    (SortId (SortId), sortIdBool,
                                             sortIdInt, sortIdRegex,
                                             sortIdString)
 
-import           TorXakis.Compiler.Data   hiding (lookup)
+import           TorXakis.Compiler.Data  
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.MapsTo 
 import           TorXakis.Compiler.Maps
@@ -53,13 +53,12 @@ sortIdOfVarDeclM mm f = liftEither $ sortIdOfVarDecl mm f
 -- | Infer the types in a list of function declaration.
 inferTypes :: ( MapsTo Text SortId mm
               , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
-              , HasVarDecls e
-              , HasFuncIds e)
+              , MapsTo FuncDefInfo FuncId mm
+              , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
            => mm
-           -> e
            -> [FuncDecl]
            -> CompilerM (Map (Loc VarDeclE) SortId)
-inferTypes mm e fs = liftEither $ do
+inferTypes mm fs = liftEither $ do
     paramsVdSid <- Map.fromList . concat <$> traverse fParamLocSorts fs
     letVdSid    <- gInferTypes paramsVdSid allLetVarDecls
     return $ Map.union letVdSid paramsVdSid
@@ -69,7 +68,7 @@ inferTypes mm e fs = liftEither $ do
                   -> [LetVarDecl]
                   -> Either Error (Map (Loc VarDeclE) SortId)
       gInferTypes mVdSid vs =
-          case partitionEithers (inferVarDeclType (mm :& mVdSid) e <$> vs) of
+          case partitionEithers (inferVarDeclType (mm :& mVdSid) <$> vs) of
               ([], rs) -> Right $ fromList rs <> mVdSid
               (ls, []) -> Left  Error
                           { _errorType = UndefinedType
@@ -90,17 +89,17 @@ letVarDeclsInFunc fd = expLetVarDecls (funcBody fd)
 
 inferVarDeclType :: ( MapsTo Text SortId mm
                     , MapsTo (Loc VarDeclE) SortId mm
-                    , HasVarDecls e, HasFuncIds e)
+                    , MapsTo FuncDefInfo FuncId mm
+                    , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
                  => mm
-                 -> e
                  -> LetVarDecl -> Either (Error, LetVarDecl) (Loc VarDeclE, SortId)
-inferVarDeclType mm e vd = left (,vd) $
+inferVarDeclType mm vd = left (,vd) $
     case letVarDeclSortName vd of
     Just sn -> do -- If the sort is declared, we just return it.
         sId <- findSortId mm sn
         return (getLoc vd, sId)
     Nothing -> do -- If the sort is not declared, we try to infer it from the expression.
-        expSids <- inferExpTypes mm e (varDeclExp vd)
+        expSids <- inferExpTypes mm (varDeclExp vd)
         expSid <- getUniqueElement expSids
         return (getLoc vd, expSid)
 
@@ -113,30 +112,31 @@ inferVarDeclType mm e vd = left (,vd) $
 --
 inferExpTypes :: ( MapsTo Text SortId mm
                  , MapsTo (Loc VarDeclE) SortId mm
-                 , HasVarDecls e, HasFuncIds e)
+                 , MapsTo FuncDefInfo FuncId mm
+                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm)
               => mm
-              -> e
               -> ExpDecl
               -> Either Error [SortId]
-inferExpTypes mm e ex =
+inferExpTypes mm ex =
     case expChild ex of
     VarRef _ l ->
         -- Find the location of the variable reference
         -- If it is a variable, return the sort id of the variable declaration.
         -- If it is a function, return the sort id's of the functions.
-        (fmap pure . (`lookup` mm) ||| findFuncSortIds e) =<< findVarDecl e l
+        (fmap pure . (`lookup` mm) ||| findFuncSortIds mm)
+            =<< (lookup l mm :: Either Error (Either (Loc VarDeclE) [FuncDefInfo]))
     ConstLit c ->
         return $ -- The type of any is any sort known!
             maybe (values @Text mm) pure (sortIdConst c)
     LetExp vs subEx -> do
-        vsSidss <- traverse (inferExpTypes mm e) (varDeclExp <$> vs)
+        vsSidss <- traverse (inferExpTypes mm) (varDeclExp <$> vs)
         -- Here we make sure that each variable expression has a unique type.
         vsSids <- traverse getUniqueElement vsSidss
         let vdSid = fromList (zip (getLoc <$> vs) vsSids)
-        inferExpTypes (vdSid <.+> mm) e subEx
+        inferExpTypes (vdSid <.+> mm) subEx
     -- TODO: shouldn't if be also a function? Defined in terms of the Haskell's @if@ operator.
     If e0 e1 e2 -> do
-        [se0s, se1s, se2s] <- traverse (inferExpTypes mm e) [e0, e1, e2]
+        [se0s, se1s, se2s] <- traverse (inferExpTypes mm) [e0, e1, e2]
         when (sortIdBool `notElem` se0s)
             (Left Error
                 { _errorType = TypeMismatch
@@ -156,12 +156,12 @@ inferExpTypes mm e ex =
              )
         return ses
     Fappl _ l exs -> concat <$> do
-        sess <- traverse (inferExpTypes mm e) exs
+        sess <- traverse (inferExpTypes mm) exs
         for (sequence sess) $ \ses -> do
-              fdis <- findFuncDecl e l
-              let matchingFdis = determineF e fdis ses Nothing
+              fdis <- findFuncDecl mm l
+              let matchingFdis = determineF mm fdis ses Nothing
               for matchingFdis $ \fdi -> do
-                  fId  <- findFuncId e fdi
+                  fId  <- lookup fdi mm
                   when (ses /= funcargs fId)
                       (Left Error
                        { _errorType = TypeMismatch
