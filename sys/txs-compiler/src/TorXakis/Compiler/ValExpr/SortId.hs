@@ -4,6 +4,8 @@
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE FlexibleInstances  #-}
 module TorXakis.Compiler.ValExpr.SortId where
 
 import           Prelude                   hiding (lookup)
@@ -19,12 +21,14 @@ import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           Data.Traversable          (for)
 import           GHC.Exts                  (fromList)
-
+import           Data.Maybe                (catMaybes)
+    
 import           FuncId                    (funcargs, funcsort, FuncId)
 import           Id                        (Id (Id))
 import           SortId                    (SortId (SortId), sortIdBool,
                                             sortIdInt, sortIdRegex,
                                             sortIdString)
+import           ChanId (ChanId, chansorts)                 
 
 import           TorXakis.Compiler.Data  
 import           TorXakis.Compiler.Error
@@ -52,7 +56,7 @@ sortIdOfVarDeclM mm f = liftEither $ sortIdOfVarDecl mm f
 
 -- | Infer the types in a list of function declaration.
 inferTypes :: ( MapsTo Text SortId mm
-              , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
+              , MapsTo (Loc VarDeclE) SortId mm
               , MapsTo FuncDefInfo FuncId mm
               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
            => mm
@@ -60,29 +64,35 @@ inferTypes :: ( MapsTo Text SortId mm
            -> CompilerM (Map (Loc VarDeclE) SortId)
 inferTypes mm fs = liftEither $ do
     paramsVdSid <- Map.fromList . concat <$> traverse fParamLocSorts fs
-    letVdSid    <- gInferTypes paramsVdSid allLetVarDecls
+    letVdSid    <- gInferTypes (paramsVdSid <.+> mm)  allLetVarDecls
     return $ Map.union letVdSid paramsVdSid
     where
       allLetVarDecls = concatMap letVarDeclsInFunc fs
-      gInferTypes :: Map (Loc VarDeclE) SortId
-                  -> [LetVarDecl]
-                  -> Either Error (Map (Loc VarDeclE) SortId)
-      gInferTypes mVdSid vs =
-          case partitionEithers (inferVarDeclType (mm :& mVdSid) <$> vs) of
-              ([], rs) -> Right $ fromList rs <> mVdSid
-              (ls, []) -> Left  Error
-                          { _errorType = UndefinedType
-                          , _errorLoc  = NoErrorLoc -- TODO: we could generate
-                                                   -- multiple errors, giving
-                                                   -- all the locations in 'ls'
-                          , _errorMsg  =  "Could not infer the types: " <> (T.pack . show . (fst <$>)) ls
-                          }
-              (ls, rs) -> gInferTypes (fromList rs <> mVdSid) (snd <$> ls)
       fParamLocSorts :: FuncDecl -> Either Error [(Loc VarDeclE, SortId)]
       fParamLocSorts fd = zip (getLoc <$> funcParams fd) <$> fParamSorts
           where
             fParamSorts :: Either Error [SortId]
             fParamSorts = traverse (findSortId mm) (varDeclSort <$> funcParams fd)
+
+
+gInferTypes :: ( MapsTo Text SortId mm
+               , MapsTo (Loc VarDeclE)  SortId mm
+               , MapsTo FuncDefInfo FuncId mm
+               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
+            => mm
+            -> [LetVarDecl]
+            -> Either Error (Map (Loc VarDeclE) SortId)
+gInferTypes mm vs =
+    case partitionEithers (inferVarDeclType mm <$> vs) of
+        ([], rs) -> Right $ fromList rs <> innerMap mm
+        (ls, []) -> Left  Error
+                    { _errorType = UndefinedType
+                    , _errorLoc  = NoErrorLoc -- TODO: we could generate
+                                             -- multiple errors, giving
+                                             -- all the locations in 'ls'
+                    , _errorMsg  =  "Could not infer the types: " <> (T.pack . show . (fst <$>)) ls
+                    }
+        (ls, rs) -> gInferTypes (fromList rs <.+> mm) (snd <$> ls)
 
 letVarDeclsInFunc :: FuncDecl -> [LetVarDecl]
 letVarDeclsInFunc fd = expLetVarDecls (funcBody fd)
@@ -192,3 +202,37 @@ checkSortIds sId0 sId1 =
                   <> T.pack (show sId0) <> T.pack (show sId1)
     }
 
+class HasTypedVars e where
+    inferVarTypes :: ( MapsTo Text SortId mm
+                     , MapsTo Text ChanId mm
+                     , MapsTo (Loc VarDeclE) SortId mm
+                     , MapsTo FuncDefInfo FuncId mm
+                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
+                  => mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
+
+instance HasTypedVars BExpDecl where
+    inferVarTypes _ Stop = return []
+    inferVarTypes mm (ActPref ao be) = (++) <$> inferVarTypes mm ao <*> inferVarTypes mm be
+
+instance HasTypedVars ActOfferDecl where
+    inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx
+
+instance HasTypedVars e => HasTypedVars (Maybe e) where
+    inferVarTypes mm = maybe (return []) (inferVarTypes mm)
+
+instance HasTypedVars e => HasTypedVars [e] where
+    inferVarTypes mm es = concat <$> traverse (inferVarTypes mm) es
+
+instance HasTypedVars ExpDecl where
+    inferVarTypes mm ex = liftEither $
+        Map.toList <$> gInferTypes mm (expLetVarDecls ex)
+
+instance HasTypedVars OfferDecl where
+    inferVarTypes mm (OfferDecl cr os) = do
+        chId <- mm .@!! (chanRefName cr, cr)
+        let
+            vds :: [Maybe (Loc VarDeclE, SortId)]
+            vds = zipWith (\o sId -> ((, sId) . getLoc) <$> chanOfferIvarDecl o)
+                          os
+                          (chansorts chId)
+        return $ catMaybes vds

@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 module TorXakis.Compiler.ValExpr.VarId where
 
 import           Data.Map               (Map)
@@ -20,14 +21,14 @@ generateVarIds mm fs = Map.fromList . concat <$>
 varIdsFromFuncDecl :: (MapsTo (Loc VarDeclE) SortId mm)
                    => mm -> FuncDecl -> CompilerM [(Loc VarDeclE, VarId)]
 varIdsFromFuncDecl e fd = do
-    pVids <- traverse (varIdsFromVarDecl e) (funcParams fd)
+    pVids <- traverse (varIdFromVarDecl e) (funcParams fd)
     bVids <- varIdsFromExpDecl e (funcBody fd)
     return $ pVids ++ bVids
 
-varIdsFromVarDecl :: ( MapsTo (Loc VarDeclE) SortId mm
+varIdFromVarDecl :: ( MapsTo (Loc VarDeclE) SortId mm
                      , IsVariable v, HasLoc v VarDeclE)
-                  => mm -> v -> CompilerM (Loc VarDeclE, VarId)
-varIdsFromVarDecl mm v = do
+                 => mm -> v -> CompilerM (Loc VarDeclE, VarId)
+varIdFromVarDecl mm v = do
     sId <- lookupM (getLoc v) mm
     vId <- getNextId
     return (getLoc v, VarId (varName v) (Id vId) sId)
@@ -43,7 +44,7 @@ varIdsFromExpDecl :: (MapsTo (Loc VarDeclE) SortId mm)
                   => mm -> ExpDecl -> CompilerM [(Loc VarDeclE, VarId)]
 varIdsFromExpDecl mm ex = case expChild ex of
     LetExp vs subEx -> do
-        vdMap  <- traverse (varIdsFromVarDecl mm) vs
+        vdMap  <- traverse (varIdFromVarDecl mm) vs
         vdExpMap <- concat <$> traverse (varIdsFromExpDecl mm) (varDeclExp <$> vs)
         subMap <- varIdsFromExpDecl mm subEx
         return $ vdMap ++ subMap ++ vdExpMap
@@ -51,3 +52,30 @@ varIdsFromExpDecl mm ex = case expChild ex of
         concat <$> traverse (varIdsFromExpDecl mm) (childExps ex)
 
 
+class DeclaresVariables e where
+    mkVarIds :: MapsTo (Loc VarDeclE) SortId mm
+             => mm -> e -> CompilerM [(Loc VarDeclE, VarId)]
+
+instance DeclaresVariables BExpDecl where
+    mkVarIds _  Stop = return []
+    mkVarIds mm (ActPref ao be) = (++) <$> mkVarIds mm ao <*> mkVarIds mm be
+
+instance DeclaresVariables ActOfferDecl where
+    mkVarIds mm (ActOfferDecl os mEx) = (++) <$> mkVarIds mm os <*> mkVarIds mm mEx
+
+instance DeclaresVariables e => DeclaresVariables (Maybe e) where
+    mkVarIds mm = maybe (return []) (mkVarIds mm)
+
+instance DeclaresVariables e => DeclaresVariables [e] where
+    mkVarIds mm es = concat <$> traverse (mkVarIds mm) es
+
+instance DeclaresVariables OfferDecl where
+    mkVarIds mm (OfferDecl _ os) = mkVarIds mm os
+
+instance DeclaresVariables ChanOfferDecl where
+    mkVarIds mm (QuestD vd) = return <$> varIdFromVarDecl mm vd
+    mkVarIds mm (ExclD  ex) = mkVarIds mm ex
+
+instance DeclaresVariables ExpDecl where
+    -- TODO: rename 'varIdsFromExpDecl' to 'mkVarIds'.
+    mkVarIds = varIdsFromExpDecl 

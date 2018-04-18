@@ -14,3 +14,10 @@ PROCDEF boring[Boh]() ::=
     STOP
 ENDDEF
 
+PROCDEF stopper2[X :: Int # Int]() ::=
+    STOP
+ENDDEF
+
+PROCDEF stopper3[X, Y :: Int # Int; Z :: String; A, B](x:: String) ::=
+    STOP
+ENDDEF

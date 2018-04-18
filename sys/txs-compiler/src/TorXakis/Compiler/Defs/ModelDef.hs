@@ -13,15 +13,20 @@ import Data.Set (Set)
 import           ChanId                 (ChanId)
 import           TxsDefs                            (ModelDef (ModelDef))
 import           VarId (VarId)
+import           FuncId (FuncId)
+import           FuncDef (FuncDef)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.BehExprDefs
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.MapsTo
+import           TorXakis.Compiler.Maps
 
 modelDeclToModelDef :: ( MapsTo Text ChanId mm
-                       , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
-                       )
+                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
+                       , MapsTo FuncDefInfo FuncId mm
+                       , MapsTo FuncId (FuncDef VarId) mm
+                       , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False )
                     => mm -> ModelDecl -> CompilerM ModelDef
 modelDeclToModelDef mm md = do
     ins  <- Set.fromList <$> traverse (`lookupM` mm) (chanRefName <$> modelIns md)

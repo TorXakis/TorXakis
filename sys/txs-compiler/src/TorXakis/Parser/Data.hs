@@ -90,6 +90,7 @@ module TorXakis.Parser.Data
     , ActOfferDecl (..)
     , OfferDecl (..)
     , ChanOfferDecl (..)
+    , chanOfferIvarDecl
     -- ** Channels
     , ChanDecl
     , mkChanDecl
@@ -284,6 +285,9 @@ class IsVariable v where
 instance IsVariable VarDecl where
     varName = nodeNameT
 
+instance IsVariable IVarDecl where
+    varName = nodeNameT
+
 varDeclSort :: VarDecl -> (Text, Loc SortRefE)
 varDeclSort f = (nodeNameT . child $ f, nodeLoc . child $ f)
 
@@ -469,6 +473,10 @@ data OfferDecl = OfferDecl ChanRef [ChanOfferDecl]
 data ChanOfferDecl = QuestD IVarDecl
                    | ExclD  ExpDecl
     deriving (Eq, Ord, Show)
+
+chanOfferIvarDecl :: ChanOfferDecl -> Maybe IVarDecl
+chanOfferIvarDecl (QuestD iv) = Just iv
+chanOfferIvarDecl _           = Nothing
 
 type VarRef = ParseTree VarRefE ()
 

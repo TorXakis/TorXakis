@@ -12,7 +12,8 @@ module TorXakis.Compiler.Maps where
 
 import           Control.Arrow             (left, (|||))
 import           Control.Lens              (Lens', to, (%~), (.~), (^.))
-import           Control.Monad.Error.Class (MonadError, liftEither)
+import           Control.Monad.Error.Class (MonadError, catchError, liftEither,
+                                            throwError)
 import           Control.Monad.State       (MonadState, StateT, get, put)
 import           Data.Either.Utils         (maybeToEither)
 import           Data.List                 (find)
@@ -22,6 +23,7 @@ import           Data.Maybe                (catMaybes, fromMaybe)
 import           Data.Monoid               (Monoid, (<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
+import           Data.Typeable             (Typeable)
 import           GHC.Exts                  (IsList, Item, fromList, toList)
 import           Prelude                   hiding (lookup)
 
@@ -38,7 +40,7 @@ import           TorXakis.Parser.Data      hiding (St, nextId)
 
 findSortId :: MapsTo Text SortId mm
            => mm -> (Text, Loc t) -> Either Error SortId
-findSortId mm (t, l) = left (errorMsg .~ msg) $ lookupWithLoc (t, l) mm
+findSortId mm (t, l) = left (errorMsg .~ msg) $ lookup t mm <!> l
     where
       msg = "Could not find sort " <> t
 
@@ -170,3 +172,23 @@ idefsNames mm = catMaybes $ fdiName <$> Map.keys fm
     where
       fm :: Map FuncDefInfo FuncId
       fm = innerMap mm
+
+-- | Set the error location.
+(<!>) :: HasErrorLoc l => Either Error a -> l -> Either Error a
+(<!>) ea l = left (errorLoc .~ getErrorLoc l) ea
+
+-- | Set the error location (monadic version).
+(<!!>) :: HasErrorLoc l => CompilerM a -> l -> CompilerM a
+m <!!> l = catchError m $ throwError . (errorLoc .~ getErrorLoc l)
+
+(.@@) :: (HasErrorLoc k, MapsTo k v mm, Ord k, Show k, Typeable k)
+      => mm -> k -> Either Error v
+mm .@@ k = lookup k mm <!> k
+
+(.@) :: (HasErrorLoc k, MapsTo k v mm, Ord k, Show k, Typeable k)
+     => mm -> k -> CompilerM v
+mm .@ k = lookupM k mm <!!> k
+
+(.@!!) :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k, Typeable k)
+     => mm -> (k, l) -> CompilerM v
+mm .@!! (k, l) = lookupM k mm <!!> l

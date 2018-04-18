@@ -13,6 +13,7 @@ import           StdTDefs (chanIdExit, chanIdIstep, chanIdQstep, chanIdHit, chan
 import           TorXakis.Compiler.Data
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.MapsTo
+import           TorXakis.Compiler.Maps
 
 -- | Create a mapping from channel names to channel id's.
 chanDeclsToChanIds :: (MapsTo Text SortId mm)
@@ -23,7 +24,7 @@ chanDeclsToChanIds mm chs = do
     where
       chanDeclToChanIds ch = do
           chId   <- getNextId
-          chSids <- traverse (`lookupWithLocM` mm) (chanDeclSorts ch)
+          chSids <- traverse (mm .@!!) (chanDeclSorts ch)
           return $ ChanId (chanDeclName ch) (Id chId) chSids
 
 predefinedChans :: [(Text, ChanId)]

@@ -40,6 +40,10 @@ instance HasErrorLoc l => HasErrorLoc (Either l b) where
     getErrorLoc (Left l) = getErrorLoc l
     getErrorLoc _        = NoErrorLoc
 
+instance HasErrorLoc l => HasErrorLoc (k, l) where
+    getErrorLoc (_, l) = getErrorLoc l
+
+
 instance HasErrorLoc l => HasErrorLoc (l, c, d) where
     getErrorLoc (l, _, _) = getErrorLoc l
 

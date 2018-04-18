@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleContexts  #-}
 module TorXakis.Compiler.ValExpr.ValExpr where
 
-import           Prelude hiding (lookup)
 import           Data.Either                         (partitionEithers)
 import           Data.Foldable                       (traverse_)
 import           Data.Map                            (Map)
@@ -41,16 +40,16 @@ expDeclToValExpr :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo])
                  -> Either Error (ValExpr VarId)
 expDeclToValExpr mm eSid ex = case expChild ex of
     VarRef _ l -> do
-        vLocfLoc <- lookup (l :: Loc VarRefE) mm
+        vLocfLoc <- mm .@@ (l :: Loc VarRefE)
         case vLocfLoc of
             Left vLoc -> do
-                vId <- lookup (vLoc :: Loc VarDeclE) mm
+                vId <- mm .@@ (vLoc :: Loc VarDeclE) 
                 checkSortIds (varsort vId) eSid
                 return $ cstrVar vId
             Right fdis -> do
                 let matchingFdis = determineF mm fdis [] (Just eSid)
                 fdi  <- getUniqueElement matchingFdis
-                fId  <- lookup fdi mm
+                fId  <- mm .@@ fdi
                 checkSortIds (funcsort fId) eSid
                 return $ cstrFunc (innerMap mm :: Map FuncId (FuncDef VarId)) fId []
     ConstLit c -> do
@@ -63,7 +62,7 @@ expDeclToValExpr mm eSid ex = case expChild ex of
                 where
                   letValDeclToMap :: LetVarDecl -> Either Error (Map VarId (ValExpr VarId))
                   letValDeclToMap vd = do
-                      vId   <- lookup (getLoc vd) mm
+                      vId   <- mm .@@ getLoc vd
                       vdExp <- expDeclToValExpr mm (varsort vId) (varDeclExp vd)
                       return $ Map.singleton vId vdExp
             fsM :: Map.Map FuncId (FuncDef VarId)
@@ -92,7 +91,7 @@ expDeclToValExpr mm eSid ex = case expChild ex of
         where
           tryMkValExpr :: FuncDefInfo -> Either Error (ValExpr VarId)
           tryMkValExpr fdi = do
-              fId  <- lookup fdi mm
+              fId  <- mm .@@ fdi
               checkSortIds (funcsort fId) eSid
               if length (funcargs fId) /= length exs
                   then Left Error

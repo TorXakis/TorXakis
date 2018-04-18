@@ -3,6 +3,8 @@
 {-# LANGUAGE ViewPatterns      #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE TypeFamilies          #-}
 module TorXakis.Compiler where
 
 import           Control.Arrow                     (first, second, (|||))
@@ -103,16 +105,19 @@ compileParsedDefs pd = do
             ++ stdFuncIds
             ++ cstrFuncIds
     -- Infer the types of all variable declarations.
-    vdSortMap <- inferTypes (allSortsMap :& dMap :& completeFidMap) allFuncs
+    let emptyVdMap = Map.empty :: Map (Loc VarDeclE) SortId
+    -- We pass to 'inferTypes' an empty map from 'Loc VarDeclE' to 'SortId'
+    -- since no variables can be declared at the top level.
+    vdSortMap <- inferTypes (allSortsMap :& dMap :& completeFidMap :& emptyVdMap) allFuncs
     -- Construct the variable declarations to @VarId@'s lookup table.
     vMap <- generateVarIds (vdSortMap :& completeFidMap ) allFuncs
     lFDefMap <- funcDeclsToFuncDefs (vMap :& completeFidMap :& dMap) allFuncs
-    -- Construct the @ProcId@ to @ProcDef@ map:
-    pdefMap <- procDeclsToProcDefMap allSortsMap (pd ^. procs)
+     -- Construct the @ProcId@ to @ProcDef@ map:
+    pdefMap <- procDeclsToProcDefMap (allSortsMap :& cMap :& completeFidMap :& lFDefMap :& dMap) (pd ^. procs)
     -- Finally construct the TxsDefs.
     let mm = allSortsMap :& pdefMap :& chs :& cMap :& completeFidMap :& lFDefMap
     sigs    <- toSigs                mm pd
-    txsDefs <- toTxsDefs (func sigs) mm pd
+    txsDefs <- toTxsDefs (func sigs) (mm :& dMap) pd
     St i    <- get
     return (Id i, txsDefs, sigs)
 
@@ -147,10 +152,12 @@ simplify ft fns (fId, FuncDef vs ex) = (fId, FuncDef vs (simplify' ft fns ex))
 
 toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo (Loc CstrE) CstrId mm
+             , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
              , MapsTo FuncDefInfo FuncId mm
              , MapsTo FuncId (FuncDef VarId) mm 
              , MapsTo ProcId ProcDef mm
-             , MapsTo Text ChanId mm )
+             , MapsTo Text ChanId mm
+             , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False )
           => FuncTable VarId -> mm -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs ft mm pd = do
     ads <- adtsToTxsDefs mm (pd ^. adts)
@@ -168,10 +175,7 @@ toTxsDefs ft mm pd = do
         pds = TxsDefs.empty {
             procDefs = innerMap mm
             }    
-    -- Extract the model definitions
-    let chIdsMap :: Map Text ChanId
-        chIdsMap = innerMap mm
-    mds <- modelDeclsToTxsDefs chIdsMap (pd ^. models)
+    mds <- modelDeclsToTxsDefs mm (pd ^. models)
     return $ ads
         `union` fds
         `union` pds        

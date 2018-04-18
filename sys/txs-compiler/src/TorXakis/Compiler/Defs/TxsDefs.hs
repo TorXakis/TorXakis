@@ -15,6 +15,8 @@ import           TxsDefs                           (TxsDefs, cstrDefs, empty,
 import           ChanId                 (ChanId)
 import           VarId (VarId)
 import           CstrId (CstrId)
+import           FuncId (FuncId)
+import           FuncDef (FuncDef)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.ModelDef
@@ -22,6 +24,7 @@ import           TorXakis.Compiler.Defs.ModelId
 import           TorXakis.Compiler.ValExpr.CstrDef
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.MapsTo
+import           TorXakis.Compiler.Maps
 
 adtsToTxsDefs :: ( MapsTo Text SortId mm
                  , MapsTo (Loc CstrE) CstrId mm)
@@ -39,6 +42,9 @@ envToSortDefs mm = Map.fromList $
     zip (values @Text mm) (repeat SortDef)
 
 modelDeclsToTxsDefs :: ( MapsTo Text ChanId mm
+                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
+                       , MapsTo FuncDefInfo FuncId mm
+                       , MapsTo FuncId (FuncDef VarId) mm
                        , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                        )
                     => mm -> [ModelDecl] -> CompilerM TxsDefs

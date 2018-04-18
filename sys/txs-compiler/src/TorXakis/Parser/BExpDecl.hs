@@ -53,8 +53,8 @@ actOfferP = ActOfferDecl <$> offersP <*> actConstP
           where
             questOfferVDP = do
                 txsSymbol "?"
-                n <- identifier
                 l <- mkLoc -- This offer always introduce a new implicit variable
+                n <- identifier
                 return $ QuestD (mkIVarDecl n l)
             -- TODO: it is better if we just infer the types of the variables.
             -- questOfferP = do

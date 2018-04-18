@@ -20,6 +20,7 @@ import           Data.Proxy                (Proxy)
 import           Data.Semigroup            ((<>))
 import qualified Data.Text                 as T
 import           Data.Type.Bool
+import           Data.Typeable             (Typeable, typeOf)
 import           GHC.TypeLits              (ErrorMessage ((:<>:), ShowType, Text),
                                             TypeError)
 import           Prelude                   hiding (lookup)
@@ -30,9 +31,9 @@ import           TorXakis.Compiler.Error
 -- | 'm' maps keys of type 'k' onto values of type 'v'.
 class (In (k, v) (Contents m) ~ 'True) => MapsTo k v m where
     -- | Lookup a key in the map.
-    lookup  :: (Ord k, Show k) => k -> m -> Either Error v
+    lookup  :: (Ord k, Show k, Typeable k) => k -> m -> Either Error v
     -- | Monadic version of @lookup@.
-    lookupM :: (Ord k, Show k) => k -> m -> CompilerM v
+    lookupM :: (Ord k, Show k, Typeable k) => k -> m -> CompilerM v
     lookupM k m = liftEither $ lookup k m
     -- | Get the inner map.
     innerMap :: m -> Map k v
@@ -77,21 +78,21 @@ instance MapsTo k v (Map k v) where
         where err = Error
                   { _errorType = UndefinedRef
                   , _errorLoc  = NoErrorLoc
-                  , _errorMsg  = "Could not find " <> T.pack (show k)
+                  , _errorMsg  =  "Could not find key " <> T.pack (show k)
+                               <> " of type " <> (T.pack . show . typeOf $ k)
                   }
     innerMap = id
     -- Note that here we're using the monoidal implementation of <> for maps,
     -- which overwrites the keys of 'm1'.
     (<.+>) = (<>)
 
+-- lookupWithLoc :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
+--               => (k, l) -> mm -> Either Error v
+-- lookupWithLoc (k, l) mm = lookup k mm <!> l
 
-lookupWithLoc :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
-              => (k, l) -> mm -> Either Error v
-lookupWithLoc (k, l) mm = lookup k mm <!> l
-
-lookupWithLocM :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
-               => (k, l) -> mm -> CompilerM v
-lookupWithLocM p mm = liftEither $ lookupWithLoc p mm
+-- lookupWithLocM :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
+--                => (k, l) -> mm -> CompilerM v
+-- lookupWithLocM p mm = liftEither $ lookupWithLoc p mm
 
 -- | Combinator for maps.
 data a :& b = a :& b
@@ -101,6 +102,12 @@ data a :& b = a :& b
       => [(k0, v0)] -> [(k1, v1)] -> Map k0 v0 :& Map k1 v1
 kv0 .&. kv1 = Map.fromList kv0 :& Map.fromList kv1
 
+-- | Combine a list of key values pairs with an existing map.
+(.&) :: (Ord k0)
+      => [(k0, v0)] -> mm -> Map k0 v0 :& mm
+kv0 .& mm = Map.fromList kv0 :& mm
+
+
 type instance Contents (a :& b) = 'Node (Contents a) (Contents b)
 
 -- | The pair 'm0 :& m1' maps values of type 'k' onto values of type 'v'
@@ -109,7 +116,7 @@ class ( In (k, v) (Contents m0) ~ inM0
       , (inM0 || inM1) ~ 'True
       ) =>
       PairMapsTo k v m0 m1 inM0 inM1 where
-    lookupPair :: (Ord k, Show k) => k -> m0 :& m1 -> Either Error v
+    lookupPair :: (Ord k, Show k, Typeable k) => k -> m0 :& m1 -> Either Error v
     innerMapPair :: m0 :& m1 -> Map k v
     addMapPair :: Ord k => Map k v -> m0 :& m1 -> m0 :& m1
 

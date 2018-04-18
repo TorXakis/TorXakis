@@ -9,8 +9,7 @@ module TorXakis.Compiler.Data where
 
 import           Control.Arrow             (left, (|||))
 import           Control.Lens              ((&), (.~))
-import           Control.Monad.Error.Class (MonadError, catchError, liftEither,
-                                            throwError)
+import           Control.Monad.Error.Class (MonadError, liftEither)
 import           Control.Monad.State       (MonadState, StateT, get, put)
 import           Data.Either.Utils         (maybeToEither)
 import           Data.Map                  (Map)
@@ -45,10 +44,4 @@ getNextId = do
     put (St $ i + 1)
     return i
 
--- | Set the error location.
-(<!>) :: HasErrorLoc l => Either Error a -> l -> Either Error a
-(<!>) ea l = left (errorLoc .~ getErrorLoc l) ea
 
--- | Set the error location (monadic version).
-(<!!>) :: HasErrorLoc l => CompilerM a -> l -> CompilerM a
-m <!!> l = catchError m $ throwError . (errorLoc .~ getErrorLoc l)
