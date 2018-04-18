@@ -318,10 +318,8 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
                                  (txsUIProc mLogDir inMF port)
         return ret
     txsUIProc mUiLogDir imf port =
-      -- Concurrently $
       do
         eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
-        sleep 5.0
         case eRes of
           Left exception -> return $ Left exception
           Right res      -> return $ unless res $ Left tErr
@@ -349,8 +347,8 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
     tErr = TestExpectationError $
               format ("Did not get expected result "%s)
                      (repr . expectedResult $ ex)
-    txsServerProc sLogDir args = -- Concurrently $
-      runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd args
+    txsServerProc sLogDir =
+      runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd
 
 -- | Run a process.
 runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @Nothing@ if no logging is desired.
