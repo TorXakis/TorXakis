@@ -6,7 +6,6 @@ See LICENSE at root directory of this repository.
 
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE ViewPatterns        #-}
 module Reduce
 
 -- ----------------------------------------------------------------------------------------- --
@@ -212,7 +211,7 @@ reduce' (Parallel chids bexps) = do
 
 reduce' (Enable bexp1 choffs bexp2) = do
      bexp1'  <- reduce bexp1
-     if isStop (bexp1') 
+     if isStop bexp1'
         then return stop
         else do
                 bexp2'  <- reduce bexp2
