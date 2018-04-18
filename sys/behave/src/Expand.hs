@@ -68,10 +68,7 @@ expand :: [ Set.Set TxsDefs.ChanId ] -- ^ Set of expected synchronization channe
        -> IOB.IOB CTree
 -- expand  :  for  BNbexpr WEnv BExpr
 
-expand _ (BNbexpr _ (TxsDefs.view -> Stop))  = return []
-
 -- ----------------------------------------------------------------------------------------- --
-
 expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs hidvars cnd) bexp))  =  do
      (ctoffs, quests, exclams) <- expandOffers chsets offs
      hvarlist <- sequence [ liftP2 (hvid, uniIVar hvid) | hvid <- Set.toList hidvars ]
@@ -525,9 +522,6 @@ instance Relabel BExpr
         relabel v = relabel' v . TxsDefs.view
 
 relabel' :: Map.Map ChanId ChanId -> BExprView -> BExpr
-relabel' _ Stop
-  =  stop
-
 relabel' chanmap (ActionPref (ActOffer offs hidvars cnrs) bexp)
   =  actionPref (ActOffer (Set.map (relabel chanmap) offs) hidvars cnrs) (relabel chanmap bexp)
 
@@ -553,7 +547,7 @@ relabel' chanmap (ProcInst pid chans vexps)
   =  procInst pid (map (relabel chanmap) chans) vexps
 
 relabel' chanmap (Hide chans bexp)
-  =  hide chans (relabel (Map.filterWithKey (\k _->k`notElem`chans) chanmap) bexp)
+  =  hide chans (relabel (Map.filterWithKey (\k _->k `notElem` chans) chanmap) bexp)
 
 relabel' chanmap (ValueEnv venv bexp)
   =  valueEnv venv (relabel chanmap bexp)

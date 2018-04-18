@@ -31,8 +31,9 @@ module BehExprDefs
 , ChanOffer(..)
 , Trans(..)
 , (~~)
-  -- * Smart Constructors for Behaviour Expressions
+  -- * Smart Constructors and checks for Behaviour Expressions
 , stop
+, isStop
 , actionPref
 , guard
 , choice
@@ -65,8 +66,7 @@ import           VarId
 
 
 -- | BExprView: the public view of Behaviour Expression `BExpr`
-data BExprView = Stop
-               | ActionPref  ActOffer BExpr
+data BExprView = ActionPref  ActOffer BExpr
                | Guard       VExpr BExpr
                | Choice      [BExpr]                -- Distinct Ascending List, does not contain a Choice as element of this list
                | Parallel    [ChanId] [BExpr]
@@ -82,7 +82,6 @@ instance Resettable BExprView
     where 
 --        reset (Choice bs)       = Choice (Set.toAscList (Set.fromList (reset bs))) -- reorder to ensure invariant
 --        reset x                 = over uniplate reset x
-        reset Stop              = Stop
         reset (ActionPref a b)  = ActionPref (reset a) (reset b)
         reset (Guard v b)       = Guard (reset v) (reset b)
         reset (Choice bs)       = Choice (Set.toAscList (Set.fromList (reset bs))) -- reorder to ensure invariant
@@ -109,20 +108,29 @@ newtype BExpr = BExpr {
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 instance Resettable BExpr
 
-stop :: BExpr
-stop = BExpr Stop
+-- | Is behaviour expression equal to Stop behaviour?
+isStop :: BExpr -> Bool
+isStop (view -> Choice []) = True
+isStop _                   = False
 
+-- | Create a Stop behaviour expression.
+--   The Stop behaviour is equal to dead lock.
+stop :: BExpr
+stop = BExpr (Choice [])
+
+-- | Create an ActionPrefix behaviour expression.
 actionPref :: ActOffer -> BExpr -> BExpr
 actionPref a b = BExpr (ActionPref a b)
 
+-- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
 guard v b = BExpr (Guard v b)
 
--- | create a behaviour expression that is the choice of the given alternatives
+-- | Create a choice behaviour expression.
+--  A choice combines zero or more behaviour expressions.
 choice :: [BExpr] -> BExpr
 choice l = let s = flattenChoice l
-               s' = Set.delete stop s      -- p ## stop == p
-               l' = Set.toAscList s'       -- All elements in a set are distinct
+               l' = Set.toAscList s       -- All elements in a set are distinct
              in 
                 case l' of
                     []  -> stop
@@ -141,27 +149,37 @@ choice l = let s = flattenChoice l
         fromBExpr (view -> Choice l') = Set.fromDistinctAscList l'
         fromBExpr x                   = Set.singleton x
 
+-- | Create a parallel behaviour expression.
+-- The two behaviour expression must synchronize on the given set of channels (and EXIT).
 parallel :: [ChanId] -> [BExpr] -> BExpr
 parallel cs bs = BExpr (Parallel cs bs)
 
+-- | Create an enable behaviour expression.
 enable :: BExpr -> [ChanOffer] -> BExpr -> BExpr
 enable b1 cs b2 = BExpr (Enable b1 cs b2)
 
+-- | Create a disable behaviour expression.
 disable :: BExpr -> BExpr -> BExpr
 disable b1 b2 = BExpr (Disable b1 b2)
 
+-- | Create an interrupt behaviour expression.
 interrupt :: BExpr -> BExpr -> BExpr
 interrupt b1 b2 = BExpr (Interrupt b1 b2)
 
+-- | Create a process instantiation behaviour expression.
 procInst :: ProcId -> [ChanId] -> [VExpr] -> BExpr
 procInst p cs vs = BExpr (ProcInst p cs vs)
 
+-- | Create a hide behaviour expression.
+--   The given set of channels is hidden for its environment.
 hide :: [ChanId] -> BExpr -> BExpr
 hide cs b = BExpr (Hide cs b)
 
+-- | Create a Value Environment behaviour expression.
 valueEnv :: VEnv -> BExpr -> BExpr
 valueEnv v b = BExpr (ValueEnv v b)
 
+-- | Create a State Automaton behaviour expression.
 stAut :: StatId -> VEnv -> [Trans] -> BExpr
 stAut s v ts = BExpr (StAut s v ts)
 

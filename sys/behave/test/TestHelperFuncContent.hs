@@ -156,7 +156,6 @@ identicalBExpr :: BExpr -> BExpr -> Bool
 identicalBExpr b1 b2 = identicalBExpr' (TxsDefs.view b1) (TxsDefs.view b2)
 
 identicalBExpr' :: BExprView -> BExprView -> Bool
-identicalBExpr' Stop Stop = True
 identicalBExpr' (ActionPref actOffer1 bExpr1) (ActionPref actOffer2 bExpr2)   =    identicalActOffer actOffer1 actOffer2
                                                                                 && identicalBExpr bExpr1 bExpr2
 identicalBExpr' (Guard vexpr1 bExpr1) (Guard vexpr2 bExpr2)                   =    identicalVExpr vexpr1 vexpr2

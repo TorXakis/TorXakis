@@ -160,12 +160,9 @@ instance Equiv BExpr
 
 instance Equiv BExprView
   where
-
-    Stop ~=~ Stop = return True
-
     (ActionPref (ActOffer offs1 hidvars1 c1) bexp1) ~=~ (ActionPref (ActOffer offs2 hidvars2 c2) bexp2) = do
          eq_bexp <- bexp1 ~=~ bexp2
-         return $ offs1 == offs2 && null hidvars1 && null hidvars2 && c1 == c2 && eq_bexp
+         return $ offs1 == offs2 && null hidvars1 && null hidvars2 && c1 == c2 && eq_bexp  -- @tretmans: why not hidvars1 == hidvars2?
 
     (Guard c1 bexp1) ~=~ (Guard c2 bexp2)  =  do
          eq_bexp <- bexp1 ~=~ bexp2
