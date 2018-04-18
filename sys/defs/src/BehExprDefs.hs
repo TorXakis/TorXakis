@@ -44,7 +44,6 @@ module BehExprDefs
 , procInst
 , hide
 , valueEnv
-, stAut
   -- * Debugging
 , valid
 )
@@ -78,7 +77,6 @@ data BExprView = ActionPref  ActOffer BExpr
                | ProcInst    ProcId [ChanId] [VExpr]
                | Hide        [ChanId] BExpr
                | ValueEnv    VEnv BExpr
-               | StAut       StatId VEnv [Trans]
   deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 instance Resettable BExprView
     where 
@@ -94,7 +92,6 @@ instance Resettable BExprView
         reset (ProcInst p c v)  = ProcInst (reset p) (reset c) (reset v)
         reset (Hide c b)        = Hide (reset c) (reset b)
         reset (ValueEnv v b)    = ValueEnv (reset v) (reset b)
-        reset (StAut s v t)     = StAut (reset s) (reset v) (reset t)
 
 -- | BExpr: behaviour expression
 --
@@ -196,10 +193,6 @@ hide cs b = BExpr (Hide cs b)
 -- | Create a Value Environment behaviour expression.
 valueEnv :: VEnv -> BExpr -> BExpr
 valueEnv v b = BExpr (ValueEnv v b)
-
--- | Create a State Automaton behaviour expression.
-stAut :: StatId -> VEnv -> [Trans] -> BExpr
-stAut s v ts = BExpr (StAut s v ts)
 
 -- | ActOffer
 -- Offer on multiple channels with constraints

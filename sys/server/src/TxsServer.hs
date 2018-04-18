@@ -184,8 +184,6 @@ cmdsIntpr = do
        "MAP"       |       IOS.isSimuled  modus  ->  cmdMap       args
        "MAP"       |       IOS.isStepped  modus  ->  cmdNoop      cmd
        "MAP"       | not $ IOS.isGtInited modus  ->  cmdNoop      cmd
-       "NCOMP"     |       IOS.isInited   modus  ->  cmdNComp     args
-       "NCOMP"     | not $ IOS.isInited   modus  ->  cmdNoop      cmd
        "LPE"       |       IOS.isInited   modus  ->  cmdLPE       args
        "LPE"       | not $ IOS.isInited   modus  ->  cmdNoop      cmd
        _           ->  cmdUnknown   cmd
@@ -945,31 +943,6 @@ cmdMap args = do
                else do act' <- lift $ TxsCore.txsMapper act
                        IFS.pack "MAP" [TxsShow.fshow act']
                        cmdsIntpr
-
--- ----------------------------------------------------------------------------------------- --
-
-cmdNComp :: String -> IOS.IOS ()
-cmdNComp args = do
-     tdefs <- lift TxsCore.txsGetTDefs
-     case words args of
-       [mname] -> case [ mdef
-                       | (TxsDefs.ModelId nm _, mdef) <- Map.toList (TxsDefs.modelDefs tdefs)
-                       , T.unpack nm == mname
-                       ] of
-                    [mdef]
-                      -> do mayPurpId <- lift $ TxsCore.txsNComp mdef
-                            case mayPurpId of
-                              Just purpid
-                                -> do IFS.pack "NCOMP" [ "Test Purpose generated: "
-                                                          ++ TxsShow.fshow purpid ]
-                                      cmdsIntpr
-                              Nothing
-                                -> do IFS.nack "NCOMP" [ "Could not generate test purpose" ]
-                                      cmdsIntpr
-                    _ -> do IFS.nack "NCOMP" [ "No such MODELDEF" ]
-                            cmdsIntpr
-       _       -> do IFS.nack "NCOMP" [ "Argument must be one MODELDEF name" ]
-                     cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 

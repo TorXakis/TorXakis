@@ -30,7 +30,6 @@ module Expand
 where
 
 import           Control.Arrow
-import           Control.Monad.Extra
 import           Control.Monad.State
 import           Data.Either
 import           Data.Monoid
@@ -192,73 +191,6 @@ expand chsets (BNbexpr we (TxsDefs.view -> ValueEnv venv bexp))  =  do
         (s,_)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                    ("Expand:  Eval failed in expand - ValueEnv " ++ show s) ]
                      return []
-
--- ----------------------------------------------------------------------------------------- --
-
-expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
-    let envwals = Map.fromList [ (vid, wal)
-                               | (vid, wal) <- Map.toList we
-                               , vid `Map.notMember` ve
-                               ]
-    tds   <- gets IOB.tdefs
-    let vewals = map toEitherTuple [ (vid, ValExpr.eval (ValExpr.subst (Map.map cstrConst we) (funcDefs tds) vexp) )
-                                   | (vid, vexp) <- Map.toList ve
-                                   ]
-    case Data.Either.partitionEithers vewals of
-        ([], r) -> concatMapM (expandTrans chsets envwals (Map.fromList r)) [ tr | tr <- trns, from tr == ini ]
-        (s,_)   -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
-                                  $ "Expand:  Eval failed in expand - StAut - vewals " ++ show s ++
-                                    "\nCheck all your STAUTDEF VARs: Has a value been assigned to each " ++
-                                    "variable (either in initialization or earlier steps)?"
-                                  ]
-                      return []
-
-  where
-    expandTrans :: [ Set.Set TxsDefs.ChanId ] -> WEnv VarId -> WEnv VarId -> Trans
-                -> IOB.IOB CTree
-    expandTrans chsets' envwals stswals (Trans _ (ActOffer offs hidvars cnd) update' to')  =  do
-         (ctoffs, quests, exclams) <- expandOffers chsets' offs
-         hvarlist <- sequence [ liftP2 (hvid, uniIVar hvid) | hvid <- Set.toList hidvars ]
-         let ivenv = if null $ Set.intersection hidvars (Set.fromList (map fst quests))
-                       then Map.fromList $   [ (vid,  cstrVar ivar) | (vid,  ivar) <- quests   ]
-                                          ++ [ (hvid, cstrVar hvar) | (hvid, hvar) <- hvarlist ]
-                       else error "ERROR: interaction and hidden variables shall be disjoint\n"
-             we'   = envwals `combineWEnv` stswals
-         tds <- gets IOB.tdefs
-         let exclams' = map toEitherTuple
-                          [ (ivar, ValExpr.eval (ValExpr.subst (Map.map cstrConst we') (funcDefs tds) vexp) )
-                          | (ivar, vexp) <- exclams
-                          ]
-         case Data.Either.partitionEithers exclams' of
-            ([], r) -> do let we'' = Map.fromList [ (vid, wal)
-                                                  | (vid, wal) <- Map.toList we'
-                                                  , vid `Map.notMember` ivenv
-                                                  ]
-                              envwals' = Map.fromList [ (vid, wal)
-                                                      | (vid, wal) <- Map.toList envwals
-                                                      , vid `Map.notMember` ivenv
-                                                      ]
-                              ve' = Map.fromList [ (vid, ValExpr.subst (Map.map cstrConst we'') (funcDefs tds) vexp)
-                                                 | (vid, vexp) <- Map.toList update'
-                                                 ]
-                          return
-                            [ CTpref { ctoffers  = ctoffs
-                                     , cthidvars = map snd hvarlist
-                                     , ctpred    = cstrAnd $ Set.fromList
-                                                     ( compSubst ivenv (funcDefs tds)
-                                                         (ValExpr.subst (Map.map cstrConst we'') (funcDefs tds) cnd)
-                                                     : [ cstrEqual (cstrVar ivar) (cstrConst wal)
-                                                       | (ivar, wal) <- r
-                                                       ]
-                                                     )
-                                     , ctnext    = BNbexpr (envwals',ivenv) (stAut to' (Map.union ve' ve) trns)
-                                     }
-                            ]
-            (s,_)   -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
-                                      $ "Expand: Eval failed in expand - StAut - exclams " ++ show s ++
-                                        "\nCheck all your STAUTDEF VARs: Has a value been assigned to each "++
-                                        "variable (either in initialization or earlier steps)?" ]
-                          return []
 
 -- ----------------------------------------------------------------------------------------- --
 -- expand  :  for genuine BNode
@@ -548,14 +480,10 @@ relabel' chanmap (ProcInst pid chans vexps)
   =  procInst pid (map (relabel chanmap) chans) vexps
 
 relabel' chanmap (Hide chans bexp)
-  =  hide chans (relabel (Map.filterWithKey (\k _->k `notElem` chans) chanmap) bexp)
+  =  hide chans (relabel (Map.filterWithKey (\k _-> k `notElem` chans) chanmap) bexp)
 
 relabel' chanmap (ValueEnv venv bexp)
   =  valueEnv venv (relabel chanmap bexp)
-
-relabel' chanmap (StAut stid venv trans)
-  =  stAut stid venv (map (relabel chanmap) trans)
-
 
 instance Relabel Offer
   where

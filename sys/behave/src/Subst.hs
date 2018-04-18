@@ -86,9 +86,6 @@ subst' ve fdefs (Hide chids bexp) =
 subst' ve fdefs (ValueEnv venv bexp) =
     subst ve fdefs (subst venv fdefs bexp)
 
-subst' ve fdefs (StAut stid venv trns) =
-    stAut stid (Map.map (subst ve fdefs) venv) trns
-
 instance Subst Offer where
     subst ve fdefs (Offer chid choffs) = Offer chid (subst ve fdefs choffs)
 

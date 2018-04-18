@@ -249,8 +249,6 @@ reduce' (ValueEnv venv bexp) = do
     fdefs <- IOB.getFuncDefs
     reduce $ Subst.subst venv fdefs bexp
 
-reduce' (StAut stid ve trns) = return $ stAut stid ve trns
-
 -- ----------------------------------------------------------------------------------------- --
 
 instance Reduce Offer
@@ -305,7 +303,6 @@ instance FreeChan BExpr
         freeChans' (ProcInst _ chids _)    = chids
         freeChans' (Hide chids bexp)       = freeChans bexp List.\\ chids         
         freeChans' (ValueEnv _ bexp)       = freeChans bexp
-        freeChans' (StAut _ _ trns)        = concatMap freeChans trns
 
 instance FreeChan ActOffer
   where

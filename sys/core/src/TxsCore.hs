@@ -107,9 +107,6 @@ module TxsCore
   -- * give action to mapper
 , txsMapper
 
-  -- * test purpose for N complete coverage
-, txsNComp
-
   -- * LPE transformation
 , txsLPE
 )
@@ -135,7 +132,6 @@ import           System.Random
 import           CoreUtils
 import           Ioco
 import           Mapper
-import           NComp
 import           Purpose
 import           Sim
 import           Step
@@ -147,7 +143,6 @@ import qualified Config
 -- import from behave(defs)
 import qualified Behave
 import qualified BTree
-import           Expand              (relabel)
 
 -- import from coreenv
 import qualified EnvCore             as IOC
@@ -1041,47 +1036,6 @@ txsMapper act  =  do
          return act
 
 
--- | NComplete derivation by Petra van den Bos.
-txsNComp :: TxsDefs.ModelDef                   -- ^ model. Currently only
-                                               -- `StautDef` without data is
-                                               -- supported.
-         -> IOC.IOC (Maybe TxsDefs.PurpId)     -- ^ Derived purpose, when
-                                               -- succesful.
-txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
-  envc <- get
-  case (IOC.state envc, TxsDefs.view bexp) of
-    ( IOC.Initing {IOC.tdefs = tdefs}
-      , TxsDefs.ProcInst procid@(TxsDefs.ProcId pnm _ _ _ _) chans []
-      ) | and [ Set.size sync == 1 | sync <- insyncs ++ outsyncs ]
-          && and [ null srts
-                 | TxsDefs.ChanId _ _ srts <- Set.toList $ Set.unions $ insyncs ++ outsyncs
-                 ]
-          && null splsyncs
-       -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
-              Just (TxsDefs.ProcDef chids [] staut@(TxsDefs.view -> TxsDefs.StAut _ ve _)) | Map.null ve
-                 -> do let chanmap                       = Map.fromList (zip chids chans)
-                           TxsDefs.StAut statid _ trans = TxsDefs.view $ Expand.relabel chanmap staut
-                       maypurp <- NComp.nComplete insyncs outsyncs statid trans
-                       case maypurp of
-                         Just purpdef -> do
-                           uid <- gets IOC.unid
-                           let purpid = TxsDefs.PurpId ("PURP_"<>pnm) (uid+1)
-                               tdefs' = tdefs
-                                 { TxsDefs.purpDefs = Map.insert
-                                                      purpid purpdef (TxsDefs.purpDefs tdefs)
-                                 }
-                           IOC.incUnid
-                           IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs' }
-                           return $ Just purpid
-                         _ -> return Nothing
-
-              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                                    "N-Complete requires a data-less STAUTDEF" ]
-                      return Nothing
-    _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                          $ "N-Complete should be used after initialization, before testing, "
-                            ++ "with a STAUTDEF with data-less, singleton channels" ]
-            return Nothing
 
 -- ----------------------------------------------------------------------------------------- --
 

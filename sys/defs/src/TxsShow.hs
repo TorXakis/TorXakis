@@ -204,10 +204,6 @@ instance PShow BExprView
          ++ Utils.join ";\n"
                    (map (\(k,v) -> pshow k ++ " = " ++ pshow v) (Map.assocs ve))
          ++ " IN " ++ pshow bexp ++ " NI"
-    pshow (StAut init' ve trns)
-      =  "STAUT " ++ pshow init' ++ "\n"  ++ pshow ve ++ "\n"
-           ++ Utils.join ";\n" (map pshow trns)
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- PShow: ActOffer

@@ -208,12 +208,6 @@ instance Equiv BExprView
          eq_bexp <- bexp1 ~=~ bexp2
          return $ eq_ve && eq_bexp
 
-    (StAut stid1 ve1 trns1) ~=~ (StAut stid2 ve2 trns2)  =  do
-         let eq_stid = stid1 == stid2
-         let eq_ve = ve1 == ve2
-         let eq_trns = trns1 == trns2
-         return $ eq_stid && eq_ve && eq_trns
-
     _ ~=~ _  = return False
 
 -- | check elem of, with given momad equality

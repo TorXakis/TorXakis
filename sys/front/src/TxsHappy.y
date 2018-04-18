@@ -930,7 +930,7 @@ StautDef        -- :: { [(Ident,TxsDef)] }
                 --  PVDL: are global procdefs not available in the stautdef context?? 
 
               : STAUTDEF Id FormalChannels FormalVars ExitKind "::=" StautItemList EndDef
-                {  $3.inhNodeUid   = $$.inhNodeUid + 4
+                {  $3.inhNodeUid   = $$.inhNodeUid + 3
                 ;  $4.inhNodeUid   = $3.synMaxUid + 1
                 ;  $5.inhNodeUid   = $4.synMaxUid + 1
                 ;  $7.inhNodeUid   = $5.synMaxUid + 1
@@ -938,23 +938,20 @@ StautDef        -- :: { [(Ident,TxsDef)] }
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $4.inhSigs      = $$.inhSigs
                 ;  $5.inhSigs      = $$.inhSigs
-                ;  $7.inhSigs      = let (_, vars, _, _, _, _) = $7 in
+                ;  $7.inhSigs      = let (_, vars, _, _, _) = $7 in
                                         $$.inhSigs { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 
-                                                                , ProcId (T.pack "stdi_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5
                                                                 , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 1) $3 (combineParameters $4 (VarId (T.pack "$s") ($$.inhNodeUid + 2) sortIdInt) vars) $5
                                                                 ] }
                                                                  { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] } 
                 ;  $7.inhChanSigs  = $3
                 ;  $7.inhVarSigs   = $4
-                ;  $$.synSigs      = let (_, vars, _, _, _, _) = $7 in
+                ;  $$.synSigs      = let (_, vars, _, _, _) = $7 in
                                         Sigs.empty { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 
-                                                                , ProcId (T.pack "stdi_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5
                                                                 , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 1) $3 (combineParameters $4 (VarId (T.pack "$s") ($$.inhNodeUid + 2) sortIdInt) vars) $5
                                                                 ] }
-                ;  $$ = let (sts, vars, trs, init, venv, bexpr) = $7 in
+                ;  $$ = let (sts, vars, trs, init, venv) = $7 in
                         let (pd, pi) = translate (Map.empty :: Map.Map FuncId (FuncDef VarId)) ($$.inhNodeUid + 1) ($$.inhNodeUid + 2) $2 $3 $4 $5 sts vars trs init venv in
-                            [ ( IdProc (ProcId $2 $$.inhNodeUid $3 $4 $5), DefProc (ProcDef $3 $4 bexpr) )
-                            , ( IdProc (ProcId (T.pack "stdi_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5), DefProc (ProcDef $3 $4 pi) )
+                            [ ( IdProc (ProcId $2 $$.inhNodeUid $3 $4 $5), DefProc (ProcDef $3 $4 pi) )
                             , ( IdProc (ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 1) $3 (combineParameters $4 (VarId (T.pack "$s") ($$.inhNodeUid + 2) sortIdInt) vars) $5), DefProc pd)
                             ]
                 ;  where if $7.synExitSorts == $5 then () else
@@ -3373,7 +3370,7 @@ NeSmallIdList   -- :: { [String] }
 -- state automaton (symbolic transition system) items
 
 
-StautItemList   -- :: { (sts,vars,trs, init, venv, BExpr) }
+StautItemList   -- :: { (sts,vars,trs, init, venv) }
                 -- top-level state automaton behaviour expression;
                 -- attrs inh : inhNodeUid  : unique node identification
                 --           : inhSortSigs : usable sorts        = global sorts
@@ -3401,7 +3398,7 @@ StautItemList   -- :: { (sts,vars,trs, init, venv, BExpr) }
                 ;  $$.synExitSorts = $1.synExitSorts
                 ;  $$ = case $1 of
                         { ( sts, vars, trs, [init], [venv] )
-                            -> (sts, vars, trs, init, venv, stAut init venv trs)
+                            -> (sts, vars, trs, init, venv)
                         ; _ -> error $ "\nTXS1010: " ++ "error in state atomaton def: " ++
                                        (show (Sigs.pro $$.inhSigs)) ++ "\n"
                         }

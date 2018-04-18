@@ -167,13 +167,6 @@ instance UsedFids BExprView
     usedFids (ProcInst _pid _chids vexps)   =  usedFids vexps
     usedFids (Hide _chids bexp)             =  usedFids bexp
     usedFids (ValueEnv ve bexp)             =  usedFids (Map.elems ve) ++ usedFids bexp
-    usedFids (StAut _stid ve transs)        =  usedFids (Map.elems ve) ++ usedFids transs
-
-
-instance UsedFids Trans
-  where
-    usedFids (Trans _fr actoff upd _to)  =  usedFids actoff ++ usedFids (Map.elems upd)
-
 
 instance UsedFids ActOffer
   where
