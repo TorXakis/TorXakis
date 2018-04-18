@@ -48,6 +48,3 @@ else
     touch ./z3-4.6.0
     cd $CURDIR
 fi
-
-echo "$CACHE_DIR/.stack-work contents"
-ls $CACHE_DIR/.stack-work
