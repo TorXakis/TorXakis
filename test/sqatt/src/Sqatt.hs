@@ -305,8 +305,7 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
       port <- repr <$> getRandomPort
       runConcurrently $ timer
                     <|> heartbeat
-                    <|> txsServerProc mLogDir (port : txsServerArgs ex)
-                    <|> txsUIProc mLogDir inputModelF port
+                    <|> txsProcs inputModelF port
   where
     heartbeat = Concurrently $ forever $ do
       sleep 60.0 -- For now we don't make this configurable.
@@ -314,13 +313,18 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
     timer = Concurrently $ do
       sleep sqattTimeout
       return $ Left TestTimedOut
+    txsProcs inMF port = Concurrently $ do
+        (_, ret) <- concurrently (txsServerProc mLogDir (port : txsServerArgs ex))
+                                 (txsUIProc mLogDir inMF port)
+        return ret
     txsUIProc mUiLogDir imf port =
-      Concurrently $ do
+      -- Concurrently $
+      do
         eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
+        sleep 5.0
         case eRes of
-          Left exception -> do sleep 5.0       -- take time to write results to log files
-                               return $ Left exception
-          Right res -> return $ unless res $ Left tErr
+          Left exception -> return $ Left exception
+          Right res      -> return $ unless res $ Left tErr
       where
         inLines :: Shell Line
         inLines = asum $ input <$> cmdsFile
@@ -345,7 +349,7 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
     tErr = TestExpectationError $
               format ("Did not get expected result "%s)
                      (repr . expectedResult $ ex)
-    txsServerProc sLogDir args = Concurrently $
+    txsServerProc sLogDir args = -- Concurrently $
       runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd args
 
 -- | Run a process.
