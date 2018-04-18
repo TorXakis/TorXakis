@@ -29,15 +29,18 @@ procDeclsToProcDefMap mm ps = Map.fromList <$>
       procDeclToProcDefMap :: ProcDecl -> CompilerM (ProcId, ProcDef)
       procDeclToProcDefMap pd = do
           pId         <- getNextId
-          chIdsMap    <- chanDeclsToChanIds mm (procChParams . procDeclComps $ pd)
+          chIds       <- chanDeclsToChanIds mm (procChParams . procDeclComps $ pd)
           pdVdSortMap <- procDefVdSortMap
           vIdsMap     <- traverse (varIdsFromVarDecl pdVdSortMap) vdecls                  
           e           <- exitSort (procRetSort . procDeclComps $ pd) <!!> pd              
-          b           <- toBExpr (chIdsMap .&. vIdsMap) (procBody . procDeclComps $ pd)
-          let chIds = snd <$> chIdsMap
-              vIds  = snd <$> vIdsMap
-          return ( ProcId (procDeclName pd) (Id pId) chIds vIds e
-                 , ProcDef chIds vIds b
+          b           <- toBExpr ((chIds ++ predefinedChans) .&. vIdsMap)
+                                 (procBody . procDeclComps $ pd)
+          -- NOTE that it is crucial that the order of the channel parameters
+          -- declarations is preserved!
+          let chIds' = snd <$> chIds
+              vIds   = snd <$> vIdsMap
+          return ( ProcId (procDeclName pd) (Id pId) chIds' vIds e
+                 , ProcDef chIds' vIds b
                  )
               where
                 vdecls = procParams . procDeclComps $ pd

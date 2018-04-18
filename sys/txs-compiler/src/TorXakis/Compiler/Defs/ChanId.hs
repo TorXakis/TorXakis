@@ -5,9 +5,10 @@ import           Data.Map               (Map)
 import qualified Data.Map               as Map
 import           Data.Text              (Text)
 
-import           ChanId                 (ChanId (ChanId))
+import           ChanId                 (ChanId (ChanId), name)
 import           Id                     (Id (Id))
 import           SortId (SortId)
+import           StdTDefs (chanIdExit, chanIdIstep, chanIdQstep, chanIdHit, chanIdMiss)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Parser.Data
@@ -24,3 +25,13 @@ chanDeclsToChanIds mm chs = do
           chId   <- getNextId
           chSids <- traverse (`lookupWithLocM` mm) (chanDeclSorts ch)
           return $ ChanId (chanDeclName ch) (Id chId) chSids
+
+predefinedChans :: [(Text, ChanId)]
+predefinedChans =
+    zip (name <$> cIds) cIds
+    where cIds = [ chanIdExit
+                 , chanIdIstep
+                 , chanIdQstep
+                 , chanIdHit
+                 , chanIdMiss
+                 ]
