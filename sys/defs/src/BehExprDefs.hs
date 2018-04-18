@@ -24,7 +24,7 @@ module BehExprDefs
   -- * Behaviour Expression type and view
   BExprView(..)
 , BExpr
-, view
+, BehExprDefs.view
 
 , ActOffer(..)
 , Offer(..)
@@ -57,10 +57,12 @@ import           Data.Data
 import           GHC.Generics    (Generic)
 
 import           ChanId
+import           ConstDefs
 import           Id
 import           ProcId
 import           SortOf
 import           StatId
+import           ValExpr
 import           VarEnv
 import           VarId
 
@@ -110,8 +112,8 @@ instance Resettable BExpr
 
 -- | Is behaviour expression equal to Stop behaviour?
 isStop :: BExpr -> Bool
-isStop (view -> Choice []) = True
-isStop _                   = False
+isStop (BehExprDefs.view -> Choice []) = True
+isStop _                               = False
 
 -- | Create a Stop behaviour expression.
 --   The Stop behaviour is equal to dead lock.
@@ -120,7 +122,9 @@ stop = BExpr (Choice [])
 
 -- | Create an ActionPrefix behaviour expression.
 actionPref :: ActOffer -> BExpr -> BExpr
-actionPref a b = BExpr (ActionPref a b)
+actionPref a b = case ValExpr.view (constraint a) of
+                    Vconst (Cbool False)    -> stop
+                    _                       -> BExpr (ActionPref a b)
 
 -- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
@@ -146,8 +150,8 @@ choice l = let s = flattenChoice l
         flattenChoice l' = Set.unions $ map fromBExpr l'
         
         fromBExpr :: BExpr -> Set.Set BExpr
-        fromBExpr (view -> Choice l') = Set.fromDistinctAscList l'
-        fromBExpr x                   = Set.singleton x
+        fromBExpr (BehExprDefs.view -> Choice l') = Set.fromDistinctAscList l'
+        fromBExpr x                               = Set.singleton x
 
 -- | Create a parallel behaviour expression.
 -- The two behaviour expression must synchronize on the given set of channels (and EXIT).
@@ -232,5 +236,5 @@ be0 ~~ be1 = reset be0 == reset be1
 
 -- | Test if the internal Behaviour Expression structure is valid.
 valid :: BExpr -> Bool
-valid (view -> Choice actual)     = actual == Set.toAscList (Set.fromList actual)
-valid _                           = True
+valid (BehExprDefs.view -> Choice actual)   = actual == Set.toAscList (Set.fromList actual)
+valid _                                     = True
