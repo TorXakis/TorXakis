@@ -10,9 +10,9 @@ See LICENSE at root directory of this repository.
 module Main (main) where
 
 import           Control.Exception            (catch, throwIO)
-import           Control.Lens                 ((^.))
 import           Data.ByteString.Char8        as BS
 import           Data.ByteString.Lazy.Char8   as BSL
+import           Lens.Micro                   ((^.))
 import           System.Process               (StdStream (NoStream), proc,
                                                std_out, withCreateProcess)
 
@@ -40,32 +40,32 @@ spec = return $ do
             it "Creates 2 sessions" $ do
                 r <- post "http://localhost:8080/sessions/new" [partText "" ""]
                 r ^. responseStatus . statusCode `shouldBe` 201
-                r ^. responseBody `shouldBe` "1"
+                r ^. responseBody `shouldBe` "{\"sessionId\":1}"
                 r2 <- post "http://localhost:8080/sessions/new" [partText "" ""]
                 r2 ^. responseStatus . statusCode `shouldBe` 201
-                r2 ^. responseBody `shouldBe` "2"
+                r2 ^. responseBody `shouldBe` "{\"sessionId\":2}"
         describe "Upload files to a session" $ do
             it "Uploads valid files" $ do
                 _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
-                r <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                r <- post "http://localhost:8080/sessions/1/load" [partFile "Point.txs" "../../examps/Point/Point.txs"]
                 r ^. responseStatus . statusCode `shouldBe` 202
-                r ^. responseBody `shouldBe` "\"\\nLoaded: Point.txs\""
+                r ^. responseBody `shouldBe` "{\"fileName\": \"Point.txs\"}"
             it "Fails for parse error" $ do
                 let handler (CI.HttpExceptionRequest _ (C.StatusCodeException r body)) = do
-                        BS.unpack body `shouldStartWith` "\nError in wrong.txt: \nParse Error:"
+                        BS.unpack body `shouldStartWith` "{\"msg\": \"Error in wrong.txt: \nParse Error:"
                         let s = r ^. responseStatus
                         return CI.Response{CI.responseStatus = s}
                     handler e = throwIO e
                 _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
-                r <- put "http://localhost:8080/sessions/1/model" [partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"]
+                r <- post "http://localhost:8080/sessions/1/load" [partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"]
                         `catch` handler
                 r ^. responseStatus . statusCode `shouldBe` 400
             it "Starts stepper and takes 3 steps" $ do
                 _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
-                _ <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
-                post "http://localhost:8080/stepper/start/1/Model" [partText "" ""] >>= checkSuccess
-                post "http://localhost:8080/stepper/step/1/3" [partText "" ""] >>= checkSuccess
-                get "http://localhost:8080/sessions/sse/1/messages" >>= checkJSON
+                _ <- put "http://localhost:8080/sessions/1/load" [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                post "http://localhost:8080/sessions/1/models/Model/stepper" [partText "" ""] >>= checkSuccess
+                post "http://localhost:8080/sessions/1/stepper/3" [partText "" ""] >>= checkSuccess
+                get "http://localhost:8080/sessions/1/messages" >>= checkJSON
             -- it "Starts tester and tests 3 steps" $ do
             --     _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
             --     _ <- post "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
@@ -74,9 +74,8 @@ spec = return $ do
             --     checkJSON    <$> get "http://localhost:8080/sessions/sse/1/messages"
 
 checkSuccess :: Response BSL.ByteString -> IO ()
-checkSuccess r = do
-    r ^. responseStatus . statusCode `shouldBe` 200
-    r ^. responseBody `shouldBe` "\"Success\""
+checkSuccess r =
+    r ^. responseStatus . statusCode `shouldBe` 204
 
 checkJSON :: Response BSL.ByteString -> IO ()
 checkJSON r = do

@@ -29,7 +29,7 @@ type UploadEP = "sessions"
              :> Capture "sid" SessionId
              :> "model"
              :> MultipartForm Mem (MultipartData Mem)
-             :> PutAccepted '[JSON] String
+             :> PostAccepted '[JSON] String
 
 upload :: Env -> SessionId -> MultipartData Mem -> Handler String
 upload env sid multipartData =  do

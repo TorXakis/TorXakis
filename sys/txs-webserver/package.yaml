@@ -90,6 +90,6 @@ tests:
     - bytestring
     - hspec
     - http-client
-    - lens
+    - microlens
     - process
     - wreq
