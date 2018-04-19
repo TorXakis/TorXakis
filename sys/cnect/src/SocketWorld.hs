@@ -227,12 +227,12 @@ putSocket ioTime _ envs act@Act{} =
       in do sact <- EnDecode.encode envs act
             obs  <- lift $ timeout (ioTime*1000) (readChan frowChan)       -- timeout in musec
             case obs of
-              Nothing         -> writeAct
-              Just SActQui    -> writeAct
+              Nothing         -> writeAct towChan sact
+              Just SActQui    -> writeAct towChan sact
               Just (SAct h s) -> EnDecode.decode envs (SAct h s)
             where
-              writeAct = do lift $ writeChan towChan sact
-                            return act
+              writeAct ch sa = do lift $ writeChan ch sa
+                                  return act
 
 putSocket ioTime deltaTime envs ActQui =
      let ( Just towChan,  _, _ ) = IOS.tow  envs
@@ -240,13 +240,13 @@ putSocket ioTime deltaTime envs ActQui =
       in do sact <- EnDecode.encode envs ActQui
             obs <- lift $ timeout (ioTime*1000) (readChan frowChan)
             case obs of
-              Nothing         -> writeQui
-              Just SActQui    -> writeQui
+              Nothing         -> writeQui towChan sact
+              Just SActQui    -> writeQui towChan sact
               Just (SAct h s) -> EnDecode.decode envs (SAct h s)
             where
-              writeQui = do lift $ threadDelay (deltaTime*1000)
-                            lift $ writeChan towChan sact
-                            return ActQui
+              writeQui ch sa = do lift $ threadDelay (deltaTime*1000)
+                                  lift $ writeChan ch sa
+                                  return ActQui
 
 -- | getSocket :  observe input from world, or observe quiescence
 getSocket :: Int -> IOS.EnvS -> IOC.IOC TxsDDefs.Action
