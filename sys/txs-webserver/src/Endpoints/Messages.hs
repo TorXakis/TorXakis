@@ -74,7 +74,7 @@ streamMessages env sid = do
         -- wait5 :: IO ()
         -- wait5 = threadDelay (10^(6::Int) * 5)
 
-type SSMessagesEP = "session" :> "sse"
+type SSMessagesEP = "sessions" :> "sse"
                :> Capture "sid" SessionId
                :> "messages"
                :> Raw

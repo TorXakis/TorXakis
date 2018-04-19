@@ -25,11 +25,11 @@ import           TorXakis.Lib.Session            (Session)
 
 import           Common (SessionId, getSession, Env)
 
-type UploadEP = "session"
-                :> Capture "sid" SessionId
-                :> "model"
-                :> MultipartForm Mem (MultipartData Mem)
-                :> PutAccepted '[JSON] String
+type UploadEP = "sessions"
+             :> Capture "sid" SessionId
+             :> "model"
+             :> MultipartForm Mem (MultipartData Mem)
+             :> PutAccepted '[JSON] String
 
 upload :: Env -> SessionId -> MultipartData Mem -> Handler String
 upload env sid multipartData =  do

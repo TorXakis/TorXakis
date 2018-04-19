@@ -19,7 +19,7 @@ import           TorXakis.Lib     (newSession)
 
 import           Common (SessionId, Env(..))
 
-type NewSessionEP = "session" :> "new" :> PostCreated '[JSON] SessionId
+type NewSessionEP = "sessions" :> "new" :> PostCreated '[JSON] SessionId
 
 newSrvSession :: Env -> Handler SessionId
 newSrvSession Env{sessions = ssT, lastSid = pSidT} = do
