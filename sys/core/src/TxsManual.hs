@@ -13,41 +13,42 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 --
 -- Core Module TorXakis API:
--- API for TorXakis core functionality.
+-- Manual Mode
 -----------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
 
 module TxsManual
 
-( -- * set manual mode for External World
-  mnlSetManual    -- :: IOC.EWorld ew => ew -> IOC.IOC ()      
+(
+  -- * set manual mode for External World
+  txsSetManual     -- :: IOC.EWorld ew => ew -> IOC.IOC ()      
 
   -- * shut manual mode for External World
-, mnlShutManual   -- :: IOC.IOC ()
+, txsShutManual    -- :: IOC.IOC ()
 
   -- * start External World
-, mnlStartW       -- :: IOC.IOC ()
+, txsStartW        -- :: IOC.IOC ()
 
   -- * stop External World
-, mnlStopW        -- :: IOC.IOC ()
+, txsStopW         -- :: IOC.IOC ()
 
   -- * send action to External World
-, mnlActToW       -- :: DD.Action -> IOC.IOC DD.Action
+, txsActToW        -- :: DD.Action -> IOC.IOC DD.Verdict
 
   -- * observe action from External World
-, mnlObsFroW      -- :: IOC.IOC DD.Action
+, txsObsFroW       -- :: IOC.IOC DD.Verdict
 
-  -- * send action according to offer pattern to External World
-, mnlOfferToW     -- :: D.Offer -> IOC.IOC DD.Action
+  -- * send action according to offer-pattern to External World
+, txsOfferToW      -- :: D.Offer -> IOC.IOC DD.Verdict
 
-  -- * run n actions on External World; if n<0 then infinitely many actions 
-, mnlRunW         -- :: Int -> IOC.IOC DD.Verdict
+  -- * run n actions on External World; if n<0 then indefinitely many actions 
+, txsRunW          -- :: Int -> IOC.IOC DD.Verdict
 
   -- * give current state number
-, mnlGetStNr      -- :: IOC.IOC Int
+, txsGetWStateNr   -- :: IOC.IOC Int
 
-  -- * give path from initial state to current state number
-, mnlGetPath      -- :: -> IOC.IOC [(EnvData.StateNr,DD.Action,EnvData.StateNr)]
+  -- * give trace from initial state to current state number
+, txsGetWTrace     -- :: -> IOC.IOC [DD.Action]
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -82,14 +83,12 @@ import qualified TxsShow
 
 
 -- ----------------------------------------------------------------------------------------- --
-
--- | Set manual mode
+-- | Set Manual Mode
 --
---   Only possible when in initialized mode.
-mnlSetManual :: IOC.EWorld ew
-             => ew                             -- ^ external world.
+--   Only possible when in Initing Mode.
+
              -> IOC.IOC ()                     -- ^ modified external world.
-mnlSetManual eWorld  =  do
+txsSetManual eWorld  =  do
      envc <- get
      case IOC.state envc of
        IOC.Initing { IOC.smts    = smts
@@ -97,193 +96,196 @@ mnlSetManual eWorld  =  do
                    , IOC.sigs    = sigs
                    , IOC.putmsgs = putmsgs
                    }
-         -> do IOC.putCS IOC.ManualIdle { IOC.smts     = smts
-                                        , IOC.tdefs    = tdefs
-                                        , IOC.sigs     = sigs
-                                        , IOC.eworld   = eWorld
-                                        , IOC.putmsgs  = putmsgs
-                                        }
-               putmsgs [ EnvData.TXS_CORE_USER_INFO "Manual mode set" ]
+         -> do IOC.putCS IOC.ManSet { IOC.smts     = smts
+                                    , IOC.tdefs    = tdefs
+                                    , IOC.sigs     = sigs
+                                    , IOC.eworld   = eWorld
+                                    , IOC.putmsgs  = putmsgs
+                                    }
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Manual Mode set" ]
        _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                          "Manual mode must be set in Initing mode" ]
+                          "Manual Mode must be set in Initing mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
-
--- | Shut manual mode
+-- | Shut Manual Mode
 --
---   Only possible when in manual idle mode.
-mnlShutManual :: IOC.IOC ()
-mnlShutManual  =  do
+--   Only possible when in ManSet Mode.
+txsShutManual :: IOC.IOC ()
+txsShutManual  =  do
      envc <- get
      case IOC.state envc of
-       IOC.ManualIdle { IOC.smts     = smts
-                      , IOC.tdefs    = tdefs
-                      , IOC.sigs     = sigs
-                      , IOC.eworld   = _eworld
-                      , IOC.putmsgs  = putmsgs
-                      }
+       IOC.ManSet { IOC.smts     = smts
+                  , IOC.tdefs    = tdefs
+                  , IOC.sigs     = sigs
+                  , IOC.eworld   = _eworld
+                  , IOC.putmsgs  = putmsgs
+                  }
          -> do IOC.putCS IOC.Initing { IOC.smts    = smts
                                      , IOC.tdefs   = tdefs
                                      , IOC.sigs    = sigs
                                      , IOC.putmsgs = putmsgs
                                      }
-               putmsgs [ EnvData.TXS_CORE_USER_INFO "Manual mode shut" ]
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Manual Mode shut" ]
        _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                          "Manual mode must be shut from ManualIdle" ]
+                          "Manual Mode must be shut from ManSet Mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
-
 -- | Start External World
 --
---   Only possible when in manual idle mode.
-mnlStartW :: IOC.IOC ()
-mnlStartW  =  do
+--   Only possible when in ManSet Mode.
+txsStartW :: IOC.IOC ()
+txsStartW  =  do
      envc <- get
      case IOC.state envc of
-       IOC.ManualIdle { IOC.smts     = smts
-                      , IOC.tdefs    = tdefs
-                      , IOC.sigs     = sigs
-                      , IOC.eworld   = eworld
-                      , IOC.putmsgs  = putmsgs
-                      }
+       IOC.ManSet { IOC.smts     = smts
+                  , IOC.tdefs    = tdefs
+                  , IOC.sigs     = sigs
+                  , IOC.eworld   = eworld
+                  , IOC.putmsgs  = putmsgs
+                  }
          -> do eworld' <- IOC.startW eworld
-               IOC.putCS IOC.ManualActive { IOC.smts     = smts
-                                          , IOC.tdefs    = tdefs
-                                          , IOC.sigs     = sigs
-                                          , IOC.behtrie  = []
-                                          , IOC.inistate = 0
-                                          , IOC.curstate = 0
-                                          , IOC.eworld   = eworld'
-                                          , IOC.putmsgs  = putmsgs
-                                          }
-               putmsgs [ EnvData.TXS_CORE_USER_INFO "EWorld started" ]
-       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "EWorld must be started form ManualIdle" ]
+               IOC.putCS IOC.Manualing { IOC.smts     = smts
+                                       , IOC.tdefs    = tdefs
+                                       , IOC.sigs     = sigs
+                                       , IOC.behtrie  = []
+                                       , IOC.inistate = 0
+                                       , IOC.curstate = 0
+                                       , IOC.eworld   = eworld'
+                                       , IOC.putmsgs  = putmsgs
+                                       }
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "EWorld started" ]
+       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                          "EWorld must be started in ManSet Mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
-
 -- | Stop External World
 --
---   Only possible when in manual active mode.
-mnlStopW :: IOC.IOC ()
-mnlStopW  =  do
+--   Only possible when in Manualing Mode.
+txsStopW :: IOC.IOC ()
+txsStopW  =  do
      envc <- get
      case IOC.state envc of
-       IOC.ManualActive { IOC.smts     = smts
-                        , IOC.tdefs    = tdefs
-                        , IOC.sigs     = sigs
-                        , IOC.behtrie  = _behtrie
-                        , IOC.inistate = _inistate
-                        , IOC.curstate = _curstate
-                        , IOC.eworld   = eworld
-                        , IOC.putmsgs  = putmsgs
-                        }
+       IOC.Manualing { IOC.smts     = smts
+                     , IOC.tdefs    = tdefs
+                     , IOC.sigs     = sigs
+                     , IOC.behtrie  = _behtrie
+                     , IOC.inistate = _inistate
+                     , IOC.curstate = _curstate
+                     , IOC.eworld   = eworld
+                     , IOC.putmsgs  = putmsgs
+                     }
          -> do eworld' <- IOC.stopW eworld
-               IOC.putCS IOC.ManualIdle { IOC.smts     = smts
-                                        , IOC.tdefs    = tdefs
-                                        , IOC.sigs     = sigs
-                                        , IOC.eworld   = eworld'
-                                        , IOC.putmsgs  = putmsgs
-                                        }
-               putmsgs [ EnvData.TXS_CORE_USER_INFO "EWorld stopped" ]
-       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "EWorld must be stopped form ManualActive" ]
+               IOC.putCS IOC.ManSet { IOC.smts     = smts
+                                    , IOC.tdefs    = tdefs
+                                    , IOC.sigs     = sigs
+                                    , IOC.eworld   = eworld'
+                                    , IOC.putmsgs  = putmsgs
+                                    }
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "EWorld stopped" ]
+       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                          "EWorld must be stopped from Manualing Mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
-
 -- | Provide action to External World
 --
---   Only possible when in manual active mode.
-mnlActToW :: DD.Action -> IOC.IOC (Maybe DD.Action)
-mnlActToW act  =  do
+--   Only possible when in Manualing Mode.
+txsActToW :: DD.Action -> IOC.IOC DD.Verdict
+txsActToW act  =  do
      envc <- get
      case ( act, IOC.state envc ) of
-       ( DD.Act _acts, IOC.ManualActive { IOC.behtrie  = behtrie
-                                        , IOC.curstate = curstate
-                                        , IOC.eworld   = eworld
-                                        , IOC.putmsgs  = putmsgs
-                                        }                         )
+       ( DD.Act _acts, IOC.Manualing { IOC.behtrie  = behtrie
+                                     , IOC.curstate = curstate
+                                     , IOC.eworld   = eworld
+                                     , IOC.putmsgs  = putmsgs
+                                     }                         )
          -> do act' <- IOC.putToW eworld act
                IOC.modifyCS $ \cs -> cs { IOC.behtrie = behtrie ++ [(curstate,act',curstate+1)]
                                         , IOC.curstate = curstate+1
                                         }
-               putmsgs [ EnvData.TXS_CORE_USER_INFO $
-                         TxsShow.showN (curstate+1) 6 ++ "  IN: " ++ TxsShow.fshow act' ]
-               return $ Just act'
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                           $ TxsShow.showN (curstate+1) 6 ++
+                             "  IN: " ++ TxsShow.fshow act'
+                           ]
+               return $ Pass
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                             "Manual input action on EWorld only in ManualActive Mode" ]
-               return Nothing
+                             "Manual input on EWorld only in Manualing Mode" ]
+               return NoVerdict
 
 -- ----------------------------------------------------------------------------------------- --
-
 -- | Observe action from External World
 --
---   Only possible when in manual active mode.
-mnlObsFroW :: IOC.IOC (Maybe DD.Action)
-mnlObsFroW  =  do
+--   Only possible when in Manualing Mode.
+txsObsFroW :: IOC.IOC DD.Verdict
+txsObsFroW  =  do
      envc <- get
      case IOC.state envc of
-       IOC.ManualActive { IOC.behtrie  = behtrie
-                        , IOC.curstate = curstate
-                        , IOC.eworld   = eworld
-                        , IOC.putmsgs  = putmsgs
-                        }
+       IOC.Manualing { IOC.behtrie  = behtrie
+                     , IOC.curstate = curstate
+                     , IOC.eworld   = eworld
+                     , IOC.putmsgs  = putmsgs
+                     }
          -> do act' <- IOC.getFroW eworld
                IOC.modifyCS $ \cs -> cs { IOC.behtrie = behtrie ++ [(curstate,act',curstate+1)]
                                         , IOC.curstate = curstate+1
                                         }
-               putmsgs [ EnvData.TXS_CORE_USER_INFO $
-                         TxsShow.showN (curstate+1) 6 ++ " OUT: " ++ TxsShow.fshow act' ]
-               return $ Just act'
+               IOC.putmsgs [ EnvData.TXS_CORE_USER_INFO
+                           $ TxsShow.showN (curstate+1) 6 ++ " OUT: " ++ TxsShow.fshow act'
+                           ]
+               return $ Pass
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                             "Manual observation on EWorld only in ManualActive Mode" ]
-               return Nothing
+                             "Manual observation on EWorld only in Manualing Mode" ]
+               return NoVerdict
 
 -- ----------------------------------------------------------------------------------------- --
-
 -- | Provide action according to offer pattern to External World
 --
---   Only possible when in manual active mode.
-mnlOfferToW :: D.Offer -> IOC.IOC (Maybe DD.Action)
-mnlOfferToW offer  =  do
+--   Only possible when in Manualing Mode.
+txsOfferToW :: D.Offer -> IOC.IOC DD.Verdict
+txsOfferToW offer  =  do
      envc <- get
      case IOC.state envc of
-       IOC.ManualActive { IOC.behtrie  = behtrie
-                        , IOC.curstate = curstate
-                        , IOC.eworld   = eworld
-                        , IOC.putmsgs  = putmsgs
-                        }
-         -> do input <- randOffAct offer
+       IOC.Manualing { IOC.behtrie  = behtrie
+                     , IOC.curstate = curstate
+                     , IOC.eworld   = eworld
+                     , IOC.putmsgs  = putmsgs
+                     }
+         -> do input <- randOff2Act offer
                case input of
-                 Nothing  -> do putmsgs [ EnvData.TXS_CORE_USER_INFO "No action to EWorld" ]
-                                return Nothing
-                 Just act -> do act' <- IOC.putToW eworld act
-                                IOC.modifyCS $ \cs -> cs
-                                      { IOC.behtrie  = behtrie ++ [(curstate,act',curstate+1)]
-                                      , IOC.curstate = curstate+1
-                                      }
-                                putmsgs [ EnvData.TXS_CORE_USER_INFO $ TxsShow.showN
-                                            (curstate+1) 6 ++ "  IN: " ++ TxsShow.fshow act' ]
-                                return $ Just act'
+                 Nothing
+                   -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                                       "Could not generate action to EWorld" ]
+                         return NoVerdict
+                 Just act
+                   -> do act' <- IOC.putToW eworld act
+                         IOC.modifyCS $ \cs -> cs
+                               { IOC.behtrie  = behtrie ++ [(curstate,act',curstate+1)]
+                               , IOC.curstate = curstate+1
+                               }
+                         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                                     $ TxsShow.showN (curstate+1) 6 ++
+                                       "  IN: " ++ TxsShow.fshow act'
+                                     ]
+                         return $ Pass
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                             "Manual offer on EWorld only in ManualActive Mode" ]
-               return Nothing
+                             "Manual offer on EWorld only in Manualing Mode" ]
+               return NoVerdict
  
 -- ----------------------------------------------------------------------------------------- --
-
 -- | Run a number of random actions on External World
 --
---   Only possible when in manual active mode.
-mnlRunW :: Int -> IOC.IOC DD.Verdict
-mnlRunW nrsteps  =  do
+--   Only possible when in Manualing Mode.
+txsRunW :: Int -> IOC.IOC DD.Verdict
+txsRunW nrsteps  =  do
      envc <- get
      case IOC.state envc of
-       IOC.ManualActive { IOC.eworld  = eworld }
-         -> mnlRunW' (IOC.chansToW eworld) nrsteps False
+       IOC.Manualing { IOC.eworld  = eworld }
+         -> txsRunW' (IOC.chansToW eworld) nrsteps False
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Run on EWorld only in ManualActive Mode" ]
                return DD.NoVerdict
   where
-     mnlRunW' :: [D.ChanId] -> Int -> Bool -> IOC.IOC DD.Verdict
-     mnlRunW' chans depth lastDelta  =
+     txsRunW' :: [D.ChanId] -> Int -> Bool -> IOC.IOC DD.Verdict
+     txsRunW' chans depth lastDelta  =
           if  depth == 0
             then return DD.Pass
             else do
@@ -292,51 +294,49 @@ mnlRunW nrsteps  =  do
               if isJust input && ( lastDelta || ioRand )
                 then do                                                         -- try input --
                   let Just act = input
-                  act' <- mnlActToW act
+                  act' <- txsActToW act
                   case act' of
                     Nothing    -> return DD.NoVerdict
-                    Just act'' -> mnlRunW' chans (depth-1) (act''==DD.ActQui)
+                    Just act'' -> txsRunW' chans (depth-1) (act''==DD.ActQui)
                 else
                   if not lastDelta
                     then do                                                -- observe output --
-                      act' <- mnlObsFroW
+                      act' <- txsObsFroW
                       case act' of
                         Nothing    -> return DD.NoVerdict
-                        Just act'' -> mnlRunW' chans (depth-1) (act''==DD.ActQui)
+                        Just act'' -> txsRunW' chans (depth-1) (act''==DD.ActQui)
                     else do                                 -- lastDelta and no inputs: stop --
-                      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "No more actions on EWorld" ]
+                      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                                    "No more actions on EWorld" ]
                       return DD.Pass
  
 -- ----------------------------------------------------------------------------------------- --
-
 -- | Give current state number
 --
 --   Only possible when in manual active mode.
-mnlGetStNr :: IOC.IOC Int
-mnlGetStNr  =  do
+txsGetWStateNr :: IOC.IOC Int
+txsGetWStateNr  =  do
      envc <- get
      case IOC.state envc of
        IOC.ManualActive { IOC.curstate = curstate }
          -> return curstate
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                             "Current state of EWorld only in ManualActive Mode" ]
+                             "Current state of EWorld only in Manualing Mode" ]
                return $ -1
     
 -- ----------------------------------------------------------------------------------------- --
-
--- | Give path from initial state to current state number
+-- | Give trace from initial state to current state
 --
---   Only possible when in manual active mode.
-mnlGetPath :: IOC.IOC [(EnvData.StateNr,DD.Action,EnvData.StateNr)]
-mnlGetPath  =  do
+--   Only possible when in Manualing Mode.
+txsGetWTrace :: IOC.IOC [DD.Action]
+txsGetWTrace  =  do
      envc <- get
      case IOC.state envc of
-       IOC.ManualActive { IOC.behtrie = behtrie }
-         -> return behtrie
+       IOC.Manualing { IOC.behtrie = behtrie }
+         -> return [ act | (s1,act,s2) <- behtrie ]
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                             "Path of EWorld only in ManualActive Mode" ]
+                             "Trace of EWorld only in Manualing Mode" ]
                return []
-
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

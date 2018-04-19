@@ -13,50 +13,59 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 --
 -- Core Module TorXakis API:
--- API for TorXakis core functionality.
+-- Stepping Mode
 -- ----------------------------------------------------------------------------------------- --
 
 -- {-# LANGUAGE OverloadedStrings #-}
 
 module TxsStep
 
-( txsSetStep     -- :: TxsDefs.ModelDef -> IOC.IOC (Either String ())
-, txsShutStep    -- :: IOC.IOC (Either String ())
-, txsStartStep   -- :: IOC.IOC (Either String ())
-, txsStopStep    -- :: IOC.IOC (Either String ())
-, txsStepRun     -- :: Int -> IOC.IOC (Either String TxsDDefs.Verdict)
-, txsStepAct     -- :: TxsDDefs.Action -> IOC.IOC (Either String TxsDDefs.Verdict)
+(
+  -- * set stepping mode
+  txsSetStep       -- :: TxsDefs.ModelDef -> IOC.IOC ()
+
+  -- * shut stepping mode
+, txsShutStep      -- :: IOC.IOC ()
+
+  -- * start stepping mode
+, txsStartStep     -- :: IOC.IOC ()
+
+  -- * stop stepping mode
+, txsStopStep      -- :: IOC.IOC ()
+
+  -- * do an action in the model
+, txsStepAct       -- :: TxsDDefs.Action -> IOC.IOC (Either String TxsDDefs.Verdict)
+
+  -- * do an action according to offer-pattern in the model
+, txsStepOffer     -- ::
+
+  -- * run n actions on the model; if n<0 then indefinitely many actions
+, txsStepRun       -- ::
+
+  -- * give current state number in the model
+, txsStepStateNr   -- ::  
+
+  -- * give current state in the model
+, txsStepState     -- ::  
+
+  -- * give trace from initial state to current state in the model
+, txsStepTrace     -- ::
+
+  -- * give transition graph of actions stepped through so far
+, txsStepGraph     -- ::
+
+  -- * give the menu of possible offers in the model
+, txsStepMenu      -- :: 
+
+  -- * go to the specified state number in the model
+, txsStepTo        -- ::
+
+  -- * go to the initial state in the model
+, txsStepInit      --  ::
+
+  -- * go back with the specified number of steps in the model.
+, txsStepBack      --  ::
 )
-
-
-{-
-
- SetStepper  ::   Model    modelname    :: String     -- start stepper with model
-                    | Mapper   mappername   :: String     -- start stepper with mapper
-                    | Purp     purpname     :: String     -- start stepper with goal
-                    | Goals
-                    |  TOBJ    goalname     :: String     -- or purpose
-                    | Proc     procname     :: String     -- start stepper with process
-
-, stpAct   Action | Offer | -
-, stpObs
-, stpRun   [NrSteps]
-
-, stpGoInit
-, stpGoTo   StateNr
-, stpGoBack [NrSteps]
-
-, stpMenu
-
-, stpShowStNr
-, stpShowState
-, stpShowPath
-, stpShowGraph
-, stpShowTree
-, stpShowTrace
-
--}
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- import
@@ -118,13 +127,12 @@ import qualified TxsDefs
 
 
 -- ----------------------------------------------------------------------------------------- --
--- txsSetStep
-
--- | Set stepping using the provided model definition.
+-- | Set Stepping Mode.
 --
 --   Only possible when txscore is initialized.
+
 txsSetStep :: TxsDefs.ModelDef              -- ^ model definition.
-           -> IOC.IOC (Either String ())
+           -> IOC.IOC ()
 txsSetStep moddef  =  do
      envc <- get
      case IOC.state envc of
@@ -139,23 +147,22 @@ txsSetStep moddef  =  do
                                      , IOC.modeldef = moddef
                                      , IOC.putmsgs  = putmsgs
                                      }
-               return $ Right ()
-       _ -> return $ Left "'txsSetStep' only allowed in 'Initing' core state"
-
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepping Mode set" ]
+       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                          "Stepping Mode must be set in Initing mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
--- txsShutStep
-
--- | Shut stepping.
+-- | Shut Stepping Mode.
 --
---   Only possible when txscore is in StepSet.
-txsShutStep :: IOC.IOC (Either String ())
+--   Only possible when in StepSet Mode.
+txsShutStep :: IOC.IOC ()
 txsShutStep  =  do
      envc <- get
      case IOC.state envc of
        IOC.StepSet { IOC.smts     = smts
                    , IOC.tdefs    = tdefs
                    , IOC.sigs     = sigs
+                   , IOC.modeldef = _moddef
                    , IOC.putmsgs  = putmsgs
                    }
          -> do IOC.putCS IOC.Initing { IOC.smts     = smts
@@ -163,17 +170,15 @@ txsShutStep  =  do
                                      , IOC.sigs     = sigs
                                      , IOC.putmsgs  = putmsgs
                                      }
-               return $ Right ()
-       _ -> return $ Left "'txsShutStep' only allowed in 'StepSet' core state"
-
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepping Mode shut" ]
+       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                          "Stepping Mode must be shut from StepSet Mode" ]
                  
 -- ----------------------------------------------------------------------------------------- --
--- txsStartStep
-
 -- | Start stepping.
 --
---   Only possible when txscore is StepSet.
-txsStartStep :: IOC.IOC (Either String ())
+--   Only possible when in StepSet Mode.
+txsStartStep :: IOC.IOC ()
 txsStartStep  =  do
      envc <- get
      case IOC.state envc of
@@ -197,15 +202,16 @@ txsStartStep  =  do
                maybt <- startStepper moddef
                case maybt of
                  Nothing
-                   -> return $ Left "'txsStartStep': starting the 'stepper' failed"
+                   -> IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_INFO
+                                    "Starting Stepping Mode failed"]
                  Just bt
                    -> do IOC.modifyCS $ \st -> st { IOC.modstss = Map.singleton 0 bt }
-                         return $ Right ()
-       _ -> return $ Left "'txsStartStep' only allowed in 'StepSet' core state"
+                         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepping Mode started" ]
+       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                          "Stepping Mode must be started in StepSet Mode" ]
+ 
 
-
-startStepper :: TxsDefs.ModelDef ->
-                IOC.IOC ( Maybe BTree.BTree )
+startStepper :: TxsDefs.ModelDef -> IOC.IOC ( Maybe BTree.BTree )
 
 startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
@@ -214,14 +220,11 @@ startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
      writeEnvBtoEnvC envb'
      return maybt'
 
-
 -- ----------------------------------------------------------------------------------------- --
--- txsStopStep
-
--- | stop stepping.
+-- | Stop stepping.
 --
---   Only possible when Stepping.
-txsStopStep :: IOC.IOC (Either String ())
+--   Only possible when Stepping Mode.
+txsStopStep :: IOC.IOC ()
 txsStopStep  =  do
      envc <- get
      case  IOC.state envc of
@@ -237,9 +240,9 @@ txsStopStep  =  do
                                      , IOC.modeldef = moddef
                                      , IOC.putmsgs  = putmsgs
                                      }
-               return $ Right ()
-       _ -> return $ Left "'txsStopStep' only allowed in 'Stepping' core state"
-
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepping Mode stopped" ]
+       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                          "Stepping Mode must be stopped from Stepping Mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
 -- txsStepRun
@@ -259,8 +262,6 @@ txsStepRun nrsteps  =  do
 
 
 -- ----------------------------------------------------------------------------------------- --
--- txsStepAct
-
 -- | Step model with the provided action.
 --
 --   Only possible when Stepping.

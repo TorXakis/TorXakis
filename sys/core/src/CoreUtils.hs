@@ -23,7 +23,7 @@ module CoreUtils
 , isInAct           -- :: TxsDDefs.Action -> IOC.IOC Bool
 , nextBehTrie       -- :: TxsDDefs.Action -> IOC.IOC ()
 , randMenu          -- :: BTree.Menu -> IOC.IOC (Maybe TxsDDefs.Action)
-, randOffAct
+, randOff2Act
 , randAct           -- :: [TxsDefs.ChanId] -> IOC.IOC (Maybe TxsDDefs.Action)
 , randPurpMenu      -- :: BTree.Menu -> [BTree.Menu] -> IOC.IOC (Maybe TxsDDefs.Action)
 , menuConjunct      -- :: BTree.Menu -> BTree.Menu -> BTree.Menu
@@ -274,8 +274,8 @@ instantIVar sol var
 -- randOffsAct offs =
 --     sequence $ Set.map randOffer Set.toList offs
 
-randOffAct :: TxsDefs.Offer -> IOC.IOC (Maybe TxsDDefs.Action)
-randOffAct (TxsDefs.Offer chid choffs)  =  do
+randOff2Act :: TxsDefs.Offer -> IOC.IOC (Maybe TxsDDefs.Action)
+randOff2Act (TxsDefs.Offer chid choffs)  =  do
      consts <- mapM randChOffer choffs
      if  and $ map isJust consts  
        then return $ Just $ TxsDDefs.Act $ Set.singleton
