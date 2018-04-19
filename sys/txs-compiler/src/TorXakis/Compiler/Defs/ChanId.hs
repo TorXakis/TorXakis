@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE OverloadedStrings      #-}
 module TorXakis.Compiler.Defs.ChanId where
 
 import           Data.Map               (Map)
@@ -14,6 +15,7 @@ import           TorXakis.Compiler.Data
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Maps
+import           TorXakis.Compiler.ValExpr.SortId
 
 -- | Create a mapping from channel names to channel id's.
 chanDeclsToChanIds :: (MapsTo Text SortId mm)
@@ -30,9 +32,22 @@ chanDeclsToChanIds mm chs = do
 predefinedChans :: [(Text, ChanId)]
 predefinedChans =
     zip (name <$> cIds) cIds
-    where cIds = [ chanIdExit
-                 , chanIdIstep
+    where cIds = [ chanIdIstep
                  , chanIdQstep
-                 , chanIdHit
-                 , chanIdMiss
                  ]
+
+class DeclaresChannels e where
+    mkChanIds :: (MapsTo Text SortId mm) => mm -> e -> CompilerM [(Text, ChanId)]
+
+instance DeclaresChannels ExitSortDecl where
+    mkChanIds _ NoExitD = return []
+    mkChanIds mm (ExitD xs) = do
+        chId  <- getNextId
+        eSids <- sortIds mm xs
+        return [("EXIT", ChanId "EXIT" (Id chId) eSids)]
+    mkChanIds _ HitD = return [ (name chanIdHit, chanIdHit)
+                               , (name chanIdMiss, chanIdMiss)
+                               ]
+
+
+    

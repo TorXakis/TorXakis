@@ -44,7 +44,8 @@ procDeclsToProcDefMap mm ps = Map.fromList <$>
       procDeclToProcDefMap pd = do
           pId         <- getNextId
           chIds       <- chanDeclsToChanIds mm (procChParams . procDeclComps $ pd)
-          let allChIds = chIds ++ predefinedChans
+          exitChan    <- mkChanIds mm (procRetSort . procDeclComps $ pd)
+          let allChIds = chIds ++ predefinedChans ++ exitChan
           pdVdSortMap <- procDefVdSortMap
           -- List of VarId's associated to the variables declared by a formal parameter.
           pvIds       <- traverse (varIdFromVarDecl pdVdSortMap) vdecls
@@ -53,9 +54,6 @@ procDeclsToProcDefMap mm ps = Map.fromList <$>
           bTypes      <- Map.fromList <$> inferVarTypes (allChIds .& (pvIds .& mm) :& pdVdSortMap) body
           bvIds       <- mkVarIds bTypes body
           e           <- exitSort (procRetSort . procDeclComps $ pd) <!!> pd
-          -- TODO: we need to generate a Loc VarRefE to Loc VarDeclE mapping
-          -- for the variables inside a process definition. Here the trickiest
-          -- part is to consider that question offers introduce a local variable (In ? x >-> Out ! x + 1)
           b           <- toBExpr (allChIds .&. (pvIds ++ bvIds) :& mm) body
           -- NOTE that it is crucial that the order of the channel parameters
           -- declarations is preserved!
@@ -76,4 +74,4 @@ procDeclsToProcDefMap mm ps = Map.fromList <$>
                 exitSort NoExitD   = return NoExit
                 exitSort HitD      = return Hit
                 exitSort (ExitD xs) = fmap Exit $
-                    traverse (mm .@!!) $ zip (sortRefName <$> xs) (getLoc <$> xs)
+                    sortIds mm xs -- traverse (mm .@!!) $ zip (sortRefName <$> xs) (getLoc <$> xs)

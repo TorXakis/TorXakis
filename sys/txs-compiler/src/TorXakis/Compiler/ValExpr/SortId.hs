@@ -236,3 +236,6 @@ instance HasTypedVars OfferDecl where
                           os
                           (chansorts chId)
         return $ catMaybes vds
+
+sortIds :: (MapsTo Text SortId mm) => mm -> [OfSort] -> CompilerM [SortId]
+sortIds mm xs = traverse (mm .@!!) $ zip (sortRefName <$> xs) (getLoc <$> xs)

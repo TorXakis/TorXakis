@@ -6,8 +6,8 @@ import           Data.Char                (isPrint)
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           Text.Parsec              (many, many1, notFollowedBy, oneOf,
-                                           optionMaybe, satisfy, sepBy, try,
-                                           (<?>), (<|>))
+                                           optionMaybe, parserFail, satisfy,
+                                           sepBy, try, (<?>), (<|>))
 
 import           Text.Parsec.Expr         (Assoc (AssocLeft),
                                            Operator (Infix, Prefix),
@@ -99,7 +99,11 @@ txsITEP = do
     return $ mkITEExpDecl l ex0 ex1 ex2
 
 txsBopSymbolP :: TxsParser Text
-txsBopSymbolP = T.pack <$> txsLexeme (many1 txsSpecialCOp)
+txsBopSymbolP = try $ T.pack <$> do
+    op <- txsLexeme (many1 txsSpecialCOp)
+    case op of
+        ">->" -> parserFail "Operator \">->\" not allowed in value expressions."
+        _     -> return op
 
 -- | Special characters for operators.
 txsSpecialCOp :: TxsParser Char
