@@ -47,8 +47,8 @@ spec = return $ do
         describe "Upload files to a session" $ do
             it "Uploads valid files" $ do
                 _ <- post "http://localhost:8080/session/new" [partText "" ""]
-                r <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
-                r ^. responseStatus . statusCode `shouldBe` 201
+                r <- put "http://localhost:8080/session/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                r ^. responseStatus . statusCode `shouldBe` 202
                 r ^. responseBody `shouldBe` "\"\\nLoaded: Point.txs\""
             it "Fails for parse error" $ do
                 let handler (CI.HttpExceptionRequest _ (C.StatusCodeException r body)) = do
@@ -57,12 +57,12 @@ spec = return $ do
                         return CI.Response{CI.responseStatus = s}
                     handler e = throwIO e
                 _ <- post "http://localhost:8080/session/new" [partText "" ""]
-                r <- post "http://localhost:8080/session/1/model" [partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"]
+                r <- put "http://localhost:8080/session/1/model" [partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"]
                         `catch` handler
                 r ^. responseStatus . statusCode `shouldBe` 400
             it "Starts stepper and takes 3 steps" $ do
                 _ <- post "http://localhost:8080/session/new" [partText "" ""]
-                _ <- post "http://localhost:8080/session/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                _ <- put "http://localhost:8080/session/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
                 post "http://localhost:8080/stepper/start/1/Model" [partText "" ""] >>= checkSuccess
                 post "http://localhost:8080/stepper/step/1/3" [partText "" ""] >>= checkSuccess
                 get "http://localhost:8080/session/sse/1/messages" >>= checkJSON
