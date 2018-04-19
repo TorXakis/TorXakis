@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 module TorXakis.Compiler.ValExpr.ExpDecl where
 
 import           Control.Monad.Error.Class (liftEither)
@@ -11,72 +13,93 @@ import qualified Data.Map                  as Map
 import           Data.Text                 (Text)
 import Data.Semigroup ((<>))
 import           Data.Either               (partitionEithers)
-    
+
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Error
 import           TorXakis.Parser.Data
 
--- | Generate a map from the locations of variable references to the declarations of
--- those variables.
-generateVarDecls :: Map Text [FuncDefInfo] -- ^ Predefined functions
-                 -> [FuncDecl]
-                 -> CompilerM (Map (Loc VarRefE) (Loc VarDeclE :| [FuncDefInfo]))
-generateVarDecls ps fs = Map.fromList . concat <$>
-    traverse (generateVarDeclsForFD fdMap) fs
-    where
-      -- | Map of function names to the locations where they are defined.
-      fdMap :: Map Text [FuncDefInfo]
-      fdMap =
-          -- Note the union is left biased, so functions defined by the user
-          -- will have precedence over predefined functions.          
-          Map.fromListWith (++) (zip (funcName <$> fs) (return . FDefLoc . getLoc <$> fs))
-          `union`
-          ps
-          where
-            union = Map.unionWith (++)
 
--- | Map a variable reference to a variable declaration, for a function declaration.
---
--- TODO: property to check:
---
--- the number of 'Loc FuncDeclE' entities in the function declaration should equal the
--- length of the list returned by this function.
---
--- This ensures that the mapping returned is complete.
-generateVarDeclsForFD :: Map Text [FuncDefInfo] -- ^ Existing function declarations.
-                      -> FuncDecl
-                      -> CompilerM [(Loc VarRefE, Loc VarDeclE :| [FuncDefInfo])]
-generateVarDeclsForFD fdMap f = varDeclsFromExpDecl (mkVdMap (funcParams f)) (funcBody f)
-    where
-      mkVdMap :: (IsVariable v, HasLoc v VarDeclE)
-              => [v] -> Map Text (Loc VarDeclE)
-      mkVdMap vs =
-          Map.fromList $ zip (varName <$> vs) (getLoc <$> vs)
-      varDeclsFromExpDecl :: Map Text (Loc VarDeclE)
-                          -> ExpDecl
-                          -> CompilerM [(Loc VarRefE, Loc VarDeclE :| [FuncDefInfo])]
-      varDeclsFromExpDecl vdMap ex = case expChild ex of
-          VarRef n rLoc -> do
-              dLoc <- fmap Left (lookupM (toText n) vdMap)
-                  `catchError`
-                  const (fmap Right (lookupM (toText n) fdMap)) -- ("identifier declaration for " <> toText n)
-              return [(rLoc, dLoc)]
-          ConstLit _ -> return []
-          LetExp vs subEx -> do
-              vdVs <- concat <$> traverse (varDeclsFromExpDecl vdMap) (varDeclExp <$> vs)
-              -- If there are variables in the LET expression that shadows a
-              -- more global variable, then we overwrite this global occurrence
-              -- with the one at the LET expression.
-              let vdMap' = Map.unionWith (flip const) vdMap (mkVdMap vs)
-              vdSubEx <- varDeclsFromExpDecl vdMap' subEx
-              return $ vdSubEx ++ vdVs
-                  
-          If ex0 ex1 ex2 ->
-              concat <$> traverse (varDeclsFromExpDecl vdMap) [ex0, ex1, ex2]
-          Fappl n rLoc exs -> do
-              dLocs   <- lookupM (toText n) fdMap -- ("function declaration for " <> toText n)
-              -- TODO: factor out the duplication w.r.t. `If`
-              vrVDExs <- concat <$> traverse (varDeclsFromExpDecl vdMap) exs
-              return $ (rLoc, Right dLocs) : vrVDExs 
+class HasVarReferences e where
+    -- | Map variable references to the entities they refer to.
+    --
+    -- TODO: property to check:
+    --
+    -- the number of 'Loc FuncDeclE' entities in the function declaration
+    -- should equal the length of the list returned by this function.
+    --
+    -- This ensures that the mapping returned is complete.
+    mapRefToDecls :: ( MapsTo Text [FuncDefInfo] mm
+                     , MapsTo Text (Loc VarDeclE) mm )
+                  => mm  -- ^ Predefined functions
+                  -> e
+                  -> CompilerM [(Loc VarRefE, Loc VarDeclE :| [FuncDefInfo])]
+
+instance HasVarReferences e => HasVarReferences [e] where
+    mapRefToDecls mm = fmap concat . traverse (mapRefToDecls mm)
+
+instance HasVarReferences ProcDecl where
+    mapRefToDecls mm pd = mapRefToDecls (pNtoD <.+> mm) (procDeclBody pd)
+        where
+          pNtoD = mkVdMap (procDeclParams pd)
+
+-- | Make a map from variable names to variable the location in which a
+-- variable with that name is declared.
+mkVdMap :: (IsVariable v, HasLoc v VarDeclE)
+        => [v] -> Map Text (Loc VarDeclE)
+mkVdMap vs =
+    Map.fromList $ zip (varName <$> vs) (getLoc <$> vs)
+
+instance HasVarReferences BExpDecl where
+    mapRefToDecls _ Stop = return []
+    mapRefToDecls mm (ActPref ao be) =
+        (++) <$> mapRefToDecls mm ao <*> mapRefToDecls (aoVds <.+> mm) be
+        where
+          -- An action offer introduces new variables in the case of actions of
+          -- the form 'Ch ? v':
+          aoVds = mkVdMap (actOfferDecls ao)
+
+instance HasVarReferences ActOfferDecl where
+    mapRefToDecls mm ao@(ActOfferDecl os mc) =
+        (++) <$> mapRefToDecls mm os <*> mapRefToDecls (aoVds <.+> mm) mc
+        where
+          --  Variables introduced in the action offer (by means of actions of
+          --  the form 'Ch ? v') are available at the constraint.
+          aoVds = mkVdMap (actOfferDecls ao)
+
+instance HasVarReferences e => HasVarReferences (Maybe e) where
+    mapRefToDecls mm = maybe (return []) (mapRefToDecls mm)
+
+instance HasVarReferences ExpDecl where
+    -- TODO: replace varDeclsFromExpDecl by this function
+    mapRefToDecls mm ex = case expChild ex of
+        VarRef n rLoc -> do
+            dLoc <- fmap Left (mm .@!! (toText n, rLoc))
+                    `catchError`
+                    const (fmap Right (mm .@!! (toText n, rLoc)))
+            return [(rLoc, dLoc)]
+        ConstLit _ ->
+            return []
+        LetExp vs subEx ->
+            let letVds = mkVdMap vs in
+                (++) <$> mapRefToDecls mm (varDeclExp <$> vs)
+                     <*> mapRefToDecls (letVds <.+> mm) subEx
+        If ex0 ex1 ex2 ->
+            mapRefToDecls mm [ex0, ex1, ex2]
+        Fappl n rLoc exs -> do
+            dLocs   <- mm .@!! (toText n, rLoc)
+            vrVDExs <- mapRefToDecls mm exs
+            return $ (rLoc, Right dLocs) : vrVDExs        
+
+instance HasVarReferences OfferDecl where
+    mapRefToDecls mm (OfferDecl _ os) = mapRefToDecls mm os
+
+instance HasVarReferences ChanOfferDecl where
+    mapRefToDecls _ (QuestD ivd) =
+        -- A variable declared in an input action refers to itself.
+        return [(asVarReflLoc . getLoc $ ivd, Left . getLoc $ ivd)]
+    mapRefToDecls mm (ExclD ex)  = mapRefToDecls mm ex
+    
+instance HasVarReferences FuncDecl where
+    mapRefToDecls mm f = mapRefToDecls (mkVdMap (funcParams f) <.+> mm) (funcBody f)

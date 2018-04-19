@@ -94,9 +94,22 @@ compileParsedDefs pd = do
     stdFuncIds <- getStdFuncIds
     cstrFuncIds <- adtsToFuncIds allSortsMap (pd ^. adts)
     -- Construct the variable declarations table.
-    let predefFuncs = funcDefInfoNamesMap $
+    let -- Predefined functions:
+        predefFuncs = funcDefInfoNamesMap $
             (fst <$> stdFuncIds) ++ (fst <$> cstrFuncIds)
-    dMap <- generateVarDecls predefFuncs allFuncs
+        -- User defined functions:
+        userDefFuncs = Map.fromListWith (++) $
+                           zip (funcName <$> allFuncs)
+                               (return . FDefLoc . getLoc <$> allFuncs)
+        --  All the functions available at the top level. Note the union is
+        -- left biased, so functions defined by the user will have precedence
+        -- over predefined functions.
+        nameToFDefs = Map.unionWith (++) predefFuncs userDefFuncs
+        -- There are no variable declarations at the top level.
+        eVdMap = Map.empty :: Map Text (Loc VarDeclE) 
+    fRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs) allFuncs
+    pRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs) (pd ^. procs)
+    let dMap = fRtoDs `Map.union` pRtoDs
     -- Construct the function declaration to function id table.
     lFIdMap <- funcDeclsToFuncIds allSortsMap allFuncs
     -- Join `lFIdMap` and  `stdFuncIds`.

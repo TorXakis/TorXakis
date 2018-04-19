@@ -181,14 +181,17 @@ idefsNames mm = catMaybes $ fdiName <$> Map.keys fm
 (<!!>) :: HasErrorLoc l => CompilerM a -> l -> CompilerM a
 m <!!> l = catchError m $ throwError . (errorLoc .~ getErrorLoc l)
 
-(.@@) :: (HasErrorLoc k, MapsTo k v mm, Ord k, Show k, Typeable k)
+(.@@) :: (HasErrorLoc k, MapsTo k v mm, Ord k, Show k
+         , Typeable k, Typeable v)
       => mm -> k -> Either Error v
 mm .@@ k = lookup k mm <!> k
 
-(.@) :: (HasErrorLoc k, MapsTo k v mm, Ord k, Show k, Typeable k)
+(.@) :: ( HasErrorLoc k, MapsTo k v mm, Ord k, Show k
+        , Typeable k, Typeable v)
      => mm -> k -> CompilerM v
 mm .@ k = lookupM k mm <!!> k
 
-(.@!!) :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k, Typeable k)
+(.@!!) :: ( HasErrorLoc l, MapsTo k v mm, Ord k, Show k
+          , Typeable k, Typeable v )
      => mm -> (k, l) -> CompilerM v
 mm .@!! (k, l) = lookupM k mm <!!> l

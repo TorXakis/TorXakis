@@ -17,6 +17,7 @@ import           Data.Either.Utils         (maybeToEither)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
 import           Data.Proxy                (Proxy)
+import           Data.Proxy                (Proxy (Proxy))
 import           Data.Semigroup            ((<>))
 import qualified Data.Text                 as T
 import           Data.Type.Bool
@@ -31,9 +32,11 @@ import           TorXakis.Compiler.Error
 -- | 'm' maps keys of type 'k' onto values of type 'v'.
 class (In (k, v) (Contents m) ~ 'True) => MapsTo k v m where
     -- | Lookup a key in the map.
-    lookup  :: (Ord k, Show k, Typeable k) => k -> m -> Either Error v
+    lookup  :: (Ord k, Show k, Typeable k, Typeable v)
+            => k -> m -> Either Error v
     -- | Monadic version of @lookup@.
-    lookupM :: (Ord k, Show k, Typeable k) => k -> m -> CompilerM v
+    lookupM :: (Ord k, Show k, Typeable k, Typeable v)
+            => k -> m -> CompilerM v
     lookupM k m = liftEither $ lookup k m
     -- | Get the inner map.
     innerMap :: m -> Map k v
@@ -80,6 +83,8 @@ instance MapsTo k v (Map k v) where
                   , _errorLoc  = NoErrorLoc
                   , _errorMsg  =  "Could not find key " <> T.pack (show k)
                                <> " of type " <> (T.pack . show . typeOf $ k)
+                               <> " when looking for a value of type "
+                               <> (T.pack . show . typeOf $ (Proxy :: Proxy v))
                   }
     innerMap = id
     -- Note that here we're using the monoidal implementation of <> for maps,
@@ -116,7 +121,8 @@ class ( In (k, v) (Contents m0) ~ inM0
       , (inM0 || inM1) ~ 'True
       ) =>
       PairMapsTo k v m0 m1 inM0 inM1 where
-    lookupPair :: (Ord k, Show k, Typeable k) => k -> m0 :& m1 -> Either Error v
+    lookupPair :: (Ord k, Show k, Typeable k, Typeable v)
+               => k -> m0 :& m1 -> Either Error v
     innerMapPair :: m0 :& m1 -> Map k v
     addMapPair :: Ord k => Map k v -> m0 :& m1 -> m0 :& m1
 

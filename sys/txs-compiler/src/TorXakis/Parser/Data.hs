@@ -91,6 +91,8 @@ module TorXakis.Parser.Data
     , OfferDecl (..)
     , ChanOfferDecl (..)
     , chanOfferIvarDecl
+    , actOfferDecls
+    , asVarReflLoc
     -- ** Channels
     , ChanDecl
     , mkChanDecl
@@ -104,6 +106,8 @@ module TorXakis.Parser.Data
     , mkProcDecl
     , procDeclName
     , procDeclComps
+    , procDeclBody
+    , procDeclParams
     , ProcComps
     , procChParams
     , procParams
@@ -478,6 +482,24 @@ chanOfferIvarDecl :: ChanOfferDecl -> Maybe IVarDecl
 chanOfferIvarDecl (QuestD iv) = Just iv
 chanOfferIvarDecl _           = Nothing
 
+-- | Transform a variable declaration into a variable reference. This is used
+-- in the case of an implicit variable declaration (which is a reference to
+-- itself).
+--
+-- TODO: does it make sense to have this function instead of just exporting @locFromLoc@.
+asVarReflLoc :: Loc VarDeclE -> Loc VarRefE
+asVarReflLoc = locFromLoc
+
+-- | Get all the variable declarations introduced by receiving actions of the
+-- form 'Ch ? v'.
+actOfferDecls :: ActOfferDecl -> [IVarDecl]
+actOfferDecls (ActOfferDecl os _) = concatMap f os
+    where
+      f :: OfferDecl -> [IVarDecl]
+      f (OfferDecl _ cs) = concatMap g cs
+      g (QuestD ivd) = [ivd]
+      g (ExclD _)    = []
+
 type VarRef = ParseTree VarRefE ()
 
 mkVarRef :: Text -> Loc VarRefE -> VarRef
@@ -514,6 +536,12 @@ procDeclName = nodeNameT
 
 procDeclComps :: ProcDecl -> ProcComps
 procDeclComps = child
+
+procDeclBody :: ProcDecl -> BExpDecl
+procDeclBody = procBody . procDeclComps
+
+procDeclParams :: ProcDecl -> [VarDecl]
+procDeclParams = procParams . procDeclComps
 
 -- | Components of a process.
 data ProcComps = ProcComps
