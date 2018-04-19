@@ -21,3 +21,11 @@ ENDDEF
 PROCDEF stopper3[X, Y :: Int # Int; Z :: String; A, B](x:: String) ::=
     STOP
 ENDDEF
+
+PROCDEF simple[X :: Int]() ::=
+    X ! 1
+ENDDEF
+
+PROCDEF exiter[X :: Int]() EXIT Int # Int ::=
+    EXIT ! 0 ! 1
+ENDDEF

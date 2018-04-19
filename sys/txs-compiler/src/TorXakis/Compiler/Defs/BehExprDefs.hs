@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Compiler.Defs.BehExprDefs where
 
 import           Control.Monad.Error.Class         (liftEither)
@@ -11,7 +12,7 @@ import           SortId                            (sortIdBool, SortId)
 import           TxsDefs                           (ActOffer (ActOffer), BExpr, ChanOffer (Quest, Exclam),
                                                     Offer (Offer), actionPref, stop)
 import           ValExpr                           (cstrConst)
-import           ChanId (ChanId, chansorts)
+import           ChanId (ChanId (ChanId), chansorts, name, unid)
 import           VarId (VarId)
 import           FuncId (FuncId)
 import           FuncDef (FuncDef)
@@ -56,7 +57,14 @@ toOffer mm (OfferDecl cr cods) = do
             <!!> cr
     ofrs <- traverse (uncurry (toChanOffer mm))
                      (zip (chansorts cId) cods)
-    return $ Offer cId ofrs
+    -- | TODO: QUESTION: Here TorXakis assigns the empty list of SortId's to
+    -- the EXIT channel. Why is TorXakis not using the expected SortId's? To
+    -- comply with the curent compiler I have to erase the sort Ids.
+    let cId' =
+            case name cId of
+                "EXIT" -> ChanId (name cId) (unid cId) []
+                _      -> cId
+    return $ Offer cId' ofrs
 
 toChanOffer :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                , MapsTo (Loc VarDeclE) VarId mm

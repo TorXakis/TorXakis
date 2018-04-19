@@ -71,7 +71,7 @@ procDeclsToProcDefMap mm ps = Map.fromList <$>
                       vdToSortId vd =
                           (getLoc vd, ) <$>  mm .@!! varDeclSort vd
                 exitSort :: ExitSortDecl -> CompilerM ExitSort
-                exitSort NoExitD   = return NoExit
-                exitSort HitD      = return Hit
-                exitSort (ExitD xs) = fmap Exit $
-                    sortIds mm xs -- traverse (mm .@!!) $ zip (sortRefName <$> xs) (getLoc <$> xs)
+                exitSort NoExitD    = return NoExit
+                exitSort HitD       = return Hit
+                exitSort (ExitD xs) = Exit <$> sortIds mm xs
+                    
