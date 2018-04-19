@@ -7,10 +7,11 @@ import           Data.Maybe                        (fromMaybe)
 import qualified Data.Set                          as Set
 import           Data.Text (Text)
 
+import           StdTDefs (chanIdIstep)
 import           ConstDefs                         (Const (Cbool))
 import           SortId                            (sortIdBool, SortId)
 import           TxsDefs                           (ActOffer (ActOffer), BExpr, ChanOffer (Quest, Exclam),
-                                                    Offer (Offer), actionPref, stop)
+                                                    Offer (Offer), chanid, actionPref, stop)
 import           ValExpr                           (cstrConst)
 import           ChanId (ChanId (ChanId), chansorts, name, unid)
 import           VarId (VarId)
@@ -43,7 +44,9 @@ toActOffer mm (ActOfferDecl osd mc) = do
     os <- traverse (toOffer mm) osd
     c  <- fromMaybe (return . cstrConst . Cbool $ True)
                     (liftEither . expDeclToValExpr mm sortIdBool <$> mc)
-    return $ ActOffer (Set.fromList os) c
+    -- Filter the internal actions (to comply with the current TorXakis compiler).
+    let os' = filter ((chanIdIstep /=) . chanid) os
+    return $ ActOffer (Set.fromList os') c
 
 toOffer :: ( MapsTo Text ChanId mm
            , MapsTo (Loc VarDeclE) VarId mm
@@ -60,11 +63,11 @@ toOffer mm (OfferDecl cr cods) = do
     -- | TODO: QUESTION: Here TorXakis assigns the empty list of SortId's to
     -- the EXIT channel. Why is TorXakis not using the expected SortId's? To
     -- comply with the curent compiler I have to erase the sort Ids.
-    let cId' =
-            case name cId of
-                "EXIT" -> ChanId (name cId) (unid cId) []
-                _      -> cId
-    return $ Offer cId' ofrs
+    return $
+        case name cId of
+            "EXIT"  -> Offer (ChanId (name cId) (unid cId) []) ofrs                      
+            _      -> Offer cId ofrs
+    
 
 toChanOffer :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                , MapsTo (Loc VarDeclE) VarId mm

@@ -53,6 +53,7 @@ import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.VarId
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Maps
+import           TorXakis.Compiler.Simplifiable
 import           TorXakis.Compiler.Defs.ProcDef
  
 import           TorXakis.Parser
@@ -134,35 +135,6 @@ compileParsedDefs pd = do
     St i    <- get
     return (Id i, txsDefs, sigs)
 
--- | Try to apply a handler to the given function definition (which is described by a pair).
---
--- TODO: Return an Either instead of throwing an error.
-simplify' :: FuncTable VarId
-          -> [Text] -- ^ Only simplify these function calls. Once we do not
-                    -- need to be compliant with the old TorXakis compiler we
-                    -- can optimize further.
-          -> ValExpr VarId -> ValExpr VarId
-simplify' ft fns ex@(view -> Vfunc (FuncId n _ aSids rSid) vs) =
-    -- TODO: For now make the simplification only if "n" is a predefined
-    -- symbol. Once compliance with the current `TorXakis` compiler is not
-    -- needed we can remove this constraint and simplify further.
-    if n `elem` fns
-    then fromMaybe (error "Could not apply handler") $ do
-        sh <- Map.lookup n (toMap ft)
-        h  <- Map.lookup (Signature aSids rSid) sh
-        return $ h (simplify' ft fns <$> vs)
-    else ex
-
-simplify' ft fns (view -> Vite ex0 ex1 ex2) = cstrITE
-                                             (simplify' ft fns ex0)
-                                             (simplify' ft fns ex1)
-                                             (simplify' ft fns ex2)
-simplify' ft fns x                          = over uniplate (simplify' ft fns) x
-
-simplify :: FuncTable VarId -> [Text] -> (FuncId, FuncDef VarId) -> (FuncId, FuncDef VarId)
--- TODO: return an either instead.
-simplify ft fns (fId, FuncDef vs ex) = (fId, FuncDef vs (simplify' ft fns ex))
-
 toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo (Loc CstrE) CstrId mm
              , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
@@ -181,12 +153,12 @@ toTxsDefs ft mm pd = do
         funcDefsNoConsts = Map.withoutKeys (innerMap mm) (Set.fromList cfIds)
         -- TODO: we have to simplify to comply with what TorXakis generates.
         fn = idefsNames mm ++ fmap name cfIds
-        funcDefsSimpl = Map.fromList (simplify ft fn <$> Map.toList funcDefsNoConsts)
+--        funcDefsSimpl = Map.fromList (simplify ft fn <$> Map.toList funcDefsNoConsts)
         fds = TxsDefs.empty {
-            funcDefs = funcDefsSimpl            
+            funcDefs = simplify ft fn funcDefsNoConsts
             }
         pds = TxsDefs.empty {
-            procDefs = innerMap mm
+            procDefs = simplify ft fn (innerMap mm)
             }    
     mds <- modelDeclsToTxsDefs mm (pd ^. models)
     return $ ads

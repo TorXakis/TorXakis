@@ -29,3 +29,75 @@ ENDDEF
 PROCDEF exiter[X :: Int]() EXIT Int # Int ::=
     EXIT ! 0 ! 1
 ENDDEF
+
+PROCDEF ap0[X, Y :: Int](x :: Int) ::=
+    Y ? v | X ! 1
+    >-> X ! x * v
+ENDDEF
+
+PROCDEF ap1[M :: String; N :: String; A :: String](exp :: String) ::=
+    M ? exp | N ? rn [[ exp == rn ]] >-> A ! "Success!"
+ENDDEF
+
+PROCDEF ap2[In :: Int; Out :: String # String]() ::=
+        In ? v
+    >-> Out ! "Boom" ! "Bang" [[v == 0]]
+    >-> In ? w
+    >-> Out ! "Uh?" ! "Ah!" [[v == 1]]
+ENDDEF
+
+PROCDEF ap2[In :: Int; Out :: String # String](e :: String) HIT ::=
+        In ? v
+    >-> Out ! "Boom" ? z [[z == e]]
+    >-> HIT
+    >-> In ? w
+    >-> Out ! "Uh?" ! "Ah!" [[v == 1]]
+ENDDEF
+
+PROCDEF ap2[In :: Int; Out :: String # String]() HIT ::=
+        In ? v
+    >-> ISTEP        
+    >-> Out ! "Boom" ! "Bang" [[v == 0]]
+    >-> MISS
+    >-> In ? w
+    >-> QSTEP
+    >-> Out ! "Uh?" ! "Ah!" [[v == 1]]
+ENDDEF
+
+CHANDEF WhyDoYouHaveANameAtAll ::=
+    Ping;
+    Pong :: Int # Int;    
+    Peng, Pung :: String # Bool
+ENDDEF
+
+MODELDEF Stopper2 ::=
+    CHAN IN Pong
+    CHAN OUT
+    BEHAVIOUR
+    Pong ! 2 ! 2
+ENDDEF
+
+MODELDEF Pinger ::=
+    CHAN IN Ping
+    CHAN OUT
+    BEHAVIOUR Ping >-> STOP
+ENDDEF
+
+FUNCDEF inc(x :: Int) :: Int ::=
+    x + 1
+ENDDEF
+
+CONSTDEF
+    one :: Int ::= 1;
+    two :: String ::= "two"
+ENDDEF
+
+PROCDEF shadower[In, Out :: Int](x::Int) ::=
+        In ? x >-> Out ! x + 1
+    >-> In ? x >-> Out ! inc(x)
+    >-> In ? x >-> Out ! x + one
+ENDDEF
+
+CHANDEF Blah ::=
+    In, Out :: Int
+ENDDEF
