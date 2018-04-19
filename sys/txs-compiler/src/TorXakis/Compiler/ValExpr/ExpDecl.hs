@@ -59,6 +59,10 @@ instance HasVarReferences BExpDecl where
           -- An action offer introduces new variables in the case of actions of
           -- the form 'Ch ? v':
           aoVds = mkVdMap (actOfferDecls ao)
+    mapRefToDecls mm (LetBExp vs be) =
+        let letVds = mkVdMap vs in
+            (++) <$> mapRefToDecls mm (varDeclExp <$> vs)
+                 <*> mapRefToDecls (letVds <.+> mm) be
 
 instance HasVarReferences ActOfferDecl where
     mapRefToDecls mm ao@(ActOfferDecl os mc) =

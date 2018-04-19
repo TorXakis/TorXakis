@@ -59,6 +59,7 @@ class DeclaresVariables e where
 instance DeclaresVariables BExpDecl where
     mkVarIds _  Stop = return []
     mkVarIds mm (ActPref ao be) = (++) <$> mkVarIds mm ao <*> mkVarIds mm be
+    mkVarIds mm (LetBExp vs be) = (++) <$> mkVarIds mm vs <*> mkVarIds mm be
 
 instance DeclaresVariables ActOfferDecl where
     mkVarIds mm (ActOfferDecl os mEx) = (++) <$> mkVarIds mm os <*> mkVarIds mm mEx
@@ -79,3 +80,6 @@ instance DeclaresVariables ChanOfferDecl where
 instance DeclaresVariables ExpDecl where
     -- TODO: rename 'varIdsFromExpDecl' to 'mkVarIds'.
     mkVarIds = varIdsFromExpDecl 
+
+instance DeclaresVariables LetVarDecl where
+    mkVarIds mm v = return <$> varIdFromVarDecl mm v

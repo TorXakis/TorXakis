@@ -8,6 +8,8 @@
 {-# LANGUAGE FlexibleInstances  #-}
 module TorXakis.Compiler.ValExpr.SortId where
 
+import Debug.Trace (trace)
+
 import           Prelude                   hiding (lookup)
 import           Control.Arrow             (left, (|||))
 import           Control.Monad             (when)
@@ -212,7 +214,15 @@ class HasTypedVars e where
 
 instance HasTypedVars BExpDecl where
     inferVarTypes _ Stop = return []
-    inferVarTypes mm (ActPref ao be) = (++) <$> inferVarTypes mm ao <*> inferVarTypes mm be
+    inferVarTypes mm (ActPref ao be) = do
+        xs <- inferVarTypes mm ao
+        -- The implicit variables in the offers are needed in subsequent expressions.
+        ys <- inferVarTypes (Map.fromList xs <.+> mm) be
+        return $ xs ++ ys
+    inferVarTypes mm (LetBExp vs be) = do
+        xs <- Map.toList <$> liftEither (gInferTypes mm vs)
+        ys <- inferVarTypes mm be
+        return $ xs ++ ys 
 
 instance HasTypedVars ActOfferDecl where
     inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx

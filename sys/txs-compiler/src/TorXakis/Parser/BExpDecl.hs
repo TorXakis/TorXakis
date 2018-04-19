@@ -12,6 +12,7 @@ import           TorXakis.Parser.VarDecl
 
 bexpDeclP :: TxsParser BExpDecl
 bexpDeclP =  try stopP
+         <|> try letBExpP
          <|> actPrefixP
 
 stopP :: TxsParser BExpDecl
@@ -63,3 +64,13 @@ actOfferP = ActOfferDecl <$> offersP <*> actConstP
             --     n <- identifier
             --     return $ QuestD (Left (mkVarRef n l))
             exclOfferP = ExclD <$> (txsSymbol "!" *> valExpP)
+
+letBExpP :: TxsParser BExpDecl
+letBExpP = do
+    txsSymbol "LET"
+    vs <- letVarDeclsP
+    txsSymbol "IN"
+    subEx <- bexpDeclP
+    txsSymbol "NI"
+    return $ LetBExp vs subEx
+

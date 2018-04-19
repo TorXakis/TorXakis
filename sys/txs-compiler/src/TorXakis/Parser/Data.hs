@@ -464,6 +464,7 @@ data ModelComps = ModelComps
 
 data BExpDecl = Stop
               | ActPref ActOfferDecl BExpDecl
+              | LetBExp [LetVarDecl] BExpDecl
     deriving (Eq, Ord, Show)
 
 data ActOfferDecl = ActOfferDecl

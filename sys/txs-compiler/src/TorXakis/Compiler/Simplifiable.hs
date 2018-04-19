@@ -17,9 +17,9 @@ import           FuncId          (FuncId (FuncId), name)
 import           FuncTable       (FuncTable, Signature (Signature), toMap)
 import           ProcId          (ProcId)
 import           TxsDefs         (ActOffer (ActOffer), BExpr,
-                                  BExprView (ActionPref),
+                                  BExprView (ActionPref, ValueEnv),
                                   ChanOffer (Exclam, Quest), Offer (Offer),
-                                  ProcDef (ProcDef), actionPref)
+                                  ProcDef (ProcDef), actionPref, valueEnv)
 import           ValExpr         (ValExpr, ValExprView (Vfunc, Vite), cstrITE,
                                   cstrVar)
 import qualified ValExpr
@@ -88,6 +88,8 @@ instance Simplifiable ProcDef where
 instance Simplifiable BExpr where
     simplify ft fns (BExpr.view -> ActionPref ao bexp)
         = actionPref (simplify ft fns ao) (simplify ft fns bexp)
+    simplify ft fns (BExpr.view -> ValueEnv env bexp)
+        = valueEnv (simplify ft fns env) (simplify ft fns bexp)
     simplify _ _ ex = ex
 
 instance Simplifiable ActOffer where
@@ -99,3 +101,6 @@ instance Simplifiable Offer where
 instance Simplifiable ChanOffer where
     simplify _  _   x@(Quest _)   = x
     simplify ft fns (Exclam vexp) = Exclam (simplify ft fns vexp)
+
+instance Simplifiable VarId where
+    simplify _ _ = id
