@@ -314,10 +314,8 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
       sleep sqattTimeout
       return $ Left TestTimedOut
     txsProcs inMF port = Concurrently $ do
-      a <- async $ txsServerProc mLogDir (port : txsServerArgs ex)
-      ret <- txsUIProc mLogDir inMF port
-      cancel a
-      return ret
+      _ <- async $ txsServerProc mLogDir (port : txsServerArgs ex)
+      txsUIProc mLogDir inMF port
     txsUIProc mUiLogDir imf port =
       do
         eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
