@@ -306,7 +306,7 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
       a <- async $ txsServerProc mLogDir (port : txsServerArgs ex)
       runConcurrently $ timer a
                     <|> heartbeat
-                    <|> txsProcs inputModelF port
+                    <|> txsUIProc mLogDir inputModelF port
   where
     heartbeat = Concurrently $ forever $ do
       sleep 60.0 -- For now we don't make this configurable.
@@ -315,9 +315,7 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
       sleep sqattTimeout
       cancel srvProc
       return $ Left TestTimedOut
-    txsProcs inMF port = Concurrently $ txsUIProc mLogDir inMF port
-    txsUIProc mUiLogDir imf port =
-      do
+    txsUIProc mUiLogDir imf port = Concurrently $ do
         eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
         case eRes of
           Left exception -> return $ Left exception
