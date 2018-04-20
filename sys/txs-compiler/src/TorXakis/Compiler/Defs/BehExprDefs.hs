@@ -1,37 +1,46 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
 module TorXakis.Compiler.Defs.BehExprDefs where
 
 import qualified Data.Map as Map
-import           Control.Monad.Error.Class         (liftEither)
+import           Control.Monad.Error.Class         (liftEither, throwError)
 import           Data.Maybe                        (fromMaybe)
 import qualified Data.Set                          as Set
 import           Data.Text (Text)
+import qualified Data.Text as T
+import           Data.Traversable (for)
+import           Data.Semigroup ((<>))
 
 import           StdTDefs (chanIdIstep)
 import           ConstDefs                         (Const (Cbool))
 import           SortId                            (sortIdBool, SortId)
 import           TxsDefs                           (ActOffer (ActOffer), BExpr, ChanOffer (Quest, Exclam),
-                                                    Offer (Offer), chanid, actionPref, stop, valueEnv)
-import           ValExpr                           (cstrConst)
+                                                    Offer (Offer), chanid, actionPref, stop, valueEnv, procInst,
+                                                    ProcDef)
 import           ChanId (ChanId (ChanId), chansorts, name, unid)
 import           VarId (VarId, varsort)
 import           FuncId (FuncId)
 import           FuncDef (FuncDef)
-import           ValExpr (ValExpr)
+import           ValExpr (ValExpr, cstrConst)
+import           ProcId (ProcId, procvars, procchans)
+import qualified ProcId
     
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.ValExpr
+import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Parser.Data
 
 toBExpr :: ( MapsTo Text ChanId mm
            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
            , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo FuncDefInfo FuncId mm
-           , MapsTo FuncId (FuncDef VarId) mm )
+           , MapsTo FuncId (FuncDef VarId) mm
+           , MapsTo ProcId ProcDef mm )
         => mm -> BExpDecl -> CompilerM BExpr
 toBExpr _ Stop             = return stop
 toBExpr mm (ActPref ao be) = actionPref <$> toActOffer mm ao <*> toBExpr mm be
@@ -44,6 +53,30 @@ toBExpr mm (LetBExp vs be) = valueEnv   <$> venv <*> toBExpr mm be
           ex  <- liftEither $
               expDeclToValExpr mm (varsort vId) (varDeclExp vd)
           return (vId, ex)
+toBExpr mm (Pappl n l crs exs) = do -- undefined n crs exs mm
+    chIds <- chRefsToIds mm crs
+    let candidate :: ProcId -> Bool
+        candidate pId =
+            toText n == ProcId.name pId && procchans pId == chIds
+    -- Try to find a matching process definition:
+    res <- forCatch (filter candidate $ keys @ProcId @ProcDef mm) $ \pId -> do
+        let eSids = varsort <$> procvars pId
+        vExps <- liftEither $
+            traverse (uncurry $ expDeclToValExpr mm) $ zip eSids exs
+        return (pId, procInst pId chIds vExps)
+    case res of
+        (_ , [(_, pInst)]) -> return pInst
+        (_, r:rs )         -> throwError Error
+            { _errorType = MultipleDefinitions
+            , _errorLoc  = getErrorLoc l
+            , _errorMsg  = "Multiple matching definitions for process instantiation: "
+                         <> T.pack (show (r:rs))
+            }
+        (_, _)             -> throwError Error
+            { _errorType = NoDefinition
+            , _errorLoc  = getErrorLoc l
+            , _errorMsg  = "No matching process definition found."
+            }
 
 toActOffer :: ( MapsTo Text ChanId mm
               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm

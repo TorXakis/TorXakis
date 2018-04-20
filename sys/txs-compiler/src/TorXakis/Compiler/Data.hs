@@ -9,8 +9,9 @@ module TorXakis.Compiler.Data where
 
 import           Control.Arrow             (left, (|||))
 import           Control.Lens              ((&), (.~))
-import           Control.Monad.Error.Class (MonadError, liftEither)
+import           Control.Monad.Error.Class (MonadError, catchError, liftEither)
 import           Control.Monad.State       (MonadState, StateT, get, put)
+import           Data.Either               (partitionEithers)
 import           Data.Either.Utils         (maybeToEither)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
@@ -44,4 +45,14 @@ getNextId = do
     put (St $ i + 1)
     return i
 
+-- | Like traverse, but catch and error and continue if any `CompilerM` action
+-- throws an error in the process.
+traverseCatch :: (a -> CompilerM b) -> [a] -> CompilerM ([(a, Error)], [b])
+traverseCatch f as = partitionEithers <$>
+    traverse (\a -> (`catchError` hdlr a) (fmap Right (f a)) ) as
+    where
+      hdlr a e = return $ Left (a, e)
 
+-- | Flipped version of traverseCatch
+forCatch :: [a] -> (a -> CompilerM b) -> CompilerM ([(a, Error)], [b])
+forCatch = flip traverseCatch

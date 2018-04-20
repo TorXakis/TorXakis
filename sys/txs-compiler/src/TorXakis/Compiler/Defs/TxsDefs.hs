@@ -11,12 +11,13 @@ import           Data.Text              (Text)
 import           SortDef                           (SortDef (SortDef))
 import           SortId                            (SortId)
 import           TxsDefs                           (TxsDefs, cstrDefs, empty,
-                                                    modelDefs, sortDefs)
+                                                    modelDefs, sortDefs, ProcDef)
 import           ChanId                 (ChanId)
 import           VarId (VarId)
 import           CstrId (CstrId)
 import           FuncId (FuncId)
 import           FuncDef (FuncDef)
+import           ProcId (ProcId)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.ModelDef
@@ -45,6 +46,7 @@ modelDeclsToTxsDefs :: ( MapsTo Text ChanId mm
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                        , MapsTo FuncDefInfo FuncId mm
                        , MapsTo FuncId (FuncDef VarId) mm
+                       , MapsTo ProcId ProcDef mm
                        , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                        )
                     => mm -> [ModelDecl] -> CompilerM TxsDefs

@@ -6,6 +6,7 @@ import           Control.Lens    ((.~))
 import           Control.Lens.TH (makeLenses)
 import           Data.Text       (Text)
 
+
 data ErrorType
     = ParseError
     | UndefinedRef -- TODO: we could specify the type of what's being undefined (variable, sort, etc...)
@@ -14,6 +15,8 @@ data ErrorType
     | FunctionNotDefined
     | UnresolvedIdentifier
     | MultipleDefinitions
+    | NoDefinition -- ^ No definition found for function or process.
+    | ProcessNotDefined
     deriving (Eq, Show)
 
 data Decl

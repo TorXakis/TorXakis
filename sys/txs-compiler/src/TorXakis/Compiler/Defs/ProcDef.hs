@@ -4,9 +4,12 @@
 {-# LANGUAGE TypeFamilies          #-}
 module TorXakis.Compiler.Defs.ProcDef where
 
+import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import           Control.Monad.Error.Class (throwError)
+import           Data.Semigroup ((<>))
 
 import           TxsDefs (ProcId (ProcId), ProcDef (ProcDef), ExitSort (..))
 import           SortId (SortId)
@@ -26,22 +29,41 @@ import TorXakis.Compiler.ValExpr.VarId
 import TorXakis.Compiler.ValExpr.SortId
 import TorXakis.Compiler.Defs.BehExprDefs
 import TorXakis.Compiler.Error
-
+    
 procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                          , MapsTo FuncDefInfo FuncId mm
                          , MapsTo FuncId (FuncDef VarId) mm
                          , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
-                         , In (Text, ChanId) (Contents mm) ~ 'False 
+                         , In (Text, ChanId) (Contents mm) ~ 'False
+                         , In (ProcId, ProcDef) (Contents mm) ~ 'False 
                          , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False )
                       => mm
                       -> [ProcDecl]
                       -> CompilerM (Map ProcId ProcDef)
-procDeclsToProcDefMap mm ps = Map.fromList <$>
-    traverse procDeclToProcDefMap ps
+procDeclsToProcDefMap mm ps = 
+    -- Map.fromList <$> traverse mkpIdPDefM ps
+    gProcDeclsToProcDefMap emptyMpd ps
     where
-      procDeclToProcDefMap :: ProcDecl -> CompilerM (ProcId, ProcDef)
-      procDeclToProcDefMap pd = do
+      emptyMpd = Map.empty :: Map ProcId ProcDef
+      gProcDeclsToProcDefMap :: Map ProcId ProcDef
+                             -> [ProcDecl]
+                             -> CompilerM (Map ProcId ProcDef)
+      gProcDeclsToProcDefMap mpd rs = do
+          (ls, rs') <- traverseCatch (mkpIdPDefM mpd) rs
+          case (ls, rs') of
+              ([], _) -> return $ Map.fromList rs' <> innerMap mpd
+              (_, []) -> throwError Error
+                  { _errorType = ProcessNotDefined
+                  , _errorLoc = NoErrorLoc
+                  , _errorMsg = T.pack (show (snd <$> ls))
+                  }
+              (_, _ ) -> gProcDeclsToProcDefMap (Map.fromList rs' <.+> mpd) (fst <$> ls)
+      
+      mkpIdPDefM :: Map ProcId ProcDef
+                 -> ProcDecl
+                 -> CompilerM (ProcId, ProcDef)
+      mkpIdPDefM mpd pd = do
           pId         <- getNextId
           chIds       <- chanDeclsToChanIds mm (procChParams . procDeclComps $ pd)
           exitChan    <- mkChanIds mm (procRetSort . procDeclComps $ pd)
@@ -54,11 +76,11 @@ procDeclsToProcDefMap mm ps = Map.fromList <$>
           bTypes      <- Map.fromList <$> inferVarTypes (allChIds .& (pvIds .& mm) :& pdVdSortMap) body
           bvIds       <- mkVarIds bTypes body
           e           <- exitSort (procRetSort . procDeclComps $ pd) <!!> pd
-          b           <- toBExpr (allChIds .&. (pvIds ++ bvIds) :& mm) body
+          b           <- toBExpr ((allChIds .&. (pvIds ++ bvIds)) :& mm :& mpd) body
           -- NOTE that it is crucial that the order of the channel parameters
           -- declarations is preserved!
           let chIds' = snd <$> chIds
-              pvIds'   = snd <$> pvIds
+              pvIds' = snd <$> pvIds
           return ( ProcId (procDeclName pd) (Id pId) chIds' pvIds' e
                  , ProcDef chIds' pvIds' b
                  )

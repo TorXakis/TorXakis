@@ -101,3 +101,15 @@ ENDDEF
 CHANDEF Blah ::=
     In, Out :: Int
 ENDDEF
+
+PROCDEF letter[In, Out :: Int]() ::=
+    LET y = 20 IN In ? x >-> Out ! x * y NI
+ENDDEF
+
+PROCDEF letter2[In, Out :: Int]() ::=
+   In ? x >-> LET y = x + 1 IN Out ! y NI --  ||| Out ! 2
+ENDDEF
+
+PROCDEF letter3[In, Out :: Int](x :: Int) ::=
+   In ? x >-> LET y = x + 1 IN Out ! y NI --  ||| Out ! 2
+ENDDEF

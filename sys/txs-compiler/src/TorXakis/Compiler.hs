@@ -153,7 +153,6 @@ toTxsDefs ft mm pd = do
         funcDefsNoConsts = Map.withoutKeys (innerMap mm) (Set.fromList cfIds)
         -- TODO: we have to simplify to comply with what TorXakis generates.
         fn = idefsNames mm ++ fmap name cfIds
---        funcDefsSimpl = Map.fromList (simplify ft fn <$> Map.toList funcDefsNoConsts)
         fds = TxsDefs.empty {
             funcDefs = simplify ft fn funcDefsNoConsts
             }

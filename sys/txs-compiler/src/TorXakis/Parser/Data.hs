@@ -191,9 +191,6 @@ data SortRefE = SortRefE deriving (Eq, Ord, Show)
 -- | Function declaration.
 data FuncDeclE = FuncDeclE deriving (Eq, Ord, Show)
 
--- | Function call.
-data FuncCallE = FuncCallE deriving (Eq, Ord, Show)
-
 -- | An expression
 data ExpDeclE = ExpDeclE deriving (Eq, Ord, Show)
 
@@ -218,6 +215,9 @@ data ModelDeclE = ModelDeclE deriving (Eq, Ord, Show)
 
 -- | Process declaration.
 data ProcDeclE = ProcDeclE  deriving (Eq, Ord, Show)
+
+-- | Process reference. Used at process instantiations.
+data ProcRefE = ProcRefE  deriving (Eq, Ord, Show)
 
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADTE     [CstrDecl]
@@ -463,8 +463,9 @@ data ModelComps = ModelComps
     } deriving (Eq, Ord, Show)
 
 data BExpDecl = Stop
-              | ActPref ActOfferDecl BExpDecl
-              | LetBExp [LetVarDecl] BExpDecl
+              | ActPref  ActOfferDecl BExpDecl
+              | LetBExp  [LetVarDecl] BExpDecl
+              | Pappl (Name ProcRefE) (Loc ProcRefE) [ChanRef] [ExpDecl]
     deriving (Eq, Ord, Show)
 
 data ActOfferDecl = ActOfferDecl

@@ -57,9 +57,10 @@ class DeclaresVariables e where
              => mm -> e -> CompilerM [(Loc VarDeclE, VarId)]
 
 instance DeclaresVariables BExpDecl where
-    mkVarIds _  Stop = return []
-    mkVarIds mm (ActPref ao be) = (++) <$> mkVarIds mm ao <*> mkVarIds mm be
-    mkVarIds mm (LetBExp vs be) = (++) <$> mkVarIds mm vs <*> mkVarIds mm be
+    mkVarIds _  Stop              = return []
+    mkVarIds mm (ActPref ao be)   = (++) <$> mkVarIds mm ao <*> mkVarIds mm be
+    mkVarIds mm (LetBExp vs be)   = (++) <$> mkVarIds mm vs <*> mkVarIds mm be
+    mkVarIds mm (Pappl _ _ _ exs) = mkVarIds mm exs
 
 instance DeclaresVariables ActOfferDecl where
     mkVarIds mm (ActOfferDecl os mEx) = (++) <$> mkVarIds mm os <*> mkVarIds mm mEx

@@ -2,6 +2,8 @@
 {-# LANGUAGE OverloadedStrings      #-}
 module TorXakis.Compiler.Defs.ChanId where
 
+import qualified Data.Set as Set
+import           Data.Set (Set)
 import           Data.Map               (Map)
 import qualified Data.Map               as Map
 import           Data.Text              (Text)
@@ -49,5 +51,10 @@ instance DeclaresChannels ExitSortDecl where
                                , (name chanIdMiss, chanIdMiss)
                                ]
 
+chRefsToIds :: MapsTo Text ChanId mm 
+            => mm -> [ChanRef] -> CompilerM [ChanId]
+chRefsToIds mm chs = traverse (`lookupM` mm) (chanRefName <$> chs)
 
-    
+chRefsToChIdSet :: MapsTo Text ChanId mm 
+                => mm -> Set ChanRef -> CompilerM (Set ChanId)
+chRefsToChIdSet mm = fmap Set.fromList . chRefsToIds mm . Set.toList
