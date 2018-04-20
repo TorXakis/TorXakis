@@ -18,6 +18,7 @@ import           VarId (VarId)
 import           FuncId (FuncId)
 import           FuncDef (FuncDef)
 import           ProcId (ProcId)
+import           SortId (SortId)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.BehExprDefs
@@ -25,13 +26,17 @@ import           TorXakis.Parser.Data
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Defs.ChanId
+import           TorXakis.Compiler.ValExpr.VarId
+import           TorXakis.Compiler.ValExpr.SortId
 
-modelDeclToModelDef :: ( MapsTo Text ChanId mm
+modelDeclToModelDef :: ( MapsTo Text SortId mm
+                       , MapsTo Text ChanId mm
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                        , MapsTo FuncDefInfo FuncId mm
                        , MapsTo FuncId (FuncDef VarId) mm
                        , MapsTo ProcId ProcDef mm
-                       , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False )
+                       , MapsTo (Loc VarDeclE) SortId mm
+                       , MapsTo (Loc VarDeclE) VarId mm )
                     => mm -> ModelDecl -> CompilerM ModelDef
 modelDeclToModelDef mm md = do
     ins  <- Set.fromList <$> traverse (`lookupM` mm) (chanRefName <$> modelIns md)
@@ -47,12 +52,15 @@ modelDeclToModelDef mm md = do
     syncs <- maybe (return allChIds)  
                    (traverse (chRefsToChIdSet mm))
                    (modelSyncs md)
-    let mm' =  mm
-            :& (Map.empty :: Map (Loc VarDeclE) VarId) -- No variables are declared in a model.
+    let
         insyncs  = filter (`Set.isSubsetOf` ins) syncs
         outsyncs = filter (`Set.isSubsetOf` outs) syncs
         -- TODO: construct this, once you know the exit sort of the behavior expression `be`.
         -- splsyncs = ...
         -- errsyncs = ...
-    be   <- toBExpr mm' (modelBExp md)
+    -- Infer the variable types of the expression:
+    bvSids <- Map.fromList <$> inferVarTypes mm (modelBExp md)
+    bTypes <- Map.fromList <$> inferVarTypes (bvSids <.+> mm) (modelBExp md)
+    bvIds  <- Map.fromList <$> mkVarIds bTypes (modelBExp md)
+    be   <- toBExpr (bvSids <.+> (bvIds <.+> mm)) (modelBExp md)
     return $ ModelDef insyncs outsyncs [] be

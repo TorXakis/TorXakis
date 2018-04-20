@@ -168,3 +168,30 @@ MODELDEF Overloader11 ::=
     BEHAVIOUR
         overloaded1[OutS](33)
 ENDDEF
+
+MODELDEF Overloader12 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+       overloaded1[OutS](LET x = "foo" IN x NI)
+ENDDEF
+
+PROCDEF outlet[O :: String]() ::=
+    O ! LET x = "foo" IN x NI
+ENDDEF
+
+MODELDEF Outlet0 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+        outlet[OutS]()
+ENDDEF
+
+MODELDEF Outlet1 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+           OutS ! LET x = "foo" IN x NI 
+       >-> S ? x
+       >-> overloaded1[OutS](x)
+ENDDEF

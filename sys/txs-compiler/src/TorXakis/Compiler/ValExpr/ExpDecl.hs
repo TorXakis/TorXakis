@@ -109,3 +109,6 @@ instance HasVarReferences ChanOfferDecl where
     
 instance HasVarReferences FuncDecl where
     mapRefToDecls mm f = mapRefToDecls (mkVdMap (funcParams f) <.+> mm) (funcBody f)
+
+instance HasVarReferences ModelDecl where
+    mapRefToDecls mm = mapRefToDecls mm . modelBExp

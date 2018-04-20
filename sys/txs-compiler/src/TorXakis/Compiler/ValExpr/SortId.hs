@@ -239,12 +239,23 @@ instance HasTypedVars ExpDecl where
 instance HasTypedVars OfferDecl where
     inferVarTypes mm (OfferDecl cr os) = do
         chId <- mm .@!! (chanRefName cr, cr)
+        -- Collect the variable declarations to @SortId@ maps from the output
+        -- offers of the form 'Ch ! exp'.
+        exclVds <- inferVarTypes mm os
         let
+            -- Variables declared by the question offer.
             vds :: [Maybe (Loc VarDeclE, SortId)]
             vds = zipWith (\o sId -> ((, sId) . getLoc) <$> chanOfferIvarDecl o)
                           os
-                          (chansorts chId)
-        return $ catMaybes vds
+                          (chansorts chId)                          
+        return $ catMaybes vds ++ exclVds
 
+instance HasTypedVars ChanOfferDecl where
+    -- We don't have the @SortId@ of the variable, so we cannot know its type
+    -- at this level. Refer to the 'instance HasTypedVars OfferDecl' to see how
+    -- this is handled.
+    inferVarTypes _  (QuestD _) = return [] 
+    inferVarTypes mm (ExclD ex) = inferVarTypes mm ex
+    
 sortIds :: (MapsTo Text SortId mm) => mm -> [OfSort] -> CompilerM [SortId]
 sortIds mm xs = traverse (mm .@!!) $ zip (sortRefName <$> xs) (getLoc <$> xs)

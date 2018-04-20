@@ -110,8 +110,8 @@ compileParsedDefs pd = do
         eVdMap = Map.empty :: Map Text (Loc VarDeclE) 
     fRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs) allFuncs
     pRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs) (pd ^. procs)
-    -- mRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs) (pd ^. models)
-    let dMap = fRtoDs `Map.union` pRtoDs -- `Map.union` mRtoDs
+    mRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs :& chs) (pd ^. models)
+    let dMap = fRtoDs `Map.union` pRtoDs `Map.union` mRtoDs
     -- Construct the function declaration to function id table.
     lFIdMap <- funcDeclsToFuncIds allSortsMap allFuncs
     -- Join `lFIdMap` and  `stdFuncIds`.
@@ -132,7 +132,7 @@ compileParsedDefs pd = do
     -- Finally construct the TxsDefs.
     let mm = allSortsMap :& pdefMap :& chs :& cMap :& completeFidMap :& lFDefMap
     sigs    <- toSigs                mm pd
-    txsDefs <- toTxsDefs (func sigs) (mm :& dMap) pd
+    txsDefs <- toTxsDefs (func sigs) (mm :& dMap :& vMap :& vdSortMap) pd
     St i    <- get
     return (Id i, txsDefs, sigs)
 
@@ -143,7 +143,8 @@ toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo FuncId (FuncDef VarId) mm 
              , MapsTo ProcId ProcDef mm
              , MapsTo Text ChanId mm
-             , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False )
+             , MapsTo (Loc VarDeclE) VarId mm
+             , MapsTo (Loc VarDeclE) SortId mm )
           => FuncTable VarId -> mm -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs ft mm pd = do
     ads <- adtsToTxsDefs mm (pd ^. adts)
