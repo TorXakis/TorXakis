@@ -167,7 +167,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> ProcInst procid@(ProcId nm _ _ _ _) c
                let wals = map ( ValExpr.eval . ValExpr.subst (Map.map cstrConst we) (funcDefs tdefs) ) vexps
                case Data.Either.partitionEithers wals of
                     ([], r) -> do let we' = Map.fromList (zip vids r)
-                                  expand chsets $ BNbexpr we' (relabel chanmap (Subst.subst (Map.map cstrConst we') (funcDefs tdefs) bexp) )
+                                  expand chsets $ BNbexpr Map.empty (relabel chanmap (Subst.subst (Map.map cstrConst we') (funcDefs tdefs) bexp) )
                     (s, _)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                                 ("Expand: Eval failed in expand - ProcInst " ++ show s) ]
                                   return []

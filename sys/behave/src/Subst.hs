@@ -20,7 +20,6 @@ module Subst
 
 where
 
-import           Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -34,11 +33,11 @@ import           VarId
 -- | Expressions that support substitution of variables for expressions.
 class Subst e where
     -- | Substitution function.
-    subst :: TxsDefs.VEnv                -- ^ Mapping from variable id's to
-                                         -- expressions on those variable id's.
-          -> Map FuncId (FuncDef VarId) -- ^ Mapping of function identifiers.
-                                         -- to their definitions.
-          -> e                           -- ^ Input expression.
+    subst :: TxsDefs.VEnv                   -- ^ Mapping from variable id's to
+                                            -- expressions on those variable id's.
+          -> Map.Map FuncId (FuncDef VarId) -- ^ Mapping of function identifiers.
+                                            -- to their definitions.
+          -> e                              -- ^ Input expression.
           -> e
 
 instance (Ord e,Subst e) => Subst [e] where
@@ -48,9 +47,10 @@ instance (Ord e,Subst e) => Subst (Set.Set e) where
     subst ve fis = Set.map (subst ve fis)
 
 instance Subst BExpr where
-    subst ve fdefs = subst' ve fdefs . TxsDefs.view
+    subst ve _     | Map.null ve = id
+    subst ve fdefs               = subst' ve fdefs . TxsDefs.view
     
-subst' :: TxsDefs.VEnv -> Map FuncId (FuncDef VarId) -> BExprView -> BExpr
+subst' :: TxsDefs.VEnv -> Map.Map FuncId (FuncDef VarId) -> BExprView -> BExpr
 subst' ve fdefs (ActionPref (ActOffer offs hidvars cnrs) bexp) =
     actionPref (ActOffer (subst ve fdefs offs)
                          hidvars
