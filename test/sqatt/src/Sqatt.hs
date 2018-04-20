@@ -303,19 +303,19 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
     Right inputModelF -> do
       sleep delay
       port <- repr <$> getRandomPort
-      runConcurrently $ timer
+      a <- async $ txsServerProc mLogDir (port : txsServerArgs ex)
+      runConcurrently $ timer a
                     <|> heartbeat
                     <|> txsProcs inputModelF port
   where
     heartbeat = Concurrently $ forever $ do
       sleep 60.0 -- For now we don't make this configurable.
       putStr "."
-    timer = Concurrently $ do
+    timer srvProc = Concurrently $ do
       sleep sqattTimeout
+      cancel srvProc
       return $ Left TestTimedOut
-    txsProcs inMF port = Concurrently $ do
-      _ <- async $ txsServerProc mLogDir (port : txsServerArgs ex)
-      txsUIProc mLogDir inMF port
+    txsProcs inMF port = Concurrently $ txsUIProc mLogDir inMF port
     txsUIProc mUiLogDir imf port =
       do
         eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
