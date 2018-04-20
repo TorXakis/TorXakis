@@ -26,7 +26,7 @@ then
     echo "$CACHE_DIR/bin/cvc4 found in cache."
 else
     echo "cvc4 not found in cache or different version than 20180306"
-    rm $CACHE_DIR/bin/cvc4*
+    rm -f $CACHE_DIR/bin/cvc4*
     curl -L https://github.com/TorXakis/Dependencies/releases/download/cvc4-20180306/cvc4-20180306-x86_64-linux-opt -o cvc4
     mv cvc4 $CACHE_DIR/bin
     chmod +x $CACHE_DIR/bin/cvc4
