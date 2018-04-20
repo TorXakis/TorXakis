@@ -113,3 +113,58 @@ ENDDEF
 PROCDEF letter3[In, Out :: Int](x :: Int) ::=
    In ? x >-> LET y = x + 1 IN Out ! y NI --  ||| Out ! 2
 ENDDEF
+
+PROCDEF overloaded[X :: String; Out :: String]() ::=
+    Out ! "X ~ String"
+ENDDEF
+
+
+PROCDEF overloaded[X :: Int; Out :: String]() ::=
+    Out ! "X ~ Int"
+ENDDEF
+
+CHANDEF X ::=
+    S :: String;
+    I :: Int;
+    OutS :: String
+ENDDEF    
+
+MODELDEF Overloader ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+        overloaded[S, OutS]()
+ENDDEF
+
+MODELDEF Overloader1 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+        overloaded[I, OutS]()
+ENDDEF
+
+MODELDEF Overloader2 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+        S ! "Here I go!" >-> overloaded[I, OutS]()
+ENDDEF
+
+PROCDEF overloaded1[OutS :: String](x :: String) ::=
+    OutS ! "X ~ String"
+ENDDEF
+
+PROCDEF overloaded1[OutS :: String](x :: Int) ::=
+    OutS ! "X ~ Int"
+ENDDEF
+
+PROCDEF overloadedFoo[OutS :: String]() ::=
+        overloaded1[OutS](LET x = "foo" IN x NI)
+ENDDEF
+
+MODELDEF Overloader11 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+        overloaded1[OutS](33)
+ENDDEF

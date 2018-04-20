@@ -1,5 +1,3 @@
--- |
-
 module TorXakis.Parser.BExpDecl (bexpDeclP) where
 
 import qualified Data.Text                   as T
@@ -13,6 +11,7 @@ import           TorXakis.Parser.VarDecl
 bexpDeclP :: TxsParser BExpDecl
 bexpDeclP =  try stopP
          <|> try letBExpP
+         <|> try procInstP
          <|> actPrefixP
 
 stopP :: TxsParser BExpDecl
@@ -57,12 +56,6 @@ actOfferP = ActOfferDecl <$> offersP <*> actConstP
                 l <- mkLoc -- This offer always introduce a new implicit variable
                 n <- identifier
                 return $ QuestD (mkIVarDecl n l)
-            -- TODO: it is better if we just infer the types of the variables.
-            -- questOfferP = do
-            --     txsSymbol "?"
-            --     l <- mkLoc
-            --     n <- identifier
-            --     return $ QuestD (Left (mkVarRef n l))
             exclOfferP = ExclD <$> (txsSymbol "!" *> valExpP)
 
 letBExpP :: TxsParser BExpDecl
@@ -74,3 +67,14 @@ letBExpP = do
     txsSymbol "NI"
     return $ LetBExp vs subEx
 
+procInstP :: TxsParser BExpDecl
+procInstP = do
+    l    <- mkLoc
+    pN   <- identifier
+    crs  <-    txsSymbol "["
+            *> (mkChanRef <$> identifier <*> mkLoc) `sepBy` txsSymbol ","
+            <* txsSymbol "]"
+    exps <-   txsSymbol "("
+           *> valExpP `sepBy` txsSymbol ","
+           <* txsSymbol ")"
+    return $ Pappl (procRefName pN) l crs exps

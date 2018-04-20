@@ -128,7 +128,7 @@ txsFapplP :: TxsParser ExpDecl
 txsFapplP = do
     le <- mkLoc
     lr <- mkLoc
-    fN <- try ((lcIdentifier <|> ucIdentifier "") <* txsSymbol "(")
+    fN <- try (identifier <* txsSymbol "(")
     exs <- valExpP `sepBy` txsSymbol ","
     txsSymbol ")"
     return $ mkFappl le lr fN exs

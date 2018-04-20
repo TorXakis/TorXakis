@@ -110,7 +110,8 @@ compileParsedDefs pd = do
         eVdMap = Map.empty :: Map Text (Loc VarDeclE) 
     fRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs) allFuncs
     pRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs) (pd ^. procs)
-    let dMap = fRtoDs `Map.union` pRtoDs
+    -- mRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs) (pd ^. models)
+    let dMap = fRtoDs `Map.union` pRtoDs -- `Map.union` mRtoDs
     -- Construct the function declaration to function id table.
     lFIdMap <- funcDeclsToFuncIds allSortsMap allFuncs
     -- Join `lFIdMap` and  `stdFuncIds`.

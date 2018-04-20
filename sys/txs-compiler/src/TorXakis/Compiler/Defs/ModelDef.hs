@@ -8,9 +8,11 @@ import           Data.Text              (Text)
 import qualified Data.Map               as Map
 import           Data.Map               (Map)
 import qualified Data.Set as Set
-import Data.Set (Set)
+import           Data.Set (Set)
+import           Data.List (sortBy)
+import           Data.Ord (compare)
 
-import           ChanId                 (ChanId)
+import           ChanId                 (ChanId, unid)
 import           TxsDefs                            (ModelDef (ModelDef), ProcDef)
 import           VarId (VarId)
 import           FuncId (FuncId)
@@ -36,13 +38,18 @@ modelDeclToModelDef mm md = do
     outs <- Set.fromList <$> traverse (`lookupM` mm) (chanRefName <$> modelOuts md)
     let
         allChIds :: [Set ChanId]
-        allChIds = Set.singleton <$> values @Text mm
+        allChIds = Set.singleton <$> sortByUnid (values @Text mm)
+        -- Sort the channels by its id, since we have to comply with the current TorXakis compiler.
+        sortByUnid :: [ChanId] -> [ChanId]
+        sortByUnid = sortBy cmpChUnid
+            where
+              cmpChUnid c0 c1 = unid c0 `compare` unid c1
     syncs <- maybe (return allChIds)  
                    (traverse (chRefsToChIdSet mm))
                    (modelSyncs md)
     let mm' =  mm
             :& (Map.empty :: Map (Loc VarDeclE) VarId) -- No variables are declared in a model.
-        insyncs  = filter (`Set.isSubsetOf` ins)  syncs
+        insyncs  = filter (`Set.isSubsetOf` ins) syncs
         outsyncs = filter (`Set.isSubsetOf` outs) syncs
         -- TODO: construct this, once you know the exit sort of the behavior expression `be`.
         -- splsyncs = ...

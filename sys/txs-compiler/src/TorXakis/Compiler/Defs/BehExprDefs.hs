@@ -57,7 +57,8 @@ toBExpr mm (Pappl n l crs exs) = do -- undefined n crs exs mm
     chIds <- chRefsToIds mm crs
     let candidate :: ProcId -> Bool
         candidate pId =
-            toText n == ProcId.name pId && procchans pId == chIds
+               toText   n                     == ProcId.name pId
+            && fmap chansorts (procchans pId) == fmap chansorts chIds -- Compare the sort id's of the channels
     -- Try to find a matching process definition:
     res <- forCatch (filter candidate $ keys @ProcId @ProcDef mm) $ \pId -> do
         let eSids = varsort <$> procvars pId
@@ -72,10 +73,11 @@ toBExpr mm (Pappl n l crs exs) = do -- undefined n crs exs mm
             , _errorMsg  = "Multiple matching definitions for process instantiation: "
                          <> T.pack (show (r:rs))
             }
-        (_, _)             -> throwError Error
+        (ls, _)             -> throwError Error
             { _errorType = NoDefinition
             , _errorLoc  = getErrorLoc l
             , _errorMsg  = "No matching process definition found."
+                         <> T.pack (show ls)
             }
 
 toActOffer :: ( MapsTo Text ChanId mm

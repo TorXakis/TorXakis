@@ -113,6 +113,7 @@ module TorXakis.Parser.Data
     , procParams
     , procRetSort
     , procBody
+    , procRefName
     , ExitSortDecl (..)
     -- * Location of the entities.
     , getLoc
@@ -467,6 +468,9 @@ data BExpDecl = Stop
               | LetBExp  [LetVarDecl] BExpDecl
               | Pappl (Name ProcRefE) (Loc ProcRefE) [ChanRef] [ExpDecl]
     deriving (Eq, Ord, Show)
+
+procRefName :: Text -> Name ProcRefE
+procRefName = Name
 
 data ActOfferDecl = ActOfferDecl
     { _offers     :: [OfferDecl]
