@@ -154,9 +154,23 @@ choice l = let s = flattenChoice l
         fromBExpr x                               = Set.singleton x
 
 -- | Create a parallel behaviour expression.
--- The two behaviour expression must synchronize on the given set of channels (and EXIT).
+-- The behaviour expressions must synchronize on the given set of channels (and EXIT).
 parallel :: [ChanId] -> [BExpr] -> BExpr
-parallel cs bs = BExpr (Parallel cs bs)
+parallel cs bs = let fbs = flattenParallel bs
+                    in BExpr (Parallel cs fbs)
+    where
+        -- nesting of parallels over the same channel sets are flatten
+        --     (p |[ G ]| q) |[ G ]| r == p |[ G ]| q |[ G ]| r
+        --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
+        flattenParallel :: [BExpr] -> [BExpr]
+        flattenParallel = concatMap fromBExpr
+        
+        fromBExpr :: BExpr -> [BExpr]
+        fromBExpr (BehExprDefs.view -> Parallel pcs pbs) | Set.fromList cs == Set.fromList pcs  = pbs
+        fromBExpr bexpr                                                                         = [bexpr]
+
+
+
 
 -- | Create an enable behaviour expression.
 enable :: BExpr -> [ChanOffer] -> BExpr -> BExpr
