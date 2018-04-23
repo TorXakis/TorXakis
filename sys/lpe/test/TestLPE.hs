@@ -1039,217 +1039,198 @@ testLPEPar = TestCase $
 -- -------------------------------------------------
 -- LPEHide integration (it's called at preGNF level)
 -- -------------------------------------------------
--- test HIDE bexpr at lower level
-
--- -- P[A,B]() := A?x -> HIDE [] IN B!x -> STOP 
--- -- with procInst = P[A,B]()
--- -- becomes
--- -- P[A,B](pc$P, P$hide1$pc, $P$hide$B$x) := 
--- --                A?A$1 [pc$P == 0] -> P[A,B](1,0,A$1)
--- --          ##    B?B$1 [pc$P == 1 and $P$hide1$pc == 0 and B$1 == $P$hide$B$x] -> P[A,B](1,-1,ANY)
--- --
--- -- with procInst = P[A,B](0)
-      
--- testLPEHide1 :: Test
--- testLPEHide1 = TestCase $
---    assertBool "test LPEHide integration" $ eqProcDef (Just (procInst', procDefP')) result
---    where
---       result =  (lpeTransformFunc procInst'' procDefs')
---       procInst'' = procInst procIdP [chanIdA, chanIdB] []
---       procIdP = procIdGen "P" [chanIdA, chanIdB] []
-
---       procDefP = ProcDef [chanIdA, chanIdB] [] (
---             actionPref 
---                   actOfferAx
---                   (hide[] (actionPref actOfferBExclamX stop)))
---       procDefs' = Map.fromList  [  (procIdP, procDefP)]
-
---       -- pc$P, P$pre1$A$op1$pc$P$pre1$op1, P$pre1$A$op1$P$pre1$x, P$pre1$A$op2$pc$P$pre1$op2, P$pre1$A$op2$P$pre1$x) :=
---       varIdpcP = VarId (T.pack "pc$P") 0 intSort
---       varIdHide1pc = VarId (T.pack "P$pre1$A$B$pc$P$pre1") 0 intSort
---       varIdHide1x = VarId (T.pack "P$pre1$A$B$P$pre1$A$B$x") 33 intSort
-
---       vexprpcP = cstrVar varIdpcP
---       vexprHidepc = cstrVar varIdHide1pc
---       vexprHide1x = cstrVar varIdHide1x
-
---       procIdP' = procIdGen "LPE_P" [chanIdA, chanIdB] [varIdpcP, varIdHide1pc, varIdHide1x]
---       procDefP' = ProcDef [chanIdA, chanIdB] [varIdpcP, varIdHide1pc, varIdHide1x] (
---                     choice[
---                         --   A?A$1 [pc$P == 0] -> P[A,B](1,0,A$1)
---                         actionPref
---                           ActOffer {  offers = Set.singleton
---                                                     Offer { chanid = chanIdA
---                                                           , chanoffers = [Quest varIdA1]
---                                                     }
---                                     , hiddenvars = Set.empty
---                                     , constraint =  cstrEqual vexprpcP int0
---                                     }
---                           (procInst procIdP' [chanIdA, chanIdB] [int1, int0, vexprA1]),
---                         --  B?B$1 [pc$P == 1 and $P$hide1$pc == 0 and B$1 == $P$hide$B$x] -> P[A,B](1,-1,ANY)
---                         actionPref
---                           ActOffer {  offers = Set.singleton
---                                                     Offer { chanid = chanIdB
---                                                           , chanoffers = [Quest varIdB1]
---                                                     }
-
---                                     , hiddenvars = Set.empty
---                                     , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprpcP int1)
---                                                                                             (cstrAnd (Set.fromList [
---                                                                                                 cstrITE (cstrEqual vexprHidepc int0)
---                                                                                                    (cstrEqual vexprB1 vexprHide1x)
---                                                                                                    (cstrConst (Cbool False))
---                                                                                             ]))
---                                                                                            (cstrConst (Cbool False))
---                                                                 ])
 
 
---                                     }
---                           (procInst procIdP' [chanIdA, chanIdB] [int1, vexprMin1, anyInt])])
---       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, anyInt, anyInt]
+-- P[A]() := HIDE [] IN A -> STOP NI 
+-- with procInst = P[A]()
+-- LPE:
+--    first GNF 
+--          first preGNF
+--                preGNF of HIDE hiddenChans bexpr involves generating the LPE of bexpr first:
+                  --    LPE of P$pre1[A]() ::= A -> STOP 
+                  --    becomes
+                  --           P$pre1[A](pc$P$pre1) := A [pc$P$pre1 == 0] -> P$pre1[A](-1)
+--                then HIDE is applied: nothing happens in this case
+--                returns: ProcInst: P$pre1[A](0) 
+--                         ProcDef:  P$pre1[A](pc$P$pre1) := A [pc$P$pre1 == 0] -> P$pre1[A](-1)
+--          then GNF is applied: to the bexpr of the ProcDef
+--                no changes
+--    then LPE of the whole: P[A]() ::= A [pc$P$pre1 == 0] -> P$pre1[A](-1)
+--          one extra call to another ProcDef: P$pre1
+--                thus pc$P == 0 is for A [pc$P$pre1 == 0] -> P$pre1[A](-1)
+--                and  pc$P == 1 is for the instantiation of P$pre1[A](-1) 
+--                      which is the same again: A [pc$P$pre1 == 0] -> P$pre1[A](-1)
+--    thus the whole becomes:
+-- becomes
+-- LPE_P[A](pc$P, P$pre1$A$pc$P$pre1) :=        A [pc$P == 0] -> LPE_P[A](1, -1)
+--                                        ##    A [pc$P == 1, P$pre1$A$pc$P$pre1 == 0] -> LPE_P[A](1,-1)
+--                                                    pc$P remains instantiated with 1 because it's just 
+--                                                    the translation of the call to P$pre1[A](-1) again
+--                                                    and that was mapped to LPE_P[A](1,-1): never executed
+-- with procInst = P[A](0)
+
+testLPEHide1 :: Test
+testLPEHide1 = TestCase $
+   assertBool "testLPEHide1" (eqProcDef (Just (procInst', procDefPlpe)) res)
+   where
+      res = lpeTransformFunc procInst'' procDefs'
+      procInst'' = procInst procIdP [chanIdA0] []
+      procIdP = procIdGen "P" [chanIdA0] []
+      procDefP = ProcDef [chanIdA0] [] (hide [] (actionPref actOfferA stop))
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+
+      varIdPcPpre1 :: VarId
+      varIdPcPpre1 = VarId (T.pack "P$pre1$A$pc$P$pre1") 0 intSort
+      vexprPcPpre1 :: VExpr
+      vexprPcPpre1 = cstrVar varIdPcPpre1
 
 
+      chanIdA0 = ChanId    { ChanId.name = T.pack "A"
+                              , ChanId.unid = 2
+                              , ChanId.chansorts = []
+      }      
+
+      -- action: A
+      actOfferA :: ActOffer
+      actOfferA   = ActOffer {  offers = Set.singleton
+                                          Offer { chanid = chanIdA0
+                                                , chanoffers = []
+                                          }
+                              , hiddenvars = Set.empty
+                              , constraint = cstrConst (Cbool True)
+                  }
 
 
--- -- P[A,B]() := A?x -> HIDE [A] IN B!x -> STOP 
--- -- with procInst = P[A,B]()
--- -- becomes
--- -- P[A,B](pc$P, P$hide1$pc, $P$hide$B$x) := 
--- --                A?A$1 [pc$P == 0] -> P[A,B](1,0,A$1)
--- --          ##    B?B$1 [pc$P == 1 and $P$hide1$pc == 0 and B$1 == $P$hide$B$x] -> P[A,B](1,-1,ANY)
--- --
--- -- with procInst = P[A,B](0)
-      
--- testLPEHide2 :: Test
--- testLPEHide2 = TestCase $
---    assertBool "test LPEHide integration" $ eqProcDef (Just (procInst', procDefP')) result
---    where
---       result =  (lpeTransformFunc procInst'' procDefs')
---       procInst'' = procInst procIdP [chanIdA, chanIdB] []
---       procIdP = procIdGen "P" [chanIdA, chanIdB] []
+      procIdPlpe = procIdGen "LPE_P" [chanIdA0] [varIdPcP, varIdPcPpre1]
+      procDefPlpe = ProcDef [chanIdA0] [varIdPcP, varIdPcPpre1] (choice [
+                                                      -- A [pc$P == 0] -> LPE_P[A](1, -1)
+                                                      (actionPref                         
+                                                            
+                                                            ActOffer {  offers = Set.singleton
+                                                                                    Offer { chanid = chanIdA0
+                                                                                          , chanoffers = []
+                                                                                    }
+                                                                        , hiddenvars = Set.empty
+                                                                        , constraint = cstrEqual vexprPcP int0
+                                                                        } 
+                                                            (procInst procIdPlpe [chanIdA0] [vexpr1, vexprMin1]))
 
---       procDefP = ProcDef [chanIdA, chanIdB] [] (
---             actionPref 
---                   actOfferAx
---                   (hide[chanIdA] (actionPref actOfferBExclamX stop)))
---       procDefs' = Map.fromList  [  (procIdP, procDefP)]
+                                                      -- ##    A [pc$P == 1, P$pre1$A$pc$P$pre1 == 0] -> LPE_P[A](1,-1)
+                                                      , (actionPref                         
+                                                            ActOffer {  offers = Set.singleton
+                                                                                    Offer { chanid = chanIdA0
+                                                                                          , chanoffers = []
+                                                                                    }
+                                                                        , hiddenvars = Set.empty
+                                                                        , constraint = cstrITE (cstrEqual vexprPcP int1)
+                                                                                                (cstrEqual vexprPcPpre1 int0)
+                                                                                                (cstrConst (Cbool False))
+                                                                  } 
+                                                            (procInst procIdPlpe [chanIdA0] [vexpr1, vexprMin1]))
 
---       -- pc$P, P$pre1$A$op1$pc$P$pre1$op1, P$pre1$A$op1$P$pre1$x, P$pre1$A$op2$pc$P$pre1$op2, P$pre1$A$op2$P$pre1$x) :=
---       varIdpcP = VarId (T.pack "pc$P") 0 intSort
---       varIdHide1pc = VarId (T.pack "P$pre1$A$B$pc$P$pre1") 0 intSort
---       varIdHide1x = VarId (T.pack "P$pre1$A$B$P$pre1$A$B$x") 33 intSort
-
---       vexprpcP = cstrVar varIdpcP
---       vexprHidepc = cstrVar varIdHide1pc
---       vexprHide1x = cstrVar varIdHide1x
-
---       procIdP' = procIdGen "LPE_P" [chanIdA, chanIdB] [varIdpcP, varIdHide1pc, varIdHide1x]
---       procDefP' = ProcDef [chanIdA, chanIdB] [varIdpcP, varIdHide1pc, varIdHide1x] (
---                     choice[
---                         --   A?A$1 [pc$P == 0] -> P[A,B](1,0,A$1)
---                         actionPref
---                           ActOffer {  offers = Set.singleton
---                                                     Offer { chanid = chanIdA
---                                                           , chanoffers = [Quest varIdA1]
---                                                     }
---                                     , hiddenvars = Set.empty
---                                     , constraint =  cstrEqual vexprpcP int0
---                                     }
---                           (procInst procIdP' [chanIdA, chanIdB] [int1, int0, vexprA1]),
---                         --  B?B$1 [pc$P == 1 and $P$hide1$pc == 0 and B$1 == $P$hide$B$x] -> P[A,B](1,-1,ANY)
---                         actionPref
---                           ActOffer {  offers = Set.singleton
---                                                     Offer { chanid = chanIdB
---                                                           , chanoffers = [Quest varIdB1]
---                                                     }
---                                     , hiddenvars = Set.empty
---                                     , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprpcP int1)
---                                                                                             (cstrAnd (Set.fromList [
---                                                                                                 cstrITE (cstrEqual vexprHidepc int0)
---                                                                                                    (cstrEqual vexprB1 vexprHide1x)
---                                                                                                    (cstrConst (Cbool False))
---                                                                                             ]))
---                                                                                            (cstrConst (Cbool False))
---                                                                 ])
+                                                      ]) 
+      procInst' = procInst procIdPlpe [chanIdA0] [int0, anyInt]
 
 
---                                     }
---                           (procInst procIdP' [chanIdA, chanIdB] [int1, vexprMin1, anyInt])])
---       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, anyInt, anyInt]
+-- check for correct var substitution 
+-- 
+-- P[A]() := HIDE [A] IN A?x [x == 0]-> Q(x) NI 
+-- Q[]() := STOP
+-- with procInst = P[A]()
+-- LPE:
+--    first GNF 
+--          first preGNF
+--                preGNF of HIDE hiddenChans bexpr involves generating the LPE of bexpr first:
+                  --    LPE of P$pre1[A]() ::= A?x [x == 0]-> Q(x)
+                  --    becomes
+                  --           P$pre1[A](pc$P$pre1, P$pre$A$x) := A?A$1 [pc$P$pre1 == 0, A$1 == 0] -> P$pre1[A](1, A$1)
+--                then HIDE is applied
+--                returns: ProcInst: P$pre1[A](0, ANY) 
+--                         ProcDef:  P$pre1[A](pc$P$pre1, P$pre$A$x) := {} [pc$P$pre1 == 0, A$1_1 == 0] {A$1_1} -> P$pre1[A](1, A$1_1)
+--                preGNF returns only ProcDefs:
+--                     P[A]() := P$pre1[A](0, ANY) 
+--                     P$pre1[A](pc$P$pre1, P$pre$A$x) := {} [pc$P$pre1 == 0, A$1_1 == 0] {A$1_1} -> P$pre1[A](1, A$1_1)
+--          then GNF
+--                the bexpr P$pre1[A](0, ANY) of the ProcDef P[A]() is instantiated:
+--                      P[A]() := {} [A$1_1 == 0] {A$1_1} -> P$pre1[A](1, A$1_1)
+--                      note that the constraint pc$P$pre1 == 0 disappeared after substitution
+--                GNF returns only ProcDefs:
+--                      P[A]() := {} [pc$P$pre1 == 0, A$1_1 == 0] {A$1_1} -> P$pre1[A](1, A$1_1)
+--                      P$pre1[A](pc$P$pre1, P$pre$A$x) := {} [pc$P$pre1 == 0, A$1_1 == 0] {A$1_1} -> P$pre1[A](1, A$1_1)
+--    then LPE of P[A]()
+--          P[A]() ::= {} [A$1_1 == 0] {A$1_1} -> P$pre1[A](1, A$1_1)
+--          one extra call to another ProcDef: P$pre1
+--                thus pc$P == 0 is for {} [A$1_1 == 0] {A$1_1} -> P$pre1[A](1, A$1_1)
+--                and  pc$P == 1 is for the call to P$pre1[A](1, A$1_1)
+--                      {} [pc$P$pre1 == 0, A$1_1 == 0] {A$1_1} -> P$pre1[A](1, A$1_1)
+--                      note that the ProcDef of P$pre1 is taken "as is"
+--                            when evaluating, the instantiation in the first step (P$pre1[A](1, A$1_1))
+--                            makes sure that the constraint is never true. (pc$P$pre1 = 1 )
+--                      thus we get the second step as unnecessary extra in this case
+--                            but P$pre1 could have had more than one follow-up step, 
+--                            then the inclusion of P$pre1 would have been useful/necessary
+--                                  e.g.  P$pre1[A](pc$P$pre1, P$pre$A$x) := 
+--                                              {} [A$1_1 == 0] {A$1_1} -> P$pre1[A](1, A$1_1)
+--                                              B  [pc$P$pre1 == 1,]                    -> ...
+--                            THUS: we get an unnecessary step in case the generated ProcDef P$Pre1 only
+--                                  has ONE step
+--                                  optimisation in general not possible, but post-processing possible
+--    thus the whole becomes:
+--
+-- LPE_P[A](pc$P, P$pre1$A$pc$P$pre1, P$pre1$A$Q$A$x) :=
+--          {} [pc$P == 0, A$1_1 == 0] {A$1_1} -> LPE_P[A](1, 1, A$1_1)
+--    ##    {} [pc$P == 1, P$pre1$A$pc$P$pre1 == 0, A$1_1 == 0] {A$1_1} -> LPE_P[A](1, 1, A$1_1)
+-- with procInst = P[A](0, ANY, ANY)
+
+testLPEHide2 :: Test
+testLPEHide2 = TestCase $
+   assertBool "testLPEHide1" (eqProcDef (Just (procInst', procDefPlpe)) res)
+   where
+      res = lpeTransformFunc procInst'' procDefs'
+      procInst'' = procInst procIdP [chanIdA] []
+      procIdP = procIdGen "P" [chanIdA] []
+      procIdQ = procIdGen "Q" [chanIdA] []
+                                    -- HIDE [A] IN A?x [x == 0]-> Q(x) NI 
+      procDefP = ProcDef [chanIdA] [] (hide [chanIdA] (actionPref 
+                                                      actOfferAx {constraint = cstrEqual vexprX int0} 
+                                                      (procInst procIdQ [chanIdA] [vexprX])))
+      procDefQ = ProcDef [chanIdA] [varIdX] stop
+      procDefs' = Map.fromList  [  (procIdP, procDefP)
+                                ,  (procIdQ, procDefQ)]
 
 
+      varIdPcPpre1 = VarId (T.pack "P$pre1$A$pc$P$pre1") 0 intSort
+      vexprPcPpre1 = cstrVar varIdPcPpre1
+      varIdPpre1QAx = VarId (T.pack "P$pre1$A$Q$A$x") 0 intSort
+      -- vexprPpre1QAx = cstrVar varIdPpre1QAx
+      varIdA1' = VarId (T.pack "A$1_5") 34 intSort
+      vexprA1' = cstrVar varIdA1'
 
--- -- P[A,B]() := A?x -> HIDE [B] IN B!x -> STOP 
--- -- with procInst = P[A,B]()
--- -- becomes
--- -- P[A,B](pc$P, P$hide1$pc, $P$hide$B$x) := 
--- --                A?A$1 [pc$P == 0] -> P[A,B](1,0,A$1)
--- --          ##    ISTEP {B$1} [pc$P == 1 and $P$hide1$pc == 0 and B$1 == $P$hide$B$x] -> P[A,B](1,-1,ANY)
--- --
--- -- with procInst = P[A,B](0)
-
--- testLPEHide3 :: Test
--- testLPEHide3 = TestCase $
---    assertBool "test LPEHide integration" $ eqProcDef (Just (procInst', procDefP')) result
---    where
---       result =  (lpeTransformFunc procInst'' procDefs')
---       procInst'' = procInst procIdP [chanIdA, chanIdB] []
---       procIdP = procIdGen "P" [chanIdA, chanIdB] []
-
---       procDefP = ProcDef [chanIdA, chanIdB] [] (
---             actionPref 
---                   actOfferAx
---                   (hide[chanIdB] (actionPref actOfferBExclamX stop)))
---       procDefs' = Map.fromList  [  (procIdP, procDefP)]
-
---       -- pc$P, P$pre1$A$op1$pc$P$pre1$op1, P$pre1$A$op1$P$pre1$x, P$pre1$A$op2$pc$P$pre1$op2, P$pre1$A$op2$P$pre1$x) :=
---       varIdpcP = VarId (T.pack "pc$P") 0 intSort
---       varIdHide1pc = VarId (T.pack "P$pre1$A$B$pc$P$pre1") 0 intSort
---       varIdHide1x = VarId (T.pack "P$pre1$A$B$P$pre1$A$B$x") 33 intSort
-
---       vexprpcP = cstrVar varIdpcP
---       vexprHidepc = cstrVar varIdHide1pc
---       vexprHide1x = cstrVar varIdHide1x
-
---       -- chanIdIstep :: ChanId
---       -- chanIdIstep = ChanId "ISTEP" 902 []
---       chanIdIstepX :: ChanId
---       chanIdIstepX = ChanId (T.pack "ISTEP") 902 []
-                                 
---       procIdP' = procIdGen "LPE_P" [chanIdA, chanIdB] [varIdpcP, varIdHide1pc, varIdHide1x]
---       procDefP' = ProcDef [chanIdA, chanIdB] [varIdpcP, varIdHide1pc, varIdHide1x] (
---                     choice[
---                         --   A?A$1 [pc$P == 0] -> P[A,B](1,0,A$1)
---                         actionPref
---                           ActOffer {  offers = Set.singleton
---                                                     Offer { chanid = chanIdA
---                                                           , chanoffers = [Quest varIdA1]
---                                                     }
-
---                                     , hiddenvars = Set.empty
---                                     , constraint =  cstrEqual vexprpcP int0
---                                     }
---                           (procInst procIdP' [chanIdA, chanIdB] [int1, int0, vexprA1]),
---                         --  B?B$1 [pc$P == 1 and $P$hide1$pc == 0 and B$1 == $P$hide$B$x] -> P[A,B](1,-1,ANY)
---                         actionPref
---                           ActOffer {  offers = Set.singleton
---                                                     Offer { chanid = chanIdIstepX
---                                                           , chanoffers = [Quest varIdB1]
---                                                       --     , chanoffers = [Quest varIdB1]
---                                                       --     , hiddenvars = Set.fromList [varIdB1]
---                                                     }
---                                     , hiddenvars = Set.empty
---                                     , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprpcP int1)
---                                                                                             (cstrAnd (Set.fromList [
---                                                                                                 cstrITE (cstrEqual vexprHidepc int0)
---                                                                                                    (cstrEqual vexprB1 vexprHide1x)
---                                                                                                    (cstrConst (Cbool False))
---                                                                                             ]))
---                                                                                            (cstrConst (Cbool False))
---                                                                 ])
---                                     }
---                           (procInst procIdP' [chanIdA, chanIdB] [int1, vexprMin1, anyInt])])
---       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, anyInt, anyInt]
+      procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP, varIdPcPpre1, varIdPpre1QAx]
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP, varIdPcPpre1, varIdPpre1QAx] (choice [
+                                                      -- {} [pc$P == 0, A$1_1 == 0] {A$1_1} -> LPE_P[A](1, 1, A$1_1)
+                                                            (actionPref                         
+                                                                  ActOffer {  offers = Set.empty
+                                                                              , hiddenvars = Set.fromList [varIdA1']
+                                                                              , constraint = cstrITE (cstrEqual vexprPcP int0)
+                                                                                                      (cstrEqual vexprA1' int0)
+                                                                                                      (cstrConst (Cbool False))
+                                                                              } 
+                                                                  (procInst procIdPlpe [chanIdA] [vexpr1, vexpr1, vexprA1']))
+                                                      , -- {} [pc$P == 1, P$pre1$A$pc$P$pre1 == 0, A$1_1 == 0] {A$1_1} -> LPE_P[A](1, 1, A$1_1)
+                                                            (actionPref                         
+                                                            ActOffer {  offers = Set.empty
+                                                                        , hiddenvars = Set.fromList [varIdA1']
+                                                                        , constraint = cstrITE (cstrEqual vexprPcP int1)
+                                                                                                ( cstrITE (cstrEqual vexprPcPpre1 int0)
+                                                                                                      (cstrEqual vexprA1' int0)
+                                                                                                      (cstrConst (Cbool False))      
+                                                                                                      )
+                                                                                                (cstrConst (Cbool False))
+                                                                        } 
+                                                            (procInst procIdPlpe [chanIdA] [vexpr1, vexpr1, vexprA1']))
+                                                      ]) 
+      procInst' = procInst procIdPlpe [chanIdA] [int0, anyInt, anyInt]
 
 
 
@@ -1290,9 +1271,8 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
 
                         , TestLabel "lpePar integration" testLPEPar
 
-                        -- , TestLabel "lpeHide integration" testLPEHide1
-                        -- , TestLabel "lpeHide integration" testLPEHide2
-                        -- , TestLabel "lpeHide integration" testLPEHide3
+                        , TestLabel "lpeHide integration" testLPEHide1
+                        , TestLabel "lpeHide integration" testLPEHide2
                         
                         --, TestLabel "multi chanoffer translation" testMultiChanOffer
                         ]

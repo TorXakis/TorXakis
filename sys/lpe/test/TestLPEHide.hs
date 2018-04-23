@@ -196,15 +196,6 @@ anyInt = cstrConst $ Cany intSort
 ---------------------------------------------------------------------------
 
 
--- P[A]() := HIDE [] IN EXIT NI 
--- with procInst = P[A]()
--- becomes
--- P[A](pc$P) := ISTEP [pc$P == 0] >-> EXIT
--- with procInst = P[A](0)
-
-
-
-
 -- P[A]() := HIDE [] IN STOP NI 
 -- with procInst = P[A]()
 -- becomes
@@ -279,7 +270,7 @@ testActionPref1 = TestCase $
 -- P[A]() := HIDE [A] IN A -> STOP NI 
 -- with procInst = P[A]()
 -- becomes
--- LPE_P[A](pc$P) := ISTEP -> STOP
+-- LPE_P[A](pc$P) := {} -> STOP
 -- with procInst = P[A](0)
 
 testActionPref2 :: Test
@@ -293,11 +284,8 @@ testActionPref2 = TestCase $
 
       procIdPlpe = procIdGen "P" [chanIdA0] [varIdPcP]
       procDefPlpe = ProcDef [chanIdA0] [varIdPcP] (actionPref                         
-                                                      -- action: ISTEP [pc$P == 0]
-                                                      ActOffer {  offers = Set.singleton
-                                                                              Offer { chanid = chanIdIstep
-                                                                                    , chanoffers = []
-                                                                              }
+                                                      -- action: {} [pc$P == 0]
+                                                      ActOffer {  offers = Set.empty
                                                                   , hiddenvars = Set.empty
                                                                   , constraint = cstrEqual vexprPcP int0
                                                                   } 
@@ -339,38 +327,30 @@ testActionPref3 = TestCase $
 -- P[A]() := HIDE [A] IN A?x -> STOP NI 
 -- with procInst = P[A]()
 -- becomes
--- P[A](pc$P) := ISTEP {hidvars: ?x} -> P[A](-1)
+-- P[A](pc$P) := {} [pc$P == 0] {hiddenvars: A1_1} -> P[A](-1)
 -- with procInst = P[A](0)
 
 testActionPref4 :: Test
 testActionPref4 = TestCase $
-   assertBool "actionPref 3" (eqProcDef (Just (procInst', procDefPlpe)) (lpeHideTestWrapper procInst'' emptyTranslatedProcDefs procDefs))
+   assertBool "actionPref 3" (eqProcDef (Just (procInst', procDefPlpe)) res)
    where
+      res =  lpeHideTestWrapper procInst'' emptyTranslatedProcDefs procDefs
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
       procDefP = ProcDef [chanIdA] [] (hide [chanIdA] (actionPref actOfferAx stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
-
-      -- chanIdIstep :: ChanId
-      -- chanIdIstep = ChanId "ISTEP" 902 []
-      chanIdIstepX :: ChanId
-      chanIdIstepX = ChanId (T.pack "ISTEP") 902 []
-                                                                                                      
+      varIdA1' = VarId (T.pack "A$1_3") 34 intSort
+                                                                                          
       procIdPlpe = procIdGen "P" [chanIdA] [varIdPcP]
       procDefPlpe = ProcDef [chanIdA] [varIdPcP] (actionPref                         
-                                                      -- action: ISTEP ?x [pc$P == 0]
-                                                      ActOffer {  offers = Set.singleton
-                                                                              Offer { chanid = chanIdIstepX
-                                                                                    , chanoffers = [Quest varIdA1]
-                                                                              }
-                                                                  , hiddenvars = Set.empty
-                                                                  -- , hidvars = Set.fromList [varIdA1]
+                                                      -- action: {} {A1_1} [pc$P == 0]
+                                                      ActOffer {  offers = Set.empty
+                                                                  , hiddenvars = Set.fromList [varIdA1']
                                                                   , constraint = cstrEqual vexprPcP int0
                                                                   } 
                                                       (procInst procIdPlpe [chanIdA] [vexprMin1]))
       procInst' = procInst procIdPlpe [chanIdA] [int0]
-
 
 
         
@@ -383,7 +363,7 @@ testLPEHideList = TestList [
                             , TestLabel "simple STOP 2" testStop2
 
                             , TestLabel "actionPref 1" testActionPref1
-                        --     , TestLabel "actionPref 2" testActionPref2
-                        --     , TestLabel "actionPref 3" testActionPref3
-                        --     , TestLabel "actionPref 4" testActionPref4
+                            , TestLabel "actionPref 2" testActionPref2
+                            , TestLabel "actionPref 3" testActionPref3
+                            , TestLabel "actionPref 4" testActionPref4
                         ]

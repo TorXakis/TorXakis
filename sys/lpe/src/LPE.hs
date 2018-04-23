@@ -41,7 +41,7 @@ import TranslatedProcDefs
 
 import TxsDefs
 import ConstDefs
-import StdTDefs (stdSortTable, chanIdIstep)
+import StdTDefs (stdSortTable)
 
 import ChanId
 import ProcId
@@ -56,7 +56,7 @@ import qualified EnvBasic            as EnvB
 import Expand (relabel)
 import Subst
 
--- import Debug.Trace 
+import Debug.Trace 
 
 -- ----------------------------------------------------------------------------------------- --
 -- Types :
@@ -84,7 +84,7 @@ extractVars actOffer = let  set = offers actOffer in
                        Set.foldr extractVarIds_Offer [] set
 
 extractVarIds_Offer :: Offer -> [VarId] -> [VarId]
-extractVarIds_Offer Offer{chanoffers = coffers} _varIds = foldr extractVarIds_ChanOffer [] coffers
+extractVarIds_Offer Offer{chanoffers = coffers} varIds = (foldr extractVarIds_ChanOffer [] coffers) ++ varIds
 
 extractVarIds_ChanOffer :: ChanOffer -> [VarId] -> [VarId]
 extractVarIds_ChanOffer (Quest varId) varIds  = varId:varIds
@@ -287,7 +287,6 @@ gnfBExpr (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) _choiceCnt _
     if procIdInst `elem` lGNFdirectcalls translatedProcDefs
         then do -- found a loop
                 let loop = map ProcId.name $ lGNFdirectcalls translatedProcDefs ++ [procIdInst]
-                -- trace ("\nfound GNF loop " ++ (show loop) ++ "\n") $ 
                 error ("found GNF loop of direct calls without progress: " ++ (show loop))
         else do -- no loop
                 -- check if the called ProcDef has been translated to GNF already
@@ -303,7 +302,7 @@ gnfBExpr (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) _choiceCnt _
                     -- instantiate
                     -- substitute channels
                     chanmap = Map.fromList (zip chansDef chansInst)
-                    bexprRelabeled = relabel chanmap bexprDef -- trace ("chanmap: " ++ show chanmap) relabel chanmap bexprProcDef
+                    bexprRelabeled = relabel chanmap bexprDef
                     -- substitute params
                     parammap = Map.fromList (zip paramsDef paramsInst)
                     -- TODO: initialise funcDefs param properly
@@ -374,22 +373,20 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
           mergeStepsLR :: ProcId -> [ChanId] -> [VarId] -> [VarId] -> (BExpr, BExpr) -> BExpr
           mergeStepsLR procIdPAR' chansDefPar _opParamsL _opParamsR (stepL, stepR) =
             let -- decompose steps
-                ActionPref ActOffer{offers=offersL, constraint=constraintL} bL = TxsDefs.view stepL
+                ActionPref ActOffer{offers=offersL, constraint=constraintL, hiddenvars=hiddenvarsL} bL = TxsDefs.view stepL
                 ProcInst _procIdL _chansL paramsL = TxsDefs.view bL
-                ActionPref ActOffer{offers=offersR, constraint=constraintR} bR = TxsDefs.view stepR
+                ActionPref ActOffer{offers=offersR, constraint=constraintR, hiddenvars=hiddenvarsR} bR = TxsDefs.view stepR
                 ProcInst _procIdR _chansR paramsR = TxsDefs.view bR
 
                 -- combine action offers
                 --  union of offers, concatenation of constraints
-                -- offersLR = trace ("\ncombining: " ++ (show offersL) ++ " and " ++ (show offersR)) $ Set.union offersL offersR
                 offersLR = Set.union offersL offersR
 
-                -- constraintLR = trace ("\nconstraints: " ++ (show constraintL) ++ " and " ++ (show constraintR)) $ cstrAnd (Set.fromList [constraintL, constraintR])
                 constraintLR = cstrAnd (Set.fromList [constraintL, constraintR])
 
                 -- new ActOffers and ProcInst
                 actOfferLR = ActOffer { offers = offersLR,
-                                        hiddenvars = Set.empty,
+                                        hiddenvars = Set.union hiddenvarsL hiddenvarsR,
                                         constraint = constraintLR}
                 procInstLR = procInst procIdPAR' chansDefPar (paramsL ++ paramsR)
             in
@@ -504,47 +501,49 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
         ProcDef chansDef_lpe paramsDef_lpe bexpr_lpe = fromMaybe (error "lpeHide: could not find the given procId") (Map.lookup procId_lpe procDefs''')
         -- strip hidden chans and update ProcDef
         steps = extractSteps bexpr_lpe
-        steps' = map (hideChans hiddenChans) steps
-        procDef_lpe = ProcDef chansDef_lpe paramsDef_lpe (wrapSteps steps')
+    steps' <- mapM (hideChans hiddenChans) steps
+    let procDef_lpe = ProcDef chansDef_lpe paramsDef_lpe (wrapSteps steps')
         procDefs'''' = Map.insert procId_lpe procDef_lpe procDefs'''
     return $ (procInst_lpe, procDefs'''')
     where
-        hideChans :: [ChanId] -> BExpr -> BExpr
-        hideChans _ (TxsDefs.view -> Stop) = stop
+        hideChans :: (EnvB.EnvB envb) => [ChanId] -> BExpr -> envb(BExpr)
+        hideChans _ (TxsDefs.view -> Stop) = return stop
         -- hideChans _ (ActionPref chanIdExit ) ??
-        hideChans hiddenChans (TxsDefs.view -> ActionPref actOffer bexpr) = 
+        hideChans hiddenChans (TxsDefs.view -> ActionPref actOffer bexpr) = do
             let os = offers actOffer 
-                os' = hideChansOffer (Set.toList os) 
-                -- TODO for hidvars:
-                --  receive the set of hidden vars: put in the actOffer
-            in actionPref actOffer{ offers = Set.fromList os'} bexpr 
-            where
-                -- TODO for hidvars:
-                -- return type: ([Offer], Set.Set VarId)
-                --      possibly return variables that went hidden
-                
-                hideChansOffer :: [Offer] -> [Offer]
-                hideChansOffer [] = []
-                hideChansOffer (o:os) = 
-                    let -- recursion 
-                        os' = hideChansOffer os 
-                        -- current case
-                        chanid' = if (chanid o) `elem` hiddenChans 
-                                    then chanIdIstep  
-                                    else (chanid o)
-                        o' = o{ chanid = chanid' }
-                    in (o':os')
+            (os',hidvars, varMap) <-  hideChansOffer (Set.toList os) 
 
-                -- TODO for hidvars: uncomment!
-                -- hideChansOffer (o:os) = 
-                --     let -- recursion 
-                --         (os', hiddenvarsRec) = hideChansOffer os 
-                --         -- current case
-                --         (chanid', hiddenvars) = if (chanid o) `elem` hiddenChans 
-                --                                     then (chanIdIstep, extractVarIds_Offer  o)
-                --                                     else ((chanid o), Set.empty)
-                --         o' = o{ chanid = chanid' }
-                --     in ((o':os'), Set.union hiddenvars hiddenvarsRec)
+            -- need to substitute the standard chanoffer variables with the newly unique variables
+            --  in constraints and the ProcInst (bepxr)
+            let varMap' = Map.fromList $ map (Control.Arrow.second cstrVar) varMap
+                constraint_substituted = Subst.subst varMap' (Map.fromList []) $ constraint actOffer
+                bexpr_substituted = Subst.subst varMap' (Map.fromList []) bexpr
+            return $ actionPref 
+                        actOffer{ offers = Set.fromList os'
+                                , constraint = constraint_substituted
+                                , hiddenvars = hidvars} 
+                        bexpr_substituted
+            where
+                hideChansOffer :: (EnvB.EnvB envb) => [Offer] -> envb([Offer], Set.Set VarId, [(VarId, VarId)])
+                hideChansOffer [] = return ([], Set.empty, [])
+                hideChansOffer (o:os) = do  -- recursion 
+                                            (os', hiddenVarsRec, varMapRec) <- hideChansOffer os 
+                                            -- current case
+                                            if (chanid o) `elem` hiddenChans 
+                                                then do (hidvars, varMap) <- generate_hiddenvars o
+                                                        return (os', Set.union hidvars hiddenVarsRec, varMap ++ varMapRec)
+                                                else return ((o:os'), hiddenVarsRec, varMapRec)
+                                            where
+                                                generate_hiddenvars :: (EnvB.EnvB envb) => Offer -> envb(Set.Set VarId, [(VarId, VarId)])
+                                                generate_hiddenvars o'  = do let vars' = extractVarIds_Offer o' []
+                                                                             vars'' <- mapM transformVar vars' 
+                                                                             let varMap = zip vars' vars''
+                                                                             return (Set.fromList vars'', varMap)
+                                                -- make hiddenvars globally unique, practically they get a local scope
+                                                transformVar :: (EnvB.EnvB envb) => VarId -> envb(VarId)
+                                                transformVar var' = do  unid' <- EnvB.newUnid
+                                                                        let name' = T.unpack (VarId.name var') ++ "_" ++ show unid'
+                                                                        return var' { VarId.name = T.pack name', VarId.unid = unid'}
         hideChans _ _ = error "hideChans: unknown input"            
 
 lpeHide _ _ _ = error "lpeHide: was called with something other than a ProcInst"
@@ -568,8 +567,7 @@ lpeTransform procInst' procDefs'  =
        ProcInst procid _chans _vexps
          -> case Map.lookup procid procDefs' of
               Just _procdef
-                ->
-                      lpeTransform' procInst' procDefs'
+                -> lpeTransform' procInst' procDefs'
               _ -> do EnvB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                      "LPE Transformation: undefined process instantiation" ]
                       return Nothing
@@ -600,8 +598,7 @@ lpeTransform' procInst''' procDefs' = do    (procInst', procDefs'') <- lpe procI
                                                 -- put new ProcId in each step
                                                 steps = map (substituteProcId procIdInst'' procIdInst') (extractSteps bexpr)
                                                 procDef = ProcDef chans params (wrapSteps steps)
-                                            -- trace (show procDef) $
-                                            return $ Just (procInst'', procDef)
+                                            trace ("\n\nlpeTransform result: \n " ++ show procInst'' ++ "\n" ++ show procDef) $ return $ Just (procInst'', procDef)
         where
         -- -- create new channoffers for ONE channel
         -- collectChanOffers :: (EnvB.EnvB envb ) => ChanId -> envb [((Name, Int), VarId)]
@@ -817,7 +814,7 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
                         else cstrITE constraintPC (cstrAnd (Set.fromList constraintsList)) (cstrConst (Cbool False))
 
         actOffer' = ActOffer { offers = Set.fromList offers'
-                             , hiddenvars = Set.empty
+                             , hiddenvars = hiddenvars actOffer
                              , constraint = constraint' }
 
         bexpr'' = case TxsDefs.view bexpr' of
