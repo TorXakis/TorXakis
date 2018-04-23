@@ -96,7 +96,7 @@ guard :: VExpr -> BExpr -> BExpr
 guard v b = BExpr (Guard v b)
 
 choice :: [BExpr] -> BExpr
-choice bs = BExpr (Choice bs)
+choice = BExpr . Choice
 
 parallel :: [ChanId] -> [BExpr] -> BExpr
 parallel cs bs = BExpr (Parallel cs bs)
@@ -126,6 +126,7 @@ stAut s v ts = BExpr (StAut s v ts)
 -- Offer on multiple channels with constraints
 data ActOffer = ActOffer
   { offers     :: Set.Set Offer      -- PvdL -- why not? -- Map ChanId [ChanOffer]
+  , hiddenvars :: Set.Set VarId
   , constraint :: VExpr
   } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 

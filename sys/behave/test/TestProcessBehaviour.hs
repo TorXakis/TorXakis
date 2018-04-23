@@ -80,7 +80,7 @@ testGuardFalse = do
 
 testGuardTrue :: IOB()
 testGuardTrue = do
-    let aBExpr = actionPref (ActOffer (Set.singleton (Offer chanIdExit []) ) (cstrConst (Cbool True)) ) stop
+    let aBExpr = actionPref (ActOffer (Set.singleton (Offer chanIdExit []) ) Set.empty (cstrConst (Cbool True)) ) stop
     let bnode = BNbexpr Map.empty aBExpr
     nextExpected <- expand [] bnode
     
@@ -90,7 +90,7 @@ testGuardTrue = do
     
 testChoice :: IOB()
 testChoice = do
-    let aBExpr = actionPref (ActOffer (Set.singleton (Offer chanIdExit []) ) (cstrConst (Cbool True)) ) stop
+    let aBExpr = actionPref (ActOffer (Set.singleton (Offer chanIdExit []) ) Set.empty (cstrConst (Cbool True)) ) stop
     let bnode = BNbexpr Map.empty aBExpr
     nextExpected <- unfold [] bnode
     

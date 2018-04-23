@@ -82,7 +82,6 @@ import           Data.Maybe      (fromMaybe)
 import           Data.Monoid     ((<>))
 import qualified Data.Set        as Set
 import qualified Data.Text       as T
-import           Debug.Trace     as Trace
 import           Text.Regex.TDFA
 
 import           ConstDefs
@@ -130,16 +129,14 @@ cstrIsCstr c e                             = ValExpr (Viscstr c e)
 -- | Apply ADT Accessor of constructor with CstrId on field with given position on the provided value expression.
 -- Preconditions are /not/ checked.
 cstrAccess :: CstrId -> Int -> ValExpr v -> ValExpr v
-cstrAccess c1 p1 e@(view -> Vcstr c2 fields) =
+cstrAccess c1 p1 (view -> Vcstr c2 fields) =
     if c1 == c2 -- prevent crashes due to model errors
         then fields!!p1
-        else Trace.trace ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on instance from constructor " ++ show c2) $
-                ValExpr (Vaccess c1 p1 e)
-cstrAccess c1 p1 e@(view -> Vconst (Cstr c2 fields)) =
+        else error ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on instance from constructor " ++ show c2)
+cstrAccess c1 p1 (view -> Vconst (Cstr c2 fields)) =
     if c1 == c2 -- prevent crashes due to model errors
         then cstrConst (fields!!p1)
-        else Trace.trace ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on value from constructor " ++ show c2) $
-                ValExpr (Vaccess c1 p1 e)
+        else error ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on value from constructor " ++ show c2)
 cstrAccess c p e = ValExpr (Vaccess c p e)
 
 -- | Is ValExpr a Constant/Value Expression?
@@ -157,11 +154,11 @@ getIntVal _                         =
 
 -- | Create a constant as a value expression.
 cstrConst :: Const -> ValExpr v
-cstrConst c = ValExpr (Vconst c)
+cstrConst = ValExpr . Vconst
 
 -- | Create a variable as a value expression.
 cstrVar :: v -> ValExpr v
-cstrVar v = ValExpr (Vvar v)
+cstrVar = ValExpr . Vvar
 
 -- | Apply operator ITE (IF THEN ELSE) on the provided value expressions.
 -- Preconditions are /not/ checked.
@@ -337,8 +334,7 @@ cstrProduct' ms =
             _   ->  let (_, n) = Product.fraction zeros in
                         case FMX.nrofDistinctTerms n of
                             0   ->  cstrConst (Cint 0)      -- 0 * x == 0
-                            _   ->  Trace.trace "Error in model: Division by Zero in Product (via negative power)" $
-                                    ValExpr (Vproduct ms)
+                            _   ->  error "Error in model: Division by Zero in Product (via negative power)"
     where
         isZero :: ValExpr v -> Bool
         isZero (view -> Vconst (Cint 0)) = True
@@ -349,8 +345,8 @@ cstrProduct' ms =
 -- | Apply operator Divide on the provided value expressions.
 -- Preconditions are /not/ checked.
 cstrDivide :: ValExpr v -> ValExpr v -> ValExpr v
-cstrDivide vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Divide" $ ValExpr (Vdivide vet ven)
-cstrDivide (view ->  Vconst (Cint t)) (view ->  Vconst (Cint n)) = cstrConst (Cint (t `div` n) )
+cstrDivide _                          (view -> Vconst (Cint n)) | n == 0 = error "Error in model: Division by Zero in Divide"
+cstrDivide (view ->  Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `div` n) )
 cstrDivide vet ven = ValExpr (Vdivide vet ven)
 
 -- Modulo
@@ -358,7 +354,7 @@ cstrDivide vet ven = ValExpr (Vdivide vet ven)
 -- | Apply operator Modulo on the provided value expressions.
 -- Preconditions are /not/ checked.
 cstrModulo :: ValExpr v -> ValExpr v -> ValExpr v
-cstrModulo vet ven@(view -> Vconst (Cint n)) | n == 0 = Trace.trace "Error in model: Division by Zero in Modulo" $ ValExpr (Vmodulo vet ven)
+cstrModulo _                         (view -> Vconst (Cint n)) | n == 0 = error "Error in model: Division by Zero in Modulo"
 cstrModulo (view -> Vconst (Cint t)) (view -> Vconst (Cint n)) = cstrConst (Cint (t `mod` n) )
 cstrModulo vet ven = ValExpr (Vmodulo vet ven)
 
@@ -380,10 +376,9 @@ cstrLength v                            = ValExpr (Vlength v)
 -- | Apply operator At on the provided value expressions.
 -- Preconditions are /not/ checked.
 cstrAt :: ValExpr v -> ValExpr v -> ValExpr v
-cstrAt ves@(view -> Vconst (Cstring s)) vei@(view -> Vconst (Cint i)) =
+cstrAt (view -> Vconst (Cstring s)) (view -> Vconst (Cint i)) =
     if i < 0 || i >= Prelude.toInteger (T.length s)
-        then Trace.trace ("Error in model: Accessing string " ++ show s ++ " of length " ++ show (T.length s) ++ " with illegal index "++ show i) $
-             ValExpr (Vat ves vei)
+        then error ("Error in model: Accessing string " ++ show s ++ " of length " ++ show (T.length s) ++ " with illegal index "++ show i) 
         else cstrConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))
 cstrAt ves vei = ValExpr (Vat ves vei)
 
@@ -496,8 +491,6 @@ compSubst' ve fis (Vat s p)                = cstrAt ( (compSubst' ve fis . view)
 compSubst' ve fis (Vconcat vexps)          = cstrConcat $ map (compSubst' ve fis . view) vexps
 compSubst' ve fis (Vstrinre s r)           = cstrStrInRe ( (compSubst' ve fis . view) s) ( (compSubst' ve fis . view) r)
 compSubst' ve fis (Vpredef kd fid vexps)   = cstrPredef kd fid (map (compSubst' ve fis . view) vexps)
-
--- ----------------------------------------------------------------------------------------- --
 
 -- ----------------------------------------------------------------------------------------- --
 --

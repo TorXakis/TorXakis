@@ -54,7 +54,11 @@ MODELDEF  Adder ::=
     BEHAVIOUR  adder [ Action, Result ] ( )
 ENDDEF
 
-
+MODELDEF  STD_Adder ::=  -- TODO remove in final version
+    CHAN IN    Action
+    CHAN OUT   Result
+    BEHAVIOUR  stdi_adder [ Action, Result ] ( )
+ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 CNECTDEF  SutConnection ::=

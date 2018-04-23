@@ -5,7 +5,7 @@
 build: off
 skip_tags: true
 
-version: pre-0.6.0.{build}.{branch}
+version: pre-0.7.0.{build}.{branch}
 # branches:
     # only:
     # - develop

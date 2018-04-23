@@ -18,6 +18,7 @@ library
   exposed-modules:      Behave
                       , Expand
                       , Subst
+                      , StautDef
 
   other-modules:        Equiv
                       , Next

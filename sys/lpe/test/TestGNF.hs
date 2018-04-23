@@ -4,23 +4,11 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
--- TODO: make sure these warnings are removed.
--- TODO: also check the hlint warnings!
-{-# OPTIONS_GHC -Wno-name-shadowing #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# OPTIONS_GHC -Wno-unused-local-binds #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-
 module TestGNF
 (
 testGNFList
 )
 where
-import LPE
 import TranslatedProcDefs
 
 import Test.HUnit
@@ -28,7 +16,6 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 
 import TxsDefs
-import TxsShow
 import ProcId
 import ChanId
 import SortId
@@ -44,60 +31,62 @@ import LPEfunc
 ---------------------------------------------------------------------------
 
 procIdGen :: String -> [ChanId] -> [VarId] -> ProcId
-procIdGen name chans vars = ProcId   {    ProcId.name       = T.pack name
+procIdGen name' chans vars' = ProcId   {  ProcId.name       = T.pack name'
                                         , ProcId.unid       = 111
                                         , ProcId.procchans  = chans
-                                        , ProcId.procvars   = vars
+                                        , ProcId.procvars   = vars'
                                         , ProcId.procexit   = NoExit
                                     }
 
+varIdX :: VarId
 varIdX = VarId (T.pack "x") 33 intSort
-varIdY = VarId (T.pack "y") 34 intSort
--- vexprX :: VExpr
+vexprX :: VExpr
 vexprX = cstrVar varIdX
+vexpr1 :: VExpr
 vexpr1 = cstrConst (Cint 1)
 
 
--- action: A!1
-actOfferA1   = ActOffer {  offers = Set.singleton
-                                        Offer { chanid = chanIdA
-                                              , chanoffers = [Exclam vexpr1]
-                                        }
-                        , constraint = cstrConst (Cbool True)
-            }
-
 -- action: A?x
+actOfferAx :: ActOffer
 actOfferAx   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdA
                                               , chanoffers = [Quest varIdX]
                                         }
+                        , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
 
 -- action: B!1
+actOfferB1 :: ActOffer
 actOfferB1   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdB
                                               , chanoffers = [Exclam vexpr1]
                                         }
+                        , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
 
 -- action: B?x
+actOfferBx :: ActOffer
 actOfferBx   = ActOffer {  offers = Set.singleton
                                         Offer { chanid = chanIdB
                                               , chanoffers = [Quest varIdX]
                                         }
+                        , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
 
 -- sorts, chanIds
+intSort :: SortId
 intSort = SortId {  SortId.name = T.pack "Int"
                   , SortId.unid = 1}
 
+chanIdA :: ChanId
 chanIdA = ChanId    { ChanId.name = T.pack "A"
                     , ChanId.unid = 2
                     , ChanId.chansorts = [intSort]
                     }
+chanIdB :: ChanId
 chanIdB = ChanId    { ChanId.name = T.pack "B"
                     , ChanId.unid = 3
                     , ChanId.chansorts = [intSort]
@@ -115,7 +104,7 @@ chanIdB = ChanId    { ChanId.name = T.pack "B"
   -- P$pre1[A](x) = STOP ## STOP
 testPreGNFFirst :: Test
 testPreGNFFirst = TestCase $
-   assertBool "choice (on lower level) is substituted" $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "choice (on lower level) is substituted" $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP = procIdGen "P" [chanIdA] []
       procDefP = ProcDef [chanIdA] [] (actionPref actOfferAx (choice [stop, stop]))
@@ -128,24 +117,24 @@ testPreGNFFirst = TestCase $
       procDefPpre1x = ProcDef [chanIdA] [varIdX] (choice [stop, stop])
 
 
-      procDefs = Map.fromList  [ (procIdP, procDefP) ]
-      procDefs' = Map.fromList  [ (procIdP, procDefP')
+      procDefs' = Map.fromList  [ (procIdP, procDefP) ]
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
                                 , (procIdPpre1x, procDefPpre1x) ]
 
 
 -- Stop remains unchanged
 testStop :: Test
 testStop = TestCase $
-    let procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] stop)]
+    let procDefs' = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] stop)]
         procIdP = procIdGen "P" [chanIdA] [varIdX]
-    in  assertBool "STOP"  $ eqProcDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+    in  assertBool "STOP"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
 
 -- A?X >-> STOP remains unchanged
 testASeqStop :: Test
 testASeqStop = TestCase $
-    let procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [] (actionPref actOfferAx stop))]
+    let procDefs' = Map.fromList [(procIdP, ProcDef [chanIdA] [] (actionPref actOfferAx stop))]
         procIdP = procIdGen "P" [chanIdA] [varIdX]
-    in  assertBool "STOP"  $ eqProcDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+    in  assertBool "STOP"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
 
 -- P[]() := A?x >-> P[A](x) remains unchanged
 -- also checks that there are no infinite loops of valid gnfFunc translations
@@ -154,8 +143,8 @@ testASeqProcInst :: Test
 testASeqProcInst = TestCase $
     let procIdP = procIdGen "P" [chanIdA] [varIdX]
         procInstP = procInst procIdP [chanIdA] [vexprX]
-        procDefs = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] (actionPref actOfferAx procInstP))]
-    in  assertBool "STOP"  $ eqProcDefs procDefs (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+        procDefs' = Map.fromList [(procIdP, ProcDef [chanIdA] [varIdX] (actionPref actOfferAx procInstP))]
+    in  assertBool "STOP"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
 
 
 
@@ -164,7 +153,7 @@ testASeqProcInst = TestCase $
 -- P$gnf1[A,B](x) := B!1 >-> STOP
 testActPrefSplit :: Test
 testActPrefSplit = TestCase $
-   assertBool "multi action sequence is split"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "multi action sequence is split"  $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
       procDefP = ProcDef [chanIdA, chanIdB] [] (actionPref actOfferAx (actionPref actOfferB1 stop))
@@ -177,8 +166,8 @@ testActPrefSplit = TestCase $
       procDefPgnf1x = ProcDef [chanIdA, chanIdB] [varIdX] (actionPref actOfferB1 stop)
 
 
-      procDefs = Map.fromList  [ (procIdP, procDefP) ]
-      procDefs' = Map.fromList  [ (procIdP, procDefP')
+      procDefs' = Map.fromList  [ (procIdP, procDefP) ]
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
                                 , (procIdPgnf1, procDefPgnf1x) ]
 
 
@@ -190,7 +179,7 @@ testActPrefSplit = TestCase $
 -- Q[B]() := B?x >-> STOP
 testProcInst1 :: Test
 testProcInst1 = TestCase $
-   assertBool "procInst is substituted"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted"  $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
@@ -200,9 +189,9 @@ testProcInst1 = TestCase $
 
       procDefP' = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
 
-      procDefs = Map.fromList  [  (procIdP, procDefP)
+      procDefs' = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
-      procDefs' = Map.fromList  [ (procIdP, procDefP')
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
                                 , (procIdQ, procDefQ) ]
 
 
@@ -213,7 +202,7 @@ testProcInst1 = TestCase $
 -- Q[A]() := A?X >-> STOP
 testProcInst2 :: Test
 testProcInst2 = TestCase $
-   assertBool "procInst is substituted 2"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted 2"  $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
@@ -223,9 +212,9 @@ testProcInst2 = TestCase $
 
       procDefP' = ProcDef [chanIdA] [] (choice [stop, actionPref actOfferAx stop])
 
-      procDefs = Map.fromList  [  (procIdP, procDefP)
+      procDefs' = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
-      procDefs' = Map.fromList  [ (procIdP, procDefP')
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
                                 , (procIdQ, procDefQ) ]
 
 
@@ -238,7 +227,7 @@ testProcInst2 = TestCase $
 -- R[A]()  := A?x -> STOP
 testProcInst3 :: Test
 testProcInst3 = TestCase $
-   assertBool "procInst is substituted 3"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted 3"  $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
@@ -251,10 +240,10 @@ testProcInst3 = TestCase $
       procDefQ' = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
 
 
-      procDefs = Map.fromList  [  (procIdP, procDefP)
+      procDefs' = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)
                                 , (procIdR, procDefR)]
-      procDefs' = Map.fromList  [ (procIdP, procDefP')
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
                                 , (procIdQ, procDefQ')
                                 , (procIdR, procDefR) ]
 
@@ -270,7 +259,7 @@ testProcInst3 = TestCase $
 --      otherwise it would not be in pregnfFunc (and thus not GNF) after the substitution!
 testProcInst4 :: Test
 testProcInst4 = TestCase $
-   assertBool "procInst is substituted and normalised"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "procInst is substituted and normalised"  $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP = procIdGen "P" [] []
       procIdQ = procIdGen "Q" [] []
@@ -280,9 +269,9 @@ testProcInst4 = TestCase $
 
       procDefP' = ProcDef [] [] (choice [stop, stop, stop])
 
-      procDefs = Map.fromList  [  (procIdP, procDefP)
+      procDefs' = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
-      procDefs' = Map.fromList  [ (procIdP, procDefP')
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
                                 , (procIdQ, procDefQ) ]
 
 
@@ -302,7 +291,7 @@ testProcInst4 = TestCase $
 -- P$pre1[A,B](x) := STOP ## STOP
 testNamingClash :: Test
 testNamingClash = TestCase $
-   assertBool "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+   assertBool "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash"  $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
       procIdPgnf1 = procIdGen "P$gnf1" [chanIdA, chanIdB] [varIdX]
@@ -314,18 +303,18 @@ testNamingClash = TestCase $
       procDefPgnf1 = ProcDef [chanIdA, chanIdB] [varIdX] (actionPref actOfferB1 (procInst procIdPpre1 [chanIdA, chanIdB] [vexprX]))
       procDefPpre1 = ProcDef [chanIdA, chanIdB] [varIdX] (choice [stop, stop])
 
-      procDefs = Map.fromList  [ (procIdP, procDefP) ]
+      procDefs' = Map.fromList  [ (procIdP, procDefP) ]
 
-      procDefs' = Map.fromList  [ (procIdP, procDefP')
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
                                 , (procIdPgnf1, procDefPgnf1)
                                 , (procIdPpre1, procDefPpre1) ]
 
 
 --
 -- -- create monad to run GNF
--- -- return the resulting procDefs and the possible error
+-- -- return the resulting procDefs' and the possible error
 -- gnfTestWrapper :: ProcId -> TranslatedProcDefs -> ProcDefs -> (ProcDefs, String)
--- gnfTestWrapper procId translatedProcDefs procDefs =
+-- gnfTestWrapper procId translatedProcDefs procDefs' =
 --   let a = a
 --   in (Map.fromList [], "loop (GNF) detected in P")
 
@@ -336,14 +325,14 @@ testNamingClash = TestCase $
 -- -- should fail
 -- testLoop1 :: Test
 -- testLoop1 = TestCase $
---    -- result = gnfFunc procIdP emptyTranslatedProcDefs procDefs
---    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
+--    -- result = gnfFunc procIdP emptyTranslatedProcDefs procDefs'
+--    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs' in
 --    assertBool "loop 1" err "loop (GNF) detected in P"
 --    where
 --       procIdP = procIdGen "P" [] []
 --       procDefP = ProcDef [] [] (ProcInst procIdP [] [])
 --
---       procDefs = Map.fromList  [  (procIdP, procDefP)]
+--       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 --
 -- -- cycle detection
 -- --  P[]() :=     A >-> P[]()
@@ -351,7 +340,7 @@ testNamingClash = TestCase $
 -- -- should fail
 -- testLoop2 :: Test
 -- testLoop2 = TestCase $
---    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
+--    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs' in
 --    assertBool "loop 2" err "loop (GNF) detected in P"
 --    where
 --       procIdP = procIdGen "P" [] []
@@ -360,7 +349,7 @@ testNamingClash = TestCase $
 --                                   (ProcInst procIdP [] [])
 --                                   ])
 --
---       procDefs = Map.fromList  [  (procIdP, procDefP)]
+--       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 --
 --
 -- -- cycle detection
@@ -370,7 +359,7 @@ testNamingClash = TestCase $
 -- -- should fail
 -- testLoop3 :: Test
 -- testLoop3 = TestCase $
---    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs in
+--    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs' in
 --    assertBool "loop 3" err "loop (GNF) detected in P"
 --    where
 --       procIdP = procIdGen "P" [] []
@@ -380,7 +369,7 @@ testNamingClash = TestCase $
 --                                   (ProcInst procIdQ [] [])
 --                                   ])
 --       procDefQ = ProcDef [] [] (ProcInst procIdQ [] [])
---       procDefs = Map.fromList  [  (procIdP, procDefP),
+--       procDefs' = Map.fromList  [  (procIdP, procDefP),
 --                                   (procIdQ, procDefQ)]
 --
 --
