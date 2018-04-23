@@ -130,7 +130,7 @@ preGNF procId translatedProcDefs procDefs' = do
 
 preGNFBExpr :: (EnvB.EnvB envb) => BExpr -> Int -> [VarId] -> ProcId -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
 
-preGNFBExpr (TxsDefs.view -> Stop) _ _ _ _ procDefs' =
+preGNFBExpr bexpr _ _ _ _ procDefs' | isStop bexpr =
     return (stop, procDefs')
 
 preGNFBExpr (TxsDefs.view -> ActionPref actOffer bexpr') choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
@@ -227,10 +227,10 @@ gnf procId translatedProcDefs procDefs' = do
 
 
 gnfBExpr :: (EnvB.EnvB envb) => BExpr -> Int -> ProcId -> TranslatedProcDefs -> ProcDefs -> envb([BExpr], ProcDefs)
-gnfBExpr bexpr@(TxsDefs.view -> Stop) _choiceCnt _procId _translatedProcDefs procDefs' =
+gnfBExpr bexpr _choiceCnt _procId _translatedProcDefs procDefs' | isStop bexpr =
       return ([bexpr], procDefs')
 
-gnfBExpr bexpr@(TxsDefs.view -> ActionPref _actOffer (TxsDefs.view -> Stop)) _choiceCnt _procId _translatedProcDefs procDefs' =
+gnfBExpr bexpr@(TxsDefs.view -> ActionPref _actOffer bexpr1) _choiceCnt _procId _translatedProcDefs procDefs' | isStop bexpr1 =
       return ([bexpr], procDefs')
 
 gnfBExpr bexpr@(TxsDefs.view -> ActionPref _actOffer (TxsDefs.view -> ProcInst procIdInst _ _)) _choiceCnt _procId translatedProcDefs procDefs' =
@@ -515,7 +515,7 @@ lpeTransform' procInst''' procDefs' = do (procInst', procDefs'') <- lpe procInst
                                            return $ Just (procInst'', procDef)
     where
         substituteProcId :: ProcId -> ProcId -> BExpr -> BExpr
-        substituteProcId _orig _new (TxsDefs.view -> Stop) = stop
+        substituteProcId _orig _new bexpr | isStop bexpr = stop
         substituteProcId orig new (TxsDefs.view -> ActionPref actOffer (TxsDefs.view -> ProcInst procId chansInst paramsInst)) =
           if procId == orig
               then actionPref actOffer (procInst new chansInst paramsInst)
@@ -618,7 +618,7 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
 
             -- let steps' = map (lpeBExpr chanMap paramMap varIdPC pcValue) steps
             steps' <- mapM (lpeBExpr chanMap paramMap varIdPC pcValue) steps
-            let steps'' = filter (not . (\b -> TxsDefs.view b == Stop)) steps'       -- filter out the Stops
+            let steps'' = filter (not . isStop) steps'       -- filter out the Stops
             -- recursion
             (stepsRec, paramsRec, procToParamsRec) <- translateProcs procss varIdPC pcMapping procDefs''
 
@@ -642,7 +642,7 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
         
         -- update the ProcInsts in the steps to the new ProcId
         stepsUpdateProcInsts :: [Proc] -> ProcToParams -> PCMapping -> ProcId -> BExpr -> BExpr
-        stepsUpdateProcInsts _procs _procToParams _pcMap procIdNew (TxsDefs.view -> ActionPref actOffer (TxsDefs.view -> Stop)) =
+        stepsUpdateProcInsts _procs _procToParams _pcMap procIdNew (TxsDefs.view -> ActionPref actOffer bexpr) | isStop bexpr =
             let -- get the params, but leave out the first one because it's the program counter
                 (_:params) = ProcId.procvars procIdNew
                 paramsSorts = map varIdToSort params
@@ -689,7 +689,7 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
 lpe _ _ _ = error "Only allowed with ProcInst"
 
 lpeBExpr :: (EnvB.EnvB envb ) => ChanMapping -> ParamMapping -> VarId -> Integer -> BExpr -> envb BExpr
-lpeBExpr _chanMap _paramMap _varIdPC _pcValue (TxsDefs.view -> Stop) = return stop
+lpeBExpr _chanMap _paramMap _varIdPC _pcValue bexpr | isStop bexpr = return stop
 lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
     let -- instantiate the bexpr
         bexprRelabeled = relabel chanMap bexpr
@@ -726,10 +726,9 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
                              , hiddenvars = Set.empty
                              , constraint = constraint' }
 
-        bexpr'' = case TxsDefs.view bexpr' of
-                    Stop -> stop
-                    -- TODO: properly initialise funcDefs param of subst
-                    _    -> Subst.subst varMap' (Map.fromList []) bexpr'
+        bexpr'' = if isStop bexpr' then stop
+                                        -- TODO: properly initialise funcDefs param of subst
+                                   else Subst.subst varMap' (Map.fromList []) bexpr'
     return (actionPref actOffer' bexpr'')
 
     where

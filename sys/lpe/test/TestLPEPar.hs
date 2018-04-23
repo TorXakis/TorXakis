@@ -19,7 +19,6 @@ import           Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
-import TxsDefs
 import ProcId
 import ChanId
 import SortId
@@ -27,6 +26,8 @@ import qualified Data.Text         as T
 import VarId
 import ConstDefs
 import ValExpr
+import TxsDefs
+import TxsShow
 
 import LPEfunc
 
@@ -1618,11 +1619,11 @@ testMultiSeqGEN = TestCase $
 -- becomes after step combination
 -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
 --        // only op1
---        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
+--        A?A1 [op1$pc$Q == 0]                         >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
 --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
 --                                // note: the right side is still allowed to continue! that's intended behaviour.
 --        // only op2
---        A?A1 [op2$pc$Q == 0]                    >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
+--        A?A1 [op2$pc$Q == 0]                         >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
 --        B?B1 [op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, -1, ANY)
 --        // both op1 and op2
 --        // 1,2 : only if G is empty: |[]|
@@ -1632,10 +1633,12 @@ testMultiSeqGEN = TestCase $
 --  with procInst = P[A,B](0, ANY, 0, ANY)
 testMultiSeq1 :: Test
 testMultiSeq1 = TestCase $
-   assertBool "test multi-sequences 1"  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
+   assertBool ("test multi-sequences 1" ++ "expected " ++ pshow (TxsDefs.fromList [(IdProc ((\(ProcInst p _ _) -> p) (TxsDefs.view procInst')), DefProc procDefP')]) ++ "\n"
+                                        ++ "actual " ++ (pshow . TxsDefs.fromList . (\(Just (TxsDefs.view -> (ProcInst p _ _),b) ) -> [(IdProc p, DefProc b)])) (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
+              )  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
    where
 
-      -- P[A,B]() := Q[A,B]() |G| Q[A,B]()
+      -- P[A,B]() := Q[A,B]() |[G]| Q[A,B]()
       -- Q[A,B]() := A?x >-> B!x >-> STOP
       -- with procInst := P[A,B]()
       procInst'' = procInst procIdP [chanIdA, chanIdB] []
@@ -1691,7 +1694,7 @@ testMultiSeq1 = TestCase $
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp1QABx, varIdOp2pcQ, varIdOp2QABx]
                       (choice [
                           --        // only op1
-                          --        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
+                          --        A?A1 [op1$pc$Q == 0]                         >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --                                // note: the right side is still allowed to continue! that's intended behaviour.
                           actionPref
@@ -1718,7 +1721,7 @@ testMultiSeq1 = TestCase $
 
 
                             --        // only op2
-                            --        A?A1 [op2$pc$Q == 0]                    >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
+                            --        A?A1 [op2$pc$Q == 0]                         >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
                             --        B?B1 [op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, -1, ANY)
                             , actionPref
                               ActOffer {  offers = Set.singleton
