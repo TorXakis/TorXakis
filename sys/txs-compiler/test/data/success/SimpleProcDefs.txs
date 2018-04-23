@@ -125,7 +125,7 @@ ENDDEF
 
 CHANDEF X ::=
     S :: String;
-    I :: Int;
+    I, J :: Int;
     OutS :: String
 ENDDEF    
 
@@ -194,4 +194,50 @@ MODELDEF Outlet1 ::=
            OutS ! LET x = "foo" IN x NI 
        >-> S ? x
        >-> overloaded1[OutS](x)
+ENDDEF
+
+MODELDEF Syncer20 ::=
+    CHAN IN S, I
+    CHAN OUT OutS    
+    BEHAVIOUR
+        I ! 10 | S ? v
+ENDDEF
+
+MODELDEF Syncer21 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    SYNC {S | I}, {OutS}
+    BEHAVIOUR
+        S ! "10" | I ? v >-> I ? x
+ENDDEF
+
+MODELDEF Syncer ::=
+    CHAN IN I
+    CHAN OUT
+    BEHAVIOUR
+        I ! 10 |[ I ]| I ? x
+ENDDEF
+
+MODELDEF Syncer1 ::=
+    CHAN IN I, J
+    CHAN OUT
+    -- SYNC
+    BEHAVIOUR
+        I ! 10 >-> J ? x |[ I ]| I ? x >-> J ! 33
+ENDDEF
+
+MODELDEF Syncer2 ::=
+    CHAN IN I, J
+    CHAN OUT
+    -- SYNC
+    BEHAVIOUR
+        I ! 10 >-> J ? x |[ I ]| I ? x >-> J ? y |[ J ]| J ! 33
+ENDDEF
+
+MODELDEF Syncer3 ::=
+    CHAN IN I, J
+    CHAN OUT
+    -- SYNC
+    BEHAVIOUR
+        I ! 10 >-> J ? x |[ I ]| (I ? x >-> J ? y |[ J ]| J ! 33)
 ENDDEF

@@ -211,7 +211,8 @@ class HasTypedVars e where
                   => mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
 
 instance HasTypedVars BExpDecl where
-    inferVarTypes _ Stop               = return []
+    inferVarTypes _ Stop               =
+        return []
     inferVarTypes mm (ActPref ao be)   = do
         xs <- inferVarTypes mm ao
         -- The implicit variables in the offers are needed in subsequent expressions.
@@ -221,7 +222,10 @@ instance HasTypedVars BExpDecl where
         xs <- Map.toList <$> liftEither (gInferTypes mm vs)
         ys <- inferVarTypes mm be
         return $ xs ++ ys
-    inferVarTypes mm (Pappl _ _ _ exs) = inferVarTypes mm exs
+    inferVarTypes mm (Pappl _ _ _ exs) =
+        inferVarTypes mm exs
+    inferVarTypes mm (Par _ _ be0 be1) =
+        (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
 
 instance HasTypedVars ActOfferDecl where
     inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx

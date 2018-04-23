@@ -65,6 +65,8 @@ instance HasVarReferences BExpDecl where
                  <*> mapRefToDecls (letVds <.+> mm) be
     mapRefToDecls mm (Pappl _ _ _ exs) =
         mapRefToDecls mm exs
+    mapRefToDecls mm (Par _ _ be0 be1) =
+        (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
 
 instance HasVarReferences ActOfferDecl where
     mapRefToDecls mm ao@(ActOfferDecl os mc) =

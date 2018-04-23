@@ -101,9 +101,10 @@ txsITEP = do
 txsBopSymbolP :: TxsParser Text
 txsBopSymbolP = try $ T.pack <$> do
     op <- txsLexeme (many1 txsSpecialCOp)
-    case op of
-        ">->" -> parserFail "Operator \">->\" not allowed in value expressions."
-        _     -> return op
+    if op `elem` [">->", "|"]
+        then parserFail $ "Operator \"" ++ op
+                        ++ "\" not allowed in value expressions."
+        else return op
 
 -- | Special characters for operators.
 txsSpecialCOp :: TxsParser Char

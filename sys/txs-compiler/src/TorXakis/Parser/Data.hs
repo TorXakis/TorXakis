@@ -90,6 +90,7 @@ module TorXakis.Parser.Data
     , ActOfferDecl (..)
     , OfferDecl (..)
     , ChanOfferDecl (..)
+    , SyncOn (..)
     , chanOfferIvarDecl
     , actOfferDecls
     , asVarReflLoc
@@ -215,10 +216,13 @@ data ChanRefE = ChanRefE deriving (Eq, Ord, Show)
 data ModelDeclE = ModelDeclE deriving (Eq, Ord, Show)
 
 -- | Process declaration.
-data ProcDeclE = ProcDeclE  deriving (Eq, Ord, Show)
+data ProcDeclE = ProcDeclE deriving (Eq, Ord, Show)
 
 -- | Process reference. Used at process instantiations.
-data ProcRefE = ProcRefE  deriving (Eq, Ord, Show)
+data ProcRefE = ProcRefE deriving (Eq, Ord, Show)
+
+-- | Parallel operator occurrence in a behavior expression.
+data ParOpE = ParOpE deriving (Eq, Ord, Show)
 
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADTE     [CstrDecl]
@@ -467,7 +471,18 @@ data BExpDecl = Stop
               | ActPref  ActOfferDecl BExpDecl
               | LetBExp  [LetVarDecl] BExpDecl
               | Pappl (Name ProcRefE) (Loc ProcRefE) [ChanRef] [ExpDecl]
+              | Par (Loc ParOpE) SyncOn BExpDecl BExpDecl
     deriving (Eq, Ord, Show)
+
+-- | Channels to sync on in a parallel operator.
+data SyncOn = All              -- ^ Sync on all channels, this is the result of
+                               -- parsing '||'
+            | OnlyOn [ChanRef] -- ^ Sync only on the given channels. This is
+                               -- the result of parsing either '|||' or
+                               -- '|[...]|'. Parsing '|||' will result in an
+                               -- empty list, meaning that full interleaving is
+                               -- allowed.
+            deriving (Eq, Ord, Show)
 
 procRefName :: Text -> Name ProcRefE
 procRefName = Name

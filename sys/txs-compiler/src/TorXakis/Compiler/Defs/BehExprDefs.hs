@@ -13,12 +13,12 @@ import qualified Data.Text as T
 import           Data.Traversable (for)
 import           Data.Semigroup ((<>))
 
-import           StdTDefs (chanIdIstep)
+import           StdTDefs (chanIdIstep, chanIdExit)
 import           ConstDefs                         (Const (Cbool))
 import           SortId                            (sortIdBool, SortId)
 import           TxsDefs                           (ActOffer (ActOffer), BExpr, ChanOffer (Quest, Exclam),
                                                     Offer (Offer), chanid, actionPref, stop, valueEnv, procInst,
-                                                    ProcDef)
+                                                    ProcDef, parallel)
 import           ChanId (ChanId (ChanId), chansorts, name, unid)
 import           VarId (VarId, varsort)
 import           FuncId (FuncId)
@@ -53,7 +53,7 @@ toBExpr mm (LetBExp vs be) = valueEnv   <$> venv <*> toBExpr mm be
           ex  <- liftEither $
               expDeclToValExpr mm (varsort vId) (varDeclExp vd)
           return (vId, ex)
-toBExpr mm (Pappl n l crs exs) = do -- undefined n crs exs mm
+toBExpr mm (Pappl n l crs exs) = do
     chIds <- chRefsToIds mm crs
     let candidate :: ProcId -> Bool
         candidate pId =
@@ -79,7 +79,16 @@ toBExpr mm (Pappl n l crs exs) = do -- undefined n crs exs mm
             , _errorMsg  = "No matching process definition found."
                          <> T.pack (show ls)
             }
-
+toBExpr mm (Par _ sOn be0 be1) = do
+    be0' <- toBExpr mm be0
+    be1' <- toBExpr mm be1
+    cIds <- case sOn of
+            All         ->
+                return $ values @Text mm
+            OnlyOn crfs ->
+                traverse (mm .@!!) $ zip  (chanRefName <$> crfs) crfs
+    return $ parallel (chanIdExit:cIds) [be0', be1']
+    
 toActOffer :: ( MapsTo Text ChanId mm
               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
               , MapsTo (Loc VarDeclE) VarId mm
