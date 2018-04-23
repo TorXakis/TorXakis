@@ -241,3 +241,10 @@ MODELDEF Syncer3 ::=
     BEHAVIOUR
         I ! 10 >-> J ? x |[ I ]| (I ? x >-> J ? y |[ J ]| J ! 33)
 ENDDEF
+
+MODELDEF Syncer4 ::=
+    CHAN IN I, J
+    CHAN OUT
+    BEHAVIOUR
+        J ? y >-> I ! 10 |[]| J ! 1 >-> I ? a
+ENDDEF

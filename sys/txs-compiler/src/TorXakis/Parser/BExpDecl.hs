@@ -22,10 +22,13 @@ bexpDeclP = buildExpressionParser table bexpTermP
       parOpP = do
           l <- mkLoc
           txsSymbol "|"
-          sOn <-     (txsSymbol "|" >> return (OnlyOn [])) -- '|||'  operator
-                 <|> fmap OnlyOn chanrefsP                 -- '[..]' operator
-                 <|> return All                            -- '||'   operator
-          txsSymbol "|"
+          sOn <-
+              -- '|||'  operator
+                  (try (txsSymbol "||") >> return (OnlyOn []))
+              -- '[..]' operator
+              <|> (fmap OnlyOn chanrefsP <* txsSymbol "|")
+              -- '||'   operator
+              <|> (txsSymbol "|" >> return All)
           return $ \bex0 bex1 -> Par l sOn bex0 bex1
 
 bexpTermP :: TxsParser BExpDecl
