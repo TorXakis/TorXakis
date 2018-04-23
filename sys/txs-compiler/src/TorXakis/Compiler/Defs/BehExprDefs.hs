@@ -101,7 +101,7 @@ toActOffer mm (ActOfferDecl osd mc) = do
                     (liftEither . expDeclToValExpr mm sortIdBool <$> mc)
     -- Filter the internal actions (to comply with the current TorXakis compiler).
     let os' = filter ((chanIdIstep /=) . chanid) os
-    return $ ActOffer (Set.fromList os') c
+    return $ ActOffer (Set.fromList os') Set.empty c
 
 toOffer :: ( MapsTo Text ChanId mm
            , MapsTo (Loc VarDeclE) VarId mm

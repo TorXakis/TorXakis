@@ -93,7 +93,7 @@ instance Simplifiable BExpr where
     simplify _ _ ex = ex
 
 instance Simplifiable ActOffer where
-    simplify ft fns (ActOffer aos c) = ActOffer (simplify ft fns aos) (simplify ft fns c)
+    simplify ft fns (ActOffer aos hv c) = ActOffer (simplify ft fns aos) hv (simplify ft fns c)
 
 instance Simplifiable Offer where
     simplify ft fns (Offer cId os) = Offer cId (simplify ft fns os)
