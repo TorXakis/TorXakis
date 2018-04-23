@@ -1938,13 +1938,7 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
-                ;  $$ = case TxsDefs.view $1 of
-                        { Parallel chids bexps
-                            -> if (Set.fromList chids) == (Set.fromList (chanIdExit:$$.inhChanSigs))
-                                 then parallel (chanIdExit:$$.inhChanSigs) (bexps ++ [$3])
-                                 else parallel (chanIdExit:$$.inhChanSigs) [$1,$3]
-                        ; _ -> parallel (chanIdExit:$$.inhChanSigs) [$1,$3]
-                        }
+                ;  $$ = parallel (chanIdExit:$$.inhChanSigs) [$1,$3]
                 }
               | BehaviourExpr2 "|||" BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1957,10 +1951,7 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
-                ;  $$ = case TxsDefs.view $1 of
-                        { Parallel [chanIdExit] bexps -> parallel [chanIdExit] (bexps ++ [$3])
-                        ; _                           -> parallel [chanIdExit] [$1,$3]
-                        }
+                ;  $$ = parallel [chanIdExit] [$1,$3]
                 }
               | BehaviourExpr2 "|[" IdList "]|" BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1982,13 +1973,7 @@ BehaviourExpr2  -- :: { BExpr }
                                       }
                                     | nm <- $3
                                     ]
-                         in case TxsDefs.view $1 of
-                            { Parallel chids bexps
-                                -> if (Set.fromList chids) == (Set.fromList (chanIdExit:chans))
-                                     then parallel (chanIdExit:chans) (bexps ++ [$5])
-                                     else parallel (chanIdExit:chans) [$1,$5]
-                            ; _ -> parallel (chanIdExit:chans) [$1,$5]
-                            }
+                         in parallel (chanIdExit:chans) [$1,$5]
                 }
               | BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1

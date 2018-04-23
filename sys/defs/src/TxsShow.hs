@@ -155,8 +155,6 @@ instance PShow BExpr
 
 instance PShow BExprView
   where
-    pshow Stop
-      =  " STOP "
     pshow (ActionPref actoff bexp)
       =  pshow actoff ++ "\n"
          ++ "  >->  " ++ "( " ++ pshow bexp ++ " )"
