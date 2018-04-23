@@ -1,4 +1,4 @@
-param param_Sut_deltaTime 250
+param param_Sut_deltaTime 500
 tester Model RestrictedAxisTestPurpose Sut
 test 20
 exit

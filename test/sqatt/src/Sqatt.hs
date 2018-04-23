@@ -49,8 +49,8 @@ import qualified Data.Text.IO              as TIO
 import           Filesystem.Path
 import           Filesystem.Path.CurrentOS
 import           Prelude                   hiding (FilePath)
-import qualified System.IO                 as IO
 import           System.Info
+import qualified System.IO                 as IO
 import           System.Random
 import           Test.Hspec
 import           Turtle
@@ -303,24 +303,23 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
     Right inputModelF -> do
       sleep delay
       port <- repr <$> getRandomPort
-      runConcurrently $ timer
+      a <- async $ txsServerProc mLogDir (port : txsServerArgs ex)
+      runConcurrently $ timer a
                     <|> heartbeat
-                    <|> txsServerProc mLogDir (port : txsServerArgs ex)
                     <|> txsUIProc mLogDir inputModelF port
   where
     heartbeat = Concurrently $ forever $ do
       sleep 60.0 -- For now we don't make this configurable.
       putStr "."
-    timer = Concurrently $ do
+    timer srvProc = Concurrently $ do
       sleep sqattTimeout
+      cancel srvProc
       return $ Left TestTimedOut
-    txsUIProc mUiLogDir imf port =
-      Concurrently $ do
+    txsUIProc mUiLogDir imf port = Concurrently $ do
         eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
-        sleep 5.0       -- take time to write results to log files (in case of error)
         case eRes of
           Left exception -> return $ Left exception
-          Right res -> return $ unless res $ Left tErr
+          Right res      -> return $ unless res $ Left tErr
       where
         inLines :: Shell Line
         inLines = asum $ input <$> cmdsFile
@@ -345,8 +344,8 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
     tErr = TestExpectationError $
               format ("Did not get expected result "%s)
                      (repr . expectedResult $ ex)
-    txsServerProc sLogDir args = Concurrently $
-      runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd args
+    txsServerProc sLogDir =
+      runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd
 
 -- | Run a process.
 runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @Nothing@ if no logging is desired.
@@ -355,7 +354,7 @@ runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @
           -> Shell Line       -- ^ Lines to be input to the command.
           -> IO (Either SqattError ())
 runInproc mLogDir cmd cmdArgs procInput =
-  left (UnexpectedException . T.pack . show) <$> 
+  left (UnexpectedException . T.pack . show) <$>
     case mLogDir of
         Nothing -> try $ sh $ inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
         Just logDir -> try $ output logDir $ either id id <$> inprocWithErr cmd cmdArgs procInput :: IO (Either SomeException ())
