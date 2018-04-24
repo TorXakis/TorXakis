@@ -11,7 +11,7 @@ module TorXakis.Compiler.ValExpr.SortId where
 import           Prelude                   hiding (lookup)
 import           Control.Arrow             (left, (|||))
 import           Control.Monad             (when)
-import           Control.Monad.Error.Class (liftEither)
+import           Control.Monad.Error.Class (liftEither, throwError)
 import           Data.Either               (partitionEithers)
 import           Data.List                 (intersect)
 import           Data.Map                  (Map)
@@ -226,6 +226,16 @@ instance HasTypedVars BExpDecl where
         inferVarTypes mm exs
     inferVarTypes mm (Par _ _ be0 be1) =
         (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
+    -- The enable operator has to take care of handle the `Accept` constructor.
+    -- If 'ACCEPT' does not follow an enable operator then an error will be
+    -- thrown.
+    inferVarTypes _ (Accept l _ _)     =
+        throwError Error
+            { _errorType = ParseError
+            , _errorLoc  = getErrorLoc l
+            , _errorMsg  = "ACCEPT cannot be used here."
+            }
+
 
 instance HasTypedVars ActOfferDecl where
     inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx

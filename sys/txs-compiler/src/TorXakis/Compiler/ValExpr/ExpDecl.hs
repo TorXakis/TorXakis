@@ -52,21 +52,23 @@ mkVdMap vs =
     Map.fromList $ zip (varName <$> vs) (getLoc <$> vs)
 
 instance HasVarReferences BExpDecl where
-    mapRefToDecls _ Stop               = return []
-    mapRefToDecls mm (ActPref ao be)   =
+    mapRefToDecls _ Stop                = return []
+    mapRefToDecls mm (ActPref ao be)    =
         (++) <$> mapRefToDecls mm ao <*> mapRefToDecls (aoVds <.+> mm) be
         where
           -- An action offer introduces new variables in the case of actions of
           -- the form 'Ch ? v':
           aoVds = mkVdMap (actOfferDecls ao)
-    mapRefToDecls mm (LetBExp vs be)   =
+    mapRefToDecls mm (LetBExp vs be)    =
         let letVds = mkVdMap vs in
             (++) <$> mapRefToDecls mm (varDeclExp <$> vs)
                  <*> mapRefToDecls (letVds <.+> mm) be
-    mapRefToDecls mm (Pappl _ _ _ exs) =
+    mapRefToDecls mm (Pappl _ _ _ exs)  =
         mapRefToDecls mm exs
-    mapRefToDecls mm (Par _ _ be0 be1) =
+    mapRefToDecls mm (Par _ _ be0 be1)  =
         (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
+    mapRefToDecls mm (Accept _ ofrs be) =
+        (++) <$> mapRefToDecls mm ofrs <*> mapRefToDecls mm be
 
 instance HasVarReferences ActOfferDecl where
     mapRefToDecls mm ao@(ActOfferDecl os mc) =

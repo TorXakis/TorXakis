@@ -88,6 +88,12 @@ toBExpr mm (Par _ sOn be0 be1) = do
             OnlyOn crfs ->
                 traverse (mm .@!!) $ zip  (chanRefName <$> crfs) crfs
     return $ parallel (chanIdExit:cIds) [be0', be1']
+toBExpr _ (Accept l _ _ )      =
+    throwError Error
+    { _errorType = ParseError
+    , _errorLoc  = getErrorLoc l
+    , _errorMsg  = "ACCEPT cannot be used here."
+    }
 
 toActOffer :: ( MapsTo Text ChanId mm
               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm

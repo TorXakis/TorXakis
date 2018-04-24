@@ -227,6 +227,9 @@ data ProcRefE = ProcRefE deriving (Eq, Ord, Show)
 -- | Parallel operator occurrence in a behavior expression.
 data ParOpE = ParOpE deriving (Eq, Ord, Show)
 
+-- | Accept operator.
+data AcceptE = AcceptE deriving (Eq, Ord, Show)
+
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADTE     [CstrDecl]
 
@@ -473,11 +476,23 @@ data ModelComps = ModelComps
     , bexp   :: BExpDecl
     } deriving (Eq, Ord, Show)
 
-data BExpDecl = Stop
-              | ActPref  ActOfferDecl BExpDecl
-              | LetBExp  [LetVarDecl] BExpDecl
-              | Pappl (Name ProcRefE) (Loc ProcRefE) [ChanRef] [ExpDecl]
-              | Par (Loc ParOpE) SyncOn BExpDecl BExpDecl
+data BExpDecl
+    -- | 'STOP' operator.
+    = Stop
+    -- | '>->' (action prefix) operator.
+    | ActPref  ActOfferDecl BExpDecl
+    -- | 'LET' declarations for behavior expressions.
+    | LetBExp  [LetVarDecl] BExpDecl
+    -- | Process instantiation.
+    | Pappl (Name ProcRefE) (Loc ProcRefE) [ChanRef] [ExpDecl]
+    -- | Parallel operators.
+    | Par (Loc ParOpE) SyncOn BExpDecl BExpDecl
+    -- | 'ACCEPT' operator.
+    --
+    -- Note that while the parser will allow 'ACCEPT's in arbitrary positions,
+    -- the compiler will check that they only occur after an enable operator
+    -- ('>>>')
+    | Accept (Loc AcceptE) [ChanOfferDecl] BExpDecl
     deriving (Eq, Ord, Show)
 
 -- | Channels to sync on in a parallel operator.

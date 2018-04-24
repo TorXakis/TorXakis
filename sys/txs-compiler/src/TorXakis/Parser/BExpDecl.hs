@@ -40,6 +40,7 @@ bexpDeclP = buildExpressionParser table bexpTermP
 
 bexpTermP :: TxsParser BExpDecl
 bexpTermP =  txsSymbol "(" *> ( bexpDeclP <* txsSymbol ")")
+         <|> try acceptP
          <|> try stopP
          <|> try letBExpP
          <|> try procInstP
@@ -82,16 +83,16 @@ actOfferP = ActOfferDecl <$> offersP <*> actConstP
           chOfs <- chanOffersP
           return $ OfferDecl (mkChanRef n l) chOfs
 
-      chanOffersP :: TxsParser [ChanOfferDecl]
-      chanOffersP = many (try questOfferP <|> exclOfferP)
-          where
-            questOfferP = do
-                txsSymbol "?"
-                l  <- mkLoc
-                n  <- identifier
-                ms <- optionMaybe ofSortP
-                return $ QuestD  (mkIVarDecl n l ms)
-            exclOfferP = ExclD <$> (txsSymbol "!" *> valExpP)
+chanOffersP :: TxsParser [ChanOfferDecl]
+chanOffersP = many (try questOfferP <|> exclOfferP)
+    where
+      questOfferP = do
+          txsSymbol "?"
+          l  <- mkLoc
+          n  <- identifier
+          ms <- optionMaybe ofSortP
+          return $ QuestD  (mkIVarDecl n l ms)
+      exclOfferP = ExclD <$> (txsSymbol "!" *> valExpP)
 
 letBExpP :: TxsParser BExpDecl
 letBExpP = do
@@ -111,6 +112,16 @@ procInstP = do
            *> valExpP `sepBy` txsSymbol ","
            <* txsSymbol ")"
     return $ Pappl (procRefName pN) l crs exps
+
+acceptP :: TxsParser BExpDecl
+acceptP = do
+    l <- mkLoc
+    txsSymbol "ACCEPT"
+    ofrs <- chanOffersP
+    txsSymbol "IN"
+    be <- bexpDeclP
+    txsSymbol "NI"
+    return $ Accept l ofrs be
 
 chanrefsP :: TxsParser [ChanRef]
 chanrefsP = txsSymbol "["
