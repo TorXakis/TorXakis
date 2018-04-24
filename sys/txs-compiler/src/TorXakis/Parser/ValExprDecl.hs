@@ -101,7 +101,7 @@ txsITEP = do
 txsBopSymbolP :: TxsParser Text
 txsBopSymbolP = try $ T.pack <$> do
     op <- txsLexeme (many1 txsSpecialCOp)
-    if op `elem` [">->", "|", "||", "|||"]
+    if op `elem` [">->", "|", "||", "|||", ">>>", "[>>", "[><"]
         then parserFail $ "Operator \"" ++ op
                         ++ "\" not allowed in value expressions."
         else return op

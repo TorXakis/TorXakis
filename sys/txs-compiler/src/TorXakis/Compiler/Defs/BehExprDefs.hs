@@ -26,7 +26,7 @@ import           FuncDef (FuncDef)
 import           ValExpr (ValExpr, cstrConst)
 import           ProcId (ProcId, procvars, procchans)
 import qualified ProcId
-    
+
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
@@ -88,7 +88,7 @@ toBExpr mm (Par _ sOn be0 be1) = do
             OnlyOn crfs ->
                 traverse (mm .@!!) $ zip  (chanRefName <$> crfs) crfs
     return $ parallel (chanIdExit:cIds) [be0', be1']
-    
+
 toActOffer :: ( MapsTo Text ChanId mm
               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
               , MapsTo (Loc VarDeclE) VarId mm
@@ -120,9 +120,9 @@ toOffer mm (OfferDecl cr cods) = do
     -- comply with the curent compiler I have to erase the sort Ids.
     return $
         case name cId of
-            "EXIT"  -> Offer (ChanId (name cId) (unid cId) []) ofrs                      
+            "EXIT"  -> Offer (ChanId (name cId) (unid cId) []) ofrs
             _      -> Offer cId ofrs
-    
+
 
 toChanOffer :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                , MapsTo (Loc VarDeclE) VarId mm
@@ -136,5 +136,3 @@ toChanOffer mm _ (QuestD vd) =
     Quest  <$> mm .@ getLoc vd
 toChanOffer mm eSid (ExclD ex) = liftEither $
     Exclam <$> expDeclToValExpr mm eSid ex
-
-

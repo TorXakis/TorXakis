@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
@@ -54,10 +55,11 @@ module TorXakis.Parser.Data
     , funcRetSort
     , VarDecl
     , mkVarDecl
+    , varDeclSort
     , IVarDecl
     , mkIVarDecl
+    , ivarDeclSort
     , mkVarRef
-    , varDeclSort
     , varName
     -- ** Expressions
     , ExpDecl
@@ -122,6 +124,7 @@ module TorXakis.Parser.Data
     )
 where
 
+import           Control.Arrow           ((+++), (|||))
 import           Control.Lens            (Lens')
 import           Data.Set                (Set)
 import           Data.Text               (Text)
@@ -275,17 +278,20 @@ data FuncComps = FuncComps
     , funcCompsBody    :: ExpDecl
     } deriving (Eq, Show, Ord)
 
--- | Variable declarations.
+-- | Variable declarations (with an explicit sort).
 type VarDecl = ParseTree VarDeclE OfSort
 
 mkVarDecl :: Text -> Loc VarDeclE -> OfSort -> VarDecl
 mkVarDecl n l s = ParseTree (Name n) VarDeclE l s
 
--- | Implicit variable declaration (with no sort associated to it)
-type IVarDecl = ParseTree VarDeclE ()
+-- | Implicit variable declaration (maybe with a sort associated to it).
+type IVarDecl = ParseTree VarDeclE (Maybe OfSort)
 
-mkIVarDecl :: Text -> Loc VarDeclE -> IVarDecl
-mkIVarDecl n l = ParseTree (Name n) VarDeclE l ()
+mkIVarDecl :: Text -> Loc VarDeclE -> Maybe OfSort -> IVarDecl
+mkIVarDecl n l ms = ParseTree (Name n) VarDeclE l ms
+
+ivarDeclSort :: IVarDecl -> Maybe OfSort
+ivarDeclSort = child
 
 class IsVariable v where
     -- | Name of a variable
@@ -495,6 +501,11 @@ data ActOfferDecl = ActOfferDecl
 data OfferDecl = OfferDecl ChanRef [ChanOfferDecl]
     deriving (Eq, Ord, Show)
 
+-- | Channel offer reclarations.
+--
+-- Note that a receiving action with an explicit type declaration are only
+-- needed to simplify the type inference of exit variables used in expressions
+-- of the form 'EXIT ? v :: T'.
 data ChanOfferDecl = QuestD IVarDecl
                    | ExclD  ExpDecl
     deriving (Eq, Ord, Show)

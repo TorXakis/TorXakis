@@ -76,8 +76,8 @@ instance DeclaresVariables OfferDecl where
     mkVarIds mm (OfferDecl _ os) = mkVarIds mm os
 
 instance DeclaresVariables ChanOfferDecl where
-    mkVarIds mm (QuestD vd) = return <$> varIdFromVarDecl mm vd
-    mkVarIds mm (ExclD  ex) = mkVarIds mm ex
+    mkVarIds mm (QuestD vd)  = return <$> varIdFromVarDecl mm vd
+    mkVarIds mm (ExclD  ex)  = mkVarIds mm ex
 
 instance DeclaresVariables ExpDecl where
     -- TODO: rename 'varIdsFromExpDecl' to 'mkVarIds'.

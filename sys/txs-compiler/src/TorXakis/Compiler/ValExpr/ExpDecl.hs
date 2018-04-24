@@ -104,9 +104,9 @@ instance HasVarReferences OfferDecl where
     mapRefToDecls mm (OfferDecl _ os) = mapRefToDecls mm os
 
 instance HasVarReferences ChanOfferDecl where
-    mapRefToDecls _ (QuestD ivd) =
+    mapRefToDecls _ (QuestD vd) =
         -- A variable declared in an input action refers to itself.
-        return [(asVarReflLoc . getLoc $ ivd, Left . getLoc $ ivd)]
+        return [(asVarReflLoc . getLoc $ vd, Left . getLoc $ vd)]
     mapRefToDecls mm (ExclD ex)  = mapRefToDecls mm ex
     
 instance HasVarReferences FuncDecl where

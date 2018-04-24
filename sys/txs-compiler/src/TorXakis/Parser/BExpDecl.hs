@@ -2,14 +2,15 @@ module TorXakis.Parser.BExpDecl (bexpDeclP) where
 
 import           Control.Monad               (void)
 import qualified Data.Text                   as T
-import           Text.Parsec                 (many, notFollowedBy, sepBy,
-                                              sepBy1, try, (<?>), (<|>))
+import           Text.Parsec                 (many, notFollowedBy, optionMaybe,
+                                              sepBy, sepBy1, try, (<?>), (<|>))
 import           Text.Parsec.Expr            (Assoc (AssocLeft),
                                               Operator (Infix),
                                               buildExpressionParser)
 
 import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
+import           TorXakis.Parser.TypeDefs
 import           TorXakis.Parser.ValExprDecl
 import           TorXakis.Parser.VarDecl
 
@@ -17,7 +18,13 @@ bexpDeclP :: TxsParser BExpDecl
 bexpDeclP = buildExpressionParser table bexpTermP
     <?> "Behavior expression"
     where
-      table = [ [Infix parOpP AssocLeft] ]
+      table = [ [Infix parOpP AssocLeft]
+              , [Infix enableP AssocLeft] -- TODO: disable and interrup should also be placed in this level
+              ]
+      enableP :: TxsParser (BExpDecl -> BExpDecl ->  BExpDecl)
+      enableP = do
+          txsSymbol ">>>"
+          return undefined
       parOpP :: TxsParser (BExpDecl -> BExpDecl ->  BExpDecl)
       parOpP = do
           l <- mkLoc
@@ -44,7 +51,7 @@ stopP = txsSymbol "STOP" >> return Stop
 actPrefixP :: TxsParser BExpDecl
 actPrefixP = ActPref <$> actOfferP <*> actContP
     where
-      actContP = (txsSymbol ">->" >> bexpTermP)--bexpDeclP)
+      actContP = (try (txsSymbol ">->") >> bexpTermP)--bexpDeclP)
              <|> return Stop
 
 actOfferP :: TxsParser ActOfferDecl
@@ -76,13 +83,14 @@ actOfferP = ActOfferDecl <$> offersP <*> actConstP
           return $ OfferDecl (mkChanRef n l) chOfs
 
       chanOffersP :: TxsParser [ChanOfferDecl]
-      chanOffersP = many (try questOfferVDP <|> exclOfferP)
+      chanOffersP = many (try questOfferP <|> exclOfferP)
           where
-            questOfferVDP = do
+            questOfferP = do
                 txsSymbol "?"
-                l <- mkLoc -- This offer always introduce a new implicit variable
-                n <- identifier
-                return $ QuestD (mkIVarDecl n l)
+                l  <- mkLoc
+                n  <- identifier
+                ms <- optionMaybe ofSortP
+                return $ QuestD  (mkIVarDecl n l ms)
             exclOfferP = ExclD <$> (txsSymbol "!" *> valExpP)
 
 letBExpP :: TxsParser BExpDecl

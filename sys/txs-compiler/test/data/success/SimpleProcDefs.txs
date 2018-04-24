@@ -111,7 +111,7 @@ PROCDEF letter2[In, Out :: Int]() ::=
 ENDDEF
 
 PROCDEF letter3[In, Out :: Int](x :: Int) ::=
-   In ? x >-> LET y = x + 1 IN Out ! y NI --  ||| Out ! 2
+   In ? x :: Int >-> LET y = x + 1 IN Out ! y NI --  ||| Out ! 2
 ENDDEF
 
 PROCDEF overloaded[X :: String; Out :: String]() ::=
@@ -192,7 +192,7 @@ MODELDEF Outlet1 ::=
     CHAN OUT OutS
     BEHAVIOUR
            OutS ! LET x = "foo" IN x NI 
-       >-> S ? x
+       >-> S ? x :: String
        >-> overloaded1[OutS](x)
 ENDDEF
 
@@ -200,7 +200,7 @@ MODELDEF Syncer20 ::=
     CHAN IN S, I
     CHAN OUT OutS    
     BEHAVIOUR
-        I ! 10 | S ? v
+        I ! 10 | S ? v :: String
 ENDDEF
 
 MODELDEF Syncer21 ::=
@@ -209,6 +209,13 @@ MODELDEF Syncer21 ::=
     SYNC {S | I}, {OutS}
     BEHAVIOUR
         S ! "10" | I ? v >-> I ? x
+ENDDEF
+
+MODELDEF Syncer22 ::=
+    CHAN IN S, I
+    CHAN OUT OutS    
+    BEHAVIOUR
+        I ! 10 | S ? v
 ENDDEF
 
 MODELDEF Syncer ::=
@@ -264,7 +271,7 @@ MODELDEF Syncer6 ::=
 ENDDEF
 
 PROCDEF syncer[X :: Int](y :: Int) ::=
-    X ? v >-> X ! y + v
+    X ? v :: Int >-> X ! y + v
 ENDDEF
 
 PROCDEF syncer2[X, Y :: Int]() ::=

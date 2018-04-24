@@ -258,8 +258,11 @@ instance HasTypedVars ChanOfferDecl where
     -- We don't have the @SortId@ of the variable, so we cannot know its type
     -- at this level. Refer to the 'instance HasTypedVars OfferDecl' to see how
     -- this is handled.
-    inferVarTypes _  (QuestD _) = return [] 
-    inferVarTypes mm (ExclD ex) = inferVarTypes mm ex
+    inferVarTypes mm (QuestD vd) = case ivarDeclSort vd of
+        Nothing -> return []
+        Just sr -> 
+            pure . (getLoc vd, ) <$> (mm .@!! (sortRefName sr, getLoc sr))
+    inferVarTypes mm (ExclD ex)         = inferVarTypes mm ex
     
 sortIds :: (MapsTo Text SortId mm) => mm -> [OfSort] -> CompilerM [SortId]
 sortIds mm xs = traverse (mm .@!!) $ zip (sortRefName <$> xs) (getLoc <$> xs)
