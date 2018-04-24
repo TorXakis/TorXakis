@@ -13,7 +13,7 @@ import TorXakis.Compiler.Error
 
 import TorXakis.Compiler.MapsTo
 
-data Fruit = Orange | Pear | Apple deriving (Show, Eq)
+data Fruit = Orange | Pear | Apple | Banana deriving (Show, Eq)
 data Vegetable = Cucumber | Carrot | Spinach deriving (Show, Eq)
 data Legume = Lentils | Chickpeas | BlackEyedPeas deriving (Show, Eq)
 
@@ -57,8 +57,24 @@ spec = do
         values @String
             (fruitNames :& vegetableNames :& fruitNumbers)
         `shouldBe`
-        [Carrot, Cucumber, Spinach]        
-           
+        [Carrot, Cucumber, Spinach]
+    it  "Adds a map" $
+        values @String ([("Whatever", Banana)] <.+> fruitNames)
+        `shouldBe`
+        [Apple, Orange, Pear, Banana]
+    it  "Adds a map in a nested context" $
+        values @String ([("Whatever", Banana)] <.+> (fruitNames :& fruitNumbers))
+        `shouldBe`
+        [Apple, Orange, Pear, Banana]                
+    it "Replaces a map" $
+        values @String (replaceInnerMap fruitNames [("Whatever", Banana)] )
+        `shouldBe`
+        [Banana]
+    it "Replaces a map in a nested context" $
+        values @String (replaceInnerMap (fruitNames :& vegetableNames) [("Whatever", Banana)] )
+        `shouldBe`
+        [Banana]
+        
     -- Uncomment these to test for the type errors of the compiler:
     --
     -- it "Fails when no map is found)" $

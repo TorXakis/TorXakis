@@ -44,6 +44,8 @@ class (In (k, v) (Contents m) ~ 'True) => MapsTo k v m where
     -- have the same key, then the value of the right map is discarded, and the
     -- value of the left map is kept.
     (<.+>) :: Ord k => Map k v -> m -> m
+    -- | Replace the inner map with the given one.
+    replaceInnerMap :: m -> Map k v -> m
 
 keys :: forall k v m . MapsTo k v m => m -> [k]
 keys m = Map.keys im
@@ -90,6 +92,7 @@ instance MapsTo k v (Map k v) where
     -- Note that here we're using the monoidal implementation of <> for maps,
     -- which overwrites the keys of 'm1'.
     (<.+>) = (<>)
+    replaceInnerMap _ new = new
 
 -- lookupWithLoc :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
 --               => (k, l) -> mm -> Either Error v
@@ -125,23 +128,27 @@ class ( In (k, v) (Contents m0) ~ inM0
                => k -> m0 :& m1 -> Either Error v
     innerMapPair :: m0 :& m1 -> Map k v
     addMapPair :: Ord k => Map k v -> m0 :& m1 -> m0 :& m1
+    replaceInnerMapPair :: m0 :& m1 -> Map k v -> m0 :& m1
 
 instance ( MapsTo k v m0, In (k, v) (Contents m1) ~ 'False
          ) => PairMapsTo k v m0 m1 'True 'False where
-    lookupPair k (m0 :& _) = lookup k m0
-    innerMapPair (m0 :& _) = innerMap m0
-    addMapPair m (m0 :& m1) = (m <.+> m0) :& m1
+    lookupPair k (m0 :& _)     = lookup k m0
+    innerMapPair (m0 :& _)     = innerMap m0
+    addMapPair m (m0 :& m1)    = (m <.+> m0) :& m1
+    replaceInnerMapPair (m0 :& m1) new = replaceInnerMap m0 new :& m1
 
 instance ( In (k, v) (Contents m0) ~ 'False, MapsTo k v m1
          ) => PairMapsTo k v m0 m1 'False 'True where
-    lookupPair k (_ :& m1) = lookup k m1
-    innerMapPair (_ :& m1) = innerMap m1
-    addMapPair m (m0 :& m1) = m0 :& (m <.+> m1)
+    lookupPair k (_ :& m1)     = lookup k m1
+    innerMapPair (_ :& m1)     = innerMap m1
+    addMapPair m (m0 :& m1)    = m0 :& (m <.+> m1)
+    replaceInnerMapPair (m0 :& m1) new = m0 :& replaceInnerMap m1 new
 
 instance PairMapsTo k v m0 m1 inM0 inM1 => MapsTo k v (m0 :& m1) where
     lookup = lookupPair
     innerMap = innerMapPair
     (<.+>) = addMapPair
+    replaceInnerMap = replaceInnerMapPair
 
 instance ( TypeError (      'Text "No map found: \""
                       ':<>: 'ShowType (m0 :& m1)
@@ -154,9 +161,10 @@ instance ( TypeError (      'Text "No map found: \""
          , In (k, v) (Contents m1) ~ 'False
          , 'False ~ 'True )
          => PairMapsTo k v m0 m1 'False 'False where
-    lookupPair _ = undefined
-    innerMapPair _ = undefined
-    addMapPair _ _ = undefined
+    lookupPair          _ = undefined
+    innerMapPair        _ = undefined
+    addMapPair          _ = undefined
+    replaceInnerMapPair _ =  undefined
 
 instance ( TypeError (     'Text "Map is not unique: \""
                       ':<>: 'ShowType (m0 :& m1)
@@ -169,6 +177,7 @@ instance ( TypeError (     'Text "Map is not unique: \""
          , In (k, v) (Contents m1) ~ 'True
          )
          => PairMapsTo k v m0 m1 'True 'True where
-    lookupPair _ = undefined
-    innerMapPair _ = undefined
-    addMapPair _ _ = undefined
+    lookupPair          _ = undefined
+    innerMapPair        _ = undefined
+    addMapPair          _ = undefined
+    replaceInnerMapPair _ =  undefined

@@ -248,3 +248,38 @@ MODELDEF Syncer4 ::=
     BEHAVIOUR
         J ? y >-> I ! 10 |[]| J ! 1 >-> I ? a
 ENDDEF
+
+MODELDEF Syncer5 ::=
+    CHAN IN I, J
+    CHAN OUT
+    BEHAVIOUR
+        I ! 10 || J ! 1 |[ I, J ]| I ! 22
+ENDDEF
+
+MODELDEF Syncer6 ::=
+    CHAN IN I, J
+    CHAN OUT
+    BEHAVIOUR
+        I ? x ||| J ? y >-> I ! 10 || J ! 1 >-> I ? a |[ I ]| I ! 22
+ENDDEF
+
+PROCDEF syncer[X :: Int](y :: Int) ::=
+    X ? v >-> X ! y + v
+ENDDEF
+
+PROCDEF syncer2[X, Y :: Int]() ::=
+    X ? v |[ Y, X ]| Y ? z
+ENDDEF
+
+
+MODELDEF Syncer7 ::=
+    CHAN IN I, J
+    CHAN OUT
+    BEHAVIOUR
+        I ? x
+    ||| J ? y >-> I ! 10
+    ||  J ! 1 >-> I ? a
+    |[ I ]| I ! 22
+    ||| I ? v >-> syncer[J](v)
+    ||| syncer2[I, J]()
+ENDDEF

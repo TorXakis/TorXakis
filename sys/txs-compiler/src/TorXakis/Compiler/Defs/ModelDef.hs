@@ -12,7 +12,7 @@ import           Data.Set (Set)
 import           Data.List (sortBy)
 import           Data.Ord (compare)
 
-import           ChanId                 (ChanId, unid)
+import           ChanId                 (ChanId, unid, name)
 import           TxsDefs                            (ModelDef (ModelDef), ProcDef)
 import           VarId (VarId)
 import           FuncId (FuncId)
@@ -62,5 +62,11 @@ modelDeclToModelDef mm md = do
     bvSids <- Map.fromList <$> inferVarTypes mm (modelBExp md)
     bTypes <- Map.fromList <$> inferVarTypes (bvSids <.+> mm) (modelBExp md)
     bvIds  <- Map.fromList <$> mkVarIds bTypes (modelBExp md)
-    be   <- toBExpr (bvSids <.+> (bvIds <.+> mm)) (modelBExp md)
+    let
+        chanIds :: Map Text ChanId
+        chanIds = innerMap mm
+        -- Only the model channels are accessible when constructing the behavior expression.
+        modelChans = Set.union (Set.map name ins) (Set.map name outs)
+        mm' = replaceInnerMap mm (Map.restrictKeys chanIds modelChans)
+    be   <- toBExpr (bvSids <.+> (bvIds <.+> mm')) (modelBExp md)
     return $ ModelDef insyncs outsyncs [] be
