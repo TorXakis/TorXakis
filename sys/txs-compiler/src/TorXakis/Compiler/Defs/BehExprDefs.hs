@@ -12,19 +12,20 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Traversable (for)
 import           Data.Semigroup ((<>))
+import           Control.Monad (when)
 
 import           StdTDefs (chanIdIstep, chanIdExit)
 import           ConstDefs                         (Const (Cbool))
 import           SortId                            (sortIdBool, SortId)
 import           TxsDefs                           (ActOffer (ActOffer), BExpr, ChanOffer (Quest, Exclam),
                                                     Offer (Offer), chanid, actionPref, stop, valueEnv, procInst,
-                                                    ProcDef, parallel)
+                                                    ProcDef, parallel, enable)
 import           ChanId (ChanId (ChanId), chansorts, name, unid)
 import           VarId (VarId, varsort)
 import           FuncId (FuncId)
 import           FuncDef (FuncDef)
 import           ValExpr (ValExpr, cstrConst)
-import           ProcId (ProcId, procvars, procchans)
+import           ProcId (ProcId, procvars, procchans, exitSortIds, ExitSort (Exit))
 import qualified ProcId
 
 import           TorXakis.Compiler.Data
@@ -34,13 +35,16 @@ import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Parser.Data
+import           TorXakis.Compiler.ValExpr.SortId
 
-toBExpr :: ( MapsTo Text ChanId mm
+toBExpr :: ( MapsTo Text SortId mm
+           , MapsTo Text ChanId mm
            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
            , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo FuncDefInfo FuncId mm
            , MapsTo FuncId (FuncDef VarId) mm
-           , MapsTo ProcId ProcDef mm )
+           , MapsTo ProcId ProcDef mm
+           , MapsTo (Loc VarDeclE) SortId mm )
         => mm -> BExpDecl -> CompilerM BExpr
 toBExpr _ Stop             = return stop
 toBExpr mm (ActPref ao be) = actionPref <$> toActOffer mm ao <*> toBExpr mm be
@@ -88,6 +92,19 @@ toBExpr mm (Par _ sOn be0 be1) = do
             OnlyOn crfs ->
                 traverse (mm .@!!) $ zip  (chanRefName <$> crfs) crfs
     return $ parallel (chanIdExit:cIds) [be0', be1']
+toBExpr mm (Enable _ be0 (Accept _ ofrs be1)) = do
+    be0'  <- toBExpr mm be0
+    eSids <- exitSortIds <$> exitSort mm be0
+    ofrs' <- traverse (uncurry $ toChanOffer mm) $ zip eSids ofrs
+    be1'  <- toBExpr mm be1
+    return $ enable be0' ofrs' be1'
+toBExpr mm (Enable _ be0 be1) = do
+    be0' <- toBExpr mm be0
+    es   <- exitSort mm be0
+    when (es /= Exit [])
+        (throwError undefined) -- TODO: give the appropriate error message.
+    be1' <- toBExpr mm be1
+    return $ enable be0' [] be1'
 toBExpr _ (Accept l _ _ )      =
     throwError Error
     { _errorType = ParseError
@@ -95,11 +112,13 @@ toBExpr _ (Accept l _ _ )      =
     , _errorMsg  = "ACCEPT cannot be used here."
     }
 
-toActOffer :: ( MapsTo Text ChanId mm
+toActOffer :: ( MapsTo Text SortId mm
+              , MapsTo Text ChanId mm
               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
               , MapsTo (Loc VarDeclE) VarId mm
               , MapsTo FuncDefInfo FuncId mm
-              , MapsTo FuncId (FuncDef VarId) mm )
+              , MapsTo FuncId (FuncDef VarId) mm
+              , MapsTo (Loc VarDeclE) SortId mm )
            => mm -> ActOfferDecl -> CompilerM ActOffer
 toActOffer mm (ActOfferDecl osd mc) = do
     os <- traverse (toOffer mm) osd
@@ -109,30 +128,38 @@ toActOffer mm (ActOfferDecl osd mc) = do
     let os' = filter ((chanIdIstep /=) . chanid) os
     return $ ActOffer (Set.fromList os') Set.empty c
 
-toOffer :: ( MapsTo Text ChanId mm
+toOffer :: ( MapsTo Text SortId mm
+           , MapsTo Text ChanId mm
            , MapsTo (Loc VarDeclE) VarId mm
+           , MapsTo (Loc VarDeclE) SortId mm
            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
            , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo FuncDefInfo FuncId mm
            , MapsTo FuncId (FuncDef VarId) mm )
         => mm -> OfferDecl -> CompilerM Offer
-toOffer mm (OfferDecl cr cods) = do
-    cId  <- lookupM (chanRefName cr) mm
-            <!!> cr
-    ofrs <- traverse (uncurry (toChanOffer mm))
+-- EXIT is a special channel that can be use anywhere in a behavior
+-- expression and doesn't have to be declared. For instance:
+--
+-- >  X ? v >-> EXIT >>> EXIT ! "Boom" >>> ACCEPT ? str IN X ! str NI
+--
+-- so we have to treat this channel specially.        
+toOffer mm (OfferDecl cr cods) = case chanRefName cr of
+    "EXIT" -> do
+        eSids <- traverse (offerSid mm) cods
+        ofrs  <- traverse (uncurry (toChanOffer mm))
+                     (zip eSids cods)
+        return $ Offer chanIdExit ofrs
+    _      -> do
+        cId  <- mm .@!! (chanRefName cr, cr)
+        ofrs <- traverse (uncurry (toChanOffer mm))
                      (zip (chansorts cId) cods)
-    -- | TODO: QUESTION: Here TorXakis assigns the empty list of SortId's to
-    -- the EXIT channel. Why is TorXakis not using the expected SortId's? To
-    -- comply with the curent compiler I have to erase the sort Ids.
-    return $
-        case name cId of
-            "EXIT"  -> Offer (ChanId (name cId) (unid cId) []) ofrs
-            _      -> Offer cId ofrs
+        return $ Offer cId ofrs
 
 
 toChanOffer :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                , MapsTo (Loc VarDeclE) VarId mm
                , MapsTo FuncDefInfo FuncId mm
+               , MapsTo (Loc VarDeclE) SortId mm
                , MapsTo FuncId (FuncDef VarId) mm )
             => mm
             -> SortId -- ^ Expected sort id's the offer

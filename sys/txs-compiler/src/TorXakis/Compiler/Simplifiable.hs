@@ -18,7 +18,8 @@ import           FuncTable       (FuncTable, Signature (Signature), toMap)
 import           ProcId          (ProcId)
 import           TxsDefs         (ActOffer (ActOffer), BExpr,
                                   BExprView (ActionPref, ValueEnv),
-                                  ChanOffer (Exclam, Quest), Offer (Offer),
+                                  ChanOffer (Exclam, Quest),
+                                  ModelDef (ModelDef), ModelId, Offer (Offer),
                                   ProcDef (ProcDef), actionPref, valueEnv)
 import           ValExpr         (ValExpr, ValExprView (Vfunc, Vite), cstrITE,
                                   cstrVar)
@@ -64,6 +65,10 @@ instance Simplifiable (ValExpr VarId) where
 instance Simplifiable FuncId where
     simplify _ _ = id
 
+instance Simplifiable ModelId where
+    simplify _ _ = id
+
+
 instance Simplifiable (FuncDef VarId) where
     simplify ft fns (FuncDef vs ex) = FuncDef vs (simplify ft fns ex)
 
@@ -83,14 +88,17 @@ instance Simplifiable ProcId where
     simplify _ _ = id
 
 instance Simplifiable ProcDef where
-    simplify ft fns (ProcDef cs vs bexp) = ProcDef cs vs (simplify ft fns bexp)
+    simplify ft fns (ProcDef cs vs be) = ProcDef cs vs (simplify ft fns be)
+
+instance Simplifiable ModelDef where
+    simplify ft fns (ModelDef ins outs syncs be) = ModelDef ins outs syncs (simplify ft fns be)
 
 instance Simplifiable BExpr where
-    simplify ft fns (BExpr.view -> ActionPref ao bexp)
-        = actionPref (simplify ft fns ao) (simplify ft fns bexp)
-    simplify ft fns (BExpr.view -> ValueEnv env bexp)
-        = valueEnv (simplify ft fns env) (simplify ft fns bexp)
-    simplify _ _ ex = ex
+    simplify ft fns (BExpr.view -> ActionPref ao be)
+        = actionPref (simplify ft fns ao) (simplify ft fns be)
+    simplify ft fns (BExpr.view -> ValueEnv env be)
+        = valueEnv (simplify ft fns env) (simplify ft fns be)
+    simplify ft fns be = over uniplate (simplify ft fns) be -- ex
 
 instance Simplifiable ActOffer where
     simplify ft fns (ActOffer aos hv c) = ActOffer (simplify ft fns aos) hv (simplify ft fns c)

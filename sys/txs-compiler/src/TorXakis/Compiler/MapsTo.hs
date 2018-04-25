@@ -115,6 +115,8 @@ kv0 .&. kv1 = Map.fromList kv0 :& Map.fromList kv1
       => [(k0, v0)] -> mm -> Map k0 v0 :& mm
 kv0 .& mm = Map.fromList kv0 :& mm
 
+(<.++>) ::(Ord k, MapsTo k v mm) => [(k, v)] -> mm -> mm
+xs <.++> m = Map.fromList xs <.+> m
 
 type instance Contents (a :& b) = 'Node (Contents a) (Contents b)
 

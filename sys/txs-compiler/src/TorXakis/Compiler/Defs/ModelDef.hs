@@ -59,8 +59,8 @@ modelDeclToModelDef mm md = do
         -- splsyncs = ...
         -- errsyncs = ...
     -- Infer the variable types of the expression:
-    bvSids <- Map.fromList <$> inferVarTypes mm (modelBExp md)
-    bTypes <- Map.fromList <$> inferVarTypes (bvSids <.+> mm) (modelBExp md)
+--    bvSids <- Map.fromList <$> inferVarTypes (Map.fromList predefinedChans <.+> mm) (modelBExp md)
+    bTypes <- Map.fromList <$> inferVarTypes (Map.fromList predefinedChans <.+> mm) (modelBExp md)
     bvIds  <- Map.fromList <$> mkVarIds bTypes (modelBExp md)
     let
         chanIds :: Map Text ChanId
@@ -68,5 +68,5 @@ modelDeclToModelDef mm md = do
         -- Only the model channels are accessible when constructing the behavior expression.
         modelChans = Set.union (Set.map name ins) (Set.map name outs)
         mm' = replaceInnerMap mm (Map.restrictKeys chanIds modelChans)
-    be   <- toBExpr (bvSids <.+> (bvIds <.+> mm')) (modelBExp md)
+    be   <- toBExpr (bTypes <.+> (bvIds <.+> mm')) (modelBExp md)
     return $ ModelDef insyncs outsyncs [] be

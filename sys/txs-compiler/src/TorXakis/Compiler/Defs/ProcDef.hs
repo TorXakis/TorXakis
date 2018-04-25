@@ -73,10 +73,11 @@ procDeclsToProcDefMap mm ps =
           pvIds       <- traverse (varIdFromVarDecl pdVdSortMap) vdecls
           let body = procBody . procDeclComps $ pd
           -- List of VarId's associated to the variables declared by a question mark offer.
-          bTypes      <- Map.fromList <$> inferVarTypes (allChIds .& (pvIds .& mm) :& pdVdSortMap) body
+          bTypes      <- Map.fromList <$> inferVarTypes (allChIds .& (pvIds .& mm) :& pdVdSortMap :& mpd) body
           bvIds       <- mkVarIds bTypes body
-          e           <- exitSort (procRetSort . procDeclComps $ pd) <!!> pd
-          b           <- toBExpr ((allChIds .&. (pvIds ++ bvIds)) :& mm :& mpd) body
+          e           <- exitSort ((pvIds ++ bvIds) .& (allChIds .& (pvIds .& mm)) :& pdVdSortMap :& mpd)
+                                  (procRetSort . procDeclComps $ pd) <!!> pd
+          b           <- toBExpr (bTypes :& (allChIds .&. (pvIds ++ bvIds)) :& mm :& mpd) body
           -- NOTE that it is crucial that the order of the channel parameters
           -- declarations is preserved!
           let chIds' = snd <$> chIds
@@ -92,8 +93,4 @@ procDeclsToProcDefMap mm ps =
                       vdToSortId :: VarDecl -> CompilerM (Loc VarDeclE, SortId)
                       vdToSortId vd =
                           (getLoc vd, ) <$>  mm .@!! varDeclSort vd
-                exitSort :: ExitSortDecl -> CompilerM ExitSort
-                exitSort NoExitD    = return NoExit
-                exitSort HitD       = return Hit
-                exitSort (ExitD xs) = Exit <$> sortIds mm xs
                     

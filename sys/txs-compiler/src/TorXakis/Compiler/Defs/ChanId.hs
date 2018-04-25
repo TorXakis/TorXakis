@@ -36,6 +36,7 @@ predefinedChans =
     zip (name <$> cIds) cIds
     where cIds = [ chanIdIstep
                  , chanIdQstep
+                 , chanIdExit
                  ]
 
 class DeclaresChannels e where
@@ -50,10 +51,6 @@ instance DeclaresChannels ExitSortDecl where
     mkChanIds _ HitD = return [ (name chanIdHit, chanIdHit)
                                , (name chanIdMiss, chanIdMiss)
                                ]
-
-chRefsToIds :: MapsTo Text ChanId mm 
-            => mm -> [ChanRef] -> CompilerM [ChanId]
-chRefsToIds mm chs = traverse (`lookupM` mm) (chanRefName <$> chs)
 
 chRefsToChIdSet :: MapsTo Text ChanId mm 
                 => mm -> Set ChanRef -> CompilerM (Set ChanId)

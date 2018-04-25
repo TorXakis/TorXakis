@@ -10,7 +10,7 @@ module TorXakis.Compiler.ValExpr.SortId where
 
 import           Prelude                   hiding (lookup)
 import           Control.Arrow             (left, (|||))
-import           Control.Monad             (when)
+import           Control.Monad             (when, foldM)
 import           Control.Monad.Error.Class (liftEither, throwError)
 import           Data.Either               (partitionEithers)
 import           Data.List                 (intersect)
@@ -28,13 +28,19 @@ import           Id                        (Id (Id))
 import           SortId                    (SortId (SortId), sortIdBool,
                                             sortIdInt, sortIdRegex,
                                             sortIdString)
-import           ChanId (ChanId, chansorts)                 
+import qualified SortId                 
+import           VarId (varsort)                 
+import           ChanId (ChanId, chansorts)
+import           ProcId (ExitSort (NoExit, Exit, Hit), exitSortIds, ProcId, procvars, procchans, procexit)
+import qualified ProcId
+import           TxsDefs (ProcDef)
 
 import           TorXakis.Compiler.Data  
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.MapsTo 
 import           TorXakis.Compiler.Maps
-import           TorXakis.Parser.Data 
+import           TorXakis.Parser.Data
+
 
 -- | Construct a list of sort ID's from a list of ADT declarations.
 --
@@ -123,7 +129,7 @@ inferVarDeclType mm vd = left (,vd) $
 inferExpTypes :: ( MapsTo Text SortId mm
                  , MapsTo (Loc VarDeclE) SortId mm
                  , MapsTo FuncDefInfo FuncId mm
-                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm)
+                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
               => mm
               -> ExpDecl
               -> Either Error [SortId]
@@ -207,24 +213,48 @@ class HasTypedVars e where
                      , MapsTo Text ChanId mm
                      , MapsTo (Loc VarDeclE) SortId mm
                      , MapsTo FuncDefInfo FuncId mm
-                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
+                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
+                     , MapsTo ProcId ProcDef mm )
                   => mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
 
 instance HasTypedVars BExpDecl where
-    inferVarTypes _ Stop               =
+    inferVarTypes _ Stop =
         return []
-    inferVarTypes mm (ActPref ao be)   = do
+    inferVarTypes mm (ActPref ao be) = do
         xs <- inferVarTypes mm ao
         -- The implicit variables in the offers are needed in subsequent expressions.
         ys <- inferVarTypes (Map.fromList xs <.+> mm) be
         return $ xs ++ ys
-    inferVarTypes mm (LetBExp vs be)   = do
+    inferVarTypes mm (LetBExp vs be) = do
         xs <- Map.toList <$> liftEither (gInferTypes mm vs)
         ys <- inferVarTypes mm be
         return $ xs ++ ys
     inferVarTypes mm (Pappl _ _ _ exs) =
         inferVarTypes mm exs
     inferVarTypes mm (Par _ _ be0 be1) =
+        (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
+    inferVarTypes mm (Enable _ be0 (Accept _ ofrs be1)) = do
+        xs <- inferVarTypes mm be0        
+        es <- exitSort (xs <.++> mm) be0
+        let sIds = exitSortIds es
+        when (length ofrs /= length sIds)
+            (error $  "Exit sorts and offers don't match:\n"
+                  ++ "Offers: " ++ show ofrs
+                  ++ "Exit sorts: " ++ show sIds)
+            -- (throwError undefined) -- TODO: give the appropriate error message here
+        let ofrs' = addType <$> zip sIds ofrs
+        ys <- inferVarTypes mm ofrs'
+        zs <- inferVarTypes (Map.fromList ys <.+> mm) be1
+        return $ xs ++ ys ++ zs
+        where
+          -- Add the sort id's to the list of offers
+          addType :: (SortId , ChanOfferDecl) -> ChanOfferDecl
+          addType (sId, QuestD ivd) =
+              QuestD $ mkIVarDecl (varName ivd)
+                                  (getLoc ivd)
+                                  (Just $ mkOfSort (SortId.name sId) undefined) -- TODO: do we use the same location here as the variable declaration 'vid'?
+          addType (_, excl) = excl
+    inferVarTypes mm (Enable _ be0 be1) =
         (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
     -- The enable operator has to take care of handle the `Accept` constructor.
     -- If 'ACCEPT' does not follow an enable operator then an error will be
@@ -276,3 +306,113 @@ instance HasTypedVars ChanOfferDecl where
     
 sortIds :: (MapsTo Text SortId mm) => mm -> [OfSort] -> CompilerM [SortId]
 sortIds mm xs = traverse (mm .@!!) $ zip (sortRefName <$> xs) (getLoc <$> xs)
+
+-- | The expression has exit sorts associated to it.
+class HasExitSorts e where
+    -- | Obtain the exit sorts for an expression.
+    exitSort :: ( MapsTo Text SortId mm
+                , MapsTo Text ChanId mm
+                , MapsTo ProcId ProcDef mm
+                , MapsTo (Loc VarDeclE) SortId mm
+                , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
+                , MapsTo FuncDefInfo FuncId mm
+                )
+             => mm -> e -> CompilerM ExitSort
+
+instance HasExitSorts BExpDecl where
+    exitSort _ Stop = return NoExit
+    exitSort mm (ActPref aos be) = do
+        es0 <- exitSort mm aos
+        es1 <- exitSort mm be
+        es0 <<+>> es1 -- TODO: modify `ActPref` to include a location then we can use <!!> l
+    exitSort mm (LetBExp _ be) = exitSort mm be
+    exitSort mm (Pappl n _ crs exps) = do
+        chIds <- chRefsToIds mm crs
+        -- Cartesian product of all the possible sorts that can be inferred:
+        expsSidss <- sequence <$> liftEither (traverse (inferExpTypes mm) exps)
+        let candidate :: ProcId -> Bool
+            candidate pId =
+                   toText   n                     == ProcId.name pId
+                && fmap chansorts (procchans pId) == fmap chansorts chIds -- Compare the sort id's of the channels
+                && fmap varsort (procvars pId )  `elem` expsSidss
+        case filter candidate $ keys @ProcId @ProcDef mm of
+            [pId] -> return $ procexit pId
+            []    -> error $ "No matching process found " -- TODO: throwError
+            _     -> error $ "Multiple matching processes found" -- TODO: throwError
+    exitSort mm (Par l _ be0 be1) = do
+        es0 <- exitSort mm be0
+        es1 <- exitSort mm be1
+        (es0 <<->> es1) <!!> l
+    exitSort mm (Enable _ _ be) = exitSort mm be
+    exitSort mm (Accept _ _ be) = exitSort mm be
+
+instance HasExitSorts ActOfferDecl where
+    exitSort mm (ActOfferDecl os _) =
+        exitSort mm os
+
+instance HasExitSorts e => HasExitSorts [e] where
+    exitSort mm exps = do
+        es <- traverse (exitSort mm) exps
+        foldM (<<+>>) NoExit es
+
+instance HasExitSorts OfferDecl where
+    exitSort mm (OfferDecl cr ofrs) = case chanRefName cr of
+        "EXIT"  -> do
+            sIds <- traverse (offerSid mm) ofrs
+            return $ Exit sIds
+        "ISTEP" -> return NoExit
+        "QSTEP" -> return Hit
+        "HIT"   -> return Hit
+        "MISS"  -> return Hit
+        _       -> return NoExit
+
+instance HasExitSorts ExitSortDecl where
+    exitSort _  NoExitD    = return NoExit
+    exitSort _  HitD       = return Hit
+    exitSort mm (ExitD xs) = Exit <$> sortIds mm xs
+
+-- | Combine exit sorts for choice, disable: max of exit sorts
+(<<+>>) :: ExitSort -> ExitSort -> CompilerM ExitSort
+NoExit   <<+>> NoExit    = return NoExit
+NoExit   <<+>> Exit exs  = return $ Exit exs
+NoExit   <<+>> Hit       = return Hit
+Exit exs <<+>> NoExit    = return $ Exit exs
+Exit exs <<+>> Exit exs' = do
+    when (exs /= exs')
+         (throwError undefined) -- TODO:"\nTXS2222: Exit sorts do not match\n"
+    return (Exit exs)
+Exit _   <<+>> Hit       = throwError undefined -- TODO: "\nTXS2223: Exit sorts do not match\n"
+Hit      <<+>> NoExit    = return Hit
+Hit      <<+>> Exit _    = throwError undefined -- TODO: "\nTXS2224: Exit sorts do not match\n"
+Hit      <<+>> Hit       = return Hit
+
+
+-- | Combine exit sorts for parallel: min of exit sorts
+(<<->>) :: ExitSort -> ExitSort -> CompilerM ExitSort
+NoExit   <<->> NoExit    = return NoExit
+NoExit   <<->> Exit _    = return NoExit
+NoExit   <<->> Hit       = return NoExit
+Exit _   <<->> NoExit    = return NoExit
+Exit exs <<->> Exit exs' = do
+    when (exs /= exs')
+         (throwError undefined) -- TODO:"\nTXS2222: Exit sorts do not match\n"
+    return (Exit exs)
+Exit _   <<->> Hit       = throwError undefined -- TODO: "\nTXS2223: Exit sorts do not match\n"
+Hit      <<->> NoExit    = return NoExit
+Hit      <<->> Exit _    = throwError undefined -- TODO: "\nTXS2224: Exit sorts do not match\n"
+Hit      <<->> Hit       = return Hit
+
+offerSid :: ( MapsTo Text SortId mm
+            , MapsTo (Loc VarDeclE) SortId mm
+            , MapsTo FuncDefInfo FuncId mm
+            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
+         => mm -> ChanOfferDecl -> CompilerM SortId
+offerSid mm (QuestD vd) = case ivarDeclSort vd of
+    Nothing -> error $ "No sort for offer variable" ++ show vd  -- TODO: throw the appropriate error message
+    Just sr -> mm .@!! (sortRefName sr, sr)
+offerSid mm (ExclD ex) = case inferExpTypes mm ex of
+    Left err    -> throwError err
+    Right []    -> error $ "No matching sort for " ++ show ex
+    Right [sId] -> return sId
+    Right xs    -> error $  "Found multiple matching sorts for " ++ show ex
+                         ++ ": " ++ show xs -- TODO: throwError

@@ -125,7 +125,7 @@ ENDDEF
 
 CHANDEF X ::=
     S :: String;
-    I, J :: Int;
+    I, J, K :: Int;
     OutS :: String
 ENDDEF    
 
@@ -289,4 +289,93 @@ MODELDEF Syncer7 ::=
     |[ I ]| I ! 22
     ||| I ? v >-> syncer[J](v)
     ||| syncer2[I, J]()
+ENDDEF
+
+
+PROCDEF preEnabler[X :: Int]() ::=
+    X ? a :: Int
+ENDDEF
+
+PROCDEF enabler2[X :: Int]() ::=
+    X ? v >-> EXIT ! 10 >>> ACCEPT ? x IN X ! x NI
+ENDDEF
+
+PROCDEF enabler3[X :: Int]() ::=
+    X ? v >-> EXIT >>> X ! 22
+ENDDEF
+
+PROCDEF multipleExiters[X :: String]() ::=
+    X ? v >-> X ? v >-> EXIT >>> EXIT ! "bang" >>> ACCEPT ? str :: String IN X ! str NI
+ENDDEF
+
+PROCDEF enabler[X :: Int]() ::=
+    X ? v >-> EXIT ! 10 ? z :: Int >>> ACCEPT ? a ? b IN X ! a + b NI
+ENDDEF
+
+PROCDEF enabler3[X :: Int]() ::=
+    X ? v >-> EXIT ! 10 ? z :: Int >-> X ? v >-> EXIT ! 10 ? z :: Int >>> ACCEPT ? a ? b IN X ! a + b NI
+ENDDEF
+
+MODELDEF Enabler ::=
+    CHAN IN I
+    CHAN OUT J
+    BEHAVIOUR
+        enabler[I]()
+ENDDEF
+
+PROCDEF exiterMultipleExits[ ](x :: Int) EXIT Int ::=
+    EXIT ! "Hello" >>> ACCEPT ? what IN EXIT ! 10 NI
+ENDDEF
+
+PROCDEF exiterOverloaded[ ](x :: Int) EXIT Int ::=
+    EXIT ! 1
+ENDDEF
+
+PROCDEF exiterOverloaded[ ](s :: String) EXIT String # String ::=
+    EXIT ! "Foo" ? bar :: String
+ENDDEF
+
+CHANDEF X ::=
+        ST :: String # String
+ENDDEF
+
+MODELDEF ExiterOverloader ::=
+    CHAN IN ST
+    CHAN OUT
+    BEHAVIOUR
+        exiterOverloaded[ ]("foo") >>> ACCEPT ? v :: String ? w :: String IN  ST ! v ! w NI
+ENDDEF
+
+
+PROCDEF enabler200[I, J, K :: Int]() ::=
+    I ? x >-> EXIT ! x >>> ACCEPT ? z IN K ! 10 NI
+ENDDEF
+
+PROCDEF enabler2[I, J, K :: Int]() ::=
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    |||
+        J ? y :: Int >-> EXIT ? x :: Int ! y
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+MODELDEF Enabler2 ::=
+    CHAN IN I
+    CHAN OUT J, K
+    BEHAVIOUR
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    |||
+        J ? y :: Int >-> EXIT ? x :: Int ! y
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+PROCDEF enabler3[X :: Int; Z]() ::=
+    (X ? v >-> EXIT ||| X ! 22 >-> EXIT) >>> X ! 10
 ENDDEF

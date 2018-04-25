@@ -30,7 +30,7 @@ import           SortId                            (sortIdBool, sortIdInt,
                                                     sortIdRegex, sortIdString)
 import           ChanId                 (ChanId)                 
 import           StdTDefs                          (stdFuncTable, stdTDefs)
-import           TxsDefs                           (TxsDefs, fromList, funcDefs, procDefs,
+import           TxsDefs                           (TxsDefs, fromList, funcDefs, procDefs, modelDefs,
                                                     union, ProcDef, ProcId)
 import qualified TxsDefs                           (empty)
 import           ValExpr                           (ValExpr,
@@ -161,7 +161,8 @@ toTxsDefs ft mm pd = do
         pds = TxsDefs.empty {
             procDefs = simplify ft fn (innerMap mm)
             }    
-    mds <- modelDeclsToTxsDefs mm (pd ^. models)
+    mDefMap <- modelDeclsToTxsDefs mm (pd ^. models)
+    let mds = TxsDefs.empty { modelDefs = simplify ft fn mDefMap }
     return $ ads
         `union` fds
         `union` pds        

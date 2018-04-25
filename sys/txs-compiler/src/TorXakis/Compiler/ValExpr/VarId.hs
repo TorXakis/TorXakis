@@ -62,6 +62,7 @@ instance DeclaresVariables BExpDecl where
     mkVarIds mm (LetBExp vs be)    = (++) <$> mkVarIds mm vs <*> mkVarIds mm be
     mkVarIds mm (Pappl _ _ _ exs)  = mkVarIds mm exs
     mkVarIds mm (Par _ _ be0 be1)  = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
+    mkVarIds mm (Enable _ be0 be1) = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
     mkVarIds mm (Accept _ ofrs be) = (++) <$> mkVarIds mm ofrs <*> mkVarIds mm be
 
 instance DeclaresVariables ActOfferDecl where

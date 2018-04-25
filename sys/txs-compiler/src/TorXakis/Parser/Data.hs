@@ -95,6 +95,7 @@ module TorXakis.Parser.Data
     , SyncOn (..)
     , chanOfferIvarDecl
     , actOfferDecls
+    , chanOfferDecls
     , asVarReflLoc
     -- ** Channels
     , ChanDecl
@@ -226,6 +227,8 @@ data ProcRefE = ProcRefE deriving (Eq, Ord, Show)
 
 -- | Parallel operator occurrence in a behavior expression.
 data ParOpE = ParOpE deriving (Eq, Ord, Show)
+
+data EnableE = EnableE deriving (Eq, Ord, Show)
 
 -- | Accept operator.
 data AcceptE = AcceptE deriving (Eq, Ord, Show)
@@ -487,6 +490,8 @@ data BExpDecl
     | Pappl (Name ProcRefE) (Loc ProcRefE) [ChanRef] [ExpDecl]
     -- | Parallel operators.
     | Par (Loc ParOpE) SyncOn BExpDecl BExpDecl
+    -- | Enable operator.
+    | Enable (Loc EnableE) BExpDecl BExpDecl
     -- | 'ACCEPT' operator.
     --
     -- Note that while the parser will allow 'ACCEPT's in arbitrary positions,
@@ -516,7 +521,7 @@ data ActOfferDecl = ActOfferDecl
 data OfferDecl = OfferDecl ChanRef [ChanOfferDecl]
     deriving (Eq, Ord, Show)
 
--- | Channel offer reclarations.
+-- | Channel offer declarations.
 --
 -- Note that a receiving action with an explicit type declaration are only
 -- needed to simplify the type inference of exit variables used in expressions
@@ -540,12 +545,14 @@ asVarReflLoc = locFromLoc
 -- | Get all the variable declarations introduced by receiving actions of the
 -- form 'Ch ? v'.
 actOfferDecls :: ActOfferDecl -> [IVarDecl]
-actOfferDecls (ActOfferDecl os _) = concatMap f os
-    where
-      f :: OfferDecl -> [IVarDecl]
-      f (OfferDecl _ cs) = concatMap g cs
-      g (QuestD ivd) = [ivd]
-      g (ExclD _)    = []
+actOfferDecls (ActOfferDecl os _) = concatMap offerDecls os
+
+offerDecls :: OfferDecl -> [IVarDecl]
+offerDecls (OfferDecl _ cs) = concatMap chanOfferDecls cs
+
+chanOfferDecls :: ChanOfferDecl -> [IVarDecl]
+chanOfferDecls (QuestD ivd) = [ivd]
+chanOfferDecls (ExclD _)    = []
 
 type VarRef = ParseTree VarRefE ()
 

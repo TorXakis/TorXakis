@@ -27,6 +27,7 @@ import           Data.Typeable             (Typeable)
 import           GHC.Exts                  (IsList, Item, fromList, toList)
 import           Prelude                   hiding (lookup)
 
+import           ChanId                    (ChanId (ChanId), name)
 import           CstrId                    (CstrId)
 import           FuncDef                   (FuncDef)
 import           FuncId                    (FuncId, funcargs, funcsort)
@@ -195,3 +196,7 @@ mm .@ k = lookupM k mm <!!> k
           , Typeable k, Typeable v )
      => mm -> (k, l) -> CompilerM v
 mm .@!! (k, l) = lookupM k mm <!!> l
+
+chRefsToIds :: MapsTo Text ChanId mm
+            => mm -> [ChanRef] -> CompilerM [ChanId]
+chRefsToIds mm chs = traverse (`lookupM` mm) (chanRefName <$> chs)

@@ -23,8 +23,9 @@ bexpDeclP = buildExpressionParser table bexpTermP
               ]
       enableP :: TxsParser (BExpDecl -> BExpDecl ->  BExpDecl)
       enableP = do
+          l <- mkLoc
           txsSymbol ">>>"
-          return undefined
+          return $ \be0 be1 -> Enable l be0 be1
       parOpP :: TxsParser (BExpDecl -> BExpDecl ->  BExpDecl)
       parOpP = do
           l <- mkLoc
@@ -36,7 +37,7 @@ bexpDeclP = buildExpressionParser table bexpTermP
               <|> (fmap OnlyOn chanrefsP <* txsSymbol "|")
               -- '||'   operator
               <|> (txsSymbol "|" >> return All)
-          return $ \bex0 bex1 -> Par l sOn bex0 bex1
+          return $ \be0 be1 -> Par l sOn be0 be1
 
 bexpTermP :: TxsParser BExpDecl
 bexpTermP =  txsSymbol "(" *> ( bexpDeclP <* txsSymbol ")")

@@ -10,8 +10,8 @@ import           Data.Text              (Text)
 
 import           SortDef                           (SortDef (SortDef))
 import           SortId                            (SortId)
-import           TxsDefs                           (TxsDefs, cstrDefs, empty,
-                                                    modelDefs, sortDefs, ProcDef)
+import           TxsDefs                           (TxsDefs, cstrDefs,
+                                                    modelDefs, sortDefs, ProcDef, ModelId, ModelDef, empty)
 import           ChanId                 (ChanId)
 import           VarId (VarId)
 import           CstrId (CstrId)
@@ -50,8 +50,7 @@ modelDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , MapsTo ProcId ProcDef mm
                        , MapsTo (Loc VarDeclE) SortId mm
                        , MapsTo (Loc VarDeclE) VarId mm )
-                    => mm -> [ModelDecl] -> CompilerM TxsDefs
-modelDeclsToTxsDefs mm mds = do
-    mIds   <- traverse modelDeclToModelId  mds
-    mDecls <- traverse (modelDeclToModelDef mm) mds
-    return $ empty { modelDefs = Map.fromList $ zip mIds mDecls }
+                    => mm -> [ModelDecl] -> CompilerM (Map ModelId ModelDef)
+modelDeclsToTxsDefs mm mds =
+    Map.fromList <$> (zip <$> traverse modelDeclToModelId  mds
+                          <*> traverse (modelDeclToModelDef mm) mds)

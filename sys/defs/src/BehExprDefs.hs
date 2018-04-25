@@ -20,7 +20,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE ViewPatterns       #-}
 module BehExprDefs
-( 
+(
   -- * Behaviour Expression type and view
   BExprView(..)
 , BExpr
@@ -81,7 +81,7 @@ data BExprView = ActionPref  ActOffer BExpr
                | StAut       StatId VEnv [Trans]
   deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 instance Resettable BExprView
-    where 
+    where
 --        reset (Choice bs)       = Choice (Set.toAscList (Set.fromList (reset bs))) -- reorder to ensure invariant
 --        reset x                 = over uniplate reset x
         reset (ActionPref a b)  = ActionPref (reset a) (reset b)
@@ -123,8 +123,8 @@ stop = BExpr (Choice [])
 -- | Create an ActionPrefix behaviour expression.
 actionPref :: ActOffer -> BExpr -> BExpr
 actionPref a b = case ValExpr.view (constraint a) of
-                    Vconst (Cbool False)    -> stop
-                    _                       -> BExpr (ActionPref a b)
+                    Vconst (Cbool False) -> stop
+                    _                    -> BExpr (ActionPref a b)
 
 -- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
@@ -135,20 +135,20 @@ guard v b = BExpr (Guard v b)
 choice :: [BExpr] -> BExpr
 choice l = let s = flattenChoice l
                l' = Set.toAscList s       -- All elements in a set are distinct
-             in 
+             in
                 case l' of
                     []  -> stop
                     [a] -> a
                     _   -> BExpr (Choice l')
-    where 
+    where
         -- 1. nesting of choices are flatten
-        --    (p ## q) ## r == p ## q ## r 
+        --    (p ## q) ## r == p ## q ## r
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
         -- 2. elements in a set are distinctive
         --    hence p ## p == p
         flattenChoice :: [BExpr] -> Set.Set BExpr
         flattenChoice l' = Set.unions $ map fromBExpr l'
-        
+
         fromBExpr :: BExpr -> Set.Set BExpr
         fromBExpr (BehExprDefs.view -> Choice l') = Set.fromDistinctAscList l'
         fromBExpr x                               = Set.singleton x
@@ -164,7 +164,7 @@ parallel cs bs = let fbs = flattenParallel bs
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
         flattenParallel :: [BExpr] -> [BExpr]
         flattenParallel = concatMap fromBExpr
-        
+
         fromBExpr :: BExpr -> [BExpr]
         fromBExpr (BehExprDefs.view -> Parallel pcs pbs) | Set.fromList cs == Set.fromList pcs  = pbs
         fromBExpr bexpr                                                                         = [bexpr]
@@ -252,3 +252,60 @@ be0 ~~ be1 = reset be0 == reset be1
 valid :: BExpr -> Bool
 valid (BehExprDefs.view -> Choice actual)   = actual == Set.toAscList (Set.fromList actual)
 valid _                                     = True
+
+-- -- | The expression has exit sorts associated to it.
+-- class HasExitSorts e where
+--     -- | Obtain the exit sorts for an expression.
+--     exitSort :: ( MapsTo Text SortId mm
+--                 , MapsTo Text ChanId mm )
+--              => mm -> e -> CompilerM ExitSort
+
+-- instance HasExitSorts BExpDecl where
+--     exitSort _ Stop = return NoExit
+--     exitSort mm (ActPref aos be) = do
+--         es0 <- exitSort mm aos
+--         es1 <- exitSort mm be
+--         es0 <<+>> es1 -- TODO: modify `ActPref` to include a location then we can use <!!> l
+--     exitSort mm (LetBExp _ be) = exitSort mm be
+--     exitSort mm (Pappl p _ _ _) = do
+--         p <- Arrrgh -- It seems it makes more sense to define exitSort at BehExprDefs.
+
+-- instance HasExitSorts ActOfferDecl where
+--     exitSort mm (ActOfferDecl os _) =
+--         exitSort mm os
+
+-- instance HasExitSorts e => HasExitSorts [e] where
+--     exitSort mm exps = do
+--         es <- traverse (exitSort mm) exps
+--         foldM (<<+>>) NoExit es
+
+-- instance HasExitSorts OfferDecl where
+--     exitSort mm (OfferDecl cr _) = case chanRefName cr of
+--         "EXIT"  -> do
+--             sIds <- chansorts <$> mm .@!! (chanRefName cr, cr)
+--             return $ Exit sIds
+--         "ISTEP" -> return NoExit
+--         "QSTEP" -> return Hit
+--         "HIT"   -> return Hit
+--         "MISS"  -> return Hit
+--         _       -> return NoExit
+
+-- instance HasExitSorts ExitSortDecl where
+--     exitSort _  NoExitD    = return NoExit
+--     exitSort _  HitD       = return Hit
+--     exitSort mm (ExitD xs) = Exit <$> sortIds mm xs
+
+-- -- | Combine exit sorts for choice, disable: max of exit sorts
+-- (<<+>>) :: ExitSort -> ExitSort -> CompilerM ExitSort
+-- NoExit   <<+>> NoExit    = return NoExit
+-- NoExit   <<+>> Exit exs  = return $ Exit exs
+-- NoExit   <<+>> Hit       = return Hit
+-- Exit exs <<+>> NoExit    = return $ Exit exs
+-- Exit exs <<+>> Exit exs' = do
+--     when (exs /= exs')
+--          (throwError undefined) -- TODO:"\nTXS2222: Exit sorts do not match\n"
+--     return (Exit exs)
+-- Exit _   <<+>> Hit       = throwError undefined -- TODO: "\nTXS2223: Exit sorts do not match\n"
+-- Hit      <<+>> NoExit    = return Hit
+-- Hit      <<+>> Exit _    = throwError undefined -- TODO: "\nTXS2224: Exit sorts do not match\n"
+-- Hit      <<+>> Hit       = return Hit
