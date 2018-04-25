@@ -98,7 +98,7 @@ import           Variable
 -- | Create a function call.
 -- Preconditions are /not/ checked.
 cstrFunc :: (Variable v, Variable w) => Map.Map FuncId (FuncDef v) -> FuncId -> [ValExpr w] -> ValExpr w
-cstrFunc fis fi arguments =
+cstrFunc = \fis fi arguments ->
     case Map.lookup fi fis of
         Nothing ->
             -- When implementing the body of a recursive function, a function
@@ -115,9 +115,9 @@ cstrFunc fis fi arguments =
 -- | Apply ADT Constructor of constructor with CstrId and the provided arguments (the list of value expressions).
 -- Preconditions are /not/ checked.
 cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
-cstrCstr c a = if all isConst a
-                then cstrConst (Cstr c (map (\(view -> Vconst v) -> v) a))
-                else ValExpr (Vcstr c a)
+cstrCstr = \c a -> if all isConst a
+                    then cstrConst (Cstr c (map (\(view -> Vconst v) -> v) a))
+                    else ValExpr (Vcstr c a)
 
 -- | Is the provided value expression made by the ADT constructor with CstrId?
 -- Preconditions are /not/ checked.
@@ -418,7 +418,7 @@ cstrStrInRe s r                                                      = ValExpr (
 
 -- | Create a call to a predefined function as a value expression.
 cstrPredef :: PredefKind -> FuncId -> [ValExpr v] -> ValExpr v
-cstrPredef p f a = ValExpr (Vpredef p f a)
+cstrPredef = \p f a -> ValExpr (Vpredef p f a)
 
 -- | Substitute variables by value expressions in a value expression.
 --
