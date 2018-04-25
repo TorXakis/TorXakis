@@ -47,7 +47,7 @@ spec = return $ do
                 r2 ^. responseStatus . statusCode `shouldBe` 201 -- Created
                 r2 ^. responseBody `shouldBe` "{\"sessionId\":2}"
         describe "Upload files to a session" $ do
-            it "Uploads valid files" $ do
+            it "Uploads valid file" $ do
                 _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
                 r <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
                 r ^. responseStatus . statusCode `shouldBe` 202 -- Accepted
@@ -64,7 +64,7 @@ spec = return $ do
                         loaded `shouldBe` True
             it "Fails for parse error" $ do
                 let handler (CI.HttpExceptionRequest _ (C.StatusCodeException r body)) = do
-                        BS.unpack body `shouldStartWith` "{\"msg\": \"Error in wrong.txt: \nParse Error:"
+                        BS.unpack body `shouldStartWith` "\nParse Error:"
                         let s = r ^. responseStatus
                         return CI.Response{CI.responseStatus = s}
                     handler e = throwIO e
@@ -72,6 +72,11 @@ spec = return $ do
                 r <- put "http://localhost:8080/sessions/1/model" [partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"]
                         `catch` handler
                 r ^. responseStatus . statusCode `shouldBe` 400 -- Bad Request
+                r2 <- put "http://localhost:8080/sessions/1/model" [ partFile "Point.txs" "../../examps/Point/Point.txs"
+                                                                   , partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"
+                                                                   ]
+                        `catch` handler
+                r2 ^. responseStatus . statusCode `shouldBe` 400 -- Bad Request
             it "Starts stepper and takes 3 steps" $ do
                 _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
                 _ <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
