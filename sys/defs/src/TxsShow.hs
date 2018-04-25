@@ -217,9 +217,10 @@ instance PShow ActOffer
   where
     pshow (ActOffer ofs hidvars c)
       =  "{ " ++ Utils.join " | " (map pshow (Set.toList ofs)) ++ "} "
-         ++ if  null hidvars
-              then ""
-              else  "{/ " ++ Utils.join " | " (map pshow (Set.toList hidvars)) ++ " /} "
+         ++ ( if  null hidvars
+                then ""
+                else  "{/ " ++ Utils.join " | " (map pshow (Set.toList hidvars)) ++ " /} "
+            )
          ++ case ValExpr.view c of
             { Vconst (Cbool True) -> ""
             ; _                   -> "\n   [[ " ++ pshow c ++ " ]]"
