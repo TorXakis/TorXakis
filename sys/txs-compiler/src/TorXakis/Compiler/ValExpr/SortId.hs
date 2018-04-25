@@ -366,10 +366,6 @@ instance HasExitSorts OfferDecl where
         "MISS"  -> return Hit
         _       -> return NoExit
 
-instance HasExitSorts ExitSortDecl where
-    exitSort _  NoExitD    = return NoExit
-    exitSort _  HitD       = return Hit
-    exitSort mm (ExitD xs) = Exit <$> sortIds mm xs
 
 -- | Combine exit sorts for choice, disable: max of exit sorts
 (<<+>>) :: ExitSort -> ExitSort -> CompilerM ExitSort

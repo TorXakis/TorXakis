@@ -71,18 +71,23 @@ procDeclsToProcDefMap mm ps =
           pdVdSortMap <- procDefVdSortMap
           -- List of VarId's associated to the variables declared by a formal parameter.
           pvIds       <- traverse (varIdFromVarDecl pdVdSortMap) vdecls
+          e           <- declExitSort (procRetSort . procDeclComps $ pd) <!!> pd
           let body = procBody . procDeclComps $ pd
+              chIds' = snd <$> chIds
+              pvIds' = snd <$> pvIds
+              -- NOTE: we need to introduce a temporary ProcId to deal with the case of recursive process!
+              newPid = ProcId (procDeclName pd) (Id pId) chIds' pvIds' e
+              -- We add the newly defined process to the map.
+              -- TODO: if the ProcDef is not used at all, we might need to change the constraints to
+              -- MapsTo ProcId () mm (Although this is a abuse of mapsto)
+              mpd' = Map.singleton newPid (undefined :: ProcDef) <.+> mpd
           -- List of VarId's associated to the variables declared by a question mark offer.
-          bTypes      <- Map.fromList <$> inferVarTypes (allChIds .& (pvIds .& mm) :& pdVdSortMap :& mpd) body
+          bTypes      <- Map.fromList <$> inferVarTypes (allChIds .& (pvIds .& mm) :& pdVdSortMap :& mpd') body
           bvIds       <- mkVarIds bTypes body
-          e           <- exitSort ((pvIds ++ bvIds) .& (allChIds .& (pvIds .& mm)) :& pdVdSortMap :& mpd)
-                                  (procRetSort . procDeclComps $ pd) <!!> pd
-          b           <- toBExpr (bTypes :& (allChIds .&. (pvIds ++ bvIds)) :& mm :& mpd) body
+          b           <- toBExpr (bTypes :& (allChIds .&. (pvIds ++ bvIds)) :& mm :& mpd') body
           -- NOTE that it is crucial that the order of the channel parameters
           -- declarations is preserved!
-          let chIds' = snd <$> chIds
-              pvIds' = snd <$> pvIds
-          return ( ProcId (procDeclName pd) (Id pId) chIds' pvIds' e
+          return ( newPid 
                  , ProcDef chIds' pvIds' b
                  )
               where
@@ -93,4 +98,6 @@ procDeclsToProcDefMap mm ps =
                       vdToSortId :: VarDecl -> CompilerM (Loc VarDeclE, SortId)
                       vdToSortId vd =
                           (getLoc vd, ) <$>  mm .@!! varDeclSort vd
-                    
+                declExitSort NoExitD    = return NoExit
+                declExitSort HitD       = return Hit
+                declExitSort (ExitD xs) = Exit <$> sortIds mm xs

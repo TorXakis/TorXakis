@@ -379,3 +379,35 @@ ENDDEF
 PROCDEF enabler3[X :: Int; Z]() ::=
     (X ? v >-> EXIT ||| X ! 22 >-> EXIT) >>> X ! 10
 ENDDEF
+
+PROCDEF noop [ ] (  ) ::=
+    STOP
+ENDDEF
+
+PROCDEF noop [ ] ( id :: Int ) ::=
+        noop [ ] (10)
+ENDDEF
+
+PROCDEF produceLoop [ In_Material           :: Int
+                    ; In_Correction         :: String
+                    ; Out_Material          :: Int
+                    ; Out_ProduceReport     :: String
+                    ] ( id :: Int ) ::=
+    (       
+            Out_Material ! id 
+       >-> In_Material ? nextId
+       >-> EXIT ! nextId
+    )
+    |[ Out_Material ]|
+    (
+        (
+                ( Out_Material ! id >-> EXIT )
+          |||
+              ( Out_ProduceReport ? pr [[ 44 == id ]] >-> EXIT )
+        ) >>>
+           ( In_Correction ? correction [[ 22 == id ]] >-> EXIT ? nextId :: Int )
+    )
+    >>> ACCEPT ? nextId :: Int IN
+        produceLoop [In_Material, In_Correction, Out_Material, Out_ProduceReport] (nextId)
+    NI
+ENDDEF
