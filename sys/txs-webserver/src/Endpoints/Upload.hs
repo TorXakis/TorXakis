@@ -3,63 +3,53 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators     #-}
 module Endpoints.Upload
 ( UploadEP
 , upload
 ) where
 
-import           Control.Monad.IO.Class      (liftIO)
-import           Data.ByteString.Lazy.Char8  (pack)
-import           Data.Monoid                 ((<>))
-import           Data.Text                   (Text)
-import qualified Data.Text                   as T
-import qualified Data.Text.Lazy              as LT
-import           Data.Text.Lazy.Encoding     (decodeUtf8)
+import           Control.Monad.IO.Class     (liftIO)
+import           Data.Aeson                 (ToJSON)
+import           Data.ByteString.Lazy.Char8 (pack)
+import           Data.Text                  (Text)
+import qualified Data.Text.Lazy             as LT
+import           Data.Text.Lazy.Encoding    (decodeUtf8)
+import           GHC.Generics               (Generic)
 import           Servant
-import           Servant.Multipart           (MultipartForm, MultipartData, Mem, FileData, files, fdFileName, fdPayload) --  iName, iValue, inputs
+import           Servant.Multipart          (Mem, MultipartData, MultipartForm,
+                                             fdFileName, fdPayload, files)
 
-import           TorXakis.Lib                (load, Response (..))
-import           TorXakis.Lib.Session            (Session)
+import           TorXakis.Lib               (Response (..), load)
+-- import           TorXakis.Lib.Session       (Session)
 
-import           Common (SessionId, getSession, Env)
+import           Common                     (Env, SessionId, getSession)
 
 type UploadEP = "sessions"
              :> Capture "sid" SessionId
              :> "model"
              :> MultipartForm Mem (MultipartData Mem)
-             :> PostAccepted '[JSON] String
+             :> PutAccepted '[JSON] [FileLoadedResponse]
 
-upload :: Env -> SessionId -> MultipartData Mem -> Handler String
+data FileLoadedResponse = FileLoadedResponse
+                            { fileName :: Text
+                            , loaded   :: Bool
+                            }
+    deriving (Generic)
+instance ToJSON FileLoadedResponse
+
+upload :: Env -> SessionId -> MultipartData Mem -> Handler [FileLoadedResponse]
 upload env sid multipartData =  do
     s <- getSession env sid
-    res <- liftIO $
-        case files multipartData of
-            [] -> return $ Left "No files received"
-            fs -> do
-                rs <- mapM (loadFile s) fs
-                let (errMsg,succMsg) = concatErrorMsgs rs T.empty T.empty
-                case T.unpack errMsg of
-                    []   -> return $ Right $ T.unpack succMsg
-                    eMsg -> return $ Left eMsg
-    case res of
-        Left  e -> throwError err400 { errBody = pack e }
-        Right m -> return m
-
-loadFile :: Session -> FileData Mem -> IO (Text,Response)
-loadFile s f = do
-    let fnTxt = fdFileName f
-        contentTxt = decodeUtf8 $ fdPayload f
-    if contentTxt == LT.empty
-        then return (fnTxt, Error "Empty file")
-        else do
-            putStrLn $ "Loading file: " ++ show fnTxt
-            r <- load s $ LT.unpack contentTxt
-            print r
-            return (fnTxt,r)
-
-concatErrorMsgs :: [(Text, Response)] -> Text -> Text -> (Text, Text)
-concatErrorMsgs []                   em sm = (em,sm)
-concatErrorMsgs ( (fn,Error m) : rs) em sm = concatErrorMsgs rs (em <> "\nError in " <> fn <> ": " <> T.pack m) sm
-concatErrorMsgs ( (fn,Success) : rs) em sm = concatErrorMsgs rs em (sm <> "\nLoaded: " <> fn)
+    case files multipartData of
+        [] -> throwError err400 { errBody = "No files received" }
+        fs -> do
+            r <- liftIO $ load s $ LT.unpack $ LT.concat $ map (decodeUtf8 . fdPayload) fs
+            case r of
+                Success -> return $ map mkResponse fs
+                Error e -> throwError err400 { errBody = pack e }
+              where
+                mkResponse f = FileLoadedResponse { fileName=fdFileName f, loaded=True }

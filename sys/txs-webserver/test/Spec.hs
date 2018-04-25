@@ -10,6 +10,8 @@ See LICENSE at root directory of this repository.
 module Main (main) where
 
 import           Control.Exception            (catch, throwIO)
+import           Data.Aeson                   (decode)
+import           Data.Aeson.Types             (Parser, parseMaybe, (.:))
 import           Data.ByteString.Char8        as BS
 import           Data.ByteString.Lazy.Char8   as BSL
 import           Lens.Micro                   ((^.))
@@ -49,7 +51,17 @@ spec = return $ do
                 _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
                 r <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
                 r ^. responseStatus . statusCode `shouldBe` 202 -- Accepted
-                r ^. responseBody `shouldBe` "{\"loadedFile\": \"Point.txs\"}"
+                let res = do
+                        [result] <- decode $ r ^. responseBody
+                        flip parseMaybe result $ \obj -> do
+                            fn <- obj .: "fileName" :: Parser String
+                            l  <- obj .: "loaded"   :: Parser Bool
+                            return (fn,l)
+                case res of
+                    Nothing -> expectationFailure $ "Can't parse: " ++ show (r ^. responseBody)
+                    Just (fileName, loaded) -> do
+                        fileName `shouldBe` "Point.txs"
+                        loaded `shouldBe` True
             it "Fails for parse error" $ do
                 let handler (CI.HttpExceptionRequest _ (C.StatusCodeException r body)) = do
                         BS.unpack body `shouldStartWith` "{\"msg\": \"Error in wrong.txt: \nParse Error:"

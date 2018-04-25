@@ -86,10 +86,12 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - aeson
     - base
     - bytestring
     - hspec
     - http-client
+    - microlens-aeson
     - microlens
     - process
     - wreq
