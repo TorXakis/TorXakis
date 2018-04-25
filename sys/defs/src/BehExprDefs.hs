@@ -20,7 +20,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE ViewPatterns       #-}
 module BehExprDefs
-( 
+(
   -- * Behaviour Expression type and view
   BExprView(..)
 , BExpr
@@ -81,7 +81,7 @@ data BExprView = ActionPref  ActOffer BExpr
                | StAut       StatId VEnv [Trans]
   deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 instance Resettable BExprView
-    where 
+    where
 --        reset (Choice bs)       = Choice (Set.toAscList (Set.fromList (reset bs))) -- reorder to ensure invariant
 --        reset x                 = over uniplate reset x
         reset (ActionPref a b)  = ActionPref (reset a) (reset b)
@@ -122,9 +122,10 @@ stop = BExpr (Choice [])
 
 -- | Create an ActionPrefix behaviour expression.
 actionPref :: ActOffer -> BExpr -> BExpr
-actionPref a b = BExpr (ActionPref a b)
-                    Vconst (Cbool False)    -> stop
-                    _                       -> BExpr (ActionPref a b)
+actionPref = \a b ->
+    case ValExpr.view (constraint a) of
+        Vconst (Cbool False) -> stop
+        _                    -> BExpr (ActionPref a b)
 
 -- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
@@ -135,20 +136,20 @@ guard = \v b -> BExpr (Guard v b)
 choice :: [BExpr] -> BExpr
 choice l = let s = flattenChoice l
                l' = Set.toAscList s       -- All elements in a set are distinct
-             in 
+             in
                 case l' of
                     []  -> stop
                     [a] -> a
                     _   -> BExpr (Choice l')
-    where 
+    where
         -- 1. nesting of choices are flatten
-        --    (p ## q) ## r == p ## q ## r 
+        --    (p ## q) ## r == p ## q ## r
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
         -- 2. elements in a set are distinctive
         --    hence p ## p == p
         flattenChoice :: [BExpr] -> Set.Set BExpr
         flattenChoice l' = Set.unions $ map fromBExpr l'
-        
+
         fromBExpr :: BExpr -> Set.Set BExpr
         fromBExpr (BehExprDefs.view -> Choice l') = Set.fromDistinctAscList l'
         fromBExpr x                               = Set.singleton x
@@ -164,7 +165,7 @@ parallel cs bs = let fbs = flattenParallel bs
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
         flattenParallel :: [BExpr] -> [BExpr]
         flattenParallel = concatMap fromBExpr
-        
+
         fromBExpr :: BExpr -> [BExpr]
         fromBExpr (BehExprDefs.view -> Parallel pcs pbs) | Set.fromList cs == Set.fromList pcs  = pbs
         fromBExpr bexpr                                                                         = [bexpr]
