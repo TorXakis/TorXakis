@@ -128,7 +128,11 @@ actionPref a b = case ValExpr.view (constraint a) of
 
 -- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
-guard v b = BExpr (Guard v b)
+guard (ValExpr.view -> Vconst (Cbool False)) _              = stop
+guard (ValExpr.view -> Vconst (Cbool True))  b              = b
+guard _ b                                     | isStop b    = stop
+guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = actionPref (ActOffer o h (cstrAnd (Set.fromList [v,c]))) b
+guard v b                                                   = BExpr (Guard v b)
 
 -- | Create a choice behaviour expression.
 --  A choice combines zero or more behaviour expressions.
@@ -169,16 +173,16 @@ parallel cs bs = let fbs = flattenParallel bs
         fromBExpr (BehExprDefs.view -> Parallel pcs pbs) | Set.fromList cs == Set.fromList pcs  = pbs
         fromBExpr bexpr                                                                         = [bexpr]
 
-
-
-
 -- | Create an enable behaviour expression.
 enable :: BExpr -> [ChanOffer] -> BExpr -> BExpr
-enable b1 cs b2 = BExpr (Enable b1 cs b2)
+enable b _ _    | isStop b = stop
+enable b1 cs b2            = BExpr (Enable b1 cs b2)
 
 -- | Create a disable behaviour expression.
 disable :: BExpr -> BExpr -> BExpr
-disable b1 b2 = BExpr (Disable b1 b2)
+disable b1 b2 | isStop b1 = b2
+disable b1 b2 | isStop b2 = b1
+disable b1 b2             = BExpr (Disable b1 b2)
 
 -- | Create an interrupt behaviour expression.
 interrupt :: BExpr -> BExpr -> BExpr
