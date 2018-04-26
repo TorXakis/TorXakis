@@ -19,12 +19,11 @@ import           Servant
 
 import           Common                      (Env (..))
 import           Endpoints.Info              (InfoEP, getInfo)
-import           Endpoints.Messages          (MessagesEP, SSMessagesEP,
-                                              ssMessagesEP, streamMessages)
+import           Endpoints.Messages          (MessagesEP, messages)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
 import           Endpoints.Stepper           (StartStepperEP, TakeNStepsEP,
                                               startStepper, takeNSteps)
-import           Endpoints.Tester           (StartTesterEP, TestNStepsEP,
+import           Endpoints.Tester            (StartTesterEP, TestNStepsEP,
                                               startTester, testNSteps)
 import           Endpoints.Upload            (UploadEP, upload)
 -- import           Swagger
@@ -34,7 +33,6 @@ type ServiceAPI = NewSessionEP :<|> UploadEP
                                :<|> StartStepperEP :<|> TakeNStepsEP
                                :<|> StartTesterEP  :<|> TestNStepsEP
                                :<|> MessagesEP
-                               :<|> SSMessagesEP
                                :<|> InfoEP
                                :<|> TestPageAPI
 type TestPageAPI = "test" :> Raw
@@ -56,8 +54,7 @@ server env = newSrvSession env
     :<|> upload env
     :<|> startStepper env :<|> takeNSteps env
     :<|> startTester env  :<|> testNSteps env
-    :<|> streamMessages env
-    :<|> ssMessagesEP env
+    :<|> messages env
     :<|> getInfo
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"
     -- :<|> return swaggerDocs

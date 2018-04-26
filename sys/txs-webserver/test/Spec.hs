@@ -88,6 +88,7 @@ spec = return $ do
                                                                    ]
                         `catch` handler
                 r2 ^. responseStatus . statusCode `shouldBe` 400 -- Bad Request
+        describe "Stepper" $
             it "Starts stepper and takes 3 steps" $ do
                 _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
                 _ <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]

@@ -7,14 +7,10 @@ See LICENSE at root directory of this repository.
 module Endpoints.Messages
 (
   MessagesEP
-, streamMessages
-, SSMessagesEP
-, ssMessagesEP
+, messages
 ) where
 
-import           Conduit                   (ZipSource (..), getZipSource,
-                                            repeatC, runConduit, yield, (.|))
--- import           Control.Concurrent        (threadDelay)
+import           Conduit                   (runConduit, (.|))
 import           Control.Concurrent.Async  (async, race_)
 import           Control.Concurrent.Chan   (Chan, newChan, writeChan)
 import           Data.Aeson                (encode)
@@ -31,57 +27,22 @@ import           Network.Wai.EventSource   (ServerEvent (CloseEvent, ServerEvent
                                             eventData, eventId, eventName,
                                             eventSourceAppChan)
 import           Prelude                   hiding (mapM_)
-import           Servant                   ((:>), Application, Capture, Handler,
-                                            JSON, NewlineFraming, Raw,
-                                            StreamGenerator,
-                                            StreamGenerator (StreamGenerator),
-                                            StreamGet, Tagged (Tagged))
+import           Servant
 
 
-import           Common                    (Env, SessionId, getSession,
-                                            getSessionIO)
+import           Common                    (Env, SessionId, getSessionIO)
 import           EnvData                   (Msg)
 import           TorXakis.Lib              (waitForMessageQueue, waitForVerdict)
-import           TorXakis.Lib.Session      (Session, sessionMsgs)
+import           TorXakis.Lib.Session      (sessionMsgs)
 
-type MessagesEP = "session"
-               :> Capture "sid" SessionId
-               :> "messages"
-               :> StreamGet NewlineFraming JSON (StreamGenerator Msg)
-
-streamMessages :: Env -> SessionId -> Handler (StreamGenerator Msg)
-streamMessages env sid = do
-    s <- getSession env sid
-    return $ StreamGenerator
-           $ \sendFirst sendRest ->
-                race_ (dataSource sendFirst sendRest s)
-                      (waitForVerdict s >> waitForMessageQueue s)
-      where
-        dataSource f r s = runConduit $ getZipSource ((,) <$> isFirstSource <*> messagesSource s)
-                        .| mapM_ (sendData f r)
-        isFirstSource :: ZipSource IO Bool
-        isFirstSource = ZipSource $ yield True >> repeatC False
-        messagesSource :: Session -> ZipSource IO Msg
-        messagesSource s = ZipSource $ sourceTQueue (s ^. sessionMsgs)
-        --         .| mapM delayAndPass
-        -- delayAndPass a =
-        --     threadDelay (10^(4::Int)) >> return a
-        sendData :: (a -> IO ()) -> (a -> IO ()) -> (Bool, a) -> IO ()
-        sendData f _ (True, a)=
-            f a
-        sendData _ g (False, a)=
-            g a
-        -- wait5 :: IO ()
-        -- wait5 = threadDelay (10^(6::Int) * 5)
-
-type SSMessagesEP = "sessions" :> "sse"
-               :> Capture "sid" SessionId
-               :> "messages"
-               :> Raw
+type MessagesEP = "sessions"
+                 :> Capture "sid" SessionId
+                 :> "messages"
+                 :> Raw
 
 -- | Server sent messages.
-ssMessagesEP :: Env -> SessionId -> Tagged Handler Application
-ssMessagesEP env sid = Tagged $ \req respond -> do
+messages :: Env -> SessionId -> Tagged Handler Application
+messages env sid = Tagged $ \req respond -> do
     mS <- getSessionIO env sid
     case mS of
         Nothing -> do

@@ -3,10 +3,8 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators     #-}
 module Endpoints.Upload
 ( UploadEP
 , upload
@@ -24,7 +22,6 @@ import           Servant.Multipart          (Mem, MultipartData, MultipartForm,
                                              fdFileName, fdPayload, files)
 
 import           TorXakis.Lib               (Response (..), load)
--- import           TorXakis.Lib.Session       (Session)
 
 import           Common                     (Env, SessionId, getSession)
 
