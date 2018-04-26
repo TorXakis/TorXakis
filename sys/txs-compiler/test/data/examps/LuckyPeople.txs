@@ -1,3 +1,9 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
 TYPEDEF Sex ::= Male | Female ENDDEF
 
 TYPEDEF Person ::=
@@ -31,3 +37,27 @@ ENDDEF
 FUNCDEF isLuckyByBirthday (p :: Person) :: Bool ::=
     dayOfBirth(p) == monthOfBirth(p)
 ENDDEF
+
+PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
+        In ? p [[ isValid_Person(p) ]] 
+    >-> Out ! isLuckyPerson (p, last, n) 
+    >->(
+                ( [[ sex(p) == last ]] =>> luckyPeople[In,Out] ( sex(p), n+1 ) )
+            ##
+                ( [[ sex(p) <> last ]] =>> luckyPeople[In,Out] ( sex(p), 1 ) )
+        )
+ENDDEF
+
+CHANDEF Channels ::=  In   :: Person
+                    ; Out  :: Bool
+ENDDEF
+
+MODELDEF Model ::=
+    CHAN IN    In
+    CHAN OUT   Out
+
+    BEHAVIOUR  
+        luckyPeople[In, Out](Male,0)            -- first sex choice is arbitrary
+ENDDEF
+
+CONSTDEF separator :: String ::= "@" ENDDEF

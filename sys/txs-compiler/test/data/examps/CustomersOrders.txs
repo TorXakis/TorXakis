@@ -1,3 +1,8 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 
 TYPEDEF ReportList  ::= Nil_Report | Cstr_Report  { head ::  Report ; tail ::  ReportList } ENDDEF
 TYPEDEF Report ::= Report { customers :: List_Customer ; orders :: List_Order } ENDDEF
@@ -40,5 +45,41 @@ FUNCDEF  add ( x :: Report; l :: ReportList ) :: ReportList ::=
     THEN  Cstr_Report(x,Nil_Report)
     ELSE  Cstr_Report(head(l), add(x,tail(l)))
     FI
+ENDDEF
+
+PROCDEF bufferedOutput [ IReport, OReport :: Report ] (queue :: ReportList) ::=
+        IReport ? r >-> bufferedOutput [ IReport, OReport ] (add (r , queue))
+    ##
+        [[ isCstr_Report (queue) ]] =>> OReport ! head(queue) >-> bufferedOutput [ IReport, OReport ] (tail(queue))
+ENDDEF
+
+PROCDEF handle [ Customer :: Customer; Order :: Order; Report :: Report ] (cs :: List_Customer; os :: List_Order; changed :: Bool) EXIT ::= 
+        [[ changed ]] =>>   (   Report ! Report ( cs, os )
+                            >-> handle [Customer , Order , Report ] ( cs , os , False)
+                            )
+    ##
+        (   Customer ? c [[ isValid_Customer(c) /\ not ( containsCustomerID ( customerID ( c ) , cs ) ) ]] 
+        >-> handle [Customer, Order, Report] ( Cstr_Customer ( c, cs ), os , True ) 
+        )
+    ##
+        (   Order ? o [[ isValid_Order(o) /\ containsCustomerID ( customerID(o), cs ) ]] 
+        >-> handle [Customer, Order, Report] ( cs, Cstr_Order ( o, os ) , True ) 
+        )
+ENDDEF
+
+CHANDEF Chans ::=   Customer  :: Customer
+                  ; Order     :: Order 
+                  ; Report    :: Report 
+ENDDEF
+
+MODELDEF Model ::= 
+    CHAN IN    Customer, Order
+    CHAN OUT   Report
+    BEHAVIOUR
+        HIDE [ HReport :: Report ] IN
+                handle [ Customer, Order, HReport ] ( Nil_Customer, Nil_Order, True )
+            |[ HReport ]|
+                bufferedOutput [ HReport, Report ] (Nil_Report)
+        NI
 ENDDEF
 

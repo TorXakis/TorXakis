@@ -1,0 +1,85 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+CHANDEF Channels ::=
+    UpX, DownX, StopX, StoppedX, MinX, MaxX,
+    UpY, DownY, StopY, StoppedY, MinY, MaxY,
+    UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ
+ENDDEF
+-- ----------------------------------------------------------------------------------------- --
+
+PROCDEF basicAllowedBehaviour [ UpX, DownX, StopX, StoppedX, MinX, MaxX,
+                                UpY, DownY, StopY, StoppedY, MinY, MaxY,
+                                UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ] ( ) ::=
+        stopped [UpX, DownX, StopX, StoppedX, MinX, MaxX] ()
+    ||| stopped [UpY, DownY, StopY, StoppedY, MinY, MaxY] ()
+    ||| stopped [UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ] ()
+ENDDEF
+
+PROCDEF stopped [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Up >-> movingUp [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        Down >-> movingDown [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF movingUp [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stop >-> stoppingUp [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        Max >-> stoppingAtMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF stoppingAtMax [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stop >-> stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF stoppingUp [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stopped >-> stopped [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        Max >-> stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF stoppedMax [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Down >-> movingDown [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+
+PROCDEF movingDown [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stop >-> stoppingDown [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        Min >-> stoppingAtMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF stoppingAtMin [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stop >-> stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF stoppingDown [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Stopped >-> stopped [ Up, Down, Stop, Stopped, Min, Max ] ( )
+    ##
+        Min >-> stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+PROCDEF stoppedMin [ Up, Down, Stop, Stopped, Min, Max ] ( ) ::=
+        Up >-> movingUp [ Up, Down, Stop, Stopped, Min, Max ] ( )
+ENDDEF
+
+MODELDEF  Model ::=
+    CHAN IN     UpX, DownX, StopX, 
+                UpY, DownY, StopY,
+                UpZ, DownZ, StopZ
+    CHAN OUT    StoppedX, MinX, MaxX,
+                StoppedY, MinY, MaxY,
+                StoppedZ, MinZ, MaxZ
+    BEHAVIOUR   basicAllowedBehaviour [ UpX, DownX, StopX, StoppedX, MinX, MaxX,
+                                        UpY, DownY, StopY, StoppedY, MinY, MaxY,
+                                        UpZ, DownZ, StopZ, StoppedZ, MinZ, MaxZ] ( )
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --

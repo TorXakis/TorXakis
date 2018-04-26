@@ -23,6 +23,6 @@ procDeclP = do
     return $ mkProcDecl n l cs vs e be
 
 procExitP :: TxsParser ExitSortDecl
-procExitP =  (ExitD <$> (txsSymbol "EXIT" *> sortP `sepBy1` txsSymbol "#"))
+procExitP =  (ExitD <$> (txsSymbol "EXIT" *> sortP `sepBy` txsSymbol "#"))
          <|> (txsSymbol "HIT" >> return HitD)
          <|> return NoExitD

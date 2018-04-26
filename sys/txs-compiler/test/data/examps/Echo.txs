@@ -1,0 +1,38 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+-- ----------------------------------------------------------------------------------------- --
+-- channels
+
+CHANDEF  ChanDefs   ::=  In, Out  :: Int
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- inputs and outputs
+
+PROCDEF  proc  [ In, Out :: Int ]  ( ) ::=
+        In ? x
+    >-> Out ! x
+    >-> proc [ In, Out ] ()
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+-- model
+
+
+MODELDEF  Model ::=
+        CHAN IN     In
+        CHAN OUT    Out
+
+        BEHAVIOUR   proc [ In, Out ] ( )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- sut
+
+

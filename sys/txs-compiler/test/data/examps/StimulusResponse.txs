@@ -1,0 +1,16 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+CHANDEF  Chans ::=  Stimulus; Response
+ENDDEF
+
+MODELDEF Model ::=
+    CHAN IN    Stimulus
+    CHAN OUT   Response
+
+    BEHAVIOUR  
+        Stimulus >-> Response
+ENDDEF
