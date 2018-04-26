@@ -19,13 +19,18 @@ bexpDeclP = buildExpressionParser table bexpTermP
     <?> "Behavior expression"
     where
       table = [ [Infix parOpP AssocLeft]
-              , [Infix enableP AssocLeft] -- TODO: disable and interrup should also be placed in this level
+              , [Infix enableP AssocLeft, Infix disableP AssocLeft]
               ]
       enableP :: TxsParser (BExpDecl -> BExpDecl ->  BExpDecl)
       enableP = do
           l <- mkLoc
           txsSymbol ">>>"
           return $ \be0 be1 -> Enable l be0 be1
+      disableP :: TxsParser (BExpDecl -> BExpDecl -> BExpDecl)
+      disableP = do
+          l <- mkLoc
+          txsSymbol "[>>"
+          return $ \be0 be1 -> Disable l be0 be1
       parOpP :: TxsParser (BExpDecl -> BExpDecl ->  BExpDecl)
       parOpP = do
           l <- mkLoc
@@ -60,7 +65,7 @@ actOfferP :: TxsParser ActOfferDecl
 actOfferP = ActOfferDecl <$> offersP <*> actConstP
     where
       actConstP :: TxsParser (Maybe ExpDecl)
-      actConstP =  fmap Just (txsSymbol "[[" *> valExpP <* txsSymbol "]]")
+      actConstP =  fmap Just (try (txsSymbol "[[") *> valExpP <* txsSymbol "]]")
                <|> return Nothing
 
       offersP :: TxsParser [OfferDecl]

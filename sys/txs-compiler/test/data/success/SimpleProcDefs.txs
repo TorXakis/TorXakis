@@ -411,3 +411,58 @@ PROCDEF produceLoop [ In_Material           :: Int
         produceLoop [In_Material, In_Correction, Out_Material, Out_ProduceReport] (nextId)
     NI
 ENDDEF
+
+MODELDEF Disabler ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        I ! 10 >-> K ! 22 [>> J ? k
+ENDDEF
+
+MODELDEF Disabler2 ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        (I ! 10 ||| K ! 22) [>> J ? k
+ENDDEF
+
+MODELDEF Disabler3 ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        (I ! 10 ||| K ! 22) [>> (J ? k |[ J ]| J ? z [[ z > 20 ]])
+ENDDEF
+
+
+MODELDEF Disabler4 ::=
+    CHAN IN I
+    CHAN OUT J, K
+    BEHAVIOUR
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    [>>
+        J ? y :: Int >-> EXIT ? x :: Int ! y
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+PROCDEF disabler5[I, J, K :: Int]() ::=           -- 
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    [>>
+        J ? y :: Int >-> EXIT ? x :: Int ! y
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+MODELDEF Disabler5 ::=
+    CHAN IN I
+    CHAN OUT J, K
+    BEHAVIOUR
+        disabler5[K, I, J]()
+ENDDEF
+
