@@ -43,7 +43,7 @@ toBExpr :: ( MapsTo Text SortId mm
            , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo FuncDefInfo FuncId mm
            , MapsTo FuncId (FuncDef VarId) mm
-           , MapsTo ProcId ProcDef mm
+           , MapsTo ProcId () mm
            , MapsTo (Loc VarDeclE) SortId mm )
         => mm -> BExpDecl -> CompilerM BExpr
 toBExpr _ Stop             = return stop
@@ -64,7 +64,7 @@ toBExpr mm (Pappl n l crs exs) = do
                toText   n                     == ProcId.name pId
             && fmap chansorts (procchans pId) == fmap chansorts chIds -- Compare the sort id's of the channels
     -- Try to find a matching process definition:
-    res <- forCatch (filter candidate $ keys @ProcId @ProcDef mm) $ \pId -> do
+    res <- forCatch (filter candidate $ keys @ProcId @() mm) $ \pId -> do
         let eSids = varsort <$> procvars pId
         vExps <- liftEither $
             traverse (uncurry $ expDeclToValExpr mm) $ zip eSids exs

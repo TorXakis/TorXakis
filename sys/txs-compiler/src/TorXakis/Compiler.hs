@@ -144,7 +144,8 @@ toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo ProcId ProcDef mm
              , MapsTo Text ChanId mm
              , MapsTo (Loc VarDeclE) VarId mm
-             , MapsTo (Loc VarDeclE) SortId mm )
+             , MapsTo (Loc VarDeclE) SortId mm
+             , In (ProcId, ()) (Contents mm) ~ 'False )
           => FuncTable VarId -> mm -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs ft mm pd = do
     ads <- adtsToTxsDefs mm (pd ^. adts)

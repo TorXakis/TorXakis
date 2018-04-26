@@ -214,7 +214,7 @@ class HasTypedVars e where
                      , MapsTo (Loc VarDeclE) SortId mm
                      , MapsTo FuncDefInfo FuncId mm
                      , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
-                     , MapsTo ProcId ProcDef mm )
+                     , MapsTo ProcId () mm )
                   => mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
 
 instance HasTypedVars BExpDecl where
@@ -312,7 +312,7 @@ class HasExitSorts e where
     -- | Obtain the exit sorts for an expression.
     exitSort :: ( MapsTo Text SortId mm
                 , MapsTo Text ChanId mm
-                , MapsTo ProcId ProcDef mm
+                , MapsTo ProcId () mm
                 , MapsTo (Loc VarDeclE) SortId mm
                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                 , MapsTo FuncDefInfo FuncId mm
@@ -335,7 +335,7 @@ instance HasExitSorts BExpDecl where
                    toText   n                     == ProcId.name pId
                 && fmap chansorts (procchans pId) == fmap chansorts chIds -- Compare the sort id's of the channels
                 && fmap varsort (procvars pId )  `elem` expsSidss
-        case filter candidate $ keys @ProcId @ProcDef mm of
+        case filter candidate $ keys @ProcId @() mm of
             [pId] -> return $ procexit pId
             []    -> error $ "No matching process found " -- TODO: throwError
             _     -> error $ "Multiple matching processes found" -- TODO: throwError

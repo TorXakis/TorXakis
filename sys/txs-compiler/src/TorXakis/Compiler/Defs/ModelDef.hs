@@ -34,7 +34,7 @@ modelDeclToModelDef :: ( MapsTo Text SortId mm
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                        , MapsTo FuncDefInfo FuncId mm
                        , MapsTo FuncId (FuncDef VarId) mm
-                       , MapsTo ProcId ProcDef mm
+                       , MapsTo ProcId () mm
                        , MapsTo (Loc VarDeclE) SortId mm
                        , MapsTo (Loc VarDeclE) VarId mm )
                     => mm -> ModelDecl -> CompilerM ModelDef

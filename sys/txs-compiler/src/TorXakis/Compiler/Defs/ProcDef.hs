@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE TupleSections       #-}
 {-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeApplications  #-}
 module TorXakis.Compiler.Defs.ProcDef where
 
 import qualified Data.Text as T
@@ -36,7 +37,7 @@ procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                          , MapsTo FuncId (FuncDef VarId) mm
                          , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                          , In (Text, ChanId) (Contents mm) ~ 'False
-                         , In (ProcId, ProcDef) (Contents mm) ~ 'False 
+                         , In (ProcId, ()) (Contents mm) ~ 'False 
                          , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False )
                       => mm
                       -> [ProcDecl]
@@ -78,9 +79,7 @@ procDeclsToProcDefMap mm ps =
               -- NOTE: we need to introduce a temporary ProcId to deal with the case of recursive process!
               newPid = ProcId (procDeclName pd) (Id pId) chIds' pvIds' e
               -- We add the newly defined process to the map.
-              -- TODO: if the ProcDef is not used at all, we might need to change the constraints to
-              -- MapsTo ProcId () mm (Although this is a abuse of mapsto)
-              mpd' = Map.singleton newPid (undefined :: ProcDef) <.+> mpd
+              mpd' = Map.fromList $ (newPid, ()) : zip (keys @ProcId @ProcDef mpd) (repeat ())
           -- List of VarId's associated to the variables declared by a question mark offer.
           bTypes      <- Map.fromList <$> inferVarTypes (allChIds .& (pvIds .& mm) :& pdVdSortMap :& mpd') body
           bvIds       <- mkVarIds bTypes body

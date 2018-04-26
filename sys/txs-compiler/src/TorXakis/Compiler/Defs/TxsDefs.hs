@@ -49,8 +49,13 @@ modelDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , MapsTo FuncId (FuncDef VarId) mm
                        , MapsTo ProcId ProcDef mm
                        , MapsTo (Loc VarDeclE) SortId mm
-                       , MapsTo (Loc VarDeclE) VarId mm )
+                       , MapsTo (Loc VarDeclE) VarId mm
+                       , In (ProcId, ()) (Contents mm) ~ 'False )
                     => mm -> [ModelDecl] -> CompilerM (Map ModelId ModelDef)
 modelDeclsToTxsDefs mm mds =
     Map.fromList <$> (zip <$> traverse modelDeclToModelId  mds
-                          <*> traverse (modelDeclToModelDef mm) mds)
+                          <*> traverse (modelDeclToModelDef mm') mds)
+    where
+      procIdsOnly :: Map ProcId ()
+      procIdsOnly = Map.fromList $ zip (keys @ProcId @ProcDef mm) (repeat ())
+      mm' = mm :& procIdsOnly
