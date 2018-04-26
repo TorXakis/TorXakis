@@ -110,27 +110,34 @@ newtype BExpr = BExpr {
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 instance Resettable BExpr
 
+-- | Create a Stop behaviour expression.
+--   The Stop behaviour is equal to dead lock.
+stop :: BExpr
+-- No special Stop constructor, use Choice with empty list instead
+stop = BExpr (Choice [])
+
 -- | Is behaviour expression equal to Stop behaviour?
 isStop :: BExpr -> Bool
 isStop (BehExprDefs.view -> Choice []) = True
 isStop _                               = False
 
--- | Create a Stop behaviour expression.
---   The Stop behaviour is equal to dead lock.
-stop :: BExpr
-stop = BExpr (Choice [])
 
 -- | Create an ActionPrefix behaviour expression.
 actionPref :: ActOffer -> BExpr -> BExpr
 actionPref a b = case ValExpr.view (constraint a) of
+                    -- A?x [[ False ]] >-> p <==> stop
                     Vconst (Cbool False)    -> stop
                     _                       -> BExpr (ActionPref a b)
 
 -- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
+-- [[ False ]] =>> p <==> stop
 guard (ValExpr.view -> Vconst (Cbool False)) _              = stop
+-- [[ True ]] =>> p <==> p
 guard (ValExpr.view -> Vconst (Cbool True))  b              = b
+-- [[ c ]] =>> stop <==> stop
 guard _ b                                     | isStop b    = stop
+-- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ c1 /\ c2 ]] >-> p
 guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = actionPref (ActOffer o h (cstrAnd (Set.fromList [v,c]))) b
 guard v b                                                   = BExpr (Guard v b)
 
@@ -146,10 +153,11 @@ choice l = let s = flattenChoice l
                     _   -> BExpr (Choice l')
     where 
         -- 1. nesting of choices are flatten
-        --    (p ## q) ## r == p ## q ## r 
+        --    (p ## q) ## r <==> p ## q ## r 
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
         -- 2. elements in a set are distinctive
-        --    hence p ## p == p
+        --    hence p ## p <==> p
+        -- 3. since stop == Choice [] (the empty set), we automatically have p ## stop <==> p
         flattenChoice :: [BExpr] -> Set.Set BExpr
         flattenChoice l' = Set.unions $ map fromBExpr l'
         
@@ -164,7 +172,7 @@ parallel cs bs = let fbs = flattenParallel bs
                     in BExpr (Parallel cs fbs)
     where
         -- nesting of parallels over the same channel sets are flatten
-        --     (p |[ G ]| q) |[ G ]| r == p |[ G ]| q |[ G ]| r
+        --     (p |[ G ]| q) |[ G ]| r <==> p |[ G ]| q |[ G ]| r
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
         flattenParallel :: [BExpr] -> [BExpr]
         flattenParallel = concatMap fromBExpr
@@ -175,12 +183,15 @@ parallel cs bs = let fbs = flattenParallel bs
 
 -- | Create an enable behaviour expression.
 enable :: BExpr -> [ChanOffer] -> BExpr -> BExpr
+-- stop >>> p <==> stop
 enable b _ _    | isStop b = stop
 enable b1 cs b2            = BExpr (Enable b1 cs b2)
 
 -- | Create a disable behaviour expression.
 disable :: BExpr -> BExpr -> BExpr
+-- stop [>> p <==> p
 disable b1 b2 | isStop b1 = b2
+-- p [>> stop <==> p
 disable b1 b2 | isStop b2 = b1
 disable b1 b2             = BExpr (Disable b1 b2)
 
