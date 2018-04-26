@@ -228,7 +228,11 @@ data ProcRefE = ProcRefE deriving (Eq, Ord, Show)
 -- | Parallel operator occurrence in a behavior expression.
 data ParOpE = ParOpE deriving (Eq, Ord, Show)
 
+-- | Enable operator occurrence.
 data EnableE = EnableE deriving (Eq, Ord, Show)
+
+-- | Disable operator occurrence.
+data DisableE = DisableE deriving (Eq, Ord, Show)
 
 -- | Accept operator.
 data AcceptE = AcceptE deriving (Eq, Ord, Show)
@@ -498,6 +502,8 @@ data BExpDecl
     -- the compiler will check that they only occur after an enable operator
     -- ('>>>')
     | Accept (Loc AcceptE) [ChanOfferDecl] BExpDecl
+    -- | Disable operator.
+    | Disable (Loc DisableE) BExpDecl BExpDecl
     deriving (Eq, Ord, Show)
 
 -- | Channels to sync on in a parallel operator.

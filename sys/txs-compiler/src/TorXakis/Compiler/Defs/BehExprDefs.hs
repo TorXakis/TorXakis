@@ -19,7 +19,7 @@ import           ConstDefs                         (Const (Cbool))
 import           SortId                            (sortIdBool, SortId)
 import           TxsDefs                           (ActOffer (ActOffer), BExpr, ChanOffer (Quest, Exclam),
                                                     Offer (Offer), chanid, actionPref, stop, valueEnv, procInst,
-                                                    ProcDef, parallel, enable)
+                                                    ProcDef, parallel, enable, disable, interrupt, guard)
 import           ChanId (ChanId (ChanId), chansorts, name, unid)
 import           VarId (VarId, varsort)
 import           FuncId (FuncId)
@@ -111,7 +111,11 @@ toBExpr _ (Accept l _ _ )      =
     , _errorLoc  = getErrorLoc l
     , _errorMsg  = "ACCEPT cannot be used here."
     }
-
+toBExpr mm (Disable _ be0 be1) = do
+    be0' <- toBExpr mm be0
+    be1' <- toBExpr mm be1
+    return $ disable be0' be1'
+    
 toActOffer :: ( MapsTo Text SortId mm
               , MapsTo Text ChanId mm
               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
