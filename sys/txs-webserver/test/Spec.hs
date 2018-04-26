@@ -9,7 +9,7 @@ See LICENSE at root directory of this repository.
 module Main (main) where
 
 import           Control.Exception            (catch, throwIO)
-import           Data.Aeson                   (decode)
+import           Data.Aeson                   (decode, decodeStrict)
 import           Data.Aeson.Types             (Object, Parser, parseMaybe, (.:))
 import           Data.ByteString.Char8        as BS
 import           Data.ByteString.Lazy.Char8   as BSL
@@ -94,7 +94,8 @@ spec = return $ do
                 _ <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
                 post "http://localhost:8080/sessions/1/models/Model/stepper" [partText "" ""] >>= check204NoContent
                 post "http://localhost:8080/sessions/1/stepper/3" [partText "" ""] >>= check204NoContent
-                get "http://localhost:8080/sessions/1/messages" >>= checkJSON
+                totalSteps <- foldGet checkActions 0 "http://localhost:8080/sessions/1/messages"
+                totalSteps `shouldBe` 3
             -- it "Starts tester and tests 3 steps" $ do
             --     _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
             --     _ <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
@@ -105,13 +106,19 @@ spec = return $ do
 check204NoContent :: Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
 
-checkJSON :: Response BSL.ByteString -> IO ()
-checkJSON r = do
-    r ^. responseStatus . statusCode `shouldBe` 200
-    BSL.unpack (r ^. responseBody) `shouldStartWith` "data:{\"tag\":\""
-
 parseFileUploadResult :: Object -> Parser (String, Bool)
 parseFileUploadResult o = do
     fn <- o .: "fileName" :: Parser String
     l  <- o .: "loaded"   :: Parser Bool
     return (fn,l)
+
+checkActions :: Int -> BS.ByteString -> IO Int
+checkActions steps bs = do
+    let Just jsonBs  = BS.stripPrefix "data:" bs
+        Just jsonObj = decodeStrict jsonBs
+    case parseMaybe parseTag jsonObj of
+        Just "AnAction" -> return $ steps + 1
+        _               -> return steps
+
+parseTag :: Object -> Parser String
+parseTag o = o .: "tag"
