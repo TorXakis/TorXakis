@@ -57,14 +57,15 @@ class DeclaresVariables e where
              => mm -> e -> CompilerM [(Loc VarDeclE, VarId)]
 
 instance DeclaresVariables BExpDecl where
-    mkVarIds _  Stop                = return []
-    mkVarIds mm (ActPref ao be)     = (++) <$> mkVarIds mm ao <*> mkVarIds mm be
-    mkVarIds mm (LetBExp vs be)     = (++) <$> mkVarIds mm vs <*> mkVarIds mm be
-    mkVarIds mm (Pappl _ _ _ exs)   = mkVarIds mm exs
-    mkVarIds mm (Par _ _ be0 be1)   = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
-    mkVarIds mm (Enable _ be0 be1)  = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
-    mkVarIds mm (Accept _ ofrs be)  = (++) <$> mkVarIds mm ofrs <*> mkVarIds mm be
-    mkVarIds mm (Disable _ be0 be1) = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
+    mkVarIds _  Stop                  = return []
+    mkVarIds mm (ActPref ao be)       = (++) <$> mkVarIds mm ao <*> mkVarIds mm be
+    mkVarIds mm (LetBExp vs be)       = (++) <$> mkVarIds mm vs <*> mkVarIds mm be
+    mkVarIds mm (Pappl _ _ _ exs)     = mkVarIds mm exs
+    mkVarIds mm (Par _ _ be0 be1)     = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
+    mkVarIds mm (Enable _ be0 be1)    = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
+    mkVarIds mm (Accept _ ofrs be)    = (++) <$> mkVarIds mm ofrs <*> mkVarIds mm be
+    mkVarIds mm (Disable _ be0 be1)   = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
+    mkVarIds mm (Interrupt _ be0 be1) = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1    
 
 instance DeclaresVariables ActOfferDecl where
     mkVarIds mm (ActOfferDecl os mEx) = (++) <$> mkVarIds mm os <*> mkVarIds mm mEx

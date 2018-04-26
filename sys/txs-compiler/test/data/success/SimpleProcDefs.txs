@@ -466,3 +466,56 @@ MODELDEF Disabler5 ::=
         disabler5[K, I, J]()
 ENDDEF
 
+
+MODELDEF Interruptr ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        I ! 10 >-> K ! 22 [>< J ? k >-> EXIT
+ENDDEF
+
+MODELDEF Interruptr2 ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        (I ! 10 ||| K ! 22) [>< J ? k >-> EXIT
+ENDDEF
+
+MODELDEF Interruptr3 ::=
+    CHAN IN I, K
+    CHAN OUT J
+    BEHAVIOUR
+        (I ! 10 ||| K ! 22) [>< (J ? k  >-> EXIT |[ J ]| J ? z >-> EXIT [[ z > 20 ]] >-> EXIT)
+ENDDEF
+
+MODELDEF Interruptr4 ::=
+    CHAN IN I
+    CHAN OUT J, K
+    BEHAVIOUR
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    [><
+        J ? y :: Int >-> EXIT
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+PROCDEF interruptr5[I, J, K :: Int]() ::=           -- 
+    (
+        I ? x :: Int >-> EXIT ! x ? y :: Int
+    [><
+        J ? y :: Int >-> EXIT
+    ) 
+    >>> ACCEPT ? a ? b IN 
+       K ! a + b
+    NI
+ENDDEF
+
+MODELDEF Interruptr5 ::=
+    CHAN IN I
+    CHAN OUT J, K
+    BEHAVIOUR
+        interruptr5[K, I, J]()
+ENDDEF

@@ -234,6 +234,9 @@ data EnableE = EnableE deriving (Eq, Ord, Show)
 -- | Disable operator occurrence.
 data DisableE = DisableE deriving (Eq, Ord, Show)
 
+-- | Interrupt operator occurrence.
+data InterruptE = InterruptE deriving (Eq, Ord, Show)
+
 -- | Accept operator.
 data AcceptE = AcceptE deriving (Eq, Ord, Show)
 
@@ -504,6 +507,8 @@ data BExpDecl
     | Accept (Loc AcceptE) [ChanOfferDecl] BExpDecl
     -- | Disable operator.
     | Disable (Loc DisableE) BExpDecl BExpDecl
+    -- | Interrupt operator.
+    | Interrupt (Loc InterruptE) BExpDecl BExpDecl
     deriving (Eq, Ord, Show)
 
 -- | Channels to sync on in a parallel operator.

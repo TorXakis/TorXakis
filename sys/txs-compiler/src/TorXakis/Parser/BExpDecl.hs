@@ -19,7 +19,9 @@ bexpDeclP = buildExpressionParser table bexpTermP
     <?> "Behavior expression"
     where
       table = [ [Infix parOpP AssocLeft]
-              , [Infix enableP AssocLeft, Infix disableP AssocLeft]
+              , [ Infix enableP AssocLeft
+                , Infix disableP AssocLeft
+                , Infix interruptP AssocLeft]
               ]
       enableP :: TxsParser (BExpDecl -> BExpDecl ->  BExpDecl)
       enableP = do
@@ -29,8 +31,13 @@ bexpDeclP = buildExpressionParser table bexpTermP
       disableP :: TxsParser (BExpDecl -> BExpDecl -> BExpDecl)
       disableP = do
           l <- mkLoc
-          txsSymbol "[>>"
+          try (txsSymbol "[>>")
           return $ \be0 be1 -> Disable l be0 be1
+      interruptP :: TxsParser (BExpDecl -> BExpDecl -> BExpDecl)
+      interruptP = do
+          l <- mkLoc
+          try (txsSymbol "[><")
+          return $ \be0 be1 -> Interrupt l be0 be1
       parOpP :: TxsParser (BExpDecl -> BExpDecl ->  BExpDecl)
       parOpP = do
           l <- mkLoc

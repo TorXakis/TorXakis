@@ -115,6 +115,11 @@ toBExpr mm (Disable _ be0 be1) = do
     be0' <- toBExpr mm be0
     be1' <- toBExpr mm be1
     return $ disable be0' be1'
+toBExpr mm (Interrupt _ be0 be1) = do
+    be0' <- toBExpr mm be0
+    be1' <- toBExpr mm be1
+    return $ interrupt be0' be1'
+
     
 toActOffer :: ( MapsTo Text SortId mm
               , MapsTo Text ChanId mm

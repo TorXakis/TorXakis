@@ -267,7 +267,8 @@ instance HasTypedVars BExpDecl where
             }
     inferVarTypes mm (Disable _ be0 be1) =
         (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
-
+    inferVarTypes mm (Interrupt _ be0 be1) =
+        (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
 instance HasTypedVars ActOfferDecl where
     inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx
 
@@ -350,6 +351,11 @@ instance HasExitSorts BExpDecl where
         es0 <- exitSort mm be0
         es1 <- exitSort mm be1
         (es0 <<+>> es1) <!!> l
+    exitSort mm (Interrupt l be0 be1) = do
+        es1 <- exitSort mm be1
+        when (es1 /= Exit [])
+            (error $ "\nTXS2233: " ++ show l ++ ". Exit sorts do not match in Interrupt\n") -- TODO: throwError
+        exitSort mm be0
 
 instance HasExitSorts ActOfferDecl where
     exitSort mm (ActOfferDecl os _) =

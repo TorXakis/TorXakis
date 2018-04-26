@@ -75,7 +75,9 @@ instance HasVarReferences BExpDecl where
         where
           ovVds = mkVdMap (concatMap chanOfferDecls ofrs)
     mapRefToDecls mm (Disable _ be0 be1) =
-        (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1          
+        (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
+    mapRefToDecls mm (Interrupt _ be0 be1) =
+        (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1                  
 
 instance HasVarReferences ActOfferDecl where
     mapRefToDecls mm ao@(ActOfferDecl os mc) =
