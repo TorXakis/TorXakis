@@ -42,7 +42,7 @@ import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
 import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
-                                                txsStepN, txsTestN)
+                                                txsStepN, txsStop, txsTestN)
 import           TxsDDefs                      (Verdict)
 import           TxsDefs                       (ModelDef)
 import           TxsHappy                      (txsParser)
@@ -183,6 +183,11 @@ test s (NumberOfSteps n) = do
         verdict <- try $ runIOC s $ txsTestN n
         atomically $ writeTQueue (s ^. verdicts) verdict
     return Success
+
+-- | Start the stepper with the given model.
+stop :: Session -> IO Response
+stop s =
+    runResponse $ lift $ runIOC s txsStop
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.

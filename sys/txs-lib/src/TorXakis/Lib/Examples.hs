@@ -149,6 +149,26 @@ testPutToWReadsWorld = do
     action' <- runIOC s $ putToW fWCh Map.empty ActQui
     return $ action == actG && action' == actG
 
+-- | This example tries to stop the core before all steps are taken.
+-- Outcome: txsStop waits for current steps to finish, i.e. does not cancel.
+testPrematureStop :: IO ()
+testPrematureStop = do
+    cs <- readFile $ "test" </> "data" </> "Echo.txs"
+    s <- newSession
+    a <- async (printer s)
+    void $ load s cs
+    void $ stepper s "Model"
+    r <- step s (NumberOfSteps 20)
+    putStrLn $ "Result of `step`: " ++ show r
+    r' <- stop s
+    putStrLn $ "Result of `stop`: " ++ show r'
+    r'' <- step s (NumberOfSteps 20)
+    putStrLn $ "Result of `step` 2: " ++ show r''
+    -- putStrLn $ "Results: " ++ show r ++ show r' ++ show r''
+    -- Cancel the printer (we aren't interested in any more messages, as a
+    -- verdict has been reached):
+    cancel a
+
 -- | Test info
 --
 -- TODO: for now I'm putting this test here. We should find the right place for
