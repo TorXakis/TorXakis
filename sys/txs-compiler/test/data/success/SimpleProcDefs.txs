@@ -587,3 +587,57 @@ PROCDEF luckyPeople [ In :: String; Out :: String ] ( last :: String; n :: Int )
                 ( [[ sex(p) <> last ]] =>> luckyPeople[In,Out] ( sex(p), 1 ) )
         )
 ENDDEF
+
+CHANDEF X ::=        
+        Channel, A, B, C, D
+ENDDEF
+
+
+MODELDEF Hidder ::=
+    CHAN IN Channel, A, B, C, D
+    CHAN OUT
+    BEHAVIOUR
+    HIDE [ Channel ] IN
+        A >-> Channel >-> C
+    |[ Channel ]|
+        B >-> Channel >-> D
+    NI
+ENDDEF    
+
+PROCDEF hidder[Channel, A, B, C, D]() ::=
+    HIDE [ Channel ] IN
+        A >-> Channel >-> C
+    |[ Channel ]|
+        B >-> Channel >-> D
+    NI
+ENDDEF    
+
+
+MODELDEF Hidder2 ::=
+    CHAN IN I, J, K
+    CHAN OUT
+    BEHAVIOUR
+    HIDE [ T :: Int ] IN
+           I ? x >-> K ? y >-> T ! x+y >-> EXIT ! "hello" ! 2 * x  + y
+         |[ T ]|
+           K ? s >-> T ? sum >-> EXIT  ? s :: String ! sum + s
+    NI
+    >>>
+    ACCEPT ? str ? v
+    IN
+        I ! v
+    NI
+ENDDEF    
+
+PROCDEF hidder2[I, J, K :: Int]() ::=
+    HIDE [ T :: Int ] IN
+           I ? x >-> K ? y >-> T ! x + y >-> EXIT ! "hello" ! 2 * x  + y
+         |[ T ]|
+           K ? s >-> T ? sum >-> EXIT  ? s :: String ! sum + s
+    NI
+    >>>
+    ACCEPT ? str ? v
+    IN
+        I ! v
+    NI
+ENDDEF    

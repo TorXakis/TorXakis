@@ -19,7 +19,8 @@ import           ConstDefs                         (Const (Cbool))
 import           SortId                            (sortIdBool, SortId)
 import           TxsDefs                           (ActOffer (ActOffer), BExpr, ChanOffer (Quest, Exclam),
                                                     Offer (Offer), chanid, actionPref, stop, valueEnv, procInst,
-                                                    ProcDef, parallel, enable, disable, interrupt, guard, choice)
+                                                    ProcDef, parallel, enable, disable, interrupt, guard,
+                                                    choice, hide)
 import           ChanId (ChanId (ChanId), chansorts, name, unid)
 import           VarId (VarId, varsort)
 import           FuncId (FuncId)
@@ -36,6 +37,7 @@ import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Parser.Data
 import           TorXakis.Compiler.ValExpr.SortId
+import           TorXakis.Compiler.ValExpr.Common
 
 toBExpr :: ( MapsTo Text SortId mm
            , MapsTo Text ChanId mm
@@ -127,6 +129,10 @@ toBExpr mm (Guard g be) = do
     g'  <- liftEither $ expDeclToValExpr mm sortIdBool g
     be' <- toBExpr mm be
     return $ guard g' be'
+toBExpr mm (Hide _ cds be) = do
+    chNameChIds <- chanDeclsToChanIds mm cds
+    be' <- toBExpr (chNameChIds <.++> mm) be
+    return $ hide (snd <$> chNameChIds) be'
     
 toActOffer :: ( MapsTo Text SortId mm
               , MapsTo Text ChanId mm

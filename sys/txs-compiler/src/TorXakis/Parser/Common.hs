@@ -5,9 +5,9 @@ import           Control.Monad          (void)
 import           Control.Monad.Identity (Identity)
 import           Data.Text              (Text)
 import qualified Data.Text              as T
-import           Text.Parsec            (ParsecT, getPosition, getState, label,
-                                         many, putState, sourceColumn,
-                                         sourceLine, (<|>))
+import           Text.Parsec            (ParsecT, getPosition, getState, many,
+                                         putState, sourceColumn, sourceLine,
+                                         (<?>), (<|>))
 import           Text.Parsec.Char       (alphaNum, letter, lower, oneOf, upper)
 import           Text.Parsec.Token
 
@@ -72,26 +72,22 @@ getNextId = do
 
 -- | Parser for upper case identifiers.
 ucIdentifier :: String -> TxsParser Text
-ucIdentifier what = txsLexeme (identifierNE idStart)
+ucIdentifier what = txsLexeme (identifierNE idStart) <?> what
     where
       idStart = upper
-                `label`
-                (what ++ " must start with an uppercase letter")
+
 
 lcIdentifier :: TxsParser Text
-lcIdentifier = txsLexeme (identifierNE idStart)
+lcIdentifier = txsLexeme (identifierNE idStart) <?> "lowercase identifier"
     where
       idStart = lower <|> oneOf "_"
-                `label`
-                "Identifiers must start with a lowercase letter or '_'"
 
 -- | Parser for identifiers, which may start with lower or upper case letters.
 identifier :: TxsParser Text
-identifier = txsLexeme (identifierNE idStart)
+identifier = txsLexeme (identifierNE idStart) <?> "identifier"
     where
       idStart = lower <|> upper <|> oneOf "_"
-                `label`
-                "Identifiers must start with a letter or '_'"
+
 
 -- | Parser for non-empty identifiers.
 identifierNE :: TxsParser Char -> TxsParser Text

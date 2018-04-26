@@ -30,7 +30,8 @@ import TorXakis.Compiler.ValExpr.VarId
 import TorXakis.Compiler.ValExpr.SortId
 import TorXakis.Compiler.Defs.BehExprDefs
 import TorXakis.Compiler.Error
-    
+import           TorXakis.Compiler.ValExpr.Common
+
 procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                          , MapsTo FuncDefInfo FuncId mm

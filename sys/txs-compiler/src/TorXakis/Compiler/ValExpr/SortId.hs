@@ -40,7 +40,7 @@ import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Maps
 import           TorXakis.Parser.Data
-
+import           TorXakis.Compiler.ValExpr.Common
 
 -- | Construct a list of sort ID's from a list of ADT declarations.
 --
@@ -273,7 +273,12 @@ instance HasTypedVars BExpDecl where
         (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
     inferVarTypes mm (Guard ex be) =
         (++) <$> inferVarTypes mm ex <*> inferVarTypes mm be
-
+    inferVarTypes mm (Hide _ cds be) = do
+        -- TODO: we should two maps: Text -> Loc ChanDeclE  and Loc ChanDeclE -> ChanId
+        -- In that way we don't need to do this multiple times!        
+        chNameChIds <- chanDeclsToChanIds mm cds
+        inferVarTypes (chNameChIds <.++> mm) be
+        
 instance HasTypedVars ActOfferDecl where
     inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx
 
@@ -366,6 +371,11 @@ instance HasExitSorts BExpDecl where
         es1 <- exitSort mm be1
         (es0 <<+>> es1) <!!> l
     exitSort mm (Guard _ be) = exitSort mm be
+    -- TODO: I'm following the current TorXakis compiler here. Shouldn't we take out the channels that are hidden?
+    exitSort mm (Hide _ cds be) = do
+        -- TODO: remove duplication w.r.t. @inferVarTypes@: @Hide@ case.
+        chNameChIds <- chanDeclsToChanIds mm cds
+        exitSort (chNameChIds <.++> mm) be    
 
 instance HasExitSorts ActOfferDecl where
     exitSort mm (ActOfferDecl os _) =
@@ -412,7 +422,8 @@ NoExit   <<->> Hit       = return NoExit
 Exit _   <<->> NoExit    = return NoExit
 Exit exs <<->> Exit exs' = do
     when (exs /= exs')
-         (throwError undefined) -- TODO:"\nTXS2222: Exit sorts do not match\n"
+        (error "\nTXS2222: Exit sorts do not match\n")
+--         (throwError undefined) -- TODO:"\nTXS2222: Exit sorts do not match\n"
     return (Exit exs)
 Exit _   <<->> Hit       = throwError undefined -- TODO: "\nTXS2223: Exit sorts do not match\n"
 Hit      <<->> NoExit    = return NoExit

@@ -55,7 +55,8 @@ import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Simplifiable
 import           TorXakis.Compiler.Defs.ProcDef
- 
+import           TorXakis.Compiler.ValExpr.Common
+
 import           TorXakis.Parser
 import           TorXakis.Parser.Data
 

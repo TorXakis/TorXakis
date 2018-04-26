@@ -82,6 +82,8 @@ instance HasVarReferences BExpDecl where
         (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
     mapRefToDecls mm (Guard ex be) =
         (++) <$> mapRefToDecls mm ex <*> mapRefToDecls mm be
+    mapRefToDecls mm (Hide _ _ be) =
+        mapRefToDecls mm be        
 
 instance HasVarReferences ActOfferDecl where
     mapRefToDecls mm ao@(ActOfferDecl os mc) =

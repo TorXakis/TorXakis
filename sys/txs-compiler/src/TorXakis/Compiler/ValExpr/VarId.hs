@@ -65,9 +65,10 @@ instance DeclaresVariables BExpDecl where
     mkVarIds mm (Enable _ be0 be1)    = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
     mkVarIds mm (Accept _ ofrs be)    = (++) <$> mkVarIds mm ofrs <*> mkVarIds mm be
     mkVarIds mm (Disable _ be0 be1)   = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
-    mkVarIds mm (Interrupt _ be0 be1) = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1    
+    mkVarIds mm (Interrupt _ be0 be1) = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
     mkVarIds mm (Choice _ be0 be1)    = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
-    mkVarIds mm (Guard ex be)         = (++) <$> mkVarIds mm ex <*> mkVarIds mm be        
+    mkVarIds mm (Guard ex be)         = (++) <$> mkVarIds mm ex <*> mkVarIds mm be
+    mkVarIds mm (Hide _ _ be)         = mkVarIds mm be
 
 instance DeclaresVariables ActOfferDecl where
     mkVarIds mm (ActOfferDecl os mEx) = (++) <$> mkVarIds mm os <*> mkVarIds mm mEx
@@ -87,7 +88,7 @@ instance DeclaresVariables ChanOfferDecl where
 
 instance DeclaresVariables ExpDecl where
     -- TODO: rename 'varIdsFromExpDecl' to 'mkVarIds'.
-    mkVarIds = varIdsFromExpDecl 
+    mkVarIds = varIdsFromExpDecl
 
 instance DeclaresVariables LetVarDecl where
     mkVarIds mm v = return <$> varIdFromVarDecl mm v

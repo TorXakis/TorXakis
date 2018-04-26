@@ -240,6 +240,9 @@ data InterruptE = InterruptE deriving (Eq, Ord, Show)
 -- | Choice operator occurrence.
 data ChoiceE = ChoiceE deriving (Eq, Ord, Show)
 
+-- | Hide operator occurrence.
+data HideE = HideE deriving (Eq, Ord, Show)
+
 -- | Accept operator.
 data AcceptE = AcceptE deriving (Eq, Ord, Show)
 
@@ -516,6 +519,8 @@ data BExpDecl
     | Choice (Loc ChoiceE) BExpDecl BExpDecl
     -- | Guard operator.
     | Guard ExpDecl BExpDecl
+    -- | Hide operator.
+    | Hide (Loc HideE) [ChanDecl] BExpDecl
     deriving (Eq, Ord, Show)
 
 -- | Channels to sync on in a parallel operator.

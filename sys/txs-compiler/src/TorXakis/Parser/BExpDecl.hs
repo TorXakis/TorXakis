@@ -1,4 +1,4 @@
-module TorXakis.Parser.BExpDecl (bexpDeclP) where
+module TorXakis.Parser.BExpDecl where
 
 import           Control.Monad               (void)
 import qualified Data.Text                   as T
@@ -8,6 +8,7 @@ import           Text.Parsec.Expr            (Assoc (AssocLeft),
                                               Operator (Infix),
                                               buildExpressionParser)
 
+import           TorXakis.Parser.ChanDecl
 import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
 import           TorXakis.Parser.TypeDefs
@@ -59,15 +60,16 @@ bexpDeclP = buildExpressionParser table bexpTermP
 
 bexpTermP :: TxsParser BExpDecl
 bexpTermP =  txsSymbol "(" *> ( bexpDeclP <* txsSymbol ")")
-         <|> try acceptP
-         <|> try stopP
-         <|> try letBExpP
+         <|> acceptP
+         <|> stopP
+         <|> letBExpP
+         <|> hideP
          <|> try procInstP
          <|> try guardP
          <|> actPrefixP
 
 stopP :: TxsParser BExpDecl
-stopP = txsSymbol "STOP" >> return Stop
+stopP = try (txsSymbol "STOP") >> return Stop
 
 actPrefixP :: TxsParser BExpDecl
 actPrefixP = ActPref <$> actOfferP <*> actContP
@@ -118,17 +120,27 @@ chanOffersP = many (try questOfferP <|> exclOfferP)
           l  <- mkLoc
           n  <- identifier
           ms <- optionMaybe ofSortP
-          return $ QuestD  (mkIVarDecl n l ms)
+          return $ QuestD (mkIVarDecl n l ms)
       exclOfferP = ExclD <$> (txsSymbol "!" *> valExpP)
 
 letBExpP :: TxsParser BExpDecl
 letBExpP = do
-    txsSymbol "LET"
+    try (txsSymbol "LET")
     vs <- letVarDeclsP
     txsSymbol "IN"
     subEx <- bexpDeclP
     txsSymbol "NI"
     return $ LetBExp vs subEx
+
+hideP :: TxsParser BExpDecl
+hideP = do
+    l <- mkLoc
+    try (txsSymbol "HIDE")
+    crs <- chParamsP
+    txsSymbol "IN"
+    subEx <- bexpDeclP
+    txsSymbol "NI"
+    return $ Hide l crs subEx
 
 procInstP :: TxsParser BExpDecl
 procInstP = do
@@ -143,7 +155,7 @@ procInstP = do
 acceptP :: TxsParser BExpDecl
 acceptP = do
     l <- mkLoc
-    txsSymbol "ACCEPT"
+    try (txsSymbol "ACCEPT")
     ofrs <- chanOffersP
     txsSymbol "IN"
     be <- bexpDeclP
@@ -154,3 +166,10 @@ chanrefsP :: TxsParser [ChanRef]
 chanrefsP = txsSymbol "["
             *> (mkChanRef <$> identifier <*> mkLoc) `sepBy` txsSymbol ","
             <* txsSymbol "]"
+
+chParamsP :: TxsParser [ChanDecl]
+chParamsP = do
+    txsSymbol "["
+    res <- concat <$> chanDeclsOfSortP `sepBy` txsSymbol ";"
+    txsSymbol "]"
+    return res
