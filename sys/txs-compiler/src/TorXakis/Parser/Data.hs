@@ -514,6 +514,8 @@ data BExpDecl
     | Interrupt (Loc InterruptE) BExpDecl BExpDecl
     -- | Choice operator.
     | Choice (Loc ChoiceE) BExpDecl BExpDecl
+    -- | Guard operator.
+    | Guard ExpDecl BExpDecl
     deriving (Eq, Ord, Show)
 
 -- | Channels to sync on in a parallel operator.

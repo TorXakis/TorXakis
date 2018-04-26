@@ -123,6 +123,10 @@ toBExpr mm (Choice _ be0 be1) = do
     be0' <- toBExpr mm be0
     be1' <- toBExpr mm be1
     return $ choice [be0', be1']
+toBExpr mm (Guard g be) = do
+    g'  <- liftEither $ expDeclToValExpr mm sortIdBool g
+    be' <- toBExpr mm be
+    return $ guard g' be'
     
 toActOffer :: ( MapsTo Text SortId mm
               , MapsTo Text ChanId mm

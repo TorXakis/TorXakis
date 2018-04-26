@@ -16,11 +16,11 @@ import           FuncDef         (FuncDef (FuncDef))
 import           FuncId          (FuncId (FuncId), name)
 import           FuncTable       (FuncTable, Signature (Signature), toMap)
 import           ProcId          (ProcId)
-import           TxsDefs         (ActOffer (ActOffer), BExpr,
-                                  BExprView (ActionPref, ValueEnv),
+import           TxsDefs         (ActOffer (ActOffer), BExpr, BExprView (ActionPref, Guard, ProcInst, ValueEnv),
                                   ChanOffer (Exclam, Quest),
                                   ModelDef (ModelDef), ModelId, Offer (Offer),
-                                  ProcDef (ProcDef), actionPref, valueEnv)
+                                  ProcDef (ProcDef), actionPref, guard,
+                                  procInst, valueEnv)
 import           ValExpr         (ValExpr, ValExprView (Vfunc, Vite), cstrITE,
                                   cstrVar)
 import qualified ValExpr
@@ -98,7 +98,11 @@ instance Simplifiable BExpr where
         = actionPref (simplify ft fns ao) (simplify ft fns be)
     simplify ft fns (BExpr.view -> ValueEnv env be)
         = valueEnv (simplify ft fns env) (simplify ft fns be)
-    simplify ft fns be = over uniplate (simplify ft fns) be -- ex
+    simplify ft fns (BExpr.view -> ProcInst p cs vs)
+        = procInst p cs (simplify ft fns vs)
+    simplify ft fns (BExpr.view -> Guard g be)
+        = guard (simplify ft fns g) (simplify ft fns be)
+    simplify ft fns be = over uniplate (simplify ft fns) be
 
 instance Simplifiable ActOffer where
     simplify ft fns (ActOffer aos hv c) = ActOffer (simplify ft fns aos) hv (simplify ft fns c)

@@ -22,22 +22,22 @@ import qualified Data.Text                 as T
 import           Data.Traversable          (for)
 import           GHC.Exts                  (fromList)
 import           Data.Maybe                (catMaybes)
-    
+
 import           FuncId                    (funcargs, funcsort, FuncId)
 import           Id                        (Id (Id))
 import           SortId                    (SortId (SortId), sortIdBool,
                                             sortIdInt, sortIdRegex,
                                             sortIdString)
-import qualified SortId                 
-import           VarId (varsort)                 
+import qualified SortId
+import           VarId (varsort)
 import           ChanId (ChanId, chansorts)
 import           ProcId (ExitSort (NoExit, Exit, Hit), exitSortIds, ProcId, procvars, procchans, procexit)
 import qualified ProcId
 import           TxsDefs (ProcDef)
 
-import           TorXakis.Compiler.Data  
+import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.MapsTo 
+import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Maps
 import           TorXakis.Parser.Data
 
@@ -234,7 +234,7 @@ instance HasTypedVars BExpDecl where
     inferVarTypes mm (Par _ _ be0 be1) =
         (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
     inferVarTypes mm (Enable _ be0 (Accept _ ofrs be1)) = do
-        xs <- inferVarTypes mm be0        
+        xs <- inferVarTypes mm be0
         es <- exitSort (xs <.++> mm) be0
         let sIds = exitSortIds es
         when (length ofrs /= length sIds)
@@ -270,7 +270,10 @@ instance HasTypedVars BExpDecl where
     inferVarTypes mm (Interrupt _ be0 be1) =
         (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
     inferVarTypes mm (Choice _ be0 be1) =
-        (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1        
+        (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
+    inferVarTypes mm (Guard ex be) =
+        (++) <$> inferVarTypes mm ex <*> inferVarTypes mm be
+
 instance HasTypedVars ActOfferDecl where
     inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx
 
@@ -295,7 +298,7 @@ instance HasTypedVars OfferDecl where
             vds :: [Maybe (Loc VarDeclE, SortId)]
             vds = zipWith (\o sId -> ((, sId) . getLoc) <$> chanOfferIvarDecl o)
                           os
-                          (chansorts chId)                          
+                          (chansorts chId)
         return $ catMaybes vds ++ exclVds
 
 instance HasTypedVars ChanOfferDecl where
@@ -304,10 +307,10 @@ instance HasTypedVars ChanOfferDecl where
     -- this is handled.
     inferVarTypes mm (QuestD vd) = case ivarDeclSort vd of
         Nothing -> return []
-        Just sr -> 
+        Just sr ->
             pure . (getLoc vd, ) <$> (mm .@!! (sortRefName sr, getLoc sr))
     inferVarTypes mm (ExclD ex)         = inferVarTypes mm ex
-    
+
 sortIds :: (MapsTo Text SortId mm) => mm -> [OfSort] -> CompilerM [SortId]
 sortIds mm xs = traverse (mm .@!!) $ zip (sortRefName <$> xs) (getLoc <$> xs)
 
@@ -361,7 +364,8 @@ instance HasExitSorts BExpDecl where
     exitSort mm (Choice l be0 be1) = do
         es0 <- exitSort mm be0
         es1 <- exitSort mm be1
-        (es0 <<+>> es1) <!!> l        
+        (es0 <<+>> es1) <!!> l
+    exitSort mm (Guard _ be) = exitSort mm be
 
 instance HasExitSorts ActOfferDecl where
     exitSort mm (ActOfferDecl os _) =

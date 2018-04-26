@@ -66,7 +66,8 @@ instance DeclaresVariables BExpDecl where
     mkVarIds mm (Accept _ ofrs be)    = (++) <$> mkVarIds mm ofrs <*> mkVarIds mm be
     mkVarIds mm (Disable _ be0 be1)   = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
     mkVarIds mm (Interrupt _ be0 be1) = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1    
-    mkVarIds mm (Choice _ be0 be1)    = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1    
+    mkVarIds mm (Choice _ be0 be1)    = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
+    mkVarIds mm (Guard ex be)         = (++) <$> mkVarIds mm ex <*> mkVarIds mm be        
 
 instance DeclaresVariables ActOfferDecl where
     mkVarIds mm (ActOfferDecl os mEx) = (++) <$> mkVarIds mm os <*> mkVarIds mm mEx

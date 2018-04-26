@@ -63,6 +63,7 @@ bexpTermP =  txsSymbol "(" *> ( bexpDeclP <* txsSymbol ")")
          <|> try stopP
          <|> try letBExpP
          <|> try procInstP
+         <|> try guardP
          <|> actPrefixP
 
 stopP :: TxsParser BExpDecl
@@ -73,6 +74,13 @@ actPrefixP = ActPref <$> actOfferP <*> actContP
     where
       actContP = (try (txsSymbol ">->") >> bexpTermP)--bexpDeclP)
              <|> return Stop
+
+guardP :: TxsParser BExpDecl
+guardP = do
+    g <- try (txsSymbol "[[") *> valExpP <* txsSymbol "]]"
+    txsSymbol "=>>"
+    be <- bexpTermP
+    return $ Guard g be
 
 actOfferP :: TxsParser ActOfferDecl
 actOfferP = ActOfferDecl <$> offersP <*> actConstP

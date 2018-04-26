@@ -553,3 +553,37 @@ MODELDEF Choicer ::=
     ||| I ? v >-> syncer[J](v)
     ## syncer2[I, J]()
 ENDDEF
+
+PROCDEF guardian[X :: String](n :: Int) ::=
+    [[ n == 0 ]] =>> X ! "Bye"
+    |||
+    [[ 0 <  n ]] =>> X ! "Hello" >-> guardian[X](n - 1)    
+ENDDEF
+
+PROCDEF guardian2[X :: String](n :: Int) ::=
+    [[ n == 0 ]] =>> X ! "Bye"
+    ##
+    [[ 0 <  n ]] =>> X ! "Hello" >-> guardian[X](n - 1)    
+ENDDEF
+
+
+FUNCDEF isSomething(s :: String) :: Bool ::=
+    (s == "Something") \/ (s == "something") \/ (s == "SOMETHING")
+ENDDEF
+
+FUNCDEF sex(s :: String) :: String ::=
+    IF s == "Moon"
+    THEN "Female"
+    ELSE "Unknown"
+    FI
+ENDDEF    
+
+PROCDEF luckyPeople [ In :: String; Out :: String ] ( last :: String; n :: Int ) ::=
+        In ? p :: String [[ isSomething(p) ]] 
+    >-> Out ! "Is lucky!"
+    >->(
+                ( [[ sex(p) == last ]] =>> luckyPeople[In,Out] ( sex(p), n+1 ) )
+            ##
+                ( [[ sex(p) <> last ]] =>> luckyPeople[In,Out] ( sex(p), 1 ) )
+        )
+ENDDEF
