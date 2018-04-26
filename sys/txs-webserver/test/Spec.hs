@@ -4,16 +4,16 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
--- {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
 module Main (main) where
 
 import           Control.Exception            (catch, throwIO)
 import           Data.Aeson                   (decode)
-import           Data.Aeson.Types             (Parser, parseMaybe, (.:))
+import           Data.Aeson.Types             (Object, Parser, parseMaybe, (.:))
 import           Data.ByteString.Char8        as BS
 import           Data.ByteString.Lazy.Char8   as BSL
+import           Data.Maybe                   (mapMaybe)
 import           Lens.Micro                   ((^.))
 import           System.Process               (StdStream (NoStream), proc,
                                                std_out, withCreateProcess)
@@ -53,15 +53,26 @@ spec = return $ do
                 r ^. responseStatus . statusCode `shouldBe` 202 -- Accepted
                 let res = do
                         [result] <- decode $ r ^. responseBody
-                        flip parseMaybe result $ \obj -> do
-                            fn <- obj .: "fileName" :: Parser String
-                            l  <- obj .: "loaded"   :: Parser Bool
-                            return (fn,l)
+                        parseMaybe parseFileUploadResult result
                 case res of
                     Nothing -> expectationFailure $ "Can't parse: " ++ show (r ^. responseBody)
                     Just (fileName, loaded) -> do
                         fileName `shouldBe` "Point.txs"
                         loaded `shouldBe` True
+            it "Uploads multiple files" $ do
+                _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
+                r <- put "http://localhost:8080/sessions/1/model" [ partFile "LuckyPeople.txs" "../../examps/LuckyPeople/spec/LuckyPeople.txs"
+                                                                  , partFile "PurposeExamples.txs" "../../examps/LuckyPeople/spec/PurposeExamples.txs"
+                                                                  ]
+                r ^. responseStatus . statusCode `shouldBe` 202 -- Accepted
+                let res = do
+                        results <- decode $ r ^. responseBody
+                        return $ mapMaybe (parseMaybe parseFileUploadResult) results
+                case res of
+                    Nothing -> expectationFailure $ "Can't parse: " ++ show (r ^. responseBody)
+                    Just arr -> do
+                        arr `shouldContain` [("LuckyPeople.txs",True)]
+                        arr `shouldContain` [("PurposeExamples.txs",True)]
             it "Fails for parse error" $ do
                 let handler (CI.HttpExceptionRequest _ (C.StatusCodeException r body)) = do
                         BS.unpack body `shouldStartWith` "\nParse Error:"
@@ -97,3 +108,9 @@ checkJSON :: Response BSL.ByteString -> IO ()
 checkJSON r = do
     r ^. responseStatus . statusCode `shouldBe` 200
     BSL.unpack (r ^. responseBody) `shouldStartWith` "data:{\"tag\":\""
+
+parseFileUploadResult :: Object -> Parser (String, Bool)
+parseFileUploadResult o = do
+    fn <- o .: "fileName" :: Parser String
+    l  <- o .: "loaded"   :: Parser Bool
+    return (fn,l)
