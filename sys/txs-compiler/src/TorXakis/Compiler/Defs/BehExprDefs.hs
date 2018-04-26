@@ -19,7 +19,7 @@ import           ConstDefs                         (Const (Cbool))
 import           SortId                            (sortIdBool, SortId)
 import           TxsDefs                           (ActOffer (ActOffer), BExpr, ChanOffer (Quest, Exclam),
                                                     Offer (Offer), chanid, actionPref, stop, valueEnv, procInst,
-                                                    ProcDef, parallel, enable, disable, interrupt, guard)
+                                                    ProcDef, parallel, enable, disable, interrupt, guard, choice)
 import           ChanId (ChanId (ChanId), chansorts, name, unid)
 import           VarId (VarId, varsort)
 import           FuncId (FuncId)
@@ -119,7 +119,10 @@ toBExpr mm (Interrupt _ be0 be1) = do
     be0' <- toBExpr mm be0
     be1' <- toBExpr mm be1
     return $ interrupt be0' be1'
-
+toBExpr mm (Choice _ be0 be1) = do
+    be0' <- toBExpr mm be0
+    be1' <- toBExpr mm be1
+    return $ choice [be0', be1']
     
 toActOffer :: ( MapsTo Text SortId mm
               , MapsTo Text ChanId mm

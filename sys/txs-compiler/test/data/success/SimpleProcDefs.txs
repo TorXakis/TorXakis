@@ -519,3 +519,37 @@ MODELDEF Interruptr5 ::=
     BEHAVIOUR
         interruptr5[K, I, J]()
 ENDDEF
+
+PROCDEF stringer[ ]() EXIT String ::=
+    EXIT ! "Foo"
+ENDDEF
+
+PROCDEF integerer[ ]() EXIT Int ::=
+    EXIT ! 33
+ENDDEF
+
+CHANDEF X ::=
+    OutStr :: String;
+    OutInt :: Int
+ENDDEF
+
+MODELDEF Overloader200 ::=
+    CHAN IN 
+    CHAN OUT OutStr, OutInt
+    BEHAVIOUR
+        (stringer[ ]() >>> ACCEPT ? v IN OutStr ! v NI)
+        ##
+        (integerer[ ]() >>> ACCEPT ? v IN OutInt ! v NI)
+ENDDEF
+
+MODELDEF Choicer ::=
+    CHAN IN I, J
+    CHAN OUT
+    BEHAVIOUR
+        I ? x
+    ## J ? y >-> I ! 10
+    ||  J ! 1 >-> I ? a
+    |[ I ]| I ! 22
+    ||| I ? v >-> syncer[J](v)
+    ## syncer2[I, J]()
+ENDDEF

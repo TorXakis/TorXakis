@@ -77,7 +77,9 @@ instance HasVarReferences BExpDecl where
     mapRefToDecls mm (Disable _ be0 be1) =
         (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
     mapRefToDecls mm (Interrupt _ be0 be1) =
-        (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1                  
+        (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
+    mapRefToDecls mm (Choice _ be0 be1) =
+        (++) <$> mapRefToDecls mm be0 <*> mapRefToDecls mm be1
 
 instance HasVarReferences ActOfferDecl where
     mapRefToDecls mm ao@(ActOfferDecl os mc) =
@@ -109,7 +111,7 @@ instance HasVarReferences ExpDecl where
         Fappl n rLoc exs -> do
             dLocs   <- mm .@!! (toText n, rLoc)
             vrVDExs <- mapRefToDecls mm exs
-            return $ (rLoc, Right dLocs) : vrVDExs        
+            return $ (rLoc, Right dLocs) : vrVDExs
 
 instance HasVarReferences OfferDecl where
     mapRefToDecls mm (OfferDecl _ os) = mapRefToDecls mm os
@@ -119,7 +121,7 @@ instance HasVarReferences ChanOfferDecl where
         -- A variable declared in an input action refers to itself.
         return [(asVarReflLoc . getLoc $ vd, Left . getLoc $ vd)]
     mapRefToDecls mm (ExclD ex)  = mapRefToDecls mm ex
-    
+
 instance HasVarReferences FuncDecl where
     mapRefToDecls mm f = mapRefToDecls (mkVdMap (funcParams f) <.+> mm) (funcBody f)
 
