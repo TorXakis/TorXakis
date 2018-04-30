@@ -202,7 +202,6 @@ txsActToW act  =  do
        ( DD.Act _acts, IOC.Manualing { IOC.behtrie  = behtrie
                                      , IOC.curstate = curstate
                                      , IOC.eworld   = eworld
-                                     , IOC.putmsgs  = putmsgs
                                      }                         )
          -> do act' <- IOC.putToW eworld act
                IOC.modifyCS $ \cs -> cs { IOC.behtrie = behtrie ++ [(curstate,act',curstate+1)]
@@ -228,7 +227,6 @@ txsObsFroW  =  do
        IOC.Manualing { IOC.behtrie  = behtrie
                      , IOC.curstate = curstate
                      , IOC.eworld   = eworld
-                     , IOC.putmsgs  = putmsgs
                      }
          -> do act' <- IOC.getFroW eworld
                IOC.modifyCS $ \cs -> cs { IOC.behtrie = behtrie ++ [(curstate,act',curstate+1)]
@@ -253,7 +251,6 @@ txsOfferToW offer  =  do
        IOC.Manualing { IOC.behtrie  = behtrie
                      , IOC.curstate = curstate
                      , IOC.eworld   = eworld
-                     , IOC.putmsgs  = putmsgs
                      }
          -> do input <- randOff2Act offer
                case input of
@@ -282,39 +279,54 @@ txsOfferToW offer  =  do
 --   Only possible when in Manualing Mode.
 txsRunW :: Int -> IOC.IOC DD.Verdict
 txsRunW nrsteps  =  do
-     envc <- get
-     case IOC.state envc of
-       IOC.Manualing { IOC.eworld  = eworld }
-         -> txsRunW' (IOC.chansToW eworld) nrsteps False
-       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                             "Run on EWorld only in ManualActive Mode" ]
-               return DD.NoVerdict
+     runW nrsteps False
   where
-     txsRunW' :: [D.ChanId] -> Int -> Bool -> IOC.IOC DD.Verdict
-     txsRunW' chans depth lastDelta  =
-          if  depth == 0
-            then return DD.Pass
-            else do
-              ioRand <- lift $ randomRIO (False,True)
-              input <- randAct chans
-              if isJust input && ( lastDelta || ioRand )
-                then do                                                         -- try input --
-                  let Just act = input
-                  verd <- txsActToW act
-                  case verd of
-                    Just act'' -> txsRunW' chans (depth-1) (act''==DD.ActQui)
-                    _          -> return verd
-                else
-                  if not lastDelta
-                    then do                                                -- observe output --
-                      act' <- txsObsFroW
-                      case act' of
-                        Nothing    -> return DD.NoVerdict
-                        Just act'' -> txsRunW' chans (depth-1) (act''==DD.ActQui)
-                    else do                                 -- lastDelta and no inputs: stop --
-                      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                                    "No more actions on EWorld" ]
-                      return DD.Pass
+     runW :: Int -> Bool -> IOC.IOC DD.Verdict
+     runW depth lastDelta  =  do
+          envc <- get
+          case IOC.state envc of
+            IOC.Manualing { IOC.behtrie  = behtrie
+                          , IOC.curstate = curstate
+                          , IOC.eworld   = eworld
+                          }
+              -> if  depth == 0
+                   then return DD.Pass
+                   else do
+                     ioRand <- lift $ randomRIO (False,True)
+                     input  <- randAct (IOC.chansToW eworld)
+                     if  isJust input && ( lastDelta || ioRand )
+                       then do                                                  -- try input --
+                         let Just act = input
+                         act' <- IOC.putToW eworld act
+                         IOC.modifyCS $ \cs -> cs
+                               { IOC.behtrie = behtrie ++ [(curstate, act', curstate+1)]
+                               , IOC.curstate = curstate+1
+                               }
+                         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                                     $ TxsShow.showN (curstate+1) 6 ++
+                                       "  IN: " ++ TxsShow.fshow act'
+                                     ]
+                         runW (depth-1) (act'==DD.ActQui)
+                       else
+                         if not lastDelta
+                           then do                                         -- observe output --
+                             act' <- IOC.getFroW eworld
+                             IOC.modifyCS $ \cs -> cs
+                                   { IOC.behtrie = behtrie ++ [(curstate, act', curstate+1)]
+                                   , IOC.curstate = curstate+1
+                                   }
+                             IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                                         $ TxsShow.showN (curstate+1) 6 ++
+                                           " OUT: " ++ TxsShow.fshow act'
+                                         ]
+                             runW (depth-1) (act'==DD.ActQui)
+                           else do                          -- lastDelta and no inputs: stop --
+                             IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                                           "No more actions on EWorld" ]
+                             return DD.Pass
+            _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                  "Run on EWorld only in ManualActive Mode" ]
+                    return DD.NoVerdict
  
 -- ----------------------------------------------------------------------------------------- --
 -- | Give current state number
@@ -339,7 +351,7 @@ txsGetWTrace  =  do
      envc <- get
      case IOC.state envc of
        IOC.Manualing { IOC.behtrie = behtrie }
-         -> return [ act | (s1,act,s2) <- behtrie ]
+         -> return [ act | (_s1,act,_s2) <- behtrie ]
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Trace of EWorld only in Manualing Mode" ]
                return []

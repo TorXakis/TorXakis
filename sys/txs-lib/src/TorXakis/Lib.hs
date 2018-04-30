@@ -111,25 +111,17 @@ stepper s mn =  do
             Nothing ->
                 return $ Error $ "No model named " ++ show mn
             Just mDef -> do
-                resp1 <- txsSetStep mDef
-                resp2 <- txsStartStep
-                case (resp1, resp2) of
-                  (Right _, Right _) -> return Success
-                  (Right _, Left e2) -> return $ Error e2
-                  (Left e1, Right _) -> return $ Error e1
-                  (Left e1, Left e2) -> return $ Error $ e1 ++ "\n" ++ e2
+                txsSetStep mDef
+                txsStartStep
+                return Success
 
 -- | Leave the stepper.
 shutStepper :: Session -> IO Response
 shutStepper s  =  do
     runIOC s $ do
-        resp1 <- txsStopStep
-        resp2 <- txsShutStep
-        case (resp1, resp2) of
-          (Right _, Right _) -> return Success
-          (Right _, Left e2) -> return $ Error e2
-          (Left e1, Right _) -> return $ Error e1
-          (Left e1, Left e2) -> return $ Error $ e1 ++ "\n" ++ e2
+        txsStopStep
+        txsShutStep
+        return Success
     
 msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
@@ -149,11 +141,9 @@ step :: Session -> StepType -> IO Response
 
 step s (NumberOfSteps n) = do
     void $ forkIO $ runIOC s $ do
-        resp <- txsStepRun n
-        case resp of
-          Right v -> do lift $ atomically $ writeTQueue (s ^. verdicts) v
-                        return ()
-          Left  _ -> return ()
+        verd <- txsStepRun n
+        lift $ atomically $ writeTQueue (s ^. verdicts) verd
+        return ()
     return Success
 
 {-
