@@ -36,32 +36,16 @@ library:
   exposed-modules:
   - CLI
   dependencies:
+  - aeson
+  - async
   - base
+  - bytestring
   - haskeline
-  # - aeson
-  # - async
-  # - binary
-  # - bytestring
-  # - conduit
-  # - containers
-  # - http-types
-  # - microlens
-  # - mtl
-  # - servant-multipart
-  # - servant-server >= 0.12
-  # - servant-swagger
-  # - stm-conduit
-  # - swagger2
-  # - stm
-  # - text
-  # - wai
-  # - wai-cors
-  # - wai-extra  
-  # - warp
-  # # `TorXakis` dependencies.
-  # - coreenv
-  # - txs-lib
-  
+  - microlens
+  - mtl
+  - safe-exceptions
+  - wreq
+
 executables:
   txs-cli-exe:
     main: Main.hs
@@ -72,9 +56,17 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - aeson
     - base
+    - bytestring
+    - microlens-aeson
+    - microlens
+    - mtl
+    - process
+    - wreq
+    # `TorXakis` dependencies.
     - txs-cli
-    
+
 tests:
   txs-cli-test:
     main: Spec.hs
@@ -86,11 +78,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     # - aeson
-    # - base
     # - bytestring
-    # - hspec
-    # - http-client
     # - microlens-aeson
     # - microlens
-    # - process
-    # - wreq

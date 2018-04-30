@@ -165,8 +165,6 @@ testPrematureStop = do
     r'' <- step s (NumberOfSteps 20)
     putStrLn $ "Result of `step` 2: " ++ show r''
     -- putStrLn $ "Results: " ++ show r ++ show r' ++ show r''
-    -- Cancel the printer (we aren't interested in any more messages, as a
-    -- verdict has been reached):
     cancel a
 
 -- | Test info
