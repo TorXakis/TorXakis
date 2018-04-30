@@ -70,6 +70,7 @@ tokens :-                                           -- Each right-hand side has 
     SYNC                      { tok ( \p _s -> Tsync p ) }
     CLIENTSOCK                { tok ( \p _s -> Tclientsock p ) }
     SERVERSOCK                { tok ( \p _s -> Tserversock p ) }
+    EWORLD                    { tok ( \p _s -> Teworld p ) }
     HOST                      { tok ( \p _s -> Thost p ) }
     PORT                      { tok ( \p _s -> Tport p ) }
     ENCODE                    { tok ( \p _s -> Tencode p ) }
@@ -214,6 +215,7 @@ data  Token  =  Ttypedef          AlexPosn
               | Tsync             AlexPosn
               | Tclientsock       AlexPosn
               | Tserversock       AlexPosn
+              | Teworld           AlexPosn
               | Thost             AlexPosn
               | Tport             AlexPosn
               | Tencode           AlexPosn

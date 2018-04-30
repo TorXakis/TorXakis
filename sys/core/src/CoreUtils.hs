@@ -23,6 +23,8 @@ module CoreUtils
 , isInAct           -- :: TxsDDefs.Action -> IOC.IOC Bool
 , nextBehTrie       -- :: TxsDDefs.Action -> IOC.IOC ()
 , randMenu          -- :: BTree.Menu -> IOC.IOC (Maybe TxsDDefs.Action)
+, randOff2Act
+, randAct           -- :: [TxsDefs.ChanId] -> IOC.IOC (Maybe TxsDDefs.Action)
 , randPurpMenu      -- :: BTree.Menu -> [BTree.Menu] -> IOC.IOC (Maybe TxsDDefs.Action)
 , menuConjunct      -- :: BTree.Menu -> BTree.Menu -> BTree.Menu
 , menuConjuncts     -- :: [BTree.Menu] -> BTree.Menu
@@ -39,6 +41,7 @@ import Control.Monad.State
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
 import           Data.Maybe
+import qualified Data.Text as T
 
 -- import from behavedef
 import qualified BTree
@@ -46,17 +49,23 @@ import qualified BTree
 -- import from behaveenv
 import qualified EnvCore   as IOC
 import qualified EnvBTree  as IOB
+import qualified EnvData
 
 -- import from defs
 import qualified TxsDefs
 import qualified TxsDDefs
+import qualified TxsShow
 import qualified Sigs
 import qualified SolveDefs
 import qualified Solve
 
 -- import from valexpr
 import ConstDefs
+import FreeVar
 import ValExpr
+import Variable
+import VarId
+import Eval
 
 -- ----------------------------------------------------------------------------------------- --
 -- filterEnvCtoEnvB
@@ -66,7 +75,7 @@ filterEnvCtoEnvB :: IOC.IOC IOB.EnvB
 filterEnvCtoEnvB = do
      envc <- get
      case IOC.state envc of
-       IOC.Noning
+       IOC.Idling
          -> return IOB.EnvB { IOB.smts     = Map.empty
                             , IOB.tdefs    = TxsDefs.empty
                             , IOB.sigs     = Sigs.empty
@@ -102,11 +111,38 @@ filterEnvCtoEnvB = do
                             , IOB.unid     = IOC.unid envc
                             , IOB.msgs     = []
                             }
+       IOC.StepSet{..}
+         -> return IOB.EnvB { IOB.smts     = smts
+                            , IOB.tdefs    = tdefs
+                            , IOB.sigs     = sigs
+                            , IOB.stateid  = 0
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
        IOC.Stepping{..}
          -> return IOB.EnvB { IOB.smts     = smts
                             , IOB.tdefs    = tdefs
                             , IOB.sigs     = sigs
                             , IOB.stateid  = curstate
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
+       IOC.ManSet {..}
+         -> return IOB.EnvB { IOB.smts     = smts
+                            , IOB.tdefs    = tdefs
+                            , IOB.sigs     = sigs
+                            , IOB.stateid  = 0
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
+       IOC.Manualing {..}
+         -> return IOB.EnvB { IOB.smts     = smts
+                            , IOB.tdefs    = tdefs
+                            , IOB.sigs     = sigs
+                            , IOB.stateid  = 0
                             , IOB.params   = IOC.params envc
                             , IOB.unid     = IOC.unid envc
                             , IOB.msgs     = []
@@ -165,7 +201,7 @@ nextBehTrie :: TxsDDefs.Action -> IOC.IOC ()
 nextBehTrie act = do
      envc <- get
      case IOC.state envc of
-       IOC.Noning {} -> return ()
+       IOC.Idling  {} -> return ()
        IOC.Initing {} -> return ()
        IOC.Testing { IOC.behtrie = behtrie
                    , IOC.curstate = curstate
@@ -181,6 +217,7 @@ nextBehTrie act = do
            \st -> st { IOC.behtrie  = behtrie ++ [(curstate, act, curstate+1)]
                      , IOC.curstate = curstate + 1
                      }
+       IOC.StepSet {} -> return ()
        IOC.Stepping { IOC.behtrie = behtrie
                     , IOC.curstate = curstate
                     , IOC.maxstate = maxstate
@@ -190,6 +227,8 @@ nextBehTrie act = do
                      , IOC.curstate = maxstate+1
                      , IOC.maxstate = maxstate+1
                      }
+       IOC.ManSet {} -> return ()
+       IOC.Manualing {} -> return ()
 
 -- ----------------------------------------------------------------------------------------- --
 -- randMenu :  menu randomization
@@ -201,7 +240,7 @@ randMenu menu =
        else do
          relem <- lift $ randomRIO (0, length menu - 1)
          let (pre, x:post) = splitAt relem menu
-             (ctoffs, hvars, pred')  = x
+             (ctoffs, hvars, pred') = x
              menu'                  = pre++post
              vvars                  = concatMap BTree.ctchoffers (Set.toList ctoffs)
              ivars                  = vvars ++ hvars
@@ -222,11 +261,75 @@ instantCTOffer :: Map.Map BTree.IVar Const -> BTree.CTOffer ->
 instantCTOffer sol (BTree.CToffer chan choffs)
  = ( chan, map (instantIVar sol) choffs )
 
-instantIVar :: Map.Map BTree.IVar Const -> BTree.IVar -> Const
-instantIVar sol ivar
+instantIVar :: (Variable.Variable v) => Map.Map v Const -> v -> Const
+instantIVar sol var
  =   fromMaybe
       (error "TXS Test ranMenuIn: No value for interaction variable\n")
-      (Map.lookup ivar sol)
+      (Map.lookup var sol)
+
+-- ----------------------------------------------------------------------------------------- --
+-- randAct :  random action
+
+-- randOffsAct :: (Set.Set TxsDefs.Offer) -> IOC.IOC (Maybe TxsDDefs.Action)
+-- randOffsAct offs =
+--     sequence $ Set.map randOffer Set.toList offs
+
+randOff2Act :: TxsDefs.Offer -> IOC.IOC (Maybe TxsDDefs.Action)
+randOff2Act (TxsDefs.Offer chid choffs)  =  do
+     consts <- mapM randChOffer choffs
+     if  and $ map isJust consts  
+       then return $ Just $ TxsDDefs.Act $ Set.singleton
+                       (chid, map (fromMaybe (error "should not occur")) consts)
+       else return Nothing
+
+randChOffer :: TxsDefs.ChanOffer -> IOC.IOC (Maybe Const)
+randChOffer choff  =  do
+     case choff of
+       TxsDefs.Exclam vexp
+         -> let frs = FreeVar.freeVars vexp
+             in if  not $ null frs
+                  then do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR $
+                                        "Value expr not closed: " ++ TxsShow.fshow frs ]
+                          return Nothing
+                  else do envb         <- filterEnvCtoEnvB
+                          (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
+                          writeEnvBtoEnvC envb'
+                          return $ Just wal'
+       TxsDefs.Quest vid
+         -> do smtEnv   <- IOC.getSMT "current"
+               parammap <- gets IOC.params
+               let p = Solve.toRandParam parammap
+               (sat,smtEnv') <- lift $ runStateT (Solve.randSolve p [vid] Solve.empty) smtEnv
+               IOC.putSMT "current" smtEnv'
+               case sat of
+                 SolveDefs.Solved sol    -> return $ Map.lookup vid sol
+                 SolveDefs.Unsolvable    -> return Nothing
+                 SolveDefs.UnableToSolve -> return Nothing
+
+-- ----------------------------------------------------------------------------------------- --
+-- randAct :  random action
+
+randAct :: [TxsDefs.ChanId] -> IOC.IOC (Maybe TxsDDefs.Action)
+randAct chans  =
+     if null chans
+       then return Nothing
+       else do
+         relem    <- lift $ randomRIO (0, length chans-1)
+         let (_pre, chan@(TxsDefs.ChanId nm _uid srts):_post) = splitAt relem chans
+         newunids <- sequence [ IOC.newUnid | _srt <- srts ]
+         let ivars = [ VarId.VarId (T.pack((T.unpack nm)++"$"++(show unid))) unid srt
+                     | (unid,srt) <- zip newunids srts
+                     ]
+         smtEnv   <- IOC.getSMT "current"
+         parammap <- gets IOC.params
+         let p = Solve.toRandParam parammap
+         (sat,smtEnv') <- lift $ runStateT (Solve.randSolve p ivars Solve.empty) smtEnv
+         IOC.putSMT "current" smtEnv'
+         case sat of
+           SolveDefs.Solved sol    -> return $ Just $ TxsDDefs.Act $ Set.singleton
+                                        ( chan, [ instantIVar sol ivar | ivar <- ivars ] )
+           SolveDefs.Unsolvable    -> return Nothing
+           SolveDefs.UnableToSolve -> return Nothing
 
 -- ----------------------------------------------------------------------------------------- --
 -- combine menu with purpose menus

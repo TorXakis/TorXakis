@@ -48,12 +48,16 @@ library:
   - conduit-combinators
   - containers
   - deepseq
+  - directory
   - extra
+  - filepath
   - http-client
   - lens-aeson
   - microlens
   - microlens-th  
   - mtl
+  - network
+  - optparse-applicative
   - path
   - process
   - stm
@@ -62,7 +66,7 @@ library:
   - text
   - transformers
   - wreq
-  - filepath
+  - yaml
   # `TorXakis` dependencies.
   - defs
   - valexpr

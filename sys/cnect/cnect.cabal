@@ -16,9 +16,11 @@ library
   hs-source-dirs:       src
 
   exposed-modules:
-                        SocketWorld
+                        SockExplW
+                        SockImplW
   other-modules:
                         EnDecode
+                        SockConnect
 
   ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -Wall
 
@@ -26,7 +28,7 @@ library
                       , base
                       , containers
                       , mtl
-                      , network
+                      , process
                       , text
                       , MissingH
 

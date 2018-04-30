@@ -63,3 +63,4 @@ library
                       , text-via-sockets
                       , valexpr
   default-language:     Haskell2010
+

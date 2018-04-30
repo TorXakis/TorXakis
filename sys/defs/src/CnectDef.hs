@@ -11,12 +11,16 @@ where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq
+import Data.Text (Text)
 
 import ConnectionDefs
 
-data  CnectDef       = CnectDef   CnectType [ConnDef]
+data  CnectDef       =  CnectSockExplW Text CnectType [ConnDef]
+                      | CnectSockImplW CnectType [ConnDef]
      deriving (Eq,Ord,Read,Show, Generic, NFData)
+
 
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --
+

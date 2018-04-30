@@ -38,6 +38,11 @@ import qualified VersionInfo
 
 import           EnvCore                       (IOC)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
+import           TxsCore  (txsSetCore, txsInitCore, txsTermitCore)
+import           TxsStep  ( txsSetStep, txsShutStep
+                          , txsStartStep, txsStopStep
+                          , txsStepRun 
+                          )
 import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
@@ -47,7 +52,6 @@ import           TxsDDefs                      (Verdict)
 import           TxsDefs                       (ModelDef)
 import           TxsHappy                      (txsParser)
 
-import           TorXakis.Lib.Internal         (getFromW, putToW)
 import           TorXakis.Lib.Session
 
 -- | For now file contents are represented as a string. This has to change in
@@ -79,6 +83,11 @@ newSession = Session <$> newTVarIO emptySessionState
                      <*> return (WorldConnDef Map.empty (\_ -> return []))
                      <*> return []
 
+-- | Stop a session.
+killSession :: Session -> IO Response
+killSession _s  =  do
+    return $ Error "Kill Session: Not implemented (yet)"
+
 -- | Load a TorXakis file, compile it, and return the response.
 --
 -- The absolute path to the file is used to associate the parsed structure
@@ -99,9 +108,12 @@ load s xs = do
         Right _  -> do
             -- Initialize the TorXakis core with the definitions we just loaded.
             st <- readTVarIO (s ^. sessionState)
-            runIOC s $
-                txsInit (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
-            return Success
+                runIOC s $ do
+                  resp <- txsInitCore (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
+                  case resp of 
+                    Right _ -> return Success
+                    Left  e -> return $ Error e
+
 
 -- | Start the stepper with the given model.
 stepper :: Session
@@ -110,8 +122,9 @@ stepper :: Session
 stepper s mn =
     runResponse $ do
     mDef <- lookupModel s mn
-    lift $ runIOC s $
+    lift $ runIOC s $ do
         txsSetStep mDef
+        txsStartStep
 
 lookupModel :: Session -> Name -> ExceptT Text IO ModelDef
 lookupModel s mn = do
@@ -120,13 +133,20 @@ lookupModel s mn = do
         (throwE $ "No model named " <> mn)
         return (st ^. tdefs . ix mn)
 
+-- | Leave the stepper.
+shutStepper :: Session -> IO Response
+shutStepper s  =  do
+    runIOC s $ do
+        txsStopStep
+        txsShutStep
+        return Success
+    
 msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
 
 -- | How a step is described
-newtype StepType = NumberOfSteps Int
-    -- Action ActionName
-    --           |
+data StepType =  NumberOfSteps Int
+    --         | ActionTxt String -- todo: Make this a TorXakis Action
     --           | GoTo StateNumber
     --           | Reset -- ^ Go to the initial state.
     --           | Rewind Steps
@@ -134,12 +154,12 @@ newtype StepType = NumberOfSteps Int
 -- data ActionName
 -- TODO: discuss with Jan: do we need a `Tree` step here?
 
--- | Step for n-steps
+-- | Step for n-steps or actions
 step :: Session -> StepType -> IO Response
 step s (NumberOfSteps n) = do
     void $ forkIO $ do
-        verdict <- try $ runIOC s $ txsStepN n
-        atomically $ writeTQueue (s ^. verdicts) verdict
+        verd <- try $ runIOC s $ txsStepRun n
+        atomically $ writeTQueue (s ^. verdicts) verd
     return Success
 
 -- | Wait for a verdict to be reached.

@@ -142,6 +142,7 @@ import Id
     SYNC          { Tsync             pos }
     CLIENTSOCK    { Tclientsock       pos }
     SERVERSOCK    { Tserversock       pos }
+    EWORLD        { Teworld           pos }
     HOST          { Thost             pos }
     PORT          { Tport             pos }
     ENCODE        { Tencode           pos }
@@ -1209,50 +1210,58 @@ CnectDef        -- :: { (Ident,TxsDef) }
                 --           : each OUT-channel shall have exactly one encoding
                 --           : each  IN-channel shall have exactly one decoding
                 --
-              : CNECTDEF capid "::=" ConnectionType ConnectionItems EndDef
+              : CNECTDEF capid "::=" ExternalWorld ConnectionType ConnectionItems EndDef
                 {  $4.inhNodeUid   = $$.inhNodeUid + 1
                 ;  $5.inhNodeUid   = $4.synMaxUid  + 1
-                ;  $$.synMaxUid    = $5.synMaxUid
-                ;  $5.inhSigs      = $$.inhSigs
+                ;  $6.inhNodeUid   = $5.synMaxUid  + 1
+                ;  $$.synMaxUid    = $6.synMaxUid  
+                ;  $4.inhSigs      = $$.inhSigs
+                ;  $6.inhSigs      = $$.inhSigs
                 ;  $$.synSigs      = Sigs.empty
                 ;  $$ = let { conntows  = [ ConnDtoW chid hsn prn vars vexp
-                                          | ConnDtoW chid hsn prn [] (ValExpr.view -> Vconst (Cstring "")) <- $5
-                                          , ConnDtoW chid' "" (-1) vars vexp <- $5
+                                          | ConnDtoW chid hsn prn [] (ValExpr.view -> Vconst (Cstring "")) <- $6
+                                          , ConnDtoW chid' "" (-1) vars vexp <- $6
                                           , not $ prn == (-1)
                                           , chid == chid'
                                           ]
                             ; connfrows = [ ConnDfroW chid hsn prn var vexps
-                                          | ConnDfroW chid hsn prn (VarId "" (-1) srt) [] <- $5
-                                          , ConnDfroW chid' "" (-1) var vexps <- $5
+                                          | ConnDfroW chid hsn prn (VarId "" (-1) srt) [] <- $6
+                                          , ConnDfroW chid' "" (-1) var vexps <- $6
                                           , not $ prn == (-1)
                                           , chid == chid'
                                           ]
                             }
-                         in ( IdCnect (CnectId $2 $$.inhNodeUid), DefCnect (CnectDef $4 (conntows ++ connfrows) ) )
-                ;  where let dbls = doubles $ map ChanId.name $5.synChanSigs
+                         in ( IdCnect (CnectId $2 $$.inhNodeUid)
+                            , DefCnect $
+                                case $4 of
+                                { Just txt -> CnectSockExplW txt $5 (conntows++connfrows)
+                                ; Nothing  -> CnectSockImplW $5 (conntows++connfrows)
+                                }
+                            )
+                ;  where let dbls = doubles $ map ChanId.name $6.synChanSigs
                           in if null dbls then () else
                              error $ "\nTXS0221: "++
                                "Double channels in Connection definition:"++(show dbls)++"\n"
                 ;  where let dbls = doubles [ (hs,pr)
-                                            | ConnDtoW chid hs pr [] (ValExpr.view -> Vconst (Cstring "")) <- $5
+                                            | ConnDtoW chid hs pr [] (ValExpr.view -> Vconst (Cstring "")) <- $6
                                             , not $ pr == (-1)
                                             ]
                           in if null dbls then () else 
                              error $ "\nTXS0222: "++ 
                                "Double (hostname,portnr) for OUT: "++(show dbls)++"\n"
                 ;  where let dbls = doubles [ (hs,pr)
-                                            | ConnDfroW chid hs pr (VarId "" (-1) srt) [] <- $5
+                                            | ConnDfroW chid hs pr (VarId "" (-1) srt) [] <- $6
                                             , not $ pr == (-1)
                                             ]
                           in if null dbls then () else 
                              error $ "\nTXS0223: "++ 
                                "Double (hostname,portnr) for IN: "++(show dbls)++"\n"
 	        ;  where let { towchids  = [ chid
-                                           | ConnDtoW chid hs pr [] (ValExpr.view -> Vconst (Cstring "")) <- $5
+                                           | ConnDtoW chid hs pr [] (ValExpr.view -> Vconst (Cstring "")) <- $6
                                            , not $ pr == (-1)
                                            ]
                              ; encchids  = [ chid
-                                           | ConnDtoW chid "" (-1) vars vexp <- $5
+                                           | ConnDtoW chid "" (-1) vars vexp <- $6
                                            ]
                              } in if  ( length towchids == length encchids ) &&
                                       ( Set.fromList towchids == Set.fromList encchids )
@@ -1260,17 +1269,41 @@ CnectDef        -- :: { (Ident,TxsDef) }
                                     else error $ "\nTXS0224: "++
                                            "No bijection between OUT channels and Encodings\n"
 	        ;  where let { frowchids = [ chid
-                                           | ConnDfroW chid hs pr (VarId "" (-1) srt) [] <- $5
+                                           | ConnDfroW chid hs pr (VarId "" (-1) srt) [] <- $6
                                            , not $ pr == (-1)
                                            ]
                              ; decchids  = [ chid
-                                           | ConnDfroW chid "" (-1) var vexps <- $5
+                                           | ConnDfroW chid "" (-1) var vexps <- $6
                                            ]
                              } in if  ( length frowchids == length decchids ) &&
                                       ( Set.fromList frowchids == Set.fromList decchids )
                                     then ()
                                     else error $ "\nTXS0225: "++
                                            "No bijection between IN channels and decodings\n"
+                }
+
+ExternalWorld   -- :: { Maybe Text }
+                -- command to be executed to start external world/sut
+                -- attrs inh : inhNodeUid : unique node identification
+                --           : inhSortSigs: usable sorts
+                -- attrs syn : synMaxUid  : maximum uid in whole subtree
+                -- mirroring : synExpdSort -> inhSolvSort, which must be sortIdString
+                -- constrs   : sort of constant must be sortIdString
+              : {- empty -}
+                {  $$.synMaxUid    = $$.inhNodeUid
+                ;  $$ = Nothing
+                }
+              | EWORLD Constant
+                {  $2.inhNodeUid   = $$.inhNodeUid + 1
+                ;  $$.synMaxUid    = $2.synMaxUid
+                ;  $2.inhSigs      = $$.inhSigs
+                ;  $2.inhSolvSort  = Just sortIdString
+                ;  $$ = case $2 of
+                        { Cstring t -> Just t
+                        ; _         -> error $ "\nTXS ERROR 0182: EWORLD no String constant\n"
+                        }
+                ;  where if $2.synExpdSort == [ sortIdString ] then () else
+                              error $ "\nTXS0226: EWORLD shall contain command as String\n"
                 }
 
 ConnectionType  -- :: { CnectType }
