@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TupleSections     #-}
-{-# LANGUAGE ViewPatterns      #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE DataKinds             #-}
@@ -56,9 +56,11 @@ import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Simplifiable
 import           TorXakis.Compiler.Defs.ProcDef
 import           TorXakis.Compiler.ValExpr.Common
+import           TorXakis.Compiler.Maps.DefinesAMap
 
 import           TorXakis.Parser
 import           TorXakis.Parser.Data
+
 
 -- | Compile a string into a TorXakis model.
 --
@@ -89,7 +91,7 @@ compileParsedDefs pd = do
                               , ("String", sortIdString)
                               ]
         allSortsMap = Map.union pdsMap sMap
-    chs <- Map.fromList <$> chanDeclsToChanIds allSortsMap (pd ^. chdecls)        
+--    chs <- Map.fromList <$> chanDeclsToChanIds allSortsMap (pd ^. chdecls)
     cMap <- compileToCstrId allSortsMap (pd ^. adts)
     let --  e1 = e0 { cstrIdT = cMap }
         allFuncs = pd ^. funcs ++ pd ^. consts
@@ -111,7 +113,7 @@ compileParsedDefs pd = do
         eVdMap = Map.empty :: Map Text (Loc VarDeclE) 
     fRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs) allFuncs
     pRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs) (pd ^. procs)
-    mRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs :& chs) (pd ^. models)
+    mRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& nameToFDefs) (pd ^. models)
     let dMap = fRtoDs `Map.union` pRtoDs `Map.union` mRtoDs
     -- Construct the function declaration to function id table.
     lFIdMap <- funcDeclsToFuncIds allSortsMap allFuncs
@@ -131,9 +133,12 @@ compileParsedDefs pd = do
      -- Construct the @ProcId@ to @ProcDef@ map:
     pdefMap <- procDeclsToProcDefMap (allSortsMap :& cMap :& completeFidMap :& lFDefMap :& dMap) (pd ^. procs)
     -- Finally construct the TxsDefs.
-    let mm = allSortsMap :& pdefMap :& chs :& cMap :& completeFidMap :& lFDefMap
-    sigs    <- toSigs                mm pd
-    txsDefs <- toTxsDefs (func sigs) (mm :& dMap :& vMap :& vdSortMap) pd
+    let mm = allSortsMap :& pdefMap :& cMap :& completeFidMap :& lFDefMap
+    chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
+--    chIds   <- getMap allSortsMap pd :: CompilerM (Map (Loc ChanDeclE) ChanId)
+    chIds   <- getMap allSortsMap (pd ^. chdecls) :: CompilerM (Map (Loc ChanDeclE) ChanId)
+    sigs    <- toSigs                (mm :& chIds) pd
+    txsDefs <- toTxsDefs (func sigs) (mm :& dMap :& vMap :& vdSortMap :& chDecls :& chIds) pd
     St i    <- get
     return (Id i, txsDefs, sigs)
 
@@ -143,7 +148,9 @@ toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo FuncDefInfo FuncId mm
              , MapsTo FuncId (FuncDef VarId) mm 
              , MapsTo ProcId ProcDef mm
-             , MapsTo Text ChanId mm
+--             , MapsTo Text ChanId mm
+             , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+             , MapsTo (Loc ChanDeclE) ChanId mm
              , MapsTo (Loc VarDeclE) VarId mm
              , MapsTo (Loc VarDeclE) SortId mm
              , In (ProcId, ()) (Contents mm) ~ 'False )
@@ -176,7 +183,7 @@ toSigs :: ( MapsTo Text        SortId mm
           , MapsTo FuncDefInfo FuncId mm
           , MapsTo FuncId (FuncDef VarId) mm
           , MapsTo ProcId ProcDef mm
-          , MapsTo Text ChanId mm)
+          , MapsTo (Loc ChanDeclE) ChanId mm)
        => mm -> ParsedDefs -> CompilerM (Sigs VarId)
 toSigs mm pd = do
     let ts   = sortsToSigs (innerMap mm)
@@ -186,7 +193,7 @@ toSigs mm pd = do
     let pidMap :: Map ProcId ProcDef
         pidMap = innerMap mm
         ss = Sigs.empty { func = stdFuncTable
-                        , chan = Map.elems (innerMap mm :: Map Text ChanId)
+                        , chan = values @(Loc ChanDeclE) mm
                         , pro  = Map.keys pidMap
                         }
     return $ ts `uniqueCombine` as

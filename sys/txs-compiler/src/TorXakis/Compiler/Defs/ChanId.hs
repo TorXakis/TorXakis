@@ -40,6 +40,7 @@ instance DeclaresChannels ExitSortDecl where
                                , (name chanIdMiss, chanIdMiss)
                                ]
 
-chRefsToChIdSet :: MapsTo Text ChanId mm 
+chRefsToChIdSet :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm 
+                   , MapsTo (Loc ChanDeclE) ChanId mm )
                 => mm -> Set ChanRef -> CompilerM (Set ChanId)
 chRefsToChIdSet mm = fmap Set.fromList . chRefsToIds mm . Set.toList

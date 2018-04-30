@@ -8,6 +8,10 @@
 {-# LANGUAGE FlexibleInstances  #-}
 module TorXakis.Compiler.ValExpr.SortId where
 
+import Debug.Trace
+
+
+
 import           Prelude                   hiding (lookup)
 import           Control.Arrow             (left, (|||))
 import           Control.Monad             (when, foldM)
@@ -210,7 +214,8 @@ checkSortIds sId0 sId1 =
 
 class HasTypedVars e where
     inferVarTypes :: ( MapsTo Text SortId mm
-                     , MapsTo Text ChanId mm
+                     , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+                     , MapsTo (Loc ChanDeclE) ChanId mm
                      , MapsTo (Loc VarDeclE) SortId mm
                      , MapsTo FuncDefInfo FuncId mm
                      , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
@@ -220,8 +225,8 @@ class HasTypedVars e where
 instance HasTypedVars BExpDecl where
     inferVarTypes _ Stop =
         return []
-    inferVarTypes mm (ActPref ao be) = do
-        xs <- inferVarTypes mm ao
+    inferVarTypes mm (ActPref ao be) = do        
+        xs <- inferVarTypes mm ao        
         -- The implicit variables in the offers are needed in subsequent expressions.
         ys <- inferVarTypes (Map.fromList xs <.+> mm) be
         return $ xs ++ ys
@@ -273,11 +278,8 @@ instance HasTypedVars BExpDecl where
         (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
     inferVarTypes mm (Guard ex be) =
         (++) <$> inferVarTypes mm ex <*> inferVarTypes mm be
-    inferVarTypes mm (Hide _ cds be) = do
-        -- TODO: we should two maps: Text -> Loc ChanDeclE  and Loc ChanDeclE -> ChanId
-        -- In that way we don't need to do this multiple times!        
-        chNameChIds <- chanDeclsToChanIds mm cds
-        inferVarTypes (chNameChIds <.++> mm) be
+    inferVarTypes mm (Hide _ _ be) = 
+        inferVarTypes mm be
         
 instance HasTypedVars ActOfferDecl where
     inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx
@@ -294,7 +296,7 @@ instance HasTypedVars ExpDecl where
 
 instance HasTypedVars OfferDecl where
     inferVarTypes mm (OfferDecl cr os) = do
-        chId <- mm .@!! (chanRefName cr, cr)
+        chId <- lookupChId mm (getLoc cr)
         -- Collect the variable declarations to @SortId@ maps from the output
         -- offers of the form 'Ch ! exp'.
         exclVds <- inferVarTypes mm os
@@ -323,7 +325,8 @@ sortIds mm xs = traverse (mm .@!!) $ zip (sortRefName <$> xs) (getLoc <$> xs)
 class HasExitSorts e where
     -- | Obtain the exit sorts for an expression.
     exitSort :: ( MapsTo Text SortId mm
-                , MapsTo Text ChanId mm
+                , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+                , MapsTo (Loc ChanDeclE) ChanId mm
                 , MapsTo ProcId () mm
                 , MapsTo (Loc VarDeclE) SortId mm
                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
@@ -371,11 +374,8 @@ instance HasExitSorts BExpDecl where
         es1 <- exitSort mm be1
         (es0 <<+>> es1) <!!> l
     exitSort mm (Guard _ be) = exitSort mm be
-    -- TODO: I'm following the current TorXakis compiler here. Shouldn't we take out the channels that are hidden?
-    exitSort mm (Hide _ cds be) = do
-        -- TODO: remove duplication w.r.t. @inferVarTypes@: @Hide@ case.
-        chNameChIds <- chanDeclsToChanIds mm cds
-        exitSort (chNameChIds <.++> mm) be    
+    exitSort mm (Hide _ _ be) = 
+        exitSort mm be    
 
 instance HasExitSorts ActOfferDecl where
     exitSort mm (ActOfferDecl os _) =

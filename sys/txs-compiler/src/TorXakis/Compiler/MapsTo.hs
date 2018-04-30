@@ -94,14 +94,6 @@ instance MapsTo k v (Map k v) where
     (<.+>) = (<>)
     replaceInnerMap _ new = new
 
--- lookupWithLoc :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
---               => (k, l) -> mm -> Either Error v
--- lookupWithLoc (k, l) mm = lookup k mm <!> l
-
--- lookupWithLocM :: (HasErrorLoc l, MapsTo k v mm, Ord k, Show k)
---                => (k, l) -> mm -> CompilerM v
--- lookupWithLocM p mm = liftEither $ lookupWithLoc p mm
-
 -- | Combinator for maps.
 data a :& b = a :& b
 

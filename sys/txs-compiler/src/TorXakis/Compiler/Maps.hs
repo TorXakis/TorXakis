@@ -192,11 +192,20 @@ mm .@@ k = lookup k mm <!> k
      => mm -> k -> CompilerM v
 mm .@ k = lookupM k mm <!!> k
 
+lookupChId :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+              , MapsTo (Loc ChanDeclE) ChanId mm )
+           => mm -> Loc ChanRefE -> CompilerM ChanId
+lookupChId mm cr = do
+    cd <- mm .@ cr :: CompilerM (Loc ChanDeclE)
+    mm .@ cd
+
 (.@!!) :: ( HasErrorLoc l, MapsTo k v mm, Ord k, Show k
           , Typeable k, Typeable v )
      => mm -> (k, l) -> CompilerM v
 mm .@!! (k, l) = lookupM k mm <!!> l
 
-chRefsToIds :: MapsTo Text ChanId mm
+chRefsToIds :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+               , MapsTo (Loc ChanDeclE) ChanId mm )
             => mm -> [ChanRef] -> CompilerM [ChanId]
-chRefsToIds mm chs = traverse (`lookupM` mm) (chanRefName <$> chs)
+chRefsToIds mm chs = traverse (lookupChId mm) (getLoc <$> chs)
+

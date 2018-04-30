@@ -13,6 +13,7 @@ import qualified Data.Text as T
 import           Data.Traversable (for)
 import           Data.Semigroup ((<>))
 import           Control.Monad (when)
+import           Debug.Trace 
 
 import           StdTDefs (chanIdIstep, chanIdExit)
 import           ConstDefs                         (Const (Cbool))
@@ -40,7 +41,8 @@ import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.Common
 
 toBExpr :: ( MapsTo Text SortId mm
-           , MapsTo Text ChanId mm
+           , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+           , MapsTo (Loc ChanDeclE) ChanId mm
            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
            , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo FuncDefInfo FuncId mm
@@ -82,7 +84,7 @@ toBExpr mm (Pappl n l crs exs) = do
         (ls, _)             -> throwError Error
             { _errorType = NoDefinition
             , _errorLoc  = getErrorLoc l
-            , _errorMsg  = "No matching process definition found."
+            , _errorMsg  = "No matching process definition found: "
                          <> T.pack (show ls)
             }
 toBExpr mm (Par _ sOn be0 be1) = do
@@ -90,9 +92,9 @@ toBExpr mm (Par _ sOn be0 be1) = do
     be1' <- toBExpr mm be1
     cIds <- case sOn of
             All         ->
-                return $ values @Text mm
+                return $ values @(Loc ChanDeclE) mm
             OnlyOn crfs ->
-                traverse (mm .@!!) $ zip  (chanRefName <$> crfs) crfs
+                traverse (lookupChId mm) (getLoc <$> crfs)
     return $ parallel (chanIdExit:cIds) [be0', be1']
 toBExpr mm (Enable _ be0 (Accept _ ofrs be1)) = do
     be0'  <- toBExpr mm be0
@@ -130,12 +132,13 @@ toBExpr mm (Guard g be) = do
     be' <- toBExpr mm be
     return $ guard g' be'
 toBExpr mm (Hide _ cds be) = do
-    chNameChIds <- chanDeclsToChanIds mm cds
-    be' <- toBExpr (chNameChIds <.++> mm) be
-    return $ hide (snd <$> chNameChIds) be'
+    chNameChIds <- traverse (mm .@) (getLoc <$> cds) :: CompilerM [ChanId]
+    be' <- toBExpr mm be
+    return $ hide chNameChIds be'
     
 toActOffer :: ( MapsTo Text SortId mm
-              , MapsTo Text ChanId mm
+              , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+              , MapsTo (Loc ChanDeclE) ChanId mm
               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
               , MapsTo (Loc VarDeclE) VarId mm
               , MapsTo FuncDefInfo FuncId mm
@@ -151,7 +154,8 @@ toActOffer mm (ActOfferDecl osd mc) = do
     return $ ActOffer (Set.fromList os') Set.empty c
 
 toOffer :: ( MapsTo Text SortId mm
-           , MapsTo Text ChanId mm
+           , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+           , MapsTo (Loc ChanDeclE) ChanId mm
            , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo (Loc VarDeclE) SortId mm
            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
@@ -172,7 +176,7 @@ toOffer mm (OfferDecl cr cods) = case chanRefName cr of
                      (zip eSids cods)
         return $ Offer chanIdExit ofrs
     _      -> do
-        cId  <- mm .@!! (chanRefName cr, cr)
+        cId  <- lookupChId mm (getLoc cr)
         ofrs <- traverse (uncurry (toChanOffer mm))
                      (zip (chansorts cId) cods)
         return $ Offer cId ofrs
