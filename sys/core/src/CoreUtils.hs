@@ -75,7 +75,7 @@ filterEnvCtoEnvB :: IOC.IOC IOB.EnvB
 filterEnvCtoEnvB = do
      envc <- get
      case IOC.state envc of
-       IOC.Noning
+       IOC.Idling
          -> return IOB.EnvB { IOB.smts     = Map.empty
                             , IOB.tdefs    = TxsDefs.empty
                             , IOB.sigs     = Sigs.empty
@@ -129,7 +129,7 @@ filterEnvCtoEnvB = do
                             , IOB.unid     = IOC.unid envc
                             , IOB.msgs     = []
                             }
-       IOC.ManualIdle{..}
+       IOC.ManSet {..}
          -> return IOB.EnvB { IOB.smts     = smts
                             , IOB.tdefs    = tdefs
                             , IOB.sigs     = sigs
@@ -138,7 +138,7 @@ filterEnvCtoEnvB = do
                             , IOB.unid     = IOC.unid envc
                             , IOB.msgs     = []
                             }
-       IOC.ManualActive{..}
+       IOC.Manualing {..}
          -> return IOB.EnvB { IOB.smts     = smts
                             , IOB.tdefs    = tdefs
                             , IOB.sigs     = sigs
@@ -201,7 +201,7 @@ nextBehTrie :: TxsDDefs.Action -> IOC.IOC ()
 nextBehTrie act = do
      envc <- get
      case IOC.state envc of
-       IOC.Noning {} -> return ()
+       IOC.Idling  {} -> return ()
        IOC.Initing {} -> return ()
        IOC.Testing { IOC.behtrie = behtrie
                    , IOC.curstate = curstate
@@ -227,8 +227,8 @@ nextBehTrie act = do
                      , IOC.curstate = maxstate+1
                      , IOC.maxstate = maxstate+1
                      }
-       IOC.ManualIdle{} -> return ()
-       IOC.ManualActive{} -> return ()
+       IOC.ManSet {} -> return ()
+       IOC.Manualing {} -> return ()
 
 -- ----------------------------------------------------------------------------------------- --
 -- randMenu :  menu randomization

@@ -4,7 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
------------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------------------- --
 -- |
 -- Module      :  TxsManual
 -- Copyright   :  TNO and Radboud University
@@ -14,42 +14,47 @@ See LICENSE at root directory of this repository.
 --
 -- Core Module TorXakis API:
 -- Manual Mode
------------------------------------------------------------------------------
+--
+-- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE OverloadedStrings #-}
 
 module TxsManual
 
+-- ----------------------------------------------------------------------------------------- --
+-- export
+
 (
   -- * set manual mode for External World
-  txsSetManual     -- :: IOC.EWorld ew => ew -> IOC.IOC ()      
+  txsSetManual     -- :: IOC.EWorld ew => ew -> IOC.IOC ()
 
   -- * shut manual mode for External World
 , txsShutManual    -- :: IOC.IOC ()
 
-  -- * start External World
-, txsStartW        -- :: IOC.IOC ()
+  -- * start running with the External World
+,  txsStartW       -- :: IOC.IOC ()
 
-  -- * stop External World
+  -- * stop running with the External World
 , txsStopW         -- :: IOC.IOC ()
 
-  -- * send action to External World
+  -- * send an action to the External World, and do that action, or an observed earlier action.
 , txsActToW        -- :: DD.Action -> IOC.IOC DD.Verdict
 
-  -- * observe action from External World
+  -- * observe an action from the External World
 , txsObsFroW       -- :: IOC.IOC DD.Verdict
 
-  -- * send action according to offer-pattern to External World
+  -- send an action according to the offer-pattern to the External World
 , txsOfferToW      -- :: D.Offer -> IOC.IOC DD.Verdict
 
-  -- * run n actions on External World; if n<0 then indefinitely many actions 
+  -- * run n actions on the External World; if n<0 then run indefinitely
 , txsRunW          -- :: Int -> IOC.IOC DD.Verdict
 
-  -- * give current state number
+  -- * give the current state number
 , txsGetWStateNr   -- :: IOC.IOC Int
 
-  -- * give trace from initial state to current state number
-, txsGetWTrace     -- :: -> IOC.IOC [DD.Action]
+  -- * give the trace from the initial state to the current state
+, txsGetWTrace     -- :: IOC.IOC [DD.Action]
 )
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- import
@@ -86,9 +91,10 @@ import qualified TxsShow
 -- | Set Manual Mode
 --
 --   Only possible when in Initing Mode.
-
-             -> IOC.IOC ()                     -- ^ modified external world.
-txsSetManual eWorld  =  do
+txsSetManual :: IOC.EWorld ew
+             => ew
+             -> IOC.IOC ()
+txsSetManual eworld  =  do
      envc <- get
      case IOC.state envc of
        IOC.Initing { IOC.smts    = smts
@@ -99,7 +105,7 @@ txsSetManual eWorld  =  do
          -> do IOC.putCS IOC.ManSet { IOC.smts     = smts
                                     , IOC.tdefs    = tdefs
                                     , IOC.sigs     = sigs
-                                    , IOC.eworld   = eWorld
+                                    , IOC.eworld   = eworld
                                     , IOC.putmsgs  = putmsgs
                                     }
                IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Manual Mode set" ]
@@ -155,7 +161,7 @@ txsStartW  =  do
                                        }
                IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "EWorld started" ]
        _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                          "EWorld must be started in ManSet Mode" ]
+                          "EWorld must be started from ManSet Mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Stop External World
@@ -206,10 +212,10 @@ txsActToW act  =  do
                            $ TxsShow.showN (curstate+1) 6 ++
                              "  IN: " ++ TxsShow.fshow act'
                            ]
-               return $ Pass
+               return $ DD.Pass
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Manual input on EWorld only in Manualing Mode" ]
-               return NoVerdict
+               return DD.NoVerdict
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Observe action from External World
@@ -228,13 +234,13 @@ txsObsFroW  =  do
                IOC.modifyCS $ \cs -> cs { IOC.behtrie = behtrie ++ [(curstate,act',curstate+1)]
                                         , IOC.curstate = curstate+1
                                         }
-               IOC.putmsgs [ EnvData.TXS_CORE_USER_INFO
+               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                            $ TxsShow.showN (curstate+1) 6 ++ " OUT: " ++ TxsShow.fshow act'
                            ]
-               return $ Pass
+               return $ DD.Pass
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Manual observation on EWorld only in Manualing Mode" ]
-               return NoVerdict
+               return DD.NoVerdict
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Provide action according to offer pattern to External World
@@ -254,7 +260,7 @@ txsOfferToW offer  =  do
                  Nothing
                    -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                                        "Could not generate action to EWorld" ]
-                         return NoVerdict
+                         return DD.NoVerdict
                  Just act
                    -> do act' <- IOC.putToW eworld act
                          IOC.modifyCS $ \cs -> cs
@@ -265,10 +271,10 @@ txsOfferToW offer  =  do
                                      $ TxsShow.showN (curstate+1) 6 ++
                                        "  IN: " ++ TxsShow.fshow act'
                                      ]
-                         return $ Pass
+                         return $ DD.Pass
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Manual offer on EWorld only in Manualing Mode" ]
-               return NoVerdict
+               return DD.NoVerdict
  
 -- ----------------------------------------------------------------------------------------- --
 -- | Run a number of random actions on External World
@@ -294,10 +300,10 @@ txsRunW nrsteps  =  do
               if isJust input && ( lastDelta || ioRand )
                 then do                                                         -- try input --
                   let Just act = input
-                  act' <- txsActToW act
-                  case act' of
-                    Nothing    -> return DD.NoVerdict
+                  verd <- txsActToW act
+                  case verd of
                     Just act'' -> txsRunW' chans (depth-1) (act''==DD.ActQui)
+                    _          -> return verd
                 else
                   if not lastDelta
                     then do                                                -- observe output --
@@ -313,12 +319,12 @@ txsRunW nrsteps  =  do
 -- ----------------------------------------------------------------------------------------- --
 -- | Give current state number
 --
---   Only possible when in manual active mode.
-txsGetWStateNr :: IOC.IOC Int
+--   Only possible when in Manualing Mode.
+txsGetWStateNr :: IOC.IOC EnvData.StateNr
 txsGetWStateNr  =  do
      envc <- get
      case IOC.state envc of
-       IOC.ManualActive { IOC.curstate = curstate }
+       IOC.Manualing { IOC.curstate = curstate }
          -> return curstate
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Current state of EWorld only in Manualing Mode" ]

@@ -82,7 +82,7 @@ instance NFData EnvC where
         rnf c `seq` rnf u `seq` rnf p `seq` ()
 
 data CoreState =
-       Noning
+       Idling
      | Initing   { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                  , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
                  , sigs    :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
@@ -122,16 +122,16 @@ data CoreState =
                  }
      | StepSet   { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                  , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
                  , modeldef  :: TxsDefs.ModelDef
                  , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
      | Stepping  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                  , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
                  , modeldef  :: TxsDefs.ModelDef
                  , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
-                 -- behaviour trie
+                                                              -- behaviour trie
                  , inistate  :: EnvData.StateNr               -- initial beh statenr
                  , curstate  :: EnvData.StateNr               -- current beh statenr
                  , maxstate  :: EnvData.StateNr               -- max beh statenr
@@ -139,18 +139,16 @@ data CoreState =
                  , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
      | forall ew . (EWorld ew) =>
-       ManualIdle
-                 { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+       ManSet    { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                  , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
                  , eworld    :: ew
                  , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
      | forall ew . (EWorld ew) =>
-       ManualActive
-                 { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+       Manualing { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                  , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
                  , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)] -- beh tree
                  , inistate  :: EnvData.StateNr               -- initial beh statenr
                  , curstate  :: EnvData.StateNr               -- current beh statenr
@@ -158,9 +156,10 @@ data CoreState =
                  , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
 
+
 -- | Initial state for the core environment.
 initEnvC :: EnvC
-initEnvC = EnvC defaultConfig (Id 0) initParams Noning
+initEnvC = EnvC defaultConfig (Id 0) initParams Idling
    where
      initParams = Map.union ParamCore.initParams Solve.Params.initParams
 
@@ -272,3 +271,4 @@ putMsgs msg = do
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --
+

@@ -195,14 +195,14 @@ txsSetCore :: Config -> IOC.IOC (Either String ())
 txsSetCore config'  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning
+       IOC.Idling
          -> do put envc { IOC.config = config'
                         , IOC.params = Config.updateParamVals   -- updating parameters...
                                          initParams   -- ...defined in EnvCore and SolveDefs
                                          $ Config.configuredParameters config'
                         }
                return $ Right ()
-       _ -> return $ Left "'txsSetEnvCore' only allowed in 'Noning' core state"
+       _ -> return $ Left "'txsSetEnvCore' only allowed in 'Idling' core state"
   where
      initParams = Map.union ParamCore.initParams Solve.Params.initParams
 
@@ -218,7 +218,7 @@ txsInitCore :: TxsDefs.TxsDefs                 -- ^ Definitions for computations
 txsInitCore tdefs sigs putMsgs  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning
+       IOC.Idling
          -> do
                let cfg    = IOC.config envc
                    smtLog = Config.smtLog cfg
@@ -254,7 +254,7 @@ txsInitCore tdefs sigs putMsgs  =  do
                                         }
                         }
                return $ Right ()
-       _ -> return $ Left "'txsInitCore' only allowed in 'Noning' core state"
+       _ -> return $ Left "'txsInitCore' only allowed in 'Idling' core state"
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -272,7 +272,7 @@ txsTermitCore  =  do
                putmsgs [ EnvData.TXS_CORE_USER_INFO "Solver(s) closed"
                        , EnvData.TXS_CORE_USER_INFO "TxsCore terminated"
                        ]
-               put envc { IOC.state = IOC.Noning }
+               put envc { IOC.state = IOC.Idling }
                return $ Right ()
        _ -> return $ Left "'txsTermitCore' only allowed in 'Initing' core state"
 
@@ -297,7 +297,7 @@ txsStopNOEW  =  do
                                                   , IOC.putmsgs = IOC.putmsgs cState
                         }                         }
                IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepping stopped" ]
-       _ -> do                         -- IOC.Noning, IOC.Initing IOC.Testing, IOC.Simuling --
+       _ -> do                         -- IOC.Idling, IOC.Initing IOC.Testing, IOC.Simuling --
                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "txsStopNW only in Stepping mode" ]
 
 
@@ -329,7 +329,7 @@ txsStopEW eWorld  =  do
                eWorld' <- IOC.stopW eWorld
                IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulation stopped" ]
                return eWorld'
-       _ -> do                         -- IOC.Noning, IOC.Initing IOC.Testing, IOC.Simuling --
+       _ -> do                         -- IOC.Idling, IOC.Initing IOC.Testing, IOC.Simuling --
                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "txsStopEW only in Testing or Simuling mode" ]
                return eWorld
@@ -343,7 +343,7 @@ txsGetTDefs :: IOC.IOC TxsDefs.TxsDefs
 txsGetTDefs  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning -> return TxsDefs.empty
+       IOC.Idling -> return TxsDefs.empty
        _                             -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
                   -> return $ IOC.tdefs (IOC.state envc)
 
@@ -352,7 +352,7 @@ txsSetTDefs :: TxsDefs.TxsDefs -> IOC.IOC ()
 txsSetTDefs tdefs'  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning -> return ()
+       IOC.Idling -> return ()
        _                             -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
                   -> IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs' }
 
@@ -391,7 +391,7 @@ txsEval :: TxsDefs.VExpr                    -- ^ value expression to be evaluate
 txsEval vexp  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning
+       IOC.Idling
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'eval' without model" ]
                return $ Cerror ""
        _ -> let frees = FreeVar.freeVars vexp
@@ -415,7 +415,7 @@ txsSolve :: TxsDefs.VExpr                   -- ^ value expression to solve.
 txsSolve vexp  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning
+       IOC.Idling
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR  "No 'solve' without model" ]
                return Map.empty
        _ -> if  SortOf.sortOf vexp /= SortId.sortIdBool
@@ -449,7 +449,7 @@ txsUniSolve :: TxsDefs.VExpr            -- ^ value expression to solve uniquely.
 txsUniSolve vexp  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning
+       IOC.Idling
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'solve' without model" ]
                return Map.empty
        _ -> if  SortOf.sortOf vexp /= SortId.sortIdBool
@@ -481,7 +481,7 @@ txsRanSolve :: TxsDefs.VExpr                -- ^ value expression to solve rando
 txsRanSolve vexp  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Noning
+       IOC.Idling
          -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "No 'solve' without model" ]
                return Map.empty
        _ -> if  SortOf.sortOf vexp /= SortId.sortIdBool
@@ -575,7 +575,7 @@ txsSetTest eWorld moddef mapdef purpdef  =  do
                                           List.intercalate "," (TxsShow.fshow . fst <$> gls) ])
                          IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]
                          return eWorld'
-       _ -> do                        -- IOC.Noning, IOC.Testing, IOC.Simuling, IOC.Stepping --
+       _ -> do                        -- IOC.Idling, IOC.Testing, IOC.Simuling, IOC.Stepping --
                IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester must start in Initing mode" ]
                return eWorld
 
@@ -883,8 +883,8 @@ txsShow item nm  = do
      envc  <- gets IOC.state
      let tdefs = IOC.tdefs envc
      case envc of
-      IOC.Noning{ }
-         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Noning: nothing to be shown" ]
+      IOC.Idling{ }
+         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Idling: nothing to be shown" ]
                return "\n"
       IOC.Initing{ }
          -> case (item,nm) of

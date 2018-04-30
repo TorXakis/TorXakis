@@ -22,7 +22,7 @@ module TxsStep
 
 (
   -- * set stepping mode
-  txsSetStep       -- :: TxsDefs.ModelDef -> IOC.IOC ()
+  txsSetStep       -- :: D.ModelDef -> IOC.IOC ()
 
   -- * shut stepping mode
 , txsShutStep      -- :: IOC.IOC ()
@@ -34,37 +34,37 @@ module TxsStep
 , txsStopStep      -- :: IOC.IOC ()
 
   -- * do an action in the model
-, txsStepAct       -- :: TxsDDefs.Action -> IOC.IOC (Either String TxsDDefs.Verdict)
+, txsStepAct       -- :: DD.Action -> IOC.IOC DD.Verdict
 
   -- * do an action according to offer-pattern in the model
-, txsStepOffer     -- ::
+, txsStepOffer     -- :: D.Offer -> IOC.IOC DD.Verdict
 
   -- * run n actions on the model; if n<0 then indefinitely many actions
-, txsStepRun       -- ::
-
-  -- * give current state number in the model
-, txsStepStateNr   -- ::  
-
-  -- * give current state in the model
-, txsStepState     -- ::  
-
-  -- * give trace from initial state to current state in the model
-, txsStepTrace     -- ::
-
-  -- * give transition graph of actions stepped through so far
-, txsStepGraph     -- ::
+, txsStepRun       -- :: Int -> IOC.IOC DD.Verdict
 
   -- * give the menu of possible offers in the model
-, txsStepMenu      -- :: 
+, txsStepMenu      -- :: IOC.IOC BTree.Menu
+
+  -- * give current state number in the model
+, txsStepStateNr   -- :: IOC.IOC EnvData.StateNr
+
+  -- * give current state in the model
+, txsStepState     -- :: IOC.IOC BTree.BTree 
+
+  -- * give trace from initial state to current state in the model
+, txsStepTrace     -- :: [DD.Action]
+
+  -- * give transition graph of actions stepped through so far
+, txsStepGraph     -- :: [(EnvData.StateNr,DD.Action,EnvData.StateNr)]
 
   -- * go to the specified state number in the model
-, txsStepTo        -- ::
+, txsStepTo        -- :: EnvData.StateNr -> IOC.IOC ()
 
   -- * go to the initial state in the model
-, txsStepInit      --  ::
+, txsStepInit      --  :: IOC.IOC ()
 
   -- * go back with the specified number of steps in the model.
-, txsStepBack      --  ::
+, txsStepBack      --  :: Int -> IOC>IOC ()
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -103,8 +103,8 @@ import qualified EnvCore             as IOC
 
 -- import from defs
 -- import qualified Sigs
-import qualified TxsDDefs
-import qualified TxsDefs
+import qualified TxsDDefs            as DD
+import qualified TxsDefs             as D
 -- import qualified TxsShow
 -- import           TxsUtils
 
@@ -130,8 +130,7 @@ import qualified TxsDefs
 -- | Set Stepping Mode.
 --
 --   Only possible when txscore is initialized.
-
-txsSetStep :: TxsDefs.ModelDef              -- ^ model definition.
+txsSetStep :: D.ModelDef                -- ^ model definition.
            -> IOC.IOC ()
 txsSetStep moddef  =  do
      envc <- get
@@ -149,7 +148,7 @@ txsSetStep moddef  =  do
                                      }
                IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepping Mode set" ]
        _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                          "Stepping Mode must be set in Initing mode" ]
+                          "Stepping Mode must be set from Initing mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Shut Stepping Mode.
@@ -211,9 +210,9 @@ txsStartStep  =  do
                           "Stepping Mode must be started in StepSet Mode" ]
  
 
-startStepper :: TxsDefs.ModelDef -> IOC.IOC ( Maybe BTree.BTree )
+startStepper :: D.ModelDef -> IOC.IOC ( Maybe BTree.BTree )
 
-startStepper (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
+startStepper (D.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
      let allSyncs = minsyncs ++ moutsyncs ++ msplsyncs
      envb            <- filterEnvCtoEnvB
      (maybt', envb') <- lift $ runStateT (Behave.behInit allSyncs mbexp) envb
@@ -232,6 +231,11 @@ txsStopStep  =  do
                     , IOC.tdefs    = tdefs
                     , IOC.sigs     = sigs
                     , IOC.modeldef = moddef
+                    , IOC.behtrie  = _behtrie
+                    , IOC.inistate = _inistate
+                    , IOC.curstate = _curstate
+                    , IOC.maxstate = _maxststae
+                    , IOC.modstss  = _modstss
                     , IOC.putmsgs  = putmsgs
                     }
          -> do IOC.putCS IOC.StepSet { IOC.smts     = smts
@@ -245,149 +249,222 @@ txsStopStep  =  do
                           "Stepping Mode must be stopped from Stepping Mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
--- txsStepRun
-
--- | Step model with the provided number of actions.
---
---   Only possible when Stepping.
-txsStepRun :: Int                                        -- ^ Number of actions to step model.
-           -> IOC.IOC (Either String TxsDDefs.Verdict)   -- ^ Verdict of stepping.
-txsStepRun nrsteps  =  do
-     envc <- get
-     case IOC.state envc of
-       IOC.Stepping {}
-         -> do verd <- Step.stepN nrsteps 1
-               return $ Right verd
-       _ -> return $ Left "'txsStepRun' only allowed in 'Stepping' core state"
-
-
--- ----------------------------------------------------------------------------------------- --
 -- | Step model with the provided action.
 --
 --   Only possible when Stepping.
-txsStepAct :: TxsDDefs.Action                            -- ^ Action to step in model.
-           -> IOC.IOC (Either String TxsDDefs.Verdict)   -- ^ Verdict of stepping.
+txsStepAct :: DD.Action                           -- ^ Action to step in model.
+           -> IOC.IOC DD.Verdict                  -- ^ Verdict of stepping.
 txsStepAct act  =  do
      envc <- get
      case IOC.state envc of
        IOC.Stepping {}
-         -> do verd <- Step.stepA act
-               return $ Right verd
-       _ -> return $ Left "'txsStepAct' only allowed in 'Stepping' core state"
-
+         -> Step.stepA act
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Stepping with action only in Stepping Mode" ]
+               return NoVerdict
 
 -- ----------------------------------------------------------------------------------------- --
-
-{-
-
--- | Go to state with the provided state number.
--- core action.
+-- | Step with action according to offer-pattern in the model.
 --
--- Only possible in stepper modus (see 'txsSetStep').
-txsGoTo :: EnvData.StateNr              -- ^ state to go to.
-        -> IOC.IOC ()
-txsGoTo stateNr  =
-  if  stateNr >= 0
-  then do
-    modStss <- gets (IOC.modstss . IOC.state)
-    case Map.lookup stateNr modStss of
-       Nothing -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "no such state" ]
-       Just _ ->
-         modify $
-           \env ->
-             env { IOC.state =
-                     (IOC.state env)
-                     { IOC.curstate = stateNr }
-                 }
-  else ltsBackN (-stateNr)
-  where
-     ltsBackN :: Int -> IOC.IOC ()
-     ltsBackN backsteps
-        | backsteps <= 0 = return ()
-        | otherwise  = do    -- backsteps > 0
-            st <- gets IOC.state
-            let iniState = IOC.inistate st
-                curState = IOC.curstate st
-                behTrie = IOC.behtrie st
-            case [ s | (s, _, s') <- behTrie, s' == curState ] of
-              [prev] -> do
-                modify $
-                  \env ->
-                    env { IOC.state =
-                            (IOC.state env) {
-                            IOC.curstate = prev
-                            }
-                        }
-                unless (prev == iniState) (ltsBackN (backsteps-1))
-              _      -> do
-                IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "LtsBack error" ]
-                return ()
+--   Only possible when in Stepping Mode.
+txsStepOffer :: D.Offer -> IOC.IOC DD.Verdict
+txsOfferToW offer  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Stepping {}
+         -> do mact <- randOff2Acttt offer
+               case mact of
+                 Nothing
+                   -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
+                                       "Could not generate action for stepping" ]
+                         return NoVerdict
+                 Just act
+                   -> txsStepAct act
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Stepping with offer only in Stepping Mode" ]
+               return NoVerdict
 
--- | Provide the path.
-txsPath :: IOC.IOC [(EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr)]
-txsPath  =  do
-  st <- gets IOC.state
-  path (IOC.inistate st) (IOC.curstate st)
-  where
-     path :: EnvData.StateNr -> EnvData.StateNr ->
-             IOC.IOC [(EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr)]
-     path from to | from >= to = return []
-     path from to = do -- from < to
-       iniState <- gets (IOC.inistate . IOC.state)
-       behTrie  <- gets (IOC.behtrie . IOC.state)
-       case [ (s1,a,s2) | (s1,a,s2) <- behTrie, s2 == to ] of
-         [(s1,a,s2)] ->
-           if (s1 == from) || (s1 == iniState)
-           then return [(s1,a,s2)]
-           else do
-             pp <- path from s1
-             return $ pp ++ [(s1,a,s2)]
-         _           -> do
-           IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "Path error" ]
-           return []
+-- ----------------------------------------------------------------------------------------- --
+-- | Step model with the provided number of actions.
+--
+--   Only possible when Stepping.
+txsStepRun :: Int                                 -- ^ Number of actions to step model.
+           -> IOC.IOC DD.Verdict                  -- ^ Verdict of stepping.
+txsStepRun nrsteps  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Stepping {}
+         -> do Step.stepN nrsteps 1
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Stepping with run only in Stepping Mode" ]
+               return NoVerdict
 
-
--- | Return the menu, i.e., all possible actions.
-txsMenu :: String                               -- ^ kind (valid values are "mod", "purp", or "map")
-        -> String                               -- ^ what (valid values are "all", "in", "out", or a <goal name>)
-        -> IOC.IOC BTree.Menu
-txsMenu kind what  =  do
-     envSt <- gets IOC.state
-     case (kind,envSt) of
-       ("mod",IOC.Testing {})  -> do
-            menuIn   <- Ioco.iocoModelMenuIn
-            menuOut  <- Ioco.iocoModelMenuOut
-            case what of
-              "all" -> return $ menuIn ++ menuOut
-              "in"  -> return menuIn
-              "out" -> return menuOut
-              _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
-                          return []
-       ("mod",IOC.Simuling {}) -> do
-            menuIn   <- Ioco.iocoModelMenuIn
-            menuOut  <- Ioco.iocoModelMenuOut
-            case what of
-              "all" -> return $ menuIn ++ menuOut
-              "in"  -> return menuIn
-              "out" -> return menuOut
-              _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
-                          return []
-       ("mod",IOC.Stepping {}) -> do
-            menuIn  <- Step.stepModelMenuIn
-            menuOut <- Step.stepModelMenuOut
-            case what of
-              "all" -> return $ menuIn ++ menuOut
-              "in"  -> return menuIn
-              "out" -> return menuOut
-              _     -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
-                          return []
-       ("map",IOC.Testing {})  -> Mapper.mapperMenu
-       ("map",IOC.Simuling {}) -> Mapper.mapperMenu
-       ("purp",IOC.Testing {}) -> Purpose.goalMenu what
-       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "error in menu" ]
+-- ----------------------------------------------------------------------------------------- --
+-- | Give the menu, i.e., all possible offers.
+--
+--   Only possible when Stepping.
+txsStepMenu :: IOC.IOC BTree.Menu
+txsStepMenu  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Stepping {}
+         -> do menuIn  <- Step.stepModelMenuIn
+               menuOut <- Step.stepModelMenuOut
+               return $ menuIn ++ menuOut
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Stepping menu only in Stepping Mode" ]
                return []
 
--}
+-- ----------------------------------------------------------------------------------------- --
+-- | Give current state number
+--
+--   Only possible when Stepping.
+txsStepStateNr :: IOC.IOC EnvData.StateNr
+txsStepStateNr  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Stepping { IOC.curstate = curstate }
+         -> return curstate
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Current state of stepping only in Stepping Mode" ]
+               return $ -1
+
+-- ----------------------------------------------------------------------------------------- --
+-- | Give current state 
+--
+--   Only possible when Stepping.
+txsStepState :: IOC.IOC BTree.BTree
+txsStepState  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Stepping { IOC.curstate = curstate
+                    , IOC.modstss  = modstss
+                    }
+         -> do case Map.lookup curstate modstss of
+                 Nothing    -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEN_ERROR
+                                                "No valid current state" ]
+                                  return []
+                 Just btree -> return btree
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Current state of stepping only in Stepping Mode" ]
+               return []
+                
+-- ----------------------------------------------------------------------------------------- --
+-- | Give trace from initial state to current state
+--
+--   Only possible when Stepping.
+txsStepTrace :: IOC.IOC [DD.Action]
+txsStepTrace  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Stepping { IOC.behtrie  = behtrie
+                    , IOC.inistate = inistate
+                    , IOC.curstate = curstate
+                    }
+         -> case trace behtrie inistate curstate of
+              Nothing -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                          "Path error: Behaviour Trie is not a tree" ]
+                            return []
+              Just t  -> return t
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Trace of stepping only in Stepping Mode" ]
+               return []
+  where
+     trace :: [(EnvData.StateNr, DD.Action, EnvData.StateNr)]
+           -> EnvData.StateNr
+           -> EnvData.StateNr
+           -> IOC.IOC (Maybe [DD.Action])
+     trace _behtrie from to    | from >  to  =  Nothing
+     trace _behtrie from to    | from == to  =  Just []
+     trace  behtrie from to -- | from <  to
+       =  case [ (s1,a,s2) | (s1,a,s2) <- behtrie, s2 == to ] of
+            [(s1,a,s2)] -> case path behtrie from s1 of
+                             Nothing -> Nothing
+                             Just t  -> t ++ [a]
+            _ -> Nothing
+
+-- ----------------------------------------------------------------------------------------- --
+-- | Give the transition graph of actions stepped through so far.
+--
+--   Only possible when Stepping.
+txsStepGraph :: IOC.IOC [(EnvData.StateNr, DD.Action, EnvData.StateNr)]
+txsStepGraph  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Stepping { IOC.behtrie  = behtrie }
+         -> return behtrie
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Graph of stepping only in Stepping Mode" ]
+               return []
+
+-- ----------------------------------------------------------------------------------------- --
+-- | Go to state with the provided state number in the model
+--
+--   Only possible when Stepping.
+txsStepTo :: EnvData.StateNr               -- ^ state to go to.
+          -> IOC.IOC ()
+txsStepTo statenr  =
+     envc <- get
+     case IOC.state envc of
+       IOC.Stepping { IOC.modstss = modstss }
+         -> case Map.lookup statenr modstss of
+              Nothing -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                       "No such state to go to" ]
+              Just _  -> IOC.modifyCS $ \st -> st { IOC.curstate = statenr }
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Go to stepping state only in Stepping Mode" ]
+               return []
+
+-- ----------------------------------------------------------------------------------------- --
+-- | Go to initial in the model
+--
+--   Only possible when Stepping.
+txsStepInit :: IOC.IOC ()
+txsStepInit  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Stepping { IOC.inistate = inistate
+                    , IOC.modstss  = modstss
+                    }
+         -> case Map.lookup inistate modstss of
+              Nothing -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                       "No initial state to go to" ]
+              Just _  -> IOC.modifyCS $ \st -> st { IOC.curstate = inistate }
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Go to initial stepping state only in Stepping Mode" ]
+               return []
+
+-- ----------------------------------------------------------------------------------------- --
+-- | Go back with the specified number of steps in the model.
+--
+--   Only possible when Stepping.
+txsStepBack :: Int -> IOC.IOC ()
+txsStepBack steps  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Stepping { IOC.behtrie  = behtrie
+                    , IOC.curstate = curstate
+                    , IOC.modstss  = modstss
+                    }
+         -> case Map.lookup curstate modstss of
+              Nothing -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                       "No initial state to go backwards from" ]
+              Just _  -> case Map.lookup (back behtrie curstate steps) modstss of
+                           Nothing  -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                                     "No state to go backwards to" ]
+                           Just cur -> IOC.modifyCS $ \st -> st { IOC.curstate = cur }
+       _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                             "Go backwards in stepping state only in Stepping Mode" ]
+  where
+     back :: [(EnvData.StateNr, DD.Action, EnvData.StateNr)]
+          -> EnvData.StateNr
+          -> Int
+          -> EnvData.StateNr
+     back _behtrie cur steps    | steps <= 0  =  cur
+     back  behtrie cur steps -- | steps >  0  =
+       case [ (s1,a,s2) | (s1,a,s2) <- behtrie, s2 == cur ] of
+         =  [(s1,_a,_s2)] -> back behtrie s1 (steps-1)
+            _             -> (-1)
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
