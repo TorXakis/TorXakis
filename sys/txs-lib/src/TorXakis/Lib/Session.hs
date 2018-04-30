@@ -24,7 +24,7 @@ import           Lens.Micro.TH                 (makeLenses)
 
 import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
-import           EnvCore                       (EnvC, initState)
+import           EnvCore                       (EnvC, initEnvC)
 import           EnvData                       (Msg)
 import           ParamCore                     (Params)
 import           Sigs                          (Sigs, empty)
@@ -74,7 +74,7 @@ makeLenses ''Session
 
 -- * Session state manipulation
 emptySessionState :: SessionSt
-emptySessionState = SessionSt TxsDefs.empty Sigs.empty initState initParams
+emptySessionState = SessionSt TxsDefs.empty Sigs.empty initEnvC initParams
 -- TODO: coreenv can be used to read from config file, and
 --       some of TxsServerConfig.hs might be extracted to a common package
                         -- $ Config.updateParamVals initParams

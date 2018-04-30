@@ -10,9 +10,9 @@ See LICENSE at root directory of this repository.
 module CoreUtils
 
 -- ----------------------------------------------------------------------------------------- --
--- 
+--
 -- Utilities for Core
--- 
+--
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
@@ -31,41 +31,41 @@ module CoreUtils
 )
 
 -- ----------------------------------------------------------------------------------------- --
--- import 
+-- import
 
 where
 
-import System.Random
-import Control.Monad.State
+import           Control.Monad.State
+import           System.Random
 
-import qualified Data.Set  as Set
-import qualified Data.Map  as Map
+import qualified Data.Map            as Map
 import           Data.Maybe
-import qualified Data.Text as T
+import qualified Data.Set            as Set
+import qualified Data.Text           as T
 
 -- import from behavedef
 import qualified BTree
 
 -- import from behaveenv
-import qualified EnvCore   as IOC
-import qualified EnvBTree  as IOB
+import qualified EnvBTree            as IOB
+import qualified EnvCore             as IOC
 import qualified EnvData
 
 -- import from defs
-import qualified TxsDefs
-import qualified TxsDDefs
-import qualified TxsShow
 import qualified Sigs
-import qualified SolveDefs
 import qualified Solve
+import qualified SolveDefs
+import qualified TxsDDefs
+import qualified TxsDefs
+import qualified TxsShow
 
 -- import from valexpr
-import ConstDefs
-import FreeVar
-import ValExpr
-import Variable
-import VarId
-import Eval
+import           ConstDefs
+import           Eval
+import           FreeVar
+import           ValExpr
+import           Variable
+import           VarId
 
 -- ----------------------------------------------------------------------------------------- --
 -- filterEnvCtoEnvB
@@ -277,13 +277,13 @@ instantIVar sol var
 randOff2Act :: TxsDefs.Offer -> IOC.IOC (Maybe TxsDDefs.Action)
 randOff2Act (TxsDefs.Offer chid choffs)  =  do
      consts <- mapM randChOffer choffs
-     if  and $ map isJust consts  
+     if  and $ map isJust consts
        then return $ Just $ TxsDDefs.Act $ Set.singleton
                        (chid, map (fromMaybe (error "should not occur")) consts)
        else return Nothing
 
 randChOffer :: TxsDefs.ChanOffer -> IOC.IOC (Maybe Const)
-randChOffer choff  =  do
+randChOffer choff =
      case choff of
        TxsDefs.Exclam vexp
          -> let frs = FreeVar.freeVars vexp
@@ -292,7 +292,7 @@ randChOffer choff  =  do
                                         "Value expr not closed: " ++ TxsShow.fshow frs ]
                           return Nothing
                   else do envb         <- filterEnvCtoEnvB
-                          (wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
+                          (Right wal',envb') <- lift $ runStateT (Eval.eval vexp) envb
                           writeEnvBtoEnvC envb'
                           return $ Just wal'
        TxsDefs.Quest vid

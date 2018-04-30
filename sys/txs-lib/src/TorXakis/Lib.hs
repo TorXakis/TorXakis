@@ -38,16 +38,16 @@ import qualified VersionInfo
 
 import           EnvCore                       (IOC)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
-import           TxsCore  (txsSetCore, txsInitCore, txsTermitCore)
-import           TxsStep  ( txsSetStep, txsShutStep
-                          , txsStartStep, txsStopStep
-                          , txsStepRun 
-                          )
 import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
-import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
-                                                txsStepN, txsStop, txsTestN)
+import           TxsCore                       (txsInitCore, txsSetCore,
+                                                txsTermitCore)
+import           TxsStep                       (txsSetStep, txsShutStep,
+                                                txsStartStep, txsStepRun,
+                                                txsStopStep)
+-- import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
+--                                                 txsStepN, txsStop, txsTestN)
 import           TxsDDefs                      (Verdict)
 import           TxsDefs                       (ModelDef)
 import           TxsHappy                      (txsParser)
@@ -108,9 +108,9 @@ load s xs = do
         Right _  -> do
             -- Initialize the TorXakis core with the definitions we just loaded.
             st <- readTVarIO (s ^. sessionState)
-                runIOC s $ do
-                  resp <- txsInitCore (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
-                  case resp of 
+            runIOC s $ do
+                resp <- txsInitCore (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
+                case resp of
                     Right _ -> return Success
                     Left  e -> return $ Error e
 
@@ -119,12 +119,10 @@ load s xs = do
 stepper :: Session
         -> Name        -- ^ Model name
         -> IO Response
-stepper s mn =
-    runResponse $ do
+stepper s mn = runResponse $ do
     mDef <- lookupModel s mn
-    lift $ runIOC s $ do
-        txsSetStep mDef
-        txsStartStep
+    lift $ runIOC s $ do txsSetStep mDef
+                         txsStartStep
 
 lookupModel :: Session -> Name -> ExceptT Text IO ModelDef
 lookupModel s mn = do
@@ -140,7 +138,7 @@ shutStepper s  =  do
         txsStopStep
         txsShutStep
         return Success
-    
+
 msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
 

@@ -7,7 +7,7 @@ module ShowToken
 ( showToken
 )
 where
-import TxsAlex
+import           TxsAlex
 
 showToken :: Token -> String
 showToken t  =  case t of
@@ -29,6 +29,7 @@ showToken t  =  case t of
                 ; Tsync             pos     ->  showPos pos ++ "  SYNC"
                 ; Tclientsock       pos     ->  showPos pos ++ "  CLIENTSOCK"
                 ; Tserversock       pos     ->  showPos pos ++ "  SERVERSOCK"
+                ; Teworld           pos     ->  showPos pos ++ "  EWORLD"
                 ; Thost             pos     ->  showPos pos ++ "  HOST"
                 ; Tport             pos     ->  showPos pos ++ "  PORT"
                 ; Tencode           pos     ->  showPos pos ++ "  ENCODE"
@@ -106,4 +107,4 @@ showToken t  =  case t of
                 }
 
 showPos :: AlexPosn -> String
-showPos (AlexPn _ l c)  =  "( line = " ++ show l ++ ", column = " ++ show c ++ " )" 
+showPos (AlexPn _ l c)  =  "( line = " ++ show l ++ ", column = " ++ show c ++ " )"
