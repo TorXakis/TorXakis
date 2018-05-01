@@ -196,6 +196,23 @@ MODELDEF Outlet1 ::=
        >-> overloaded1[OutS](x)
 ENDDEF
 
+MODELDEF Outlet100 ::=
+    CHAN IN S, I
+    CHAN OUT OutS
+    BEHAVIOUR
+          OutS ! LET x = "foo" IN x NI 
+       >->
+       S ? x :: String
+      >-> overloaded1[OutS](x)
+ENDDEF
+
+PROCDEF outlet100[I :: Int; S, OutS :: String]() ::=
+OutS ! LET x = "foo" IN x NI 
+       >->
+       S ? x :: String
+      >-> overloaded1[OutS](x)
+ENDDEF
+
 MODELDEF Syncer20 ::=
     CHAN IN S, I
     CHAN OUT OutS    

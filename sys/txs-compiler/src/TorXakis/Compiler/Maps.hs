@@ -209,3 +209,14 @@ chRefsToIds :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
             => mm -> [ChanRef] -> CompilerM [ChanId]
 chRefsToIds mm chs = traverse (lookupChId mm) (getLoc <$> chs)
 
+closure2 :: (Ord k, Ord v) => Map k v -> Map v w -> Map k w
+closure2 m0 m1 = foldl maybeAddPair Map.empty (Map.toList m0)
+    where
+      maybeAddPair acc (k, v) =
+          maybe acc (\w -> Map.insert k w acc) (Map.lookup v m1)
+
+-- | Channels referred in the model
+usedChIdMap :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+               , MapsTo (Loc ChanDeclE) ChanId mm )
+            => mm -> Map (Loc ChanRefE) ChanId
+usedChIdMap mm =  closure2 (innerMap mm :: Map (Loc ChanRefE) (Loc ChanDeclE)) (innerMap mm)

@@ -7,7 +7,31 @@ ENDDEF
 TYPEDEF Pair ::= Pair { x, y :: Int } ENDDEF
 
 CHANDEF Another ::=
-   X :: Int;
+   X, I, J, K :: Int;
    XY :: Int # Int;
    P :: Pair
+ENDDEF
+
+MODELDEF Exiter ::=
+    CHAN IN J
+    CHAN OUT
+    BEHAVIOUR
+    EXIT
+ENDDEF
+
+
+MODELDEF Syncer6 ::=
+    CHAN IN I, J
+    CHAN OUT
+    BEHAVIOUR
+    I ! 10 || J ! 1
+ENDDEF
+
+MODELDEF Hidder ::=
+    CHAN IN J
+    CHAN OUT
+    BEHAVIOUR
+    HIDE [ Y ] IN
+        Y
+    NI
 ENDDEF

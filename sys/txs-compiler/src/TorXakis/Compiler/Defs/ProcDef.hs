@@ -5,8 +5,6 @@
 {-# LANGUAGE TypeApplications  #-}
 module TorXakis.Compiler.Defs.ProcDef where
 
-import Debug.Trace
-
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Map (Map)

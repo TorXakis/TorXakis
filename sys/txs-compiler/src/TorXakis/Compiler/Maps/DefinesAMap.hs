@@ -4,8 +4,6 @@
 {-# LANGUAGE OverloadedStrings     #-}
 module TorXakis.Compiler.Maps.DefinesAMap where
 
-import           Debug.Trace
-
 import           Control.Lens                     ((^.))
 import           Data.Map                         (Map)
 import qualified Data.Map                         as Map
@@ -86,10 +84,12 @@ instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ParsedDefs () where
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ModelDecl mm where
     getKVs mm md = do
-       ins   <- getKVs mm (modelIns md)
-       outs  <- getKVs mm (modelOuts md)
-       syncs <- getKVs mm (modelSyncs md)
-       bes   <- getKVs mm (modelBExp md)
+       -- We augment the map with the predefined channels.
+       let mm' = predefChDecls <.+> mm
+       ins   <- getKVs mm' (modelIns md)
+       outs  <- getKVs mm' (modelOuts md)
+       syncs <- getKVs mm' (modelSyncs md)
+       bes   <- getKVs mm' (modelBExp md)
        return $ ins ++ outs ++ syncs ++ bes
 
 instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ProcDecl () where

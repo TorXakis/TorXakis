@@ -8,10 +8,6 @@
 {-# LANGUAGE FlexibleInstances  #-}
 module TorXakis.Compiler.ValExpr.SortId where
 
-import Debug.Trace
-
-
-
 import           Prelude                   hiding (lookup)
 import           Control.Arrow             (left, (|||))
 import           Control.Monad             (when, foldM)

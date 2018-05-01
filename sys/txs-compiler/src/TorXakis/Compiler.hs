@@ -134,11 +134,15 @@ compileParsedDefs pd = do
     pdefMap <- procDeclsToProcDefMap (allSortsMap :& cMap :& completeFidMap :& lFDefMap :& dMap) (pd ^. procs)
     -- Finally construct the TxsDefs.
     let mm = allSortsMap :& pdefMap :& cMap :& completeFidMap :& lFDefMap
-    chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
+--    chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
 --    chIds   <- getMap allSortsMap pd :: CompilerM (Map (Loc ChanDeclE) ChanId)
     chIds   <- getMap allSortsMap (pd ^. chdecls) :: CompilerM (Map (Loc ChanDeclE) ChanId)
     sigs    <- toSigs                (mm :& chIds) pd
-    txsDefs <- toTxsDefs (func sigs) (mm :& dMap :& vMap :& vdSortMap :& chDecls :& chIds) pd
+    -- We need the map from channel names to the locations in which these
+    -- channels are declared, because the model definitions rely on channels
+    -- declared outside its scope.
+    chNames <-  getMap () (pd ^. chdecls) :: CompilerM (Map Text (Loc ChanDeclE))
+    txsDefs <- toTxsDefs (func sigs) (mm :& dMap :& vMap :& vdSortMap :& chNames :& chIds) pd
     St i    <- get
     return (Id i, txsDefs, sigs)
 
@@ -148,11 +152,12 @@ toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo FuncDefInfo FuncId mm
              , MapsTo FuncId (FuncDef VarId) mm 
              , MapsTo ProcId ProcDef mm
---             , MapsTo Text ChanId mm
-             , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+             , MapsTo Text (Loc ChanDeclE) mm
+             -- , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
              , MapsTo (Loc ChanDeclE) ChanId mm
              , MapsTo (Loc VarDeclE) VarId mm
              , MapsTo (Loc VarDeclE) SortId mm
+             , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
              , In (ProcId, ()) (Contents mm) ~ 'False )
           => FuncTable VarId -> mm -> ParsedDefs -> CompilerM TxsDefs
 toTxsDefs ft mm pd = do

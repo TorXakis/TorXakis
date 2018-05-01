@@ -43,7 +43,8 @@ envToSortDefs mm = Map.fromList $
     zip (values @Text mm) (repeat SortDef)
 
 modelDeclsToTxsDefs :: ( MapsTo Text SortId mm
-                       , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+                       , MapsTo Text (Loc ChanDeclE) mm
+                       -- , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
                        , MapsTo (Loc ChanDeclE) ChanId mm
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                        , MapsTo FuncDefInfo FuncId mm
@@ -51,6 +52,8 @@ modelDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , MapsTo ProcId ProcDef mm
                        , MapsTo (Loc VarDeclE) SortId mm
                        , MapsTo (Loc VarDeclE) VarId mm
+                       -- , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
+                       , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
                        , In (ProcId, ()) (Contents mm) ~ 'False )
                     => mm -> [ModelDecl] -> CompilerM (Map ModelId ModelDef)
 modelDeclsToTxsDefs mm mds =

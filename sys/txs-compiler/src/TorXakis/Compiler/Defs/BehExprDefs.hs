@@ -13,7 +13,7 @@ import qualified Data.Text as T
 import           Data.Traversable (for)
 import           Data.Semigroup ((<>))
 import           Control.Monad (when)
-import           Debug.Trace 
+import           Data.List (nub)
 
 import           StdTDefs (chanIdIstep, chanIdExit)
 import           ConstDefs                         (Const (Cbool))
@@ -92,7 +92,7 @@ toBExpr mm (Par _ sOn be0 be1) = do
     be1' <- toBExpr mm be1
     cIds <- case sOn of
             All         ->
-                return $ values @(Loc ChanDeclE) mm
+                return $ nub . Map.elems $ usedChIdMap mm
             OnlyOn crfs ->
                 traverse (lookupChId mm) (getLoc <$> crfs)
     return $ parallel (chanIdExit:cIds) [be0', be1']
