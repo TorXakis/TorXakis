@@ -58,9 +58,10 @@ import           TorXakis.Compiler.Defs.ProcDef
 import           TorXakis.Compiler.ValExpr.Common
 import           TorXakis.Compiler.Maps.DefinesAMap
 
+import TorXakis.Compiler.Data.ProcDecl
+
 import           TorXakis.Parser
 import           TorXakis.Parser.Data
-
 
 -- | Compile a string into a TorXakis model.
 --
@@ -131,7 +132,19 @@ compileParsedDefs pd = do
     vMap <- generateVarIds (vdSortMap :& completeFidMap ) allFuncs
     lFDefMap <- funcDeclsToFuncDefs (vMap :& completeFidMap :& dMap) allFuncs
      -- Construct the @ProcId@ to @ProcDef@ map:
-    pdefMap <- procDeclsToProcDefMap (allSortsMap :& cMap :& completeFidMap :& lFDefMap :& dMap) (pd ^. procs)
+    -- pVDecls <- getMap allSortsMap (pd ^. procs)
+    --            :: CompilerM (Map (Loc ProcDeclE) [(Loc VarDeclE, VarId)])
+    -- pCDecls <- getMap allSortsMap (pd ^. procs)
+    --            :: CompilerM (Map (Loc ProcDeclE) [(Loc ChanDeclE, ChanId)])
+    pdefMap <- procDeclsToProcDefMap
+                 ( allSortsMap
+                 :& cMap
+                 :& completeFidMap
+                 :& lFDefMap
+                 :& dMap
+--                 :& (pCDecls)
+                 )
+                 (pd ^. procs)
     -- Finally construct the TxsDefs.
     let mm = allSortsMap :& pdefMap :& cMap :& completeFidMap :& lFDefMap
 --    chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))

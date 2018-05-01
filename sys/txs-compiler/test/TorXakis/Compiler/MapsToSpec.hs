@@ -34,6 +34,53 @@ vegetableWithName :: MapsTo String Vegetable m => String -> m -> Either Error Ve
 vegetableWithName n m =
     lookup n m    
 
+somethingWithName :: ( MapsTo String Fruit m
+                     , MapsTo String Vegetable m )
+                  => String -> m -> Either Error (Either Fruit Vegetable)
+somethingWithName n m = 
+    case fruitWithName n m of
+        Right f -> Right (Left f)
+        Left _  -> Right <$> vegetableWithName n m
+
+fooBi :: ( --MapsTo Text SortId mm
+    MapsTo String Bool mm
+--         , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
+         -- , In (Text, ChanId) (Contents mm) ~ 'False
+         -- , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
+         -- , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
+         -- , In (ProcId, ()) (Contents mm) ~ 'False
+--         , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
+         )
+      => mm -> ()
+fooBi _ = ()
+
+qq :: Map Double Int
+qq = Map.empty
+zz :: Map Bool Int
+zz = Map.empty
+tt :: Map Char Int
+tt = Map.empty
+dd :: Map Int Double
+dd = Map.empty
+gg :: Map Bool Double
+gg = Map.empty
+hh :: Map Char Double
+hh = Map.empty
+myma :: Map String Bool
+myma = Map.empty
+        
+boom :: ()
+boom =
+    fooBi ( (myma
+            :&
+            qq)
+            :& (dd -- TODO: find out why removing the parentheses won't compile.
+            :& tt  -- Removing one of the elements here (e.g. 'tt' will work as well)
+            :& zz
+            :& gg)
+            :& hh
+          )
+
 spec :: Spec
 spec = do
     it "It gets the right fruit in a map" $
@@ -48,6 +95,14 @@ spec = do
     it "It gets the right vegetable in a composite map" $
        let Right res = vegetableWithName "Spinach" (fruitNames :& vegetableNames :& fruitNumbers) in
            res `shouldBe` Spinach
+    it "It gets the right thing in a composite map" $
+       let Right (Right res) = somethingWithName "Spinach" (z :& x :& fruitNames :& vegetableNames :& fruitNumbers)
+           x :: Map Double Int
+           x = undefined
+           z :: Map Double Bool
+           z = undefined
+       in
+           res `shouldBe` Spinach           
     it "It gets all the vegetables names in a composite map" $
         keys @String @Vegetable
             (fruitNames :& vegetableNames :& fruitNumbers)

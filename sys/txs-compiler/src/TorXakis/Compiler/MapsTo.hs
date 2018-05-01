@@ -77,6 +77,7 @@ data Tree a = Leaf a | Node (Tree a) (Tree a)
 type instance Contents (Map k v) = 'Leaf (k, v)
 type instance Contents [a] = 'Leaf ()
 type instance Contents (Either a b) = 'Leaf ()
+type instance Contents (a, b) = 'Leaf ()
 
 instance MapsTo k v (Map k v) where
     lookup k m = maybeToEither err . Map.lookup k $ m
