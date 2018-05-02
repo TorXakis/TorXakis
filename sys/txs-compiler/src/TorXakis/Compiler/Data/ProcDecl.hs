@@ -82,3 +82,5 @@ instance ( MapsTo Text SortId mm
 --         traverse (varIdFromVarDecl pdSIds) (procDeclParams pd)
 --         --return [(getLoc pd, pVIds)]
 
+allProcIds :: MapsTo (Loc ProcDeclE) ProcDeclC mm => mm -> [ProcId]
+allProcIds mm = (\(pId, _, _) -> pId) <$> values @(Loc ProcDeclE) @ProcDeclC mm

@@ -41,11 +41,6 @@ procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
                          , MapsTo FuncDefInfo FuncId mm
                          , MapsTo FuncId (FuncDef VarId) mm
---                         , MapsTo Text [ProcId] mm
-                         -- , MapsTo (Loc ProcDeclE) [(Loc VarDeclE, VarId)] mm
---                         , MapsTo (Loc ProcDeclE) [(Loc ChanDeclE, ChanId)] mm
-                         -- , MapsTo Double Int mm
---                         , DefinesAMap (Loc VarDeclE) VarId ProcDecl mm
                          , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                          , In (Text, ChanId) (Contents mm) ~ 'False
                          , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
@@ -55,8 +50,7 @@ procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                       => mm
                       -> [ProcDecl]
                       -> CompilerM (Map ProcId ProcDef)
-procDeclsToProcDefMap mm ps =
-    gProcDeclsToProcDefMap emptyMpd ps
+procDeclsToProcDefMap mm  = gProcDeclsToProcDefMap emptyMpd
     where
       emptyMpd = Map.empty :: Map ProcId ProcDef
       gProcDeclsToProcDefMap :: Map ProcId ProcDef
@@ -64,7 +58,7 @@ procDeclsToProcDefMap mm ps =
                              -> CompilerM (Map ProcId ProcDef)
       gProcDeclsToProcDefMap mpd rs = do
           pms <- getMap mm rs
-          (ls, rs') <- traverseCatch (mkpIdPDefM mpd pms) rs
+          (ls, rs') <- traverseCatch (mkpIdPDefM pms) rs
           case (ls, rs') of
               ([], _) -> return $ Map.fromList rs' <> innerMap mpd
               (_, []) -> throwError Error
@@ -74,39 +68,25 @@ procDeclsToProcDefMap mm ps =
                   }
               (_, _ ) -> gProcDeclsToProcDefMap (Map.fromList rs' <.+> mpd) (fst <$> ls)
 
-      mkpIdPDefM :: Map ProcId ProcDef
-                 -> Map (Loc ProcDeclE) ProcDeclC
+      mkpIdPDefM :: Map (Loc ProcDeclE) ProcDeclC
                  -> ProcDecl
                  -> CompilerM (ProcId, ProcDef)
-      mkpIdPDefM mpd pms pd = do
---          pId         <- getNextId
-          (newPid, chIds, pvIds) <- pms .@ getLoc pd
-              :: CompilerM ProcDeclC
+      mkpIdPDefM pms pd = do
+          (pId, chIds, pvIds) <- pms .@ getLoc pd :: CompilerM ProcDeclC
           -- Scan for channel references and declarations
           chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
---          chIds   <- getKVs mm pd :: CompilerM [(Loc ChanDeclE, ChanId)]
           let chIdsM = Map.fromList chIds
-          procChIds <- traverse (chIdsM .@) (getLoc <$> procDeclChParams pd)
-          -- List of VarId's associated to the variables declared by a formal parameter.
---          pvIds       <- mm .@ getLoc pd :: CompilerM [(Loc VarDeclE, VarId)]
---          pvIds <- getKVs mm pd :: CompilerM [(Loc VarDeclE, VarId)]
---          e           <- declExitSort (procRetSort . procDeclComps $ pd) <!!> pd
           let body = procDeclBody pd
-              pvIds' = snd <$> pvIds
-              -- NOTE: we need to introduce a temporary ProcId to deal with the case of recursive process!
---              newPid = ProcId (procDeclName pd) (Id pId) procChIds pvIds' e
-              -- We add the newly defined process to the map.
-              mpd' = Map.fromList $ (newPid, ()) : zip (keys @ProcId @ProcDef mpd) (repeat ())
-          -- List of VarId's associated to the variables declared by a question mark offer.
-          bTypes      <- Map.fromList <$> inferVarTypes (  Map.fromList pvIds
-                                                        :& mm
-                                                        :& Map.fromList (fmap (second varsort) pvIds)
-                                                        :& mpd'
-                                                        :& chDecls
-                                                        :& chIdsM ) body
-          bvIds       <- mkVarIds bTypes body
+              mpd' = Map.fromList $ zip (allProcIds pms) (repeat ())
+          bTypes  <- Map.fromList <$>
+              inferVarTypes (  Map.fromList pvIds
+                            :& mm
+                            :& Map.fromList (fmap (second varsort) pvIds)
+                            :& mpd'
+                            :& chDecls
+                            :& chIdsM ) body
+          bvIds   <- mkVarIds bTypes body
           b       <- toBExpr (  bTypes
---                             :& (allChIds .&.
                              :& Map.fromList (pvIds ++ bvIds)
                              :& mm
                              :& mpd'
@@ -115,10 +95,6 @@ procDeclsToProcDefMap mm ps =
                              ) body
           -- NOTE that it is crucial that the order of the channel parameters
           -- declarations is preserved!
-          return ( newPid
-                 , ProcDef procChIds pvIds' b
-                 )
---              where
-                -- declExitSort NoExitD    = return NoExit
-                -- declExitSort HitD       = return Hit
-                -- declExitSort (ExitD xs) = Exit <$> sortIds mm xs
+          procChIds <- traverse (chIdsM .@) (getLoc <$> procDeclChParams pd)
+          let pvIds' = snd <$> pvIds
+          return ( pId, ProcDef procChIds pvIds' b )
