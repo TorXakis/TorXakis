@@ -22,49 +22,50 @@ module TxsStep
 
 (
   -- * set stepping mode
-  txsSetStep       -- :: D.ModelDef -> IOC.IOC ()
+  txsSetStep       -- :: D.ModelDef -> IOC.IOC (Either EnvData.Msg ())
 
   -- * shut stepping mode
-, txsShutStep      -- :: IOC.IOC ()
+, txsShutStep      -- :: IOC.IOC (Either EnvData.Msg ())
 
   -- * start stepping mode
-, txsStartStep     -- :: IOC.IOC ()
+, txsStartStep     -- :: IOC.IOC (Either EnvData.Msg ())
 
   -- * stop stepping mode
-, txsStopStep      -- :: IOC.IOC ()
+, txsStopStep      -- :: IOC.IOC (Either EnvData.Msg ())
 
   -- * do an action in the model
-, txsStepAct       -- :: DD.Action -> IOC.IOC DD.Verdict
+, txsStepAct       -- :: DD.Action -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
   -- * do an action according to offer-pattern in the model
-, txsStepOffer     -- :: D.Offer -> IOC.IOC DD.Verdict
+, txsStepOffer     -- :: D.Offer -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
   -- * run n actions on the model; if n<0 then indefinitely many actions
-, txsStepRun       -- :: Int -> IOC.IOC DD.Verdict
+, txsStepRun       -- :: Int -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
   -- * give the menu of possible offers in the model
-, txsStepMenu      -- :: IOC.IOC BTree.Menu
+, txsStepMenu      -- :: IOC.IOC (Either EnvData.Msg BTree.Menu)
 
   -- * give current state number in the model
-, txsStepStateNr   -- :: IOC.IOC EnvData.StateNr
+, txsStepStateNr   -- :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
 
   -- * give current state in the model
-, txsStepState     -- :: IOC.IOC BTree.BTree 
+, txsStepState     -- :: IOC.IOC (Either EnvData.Msg BTree.BTree)
 
   -- * give trace from initial state to current state in the model
-, txsStepTrace     -- :: [DD.Action]
+, txsStepTrace     -- :: IOC.IOC (Either EnvData.Msg [DD.Action])
 
   -- * give transition graph of actions stepped through so far
-, txsStepGraph     -- :: [(EnvData.StateNr,DD.Action,EnvData.StateNr)]
+, txsStepGraph     -- :: IOC.IOC (Either EnvData.Msg
+                                         [(EnvData.StateNr,DD.Action,EnvData.StateNr)])
 
   -- * go to the specified state number in the model
-, txsStepTo        -- :: EnvData.StateNr -> IOC.IOC ()
+, txsStepTo        -- :: EnvData.StateNr -> IOC.IOC (Either EnvData.Msg ())
 
   -- * go to the initial state in the model
-, txsStepInit      --  :: IOC.IOC ()
+, txsStepInit      --  :: IOC.IOC (Either EnvData.Msg ())
 
   -- * go back with the specified number of steps in the model.
-, txsStepBack      --  :: Int -> IOC>IOC ()
+, txsStepBack      --  :: Int -> IOC.IOC (Either EnvData.Msg ())
 )
 
 -- ----------------------------------------------------------------------------------------- --
