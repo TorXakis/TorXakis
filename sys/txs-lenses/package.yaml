@@ -22,7 +22,7 @@ maintainer:
 default-extensions:
 - OverloadedStrings
 
-dependencies:
+dependencies: []
 
 ghc-options:
 - -O2
