@@ -13,64 +13,68 @@ See LICENSE at root directory of this repository.
 
 module TorXakis.Lib.Examples where
 
-import           Control.Concurrent           (ThreadId, forkIO)
+--import           Control.Concurrent           (ThreadId, forkIO)
 import           Control.Concurrent.Async     (async, cancel)
-import           Control.Concurrent.STM.TChan (TChan, writeTChan)
-import           Control.Concurrent.STM.TVar  (readTVarIO)
-import           Control.Exception            (SomeException)
-import           Control.Monad                (forever, void, when)
-import           Control.Monad.State          (evalStateT)
+import           Control.Concurrent.STM.TChan (writeTChan)
+    --import           Control.Concurrent.STM.TVar  (readTVarIO)
+--import           Control.Exception            (SomeException)
+import           Control.Monad                (void, when)
+--import           Control.Monad.State          (evalStateT)
 import           Control.Monad.STM            (atomically)
-import           Data.Aeson                   (decode)
-import           Data.Aeson.Lens              (key)
-import           Data.Aeson.Types             (Value (String))
-import qualified Data.ByteString.Char8        as BS
-import qualified Data.ByteString.Lazy.Char8   as BSL
+--import           Data.Aeson                   (decode)
+--import           Data.Aeson.Lens              (key)
+--import           Data.Aeson.Types             (Value (String))
+--import qualified Data.ByteString.Char8        as BS
+--import qualified Data.ByteString.Lazy.Char8   as BSL
 import           Data.Conduit                 (runConduit, (.|))
 import           Data.Conduit.Combinators     (mapM_, sinkList, take)
 import           Data.Conduit.TQueue          (sourceTQueue)
 import           Data.Foldable                (traverse_)
-import           Data.List.Extra              (dropPrefix)
+--import           Data.List.Extra              (dropPrefix)
 import qualified Data.Map                     as Map
-import           Data.Monoid                  ((<>))
+--import           Data.Monoid                  ((<>))
 import qualified Data.Set                     as Set
-import           Data.Text                    (Text)
-import qualified Data.Text                    as T
-import           Lens.Micro                   ((&), (.~), (^.), (^?))
+--import           Data.Text                    (Text)
+--import qualified Data.Text                    as T
+import           Lens.Micro                   ((^.))
 import           Prelude                      hiding (mapM_, take)
 import           System.FilePath              ((</>))
-import           System.Process               (StdStream (NoStream), proc,
-                                               std_out, withCreateProcess)
+--import           System.Process               (StdStream (NoStream), proc,
+--                                               std_out, withCreateProcess)
 
 import           ChanId                       (ChanId (ChanId))
-import qualified ChanId
-import           ConstDefs                    (Const (Cint, Cstr, Cstring),
-                                               args, cInt, cString, cstrId)
-import           CstrId                       (CstrId (CstrId), name)
-import           EnvBTree                     (EnvB (EnvB), msgs, smts, stateid)
-import qualified EnvBTree                     as E
-import           EnvData                      (Msg (AnAction), act)
-import           Eval                         (eval)
-import           FuncTable                    (FuncTable, Signature (Signature),
-                                               signHandler)
+-- import qualified ChanId
+import           ConstDefs                    (Const (Cstring))
+--                                               args, cInt, cString, cstrId)
+--import           CstrId                       (CstrId (CstrId), name)
+--import           EnvBTree                     (EnvB (EnvB), msgs, smts, stateid)
+--import qualified EnvBTree                     as E
+import           EnvData                      (Msg)
+--import           Eval                         (eval)
+-- import           FuncTable                    (FuncTable, Signature (Signature),
+--                                                signHandler)
 import           Id                           (Id (Id))
-import           Name                         (Name)
+--import           Name                         (Name)
 import           SortId                       (SortId (SortId))
-import           SortOf                       (sortOf)
+--import           SortOf                       (sortOf)
 import           TorXakis.Lens.ModelDef
-import           TorXakis.Lens.Sigs           (funcTable)
-import           TorXakis.Lens.TxsDefs
+--import           TorXakis.Lens.Sigs           (funcTable)
+--import           TorXakis.Lens.TxsDefs
 import           TorXakis.Lib
 import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
-import           TxsDDefs                     (Action (Act, ActQui), Verdict)
-import           TxsDefs                      (ModelDef, sortDefs)
-import           ValExpr                      (ValExpr, cstrConst)
-import           VarId                        (VarId)
+import           TxsDDefs                     (Action (Act, ActQui))
+import           TxsDefs                      (ModelDef)
+--import           ValExpr                      (ValExpr, cstrConst)
+--import           VarId                        (VarId)
 
-import           Network.Wreq                 (foldGet, get, partFile, partText,
-                                               post, responseBody,
-                                               responseStatus, statusCode)
+-- import           Network.Wreq                 (foldGet, get, partFile, partText,
+--                                                post, responseBody,
+--                                                responseStatus, statusCode)
+
+import           Network.Wreq                 (partText, post, responseStatus,
+                                               statusCode)
+
 
 -- | Get the next N messages in the session.
 --
