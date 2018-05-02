@@ -18,8 +18,9 @@ import           Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue,
 import           Control.Concurrent.STM.TVar   (modifyTVar', newTVarIO,
                                                 readTVarIO)
 import           Control.DeepSeq               (force)
-import           Control.Exception             (ErrorCall, SomeException, catch,
-                                                evaluate, try)
+import           Control.Exception             (ErrorCall, Exception,
+                                                SomeException, catch, evaluate,
+                                                toException, try)
 import           Control.Monad                 (unless, void)
 import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically, retry)
@@ -28,6 +29,7 @@ import           Data.Aeson                    (ToJSON)
 import           Data.Foldable                 (traverse_)
 import           Data.Map.Strict               as Map
 import           Data.Semigroup                ((<>))
+import           Data.Set                      (Set)
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import           GHC.Generics                  (Generic)
@@ -49,7 +51,7 @@ import           TxsStep                       (txsSetStep, txsShutStep,
 -- import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
 --                                                 txsStepN, txsStop, txsTestN)
 import           TxsDDefs                      (Verdict)
-import           TxsDefs                       (ModelDef)
+import           TxsDefs                       (ModelDef, Offer)
 import           TxsHappy                      (txsParser)
 
 import           TorXakis.Lib.Session
@@ -61,6 +63,11 @@ type FileContents = String
 
 -- TODO: do we need a String here?
 data Response = Success | Error { msg :: String } deriving (Eq, Show)
+
+data LibException = TxsError { errMsg :: Msg } deriving Show
+
+instance Exception LibException
+
 
 isError :: Response -> Bool
 isError (Error _) = True
@@ -120,8 +127,8 @@ stepper :: Session
         -> IO Response
 stepper s mn = runResponse $ do
     mDef <- lookupModel s mn
-    lift $ runIOC s $ do txsSetStep mDef
-                         txsStartStep
+    runIOCE s (txsSetStep mDef)
+    runIOCE s txsStartStep
 
 lookupModel :: Session -> Name -> ExceptT Text IO ModelDef
 lookupModel s mn = do
@@ -133,11 +140,9 @@ lookupModel s mn = do
 
 -- | Leave the stepper.
 shutStepper :: Session -> IO Response
-shutStepper s  =  do
-    runIOC s $ do
-        txsStopStep
-        txsShutStep
-        return Success
+shutStepper s  = runResponse $ do
+    runIOCE s txsStopStep
+    runIOCE s txsShutStep
 
 msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
@@ -156,9 +161,15 @@ data StepType =  NumberOfSteps Int
 step :: Session -> StepType -> IO Response
 step s (NumberOfSteps n) = do
     void $ forkIO $ do
-        verd <- try $ runIOC s $ txsStepRun n
-        atomically $ writeTQueue (s ^. verdicts) verd
+        eVerd <- try $ runIOC s $ txsStepRun n
+        case eVerd of
+            Left e -> atomically $ writeTQueue (s ^. verdicts) (Left e)
+            Right (Left eMsg) ->
+                atomically $ writeTQueue (s ^. verdicts) $ Left $ toException $ TxsError eMsg
+            Right (Right verd) ->
+                atomically $ writeTQueue (s ^. verdicts) $ Right verd
     return Success
+
 
 -- | Wait for a verdict to be reached.
 waitForVerdict :: Session -> IO (Either SomeException Verdict)
@@ -211,6 +222,10 @@ stop s =
     -- runResponse $ lift $ runIOC s txsStop
     return Success
 
+-- | Parse a string into a set of offers.
+parseOffer :: Session -> Text -> IO (Either Text (Set Offer))
+parseOffer = undefined
+
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.
 --
@@ -236,3 +251,11 @@ runIOC s act = runIOC' `catch` reportError
           putMVar (s ^. pendingIOC) ()
           atomically $ writeTQueue (s ^. sessionMsgs) (TXS_CORE_SYSTEM_ERROR (show err))
           error (show err)
+
+-- | Run an IC action but wrap the results in an exception.
+runIOCE :: Session -> IOC (Either Msg a) -> ExceptT Text IO a
+runIOCE s act = do
+    er <- lift $ runIOC s act
+    case er of
+        Left eMsg -> throwE . T.pack . show $ eMsg
+        Right res -> return res
