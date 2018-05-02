@@ -30,21 +30,20 @@ where
 
 import           Control.Monad.State
 
-import           Data.Either
-import qualified Data.Map  as Map
-import qualified Data.Set  as Set
-import qualified Data.String.Utils   as Utils
+import           Data.Either         (partitionEithers)
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
 
 -- import from serverenv
 -- import qualified EnvServer    as IOS
 
 -- import from core
-import qualified EnvCore   as IOC
+import qualified EnvCore             as IOC
 import qualified TxsCore
 
 --import from defs
-import qualified TxsDDefs        as DD
-import qualified TxsDefs         as D
+import qualified TxsDDefs            as DD
+import qualified TxsDefs             as D
 import           TxsShow
 
 -- import from valexpr
@@ -74,8 +73,8 @@ encode towhdls (DD.Act offs)
             sval <- TxsCore.txsEval $
                       subst (Map.map cstrConst wenv) (D.funcDefs (IOC.tdefs st)) vexp
             return $ case sval of
-                       Cstring s -> DD.SAct h s
-                       _         -> error "Encode 3: No encoding to String\n"
+                       Right (Cstring s) -> DD.SAct h s
+                       x -> error $ "Encode 3: No encoding to String\n" ++ show x
 
 encode _towhdls DD.ActQui
   =  return DD.SActQui
@@ -93,8 +92,10 @@ decode frowhdls (DD.SAct hdl sval)
                   _        -> error "Decode: No (unique) handle\n"
          senv = Map.fromList [ (var', cstrConst (Cstring sval)) ]
       in do st   <- gets IOC.state
-            wals <- mapM (TxsCore.txsEval . subst senv (D.funcDefs (IOC.tdefs st))) vexps
-            return $ DD.Act ( Set.singleton (chan',wals) )
+            eWals <- mapM (TxsCore.txsEval . subst senv (D.funcDefs (IOC.tdefs st))) vexps
+            case partitionEithers eWals of
+                ([], wals) -> return $ DD.Act ( Set.singleton (chan',wals) )
+                (errs, _)  -> error $ "Decode: " ++ show errs
 
 decode _frowhdls DD.SActQui
   =  return DD.ActQui

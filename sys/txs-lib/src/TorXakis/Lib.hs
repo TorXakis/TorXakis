@@ -187,25 +187,28 @@ tester s mn = runResponse $ do
         st <- readTVarIO (s ^. sessionState)
         tids <- (s ^. wConnDef . initWorld) fWCh
         let Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (st ^. prms)
-            deltaTime = read deltaString
+            deltaTime = undefined -- read deltaString
             s' = s & worldListeners .~ tids
-        runIOC s' $
-            txsSetTest (putToW fWCh (s' ^. wConnDef . toWorldMappings))
-                       (getFromW deltaTime fWCh)
-                       mDef Nothing Nothing
+        runIOC s' $ undefined
+            -- TODO: `txsSetTest` this was commented out by Jan.
+            -- txsSetTest (putToW fWCh (s' ^. wConnDef . toWorldMappings))
+            --            (getFromW deltaTime fWCh)
+            --            mDef Nothing Nothing
 
 -- | Test for n-steps
 test :: Session -> StepType -> IO Response
 test s (NumberOfSteps n) = do
-    void $ forkIO $ do
-        verdict <- try $ runIOC s $ txsTestN n
-        atomically $ writeTQueue (s ^. verdicts) verdict
+    void $ forkIO $ do undefined
+        -- TODO: `txsTestN` this was commented out by Jan.
+        -- verdict <- try $ runIOC s $ txsTestN n
+        -- atomically $ writeTQueue (s ^. verdicts) verdict
     return Success
 
 -- | Start the stepper with the given model.
 stop :: Session -> IO Response
-stop s =
-    runResponse $ lift $ runIOC s txsStop
+stop s = undefined
+    -- TODO: `txsStop` was commented out by Jan.
+    -- runResponse $ lift $ runIOC s txsStop
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.
