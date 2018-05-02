@@ -17,7 +17,7 @@ import           Control.Concurrent.STM.TQueue (TQueue)
 import           Control.Concurrent.STM.TVar   (TVar)
 import           Control.DeepSeq               (NFData)
 import           Control.Exception             (SomeException)
-import qualified Data.Char                     as Char
+-- import qualified Data.Char                     as Char
 import qualified Data.Map                      as Map
 import           GHC.Generics                  (Generic)
 import           Lens.Micro.TH                 (makeLenses)
@@ -26,11 +26,11 @@ import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
 import           EnvCore                       (EnvC, initEnvC)
 import           EnvData                       (Msg)
-import           ParamCore                     (Params)
-import           Sigs                          (Sigs, empty)
+-- import           ParamCore                     (Params)
+-- import           Sigs                          (Sigs, empty)
 import           TxsDDefs                      (Action, Verdict)
-import           TxsDefs                       (TxsDefs, empty)
-import           VarId                         (VarId)
+-- import           TxsDefs                       (TxsDefs, empty)
+-- import           VarId                         (VarId)
 
 newtype ToWorldMapping = ToWorldMapping
     { -- Send some data to the external world, getting some action as a response

@@ -64,6 +64,7 @@ data TxsServerCmd
      | Sim         Observe                             -- make environment observation (input)
                  | Action   actiontxt    :: String     -- make simulation step <action> (output)
                  | Run      nrsteps      :: Maybe Int  -- make <nrsteps>/[unbounded] sim steps
+
      | Step        Action   actiontxt    :: String     -- make step <action> in stepping object
                  | Run      nrsteps      :: Maybe Int  -- make <nrsteps>/[unbounded] steps
                  | GoTo     statenr      :: Int        -- go to state <statenr>

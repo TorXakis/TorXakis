@@ -1,0 +1,49 @@
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+
+
+-- ------------------------------------------------------------------------------------------ --
+-- structure for TxsServer Commands
+
+
+-- Start TxsServer :  call txsserver.exe <PrtNr>
+
+
+data TxsServerCmd
+  =  
+     . . . . . 
+
+     | Load      filename     :: String                -- load <filename>.txs with TXS defs
+     | UnLoad    filename     :: String                -- unload <filename>.txs with TXS defs
+
+     | Info                                            -- give info about current TorXakis
+
+     | Stepper     Model    modelname    :: String     -- start stepper with model
+
+     | Step        Action   actiontxt    :: String     -- make step <action> in stepping object
+                 | Run      nrsteps      :: Maybe Int  -- make <nrsteps>/[unbounded] steps
+                 | GoTo     statenr      :: Int        -- go to state <statenr>
+                 | GoInit                              -- go to initial state
+                 | GoBack   nrsteps      :: Maybe Int  -- go back <nrsteps>/[1] steps
+                 | Tree     statenr      :: Maybe Int  -- show action tree from <statenr>/[init]
+
+     | StateNr                                         -- show current state number
+     | State                                           -- show current state
+     | Menu        All                                 -- show menu of possible actions
+                 | In                                  -- show menu of possible input actions
+                 | Out                                 -- show menu of possible output actions
+     | Trace       Show                                -- show current trace from initial state
+                 | ToProc                              -- generate process from current trace
+                 | ToPurp                              -- generate purpose from current trace
+
+     | Stop        All                                 -- stop all: go to Idled
+                 | Doing                               -- stop Testing,..: go to Inited
+                 | Running                             -- stop running test,..: go to Tested,..
+
+parse
+
+unparse
+
+-- ------------------------------------------------------------------------------------------ --
+

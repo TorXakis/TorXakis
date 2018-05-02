@@ -56,7 +56,7 @@ module TxsStep
 
   -- * give transition graph of actions stepped through so far
 , txsStepGraph     -- :: IOC.IOC (Either EnvData.Msg
-                                         [(EnvData.StateNr,DD.Action,EnvData.StateNr)])
+                   --                    [(EnvData.StateNr,DD.Action,EnvData.StateNr)])
 
   -- * go to the specified state number in the model
 , txsStepTo        -- :: EnvData.StateNr -> IOC.IOC (Either EnvData.Msg ())
