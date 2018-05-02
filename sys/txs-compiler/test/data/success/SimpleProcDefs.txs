@@ -107,11 +107,11 @@ PROCDEF letter[In, Out :: Int]() ::=
 ENDDEF
 
 PROCDEF letter2[In, Out :: Int]() ::=
-   In ? x >-> LET y = x + 1 IN Out ! y NI --  ||| Out ! 2
+   In ? x >-> LET y = x + 1 IN Out ! y NI ||| Out ! 2
 ENDDEF
 
 PROCDEF letter3[In, Out :: Int](x :: Int) ::=
-   In ? x :: Int >-> LET y = x + 1 IN Out ! y NI --  ||| Out ! 2
+   In ? x :: Int >-> LET y = x + 1 IN Out ! y NI ||| Out ! 2
 ENDDEF
 
 PROCDEF overloaded[X :: String; Out :: String]() ::=
