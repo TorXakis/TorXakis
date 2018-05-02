@@ -50,11 +50,8 @@ makeLenses ''WorldConnDef
 -- TODO: '_tdefs' '_sigs', and '_wConnDef' should be placed in a data structure
 -- having a name like 'SessionEnv', since they won't change once a 'TorXakis'
 -- file is compiled.
-data SessionSt = SessionSt
-    { _tdefs   :: TxsDefs
-    , _sigs    :: Sigs VarId
-    , _envCore :: EnvC
-    , _prms    :: Params
+newtype SessionSt = SessionSt
+    { _envCore :: EnvC
     } deriving (Generic, NFData)
 
 makeLenses ''SessionSt
@@ -74,18 +71,4 @@ makeLenses ''Session
 
 -- * Session state manipulation
 emptySessionState :: SessionSt
-emptySessionState = SessionSt TxsDefs.empty Sigs.empty initEnvC initParams
--- TODO: coreenv can be used to read from config file, and
---       some of TxsServerConfig.hs might be extracted to a common package
-                        -- $ Config.updateParamVals initParams
-                        --     $ Config.configuredParameters initConfig
-    where
-        initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
-            [ ( "param_Sut_deltaTime"      , "2000"      , \s -> not (null s) && all Char.isDigit s)
-                        -- param_Sut_deltaTime :: Int (>0)
-                        -- quiescence output time (millisec >0)
-            , ( "param_Sim_deltaTime"      , "2000"       , \s -> not (null s) && all Char.isDigit s)
-                        -- param_Sim_deltaTime :: Int (>0)
-                        -- quiescence input time (millisec >0)
-            ]
-
+emptySessionState = SessionSt initEnvC

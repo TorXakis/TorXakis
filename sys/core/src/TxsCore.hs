@@ -56,12 +56,14 @@ module TxsCore
   -- ** stop testing, simulating
 , txsStopEW
 
+-}
   -- *  TorXakis definitions
   -- ** get all torxakis definitions
 , txsGetTDefs
-
+{-
   -- ** set all torxakis definitions
 , txsSetTDefs
+
 
   -- * Parameters
   -- ** get all parameter values
@@ -183,8 +185,8 @@ import qualified Eval
 -- import from valexpr
 -- import qualified SortId
 -- import qualified SortOf
-import ConstDefs
-import VarId
+import           ConstDefs
+import           VarId
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -336,8 +338,6 @@ txsStopEW eWorld  =  do
 
 -}
 
-{-
-
 -- | Get all torxakis definitions
 txsGetTDefs :: IOC.IOC TxsDefs.TxsDefs
 txsGetTDefs  =  do
@@ -346,6 +346,8 @@ txsGetTDefs  =  do
        IOC.Idling -> return TxsDefs.empty
        _                             -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
                   -> return $ IOC.tdefs (IOC.state envc)
+
+{-
 
 -- | Set all torxakis definitions
 txsSetTDefs :: TxsDefs.TxsDefs -> IOC.IOC ()
@@ -552,8 +554,8 @@ txsSetTest eWorld moddef mapdef purpdef  =  do
                case maybt of
                  Nothing
                    -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Tester start failed" ]
-                         return eWorld 
-                 Just bt 
+                         return eWorld
+                 Just bt
                    -> do eWorld' <- IOC.startW eWorld
                          IOC.putCS IOC.Testing { IOC.smts      = smts
                                                , IOC.tdefs     = tdefs
@@ -569,9 +571,9 @@ txsSetTest eWorld moddef mapdef purpdef  =  do
                                                , IOC.mapsts    = mt
                                                , IOC.purpsts   = fmap (second Left) gls
                                                , IOC.putmsgs   = putmsgs
-                                               } 
-                         unless                
-                           (null gls)        
+                                               }
+                         unless
+                           (null gls)
                            (IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Goals: " ++
                                           List.intercalate "," (TxsShow.fshow . fst <$> gls) ])
                          IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Tester started" ]

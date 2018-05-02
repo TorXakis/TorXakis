@@ -41,8 +41,8 @@ import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
-import           TxsCore                       (txsInitCore, txsSetCore,
-                                                txsTermitCore)
+import           TxsCore                       (txsGetTDefs, txsInitCore,
+                                                txsSetCore, txsTermitCore)
 import           TxsStep                       (txsSetStep, txsShutStep,
                                                 txsStartStep, txsStepRun,
                                                 txsStopStep)
@@ -101,15 +101,14 @@ load s xs = do
     r <- try $ do -- Since the 'TorXakis' parser currently just calls 'error'
                   -- we have to catch a generic 'ErrorCall' exception.
         (_, ts, is) <- evaluate . force . txsParser . txsLexer $ xs
-        atomically $ modifyTVar' (_sessionState s) ((tdefs .~ ts) . (sigs .~ is))
-        return ()
+        return (ts, is)
     case r of
         Left err -> return $ Error $ show (err :: ErrorCall)
-        Right _  -> do
+        Right (ts, is)  -> do
             -- Initialize the TorXakis core with the definitions we just loaded.
             st <- readTVarIO (s ^. sessionState)
             runIOC s $ do
-                resp <- txsInitCore (st ^. tdefs) (st ^. sigs) (msgHandler (_sessionMsgs s))
+                resp <- txsInitCore ts is (msgHandler (_sessionMsgs s))
                 case resp of
                     Right _ -> return Success
                     Left  e -> return $ Error e
@@ -127,9 +126,10 @@ stepper s mn = runResponse $ do
 lookupModel :: Session -> Name -> ExceptT Text IO ModelDef
 lookupModel s mn = do
     st <- lift $ readTVarIO (s ^. sessionState)
+    tdefs <- lift $ runIOC s txsGetTDefs
     maybe
         (throwE $ "No model named " <> mn)
-        return (st ^. tdefs . ix mn)
+        return (tdefs ^. ix mn)
 
 -- | Leave the stepper.
 shutStepper :: Session -> IO Response
@@ -186,9 +186,9 @@ tester s mn = runResponse $ do
         let fWCh = s ^. fromWorldChan
         st <- readTVarIO (s ^. sessionState)
         tids <- (s ^. wConnDef . initWorld) fWCh
-        let Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (st ^. prms)
-            deltaTime = undefined -- read deltaString
-            s' = s & worldListeners .~ tids
+        -- let Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (st ^. prms)
+        --     deltaTime = undefined -- read deltaString
+        let s' = s & worldListeners .~ tids
         runIOC s' $ undefined
             -- TODO: `txsSetTest` this was commented out by Jan.
             -- txsSetTest (putToW fWCh (s' ^. wConnDef . toWorldMappings))
