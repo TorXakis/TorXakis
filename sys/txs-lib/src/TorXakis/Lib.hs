@@ -43,8 +43,7 @@ import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
-import           TxsCore                       (txsGetTDefs, txsInitCore,
-                                                txsSetCore, txsTermitCore)
+import           TxsCore                       (txsGetTDefs, txsInitCore)
 import           TxsStep                       (txsSetStep, txsShutStep,
                                                 txsStartStep, txsStepRun,
                                                 txsStopStep)
@@ -111,9 +110,7 @@ load s xs = do
         return (ts, is)
     case r of
         Left err -> return $ Error $ show (err :: ErrorCall)
-        Right (ts, is)  -> do
-            -- Initialize the TorXakis core with the definitions we just loaded.
-            st <- readTVarIO (s ^. sessionState)
+        Right (ts, is)  ->
             runIOC s $ do
                 resp <- txsInitCore ts is (msgHandler (_sessionMsgs s))
                 case resp of
@@ -132,7 +129,6 @@ stepper s mn = runResponse $ do
 
 lookupModel :: Session -> Name -> ExceptT Text IO ModelDef
 lookupModel s mn = do
-    st <- lift $ readTVarIO (s ^. sessionState)
     tdefs <- lift $ runIOC s txsGetTDefs
     maybe
         (throwE $ "No model named " <> mn)
@@ -195,12 +191,11 @@ tester s mn = runResponse $ do
     mDef <- lookupModel s mn
     lift $ do
         let fWCh = s ^. fromWorldChan
-        st <- readTVarIO (s ^. sessionState)
         tids <- (s ^. wConnDef . initWorld) fWCh
         -- let Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (st ^. prms)
         --     deltaTime = undefined -- read deltaString
         let s' = s & worldListeners .~ tids
-        runIOC s' $ undefined
+        runIOC s' $ undefined mDef
             -- TODO: `txsSetTest` this was commented out by Jan.
             -- txsSetTest (putToW fWCh (s' ^. wConnDef . toWorldMappings))
             --            (getFromW deltaTime fWCh)
@@ -209,7 +204,7 @@ tester s mn = runResponse $ do
 -- | Test for n-steps
 test :: Session -> StepType -> IO Response
 test s (NumberOfSteps n) = do
-    void $ forkIO $ do undefined
+    void $ forkIO $ do undefined s n
         -- TODO: `txsTestN` this was commented out by Jan.
         -- verdict <- try $ runIOC s $ txsTestN n
         -- atomically $ writeTQueue (s ^. verdicts) verdict
@@ -217,7 +212,7 @@ test s (NumberOfSteps n) = do
 
 -- | Start the stepper with the given model.
 stop :: Session -> IO Response
-stop s =
+stop _ =
     -- TODO: `txsStop` was commented out by Jan.
     -- runResponse $ lift $ runIOC s txsStop
     return Success
