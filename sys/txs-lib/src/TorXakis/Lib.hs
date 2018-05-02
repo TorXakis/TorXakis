@@ -206,9 +206,10 @@ test s (NumberOfSteps n) = do
 
 -- | Start the stepper with the given model.
 stop :: Session -> IO Response
-stop s = undefined
+stop s =
     -- TODO: `txsStop` was commented out by Jan.
     -- runResponse $ lift $ runIOC s txsStop
+    return Success
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.

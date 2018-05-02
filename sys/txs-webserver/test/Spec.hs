@@ -14,7 +14,8 @@ import           Data.Aeson.Types             (Object, Parser, parseMaybe, (.:))
 import           Data.ByteString.Char8        as BS
 import           Data.ByteString.Lazy.Char8   as BSL
 import           Data.Maybe                   (mapMaybe)
-import           Lens.Micro                   ((^.))
+import           Lens.Micro                   ((^.), (^?))
+import           Lens.Micro.Aeson             (key, _Integer)
 import           System.Process               (StdStream (NoStream), proc,
                                                std_out, withCreateProcess)
 
@@ -60,10 +61,11 @@ spec = return $ do
                         fileName `shouldBe` "Point.txs"
                         loaded `shouldBe` True
             it "Uploads multiple files" $ do
-                _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
-                r <- put "http://localhost:8080/sessions/1/model" [ partFile "LuckyPeople.txs" "../../examps/LuckyPeople/spec/LuckyPeople.txs"
-                                                                  , partFile "PurposeExamples.txs" "../../examps/LuckyPeople/spec/PurposeExamples.txs"
-                                                                  ]
+                sId <- mkNewSession
+                r <- put (newSessionUrl sId)
+                    [ partFile "LuckyPeople.txs" "../../examps/LuckyPeople/spec/LuckyPeople.txs"
+                    , partFile "PurposeExamples.txs" "../../examps/LuckyPeople/spec/PurposeExamples.txs"
+                    ]
                 r ^. responseStatus . statusCode `shouldBe` 202 -- Accepted
                 let res = do
                         results <- decode $ r ^. responseBody
@@ -80,18 +82,19 @@ spec = return $ do
                         return CI.Response{CI.responseStatus = s}
                     handler e = throwIO e
                 _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
-                r <- put "http://localhost:8080/sessions/1/model" [partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"]
+                sId <- mkNewSession
+                r <- put (newSessionUrl sId) [partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"]
                         `catch` handler
                 r ^. responseStatus . statusCode `shouldBe` 400 -- Bad Request
-                r2 <- put "http://localhost:8080/sessions/1/model" [ partFile "Point.txs" "../../examps/Point/Point.txs"
+                r2 <- put (newSessionUrl sId) [ partFile "Point.txs" "../../examps/Point/Point.txs"
                                                                    , partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"
                                                                    ]
                         `catch` handler
                 r2 ^. responseStatus . statusCode `shouldBe` 400 -- Bad Request
         describe "Stepper" $
             it "Starts stepper and takes 3 steps" $ do
-                _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
-                _ <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                sId <- mkNewSession
+                _ <- put (newSessionUrl sId) [partFile "Point.txs" "../../examps/Point/Point.txs"]
                 post "http://localhost:8080/sessions/1/models/Model/stepper" [partText "" ""] >>= check204NoContent
                 post "http://localhost:8080/sessions/1/stepper/3" [partText "" ""] >>= check204NoContent
                 totalSteps <- foldGet checkActions 0 "http://localhost:8080/sessions/1/messages"
@@ -122,3 +125,13 @@ checkActions steps bs = do
 
 parseTag :: Object -> Parser String
 parseTag o = o .: "tag"
+
+mkNewSession :: IO Integer
+mkNewSession = do
+    sr <- post "http://localhost:8080/sessions/new" [partText "" ""]
+    sr ^. responseStatus . statusCode `shouldBe` 201 -- Created
+    let Just sId = sr ^? responseBody . key "sessionId" . _Integer
+    return sId
+
+newSessionUrl :: Integer -> String
+newSessionUrl sId = "http://localhost:8080/sessions/" ++ show sId ++ "/model"
