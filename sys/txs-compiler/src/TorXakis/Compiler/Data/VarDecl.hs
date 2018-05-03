@@ -2,7 +2,11 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TupleSections         #-}
-
+-- TODO: We are not exporting 'DefinesAMap' outside the compiler, so the
+-- declaration of orphan instances is not likely to cause problems. As an
+-- alternative we can move the 'ProcDecl' parser data type here. However I
+-- don't know how good that design decision is, since the parser and the
+-- compiler are sharing the same module.
 {-# OPTIONS_GHC -Wno-orphans #-}
 module TorXakis.Compiler.Data.VarDecl where
 

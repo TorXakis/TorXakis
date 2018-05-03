@@ -68,11 +68,11 @@ procDeclsToProcDefMap mm  = gProcDeclsToProcDefMap emptyMpd
                   }
               (_, _ ) -> gProcDeclsToProcDefMap (Map.fromList rs' <.+> mpd) (fst <$> ls)
 
-      mkpIdPDefM :: Map (Loc ProcDeclE) ProcDeclC
+      mkpIdPDefM :: Map (Loc ProcDeclE) ProcInfo
                  -> ProcDecl
                  -> CompilerM (ProcId, ProcDef)
       mkpIdPDefM pms pd = do
-          (pId, chIds, pvIds) <- pms .@ getLoc pd :: CompilerM ProcDeclC
+          ProcInfo pId chIds pvIds <- pms .@ getLoc pd :: CompilerM ProcInfo
           -- Scan for channel references and declarations
           chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
           let chIdsM = Map.fromList chIds

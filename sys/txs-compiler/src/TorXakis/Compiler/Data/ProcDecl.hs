@@ -6,14 +6,6 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
-
-{-# OPTIONS_GHC -Wno-orphans #-}
--- TODO: We are not exporting 'DefinesAMap' outside the compiler, so the
--- declaration of orphan instances is not likely to cause problems. As an
--- alternative we can move the 'ProcDecl' parser data type here. However I
--- don't know how good that design decision is, since the parser and the
--- compiler are sharing the same module.
-
 -- | Process declarations.
 module TorXakis.Compiler.Data.ProcDecl where
 
@@ -40,11 +32,15 @@ import           TorXakis.Parser.Data
 
 import           TorXakis.Compiler.Data.VarDecl
 
-type ProcDeclC = (ProcId, [(Loc ChanDeclE, ChanId)], [(Loc VarDeclE, VarId)])
+-- | Information about a process.
+data ProcInfo = ProcInfo ProcId [(Loc ChanDeclE, ChanId)] [(Loc VarDeclE, VarId)]
+
+getPId :: ProcInfo -> ProcId
+getPId (ProcInfo pId _ _) = pId
 
 instance ( MapsTo Text SortId mm
          , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
-         ) => DefinesAMap (Loc ProcDeclE) ProcDeclC ProcDecl mm where
+         ) => DefinesAMap (Loc ProcDeclE) ProcInfo ProcDecl mm where
     getKVs mm pd = do
         pId    <- getNextId
         allPChIds <- getKVs mm pd
@@ -59,15 +55,15 @@ instance ( MapsTo Text SortId mm
             :: CompilerM [(Loc VarDeclE, VarId)]
         eSort  <- declExitSort (procDeclRetSort pd) <!!> pd
         return [( getLoc pd
-                , ( ProcId
-                      (procDeclName pd)
-                      (Id pId)
-                      pChIds
-                      (snd <$> pVIds)
-                      eSort
-                  , allPChIds
-                  , pVIds
-                  )
+                , ProcInfo ( ProcId
+                             (procDeclName pd)
+                             (Id pId)
+                             pChIds
+                             (snd <$> pVIds)
+                             eSort
+                           )
+                           allPChIds
+                           pVIds
                 )]
             where
               declExitSort NoExitD    = return NoExit
@@ -82,5 +78,5 @@ instance ( MapsTo Text SortId mm
 --         traverse (varIdFromVarDecl pdSIds) (procDeclParams pd)
 --         --return [(getLoc pd, pVIds)]
 
-allProcIds :: MapsTo (Loc ProcDeclE) ProcDeclC mm => mm -> [ProcId]
-allProcIds mm = (\(pId, _, _) -> pId) <$> values @(Loc ProcDeclE) @ProcDeclC mm
+allProcIds :: MapsTo (Loc ProcDeclE) ProcInfo mm => mm -> [ProcId]
+allProcIds mm = getPId <$> values @(Loc ProcDeclE) @ProcInfo mm
