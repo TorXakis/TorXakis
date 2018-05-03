@@ -1,15 +1,34 @@
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+-- {-# LANGUAGE DefaultSignatures     #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-module TorXakis.Compiler.Maps.DefinesAMap where
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
+module TorXakis.Compiler.Maps.DefinesAMap
+    ( DefinesAMap
+    , getKVs
+    , getKs -- TODO: thid this
+    , getMap
+    , uGetKVs -- TODO: this shouldn't be visible outside the module. Arrange the modules structure to ensure this.
+    )
+where
 
-import           Control.Lens                     ((^.))
+import           Control.Lens                     ((^.), (^..))
+import           Control.Monad.Error.Class        (throwError)
+import           Data.Data                        (Data)
+import           Data.Data.Lens                   (biplate)
 import           Data.Map                         (Map)
 import qualified Data.Map                         as Map
+import           Data.Semigroup                   ((<>))
 import           Data.Set                         (Set)
 import qualified Data.Set                         as Set
+import qualified Data.Set                         as Set
 import           Data.Text                        (Text)
+import qualified Data.Text                        as T
+import           Data.Typeable                    (Typeable)
+
 
 import           ChanId                           (ChanId (ChanId))
 import           Id                               (Id (Id))
@@ -19,30 +38,60 @@ import           StdTDefs                         (chanIdExit, chanIdHit,
                                                    chanIdMiss, chanIdQstep)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Parser.Data
 
--- | Expressions that define a map from 'k' to 'v', provided a map 'm' is
--- available.
-class DefinesAMap k v e mm where
+-- | Abstract syntax tree types that define a map.
+--
+-- 'DefinesAMap k v e mm' models the fact that an AST 'e' defines a map from
+-- 'k' to 'v', provided a map 'm' is available.
+class (Show k, Ord k, Eq k) => DefinesAMap k v e mm where
+    -- | Get the 'k' 'v' pairs defined by the ast 'e'.
     getKVs :: mm -> e -> CompilerM [(k, v)]
+    getKVs mm e = do
+        res <- uGetKVs mm e
+        ks  <- getKs @k @v mm e
+        if Set.fromList ks `Set.isSubsetOf` Set.fromList (fmap fst res)
+            then return res
+            else throwError Error
+                 { _errorType = CompilerPanic
+                 , _errorLoc  = NoErrorLoc
+                 , _errorMsg  = "Not all the keys where mapped: \n"
+                                <> "    - expected: " <> T.pack (show ks) <> "\n"
+                                <> "    - but got: " <> T.pack (show $ fmap fst res)
+
+                 }
+    -- | Get the dictionary of 'k' 'v' pairs defined by the ast 'e'.
     getMap :: Ord k => mm -> e -> CompilerM (Map k v)
     getMap mm = fmap Map.fromList . getKVs mm
+    -- | Get the list of keys defined in 'e'. This is used for invariant
+    -- checking.
+    getKs :: mm -> e -> CompilerM [k]
+    -- default getKs :: (Data e, Typeable k) => mm -> e -> CompilerM [k]
+    -- getKs _ md = return $ md ^.. biplate
+    -- | Get the 'k' 'v' pairs defined by the ast 'e', without checking for the
+    -- invariant. Unchecked version of 'getKVs'.
+    uGetKVs :: mm -> e -> CompilerM [(k, v)]
 
-instance (DefinesAMap k v e mm) => DefinesAMap k v [e] mm where
-    getKVs mm es = concat <$> traverse (getKVs mm) es
+instance (Data e, Typeable k, DefinesAMap k v e mm) => DefinesAMap k v [e] mm where
+    uGetKVs mm es = concat <$> traverse (uGetKVs mm) es
+    getKs mm es = concat <$> traverse (getKs @k @v mm) es
 
-instance (DefinesAMap k v e mm) => DefinesAMap k v (Maybe e) mm where
-    getKVs mm = maybe (return []) (getKVs mm)
+instance (Data e, Typeable k, DefinesAMap k v e mm) => DefinesAMap k v (Maybe e) mm where
+    uGetKVs mm = maybe (return []) (uGetKVs mm)
+    getKs _ md = return $ md ^.. biplate
 
-instance (DefinesAMap k v e mm) => DefinesAMap k v (Set e) mm where
-    getKVs mm = getKVs mm . Set.toList
+instance (Data e, Typeable k, Ord e, DefinesAMap k v e mm) => DefinesAMap k v (Set e) mm where
+    uGetKVs mm = uGetKVs mm . Set.toList
+    getKs _ md = return $ md ^.. biplate
 
 -- * Expressions that define a map from channel name to its declaration
 instance DefinesAMap Text (Loc ChanDeclE) ChanDecl () where
-    getKVs () cd = return [(chanDeclName cd, getLoc cd)]
+    uGetKVs () cd = return [(chanDeclName cd, getLoc cd)]
+    getKs _ cd = return [chanDeclName cd]
 
 -- | Predefined channels declarations.
 predefChDecls :: Map Text (Loc ChanDeclE)
@@ -72,137 +121,150 @@ missChLoc = PredefLoc "MISS" 10004
 
 -- * Expressions that define a map from a channel reference to its declaration
 instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ParsedDefs () where
-    getKVs () pd = do
+    uGetKVs () pd = do
         cdMap <- getMap () (pd ^. chdecls) :: CompilerM (Map Text (Loc ChanDeclE))
-        chDeclModels <- getKVs (predefChDecls <.+> cdMap) (pd ^. models)
-        chDeclProcs <- getKVs () (pd ^. procs)
+        chDeclModels <- uGetKVs (predefChDecls <.+> cdMap) (pd ^. models)
+        chDeclProcs <- uGetKVs () (pd ^. procs)
         return $  chDeclModels ++ chDeclProcs
+    getKs _ md = return $ md ^.. biplate
 
 -- | A model declaration relies on channels declared outside of its scope,
 -- hence the need for a map from channel names to a location in which these
 -- channels are declared.
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ModelDecl mm where
-    getKVs mm md = do
+    uGetKVs mm md = do
        -- We augment the map with the predefined channels.
        let mm' = predefChDecls <.+> mm
-       ins   <- getKVs mm' (modelIns md)
-       outs  <- getKVs mm' (modelOuts md)
-       syncs <- getKVs mm' (modelSyncs md)
-       bes   <- getKVs mm' (modelBExp md)
+       ins   <- uGetKVs mm' (modelIns md)
+       outs  <- uGetKVs mm' (modelOuts md)
+       syncs <- uGetKVs mm' (modelSyncs md)
+       bes   <- uGetKVs mm' (modelBExp md)
        return $ ins ++ outs ++ syncs ++ bes
+    getKs _ md = return $ md ^.. biplate
 
 instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ProcDecl () where
-    getKVs () pd = do
+    uGetKVs () pd = do
         cdMap <- getMap () (procDeclChParams pd) :: CompilerM (Map Text (Loc ChanDeclE))
-        getKVs (predefChDecls <.+> cdMap) (procDeclBody pd)
+        uGetKVs (predefChDecls <.+> cdMap) (procDeclBody pd)
+    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) BExpDecl mm where
-    getKVs _ Stop                = return []
-    getKVs mm (ActPref aod be)   = (++) <$> getKVs mm aod <*> getKVs mm be
-    getKVs mm (LetBExp _ be)     = getKVs mm be
-    getKVs mm (Pappl _ _ crs _ ) = getKVs mm crs
-    getKVs mm (Par _ son be0 be1) = (++) <$> getKVs mm son
-                                         <*> ((++) <$> getKVs mm be0 <*> getKVs mm be1)
-    getKVs mm (Enable _ be0 be1) = (++) <$> getKVs mm be0 <*> getKVs mm be1
-    getKVs mm (Accept _ _ be) = getKVs mm be
-    getKVs mm (Disable _ be0 be1) = (++) <$> getKVs mm be0 <*> getKVs mm be1
-    getKVs mm (Interrupt _ be0 be1) = (++) <$> getKVs mm be0 <*> getKVs mm be1
-    getKVs mm (Choice _ be0 be1) = (++) <$> getKVs mm be0 <*> getKVs mm be1
-    getKVs mm (Guard _ be) = getKVs mm be
-    getKVs mm (Hide _ cds be) = do
+    uGetKVs _ Stop                = return []
+    uGetKVs mm (ActPref aod be)   = (++) <$> uGetKVs mm aod <*> uGetKVs mm be
+    uGetKVs mm (LetBExp _ be)     = uGetKVs mm be
+    uGetKVs mm (Pappl _ _ crs _ ) = uGetKVs mm crs
+    uGetKVs mm (Par _ son be0 be1) = (++) <$> uGetKVs mm son
+                                         <*> ((++) <$> uGetKVs mm be0 <*> uGetKVs mm be1)
+    uGetKVs mm (Enable _ be0 be1) = (++) <$> uGetKVs mm be0 <*> uGetKVs mm be1
+    uGetKVs mm (Accept _ _ be) = uGetKVs mm be
+    uGetKVs mm (Disable _ be0 be1) = (++) <$> uGetKVs mm be0 <*> uGetKVs mm be1
+    uGetKVs mm (Interrupt _ be0 be1) = (++) <$> uGetKVs mm be0 <*> uGetKVs mm be1
+    uGetKVs mm (Choice _ be0 be1) = (++) <$> uGetKVs mm be0 <*> uGetKVs mm be1
+    uGetKVs mm (Guard _ be) = uGetKVs mm be
+    uGetKVs mm (Hide _ cds be) = do
         cdMap <- getMap () cds :: CompilerM (Map Text (Loc ChanDeclE))
-        getKVs (cdMap <.+> mm) be
+        uGetKVs (cdMap <.+> mm) be
+    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) =>  DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ActOfferDecl mm where
-    getKVs mm (ActOfferDecl os _) = getKVs mm os
+    uGetKVs mm (ActOfferDecl os _) = uGetKVs mm os
+    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) OfferDecl mm where
-    getKVs mm (OfferDecl cr _) = getKVs mm cr
+    uGetKVs mm (OfferDecl cr _) = uGetKVs mm cr
+    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ChanRef mm where
-    getKVs mm cr = do
+    uGetKVs mm cr = do
         loc <- mm .@!! (chanRefName cr, cr)
         return [(getLoc cr, loc)]
+    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) SyncOn mm where
-    getKVs _ All           = return []
-    getKVs mm (OnlyOn crs) = getKVs mm crs
+    uGetKVs _ All           = return []
+    uGetKVs mm (OnlyOn crs) = uGetKVs mm crs
+    getKs _ md = return $ md ^.. biplate
 
 -- * Expressions that introduce new channel id's.
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ParsedDefs mm where
-    getKVs mm pd = do
-        chIdsDecls <- getKVs mm (pd ^. chdecls)
-        chIdsProcs <- getKVs mm (pd ^. procs)
+    uGetKVs mm pd = do
+        chIdsDecls <- uGetKVs mm (pd ^. chdecls)
+        chIdsProcs <- uGetKVs mm (pd ^. procs)
         return $ chIdsDecls ++ chIdsProcs
+    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ChanDecl mm where
-    getKVs mm cd = do
+    uGetKVs mm cd = do
         chId   <- getNextId
         chSids <- traverse (mm .@!!) (chanDeclSorts cd)
         return [(getLoc cd, ChanId (chanDeclName cd) (Id chId) chSids)]
+    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ProcDecl mm where
-    getKVs mm pd = do
-        parChids <- getKVs mm (procDeclChParams pd)
+    uGetKVs mm pd = do
+        parChids <- uGetKVs mm (procDeclChParams pd)
         -- Add the exit sort.
-        retChids <- getKVs mm (procDeclRetSort pd)
+        retChids <- uGetKVs mm (procDeclRetSort pd)
         -- Add the predefined channels.
         let predefChids = [ (exitChLoc, chanIdExit)
                           , (istepChLoc, chanIdIstep)
                           , (qstepChLoc, chanIdQstep)
                           ]
         -- Add the channels declared at the body.
-        bodyChids <- getKVs mm (procDeclBody pd)
+        bodyChids <- uGetKVs mm (procDeclBody pd)
         return $ parChids ++ retChids ++ predefChids ++ bodyChids
-
+    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ModelDecl mm where
-    getKVs mm md = do
+    uGetKVs mm md = do
         -- Add the predefined channels.
         let predefChids = [ (exitChLoc, chanIdExit)
                           , (istepChLoc, chanIdIstep)
                           , (qstepChLoc, chanIdQstep)
                           ]
         -- Add the channels declared at the body.
-        bodyChids <- getKVs mm (modelBExp md)
+        bodyChids <- uGetKVs mm (modelBExp md)
         return $ predefChids ++ bodyChids
+    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId BExpDecl mm where
-    getKVs _ Stop                = return []
-    getKVs mm (ActPref _ be)   = getKVs mm be
-    getKVs mm (LetBExp _ be)     = getKVs mm be
-    getKVs _ Pappl {} = return []
-    getKVs mm (Par _ _ be0 be1) = (++) <$> getKVs mm be0 <*> getKVs mm be1
-    getKVs mm (Enable _ be0 be1) = (++) <$> getKVs mm be0 <*> getKVs mm be1
-    getKVs mm (Accept _ _ be) = getKVs mm be
-    getKVs mm (Disable _ be0 be1) = (++) <$> getKVs mm be0 <*> getKVs mm be1
-    getKVs mm (Interrupt _ be0 be1) = (++) <$> getKVs mm be0 <*> getKVs mm be1
-    getKVs mm (Choice _ be0 be1) = (++) <$> getKVs mm be0 <*> getKVs mm be1
-    getKVs mm (Guard _ be) = getKVs mm be
-    getKVs mm (Hide _ cds be) = do
-        cdMap <- getKVs mm cds :: CompilerM [(Loc ChanDeclE, ChanId)]
-        beMap <- getKVs mm be
+    uGetKVs _ Stop                = return []
+    uGetKVs mm (ActPref _ be)   = uGetKVs mm be
+    uGetKVs mm (LetBExp _ be)     = uGetKVs mm be
+    uGetKVs _ Pappl {} = return []
+    uGetKVs mm (Par _ _ be0 be1) = (++) <$> uGetKVs mm be0 <*> uGetKVs mm be1
+    uGetKVs mm (Enable _ be0 be1) = (++) <$> uGetKVs mm be0 <*> uGetKVs mm be1
+    uGetKVs mm (Accept _ _ be) = uGetKVs mm be
+    uGetKVs mm (Disable _ be0 be1) = (++) <$> uGetKVs mm be0 <*> uGetKVs mm be1
+    uGetKVs mm (Interrupt _ be0 be1) = (++) <$> uGetKVs mm be0 <*> uGetKVs mm be1
+    uGetKVs mm (Choice _ be0 be1) = (++) <$> uGetKVs mm be0 <*> uGetKVs mm be1
+    uGetKVs mm (Guard _ be) = uGetKVs mm be
+    uGetKVs mm (Hide _ cds be) = do
+        cdMap <- uGetKVs mm cds :: CompilerM [(Loc ChanDeclE, ChanId)]
+        beMap <- uGetKVs mm be
         return $ cdMap ++ beMap
+    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ExitSortDecl mm where
-    getKVs _ NoExitD = return []
-    getKVs mm (ExitD xs) = do
+    uGetKVs _ NoExitD = return []
+    uGetKVs mm (ExitD xs) = do
         chId  <- getNextId
         eSids <- sortIds mm xs
         return [(exitChLoc, ChanId "EXIT" (Id chId) eSids)]
-    getKVs _ HitD = return [ (hitChLoc, chanIdHit)
+    uGetKVs _ HitD = return [ (hitChLoc, chanIdHit)
                            , (missChLoc, chanIdMiss)
                            ]
+    getKs _ md = return $ md ^.. biplate

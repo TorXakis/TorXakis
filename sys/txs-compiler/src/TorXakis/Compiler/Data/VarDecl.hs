@@ -10,6 +10,10 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 module TorXakis.Compiler.Data.VarDecl where
 
+import           Control.Lens                       ((^.), (^..))
+import           Data.Data.Lens                     (biplate)
+
+
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
 import           Data.Text                          (Text)
@@ -27,10 +31,11 @@ import           TorXakis.Parser.Data
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc VarDeclE) SortId VarDecl mm where
-    getKVs mm vd = pure . (getLoc vd, ) <$>  mm .@!! varDeclSort vd
+    uGetKVs mm vd = pure . (getLoc vd, ) <$>  mm .@!! varDeclSort vd
+    getKs _ md = return $ md ^.. biplate
 
 -- | A process declaration introduces variable id's in its parameters.
 instance ( MapsTo (Loc VarDeclE) SortId mm
          ) => DefinesAMap (Loc VarDeclE) VarId VarDecl mm where
-    getKVs mm vd = pure <$> varIdFromVarDecl mm vd
-
+    uGetKVs mm vd = pure <$> varIdFromVarDecl mm vd
+    getKs _ md = return $ md ^.. biplate

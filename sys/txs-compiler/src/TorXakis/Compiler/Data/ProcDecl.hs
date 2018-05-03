@@ -9,6 +9,9 @@
 -- | Process declarations.
 module TorXakis.Compiler.Data.ProcDecl where
 
+import           Control.Lens                       ((^.), (^..))
+import           Data.Data.Lens                     (biplate)
+
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
 import           Data.Text                          (Text)
@@ -41,9 +44,9 @@ getPId (ProcInfo pId _ _) = pId
 instance ( MapsTo Text SortId mm
          , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
          ) => DefinesAMap (Loc ProcDeclE) ProcInfo ProcDecl mm where
-    getKVs mm pd = do
+    uGetKVs mm pd = do
         pId    <- getNextId
-        allPChIds <- getKVs mm pd
+        allPChIds <- uGetKVs mm pd
             :: CompilerM [(Loc ChanDeclE, ChanId)]
         let
             pChLocs = getLoc <$> procDeclChParams pd
@@ -51,7 +54,7 @@ instance ( MapsTo Text SortId mm
                 filter ((`elem` pChLocs) . fst) allPChIds
         vdSids <- getMap mm (procDeclParams pd)
             :: CompilerM (Map (Loc VarDeclE) SortId)
-        pVIds  <- getKVs (vdSids :& mm) (procDeclParams pd)
+        pVIds  <- uGetKVs (vdSids :& mm) (procDeclParams pd)
             :: CompilerM [(Loc VarDeclE, VarId)]
         eSort  <- declExitSort (procDeclRetSort pd) <!!> pd
         return [( getLoc pd
@@ -69,11 +72,12 @@ instance ( MapsTo Text SortId mm
               declExitSort NoExitD    = return NoExit
               declExitSort HitD       = return Hit
               declExitSort (ExitD xs) = Exit <$> sortIds mm xs
+    getKs _ md = return $ md ^.. biplate
 
 -- -- | A process declaration introduces variable id's in its parameters.
 -- instance ( MapsTo Text SortId mm
 --          ) => DefinesAMap (Loc VarDeclE) VarId ProcDecl mm where
---     getKVs mm pd = do
+--     uGetKVs mm pd = do
 --         pdSIds <- getMap mm (procDeclParams pd) :: CompilerM (Map (Loc VarDeclE) SortId)
 --         traverse (varIdFromVarDecl pdSIds) (procDeclParams pd)
 --         --return [(getLoc pd, pVIds)]

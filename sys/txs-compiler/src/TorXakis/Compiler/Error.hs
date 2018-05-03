@@ -17,6 +17,7 @@ data ErrorType
     | MultipleDefinitions
     | NoDefinition -- ^ No definition found for function or process.
     | ProcessNotDefined
+    | CompilerPanic -- ^ An error in the compiler has happened.
     deriving (Eq, Show)
 
 data Decl

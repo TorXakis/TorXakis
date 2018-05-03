@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable     #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -140,6 +141,7 @@ where
 import           Control.Arrow           ((+++), (|||))
 import           Control.Lens            (Lens')
 import           Control.Lens.TH         (makeLenses)
+import           Data.Data               (Data)
 import           Data.Set                (Set)
 import           Data.Text               (Text)
 
@@ -160,9 +162,9 @@ data ParseTree t c = ParseTree
     , nodeType :: t
     , nodeLoc  :: Loc t
     , child    :: c
-    } deriving (Show, Eq, Ord)
+    } deriving (Show, Eq, Ord, Data)
 
-newtype Name t = Name { toText :: Text } deriving (Show, Eq, Ord)
+newtype Name t = Name { toText :: Text } deriving (Show, Eq, Ord, Data)
 
 nodeNameT :: ParseTree t c -> Text
 nodeNameT = toText . nodeName
@@ -182,7 +184,7 @@ data Loc t
         locName :: Text
         -- | Unique identifier.
       , locUid  :: Int
-      }deriving (Show, Eq, Ord)
+      }deriving (Show, Eq, Ord, Data)
 
 -- | Change extract the location of the metadata, and change its type from 't'
 -- to 'u'. This is useful when defining parsed entities whose locations
@@ -204,68 +206,68 @@ instance HasLoc (ParseTree t c) t where
 -- * Types of entities encountered when parsing.
 
 -- | ADT.
-data ADTE = ADTE deriving (Eq, Ord, Show)
+data ADTE = ADTE deriving (Eq, Ord, Show, Data)
 
 -- | Constructor.
-data CstrE = CstrE  deriving (Eq, Ord, Show)
+data CstrE = CstrE  deriving (Eq, Ord, Show, Data)
 
 -- | Field of a constructor.
-data FieldE = FieldE deriving (Eq, Ord, Show)
+data FieldE = FieldE deriving (Eq, Ord, Show, Data)
 
 -- | Reference to an existing (previously defined or primitive) sort.
-data SortRefE = SortRefE deriving (Eq, Ord, Show)
+data SortRefE = SortRefE deriving (Eq, Ord, Show, Data)
 
 -- | Function declaration.
-data FuncDeclE = FuncDeclE deriving (Eq, Ord, Show)
+data FuncDeclE = FuncDeclE deriving (Eq, Ord, Show, Data)
 
 -- | An expression
-data ExpDeclE = ExpDeclE deriving (Eq, Ord, Show)
+data ExpDeclE = ExpDeclE deriving (Eq, Ord, Show, Data)
 
 -- | A variable declaration.
-data VarDeclE = VarDeclE deriving (Eq, Ord, Show)
+data VarDeclE = VarDeclE deriving (Eq, Ord, Show, Data)
 
 -- | A variable occurrence in an expression. It is assumed to be a
 -- **reference** to an existing variable.
-data VarRefE = VarRefE deriving (Eq, Ord, Show)
+data VarRefE = VarRefE deriving (Eq, Ord, Show, Data)
 
 -- | A constant literal
-data ConstLitE = ConstLitE deriving (Eq, Ord, Show)
+data ConstLitE = ConstLitE deriving (Eq, Ord, Show, Data)
 
 -- | Channel declaration.
-data ChanDeclE = ChanDeclE deriving (Eq, Ord, Show)
+data ChanDeclE = ChanDeclE deriving (Eq, Ord, Show, Data)
 
 -- | Channel  reference.
-data ChanRefE = ChanRefE deriving (Eq, Ord, Show)
+data ChanRefE = ChanRefE deriving (Eq, Ord, Show, Data)
 
 -- | Model declaration.
-data ModelDeclE = ModelDeclE deriving (Eq, Ord, Show)
+data ModelDeclE = ModelDeclE deriving (Eq, Ord, Show, Data)
 
 -- | Process declaration.
-data ProcDeclE = ProcDeclE deriving (Eq, Ord, Show)
+data ProcDeclE = ProcDeclE deriving (Eq, Ord, Show, Data)
 
 -- | Process reference. Used at process instantiations.
-data ProcRefE = ProcRefE deriving (Eq, Ord, Show)
+data ProcRefE = ProcRefE deriving (Eq, Ord, Show, Data)
 
 -- | Parallel operator occurrence in a behavior expression.
-data ParOpE = ParOpE deriving (Eq, Ord, Show)
+data ParOpE = ParOpE deriving (Eq, Ord, Show, Data)
 
 -- | Enable operator occurrence.
-data EnableE = EnableE deriving (Eq, Ord, Show)
+data EnableE = EnableE deriving (Eq, Ord, Show, Data)
 
 -- | Disable operator occurrence.
-data DisableE = DisableE deriving (Eq, Ord, Show)
+data DisableE = DisableE deriving (Eq, Ord, Show, Data)
 
 -- | Interrupt operator occurrence.
-data InterruptE = InterruptE deriving (Eq, Ord, Show)
+data InterruptE = InterruptE deriving (Eq, Ord, Show, Data)
 
 -- | Choice operator occurrence.
-data ChoiceE = ChoiceE deriving (Eq, Ord, Show)
+data ChoiceE = ChoiceE deriving (Eq, Ord, Show, Data)
 
 -- | Hide operator occurrence.
-data HideE = HideE deriving (Eq, Ord, Show)
+data HideE = HideE deriving (Eq, Ord, Show, Data)
 
 -- | Accept operator.
-data AcceptE = AcceptE deriving (Eq, Ord, Show)
+data AcceptE = AcceptE deriving (Eq, Ord, Show, Data)
 
 -- * Types of parse trees.
 type ADTDecl   = ParseTree ADTE     [CstrDecl]
@@ -316,7 +318,7 @@ data FuncComps = FuncComps
     { funcCompsParams  :: [VarDecl]
     , funcCompsRetSort :: OfSort
     , funcCompsBody    :: ExpDecl
-    } deriving (Eq, Show, Ord)
+    } deriving (Eq, Show, Ord, Data)
 
 -- | Variable declarations (with an explicit sort).
 type VarDecl = ParseTree VarDeclE OfSort
@@ -358,14 +360,14 @@ data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)
               | If ExpDecl ExpDecl ExpDecl
               | Fappl (Name VarRefE) (Loc VarRefE) [ExpDecl] -- ^ Function application. A function is applied
                                                              -- to a list of expressions.
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
 
 data Const = BoolConst Bool
            | IntConst Integer
            | StringConst Text
            | RegexConst Text
            | AnyConst
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Show, Ord, Data)
 
 -- | Extract all the let-variable declarations of an expression.
 --
@@ -511,7 +513,7 @@ data ModelComps = ModelComps
     , outchs :: [ChanRef]
     , synchs :: Maybe [Set ChanRef]
     , bexp   :: BExpDecl
-    } deriving (Eq, Ord, Show)
+    } deriving (Eq, Ord, Show, Data)
 
 data BExpDecl
     -- | 'STOP' operator.
@@ -542,7 +544,7 @@ data BExpDecl
     | Guard ExpDecl BExpDecl
     -- | Hide operator.
     | Hide (Loc HideE) [ChanDecl] BExpDecl
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
 
 -- | Channels to sync on in a parallel operator.
 data SyncOn = All              -- ^ Sync on all channels, this is the result of
@@ -552,7 +554,7 @@ data SyncOn = All              -- ^ Sync on all channels, this is the result of
                                -- '|[...]|'. Parsing '|||' will result in an
                                -- empty list, meaning that full interleaving is
                                -- allowed.
-            deriving (Eq, Ord, Show)
+            deriving (Eq, Ord, Show, Data)
 
 procRefName :: Text -> Name ProcRefE
 procRefName = Name
@@ -560,10 +562,10 @@ procRefName = Name
 data ActOfferDecl = ActOfferDecl
     { _offers     :: [OfferDecl]
     , _constraint :: Maybe ExpDecl
-    } deriving (Eq, Ord, Show)
+    } deriving (Eq, Ord, Show, Data)
 
 data OfferDecl = OfferDecl ChanRef [ChanOfferDecl]
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
 
 -- | Channel offer declarations.
 --
@@ -572,7 +574,7 @@ data OfferDecl = OfferDecl ChanRef [ChanOfferDecl]
 -- of the form 'EXIT ? v :: T'.
 data ChanOfferDecl = QuestD IVarDecl
                    | ExclD  ExpDecl
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Data)
 
 chanOfferIvarDecl :: ChanOfferDecl -> Maybe IVarDecl
 chanOfferIvarDecl (QuestD iv) = Just iv
@@ -625,7 +627,7 @@ data ProcComps = ProcComps
     , procParams   :: [VarDecl]
     , procRetSort  :: ExitSortDecl
     , procBody     :: BExpDecl
-    } deriving (Eq, Show, Ord)
+    } deriving (Eq, Show, Ord, Data)
 
 -- | Make a process declaration.
 mkProcDecl :: Text
@@ -659,7 +661,7 @@ procDeclBody = procBody . procDeclComps
 data ExitSortDecl = NoExitD
                   | ExitD [OfSort]
                   | HitD
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Show, Ord, Data)
 
 -- | TorXakis definitions generated by the parser.
 data ParsedDefs = ParsedDefs
@@ -669,7 +671,7 @@ data ParsedDefs = ParsedDefs
     , _models  :: [ModelDecl]
     , _chdecls :: [ChanDecl]
     , _procs   :: [ProcDecl]
-    } deriving (Eq, Show)
+    } deriving (Eq, Show, Data)
 makeLenses ''ParsedDefs
 
 emptyPds :: ParsedDefs
