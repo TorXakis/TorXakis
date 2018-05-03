@@ -54,21 +54,21 @@ predefChDecls =  Map.fromList
     , ("MISS", missChLoc)
     ]
 
+-- | Predefined locations for channels start at 10000.
 exitChLoc :: Loc ChanDeclE
-exitChLoc = PredefLoc "EXIT"
+exitChLoc = PredefLoc "EXIT" 10000
 
 istepChLoc :: Loc ChanDeclE
-istepChLoc = PredefLoc "ISTEP"
+istepChLoc = PredefLoc "ISTEP" 10001
 
 qstepChLoc :: Loc ChanDeclE
-qstepChLoc = PredefLoc "QSTEP"
+qstepChLoc = PredefLoc "QSTEP" 10002
 
 hitChLoc :: Loc ChanDeclE
-hitChLoc = PredefLoc "HIT"
+hitChLoc = PredefLoc "HIT" 10003
 
 missChLoc :: Loc ChanDeclE
-missChLoc = PredefLoc "MISS"
-
+missChLoc = PredefLoc "MISS" 10004
 
 -- * Expressions that define a map from a channel reference to its declaration
 instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ParsedDefs () where

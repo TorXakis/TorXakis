@@ -26,6 +26,7 @@ data Decl
 
 data ErrorLoc
     = NoErrorLoc
+    | ErrorPredef Text
     | ErrorLoc
         { errorLine   :: Int
         , errorColumn :: Int

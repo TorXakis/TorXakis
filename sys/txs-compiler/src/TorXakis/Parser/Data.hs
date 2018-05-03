@@ -180,14 +180,16 @@ data Loc t
     | PredefLoc
       { -- | Name of the predefined location
         locName :: Text
+        -- | Unique identifier.
+      , locUid  :: Int
       }deriving (Show, Eq, Ord)
 
 -- | Change extract the location of the metadata, and change its type from 't'
 -- to 'u'. This is useful when defining parsed entities whose locations
 -- coincide, like expressions and variable-references or constant-literals.
 locFromLoc :: Loc t -> Loc u
-locFromLoc (Loc l c i)   = Loc l c i
-locFromLoc (PredefLoc n) = PredefLoc n
+locFromLoc (Loc l c i)     = Loc l c i
+locFromLoc (PredefLoc n i) = PredefLoc n i
 
 class HasLoc a t | a -> t where
     getLoc :: a -> Loc t
@@ -458,8 +460,8 @@ funcRetSort f = ( nodeNameT . funcCompsRetSort . child $ f
                 )
 
 instance HasErrorLoc (Loc t) where
-    getErrorLoc (Loc l c _)   = ErrorLoc {errorLine = l, errorColumn = c}
-    getErrorLoc (PredefLoc _) = NoErrorLoc
+    getErrorLoc (Loc l c _)     = ErrorLoc {errorLine = l, errorColumn = c}
+    getErrorLoc (PredefLoc n _) = ErrorPredef n
 
 instance HasErrorLoc (ParseTree t c) where
     getErrorLoc pt = ErrorLoc { errorLine = l, errorColumn = c }
