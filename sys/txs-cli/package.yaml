@@ -35,15 +35,18 @@ library:
   source-dirs: src
   exposed-modules:
   - CLI
+  - Env
   dependencies:
   - aeson
   - async
   - base
   - bytestring
+  - filepath
   - haskeline
   - microlens
   - mtl
   - safe-exceptions
+  - text
   - wreq
 
 executables:
@@ -64,7 +67,7 @@ executables:
     - mtl
     - process
     - wreq
-    # `TorXakis` dependencies.
+
     - txs-cli
 
 tests:

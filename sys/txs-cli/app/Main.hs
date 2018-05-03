@@ -16,6 +16,7 @@ import qualified Data.ByteString.Lazy.Char8 as BSL
 import           Network.Wreq
 
 import           CLI
+import           Env
 
 main :: IO ()
 main =
