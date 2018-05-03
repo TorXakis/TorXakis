@@ -112,8 +112,8 @@ compileParsedDefs pd = do
 
 toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo (Loc CstrE) CstrId mm
-             , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
-             , MapsTo FuncDefInfo FuncId mm
+             , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+             , MapsTo (Loc FuncDeclE) FuncId mm
              , MapsTo FuncId (FuncDef VarId) mm
              , MapsTo ProcId ProcDef mm
              , MapsTo Text (Loc ChanDeclE) mm
@@ -126,7 +126,7 @@ toTxsDefs :: ( MapsTo Text        SortId mm
 toTxsDefs ft mm pd = do
     ads <- adtsToTxsDefs mm (pd ^. adts)
     -- Get the function id's of all the constants.
-    cfIds <- traverse (findFuncIdForDeclM mm) (pd ^.. consts . traverse . loc')
+    cfIds <- traverse (mm .@) (pd ^.. consts . traverse . loc')
     let
         -- TODO: we have to remove the constants to comply with what TorXakis generates :/
         funcDefsNoConsts = Map.withoutKeys (innerMap mm) (Set.fromList cfIds)
@@ -148,7 +148,7 @@ toTxsDefs ft mm pd = do
 
 toSigs :: ( MapsTo Text        SortId mm
           , MapsTo (Loc CstrE) CstrId mm
-          , MapsTo FuncDefInfo FuncId mm
+          , MapsTo (Loc FuncDeclE) FuncId mm
           , MapsTo FuncId (FuncDef VarId) mm
           , MapsTo ProcId ProcDef mm
           , MapsTo (Loc ChanDeclE) ChanId mm)
@@ -169,13 +169,13 @@ toSigs mm pd = do
         `uniqueCombine` cs
         `uniqueCombine` ss
 
-funcDefInfoNamesMap :: [FuncDefInfo] -> Map Text [FuncDefInfo]
+funcDefInfoNamesMap :: [(Loc FuncDeclE)] -> Map Text [(Loc FuncDeclE)]
 funcDefInfoNamesMap fdis =
     groupByName $ catMaybes $ asPair <$> fdis
     where
-      asPair :: FuncDefInfo -> Maybe (Text, FuncDefInfo)
+      asPair :: (Loc FuncDeclE) -> Maybe (Text, (Loc FuncDeclE))
       asPair fdi = (, fdi) <$> fdiName fdi
-      groupByName :: [(Text, FuncDefInfo)] -> Map Text [FuncDefInfo]
+      groupByName :: [(Text, (Loc FuncDeclE))] -> Map Text [(Loc FuncDeclE)]
       groupByName = Map.fromListWith (++) . fmap (second pure)
 
 -- | Get a dictionary from sort names to their @SortId@. The sorts returned
@@ -194,15 +194,15 @@ compileToSortIds pd = do
 
 -- | Get a dictionary from locations of function definitions (included
 -- locations of predefined functions), to their function id's.
-compileToFuncIds :: Map Text SortId ->  ParsedDefs -> CompilerM (Map FuncDefInfo FuncId)
+compileToFuncIds :: Map Text SortId ->  ParsedDefs -> CompilerM (Map (Loc FuncDeclE) FuncId)
 compileToFuncIds sIds pd = do
     stdFuncIds <- getStdFuncIds
     cstrFuncIds <- adtsToFuncIds sIds (pd ^. adts)
     -- Construct the function declaration to function id table.
-    lFIdMap <- funcDeclsToFuncIds sIds (allFuncs pd)
+    fIds <- funcDeclsToFuncIds sIds (allFuncs pd)
     -- Join `lFIdMap` and  `stdFuncIds`.
     return $ Map.fromList
-        $  fmap (first FDefLoc) (Map.toList lFIdMap) -- TODO: why not having `funcDeclsToFuncIds` return a list?
+        $  fIds
         ++ stdFuncIds
         ++ cstrFuncIds
 
@@ -213,19 +213,19 @@ allFuncs pd = pd ^. funcs ++ pd ^. consts
 -- | Get a dictionary from the function names to the locations in which these
 -- functions are defined.
 --
-compileToFuncLocs :: Map FuncDefInfo FuncId -> Map Text [FuncDefInfo]
+compileToFuncLocs :: Map (Loc FuncDeclE) FuncId -> Map Text [(Loc FuncDeclE)]
 compileToFuncLocs fIds = Map.fromListWith (++) $
     fmap mkPair (Map.toList fIds)
     where
-      mkPair :: (FuncDefInfo, FuncId) -> (Text, [FuncDefInfo])
+      mkPair :: ((Loc FuncDeclE), FuncId) -> (Text, [(Loc FuncDeclE)])
       mkPair (fdi, fId) = (name fId, [fdi])
 
 -- | Get a dictionary from variable references to the possible location in
 -- which these variables are declared. Due to overloading a syntactic reference
 -- to a variable can refer to a variable, or multiple functions.
-compileToDecls :: Map Text [FuncDefInfo]
+compileToDecls :: Map Text [(Loc FuncDeclE)]
                -> ParsedDefs
-               -> CompilerM (Map (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]))
+               -> CompilerM (Map (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]))
 compileToDecls lfDefs pd = do
     let eVdMap = Map.empty :: Map Text (Loc VarDeclE)
     fRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (allFuncs pd)

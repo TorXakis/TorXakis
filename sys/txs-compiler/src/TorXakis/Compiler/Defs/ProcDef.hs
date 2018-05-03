@@ -1,45 +1,47 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE TupleSections       #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TupleSections    #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies     #-}
 module TorXakis.Compiler.Defs.ProcDef where
 
-import           Control.Arrow (second)
-import qualified Data.Text as T
-import Data.Text (Text)
-import Data.Map (Map)
-import qualified Data.Map as Map
-import           Control.Monad.Error.Class (throwError)
-import           Data.Semigroup ((<>))
+import           Control.Arrow                      (second)
+import           Control.Monad.Error.Class          (throwError)
+import           Data.Map                           (Map)
+import qualified Data.Map                           as Map
+import           Data.Semigroup                     ((<>))
+import           Data.Text                          (Text)
+import qualified Data.Text                          as T
 
-import           TxsDefs (ProcId (ProcId), ProcDef (ProcDef), ExitSort (..))
-import           SortId (SortId)
-import           qualified SortId
-import           Id (Id (Id))
-import           VarId (VarId, varsort)
-import           FuncId (FuncId)
-import           FuncDef (FuncDef)
-import           ChanId (ChanId)
+import           ChanId                             (ChanId)
+import           FuncDef                            (FuncDef)
+import           FuncId                             (FuncId)
+import           Id                                 (Id (Id))
+import           SortId                             (SortId)
+import qualified SortId
+import           TxsDefs                            (ExitSort (..),
+                                                     ProcDef (ProcDef),
+                                                     ProcId (ProcId))
+import           VarId                              (VarId, varsort)
 
-import TorXakis.Compiler.MapsTo
-import TorXakis.Compiler.Maps
-import TorXakis.Compiler.Data
-import TorXakis.Parser.Data
-import TorXakis.Compiler.Defs.ChanId
-import TorXakis.Compiler.ValExpr.VarId
-import TorXakis.Compiler.ValExpr.SortId
-import TorXakis.Compiler.Defs.BehExprDefs
-import TorXakis.Compiler.Error
+import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Defs.BehExprDefs
+import           TorXakis.Compiler.Defs.ChanId
+import           TorXakis.Compiler.Error
+import           TorXakis.Compiler.Maps
+import           TorXakis.Compiler.Maps.DefinesAMap
+import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.Common
-import TorXakis.Compiler.Maps.DefinesAMap
+import           TorXakis.Compiler.ValExpr.SortId
+import           TorXakis.Compiler.ValExpr.VarId
+import           TorXakis.Parser.Data
 
-import           TorXakis.Compiler.Data.VarDecl
 import           TorXakis.Compiler.Data.ProcDecl
+import           TorXakis.Compiler.Data.VarDecl
 
 procDeclsToProcDefMap :: ( MapsTo Text SortId mm
-                         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
-                         , MapsTo FuncDefInfo FuncId mm
+                         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+                         , MapsTo (Loc FuncDeclE) FuncId mm
                          , MapsTo FuncId (FuncDef VarId) mm
                          , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                          , In (Text, ChanId) (Contents mm) ~ 'False

@@ -49,17 +49,17 @@ findSortIdM :: MapsTo Text SortId mm
            => mm -> (Text, Loc t) -> CompilerM SortId
 findSortIdM mm (t, l) = liftEither $ findSortId mm (t, l)
 
-filterByReturnSort :: MapsTo FuncDefInfo FuncId mm
+filterByReturnSort :: MapsTo (Loc FuncDeclE) FuncId mm
                    => mm
                    -> SortId
-                   -> [FuncDefInfo]
-                   -> [FuncDefInfo]
+                   -> [(Loc FuncDeclE)]
+                   -> [(Loc FuncDeclE)]
 filterByReturnSort mm sId fdis = filter (fidHasReturnSort mm sId) fdis
 
-fidHasReturnSort :: MapsTo FuncDefInfo FuncId mm
+fidHasReturnSort :: MapsTo (Loc FuncDeclE) FuncId mm
                    => mm
                    -> SortId
-                   -> FuncDefInfo
+                   -> (Loc FuncDeclE)
                    -> Bool
 fidHasReturnSort mm sId fdi = const False ||| id $ do
     fId <- lookup fdi mm
@@ -83,16 +83,16 @@ getUniqueElement xs = Left Error
 
 -- | Select the function definitions that matches the given arguments and return
 -- types.
-determineF :: MapsTo FuncDefInfo FuncId mm
+determineF :: MapsTo (Loc FuncDeclE) FuncId mm
            => mm
-           -> [FuncDefInfo]
+           -> [(Loc FuncDeclE)]
            -> [SortId]
            -> Maybe SortId  -- ^ Return Sort, if known.
-           -> [FuncDefInfo]
+           -> [(Loc FuncDeclE)]
 determineF mm fdis aSids mRSid =
     filter funcMatches fdis
     where
-      funcMatches :: FuncDefInfo -> Bool
+      funcMatches :: (Loc FuncDeclE) -> Bool
       funcMatches fdi = const False ||| id $ do
           fId <- lookup fdi mm
           return $ funcargs fId == aSids &&
@@ -113,25 +113,25 @@ determineF mm fdis aSids mRSid =
 -- - The equal and not equal functions.
 -- - The to/from String/XML functions.
 --
-data FuncDefInfo = IDefUid  Text Int        -- ^ Name and unique identifier of an implicitly defined function.
-                 | FDefLoc  (Loc FuncDeclE) -- ^ Location of a function declaration.
-                 deriving (Eq, Ord, Show)
+-- data (Loc FuncDeclE) = IDefUid  Text Int        -- ^ Name and unique identifier of an implicitly defined function.
+--                  | FDefLoc  (Loc FuncDeclE) -- ^ Location of a function declaration.
+--                  deriving (Eq, Ord, Show)
 
-fdiLoc :: FuncDefInfo -> Maybe (Loc FuncDeclE)
-fdiLoc IDefUid {}  = Nothing
-fdiLoc (FDefLoc l) = Just l
-
-fdiName :: FuncDefInfo -> Maybe Text
-fdiName (IDefUid t _) = Just t
-fdiName (FDefLoc _)   = Nothing
+-- fdiLoc :: (Loc FuncDeclE) -> Maybe (Loc FuncDeclE)
+-- fdiLoc IDefUid {}  = Nothing
+-- fdiLoc (FDefLoc l) = Just l
+-- | Get the name of the implicit function declaration, if any.
+fdiName :: Loc FuncDeclE -> Maybe Text
+fdiName Loc {}          = Nothing
+fdiName (PredefLoc n _) = Just n
 
 -- TODO determine the right kind of precedence.
 infixr 5 :|
  -- TODO: you might want to replace the 'Either's by ':|'.
 type (:|) = Either
 
-findFuncDecl :: MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
-             => mm -> Loc VarRefE -> Either Error [FuncDefInfo]
+findFuncDecl :: MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+             => mm -> Loc VarRefE -> Either Error [(Loc FuncDeclE)]
 findFuncDecl mm l =
     Left ||| cErr ||| Right $ lookup l mm
     where
@@ -143,35 +143,32 @@ findFuncDecl mm l =
             , _errorMsg  = "Could not function declaration."
             }
 
-findFuncSortIds :: MapsTo FuncDefInfo FuncId mm
-                => mm -> [FuncDefInfo] -> Either Error [SortId]
+findFuncSortIds :: MapsTo (Loc FuncDeclE) FuncId mm
+                => mm -> [(Loc FuncDeclE)] -> Either Error [SortId]
 findFuncSortIds mm fdis = fmap funcsort <$> traverse (`lookup` mm) fdis
 
-instance HasErrorLoc FuncDefInfo where
-    getErrorLoc fdi = fromMaybe NoErrorLoc (getErrorLoc <$> fdiLoc fdi)
+-- findFuncIdForDecl :: MapsTo (Loc FuncDeclE) FuncId mm
+--                   => mm -> Loc FuncDeclE -> Either Error FuncId
+-- findFuncIdForDecl mm fl =
+--     case find ((Just fl ==) . fdiLoc) (Map.keys im) of
+--         Nothing  -> Left Error
+--             { _errorType = UndefinedRef
+--             , _errorLoc  = getErrorLoc fl
+--             , _errorMsg  = "Could not find function definition for the given location"
+--             }
+--         Just fdi -> lookup fdi mm
+--     where
+--       im :: Map (Loc FuncDeclE) FuncId
+--       im = innerMap mm
 
-findFuncIdForDecl :: MapsTo FuncDefInfo FuncId mm
-                  => mm -> Loc FuncDeclE -> Either Error FuncId
-findFuncIdForDecl mm fl =
-    case find ((Just fl ==) . fdiLoc) (Map.keys im) of
-        Nothing  -> Left Error
-            { _errorType = UndefinedRef
-            , _errorLoc  = getErrorLoc fl
-            , _errorMsg  = "Could not find function definition for the given location"
-            }
-        Just fdi -> lookup fdi mm
-    where
-      im :: Map FuncDefInfo FuncId
-      im = innerMap mm
+-- findFuncIdForDeclM :: MapsTo (Loc FuncDeclE) FuncId mm
+--                   => mm -> Loc FuncDeclE -> CompilerM FuncId
+-- findFuncIdForDeclM mm fl = liftEither $ findFuncIdForDecl mm fl
 
-findFuncIdForDeclM :: MapsTo FuncDefInfo FuncId mm
-                  => mm -> Loc FuncDeclE -> CompilerM FuncId
-findFuncIdForDeclM mm fl = liftEither $ findFuncIdForDecl mm fl
-
-idefsNames :: MapsTo FuncDefInfo FuncId mm => mm -> [Text]
+idefsNames :: MapsTo (Loc FuncDeclE) FuncId mm => mm -> [Text]
 idefsNames mm = catMaybes $ fdiName <$> Map.keys fm
     where
-      fm :: Map FuncDefInfo FuncId
+      fm :: Map (Loc FuncDeclE) FuncId
       fm = innerMap mm
 
 -- | Set the error location.

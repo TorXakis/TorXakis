@@ -1,5 +1,5 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections     #-}
 module TorXakis.Compiler.ValExpr.FuncId where
 
@@ -46,10 +46,10 @@ cstrToAccFuncId mm cId f = do
     return $ FuncId (fieldName f) (Id fId) [cstrsort cId] sId
 
 funcDeclsToFuncIds :: MapsTo Text SortId mm
-                   => mm -> [FuncDecl] -> CompilerM (Map (Loc FuncDeclE) FuncId)
+                   => mm -> [FuncDecl] -> CompilerM [(Loc FuncDeclE, FuncId)]
 funcDeclsToFuncIds mm fs = do
     fIds <- traverse (funcDeclToFuncId mm) fs
-    return $ Map.fromList $ zip (getLoc <$> fs) fIds
+    return $ zip (getLoc <$> fs) fIds
 
 funcDeclToFuncId :: MapsTo Text SortId mm
                  => mm -> FuncDecl -> CompilerM FuncId
@@ -73,26 +73,26 @@ sortFromStringFuncId sId = do
 
 -- | Generate the function id's that correspond to the functions in the
 -- standard function table (@stdFuncTable@)
-getStdFuncIds :: CompilerM [(FuncDefInfo, FuncId)]
+getStdFuncIds :: CompilerM [((Loc FuncDeclE), FuncId)]
 getStdFuncIds = concat <$>
     traverse signHandlerToFuncIds (Map.toList (toMap stdFuncTable))
 
-signHandlerToFuncIds :: (Text, SignHandler VarId) -> CompilerM [(FuncDefInfo, FuncId)]
+signHandlerToFuncIds :: (Text, SignHandler VarId) -> CompilerM [((Loc FuncDeclE), FuncId)]
 signHandlerToFuncIds (n, sh) =
     traverse (signatureToFuncId n) (Map.keys sh)
 
-signatureToFuncId :: Text -> Signature -> CompilerM (FuncDefInfo, FuncId)
+signatureToFuncId :: Text -> Signature -> CompilerM ((Loc FuncDeclE), FuncId)
 signatureToFuncId n (Signature aSids rSid) = do
     fId  <- getNextId
-    return (IDefUid n fId, FuncId n (Id fId) aSids rSid)
+    return (PredefLoc n fId, FuncId n (Id fId) aSids rSid)
 
 -- | Create the function id's that the ADT implicitly defines.
 adtsToFuncIds :: (MapsTo Text SortId mm)
-              => mm -> [ADTDecl] -> CompilerM [(FuncDefInfo, FuncId)]
+              => mm -> [ADTDecl] -> CompilerM [((Loc FuncDeclE), FuncId)]
 adtsToFuncIds mm ds = concat <$> traverse (adtToFuncIds mm) ds
 
 adtToFuncIds :: (MapsTo Text SortId mm)
-             => mm -> ADTDecl -> CompilerM [(FuncDefInfo, FuncId)]
+             => mm -> ADTDecl -> CompilerM [((Loc FuncDeclE), FuncId)]
 adtToFuncIds mm a = do
     sId <- findSortIdM mm (adtName a, nodeLoc a)
     cstrFIds <- concat <$> traverse (cstrToFuncIds mm sId) (constructors a)
@@ -118,12 +118,12 @@ adtToFuncIds mm a = do
       fromXMLFdiFid sId =
           mkPredef fromXmlName [sortIdString] sId
 
-mkPredef :: Text -> [SortId] -> SortId -> CompilerM [(FuncDefInfo, FuncId)]
+mkPredef :: Text -> [SortId] -> SortId -> CompilerM [((Loc FuncDeclE), FuncId)]
 mkPredef n aSids rSid =
-    (\i -> [(IDefUid n i, FuncId n (Id i) aSids rSid)]) <$> getNextId
+    (\i -> [(PredefLoc n i, FuncId n (Id i) aSids rSid)]) <$> getNextId
 
 cstrToFuncIds :: (MapsTo Text SortId mm)
-              => mm -> SortId -> CstrDecl -> CompilerM [(FuncDefInfo, FuncId)]
+              => mm -> SortId -> CstrDecl -> CompilerM [((Loc FuncDeclE), FuncId)]
 cstrToFuncIds mm sId c =
     concat <$> sequence [ mkCstrFdiFid
                         , isCstrFdiFid
@@ -136,17 +136,17 @@ cstrToFuncIds mm sId c =
           fSids <- traverse (findSortIdM mm . fieldSort) (cstrFields c)
           -- Create a function id for the constructor function.
           -- TODO: sharing the ID should be fine.
-          return [(IDefUid cn mkCstrId, FuncId cn (Id mkCstrId) fSids sId)]
+          return [(PredefLoc cn mkCstrId, FuncId cn (Id mkCstrId) fSids sId)]
       isCstrFdiFid = do
           let isN = "is" <> cn
           isCstrId <- getNextId
           -- Create a function id for the constructor function.
           -- TODO: sharing the ID should be fine.
-          return [(IDefUid isN isCstrId, FuncId isN (Id isCstrId) [sId] sortIdBool)]
+          return [(PredefLoc isN isCstrId, FuncId isN (Id isCstrId) [sId] sortIdBool)]
       cstrAccessFdiFid = traverse accessFdiFid (cstrFields c)
           where
             accessFdiFid f = do
                 let accN = fieldName f
                 accSid <- getNextId
                 fSid   <- findSortIdM mm (fieldSort f)
-                return (IDefUid accN accSid, FuncId accN (Id accSid) [sId] fSid)
+                return (PredefLoc accN accSid, FuncId accN (Id accSid) [sId] fSid)

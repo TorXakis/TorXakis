@@ -1,43 +1,45 @@
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeApplications          #-}
+{-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies     #-}
 module TorXakis.Compiler.Defs.ModelDef where
 
-import           Data.Text              (Text)
-import qualified Data.Map               as Map
-import           Data.Map               (Map)
-import qualified Data.Set as Set
-import           Data.Set (Set)
-import           Data.List (sortBy, nub)
-import           Data.Ord (compare)
+import           Data.List                          (nub, sortBy)
+import           Data.Map                           (Map)
+import qualified Data.Map                           as Map
+import           Data.Ord                           (compare)
+import           Data.Set                           (Set)
+import qualified Data.Set                           as Set
+import           Data.Text                          (Text)
 
-import           ChanId                 (ChanId, unid, name)
-import           TxsDefs                            (ModelDef (ModelDef), ProcDef)
-import           VarId (VarId)
-import           FuncId (FuncId)
-import           FuncDef (FuncDef)
-import           ProcId (ProcId, ExitSort (Exit, NoExit))
-import           SortId (SortId)
-import           StdTDefs (chanIdExit)
+import           ChanId                             (ChanId, name, unid)
+import           FuncDef                            (FuncDef)
+import           FuncId                             (FuncId)
+import           ProcId                             (ExitSort (Exit, NoExit),
+                                                     ProcId)
+import           SortId                             (SortId)
+import           StdTDefs                           (chanIdExit)
+import           TxsDefs                            (ModelDef (ModelDef),
+                                                     ProcDef)
+import           VarId                              (VarId)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.BehExprDefs
-import           TorXakis.Parser.Data
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Defs.ChanId
-import           TorXakis.Compiler.ValExpr.VarId
-import           TorXakis.Compiler.ValExpr.SortId
+import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
+import           TorXakis.Compiler.MapsTo
+import           TorXakis.Compiler.ValExpr.SortId
+import           TorXakis.Compiler.ValExpr.VarId
+import           TorXakis.Parser.Data
 
 modelDeclToModelDef :: ( MapsTo Text SortId mm
                        , MapsTo Text (Loc ChanDeclE) mm -- Needed because channels are declared outside the model.
                        , MapsTo (Loc ChanDeclE) ChanId mm -- Also needed because channels are declared outside the model
                        -- , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm -- But we don't care about external references to channels.
 
-                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
-                       , MapsTo FuncDefInfo FuncId mm
+                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+                       , MapsTo (Loc FuncDeclE) FuncId mm
                        , MapsTo FuncId (FuncDef VarId) mm
                        , MapsTo ProcId () mm
                        , MapsTo (Loc VarDeclE) SortId mm
@@ -48,7 +50,7 @@ modelDeclToModelDef mm md = do
     -- Map the channel references to the places in which they are declared.
     chDecls <- getMap mm md :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
     -- Add the channel declaration introduced by the hide operator.
-    modelChIds <- getMap mm md :: CompilerM (Map (Loc ChanDeclE) ChanId)    
+    modelChIds <- getMap mm md :: CompilerM (Map (Loc ChanDeclE) ChanId)
     let mm' = chDecls :& (modelChIds <.+> mm)
     ins  <- Set.fromList <$> traverse (lookupChId mm') (getLoc <$> modelIns md)
     outs <- Set.fromList <$> traverse (lookupChId mm') (getLoc <$> modelOuts md)

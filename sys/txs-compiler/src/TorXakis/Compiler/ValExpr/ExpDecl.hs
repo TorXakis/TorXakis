@@ -1,23 +1,23 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
 module TorXakis.Compiler.ValExpr.ExpDecl where
 
+import           Control.Arrow             (second, (+++))
 import           Control.Monad.Error.Class (liftEither)
-import           Control.Arrow             ((+++), second)
 import           Control.Monad.Error.Class (catchError)
+import           Data.Either               (partitionEithers)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
+import           Data.Semigroup            ((<>))
 import           Data.Text                 (Text)
-import Data.Semigroup ((<>))
-import           Data.Either               (partitionEithers)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.Error
 import           TorXakis.Parser.Data
 
 
@@ -30,11 +30,11 @@ class HasVarReferences e where
     -- should equal the length of the list returned by this function.
     --
     -- This ensures that the mapping returned is complete.
-    mapRefToDecls :: ( MapsTo Text [FuncDefInfo] mm
+    mapRefToDecls :: ( MapsTo Text [Loc FuncDeclE] mm
                      , MapsTo Text (Loc VarDeclE) mm )
                   => mm  -- ^ Predefined functions
                   -> e
-                  -> CompilerM [(Loc VarRefE, Loc VarDeclE :| [FuncDefInfo])]
+                  -> CompilerM [(Loc VarRefE, Loc VarDeclE :| [Loc FuncDeclE])]
 
 instance HasVarReferences e => HasVarReferences [e] where
     mapRefToDecls mm = fmap concat . traverse (mapRefToDecls mm)
@@ -83,7 +83,7 @@ instance HasVarReferences BExpDecl where
     mapRefToDecls mm (Guard ex be) =
         (++) <$> mapRefToDecls mm ex <*> mapRefToDecls mm be
     mapRefToDecls mm (Hide _ _ be) =
-        mapRefToDecls mm be        
+        mapRefToDecls mm be
 
 instance HasVarReferences ActOfferDecl where
     mapRefToDecls mm ao@(ActOfferDecl os mc) =

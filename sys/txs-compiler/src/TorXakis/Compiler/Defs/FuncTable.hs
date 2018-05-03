@@ -5,7 +5,6 @@
 
 module TorXakis.Compiler.Defs.FuncTable where
 
-import Prelude hiding (lookup)
 import           Control.Arrow                    (second)
 import           Data.Foldable                    (foldl')
 import           Data.List.Index                  (imapM)
@@ -13,8 +12,11 @@ import           Data.Map                         (Map)
 import qualified Data.Map                         as Map
 import           Data.Semigroup                   ((<>))
 import           Data.Text                        (Text)
+import           Prelude                          hiding (lookup)
 
 import           CstrId                           (CstrId)
+import           FuncDef                          (FuncDef)
+import           FuncId                           (FuncId)
 import           FuncTable                        (FuncTable (FuncTable),
                                                    Handler, SignHandler,
                                                    Signature (Signature))
@@ -26,18 +28,15 @@ import           StdTDefs                         (accessHandler, cstrHandler,
                                                    fromStringName, fromXmlName,
                                                    iscstrHandler, neqName,
                                                    notEqualHandler,
-                                                   toStringName, toStringName,
-                                                   toXmlName)
+                                                   toStringName, toXmlName)
 import           ValExpr                          (PredefKind (ASF, AST, AXF, AXT),
                                                    cstrFunc, cstrPredef)
 import           VarId                            (VarId)
-import FuncId (FuncId)
-import FuncDef (FuncDef)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Parser.Data
 
@@ -138,14 +137,14 @@ fieldToAccessCstrHandler mm sId cId p f = do
            , Map.singleton (Signature [sId] fId) (accessHandler cId p))
 
 funcDeclsToFuncTable :: ( MapsTo Text SortId mm
-                        , MapsTo FuncDefInfo FuncId mm
+                        , MapsTo (Loc FuncDeclE) FuncId mm
                         , MapsTo FuncId (FuncDef VarId) mm )
                      => mm -> [FuncDecl] -> CompilerM (FuncTable VarId)
 funcDeclsToFuncTable mm fs = FuncTable . Map.fromListWith Map.union <$>
     traverse (funcDeclToFuncTable mm) fs
 
 funcDeclToFuncTable :: ( MapsTo Text SortId mm
-                        , MapsTo FuncDefInfo FuncId mm
+                        , MapsTo (Loc FuncDeclE) FuncId mm
                         , MapsTo FuncId (FuncDef VarId) mm )
                     => mm -> FuncDecl -> CompilerM (Text, SignHandler VarId)
 funcDeclToFuncTable mm f = do
@@ -154,11 +153,11 @@ funcDeclToFuncTable mm f = do
     hdlr  <- fBodyToHandler mm f
     return (funcName f, Map.singleton (Signature fSids sId) hdlr)
 
-fBodyToHandler :: ( MapsTo FuncDefInfo FuncId mm
+fBodyToHandler :: ( MapsTo (Loc FuncDeclE) FuncId mm
                   , MapsTo FuncId (FuncDef VarId) mm )
                => mm -> FuncDecl -> CompilerM (Handler VarId)
 fBodyToHandler mm f = do
-    fId  <- findFuncIdForDeclM mm (getLoc f)
+    fId  <- mm .@ getLoc f
     let
         im :: Map FuncId (FuncDef VarId)
         im = innerMap mm

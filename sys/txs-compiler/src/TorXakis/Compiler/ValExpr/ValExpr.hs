@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Compiler.ValExpr.ValExpr where
 
 import           Data.Either                         (partitionEithers)
@@ -21,17 +21,17 @@ import           ValExpr                             (ValExpr, cstrAnd,
 import           VarId                               (VarId, varsort)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.ValExpr.ConstDefs
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Parser.Data
 
 -- | Make a 'ValExpr' from the given expression-declaration.
 --
-expDeclToValExpr :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
-                    , MapsTo FuncDefInfo FuncId mm
+expDeclToValExpr :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+                    , MapsTo (Loc FuncDeclE) FuncId mm
                     , MapsTo FuncId (FuncDef VarId) mm
                     , MapsTo (Loc VarDeclE) VarId mm)
                  => mm
@@ -43,7 +43,7 @@ expDeclToValExpr mm eSid ex = case expChild ex of
         vLocfLoc <- mm .@@ (l :: Loc VarRefE)
         case vLocfLoc of
             Left vLoc -> do
-                vId <- mm .@@ (vLoc :: Loc VarDeclE) 
+                vId <- mm .@@ (vLoc :: Loc VarDeclE)
                 checkSortIds (varsort vId) eSid
                 return $ cstrVar vId
             Right fdis -> do
@@ -89,7 +89,7 @@ expDeclToValExpr mm eSid ex = case expChild ex of
                           , _errorMsg   = "Function not uniquely resolved: " <> T.pack (show vexs)
                           }
         where
-          tryMkValExpr :: FuncDefInfo -> Either Error (ValExpr VarId)
+          tryMkValExpr :: (Loc FuncDeclE) -> Either Error (ValExpr VarId)
           tryMkValExpr fdi = do
               fId  <- mm .@@ fdi
               checkSortIds (funcsort fId) eSid

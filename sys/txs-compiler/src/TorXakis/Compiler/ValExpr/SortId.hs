@@ -1,46 +1,49 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections     #-}
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE TypeFamilies      #-}
-{-# LANGUAGE TypeApplications  #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
-{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TupleSections        #-}
+{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module TorXakis.Compiler.ValExpr.SortId where
 
-import           Prelude                   hiding (lookup)
-import           Control.Arrow             (left, (|||))
-import           Control.Monad             (when, foldM)
-import           Control.Monad.Error.Class (liftEither, throwError)
-import           Data.Either               (partitionEithers)
-import           Data.List                 (intersect)
-import           Data.Map                  (Map)
-import qualified Data.Map                  as Map
-import           Data.Monoid               ((<>))
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
-import           Data.Traversable          (for)
-import           GHC.Exts                  (fromList)
-import           Data.Maybe                (catMaybes)
+import           Control.Arrow                    (left, (|||))
+import           Control.Monad                    (foldM, when)
+import           Control.Monad.Error.Class        (liftEither, throwError)
+import           Data.Either                      (partitionEithers)
+import           Data.List                        (intersect)
+import           Data.Map                         (Map)
+import qualified Data.Map                         as Map
+import           Data.Maybe                       (catMaybes)
+import           Data.Monoid                      ((<>))
+import           Data.Text                        (Text)
+import qualified Data.Text                        as T
+import           Data.Traversable                 (for)
+import           GHC.Exts                         (fromList)
+import           Prelude                          hiding (lookup)
 
-import           FuncId                    (funcargs, funcsort, FuncId)
-import           Id                        (Id (Id))
-import           SortId                    (SortId (SortId), sortIdBool,
-                                            sortIdInt, sortIdRegex,
-                                            sortIdString)
-import qualified SortId
-import           VarId (varsort)
-import           ChanId (ChanId, chansorts)
-import           ProcId (ExitSort (NoExit, Exit, Hit), exitSortIds, ProcId, procvars, procchans, procexit)
+import           ChanId                           (ChanId, chansorts)
+import           FuncId                           (FuncId, funcargs, funcsort)
+import           Id                               (Id (Id))
+import           ProcId                           (ExitSort (Exit, Hit, NoExit),
+                                                   ProcId, exitSortIds,
+                                                   procchans, procexit,
+                                                   procvars)
 import qualified ProcId
-import           TxsDefs (ProcDef)
+import           SortId                           (SortId (SortId), sortIdBool,
+                                                   sortIdInt, sortIdRegex,
+                                                   sortIdString)
+import qualified SortId
+import           TxsDefs                          (ProcDef)
+import           VarId                            (varsort)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.Maps
-import           TorXakis.Parser.Data
+import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.Common
+import           TorXakis.Parser.Data
 
 -- | Construct a list of sort ID's from a list of ADT declarations.
 --
@@ -63,8 +66,8 @@ sortIdOfVarDeclM mm f = liftEither $ sortIdOfVarDecl mm f
 -- | Infer the types in a list of function declaration.
 inferTypes :: ( MapsTo Text SortId mm
               , MapsTo (Loc VarDeclE) SortId mm
-              , MapsTo FuncDefInfo FuncId mm
-              , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
+              , MapsTo (Loc FuncDeclE) FuncId mm
+              , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
            => mm
            -> [FuncDecl]
            -> CompilerM (Map (Loc VarDeclE) SortId)
@@ -83,8 +86,8 @@ inferTypes mm fs = liftEither $ do
 
 gInferTypes :: ( MapsTo Text SortId mm
                , MapsTo (Loc VarDeclE)  SortId mm
-               , MapsTo FuncDefInfo FuncId mm
-               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
+               , MapsTo (Loc FuncDeclE) FuncId mm
+               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
             => mm
             -> [LetVarDecl]
             -> Either Error (Map (Loc VarDeclE) SortId)
@@ -105,8 +108,8 @@ letVarDeclsInFunc fd = expLetVarDecls (funcBody fd)
 
 inferVarDeclType :: ( MapsTo Text SortId mm
                     , MapsTo (Loc VarDeclE) SortId mm
-                    , MapsTo FuncDefInfo FuncId mm
-                    , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
+                    , MapsTo (Loc FuncDeclE) FuncId mm
+                    , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
                  => mm
                  -> LetVarDecl -> Either (Error, LetVarDecl) (Loc VarDeclE, SortId)
 inferVarDeclType mm vd = left (,vd) $
@@ -128,8 +131,8 @@ inferVarDeclType mm vd = left (,vd) $
 --
 inferExpTypes :: ( MapsTo Text SortId mm
                  , MapsTo (Loc VarDeclE) SortId mm
-                 , MapsTo FuncDefInfo FuncId mm
-                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
+                 , MapsTo (Loc FuncDeclE) FuncId mm
+                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
               => mm
               -> ExpDecl
               -> Either Error [SortId]
@@ -140,7 +143,7 @@ inferExpTypes mm ex =
         -- If it is a variable, return the sort id of the variable declaration.
         -- If it is a function, return the sort id's of the functions.
         (fmap pure . (`lookup` mm) ||| findFuncSortIds mm)
-            =<< (lookup l mm :: Either Error (Either (Loc VarDeclE) [FuncDefInfo]))
+            =<< (lookup l mm :: Either Error (Either (Loc VarDeclE) [(Loc FuncDeclE)]))
     ConstLit c ->
         return $ -- The type of any is any sort known!
             maybe (values @Text mm) pure (sortIdConst c)
@@ -213,16 +216,16 @@ class HasTypedVars e where
                      , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
                      , MapsTo (Loc ChanDeclE) ChanId mm
                      , MapsTo (Loc VarDeclE) SortId mm
-                     , MapsTo FuncDefInfo FuncId mm
-                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
+                     , MapsTo (Loc FuncDeclE) FuncId mm
+                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
                      , MapsTo ProcId () mm )
                   => mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
 
 instance HasTypedVars BExpDecl where
     inferVarTypes _ Stop =
         return []
-    inferVarTypes mm (ActPref ao be) = do        
-        xs <- inferVarTypes mm ao        
+    inferVarTypes mm (ActPref ao be) = do
+        xs <- inferVarTypes mm ao
         -- The implicit variables in the offers are needed in subsequent expressions.
         ys <- inferVarTypes (Map.fromList xs <.+> mm) be
         return $ xs ++ ys
@@ -274,9 +277,9 @@ instance HasTypedVars BExpDecl where
         (++) <$> inferVarTypes mm be0 <*> inferVarTypes mm be1
     inferVarTypes mm (Guard ex be) =
         (++) <$> inferVarTypes mm ex <*> inferVarTypes mm be
-    inferVarTypes mm (Hide _ _ be) = 
+    inferVarTypes mm (Hide _ _ be) =
         inferVarTypes mm be
-        
+
 instance HasTypedVars ActOfferDecl where
     inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx
 
@@ -325,8 +328,8 @@ class HasExitSorts e where
                 , MapsTo (Loc ChanDeclE) ChanId mm
                 , MapsTo ProcId () mm
                 , MapsTo (Loc VarDeclE) SortId mm
-                , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
-                , MapsTo FuncDefInfo FuncId mm
+                , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+                , MapsTo (Loc FuncDeclE) FuncId mm
                 )
              => mm -> e -> CompilerM ExitSort
 
@@ -370,8 +373,8 @@ instance HasExitSorts BExpDecl where
         es1 <- exitSort mm be1
         (es0 <<+>> es1) <!!> l
     exitSort mm (Guard _ be) = exitSort mm be
-    exitSort mm (Hide _ _ be) = 
-        exitSort mm be    
+    exitSort mm (Hide _ _ be) =
+        exitSort mm be
 
 instance HasExitSorts ActOfferDecl where
     exitSort mm (ActOfferDecl os _) =
@@ -428,8 +431,8 @@ Hit      <<->> Hit       = return Hit
 
 offerSid :: ( MapsTo Text SortId mm
             , MapsTo (Loc VarDeclE) SortId mm
-            , MapsTo FuncDefInfo FuncId mm
-            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm )
+            , MapsTo (Loc FuncDeclE) FuncId mm
+            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
          => mm -> ChanOfferDecl -> CompilerM SortId
 offerSid mm (QuestD vd) = case ivarDeclSort vd of
     Nothing -> error $ "No sort for offer variable" ++ show vd  -- TODO: throw the appropriate error message

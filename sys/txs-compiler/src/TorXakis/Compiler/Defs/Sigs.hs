@@ -1,21 +1,21 @@
-{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module TorXakis.Compiler.Defs.Sigs where
 
 import           Data.Map                         (Map)
 import           Data.Text                        (Text)
 
+import           CstrId                           (CstrId)
+import           FuncDef                          (FuncDef)
+import           FuncId                           (FuncId)
 import           Sigs                             (Sigs, empty, func, sort)
 import           SortId                           (SortId)
 import           VarId                            (VarId)
-import           CstrId (CstrId)
-import FuncId (FuncId)
-import FuncDef (FuncDef)
-    
+
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Defs.FuncTable
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.Defs.FuncTable
 import           TorXakis.Parser.Data
 
 adtDeclsToSigs :: ( MapsTo Text SortId mm
@@ -27,7 +27,7 @@ adtDeclsToSigs mm ds = do
 
 funDeclsToSigs :: ( MapsTo Text SortId mm
                   , MapsTo (Loc CstrE) CstrId mm
-                  , MapsTo FuncDefInfo FuncId mm
+                  , MapsTo (Loc FuncDeclE) FuncId mm
                   , MapsTo FuncId (FuncDef VarId) mm )
                => mm -> [FuncDecl] -> CompilerM (Sigs VarId)
 funDeclsToSigs mm ds = do

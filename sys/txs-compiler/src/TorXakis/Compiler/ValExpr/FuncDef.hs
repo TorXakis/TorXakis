@@ -1,20 +1,20 @@
+{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
-{-# LANGUAGE DataKinds     #-}
-{-# LANGUAGE TypeFamilies     #-}
+{-# LANGUAGE TypeFamilies      #-}
 module TorXakis.Compiler.ValExpr.FuncDef where
 
-import           Prelude hiding (lookup)
 import           Control.Arrow                     (left)
 import           Data.Either                       (partitionEithers)
+import           Data.List                         (find)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
 import           Data.Monoid                       (mempty, (<>))
 import           Data.Text                         (Text)
 import qualified Data.Text                         as T
 import           GHC.Exts                          (fromList)
-import           Data.List                 (find)
+import           Prelude                           hiding (lookup)
 
 import           FuncDef                           (FuncDef (FuncDef))
 import           FuncId                            (FuncId, funcsort)
@@ -31,8 +31,8 @@ import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Parser.Data
 
-funcDeclsToFuncDefs :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
-                       , MapsTo FuncDefInfo FuncId mm
+funcDeclsToFuncDefs :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+                       , MapsTo (Loc FuncDeclE) FuncId mm
                        , MapsTo (Loc VarDeclE) VarId mm
                        , In (FuncId, FuncDef VarId) (Contents mm) ~ 'False )
                     => mm
@@ -51,20 +51,16 @@ funcDeclsToFuncDefs mm fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
 
 -- | Create a function definition for the given function declaration.
 --
--- TODO: we pass two environments, since e cannot be extended. We should try
--- to solve this by implementing this:
---
--- https://stackoverflow.com/a/49546517/2289983
---
 funcDeclToFuncDef :: ( MapsTo (Loc VarDeclE) VarId mm
-                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
-                     , MapsTo FuncDefInfo FuncId mm
+                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+                     , MapsTo (Loc FuncDeclE) FuncId mm
                      , MapsTo FuncId (FuncDef VarId) mm )
                   => mm
                   -> FuncDecl
                   -> Either (Error, FuncDecl) (FuncId, FuncDef VarId)
 funcDeclToFuncDef mm f = left (,f) $ do
-    fId  <- findFuncIdForDecl mm (getLoc f)
+--    fId  <- findFuncIdForDecl mm (getLoc f)
+    fId  <- mm .@@ getLoc f
     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
     vExp <- expDeclToValExpr mm (funcsort fId) (funcBody f)
     return (fId, FuncDef pIds vExp)

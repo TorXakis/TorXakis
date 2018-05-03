@@ -4,48 +4,54 @@
 {-# LANGUAGE TypeApplications    #-}
 module TorXakis.Compiler.Defs.BehExprDefs where
 
-import qualified Data.Map as Map
+import           Control.Monad                     (when)
 import           Control.Monad.Error.Class         (liftEither, throwError)
+import           Data.List                         (nub)
+import qualified Data.Map                          as Map
 import           Data.Maybe                        (fromMaybe)
+import           Data.Semigroup                    ((<>))
 import qualified Data.Set                          as Set
-import           Data.Text (Text)
-import qualified Data.Text as T
-import           Data.Traversable (for)
-import           Data.Semigroup ((<>))
-import           Control.Monad (when)
-import           Data.List (nub)
+import           Data.Text                         (Text)
+import qualified Data.Text                         as T
+import           Data.Traversable                  (for)
 
-import           StdTDefs (chanIdIstep, chanIdExit)
+import           ChanId                            (ChanId (ChanId), chansorts,
+                                                    name, unid)
 import           ConstDefs                         (Const (Cbool))
-import           SortId                            (sortIdBool, SortId)
-import           TxsDefs                           (ActOffer (ActOffer), BExpr, ChanOffer (Quest, Exclam),
-                                                    Offer (Offer), chanid, actionPref, stop, valueEnv, procInst,
-                                                    ProcDef, parallel, enable, disable, interrupt, guard,
-                                                    choice, hide)
-import           ChanId (ChanId (ChanId), chansorts, name, unid)
-import           VarId (VarId, varsort)
-import           FuncId (FuncId)
-import           FuncDef (FuncDef)
-import           ValExpr (ValExpr, cstrConst)
-import           ProcId (ProcId, procvars, procchans, exitSortIds, ExitSort (Exit))
+import           FuncDef                           (FuncDef)
+import           FuncId                            (FuncId)
+import           ProcId                            (ExitSort (Exit), ProcId,
+                                                    exitSortIds, procchans,
+                                                    procvars)
 import qualified ProcId
+import           SortId                            (SortId, sortIdBool)
+import           StdTDefs                          (chanIdExit, chanIdIstep)
+import           TxsDefs                           (ActOffer (ActOffer), BExpr,
+                                                    ChanOffer (Exclam, Quest),
+                                                    Offer (Offer), ProcDef,
+                                                    actionPref, chanid, choice,
+                                                    disable, enable, guard,
+                                                    hide, interrupt, parallel,
+                                                    procInst, stop, valueEnv)
+import           ValExpr                           (ValExpr, cstrConst)
+import           VarId                             (VarId, varsort)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.ValExpr.ValExpr
-import           TorXakis.Compiler.Defs.ChanId
-import           TorXakis.Parser.Data
-import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.Common
+import           TorXakis.Compiler.ValExpr.SortId
+import           TorXakis.Compiler.ValExpr.ValExpr
+import           TorXakis.Parser.Data
 
 toBExpr :: ( MapsTo Text SortId mm
            , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
            , MapsTo (Loc ChanDeclE) ChanId mm
-           , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
+           , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
            , MapsTo (Loc VarDeclE) VarId mm
-           , MapsTo FuncDefInfo FuncId mm
+           , MapsTo (Loc FuncDeclE) FuncId mm
            , MapsTo FuncId (FuncDef VarId) mm
            , MapsTo ProcId () mm
            , MapsTo (Loc VarDeclE) SortId mm )
@@ -135,13 +141,13 @@ toBExpr mm (Hide _ cds be) = do
     chNameChIds <- traverse (mm .@) (getLoc <$> cds) :: CompilerM [ChanId]
     be' <- toBExpr mm be
     return $ hide chNameChIds be'
-    
+
 toActOffer :: ( MapsTo Text SortId mm
               , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
               , MapsTo (Loc ChanDeclE) ChanId mm
-              , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
+              , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
               , MapsTo (Loc VarDeclE) VarId mm
-              , MapsTo FuncDefInfo FuncId mm
+              , MapsTo (Loc FuncDeclE) FuncId mm
               , MapsTo FuncId (FuncDef VarId) mm
               , MapsTo (Loc VarDeclE) SortId mm )
            => mm -> ActOfferDecl -> CompilerM ActOffer
@@ -158,9 +164,9 @@ toOffer :: ( MapsTo Text SortId mm
            , MapsTo (Loc ChanDeclE) ChanId mm
            , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo (Loc VarDeclE) SortId mm
-           , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
+           , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
            , MapsTo (Loc VarDeclE) VarId mm
-           , MapsTo FuncDefInfo FuncId mm
+           , MapsTo (Loc FuncDeclE) FuncId mm
            , MapsTo FuncId (FuncDef VarId) mm )
         => mm -> OfferDecl -> CompilerM Offer
 -- EXIT is a special channel that can be use anywhere in a behavior
@@ -168,7 +174,7 @@ toOffer :: ( MapsTo Text SortId mm
 --
 -- >  X ? v >-> EXIT >>> EXIT ! "Boom" >>> ACCEPT ? str IN X ! str NI
 --
--- so we have to treat this channel specially.        
+-- so we have to treat this channel specially.
 toOffer mm (OfferDecl cr cods) = case chanRefName cr of
     "EXIT" -> do
         eSids <- traverse (offerSid mm) cods
@@ -182,9 +188,9 @@ toOffer mm (OfferDecl cr cods) = case chanRefName cr of
         return $ Offer cId ofrs
 
 
-toChanOffer :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [FuncDefInfo]) mm
+toChanOffer :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
                , MapsTo (Loc VarDeclE) VarId mm
-               , MapsTo FuncDefInfo FuncId mm
+               , MapsTo (Loc FuncDeclE) FuncId mm
                , MapsTo (Loc VarDeclE) SortId mm
                , MapsTo FuncId (FuncDef VarId) mm )
             => mm
