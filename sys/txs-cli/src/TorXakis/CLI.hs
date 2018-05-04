@@ -62,7 +62,7 @@ startCLI = runInputT defaultSettings cli
         printer <- getExternalPrint
         sid <- lift $ asks sessionId
         info $ "SessionId: " ++ show sid
-        liftIO $ printer "Starting printer async..."
+        info "Starting printer async..."
         pa <- liftIO $ async $ timer 0 printer
         handleInterrupt (return ())
                         $ withInterrupt loop
@@ -74,17 +74,14 @@ startCLI = runInputT defaultSettings cli
             Nothing -> return ()
             Just "" -> loop
             Just "quit" -> return ()
-            Just input -> do outputStrLn $ "Input was: " ++ input
-                             dispatch input
+            Just input -> do dispatch input
                              loop
     timer :: Int -> (String -> IO ()) -> IO ()
     timer n p = do
         -- TODO: Connect and wait for SSEs, print whatever comes
         --       use foldGet as in Stepper test in sys\txs-webserver\test\Spec.hs
         --       or in testTorXakisWithEcho example in sys\txs-lib\src\TorXakis\Lib\Examples.hs
-        p $ "Printer waiting: " ++ show n
         info "Hello, I'm the printer"
-        warn  "Hello, I'm the printer"
         threadDelay (2 * (10 ^ (6 :: Int)))
         timer (n+1) p
     dispatch :: String -> InputT CLIM ()
