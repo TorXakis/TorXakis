@@ -32,10 +32,8 @@ import           TorXakis.Parser.Data
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc VarDeclE) SortId VarDecl mm where
     uGetKVs mm vd = pure . (getLoc vd, ) <$>  mm .@!! varDeclSort vd
-    getKs _ md = return $ md ^.. biplate
 
 -- | A process declaration introduces variable id's in its parameters.
 instance ( MapsTo (Loc VarDeclE) SortId mm
          ) => DefinesAMap (Loc VarDeclE) VarId VarDecl mm where
     uGetKVs mm vd = pure <$> varIdFromVarDecl mm vd
-    getKs _ md = return $ md ^.. biplate

@@ -72,7 +72,6 @@ instance ( MapsTo Text SortId mm
               declExitSort NoExitD    = return NoExit
               declExitSort HitD       = return Hit
               declExitSort (ExitD xs) = Exit <$> sortIds mm xs
-    getKs _ md = return $ md ^.. biplate
 
 -- -- | A process declaration introduces variable id's in its parameters.
 -- instance ( MapsTo Text SortId mm

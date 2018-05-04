@@ -1,5 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes   #-}
--- {-# LANGUAGE DefaultSignatures     #-}
+{-# LANGUAGE DefaultSignatures     #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -52,16 +52,19 @@ class (Show k, Ord k, Eq k) => DefinesAMap k v e mm where
     -- | Get the 'k' 'v' pairs defined by the ast 'e'.
     getKVs :: mm -> e -> CompilerM [(k, v)]
     getKVs mm e = do
-        res <- uGetKVs mm e
-        ks  <- getKs @k @v mm e
-        if Set.fromList ks `Set.isSubsetOf` Set.fromList (fmap fst res)
-            then return res
+        kvs <- uGetKVs mm e
+        let ks = getKs @k @v @e @mm e
+        -- The key value pairs 'kvs' might contain keys not found in 'e' in the
+        -- case of pre-defined entities, hence the need for checking set
+        -- inclusion instead of set equality.
+        if Set.fromList ks `Set.isSubsetOf` Set.fromList (fmap fst kvs)
+            then return kvs
             else throwError Error
                  { _errorType = CompilerPanic
                  , _errorLoc  = NoErrorLoc
                  , _errorMsg  = "Not all the keys where mapped: \n"
                                 <> "    - expected: " <> T.pack (show ks) <> "\n"
-                                <> "    - but got: " <> T.pack (show $ fmap fst res)
+                                <> "    - but got: " <> T.pack (show $ fmap fst kvs)
 
                  }
     -- | Get the dictionary of 'k' 'v' pairs defined by the ast 'e'.
@@ -69,29 +72,33 @@ class (Show k, Ord k, Eq k) => DefinesAMap k v e mm where
     getMap mm = fmap Map.fromList . getKVs mm
     -- | Get the list of keys defined in 'e'. This is used for invariant
     -- checking.
-    getKs :: mm -> e -> CompilerM [k]
-    -- default getKs :: (Data e, Typeable k) => mm -> e -> CompilerM [k]
-    -- getKs _ md = return $ md ^.. biplate
+    getKs :: e -> [k]
+    default getKs :: (Data e, Typeable k) => e -> [k]
+    getKs md = md ^.. biplate
     -- | Get the 'k' 'v' pairs defined by the ast 'e', without checking for the
     -- invariant. Unchecked version of 'getKVs'.
     uGetKVs :: mm -> e -> CompilerM [(k, v)]
 
 instance (Data e, Typeable k, DefinesAMap k v e mm) => DefinesAMap k v [e] mm where
     uGetKVs mm es = concat <$> traverse (uGetKVs mm) es
-    getKs mm es = concat <$> traverse (getKs @k @v mm) es
+    -- We don't want to use the default implementation here, since 'e' might
+    -- have defined its own 'getKs' function.
+    getKs = concatMap (getKs @k @v @e @mm)
 
 instance (Data e, Typeable k, DefinesAMap k v e mm) => DefinesAMap k v (Maybe e) mm where
     uGetKVs mm = maybe (return []) (uGetKVs mm)
-    getKs _ md = return $ md ^.. biplate
+    -- We don't want to use the default implementation here, since 'e' might
+    -- have defined its own 'getKs' function.
+    getKs = maybe [] (getKs @k @v @e @mm)
 
 instance (Data e, Typeable k, Ord e, DefinesAMap k v e mm) => DefinesAMap k v (Set e) mm where
     uGetKVs mm = uGetKVs mm . Set.toList
-    getKs _ md = return $ md ^.. biplate
+    getKs = concatMap (getKs @k @v @e @mm) . Set.toList
 
 -- * Expressions that define a map from channel name to its declaration
 instance DefinesAMap Text (Loc ChanDeclE) ChanDecl () where
     uGetKVs () cd = return [(chanDeclName cd, getLoc cd)]
-    getKs _ cd = return [chanDeclName cd]
+    getKs cd = [chanDeclName cd]
 
 -- | Predefined channels declarations.
 predefChDecls :: Map Text (Loc ChanDeclE)
@@ -126,7 +133,6 @@ instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ParsedDefs () where
         chDeclModels <- uGetKVs (predefChDecls <.+> cdMap) (pd ^. models)
         chDeclProcs <- uGetKVs () (pd ^. procs)
         return $  chDeclModels ++ chDeclProcs
-    getKs _ md = return $ md ^.. biplate
 
 -- | A model declaration relies on channels declared outside of its scope,
 -- hence the need for a map from channel names to a location in which these
@@ -141,13 +147,11 @@ instance ( MapsTo Text (Loc ChanDeclE) mm
        syncs <- uGetKVs mm' (modelSyncs md)
        bes   <- uGetKVs mm' (modelBExp md)
        return $ ins ++ outs ++ syncs ++ bes
-    getKs _ md = return $ md ^.. biplate
 
 instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ProcDecl () where
     uGetKVs () pd = do
         cdMap <- getMap () (procDeclChParams pd) :: CompilerM (Map Text (Loc ChanDeclE))
         uGetKVs (predefChDecls <.+> cdMap) (procDeclBody pd)
-    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) BExpDecl mm where
@@ -166,30 +170,25 @@ instance ( MapsTo Text (Loc ChanDeclE) mm
     uGetKVs mm (Hide _ cds be) = do
         cdMap <- getMap () cds :: CompilerM (Map Text (Loc ChanDeclE))
         uGetKVs (cdMap <.+> mm) be
-    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) =>  DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ActOfferDecl mm where
     uGetKVs mm (ActOfferDecl os _) = uGetKVs mm os
-    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) OfferDecl mm where
     uGetKVs mm (OfferDecl cr _) = uGetKVs mm cr
-    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ChanRef mm where
     uGetKVs mm cr = do
         loc <- mm .@!! (chanRefName cr, cr)
         return [(getLoc cr, loc)]
-    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) SyncOn mm where
     uGetKVs _ All           = return []
     uGetKVs mm (OnlyOn crs) = uGetKVs mm crs
-    getKs _ md = return $ md ^.. biplate
 
 -- * Expressions that introduce new channel id's.
 
@@ -199,7 +198,6 @@ instance ( MapsTo Text SortId mm
         chIdsDecls <- uGetKVs mm (pd ^. chdecls)
         chIdsProcs <- uGetKVs mm (pd ^. procs)
         return $ chIdsDecls ++ chIdsProcs
-    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ChanDecl mm where
@@ -207,7 +205,6 @@ instance ( MapsTo Text SortId mm
         chId   <- getNextId
         chSids <- traverse (mm .@!!) (chanDeclSorts cd)
         return [(getLoc cd, ChanId (chanDeclName cd) (Id chId) chSids)]
-    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ProcDecl mm where
@@ -223,7 +220,6 @@ instance ( MapsTo Text SortId mm
         -- Add the channels declared at the body.
         bodyChids <- uGetKVs mm (procDeclBody pd)
         return $ parChids ++ retChids ++ predefChids ++ bodyChids
-    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ModelDecl mm where
@@ -236,7 +232,6 @@ instance ( MapsTo Text SortId mm
         -- Add the channels declared at the body.
         bodyChids <- uGetKVs mm (modelBExp md)
         return $ predefChids ++ bodyChids
-    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId BExpDecl mm where
@@ -255,7 +250,6 @@ instance ( MapsTo Text SortId mm
         cdMap <- uGetKVs mm cds :: CompilerM [(Loc ChanDeclE, ChanId)]
         beMap <- uGetKVs mm be
         return $ cdMap ++ beMap
-    getKs _ md = return $ md ^.. biplate
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ExitSortDecl mm where
@@ -267,4 +261,3 @@ instance ( MapsTo Text SortId mm
     uGetKVs _ HitD = return [ (hitChLoc, chanIdHit)
                            , (missChLoc, chanIdMiss)
                            ]
-    getKs _ md = return $ md ^.. biplate
