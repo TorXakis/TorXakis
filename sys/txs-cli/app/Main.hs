@@ -25,7 +25,7 @@ main =
             initRes <- initTorXakisSession host -- todo: get session id from arguments
             case initRes of
                 Left  e   -> print e
-                Right sid -> runReaderT startCLI (Env host sid)
+                Right sid -> runReaderT (runCli startCLI) (Env host sid)
           where
             initTorXakisSession :: String -> IO (Either TorXakisServerException Int)
             initTorXakisSession host = do
