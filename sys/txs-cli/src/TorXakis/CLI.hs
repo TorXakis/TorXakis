@@ -83,14 +83,14 @@ startCLI = runInputT defaultSettings cli
             "load"    ->
                 lift (load (tail tokens)) >>= output
             "stepper" ->
-                initStepper (tail tokens) >>= output
+                subStepper (tail tokens) >>= output
             _         ->
                 output $ "Unknown command: " ++ cmd
           where
-            initStepper :: [String] -> InputT CLIM ()
-            initStepper [mName] =
+            subStepper :: [String] -> InputT CLIM ()
+            subStepper [mName] =
                 lift (stepper mName) >>= output
-            initStepper _ = outputStrLn "This command is not supported yet."
+            subStepper _ = outputStrLn "This command is not supported yet."
 
 -- | Values that can be output in the command line.
 class Outputable v where
