@@ -1,6 +1,6 @@
 -- | Logging functionality for the TorXakis CLI.
 module TorXakis.CLI.Log
-    (initLogger, info, warn)
+    (initL, info, warn)
 where
 
 
@@ -15,8 +15,8 @@ import           System.Log.Logger         (Priority (INFO), addHandler, infoM,
 appName :: String
 appName = "txs-cli"
 
-initLogger :: MonadIO m => m ()
-initLogger = liftIO $ do
+initL :: MonadIO m => m ()
+initL = liftIO $ do
     removeAllHandlers
     lh <- fileHandler "txs-cli.log" INFO
     let h = setFormatter lh

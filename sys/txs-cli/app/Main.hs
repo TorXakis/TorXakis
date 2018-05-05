@@ -6,7 +6,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import           Control.Monad.Reader       (runReaderT)
 import           Lens.Micro                 ((^.), (^?))
 import           Lens.Micro.Aeson           (key, _Integer)
 import           System.Process             (StdStream (NoStream), proc,
@@ -25,7 +24,7 @@ main =
             initRes <- initTorXakisSession host -- todo: get session id from arguments
             case initRes of
                 Left  e   -> print e
-                Right sid -> runReaderT (runCli startCLI) (Env host sid)
+                Right sid -> runCli (Env host sid) startCLI
           where
             initTorXakisSession :: String -> IO (Either TorXakisServerException Int)
             initTorXakisSession host = do

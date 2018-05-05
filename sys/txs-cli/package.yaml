@@ -33,6 +33,7 @@ library:
   source-dirs: src
   dependencies:
   - aeson
+  - lens-aeson
   - async
   - base
   - bytestring
@@ -45,6 +46,7 @@ library:
   - wreq
   - hslogger
   - http-client
+  - MissingH
 
 executables:
   # NOTE: once txs-cli is fully functional we might want to rename this to `TorXakis`.
