@@ -4,12 +4,13 @@
 {-# LANGUAGE TemplateHaskell     #-}
 -- | Web client for `txs-webserver`.
 module TorXakis.CLI.WebClient
-    ( load
-    , stepper
-    , info
+    ( info
     , Info
     , version
     , buildTime
+    , load
+    , stepper
+    , step
     )
 where
 
@@ -128,6 +129,12 @@ stepper mName = do
     sId <- asks sessionId
     ignoreResponse $
         envPost (concat ["sessions/", show sId, "/models/", mName, "/stepper"]) noContent
+
+step :: (MonadIO m, MonadReader Env m) => Int -> m (Either String ())
+step n = do
+    sId <- asks sessionId
+    ignoreResponse $
+        envPost (concat ["sessions/", show sId, "/stepper/", show n]) noContent
 
 ignoreResponse :: (MonadIO m)
                => ExceptT String m (Response ByteString)

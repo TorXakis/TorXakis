@@ -28,6 +28,7 @@ import           Control.Monad.Trans      (lift)
 import           Data.Char                (toLower)
 import qualified Data.Text                as T
 import           System.Console.Haskeline
+import           Text.Read                (readMaybe)
 
 import           TorXakis.CLI.Conf
 import           TorXakis.CLI.Env
@@ -84,13 +85,22 @@ startCLI = runInputT defaultSettings cli
                 lift (load (tail tokens)) >>= output
             "stepper" ->
                 subStepper (tail tokens) >>= output
+            "step" ->
+                subStep (tail tokens) >>= output
             _         ->
                 output $ "Unknown command: " ++ cmd
           where
+            -- | Sub-command stepper.
             subStepper :: [String] -> InputT CLIM ()
             subStepper [mName] =
                 lift (stepper mName) >>= output
             subStepper _ = outputStrLn "This command is not supported yet."
+            -- | Sub-command step.
+            subStep [with] = do
+                case readMaybe with of
+                    Nothing -> outputStrLn "Number of steps should be an integer."
+                    Just n  -> lift (step n) >>= output
+            subStep _ = outputStrLn "This command is not supported yet."
 
 -- | Values that can be output in the command line.
 class Outputable v where
