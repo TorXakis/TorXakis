@@ -11,9 +11,11 @@ module TorXakis.CLI.WebClient
     , load
     , stepper
     , step
+    , sseSubscribe
     )
 where
 
+import           Control.Concurrent     (Chan, writeChan)
 import           Data.Text              (Text)
 --import           Data.Aeson             (FromJSON, decode)
 import           Data.Aeson.Lens        (key, _String)
@@ -32,12 +34,13 @@ import           Control.Monad          (when)
 import           Control.Monad.Except   (ExceptT, MonadError, liftEither,
                                          runExceptT, throwError)
 import           Control.Monad.Reader   (MonadReader, asks)
+import qualified Data.ByteString        as BSS
 import qualified Data.ByteString.Char8  as BS
 import           Data.ByteString.Lazy   (ByteString)
 import qualified Data.Text              as T
 import           Network.HTTP.Client    (HttpException (HttpExceptionRequest), HttpExceptionContent (StatusCodeException))
-import           Network.Wreq           (Response, get, partFile, post, put,
-                                         responseBody, responseStatus,
+import           Network.Wreq           (Response, foldGet, get, partFile, post,
+                                         put, responseBody, responseStatus,
                                          statusCode)
 import           Network.Wreq.Types     (Postable, Putable)
 import           System.FilePath        (takeFileName)
@@ -140,4 +143,11 @@ ignoreResponse :: (MonadIO m)
                => ExceptT String m (Response ByteString)
                -> m (Either String ())
 ignoreResponse = fmap (right (const ())) . runExceptT
+
+sseSubscribe :: Env -> Chan BSS.ByteString -> String -> IO (Either String ())
+sseSubscribe env ch suffix =
+    safe $ foldGet act () (host ++ suffix)
+    where
+      host = txsHost env
+      act _ = writeChan ch
 

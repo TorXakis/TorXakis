@@ -47,6 +47,8 @@ library:
   - hslogger
   - http-client
   - MissingH
+  - pipes
+  - pipes-aeson
 
 executables:
   # NOTE: once txs-cli is fully functional we might want to rename this to `TorXakis`.

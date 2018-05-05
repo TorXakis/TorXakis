@@ -17,14 +17,16 @@ module TorXakis.CLI
 where
 
 import           Control.Arrow            ((|||))
-import           Control.Concurrent       (threadDelay)
+import           Control.Concurrent       (newChan, readChan)
 import           Control.Concurrent.Async (async, cancel)
 import           Control.Lens             ((^.))
+import           Control.Monad            (forever)
 import           Control.Monad.Except     (runExceptT)
 import           Control.Monad.IO.Class   (MonadIO, liftIO)
-import           Control.Monad.Reader     (MonadReader, ReaderT, asks,
+import           Control.Monad.Reader     (MonadReader, ReaderT, ask, asks,
                                            runReaderT)
 import           Control.Monad.Trans      (lift)
+import qualified Data.ByteString.Char8    as BS
 import           Data.Char                (toLower)
 import qualified Data.Text                as T
 import           System.Console.Haskeline
@@ -44,19 +46,28 @@ runCli e clim =
     runReaderT (innerM clim) e
 
 startCLI :: CLIM ()
-startCLI = runInputT defaultSettings cli
+startCLI = do
+    runInputT defaultSettings cli
   where
     cli :: InputT CLIM ()
     cli = do
         Log.initL
-        printer <- getExternalPrint
-        sid <- lift $ asks sessionId
-        Log.info $ "SessionId: " ++ show sid
+        sId <- lift $ asks sessionId
+        Log.info $ "SessionId: " ++ show sId
         Log.info "Starting printer async..."
-        pa <- liftIO $ async $ timer 0 printer
+        printer <- getExternalPrint
+        ch <- liftIO newChan
+        env <- lift ask
+        producer <- liftIO $ async $
+            sseSubscribe env ch $ concat ["sessions/", show sId, "/messages"]
+        consumer <- liftIO $ async $ forever $ do
+            msg <- readChan ch
+            printer $ "<< " ++ BS.unpack msg
         handleInterrupt (return ())
                         $ withInterrupt loop
-        liftIO $ cancel pa
+        liftIO $ cancel producer
+        liftIO $ cancel consumer
+
     loop :: InputT CLIM ()
     loop = do
         minput <- getInputLine (defaultConf ^. prompt)
@@ -66,14 +77,6 @@ startCLI = runInputT defaultSettings cli
             Just "quit" -> return ()
             Just input -> do dispatch input
                              loop
-    timer :: Int -> (String -> IO ()) -> IO ()
-    timer n p = do
-        -- TODO: Connect and wait for SSEs, print whatever comes
-        --       use foldGet as in Stepper test in sys\txs-webserver\test\Spec.hs
-        --       or in testTorXakisWithEcho example in sys\txs-lib\src\TorXakis\Lib\Examples.hs
-        Log.info "Hello, I'm the printer"
-        threadDelay (2 * (10 ^ (6 :: Int)))
-        timer (n+1) p
     dispatch :: String -> InputT CLIM ()
     dispatch inputLine = do
         let tokens = words inputLine
