@@ -21,6 +21,7 @@ module LPEfunc
   lpeTransformFunc,
   lpeParFunc,
   lpeHideFunc,
+  preGNFEnableFunc,
   gnfFunc,
   preGNFFunc,
   eqProcDef,
@@ -109,6 +110,12 @@ lpeHideFunc :: BExpr -> (Map.Map (Name, Int) VarId) -> TranslatedProcDefs -> Pro
 lpeHideFunc bexpr _chanOffers translatedProcDefs procDefs' =
   let envl = EnvL 0 (Map.fromList []) []
    in evalState (lpeHide bexpr translatedProcDefs procDefs') envl
+
+-- preGNFEnable :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
+preGNFEnableFunc :: BExpr -> (Map.Map (Name, Int) VarId) -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
+preGNFEnableFunc bexpr _chanOffers translatedProcDefs procDefs' =
+  let envl = EnvL 0 (Map.fromList []) []
+   in evalState (preGNFEnable bexpr translatedProcDefs procDefs') envl
 
 
 -- gnf :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb (ProcDefs)

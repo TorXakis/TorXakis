@@ -26,8 +26,9 @@ import ConstDefs
 import ValExpr
 
 import LPEfunc
+import StdTDefs (chanIdExit)
 
--- import Debug.Trace
+import Debug.Trace
 ---------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------
@@ -1235,6 +1236,83 @@ testLPEHide2 = TestCase $
 
 
 
+-- -------------------------------------------------------
+-- preGNFEnable integration (it's called at preGNF level)
+-- -------------------------------------------------------
+
+-- P[A]() := EXIT >>> STOP
+-- with procInst = P[A]()
+-- becomes:
+-- LPE:
+--    first GNF 
+--          first preGNF
+--                preGNFBExpr for Enable creates a new ProcDef/ProcInst of the whole bexpr
+--                      ProcDef:    P$pre1[A]() := EXIT >>> STOP
+--                      ProcInst:   P$pre1[A]()
+--                      thus the bexpr of the original ProcDef P is replaced with the call to the new ProcInst:
+--                      ProcDef:    P[A]() := P$pre1[A]()
+--                then preGNFEnable is applied
+                        -- first LPE of left side of ENABLE:
+                        --       P$pre1[A](pc$P) := EXIT [pc$P == 0] >-> STOP 
+                        --       with procInst = P$pre1[A](0)
+                        -- make a new ProcDef P$enable of the right hand side of ENABLE operator
+                        --       P$pre1$enable[A]() := STOP
+                        -- then replace each occurrence of EXIT >-> BExpr with an empty ActionPrefix and a ProcInst to P$enable
+                        --       P$pre1[A](pc$P) := {} [pc$P == 0] >-> P$pre1$enable[A]()           
+                        -- then run preGNF on P$pre1$enable
+                        --       extension of scope of variables from the lhs to rhs?
+                        --       just by explicit communication via EXIT/ACCEPT
+                        -- returns
+                        --       ProcDef:  P$pre1[A](pc$P) := {} [pc$P == 0] >-> P$pre1$enable[A]()
+                        --       ProcInst: P$pre1[A](0)                // just the procInst of the LPE of lhs
+--                now the originally generated ProcInst is replaced with the new one
+--                     P[A]() := P$pre1[A](0)
+--    GNF cont'd:
+--          unfold the ProcDef P[A](), i.e. instantiate P$pre1[A](0)
+--          P[A]() := EXIT >-> STOP
+--          becomes:
+--          P[A]() := EXIT >-> P$gnf1[A]()
+--          P$gnf1[A]() := STOP
+-- LPE cont'd:
+--    becomes: 
+--    LPE_P[A]() := EXIT[pcP == 0] >-> P[A](-1)
+--    LPE_P[A](0)
+
+
+testEnable1 :: Test
+testEnable1 = TestCase $
+   trace ("\n\n expected:" ++ show (Just (procInst', procDefPlpe)) ++ "\ngot: " ++ show res) $ assertBool "simple EXIT" (eqProcDef (Just (procInst', procDefPlpe)) res)
+   where
+      res = lpeTransformFunc procInst'' procDefs'
+      procInst'' = procInst procIdP [chanIdA] []
+      procIdP = procIdGen "P" [chanIdA] []
+      
+      -- action: EXIT
+      actOfferExit :: ActOffer
+      actOfferExit   = ActOffer {  offers = Set.singleton
+                                          Offer { chanid = chanIdExit
+                                                , chanoffers = []
+                                          }
+                              , hiddenvars = Set.empty
+                              , constraint = cstrConst (Cbool True)
+                  }
+      
+      procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExit stop)
+                                              [] 
+                                              stop)
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+
+      procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP]
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (actionPref 
+                                                      ActOffer {    offers = Set.empty
+                                                                  , hiddenvars = Set.empty
+                                                                  , constraint = cstrEqual vexprPcP int0
+                                                                  } 
+                                                      (procInst procIdPlpe [chanIdA] [int1]))
+      procInst' = procInst procIdPlpe [chanIdA] [int0]
+
+
+
 
 
 -- -------------------------------------------------
@@ -1252,27 +1330,28 @@ testLPEHide2 = TestCase $
 -- List of Tests
 ----------------------------------------------------------------------------------------
 testLPEList :: Test
-testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
+testLPEList = TestList [  --TestLabel "translation to GNF did work" testGNFFirst
 
-                        , TestLabel "STOP becomes empty choice" testStop
-                        , TestLabel "actionPref stop" testActionPrefStop
-                        , TestLabel "actionPref Constraints are kept" testActionPrefConstraints
-                        , TestLabel "actionPref procInst" testActionPrefProcInst
-                        , TestLabel "choice" testChoice
-                        , TestLabel "Multiple ProcDefs simple" testMultipleProcDefs1
-                        , TestLabel "Multiple ProcDefs circular" testMultipleProcDefs2
-                        , TestLabel "Multiple ProcDefs removal of STOP" testMultipleProcDefs3
+                        -- , TestLabel "STOP becomes empty choice" testStop
+                        -- , TestLabel "actionPref stop" testActionPrefStop
+                        -- , TestLabel "actionPref Constraints are kept" testActionPrefConstraints
+                        -- , TestLabel "actionPref procInst" testActionPrefProcInst
+                        -- , TestLabel "choice" testChoice
+                        -- , TestLabel "Multiple ProcDefs simple" testMultipleProcDefs1
+                        -- , TestLabel "Multiple ProcDefs circular" testMultipleProcDefs2
+                        -- , TestLabel "Multiple ProcDefs removal of STOP" testMultipleProcDefs3
 
-                        , TestLabel "ProcDef Identity" testProcDefIdentity
-                        , TestLabel "Params are made unique" testParamsUnique
-                        , TestLabel "switching channels" testChannelSwitch
-                        , TestLabel "multi action" testMultiAction
-                        , TestLabel "channel instantiation not for top-level procInst" testChannelInstantiation
+                        -- , TestLabel "ProcDef Identity" testProcDefIdentity
+                        -- , TestLabel "Params are made unique" testParamsUnique
+                        -- , TestLabel "switching channels" testChannelSwitch
+                        -- , TestLabel "multi action" testMultiAction
+                        -- , TestLabel "channel instantiation not for top-level procInst" testChannelInstantiation
 
-                        , TestLabel "lpePar integration" testLPEPar
+                        -- , TestLabel "lpePar integration" testLPEPar
 
-                        , TestLabel "lpeHide integration" testLPEHide1
-                        , TestLabel "lpeHide integration" testLPEHide2
+                        -- , TestLabel "lpeHide integration" testLPEHide1
+                        -- , TestLabel "lpeHide integration" testLPEHide2
+                        TestLabel "lpeEnable integration" testEnable1
                         
                         --, TestLabel "multi chanoffer translation" testMultiChanOffer
                         ]

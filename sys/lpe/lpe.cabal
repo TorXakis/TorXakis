@@ -47,6 +47,7 @@ test-suite lpe-test
                       , LPE
                       , TestLPEPar
                       , TestLPEHide
+                      , TestPreGNFEnable 
                       , TranslatedProcDefs
                       , LPEfunc
 

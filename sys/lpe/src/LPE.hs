@@ -25,6 +25,7 @@ module LPE
 , lpe
 , lpePar
 , lpeHide
+, preGNFEnable
 )
 where
 
@@ -41,7 +42,7 @@ import TranslatedProcDefs
 
 import TxsDefs
 import ConstDefs
-import StdTDefs (stdSortTable)
+import StdTDefs (stdSortTable, chanIdExit)
 
 import ChanId
 import ProcId
@@ -168,6 +169,14 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Hide _hiddenChans _bexpr) choiceCnt freeVars
     (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
     -- translate the created ProcDef with LPEHide
     res <- lpeHide procInst' translatedProcDefs procDefs'' 
+    return $ res
+
+
+preGNFBExpr bexpr'@(TxsDefs.view -> Enable _bexprL _exitChans _bexprR) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
+    -- ENABLE at lower level not allowed
+    (procInst', procDefs'') <- trace ("\n\n preGNFBexpr of Enable....") $ preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
+    -- translate the created ProcDef with LPEEnable
+    res <- preGNFEnable procInst' translatedProcDefs procDefs'' 
     return $ res
 
 preGNFBExpr _ _ _ _ _ _ =
@@ -487,7 +496,7 @@ lpePar _ _ _ = error "only allowed with ProcInst"
 lpeHide :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
 lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) translatedProcDefs procDefs' = do
     let -- 
-        ProcDef chansDef paramsDef bexpr = fromMaybe (error "lpePar: could not find the given procId") (Map.lookup procIdInst procDefs')
+        ProcDef chansDef paramsDef bexpr = fromMaybe (error "lpeHide: could not find the given procId") (Map.lookup procIdInst procDefs')
         Hide hiddenChans bexpr' = TxsDefs.view bexpr
         
         -- translate bexpr of HIDE to LPE first
@@ -548,6 +557,81 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
 
 lpeHide _ _ _ = error "lpeHide: was called with something other than a ProcInst"
     
+
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- preGNFEnable :
+-- ----------------------------------------------------------------------------------------- --
+
+-- we assume that the top-level bexpr of the called ProcDef is Enable
+preGNFEnable :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
+preGNFEnable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) translatedProcDefs procDefs' = do
+    let -- 
+        ProcDef chansDef paramsDef bexpr = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procIdInst procDefs')
+        Enable bexprL _acceptchans bexprR = TxsDefs.view bexpr
+        
+        -- translate left bexpr of Enable to LPE first
+        -- reuse current ProcDef: 
+        procDef' = ProcDef chansDef paramsDef bexprL
+        procDefs'' = Map.insert procIdInst procDef' procDefs'
+    (procInst_lpe@(TxsDefs.view -> ProcInst procId_lpe _chansInst_lpe _paramsInst_lpe), procDefs''') <- lpe procInst' translatedProcDefs procDefs''
+
+    unidR <- EnvB.newUnid
+    let -- decompose translated ProcDef
+        ProcDef chansDef_lpe paramsDef_lpe bexpr_lpe = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procId_lpe procDefs''')
+        -- strip hidden chans and update ProcDef
+        steps = trace ("\n\nlpe of LHS: " ++ show bexpr_lpe) $ extractSteps bexpr_lpe
+
+        -- create new ProcDef of bexprR
+        procDefR = trace ("\n\npreGNFEnable: lpe steps of bexprsL: \n" ++ show steps) $ ProcDef chansDef paramsDef bexprR
+        -- create new ProcId
+        name' = T.append (ProcId.name procIdInst) (T.pack "$enable")
+        procIdR = procIdInst {  ProcId.name = name',
+                                ProcId.unid = unidR,
+                                ProcId.procvars = paramsDef}
+        -- create ProcInst, translate params to VExprs
+        paramsDef' = map cstrVar paramsDef
+        procInstR = procInst procIdR chansDef paramsDef'
+        -- put created ProcDefs in the ProcDefs
+        procDefs'''' = trace ("\n\npreGNFEnable: procInst/ProcDef of bexprR: \n" ++ show procInstR ++ "\n" ++ show procDefR ) $ Map.insert procIdR procDefR procDefs'''
+
+        steps' = map (replaceExits procInstR) steps 
+
+        -- put new steps in the ProcDef of bexprL:
+        procDefNew = trace ("\n\npreGNFEnable: replaced steps: \n" ++ show steps') $ ProcDef chansDef_lpe paramsDef_lpe (wrapSteps steps')
+        procDefs5 = Map.insert procId_lpe procDefNew procDefs''''
+
+    -- translate to LPE again!
+    -- (procInst_lpe2@(TxsDefs.view -> ProcInst procId_lpe2 _chansInst_lpe2 _paramsInst_lpe2), procDefs6) <- trace ("\n\n preGNFEnable: given to lpe round2: \n" ++ show procInst_lpe ++ "\n" ++ show procDefs5) $ lpe procInst_lpe translatedProcDefs procDefs5
+    -- (procInst_lpe2@(TxsDefs.view -> ProcInst procId_lpe2 _chansInst_lpe2 _paramsInst_lpe2), procDefs6) <- trace ("\n\n preGNFEnable: given to lpe round2: \n" ++ show procInst_lpe ++ "\n" ++ show procDefs5) 
+    --  preGNF procId translatedProcDefs procDefs' = do
+    procDefs6 <- preGNF procId_lpe translatedProcDefs procDefs5
+      
+    -- let -- decompose translated ProcDef
+    --     procDef_final = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procId_lpe2 procDefs6)
+    
+
+    -- trace ("\n\npreGNFEnable: final procInst/ProcDef: \n" ++ show procInst_lpe2 ++ "\n" ++ show procDef_final) $ 
+    return $ (procInst_lpe, procDefs6)
+    where   
+        -- just for the steps with EXIT -> <>  replace with the ProcInst
+        replaceExits :: BExpr -> BExpr -> BExpr 
+        replaceExits procInst1 bexpr'@(TxsDefs.view -> ActionPref actOffer'@ActOffer{offers = offers'} _bexpr) = --{ offers = Set.fromList [Offer { chanid = chanIdExit, chanoffers = []}]}
+            case Set.toList offers' of 
+                [Offer { chanid = chid, chanoffers = []}] | chid == chanIdExit -> actionPref actOffer'{offers = Set.empty} procInst1
+                _       -> bexpr'
+            -- where 
+            --     actOfferEmpty = ActOffer { offers = Set.empty
+            --                              , hiddenvars = Set.empty
+            --                              , constraint = cstrConst (Cbool True)
+            --                              }
+        replaceExits _ _ = error "replaceExits: unknown input"  
+
+preGNFEnable _ _ _ = error "preGNFEnable: was called with something other than a ProcInst"
+    
+
+
 -- ----------------------------------------------------------------------------------------- --
 -- LPE :
 -- ----------------------------------------------------------------------------------------- --
@@ -567,7 +651,7 @@ lpeTransform procInst' procDefs'  =
        ProcInst procid _chans _vexps
          -> case Map.lookup procid procDefs' of
               Just _procdef
-                -> lpeTransform' procInst' procDefs'
+                -> trace ("\n\nlpe: procDefs: " ++ show procDefs') $ lpeTransform' procInst' procDefs'
               _ -> do EnvB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                      "LPE Transformation: undefined process instantiation" ]
                       return Nothing
@@ -598,7 +682,7 @@ lpeTransform' procInst''' procDefs' = do    (procInst', procDefs'') <- lpe procI
                                                 -- put new ProcId in each step
                                                 steps = map (substituteProcId procIdInst'' procIdInst') (extractSteps bexpr)
                                                 procDef = ProcDef chans params (wrapSteps steps)
-                                            trace ("\n\nlpeTransform result: \n " ++ show procInst'' ++ "\n" ++ show procDef) $ return $ Just (procInst'', procDef)
+                                            return $ Just (procInst'', procDef)
         where
         -- -- create new channoffers for ONE channel
         -- collectChanOffers :: (EnvB.EnvB envb ) => ChanId -> envb [((Name, Int), VarId)]
