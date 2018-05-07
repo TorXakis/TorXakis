@@ -49,6 +49,8 @@ library:
   - MissingH
   - pipes
   - pipes-aeson
+  - coreenv
+  - defs
 
 executables:
   # NOTE: once txs-cli is fully functional we might want to rename this to `TorXakis`.
