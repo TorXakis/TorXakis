@@ -57,8 +57,8 @@ data  InputCompletion  =  ANGELIC
 
 -- Represent String a positive integer within the given range?
 -- lower and upper bound are inclusive.
-withinRangeInt :: Int -> Int -> string -> Bool
-withinRangeInt low high s = not (null s) && all Char.isDigit s && (let v = read s in ( low <= v ) && ( v <= high) )
+withinRangeInt :: Int -> Int -> String -> Bool
+withinRangeInt low high s = not (null s) && all Char.isDigit s && (let v = read s :: Int in ( low <= v ) && ( v <= high) )
       
 
 -- ----------------------------------------------------------------------------------------- --
