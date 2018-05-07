@@ -49,7 +49,6 @@ data ParamPartition =
     ParamPartition { maxDepth               :: Int
                    , intHalf                :: Int
                    , intNum                 :: Int
-                   , adtWidth               :: Int
                    }
     deriving (Eq,Ord,Read,Show)
 
@@ -186,7 +185,7 @@ randCnrsADT p vexp depth  =  do
 
 randCnrsCstr :: Variable v => ParamPartition -> (CstrId,CstrDef) -> ValExpr v -> Int
                                 -> SMT [ Set.Set (ValExpr v) ]
-randCnrsCstr p (cid, CstrDef{}) vexp depth  =  do
+randCnrsCstr p (cid, _) vexp depth  =  do
      let ccCnr = cstrIsCstr cid vexp
      recCnrs <- sequence [ randCnrs p (cstrAccess cid pos vexp) (depth-1) | (_,pos) <- zip (cstrargs cid) [0..] ]
      return [ Set.insert ccCnr cnrs

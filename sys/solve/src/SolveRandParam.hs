@@ -51,7 +51,6 @@ toRandParam p =
                     (read (getParam "param_max_rand_depth" p) )
                     (read (getParam "param_RandSolve_IntHalf" p) )
                     (read (getParam "param_RandSolve_IntNum" p) )
-                    (read (getParam "param_RandSolve_adtWidth" p) )
                 )
         TrueBins        -> 
             RandTrueBins 
