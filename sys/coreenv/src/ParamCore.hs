@@ -55,6 +55,12 @@ data  InputCompletion  =  ANGELIC
      deriving (Eq,Ord,Read,Show)
 
 
+-- Represent String a positive integer within the given range?
+-- lower and upper bound are inclusive.
+withinRangeInt :: Int -> Int -> string -> Bool
+withinRangeInt low high s = not (null s) && all Char.isDigit s && (let v = read s in ( low <= v ) && ( v <= high) )
+      
+
 -- ----------------------------------------------------------------------------------------- --
 -- parameter initialization
 
@@ -63,28 +69,22 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
 
 -- ----------------------------------------------------------------------------------------- --
 -- test/simulation input generation
-  [ ( "param_Test_inputEager"    , "3"         , \s -> not (null s) && all Char.isDigit s
-                                                       && ( 0 <= (read s::Integer) ) && ( (read s::Integer) <= 3 )   )
-            -- param_Test_inputEager :: Int (0 <= param_Test_inputEager <= 3)
+  [ ( "param_Test_inputEager"    , "3"         , withinRangeInt 0 3 )
             -- level of input eagerness: 0 .. 3
 
-  , ( "param_Sim_inputEager"     , "0"         , \s -> not (null s) && all Char.isDigit s
-                                                       && ( 0 <= (read s::Integer) ) && ( (read s::Integer) <= 3 )   )
-            -- param_Sim_inputEager :: Int (0 <= param_Test_inputEager <= 3)
+  , ( "param_Sim_inputEager"     , "0"         , withinRangeInt 0 3 )
             -- level of input eagerness: 0 .. 3
 
 -- ----------------------------------------------------------------------------------------- --
 -- test generation
 
   , ( "param_ImpRel"             , "IOCO"      , (=="IOCO")                           )
-            -- param_ImpRel :: ImpRel
             -- implementation relation; currently only IOCO
 
 -- ----------------------------------------------------------------------------------------- --
 -- simulation
 
   , ( "param_InputCompletion"    , "ANGELIC"   , (=="ANGELIC")                        )
-            -- param_InputCompletion :: InputCompletion
             -- input completion for simulation; currently only ANGELIC
   ]
 
