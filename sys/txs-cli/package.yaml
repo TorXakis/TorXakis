@@ -51,6 +51,7 @@ library:
   - pipes-aeson
   - coreenv
   - defs
+  - directory
 
 executables:
   # NOTE: once txs-cli is fully functional we might want to rename this to `TorXakis`.

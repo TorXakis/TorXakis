@@ -16,32 +16,36 @@ module TorXakis.CLI
     )
 where
 
-import           Control.Arrow            ((|||))
-import           Control.Concurrent       (newChan, readChan)
-import           Control.Concurrent.Async (async, cancel)
-import           Control.Lens             ((^.))
-import           Control.Monad            (forever)
-import           Control.Monad.Except     (runExceptT)
-import           Control.Monad.IO.Class   (MonadIO, liftIO)
-import           Control.Monad.Reader     (MonadReader, ReaderT, ask, asks,
-                                           runReaderT)
-import           Control.Monad.Trans      (lift)
-import           Data.Aeson               (eitherDecodeStrict)
-import qualified Data.ByteString.Char8    as BS
-import           Data.Char                (toLower)
-import           Data.Either.Utils        (maybeToEither)
-import           Data.Foldable            (traverse_)
-import qualified Data.Text                as T
+
+import           Control.Arrow                    ((|||))
+import           Control.Concurrent               (newChan, readChan)
+import           Control.Concurrent.Async         (async, cancel)
+import           Control.Lens                     ((^.))
+import           Control.Monad                    (forever)
+import           Control.Monad.Except             (runExceptT)
+import           Control.Monad.IO.Class           (MonadIO, liftIO)
+import           Control.Monad.Reader             (MonadReader, ReaderT, ask,
+                                                   asks, runReaderT)
+import           Control.Monad.Trans              (lift)
+import           Data.Aeson                       (eitherDecodeStrict)
+import qualified Data.ByteString.Char8            as BS
+import           Data.Char                        (toLower)
+import           Data.Either.Utils                (maybeToEither)
+import           Data.Foldable                    (traverse_)
+import           Data.String.Utils                (strip)
+import qualified Data.Text                        as T
 import           System.Console.Haskeline
-import           Text.Read                (readMaybe)
+import           System.Console.Haskeline.History (addHistoryRemovingAllDupes)
+import           System.Directory                 (getHomeDirectory)
+import           System.FilePath                  ((</>))
+import           Text.Read                        (readMaybe)
 
-
-import           EnvData                  (Msg)
-import           TxsShow                  (pshow)
+import           EnvData                          (Msg)
+import           TxsShow                          (pshow)
 
 import           TorXakis.CLI.Conf
 import           TorXakis.CLI.Env
-import qualified TorXakis.CLI.Log         as Log
+import qualified TorXakis.CLI.Log                 as Log
 import           TorXakis.CLI.WebClient
 
 -- | Client monad
@@ -54,8 +58,15 @@ runCli e clim =
 
 startCLI :: CLIM ()
 startCLI = do
-    runInputT defaultSettings cli
+    home <- liftIO getHomeDirectory
+    runInputT (haskelineSettings home) cli
   where
+    haskelineSettings home = defaultSettings
+        { historyFile = Just $ home </> ".torxakis-hist.txt"
+        -- We add entries to the history ourselves, by using
+        -- 'addHistoryRemovingAllDupes'.
+        , autoAddHistory = False
+        }
     cli :: InputT CLIM ()
     cli = do
         Log.initL
@@ -72,16 +83,6 @@ startCLI = do
         consumer <- liftIO $ async $ forever $ do
             msg <- readChan ch
             traverse_ (printer . ("<< " ++)) $ pretty (asTxsMsg msg)
-            --TODO: parse the bytesting into 'EnvData.Msg'
-            -- Remember that we need to strip the "data" prefix.
-            -- data:{"tag":"TXS_CORE_USER_INFO","s":"Stepping Mode set"}
-            -- see 'checkActions' at 'txs-webserver/Spec'.
-
-            -- TODO: pretty print the message (See TxsDDefs)
-            --
-            -- data:{"tag":"AnAction","act":{"tag":"Act","contents":[[{"name":"Action","chansorts":[{"name":"Operation","unid":{"_id":1014}}],"unid":{"_id":1285}},[{"args":[{"tag":"Cint","cInt":-7059},{"tag":"Cint","cInt":-2147474793}],"tag":"Cstr","cstrId":{"cstrsort":{"name":"Operation","unid":{"_id":1014}},"name":"Plus","unid":{"_id":1031},"cstrargs":[{"name":"Int","unid":{"_id":102}},{"name":"Int","unid":{"_id":102}}]}}]]]}}
-
-
         handleInterrupt (return ())
                         $ withInterrupt loop
         liftIO $ cancel producer
@@ -98,6 +99,7 @@ startCLI = do
                              loop
     dispatch :: String -> InputT CLIM ()
     dispatch inputLine = do
+        modifyHistory $ addHistoryRemovingAllDupes (strip inputLine)
         let tokens = words inputLine
             cmd = head tokens
         case map toLower cmd of
@@ -140,11 +142,6 @@ class Outputable v where
     -- | Format the value as list of strings, to be printed line by line in the
     -- command line.
     pretty :: v -> [String]
-
--- data Output v = forall v . Outputable v => Output v
-
--- outputRes :: forall v . Outputable v => v -> InputT CLIM ()
--- outputRes = output
 
 instance Outputable () where
     pretty _ = []
