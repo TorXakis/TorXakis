@@ -1,0 +1,5 @@
+param param_Sut_deltaTime 500
+param param_Test_inputEager 0
+tester Model Sut
+test 20
+exit
