@@ -9,13 +9,14 @@
 # containerized CI for TorXakis, which includes all the needed dependencies.
 
 # First build TorXakis
+stack build
 
 # Version of TorXakis that is being packaged.
 TXS_VERSION=0.6.0
 
 TXS_TMP=/tmp/torxakis/
 
-## rm -fr $TXS_TMP
+rm -fr $TXS_TMP
 mkdir -p ${TXS_TMP}/usr/bin
 
 echo "Temporary directory is: ${TXS_TMP}"
@@ -37,6 +38,8 @@ chmod +x usr/bin/cvc4
 curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.6.0/z3-4.6.0-x64-ubuntu-14.04.zip -o z3.zip 
 unzip -p z3.zip "bin/z3" > /usr/bin/z3
 
+cd -
+
 # Create the deb package
 fpm -s dir \
     -t deb \
@@ -49,6 +52,7 @@ fpm -s dir \
     -d "libgomp1" \
     -p torxakis_VERSION_ARCH.deb \
     usr/bin
+
 
 # Create an rpm from the deb package
 fpm -t rpm -s deb torxakis_${TXS_VERSION}_amd64.deb

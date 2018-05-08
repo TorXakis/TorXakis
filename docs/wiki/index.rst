@@ -11,3 +11,5 @@ Welcome to TorXakis's documentation!
    :caption: Contents:
 
    tutorial/index.rst
+
+   developers/index.rst
