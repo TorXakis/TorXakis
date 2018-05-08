@@ -7,7 +7,6 @@ See LICENSE at root directory of this repository.
 
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 module SMTInternal
 
@@ -234,9 +233,9 @@ getInfo info = do
         then
             let tuple = strip (List.init . tail $ list) in
                 case List.stripPrefix (":" ++ info) tuple of
-                   Just res -> let string = strip res in
-                               if startswith "\"" string && endswith "\"" string
-                               then return $ List.init . tail $ string
+                   Just res -> let str = strip res in
+                               if startswith "\"" str && endswith "\"" str
+                               then return $ List.init . tail $ str
                                else error ("SMT response violates quotes in pattern.\nExpected (:" ++ info ++ " \"<name>\")\nActual "++ list)
                    Nothing -> error ("SMT response violates info in pattern.\nExpected (:" ++ info ++ " \"<name>\")\nActual "++ list)
         else
