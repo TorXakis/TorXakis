@@ -9,6 +9,7 @@
 # containerized CI for TorXakis, which includes all the needed dependencies.
 
 # First build TorXakis
+export STACK_YAML="stack_linux.yaml"
 stack build
 
 # Version of TorXakis that is being packaged.
@@ -36,7 +37,8 @@ chmod +x usr/bin/cvc4
 
 # Download and copy the Z3 binary
 curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.6.0/z3-4.6.0-x64-ubuntu-14.04.zip -o z3.zip 
-unzip -p z3.zip "bin/z3" > /usr/bin/z3
+unzip -p z3.zip "bin/z3" > usr/bin/z3
+chmod +x usr/bin/z3
 
 cd -
 
