@@ -32,3 +32,6 @@ docs/wiki/_build
 
 # Debian package
 *.deb
+
+# RPM package.
+*.rpm
