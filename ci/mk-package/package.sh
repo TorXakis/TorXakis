@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Create a TorXakis package.
+
+# NOTE: this script will build TorXakis and download the SMT solvers, so it is
+# not ready to be incorporated in CI yet. Since `fpm` and `github-release` are
+# additional packages that need to be installed, doing it in the current CI
+# will slow down the process. It would therefore make more sense to go to
+# containerized CI for TorXakis, which includes all the needed dependencies.
+
+# Version of TorXakis that is being packaged.
+TXS_VERSION=0.6.0
+
+TXS_TMP=/tmp/torxakis/
+
+## rm -fr $TXS_TMP
+mkdir -p ${TXS_TMP}/usr/bin
+
+echo "Temporary directory is: ${TXS_TMP}"
+
+TXS_BIN=`stack path --local-install-root --silent`/bin
+
+echo "TorXakis binary directory is: ${TXS_BIN}"
+
+cp ${TXS_BIN}/* ${TXS_TMP}/usr/bin/
+
+cd $TXS_TMP
+
+# Download and copy the CVC4 binary
+curl -L https://github.com/TorXakis/Dependencies/releases/download/cvc4-20180306/cvc4-20180306-x86_64-linux-opt -o cvc4
+mv cvc4 usr/bin
+chmod +x usr/bin/cvc4
+
+# Download and copy the Z3 binary
+curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.6.0/z3-4.6.0-x64-ubuntu-14.04.zip -o z3.zip 
+unzip -p z3.zip "bin/z3" > /usr/bin/z3
+
+# Create the package
+fpm -s dir \
+    -t deb \
+    -n torxakis \
+    -v $TXS_VERSION \
+    -C $TXS_TMP \
+    -d "libgmp-dev" \
+    -d "libexpat1" \
+    -d "netbase" \
+    -d "libgomp1" \
+    -p torxakis_VERSION_ARCH.deb \
+    usr/bin
