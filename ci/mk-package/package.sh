@@ -8,6 +8,8 @@
 # will slow down the process. It would therefore make more sense to go to
 # containerized CI for TorXakis, which includes all the needed dependencies.
 
+# First build TorXakis
+
 # Version of TorXakis that is being packaged.
 TXS_VERSION=0.6.0
 
@@ -35,7 +37,7 @@ chmod +x usr/bin/cvc4
 curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.6.0/z3-4.6.0-x64-ubuntu-14.04.zip -o z3.zip 
 unzip -p z3.zip "bin/z3" > /usr/bin/z3
 
-# Create the package
+# Create the deb package
 fpm -s dir \
     -t deb \
     -n torxakis \
@@ -47,3 +49,6 @@ fpm -s dir \
     -d "libgomp1" \
     -p torxakis_VERSION_ARCH.deb \
     usr/bin
+
+# Create an rpm from the deb package
+fpm -t rpm -s deb torxakis_${TXS_VERSION}_amd64.deb

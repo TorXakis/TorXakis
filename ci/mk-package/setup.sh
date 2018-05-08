@@ -6,3 +6,6 @@
 sudo apt-get install ruby ruby-dev rubygems build-essential
 sudo gem install --no-ri --no-rdoc fpm
 
+# rpmbuild
+sudo apt-get install rpm -y
+
