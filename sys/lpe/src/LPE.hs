@@ -51,13 +51,15 @@ import VarId
 
 import ValExpr
 
+
 import qualified EnvData
 import qualified EnvBasic            as EnvB
 
 import Expand (relabel)
 import Subst
+import SortOf
 
-import Debug.Trace 
+-- import Debug.Trace 
 
 -- ----------------------------------------------------------------------------------------- --
 -- Types :
@@ -85,7 +87,10 @@ extractVars actOffer = let  set = offers actOffer in
                        Set.foldr extractVarIds_Offer [] set
 
 extractVarIds_Offer :: Offer -> [VarId] -> [VarId]
-extractVarIds_Offer Offer{chanoffers = coffers} varIds = (foldr extractVarIds_ChanOffer [] coffers) ++ varIds
+extractVarIds_Offer Offer{chanoffers = choffers} varIds = (extractVarIds_ChanOffers choffers) ++ varIds
+
+extractVarIds_ChanOffers :: [ChanOffer] -> [VarId]
+extractVarIds_ChanOffers choffers = foldr extractVarIds_ChanOffer [] choffers
 
 extractVarIds_ChanOffer :: ChanOffer -> [VarId] -> [VarId]
 extractVarIds_ChanOffer (Quest varId) varIds  = varId:varIds
@@ -174,7 +179,7 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Hide _hiddenChans _bexpr) choiceCnt freeVars
 
 preGNFBExpr bexpr'@(TxsDefs.view -> Enable _bexprL _exitChans _bexprR) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
     -- ENABLE at lower level not allowed
-    (procInst', procDefs'') <- trace ("\n\n preGNFBexpr of Enable....") $ preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
+    (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
     -- translate the created ProcDef with LPEEnable
     res <- preGNFEnable procInst' translatedProcDefs procDefs'' 
     return $ res
@@ -569,7 +574,7 @@ preGNFEnable :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> e
 preGNFEnable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) translatedProcDefs procDefs' = do
     let -- 
         ProcDef chansDef paramsDef bexpr = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procIdInst procDefs')
-        Enable bexprL _acceptchans bexprR = TxsDefs.view bexpr
+        Enable bexprL acceptChanOffers bexprR = TxsDefs.view bexpr
         
         -- translate left bexpr of Enable to LPE first
         -- reuse current ProcDef: 
@@ -581,25 +586,27 @@ preGNFEnable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsIn
     let -- decompose translated ProcDef
         ProcDef chansDef_lpe paramsDef_lpe bexpr_lpe = fromMaybe (error "preGNFEnable: could not find the given procId") (Map.lookup procId_lpe procDefs''')
         -- strip hidden chans and update ProcDef
-        steps = trace ("\n\nlpe of LHS: " ++ show bexpr_lpe) $ extractSteps bexpr_lpe
+        steps = extractSteps bexpr_lpe
 
         -- create new ProcDef of bexprR
-        procDefR = trace ("\n\npreGNFEnable: lpe steps of bexprsL: \n" ++ show steps) $ ProcDef chansDef paramsDef bexprR
+        paramsAccept = extractVarIds_ChanOffers acceptChanOffers
+        procDefR = ProcDef chansDef (paramsDef ++ paramsAccept) bexprR
         -- create new ProcId
         name' = T.append (ProcId.name procIdInst) (T.pack "$enable")
         procIdR = procIdInst {  ProcId.name = name',
                                 ProcId.unid = unidR,
-                                ProcId.procvars = paramsDef}
+                                -- concatenate the original params with the varIds passed via ACCEPT to extend their scope into the RHS of ENABLE
+                                ProcId.procvars = paramsDef ++ paramsAccept} 
         -- create ProcInst, translate params to VExprs
         paramsDef' = map cstrVar paramsDef
         procInstR = procInst procIdR chansDef paramsDef'
         -- put created ProcDefs in the ProcDefs
-        procDefs'''' = trace ("\n\npreGNFEnable: procInst/ProcDef of bexprR: \n" ++ show procInstR ++ "\n" ++ show procDefR ) $ Map.insert procIdR procDefR procDefs'''
+        procDefs'''' = Map.insert procIdR procDefR procDefs'''
 
         steps' = map (replaceExits procInstR) steps 
 
         -- put new steps in the ProcDef of bexprL:
-        procDefNew = trace ("\n\npreGNFEnable: replaced steps: \n" ++ show steps') $ ProcDef chansDef_lpe paramsDef_lpe (wrapSteps steps')
+        procDefNew = ProcDef chansDef_lpe paramsDef_lpe (wrapSteps steps')
         procDefs5 = Map.insert procId_lpe procDefNew procDefs''''
 
     -- translate to LPE again!
@@ -617,15 +624,14 @@ preGNFEnable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsIn
     where   
         -- just for the steps with EXIT -> <>  replace with the ProcInst
         replaceExits :: BExpr -> BExpr -> BExpr 
-        replaceExits procInst1 bexpr'@(TxsDefs.view -> ActionPref actOffer'@ActOffer{offers = offers'} _bexpr) = --{ offers = Set.fromList [Offer { chanid = chanIdExit, chanoffers = []}]}
+        replaceExits (TxsDefs.view -> ProcInst procId chanIds params) bexpr'@(TxsDefs.view -> ActionPref actOffer'@ActOffer{offers = offers'} _bexpr) = --{ offers = Set.fromList [Offer { chanid = chanIdExit, chanoffers = []}]}
+            let exitParams = extractVars actOffer' in 
             case Set.toList offers' of 
-                [Offer { chanid = chid, chanoffers = []}] | chid == chanIdExit -> actionPref actOffer'{offers = Set.empty} procInst1
+                [Offer { chanid = chid}] | chid == chanIdExit -> actionPref 
+                                                                    actOffer'{  offers = Set.empty
+                                                                                , hiddenvars = Set.fromList exitParams} 
+                                                                    (procInst procId chanIds (params ++ (map cstrVar exitParams)))
                 _       -> bexpr'
-            -- where 
-            --     actOfferEmpty = ActOffer { offers = Set.empty
-            --                              , hiddenvars = Set.empty
-            --                              , constraint = cstrConst (Cbool True)
-            --                              }
         replaceExits _ _ = error "replaceExits: unknown input"  
 
 preGNFEnable _ _ _ = error "preGNFEnable: was called with something other than a ProcInst"
@@ -651,7 +657,7 @@ lpeTransform procInst' procDefs'  =
        ProcInst procid _chans _vexps
          -> case Map.lookup procid procDefs' of
               Just _procdef
-                -> trace ("\n\nlpe: procDefs: " ++ show procDefs') $ lpeTransform' procInst' procDefs'
+                -> lpeTransform' procInst' procDefs'
               _ -> do EnvB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                      "LPE Transformation: undefined process instantiation" ]
                       return Nothing
@@ -915,7 +921,7 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
             let chanId = chanid offer
                 chanOffers = chanoffers offer
 
-                chanOffersNumberedSorts = zip3 [1..] chanOffers (ChanId.chansorts chanId)
+                chanOffersNumberedSorts = zip [1..] chanOffers
 
             (chanOffers', constraints, varMap) <- translateChanOffers chanOffersNumberedSorts chanId
 
@@ -924,16 +930,16 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
 
             return (offer':offersRec, constraints ++ constraintsRec, varMap ++ varMapRec)
             where
-                translateChanOffers :: (EnvB.EnvB envb ) => [(Int, ChanOffer, SortId)] -> ChanId -> envb ([ChanOffer], [VExpr], [(VarId, VarId)])
+                translateChanOffers :: (EnvB.EnvB envb ) => [(Int, ChanOffer)] -> ChanId -> envb ([ChanOffer], [VExpr], [(VarId, VarId)])
                 translateChanOffers [] _ = return ([], [], [])
-                translateChanOffers ((i, chanOffer, sort') : chanOffers) chanId = do
+                translateChanOffers ((i, chanOffer) : chanOffers) chanId = do
                      -- recursion first
                      (chanOffersRec, constraintsRec, varMapRec) <- translateChanOffers chanOffers chanId
                      -- transform current chanOffer
                      let chanName' = T.unpack (ChanId.name chanId) ++ "$" ++ show i
  
                      -- reuse unid of the chanId
-                     let varIdChani = VarId (T.pack chanName') (ChanId.unid chanId) sort'
+                     let varIdChani = VarId (T.pack chanName') (ChanId.unid chanId) (sortOf chanOffer)
                          chanOffer' = Quest varIdChani
                          constraints = case chanOffer of
                                          (Quest _varId)  -> constraintsRec
