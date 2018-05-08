@@ -7,7 +7,7 @@
 
 # TorXakis
 
-TorXakis is a tool for Model Based Testing.
+`TorXakis` is a tool for Model Based Testing.
 
 It is licensed under the [BSD3 license](LICENSE).
 
@@ -21,29 +21,22 @@ For Windows systems an installer is provided in the [releases][13] section.
 
 ### Linux
 
-For Linux systems we provide a [`snap`][12] package. To install `TorXakis`
-run:
+We provide a `deb` package from Debian based systems (Debian, Ubuntu, etc), and an
+`rpm` package for distros using the RPM package manager. Below we give
+instructions on how to install `TorXakis` on Ubuntu.
+
+Download the latest `deb` release of `TorXakis` (`torxakis_0.6.0_amd64.deb` in
+the example below) and then run the following commands:
 
 ```sh
-sudo snap install torxakis --edge
+apt-get update
+apt-get install ./torxakis_0.6.0_amd64.deb -y
 ```
 
-If you don't have the `snap` package manager installed on your Linux
-distribution see the [installation instructions for your platform][14].
+The `deb` package was tested on Ubuntu version `16.04`, `17.10`, and `18.04`.
 
-When running `TorXakis` as a snap, the configuration file for `TorXakis` should
-go in the `~/snap/torxakis/current` directory. This is because snaps run in an
-isolated environment, and they are not able to see any hidden files in the
-users home directory.
-
-If you are installing `TorXakis` using a downloaded snap (say
-`torxakis_nightly_amd64.snap`), then you need to provide the path to the snap
-along with the `--dangerous` flag, since you are not fetching the snap from the
-official Ubuntu repository.
-
-```sh
-sudo snap install torxakis_nightly_amd64.snap --dangerous
-```
+For installing `TorXakis` in RPM based distros please check your Linux distro
+manual.
 
 ### macOS ###
 
@@ -163,11 +156,11 @@ There are several folders in this repository, which serve different purposes:
 
 - [`bin`](bin/): utility scripts to start `TorXakis` UI and server.
 - [`ci`](ci/): scripts used in our continuous integration process.
+- [`ci/mk-package`](ci/mk-package): files needed to create Linux packages.
 - [`docs`](docs/): documentation files for `TorXakis`.
 - [`examps`](examps/): example models and systems-under-test (SUT's) to play
   around with. This folder also contains some binary (.jpg and .pptx) files,
   which are used for documentation. Such files are tracked with [Git-LFS][15](*).
-- [`snap`](snap/): files needed to create Linux [snaps][12].
 - [`sys`](sys/): packages that make up `TorXakis` this is where the source code
   resides.
 - [`test`](test/): utilities for quality assurance tests (integration-tests,
@@ -190,7 +183,5 @@ See the README files in each folders to get a more detailed explanation.
 [9]: https://www.haskellstack.org
 [10]: https://docs.haskellstack.org/en/stable/install_and_upgrade/
 [11]: https://github.com/TorXakis/TorXakis/issues/40
-[12]: https://www.ubuntu.com/desktop/snappy
 [13]: https://github.com/TorXakis/TorXakis/releases
-[14]: https://docs.snapcraft.io/core/install
 [15]: https://git-lfs.github.com/
