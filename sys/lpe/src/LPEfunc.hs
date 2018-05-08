@@ -157,7 +157,7 @@ eqProcDefs procDefsL procDefsR =
         r = Map.toList procDefsR
         zipped = zip l r
         compared = map comp zipped in
-    and compared && length l == length r
+    length l == length r && and compared
     where
       comp (l,r) = eq_elem l r
       eq_elem (procIdL, procDefL) (procIdR, procDefR) =
