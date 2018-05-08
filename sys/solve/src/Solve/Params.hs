@@ -50,8 +50,7 @@ type Params = Map.Map String (String,String->Bool)
 
 -- Represent String a positive integer?
 positiveInt :: String -> Bool
-positiveInt s = not (null s) && all Char.isDigit s && ( 0 < (read s::Integer) )
-    -- is last check needed: only digits are allowed, so how can I make a negative number without a minus sign?
+positiveInt s = not (null s) && all Char.isDigit s
 ----------------------------------------------------------------------------------------- --
 -- initParams
 
