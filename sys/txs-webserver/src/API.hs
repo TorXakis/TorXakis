@@ -48,11 +48,11 @@ type ServiceAPI
     :<|> TestPageAPI
 type TestPageAPI = "test" :> Raw
 
-startApp :: IO ()
-startApp = do
+startApp :: Port -> IO ()
+startApp p = do
     sessionsMap <- newTVarIO Map.empty
     zeroId      <- newTVarIO 0
-    run 8080 $ app $ Env sessionsMap zeroId
+    run p $ app $ Env sessionsMap zeroId
 
 app :: Env -> Application
 app env = simpleCors $ serve api (server env)

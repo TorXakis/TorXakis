@@ -38,7 +38,6 @@ import           System.Console.Haskeline
 import           System.Console.Haskeline.History (addHistoryRemovingAllDupes)
 import           System.Directory                 (getHomeDirectory)
 import           System.FilePath                  ((</>))
-import           System.Process                   (callProcess)
 import           Text.Read                        (readMaybe)
 
 import           EnvData                          (Msg)
@@ -69,7 +68,7 @@ startCLI = do
         , autoAddHistory = False
         }
     cli :: InputT CLIM ()
-    cli = withInterrupt $  do
+    cli = do
         Log.initL
         sId <- lift $ asks sessionId
         Log.info $ "SessionId: " ++ show sId
@@ -86,13 +85,10 @@ startCLI = do
         consumer <- liftIO $ async $ forever $ do
             msg <- readChan ch
             traverse_ (printer . ("<< " ++)) $ pretty (asTxsMsg msg)
-        gLoop
+        -- Start the main loop:
+        withInterrupt $ handleInterrupt (outputStrLn "Ctrl+C: quitting") loop
         liftIO $ cancel producer
         liftIO $ cancel consumer
-
-    gLoop :: InputT CLIM ()
-    gLoop = withInterrupt $
-        handleInterrupt (outputStrLn "Ctrl+C" >> gLoop) loop
 
     loop :: InputT CLIM ()
     loop = do

@@ -64,7 +64,7 @@ library:
   - txs-lib
   
 executables:
-  txs-webserver-exe:
+  txs-webserver:
     main: Main.hs
     source-dirs:
     - app
@@ -75,6 +75,8 @@ executables:
     dependencies:
     - base
     - txs-webserver
+    - docopt
+    - MissingH    
     
 tests:
   txs-webserver-test:

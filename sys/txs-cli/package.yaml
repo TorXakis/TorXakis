@@ -23,6 +23,7 @@ default-extensions: []
 dependencies:
 - base >= 4.7 && < 5
 - async
+- MissingH
   
 ghc-options:
 - -O2
@@ -46,7 +47,6 @@ library:
   - wreq
   - hslogger
   - http-client
-  - MissingH
   - pipes
   - pipes-aeson
   - coreenv
@@ -73,5 +73,5 @@ executables:
     - mtl
     - process
     - wreq
-
+    - docopt
     - txs-cli
