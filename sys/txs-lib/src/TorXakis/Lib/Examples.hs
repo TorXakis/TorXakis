@@ -103,7 +103,8 @@ testEchoReactive = do
     r <- load s cs
     putStrLn $ "Result of `load`: " ++ show r
     -- Start the stepper:
-    r' <- stepper s "Model"
+    _  <- setStep s "Model"
+    r' <- startStep s
     putStrLn $ "Result of `stepper`: " ++ show r'
     -- Run a couple of steps:
     r'' <- step s (NumberOfSteps 10)
@@ -161,7 +162,8 @@ testPrematureStop = do
     s <- newSession
     a <- async (printer s)
     void $ load s cs
-    void $ stepper s "Model"
+    void $ setStep s "Model"
+    void $ startStep s
     r <- step s (NumberOfSteps 20)
     putStrLn $ "Result of `step`: " ++ show r
     r' <- stop s

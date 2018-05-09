@@ -44,14 +44,12 @@ import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
 import           TxsCore                       (txsGetTDefs, txsInitCore)
-import           TxsStep                       (txsSetStep, txsShutStep,
-                                                txsStartStep, txsStepRun,
-                                                txsStopStep)
--- import           TxsCore                       (txsInit, txsSetStep, txsSetTest,
---                                                 txsStepN, txsStop, txsTestN)
 import           TxsDDefs                      (Verdict)
 import           TxsDefs                       (ModelDef, Offer)
 import           TxsHappy                      (txsParser)
+import           TxsStep                       (txsSetStep, txsShutStep,
+                                                txsStartStep, txsStepRun,
+                                                txsStopStep)
 
 import           TorXakis.Lib.Session
 
@@ -91,7 +89,7 @@ newSession = Session <$> newTVarIO emptySessionState
 
 -- | Stop a session.
 killSession :: Session -> IO Response
-killSession _s  =  do
+killSession _ =
     return $ Error "Kill Session: Not implemented (yet)"
 
 -- | Load a TorXakis file, compile it, and return the response.
@@ -118,14 +116,18 @@ load s xs = do
                     Left  e -> return $ Error e
 
 
--- | Start the stepper with the given model.
-stepper :: Session
-        -> Name        -- ^ Model name
+-- | Set the stepper.
+setStep :: Session
+        -> Name -- ^ Model name
         -> IO Response
-stepper s mn = runResponse $ do
+setStep s mn = runResponse $ do
     mDef <- lookupModel s mn
     runIOCE s (txsSetStep mDef)
-    runIOCE s txsStartStep
+
+-- | Start the stepper. This step requires the stepper to be set. See
+-- @setStep@.
+startStep :: Session -> IO Response
+startStep s = runResponse $ runIOCE s txsStartStep
 
 lookupModel :: Session -> Name -> ExceptT Text IO ModelDef
 lookupModel s mn = do
