@@ -95,7 +95,8 @@ spec = return $ do
             it "Starts stepper and takes 3 steps" $ do
                 sId <- mkNewSession
                 _ <- put (newSessionUrl sId) [partFile "Point.txs" "../../examps/Point/Point.txs"]
-                post "http://localhost:8080/sessions/1/models/Model/stepper" [partText "" ""] >>= check204NoContent
+                post "http://localhost:8080/sessions/1/set-step/Model" [partText "" ""] >>= check204NoContent
+                post "http://localhost:8080/sessions/1/start-step/" [partText "" ""] >>= check204NoContent
                 post "http://localhost:8080/sessions/1/stepper/3" [partText "" ""] >>= check204NoContent
                 totalSteps <- foldGet checkActions 0 "http://localhost:8080/sessions/1/messages"
                 totalSteps `shouldBe` 3

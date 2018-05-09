@@ -3,42 +3,55 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
+{-# LANGUAGE DataKinds     #-}
+{-# LANGUAGE TypeOperators #-}
 module Endpoints.Stepper
-( StartStepperEP
-, startStepper
-, TakeNStepsEP
-, takeNSteps
-) where
+    ( SetStepperEP
+    , StartStepperEP
+    , setStep
+    , startStep
+    , TakeNStepsEP
+    , takeNSteps
+    )
+where
 
 import           Control.Monad.IO.Class     (liftIO)
 import           Data.ByteString.Lazy.Char8 (pack)
 import           Data.Text                  (Text)
 import           Servant
 
-import           TorXakis.Lib               (Response (..), StepType (..), step,
-                                             stepper)
+import           TorXakis.Lib               (Response (..), StepType (..), step)
+import qualified TorXakis.Lib               as Lib
 
 import           Common                     (Env, SessionId, getSession)
 
-type StartStepperEP = "sessions"
+type SetStepperEP = "sessions"
                    :> Capture "sid" SessionId
-                   :> "models"
+                   :> "set-step"
                    :> Capture "model" Text
-                   :> "stepper"
                    :> PostNoContent '[JSON] ()
 
-startStepper :: Env -> SessionId -> Text -> Handler ()
-startStepper env sid model = do
+setStep :: Env -> SessionId -> Text -> Handler ()
+setStep env sid model = do
     s <- getSession env sid
-    r <- liftIO $ do
-            putStrLn $ "Starting stepper for model " ++ show model ++ " in session " ++ show sid
-            r <- stepper s model
-            print r
-            return r
+    r <- liftIO $ Lib.setStep s model
     case r of
         Success -> return ()
         Error m -> throwError $ err500 { errBody = pack m }
+
+type StartStepperEP = "sessions"
+                   :> Capture "sid" SessionId
+                   :> "start-step"
+                   :> PostNoContent '[JSON] ()
+
+startStep :: Env -> SessionId -> Handler ()
+startStep env sid = do
+    s <- getSession env sid
+    r <- liftIO $ Lib.startStep s
+    case r of
+        Success -> return ()
+        Error m -> throwError $ err500 { errBody = pack m }
+
 
 type TakeNStepsEP   = "sessions"
                    :> Capture "sid" SessionId

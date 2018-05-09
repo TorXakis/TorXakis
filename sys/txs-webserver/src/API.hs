@@ -21,8 +21,8 @@ import           Common                      (Env (..))
 import           Endpoints.Info              (InfoEP, getInfo)
 import           Endpoints.Messages          (MessagesEP, messages)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
-import           Endpoints.Stepper           (StartStepperEP, TakeNStepsEP,
-                                              startStepper, takeNSteps)
+import           Endpoints.Stepper           (SetStepperEP, StartStepperEP, TakeNStepsEP,
+                                              setStep, startStep, takeNSteps)
 import           Endpoints.Tester            (StartTesterEP, TestNStepsEP,
                                               startTester, testNSteps)
 import           Endpoints.Upload            (UploadEP, upload)
@@ -30,7 +30,7 @@ import           Endpoints.Upload            (UploadEP, upload)
 
 type API = ServiceAPI
 type ServiceAPI = NewSessionEP :<|> UploadEP
-                               :<|> StartStepperEP :<|> TakeNStepsEP
+                               :<|> SetStepperEP :<|> StartStepperEP :<|> TakeNStepsEP
                                :<|> StartTesterEP  :<|> TestNStepsEP
                                :<|> MessagesEP
                                :<|> InfoEP
@@ -52,7 +52,7 @@ app env = simpleCors $ serve api (server env)
 server :: Env -> ServerT API Handler
 server env = newSrvSession env
     :<|> upload env
-    :<|> startStepper env :<|> takeNSteps env
+    :<|> setStep env :<|> startStep env :<|> takeNSteps env
     :<|> startTester env  :<|> testNSteps env
     :<|> messages env
     :<|> getInfo

@@ -168,7 +168,6 @@ step s (NumberOfSteps n) = do
                 atomically $ writeTQueue (s ^. verdicts) $ Right verd
     return Success
 
-
 -- | Wait for a verdict to be reached.
 waitForVerdict :: Session -> IO (Either SomeException Verdict)
 waitForVerdict s = atomically $ readTQueue (s ^. verdicts)
