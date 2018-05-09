@@ -5,7 +5,6 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TestHelperFuncContent
 
 where
