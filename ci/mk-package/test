@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+
+
+
 # Test that the the `TorXakis` `.deb` package can be installed and run in different ubuntu versions.
 
 versions=("17.10" "16.04" "18.04")
