@@ -58,6 +58,7 @@ packages:
 - location: sys/ui
 - location: sys/value
 - location: sys/valexpr
+- location: sys/txs-cli
 - location: sys/txs-lib
 - location: sys/txs-lenses
 - location: sys/txs-webserver
@@ -86,7 +87,7 @@ flags:
 
 # Extra package databases containing global packages
 extra-package-dbs:
-  
+
 # Control whether we use the GHC we find on the path
 # system-ghc: true
 #
