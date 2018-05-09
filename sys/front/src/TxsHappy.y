@@ -943,7 +943,6 @@ StautDef        -- :: { [(Ident,TxsDef)] }
                                                                 , ProcId (T.pack "stdi_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5
                                                                 , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 1) $3 (combineParameters $4 (VarId (T.pack "$s") ($$.inhNodeUid + 2) sortIdInt) vars) $5
                                                                 ] }
-                                                                 { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] } 
                 ;  $7.inhChanSigs  = $3
                 ;  $7.inhVarSigs   = $4
                 ;  $$.synSigs      = let (_, vars, _, _, _, _) = $7 in
