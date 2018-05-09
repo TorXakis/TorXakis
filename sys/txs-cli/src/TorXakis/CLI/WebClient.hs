@@ -15,17 +15,8 @@ module TorXakis.CLI.WebClient
     )
 where
 
-import           Control.Concurrent     (Chan, writeChan)
-import           Data.Text              (Text)
---import           Data.Aeson             (FromJSON, decode)
-import           Data.Aeson.Lens        (key, _String)
-import           Data.Either.Utils      (maybeToEither)
---import           Network.Wreq
-import           Control.Monad.IO.Class (MonadIO, liftIO)
--- import           Data.List                  (intercalate)
--- import           Data.Text                  (Text)
--- import           GHC.Generics               (Generic)
 import           Control.Arrow          (right)
+import           Control.Concurrent     (Chan, writeChan)
 import           Control.Exception      (Handler (Handler), IOException,
                                          catches)
 import           Control.Lens           ((^.), (^?))
@@ -33,10 +24,14 @@ import           Control.Lens.TH        (makeLenses)
 import           Control.Monad          (when)
 import           Control.Monad.Except   (ExceptT, MonadError, liftEither,
                                          runExceptT, throwError)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader   (MonadReader, asks)
+import           Data.Aeson.Lens        (key, _String)
 import qualified Data.ByteString        as BSS
 import qualified Data.ByteString.Char8  as BS
 import           Data.ByteString.Lazy   (ByteString)
+import           Data.Either.Utils      (maybeToEither)
+import           Data.Text              (Text)
 import qualified Data.Text              as T
 import           Network.HTTP.Client    (HttpException (HttpExceptionRequest), HttpExceptionContent (StatusCodeException))
 import           Network.Wreq           (Response, foldGet, get, partFile, post,
@@ -108,7 +103,7 @@ load :: (MonadIO m, MonadReader Env m) => [FilePath] -> m (Either String ())
 load files = do
     sId <- asks sessionId
     let path = concat ["sessions/", show sId, "/model"]
-    ignoreResponse $ envPut path pfs
+    ignoreSuccess $ envPut path pfs
     where fns = map takeFileName files
           pfs  = zipWith partFile (map T.pack fns) files
 
@@ -130,19 +125,21 @@ noContent = ""
 stepper :: (MonadIO m, MonadReader Env m) => String -> m (Either String ())
 stepper mName = do
     sId <- asks sessionId
-    ignoreResponse $
-        envPost (concat ["sessions/", show sId, "/models/", mName, "/stepper"]) noContent
+    ignoreSuccess $ do
+        _ <- envPost (concat ["sessions/", show sId, "/set-step/", mName]) noContent
+        envPost (concat ["sessions/", show sId, "/start-step/"]) noContent
+
 
 step :: (MonadIO m, MonadReader Env m) => Int -> m (Either String ())
 step n = do
     sId <- asks sessionId
-    ignoreResponse $
+    ignoreSuccess $
         envPost (concat ["sessions/", show sId, "/stepper/", show n]) noContent
 
-ignoreResponse :: (MonadIO m)
+ignoreSuccess :: (MonadIO m)
                => ExceptT String m (Response ByteString)
                -> m (Either String ())
-ignoreResponse = fmap (right (const ())) . runExceptT
+ignoreSuccess = fmap (right (const ())) . runExceptT
 
 sseSubscribe :: Env -> Chan BSS.ByteString -> String -> IO (Either String ())
 sseSubscribe env ch suffix =
