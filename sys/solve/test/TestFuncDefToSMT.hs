@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TestFuncDefToSMT
 (
 testFuncDefToSMTList
@@ -98,6 +97,6 @@ testMultipleFunctions = TestCase $ do
                                       ,(fid2, fName2)
                                       ])
 
-    let (TXS2SMTFuncTest envdefs expected) = createFunctionDefsRecursive mapI [(fid1,[varX, varY],sortIdBool,vexpr1),(fid2,[],sortIdInt,vexpr2)]
+    let (TXS2SMTFuncTest envdefs expected') = createFunctionDefsRecursive mapI [(fid1,[varX, varY],sortIdBool,vexpr1),(fid2,[],sortIdInt,vexpr2)]
 
-    assertEqual "multiple Functions" expected (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))
+    assertEqual "multiple Functions" expected' (T.unpack (funcdefsToSMT mapI (funcDefs envdefs)))

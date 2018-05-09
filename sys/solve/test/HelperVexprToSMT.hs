@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module HelperVexprToSMT
 
 where
@@ -78,8 +77,8 @@ createVand conds =
                      ("(and " ++ join " " (Set.toList (Set.map expected conds)) ++ ")")
 
 createVgez :: TXS2SMTVExprTest -> TXS2SMTVExprTest
-createVgez (TXS2SMTVExprTest input expected) =
-    TXS2SMTVExprTest (cstrGEZ input ) ("(<= 0 " ++ expected ++ ")" )
+createVgez (TXS2SMTVExprTest input' expected') =
+    TXS2SMTVExprTest (cstrGEZ input' ) ("(<= 0 " ++ expected' ++ ")" )
 
 ----------------------------------------------------------------
 -- functions

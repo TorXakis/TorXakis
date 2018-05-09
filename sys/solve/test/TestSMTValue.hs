@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-incomplete-patterns #-}
 module TestSMTValue
 (
 testSMTValueList
@@ -87,6 +86,7 @@ createSMTInt i = SMTValueTest (show i) (TVEInt i)
 
 createNegative :: SMTValueTest -> SMTValueTest
 createNegative (SMTValueTest s (TVEInt i)) = SMTValueTest ("(- " ++ s ++ ")") (TVEInt (-1*i))
+createNegative _                           = error "must be applied on an TVEInt"
 
 createSMTString :: String -> SMTValueTest
 createSMTString s = SMTValueTest ("\"" ++ T.unpack (encodeStringLiteral (T.pack s)) ++ "\"") (TVEString s)
@@ -103,8 +103,8 @@ toLetBind :: Map.Map SMTValueTest SMTValueTest -> Map.Map TestValExpr TestValExp
 toLetBind bind = Map.fromList (map (\(SMTValueTest _ expectedX, SMTValueTest _ expectedY) -> (expectedX, expectedY) ) (Map.toList bind) )
 
 createSMTLet :: Map.Map SMTValueTest SMTValueTest -> SMTValueTest -> SMTValueTest
-createSMTLet bind (SMTValueTest input expected) =
-    SMTValueTest ("(let ("++ toLetPairs bind ++") " ++ input ++ " )") (substitute (toLetBind bind) expected)
+createSMTLet bind (SMTValueTest input' expected') =
+    SMTValueTest ("(let ("++ toLetPairs bind ++") " ++ input' ++ " )") (substitute (toLetBind bind) expected')
 
 -- ---------------------------------------------------------------------------------
 -- decode SMT String Literal
@@ -118,9 +118,9 @@ encodeStringLiteral string =
 -- Tests
 ---------------------------------------------------------------------------
 testSMTValueTest :: String -> SMTValueTest -> Test
-testSMTValueTest s (SMTValueTest input expected) = TestCase $
+testSMTValueTest s (SMTValueTest input' expected') = TestCase $
     --Trace.trace (" SMTValue : " ++ input) $ do
-    assertEqual s (Map.singleton "x" (toSMTValue expected)) (smtParser (smtLexer ("((x " ++ input ++ "))")))
+    assertEqual s (Map.singleton "x" (toSMTValue expected')) (smtParser (smtLexer ("((x " ++ input' ++ "))")))
 
 testIntPositive :: Test
 testIntPositive = testSMTValueTest "Int positive" (createSMTInt 3)
