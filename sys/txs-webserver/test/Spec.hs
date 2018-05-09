@@ -8,6 +8,7 @@ See LICENSE at root directory of this repository.
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
 module Main (main) where
 
+import           Control.Concurrent (threadDelay)
 import           Control.Concurrent.Async     (async, wait)
 import           Control.Exception            (catch, throwIO)
 import           Data.Aeson                   (decode, decodeStrict)
@@ -102,6 +103,9 @@ spec = return $ do
                 post (stepperUrl sId 3) emptyP >>= check204NoContent
                 post (openMessagesUrl sId) emptyP >>= check204NoContent
                 a <- async $ foldGet checkActions 0 (messagesUrl sId)
+                threadDelay (10 ^ (6 :: Int)) -- We have to wait a bit till all
+                                              -- the messages are put in the
+                                              -- queue by the stepper.
                 post (closeMessagesUrl sId) emptyP >>= check204NoContent
                 totalSteps <- wait a
                 totalSteps `shouldBe` 3
@@ -114,6 +118,9 @@ spec = return $ do
                 post (openMessagesUrl sId) emptyP >>= check204NoContent                
                 a <- async $ foldGet checkActions 0 (messagesUrl sId)
                 post (stepperUrl sId 3) emptyP >>= check204NoContent
+                threadDelay (10 ^ (6 :: Int)) -- We have to wait a bit till all
+                                              -- the messages are put in the
+                                              -- queue by the stepper.
                 post (closeMessagesUrl sId) emptyP >>= check204NoContent
                 totalSteps <- wait a
                 totalSteps `shouldBe` 6

@@ -11,6 +11,7 @@ module TorXakis.CLI.WebClient
     , load
     , stepper
     , step
+    , openMessages
     , sseSubscribe
     )
 where
@@ -140,6 +141,13 @@ ignoreSuccess :: (MonadIO m)
                => ExceptT String m (Response ByteString)
                -> m (Either String ())
 ignoreSuccess = fmap (right (const ())) . runExceptT
+
+-- | Open the messages endpoint
+openMessages :: (MonadIO m, MonadReader Env m) => m (Either String ())
+openMessages = do
+    sId <- asks sessionId
+    ignoreSuccess $
+        envPost (concat ["sessions/", show sId, "/messages/open/"]) noContent
 
 sseSubscribe :: Env -> Chan BSS.ByteString -> String -> IO (Either String ())
 sseSubscribe env ch suffix =

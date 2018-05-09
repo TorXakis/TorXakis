@@ -6,7 +6,7 @@ See LICENSE at root directory of this repository.
 
 module Main where
 
-import API
+import           API
 
 main :: IO ()
 main = startApp

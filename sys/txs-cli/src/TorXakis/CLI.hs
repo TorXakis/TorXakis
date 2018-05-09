@@ -16,12 +16,11 @@ module TorXakis.CLI
     )
 where
 
-
 import           Control.Arrow                    ((|||))
 import           Control.Concurrent               (newChan, readChan)
 import           Control.Concurrent.Async         (async, cancel)
 import           Control.Lens                     ((^.))
-import           Control.Monad                    (forever)
+import           Control.Monad                    (forever, when)
 import           Control.Monad.Except             (runExceptT)
 import           Control.Monad.IO.Class           (MonadIO, liftIO)
 import           Control.Monad.Reader             (MonadReader, ReaderT, ask,
@@ -30,6 +29,7 @@ import           Control.Monad.Trans              (lift)
 import           Data.Aeson                       (eitherDecodeStrict)
 import qualified Data.ByteString.Char8            as BS
 import           Data.Char                        (toLower)
+import           Data.Either                      (isLeft)
 import           Data.Either.Utils                (maybeToEither)
 import           Data.Foldable                    (traverse_)
 import           Data.String.Utils                (strip)
@@ -38,6 +38,7 @@ import           System.Console.Haskeline
 import           System.Console.Haskeline.History (addHistoryRemovingAllDupes)
 import           System.Directory                 (getHomeDirectory)
 import           System.FilePath                  ((</>))
+import           System.Process                   (callProcess)
 import           Text.Read                        (readMaybe)
 
 import           EnvData                          (Msg)
@@ -68,7 +69,7 @@ startCLI = do
         , autoAddHistory = False
         }
     cli :: InputT CLIM ()
-    cli = do
+    cli = withInterrupt $  do
         Log.initL
         sId <- lift $ asks sessionId
         Log.info $ "SessionId: " ++ show sId
@@ -78,17 +79,20 @@ startCLI = do
         env <- lift ask
         -- TODO: maybe encapsulate this into a `withProdCons` that always
         -- cancel the producers and consumers at the end.
+        res <- lift openMessages
+        when (isLeft res) (error $ show res)
         producer <- liftIO $ async $
             sseSubscribe env ch $ concat ["sessions/", show sId, "/messages"]
         consumer <- liftIO $ async $ forever $ do
-            putStrLn "Getting message"
             msg <- readChan ch
-            putStrLn "Got message"
             traverse_ (printer . ("<< " ++)) $ pretty (asTxsMsg msg)
-        handleInterrupt (return ())
-                        $ withInterrupt loop
+        gLoop
         liftIO $ cancel producer
         liftIO $ cancel consumer
+
+    gLoop :: InputT CLIM ()
+    gLoop = withInterrupt $
+        handleInterrupt (outputStrLn "Ctrl+C" >> gLoop) loop
 
     loop :: InputT CLIM ()
     loop = do
@@ -96,6 +100,7 @@ startCLI = do
         case minput of
             Nothing -> return ()
             Just "" -> loop
+            Just "q" -> return ()
             Just "quit" -> return ()
             Just input -> do dispatch input
                              loop
