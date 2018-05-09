@@ -5,12 +5,14 @@ See LICENSE at root directory of this repository.
 -}
 
 module Common
-(
-  SessionId
-, Env (..)
-, getSession
-, getSessionIO
-)
+    ( SessionId
+    , Env (..)
+    , getSession
+    , getServerSession
+    , getSessionIO
+    , getServerSessionIO
+    , ServerSession (..)
+    )
 where
 
 import           Control.Concurrent.STM.TVar (TVar, readTVarIO)
@@ -24,16 +26,43 @@ import           TorXakis.Lib.Session        (Session)
 
 type SessionId = Int
 
-data Env = Env { sessions :: TVar (Map.IntMap Session)
+-- TODO: put this in the appropriate place. This needs to be done after all the
+-- hs files in the webserver are put into subfolders with the 'TorXakis'
+-- namespace.
+data ServerSession = ServerSession
+    { -- | TorXakis @Lib@ session.
+      _libSession    :: Session
+     -- | Continue listening for messages?
+    , _contListening :: TVar Bool
+    }
+
+data Env = Env { sessions :: TVar (Map.IntMap ServerSession)
                , lastSid  :: TVar SessionId
                }
 
-getSessionIO :: Env -> SessionId -> IO  (Maybe Session)
-getSessionIO Env{sessions = ssT} sid = Map.lookup sid <$> readTVarIO ssT
+getServerSessionIO :: Env -> SessionId -> IO (Maybe ServerSession)
+getServerSessionIO Env{sessions = ssT} sId = Map.lookup sId <$> readTVarIO ssT
+
+
+getSessionIO :: Env -> SessionId -> IO (Maybe Session)
+getSessionIO Env{sessions = ssT} sId = fmap _libSession . Map.lookup sId <$> readTVarIO ssT
 
 getSession :: Env -> SessionId -> Handler Session
-getSession e sId = do
-    mSession <- liftIO $ getSessionIO e sId
+getSession env sId = do
+    mSession <- liftIO $ getSessionIO env sId
     case mSession of
-        Nothing -> throwError $ err422 { errBody = pack $ "Session " ++ show sId ++ " not found." }
-        Just s  -> return s
+        Nothing ->
+            throwError $ err422
+                { errBody = pack $ "Session " ++ show sId ++ " not found." }
+        Just s  ->
+            return s
+
+getServerSession :: Env -> SessionId -> Handler ServerSession
+getServerSession env sId = do
+    mSession <- liftIO $ getServerSessionIO env sId
+    case mSession of
+        Nothing ->
+            throwError $ err422
+                { errBody = pack $ "Session " ++ show sId ++ " not found." }
+        Just s  ->
+            return s

@@ -81,7 +81,9 @@ startCLI = do
         producer <- liftIO $ async $
             sseSubscribe env ch $ concat ["sessions/", show sId, "/messages"]
         consumer <- liftIO $ async $ forever $ do
+            putStrLn "Getting message"
             msg <- readChan ch
+            putStrLn "Got message"
             traverse_ (printer . ("<< " ++)) $ pretty (asTxsMsg msg)
         handleInterrupt (return ())
                         $ withInterrupt loop

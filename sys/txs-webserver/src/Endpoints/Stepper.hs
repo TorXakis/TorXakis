@@ -62,11 +62,7 @@ type TakeNStepsEP   = "sessions"
 takeNSteps :: Env -> SessionId -> Int -> Handler ()
 takeNSteps env sid steps = do
     s <- getSession env sid
-    r <- liftIO $ do
-            putStrLn $ "Taking " ++ show steps ++ " steps in session " ++ show sid
-            r <- step s $ NumberOfSteps steps
-            print r
-            return r
+    r <- liftIO $ step s $ NumberOfSteps steps
     case r of
         Success -> return ()
         Error m -> throwError $ err500 { errBody = pack m }

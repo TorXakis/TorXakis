@@ -8,12 +8,14 @@ See LICENSE at root directory of this repository.
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
 module Main (main) where
 
+import           Control.Concurrent.Async     (async, wait)
 import           Control.Exception            (catch, throwIO)
 import           Data.Aeson                   (decode, decodeStrict)
 import           Data.Aeson.Types             (Object, Parser, parseMaybe, (.:))
 import           Data.ByteString.Char8        as BS
 import           Data.ByteString.Lazy.Char8   as BSL
 import           Data.Maybe                   (mapMaybe)
+import           GHC.Stack                    (HasCallStack)
 import           Lens.Micro                   ((^.), (^?))
 import           Lens.Micro.Aeson             (key, _Integer)
 import           System.Process               (StdStream (NoStream), proc,
@@ -41,15 +43,15 @@ spec = return $ do
                 bodyStr `shouldContain` "\"buildTime\""
         describe "Create new TorXakis session" $
             it "Creates 2 sessions" $ do
-                r <- post "http://localhost:8080/sessions/new" [partText "" ""]
+                r <- post "http://localhost:8080/sessions/new" emptyP
                 r ^. responseStatus . statusCode `shouldBe` 201 -- Created
                 r ^. responseBody `shouldBe` "{\"sessionId\":1}"
-                r2 <- post "http://localhost:8080/sessions/new" [partText "" ""]
+                r2 <- post "http://localhost:8080/sessions/new" emptyP
                 r2 ^. responseStatus . statusCode `shouldBe` 201 -- Created
                 r2 ^. responseBody `shouldBe` "{\"sessionId\":2}"
         describe "Upload files to a session" $ do
             it "Uploads valid file" $ do
-                _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
+                _ <- post "http://localhost:8080/sessions/new" emptyP
                 r <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
                 r ^. responseStatus . statusCode `shouldBe` 202 -- Accepted
                 let res = do
@@ -81,7 +83,7 @@ spec = return $ do
                         let s = r ^. responseStatus
                         return CI.Response{CI.responseStatus = s}
                     handler e = throwIO e
-                _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
+                _ <- post "http://localhost:8080/sessions/new" emptyP
                 sId <- mkNewSession
                 r <- put (newSessionUrl sId) [partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"]
                         `catch` handler
@@ -91,30 +93,45 @@ spec = return $ do
                                                                    ]
                         `catch` handler
                 r2 ^. responseStatus . statusCode `shouldBe` 400 -- Bad Request
-        describe "Stepper" $
+        describe "Stepper" $ do
             it "Starts stepper and takes 3 steps" $ do
                 sId <- mkNewSession
                 _ <- put (newSessionUrl sId) [partFile "Point.txs" "../../examps/Point/Point.txs"]
-                post "http://localhost:8080/sessions/1/set-step/Model" [partText "" ""] >>= check204NoContent
-                post "http://localhost:8080/sessions/1/start-step/" [partText "" ""] >>= check204NoContent
-                post "http://localhost:8080/sessions/1/stepper/3" [partText "" ""] >>= check204NoContent
-                totalSteps <- foldGet checkActions 0 "http://localhost:8080/sessions/1/messages"
+                post (setStepUrl sId) emptyP >>= check204NoContent
+                post (startStepUrl sId) emptyP >>= check204NoContent
+                post (stepperUrl sId 3) emptyP >>= check204NoContent
+                post (openMessagesUrl sId) emptyP >>= check204NoContent
+                a <- async $ foldGet checkActions 0 (messagesUrl sId)
+                post (closeMessagesUrl sId) emptyP >>= check204NoContent
+                totalSteps <- wait a
                 totalSteps `shouldBe` 3
+            it "Starts stepper and takes 6 steps in two different step commands" $ do
+                sId <- mkNewSession
+                _ <- put (newSessionUrl sId) [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                post (setStepUrl sId) emptyP >>= check204NoContent
+                post (startStepUrl sId) emptyP >>= check204NoContent
+                post (stepperUrl sId 3) emptyP >>= check204NoContent
+                post (openMessagesUrl sId) emptyP >>= check204NoContent                
+                a <- async $ foldGet checkActions 0 (messagesUrl sId)
+                post (stepperUrl sId 3) emptyP >>= check204NoContent
+                post (closeMessagesUrl sId) emptyP >>= check204NoContent
+                totalSteps <- wait a
+                totalSteps `shouldBe` 6
             -- it "Starts tester and tests 3 steps" $ do
-            --     _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
+            --     _ <- post "http://localhost:8080/sessions/new" emptyP
             --     _ <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
-            --     _ <- checkSuccess <$> post "http://localhost:8080/tester/start/1/Model" [partText "" ""]
-            --     _ <- checkSuccess <$> post "http://localhost:8080/tester/test/1/3" [partText "" ""]
+            --     _ <- checkSuccess <$> post "http://localhost:8080/tester/start/1/Model" emptyP
+            --     _ <- checkSuccess <$> post "http://localhost:8080/tester/test/1/3" emptyP
             --     checkJSON    <$> get "http://localhost:8080/sessions/sse/1/messages"
 
-check204NoContent :: Response BSL.ByteString -> IO ()
+check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
 
 parseFileUploadResult :: Object -> Parser (String, Bool)
 parseFileUploadResult o = do
     fn <- o .: "fileName" :: Parser String
     l  <- o .: "loaded"   :: Parser Bool
-    return (fn,l)
+    return (fn, l)
 
 checkActions :: Int -> BS.ByteString -> IO Int
 checkActions steps bs = do
@@ -129,10 +146,33 @@ parseTag o = o .: "tag"
 
 mkNewSession :: IO Integer
 mkNewSession = do
-    sr <- post "http://localhost:8080/sessions/new" [partText "" ""]
+    sr <- post "http://localhost:8080/sessions/new" emptyP
     sr ^. responseStatus . statusCode `shouldBe` 201 -- Created
     let Just sId = sr ^? responseBody . key "sessionId" . _Integer
     return sId
 
 newSessionUrl :: Integer -> String
 newSessionUrl sId = "http://localhost:8080/sessions/" ++ show sId ++ "/model"
+
+setStepUrl :: Integer -> String
+setStepUrl sId = "http://localhost:8080/sessions/" ++ show sId ++ "/set-step/Model"
+
+startStepUrl :: Integer -> String
+startStepUrl sId = "http://localhost:8080/sessions/" ++ show sId ++ "/start-step"
+
+stepperUrl :: Integer -> Integer -> String
+stepperUrl sId n = "http://localhost:8080/sessions/" ++ show sId
+                   ++ "/stepper/" ++ show n
+
+messagesUrl :: Integer -> String
+messagesUrl sId = "http://localhost:8080/sessions/" ++ show sId ++ "/messages"
+
+closeMessagesUrl :: Integer -> String
+closeMessagesUrl sId = "http://localhost:8080/sessions/" ++ show sId ++ "/messages/close"
+
+openMessagesUrl :: Integer -> String
+openMessagesUrl sId = "http://localhost:8080/sessions/" ++ show sId ++ "/messages/open"
+
+
+emptyP :: [Part]
+emptyP = [partText "" ""]

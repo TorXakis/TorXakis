@@ -3,8 +3,9 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
+{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators     #-}
 module API
 ( startApp
 , app
@@ -19,22 +20,32 @@ import           Servant
 
 import           Common                      (Env (..))
 import           Endpoints.Info              (InfoEP, getInfo)
-import           Endpoints.Messages          (MessagesEP, messages)
+import           Endpoints.Messages          (CloseMessagesEP, MessagesEP,
+                                              OpenMessagesEP, closeMessages,
+                                              messages, openMessages)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
-import           Endpoints.Stepper           (SetStepperEP, StartStepperEP, TakeNStepsEP,
-                                              setStep, startStep, takeNSteps)
+import           Endpoints.Stepper           (SetStepperEP, StartStepperEP,
+                                              TakeNStepsEP, setStep, startStep,
+                                              takeNSteps)
 import           Endpoints.Tester            (StartTesterEP, TestNStepsEP,
                                               startTester, testNSteps)
 import           Endpoints.Upload            (UploadEP, upload)
 -- import           Swagger
 
 type API = ServiceAPI
-type ServiceAPI = NewSessionEP :<|> UploadEP
-                               :<|> SetStepperEP :<|> StartStepperEP :<|> TakeNStepsEP
-                               :<|> StartTesterEP  :<|> TestNStepsEP
-                               :<|> MessagesEP
-                               :<|> InfoEP
-                               :<|> TestPageAPI
+type ServiceAPI
+    =    InfoEP
+    :<|> NewSessionEP
+    :<|> UploadEP
+    :<|> SetStepperEP
+    :<|> StartStepperEP
+    :<|> TakeNStepsEP
+    :<|> StartTesterEP
+    :<|> TestNStepsEP
+    :<|> OpenMessagesEP
+    :<|> CloseMessagesEP
+    :<|> MessagesEP
+    :<|> TestPageAPI
 type TestPageAPI = "test" :> Raw
 
 startApp :: IO ()
@@ -50,12 +61,15 @@ app env = simpleCors $ serve api (server env)
         api = Proxy
 
 server :: Env -> ServerT API Handler
-server env = newSrvSession env
+server env
+    =    getInfo
+    :<|> newSrvSession env
     :<|> upload env
     :<|> setStep env :<|> startStep env :<|> takeNSteps env
     :<|> startTester env  :<|> testNSteps env
+    :<|> openMessages env
+    :<|> closeMessages env
     :<|> messages env
-    :<|> getInfo
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"
     -- :<|> return swaggerDocs
     -- where
