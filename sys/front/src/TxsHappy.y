@@ -691,7 +691,7 @@ FuncDefs        -- :: { [ (Ident,TxsDef) ] }
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $3.synSigs
-                ;  $$ = $1 ++ [ $3 ]
+                ;  $$ = $3:$1
                 }
 
 ExFuncDef       -- :: { ( Int, TxsDef ) }
@@ -876,7 +876,7 @@ ProcDefs        -- :: { [ (Ident,TxsDef) ] }
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $$.synSigs      = Sigs.combine $1.synSigs $3.synSigs
-                ;  $$ = $1 ++ [ $3 ]
+                ;  $$ = $3:$1
                 }
 
 ProcDef         -- :: { (Ident,TxsDef) }
@@ -1132,7 +1132,7 @@ TestGoals       -- :: { [ (GoalId,BExpr) ] }
                 ;  $1.inhChanSigs  = $$.inhChanSigs
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $2.inhChanSigs  = $$.inhChanSigs
-                ;  $$ = $1 ++ [ $2 ]
+                ;  $$ = $2:$1
                 ;  where if (GoalId.name . fst) $2 `notElem` map (GoalId.name . fst) $1 then () else
                          error $ "\nTXS0551: "++ 
                                  "Double defined goal names in test purpose\n"
@@ -1326,7 +1326,7 @@ ConnectionItems -- :: { [ ConnDef ] }
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $$.synChanSigs  = $1.synChanSigs ++ $2.synChanSigs
-                ;  $$ = $1 ++ [ $2 ]
+                ;  $$ = $2:$1
                 }
 
 ConnectionItem  -- :: { ConnDef }
@@ -3668,7 +3668,7 @@ Transitions     -- :: { [Trans] }
                 ;  $1.inhStVarSigs = $$.inhStVarSigs
                 ;  $2.inhStVarSigs = $$.inhStVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $2.synExitSorts
-                ;  $$ = $1 ++ [ $2 ]
+                ;  $$ = $2:$1
                 }
               | Transitions ";" Transition
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -3685,7 +3685,7 @@ Transitions     -- :: { [Trans] }
                 ;  $1.inhStVarSigs = $$.inhStVarSigs
                 ;  $3.inhStVarSigs = $$.inhStVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $3.synExitSorts
-                ;  $$ = $1 ++ [ $3 ]
+                ;  $$ = $3:$1
                 }
 
 Transition      -- :: { Trans }
