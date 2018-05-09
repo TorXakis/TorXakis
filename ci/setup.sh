@@ -35,7 +35,7 @@ fi
 
 if [ -d $CACHE_DIR/z3 ] && [ -e $CACHE_DIR/z3/z3-4.6.0 ]
 then
-    echo "$CACHE_DIR/z3 build 4.6.0 is found in cache."
+    echo "$CACHE_DIR/z3 build 4.6.0 found in cache."
 else
     echo "z3 not found in cache or different version than 4.6.0"
     rm $CACHE_DIR/z3 -rf
