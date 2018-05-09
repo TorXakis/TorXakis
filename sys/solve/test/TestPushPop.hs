@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TestPushPop
 (
 testPushPopList
@@ -62,9 +61,9 @@ getValues vs = do
 testPushPopTemplate :: ([VarId] -> [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()) ->
                         EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId], [Const] -> SMT()) ->
                                               [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()
-testPushPopTemplate steps envDefs types (createInitialAssertions,checkInitial) pps = do
+testPushPopTemplate steps envDefs' types (createInitialAssertions,checkInitial) pps = do
     _ <- SMT.openSolver
-    addDefinitions envDefs
+    addDefinitions envDefs'
     let vs = map (\(x,t) -> VarId (T.pack ("i" ++ show x)) x t) (zip [1000..] types)
     addDeclarations vs
     addAssertions (createInitialAssertions vs)

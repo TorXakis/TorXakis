@@ -8,7 +8,6 @@ See LICENSE at root directory of this repository.
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TXS2SMT
 
 -- ----------------------------------------------------------------------------------------- --
@@ -98,7 +97,7 @@ insertCstr (cd, CstrDef c fs) enames
   =  if cd `Map.member` cstrNames enames
        then error $ "TXS TXS2SMT insertMap: Constructor (" ++ show cd ++ ", CstrDef " ++
                     show c ++ " " ++ show fs ++  ") already defined\n"
-       else foldr ( \(f,p) enames -> enames { funcNames = Map.insert f (toFieldName cd p) (funcNames enames) } )
+       else foldr ( \(f,p) enames' -> enames' { funcNames = Map.insert f (toFieldName cd p) (funcNames enames') } )
                   ( enames { funcNames = Map.insert c (toIsCstrName cd) (funcNames enames)
                            , cstrNames = Map.insert cd (toCstrName cd) (cstrNames enames)
                            } 

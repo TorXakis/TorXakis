@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TestSortDefToSMT
 (
 testSortDefToSMTList
@@ -46,10 +45,10 @@ testAbsentConditionalInt = TestCase $ do
     let mapI = EnvNames (Map.fromList [(conditionalIntSortId, "conditionalInt")])
                         (Map.fromList [(absentCstrId, "_absent")])
                         Map.empty
-    let envDefs = EnvDefs (Map.fromList [(conditionalIntSortId, SortDef)]) 
-                          (Map.fromList [(absentCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [])])
-                          Map.empty
-    assertBool "absent" ("(declare-datatypes () (\n    (conditionalInt (_absent))\n) )" `List.isInfixOf ` T.unpack (sortdefsToSMT mapI envDefs) )
+    let envDefs' = EnvDefs (Map.fromList [(conditionalIntSortId, SortDef)]) 
+                           (Map.fromList [(absentCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [])])
+                           Map.empty
+    assertBool "absent" ("(declare-datatypes () (\n    (conditionalInt (_absent))\n) )" `List.isInfixOf ` T.unpack (sortdefsToSMT mapI envDefs') )
 
 testPresentConditionalInt :: Test
 testPresentConditionalInt = TestCase $ do
@@ -63,10 +62,10 @@ testPresentConditionalInt = TestCase $ do
                         (Map.fromList [(presentCstrId, "_present")])
                         (Map.fromList [(valueAccessor, "value")])
                         
-    let envDefs = EnvDefs (Map.fromList [(conditionalIntSortId, SortDef)]) 
-                          (Map.fromList [(presentCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [valueAccessor])])
-                          Map.empty
-    let result = T.unpack $ sortdefsToSMT mapI envDefs
+    let envDefs' = EnvDefs (Map.fromList [(conditionalIntSortId, SortDef)]) 
+                           (Map.fromList [(presentCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [valueAccessor])])
+                           Map.empty
+    let result = T.unpack $ sortdefsToSMT mapI envDefs'
     assertBool ("present " ++ show result) ("(declare-datatypes () (\n    (conditionalInt (_present (ConditionalInt$_present$0 Int)))\n) )" `List.isInfixOf` result)
 
 testConditionalInt :: Test
@@ -85,12 +84,12 @@ testConditionalInt = TestCase $ do
                                       ])
                         (Map.fromList [(valueAccessor, "value")])
                         
-    let envDefs = EnvDefs (Map.fromList [(conditionalIntSortId, SortDef)]) 
-                          (Map.fromList [(absentCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [])
-                                        ,(presentCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [valueAccessor])
-                                        ])
-                          Map.empty
-    let result = T.unpack (sortdefsToSMT mapI envDefs)
+    let envDefs' = EnvDefs (Map.fromList [(conditionalIntSortId, SortDef)]) 
+                           (Map.fromList [(absentCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [])
+                                         ,(presentCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalIntSortId) [valueAccessor])
+                                         ])
+                           Map.empty
+    let result = T.unpack (sortdefsToSMT mapI envDefs')
     assertBool ("conditional " ++ show result) ("(declare-datatypes () (\n    (conditionalInt (_absent) (_present (ConditionalInt$_present$0 Int)))\n) )" `List.isInfixOf` result)
 
 testPair :: Test
@@ -110,8 +109,8 @@ testPair = TestCase $ do
                                       ,(secondAccessor, "secondX")
                                       ])
 
-    let envDefs = EnvDefs (Map.fromList [(pairSortId, SortDef)])
-                          (Map.fromList [(cstrId, CstrDef (FuncId "ignore" 9876 [] pairSortId) [firstAccessor, secondAccessor]) ])
-                          Map.empty   
-    let result = T.unpack (sortdefsToSMT mapI envDefs)
+    let envDefs' = EnvDefs (Map.fromList [(pairSortId, SortDef)])
+                           (Map.fromList [(cstrId, CstrDef (FuncId "ignore" 9876 [] pairSortId) [firstAccessor, secondAccessor]) ])
+                           Map.empty   
+    let result = T.unpack (sortdefsToSMT mapI envDefs')
     assertBool ("pair " ++ show result) ("(declare-datatypes () (\n    (PairX (pairX (Pair$pair$0 IntX) (Pair$pair$1 IntX)))\n) )" `List.isInfixOf` result)
