@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib where
 
-import           Control.Arrow                 (left, (|||))
+import           Control.Arrow                 (left)
 import           Control.Concurrent            (forkIO)
 import           Control.Concurrent.MVar       (newMVar, putMVar, takeMVar)
 import           Control.Concurrent.STM.TChan  (newTChanIO)
@@ -26,12 +26,12 @@ import           Control.Monad.Except          (ExceptT, liftEither, runExceptT,
                                                 throwError)
 import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically, retry)
-import           Control.Monad.Trans.Except    (ExceptT, except, throwE)
 import           Data.Aeson                    (ToJSON)
+import           Data.Either.Utils             (maybeToEither)
 import           Data.Foldable                 (traverse_)
 import           Data.Map.Strict               as Map
 import           Data.Semigroup                ((<>))
-import           Data.Set                      (Set)
+import qualified Data.Set                      as Set
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import           GHC.Generics                  (Generic)
@@ -46,16 +46,15 @@ import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
 import           EnvCore                       (IOC)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
-import           Id                            (_id)
 import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (Token (Cchanenv, Csigs, Cunid, Cvarenv),
                                                 txsLexer)
-import           TxsCore                       (txsEval, txsGetSigs,
-                                                txsGetTDefs, txsInitCore)
+import           TxsCore                       (txsEval, txsGetCurrentModel,
+                                                txsGetSigs, txsGetTDefs,
+                                                txsInitCore)
 import           TxsDDefs                      (Action (Act), Verdict)
-import           TxsDefs                       (ModelDef, Offer, chan,
-                                                cnectDefs, getConnDefs)
+import           TxsDefs                       (ModelDef (ModelDef))
 import           TxsHappy                      (prefoffsParser, txsParser)
 import           TxsStep                       (txsSetStep, txsShutStep,
                                                 txsStartStep, txsStepRun,
@@ -141,7 +140,7 @@ lookupModel :: Session -> Name -> ExceptT Text IO ModelDef
 lookupModel s mn = do
     tdefs <- lift $ runIOC s txsGetTDefs
     maybe
-        (throwE $ "No model named " <> mn)
+        (throwError $ "No model named " <> mn)
         return (tdefs ^. ix mn)
 
 -- | Leave the stepper.
@@ -230,9 +229,6 @@ parseAction :: Session -> Text -> IO (Response Action)
 parseAction s act = do
     let strAct = T.unpack act
     sigs <- runIOC s txsGetSigs
-    -- TODO: for now we just get all the channels in the connect defs.
-    chids <- fmap chan . concatMap getConnDefs . Map.elems . cnectDefs
-        <$> runIOC s txsGetTDefs
     --
     -- IOS.Tested (TxsDefs.CnectDef _ conndefs) <- gets IOS.modus
     -- We don't have the connection definition here! Can we get this from `TxsDefs`?
@@ -242,24 +238,32 @@ parseAction s act = do
     --  vals <- gets IOS.locvals
     --                 , locvals :: TxsDefs.VEnv              -- ^ local value environment (EnvSever)
     --
-    -- What is the best way to get the `chids`?
-    (_, offs) <- evaluate . force . prefoffsParser $
-        ( Csigs    sigs
-        : Cchanenv chids
-        : Cvarenv  []
-        : Cunid    0 -- Do we need to keep track of the UID in the session?
-        : txsLexer strAct
-        )
-    print offs
-    return $ Right $ Act undefined
+    runExceptT $ do
+        -- TODO: What is the correct way to get the `chids`?
+        ModelDef is os _ _ <- runIOCE s $
+            maybeToEither ("There is no current model set" :: String) <$> txsGetCurrentModel
+        let chids = concatMap Set.toList is ++ concatMap Set.toList os
+        parseRes <- fmap (left showEx) $
+            lift $ try $ evaluate . force . prefoffsParser $
+            ( Csigs    sigs
+            : Cchanenv chids
+            : Cvarenv  []
+            : Cunid    0 -- Do we need to keep track of the UID in the session?
+            : txsLexer strAct
+            )
+        (_, offs) <- liftEither parseRes
+        cstOfs <- traverse offerToAction (Set.toList offs)
+        return $ Act (Set.fromList cstOfs)
     where
+      showEx :: SomeException -> Text
+      showEx = T.pack . show
       offerToAction :: Offer -> ExceptT Text IO (ChanId, [Const])
       offerToAction (Offer cid offrs) = do
           csts <- traverse evalExclam  offrs
           return (cid, csts)
 
       evalExclam :: ChanOffer -> ExceptT Text IO Const
-      evalExclam (Quest choff) = throwError "No ? offer allowed as input."
+      evalExclam (Quest _) = throwError "No ? offer allowed as input."
       evalExclam (Exclam choff) = do
           res <- lift (runIOC s (txsEval choff))
           liftEither $ left T.pack res
@@ -296,5 +300,5 @@ runIOCE :: Show err => Session -> IOC (Either err a) -> ExceptT Text IO a
 runIOCE s act = do
     er <- lift $ runIOC s act
     case er of
-        Left eMsg -> throwE . T.pack . show $ eMsg
+        Left eMsg -> throwError . T.pack . show $ eMsg
         Right res -> return res

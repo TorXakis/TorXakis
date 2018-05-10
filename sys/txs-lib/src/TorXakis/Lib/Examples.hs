@@ -125,12 +125,16 @@ printer s = runConduit $
     sourceTQueue (s ^. sessionMsgs) .|  mapM_ print
 
 -- | This example shows how use the action parsing capabilities of the library.
-testParseAction = do
-    cs <- readFile $ "test" </> "data" </> "Echo.txs"
+testParseAction :: FilePath -> IO ()
+testParseAction path = do
+    cs <- readFile path
     s <- newSession
     r <- load s cs
     putStrLn $ "Result of `load`: " ++ show r
-    act <- parseAction s "In"
+    _  <- setStep s "Model"
+    r' <- startStep s
+    putStrLn $ "Result of `step`: " ++ show r'
+    act <- parseAction s "In ! 90"
     print act
 
 -- | This example shows what happens when you load an invalid file.

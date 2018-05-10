@@ -25,7 +25,6 @@ module TxsDefs
 , TxsDefs.elems
 , TxsDefs.union
 , TxsDefs.insert
-, TxsDefs.getConnDefs
 , TxsDef(..)
 , VarEnv
 , VExpr
@@ -232,10 +231,6 @@ union a b = TxsDefs
                 (Map.union (goalDefs a)  (goalDefs b)   )
                 (Map.union (mapperDefs a)(mapperDefs b) )
                 (Map.union (cnectDefs a) (cnectDefs b)  )
-
-getConnDefs :: CnectDef -> [ConnDef]
-getConnDefs (CnectSockExplW _ _ cs) = cs
-getConnDefs (CnectSockImplW _ cs)   = cs
 
 -- ----------------------------------------------------------------------------------------- --
 --
