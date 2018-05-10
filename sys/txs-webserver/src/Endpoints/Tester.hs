@@ -18,41 +18,29 @@ import           Servant
 
 import           TorXakis.Lib                (tester, Response (..), test, StepType (..))
 
-import           Common (SessionId, getSession, Env)
+import           Common (SessionId, getSession, Env, checkResult)
 
 type StartTesterEP  = "tester"
                    :> "start"
                    :> Capture "sid" SessionId
                    :> Capture "model" Text
-                   :> Post '[JSON] String
+                   :> Post '[JSON] ()
                       
 type TestNStepsEP   = "tester"
                    :> "test"
                    :> Capture "sid" SessionId
                    :> Capture "steps" Int
-                   :> Post '[JSON] String
+                   :> Post '[JSON] ()
 
-startTester :: Env -> SessionId -> Text -> Handler String
+startTester :: Env -> SessionId -> Text -> Handler ()
 startTester env sid model = do
     s <- getSession env sid
-    r <- liftIO $ do
-            putStrLn $ "Starting tester for model " ++ show model ++ " in session " ++ show sid 
-            r <- tester s model
-            print r
-            return r
-    case r of
-        Success -> return $ show Success
-        Error m -> throwError $ err500 { errBody = pack m }
+    r <- liftIO $ tester s model
+    checkResult r
 
-testNSteps :: Env -> SessionId -> Int -> Handler String
+testNSteps :: Env -> SessionId -> Int -> Handler ()
 testNSteps env sid steps = do
     s <- getSession env sid
-    r <- liftIO $ do
-            putStrLn $ "Taking " ++ show steps ++ " test steps in session " ++ show sid 
-            r <- test s $ NumberOfSteps steps
-            print r
-            return r
-    case r of
-        Success -> return $ show Success
-        Error m -> throwError $ err500 { errBody = pack m }
+    r <- liftIO $ test s $ NumberOfSteps steps
+    checkResult r
 

@@ -23,7 +23,8 @@ import           Servant
 import           TorXakis.Lib               (Response (..), StepType (..), step)
 import qualified TorXakis.Lib               as Lib
 
-import           Common                     (Env, SessionId, getSession)
+import           Common                     (Env, SessionId, checkResult,
+                                             getSession)
 
 type SetStepperEP = "sessions"
                    :> Capture "sid" SessionId
@@ -35,9 +36,7 @@ setStep :: Env -> SessionId -> Text -> Handler ()
 setStep env sid model = do
     s <- getSession env sid
     r <- liftIO $ Lib.setStep s model
-    case r of
-        Success -> return ()
-        Error m -> throwError $ err500 { errBody = pack m }
+    checkResult r
 
 type StartStepperEP = "sessions"
                    :> Capture "sid" SessionId
@@ -48,10 +47,7 @@ startStep :: Env -> SessionId -> Handler ()
 startStep env sid = do
     s <- getSession env sid
     r <- liftIO $ Lib.startStep s
-    case r of
-        Success -> return ()
-        Error m -> throwError $ err500 { errBody = pack m }
-
+    checkResult r
 
 type TakeNStepsEP   = "sessions"
                    :> Capture "sid" SessionId
@@ -63,7 +59,5 @@ takeNSteps :: Env -> SessionId -> Int -> Handler ()
 takeNSteps env sid steps = do
     s <- getSession env sid
     r <- liftIO $ step s $ NumberOfSteps steps
-    case r of
-        Success -> return ()
-        Error m -> throwError $ err500 { errBody = pack m }
+    checkResult r
 

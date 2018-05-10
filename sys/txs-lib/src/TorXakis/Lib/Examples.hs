@@ -125,7 +125,7 @@ printer s = runConduit $
     sourceTQueue (s ^. sessionMsgs) .|  mapM_ print
 
 -- | This example shows what happens when you load an invalid file.
-testWrongFile :: IO Response
+testWrongFile :: IO (Response ())
 testWrongFile = do
     cs <- readFile $ "test" </> "data" </> "wrong.txt"
     s <- newSession

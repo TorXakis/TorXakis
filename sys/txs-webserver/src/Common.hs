@@ -12,16 +12,21 @@ module Common
     , getSessionIO
     , getServerSessionIO
     , ServerSession (..)
+    , checkResult
     )
 where
 
+import           Control.Arrow               ((|||))
 import           Control.Concurrent.STM.TVar (TVar, readTVarIO)
 import           Control.Monad.IO.Class      (liftIO)
 import           Data.ByteString.Lazy.Char8  (pack)
 import qualified Data.IntMap.Strict          as Map
+import qualified Data.Text.Lazy              as TL
+import           Data.Text.Lazy.Encoding     (encodeUtf8)
 import           Servant                     (throwError)
 import           Servant.Server
 
+import           TorXakis.Lib                (Error)
 import           TorXakis.Lib.Session        (Session)
 
 type SessionId = Int
@@ -66,3 +71,8 @@ getServerSession env sId = do
                 { errBody = pack $ "Session " ++ show sId ++ " not found." }
         Just s  ->
             return s
+
+
+-- | Check the result and throw a 400 error if it is a left.
+checkResult :: Either Error a -> Handler a
+checkResult = (\e -> throwError err400 { errBody = encodeUtf8 (TL.fromStrict e) }) ||| return

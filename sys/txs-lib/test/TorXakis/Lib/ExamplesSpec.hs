@@ -7,19 +7,18 @@ See LICENSE at root directory of this repository.
 module TorXakis.Lib.ExamplesSpec where
 
 import           Control.Monad         (replicateM)
+import           Data.Either           (isLeft)
 import           Test.Hspec            (Spec, it, shouldSatisfy)
 
--- import           TxsDDefs              (Verdict (Pass))
-
-import           TorXakis.Lib          (isError)
 import           TorXakis.Lib.Examples
+
 
 spec :: Spec
 spec = do
     it "testEchoReactive" testEchoReactive
     it "testWrongFile"    $ do
         r <- testWrongFile
-        r `shouldSatisfy` isError
+        r `shouldSatisfy` isLeft
     it "testInfo"         testInfo
     -- it "testTorXakisWithInfo" $ do
     --     Right res <- testTorXakisWithInfo

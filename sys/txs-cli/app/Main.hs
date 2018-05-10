@@ -35,6 +35,10 @@ Options:
                          assigned port.
 |]
 
+-- | The CLI will start the web-server on a dynamically allocated port if no
+-- host is specified. The port numbers are tried one by one starting from (the
+-- rather arbitrary number 8000), till one free port is found, or until the
+-- maximum port number (2^16 - 1) is reached.
 main :: IO ()
 main = do
     args <- parseArgsOrExit patterns =<< getArgs

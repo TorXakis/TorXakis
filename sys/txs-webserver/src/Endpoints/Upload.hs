@@ -23,7 +23,7 @@ import           Servant.Multipart          (Mem, MultipartData, MultipartForm,
 
 import           TorXakis.Lib               (Response (..), load)
 
-import           Common                     (Env, SessionId, getSession)
+import           Common                     (Env, SessionId, getSession, checkResult)
 
 type UploadEP = "sessions"
              :> Capture "sid" SessionId
@@ -45,8 +45,6 @@ upload env sid multipartData =  do
         [] -> throwError err400 { errBody = "No files received" }
         fs -> do
             r <- liftIO $ load s $ LT.unpack $ LT.concat $ map (decodeUtf8 . fdPayload) fs
-            case r of
-                Success -> return $ map mkResponse fs
-                Error e -> throwError err400 { errBody = pack e }
-              where
-                mkResponse f = FileLoadedResponse { fileName=fdFileName f, loaded=True }
+            checkResult r
+            let  mkResponse f = FileLoadedResponse { fileName = fdFileName f, loaded = True }
+            return $ map mkResponse fs

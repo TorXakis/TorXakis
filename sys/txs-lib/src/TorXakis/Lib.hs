@@ -44,7 +44,7 @@ import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (txsLexer)
 import           TxsCore                       (txsGetTDefs, txsInitCore)
-import           TxsDDefs                      (Verdict)
+import           TxsDDefs                      (Action, Verdict)
 import           TxsDefs                       (ModelDef, Offer)
 import           TxsHappy                      (txsParser)
 import           TxsStep                       (txsSetStep, txsShutStep,
@@ -58,17 +58,20 @@ import           TorXakis.Lib.Session
 -- current 'TorXakis' parser parses @String@s.
 type FileContents = String
 
--- TODO: do we need a String here?
-data Response = Success | Error { msg :: String } deriving (Eq, Show)
+type Error = Text
+type Response a = Either Error a
+
+success :: Response ()
+success = Right ()
 
 data LibException = TxsError { errMsg :: Msg } deriving Show
 
 instance Exception LibException
 
 
-isError :: Response -> Bool
-isError (Error _) = True
-isError _         = False
+-- isError :: Response -> Bool
+-- isError (Error _) = True
+-- isError _         = False
 
 data TorXakisInfo = Info { version :: String, buildTime :: String }
     deriving (Generic)
@@ -88,9 +91,9 @@ newSession = Session <$> newTVarIO emptySessionState
                      <*> return []
 
 -- | Stop a session.
-killSession :: Session -> IO Response
+killSession :: Session -> IO (Response ())
 killSession _ =
-    return $ Error "Kill Session: Not implemented (yet)"
+    return $ Left "Kill Session: Not implemented (yet)"
 
 -- | Load a TorXakis file, compile it, and return the response.
 --
@@ -100,33 +103,28 @@ killSession _ =
 --
 -- In the future we might want to make loading of 'TorXakis' models
 -- incremental, to give better error messages, and support more modularity.
-load :: Session -> FileContents -> IO Response
+load :: Session -> FileContents -> IO (Response ())
 load s xs = do
     r <- try $ do -- Since the 'TorXakis' parser currently just calls 'error'
                   -- we have to catch a generic 'ErrorCall' exception.
         (_, ts, is) <- evaluate . force . txsParser . txsLexer $ xs
         return (ts, is)
     case r of
-        Left err -> return $ Error $ show (err :: ErrorCall)
-        Right (ts, is)  ->
-            runIOC s $ do
-                resp <- txsInitCore ts is (msgHandler (_sessionMsgs s))
-                case resp of
-                    Right _ -> return Success
-                    Left  e -> return $ Error e
-
+        Left err -> return $ Left $ T.pack $ show  (err :: ErrorCall)
+        Right (ts, is) -> runExceptT . runIOCE s $
+            txsInitCore ts is (msgHandler (_sessionMsgs s))
 
 -- | Set the stepper.
 setStep :: Session
         -> Name -- ^ Model name
-        -> IO Response
+        -> IO (Response ())
 setStep s mn = runResponse $ do
     mDef <- lookupModel s mn
     runIOCE s (txsSetStep mDef)
 
 -- | Start the stepper. This step requires the stepper to be set. See
 -- @setStep@.
-startStep :: Session -> IO Response
+startStep :: Session -> IO (Response ())
 startStep s = runResponse $ runIOCE s txsStartStep
 
 lookupModel :: Session -> Name -> ExceptT Text IO ModelDef
@@ -137,7 +135,7 @@ lookupModel s mn = do
         return (tdefs ^. ix mn)
 
 -- | Leave the stepper.
-shutStepper :: Session -> IO Response
+shutStepper :: Session -> IO (Response ())
 shutStepper s  = runResponse $ do
     runIOCE s txsStopStep
     runIOCE s txsShutStep
@@ -156,7 +154,7 @@ data StepType =  NumberOfSteps Int
 -- TODO: discuss with Jan: do we need a `Tree` step here?
 
 -- | Step for n-steps or actions
-step :: Session -> StepType -> IO Response
+step :: Session -> StepType -> IO (Response ())
 step s (NumberOfSteps n) = do
     void $ forkIO $ do
         eVerd <- try $ runIOC s $ txsStepRun n
@@ -166,7 +164,7 @@ step s (NumberOfSteps n) = do
                 atomically $ writeTQueue (s ^. verdicts) $ Left $ toException $ TxsError eMsg
             Right (Right verd) ->
                 atomically $ writeTQueue (s ^. verdicts) $ Right verd
-    return Success
+    return success
 
 -- | Wait for a verdict to be reached.
 waitForVerdict :: Session -> IO (Either SomeException Verdict)
@@ -178,16 +176,14 @@ waitForMessageQueue s = atomically $ do
     b <- isEmptyTQueue (s ^. sessionMsgs)
     unless b retry
 
-eitherToResponse :: Either Text () -> Response
-eitherToResponse = Error . T.unpack ||| const Success
 
-runResponse :: ExceptT Text IO () -> IO Response
-runResponse act = eitherToResponse <$> runExceptT act
+runResponse :: ExceptT Text IO a -> IO (Response a)
+runResponse act = runExceptT act
 
 -- | Start the tester
 tester :: Session
        -> Name
-       -> IO Response
+       -> IO (Response ())
 tester s mn = runResponse $ do
     mDef <- lookupModel s mn
     lift $ do
@@ -197,30 +193,31 @@ tester s mn = runResponse $ do
         --     deltaTime = undefined -- read deltaString
         let s' = s & worldListeners .~ tids
         runIOC s' $ undefined mDef
-            -- TODO: `txsSetTest` this was commented out by Jan.
+            -- TODO: `t` this was commented out by Jan.
             -- txsSetTest (putToW fWCh (s' ^. wConnDef . toWorldMappings))
             --            (getFromW deltaTime fWCh)
             --            mDef Nothing Nothing
 
 -- | Test for n-steps
-test :: Session -> StepType -> IO Response
+test :: Session -> StepType -> IO (Response ())
 test s (NumberOfSteps n) = do
     void $ forkIO $ do undefined s n
         -- TODO: `txsTestN` this was commented out by Jan.
         -- verdict <- try $ runIOC s $ txsTestN n
         -- atomically $ writeTQueue (s ^. verdicts) verdict
-    return Success
+    return success
 
 -- | Start the stepper with the given model.
-stop :: Session -> IO Response
+stop :: Session -> IO (Response ())
 stop _ =
     -- TODO: `txsStop` was commented out by Jan.
     -- runResponse $ lift $ runIOC s txsStop
-    return Success
+    return success
 
--- | Parse a string into a set of offers.
-parseOffer :: Session -> Text -> IO (Either Text (Set Offer))
-parseOffer = undefined
+-- | Parse a String into an set of offers.
+--
+parseAction :: Session -> Text -> IO (Response Action)
+parseAction = undefined
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.
@@ -248,8 +245,8 @@ runIOC s act = runIOC' `catch` reportError
           atomically $ writeTQueue (s ^. sessionMsgs) (TXS_CORE_SYSTEM_ERROR (show err))
           error (show err)
 
--- | Run an IC action but wrap the results in an exception.
-runIOCE :: Session -> IOC (Either Msg a) -> ExceptT Text IO a
+-- | Run an IOC action but wrap the results in an exception.
+runIOCE :: Show err => Session -> IOC (Either err a) -> ExceptT Text IO a
 runIOCE s act = do
     er <- lift $ runIOC s act
     case er of
