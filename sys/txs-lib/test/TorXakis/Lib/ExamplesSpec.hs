@@ -9,7 +9,7 @@ module TorXakis.Lib.ExamplesSpec where
 import           Control.Monad         (replicateM)
 import           Data.Either           (isLeft, isRight)
 import           System.FilePath       ((</>))
-import           Test.Hspec            (Spec, it, shouldSatisfy)
+import           Test.Hspec            (Spec, it, shouldBe, shouldSatisfy)
 
 import           TorXakis.Lib.Examples
 
@@ -37,3 +37,6 @@ spec = do
     it "Action parsing wrong" $ do
         eAct <- testParseWrongAction $ "test" </> "data" </> "Echo.txs"
         eAct `shouldSatisfy` isLeft
+    it "Stepping with user actions" $ do
+        res <- testWithUserActions $ "test" </> "data" </> "Echo.txs"
+        res `shouldBe` Right ()

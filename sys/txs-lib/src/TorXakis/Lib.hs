@@ -57,8 +57,8 @@ import           TxsDDefs                      (Action (Act), Verdict)
 import           TxsDefs                       (ModelDef (ModelDef))
 import           TxsHappy                      (prefoffsParser, txsParser)
 import           TxsStep                       (txsSetStep, txsShutStep,
-                                                txsStartStep, txsStepRun,
-                                                txsStopStep)
+                                                txsStartStep, txsStepAct,
+                                                txsStepRun, txsStopStep)
 
 import           TorXakis.Lib.Session
 
@@ -153,8 +153,9 @@ msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
 
 -- | How a step is described
-data StepType =  NumberOfSteps Int
-    --         | ActionTxt String -- todo: Make this a TorXakis Action
+data StepType = NumberOfSteps Int
+              | AnAction Action
+              deriving (Show, Eq)
     --           | GoTo StateNumber
     --           | Reset -- ^ Go to the initial state.
     --           | Rewind Steps
@@ -164,9 +165,13 @@ data StepType =  NumberOfSteps Int
 
 -- | Step for n-steps or actions
 step :: Session -> StepType -> IO (Response ())
-step s (NumberOfSteps n) = do
+step s (NumberOfSteps n) = runForVerdict s (txsStepRun n)
+step s (AnAction a)      = runForVerdict s (txsStepAct a)
+
+runForVerdict :: Session -> IOC (Either Msg Verdict) -> IO (Response ())
+runForVerdict s ioc = do
     void $ forkIO $ do
-        eVerd <- try $ runIOC s $ txsStepRun n
+        eVerd <- try $ runIOC s ioc
         case eVerd of
             Left e -> atomically $ writeTQueue (s ^. verdicts) (Left e)
             Right (Left eMsg) ->
@@ -215,6 +220,7 @@ test s (NumberOfSteps n) = do
         -- verdict <- try $ runIOC s $ txsTestN n
         -- atomically $ writeTQueue (s ^. verdicts) verdict
     return success
+test s (AnAction a) = undefined s a
 
 -- | Start the stepper with the given model.
 stop :: Session -> IO (Response ())
