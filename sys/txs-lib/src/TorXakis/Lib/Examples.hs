@@ -125,7 +125,7 @@ printer s = runConduit $
     sourceTQueue (s ^. sessionMsgs) .|  mapM_ print
 
 -- | This example shows how use the action parsing capabilities of the library.
-testParseAction :: FilePath -> IO ()
+testParseAction :: FilePath -> IO (Either Error Action)
 testParseAction path = do
     cs <- readFile path
     s <- newSession
@@ -134,8 +134,21 @@ testParseAction path = do
     _  <- setStep s "Model"
     r' <- startStep s
     putStrLn $ "Result of `step`: " ++ show r'
-    act <- parseAction s "In ! 90"
-    print act
+    parseAction s "In ! 90"
+
+-- | This example parses a wrong action.
+testParseWrongAction :: FilePath -> IO (Either Error Action)
+testParseWrongAction path = do
+    cs <- readFile path
+    s <- newSession
+    r <- load s cs
+    putStrLn $ "Result of `load`: " ++ show r
+    _  <- setStep s "Model"
+    r' <- startStep s
+    putStrLn $ "Result of `step`: " ++ show r'
+    parseAction s "In" -- Error: no offer of type Int.
+
+
 
 -- | This example shows what happens when you load an invalid file.
 testWrongFile :: IO (Response ())

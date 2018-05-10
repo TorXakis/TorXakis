@@ -25,6 +25,7 @@ default-extensions:
 
 dependencies:
 - base >= 4.7 && < 5
+- filepath
   
 ghc-options:
 - -O2
@@ -45,7 +46,6 @@ library:
   - deepseq
   - directory
   - extra
-  - filepath
   - http-client
   - lens-aeson
   - microlens
