@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib where
 
-import           Control.Arrow                 ((|||))
+import           Control.Arrow                 (left, (|||))
 import           Control.Concurrent            (forkIO)
 import           Control.Concurrent.MVar       (newMVar, putMVar, takeMVar)
 import           Control.Concurrent.STM.TChan  (newTChanIO)
@@ -22,9 +22,11 @@ import           Control.Exception             (ErrorCall, Exception,
                                                 SomeException, catch, evaluate,
                                                 toException, try)
 import           Control.Monad                 (unless, void)
+import           Control.Monad.Except          (ExceptT, liftEither, runExceptT,
+                                                throwError)
 import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically, retry)
-import           Control.Monad.Trans.Except    (ExceptT, runExceptT, throwE)
+import           Control.Monad.Trans.Except    (ExceptT, except, throwE)
 import           Data.Aeson                    (ToJSON)
 import           Data.Foldable                 (traverse_)
 import           Data.Map.Strict               as Map
@@ -38,15 +40,23 @@ import           Lens.Micro                    ((&), (.~), (^.))
 import qualified BuildInfo
 import qualified VersionInfo
 
+import           BehExprDefs                   (ChanOffer (Exclam, Quest),
+                                                Offer (Offer))
+import           ChanId                        (ChanId)
+import           ConstDefs                     (Const)
 import           EnvCore                       (IOC)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
+import           Id                            (_id)
 import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
-import           TxsAlex                       (txsLexer)
-import           TxsCore                       (txsGetTDefs, txsInitCore)
-import           TxsDDefs                      (Action, Verdict)
-import           TxsDefs                       (ModelDef, Offer)
-import           TxsHappy                      (txsParser)
+import           TxsAlex                       (Token (Cchanenv, Csigs, Cunid, Cvarenv),
+                                                txsLexer)
+import           TxsCore                       (txsEval, txsGetSigs,
+                                                txsGetTDefs, txsInitCore)
+import           TxsDDefs                      (Action (Act), Verdict)
+import           TxsDefs                       (ModelDef, Offer, chan,
+                                                cnectDefs, getConnDefs)
+import           TxsHappy                      (prefoffsParser, txsParser)
 import           TxsStep                       (txsSetStep, txsShutStep,
                                                 txsStartStep, txsStepRun,
                                                 txsStopStep)
@@ -217,7 +227,43 @@ stop _ =
 -- | Parse a String into an set of offers.
 --
 parseAction :: Session -> Text -> IO (Response Action)
-parseAction = undefined
+parseAction s act = do
+    let strAct = T.unpack act
+    sigs <- runIOC s txsGetSigs
+    -- TODO: for now we just get all the channels in the connect defs.
+    chids <- fmap chan . concatMap getConnDefs . Map.elems . cnectDefs
+        <$> runIOC s txsGetTDefs
+    --
+    -- IOS.Tested (TxsDefs.CnectDef _ conndefs) <- gets IOS.modus
+    -- We don't have the connection definition here! Can we get this from `TxsDefs`?
+    -- let chids = [ chan | TxsDefs.ConnDtoW chan _ _ _ _ <- conndefs ]
+    --
+    -- We don't have a local value in the session. Do we need one?
+    --  vals <- gets IOS.locvals
+    --                 , locvals :: TxsDefs.VEnv              -- ^ local value environment (EnvSever)
+    --
+    -- What is the best way to get the `chids`?
+    (_, offs) <- evaluate . force . prefoffsParser $
+        ( Csigs    sigs
+        : Cchanenv chids
+        : Cvarenv  []
+        : Cunid    0 -- Do we need to keep track of the UID in the session?
+        : txsLexer strAct
+        )
+    print offs
+    return $ Right $ Act undefined
+    where
+      offerToAction :: Offer -> ExceptT Text IO (ChanId, [Const])
+      offerToAction (Offer cid offrs) = do
+          csts <- traverse evalExclam  offrs
+          return (cid, csts)
+
+      evalExclam :: ChanOffer -> ExceptT Text IO Const
+      evalExclam (Quest choff) = throwError "No ? offer allowed as input."
+      evalExclam (Exclam choff) = do
+          res <- lift (runIOC s (txsEval choff))
+          liftEither $ left T.pack res
+
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.

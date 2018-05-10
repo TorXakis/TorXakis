@@ -57,9 +57,9 @@ module TxsCore
 , txsStopEW
 
 -}
-  -- *  TorXakis definitions
-  -- ** get all torxakis definitions
+  -- *  TorXakis definitions loaded into the core.
 , txsGetTDefs
+, txsGetSigs
 {-
   -- ** set all torxakis definitions
 , txsSetTDefs
@@ -338,14 +338,25 @@ txsStopEW eWorld  =  do
 
 -}
 
--- | Get all torxakis definitions
+-- | Get the TorXakis definitions that were loaded into the core.
 txsGetTDefs :: IOC.IOC TxsDefs.TxsDefs
 txsGetTDefs  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Idling -> return TxsDefs.empty
-       _                             -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
-                  -> return $ IOC.tdefs (IOC.state envc)
+         IOC.Idling ->
+             return TxsDefs.empty
+         _  ->
+             return $ IOC.tdefs (IOC.state envc)
+
+-- | Get the TorXakis signatures that were loaded into the core.
+txsGetSigs :: IOC.IOC (Sigs.Sigs VarId)
+txsGetSigs  =  do
+    envc <- get
+    case IOC.state envc of
+         IOC.Idling ->
+             return Sigs.empty
+         _  ->
+             return $ IOC.sigs (IOC.state envc)
 
 {-
 

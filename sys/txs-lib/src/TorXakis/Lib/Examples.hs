@@ -124,6 +124,15 @@ printer :: Session -> IO ()
 printer s = runConduit $
     sourceTQueue (s ^. sessionMsgs) .|  mapM_ print
 
+-- | This example shows how use the action parsing capabilities of the library.
+testParseAction = do
+    cs <- readFile $ "test" </> "data" </> "Echo.txs"
+    s <- newSession
+    r <- load s cs
+    putStrLn $ "Result of `load`: " ++ show r
+    act <- parseAction s "In"
+    print act
+
 -- | This example shows what happens when you load an invalid file.
 testWrongFile :: IO (Response ())
 testWrongFile = do
