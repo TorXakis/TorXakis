@@ -24,13 +24,12 @@ import           Endpoints.Messages          (CloseMessagesEP, MessagesEP,
                                               OpenMessagesEP, closeMessages,
                                               messages, openMessages)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
+import           Endpoints.Parse             (ParseActionEP, parseAction)
 import           Endpoints.Stepper           (SetStepperEP, StartStepperEP,
-                                              TakeNStepsEP, setStep, startStep,
-                                              takeNSteps)
+                                              StepEP, setStep, startStep, step)
 import           Endpoints.Tester            (StartTesterEP, TestNStepsEP,
                                               startTester, testNSteps)
 import           Endpoints.Upload            (UploadEP, upload)
--- import           Swagger
 
 type API = ServiceAPI
 type ServiceAPI
@@ -39,13 +38,15 @@ type ServiceAPI
     :<|> UploadEP
     :<|> SetStepperEP
     :<|> StartStepperEP
-    :<|> TakeNStepsEP
+    :<|> StepEP
     :<|> StartTesterEP
     :<|> TestNStepsEP
+    :<|> ParseActionEP
     :<|> OpenMessagesEP
     :<|> CloseMessagesEP
     :<|> MessagesEP
     :<|> TestPageAPI
+
 type TestPageAPI = "test" :> Raw
 
 startApp :: Port -> IO ()
@@ -65,15 +66,13 @@ server env
     =    getInfo
     :<|> newSrvSession env
     :<|> upload env
-    :<|> setStep env :<|> startStep env :<|> takeNSteps env
-    :<|> startTester env  :<|> testNSteps env
+    :<|> setStep env
+    :<|> startStep env
+    :<|> step env
+    :<|> startTester env
+    :<|> testNSteps env
+    :<|> parseAction env
     :<|> openMessages env
     :<|> closeMessages env
     :<|> messages env
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"
-    -- :<|> return swaggerDocs
-    -- where
-        -- swaggerDocs :: Swagger
-        -- swaggerDocs = toSwagger serviceAPI
-        --     where serviceAPI :: Proxy ServiceAPI
-        --           serviceAPI = Proxy

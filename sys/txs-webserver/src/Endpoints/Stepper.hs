@@ -10,20 +10,18 @@ module Endpoints.Stepper
     , StartStepperEP
     , setStep
     , startStep
-    , TakeNStepsEP
-    , takeNSteps
+    , StepEP
+    , step
     )
 where
 
-import           Control.Monad.IO.Class (liftIO)
-import           Data.Text              (Text)
+import           Data.Text    (Text)
 import           Servant
 
-import           TorXakis.Lib           (StepType (..), step)
-import qualified TorXakis.Lib           as Lib
+import           TorXakis.Lib (StepType (..))
+import qualified TorXakis.Lib as Lib
 
-import           Common                 (Env, SessionId, checkResult,
-                                         getSession)
+import           Common       (Env, SessionId, liftLib)
 
 type SetStepperEP = "sessions"
                    :> Capture "sid" SessionId
@@ -32,10 +30,7 @@ type SetStepperEP = "sessions"
                    :> PostNoContent '[JSON] ()
 
 setStep :: Env -> SessionId -> Text -> Handler ()
-setStep env sid model = do
-    s <- getSession env sid
-    r <- liftIO $ Lib.setStep s model
-    checkResult r
+setStep env sId model = liftLib env sId (`Lib.setStep` model)
 
 type StartStepperEP = "sessions"
                    :> Capture "sid" SessionId
@@ -43,20 +38,13 @@ type StartStepperEP = "sessions"
                    :> PostNoContent '[JSON] ()
 
 startStep :: Env -> SessionId -> Handler ()
-startStep env sid = do
-    s <- getSession env sid
-    r <- liftIO $ Lib.startStep s
-    checkResult r
+startStep env sId = liftLib env sId Lib.startStep
 
-type TakeNStepsEP   = "sessions"
-                   :> Capture "sid" SessionId
-                   :> "stepper"
-                   :> Capture "steps" Int
-                   :> PostNoContent '[JSON] ()
+type StepEP   = "sessions"
+                :> Capture "sid" SessionId
+                :> "step"
+                :> ReqBody '[JSON] StepType
+                :> PostNoContent '[JSON] ()
 
-takeNSteps :: Env -> SessionId -> Int -> Handler ()
-takeNSteps env sid steps = do
-    s <- getSession env sid
-    r <- liftIO $ step s $ NumberOfSteps steps
-    checkResult r
-
+step :: Env -> SessionId -> StepType -> Handler ()
+step env sId sType = liftLib env sId (`Lib.step` sType)

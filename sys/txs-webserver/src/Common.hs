@@ -13,6 +13,7 @@ module Common
     , getServerSessionIO
     , ServerSession (..)
     , checkResult
+    , liftLib
     )
 where
 
@@ -26,7 +27,7 @@ import           Data.Text.Lazy.Encoding     (encodeUtf8)
 import           Servant                     (throwError)
 import           Servant.Server
 
-import           TorXakis.Lib                (Error)
+import           TorXakis.Lib                (Error, Response)
 import           TorXakis.Lib.Session        (Session)
 
 type SessionId = Int
@@ -72,7 +73,15 @@ getServerSession env sId = do
         Just s  ->
             return s
 
-
 -- | Check the result and throw a 400 error if it is a left.
 checkResult :: Either Error a -> Handler a
 checkResult = (\e -> throwError err400 { errBody = encodeUtf8 (TL.fromStrict e) }) ||| return
+
+-- | Call a @Lib@ function using the @Session@ associated to the given session
+-- id. The result @Either Error a@ of the @Lib@ function will be converted to a
+-- @Handler a@ value. Left values will be converted to 400 error codes.
+liftLib :: Env -> SessionId -> (Session -> IO (Response a)) -> Handler a
+liftLib env sId f = do
+    s <- getSession env sId
+    r <- liftIO (f s)
+    checkResult r

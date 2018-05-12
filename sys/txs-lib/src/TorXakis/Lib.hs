@@ -26,7 +26,7 @@ import           Control.Monad.Except          (ExceptT, liftEither, runExceptT,
                                                 throwError)
 import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically, retry)
-import           Data.Aeson                    (ToJSON)
+import           Data.Aeson                    (FromJSON, ToJSON)
 import           Data.Either.Utils             (maybeToEither)
 import           Data.Foldable                 (traverse_)
 import           Data.Map.Strict               as Map
@@ -77,13 +77,9 @@ data LibException = TxsError { errMsg :: Msg } deriving Show
 
 instance Exception LibException
 
-
--- isError :: Response -> Bool
--- isError (Error _) = True
--- isError _         = False
-
 data TorXakisInfo = Info { version :: String, buildTime :: String }
     deriving (Generic)
+
 instance ToJSON TorXakisInfo
 
 info :: TorXakisInfo
@@ -153,15 +149,22 @@ msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
 
 -- | How a step is described
+--
 data StepType = NumberOfSteps Int
               | AnAction Action
-              deriving (Show, Eq)
     --           | GoTo StateNumber
     --           | Reset -- ^ Go to the initial state.
     --           | Rewind Steps
--- data StateNumber
--- data ActionName
+              deriving (Show, Eq, Generic)
+
+-- TODO: Types like 'StepType' are needed by the clients of 'txs-webserver'. So
+-- to avoid introducing a dependency 'txs-lib' we could create a new package
+-- called 'txs-lib-data', or something similar.
+
 -- TODO: discuss with Jan: do we need a `Tree` step here?
+
+instance ToJSON StepType
+instance FromJSON StepType
 
 -- | Step for n-steps or actions
 step :: Session -> StepType -> IO (Response ())

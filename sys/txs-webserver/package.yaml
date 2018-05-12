@@ -62,6 +62,7 @@ library:
   # `TorXakis` dependencies.
   - coreenv
   - txs-lib
+  - defs
   
 executables:
   txs-webserver:
@@ -97,3 +98,5 @@ tests:
     - microlens
     - process
     - wreq
+    # TorXakis dependencies.
+    - txs-lib

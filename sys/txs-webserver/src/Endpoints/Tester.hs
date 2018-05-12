@@ -3,7 +3,8 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
+{-# LANGUAGE DataKinds     #-}
+{-# LANGUAGE TypeOperators #-}
 module Endpoints.Tester
 ( StartTesterEP
 , startTester
@@ -11,20 +12,19 @@ module Endpoints.Tester
 , testNSteps
 ) where
 
-import           Control.Monad.IO.Class      (liftIO)
-import           Data.Text                   (Text)
+import           Data.Text    (Text)
 import           Servant
 
-import           TorXakis.Lib                (tester, test, StepType (..))
+import           TorXakis.Lib (StepType (..), test, tester)
 
-import           Common (SessionId, getSession, Env, checkResult)
+import           Common       (Env, SessionId, liftLib)
 
 type StartTesterEP  = "tester"
                    :> "start"
                    :> Capture "sid" SessionId
                    :> Capture "model" Text
                    :> Post '[JSON] ()
-                      
+
 type TestNStepsEP   = "tester"
                    :> "test"
                    :> Capture "sid" SessionId
@@ -32,14 +32,7 @@ type TestNStepsEP   = "tester"
                    :> Post '[JSON] ()
 
 startTester :: Env -> SessionId -> Text -> Handler ()
-startTester env sid model = do
-    s <- getSession env sid
-    r <- liftIO $ tester s model
-    checkResult r
+startTester env sId model = liftLib env sId (`tester` model)
 
 testNSteps :: Env -> SessionId -> Int -> Handler ()
-testNSteps env sid steps = do
-    s <- getSession env sid
-    r <- liftIO $ test s $ NumberOfSteps steps
-    checkResult r
-
+testNSteps env sId steps = liftLib env sId (`test` NumberOfSteps steps)
