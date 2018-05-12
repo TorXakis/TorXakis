@@ -12,11 +12,10 @@ module Endpoints.Tester
 ) where
 
 import           Control.Monad.IO.Class      (liftIO)
-import           Data.ByteString.Lazy.Char8  (pack)
 import           Data.Text                   (Text)
 import           Servant
 
-import           TorXakis.Lib                (tester, Response (..), test, StepType (..))
+import           TorXakis.Lib                (tester, test, StepType (..))
 
 import           Common (SessionId, getSession, Env, checkResult)
 

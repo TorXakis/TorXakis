@@ -15,16 +15,15 @@ module Endpoints.Stepper
     )
 where
 
-import           Control.Monad.IO.Class     (liftIO)
-import           Data.ByteString.Lazy.Char8 (pack)
-import           Data.Text                  (Text)
+import           Control.Monad.IO.Class (liftIO)
+import           Data.Text              (Text)
 import           Servant
 
-import           TorXakis.Lib               (Response (..), StepType (..), step)
-import qualified TorXakis.Lib               as Lib
+import           TorXakis.Lib           (StepType (..), step)
+import qualified TorXakis.Lib           as Lib
 
-import           Common                     (Env, SessionId, checkResult,
-                                             getSession)
+import           Common                 (Env, SessionId, checkResult,
+                                         getSession)
 
 type SetStepperEP = "sessions"
                    :> Capture "sid" SessionId
