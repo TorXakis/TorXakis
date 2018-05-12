@@ -53,6 +53,10 @@ library:
   - defs
   - directory
   - process
+  - exceptions
+  # TorXakis specific dependencies
+  - txs-lib
+  - txs-webserver
 
 executables:
   # NOTE: once txs-cli is fully functional we might want to rename this to `TorXakis`.

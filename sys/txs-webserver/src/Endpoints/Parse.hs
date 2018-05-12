@@ -5,6 +5,7 @@
 module Endpoints.Parse
     ( ParseActionEP
     , parseAction
+    , ActionText (ActionText)
     )
 where
 
@@ -29,7 +30,7 @@ type ParseActionEP = "sessions"
                   :> Capture "sid" SessionId
                   :> "parse-action"
                   :> ReqBody '[JSON] ActionText
-                  :> Get '[JSON] Action
+                  :> Post '[JSON] Action
 
 parseAction :: Env -> SessionId -> ActionText -> Handler Action
 parseAction env sId (ActionText t) = liftLib env sId (`Lib.parseAction` t)

@@ -36,9 +36,6 @@ ghc-options:
 
 library:
   source-dirs: src
-  exposed-modules:
-  - API
-  - Common
   dependencies:
   - aeson
   - binary

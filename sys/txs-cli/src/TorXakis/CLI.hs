@@ -38,7 +38,6 @@ import           System.Console.Haskeline
 import           System.Console.Haskeline.History (addHistoryRemovingAllDupes)
 import           System.Directory                 (getHomeDirectory)
 import           System.FilePath                  ((</>))
-import           Text.Read                        (readMaybe)
 
 import           EnvData                          (Msg)
 import           TxsShow                          (pshow)
@@ -103,13 +102,13 @@ startCLI = do
     dispatch :: String -> InputT CLIM ()
     dispatch inputLine = do
         modifyHistory $ addHistoryRemovingAllDupes (strip inputLine)
-        let tokens = words inputLine
+        let tokens = words inputLine -- TODO: this argument parsing should be a bit more sophisticated.
             cmd = head tokens
         case map toLower cmd of
             "info"    ->
                 lift (runExceptT info) >>= output
             "load"    ->
-                lift (load (tail tokens)) >>= output
+                lift (load (tail tokens)) >>= output -- TODO: this will break if the file names contain a space.
             "stepper" ->
                 subStepper (tail tokens) >>= output
             "step" ->
@@ -123,10 +122,7 @@ startCLI = do
                 lift (stepper mName) >>= output
             subStepper _ = outputStrLn "This command is not supported yet."
             -- | Sub-command step.
-            subStep [with] = case readMaybe with of
-                Nothing -> outputStrLn "Number of steps should be an integer."
-                Just n  -> lift (step n) >>= output
-            subStep _ = outputStrLn "This command is not supported yet."
+            subStep with = (lift . step . concat $ with) >>= output
     asTxsMsg :: BS.ByteString -> Either String Msg
     asTxsMsg msg = do
         msgData <- maybeToEither dataErr $

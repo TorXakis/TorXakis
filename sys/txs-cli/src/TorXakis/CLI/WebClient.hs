@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeApplications    #-}
 -- | Web client for `txs-webserver`.
 module TorXakis.CLI.WebClient
     ( info
@@ -23,11 +24,13 @@ import           Control.Exception      (Handler (Handler), IOException,
 import           Control.Lens           ((^.), (^?))
 import           Control.Lens.TH        (makeLenses)
 import           Control.Monad          (when)
-import           Control.Monad.Except   (ExceptT, MonadError, liftEither,
-                                         runExceptT, throwError)
+import           Control.Monad.Except   (ExceptT, MonadError, catchError,
+                                         liftEither, runExceptT, throwError)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader   (MonadReader, asks)
+import           Data.Aeson             (eitherDecode)
 import           Data.Aeson.Lens        (key, _String)
+import           Data.Aeson.Types       (toJSON)
 import qualified Data.ByteString        as BSS
 import qualified Data.ByteString.Char8  as BS
 import           Data.ByteString.Lazy   (ByteString)
@@ -40,6 +43,12 @@ import           Network.Wreq           (Response, foldGet, get, partFile, post,
                                          statusCode)
 import           Network.Wreq.Types     (Postable, Putable)
 import           System.FilePath        (takeFileName)
+import           Text.Read              (readMaybe)
+
+import           TorXakis.Lib           (StepType (AnAction, NumberOfSteps))
+
+-- TODO: put the module below into 'TorXakis.WebServer.Endpoints.Parse' or something similar.
+import           Endpoints.Parse        (ActionText (ActionText))
 
 import           TorXakis.CLI.Env
 
@@ -100,6 +109,7 @@ shouldBeStatus got expected =
                    ++ " instead of " ++ show expected
 
 -- | Load a list of files using the given environment.
+--
 load :: (MonadIO m, MonadReader Env m) => [FilePath] -> m (Either String ())
 load files = do
     sId <- asks sessionId
@@ -131,11 +141,25 @@ stepper mName = do
         envPost (concat ["sessions/", show sId, "/start-step/"]) noContent
 
 
-step :: (MonadIO m, MonadReader Env m) => Int -> m (Either String ())
-step n = do
+step :: (MonadIO m, MonadReader Env m) => String -> m (Either String ())
+step with = do
     sId <- asks sessionId
-    ignoreSuccess $
-        envPost (concat ["sessions/", show sId, "/stepper/", show n]) noContent
+    ignoreSuccess $ do
+        sType <- step1 `catchError` \_ ->
+                 parseNumberOfSteps `catchError` \_ ->
+                 parseAction sId
+        envPost (concat ["sessions/", show sId, "/step/"]) (toJSON sType)
+    where
+      step1 = if null with
+          then return $ NumberOfSteps 1
+          else throwError "Non-empty argument to step"
+      parseNumberOfSteps = liftEither $ maybeToEither "Expecting a number" $
+          fmap NumberOfSteps (readMaybe with)
+      parseAction sId = do
+          let actText = ActionText (T.pack with)
+          rsp <- envPost (concat ["sessions/", show sId, "/parse-action/"]) (toJSON actText)
+          act <- liftEither $ eitherDecode $ rsp ^. responseBody
+          return $ AnAction act
 
 ignoreSuccess :: (MonadIO m)
                => ExceptT String m (Response ByteString)

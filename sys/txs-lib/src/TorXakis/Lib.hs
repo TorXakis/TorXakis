@@ -249,8 +249,12 @@ parseAction s act = do
     --
     runExceptT $ do
         -- TODO: What is the correct way to get the `chids`?
+        let
+            cannotParse :: String
+            cannotParse =  "There is no current model set, "
+                        ++ "which is required for parsing an action"
         ModelDef is os _ _ <- runIOCE s $
-            maybeToEither ("There is no current model set" :: String) <$> txsGetCurrentModel
+            maybeToEither cannotParse <$> txsGetCurrentModel
         let chids = concatMap Set.toList is ++ concatMap Set.toList os
         parseRes <- fmap (left showEx) $
             lift $ try $ evaluate . force . prefoffsParser $
