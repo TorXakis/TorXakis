@@ -148,8 +148,8 @@ genGenSortDef sortName sortNames = do
     fieldNames <- genUniqueSmallIds
     fieldNamesConstr <- splitInSubsets (Set.size constrNames) fieldNames
     fieldNamesConstrSort <- mapM disjointNESubsets fieldNamesConstr
-    typedElements <- mapM (mapM (\x -> do elem <- elements (Set.toList sortNames)
-                                          return (Set.toList x, elem) )
+    typedElements <- mapM (mapM (\x -> do elem' <- elements (Set.toList sortNames)
+                                          return (Set.toList x, elem') )
                           )
                           fieldNamesConstrSort
     return $ GenSortDef sortName (zip (Set.toList constrNames) typedElements)
