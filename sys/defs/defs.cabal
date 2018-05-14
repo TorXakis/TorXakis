@@ -45,7 +45,7 @@ library
                       , VarEnv
 
 
-  ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math -Wall
+  ghc-options:         -Wall -Werror -O2 -optc-O3 -optc-ffast-math
 
   build-tools:          happy
   build-depends:        array

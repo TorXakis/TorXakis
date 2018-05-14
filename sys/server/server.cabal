@@ -13,7 +13,7 @@ build-type:             Simple
 cabal-version:          >=1.10
 
 library
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math
+  ghc-options:         -Wall -Werror -O2 -optc-O3 -optc-ffast-math
   hs-source-dirs:      src
   exposed-modules:     CmdLineParser
   build-depends:       base
@@ -23,7 +23,7 @@ library
   default-language: Haskell2010
 
 executable txsserver
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -Wall
+  ghc-options:         -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
 
   hs-source-dirs:       src
   main-is:              TxsServer.hs
@@ -68,5 +68,5 @@ test-suite server-test
                      , QuickCheck
                      , network
 
-  ghc-options:       -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:       -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
   default-language: Haskell2010

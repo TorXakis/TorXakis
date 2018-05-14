@@ -25,7 +25,7 @@ library
                       , Reduce
                       , Unfold
 
-  ghc-options:        -Werror -O2 -optc-O3 -optc-ffast-math -Wall
+  ghc-options:        -Wall -Werror -O2 -optc-O3 -optc-ffast-math
   
   build-depends:        base
                       , containers
@@ -61,9 +61,7 @@ test-suite behave-test
                       , TestHelperFuncContent
                       , TestProcessBehaviour
 
-                      
-
-  ghc-options:       -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
+  ghc-options:       -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
   
   build-depends:       base
                      , containers
