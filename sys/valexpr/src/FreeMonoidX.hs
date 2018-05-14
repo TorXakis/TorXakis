@@ -113,7 +113,7 @@ import           Data.Foldable
 import           Data.List       hiding (partition)
 import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import           Data.Monoid     hiding (Product (..))
+import           Data.Semigroup  (Semigroup, (<>))
 import           GHC.Exts
 import           GHC.Generics    (Generic)
 
@@ -157,9 +157,12 @@ instance Ord a => IntMultipliable (FreeMonoidX a) where
     0 <.> _ = mempty
     n <.> (FMX p) = FMX $ (toInteger n *) <$> p
 
+instance Ord a => Semigroup (FreeMonoidX a) where
+    FMX p0 <> FMX p1 = FMX $ Map.filter (/= 0) $ Map.unionWith (+) p0 p1
+
 instance Ord a => Monoid (FreeMonoidX a) where
     mempty = FMX []
-    FMX p0 `mappend` FMX p1 = FMX $ Map.filter (/= 0) $ Map.unionWith (+) p0 p1
+    mappend = (<>)
 
 instance Ord a => IsList (FreeMonoidX a) where
     type Item (FreeMonoidX a) = a
@@ -174,7 +177,7 @@ fromListT :: (Ord (t a), TermWrapper t) => [a] -> FreeMonoidX (t a)
 fromListT = fromList . (wrap <$>)
 
 -- | Fold the free-monoid.
-foldFMX :: (IntMultipliable a, Monoid a) => FreeMonoidX a -> a
+foldFMX :: (IntMultipliable a, Monoid a, Semigroup a) => FreeMonoidX a -> a
 foldFMX (FMX p) = Map.foldrWithKey (\x n -> (n <.> x <>)) mempty p
 
 -- | Number of distinct terms in the free-monoid.
@@ -304,7 +307,7 @@ mapTerms f = fromOccurList . (first f <$>) . toOccurList
 --
 -- Assuming `a < b`.
 --
-flatten :: (Ord a, IntMultipliable a) => FreeMonoidX (FreeMonoidX a) -> FreeMonoidX a
+flatten :: (Ord a) => FreeMonoidX (FreeMonoidX a) -> FreeMonoidX a
 flatten (FMX p) = fold $ multiplyFMX <$> Map.toAscList p
     where
       multiplyFMX :: Ord a => (FreeMonoidX a, Integer) -> FreeMonoidX a
