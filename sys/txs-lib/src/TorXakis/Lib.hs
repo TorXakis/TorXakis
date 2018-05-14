@@ -53,7 +53,8 @@ import           TxsAlex                       (Token (Cchanenv, Csigs, Cunid, C
 import           TxsCore                       (txsEval, txsGetCurrentModel,
                                                 txsGetSigs, txsGetTDefs,
                                                 txsInitCore)
-import           TxsDDefs                      (Action (Act), Verdict)
+import           TxsDDefs                      (Action (Act),
+                                                Verdict (NoVerdict))
 import           TxsDefs                       (ModelDef (ModelDef))
 import           TxsHappy                      (prefoffsParser, txsParser)
 import           TxsStep                       (txsSetStep, txsShutStep,
@@ -187,6 +188,9 @@ runForVerdict s ioc = do
 waitForVerdict :: Session -> IO (Either SomeException Verdict)
 waitForVerdict s = atomically $ readTQueue (s ^. verdicts)
 
+writeClosingVerdict :: Session -> IO ()
+writeClosingVerdict s = atomically $ writeTQueue (s ^. verdicts) $ Right NoVerdict
+
 -- | Wait for the message queue to be consumed.
 waitForMessageQueue :: Session -> IO ()
 waitForMessageQueue s = atomically $ do
@@ -195,7 +199,7 @@ waitForMessageQueue s = atomically $ do
 
 
 runResponse :: ExceptT Text IO a -> IO (Response a)
-runResponse act = runExceptT act
+runResponse = runExceptT
 
 -- | Start the tester
 tester :: Session

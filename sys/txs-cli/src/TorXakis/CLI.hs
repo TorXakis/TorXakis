@@ -52,8 +52,7 @@ newtype CLIM a = CLIM { innerM :: ReaderT Env IO a }
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader Env, MonadException)
 
 runCli :: Env -> CLIM a -> IO a
-runCli e clim =
-    runReaderT (innerM clim) e
+runCli e clim = runReaderT (innerM clim) e
 
 startCLI :: CLIM ()
 startCLI = do
@@ -68,26 +67,30 @@ startCLI = do
         }
     cli :: InputT CLIM ()
     cli = do
-        Log.initL
         sId <- lift $ asks sessionId
-        Log.info $ "SessionId: " ++ show sId
         Log.info "Starting printer async..."
         printer <- getExternalPrint
         ch <- liftIO newChan
         env <- lift ask
         -- TODO: maybe encapsulate this into a `withProdCons` that always
         -- cancel the producers and consumers at the end.
+        Log.info "Enabling messages..."
         res <- lift openMessages
         when (isLeft res) (error $ show res)
+        Log.info "Subscribing to messages..."
         producer <- liftIO $ async $
             sseSubscribe env ch $ concat ["sessions/", show sId, "/messages"]
         consumer <- liftIO $ async $ forever $ do
             msg <- readChan ch
             traverse_ (printer . ("<< " ++)) $ pretty (asTxsMsg msg)
-        -- Start the main loop:
+        Log.info "Starting the main loop..."
+        outputStrLn "Welcome to TorXakis!"
         withInterrupt $ handleInterrupt (outputStrLn "Ctrl+C: quitting") loop
-        liftIO $ cancel producer
-        liftIO $ cancel consumer
+        Log.info "Closing messages..."
+        _ <- lift closeMessages
+        liftIO $ do
+            cancel producer
+            cancel consumer
 
     loop :: InputT CLIM ()
     loop = do
@@ -97,6 +100,8 @@ startCLI = do
             Just "" -> loop
             Just "q" -> return ()
             Just "quit" -> return ()
+            Just "x" -> return ()
+            Just "exit" -> return ()
             Just input -> do dispatch input
                              loop
     dispatch :: String -> InputT CLIM ()

@@ -18,8 +18,7 @@ patterns :: Docopt
 patterns = [docopt|
 txs-webserver
 
-Usage:
-txs-webserver [options]
+Usage: txs-webserver [options]
 
 Options:
 -p --port <number>    Port number in which the server will be started. If
@@ -36,8 +35,8 @@ main = do
             print $ "The port number should be an integer between 0 and 65535, got " ++ show p
     case readMaybe p of
         Nothing -> portErr
-        Just n  ->
-            if 0 <=  n && n <= 65535
-            then startApp n
-            else portErr
-
+        Just n  -> do
+            putStrLn $ "Starting txs-webserver at port: " ++ show p
+            if 0 <= n && n <= 65535
+                then startApp n
+                else portErr

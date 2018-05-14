@@ -14,6 +14,7 @@ module TorXakis.CLI.WebClient
     , step
     , openMessages
     , sseSubscribe
+    , closeMessages
     )
 where
 
@@ -180,3 +181,9 @@ sseSubscribe env ch suffix =
       host = txsHost env
       act _ = writeChan ch
 
+-- | Close the messages endpoint
+closeMessages :: (MonadIO m, MonadReader Env m) => m (Either String ())
+closeMessages = do
+    sId <- asks sessionId
+    ignoreSuccess $
+        envPost (concat ["sessions/", show sId, "/messages/close/"]) noContent

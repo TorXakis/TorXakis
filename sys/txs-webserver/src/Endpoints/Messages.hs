@@ -40,12 +40,15 @@ import           Prelude                     hiding (mapM_)
 import           Servant
 
 
-import           Common                      (Env, SessionId, getServerSession,
+import           Common                      (Env,
+                                              ServerSession (ServerSession),
+                                              SessionId, getServerSession,
                                               getServerSessionIO,
                                               _contListening, _libSession)
 import           EnvData                     (Msg)
 import           TorXakis.Lib                (waitForMessageQueue,
-                                              waitForVerdict)
+                                              waitForVerdict,
+                                              writeClosingVerdict)
 import           TorXakis.Lib.Session        (sessionMsgs)
 
 type MessagesEP = "sessions"
@@ -109,8 +112,6 @@ openMessages env sId = do
     liftIO $ atomically $ writeTVar (_contListening svrS) True
     return ()
 
-
-
 type CloseMessagesEP = "sessions"
                        :> Capture "sid" SessionId
                        :> "messages"
@@ -120,7 +121,8 @@ type CloseMessagesEP = "sessions"
 -- | Close the messages server sent events endpoint.
 closeMessages :: Env -> SessionId -> Handler ()
 closeMessages env sId = do
-    svrS <- getServerSession env sId
-    liftIO $ atomically $ writeTVar (_contListening svrS) False
+    ServerSession s contLstnTVar <- getServerSession env sId
+    liftIO $ do
+        atomically $ writeTVar contLstnTVar False
+        writeClosingVerdict s
     return ()
-

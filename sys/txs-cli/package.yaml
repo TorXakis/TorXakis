@@ -8,8 +8,10 @@ github: "TorXakis/TorXakis"
 license: BSD3
 author:
 - "Kerem Ispirli"
+- "Damian Nadales Agut"
 maintainer:
 - "kerem.ispirli@tno.nl"
+- "damian.nadales@gmail.com"
 copyright: "Copyright: (c) 2018 TorXakis"
 
 extra-source-files:
@@ -30,6 +32,10 @@ ghc-options:
 - -optc-O3
 - -Werror
 - -Wall
+- -Wcompat
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wredundant-constraints
 
 library:
   source-dirs: src

@@ -7,27 +7,27 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE QuasiQuotes       #-}
 module Main where
 
-import           Control.Arrow              ((|||))
-import           Control.Concurrent.Async   (race)
 import qualified Data.ByteString.Lazy.Char8 as BSL
 import           Data.List                  (isInfixOf)
 import           Data.String.Utils          (strip)
+import           GHC.IO.Handle              (hGetContents)
 import           Lens.Micro                 ((^.), (^?))
 import           Lens.Micro.Aeson           (key, _Integer)
 import           Network.Wreq
 import           System.Console.Docopt      (Docopt, docopt, getArg, longOption,
                                              parseArgsOrExit)
 import           System.Environment         (getArgs)
-import           System.Process             (readProcessWithExitCode)
+import           System.Process             (StdStream (NoStream), proc,
+                                             std_out, withCreateProcess)
 
 import           TorXakis.CLI
+import qualified TorXakis.CLI.Log           as Log
 
 patterns :: Docopt
 patterns = [docopt|
 ticl
 
-Usage:
-ticl [options]
+Usage: ticl [options]
 
 Options:
 -s --server <address>    Address of the server. If not present a new server
@@ -42,10 +42,11 @@ Options:
 main :: IO ()
 main = do
     args <- parseArgsOrExit patterns =<< getArgs
+    Log.initL
     case strip <$> args `getArg` longOption "server" of
         -- TODO: make the user input type-safe. For instance we're assuming the host ends with a '/'.
         Nothing    ->
-            tryStartCli (8000 :: Int)
+            tryStartCli (8080 :: Int)
         Just oAddr ->
             startCLIWithHost oAddr
     where
@@ -53,29 +54,45 @@ main = do
       tryStartCli n
           | n <= maxPortNumber = do
                 let p = show n
-                r <- race
-                    (readProcessWithExitCode "txs-webserver" ["-p", p] "")
-                    (startCLIWithHost ("http://localhost:" ++ p ++ "/"))
-                -- If the server exits we get an error, so we retry.
-                retryIfPortBusy ||| return $ r
-          | otherwise =
-              putStrLn "Unable to find a free port for launching the TorXakis webserver"
+                Log.info $ "Running web server on port " ++ p
+                withCreateProcess (proc "txs-webserver" ["-p", p]) {std_out = NoStream} $
+                    \_stdin _stdout stderr _ph -> do
+                        -- If the server exits we get an error, so we retry.
+                        errStr  <-  case stderr of
+                                        Nothing -> do
+                                            Log.info "No stderr handle"
+                                            return []
+                                        Just h  -> do
+                                            Log.info "Reading stderr handle"
+                                            hGetContents h
+                        Log.info $ "Read stderr handle: " ++ errStr
+                        if null errStr
+                            then do
+                                Log.info "Starting CLI"
+                                startCLIWithHost ("http://localhost:" ++ p ++ "/")
+                                Log.info "Exiting CLI"
+                            else retryIfPortBusy errStr
+          | otherwise = let errStr = "Unable to find a free port for launching the TorXakis webserver"
+                        in Log.warn errStr
           where
             maxPortNumber = 2 ^ (16 :: Int) - 1
-            retryIfPortBusy (_, _, err)
+            retryIfPortBusy err
                 | "resource busy" `isInfixOf` err =
                       -- The port is busy, we retry on the next one.
                       tryStartCli (n + 1)
                 | otherwise =
                       -- We got some other kind of error. Giving up.
-                      putStrLn
+                      Log.warn
                       $  "Unexpected error when trying to "
                       ++ "start the TorXakis webserver: " ++ show err
       startCLIWithHost host = do
+          Log.info "Initializing TorXakis session..."
           initRes <- initTorXakisSession host -- todo: get session id from arguments
           case initRes of
-              Left  e   -> print e
-              Right sid -> runCli (Env host sid) startCLI
+              Left  e   -> Log.warn $ show e
+              Right sid -> do
+                            Log.info $ "Starting CLI for session" ++ show sid
+                            runCli (Env host sid) startCLI
       initTorXakisSession :: String -> IO (Either TorXakisServerException Int)
       initTorXakisSession host = do
           let url = host ++ "sessions/new"
@@ -92,5 +109,3 @@ main = do
                   _   -> Left $ TorXakisServerException
                                 (BSL.unpack $ r ^. responseBody)
                                 st url "HTTP Status 201"
-
-
