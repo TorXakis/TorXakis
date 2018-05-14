@@ -40,10 +40,10 @@ class Subst e where
           -> e                              -- ^ Input expression.
           -> e
 
-instance (Ord e,Subst e) => Subst [e] where
+instance Subst e => Subst [e] where
     subst ve fis = map (subst ve fis)
 
-instance (Ord e,Subst e) => Subst (Set.Set e) where
+instance (Ord e, Subst e) => Subst (Set.Set e) where
     subst ve fis = Set.map (subst ve fis)
 
 instance Subst BExpr where
