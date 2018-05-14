@@ -362,7 +362,7 @@ varContent nm srt = FuncContent (cstrVar (expectVarId nm srt) )
 
 -- user must ensure first argument bool, then and else part same type
 ite :: FuncContent -> FuncContent -> FuncContent -> FuncContent
-ite condition thenPart elsePart = FuncContent (cstrITE (vexpr condition) (vexpr thenPart) (vexpr elsePart))
+ite condition' thenPart elsePart = FuncContent (cstrITE (vexpr condition') (vexpr thenPart) (vexpr elsePart))
 
 -- user must assert only variables are used as keys
 subst :: Map.Map FuncContent FuncContent -> FuncContent -> FuncContent

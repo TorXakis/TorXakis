@@ -1,0 +1,74 @@
+-- This file has been generated from package.yaml by hpack version 0.20.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: f1ba5f9292a239083bff5da7538d25bd55d5b21520366d3b9defdb1ea3bd1a3e
+
+name:           txs-lib
+version:        0.1.0.0
+synopsis:       Interface to the `TorXakis` parser and core.
+homepage:       https://github.com/TorXakis/TorXakis#readme
+bug-reports:    https://github.com/TorXakis/TorXakis/issues
+author:         Damian Nadales
+maintainer:     damian.nadales@gmail.com
+copyright:      Copyright: (c) 2017 TNO
+license:        BSD3
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    ChangeLog.md
+    license.txt
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/TorXakis/TorXakis
+
+library
+  hs-source-dirs:
+      src
+  default-extensions: OverloadedStrings
+  ghc-options: -Wall -Werror -O2 -optc-O3 -optc-ffast-math
+  build-depends:
+      async
+    , base >=4.7 && <5
+    , conduit
+    , conduit-combinators
+    , core
+    , coreenv
+    , deepseq
+    , defs
+    , front
+    , microlens
+    , mtl
+    , path
+    , stm
+    , stm-chans
+    , stm-conduit
+    , text
+    , txs-lenses
+    , valexpr
+  exposed-modules:
+      TorXakis.Lib
+      TorXakis.Lib.Examples
+      TorXakis.Lib.Session
+  other-modules:
+      Paths_txs_lib
+  default-language: Haskell2010
+
+test-suite txs-lib-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs:
+      test
+  default-extensions: OverloadedStrings
+  ghc-options: -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -O
+  build-depends:
+      base >=4.7 && <5
+    , hspec
+    , txs-lib
+  other-modules:
+      TorXakis.Lib.ExamplesSpec
+      Paths_txs_lib
+  default-language: Haskell2010

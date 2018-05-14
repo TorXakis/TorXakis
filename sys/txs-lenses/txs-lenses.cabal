@@ -1,0 +1,44 @@
+-- This file has been generated from package.yaml by hpack version 0.20.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 98d3a3d7c20336f2c6b3d520c8ce5dca27eafc6dff44e6cb613c0a2f92e509fb
+
+name:           txs-lenses
+version:        0.1.0.0
+synopsis:       Lenses for the structures used in `TorXakis`.
+homepage:       https://github.com/TorXakis/TorXakis#readme
+bug-reports:    https://github.com/TorXakis/TorXakis/issues
+author:         Damian Nadales
+maintainer:     damian.nadales@gmail.com
+copyright:      Copyright: (c) 2017 TNO
+license:        BSD3
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    ChangeLog.md
+    license.txt
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/TorXakis/TorXakis
+
+library
+  hs-source-dirs:
+      src
+  default-extensions: OverloadedStrings
+  ghc-options: -Wall -Werror -O2 -optc-O3 -optc-ffast-math
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , defs
+    , microlens
+    , text
+    , valexpr
+  exposed-modules:
+      TorXakis.Lens.TxsDefs
+  other-modules:
+      Paths_txs_lenses
+  default-language: Haskell2010

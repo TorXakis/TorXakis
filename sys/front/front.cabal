@@ -20,7 +20,7 @@ library
                       
   other-modules:        ShowToken
   
-  ghc-options:         -Werror -Wall -O0 -optc-O3 -optc-ffast-math
+  ghc-options:         -Wall -Werror -O0 -optc-O3 -optc-ffast-math
   
   build-tools:          alex
                       , happy
@@ -45,7 +45,7 @@ test-suite TorXakisFront-BlackBox
 
   main-is:              Main.hs
   
-  ghc-options:         -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
   
   build-depends:        base
                       , containers
