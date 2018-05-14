@@ -134,7 +134,8 @@ testExitValue = TestCase $
 -- ActionPref 
 testExclam :: Test
 testExclam = TestCase $
-    let value = 10
+    let value :: Integer
+        value = 10
         bexpr :: BExpr
         bexpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrConst (Cint value))])) Set.empty (cstrConst (Cbool True))) stop
         actual :: BExpr
