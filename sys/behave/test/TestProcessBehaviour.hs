@@ -30,6 +30,7 @@ import StdTDefs
 import TxsDefs
 import Unfold
 import ValExpr
+import VarId
 
 -- ----------------------------------------------------------------------------
 -- additional variables
