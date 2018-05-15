@@ -328,6 +328,7 @@ expand chsets (BNparallel chans cnodes)  = do
         allPairsMatch :: [[(CTBranch, (Set.Set ChanId, Set.Set ChanId) )]] -> [(CTBranch, (Set.Set ChanId, Set.Set ChanId) )] -> [[(CTBranch, (Set.Set ChanId, Set.Set ChanId) )]]
         allPairsMatch acc branches = [ branch:a | branch <- branches, a <- acc, pairwiseMatch branch a]
             where
+                pairwiseMatch :: (CTBranch, (Set.Set ChanId, Set.Set ChanId) ) -> [(CTBranch, (Set.Set ChanId, Set.Set ChanId) )] -> Bool
                 pairwiseMatch (_,(si,icsi)) acc' = and [ let mm = si `Set.intersection` sj in
                                                           not (Set.null mm) &&       -- only handle synchronizing events : non-synchronzing events on all channels already handled
                                                           (icsi == mm) && (icsj == mm)
