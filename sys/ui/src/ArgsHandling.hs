@@ -44,8 +44,11 @@ getTxsUIArgs = do
       mPort = getPortId args
     return $ Right uiArgs
     where
+      getPortId :: [String] -> Maybe PortID
       getPortId []    = Nothing
       getPortId (x:_) = PortNumber . fromInteger <$> readMaybe x
+
+      removePort :: Maybe PortID -> [String] -> [String]
       removePort Nothing xs = xs
       removePort (Just _) (_:xs) = xs
       removePort _ _ = error $  "This shouldn't happen: pattern 'Just x' "

@@ -63,7 +63,8 @@ ioeTestList = [
 
 testStop :: IOB()
 testStop = do
-    let bnode = BNbexpr Map.empty stop
+    let bnode :: BNode (WEnv VarId)
+        bnode = BNbexpr Map.empty stop
     _bt <- unfold [] bnode
     -- modify ( \env -> env { envs2bt = Map.singleton 0 bt  } )
     -- actual <- isQui
@@ -74,14 +75,16 @@ testStop = do
 
 testGuardFalse :: IOB()
 testGuardFalse = do
-    let bnode = BNbexpr Map.empty (TxsDefs.guard (cstrConst (Cbool False)) stop )
+    let bnode :: BNode (WEnv VarId)
+        bnode = BNbexpr Map.empty (TxsDefs.guard (cstrConst (Cbool False)) stop )
     next <- expand [] bnode
     lift $ assertEqual "expand guard false" [] next
 
 testGuardTrue :: IOB()
 testGuardTrue = do
     let aBExpr = actionPref (ActOffer (Set.singleton (Offer chanIdExit []) ) Set.empty (cstrConst (Cbool True)) ) stop
-    let bnode = BNbexpr Map.empty aBExpr
+        bnode :: BNode (WEnv VarId)
+        bnode = BNbexpr Map.empty aBExpr
     nextExpected <- expand [] bnode
     
     let bnodeGuard = BNbexpr Map.empty (TxsDefs.guard (cstrConst (Cbool True)) aBExpr )
@@ -91,7 +94,8 @@ testGuardTrue = do
 testChoice :: IOB()
 testChoice = do
     let aBExpr = actionPref (ActOffer (Set.singleton (Offer chanIdExit []) ) Set.empty (cstrConst (Cbool True)) ) stop
-    let bnode = BNbexpr Map.empty aBExpr
+        bnode :: BNode (WEnv VarId)
+        bnode = BNbexpr Map.empty aBExpr
     nextExpected <- unfold [] bnode
     
     let bnodeChoice = BNbexpr Map.empty (choice [ aBExpr, aBExpr ])

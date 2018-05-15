@@ -505,7 +505,8 @@ hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
     return CTpref { ctoffers  = vctoffs
                   , cthidvars = hidvars ++ unihvars
                   , ctpred    = ValExpr.subst hvarenv (funcDefs tds) pred'
-                  , ctnext    = let f (we, ivenv) =
+                  , ctnext    = let f :: (WEnv VarId, VarEnv VarId IVar) -> (WEnv VarId, VarEnv VarId IVar)
+                                    f (we, ivenv) =
                                         (we, Map.map (ValExpr.subst hvarenv (funcDefs tds)) ivenv)
                                  in fmap f ctnext1'
                   }
