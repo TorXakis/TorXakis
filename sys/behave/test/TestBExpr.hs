@@ -214,7 +214,8 @@ testChoice = TestCase $
 --Parallel
 testSynchronization :: Test
 testSynchronization = TestCase $
-    let chans = definedChannels
+    let chans :: TypedElements
+        chans = definedChannels
         bexpr :: BExpr
         bexpr = parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
         actual :: BExpr
@@ -224,7 +225,8 @@ testSynchronization = TestCase $
 
 testInterleaving :: Test
 testInterleaving = TestCase $
-    let chans = []
+    let chans :: TypedElements
+        chans = []
         bexpr :: BExpr
         bexpr = parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
         actual :: BExpr
@@ -234,7 +236,8 @@ testInterleaving = TestCase $
 
 testCommunicate :: Test
 testCommunicate = TestCase $
-    let chans = [([definedChannel1SortName], definedChannel1)]
+    let chans :: TypedElements
+        chans = [([definedChannel1SortName], definedChannel1)]
         bexpr :: BExpr
         bexpr = parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
         actual :: BExpr

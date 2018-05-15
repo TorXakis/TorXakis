@@ -283,6 +283,7 @@ instance FreeChan INode
   where
     freeChans inode  =  List.nub $ freeChans' inode
       where
+       freeChans' :: INode -> [ChanId]
        freeChans' (BNbexpr _ bexp)            = freeChans bexp
        freeChans' (BNparallel chids inodes)   = chids ++ concatMap freeChans' inodes
        freeChans' (BNenable inode1 _ inode2)  = freeChans' inode1 ++ freeChans' inode2
