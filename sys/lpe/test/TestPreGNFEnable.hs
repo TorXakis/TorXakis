@@ -44,7 +44,7 @@ import ValExpr
 import LPEfunc
 
 import StdTDefs (chanIdExit)
-import Debug.Trace
+-- import Debug.Trace
 
 ---------------------------------------------------------------------------
 -- Helper functions
@@ -217,7 +217,7 @@ anyInt = cstrConst $ Cany intSort
 
 testExit1 :: Test
 testExit1 = TestCase $
-   trace ("\n\ntestExit1:\n expected:" ++ show (procInst', procDefs'') ++ "\ngot: " ++ show  (res_procInst, res_procDefs')) $ 
+   --trace ("\n\ntestExit1:\n expected:" ++ show (procInst', procDefs'') ++ "\ngot: " ++ show  (res_procInst, res_procDefs')) $ 
       assertBool "simple EXIT" ((eqProcDefs procDefs'' res_procDefs') && (procInst' ~~ res_procInst))
    where
       res_procDefs' = Map.delete procIdP res_procDefs  -- remove the original ProcId for the comparison with the expected result
@@ -265,7 +265,7 @@ testExit1 = TestCase $
 -- with procInst = P[A](0)                // just the procInst of the LPE of lhs
 testExit2 :: Test
 testExit2 = TestCase $
-   trace ("\n\ntestExit2:\n expected:" ++ show (procInst', procDefs'') ++ "\ngot: " ++ show  (res_procInst, res_procDefs')) $ 
+   --trace ("\n\ntestExit2:\n expected:" ++ show (procInst', procDefs'') ++ "\ngot: " ++ show  (res_procInst, res_procDefs')) $ 
        assertBool "EXIT ActionPref" ((eqProcDefs procDefs'' res_procDefs') && (procInst' ~~ res_procInst))
    where
       res_procDefs' = Map.delete procIdP res_procDefs  -- remove the original ProcId for the comparison with the expected result
@@ -312,7 +312,7 @@ testExit2 = TestCase $
 -- with procInst = P[A](0)
 testExit3 :: Test
 testExit3 = TestCase $
-   trace ("\n\nACCEPT:\n expected:" ++ show (procInst', procDefs'') ++ "\ngot: " ++ show  (res_procInst, res_procDefs')) $ 
+   -- trace ("\n\nACCEPT:\n expected:" ++ show (procInst', procDefs'') ++ "\ngot: " ++ show  (res_procInst, res_procDefs')) $ 
        assertBool "ACCEPT" ((eqProcDefs procDefs'' res_procDefs') && (procInst' ~~ res_procInst))
    where
       res_procDefs' = Map.delete procIdP res_procDefs  -- remove the original ProcId for the comparison with the expected result
@@ -351,7 +351,7 @@ testExit3 = TestCase $
                                     ProcId.procexit = NoExit},
                               (ProcDef [] [] stop))]
       
-      procInst' = trace ("\n\n test result: " ++ show (eqProcDefs procDefs3 (Map.empty))) $ procInst procIdP' [chanIdA] [int0]
+      procInst' = procInst procIdP' [chanIdA] [int0]
       procDefs'' = Map.fromList [   (procIdP', ProcDef [chanIdA] [varIdPcP] 
                                                 (actionPref 
                                                       ActOffer {    offers = Set.empty
