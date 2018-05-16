@@ -8,11 +8,12 @@ See LICENSE at root directory of this repository.
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
 module Main (main) where
 
-import           Control.Concurrent (threadDelay)
+import           Control.Concurrent           (threadDelay)
 import           Control.Concurrent.Async     (async, wait)
 import           Control.Exception            (catch, throwIO)
 import           Data.Aeson                   (decode, decodeStrict)
-import           Data.Aeson.Types             (Object, Parser, parseMaybe, (.:), toJSON)
+import           Data.Aeson.Types             (Object, Parser, parseMaybe,
+                                               toJSON, (.:))
 import           Data.ByteString.Char8        as BS
 import           Data.ByteString.Lazy.Char8   as BSL
 import           Data.Maybe                   (mapMaybe)
@@ -123,7 +124,7 @@ spec = return $ do
                 post (startStepUrl sId) emptyP >>= check204NoContent
                 let threeSteps = toJSON (NumberOfSteps 3)
                 post (stepUrl sId) threeSteps >>= check204NoContent
-                post (openMessagesUrl sId) emptyP >>= check204NoContent                
+                post (openMessagesUrl sId) emptyP >>= check204NoContent
                 a <- async $ foldGet checkActions 0 (messagesUrl sId)
                 post (stepUrl sId) threeSteps >>= check204NoContent
                 threadDelay (10 ^ (6 :: Int)) -- We have to wait a bit till all
@@ -189,7 +190,6 @@ closeMessagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages/close"
 
 openMessagesUrl :: Integer -> String
 openMessagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages/open"
-
 
 emptyP :: [Part]
 emptyP = [partText "" ""]

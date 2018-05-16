@@ -44,6 +44,7 @@ library:
   - lens-aeson
   - base
   - bytestring
+  - exceptions
   - filepath
   - haskeline
   - lens
@@ -55,12 +56,12 @@ library:
   - http-client
   - pipes
   - pipes-aeson
-  - coreenv
-  - defs
+  - raw-strings-qq
   - directory
   - process
-  - exceptions
   # TorXakis specific dependencies
+  - defs
+  - coreenv
   - txs-lib
   - txs-webserver
 

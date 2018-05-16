@@ -44,6 +44,7 @@ import           TxsShow                          (pshow)
 
 import           TorXakis.CLI.Conf
 import           TorXakis.CLI.Env
+import           TorXakis.CLI.Help
 import qualified TorXakis.CLI.Log                 as Log
 import           TorXakis.CLI.WebClient
 
@@ -91,7 +92,6 @@ startCLI = do
         liftIO $ do
             cancel producer
             cancel consumer
-
     loop :: InputT CLIM ()
     loop = do
         minput <- getInputLine (defaultConf ^. prompt)
@@ -99,27 +99,31 @@ startCLI = do
             Nothing -> return ()
             Just "" -> loop
             Just "q" -> return ()
-            Just "quit" -> return ()
-            Just "x" -> return ()
-            Just "exit" -> return ()
+            Just "quit" -> return () -- stop TorXakis completely
+            Just "exit" -> return () -- TODO: exit the current command run of TorXakis; when a file is run, exit ends that run while quit exits TorXakis
+            Just "x" -> return ()    -- ^
+            Just "?" -> showHelp
+            Just "h" -> showHelp
+            Just "help" -> showHelp
             Just input -> do dispatch input
                              loop
+    showHelp :: InputT CLIM ()
+    showHelp = do
+        outputStrLn helpText
+        loop
     dispatch :: String -> InputT CLIM ()
     dispatch inputLine = do
         modifyHistory $ addHistoryRemovingAllDupes (strip inputLine)
         let tokens = words inputLine -- TODO: this argument parsing should be a bit more sophisticated.
             cmd = head tokens
         case map toLower cmd of
-            "info"    ->
-                lift (runExceptT info) >>= output
-            "load"    ->
-                lift (load (tail tokens)) >>= output -- TODO: this will break if the file names contain a space.
-            "stepper" ->
-                subStepper (tail tokens) >>= output
-            "step" ->
-                subStep (tail tokens) >>= output
-            _         ->
-                output $ "Unknown command: " ++ cmd
+            "i"       -> lift (runExceptT info) >>= output
+            "info"    -> lift (runExceptT info) >>= output
+            "l"       -> lift (load (tail tokens)) >>= output
+            "load"    -> lift (load (tail tokens)) >>= output -- TODO: this will break if the file names contain a space.
+            "stepper" -> subStepper (tail tokens) >>= output
+            "step"    -> subStep (tail tokens) >>= output
+            _         -> output $ "Unknown command: " ++ cmd
           where
             -- | Sub-command stepper.
             subStepper :: [String] -> InputT CLIM ()

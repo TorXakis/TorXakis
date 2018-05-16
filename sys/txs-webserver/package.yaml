@@ -60,7 +60,7 @@ library:
   - coreenv
   - txs-lib
   - defs
-  
+
 executables:
   txs-webserver:
     main: Main.hs
@@ -74,8 +74,8 @@ executables:
     - base
     - txs-webserver
     - docopt
-    - MissingH    
-    
+    - MissingH
+
 tests:
   txs-webserver-test:
     main: Spec.hs
