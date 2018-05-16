@@ -161,10 +161,9 @@ instance PShow BExprView
     pshow (Guard c bexp)
       =  "[[ " ++ pshow c ++ " ]] =>> \n" ++ "( " ++ pshow bexp ++ " )"
     pshow (Choice bexps)
-      =  case bexps of
-         { [] -> "STOP\n"
-         ; be -> "( " ++ Utils.join (" )\n"++ "##\n( ") (map pshow be) ++ " )"
-         }
+      =  case Set.toList bexps of
+            [] -> "STOP\n"
+            be -> "( " ++ Utils.join (" )\n"++ "##\n( ") (map pshow be) ++ " )"
     pshow (Parallel chans bexps)
       =  case bexps of
          { [] -> "STOP\n"

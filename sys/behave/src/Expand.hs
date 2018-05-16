@@ -118,7 +118,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> Guard c bexp))  = do
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (TxsDefs.view -> Choice bexps))  =
-     concat <$> sequence [ expand chsets (BNbexpr we bexp) | bexp <- bexps ]
+     concat <$> sequence [ expand chsets (BNbexpr we bexp) | bexp <- Set.toList bexps ]
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -532,7 +532,7 @@ relabel' chanmap (Guard cnrs bexp)
   =  TxsDefs.guard cnrs (relabel chanmap bexp)
 
 relabel' chanmap (Choice bexps)
-  =  choice (map (relabel chanmap) bexps)
+  =  choice (Set.map (relabel chanmap) bexps)
 
 relabel' chanmap (Parallel chids bexps)
   =  parallel (map (relabel chanmap) chids) (map (relabel chanmap) bexps)

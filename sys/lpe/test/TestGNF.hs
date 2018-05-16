@@ -116,7 +116,7 @@ testPreGNFFirst = TestCase $
    assertBool "choice (on lower level) is substituted" $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP   = procIdGen "P" [chanIdA] []
-      choice'   = choice [actionPref actOfferA1 stop, actionPref actOfferAx stop]
+      choice'   = choice $ Set.fromList [actionPref actOfferA1 stop, actionPref actOfferAx stop]
       procDefP = ProcDef [chanIdA] [] (actionPref actOfferAx choice')
 
       procIdPpre1x = procIdGen "P$pre1" [chanIdA] [varIdX]
@@ -216,11 +216,11 @@ testProcInst2 = TestCase $
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (choice [actionPref actOfferA1 stop, procInst procIdQ [chanIdA] []])
+      procDefP = ProcDef [chanIdA] [] (choice $ Set.fromList [actionPref actOfferA1 stop, procInst procIdQ [chanIdA] []])
       procDefQ = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
 
 
-      procDefP' = ProcDef [chanIdA] [] (choice [actionPref actOfferA1 stop, actionPref actOfferAx stop])
+      procDefP' = ProcDef [chanIdA] [] (choice $ Set.fromList [actionPref actOfferA1 stop, actionPref actOfferAx stop])
 
       procDefs' = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
@@ -242,11 +242,11 @@ testProcInst3 = TestCase $
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
       procIdR = procIdGen "R" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (choice [procInst procIdQ [chanIdA] [], actionPref actOfferA1 stop])
+      procDefP = ProcDef [chanIdA] [] (choice $ Set.fromList [procInst procIdQ [chanIdA] [], actionPref actOfferA1 stop])
       procDefQ = ProcDef [chanIdA] [] (procInst procIdR [chanIdA] [])
       procDefR = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
 
-      procDefP' = ProcDef [chanIdA] [] (choice [actionPref actOfferAx stop, actionPref actOfferA1 stop])
+      procDefP' = ProcDef [chanIdA] [] (choice $ Set.fromList [actionPref actOfferAx stop, actionPref actOfferA1 stop])
       procDefQ' = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
 
 
@@ -273,11 +273,11 @@ testProcInst4 = TestCase $
    where
       procIdP = procIdGen "P" [] []
       procIdQ = procIdGen "Q" [] []
-      procDefP = ProcDef [] [] (choice [actionPref actOfferA1 stop, procInst procIdQ [] []])
-      procDefQ = ProcDef [] [] (choice [actionPref actOfferAx stop, actionPref actOfferA1 (procInst procIdP [] [])])
+      procDefP = ProcDef [] [] (choice $ Set.fromList [actionPref actOfferA1 stop, procInst procIdQ [] []])
+      procDefQ = ProcDef [] [] (choice $ Set.fromList [actionPref actOfferAx stop, actionPref actOfferA1 (procInst procIdP [] [])])
 
 
-      procDefP' = ProcDef [] [] (choice [actionPref actOfferA1 stop
+      procDefP' = ProcDef [] [] (choice $ Set.fromList [actionPref actOfferA1 stop
                                         , actionPref actOfferAx stop
                                         , actionPref actOfferA1 (procInst procIdP [] [])
                                         ])
@@ -309,7 +309,7 @@ testNamingClash = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
       procIdPgnf1 = procIdGen "P$gnf1" [chanIdA, chanIdB] [varIdX]
       procIdPpre1 = procIdGen "P$pre1" [chanIdA, chanIdB] [varIdX]
-      choice'= choice [actionPref actOfferA1 stop, actionPref actOfferAx stop]
+      choice'= choice $ Set.fromList [actionPref actOfferA1 stop, actionPref actOfferAx stop]
       
       procDefP = ProcDef [chanIdA, chanIdB] [] (actionPref actOfferAx (actionPref actOfferB1 choice'))
 

@@ -2008,7 +2008,7 @@ BehaviourExpr3  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $3.synExitSorts
-                ;  $$ = choice [$1,$3]
+                ;  $$ = choice (Set.fromList [$1,$3])
                 }  
               | BehaviourExpr4
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1

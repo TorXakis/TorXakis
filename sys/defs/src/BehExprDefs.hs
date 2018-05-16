@@ -45,8 +45,6 @@ module BehExprDefs
 , hide
 , valueEnv
 , stAut
-  -- * Debugging
-, valid
 )
 where
 
@@ -70,7 +68,7 @@ import           VarId
 -- | BExprView: the public view of Behaviour Expression `BExpr`
 data BExprView = ActionPref  ActOffer BExpr
                | Guard       VExpr BExpr
-               | Choice      [BExpr]                -- Distinct Ascending List, does not contain a Choice as element of this list
+               | Choice      (Set.Set BExpr)
                | Parallel    [ChanId] [BExpr]
                | Enable      BExpr [ChanOffer] BExpr
                | Disable     BExpr BExpr
@@ -81,20 +79,6 @@ data BExprView = ActionPref  ActOffer BExpr
                | StAut       StatId VEnv [Trans]
   deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 instance Resettable BExprView
-    where 
---        reset (Choice bs)       = Choice (Set.toAscList (Set.fromList (reset bs))) -- reorder to ensure invariant
---        reset x                 = over uniplate reset x
-        reset (ActionPref a b)  = ActionPref (reset a) (reset b)
-        reset (Guard v b)       = Guard (reset v) (reset b)
-        reset (Choice bs)       = Choice (Set.toAscList (Set.fromList (reset bs))) -- reorder to ensure invariant
-        reset (Parallel c b)    = Parallel (reset c) (reset b)
-        reset (Enable b1 c b2)  = Enable (reset b1) (reset c) (reset b2)
-        reset (Disable b1 b2)   = Disable (reset b1) (reset b2)
-        reset (Interrupt b1 b2) = Interrupt (reset b1) (reset b2)
-        reset (ProcInst p c v)  = ProcInst (reset p) (reset c) (reset v)
-        reset (Hide c b)        = Hide (reset c) (reset b)
-        reset (ValueEnv v b)    = ValueEnv (reset v) (reset b)
-        reset (StAut s v t)     = StAut (reset s) (reset v) (reset t)
 
 -- | BExpr: behaviour expression
 --
@@ -114,12 +98,12 @@ instance Resettable BExpr
 --   The Stop behaviour is equal to dead lock.
 stop :: BExpr
 -- No special Stop constructor, use Choice with empty list instead
-stop = BExpr (Choice [])
+stop = BExpr (Choice Set.empty)
 
 -- | Is behaviour expression equal to Stop behaviour?
 isStop :: BExpr -> Bool
-isStop (BehExprDefs.view -> Choice []) = True
-isStop _                               = False
+isStop (BehExprDefs.view -> Choice s) | Set.null s = True
+isStop _                                           = False
 
 
 -- | Create an ActionPrefix behaviour expression.
@@ -143,26 +127,25 @@ guard v b                                                   = BExpr (Guard v b)
 
 -- | Create a choice behaviour expression.
 --  A choice combines zero or more behaviour expressions.
-choice :: [BExpr] -> BExpr
-choice l = let s = flattenChoice l
-               l' = Set.toAscList s       -- All elements in a set are distinct
+choice :: Set.Set BExpr -> BExpr
+choice s = let fs = flattenChoice s
              in 
-                case l' of
+                case Set.toList fs of
                     []  -> stop
                     [a] -> a
-                    _   -> BExpr (Choice l')
+                    _   -> BExpr (Choice fs)
     where 
         -- 1. nesting of choices are flatten
         --    (p ## q) ## r <==> p ## q ## r 
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
         -- 2. elements in a set are distinctive
         --    hence p ## p <==> p
-        -- 3. since stop == Choice [] (the empty set), we automatically have p ## stop <==> p
-        flattenChoice :: [BExpr] -> Set.Set BExpr
-        flattenChoice l' = Set.unions $ map fromBExpr l'
+        -- 3. since stop == Choice Set.empty, we automatically have p ## stop <==> p
+        flattenChoice :: Set.Set BExpr -> Set.Set BExpr
+        flattenChoice = Set.unions . map fromBExpr . Set.toList
         
         fromBExpr :: BExpr -> Set.Set BExpr
-        fromBExpr (BehExprDefs.view -> Choice l') = Set.fromDistinctAscList l'
+        fromBExpr (BehExprDefs.view -> Choice s') = s'
         fromBExpr x                               = Set.singleton x
 
 -- | Create a parallel behaviour expression.
@@ -262,8 +245,3 @@ instance Resettable Trans
 -- ignoring the differences in identifiers.
 (~~) :: BExpr -> BExpr -> Bool
 be0 ~~ be1 = reset be0 == reset be1
-
--- | Test if the internal Behaviour Expression structure is valid.
-valid :: BExpr -> Bool
-valid (BehExprDefs.view -> Choice actual)   = actual == Set.toAscList (Set.fromList actual)
-valid _                                     = True

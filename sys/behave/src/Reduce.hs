@@ -188,12 +188,12 @@ reduce' (Guard c bexp) = do
                                      else return $ guard c' bexp'
 
 reduce' (Choice bexps) = do
-     bexps' <- mapM reduce bexps
+     bexps' <- mapM reduce (Set.toList bexps)
      let bexps'' = filter (not . isStop) bexps'
      bexps''' <- nubMby (~=~) bexps''
      if  null bexps'''
        then return stop
-       else return $ choice bexps'''
+       else return $ choice (Set.fromList bexps''')
 
 reduce' (Parallel chids bexps) = do
      bexps' <- mapM reduce bexps
