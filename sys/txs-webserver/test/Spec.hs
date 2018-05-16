@@ -134,8 +134,8 @@ spec = return $ do
                 totalSteps <- wait a
                 totalSteps `shouldBe` 6
             -- it "Starts tester and tests 3 steps" $ do
-            --     _ <- post host ++ "/sessions/new" emptyP
-            --     _ <- put host ++ "/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
+            --     sId <- mkNewSession
+            --     _ <- put (newSessionUrl sid) [partFile "Point.txs" "../../examps/Point/Point.txs"]
             --     _ <- checkSuccess <$> post host ++ "/tester/start/1/Model" emptyP
             --     _ <- checkSuccess <$> post host ++ "/tester/test/1/3" emptyP
             --     checkJSON    <$> get host ++ "/sessions/sse/1/messages"

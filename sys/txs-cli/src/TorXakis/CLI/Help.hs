@@ -15,7 +15,9 @@ exit, x                         : exit the current command run of TorXakis
 help, h, ?                      : show help (this text)
 info, i                         : show info on TorXakis
 
+delay <n>                       : wait for <n> seconds
 load <file path>                : load TorXakis model definitions to the session
+
 stepper <model>                 : start stepping with model <model> where <model>
                                   is a model in model definitions which has been
                                   loaded with `load` command

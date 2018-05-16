@@ -17,7 +17,8 @@ module TorXakis.CLI
 where
 
 import           Control.Arrow                    ((|||))
-import           Control.Concurrent               (newChan, readChan)
+import           Control.Concurrent               (newChan, readChan,
+                                                   threadDelay)
 import           Control.Concurrent.Async         (async, cancel)
 import           Control.Lens                     ((^.))
 import           Control.Monad                    (forever, when)
@@ -38,6 +39,7 @@ import           System.Console.Haskeline
 import           System.Console.Haskeline.History (addHistoryRemovingAllDupes)
 import           System.Directory                 (getHomeDirectory)
 import           System.FilePath                  ((</>))
+import           Text.Read                        (readMaybe)
 
 import           EnvData                          (Msg)
 import           TxsShow                          (pshow)
@@ -115,16 +117,22 @@ startCLI = do
     dispatch inputLine = do
         modifyHistory $ addHistoryRemovingAllDupes (strip inputLine)
         let tokens = words inputLine -- TODO: this argument parsing should be a bit more sophisticated.
-            cmd = head tokens
+            cmd  = head tokens
+            rest = tail tokens
         case map toLower cmd of
+            "delay"   -> waitFor $ head rest
             "i"       -> lift (runExceptT info) >>= output
             "info"    -> lift (runExceptT info) >>= output
-            "l"       -> lift (load (tail tokens)) >>= output
-            "load"    -> lift (load (tail tokens)) >>= output -- TODO: this will break if the file names contain a space.
-            "stepper" -> subStepper (tail tokens) >>= output
-            "step"    -> subStep (tail tokens) >>= output
+            "l"       -> lift (load rest) >>= output
+            "load"    -> lift (load rest) >>= output -- TODO: this will break if the file names contain a space.
+            "stepper" -> subStepper rest >>= output
+            "step"    -> subStep rest >>= output
             _         -> output $ "Unknown command: " ++ cmd
           where
+            waitFor :: String -> InputT CLIM ()
+            waitFor n = case readMaybe n :: Maybe Int of
+                            Nothing -> output $ "Error: " ++ show n ++ " doesn't seem to be an integer."
+                            Just s  -> liftIO $ threadDelay (s * 10 ^ (6 :: Int))
             -- | Sub-command stepper.
             subStepper :: [String] -> InputT CLIM ()
             subStepper [mName] =
