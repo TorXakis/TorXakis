@@ -190,7 +190,7 @@ testStop = TestCase $
       procDefP = ProcDef [] [] stop
 
       procIdPlpe = procIdGen "LPE_P" [] [varIdPcP]
-      procDefPlpe = ProcDef [] [varIdPcP] (choice [])
+      procDefPlpe = ProcDef [] [varIdPcP] (choice $ Set.fromList [])
 
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
       procInst' = procInst procIdPlpe [] [int0]
@@ -323,9 +323,9 @@ testChoice = TestCase $
       procIdP = procIdGen "P" [chanIdA] []
 
       procDefP = ProcDef [chanIdA] [] (
-                        choice [ actionPref actOfferAx stop
-                               , actionPref actOfferAx (procInst procIdP [chanIdA] [])
-                        ])
+                        choice $ Set.fromList [ actionPref actOfferAx stop
+                                              , actionPref actOfferAx (procInst procIdP [chanIdA] [])
+                                              ])
 
       -- action: A?A1 [pc$P == 0]
       actOfferA1P0 = ActOffer {  offers = Set.singleton
@@ -337,9 +337,9 @@ testChoice = TestCase $
                               }
 
       procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP]
-      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (choice [ actionPref actOfferA1P0 (procInst procIdPlpe [chanIdA] [vexprMin1])
-                                                         , actionPref actOfferA1P0 (procInst procIdPlpe [chanIdA] [vexpr0])
-                                                        ])
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (choice $ Set.fromList [ actionPref actOfferA1P0 (procInst procIdPlpe [chanIdA] [vexprMin1])
+                                                                        , actionPref actOfferA1P0 (procInst procIdPlpe [chanIdA] [vexpr0])
+                                                                        ])
 
 
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
@@ -367,7 +367,7 @@ testMultipleProcDefs1 = TestCase $
 
       procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP]
       procDefPlpe = ProcDef [chanIdA] [varIdPcP]
-                      (choice [
+                      (choice $ Set.fromList [
                           actionPref
                             -- action: A?A1 [pc$P == 0]
                             ActOffer {  offers = Set.singleton
@@ -417,7 +417,7 @@ testMultipleProcDefs2 = TestCase $
 
       procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP]
       procDefPlpe = ProcDef [chanIdA] [varIdPcP]
-                      (choice [
+                      (choice $ Set.fromList [
                           actionPref
                             -- action: A?A1 [pc$P == 0]
                             ActOffer {  offers = Set.singleton
@@ -469,7 +469,7 @@ testMultipleProcDefs3 = TestCase $
       procIdQ = procIdGen "Q" [chanIdB] []
       procIdR = procIdGen "R" [chanIdB] []
 
-      procDefP = ProcDef [chanIdA] [] (choice [ actionPref actOfferAx (procInst procIdQ [chanIdA] [])
+      procDefP = ProcDef [chanIdA] [] (choice $ Set.fromList [ actionPref actOfferAx (procInst procIdQ [chanIdA] [])
                                               , actionPref actOfferAx (procInst procIdR [chanIdA] [])
                                       ])
       procDefQ = ProcDef [chanIdB] [] stop
@@ -477,7 +477,7 @@ testMultipleProcDefs3 = TestCase $
 
       procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP]
       procDefPlpe = ProcDef [chanIdA] [varIdPcP]
-                      (choice [
+                      (choice $ Set.fromList [
                           actionPref
                             -- action: A?A1 [pc$P == 0]
                             ActOffer {  offers = Set.singleton
@@ -540,7 +540,7 @@ testProcDefIdentity = TestCase $
       procIdP = procIdGen "P" [chanIdA,chanIdB] []
       procIdQ = procIdGen "Q" [chanIdA] [varIdX]
 
-      procDefP = ProcDef [chanIdA,chanIdB] [] (choice [ actionPref actOfferAx (procInst procIdQ [chanIdA] [vexprX])
+      procDefP = ProcDef [chanIdA,chanIdB] [] (choice $ Set.fromList [ actionPref actOfferAx (procInst procIdQ [chanIdA] [vexprX])
                                                       , actionPref actOfferAx (procInst procIdQ [chanIdB] [vexprX])
                                                       ])
       procDefQ = ProcDef [chanIdA] [varIdX] (actionPref actOfferAExclamX stop)
@@ -552,7 +552,7 @@ testProcDefIdentity = TestCase $
       vexprQBx = cstrVar varIdQBX
 
       procDefPlpe = ProcDef [chanIdA, chanIdB] [varIdPcP, varIdQAx, varIdQBX]
-                      (choice [
+                      (choice $ Set.fromList [
                           --  A?A1 [pc$P == 0] >-> LPE_P(1,A1, Q$B$x)
                           actionPref
                             ActOffer {  offers = Set.singleton
@@ -639,7 +639,7 @@ testParamsUnique = TestCase $
       vexprRAx = cstrVar varIdRAx
 
       procDefPlpe = ProcDef [chanIdA] [varIdPcP, varIdQAx, varIdRAx]
-                      (choice [
+                      (choice $ Set.fromList [
                           --  A?A1 [pc$P == 0]  >-> LPE_P[A](1, A1, R$A$x)
                           actionPref
                             ActOffer {  offers = Set.singleton
@@ -706,7 +706,7 @@ testChannelSwitch = TestCase $
       procIdPlpe = procIdGen "LPE_P" [chanIdA, chanIdB] [varIdPcP]
 
       procDefPlpe = ProcDef [chanIdA, chanIdB] [varIdPcP]
-                      (choice [
+                      (choice $ Set.fromList [
                           --  A?A1 [pc$P == 0, A1 == 1] >-> LPE_P[A,B](1)
                           actionPref
                             ActOffer {  offers = Set.singleton
@@ -783,7 +783,7 @@ testMultiAction = TestCase $
       -- vexprPgnf1ABx = cstrVar varIdPgnf1ABx            -- PvdL: not used, but was that intentionally?
 
       procDefPlpe = ProcDef [chanIdA, chanIdB] [varIdPcP, varIdPABs, varIdPgnf1ABs, varIdPgnf1ABx]
-                      (choice [
+                      (choice $ Set.fromList [
                           --  A?A1 [pc$P == 0] >-> LPE_P[A,B](1, P$A$B$s, P$gnf1$A$B$s, A1)
                           actionPref
                             ActOffer {  offers = Set.singleton
@@ -915,7 +915,7 @@ testLPEPar = TestCase $
 
       procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP, varIdOp1pc, varIdOp1x, varIdOp2pc, varIdOp2x]
       procDefP' = ProcDef [chanIdA] [varIdpcP, varIdOp1pc, varIdOp1x, varIdOp2pc, varIdOp2x] (
-                    choice [
+                    choice $ Set.fromList [
                         --    A?A1 [pc$P == 0] >-> P[A](1, x, 0, x, 0)
                         actionPref
                           ActOffer {  offers = Set.singleton

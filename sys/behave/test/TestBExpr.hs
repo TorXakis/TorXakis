@@ -205,7 +205,7 @@ testGuard = TestCase $
 testChoice :: Test
 testChoice = TestCase $
     let bexpr :: BExpr
-        bexpr = choice [aBExpr, anotherBExpr]
+        bexpr = choice $ Set.fromList [aBExpr, anotherBExpr]
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in

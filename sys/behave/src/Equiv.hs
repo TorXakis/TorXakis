@@ -46,8 +46,8 @@ class (Eq e) => Equiv e
 instance (Equiv t) => Equiv [t]
   where
     []     ~=~ []      =  return True
-    []     ~=~ (_:_)  =  return False
-    (_:_) ~=~ []      =  return False
+    []     ~=~ (_:_)   =  return False
+    (_:_)  ~=~ []      =  return False
     (x:xs) ~=~ (y:ys)  =  do  { eq_hd <- x  ~=~ y
                               ; eq_tl <- xs ~=~ ys
                               ; return $ eq_hd && eq_tl
@@ -169,7 +169,7 @@ instance Equiv BExprView
          return $ c1 == c2 && eq_bexp
 
     (Choice bexps1) ~=~ (Choice bexps2)  =
-        Set.fromList bexps1 ~=~ Set.fromList bexps2
+        bexps1 ~=~ bexps2
 
     (Parallel chids1 bexps1) ~=~ (Parallel chids2 bexps2)  =  do
          let eq_chids = Set.fromList chids1 == Set.fromList chids2

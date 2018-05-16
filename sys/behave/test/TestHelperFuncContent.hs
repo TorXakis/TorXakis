@@ -137,7 +137,7 @@ identicalVExpr (ValExpr.view -> Vat s1 p1)              (ValExpr.view -> Vat s2 
 identicalVExpr (ValExpr.view -> Vconcat vs1)            (ValExpr.view -> Vconcat vs2)            = identicalLists identicalVExpr vs1 vs2
 identicalVExpr (ValExpr.view -> Vstrinre s1 r1)         (ValExpr.view -> Vstrinre s2 r2)         = identicalVExpr s1 s2 && identicalVExpr r1 r2
 identicalVExpr (ValExpr.view -> Vpredef p1 fid1 vexps1) (ValExpr.view -> Vpredef p2 fid2 vexps2) = p1 == p2 && identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2
-identicalVExpr _                                _                                                = False                          -- different
+identicalVExpr _                                        _                                        = False                          -- different
 
 identicalActOffer :: ActOffer -> ActOffer -> Bool
 identicalActOffer (ActOffer offers1 _hidvars1 vexpr1) (ActOffer offers2 _hidvars2 vexpr2) =    identicalLists identicalOffer (Set.toAscList offers1) (Set.toAscList offers2)
@@ -159,7 +159,7 @@ identicalBExpr' (ActionPref actOffer1 bExpr1) (ActionPref actOffer2 bExpr2)   = 
                                                                                 && identicalBExpr bExpr1 bExpr2
 identicalBExpr' (Guard vexpr1 bExpr1) (Guard vexpr2 bExpr2)                   =    identicalVExpr vexpr1 vexpr2
                                                                                 && identicalBExpr bExpr1 bExpr2
-identicalBExpr' (Choice bExprs1) (Choice bExprs2)                             =    identicalLists identicalBExpr bExprs1 bExprs2      -- Set would be better -> Position in list is irrelevant
+identicalBExpr' (Choice bExprs1) (Choice bExprs2)                             =    identicalLists identicalBExpr (Set.toAscList bExprs1) (Set.toAscList bExprs2)
 identicalBExpr' (Parallel chanids1 bExprs1) (Parallel chanids2 bExprs2)       =    identicalLists identicalChanId chanids1 chanids2
                                                                                 && identicalLists identicalBExpr bExprs1 bExprs2      -- Set would be better -> Position in list is irrelevant
 identicalBExpr' (Enable bexpr11 chanoffers1 bexpr12) (Enable bexpr21 chanoffers2 bexpr22) =    identicalBExpr bexpr11 bexpr21

@@ -91,10 +91,10 @@ extractVars actOffer = let  set = offers actOffer in
 
 wrapSteps :: [BExpr] -> BExpr
 wrapSteps [bexpr] = bexpr
-wrapSteps bexprs = choice bexprs
+wrapSteps bexprs = choice $ Set.fromList bexprs
 
 extractSteps :: BExpr -> [BExpr]
-extractSteps (TxsDefs.view -> Choice bexprs) = bexprs
+extractSteps (TxsDefs.view -> Choice bexprs) = Set.toList bexprs
 extractSteps bexpr = [bexpr]
 
 -- ----------------------------------------------------------------------------------------- --
@@ -110,8 +110,8 @@ preGNF procId translatedProcDefs procDefs' = do
         -- translate each choice separately
 
     (procDef', procDefs''') <- case TxsDefs.view bexpr of
-                              (Choice bexprs) -> do  (bexprs', procDefs'') <-  applyPreGNFBexpr bexprs 1 [] translatedProcDefs' procDefs'
-                                                     let procDef' = ProcDef chansDef paramsDef (choice bexprs')
+                              (Choice bexprs) -> do  (bexprs', procDefs'') <-  applyPreGNFBexpr (Set.toList bexprs) 1 [] translatedProcDefs' procDefs'
+                                                     let procDef' = ProcDef chansDef paramsDef (choice (Set.fromList bexprs'))
                                                      return (procDef', procDefs'')
 
                               _               -> do  (bexpr', procDefs'') <- preGNFBExpr bexpr 1 [] procId translatedProcDefs' procDefs'
@@ -210,8 +210,8 @@ gnf procId translatedProcDefs procDefs' = do
         ProcDef chansDef paramsDef bexpr = fromMaybe (error "GNF: could not find given procId (should be impossible)") (Map.lookup procId procDefs'')
 
     (procDef, procDefs'''') <- case TxsDefs.view bexpr of
-                                (Choice bexprs) -> do   (steps, procDefs''') <- applyGNFBexpr bexprs 1 [] translatedProcDefs' procDefs''
-                                                        let procDef = ProcDef chansDef paramsDef (choice steps)
+                                (Choice bexprs) -> do   (steps, procDefs''') <- applyGNFBexpr (Set.toList bexprs) 1 [] translatedProcDefs' procDefs''
+                                                        let procDef = ProcDef chansDef paramsDef (choice (Set.fromList steps))
                                                         return (procDef, procDefs''')
                                 _               -> do   (steps, procDefs''') <- gnfBExpr bexpr 1 procId translatedProcDefs' procDefs''
                                                         let procDef = ProcDef chansDef paramsDef (wrapSteps steps)
