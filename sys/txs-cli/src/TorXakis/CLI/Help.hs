@@ -16,6 +16,7 @@ help, h, ?                      : show help (this text)
 info, i                         : show info on TorXakis
 
 delay <n>                       : wait for <n> seconds
+echo <text>                     : echo the input <text>
 load <file path>                : load TorXakis model definitions to the session
 
 stepper <model>                 : start stepping with model <model> where <model>
