@@ -120,6 +120,7 @@ startCLI = do
             cmd  = head tokens
             rest = tail tokens
         case map toLower cmd of
+            "#"       -> return ()
             "echo"    -> outputStrLn $ unwords rest
             "delay"   -> waitFor $ head rest
             "i"       -> lift (runExceptT info) >>= output

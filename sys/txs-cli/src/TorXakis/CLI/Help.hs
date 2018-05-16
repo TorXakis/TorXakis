@@ -17,8 +17,9 @@ info, i                         : show info on TorXakis
 
 delay <n>                       : wait for <n> seconds
 echo <text>                     : echo the input <text>
-load <file path>                : load TorXakis model definitions to the session
+# <text>                        : comment, <text> is ignored
 
+load <file path>                : load TorXakis model definitions to the session
 stepper <model>                 : start stepping with model <model> where <model>
                                   is a model in model definitions which has been
                                   loaded with `load` command
