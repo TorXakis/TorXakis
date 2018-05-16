@@ -1,4 +1,4 @@
 param param_Sim_deltaTime 200
 simulator Model Sim
-sim 60
+sim 300
 exit
