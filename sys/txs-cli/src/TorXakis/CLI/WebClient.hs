@@ -7,6 +7,7 @@
 module TorXakis.CLI.WebClient
     ( info
     , Info
+    , getTime
     , version
     , buildTime
     , load
@@ -15,6 +16,7 @@ module TorXakis.CLI.WebClient
     , openMessages
     , sseSubscribe
     , closeMessages
+    , callTimer
     )
 where
 
@@ -52,8 +54,6 @@ import           TorXakis.Lib           (StepType (AnAction, NumberOfSteps))
 import           Endpoints.Parse        (ActionText (ActionText))
 
 import           TorXakis.CLI.Env
-
-
 
 data Info = Info
     { _version   :: Text
@@ -102,6 +102,39 @@ info = do
         b <- maybeToEither "Response did not contain \"buildTime\"" $
              r ^? responseBody . key "buildTime" . _String
         return $ Info v b
+
+-- | Retrieve the system information from 'TorXakis'.
+getTime :: (MonadIO m, MonadReader Env m, MonadError String m)
+        => m Text
+getTime = do
+    r <- envGet "time"
+    (r ^. responseStatus . statusCode) `shouldBeStatus` 200
+    liftEither $ maybeToEither "Response did not contain \"currentTime\"" $
+                    r ^? responseBody . key "currentTime" . _String
+
+
+-- | Retrieve the system information from 'TorXakis'.
+-- callTimer :: (MonadIO m, MonadReader Env m, MonadError String m)
+--         => m Text
+callTimer :: (MonadIO m, MonadReader Env m, MonadError String m)
+          => String -> m String
+callTimer nm = do
+    sId <- asks sessionId
+    let path = concat ["sessions/", show sId, "/timers/", nm]
+    r <- envPost path noContent
+    (r ^. responseStatus . statusCode) `shouldBeStatus` 200
+    liftEither $ do
+        tnm <- maybeToEither "Response did not contain \"timerName\"" $
+                    r ^? responseBody . key "timerName" . _String
+        stt <- maybeToEither "Response did not contain \"startTime\"" $
+                    r ^? responseBody . key "startTime" . _String
+        stp <- maybeToEither "Response did not contain \"stopTime\"" $
+                    r ^? responseBody . key "stopTime" . _String
+        d   <- maybeToEither "Response did not contain \"duration\"" $
+                    r ^? responseBody . key "duration" . _String
+        if T.null d
+            then return $ concat ["Timer ", T.unpack tnm, " started at " ++ T.unpack stt ++ "."]
+            else return $ concat ["Timer ", T.unpack tnm, " stopped at " ++ T.unpack stp ++ ". Duration: ", T.unpack d]
 
 shouldBeStatus :: (MonadError String m) => Int -> Int -> m ()
 shouldBeStatus got expected =

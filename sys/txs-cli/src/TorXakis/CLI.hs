@@ -4,6 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
@@ -22,7 +23,7 @@ import           Control.Concurrent               (newChan, readChan,
 import           Control.Concurrent.Async         (async, cancel)
 import           Control.Lens                     ((^.))
 import           Control.Monad                    (forever, when)
-import           Control.Monad.Except             (runExceptT)
+import           Control.Monad.Except             (MonadError, runExceptT)
 import           Control.Monad.IO.Class           (MonadIO, liftIO)
 import           Control.Monad.Reader             (MonadReader, ReaderT, ask,
                                                    asks, runReaderT)
@@ -125,6 +126,8 @@ startCLI = do
             "delay"   -> waitFor $ head rest
             "i"       -> lift (runExceptT info) >>= output
             "info"    -> lift (runExceptT info) >>= output
+            "time"    -> lift (runExceptT getTime) >>= output
+            "timer"   -> lift (runExceptT $ timer rest) >>= output
             "l"       -> lift (load rest) >>= output
             "load"    -> lift (load rest) >>= output -- TODO: this will break if the file names contain a space.
             "stepper" -> subStepper rest >>= output
@@ -142,6 +145,10 @@ startCLI = do
             subStepper _ = outputStrLn "This command is not supported yet."
             -- | Sub-command step.
             subStep with = (lift . step . concat $ with) >>= output
+            timer :: (MonadIO m, MonadReader Env m, MonadError String m)
+                  => [String] -> m String
+            timer [nm] = callTimer nm
+            timer _    = return "Usage: timer <timer name>"
     asTxsMsg :: BS.ByteString -> Either String Msg
     asTxsMsg msg = do
         msgData <- maybeToEither dataErr $
@@ -166,6 +173,9 @@ instance Outputable () where
 
 instance Outputable String where
     pretty = pure
+
+instance Outputable T.Text where
+    pretty = pure . T.unpack
 
 instance Outputable Info where
     pretty i = [ "Version: " ++ T.unpack (i ^. version)
