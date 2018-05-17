@@ -89,6 +89,18 @@ instance ToJSON TorXakisInfo
 info :: TorXakisInfo
 info = Info VersionInfo.version BuildInfo.buildTime
 
+newtype TimeResult = TimeResult { currentTime :: String }
+    deriving (Generic)
+
+instance ToJSON TimeResult
+instance FromJSON TimeResult
+
+time :: IO TimeResult
+time = do
+    tz  <- getCurrentTimeZone
+    now <- getCurrentTime
+    return $ TimeResult $ show $ utcToLocalTime tz now
+
 -- | Create a new session.
 newSession :: IO Session
 newSession = Session <$> newTVarIO emptySessionState
