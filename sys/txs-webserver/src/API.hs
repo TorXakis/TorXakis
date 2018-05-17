@@ -27,12 +27,14 @@ import           Endpoints.Stepper           (SetStepperEP, StartStepperEP,
                                               StepEP, setStep, startStep, step)
 import           Endpoints.Tester            (StartTesterEP, TestNStepsEP,
                                               startTester, testNSteps)
+import           Endpoints.Timer             (TimerEP, timer)
 import           Endpoints.Upload            (UploadEP, upload)
 
 type API = ServiceAPI
 type ServiceAPI
     =    InfoEP
     :<|> NewSessionEP
+    :<|> TimerEP
     :<|> UploadEP
     :<|> SetStepperEP
     :<|> StartStepperEP
@@ -63,6 +65,7 @@ server :: Env -> ServerT API Handler
 server env
     =    getInfo
     :<|> newSrvSession env
+    :<|> timer env
     :<|> upload env
     :<|> setStep env
     :<|> startStep env

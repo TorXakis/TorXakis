@@ -59,6 +59,7 @@ library:
   - stm-chans  
   - stm-conduit
   - text
+  - time
   - transformers
   - wreq
   - yaml

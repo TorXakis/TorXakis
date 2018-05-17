@@ -27,7 +27,7 @@ import qualified Network.HTTP.Client          as C
 import qualified Network.HTTP.Client.Internal as CI
 import           Network.Wreq                 as W
 
-import TorXakis.Lib (StepType (NumberOfSteps))
+import           TorXakis.Lib                 (StepType (NumberOfSteps))
 
 import           Test.Hspec
 
@@ -133,6 +133,78 @@ spec = return $ do
                 post (closeMessagesUrl sId) emptyP >>= check204NoContent
                 totalSteps <- wait a
                 totalSteps `shouldBe` 6
+        describe "Timer" $ do
+            it "Starts timer" $ do
+                sId <- mkNewSession
+                r <- post (timerUrl sId "testTimer") emptyP
+                r ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                let res = do timer <- decode $ r ^. responseBody :: Maybe Object
+                             parseMaybe parseTimerResult timer
+                case res of
+                    Nothing -> expectationFailure $  "Can't parse: " ++ show (r ^. responseBody)
+                    Just (tn,stt,stp,d) -> do tn `shouldBe` "testTimer"
+                                              stt `shouldNotSatisfy` Prelude.null
+                                              stp `shouldSatisfy` Prelude.null
+                                              d   `shouldSatisfy` Prelude.null
+            it "Reads timer" $ do
+                sId <- mkNewSession
+                r <- post (timerUrl sId "testTimer") emptyP
+                let Just (_,startTime,_,_) =
+                        do  timer <- decode $ r ^. responseBody :: Maybe Object
+                            parseMaybe parseTimerResult timer
+                r2 <- post (timerUrl sId "testTimer") emptyP
+                r2 ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                let res2 = do timer <- decode $ r2 ^. responseBody :: Maybe Object
+                              parseMaybe parseTimerResult timer
+                case res2 of
+                    Nothing -> expectationFailure $ "Can't parse: " ++ show (r2 ^. responseBody)
+                    Just (tn,stt,stp,d) -> do tn `shouldBe` "testTimer"
+                                              stt `shouldBe` startTime
+                                              stp `shouldNotSatisfy` Prelude.null
+                                              d   `shouldNotSatisfy` Prelude.null
+            it "Restarts timer" $ do
+                sId <- mkNewSession
+                _ <- post (timerUrl sId "testTimer") emptyP
+                _ <- post (timerUrl sId "testTimer") emptyP
+                r <- post (timerUrl sId "testTimer") emptyP
+                let res = do timer <- decode $ r ^. responseBody :: Maybe Object
+                             parseMaybe parseTimerResult timer
+                case res of
+                    Nothing -> expectationFailure $ "Can't parse: " ++ show (r ^. responseBody)
+                    Just (tn,stt,stp,d) -> do tn `shouldBe` "testTimer"
+                                              stt `shouldNotSatisfy` Prelude.null
+                                              stp `shouldSatisfy` Prelude.null
+                                              d   `shouldSatisfy` Prelude.null
+            it "Multiple timers" $ do
+                sId <- mkNewSession
+                r1_start <- post (timerUrl sId "testTimer1") emptyP
+                let Just (_,startTime1,_,_) =
+                        do  timer <- decode $ r1_start ^. responseBody :: Maybe Object
+                            parseMaybe parseTimerResult timer
+                r2_start <- post (timerUrl sId "testTimer2") emptyP
+                let Just (_,startTime2,_,_) =
+                        do  timer <- decode $ r2_start ^. responseBody :: Maybe Object
+                            parseMaybe parseTimerResult timer
+
+                r1_read <- post (timerUrl sId "testTimer1") emptyP
+                let res1 = do timer <- decode $ r1_read ^. responseBody :: Maybe Object
+                              parseMaybe parseTimerResult timer
+                case res1 of
+                    Nothing -> expectationFailure $ "Can't parse: " ++ show (r1_read ^. responseBody)
+                    Just (tn,stt,stp,d) -> do tn `shouldBe` "testTimer1"
+                                              stt `shouldBe` startTime1
+                                              stp `shouldNotSatisfy` Prelude.null
+                                              d   `shouldNotSatisfy` Prelude.null
+                r2_read <- post (timerUrl sId "testTimer2") emptyP
+                let res2 = do timer <- decode $ r2_read ^. responseBody :: Maybe Object
+                              parseMaybe parseTimerResult timer
+                case res2 of
+                    Nothing -> expectationFailure $ "Can't parse: " ++ show (r2_read ^. responseBody)
+                    Just (tn,stt,stp,d) -> do tn `shouldBe` "testTimer2"
+                                              stt `shouldBe` startTime2
+                                              stp `shouldNotSatisfy` Prelude.null
+                                              d   `shouldNotSatisfy` Prelude.null
+
             -- it "Starts tester and tests 3 steps" $ do
             --     sId <- mkNewSession
             --     _ <- put (newSessionUrl sid) [partFile "Point.txs" "../../examps/Point/Point.txs"]
@@ -148,6 +220,14 @@ parseFileUploadResult o = do
     fn <- o .: "fileName" :: Parser String
     l  <- o .: "loaded"   :: Parser Bool
     return (fn, l)
+
+parseTimerResult :: Object -> Parser (String, String, String, String)
+parseTimerResult o = do
+    tn  <- o .: "timerName" :: Parser String
+    stt <- o .: "startTime" :: Parser String
+    stp <- o .: "stopTime" :: Parser String
+    d   <- o .: "duration"  :: Parser String
+    return (tn,stt,stp,d)
 
 checkActions :: Int -> BS.ByteString -> IO Int
 checkActions steps bs = do
@@ -190,6 +270,9 @@ closeMessagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages/close"
 
 openMessagesUrl :: Integer -> String
 openMessagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages/open"
+
+timerUrl :: Integer -> String -> String
+timerUrl sId nm = Prelude.concat [host, "/sessions/", show sId, "/timers/", nm]
 
 emptyP :: [Part]
 emptyP = [partText "" ""]

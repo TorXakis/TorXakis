@@ -34,6 +34,9 @@ import           Data.Semigroup                ((<>))
 import qualified Data.Set                      as Set
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
+import           Data.Time                     (diffUTCTime, getCurrentTime,
+                                                getCurrentTimeZone,
+                                                utcToLocalTime)
 import           GHC.Generics                  (Generic)
 import           Lens.Micro                    ((&), (.~), (^.))
 
@@ -95,11 +98,39 @@ newSession = Session <$> newTVarIO emptySessionState
                      <*> newTChanIO
                      <*> return (WorldConnDef Map.empty (\_ -> return []))
                      <*> return []
+                     <*> newTVarIO Map.empty
 
 -- | Stop a session.
 killSession :: Session -> IO (Response ())
 killSession _ =
     return $ Left "Kill Session: Not implemented (yet)"
+
+data Timer = Timer { timerName :: String
+                   , startTime :: String
+                   , stopTime  :: String
+                   , duration  :: String
+                   }
+    deriving (Generic)
+
+instance ToJSON Timer
+instance FromJSON Timer
+
+timer :: Session -> String -> IO Timer
+timer s nm = do
+    tz  <- getCurrentTimeZone
+    now <- getCurrentTime
+    let timersT = s ^. timers
+    timersMap <- readTVarIO timersT
+    case Map.lookup nm timersMap of
+        Nothing -> do
+                    atomically $ modifyTVar' timersT $ Map.insert nm now
+                    return $ Timer nm (show $ utcToLocalTime tz now) "" ""
+        Just t  -> do
+                    atomically $ modifyTVar' timersT $ Map.delete nm
+                    return $ Timer nm
+                                   (show $ utcToLocalTime tz t)
+                                   (show $ utcToLocalTime tz now)
+                                   (show $ diffUTCTime now t)
 
 -- | Load a TorXakis file, compile it, and return the response.
 --
@@ -284,7 +315,6 @@ parseAction s act = do
       evalExclam (Exclam choff) = do
           res <- lift (runIOC s (txsEval choff))
           liftEither $ left T.pack res
-
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.
