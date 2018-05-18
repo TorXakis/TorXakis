@@ -22,6 +22,7 @@ import           Endpoints.Messages          (CloseMessagesEP, MessagesEP,
                                               OpenMessagesEP, closeMessages,
                                               messages, openMessages)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
+import           Endpoints.Params            (ParamsEP, params)
 import           Endpoints.Parse             (ParseActionEP, parseAction)
 import           Endpoints.Stepper           (SetStepperEP, StartStepperEP,
                                               StepEP, setStep, startStep, step)
@@ -37,6 +38,7 @@ type ServiceAPI
     :<|> TimeEP
     :<|> NewSessionEP
     :<|> TimerEP
+    :<|> ParamsEP
     :<|> UploadEP
     :<|> SetStepperEP
     :<|> StartStepperEP
@@ -69,6 +71,7 @@ server env
     :<|> getTime
     :<|> newSrvSession env
     :<|> timer env
+    :<|> params env
     :<|> upload env
     :<|> setStep env
     :<|> startStep env

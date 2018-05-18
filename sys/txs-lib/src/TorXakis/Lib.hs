@@ -47,7 +47,7 @@ import           BehExprDefs                   (ChanOffer (Exclam, Quest),
                                                 Offer (Offer))
 import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
-import           EnvCore                       (IOC)
+import           EnvCore                       (IOC, getParams)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
@@ -143,6 +143,9 @@ timer s nm = do
                                    (show $ utcToLocalTime tz t)
                                    (show $ utcToLocalTime tz now)
                                    (show $ diffUTCTime now t)
+
+getCoreAndSolveParams :: Session -> [String] -> IO [(String, String)]
+getCoreAndSolveParams s ps =  runIOC s $ getParams ps
 
 -- | Load a TorXakis file, compile it, and return the response.
 --
