@@ -116,8 +116,11 @@ cstrFunc fis fi arguments =
 -- Preconditions are /not/ checked.
 cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
 cstrCstr c a = if all isConst a
-                then cstrConst (Cstr c (map (\(view -> Vconst v) -> v) a))
+                then cstrConst (Cstr c (map toConst a) )
                 else ValExpr (Vcstr c a)
+    where   toConst :: ValExpr v -> Const
+            toConst (view -> Vconst v) = v
+            toConst _                  = error "Impossible when all satisfy isConst"
 
 -- | Is the provided value expression made by the ADT constructor with CstrId?
 -- Preconditions are /not/ checked.
@@ -202,11 +205,6 @@ cstrEqual ve1 ve2                                   = if ve1 <= ve2
                                                         then ValExpr (Vequal ve1 ve2)
                                                         else ValExpr (Vequal ve2 ve1)
 
--- | Is ValExpr a Not Expression?
-isNot :: ValExpr v -> Bool
-isNot (view -> Vnot {}) = True
-isNot _                 = False
-
 -- | Apply operator Not on the provided value expression.
 -- Preconditions are /not/ checked.
 cstrNot :: ValExpr v -> ValExpr v
@@ -217,17 +215,17 @@ cstrNot (view -> Vnot ve)                   = ve
 cstrNot (view -> Vite cs tb fb)             = ValExpr (Vite cs (cstrNot tb) (cstrNot fb))
 cstrNot ve                                  = ValExpr (Vnot ve)
 
--- | Is ValExpr an And Expression?
-isAnd :: ValExpr v -> Bool
-isAnd (view -> Vand {}) = True
-isAnd _                 = False
-
 -- | Apply operator And on the provided set of value expressions.
 -- Preconditions are /not/ checked.
 cstrAnd :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v
-cstrAnd ms =
-        let (ands, nonands) = Set.partition isAnd ms in
-            cstrAnd' $ foldl Set.union nonands (map (\(view -> Vand a) -> a) (Set.toList ands))
+cstrAnd = cstrAnd' . flattenAnd
+    where
+        flattenAnd :: (Ord v) => Set.Set (ValExpr v) -> Set.Set (ValExpr v)
+        flattenAnd = Set.unions . map fromValExpr . Set.toList
+        
+        fromValExpr :: (Ord v) => ValExpr v -> Set.Set (ValExpr v)
+        fromValExpr (view -> Vand a) = a
+        fromValExpr x                = Set.singleton x
 
 -- And doesn't contain elements of type Vand.
 cstrAnd' :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v
@@ -239,11 +237,17 @@ cstrAnd' s =
                     0   -> cstrConst (Cbool True)
                     1   -> head (Set.toList s')
                     _   ->  -- not(x) and x == False
-                            let (nots, _) = Set.partition isNot s' in
-                                if any (contains s') (map (\(view -> Vnot n) -> n) (Set.toList nots))
+                            let nots = filterNot (Set.toList s') in
+                                if any (contains s') nots
                                     then cstrConst (Cbool False)
                                     else ValExpr (Vand s')
     where
+        filterNot :: [ValExpr v] -> [ValExpr v]
+        filterNot [] = []
+        filterNot (x:xs) = case view x of
+                            Vnot n -> n : filterNot xs
+                            _      ->     filterNot xs
+        
         contains :: (Ord v) => Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set
