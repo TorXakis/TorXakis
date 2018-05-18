@@ -173,3 +173,8 @@ chParamsP = do
     res <- concat <$> chanDeclsOfSortP `sepBy` txsSymbol ";"
     txsSymbol "]"
     return res
+
+procExitP :: TxsParser ExitSortDecl
+procExitP =  (ExitD <$> (txsSymbol "EXIT" *> sortP `sepBy` txsSymbol "#"))
+         <|> (txsSymbol "HIT" >> return HitD)
+         <|> return NoExitD

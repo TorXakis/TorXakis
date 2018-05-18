@@ -33,6 +33,7 @@ import           TorXakis.Parser.Data
 import           TorXakis.Parser.FuncDefs  (fdeclP)
 import           TorXakis.Parser.ModelDecl
 import           TorXakis.Parser.ProcDecl
+import           TorXakis.Parser.StautDecl
 import           TorXakis.Parser.TypeDefs  (adtP)
 
 parse :: String -> Either Error ParsedDefs
@@ -60,6 +61,7 @@ data TLDef = TLADT       ADTDecl
            | TLModel     ModelDecl
            | TLChanDecls [ChanDecl]
            | TLProcDecl  ProcDecl
+           | TLStautDecl     StautDecl
 
 -- | Group a list of top-level definitions per-type.
 asParsedDefs :: [TLDef] -> ParsedDefs
@@ -71,6 +73,7 @@ asParsedDefs = foldr sep emptyPds
       sep (TLModel m)       = models %~ (m:)
       sep (TLChanDecls chs) = chdecls %~ (chs++)
       sep (TLProcDecl p)    = procs %~ (p:)
+      sep (TLStautDecl s)   = stauts %~ (s:)
 
 -- | Root parser for the TorXakis language.
 txsP :: TxsParser ParsedDefs
@@ -82,5 +85,6 @@ txsP = do
               <|> fmap TLModel     modelDeclP
               <|> fmap TLChanDecls chanDeclsP
               <|> fmap TLProcDecl  procDeclP
+              <|> fmap TLStautDecl stautDeclP
     eof
     return $ asParsedDefs ts

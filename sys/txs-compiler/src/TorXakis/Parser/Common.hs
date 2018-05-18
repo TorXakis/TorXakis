@@ -7,9 +7,9 @@ import           Data.Text              (Text)
 import qualified Data.Text              as T
 import           Text.Parsec            (ParsecT, getPosition, getState, many,
                                          putState, sourceColumn, sourceLine,
-                                         (<?>), (<|>))
+                                         try, (<?>), (<|>))
 import           Text.Parsec.Char       (alphaNum, letter, lower, oneOf, upper)
-import           Text.Parsec.Token
+import           Text.Parsec.Token      hiding (identifier)
 
 import           TorXakis.Parser.Data
 
@@ -88,6 +88,9 @@ identifier = txsLexeme (identifierNE idStart) <?> "identifier"
     where
       idStart = lower <|> upper <|> oneOf "_"
 
+-- | Like @identifier@, but try.
+tryIdentifier :: TxsParser Text
+tryIdentifier = try identifier
 
 -- | Parser for non-empty identifiers.
 identifierNE :: TxsParser Char -> TxsParser Text

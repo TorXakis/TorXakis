@@ -1,8 +1,7 @@
 module TorXakis.Parser.ProcDecl where
 
-import           Text.Parsec              (sepBy, sepBy1, (<|>))
+import           Text.Parsec              ((<|>))
 
-import           TorXakis.Parser.BExpDecl
 import           TorXakis.Parser.BExpDecl
 import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
@@ -21,8 +20,3 @@ procDeclP = do
     be <- bexpDeclP
     txsSymbol "ENDDEF"
     return $ mkProcDecl n l cs vs e be
-
-procExitP :: TxsParser ExitSortDecl
-procExitP =  (ExitD <$> (txsSymbol "EXIT" *> sortP `sepBy` txsSymbol "#"))
-         <|> (txsSymbol "HIT" >> return HitD)
-         <|> return NoExitD

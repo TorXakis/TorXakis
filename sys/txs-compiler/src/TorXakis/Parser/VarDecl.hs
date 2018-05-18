@@ -5,5 +5,6 @@ import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
 import           TorXakis.Parser.TypeDefs
 
--- varDeclP :: TxsParser VarDecl
--- varDeclP = mkVarDecl <$> lcIdentifier <*> mkLoc <*> ofSortP
+varDeclsP :: TxsParser [VarDecl]
+varDeclsP = idOfSortsP "" "" mkVarDecl
+
