@@ -24,6 +24,11 @@ spec = do
               ("test" </> "data" </> "parser" </> "success")
         parallel $ traverse_ testParser fs
 
+    describe "Correctly parses the HUGE models" $ do
+        fs <- runIO $ find (return True) (extension ==? ".txs")
+              ("test" </> "data" </> "parser" </> "huge")
+        parallel $ traverse_ testParser fs
+
     where
         testParser fp = it (show fp) $ do
             r <- parseFile fp
