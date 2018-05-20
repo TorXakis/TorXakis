@@ -73,6 +73,7 @@ toBExpr mm (Pappl n l crs exs) = do
         candidate pId =
                toText   n                     == ProcId.name pId
             && fmap chansorts (procchans pId) == fmap chansorts chIds -- Compare the sort id's of the channels
+            && length (procvars pId)          == length exs
     -- Try to find a matching process definition:
     res <- forCatch (filter candidate $ keys @ProcId @() mm) $ \pId -> do
         let eSids = varsort <$> procvars pId

@@ -40,7 +40,7 @@ import           TorXakis.Compiler.Data.ProcDecl
 import           TorXakis.Compiler.Data.VarDecl
 
 procDeclsToProcDefMap :: ( MapsTo Text SortId mm
-                         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+                         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                          , MapsTo (Loc FuncDeclE) FuncId mm
                          , MapsTo FuncId (FuncDef VarId) mm
                          , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
@@ -52,14 +52,16 @@ procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                       => mm
                       -> [ProcDecl]
                       -> CompilerM (Map ProcId ProcDef)
-procDeclsToProcDefMap mm  = gProcDeclsToProcDefMap emptyMpd
+procDeclsToProcDefMap mm ps = do
+    pms <- getMap mm ps
+    gProcDeclsToProcDefMap pms emptyMpd ps
     where
       emptyMpd = Map.empty :: Map ProcId ProcDef
-      gProcDeclsToProcDefMap :: Map ProcId ProcDef
+      gProcDeclsToProcDefMap :: Map (Loc ProcDeclE) ProcInfo
+                             -> Map ProcId ProcDef
                              -> [ProcDecl]
                              -> CompilerM (Map ProcId ProcDef)
-      gProcDeclsToProcDefMap mpd rs = do
-          pms <- getMap mm rs
+      gProcDeclsToProcDefMap pms mpd rs = do
           (ls, rs') <- traverseCatch (mkpIdPDefM pms) rs
           case (ls, rs') of
               ([], _) -> return $ Map.fromList rs' <> innerMap mpd
@@ -68,7 +70,7 @@ procDeclsToProcDefMap mm  = gProcDeclsToProcDefMap emptyMpd
                   , _errorLoc = NoErrorLoc
                   , _errorMsg = T.pack (show (snd <$> ls))
                   }
-              (_, _ ) -> gProcDeclsToProcDefMap (Map.fromList rs' <.+> mpd) (fst <$> ls)
+              (_, _ ) -> gProcDeclsToProcDefMap pms (Map.fromList rs' <.+> mpd) (fst <$> ls)
 
       mkpIdPDefM :: Map (Loc ProcDeclE) ProcInfo
                  -> ProcDecl

@@ -28,9 +28,9 @@ import           Id                                 (Id (Id))
 import           Sigs                               (Sigs, chan, func, pro,
                                                      uniqueCombine)
 import qualified Sigs                               (empty)
-import           SortId                             (sortIdBool, sortIdInt,
-                                                     sortIdRegex, sortIdString)
-import           SortId                             (SortId)
+import           SortId                             (SortId, sortIdBool,
+                                                     sortIdInt, sortIdRegex,
+                                                     sortIdString)
 import           StdTDefs                           (stdFuncTable, stdTDefs)
 import           TxsDefs                            (ProcDef, ProcId, TxsDefs,
                                                      fromList, funcDefs,
@@ -95,7 +95,7 @@ compileParsedDefs pd = do
     -- since no variables can be declared at the top level.
     vdSortMap <- inferTypes (sIds :& decls :& fIds :& emptyVdMap) (allFuncs pd)
     -- Construct the variable declarations to @VarId@'s lookup table.
-    vIds <- generateVarIds (vdSortMap :& fIds ) (allFuncs pd)
+    vIds <- generateVarIds (vdSortMap :& fIds) (allFuncs pd)
     fdefs <- funcDeclsToFuncDefs (vIds :& fIds :& decls) (allFuncs pd)
     pdefs <- procDeclsToProcDefMap (sIds :& cstrIds :& fIds :& fdefs :& decls)
                                    (pd ^. procs)

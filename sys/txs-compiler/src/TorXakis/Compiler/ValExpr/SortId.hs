@@ -340,7 +340,7 @@ instance HasExitSorts BExpDecl where
         es1 <- exitSort mm be
         es0 <<+>> es1 -- TODO: modify `ActPref` to include a location then we can use <!!> l
     exitSort mm (LetBExp _ be) = exitSort mm be
-    exitSort mm (Pappl n _ crs exps) = do
+    exitSort mm (Pappl n l crs exps) = do
         chIds <- chRefsToIds mm crs
         -- Cartesian product of all the possible sorts that can be inferred:
         expsSidss <- sequence <$> liftEither (traverse (inferExpTypes mm) exps)
@@ -351,8 +351,16 @@ instance HasExitSorts BExpDecl where
                 && fmap varsort (procvars pId )  `elem` expsSidss
         case filter candidate $ keys @ProcId @() mm of
             [pId] -> return $ procexit pId
-            []    -> error $ "No matching process found " -- TODO: throwError
-            _     -> error $ "Multiple matching processes found" -- TODO: throwError
+            []    -> throwError Error
+                { _errorType = ProcessNotDefined
+                , _errorLoc  = getErrorLoc l
+                , _errorMsg  = "No matching process found"
+                }
+            _     -> throwError Error
+                { _errorType = MultipleDefinitions
+                , _errorLoc  = getErrorLoc l
+                , _errorMsg  = "Multiple matching processes found"
+                }
     exitSort mm (Par l _ be0 be1) = do
         es0 <- exitSort mm be0
         es1 <- exitSort mm be1
