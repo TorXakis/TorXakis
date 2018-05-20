@@ -137,6 +137,13 @@ module TorXakis.Parser.Data
     , mkStautDecl
     , mkStateDecl
     , mkStateRef
+    , stautName
+    , asProcDeclLoc
+    , stautDeclChParams
+    , stautDeclParams
+    , stautDeclRetSort
+    , stautDeclComps
+    , stautDeclInnerVars
     -- * Location of the entities
     , getLoc
     , loc'
@@ -155,8 +162,10 @@ where
 
 import           Control.Arrow           ((+++), (|||))
 import           Control.Lens            (Lens')
+import           Control.Lens            ((^..))
 import           Control.Lens.TH         (makeLenses)
 import           Data.Data               (Data)
+import           Data.Data.Lens          (biplate)
 import           Data.Set                (Set)
 import           Data.Text               (Text)
 
@@ -700,6 +709,29 @@ mkStautDecl :: Text
             -> StautDecl
 mkStautDecl n l cs vs e is = ParseTree (Name n) StautDeclE l (StautComps cs vs e is)
 
+stautName :: StautDecl -> Text
+stautName = nodeNameT
+
+-- | Return the location of a state automaton as the location of a process declaration.
+asProcDeclLoc :: StautDecl -> Loc ProcDeclE
+asProcDeclLoc = locFromLoc . getLoc
+
+-- | Get the channel declarations of a state automaton.
+stautDeclChParams :: StautDecl -> [ChanDecl]
+stautDeclChParams = stautChParams . child
+
+-- | Get the formal parameters of a state automaton.
+stautDeclParams :: StautDecl -> [VarDecl]
+stautDeclParams = stautParams . child
+
+-- | Get the return sort of a state automaton.
+stautDeclRetSort :: StautDecl -> ExitSortDecl
+stautDeclRetSort = stautRetSort . child
+
+-- | Get the components of a state automaton.
+stautDeclComps :: StautDecl -> [StautItem]
+stautDeclComps = stautComps . child
+
 -- | Components of a state automaton.
 data StautComps = StautComps
     { stautChParams :: [ChanDecl]
@@ -714,6 +746,10 @@ data StautItem = States [StateDecl]
                | InitState StateRef [StUpdate]
                | Trans [Transition]
     deriving (Eq, Show, Ord, Data)
+
+-- | Extract the variables declared in the automaton.
+stautDeclInnerVars :: StautDecl -> [VarDecl]
+stautDeclInnerVars staut = staut ^.. biplate
 
 -- | Declaration of an automaton state.
 type StateDecl = ParseTree StateDeclE ()

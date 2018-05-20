@@ -47,7 +47,7 @@ import           TorXakis.Parser.Data
 -- | Abstract syntax tree types that define a map.
 --
 -- 'DefinesAMap k v e mm' models the fact that an AST 'e' defines a map from
--- 'k' to 'v', provided a map 'm' is available.
+-- 'k' to 'v', provided a map 'mm' is available.
 class (Show k, Ord k, Eq k) => DefinesAMap k v e mm where
     -- | Get the 'k' 'v' pairs defined by the ast 'e'.
     getKVs :: mm -> e -> CompilerM [(k, v)]
@@ -220,6 +220,21 @@ instance ( MapsTo Text SortId mm
         -- Add the channels declared at the body.
         bodyChids <- uGetKVs mm (procDeclBody pd)
         return $ parChids ++ retChids ++ predefChids ++ bodyChids
+
+instance ( MapsTo Text SortId mm
+         ) => DefinesAMap (Loc ChanDeclE) ChanId StautDecl mm where
+    uGetKVs mm pd = do
+        parChids <- uGetKVs mm (stautDeclChParams pd)
+        -- Add the exit sort.
+        retChids <- uGetKVs mm (stautDeclRetSort pd)
+        -- Add the predefined channels.
+        let predefChids = [ (exitChLoc, chanIdExit)
+                          , (istepChLoc, chanIdIstep)
+                          , (qstepChLoc, chanIdQstep)
+                          ]
+        -- Add the channels declared at the body.
+        -- A state-automaton does not declare channels in its body.
+        return $ parChids ++ retChids ++ predefChids
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ModelDecl mm where

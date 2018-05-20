@@ -29,6 +29,7 @@ library:
   # TorXakis dependencies
   - defs
   - valexpr
+  - behave
   
 tests:
   txs-compiler-test:

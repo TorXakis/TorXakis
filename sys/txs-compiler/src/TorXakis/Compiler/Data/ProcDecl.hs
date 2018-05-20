@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
@@ -11,19 +12,20 @@ module TorXakis.Compiler.Data.ProcDecl where
 
 import           Control.Lens                       ((^.), (^..))
 import           Data.Data.Lens                     (biplate)
-
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
+import           Data.Semigroup                     ((<>))
 import           Data.Text                          (Text)
 
 import           ChanId                             (ChanId)
 import           Id                                 (Id (Id))
 import           ProcId                             (ProcId (ProcId))
-import           SortId                             (SortId)
+import           SortId                             (SortId, sortIdInt)
+import           StautDef                           (combineParameters)
 import           TxsDefs                            (ExitSort (..),
                                                      ProcDef (ProcDef),
                                                      ProcId (ProcId))
-import           VarId                              (VarId)
+import           VarId                              (VarId (VarId))
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Maps
@@ -46,40 +48,94 @@ instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ProcDeclE) ProcInfo ProcDecl mm where
     uGetKVs mm pd = do
         pId    <- getNextId
-        allPChIds <- uGetKVs mm pd
+        allPChIds <- uGetKVs mm pd -- TODO: why not getKVs?
             :: CompilerM [(Loc ChanDeclE, ChanId)]
         let
             pChLocs = getLoc <$> procDeclChParams pd
-            pChIds = snd <$>
-                filter ((`elem` pChLocs) . fst) allPChIds
-        vdSids <- getMap mm (procDeclParams pd)
+            pChIds = snd <$> filter ((`elem` pChLocs) . fst) allPChIds
+        vdSIds <- getMap mm (procDeclParams pd)
             :: CompilerM (Map (Loc VarDeclE) SortId)
-        pVIds  <- uGetKVs (vdSids :& mm) (procDeclParams pd)
+        pVIds  <- uGetKVs (vdSIds :& mm) (procDeclParams pd)
             :: CompilerM [(Loc VarDeclE, VarId)]
-        eSort  <- declExitSort (procDeclRetSort pd) <!!> pd
+        eSort  <- declExitSort mm (procDeclRetSort pd) <!!> pd
         return [( getLoc pd
-                , ProcInfo ( ProcId
-                             (procDeclName pd)
-                             (Id pId)
-                             pChIds
-                             (snd <$> pVIds)
-                             eSort
+                , ProcInfo ( ProcId (procDeclName pd)
+                                    (Id pId)
+                                    pChIds
+                                    (snd <$> pVIds)
+                                    eSort
                            )
                            allPChIds
                            pVIds
                 )]
-            where
-              declExitSort NoExitD    = return NoExit
-              declExitSort HitD       = return Hit
-              declExitSort (ExitD xs) = Exit <$> sortIds mm xs
 
--- -- | A process declaration introduces variable id's in its parameters.
--- instance ( MapsTo Text SortId mm
---          ) => DefinesAMap (Loc VarDeclE) VarId ProcDecl mm where
---     uGetKVs mm pd = do
---         pdSIds <- getMap mm (procDeclParams pd) :: CompilerM (Map (Loc VarDeclE) SortId)
---         traverse (varIdFromVarDecl pdSIds) (procDeclParams pd)
---         --return [(getLoc pd, pVIds)]
+declExitSort :: (MapsTo Text SortId mm)
+             => mm -> ExitSortDecl -> CompilerM ExitSort
+declExitSort _  NoExitD    = return NoExit
+declExitSort _  HitD       = return Hit
+declExitSort mm (ExitD xs) = Exit <$> sortIds mm xs
+
+instance ( MapsTo Text SortId mm
+         , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
+         ) => DefinesAMap (Loc ProcDeclE) ProcInfo StautDecl mm where
+    uGetKVs mm staut = do
+        pId       <- getNextId
+        pIdStd    <- getNextId
+        pIdStdi   <- getNextId
+        allSChIds <- uGetKVs mm staut
+                     :: CompilerM [(Loc ChanDeclE, ChanId)]
+        let loc = asProcDeclLoc staut
+            n   = stautName staut
+            sChLocs = getLoc <$> stautDeclChParams staut
+            sChIds = snd <$> filter ((`elem` sChLocs) . fst) allSChIds
+        vdSIds <- getMap mm (stautDeclParams staut)
+                  :: CompilerM (Map (Loc VarDeclE) SortId)
+        pVIds  <- uGetKVs (vdSIds :& mm) (stautDeclParams staut)
+            :: CompilerM [(Loc VarDeclE, VarId)]
+        eSort  <- declExitSort mm (stautDeclRetSort staut) <!!> staut
+        -- TODO: NOTE: this is required to comply with the current TorXakis
+        -- compiler, which generates an "std_" variant based on a
+        -- 'combineParameters' function which shouldn't be exposed (according
+        -- to the comments of 'StautDef').
+        innerVdSIds <- getMap mm (stautDeclInnerVars staut)
+                       :: CompilerM (Map (Loc VarDeclE) SortId)
+        innerVdIds  <- uGetKVs (innerVdSIds :& mm) (stautDeclInnerVars staut)
+                       :: CompilerM [(Loc VarDeclE, VarId)]
+        sVId        <- getNextId
+        let
+            s = VarId "$s" (Id sVId) sortIdInt
+            stdVids = combineParameters (snd <$> pVIds) s (snd <$> innerVdIds)
+        return [ ( loc
+                 , ProcInfo ( ProcId n
+                                    (Id pId)
+                                    sChIds
+                                    (snd <$> pVIds)
+                                    eSort
+                            )
+                           allSChIds
+                           pVIds
+                 )
+               , ( loc
+                 , ProcInfo ( ProcId ("std_" <> n)
+                                    (Id pIdStd)
+                                    sChIds
+                                    stdVids
+                                    eSort
+                            )
+                           allSChIds
+                           pVIds
+                 )
+               , ( loc
+                 , ProcInfo ( ProcId ("stdi_" <> n)
+                                    (Id pIdStdi)
+                                    sChIds
+                                    (snd <$> pVIds)
+                                    eSort
+                            )
+                           allSChIds
+                           pVIds
+                 )
+               ]
 
 allProcIds :: MapsTo (Loc ProcDeclE) ProcInfo mm => mm -> [ProcId]
 allProcIds mm = getPId <$> values @(Loc ProcDeclE) @ProcInfo mm

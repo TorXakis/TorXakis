@@ -97,8 +97,9 @@ compileParsedDefs pd = do
     -- Construct the variable declarations to @VarId@'s lookup table.
     vIds <- generateVarIds (vdSortMap :& fIds) (allFuncs pd)
     fdefs <- funcDeclsToFuncDefs (vIds :& fIds :& decls) (allFuncs pd)
-    pdefs <- procDeclsToProcDefMap (sIds :& cstrIds :& fIds :& fdefs :& decls)
-                                   (pd ^. procs)
+    -- pdefs <- procDeclsToProcDefMap (sIds :& cstrIds :& fIds :& fdefs :& decls)
+    --                                (pd ^. procs)
+    pdefs <- compileToProcDefs (sIds :& cstrIds :& fIds :& fdefs :& decls) pd
     chIds   <- getMap sIds (pd ^. chdecls) :: CompilerM (Map (Loc ChanDeclE) ChanId)
     let mm = sIds :& pdefs :& cstrIds :& fIds :& fdefs
     sigs    <- toSigs (mm :& chIds) pd
@@ -233,3 +234,21 @@ compileToDecls lfDefs pd = do
     mRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. models)
     return $ fRtoDs `Map.union` pRtoDs `Map.union` mRtoDs
 
+-- | Generate the map from process id's definitions to process definitions.
+compileToProcDefs :: ( MapsTo Text SortId mm
+                     , MapsTo FuncId (FuncDef VarId) mm
+                     , MapsTo (Loc FuncDeclE) FuncId mm
+                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+                     , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
+                     , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
+                     , In (Text, ChanId) (Contents mm) ~ 'False
+                     , In (Loc ProcDeclE, ProcInfo) (Contents mm) ~ 'False
+                     , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
+                     , In (ProcId, ()) (Contents mm) ~ 'False
+                     , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False)
+                  => mm -> ParsedDefs -> CompilerM (Map ProcId ProcDef)
+compileToProcDefs mm pd = do
+    pmsP <- getMap mm (pd ^. procs)  :: CompilerM (Map (Loc ProcDeclE) ProcInfo)
+    pmsS <- getMap mm (pd ^. stauts) :: CompilerM (Map (Loc ProcDeclE) ProcInfo)
+    let pms = pmsP `Map.union` pmsS -- TODO: we might consider detecting for duplicated process here.
+    procDeclsToProcDefMap (pms :& mm) (pd ^. procs)

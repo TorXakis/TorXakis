@@ -43,6 +43,7 @@ procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                          , MapsTo (Loc FuncDeclE) FuncId mm
                          , MapsTo FuncId (FuncDef VarId) mm
+                         , MapsTo (Loc ProcDeclE) ProcInfo mm
                          , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                          , In (Text, ChanId) (Contents mm) ~ 'False
                          , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
@@ -53,7 +54,7 @@ procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                       -> [ProcDecl]
                       -> CompilerM (Map ProcId ProcDef)
 procDeclsToProcDefMap mm ps = do
-    pms <- getMap mm ps
+    let pms = innerMap mm
     gProcDeclsToProcDefMap pms emptyMpd ps
     where
       emptyMpd = Map.empty :: Map ProcId ProcDef
