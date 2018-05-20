@@ -97,7 +97,6 @@ instance HasVarReferences e => HasVarReferences (Maybe e) where
     mapRefToDecls mm = maybe (return []) (mapRefToDecls mm)
 
 instance HasVarReferences ExpDecl where
-    -- TODO: replace varDeclsFromExpDecl by this function
     mapRefToDecls mm ex = case expChild ex of
         VarRef n rLoc -> do
             dLoc <- fmap Left (mm .@!! (toText n, rLoc))
@@ -131,3 +130,38 @@ instance HasVarReferences FuncDecl where
 
 instance HasVarReferences ModelDecl where
     mapRefToDecls mm = mapRefToDecls mm . modelBExp
+
+instance HasVarReferences StautDecl where
+    mapRefToDecls mm staut = mapRefToDecls (stautVarDecls <.+> mm) (stautDeclComps staut)
+        where
+          paramVarDecls = mkVdMap (stautDeclParams staut)
+          innerVarDecls = mkVdMap (stautDeclInnerVars staut)
+          -- We give the inner variables precedence over the state automaton parameters.
+          stautVarDecls = innerVarDecls `Map.union` paramVarDecls
+
+instance HasVarReferences StautItem where
+    mapRefToDecls _  (States _)        = return []
+    mapRefToDecls _  (StVarDecl _)     = return []
+    mapRefToDecls mm (InitState _ uds) = mapRefToDecls mm uds
+    mapRefToDecls mm (Trans ts)        = mapRefToDecls mm ts
+
+instance HasVarReferences StUpdate where
+    mapRefToDecls mm (StUpdate vs e) =
+        (++) <$> mapRefToDecls mm vs <*> mapRefToDecls mm e
+
+instance HasVarReferences VarRef where
+    mapRefToDecls mm vr = do
+        -- TODO: reduce duplication w.r.t 'instance HasVarReferences ExpDecl':
+        let rLoc = getLoc vr
+            n = varName vr
+        dLoc <- fmap Left (mm .@!! (n, rLoc))
+                `catchError`
+                const (fmap Right (mm .@!! (n, rLoc)))
+        return [(rLoc, dLoc)]
+
+instance HasVarReferences Transition where
+    mapRefToDecls mm (Transition _ offr uds _) =
+        (++) <$> mapRefToDecls mm offr <*> mapRefToDecls (aoVds <.+> mm) uds
+         where
+           aoVds = mkVdMap (actOfferDecls offr)
+

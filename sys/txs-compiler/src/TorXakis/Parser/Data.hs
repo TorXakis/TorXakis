@@ -639,6 +639,9 @@ type VarRef = ParseTree VarRefE ()
 mkVarRef :: Text -> Loc VarRefE -> VarRef
 mkVarRef n l = ParseTree (Name n) VarRefE l ()
 
+instance IsVariable VarRef where
+    varName = nodeNameT
+
 type ChanDecl = ParseTree ChanDeclE [OfSort]
 
 -- | Make a channel declaration.

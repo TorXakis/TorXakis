@@ -224,15 +224,16 @@ compileToFuncLocs fIds = Map.fromListWith (++) $
 -- | Get a dictionary from variable references to the possible location in
 -- which these variables are declared. Due to overloading a syntactic reference
 -- to a variable can refer to a variable, or multiple functions.
-compileToDecls :: Map Text [(Loc FuncDeclE)]
+compileToDecls :: Map Text [Loc FuncDeclE]
                -> ParsedDefs
-               -> CompilerM (Map (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]))
+               -> CompilerM (Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]))
 compileToDecls lfDefs pd = do
     let eVdMap = Map.empty :: Map Text (Loc VarDeclE)
     fRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (allFuncs pd)
     pRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. procs)
+    sRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. stauts)
     mRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. models)
-    return $ fRtoDs `Map.union` pRtoDs `Map.union` mRtoDs
+    return $ fRtoDs `Map.union` pRtoDs `Map.union` sRtoDs `Map.union` mRtoDs
 
 -- | Generate the map from process id's definitions to process definitions.
 compileToProcDefs :: ( MapsTo Text SortId mm
