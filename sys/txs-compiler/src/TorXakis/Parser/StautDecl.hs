@@ -24,10 +24,10 @@ stautDeclP = do
 
 stautItemP :: TxsParser StautItem
 stautItemP
-    =   fmap States    (txsSymbol "STATE" *> (statesDecP `sepBy1` txsSymbol ","))
-    <|> fmap StVarDecl (txsSymbol "VAR"   *> varDeclsP)
-    <|> fmap InitState (txsSymbol "INIT"  *> stateRefP) <*> stUpdatesP
-    <|> fmap Trans     (txsSymbol "TRANS" *> many transitionP)
+    =   fmap States      (txsSymbol "STATE" *> (statesDecP `sepBy1` txsSymbol ","))
+    <|> fmap StVarDecl   (txsSymbol "VAR"   *> varDeclsP)
+    <|> fmap mkInitState (txsSymbol "INIT"  *> stateRefP) <*> stUpdatesP
+    <|> fmap Trans       (txsSymbol "TRANS" *> many transitionP)
     where
       stateRefP :: TxsParser StateRef
       stateRefP = mkStateRef <$> tryIdentifier <*> mkLoc

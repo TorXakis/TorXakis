@@ -140,10 +140,10 @@ instance HasVarReferences StautDecl where
           stautVarDecls = innerVarDecls `Map.union` paramVarDecls
 
 instance HasVarReferences StautItem where
-    mapRefToDecls _  (States _)        = return []
-    mapRefToDecls _  (StVarDecl _)     = return []
-    mapRefToDecls mm (InitState _ uds) = mapRefToDecls mm uds
-    mapRefToDecls mm (Trans ts)        = mapRefToDecls mm ts
+    mapRefToDecls _  (States _)                        = return []
+    mapRefToDecls _  (StVarDecl _)                     = return []
+    mapRefToDecls mm (InitState (InitStateDecl _ uds)) = mapRefToDecls mm uds
+    mapRefToDecls mm (Trans ts)                        = mapRefToDecls mm ts
 
 instance HasVarReferences StUpdate where
     mapRefToDecls mm (StUpdate vs e) =

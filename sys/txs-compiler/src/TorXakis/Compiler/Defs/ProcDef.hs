@@ -13,15 +13,17 @@ import           Data.Semigroup                     ((<>))
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 
+import qualified BehExprDefs                        as Beh
 import           ChanId                             (ChanId)
 import           FuncDef                            (FuncDef)
 import           FuncId                             (FuncId)
 import           Id                                 (Id (Id))
 import           SortId                             (SortId)
 import qualified SortId
+import           StatId                             (StatId)
 import           TxsDefs                            (ExitSort (..),
                                                      ProcDef (ProcDef),
-                                                     ProcId (ProcId))
+                                                     ProcId (ProcId), VEnv)
 import           VarId                              (VarId, varsort)
 
 import           TorXakis.Compiler.Data
@@ -103,3 +105,45 @@ procDeclsToProcDefMap mm ps = do
           procChIds <- traverse (chIdsM .@) (getLoc <$> procDeclChParams pd)
           let pvIds' = snd <$> pvIds
           return ( pId, ProcDef procChIds pvIds' b )
+
+-- | TODO: remove the unnecessary constraints.
+stautDeclsToProcDefMap :: ( MapsTo Text SortId mm
+                          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+                          , MapsTo (Loc FuncDeclE) FuncId mm
+                          , MapsTo FuncId (FuncDef VarId) mm
+                          , MapsTo (Loc ProcDeclE) ProcInfo mm
+                          , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
+                          , In (Text, ChanId) (Contents mm) ~ 'False
+                          , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
+                          , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
+                          , In (ProcId, ()) (Contents mm) ~ 'False
+                          , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False )
+                       => mm
+                       -> [StautDecl]
+                       -> CompilerM (Map ProcId ProcDef)
+stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
+    traverse stautDeclsToProcDefs ts
+    where
+      stautDeclsToProcDefs :: StautDecl -> CompilerM [(ProcId, ProcDef)]
+      stautDeclsToProcDefs staut = do
+          ProcInfo pId chIds pvIds <- mm .@ asProcDeclLoc staut :: CompilerM ProcInfo
+          let chIdsM = Map.fromList chIds
+          procChIds <- traverse (chIdsM .@) (getLoc <$> stautDeclChParams staut)
+          let pvIds' = snd <$> pvIds
+          beStaut <- uncurry3 Beh.stAut <$> stautItemToBExpr
+          return [( pId, ProcDef procChIds pvIds' beStaut )]
+          where
+            -- | Compile the list of @StautItem@'s to a triple of the initial state,
+            -- a local variables map, and a list of transitions.
+            stautItemToBExpr:: CompilerM (StatId, VEnv, [Beh.Trans])
+            stautItemToBExpr = do
+                -- Collect all the state declarations.
+                stIds <- traverse stateDeclToStateId (stautDeclStates staut)
+                -- Make sure there is a unique initial state.
+                undefined stIds
+
+            stateDeclToStateId :: StateDecl -> CompilerM StatId
+            stateDeclToStateId = undefined
+
+      uncurry3 :: (a -> b -> c -> d) -> ((a, b, c) -> d)
+      uncurry3 f (a, b, c) = f a b c

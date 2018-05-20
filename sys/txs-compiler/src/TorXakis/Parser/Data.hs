@@ -143,7 +143,12 @@ module TorXakis.Parser.Data
     , stautDeclParams
     , stautDeclRetSort
     , stautDeclComps
+    , stautDeclStates
     , stautDeclInnerVars
+    , stautInitStates
+    , stautTrans
+    , InitStateDecl (..)
+    , mkInitState
     -- * Location of the entities
     , getLoc
     , loc'
@@ -746,19 +751,38 @@ data StautComps = StautComps
 -- | Item of a state automaton.
 data StautItem = States [StateDecl]
                | StVarDecl [VarDecl]
-               | InitState StateRef [StUpdate]
+               | InitState InitStateDecl
                | Trans [Transition]
     deriving (Eq, Show, Ord, Data)
+
+-- | Extract the states declared in the automaton.
+stautDeclStates :: StautDecl -> [StateDecl]
+stautDeclStates staut = staut ^.. biplate
 
 -- | Extract the variables declared in the automaton.
 stautDeclInnerVars :: StautDecl -> [VarDecl]
 stautDeclInnerVars staut = staut ^.. biplate
+
+-- | Extract the initial states declared in the automaton.
+stautInitStates :: StautDecl -> [InitStateDecl]
+stautInitStates staut = staut ^.. biplate
+
+-- | Extract the transitions declared in the automaton.
+stautTrans :: StautDecl -> [Transition]
+stautTrans staut = concat $ staut ^.. biplate
 
 -- | Declaration of an automaton state.
 type StateDecl = ParseTree StateDeclE ()
 
 mkStateDecl :: Text -> Loc StateDeclE -> StateDecl
 mkStateDecl n l = ParseTree (Name n) StateDeclE l ()
+
+-- | Declaration of an initial state.
+data InitStateDecl = InitStateDecl StateRef [StUpdate]
+    deriving (Eq, Ord, Show, Data)
+
+mkInitState :: StateRef -> [StUpdate] -> StautItem
+mkInitState s uds = InitState (InitStateDecl s uds)
 
 -- | Reference to a previously declared automaton state.
 type StateRef = ParseTree StateRefE ()
