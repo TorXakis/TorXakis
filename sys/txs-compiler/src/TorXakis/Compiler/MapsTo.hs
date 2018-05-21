@@ -80,7 +80,7 @@ type instance Contents (Either a b) = 'Leaf ()
 type instance Contents (a, b) = 'Leaf ()
 
 instance MapsTo k v (Map k v) where
-    lookup k m = maybeToEither err . Map.lookup k $ m
+    lookup k = maybeToEither err . Map.lookup k
         where err = Error
                   { _errorType = UndefinedRef
                   , _errorLoc  = NoErrorLoc

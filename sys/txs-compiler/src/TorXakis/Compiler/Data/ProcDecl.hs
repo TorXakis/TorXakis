@@ -7,6 +7,7 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 -- | Process declarations.
 module TorXakis.Compiler.Data.ProcDecl where
 
@@ -105,6 +106,7 @@ instance ( MapsTo Text SortId mm
         let
             s = VarId "$s" (Id sVId) sortIdInt
             stdVids = combineParameters (snd <$> pVIds) s (snd <$> innerVdIds)
+            -- Wrong! You're using the same location, so you'll overwrite everything!
         return [ ( loc
                  , ProcInfo ( ProcId n
                                     (Id pId)
@@ -139,3 +141,12 @@ instance ( MapsTo Text SortId mm
 
 allProcIds :: MapsTo (Loc ProcDeclE) ProcInfo mm => mm -> [ProcId]
 allProcIds mm = getPId <$> values @(Loc ProcDeclE) @ProcInfo mm
+
+instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) StautDecl () where
+    uGetKVs _ staut = do
+        chanDecls <- getMap () (stautDeclChParams staut) :: CompilerM (Map Text (Loc ChanDeclE))
+        uGetKVs chanDecls (stautTrans staut)
+
+instance ( MapsTo Text (Loc ChanDeclE) mm
+         ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) Transition mm where
+    uGetKVs mm (Transition _ offr _ _) = uGetKVs mm offr

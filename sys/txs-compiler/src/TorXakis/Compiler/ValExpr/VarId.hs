@@ -1,17 +1,17 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
 module TorXakis.Compiler.ValExpr.VarId where
 
-import           Data.Map               (Map)
-import qualified Data.Map               as Map
+import           Data.Map                 (Map)
+import qualified Data.Map                 as Map
 
-import           Id                     (Id (Id))
-import           VarId                  (VarId (VarId))
-import           SortId                 (SortId)
+import           Id                       (Id (Id))
+import           SortId                   (SortId)
+import           VarId                    (VarId (VarId))
 
 import           TorXakis.Compiler.Data
-import           TorXakis.Parser.Data
 import           TorXakis.Compiler.MapsTo
+import           TorXakis.Parser.Data
 
 generateVarIds :: (MapsTo (Loc VarDeclE) SortId mm)
                => mm -> [FuncDecl] -> CompilerM (Map (Loc VarDeclE) VarId)
@@ -83,8 +83,8 @@ instance DeclaresVariables OfferDecl where
     mkVarIds mm (OfferDecl _ os) = mkVarIds mm os
 
 instance DeclaresVariables ChanOfferDecl where
-    mkVarIds mm (QuestD vd)  = return <$> varIdFromVarDecl mm vd
-    mkVarIds mm (ExclD  ex)  = mkVarIds mm ex
+    mkVarIds mm (QuestD vd) = return <$> varIdFromVarDecl mm vd
+    mkVarIds mm (ExclD  ex) = mkVarIds mm ex
 
 instance DeclaresVariables ExpDecl where
     -- TODO: rename 'varIdsFromExpDecl' to 'mkVarIds'.
@@ -92,3 +92,7 @@ instance DeclaresVariables ExpDecl where
 
 instance DeclaresVariables LetVarDecl where
     mkVarIds mm v = return <$> varIdFromVarDecl mm v
+
+instance DeclaresVariables Transition where
+    mkVarIds mm (Transition _ ofr _ _ ) = mkVarIds mm ofr
+

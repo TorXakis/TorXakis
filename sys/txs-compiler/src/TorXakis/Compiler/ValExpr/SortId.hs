@@ -451,3 +451,7 @@ offerSid mm (ExclD ex) = case inferExpTypes mm ex of
     Right [sId] -> return sId
     Right xs    -> error $  "Found multiple matching sorts for " ++ show ex
                          ++ ": " ++ show xs -- TODO: throwError
+
+instance HasTypedVars Transition where
+    inferVarTypes mm (Transition _ ofr _ _) = inferVarTypes mm ofr
+

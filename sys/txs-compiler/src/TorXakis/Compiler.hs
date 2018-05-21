@@ -7,6 +7,8 @@
 {-# LANGUAGE TypeFamilies        #-}
 module TorXakis.Compiler where
 
+import           Debug.Trace
+
 import           Control.Arrow                      (first, second, (|||))
 import           Control.Lens                       (over, (^.), (^..))
 import           Control.Monad.State                (evalStateT, get)
@@ -100,7 +102,7 @@ compileParsedDefs pd = do
     -- pdefs <- procDeclsToProcDefMap (sIds :& cstrIds :& fIds :& fdefs :& decls)
     --                                (pd ^. procs)
     pdefs <- compileToProcDefs (sIds :& cstrIds :& fIds :& fdefs :& decls) pd
-    chIds   <- getMap sIds (pd ^. chdecls) :: CompilerM (Map (Loc ChanDeclE) ChanId)
+    chIds <- getMap sIds (pd ^. chdecls) :: CompilerM (Map (Loc ChanDeclE) ChanId)
     let mm = sIds :& pdefs :& cstrIds :& fIds :& fdefs
     sigs    <- toSigs (mm :& chIds) pd
     -- We need the map from channel names to the locations in which these
@@ -254,4 +256,4 @@ compileToProcDefs mm pd = do
     let pms = pmsP `Map.union` pmsS -- TODO: we might consider detecting for duplicated process here.
     procPDefMap  <- procDeclsToProcDefMap (pms :& mm) (pd ^. procs)
     stautPDefMap <- stautDeclsToProcDefMap (pms :& mm) (pd ^. stauts)
-    return $ procPDefMap `Map.union` stautPDefMap
+    trace (show stautPDefMap) $ return $ procPDefMap `Map.union` stautPDefMap

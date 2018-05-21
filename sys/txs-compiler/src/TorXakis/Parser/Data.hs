@@ -136,7 +136,9 @@ module TorXakis.Parser.Data
     , Transition (..)
     , mkStautDecl
     , mkStateDecl
+    , stateDeclName
     , mkStateRef
+    , stateRefName
     , stautName
     , asProcDeclLoc
     , stautDeclChParams
@@ -777,6 +779,9 @@ type StateDecl = ParseTree StateDeclE ()
 mkStateDecl :: Text -> Loc StateDeclE -> StateDecl
 mkStateDecl n l = ParseTree (Name n) StateDeclE l ()
 
+stateDeclName :: StateDecl -> Text
+stateDeclName = nodeNameT
+
 -- | Declaration of an initial state.
 data InitStateDecl = InitStateDecl StateRef [StUpdate]
     deriving (Eq, Ord, Show, Data)
@@ -789,6 +794,9 @@ type StateRef = ParseTree StateRefE ()
 
 mkStateRef :: Text -> Loc StateRefE -> StateRef
 mkStateRef n l = ParseTree (Name n) StateRefE l ()
+
+stateRefName :: StateRef -> Text
+stateRefName = nodeNameT
 
 -- | State automaton update.
 data StUpdate = StUpdate [VarRef] ExpDecl
