@@ -769,7 +769,7 @@ stautDeclStates staut = staut ^.. biplate
 
 -- | Extract the variables declared in the automaton.
 stautDeclInnerVars :: StautDecl -> [VarDecl]
-stautDeclInnerVars staut = staut ^.. biplate
+stautDeclInnerVars staut = stautComps (child staut) ^.. biplate
 
 -- | Extract the initial states declared in the automaton.
 stautInitStates :: StautDecl -> [InitStateDecl]
