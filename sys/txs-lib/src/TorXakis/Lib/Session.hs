@@ -17,7 +17,8 @@ import           Control.Concurrent.STM.TQueue (TQueue)
 import           Control.Concurrent.STM.TVar   (TVar)
 import           Control.DeepSeq               (NFData)
 import           Control.Exception             (SomeException)
-import qualified Data.Map                      as Map
+import qualified Data.Map.Strict               as Map
+import           Data.Time                     (UTCTime)
 import           GHC.Generics                  (Generic)
 import           Lens.Micro.TH                 (makeLenses)
 
@@ -60,6 +61,7 @@ data Session = Session
     , _fromWorldChan  :: TChan Action
     , _wConnDef       :: WorldConnDef
     , _worldListeners :: [ThreadId]
+    , _timers         :: TVar (Map.Map String UTCTime)
     }
 
 makeLenses ''Session

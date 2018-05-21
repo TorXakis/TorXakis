@@ -4,6 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
@@ -16,13 +17,13 @@ module TorXakis.CLI
     )
 where
 
-
 import           Control.Arrow                    ((|||))
-import           Control.Concurrent               (newChan, readChan)
+import           Control.Concurrent               (newChan, readChan,
+                                                   threadDelay)
 import           Control.Concurrent.Async         (async, cancel)
 import           Control.Lens                     ((^.))
-import           Control.Monad                    (forever)
-import           Control.Monad.Except             (runExceptT)
+import           Control.Monad                    (forever, when)
+import           Control.Monad.Except             (MonadError, runExceptT)
 import           Control.Monad.IO.Class           (MonadIO, liftIO)
 import           Control.Monad.Reader             (MonadReader, ReaderT, ask,
                                                    asks, runReaderT)
@@ -30,6 +31,7 @@ import           Control.Monad.Trans              (lift)
 import           Data.Aeson                       (eitherDecodeStrict)
 import qualified Data.ByteString.Char8            as BS
 import           Data.Char                        (toLower)
+import           Data.Either                      (isLeft)
 import           Data.Either.Utils                (maybeToEither)
 import           Data.Foldable                    (traverse_)
 import           Data.String.Utils                (strip)
@@ -45,6 +47,7 @@ import           TxsShow                          (pshow)
 
 import           TorXakis.CLI.Conf
 import           TorXakis.CLI.Env
+import           TorXakis.CLI.Help
 import qualified TorXakis.CLI.Log                 as Log
 import           TorXakis.CLI.WebClient
 
@@ -53,8 +56,7 @@ newtype CLIM a = CLIM { innerM :: ReaderT Env IO a }
     deriving (Functor, Applicative, Monad, MonadIO, MonadReader Env, MonadException)
 
 runCli :: Env -> CLIM a -> IO a
-runCli e clim =
-    runReaderT (innerM clim) e
+runCli e clim = runReaderT (innerM clim) e
 
 startCLI :: CLIM ()
 startCLI = do
@@ -69,61 +71,84 @@ startCLI = do
         }
     cli :: InputT CLIM ()
     cli = do
-        Log.initL
         sId <- lift $ asks sessionId
-        Log.info $ "SessionId: " ++ show sId
         Log.info "Starting printer async..."
         printer <- getExternalPrint
         ch <- liftIO newChan
         env <- lift ask
         -- TODO: maybe encapsulate this into a `withProdCons` that always
         -- cancel the producers and consumers at the end.
+        Log.info "Enabling messages..."
+        res <- lift openMessages
+        when (isLeft res) (error $ show res)
+        Log.info "Subscribing to messages..."
         producer <- liftIO $ async $
             sseSubscribe env ch $ concat ["sessions/", show sId, "/messages"]
         consumer <- liftIO $ async $ forever $ do
             msg <- readChan ch
             traverse_ (printer . ("<< " ++)) $ pretty (asTxsMsg msg)
-        handleInterrupt (return ())
-                        $ withInterrupt loop
-        liftIO $ cancel producer
-        liftIO $ cancel consumer
-
+        Log.info "Starting the main loop..."
+        outputStrLn "Welcome to TorXakis!"
+        withInterrupt $ handleInterrupt (outputStrLn "Ctrl+C: quitting") loop
+        Log.info "Closing messages..."
+        _ <- lift closeMessages
+        liftIO $ do
+            cancel producer
+            cancel consumer
     loop :: InputT CLIM ()
     loop = do
         minput <- getInputLine (defaultConf ^. prompt)
         case minput of
             Nothing -> return ()
             Just "" -> loop
-            Just "quit" -> return ()
+            Just "q" -> return ()
+            Just "quit" -> return () -- stop TorXakis completely
+            Just "exit" -> return () -- TODO: exit the current command run of TorXakis; when a file is run, exit ends that run while quit exits TorXakis
+            Just "x" -> return ()    -- ^
+            Just "?" -> showHelp
+            Just "h" -> showHelp
+            Just "help" -> showHelp
             Just input -> do dispatch input
                              loop
+    showHelp :: InputT CLIM ()
+    showHelp = do
+        outputStrLn helpText
+        loop
     dispatch :: String -> InputT CLIM ()
     dispatch inputLine = do
         modifyHistory $ addHistoryRemovingAllDupes (strip inputLine)
-        let tokens = words inputLine
-            cmd = head tokens
+        let tokens = words inputLine -- TODO: this argument parsing should be a bit more sophisticated.
+            cmd  = head tokens
+            rest = tail tokens
         case map toLower cmd of
-            "info"    ->
-                lift (runExceptT info) >>= output
-            "load"    ->
-                lift (load (tail tokens)) >>= output
-            "stepper" ->
-                subStepper (tail tokens) >>= output
-            "step" ->
-                subStep (tail tokens) >>= output
-            _         ->
-                output $ "Unknown command: " ++ cmd
+            "#"       -> return ()
+            "echo"    -> outputStrLn $ unwords rest
+            "delay"   -> waitFor $ head rest
+            "i"       -> lift (runExceptT info) >>= output
+            "info"    -> lift (runExceptT info) >>= output
+            "time"    -> lift (runExceptT getTime) >>= output
+            "timer"   -> lift (runExceptT $ timer rest) >>= output
+            "l"       -> lift (load rest) >>= output
+            "load"    -> lift (load rest) >>= output -- TODO: this will break if the file names contain a space.
+            "stepper" -> subStepper rest >>= output
+            "step"    -> subStep rest >>= output
+            _         -> output $ "Unknown command: " ++ cmd
           where
+            waitFor :: String -> InputT CLIM ()
+            waitFor n = case readMaybe n :: Maybe Int of
+                            Nothing -> output $ "Error: " ++ show n ++ " doesn't seem to be an integer."
+                            Just s  -> liftIO $ threadDelay (s * 10 ^ (6 :: Int))
             -- | Sub-command stepper.
             subStepper :: [String] -> InputT CLIM ()
             subStepper [mName] =
                 lift (stepper mName) >>= output
             subStepper _ = outputStrLn "This command is not supported yet."
             -- | Sub-command step.
-            subStep [with] = case readMaybe with of
-                Nothing -> outputStrLn "Number of steps should be an integer."
-                Just n  -> lift (step n) >>= output
-            subStep _ = outputStrLn "This command is not supported yet."
+            subStep with = (lift . step . concat $ with) >>= output
+            timer :: (MonadIO m, MonadReader Env m, MonadError String m)
+                  => [String] -> m String
+            timer [nm] = callTimer nm
+            timer _    = return "Usage: timer <timer name>"
     asTxsMsg :: BS.ByteString -> Either String Msg
     asTxsMsg msg = do
         msgData <- maybeToEither dataErr $
@@ -148,6 +173,9 @@ instance Outputable () where
 
 instance Outputable String where
     pretty = pure
+
+instance Outputable T.Text where
+    pretty = pure . T.unpack
 
 instance Outputable Info where
     pretty i = [ "Version: " ++ T.unpack (i ^. version)

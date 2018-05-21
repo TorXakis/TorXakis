@@ -13,7 +13,7 @@ See LICENSE at root directory of this repository.
 
 module TorXakis.Lib.Examples where
 
---import           Control.Concurrent           (ThreadId, forkIO)
+import           Control.Concurrent           (threadDelay)
 import           Control.Concurrent.Async     (async, cancel)
 import           Control.Concurrent.STM.TChan (writeTChan)
     --import           Control.Concurrent.STM.TVar  (readTVarIO)
@@ -124,8 +124,32 @@ printer :: Session -> IO ()
 printer s = runConduit $
     sourceTQueue (s ^. sessionMsgs) .|  mapM_ print
 
+-- | This example shows how use the action parsing capabilities of the library.
+testParseAction :: FilePath -> IO (Either Error Action)
+testParseAction path = do
+    cs <- readFile path
+    s <- newSession
+    r <- load s cs
+    putStrLn $ "Result of `load`: " ++ show r
+    _  <- setStep s "Model"
+    r' <- startStep s
+    putStrLn $ "Result of `step`: " ++ show r'
+    parseAction s "In ! 90"
+
+-- | This example parses a wrong action.
+testParseWrongAction :: FilePath -> IO (Either Error Action)
+testParseWrongAction path = do
+    cs <- readFile path
+    s <- newSession
+    r <- load s cs
+    putStrLn $ "Result of `load`: " ++ show r
+    _  <- setStep s "Model"
+    r' <- startStep s
+    putStrLn $ "Result of `step`: " ++ show r'
+    parseAction s "In" -- Error: no offer of type Int.
+
 -- | This example shows what happens when you load an invalid file.
-testWrongFile :: IO Response
+testWrongFile :: IO (Response ())
 testWrongFile = do
     cs <- readFile $ "test" </> "data" </> "wrong.txt"
     s <- newSession
@@ -174,6 +198,24 @@ testPrematureStop = do
     -- Cancel the printer (we aren't interested in any more messages, as a
     -- verdict has been reached):
     cancel a
+
+-- | Example of testing with an action.
+testWithUserActions :: FilePath -> IO (Either Error ())
+testWithUserActions path = do
+    cs <- readFile path
+    s <- newSession
+    a <- async (printer s)
+    void $ load s cs
+    void $ setStep s "Model"
+    void $ startStep s
+    Right act0 <- parseAction s "In ! 22"
+    _ <- step s (AnAction act0)
+    Right act1 <- parseAction s "Out ! 22"
+    r <- step s (AnAction act1)
+    void $ waitForVerdict s
+    threadDelay (10 ^ (6 :: Int))
+    cancel a
+    return r
 
 -- | Test info
 --

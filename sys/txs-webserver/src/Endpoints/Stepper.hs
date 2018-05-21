@@ -10,20 +10,18 @@ module Endpoints.Stepper
     , StartStepperEP
     , setStep
     , startStep
-    , TakeNStepsEP
-    , takeNSteps
+    , StepEP
+    , step
     )
 where
 
-import           Control.Monad.IO.Class     (liftIO)
-import           Data.ByteString.Lazy.Char8 (pack)
-import           Data.Text                  (Text)
+import           Data.Text    (Text)
 import           Servant
 
-import           TorXakis.Lib               (Response (..), StepType (..), step)
-import qualified TorXakis.Lib               as Lib
+import           TorXakis.Lib (StepType (..))
+import qualified TorXakis.Lib as Lib
 
-import           Common                     (Env, SessionId, getSession)
+import           Common       (Env, SessionId, liftLib)
 
 type SetStepperEP = "sessions"
                    :> Capture "sid" SessionId
@@ -32,12 +30,7 @@ type SetStepperEP = "sessions"
                    :> PostNoContent '[JSON] ()
 
 setStep :: Env -> SessionId -> Text -> Handler ()
-setStep env sid model = do
-    s <- getSession env sid
-    r <- liftIO $ Lib.setStep s model
-    case r of
-        Success -> return ()
-        Error m -> throwError $ err500 { errBody = pack m }
+setStep env sId model = liftLib env sId (`Lib.setStep` model)
 
 type StartStepperEP = "sessions"
                    :> Capture "sid" SessionId
@@ -45,29 +38,13 @@ type StartStepperEP = "sessions"
                    :> PostNoContent '[JSON] ()
 
 startStep :: Env -> SessionId -> Handler ()
-startStep env sid = do
-    s <- getSession env sid
-    r <- liftIO $ Lib.startStep s
-    case r of
-        Success -> return ()
-        Error m -> throwError $ err500 { errBody = pack m }
+startStep env sId = liftLib env sId Lib.startStep
 
+type StepEP   = "sessions"
+                :> Capture "sid" SessionId
+                :> "step"
+                :> ReqBody '[JSON] StepType
+                :> PostNoContent '[JSON] ()
 
-type TakeNStepsEP   = "sessions"
-                   :> Capture "sid" SessionId
-                   :> "stepper"
-                   :> Capture "steps" Int
-                   :> PostNoContent '[JSON] ()
-
-takeNSteps :: Env -> SessionId -> Int -> Handler ()
-takeNSteps env sid steps = do
-    s <- getSession env sid
-    r <- liftIO $ do
-            putStrLn $ "Taking " ++ show steps ++ " steps in session " ++ show sid
-            r <- step s $ NumberOfSteps steps
-            print r
-            return r
-    case r of
-        Success -> return ()
-        Error m -> throwError $ err500 { errBody = pack m }
-
+step :: Env -> SessionId -> StepType -> Handler ()
+step env sId sType = liftLib env sId (`Lib.step` sType)

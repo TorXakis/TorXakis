@@ -53,9 +53,9 @@ import qualified Data.Map        as Map
 import           GHC.Generics    (Generic)
 
 import           BehExprDefs     as X
+import           ConnectionDefs  as X
 import           Ident           as X
 import           TxsDef          as X
-import           ConnectionDefs  as X
 
 import           ChanId
 import           CnectDef
@@ -231,7 +231,6 @@ union a b = TxsDefs
                 (Map.union (goalDefs a)  (goalDefs b)   )
                 (Map.union (mapperDefs a)(mapperDefs b) )
                 (Map.union (cnectDefs a) (cnectDefs b)  )
-
 
 -- ----------------------------------------------------------------------------------------- --
 --

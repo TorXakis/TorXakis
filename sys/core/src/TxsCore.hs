@@ -57,9 +57,10 @@ module TxsCore
 , txsStopEW
 
 -}
-  -- *  TorXakis definitions
-  -- ** get all torxakis definitions
+  -- *  TorXakis definitions loaded into the core.
 , txsGetTDefs
+, txsGetSigs
+, txsGetCurrentModel
 {-
   -- ** set all torxakis definitions
 , txsSetTDefs
@@ -156,6 +157,7 @@ import qualified Config
 -- import           Expand              (relabel)
 
 -- import from coreenv
+import           EnvCore             (modeldef)
 import qualified EnvCore             as IOC
 import qualified EnvData
 import qualified ParamCore
@@ -338,14 +340,44 @@ txsStopEW eWorld  =  do
 
 -}
 
--- | Get all torxakis definitions
+-- | Get the TorXakis definitions that were loaded into the core.
 txsGetTDefs :: IOC.IOC TxsDefs.TxsDefs
-txsGetTDefs  =  do
+txsGetTDefs =  do
      envc <- get
      case IOC.state envc of
-       IOC.Idling -> return TxsDefs.empty
-       _                             -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
-                  -> return $ IOC.tdefs (IOC.state envc)
+         IOC.Idling ->
+             return TxsDefs.empty
+         _  ->
+             return $ IOC.tdefs (IOC.state envc)
+
+-- | Get the TorXakis signatures that were loaded into the core.
+txsGetSigs :: IOC.IOC (Sigs.Sigs VarId)
+txsGetSigs =  do
+    envc <- get
+    case IOC.state envc of
+         IOC.Idling ->
+             return Sigs.empty
+         _  ->
+             return $ IOC.sigs (IOC.state envc)
+
+-- | Get the current model, if any. A model will be returned only in the
+-- 'Testing', 'Simuling', 'StepSet', and 'Stepping' modes.
+txsGetCurrentModel :: IOC.IOC (Maybe TxsDefs.ModelDef)
+txsGetCurrentModel = do
+    envc <- get
+    case IOC.state envc of
+        IOC.Idling                  -> return Nothing
+        IOC.Initing {}              -> return Nothing
+        IOC.ManSet {}               -> return Nothing
+        IOC.Manualing {}            -> return Nothing
+        -- Please note that we want to have an *explicit* pattern matching on
+        -- the constructors that have a model definition, since we don't want
+        -- to inadvertently try to access a value that does not have a modeldef
+        -- field if `CoreState` gets extended later on.
+        IOC.Testing {modeldef = m}  -> return (Just m)
+        IOC.Simuling {modeldef = m} -> return (Just m)
+        IOC.StepSet {modeldef = m}  -> return (Just m)
+        IOC.Stepping {modeldef = m} -> return (Just m)
 
 {-
 

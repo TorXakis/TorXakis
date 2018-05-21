@@ -2,16 +2,21 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeApplications    #-}
 -- | Web client for `txs-webserver`.
 module TorXakis.CLI.WebClient
     ( info
     , Info
+    , getTime
     , version
     , buildTime
     , load
     , stepper
     , step
+    , openMessages
     , sseSubscribe
+    , closeMessages
+    , callTimer
     )
 where
 
@@ -22,11 +27,13 @@ import           Control.Exception      (Handler (Handler), IOException,
 import           Control.Lens           ((^.), (^?))
 import           Control.Lens.TH        (makeLenses)
 import           Control.Monad          (when)
-import           Control.Monad.Except   (ExceptT, MonadError, liftEither,
-                                         runExceptT, throwError)
+import           Control.Monad.Except   (ExceptT, MonadError, catchError,
+                                         liftEither, runExceptT, throwError)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader   (MonadReader, asks)
+import           Data.Aeson             (eitherDecode)
 import           Data.Aeson.Lens        (key, _String)
+import           Data.Aeson.Types       (toJSON)
 import qualified Data.ByteString        as BSS
 import qualified Data.ByteString.Char8  as BS
 import           Data.ByteString.Lazy   (ByteString)
@@ -39,10 +46,14 @@ import           Network.Wreq           (Response, foldGet, get, partFile, post,
                                          statusCode)
 import           Network.Wreq.Types     (Postable, Putable)
 import           System.FilePath        (takeFileName)
+import           Text.Read              (readMaybe)
+
+import           TorXakis.Lib           (StepType (AnAction, NumberOfSteps))
+
+-- TODO: put the module below into 'TorXakis.WebServer.Endpoints.Parse' or something similar.
+import           Endpoints.Parse        (ActionText (ActionText))
 
 import           TorXakis.CLI.Env
-
-
 
 data Info = Info
     { _version   :: Text
@@ -92,6 +103,39 @@ info = do
              r ^? responseBody . key "buildTime" . _String
         return $ Info v b
 
+-- | Retrieve the system information from 'TorXakis'.
+getTime :: (MonadIO m, MonadReader Env m, MonadError String m)
+        => m Text
+getTime = do
+    r <- envGet "time"
+    (r ^. responseStatus . statusCode) `shouldBeStatus` 200
+    liftEither $ maybeToEither "Response did not contain \"currentTime\"" $
+                    r ^? responseBody . key "currentTime" . _String
+
+
+-- | Retrieve the system information from 'TorXakis'.
+-- callTimer :: (MonadIO m, MonadReader Env m, MonadError String m)
+--         => m Text
+callTimer :: (MonadIO m, MonadReader Env m, MonadError String m)
+          => String -> m String
+callTimer nm = do
+    sId <- asks sessionId
+    let path = concat ["sessions/", show sId, "/timers/", nm]
+    r <- envPost path noContent
+    (r ^. responseStatus . statusCode) `shouldBeStatus` 200
+    liftEither $ do
+        tnm <- maybeToEither "Response did not contain \"timerName\"" $
+                    r ^? responseBody . key "timerName" . _String
+        stt <- maybeToEither "Response did not contain \"startTime\"" $
+                    r ^? responseBody . key "startTime" . _String
+        stp <- maybeToEither "Response did not contain \"stopTime\"" $
+                    r ^? responseBody . key "stopTime" . _String
+        d   <- maybeToEither "Response did not contain \"duration\"" $
+                    r ^? responseBody . key "duration" . _String
+        if T.null d
+            then return $ concat ["Timer ", T.unpack tnm, " started at " ++ T.unpack stt ++ "."]
+            else return $ concat ["Timer ", T.unpack tnm, " stopped at " ++ T.unpack stp ++ ". Duration: ", T.unpack d]
+
 shouldBeStatus :: (MonadError String m) => Int -> Int -> m ()
 shouldBeStatus got expected =
     when (got /= expected) $
@@ -99,6 +143,7 @@ shouldBeStatus got expected =
                    ++ " instead of " ++ show expected
 
 -- | Load a list of files using the given environment.
+--
 load :: (MonadIO m, MonadReader Env m) => [FilePath] -> m (Either String ())
 load files = do
     sId <- asks sessionId
@@ -130,16 +175,37 @@ stepper mName = do
         envPost (concat ["sessions/", show sId, "/start-step/"]) noContent
 
 
-step :: (MonadIO m, MonadReader Env m) => Int -> m (Either String ())
-step n = do
+step :: (MonadIO m, MonadReader Env m) => String -> m (Either String ())
+step with = do
     sId <- asks sessionId
-    ignoreSuccess $
-        envPost (concat ["sessions/", show sId, "/stepper/", show n]) noContent
+    ignoreSuccess $ do
+        sType <- step1 `catchError` \_ ->
+                 parseNumberOfSteps `catchError` \_ ->
+                 parseAction sId
+        envPost (concat ["sessions/", show sId, "/step/"]) (toJSON sType)
+    where
+      step1 = if null with
+          then return $ NumberOfSteps 1
+          else throwError "Non-empty argument to step"
+      parseNumberOfSteps = liftEither $ maybeToEither "Expecting a number" $
+          fmap NumberOfSteps (readMaybe with)
+      parseAction sId = do
+          let actText = ActionText (T.pack with)
+          rsp <- envPost (concat ["sessions/", show sId, "/parse-action/"]) (toJSON actText)
+          act <- liftEither $ eitherDecode $ rsp ^. responseBody
+          return $ AnAction act
 
 ignoreSuccess :: (MonadIO m)
                => ExceptT String m (Response ByteString)
                -> m (Either String ())
 ignoreSuccess = fmap (right (const ())) . runExceptT
+
+-- | Open the messages endpoint
+openMessages :: (MonadIO m, MonadReader Env m) => m (Either String ())
+openMessages = do
+    sId <- asks sessionId
+    ignoreSuccess $
+        envPost (concat ["sessions/", show sId, "/messages/open/"]) noContent
 
 sseSubscribe :: Env -> Chan BSS.ByteString -> String -> IO (Either String ())
 sseSubscribe env ch suffix =
@@ -148,3 +214,9 @@ sseSubscribe env ch suffix =
       host = txsHost env
       act _ = writeChan ch
 
+-- | Close the messages endpoint
+closeMessages :: (MonadIO m, MonadReader Env m) => m (Either String ())
+closeMessages = do
+    sId <- asks sessionId
+    ignoreSuccess $
+        envPost (concat ["sessions/", show sId, "/messages/close/"]) noContent

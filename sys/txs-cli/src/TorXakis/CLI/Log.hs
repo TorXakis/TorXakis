@@ -29,5 +29,7 @@ info :: MonadIO m => String -> m ()
 info = liftIO . infoM appName
 
 warn :: MonadIO m => String -> m ()
-warn = liftIO . warningM appName
+warn s = liftIO $ do
+    warningM appName s
+    putStrLn s
 

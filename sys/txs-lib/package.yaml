@@ -25,6 +25,7 @@ default-extensions:
 
 dependencies:
 - base >= 4.7 && < 5
+- filepath
   
 ghc-options:
 - -O2
@@ -35,11 +36,6 @@ ghc-options:
 
 library:
   source-dirs: src
-  exposed-modules:
-  - TorXakis.Lib
-  - TorXakis.Lib.Examples
-  - TorXakis.Lib.Internal
-  - TorXakis.Lib.Session
   dependencies:
   - aeson
   - async
@@ -50,7 +46,6 @@ library:
   - deepseq
   - directory
   - extra
-  - filepath
   - http-client
   - lens-aeson
   - microlens
@@ -64,9 +59,11 @@ library:
   - stm-chans  
   - stm-conduit
   - text
+  - time
   - transformers
   - wreq
   - yaml
+  - MissingH
   # `TorXakis` dependencies.
   - defs
   - valexpr

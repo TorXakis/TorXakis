@@ -8,12 +8,16 @@ See LICENSE at root directory of this repository.
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
 module Main (main) where
 
+import           Control.Concurrent           (threadDelay)
+import           Control.Concurrent.Async     (async, wait)
 import           Control.Exception            (catch, throwIO)
 import           Data.Aeson                   (decode, decodeStrict)
-import           Data.Aeson.Types             (Object, Parser, parseMaybe, (.:))
+import           Data.Aeson.Types             (Object, Parser, parseMaybe,
+                                               toJSON, (.:))
 import           Data.ByteString.Char8        as BS
 import           Data.ByteString.Lazy.Char8   as BSL
 import           Data.Maybe                   (mapMaybe)
+import           GHC.Stack                    (HasCallStack)
 import           Lens.Micro                   ((^.), (^?))
 import           Lens.Micro.Aeson             (key, _Integer)
 import           System.Process               (StdStream (NoStream), proc,
@@ -23,34 +27,40 @@ import qualified Network.HTTP.Client          as C
 import qualified Network.HTTP.Client.Internal as CI
 import           Network.Wreq                 as W
 
+import           TorXakis.Lib                 (StepType (NumberOfSteps))
+
 import           Test.Hspec
 
 main :: IO ()
-main = withCreateProcess (proc "txs-webserver-exe" []) {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
-    s <- spec
-    hspec s
+-- TODO: a problem with this is that it won't recompile the 'txs-webserver'
+-- program when it changes, so this is not that useful for unit testing. We
+-- should just call the 'main' function at 'txs-webserver/app/Main.hs'.
+main = withCreateProcess (proc "txs-webserver" []) {std_out = NoStream} $
+    \_stdin _stdout _stderr _ph -> do
+        s <- spec
+        hspec s
 
 spec :: IO Spec
 spec = return $ do
         describe "Get TorXakis info" $
             it "Info responds with 200 and info" $ do
-                r <- get "http://localhost:8080/info"
+                r <- get (host ++ "/info")
                 r ^. responseStatus . statusCode `shouldBe` 200 -- OK
                 let bodyStr = BSL.unpack $ r ^. responseBody
                 bodyStr `shouldContain` "\"version\""
                 bodyStr `shouldContain` "\"buildTime\""
         describe "Create new TorXakis session" $
             it "Creates 2 sessions" $ do
-                r <- post "http://localhost:8080/sessions/new" [partText "" ""]
+                r <- post (host ++ "/sessions/new") emptyP
                 r ^. responseStatus . statusCode `shouldBe` 201 -- Created
                 r ^. responseBody `shouldBe` "{\"sessionId\":1}"
-                r2 <- post "http://localhost:8080/sessions/new" [partText "" ""]
+                r2 <- post (host ++ "/sessions/new") emptyP
                 r2 ^. responseStatus . statusCode `shouldBe` 201 -- Created
                 r2 ^. responseBody `shouldBe` "{\"sessionId\":2}"
         describe "Upload files to a session" $ do
             it "Uploads valid file" $ do
-                _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
-                r <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                _ <- post (host ++ "/sessions/new") emptyP
+                r <- put (host ++ "/sessions/1/model") [partFile "Point.txs" "../../examps/Point/Point.txs"]
                 r ^. responseStatus . statusCode `shouldBe` 202 -- Accepted
                 let res = do
                         [result] <- decode $ r ^. responseBody
@@ -81,7 +91,7 @@ spec = return $ do
                         let s = r ^. responseStatus
                         return CI.Response{CI.responseStatus = s}
                     handler e = throwIO e
-                _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
+                _ <- post (host ++ "/sessions/new") emptyP
                 sId <- mkNewSession
                 r <- put (newSessionUrl sId) [partFile "wrong.txt" "../../sys/txs-lib/test/data/wrong.txt"]
                         `catch` handler
@@ -91,30 +101,133 @@ spec = return $ do
                                                                    ]
                         `catch` handler
                 r2 ^. responseStatus . statusCode `shouldBe` 400 -- Bad Request
-        describe "Stepper" $
+        describe "Stepper" $ do
             it "Starts stepper and takes 3 steps" $ do
                 sId <- mkNewSession
                 _ <- put (newSessionUrl sId) [partFile "Point.txs" "../../examps/Point/Point.txs"]
-                post "http://localhost:8080/sessions/1/set-step/Model" [partText "" ""] >>= check204NoContent
-                post "http://localhost:8080/sessions/1/start-step/" [partText "" ""] >>= check204NoContent
-                post "http://localhost:8080/sessions/1/stepper/3" [partText "" ""] >>= check204NoContent
-                totalSteps <- foldGet checkActions 0 "http://localhost:8080/sessions/1/messages"
+                post (setStepUrl sId) emptyP >>= check204NoContent
+                post (startStepUrl sId) emptyP >>= check204NoContent
+                let threeSteps = toJSON (NumberOfSteps 3)
+                post (stepUrl sId) threeSteps >>= check204NoContent
+                post (openMessagesUrl sId) emptyP >>= check204NoContent
+                a <- async $ foldGet checkActions 0 (messagesUrl sId)
+                threadDelay (10 ^ (6 :: Int)) -- We have to wait a bit till all
+                                              -- the messages are put in the
+                                              -- queue by the stepper.
+                post (closeMessagesUrl sId) emptyP >>= check204NoContent
+                totalSteps <- wait a
                 totalSteps `shouldBe` 3
-            -- it "Starts tester and tests 3 steps" $ do
-            --     _ <- post "http://localhost:8080/sessions/new" [partText "" ""]
-            --     _ <- put "http://localhost:8080/sessions/1/model" [partFile "Point.txs" "../../examps/Point/Point.txs"]
-            --     _ <- checkSuccess <$> post "http://localhost:8080/tester/start/1/Model" [partText "" ""]
-            --     _ <- checkSuccess <$> post "http://localhost:8080/tester/test/1/3" [partText "" ""]
-            --     checkJSON    <$> get "http://localhost:8080/sessions/sse/1/messages"
+            it "Starts stepper and takes 6 steps in two different step commands" $ do
+                sId <- mkNewSession
+                _ <- put (newSessionUrl sId) [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                post (setStepUrl sId) emptyP >>= check204NoContent
+                post (startStepUrl sId) emptyP >>= check204NoContent
+                let threeSteps = toJSON (NumberOfSteps 3)
+                post (stepUrl sId) threeSteps >>= check204NoContent
+                post (openMessagesUrl sId) emptyP >>= check204NoContent
+                a <- async $ foldGet checkActions 0 (messagesUrl sId)
+                post (stepUrl sId) threeSteps >>= check204NoContent
+                threadDelay (10 ^ (6 :: Int)) -- We have to wait a bit till all
+                                              -- the messages are put in the
+                                              -- queue by the stepper.
+                post (closeMessagesUrl sId) emptyP >>= check204NoContent
+                totalSteps <- wait a
+                totalSteps `shouldBe` 6
+        describe "Timer" $ do
+            it "Starts timer" $ do
+                sId <- mkNewSession
+                r <- post (timerUrl sId "testTimer") emptyP
+                r ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                let res = do timer <- decode $ r ^. responseBody :: Maybe Object
+                             parseMaybe parseTimerResult timer
+                case res of
+                    Nothing -> expectationFailure $  "Can't parse: " ++ show (r ^. responseBody)
+                    Just (tn,stt,stp,d) -> do tn `shouldBe` "testTimer"
+                                              stt `shouldNotSatisfy` Prelude.null
+                                              stp `shouldSatisfy` Prelude.null
+                                              d   `shouldSatisfy` Prelude.null
+            it "Reads timer" $ do
+                sId <- mkNewSession
+                r <- post (timerUrl sId "testTimer") emptyP
+                let Just (_,startTime,_,_) =
+                        do  timer <- decode $ r ^. responseBody :: Maybe Object
+                            parseMaybe parseTimerResult timer
+                r2 <- post (timerUrl sId "testTimer") emptyP
+                r2 ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                let res2 = do timer <- decode $ r2 ^. responseBody :: Maybe Object
+                              parseMaybe parseTimerResult timer
+                case res2 of
+                    Nothing -> expectationFailure $ "Can't parse: " ++ show (r2 ^. responseBody)
+                    Just (tn,stt,stp,d) -> do tn `shouldBe` "testTimer"
+                                              stt `shouldBe` startTime
+                                              stp `shouldNotSatisfy` Prelude.null
+                                              d   `shouldNotSatisfy` Prelude.null
+            it "Restarts timer" $ do
+                sId <- mkNewSession
+                _ <- post (timerUrl sId "testTimer") emptyP
+                _ <- post (timerUrl sId "testTimer") emptyP
+                r <- post (timerUrl sId "testTimer") emptyP
+                let res = do timer <- decode $ r ^. responseBody :: Maybe Object
+                             parseMaybe parseTimerResult timer
+                case res of
+                    Nothing -> expectationFailure $ "Can't parse: " ++ show (r ^. responseBody)
+                    Just (tn,stt,stp,d) -> do tn `shouldBe` "testTimer"
+                                              stt `shouldNotSatisfy` Prelude.null
+                                              stp `shouldSatisfy` Prelude.null
+                                              d   `shouldSatisfy` Prelude.null
+            it "Multiple timers" $ do
+                sId <- mkNewSession
+                r1_start <- post (timerUrl sId "testTimer1") emptyP
+                let Just (_,startTime1,_,_) =
+                        do  timer <- decode $ r1_start ^. responseBody :: Maybe Object
+                            parseMaybe parseTimerResult timer
+                r2_start <- post (timerUrl sId "testTimer2") emptyP
+                let Just (_,startTime2,_,_) =
+                        do  timer <- decode $ r2_start ^. responseBody :: Maybe Object
+                            parseMaybe parseTimerResult timer
 
-check204NoContent :: Response BSL.ByteString -> IO ()
+                r1_read <- post (timerUrl sId "testTimer1") emptyP
+                let res1 = do timer <- decode $ r1_read ^. responseBody :: Maybe Object
+                              parseMaybe parseTimerResult timer
+                case res1 of
+                    Nothing -> expectationFailure $ "Can't parse: " ++ show (r1_read ^. responseBody)
+                    Just (tn,stt,stp,d) -> do tn `shouldBe` "testTimer1"
+                                              stt `shouldBe` startTime1
+                                              stp `shouldNotSatisfy` Prelude.null
+                                              d   `shouldNotSatisfy` Prelude.null
+                r2_read <- post (timerUrl sId "testTimer2") emptyP
+                let res2 = do timer <- decode $ r2_read ^. responseBody :: Maybe Object
+                              parseMaybe parseTimerResult timer
+                case res2 of
+                    Nothing -> expectationFailure $ "Can't parse: " ++ show (r2_read ^. responseBody)
+                    Just (tn,stt,stp,d) -> do tn `shouldBe` "testTimer2"
+                                              stt `shouldBe` startTime2
+                                              stp `shouldNotSatisfy` Prelude.null
+                                              d   `shouldNotSatisfy` Prelude.null
+
+            -- it "Starts tester and tests 3 steps" $ do
+            --     sId <- mkNewSession
+            --     _ <- put (newSessionUrl sid) [partFile "Point.txs" "../../examps/Point/Point.txs"]
+            --     _ <- checkSuccess <$> post host ++ "/tester/start/1/Model" emptyP
+            --     _ <- checkSuccess <$> post host ++ "/tester/test/1/3" emptyP
+            --     checkJSON    <$> get host ++ "/sessions/sse/1/messages"
+
+check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
 
 parseFileUploadResult :: Object -> Parser (String, Bool)
 parseFileUploadResult o = do
     fn <- o .: "fileName" :: Parser String
     l  <- o .: "loaded"   :: Parser Bool
-    return (fn,l)
+    return (fn, l)
+
+parseTimerResult :: Object -> Parser (String, String, String, String)
+parseTimerResult o = do
+    tn  <- o .: "timerName" :: Parser String
+    stt <- o .: "startTime" :: Parser String
+    stp <- o .: "stopTime" :: Parser String
+    d   <- o .: "duration"  :: Parser String
+    return (tn,stt,stp,d)
 
 checkActions :: Int -> BS.ByteString -> IO Int
 checkActions steps bs = do
@@ -129,10 +242,37 @@ parseTag o = o .: "tag"
 
 mkNewSession :: IO Integer
 mkNewSession = do
-    sr <- post "http://localhost:8080/sessions/new" [partText "" ""]
+    sr <- post (host ++ "/sessions/new") emptyP
     sr ^. responseStatus . statusCode `shouldBe` 201 -- Created
     let Just sId = sr ^? responseBody . key "sessionId" . _Integer
     return sId
 
+host :: String
+host = "http://localhost:8080"
+
 newSessionUrl :: Integer -> String
-newSessionUrl sId = "http://localhost:8080/sessions/" ++ show sId ++ "/model"
+newSessionUrl sId = host ++ "/sessions/" ++ show sId ++ "/model"
+
+setStepUrl :: Integer -> String
+setStepUrl sId = host ++ "/sessions/" ++ show sId ++ "/set-step/Model"
+
+startStepUrl :: Integer -> String
+startStepUrl sId = host ++ "/sessions/" ++ show sId ++ "/start-step"
+
+stepUrl :: Integer -> String
+stepUrl sId = host ++ "/sessions/" ++ show sId ++ "/step/"
+
+messagesUrl :: Integer -> String
+messagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages"
+
+closeMessagesUrl :: Integer -> String
+closeMessagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages/close"
+
+openMessagesUrl :: Integer -> String
+openMessagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages/open"
+
+timerUrl :: Integer -> String -> String
+timerUrl sId nm = Prelude.concat [host, "/sessions/", show sId, "/timers/", nm]
+
+emptyP :: [Part]
+emptyP = [partText "" ""]

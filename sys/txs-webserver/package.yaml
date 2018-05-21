@@ -26,6 +26,7 @@ default-extensions:
 
 dependencies:
 - base >= 4.7 && < 5
+- async
   
 ghc-options:
 - -O2
@@ -35,12 +36,8 @@ ghc-options:
 
 library:
   source-dirs: src
-  exposed-modules:
-  - API
-  - Common
   dependencies:
   - aeson
-  - async
   - binary
   - bytestring
   - conduit
@@ -62,9 +59,10 @@ library:
   # `TorXakis` dependencies.
   - coreenv
   - txs-lib
-  
+  - defs
+
 executables:
-  txs-webserver-exe:
+  txs-webserver:
     main: Main.hs
     source-dirs:
     - app
@@ -75,7 +73,9 @@ executables:
     dependencies:
     - base
     - txs-webserver
-    
+    - docopt
+    - MissingH
+
 tests:
   txs-webserver-test:
     main: Spec.hs
@@ -95,3 +95,5 @@ tests:
     - microlens
     - process
     - wreq
+    # TorXakis dependencies.
+    - txs-lib
