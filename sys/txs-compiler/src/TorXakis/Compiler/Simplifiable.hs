@@ -16,11 +16,11 @@ import           FuncDef         (FuncDef (FuncDef))
 import           FuncId          (FuncId (FuncId), name)
 import           FuncTable       (FuncTable, Signature (Signature), toMap)
 import           ProcId          (ProcId)
-import           TxsDefs         (ActOffer (ActOffer), BExpr, BExprView (ActionPref, Guard, ProcInst, ValueEnv),
+import           TxsDefs         (ActOffer (ActOffer), BExpr, BExprView (ActionPref, Guard, ProcInst, StAut, ValueEnv),
                                   ChanOffer (Exclam, Quest),
                                   ModelDef (ModelDef), ModelId, Offer (Offer),
-                                  ProcDef (ProcDef), actionPref, guard,
-                                  procInst, valueEnv)
+                                  ProcDef (ProcDef), Trans (Trans), actionPref,
+                                  guard, procInst, stAut, valueEnv)
 import           ValExpr         (ValExpr, ValExprView (Vfunc, Vite), cstrITE,
                                   cstrVar)
 import qualified ValExpr
@@ -82,7 +82,7 @@ instance (Simplifiable a, Ord a) => Simplifiable (Set a) where
     simplify ft fns = Set.fromList . fmap (simplify ft fns) . Set.toList
 
 instance (Simplifiable k, Simplifiable v, Ord k) => Simplifiable (Map k v) where
-    simplify ft fns = Map.fromList . simplify ft fns .Map.toList
+    simplify ft fns = Map.fromList . simplify ft fns . Map.toList
 
 instance Simplifiable ProcId where
     simplify _ _ = id
@@ -102,6 +102,8 @@ instance Simplifiable BExpr where
         = procInst p cs (simplify ft fns vs)
     simplify ft fns (BExpr.view -> Guard g be)
         = guard (simplify ft fns g) (simplify ft fns be)
+    simplify ft fns (BExpr.view -> StAut st vEnv trs)
+        = stAut st (simplify ft fns vEnv) (simplify ft fns trs)
     simplify ft fns be = over uniplate (simplify ft fns) be
 
 instance Simplifiable ActOffer where
@@ -116,3 +118,9 @@ instance Simplifiable ChanOffer where
 
 instance Simplifiable VarId where
     simplify _ _ = id
+
+instance Simplifiable Trans where
+    simplify ft fns (Trans from ofr upd to) = Trans from ofr' upd' to
+        where
+          ofr' = simplify ft fns ofr
+          upd' = simplify ft fns upd

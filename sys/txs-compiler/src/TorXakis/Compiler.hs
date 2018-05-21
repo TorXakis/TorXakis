@@ -7,8 +7,6 @@
 {-# LANGUAGE TypeFamilies        #-}
 module TorXakis.Compiler where
 
-import           Debug.Trace
-
 import           Control.Arrow                      (first, second, (|||))
 import           Control.Lens                       (over, (^.), (^..))
 import           Control.Monad.State                (evalStateT, get)
@@ -256,4 +254,4 @@ compileToProcDefs mm pd = do
     let pms = pmsP `Map.union` pmsS -- TODO: we might consider detecting for duplicated process here.
     procPDefMap  <- procDeclsToProcDefMap (pms :& mm) (pd ^. procs)
     stautPDefMap <- stautDeclsToProcDefMap (pms :& mm) (pd ^. stauts)
-    trace (show stautPDefMap) $ return $ procPDefMap `Map.union` stautPDefMap
+    return $ procPDefMap `Map.union` stautPDefMap

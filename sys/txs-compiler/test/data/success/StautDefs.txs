@@ -1,12 +1,28 @@
-STAUTDEF simple[X]() ::=
-    STATE foo, bar, Boo
-    VAR x :: Int
-    INIT foo
+-- STAUTDEF verrrrySimple[X]() ::=
+--     STATE foo
+--     INIT foo
 
-    TRANS foo -> X                          -> bar
-          bar -> X { x := x + 10 }          -> foo
-          bar -> X [[ x < 20 ]] { x := 10 } -> foo          
-ENDDEF
+--     TRANS foo -> X                          -> foo
+-- ENDDEF
+
+-- STAUTDEF verySimple[X]() ::=
+--     STATE foo
+--     INIT foo
+--     VAR x :: Int
+
+--     TRANS foo -> X {x := x + 1} -> foo
+-- ENDDEF
+
+
+-- STAUTDEF simple[X]() ::=
+--     STATE foo, bar, Boo
+--     VAR x :: Int
+--     INIT foo
+
+--     TRANS foo -> X                          -> bar
+--           bar -> X { x := x + 10 }          -> foo
+--           bar -> X [[ x < 20 ]] { x := 10 } -> foo          
+-- ENDDEF
 
 STAUTDEF check1000 [ Add :: Int;  Sum :: Int;  Success ]  ( start_value :: Int ) ::=
       STATE  state0, state1
@@ -19,17 +35,17 @@ STAUTDEF check1000 [ Add :: Int;  Sum :: Int;  Success ]  ( start_value :: Int )
              state1  ->  Success    [[ sum >= 1000 ]]  { sum := start_value }  ->  state0
 ENDDEF
 
-CHANDEF X ::=
-    Add, Sum :: Int;
-    Success
-ENDDEF
+-- CHANDEF X ::=
+--     Add, Sum :: Int;
+--     Success
+-- ENDDEF
 
-MODELDEF Check1000 ::=
-    CHAN IN Add
-    CHAN OUT Sum, Success
-    BEHAVIOUR
-    check1000[Add, Sum, Success](0)
-ENDDEF
+-- MODELDEF Check1000 ::=
+--     CHAN IN Add
+--     CHAN OUT Sum, Success
+--     BEHAVIOUR
+--     check1000[Add, Sum, Success](0)
+-- ENDDEF
 
 -- TODO:
 -- MODELDEF STDCheck1000 ::=

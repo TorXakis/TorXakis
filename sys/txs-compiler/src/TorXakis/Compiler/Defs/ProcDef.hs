@@ -18,10 +18,12 @@ import           ChanId                             (ChanId)
 import           FuncDef                            (FuncDef)
 import           FuncId                             (FuncId)
 import           Id                                 (Id (Id))
+import qualified ProcId
 import           SortId                             (SortId)
 import qualified SortId
 import           StatId                             (StatId (StatId))
 import qualified StatId
+import           StautDef                           (translate)
 import           TxsDefs                            (ExitSort (..),
                                                      ProcDef (ProcDef),
                                                      ProcId (ProcId), VEnv)
@@ -132,18 +134,35 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                            -> CompilerM [(ProcId, ProcDef)]
       stautDeclsToProcDefs pms staut = do
           p@(ProcInfo pId chIds pvIds) <- mm .@ asProcDeclLoc staut :: CompilerM ProcInfo
+          (ProcInfo pIdStd _ _)        <- mm .@ ExtraAut "std" (asProcDeclLoc staut) :: CompilerM ProcInfo
+          (ProcInfo pIdStdi _ _)       <- mm .@ ExtraAut "stdi" (asProcDeclLoc staut) :: CompilerM ProcInfo
           let chIdsM = Map.fromList chIds
           procChIds <- traverse (chIdsM .@) (getLoc <$> stautDeclChParams staut)
           let pvIds' = snd <$> pvIds
-          beStaut <- uncurry3 Beh.stAut <$> stautItemToBExpr p
-          return [( pId, ProcDef procChIds pvIds' beStaut )
-                 -- , undefined -- TODO: defined proc defs for "std"
-                 -- , undefined -- TODO: defined proc defs for "stdi"
+          (stIds, innerVars, initS, vEnv, trans) <- stautItemToBExpr p
+          -- Now we create the other two non-standard automata
+          id0   <- getNextId
+          id1   <- getNextId
+          let (pd, iStaut) = translate (Map.empty :: Map.Map FuncId (FuncDef VarId))
+                                   (Id id0)
+                                   (Id id1)
+                                   (ProcId.name pId)
+                                   procChIds
+                                   (snd <$> pvIds)
+                                   (ProcId.procexit pId)
+                                   stIds
+                                   innerVars
+                                   trans
+                                   initS
+                                   vEnv
+          return [ (pId, ProcDef procChIds pvIds' (Beh.stAut initS vEnv trans))
+                 , (pIdStd, pd)
+                 , (pIdStdi, ProcDef procChIds pvIds' iStaut)
                  ]
           where
             -- | Compile the list of @StautItem@'s to a triple of the initial state,
             -- a local variables map, and a list of transitions.
-            stautItemToBExpr:: ProcInfo -> CompilerM (StatId, VEnv, [Beh.Trans])
+            stautItemToBExpr:: ProcInfo -> CompilerM ([StatId], [VarId], StatId, VEnv, [Beh.Trans])
             stautItemToBExpr (ProcInfo pId chIds pvIds) = do
                 -- Collect all the explicit variable declarations.
                 innerVSIds <- getMap mm (stautDeclInnerVars staut)
@@ -172,7 +191,7 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                 iniSt    <- lookupStatId iniStRef stIds
                 initVEnv <- stUpdatesToVEnv extraVIds uds
                 trans    <- mkTransitions stIds chDecls extraVIds
-                return (iniSt, initVEnv, trans)
+                return (stIds, Map.elems innerVIds, iniSt, initVEnv, trans)
                 where
                   stateDeclToStateId :: StateDecl -> CompilerM StatId
                   stateDeclToStateId st = do
@@ -246,6 +265,3 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                                                ofrD
                             upd  <- stUpdatesToVEnv allVIds updD
                             return $ Beh.Trans from ofr upd to
-
-      uncurry3 :: (a -> b -> c -> d) -> ((a, b, c) -> d)
-      uncurry3 f (a, b, c) = f a b c
