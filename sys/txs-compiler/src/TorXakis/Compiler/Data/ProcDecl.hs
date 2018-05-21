@@ -106,7 +106,6 @@ instance ( MapsTo Text SortId mm
         let
             s = VarId "$s" (Id sVId) sortIdInt
             stdVids = combineParameters (snd <$> pVIds) s (snd <$> innerVdIds)
-            -- Wrong! You're using the same location, so you'll overwrite everything!
         return [ ( loc
                  , ProcInfo ( ProcId n
                                     (Id pId)
@@ -117,7 +116,7 @@ instance ( MapsTo Text SortId mm
                            allSChIds
                            pVIds
                  )
-               , ( loc
+               , ( ExtraAut "std" loc
                  , ProcInfo ( ProcId ("std_" <> n)
                                     (Id pIdStd)
                                     sChIds
@@ -127,7 +126,7 @@ instance ( MapsTo Text SortId mm
                            allSChIds
                            pVIds
                  )
-               , ( loc
+               , ( ExtraAut "stdi" loc
                  , ProcInfo ( ProcId ("stdi_" <> n)
                                     (Id pIdStdi)
                                     sChIds

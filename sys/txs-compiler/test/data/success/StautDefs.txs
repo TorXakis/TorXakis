@@ -31,9 +31,10 @@ MODELDEF Check1000 ::=
     check1000[Add, Sum, Success](0)
 ENDDEF
 
-MODELDEF STDCheck1000 ::=
-    CHAN IN Add
-    CHAN OUT Sum, Success
-    BEHAVIOUR
-    stdi_check1000[Add, Sum, Success](0)
-ENDDEF
+-- TODO:
+-- MODELDEF STDCheck1000 ::=
+--     CHAN IN Add
+--     CHAN OUT Sum, Success
+--     BEHAVIOUR
+--     stdi_check1000[Add, Sum, Success](0)
+-- ENDDEF

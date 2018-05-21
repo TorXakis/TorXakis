@@ -11,7 +11,7 @@ module TorXakis.Parser.Data
     , nodeLoc
     , incId
     , nextId
-    , Loc (Loc, PredefLoc)
+    , Loc (Loc, PredefLoc, ExtraAut)
     , HasLoc
     , IsVariable
     -- * Name
@@ -215,7 +215,11 @@ data Loc t
         locName :: Text
         -- | Unique identifier.
       , locUid  :: Int
-      }deriving (Show, Eq, Ord, Data)
+      }
+    -- TODO: this is needed only to support the three kind of automata that are
+    -- generated per each automaton declaration.
+    | ExtraAut Text (Loc t)
+    deriving (Show, Eq, Ord, Data)
 
 -- | Change extract the location of the metadata, and change its type from 't'
 -- to 'u'. This is useful when defining parsed entities whose locations
@@ -223,6 +227,7 @@ data Loc t
 locFromLoc :: Loc t -> Loc u
 locFromLoc (Loc l c i)     = Loc l c i
 locFromLoc (PredefLoc n i) = PredefLoc n i
+locFromLoc (ExtraAut n l)  = ExtraAut n (locFromLoc l)
 
 class HasLoc a t | a -> t where
     getLoc :: a -> Loc t
@@ -505,6 +510,7 @@ funcRetSort f = ( nodeNameT . funcCompsRetSort . child $ f
 instance HasErrorLoc (Loc t) where
     getErrorLoc (Loc l c _)     = ErrorLoc {errorLine = l, errorColumn = c}
     getErrorLoc (PredefLoc n _) = ErrorPredef n
+    getErrorLoc (ExtraAut _ l)  = getErrorLoc l
 
 instance HasErrorLoc (ParseTree t c) where
     getErrorLoc pt = ErrorLoc { errorLine = l, errorColumn = c }

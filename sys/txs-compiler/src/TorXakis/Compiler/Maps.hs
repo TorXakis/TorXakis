@@ -100,7 +100,9 @@ determineF mm fdis aSids mRSid =
 -- | Get the name of the implicit function declaration, if any.
 fdiName :: Loc FuncDeclE -> Maybe Text
 fdiName Loc {}          = Nothing
+fdiName ExtraAut {}     = Nothing
 fdiName (PredefLoc n _) = Just n
+
 
 -- TODO determine the right kind of precedence.
 infixr 5 :|
