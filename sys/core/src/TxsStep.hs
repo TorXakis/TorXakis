@@ -103,8 +103,8 @@ import qualified TxsDefs             as D
 -- ----------------------------------------------------------------------------------------- --
 -- | Set Stepping Mode.
 --
---   Only possible when txscore is initialized.
-txsSetStep :: D.ModelDef                -- ^ model definition.
+--   Only possible when in Initing Mode.
+txsSetStep :: D.ModelDef                       -- ^ model definition.
            -> IOC.IOC (Either EnvData.Msg ())
 txsSetStep moddef  =  do
      envc <- get
@@ -184,7 +184,7 @@ txsStartStep  =  do
                          Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                              "Stepping Mode started" ]
        _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Stepping Mode must be started in StepSet Mode" 
+                            "Stepping Mode must be started from StepSet Mode" 
  
 
 startStepper :: D.ModelDef -> IOC.IOC ( Maybe BTree.BTree )

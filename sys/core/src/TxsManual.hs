@@ -25,34 +25,34 @@ module TxsManual
 
 (
   -- * set manual mode for External World
-  txsSetManual     -- :: IOC.EWorld ew => ew -> IOC.IOC ()
+  txsSetManual     -- :: IOC.EWorld ew => ew -> IOC.IOC (Either EnvData.Msg ())
 
   -- * shut manual mode for External World
-, txsShutManual    -- :: IOC.IOC ()
+, txsShutManual    -- :: IOC.IOC (Either EnvData.Msg ())
 
   -- * start running with the External World
-,  txsStartW       -- :: IOC.IOC ()
+,  txsStartW       -- :: IOC.IOC (Either EnvData.Msg ())
 
   -- * stop running with the External World
-, txsStopW         -- :: IOC.IOC ()
+, txsStopW         -- :: IOC.IOC (Either EnvData.Msg ())
 
   -- * send an action to the External World, and do that action, or an observed earlier action.
-, txsActToW        -- :: DD.Action -> IOC.IOC DD.Verdict
+, txsActToW        -- :: DD.Action -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
   -- * observe an action from the External World
-, txsObsFroW       -- :: IOC.IOC DD.Verdict
+, txsObsFroW       -- :: IOC.IOC (Either EnvData.Msg DD.Verdict)
 
   -- send an action according to the offer-pattern to the External World
-, txsOfferToW      -- :: D.Offer -> IOC.IOC DD.Verdict
+, txsOfferToW      -- :: D.Offer -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
   -- * run n actions on the External World; if n<0 then run indefinitely
-, txsRunW          -- :: Int -> IOC.IOC DD.Verdict
+, txsRunW          -- :: Int -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
   -- * give the current state number
-, txsGetWStateNr   -- :: IOC.IOC Int
+, txsGetWStateNr   -- :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
 
   -- * give the trace from the initial state to the current state
-, txsGetWTrace     -- :: IOC.IOC [DD.Action]
+, txsGetWTrace     -- :: IOC.IOC (Either EnvData.Msg [DD.Action])
 )
 
 
@@ -61,9 +61,6 @@ module TxsManual
 
 where
 
--- import           Control.Arrow
--- import           Control.Monad
-import           Control.Monad.State
 -- import qualified Data.List           as List
 -- import qualified Data.Map            as Map
 import           Data.Maybe
@@ -88,12 +85,12 @@ import qualified TxsShow
 
 
 -- ----------------------------------------------------------------------------------------- --
--- | Set Manual Mode
+-- | Set Manualing Mode
 --
 --   Only possible when in Initing Mode.
 txsSetManual :: IOC.EWorld ew
-             => ew
-             -> IOC.IOC ()
+             => ew                               -- ^ external world
+             -> IOC.IOC (Either EnvData.Msg ())
 txsSetManual eworld  =  do
      envc <- get
      case IOC.state envc of
@@ -108,15 +105,16 @@ txsSetManual eworld  =  do
                                     , IOC.eworld   = eworld
                                     , IOC.putmsgs  = putmsgs
                                     }
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Manual Mode set" ]
-       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                          "Manual Mode must be set in Initing mode" ]
+               Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
+                                   "Manual Mode set" ]
+       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
+                            "Manual Mode must be set from Initing mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Shut Manual Mode
 --
 --   Only possible when in ManSet Mode.
-txsShutManual :: IOC.IOC ()
+txsShutManual :: IOC.IOC (Either EnvData.Msg ())
 txsShutManual  =  do
      envc <- get
      case IOC.state envc of
@@ -131,15 +129,16 @@ txsShutManual  =  do
                                      , IOC.sigs    = sigs
                                      , IOC.putmsgs = putmsgs
                                      }
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Manual Mode shut" ]
-       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                          "Manual Mode must be shut from ManSet Mode" ]
+               Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
+                                   "Manual Mode shut" ]
+       _ -> return $ left $ EnvData.TXS_CORE_USER_ERROR
+                            "Manual Mode must be shut from ManSet Mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Start External World
 --
 --   Only possible when in ManSet Mode.
-txsStartW :: IOC.IOC ()
+txsStartW :: IOC.IOC (Either EnvData.Msg ())
 txsStartW  =  do
      envc <- get
      case IOC.state envc of
@@ -159,15 +158,16 @@ txsStartW  =  do
                                        , IOC.eworld   = eworld'
                                        , IOC.putmsgs  = putmsgs
                                        }
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "EWorld started" ]
-       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                          "EWorld must be started from ManSet Mode" ]
+               Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
+                                   "Manualing Mode started" ]
+       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
+                            "Manualing Mode must be started from ManSet Mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Stop External World
 --
 --   Only possible when in Manualing Mode.
-txsStopW :: IOC.IOC ()
+txsStopW :: IOC.IOC (Either EnvData.Msg ())
 txsStopW  =  do
      envc <- get
      case IOC.state envc of
@@ -187,9 +187,10 @@ txsStopW  =  do
                                     , IOC.eworld   = eworld'
                                     , IOC.putmsgs  = putmsgs
                                     }
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "EWorld stopped" ]
-       _ -> IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                          "EWorld must be stopped from Manualing Mode" ]
+               Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
+                                   "Manualing Mode stopped" ]
+       _ -> right $ Left $ EnvData.TXS_CORE_USER_ERROR
+                           "Manualing Mode must be stopped from Manualing Mode" ]
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Provide action to External World
