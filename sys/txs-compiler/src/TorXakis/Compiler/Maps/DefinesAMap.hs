@@ -148,6 +148,21 @@ instance ( MapsTo Text (Loc ChanDeclE) mm
        bes   <- uGetKVs mm' (modelBExp md)
        return $ ins ++ outs ++ syncs ++ bes
 
+instance ( MapsTo Text (Loc ChanDeclE) mm
+         ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) PurpDecl mm where
+    uGetKVs mm pd = do
+       -- We augment the map with the predefined channels.
+       let mm' = predefChDecls <.+> mm
+       ins   <- uGetKVs mm' (purpDeclIns pd)
+       outs  <- uGetKVs mm' (purpDeclOuts pd)
+       syncs <- uGetKVs mm' (purpDeclSyncs pd)
+       gls   <- uGetKVs mm' (purpDeclGoals pd)
+       return $ ins ++ outs ++ syncs ++ gls
+
+instance ( MapsTo Text (Loc ChanDeclE) mm
+         ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) TestGoalDecl mm where
+    uGetKVs mm gd = uGetKVs mm (testGoalDeclBExp gd)
+
 instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ProcDecl () where
     uGetKVs () pd = do
         cdMap <- getMap () (procDeclChParams pd) :: CompilerM (Map Text (Loc ChanDeclE))
@@ -239,14 +254,25 @@ instance ( MapsTo Text SortId mm
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ModelDecl mm where
     uGetKVs mm md = do
-        -- Add the predefined channels.
-        let predefChids = [ (exitChLoc, chanIdExit)
-                          , (istepChLoc, chanIdIstep)
-                          , (qstepChLoc, chanIdQstep)
-                          ]
-        -- Add the channels declared at the body.
-        bodyChids <- uGetKVs mm (modelBExp md)
-        return $ predefChids ++ bodyChids
+        bodyChIds <- uGetKVs mm (modelBExp md)
+        return $ predefChIds ++ bodyChIds
+
+-- Predefined channels.
+predefChIds :: [(Loc ChanDeclE, ChanId)]
+predefChIds = [ (exitChLoc, chanIdExit)
+              , (istepChLoc, chanIdIstep)
+              , (qstepChLoc, chanIdQstep)
+              ]
+
+instance ( MapsTo Text SortId mm
+         ) => DefinesAMap (Loc ChanDeclE) ChanId PurpDecl mm where
+    uGetKVs mm pd = do
+        goalsChIds <- uGetKVs mm (purpDeclGoals pd)
+        return $ predefChIds ++ goalsChIds
+
+instance ( MapsTo Text SortId mm
+         ) => DefinesAMap (Loc ChanDeclE) ChanId TestGoalDecl mm where
+    uGetKVs mm gd = uGetKVs mm (testGoalDeclBExp gd)
 
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId BExpDecl mm where

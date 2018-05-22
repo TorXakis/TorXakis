@@ -15,12 +15,15 @@ import qualified BehExprDefs     as BExpr
 import           FuncDef         (FuncDef (FuncDef))
 import           FuncId          (FuncId (FuncId), name)
 import           FuncTable       (FuncTable, Signature (Signature), toMap)
+import           GoalId          (GoalId)
 import           ProcId          (ProcId)
+import           PurpId          (PurpId)
 import           TxsDefs         (ActOffer (ActOffer), BExpr, BExprView (ActionPref, Guard, ProcInst, StAut, ValueEnv),
                                   ChanOffer (Exclam, Quest),
                                   ModelDef (ModelDef), ModelId, Offer (Offer),
-                                  ProcDef (ProcDef), Trans (Trans), actionPref,
-                                  guard, procInst, stAut, valueEnv)
+                                  ProcDef (ProcDef), PurpDef (PurpDef),
+                                  Trans (Trans), actionPref, guard, procInst,
+                                  stAut, valueEnv)
 import           ValExpr         (ValExpr, ValExprView (Vfunc, Vite), cstrITE,
                                   cstrVar)
 import qualified ValExpr
@@ -124,3 +127,13 @@ instance Simplifiable Trans where
         where
           ofr' = simplify ft fns ofr
           upd' = simplify ft fns upd
+
+instance Simplifiable PurpId where
+    simplify _ _ = id
+
+instance Simplifiable PurpDef where
+    simplify ft fns (PurpDef is os ys gs) =
+        PurpDef is os ys (simplify ft fns gs)
+
+instance Simplifiable GoalId where
+    simplify _ _ = id

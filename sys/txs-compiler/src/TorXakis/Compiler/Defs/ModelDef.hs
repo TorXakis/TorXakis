@@ -38,7 +38,7 @@ modelDeclToModelDef :: ( MapsTo Text SortId mm
                        , MapsTo (Loc ChanDeclE) ChanId mm -- Also needed because channels are declared outside the model
                        -- , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm -- But we don't care about external references to channels.
 
-                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                        , MapsTo (Loc FuncDeclE) FuncId mm
                        , MapsTo FuncId (FuncDef VarId) mm
                        , MapsTo ProcId () mm

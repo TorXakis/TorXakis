@@ -184,8 +184,7 @@ module TorXakis.Parser.Data
 where
 
 import           Control.Arrow           ((+++), (|||))
-import           Control.Lens            (Lens')
-import           Control.Lens            ((^..))
+import           Control.Lens            (Lens', (^..))
 import           Control.Lens.TH         (makeLenses)
 import           Data.Data               (Data)
 import           Data.Data.Lens          (biplate)

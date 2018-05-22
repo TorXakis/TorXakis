@@ -34,7 +34,8 @@ import           SortId                             (SortId, sortIdBool,
 import           StdTDefs                           (stdFuncTable, stdTDefs)
 import           TxsDefs                            (ProcDef, ProcId, TxsDefs,
                                                      fromList, funcDefs,
-                                                     modelDefs, procDefs, union)
+                                                     modelDefs, procDefs,
+                                                     purpDefs, union)
 import qualified TxsDefs                            (empty)
 import           ValExpr                            (ValExpr,
                                                      ValExprView (Vfunc, Vite),
@@ -141,11 +142,14 @@ toTxsDefs ft mm pd = do
             }
     mDefMap <- modelDeclsToTxsDefs mm (pd ^. models)
     let mds = TxsDefs.empty { modelDefs = simplify ft fn mDefMap }
+    uDefMap <- purpDeclsToTxsDefs mm (pd ^. purps)
+    let uds = TxsDefs.empty { purpDefs = simplify ft fn uDefMap }
     return $ ads
         `union` fds
         `union` pds
         `union` fromList stdTDefs
         `union` mds
+        `union` uds
 
 toSigs :: ( MapsTo Text        SortId mm
           , MapsTo (Loc CstrE) CstrId mm
@@ -174,9 +178,9 @@ funcDefInfoNamesMap :: [(Loc FuncDeclE)] -> Map Text [(Loc FuncDeclE)]
 funcDefInfoNamesMap fdis =
     groupByName $ catMaybes $ asPair <$> fdis
     where
-      asPair :: (Loc FuncDeclE) -> Maybe (Text, (Loc FuncDeclE))
+      asPair :: Loc FuncDeclE -> Maybe (Text, Loc FuncDeclE)
       asPair fdi = (, fdi) <$> fdiName fdi
-      groupByName :: [(Text, (Loc FuncDeclE))] -> Map Text [(Loc FuncDeclE)]
+      groupByName :: [(Text, Loc FuncDeclE)] -> Map Text [Loc FuncDeclE]
       groupByName = Map.fromListWith (++) . fmap (second pure)
 
 -- | Get a dictionary from sort names to their @SortId@. The sorts returned
@@ -233,7 +237,9 @@ compileToDecls lfDefs pd = do
     pRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. procs)
     sRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. stauts)
     mRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. models)
+    uRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. purps)
     return $ fRtoDs `Map.union` pRtoDs `Map.union` sRtoDs `Map.union` mRtoDs
+            `Map.union` uRtoDs
 
 -- | Generate the map from process id's definitions to process definitions.
 compileToProcDefs :: ( MapsTo Text SortId mm

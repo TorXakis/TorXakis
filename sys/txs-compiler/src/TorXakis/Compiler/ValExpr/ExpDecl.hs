@@ -165,3 +165,8 @@ instance HasVarReferences Transition where
          where
            aoVds = mkVdMap (actOfferDecls offr)
 
+instance HasVarReferences PurpDecl where
+    mapRefToDecls mm = mapRefToDecls mm . purpDeclGoals
+
+instance HasVarReferences TestGoalDecl where
+    mapRefToDecls mm = mapRefToDecls mm . testGoalDeclBExp
