@@ -9,9 +9,10 @@
 module TorXakis.Compiler.Maps.DefinesAMap
     ( DefinesAMap
     , getKVs
-    , getKs -- TODO: thid this
+    , getKs
     , getMap
     , uGetKVs -- TODO: this shouldn't be visible outside the module. Arrange the modules structure to ensure this.
+    , predefChDecls
     )
 where
 
@@ -23,7 +24,6 @@ import           Data.Map                         (Map)
 import qualified Data.Map                         as Map
 import           Data.Semigroup                   ((<>))
 import           Data.Set                         (Set)
-import qualified Data.Set                         as Set
 import qualified Data.Set                         as Set
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T

@@ -35,6 +35,10 @@ spec = do
         fs <- runIO $ find (return True) (extension ==? ".txs")
               ("test" </> "data" </> "examps")
         parallel $ traverse_ testCompiler fs
+    describe "Correctly compiles  the HUGE models" $ do
+        fs <- runIO $ find (return True) (extension ==? ".txs")
+                           ("test" </> "data" </> "parser" </> "huge")
+        parallel $ traverse_ testCompiler fs
     where
         testCompiler fp = it (show fp) $ do
             r <- compileFile fp

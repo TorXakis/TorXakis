@@ -144,7 +144,7 @@ allProcIds mm = getPId <$> values @(Loc ProcDeclE) @ProcInfo mm
 instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) StautDecl () where
     uGetKVs _ staut = do
         chanDecls <- getMap () (stautDeclChParams staut) :: CompilerM (Map Text (Loc ChanDeclE))
-        uGetKVs chanDecls (stautTrans staut)
+        uGetKVs (predefChDecls <.+> chanDecls) (stautTrans staut)
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) Transition mm where
