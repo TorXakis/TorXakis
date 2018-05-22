@@ -12,6 +12,7 @@ import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
 
+import           BehExprDefs                        (BExpr)
 import           ChanId                             (ChanId, name, unid)
 import           CstrId                             (CstrId)
 import           FuncDef                            (FuncDef)
@@ -23,13 +24,15 @@ import           SortDef                            (SortDef (SortDef))
 import           SortId                             (SortId)
 import           StdTDefs                           (chanIdHit, chanIdMiss,
                                                      chanIdQstep)
-import           TxsDefs                            (ModelDef, ModelId, ProcDef,
+import           TxsDefs                            (GoalId (GoalId), ModelDef,
+                                                     ModelId, ProcDef,
                                                      PurpDef (PurpDef), TxsDefs,
                                                      cstrDefs, empty, modelDefs,
                                                      sortDefs)
 import           VarId                              (VarId)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Defs.BehExprDefs
 import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Compiler.Defs.ModelDef
 import           TorXakis.Compiler.Defs.ModelId
@@ -37,6 +40,8 @@ import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.CstrDef
+import           TorXakis.Compiler.ValExpr.SortId
+import           TorXakis.Compiler.ValExpr.VarId
 import           TorXakis.Parser.Data
 
 adtsToTxsDefs :: ( MapsTo Text SortId mm
@@ -85,11 +90,12 @@ purpDeclsToTxsDefs :: ( MapsTo Text SortId mm
                       , MapsTo ProcId ProcDef mm
                       , MapsTo (Loc VarDeclE) SortId mm
                       , MapsTo (Loc VarDeclE) VarId mm
+                      , In (ProcId, ()) (Contents mm) ~ 'False
                       , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False )
                       =>  mm -> [PurpDecl] -> CompilerM (Map PurpId PurpDef)
-purpDeclsToTxsDefs mm pps =
-    Map.fromList <$> (zip <$> traverse purpDeclToPurpId pps
-                          <*> traverse purpDeclToPurpDef pps)
+purpDeclsToTxsDefs mm pds =
+    Map.fromList <$> (zip <$> traverse purpDeclToPurpId pds
+                          <*> traverse purpDeclToPurpDef pds)
 
     where
       procIdsOnly :: Map ProcId ()
@@ -129,5 +135,14 @@ purpDeclsToTxsDefs mm pps =
                          , Set.singleton chanIdHit
                          , Set.singleton chanIdMiss
                          ]
-          gls <- undefined pd mm'
+          -- Compile the goals
+          bTypes <- Map.fromList <$> inferVarTypes mm' (purpDeclGoals pd)
+          bvIds  <- Map.fromList <$> mkVarIds bTypes (purpDeclGoals pd)
+          let mm'' = bTypes <.+> (bvIds <.+> mm')
+              compileTestGoalDecl gd = do
+                  gId <- getNextId
+                  be  <- toBExpr mm'' (testGoalDeclBExp gd)
+                  return (GoalId (testGoalDeclName gd) (Id gId), be)
+          gls <- traverse compileTestGoalDecl (purpDeclGoals pd)
           return $ PurpDef insyncs outsyncs splsyncs gls
+

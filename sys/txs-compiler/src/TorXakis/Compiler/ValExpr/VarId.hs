@@ -96,3 +96,5 @@ instance DeclaresVariables LetVarDecl where
 instance DeclaresVariables Transition where
     mkVarIds mm (Transition _ ofr _ _ ) = mkVarIds mm ofr
 
+instance DeclaresVariables TestGoalDecl where
+    mkVarIds mm gd = mkVarIds mm (testGoalDeclBExp gd)

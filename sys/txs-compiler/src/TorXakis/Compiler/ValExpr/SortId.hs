@@ -455,3 +455,5 @@ offerSid mm (ExclD ex) = case inferExpTypes mm ex of
 instance HasTypedVars Transition where
     inferVarTypes mm (Transition _ ofr _ _) = inferVarTypes mm ofr
 
+instance HasTypedVars TestGoalDecl where
+    inferVarTypes mm gd = inferVarTypes mm (testGoalDeclBExp gd)
