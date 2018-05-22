@@ -154,6 +154,8 @@ module TorXakis.Parser.Data
     , InitStateDecl (..)
     , mkInitState
     -- * Purposes
+    , PurpDecl
+    , mkPurpDecl
     , PurpComps (..)
     , purpDeclName
     , purpDeclIns
@@ -177,6 +179,7 @@ module TorXakis.Parser.Data
     , procs
     , emptyPds
     , stauts
+    , purps
     )
 where
 
@@ -886,8 +889,9 @@ data ParsedDefs = ParsedDefs
     , _chdecls :: [ChanDecl]
     , _procs   :: [ProcDecl]
     , _stauts  :: [StautDecl]
+    , _purps   :: [PurpDecl]
     } deriving (Eq, Show, Data)
 makeLenses ''ParsedDefs
 
 emptyPds :: ParsedDefs
-emptyPds = ParsedDefs [] [] [] [] [] [] []
+emptyPds = ParsedDefs [] [] [] [] [] [] [] []

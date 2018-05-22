@@ -1,0 +1,21 @@
+TYPEDEF Person ::=
+    Person { name :: String }
+ENDDEF
+
+CHANDEF X ::=
+    In :: Person;
+    Out :: Bool
+ENDDEF
+
+PROCDEF small [ In :: Person; Out :: Bool ] () HIT ::=
+        In ! Person( "Mickey" )
+    >-> Out ! True
+    >-> HIT
+ENDDEF
+
+PURPDEF SmallPurp ::=
+    CHAN IN    In
+    CHAN OUT   Out
+    
+    GOAL small ::= small [In,Out] ()
+ENDDEF

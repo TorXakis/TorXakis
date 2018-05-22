@@ -1,6 +1,6 @@
 module TorXakis.Parser.ProcDecl where
 
-import           Text.Parsec              ((<|>))
+import           Text.Parsec              (try, (<|>))
 
 import           TorXakis.Parser.BExpDecl
 import           TorXakis.Parser.Common
@@ -10,7 +10,7 @@ import           TorXakis.Parser.TypeDefs
 
 procDeclP :: TxsParser ProcDecl
 procDeclP = do
-    txsSymbol "PROCDEF"
+    try $ txsSymbol "PROCDEF"
     l  <- mkLoc
     n  <- identifier
     cs <- chParamsP
