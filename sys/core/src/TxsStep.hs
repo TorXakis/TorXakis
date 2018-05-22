@@ -6,7 +6,7 @@ See LICENSE at root directory of this repository.
 
 -- ----------------------------------------------------------------------------------------- --
 -- |
--- Module      :  TxsCore
+-- Module      :  TxsStep
 -- Copyright   :  TNO and Radboud University
 -- License     :  BSD3
 -- Maintainer  :  jan.tretmans
@@ -78,24 +78,17 @@ import qualified Data.Map            as Map
 
 -- import from local
 import           CoreUtils
--- import           Ioco
 import           Step
-
--- import           Config              (Config)
--- import qualified Config
 
 -- import from behave(defs)
 import qualified Behave
 import qualified BTree
--- import           Expand              (relabel)
 
 -- import from coreenv
 import qualified EnvCore             as IOC
 import qualified EnvData
--- import qualified ParamCore
 
 -- import from defs
--- import qualified Sigs
 import qualified TxsDDefs            as DD
 import qualified TxsDefs             as D
 
@@ -265,7 +258,7 @@ txsStepOffer offer  =  do
 -- | Step model with the provided number of actions.
 --
 --   Only possible when Stepping.
-txsStepRun :: Int                                 -- ^ Number of actions to step model.
+txsStepRun :: Int                               -- ^ Number of actions to step model.
            -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 txsStepRun nrsteps  =  do
      envc <- get

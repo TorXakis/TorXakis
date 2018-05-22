@@ -83,26 +83,36 @@ instance NFData EnvC where
 
 data CoreState =
        Idling
-     | Initing   { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                 , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
-                 , sigs    :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
-                 , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+     | Initing   { smts    :: Map.Map String SMTData.SmtEnv   -- named smt solver envs
+                 , tdefs   :: TxsDefs.TxsDefs                 -- TorXakis definitions
+                 , sigs    :: Sigs.Sigs VarId.VarId           -- TorXakis signatures
+                 , putmsgs :: [EnvData.Msg] -> IOC ()         -- (error) reporting
+                 }
+     | forall ew . (EWorld ew) =>
+       TestSet   { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , modeldef  :: TxsDefs.ModelDef
+                 , mapperdef :: Maybe TxsDefs.MapperDef
+                 , eworld    :: ew
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
      | forall ew . (EWorld ew) =>
        Testing   { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                  , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
                  , modeldef  :: TxsDefs.ModelDef
                  , mapperdef :: Maybe TxsDefs.MapperDef
                  , purpdef   :: Maybe TxsDefs.PurpDef
                  , eworld    :: ew
                  , behtrie   :: [ (EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr) ]
-                                                                      -- behaviour trie
+                                                              -- behaviour trie
                  , inistate  :: EnvData.StateNr               -- initial beh statenr
                  , curstate  :: EnvData.StateNr               -- current beh statenr
-                 , modsts    :: BTree.BTree                      -- model state
-                 , mapsts    :: BTree.BTree                      -- mapper state
-                 , purpsts   :: [(TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)]   -- purpose state
+                 , modsts    :: BTree.BTree                   -- model state
+                 , mapsts    :: BTree.BTree                   -- mapper state
+                 , purpsts   :: [(TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)]
+                                                              -- purpose state
                  , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
      | forall ew . (EWorld ew) =>
