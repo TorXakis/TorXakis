@@ -44,7 +44,7 @@ termP = txsSymbol "(" *> ( valExpP <* txsSymbol ")")
     <|> try letExpP
     <|> try txsITEP
     <|> try txsFapplP
-    <|> mkBoolConstExp   <$> mkLoc <*> txsBoolP
+    <|> mkBoolConstExp   <$> mkLoc <*> try txsBoolP
     <|> mkIntConstExp    <$> mkLoc <*> txsIntP
     <|> mkStringConstExp <$> mkLoc <*> txsStringP
     <|> mkVarExp         <$> mkLoc <*> (lcIdentifier <|> ucIdentifier "")

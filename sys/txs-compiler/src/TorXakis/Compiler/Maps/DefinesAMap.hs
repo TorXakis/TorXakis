@@ -262,6 +262,8 @@ predefChIds :: [(Loc ChanDeclE, ChanId)]
 predefChIds = [ (exitChLoc, chanIdExit)
               , (istepChLoc, chanIdIstep)
               , (qstepChLoc, chanIdQstep)
+              , (hitChLoc, chanIdHit)
+              , (missChLoc, chanIdMiss)
               ]
 
 instance ( MapsTo Text SortId mm
