@@ -39,7 +39,7 @@ cnectItemP = do
 codecItemP :: TxsParser CodecItem
 codecItemP = do
     (cType, str) <-  try $   (txsSymbol "DECODE" >> return (Decode, "<-"))
-                         <|> (txsSymbol "ENCODE" >> return (Decode, "->"))
+                         <|> (txsSymbol "ENCODE" >> return (Encode, "->"))
     offr         <- offerP
     txsSymbol str
     chOffr       <- chanOfferP

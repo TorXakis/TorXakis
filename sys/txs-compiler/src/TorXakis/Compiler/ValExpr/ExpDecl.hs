@@ -20,7 +20,6 @@ import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Parser.Data
 
-
 class HasVarReferences e where
     -- | Map variable references to the entities they refer to.
     --
@@ -170,3 +169,17 @@ instance HasVarReferences PurpDecl where
 
 instance HasVarReferences TestGoalDecl where
     mapRefToDecls mm = mapRefToDecls mm . testGoalDeclBExp
+
+instance HasVarReferences CnectDecl where
+    mapRefToDecls mm cd = mapRefToDecls mm (cnectDeclCodecs cd)
+
+instance HasVarReferences CodecItem where
+    mapRefToDecls mm (CodecItem offr chOffr Decode) =
+        (++) <$> mapRefToDecls (chOffrVd <.+> mm) offr <*> mapRefToDecls mm chOffr
+        where
+          chOffrVd = mkVdMap (chanOfferDecls chOffr)
+
+    mapRefToDecls mm (CodecItem offr chOffr Encode) =
+        (++) <$> mapRefToDecls mm offr <*> mapRefToDecls (offrVd <.+> mm) chOffr
+        where
+          offrVd = mkVdMap (offerDecls offr)

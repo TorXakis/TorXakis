@@ -36,7 +36,6 @@ valExpP =  buildExpressionParser table termP
           opN <- txsBopSymbolP
           return $ \ex0 ex1 -> (mkFappl le lr opN [ex0, ex1])
 
-
 -- | Terms of the TorXakis value expressions.
 termP :: TxsParser ExpDecl
 termP = txsSymbol "(" *> ( valExpP <* txsSymbol ")")
@@ -48,7 +47,6 @@ termP = txsSymbol "(" *> ( valExpP <* txsSymbol ")")
     <|> mkIntConstExp    <$> mkLoc <*> txsIntP
     <|> mkStringConstExp <$> mkLoc <*> txsStringP
     <|> mkVarExp         <$> mkLoc <*> (lcIdentifier <|> ucIdentifier "")
-
 
 letExpP :: TxsParser ExpDecl
 letExpP = do

@@ -238,8 +238,9 @@ compileToDecls lfDefs pd = do
     sRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. stauts)
     mRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. models)
     uRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. purps)
+    cRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. cnects)
     return $ fRtoDs `Map.union` pRtoDs `Map.union` sRtoDs `Map.union` mRtoDs
-            `Map.union` uRtoDs
+            `Map.union` uRtoDs `Map.union` cRtoDs
 
 -- | Generate the map from process id's definitions to process definitions.
 compileToProcDefs :: ( MapsTo Text SortId mm
