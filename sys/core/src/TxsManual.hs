@@ -61,6 +61,7 @@ module TxsManual
 
 where
 
+import           Control.Monad.State
 -- import qualified Data.List           as List
 -- import qualified Data.Map            as Map
 import           Data.Maybe
@@ -72,15 +73,15 @@ import           System.Random
 -- import           Config              (Config)
 -- import qualified Config
 
-import CoreUtils
+import           CoreUtils
 -- import from coreenv
-import qualified EnvCore             as IOC
+import qualified EnvCore       as IOC
 import qualified EnvData
 -- import qualified ParamCore
 
 -- import from defs
-import qualified TxsDefs             as D
-import qualified TxsDDefs            as DD
+import qualified TxsDDefs      as DD
+import qualified TxsDefs       as D
 import qualified TxsShow
 
 
@@ -108,7 +109,7 @@ txsSetManual eworld  =  do
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Manual Mode set" ]
        _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Manual Mode must be set from Initing mode" ]
+                            "Manual Mode must be set from Initing mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Shut Manual Mode
@@ -131,8 +132,8 @@ txsShutManual  =  do
                                      }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Manual Mode shut" ]
-       _ -> return $ left $ EnvData.TXS_CORE_USER_ERROR
-                            "Manual Mode must be shut from ManSet Mode" ]
+       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
+                            "Manual Mode must be shut from ManSet Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Start External World
@@ -161,7 +162,7 @@ txsStartW  =  do
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Manualing Mode started" ]
        _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Manualing Mode must be started from ManSet Mode" ]
+                            "Manualing Mode must be started from ManSet Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Stop External World
@@ -189,8 +190,8 @@ txsStopW  =  do
                                     }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Manualing Mode stopped" ]
-       _ -> right $ Left $ EnvData.TXS_CORE_USER_ERROR
-                           "Manualing Mode must be stopped from Manualing Mode" ]
+       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
+                           "Manualing Mode must be stopped from Manualing Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Provide action to External World
@@ -212,7 +213,7 @@ txsActToW act  =  do
                            $ TxsShow.showN (curstate+1) 6 ++
                              "  IN: " ++ TxsShow.fshow act'
                            ]
-               return $ DD.Pass
+               return DD.Pass
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Manual input on EWorld only in Manualing Mode" ]
                return DD.NoVerdict
@@ -236,7 +237,7 @@ txsObsFroW  =  do
                IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
                            $ TxsShow.showN (curstate+1) 6 ++ " OUT: " ++ TxsShow.fshow act'
                            ]
-               return $ DD.Pass
+               return DD.Pass
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Manual observation on EWorld only in Manualing Mode" ]
                return DD.NoVerdict
@@ -269,18 +270,17 @@ txsOfferToW offer  =  do
                                      $ TxsShow.showN (curstate+1) 6 ++
                                        "  IN: " ++ TxsShow.fshow act'
                                      ]
-                         return $ DD.Pass
+                         return DD.Pass
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Manual offer on EWorld only in Manualing Mode" ]
                return DD.NoVerdict
- 
+
 -- ----------------------------------------------------------------------------------------- --
 -- | Run a number of random actions on External World
 --
 --   Only possible when in Manualing Mode.
 txsRunW :: Int -> IOC.IOC DD.Verdict
-txsRunW nrsteps  =  do
-     runW nrsteps False
+txsRunW nrsteps  =  runW nrsteps False
   where
      runW :: Int -> Bool -> IOC.IOC DD.Verdict
      runW depth lastDelta  =  do
@@ -328,7 +328,7 @@ txsRunW nrsteps  =  do
             _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                   "Run on EWorld only in ManualActive Mode" ]
                     return DD.NoVerdict
- 
+
 -- ----------------------------------------------------------------------------------------- --
 -- | Give current state number
 --
@@ -342,7 +342,7 @@ txsGetWStateNr  =  do
        _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                              "Current state of EWorld only in Manualing Mode" ]
                return $ -1
-    
+
 -- ----------------------------------------------------------------------------------------- --
 -- | Give trace from initial state to current state
 --
