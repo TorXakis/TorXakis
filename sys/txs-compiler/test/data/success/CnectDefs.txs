@@ -1,0 +1,19 @@
+CHANDEF X ::=
+    In :: Int;
+    Out :: Int
+ENDDEF
+
+CNECTDEF EMPTY ::=
+    SERVERSOCK
+ENDDEF
+
+CNECTDEF SIMPLE ::=
+    CLIENTSOCK
+
+    CHAN OUT Out HOST "my.host" PORT 81923
+    ENCODE Out ? v -> ! toString (v)
+
+    CHAN IN In HOST "my.host" PORT 81923
+    DECODE In ! fromString(v) + 33 <- ? v
+    
+ENDDEF

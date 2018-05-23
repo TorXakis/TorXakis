@@ -11,7 +11,6 @@ import           TorXakis.Parser.Data
 
 purpDeclP :: TxsParser PurpDecl
 purpDeclP = do
-    txsWhitespace
     txsSymbol "PURPDEF"
     l <- mkLoc
     n <- txsLexeme identifier

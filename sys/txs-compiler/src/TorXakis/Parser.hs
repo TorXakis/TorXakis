@@ -27,6 +27,7 @@ import           TorXakis.Compiler.Error   (Error (Error), ErrorLoc (ErrorLoc),
                                             errorLine, _errorLoc, _errorMsg,
                                             _errorType)
 import           TorXakis.Parser.ChanDecl
+import           TorXakis.Parser.CnectDecl
 import           TorXakis.Parser.Common    (TxsParser, txsWhitespace)
 import           TorXakis.Parser.ConstDecl (constDeclsP)
 import           TorXakis.Parser.Data
@@ -64,6 +65,7 @@ data TLDef = TLADT       ADTDecl
            | TLProcDecl  ProcDecl
            | TLStautDecl StautDecl
            | TLPurpDecl  PurpDecl
+           | TLCnectDecl CnectDecl
 
 -- | Group a list of top-level definitions per-type.
 asParsedDefs :: [TLDef] -> ParsedDefs
@@ -77,6 +79,7 @@ asParsedDefs = foldr sep emptyPds
       sep (TLProcDecl p)    = procs %~ (p:)
       sep (TLStautDecl s)   = stauts %~ (s:)
       sep (TLPurpDecl p)    = purps %~ (p:)
+      sep (TLCnectDecl c)   = cnects %~ (c:)
 
 -- | Root parser for the TorXakis language.
 txsP :: TxsParser ParsedDefs
@@ -86,9 +89,10 @@ txsP = do
               <|> fmap TLFunc      fdeclP
               <|> fmap TLConsts    (try constDeclsP)
               <|> fmap TLModel     modelDeclP
-              <|> fmap TLChanDecls chanDeclsP
+              <|> fmap TLChanDecls (try chanDeclsP)
               <|> fmap TLProcDecl  procDeclP
               <|> fmap TLStautDecl stautDeclP
               <|> fmap TLPurpDecl  purpDeclP
+              <|> fmap TLCnectDecl cnectDeclP
     eof
     return $ asParsedDefs ts

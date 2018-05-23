@@ -105,15 +105,18 @@ actOfferP = ActOfferDecl <$> offersP <*> actConstP
                     txsSymbol str
                     return [OfferDecl (mkChanRef (T.pack str) l) []]
 
-      offerP :: TxsParser OfferDecl
-      offerP = do
-          l     <- mkLoc
-          n     <- identifier
-          chOfs <- chanOffersP
-          return $ OfferDecl (mkChanRef n l) chOfs
+offerP :: TxsParser OfferDecl
+offerP = do
+    l     <- mkLoc
+    n     <- identifier
+    chOfs <- chanOffersP
+    return $ OfferDecl (mkChanRef n l) chOfs
 
 chanOffersP :: TxsParser [ChanOfferDecl]
-chanOffersP = many (try questOfferP <|> exclOfferP)
+chanOffersP = many chanOfferP
+
+chanOfferP :: TxsParser ChanOfferDecl
+chanOfferP = try questOfferP <|> exclOfferP
     where
       questOfferP = do
           txsSymbol "?"
