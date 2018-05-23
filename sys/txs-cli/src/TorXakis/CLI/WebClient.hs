@@ -17,78 +17,47 @@ module TorXakis.CLI.WebClient
     , sseSubscribe
     , closeMessages
     , callTimer
+    , module TorXakis.CLI.WebClient.Params
     )
 where
 
-import           Control.Arrow          (right)
-import           Control.Concurrent     (Chan, writeChan)
-import           Control.Exception      (Handler (Handler), IOException,
-                                         catches)
-import           Control.Lens           ((^.), (^?))
-import           Control.Lens.TH        (makeLenses)
-import           Control.Monad          (when)
-import           Control.Monad.Except   (ExceptT, MonadError, catchError,
-                                         liftEither, runExceptT, throwError)
-import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Control.Monad.Reader   (MonadReader, asks)
-import           Data.Aeson             (eitherDecode)
-import           Data.Aeson.Lens        (key, _String)
-import           Data.Aeson.Types       (toJSON)
-import qualified Data.ByteString        as BSS
-import qualified Data.ByteString.Char8  as BS
-import           Data.ByteString.Lazy   (ByteString)
-import           Data.Either.Utils      (maybeToEither)
-import           Data.Text              (Text)
-import qualified Data.Text              as T
-import           Network.HTTP.Client    (HttpException (HttpExceptionRequest), HttpExceptionContent (StatusCodeException))
-import           Network.Wreq           (Response, foldGet, get, partFile, post,
-                                         put, responseBody, responseStatus,
-                                         statusCode)
-import           Network.Wreq.Types     (Postable, Putable)
-import           System.FilePath        (takeFileName)
-import           Text.Read              (readMaybe)
+import           Control.Arrow                 (right)
+import           Control.Concurrent            (Chan, writeChan)
+import           Control.Monad.Except          (ExceptT, MonadError, catchError,
+                                                liftEither, runExceptT,
+                                                throwError)
+import           Control.Monad.IO.Class        (MonadIO)
+import           Control.Monad.Reader          (MonadReader, asks)
+import           Data.Aeson                    (eitherDecode)
+import           Data.Aeson.Types              (toJSON)
+import qualified Data.ByteString               as BSS
+import           Data.ByteString.Lazy          (ByteString)
+import           Data.Either.Utils             (maybeToEither)
+import           Data.Text                     (Text)
+import qualified Data.Text                     as T
+import           Lens.Micro                    ((^.), (^?))
+import           Lens.Micro.Aeson              (key, _String)
+import           Lens.Micro.TH                 (makeLenses)
+import           Network.Wreq                  (Response, foldGet, partFile,
+                                                responseBody, responseStatus,
+                                                statusCode)
+import           System.FilePath               (takeFileName)
+import           Text.Read                     (readMaybe)
 
-import           TorXakis.Lib           (StepType (AnAction, NumberOfSteps))
+import           TorXakis.Lib                  (StepType (AnAction, NumberOfSteps))
 
 -- TODO: put the module below into 'TorXakis.WebServer.Endpoints.Parse' or something similar.
-import           Endpoints.Parse        (ActionText (ActionText))
+import           Endpoints.Parse               (ActionText (ActionText))
 
 import           TorXakis.CLI.Env
+import           TorXakis.CLI.WebClient.Common
+import           TorXakis.CLI.WebClient.Params
 
 data Info = Info
     { _version   :: Text
     , _buildTime :: Text
     } deriving (Eq, Show)
 makeLenses ''Info
-
--- | Perform a get request on the given path, using the host specified in the
--- environment.
---
--- TODO: the path could be made type-safe, if the overhead is worth. Maybe we
--- can use an existing type-safe URL package.
-envGet :: (MonadIO m, MonadReader Env m, MonadError String m)
-       => String -> m (Response ByteString)
-envGet suffix = do
-    host <- asks txsHost
-    res <- liftIO $ safe $
-           get (host ++ suffix)
-    liftEither res
-
-envPut :: (MonadIO m, MonadReader Env m, MonadError String m, Putable a)
-       => String -> a -> m (Response ByteString)
-envPut suffix what = do
-    host <- asks txsHost
-    res <- liftIO $ safe $
-        put (host ++ suffix) what
-    liftEither res
-
-envPost :: (MonadIO m, MonadReader Env m, MonadError String m, Postable a)
-        => String -> a -> m (Response ByteString)
-envPost suffix what = do
-    host <- asks txsHost
-    res <- liftIO $ safe $
-        post (host ++ suffix) what
-    liftEither res
 
 -- | Retrieve the system information from 'TorXakis'.
 info :: (MonadIO m, MonadReader Env m, MonadError String m)
@@ -103,7 +72,7 @@ info = do
              r ^? responseBody . key "buildTime" . _String
         return $ Info v b
 
--- | Retrieve the system information from 'TorXakis'.
+-- | Retrieve the system time from 'TorXakis'.
 getTime :: (MonadIO m, MonadReader Env m, MonadError String m)
         => m Text
 getTime = do
@@ -112,10 +81,7 @@ getTime = do
     liftEither $ maybeToEither "Response did not contain \"currentTime\"" $
                     r ^? responseBody . key "currentTime" . _String
 
-
--- | Retrieve the system information from 'TorXakis'.
--- callTimer :: (MonadIO m, MonadReader Env m, MonadError String m)
---         => m Text
+-- | Start/stop a timer in 'TorXakis'.
 callTimer :: (MonadIO m, MonadReader Env m, MonadError String m)
           => String -> m String
 callTimer nm = do
@@ -136,12 +102,6 @@ callTimer nm = do
             then return $ concat ["Timer ", T.unpack tnm, " started at " ++ T.unpack stt ++ "."]
             else return $ concat ["Timer ", T.unpack tnm, " stopped at " ++ T.unpack stp ++ ". Duration: ", T.unpack d]
 
-shouldBeStatus :: (MonadError String m) => Int -> Int -> m ()
-shouldBeStatus got expected =
-    when (got /= expected) $
-        throwError $ "Got status code " ++ show got
-                   ++ " instead of " ++ show expected
-
 -- | Load a list of files using the given environment.
 --
 load :: (MonadIO m, MonadReader Env m) => [FilePath] -> m (Either String ())
@@ -151,21 +111,6 @@ load files = do
     ignoreSuccess $ envPut path pfs
     where fns = map takeFileName files
           pfs  = zipWith partFile (map T.pack fns) files
-
-safe :: IO a -> IO (Either String a)
-safe io =
-    fmap Right io `catches` [ Handler (return . Left . mapHttpException)
-                            , Handler (return . Left . mapIOException)]
-
-mapHttpException :: HttpException -> String
-mapHttpException (HttpExceptionRequest _ (StatusCodeException _ msg)) = BS.unpack msg
-mapHttpException e                          = show e -- TODO: give a more informative error.
-
-mapIOException :: IOException -> String
-mapIOException e = "IO exception: " ++ show e
-
-noContent :: ByteString
-noContent = ""
 
 stepper :: (MonadIO m, MonadReader Env m) => String -> m (Either String ())
 stepper mName = do

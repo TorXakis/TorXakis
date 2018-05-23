@@ -21,7 +21,6 @@ import           Control.Arrow                    ((|||))
 import           Control.Concurrent               (newChan, readChan,
                                                    threadDelay)
 import           Control.Concurrent.Async         (async, cancel)
-import           Control.Lens                     ((^.))
 import           Control.Monad                    (forever, when)
 import           Control.Monad.Except             (MonadError, runExceptT)
 import           Control.Monad.IO.Class           (MonadIO, liftIO)
@@ -36,6 +35,7 @@ import           Data.Either.Utils                (maybeToEither)
 import           Data.Foldable                    (traverse_)
 import           Data.String.Utils                (strip)
 import qualified Data.Text                        as T
+import           Lens.Micro                       ((^.))
 import           System.Console.Haskeline
 import           System.Console.Haskeline.History (addHistoryRemovingAllDupes)
 import           System.Directory                 (getHomeDirectory)
@@ -126,6 +126,7 @@ startCLI = do
             "delay"   -> waitFor $ head rest
             "i"       -> lift (runExceptT info) >>= output
             "info"    -> lift (runExceptT info) >>= output
+            "param"   -> lift (runExceptT $ param rest) >>= output
             "time"    -> lift (runExceptT getTime) >>= output
             "timer"   -> lift (runExceptT $ timer rest) >>= output
             "l"       -> lift (load rest) >>= output
@@ -149,6 +150,13 @@ startCLI = do
                   => [String] -> m String
             timer [nm] = callTimer nm
             timer _    = return "Usage: timer <timer name>"
+            param :: (MonadIO m, MonadReader Env m, MonadError String m)
+                  => [String] -> m String
+            param []    = getParams []
+            param [p]   = getParams [p]
+            param [p,v] = setParam p v
+            param _     = return "Usage: param [ <parameter> [<value>] ]"
+            setParam _p _v = undefined
     asTxsMsg :: BS.ByteString -> Either String Msg
     asTxsMsg msg = do
         msgData <- maybeToEither dataErr $

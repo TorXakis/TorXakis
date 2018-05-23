@@ -3,30 +3,55 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+
+{-# LANGUAGE DeriveGeneric     #-}
 module Endpoints.Params
-    ( ParamsEP
+    ( ParamEP
+    , param
+    , ParamsEP
     , params
     ) where
 
 import           Control.Monad.IO.Class (liftIO)
+import           Data.Aeson             (ToJSON)
+import           GHC.Generics           (Generic)
 import           Servant
 
 import qualified TorXakis.Lib           as Lib
 
 import           Common                 (Env, SessionId, getSession)
 
+data ParameterValue = ParameterValue { _paramName  :: String
+                                     , _paramValue :: String
+                                     }
+    deriving (Generic)
+
+instance ToJSON ParameterValue
+
+type ParamEP = "sessions"
+             :> Capture "sid" SessionId
+             :> "params"
+             :> Capture "pNm" String
+             :> Get '[JSON] ParameterValue
+
+param :: Env -> SessionId -> String -> Handler ParameterValue
+param env sid pNm = do
+    s <- getSession env sid
+    [prm] <- liftIO $ Lib.getCoreAndSolveParams s [pNm]
+    liftIO $ print prm
+    return $ showPrm prm
+
 type ParamsEP = "sessions"
              :> Capture "sid" SessionId
              :> "params"
-             :> Capture "pNms" String
-             :> Post '[JSON] String
+             :> Get '[JSON] [ParameterValue]
 
-params :: Env -> SessionId -> String -> Handler String
-params env sid pNms = do
+params :: Env -> SessionId -> Handler [ParameterValue]
+params env sid = do
     s <- getSession env sid
-    prms <- liftIO $ Lib.getCoreAndSolveParams s $ words pNms
-    return $ unlines $ map displayPrm prms
-      where
-        displayPrm :: (String,String) -> String
-        displayPrm (nm,vl) = concat [nm, " = ", vl]
+    prms <- liftIO $ Lib.getCoreAndSolveParams s []
+    liftIO $ print prms
+    return $ map showPrm prms
 
+showPrm :: (String,String) -> ParameterValue
+showPrm (nm,vl) = ParameterValue nm vl
