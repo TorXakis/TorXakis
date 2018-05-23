@@ -17,6 +17,7 @@ import qualified Data.Text                          as T
 import           BehExprDefs                        (BExpr)
 import           ChanId                             (ChanId, name, unid)
 import           CnectId                            (CnectId (CnectId))
+import           ConstDefs                          (Const (Cstring))
 import           CstrId                             (CstrId)
 import           FuncDef                            (FuncDef)
 import           FuncId                             (FuncId)
@@ -34,6 +35,7 @@ import           TxsDefs                            (CnectDef (CnectDef), ConnDe
                                                      cstrDefs, empty, modelDefs,
                                                      sortDefs)
 import qualified TxsDefs
+import           ValExpr                            (cstrConst)
 import           VarId                              (VarId (VarId))
 
 import           TorXakis.Compiler.Data
@@ -149,9 +151,11 @@ purpDeclsToTxsDefs mm pds =
           gls <- traverse compileTestGoalDecl (purpDeclGoals pd)
           return $ PurpDef insyncs outsyncs splsyncs gls
 
-cnectDeclsToTxsDefs :: mm -> [CnectDecl] -> CompilerM (Map CnectId CnectDef)
+cnectDeclsToTxsDefs :: ( MapsTo Text (Loc ChanDeclE) mm
+                       , MapsTo (Loc ChanDeclE) ChanId mm
+                       , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False )
+                    => mm -> [CnectDecl] -> CompilerM (Map CnectId CnectDef)
 cnectDeclsToTxsDefs mm cds =
-    -- TODO: it seems we need to make a map from channel references to channel ids (use getMap)
     Map.fromList <$> (zip <$> traverse cnectDeclToCnectId cds
                           <*> traverse cnectDeclToCnectDef cds)
     where
@@ -162,18 +166,28 @@ cnectDeclsToTxsDefs mm cds =
 
       cnectDeclToCnectDef :: CnectDecl -> CompilerM CnectDef
       cnectDeclToCnectDef cd = do
-          cds0 <- traverse cnectItemToConnDef (cnectDeclCnectItems cd)
-          cds1 <- traverse cnectCodecToConnDef (cnectDeclCodecs cd)
+          chDecls <- getMap mm cd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
+          let
+              mm' = chDecls :& mm
+
+              cnectItemToConnDef :: CnectItem -> CompilerM ConnDef
+              cnectItemToConnDef (CnectItem cr ChanIn h p) = do
+                  chId <- lookupChId mm' (getLoc cr)
+                  return $ ConnDfroW chId h p (VarId "" (-1) sortIdString) []
+
+              cnectItemToConnDef (CnectItem cr ChanOut h p) = do
+                  chId <- lookupChId mm' (getLoc cr)
+                  return $ ConnDtoW chId h p [] (cstrConst (Cstring ""))
+
+
+              cnectCodecToConnDef :: CodecItem -> CompilerM ConnDef
+              cnectCodecToConnDef = undefined
+
+              asCnectType :: CnectType -> TxsDefs.CnectType
+              asCnectType CTClient = TxsDefs.ClientSocket
+              asCnectType CTServer = TxsDefs.ServerSocket
+
+          cds0    <- traverse cnectItemToConnDef (cnectDeclCnectItems cd)
+          cds1    <- traverse cnectCodecToConnDef (cnectDeclCodecs cd)
           return $ CnectDef (asCnectType $ cnectDeclType cd) (cds0 ++ cds1)
 
-      cnectItemToConnDef :: CnectItem -> CompilerM ConnDef
-      cnectItemToConnDef (CnectItem cr ChanIn h p) = do
-          chId <- lookupChId mm (getLoc cr)
-          return $ ConnDfroW chId h p (VarId "" (-1) sortIdString) []
-
-      cnectCodecToConnDef :: CodecItem -> CompilerM ConnDef
-      cnectCodecToConnDef = undefined
-
-      asCnectType :: CnectType -> TxsDefs.CnectType
-      asCnectType CTClient = TxsDefs.ClientSocket
-      asCnectType CTServer = TxsDefs.ServerSocket

@@ -160,6 +160,19 @@ instance ( MapsTo Text (Loc ChanDeclE) mm
        return $ ins ++ outs ++ syncs ++ gls
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
+         ) => DefinesAMap  (Loc ChanRefE) (Loc ChanDeclE) CnectDecl mm where
+    uGetKVs mm cd = (++) <$> uGetKVs mm (cnectDeclCnectItems cd)
+                         <*> uGetKVs mm (cnectDeclCodecs cd)
+
+instance ( MapsTo Text (Loc ChanDeclE) mm
+         ) => DefinesAMap  (Loc ChanRefE) (Loc ChanDeclE) CnectItem mm where
+    uGetKVs mm (CnectItem cr _ _ _) = uGetKVs mm cr
+
+instance ( MapsTo Text (Loc ChanDeclE) mm
+         ) => DefinesAMap  (Loc ChanRefE) (Loc ChanDeclE) CodecItem mm where
+    uGetKVs mm (CodecItem offr _ _) = uGetKVs mm offr
+
+instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) TestGoalDecl mm where
     uGetKVs mm gd = uGetKVs mm (testGoalDeclBExp gd)
 
