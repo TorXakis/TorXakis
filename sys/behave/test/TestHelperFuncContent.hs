@@ -160,7 +160,7 @@ identicalBExpr' (ActionPref actOffer1 bExpr1) (ActionPref actOffer2 bExpr2)   = 
 identicalBExpr' (Guard vexpr1 bExpr1) (Guard vexpr2 bExpr2)                   =    identicalVExpr vexpr1 vexpr2
                                                                                 && identicalBExpr bExpr1 bExpr2
 identicalBExpr' (Choice bExprs1) (Choice bExprs2)                             =    identicalLists identicalBExpr (Set.toAscList bExprs1) (Set.toAscList bExprs2)
-identicalBExpr' (Parallel chanids1 bExprs1) (Parallel chanids2 bExprs2)       =    identicalLists identicalChanId chanids1 chanids2
+identicalBExpr' (Parallel chanids1 bExprs1) (Parallel chanids2 bExprs2)       =    identicalLists identicalChanId (Set.toAscList chanids1) (Set.toAscList chanids2)
                                                                                 && identicalLists identicalBExpr bExprs1 bExprs2      -- Set would be better -> Position in list is irrelevant
 identicalBExpr' (Enable bexpr11 chanoffers1 bexpr12) (Enable bexpr21 chanoffers2 bexpr22) =    identicalBExpr bexpr11 bexpr21
                                                                                             && identicalLists identicalChanOffer chanoffers1 chanoffers2

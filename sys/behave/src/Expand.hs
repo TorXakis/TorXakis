@@ -282,7 +282,7 @@ expand chsets (BNparallel chans cnodes)  = do
       where
         calcSets :: (CNode,CTree) -> (CNode, [(CTBranch, (Set.Set ChanId, Bool) )] )
         calcSets (node, ctree) = (node, [ let set = Set.map ctchan ctoffs in
-                                               (ctpref, (set, Set.null (set `Set.intersection` Set.fromList chans) ) )
+                                               (ctpref, (set, Set.null (set `Set.intersection` chans) ) )
                                         | ctpref@(CTpref ctoffs _ _ _) <- ctree
                                         ])
 
@@ -321,7 +321,7 @@ expand chsets (BNparallel chans cnodes)  = do
       where
         calcSets :: CTree -> [(CTBranch, (Set.Set ChanId, Set.Set ChanId) )]
         calcSets ctree = [ let set = Set.map ctchan ctoffs in
-                                   (ctpref, (set, set `Set.intersection` Set.fromList chans))
+                                   (ctpref, (set, set `Set.intersection` chans))
                          | ctpref@(CTpref ctoffs _ _ _) <- ctree
                          ]
 
@@ -535,7 +535,7 @@ relabel' chanmap (Choice bexps)
   =  choice (Set.map (relabel chanmap) bexps)
 
 relabel' chanmap (Parallel chids bexps)
-  =  parallel (map (relabel chanmap) chids) (map (relabel chanmap) bexps)
+  =  parallel (Set.map (relabel chanmap) chids) (map (relabel chanmap) bexps)
 
 relabel' chanmap (Enable bexp1 choffs bexp2)
   =  enable (relabel chanmap bexp1) choffs (relabel chanmap bexp2)

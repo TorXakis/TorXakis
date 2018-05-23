@@ -217,7 +217,7 @@ testSynchronization = TestCase $
     let chans :: TypedElements
         chans = definedChannels
         bexpr :: BExpr
-        bexpr = parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
+        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) [aBExpr, anotherBExpr]
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in
@@ -228,7 +228,7 @@ testInterleaving = TestCase $
     let chans :: TypedElements
         chans = []
         bexpr :: BExpr
-        bexpr = parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
+        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) [aBExpr, anotherBExpr]
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in
@@ -239,7 +239,7 @@ testCommunicate = TestCase $
     let chans :: TypedElements
         chans = [([definedChannel1SortName], definedChannel1)]
         bexpr :: BExpr
-        bexpr = parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
+        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) [aBExpr, anotherBExpr]
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in

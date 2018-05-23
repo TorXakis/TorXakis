@@ -168,7 +168,7 @@ instance PShow BExprView
       =  case bexps of
          { [] -> "STOP\n"
          ; be -> "( " ++
-                  Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (List.delete chanIdExit chans)) ++" ]|\n( ")
+                  Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (Set.toList (Set.delete chanIdExit chans))) ++" ]|\n( ")
                              (map pshow be)
                  ++ " )"
          }

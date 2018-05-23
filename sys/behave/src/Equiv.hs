@@ -112,7 +112,7 @@ instance Equiv INode
          return $ eq_wenv && eq_ivenv && eq_bexp
 
     (BNparallel chids1 inodes1) ~=~ (BNparallel chids2 inodes2)  =  do
-         let eq_chids = Set.fromList chids1 == Set.fromList chids2
+         let eq_chids = chids1 == chids2
          eq_inodes <- inodes1 ~=~ inodes2
          return $ eq_chids && eq_inodes
 
@@ -172,7 +172,7 @@ instance Equiv BExprView
         bexps1 ~=~ bexps2
 
     (Parallel chids1 bexps1) ~=~ (Parallel chids2 bexps2)  =  do
-         let eq_chids = Set.fromList chids1 == Set.fromList chids2
+         let eq_chids = chids1 == chids2
          eq_bexps <- bexps1 ~=~ bexps2
          return $ eq_chids && eq_bexps
 

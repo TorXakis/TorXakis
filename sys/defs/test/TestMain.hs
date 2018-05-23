@@ -11,9 +11,7 @@ import System.Exit
 import TestBehExprDefs
 
 testDefsPackage :: IO Bool
-testDefsPackage = do
-    resultBehExprDefs <- testBehExprDefs   
-    return $    resultBehExprDefs
+testDefsPackage = testBehExprDefs   
 
 main :: IO ()
 main = do

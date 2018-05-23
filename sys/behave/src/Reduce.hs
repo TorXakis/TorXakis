@@ -117,15 +117,14 @@ instance Reduce INode where
                                              )
                                              inodes'
              chans'  = Set.unions $ map (Set.fromList . freeChans) nstops
-             chids'  = Set.fromList chids `Set.intersection` chans'
-             chids'' = Set.toList chids'
+             chids'  = chids `Set.intersection` chans'
          case (stops,nstops) of
            ( _  , [] )       -> return stopINode
            ( []  , [inode] ) -> return inode
-           ( []  , inods )   -> return $ BNparallel chids'' inods
+           ( []  , inods )   -> return $ BNparallel chids' inods
            ( j:_ , i:is )    -> if Set.null chids' -- PvdL: performance/change issue - should be equal to chanIdExit? chanIdExit will always be part of intersection....
-                                  then return $ BNparallel chids'' (i:is)
-                                  else return $ BNparallel chids'' (j:i:is)
+                                  then return $ BNparallel chids' (i:is)
+                                  else return $ BNparallel chids' (j:i:is)
 
     reduce (BNenable inode1 choffs inode2) = do
          inode1' <- reduce inode1
@@ -199,15 +198,14 @@ reduce' (Parallel chids bexps) = do
      bexps' <- mapM reduce bexps
      let (stops,nstops) = List.partition isStop bexps'
          chans'  = Set.unions $ map (Set.fromList . freeChans) nstops
-         chids'  = Set.fromList chids `Set.intersection` chans'
-         chids'' = Set.toList chids'
+         chids'  = chids `Set.intersection` chans'
      case (stops,nstops) of
        ( _ , [] )      -> return stop
        ( [] , [bexp] ) -> return bexp
-       ( [] , bexs )   -> return $ parallel chids'' bexs
+       ( [] , bexs )   -> return $ parallel chids' bexs
        ( c:_ , b:bs )  -> if  Set.null chids'       -- PvdL: performance/change issue - should be equal to chanIdExit? chanIdExit will always be part of intersection....
-                            then return $ parallel chids'' (b:bs)
-                            else return $ parallel chids'' (c:b:bs)
+                            then return $ parallel chids' (b:bs)
+                            else return $ parallel chids' (c:b:bs)
 
 reduce' (Enable bexp1 choffs bexp2) = do
      bexp1'  <- reduce bexp1
@@ -285,7 +283,7 @@ instance FreeChan INode
       where
        freeChans' :: INode -> [ChanId]
        freeChans' (BNbexpr _ bexp)            = freeChans bexp
-       freeChans' (BNparallel chids inodes)   = chids ++ concatMap freeChans' inodes
+       freeChans' (BNparallel chids inodes)   = Set.toList chids ++ concatMap freeChans' inodes
        freeChans' (BNenable inode1 _ inode2)  = freeChans' inode1 ++ freeChans' inode2
        freeChans' (BNdisable inode1 inode2)   = freeChans' inode1 ++ freeChans' inode2
        freeChans' (BNinterrupt inode1 inode2) = freeChans' inode1 ++ freeChans' inode2
@@ -299,7 +297,7 @@ instance FreeChan BExpr
         freeChans' (ActionPref ao bexp)    = freeChans ao ++ freeChans bexp
         freeChans' (Guard _ bexp)          = freeChans bexp
         freeChans' (Choice bexps)          = concatMap freeChans bexps
-        freeChans' (Parallel chids bexps)  = chids ++ concatMap freeChans bexps
+        freeChans' (Parallel chids bexps)  = Set.toList chids ++ concatMap freeChans bexps
         freeChans' (Enable bexp1 _ bexp2)  = freeChans bexp1 ++ freeChans bexp2
         freeChans' (Disable bexp1 bexp2)   = freeChans bexp1 ++ freeChans bexp2
         freeChans' (Interrupt bexp1 bexp2) = freeChans bexp1 ++ freeChans bexp2

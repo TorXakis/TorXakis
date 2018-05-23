@@ -19,6 +19,7 @@ module BTShow
 where
 
 import qualified Data.Map          as Map
+import qualified Data.Set          as Set
 import qualified Data.String.Utils as Utils
 
 import           BTree
@@ -41,7 +42,7 @@ instance PShow CNode where
       =  case bnodes of
            [] -> "STOP\n"
            be -> "( " ++
-                 Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow chans) ++" ]|\n( ")
+                 Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (Set.toList chans)) ++ " ]|\n( ")
                             (map pshow be)
                  ++ " )"
     pshow (BNenable bnode1 choffs bnode2)
@@ -79,7 +80,7 @@ instance PShow INode
       =  case snodes of
            [] -> "STOP\n"
            be -> "( "
-                 ++ Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow chans) ++" ]|\n( ")
+                 ++ Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (Set.toList chans)) ++ " ]|\n( ")
                                (map pshow be)
                  ++ " )"
     pshow (BNenable snode1 choffs snode2)
