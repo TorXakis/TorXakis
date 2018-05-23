@@ -12,6 +12,7 @@ import qualified Data.Set        as Set
 import           Data.Text       (Text)
 
 import qualified BehExprDefs     as BExpr
+import           CnectId         (CnectId)
 import           FuncDef         (FuncDef (FuncDef))
 import           FuncId          (FuncId (FuncId), name)
 import           FuncTable       (FuncTable, Signature (Signature), toMap)
@@ -20,6 +21,8 @@ import           ProcId          (ProcId)
 import           PurpId          (PurpId)
 import           TxsDefs         (ActOffer (ActOffer), BExpr, BExprView (ActionPref, Guard, ProcInst, StAut, ValueEnv),
                                   ChanOffer (Exclam, Quest),
+                                  CnectDef (CnectDef),
+                                  ConnDef (ConnDfroW, ConnDtoW),
                                   ModelDef (ModelDef), ModelId, Offer (Offer),
                                   ProcDef (ProcDef), PurpDef (PurpDef),
                                   Trans (Trans), actionPref, guard, procInst,
@@ -137,3 +140,13 @@ instance Simplifiable PurpDef where
 
 instance Simplifiable GoalId where
     simplify _ _ = id
+
+instance Simplifiable CnectId where
+    simplify _ _ = id
+
+instance Simplifiable CnectDef where
+    simplify ft fns (CnectDef t cs) = CnectDef t (simplify ft fns cs)
+
+instance Simplifiable ConnDef where
+    simplify ft fns (ConnDtoW c h p vs e) = ConnDtoW c h p vs (simplify ft fns e)
+    simplify ft fns (ConnDfroW c h p v es) = ConnDfroW c h p v (simplify ft fns es)

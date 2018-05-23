@@ -1,7 +1,8 @@
-{-# LANGUAGE DataKinds        #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeFamilies     #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE TypeFamilies      #-}
 module TorXakis.Compiler.Defs.TxsDefs where
 
 import           Data.List                          (nub, sortBy)
@@ -11,9 +12,11 @@ import           Data.Ord                           (compare)
 import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
+import qualified Data.Text                          as T
 
 import           BehExprDefs                        (BExpr)
 import           ChanId                             (ChanId, name, unid)
+import           CnectId                            (CnectId (CnectId))
 import           CstrId                             (CstrId)
 import           FuncDef                            (FuncDef)
 import           FuncId                             (FuncId)
@@ -21,15 +24,17 @@ import           Id                                 (Id (Id))
 import           ProcId                             (ProcId)
 import           PurpId                             (PurpId (PurpId))
 import           SortDef                            (SortDef (SortDef))
-import           SortId                             (SortId)
+import           SortId                             (SortId, sortIdString)
 import           StdTDefs                           (chanIdHit, chanIdMiss,
                                                      chanIdQstep)
-import           TxsDefs                            (GoalId (GoalId), ModelDef,
+import           TxsDefs                            (CnectDef (CnectDef), ConnDef (ConnDfroW, ConnDtoW),
+                                                     GoalId (GoalId), ModelDef,
                                                      ModelId, ProcDef,
                                                      PurpDef (PurpDef), TxsDefs,
                                                      cstrDefs, empty, modelDefs,
                                                      sortDefs)
-import           VarId                              (VarId)
+import qualified TxsDefs
+import           VarId                              (VarId (VarId))
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.BehExprDefs
@@ -144,3 +149,31 @@ purpDeclsToTxsDefs mm pds =
           gls <- traverse compileTestGoalDecl (purpDeclGoals pd)
           return $ PurpDef insyncs outsyncs splsyncs gls
 
+cnectDeclsToTxsDefs :: mm -> [CnectDecl] -> CompilerM (Map CnectId CnectDef)
+cnectDeclsToTxsDefs mm cds =
+    -- TODO: it seems we need to make a map from channel references to channel ids (use getMap)
+    Map.fromList <$> (zip <$> traverse cnectDeclToCnectId cds
+                          <*> traverse cnectDeclToCnectDef cds)
+    where
+      cnectDeclToCnectId :: CnectDecl -> CompilerM CnectId
+      cnectDeclToCnectId cd = do
+          cId <- getNextId
+          return $ CnectId (cnectDeclName cd) (Id cId)
+
+      cnectDeclToCnectDef :: CnectDecl -> CompilerM CnectDef
+      cnectDeclToCnectDef cd = do
+          cds0 <- traverse cnectItemToConnDef (cnectDeclCnectItems cd)
+          cds1 <- traverse cnectCodecToConnDef (cnectDeclCodecs cd)
+          return $ CnectDef (asCnectType $ cnectDeclType cd) (cds0 ++ cds1)
+
+      cnectItemToConnDef :: CnectItem -> CompilerM ConnDef
+      cnectItemToConnDef (CnectItem cr ChanIn h p) = do
+          chId <- lookupChId mm (getLoc cr)
+          return $ ConnDfroW chId h p (VarId "" (-1) sortIdString) []
+
+      cnectCodecToConnDef :: CodecItem -> CompilerM ConnDef
+      cnectCodecToConnDef = undefined
+
+      asCnectType :: CnectType -> TxsDefs.CnectType
+      asCnectType CTClient = TxsDefs.ClientSocket
+      asCnectType CTServer = TxsDefs.ServerSocket

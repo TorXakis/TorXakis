@@ -176,6 +176,9 @@ module TorXakis.Parser.Data
     , CodecItem (..)
     , CodecType (..)
     , mkCnectDecl
+    , cnectDeclName
+    , cnectDeclType
+    , cnectDeclCnectItems
     , cnectDeclCodecs
     -- * Location of the entities
     , getLoc
@@ -927,6 +930,17 @@ mkCnectDecl :: Text
             -> [CodecItem]
             -> CnectDecl
 mkCnectDecl n l ct is cs = ParseTree (Name n) CnectDeclE l (ct, is, cs)
+
+cnectDeclName :: CnectDecl -> Text
+cnectDeclName = nodeNameT
+
+cnectDeclType :: CnectDecl -> CnectType
+cnectDeclType = fst3 . child
+    where fst3 (f, _, _) = f
+
+cnectDeclCnectItems :: CnectDecl -> [CnectItem]
+cnectDeclCnectItems = snd3 . child
+    where snd3 (_, s, _) = s
 
 cnectDeclCodecs :: CnectDecl -> [CodecItem]
 cnectDeclCodecs = thrd . child
