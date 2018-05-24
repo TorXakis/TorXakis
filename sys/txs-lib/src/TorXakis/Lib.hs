@@ -50,6 +50,7 @@ import           ConstDefs                     (Const)
 import           EnvCore                       (IOC, getParams)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
+import           ParamCore                     (getParamPairs)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (Token (Cchanenv, Csigs, Cunid, Cvarenv),
                                                 txsLexer)
@@ -77,7 +78,7 @@ type Response a = Either Error a
 success :: Response ()
 success = Right ()
 
-data LibException = TxsError { errMsg :: Msg } deriving Show
+newtype LibException = TxsError { errMsg :: Msg } deriving Show
 
 instance Exception LibException
 
@@ -144,8 +145,11 @@ timer s nm = do
                                    (show $ utcToLocalTime tz now)
                                    (show $ diffUTCTime now t)
 
-getCoreAndSolveParams :: Session -> [String] -> IO [(String, String)]
-getCoreAndSolveParams s ps =  runIOC s $ getParams ps
+getAllParams :: Session -> [String] -> IO [(String, String)]
+getAllParams s pNms = do
+    cParams <- runIOC s $ getParams pNms
+    st <- readTVarIO (s ^. sessionState)
+    return $ cParams ++ getParamPairs pNms (st ^. sessionParams)
 
 -- | Load a TorXakis file, compile it, and return the response.
 --

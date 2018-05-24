@@ -3,7 +3,6 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
 {-# LANGUAGE DeriveGeneric     #-}
 module Endpoints.Params
     ( ParamEP
@@ -37,8 +36,7 @@ type ParamEP = "sessions"
 param :: Env -> SessionId -> String -> Handler ParameterValue
 param env sid pNm = do
     s <- getSession env sid
-    [prm] <- liftIO $ Lib.getCoreAndSolveParams s [pNm]
-    liftIO $ print prm
+    [prm] <- liftIO $ Lib.getAllParams s [pNm]
     return $ showPrm prm
 
 type ParamsEP = "sessions"
@@ -49,8 +47,7 @@ type ParamsEP = "sessions"
 params :: Env -> SessionId -> Handler [ParameterValue]
 params env sid = do
     s <- getSession env sid
-    prms <- liftIO $ Lib.getCoreAndSolveParams s []
-    liftIO $ print prms
+    prms <- liftIO $ Lib.getAllParams s []
     return $ map showPrm prms
 
 showPrm :: (String,String) -> ParameterValue

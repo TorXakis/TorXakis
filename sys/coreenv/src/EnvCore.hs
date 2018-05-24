@@ -4,9 +4,9 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
+{-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances         #-}
 
 -- | TorXakis Core Environment (Internal State) Data Type Definitions.
 module EnvCore
@@ -32,15 +32,15 @@ where
 
 import           Control.Monad.State hiding (state)
 
+import           Control.DeepSeq     (NFData, rnf)
 import qualified Data.Map            as Map
-import           Control.DeepSeq (NFData, rnf)
-import           GHC.Generics    (Generic)
+import           GHC.Generics        (Generic)
 
 -- import from local
-import           Config    hiding (setParams)
-import qualified EnvBasic    as EnvB
+import           Config              hiding (setParams)
+import qualified EnvBasic            as EnvB
 import qualified EnvData
-import qualified ParamCore
+import qualified ParamCore           as PC
 
 -- import from behavedefs
 import qualified BTree
@@ -67,12 +67,11 @@ instance EnvB.EnvB IOC     --  (StateT IOC.EnvC IO)
   where
      newUnid  =  newUnid
      putMsgs  =  putMsgs
- 
 
 data EnvC = EnvC
   { config :: Config           -- ^ Core configuration.
   , unid   :: Id               -- ^ Last used unique number.
-  , params :: ParamCore.Params
+  , params :: PC.Params
   , state  :: CoreState        -- ^ State specific information.
   } deriving (Generic)
 
@@ -120,11 +119,11 @@ data CoreState =
                  , mapsts    :: BTree.BTree                   -- mapper state
                  , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
-     | StepSet   { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
-                 , modeldef  :: TxsDefs.ModelDef
-                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+     | StepSet   { smts     :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs    :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs     :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , modeldef :: TxsDefs.ModelDef
+                 , putmsgs  :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
      | Stepping  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                  , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
@@ -139,11 +138,11 @@ data CoreState =
                  , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
      | forall ew . (EWorld ew) =>
-       ManSet    { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
-                 , eworld    :: ew
-                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+       ManSet    { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs    :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , eworld  :: ew
+                 , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                  }
      | forall ew . (EWorld ew) =>
        Manualing { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
@@ -161,7 +160,7 @@ data CoreState =
 initEnvC :: EnvC
 initEnvC = EnvC defaultConfig (Id 0) initParams Idling
    where
-     initParams = Map.union ParamCore.initParams Solve.Params.initParams
+     initParams = Map.union PC.initParams Solve.Params.initParams
 
 modifyCS :: (CoreState -> CoreState) -> IOC ()
 modifyCS f  = modify $ \env -> env { state = f (state env) }
@@ -217,17 +216,7 @@ putSMT smtname smtenv = do
 -- Params :  getParams, setParams
 
 getParams :: [String] -> IOC [(String,String)]
-getParams prms =
-     case prms of
-       [] -> map (\(nm,(val,_))->(nm,val)) . Map.toList <$> gets params
-       _  -> concat <$> mapM getParam prms
-
-getParam :: String -> IOC [(String,String)]
-getParam prm = do
-     params' <- gets params
-     case Map.lookup prm params' of
-       Nothing           -> return []
-       Just (val,_check) -> return [(prm,val)]
+getParams prms = PC.getParamPairs prms <$> gets params
 
 setParams :: [(String,String)] -> IOC [(String,String)]
 setParams parvals = concat <$> mapM setParam parvals
