@@ -38,13 +38,15 @@ testFuncDefToSMTList = TestList [
 testNoFuncDefs :: Test
 testNoFuncDefs = TestCase $ do
     let envnames = EnvNames Map.empty Map.empty Map.empty
-    let envdefs = Map.empty
+        envdefs :: Map.Map FuncId (FuncDef VarId)
+        envdefs = Map.empty
     assertEqual "none" "" (funcdefsToSMT envnames envdefs)
 
 testConstant :: Test
 testConstant = TestCase $ do
     let ve = createVconst (Cint 3)
-    let myConst = "myConst"
+    let myConst :: Text
+        myConst = "myConst"
     let fid = createFunctionId myConst 987654 [] sortIdInt
     let mapI = EnvNames (Map.fromList [(sortIdInt, "Sort_Int")])
                         Map.empty
@@ -56,7 +58,8 @@ testSingleArg :: Test
 testSingleArg = TestCase $ do
     let v = VarId "x" 645421 sortIdInt
     let ve = createVvar v
-    let fName = "singleArgFunction"
+    let fName :: Text
+        fName = "singleArgFunction"
     let fid = createFunctionId fName 987654 [v] sortIdInt
     let mapI = EnvNames (Map.fromList [(sortIdInt, "Sort_Int")])
                         Map.empty
@@ -69,7 +72,8 @@ testMultipleArgs = TestCase $ do
     let varX = VarId "x" 645421 sortIdBool
     let varY = VarId "y" 645422 sortIdBool
     let ve = createVequal (createVvar varX) (createVvar varY)
-    let fName = "multipleArgsFunction"
+    let fName :: Text
+        fName = "multipleArgsFunction"
     let fid = createFunctionId fName 987654 [varX, varY] sortIdBool
     let mapI = EnvNames (Map.fromList [(sortIdBool, "SortBoolean")])
                         Map.empty
@@ -79,13 +83,15 @@ testMultipleArgs = TestCase $ do
 
 testMultipleFunctions :: Test
 testMultipleFunctions = TestCase $ do
-    let fName1 = "multipleArgsFunction"
+    let fName1 :: Text
+        fName1 = "multipleArgsFunction"
     let varX = VarId "x" 645421 sortIdBool
     let varY = VarId "y" 645422 sortIdBool
     let fid1 = createFunctionId fName1 987654 [varX, varY] sortIdBool
     let vexpr1 = createVequal (createVvar varX) (createVvar varY)
 
-    let fName2 = "myConst"
+    let fName2 :: Text
+        fName2 = "myConst"
     let fid2 = createFunctionId fName2 97531 [] sortIdInt
     let vexpr2 = createVconst (Cint 3)
 

@@ -222,6 +222,7 @@ randCnrs p vexp depth  =
 cartProd :: [[t]] -> [[t]]
 cartProd =  foldr listProd [[]]
   where
+    listProd :: [t] -> [[t]] -> [[t]]
     listProd sq acc  =  [ e:a | e <- sq, a <- acc ]
 
 -- ----------------------------------------------------------------------------------------- --

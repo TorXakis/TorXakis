@@ -170,6 +170,7 @@ testNestedRanges :: SMT()
 testNestedRanges = testNestedPushPopTemplate (EnvDefs Map.empty Map.empty Map.empty) [sortIdInt]  (const [], checkInt)
                                                                      (map (createAssertions Control.Arrow.&&& checkAssert) [100,99..1])
     where
+        y :: Integer
         y = 123
         createAssertions :: Integer -> [VarId] -> [ValExpr VarId]
         createAssertions n [v] = [ cstrGT (cstrVar v) (cstrConst (Cint (y-n)))
