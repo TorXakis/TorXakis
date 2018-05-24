@@ -113,3 +113,25 @@ ENDDEF
 
 -- ----------------------------------------------------------------------------------------- --
 -- ----------------------------------------------------------------------------------------- --
+CNECTDEF  Sim
+    ::=
+        SERVERSOCK
+
+        CHAN IN    In                         HOST "localhost"  PORT 7890
+        DECODE     In ! fromString(s)    <-   ? s
+
+        CHAN OUT   Out                        HOST "localhost"  PORT 7890
+        ENCODE     Out ? qop              ->  ! toString(qop)
+
+ENDDEF
+
+CNECTDEF  Sut ::=
+        CLIENTSOCK
+
+        CHAN  OUT  In                         HOST "localhost"  PORT 7890
+        ENCODE     In ? qop               ->  ! toString(qop)
+
+        CHAN  IN   Out                        HOST "localhost"  PORT 7890
+        DECODE     Out ! fromString(s)   <-   ? s
+
+ENDDEF

@@ -59,3 +59,25 @@ MODELDEF  STD_Adder ::=  -- TODO remove in final version
     CHAN OUT   Result
     BEHAVIOUR  stdi_adder [ Action, Result ] ( )
 ENDDEF
+
+CNECTDEF  SutConnection ::=
+        CLIENTSOCK
+
+        CHAN  OUT  Action                        HOST "localhost"  PORT 7890
+        ENCODE     Action ? opn              ->  ! toString(opn)
+
+        CHAN  IN   Result                        HOST "localhost"  PORT 7890
+        DECODE     Result ! fromString(s)   <-   ? s
+ENDDEF
+
+
+CNECTDEF  Sim  ::=
+        SERVERSOCK
+
+        CHAN  IN   Action                        HOST "localhost"  PORT 7890
+        DECODE     Action ! fromString(s)   <-   ? s
+
+        CHAN  OUT  Result                        HOST "localhost"  PORT 7890
+        ENCODE     Result ? result           ->  ! toString(result)
+ENDDEF
+

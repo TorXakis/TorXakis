@@ -30,3 +30,24 @@ MODELDEF  Model ::=
 
     BEHAVIOUR   allowedBehaviour [ In, Out ] ( )
 ENDDEF
+
+
+CNECTDEF  Sut ::=
+        CLIENTSOCK
+
+        CHAN OUT  In                        HOST "localhost"  PORT 9999
+        ENCODE    In ? s                    ->  ! toString(s)
+
+        CHAN IN   Out                       HOST "localhost"  PORT 9999
+        DECODE    Out ! fromString(s)       <-   ? s
+ENDDEF
+
+CNECTDEF  Sim ::=
+        SERVERSOCK
+
+        CHAN OUT  Out                       HOST "localhost"  PORT 9999
+        ENCODE    Out ? s                   ->  ! toString(s)
+        
+        CHAN IN   In                        HOST "localhost"  PORT 9999
+        DECODE    In ! fromString(s)        <-   ? s
+ENDDEF

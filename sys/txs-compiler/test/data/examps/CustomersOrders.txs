@@ -83,3 +83,16 @@ MODELDEF Model ::=
         NI
 ENDDEF
 
+CNECTDEF  Sut
+    ::=
+        CLIENTSOCK
+
+        CHAN  OUT  Customer                  HOST "localhost"  PORT 7890
+        ENCODE     Customer  ? c             ->  ! toXml(c)
+
+        CHAN  OUT  Order                     HOST "localhost"  PORT 7891
+        ENCODE     Order  ? o                ->  ! toXml(o)
+
+        CHAN  IN   Report                    HOST "localhost"  PORT 7892
+        DECODE     Report ! fromXml(s)       <-   ? s
+ENDDEF

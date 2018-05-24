@@ -14,3 +14,13 @@ MODELDEF Model ::=
     BEHAVIOUR  
         Stimulus >-> Response
 ENDDEF
+
+CNECTDEF  Sut ::=
+    CLIENTSOCK
+
+    CHAN  OUT  Stimulus            HOST "localhost"  PORT 7890
+    ENCODE     Stimulus            ->  ! ""
+    
+    CHAN  IN   Response            HOST "localhost"  PORT 7890
+    DECODE     Response            <-   ? s
+ENDDEF
