@@ -223,7 +223,7 @@ cstrAnd = cstrAnd' . flattenAnd
         flattenAnd :: (Ord v) => Set.Set (ValExpr v) -> Set.Set (ValExpr v)
         flattenAnd = Set.unions . map fromValExpr . Set.toList
         
-        fromValExpr :: (Ord v) => ValExpr v -> Set.Set (ValExpr v)
+        fromValExpr :: ValExpr v -> Set.Set (ValExpr v)
         fromValExpr (view -> Vand a) = a
         fromValExpr x                = Set.singleton x
 
