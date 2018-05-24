@@ -167,6 +167,7 @@ pairNameConstFromXml tdefs sid (Element nt [] [Element cname [] list]) n
         vexprArgs =
           map (uncurry3 (pairNameConstFromXml tdefs))
               (zip3 (cstrargs cstrid) list (getFieldNames cDef))
+        uncurry3 :: (a1 -> a2 -> a3 -> a4) -> (a1, a2, a3) -> a4
         uncurry3 f (a, b, c) = f a b c
     in
       if length (cstrargs cstrid) == length list
