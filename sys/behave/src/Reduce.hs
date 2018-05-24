@@ -238,7 +238,7 @@ reduce' (Hide chids bexp) = do
      bexp' <- reduce bexp
      if isStop bexp'
        then return stop
-       else let chids' = chids `Set.intersection` (freeChans bexp')
+       else let chids' = chids `Set.intersection` freeChans bexp'
             in if Set.null chids'
                  then return bexp'
                  else return $ hide chids' bexp'
