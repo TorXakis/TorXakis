@@ -14,6 +14,8 @@ import qualified Data.Text          as T
 import           Test.HUnit
 
 import           ConstDefs
+import           FuncDef(FuncDef)
+import           FuncId(FuncId)
 import           SMTData
 import           SortId
 import           TXS2SMT
@@ -45,7 +47,7 @@ testNoFuncDefs = TestCase $ do
 testConstant :: Test
 testConstant = TestCase $ do
     let ve = createVconst (Cint 3)
-    let myConst :: Text
+    let myConst :: T.Text
         myConst = "myConst"
     let fid = createFunctionId myConst 987654 [] sortIdInt
     let mapI = EnvNames (Map.fromList [(sortIdInt, "Sort_Int")])
@@ -58,7 +60,7 @@ testSingleArg :: Test
 testSingleArg = TestCase $ do
     let v = VarId "x" 645421 sortIdInt
     let ve = createVvar v
-    let fName :: Text
+    let fName :: T.Text
         fName = "singleArgFunction"
     let fid = createFunctionId fName 987654 [v] sortIdInt
     let mapI = EnvNames (Map.fromList [(sortIdInt, "Sort_Int")])
@@ -72,7 +74,7 @@ testMultipleArgs = TestCase $ do
     let varX = VarId "x" 645421 sortIdBool
     let varY = VarId "y" 645422 sortIdBool
     let ve = createVequal (createVvar varX) (createVvar varY)
-    let fName :: Text
+    let fName :: T.Text
         fName = "multipleArgsFunction"
     let fid = createFunctionId fName 987654 [varX, varY] sortIdBool
     let mapI = EnvNames (Map.fromList [(sortIdBool, "SortBoolean")])
@@ -83,14 +85,14 @@ testMultipleArgs = TestCase $ do
 
 testMultipleFunctions :: Test
 testMultipleFunctions = TestCase $ do
-    let fName1 :: Text
+    let fName1 :: T.Text
         fName1 = "multipleArgsFunction"
     let varX = VarId "x" 645421 sortIdBool
     let varY = VarId "y" 645422 sortIdBool
     let fid1 = createFunctionId fName1 987654 [varX, varY] sortIdBool
     let vexpr1 = createVequal (createVvar varX) (createVvar varY)
 
-    let fName2 :: Text
+    let fName2 :: T.Text
         fName2 = "myConst"
     let fid2 = createFunctionId fName2 97531 [] sortIdInt
     let vexpr2 = createVconst (Cint 3)
