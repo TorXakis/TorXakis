@@ -26,6 +26,7 @@ library:
   - MissingH
   - ilist
   - lens
+  - Unique
   # TorXakis dependencies
   - defs
   - valexpr

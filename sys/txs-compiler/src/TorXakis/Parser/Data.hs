@@ -105,6 +105,7 @@ module TorXakis.Parser.Data
     , chanOfferIvarDecl
     , actOfferDecls
     , offerDecls
+    , chanRefOfOfferDecl
     , chanOfferDecls
     , asVarReflLoc
     -- ** Channels
@@ -652,6 +653,9 @@ data ActOfferDecl = ActOfferDecl
 data OfferDecl = OfferDecl ChanRef [ChanOfferDecl]
     deriving (Eq, Ord, Show, Data)
 
+chanRefOfOfferDecl :: OfferDecl -> ChanRef
+chanRefOfOfferDecl (OfferDecl cr _) = cr
+
 -- | Channel offer declarations.
 --
 -- Note that a receiving action with an explicit type declaration are only
@@ -911,7 +915,7 @@ data CnectItem = CnectItem
     } deriving (Eq, Show, Data)
 
 data CnectItemType = ChanIn | ChanOut
-    deriving (Eq, Show, Data)
+    deriving (Eq, Ord, Show, Data)
 
 data CodecItem = CodecItem
       { codecOffer   :: OfferDecl

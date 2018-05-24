@@ -5,11 +5,17 @@
 {-# LANGUAGE TypeFamilies      #-}
 module TorXakis.Compiler.Defs.TxsDefs where
 
-import           Control.Monad.Error.Class          (throwError)
+import           Control.Monad                      (unless)
+import           Control.Monad.Error.Class          (liftEither, throwError)
 import           Data.List                          (nub, sortBy)
+import           Data.List.Unique                   (repeated)
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
+import           Data.Map.Merge.Strict              (WhenMatched, WhenMissing,
+                                                     mergeA, traverseMissing,
+                                                     zipWithAMatched)
 import           Data.Ord                           (compare)
+import           Data.Semigroup                     ((<>))
 import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
@@ -52,6 +58,7 @@ import           TorXakis.Compiler.Maps.DefinesAMap
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.CstrDef
 import           TorXakis.Compiler.ValExpr.SortId
+import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Compiler.ValExpr.VarId
 import           TorXakis.Parser.Data
 
@@ -163,6 +170,7 @@ cnectDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , MapsTo (Loc FuncDeclE) FuncId mm
                        , MapsTo FuncId (FuncDef VarId) mm
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+                       , In (ProcId, ()) (Contents mm) ~ 'False
                        , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False )
                     => mm -> [CnectDecl] -> CompilerM (Map CnectId CnectDef)
 cnectDeclsToTxsDefs mm cds =
@@ -180,17 +188,8 @@ cnectDeclsToTxsDefs mm cds =
           let
               mm' = chDecls :& mm
 
-              cnectItemToConnDef :: CnectItem -> CompilerM ConnDef
-              cnectItemToConnDef (CnectItem cr ChanIn h p) = do
-                  chId <- lookupChId mm' (getLoc cr)
-                  return $ ConnDfroW chId h p (VarId "" (-1) sortIdString) []
-
-              cnectItemToConnDef (CnectItem cr ChanOut h p) = do
-                  chId <- lookupChId mm' (getLoc cr)
-                  return $ ConnDtoW chId h p [] (cstrConst (Cstring ""))
-
-              cnectCodecToConnDef :: CodecItem -> CompilerM ConnDef
-              cnectCodecToConnDef (CodecItem offr chOffr@(QuestD iv) Decode) = do
+              toConnDef :: (Text, Integer, CodecItem) -> CompilerM ConnDef
+              toConnDef (h, p, CodecItem offr chOffr@(QuestD iv) Decode) = do
                   -- We know the type of 'iv' must be a string.
                   let ivSortMap = Map.singleton (getLoc iv) sortIdString
                   vIdMap   <- Map.fromList <$> mkVarIds ivSortMap chOffr
@@ -200,22 +199,123 @@ cnectDeclsToTxsDefs mm cds =
                   -- instance because a variable might not be declared).
                   Offer chId chOffrs <- toOffer (ivSortMap <.+> (vIdMap <.+> mm')) offr
                   vExps <- traverse exclamExp chOffrs
-                  return $ ConnDfroW chId "" (-1) vId vExps
-              cnectCodecToConnDef (CodecItem _ (ExclD _) Decode) =
+                  return $ ConnDfroW chId h p vId vExps
+              toConnDef (_, _, CodecItem _ (ExclD _) Decode) =
                   throwError Error
                   { _errorType = InvalidExpression
                   , _errorLoc  = getErrorLoc cd -- TODO: add a location to CodecItem to be more precise.
-                  , _errorMsg = "DECODE domain shall be one of '?' of String\n"
+                  , _errorMsg = "DECODE domain shall be one '?' of String\n"
+                  }
+              toConnDef(h, p, CodecItem offr (ExclD e) Encode) = do
+                  let
+                      -- We don't need the proc ids' to infer the variable types of the offer.
+                      -- TODO: 'HasTypedVars' should be replaced by 'DefinesAMap'.
+                      emptyProcIds :: Map ProcId ()
+                      emptyProcIds = Map.empty
+                  offrSIdMap <- Map.fromList <$> inferVarTypes (emptyProcIds :& mm') offr
+                  offrVIdMap <- Map.fromList <$> mkVarIds offrSIdMap offr
+                  let mm'' = offrSIdMap <.+> (offrVIdMap <.+> mm')
+                  Offer chId chOffrs <- toOffer mm'' offr
+                  vIds <- traverse questVIds chOffrs
+                  vExp <- liftEither $ expDeclToValExpr mm'' sortIdString e
+                  return $ ConnDtoW chId h p vIds vExp
+              toConnDef (_, _, CodecItem _ (QuestD _) Encode) =
+                  throwError Error
+                  { _errorType = InvalidExpression
+                  , _errorLoc  = getErrorLoc cd
+                  , _errorMsg = "ENCODE domain shall be one '!' of String\n"
                   }
 
               exclamExp :: ChanOffer -> CompilerM VExpr
-              exclamExp = undefined
+              exclamExp (Exclam vExp) = return vExp
+              exclamExp (Quest _) = throwError Error
+                  { _errorType = InvalidExpression
+                  , _errorLoc = getErrorLoc cd
+                  , _errorMsg = "No '?' offer allowed here."
+                  }
+
+              questVIds :: ChanOffer -> CompilerM VarId
+              questVIds (Quest vId) = return vId
+              questVIds (Exclam _)  = throwError Error
+                  { _errorType = InvalidExpression
+                  , _errorLoc = getErrorLoc cd
+                  , _errorMsg = "No '!' offer allowed here."
+                  }
 
               asCnectType :: CnectType -> TxsDefs.CnectType
               asCnectType CTClient = TxsDefs.ClientSocket
               asCnectType CTServer = TxsDefs.ServerSocket
 
-          cds0    <- traverse cnectItemToConnDef (cnectDeclCnectItems cd)
-          cds1    <- traverse cnectCodecToConnDef (cnectDeclCodecs cd)
-          return $ CnectDef (asCnectType $ cnectDeclType cd) (cds0 ++ cds1)
+              -- | Check that the (host, port) mapping is unique across all
+              -- @CnectItem@s.
+              checkUniqueHostPorts :: [CnectItem] -> CompilerM ()
+              checkUniqueHostPorts cs =
+                  unless (null $ repeated $ zip3 (cnectType <$> cs) (host <$> cs) (port <$> cs)) $
+                      throwError Error
+                      { _errorType = InvalidExpression
+                      , _errorLoc = getErrorLoc cd
+                      , _errorMsg = "HOST-PORT pairs are not unique"
+                      }
 
+              -- | Check that the channels used in the @CnetItem@s are unique.
+              checkUniqueChannels :: [CnectItem] -> CompilerM ()
+              checkUniqueChannels cs =
+                  unless (null $ repeated $ cnectCh <$> cs) $
+                      throwError Error
+                      { _errorType = InvalidExpression
+                      , _errorLoc = getErrorLoc cd
+                      , _errorMsg = "Channels in the connections are not unique"
+                      }
+
+              cnectItems = cnectDeclCnectItems cd
+              cnectCodecs = cnectDeclCodecs cd
+
+          checkUniqueHostPorts cnectItems
+          checkUniqueChannels  cnectItems
+          let
+              crToCnectItem :: Map Text CnectItem
+              crToCnectItem = Map.fromList $
+                  zip (chanRefName . cnectCh <$> cnectItems) cnectItems
+
+              crToCodecItem :: Map Text CodecItem
+              crToCodecItem = Map.fromList $
+                  zip (chanRefName . chanRefOfOfferDecl . codecOffer <$> cnectCodecs) cnectCodecs
+
+              errorOnMissingCodec :: Text -> CnectItem -> CompilerM (Text, Integer, CodecItem)
+              errorOnMissingCodec _ cnect = throwError Error
+                    { _errorType = InvalidExpression
+                    , _errorLoc = getErrorLoc cd
+                    , _errorMsg = "Missing codec for " <> T.pack (show cnect)
+                    }
+
+              errorOnMissingCnect :: Text ->  CodecItem -> CompilerM (Text, Integer, CodecItem)
+              errorOnMissingCnect _ codec = throwError Error
+                    { _errorType = InvalidExpression
+                    , _errorLoc = getErrorLoc cd
+                    , _errorMsg = "Missing connect for " <> T.pack (show codec)
+                    }
+
+              mergeCnectCodec :: Text  -> CnectItem ->  CodecItem -> CompilerM (Text, Integer, CodecItem)
+              mergeCnectCodec _ cnect codec
+                  | cnectType cnect == ChanIn && codecType codec == Decode =
+                        return (host cnect, port cnect, codec)
+                  | cnectType cnect == ChanOut && codecType codec == Encode =
+                        return (host cnect, port cnect, codec)
+                  | otherwise = throwError Error
+                    { _errorType = InvalidExpression
+                    , _errorLoc = getErrorLoc cd
+                    , _errorMsg = "'CHAN IN' must correspond to 'DECODE'"
+                                  <> ", and  'CHAN OUT must correspond to 'ENCODE'"
+                    }
+
+
+          -- Merge the @CnectItem@s and the @CodecItem@s based on the channel
+          -- references.
+          hostPortCnects <- mergeA
+              (traverseMissing errorOnMissingCodec)
+              (traverseMissing errorOnMissingCnect)
+              (zipWithAMatched mergeCnectCodec)
+              crToCnectItem
+              crToCodecItem
+          connDefs <- traverse toConnDef hostPortCnects
+          return $ CnectDef (asCnectType $ cnectDeclType cd) (Map.elems connDefs)

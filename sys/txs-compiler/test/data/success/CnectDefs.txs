@@ -10,8 +10,8 @@ ENDDEF
 CNECTDEF SIMPLE ::=
     CLIENTSOCK
 
-    CHAN OUT Out HOST "my.host" PORT 81923
     ENCODE Out ? v -> ! toString (v)
+    CHAN OUT Out HOST "my.host" PORT 81923
 
     CHAN IN In HOST "my.host" PORT 81923
     DECODE In ! fromString(v) + 33 <- ? v
