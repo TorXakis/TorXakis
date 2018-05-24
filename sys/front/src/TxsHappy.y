@@ -2195,7 +2195,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $4.inhChanSigs  = map (\(IdChan c) -> c ) $ scopeMerge (map IdChan $$.inhChanSigs) (map IdChan $2)
                 ;  $4.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $4.synExitSorts
-                ;  $$ = hide $2 $4
+                ;  $$ = hide (Set.fromList $2) $4
                 }
               | "(" BehaviourExpr1 ")"
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1

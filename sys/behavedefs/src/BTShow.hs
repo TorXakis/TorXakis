@@ -60,14 +60,14 @@ instance PShow CNode where
     pshow (BNhide chans bnode)
       =  "HIDE "
          ++ Utils.join "; " [ show n ++ " :: " ++ Utils.join " # " (map pshow srts)
-                            | ChanId n _uid srts <- chans
+                            | ChanId n _uid srts <- Set.toList chans
                             ]
          ++ " IN\n"
          ++ pshow bnode ++ "\n"
          ++ "NI\n"
 
 -- ----------------------------------------------------------------------------------------- --
--- PShow INode
+-- PShow INode -- PvdL how to factor out the code duplication between PShow CNode and INode?
 
 instance PShow INode
   where
@@ -98,7 +98,7 @@ instance PShow INode
     pshow (BNhide chans snode)
       =  "HIDE "
          ++ Utils.join "; " [ show n ++ " :: " ++ Utils.join " # " (map pshow srts)
-                            | ChanId n _uid srts <- chans
+                            | ChanId n _uid srts <- Set.toList chans
                             ]
          ++ " IN\n"
          ++ pshow snode ++ "\n"

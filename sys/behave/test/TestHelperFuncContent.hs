@@ -172,7 +172,7 @@ identicalBExpr' (Interrupt bexpr11 bexpr12) (Interrupt bexpr21 bexpr22)       = 
 identicalBExpr' (ProcInst pid1 chans1 vexprs1) (ProcInst pid2 chans2 vexprs2) =    identicalProcId pid1 pid2
                                                                                 && identicalLists identicalChanId chans1 chans2
                                                                                 && identicalLists identicalVExpr vexprs1 vexprs2
-identicalBExpr' (Hide chans1 bexpr1) (Hide chans2 bexpr2)                     =    identicalLists identicalChanId chans1 chans2
+identicalBExpr' (Hide chans1 bexpr1) (Hide chans2 bexpr2)                     =    identicalLists identicalChanId (Set.toAscList chans1) (Set.toAscList chans2)
                                                                                 && identicalBExpr bexpr1 bexpr2
 identicalBExpr' (ValueEnv _mp1 _bexpr1) (ValueEnv _mp2 _bexpr2)               = error "TODO - identicalBExpr - ValueEnv"
 identicalBExpr' (StAut _sid1 _mp1 _trans1) (StAut _sid2 _mp2 _trans2)         = error "TODO - identicalBExpr - StAut"

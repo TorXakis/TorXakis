@@ -194,7 +194,7 @@ instance PShow BExprView
     pshow (Hide chans bexp)
       =  "HIDE "
          ++ Utils.join "; " [ T.unpack n ++ " :: " ++ Utils.join " # " (map pshow srts)
-                            | ChanId n _ srts <- chans
+                            | ChanId n _ srts <- Set.toList chans
                             ] ++ " IN\n"
          ++ pshow bexp ++ "\n"
          ++ "NI\n"

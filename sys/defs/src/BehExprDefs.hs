@@ -73,7 +73,7 @@ data BExprView = ActionPref  ActOffer BExpr
                | Disable     BExpr BExpr
                | Interrupt   BExpr BExpr
                | ProcInst    ProcId [ChanId] [VExpr]
-               | Hide        [ChanId] BExpr
+               | Hide        (Set.Set ChanId) BExpr
                | ValueEnv    VEnv BExpr
                | StAut       StatId VEnv [Trans]
   deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
@@ -187,7 +187,7 @@ procInst p cs vs = BExpr (ProcInst p cs vs)
 
 -- | Create a hide behaviour expression.
 --   The given set of channels is hidden for its environment.
-hide :: [ChanId] -> BExpr -> BExpr
+hide :: Set.Set ChanId -> BExpr -> BExpr
 hide cs b = BExpr (Hide cs b)
 
 -- | Create a Value Environment behaviour expression.

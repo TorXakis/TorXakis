@@ -133,7 +133,7 @@ instance Equiv INode
          return $ eq_inode1 && eq_inode2
 
     (BNhide chids1 inode1) ~=~ (BNhide chids2 inode2)  =  do
-         let eq_chids = Set.fromList chids1 == Set.fromList chids2
+         let eq_chids = chids1 == chids2
          eq_inode <- inode1 ~=~ inode2
          return $ eq_chids && eq_inode
 
@@ -199,7 +199,7 @@ instance Equiv BExprView
          return $ eq_pid && eq_chids && eq_vexps
 
     (Hide chids1 bexp1) ~=~ (Hide chids2 bexp2)  =  do
-         let eq_chids = Set.fromList chids1 == Set.fromList chids2
+         let eq_chids = chids1 == chids2
          eq_bexp  <- bexp1 ~=~ bexp2
          return $ eq_chids && eq_bexp
 
