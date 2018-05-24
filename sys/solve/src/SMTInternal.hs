@@ -323,7 +323,7 @@ getSMTresponse = do
     ph <- gets smtProcessHandle
     lift $ getResponse hout 0 `onException` exitWithError ph
     where
-      exitWithError :: procHandle -> IO ()
+      exitWithError :: ProcessHandle -> IO ()
       exitWithError procHandle = do
         ec <- getProcessExitCode procHandle
         -- The output and error handles of the SMT process are closed when this
