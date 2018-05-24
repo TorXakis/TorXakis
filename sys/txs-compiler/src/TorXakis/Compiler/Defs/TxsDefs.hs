@@ -5,6 +5,7 @@
 {-# LANGUAGE TypeFamilies      #-}
 module TorXakis.Compiler.Defs.TxsDefs where
 
+import           Control.Monad.Error.Class          (throwError)
 import           Data.List                          (nub, sortBy)
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
@@ -14,7 +15,9 @@ import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 
-import           BehExprDefs                        (BExpr)
+import           BehExprDefs                        (BExpr,
+                                                     ChanOffer (Exclam, Quest),
+                                                     Offer (Offer))
 import           ChanId                             (ChanId, name, unid)
 import           CnectId                            (CnectId (CnectId))
 import           ConstDefs                          (Const (Cstring))
@@ -32,8 +35,8 @@ import           TxsDefs                            (CnectDef (CnectDef), ConnDe
                                                      GoalId (GoalId), ModelDef,
                                                      ModelId, ProcDef,
                                                      PurpDef (PurpDef), TxsDefs,
-                                                     cstrDefs, empty, modelDefs,
-                                                     sortDefs)
+                                                     VExpr, cstrDefs, empty,
+                                                     modelDefs, sortDefs)
 import qualified TxsDefs
 import           ValExpr                            (cstrConst)
 import           VarId                              (VarId (VarId))
@@ -43,6 +46,7 @@ import           TorXakis.Compiler.Defs.BehExprDefs
 import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Compiler.Defs.ModelDef
 import           TorXakis.Compiler.Defs.ModelId
+import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
 import           TorXakis.Compiler.MapsTo
@@ -151,8 +155,14 @@ purpDeclsToTxsDefs mm pds =
           gls <- traverse compileTestGoalDecl (purpDeclGoals pd)
           return $ PurpDef insyncs outsyncs splsyncs gls
 
-cnectDeclsToTxsDefs :: ( MapsTo Text (Loc ChanDeclE) mm
+cnectDeclsToTxsDefs :: ( MapsTo Text SortId mm
+                       , MapsTo Text (Loc ChanDeclE) mm
                        , MapsTo (Loc ChanDeclE) ChanId mm
+                       , MapsTo (Loc VarDeclE) SortId mm
+                       , MapsTo (Loc VarDeclE) VarId mm
+                       , MapsTo (Loc FuncDeclE) FuncId mm
+                       , MapsTo FuncId (FuncDef VarId) mm
+                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                        , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False )
                     => mm -> [CnectDecl] -> CompilerM (Map CnectId CnectDef)
 cnectDeclsToTxsDefs mm cds =
@@ -179,9 +189,27 @@ cnectDeclsToTxsDefs mm cds =
                   chId <- lookupChId mm' (getLoc cr)
                   return $ ConnDtoW chId h p [] (cstrConst (Cstring ""))
 
-
               cnectCodecToConnDef :: CodecItem -> CompilerM ConnDef
-              cnectCodecToConnDef = undefined
+              cnectCodecToConnDef (CodecItem offr chOffr@(QuestD iv) Decode) = do
+                  -- We know the type of 'iv' must be a string.
+                  let ivSortMap = Map.singleton (getLoc iv) sortIdString
+                  vIdMap   <- Map.fromList <$> mkVarIds ivSortMap chOffr
+                  vId <- vIdMap .@ getLoc iv
+                  -- TODO: we should assert that offr does not contain question
+                  -- marks, otherwise the user might get a different error (for
+                  -- instance because a variable might not be declared).
+                  Offer chId chOffrs <- toOffer (ivSortMap <.+> (vIdMap <.+> mm')) offr
+                  vExps <- traverse exclamExp chOffrs
+                  return $ ConnDfroW chId "" (-1) vId vExps
+              cnectCodecToConnDef (CodecItem _ (ExclD _) Decode) =
+                  throwError Error
+                  { _errorType = InvalidExpression
+                  , _errorLoc  = getErrorLoc cd -- TODO: add a location to CodecItem to be more precise.
+                  , _errorMsg = "DECODE domain shall be one of '?' of String\n"
+                  }
+
+              exclamExp :: ChanOffer -> CompilerM VExpr
+              exclamExp = undefined
 
               asCnectType :: CnectType -> TxsDefs.CnectType
               asCnectType CTClient = TxsDefs.ClientSocket
