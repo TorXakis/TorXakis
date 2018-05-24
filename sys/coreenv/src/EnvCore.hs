@@ -224,14 +224,9 @@ setParams parvals = concat <$> mapM setParam parvals
 setParam :: (String,String) -> IOC [(String,String)]
 setParam (prm,val) = do
      params' <- gets params
-     case Map.lookup prm params' of
-       Nothing           -> return []
-       Just (_,check)    -> if check val
-                              then let newParams = Map.insert prm (val,check) params'
-                                    in do
-                                      modify $ \env -> env { params = newParams }
-                                      return [(prm,val)]
-                              else return []
+     let newParams = PC.updateParam params' (prm,val)
+     modify $ \env -> env { params = newParams }
+     return $ PC.paramToPair newParams prm
 
 -- ----------------------------------------------------------------------------------------- --
 -- Unid :  unique (negative) number for identifiers

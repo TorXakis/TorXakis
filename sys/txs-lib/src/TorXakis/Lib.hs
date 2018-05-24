@@ -47,10 +47,12 @@ import           BehExprDefs                   (ChanOffer (Exclam, Quest),
                                                 Offer (Offer))
 import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
-import           EnvCore                       (IOC, getParams)
+import           EnvCore                       (IOC)
+import qualified EnvCore                       as IOC
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
-import           ParamCore                     (getParamPairs)
+import           ParamCore                     (getParamPairs, paramToPair,
+                                                updateParam)
 import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (Token (Cchanenv, Csigs, Cunid, Cvarenv),
                                                 txsLexer)
@@ -147,9 +149,25 @@ timer s nm = do
 
 getAllParams :: Session -> [String] -> IO [(String, String)]
 getAllParams s pNms = do
-    cParams <- runIOC s $ getParams pNms
+    cParams <- runIOC s $ IOC.getParams pNms
     st <- readTVarIO (s ^. sessionState)
     return $ cParams ++ getParamPairs pNms (st ^. sessionParams)
+
+setParam :: Session -> String -> String -> IO (String,String)
+setParam s pNm pVl = do
+    setRes <- runIOC s $ IOC.setParams [(pNm, pVl)]
+    case setRes of
+        [] -> do
+            let stT = s ^. sessionState
+            st <- readTVarIO stT
+            let params  = st ^. sessionParams
+                params' = updateParam params (pNm, pVl)
+                st'     = st & sessionParams .~ params'
+                [pair]  = paramToPair params' pNm
+            atomically $ modifyTVar' stT (const st')
+            return pair
+        [pair] -> return pair
+        _ps    -> return ("","")
 
 -- | Load a TorXakis file, compile it, and return the response.
 --

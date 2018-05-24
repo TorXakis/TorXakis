@@ -152,11 +152,10 @@ startCLI = do
             timer _    = return "Usage: timer <timer name>"
             param :: (MonadIO m, MonadReader Env m, MonadError String m)
                   => [String] -> m String
-            param []    = getParams []
-            param [p]   = getParams [p]
+            param []    = getAllParams
+            param [p]   = getParam p
             param [p,v] = setParam p v
             param _     = return "Usage: param [ <parameter> [<value>] ]"
-            setParam _p _v = undefined
     asTxsMsg :: BS.ByteString -> Either String Msg
     asTxsMsg msg = do
         msgData <- maybeToEither dataErr $

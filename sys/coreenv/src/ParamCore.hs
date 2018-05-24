@@ -22,6 +22,8 @@ module ParamCore
 , initParams             -- initParams :: Map.Map String (String,String->Bool)
                          -- initial values of parameters
 , getParamPairs
+, paramToPair
+, updateParam
 )
 
 where
@@ -101,3 +103,9 @@ paramToPair ps pNm =
         Nothing           -> []
         Just (val,_check) -> [(pNm,val)]
 
+updateParam :: Params -> (String,String) -> Params
+updateParam ps (pNm,pVl) =  case Map.lookup pNm ps of
+    Nothing        -> ps
+    Just (_,check) -> if check pVl
+                            then Map.insert pNm (pVl,check) ps
+                            else ps
