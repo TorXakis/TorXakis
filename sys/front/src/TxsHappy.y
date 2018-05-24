@@ -1937,7 +1937,7 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
-                ;  $$ = parallel (chanIdExit:$$.inhChanSigs) [$1,$3]
+                ;  $$ = parallel (Set.fromList (chanIdExit:$$.inhChanSigs)) [$1,$3]
                 }
               | BehaviourExpr2 "|||" BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1950,7 +1950,7 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
-                ;  $$ = parallel [chanIdExit] [$1,$3]
+                ;  $$ = parallel (Set.singleton chanIdExit) [$1,$3]
                 }
               | BehaviourExpr2 "|[" IdList "]|" BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1972,7 +1972,7 @@ BehaviourExpr2  -- :: { BExpr }
                                       }
                                     | nm <- $3
                                     ]
-                         in parallel (chanIdExit:chans) [$1,$5]
+                         in parallel (Set.fromList (chanIdExit:chans)) [$1,$5]
                 }
               | BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -2195,7 +2195,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $4.inhChanSigs  = map (\(IdChan c) -> c ) $ scopeMerge (map IdChan $$.inhChanSigs) (map IdChan $2)
                 ;  $4.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $4.synExitSorts
-                ;  $$ = hide $2 $4
+                ;  $$ = hide (Set.fromList $2) $4
                 }
               | "(" BehaviourExpr1 ")"
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1

@@ -168,7 +168,7 @@ instance PShow BExprView
       =  case bexps of
          { [] -> "STOP\n"
          ; be -> "( " ++
-                  Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (List.delete chanIdExit chans)) ++" ]|\n( ")
+                  Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (Set.toList (Set.delete chanIdExit chans))) ++" ]|\n( ")
                              (map pshow be)
                  ++ " )"
          }
@@ -194,7 +194,7 @@ instance PShow BExprView
     pshow (Hide chans bexp)
       =  "HIDE "
          ++ Utils.join "; " [ T.unpack n ++ " :: " ++ Utils.join " # " (map pshow srts)
-                            | ChanId n _ srts <- chans
+                            | ChanId n _ srts <- Set.toList chans
                             ] ++ " IN\n"
          ++ pshow bexp ++ "\n"
          ++ "NI\n"

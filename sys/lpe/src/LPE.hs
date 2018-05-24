@@ -332,7 +332,7 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
     return (procInstPAR, procDefsPAR)
     where
       -- takes two operands (steps and paramsDef) and combines them according to parallel semantics
-      combineSteps :: [ChanId] -> ProcId -> [ChanId] -> ([BExpr], [VarId]) -> ([BExpr], [VarId]) ->  ([BExpr], [VarId])
+      combineSteps :: Set.Set ChanId -> ProcId -> [ChanId] -> ([BExpr], [VarId]) -> ([BExpr], [VarId]) ->  ([BExpr], [VarId])
       combineSteps syncChans procIdPAR chansDefPAR (stepsL, opParamsL) (stepsR, opParamsR) =
         let -- first only steps of the left operand
             stepsLvalid = filter (isValidStep syncChans) stepsL
@@ -375,22 +375,21 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
             actionPref actOfferLR procInstLR
 
           -- check if given step can be executed by itself according to parallel semantics
-          isValidStep :: [ChanId] -> BExpr -> Bool
+          isValidStep :: Set.Set ChanId -> BExpr -> Bool
           isValidStep syncChans' (TxsDefs.view -> ActionPref ActOffer{offers=os} _) =
             let -- extract all chanIds from the offers in the ActOffer
                 chanIds = Set.foldl (\accu offer -> (chanid offer : accu)) [] os in
             -- if there are no common channels with the synchronisation channels: return true
-            Set.null $ Set.intersection (Set.fromList syncChans') (Set.fromList chanIds)
+            Set.null $ Set.intersection syncChans' (Set.fromList chanIds)
           isValidStep _ _ = error "only allowed with ActionPref"
 
           -- check if given step combination can be executed according to parallel semantics
-          isValidStepCombination :: [ChanId] -> (BExpr, BExpr) -> Bool
-          isValidStepCombination syncChans' (TxsDefs.view -> ActionPref ActOffer{offers=offersL} _, TxsDefs.view -> ActionPref ActOffer{offers=offersR} _) =
+          isValidStepCombination :: Set.Set ChanId -> (BExpr, BExpr) -> Bool
+          isValidStepCombination syncChansSet (TxsDefs.view -> ActionPref ActOffer{offers=offersL} _, TxsDefs.view -> ActionPref ActOffer{offers=offersR} _) =
             let -- extract all chanIds from the offers in the ActOffer
                 chanIdsLSet = Set.fromList $ Set.foldl (\accu offer -> (chanid offer : accu)) [] offersL
                 chanIdsRSet = Set.fromList $ Set.foldl (\accu offer -> (chanid offer : accu)) [] offersR
-                syncChansSet = Set.fromList syncChans'
-
+                
                 intersectionLR = Set.intersection chanIdsLSet chanIdsRSet
                 intersectionLsyncChans = Set.intersection chanIdsLSet syncChansSet
                 intersectionRsyncChans = Set.intersection chanIdsRSet syncChansSet

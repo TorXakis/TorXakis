@@ -148,11 +148,11 @@ data  BBranch  =  BTpref   { btoffers  :: Set.Set CTOffer        -- set must be 
 
 
 data  BNode env =  BNbexpr      env BExpr
-                 | BNparallel   [ChanId] [BNode env]
+                 | BNparallel   (Set.Set ChanId) [BNode env]
                  | BNenable     (BNode env) [ChanOffer] (BNode env)
                  | BNdisable    (BNode env) (BNode env)
                  | BNinterrupt  (BNode env) (BNode env)
-                 | BNhide       [ChanId] (BNode env)
+                 | BNhide       (Set.Set ChanId) (BNode env)
      deriving (Eq,Ord,Read,Show,Functor)
 
 

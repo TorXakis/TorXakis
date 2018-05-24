@@ -890,7 +890,7 @@ testLPEPar = TestCase $
 
       procDefP = ProcDef [chanIdA] [] (
             actionPref actOfferAx (
-                parallel [chanIdA] [
+                parallel (Set.singleton chanIdA) [
                     actionPref actOfferAExclamX stop,
                     actionPref actOfferAExclamX stop
                   ]

@@ -116,16 +116,15 @@ instance Reduce INode where
                                                   _               -> False
                                              )
                                              inodes'
-             chans'  = Set.unions $ map (Set.fromList . freeChans) nstops
-             chids'  = Set.fromList chids `Set.intersection` chans'
-             chids'' = Set.toList chids'
+             chans'  = Set.unions $ map freeChans nstops
+             chids'  = chids `Set.intersection` chans'
          case (stops,nstops) of
            ( _  , [] )       -> return stopINode
            ( []  , [inode] ) -> return inode
-           ( []  , inods )   -> return $ BNparallel chids'' inods
+           ( []  , inods )   -> return $ BNparallel chids' inods
            ( j:_ , i:is )    -> if Set.null chids' -- PvdL: performance/change issue - should be equal to chanIdExit? chanIdExit will always be part of intersection....
-                                  then return $ BNparallel chids'' (i:is)
-                                  else return $ BNparallel chids'' (j:i:is)
+                                  then return $ BNparallel chids' (i:is)
+                                  else return $ BNparallel chids' (j:i:is)
 
     reduce (BNenable inode1 choffs inode2) = do
          inode1' <- reduce inode1
@@ -153,13 +152,13 @@ instance Reduce INode where
 
     reduce (BNhide chids inode) = do
          inode' <- reduce inode
-         let chans' = Set.fromList $ freeChans inode'
-             chids' = Set.fromList chids `Set.intersection` chans'
+         let chans' = freeChans inode'
+             chids' = chids `Set.intersection` chans'
          case inode' of
            BNbexpr _ bexpr | isStop bexpr -> return stopINode
            _                              -> if Set.null chids'
                                                 then return inode'
-                                                else return $ BNhide (Set.toList chids') inode'
+                                                else return $ BNhide chids' inode'
 
 -- ----------------------------------------------------------------------------------------- --
 -- Reduce :  BExpr
@@ -198,16 +197,15 @@ reduce' (Choice bexps) = do
 reduce' (Parallel chids bexps) = do
      bexps' <- mapM reduce bexps
      let (stops,nstops) = List.partition isStop bexps'
-         chans'  = Set.unions $ map (Set.fromList . freeChans) nstops
-         chids'  = Set.fromList chids `Set.intersection` chans'
-         chids'' = Set.toList chids'
+         chans'  = Set.unions $ map freeChans nstops
+         chids'  = chids `Set.intersection` chans'
      case (stops,nstops) of
        ( _ , [] )      -> return stop
        ( [] , [bexp] ) -> return bexp
-       ( [] , bexs )   -> return $ parallel chids'' bexs
+       ( [] , bexs )   -> return $ parallel chids' bexs
        ( c:_ , b:bs )  -> if  Set.null chids'       -- PvdL: performance/change issue - should be equal to chanIdExit? chanIdExit will always be part of intersection....
-                            then return $ parallel chids'' (b:bs)
-                            else return $ parallel chids'' (c:b:bs)
+                            then return $ parallel chids' (b:bs)
+                            else return $ parallel chids' (c:b:bs)
 
 reduce' (Enable bexp1 choffs bexp2) = do
      bexp1'  <- reduce bexp1
@@ -240,8 +238,8 @@ reduce' (Hide chids bexp) = do
      bexp' <- reduce bexp
      if isStop bexp'
        then return stop
-       else let chids' = List.nub chids `List.intersect` freeChans bexp'
-            in if null chids'
+       else let chids' = chids `Set.intersection` freeChans bexp'
+            in if Set.null chids'
                  then return bexp'
                  else return $ hide chids' bexp'
 
@@ -276,41 +274,38 @@ instance Reduce VExpr
 
 class FreeChan t
   where
-    freeChans :: t -> [ChanId]      -- PvdL : result is a set, why not use Set iso List?
+    freeChans :: t -> Set.Set ChanId
 
 
 instance FreeChan INode
   where
-    freeChans inode  =  List.nub $ freeChans' inode
-      where
-       freeChans' :: INode -> [ChanId]
-       freeChans' (BNbexpr _ bexp)            = freeChans bexp
-       freeChans' (BNparallel chids inodes)   = chids ++ concatMap freeChans' inodes
-       freeChans' (BNenable inode1 _ inode2)  = freeChans' inode1 ++ freeChans' inode2
-       freeChans' (BNdisable inode1 inode2)   = freeChans' inode1 ++ freeChans' inode2
-       freeChans' (BNinterrupt inode1 inode2) = freeChans' inode1 ++ freeChans' inode2
-       freeChans' (BNhide chids inode')       = List.nub (freeChans' inode') List.\\ chids -- use List.nub since list-difference \\ only removes first occurrence of elem
+   freeChans (BNbexpr _ bexp)            = freeChans bexp
+   freeChans (BNparallel chids inodes)   = Set.unions (chids:map freeChans inodes)
+   freeChans (BNenable inode1 _ inode2)  = freeChans inode1 `Set.union` freeChans inode2
+   freeChans (BNdisable inode1 inode2)   = freeChans inode1 `Set.union` freeChans inode2
+   freeChans (BNinterrupt inode1 inode2) = freeChans inode1 `Set.union` freeChans inode2
+   freeChans (BNhide chids inode')       = Set.difference (freeChans inode') chids
 
 instance FreeChan BExpr
   where
-    freeChans bexpr  =  List.nub $ freeChans' (TxsDefs.view bexpr)
+    freeChans bexpr  =  freeChans' (TxsDefs.view bexpr)
       where
-        freeChans' :: BExprView -> [ChanId]
-        freeChans' (ActionPref ao bexp)    = freeChans ao ++ freeChans bexp
+        freeChans' :: BExprView -> Set.Set ChanId
+        freeChans' (ActionPref ao bexp)    = freeChans ao `Set.union` freeChans bexp
         freeChans' (Guard _ bexp)          = freeChans bexp
-        freeChans' (Choice bexps)          = concatMap freeChans bexps
-        freeChans' (Parallel chids bexps)  = chids ++ concatMap freeChans bexps
-        freeChans' (Enable bexp1 _ bexp2)  = freeChans bexp1 ++ freeChans bexp2
-        freeChans' (Disable bexp1 bexp2)   = freeChans bexp1 ++ freeChans bexp2
-        freeChans' (Interrupt bexp1 bexp2) = freeChans bexp1 ++ freeChans bexp2
-        freeChans' (ProcInst _ chids _)    = chids
-        freeChans' (Hide chids bexp)       = freeChans bexp List.\\ chids         
+        freeChans' (Choice bexps)          = Set.unions $ map freeChans (Set.toList bexps)
+        freeChans' (Parallel chids bexps)  = Set.unions (chids:map freeChans bexps)
+        freeChans' (Enable bexp1 _ bexp2)  = freeChans bexp1 `Set.union` freeChans bexp2
+        freeChans' (Disable bexp1 bexp2)   = freeChans bexp1 `Set.union` freeChans bexp2
+        freeChans' (Interrupt bexp1 bexp2) = freeChans bexp1 `Set.union` freeChans bexp2
+        freeChans' (ProcInst _ chids _)    = Set.fromList chids
+        freeChans' (Hide chids bexp)       = Set.difference (freeChans bexp) chids         
         freeChans' (ValueEnv _ bexp)       = freeChans bexp
-        freeChans' (StAut _ _ trns)        = concatMap freeChans trns
+        freeChans' (StAut _ _ trns)        = Set.unions (map freeChans trns)
 
 instance FreeChan ActOffer
   where
-    freeChans (ActOffer offs _ _) = map chanid $ Set.toList offs
+    freeChans (ActOffer offs _ _) = Set.map chanid offs
 
 instance FreeChan Trans
   where
@@ -318,7 +313,7 @@ instance FreeChan Trans
 
 instance (FreeChan t) => FreeChan [t]
   where
-    freeChans = concatMap freeChans
+    freeChans = Set.unions . map freeChans
 
 -- ----------------------------------------------------------------------------------------- --
 -- helper functions
