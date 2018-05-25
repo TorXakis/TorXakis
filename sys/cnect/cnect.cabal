@@ -26,7 +26,6 @@ library
                       , base
                       , containers
                       , mtl
-                      , network
                       , text
                       , MissingH
 

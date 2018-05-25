@@ -27,7 +27,7 @@ library
                       , text
 
                       , behave
-                      , behaveenv
+                      , bexpr
                       , coreenv
                       , defs
                       , valexpr
@@ -59,6 +59,7 @@ test-suite lpe-test
                      , MissingH
 
                      , behave
+                     , bexpr
                      , coreenv
                      , defs
                      , valexpr

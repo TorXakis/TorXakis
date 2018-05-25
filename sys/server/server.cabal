@@ -46,6 +46,7 @@ executable txsserver
                       , yaml
                       , MissingH
 
+                      , bexpr
                       , cnect
                       , core
                       , coreenv

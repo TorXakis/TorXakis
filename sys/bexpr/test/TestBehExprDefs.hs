@@ -24,9 +24,9 @@ import BehExprDefs
 import ChanId
 import ConstDefs
 import SortId
-import StdTDefs
 import ValExpr
 import VarId
+
 
 -- variables
 varIdx :: VarId
@@ -60,7 +60,10 @@ instance Arbitrary GenValExprBool where
                         , GenValExprBool valExprGEZx
                         , GenValExprBool valExprEqualxy
                         ]
-    
+
+chanIdExit :: ChanId
+chanIdExit  = ChanId "EXIT"  901 []
+
 chanIdA :: ChanId
 chanIdA = ChanId { ChanId.name = "A"
                  , ChanId.unid = 2
