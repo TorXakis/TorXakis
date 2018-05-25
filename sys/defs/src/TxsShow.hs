@@ -278,20 +278,24 @@ instance PShow v => PShow (ValExprView v) where
     pshow (Vsum s)
       = listShow (FMX.toOccurList s)
       where
+        listShow :: PShow a => [(a, Integer)] -> String
         listShow []     = "0"
         listShow [x]    = elemShow x
         listShow (x:xs) = "( " ++ elemShow x ++ " + " ++ listShow xs ++ " )"
 
+        elemShow :: PShow a => (a, Integer) -> String
         elemShow (t,1)  = pshow t
         elemShow (t,-1) = "(- " ++ pshow t ++ " )"
         elemShow (t,p)  = "( " ++ show p ++ " * " ++ pshow t ++ " )"
     pshow (Vproduct s)
       = listShow (FMX.toDistinctAscOccurListT s)
       where
+        listShow :: PShow a => [(a, Integer)] -> String
         listShow []     = "1"
         listShow [x]    = elemShow x
         listShow (x:xs) = "( " ++ elemShow x ++ " * " ++ listShow xs ++ " )"
 
+        elemShow :: PShow a => (a, Integer) -> String
         elemShow (t,1)  = pshow t
         elemShow (t,p)  | p > 0 = "( " ++ pshow t ++ " ^ "  ++ show p ++ " )"
         elemShow (_,p)  = error ("TxsShow - pshow VExpr - illegal power: p = " ++ show p)
