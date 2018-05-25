@@ -16,13 +16,11 @@ import           Data.Aeson.Types              (Object, Parser, parseMaybe,
                                                 (.:))
 import qualified Data.ByteString.Lazy.Char8    as BSL
 import           Data.Maybe                    (fromMaybe, mapMaybe)
--- import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import           Lens.Micro                    ((^.))
 import           Network.Wreq                  (Response, partString,
                                                 responseBody, responseStatus,
                                                 statusCode)
--- import           Lens.Micro.Aeson              (key, _String)
 
 import           TorXakis.CLI.Env
 import           TorXakis.CLI.WebClient.Common

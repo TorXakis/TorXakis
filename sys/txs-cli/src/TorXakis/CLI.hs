@@ -126,13 +126,14 @@ startCLI = do
             "delay"   -> waitFor $ head rest
             "i"       -> lift (runExceptT info) >>= output
             "info"    -> lift (runExceptT info) >>= output
-            "param"   -> lift (runExceptT $ param rest) >>= output
-            "time"    -> lift (runExceptT getTime) >>= output
-            "timer"   -> lift (runExceptT $ timer rest) >>= output
             "l"       -> lift (load rest) >>= output
             "load"    -> lift (load rest) >>= output -- TODO: this will break if the file names contain a space.
+            "param"   -> lift (runExceptT $ param rest) >>= output
             "stepper" -> subStepper rest >>= output
             "step"    -> subStep rest >>= output
+            "time"    -> lift (runExceptT getTime) >>= output
+            "timer"   -> lift (runExceptT $ timer rest) >>= output
+            "val"     -> lift (runExceptT $ val rest) >>= output
             _         -> output $ "Unknown command: " ++ cmd
           where
             waitFor :: String -> InputT CLIM ()
@@ -156,6 +157,11 @@ startCLI = do
             param [p]   = getParam p
             param [p,v] = setParam p v
             param _     = return "Usage: param [ <parameter> [<value>] ]"
+            val :: (MonadIO m, MonadReader Env m, MonadError String m)
+                => [String] -> m String
+            val [] = getVals
+            val t  = createVal $ unwords t
+
     asTxsMsg :: BS.ByteString -> Either String Msg
     asTxsMsg msg = do
         msgData <- maybeToEither dataErr $

@@ -41,28 +41,25 @@ type ParamsAPI = "sessions"
                 )
 
 paramsServer :: Env -> Server ParamsAPI
-paramsServer env sid = param env sid :<|> params env sid :<|> setParam env sid
-
-param :: Env -> SessionId -> String -> Handler ParameterValue
-param env sid pNm = do
-    s <- getSession env sid
-    [prm] <- liftIO $ Lib.getAllParams s [pNm]
-    return $ showPrm prm
-
-params :: Env -> SessionId -> Handler [ParameterValue]
-params env sid = do
-    s <- getSession env sid
-    prms <- liftIO $ Lib.getAllParams s []
-    return $ map showPrm prms
-
-setParam :: Env -> SessionId -> MultipartData Mem -> Handler ParameterValue
-setParam env sid mpData = do
-    s <- getSession env sid
-    case inputs mpData of
-        [pIn] -> do
-            prm <- liftIO $ Lib.setParam s (T.unpack $ iName pIn) (T.unpack $ iValue pIn)
+paramsServer env sid = param :<|> params :<|> setParam
+    where
+        param :: String -> Handler ParameterValue
+        param pNm = do
+            s <- getSession env sid
+            [prm] <- liftIO $ Lib.getAllParams s [pNm]
             return $ showPrm prm
-        _     -> return $ ParameterValue "" ""
-
-showPrm :: (String,String) -> ParameterValue
-showPrm (nm,vl) = ParameterValue nm vl
+        params :: Handler [ParameterValue]
+        params = do
+            s <- getSession env sid
+            prms <- liftIO $ Lib.getAllParams s []
+            return $ map showPrm prms
+        setParam :: MultipartData Mem -> Handler ParameterValue
+        setParam mpData = do
+            s <- getSession env sid
+            case inputs mpData of
+                [pIn] -> do
+                    prm <- liftIO $ Lib.setParam s (T.unpack $ iName pIn) (T.unpack $ iValue pIn)
+                    return $ showPrm prm
+                _     -> return $ ParameterValue "" ""
+        showPrm :: (String,String) -> ParameterValue
+        showPrm (nm,vl) = ParameterValue nm vl

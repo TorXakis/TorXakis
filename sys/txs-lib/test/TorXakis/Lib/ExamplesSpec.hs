@@ -40,3 +40,4 @@ spec = do
     it "Stepping with user actions" $ do
         res <- testWithUserActions $ "test" </> "data" </> "Echo.txs"
         res `shouldBe` Right ()
+    it "testVals" testVals

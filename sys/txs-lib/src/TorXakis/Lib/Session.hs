@@ -28,6 +28,8 @@ import           EnvCore                       (EnvC, initEnvC)
 import           EnvData                       (Msg)
 import           ParamCore                     (Params)
 import           TxsDDefs                      (Action, Verdict)
+import           TxsDefs                       (VEnv)
+import           VarId                         (VarId)
 
 import           TorXakis.Lib.SessionParams
 
@@ -66,6 +68,8 @@ data Session = Session
     , _wConnDef       :: WorldConnDef
     , _worldListeners :: [ThreadId]
     , _timers         :: TVar (Map.Map String UTCTime)
+    , _locVars        :: TVar [VarId] -- ^ local free variables
+    , _locValEnv      :: TVar VEnv    -- ^ local value environment
     }
 
 makeLenses ''Session

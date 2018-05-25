@@ -31,6 +31,7 @@ import           Endpoints.Tester            (StartTesterEP, TestNStepsEP,
 import           Endpoints.Time              (TimeEP, getTime)
 import           Endpoints.Timer             (TimerEP, timer)
 import           Endpoints.Upload            (UploadEP, upload)
+import           Endpoints.Vals              (ValsAPI, valsServer)
 
 type API = ServiceAPI
 type ServiceAPI
@@ -49,6 +50,7 @@ type ServiceAPI
     :<|> OpenMessagesEP
     :<|> CloseMessagesEP
     :<|> MessagesEP
+    :<|> ValsAPI
     :<|> TestPageAPI
 
 type TestPageAPI = "test" :> Raw
@@ -82,4 +84,5 @@ server env
     :<|> openMessages env
     :<|> closeMessages env
     :<|> messages env
+    :<|> valsServer env
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"

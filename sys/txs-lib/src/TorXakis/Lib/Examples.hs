@@ -18,7 +18,7 @@ import           Control.Concurrent.Async     (async, cancel)
 import           Control.Concurrent.STM.TChan (writeTChan)
     --import           Control.Concurrent.STM.TVar  (readTVarIO)
 --import           Control.Exception            (SomeException)
-import           Control.Monad                (void, when)
+import           Control.Monad                (void)
 --import           Control.Monad.State          (evalStateT)
 import           Control.Monad.STM            (atomically)
 --import           Data.Aeson                   (decode)
@@ -57,14 +57,14 @@ import           Id                           (Id (Id))
 --import           Name                         (Name)
 import           SortId                       (SortId (SortId))
 --import           SortOf                       (sortOf)
-import           TorXakis.Lens.ModelDef
+-- import           TorXakis.Lens.ModelDef
 --import           TorXakis.Lens.Sigs           (funcTable)
 --import           TorXakis.Lens.TxsDefs
 import           TorXakis.Lib
 import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
 import           TxsDDefs                     (Action (Act, ActQui))
-import           TxsDefs                      (ModelDef)
+-- import           TxsDefs                      (ModelDef)
 --import           ValExpr                      (ValExpr, cstrConst)
 --import           VarId                        (VarId)
 
@@ -72,8 +72,8 @@ import           TxsDefs                      (ModelDef)
 --                                                post, responseBody,
 --                                                responseStatus, statusCode)
 
-import           Network.Wreq                 (partText, post, responseStatus,
-                                               statusCode)
+-- import           Network.Wreq                 (partText, post, responseStatus,
+--                                                statusCode)
 
 
 -- | Get the next N messages in the session.
@@ -217,6 +217,25 @@ testWithUserActions path = do
     cancel a
     return r
 
+testVals :: IO ()
+testVals = do
+    s <- newSession
+    a <- async (printer s)
+    cs <- readFile $ "test" </> "data" </> "Echo.txs"
+    void $ load s cs
+    vals <- getVals s
+    x <- createVal s "x = 42"
+    valsx <- getVals s
+    y <- createVal s "y = 42"
+    valsxy <- getVals s
+    print $ "vals = " ++ show vals
+    print $ "x = " ++ show x
+    print $ "valsx = " ++ show valsx
+    print $ "y = " ++ show y
+    print $ "valsxy = " ++ show valsxy
+    threadDelay (10 ^ (5 :: Int))
+    cancel a
+
 -- | Test info
 --
 -- TODO: for now I'm putting this test here. We should find the right place for
@@ -345,24 +364,24 @@ testWithUserActions path = do
 --         s   -> Just <$> createResponseAction st outChId "ResponseFailure"
 --                             [cstrConst (Cstring $ T.pack $ "/stepper/step/1/" ++ show n ++ " returned unxpected status: " ++ show s)]
 
-initSession :: IO ()
-initSession = do
-    resp <- post "http://localhost:8080/session/new" [partText "" ""]
-    let status = resp ^. responseStatus . statusCode
-    when (status /= 201) $
-        error $ "/session/new returned unxpected status: " ++ show status
+-- initSession :: IO ()
+-- initSession = do
+--     resp <- post "http://localhost:8080/session/new" [partText "" ""]
+--     let status = resp ^. responseStatus . statusCode
+--     when (status /= 201) $
+--         error $ "/session/new returned unxpected status: " ++ show status
 
-getOutChanId :: ModelDef -> ChanId
-getOutChanId mDef =
-    let [setChId] = mDef ^. modelOutChans
-        [outChId] = Set.toList setChId
-    in  outChId
+-- getOutChanId :: ModelDef -> ChanId
+-- getOutChanId mDef =
+--     let [setChId] = mDef ^. modelOutChans
+--         [outChId] = Set.toList setChId
+--     in  outChId
 
-getInChanId :: ModelDef -> ChanId
-getInChanId mDef =
-    let [setChId] = mDef ^. modelInChans
-        [inChId] = Set.toList setChId
-    in inChId
+-- getInChanId :: ModelDef -> ChanId
+-- getInChanId mDef =
+--     let [setChId] = mDef ^. modelInChans
+--         [inChId] = Set.toList setChId
+--     in inChId
 
 -- createResponseAction :: SessionSt -> ChanId -> Text -> [ValExpr VarId] -> IO Action
 -- createResponseAction st outChId rNm params = do

@@ -18,6 +18,7 @@ module TorXakis.CLI.WebClient
     , closeMessages
     , callTimer
     , module TorXakis.CLI.WebClient.Params
+    , module TorXakis.CLI.WebClient.Vals
     )
 where
 
@@ -52,6 +53,7 @@ import           Endpoints.Parse               (ActionText (ActionText))
 import           TorXakis.CLI.Env
 import           TorXakis.CLI.WebClient.Common
 import           TorXakis.CLI.WebClient.Params
+import           TorXakis.CLI.WebClient.Vals
 
 data Info = Info
     { _version   :: Text

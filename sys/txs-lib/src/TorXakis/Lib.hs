@@ -29,7 +29,8 @@ import           Control.Monad.STM             (atomically, retry)
 import           Data.Aeson                    (FromJSON, ToJSON)
 import           Data.Either.Utils             (maybeToEither)
 import           Data.Foldable                 (traverse_)
-import           Data.Map.Strict               as Map
+import qualified Data.List                     as List
+import qualified Data.Map.Strict               as Map
 import           Data.Semigroup                ((<>))
 import qualified Data.Set                      as Set
 import           Data.Text                     (Text)
@@ -62,10 +63,13 @@ import           TxsCore                       (txsEval, txsGetCurrentModel,
 import           TxsDDefs                      (Action (Act),
                                                 Verdict (NoVerdict))
 import           TxsDefs                       (ModelDef (ModelDef))
-import           TxsHappy                      (prefoffsParser, txsParser)
+import           TxsHappy                      (prefoffsParser, txsParser,
+                                                valdefsParser)
+import           TxsShow                       (fshow)
 import           TxsStep                       (txsSetStep, txsShutStep,
                                                 txsStartStep, txsStepAct,
                                                 txsStepRun, txsStopStep)
+import qualified VarId
 
 import           TorXakis.Lib.Session
 
@@ -113,6 +117,8 @@ newSession = Session <$> newTVarIO emptySessionState
                      <*> newTChanIO
                      <*> return (WorldConnDef Map.empty (\_ -> return []))
                      <*> return []
+                     <*> newTVarIO Map.empty
+                     <*> newTVarIO []
                      <*> newTVarIO Map.empty
 
 -- | Stop a session.
@@ -304,8 +310,40 @@ stop _ =
     -- runResponse $ lift $ runIOC s txsStop
     return success
 
--- | Parse a String into an set of offers.
---
+createVal :: Session -> Text -> IO (Response String)
+createVal s val = do
+    let strVal = T.unpack val
+        varsT  = s ^. locVars
+        valEnvT = s ^. locValEnv
+    valEnv <- readTVarIO valEnvT
+    if T.null val
+        then return $ Left "No value expression received"
+        else do
+            vars <- readTVarIO varsT
+            sigs <- runIOC s txsGetSigs
+            runExceptT $ do
+                parseRes <- fmap (left showEx) $
+                    lift $ try $ evaluate . force . valdefsParser $
+                    ( Csigs    sigs
+                    : Cvarenv  []
+                    : Cunid    0
+                    : txsLexer strVal
+                    )
+                (_, venv) <- liftEither parseRes
+                if let newnames = map VarId.name (Map.keys venv)
+                    in null (newnames `List.intersect` map VarId.name vars) &&
+                       null (newnames `List.intersect` map VarId.name (Map.keys valEnv))
+                  then lift $ atomically $ modifyTVar' valEnvT $ Map.union venv
+                  else throwError $ T.pack $ "double value names: " ++ fshow venv
+                return $ fshow venv
+
+getVals :: Session -> IO (Response String)
+getVals s = do
+    let valEnvT = s ^. locValEnv
+    valEnv <- readTVarIO valEnvT
+    runExceptT $ return $ fshow valEnv
+
+-- | Parse a String into a set of offers.
 parseAction :: Session -> Text -> IO (Response Action)
 parseAction s act = do
     let strAct = T.unpack act
@@ -340,8 +378,6 @@ parseAction s act = do
         cstOfs <- traverse offerToAction (Set.toList offs)
         return $ Act (Set.fromList cstOfs)
     where
-      showEx :: SomeException -> Text
-      showEx = T.pack . show
       offerToAction :: Offer -> ExceptT Text IO (ChanId, [Const])
       offerToAction (Offer cid offrs) = do
           csts <- traverse evalExclam  offrs
@@ -352,6 +388,10 @@ parseAction s act = do
       evalExclam (Exclam choff) = do
           res <- lift (runIOC s (txsEval choff))
           liftEither $ left T.pack res
+
+-- | Show exception as `Text`
+showEx :: SomeException -> Text
+showEx = T.pack . show
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.
