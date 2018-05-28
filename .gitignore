@@ -36,3 +36,6 @@ prime
 stage
 snap/.snapcraft
 *.snap
+
+# special mac files
+.DS_Store

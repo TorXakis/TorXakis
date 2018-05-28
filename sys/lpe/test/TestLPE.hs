@@ -1267,13 +1267,13 @@ testLPEHide2 = TestCase $
 --                     P[A]() := P$pre1[A](0)
 --    GNF cont'd:
 --          unfold the ProcDef P[A](), i.e. instantiate P$pre1[A](0)
---          P[A]() := EXIT >-> STOP
+--          P[A]() := P$pre1[A](0)
 --          becomes:
---          P[A]() := EXIT >-> P$gnf1[A]()
---          P$gnf1[A]() := STOP
+--          P[A]() := {} [pc$P == 0] >-> P$pre1$enable[A]()
+--          P$pre1$enable[A]() := STOP
 -- LPE cont'd:
 --    becomes: 
---    LPE_P[A]() := EXIT[pcP == 0] >-> P[A](-1)
+--    LPE_P[A]() := EXIT[pcP == 0] >-> P[A](1)
 --    LPE_P[A](0)
 
 testEnable1 :: Test
