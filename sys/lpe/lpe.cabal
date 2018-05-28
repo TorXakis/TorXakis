@@ -26,7 +26,6 @@ library
                       , mtl
                       , text
 
-                      , behave
                       , bexpr
                       , coreenv
                       , defs
@@ -56,9 +55,7 @@ test-suite lpe-test
                      , mtl
                      , text
                      , HUnit
-                     , MissingH
 
-                     , behave
                      , bexpr
                      , coreenv
                      , defs

@@ -52,7 +52,7 @@ import ValExpr
 import qualified EnvData
 import qualified EnvBasic            as EnvB
 
-import Expand (relabel)
+import Relabel (relabel)
 import Subst
 
 -- ----------------------------------------------------------------------------------------- --

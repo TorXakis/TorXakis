@@ -21,7 +21,6 @@ module Expand
                  -- (concrete, closed, no interaction variables)
                  -- into a communication tree with interaction variables (closed)
                  -- plain expansion, no input/ouput, no solving
-, Relabel (..)   -- relabel :: (Map.Map ChanId ChanId) -> e -> e
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -46,6 +45,7 @@ import           ConstDefs
 import qualified EnvBTree            as IOB
 import qualified EnvData
 import           Id
+import           Relabel(relabel)
 import           StdTDefs
 import           Subst
 import           TxsDefs
@@ -511,71 +511,6 @@ hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
                                         (we, Map.map (ValExpr.subst hvarenv (funcDefs tds)) ivenv)
                                  in fmap f ctnext1'
                   }
-
--- ----------------------------------------------------------------------------------------- --
--- relabel
-
-
-class Relabel e
-  where
-    relabel :: Map.Map ChanId ChanId -> e -> e
-
-instance Relabel BExpr
-    where
-        relabel v = relabel' v . TxsDefs.view
-
-relabel' :: Map.Map ChanId ChanId -> BExprView -> BExpr
-relabel' chanmap (ActionPref (ActOffer offs hidvars cnrs) bexp)
-  =  actionPref (ActOffer (Set.map (relabel chanmap) offs) hidvars cnrs) (relabel chanmap bexp)
-
-relabel' chanmap (Guard cnrs bexp)
-  =  TxsDefs.guard cnrs (relabel chanmap bexp)
-
-relabel' chanmap (Choice bexps)
-  =  choice (Set.map (relabel chanmap) bexps)
-
-relabel' chanmap (Parallel chids bexps)
-  =  parallel (Set.map (relabel chanmap) chids) (map (relabel chanmap) bexps)
-
-relabel' chanmap (Enable bexp1 choffs bexp2)
-  =  enable (relabel chanmap bexp1) choffs (relabel chanmap bexp2)
-
-relabel' chanmap (Disable bexp1 bexp2)
-  =  disable (relabel chanmap bexp1) (relabel chanmap bexp2)
-
-relabel' chanmap (Interrupt bexp1 bexp2)
-  =  interrupt (relabel chanmap bexp1) (relabel chanmap bexp2)
-
-relabel' chanmap (ProcInst pid chans vexps)
-  =  procInst pid (map (relabel chanmap) chans) vexps
-
-relabel' chanmap (Hide chans bexp)
-  =  hide chans (relabel (Map.filterWithKey (\k _->k `notElem` chans) chanmap) bexp)
-
-relabel' chanmap (ValueEnv venv bexp)
-  =  valueEnv venv (relabel chanmap bexp)
-
-relabel' chanmap (StAut stid venv trans)
-  =  stAut stid venv (map (relabel chanmap) trans)
-
-
-instance Relabel Offer
-  where
-    relabel chanmap (Offer chid choffs)
-      =  Offer (relabel chanmap chid) choffs
-
-
-instance Relabel ChanId
-  where
-    relabel chanmap chid
-      =  Map.findWithDefault chid chid chanmap
-
-
-instance Relabel Trans
-  where
-    relabel chanmap (Trans from' (ActOffer offs hidvars cnrs) venv to')
-      =  Trans from' (ActOffer (Set.map (relabel chanmap) offs) hidvars cnrs) venv to'
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- transform IVar/VarId into unique IVar (HVar)

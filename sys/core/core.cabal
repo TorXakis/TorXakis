@@ -38,6 +38,7 @@ library
                       , behavedefs
                       , behaveenv
                       , behave
+                      , bexpr
                       , coreenv
                       , defs
                       , solve

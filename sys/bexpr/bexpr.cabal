@@ -19,8 +19,10 @@ library
                       , ChanId
                       , ProcDef
                       , ProcId
+                      , Relabel
                       , StautDef
                       , StatId
+                      , Subst
                       , VarEnv
 
   ghc-options:         -Wall -Werror -O2 -optc-O3 -optc-ffast-math
