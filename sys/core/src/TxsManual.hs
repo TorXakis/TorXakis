@@ -40,7 +40,7 @@ module TxsManual
 , txsActToW        -- :: DD.Action -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
   -- * observe an action from the External World
-, txsObsFroW       -- :: IOC.IOC (Either EnvData.Msg DD.Verdict)
+, txsActFroW       -- :: IOC.IOC (Either EnvData.Msg DD.Verdict)
 
   -- send an action according to the offer-pattern to the External World
 , txsOfferToW      -- :: D.Offer -> IOC.IOC (Either EnvData.Msg DD.Verdict)
@@ -223,8 +223,8 @@ txsActToW act  =  do
 -- | Observe action from External World
 --
 --   Only possible when in Manualing Mode.
-txsObsFroW :: IOC.IOC (Either EnvData.Msg DD.Verdict)
-txsObsFroW  =  do
+txsActFroW :: IOC.IOC (Either EnvData.Msg DD.Verdict)
+txsActFroW  =  do
      envc <- get
      case IOC.state envc of
        IOC.Manualing { IOC.behtrie  = behtrie
@@ -258,8 +258,8 @@ txsOfferToW offer  =  do
                      , IOC.eworld   = eworld
                      , IOC.putmsgs  = putmsgs
                      }
-         -> do input <- randOff2Act offer
-               case input of
+         -> do mact <- randOff2Act offer
+               case mact of
                  Nothing
                    -> do putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Could not generate action to EWorld" ]

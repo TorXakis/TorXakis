@@ -16,6 +16,8 @@ module Test
 ( testIn
 , testOut
 , testN
+, testModelMenuIn  -- :: IOC.IOC BTree.Menu
+, testModelMenuOut -- :: IOC.IOC BTree.Menu
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -24,6 +26,7 @@ module Test
 where
 
 import Control.Monad.State
+import qualified Data.Map  as Map
 import Data.Maybe
 import System.Random
 
@@ -41,6 +44,9 @@ import qualified EnvData
 import qualified TxsDefs
 import qualified TxsDDefs
 import qualified TxsShow
+import qualified Behave
+import qualified BTree
+import qualified Utils
 import BTShow()
 
 -- ----------------------------------------------------------------------------------------- --
@@ -265,6 +271,34 @@ testIOCOfullPurp depth lastDelta step =
                  IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "no more actions" ]
                  _ <- purpVerdict
                  return TxsDDefs.Pass
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- testMenu
+
+testModelMenu :: IOC.IOC BTree.Menu
+testModelMenu  =  do
+     envSt <- gets IOC.state
+     case envSt of
+       IOC.Stepping {IOC.modeldef = TxsDefs.ModelDef insyncs outsyncs splsyncs _bexp} -> do
+         let allSyncs = insyncs ++ outsyncs ++ splsyncs
+             curState = IOC.curstate envSt
+             modSts   = fromMaybe [] (Map.lookup curState (IOC.modstss envSt))
+         return $ Behave.behMayMenu allSyncs modSts
+       _ -> do
+         IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "testModelMenu without valid model"     ]
+         return []
+
+testModelMenuIn :: IOC.IOC BTree.Menu
+testModelMenuIn  =  do
+     menu <- testModelMenu
+     filterM (isInCTOffers . Utils.frst) menu
+
+testModelMenuOut :: IOC.IOC BTree.Menu
+testModelMenuOut  =  do
+     menu <- testModelMenu
+     filterM (isOutCTOffers . Utils.frst) menu
+
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --

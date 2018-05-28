@@ -1,0 +1,45 @@
+-- ----------------------------------------------------------------------------------------- --
+-- | Set Testing Mode.
+txsSetTest :: IOC.EWorld ew
+           => D.ModelDef                           -- ^ model definition.
+           -> Maybe D.MapperDef                    -- ^ optional mapper definition.
+           -> ew                                   -- ^ external world.
+           -> IOC.IOC (Either EnvData.Msg ())
+-- ----------------------------------------------------------------------------------------- --
+-- | Shut Testing Mode.
+txsShutTest :: IOC.IOC (Either EnvData.Msg ())
+-- ----------------------------------------------------------------------------------------- --
+-- | Start testing.
+txsStartTest :: Maybe D.PurpDef                    -- ^ optional test purpose definition.
+             -> IOC.IOC (Either EnvData.Msg ())
+-- ----------------------------------------------------------------------------------------- --
+-- | Stop testing.
+txsStopTest :: IOC.IOC (Either EnvData.Msg ())
+-- ----------------------------------------------------------------------------------------- --
+-- | Test SUT with the provided input action.
+txsTestActIn :: DD.Action                                 -- ^ input action to SUT.
+             -> IOC.IOC (Either EnvData.Msg DD.Verdict)   -- ^ verdict of test.
+-- ----------------------------------------------------------------------------------------- --
+-- | Test SUT by observing output action.
+txsTestActOut :: IOC.IOC TxsDDefs.Verdict
+-- ----------------------------------------------------------------------------------------- --
+-- | Test SUT with action according to offer-pattern in the model.
+txsTestOfferIn :: D.Offer                         -- ^ Offer-pattern to step in model.
+               -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+-- ----------------------------------------------------------------------------------------- --
+-- | Test SUT with the provided number of actions.
+txsTestRun :: Int                         -- ^ number of actions to test  the SUT.
+           -> IOC.IOC TxsDDefs.Verdict    -- ^ verdict after provided number of actions.
+-- ----------------------------------------------------------------------------------------- --
+-- | Give the menu, i.e., all possible offers, in the model.
+txsTestMenu :: IOC.IOC (Either EnvData.Msg BTree.Menu)
+-- ----------------------------------------------------------------------------------------- --
+-- | Give current state number
+txsTestStateNr :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
+-- ----------------------------------------------------------------------------------------- --
+-- | Give current state.
+txsTestState :: IOC.IOC (Either EnvData.Msg BTree.BTree)
+-- ----------------------------------------------------------------------------------------- --
+-- | Give trace from initial state to current state.
+txsTestTrace :: IOC.IOC (Either EnvData.Msg [DD.Action])
+

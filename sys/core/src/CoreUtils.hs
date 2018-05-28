@@ -93,6 +93,15 @@ filterEnvCtoEnvB = do
                             , IOB.unid     = IOC.unid envc
                             , IOB.msgs     = []
                             }
+       IOC.TestSet {..}
+         -> return IOB.EnvB { IOB.smts     = smts
+                            , IOB.tdefs    = tdefs
+                            , IOB.sigs     = sigs
+                            , IOB.stateid  = 0
+                            , IOB.params   = IOC.params envc
+                            , IOB.unid     = IOC.unid envc
+                            , IOB.msgs     = []
+                            }
        IOC.Testing{..}
          -> return IOB.EnvB { IOB.smts     = smts
                             , IOB.tdefs    = tdefs
@@ -203,6 +212,7 @@ nextBehTrie act = do
      case IOC.state envc of
        IOC.Idling  {} -> return ()
        IOC.Initing {} -> return ()
+       IOC.TestSet {} -> return ()
        IOC.Testing { IOC.behtrie = behtrie
                    , IOC.curstate = curstate
                    } ->

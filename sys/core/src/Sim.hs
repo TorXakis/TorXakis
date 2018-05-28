@@ -16,7 +16,9 @@ module Sim
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( simN      -- :: simN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
+( simN      -- :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
+, simAtoW   -- :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
+, simAfroW  -- :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -72,6 +74,7 @@ simA depth step =
                  then simAfroW depth step
                  else simAtoW  depth step
 
+
 simAfroW :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simAfroW depth step = do
      cState  <- gets IOC.state
@@ -91,6 +94,7 @@ simAfroW depth step = do
           simA (depth-1) (step+1)                  -- continue whether _done or not (angelic)
        TxsDDefs.ActQui ->                                    -- world did not provide input
           simAtoW depth step                                 -- continue with output to world
+
 
 simAtoW :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simAtoW depth step = do

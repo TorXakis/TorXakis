@@ -192,11 +192,11 @@ startStepper (D.ModelDef minsyncs moutsyncs msplsyncs mbexp)  =  do
 -- ----------------------------------------------------------------------------------------- --
 -- | Stop stepping.
 --
---   Only possible when Stepping Mode.
+--   Only possible when in Stepping Mode.
 txsStopStep :: IOC.IOC (Either EnvData.Msg ())
 txsStopStep  =  do
      envc <- get
-     case  IOC.state envc of
+     case IOC.state envc of
        IOC.Stepping { IOC.smts     = smts
                     , IOC.tdefs    = tdefs
                     , IOC.sigs     = sigs
@@ -266,10 +266,10 @@ txsStepRun nrsteps  =  do
        IOC.Stepping {}
          -> Right <$> Step.stepN nrsteps 1
        _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Stepping with run only in Stepping Mode"
+                            "Stepping Run only in Stepping Mode"
 
 -- ----------------------------------------------------------------------------------------- --
--- | Give the menu, i.e., all possible offers.
+-- | Give the menu, i.e., all possible offers, in the model.
 --
 --   Only possible when Stepping.
 txsStepMenu :: IOC.IOC (Either EnvData.Msg BTree.Menu)
@@ -281,7 +281,7 @@ txsStepMenu  =  do
                menuOut <- Step.stepModelMenuOut
                return $ Right $ menuIn ++ menuOut
        _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Stepping menu only in Stepping Mode"
+                            "Stepping Menu only in Stepping Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Give current state number
@@ -342,9 +342,9 @@ txsStepTrace  =  do
      trace  behtrie from to -- | from <  to
        =  case [ (s1,a,s2) | (s1,a,s2) <- behtrie, s2 == to ] of
             [(s1,a,_s2)] -> case trace behtrie from s1 of
-                             Nothing -> Nothing
-                             Just t  -> Just $ t ++ [a]
-            _           -> Nothing
+                              Nothing -> Nothing
+                              Just t  -> Just $ t ++ [a]
+            _            -> Nothing
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Give the transition graph of actions stepped through so far.
