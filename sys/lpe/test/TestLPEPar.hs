@@ -511,7 +511,7 @@ testSingleAction_differentVars = TestCase $
       procIdP = procIdGen "P" [chanIdA] []
 
       procDefP = ProcDef [chanIdA] [] (
-            parallel [chanIdA] [
+            parallel (Set.singleton chanIdA) [
                 actionPref actOfferAx stop,
                 actionPref actOfferAy stop
               ]

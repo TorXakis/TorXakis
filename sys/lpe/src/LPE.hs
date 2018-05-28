@@ -519,8 +519,8 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
         procDefs'''' = Map.insert procId_lpe procDef_lpe procDefs'''
     return $ (procInst_lpe, procDefs'''')
     where
-        hideChans :: (EnvB.EnvB envb) => [ChanId] -> BExpr -> envb(BExpr)
-        hideChans _ (TxsDefs.view -> Stop) = return stop
+        hideChans :: (EnvB.EnvB envb) => Set.Set ChanId -> BExpr -> envb(BExpr)
+        hideChans _ bexpr | isStop bexpr = return stop
         -- hideChans _ (ActionPref chanIdExit ) ??
         hideChans hiddenChans (TxsDefs.view -> ActionPref actOffer bexpr) = do
             let os = offers actOffer 
@@ -542,7 +542,7 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
                 hideChansOffer (o:os) = do  -- recursion 
                                             (os', hiddenVarsRec, varMapRec) <- hideChansOffer os 
                                             -- current case
-                                            if (chanid o) `elem` hiddenChans 
+                                            if (chanid o) `Set.member` hiddenChans 
                                                 then do (hidvars, varMap) <- generate_hiddenvars o
                                                         return (os', Set.union hidvars hiddenVarsRec, varMap ++ varMapRec)
                                                 else return ((o:os'), hiddenVarsRec, varMapRec)

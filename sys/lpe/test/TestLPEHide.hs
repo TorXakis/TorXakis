@@ -199,7 +199,7 @@ anyInt = cstrConst $ Cany intSort
 -- P[A]() := HIDE [] IN STOP NI 
 -- with procInst = P[A]()
 -- becomes
--- P[A](pc$P) :=                    // technically: choice[]
+-- P[A](pc$P) :=                    // technically: choice Set.empty
 -- with procInst = P[A](0)
 
 testStop1 :: Test
@@ -208,11 +208,11 @@ testStop1 = TestCase $
    where
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (hide [] stop)
+      procDefP = ProcDef [chanIdA] [] (hide Set.empty stop)
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
       procIdPlpe = procIdGen "P" [chanIdA] [varIdPcP]
-      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (choice[])
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (choice Set.empty)
       procInst' = procInst procIdPlpe [chanIdA] [int0]
 
 
@@ -220,7 +220,7 @@ testStop1 = TestCase $
 -- P[A]() := HIDE [A] IN STOP NI 
 -- with procInst = P[A]()
 -- becomes
--- P[A](pc$P) :=                    // technically: choice[]
+-- P[A](pc$P) :=                    // technically: choice Set.empty
 -- with procInst = P[A](0)
 
 testStop2 :: Test
@@ -229,11 +229,11 @@ testStop2 = TestCase $
    where
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (hide [chanIdA] stop)
+      procDefP = ProcDef [chanIdA] [] (hide (Set.singleton chanIdA) stop)
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
       procIdPlpe = procIdGen "P" [chanIdA] [varIdPcP]
-      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (choice[])
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (choice Set.empty)
       procInst' = procInst procIdPlpe [chanIdA] [int0]
 
 
@@ -250,7 +250,7 @@ testActionPref1 = TestCase $
    where
       procInst'' = procInst procIdP [chanIdA0] []
       procIdP = procIdGen "P" [chanIdA0] []
-      procDefP = ProcDef [chanIdA0] [] (hide [] (actionPref actOfferA stop))
+      procDefP = ProcDef [chanIdA0] [] (hide Set.empty (actionPref actOfferA stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
       procIdPlpe = procIdGen "P" [chanIdA0] [varIdPcP]
@@ -279,7 +279,7 @@ testActionPref2 = TestCase $
    where
       procInst'' = procInst procIdP [chanIdA0] []
       procIdP = procIdGen "P" [chanIdA0] []
-      procDefP = ProcDef [chanIdA0] [] (hide [chanIdA0] (actionPref actOfferA stop))
+      procDefP = ProcDef [chanIdA0] [] (hide (Set.singleton chanIdA0) (actionPref actOfferA stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
       procIdPlpe = procIdGen "P" [chanIdA0] [varIdPcP]
@@ -307,7 +307,7 @@ testActionPref3 = TestCase $
    where
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (hide [] (actionPref actOfferAx stop))
+      procDefP = ProcDef [chanIdA] [] (hide Set.empty (actionPref actOfferAx stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
       procIdPlpe = procIdGen "P" [chanIdA] [varIdPcP]
@@ -337,7 +337,7 @@ testActionPref4 = TestCase $
       res =  lpeHideTestWrapper procInst'' emptyTranslatedProcDefs procDefs
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (hide [chanIdA] (actionPref actOfferAx stop))
+      procDefP = ProcDef [chanIdA] [] (hide (Set.singleton chanIdA) (actionPref actOfferAx stop))
       procDefs = Map.fromList  [  (procIdP, procDefP)]
 
       varIdA1' = VarId (T.pack "A$1_3") 34 intSort
