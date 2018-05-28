@@ -61,8 +61,6 @@ import           SortId                       (SortId (SortId))
 --import           TorXakis.Lens.Sigs           (funcTable)
 --import           TorXakis.Lens.TxsDefs
 import           TorXakis.Lib
-import           TorXakis.Lib.Internal
-import           TorXakis.Lib.Session
 import           TxsDDefs                     (Action (Act, ActQui))
 -- import           TxsDefs                      (ModelDef)
 --import           ValExpr                      (ValExpr, cstrConst)

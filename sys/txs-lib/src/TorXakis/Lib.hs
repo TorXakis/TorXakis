@@ -6,11 +6,18 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric #-}
 
 -- |
-module TorXakis.Lib where
+module TorXakis.Lib
+( module TorXakis.Lib
+, module TorXakis.Lib.Common
+, module TorXakis.Lib.Vals
+, module TorXakis.Lib.Internal
+, module TorXakis.Lib.Session
+)
+where
 
 import           Control.Arrow                 (left)
 import           Control.Concurrent            (forkIO)
-import           Control.Concurrent.MVar       (newMVar, putMVar, takeMVar)
+import           Control.Concurrent.MVar       (newMVar)
 import           Control.Concurrent.STM.TChan  (newTChanIO)
 import           Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue,
                                                 newTQueueIO, readTQueue,
@@ -19,17 +26,16 @@ import           Control.Concurrent.STM.TVar   (modifyTVar', newTVarIO,
                                                 readTVarIO)
 import           Control.DeepSeq               (force)
 import           Control.Exception             (ErrorCall, Exception,
-                                                SomeException, catch, evaluate,
+                                                SomeException, evaluate,
                                                 toException, try)
 import           Control.Monad                 (unless, void)
 import           Control.Monad.Except          (ExceptT, liftEither, runExceptT,
                                                 throwError)
-import           Control.Monad.State           (lift, runStateT)
+import           Control.Monad.State           (lift)
 import           Control.Monad.STM             (atomically, retry)
 import           Data.Aeson                    (FromJSON, ToJSON)
 import           Data.Either.Utils             (maybeToEither)
 import           Data.Foldable                 (traverse_)
-import qualified Data.List                     as List
 import qualified Data.Map.Strict               as Map
 import           Data.Semigroup                ((<>))
 import qualified Data.Set                      as Set
@@ -50,7 +56,7 @@ import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
 import           EnvCore                       (IOC)
 import qualified EnvCore                       as IOC
-import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
+import           EnvData                       (Msg)
 import           Name                          (Name)
 import           ParamCore                     (getParamPairs, paramToPair,
                                                 updateParam)
@@ -63,23 +69,20 @@ import           TxsCore                       (txsEval, txsGetCurrentModel,
 import           TxsDDefs                      (Action (Act),
                                                 Verdict (NoVerdict))
 import           TxsDefs                       (ModelDef (ModelDef))
-import           TxsHappy                      (prefoffsParser, txsParser,
-                                                valdefsParser)
-import           TxsShow                       (fshow)
+import           TxsHappy                      (prefoffsParser, txsParser)
 import           TxsStep                       (txsSetStep, txsShutStep,
                                                 txsStartStep, txsStepAct,
                                                 txsStepRun, txsStopStep)
-import qualified VarId
 
+import           TorXakis.Lib.Common
+import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
+import           TorXakis.Lib.Vals
 
 -- | For now file contents are represented as a string. This has to change in
 -- the future, since it is quite inefficient, but we start off simple since the
 -- current 'TorXakis' parser parses @String@s.
 type FileContents = String
-
-type Error = Text
-type Response a = Either Error a
 
 success :: Response ()
 success = Right ()
@@ -310,39 +313,6 @@ stop _ =
     -- runResponse $ lift $ runIOC s txsStop
     return success
 
-createVal :: Session -> Text -> IO (Response String)
-createVal s val = do
-    let strVal = T.unpack val
-        varsT  = s ^. locVars
-        valEnvT = s ^. locValEnv
-    valEnv <- readTVarIO valEnvT
-    if T.null val
-        then return $ Left "No value expression received"
-        else do
-            vars <- readTVarIO varsT
-            sigs <- runIOC s txsGetSigs
-            runExceptT $ do
-                parseRes <- fmap (left showEx) $
-                    lift $ try $ evaluate . force . valdefsParser $
-                    ( Csigs    sigs
-                    : Cvarenv  []
-                    : Cunid    0
-                    : txsLexer strVal
-                    )
-                (_, venv) <- liftEither parseRes
-                if let newnames = map VarId.name (Map.keys venv)
-                    in null (newnames `List.intersect` map VarId.name vars) &&
-                       null (newnames `List.intersect` map VarId.name (Map.keys valEnv))
-                  then lift $ atomically $ modifyTVar' valEnvT $ Map.union venv
-                  else throwError $ T.pack $ "double value names: " ++ fshow venv
-                return $ fshow venv
-
-getVals :: Session -> IO (Response String)
-getVals s = do
-    let valEnvT = s ^. locValEnv
-    valEnv <- readTVarIO valEnvT
-    runExceptT $ return $ fshow valEnv
-
 -- | Parse a String into a set of offers.
 parseAction :: Session -> Text -> IO (Response Action)
 parseAction s act = do
@@ -388,41 +358,3 @@ parseAction s act = do
       evalExclam (Exclam choff) = do
           res <- lift (runIOC s (txsEval choff))
           liftEither $ left T.pack res
-
--- | Show exception as `Text`
-showEx :: SomeException -> Text
-showEx = T.pack . show
-
--- | Run an IOC action, using the initial state provided at the session, and
--- modifying the end-state accordingly.
---
--- Two `runIOC` action won't be run in parallel. If an IOC action is pending,
--- then a subsequent call to `runIOC` will block till the operation is
--- finished.
---
-runIOC :: Session -> IOC a -> IO a
-runIOC s act = runIOC' `catch` reportError
-    where
-      runIOC' = do
-          -- The GHC implementation of MVar's guarantees fairness in the access to
-          -- the critical sections delimited by `takeMVar` and `putMVar`.
-          takeMVar (s ^. pendingIOC)
-          st <- readTVarIO (s ^. sessionState)
-          (r, st') <- runStateT act (st ^. envCore)
-          atomically $ modifyTVar' (s ^. sessionState) (envCore .~ st')
-          putMVar (s ^. pendingIOC) ()
-          return r
-      reportError :: SomeException -> IO a
-      reportError err = do
-          -- There's no pending IOC anymore, we release the lock.
-          putMVar (s ^. pendingIOC) ()
-          atomically $ writeTQueue (s ^. sessionMsgs) (TXS_CORE_SYSTEM_ERROR (show err))
-          error (show err)
-
--- | Run an IOC action but wrap the results in an exception.
-runIOCE :: Show err => Session -> IOC (Either err a) -> ExceptT Text IO a
-runIOCE s act = do
-    er <- lift $ runIOC s act
-    case er of
-        Left eMsg -> throwError . T.pack . show $ eMsg
-        Right res -> return res
