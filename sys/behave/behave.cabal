@@ -17,15 +17,13 @@ library
 
   exposed-modules:      Behave
                       , Expand
-                      , Subst
-                      , StautDef
 
   other-modules:        Equiv
                       , Next
                       , Reduce
                       , Unfold
 
-  ghc-options:        -Werror -O2 -optc-O3 -optc-ffast-math -Wall
+  ghc-options:        -Wall -Werror -O2 -optc-O3 -optc-ffast-math
   
   build-depends:        base
                       , containers
@@ -35,6 +33,7 @@ library
 
                       , behavedefs
                       , behaveenv
+                      , bexpr
                       , coreenv
                       , defs
                       , solve
@@ -54,16 +53,13 @@ test-suite behave-test
                       , Expand
                       , Next
                       , Reduce
-                      , Subst
                       , Unfold
                       , TestBExpr
                       , TestFuncContent
                       , TestHelperFuncContent
                       , TestProcessBehaviour
 
-                      
-
-  ghc-options:       -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
+  ghc-options:       -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
   
   build-depends:       base
                      , containers
@@ -75,6 +71,7 @@ test-suite behave-test
                      
                      , behavedefs
                      , behaveenv
+                     , bexpr
                      , coreenv
                      , defs
                      , front

@@ -155,23 +155,20 @@ instance PShow BExpr
 
 instance PShow BExprView
   where
-    pshow Stop
-      =  " STOP "
     pshow (ActionPref actoff bexp)
       =  pshow actoff ++ "\n"
          ++ "  >->  " ++ "( " ++ pshow bexp ++ " )"
     pshow (Guard c bexp)
       =  "[[ " ++ pshow c ++ " ]] =>> \n" ++ "( " ++ pshow bexp ++ " )"
     pshow (Choice bexps)
-      =  case bexps of
-         { [] -> "STOP\n"
-         ; be -> "( " ++ Utils.join (" )\n"++ "##\n( ") (map pshow be) ++ " )"
-         }
+      =  case Set.toList bexps of
+            [] -> "STOP\n"
+            be -> "( " ++ Utils.join (" )\n"++ "##\n( ") (map pshow be) ++ " )"
     pshow (Parallel chans bexps)
       =  case bexps of
          { [] -> "STOP\n"
          ; be -> "( " ++
-                  Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (List.delete chanIdExit chans)) ++" ]|\n( ")
+                  Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (Set.toList (Set.delete chanIdExit chans))) ++" ]|\n( ")
                              (map pshow be)
                  ++ " )"
          }
@@ -197,7 +194,7 @@ instance PShow BExprView
     pshow (Hide chans bexp)
       =  "HIDE "
          ++ Utils.join "; " [ T.unpack n ++ " :: " ++ Utils.join " # " (map pshow srts)
-                            | ChanId n _ srts <- chans
+                            | ChanId n _ srts <- Set.toList chans
                             ] ++ " IN\n"
          ++ pshow bexp ++ "\n"
          ++ "NI\n"
@@ -219,9 +216,10 @@ instance PShow ActOffer
   where
     pshow (ActOffer ofs hidvars c)
       =  "{ " ++ Utils.join " | " (map pshow (Set.toList ofs)) ++ "} "
-         ++ if  null hidvars
-              then ""
-              else  "{/ " ++ Utils.join " | " (map pshow (Set.toList hidvars)) ++ " /} "
+         ++ ( if  null hidvars
+                then ""
+                else  "{/ " ++ Utils.join " | " (map pshow (Set.toList hidvars)) ++ " /} "
+            )
          ++ case ValExpr.view c of
             { Vconst (Cbool True) -> ""
             ; _                   -> "\n   [[ " ++ pshow c ++ " ]]"
@@ -280,20 +278,24 @@ instance PShow v => PShow (ValExprView v) where
     pshow (Vsum s)
       = listShow (FMX.toOccurList s)
       where
+        listShow :: PShow a => [(a, Integer)] -> String
         listShow []     = "0"
         listShow [x]    = elemShow x
         listShow (x:xs) = "( " ++ elemShow x ++ " + " ++ listShow xs ++ " )"
 
+        elemShow :: PShow a => (a, Integer) -> String
         elemShow (t,1)  = pshow t
         elemShow (t,-1) = "(- " ++ pshow t ++ " )"
         elemShow (t,p)  = "( " ++ show p ++ " * " ++ pshow t ++ " )"
     pshow (Vproduct s)
       = listShow (FMX.toDistinctAscOccurListT s)
       where
+        listShow :: PShow a => [(a, Integer)] -> String
         listShow []     = "1"
         listShow [x]    = elemShow x
         listShow (x:xs) = "( " ++ elemShow x ++ " * " ++ listShow xs ++ " )"
 
+        elemShow :: PShow a => (a, Integer) -> String
         elemShow (t,1)  = pshow t
         elemShow (t,p)  | p > 0 = "( " ++ pshow t ++ " ^ "  ++ show p ++ " )"
         elemShow (_,p)  = error ("TxsShow - pshow VExpr - illegal power: p = " ++ show p)

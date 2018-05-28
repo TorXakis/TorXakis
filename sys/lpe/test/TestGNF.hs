@@ -59,6 +59,15 @@ actOfferAx   = ActOffer {  offers = Set.singleton
                         , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
+-- action: A!1
+actOfferA1 :: ActOffer
+actOfferA1   = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdA
+                                              , chanoffers = [Exclam vexpr1]
+                                        }
+                        , hiddenvars = Set.empty
+                        , constraint = cstrConst (Cbool True)
+            }
 
 -- action: B!1
 actOfferB1 :: ActOffer
@@ -102,28 +111,29 @@ chanIdB = ChanId    { ChanId.name = T.pack "B"
 
 -- check that things have been translated to pregnfFunc first
 -- e.g. choice lower in the hierarchy is put in new ProcDef
--- P[A]() = A?x >-> (STOP ## STOP)
+-- P[A]() = A?x >-> ( (A!1 >->STOP) ## (A?x >->STOP) )
 -- becomes
   -- P[A]()  = A?x >-> P$pre1[A](x)
-  -- P$pre1[A](x) = STOP ## STOP
+  -- P$pre1[A](x) = (A!1 >->STOP) ## (A?x >->STOP)
 testPreGNFFirst :: Test
 testPreGNFFirst = TestCase $
    assertBool "choice (on lower level) is substituted" $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
    where
-      procIdP = procIdGen "P" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (actionPref actOfferAx (choice [stop, stop]))
-
+      procIdP   = procIdGen "P" [chanIdA] []
+      choice'   = choice $ Set.fromList [actionPref actOfferA1 stop, actionPref actOfferAx stop]
+      procDefP = ProcDef [chanIdA] [] (actionPref actOfferAx choice')
 
       procIdPpre1x = procIdGen "P$pre1" [chanIdA] [varIdX]
       procInstPpre1 = procInst procIdPpre1x [chanIdA] [vexprX]
 
       procDefP' = ProcDef [chanIdA] [] (actionPref actOfferAx procInstPpre1)
-      procDefPpre1x = ProcDef [chanIdA] [varIdX] (choice [stop, stop])
+      procDefPpre1x = ProcDef [chanIdA] [varIdX] choice'
 
 
       procDefs' = Map.fromList  [ (procIdP, procDefP) ]
-      procDefs'' = Map.fromList  [ (procIdP, procDefP')
-                                , (procIdPpre1x, procDefPpre1x) ]
+      procDefs'' = Map.fromList [ (procIdP, procDefP')
+                                , (procIdPpre1x, procDefPpre1x) 
+                                ]
 
 
 -- Stop remains unchanged
@@ -199,10 +209,10 @@ testProcInst1 = TestCase $
                                 , (procIdQ, procDefQ) ]
 
 
--- P[A]() := STOP ## Q[A]()
+-- P[A]() := (A!1 >-> STOP) ## Q[A]()
 -- Q[A]() := A?X >-> STOP
 -- becomes
--- P[A]() := STOP ## (A?X >-> STOP)
+-- P[A]() := (A!1 >-> STOP) ## (A?X >-> STOP)
 -- Q[A]() := A?X >-> STOP
 testProcInst2 :: Test
 testProcInst2 = TestCase $
@@ -210,11 +220,11 @@ testProcInst2 = TestCase $
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (choice [stop, procInst procIdQ [chanIdA] []])
+      procDefP = ProcDef [chanIdA] [] (choice $ Set.fromList [actionPref actOfferA1 stop, procInst procIdQ [chanIdA] []])
       procDefQ = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
 
 
-      procDefP' = ProcDef [chanIdA] [] (choice [stop, actionPref actOfferAx stop])
+      procDefP' = ProcDef [chanIdA] [] (choice $ Set.fromList [actionPref actOfferA1 stop, actionPref actOfferAx stop])
 
       procDefs' = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
@@ -222,11 +232,11 @@ testProcInst2 = TestCase $
                                 , (procIdQ, procDefQ) ]
 
 
--- P[A]()  := Q[A]() ## STOP
+-- P[A]()  := Q[A]() ## (A!1 >-> STOP)
 -- Q[A]()  := R[A]()
 -- R[A]()  := A?x -> STOP
 -- becomes
--- P[A]()  := (A?x >-> STOP) ## STOP
+-- P[A]()  := (A?x >-> STOP) ## (A!1 >-> STOP)
 -- Q[A]()  := A?x -> STOP
 -- R[A]()  := A?x -> STOP
 testProcInst3 :: Test
@@ -236,11 +246,11 @@ testProcInst3 = TestCase $
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
       procIdR = procIdGen "R" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (choice [procInst procIdQ [chanIdA] [], stop])
+      procDefP = ProcDef [chanIdA] [] (choice $ Set.fromList [procInst procIdQ [chanIdA] [], actionPref actOfferA1 stop])
       procDefQ = ProcDef [chanIdA] [] (procInst procIdR [chanIdA] [])
       procDefR = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
 
-      procDefP' = ProcDef [chanIdA] [] (choice [actionPref actOfferAx stop, stop])
+      procDefP' = ProcDef [chanIdA] [] (choice $ Set.fromList [actionPref actOfferAx stop, actionPref actOfferA1 stop])
       procDefQ' = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
 
 
@@ -254,12 +264,12 @@ testProcInst3 = TestCase $
 
 
 -- choice substitution is normalised!
---  P[]() := STOP ## Q[]()
---  Q[]() := STOP ## STOP
+--  P[]() := (A!1 >-> STOP) ## Q[]()
+--  Q[]() := (A?x >-> STOP) ## (A!1 >-> P[]())
 --  becomes:
---  P[]() := STOP ## STOP ## STOP
+--  P[]() := (A!1 >-> STOP) ## (A?x >-> STOP) ## (A!1 >-> P[]())
 --      NOTE the normalisation: choice is not nested after the substitution:
---      STOP ## (STOP ## STOP) became  STOP ## STOP ## STOP
+--      (A!1 >-> STOP) ## ((A?x >-> STOP) ## (A!1 >-> P[]())) became (A!1 >-> STOP) ## (A?x >-> STOP) ## (A!1 >-> P[]())
 --      otherwise it would not be in pregnfFunc (and thus not GNF) after the substitution!
 testProcInst4 :: Test
 testProcInst4 = TestCase $
@@ -267,11 +277,14 @@ testProcInst4 = TestCase $
    where
       procIdP = procIdGen "P" [] []
       procIdQ = procIdGen "Q" [] []
-      procDefP = ProcDef [] [] (choice [stop, procInst procIdQ [] []])
-      procDefQ = ProcDef [] [] (choice [stop, stop])
+      procDefP = ProcDef [] [] (choice $ Set.fromList [actionPref actOfferA1 stop, procInst procIdQ [] []])
+      procDefQ = ProcDef [] [] (choice $ Set.fromList [actionPref actOfferAx stop, actionPref actOfferA1 (procInst procIdP [] [])])
 
 
-      procDefP' = ProcDef [] [] (choice [stop, stop, stop])
+      procDefP' = ProcDef [] [] (choice $ Set.fromList [actionPref actOfferA1 stop
+                                        , actionPref actOfferAx stop
+                                        , actionPref actOfferA1 (procInst procIdP [] [])
+                                        ])
 
       procDefs' = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
@@ -284,7 +297,7 @@ testProcInst4 = TestCase $
 
 
 -- no name clash of newly created ProcDefs by pregnfFunc and GNF:
--- P[A,B]() := A?x >-> B!1 >-> (STOP ## STOP)
+-- P[A,B]() := A?x >-> B!1 >-> ( (A!1 >->STOP) ## (A?x >->STOP) )
 -- becomes after preGNF:
 -- P[A,B]() := A?x >-> B!1 >-> P$pre1[A,B](x)
 -- P$pre1[A,B](x) := STOP ## STOP
@@ -292,7 +305,7 @@ testProcInst4 = TestCase $
 -- becomes after GNF:
 -- P[A,B]() := A?x >-> P$gnf1(x)
 -- P$gnf1[A,B](x) := B!1 >-> P$pre1[A,B](x)
--- P$pre1[A,B](x) := STOP ## STOP
+-- P$pre1[A,B](x) := (A!1 >->STOP) ## (A?x >->STOP)
 testNamingClash :: Test
 testNamingClash = TestCase $
    assertBool "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash"  $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
@@ -300,12 +313,13 @@ testNamingClash = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
       procIdPgnf1 = procIdGen "P$gnf1" [chanIdA, chanIdB] [varIdX]
       procIdPpre1 = procIdGen "P$pre1" [chanIdA, chanIdB] [varIdX]
-
-      procDefP = ProcDef [chanIdA, chanIdB] [] (actionPref actOfferAx (actionPref actOfferB1 (choice [stop, stop])))
+      choice'= choice $ Set.fromList [actionPref actOfferA1 stop, actionPref actOfferAx stop]
+      
+      procDefP = ProcDef [chanIdA, chanIdB] [] (actionPref actOfferAx (actionPref actOfferB1 choice'))
 
       procDefP' = ProcDef [chanIdA, chanIdB] [] (actionPref actOfferAx (procInst procIdPgnf1 [chanIdA, chanIdB] [vexprX]))
       procDefPgnf1 = ProcDef [chanIdA, chanIdB] [varIdX] (actionPref actOfferB1 (procInst procIdPpre1 [chanIdA, chanIdB] [vexprX]))
-      procDefPpre1 = ProcDef [chanIdA, chanIdB] [varIdX] (choice [stop, stop])
+      procDefPpre1 = ProcDef [chanIdA, chanIdB] [varIdX] choice'
 
       procDefs' = Map.fromList  [ (procIdP, procDefP) ]
 

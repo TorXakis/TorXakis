@@ -39,3 +39,9 @@ snap/.snapcraft
 
 # special mac files
 .DS_Store
+
+# Debian package
+*.deb
+
+# RPM package.
+*.rpm

@@ -86,6 +86,9 @@ module TxsCore
 , txsEval
 
   -- * Solving
+  -- ** Type of solver
+, TxsSolveType
+
   -- ** finding a solution for value expression
 , txsSolve
 
@@ -112,6 +115,7 @@ module TxsCore
 
   -- * LPE transformation
 , txsLPE
+
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -144,10 +148,12 @@ import           Test
 import           Config              (Config)
 import qualified Config
 
+-- import from bexpr
+import           Relabel             (relabel)
+
 -- import from behave(defs)
 import qualified Behave
 import qualified BTree
-import           Expand              (relabel)
 
 -- import from coreenv
 import qualified EnvCore             as IOC
@@ -352,11 +358,14 @@ txsEval vexp  =  do
                              writeEnvBtoEnvC envb'
                              return wal'
 
+-- | Type for solve (@txsSolve, @txsUniSolve, and @txsRanSolve)                             
+type TxsSolveType = TxsDefs.VExpr                   -- ^ value expression to solve.
+                    -> IOC.IOC (TxsDefs.WEnv VarId)
+                        
 -- | Find a solution for the provided Boolean value expression.
 --
 --   Only possible when txscore is initialized.
-txsSolve :: TxsDefs.VExpr                   -- ^ value expression to solve.
-         -> IOC.IOC (TxsDefs.WEnv VarId)
+txsSolve :: TxsSolveType
 txsSolve vexp  =  do
      envc <- get
      case IOC.state envc of
@@ -389,8 +398,7 @@ txsSolve vexp  =  do
 -- | Find an unique solution for the provided Boolean value expression.
 --
 --   Only possible when txscore is initialized.
-txsUniSolve :: TxsDefs.VExpr            -- ^ value expression to solve uniquely.
-            -> IOC.IOC (TxsDefs.WEnv VarId)
+txsUniSolve :: TxsSolveType
 txsUniSolve vexp  =  do
      envc <- get
      case IOC.state envc of
@@ -421,8 +429,7 @@ txsUniSolve vexp  =  do
 -- | Find a random solution for the provided Boolean value expression.
 --
 --   Only possible when txscore is initialized.
-txsRanSolve :: TxsDefs.VExpr                -- ^ value expression to solve randomly.
-            -> IOC.IOC (TxsDefs.WEnv VarId)
+txsRanSolve :: TxsSolveType
 txsRanSolve vexp  =  do
      envc <- get
      case IOC.state envc of
@@ -1065,7 +1072,7 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
        -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
               Just (TxsDefs.ProcDef chids [] staut@(TxsDefs.view -> TxsDefs.StAut _ ve _)) | Map.null ve
                  -> do let chanmap                       = Map.fromList (zip chids chans)
-                           TxsDefs.StAut statid _ trans = TxsDefs.view $ Expand.relabel chanmap staut
+                           TxsDefs.StAut statid _ trans = TxsDefs.view $ relabel chanmap staut
                        maypurp <- NComp.nComplete insyncs outsyncs statid trans
                        case maypurp of
                          Just purpdef -> do

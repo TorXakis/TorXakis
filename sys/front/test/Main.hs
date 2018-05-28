@@ -6,7 +6,6 @@ See LICENSE at root directory of this repository.
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module Main where
 
 import qualified Data.Map          as Map
@@ -149,8 +148,8 @@ genGenSortDef sortName sortNames = do
     fieldNames <- genUniqueSmallIds
     fieldNamesConstr <- splitInSubsets (Set.size constrNames) fieldNames
     fieldNamesConstrSort <- mapM disjointNESubsets fieldNamesConstr
-    typedElements <- mapM (mapM (\x -> do elem <- elements (Set.toList sortNames)
-                                          return (Set.toList x, elem) )
+    typedElements <- mapM (mapM (\x -> do elem' <- elements (Set.toList sortNames)
+                                          return (Set.toList x, elem') )
                           )
                           fieldNamesConstrSort
     return $ GenSortDef sortName (zip (Set.toList constrNames) typedElements)

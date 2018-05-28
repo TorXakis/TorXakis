@@ -65,9 +65,9 @@ cstrOr = cstrNot . cstrAnd . Set.map cstrNot
 -- | Apply operator Xor (\\\|/) on the provided set of value expressions.
 -- Preconditions are /not/ checked.
 cstrXor :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
-cstrXor a b = cstrOr (Set.fromList [arg0, arg1])
-  where arg0 = cstrAnd (Set.fromList [a, cstrNot b])
-        arg1 = cstrAnd (Set.fromList [cstrNot a, b])
+cstrXor a b = cstrOr (Set.fromList [ cstrAnd (Set.fromList [a, cstrNot b])
+                                   , cstrAnd (Set.fromList [cstrNot a, b])
+                                   ])
 
 -- | Apply operator Implies (=>) on the provided value expressions.
 -- Preconditions are /not/ checked.

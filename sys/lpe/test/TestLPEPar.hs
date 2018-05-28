@@ -21,7 +21,6 @@ import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
-import TxsDefs
 import ProcId
 import ChanId
 import SortId
@@ -29,6 +28,8 @@ import qualified Data.Text         as T
 import VarId
 import ConstDefs
 import ValExpr
+import TxsDefs
+import TxsShow
 
 import LPEfunc
 
@@ -206,7 +207,7 @@ anyInt = cstrConst $ Cany intSort
 --       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 --
 --       procDefP = ProcDef [chanIdA, chanIdB] [] (
---             parallel [chanIdA, chanIdB] [
+--             parallel (Set.fromList [chanIdA, chanIdB]) [
 --                 actionPref actOfferA stop,
 --                 actionPref actOfferA stop
 --               ]
@@ -221,7 +222,7 @@ anyInt = cstrConst $ Cany intSort
 --       -- with procInst := P[A,B](0,0)
 --       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
 --       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
---                       (choice [
+--                       (choice $ Set.fromList [
 --                           -- // only left side
 --                           -- A [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
 --                           actionPref
@@ -281,7 +282,7 @@ testSingleAction1 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [] [
+            parallel Set.empty [
                 actionPref actOfferA stop,
                 actionPref actOfferA stop
               ]
@@ -296,7 +297,7 @@ testSingleAction1 = TestCase $
       -- with procInst := P[A,B](0,0)
       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
-                      (choice [
+                      (choice $ Set.fromList [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
                           actionPref
@@ -337,7 +338,7 @@ testSingleAction2 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdA] [
+            parallel (Set.singleton chanIdA) [
                 actionPref actOfferA stop,
                 actionPref actOfferA stop
               ]
@@ -389,7 +390,7 @@ testSingleAction3 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdB] [
+            parallel (Set.singleton chanIdB) [
                 actionPref actOfferA stop,
                 actionPref actOfferA stop
               ]
@@ -404,7 +405,7 @@ testSingleAction3 = TestCase $
       -- with procInst := P[A,B](0,0)
       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
-                      (choice [
+                      (choice $ Set.fromList [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
                           actionPref
@@ -449,7 +450,7 @@ testSingleAction4 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdA, chanIdB] [
+            parallel (Set.fromList [chanIdA, chanIdB]) [
                 actionPref actOfferA stop,
                 actionPref actOfferA stop
               ]
@@ -584,7 +585,7 @@ testSingleAction_differentVars = TestCase $
 --       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 --
 --       procDefP = ProcDef [chanIdA, chanIdB] [] (
---             parallel [chanIdA, chanIdB] [
+--             parallel (Set.fromList [chanIdA, chanIdB]) [
 --                 actionPref actOfferA stop,
 --                 actionPref actOfferB stop
 --               ]
@@ -599,7 +600,7 @@ testSingleAction_differentVars = TestCase $
 --       -- with procInst := P[A,B](0,0)
 --       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
 --       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
---                       (choice [
+--                       (choice $ Set.fromList [
 --                           -- // only left side
 --                           -- A [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
 --                           actionPref
@@ -666,7 +667,7 @@ testSingleActionDifferentActions1 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [] [
+            parallel Set.empty [
                 actionPref actOfferA stop,
                 actionPref actOfferB stop
               ]
@@ -681,7 +682,7 @@ testSingleActionDifferentActions1 = TestCase $
       -- with procInst := P[A,B](0,0)
       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
-                      (choice [
+                      (choice $ Set.fromList [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
                           actionPref
@@ -743,7 +744,7 @@ testSingleActionDifferentActions2 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdA] [
+            parallel (Set.singleton chanIdA) [
                 actionPref actOfferA stop,
                 actionPref actOfferB stop
               ]
@@ -789,7 +790,7 @@ testSingleActionDifferentActions3 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdB] [
+            parallel (Set.singleton chanIdB) [
                 actionPref actOfferA stop,
                 actionPref actOfferB stop
               ]
@@ -835,7 +836,7 @@ testSingleActionDifferentActions4 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdA, chanIdB] [
+            parallel (Set.fromList [chanIdA, chanIdB]) [
                 actionPref actOfferA stop,
                 actionPref actOfferB stop
               ]
@@ -850,7 +851,7 @@ testSingleActionDifferentActions4 = TestCase $
       -- with procInst := P[A,B](0,0)
       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
-                      (choice [])
+                      (choice $ Set.fromList [])
 
       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
 
@@ -896,7 +897,7 @@ testSingleActionDifferentActions4 = TestCase $
 --       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 --
 --       procDefP = ProcDef [chanIdA, chanIdB] [] (
---             parallel [chanIdA, chanIdB] [
+--             parallel (Set.fromList [chanIdA, chanIdB]) [
 --                 actionPref actOfferAB stop,
 --                 actionPref actOfferA stop
 --               ]
@@ -911,7 +912,7 @@ testSingleActionDifferentActions4 = TestCase $
 --       -- with procInst := P[A,B](0,0)
 --       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
 --       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
---                       (choice [
+--                       (choice $ Set.fromList [
 --                           -- // only left side: ONLY IF G = []
 --                           --    A | B [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
 --                           (actionPref
@@ -984,7 +985,7 @@ testMultiActions1 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [] [
+            parallel Set.empty [
                 actionPref actOfferAB stop,
                 actionPref actOfferA stop
               ]
@@ -999,7 +1000,7 @@ testMultiActions1 = TestCase $
       -- with procInst := P[A,B](0,0)
       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
-                      (choice [
+                      (choice $ Set.fromList [
                           -- // only left side: ONLY IF G = []
                           --    A | B [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
                           actionPref
@@ -1046,7 +1047,7 @@ testMultiActions2 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdA] [
+            parallel (Set.singleton chanIdA) [
                 actionPref actOfferAB stop,
                 actionPref actOfferA stop
               ]
@@ -1101,7 +1102,7 @@ testMultiActions3 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdB] [
+            parallel (Set.singleton chanIdB) [
                 actionPref actOfferAB stop,
                 actionPref actOfferA stop
               ]
@@ -1144,12 +1145,12 @@ testMultiActions4 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdA, chanIdB] [
+            parallel (Set.fromList [chanIdA, chanIdB]) [
                 actionPref actOfferAB stop,
                 actionPref actOfferA stop
               ]
             )
-      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+      procDefs' = Map.fromList  [ (procIdP, procDefP) ]
 
       varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
       varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
@@ -1159,7 +1160,7 @@ testMultiActions4 = TestCase $
       -- with procInst := P[A,B](0,0)
       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
-                      (choice [])
+                      (choice $ Set.fromList [])
 
       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
 
@@ -1183,7 +1184,7 @@ testMultiActions5 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [] [
+            parallel Set.empty [
                 actionPref actOfferAB stop,
                 actionPref actOfferAB stop
               ]
@@ -1198,7 +1199,7 @@ testMultiActions5 = TestCase $
       -- with procInst := P[A,B](0,0)
       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
-                      (choice [
+                      (choice $ Set.fromList [
                           -- // only left side: ONLY IF G = []
                           --    A | B [op1$pc$P$op1 == 0] >->  P[A,B](-1, op2$pc$P$op2)
                           actionPref
@@ -1247,7 +1248,7 @@ testMultiActions6 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdA] [
+            parallel (Set.singleton chanIdA) [
                 actionPref actOfferAB stop,
                 actionPref actOfferAB stop
               ]
@@ -1262,7 +1263,7 @@ testMultiActions6 = TestCase $
       -- with procInst := P[A,B](0,0)
       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
-                      (choice [])
+                      (choice $ Set.fromList [])
 
       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
 
@@ -1280,7 +1281,7 @@ testMultiActions7 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdB] [
+            parallel (Set.singleton chanIdB) [
                 actionPref actOfferAB stop,
                 actionPref actOfferAB stop
               ]
@@ -1295,7 +1296,7 @@ testMultiActions7 = TestCase $
       -- with procInst := P[A,B](0,0)
       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcPop1, varIdOp2pcPop2]
-                      (choice [])
+                      (choice $ Set.fromList [])
 
       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
 
@@ -1315,7 +1316,7 @@ testMultiActions8 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdA, chanIdB] [
+            parallel (Set.fromList [chanIdA, chanIdB]) [
                 actionPref actOfferAB stop,
                 actionPref actOfferAB stop
               ]
@@ -1390,7 +1391,7 @@ testParams = TestCase $
 
 
       procDefP = ProcDef [chanIdA] [] (
-            parallel [] [
+            parallel Set.empty [
                 procInst procIdQ [chanIdA] [vexprS, int1],
                 procInst procIdR [chanIdA] [vexprS]
               ]
@@ -1438,7 +1439,7 @@ testParams = TestCase $
       -- with procInst := P[A,B](0,0)
       procIdP' = procIdGen "P" [chanIdA] [varIdOp1pcQ, varIdOp1s, varIdOp1x, varIdOp2pcR, varIdOp2s]
       procDefP' = ProcDef [chanIdA] [varIdOp1pcQ, varIdOp1s, varIdOp1x, varIdOp2pcR, varIdOp2s]
-                      (choice [
+                      (choice $ Set.fromList [
                           -- // only left side:
                           --    A?A1 [op1$pc$Q == 0, A1 == op1$Q$A$s] >->  P[A](-1, ANY?, ANY?, op2$pc$R, op2$R$A$s)
                           actionPref
@@ -1523,7 +1524,7 @@ testMultiSeqGEN = TestCase $
       procIdQ = procIdGen "Q" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [] [
+            parallel Set.empty [
                 procInst procIdQ [chanIdA, chanIdB] [],
                 procInst procIdQ [chanIdA, chanIdB] []
               ]
@@ -1569,7 +1570,7 @@ testMultiSeqGEN = TestCase $
 
 
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp1QABx, varIdOp2pcQ, varIdOp2QABx]
-                      (choice [
+                      (choice $ Set.fromList [
                           --        // only op1
                           --        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
@@ -1705,11 +1706,11 @@ testMultiSeqGEN = TestCase $
 -- becomes after step combination
 -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
 --        // only op1
---        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
+--        A?A1 [op1$pc$Q == 0]                         >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
 --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
 --                                // note: the right side is still allowed to continue! that's intended behaviour.
 --        // only op2
---        A?A1 [op2$pc$Q == 0]                    >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
+--        A?A1 [op2$pc$Q == 0]                         >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
 --        B?B1 [op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, -1, ANY)
 --        // both op1 and op2
 --        // 1,2 : only if G is empty: |[]|
@@ -1719,10 +1720,12 @@ testMultiSeqGEN = TestCase $
 --  with procInst = P[A,B](0, ANY, 0, ANY)
 testMultiSeq1 :: Test
 testMultiSeq1 = TestCase $
-   assertBool "test multi-sequences 1"  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
+   assertBool ("test multi-sequences 1" ++ "expected " ++ pshow (TxsDefs.fromList [(IdProc ((\(ProcInst p _ _) -> p) (TxsDefs.view procInst')), DefProc procDefP')]) ++ "\n"
+                                        ++ "actual " ++ (pshow . TxsDefs.fromList . (\(Just (TxsDefs.view -> (ProcInst p _ _),b) ) -> [(IdProc p, DefProc b)])) (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
+              )  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
    where
 
-      -- P[A,B]() := Q[A,B]() |G| Q[A,B]()
+      -- P[A,B]() := Q[A,B]() |[G]| Q[A,B]()
       -- Q[A,B]() := A?x >-> B!x >-> STOP
       -- with procInst := P[A,B]()
       procInst'' = procInst procIdP [chanIdA, chanIdB] []
@@ -1730,7 +1733,7 @@ testMultiSeq1 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [] [
+            parallel Set.empty [
                 procInst procIdQ [chanIdA, chanIdB] [],
                 procInst procIdQ [chanIdA, chanIdB] []
               ]
@@ -1776,9 +1779,9 @@ testMultiSeq1 = TestCase $
 
 
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp1QABx, varIdOp2pcQ, varIdOp2QABx]
-                      (choice [
+                      (choice $ Set.fromList [
                           --        // only op1
-                          --        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
+                          --        A?A1 [op1$pc$Q == 0]                         >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --                                // note: the right side is still allowed to continue! that's intended behaviour.
                           actionPref
@@ -1805,7 +1808,7 @@ testMultiSeq1 = TestCase $
 
 
                             --        // only op2
-                            --        A?A1 [op2$pc$Q == 0]                    >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
+                            --        A?A1 [op2$pc$Q == 0]                         >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, 1, A1)
                             --        B?B1 [op2$pc$Q == 1, B1 == op2$Q$gnf1$A$B$x] >-> P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, -1, ANY)
                             , actionPref
                               ActOffer {  offers = Set.singleton
@@ -1937,7 +1940,7 @@ testMultiSeq2 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdA] [
+            parallel (Set.singleton chanIdA) [
                 procInst procIdQ [chanIdA, chanIdB] [],
                 procInst procIdQ [chanIdA, chanIdB] []
               ]
@@ -1983,7 +1986,7 @@ testMultiSeq2 = TestCase $
 
 
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp1QABx, varIdOp2pcQ, varIdOp2QABx]
-                      (choice [
+                      (choice $ Set.fromList [
                           --        // only op1
                           --        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
@@ -2145,7 +2148,7 @@ testMultiSeq3 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdB] [
+            parallel (Set.singleton chanIdB) [
                 procInst procIdQ [chanIdA, chanIdB] [],
                 procInst procIdQ [chanIdA, chanIdB] []
               ]
@@ -2191,7 +2194,7 @@ testMultiSeq3 = TestCase $
 
 
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp1QABx, varIdOp2pcQ, varIdOp2QABx]
-                      (choice [
+                      (choice $ Set.fromList [
                           --        // only op1
                           --        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
@@ -2348,7 +2351,7 @@ testMultiSeq4 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [chanIdA, chanIdB] [
+            parallel (Set.fromList [chanIdA, chanIdB]) [
                 procInst procIdQ [chanIdA, chanIdB] [],
                 procInst procIdQ [chanIdA, chanIdB] []
               ]
@@ -2394,7 +2397,7 @@ testMultiSeq4 = TestCase $
 
 
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp1QABx, varIdOp2pcQ, varIdOp2QABx]
-                      (choice [
+                      (choice $ Set.fromList [
                           --        // only op1
                           --        A?A1 [op1$pc$Q == 0]                    >-> P[A,B](1, A1, op2$pc$Q, op2$Q$gnf1$A$B$x)
                           --        B?B1 [op1$pc$Q == 1, B1 == op1$Q$gnf1$A$B$x] >-> P[A,B](-1, ANY, op2$pc$Q, op2$Q$gnf1$A$B$x)
@@ -2562,7 +2565,7 @@ testThreeOperands1 = TestCase $
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] [VarId (T.pack "s") 0 intSort]
       procDefP = ProcDef [chanIdA] [] (
-            parallel [] [
+            parallel Set.empty [
                 procInst procIdQ [chanIdA] [int1],
                 procInst procIdQ [chanIdA] [int1],
                 procInst procIdQ [chanIdA] [int1]
@@ -2589,7 +2592,7 @@ testThreeOperands1 = TestCase $
       -- with procInst := P[A](0,0,0)
       procIdP' = procIdGen "P" [chanIdA] [varIdOp1pcQ, varIdOp1QAs, varIdOp2pcQ, varIdOp2QAs, varIdOp3pcQ, varIdOp3QAs]
       procDefP' = ProcDef [chanIdA] [varIdOp1pcQ, varIdOp1QAs, varIdOp2pcQ, varIdOp2QAs, varIdOp3pcQ, varIdOp3QAs]
-                      (choice [
+                      (choice $ Set.fromList [
                         -- combination of 1 and 2
                         --  // only 1
                         --  A [op1$pc$Q == 0] >-> P[A](-1, op2$pc$Q, op3$pc$Q)
@@ -2645,7 +2648,7 @@ testThreeOperands2 = TestCase $
      procIdP = procIdGen "P" [chanIdA] []
      procIdQ = procIdGen "Q" [chanIdA] [VarId (T.pack "s") 0 intSort]
      procDefP = ProcDef [chanIdA] [] (
-           parallel [chanIdA] [
+           parallel (Set.singleton chanIdA) [
                procInst procIdQ [chanIdA] [int1],
                procInst procIdQ [chanIdA] [int1],
                procInst procIdQ [chanIdA] [int1]
@@ -2732,7 +2735,7 @@ testThreeOperandsDiffChannelsGEN = TestCase $
    procIdR = procIdGen "R" [chanIdB] []
 
    procDefP = ProcDef [chanIdA, chanIdB] [] (
-         parallel [] [
+         parallel Set.empty [
              procInst procIdQ [chanIdA] [],
              procInst procIdQ [chanIdA] [],
              procInst procIdR [chanIdB] []
@@ -2757,7 +2760,7 @@ testThreeOperandsDiffChannelsGEN = TestCase $
    -- with procInst := P[A](0,0,0)
    procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ, varIdOp3pcR]
    procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ, varIdOp3pcR]
-                    (choice  [
+                    (choice $ Set.fromList [
                               -- combination of op1, op2:
                               --  // only 1
                               --  A [op1$pc$Q == 0] >-> P[A,B](-1, op2$pc$Q,  op3$pc$Q)
@@ -2899,7 +2902,7 @@ testThreeOperandsDiffChannels1 = TestCase $
    procIdR = procIdGen "R" [chanIdB] []
 
    procDefP = ProcDef [chanIdA, chanIdB] [] (
-         parallel [] [
+         parallel Set.empty [
              procInst procIdQ [chanIdA] [],
              procInst procIdQ [chanIdA] [],
              procInst procIdR [chanIdB] []
@@ -2924,7 +2927,7 @@ testThreeOperandsDiffChannels1 = TestCase $
    -- with procInst := P[A](0,0,0)
    procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ, varIdOp3pcR]
    procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ, varIdOp3pcR]
-                    (choice  [
+                    (choice $ Set.fromList [
                               -- combination of op1, op2:
                               --  // only 1
                               --  A [op1$pc$Q == 0] >-> P[A,B](-1, op2$pc$Q,  op3$pc$Q)
@@ -3058,7 +3061,7 @@ testThreeOperandsDiffChannels2 = TestCase $
    procIdR = procIdGen "R" [chanIdB] []
 
    procDefP = ProcDef [chanIdA, chanIdB] [] (
-         parallel [chanIdA] [
+         parallel (Set.singleton chanIdA) [
              procInst procIdQ [chanIdA] [],
              procInst procIdQ [chanIdA] [],
              procInst procIdR [chanIdB] []
@@ -3124,7 +3127,7 @@ testThreeOperandsDiffChannels3 = TestCase $
    procIdR = procIdGen "R" [chanIdB] []
 
    procDefP = ProcDef [chanIdA, chanIdB] [] (
-         parallel [chanIdB] [
+         parallel (Set.singleton chanIdB) [
              procInst procIdQ [chanIdA] [],
              procInst procIdQ [chanIdA] [],
              procInst procIdR [chanIdB] []
@@ -3149,7 +3152,7 @@ testThreeOperandsDiffChannels3 = TestCase $
    -- with procInst := P[A](0,0,0)
    procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ, varIdOp3pcR]
    procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ, varIdOp3pcR]
-                    (choice  [
+                    (choice $ Set.fromList [
                               -- combination of op1, op2:
                               --  // only 1
                               --  A [op1$pc$Q == 0] >-> P[A,B](-1, op2$pc$Q,  op3$pc$Q)
@@ -3195,7 +3198,7 @@ testThreeOperandsDiffChannels4 = TestCase $
    procIdR = procIdGen "R" [chanIdB] []
 
    procDefP = ProcDef [chanIdA, chanIdB] [] (
-         parallel [chanIdA, chanIdB] [
+         parallel (Set.fromList [chanIdA, chanIdB]) [
              procInst procIdQ [chanIdA] [],
              procInst procIdQ [chanIdA] [],
              procInst procIdR [chanIdB] []
@@ -3220,7 +3223,7 @@ testThreeOperandsDiffChannels4 = TestCase $
    -- with procInst := P[A](0,0,0)
    procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ, varIdOp3pcR]
    procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ, varIdOp3pcR]
-                    (choice  [])
+                    (choice $ Set.fromList [])
    procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0, int0]
 
 
@@ -3249,7 +3252,7 @@ testChannelInst = TestCase $
       procIdP = procIdGen "P" [chanIdA] []
 
       procDefP = ProcDef [chanIdA] [] (
-            parallel [] [
+            parallel Set.empty [
                 actionPref actOfferA stop,
                 actionPref actOfferA stop
               ]
@@ -3263,7 +3266,7 @@ testChannelInst = TestCase $
 
       procIdP' = procIdGen "P" [chanIdA] [varIdOp1pcPop1, varIdOp2pcPop2]
       procDefP' = ProcDef [chanIdA] [varIdOp1pcPop1, varIdOp2pcPop2]
-                      (choice [
+                      (choice $ Set.fromList [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A](-1, op2$pc$P$op2)
                           actionPref
@@ -3316,7 +3319,7 @@ testChannelInst2 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [] [
+            parallel Set.empty [
                 procInst procIdQ [chanIdA] [],
                 procInst procIdQ [chanIdB] []
               ]
@@ -3334,7 +3337,7 @@ testChannelInst2 = TestCase $
 
       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ]
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ]
-                      (choice [
+                      (choice $ Set.fromList [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A](-1, op2$pc$P$op2)
                           actionPref
@@ -3402,7 +3405,7 @@ testChannelInst3 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel [] [
+            parallel Set.empty [
                 procInst procIdQ [chanIdA, chanIdB] [],
                 procInst procIdQ [chanIdB, chanIdA] []
               ]
@@ -3420,7 +3423,7 @@ testChannelInst3 = TestCase $
 
       procIdP' = procIdGen "P" [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ]
       procDefP' = ProcDef [chanIdA, chanIdB] [varIdOp1pcQ, varIdOp2pcQ]
-                      (choice [
+                      (choice $ Set.fromList [
                           -- // only left side
                           -- A [op1$pc$P$op1 == 0] >->  P[A](-1, op2$pc$P$op2)
                           actionPref
@@ -3481,7 +3484,7 @@ testChannelInst3 = TestCase $
 --  where
 --     procIdP = procIdGen "P" [] []
 --     procInst'' = procInst procIdP [] []
---     procDefP = ProcDef [] [] (parallel [] [
+--     procDefP = ProcDef [] [] (parallel Set.empty [
 --                                 (actionPref actOfferA stop),
 --                                 (procInst procIdP [] [])
 --                                 ])
@@ -3502,11 +3505,11 @@ testChannelInst3 = TestCase $
 --     procIdP = procIdGen "P" [] []
 --     procIdQ = procIdGen "Q" [] []
 --     procInst'' = procInst procIdP [] []
---     procDefP = ProcDef [] [] (parallel [] [
+--     procDefP = ProcDef [] [] (parallel Set.empty [
 --                                 (actionPref actOfferA stop),
 --                                 (procInst procIdQ [] [])
 --                                 ])
---     procDefQ = ProcDef [] [] (choice [
+--     procDefQ = ProcDef [] [] (choice $ Set.fromList [
 --                                 (actionPref actOfferA stop),
 --                                 (procInst procIdP [] [])
 --                                 ])
@@ -3522,7 +3525,7 @@ testChannelInst3 = TestCase $
 --  where
 --     procIdP = procIdGen "P" [] []
 --     procIdQ = procIdGen "Q" [] []
---     procDefP = ProcDef [] [] (choice [
+--     procDefP = ProcDef [] [] (choice $ Set.fromList [
 --                                 (actionPref actOfferAx (procInst procIdP [] [])),
 --                                 (procInst procIdQ [] [])
 --                                 ])

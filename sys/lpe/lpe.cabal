@@ -19,15 +19,14 @@ library
 
   other-modules:      TranslatedProcDefs
 
-  ghc-options:        -Werror -Wall -O2 -optc-O3 -optc-ffast-math
+  ghc-options:        -Wall -Werror -O2 -optc-O3 -optc-ffast-math
 
   build-depends:        base
                       , containers
                       , mtl
                       , text
 
-                      , behave
-                      , behaveenv
+                      , bexpr
                       , coreenv
                       , defs
                       , valexpr
@@ -51,16 +50,15 @@ test-suite lpe-test
                       , TranslatedProcDefs
                       , LPEfunc
 
-  ghc-options:       -Werror -Wall -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
+  ghc-options:       -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
 
   build-depends:       base
                      , containers
                      , mtl
                      , text
                      , HUnit
-                     , MissingH
 
-                     , behave
+                     , bexpr
                      , coreenv
                      , defs
                      , valexpr

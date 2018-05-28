@@ -1,5 +1,0 @@
-#!/bin/sh
-
-# Installation script to run upon snap installation.
-
-# Empty for now...

@@ -156,7 +156,6 @@ instance UsedFids BExpr
 
 instance UsedFids BExprView
   where
-    usedFids  Stop                          =  []
     usedFids (ActionPref actoff bexp)       =  usedFids actoff ++ usedFids bexp
     usedFids (Guard vexps bexp)             =  usedFids vexps ++ usedFids bexp
     usedFids (Choice bexps)                 =  usedFids bexps
@@ -218,3 +217,7 @@ instance UsedFids (ValExprView VarId)
 instance (UsedFids t) => UsedFids [t]
   where
     usedFids  =  concatMap usedFids
+
+instance (UsedFids t) => UsedFids (Set.Set t)
+  where
+    usedFids  =  concatMap usedFids . Set.toList

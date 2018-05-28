@@ -80,7 +80,7 @@ instance (Resettable a, Resettable b) => Resettable (a, b) where
 instance (Ord a, Resettable a) => Resettable (Set a) where
     reset = Set.fromList . (reset <$>) . Set.toList
 
-instance (Ord k, Ord v, Resettable k, Resettable v) => Resettable (Map k v) where
+instance (Ord k, Resettable k, Resettable v) => Resettable (Map k v) where
     reset = Map.fromList . (reset <$>) . Map.toList
 
 class GResettable f where

@@ -55,7 +55,7 @@ import ValExpr
 import qualified EnvData
 import qualified EnvBasic            as EnvB
 
-import Expand (relabel)
+import Relabel (relabel)
 import Subst
 import SortOf
 
@@ -99,10 +99,10 @@ extractVarIds_ChanOffer _ varIds              = varIds
 
 wrapSteps :: [BExpr] -> BExpr
 wrapSteps [bexpr] = bexpr
-wrapSteps bexprs = choice bexprs
+wrapSteps bexprs = choice $ Set.fromList bexprs
 
 extractSteps :: BExpr -> [BExpr]
-extractSteps (TxsDefs.view -> Choice bexprs) = bexprs
+extractSteps (TxsDefs.view -> Choice bexprs) = Set.toList bexprs
 extractSteps bexpr = [bexpr]
 
 -- ----------------------------------------------------------------------------------------- --
@@ -118,8 +118,8 @@ preGNF procId translatedProcDefs procDefs' = do
         -- translate each choice separately
 
     (procDef', procDefs''') <- case TxsDefs.view bexpr of
-                              (Choice bexprs) -> do  (bexprs', procDefs'') <-  applyPreGNFBexpr bexprs 1 [] translatedProcDefs' procDefs'
-                                                     let procDef' = ProcDef chansDef paramsDef (choice bexprs')
+                              (Choice bexprs) -> do  (bexprs', procDefs'') <-  applyPreGNFBexpr (Set.toList bexprs) 1 [] translatedProcDefs' procDefs'
+                                                     let procDef' = ProcDef chansDef paramsDef (choice (Set.fromList bexprs'))
                                                      return (procDef', procDefs'')
 
                               _               -> do  (bexpr', procDefs'') <- preGNFBExpr bexpr 1 [] procId translatedProcDefs' procDefs'
@@ -138,7 +138,7 @@ preGNF procId translatedProcDefs procDefs' = do
 
 preGNFBExpr :: (EnvB.EnvB envb) => BExpr -> Int -> [VarId] -> ProcId -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
 
-preGNFBExpr (TxsDefs.view -> Stop) _ _ _ _ procDefs' =
+preGNFBExpr bexpr _ _ _ _ procDefs' | isStop bexpr =
     return (stop, procDefs')
 
 preGNFBExpr (TxsDefs.view -> ActionPref actOffer bexpr') choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
@@ -224,8 +224,8 @@ gnf procId translatedProcDefs procDefs' = do
         ProcDef chansDef paramsDef bexpr = fromMaybe (error "GNF: could not find given procId (should be impossible)") (Map.lookup procId procDefs'')
 
     (procDef, procDefs'''') <- case TxsDefs.view bexpr of
-                                (Choice bexprs) -> do   (steps, procDefs''') <- applyGNFBexpr bexprs 1 [] translatedProcDefs' procDefs''
-                                                        let procDef = ProcDef chansDef paramsDef (choice steps)
+                                (Choice bexprs) -> do   (steps, procDefs''') <- applyGNFBexpr (Set.toList bexprs) 1 [] translatedProcDefs' procDefs''
+                                                        let procDef = ProcDef chansDef paramsDef (choice (Set.fromList steps))
                                                         return (procDef, procDefs''')
                                 _               -> do   (steps, procDefs''') <- gnfBExpr bexpr 1 procId translatedProcDefs' procDefs''
                                                         let procDef = ProcDef chansDef paramsDef (wrapSteps steps)
@@ -241,10 +241,10 @@ gnf procId translatedProcDefs procDefs' = do
 
 
 gnfBExpr :: (EnvB.EnvB envb) => BExpr -> Int -> ProcId -> TranslatedProcDefs -> ProcDefs -> envb([BExpr], ProcDefs)
-gnfBExpr bexpr@(TxsDefs.view -> Stop) _choiceCnt _procId _translatedProcDefs procDefs' =
+gnfBExpr bexpr _choiceCnt _procId _translatedProcDefs procDefs' | isStop bexpr =
       return ([bexpr], procDefs')
 
-gnfBExpr bexpr@(TxsDefs.view -> ActionPref _actOffer (TxsDefs.view -> Stop)) _choiceCnt _procId _translatedProcDefs procDefs' =
+gnfBExpr bexpr@(TxsDefs.view -> ActionPref _actOffer bexpr1) _choiceCnt _procId _translatedProcDefs procDefs' | isStop bexpr1 =
       return ([bexpr], procDefs')
 
 gnfBExpr bexpr@(TxsDefs.view -> ActionPref _actOffer (TxsDefs.view -> ProcInst procIdInst _ _)) _choiceCnt _procId translatedProcDefs procDefs' =
@@ -366,7 +366,7 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
     return (procInstPAR, procDefsPAR)
     where
       -- takes two operands (steps and paramsDef) and combines them according to parallel semantics
-      combineSteps :: [ChanId] -> ProcId -> [ChanId] -> ([BExpr], [VarId]) -> ([BExpr], [VarId]) ->  ([BExpr], [VarId])
+      combineSteps :: Set.Set ChanId -> ProcId -> [ChanId] -> ([BExpr], [VarId]) -> ([BExpr], [VarId]) ->  ([BExpr], [VarId])
       combineSteps syncChans procIdPAR chansDefPAR (stepsL, opParamsL) (stepsR, opParamsR) =
         let -- first only steps of the left operand
             stepsLvalid = filter (isValidStep syncChans) stepsL
@@ -407,22 +407,21 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
             actionPref actOfferLR procInstLR
 
           -- check if given step can be executed by itself according to parallel semantics
-          isValidStep :: [ChanId] -> BExpr -> Bool
+          isValidStep :: Set.Set ChanId -> BExpr -> Bool
           isValidStep syncChans' (TxsDefs.view -> ActionPref ActOffer{offers=os} _) =
             let -- extract all chanIds from the offers in the ActOffer
                 chanIds = Set.foldl (\accu offer -> (chanid offer : accu)) [] os in
             -- if there are no common channels with the synchronisation channels: return true
-            Set.null $ Set.intersection (Set.fromList syncChans') (Set.fromList chanIds)
+            Set.null $ Set.intersection syncChans' (Set.fromList chanIds)
           isValidStep _ _ = error "only allowed with ActionPref"
 
           -- check if given step combination can be executed according to parallel semantics
-          isValidStepCombination :: [ChanId] -> (BExpr, BExpr) -> Bool
-          isValidStepCombination syncChans' (TxsDefs.view -> ActionPref ActOffer{offers=offersL} _, TxsDefs.view -> ActionPref ActOffer{offers=offersR} _) =
+          isValidStepCombination :: Set.Set ChanId -> (BExpr, BExpr) -> Bool
+          isValidStepCombination syncChansSet (TxsDefs.view -> ActionPref ActOffer{offers=offersL} _, TxsDefs.view -> ActionPref ActOffer{offers=offersR} _) =
             let -- extract all chanIds from the offers in the ActOffer
                 chanIdsLSet = Set.fromList $ Set.foldl (\accu offer -> (chanid offer : accu)) [] offersL
                 chanIdsRSet = Set.fromList $ Set.foldl (\accu offer -> (chanid offer : accu)) [] offersR
-                syncChansSet = Set.fromList syncChans'
-
+                
                 intersectionLR = Set.intersection chanIdsLSet chanIdsRSet
                 intersectionLsyncChans = Set.intersection chanIdsLSet syncChansSet
                 intersectionRsyncChans = Set.intersection chanIdsRSet syncChansSet
@@ -702,7 +701,7 @@ lpeTransform' procInst''' procDefs' = do    (procInst', procDefs'') <- lpe procI
         --                                                     return $ ((chanName, varNr), (VarId (T.pack chanName') unid' varSort))
 
         substituteProcId :: ProcId -> ProcId -> BExpr -> BExpr
-        substituteProcId _orig _new (TxsDefs.view -> Stop) = stop
+        substituteProcId _orig _new bexpr | isStop bexpr = stop
         substituteProcId orig new (TxsDefs.view -> ActionPref actOffer (TxsDefs.view -> ProcInst procId chansInst paramsInst)) =
           if procId == orig
               then actionPref actOffer (procInst new chansInst paramsInst)
@@ -799,7 +798,7 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
 
             -- let steps' = map (lpeBExpr chanMap paramMap varIdPC pcValue) steps
             steps' <- mapM (lpeBExpr chanMap paramMap varIdPC pcValue) steps
-            let steps'' = filter (not . (\b -> TxsDefs.view b == Stop)) steps'       -- filter out the Stops
+            let steps'' = filter (not . isStop) steps'       -- filter out the Stops
             -- recursion
             (stepsRec, paramsRec, procToParamsRec) <- translateProcs procss varIdPC pcMapping procDefs''
 
@@ -823,7 +822,7 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
         
         -- update the ProcInsts in the steps to the new ProcId
         stepsUpdateProcInsts :: [Proc] -> ProcToParams -> PCMapping -> ProcId -> BExpr -> BExpr
-        stepsUpdateProcInsts _procs _procToParams _pcMap procIdNew (TxsDefs.view -> ActionPref actOffer (TxsDefs.view -> Stop)) =
+        stepsUpdateProcInsts _procs _procToParams _pcMap procIdNew (TxsDefs.view -> ActionPref actOffer bexpr) | isStop bexpr =
             let -- get the params, but leave out the first one because it's the program counter
                 (_:params) = ProcId.procvars procIdNew
                 paramsSorts = map varIdToSort params
@@ -870,7 +869,7 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
 lpe _ _ _ = error "Only allowed with ProcInst"
 
 lpeBExpr :: (EnvB.EnvB envb ) => ChanMapping -> ParamMapping -> VarId -> Integer -> BExpr -> envb BExpr
-lpeBExpr _chanMap _paramMap _varIdPC _pcValue (TxsDefs.view -> Stop) = return stop
+lpeBExpr _chanMap _paramMap _varIdPC _pcValue bexpr | isStop bexpr = return stop
 lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
     let -- instantiate the bexpr
         bexprRelabeled = relabel chanMap bexpr
@@ -907,10 +906,9 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
                              , hiddenvars = hiddenvars actOffer
                              , constraint = constraint' }
 
-        bexpr'' = case TxsDefs.view bexpr' of
-                    Stop -> stop
-                    -- TODO: properly initialise funcDefs param of subst
-                    _    -> Subst.subst varMap' (Map.fromList []) bexpr'
+        bexpr'' = if isStop bexpr' then stop
+                                        -- TODO: properly initialise funcDefs param of subst
+                                   else Subst.subst varMap' (Map.fromList []) bexpr'
     return (actionPref actOffer' bexpr'')
 
     where

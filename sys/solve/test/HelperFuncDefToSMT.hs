@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module HelperFuncDefToSMT
 where
 import qualified Data.Map          as Map
@@ -49,8 +48,11 @@ createFunctionDefsRecursive mapI l =
     TXS2SMTFuncTest (EnvDefs Map.empty Map.empty (foldr insert Map.empty l) )
                     ("(define-funs-rec\n  (\n" ++ concatMap define l ++ "  )\n  (\n" ++ concatMap body l ++ "  )\n)\n")
   where
+    insert :: (FuncId, [VarId], SortId, TXS2SMTVExprTest) -> Map.Map FuncId (FuncDef VarId) -> Map.Map FuncId (FuncDef VarId)
     insert (fn, vs, _sort, expr) = Map.insert fn (FuncDef vs (HelperVexprToSMT.input expr))
+    define :: (FuncId, [VarId], SortId, TXS2SMTVExprTest) -> String
     define (fn, vs, sort, _expr) = "    (" ++ T.unpack (justLookupFunc fn mapI) ++ "(" ++ join " " (map (\vi -> "(" ++ toSMTVar vi ++ " " ++ T.unpack (justLookupSort (varsort vi) mapI) ++ ")") vs) ++ ") " ++ T.unpack (justLookupSort sort mapI) ++ ")\n"
+    body :: (FuncId, [VarId], SortId, TXS2SMTVExprTest) -> String
     body (_, _, _, expr)    = "    " ++ HelperVexprToSMT.expected expr ++ "\n"
 
 justLookupSort :: SortId -> EnvNames -> Text

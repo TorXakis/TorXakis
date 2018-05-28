@@ -335,7 +335,8 @@ cmdParam args =
 cmdSeed :: String -> IOS.IOS ()
 cmdSeed args =
      case words args of
-       [val] -> let seed = read val
+       [val] -> let seed :: Int
+                    seed = read val
                   in do
                    lift $ TxsCore.txsSetSeed seed
                    IFS.pack "SEED" []
@@ -471,7 +472,9 @@ cmdEval args = do
 
 cmdSolve :: String -> String -> IOS.IOS ()
 cmdSolve args kind = do
-     let (cmd,solver) = case kind of
+     let cmd :: String
+         solver :: TxsCore.TxsSolveType
+         (cmd,solver) = case kind of
                              "sol" -> ( "SOLVE"   , TxsCore.txsSolve    )
                              "uni" -> ( "UNISOLVE", TxsCore.txsUniSolve )
                              "ran" -> ( "RANSOLVE", TxsCore.txsRanSolve )
@@ -509,8 +512,10 @@ cmdTester :: String -> IOS.IOS ()
 cmdTester args = do
      envs'  <- get
      let Just (ioString,_) = Map.lookup "param_Sut_ioTime" (IOS.params envs')
+         ioTime :: Int
          ioTime = read ioString
          Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (IOS.params envs')
+         deltaTime :: Int
          deltaTime = read deltaString
      tdefs  <- lift TxsCore.txsGetTDefs
      case words args of
@@ -649,8 +654,10 @@ cmdSimulator :: String -> IOS.IOS ()
 cmdSimulator args = do
      envs'  <- get
      let Just (ioString,_) = Map.lookup "param_Sim_ioTime" (IOS.params envs')
+         ioTime :: Int
          ioTime = read ioString
          Just (deltaString,_) = Map.lookup "param_Sim_deltaTime" (IOS.params envs')
+         deltaTime :: Int
          deltaTime = read deltaString                      
      tdefs  <- lift TxsCore.txsGetTDefs
      case words args of
@@ -861,8 +868,9 @@ cmdGoTo args =
        ["back"]  -> do lift $ TxsCore.txsGoTo (-1)
                        IFS.pack "GOTO" ["gone to previous state"]
                        cmdsIntpr
-       ["back",d] | all Char.isDigit d
-                 -> let steps = read d
+       ["back", d] | all Char.isDigit d
+                 -> let steps :: Int
+                        steps = read d
                      in if  steps == 0
                           then do IFS.pack "GOTO" ["gone to current state"]
                                   cmdsIntpr
@@ -913,7 +921,8 @@ cmdTrace args = do
 
 cmdMenu :: String -> IOS.IOS ()
 cmdMenu args =
-     let (kind,what) =
+     let kind, what :: String
+         (kind,what) =
           case words args of
               ["in"]       -> ( "mod", "in" )
               ["out"]      -> ( "mod", "out" )

@@ -21,7 +21,6 @@ module Expand
                  -- (concrete, closed, no interaction variables)
                  -- into a communication tree with interaction variables (closed)
                  -- plain expansion, no input/ouput, no solving
-, Relabel (..)   -- relabel :: (Map.Map ChanId ChanId) -> e -> e
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -46,7 +45,9 @@ import           ConstDefs
 import qualified EnvBTree            as IOB
 import qualified EnvData
 import           Id
+import           Relabel(relabel)
 import           StdTDefs
+import           Subst
 import           TxsDefs
 import           TxsUtils
 import           Utils
@@ -68,10 +69,7 @@ expand :: [ Set.Set TxsDefs.ChanId ] -- ^ Set of expected synchronization channe
        -> IOB.IOB CTree
 -- expand  :  for  BNbexpr WEnv BExpr
 
-expand _ (BNbexpr _ (TxsDefs.view -> Stop))  = return []
-
 -- ----------------------------------------------------------------------------------------- --
-
 expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs hidvars cnd) bexp))  =  do
      (ctoffs, quests, exclams) <- expandOffers chsets offs
      hvarlist <- sequence [ liftP2 (hvid, uniIVar hvid) | hvid <- Set.toList hidvars ]
@@ -85,7 +83,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs hidvars cnd
                               ]
      tds <- gets IOB.tdefs
      let exclams' = map toEitherTuple
-                      [ (ivar, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
+                      [ (ivar, ValExpr.eval (ValExpr.subst (Map.map cstrConst we) (funcDefs tds) vexp) )
                       | (ivar, vexp) <- exclams
                       ]
      case Data.Either.partitionEithers exclams' of
@@ -94,7 +92,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs hidvars cnd
                                , cthidvars = map snd hvarlist
                                , ctpred    = cstrAnd $ Set.fromList
                                                ( compSubst ivenv (funcDefs tds)
-                                                   (subst (Map.map cstrConst we') (funcDefs tds) cnd)
+                                                   (ValExpr.subst (Map.map cstrConst we') (funcDefs tds) cnd)
                                                : [ cstrEqual (cstrVar ivar) (cstrConst wal)
                                                  | (ivar, wal) <- r
                                                  ]
@@ -110,7 +108,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> ActionPref (ActOffer offs hidvars cnd
 
 expand chsets (BNbexpr we (TxsDefs.view -> Guard c bexp))  = do
     tds <- gets IOB.tdefs
-    case ValExpr.eval $ subst (Map.map cstrConst we) (funcDefs tds) c of
+    case ValExpr.eval $ ValExpr.subst (Map.map cstrConst we) (funcDefs tds) c of
         Right (Cbool True)  -> expand chsets (BNbexpr we bexp)
         Right (Cbool False) -> return []
         _                   -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
@@ -120,7 +118,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> Guard c bexp))  = do
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (TxsDefs.view -> Choice bexps))  =
-     concat <$> sequence [ expand chsets (BNbexpr we bexp) | bexp <- bexps ]
+     concat <$> sequence [ expand chsets (BNbexpr we bexp) | bexp <- Set.toList bexps ]
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -146,7 +144,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> Enable bexp1 chanoffs bexp2))  =  do
 
      evalChanOffer we' (Exclam vexp)  =  do
           tds <- gets IOB.tdefs
-          let res = ValExpr.eval $ subst (Map.map cstrConst we') (funcDefs tds) vexp
+          let res = ValExpr.eval $ ValExpr.subst (Map.map cstrConst we') (funcDefs tds) vexp
           return $ right (Exclam . cstrConst) res
 
 -- ----------------------------------------------------------------------------------------- --
@@ -166,10 +164,10 @@ expand chsets (BNbexpr we (TxsDefs.view -> ProcInst procid@(ProcId nm _ _ _ _) c
      case Map.lookup procid (procDefs tdefs) of
        Just (ProcDef chids vids bexp)
          -> do let chanmap = Map.fromList (zip chids chans)
-               let wals = map (ValExpr.eval . subst (Map.map cstrConst we) (funcDefs tdefs) ) vexps
+               let wals = map ( ValExpr.eval . ValExpr.subst (Map.map cstrConst we) (funcDefs tdefs) ) vexps
                case Data.Either.partitionEithers wals of
                     ([], r) -> do let we' = Map.fromList (zip vids r)
-                                  expand chsets $ BNbexpr we' (relabel chanmap bexp)
+                                  expand chsets $ BNbexpr Map.empty (relabel chanmap (Subst.subst (Map.map cstrConst we') (funcDefs tdefs) bexp) )
                     (s, _)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                                 ("Expand: Eval failed in expand - ProcInst " ++ show s) ]
                                   return []
@@ -186,7 +184,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> Hide chans bexp))  =
 
 expand chsets (BNbexpr we (TxsDefs.view -> ValueEnv venv bexp))  =  do
     tds   <- gets IOB.tdefs
-    let we' = map toEitherTuple [ (vid, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp))
+    let we' = map toEitherTuple [ (vid, ValExpr.eval (ValExpr.subst (Map.map cstrConst we) (funcDefs tds) vexp))
                                 | (vid, vexp) <- Map.toList venv
                                 ]
     case Data.Either.partitionEithers we' of
@@ -203,7 +201,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
                                , vid `Map.notMember` ve
                                ]
     tds   <- gets IOB.tdefs
-    let vewals = map toEitherTuple [ (vid, ValExpr.eval (subst (Map.map cstrConst we) (funcDefs tds) vexp) )
+    let vewals = map toEitherTuple [ (vid, ValExpr.eval (ValExpr.subst (Map.map cstrConst we) (funcDefs tds) vexp) )
                                    | (vid, vexp) <- Map.toList ve
                                    ]
     case Data.Either.partitionEithers vewals of
@@ -228,7 +226,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
              we'   = envwals `combineWEnv` stswals
          tds <- gets IOB.tdefs
          let exclams' = map toEitherTuple
-                          [ (ivar, ValExpr.eval (subst (Map.map cstrConst we') (funcDefs tds) vexp) )
+                          [ (ivar, ValExpr.eval (ValExpr.subst (Map.map cstrConst we') (funcDefs tds) vexp) )
                           | (ivar, vexp) <- exclams
                           ]
          case Data.Either.partitionEithers exclams' of
@@ -240,7 +238,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
                                                       | (vid, wal) <- Map.toList envwals
                                                       , vid `Map.notMember` ivenv
                                                       ]
-                              ve' = Map.fromList [ (vid, subst (Map.map cstrConst we'') (funcDefs tds) vexp)
+                              ve' = Map.fromList [ (vid, ValExpr.subst (Map.map cstrConst we'') (funcDefs tds) vexp)
                                                  | (vid, vexp) <- Map.toList update'
                                                  ]
                           return
@@ -248,7 +246,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> StAut ini ve trns))  =  do
                                      , cthidvars = map snd hvarlist
                                      , ctpred    = cstrAnd $ Set.fromList
                                                      ( compSubst ivenv (funcDefs tds)
-                                                         (subst (Map.map cstrConst we'') (funcDefs tds) cnd)
+                                                         (ValExpr.subst (Map.map cstrConst we'') (funcDefs tds) cnd)
                                                      : [ cstrEqual (cstrVar ivar) (cstrConst wal)
                                                        | (ivar, wal) <- r
                                                        ]
@@ -284,7 +282,7 @@ expand chsets (BNparallel chans cnodes)  = do
       where
         calcSets :: (CNode,CTree) -> (CNode, [(CTBranch, (Set.Set ChanId, Bool) )] )
         calcSets (node, ctree) = (node, [ let set = Set.map ctchan ctoffs in
-                                               (ctpref, (set, Set.null (set `Set.intersection` Set.fromList chans) ) )
+                                               (ctpref, (set, Set.null (set `Set.intersection` chans) ) )
                                         | ctpref@(CTpref ctoffs _ _ _) <- ctree
                                         ])
 
@@ -323,13 +321,14 @@ expand chsets (BNparallel chans cnodes)  = do
       where
         calcSets :: CTree -> [(CTBranch, (Set.Set ChanId, Set.Set ChanId) )]
         calcSets ctree = [ let set = Set.map ctchan ctoffs in
-                                   (ctpref, (set, set `Set.intersection` Set.fromList chans))
+                                   (ctpref, (set, set `Set.intersection` chans))
                          | ctpref@(CTpref ctoffs _ _ _) <- ctree
                          ]
 
         allPairsMatch :: [[(CTBranch, (Set.Set ChanId, Set.Set ChanId) )]] -> [(CTBranch, (Set.Set ChanId, Set.Set ChanId) )] -> [[(CTBranch, (Set.Set ChanId, Set.Set ChanId) )]]
         allPairsMatch acc branches = [ branch:a | branch <- branches, a <- acc, pairwiseMatch branch a]
             where
+                pairwiseMatch :: (CTBranch, (Set.Set ChanId, Set.Set ChanId) ) -> [(CTBranch, (Set.Set ChanId, Set.Set ChanId) )] -> Bool
                 pairwiseMatch (_,(si,icsi)) acc' = and [ let mm = si `Set.intersection` sj in
                                                           not (Set.null mm) &&       -- only handle synchronizing events : non-synchronzing events on all channels already handled
                                                           (icsi == mm) && (icsj == mm)
@@ -347,7 +346,7 @@ expand chsets (BNenable cnode1 chanoffs cnode2)  =  do
         ([], r) -> do let accpreds = [ cstrEqual (cstrVar ivar) (cstrConst wal) | (ivar, wal) <- r ]
                           (exits, noExits) = List.partition (\(CTpref ctoffs1 _ _ _) -> chanIdExit `Set.member` Set.map ctchan ctoffs1) ctree1
                       leftExits   <- sequence [ hideCTBranch chsets
-                                                      [chanIdExit]
+                                                      (Set.singleton chanIdExit)
                                                       ( CTpref ctoffs1
                                                                cthidvars1
                                                                ( cstrAnd (Set.fromList (ctpreds1:accpreds) ) )
@@ -407,7 +406,7 @@ expand chsets (BNinterrupt cnode1 cnode2)  =  do
                    , chanIdExit `Set.notMember` Set.map ctchan ctoffs1
                    ]
      ctree3' <- sequence [ hideCTBranch chsets
-                                 [chanIdExit]
+                                 (Set.singleton chanIdExit)
                                  ( CTpref ctoffs2
                                           cthidvars2
                                           ctpreds2
@@ -491,7 +490,7 @@ expandChanOffer chid (choff,pos)  =  do
 -- hide channels in CTBranch
 
 
-hideCTBranch :: [ Set.Set TxsDefs.ChanId ] -> [ChanId] -> CTBranch -> IOB.IOB CTBranch
+hideCTBranch :: [ Set.Set TxsDefs.ChanId ] -> Set.Set ChanId -> CTBranch -> IOB.IOB CTBranch
 hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
     tds <- gets IOB.tdefs
     let (hctoffs,vctoffs) = Set.partition ((`elem` chans).ctchan) ctoffs
@@ -500,85 +499,18 @@ hideCTBranch _ chans (CTpref ctoffs hidvars pred' next) = do
     let hvarmap           = Map.fromList hvarlist
         unihvars          = Map.elems hvarmap
         hvarenv           = Map.map cstrVar hvarmap
-        ctnext1'          = let chans' = chans \\\ [chanIdExit]
+        ctnext1'          = let chans' = Set.delete chanIdExit chans
                               in if null chans'
                                    then next
                                    else BNhide chans' next
     return CTpref { ctoffers  = vctoffs
                   , cthidvars = hidvars ++ unihvars
-                  , ctpred    = subst hvarenv (funcDefs tds) pred'
-                  , ctnext    = let f (we, ivenv) =
-                                        (we, Map.map (subst hvarenv (funcDefs tds)) ivenv)
+                  , ctpred    = ValExpr.subst hvarenv (funcDefs tds) pred'
+                  , ctnext    = let f :: (WEnv VarId, VarEnv VarId IVar) -> (WEnv VarId, VarEnv VarId IVar)
+                                    f (we, ivenv) =
+                                        (we, Map.map (ValExpr.subst hvarenv (funcDefs tds)) ivenv)
                                  in fmap f ctnext1'
                   }
-
--- ----------------------------------------------------------------------------------------- --
--- relabel
-
-
-class Relabel e
-  where
-    relabel :: Map.Map ChanId ChanId -> e -> e
-
-instance Relabel BExpr
-    where
-        relabel v = relabel' v . TxsDefs.view
-
-relabel' :: Map.Map ChanId ChanId -> BExprView -> BExpr
-relabel' _ Stop
-  =  stop
-
-relabel' chanmap (ActionPref (ActOffer offs hidvars cnrs) bexp)
-  =  actionPref (ActOffer (Set.map (relabel chanmap) offs) hidvars cnrs) (relabel chanmap bexp)
-
-relabel' chanmap (Guard cnrs bexp)
-  =  TxsDefs.guard cnrs (relabel chanmap bexp)
-
-relabel' chanmap (Choice bexps)
-  =  choice (map (relabel chanmap) bexps)
-
-relabel' chanmap (Parallel chids bexps)
-  =  parallel (map (relabel chanmap) chids) (map (relabel chanmap) bexps)
-
-relabel' chanmap (Enable bexp1 choffs bexp2)
-  =  enable (relabel chanmap bexp1) choffs (relabel chanmap bexp2)
-
-relabel' chanmap (Disable bexp1 bexp2)
-  =  disable (relabel chanmap bexp1) (relabel chanmap bexp2)
-
-relabel' chanmap (Interrupt bexp1 bexp2)
-  =  interrupt (relabel chanmap bexp1) (relabel chanmap bexp2)
-
-relabel' chanmap (ProcInst pid chans vexps)
-  =  procInst pid (map (relabel chanmap) chans) vexps
-
-relabel' chanmap (Hide chans bexp)
-  =  hide chans (relabel (Map.filterWithKey (\k _->k`notElem`chans) chanmap) bexp)
-
-relabel' chanmap (ValueEnv venv bexp)
-  =  valueEnv venv (relabel chanmap bexp)
-
-relabel' chanmap (StAut stid venv trans)
-  =  stAut stid venv (map (relabel chanmap) trans)
-
-
-instance Relabel Offer
-  where
-    relabel chanmap (Offer chid choffs)
-      =  Offer (relabel chanmap chid) choffs
-
-
-instance Relabel ChanId
-  where
-    relabel chanmap chid
-      =  Map.findWithDefault chid chid chanmap
-
-
-instance Relabel Trans
-  where
-    relabel chanmap (Trans from' (ActOffer offs hidvars cnrs) venv to')
-      =  Trans from' (ActOffer (Set.map (relabel chanmap) offs) hidvars cnrs) venv to'
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- transform IVar/VarId into unique IVar (HVar)

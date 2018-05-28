@@ -691,7 +691,7 @@ FuncDefs        -- :: { [ (Ident,TxsDef) ] }
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $$.synSigs      = Sigs.uniqueCombine $1.synSigs $3.synSigs
-                ;  $$ = $1 ++ [ $3 ]
+                ;  $$ = $3:$1
                 }
 
 ExFuncDef       -- :: { ( Int, TxsDef ) }
@@ -876,7 +876,7 @@ ProcDefs        -- :: { [ (Ident,TxsDef) ] }
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $3.inhSigs      = $$.inhSigs
                 ;  $$.synSigs      = Sigs.combine $1.synSigs $3.synSigs
-                ;  $$ = $1 ++ [ $3 ]
+                ;  $$ = $3:$1
                 }
 
 ProcDef         -- :: { (Ident,TxsDef) }
@@ -943,7 +943,6 @@ StautDef        -- :: { [(Ident,TxsDef)] }
                                                                 , ProcId (T.pack "stdi_"<> $2) ($$.inhNodeUid + 3) $3 $4 $5
                                                                 , ProcId (T.pack "std_"<> $2) ($$.inhNodeUid + 1) $3 (combineParameters $4 (VarId (T.pack "$s") ($$.inhNodeUid + 2) sortIdInt) vars) $5
                                                                 ] }
-                                                                 { Sigs.pro = [ ProcId $2 $$.inhNodeUid $3 $4 $5 ] } 
                 ;  $7.inhChanSigs  = $3
                 ;  $7.inhVarSigs   = $4
                 ;  $$.synSigs      = let (_, vars, _, _, _, _) = $7 in
@@ -1132,7 +1131,7 @@ TestGoals       -- :: { [ (GoalId,BExpr) ] }
                 ;  $1.inhChanSigs  = $$.inhChanSigs
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $2.inhChanSigs  = $$.inhChanSigs
-                ;  $$ = $1 ++ [ $2 ]
+                ;  $$ = $2:$1
                 ;  where if (GoalId.name . fst) $2 `notElem` map (GoalId.name . fst) $1 then () else
                          error $ "\nTXS0551: "++ 
                                  "Double defined goal names in test purpose\n"
@@ -1326,7 +1325,7 @@ ConnectionItems -- :: { [ ConnDef ] }
                 ;  $1.inhSigs      = $$.inhSigs
                 ;  $2.inhSigs      = $$.inhSigs
                 ;  $$.synChanSigs  = $1.synChanSigs ++ $2.synChanSigs
-                ;  $$ = $1 ++ [ $2 ]
+                ;  $$ = $2:$1
                 }
 
 ConnectionItem  -- :: { ConnDef }
@@ -1938,13 +1937,7 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
-                ;  $$ = case TxsDefs.view $1 of
-                        { Parallel chids bexps
-                            -> if (Set.fromList chids) == (Set.fromList (chanIdExit:$$.inhChanSigs))
-                                 then parallel (chanIdExit:$$.inhChanSigs) (bexps ++ [$3])
-                                 else parallel (chanIdExit:$$.inhChanSigs) [$1,$3]
-                        ; _ -> parallel (chanIdExit:$$.inhChanSigs) [$1,$3]
-                        }
+                ;  $$ = parallel (Set.fromList (chanIdExit:$$.inhChanSigs)) [$1,$3]
                 }
               | BehaviourExpr2 "|||" BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1957,10 +1950,7 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
-                ;  $$ = case TxsDefs.view $1 of
-                        { Parallel [chanIdExit] bexps -> parallel [chanIdExit] (bexps ++ [$3])
-                        ; _                           -> parallel [chanIdExit] [$1,$3]
-                        }
+                ;  $$ = parallel (Set.singleton chanIdExit) [$1,$3]
                 }
               | BehaviourExpr2 "|[" IdList "]|" BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1982,13 +1972,7 @@ BehaviourExpr2  -- :: { BExpr }
                                       }
                                     | nm <- $3
                                     ]
-                         in case TxsDefs.view $1 of
-                            { Parallel chids bexps
-                                -> if (Set.fromList chids) == (Set.fromList (chanIdExit:chans))
-                                     then parallel (chanIdExit:chans) (bexps ++ [$5])
-                                     else parallel (chanIdExit:chans) [$1,$5]
-                            ; _ -> parallel (chanIdExit:chans) [$1,$5]
-                            }
+                         in parallel (Set.fromList (chanIdExit:chans)) [$1,$5]
                 }
               | BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -2024,7 +2008,7 @@ BehaviourExpr3  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $3.synExitSorts
-                ;  $$ = choice [$1,$3]
+                ;  $$ = choice (Set.fromList [$1,$3])
                 }  
               | BehaviourExpr4
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -2211,7 +2195,7 @@ BehaviourExpr4  -- :: { BExpr }
                 ;  $4.inhChanSigs  = map (\(IdChan c) -> c ) $ scopeMerge (map IdChan $$.inhChanSigs) (map IdChan $2)
                 ;  $4.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $4.synExitSorts
-                ;  $$ = hide $2 $4
+                ;  $$ = hide (Set.fromList $2) $4
                 }
               | "(" BehaviourExpr1 ")"
                 {  $2.inhNodeUid   = $$.inhNodeUid + 1
@@ -3683,7 +3667,7 @@ Transitions     -- :: { [Trans] }
                 ;  $1.inhStVarSigs = $$.inhStVarSigs
                 ;  $2.inhStVarSigs = $$.inhStVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $2.synExitSorts
-                ;  $$ = $1 ++ [ $2 ]
+                ;  $$ = $2:$1
                 }
               | Transitions ";" Transition
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -3700,7 +3684,7 @@ Transitions     -- :: { [Trans] }
                 ;  $1.inhStVarSigs = $$.inhStVarSigs
                 ;  $3.inhStVarSigs = $$.inhStVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<+>> $3.synExitSorts
-                ;  $$ = $1 ++ [ $3 ]
+                ;  $$ = $3:$1
                 }
 
 Transition      -- :: { Trans }

@@ -147,12 +147,12 @@ data  BBranch  =  BTpref   { btoffers  :: Set.Set CTOffer        -- set must be 
 -- INode :  interaction behaviour node, ie. with interaction variable environment
 
 
-data  BNode env =  BNbexpr      env BExpr                         -- env must be: (WEnv,IVEnv)
-                 | BNparallel   [ChanId] [BNode env]
+data  BNode env =  BNbexpr      env BExpr
+                 | BNparallel   (Set.Set ChanId) [BNode env]
                  | BNenable     (BNode env) [ChanOffer] (BNode env)
                  | BNdisable    (BNode env) (BNode env)
                  | BNinterrupt  (BNode env) (BNode env)
-                 | BNhide       [ChanId] (BNode env)
+                 | BNhide       (Set.Set ChanId) (BNode env)
      deriving (Eq,Ord,Read,Show,Functor)
 
 

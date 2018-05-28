@@ -4,7 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing -fno-warn-incomplete-patterns #-}
 module TestConstraint
 (
 testConstraintList
@@ -139,9 +138,9 @@ testTemplateSat createAssertions = do
     SMT.close
 
 testTemplateValue :: EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId]) -> ([Const] -> SMT()) -> SMT()
-testTemplateValue envDefs types createAssertions check = do
+testTemplateValue envDefs' types createAssertions check = do
     _ <- SMT.openSolver
-    addDefinitions envDefs
+    addDefinitions envDefs'
     let v = map (\(x,t) -> VarId (T.pack ("i" ++ show x)) x t) (zip [1000..] types)
     addDeclarations v
     addAssertions (createAssertions v)
@@ -344,12 +343,12 @@ testNestedConstructor :: SMT()
 testNestedConstructor = do
         let pairSortId = SortId "Pair" 12345
         let pairCstrId = CstrId "Pair" 2344 [sortIdInt,sortIdInt] pairSortId
-        let absentCstrId = CstrId "Absent" 2345 [] conditionalPairSortId
-        let presentCstrId = CstrId "Present" 2346 [pairSortId] conditionalPairSortId
+        let absentPairCstrId = CstrId "Absent" 2345 [] conditionalPairSortId
+        let presentPairCstrId = CstrId "Present" 2346 [pairSortId] conditionalPairSortId
         let conditionalPairDefs = EnvDefs (Map.fromList [ (conditionalPairSortId, SortDef), (pairSortId, SortDef) ])
                                           (Map.fromList [ (pairCstrId, CstrDef (FuncId "ignore" 9875 [] pairSortId) [FuncId "x" 6565 [] sortIdInt, FuncId "y" 6666 [] sortIdInt])
-                                                        , (absentCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalPairSortId) [])
-                                                        , (presentCstrId, CstrDef (FuncId "ignore" 9877 [] conditionalPairSortId) [FuncId "value" 6767 [] pairSortId])
+                                                        , (absentPairCstrId, CstrDef (FuncId "ignore" 9876 [] conditionalPairSortId) [])
+                                                        , (presentPairCstrId, CstrDef (FuncId "ignore" 9877 [] conditionalPairSortId) [FuncId "value" 6767 [] pairSortId])
                                                         ])        
                                           Map.empty
 
@@ -440,7 +439,8 @@ testRegex regexStr = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [
     where
         createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v] = [cstrStrInRe (cstrVar v) (cstrConst (Cregex (T.pack regexStr)))]
-        
+        createAssertions _   = error "One variable in problem"
+
         check :: [Const] -> SMT()
         check [value] = case value of
                             Cstring s   -> let haskellRegex = xsd2posix . T.pack $ regexStr in

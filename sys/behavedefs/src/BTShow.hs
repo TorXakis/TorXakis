@@ -19,6 +19,7 @@ module BTShow
 where
 
 import qualified Data.Map          as Map
+import qualified Data.Set          as Set
 import qualified Data.String.Utils as Utils
 
 import           BTree
@@ -41,7 +42,7 @@ instance PShow CNode where
       =  case bnodes of
            [] -> "STOP\n"
            be -> "( " ++
-                 Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow chans) ++" ]|\n( ")
+                 Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (Set.toList chans)) ++ " ]|\n( ")
                             (map pshow be)
                  ++ " )"
     pshow (BNenable bnode1 choffs bnode2)
@@ -59,14 +60,14 @@ instance PShow CNode where
     pshow (BNhide chans bnode)
       =  "HIDE "
          ++ Utils.join "; " [ show n ++ " :: " ++ Utils.join " # " (map pshow srts)
-                            | ChanId n _uid srts <- chans
+                            | ChanId n _uid srts <- Set.toList chans
                             ]
          ++ " IN\n"
          ++ pshow bnode ++ "\n"
          ++ "NI\n"
 
 -- ----------------------------------------------------------------------------------------- --
--- PShow INode
+-- PShow INode -- PvdL how to factor out the code duplication between PShow CNode and INode?
 
 instance PShow INode
   where
@@ -79,7 +80,7 @@ instance PShow INode
       =  case snodes of
            [] -> "STOP\n"
            be -> "( "
-                 ++ Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow chans) ++" ]|\n( ")
+                 ++ Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (Set.toList chans)) ++ " ]|\n( ")
                                (map pshow be)
                  ++ " )"
     pshow (BNenable snode1 choffs snode2)
@@ -97,7 +98,7 @@ instance PShow INode
     pshow (BNhide chans snode)
       =  "HIDE "
          ++ Utils.join "; " [ show n ++ " :: " ++ Utils.join " # " (map pshow srts)
-                            | ChanId n _uid srts <- chans
+                            | ChanId n _uid srts <- Set.toList chans
                             ]
          ++ " IN\n"
          ++ pshow snode ++ "\n"

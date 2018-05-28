@@ -12,16 +12,22 @@ where
 
 import           Control.Arrow ((&&&))
 import qualified Data.Map           as Map
+import qualified Data.Set           as Set
 import qualified Data.Text          as T
 import           Data.Monoid
 
+import           BehExprDefs
+import           ChanId
 import           ConstDefs
 import           FuncDef
 import           FuncId
 import           Id
 import           Name
+import           ProcDef
+import           ProcId
 import           SortId
-import           TxsDefs
+import           StatId
+import           VarEnv
 import           ValExpr
 import           VarId
 
@@ -38,7 +44,7 @@ combineArguments params stateId vars' = params ++ (stateId:vars')
 translate :: Map.Map FuncId (FuncDef VarId) -> Id -> Id -> Name -> [ChanId] -> [VarId] -> ExitSort -> [StatId] -> [VarId] -> [Trans] -> StatId -> VEnv -> (ProcDef, BExpr)
 translate fdefs unidProc unidS name' chans params exitSort states vars' trans stateInit initialization =
     let Just initIndex = Map.lookup stateInit stateMap in
-        (ProcDef chans (combineParameters params stateId vars') (choice $ map alternative trans),
+        (ProcDef chans (combineParameters params stateId vars') (choice $ Set.fromList (map alternative trans)),
          procInst procId chans (combineArguments args' (cstrConst (Cint initIndex)) (map (subst defaultMap fdefs . cstrVar) vars')))
   where
         defaultMap :: VEnv
