@@ -44,6 +44,7 @@ packages:
 - location: sys/behave
 - location: sys/behavedefs
 - location: sys/behaveenv
+- location: sys/bexpr
 - location: sys/cnect
 - location: sys/core
 - location: sys/coreenv

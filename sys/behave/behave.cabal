@@ -17,8 +17,6 @@ library
 
   exposed-modules:      Behave
                       , Expand
-                      , Subst
-                      , StautDef
 
   other-modules:        Equiv
                       , Next
@@ -35,6 +33,7 @@ library
 
                       , behavedefs
                       , behaveenv
+                      , bexpr
                       , coreenv
                       , defs
                       , solve
@@ -54,7 +53,6 @@ test-suite behave-test
                       , Expand
                       , Next
                       , Reduce
-                      , Subst
                       , Unfold
                       , TestBExpr
                       , TestFuncContent
@@ -73,6 +71,7 @@ test-suite behave-test
                      
                      , behavedefs
                      , behaveenv
+                     , bexpr
                      , coreenv
                      , defs
                      , front

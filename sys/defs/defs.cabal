@@ -15,22 +15,18 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      BehExprDefs
-                      , TxsDDefs
+  exposed-modules:      TxsDDefs
                       , TxsDefs
                       , TxsShow
                       , TxsUtils
                       , StdTDefs
                       , Utils
                       , XmlFormat
-                      , ChanId
                       , CnectId
                       , GoalId
                       , MapperId
                       , ModelId
-                      , ProcId
                       , PurpId
-                      , StatId
                       , FuncTable
                       , Sigs
 
@@ -40,16 +36,11 @@ library
                       , CnectDef
                       , MapperDef
                       , ModelDef
-                      , ProcDef
                       , PurpDef
-                      , VarEnv
-
 
   ghc-options:         -Wall -Werror -O2 -optc-O3 -optc-ffast-math
 
-  build-tools:          happy
-  build-depends:        array
-                      , base
+  build-depends:        base
                       , bytestring
                       , containers
                       , deepseq
@@ -57,26 +48,8 @@ library
                       , mtl
                       , text
                       , MissingH
-                      , lexregexxsd
                       , text-via-sockets
+                      , bexpr
                       , valexpr
+                      
   default-language:     Haskell2010
-  
-test-suite defs-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-                     
-  main-is:             TestMain.hs
-  
-  other-modules:       TestBehExprDefs
-  
-  ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
-  
-  build-depends:       base
-                     , containers
-                     , QuickCheck
-                     , text
-                     , defs
-                     , valexpr
-
-  default-language:    Haskell2010  

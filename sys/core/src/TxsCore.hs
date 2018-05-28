@@ -148,10 +148,12 @@ import           Test
 import           Config              (Config)
 import qualified Config
 
+-- import from bexpr
+import           Relabel             (relabel)
+
 -- import from behave(defs)
 import qualified Behave
 import qualified BTree
-import           Expand              (relabel)
 
 -- import from coreenv
 import qualified EnvCore             as IOC
@@ -1065,7 +1067,7 @@ txsNComp (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp) =  do
        -> case Map.lookup procid (TxsDefs.procDefs tdefs) of
               Just (TxsDefs.ProcDef chids [] staut@(TxsDefs.view -> TxsDefs.StAut _ ve _)) | Map.null ve
                  -> do let chanmap                       = Map.fromList (zip chids chans)
-                           TxsDefs.StAut statid _ trans = TxsDefs.view $ Expand.relabel chanmap staut
+                           TxsDefs.StAut statid _ trans = TxsDefs.view $ relabel chanmap staut
                        maypurp <- NComp.nComplete insyncs outsyncs statid trans
                        case maypurp of
                          Just purpdef -> do

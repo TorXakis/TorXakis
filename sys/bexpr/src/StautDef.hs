@@ -16,13 +16,18 @@ import qualified Data.Set           as Set
 import qualified Data.Text          as T
 import           Data.Monoid
 
+import           BehExprDefs
+import           ChanId
 import           ConstDefs
 import           FuncDef
 import           FuncId
 import           Id
 import           Name
+import           ProcDef
+import           ProcId
 import           SortId
-import           TxsDefs
+import           StatId
+import           VarEnv
 import           ValExpr
 import           VarId
 
