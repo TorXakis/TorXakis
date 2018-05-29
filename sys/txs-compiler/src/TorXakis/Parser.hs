@@ -13,30 +13,31 @@ module TorXakis.Parser
     )
 where
 
-import           Control.Arrow             (left)
-import           Control.Lens              (Lens', to, (%~), (^.))
-import           Control.Lens.TH           (makeLenses)
-import           Control.Monad.Identity    (runIdentity)
-import qualified Data.Text                 as T
-import           Text.Parsec               (ParseError, eof, errorPos, many,
-                                            runParserT, sourceColumn,
-                                            sourceLine, try, (<|>))
+import           Control.Arrow              (left)
+import           Control.Lens               (Lens', to, (%~), (^.))
+import           Control.Lens.TH            (makeLenses)
+import           Control.Monad.Identity     (runIdentity)
+import qualified Data.Text                  as T
+import           Text.Parsec                (ParseError, eof, errorPos, many,
+                                             runParserT, sourceColumn,
+                                             sourceLine, try, (<|>))
 
-import           TorXakis.Compiler.Error   (Error (Error), ErrorLoc (ErrorLoc),
-                                            ErrorType (ParseError), errorColumn,
-                                            errorLine, _errorLoc, _errorMsg,
-                                            _errorType)
+import           TorXakis.Compiler.Error    (Error (Error), ErrorLoc (ErrorLoc),
+                                             ErrorType (ParseError),
+                                             errorColumn, errorLine, _errorLoc,
+                                             _errorMsg, _errorType)
 import           TorXakis.Parser.ChanDecl
 import           TorXakis.Parser.CnectDecl
-import           TorXakis.Parser.Common    (TxsParser, txsWhitespace)
-import           TorXakis.Parser.ConstDecl (constDeclsP)
+import           TorXakis.Parser.Common     (TxsParser, txsWhitespace)
+import           TorXakis.Parser.ConstDecl  (constDeclsP)
 import           TorXakis.Parser.Data
-import           TorXakis.Parser.FuncDefs  (fdeclP)
+import           TorXakis.Parser.FuncDefs   (fdeclP)
+import           TorXakis.Parser.MapperDecl
 import           TorXakis.Parser.ModelDecl
 import           TorXakis.Parser.ProcDecl
 import           TorXakis.Parser.PurpDecl
 import           TorXakis.Parser.StautDecl
-import           TorXakis.Parser.TypeDefs  (adtP)
+import           TorXakis.Parser.TypeDefs   (adtP)
 
 parse :: String -> Either Error ParsedDefs
 parse = undefined
@@ -66,6 +67,7 @@ data TLDef = TLADT       ADTDecl
            | TLStautDecl StautDecl
            | TLPurpDecl  PurpDecl
            | TLCnectDecl CnectDecl
+           | TLMapper    MapperDecl
 
 -- | Group a list of top-level definitions per-type.
 asParsedDefs :: [TLDef] -> ParsedDefs
@@ -80,6 +82,7 @@ asParsedDefs = foldr sep emptyPds
       sep (TLStautDecl s)   = stauts %~ (s:)
       sep (TLPurpDecl p)    = purps %~ (p:)
       sep (TLCnectDecl c)   = cnects %~ (c:)
+      sep (TLMapper c)      = mappers %~ (c:)
 
 -- | Root parser for the TorXakis language.
 txsP :: TxsParser ParsedDefs
@@ -88,11 +91,12 @@ txsP = do
     ts <- many $  fmap TLADT       adtP
               <|> fmap TLFunc      fdeclP
               <|> fmap TLConsts    (try constDeclsP)
-              <|> fmap TLModel     modelDeclP
+              <|> fmap TLModel     (try modelDeclP)
               <|> fmap TLChanDecls (try chanDeclsP)
               <|> fmap TLProcDecl  procDeclP
               <|> fmap TLStautDecl stautDeclP
               <|> fmap TLPurpDecl  purpDeclP
               <|> fmap TLCnectDecl cnectDeclP
+              <|> fmap TLMapper    mapperDeclP        -- TODO: Be consistent (decl or not?)
     eof
     return $ asParsedDefs ts

@@ -1,0 +1,12 @@
+CHANDEF Blah ::=
+    X, Y
+ENDDEF
+
+MAPPERDEF Empty ::=
+    CHAN IN
+        X
+    CHAN OUT
+        Y
+    BEHAVIOUR
+        STOP
+ENDDEF

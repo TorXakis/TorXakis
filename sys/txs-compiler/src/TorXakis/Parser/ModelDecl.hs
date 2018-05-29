@@ -14,7 +14,6 @@ import           TorXakis.Parser.Data
 
 modelDeclP :: TxsParser ModelDecl
 modelDeclP = do
-    txsWhitespace
     txsSymbol "MODELDEF"
     l  <- mkLoc
     n  <- txsLexeme identifier
