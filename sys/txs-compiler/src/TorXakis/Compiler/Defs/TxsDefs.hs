@@ -334,12 +334,42 @@ mapperDeclsToTxsDefs :: ( MapsTo Text SortId mm
                         , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
                         , In (ProcId, ()) (Contents mm) ~ 'False )
                      => mm -> [MapperDecl] -> CompilerM (Map MapperId MapperDef)
-mapperDeclsToTxsDefs mm rds =
-    Map.fromList <$> (zip <$> traverse mapperDeclToMapperId rds
-                          <*> traverse mapperDeclToMapperDef rds)
+mapperDeclsToTxsDefs mm mds =
+    Map.fromList <$> (zip <$> traverse mapperDeclToMapperId mds
+                          <*> traverse mapperDeclToMapperDef mds)
     where
       mapperDeclToMapperId :: MapperDecl -> CompilerM MapperId
-      mapperDeclToMapperId = undefined
+      mapperDeclToMapperId md = do
+          mId <- getNextId
+          return $ MapperId (mapperName md) (Id mId)
 
       mapperDeclToMapperDef :: MapperDecl -> CompilerM MapperDef
-      mapperDeclToMapperDef = undefined mm
+      mapperDeclToMapperDef md = do
+          chDecls  <- getMap mm md :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
+          mprChIds <- getMap mm md :: CompilerM (Map (Loc ChanDeclE) ChanId)
+          let mm' = chDecls :& (mprChIds <.+> mm) :& procIdsOnly
+          ins   <- traverse (lookupChId mm') (getLoc <$> mapperIns md)
+          outs  <- traverse (lookupChId mm') (getLoc <$> mapperOuts md)
+          let
+              -- Channels used in the model.
+              usedChIds :: [Set ChanId]
+              usedChIds = fmap Set.singleton (sortByUnid . nub . Map.elems $ usedChIdMap mm')
+              -- Sort the channels by its id, since we have to comply with the current TorXakis compiler.
+              sortByUnid :: [ChanId] -> [ChanId]
+              sortByUnid = sortBy cmpChUnid
+                  where
+                    cmpChUnid c0 c1 = unid c0 `compare` unid c1
+          syncs <- maybe (return usedChIds)
+                         (traverse (chRefsToChIdSet mm'))
+                         (mapperSyncs md)
+          bTypes <- Map.fromList <$> inferVarTypes mm' (mapperBExp md)
+          bvIds  <- Map.fromList <$> mkVarIds bTypes (mapperBExp md)
+          let mm'' = bTypes <.+> (bvIds <.+> mm')
+          --eSort <- exitSort mm'' (mapperBExp md)
+          -- TODO: assert the exit sort is NoExit!
+          be   <- toBExpr mm'' (mapperBExp md)
+          return $ MapperDef ins outs syncs be
+
+      -- TODO: reduce this duplication. Bring all the definitions from `ModelDef` to here.
+      procIdsOnly :: Map ProcId ()
+      procIdsOnly = Map.fromList $ zip (keys @ProcId @ProcDef mm) (repeat ())

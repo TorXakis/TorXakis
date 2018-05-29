@@ -160,6 +160,17 @@ instance ( MapsTo Text (Loc ChanDeclE) mm
        return $ ins ++ outs ++ syncs ++ gls
 
 instance ( MapsTo Text (Loc ChanDeclE) mm
+         ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) MapperDecl mm where
+    uGetKVs mm md = do
+       -- We augment the map with the predefined channels.
+       let mm' = predefChDecls <.+> mm
+       ins   <- uGetKVs mm' (mapperIns md)
+       outs  <- uGetKVs mm' (mapperOuts md)
+       syncs <- uGetKVs mm' (mapperSyncs md)
+       bes   <- uGetKVs mm' (mapperBExp md)
+       return $ ins ++ outs ++ syncs ++ bes
+
+instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap  (Loc ChanRefE) (Loc ChanDeclE) CnectDecl mm where
     uGetKVs mm cd = (++) <$> uGetKVs mm (cnectDeclCnectItems cd)
                          <*> uGetKVs mm (cnectDeclCodecs cd)
@@ -268,6 +279,12 @@ instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ModelDecl mm where
     uGetKVs mm md = do
         bodyChIds <- uGetKVs mm (modelBExp md)
+        return $ predefChIds ++ bodyChIds
+
+instance ( MapsTo Text SortId mm
+         ) => DefinesAMap (Loc ChanDeclE) ChanId MapperDecl mm where
+    uGetKVs mm md = do
+        bodyChIds <- uGetKVs mm (mapperBExp md)
         return $ predefChIds ++ bodyChIds
 
 -- Predefined channels.
