@@ -34,6 +34,7 @@ import           Endpoints.Upload            (UploadEP, upload)
 import           Endpoints.Vals              (ValsAPI, valsServer)
 import           Endpoints.Vars              (VarsAPI, varsServer)
 import           Endpoints.Eval              (EvalEP, eval)
+import           Endpoints.Seed              (SeedEP, setSeed)
 
 type API = ServiceAPI
 type ServiceAPI
@@ -55,6 +56,7 @@ type ServiceAPI
     :<|> ValsAPI
     :<|> VarsAPI
     :<|> EvalEP
+    :<|> SeedEP
     :<|> TestPageAPI
 
 type TestPageAPI = "test" :> Raw
@@ -91,4 +93,5 @@ server env
     :<|> valsServer env
     :<|> varsServer env
     :<|> eval env
+    :<|> setSeed env
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"

@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE OverloadedStrings #-}
--- | End-points for the parsing of TorXakis entities.
+-- | End-point for evaulating an expression.
 module Endpoints.Eval
     ( EvalEP
     , eval

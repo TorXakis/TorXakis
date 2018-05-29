@@ -48,6 +48,7 @@ import           Data.Time                     (diffUTCTime, getCurrentTime,
                                                 utcToLocalTime)
 import           GHC.Generics                  (Generic)
 import           Lens.Micro                    ((&), (.~), (^.))
+import           System.Random                 (mkStdGen, setStdGen)
 
 import qualified BuildInfo
 import qualified VersionInfo
@@ -58,7 +59,7 @@ import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
 import           EnvCore                       (IOC)
 import qualified EnvCore                       as IOC
-import           EnvData                       (Msg)
+import           EnvData                       (Msg (TXS_CORE_SYSTEM_INFO))
 import           Name                          (Name)
 import           ParamCore                     (getParamPairs, paramToPair,
                                                 updateParam)
@@ -159,6 +160,11 @@ timer s nm = do
                                    (show $ utcToLocalTime tz t)
                                    (show $ utcToLocalTime tz now)
                                    (show $ diffUTCTime now t)
+
+setSeed :: Session -> Int -> IO ()
+setSeed s seed = do
+    setStdGen $ mkStdGen seed
+    atomically $ writeTQueue (s ^. sessionMsgs) (TXS_CORE_SYSTEM_INFO $ "Global seed set to " ++ show seed)
 
 getAllParams :: Session -> [String] -> IO [(String, String)]
 getAllParams s pNms = do
