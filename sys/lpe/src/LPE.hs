@@ -84,17 +84,17 @@ intSort = fromMaybe (error "LPE module: could not find standard IntSort") (Map.l
 
 extractVars :: ActOffer -> [VarId]
 extractVars actOffer = let  set = offers actOffer in
-                       Set.foldr extractVarIds_Offer [] set
+                       Set.foldr extractVarIdsOffer [] set
 
-extractVarIds_Offer :: Offer -> [VarId] -> [VarId]
-extractVarIds_Offer Offer{chanoffers = choffers} varIds = (extractVarIds_ChanOffers choffers) ++ varIds
+extractVarIdsOffer :: Offer -> [VarId] -> [VarId]
+extractVarIdsOffer Offer{chanoffers = choffers} varIds = extractVarIdsChanOffers choffers ++ varIds
 
-extractVarIds_ChanOffers :: [ChanOffer] -> [VarId]
-extractVarIds_ChanOffers choffers = foldr extractVarIds_ChanOffer [] choffers
+extractVarIdsChanOffers :: [ChanOffer] -> [VarId]
+extractVarIdsChanOffers = foldr extractVarIdsChanOffer []
 
-extractVarIds_ChanOffer :: ChanOffer -> [VarId] -> [VarId]
-extractVarIds_ChanOffer (Quest varId) varIds  = varId:varIds
-extractVarIds_ChanOffer _ varIds              = varIds
+extractVarIdsChanOffer :: ChanOffer -> [VarId] -> [VarId]
+extractVarIdsChanOffer (Quest varId) varIds  = varId:varIds
+extractVarIdsChanOffer _ varIds              = varIds
 
 
 wrapSteps :: [BExpr] -> BExpr
@@ -173,16 +173,14 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Hide _hiddenChans _bexpr) choiceCnt freeVars
     -- HIDE at lower level not allowed
     (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
     -- translate the created ProcDef with LPEHide
-    res <- lpeHide procInst' translatedProcDefs procDefs'' 
-    return $ res
+    lpeHide procInst' translatedProcDefs procDefs'' 
 
 
 preGNFBExpr bexpr'@(TxsDefs.view -> Enable _bexprL _exitChans _bexprR) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
     -- ENABLE at lower level not allowed
     (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
     -- translate the created ProcDef with LPEEnable
-    res <- preGNFEnable procInst' translatedProcDefs procDefs'' 
-    return $ res
+    preGNFEnable procInst' translatedProcDefs procDefs'' 
 
 preGNFBExpr _ _ _ _ _ _ =
     error "unexpected type of bexpr"
@@ -288,7 +286,7 @@ gnfBExpr (TxsDefs.view -> ActionPref actOffer bexpr') choiceCnt procId translate
     return ([actionPref actOffer procInst'], procDefs''')
 
 
-gnfBExpr (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) _choiceCnt _procId translatedProcDefs procDefs' = do
+gnfBExpr (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) _choiceCnt _procId translatedProcDefs procDefs' =
     -- direct calls are not in GNF: need to instantiate
     -- translate procIdInst to GNF first            
     --   -- we made progress (i.e. we have an ActionPref), thus reset no-progress-loop detection
@@ -301,7 +299,7 @@ gnfBExpr (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) _choiceCnt _
     if procIdInst `elem` lGNFdirectcalls translatedProcDefs
         then do -- found a loop
                 let loop = map ProcId.name $ lGNFdirectcalls translatedProcDefs ++ [procIdInst]
-                error ("found GNF loop of direct calls without progress: " ++ (show loop))
+                error ("found GNF loop of direct calls without progress: " ++ show loop)
         else do -- no loop
                 -- check if the called ProcDef has been translated to GNF already
                 procDefs'' <- if procIdInst `notElem` lGNF translatedProcDefs
@@ -517,9 +515,9 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
     steps' <- mapM (hideChans hiddenChans) steps
     let procDef_lpe = ProcDef chansDef_lpe paramsDef_lpe (wrapSteps steps')
         procDefs'''' = Map.insert procId_lpe procDef_lpe procDefs'''
-    return $ (procInst_lpe, procDefs'''')
+    return (procInst_lpe, procDefs'''')
     where
-        hideChans :: (EnvB.EnvB envb) => Set.Set ChanId -> BExpr -> envb(BExpr)
+        hideChans :: EnvB.EnvB envb => Set.Set ChanId -> BExpr -> envb BExpr
         hideChans _ bexpr | isStop bexpr = return stop
         -- hideChans _ (ActionPref chanIdExit ) ??
         hideChans hiddenChans (TxsDefs.view -> ActionPref actOffer bexpr) = do
@@ -542,18 +540,18 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
                 hideChansOffer (o:os) = do  -- recursion 
                                             (os', hiddenVarsRec, varMapRec) <- hideChansOffer os 
                                             -- current case
-                                            if (chanid o) `Set.member` hiddenChans 
+                                            if chanid o `Set.member` hiddenChans 
                                                 then do (hidvars, varMap) <- generate_hiddenvars o
                                                         return (os', Set.union hidvars hiddenVarsRec, varMap ++ varMapRec)
-                                                else return ((o:os'), hiddenVarsRec, varMapRec)
+                                                else return (o:os', hiddenVarsRec, varMapRec)
                                             where
                                                 generate_hiddenvars :: (EnvB.EnvB envb) => Offer -> envb(Set.Set VarId, [(VarId, VarId)])
-                                                generate_hiddenvars o'  = do let vars' = extractVarIds_Offer o' []
+                                                generate_hiddenvars o'  = do let vars' = extractVarIdsOffer o' []
                                                                              vars'' <- mapM transformVar vars' 
                                                                              let varMap = zip vars' vars''
                                                                              return (Set.fromList vars'', varMap)
                                                 -- make hiddenvars globally unique, practically they get a local scope
-                                                transformVar :: (EnvB.EnvB envb) => VarId -> envb(VarId)
+                                                transformVar :: EnvB.EnvB envb => VarId -> envb VarId
                                                 transformVar var' = do  unid' <- EnvB.newUnid
                                                                         let name' = T.unpack (VarId.name var') ++ "_" ++ show unid'
                                                                         return var' { VarId.name = T.pack name', VarId.unid = unid'}
@@ -588,7 +586,7 @@ preGNFEnable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsIn
         steps = extractSteps bexpr_lpe
 
         -- create new ProcDef of bexprR
-        paramsAccept = extractVarIds_ChanOffers acceptChanOffers
+        paramsAccept = extractVarIdsChanOffers acceptChanOffers
         procDefR = ProcDef chansDef (paramsDef ++ paramsAccept) bexprR
         -- create new ProcId
         name' = T.append (ProcId.name procIdInst) (T.pack "$enable")
@@ -619,7 +617,7 @@ preGNFEnable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsIn
     
 
     -- trace ("\n\npreGNFEnable: final procInst/ProcDef: \n" ++ show procInst_lpe2 ++ "\n" ++ show procDef_final) $ 
-    return $ (procInst_lpe, procDefs6)
+    return (procInst_lpe, procDefs6)
     where   
         -- just for the steps with EXIT -> <>  replace with the ProcInst
         replaceExits :: BExpr -> BExpr -> BExpr 
@@ -629,7 +627,7 @@ preGNFEnable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsIn
                 [Offer { chanid = chid}] | chid == chanIdExit -> actionPref 
                                                                     actOffer'{  offers = Set.empty
                                                                                 , hiddenvars = Set.fromList exitParams} 
-                                                                    (procInst procId chanIds (params ++ (map cstrVar exitParams)))
+                                                                    (procInst procId chanIds (params ++ map cstrVar exitParams))
                 _       -> bexpr'
         replaceExits _ _ = error "replaceExits: unknown input"  
 
