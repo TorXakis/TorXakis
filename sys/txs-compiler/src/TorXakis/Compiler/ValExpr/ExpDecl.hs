@@ -130,6 +130,9 @@ instance HasVarReferences FuncDecl where
 instance HasVarReferences ModelDecl where
     mapRefToDecls mm = mapRefToDecls mm . modelBExp
 
+instance HasVarReferences MapperDecl where
+    mapRefToDecls mm = mapRefToDecls mm . mapperBExp
+
 instance HasVarReferences StautDecl where
     mapRefToDecls mm staut = mapRefToDecls (stautVarDecls <.+> mm) (stautDeclComps staut)
         where

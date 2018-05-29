@@ -38,8 +38,10 @@ import           SortId                             (SortId, sortIdString)
 import           StdTDefs                           (chanIdHit, chanIdMiss,
                                                      chanIdQstep)
 import           TxsDefs                            (CnectDef (CnectDef), ConnDef (ConnDfroW, ConnDtoW),
-                                                     GoalId (GoalId), ModelDef,
-                                                     ModelId, ProcDef,
+                                                     GoalId (GoalId),
+                                                     MapperDef (MapperDef),
+                                                     MapperId (MapperId),
+                                                     ModelDef, ModelId, ProcDef,
                                                      PurpDef (PurpDef), TxsDefs,
                                                      VExpr, cstrDefs, empty,
                                                      modelDefs, sortDefs)
@@ -80,7 +82,7 @@ envToSortDefs mm = Map.fromList $
 modelDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , MapsTo Text (Loc ChanDeclE) mm
                        , MapsTo (Loc ChanDeclE) ChanId mm
-                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                        , MapsTo (Loc FuncDeclE) FuncId mm
                        , MapsTo FuncId (FuncDef VarId) mm
                        , MapsTo ProcId ProcDef mm
@@ -319,3 +321,25 @@ cnectDeclsToTxsDefs mm cds =
               crToCodecItem
           connDefs <- traverse toConnDef hostPortCnects
           return $ CnectDef (asCnectType $ cnectDeclType cd) (Map.elems connDefs)
+
+mapperDeclsToTxsDefs :: ( MapsTo Text SortId mm
+                        , MapsTo Text (Loc ChanDeclE) mm
+                        , MapsTo (Loc ChanDeclE) ChanId mm
+                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+                        , MapsTo (Loc FuncDeclE) FuncId mm
+                        , MapsTo FuncId (FuncDef VarId) mm
+                        , MapsTo ProcId ProcDef mm
+                        , MapsTo (Loc VarDeclE) SortId mm
+                        , MapsTo (Loc VarDeclE) VarId mm
+                        , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
+                        , In (ProcId, ()) (Contents mm) ~ 'False )
+                     => mm -> [MapperDecl] -> CompilerM (Map MapperId MapperDef)
+mapperDeclsToTxsDefs mm rds =
+    Map.fromList <$> (zip <$> traverse mapperDeclToMapperId rds
+                          <*> traverse mapperDeclToMapperDef rds)
+    where
+      mapperDeclToMapperId :: MapperDecl -> CompilerM MapperId
+      mapperDeclToMapperId = undefined
+
+      mapperDeclToMapperDef :: MapperDecl -> CompilerM MapperDef
+      mapperDeclToMapperDef = undefined mm

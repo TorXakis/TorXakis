@@ -34,8 +34,9 @@ import           SortId                             (SortId, sortIdBool,
 import           StdTDefs                           (stdFuncTable, stdTDefs)
 import           TxsDefs                            (ProcDef, ProcId, TxsDefs,
                                                      cnectDefs, fromList,
-                                                     funcDefs, modelDefs,
-                                                     procDefs, purpDefs, union)
+                                                     funcDefs, mapperDefs,
+                                                     modelDefs, procDefs,
+                                                     purpDefs, union)
 import qualified TxsDefs                            (empty)
 import           ValExpr                            (ValExpr,
                                                      ValExprView (Vfunc, Vite),
@@ -114,7 +115,7 @@ compileParsedDefs pd = do
 
 toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo (Loc CstrE) CstrId mm
-             , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+             , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
              , MapsTo (Loc FuncDeclE) FuncId mm
              , MapsTo FuncId (FuncDef VarId) mm
              , MapsTo ProcId ProcDef mm
@@ -140,12 +141,16 @@ toTxsDefs ft mm pd = do
         pds = TxsDefs.empty {
             procDefs = simplify ft fn (innerMap mm)
             }
+    -- TODO: why not have these functions return a TxsDef data directly.
+    -- Simplify this boilerplate!
     mDefMap <- modelDeclsToTxsDefs mm (pd ^. models)
     let mds = TxsDefs.empty { modelDefs = simplify ft fn mDefMap }
     uDefMap <- purpDeclsToTxsDefs mm (pd ^. purps)
     let uds = TxsDefs.empty { purpDefs = simplify ft fn uDefMap }
     cDefMap <- cnectDeclsToTxsDefs mm (pd ^. cnects)
     let cds = TxsDefs.empty { cnectDefs = simplify ft fn cDefMap }
+    rDefMap <- mapperDeclsToTxsDefs mm (pd ^. mappers)
+    let rds = TxsDefs.empty { mapperDefs = simplify ft fn rDefMap }
     return $ ads
         `union` fds
         `union` pds
@@ -153,6 +158,7 @@ toTxsDefs ft mm pd = do
         `union` mds
         `union` uds
         `union` cds
+        `union` rds
 
 toSigs :: ( MapsTo Text        SortId mm
           , MapsTo (Loc CstrE) CstrId mm
@@ -221,11 +227,11 @@ allFuncs pd = pd ^. funcs ++ pd ^. consts
 -- | Get a dictionary from the function names to the locations in which these
 -- functions are defined.
 --
-compileToFuncLocs :: Map (Loc FuncDeclE) FuncId -> Map Text [(Loc FuncDeclE)]
+compileToFuncLocs :: Map (Loc FuncDeclE) FuncId -> Map Text [Loc FuncDeclE]
 compileToFuncLocs fIds = Map.fromListWith (++) $
     fmap mkPair (Map.toList fIds)
     where
-      mkPair :: ((Loc FuncDeclE), FuncId) -> (Text, [(Loc FuncDeclE)])
+      mkPair :: (Loc FuncDeclE, FuncId) -> (Text, [Loc FuncDeclE])
       mkPair (fdi, fId) = (name fId, [fdi])
 
 -- | Get a dictionary from variable references to the possible location in
@@ -242,8 +248,9 @@ compileToDecls lfDefs pd = do
     mRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. models)
     uRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. purps)
     cRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. cnects)
+    rRtoDs <- Map.fromList <$> mapRefToDecls (eVdMap :& lfDefs) (pd ^. mappers)
     return $ fRtoDs `Map.union` pRtoDs `Map.union` sRtoDs `Map.union` mRtoDs
-            `Map.union` uRtoDs `Map.union` cRtoDs
+            `Map.union` uRtoDs `Map.union` cRtoDs `Map.union` rRtoDs
 
 -- | Generate the map from process id's definitions to process definitions.
 compileToProcDefs :: ( MapsTo Text SortId mm

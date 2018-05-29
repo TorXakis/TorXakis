@@ -36,8 +36,6 @@ import           TorXakis.Parser.Data
 modelDeclToModelDef :: ( MapsTo Text SortId mm
                        , MapsTo Text (Loc ChanDeclE) mm -- Needed because channels are declared outside the model.
                        , MapsTo (Loc ChanDeclE) ChanId mm -- Also needed because channels are declared outside the model
-                       -- , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm -- But we don't care about external references to channels.
-
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                        , MapsTo (Loc FuncDeclE) FuncId mm
                        , MapsTo FuncId (FuncDef VarId) mm
@@ -55,9 +53,7 @@ modelDeclToModelDef mm md = do
     ins  <- Set.fromList <$> traverse (lookupChId mm') (getLoc <$> modelIns md)
     outs <- Set.fromList <$> traverse (lookupChId mm') (getLoc <$> modelOuts md)
     let
-        -- | Channels used in the model.
-        -- usedChIdMap :: Map (Loc ChanRefE) ChanId
-        -- usedChIdMap = closure2 (innerMap mm' :: Map (Loc ChanRefE) (Loc ChanDeclE)) (innerMap mm')
+        -- Channels used in the model.
         usedChIds :: [Set ChanId]
         usedChIds = fmap Set.singleton (sortByUnid . nub . Map.elems $ usedChIdMap mm')
         -- Sort the channels by its id, since we have to comply with the current TorXakis compiler.
@@ -74,16 +70,11 @@ modelDeclToModelDef mm md = do
         -- TODO: construct this, once you know the exit sort of the behavior expression `be`.
         -- errsyncs = ...
     -- Infer the variable types of the expression:
---    bvSids <- Map.fromList <$> inferVarTypes (Map.fromList predefinedChans <.+> mm) (modelBExp md)
     bTypes <- Map.fromList <$> inferVarTypes mm' (modelBExp md)
     bvIds  <- Map.fromList <$> mkVarIds bTypes (modelBExp md)
     let mm'' = bTypes <.+> (bvIds <.+> mm')
     eSort <- exitSort mm'' (modelBExp md)
     let
-        -- chanIds :: Map (Loc ChanDeclE) ChanId
-        -- chanIds = innerMap mm
-        -- Only the model channels are accessible when constructing the behavior expression.
-        -- modelChans = Set.union (Set.map name ins) (Set.map name outs)
         splsyncs = case eSort of
             NoExit  -> []
             Exit [] -> [ Set.singleton chanIdExit ]

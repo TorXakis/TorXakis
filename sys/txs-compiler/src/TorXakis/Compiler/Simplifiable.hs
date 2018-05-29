@@ -23,10 +23,11 @@ import           TxsDefs         (ActOffer (ActOffer), BExpr, BExprView (ActionP
                                   ChanOffer (Exclam, Quest),
                                   CnectDef (CnectDef),
                                   ConnDef (ConnDfroW, ConnDtoW),
-                                  ModelDef (ModelDef), ModelId, Offer (Offer),
-                                  ProcDef (ProcDef), PurpDef (PurpDef),
-                                  Trans (Trans), actionPref, guard, procInst,
-                                  stAut, valueEnv)
+                                  MapperDef (MapperDef), MapperId (MapperId),
+                                  ModelDef (ModelDef), ModelId (ModelId),
+                                  Offer (Offer), ProcDef (ProcDef),
+                                  PurpDef (PurpDef), Trans (Trans), actionPref,
+                                  guard, procInst, stAut, valueEnv)
 import           ValExpr         (ValExpr, ValExprView (Vfunc, Vite), cstrITE,
                                   cstrVar)
 import qualified ValExpr
@@ -74,6 +75,8 @@ instance Simplifiable FuncId where
 instance Simplifiable ModelId where
     simplify _ _ = id
 
+instance Simplifiable MapperId where
+    simplify _ _ = id
 
 instance Simplifiable (FuncDef VarId) where
     simplify ft fns (FuncDef vs ex) = FuncDef vs (simplify ft fns ex)
@@ -98,6 +101,9 @@ instance Simplifiable ProcDef where
 
 instance Simplifiable ModelDef where
     simplify ft fns (ModelDef ins outs syncs be) = ModelDef ins outs syncs (simplify ft fns be)
+
+instance Simplifiable MapperDef where
+    simplify ft fns (MapperDef ins outs syncs be) = MapperDef ins outs syncs (simplify ft fns be)
 
 instance Simplifiable BExpr where
     simplify ft fns (BExpr.view -> ActionPref ao be)
