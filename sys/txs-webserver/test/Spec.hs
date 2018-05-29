@@ -204,7 +204,15 @@ spec = return $ do
                                               stt `shouldBe` startTime2
                                               stp `shouldNotSatisfy` Prelude.null
                                               d   `shouldNotSatisfy` Prelude.null
-
+        describe "Eval" $
+            it "Evaluates correctly" $ do
+                sId <- mkNewSession
+                _ <- put (newSessionUrl sId) [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                _ <- post (valsUrl sId) [partText "i" "x = 42"]
+                _ <- post (valsUrl sId) [partText "i" "y = 5"]
+                r <- post (evalUrl sId) [partText "expr" "x*y+5"]
+                r ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                r ^. responseBody `shouldBe` "215"
             -- it "Starts tester and tests 3 steps" $ do
             --     sId <- mkNewSession
             --     _ <- put (newSessionUrl sid) [partFile "Point.txs" "../../examps/Point/Point.txs"]
@@ -273,6 +281,12 @@ openMessagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages/open"
 
 timerUrl :: Integer -> String -> String
 timerUrl sId nm = Prelude.concat [host, "/sessions/", show sId, "/timers/", nm]
+
+valsUrl :: Integer -> String
+valsUrl sId = Prelude.concat [host, "/sessions/", show sId, "/vals"]
+
+evalUrl :: Integer -> String
+evalUrl sId = Prelude.concat [host, "/sessions/", show sId, "/eval"]
 
 emptyP :: [Part]
 emptyP = [partText "" ""]

@@ -9,6 +9,7 @@ See LICENSE at root directory of this repository.
 module TorXakis.Lib
 ( module TorXakis.Lib
 , module TorXakis.Lib.Common
+, module TorXakis.Lib.Eval
 , module TorXakis.Lib.Internal
 , module TorXakis.Lib.Session
 , module TorXakis.Lib.Vals
@@ -76,6 +77,7 @@ import           TxsStep                       (txsSetStep, txsShutStep,
                                                 txsStepRun, txsStopStep)
 
 import           TorXakis.Lib.Common
+import           TorXakis.Lib.Eval
 import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
 import           TorXakis.Lib.Vals

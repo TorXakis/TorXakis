@@ -1,7 +1,5 @@
 -- | End-points for the parsing of TorXakis entities.
-{-# LANGUAGE DataKinds     #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TypeOperators #-}
 module Endpoints.Parse
     ( ParseActionEP
     , parseAction

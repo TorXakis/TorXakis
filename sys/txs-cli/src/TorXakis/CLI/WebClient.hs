@@ -17,6 +17,7 @@ module TorXakis.CLI.WebClient
     , sseSubscribe
     , closeMessages
     , callTimer
+    , module TorXakis.CLI.WebClient.Eval
     , module TorXakis.CLI.WebClient.Params
     , module TorXakis.CLI.WebClient.Vals
     , module TorXakis.CLI.WebClient.Vars
@@ -53,6 +54,7 @@ import           Endpoints.Parse               (ActionText (ActionText))
 
 import           TorXakis.CLI.Env
 import           TorXakis.CLI.WebClient.Common
+import           TorXakis.CLI.WebClient.Eval
 import           TorXakis.CLI.WebClient.Params
 import           TorXakis.CLI.WebClient.Vals
 import           TorXakis.CLI.WebClient.Vars
