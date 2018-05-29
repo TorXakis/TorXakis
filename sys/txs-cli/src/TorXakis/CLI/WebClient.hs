@@ -19,6 +19,7 @@ module TorXakis.CLI.WebClient
     , callTimer
     , module TorXakis.CLI.WebClient.Params
     , module TorXakis.CLI.WebClient.Vals
+    , module TorXakis.CLI.WebClient.Vars
     )
 where
 
@@ -54,6 +55,7 @@ import           TorXakis.CLI.Env
 import           TorXakis.CLI.WebClient.Common
 import           TorXakis.CLI.WebClient.Params
 import           TorXakis.CLI.WebClient.Vals
+import           TorXakis.CLI.WebClient.Vars
 
 data Info = Info
     { _version   :: Text

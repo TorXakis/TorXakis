@@ -134,6 +134,7 @@ startCLI = do
             "time"    -> lift (runExceptT getTime) >>= output
             "timer"   -> lift (runExceptT $ timer rest) >>= output
             "val"     -> lift (runExceptT $ val rest) >>= output
+            "var"     -> lift (runExceptT $ var rest) >>= output
             _         -> output $ "Unknown command: " ++ cmd
           where
             waitFor :: String -> InputT CLIM ()
@@ -161,6 +162,10 @@ startCLI = do
                 => [String] -> m String
             val [] = getVals
             val t  = createVal $ unwords t
+            var :: (MonadIO m, MonadReader Env m, MonadError String m)
+                => [String] -> m String
+            var [] = getVars
+            var t  = createVar $ unwords t
 
     asTxsMsg :: BS.ByteString -> Either String Msg
     asTxsMsg msg = do

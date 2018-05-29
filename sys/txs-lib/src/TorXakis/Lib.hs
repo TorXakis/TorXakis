@@ -9,9 +9,10 @@ See LICENSE at root directory of this repository.
 module TorXakis.Lib
 ( module TorXakis.Lib
 , module TorXakis.Lib.Common
-, module TorXakis.Lib.Vals
 , module TorXakis.Lib.Internal
 , module TorXakis.Lib.Session
+, module TorXakis.Lib.Vals
+, module TorXakis.Lib.Vars
 )
 where
 
@@ -78,6 +79,7 @@ import           TorXakis.Lib.Common
 import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
 import           TorXakis.Lib.Vals
+import           TorXakis.Lib.Vars
 
 -- | For now file contents are represented as a string. This has to change in
 -- the future, since it is quite inefficient, but we start off simple since the

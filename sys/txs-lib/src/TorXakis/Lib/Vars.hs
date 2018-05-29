@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE DeriveGeneric #-}
 -- |
-module TorXakis.Lib.Vals where
+module TorXakis.Lib.Vars where
 
 import           Control.Arrow               (left)
 import           Control.Concurrent.STM.TVar (modifyTVar', readTVarIO)
@@ -23,58 +23,62 @@ import qualified Data.Text                   as T
 import           GHC.Generics                (Generic)
 import           Lens.Micro                  ((^.))
 
-import           TxsAlex                     (Token (Csigs, Cunid, Cvarenv),
-                                              txsLexer)
+import           Id                          (_id)
+import qualified SortId
+import           TxsAlex                     (Token (Csigs, Cunid), txsLexer)
 import           TxsCore                     (txsGetSigs)
-import           TxsHappy                    (valdefsParser)
+import           TxsHappy                    (vardeclsParser)
 import           TxsShow                     (fshow)
-import           ValExpr                     (ValExpr)
+import           Variable                    (vsort, vunid)
 import qualified VarId
 
 import           TorXakis.Lib.Common
 import           TorXakis.Lib.Session
 
-data Val = Val { _valName :: String
-               , _valExpr :: String
+data Var = Var { _varName     :: Text
+               , _varUnId     :: Int
+               , _varSortName :: Text
+               , _varSortUnId :: Int
                }
     deriving (Generic, Show)
 
-instance ToJSON Val
+instance ToJSON Var
 
-createVal :: Session -> Text -> IO (Response Val)
-createVal s val = do
-    let strVal = T.unpack val
+createVar :: Session -> Text -> IO (Response Var)
+createVar s var = do
+    let strVar = T.unpack var
         varsT  = s ^. locVars
         valEnvT = s ^. locValEnv
-    if T.null val
-        then return $ Left "No value expression received"
+    if T.null var
+        then return $ Left "No variable declaration received"
         else do
             valEnv <- readTVarIO valEnvT
             vars <- readTVarIO varsT
             sigs <- runIOC s txsGetSigs
             runExceptT $ do
                 parseRes <- fmap (left showEx) $
-                    lift $ try $ evaluate . force . valdefsParser $
+                    lift $ try $ evaluate . force . vardeclsParser $
                     ( Csigs    sigs
-                    : Cvarenv  []
                     : Cunid    0
-                    : txsLexer strVal
+                    : txsLexer strVar
                     )
-                (_, venv) <- liftEither parseRes
-                if let newnames = map VarId.name (Map.keys venv)
+                (_, newVars) <- liftEither parseRes
+                if let newnames = map VarId.name newVars
                     in null (newnames `List.intersect` map VarId.name vars) &&
                        null (newnames `List.intersect` map VarId.name (Map.keys valEnv))
-                  then lift $ atomically $ modifyTVar' valEnvT $ Map.union venv
-                  else throwError $ T.pack $ "double value names: " ++ fshow venv
-                return $ head $ toVals venv
+                  then lift $ atomically $ modifyTVar' varsT (++ newVars)
+                  else throwError $ T.pack $ "double variable names: " ++ fshow newVars
+                return $ head $ map toVar newVars
 
-getVals :: Session -> IO (Response [Val])
-getVals s = do
-    let valEnvT = s ^. locValEnv
-    valEnv <- readTVarIO valEnvT
-    runExceptT $ return $ toVals valEnv
+getVars :: Session -> IO (Response [Var])
+getVars s = do
+    let varsT = s ^. locVars
+    vars <- readTVarIO varsT
+    runExceptT $ return $ map toVar vars
 
-toVals :: Map.Map VarId.VarId (ValExpr VarId.VarId) -> [Val]
-toVals venv =   [ Val (T.unpack $ VarId.name vid) (fshow vexp)
-                | (vid,vexp) <- Map.toList venv
-                ]
+toVar :: VarId.VarId -> Var
+toVar varId = Var (VarId.name varId)
+                  (vunid varId)
+                  (SortId.name vSort)
+                  (_id $ SortId.unid vSort)
+            where vSort = vsort varId
