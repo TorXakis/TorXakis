@@ -78,8 +78,6 @@ PROCDEF  mapperS [ Plus, Minus :: Int # Int; Result :: Int;
 ENDDEF
 
 
-{-
-TODO: remove this? Or test with this?
 -- Asynchronous Mapping
 MAPPERDEF  MapA
     ::=
@@ -91,7 +89,6 @@ MAPPERDEF  MapA
         BEHAVIOUR  mapperA [ Plus, Minus, Result, Sin, Sout ] ( )
 
 ENDDEF
--}
 
 -- Synchronous Mapping
 MAPPERDEF  MapS
