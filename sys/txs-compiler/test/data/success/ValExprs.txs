@@ -308,34 +308,29 @@ ENDDEF
 -- ENDDEF
 
 
--- TODO: add these test cases as well, depending on which kind of let
--- expressions we support.
+-- | 'swap' will return the value 2*b + a where a and b refer to the
+-- | parameters.
+FUNCDEF swap (a, b :: Int) :: Int ::=
+    LET a = b, b = a IN 2 * a + b NI
+ENDDEF
+
+-- | 'swap2' will return the value 3* b where b refers to the second parameter.
+FUNCDEF swap2 (a,b :: Int) :: Int ::=
+    LET a = b; b = a IN 2*a + b NI
+ENDDEF
+
+-- This should not fail since the types of v and w will be inferred
+-- sequentially.
 --
--- FUNCDEF swap (a,b :: Int) :: Int ::=
---     LET a = b, b = a IN 2*a + b NI
--- ENDDEF
--- will return the value 2*b + a where a and b refer to the parameters
---
---
--- FUNCDEF swap (a,b :: Int) :: Int ::=
---     LET a = b; b = a IN 2*a + b NI
--- ENDDEF
--- will return the value 3* b where b refers to the second parameter
+FUNCDEF let4(x :: Int) :: Int ::=
+    LET v = x; w = v IN
+        w
+    NI
+ENDDEF
 
 -- TODO: it seems TorXakis cannot handle this. Could the new compiler?
 -- FUNCDEF j(g :: String) :: String ::=
 --     g
--- ENDDEF
-
--- TODO: this will fail since the types of v and w will be inferred in
--- parallel. If the `;` separator is kept we need to correct this. If the `,`
--- will be used instead, then a type-not-inferred error is the right semantics
--- (the identifier `v` is not yet in scope when `w` is declared).
---
--- FUNCDEF let4(x :: Int) :: Int ::=
---     LET v = x; w = v IN
---         w
---     NI
 -- ENDDEF
 
 -- This results in an:
