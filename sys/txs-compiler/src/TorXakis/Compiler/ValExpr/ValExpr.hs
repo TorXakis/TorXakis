@@ -58,18 +58,7 @@ expDeclToValExpr mm eSid ex = case expChild ex of
     LetExp vss subEx -> do
         let
             letValDeclsToMaps :: Either Error [Map VarId (ValExpr VarId)]
-            letValDeclsToMaps = traverse parValDeclToMap vss
-                where
-                  parValDeclToMap :: [LetVarDecl] -> Either Error (Map VarId (ValExpr VarId))
-                  parValDeclToMap vs = Map.fromList <$>
-                      traverse letValDeclToMap vs
-
-                  letValDeclToMap :: LetVarDecl -> Either Error (VarId, ValExpr VarId)
-                  letValDeclToMap vd = do
-                      vId   <- mm .@@ getLoc vd
-                      vdExp <- expDeclToValExpr mm (varsort vId) (varDeclExp vd)
-                      return (vId, vdExp)
-
+            letValDeclsToMaps = traverse (parValDeclToMap mm) vss
             fsM :: Map.Map FuncId (FuncDef VarId)
             fsM = Map.empty
         subValExpr <- expDeclToValExpr mm eSid subEx
@@ -109,3 +98,22 @@ expDeclToValExpr mm eSid ex = case expChild ex of
                   vexs <- traverse (uncurry $ expDeclToValExpr mm) $
                                 zip (funcargs fId) exs
                   return $ cstrFunc (innerMap mm :: Map FuncId (FuncDef VarId)) fId vexs
+
+
+parValDeclToMap :: ( MapsTo FuncId (FuncDef VarId) mm
+                   , MapsTo (Loc FuncDeclE) FuncId mm
+                   , MapsTo (Loc VarDeclE) VarId mm
+                   , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
+                => mm -> [LetVarDecl] -> Either Error (Map VarId (ValExpr VarId))
+parValDeclToMap mm vs = Map.fromList <$>
+    traverse (letValDeclToMap mm) vs
+
+letValDeclToMap :: ( MapsTo FuncId (FuncDef VarId) mm
+                   , MapsTo (Loc FuncDeclE) FuncId mm
+                   , MapsTo (Loc VarDeclE) VarId mm
+                   , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
+                => mm -> LetVarDecl -> Either Error (VarId, ValExpr VarId)
+letValDeclToMap mm vd = do
+    vId   <- mm .@@ getLoc vd
+    vdExp <- expDeclToValExpr mm (varsort vId) (varDeclExp vd)
+    return (vId, vdExp)

@@ -60,6 +60,7 @@ import           TorXakis.Compiler.ValExpr.ExpDecl
 import           TorXakis.Compiler.ValExpr.FuncDef
 import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Compiler.ValExpr.SortId
+import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Compiler.ValExpr.VarId
 
 import           TorXakis.Compiler.Data.ProcDecl
@@ -288,10 +289,21 @@ compileToProcDefs mm pd = do
 -- Where
 --
 -- > SIGS   ~~ (Sigs VarId)
--- > VARENV ~~ [VarId]  WARNING!!!!! This thing is empty when used at the server, so we might not needed.
+-- > VARENV ~~ [VarId]  WARNING!!!!! This thing is empty when used at the server, so we might not need it.
 -- > UNID   ~~ Int
-valdefsParser :: Int -> String -> CompilerM ( Int, Map VarId (ValExpr VarId) )
-valdefsParser uid str = do
-    ls <- liftEither $ parse uid "" str letVarDeclsP
+valdefsParser :: ( MapsTo Text SortId mm
+                 , MapsTo (Loc VarDeclE) SortId mm
+                 , MapsTo FuncId (FuncDef VarId) mm
+                 , MapsTo (Loc FuncDeclE) FuncId mm
+                 , MapsTo (Loc VarDeclE) VarId mm
+                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
+              => mm -> Int -> String -> CompilerM (Int, Map VarId (ValExpr VarId))
+valdefsParser mm unid str = do
+    ls     <-  liftEither $ parse 0 "" str letVarDeclsP
+    setUnid unid
     -- TODO: set the id of the compiler state to the one passed as parameter.
-    undefined str ls
+    lVSIds <- liftEither $ letInferTypes mm Map.empty ls
+    lVIds  <- mkVarIds (lVSIds <.+> mm) ls
+    unid'  <- getUnid
+    vEnv   <- liftEither $ parValDeclToMap (lVSIds <.+> (lVIds <.++> mm)) ls
+    return (unid', vEnv)

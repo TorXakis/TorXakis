@@ -45,6 +45,12 @@ getNextId = do
     put (St $ i + 1)
     return i
 
+setUnid :: Int -> CompilerM ()
+setUnid unid = put (St unid)
+
+getUnid :: CompilerM Int
+getUnid = nextId <$> get
+
 -- | Like traverse, but catch and error and continue if any `CompilerM` action
 -- throws an error in the process.
 traverseCatch :: (a -> CompilerM b) -> [a] -> CompilerM ([(a, Error)], [b])
