@@ -5,6 +5,9 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE ViewPatterns        #-}
+{-# OPTIONS_GHC -Wno-type-defaults #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+
 module TestLPEPar
 (
 testLPEParList
@@ -15,9 +18,9 @@ import LPE
 import TranslatedProcDefs
 
 import Test.HUnit
-import           Data.Maybe (fromMaybe)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import           Data.Maybe
 
 import ProcId
 import ChanId
@@ -41,7 +44,9 @@ import LPEfunc
 lpeParTestWrapper :: BExpr -> TranslatedProcDefs -> ProcDefs -> Maybe (BExpr, ProcDef)
 lpeParTestWrapper procInst'' translatedProcDefs procDefs' =
   let (procInst'@(TxsDefs.view -> ProcInst procId' _ _), procDefs'') = lpeParFunc procInst'' translatedProcDefs procDefs'
-      procDef' = fromMaybe (error "lpeParTestWrapper: could not find the procId") (Map.lookup procId' procDefs'') in
+      procDef' = fromMaybe
+                    (error "lpeParTestWrapper: could not find the procId")
+                    (Map.lookup procId' procDefs'') in
   Just (procInst', procDef')
 
 
@@ -56,6 +61,8 @@ procIdGen name' chans vars' = ProcId   {  ProcId.name       = T.pack name'
 
 varIdX :: VarId
 varIdX = VarId (T.pack "x") 33 intSort
+varIdY :: VarId
+varIdY = VarId (T.pack "y") 34 intSort
 varIdS :: VarId
 varIdS = VarId (T.pack "s") 35 intSort
 varIdA1 :: VarId
@@ -115,6 +122,32 @@ actOfferAB   = ActOffer {  offers = Set.fromList [
                         , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
                         }
+
+           
+-- action: A?x
+actOfferAx :: ActOffer
+actOfferAx   = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdA
+                                              , chanoffers = [Quest varIdX]
+                                        }
+                        , hiddenvars = Set.empty
+                        , constraint = cstrConst (Cbool True)
+            }
+
+-- action: A?y
+actOfferAy :: ActOffer
+actOfferAy   = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdA
+                                              , chanoffers = [Quest varIdY]
+                                        }
+                        , hiddenvars = Set.empty
+                        , constraint = cstrConst (Cbool True)
+            }
+
+-- chanOffers :: Map.Map (T.Text, Integer) VarId
+-- chanOffers = Map.fromList [ ((T.pack "A", 1), VarId (T.pack "A$1") 34 intSort)
+--                           , ((T.pack "B", 1), VarId (T.pack "B$1") 34 intSort)
+--                           ]
 
 -- sorts, chanIds
 intSort :: SortId
@@ -457,6 +490,61 @@ testSingleAction4 = TestCase $
 
 
 
+
+-- -------------------------------------------------
+-- testing parallel semantics for single-actions: same channels, different variable names
+--
+-- P[A]() := A?x >-> STOP |[A]| A?y >-> STOP
+-- -------------------------------------------------
+
+
+-- CASE: A?x >-> STOP |[A]| A?y >-> STOP
+-- becomes:
+-- P[A,B](op1$pc$P$op1, op2$pc$P$op2) :=
+      -- // both sides
+      -- ## A?A$1 [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A](-1, -1)
+-- with ProcInst := P[A](0,0)
+testSingleActionDifferentVars :: Test
+testSingleActionDifferentVars = TestCase $
+   assertBool "test single action - different vars" $ eqProcDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
+   where
+      procInst'' = procInst procIdP [chanIdA] []
+      procIdP = procIdGen "P" [chanIdA] []
+
+      procDefP = ProcDef [chanIdA] [] (
+            parallel (Set.singleton chanIdA) [
+                actionPref actOfferAx stop,
+                actionPref actOfferAy stop
+              ]
+            )
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+
+      varIdOp1pcPop1 = VarId (T.pack "op1$pc$P$op1") 0 intSort
+      varIdOp2pcPop2 = VarId (T.pack "op2$pc$P$op2") 0 intSort
+      vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
+      vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
+
+      -- with ProcInst := P[A](0,0)
+      procIdP' = procIdGen "P" [chanIdA] [varIdOp1pcPop1, varIdOp2pcPop2]
+      procDefP' = ProcDef [chanIdA] [varIdOp1pcPop1, varIdOp2pcPop2]
+                        -- // both sides
+                        -- ## A?A$1 [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A](-1, -1)
+                        (actionPref
+                          ActOffer {  offers = Set.singleton
+                                                    Offer { chanid = chanIdA
+                                                          , chanoffers = [Quest varIdA1]
+                                                    }
+                                    , hiddenvars = Set.empty
+                                    , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcPop1 int0
+                                                                              , cstrEqual vexprOp2pcPop2 int0
+                                                      ])
+
+
+                                    }
+                          (procInst procIdP' [chanIdA] [vexprMin1, vexprMin1]))
+
+
+      procInst' = procInst procIdP' [chanIdA] [int0, int0]
 
 
 
@@ -3454,10 +3542,12 @@ testChannelInst3 = TestCase $
 -- List of Tests
 ----------------------------------------------------------------------------------------
 testLPEParList :: Test
-testLPEParList = TestList [ TestLabel "single actions 1" testSingleAction1
+testLPEParList = TestList [ 
+                            TestLabel "single actions 1" testSingleAction1
                           , TestLabel "single actions 2" testSingleAction2
                           , TestLabel "single actions 3" testSingleAction3
                           , TestLabel "single actions 4" testSingleAction4
+                          , TestLabel "single action - different vars" testSingleActionDifferentVars
 
                           , TestLabel "single actions, different actions 1" testSingleActionDifferentActions1
                           , TestLabel "single actions, different actions 2" testSingleActionDifferentActions2
