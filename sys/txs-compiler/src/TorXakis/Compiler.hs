@@ -17,6 +17,7 @@ import qualified Data.Map.Strict                    as Map
 import           Data.Maybe                         (catMaybes, fromMaybe)
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
+import           Data.Tuple                         (swap)
 
 import           ChanId                             (ChanId)
 import           CstrId                             (CstrId)
@@ -292,18 +293,35 @@ compileToProcDefs mm pd = do
 -- > VARENV ~~ [VarId]  WARNING!!!!! This thing is empty when used at the server, so we might not need it.
 -- > UNID   ~~ Int
 valdefsParser :: ( MapsTo Text SortId mm
-                 , MapsTo (Loc VarDeclE) SortId mm
                  , MapsTo FuncId (FuncDef VarId) mm
                  , MapsTo (Loc FuncDeclE) FuncId mm
-                 , MapsTo (Loc VarDeclE) VarId mm
-                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
+                 , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
+                 , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
+                 , In (Loc VarRefE, Either (Loc VarDeclE) [Loc FuncDeclE]) (Contents mm) ~ 'False )
               => mm -> Int -> String -> CompilerM (Int, Map VarId (ValExpr VarId))
 valdefsParser mm unid str = do
     ls     <-  liftEither $ parse 0 "" str letVarDeclsP
     setUnid unid
-    -- TODO: set the id of the compiler state to the one passed as parameter.
-    lVSIds <- liftEither $ letInferTypes mm Map.empty ls
-    lVIds  <- mkVarIds (lVSIds <.+> mm) ls
     unid'  <- getUnid
-    vEnv   <- liftEither $ parValDeclToMap (lVSIds <.+> (lVIds <.++> mm)) ls
+    let
+        -- We cannot refer to a variable previously declared
+        lsVDs :: Map Text (Loc VarDeclE)
+        lsVDs = Map.empty
+        lsFDs :: Map Text [Loc FuncDeclE]
+        lsFDs = Map.fromListWith (++) [(k, [v]) | (k, v) <- lsFIds]
+        lsFIds :: [(Text, Loc FuncDeclE)]
+        lsFIds = fmap (first name . swap) . Map.toList . innerMap $ mm
+    lsVRs  <- Map.fromList <$>
+        mapRefToDecls (lsVDs :& lsFDs) (varDeclExp <$> ls)
+    let
+        -- We don't have any external variables we can use.
+        lsEVSIds :: Map (Loc VarDeclE) SortId
+        lsEVSIds = Map.empty
+        lsEVVIds :: Map (Loc VarDeclE) VarId
+        lsEVVIds = Map.empty
+        mm' = lsVRs :& lsEVSIds :& lsEVVIds :& mm
+    lVSIds <- liftEither $ letInferTypes mm' Map.empty ls
+    lVIds  <- mkVarIds (lVSIds <.+> mm') ls
+    vEnv   <- liftEither $
+        parValDeclToMap (lVSIds <.+> (lVIds <.++> mm')) ls
     return (unid', vEnv)
