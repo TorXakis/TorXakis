@@ -14,6 +14,7 @@ quit, q                         : stop TorXakis completely
 exit, x                         : exit the current command run of TorXakis
 help, h, ?                      : show help (this text)
 info, i                         : show info on TorXakis
+seed <n>                        : set random seed to <n>
 
 delay <n>                       : wait for <n> seconds
 echo <text>                     : echo the input <text>

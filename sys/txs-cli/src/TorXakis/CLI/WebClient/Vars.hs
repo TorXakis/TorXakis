@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Params command of Web client for `txs-webserver`.
+-- | Create and fetch variables in a TorXakis session.
 module TorXakis.CLI.WebClient.Vars
 ( createVar
 , getVars

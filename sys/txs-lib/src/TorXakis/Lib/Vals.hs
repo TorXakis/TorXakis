@@ -4,7 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE DeriveGeneric #-}
--- |
+-- | Create and fetch value expressions in a TorXakis session.
 module TorXakis.Lib.Vals where
 
 import           Control.Arrow               (left)

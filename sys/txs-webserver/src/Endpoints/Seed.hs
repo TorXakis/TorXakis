@@ -3,9 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators     #-}
 -- | End-point for setting random seed.
 module Endpoints.Seed
     ( SeedEP
@@ -15,6 +13,7 @@ where
 
 import           Control.Monad.IO.Class     (liftIO)
 import qualified Data.ByteString.Lazy.Char8 as BSL
+import           Data.Semigroup             ((<>))
 import           Data.Text                  (unpack)
 import           Servant
 import           Servant.Multipart          (Input (Input), Mem, MultipartData,
@@ -33,9 +32,9 @@ type SeedEP = "sessions"
 setSeed :: Env -> SessionId -> MultipartData Mem -> Handler ()
 setSeed env sId mpData =
     case inputs mpData of
-        [Input "seed" seedStr] ->
-            case readMaybe $ unpack seedStr of
-                Nothing   -> throwError err400 { errBody = "No input received" }
+        [Input "seed" seedTxt] ->
+            case readMaybe $ unpack seedTxt of
+                Nothing   -> throwError err400 { errBody = BSL.pack $ unpack $ "Can't parse input: " <> seedTxt }
                 Just seed -> do
                     s <- getSession env sId
                     liftIO $ Lib.setSeed s seed

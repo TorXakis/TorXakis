@@ -22,7 +22,8 @@ import           Control.Concurrent               (newChan, readChan,
                                                    threadDelay)
 import           Control.Concurrent.Async         (async, cancel)
 import           Control.Monad                    (forever, when)
-import           Control.Monad.Except             (MonadError, runExceptT)
+import           Control.Monad.Except             (MonadError, runExceptT,
+                                                   throwError)
 import           Control.Monad.IO.Class           (MonadIO, liftIO)
 import           Control.Monad.Reader             (MonadReader, ReaderT, ask,
                                                    asks, runReaderT)
@@ -136,6 +137,7 @@ startCLI = do
             "val"     -> lift (runExceptT $ val rest) >>= output
             "var"     -> lift (runExceptT $ var rest) >>= output
             "eval"    -> lift (runExceptT $ eval rest) >>= output
+            "seed"    -> lift (runExceptT $ seed rest) >>= output
             _         -> output $ "Unknown command: " ++ cmd
           where
             waitFor :: String -> InputT CLIM ()
@@ -169,7 +171,11 @@ startCLI = do
             var t  = createVar $ unwords t
             eval :: (MonadIO m, MonadReader Env m, MonadError String m)
                 => [String] -> m String
-            eval t  = evaluate $ unwords t
+            eval t = evaluate $ unwords t
+            seed :: (MonadIO m, MonadReader Env m, MonadError String m)
+                 => [String] -> m ()
+            seed [s] = setSeed s
+            seed _   = throwError "Usage: seed <n>"
 
     asTxsMsg :: BS.ByteString -> Either String Msg
     asTxsMsg msg = do
