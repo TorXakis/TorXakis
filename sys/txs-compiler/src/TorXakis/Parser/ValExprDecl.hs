@@ -52,14 +52,20 @@ letExpP :: TxsParser ExpDecl
 letExpP = do
     l <- mkLoc
     txsSymbol "LET"
-    vs <- letVarDeclsP
+    vss <- letSeqVarDeclsP
     txsSymbol "IN"
     subEx <- valExpP
     txsSymbol "NI"
-    return $ mkLetExpDecl vs subEx l
+    return $ mkLetExpDecl vss subEx l
+
+-- | Parse a list of value declarations (where each value declaration is a list
+-- of the form 'x0 = v0, ..., xn=vn'), which allow to introduce values
+-- sequentially.
+letSeqVarDeclsP :: TxsParser [[LetVarDecl]]
+letSeqVarDeclsP = letVarDeclsP `sepBy` txsSymbol ";"
 
 letVarDeclsP :: TxsParser [LetVarDecl]
-letVarDeclsP = letVarDeclP `sepBy` txsSymbol ";"
+letVarDeclsP = letVarDeclP `sepBy` txsSymbol ","
 
 letVarDeclP :: TxsParser LetVarDecl
 letVarDeclP = do

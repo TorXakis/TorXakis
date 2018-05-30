@@ -9,6 +9,7 @@ module TorXakis.Compiler where
 
 import           Control.Arrow                      (first, second, (|||))
 import           Control.Lens                       (over, (^.), (^..))
+import           Control.Monad.Error.Class          (liftEither)
 import           Control.Monad.State                (evalStateT, get)
 import           Data.Data.Lens                     (uniplate)
 import           Data.Map.Strict                    (Map)
@@ -62,9 +63,10 @@ import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.VarId
 
 import           TorXakis.Compiler.Data.ProcDecl
-
 import           TorXakis.Parser
+import           TorXakis.Parser.BExpDecl
 import           TorXakis.Parser.Data
+import           TorXakis.Parser.ValExprDecl
 
 -- | Compile a string into a TorXakis model.
 --
@@ -272,3 +274,24 @@ compileToProcDefs mm pd = do
     procPDefMap  <- procDeclsToProcDefMap (pms :& mm) (pd ^. procs)
     stautPDefMap <- stautDeclsToProcDefMap (pms :& mm) (pd ^. stauts)
     return $ procPDefMap `Map.union` stautPDefMap
+
+-- * External parsing functions
+
+-- | Compiler for value definitions
+--
+-- name valdefsParser   ExNeValueDefs     -- valdefsParser   :: [Token]
+--
+-- Originally:
+--
+-- > SIGS VARENV UNID -> ( Int, VEnv )
+--
+-- Where
+--
+-- > SIGS   ~~ (Sigs VarId)
+-- > VARENV ~~ [VarId]  WARNING!!!!! This thing is empty when used at the server, so we might not needed.
+-- > UNID   ~~ Int
+valdefsParser :: Int -> String -> CompilerM ( Int, Map VarId (ValExpr VarId) )
+valdefsParser uid str = do
+    ls <- liftEither $ parse uid "" str letVarDeclsP
+    -- TODO: set the id of the compiler state to the one passed as parameter.
+    undefined str ls

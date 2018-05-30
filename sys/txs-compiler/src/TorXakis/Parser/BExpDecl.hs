@@ -129,11 +129,11 @@ chanOfferP = try questOfferP <|> exclOfferP
 letBExpP :: TxsParser BExpDecl
 letBExpP = do
     try (txsSymbol "LET")
-    vs <- letVarDeclsP
+    vss <- letSeqVarDeclsP
     txsSymbol "IN"
     subEx <- bexpDeclP
     txsSymbol "NI"
-    return $ LetBExp vs subEx
+    return $ LetBExp vss subEx
 
 hideP :: TxsParser BExpDecl
 hideP = do

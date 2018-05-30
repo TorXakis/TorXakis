@@ -44,8 +44,9 @@ varIdsFromExpDecl :: (MapsTo (Loc VarDeclE) SortId mm)
                   => mm -> ExpDecl -> CompilerM [(Loc VarDeclE, VarId)]
 varIdsFromExpDecl mm ex = case expChild ex of
     LetExp vs subEx -> do
-        vdMap  <- traverse (varIdFromVarDecl mm) vs
-        vdExpMap <- concat <$> traverse (varIdsFromExpDecl mm) (varDeclExp <$> vs)
+        vdMap  <- concat <$> traverse (traverse (varIdFromVarDecl mm)) vs
+        vdExpMap <- concat <$>
+            traverse (fmap concat . traverse (varIdsFromExpDecl mm) . fmap varDeclExp) vs
         subMap <- varIdsFromExpDecl mm subEx
         return $ vdMap ++ subMap ++ vdExpMap
     _ ->

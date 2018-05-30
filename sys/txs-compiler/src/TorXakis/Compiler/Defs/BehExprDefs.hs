@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeApplications    #-}
 module TorXakis.Compiler.Defs.BehExprDefs where
 
-import           Control.Monad                     (when)
+import           Control.Monad                     (foldM, when)
 import           Control.Monad.Error.Class         (liftEither, throwError)
 import           Data.List                         (nub)
 import qualified Data.Map                          as Map
@@ -49,7 +49,7 @@ import           TorXakis.Parser.Data
 toBExpr :: ( MapsTo Text SortId mm
            , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
            , MapsTo (Loc ChanDeclE) ChanId mm
-           , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+           , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
            , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo (Loc FuncDeclE) FuncId mm
            , MapsTo FuncId (FuncDef VarId) mm
@@ -58,15 +58,13 @@ toBExpr :: ( MapsTo Text SortId mm
         => mm -> BExpDecl -> CompilerM BExpr
 toBExpr _ Stop             = return stop
 toBExpr mm (ActPref ao be) = actionPref <$> toActOffer mm ao <*> toBExpr mm be
-toBExpr mm (LetBExp vs be) = valueEnv   <$> venv <*> toBExpr mm be
+toBExpr mm (LetBExp vss be) = do
+    be0 <- toBExpr mm be
+    foldM letToBExpr be0 vss
     where
-      venv = Map.fromList <$> traverse vpair vs
-      vpair :: LetVarDecl -> CompilerM (VarId, ValExpr VarId)
-      vpair vd = do
-          vId <- mm .@ getLoc vd
-          ex  <- liftEither $
-              expDeclToValExpr mm (varsort vId) (varDeclExp vd)
-          return (vId, ex)
+      letToBExpr be' vs = do
+          venv <- Map.fromList <$> traverse (vpair mm) vs
+          return $ valueEnv venv be'
 toBExpr mm (Pappl n l crs exs) = do
     chIds <- chRefsToIds mm crs
     let candidate :: ProcId -> Bool
@@ -142,6 +140,17 @@ toBExpr mm (Hide _ cds be) = do
     chNameChIds <- traverse (mm .@) (getLoc <$> cds) :: CompilerM [ChanId]
     be' <- toBExpr mm be
     return $ hide chNameChIds be'
+
+vpair :: ( MapsTo (Loc VarDeclE) VarId mm
+         , MapsTo FuncId (FuncDef VarId) mm
+         , MapsTo (Loc FuncDeclE) FuncId mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
+      => mm -> LetVarDecl -> CompilerM (VarId, ValExpr VarId)
+vpair mm vd = do
+    vId <- mm .@ getLoc vd
+    ex  <- liftEither $
+        expDeclToValExpr mm (varsort vId) (varDeclExp vd)
+    return (vId, ex)
 
 toActOffer :: ( MapsTo Text SortId mm
               , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm

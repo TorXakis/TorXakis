@@ -3,7 +3,6 @@ FUNCDEF const(x, y :: Int) :: Int ::=
 ENDDEF
 
 FUNCDEF twenty(x :: Int) :: Int ::=
-    -- LET z = 10; b = True IN x NI
     20
 ENDDEF
 

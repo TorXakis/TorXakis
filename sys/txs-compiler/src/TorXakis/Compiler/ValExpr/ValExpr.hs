@@ -30,7 +30,7 @@ import           TorXakis.Parser.Data
 
 -- | Make a 'ValExpr' from the given expression-declaration.
 --
-expDeclToValExpr :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+expDeclToValExpr :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                     , MapsTo (Loc FuncDeclE) FuncId mm
                     , MapsTo FuncId (FuncDef VarId) mm
                     , MapsTo (Loc VarDeclE) VarId mm)
@@ -55,16 +55,21 @@ expDeclToValExpr mm eSid ex = case expChild ex of
     ConstLit c -> do
         traverse_ (checkSortIds eSid) (sortIdConst c)
         return $ cstrConst (constToConstDef eSid c)
-    LetExp vs subEx -> do
+    LetExp vss subEx -> do
         let
             letValDeclsToMaps :: Either Error [Map VarId (ValExpr VarId)]
-            letValDeclsToMaps = traverse letValDeclToMap vs
+            letValDeclsToMaps = traverse parValDeclToMap vss
                 where
-                  letValDeclToMap :: LetVarDecl -> Either Error (Map VarId (ValExpr VarId))
+                  parValDeclToMap :: [LetVarDecl] -> Either Error (Map VarId (ValExpr VarId))
+                  parValDeclToMap vs = Map.fromList <$>
+                      traverse letValDeclToMap vs
+
+                  letValDeclToMap :: LetVarDecl -> Either Error (VarId, ValExpr VarId)
                   letValDeclToMap vd = do
                       vId   <- mm .@@ getLoc vd
                       vdExp <- expDeclToValExpr mm (varsort vId) (varDeclExp vd)
-                      return $ Map.singleton vId vdExp
+                      return (vId, vdExp)
+
             fsM :: Map.Map FuncId (FuncDef VarId)
             fsM = Map.empty
         subValExpr <- expDeclToValExpr mm eSid subEx

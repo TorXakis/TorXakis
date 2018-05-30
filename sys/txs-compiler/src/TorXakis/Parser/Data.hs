@@ -454,7 +454,29 @@ expChild = child
 
 data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)
               | ConstLit Const
-              | LetExp [LetVarDecl] ExpDecl
+              -- | A let expression allows to introduce a series of value
+              -- bindings of the form:
+              --
+              -- > x0 = v0, ..., xn = vn
+              --
+              -- A let expression contains a list of lists that have the form
+              -- above. Values declared within one '[LetVarDecl]' list
+              -- introduce variable names in parallel (in the sense that one
+              -- variable in the list cannot be used in the expressions within
+              -- that list). However, values declared in '[LetVarDecl]' lists
+              -- can be used in subsequent '[LetVarDecl]' lists. For instance,
+              -- the following let expression:
+              --
+              -- > LET x = 1, y = 5; z = x + y IN ...
+              --
+              -- Will be parsed to the following list
+              --
+              -- > [[(x, 1), (y, 5)], [(z, x + y)]]
+              --
+              -- Here 'x' and 'y' cannot be used in the expressions of the
+              -- first list, but it can be used in the expressions of the
+              -- second.
+              | LetExp [[LetVarDecl]] ExpDecl
               | If ExpDecl ExpDecl ExpDecl
               | Fappl (Name VarRefE) (Loc VarRefE) [ExpDecl] -- ^ Function application. A function is applied
                                                              -- to a list of expressions.
@@ -469,11 +491,11 @@ data Const = BoolConst Bool
 
 -- | Extract all the let-variable declarations of an expression.
 --
-expLetVarDecls :: ExpDecl -> [LetVarDecl]
+expLetVarDecls :: ExpDecl -> [[LetVarDecl]]
 expLetVarDecls ParseTree { child = VarRef _ _  } = []
 expLetVarDecls ParseTree { child = ConstLit _  } = []
 expLetVarDecls ParseTree { child = LetExp vs e } =
-    vs ++ expLetVarDecls e ++ concatMap (expLetVarDecls . varDeclExp) vs
+    vs ++ expLetVarDecls e ++ concatMap (concatMap (expLetVarDecls . varDeclExp)) vs
 expLetVarDecls ParseTree { child = If e0 e1 e2 } =
     expLetVarDecls e0 ++ expLetVarDecls e1 ++ expLetVarDecls e2
 expLetVarDecls ParseTree { child = Fappl _ _ exs } =
@@ -489,8 +511,8 @@ childExps ParseTree { child = LetExp _ e }     = [e]
 childExps ParseTree { child = If ex0 ex1 ex2 } = [ex0, ex1, ex2]
 childExps ParseTree { child = Fappl _ _ exs }  = exs
 
-mkLetExpDecl :: [LetVarDecl] -> ExpDecl -> Loc ExpDeclE -> ExpDecl
-mkLetExpDecl vs subEx l = mkExpDecl l (LetExp vs subEx)
+mkLetExpDecl :: [[LetVarDecl]] -> ExpDecl -> Loc ExpDeclE -> ExpDecl
+mkLetExpDecl vss subEx l = mkExpDecl l (LetExp vss subEx)
 
 mkExpDecl :: Loc ExpDeclE -> ExpChild -> ExpDecl
 mkExpDecl l c = ParseTree (Name "") ExpDeclE l c
@@ -620,7 +642,7 @@ data BExpDecl
     -- | '>->' (action prefix) operator.
     | ActPref  ActOfferDecl BExpDecl
     -- | 'LET' declarations for behavior expressions.
-    | LetBExp  [LetVarDecl] BExpDecl
+    | LetBExp  [[LetVarDecl]] BExpDecl
     -- | Process instantiation.
     | Pappl (Name ProcRefE) (Loc ProcRefE) [ChanRef] [ExpDecl]
     -- | Parallel operators.

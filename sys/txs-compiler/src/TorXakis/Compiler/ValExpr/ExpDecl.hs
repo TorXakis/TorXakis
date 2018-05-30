@@ -5,9 +5,10 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module TorXakis.Compiler.ValExpr.ExpDecl where
 
+
 import           Control.Arrow             (second, (+++))
-import           Control.Monad.Error.Class (liftEither)
-import           Control.Monad.Error.Class (catchError)
+import           Control.Monad             (foldM)
+import           Control.Monad.Error.Class (catchError, liftEither)
 import           Data.Either               (partitionEithers)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
@@ -58,10 +59,13 @@ instance HasVarReferences BExpDecl where
           -- An action offer introduces new variables in the case of actions of
           -- the form 'Ch ? v':
           aoVds = mkVdMap (actOfferDecls ao)
-    mapRefToDecls mm (LetBExp vs be)    =
-        let letVds = mkVdMap vs in
-            (++) <$> mapRefToDecls mm (varDeclExp <$> vs)
-                 <*> mapRefToDecls (letVds <.+> mm) be
+    mapRefToDecls mm (LetBExp vss be) = do
+        (mm', letRefs) <- foldM letRefToDecls (mm, []) vss
+        subExRefs      <- mapRefToDecls mm' be
+        return $ letRefs ++ subExRefs
+        -- let letVds = mkVdMap vss
+        --     (++) <$> mapRefToDecls mm (varDeclExp <$> vs)
+        --          <*> mapRefToDecls (letVds <.+> mm) be
     mapRefToDecls mm (Pappl _ _ _ exs)  =
         mapRefToDecls mm exs
     mapRefToDecls mm (Par _ _ be0 be1)  =
@@ -104,16 +108,29 @@ instance HasVarReferences ExpDecl where
             return [(rLoc, dLoc)]
         ConstLit _ ->
             return []
-        LetExp vs subEx ->
-            let letVds = mkVdMap vs in
-                (++) <$> mapRefToDecls mm (varDeclExp <$> vs)
-                     <*> mapRefToDecls (letVds <.+> mm) subEx
+        LetExp vss subEx -> do
+            (mm', letRefs) <- foldM letRefToDecls (mm, []) vss
+            subExRefs <- mapRefToDecls mm' subEx
+            return $ letRefs ++ subExRefs
         If ex0 ex1 ex2 ->
             mapRefToDecls mm [ex0, ex1, ex2]
         Fappl n rLoc exs -> do
             dLocs   <- mm .@!! (toText n, rLoc)
             vrVDExs <- mapRefToDecls mm exs
             return $ (rLoc, Right dLocs) : vrVDExs
+
+letRefToDecls :: ( MapsTo Text (Loc VarDeclE) mm
+                 , MapsTo Text [Loc FuncDeclE] mm )
+              => (mm, [(Loc VarRefE, Loc VarDeclE :| [Loc FuncDeclE])])
+              -> [LetVarDecl]
+              -> CompilerM (mm, [(Loc VarRefE, Loc VarDeclE :| [Loc FuncDeclE])])
+letRefToDecls (mm, xs) vs = do
+    let letVds = mkVdMap vs
+    -- The expressions of the let variable declarations cannot contain a
+    -- variable declared in 'vs', therefore the map 'mm' does not have to be
+    -- augmented.
+    ys <- mapRefToDecls mm (varDeclExp <$> vs)
+    return (letVds <.+> mm, xs ++ ys)
 
 instance HasVarReferences OfferDecl where
     mapRefToDecls mm (OfferDecl _ os) = mapRefToDecls mm os

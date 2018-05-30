@@ -39,23 +39,28 @@ import           TorXakis.Parser.PurpDecl
 import           TorXakis.Parser.StautDecl
 import           TorXakis.Parser.TypeDefs   (adtP)
 
-parse :: String -> Either Error ParsedDefs
-parse = undefined
+parse :: Int            -- ^ Initial value for the unique id's counter
+      -> String         -- ^ Name of the source from which the input was read.
+      -> String         -- ^ Input for the parser
+      -> TxsParser a    -- ^ Parser to run
+      -> Either Error a
+parse uid source input parser = left parseErrorAsError $
+    runIdentity (runParserT parser (mkState uid) source input)
 
 parseFile :: FilePath -> IO (Either Error ParsedDefs)
 parseFile fp = left parseErrorAsError <$> do
     input <- readFile fp
     return $ runIdentity (runParserT txsP (mkState 1000) fp input)
-    where
-      parseErrorAsError :: ParseError -> Error
-      parseErrorAsError err = Error
-          { _errorType = ParseError
-          , _errorLoc = ErrorLoc
-              { errorLine   = sourceLine (errorPos err)
-              , errorColumn = sourceColumn (errorPos err)
-              }
-          , _errorMsg = T.pack (show err)
-          }
+
+parseErrorAsError :: ParseError -> Error
+parseErrorAsError err = Error
+    { _errorType = ParseError
+    , _errorLoc = ErrorLoc
+        { errorLine   = sourceLine (errorPos err)
+        , errorColumn = sourceColumn (errorPos err)
+        }
+    , _errorMsg = T.pack (show err)
+    }
 
 -- | TorXakis top-level definitions
 data TLDef = TLADT       ADTDecl

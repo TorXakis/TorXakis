@@ -63,17 +63,17 @@ sortIdOfVarDecl mm = findSortId mm . varDeclSort
 sortIdOfVarDeclM :: MapsTo Text SortId mm => mm -> VarDecl -> CompilerM SortId
 sortIdOfVarDeclM mm f = liftEither $ sortIdOfVarDecl mm f
 
--- | Infer the types in a list of function declaration.
+-- | Infer the types in a list of function declarations.
 inferTypes :: ( MapsTo Text SortId mm
               , MapsTo (Loc VarDeclE) SortId mm
               , MapsTo (Loc FuncDeclE) FuncId mm
-              , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
+              , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
            => mm
            -> [FuncDecl]
            -> CompilerM (Map (Loc VarDeclE) SortId)
 inferTypes mm fs = liftEither $ do
     paramsVdSid <- Map.fromList . concat <$> traverse fParamLocSorts fs
-    letVdSid    <- gInferTypes (paramsVdSid <.+> mm)  allLetVarDecls
+    letVdSid    <- foldM (letInferTypes (paramsVdSid <.+> mm)) Map.empty allLetVarDecls
     return $ Map.union letVdSid paramsVdSid
     where
       allLetVarDecls = concatMap letVarDeclsInFunc fs
@@ -83,13 +83,25 @@ inferTypes mm fs = liftEither $ do
             fParamSorts :: Either Error [SortId]
             fParamSorts = traverse (findSortId mm) (varDeclSort <$> funcParams fd)
 
+letInferTypes :: ( MapsTo Text SortId mm
+                 , MapsTo (Loc VarDeclE)  SortId mm
+                 , MapsTo (Loc FuncDeclE) FuncId mm
+                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
+              => mm
+              -> Map (Loc VarDeclE) SortId
+              -> [LetVarDecl]
+              -> Either Error (Map (Loc VarDeclE) SortId)
+letInferTypes mm vdSId ls = do
+    letVdSId <- gInferTypes (vdSId <.+> mm) ls
+    return $ letVdSId `Map.union` vdSId
 
 gInferTypes :: ( MapsTo Text SortId mm
                , MapsTo (Loc VarDeclE)  SortId mm
                , MapsTo (Loc FuncDeclE) FuncId mm
-               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
+               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
             => mm
             -> [LetVarDecl]
+            -- TODO: why not return a list '[(Loc VarDeclE, SortId)]'
             -> Either Error (Map (Loc VarDeclE) SortId)
 gInferTypes mm vs =
     case partitionEithers (inferVarDeclType mm <$> vs) of
@@ -103,13 +115,13 @@ gInferTypes mm vs =
                     }
         (ls, rs) -> gInferTypes (fromList rs <.+> mm) (snd <$> ls)
 
-letVarDeclsInFunc :: FuncDecl -> [LetVarDecl]
+letVarDeclsInFunc :: FuncDecl -> [[LetVarDecl]]
 letVarDeclsInFunc fd = expLetVarDecls (funcBody fd)
 
 inferVarDeclType :: ( MapsTo Text SortId mm
                     , MapsTo (Loc VarDeclE) SortId mm
                     , MapsTo (Loc FuncDeclE) FuncId mm
-                    , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
+                    , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
                  => mm
                  -> LetVarDecl -> Either (Error, LetVarDecl) (Loc VarDeclE, SortId)
 inferVarDeclType mm vd = left (,vd) $
@@ -147,12 +159,9 @@ inferExpTypes mm ex =
     ConstLit c ->
         return $ -- The type of any is any sort known!
             maybe (values @Text mm) pure (sortIdConst c)
-    LetExp vs subEx -> do
-        vsSidss <- traverse (inferExpTypes mm) (varDeclExp <$> vs)
-        -- Here we make sure that each variable expression has a unique type.
-        vsSids <- traverse getUniqueElement vsSidss
-        let vdSid = fromList (zip (getLoc <$> vs) vsSids)
-        inferExpTypes (vdSid <.+> mm) subEx
+    LetExp vss subEx -> do
+        vdsSid <- foldM (letVarTypes mm) Map.empty vss
+        inferExpTypes (vdsSid <.+> mm) subEx
     -- TODO: shouldn't if be also a function? Defined in terms of the Haskell's @if@ operator.
     If e0 e1 e2 -> do
         [se0s, se1s, se2s] <- traverse (inferExpTypes mm) [e0, e1, e2]
@@ -189,6 +198,22 @@ inferExpTypes mm ex =
                                      <> T.pack (show ses)
                        })
                   return $ funcsort fId
+
+letVarTypes :: ( MapsTo Text SortId mm
+               , MapsTo (Loc VarDeclE) SortId mm
+               , MapsTo (Loc FuncDeclE) FuncId mm
+               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
+            => mm
+            -> Map (Loc VarDeclE) SortId
+            -> [LetVarDecl]
+            -> Either Error (Map (Loc VarDeclE) SortId)
+letVarTypes mm vdSid vs = do
+    vsSidss <- traverse (inferExpTypes (vdSid <.+> mm)) (varDeclExp <$> vs)
+    -- Here we make sure that each variable expression has a unique type.
+    vsSids <- traverse getUniqueElement vsSidss
+    let vdSid' = Map.fromList $ zip (getLoc <$> vs) vsSids
+    -- 'Map.union' is left biased, so the new variables will shadow the previous ones.
+    return $ vdSid' `Map.union` vdSid
 
 sortIdConst :: Const -> Maybe SortId
 sortIdConst (BoolConst _)   = Just sortIdBool
@@ -229,10 +254,14 @@ instance HasTypedVars BExpDecl where
         -- The implicit variables in the offers are needed in subsequent expressions.
         ys <- inferVarTypes (Map.fromList xs <.+> mm) be
         return $ xs ++ ys
-    inferVarTypes mm (LetBExp vs be) = do
-        xs <- Map.toList <$> liftEither (gInferTypes mm vs)
-        ys <- inferVarTypes mm be
-        return $ xs ++ ys
+    inferVarTypes mm (LetBExp vss be) = do
+        vssVarTypes <- foldM (inferLetVarTypes mm) [] vss
+        beVarTypes  <- inferVarTypes (vssVarTypes <.++> mm) be
+
+        -- xs <- Map.toList <$> liftEither (gInferTypes mm vs)
+        -- ys <- inferVarTypes mm be
+
+        return $ vssVarTypes ++ beVarTypes
     inferVarTypes mm (Pappl _ _ _ exs) =
         inferVarTypes mm exs
     inferVarTypes mm (Par _ _ be0 be1) =
@@ -290,8 +319,31 @@ instance HasTypedVars e => HasTypedVars [e] where
     inferVarTypes mm es = concat <$> traverse (inferVarTypes mm) es
 
 instance HasTypedVars ExpDecl where
-    inferVarTypes mm ex = liftEither $
-        Map.toList <$> gInferTypes mm (expLetVarDecls ex)
+    inferVarTypes mm ex = case expChild ex of
+        VarRef {} -> return []
+        ConstLit {} ->  return []
+        LetExp vss subEx -> do
+            vssVarTypes <- foldM (inferLetVarTypes mm) [] vss
+            subExVarTypes <- inferVarTypes (vssVarTypes <.++> mm) subEx
+            return $ subExVarTypes ++ vssVarTypes
+        If e0 e1 e2 -> concat <$> traverse (inferVarTypes mm) [e0, e1, e2]
+        Fappl _ _ exs -> concat <$> traverse (inferVarTypes mm) exs
+
+inferLetVarTypes :: ( MapsTo Text SortId mm
+                    , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+                    , MapsTo (Loc ChanDeclE) ChanId mm
+                    , MapsTo (Loc VarDeclE) SortId mm
+                    , MapsTo (Loc FuncDeclE) FuncId mm
+                    , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+                    , MapsTo ProcId () mm )
+                 => mm
+                 -> [(Loc VarDeclE, SortId)]
+                 -> [LetVarDecl]
+                 -> CompilerM [(Loc VarDeclE, SortId)]
+inferLetVarTypes mm vdSId vs = do
+    vdSId' <- liftEither $
+        Map.toList <$> gInferTypes (vdSId <.++> mm) vs
+    return $ vdSId' ++ vdSId
 
 instance HasTypedVars OfferDecl where
     inferVarTypes mm (OfferDecl cr os) = do
