@@ -143,7 +143,8 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
           -- Now we create the other two non-standard automata
           id0   <- getNextId
           id1   <- getNextId
-          let (pd, iStaut) = translate (Map.empty :: Map.Map FuncId (FuncDef VarId))
+          let trans' = reverse trans -- TODO: only needed for compatibility with the old compiler.
+              (pd, iStaut) = translate (Map.empty :: Map.Map FuncId (FuncDef VarId))
                                    (Id id0)
                                    (Id id1)
                                    (ProcId.name pId)
@@ -152,10 +153,10 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                                    (ProcId.procexit pId)
                                    stIds
                                    innerVars
-                                   trans
+                                   trans'
                                    initS
                                    vEnv
-          return [ (pId, ProcDef procChIds pvIds' (Beh.stAut initS vEnv trans))
+          return [ (pId, ProcDef procChIds pvIds' (Beh.stAut initS vEnv trans'))
                  , (pIdStd, pd)
                  , (pIdStdi, ProcDef procChIds pvIds' iStaut)
                  ]
