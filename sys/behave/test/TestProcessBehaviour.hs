@@ -18,18 +18,15 @@ import Test.HUnit
 -- generic Haskell imports
 import Control.Monad.State
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 
 -- generic TorXakis imports
 import BTree
-import ConstDefs
 import EnvBTree
 import Expand
 import Sigs
-import StdTDefs
 import TxsDefs
 import Unfold
-import ValExpr
+import VarId
 
 -- ----------------------------------------------------------------------------
 -- additional variables
@@ -51,10 +48,7 @@ testProcessBehaviourList  = TestList $ map (\e -> TestLabel (fst e) $ TestCase $
 
 ioeTestList :: [(String, IOB())]
 ioeTestList = [
-    ("Stop",        testStop),
-    ("Guard False", testGuardFalse),
-    ("Guard True",  testGuardTrue),
-    ("Choice",      testChoice)
+    ("Stop",        testStop)
     ]
 
 ---------------------------------------------------------------------------
@@ -63,7 +57,8 @@ ioeTestList = [
 
 testStop :: IOB()
 testStop = do
-    let bnode = BNbexpr Map.empty stop
+    let bnode :: BNode (WEnv VarId)
+        bnode = BNbexpr Map.empty stop
     _bt <- unfold [] bnode
     -- modify ( \env -> env { envs2bt = Map.singleton 0 bt  } )
     -- actual <- isQui
@@ -71,30 +66,3 @@ testStop = do
     
     next <- expand [] bnode
     lift $ assertEqual "expand stop" [] next
-
-testGuardFalse :: IOB()
-testGuardFalse = do
-    let bnode = BNbexpr Map.empty (TxsDefs.guard (cstrConst (Cbool False)) stop )
-    next <- expand [] bnode
-    lift $ assertEqual "expand guard false" [] next
-
-testGuardTrue :: IOB()
-testGuardTrue = do
-    let aBExpr = actionPref (ActOffer (Set.singleton (Offer chanIdExit []) ) Set.empty (cstrConst (Cbool True)) ) stop
-    let bnode = BNbexpr Map.empty aBExpr
-    nextExpected <- expand [] bnode
-    
-    let bnodeGuard = BNbexpr Map.empty (TxsDefs.guard (cstrConst (Cbool True)) aBExpr )
-    nextActual <- expand [] bnodeGuard
-    lift $ assertEqual "expand guard true" nextExpected nextActual
-    
-testChoice :: IOB()
-testChoice = do
-    let aBExpr = actionPref (ActOffer (Set.singleton (Offer chanIdExit []) ) Set.empty (cstrConst (Cbool True)) ) stop
-    let bnode = BNbexpr Map.empty aBExpr
-    nextExpected <- unfold [] bnode
-    
-    let bnodeChoice = BNbexpr Map.empty (choice [ aBExpr, aBExpr ])
-    nextActual <- unfold [] bnodeChoice
-    
-    lift $ assertEqual "unfold choice" nextExpected nextActual

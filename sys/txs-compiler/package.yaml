@@ -32,6 +32,7 @@ library:
   - defs
   - valexpr
   - behave
+  - bexpr
   
 tests:
   txs-compiler-test:

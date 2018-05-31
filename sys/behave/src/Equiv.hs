@@ -46,8 +46,8 @@ class (Eq e) => Equiv e
 instance (Equiv t) => Equiv [t]
   where
     []     ~=~ []      =  return True
-    []     ~=~ (_:_)  =  return False
-    (_:_) ~=~ []      =  return False
+    []     ~=~ (_:_)   =  return False
+    (_:_)  ~=~ []      =  return False
     (x:xs) ~=~ (y:ys)  =  do  { eq_hd <- x  ~=~ y
                               ; eq_tl <- xs ~=~ ys
                               ; return $ eq_hd && eq_tl
@@ -112,7 +112,7 @@ instance Equiv INode
          return $ eq_wenv && eq_ivenv && eq_bexp
 
     (BNparallel chids1 inodes1) ~=~ (BNparallel chids2 inodes2)  =  do
-         let eq_chids = Set.fromList chids1 == Set.fromList chids2
+         let eq_chids = chids1 == chids2
          eq_inodes <- inodes1 ~=~ inodes2
          return $ eq_chids && eq_inodes
 
@@ -133,7 +133,7 @@ instance Equiv INode
          return $ eq_inode1 && eq_inode2
 
     (BNhide chids1 inode1) ~=~ (BNhide chids2 inode2)  =  do
-         let eq_chids = Set.fromList chids1 == Set.fromList chids2
+         let eq_chids = chids1 == chids2
          eq_inode <- inode1 ~=~ inode2
          return $ eq_chids && eq_inode
 
@@ -169,10 +169,10 @@ instance Equiv BExprView
          return $ c1 == c2 && eq_bexp
 
     (Choice bexps1) ~=~ (Choice bexps2)  =
-        Set.fromList bexps1 ~=~ Set.fromList bexps2
+        bexps1 ~=~ bexps2
 
     (Parallel chids1 bexps1) ~=~ (Parallel chids2 bexps2)  =  do
-         let eq_chids = Set.fromList chids1 == Set.fromList chids2
+         let eq_chids = chids1 == chids2
          eq_bexps <- bexps1 ~=~ bexps2
          return $ eq_chids && eq_bexps
 
@@ -199,7 +199,7 @@ instance Equiv BExprView
          return $ eq_pid && eq_chids && eq_vexps
 
     (Hide chids1 bexp1) ~=~ (Hide chids2 bexp2)  =  do
-         let eq_chids = Set.fromList chids1 == Set.fromList chids2
+         let eq_chids = chids1 == chids2
          eq_bexp  <- bexp1 ~=~ bexp2
          return $ eq_chids && eq_bexp
 

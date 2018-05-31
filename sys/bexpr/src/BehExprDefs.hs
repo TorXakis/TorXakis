@@ -45,15 +45,12 @@ module BehExprDefs
 , hide
 , valueEnv
 , stAut
-  -- * Debugging
-, valid
 )
 where
 
-import qualified Data.Set        as Set
-
 import           Control.DeepSeq
 import           Data.Data
+import qualified Data.Set        as Set
 import           GHC.Generics    (Generic)
 
 import           ChanId
@@ -70,31 +67,17 @@ import           VarId
 -- | BExprView: the public view of Behaviour Expression `BExpr`
 data BExprView = ActionPref  ActOffer BExpr
                | Guard       VExpr BExpr
-               | Choice      [BExpr]                -- Distinct Ascending List, does not contain a Choice as element of this list
-               | Parallel    [ChanId] [BExpr]
+               | Choice      (Set.Set BExpr)
+               | Parallel    (Set.Set ChanId) [BExpr] -- should be (MultiSet.MultiSet BExpr) waiting on : https://github.com/twanvl/multiset/issues/31
                | Enable      BExpr [ChanOffer] BExpr
                | Disable     BExpr BExpr
                | Interrupt   BExpr BExpr
                | ProcInst    ProcId [ChanId] [VExpr]
-               | Hide        [ChanId] BExpr
+               | Hide        (Set.Set ChanId) BExpr
                | ValueEnv    VEnv BExpr
                | StAut       StatId VEnv [Trans]
   deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 instance Resettable BExprView
-    where
---        reset (Choice bs)       = Choice (Set.toAscList (Set.fromList (reset bs))) -- reorder to ensure invariant
---        reset x                 = over uniplate reset x
-        reset (ActionPref a b)  = ActionPref (reset a) (reset b)
-        reset (Guard v b)       = Guard (reset v) (reset b)
-        reset (Choice bs)       = Choice (Set.toAscList (Set.fromList (reset bs))) -- reorder to ensure invariant
-        reset (Parallel c b)    = Parallel (reset c) (reset b)
-        reset (Enable b1 c b2)  = Enable (reset b1) (reset c) (reset b2)
-        reset (Disable b1 b2)   = Disable (reset b1) (reset b2)
-        reset (Interrupt b1 b2) = Interrupt (reset b1) (reset b2)
-        reset (ProcInst p c v)  = ProcInst (reset p) (reset c) (reset v)
-        reset (Hide c b)        = Hide (reset c) (reset b)
-        reset (ValueEnv v b)    = ValueEnv (reset v) (reset b)
-        reset (StAut s v t)     = StAut (reset s) (reset v) (reset t)
 
 -- | BExpr: behaviour expression
 --
@@ -110,74 +93,88 @@ newtype BExpr = BExpr {
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 instance Resettable BExpr
 
--- | Is behaviour expression equal to Stop behaviour?
-isStop :: BExpr -> Bool
-isStop (BehExprDefs.view -> Choice []) = True
-isStop _                               = False
-
 -- | Create a Stop behaviour expression.
 --   The Stop behaviour is equal to dead lock.
 stop :: BExpr
-stop = BExpr (Choice [])
+-- No special Stop constructor, use Choice with empty list instead
+stop = BExpr (Choice Set.empty)
+
+-- | Is behaviour expression equal to Stop behaviour?
+isStop :: BExpr -> Bool
+isStop (BehExprDefs.view -> Choice s) | Set.null s = True
+isStop _                              = False
+
 
 -- | Create an ActionPrefix behaviour expression.
 actionPref :: ActOffer -> BExpr -> BExpr
 actionPref a b = case ValExpr.view (constraint a) of
+                    -- A?x [[ False ]] >-> p <==> stop
                     Vconst (Cbool False) -> stop
                     _                    -> BExpr (ActionPref a b)
 
 -- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
-guard v b = BExpr (Guard v b)
+-- [[ False ]] =>> p <==> stop
+guard (ValExpr.view -> Vconst (Cbool False)) _              = stop
+-- [[ True ]] =>> p <==> p
+guard (ValExpr.view -> Vconst (Cbool True))  b              = b
+-- [[ c ]] =>> stop <==> stop
+guard _ b                                     | isStop b    = stop
+-- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ c1 /\ c2 ]] >-> p
+guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = actionPref (ActOffer o h (cstrAnd (Set.fromList [v,c]))) b
+guard v b                                                   = BExpr (Guard v b)
 
 -- | Create a choice behaviour expression.
 --  A choice combines zero or more behaviour expressions.
-choice :: [BExpr] -> BExpr
-choice l = let s = flattenChoice l
-               l' = Set.toAscList s       -- All elements in a set are distinct
+choice :: Set.Set BExpr -> BExpr
+choice s = let fs = flattenChoice s
              in
-                case l' of
+                case Set.toList fs of
                     []  -> stop
                     [a] -> a
-                    _   -> BExpr (Choice l')
+                    _   -> BExpr (Choice fs)
     where
         -- 1. nesting of choices are flatten
-        --    (p ## q) ## r == p ## q ## r
+        --    (p ## q) ## r <==> p ## q ## r
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
         -- 2. elements in a set are distinctive
-        --    hence p ## p == p
-        flattenChoice :: [BExpr] -> Set.Set BExpr
-        flattenChoice l' = Set.unions $ map fromBExpr l'
+        --    hence p ## p <==> p
+        -- 3. since stop == Choice Set.empty, we automatically have p ## stop <==> p
+        flattenChoice :: Set.Set BExpr -> Set.Set BExpr
+        flattenChoice = Set.unions . map fromBExpr . Set.toList
 
         fromBExpr :: BExpr -> Set.Set BExpr
-        fromBExpr (BehExprDefs.view -> Choice l') = Set.fromDistinctAscList l'
+        fromBExpr (BehExprDefs.view -> Choice s') = s'
         fromBExpr x                               = Set.singleton x
 
 -- | Create a parallel behaviour expression.
 -- The behaviour expressions must synchronize on the given set of channels (and EXIT).
-parallel :: [ChanId] -> [BExpr] -> BExpr
+parallel :: Set.Set ChanId -> [BExpr] -> BExpr
 parallel cs bs = let fbs = flattenParallel bs
                     in BExpr (Parallel cs fbs)
     where
         -- nesting of parallels over the same channel sets are flatten
-        --     (p |[ G ]| q) |[ G ]| r == p |[ G ]| q |[ G ]| r
+        --     (p |[ G ]| q) |[ G ]| r <==> p |[ G ]| q |[ G ]| r
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
         flattenParallel :: [BExpr] -> [BExpr]
         flattenParallel = concatMap fromBExpr
 
         fromBExpr :: BExpr -> [BExpr]
-        fromBExpr (BehExprDefs.view -> Parallel pcs pbs) | Set.fromList cs == Set.fromList pcs  = pbs
-        fromBExpr bexpr                                                                         = [bexpr]
-
-
-
+        fromBExpr (BehExprDefs.view -> Parallel pcs pbs) | cs == pcs  = pbs
+        fromBExpr bexpr                                  = [bexpr]
 
 -- | Create an enable behaviour expression.
 enable :: BExpr -> [ChanOffer] -> BExpr -> BExpr
+-- stop >>> p <==> stop
+enable b _ _    | isStop b = stop
 enable b1 cs b2 = BExpr (Enable b1 cs b2)
 
 -- | Create a disable behaviour expression.
 disable :: BExpr -> BExpr -> BExpr
+-- stop [>> p <==> p
+disable b1 b2 | isStop b1 = b2
+-- p [>> stop <==> p
+disable b1 b2 | isStop b2 = b1
 disable b1 b2 = BExpr (Disable b1 b2)
 
 -- | Create an interrupt behaviour expression.
@@ -190,7 +187,7 @@ procInst p cs vs = BExpr (ProcInst p cs vs)
 
 -- | Create a hide behaviour expression.
 --   The given set of channels is hidden for its environment.
-hide :: [ChanId] -> BExpr -> BExpr
+hide :: Set.Set ChanId -> BExpr -> BExpr
 hide cs b = BExpr (Hide cs b)
 
 -- | Create a Value Environment behaviour expression.
@@ -247,65 +244,3 @@ instance Resettable Trans
 -- ignoring the differences in identifiers.
 (~~) :: BExpr -> BExpr -> Bool
 be0 ~~ be1 = reset be0 == reset be1
-
--- | Test if the internal Behaviour Expression structure is valid.
-valid :: BExpr -> Bool
-valid (BehExprDefs.view -> Choice actual)   = actual == Set.toAscList (Set.fromList actual)
-valid _                                     = True
-
--- -- | The expression has exit sorts associated to it.
--- class HasExitSorts e where
---     -- | Obtain the exit sorts for an expression.
---     exitSort :: ( MapsTo Text SortId mm
---                 , MapsTo Text ChanId mm )
---              => mm -> e -> CompilerM ExitSort
-
--- instance HasExitSorts BExpDecl where
---     exitSort _ Stop = return NoExit
---     exitSort mm (ActPref aos be) = do
---         es0 <- exitSort mm aos
---         es1 <- exitSort mm be
---         es0 <<+>> es1 -- TODO: modify `ActPref` to include a location then we can use <!!> l
---     exitSort mm (LetBExp _ be) = exitSort mm be
---     exitSort mm (Pappl p _ _ _) = do
---         p <- Arrrgh -- It seems it makes more sense to define exitSort at BehExprDefs.
-
--- instance HasExitSorts ActOfferDecl where
---     exitSort mm (ActOfferDecl os _) =
---         exitSort mm os
-
--- instance HasExitSorts e => HasExitSorts [e] where
---     exitSort mm exps = do
---         es <- traverse (exitSort mm) exps
---         foldM (<<+>>) NoExit es
-
--- instance HasExitSorts OfferDecl where
---     exitSort mm (OfferDecl cr _) = case chanRefName cr of
---         "EXIT"  -> do
---             sIds <- chansorts <$> mm .@!! (chanRefName cr, cr)
---             return $ Exit sIds
---         "ISTEP" -> return NoExit
---         "QSTEP" -> return Hit
---         "HIT"   -> return Hit
---         "MISS"  -> return Hit
---         _       -> return NoExit
-
--- instance HasExitSorts ExitSortDecl where
---     exitSort _  NoExitD    = return NoExit
---     exitSort _  HitD       = return Hit
---     exitSort mm (ExitD xs) = Exit <$> sortIds mm xs
-
--- -- | Combine exit sorts for choice, disable: max of exit sorts
--- (<<+>>) :: ExitSort -> ExitSort -> CompilerM ExitSort
--- NoExit   <<+>> NoExit    = return NoExit
--- NoExit   <<+>> Exit exs  = return $ Exit exs
--- NoExit   <<+>> Hit       = return Hit
--- Exit exs <<+>> NoExit    = return $ Exit exs
--- Exit exs <<+>> Exit exs' = do
---     when (exs /= exs')
---          (throwError undefined) -- TODO:"\nTXS2222: Exit sorts do not match\n"
---     return (Exit exs)
--- Exit _   <<+>> Hit       = throwError undefined -- TODO: "\nTXS2223: Exit sorts do not match\n"
--- Hit      <<+>> NoExit    = return Hit
--- Hit      <<+>> Exit _    = throwError undefined -- TODO: "\nTXS2224: Exit sorts do not match\n"
--- Hit      <<+>> Hit       = return Hit

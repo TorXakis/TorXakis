@@ -82,5 +82,4 @@ unid :: Ident -> Int
 -- For now we have to be optimistic about this check. Once we're able to
 -- compute at the type level which terms of the product are @Identifiable@ we
 -- can get rid of this.
-unid i = _id $ fromMaybe err (getId i)
-    where err = error $ "No Id found in " ++ show i
+unid i = _id $ fromMaybe (error $ "No Id found in " ++ show i) (getId i)

@@ -18,10 +18,12 @@ import ProcId
 data TranslatedProcDefs = TranslatedProcDefs
   { lPreGNF  :: [ProcId]
   , lGNF     :: [ProcId]
+  , lGNFdirectcalls :: [ProcId]
   , lLPE     :: [ProcId]
   } deriving (Eq, Ord, Read, Show)
 
 emptyTranslatedProcDefs :: TranslatedProcDefs
 emptyTranslatedProcDefs = TranslatedProcDefs { TranslatedProcDefs.lPreGNF = []
                                              , TranslatedProcDefs.lGNF = []
+                                             , TranslatedProcDefs.lGNFdirectcalls = []
                                              , TranslatedProcDefs.lLPE = [] }

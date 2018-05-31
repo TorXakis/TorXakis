@@ -11,9 +11,11 @@ testGNFList
 where
 import TranslatedProcDefs
 
-import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+-- import Control.Exception
+-- import Control.Monad
+import Test.HUnit
 
 import TxsDefs
 import ProcId
@@ -24,7 +26,9 @@ import VarId
 import ConstDefs
 import ValExpr
 
+
 import LPEfunc
+-- import LPE
 
 ---------------------------------------------------------------------------
 -- Helper functions
@@ -116,7 +120,7 @@ testPreGNFFirst = TestCase $
    assertBool "choice (on lower level) is substituted" $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
    where
       procIdP   = procIdGen "P" [chanIdA] []
-      choice'   = choice [actionPref actOfferA1 stop, actionPref actOfferAx stop]
+      choice'   = choice $ Set.fromList [actionPref actOfferA1 stop, actionPref actOfferAx stop]
       procDefP = ProcDef [chanIdA] [] (actionPref actOfferAx choice')
 
       procIdPpre1x = procIdGen "P$pre1" [chanIdA] [varIdX]
@@ -216,11 +220,11 @@ testProcInst2 = TestCase $
    where
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (choice [actionPref actOfferA1 stop, procInst procIdQ [chanIdA] []])
+      procDefP = ProcDef [chanIdA] [] (choice $ Set.fromList [actionPref actOfferA1 stop, procInst procIdQ [chanIdA] []])
       procDefQ = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
 
 
-      procDefP' = ProcDef [chanIdA] [] (choice [actionPref actOfferA1 stop, actionPref actOfferAx stop])
+      procDefP' = ProcDef [chanIdA] [] (choice $ Set.fromList [actionPref actOfferA1 stop, actionPref actOfferAx stop])
 
       procDefs' = Map.fromList  [  (procIdP, procDefP)
                                 , (procIdQ, procDefQ)]
@@ -242,11 +246,11 @@ testProcInst3 = TestCase $
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] []
       procIdR = procIdGen "R" [chanIdA] []
-      procDefP = ProcDef [chanIdA] [] (choice [procInst procIdQ [chanIdA] [], actionPref actOfferA1 stop])
+      procDefP = ProcDef [chanIdA] [] (choice $ Set.fromList [procInst procIdQ [chanIdA] [], actionPref actOfferA1 stop])
       procDefQ = ProcDef [chanIdA] [] (procInst procIdR [chanIdA] [])
       procDefR = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
 
-      procDefP' = ProcDef [chanIdA] [] (choice [actionPref actOfferAx stop, actionPref actOfferA1 stop])
+      procDefP' = ProcDef [chanIdA] [] (choice $ Set.fromList [actionPref actOfferAx stop, actionPref actOfferA1 stop])
       procDefQ' = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
 
 
@@ -273,11 +277,11 @@ testProcInst4 = TestCase $
    where
       procIdP = procIdGen "P" [] []
       procIdQ = procIdGen "Q" [] []
-      procDefP = ProcDef [] [] (choice [actionPref actOfferA1 stop, procInst procIdQ [] []])
-      procDefQ = ProcDef [] [] (choice [actionPref actOfferAx stop, actionPref actOfferA1 (procInst procIdP [] [])])
+      procDefP = ProcDef [] [] (choice $ Set.fromList [actionPref actOfferA1 stop, procInst procIdQ [] []])
+      procDefQ = ProcDef [] [] (choice $ Set.fromList [actionPref actOfferAx stop, actionPref actOfferA1 (procInst procIdP [] [])])
 
 
-      procDefP' = ProcDef [] [] (choice [actionPref actOfferA1 stop
+      procDefP' = ProcDef [] [] (choice $ Set.fromList [actionPref actOfferA1 stop
                                         , actionPref actOfferAx stop
                                         , actionPref actOfferA1 (procInst procIdP [] [])
                                         ])
@@ -309,7 +313,7 @@ testNamingClash = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
       procIdPgnf1 = procIdGen "P$gnf1" [chanIdA, chanIdB] [varIdX]
       procIdPpre1 = procIdGen "P$pre1" [chanIdA, chanIdB] [varIdX]
-      choice'= choice [actionPref actOfferA1 stop, actionPref actOfferAx stop]
+      choice'= choice $ Set.fromList [actionPref actOfferA1 stop, actionPref actOfferAx stop]
       
       procDefP = ProcDef [chanIdA, chanIdB] [] (actionPref actOfferAx (actionPref actOfferB1 choice'))
 
@@ -324,48 +328,58 @@ testNamingClash = TestCase $
                                 , (procIdPpre1, procDefPpre1) ]
 
 
---
--- -- create monad to run GNF
--- -- return the resulting procDefs' and the possible error
--- gnfTestWrapper :: ProcId -> TranslatedProcDefs -> ProcDefs -> (ProcDefs, String)
--- gnfTestWrapper procId translatedProcDefs procDefs' =
---   let a = a
---   in (Map.fromList [], "loop (GNF) detected in P")
+-- assertException :: (Exception e, Eq e) => e -> ProcDefs -> IO ()
+-- assertException ex action =
+--     handleJust isWanted (const $ return ()) $ do
+--         _ <- evaluate action
+--         assertFailure $ "Expected exception: " ++ show ex
+--     where isWanted = Control.Monad.guard . (== ex)
+
+-- assertException :: (Exception e, Eq e) => e -> IO a -> IO ()
+-- assertException ex action =
+--     handleJust isWanted (const $ return ()) $ do
+--         _ <- action
+--         assertFailure $ "Expected exception: " ++ show ex
+--     where isWanted = Control.Monad.guard . (== ex)
 
 
---
 -- -- cycle detection
 -- --  P[]() := P[]()
 -- -- should fail
 -- testLoop1 :: Test
 -- testLoop1 = TestCase $
---    -- result = gnfFunc procIdP emptyTranslatedProcDefs procDefs'
---    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs' in
---    assertBool "loop 1" err "loop (GNF) detected in P"
---    where
+--    -- result = gnfFunc procIdP emptyTranslatedProcDefs procDefs
+-- --    let (result, err) = gnfFunc procIdP emptyTranslatedProcDefs procDefs in
+-- --    assertBool "loop 1" err "loop (GNF) detected in P"
+-- --    assertFailure "found a no-progress loop" (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+-- --    assertException (ErrorCall "found a no-progress loop") (evaluate $ gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+-- --    assertRaises "desc error..." (ErrorCall "found a no-progress loop") (evaluate $ gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+--     -- assertBool "loop 1"  $ eqProcDefs procDefs' (gnfFunc procIdP emptyTranslatedProcDefs procDefs)
+--     assertException (ErrorCall "found a no-progress loop") (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
+--     where
 --       procIdP = procIdGen "P" [] []
---       procDefP = ProcDef [] [] (ProcInst procIdP [] [])
---
+--       procDefP = ProcDef [] [] (procInst procIdP [] [])
+
 --       procDefs' = Map.fromList  [  (procIdP, procDefP)]
---
+
 -- -- cycle detection
 -- --  P[]() :=     A >-> P[]()
 -- --            ## P[]()
 -- -- should fail
 -- testLoop2 :: Test
 -- testLoop2 = TestCase $
---    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs' in
---    assertBool "loop 2" err "loop (GNF) detected in P"
+--    assertBool "loop 2"  $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
 --    where
 --       procIdP = procIdGen "P" [] []
---       procDefP = ProcDef [] [] (Choice [
---                                   (ActionPref actOfferAx (ProcInst procIdP [] [])),
---                                   (ProcInst procIdP [] [])
---                                   ])
---
+--       procDefP = ProcDef [] [] (choice (Set.fromList [
+--                                   (actionPref actOfferAx (procInst procIdP [] [])),
+--                                   (procInst procIdP [] [])
+--                                   ]))
+
 --       procDefs' = Map.fromList  [  (procIdP, procDefP)]
---
---
+--       procDefs'' = procDefs'
+
+
 -- -- cycle detection
 -- --  P[]() :=     A >-> P[]()
 -- --            ## Q[]()
@@ -373,20 +387,21 @@ testNamingClash = TestCase $
 -- -- should fail
 -- testLoop3 :: Test
 -- testLoop3 = TestCase $
---    let (result, err) = gnfTestWrapper procIdP emptyTranslatedProcDefs procDefs' in
---    assertBool "loop 3" err "loop (GNF) detected in P"
---    where
+--     assertBool "loop 3"  $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
+--     where
 --       procIdP = procIdGen "P" [] []
 --       procIdQ = procIdGen "Q" [] []
---       procDefP = ProcDef [] [] (Choice [
---                                   (ActionPref actOfferAx (ProcInst procIdP [] [])),
---                                   (ProcInst procIdQ [] [])
---                                   ])
---       procDefQ = ProcDef [] [] (ProcInst procIdQ [] [])
+--       procDefP = ProcDef [] [] (choice (Set.fromList [
+--                                   (actionPref actOfferAx (procInst procIdP [] [])),
+--                                   (procInst procIdQ [] [])
+--                                   ]))
+--       procDefQ = ProcDef [] [] (procInst procIdP [] [])
 --       procDefs' = Map.fromList  [  (procIdP, procDefP),
 --                                   (procIdQ, procDefQ)]
---
---
+--       procDefs'' = procDefs'
+
+
+
 
 
 
@@ -394,7 +409,8 @@ testNamingClash = TestCase $
 -- List of Tests
 ----------------------------------------------------------------------------------------
 testGNFList :: Test
-testGNFList = TestList [  TestLabel "pregnfFunc translation is executed first" testPreGNFFirst
+testGNFList = TestList [  
+                          TestLabel "pregnfFunc translation is executed first" testPreGNFFirst
                         , TestLabel "Stop is unchanged" testStop
                         , TestLabel "A >-> STOP remains the same" testASeqStop
                         , TestLabel "A >-> P[]() remains the same" testASeqProcInst

@@ -22,6 +22,15 @@ testModel = emptyExample
   , expectedResult = Pass
   }
 
+testMovingArm :: TxsExample
+testMovingArm = emptyExample
+  { exampleName = "One Axis - Moving Arm Test"
+  , txsModelFiles = [ txsFilePath exampDir "MovingArm" ]
+  , txsCmdsFiles = [txsCmdPath exampDir "MovingArm_Tester_Model"]
+  , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "MovingArm_Simulator_Model")
+  , expectedResult = Pass
+  }
+
 testRestrictedAxisPurpose0 :: TxsExample
 testRestrictedAxisPurpose0 = emptyExample
   { exampleName = "Restricted Axis Purpose Test (input eagerness 0) 100"
@@ -31,9 +40,9 @@ testRestrictedAxisPurpose0 = emptyExample
   , sutExample = Just (TxsSimulator $ txsCmdPath exampDir "MovingArms_Simulator_Model")
   , expectedResult = Pass
   }
-  
+
 examples :: [TxsExample]
-examples = [testModel, testRestrictedAxisPurpose0]
+examples = [testModel, testMovingArm, testRestrictedAxisPurpose0]
 
 exampleSet :: TxsExampleSet
 exampleSet = TxsExampleSet "Moving Arms #model" examples

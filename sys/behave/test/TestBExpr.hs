@@ -134,7 +134,8 @@ testExitValue = TestCase $
 -- ActionPref 
 testExclam :: Test
 testExclam = TestCase $
-    let value = 10
+    let value :: Integer
+        value = 10
         bexpr :: BExpr
         bexpr = actionPref (ActOffer (Set.singleton(Offer (expectChanId definedChannel1 [definedChannel1SortName]) [Exclam (cstrConst (Cint value))])) Set.empty (cstrConst (Cbool True))) stop
         actual :: BExpr
@@ -204,7 +205,7 @@ testGuard = TestCase $
 testChoice :: Test
 testChoice = TestCase $
     let bexpr :: BExpr
-        bexpr = choice [aBExpr, anotherBExpr]
+        bexpr = choice $ Set.fromList [aBExpr, anotherBExpr]
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in
@@ -213,9 +214,10 @@ testChoice = TestCase $
 --Parallel
 testSynchronization :: Test
 testSynchronization = TestCase $
-    let chans = definedChannels
+    let chans :: TypedElements
+        chans = definedChannels
         bexpr :: BExpr
-        bexpr = parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
+        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) [aBExpr, anotherBExpr]
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in
@@ -223,9 +225,10 @@ testSynchronization = TestCase $
 
 testInterleaving :: Test
 testInterleaving = TestCase $
-    let chans = []
+    let chans :: TypedElements
+        chans = []
         bexpr :: BExpr
-        bexpr = parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
+        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) [aBExpr, anotherBExpr]
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in
@@ -233,9 +236,10 @@ testInterleaving = TestCase $
 
 testCommunicate :: Test
 testCommunicate = TestCase $
-    let chans = [([definedChannel1SortName], definedChannel1)]
+    let chans :: TypedElements
+        chans = [([definedChannel1SortName], definedChannel1)]
         bexpr :: BExpr
-        bexpr = parallel (chanIdExit:map (\(s,n) -> expectChanId n s) chans) [aBExpr, anotherBExpr]
+        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) [aBExpr, anotherBExpr]
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in

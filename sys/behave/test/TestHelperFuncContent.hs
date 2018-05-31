@@ -5,7 +5,6 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module TestHelperFuncContent
 
 where
@@ -138,7 +137,7 @@ identicalVExpr (ValExpr.view -> Vat s1 p1)              (ValExpr.view -> Vat s2 
 identicalVExpr (ValExpr.view -> Vconcat vs1)            (ValExpr.view -> Vconcat vs2)            = identicalLists identicalVExpr vs1 vs2
 identicalVExpr (ValExpr.view -> Vstrinre s1 r1)         (ValExpr.view -> Vstrinre s2 r2)         = identicalVExpr s1 s2 && identicalVExpr r1 r2
 identicalVExpr (ValExpr.view -> Vpredef p1 fid1 vexps1) (ValExpr.view -> Vpredef p2 fid2 vexps2) = p1 == p2 && identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2
-identicalVExpr _                                _                                                = False                          -- different
+identicalVExpr _                                        _                                        = False                          -- different
 
 identicalActOffer :: ActOffer -> ActOffer -> Bool
 identicalActOffer (ActOffer offers1 _hidvars1 vexpr1) (ActOffer offers2 _hidvars2 vexpr2) =    identicalLists identicalOffer (Set.toAscList offers1) (Set.toAscList offers2)
@@ -160,8 +159,8 @@ identicalBExpr' (ActionPref actOffer1 bExpr1) (ActionPref actOffer2 bExpr2)   = 
                                                                                 && identicalBExpr bExpr1 bExpr2
 identicalBExpr' (Guard vexpr1 bExpr1) (Guard vexpr2 bExpr2)                   =    identicalVExpr vexpr1 vexpr2
                                                                                 && identicalBExpr bExpr1 bExpr2
-identicalBExpr' (Choice bExprs1) (Choice bExprs2)                             =    identicalLists identicalBExpr bExprs1 bExprs2      -- Set would be better -> Position in list is irrelevant
-identicalBExpr' (Parallel chanids1 bExprs1) (Parallel chanids2 bExprs2)       =    identicalLists identicalChanId chanids1 chanids2
+identicalBExpr' (Choice bExprs1) (Choice bExprs2)                             =    identicalLists identicalBExpr (Set.toAscList bExprs1) (Set.toAscList bExprs2)
+identicalBExpr' (Parallel chanids1 bExprs1) (Parallel chanids2 bExprs2)       =    identicalLists identicalChanId (Set.toAscList chanids1) (Set.toAscList chanids2)
                                                                                 && identicalLists identicalBExpr bExprs1 bExprs2      -- Set would be better -> Position in list is irrelevant
 identicalBExpr' (Enable bexpr11 chanoffers1 bexpr12) (Enable bexpr21 chanoffers2 bexpr22) =    identicalBExpr bexpr11 bexpr21
                                                                                             && identicalLists identicalChanOffer chanoffers1 chanoffers2
@@ -173,7 +172,7 @@ identicalBExpr' (Interrupt bexpr11 bexpr12) (Interrupt bexpr21 bexpr22)       = 
 identicalBExpr' (ProcInst pid1 chans1 vexprs1) (ProcInst pid2 chans2 vexprs2) =    identicalProcId pid1 pid2
                                                                                 && identicalLists identicalChanId chans1 chans2
                                                                                 && identicalLists identicalVExpr vexprs1 vexprs2
-identicalBExpr' (Hide chans1 bexpr1) (Hide chans2 bexpr2)                     =    identicalLists identicalChanId chans1 chans2
+identicalBExpr' (Hide chans1 bexpr1) (Hide chans2 bexpr2)                     =    identicalLists identicalChanId (Set.toAscList chans1) (Set.toAscList chans2)
                                                                                 && identicalBExpr bexpr1 bexpr2
 identicalBExpr' (ValueEnv _mp1 _bexpr1) (ValueEnv _mp2 _bexpr2)               = error "TODO - identicalBExpr - ValueEnv"
 identicalBExpr' (StAut _sid1 _mp1 _trans1) (StAut _sid2 _mp2 _trans2)         = error "TODO - identicalBExpr - StAut"
@@ -242,10 +241,11 @@ expectSortDef sortDefName constrs =
         -- IsConstructor Functions
         isConstrFuncId constrName = expectFuncId ("is"++constrName) funcArgs "Bool"
         -- Accessor Functions for constructor fields
-        isAccessorsFuncIds = concatMap (\(fields,t) -> map (\field -> expectFuncId field funcArgs t) fields)
+        accessorsFuncIds :: TypedElements -> [ FuncId ]
+        accessorsFuncIds = concatMap (\(fields,t) -> map (\field -> expectFuncId field funcArgs t) fields)
      in
         TxsDefs.fromList  ( (IdSort (expectSortId sortDefName), DefSort SortDef)
-                          : map (\(constrName, types) -> (IdCstr (expectCstrId constrName types sortDefName), DefCstr (CstrDef (isConstrFuncId constrName) (isAccessorsFuncIds types)) ) ) constrs
+                          : map (\(constrName, types) -> (IdCstr (expectCstrId constrName types sortDefName), DefCstr (CstrDef (isConstrFuncId constrName) (accessorsFuncIds types)) ) ) constrs
                           )
 
 
@@ -363,7 +363,7 @@ varContent nm srt = FuncContent (cstrVar (expectVarId nm srt) )
 
 -- user must ensure first argument bool, then and else part same type
 ite :: FuncContent -> FuncContent -> FuncContent -> FuncContent
-ite condition thenPart elsePart = FuncContent (cstrITE (vexpr condition) (vexpr thenPart) (vexpr elsePart))
+ite condition' thenPart elsePart = FuncContent (cstrITE (vexpr condition') (vexpr thenPart) (vexpr elsePart))
 
 -- user must assert only variables are used as keys
 subst :: Map.Map FuncContent FuncContent -> FuncContent -> FuncContent

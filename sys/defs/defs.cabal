@@ -1,5 +1,5 @@
 name:                   defs
-version:                0.2.1.0
+version:                0.2.2.0
 synopsis:               Definitions for TorXakis
 license:                BSD3
 license-file:           license.txt
@@ -15,22 +15,18 @@ cabal-version:          >=1.10
 library
   hs-source-dirs:       src
 
-  exposed-modules:      BehExprDefs
-                      , TxsDDefs
+  exposed-modules:      TxsDDefs
                       , TxsDefs
                       , TxsShow
                       , TxsUtils
                       , StdTDefs
                       , Utils
                       , XmlFormat
-                      , ChanId
                       , CnectId
                       , GoalId
                       , MapperId
                       , ModelId
-                      , ProcId
                       , PurpId
-                      , StatId
                       , FuncTable
                       , Sigs
 
@@ -40,16 +36,11 @@ library
                       , CnectDef
                       , MapperDef
                       , ModelDef
-                      , ProcDef
                       , PurpDef
-                      , VarEnv
 
+  ghc-options:         -Wall -Werror -O2 -optc-O3 -optc-ffast-math
 
-  ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math -Wall
-
-  build-tools:          happy
-  build-depends:        array
-                      , base
+  build-depends:        base
                       , bytestring
                       , containers
                       , deepseq
@@ -57,7 +48,8 @@ library
                       , mtl
                       , text
                       , MissingH
-                      , lexregexxsd
                       , text-via-sockets
+                      , bexpr
                       , valexpr
+                      
   default-language:     Haskell2010

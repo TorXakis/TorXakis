@@ -48,6 +48,7 @@ import qualified TxsDefs
 -- import from valexpr
 import           Id
 import qualified VarId               (VarId)
+import           Name
 
 -- import from solve
 import qualified SMTData
@@ -61,6 +62,8 @@ instance EnvB.EnvB IOC     --  (StateT IOC.EnvC IO)
   where
      newUnid  =  newUnid
      putMsgs  =  putMsgs
+     setChanoffers = setChanoffers
+     getChanoffers = getChanoffers
  
 
 data EnvC = EnvC
@@ -75,6 +78,7 @@ data CoreState = Noning
                         , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
                         , sigs    :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
                         , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                        , chanoffers :: Map.Map (Name, Int) VarId.VarId    -- substitution for channel offers (LPE translation)
                         }
              | Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
@@ -92,6 +96,7 @@ data CoreState = Noning
                         , mapsts    :: BTree.BTree                      -- mapper state
                         , purpsts   :: [(TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)]   -- purpose state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                        , chanoffers :: Map.Map (Name, Int) VarId.VarId    -- substitution for channel offers (LPE translation)
                         }
              | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
@@ -107,6 +112,7 @@ data CoreState = Noning
                         , modsts    :: BTree.BTree                   -- model state
                         , mapsts    :: BTree.BTree                   -- mapper state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                        , chanoffers :: Map.Map (Name, Int) VarId.VarId    -- substitution for channel offers (LPE translation)
                         }
              | Stepping { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                         , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
@@ -119,6 +125,7 @@ data CoreState = Noning
                         , maxstate  :: EnvData.StateNr               -- max beh statenr
                         , modstss   :: Map.Map EnvData.StateNr BTree.BTree   -- model state
                         , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                        , chanoffers :: Map.Map (Name, Int) VarId.VarId    -- substitution for channel offers (LPE translation)
                         }
 
 
@@ -209,6 +216,19 @@ putMsgs msg = do
      putMsgs' <- gets (putmsgs . state)
      putMsgs' msg
 
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- set ChanOffers (needed during LPE translation)
+
+setChanoffers :: Map.Map (Name, Int) VarId.VarId -> IOC ()
+setChanoffers mapping = do 
+    st <- gets state  
+    let state' = st { chanoffers = mapping }
+    modify $ \env -> env { state = state' }
+
+getChanoffers :: IOC (Map.Map (Name, Int) VarId.VarId)
+getChanoffers = gets (chanoffers . state)
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --

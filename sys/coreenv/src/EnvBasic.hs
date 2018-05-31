@@ -13,6 +13,9 @@ where
 
 import qualified EnvData
 import qualified Id
+import qualified Data.Map            as Map
+import Name
+import VarId
 
 
 -- ----------------------------------------------------------------------------------------- --
@@ -22,6 +25,8 @@ class (Monad envb) => EnvB envb
   where
      newUnid :: envb Id.Id
      putMsgs :: [EnvData.Msg] -> envb ()
+     setChanoffers :: Map.Map (Name, Int) VarId -> envb ()
+     getChanoffers :: envb (Map.Map (Name, Int) VarId)
 
 
 -- ----------------------------------------------------------------------------------------- --

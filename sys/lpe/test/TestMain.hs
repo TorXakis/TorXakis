@@ -12,14 +12,18 @@ import TestPreGNF
 import TestGNF
 import TestLPE
 import TestLPEPar
+import TestLPEHide
+import TestPreGNFEnable
 
 testList :: Test
 testList = TestList
     [
-        TestLabel "preGNF"          testPreGNFList
-       , TestLabel "GNF"             testGNFList
-       , TestLabel "LPE"             testLPEList
-       , TestLabel "LPEPar"          testLPEParList
+          TestLabel "preGNF"          testPreGNFList
+        , TestLabel "GNF"             testGNFList
+        , TestLabel "LPE"             testLPEList
+        , TestLabel "LPEPar"          testLPEParList
+        , TestLabel "LPEHide"         testLPEHideList
+        , TestLabel "PreGNFEnable"       testPreGNFEnableList
     ]
 
 main :: IO ()

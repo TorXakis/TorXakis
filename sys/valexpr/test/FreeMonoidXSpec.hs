@@ -6,15 +6,15 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE MonoLocalBinds             #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 module FreeMonoidXSpec where
 
 import           Data.AEq        (AEq, (~==))
 import           Data.Foldable
 import           Data.List
-import           Data.Monoid     hiding (Product (..))
 import           Data.Proxy
+import           Data.Semigroup  (Semigroup, (<>))
 import           FreeMonoidX
 import           GHC.Exts
 import           Sum             (SumTerm (..))
@@ -30,9 +30,12 @@ newtype PProduct a = PProduct {getPProduct :: a}
 instance AEq a => Eq (PProduct a) where
     (PProduct x) == (PProduct y) = x ~== y
 
+instance Num a => Semigroup (PProduct a) where
+    (PProduct x) <> (PProduct y) = PProduct $ x * y
+
 instance Num a => Monoid (PProduct a) where
     mempty = PProduct 1
-    (PProduct x) `mappend` (PProduct y) = PProduct $ x * y
+    mappend = (<>)
 
 instance Fractional a => Fractional (PProduct a) where
     fromRational r = PProduct (fromRational r)
@@ -58,8 +61,7 @@ propIntMultipliableFor :: ( Eq (f a), IntMultipliable (f a)
                        => (a  -> f a) -> Proxy a -> Int -> a -> Property
 propIntMultipliableFor f _ n s = multiplyLaw n (f s)
 
-propIntMultipliableForFMX :: ( Eq (f a), IntMultipliable (f a), Ord (f a)
-                             , Monoid (f a), Show (f a))
+propIntMultipliableForFMX :: (Ord (f a), Show (f a))
                           => ([a] -> FreeMonoidX (f a)) -> Proxy a -> Int -> [a]
                           -> Property
 propIntMultipliableForFMX f _ n xs = multiplyLaw n (f xs)
@@ -67,7 +69,7 @@ propIntMultipliableForFMX f _ n xs = multiplyLaw n (f xs)
 
 -- * From list laws and properties
 
-fromListLaw :: (Eq a, IntMultipliable a, Monoid a, Show a, Ord a)
+fromListLaw :: (IntMultipliable a, Monoid a, Semigroup a, Show a, Ord a)
             => [a] -> Property
 fromListLaw xs = fold xs === foldFMX (fromList xs)
 
@@ -84,33 +86,32 @@ nrOfTermsLaw _ xs = nrofDistinctTerms (fromList xs) === length (nub xs)
 
 -- * Monoid laws and properties `FreeMonoidX`
 
-monoidLawEmpty0ForBoP :: (Eq a, Show a, Monoid (FreeMonoidX a))
+monoidLawEmpty0ForBoP :: (Eq a, Show a, Monoid (FreeMonoidX a), Semigroup (FreeMonoidX a))
                      => FreeMonoidX a -> Property
 monoidLawEmpty0ForBoP p = p <> mempty === p
 
-monoidLawEmpty1ForBoP :: (Eq a, Show a, Monoid (FreeMonoidX a))
+monoidLawEmpty1ForBoP :: (Eq a, Show a, Monoid (FreeMonoidX a), Semigroup (FreeMonoidX a))
                      => FreeMonoidX a -> Property
 monoidLawEmpty1ForBoP p = mempty <> p === p
 
-monoidLawMappendForBoP :: (Eq a, Show a, Monoid (FreeMonoidX a))
+monoidLawMappendForBoP :: (Eq a, Show a, Semigroup (FreeMonoidX a))
                        => FreeMonoidX a
                        -> FreeMonoidX a
                        -> FreeMonoidX a
                        -> Property
 monoidLawMappendForBoP p0 p1 p2 = (p0 <> p1) <> p2 === p0 <> (p1 <> p2)
 
-propMonoidEmpty0For :: (Eq (f a), Show (f a), Ord (f a)
+propMonoidEmpty0For :: ( Show (f a), Ord (f a)
                        , Monoid (FreeMonoidX (f a)))
                     => (a -> f a) -> Proxy a -> [a] -> Property
 propMonoidEmpty0For f _ = monoidLawEmpty0ForBoP . fromList . (f <$>)
 
-propMonoidEmpty1For :: (Eq (f a), Show (f a), Ord (f a)
+propMonoidEmpty1For :: ( Show (f a), Ord (f a)
                        , Monoid (FreeMonoidX (f a)))
                     => (a -> f a) -> Proxy a -> [a] -> Property
 propMonoidEmpty1For f _ = monoidLawEmpty1ForBoP . fromList . (f <$>)
 
-propMonoidMappendFor :: (Eq (f a), Show (f a), Ord (f a)
-                        , Monoid (FreeMonoidX (f a)))
+propMonoidMappendFor :: (Show (f a), Ord (f a))
                      => (a -> f a) -> Proxy a -> [a] -> [a] -> [a] -> Property
 propMonoidMappendFor f _ xs ys zs =
     monoidLawMappendForBoP  p0 p1 p2
@@ -121,10 +122,10 @@ propMonoidMappendFor f _ xs ys zs =
 
 -- * Properties of append
 
-propAppendFor :: (Eq (f a), Show (f a), Ord (f a)
+propAppendFor :: ( Show (f a), Ord (f a)
                  , IntMultipliable (f a)
-                 , Monoid (f a)
-                 , Monoid (FreeMonoidX (f a)))
+                 , Semigroup (f a)
+                 , Monoid (f a) )
               => (a -> f a) -> Proxy a ->a -> [a] -> Property
 propAppendFor f _ x xs = foldFMX (append x' p) === x' <> foldFMX p
     where
@@ -134,10 +135,10 @@ propAppendFor f _ x xs = foldFMX (append x' p) === x' <> foldFMX p
 
 -- * Properties of remove
 
-propRemoveFor :: (Eq (f a), Show (f a), Ord (f a)
+propRemoveFor :: ( Show (f a), Ord (f a)
                  , IntMultipliable (f a)
-                 , Monoid (f a)
-                 , Monoid (FreeMonoidX (f a)))
+                 , Semigroup (f a)
+                 , Monoid (f a) )
               => (a -> f a) -> Proxy a -> a -> [a] -> Property
 propRemoveFor f _ x xs =
     foldFMX (remove x' p) ===  ((-1 :: Int) <.> x') <> foldFMX p

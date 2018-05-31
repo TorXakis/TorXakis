@@ -6,7 +6,6 @@ See LICENSE at root directory of this repository.
 
 -- ----------------------------------------------------------------------------------------- --
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module Eval
 
 -- ----------------------------------------------------------------------------------------- --
@@ -217,8 +216,8 @@ eval' (Vat s p) = do
         Right x           -> return $ Left $ "at: not a string " ++ show x
         Left t            -> return $ Left $ "at: not a string value " ++ show t
 
-eval' (Vconcat vexprs) = do
-    ms <- mapM eval vexprs
+eval' (Vconcat vexprs') = do
+    ms <- mapM eval vexprs'
     case partitionEithers ms of
         ([], vs) ->  let vs' = map (\(Cstring s) -> s) vs in 
                         return $ Right $ Cstring (T.concat vs')
@@ -262,8 +261,8 @@ eval' (Vpredef kd fid vexps) =
                                                 )
                                                 ( \ec -> return ((uid, Nothing), show (ec::ErrorCall)))
                                             case vexp' of
-                                                Just exp -> eval exp
-                                                Nothing  -> return $ Left $ "eval: ASF\nvexpr: " ++ show s ++ "\nsignatures: " ++ show sigs ++ "\nerror: " ++ e
+                                                Just exp' -> eval exp'
+                                                Nothing   -> return $ Left $ "eval: ASF\nvexpr: " ++ show s ++ "\nsignatures: " ++ show sigs ++ "\nerror: " ++ e
                                 Left t  -> return $ Left t
                 _      -> return $ Left "eval: ASF" 
        AXT -> case vexps of

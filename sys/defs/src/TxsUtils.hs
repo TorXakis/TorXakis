@@ -217,3 +217,7 @@ instance UsedFids (ValExprView VarId)
 instance (UsedFids t) => UsedFids [t]
   where
     usedFids  =  concatMap usedFids
+
+instance (UsedFids t) => UsedFids (Set.Set t)
+  where
+    usedFids  =  concatMap usedFids . Set.toList

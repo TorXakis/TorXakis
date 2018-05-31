@@ -100,7 +100,7 @@ toBExpr mm (Par _ sOn be0 be1) = do
                 return $ nub . Map.elems $ usedChIdMap mm
             OnlyOn crfs ->
                 traverse (lookupChId mm) (getLoc <$> crfs)
-    return $ parallel (chanIdExit:cIds) [be0', be1']
+    return $ parallel (Set.fromList $ chanIdExit:cIds) [be0', be1']
 toBExpr mm (Enable _ be0 (Accept _ ofrs be1)) = do
     be0'  <- toBExpr mm be0
     eSids <- exitSortIds <$> exitSort mm be0
@@ -131,7 +131,7 @@ toBExpr mm (Interrupt _ be0 be1) = do
 toBExpr mm (Choice _ be0 be1) = do
     be0' <- toBExpr mm be0
     be1' <- toBExpr mm be1
-    return $ choice [be0', be1']
+    return $ choice (Set.fromList [be0', be1'])
 toBExpr mm (Guard g be) = do
     g'  <- liftEither $ expDeclToValExpr mm sortIdBool g
     be' <- toBExpr mm be
@@ -139,7 +139,7 @@ toBExpr mm (Guard g be) = do
 toBExpr mm (Hide _ cds be) = do
     chNameChIds <- traverse (mm .@) (getLoc <$> cds) :: CompilerM [ChanId]
     be' <- toBExpr mm be
-    return $ hide chNameChIds be'
+    return $ hide (Set.fromList chNameChIds) be'
 
 vpair :: ( MapsTo (Loc VarDeclE) VarId mm
          , MapsTo FuncId (FuncDef VarId) mm
