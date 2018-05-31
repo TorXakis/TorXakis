@@ -241,6 +241,7 @@ checkActions :: Int -> BS.ByteString -> IO Int
 checkActions steps bs = do
     let Just jsonBs  = BS.stripPrefix "data:" bs
         Just jsonObj = decodeStrict jsonBs
+    print bs
     case parseMaybe parseTag jsonObj of
         Just "AnAction" -> return $ steps + 1
         _               -> return steps

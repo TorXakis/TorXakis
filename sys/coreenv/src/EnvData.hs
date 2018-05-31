@@ -57,7 +57,7 @@ data Msg     =   TXS_CORE_SYSTEM_ERROR     { s :: String }
                | TXS_CORE_OK               { s :: String }
                | TXS_CORE_NOK              { s :: String }
                | TXS_CORE_ANY              { s :: String }
-               | AnAction                  { act :: Action } -- ^ An action was performed.
+               | AnAction                  { step :: Int, act :: Action } -- ^ An action was performed.
      deriving (Eq,Ord,Read,Show,Generic)
 
 instance ToJSON Msg
@@ -65,9 +65,8 @@ instance FromJSON Msg
 
 instance TxsShow.PShow Msg
   where
-    pshow (AnAction a) = TxsShow.pshow a
-    pshow x            = s x
-
+    pshow (AnAction stp a) = TxsShow.showN stp 6 ++ ": " ++ TxsShow.pshow a
+    pshow x                = s x
 
 -- ----------------------------------------------------------------------------------------- --
 --

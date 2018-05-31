@@ -68,7 +68,7 @@ stepN depth step =
                        IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no step with quiescence" ]
                        return TxsDDefs.NoVerdict
                   Just act@(TxsDDefs.Act acts) -> do
-                       IOC.putMsgs [ EnvData.AnAction act ]
+                       IOC.putMsgs [ EnvData.AnAction step act ]
                        envb           <- filterEnvCtoEnvB
                        (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
                        writeEnvBtoEnvC envb'
@@ -103,7 +103,7 @@ stepA act = do
                 curState = IOC.curstate envSt
                 nexState = IOC.maxstate envSt + 1
                 modSts   = fromMaybe [] (Map.lookup curState (IOC.modstss envSt))
-            IOC.putMsgs [ EnvData.AnAction act' ]
+            IOC.putMsgs [ EnvData.AnAction 1 act' ]
             envb           <- filterEnvCtoEnvB
             (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
             writeEnvBtoEnvC envb'
