@@ -12,7 +12,8 @@ dependencies:
 ghc-options:
 - -Werror
 - -Wall
-- -O  
+- -O
+- -fconstraint-solver-iterations=10
 
 library:
   source-dirs: src

@@ -302,7 +302,6 @@ valdefsParser :: ( MapsTo Text SortId mm
 valdefsParser mm unid str = do
     ls     <-  liftEither $ parse 0 "" str letVarDeclsP
     setUnid unid
-    unid'  <- getUnid
     let
         -- We cannot refer to a variable previously declared
         lsVDs :: Map Text (Loc VarDeclE)
@@ -324,4 +323,60 @@ valdefsParser mm unid str = do
     lVIds  <- mkVarIds (lVSIds <.+> mm') ls
     vEnv   <- liftEither $
         parValDeclToMap (lVSIds <.+> (lVIds <.++> mm')) ls
+    unid'  <- getUnid
     return (unid', vEnv)
+
+-- TODO: place this in the appropriate module.
+-- PROBLEM! The Sigs do not contain a FuncId!
+-- sigsToFuncDefs :: Sigs -> Map FuncId (FuncDef VarId)
+-- sigsToFuncDefs = undefined
+
+vexprParser :: Map Text SortId               -- ^ Sorts available to the expression (to be parsed).
+            -> Map FuncId (FuncDef VarId)    -- ^ Functions available to the expression.
+            -> Int                           -- ^ Last used unique identifier.
+            -> [VarId]                       -- ^ Local free variables.
+            -> Map.Map VarId (ValExpr VarId) -- ^ Local value environment.
+            -> String                        -- ^ String to parse.
+            -> CompilerM (Int, ValExpr VarId)
+vexprParser sIds fDefs unid vs vEnv str = do
+    eDecl <- liftEither $ parse 0 "" str valExpP
+    setUnid unid
+    let
+        allVars :: [VarId]
+        allVars = vs ++ Map.keys vEnv
+        allFIds :: [FuncId]
+        allFIds = Map.keys fDefs
+        fIds :: Map (Loc FuncDeclE) FuncId
+        fIds = Map.fromList $ zip (fIdToPredefLoc <$> allFIds) allFIds
+        eVDs :: Map Text (Loc VarDeclE)
+        eVDs = undefined
+        eFDs :: Map Text [Loc FuncDeclE]
+        eFDs = undefined
+        -- | SortIds of the pre-existing variables
+        vSIdsPre :: Map (Loc VarDeclE) SortId
+        vSIdsPre = undefined allVars
+    vRefs <- Map.fromList <$>
+        mapRefToDecls (eVDs :& eFDs) eDecl
+    let
+        mm =  sIds     -- MapsTo Text SortId mm
+           :& fDefs    -- MapsTo FuncId (FuncDef VarId) mm
+           :& fIds     -- MapsTo (Loc FuncDeclE) FuncId mm
+           :& vRefs    -- MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+           :& vSIdsPre -- MapsTo (Loc VarDeclE) SortId
+            -- TODO: if we change HasTypedVars to DefinesAMap then we don't
+            -- need the dummy maps below.
+           :& (Map.empty :: Map ProcId ())
+           :& (Map.empty :: Map (Loc ChanDeclE) ChanId)
+           :& (Map.empty :: Map (Loc ChanRefE) (Loc ChanDeclE))
+    vSIds <- Map.fromList <$> inferVarTypes mm eDecl
+    vIds  <- Map.fromList <$> mkVarIds (vSIds <.+> mm) eDecl
+    let
+        mm' =  (vSIds <.+> mm)
+            :& vIds  -- MapsTo (Loc VarDeclE) VarId mm
+    sId   <- liftEither $ inferExpTypes mm' eDecl >>= getUniqueElement
+    vExp  <- liftEither $ expDeclToValExpr mm' sId eDecl
+    unid' <- getUnid
+    return (unid', vExp)
+
+fIdToPredefLoc :: FuncId -> Loc FuncDeclE
+fIdToPredefLoc = undefined

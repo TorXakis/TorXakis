@@ -144,7 +144,7 @@ inferVarDeclType mm vd = left (,vd) $
 inferExpTypes :: ( MapsTo Text SortId mm
                  , MapsTo (Loc VarDeclE) SortId mm
                  , MapsTo (Loc FuncDeclE) FuncId mm
-                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
+                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
               => mm
               -> ExpDecl
               -> Either Error [SortId]
@@ -242,7 +242,7 @@ class HasTypedVars e where
                      , MapsTo (Loc ChanDeclE) ChanId mm
                      , MapsTo (Loc VarDeclE) SortId mm
                      , MapsTo (Loc FuncDeclE) FuncId mm
-                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                      , MapsTo ProcId () mm )
                   => mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
 
