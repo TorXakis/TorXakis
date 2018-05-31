@@ -19,6 +19,7 @@ import           System.Console.Docopt      (Docopt, docopt, getArg, longOption,
 import           System.Environment         (getArgs)
 import           System.Process             (StdStream (NoStream), proc,
                                              std_out, withCreateProcess)
+-- import           System.Process             (proc, withCreateProcess)
 
 import           TorXakis.CLI
 import qualified TorXakis.CLI.Log           as Log

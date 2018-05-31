@@ -204,13 +204,23 @@ spec = return $ do
                                               stt `shouldBe` startTime2
                                               stp `shouldNotSatisfy` Prelude.null
                                               d   `shouldNotSatisfy` Prelude.null
-
-            -- it "Starts tester and tests 3 steps" $ do
-            --     sId <- mkNewSession
-            --     _ <- put (newSessionUrl sid) [partFile "Point.txs" "../../examps/Point/Point.txs"]
-            --     _ <- checkSuccess <$> post host ++ "/tester/start/1/Model" emptyP
-            --     _ <- checkSuccess <$> post host ++ "/tester/test/1/3" emptyP
-            --     checkJSON    <$> get host ++ "/sessions/sse/1/messages"
+        describe "Eval" $
+            it "Evaluates correctly" $ do
+                sId <- mkNewSession
+                _ <- put (newSessionUrl sId) [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                _ <- post (valsUrl sId) [partText "i" "x = 42"]
+                _ <- post (valsUrl sId) [partText "i" "y = 5"]
+                r <- post (evalUrl sId) [partText "expr" "LET z = 7 IN x*y+5+z NI"]
+                r ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                r ^. responseBody `shouldBe` "222"
+                _ <- post (varsUrl sId) [partText "i" "t :: Int"]
+                r2 <- post (evalUrl sId) [partText "expr" "IF t == t THEN 4 ELSE t FI"]
+                r2 ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                r2 ^. responseBody `shouldBe` "4"
+                _ <- post (varsUrl sId) [partText "i" "s :: String"]
+                r3 <- post (evalUrl sId) [partText "expr" "len (s) < 0"]
+                r3 ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                r3 ^. responseBody `shouldBe` "False"
 
 check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
@@ -273,6 +283,15 @@ openMessagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages/open"
 
 timerUrl :: Integer -> String -> String
 timerUrl sId nm = Prelude.concat [host, "/sessions/", show sId, "/timers/", nm]
+
+valsUrl :: Integer -> String
+valsUrl sId = Prelude.concat [host, "/sessions/", show sId, "/vals"]
+
+varsUrl :: Integer -> String
+varsUrl sId = Prelude.concat [host, "/sessions/", show sId, "/vars"]
+
+evalUrl :: Integer -> String
+evalUrl sId = Prelude.concat [host, "/sessions/", show sId, "/eval"]
 
 emptyP :: [Part]
 emptyP = [partText "" ""]

@@ -21,9 +21,9 @@ import           Control.Arrow                    ((|||))
 import           Control.Concurrent               (newChan, readChan,
                                                    threadDelay)
 import           Control.Concurrent.Async         (async, cancel)
-import           Control.Lens                     ((^.))
 import           Control.Monad                    (forever, when)
-import           Control.Monad.Except             (MonadError, runExceptT)
+import           Control.Monad.Except             (MonadError, runExceptT,
+                                                   throwError)
 import           Control.Monad.IO.Class           (MonadIO, liftIO)
 import           Control.Monad.Reader             (MonadReader, ReaderT, ask,
                                                    asks, runReaderT)
@@ -36,6 +36,7 @@ import           Data.Either.Utils                (maybeToEither)
 import           Data.Foldable                    (traverse_)
 import           Data.String.Utils                (strip)
 import qualified Data.Text                        as T
+import           Lens.Micro                       ((^.))
 import           System.Console.Haskeline
 import           System.Console.Haskeline.History (addHistoryRemovingAllDupes)
 import           System.Directory                 (getHomeDirectory)
@@ -126,12 +127,17 @@ startCLI = do
             "delay"   -> waitFor $ head rest
             "i"       -> lift (runExceptT info) >>= output
             "info"    -> lift (runExceptT info) >>= output
-            "time"    -> lift (runExceptT getTime) >>= output
-            "timer"   -> lift (runExceptT $ timer rest) >>= output
             "l"       -> lift (load rest) >>= output
             "load"    -> lift (load rest) >>= output -- TODO: this will break if the file names contain a space.
+            "param"   -> lift (runExceptT $ param rest) >>= output
             "stepper" -> subStepper rest >>= output
             "step"    -> subStep rest >>= output
+            "time"    -> lift (runExceptT getTime) >>= output
+            "timer"   -> lift (runExceptT $ timer rest) >>= output
+            "val"     -> lift (runExceptT $ val rest) >>= output
+            "var"     -> lift (runExceptT $ var rest) >>= output
+            "eval"    -> lift (runExceptT $ eval rest) >>= output
+            "seed"    -> lift (runExceptT $ seed rest) >>= output
             _         -> output $ "Unknown command: " ++ cmd
           where
             waitFor :: String -> InputT CLIM ()
@@ -149,6 +155,28 @@ startCLI = do
                   => [String] -> m String
             timer [nm] = callTimer nm
             timer _    = return "Usage: timer <timer name>"
+            param :: (MonadIO m, MonadReader Env m, MonadError String m)
+                  => [String] -> m String
+            param []    = getAllParams
+            param [p]   = getParam p
+            param [p,v] = setParam p v
+            param _     = return "Usage: param [ <parameter> [<value>] ]"
+            val :: (MonadIO m, MonadReader Env m, MonadError String m)
+                => [String] -> m String
+            val [] = getVals
+            val t  = createVal $ unwords t
+            var :: (MonadIO m, MonadReader Env m, MonadError String m)
+                => [String] -> m String
+            var [] = getVars
+            var t  = createVar $ unwords t
+            eval :: (MonadIO m, MonadReader Env m, MonadError String m)
+                => [String] -> m String
+            eval t = evaluate $ unwords t
+            seed :: (MonadIO m, MonadReader Env m, MonadError String m)
+                 => [String] -> m ()
+            seed [s] = setSeed s
+            seed _   = throwError "Usage: seed <n>"
+
     asTxsMsg :: BS.ByteString -> Either String Msg
     asTxsMsg msg = do
         msgData <- maybeToEither dataErr $

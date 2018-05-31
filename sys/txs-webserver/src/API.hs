@@ -22,6 +22,7 @@ import           Endpoints.Messages          (CloseMessagesEP, MessagesEP,
                                               OpenMessagesEP, closeMessages,
                                               messages, openMessages)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
+import           Endpoints.Params            (ParamsAPI, paramsServer)
 import           Endpoints.Parse             (ParseActionEP, parseAction)
 import           Endpoints.Stepper           (SetStepperEP, StartStepperEP,
                                               StepEP, setStep, startStep, step)
@@ -30,6 +31,10 @@ import           Endpoints.Tester            (StartTesterEP, TestNStepsEP,
 import           Endpoints.Time              (TimeEP, getTime)
 import           Endpoints.Timer             (TimerEP, timer)
 import           Endpoints.Upload            (UploadEP, upload)
+import           Endpoints.Vals              (ValsAPI, valsServer)
+import           Endpoints.Vars              (VarsAPI, varsServer)
+import           Endpoints.Eval              (EvalEP, eval)
+import           Endpoints.Seed              (SeedEP, setSeed)
 
 type API = ServiceAPI
 type ServiceAPI
@@ -37,6 +42,7 @@ type ServiceAPI
     :<|> TimeEP
     :<|> NewSessionEP
     :<|> TimerEP
+    :<|> ParamsAPI
     :<|> UploadEP
     :<|> SetStepperEP
     :<|> StartStepperEP
@@ -47,6 +53,10 @@ type ServiceAPI
     :<|> OpenMessagesEP
     :<|> CloseMessagesEP
     :<|> MessagesEP
+    :<|> ValsAPI
+    :<|> VarsAPI
+    :<|> EvalEP
+    :<|> SeedEP
     :<|> TestPageAPI
 
 type TestPageAPI = "test" :> Raw
@@ -69,6 +79,7 @@ server env
     :<|> getTime
     :<|> newSrvSession env
     :<|> timer env
+    :<|> paramsServer env
     :<|> upload env
     :<|> setStep env
     :<|> startStep env
@@ -79,4 +90,8 @@ server env
     :<|> openMessages env
     :<|> closeMessages env
     :<|> messages env
+    :<|> valsServer env
+    :<|> varsServer env
+    :<|> eval env
+    :<|> setSeed env
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"

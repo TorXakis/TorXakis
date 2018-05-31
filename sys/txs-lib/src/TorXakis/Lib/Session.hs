@@ -26,7 +26,12 @@ import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
 import           EnvCore                       (EnvC, initEnvC)
 import           EnvData                       (Msg)
+import           ParamCore                     (Params)
 import           TxsDDefs                      (Action, Verdict)
+import           TxsDefs                       (VEnv)
+import           VarId                         (VarId)
+
+import           TorXakis.Lib.SessionParams
 
 newtype ToWorldMapping = ToWorldMapping
     { -- Send some data to the external world, getting some action as a response
@@ -46,8 +51,9 @@ makeLenses ''WorldConnDef
 -- TODO: '_tdefs' '_sigs', and '_wConnDef' should be placed in a data structure
 -- having a name like 'SessionEnv', since they won't change once a 'TorXakis'
 -- file is compiled.
-newtype SessionSt = SessionSt
-    { _envCore :: EnvC
+data SessionSt = SessionSt
+    { _envCore       :: EnvC
+    , _sessionParams :: Params
     } deriving (Generic, NFData)
 
 makeLenses ''SessionSt
@@ -62,10 +68,12 @@ data Session = Session
     , _wConnDef       :: WorldConnDef
     , _worldListeners :: [ThreadId]
     , _timers         :: TVar (Map.Map String UTCTime)
+    , _locVars        :: TVar [VarId] -- ^ local free variables
+    , _locValEnv      :: TVar VEnv    -- ^ local value environment
     }
 
 makeLenses ''Session
 
 -- * Session state manipulation
 emptySessionState :: SessionSt
-emptySessionState = SessionSt initEnvC
+emptySessionState = SessionSt initEnvC initSessionParams

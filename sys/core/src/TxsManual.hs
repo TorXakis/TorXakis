@@ -63,19 +63,18 @@ where
 
 import           Control.Monad.State
 
-
 import           Data.Maybe
 import           System.Random
 
 import CoreUtils
 
 -- import from coreenv
-import qualified EnvCore             as IOC
+import qualified EnvCore       as IOC
 import qualified EnvData
 
 -- import from defs
-import qualified TxsDefs             as D
-import qualified TxsDDefs            as DD
+import qualified TxsDDefs      as DD
+import qualified TxsDefs       as D
 import qualified TxsShow
 
 

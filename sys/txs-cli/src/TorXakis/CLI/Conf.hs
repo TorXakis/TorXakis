@@ -10,8 +10,8 @@ module TorXakis.CLI.Conf
     (defaultConf, prompt)
 where
 
-import           Control.Lens.TH (makeLenses)
-import           Data.Data       (Data)
+import           Data.Data     (Data)
+import           Lens.Micro.TH (makeLenses)
 
 data Conf = Conf
     { -- |  Preferred prompt

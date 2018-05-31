@@ -41,13 +41,14 @@ library:
   source-dirs: src
   dependencies:
   - aeson
-  - lens-aeson
   - base
   - bytestring
   - exceptions
   - filepath
   - haskeline
-  - lens
+  - microlens
+  - microlens-aeson
+  - microlens-th
   - mtl
   - safe-exceptions
   - text
