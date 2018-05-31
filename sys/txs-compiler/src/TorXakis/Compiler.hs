@@ -23,10 +23,11 @@ import           ChanId                             (ChanId)
 import           CstrId                             (CstrId)
 import           FuncDef                            (FuncDef (FuncDef))
 import           FuncId                             (FuncId (FuncId), name)
+import qualified FuncId
 import           FuncTable                          (FuncTable,
                                                      Signature (Signature),
                                                      toMap)
-import           Id                                 (Id (Id))
+import           Id                                 (Id (Id), _id)
 import           Sigs                               (Sigs, chan, func, pro,
                                                      uniqueCombine)
 import qualified Sigs                               (empty)
@@ -43,7 +44,8 @@ import qualified TxsDefs                            (empty)
 import           ValExpr                            (ValExpr,
                                                      ValExprView (Vfunc, Vite),
                                                      cstrITE, cstrVar, view)
-import           VarId                              (VarId)
+import           VarId                              (VarId, varsort)
+import qualified VarId
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.ChanId
@@ -309,7 +311,7 @@ valdefsParser mm unid str = do
         lsFDs :: Map Text [Loc FuncDeclE]
         lsFDs = Map.fromListWith (++) [(k, [v]) | (k, v) <- lsFIds]
         lsFIds :: [(Text, Loc FuncDeclE)]
-        lsFIds = fmap (first name . swap) . Map.toList . innerMap $ mm
+        lsFIds = fmap (first FuncId.name . swap) . Map.toList . innerMap $ mm
     lsVRs  <- Map.fromList <$>
         mapRefToDecls (lsVDs :& lsFDs) (varDeclExp <$> ls)
     let
@@ -325,6 +327,11 @@ valdefsParser mm unid str = do
         parValDeclToMap (lVSIds <.+> (lVIds <.++> mm')) ls
     unid'  <- getUnid
     return (unid', vEnv)
+
+
+mkFuncDecls :: [FuncId] -> Map Text [Loc FuncDeclE]
+mkFuncDecls fs = Map.fromListWith (++) $ zip (FuncId.name <$> fs)
+                                             (pure . fIdToLoc <$> fs)
 
 -- TODO: place this in the appropriate module.
 -- PROBLEM! The Sigs do not contain a FuncId!
@@ -347,14 +354,14 @@ vexprParser sIds fDefs unid vs vEnv str = do
         allFIds :: [FuncId]
         allFIds = Map.keys fDefs
         fIds :: Map (Loc FuncDeclE) FuncId
-        fIds = Map.fromList $ zip (fIdToPredefLoc <$> allFIds) allFIds
+        fIds = Map.fromList $ zip (fIdToLoc <$> allFIds) allFIds
         eVDs :: Map Text (Loc VarDeclE)
-        eVDs = undefined
+        eVDs = Map.fromList $ zip (VarId.name <$> allVars) (varIdToLoc <$> allVars)
         eFDs :: Map Text [Loc FuncDeclE]
-        eFDs = undefined
+        eFDs = mkFuncDecls allFIds
         -- | SortIds of the pre-existing variables
         vSIdsPre :: Map (Loc VarDeclE) SortId
-        vSIdsPre = undefined allVars
+        vSIdsPre = Map.fromList $ zip (varIdToLoc <$> allVars) (varsort <$> allVars)
     vRefs <- Map.fromList <$>
         mapRefToDecls (eVDs :& eFDs) eDecl
     let
@@ -378,5 +385,8 @@ vexprParser sIds fDefs unid vs vEnv str = do
     unid' <- getUnid
     return (unid', vExp)
 
-fIdToPredefLoc :: FuncId -> Loc FuncDeclE
-fIdToPredefLoc = undefined
+fIdToLoc :: FuncId -> Loc FuncDeclE
+fIdToLoc fId = PredefLoc (FuncId.name fId) (_id . FuncId.unid $ fId)
+
+varIdToLoc :: VarId -> Loc VarDeclE
+varIdToLoc vId = PredefLoc (VarId.name vId) (_id . VarId.unid $ vId)
