@@ -44,7 +44,8 @@ library
   build-tools:          happy
                       , alex
 
-  build-depends:        array
+  build-depends:        aeson
+                      , array
                       , base
                       , containers
                       , deepseq

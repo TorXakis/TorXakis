@@ -1,0 +1,99 @@
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+
+name: txs-webserver
+version: 0.2.0.0
+github: "TorXakis/TorXakis"
+license: BSD3
+author:
+- "Kerem Ispirli"
+- "Damian Nadales"
+maintainer:
+- "kerem.ispirli@tno.nl"
+- "damian.nadales@gmail.com"
+copyright: "Copyright: (c) 2018 TorXakis"
+
+extra-source-files:
+- README.md
+- license.txt
+
+synopsis: Web server for interface to the `TorXakis` parser and core.
+
+default-extensions:
+- DataKinds
+- TypeOperators
+
+dependencies:
+- base >= 4.7 && < 5
+- async
+  
+ghc-options:
+- -O2
+- -optc-O3
+- -Werror
+- -Wall
+
+library:
+  source-dirs: src
+  dependencies:
+  - aeson
+  - binary
+  - bytestring
+  - conduit
+  - containers
+  - http-types
+  - microlens
+  - mtl
+  - servant-multipart
+  - servant-server >= 0.12
+  - servant-swagger
+  - stm-conduit
+  - swagger2
+  - stm
+  - text
+  - wai
+  - wai-cors
+  - wai-extra  
+  - warp
+  # `TorXakis` dependencies.
+  - coreenv
+  - txs-lib
+  - defs
+
+executables:
+  txs-webserver:
+    main: Main.hs
+    source-dirs:
+    - app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - base
+    - txs-webserver
+    - docopt
+    - MissingH
+
+tests:
+  txs-webserver-test:
+    main: Spec.hs
+    source-dirs:
+    - test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - aeson
+    - base
+    - bytestring
+    - hspec
+    - http-client
+    - microlens-aeson
+    - microlens
+    - process
+    - wreq
+    # TorXakis dependencies.
+    - txs-lib

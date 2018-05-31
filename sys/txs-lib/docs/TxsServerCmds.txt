@@ -1,0 +1,99 @@
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+
+
+-- ------------------------------------------------------------------------------------------ --
+-- structure for TxsServer Commands
+
+
+-- Start TxsServer :  call txsserver.exe <PrtNr>
+
+
+data TxsServerCmd
+  =  
+       NewSession StartTXS/Session
+       KillSession QuitTXS/Session                     -- quit txsserver.exe
+
+     | Load      filename     :: String                -- load <filename>.txs with TXS defs
+     | UnLoad    filename     :: String                -- unload <filename>.txs with TXS defs
+     | Add       defstxt      :: String                -- add TXS defs manually
+     | Remove    defsname     :: String                -- remove TXS <defsname> defs manually
+
+     | Info                                            -- give info about current TorXakis
+     | Param       All                                 -- show list of all parameters
+                 | Get      parname      :: String     -- show value of parameter <parname>
+                 | Set      parname      :: String     -- set parameter <parname>
+                            parvalue     :: String     -- to value <parvalue>
+     | Seed      seed         :: Int                   -- set random seed to <seed>
+     | Show        TDef     defname      :: String     -- show TXS def <defname>
+
+     | Var         All                                 -- show all variable declarations
+                 | Get      varname      :: String     -- show type of variable <varname>
+                 | Set      vardeclstxt  :: String     -- add variable declarations
+     | Val       | All                                 -- show all value definitions
+                 | Get      varname      :: String     -- show value of variable <varname>
+                 | Set      valdefstxt   :: String     -- add value definitions
+
+     | Eval      valexprtxt   :: String                -- evaluate value expression
+     | Solve       Sol      valexprtxt   :: String     -- solve boolean value expression
+                 | Uni      valexprtxt   :: String     -- solve uniquely boolean value expr
+                 | Ran      valexprtxt   :: String     -- solve randomly boolean value expr
+
+     | Tester    modelname    :: String                -- start tester with model,
+                 mappername   :: Maybe String          -- mapper (optionally),
+                 cnectname    :: String                -- and cnect
+     | Simulator modelname    :: String                -- start simulator with model
+                 mappername   :: Maybe String          -- mapper (optionally),
+                 cnectname    :: String                -- and cnect
+     | Stepper     Model    modelname    :: String     -- start stepper with model
+--               | Mapper   mappername   :: String     -- start stepper with mapper
+--               | Purp     purpname     :: String     -- start stepper with goal <goalname>
+--                          goalname     :: String     -- of purpose <purpname>
+--               | Proc     procname     :: String     -- start stepper with process
+     | Learner   modelname    :: String                -- start learner with model, 
+                 mappername   :: Maybe String          -- mapper (optionally), 
+                 cnectname    :: String                -- and cnect
+
+     | Test        Observe                             -- make a test observation (output)
+                 | Action   actiontxt    :: String     -- make a test step <action> (input)
+                 | Run      nrsteps      :: Maybe Int  -- make <nrsteps>/[unbounded] test steps 
+                 | Purp     purpname     :: String     -- do tests guided by <purpose>
+                            nrsteps      :: Maybe Int  -- with max <nrsteps> steps per test
+                            nrtests      :: Maybe Int  -- and max <nrtests> tests
+     | Sim         Observe                             -- make environment observation (input)
+                 | Action   actiontxt    :: String     -- make simulation step <action> (output)
+                 | Run      nrsteps      :: Maybe Int  -- make <nrsteps>/[unbounded] sim steps
+
+     | Step        Action   actiontxt    :: String     -- make step <action> in stepping object
+                 | Run      nrsteps      :: Maybe Int  -- make <nrsteps>/[unbounded] steps
+                 | GoTo     statenr      :: Int        -- go to state <statenr>
+                 | GoInit                              -- go to initial state
+                 | GoBack   nrsteps      :: Maybe Int  -- go back <nrsteps>/[1] steps
+                 | Tree     statenr      :: Maybe Int  -- show action tree from <statenr>/[init]
+
+     | StateNr                                         -- show current state number
+     | State                                           -- show current state
+     | Menu        All                                 -- show menu of possible actions
+                 | In                                  -- show menu of possible input actions
+                 | Out                                 -- show menu of possible output actions
+     | Trace       Show                                -- show current trace from initial state
+                 | ToProc                              -- generate process from current trace
+                 | ToPurp                              -- generate purpose from current trace
+
+     | EWorld      Start                               -- start external world (sut or env)
+                 | Stop                                -- stop external world (sut or env)
+                 | Put      actiontxt    :: String     -- send <action> to external world
+                 | Get                                 -- receive action from external world
+
+     | Transform   Lpe      lpeargtxt    :: String     -- transform to LPE
+
+     | TestSel     Ncomp    ncargtxt     :: String     -- generate purpose with N-Complete
+
+     | Stop        All                                 -- stop all: go to Idled
+                 | Doing                               -- stop Testing,..: go to Inited
+                 | Running                             -- stop running test,..: go to Tested,..
+
+
+-- ------------------------------------------------------------------------------------------ --
+

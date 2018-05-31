@@ -10,14 +10,14 @@ See LICENSE at root directory of this repository.
 module Step
 
 -- ----------------------------------------------------------------------------------------- --
--- 
+--
 -- Visibly stepping through an STS
 --
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
 ( stepN            -- :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
-, stepA            -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict 
+, stepA            -- :: TxsDDefs.Action -> IOC.IOC TxsDDefs.Verdict
 , stepModelMenuIn  -- :: IOC.IOC BTree.Menu
 , stepModelMenuOut -- :: IOC.IOC BTree.Menu
 )
@@ -27,18 +27,17 @@ module Step
 
 where
 
-import Control.Monad.State
-import qualified Data.Map  as Map
-import Data.Maybe
+import           Control.Monad.State
+import qualified Data.Map            as Map
+import           Data.Maybe
 
-import CoreUtils
-import qualified EnvCore   as IOC
-import qualified EnvData
-import qualified TxsDefs
-import qualified TxsDDefs
-import qualified TxsShow
 import qualified Behave
 import qualified BTree
+import           CoreUtils
+import qualified EnvCore             as IOC
+import qualified EnvData
+import qualified TxsDDefs
+import qualified TxsDefs
 import qualified Utils
 
 -- ----------------------------------------------------------------------------------------- --
@@ -69,8 +68,7 @@ stepN depth step =
                        IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no step with quiescence" ]
                        return TxsDDefs.NoVerdict
                   Just act@(TxsDDefs.Act acts) -> do
-                       IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                                     $ TxsShow.showN step 6 ++ ": " ++ TxsShow.fshow act ]
+                       IOC.putMsgs [ EnvData.AnAction act ]
                        envb           <- filterEnvCtoEnvB
                        (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
                        writeEnvBtoEnvC envb'
@@ -83,7 +81,7 @@ stepN depth step =
                                 { IOC.modstss  = Map.insert nexState bt' (IOC.modstss stEnvc) }
                               nextBehTrie act
                               stepN (depth-1) (step+1)
-                        
+
             _ -> do
                 IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "Stepping not in Stepper mode" ]
                 return TxsDDefs.NoVerdict
@@ -105,8 +103,7 @@ stepA act = do
                 curState = IOC.curstate envSt
                 nexState = IOC.maxstate envSt + 1
                 modSts   = fromMaybe [] (Map.lookup curState (IOC.modstss envSt))
-            IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                          $ TxsShow.showN 1 6 ++ ": " ++ TxsShow.fshow act' ]
+            IOC.putMsgs [ EnvData.AnAction act' ]
             envb           <- filterEnvCtoEnvB
             (maybt',envb') <- lift $ runStateT (Behave.behAfterAct allSyncs modSts acts) envb
             writeEnvBtoEnvC envb'

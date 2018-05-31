@@ -3,23 +3,24 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-
+{-# LANGUAGE DeriveGeneric #-}
 -- ----------------------------------------------------------------------------------------- --
 
 module TxsDDefs
 
 where
 
-import qualified Data.Set  as Set
-import           Data.Text (Text)
+import           Data.Aeson             (FromJSON, ToJSON)
+import qualified Data.Set               as Set
+import           Data.Text              (Text)
+import           GHC.Generics           (Generic)
 
 import           Network.TextViaSockets (Connection)
 
-import           ConstDefs (Const)
-import           TxsDefs   (ChanId, VExpr)
+import           ConstDefs              (Const)
+import           TxsDefs                (ChanId, VExpr)
 import           TxsShow
-import           VarId     (VarId)
+import           VarId                  (VarId)
 
 -- ----------------------------------------------------------------------------------------- --
 -- Const  :  values (for now: VExpr)
@@ -27,7 +28,10 @@ import           VarId     (VarId)
 
 data  Action   =  Act     ( Set.Set (ChanId,[Const]) )
                 | ActQui
-     deriving (Eq,Ord,Read,Show)
+     deriving (Eq,Ord,Read,Show,Generic)
+
+instance ToJSON Action
+instance FromJSON Action
 
 -- ----------------------------------------------------------------------------------------- --
 

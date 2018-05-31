@@ -41,6 +41,7 @@ library
   ghc-options:         -Wall -Werror -O2 -optc-O3 -optc-ffast-math
 
   build-depends:        base
+                      , aeson
                       , bytestring
                       , containers
                       , deepseq

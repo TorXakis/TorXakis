@@ -3,37 +3,38 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
-
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleInstances #-}
 -- | TorXakis Core Environment (Internal State) Data Type Definitions.
 module EnvCore
-  ( IOC -- IOC = StateT EnvC IO
-                  -- torxakis core main state monad transformer
-  , EnvC(..)
-  , CoreState(..)
-  , getSMT -- :: String -> IOC SMTData.SmtEnv
-  , putSMT -- :: String -> SMTData.SmtEnv -> IOC ()
-  , getParams -- :: [String] -> IOC [(String,String)]
-  , setParams -- :: [(String,String)] -> IOC [(String,String)]
-  , initUnid -- :: IOC.IOC Int
-  , newUnid -- :: IOC.IOC Int
-  , putMsgs -- :: [EnvData.Msg] -> IOC ()
-  -- * Operation on core-state
-  , modifyCS
-  , putCS
-  , incUnid
-  )
+( IOC -- IOC = StateT EnvC IO
+      -- torxakis core main state monad transformer
+, EnvC(..)
+, initEnvC
+, CoreState(..)
+, getSMT -- :: String -> IOC SMTData.SmtEnv
+, putSMT -- :: String -> SMTData.SmtEnv -> IOC ()
+, getParams -- :: [String] -> IOC [(String,String)]
+, setParams -- :: [(String,String)] -> IOC [(String,String)]
+, initUnid -- :: IOC.IOC Int
+, newUnid -- :: IOC.IOC Int
+, putMsgs -- :: [EnvData.Msg] -> IOC ()
+-- * Operation on core-state
+, modifyCS
+, putCS
+, incUnid
+)
 where
 
+import           Control.DeepSeq     (NFData, rnf)
 import           Control.Monad.State hiding (state)
-
 import qualified Data.Map            as Map
+import           GHC.Generics        (Generic)
 
 
 -- import from local
-import           Config    hiding (setParams)
-import qualified EnvBasic    as EnvB
+import           Config              hiding (setParams)
+import qualified EnvBasic            as EnvB
 import qualified EnvData
 import qualified ParamCore
 
@@ -47,37 +48,42 @@ import qualified TxsDefs
 
 -- import from valexpr
 import           Id
-import qualified VarId               (VarId)
 import           Name
+import qualified VarId               (VarId)
 
 -- import from solve
 import qualified SMTData
+import qualified Solve.Params
 
 -- ----------------------------------------------------------------------------------------- --
 -- IOC :  torxakis core state monad transformer
 
-type  IOC  = StateT EnvC IO
+type IOC = StateT EnvC IO
 
 instance EnvB.EnvB IOC     --  (StateT IOC.EnvC IO)
   where
-     newUnid  =  newUnid
-     putMsgs  =  putMsgs
-     setChanoffers = setChanoffers
-     getChanoffers = getChanoffers
- 
+    newUnid  =  newUnid
+    putMsgs  =  putMsgs
+    setChanoffers = setChanoffers
+    getChanoffers = getChanoffers
 
 data EnvC = EnvC
-  { config :: Config           -- ^ Core configuration.
-  , unid   :: Id               -- ^ Last used unique number.
-  , params :: ParamCore.Params
-  , state  :: CoreState        -- ^ State specific information.
-  }
+    { config :: Config           -- ^ Core configuration.
+    , unid   :: Id               -- ^ Last used unique number.
+    , params :: ParamCore.Params
+    , state  :: CoreState        -- ^ State specific information.
+    } deriving (Generic)
+
+instance NFData EnvC where
+    -- We don't fully evaluate the core state as it contains functions.
+    rnf (EnvC c u p _) =
+        rnf c `seq` rnf u `seq` rnf p `seq` ()
 
 data CoreState = Noning
-             | Initing  { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                        , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs    :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
-                        , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+             | Initing  { smts       :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                        , tdefs      :: TxsDefs.TxsDefs               -- TorXakis definitions
+                        , sigs       :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                        , putmsgs    :: [EnvData.Msg] -> IOC ()       -- (error) reporting
                         , chanoffers :: Map.Map (Name, Int) VarId.VarId    -- substitution for channel offers (LPE translation)
                         }
              | Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
@@ -128,6 +134,11 @@ data CoreState = Noning
                         , chanoffers :: Map.Map (Name, Int) VarId.VarId    -- substitution for channel offers (LPE translation)
                         }
 
+-- | Initial state for the core environment.
+initEnvC :: EnvC
+initEnvC = EnvC defaultConfig (Id 0) initParams Noning
+   where
+     initParams = Map.union ParamCore.initParams Solve.Params.initParams
 
 modifyCS :: (CoreState -> CoreState) -> IOC ()
 modifyCS f  = modify $ \env -> env { state = f (state env) }
@@ -216,14 +227,12 @@ putMsgs msg = do
      putMsgs' <- gets (putmsgs . state)
      putMsgs' msg
 
-
-
 -- ----------------------------------------------------------------------------------------- --
 -- set ChanOffers (needed during LPE translation)
 
 setChanoffers :: Map.Map (Name, Int) VarId.VarId -> IOC ()
-setChanoffers mapping = do 
-    st <- gets state  
+setChanoffers mapping = do
+    st <- gets state
     let state' = st { chanoffers = mapping }
     modify $ \env -> env { state = state' }
 

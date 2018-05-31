@@ -4,6 +4,8 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
 -- | This module defines the options that can be passed to TorXakis.
 module Config
   ( Config (..)
@@ -23,8 +25,10 @@ module Config
   )
 where
 
-import qualified Data.Map       as Map
+import           Control.DeepSeq (NFData)
+import qualified Data.Map        as Map
 import           Data.Monoid
+import           GHC.Generics    (Generic)
 import           System.Process
 
 import           ParamCore
@@ -35,24 +39,24 @@ data SolverConfig = SolverConfig
     execName :: FilePath
     -- | Arguments for to be passed to the smtSolver.
   , smtArgs  :: [String]
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Generic, NFData)
 
 newtype SolverId = SolverId { solverId :: String }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic, NFData)
 
-newtype ParamName = ParamName String deriving (Eq, Ord, Show)
+newtype ParamName = ParamName String deriving (Eq, Ord, Show, Generic, NFData)
 
-newtype ParamValue = ParamValue String deriving (Eq, Ord, Show)
+newtype ParamValue = ParamValue String deriving (Eq, Ord, Show, Generic, NFData)
 
 -- | TorXakis configuration options.
 data Config = Config
   { -- | Log all SMT commands?
-    smtLog           :: Bool
+    smtLog               :: Bool
     -- | Available solvers that can be chosen from.
   , availableSolvers     :: Map.Map SolverId SolverConfig
   , selectedSolver       :: SolverId
   , configuredParameters :: [(ParamName,ParamValue)]
-  } deriving (Eq, Show)
+  } deriving (Eq, Show, Generic, NFData)
 
 changeSolver :: Config -> String -> Config
 changeSolver cfg solver = cfg { selectedSolver = SolverId solver }

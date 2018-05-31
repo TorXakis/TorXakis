@@ -16,8 +16,8 @@ See LICENSE at root directory of this repository.
 -- Core Module TorXakis API:
 -- API for TorXakis core functionality.
 -----------------------------------------------------------------------------
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns      #-}
 module TxsCore
 ( -- * run TorXakis core
   runTxsCore
@@ -61,6 +61,14 @@ module TxsCore
 
   -- ** stop testing, simulating, or stepping
 , txsStop
+
+-- *  Model
+-- ** get current model
+, txsGetCurrentModel
+
+-- *  Signatures
+-- ** get all signatures
+, txsGetSigs
 
   -- *  TorXakis definitions
   -- ** get all torxakis definitions
@@ -170,10 +178,10 @@ import           TxsUtils
 -- import from solve
 import qualified FreeVar
 import qualified SMT
+import qualified SMTData
 import qualified Solve
 import qualified Solve.Params
 import qualified SolveDefs
-import qualified SMTData
 
 -- import from value
 import qualified Eval
@@ -183,10 +191,10 @@ import qualified Eval
 import qualified LPE
 
 -- import from valexpr
+import           ConstDefs
 import qualified SortId
 import qualified SortOf
-import ConstDefs
-import VarId
+import           VarId
 
 -- | TorXakis core main api -- start
 runTxsCore :: Config -> StateT s IOC.IOC a -> s -> IO ()
@@ -272,13 +280,11 @@ txsTermit  =  do
 -- returns txscore to the initialized state.
 -- See 'txsSetTest', 'txsSetSim', and 'txsSetStep', respectively.
 txsStop :: IOC.IOC ()
-txsStop  =  do
-     envc <- get
-     case IOC.state envc of
-       IOC.Noning
-         -> return ()
-       IOC.Initing {}
-         -> return ()
+txsStop = do
+    envc <- get
+    case IOC.state envc of
+       IOC.Noning     -> return ()
+       IOC.Initing {} -> return ()
        _ -> do                                    -- IOC.Testing, IOC.Simuling, IOC.Stepping --
                IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulation/Testing/Stepping stopped" ]
                let st = IOC.state envc
@@ -292,14 +298,36 @@ txsStop  =  do
                                  }
                  }
 
+-- | Get the current model, if any. A model will be returned only in the
+-- 'Testing', 'Simuling', and 'Stepping' modes.
+txsGetCurrentModel :: IOC.IOC (Maybe TxsDefs.ModelDef)
+txsGetCurrentModel = do
+    envc <- get
+    case IOC.state envc of
+        -- Please note that we want to have an *explicit* pattern matching on
+        -- the constructors that have a model definition, since we don't want
+        -- to inadvertently try to access a value that does not have a modeldef
+        -- field if `CoreState` gets extended later on.
+        IOC.Testing  {IOC.modeldef = m} -> return (Just m)
+        IOC.Simuling {IOC.modeldef = m} -> return (Just m)
+        IOC.Stepping {IOC.modeldef = m} -> return (Just m)
+        _                               -> return Nothing
+
+txsGetSigs :: IOC.IOC (Sigs.Sigs VarId.VarId)
+txsGetSigs = do
+    envc <- get
+    return $ case IOC.state envc of
+        IOC.Noning -> Sigs.empty
+        st         -> IOC.sigs st
+
 -- | Get all torxakis definitions
 txsGetTDefs :: IOC.IOC TxsDefs.TxsDefs
 txsGetTDefs  =  do
      envc <- get
      case IOC.state envc of
        IOC.Noning -> return TxsDefs.empty
-       _                             -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
-                  -> return $ IOC.tdefs (IOC.state envc)
+       st                            -- IOC.Initing, IOC.Testing, IOC.Simuling, IOC.Stepping --
+                  -> return $ IOC.tdefs st
 
 -- | Set all torxakis definitions
 txsSetTDefs :: TxsDefs.TxsDefs -> IOC.IOC ()
@@ -358,10 +386,10 @@ txsEval vexp  =  do
                              writeEnvBtoEnvC envb'
                              return wal'
 
--- | Type for solve (@txsSolve, @txsUniSolve, and @txsRanSolve)                             
+-- | Type for solve (@txsSolve, @txsUniSolve, and @txsRanSolve)
 type TxsSolveType = TxsDefs.VExpr                   -- ^ value expression to solve.
                     -> IOC.IOC (TxsDefs.WEnv VarId)
-                        
+
 -- | Find a solution for the provided Boolean value expression.
 --
 --   Only possible when txscore is initialized.

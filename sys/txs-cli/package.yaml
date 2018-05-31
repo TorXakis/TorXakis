@@ -1,0 +1,89 @@
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+
+name: txs-cli
+version: 0.1.0.0
+github: "TorXakis/TorXakis"
+license: BSD3
+author:
+- "Kerem Ispirli"
+- "Damian Nadales Agut"
+maintainer:
+- "kerem.ispirli@tno.nl"
+- "damian.nadales@gmail.com"
+copyright: "Copyright: (c) 2018 TorXakis"
+
+extra-source-files:
+- README.md
+- license.txt
+
+synopsis: TorXakis CLI that uses the web server as backend.
+
+default-extensions: []
+
+dependencies:
+- base >= 4.7 && < 5
+- async
+- MissingH
+  
+ghc-options:
+- -O2
+- -optc-O3
+- -Werror
+- -Wall
+- -Wcompat
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+  dependencies:
+  - aeson
+  - base
+  - bytestring
+  - exceptions
+  - filepath
+  - haskeline
+  - microlens
+  - microlens-aeson
+  - microlens-th
+  - mtl
+  - safe-exceptions
+  - text
+  - wreq
+  - hslogger
+  - http-client
+  - pipes
+  - pipes-aeson
+  - raw-strings-qq
+  - directory
+  - process
+  # TorXakis specific dependencies
+  - defs
+  - coreenv
+  - txs-lib
+  - txs-webserver
+
+executables:
+  # NOTE: once txs-cli is fully functional we might want to rename this to `TorXakis`.
+  ticl:
+    main: Main.hs
+    source-dirs:
+    - app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - aeson
+    - base
+    - bytestring
+    - microlens-aeson
+    - microlens
+    - mtl
+    - process
+    - wreq
+    - docopt
+    - txs-cli

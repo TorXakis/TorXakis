@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 -- Module      :  ConstDefs
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
--- 
+--
 -- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
 -- Stability   :  experimental
 -- Portability :  portable
@@ -22,6 +22,7 @@ module ConstDefs
 where
 
 import           Control.DeepSeq
+import           Data.Aeson      (FromJSON, ToJSON)
 import           Data.Data
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
@@ -42,14 +43,17 @@ data Const = Cbool    { cBool :: Bool }
            | Cany     { sort :: SortId }
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
+instance ToJSON Const
+instance FromJSON Const
+
 -- | Const is Resettable
 instance Resettable Const
 
 -- | Const has a Sort.
 instance SortOf Const where
-  sortOf (Cbool _b)                        = sortIdBool
-  sortOf (Cint _i)                         = sortIdInt
-  sortOf (Cstring _s)                      = sortIdString
-  sortOf (Cregex _r)                       = sortIdRegex
-  sortOf (Cstr (CstrId _nm _uid _ca cs) _) = cs
-  sortOf (Cany s)                          = s
+    sortOf (Cbool _b)                        = sortIdBool
+    sortOf (Cint _i)                         = sortIdInt
+    sortOf (Cstring _s)                      = sortIdString
+    sortOf (Cregex _r)                       = sortIdRegex
+    sortOf (Cstr (CstrId _nm _uid _ca cs) _) = cs
+    sortOf (Cany s)                          = s

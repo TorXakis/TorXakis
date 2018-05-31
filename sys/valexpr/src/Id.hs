@@ -5,6 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -26,6 +27,7 @@ module Id where
 
 import           Control.Applicative
 import           Control.DeepSeq
+import           Data.Aeson          (FromJSON, ToJSON)
 import           Data.Data
 import           Data.Foldable
 import           Data.Map.Strict     (Map)
@@ -36,7 +38,10 @@ import           Data.Text           (Text)
 import           GHC.Generics
 
 newtype Id = Id { _id :: Int }
-    deriving (Eq, Ord, Enum, Num, Read, NFData, Data)
+    deriving (Eq, Ord, Enum, Num, Read, NFData, Data, Generic)
+
+instance ToJSON Id
+instance FromJSON Id
 
 instance Show Id where
     show (Id x) = show x

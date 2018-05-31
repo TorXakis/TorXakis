@@ -4,9 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
--- ----------------------------------------------------------------------------------------- --
-
+{-# LANGUAGE DeriveGeneric #-}
 module EnvData
 
 -- ----------------------------------------------------------------------------------------- --
@@ -25,9 +23,12 @@ module EnvData
 
 where
 
--- import from defs
-import qualified TxsShow
+import           Data.Aeson   (FromJSON, ToJSON)
+import           GHC.Generics (Generic)
 
+-- import from defs
+import           TxsDDefs     (Action)
+import qualified TxsShow
 
 -- ----------------------------------------------------------------------------------------- --
 -- StatNr :  state numbers
@@ -56,13 +57,18 @@ data Msg     =   TXS_CORE_SYSTEM_ERROR     { s :: String }
                | TXS_CORE_OK               { s :: String }
                | TXS_CORE_NOK              { s :: String }
                | TXS_CORE_ANY              { s :: String }
-     deriving (Eq,Ord,Read,Show)
+               | AnAction                  { act :: Action } -- ^ An action was performed.
+     deriving (Eq,Ord,Read,Show,Generic)
+
+instance ToJSON Msg
+instance FromJSON Msg
 
 instance TxsShow.PShow Msg
   where
-    pshow = s
+    pshow (AnAction a) = TxsShow.pshow a
+    pshow x            = s x
 
 
 -- ----------------------------------------------------------------------------------------- --
--- 
+--
 -- ----------------------------------------------------------------------------------------- --
