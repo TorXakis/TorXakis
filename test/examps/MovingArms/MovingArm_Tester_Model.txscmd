@@ -1,4 +1,4 @@
-param param_Sut_deltaTime 20000
+param param_Sut_deltaTime 5000
 param param_Test_inputEager 0
 tester Model Sut
 test 100
