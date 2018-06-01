@@ -3,7 +3,6 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-
 -- |
 module TorXakis.Lib.Common where
 
@@ -11,7 +10,7 @@ import           Control.Concurrent.MVar       (putMVar, takeMVar)
 import           Control.Concurrent.STM.TQueue (writeTQueue)
 import           Control.Concurrent.STM.TVar   (modifyTVar', readTVarIO)
 import           Control.Exception             (SomeException, catch)
-import           Control.Monad.Except          (ExceptT, throwError)
+import           Control.Monad.Except          (ExceptT, runExceptT, throwError)
 import           Control.Monad.State           (lift, runStateT)
 import           Control.Monad.STM             (atomically)
 import           Data.Text                     (Text)
@@ -25,6 +24,12 @@ import           TorXakis.Lib.Session
 
 type Error = Text
 type Response a = Either Error a
+
+success :: Response ()
+success = Right ()
+
+runResponse :: ExceptT Text IO a -> IO (Response a)
+runResponse = runExceptT
 
 -- | Run an IOC action, using the initial state provided at the session, and
 -- modifying the end-state accordingly.

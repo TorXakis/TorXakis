@@ -6,7 +6,11 @@ See LICENSE at root directory of this repository.
 -}
 
 -- | Module for internal functionality of TorXakis wrapper library.
-module TorXakis.Lib.Internal where
+module TorXakis.Lib.Internal
+( putToW
+, getFromW
+)
+where
 
 import           Control.Arrow                ((|||))
 import           Control.Concurrent           (forkIO, threadDelay)
@@ -32,8 +36,8 @@ import           TorXakis.Lib.Session
 --
 -- In case of an 'Action' coming from the world before given action can be put,
 -- given 'Action' will be skipped and received 'Action' will be returned.
-putToW :: TChan Action -> Map ChanId ToWorldMapping -> Action -> IOC Action
-putToW fromWorldCh toWorldMMap act@(Act cs) = do
+putToW :: Int -> TChan Action -> Map ChanId ToWorldMapping -> Action -> IOC Action
+putToW _ fromWorldCh toWorldMMap act@(Act cs) = do
     let (toWorldMapping, constants) = force getWorldMap
         toWFunc = force (toWorldMapping ^. sendToW)
     actIfNothingRead fromWorldCh $
@@ -44,12 +48,14 @@ putToW fromWorldCh toWorldMMap act@(Act cs) = do
   where
     getWorldMap =
         case Set.toList cs of
-            [(cId, xs)] -> case Map.lookup cId toWorldMMap of
-                                Just twm -> (twm, xs)
+            [(cId, cnsts)] -> case Map.lookup cId toWorldMMap of
+                                Just twm -> (twm, cnsts)
                                 Nothing  -> error $ "No mapping to world for ChanId: " ++ fshow cId
             _           -> error $ "No (unique) action: " ++ fshow cs
-putToW fromWorldCh _ ActQui =
-    actIfNothingRead fromWorldCh $ return ActQui
+putToW deltaTime fromWorldCh _ ActQui =
+    actIfNothingRead fromWorldCh $ do
+        threadDelay (deltaTime * milliSecond)
+        return ActQui
 
 actIfNothingRead :: TChan Action -> IO Action -> IOC Action
 actIfNothingRead fromWorldCh ioAct = lift $
@@ -66,4 +72,7 @@ getFromW :: Int -> TChan Action -> IOC Action
 getFromW deltaTime fromWorldCh = (id ||| id) <$> lift (sutAct `race` quiAct)
     where
         sutAct = atomically $ readTChan fromWorldCh
-        quiAct = threadDelay (deltaTime * (10 ^ (6 :: Int))) >> return ActQui
+        quiAct = threadDelay (deltaTime * milliSecond) >> return ActQui
+
+milliSecond :: Int
+milliSecond = (10 ^ (6 :: Int))

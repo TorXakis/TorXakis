@@ -23,30 +23,29 @@ module Test
 
 where
 
-import Control.Monad.State
-import Data.Maybe
-import System.Random
+import           Control.Monad.State
+import           Data.Maybe
+import           System.Random
 
 -- local
-import Ioco
-import Mapper
-import Purpose
-import CoreUtils
+import           CoreUtils
+import           Ioco
+import           Mapper
+import           Purpose
 
 -- import from coreeenv
-import qualified EnvCore     as IOC
-import qualified ParamCore
+import qualified EnvCore             as IOC
 import qualified EnvData
+import qualified ParamCore
 
-import qualified TxsDefs
+import           BTShow              ()
 import qualified TxsDDefs
+import qualified TxsDefs
 import qualified TxsShow
-import BTShow()
 
 -- ----------------------------------------------------------------------------------------- --
 -- testIn :  try to give input (Act acts), and give new environment
 --        :  result is whether input was successful, or faster output was successful/conforming
-
 
 testIn :: TxsDDefs.Action -> Int -> IOC.IOC (TxsDDefs.Action, TxsDDefs.Verdict)
 testIn act@TxsDDefs.Act{} step = do
@@ -55,8 +54,7 @@ testIn act@TxsDDefs.Act{} step = do
      mact'  <- putToW mact                                  -- try to do input on sut
      if mact == mact'
        then do                                              -- input done on sut
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                       $ TxsShow.showN step 6 ++ ":  IN:  " ++ TxsShow.fshow act ]
+         IOC.putMsgs [ EnvData.AnAction step EnvData.In act ]
          nextBehTrie act
          done <- iocoModelAfter act
          if  done
@@ -66,15 +64,14 @@ testIn act@TxsDDefs.Act{} step = do
                    return (act, TxsDDefs.Fail act)          -- input done on sut, not on btree
        else do                                              -- output was faster
          act' <- mapperMap mact'                            -- map output to model action
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                       $ TxsShow.showN step 6 ++ ":  OUT: " ++ TxsShow.fshow act' ]
+         IOC.putMsgs [ EnvData.AnAction step EnvData.Out act' ]
          nextBehTrie act'
          done <- iocoModelAfter act'
          if  done
            then return (act', TxsDDefs.Pass)                -- output act' `Elem` menuOut
            else do expected
                    return (act', TxsDDefs.Fail act')        -- output act' `notElem` menuOut
- 
+
 testIn TxsDDefs.ActQui _ = do
      IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                    "testIn cannot be done with Quiescence" ]
@@ -89,8 +86,7 @@ testOut step = do
      getFroW <- gets (IOC.getfrow . IOC.state)
      mact    <- getFroW                                     -- get next output or quiescence
      act     <- mapperMap mact                              -- map output to model action
-     IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                   $ TxsShow.showN step 6 ++ ":  OUT: " ++ TxsShow.fshow act ]
+     IOC.putMsgs [ EnvData.AnAction step EnvData.Out act ]
      nextBehTrie act
      done <- iocoModelAfter act
      if  done
@@ -122,18 +118,18 @@ testN depth step = do
       IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "testing could not start"]
       return TxsDDefs.NoVerdict
   where
-    -- No test purpose.    
+    -- No test purpose.
     continue Nothing =
-      testIOCO depth False step 
+      testIOCO depth False step
     continue (Just (TxsDefs.PurpDef [] [] _ _)) =
       testIOCO depth False step
-    -- Test purpose with only outputs.    
+    -- Test purpose with only outputs.
     continue (Just (TxsDefs.PurpDef [] _ _ _)) =
       testIOCOoutPurp depth False step
-    -- Test purpose with only inputs.      
+    -- Test purpose with only inputs.
     continue (Just (TxsDefs.PurpDef _ [] _ _)) =
       testIOCOinPurp depth False step
-    -- Test purpose with inputs and outputs.      
+    -- Test purpose with inputs and outputs.
     continue (Just TxsDefs.PurpDef{}) =
       testIOCOfullPurp depth False step
 
@@ -146,7 +142,7 @@ testN depth step = do
 --                       i.e., no output check if delta in outputs
 -- 3: extra super eager input, i.e., do always input if input specified
 
--- parameters 
+-- parameters
 -- ioRand dependent on eag
 
 testIOCO :: Int -> Bool -> Int -> IOC.IOC TxsDDefs.Verdict

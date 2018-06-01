@@ -17,6 +17,7 @@ import           Network.Wai.Middleware.Cors (simpleCors)
 import           Servant
 
 import           Common                      (Env (..))
+import           Endpoints.Eval              (EvalEP, eval)
 import           Endpoints.Info              (InfoEP, getInfo)
 import           Endpoints.Messages          (CloseMessagesEP, MessagesEP,
                                               OpenMessagesEP, closeMessages,
@@ -24,17 +25,16 @@ import           Endpoints.Messages          (CloseMessagesEP, MessagesEP,
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
 import           Endpoints.Params            (ParamsAPI, paramsServer)
 import           Endpoints.Parse             (ParseActionEP, parseAction)
-import           Endpoints.Stepper           (SetStepperEP,
-                                              StepEP, setStep, step)
-import           Endpoints.Tester            (StartTesterEP, TestNStepsEP,
-                                              startTester, testNSteps)
+import           Endpoints.Seed              (SeedEP, setSeed)
+import           Endpoints.Stepper           (SetStepperEP, StepEP, setStep,
+                                              step)
+import           Endpoints.Tester            (SetTestEP, TestStepEP,
+                                              startTester, testStep)
 import           Endpoints.Time              (TimeEP, getTime)
 import           Endpoints.Timer             (TimerEP, timer)
 import           Endpoints.Upload            (UploadEP, upload)
 import           Endpoints.Vals              (ValsAPI, valsServer)
 import           Endpoints.Vars              (VarsAPI, varsServer)
-import           Endpoints.Eval              (EvalEP, eval)
-import           Endpoints.Seed              (SeedEP, setSeed)
 
 type API = ServiceAPI
 type ServiceAPI
@@ -46,8 +46,8 @@ type ServiceAPI
     :<|> UploadEP
     :<|> SetStepperEP
     :<|> StepEP
-    :<|> StartTesterEP
-    :<|> TestNStepsEP
+    :<|> SetTestEP
+    :<|> TestStepEP
     :<|> ParseActionEP
     :<|> OpenMessagesEP
     :<|> CloseMessagesEP
@@ -83,7 +83,7 @@ server env
     :<|> setStep env
     :<|> step env
     :<|> startTester env
-    :<|> testNSteps env
+    :<|> testStep env
     :<|> parseAction env
     :<|> openMessages env
     :<|> closeMessages env

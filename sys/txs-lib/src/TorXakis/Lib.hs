@@ -4,14 +4,14 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE DeriveGeneric #-}
-
 -- |
 module TorXakis.Lib
 ( module TorXakis.Lib
 , module TorXakis.Lib.Common
+, module TorXakis.Lib.CommonCore
 , module TorXakis.Lib.Eval
-, module TorXakis.Lib.Internal
 , module TorXakis.Lib.Session
+, module TorXakis.Lib.Tester
 , module TorXakis.Lib.Vals
 , module TorXakis.Lib.Vars
 )
@@ -38,7 +38,6 @@ import           Data.Aeson                    (FromJSON, ToJSON)
 import           Data.Either.Utils             (maybeToEither)
 import           Data.Foldable                 (traverse_)
 import qualified Data.Map.Strict               as Map
-import           Data.Semigroup                ((<>))
 import qualified Data.Set                      as Set
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
@@ -62,22 +61,19 @@ import           EnvData                       (Msg (TXS_CORE_SYSTEM_INFO))
 import           Name                          (Name)
 import           ParamCore                     (getParamPairs, paramToPair,
                                                 updateParam)
-import           TorXakis.Lens.TxsDefs         (ix)
 import           TxsAlex                       (Token (Cchanenv, Csigs, Cunid, Cvarenv),
                                                 txsLexer)
-import           TxsCore                       (txsEval, txsGetCurrentModel,
-                                                txsGetSigs, txsGetTDefs,
-                                                txsInit, txsSetStep, txsStepA,
-                                                txsStepN)
+import qualified TxsCore                       as Core
 import           TxsDDefs                      (Action (Act),
                                                 Verdict (NoVerdict))
 import           TxsDefs                       (ModelDef (ModelDef))
 import           TxsHappy                      (prefoffsParser, txsParser)
 
 import           TorXakis.Lib.Common
+import           TorXakis.Lib.CommonCore
 import           TorXakis.Lib.Eval
-import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
+import           TorXakis.Lib.Tester
 import           TorXakis.Lib.Vals
 import           TorXakis.Lib.Vars
 
@@ -85,9 +81,6 @@ import           TorXakis.Lib.Vars
 -- the future, since it is quite inefficient, but we start off simple since the
 -- current 'TorXakis' parser parses @String@s.
 type FileContents = String
-
-success :: Response ()
-success = Right ()
 
 newtype LibException = TxsError { errMsg :: Msg } deriving Show
 
@@ -202,7 +195,7 @@ load s xs = do
     case r of
         Left err -> return $ Left $ T.pack $ show  (err :: ErrorCall)
         Right (ts, is) ->
-            Right <$> runIOC s (txsInit ts is (msgHandler (_sessionMsgs s)))
+            Right <$> runIOC s (Core.txsInit ts is (msgHandler (_sessionMsgs s)))
             -- case er of
             --     Left eMsg -> throwError . T.pack . show $ eMsg
             --     Right res -> return res
@@ -213,40 +206,15 @@ setStep :: Session
         -> IO (Response ())
 setStep s mn = runResponse $ do
     mDef <- lookupModel s mn
-    lift $ runIOC s (txsSetStep mDef)
-
-lookupModel :: Session -> Name -> ExceptT Text IO ModelDef
-lookupModel s mn = do
-    tdefs <- lift $ runIOC s txsGetTDefs
-    maybe
-        (throwError $ "No model named " <> mn)
-        return (tdefs ^. ix mn)
+    lift $ runIOC s (Core.txsSetStep mDef)
 
 msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)
 
--- | How a step is described
---
-data StepType = NumberOfSteps Int
-              | AnAction Action
-    --           | GoTo StateNumber
-    --           | Reset -- ^ Go to the initial state.
-    --           | Rewind Steps
-              deriving (Show, Eq, Generic)
-
--- TODO: Types like 'StepType' are needed by the clients of 'txs-webserver'. So
--- to avoid introducing a dependency 'txs-lib' we could create a new package
--- called 'txs-lib-data', or something similar.
-
--- TODO: discuss with Jan: do we need a `Tree` step here?
-
-instance ToJSON StepType
-instance FromJSON StepType
-
 -- | Step for n-steps or actions
 step :: Session -> StepType -> IO (Response ())
-step s (NumberOfSteps n) = runForVerdict s (txsStepN n)
-step s (AnAction a)      = runForVerdict s (txsStepA a)
+step s (NumberOfSteps n) = runForVerdict s (Core.txsStepN n)
+step s (AnAction a)      = runForVerdict s (Core.txsStepA a)
 
 runForVerdict :: Session -> IOC Verdict -> IO (Response ())
 runForVerdict s ioc = do
@@ -270,38 +238,6 @@ waitForMessageQueue s = atomically $ do
     b <- isEmptyTQueue (s ^. sessionMsgs)
     unless b retry
 
-
-runResponse :: ExceptT Text IO a -> IO (Response a)
-runResponse = runExceptT
-
--- | Start the tester
-tester :: Session
-       -> Name
-       -> IO (Response ())
-tester s mn = runResponse $ do
-    mDef <- lookupModel s mn
-    lift $ do
-        let fWCh = s ^. fromWorldChan
-        tids <- (s ^. wConnDef . initWorld) fWCh
-        -- let Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" (st ^. prms)
-        --     deltaTime = undefined -- read deltaString
-        let s' = s & worldListeners .~ tids
-        runIOC s' $ undefined mDef
-            -- TODO: `t` this was commented out by Jan.
-            -- txsSetTest (putToW fWCh (s' ^. wConnDef . toWorldMappings))
-            --            (getFromW deltaTime fWCh)
-            --            mDef Nothing Nothing
-
--- | Test for n-steps
-test :: Session -> StepType -> IO (Response ())
-test s (NumberOfSteps n) = do
-    void $ forkIO $ do undefined s n
-        -- TODO: `txsTestN` this was commented out by Jan.
-        -- verdict <- try $ runIOC s $ txsTestN n
-        -- atomically $ writeTQueue (s ^. verdicts) verdict
-    return success
-test s (AnAction a) = undefined s a
-
 -- | Start the stepper with the given model.
 stop :: Session -> IO (Response ())
 stop _ =
@@ -313,7 +249,7 @@ stop _ =
 parseAction :: Session -> Text -> IO (Response Action)
 parseAction s act = do
     let strAct = T.unpack act
-    sigs <- runIOC s txsGetSigs
+    sigs <- runIOC s Core.txsGetSigs
     --
     -- IOS.Tested (TxsDefs.CnectDef _ conndefs) <- gets IOS.modus
     -- We don't have the connection definition here! Can we get this from `TxsDefs`?
@@ -330,7 +266,7 @@ parseAction s act = do
             cannotParse =  "There is no current model set, "
                         ++ "which is required for parsing an action"
         ModelDef is os _ _ <- runIOCE s $
-            maybeToEither cannotParse <$> txsGetCurrentModel
+            maybeToEither cannotParse <$> Core.txsGetCurrentModel
         let chids = concatMap Set.toList is ++ concatMap Set.toList os
         parseRes <- fmap (left showEx) $
             lift $ try $ evaluate . force . prefoffsParser $
@@ -352,5 +288,5 @@ parseAction s act = do
       evalExclam :: ChanOffer -> ExceptT Text IO Const
       evalExclam (Quest _) = throwError "No ? offer allowed as input."
       evalExclam (Exclam choff) = do
-          res <- lift (runIOC s (txsEval choff))
+          res <- lift (runIOC s (Core.txsEval choff))
           liftEither $ left T.pack res

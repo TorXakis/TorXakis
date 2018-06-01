@@ -110,7 +110,7 @@ spec = return $ do
                 post (stepUrl sId) threeSteps >>= check204NoContent
                 post (openMessagesUrl sId) emptyP >>= check204NoContent
                 a <- async $ foldGet checkActions 0 (messagesUrl sId)
-                threadDelay (3 * 10 ^ (6 :: Int)) -- We have to wait a bit till all
+                threadDelay (10 ^ (6 :: Int)) -- We have to wait a bit till all
                                               -- the messages are put in the
                                               -- queue by the stepper.
                 post (closeMessagesUrl sId) emptyP >>= check204NoContent
@@ -219,6 +219,21 @@ spec = return $ do
                 r3 <- post (evalUrl sId) [partText "expr" "len (s) < 0"]
                 r3 ^. responseStatus . statusCode `shouldBe` 200 -- OK
                 r3 ^. responseBody `shouldBe` "False"
+        describe "Tester" $
+            it "Starts SUT & tester and takes 3 steps" $
+                withCreateProcess (proc "java" ["-cp","../../examps/LuckyPeople/sut","LuckyPeople"])
+                                  {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
+                    sId <- mkNewSession
+                    _ <- put (newSessionUrl sId) [partFile "model.txs" "../../examps/LuckyPeople/spec/LuckyPeople.txs"]
+                    post (setTestUrl sId "Model") emptyP >>= check204NoContent
+                    let twentySteps = toJSON (NumberOfSteps 20)
+                    post (testUrl sId) twentySteps >>= check204NoContent
+                    post (openMessagesUrl sId) emptyP >>= check204NoContent
+                    a <- async $ foldGet checkActions 0 (messagesUrl sId)
+                    threadDelay (10 ^ (6 :: Int))
+                    post (closeMessagesUrl sId) emptyP >>= check204NoContent
+                    totalSteps <- wait a
+                    totalSteps `shouldBe` 20
 
 check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
@@ -267,6 +282,12 @@ setStepUrl sId = host ++ "/sessions/" ++ show sId ++ "/set-step/Model"
 
 stepUrl :: Integer -> String
 stepUrl sId = host ++ "/sessions/" ++ show sId ++ "/step/"
+
+setTestUrl :: Integer -> String -> String
+setTestUrl sId modelName= host ++ "/sessions/" ++ show sId ++ "/set-test/" ++ modelName
+
+testUrl :: Integer -> String
+testUrl sId = host ++ "/sessions/" ++ show sId ++ "/test/"
 
 messagesUrl :: Integer -> String
 messagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages"

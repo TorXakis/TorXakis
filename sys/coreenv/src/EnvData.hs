@@ -16,6 +16,7 @@ module EnvData
 
 ( StateNr         -- state number
 , Msg (..)        -- (error) messages
+, MsgDir (..)
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -30,34 +31,35 @@ import           GHC.Generics (Generic)
 import           TxsDDefs     (Action)
 import qualified TxsShow
 
--- ----------------------------------------------------------------------------------------- --
--- StatNr :  state numbers
+-- | State numbers
+type StateNr = Int
 
 
-type StateNr  =  Int
+-- | (Error) Messages
 
+data MsgDir = NoDir | In | Out
+    deriving (Eq,Ord,Read,Show,Generic)
 
--- ----------------------------------------------------------------------------------------- --
--- Msg :  (Error) Messages
+instance ToJSON MsgDir
+instance FromJSON MsgDir
 
-
-data Msg     =   TXS_CORE_SYSTEM_ERROR     { s :: String }
-               | TXS_CORE_MODEL_ERROR      { s :: String }
-               | TXS_CORE_USER_ERROR       { s :: String }
-               | TXS_CORE_RUNTIME_ERROR    { s :: String }
-               | TXS_CORE_SYSTEM_WARNING   { s :: String }
-               | TXS_CORE_MODEL_WARNING    { s :: String }
-               | TXS_CORE_USER_WARNING     { s :: String }
-               | TXS_CORE_RUNTIME_WARNING  { s :: String }
-               | TXS_CORE_SYSTEM_INFO      { s :: String }
-               | TXS_CORE_MODEL_INFO       { s :: String }
-               | TXS_CORE_USER_INFO        { s :: String }
-               | TXS_CORE_RUNTIME_INFO     { s :: String }
-               | TXS_CORE_RESPONSE         { s :: String }
-               | TXS_CORE_OK               { s :: String }
-               | TXS_CORE_NOK              { s :: String }
-               | TXS_CORE_ANY              { s :: String }
-               | AnAction                  { step :: Int, act :: Action } -- ^ An action was performed.
+data Msg =   TXS_CORE_SYSTEM_ERROR     { s :: String }
+           | TXS_CORE_MODEL_ERROR      { s :: String }
+           | TXS_CORE_USER_ERROR       { s :: String }
+           | TXS_CORE_RUNTIME_ERROR    { s :: String }
+           | TXS_CORE_SYSTEM_WARNING   { s :: String }
+           | TXS_CORE_MODEL_WARNING    { s :: String }
+           | TXS_CORE_USER_WARNING     { s :: String }
+           | TXS_CORE_RUNTIME_WARNING  { s :: String }
+           | TXS_CORE_SYSTEM_INFO      { s :: String }
+           | TXS_CORE_MODEL_INFO       { s :: String }
+           | TXS_CORE_USER_INFO        { s :: String }
+           | TXS_CORE_RUNTIME_INFO     { s :: String }
+           | TXS_CORE_RESPONSE         { s :: String }
+           | TXS_CORE_OK               { s :: String }
+           | TXS_CORE_NOK              { s :: String }
+           | TXS_CORE_ANY              { s :: String }
+           | AnAction                  { step :: Int, dir :: MsgDir, act :: Action } -- ^ An action was performed.
      deriving (Eq,Ord,Read,Show,Generic)
 
 instance ToJSON Msg
@@ -65,7 +67,7 @@ instance FromJSON Msg
 
 instance TxsShow.PShow Msg
   where
-    pshow (AnAction stp a) = TxsShow.showN stp 6 ++ ": " ++ TxsShow.pshow a
+    pshow (AnAction stp d a) = TxsShow.showN stp 6 ++ ":  " ++ show d ++ ": " ++ TxsShow.pshow a
     pshow x                = s x
 
 -- ----------------------------------------------------------------------------------------- --

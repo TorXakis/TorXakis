@@ -61,6 +61,7 @@ import           SortId                       (SortId (SortId))
 --import           TorXakis.Lens.Sigs           (funcTable)
 --import           TorXakis.Lens.TxsDefs
 import           TorXakis.Lib
+import           TorXakis.Lib.Internal
 import           TxsDDefs                     (Action (Act, ActQui))
 -- import           TxsDefs                      (ModelDef)
 --import           ValExpr                      (ValExpr, cstrConst)
@@ -171,9 +172,9 @@ testPutToWReadsWorld = do
         fakeSendToW = error "This function should not be called in testPutToWReadsWorld, since there's an action waiting in fromWorldChan."
         toWMMs = Map.singleton txsChanId fakeSendToW
     atomically $ writeTChan fWCh actG
-    action <- runIOC s $ putToW fWCh toWMMs actP
+    action <- runIOC s $ putToW 0 fWCh toWMMs actP
     atomically $ writeTChan fWCh actG
-    action' <- runIOC s $ putToW fWCh Map.empty ActQui
+    action' <- runIOC s $ putToW 0 fWCh Map.empty ActQui
     return $ action == actG && action' == actG
 
 -- | This example tries to stop the core before all steps are taken.

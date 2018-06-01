@@ -34,8 +34,8 @@ import           VarId                         (VarId)
 import           TorXakis.Lib.SessionParams
 
 newtype ToWorldMapping = ToWorldMapping
-    { -- Send some data to the external world, getting some action as a response
-      _sendToW   :: [Const] -> IO (Maybe Action)
+    { -- Send some data to the external world, maybe get some action as a response
+      _sendToW :: [Const] -> IO (Maybe Action)
     }
     deriving (Generic, NFData)
 makeLenses ''ToWorldMapping

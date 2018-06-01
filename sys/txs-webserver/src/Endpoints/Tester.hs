@@ -5,33 +5,33 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 module Endpoints.Tester
-( StartTesterEP
+( SetTestEP
 , startTester
-, TestNStepsEP
-, testNSteps
+, TestStepEP
+, testStep
 ) where
 
 import           Data.Text    (Text)
 import           Servant
 
-import           TorXakis.Lib (StepType (..), test, tester)
+import           TorXakis.Lib (StepType (..), setTest, test)
 
 import           Common       (Env, SessionId, liftLib)
 
-type StartTesterEP  = "tester"
-                   :> "start"
-                   :> Capture "sid" SessionId
-                   :> Capture "model" Text
-                   :> Post '[JSON] ()
-
-type TestNStepsEP   = "tester"
-                   :> "test"
-                   :> Capture "sid" SessionId
-                   :> Capture "steps" Int
-                   :> Post '[JSON] ()
+type SetTestEP = "sessions"
+              :> Capture "sid" SessionId
+              :> "set-test"
+              :> Capture "model" Text
+              :> PostNoContent '[JSON] ()
 
 startTester :: Env -> SessionId -> Text -> Handler ()
-startTester env sId model = liftLib env sId (`tester` model)
+startTester env sId model = liftLib env sId (`setTest` model)
 
-testNSteps :: Env -> SessionId -> Int -> Handler ()
-testNSteps env sId steps = liftLib env sId (`test` NumberOfSteps steps)
+type TestStepEP = "sessions"
+           :> Capture "sid" SessionId
+           :> "test"
+           :> ReqBody '[JSON] StepType
+           :> PostNoContent '[JSON] ()
+
+testStep :: Env -> SessionId -> StepType -> Handler ()
+testStep env sId sType = liftLib env sId (`test` sType)
