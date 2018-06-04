@@ -61,14 +61,14 @@ instance (Ord t,Equiv t) => Equiv (Set.Set t)
         xs' <- nubMby (~=~) (Set.toList xs)
         ys' <- nubMby (~=~) (Set.toList ys)
         if List.length xs' == List.length ys'
-            then do
+            then
                     -- given that all elements different under (~=~) and same number of elements holds that xs_sub_ys implies ys_sub_xs
                     and <$> sequence [ elemMby (~=~) x ys' | x <- xs' ]
             else return False
 
 instance (Ord t,Equiv t) => Equiv (MultiSet.MultiSet t)
   where 
-    xs ~=~ ys = do
+    xs ~=~ ys =
         if MultiSet.size xs == MultiSet.size ys
             then do
                 xs' <- msMby (~=~) xs
