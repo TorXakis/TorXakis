@@ -27,24 +27,22 @@ import           ConstDefs                     (Const)
 import           EnvCore                       (EnvC, initEnvC)
 import           EnvData                       (Msg)
 import           ParamCore                     (Params)
-import           TxsDDefs                      (Action, Verdict)
+import           TxsDDefs                      (Action, ConnHandle, Verdict)
 import           TxsDefs                       (VEnv)
 import           VarId                         (VarId)
 
 import           TorXakis.Lib.SessionParams
 
-newtype ToWorldMapping = ToWorldMapping
+data ToWorldMapping = ToWorldMapping
     { -- Send some data to the external world, maybe get some action as a response
-      _sendToW :: [Const] -> IO (Maybe Action)
+      _sendToW    :: [Const] -> IO (Maybe Action)
+    , _connHandle :: ConnHandle
     }
-    deriving (Generic, NFData)
 makeLenses ''ToWorldMapping
 
 -- | TODO: put in the right place:
-data WorldConnDef = WorldConnDef
+newtype WorldConnDef = WorldConnDef
     { _toWorldMappings :: Map.Map ChanId ToWorldMapping
-    , _initWorld       :: TChan Action -> IO [ThreadId]
-    -- , _closeWorld      :: [ThreadId] -> IO ()
     }
 makeLenses ''WorldConnDef
 
@@ -65,8 +63,8 @@ data Session = Session
     , _pendingIOC     :: MVar () -- ^ Signal that a pending IOC operation is taking place.
     , _verdicts       :: TQueue (Either SomeException Verdict)
     , _fromWorldChan  :: TChan Action
-    , _wConnDef       :: WorldConnDef
-    , _worldListeners :: [ThreadId]
+    , _wConnDef       :: TVar WorldConnDef
+    , _worldListeners :: TVar [ThreadId]
     , _timers         :: TVar (Map.Map String UTCTime)
     , _locVars        :: TVar [VarId] -- ^ local free variables
     , _locValEnv      :: TVar VEnv    -- ^ local value environment

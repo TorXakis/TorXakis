@@ -36,7 +36,7 @@ import           TorXakis.Lib.Session
 -- given 'Action' will be skipped and received 'Action' will be returned.
 putToW :: Int -> TChan Action -> Map ChanId ToWorldMapping -> Action -> IO Action
 putToW _ fromWorldCh toWorldMMap act@(Act cs) = do
-    let (toWorldMapping, constants) = force getWorldMap
+    let (toWorldMapping, constants) = getWorldMap
         toWFunc = force (toWorldMapping ^. sendToW)
     actIfNothingRead fromWorldCh $
         do  _ <- forkIO $ do

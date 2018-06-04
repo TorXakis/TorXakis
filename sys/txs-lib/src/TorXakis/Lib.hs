@@ -113,8 +113,8 @@ newSession = Session <$> newTVarIO emptySessionState
                      <*> newMVar ()
                      <*> newTQueueIO
                      <*> newTChanIO
-                     <*> return (WorldConnDef Map.empty (\_ -> return []))
-                     <*> return []
+                     <*> newTVarIO (WorldConnDef Map.empty)
+                     <*> newTVarIO []
                      <*> newTVarIO Map.empty
                      <*> newTVarIO []
                      <*> newTVarIO Map.empty
