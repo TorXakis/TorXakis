@@ -260,9 +260,7 @@ elemOccurenceMby eqm t = elemOccurenceOLMby t . MultiSet.toOccurList
 msMby :: (Ord a, Monad m) => (a -> a-> m Bool) -> MultiSet.MultiSet a -> m (MultiSet.MultiSet a)
 msMby eqm ms = 
         let ol = MultiSet.toOccurList ms in
-            do
-                ol' <- olMby ol
-                return $ MultiSet.fromOccurList ol'
+            MultiSet.fromOccurList <$> olMby ol
     where
         -- | make occurence list unique, with given monad equality
         -- olMby :: (Monad m) => [(a,MultiSet.Occur)] -> m [(a, MultiSet.Occur)]

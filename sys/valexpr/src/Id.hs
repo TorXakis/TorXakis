@@ -84,7 +84,7 @@ instance (Ord a, Resettable a) => Resettable (Set a) where
     reset = Set.fromList . (reset <$>) . Set.toList
 
 instance (Ord a, Resettable a) => Resettable (MultiSet a) where
-    reset = MultiSet.fromOccurList . ((first reset) <$>) . MultiSet.toOccurList
+    reset = MultiSet.fromOccurList . (first reset <$>) . MultiSet.toOccurList
 
 instance (Ord k, Resettable k, Resettable v) => Resettable (Map k v) where
     reset = Map.fromList . (reset <$>) . Map.toList
