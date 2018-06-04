@@ -12,8 +12,9 @@ module Relabel
 -- import
 
 where
-import qualified Data.Map            as Map
-import qualified Data.Set            as Set
+import qualified Data.Map      as Map
+import qualified Data.MultiSet as MultiSet
+import qualified Data.Set      as Set
 
 import           BehExprDefs
 import           ChanId
@@ -37,7 +38,7 @@ relabel' chanmap (Choice bexps)
   =  choice (Set.map (relabel chanmap) bexps)
 
 relabel' chanmap (Parallel chids bexps)
-  =  parallel (Set.map (relabel chanmap) chids) (map (relabel chanmap) bexps)
+  =  parallel (Set.map (relabel chanmap) chids) (MultiSet.map (relabel chanmap) bexps)
 
 relabel' chanmap (Enable bexp1 choffs bexp2)
   =  enable (relabel chanmap bexp1) choffs (relabel chanmap bexp2)

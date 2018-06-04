@@ -13,14 +13,15 @@ testLPEList
 where
  
 import Test.HUnit
-import qualified Data.Set as Set
-import qualified Data.Map as Map
+import qualified Data.Map      as Map
+import qualified Data.MultiSet as MultiSet
+import qualified Data.Set      as Set
+import qualified Data.Text     as T
 
 import TxsDefs
 import ProcId
 import ChanId
 import SortId
-import qualified Data.Text         as T
 import VarId
 import ConstDefs
 import ValExpr
@@ -906,10 +907,7 @@ testLPEPar = TestCase $
 
       procDefP = ProcDef [chanIdA] [] (
             actionPref actOfferAx (
-                parallel (Set.singleton chanIdA) [
-                    actionPref actOfferAExclamX stop,
-                    actionPref actOfferAExclamX stop
-                  ]
+                    parallel (Set.singleton chanIdA) (MultiSet.fromOccurList [ (actionPref actOfferAExclamX stop, 2) ])
                 ))
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 

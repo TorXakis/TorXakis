@@ -19,6 +19,7 @@ import           Prelude           hiding (id)
 
 import qualified Data.List         as List
 import qualified Data.Map          as Map
+import qualified Data.MultiSet     as MultiSet
 import qualified Data.Set          as Set
 import qualified Data.String.Utils as Utils
 import qualified Data.Text         as T
@@ -165,13 +166,12 @@ instance PShow BExprView
             [] -> "STOP\n"
             be -> "( " ++ Utils.join (" )\n"++ "##\n( ") (map pshow be) ++ " )"
     pshow (Parallel chans bexps)
-      =  case bexps of
-         { [] -> "STOP\n"
-         ; be -> "( " ++
+      =  if MultiSet.null bexps 
+            then "STOP\n"
+            else "( " ++
                   Utils.join (" )\n"++"|[ "++ Utils.join ", " (map pshow (Set.toList (Set.delete chanIdExit chans))) ++" ]|\n( ")
-                             (map pshow be)
+                             (map pshow (MultiSet.toList bexps))
                  ++ " )"
-         }
     pshow (Enable bexp1 chofs bexp2)
       =  let psBexp2 = pshow bexp2
             in

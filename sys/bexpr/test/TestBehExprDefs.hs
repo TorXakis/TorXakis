@@ -17,7 +17,8 @@ import Test.QuickCheck
 
 
 -- generic Haskell imports
-import qualified Data.Set as Set
+import qualified Data.MultiSet as MultiSet
+import qualified Data.Set      as Set
 
 -- generic TorXakis imports
 import BehExprDefs
@@ -177,13 +178,13 @@ genBExpr = sized genBExpr'
                         return (GenBExpr $ guard vexpr bexpr)
 
         genChoice :: Gen GenBExpr
-        genChoice = GenBExpr . choice . Set.fromList <$> genListBExpr
+        genChoice = GenBExpr . choice <$> genSetBExpr
 
         genParallel :: Gen GenBExpr
         genParallel = do
                         gChanIds <- arbitrary :: Gen (Set.Set GenChanId)
                         let chanIds = Set.map (\(GenChanId chanId) -> chanId) gChanIds
-                        bexprs <- genListBExpr
+                        bexprs <- genMultiSetBExpr
                         return (GenBExpr $ parallel chanIds bexprs)
                         
         genEnable :: Gen GenBExpr
@@ -202,12 +203,23 @@ genBExpr = sized genBExpr'
                         GenBExpr b2 <- resize (n `div` 2) arbitrary
                         return (GenBExpr $ disable b1 b2)
 
-        genListBExpr :: Gen [BExpr]
-        genListBExpr = do
+        genSetBExpr :: Gen (Set.Set BExpr)
+        genSetBExpr = do
                         n <- getSize
                         k <- choose (0, n)
                         gBexprs <- vectorOf k $ resize (n-k) arbitrary
-                        return $ map (\(GenBExpr bexpr) -> bexpr) gBexprs
+                        let bexprs = map (\(GenBExpr bexpr) -> bexpr) gBexprs
+                        return $ Set.fromList bexprs
+        
+        genMultiSetBExpr :: Gen (MultiSet.MultiSet BExpr)
+        genMultiSetBExpr = do
+                        n <- getSize
+                        k <- choose (0, n)
+                        gBexprs <- vectorOf k $ resize (n-k) arbitrary
+                        pOccurs <- vectorOf k (arbitrary :: Gen (Positive Int))
+                        let bexprs = map (\(GenBExpr bexpr) -> bexpr) gBexprs
+                            occurs = map (\(Positive i) -> i) pOccurs
+                        return $ MultiSet.fromOccurList (zip bexprs occurs)
 
 ---------------------------------------------------------------------------
 -- Tests
@@ -233,11 +245,11 @@ prop_GuardStop :: GenValExprBool -> Bool
 prop_GuardStop (GenValExprBool vexpr) =
     stop == guard vexpr stop
 
--- |  [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ c1 /\ c2 ]] >-> p
+-- |  [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ IF c1 THEN c2 ELSE False FI ]] >-> p
 prop_GuardActionPrefix :: GenValExprBool -> GenValExprBool -> Set.Set GenOffer -> GenBExpr -> Bool
 prop_GuardActionPrefix (GenValExprBool vexpr1) (GenValExprBool vexpr2) soffers (GenBExpr p) =
     let offers' = Set.map (\(GenOffer o) -> o) soffers in
-        actionPref (ActOffer offers' Set.empty (cstrAnd (Set.fromList [vexpr1,vexpr2]))) p == 
+        actionPref (ActOffer offers' Set.empty (cstrITE vexpr1 vexpr2 valExprFalse)) p == 
             guard vexpr1 (actionPref (ActOffer offers' Set.empty vexpr2) p)
 
 -- |  p ## stop <==> p
@@ -259,7 +271,8 @@ prop_ChoiceAssociative (GenBExpr p) (GenBExpr q) (GenBExpr r) =
 prop_ParallelAssociative :: Set.Set GenChanId -> GenBExpr -> GenBExpr -> GenBExpr -> Bool
 prop_ParallelAssociative gChanIds (GenBExpr p) (GenBExpr q) (GenBExpr r) =
     let chanIds = Set.map (\(GenChanId chanId) -> chanId) gChanIds in
-        parallel chanIds [ parallel chanIds [p,q], r] == parallel chanIds [ p, parallel chanIds [q,r] ]
+        parallel chanIds (MultiSet.fromList [ parallel chanIds (MultiSet.fromList [p,q]), r]) == 
+        parallel chanIds (MultiSet.fromList [ p, parallel chanIds (MultiSet.fromList [q,r]) ])
 
 -- | stop >>> p <==> stop
 prop_EnableStop :: GenBExpr -> [GenChanOffer] -> Bool

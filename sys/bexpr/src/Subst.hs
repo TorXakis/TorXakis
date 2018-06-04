@@ -20,8 +20,9 @@ module Subst
 
 where
 
-import qualified Data.Map as Map
-import qualified Data.Set as Set
+import qualified Data.Map      as Map
+import qualified Data.MultiSet as MultiSet
+import qualified Data.Set      as Set
 
 -- TorXakis imports
 import           BehExprDefs
@@ -65,7 +66,7 @@ subst' ve fdefs (Choice bexps) =
     choice (subst ve fdefs bexps)
 
 subst' ve fdefs (Parallel chids bexps) =
-    parallel chids (map (subst ve fdefs) bexps)
+    parallel chids (MultiSet.map (subst ve fdefs) bexps)
 
 subst' ve fdefs (Enable bexp1 choffs bexp2) =
     enable (subst ve fdefs bexp1)

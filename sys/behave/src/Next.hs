@@ -23,7 +23,7 @@ module Next
 
 where
 
-import qualified Data.Map  as Map
+import qualified Data.Map      as Map
 import Data.Maybe
 
 import BTree

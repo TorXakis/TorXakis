@@ -31,11 +31,12 @@ module TxsHappy
 , valdefsParser
 )
 where
-import qualified Data.List   as List
-import qualified Data.Map    as Map
-import qualified Data.Set    as Set
+import qualified Data.List         as List
+import qualified Data.Map          as Map
+import qualified Data.MultiSet     as MultiSet
+import qualified Data.Set          as Set
 import qualified Data.String.Utils as Utils
-import qualified Data.Text          as T
+import qualified Data.Text         as T
 import           Data.Monoid
 
 import ShowToken
@@ -1937,7 +1938,7 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
-                ;  $$ = parallel (Set.fromList (chanIdExit:$$.inhChanSigs)) [$1,$3]
+                ;  $$ = parallel (Set.fromList (chanIdExit:$$.inhChanSigs)) (MultiSet.fromList [$1,$3])
                 }
               | BehaviourExpr2 "|||" BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1950,7 +1951,7 @@ BehaviourExpr2  -- :: { BExpr }
                 ;  $1.inhVarSigs   = $$.inhVarSigs
                 ;  $3.inhVarSigs   = $$.inhVarSigs
                 ;  $$.synExitSorts = $1.synExitSorts <<->> $3.synExitSorts
-                ;  $$ = parallel (Set.singleton chanIdExit) [$1,$3]
+                ;  $$ = parallel (Set.singleton chanIdExit) (MultiSet.fromList [$1,$3])
                 }
               | BehaviourExpr2 "|[" IdList "]|" BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1
@@ -1972,7 +1973,7 @@ BehaviourExpr2  -- :: { BExpr }
                                       }
                                     | nm <- $3
                                     ]
-                         in parallel (Set.fromList (chanIdExit:chans)) [$1,$5]
+                         in parallel (Set.fromList (chanIdExit:chans)) (MultiSet.fromList [$1,$5])
                 }
               | BehaviourExpr3
                 {  $1.inhNodeUid   = $$.inhNodeUid + 1

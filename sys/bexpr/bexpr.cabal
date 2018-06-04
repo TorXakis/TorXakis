@@ -30,6 +30,7 @@ library
   build-depends:        base
                       , containers
                       , deepseq
+                      , multiset
                       , text
                       
                       , valexpr
@@ -48,6 +49,7 @@ test-suite bexpr-test
   
   build-depends:       base
                      , containers
+                     , multiset
                      , QuickCheck
 
                      , bexpr

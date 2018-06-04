@@ -48,8 +48,10 @@ module BehExprDefs
 )
 where
 
+import           Control.Arrow(second)
 import           Control.DeepSeq
 import           Data.Data
+import qualified Data.MultiSet   as MultiSet
 import qualified Data.Set        as Set
 import           GHC.Generics    (Generic)
 
@@ -68,7 +70,7 @@ import           VarId
 data BExprView = ActionPref  ActOffer BExpr
                | Guard       VExpr BExpr
                | Choice      (Set.Set BExpr)
-               | Parallel    (Set.Set ChanId) [BExpr] -- should be (MultiSet.MultiSet BExpr) waiting on : https://github.com/twanvl/multiset/issues/31
+               | Parallel    (Set.Set ChanId) (MultiSet.MultiSet BExpr)
                | Enable      BExpr [ChanOffer] BExpr
                | Disable     BExpr BExpr
                | Interrupt   BExpr BExpr
@@ -120,8 +122,8 @@ guard (ValExpr.view -> Vconst (Cbool False)) _              = stop
 guard (ValExpr.view -> Vconst (Cbool True))  b              = b
 -- [[ c ]] =>> stop <==> stop
 guard _ b                                     | isStop b    = stop
--- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ c1 /\ c2 ]] >-> p
-guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = actionPref (ActOffer o h (cstrAnd (Set.fromList [v,c]))) b
+-- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ IF c1 THEN c2 ELSE False FI ]] >-> p
+guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = actionPref (ActOffer o h (cstrITE v c (cstrConst (Cbool False)))) b
 guard v b                                                   = BExpr (Guard v b)
 
 -- | Create a choice behaviour expression.
@@ -149,19 +151,20 @@ choice s = let fs = flattenChoice s
 
 -- | Create a parallel behaviour expression.
 -- The behaviour expressions must synchronize on the given set of channels (and EXIT).
-parallel :: Set.Set ChanId -> [BExpr] -> BExpr
+parallel :: Set.Set ChanId -> MultiSet.MultiSet BExpr -> BExpr
 parallel cs bs = let fbs = flattenParallel bs
                     in BExpr (Parallel cs fbs)
     where
         -- nesting of parallels over the same channel sets are flatten
         --     (p |[ G ]| q) |[ G ]| r <==> p |[ G ]| q |[ G ]| r
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
-        flattenParallel :: [BExpr] -> [BExpr]
-        flattenParallel = concatMap fromBExpr
+        flattenParallel :: MultiSet.MultiSet BExpr -> MultiSet.MultiSet BExpr
+        flattenParallel = MultiSet.unions . map fromBExpr . MultiSet.toOccurList
         
-        fromBExpr :: BExpr -> [BExpr]
-        fromBExpr (BehExprDefs.view -> Parallel pcs pbs) | cs == pcs  = pbs
-        fromBExpr bexpr                                               = [bexpr]
+        fromBExpr :: (BExpr, MultiSet.Occur) -> MultiSet.MultiSet BExpr
+        fromBExpr (BehExprDefs.view -> Parallel pcs pbs, 1) | cs == pcs  =                                                                     pbs
+        fromBExpr (BehExprDefs.view -> Parallel pcs pbs, c) | cs == pcs  = (MultiSet.fromOccurList . map (second (c*)) . MultiSet.toOccurList) pbs
+        fromBExpr t                                                      = MultiSet.fromOccurList [t]
 
 -- | Create an enable behaviour expression.
 enable :: BExpr -> [ChanOffer] -> BExpr -> BExpr

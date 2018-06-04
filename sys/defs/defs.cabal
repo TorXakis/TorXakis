@@ -46,6 +46,7 @@ library
                       , deepseq
                       , hexpat
                       , mtl
+                      , multiset
                       , text
                       , MissingH
                       , text-via-sockets
