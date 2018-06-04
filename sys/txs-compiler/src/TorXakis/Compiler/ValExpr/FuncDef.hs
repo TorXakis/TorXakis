@@ -21,7 +21,8 @@ import           FuncId                            (FuncId, funcargs, funcsort)
 import           FuncTable                         (Handler,
                                                     Signature (Signature))
 import           SortId                            (SortId)
-import           ValExpr                           (cstrFunc, cstrVar)
+import           ValExpr                           (cstrConst, cstrFunc,
+                                                    cstrVar)
 import           VarId                             (VarId)
 
 import           Control.Monad.Error.Class         (liftEither)
@@ -33,38 +34,38 @@ import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Parser.Data
 
-funcDeclsToFuncDefs :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                       , MapsTo (Loc FuncDeclE) FuncId mm
-                       , MapsTo (Loc VarDeclE) VarId mm
-                       , In (FuncId, FuncDef VarId) (Contents mm) ~ 'False )
-                    => mm
-                    -> [FuncDecl]
-                    -> CompilerM (Map FuncId (FuncDef VarId))
-funcDeclsToFuncDefs mm fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
-    where
-      gFuncDeclsToFuncDefs :: Map FuncId (FuncDef VarId)
-                           -> [FuncDecl]
-                           -> Either Error (Map FuncId (FuncDef VarId))
-      gFuncDeclsToFuncDefs mFDef gs =
-          case partitionEithers (funcDeclToFuncDef (mFDef :& mm) <$> gs) of
-              ([], rs) -> Right $ fromList rs <> mFDef
-              (ls, []) -> Left $ Errors (fst <$> ls)
-              (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> mFDef) (snd <$> ls)
+-- funcDeclsToFuncDefs :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+--                        , MapsTo (Loc FuncDeclE) FuncId mm
+--                        , MapsTo (Loc VarDeclE) VarId mm
+--                        , In (FuncId, FuncDef VarId) (Contents mm) ~ 'False )
+--                     => mm
+--                     -> [FuncDecl]
+--                     -> CompilerM (Map FuncId (FuncDef VarId))
+-- funcDeclsToFuncDefs mm fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
+--     where
+--       gFuncDeclsToFuncDefs :: Map FuncId (FuncDef VarId)
+--                            -> [FuncDecl]
+--                            -> Either Error (Map FuncId (FuncDef VarId))
+--       gFuncDeclsToFuncDefs mFDef gs =
+--           case partitionEithers (funcDeclToFuncDef (mFDef :& mm) <$> gs) of
+--               ([], rs) -> Right $ fromList rs <> mFDef
+--               (ls, []) -> Left $ Errors (fst <$> ls)
+--               (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> mFDef) (snd <$> ls)
 
--- | Create a function definition for the given function declaration.
---
-funcDeclToFuncDef :: ( MapsTo (Loc VarDeclE) VarId mm
-                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                     , MapsTo (Loc FuncDeclE) FuncId mm
-                     , MapsTo FuncId (FuncDef VarId) mm )
-                  => mm
-                  -> FuncDecl
-                  -> Either (Error, FuncDecl) (FuncId, FuncDef VarId)
-funcDeclToFuncDef mm f = left (,f) $ do
-    fId  <- mm .@@ getLoc f
-    pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
-    vExp <- expDeclToValExpr mm (funcsort fId) (funcBody f)
-    return (fId, FuncDef pIds vExp)
+-- -- | Create a function definition for the given function declaration.
+-- --
+-- funcDeclToFuncDef :: ( MapsTo (Loc VarDeclE) VarId mm
+--                      , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+--                      , MapsTo (Loc FuncDeclE) FuncId mm
+--                      , MapsTo FuncId (FuncDef VarId) mm )
+--                   => mm
+--                   -> FuncDecl
+--                   -> Either (Error, FuncDecl) (FuncId, FuncDef VarId)
+-- funcDeclToFuncDef mm f = left (,f) $ do
+--     fId  <- mm .@@ getLoc f
+--     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
+--     vExp <- expDeclToValExpr mm (funcsort fId) (funcBody f)
+--     return (fId, FuncDef pIds vExp)
 
 -- | Version that replaces the constraint:
 --
@@ -80,15 +81,17 @@ funcDeclsToFuncDefs2 :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncD
                        , In (FuncId, FuncDefInfo) (Contents mm) ~ 'False
                        , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False )
                     => mm
+                    -> Map (Loc FuncDeclE) (Signature, Handler VarId) -- ^ Standard functions, and ADT functions.
                     -> [FuncDecl]
                     -> CompilerM (Map FuncId FuncDefInfo)
-funcDeclsToFuncDefs2 mm fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
+funcDeclsToFuncDefs2 mm stdFuncs fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
     where
+      mm' = stdFuncs :& mm
       gFuncDeclsToFuncDefs :: Map FuncId FuncDefInfo
                            -> [FuncDecl]
                            -> Either Error (Map FuncId FuncDefInfo)
       gFuncDeclsToFuncDefs mFDef gs =
-          case partitionEithers (funcDeclToFuncDef2 (mFDef :& mm) <$> gs) of
+          case partitionEithers (funcDeclToFuncDef2 (mFDef :& mm') <$> gs) of
               ([], rs) -> Right $ fromList rs <> mFDef
               (ls, []) -> Left $ Errors (fst <$> ls)
               (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> mFDef) (snd <$> ls)
@@ -96,22 +99,25 @@ funcDeclsToFuncDefs2 mm fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
 -- | Create a function definition for the given function declaration.
 --
 funcDeclToFuncDef2 :: ( MapsTo (Loc VarDeclE) VarId mm
-                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                     , MapsTo (Loc FuncDeclE) FuncId mm
-                     , MapsTo FuncId FuncDefInfo mm
-                     , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False )
-                  => mm
-                  -> FuncDecl
-                  -> Either (Error, FuncDecl) (FuncId, FuncDefInfo)
+                      , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+                      , MapsTo (Loc FuncDeclE) FuncId mm
+                      , MapsTo FuncId FuncDefInfo mm
+                      , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm )
+                   => mm
+                   -> FuncDecl
+                   -> Either (Error, FuncDecl) (FuncId, FuncDefInfo)
 funcDeclToFuncDef2 mm f = left (,f) $ do
     fId  <- mm .@@ getLoc f
     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
     let
         locToSigHdlrMap = innerSigHandlerMap mm
-    vExp <- expDeclToValExpr2 (locToSigHdlrMap :& mm) (funcsort fId) (funcBody f)
+    vExp <- expDeclToValExpr2 (locToSigHdlrMap <.+> mm) (funcsort fId) (funcBody f)
     let fdef = FuncDef pIds vExp
         fsig = Signature (funcargs fId) (funcsort fId)
-        fhandler = cstrFunc (Map.empty::Map.Map FuncId (FuncDef VarId)) fId
+        fidFdef :: Map FuncId (FuncDef VarId)
+        fidFdef = Map.map funcDef (innerMap mm)
+        fhandler = cstrFunc fidFdef fId
+
     return (fId, FuncDefInfo fdef fsig fhandler)
 
 innerSigHandlerMap :: ( MapsTo (Loc FuncDeclE) FuncId mm

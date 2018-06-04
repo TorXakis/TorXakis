@@ -73,15 +73,15 @@ sortFromStringFuncId sId = do
 
 -- | Generate the function id's that correspond to the functions in the
 -- standard function table (@stdFuncTable@)
-getStdFuncIds :: CompilerM [((Loc FuncDeclE), FuncId)]
+getStdFuncIds :: CompilerM [(Loc FuncDeclE, FuncId)]
 getStdFuncIds = concat <$>
     traverse signHandlerToFuncIds (Map.toList (toMap stdFuncTable))
 
-signHandlerToFuncIds :: (Text, SignHandler VarId) -> CompilerM [((Loc FuncDeclE), FuncId)]
+signHandlerToFuncIds :: (Text, SignHandler VarId) -> CompilerM [(Loc FuncDeclE, FuncId)]
 signHandlerToFuncIds (n, sh) =
     traverse (signatureToFuncId n) (Map.keys sh)
 
-signatureToFuncId :: Text -> Signature -> CompilerM ((Loc FuncDeclE), FuncId)
+signatureToFuncId :: Text -> Signature -> CompilerM (Loc FuncDeclE, FuncId)
 signatureToFuncId n (Signature aSids rSid) = do
     fId  <- getNextId
     return (PredefLoc n fId, FuncId n (Id fId) aSids rSid)

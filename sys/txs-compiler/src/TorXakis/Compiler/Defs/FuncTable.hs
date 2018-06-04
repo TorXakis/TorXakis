@@ -16,10 +16,12 @@ import           Prelude                           hiding (lookup)
 
 import           CstrId                            (CstrId)
 import           FuncDef                           (FuncDef)
-import           FuncId                            (FuncId)
+import           FuncId                            (FuncId, funcargs, funcsort)
+import qualified FuncId
 import           FuncTable                         (FuncTable (FuncTable),
                                                     Handler, SignHandler,
-                                                    Signature (Signature))
+                                                    Signature (Signature),
+                                                    signHandler, toMap)
 import           Id                                (Id (Id))
 import           SortId                            (SortId, sortIdBool,
                                                     sortIdString)
@@ -28,7 +30,8 @@ import           StdTDefs                          (accessHandler, cstrHandler,
                                                     fromStringName, fromXmlName,
                                                     iscstrHandler, neqName,
                                                     notEqualHandler,
-                                                    toStringName, toXmlName)
+                                                    stdFuncTable, toStringName,
+                                                    toXmlName)
 import           ValExpr                           (PredefKind (ASF, AST, AXF, AXT),
                                                     cstrFunc, cstrPredef)
 import           VarId                             (VarId)
@@ -161,3 +164,27 @@ fBodyToHandler mm f = do
     fId <- lookupM (getLoc f :: Loc FuncDeclE) mm :: CompilerM FuncId
     fdi <- lookupM fId mm
     return $ funcHandler fdi
+
+
+adtsToSignatureHandlers :: ( MapsTo Text        SortId mm
+                   , MapsTo (Loc CstrE) CstrId mm)
+                => mm -> [ADTDecl] -> CompilerM (Map (Loc FuncDeclE)  (Signature, Handler VarId))
+adtsToSignatureHandlers = undefined
+
+stdSignatureHandlers = undefined
+
+fLocToSignatureHandlers :: Map (Loc FuncDeclE) FuncId
+                        -> FuncTable VarId
+                        -> CompilerM (Map (Loc FuncDeclE)  (Signature, Handler VarId))
+fLocToSignatureHandlers flocToFid ftable = Map.fromList . zip (Map.keys flocToFid) <$>
+    traverse funcIdToSignatureHandler (Map.elems flocToFid)
+    where
+      funcIdToSignatureHandler :: FuncId
+                               -> CompilerM (Signature, Handler VarId)
+      funcIdToSignatureHandler fid =
+          case Map.lookup sig sh of
+              Nothing -> -- TODO: throw the right kind of error
+                  error $ "Could not find " ++ show fid ++ show (Map.keys (toMap ftable))
+              Just h -> return (sig, h)
+          where sh = signHandler (FuncId.name fid) ftable
+                sig = Signature (funcargs fid) (funcsort fid)
