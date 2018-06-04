@@ -215,6 +215,7 @@ chRefsToIds :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
             => mm -> [ChanRef] -> CompilerM [ChanId]
 chRefsToIds mm chs = traverse (lookupChId mm) (getLoc <$> chs)
 
+-- TODO: rename this to join!
 closure2 :: (Ord k, Ord v) => Map k v -> Map v w -> Map k w
 closure2 m0 m1 = foldl maybeAddPair Map.empty (Map.toList m0)
     where

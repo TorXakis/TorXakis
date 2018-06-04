@@ -54,6 +54,7 @@ executable txsserver
                       , front
                       , serverenv
                       , valexpr
+                      , txs-compiler
 
   default-language:     Haskell2010
 
