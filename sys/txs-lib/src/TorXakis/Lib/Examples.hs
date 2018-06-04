@@ -172,9 +172,9 @@ testPutToWReadsWorld = do
         fakeSendToW = error "This function should not be called in testPutToWReadsWorld, since there's an action waiting in fromWorldChan."
         toWMMs = Map.singleton txsChanId fakeSendToW
     atomically $ writeTChan fWCh actG
-    action <- runIOC s $ putToW 0 fWCh toWMMs actP
+    action <- putToW 0 fWCh toWMMs actP
     atomically $ writeTChan fWCh actG
-    action' <- runIOC s $ putToW 0 fWCh Map.empty ActQui
+    action' <- putToW 0 fWCh Map.empty ActQui
     return $ action == actG && action' == actG
 
 -- | This example tries to stop the core before all steps are taken.

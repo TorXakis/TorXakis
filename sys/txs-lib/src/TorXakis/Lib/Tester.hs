@@ -40,8 +40,8 @@ setTest s mn = runResponse $ do
         let s' = s & worldListeners .~ tids
         runIOC s' $
             Core.txsSetTest
-                (putToW deltaTime fWCh (s' ^. wConnDef . toWorldMappings))
-                (getFromW deltaTime fWCh)
+                (lift <$> putToW deltaTime fWCh (s' ^. wConnDef . toWorldMappings))
+                (lift $ getFromW deltaTime fWCh)
                 mDef Nothing Nothing
 
 -- | Test for n-steps or actions

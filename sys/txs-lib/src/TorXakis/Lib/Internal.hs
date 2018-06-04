@@ -18,7 +18,6 @@ import           Control.Concurrent.Async     (race)
 import           Control.Concurrent.STM.TChan (TChan, readTChan, tryReadTChan,
                                                writeTChan)
 import           Control.DeepSeq              (force)
-import           Control.Monad.State          (lift)
 import           Control.Monad.STM            (atomically)
 import           Data.Foldable                (traverse_)
 import           Data.Map.Strict              as Map
@@ -26,7 +25,6 @@ import           Data.Set                     as Set
 import           Lens.Micro                   ((^.))
 
 import           ChanId
-import           EnvCore                      (IOC)
 import           TxsDDefs                     (Action (Act, ActQui))
 import           TxsShow
 
@@ -36,7 +34,7 @@ import           TorXakis.Lib.Session
 --
 -- In case of an 'Action' coming from the world before given action can be put,
 -- given 'Action' will be skipped and received 'Action' will be returned.
-putToW :: Int -> TChan Action -> Map ChanId ToWorldMapping -> Action -> IOC Action
+putToW :: Int -> TChan Action -> Map ChanId ToWorldMapping -> Action -> IO Action
 putToW _ fromWorldCh toWorldMMap act@(Act cs) = do
     let (toWorldMapping, constants) = force getWorldMap
         toWFunc = force (toWorldMapping ^. sendToW)
@@ -57,22 +55,22 @@ putToW deltaTime fromWorldCh _ ActQui =
         threadDelay (deltaTime * milliSecond)
         return ActQui
 
-actIfNothingRead :: TChan Action -> IO Action -> IOC Action
-actIfNothingRead fromWorldCh ioAct = lift $
-    do  mAct <- atomically $ tryReadTChan fromWorldCh
-        case mAct of
-            Just sutAct -> return sutAct
-            Nothing     -> ioAct
+actIfNothingRead :: TChan Action -> IO Action -> IO Action
+actIfNothingRead fromWorldCh ioAct = do
+    mAct <- atomically $ tryReadTChan fromWorldCh
+    case mAct of
+        Just sutAct -> return sutAct
+        Nothing     -> ioAct
 
 -- | Generic functionality for getting an action from world AKA output of the SUT.
 --
 -- If no 'Action' is received during given timeout period,
 -- a Quiescence 'Action' is returned.
-getFromW :: Int -> TChan Action -> IOC Action
-getFromW deltaTime fromWorldCh = (id ||| id) <$> lift (sutAct `race` quiAct)
+getFromW :: Int -> TChan Action -> IO Action
+getFromW deltaTime fromWorldCh = (id ||| id) <$> (sutAct `race` quiAct)
     where
         sutAct = atomically $ readTChan fromWorldCh
         quiAct = threadDelay (deltaTime * milliSecond) >> return ActQui
 
 milliSecond :: Int
-milliSecond = (10 ^ (6 :: Int))
+milliSecond = 10 ^ (6 :: Int)
