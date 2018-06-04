@@ -15,6 +15,7 @@ import           Data.Text                          (Text)
 import           ChanId                             (ChanId, name, unid)
 import           FuncDef                            (FuncDef)
 import           FuncId                             (FuncId)
+import           FuncTable                          (Handler, Signature)
 import           ProcId                             (ExitSort (Exit, NoExit),
                                                      ProcId)
 import           SortId                             (SortId)
@@ -29,6 +30,7 @@ import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
 import           TorXakis.Compiler.MapsTo
+import           TorXakis.Compiler.ValExpr.FuncDef
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.VarId
 import           TorXakis.Parser.Data
@@ -38,11 +40,12 @@ modelDeclToModelDef :: ( MapsTo Text SortId mm
                        , MapsTo (Loc ChanDeclE) ChanId mm -- Also needed because channels are declared outside the model
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                        , MapsTo (Loc FuncDeclE) FuncId mm
-                       , MapsTo FuncId (FuncDef VarId) mm
+                       , MapsTo FuncId FuncDefInfo mm
                        , MapsTo ProcId () mm
                        , MapsTo (Loc VarDeclE) SortId mm
                        , MapsTo (Loc VarDeclE) VarId mm
-                       , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False)
+                       , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
+                       , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False )
                     => mm -> ModelDecl -> CompilerM ModelDef
 modelDeclToModelDef mm md = do
     -- Map the channel references to the places in which they are declared.

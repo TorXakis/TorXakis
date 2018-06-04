@@ -17,6 +17,7 @@ import qualified BehExprDefs                        as Beh
 import           ChanId                             (ChanId)
 import           FuncDef                            (FuncDef)
 import           FuncId                             (FuncId)
+import           FuncTable                          (Handler, Signature)
 import           Id                                 (Id (Id))
 import qualified ProcId
 import           SortId                             (SortId)
@@ -38,6 +39,7 @@ import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.Common
+import           TorXakis.Compiler.ValExpr.FuncDef
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Compiler.ValExpr.VarId
@@ -45,12 +47,14 @@ import           TorXakis.Parser.Data
 
 import           TorXakis.Compiler.Data.ProcDecl
 import           TorXakis.Compiler.Data.VarDecl
+import           TorXakis.Compiler.ValExpr.FuncDef
 
 procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                          , MapsTo (Loc FuncDeclE) FuncId mm
-                         , MapsTo FuncId (FuncDef VarId) mm
+                         , MapsTo FuncId FuncDefInfo mm
                          , MapsTo (Loc ProcDeclE) ProcInfo mm
+                         , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
                          , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                          , In (Text, ChanId) (Contents mm) ~ 'False
                          , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
@@ -115,8 +119,9 @@ procDeclsToProcDefMap mm ps = do
 stautDeclsToProcDefMap :: ( MapsTo Text SortId mm
                           , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                           , MapsTo (Loc FuncDeclE) FuncId mm
-                          , MapsTo FuncId (FuncDef VarId) mm
+                          , MapsTo FuncId FuncDefInfo mm
                           , MapsTo (Loc ProcDeclE) ProcInfo mm
+                          , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
                           , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                           , In (Text, ChanId) (Contents mm) ~ 'False
                           , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
@@ -240,8 +245,9 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                       case vIds of
                           [] -> return []
                           v:_ -> do
+                              let mm' = innerSigHandlerMap mm :& mm
                               vExp <- liftEither $
-                                  expDeclToValExpr ((pvIds <.++> lVIds) :& mm) (varsort v) e
+                                  expDeclToValExpr2 ((pvIds <.++> lVIds) :& mm') (varsort v) e
                               return (zip vIds (repeat vExp))
 
                   mkTransitions :: [StatId]

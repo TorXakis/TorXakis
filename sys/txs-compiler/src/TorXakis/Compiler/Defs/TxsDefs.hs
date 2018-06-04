@@ -30,6 +30,7 @@ import           ConstDefs                          (Const (Cstring))
 import           CstrId                             (CstrId)
 import           FuncDef                            (FuncDef)
 import           FuncId                             (FuncId)
+import           FuncTable                          (Handler, Signature)
 import           Id                                 (Id (Id))
 import           ProcId                             (ProcId)
 import           PurpId                             (PurpId (PurpId))
@@ -59,6 +60,7 @@ import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.CstrDef
+import           TorXakis.Compiler.ValExpr.FuncDef
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Compiler.ValExpr.VarId
@@ -84,10 +86,11 @@ modelDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , MapsTo (Loc ChanDeclE) ChanId mm
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                        , MapsTo (Loc FuncDeclE) FuncId mm
-                       , MapsTo FuncId (FuncDef VarId) mm
+                       , MapsTo FuncId FuncDefInfo mm
                        , MapsTo ProcId ProcDef mm
                        , MapsTo (Loc VarDeclE) SortId mm
                        , MapsTo (Loc VarDeclE) VarId mm
+                       , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
                        , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
                        , In (ProcId, ()) (Contents mm) ~ 'False )
                     => mm -> [ModelDecl] -> CompilerM (Map ModelId ModelDef)
@@ -104,11 +107,12 @@ purpDeclsToTxsDefs :: ( MapsTo Text SortId mm
                       , MapsTo (Loc ChanDeclE) ChanId mm
                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                       , MapsTo (Loc FuncDeclE) FuncId mm
-                      , MapsTo FuncId (FuncDef VarId) mm
+                      , MapsTo FuncId FuncDefInfo mm
                       , MapsTo ProcId ProcDef mm
                       , MapsTo (Loc VarDeclE) SortId mm
                       , MapsTo (Loc VarDeclE) VarId mm
                       , In (ProcId, ()) (Contents mm) ~ 'False
+                      , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
                       , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False )
                       =>  mm -> [PurpDecl] -> CompilerM (Map PurpId PurpDef)
 purpDeclsToTxsDefs mm pds =
@@ -170,8 +174,9 @@ cnectDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , MapsTo (Loc VarDeclE) SortId mm
                        , MapsTo (Loc VarDeclE) VarId mm
                        , MapsTo (Loc FuncDeclE) FuncId mm
-                       , MapsTo FuncId (FuncDef VarId) mm
+                       , MapsTo FuncId FuncDefInfo mm
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+                       , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
                        , In (ProcId, ()) (Contents mm) ~ 'False
                        , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False )
                     => mm -> [CnectDecl] -> CompilerM (Map CnectId CnectDef)
@@ -219,7 +224,8 @@ cnectDeclsToTxsDefs mm cds =
                   let mm'' = offrSIdMap <.+> (offrVIdMap <.+> mm')
                   Offer chId chOffrs <- toOffer mm'' offr
                   vIds <- traverse questVIds chOffrs
-                  vExp <- liftEither $ expDeclToValExpr mm'' sortIdString e
+                  let mm''' = innerSigHandlerMap mm'' :& mm''
+                  vExp <- liftEither $ expDeclToValExpr2 mm''' sortIdString e
                   return $ ConnDtoW chId h p vIds vExp
               toConnDef (_, _, CodecItem _ (QuestD _) Encode) =
                   throwError Error
@@ -327,11 +333,12 @@ mapperDeclsToTxsDefs :: ( MapsTo Text SortId mm
                         , MapsTo (Loc ChanDeclE) ChanId mm
                         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                         , MapsTo (Loc FuncDeclE) FuncId mm
-                        , MapsTo FuncId (FuncDef VarId) mm
+                        , MapsTo FuncId FuncDefInfo mm
                         , MapsTo ProcId ProcDef mm
                         , MapsTo (Loc VarDeclE) SortId mm
                         , MapsTo (Loc VarDeclE) VarId mm
                         , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
+                        , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
                         , In (ProcId, ()) (Contents mm) ~ 'False )
                      => mm -> [MapperDecl] -> CompilerM (Map MapperId MapperDef)
 mapperDeclsToTxsDefs mm mds =

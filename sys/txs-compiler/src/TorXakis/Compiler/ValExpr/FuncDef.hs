@@ -107,19 +107,24 @@ funcDeclToFuncDef2 mm f = left (,f) $ do
     fId  <- mm .@@ getLoc f
     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
     let
-        fdisMap :: Map FuncId FuncDefInfo
-        fdisMap = innerMap mm
-        sigHdlrMap :: Map FuncId (Signature, Handler VarId)
-        sigHdlrMap = (funcSig &&& funcHandler) <$> fdisMap
-        fdeclsMap :: Map (Loc FuncDeclE) FuncId
-        fdeclsMap = innerMap mm
-        locToSigHdlrMap :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-        locToSigHdlrMap = closure2 fdeclsMap sigHdlrMap
+        locToSigHdlrMap = innerSigHandlerMap mm
     vExp <- expDeclToValExpr2 (locToSigHdlrMap :& mm) (funcsort fId) (funcBody f)
     let fdef = FuncDef pIds vExp
         fsig = Signature (funcargs fId) (funcsort fId)
         fhandler = cstrFunc (Map.empty::Map.Map FuncId (FuncDef VarId)) fId
     return (fId, FuncDefInfo fdef fsig fhandler)
+
+innerSigHandlerMap :: ( MapsTo (Loc FuncDeclE) FuncId mm
+                     ,  MapsTo FuncId FuncDefInfo mm )
+                   => mm -> Map (Loc FuncDeclE) (Signature, Handler VarId)
+innerSigHandlerMap mm = closure2 fdeclsMap sigHdlrMap
+    where
+      fdisMap :: Map FuncId FuncDefInfo
+      fdisMap = innerMap mm
+      sigHdlrMap :: Map FuncId (Signature, Handler VarId)
+      sigHdlrMap = (funcSig &&& funcHandler) <$> fdisMap
+      fdeclsMap :: Map (Loc FuncDeclE) FuncId
+      fdeclsMap = innerMap mm
 
 data FuncDefInfo = FuncDefInfo
     { funcDef     :: FuncDef VarId

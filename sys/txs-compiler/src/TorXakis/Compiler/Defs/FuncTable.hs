@@ -5,38 +5,39 @@
 
 module TorXakis.Compiler.Defs.FuncTable where
 
-import           Control.Arrow                    (second)
-import           Data.Foldable                    (foldl')
-import           Data.List.Index                  (imapM)
-import           Data.Map                         (Map)
-import qualified Data.Map                         as Map
-import           Data.Semigroup                   ((<>))
-import           Data.Text                        (Text)
-import           Prelude                          hiding (lookup)
+import           Control.Arrow                     (second)
+import           Data.Foldable                     (foldl')
+import           Data.List.Index                   (imapM)
+import           Data.Map                          (Map)
+import qualified Data.Map                          as Map
+import           Data.Semigroup                    ((<>))
+import           Data.Text                         (Text)
+import           Prelude                           hiding (lookup)
 
-import           CstrId                           (CstrId)
-import           FuncDef                          (FuncDef)
-import           FuncId                           (FuncId)
-import           FuncTable                        (FuncTable (FuncTable),
-                                                   Handler, SignHandler,
-                                                   Signature (Signature))
-import           Id                               (Id (Id))
-import           SortId                           (SortId, sortIdBool,
-                                                   sortIdString)
-import           StdTDefs                         (accessHandler, cstrHandler,
-                                                   eqName, equalHandler,
-                                                   fromStringName, fromXmlName,
-                                                   iscstrHandler, neqName,
-                                                   notEqualHandler,
-                                                   toStringName, toXmlName)
-import           ValExpr                          (PredefKind (ASF, AST, AXF, AXT),
-                                                   cstrFunc, cstrPredef)
-import           VarId                            (VarId)
+import           CstrId                            (CstrId)
+import           FuncDef                           (FuncDef)
+import           FuncId                            (FuncId)
+import           FuncTable                         (FuncTable (FuncTable),
+                                                    Handler, SignHandler,
+                                                    Signature (Signature))
+import           Id                                (Id (Id))
+import           SortId                            (SortId, sortIdBool,
+                                                    sortIdString)
+import           StdTDefs                          (accessHandler, cstrHandler,
+                                                    eqName, equalHandler,
+                                                    fromStringName, fromXmlName,
+                                                    iscstrHandler, neqName,
+                                                    notEqualHandler,
+                                                    toStringName, toXmlName)
+import           ValExpr                           (PredefKind (ASF, AST, AXF, AXT),
+                                                    cstrFunc, cstrPredef)
+import           VarId                             (VarId)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
+import           TorXakis.Compiler.ValExpr.FuncDef
 import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Parser.Data
 
@@ -138,14 +139,14 @@ fieldToAccessCstrHandler mm sId cId p f = do
 
 funcDeclsToFuncTable :: ( MapsTo Text SortId mm
                         , MapsTo (Loc FuncDeclE) FuncId mm
-                        , MapsTo FuncId (FuncDef VarId) mm )
+                        , MapsTo FuncId FuncDefInfo mm )
                      => mm -> [FuncDecl] -> CompilerM (FuncTable VarId)
 funcDeclsToFuncTable mm fs = FuncTable . Map.fromListWith Map.union <$>
     traverse (funcDeclToFuncTable mm) fs
 
 funcDeclToFuncTable :: ( MapsTo Text SortId mm
                         , MapsTo (Loc FuncDeclE) FuncId mm
-                        , MapsTo FuncId (FuncDef VarId) mm )
+                        , MapsTo FuncId FuncDefInfo mm )
                     => mm -> FuncDecl -> CompilerM (Text, SignHandler VarId)
 funcDeclToFuncTable mm f = do
     sId   <- findSortIdM mm (funcRetSort f)
@@ -154,11 +155,9 @@ funcDeclToFuncTable mm f = do
     return (funcName f, Map.singleton (Signature fSids sId) hdlr)
 
 fBodyToHandler :: ( MapsTo (Loc FuncDeclE) FuncId mm
-                  , MapsTo FuncId (FuncDef VarId) mm )
+                  , MapsTo FuncId FuncDefInfo mm )
                => mm -> FuncDecl -> CompilerM (Handler VarId)
 fBodyToHandler mm f = do
-    fId  <- mm .@ getLoc f
-    let
-        im :: Map FuncId (FuncDef VarId)
-        im = innerMap mm
-    return $ cstrFunc im fId
+    fId <- lookupM (getLoc f :: Loc FuncDeclE) mm :: CompilerM FuncId
+    fdi <- lookupM fId mm
+    return $ funcHandler fdi

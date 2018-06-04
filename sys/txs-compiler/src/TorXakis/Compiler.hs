@@ -24,7 +24,7 @@ import           CstrId                             (CstrId)
 import           FuncDef                            (FuncDef (FuncDef))
 import           FuncId                             (FuncId (FuncId), name)
 import qualified FuncId
-import           FuncTable                          (FuncTable,
+import           FuncTable                          (FuncTable, Handler,
                                                      Signature (Signature),
                                                      toMap)
 import           Id                                 (Id (Id), _id)
@@ -118,11 +118,8 @@ compileParsedDefs pd = do
 
     -- TODO! WARNING! Here we should be able to make the FuncTable!
     adtsFTable <- adtsToFuncTable (sIds :& cstrIds) (pd ^. adts) :: CompilerM (FuncTable VarId)
-
     -- :: FuncTable VarId
-
-
-    fdefs <- funcDeclsToFuncDefs (vIds :& fIds :& decls) (allFuncs pd)
+    fdefs <- funcDeclsToFuncDefs2 (vIds :& fIds :& decls) (allFuncs pd)
     -- pdefs <- procDeclsToProcDefMap (sIds :& cstrIds :& fIds :& fdefs :& decls)
     --                                (pd ^. procs)
     pdefs <- compileToProcDefs (sIds :& cstrIds :& fIds :& fdefs :& decls) pd
@@ -141,12 +138,13 @@ toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo (Loc CstrE) CstrId mm
              , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
              , MapsTo (Loc FuncDeclE) FuncId mm
-             , MapsTo FuncId (FuncDef VarId) mm
+             , MapsTo FuncId FuncDefInfo mm
              , MapsTo ProcId ProcDef mm
              , MapsTo Text (Loc ChanDeclE) mm
              , MapsTo (Loc ChanDeclE) ChanId mm
              , MapsTo (Loc VarDeclE) VarId mm
              , MapsTo (Loc VarDeclE) SortId mm
+             , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
              , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
              , In (ProcId, ()) (Contents mm) ~ 'False )
           => FuncTable VarId -> mm -> ParsedDefs -> CompilerM TxsDefs
@@ -155,8 +153,12 @@ toTxsDefs ft mm pd = do
     -- Get the function id's of all the constants.
     cfIds <- traverse (mm .@) (pd ^.. consts . traverse . loc')
     let
+        fdiMap :: Map FuncId FuncDefInfo
+        fdiMap = innerMap mm
+        fdefMap :: Map FuncId (FuncDef VarId)
+        fdefMap = funcDef <$> fdiMap
         -- TODO: we have to remove the constants to comply with what TorXakis generates :/
-        funcDefsNoConsts = Map.withoutKeys (innerMap mm) (Set.fromList cfIds)
+        funcDefsNoConsts = Map.withoutKeys fdefMap (Set.fromList cfIds)
         -- TODO: we have to simplify to comply with what TorXakis generates.
         fn = idefsNames mm ++ fmap name cfIds
         fds = TxsDefs.empty {
@@ -187,7 +189,7 @@ toTxsDefs ft mm pd = do
 toSigs :: ( MapsTo Text        SortId mm
           , MapsTo (Loc CstrE) CstrId mm
           , MapsTo (Loc FuncDeclE) FuncId mm
-          , MapsTo FuncId (FuncDef VarId) mm
+          , MapsTo FuncId FuncDefInfo mm
           , MapsTo ProcId ProcDef mm
           , MapsTo (Loc ChanDeclE) ChanId mm)
        => mm -> ParsedDefs -> CompilerM (Sigs VarId)
@@ -278,9 +280,10 @@ compileToDecls lfDefs pd = do
 
 -- | Generate the map from process id's definitions to process definitions.
 compileToProcDefs :: ( MapsTo Text SortId mm
-                     , MapsTo FuncId (FuncDef VarId) mm
+                     , MapsTo FuncId FuncDefInfo mm
                      , MapsTo (Loc FuncDeclE) FuncId mm
                      , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+                     , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
                      , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
                      , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                      , In (Text, ChanId) (Contents mm) ~ 'False
