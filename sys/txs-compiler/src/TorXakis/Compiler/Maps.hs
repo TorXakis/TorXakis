@@ -31,6 +31,8 @@ import           ChanId                    (ChanId (ChanId), name)
 import           CstrId                    (CstrId)
 import           FuncDef                   (FuncDef)
 import           FuncId                    (FuncId, funcargs, funcsort)
+import           FuncTable                 (Handler, Signature, sortArgs,
+                                            sortRet)
 import           SortId                    (SortId)
 import           VarId                     (VarId)
 
@@ -96,6 +98,24 @@ determineF mm fdis aSids mRSid =
           fId <- lookup fdi mm
           return $ funcargs fId == aSids &&
                    fromMaybe True ((funcsort fId ==) <$> mRSid)
+
+-- | Select the function definitions that matches the given arguments and return
+-- types.
+determineF2 :: MapsTo (Loc FuncDeclE) Signature mm
+           => mm
+           -> [Loc FuncDeclE]
+           -> [SortId]        -- ^ Arguments SortId
+           -> Maybe SortId    -- ^ Return Sort, if known.
+           -> [Loc FuncDeclE]
+determineF2 mm ls aSids mRSid =
+    filter funcMatches ls
+    where
+      funcMatches :: Loc FuncDeclE -> Bool
+      funcMatches l = const False ||| id $ do
+          sig <- lookup l mm
+          return $ sortArgs sig == aSids &&
+                   fromMaybe True ((sortRet sig ==) <$> mRSid)
+
 
 -- | Get the name of the implicit function declaration, if any.
 fdiName :: Loc FuncDeclE -> Maybe Text

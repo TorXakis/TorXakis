@@ -9,6 +9,7 @@ module TorXakis.Parser
     , procs
     , txsP
     , parseFile
+    , parseString
     , parse
     )
 where
@@ -48,9 +49,11 @@ parse uid source input parser = left parseErrorAsError $
     runIdentity (runParserT parser (mkState uid) source input)
 
 parseFile :: FilePath -> IO (Either Error ParsedDefs)
-parseFile fp = left parseErrorAsError <$> do
-    input <- readFile fp
-    return $ runIdentity (runParserT txsP (mkState 1000) fp input)
+parseFile fp = parseString fp <$> readFile fp
+
+parseString :: FilePath -> String -> Either Error ParsedDefs
+parseString fp input = left parseErrorAsError $
+    runIdentity (runParserT txsP (mkState 1000) fp input)
 
 parseErrorAsError :: ParseError -> Error
 parseErrorAsError err = Error

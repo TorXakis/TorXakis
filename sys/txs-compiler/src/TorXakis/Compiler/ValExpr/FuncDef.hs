@@ -52,7 +52,7 @@ funcDeclsToFuncDefs mm fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
 -- | Create a function definition for the given function declaration.
 --
 funcDeclToFuncDef :: ( MapsTo (Loc VarDeclE) VarId mm
-                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
+                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                      , MapsTo (Loc FuncDeclE) FuncId mm
                      , MapsTo FuncId (FuncDef VarId) mm )
                   => mm

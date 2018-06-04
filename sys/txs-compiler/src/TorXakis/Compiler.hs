@@ -67,6 +67,7 @@ import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Compiler.ValExpr.VarId
 
 import           TorXakis.Compiler.Data.ProcDecl
+import           TorXakis.Compiler.Defs.FuncTable
 import           TorXakis.Parser
 import           TorXakis.Parser.BExpDecl
 import           TorXakis.Parser.Data
@@ -74,7 +75,7 @@ import           TorXakis.Parser.ValExprDecl
 
 -- | Compile a string into a TorXakis model.
 --
-compileFile :: String -> IO (Either Error (Id, TxsDefs, Sigs VarId))
+compileFile :: FilePath -> IO (Either Error (Id, TxsDefs, Sigs VarId))
 compileFile fp = do
     ePd <- parseFile fp
     case ePd of
@@ -82,13 +83,23 @@ compileFile fp = do
         Right pd -> return $
             evalStateT (runCompiler . compileParsedDefs $ pd) newState
 
+
+compileUnsafe :: CompilerM a -> a
+compileUnsafe cmp = throwOnError $
+    evalStateT (runCompiler cmp) newState
+
 -- | Legacy compile function, used to comply with the old interface. It should
 -- be deprecated in favor of @compile@.
 compileLegacy :: String -> (Id, TxsDefs, Sigs VarId)
-compileLegacy = (throwOnLeft ||| id) . compile
+compileLegacy str =
+    case parseString "" str of
+        Left err -> error $ show err
+        Right pd ->
+            compileUnsafe (compileParsedDefs pd)
+
+throwOnError :: Either Error a -> a
+throwOnError = throwOnLeft ||| id
     where throwOnLeft = error . show
-          compile :: String -> Either Error (Id, TxsDefs, Sigs VarId)
-          compile = undefined
 
 compileParsedDefs :: ParsedDefs -> CompilerM (Id, TxsDefs, Sigs VarId)
 compileParsedDefs pd = do
@@ -104,6 +115,13 @@ compileParsedDefs pd = do
     vdSortMap <- inferTypes (sIds :& decls :& fIds :& emptyVdMap) (allFuncs pd)
     -- Construct the variable declarations to @VarId@'s lookup table.
     vIds <- generateVarIds (vdSortMap :& fIds) (allFuncs pd)
+
+    -- TODO! WARNING! Here we should be able to make the FuncTable!
+    adtsFTable <- adtsToFuncTable (sIds :& cstrIds) (pd ^. adts) :: CompilerM (FuncTable VarId)
+
+    -- :: FuncTable VarId
+
+
     fdefs <- funcDeclsToFuncDefs (vIds :& fIds :& decls) (allFuncs pd)
     -- pdefs <- procDeclsToProcDefMap (sIds :& cstrIds :& fIds :& fdefs :& decls)
     --                                (pd ^. procs)
@@ -189,7 +207,7 @@ toSigs mm pd = do
         `uniqueCombine` cs
         `uniqueCombine` ss
 
-funcDefInfoNamesMap :: [(Loc FuncDeclE)] -> Map Text [(Loc FuncDeclE)]
+funcDefInfoNamesMap :: [Loc FuncDeclE] -> Map Text [Loc FuncDeclE]
 funcDefInfoNamesMap fdis =
     groupByName $ catMaybes $ asPair <$> fdis
     where
@@ -214,7 +232,7 @@ compileToSortIds pd = do
 
 -- | Get a dictionary from locations of function definitions (included
 -- locations of predefined functions), to their function id's.
-compileToFuncIds :: Map Text SortId ->  ParsedDefs -> CompilerM (Map (Loc FuncDeclE) FuncId)
+compileToFuncIds :: Map Text SortId -> ParsedDefs -> CompilerM (Map (Loc FuncDeclE) FuncId)
 compileToFuncIds sIds pd = do
     stdFuncIds <- getStdFuncIds
     cstrFuncIds <- adtsToFuncIds sIds (pd ^. adts)
@@ -294,32 +312,30 @@ compileToProcDefs mm pd = do
 -- > SIGS   ~~ (Sigs VarId)
 -- > VARENV ~~ [VarId]  WARNING!!!!! This thing is empty when used at the server, so we might not need it.
 -- > UNID   ~~ Int
-valdefsParser :: ( MapsTo Text SortId mm
-                 , MapsTo FuncId (FuncDef VarId) mm
-                 , MapsTo (Loc FuncDeclE) FuncId mm
-                 , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
-                 , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
-                 , In (Loc VarRefE, Either (Loc VarDeclE) [Loc FuncDeclE]) (Contents mm) ~ 'False )
-              => mm -> Int -> String -> CompilerM (Int, Map VarId (ValExpr VarId))
-valdefsParser mm unid str = do
+valdefsParser :: Map Text SortId
+              -> Map FuncId (FuncDef VarId)
+              -> Int
+              -> String
+              -> CompilerM (Int, Map VarId (ValExpr VarId))
+valdefsParser sIds fDefs unid str = do
     ls     <-  liftEither $ parse 0 "" str letVarDeclsP
     setUnid unid
     let
+        allFIds = Map.keys fDefs
         -- We cannot refer to a variable previously declared
-        lsVDs :: Map Text (Loc VarDeclE)
-        lsVDs = Map.empty
-        lsFDs :: Map Text [Loc FuncDeclE]
-        lsFDs = Map.fromListWith (++) [(k, [v]) | (k, v) <- lsFIds]
-        lsFIds :: [(Text, Loc FuncDeclE)]
-        lsFIds = fmap (first FuncId.name . swap) . Map.toList . innerMap $ mm
+        lsVDs = Map.empty :: Map Text (Loc VarDeclE)
+        lsFDs = mkFuncDecls allFIds
+        lsFIds = mkFuncIds allFIds
+        mm =  sIds
+           :& fDefs
+           :& lsFDs
+           :& lsFIds
     lsVRs  <- Map.fromList <$>
         mapRefToDecls (lsVDs :& lsFDs) (varDeclExp <$> ls)
     let
         -- We don't have any external variables we can use.
-        lsEVSIds :: Map (Loc VarDeclE) SortId
-        lsEVSIds = Map.empty
-        lsEVVIds :: Map (Loc VarDeclE) VarId
-        lsEVVIds = Map.empty
+        lsEVSIds = Map.empty :: Map (Loc VarDeclE) SortId
+        lsEVVIds = Map.empty :: Map (Loc VarDeclE) VarId
         mm' = lsVRs :& lsEVSIds :& lsEVVIds :& mm
     lVSIds <- liftEither $ letInferTypes mm' Map.empty ls
     lVIds  <- mkVarIds (lVSIds <.+> mm') ls
@@ -328,37 +344,36 @@ valdefsParser mm unid str = do
     unid'  <- getUnid
     return (unid', vEnv)
 
-
 mkFuncDecls :: [FuncId] -> Map Text [Loc FuncDeclE]
 mkFuncDecls fs = Map.fromListWith (++) $ zip (FuncId.name <$> fs)
                                              (pure . fIdToLoc <$> fs)
+
+mkFuncIds :: [FuncId] -> Map (Loc FuncDeclE) FuncId
+mkFuncIds fs = Map.fromList $ zip (fIdToLoc <$> fs) fs
 
 -- TODO: place this in the appropriate module.
 -- PROBLEM! The Sigs do not contain a FuncId!
 -- sigsToFuncDefs :: Sigs -> Map FuncId (FuncDef VarId)
 -- sigsToFuncDefs = undefined
-
+--
+-- TODO: think about renaming this to something like 'compileVExpr'
 vexprParser :: Map Text SortId               -- ^ Sorts available to the expression (to be parsed).
             -> Map FuncId (FuncDef VarId)    -- ^ Functions available to the expression.
             -> Int                           -- ^ Last used unique identifier.
-            -> [VarId]                       -- ^ Local free variables.
-            -> Map.Map VarId (ValExpr VarId) -- ^ Local value environment.
+            -> [VarId]                       -- ^ Local variables.
             -> String                        -- ^ String to parse.
             -> CompilerM (Int, ValExpr VarId)
-vexprParser sIds fDefs unid vs vEnv str = do
+vexprParser sIds fDefs unid allVars str = do
     eDecl <- liftEither $ parse 0 "" str valExpP
     setUnid unid
     let
-        allVars :: [VarId]
-        allVars = vs ++ Map.keys vEnv
-        allFIds :: [FuncId]
         allFIds = Map.keys fDefs
         fIds :: Map (Loc FuncDeclE) FuncId
-        fIds = Map.fromList $ zip (fIdToLoc <$> allFIds) allFIds
-        eVDs :: Map Text (Loc VarDeclE)
-        eVDs = Map.fromList $ zip (VarId.name <$> allVars) (varIdToLoc <$> allVars)
+        fIds = mkFuncIds allFIds
         eFDs :: Map Text [Loc FuncDeclE]
         eFDs = mkFuncDecls allFIds
+        eVDs :: Map Text (Loc VarDeclE)
+        eVDs = Map.fromList $ zip (VarId.name <$> allVars) (varIdToLoc <$> allVars)
         -- | SortIds of the pre-existing variables
         vSIdsPre :: Map (Loc VarDeclE) SortId
         vSIdsPre = Map.fromList $ zip (varIdToLoc <$> allVars) (varsort <$> allVars)
@@ -366,11 +381,10 @@ vexprParser sIds fDefs unid vs vEnv str = do
         mapRefToDecls (eVDs :& eFDs) eDecl
     let
         mm =  sIds     -- MapsTo Text SortId mm
-           :& fDefs    -- MapsTo FuncId (FuncDef VarId) mm
            :& fIds     -- MapsTo (Loc FuncDeclE) FuncId mm
            :& vRefs    -- MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
            :& vSIdsPre -- MapsTo (Loc VarDeclE) SortId
-            -- TODO: if we change HasTypedVars to DefinesAMap then we don't
+            -- TODO: if we change @HasTypedVars@ to @DefinesAMap@ then we don't
             -- need the dummy maps below.
            :& (Map.empty :: Map ProcId ())
            :& (Map.empty :: Map (Loc ChanDeclE) ChanId)
@@ -379,6 +393,7 @@ vexprParser sIds fDefs unid vs vEnv str = do
     vIds  <- Map.fromList <$> mkVarIds (vSIds <.+> mm) eDecl
     let
         mm' =  (vSIds <.+> mm)
+            :& fDefs -- MapsTo FuncId (FuncDef VarId) mm
             :& vIds  -- MapsTo (Loc VarDeclE) VarId mm
     sId   <- liftEither $ inferExpTypes mm' eDecl >>= getUniqueElement
     vExp  <- liftEither $ expDeclToValExpr mm' sId eDecl
