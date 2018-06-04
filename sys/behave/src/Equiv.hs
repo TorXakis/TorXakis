@@ -22,7 +22,7 @@ module Equiv
 -- import
 
 where
-
+import qualified Data.List           as List
 import qualified Data.Set            as Set
 import qualified Data.MultiSet       as MultiSet
 
@@ -57,21 +57,25 @@ instance (Equiv t) => Equiv [t]
 
 instance (Ord t,Equiv t) => Equiv (Set.Set t)
   where
-    xs ~=~ ys  =  do
-         let xs' = Set.toList xs
-         let ys' = Set.toList ys
-         xs_sub_ys <- sequence [ elemMby (~=~) x ys' | x <- xs' ]
-         ys_sub_xs <- sequence [ elemMby (~=~) y xs' | y <- ys' ]
-         return $ and xs_sub_ys && and ys_sub_xs
+    xs ~=~ ys  = do
+        xs' <- nubMby (~=~) (Set.toList xs)
+        ys' <- nubMby (~=~) (Set.toList ys)
+        if List.length xs' == List.length ys'
+            then do
+                    -- given that all elements different under (~=~) and same number of elements holds that xs_sub_ys implies ys_sub_xs
+                    and <$> sequence [ elemMby (~=~) x ys' | x <- xs' ]
+            else return False
 
 instance (Ord t,Equiv t) => Equiv (MultiSet.MultiSet t)
   where 
     xs ~=~ ys = do
-        xs' <- msMby (~=~) xs
-        ys' <- msMby (~=~) ys
-        xs_sub_ys <- sequence [ elemOccurenceMby (~=~) x ys' | x <- MultiSet.toOccurList xs' ]
-        ys_sub_xs <- sequence [ elemOccurenceMby (~=~) y xs' | y <- MultiSet.toOccurList ys' ]
-        return $ and xs_sub_ys && and ys_sub_xs
+        if MultiSet.size xs == MultiSet.size ys
+            then do
+                xs' <- msMby (~=~) xs
+                ys' <- msMby (~=~) ys
+                -- given that all elements different under (~=~) and same number of elements holds that xs'_sub_ys' implies ys'_sub_xs'
+                and <$> sequence [ elemOccurenceMby (~=~) x ys' | x <- MultiSet.toOccurList xs' ]
+            else return False
 
 -- ----------------------------------------------------------------------------------------- --
 -- Equiv :  BTree
