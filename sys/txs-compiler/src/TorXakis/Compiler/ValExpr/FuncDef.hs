@@ -110,12 +110,17 @@ funcDeclToFuncDef2 mm f = left (,f) $ do
     fid  <- mm .@@ getLoc f
     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
     let
-        locToSigHdlrMap = innerSigHandlerMap mm
+        fsig = Signature (funcargs fid) (funcsort fid)
+        handler' = cstrFunc (Map.empty :: Map FuncId (FuncDef VarId)) fid
+        -- In case of a recursive function, we need to make the information of
+        -- the current function available to @expDeclToValExpr@.
+        locToSigHdlrMap =
+            Map.insert (getLoc f) (fsig, handler') (innerSigHandlerMap mm)
     vExp <- expDeclToValExpr2 (locToSigHdlrMap <.+> mm) (funcsort fid) (funcBody f)
     let fdef = FuncDef pIds vExp
-        fsig = Signature (funcargs fid) (funcsort fid)
         fidFdef :: Map FuncId (FuncDef VarId)
         fidFdef = Map.map funcDef (innerMap mm)
+        -- We recalculate the handler to simplify constant expressions.
         fhandler =
             case funcargs fid of
                 [] -> const vExp
