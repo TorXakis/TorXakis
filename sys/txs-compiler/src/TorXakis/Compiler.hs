@@ -126,7 +126,6 @@ compileParsedDefs pd = do
     -- UNDER REFACTOR!
     --
 
-    -- TODO: put also the ADT signal handlers!
     adtsFt <- adtsToFuncTable (sIds :& cstrIds) (pd ^. adts)
     stdSHs <- fLocToSignatureHandlers stdFuncIds stdFuncTable
     adtsSHs <- fLocToSignatureHandlers cstrFuncIds adtsFt

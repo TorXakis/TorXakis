@@ -107,18 +107,20 @@ funcDeclToFuncDef2 :: ( MapsTo (Loc VarDeclE) VarId mm
                    -> FuncDecl
                    -> Either (Error, FuncDecl) (FuncId, FuncDefInfo)
 funcDeclToFuncDef2 mm f = left (,f) $ do
-    fId  <- mm .@@ getLoc f
+    fid  <- mm .@@ getLoc f
     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
     let
         locToSigHdlrMap = innerSigHandlerMap mm
-    vExp <- expDeclToValExpr2 (locToSigHdlrMap <.+> mm) (funcsort fId) (funcBody f)
+    vExp <- expDeclToValExpr2 (locToSigHdlrMap <.+> mm) (funcsort fid) (funcBody f)
     let fdef = FuncDef pIds vExp
-        fsig = Signature (funcargs fId) (funcsort fId)
+        fsig = Signature (funcargs fid) (funcsort fid)
         fidFdef :: Map FuncId (FuncDef VarId)
         fidFdef = Map.map funcDef (innerMap mm)
-        fhandler = cstrFunc fidFdef fId
-
-    return (fId, FuncDefInfo fdef fsig fhandler)
+        fhandler =
+            case funcargs fid of
+                [] -> const vExp
+                _  -> cstrFunc fidFdef fid
+    return (fid, FuncDefInfo fdef fsig fhandler)
 
 innerSigHandlerMap :: ( MapsTo (Loc FuncDeclE) FuncId mm
                      ,  MapsTo FuncId FuncDefInfo mm )
