@@ -34,8 +34,7 @@ FUNCDEF h() :: String ::=
     g
 ENDDEF
 
-FUNCDEF g() :: String ::=
-    "Hello"
+CONSTDEF g :: String ::= "Hel" ++ "lo"
 ENDDEF
 
 FUNCDEF if(x :: Bool; y :: Int; z :: Int) :: Int ::=
@@ -202,12 +201,16 @@ CONSTDEF
     xx :: Int ::= 3
 ENDDEF
 
-FUNCDEF f():: Int ::=
-    xx + xx + (LET y = IF gg < 100 THEN gg ELSE xx FI IN 10 * gg NI)
-ENDDEF
+-- TODO: for now we comment this one, since we're simplifying more than the current compiler.
+--
+-- See https://github.com/TorXakis/TorXakis/issues/722
+--
+-- FUNCDEF f():: Int ::=
+--     xx + xx + (LET y = IF gg < 100 THEN gg ELSE xx FI IN 10 * gg NI)
+-- ENDDEF
 
 FUNCDEF gg() :: Int ::=
-    xx * 10
+    xx * 10 + gg()
 ENDDEF
 
 FUNCDEF if10(x :: Bool; y :: Int; z :: Int; w :: Bool) :: Int ::=
@@ -231,7 +234,7 @@ FUNCDEF composedOps50(x :: Int; y :: Int; z :: Int) :: Int ::=
     IN q NI
 ENDDEF
 
-FUNCDEF t() :: Bool ::= True ENDDEF
+CONSTDEF t :: Bool ::= True  ENDDEF
 
 FUNCDEF if12() :: String ::=
     overloaded("Boom!")

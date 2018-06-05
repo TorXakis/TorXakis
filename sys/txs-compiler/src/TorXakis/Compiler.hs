@@ -183,10 +183,10 @@ toTxsDefs ft mm pd = do
         -- TODO: we have to simplify to comply with what TorXakis generates.
         fn = idefsNames mm ++ fmap name cfIds
         fds = TxsDefs.empty {
-            funcDefs = simplify ft fn funcDefsNoConsts
+            funcDefs = funcDefsNoConsts
             }
         pds = TxsDefs.empty {
-            procDefs = simplify ft fn (innerMap mm)
+            procDefs = innerMap mm
             }
     -- TODO: why not have these functions return a TxsDef data directly.
     -- Simplify this boilerplate!

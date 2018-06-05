@@ -98,6 +98,13 @@ funcDeclsToFuncDefs2 mm stdFuncs fs = liftEither $ gFuncDeclsToFuncDefs mempty f
 
 -- | Create a function definition for the given function declaration.
 --
+-- TODO: mutually recursive functions are not supported :/ In principle there's
+-- no reason why we have to put this restriction, since:
+--
+-- We can make signatures for all the functions! Only the funcdefs need the value expressions!
+--
+-- fsig = Signature (funcargs fid) (funcsort fid)
+--        handler' = cstrFunc (Map.empty :: Map FuncId (FuncDef VarId)) fid
 funcDeclToFuncDef2 :: ( MapsTo (Loc VarDeclE) VarId mm
                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                       , MapsTo (Loc FuncDeclE) FuncId mm
@@ -124,7 +131,7 @@ funcDeclToFuncDef2 mm f = left (,f) $ do
         fhandler =
             case funcargs fid of
                 [] -> const vExp
-                _  -> cstrFunc fidFdef fid
+                _  -> handler'
     return (fid, FuncDefInfo fdef fsig fhandler)
 
 innerSigHandlerMap :: ( MapsTo (Loc FuncDeclE) FuncId mm
