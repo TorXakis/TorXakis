@@ -9,7 +9,7 @@ See LICENSE at root directory of this repository.
 
 
 PROCDEF  processor [ Start :: Int # Int; Finish :: Int ] ( ) ::=
-             Start ?x ?y  [[ x>0, y>0 ]]
+             Start ?x ?y  [[ x>0 /\ y>0 ]]
         >->  Finish ?z
         >->  processor [ Start, Finish ] ( )
 ENDDEF
@@ -31,7 +31,7 @@ ENDDEF
 
 
 PROCDEF  dispatcher [ Job, Dispatch :: Int # Int ] ( ) ::=
-             Job ?x ?y  [[ x>0, y>0 ]]
+             Job ?x ?y  [[ x>0 /\ y>0 ]]
         >->  Dispatch !x !y
         >->  dispatcher [ Job, Dispatch ]  ( )
 ENDDEF

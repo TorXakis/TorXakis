@@ -96,17 +96,18 @@ procDeclsToProcDefMap mm ps = do
               fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
               fshs = innerMap mm
               fss = fst <$> fshs
+              paramTypes = Map.fromList (fmap (second varsort) pvIds)
 
           bTypes  <- Map.fromList <$>
               inferVarTypes (  Map.fromList pvIds
                             :& mm
-                            :& Map.fromList (fmap (second varsort) pvIds)
+                            :& paramTypes
                             :& mpd'
                             :& chDecls
                             :& fss
                             :& chIdsM ) body
           bvIds   <- mkVarIds bTypes body
-          b       <- toBExpr (  bTypes
+          b       <- toBExpr (  (bTypes `Map.union` paramTypes)
                              :& Map.fromList (pvIds ++ bvIds)
                              :& mm
                              :& mpd'
