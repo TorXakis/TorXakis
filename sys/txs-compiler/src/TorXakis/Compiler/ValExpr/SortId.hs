@@ -25,6 +25,7 @@ import           Prelude                          hiding (lookup)
 
 import           ChanId                           (ChanId, chansorts)
 import           FuncId                           (FuncId, funcargs, funcsort)
+import           FuncTable                        (Signature, sortArgs, sortRet)
 import           Id                               (Id (Id))
 import           ProcId                           (ExitSort (Exit, Hit, NoExit),
                                                    ProcId, exitSortIds,
@@ -66,7 +67,7 @@ sortIdOfVarDeclM mm f = liftEither $ sortIdOfVarDecl mm f
 -- | Infer the types in a list of function declarations.
 inferTypes :: ( MapsTo Text SortId mm
               , MapsTo (Loc VarDeclE) SortId mm
-              , MapsTo (Loc FuncDeclE) FuncId mm
+              , MapsTo (Loc FuncDeclE) Signature mm
               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
            => mm
            -> [FuncDecl]
@@ -85,7 +86,7 @@ inferTypes mm fs = liftEither $ do
 
 letInferTypes :: ( MapsTo Text SortId mm
                  , MapsTo (Loc VarDeclE)  SortId mm
-                 , MapsTo (Loc FuncDeclE) FuncId mm
+                 , MapsTo (Loc FuncDeclE) Signature mm
                  , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
               => mm
               -> Map (Loc VarDeclE) SortId
@@ -97,7 +98,7 @@ letInferTypes mm vdSId ls = do
 
 gInferTypes :: ( MapsTo Text SortId mm
                , MapsTo (Loc VarDeclE)  SortId mm
-               , MapsTo (Loc FuncDeclE) FuncId mm
+               , MapsTo (Loc FuncDeclE) Signature mm
                , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
             => mm
             -> [LetVarDecl]
@@ -120,7 +121,7 @@ letVarDeclsInFunc fd = expLetVarDecls (funcBody fd)
 
 inferVarDeclType :: ( MapsTo Text SortId mm
                     , MapsTo (Loc VarDeclE) SortId mm
-                    , MapsTo (Loc FuncDeclE) FuncId mm
+                    , MapsTo (Loc FuncDeclE) Signature mm
                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
                  => mm
                  -> LetVarDecl -> Either (Error, LetVarDecl) (Loc VarDeclE, SortId)
@@ -143,7 +144,7 @@ inferVarDeclType mm vd = left (,vd) $
 --
 inferExpTypes :: ( MapsTo Text SortId mm
                  , MapsTo (Loc VarDeclE) SortId mm
-                 , MapsTo (Loc FuncDeclE) FuncId mm
+                 , MapsTo (Loc FuncDeclE) Signature mm
                  , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
               => mm
               -> ExpDecl
@@ -189,19 +190,19 @@ inferExpTypes mm ex =
               fdis <- findFuncDecl mm l
               let matchingFdis = determineF mm fdis ses Nothing
               for matchingFdis $ \fdi -> do
-                  fId  <- lookup fdi mm
-                  when (ses /= funcargs fId)
+                  sig  <- lookup fdi mm
+                  when (ses /= sortArgs sig)
                       (Left Error
                        { _errorType = TypeMismatch
                        , _errorLoc  = getErrorLoc l
                        , _errorMsg  = "Function arguments sorts do not match "
                                      <> T.pack (show ses)
                        })
-                  return $ funcsort fId
+                  return $ sortRet sig
 
 letVarTypes :: ( MapsTo Text SortId mm
                , MapsTo (Loc VarDeclE) SortId mm
-               , MapsTo (Loc FuncDeclE) FuncId mm
+               , MapsTo (Loc FuncDeclE) Signature mm
                , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
             => mm
             -> Map (Loc VarDeclE) SortId
@@ -241,7 +242,7 @@ class HasTypedVars e where
                      , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
                      , MapsTo (Loc ChanDeclE) ChanId mm
                      , MapsTo (Loc VarDeclE) SortId mm
-                     , MapsTo (Loc FuncDeclE) FuncId mm
+                     , MapsTo (Loc FuncDeclE) Signature mm
                      , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                      , MapsTo ProcId () mm )
                   => mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
@@ -333,7 +334,7 @@ inferLetVarTypes :: ( MapsTo Text SortId mm
                     , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
                     , MapsTo (Loc ChanDeclE) ChanId mm
                     , MapsTo (Loc VarDeclE) SortId mm
-                    , MapsTo (Loc FuncDeclE) FuncId mm
+                    , MapsTo (Loc FuncDeclE) Signature mm
                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                     , MapsTo ProcId () mm )
                  => mm
@@ -381,7 +382,7 @@ class HasExitSorts e where
                 , MapsTo ProcId () mm
                 , MapsTo (Loc VarDeclE) SortId mm
                 , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm
-                , MapsTo (Loc FuncDeclE) FuncId mm
+                , MapsTo (Loc FuncDeclE) Signature mm
                 )
              => mm -> e -> CompilerM ExitSort
 
@@ -491,8 +492,8 @@ Hit      <<->> Hit       = return Hit
 
 offerSid :: ( MapsTo Text SortId mm
             , MapsTo (Loc VarDeclE) SortId mm
-            , MapsTo (Loc FuncDeclE) FuncId mm
-            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [(Loc FuncDeclE)]) mm )
+            , MapsTo (Loc FuncDeclE) Signature mm
+            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
          => mm -> ChanOfferDecl -> CompilerM SortId
 offerSid mm (QuestD vd) = case ivarDeclSort vd of
     Nothing -> error $ "No sort for offer variable" ++ show vd  -- TODO: throw the appropriate error message

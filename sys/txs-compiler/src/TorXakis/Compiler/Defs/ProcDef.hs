@@ -51,10 +51,9 @@ import           TorXakis.Compiler.ValExpr.FuncDef
 
 procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                         , MapsTo (Loc FuncDeclE) FuncId mm
-                         , MapsTo FuncId FuncDefInfo mm
+                         , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
                          , MapsTo (Loc ProcDeclE) ProcInfo mm
-                         , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
+                         , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False
                          , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                          , In (Text, ChanId) (Contents mm) ~ 'False
                          , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
@@ -94,12 +93,17 @@ procDeclsToProcDefMap mm ps = do
           let chIdsM = Map.fromList chIds
           let body = procDeclBody pd
               mpd' = Map.fromList $ zip (allProcIds pms) (repeat ())
+              fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+              fshs = innerMap mm
+              fss = fst <$> fshs
+
           bTypes  <- Map.fromList <$>
               inferVarTypes (  Map.fromList pvIds
                             :& mm
                             :& Map.fromList (fmap (second varsort) pvIds)
                             :& mpd'
                             :& chDecls
+                            :& fss
                             :& chIdsM ) body
           bvIds   <- mkVarIds bTypes body
           b       <- toBExpr (  bTypes
@@ -118,10 +122,9 @@ procDeclsToProcDefMap mm ps = do
 -- | TODO: remove the unnecessary constraints.
 stautDeclsToProcDefMap :: ( MapsTo Text SortId mm
                           , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                          , MapsTo (Loc FuncDeclE) FuncId mm
-                          , MapsTo FuncId FuncDefInfo mm
+                          , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
                           , MapsTo (Loc ProcDeclE) ProcInfo mm
-                          , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
+                          , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False
                           , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                           , In (Text, ChanId) (Contents mm) ~ 'False
                           , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
@@ -178,6 +181,10 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                 -- Collect all the implicit variable declarations (declared in offers).
                 let mpd = Map.fromList $ zip (allProcIds pms) (repeat ())
                 chDecls <- getMap () staut
+                let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+                    fshs = innerMap mm
+                    fss = fst <$> fshs
+
                 implVSIds <- Map.fromList <$>
                     inferVarTypes ( Map.fromList pvIds
                                   :& mm
@@ -185,6 +192,7 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                                   :& mpd
                                   :& chDecls
                                   :& Map.fromList chIds
+                                  :& fss
                                   )
                                   (stautTrans staut)
                 implVids  <- mkVarIds implVSIds (stautTrans staut)
@@ -245,9 +253,8 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                       case vIds of
                           [] -> return []
                           v:_ -> do
-                              let mm' = innerSigHandlerMap mm :& mm
                               vExp <- liftEither $
-                                  expDeclToValExpr2 ((pvIds <.++> lVIds) :& mm') (varsort v) e
+                                  expDeclToValExpr2 ((pvIds <.++> lVIds) :& mm) (varsort v) e
                               return (zip vIds (repeat vExp))
 
                   mkTransitions :: [StatId]

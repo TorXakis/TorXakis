@@ -85,12 +85,11 @@ modelDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , MapsTo Text (Loc ChanDeclE) mm
                        , MapsTo (Loc ChanDeclE) ChanId mm
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                       , MapsTo (Loc FuncDeclE) FuncId mm
-                       , MapsTo FuncId FuncDefInfo mm
+                       , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
                        , MapsTo ProcId ProcDef mm
                        , MapsTo (Loc VarDeclE) SortId mm
                        , MapsTo (Loc VarDeclE) VarId mm
-                       , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
+                       , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False
                        , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
                        , In (ProcId, ()) (Contents mm) ~ 'False )
                     => mm -> [ModelDecl] -> CompilerM (Map ModelId ModelDef)
@@ -106,13 +105,12 @@ purpDeclsToTxsDefs :: ( MapsTo Text SortId mm
                       , MapsTo Text (Loc ChanDeclE) mm
                       , MapsTo (Loc ChanDeclE) ChanId mm
                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                      , MapsTo (Loc FuncDeclE) FuncId mm
-                      , MapsTo FuncId FuncDefInfo mm
+                      , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
                       , MapsTo ProcId ProcDef mm
                       , MapsTo (Loc VarDeclE) SortId mm
                       , MapsTo (Loc VarDeclE) VarId mm
                       , In (ProcId, ()) (Contents mm) ~ 'False
-                      , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
+                      , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False
                       , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False )
                       =>  mm -> [PurpDecl] -> CompilerM (Map PurpId PurpDef)
 purpDeclsToTxsDefs mm pds =
@@ -158,7 +156,10 @@ purpDeclsToTxsDefs mm pds =
                          , Set.singleton chanIdMiss
                          ]
           -- Compile the goals
-          bTypes <- Map.fromList <$> inferVarTypes mm' (purpDeclGoals pd)
+          let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+              fshs = innerMap mm
+              fss = fst <$> fshs
+          bTypes <- Map.fromList <$> inferVarTypes (fss :& mm') (purpDeclGoals pd)
           bvIds  <- Map.fromList <$> mkVarIds bTypes (purpDeclGoals pd)
           let mm'' = bTypes <.+> (bvIds <.+> mm')
               compileTestGoalDecl gd = do
@@ -173,10 +174,9 @@ cnectDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , MapsTo (Loc ChanDeclE) ChanId mm
                        , MapsTo (Loc VarDeclE) SortId mm
                        , MapsTo (Loc VarDeclE) VarId mm
-                       , MapsTo (Loc FuncDeclE) FuncId mm
-                       , MapsTo FuncId FuncDefInfo mm
+                       , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                       , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
+                       , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False
                        , In (ProcId, ()) (Contents mm) ~ 'False
                        , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False )
                     => mm -> [CnectDecl] -> CompilerM (Map CnectId CnectDef)
@@ -194,7 +194,6 @@ cnectDeclsToTxsDefs mm cds =
           chDecls <- getMap mm cd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
           let
               mm' = chDecls :& mm
-
               toConnDef :: (Text, Integer, CodecItem) -> CompilerM ConnDef
               toConnDef (h, p, CodecItem offr chOffr@(QuestD iv) Decode) = do
                   -- We know the type of 'iv' must be a string.
@@ -219,13 +218,15 @@ cnectDeclsToTxsDefs mm cds =
                       -- TODO: 'HasTypedVars' should be replaced by 'DefinesAMap'.
                       emptyProcIds :: Map ProcId ()
                       emptyProcIds = Map.empty
-                  offrSIdMap <- Map.fromList <$> inferVarTypes (emptyProcIds :& mm') offr
+                      fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+                      fshs = innerMap mm
+                      fss = fst <$> fshs
+                  offrSIdMap <- Map.fromList <$> inferVarTypes (fss :& emptyProcIds :& mm') offr
                   offrVIdMap <- Map.fromList <$> mkVarIds offrSIdMap offr
                   let mm'' = offrSIdMap <.+> (offrVIdMap <.+> mm')
                   Offer chId chOffrs <- toOffer mm'' offr
                   vIds <- traverse questVIds chOffrs
-                  let mm''' = innerSigHandlerMap mm'' :& mm''
-                  vExp <- liftEither $ expDeclToValExpr2 mm''' sortIdString e
+                  vExp <- liftEither $ expDeclToValExpr2 mm'' sortIdString e
                   return $ ConnDtoW chId h p vIds vExp
               toConnDef (_, _, CodecItem _ (QuestD _) Encode) =
                   throwError Error
@@ -332,13 +333,12 @@ mapperDeclsToTxsDefs :: ( MapsTo Text SortId mm
                         , MapsTo Text (Loc ChanDeclE) mm
                         , MapsTo (Loc ChanDeclE) ChanId mm
                         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                        , MapsTo (Loc FuncDeclE) FuncId mm
-                        , MapsTo FuncId FuncDefInfo mm
+                        , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
                         , MapsTo ProcId ProcDef mm
                         , MapsTo (Loc VarDeclE) SortId mm
                         , MapsTo (Loc VarDeclE) VarId mm
                         , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
-                        , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
+                        , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False
                         , In (ProcId, ()) (Contents mm) ~ 'False )
                      => mm -> [MapperDecl] -> CompilerM (Map MapperId MapperDef)
 mapperDeclsToTxsDefs mm mds =
@@ -369,7 +369,10 @@ mapperDeclsToTxsDefs mm mds =
           syncs <- maybe (return usedChIds)
                          (traverse (chRefsToChIdSet mm'))
                          (mapperSyncs md)
-          bTypes <- Map.fromList <$> inferVarTypes mm' (mapperBExp md)
+          let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+              fshs = innerMap mm
+              fss = fst <$> fshs
+          bTypes <- Map.fromList <$> inferVarTypes (fss :& mm') (mapperBExp md)
           bvIds  <- Map.fromList <$> mkVarIds bTypes (mapperBExp md)
           let mm'' = bTypes <.+> (bvIds <.+> mm')
           --eSort <- exitSort mm'' (mapperBExp md)

@@ -11,7 +11,8 @@ import           Data.Semigroup                   ((<>))
 import           Data.Text                        (Text)
 
 import           CstrId                           (CstrId, cstrsort, name)
-import           FuncId                           (FuncId (FuncId))
+import           FuncId                           (FuncId (FuncId), funcargs,
+                                                   funcsort)
 import           FuncTable                        (SignHandler,
                                                    Signature (Signature), toMap)
 import           Id                               (Id (Id))
@@ -150,3 +151,6 @@ cstrToFuncIds mm sId c =
                 accSid <- getNextId
                 fSid   <- findSortIdM mm (fieldSort f)
                 return (PredefLoc accN accSid, FuncId accN (Id accSid) [sId] fSid)
+
+funcIdAsSignature :: FuncId -> Signature
+funcIdAsSignature fid = Signature (funcargs fid) (funcsort fid)

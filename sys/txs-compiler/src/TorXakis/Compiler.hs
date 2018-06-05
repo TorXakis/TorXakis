@@ -7,7 +7,8 @@
 {-# LANGUAGE TypeFamilies        #-}
 module TorXakis.Compiler where
 
-import           Control.Arrow                      (first, second, (|||))
+import           Control.Arrow                      (first, second, (&&&),
+                                                     (|||))
 import           Control.Lens                       (over, (^.), (^..))
 import           Control.Monad.Error.Class          (liftEither)
 import           Control.Monad.State                (evalStateT, get)
@@ -118,7 +119,8 @@ compileParsedDefs pd = do
     let emptyVdMap = Map.empty :: Map (Loc VarDeclE) SortId
     -- We pass to 'inferTypes' an empty map from 'Loc VarDeclE' to 'SortId'
     -- since no variables can be declared at the top level.
-    vdSortMap <- inferTypes (sIds :& decls :& allFids :& emptyVdMap) (allFuncs pd)
+    let allFSigs = funcIdAsSignature <$> allFids
+    vdSortMap <- inferTypes (sIds :& decls :& allFSigs :& emptyVdMap) (allFuncs pd)
     -- Construct the variable declarations to @VarId@'s lookup table.
     vIds <- generateVarIds (vdSortMap :& allFids) (allFuncs pd)
 
@@ -129,7 +131,10 @@ compileParsedDefs pd = do
     adtsFt <- adtsToFuncTable (sIds :& cstrIds) (pd ^. adts)
     stdSHs <- fLocToSignatureHandlers stdFuncIds stdFuncTable
     adtsSHs <- fLocToSignatureHandlers cstrFuncIds adtsFt
+
     fdefs <- funcDeclsToFuncDefs2 (vIds :& allFids :& decls) (stdSHs `Map.union` adtsSHs) (allFuncs pd)
+    let fdefsSHs = innerSigHandlerMap (fIds :& fdefs)
+        allFSHs = stdSHs `Map.union` adtsSHs `Map.union` fdefsSHs
 
     --
     -- UNDER REFACTOR!
@@ -137,7 +142,7 @@ compileParsedDefs pd = do
 
     -- pdefs <- procDeclsToProcDefMap (sIds :& cstrIds :& allFids :& fdefs :& decls)
     --                                (pd ^. procs)
-    pdefs <- compileToProcDefs (sIds :& cstrIds :& allFids :& fdefs :& decls) pd
+    pdefs <- compileToProcDefs (sIds :& cstrIds :& allFids :& allFSHs :& decls) pd
     chIds <- getMap sIds (pd ^. chdecls) :: CompilerM (Map (Loc ChanDeclE) ChanId)
     let mm = sIds :& pdefs :& cstrIds :& allFids :& fdefs
     sigs    <- toSigs (mm :& chIds) pd
@@ -145,13 +150,14 @@ compileParsedDefs pd = do
     -- channels are declared, because the model definitions rely on channels
     -- declared outside its scope.
     chNames <-  getMap () (pd ^. chdecls) :: CompilerM (Map Text (Loc ChanDeclE))
-    txsDefs <- toTxsDefs (func sigs) (mm :& decls :& vIds :& vdSortMap :& chNames :& chIds) pd
+    txsDefs <- toTxsDefs (func sigs) (mm :& decls :& vIds :& vdSortMap :& chNames :& chIds :& allFSHs) pd
     St i    <- get
     return (Id i, txsDefs, sigs)
 
 toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo (Loc CstrE) CstrId mm
              , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+             , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
              , MapsTo (Loc FuncDeclE) FuncId mm
              , MapsTo FuncId FuncDefInfo mm
              , MapsTo ProcId ProcDef mm
@@ -159,7 +165,7 @@ toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo (Loc ChanDeclE) ChanId mm
              , MapsTo (Loc VarDeclE) VarId mm
              , MapsTo (Loc VarDeclE) SortId mm
-             , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
+             , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False
              , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
              , In (ProcId, ()) (Contents mm) ~ 'False )
           => FuncTable VarId -> mm -> ParsedDefs -> CompilerM TxsDefs
@@ -281,10 +287,11 @@ compileToDecls lfDefs pd = do
 
 -- | Generate the map from process id's definitions to process definitions.
 compileToProcDefs :: ( MapsTo Text SortId mm
-                     , MapsTo FuncId FuncDefInfo mm
-                     , MapsTo (Loc FuncDeclE) FuncId mm
+--                     , MapsTo FuncId () mm
+--                     , MapsTo (Loc FuncDeclE) FuncId mm
+                     , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
                      , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                     , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False
+                     , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False
                      , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
                      , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
                      , In (Text, ChanId) (Contents mm) ~ 'False

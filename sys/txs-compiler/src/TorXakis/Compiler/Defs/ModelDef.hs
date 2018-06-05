@@ -39,13 +39,12 @@ modelDeclToModelDef :: ( MapsTo Text SortId mm
                        , MapsTo Text (Loc ChanDeclE) mm -- Needed because channels are declared outside the model.
                        , MapsTo (Loc ChanDeclE) ChanId mm -- Also needed because channels are declared outside the model
                        , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                       , MapsTo (Loc FuncDeclE) FuncId mm
-                       , MapsTo FuncId FuncDefInfo mm
+                       , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
                        , MapsTo ProcId () mm
                        , MapsTo (Loc VarDeclE) SortId mm
                        , MapsTo (Loc VarDeclE) VarId mm
-                       , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
-                       , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False )
+                       , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False
+                       , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False )
                     => mm -> ModelDecl -> CompilerM ModelDef
 modelDeclToModelDef mm md = do
     -- Map the channel references to the places in which they are declared.
@@ -73,10 +72,13 @@ modelDeclToModelDef mm md = do
         -- TODO: construct this, once you know the exit sort of the behavior expression `be`.
         -- errsyncs = ...
     -- Infer the variable types of the expression:
-    bTypes <- Map.fromList <$> inferVarTypes mm' (modelBExp md)
+    let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+        fshs = innerMap mm
+        fss = fst <$> fshs
+    bTypes <- Map.fromList <$> inferVarTypes (fss :& mm') (modelBExp md)
     bvIds  <- Map.fromList <$> mkVarIds bTypes (modelBExp md)
     let mm'' = bTypes <.+> (bvIds <.+> mm')
-    eSort <- exitSort mm'' (modelBExp md)
+    eSort <- exitSort (fss :& mm'') (modelBExp md)
     let
         splsyncs = case eSort of
             NoExit  -> []

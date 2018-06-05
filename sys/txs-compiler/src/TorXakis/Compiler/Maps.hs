@@ -84,7 +84,7 @@ getUniqueElement xs = Left Error
 
 -- | Select the function definitions that matches the given arguments and return
 -- types.
-determineF :: MapsTo (Loc FuncDeclE) FuncId mm
+determineF :: MapsTo (Loc FuncDeclE) Signature mm
            => mm
            -> [Loc FuncDeclE]
            -> [SortId]
@@ -95,9 +95,9 @@ determineF mm fdis aSids mRSid =
     where
       funcMatches :: Loc FuncDeclE -> Bool
       funcMatches fdi = const False ||| id $ do
-          fId <- lookup fdi mm
-          return $ funcargs fId == aSids &&
-                   fromMaybe True ((funcsort fId ==) <$> mRSid)
+          sig <- lookup fdi mm
+          return $ sortArgs sig == aSids &&
+                   fromMaybe True ((sortRet sig ==) <$> mRSid)
 
 -- | Select the function definitions that matches the given arguments and return
 -- types.
@@ -170,9 +170,9 @@ findVarIdM :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
           => mm -> Loc VarRefE -> CompilerM VarId
 findVarIdM mm vr = liftEither $ findVarId mm vr
 
-findFuncSortIds :: MapsTo (Loc FuncDeclE) FuncId mm
+findFuncSortIds :: MapsTo (Loc FuncDeclE) Signature mm
                 => mm -> [Loc FuncDeclE] -> Either Error [SortId]
-findFuncSortIds mm fdis = fmap funcsort <$> traverse (`lookup` mm) fdis
+findFuncSortIds mm fdis = fmap sortRet <$> traverse (`lookup` mm) fdis
 
 idefsNames :: MapsTo (Loc FuncDeclE) FuncId mm => mm -> [Text]
 idefsNames mm = catMaybes $ fdiName <$> Map.keys fm
