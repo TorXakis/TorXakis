@@ -63,7 +63,7 @@ import           Variable
 import qualified TxsAlex
 import qualified TxsHappy
 
-import           TorXakis.Compiler   (compileUnsafe, vexprParser)
+import           TorXakis.Compiler   (compileUnsafe)
 
 evalTuple :: Variable v => (ValExpr v, Integer) -> IOB.IOB (Either String (ValExpr v, Integer))
 evalTuple (v,i) = do
