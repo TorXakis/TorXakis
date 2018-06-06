@@ -233,12 +233,16 @@ prop_GuardStop :: GenValExprBool -> Bool
 prop_GuardStop (GenValExprBool vexpr) =
     stop == guard vexpr stop
 
--- |  [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ c1 /\ c2 ]] >-> p
+
+-- |  [[ c1 ]] =>> A?x [[ True ]] >-> p <==> A?x [[ c1 ]] >-> p
+-- |  [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ IF c1 THEN c2 ELSE False FI ]] >-> p
 prop_GuardActionPrefix :: GenValExprBool -> GenValExprBool -> Set.Set GenOffer -> GenBExpr -> Bool
 prop_GuardActionPrefix (GenValExprBool vexpr1) (GenValExprBool vexpr2) soffers (GenBExpr p) =
     let offers' = Set.map (\(GenOffer o) -> o) soffers in
-        actionPref (ActOffer offers' Set.empty (cstrAnd (Set.fromList [vexpr1,vexpr2]))) p == 
-            guard vexpr1 (actionPref (ActOffer offers' Set.empty vexpr2) p)
+        guard vexpr1 (actionPref (ActOffer offers' Set.empty vexpr2) p) ==
+            case ValExpr.view vexpr2 of
+                Vconst (Cbool True)     -> actionPref (ActOffer offers' Set.empty vexpr1) p
+                _                       -> actionPref (ActOffer offers' Set.empty (cstrITE vexpr1 vexpr2 (cstrConst (Cbool False)))) p
 
 -- |  p ## stop <==> p
 prop_ChoiceStop :: GenBExpr -> Bool

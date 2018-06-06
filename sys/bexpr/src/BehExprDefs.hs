@@ -68,7 +68,7 @@ import           VarId
 data BExprView = ActionPref  ActOffer BExpr
                | Guard       VExpr BExpr
                | Choice      (Set.Set BExpr)
-               | Parallel    (Set.Set ChanId) [BExpr] -- should be (MultiSet.MultiSet BExpr) waiting on : https://github.com/twanvl/multiset/issues/31
+               | Parallel    (Set.Set ChanId) [BExpr] -- actually (MultiSet.MultiSet BExpr) but that has lousy performance (due to sorting which needs more evaluation?)
                | Enable      BExpr [ChanOffer] BExpr
                | Disable     BExpr BExpr
                | Interrupt   BExpr BExpr
@@ -120,8 +120,11 @@ guard (ValExpr.view -> Vconst (Cbool False)) _              = stop
 guard (ValExpr.view -> Vconst (Cbool True))  b              = b
 -- [[ c ]] =>> stop <==> stop
 guard _ b                                     | isStop b    = stop
--- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ c1 /\ c2 ]] >-> p
-guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = actionPref (ActOffer o h (cstrAnd (Set.fromList [v,c]))) b
+-- [[ c1 ]] =>> A?x [[ True ]] >-> p <==> A?x [[ c1 ]] >-> p
+-- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ IF c1 THEN c2 ELSE False FI ]] >-> p
+guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = case ValExpr.view c of
+                                                                Vconst (Cbool True) -> actionPref (ActOffer o h v) b
+                                                                _                   -> actionPref (ActOffer o h (cstrITE v c (cstrConst (Cbool False)))) b
 guard v b                                                   = BExpr (Guard v b)
 
 -- | Create a choice behaviour expression.
