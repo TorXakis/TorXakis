@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module TorXakis.Compiler.ValExpr.ValExpr where
 
+import           Control.Arrow                       (second, (+++))
 import           Data.Either                         (partitionEithers)
 import           Data.Foldable                       (traverse_)
 import           Data.Map                            (Map)
@@ -221,6 +222,31 @@ letValDeclToMap mm vd = do
 -- Third attempt of simplification...
 --
 
+-- | Join the three given maps. Every declaration location must have an image
+-- in the second o third map, otherwise an error is returned.
+varRefsToVarDefs :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
+                 -> Map (Loc VarDeclE) VarId
+                 -> Map (Loc FuncDeclE) (Signature, Handler VarId)
+                 -> Either Error (Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)]))
+varRefsToVarDefs vdecls vids fshs = do
+    defs <- traverse declToDef (snd <$> vrvd)
+    return $ Map.fromAscList $ zip (fst <$> vrvd) defs
+    where
+      vrvd :: [(Loc VarRefE, Either (Loc VarDeclE) [Loc FuncDeclE])]
+      vrvd = Map.toList vdecls
+      declToDef :: Either (Loc VarDeclE) [Loc FuncDeclE]
+                -> Either Error (Either VarId [(Signature, Handler VarId)])
+      declToDef (Left vid)  = Left <$> varIdforDecl vid
+      declToDef (Right fls) = Right <$> traverse shForDecl fls
+      varIdforDecl :: Loc VarDeclE -> Either Error VarId
+      varIdforDecl l = maybe vidNotFound Right (Map.lookup l vids)
+          where
+            vidNotFound = error "varRefsToVarDefs: vid not found" -- TODO: return the appropriate error.
+      shForDecl :: Loc FuncDeclE -> Either Error (Signature, Handler VarId)
+      shForDecl l = maybe shNotFound Right (Map.lookup l fshs)
+          where
+            shNotFound = error "varRefsToVarDefs: signature-handler not found" -- TODO: return the appropriate error.
+
 expDeclToValExpr_2 :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)]) -- ^ Variable definitions associated to a given reference.
                   -> SortId -- ^ Expected SortId for the expression.
                   -> ExpDecl
@@ -281,7 +307,6 @@ expDeclToValExpr_2 vdefs eSid ex = case expChild ex of
                   vexs <- traverse (uncurry $ expDeclToValExpr_2 vdefs) $
                                 zip (sortArgs sig) exs
                   return $ h vexs
-
 
 parValDeclToMap_2 :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
                   -> [LetVarDecl]
