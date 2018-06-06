@@ -168,6 +168,14 @@ FUNCDEF composedOps6(x :: Int; y :: Int; z :: Int) :: Int ::=
     FI
 ENDDEF
 
+FUNCDEF undefined() :: Int ::=
+    undefined()
+ENDDEF
+
+FUNCDEF undefined2() :: Int ::=
+    undefined2() + undefined2()
+ENDDEF
+
 TYPEDEF Pair ::= Pair { fst, snd :: Int } ENDDEF
 
 -- | Because 'TriPair' is more fun that 'Tuple'.
