@@ -81,7 +81,7 @@ helptxt  =
   "\n"++
   "--------------------------------\n"++
   "\n"++
-  "manualor <cnect>                 : start manual mode with connection <cnect>\n"++
+  "manual <cnect>                   : start manual mode with connection <cnect>\n"++
   "man act <action>                 : do input to world identified by <action>\n"++
   "man obs                          : observe output from world\n"++
   "man offer <offer>                : do input to world filtered by <offer>\n"++
@@ -92,9 +92,11 @@ helptxt  =
   "stop                             : stop tester, simulator, stepper, or manualor\n"++
   "menu [in|out]                    : give the [in|out] menu of offers of current state\n"++
   "trace [format]                   : show the current trace [in format]\n"++
-  "graph                            : show the current transition graph\n"++
   "show <object>                    : show <object>: model, purp, mapper, cnect, procdef,\n"++
   "                                   tdefs, statenr, state\n"++
+  "\n"++
+  "-- stepper only ----------------\n"++
+  "graph                            : show the current transition graph\n"++
   "goto [<state>]                   : go to <state> number in the model\n"++
   "init                             : go to initial in the model\n"++
   "back [<n>]                       : go back <n>/[one] steps in the model\n"++

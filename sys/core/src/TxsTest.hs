@@ -29,44 +29,44 @@ module TxsTest
                    -- -> ew
                    -- -> IOC.IOC (Either EnvData.Msg ())
 
--- ** shut testing mode
+  -- ** shut testing mode
 , txsShutTest      -- :: IOC.IOC (Either EnvData.Msg ())
 
--- ** start testing
+  -- ** start testing
 , txsStartTest     -- :: Maybe D.PurpDef
                    -- -> IOC.IOC (Either EnvData.Msg ())
 
--- ** stop testing
+  -- ** stop testing
 , txsStopTest      -- :: IOC.IOC (Either EnvData.Msg ())
 
--- ** test sut with the provided input action
+  -- ** test sut with the provided input action
 , txsTestActIn     -- :: DD.Action
                    -- -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
--- ** test sut by observing output action
+  -- ** test sut by observing output action
 , txsTestActOut    -- :: IOC.IOC (Either EnvData.Msg DD.Verdict)
 
--- ** test sut with action according to offer-pattern in the model
+  -- ** test sut with action according to offer-pattern in the model
 , txsTestOfferIn   -- :: D.Offer
                    -- -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
--- ** test sut with the provided number of actions
+  -- ** test sut with the provided number of actions
 , txsTestRun       -- :: Int
                    -- -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
--- ** give the input menu, i.e., all possible input offers, in the model
+  -- ** give the input menu, i.e., all possible input offers, in the model
 , txsTestMenuIn    --  :: IOC.IOC (Either EnvData.Msg BTree.Menu)
 
--- ** give the output menu, i.e., all possible output offers, in the model
+  -- ** give the output menu, i.e., all possible output offers, in the model
 , txsTestMenuOut   --  :: IOC.IOC (Either EnvData.Msg BTree.Menu)
 
--- ** give current state number
+  -- ** give current state number
 , txsTestStateNr   --  :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
 
--- ** give current state
+  -- ** give current state
 , txsTestState     --  :: IOC.IOC (Either EnvData.Msg BTree.BTree)
 
--- ** give trace from initial state to current state
+  -- ** give trace from initial state to current state
 , txsTestTrace     --  :: IOC.IOC (Either EnvData.Msg [DD.Action])
 
 )
@@ -486,7 +486,7 @@ txsTestState :: IOC.IOC (Either EnvData.Msg BTree.BTree)
 txsTestState  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Testing { IOC.modsts   = modsts }
+       IOC.Testing { IOC.modsts = modsts }
          -> return $ Right modsts
        _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
                             "Current state of testing only in Testing Mode"

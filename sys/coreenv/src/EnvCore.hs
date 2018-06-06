@@ -117,12 +117,12 @@ data CoreState =
      | forall ew . (EWorld ew) =>
        Simuling  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                  , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                 , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
                  , modeldef  :: TxsDefs.ModelDef
                  , mapperdef :: Maybe TxsDefs.MapperDef
                  , eworld    :: ew
                  , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
-                 -- behaviour trie
+                                                              -- behaviour trie
                  , inistate  :: EnvData.StateNr               -- initial beh statenr
                  , curstate  :: EnvData.StateNr               -- current beh statenr
                  , modsts    :: BTree.BTree                   -- model state

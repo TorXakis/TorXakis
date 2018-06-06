@@ -21,104 +21,49 @@ See LICENSE at root directory of this repository.
 
 module TxsSim
 
-( -- * set up TorXakis core
-  txsSetCore
+(
+  -- ** set simulating mode
+  txsSetSim        -- :: IOC.EWorld ew
+                   -- => D.ModelDef
+                   -- -> Maybe D.MapperDef
+                   -- -> ew
+                   -- -> IOC.IOC (Either EnvData.Msg ())
 
-  -- * initialize TorXakis core
-, txsInitCore
-
-  -- * terminate TorXakis core
-, txsTermitCore
-
-{-
-
-  -- * Mode
-  -- ** start testing
-, txsSetTest
-
-  -- *** test Input Action
-, txsTestIn
-
-  -- *** test Output Action
-, txsTestOut
-
-  -- *** test number of Actions
-, txsTestN
+  -- ** shut simulating mode
+, txsShutSim       -- :: IOC.IOC (Either EnvData.Msg ())
 
   -- ** start simulating
-, txsSetSim
+, txsStartSim      -- :: IOC.IOC (Either EnvData.Msg ())
 
-  -- *** simulate number of Actions
-, txsSimN
+  -- ** stop simulating
+, txsStopSim       -- :: IOC.IOC (Either EnvData.Msg ())
 
-  -- ** stop stepping
-, txsStopNW
+  -- ** simulate system by observing input action from external world
+, txsSimActIn      -- :: IOC.IOC (Either EnvData.Msg DD.Verdict)
 
-  -- ** stop testing, simulating
-, txsStopEW
+  -- ** simulate system by sending provided output action to external world
+, txsSimActOut     -- :: DD.Action -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
--}
-  -- *  TorXakis definitions loaded into the core.
-, txsGetTDefs
-, txsGetSigs
-, txsGetCurrentModel
-{-
-  -- ** set all torxakis definitions
-, txsSetTDefs
+  -- ** simulate system by sending output action according to offer-pattern to external world
+, txsSimOfferOut   -- :: D.Offer -> IOC.IOC (Either EnvData.Msg DD.Verdict)
 
+  -- ** simulate model with the provided number of actions
+, txsSimRun        -- :: Int ->IOC.IOC (Either EnvData.Msg DD.Verdict)
 
-  -- * Parameters
-  -- ** get all parameter values
-, txsGetParams
+  -- ** give the input menu, i.e., all possible input offers, in the model
+, txsSimMenuIn     -- :: IOC.IOC (Either EnvData.Msg BTree.Menu)
 
-  -- ** get value of parameter
-, txsGetParam
+  -- ** Give the output menu, i.e., all possible output offers, in the model.
+, txsSimMenuOut    -- :: IOC.IOC (Either EnvData.Msg BTree.Menu)
 
-  -- ** set value of parameter
-, txsSetParam
+  -- ** give current state number
+, txsSimStateNr    -- :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
 
-  -- * set random seed
-, txsSetSeed
+  -- ** give current state
+, txsSimState      -- :: IOC.IOC (Either EnvData.Msg BTree.BTree)
 
--}
-
-  -- * evaluation of value expression
-, txsEval
-
-{-
-
-  -- * Solving
-  -- ** finding a solution for value expression
-, txsSolve
-
-  -- ** finding an unique solution for value expression
-, txsUniSolve
-
-  -- ** finding a random solution for value expression
-, txsRanSolve
-
-  -- * show item
-, txsShow
-
-
-  -- * give path
-, txsPath
-
-
-  -- * give menu
-, txsMenu
-
-
-  -- * give action to mapper
-, txsMapper
-
-  -- * test purpose for N complete coverage
-, txsNComp
-
-  -- * LPE transformation
-, txsLPE
-
--}
+  -- ** give trace from initial state to current state
+, txsSimTrace      -- :: IOC.IOC (Either EnvData.Msg [DD.Action])
 
 )
 
@@ -410,7 +355,7 @@ txsSimActOut act  =  do
                (_,verdict) <- Sim.simAtoW 1 1
                return $ Right verdict
        _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Testing with action only in Testing Mode (without Test Purpose)"
+                            "Simulating output only in Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Simulate system by sending output action according to offer-pattern to External World.
@@ -438,104 +383,102 @@ txsSimOfferOut offer  =  do
                             "Simulating with offer only in Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
-
-XXXXXX
-
--- | Test SUT with the provided input action.
-
-
-
-
-
-
-
-
-
--- | stop testing, simulating, or stepping.
--- returns txscore to the initialized state, when no External World running.
--- See 'txsSetStep'.
-txsStopNOEW :: IOC.IOC ()
-txsStopNOEW  =  do
-     envc <- get
-     let cState = IOC.state envc
-     case cState of
-       IOC.Stepping { }
-         -> do put envc { IOC.state = IOC.Initing { IOC.smts    = IOC.smts    cState
-                                                  , IOC.tdefs   = IOC.tdefs   cState
-                                                  , IOC.sigs    = IOC.sigs    cState
-                                                  , IOC.putmsgs = IOC.putmsgs cState
-                        }                         }
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Stepping stopped" ]
-       _ -> do                         -- IOC.Idling, IOC.Initing IOC.Testing, IOC.Simuling --
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "txsStopNW only in Stepping mode" ]
-
-
--- | stop testing, simulating.
--- returns txscore to the initialized state, when External World running.
--- See 'txsSetTest', 'txsSetSim', respectively.
-txsStopEW :: (IOC.EWorld ew)
-          => ew                                         -- ^ external world.
-          -> IOC.IOC ew                                 -- ^ modified external world.
-txsStopEW eWorld  =  do
-     envc <- get
-     let cState = IOC.state envc
-     case cState of
-       IOC.Testing { }
-         -> do put envc { IOC.state = IOC.Initing { IOC.smts    = IOC.smts    cState
-                                                  , IOC.tdefs   = IOC.tdefs   cState
-                                                  , IOC.sigs    = IOC.sigs    cState
-                                                  , IOC.putmsgs = IOC.putmsgs cState
-                        }                         }
-               eWorld' <- IOC.stopW eWorld
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Testing stopped" ]
-               return eWorld'
-       IOC.Simuling { }
-         -> do put envc { IOC.state = IOC.Initing { IOC.smts    = IOC.smts    cState
-                                                  , IOC.tdefs   = IOC.tdefs   cState
-                                                  , IOC.sigs    = IOC.sigs    cState
-                                                  , IOC.putmsgs = IOC.putmsgs cState
-                        }                         }
-               eWorld' <- IOC.stopW eWorld
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO "Simulation stopped" ]
-               return eWorld'
-       _ -> do                         -- IOC.Idling, IOC.Initing IOC.Testing, IOC.Simuling --
-               IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR
-                             "txsStopEW only in Testing or Simuling mode" ]
-               return eWorld
-
--}
-
-
--}
-
--- ----------------------------------------------------------------------------------------- --
-
-{-
-
-
-
-
-
 -- | Simulate model with the provided number of actions.
--- core action.
 --
--- Only possible in simulation modus (see 'txsSetSim').
-txsSimN :: Int                      -- ^ number of actions to simulate model.
-        -> IOC.IOC TxsDDefs.Verdict -- ^ Verdict of simulation with number of actions.
-txsSimN depth  =  do
+--   Only possible when Simuling.
+txsSimRun :: Int                                      -- ^ number of actions to simulate
+          ->IOC.IOC (Either EnvData.Msg DD.Verdict)   -- ^ verdict after  simulation run
+txsSimRun nrsteps  =  do
      envc <- get
      case IOC.state envc of
-       IOC.Simuling {} -> Sim.simN depth 1
-       _ -> do
-         IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Not in Simulator mode" ]
-         return TxsDDefs.NoVerdict
-
--}
+       IOC.Simuling {}
+         -> Right <$> Sim.simN nrsteps 1
+       _ -> do return $ Left $ EnvData.TXS_CORE_USER_ERROR
+                               "Simulating Run only in Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
+-- | Give the input menu, i.e., all possible input offers, in the model.
+--
+--   Only possible when Simuling.
+txsSimMenuIn :: IOC.IOC (Either EnvData.Msg BTree.Menu)
+txsSimMenuIn  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Simuling {}
+         -> Right <$> Sim.simModelMenuIn
+       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
+                            "Simulating MenuIn only in Simulating Mode"
 
+-- ----------------------------------------------------------------------------------------- --
+-- | Give the output menu, i.e., all possible output offers, in the model.
+--
+--   Only possible when Simuling.
+txsSimMenuOut :: IOC.IOC (Either EnvData.Msg BTree.Menu)
+txsSimMenuOut  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Simuling {}
+         -> Right <$> Sim.simModelMenuOut
+       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
+                            "Simulating MenuOut only in Simulating Mode"
 
+-- ----------------------------------------------------------------------------------------- --
+-- | Give current state number
+--
+--   Only possible when Simuling.
+txsSimStateNr :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
+txsSimStateNr  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Simuling { IOC.curstate = curstate }
+         -> return $ Right curstate
+       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
+                            "Current state of simulating only in Simulating Mode"
 
+-- ----------------------------------------------------------------------------------------- --
+-- | Give current state.
+--
+--   Only possible when Simuling.
+txsSimState :: IOC.IOC (Either EnvData.Msg BTree.BTree)
+txsSimState  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Simuling { IOC.modsts = modsts }
+         -> return $ Right modsts
+       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
+                            "Current state of simulating only in Simulating Mode"
+
+-- ----------------------------------------------------------------------------------------- --
+-- | Give trace from initial state to current state.
+--
+--   Only possible when Simuling.
+txsSimTrace :: IOC.IOC (Either EnvData.Msg [DD.Action])
+txsSimTrace  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Testing { IOC.behtrie  = behtrie
+                   , IOC.inistate = inistate
+                   , IOC.curstate = curstate
+                   }
+         -> case trace behtrie inistate curstate of
+              Nothing -> return $ Left $ EnvData.TXS_CORE_SYSTEM_ERROR
+                                         "Path error: Behaviour Trie is not a tree"
+              Just t  -> return $ Right t
+       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
+                            "Trace of simulating only in Simulating Mode"
+  where
+     trace :: [(EnvData.StateNr, DD.Action, EnvData.StateNr)]
+           -> EnvData.StateNr
+           -> EnvData.StateNr
+           -> (Maybe [DD.Action])
+     trace _behtrie from to    | from >  to  =  Nothing
+     trace _behtrie from to    | from == to  =  Just []
+     trace  behtrie from to -- | from <  to
+       =  case [ (s1,a,s2) | (s1,a,s2) <- behtrie, s2 == to ] of
+            [(s1,a,_s2)] -> case trace behtrie from s1 of
+                              Nothing -> Nothing
+                              Just t  -> Just $ t ++ [a]
+            _            -> Nothing
 
 
 -- ----------------------------------------------------------------------------------------- --
