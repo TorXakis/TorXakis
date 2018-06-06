@@ -61,9 +61,6 @@ instance Arbitrary GenValExprBool where
                         , GenValExprBool valExprEqualxy
                         ]
 
-chanIdExit :: ChanId
-chanIdExit  = ChanId "EXIT"  901 []
-
 chanIdA :: ChanId
 chanIdA = ChanId { ChanId.name = "A"
                  , ChanId.unid = 2
@@ -225,6 +222,12 @@ prop_ActionPrefixConditionFalseEqualsStop :: Set.Set GenOffer -> GenBExpr -> Boo
 prop_ActionPrefixConditionFalseEqualsStop soffers (GenBExpr p) =
     let offers' = Set.map (\(GenOffer o) -> o) soffers in
         stop == actionPref (ActOffer offers' Set.empty valExprFalse) p
+
+-- EXIT >-> p <==> EXIT >-> STOP
+prop_EXIT :: Set.Set GenOffer -> GenValExprBool -> GenBExpr -> Property
+prop_EXIT soffers (GenValExprBool vexpr) (GenBExpr p) =
+    let offers' = Set.map (\(GenOffer o) -> o) soffers in
+        containsEXIT offers' ==> actionPref (ActOffer offers' Set.empty vexpr) p == actionPref (ActOffer offers' Set.empty vexpr) stop
 
 -- | [[ True ]] =>> p <==> p
 prop_GuardTrue :: GenBExpr -> Bool

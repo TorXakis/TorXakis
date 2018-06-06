@@ -48,11 +48,6 @@ module StdTDefs
 , stdFuncTable
 , stdTDefs
 
-, chanIdExit
-, chanIdIstep
-, chanIdQstep
-, chanIdHit
-, chanIdMiss
 , module SortOf
 )
 where
@@ -62,7 +57,6 @@ import qualified Data.Map              as Map
 import qualified Data.Set              as Set
 import           Data.Text             (Text)
 
-import           ChanId
 import           CstrId
 import           FuncDef
 import           FuncId
@@ -321,15 +315,4 @@ stdTDefs =    stdSortDefs
            ++ stdFuncDefsInt
            ++ stdFuncDefsString
 
--- * Standard channel identifiers
-chanIdExit :: ChanId
-chanIdExit  = ChanId "EXIT"  901 []
-chanIdIstep :: ChanId
-chanIdIstep = ChanId "ISTEP" 902 []
-chanIdQstep :: ChanId
-chanIdQstep = ChanId "QSTEP" 903 []
-chanIdHit :: ChanId
-chanIdHit   = ChanId "HIT"   904 []
-chanIdMiss :: ChanId
-chanIdMiss  = ChanId "MISS"  905 []
- 
+

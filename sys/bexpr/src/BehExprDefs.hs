@@ -18,6 +18,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns       #-}
 module BehExprDefs
 ( 
@@ -45,6 +46,13 @@ module BehExprDefs
 , hide
 , valueEnv
 , stAut
+  -- * Standard channel identifiers
+, chanIdExit
+, chanIdIstep
+, chanIdQstep
+, chanIdHit
+, chanIdMiss
+, containsEXIT
 )
 where
 
@@ -62,7 +70,6 @@ import           StatId
 import           ValExpr
 import           VarEnv
 import           VarId
-
 
 -- | BExprView: the public view of Behaviour Expression `BExpr`
 data BExprView = ActionPref  ActOffer BExpr
@@ -110,7 +117,10 @@ actionPref :: ActOffer -> BExpr -> BExpr
 actionPref a b = case ValExpr.view (constraint a) of
                     -- A?x [[ False ]] >-> p <==> stop
                     Vconst (Cbool False)    -> stop
-                    _                       -> BExpr (ActionPref a b)
+                    _                       -> if containsEXIT (offers a)
+                                                    then -- EXIT >-> p <==> EXIT >-> STOP
+                                                         BExpr (ActionPref a stop)
+                                                    else BExpr (ActionPref a b)
 
 -- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
@@ -244,6 +254,21 @@ data  Trans         = Trans  { from     :: StatId
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 instance Resettable Trans
+
+-- * Standard channel identifiers
+chanIdExit :: ChanId
+chanIdExit  = ChanId "EXIT"  901 []
+chanIdIstep :: ChanId
+chanIdIstep = ChanId "ISTEP" 902 []
+chanIdQstep :: ChanId
+chanIdQstep = ChanId "QSTEP" 903 []
+chanIdHit :: ChanId
+chanIdHit   = ChanId "HIT"   904 []
+chanIdMiss :: ChanId
+chanIdMiss  = ChanId "MISS"  905 []
+
+containsEXIT :: Set.Set Offer -> Bool
+containsEXIT os = chanIdExit `Set.member` (Set.map chanid os)
 
 -- * Functions on behavior expressions.
 
