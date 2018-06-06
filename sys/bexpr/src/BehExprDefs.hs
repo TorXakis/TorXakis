@@ -122,8 +122,8 @@ guard (ValExpr.view -> Vconst (Cbool False)) _              = stop
 guard (ValExpr.view -> Vconst (Cbool True))  b              = b
 -- [[ c ]] =>> stop <==> stop
 guard _ b                                     | isStop b    = stop
--- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ IF c1 THEN c2 ELSE False FI ]] >-> p
-guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = actionPref (ActOffer o h (cstrITE v c (cstrConst (Cbool False)))) b
+-- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ c1 /\ c2 ]] >-> p
+guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = actionPref (ActOffer o h (cstrAnd (Set.fromList [v,c]))) b
 guard v b                                                   = BExpr (Guard v b)
 
 -- | Create a choice behaviour expression.
