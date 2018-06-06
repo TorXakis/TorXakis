@@ -18,10 +18,12 @@ import           Control.Concurrent.Async     (race)
 import           Control.Concurrent.STM.TChan (TChan, readTChan, tryReadTChan,
                                                writeTChan)
 import           Control.DeepSeq              (force)
+import           Control.Monad.State          (liftIO)
 import           Control.Monad.STM            (atomically)
 import           Data.Foldable                (traverse_)
 import           Data.Map.Strict              as Map
 import           Data.Set                     as Set
+import qualified Data.Text                    as T
 import           Lens.Micro                   ((^.))
 
 import           ChanId
@@ -40,8 +42,10 @@ putToW _ fromWorldCh toWorldMMap act@(Act cs) = do
         toWFunc = force (toWorldMapping ^. sendToW)
     actIfNothingRead fromWorldCh $
         do  _ <- forkIO $ do
-                mAct' <- toWFunc constants
-                traverse_ (atomically . writeTChan fromWorldCh) mAct'
+                rAct <- liftIO $ toWFunc constants
+                case rAct of
+                    Right mAct -> traverse_ (atomically . writeTChan fromWorldCh) mAct
+                    Left  err  -> error $ T.unpack err
             return act
   where
     getWorldMap =
@@ -73,4 +77,4 @@ getFromW deltaTime fromWorldCh = (id ||| id) <$> (sutAct `race` quiAct)
         quiAct = threadDelay (deltaTime * milliSecond) >> return ActQui
 
 milliSecond :: Int
-milliSecond = 10 ^ (6 :: Int)
+milliSecond = 10 ^ (3 :: Int)

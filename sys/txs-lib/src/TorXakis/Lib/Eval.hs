@@ -26,6 +26,7 @@ import           TxsShow                     (fshow)
 import           ValExpr                     (subst)
 
 import           TorXakis.Lib.Common
+import           TorXakis.Lib.CommonCore
 import           TorXakis.Lib.Session
 
 eval :: Session -> Text -> IO (Response String)

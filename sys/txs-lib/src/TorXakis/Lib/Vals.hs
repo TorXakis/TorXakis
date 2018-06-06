@@ -32,6 +32,7 @@ import           ValExpr                     (ValExpr)
 import qualified VarId
 
 import           TorXakis.Lib.Common
+import           TorXakis.Lib.CommonCore
 import           TorXakis.Lib.Session
 
 data Val = Val { _valName :: String

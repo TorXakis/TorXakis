@@ -41,3 +41,6 @@ spec = do
         res <- testWithUserActions $ "test" </> "data" </> "Echo.txs"
         res `shouldBe` Right ()
     it "testVals" testVals
+    it "testTester" $ do
+        res <- testTester
+        res `shouldBe` Just ()

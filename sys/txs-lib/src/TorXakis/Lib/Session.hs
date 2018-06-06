@@ -27,16 +27,16 @@ import           ConstDefs                     (Const)
 import           EnvCore                       (EnvC, initEnvC)
 import           EnvData                       (Msg)
 import           ParamCore                     (Params)
-import           TxsDDefs                      (Action, ConnHandle, Verdict)
+import           TxsDDefs                      (Action, Verdict)
 import           TxsDefs                       (VEnv)
 import           VarId                         (VarId)
 
+import           TorXakis.Lib.Common
 import           TorXakis.Lib.SessionParams
 
-data ToWorldMapping = ToWorldMapping
+newtype ToWorldMapping = ToWorldMapping
     { -- Send some data to the external world, maybe get some action as a response
-      _sendToW    :: [Const] -> IO (Maybe Action)
-    , _connHandle :: ConnHandle
+      _sendToW    :: [Const] -> IO (Response (Maybe Action))
     }
 makeLenses ''ToWorldMapping
 

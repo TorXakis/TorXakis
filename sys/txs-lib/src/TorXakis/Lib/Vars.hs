@@ -33,6 +33,7 @@ import           Variable                    (vsort, vunid)
 import qualified VarId
 
 import           TorXakis.Lib.Common
+import           TorXakis.Lib.CommonCore
 import           TorXakis.Lib.Session
 
 data Var = Var { _varName     :: Text

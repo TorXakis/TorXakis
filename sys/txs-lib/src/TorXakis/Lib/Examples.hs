@@ -16,64 +16,29 @@ module TorXakis.Lib.Examples where
 import           Control.Concurrent           (threadDelay)
 import           Control.Concurrent.Async     (async, cancel)
 import           Control.Concurrent.STM.TChan (writeTChan)
-    --import           Control.Concurrent.STM.TVar  (readTVarIO)
---import           Control.Exception            (SomeException)
 import           Control.Monad                (void)
---import           Control.Monad.State          (evalStateT)
 import           Control.Monad.STM            (atomically)
---import           Data.Aeson                   (decode)
---import           Data.Aeson.Lens              (key)
---import           Data.Aeson.Types             (Value (String))
---import qualified Data.ByteString.Char8        as BS
---import qualified Data.ByteString.Lazy.Char8   as BSL
 import           Data.Conduit                 (runConduit, (.|))
 import           Data.Conduit.Combinators     (mapM_, sinkList, take)
 import           Data.Conduit.TQueue          (sourceTQueue)
 import           Data.Foldable                (traverse_)
---import           Data.List.Extra              (dropPrefix)
 import qualified Data.Map                     as Map
---import           Data.Monoid                  ((<>))
 import qualified Data.Set                     as Set
---import           Data.Text                    (Text)
---import qualified Data.Text                    as T
 import           Lens.Micro                   ((^.))
 import           Prelude                      hiding (mapM_, take)
 import           System.FilePath              ((</>))
---import           System.Process               (StdStream (NoStream), proc,
---                                               std_out, withCreateProcess)
+import           System.Process               (StdStream (NoStream), proc,
+                                               std_out, withCreateProcess)
+import           System.Timeout               (timeout)
 
 import           ChanId                       (ChanId (ChanId))
--- import qualified ChanId
 import           ConstDefs                    (Const (Cstring))
---                                               args, cInt, cString, cstrId)
---import           CstrId                       (CstrId (CstrId), name)
---import           EnvBTree                     (EnvB (EnvB), msgs, smts, stateid)
---import qualified EnvBTree                     as E
 import           EnvData                      (Msg)
---import           Eval                         (eval)
--- import           FuncTable                    (FuncTable, Signature (Signature),
---                                                signHandler)
 import           Id                           (Id (Id))
---import           Name                         (Name)
 import           SortId                       (SortId (SortId))
---import           SortOf                       (sortOf)
--- import           TorXakis.Lens.ModelDef
---import           TorXakis.Lens.Sigs           (funcTable)
---import           TorXakis.Lens.TxsDefs
 import           TorXakis.Lib
 import           TorXakis.Lib.Internal
 import           TxsDDefs                     (Action (Act, ActQui))
--- import           TxsDefs                      (ModelDef)
---import           ValExpr                      (ValExpr, cstrConst)
---import           VarId                        (VarId)
-
--- import           Network.Wreq                 (foldGet, get, partFile, partText,
---                                                post, responseBody,
---                                                responseStatus, statusCode)
-
--- import           Network.Wreq                 (partText, post, responseStatus,
---                                                statusCode)
-
 
 -- | Get the next N messages in the session.
 --
@@ -213,7 +178,7 @@ testWithUserActions path = do
     Right act1 <- parseAction s "Out ! 22"
     r <- step s (AnAction act1)
     void $ waitForVerdict s
-    threadDelay (10 ^ (6 :: Int))
+    threadDelay (1 * seconds)
     cancel a
     return r
 
@@ -235,6 +200,25 @@ testVals = do
     print $ "valsxy = " ++ show valsxy
     threadDelay (10 ^ (5 :: Int))
     cancel a
+
+testTester :: IO (Maybe ())
+testTester = timeout (10 * seconds) $ do
+    withCreateProcess (proc "java" ["-cp","../../examps/LuckyPeople/sut","LuckyPeople"])
+        {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
+            cs <- readFile $ ".." </> ".." </> "examps" </> "LuckyPeople" </> "spec" </> "LuckyPeople.txs"
+            s <- newSession
+            a <- async (printer s)
+            _ <- load s cs
+            _ <- setTest s "Model" "Sut"
+            r <- test s (NumberOfSteps 10)
+            putStrLn $ "Result of `test`: " ++ show r
+            void $ test s (NumberOfSteps 10)
+            waitForVerdict s >>= print
+            waitForVerdict s >>= print
+            cancel a
+
+seconds :: Int
+seconds = 10 ^ (6 :: Int)
 
 -- | Test info
 --
