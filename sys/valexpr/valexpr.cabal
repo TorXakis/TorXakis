@@ -48,6 +48,7 @@ library
                       , base
                       , containers
                       , deepseq
+                      , multiset
                       , regex-tdfa
                       , text
 

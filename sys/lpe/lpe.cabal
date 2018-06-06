@@ -55,6 +55,7 @@ test-suite lpe-test
   build-depends:       base
                      , containers
                      , mtl
+                     , multiset
                      , text
                      , HUnit
 

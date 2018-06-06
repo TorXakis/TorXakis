@@ -9,6 +9,7 @@ module TestHelperFuncContent
 
 where
 import qualified Data.Map          as Map
+import qualified Data.MultiSet     as MultiSet
 import qualified Data.Set          as Set
 import qualified Data.String.Utils as Utils
 import qualified Data.Text         as T
@@ -151,6 +152,9 @@ identicalChanOffer (Quest vid1) (Quest vid2)                    = identicalVarId
 identicalChanOffer (Exclam vexpr1) (Exclam vexpr2)              = identicalVExpr vexpr1 vexpr2
 identicalChanOffer _ _                                          = False
 
+identicalBExprOccurTuples :: (BExpr, MultiSet.Occur) -> (BExpr, MultiSet.Occur) -> Bool
+identicalBExprOccurTuples (v1,c1) (v2, c2) = c1 == c2 && identicalBExpr v1 v2
+
 identicalBExpr :: BExpr -> BExpr -> Bool
 identicalBExpr b1 b2 = identicalBExpr' (TxsDefs.view b1) (TxsDefs.view b2)
 
@@ -161,7 +165,7 @@ identicalBExpr' (Guard vexpr1 bExpr1) (Guard vexpr2 bExpr2)                   = 
                                                                                 && identicalBExpr bExpr1 bExpr2
 identicalBExpr' (Choice bExprs1) (Choice bExprs2)                             =    identicalLists identicalBExpr (Set.toAscList bExprs1) (Set.toAscList bExprs2)
 identicalBExpr' (Parallel chanids1 bExprs1) (Parallel chanids2 bExprs2)       =    identicalLists identicalChanId (Set.toAscList chanids1) (Set.toAscList chanids2)
-                                                                                && identicalLists identicalBExpr bExprs1 bExprs2      -- Set would be better -> Position in list is irrelevant
+                                                                                && identicalLists identicalBExprOccurTuples (MultiSet.toAscOccurList bExprs1) (MultiSet.toAscOccurList bExprs2)
 identicalBExpr' (Enable bexpr11 chanoffers1 bexpr12) (Enable bexpr21 chanoffers2 bexpr22) =    identicalBExpr bexpr11 bexpr21
                                                                                             && identicalLists identicalChanOffer chanoffers1 chanoffers2
                                                                                             && identicalBExpr bexpr12 bexpr22

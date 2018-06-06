@@ -168,9 +168,11 @@ cstrVar = ValExpr . Vvar
 cstrITE :: Eq v => ValExpr v -> ValExpr v -> ValExpr v -> ValExpr v
 cstrITE (view -> Vconst (Cbool True))  tb _ = tb
 cstrITE (view -> Vconst (Cbool False)) _ fb = fb
--- if c then a else a == a
+-- if q then p else False fi <==> q /\ p : Note: p is boolean expression (otherwise different sort in branches)
+-- Not implemented to enable conditional evaluation
+-- if c then a else a <==> a
 cstrITE _ tb fb | tb == fb = tb
--- if (not c) then tb else fb == if c then fb else tb
+-- if (not c) then tb else fb <==> if c then fb else tb
 cstrITE (view -> Vnot n) tb fb              = ValExpr (Vite n fb tb)
 cstrITE cs tb fb                            = ValExpr (Vite cs tb fb)
 

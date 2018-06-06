@@ -22,6 +22,7 @@ library
   build-depends:        base
                       , containers
                       , MissingH
+                      , multiset
                       , text
 
                       , defs

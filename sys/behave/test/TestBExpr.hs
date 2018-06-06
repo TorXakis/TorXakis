@@ -10,8 +10,9 @@ testBExprList
 )
 where
 import Test.HUnit
-import qualified Data.Set as Set
-import qualified Data.Map as Map
+import qualified Data.Map      as Map
+import qualified Data.MultiSet as MultiSet
+import qualified Data.Set      as Set
 
 -- import Debug.Trace as Trace
 
@@ -217,7 +218,7 @@ testSynchronization = TestCase $
     let chans :: TypedElements
         chans = definedChannels
         bexpr :: BExpr
-        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) [aBExpr, anotherBExpr]
+        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) (MultiSet.fromList [aBExpr, anotherBExpr])
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in
@@ -228,7 +229,7 @@ testInterleaving = TestCase $
     let chans :: TypedElements
         chans = []
         bexpr :: BExpr
-        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) [aBExpr, anotherBExpr]
+        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) (MultiSet.fromList [aBExpr, anotherBExpr])
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in
@@ -239,7 +240,7 @@ testCommunicate = TestCase $
     let chans :: TypedElements
         chans = [([definedChannel1SortName], definedChannel1)]
         bexpr :: BExpr
-        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) [aBExpr, anotherBExpr]
+        bexpr = parallel (Set.fromList (chanIdExit:map (\(s,n) -> expectChanId n s) chans)) (MultiSet.fromList [aBExpr, anotherBExpr])
         actual :: BExpr
         actual = parseBexpr aDefinedExit bexpr
       in

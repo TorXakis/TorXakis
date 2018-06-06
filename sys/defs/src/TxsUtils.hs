@@ -18,8 +18,9 @@ module TxsUtils
 
 where
 
-import qualified Data.Map    as Map
-import qualified Data.Set    as Set
+import qualified Data.Map      as Map
+import qualified Data.MultiSet as MultiSet
+import qualified Data.Set      as Set
 
 import           CstrId
 import qualified FreeMonoidX as FMX
@@ -159,7 +160,7 @@ instance UsedFids BExprView
     usedFids (ActionPref actoff bexp)       =  usedFids actoff ++ usedFids bexp
     usedFids (Guard vexps bexp)             =  usedFids vexps ++ usedFids bexp
     usedFids (Choice bexps)                 =  usedFids bexps
-    usedFids (Parallel _chids bexps)        =  usedFids bexps
+    usedFids (Parallel _chids bexps)        =  usedFids (MultiSet.distinctElems bexps)
     usedFids (Enable bexp1 choffs bexp2)    =  usedFids bexp1 ++ usedFids choffs
                                                               ++ usedFids bexp2
     usedFids (Disable bexp1 bexp2)          =  usedFids bexp1 ++ usedFids bexp2

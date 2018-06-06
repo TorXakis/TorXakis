@@ -22,8 +22,9 @@ module Equiv
 -- import
 
 where
-
+import qualified Data.List           as List
 import qualified Data.Set            as Set
+import qualified Data.MultiSet       as MultiSet
 
 import           BTree
 import qualified EnvBTree            as IOB
@@ -56,13 +57,25 @@ instance (Equiv t) => Equiv [t]
 
 instance (Ord t,Equiv t) => Equiv (Set.Set t)
   where
-    xs ~=~ ys  =  do
-         let xs' = Set.toList xs
-         let ys' = Set.toList ys
-         xs_sub_ys <- sequence [ elemMby (~=~) x ys' | x <- xs' ]
-         ys_sub_xs <- sequence [ elemMby (~=~) y xs' | y <- ys' ]
-         return $ and xs_sub_ys && and ys_sub_xs
+    xs ~=~ ys  = do
+        xs' <- nubMby (~=~) (Set.toList xs)
+        ys' <- nubMby (~=~) (Set.toList ys)
+        if List.length xs' == List.length ys'
+            then
+                    -- given that all elements different under (~=~) and same number of elements holds that xs_sub_ys implies ys_sub_xs
+                    and <$> sequence [ elemMby (~=~) x ys' | x <- xs' ]
+            else return False
 
+instance (Ord t,Equiv t) => Equiv (MultiSet.MultiSet t)
+  where 
+    xs ~=~ ys =
+        if MultiSet.size xs == MultiSet.size ys
+            then do
+                xs' <- msMby (~=~) xs
+                ys' <- msMby (~=~) ys
+                -- given that all elements different under (~=~) and same number of elements holds that xs'_sub_ys' implies ys'_sub_xs'
+                and <$> sequence [ elemOccurenceMby (~=~) x ys' | x <- MultiSet.toOccurList xs' ]
+            else return False
 
 -- ----------------------------------------------------------------------------------------- --
 -- Equiv :  BTree
@@ -216,7 +229,7 @@ instance Equiv BExprView
 
     _ ~=~ _  = return False
 
--- | check elem of, with given momad equality
+-- | check elem of, with given monad equality
 elemMby :: (Monad m) => (a -> a -> m Bool) -> a -> [a] -> m Bool
 elemMby _ _ []      =  return False
 elemMby eqm e (x:xs)  =  do
@@ -234,3 +247,39 @@ nubMby eqm (x:xs)  =  do
        then    nubMby eqm xs
        else do xs' <- nubMby eqm xs
                return $ x:xs'
+
+-- | check tuple element occurence is within occurence list
+elemOccurenceMby :: (Monad m) => (a -> a -> m Bool) -> (a,MultiSet.Occur) -> MultiSet.MultiSet a -> m Bool
+elemOccurenceMby eqm t = elemOccurenceOLMby t . MultiSet.toOccurList
+    where
+        -- elemOccurenceOLMby :: (Monad m) => (a,MultiSet.Occur) -> [(a, MultiSet.Occur)] -> m Bool
+        elemOccurenceOLMby _ [] = return False
+        elemOccurenceOLMby (v,cv) ((x,cx) : xs) = do
+            equal <- eqm v x
+            if equal 
+                then return $ cv == cx                  -- use ordered list, so only one match
+                else elemOccurenceOLMby (v,cv) xs
+
+-- | make multiSet unique under given monad equality
+msMby :: (Ord a, Monad m) => (a -> a-> m Bool) -> MultiSet.MultiSet a -> m (MultiSet.MultiSet a)
+msMby eqm ms = 
+        let ol = MultiSet.toOccurList ms in
+            MultiSet.fromOccurList <$> olMby ol
+    where
+        -- | make occurence list unique, with given monad equality
+        -- olMby :: (Monad m) => [(a,MultiSet.Occur)] -> m [(a, MultiSet.Occur)]
+        olMby []         = return []
+        olMby ((v,c):xs) = do
+                            (duplicateCount, xs') <- removedDuplicates (eqm v) xs
+                            ol' <- olMby xs'
+                            return $ (v,c+duplicateCount) : ol'
+            where
+                -- | removedDuplicates return number of duplicates and list without duplicates
+                -- removedDuplicates :: (Monad m) => (a -> m Bool) -> [(a,MultiSet.Occur)] -> m (MultiSet.Occur, [(a, MultiSet.Occur)])
+                removedDuplicates _    []           = return (0, [])
+                removedDuplicates eqmv (y@(w,cw):ys) = do
+                        equal <- eqmv w
+                        (cd, ls) <- removedDuplicates eqmv ys
+                        if equal 
+                            then return (cw+cd, ls)
+                            else return (cd, y:ls)

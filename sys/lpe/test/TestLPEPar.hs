@@ -18,14 +18,15 @@ import LPE
 import TranslatedProcDefs
 
 import Test.HUnit
-import qualified Data.Set as Set
-import qualified Data.Map as Map
+import qualified Data.Map      as Map
 import           Data.Maybe
+import qualified Data.MultiSet as MultiSet
+import qualified Data.Set      as Set
+import qualified Data.Text     as T
 
 import ProcId
 import ChanId
 import SortId
-import qualified Data.Text         as T
 import VarId
 import ConstDefs
 import ValExpr
@@ -208,10 +209,7 @@ anyInt = cstrConst $ Cany intSort
 --       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 --
 --       procDefP = ProcDef [chanIdA, chanIdB] [] (
---             parallel (Set.fromList [chanIdA, chanIdB]) [
---                 actionPref actOfferA stop,
---                 actionPref actOfferA stop
---               ]
+--             parallel (Set.fromList [chanIdA, chanIdB]) (MultiSet.fromOccurList [(actionPref actOfferA stop, 2)])
 --             )
 --       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 --
@@ -283,10 +281,7 @@ testSingleAction1 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel Set.empty [
-                actionPref actOfferA stop,
-                actionPref actOfferA stop
-              ]
+            parallel Set.empty (MultiSet.fromOccurList [ (actionPref actOfferA stop, 2) ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -339,10 +334,7 @@ testSingleAction2 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.singleton chanIdA) [
-                actionPref actOfferA stop,
-                actionPref actOfferA stop
-              ]
+                parallel (Set.singleton chanIdA) (MultiSet.fromOccurList [( actionPref actOfferA stop, 2)])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -391,10 +383,7 @@ testSingleAction3 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.singleton chanIdB) [
-                actionPref actOfferA stop,
-                actionPref actOfferA stop
-              ]
+                parallel (Set.singleton chanIdB) (MultiSet.fromOccurList [ ( actionPref actOfferA stop, 2 ) ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -451,10 +440,7 @@ testSingleAction4 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.fromList [chanIdA, chanIdB]) [
-                actionPref actOfferA stop,
-                actionPref actOfferA stop
-              ]
+                parallel (Set.fromList [chanIdA, chanIdB]) (MultiSet.fromOccurList [ ( actionPref actOfferA stop, 2) ] )
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -512,10 +498,9 @@ testSingleActionDifferentVars = TestCase $
       procIdP = procIdGen "P" [chanIdA] []
 
       procDefP = ProcDef [chanIdA] [] (
-            parallel (Set.singleton chanIdA) [
-                actionPref actOfferAx stop,
-                actionPref actOfferAy stop
-              ]
+            parallel (Set.singleton chanIdA) (MultiSet.fromList [ actionPref actOfferAx stop
+                                                                , actionPref actOfferAy stop
+                                                                ] )
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -586,10 +571,10 @@ testSingleActionDifferentVars = TestCase $
 --       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 --
 --       procDefP = ProcDef [chanIdA, chanIdB] [] (
---             parallel (Set.fromList [chanIdA, chanIdB]) [
+--             parallel (Set.fromList [chanIdA, chanIdB]) (MultiSet.fromList [
 --                 actionPref actOfferA stop,
 --                 actionPref actOfferB stop
---               ]
+--               ])
 --             )
 --       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 --
@@ -668,10 +653,9 @@ testSingleActionDifferentActions1 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel Set.empty [
-                actionPref actOfferA stop,
-                actionPref actOfferB stop
-              ]
+            parallel Set.empty (MultiSet.fromList [ actionPref actOfferA stop
+                                                  , actionPref actOfferB stop
+                                                  ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -745,10 +729,9 @@ testSingleActionDifferentActions2 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.singleton chanIdA) [
-                actionPref actOfferA stop,
-                actionPref actOfferB stop
-              ]
+            parallel (Set.singleton chanIdA) (MultiSet.fromList [ actionPref actOfferA stop
+                                                                , actionPref actOfferB stop
+                                                                ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -791,10 +774,9 @@ testSingleActionDifferentActions3 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.singleton chanIdB) [
-                actionPref actOfferA stop,
-                actionPref actOfferB stop
-              ]
+            parallel (Set.singleton chanIdB) (MultiSet.fromList [ actionPref actOfferA stop
+                                                                , actionPref actOfferB stop
+                                                                ] )
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -837,10 +819,9 @@ testSingleActionDifferentActions4 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.fromList [chanIdA, chanIdB]) [
-                actionPref actOfferA stop,
-                actionPref actOfferB stop
-              ]
+            parallel (Set.fromList [chanIdA, chanIdB]) (MultiSet.fromList [ actionPref actOfferA stop
+                                                                          , actionPref actOfferB stop
+                                                                          ] )
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -898,10 +879,10 @@ testSingleActionDifferentActions4 = TestCase $
 --       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 --
 --       procDefP = ProcDef [chanIdA, chanIdB] [] (
---             parallel (Set.fromList [chanIdA, chanIdB]) [
+--             parallel (Set.fromList [chanIdA, chanIdB]) (MultiSet.fromList [
 --                 actionPref actOfferAB stop,
 --                 actionPref actOfferA stop
---               ]
+--               ])
 --             )
 --       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 --
@@ -978,6 +959,7 @@ testSingleActionDifferentActions4 = TestCase $
       -- // only right side: ONLY IF G = [], [B]
       -- ## A [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
 -- with procInst := P[A,B](0,0)
+-- PvdL: order of parallel is implementation detail that is used in this test
 testMultiActions1 :: Test
 testMultiActions1 = TestCase $
    assertBool "test multi actions"  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
@@ -986,10 +968,10 @@ testMultiActions1 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel Set.empty [
+            parallel Set.empty (MultiSet.fromList [
                 actionPref actOfferAB stop,
                 actionPref actOfferA stop
-              ]
+              ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -1014,9 +996,9 @@ testMultiActions1 = TestCase $
                                                     }
                                                   ]
                                      , hiddenvars = Set.empty
-                                     , constraint = cstrEqual vexprOp1pcPop1 int0
+                                     , constraint = cstrEqual vexprOp2pcPop2 int0
                                      }
-                            (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2])
+                            (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1])
                       , -- // only right side: ONLY IF G = [], [B]
                         -- ## A [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
                         actionPref
@@ -1025,9 +1007,9 @@ testMultiActions1 = TestCase $
                                                           , chanoffers = []
                                                     }
                                    , hiddenvars = Set.empty
-                                   , constraint = cstrEqual vexprOp2pcPop2 int0
+                                   , constraint = cstrEqual vexprOp1pcPop1 int0
                                    }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1])
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2])
 
                       ])
 
@@ -1048,10 +1030,10 @@ testMultiActions2 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.singleton chanIdA) [
+            parallel (Set.singleton chanIdA) (MultiSet.fromList [
                 actionPref actOfferAB stop,
                 actionPref actOfferA stop
-              ]
+              ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -1095,6 +1077,7 @@ testMultiActions2 = TestCase $
       -- // only right side: ONLY IF G = [], [B]
       -- ## A [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
 -- with procInst := P[A,B](0,0)
+-- PvdL: order of parallel is implementation detail that is used in this test
 testMultiActions3 :: Test
 testMultiActions3 = TestCase $
    assertBool "test multi actions"  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
@@ -1103,10 +1086,10 @@ testMultiActions3 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.singleton chanIdB) [
+            parallel (Set.singleton chanIdB) (MultiSet.fromList [
                 actionPref actOfferAB stop,
                 actionPref actOfferA stop
-              ]
+              ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -1127,9 +1110,9 @@ testMultiActions3 = TestCase $
                                                           , chanoffers = []
                                                           }
                                    , hiddenvars = Set.empty
-                                   , constraint = cstrEqual vexprOp2pcPop2 int0
+                                   , constraint = cstrEqual vexprOp1pcPop1 int0
                                    }
-                          (procInst procIdP' [chanIdA, chanIdB] [vexprOp1pcPop1, vexprMin1]))
+                          (procInst procIdP' [chanIdA, chanIdB] [vexprMin1, vexprOp2pcPop2]))
 
       procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, int0]
 
@@ -1146,10 +1129,10 @@ testMultiActions4 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.fromList [chanIdA, chanIdB]) [
+            parallel (Set.fromList [chanIdA, chanIdB]) (MultiSet.fromList [
                 actionPref actOfferAB stop,
                 actionPref actOfferA stop
-              ]
+              ])
             )
       procDefs' = Map.fromList  [ (procIdP, procDefP) ]
 
@@ -1185,10 +1168,10 @@ testMultiActions5 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel Set.empty [
+            parallel Set.empty (MultiSet.fromList [
                 actionPref actOfferAB stop,
                 actionPref actOfferAB stop
-              ]
+              ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -1249,10 +1232,10 @@ testMultiActions6 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.singleton chanIdA) [
+            parallel (Set.singleton chanIdA) (MultiSet.fromList [
                 actionPref actOfferAB stop,
                 actionPref actOfferAB stop
-              ]
+              ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -1282,10 +1265,10 @@ testMultiActions7 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.singleton chanIdB) [
+            parallel (Set.singleton chanIdB) (MultiSet.fromList [
                 actionPref actOfferAB stop,
                 actionPref actOfferAB stop
-              ]
+              ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -1317,10 +1300,10 @@ testMultiActions8 = TestCase $
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.fromList [chanIdA, chanIdB]) [
+            parallel (Set.fromList [chanIdA, chanIdB]) (MultiSet.fromList [
                 actionPref actOfferAB stop,
                 actionPref actOfferAB stop
-              ]
+              ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -1392,10 +1375,10 @@ testParams = TestCase $
 
 
       procDefP = ProcDef [chanIdA] [] (
-            parallel Set.empty [
+            parallel Set.empty (MultiSet.fromList [
                 procInst procIdQ [chanIdA] [vexprS, int1],
                 procInst procIdR [chanIdA] [vexprS]
-              ]
+              ])
             )
 
       procDefQ = ProcDef [chanIdA] [varIdS, varIdX] (
@@ -1734,10 +1717,7 @@ testMultiSeq1 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel Set.empty [
-                procInst procIdQ [chanIdA, chanIdB] [],
-                procInst procIdQ [chanIdA, chanIdB] []
-              ]
+                parallel Set.empty (MultiSet.fromOccurList [(procInst procIdQ [chanIdA, chanIdB] [], 2)])
             )
 
       procDefQ = ProcDef [chanIdA, chanIdB] [] (
@@ -1941,10 +1921,7 @@ testMultiSeq2 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.singleton chanIdA) [
-                procInst procIdQ [chanIdA, chanIdB] [],
-                procInst procIdQ [chanIdA, chanIdB] []
-              ]
+                parallel (Set.singleton chanIdA) (MultiSet.fromOccurList [(procInst procIdQ [chanIdA, chanIdB] [], 2)])
             )
 
       procDefQ = ProcDef [chanIdA, chanIdB] [] (
@@ -2149,10 +2126,7 @@ testMultiSeq3 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.singleton chanIdB) [
-                procInst procIdQ [chanIdA, chanIdB] [],
-                procInst procIdQ [chanIdA, chanIdB] []
-              ]
+                parallel (Set.singleton chanIdB) (MultiSet.fromOccurList [(procInst procIdQ [chanIdA, chanIdB] [], 2)])
             )
 
       procDefQ = ProcDef [chanIdA, chanIdB] [] (
@@ -2352,10 +2326,7 @@ testMultiSeq4 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel (Set.fromList [chanIdA, chanIdB]) [
-                procInst procIdQ [chanIdA, chanIdB] [],
-                procInst procIdQ [chanIdA, chanIdB] []
-              ]
+                parallel (Set.fromList [chanIdA, chanIdB]) (MultiSet.fromOccurList [(procInst procIdQ [chanIdA, chanIdB] [], 2)])
             )
 
       procDefQ = ProcDef [chanIdA, chanIdB] [] (
@@ -2566,11 +2537,7 @@ testThreeOperands1 = TestCase $
       procIdP = procIdGen "P" [chanIdA] []
       procIdQ = procIdGen "Q" [chanIdA] [VarId (T.pack "s") 0 intSort]
       procDefP = ProcDef [chanIdA] [] (
-            parallel Set.empty [
-                procInst procIdQ [chanIdA] [int1],
-                procInst procIdQ [chanIdA] [int1],
-                procInst procIdQ [chanIdA] [int1]
-              ]
+                parallel Set.empty (MultiSet.fromOccurList [(procInst procIdQ [chanIdA] [int1], 3)])
             )
       procDefQ = ProcDef [chanIdA] [VarId (T.pack "s") 0 intSort] (
             actionPref actOfferA stop)
@@ -2649,11 +2616,7 @@ testThreeOperands2 = TestCase $
      procIdP = procIdGen "P" [chanIdA] []
      procIdQ = procIdGen "Q" [chanIdA] [VarId (T.pack "s") 0 intSort]
      procDefP = ProcDef [chanIdA] [] (
-           parallel (Set.singleton chanIdA) [
-               procInst procIdQ [chanIdA] [int1],
-               procInst procIdQ [chanIdA] [int1],
-               procInst procIdQ [chanIdA] [int1]
-             ]
+            parallel (Set.singleton chanIdA) (MultiSet.fromOccurList [(procInst procIdQ [chanIdA] [int1], 3)])
            )
      procDefQ = ProcDef [chanIdA] [VarId (T.pack "s") 0 intSort] (
            actionPref actOfferA stop)
@@ -2736,11 +2699,11 @@ testThreeOperandsDiffChannelsGEN = TestCase $
    procIdR = procIdGen "R" [chanIdB] []
 
    procDefP = ProcDef [chanIdA, chanIdB] [] (
-         parallel Set.empty [
+         parallel Set.empty (MultioSet.fromList [
              procInst procIdQ [chanIdA] [],
              procInst procIdQ [chanIdA] [],
              procInst procIdR [chanIdB] []
-           ]
+           ])
          )
    procDefQ = ProcDef [chanIdA] [] (
                     actionPref actOfferA stop)
@@ -2903,11 +2866,9 @@ testThreeOperandsDiffChannels1 = TestCase $
    procIdR = procIdGen "R" [chanIdB] []
 
    procDefP = ProcDef [chanIdA, chanIdB] [] (
-         parallel Set.empty [
-             procInst procIdQ [chanIdA] [],
-             procInst procIdQ [chanIdA] [],
-             procInst procIdR [chanIdB] []
-           ]
+         parallel Set.empty (MultiSet.fromOccurList [ (procInst procIdQ [chanIdA] [], 2)
+                                                    , (procInst procIdR [chanIdB] [], 1)
+                                                    ])
          )
    procDefQ = ProcDef [chanIdA] [] (
                     actionPref actOfferA stop)
@@ -3062,11 +3023,9 @@ testThreeOperandsDiffChannels2 = TestCase $
    procIdR = procIdGen "R" [chanIdB] []
 
    procDefP = ProcDef [chanIdA, chanIdB] [] (
-         parallel (Set.singleton chanIdA) [
-             procInst procIdQ [chanIdA] [],
-             procInst procIdQ [chanIdA] [],
-             procInst procIdR [chanIdB] []
-           ]
+         parallel (Set.singleton chanIdA) (MultiSet.fromOccurList [ (procInst procIdQ [chanIdA] [], 2)
+                                                                  , (procInst procIdR [chanIdB] [], 1)
+                                                                  ])
          )
    procDefQ = ProcDef [chanIdA] [] (
                     actionPref actOfferA stop)
@@ -3128,11 +3087,9 @@ testThreeOperandsDiffChannels3 = TestCase $
    procIdR = procIdGen "R" [chanIdB] []
 
    procDefP = ProcDef [chanIdA, chanIdB] [] (
-         parallel (Set.singleton chanIdB) [
-             procInst procIdQ [chanIdA] [],
-             procInst procIdQ [chanIdA] [],
-             procInst procIdR [chanIdB] []
-           ]
+         parallel (Set.singleton chanIdB) (MultiSet.fromOccurList [ (procInst procIdQ [chanIdA] [], 2)
+                                                                  , (procInst procIdR [chanIdB] [], 1)
+                                                                  ])
          )
    procDefQ = ProcDef [chanIdA] [] (
                     actionPref actOfferA stop)
@@ -3199,11 +3156,9 @@ testThreeOperandsDiffChannels4 = TestCase $
    procIdR = procIdGen "R" [chanIdB] []
 
    procDefP = ProcDef [chanIdA, chanIdB] [] (
-         parallel (Set.fromList [chanIdA, chanIdB]) [
-             procInst procIdQ [chanIdA] [],
-             procInst procIdQ [chanIdA] [],
-             procInst procIdR [chanIdB] []
-           ]
+         parallel (Set.fromList [chanIdA, chanIdB]) (MultiSet.fromOccurList [ (procInst procIdQ [chanIdA] [], 2)
+                                                                            , (procInst procIdR [chanIdB] [], 1)
+                                                                            ])
          )
    procDefQ = ProcDef [chanIdA] [] (
                     actionPref actOfferA stop)
@@ -3253,10 +3208,7 @@ testChannelInst = TestCase $
       procIdP = procIdGen "P" [chanIdA] []
 
       procDefP = ProcDef [chanIdA] [] (
-            parallel Set.empty [
-                actionPref actOfferA stop,
-                actionPref actOfferA stop
-              ]
+                parallel Set.empty (MultiSet.fromOccurList [ (actionPref actOfferA stop, 2) ])
             )
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
@@ -3320,10 +3272,9 @@ testChannelInst2 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel Set.empty [
-                procInst procIdQ [chanIdA] [],
-                procInst procIdQ [chanIdB] []
-              ]
+            parallel Set.empty (MultiSet.fromList [ procInst procIdQ [chanIdA] []
+                                                  , procInst procIdQ [chanIdB] []
+                                                  ])
             )
       procDefQ = ProcDef [chanIdA] [] (
             actionPref actOfferA stop
@@ -3406,10 +3357,9 @@ testChannelInst3 = TestCase $
       procIdQ = procIdGen "Q" [chanIdA, chanIdB] []
 
       procDefP = ProcDef [chanIdA, chanIdB] [] (
-            parallel Set.empty [
-                procInst procIdQ [chanIdA, chanIdB] [],
-                procInst procIdQ [chanIdB, chanIdA] []
-              ]
+            parallel Set.empty (MultiSet.fromList [ procInst procIdQ [chanIdA, chanIdB] []
+                                                  , procInst procIdQ [chanIdB, chanIdA] []
+                                                  ])
             )
       procDefQ = ProcDef [chanIdA, chanIdB] [] (
             actionPref actOfferA stop

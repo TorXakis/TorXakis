@@ -25,6 +25,7 @@ See LICENSE at root directory of this repository.
 module Id where
 
 import           Control.Applicative
+import           Control.Arrow(first)
 import           Control.DeepSeq
 import           Data.Data
 import           Data.Foldable
@@ -32,6 +33,8 @@ import           Data.Map.Strict     (Map)
 import qualified Data.Map.Strict     as Map
 import           Data.Set            (Set)
 import qualified Data.Set            as Set
+import           Data.MultiSet       (MultiSet)
+import qualified Data.MultiSet       as MultiSet
 import           Data.Text           (Text)
 import           GHC.Generics
 
@@ -79,6 +82,9 @@ instance (Resettable a, Resettable b) => Resettable (a, b) where
 
 instance (Ord a, Resettable a) => Resettable (Set a) where
     reset = Set.fromList . (reset <$>) . Set.toList
+
+instance (Ord a, Resettable a) => Resettable (MultiSet a) where
+    reset = MultiSet.fromOccurList . (first reset <$>) . MultiSet.toOccurList
 
 instance (Ord k, Resettable k, Resettable v) => Resettable (Map k v) where
     reset = Map.fromList . (reset <$>) . Map.toList

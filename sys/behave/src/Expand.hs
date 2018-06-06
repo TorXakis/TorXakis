@@ -34,15 +34,16 @@ import           Control.Monad.State
 import           Data.Either
 import           Data.Monoid
 
-import qualified Data.List           as List
-import qualified Data.Map            as Map
-import qualified Data.Set            as Set
-import qualified Data.Text           as T
+import qualified Data.List     as List
+import qualified Data.Map      as Map
+import qualified Data.MultiSet as MultiSet
+import qualified Data.Set      as Set
+import qualified Data.Text     as T
 
 import           BTree
 import           ChanId
 import           ConstDefs
-import qualified EnvBTree            as IOB
+import qualified EnvBTree      as IOB
 import qualified EnvData
 import           Id
 import           Relabel(relabel)
@@ -123,7 +124,7 @@ expand chsets (BNbexpr we (TxsDefs.view -> Choice bexps))  =
 -- ----------------------------------------------------------------------------------------- --
 
 expand chsets (BNbexpr we (TxsDefs.view -> Parallel chans bexps))  =
-     expand chsets $ BNparallel chans [ BNbexpr we bexp | bexp <- bexps ]
+     expand chsets $ BNparallel chans ( map (BNbexpr we) (MultiSet.toList bexps) )
 
 -- ----------------------------------------------------------------------------------------- --
 

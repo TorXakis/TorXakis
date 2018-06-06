@@ -6,6 +6,7 @@ See LICENSE at root directory of this repository.
 
 {-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Reduce
 
 -- ----------------------------------------------------------------------------------------- --
@@ -23,9 +24,10 @@ module Reduce
 
 where
 
-import qualified Data.List as List
-import qualified Data.Map  as Map
-import qualified Data.Set  as Set
+import qualified Data.List     as List
+import qualified Data.Map      as Map
+import qualified Data.MultiSet as MultiSet
+import qualified Data.Set      as Set
 
 import           BTree
 import           ConstDefs
@@ -195,17 +197,23 @@ reduce' (Choice bexps) = do
        else return $ choice (Set.fromList bexps''')
 
 reduce' (Parallel chids bexps) = do
-     bexps' <- mapM reduce bexps
-     let (stops,nstops) = List.partition isStop bexps'
-         chans'  = Set.unions $ map freeChans nstops
+     bexps' <- multiSetMapM reduce bexps
+     let (stops,nstops) = MultiSet.partition isStop bexps'
+         chans'  = Set.unions $ map freeChans (MultiSet.distinctElems nstops)
          chids'  = chids `Set.intersection` chans'
-     case (stops,nstops) of
+     case (MultiSet.toList stops, MultiSet.toList nstops) of
        ( _ , [] )      -> return stop
        ( [] , [bexp] ) -> return bexp
-       ( [] , bexs )   -> return $ parallel chids' bexs
-       ( c:_ , b:bs )  -> if  Set.null chids'       -- PvdL: performance/change issue - should be equal to chanIdExit? chanIdExit will always be part of intersection....
-                            then return $ parallel chids' (b:bs)
-                            else return $ parallel chids' (c:b:bs)
+       ( [] , _      ) -> return $ parallel chids' nstops
+       ( c:_ , _    )  -> if  Set.null chids'       -- PvdL: performance/change issue - should be equal to chanIdExit? chanIdExit will always be part of intersection....
+                            then return $ parallel chids' nstops
+                            else return $ parallel chids' (MultiSet.insert c nstops)
+  where multiSetMapM :: forall a b m . (Ord b, Monad m) => (a-> m b) -> MultiSet.MultiSet a -> m (MultiSet.MultiSet b)
+        multiSetMapM f a = MultiSet.fromOccurList <$> mapM f' (MultiSet.toOccurList a)
+          where f' :: (a, MultiSet.Occur) -> m (b, MultiSet.Occur)
+                f' (x,c) = do
+                            v <- f x
+                            return (v,c)
 
 reduce' (Enable bexp1 choffs bexp2) = do
      bexp1'  <- reduce bexp1
@@ -294,12 +302,12 @@ instance FreeChan BExpr
         freeChans' (ActionPref ao bexp)    = freeChans ao `Set.union` freeChans bexp
         freeChans' (Guard _ bexp)          = freeChans bexp
         freeChans' (Choice bexps)          = Set.unions $ map freeChans (Set.toList bexps)
-        freeChans' (Parallel chids bexps)  = Set.unions (chids:map freeChans bexps)
+        freeChans' (Parallel chids bexps)  = Set.unions (chids:map freeChans (MultiSet.distinctElems bexps))
         freeChans' (Enable bexp1 _ bexp2)  = freeChans bexp1 `Set.union` freeChans bexp2
         freeChans' (Disable bexp1 bexp2)   = freeChans bexp1 `Set.union` freeChans bexp2
         freeChans' (Interrupt bexp1 bexp2) = freeChans bexp1 `Set.union` freeChans bexp2
         freeChans' (ProcInst _ chids _)    = Set.fromList chids
-        freeChans' (Hide chids bexp)       = Set.difference (freeChans bexp) chids         
+        freeChans' (Hide chids bexp)       = Set.difference (freeChans bexp) chids
         freeChans' (ValueEnv _ bexp)       = freeChans bexp
         freeChans' (StAut _ _ trns)        = Set.unions (map freeChans trns)
 
