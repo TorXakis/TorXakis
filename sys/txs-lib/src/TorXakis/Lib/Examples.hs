@@ -202,14 +202,14 @@ testVals = do
     cancel a
 
 testTester :: IO (Maybe ())
-testTester = timeout (10 * seconds) $ do
+testTester = timeout (10 * seconds) $
     withCreateProcess (proc "java" ["-cp","../../examps/LuckyPeople/sut","LuckyPeople"])
         {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
             cs <- readFile $ ".." </> ".." </> "examps" </> "LuckyPeople" </> "spec" </> "LuckyPeople.txs"
             s <- newSession
             a <- async (printer s)
             _ <- load s cs
-            _ <- setTest s "Model" "Sut"
+            _ <- setTest "Model" "Sut" s
             r <- test s (NumberOfSteps 10)
             putStrLn $ "Result of `test`: " ++ show r
             void $ test s (NumberOfSteps 10)

@@ -22,10 +22,11 @@ type SetTestEP = "sessions"
               :> Capture "sid" SessionId
               :> "set-test"
               :> Capture "model" Text
+              :> Capture "cnect" Text
               :> PostNoContent '[JSON] ()
 
-startTester :: Env -> SessionId -> Text -> Handler ()
-startTester env sId model = liftLib env sId (`setTest` model)
+startTester :: Env -> SessionId -> Text -> Text -> Handler ()
+startTester env sId model cnect= liftLib env sId (setTest model cnect)
 
 type TestStepEP = "sessions"
            :> Capture "sid" SessionId

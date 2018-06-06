@@ -14,6 +14,7 @@ import           Control.Concurrent.STM.TQueue (writeTQueue)
 import           Control.Concurrent.STM.TVar   (readTVarIO, writeTVar)
 import           Control.Exception             (try)
 import           Control.Monad                 (void)
+import           Control.Monad.Except          (throwError)
 import           Control.Monad.State           (lift, liftIO)
 import           Control.Monad.STM             (atomically)
 import           Data.Either                   (partitionEithers)
@@ -42,11 +43,11 @@ import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
 
 -- | Start the tester
-setTest :: Session
+setTest :: Name
         -> Name
-        -> Name
+        -> Session
         -> IO (Response ())
-setTest s mdlNm cnctNm = runResponse $ do
+setTest mdlNm cnctNm s = runResponse $ do
     mDef <- lookupModel s mdlNm
     st <- lift $ readTVarIO (s ^. sessionState)
     let fWCh = s ^. fromWorldChan
@@ -58,19 +59,18 @@ setTest s mdlNm cnctNm = runResponse $ do
                 | (TxsDefs.CnectId nm _, cdef) <- Map.toList cDefsMap
                 , nm == cnctNm
                 ]
-    -- if null cdefs
-    --     then return $ Left $ "No CnectDef found with name: " <> cnctNm
-    --     else do
-    lift $ do
-        (wcd,tids) <- initSocketWorld s fWCh $ head cdefs
-        atomically $ do
-            writeTVar (s ^. wConnDef) wcd
-            writeTVar (s ^. worldListeners) tids
-        runIOC s $
-            Core.txsSetTest
-                (lift <$> putToW deltaTime fWCh (wcd ^. toWorldMappings))
-                (lift $ getFromW deltaTime fWCh)
-                mDef Nothing Nothing
+    case cdefs of
+        [] -> throwError $ "No CnectDef found with name: " <> cnctNm
+        _  -> lift $ do
+            (wcd,tids) <- initSocketWorld s fWCh $ head cdefs
+            atomically $ do
+                writeTVar (s ^. wConnDef) wcd
+                writeTVar (s ^. worldListeners) tids
+            runIOC s $
+                Core.txsSetTest
+                    (lift <$> putToW deltaTime fWCh (wcd ^. toWorldMappings))
+                    (lift $ getFromW deltaTime fWCh)
+                    mDef Nothing Nothing
 
 -- | Test for n-steps or actions
 test :: Session -> StepType -> IO (Response ())
