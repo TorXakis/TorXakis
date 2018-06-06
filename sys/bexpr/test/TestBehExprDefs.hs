@@ -156,6 +156,7 @@ genBExpr = sized genBExpr'
                                     , genParallel
                                     , genEnable
                                     , genDisable
+                                    , genInterrupt
                                     ]
         genBExpr' n = error $ "Unexpected negative size value for genBExpr' : " ++ show n
 
@@ -202,6 +203,13 @@ genBExpr = sized genBExpr'
                         GenBExpr b2 <- resize (n `div` 2) arbitrary
                         return (GenBExpr $ disable b1 b2)
 
+        genInterrupt :: Gen GenBExpr
+        genInterrupt = do
+                        n <- getSize
+                        GenBExpr b1 <- resize (n `div` 2) arbitrary
+                        GenBExpr b2 <- resize (n `div` 2) arbitrary
+                        return (GenBExpr $ interrupt b1 b2)
+
         genListBExpr :: Gen [BExpr]
         genListBExpr = do
                         n <- getSize
@@ -244,6 +252,12 @@ prop_GuardActionPrefix (GenValExprBool vexpr1) (GenValExprBool vexpr2) soffers (
                 Vconst (Cbool True)     -> actionPref (ActOffer offers' Set.empty vexpr1) p
                 _                       -> actionPref (ActOffer offers' Set.empty (cstrITE vexpr1 vexpr2 (cstrConst (Cbool False)))) p
 
+--  [[ c ]] =>> (p1 ## p2) == ( ([[ c ]] =>> p1) ## ([[ c ]] =>> p2) )
+prop_GuardOverChoice :: GenValExprBool -> Set.Set GenBExpr -> Bool
+prop_GuardOverChoice (GenValExprBool vexpr) gBexprs = 
+    let bexprs = Set.map (\(GenBExpr b) -> b) gBexprs in
+        guard vexpr (choice bexprs) == choice (Set.map (guard vexpr) bexprs)
+
 -- |  p ## stop <==> p
 prop_ChoiceStop :: GenBExpr -> Bool
 prop_ChoiceStop (GenBExpr p) =
@@ -280,6 +294,11 @@ prop_DisableStopP (GenBExpr p) =
 prop_DisablePStop :: GenBExpr -> Bool
 prop_DisablePStop (GenBExpr p) =
     p == disable p stop
+
+-- | p [>< stop <==> p
+prop_InterruptPStop :: GenBExpr -> Bool
+prop_InterruptPStop (GenBExpr p) =
+    p == interrupt p stop
 
 return []
 testBehExprDefs :: IO Bool

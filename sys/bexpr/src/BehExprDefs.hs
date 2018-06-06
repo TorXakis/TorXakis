@@ -125,6 +125,8 @@ guard _ b                                     | isStop b    = stop
 guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = case ValExpr.view c of
                                                                 Vconst (Cbool True) -> actionPref (ActOffer o h v) b
                                                                 _                   -> actionPref (ActOffer o h (cstrITE v c (cstrConst (Cbool False)))) b
+--  [[ c ]] =>> (p1 ## p2) <==> ( ([[ c ]] =>> p1) ## ([[ c ]] =>> p2) )
+guard v (BehExprDefs.view -> Choice s)                      = choice $ Set.map (guard v) s
 guard v b                                                   = BExpr (Guard v b)
 
 -- | Create a choice behaviour expression.
@@ -182,7 +184,9 @@ disable b1 b2             = BExpr (Disable b1 b2)
 
 -- | Create an interrupt behaviour expression.
 interrupt :: BExpr -> BExpr -> BExpr
-interrupt b1 b2 = BExpr (Interrupt b1 b2)
+--  p [>< stop <==> p
+interrupt b1 b2 | isStop b2 = b1
+interrupt b1 b2             = BExpr (Interrupt b1 b2)
 
 -- | Create a process instantiation behaviour expression.
 procInst :: ProcId -> [ChanId] -> [VExpr] -> BExpr
