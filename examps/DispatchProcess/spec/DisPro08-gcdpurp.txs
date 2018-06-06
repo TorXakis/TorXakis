@@ -71,7 +71,7 @@ ENDDEF
 -- ----------------------------------------------------------------------------------------- --
 
 PROCDEF  testPurposes  [ Job :: Int # Int ] ( d :: Int ) ::=
-             Job ?x ?y  [[ (x % d) == 0 /\ (y % d) == 0 ]]
+             Job ?x ?y  [[ ((x % d) == 0) /\ ((y % d) == 0) ]]
         >-> 
              testPurposes [ Job ] ( d+1 )
 ENDDEF
