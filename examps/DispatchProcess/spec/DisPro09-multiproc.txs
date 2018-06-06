@@ -21,7 +21,7 @@ ENDDEF
 
 
 PROCDEF  processor [ Start, Finish :: Int # Int ] ( procnum :: Int ) ::=
-             Start ?x ?y  [[ x>0 /\ y>0 ]]
+             Start ?x ?y  [[ ( x > 0 ) /\ ( y > 0 ) ]]
         >->  Finish ! procnum ! gcd ( x, y )
         >->  processor [ Start, Finish ] ( procnum )
 ENDDEF
@@ -39,7 +39,7 @@ ENDDEF
 
 
 PROCDEF  dispatcher [ Job, Dispatch :: Int # Int ] ( )  ::=
-             Job ?x ?y  [[ x>0 /\ y>0 ]]
+             Job ?x ?y  [[ ( x > 0 ) /\ ( y > 0 ) ]]
         >->  Dispatch !x !y
         >->  dispatcher [ Job, Dispatch ]  ( )
 ENDDEF
