@@ -704,11 +704,12 @@ chanOfferIvarDecl :: ChanOfferDecl -> Maybe IVarDecl
 chanOfferIvarDecl (QuestD iv) = Just iv
 chanOfferIvarDecl _           = Nothing
 
--- | Transform a variable declaration into a variable reference. This is used
--- in the case of an implicit variable declaration (which is a reference to
--- itself).
+-- | Transform the location of a variable declaration into the location of a
+-- variable reference. A variable declaration refers to itself.
 --
--- TODO: does it make sense to have this function instead of just exporting @locFromLoc@.
+-- We do not want to export @locFromLoc@ since we will be loosing the
+-- type-guarantees offered by the phantom type. By having @locFromLoc@ private
+-- to this module we are in control of which conversions are allowed.
 asVarReflLoc :: Loc VarDeclE -> Loc VarRefE
 asVarReflLoc = locFromLoc
 

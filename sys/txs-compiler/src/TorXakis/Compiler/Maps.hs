@@ -87,27 +87,10 @@ getUniqueElement xs = Left Error
 determineF :: MapsTo (Loc FuncDeclE) Signature mm
            => mm
            -> [Loc FuncDeclE]
-           -> [SortId]
-           -> Maybe SortId  -- ^ Return Sort, if known.
-           -> [Loc FuncDeclE]
-determineF mm fdis aSids mRSid =
-    filter funcMatches fdis
-    where
-      funcMatches :: Loc FuncDeclE -> Bool
-      funcMatches fdi = const False ||| id $ do
-          sig <- lookup fdi mm
-          return $ sortArgs sig == aSids &&
-                   fromMaybe True ((sortRet sig ==) <$> mRSid)
-
--- | Select the function definitions that matches the given arguments and return
--- types.
-determineF2 :: MapsTo (Loc FuncDeclE) Signature mm
-           => mm
-           -> [Loc FuncDeclE]
            -> [SortId]        -- ^ Arguments SortId
            -> Maybe SortId    -- ^ Return Sort, if known.
            -> [Loc FuncDeclE]
-determineF2 mm ls aSids mRSid =
+determineF mm ls aSids mRSid =
     filter funcMatches ls
     where
       funcMatches :: Loc FuncDeclE -> Bool
@@ -116,6 +99,20 @@ determineF2 mm ls aSids mRSid =
           return $ sortArgs sig == aSids &&
                    fromMaybe True ((sortRet sig ==) <$> mRSid)
 
+-- | Determine the signature and the handler based on the sort arguments and
+-- the expected return type (if any).
+determineSH :: [(Signature, Handler VarId)]
+             -> [SortId]     -- ^ @SortId@s of the arguments
+             -> Maybe SortId -- ^ @SortId@ (if known)
+             -> Either Error (Signature, Handler VarId)
+determineSH shs sargs msret =
+    case filter (sigMatches . fst) shs of
+        [(sig, h)] -> return (sig, h)
+        -- TODO: give the appropriate error using Left
+        [] -> error "Could not determine the function based on the given signature "
+        _ -> error "Found matching signatures"
+    where
+      sigMatches sig = (sortArgs sig == sargs) && maybe True (sortRet sig ==) msret
 
 -- | Get the name of the implicit function declaration, if any.
 fdiName :: Loc FuncDeclE -> Maybe Text
@@ -136,6 +133,19 @@ findFuncDecl :: MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
 findFuncDecl mm l = Left ||| cErr ||| Right $ lookup l mm
     where
       cErr :: Loc VarDeclE -> Either Error a
+      cErr _ = Left err
+      err = Error
+            { _errorType = FunctionNotDefined
+            , _errorLoc  = getErrorLoc l
+            , _errorMsg  = "Could not function declaration."
+            }
+
+findFuncDecl_2 :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+               -> Loc VarRefE
+               -> Either Error [(Signature, Handler VarId)]
+findFuncDecl_2 vdefs l = Left ||| cErr ||| Right $ lookup l vdefs
+    where
+      cErr :: VarId -> Either Error a
       cErr _ = Left err
       err = Error
             { _errorType = FunctionNotDefined

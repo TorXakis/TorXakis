@@ -129,14 +129,14 @@ import           TorXakis.Parser.Data
 --
 -- > MapsTo FuncId (Signature, Handler VarId)
 --
-expDeclToValExpr2 :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                    , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
-                    , MapsTo (Loc VarDeclE) VarId mm )
+expDeclToValExpr :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+                    , MapsTo (Loc VarDeclE) VarId mm
+                    , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm )
                   => mm
                   -> SortId -- ^ Expected SortId for the expression.
                   -> ExpDecl
                   -> Either Error (ValExpr VarId)
-expDeclToValExpr2 mm eSid ex = case expChild ex of
+expDeclToValExpr mm eSid ex = case expChild ex of
     VarRef _ l -> do
         vLocfLoc <- mm .@@ (l :: Loc VarRefE)
         case vLocfLoc of
@@ -148,7 +148,7 @@ expDeclToValExpr2 mm eSid ex = case expChild ex of
                 let sigHdlrsMap :: Map (Loc FuncDeclE) (Signature, Handler VarId)
                     sigHdlrsMap = innerMap mm
                     sigsMap = fst <$> sigHdlrsMap
-                    matchingFdis = determineF2 sigsMap fdis [] (Just eSid)
+                    matchingFdis = determineF sigsMap fdis [] (Just eSid)
                 fLoc  <- getUniqueElement matchingFdis
                 (sig, h)  <- mm .@@ fLoc :: Either Error (Signature, Handler VarId)
                 checkSortIds (sortRet sig) eSid
@@ -159,16 +159,16 @@ expDeclToValExpr2 mm eSid ex = case expChild ex of
     LetExp vss subEx -> do
         let
             letValDeclsToMaps :: Either Error [Map VarId (ValExpr VarId)]
-            letValDeclsToMaps = traverse (parValDeclToMap2 mm) vss
+            letValDeclsToMaps = traverse (parValDeclToMap mm) vss
             fsM :: Map.Map FuncId (FuncDef VarId)
             fsM = Map.empty
-        subValExpr <- expDeclToValExpr2 mm eSid subEx
+        subValExpr <- expDeclToValExpr mm eSid subEx
         vsM <- letValDeclsToMaps
         return $ foldr (`subst` fsM) subValExpr vsM
     If ex0 ex1 ex2 -> do
-        ve0 <- expDeclToValExpr2 mm sortIdBool ex0
-        ve1 <- expDeclToValExpr2 mm eSid ex1
-        ve2 <- expDeclToValExpr2 mm eSid ex2
+        ve0 <- expDeclToValExpr mm sortIdBool ex0
+        ve1 <- expDeclToValExpr mm eSid ex1
+        ve2 <- expDeclToValExpr mm eSid ex2
         return $ cstrITE (cstrAnd (Set.fromList [ve0])) ve1 ve2
     Fappl _ l exs -> do
         fdis <- findFuncDecl mm l
@@ -196,23 +196,106 @@ expDeclToValExpr2 mm eSid ex = case expChild ex of
                                      <> T.pack (show sig)
                        }
                   else do
-                  vexs <- traverse (uncurry $ expDeclToValExpr2 mm) $
+                  vexs <- traverse (uncurry $ expDeclToValExpr mm) $
                                 zip (sortArgs sig) exs
                   return $ h vexs
 
 
-parValDeclToMap2 :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+parValDeclToMap :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                     , MapsTo (Loc VarDeclE) VarId mm
                     , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm )
                  => mm -> [LetVarDecl] -> Either Error (Map VarId (ValExpr VarId))
-parValDeclToMap2 mm vs = Map.fromList <$>
-    traverse (letValDeclToMap2 mm) vs
+parValDeclToMap mm vs = Map.fromList <$>
+    traverse (letValDeclToMap mm) vs
 
-letValDeclToMap2 :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+letValDeclToMap :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                     , MapsTo (Loc VarDeclE) VarId mm
                     , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm )
                  => mm -> LetVarDecl -> Either Error (VarId, ValExpr VarId)
-letValDeclToMap2 mm vd = do
+letValDeclToMap mm vd = do
     vId   <- mm .@@ getLoc vd
-    vdExp <- expDeclToValExpr2 mm (varsort vId) (varDeclExp vd)
+    vdExp <- expDeclToValExpr mm (varsort vId) (varDeclExp vd)
+    return (vId, vdExp)
+
+--
+-- Third attempt of simplification...
+--
+
+expDeclToValExpr_2 :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)]) -- ^ Variable definitions associated to a given reference.
+                  -> SortId -- ^ Expected SortId for the expression.
+                  -> ExpDecl
+                  -> Either Error (ValExpr VarId)
+expDeclToValExpr_2 vdefs eSid ex = case expChild ex of
+    VarRef _ l -> do
+        vdef <- vdefs .@@ (l :: Loc VarRefE)
+        case vdef of
+            Left vId -> do
+                checkSortIds (varsort vId) eSid
+                return $ cstrVar vId
+            Right shs -> do
+                (sig, h)  <- determineSH shs [] (Just eSid)
+                checkSortIds (sortRet sig) eSid
+                return $ h []
+    ConstLit c -> do
+        traverse_ (checkSortIds eSid) (sortIdConst c)
+        return $ cstrConst (constToConstDef eSid c)
+    LetExp vss subEx -> do
+        let
+            letValDeclsToMaps :: Either Error [Map VarId (ValExpr VarId)]
+            letValDeclsToMaps = traverse (parValDeclToMap_2 vdefs) vss
+            fsM :: Map.Map FuncId (FuncDef VarId)
+            fsM = Map.empty
+        subValExpr <- expDeclToValExpr_2 vdefs eSid subEx
+        vsM <- letValDeclsToMaps
+        return $ foldr (`subst` fsM) subValExpr vsM
+    If ex0 ex1 ex2 -> do
+        ve0 <- expDeclToValExpr_2 vdefs sortIdBool ex0
+        ve1 <- expDeclToValExpr_2 vdefs eSid ex1
+        ve2 <- expDeclToValExpr_2 vdefs eSid ex2
+        return $ cstrITE (cstrAnd (Set.fromList [ve0])) ve1 ve2
+    Fappl _ l exs -> do
+        shs <- findFuncDecl_2 vdefs l
+        case partitionEithers (tryMkValExpr <$> shs) of
+            (ls, []) -> Left Error
+                        { _errorType = UndefinedRef
+                        , _errorLoc  = getErrorLoc l
+                        , _errorMsg   = "Could not resolve function: " <> T.pack (show ls)}
+            (_, [vex]) -> Right vex
+            (_, vexs)  -> Left Error
+                          { _errorType = UnresolvedIdentifier
+                          , _errorLoc  = getErrorLoc l
+                          , _errorMsg   = "Function not uniquely resolved: " <> T.pack (show vexs)
+                          }
+        where
+          tryMkValExpr :: (Signature, Handler VarId) -> Either Error (ValExpr VarId)
+          tryMkValExpr (sig, h) = do
+              checkSortIds (sortRet sig) eSid
+              if length (sortArgs sig) /= length exs
+                  then Left Error
+                       { _errorType = UndefinedRef
+                       , _errorLoc  = NoErrorLoc
+                       , _errorMsg  = "Length of arguments don't match"
+                                     <> T.pack (show sig)
+                       }
+                  else do
+                  vexs <- traverse (uncurry $ expDeclToValExpr_2 vdefs) $
+                                zip (sortArgs sig) exs
+                  return $ h vexs
+
+
+parValDeclToMap_2 :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+                  -> [LetVarDecl]
+                  -> Either Error (Map VarId (ValExpr VarId))
+parValDeclToMap_2 mm vs = Map.fromList <$>
+    traverse (letValDeclToMap_2 mm) vs
+
+letValDeclToMap_2 :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+                  -> LetVarDecl
+                  -> Either Error (VarId, ValExpr VarId)
+letValDeclToMap_2 vdefs vd = do
+    -- TODO: introduce a function that checks whether the location is mapped
+    -- onto a variable.
+    -- TODO: this requires that a variable declaration is also a reference!
+    let Just (Left vId) = Map.lookup (asVarReflLoc (getLoc vd)) vdefs
+    vdExp <- expDeclToValExpr_2 vdefs (varsort vId) (varDeclExp vd)
     return (vId, vdExp)

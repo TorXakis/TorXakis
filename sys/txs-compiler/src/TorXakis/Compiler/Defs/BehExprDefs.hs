@@ -82,7 +82,7 @@ toBExpr mm (Pappl n l crs exs) = do
     res <- forCatch (filter candidate $ keys @ProcId @() mm) $ \pId -> do
         let eSids = varsort <$> procvars pId
         vExps <- liftEither $
-            traverse (uncurry $ expDeclToValExpr2 mm) $ zip eSids exs
+            traverse (uncurry $ expDeclToValExpr mm) $ zip eSids exs
         return (pId, procInst pId chIds vExps)
     case res of
         (_ , [(_, pInst)]) -> return pInst
@@ -145,7 +145,7 @@ toBExpr mm (Choice _ be0 be1) = do
     be1' <- toBExpr mm be1
     return $ choice (Set.fromList [be0', be1'])
 toBExpr mm (Guard g be) = do
-    g'  <- liftEither $ expDeclToValExpr2 mm sortIdBool g
+    g'  <- liftEither $ expDeclToValExpr mm sortIdBool g
     be' <- toBExpr mm be
     return $ guard g' be'
 toBExpr mm (Hide _ cds be) = do
@@ -160,7 +160,7 @@ vpair :: ( MapsTo (Loc VarDeclE) VarId mm
 vpair mm vd = do
     vId <- mm .@ getLoc vd
     ex  <- liftEither $
-        expDeclToValExpr2 mm (varsort vId) (varDeclExp vd)
+        expDeclToValExpr mm (varsort vId) (varDeclExp vd)
     return (vId, ex)
 
 toActOffer :: ( MapsTo Text SortId mm
@@ -175,7 +175,7 @@ toActOffer :: ( MapsTo Text SortId mm
 toActOffer mm (ActOfferDecl osd mc) = do
     os <- traverse (toOffer mm) osd
     c  <- fromMaybe (return . cstrConst . Cbool $ True)
-                    (liftEither . expDeclToValExpr2 mm sortIdBool <$> mc)
+                    (liftEither . expDeclToValExpr mm sortIdBool <$> mc)
     -- Filter the internal actions (to comply with the current TorXakis compiler).
     let os' = filter ((chanIdIstep /=) . chanid) os
     return $ ActOffer (Set.fromList os') Set.empty c
@@ -223,4 +223,10 @@ toChanOffer :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
 toChanOffer mm _ (QuestD vd) =
     Quest  <$> mm .@ getLoc vd
 toChanOffer mm eSid (ExclD ex) = liftEither $
-    Exclam <$> expDeclToValExpr2 mm eSid ex
+    Exclam <$> expDeclToValExpr mm eSid ex
+
+
+---
+
+toBExpr_2 :: BExpDecl -> CompilerM BExpr
+toBExpr_2 = undefined

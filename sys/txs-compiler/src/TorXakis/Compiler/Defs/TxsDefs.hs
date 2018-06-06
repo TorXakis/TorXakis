@@ -226,7 +226,7 @@ cnectDeclsToTxsDefs mm cds =
                   let mm'' = offrSIdMap <.+> (offrVIdMap <.+> mm')
                   Offer chId chOffrs <- toOffer mm'' offr
                   vIds <- traverse questVIds chOffrs
-                  vExp <- liftEither $ expDeclToValExpr2 mm'' sortIdString e
+                  vExp <- liftEither $ expDeclToValExpr mm'' sortIdString e
                   return $ ConnDtoW chId h p vIds vExp
               toConnDef (_, _, CodecItem _ (QuestD _) Encode) =
                   throwError Error

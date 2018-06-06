@@ -107,7 +107,7 @@ compileParsedDefs pd = do
     sIds <- compileToSortIds pd
     cstrIds <- compileToCstrId sIds (pd ^. adts)
 
-    stdFuncIds <- Map.fromList <$> getStdFuncIds  -- TODO: eliminate duplication WRT compileToFuncIds!!!
+    stdFuncIds <- Map.fromList <$> getStdFuncIds
     cstrFuncIds <- Map.fromList <$> adtsToFuncIds sIds (pd ^. adts)
     fIds <- Map.fromList <$> funcDeclsToFuncIds sIds (allFuncs pd)
     let
@@ -131,7 +131,11 @@ compileParsedDefs pd = do
     adtsFt <- adtsToFuncTable (sIds :& cstrIds) (pd ^. adts)
     stdSHs <- fLocToSignatureHandlers stdFuncIds stdFuncTable
     adtsSHs <- fLocToSignatureHandlers cstrFuncIds adtsFt
-
+    -- TODO: The @FuncDef@s are only required by the @toTxsDefs@, so it makes sense to
+    -- split @funcDeclsToFuncDefs2@ into:
+    --
+    -- - 'funcDeclsToSignatureHandlers'
+    -- - 'funcDeclsToFuncDefs' (to be used at @toTxsDefs@)
     fdefs <- funcDeclsToFuncDefs2 (vIds :& allFids :& decls) (stdSHs `Map.union` adtsSHs) (allFuncs pd)
     let fdefsSHs = innerSigHandlerMap (fIds :& fdefs)
         allFSHs = stdSHs `Map.union` adtsSHs `Map.union` fdefsSHs

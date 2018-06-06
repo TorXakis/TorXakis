@@ -242,7 +242,7 @@ cmdInit args = do
      srctxts            <- lift $ lift $ mapM readFile (words args)
      let srctxt          = List.intercalate "\n\n" srctxts
      ((unid',tdefs', sigs'),e) <- lift $ lift $ catch
-                             ( let --parsing = TxsHappy.txsParser (TxsAlex.txsLexer srctxt)
+                             ( let -- parsing = TxsHappy.txsParser (TxsAlex.txsLexer srctxt)
                                    parsing = compileLegacy srctxt
                                 in return $!! (parsing, "")
                              )

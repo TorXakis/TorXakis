@@ -55,7 +55,6 @@ procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                          , MapsTo (Loc ProcDeclE) ProcInfo mm
                          , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False
                          , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
-                         , In (Text, ChanId) (Contents mm) ~ 'False
                          , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
                          , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
                          , In (ProcId, ()) (Contents mm) ~ 'False
@@ -255,7 +254,7 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                           [] -> return []
                           v:_ -> do
                               vExp <- liftEither $
-                                  expDeclToValExpr2 ((pvIds <.++> lVIds) :& mm) (varsort v) e
+                                  expDeclToValExpr ((pvIds <.++> lVIds) :& mm) (varsort v) e
                               return (zip vIds (repeat vExp))
 
                   mkTransitions :: [StatId]
@@ -280,3 +279,53 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                                                ofrD
                             upd  <- stUpdatesToVEnv allVIds updD
                             return $ Beh.Trans from ofr upd to
+
+
+
+-- TODO: experiment
+
+procDeclsToProcDefMap_2 :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
+                       -> Map (Loc VarDeclE) VarId
+                       -> Map (Loc FuncDeclE) (Signature, Handler VarId)
+                       -> Map (Loc ProcDeclE) ProcInfo
+                       -> [ProcDecl]
+                       -> CompilerM (Map ProcId ProcDef)
+procDeclsToProcDefMap_2 vdecls vids fshs pinfs ps =
+    gProcDeclsToProcDefMap emptyMpd ps
+    where
+      emptyMpd = Map.empty :: Map ProcId ProcDef
+      gProcDeclsToProcDefMap :: Map ProcId ProcDef -- ^ Process definitions obtained so far.
+                             -> [ProcDecl]
+                             -> CompilerM (Map ProcId ProcDef)
+      gProcDeclsToProcDefMap pdefs rs = do
+          (ls, rs') <- traverseCatch mkpIdPDefM rs
+          case (ls, rs') of
+              ([], _) -> return $ Map.fromList rs' <> innerMap pdefs
+              (_, []) -> throwError Error
+                  { _errorType = ProcessNotDefined
+                  , _errorLoc = NoErrorLoc
+                  , _errorMsg = T.pack (show (snd <$> ls))
+                  }
+              (_, _ ) -> gProcDeclsToProcDefMap (Map.fromList rs' <.+> pdefs) (fst <$> ls)
+
+      mkpIdPDefM :: ProcDecl -> CompilerM (ProcId, ProcDef)
+      mkpIdPDefM pd = do
+          ProcInfo pId chIds pvIds <- pinfs .@ getLoc pd :: CompilerM ProcInfo
+          -- Scan for channel references and declarations
+          chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
+          let chIdsM = Map.fromList chIds
+              mpd' = Map.fromList $ zip (allProcIds pinfs) (repeat ())
+              fss = fst <$> fshs
+
+          b  <- toBExpr_2 (procDeclBody pd)
+          -- TODO: And we might need some of these maps (  vids
+          --               :& mpd'
+          --               :& chDecls
+          --               :& chIdsM
+          --               )
+
+          -- NOTE that it is crucial that the order of the channel parameters
+          -- declarations is preserved!
+          procChIds <- traverse (chIdsM .@) (getLoc <$> procDeclChParams pd)
+          let pvIds' = snd <$> pvIds
+          return ( pId, ProcDef procChIds pvIds' b )

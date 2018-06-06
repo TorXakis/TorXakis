@@ -123,10 +123,8 @@ funcDeclToFuncDef2 mm f = left (,f) $ do
         -- the current function available to @expDeclToValExpr@.
         locToSigHdlrMap =
             Map.insert (getLoc f) (fsig, handler') (innerSigHandlerMap mm)
-    vExp <- expDeclToValExpr2 (locToSigHdlrMap <.+> mm) (funcsort fid) (funcBody f)
+    vExp <- expDeclToValExpr (locToSigHdlrMap <.+> mm) (funcsort fid) (funcBody f)
     let fdef = FuncDef pIds vExp
-        fidFdef :: Map FuncId (FuncDef VarId)
-        fidFdef = Map.map funcDef (innerMap mm)
         -- We recalculate the handler to simplify constant expressions.
         fhandler =
             case funcargs fid of
