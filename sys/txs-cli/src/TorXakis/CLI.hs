@@ -132,6 +132,8 @@ startCLI = do
             "param"   -> lift (runExceptT $ param rest) >>= output
             "stepper" -> subStepper rest >>= output
             "step"    -> subStep rest >>= output
+            "tester"  -> tester rest >>= output
+            "test"    -> test rest >>= output
             "time"    -> lift (runExceptT getTime) >>= output
             "timer"   -> lift (runExceptT $ timer rest) >>= output
             "val"     -> lift (runExceptT $ val rest) >>= output
@@ -150,6 +152,11 @@ startCLI = do
             subStepper _ = outputStrLn "This command is not supported yet."
             -- | Sub-command step.
             subStep with = (lift . step . concat $ with) >>= output
+            tester :: [String] -> InputT CLIM ()
+            tester [mName, cName] = lift (startTester mName cName) >>= output
+            tester _ = outputStrLn "This command is not supported yet."
+            test :: [String] -> InputT CLIM ()
+            test with = (lift . testN . concat $ with) >>= output
             timer :: (MonadIO m, MonadReader Env m, MonadError String m)
                   => [String] -> m String
             timer [nm] = callTimer nm

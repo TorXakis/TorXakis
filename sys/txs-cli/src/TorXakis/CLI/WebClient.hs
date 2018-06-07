@@ -20,31 +20,28 @@ module TorXakis.CLI.WebClient
     , module TorXakis.CLI.WebClient.Eval
     , module TorXakis.CLI.WebClient.Params
     , module TorXakis.CLI.WebClient.Seed
+    , module TorXakis.CLI.WebClient.Test
     , module TorXakis.CLI.WebClient.Vals
     , module TorXakis.CLI.WebClient.Vars
     )
 where
 
-import           Control.Arrow                 (right)
 import           Control.Concurrent            (Chan, writeChan)
-import           Control.Monad.Except          (ExceptT, MonadError, catchError,
-                                                liftEither, runExceptT,
-                                                throwError)
+import           Control.Monad.Except          (MonadError, catchError,
+                                                liftEither, throwError)
 import           Control.Monad.IO.Class        (MonadIO)
 import           Control.Monad.Reader          (MonadReader, asks)
 import           Data.Aeson                    (eitherDecode)
 import           Data.Aeson.Types              (toJSON)
 import qualified Data.ByteString               as BSS
-import           Data.ByteString.Lazy          (ByteString)
 import           Data.Either.Utils             (maybeToEither)
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
 import           Lens.Micro                    ((^.), (^?))
 import           Lens.Micro.Aeson              (key, _String)
 import           Lens.Micro.TH                 (makeLenses)
-import           Network.Wreq                  (Response, foldGet, partFile,
-                                                responseBody, responseStatus,
-                                                statusCode)
+import           Network.Wreq                  (foldGet, partFile, responseBody,
+                                                responseStatus, statusCode)
 import           System.FilePath               (takeFileName)
 import           Text.Read                     (readMaybe)
 
@@ -58,6 +55,7 @@ import           TorXakis.CLI.WebClient.Common
 import           TorXakis.CLI.WebClient.Eval
 import           TorXakis.CLI.WebClient.Params
 import           TorXakis.CLI.WebClient.Seed
+import           TorXakis.CLI.WebClient.Test
 import           TorXakis.CLI.WebClient.Vals
 import           TorXakis.CLI.WebClient.Vars
 
@@ -145,11 +143,6 @@ step with = do
           rsp <- envPost (concat ["sessions/", show sId, "/parse-action/"]) (toJSON actText)
           act <- liftEither $ eitherDecode $ rsp ^. responseBody
           return $ AnAction act
-
-ignoreSuccess :: (MonadIO m)
-               => ExceptT String m (Response ByteString)
-               -> m (Either String ())
-ignoreSuccess = fmap (right (const ())) . runExceptT
 
 -- | Open the messages endpoint
 openMessages :: (MonadIO m, MonadReader Env m) => m (Either String ())

@@ -3,10 +3,11 @@
 -- | Common functionality of Web client for `txs-webserver`.
 module TorXakis.CLI.WebClient.Common where
 
+import           Control.Arrow          (right)
 import           Control.Exception      (Handler (Handler), IOException,
                                          catches)
-import           Control.Monad.Except   (MonadError, liftEither, throwError,
-                                         when)
+import           Control.Monad.Except   (ExceptT, MonadError, liftEither,
+                                         runExceptT, throwError, when)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader   (MonadReader, asks)
 import qualified Data.ByteString.Char8  as BS
@@ -66,3 +67,8 @@ shouldBeStatus got expected =
     when (got /= expected) $
         throwError $ "Got status code " ++ show got
                    ++ " instead of " ++ show expected
+
+ignoreSuccess :: (MonadIO m)
+               => ExceptT String m (Response ByteString)
+               -> m (Either String ())
+ignoreSuccess = fmap (right (const ())) . runExceptT
