@@ -118,13 +118,13 @@ startCLI = do
     dispatch :: String -> InputT CLIM ()
     dispatch inputLine = do
         modifyHistory $ addHistoryRemovingAllDupes (strip inputLine)
-        let tokens = words inputLine -- TODO: this argument parsing should be a bit more sophisticated.
+        let tokens = words inputLine
             cmd  = head tokens
             rest = tail tokens
         case map toLower cmd of
             "#"       -> return ()
             "echo"    -> outputStrLn $ unwords rest
-            "delay"   -> waitFor $ head rest
+            "delay"   -> waitFor rest
             "i"       -> lift (runExceptT info) >>= output
             "info"    -> lift (runExceptT info) >>= output
             "l"       -> lift (load rest) >>= output
@@ -142,10 +142,11 @@ startCLI = do
             "seed"    -> lift (runExceptT $ seed rest) >>= output
             _         -> output $ "Unknown command: " ++ cmd
           where
-            waitFor :: String -> InputT CLIM ()
-            waitFor n = case readMaybe n :: Maybe Int of
+            waitFor :: [String] -> InputT CLIM ()
+            waitFor [n] = case readMaybe n :: Maybe Int of
                             Nothing -> output $ "Error: " ++ show n ++ " doesn't seem to be an integer."
                             Just s  -> liftIO $ threadDelay (s * 10 ^ (6 :: Int))
+            waitFor _ = outputStrLn "Usage: delay <seconds>"
             -- | Sub-command stepper.
             subStepper :: [String] -> InputT CLIM ()
             subStepper [mName] = lift (stepper mName) >>= output
