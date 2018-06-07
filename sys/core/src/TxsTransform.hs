@@ -18,7 +18,7 @@ See LICENSE at root directory of this repository.
 
 -- {-# LANGUAGE OverloadedStrings #-}
 -- {-# LANGUAGE ViewPatterns        #-}
-module TxsCore
+module TxsTransform
 
 (
   -- ** test purposes for n-complete coverage
