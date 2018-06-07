@@ -7,12 +7,13 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib.CommonCore where
 
+import           Control.Concurrent            (forkIO)
 import           Control.Concurrent.MVar       (putMVar, takeMVar)
 import           Control.Concurrent.STM.TQueue (writeTQueue)
 import           Control.Concurrent.STM.TVar   (modifyTVar', readTVarIO)
-import           Control.Exception             (SomeException, catch)
+import           Control.Exception             (SomeException, catch, try)
 import           Control.Monad.Except          (ExceptT, throwError)
-import           Control.Monad.State           (lift, runStateT)
+import           Control.Monad.State           (lift, runStateT, void)
 import           Control.Monad.STM             (atomically)
 import           Data.Aeson                    (FromJSON, ToJSON)
 import           Data.Semigroup                ((<>))
@@ -26,9 +27,10 @@ import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
 import qualified TxsCore                       as Core
-import           TxsDDefs                      (Action)
+import           TxsDDefs                      (Action, Verdict)
 import           TxsDefs                       (ModelDef)
 
+import           TorXakis.Lib.Common
 import           TorXakis.Lib.Session
 
 -- | How a step is described
@@ -121,3 +123,12 @@ reportError :: Session -> SomeException -> IO a
 reportError s err = do
     atomically $ writeTQueue (s ^. sessionMsgs) (TXS_CORE_SYSTEM_ERROR (show err))
     error (show err)
+
+runForVerdict :: Session -> IOC Verdict -> IO (Response ())
+runForVerdict s ioc = do
+    void $ forkIO $ do
+        eVerd <- try $ runIOC s ioc
+        case eVerd of
+            Left     e -> atomically $ writeTQueue (s ^. verdicts) (Left e)
+            Right verd -> atomically $ writeTQueue (s ^. verdicts) $ Right verd
+    return success

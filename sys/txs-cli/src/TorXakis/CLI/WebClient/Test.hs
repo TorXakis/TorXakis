@@ -1,14 +1,9 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Use tester in TorXakis.
-module TorXakis.CLI.WebClient.Test
-( startTester
-, testN
-)
-where
+module TorXakis.CLI.WebClient.Test where
 
-import           Control.Monad.Except          (catchError, liftEither,
-                                                throwError)
+import           Control.Monad.Except          (catchError, liftEither)
 import           Control.Monad.IO.Class        (MonadIO)
 import           Control.Monad.Reader          (MonadReader, asks)
 import           Data.Aeson                    (eitherDecode)
@@ -31,18 +26,17 @@ startTester mName cName = do
     ignoreSuccess $
         envPost (concat ["sessions/", show sId, "/set-test/", mName, "/", cName]) noContent
 
-testN :: (MonadIO m, MonadReader Env m) => String -> m (Either String ())
-testN with = do
+testStep :: (MonadIO m, MonadReader Env m) => String -> m (Either String ())
+testStep with = do
     sId <- asks sessionId
-    ignoreSuccess $ do
-        sType <- step1 `catchError` \_ ->
-                 parseNumberOfSteps `catchError` \_ ->
-                 parseAction sId
-        envPost (concat ["sessions/", show sId, "/test/"]) (toJSON sType)
+    ignoreSuccess $
+        if null with
+            then envPost (concat ["sessions/", show sId, "/test-out"]) noContent
+            else do
+                sType <- parseNumberOfSteps `catchError` \_ ->
+                        parseAction sId
+                envPost (concat ["sessions/", show sId, "/test/"]) (toJSON sType)
     where
-      step1 = if null with
-          then return $ NumberOfSteps 1
-          else throwError "Non-empty argument to test"
       parseNumberOfSteps = liftEither $ maybeToEither "Expecting a number" $
           fmap NumberOfSteps (readMaybe with)
       parseAction sId = do

@@ -7,34 +7,31 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib.Tester where
 
-import           Control.Concurrent            (ThreadId, forkIO)
-import           Control.Concurrent.Async      (async, mapConcurrently, wait)
-import           Control.Concurrent.STM.TChan  (TChan, writeTChan)
-import           Control.Concurrent.STM.TQueue (writeTQueue)
-import           Control.Concurrent.STM.TVar   (readTVarIO, writeTVar)
-import           Control.Exception             (try)
-import           Control.Monad                 (void)
-import           Control.Monad.Except          (throwError)
-import           Control.Monad.State           (lift, liftIO)
-import           Control.Monad.STM             (atomically)
-import           Data.Either                   (partitionEithers)
-import qualified Data.Map.Strict               as Map
-import           Data.Semigroup                ((<>))
-import qualified Data.Set                      as Set
-import           Data.Text                     (Text)
-import qualified Data.Text                     as T
-import           Lens.Micro                    ((^.))
-import           Name                          (Name)
-import           Network.TextViaSockets        (Connection)
-import qualified Network.TextViaSockets        as TVS
+import           Control.Concurrent           (ThreadId, forkIO)
+import           Control.Concurrent.Async     (async, mapConcurrently, wait)
+import           Control.Concurrent.STM.TChan (TChan, writeTChan)
+import           Control.Concurrent.STM.TVar  (readTVarIO, writeTVar)
+import           Control.Monad.Except         (throwError)
+import           Control.Monad.State          (lift, liftIO)
+import           Control.Monad.STM            (atomically)
+import           Data.Either                  (partitionEithers)
+import qualified Data.Map.Strict              as Map
+import           Data.Semigroup               ((<>))
+import qualified Data.Set                     as Set
+import           Data.Text                    (Text)
+import qualified Data.Text                    as T
+import           Lens.Micro                   ((^.))
+import           Name                         (Name)
+import           Network.TextViaSockets       (Connection)
+import qualified Network.TextViaSockets       as TVS
 
-import           ConstDefs                     (Const (Cstring))
-import qualified TxsCore                       as Core
-import           TxsDDefs                      (Action (Act), ConnHandle (..))
-import           TxsDefs                       (CnectDef (..), CnectType (..),
-                                                ConnDef (..))
+import           ConstDefs                    (Const (Cstring))
+import qualified TxsCore                      as Core
+import           TxsDDefs                     (Action (Act), ConnHandle (..))
+import           TxsDefs                      (CnectDef (..), CnectType (..),
+                                               ConnDef (..))
 import qualified TxsDefs
-import           ValExpr                       (cstrConst, subst)
+import           ValExpr                      (cstrConst, subst)
 import qualified VarId
 
 import           TorXakis.Lib.Common
@@ -72,14 +69,14 @@ setTest mdlNm cnctNm s = runResponse $ do
                     (lift $ getFromW deltaTime fWCh)
                     mDef Nothing Nothing
 
--- | Test for n-steps or actions
+-- | Test for n-steps or an action
 test :: Session -> StepType -> IO (Response ())
-test s (NumberOfSteps n) = do
-    void $ forkIO $ do
-        verdict <- try $ runIOC s $ Core.txsTestN n
-        atomically $ writeTQueue (s ^. verdicts) verdict
-    return success
-test s (AnAction a) = undefined s a
+test s (NumberOfSteps n) = runForVerdict s (Core.txsTestN n)
+test s (AnAction a)      = runForVerdict s (Core.txsTestIn a)
+
+-- | Test step by observing output
+testO :: Session -> IO (Response ())
+testO s = runForVerdict s Core.txsTestOut
 
 initSocketWorld :: Session -> TChan Action -> CnectDef -> IO (WorldConnDef,[ThreadId])
 initSocketWorld s fWCh cdef = do

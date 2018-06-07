@@ -230,7 +230,7 @@ spec = return $ do
                     post (testUrl sId) twentySteps >>= check204NoContent
                     post (openMessagesUrl sId) emptyP >>= check204NoContent
                     a <- async $ foldGet checkActions 0 (messagesUrl sId)
-                    threadDelay (10 ^ (6 :: Int))
+                    threadDelay (2 * 10 ^ (6 :: Int))
                     post (closeMessagesUrl sId) emptyP >>= check204NoContent
                     totalSteps <- wait a
                     totalSteps `shouldBe` 20
@@ -256,7 +256,7 @@ checkActions :: Int -> BS.ByteString -> IO Int
 checkActions steps bs = do
     let Just jsonBs  = BS.stripPrefix "data:" bs
         Just jsonObj = decodeStrict jsonBs
-    print bs
+    -- print bs
     case parseMaybe parseTag jsonObj of
         Just "AnAction" -> return $ steps + 1
         _               -> return steps

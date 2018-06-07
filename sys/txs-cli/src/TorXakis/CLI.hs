@@ -156,7 +156,7 @@ startCLI = do
             tester [mName, cName] = lift (startTester mName cName) >>= output
             tester _ = outputStrLn "This command is not supported yet."
             test :: [String] -> InputT CLIM ()
-            test with = (lift . testN . concat $ with) >>= output
+            test with = (lift . testStep . concat $ with) >>= output
             timer :: (MonadIO m, MonadReader Env m, MonadError String m)
                   => [String] -> m String
             timer [nm] = callTimer nm

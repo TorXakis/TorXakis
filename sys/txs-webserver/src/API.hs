@@ -28,8 +28,8 @@ import           Endpoints.Parse             (ParseActionEP, parseAction)
 import           Endpoints.Seed              (SeedEP, setSeed)
 import           Endpoints.Stepper           (SetStepperEP, StepEP, setStep,
                                               step)
-import           Endpoints.Tester            (SetTestEP, TestStepEP,
-                                              startTester, testStep)
+import           Endpoints.Tester            (SetTestEP, TestOutEP, TestStepEP,
+                                              startTester, testOut, testStep)
 import           Endpoints.Time              (TimeEP, getTime)
 import           Endpoints.Timer             (TimerEP, timer)
 import           Endpoints.Upload            (UploadEP, upload)
@@ -48,6 +48,7 @@ type ServiceAPI
     :<|> StepEP
     :<|> SetTestEP
     :<|> TestStepEP
+    :<|> TestOutEP
     :<|> ParseActionEP
     :<|> OpenMessagesEP
     :<|> CloseMessagesEP
@@ -84,6 +85,7 @@ server env
     :<|> step env
     :<|> startTester env
     :<|> testStep env
+    :<|> testOut env
     :<|> parseAction env
     :<|> openMessages env
     :<|> closeMessages env

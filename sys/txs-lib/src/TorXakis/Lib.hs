@@ -18,7 +18,6 @@ module TorXakis.Lib
 where
 
 import           Control.Arrow                 (left)
-import           Control.Concurrent            (forkIO)
 import           Control.Concurrent.MVar       (newMVar)
 import           Control.Concurrent.STM.TChan  (newTChanIO)
 import           Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue,
@@ -29,7 +28,7 @@ import           Control.Concurrent.STM.TVar   (modifyTVar', newTVarIO,
 import           Control.DeepSeq               (force)
 import           Control.Exception             (ErrorCall, Exception,
                                                 SomeException, evaluate, try)
-import           Control.Monad                 (unless, void)
+import           Control.Monad                 (unless)
 import           Control.Monad.Except          (ExceptT, liftEither, runExceptT,
                                                 throwError)
 import           Control.Monad.State           (lift)
@@ -215,15 +214,6 @@ msgHandler q = lift . atomically . traverse_ (writeTQueue q)
 step :: Session -> StepType -> IO (Response ())
 step s (NumberOfSteps n) = runForVerdict s (Core.txsStepN n)
 step s (AnAction a)      = runForVerdict s (Core.txsStepA a)
-
-runForVerdict :: Session -> IOC Verdict -> IO (Response ())
-runForVerdict s ioc = do
-    void $ forkIO $ do
-        eVerd <- try $ runIOC s ioc
-        case eVerd of
-            Left     e -> atomically $ writeTQueue (s ^. verdicts) (Left e)
-            Right verd -> atomically $ writeTQueue (s ^. verdicts) $ Right verd
-    return success
 
 -- | Wait for a verdict to be reached.
 waitForVerdict :: Session -> IO (Either SomeException Verdict)
