@@ -20,19 +20,17 @@ where
 import           Control.Arrow                 (left)
 import           Control.Concurrent.MVar       (newMVar)
 import           Control.Concurrent.STM.TChan  (newTChanIO)
-import           Control.Concurrent.STM.TQueue (TQueue, isEmptyTQueue,
-                                                newTQueueIO, readTQueue,
+import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue,
                                                 writeTQueue)
 import           Control.Concurrent.STM.TVar   (modifyTVar', newTVarIO,
                                                 readTVarIO)
 import           Control.DeepSeq               (force)
 import           Control.Exception             (ErrorCall, Exception,
                                                 SomeException, evaluate, try)
-import           Control.Monad                 (unless)
 import           Control.Monad.Except          (ExceptT, liftEither, runExceptT,
                                                 throwError)
 import           Control.Monad.State           (lift)
-import           Control.Monad.STM             (atomically, retry)
+import           Control.Monad.STM             (atomically)
 import           Data.Aeson                    (FromJSON, ToJSON)
 import           Data.Either.Utils             (maybeToEither)
 import           Data.Foldable                 (traverse_)
@@ -63,8 +61,7 @@ import           ParamCore                     (getParamPairs, paramToPair,
 import           TxsAlex                       (Token (Cchanenv, Csigs, Cunid, Cvarenv),
                                                 txsLexer)
 import qualified TxsCore                       as Core
-import           TxsDDefs                      (Action (Act),
-                                                Verdict (NoVerdict))
+import           TxsDDefs                      (Action (Act), Verdict)
 import           TxsDefs                       (ModelDef (ModelDef))
 import           TxsHappy                      (prefoffsParser, txsParser)
 
@@ -218,15 +215,6 @@ step s (AnAction a)      = runForVerdict s (Core.txsStepA a)
 -- | Wait for a verdict to be reached.
 waitForVerdict :: Session -> IO (Either SomeException Verdict)
 waitForVerdict s = atomically $ readTQueue (s ^. verdicts)
-
-writeClosingVerdict :: Session -> IO ()
-writeClosingVerdict s = atomically $ writeTQueue (s ^. verdicts) $ Right NoVerdict
-
--- | Wait for the message queue to be consumed.
-waitForMessageQueue :: Session -> IO ()
-waitForMessageQueue s = atomically $ do
-    b <- isEmptyTQueue (s ^. sessionMsgs)
-    unless b retry
 
 -- | Start the stepper with the given model.
 stop :: Session -> IO (Response ())

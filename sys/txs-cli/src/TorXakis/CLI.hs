@@ -72,30 +72,9 @@ startCLI = do
         }
     cli :: InputT CLIM ()
     cli = do
-        sId <- lift $ asks sessionId
-        Log.info "Starting printer async..."
-        printer <- getExternalPrint
-        ch <- liftIO newChan
-        env <- lift ask
-        -- TODO: maybe encapsulate this into a `withProdCons` that always
-        -- cancel the producers and consumers at the end.
-        Log.info "Enabling messages..."
-        res <- lift openMessages
-        when (isLeft res) (error $ show res)
-        Log.info "Subscribing to messages..."
-        producer <- liftIO $ async $
-            sseSubscribe env ch $ concat ["sessions/", show sId, "/messages"]
-        consumer <- liftIO $ async $ forever $ do
-            msg <- readChan ch
-            traverse_ (printer . ("<< " ++)) $ pretty (asTxsMsg msg)
         Log.info "Starting the main loop..."
         outputStrLn "Welcome to TorXakis!"
-        withInterrupt $ handleInterrupt (outputStrLn "Ctrl+C: quitting") loop
-        Log.info "Closing messages..."
-        _ <- lift closeMessages
-        liftIO $ do
-            cancel producer
-            cancel consumer
+        withMessages $ withInterrupt $ handleInterrupt (outputStrLn "Ctrl+C: quitting") loop
     loop :: InputT CLIM ()
     loop = do
         minput <- getInputLine (defaultConf ^. prompt)
@@ -192,6 +171,29 @@ startCLI = do
             where
               dataErr = "The message from TorXakis did not contain a \"data:\" field: "
                       ++ show msg
+    withMessages :: InputT CLIM () -> InputT CLIM ()
+    withMessages action = do
+        Log.info "Starting printer async..."
+        printer <- getExternalPrint
+        ch <- liftIO newChan
+        env <- lift ask
+        Log.info "Enabling messages..."
+        res <- lift openMessages
+        when (isLeft res) (error $ show res)
+        sId <- lift $ asks sessionId
+        Log.info "Subscribing to messages..."
+        producer <- liftIO $ async $
+            sseSubscribe env ch $ concat ["sessions/", show sId, "/messages"]
+        consumer <- liftIO $ async $ forever $ do
+            msg <- readChan ch
+            traverse_ (printer . ("<< " ++)) $ pretty (asTxsMsg msg)
+        Log.info "Triggering action..."
+        action `finally` do
+            Log.info "Closing messages..."
+            _ <- lift closeMessages
+            liftIO $ do
+                cancel producer
+                cancel consumer
 
 -- | Values that can be output in the command line.
 class Outputable v where

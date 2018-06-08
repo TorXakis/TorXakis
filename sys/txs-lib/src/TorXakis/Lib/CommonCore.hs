@@ -129,6 +129,6 @@ runForVerdict s ioc = do
     void $ forkIO $ do
         eVerd <- try $ runIOC s ioc
         case eVerd of
-            Left     e -> atomically $ writeTQueue (s ^. verdicts) (Left e)
+            Left     e -> atomically $ writeTQueue (s ^. verdicts) $ Left e
             Right verd -> atomically $ writeTQueue (s ^. verdicts) $ Right verd
     return success
