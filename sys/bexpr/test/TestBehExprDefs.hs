@@ -183,29 +183,30 @@ genBExpr = sized genBExpr'
                         let chanIds = Set.map (\(GenChanId chanId) -> chanId) gChanIds
                         bexprs <- genListBExpr
                         return (GenBExpr $ parallel chanIds bexprs)
-                        
+
         genEnable :: Gen GenBExpr
         genEnable = do
-                        n <- getSize
-                        GenBExpr b1 <- resize (n `div` 2) arbitrary
-                        GenBExpr b2 <- resize (n `div` 2) arbitrary
+                        (b1, b2) <- genTupleBExpr
                         coffers <- listOf arbitrary
                         let offers' = map (\(GenChanOffer o) -> o) coffers
                         return (GenBExpr $ enable b1 offers' b2)
         
         genDisable :: Gen GenBExpr
         genDisable = do
-                        n <- getSize
-                        GenBExpr b1 <- resize (n `div` 2) arbitrary
-                        GenBExpr b2 <- resize (n `div` 2) arbitrary
+                        (b1, b2) <- genTupleBExpr
                         return (GenBExpr $ disable b1 b2)
 
         genInterrupt :: Gen GenBExpr
         genInterrupt = do
+                        (b1, b2) <- genTupleBExpr
+                        return (GenBExpr $ interrupt b1 b2)
+
+        genTupleBExpr :: Gen (BExpr, BExpr)
+        genTupleBExpr = do
                         n <- getSize
                         GenBExpr b1 <- resize (n `div` 2) arbitrary
                         GenBExpr b2 <- resize (n `div` 2) arbitrary
-                        return (GenBExpr $ interrupt b1 b2)
+                        return (b1, b2)
 
         genListBExpr :: Gen [BExpr]
         genListBExpr = do
