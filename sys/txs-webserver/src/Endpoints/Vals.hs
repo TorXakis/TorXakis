@@ -12,11 +12,11 @@ module Endpoints.Vals
 where
 
 import           Servant
-import           Servant.Multipart      (Mem, MultipartData, MultipartForm,
-                                         iValue, inputs)
+import           Servant.Multipart (Mem, MultipartData, MultipartForm, iValue,
+                                    inputs)
 
-import           Common       (Env, SessionId, liftLib)
-import qualified TorXakis.Lib as Lib
+import           Common            (Env, SessionId, liftLib)
+import qualified TorXakis.Lib      as Lib
 
 
 type ValsAPI =  "sessions"

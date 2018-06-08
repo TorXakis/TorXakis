@@ -209,7 +209,7 @@ testTester = timeout (10 * seconds) $
             s <- newSession
             a <- async (printer s)
             _ <- load s cs
-            _ <- setTest "Model" "Sut" s
+            _ <- setTest "Model" "Sut" "" s
             r <- test s (NumberOfSteps 10)
             putStrLn $ "Result of `test`: " ++ show r
             void $ test s (NumberOfSteps 10)

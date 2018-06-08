@@ -133,8 +133,9 @@ startCLI = do
             -- | Sub-command step.
             subStep with = (lift . step . concat $ with) >>= output
             tester :: [String] -> InputT CLIM ()
-            tester [mName, cName] = lift (startTester mName cName) >>= output
-            tester _ = outputStrLn "This command is not supported yet."
+            tester names
+                | null names || length names > 4 = outputStrLn "Usage: tester <model> [<purpose>] [<mapper>] <cnect>"
+                | otherwise = lift (startTester names) >>= output
             test :: [String] -> InputT CLIM ()
             test with = (lift . testStep . concat $ with) >>= output
             timer :: (MonadIO m, MonadReader Env m, MonadError String m)

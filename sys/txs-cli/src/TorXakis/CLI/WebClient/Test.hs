@@ -11,7 +11,7 @@ import           Data.Aeson.Types              (toJSON)
 import           Data.Either.Utils             (maybeToEither)
 import qualified Data.Text                     as T
 import           Lens.Micro                    ((^.))
-import           Network.Wreq                  (responseBody)
+import           Network.Wreq                  (partString, responseBody)
 import           Text.Read                     (readMaybe)
 
 import           TorXakis.Lib                  (StepType (AnAction, NumberOfSteps))
@@ -20,11 +20,15 @@ import           Endpoints.Parse               (ActionText (ActionText))
 import           TorXakis.CLI.Env
 import           TorXakis.CLI.WebClient.Common
 
-startTester :: (MonadIO m, MonadReader Env m) => String -> String -> m (Either String ())
-startTester mName cName = do
+startTester :: (MonadIO m, MonadReader Env m) => [String] -> m (Either String ())
+startTester names = do
     sId <- asks sessionId
     ignoreSuccess $
-        envPost (concat ["sessions/", show sId, "/set-test/", mName, "/", cName]) noContent
+        envPost (concat ["sessions/", show sId, "/set-test"])
+                [ partString "model" $ head names
+                , partString "cnect" $ last names
+                , partString "purp&map" $ unwords $ tail $ reverse $ tail names
+                ]
 
 testStep :: (MonadIO m, MonadReader Env m) => String -> m (Either String ())
 testStep with = do

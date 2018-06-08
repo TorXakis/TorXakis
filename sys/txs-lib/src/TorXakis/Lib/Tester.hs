@@ -42,24 +42,44 @@ import           TorXakis.Lib.Session
 -- | Start the tester
 setTest :: Name
         -> Name
+        -> Name
         -> Session
         -> IO (Response ())
-setTest mdlNm cnctNm s = runResponse $ do
+setTest mdlNm cnctNm purpMappNms s = runResponse $ do
     mDef <- lookupModel s mdlNm
     st <- lift $ readTVarIO (s ^. sessionState)
     let fWCh = s ^. fromWorldChan
         prms = st ^. sessionParams
         Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" prms
         deltaTime = read deltaString
-    cDefsMap <- lift $ runIOC s (TxsDefs.cnectDefs <$> Core.txsGetTDefs)
+    cDefsMap    <- lift $ runReadOnlyIOC s $ TxsDefs.cnectDefs <$> Core.txsGetTDefs
+    mappDefsMap <- lift $ runReadOnlyIOC s $ TxsDefs.mapperDefs <$> Core.txsGetTDefs
+    purpDefsMap <- lift $ runReadOnlyIOC s $ TxsDefs.purpDefs <$> Core.txsGetTDefs
     let cdefs = [ cdef
                 | (TxsDefs.CnectId nm _, cdef) <- Map.toList cDefsMap
                 , nm == cnctNm
                 ]
+        purpMapps = T.words purpMappNms
+        adefs = [ adef
+                | (TxsDefs.MapperId nm _, adef) <- Map.toList mappDefsMap
+                , nm `elem` purpMapps
+                ]
+        pdefs =  [ pdef
+                 | (TxsDefs.PurpId  nm _, pdef) <- Map.toList purpDefsMap
+                 , nm `elem` purpMapps
+                 ]
+    mADef <- case adefs of
+                 [a] -> return $ Just a
+                 []  -> return Nothing
+                 _   -> throwError "Wrong or inconsistent parameters"
+    mPDef <- case pdefs of
+                 [p] -> return $ Just p
+                 []  -> return Nothing
+                 _   -> throwError "Wrong or inconsistent parameters"
     case cdefs of
         [] -> throwError $ "No CnectDef found with name: " <> cnctNm
-        _  -> lift $ do
-            (wcd,tids) <- initSocketWorld s fWCh $ head cdefs
+        [c]  -> lift $ do
+            (wcd,tids) <- initSocketWorld s fWCh c
             atomically $ do
                 writeTVar (s ^. wConnDef) wcd
                 writeTVar (s ^. worldListeners) tids
@@ -67,7 +87,9 @@ setTest mdlNm cnctNm s = runResponse $ do
                 Core.txsSetTest
                     (lift <$> putToW deltaTime fWCh (wcd ^. toWorldMappings))
                     (lift $ getFromW deltaTime fWCh)
-                    mDef Nothing Nothing
+                    mDef mADef mPDef
+        _   -> throwError "Wrong or inconsistent parameters"
+
 
 -- | Test for n-steps or an action
 test :: Session -> StepType -> IO (Response ())
