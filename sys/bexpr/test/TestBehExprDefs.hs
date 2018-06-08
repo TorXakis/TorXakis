@@ -61,9 +61,6 @@ instance Arbitrary GenValExprBool where
                         , GenValExprBool valExprEqualxy
                         ]
 
-chanIdExit :: ChanId
-chanIdExit  = ChanId "EXIT"  901 []
-
 chanIdA :: ChanId
 chanIdA = ChanId { ChanId.name = "A"
                  , ChanId.unid = 2
@@ -156,6 +153,7 @@ genBExpr = sized genBExpr'
                                     , genParallel
                                     , genEnable
                                     , genDisable
+                                    , genInterrupt
                                     ]
         genBExpr' n = error $ "Unexpected negative size value for genBExpr' : " ++ show n
 
@@ -185,22 +183,30 @@ genBExpr = sized genBExpr'
                         let chanIds = Set.map (\(GenChanId chanId) -> chanId) gChanIds
                         bexprs <- genListBExpr
                         return (GenBExpr $ parallel chanIds bexprs)
-                        
+
         genEnable :: Gen GenBExpr
         genEnable = do
-                        n <- getSize
-                        GenBExpr b1 <- resize (n `div` 2) arbitrary
-                        GenBExpr b2 <- resize (n `div` 2) arbitrary
+                        (b1, b2) <- genTupleBExpr
                         coffers <- listOf arbitrary
                         let offers' = map (\(GenChanOffer o) -> o) coffers
                         return (GenBExpr $ enable b1 offers' b2)
         
         genDisable :: Gen GenBExpr
         genDisable = do
+                        (b1, b2) <- genTupleBExpr
+                        return (GenBExpr $ disable b1 b2)
+
+        genInterrupt :: Gen GenBExpr
+        genInterrupt = do
+                        (b1, b2) <- genTupleBExpr
+                        return (GenBExpr $ interrupt b1 b2)
+
+        genTupleBExpr :: Gen (BExpr, BExpr)
+        genTupleBExpr = do
                         n <- getSize
                         GenBExpr b1 <- resize (n `div` 2) arbitrary
                         GenBExpr b2 <- resize (n `div` 2) arbitrary
-                        return (GenBExpr $ disable b1 b2)
+                        return (b1, b2)
 
         genListBExpr :: Gen [BExpr]
         genListBExpr = do
@@ -217,6 +223,12 @@ prop_ActionPrefixConditionFalseEqualsStop :: Set.Set GenOffer -> GenBExpr -> Boo
 prop_ActionPrefixConditionFalseEqualsStop soffers (GenBExpr p) =
     let offers' = Set.map (\(GenOffer o) -> o) soffers in
         stop == actionPref (ActOffer offers' Set.empty valExprFalse) p
+
+-- EXIT >-> p <==> EXIT >-> STOP
+prop_EXIT :: Set.Set GenOffer -> GenValExprBool -> GenBExpr -> Property
+prop_EXIT soffers (GenValExprBool vexpr) (GenBExpr p) =
+    let offers' = Set.map (\(GenOffer o) -> o) soffers in
+        containsEXIT offers' ==> actionPref (ActOffer offers' Set.empty vexpr) p == actionPref (ActOffer offers' Set.empty vexpr) stop
 
 -- | [[ True ]] =>> p <==> p
 prop_GuardTrue :: GenBExpr -> Bool
@@ -243,6 +255,12 @@ prop_GuardActionPrefix (GenValExprBool vexpr1) (GenValExprBool vexpr2) soffers (
             case ValExpr.view vexpr2 of
                 Vconst (Cbool True)     -> actionPref (ActOffer offers' Set.empty vexpr1) p
                 _                       -> actionPref (ActOffer offers' Set.empty (cstrITE vexpr1 vexpr2 (cstrConst (Cbool False)))) p
+
+--  [[ c ]] =>> (p1 ## p2) == ( ([[ c ]] =>> p1) ## ([[ c ]] =>> p2) )
+prop_GuardOverChoice :: GenValExprBool -> Set.Set GenBExpr -> Bool
+prop_GuardOverChoice (GenValExprBool vexpr) gBexprs = 
+    let bexprs = Set.map (\(GenBExpr b) -> b) gBexprs in
+        guard vexpr (choice bexprs) == choice (Set.map (guard vexpr) bexprs)
 
 -- |  p ## stop <==> p
 prop_ChoiceStop :: GenBExpr -> Bool
@@ -280,6 +298,11 @@ prop_DisableStopP (GenBExpr p) =
 prop_DisablePStop :: GenBExpr -> Bool
 prop_DisablePStop (GenBExpr p) =
     p == disable p stop
+
+-- | p [>< stop <==> p
+prop_InterruptPStop :: GenBExpr -> Bool
+prop_InterruptPStop (GenBExpr p) =
+    p == interrupt p stop
 
 return []
 testBehExprDefs :: IO Bool

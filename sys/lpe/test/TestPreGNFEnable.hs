@@ -44,7 +44,6 @@ import ValExpr
 
 import LPEfunc
 
-import StdTDefs (chanIdExit)
 -- import Debug.Trace
 
 ---------------------------------------------------------------------------
