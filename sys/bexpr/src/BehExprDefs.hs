@@ -268,7 +268,7 @@ chanIdMiss :: ChanId
 chanIdMiss  = ChanId "MISS"  905 []
 
 containsEXIT :: Set.Set Offer -> Bool
-containsEXIT os = chanIdExit `Set.member` (Set.map chanid os)
+containsEXIT os = chanIdExit `Set.member` Set.map chanid os
 
 -- * Functions on behavior expressions.
 
