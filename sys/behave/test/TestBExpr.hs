@@ -16,7 +16,6 @@ import qualified Data.Map as Map
 -- import Debug.Trace as Trace
 
 import ConstDefs
-import StdTDefs
 import TxsDefs
 import TxsShow
 import ValExpr

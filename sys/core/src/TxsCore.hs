@@ -899,6 +899,8 @@ txsShow item nm  = do
                                                      (TxsDefs.purpDefs tdefs)
               ("procdef"  ,_) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
                                                      (TxsDefs.procDefs tdefs)
+              ("funcdef"  ,_) -> return $ nm2string nm TxsDefs.IdFunc TxsDefs.DefFunc
+                                                     (TxsDefs.funcDefs tdefs)
               _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown 1" ]
                       return "\n"
       _ -> case (item,nm) of
@@ -915,6 +917,8 @@ txsShow item nm  = do
                                                      (TxsDefs.purpDefs tdefs)
               ("procdef"  ,_)  -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
                                                      (TxsDefs.procDefs tdefs)
+              ("funcdef"  ,_) -> return $ nm2string nm TxsDefs.IdFunc TxsDefs.DefFunc
+                                                     (TxsDefs.funcDefs tdefs)
               _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown 2" ]
                       return "\n"
 

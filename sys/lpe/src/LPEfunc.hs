@@ -80,14 +80,11 @@ putMsgs msg  =  do
      modify $ \envl -> envl { messgs = messgs' ++ msg }
 
 setChanoffers :: Map.Map (Name, Int) VarId -> IOL ()
-setChanoffers map' = do 
+setChanoffers map' =
     modify $ \envl -> envl { chanofferss = map' }
 
 getChanoffers :: IOL (Map.Map (Name, Int) VarId)
-getChanoffers = do 
-    mapping <- gets chanofferss
-    return mapping
-
+getChanoffers = gets chanofferss
 
 lpeTransformFunc :: BExpr
                  -> ProcDefs
@@ -106,13 +103,13 @@ lpeParFunc bexpr translatedProcDefs procDefs' =
 
 
 -- lpeHide :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
-lpeHideFunc :: BExpr -> (Map.Map (Name, Int) VarId) -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
+lpeHideFunc :: BExpr -> Map.Map (Name, Int) VarId -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
 lpeHideFunc bexpr _chanOffers translatedProcDefs procDefs' =
   let envl = EnvL 0 (Map.fromList []) []
    in evalState (lpeHide bexpr translatedProcDefs procDefs') envl
 
 -- preGNFEnable :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
-preGNFEnableFunc :: BExpr -> (Map.Map (Name, Int) VarId) -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
+preGNFEnableFunc :: BExpr -> Map.Map (Name, Int) VarId -> TranslatedProcDefs -> ProcDefs -> (BExpr, ProcDefs)
 preGNFEnableFunc bexpr _chanOffers translatedProcDefs procDefs' =
   let envl = EnvL 0 (Map.fromList []) []
    in evalState (preGNFEnable bexpr translatedProcDefs procDefs') envl

@@ -18,6 +18,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns       #-}
 module BehExprDefs
 ( 
@@ -45,6 +46,13 @@ module BehExprDefs
 , hide
 , valueEnv
 , stAut
+  -- * Standard channel identifiers
+, chanIdExit
+, chanIdIstep
+, chanIdQstep
+, chanIdHit
+, chanIdMiss
+, containsEXIT
 )
 where
 
@@ -63,12 +71,11 @@ import           ValExpr
 import           VarEnv
 import           VarId
 
-
 -- | BExprView: the public view of Behaviour Expression `BExpr`
 data BExprView = ActionPref  ActOffer BExpr
                | Guard       VExpr BExpr
                | Choice      (Set.Set BExpr)
-               | Parallel    (Set.Set ChanId) [BExpr] -- should be (MultiSet.MultiSet BExpr) waiting on : https://github.com/twanvl/multiset/issues/31
+               | Parallel    (Set.Set ChanId) [BExpr] -- actually (MultiSet.MultiSet BExpr) but that has lousy performance (due to sorting which needs more evaluation?)
                | Enable      BExpr [ChanOffer] BExpr
                | Disable     BExpr BExpr
                | Interrupt   BExpr BExpr
@@ -110,7 +117,10 @@ actionPref :: ActOffer -> BExpr -> BExpr
 actionPref a b = case ValExpr.view (constraint a) of
                     -- A?x [[ False ]] >-> p <==> stop
                     Vconst (Cbool False)    -> stop
-                    _                       -> BExpr (ActionPref a b)
+                    _                       -> if containsEXIT (offers a)
+                                                    then -- EXIT >-> p <==> EXIT >-> STOP
+                                                         BExpr (ActionPref a stop)
+                                                    else BExpr (ActionPref a b)
 
 -- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
@@ -120,8 +130,13 @@ guard (ValExpr.view -> Vconst (Cbool False)) _              = stop
 guard (ValExpr.view -> Vconst (Cbool True))  b              = b
 -- [[ c ]] =>> stop <==> stop
 guard _ b                                     | isStop b    = stop
--- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ c1 /\ c2 ]] >-> p
-guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = actionPref (ActOffer o h (cstrAnd (Set.fromList [v,c]))) b
+-- [[ c1 ]] =>> A?x [[ True ]] >-> p <==> A?x [[ c1 ]] >-> p
+-- [[ c1 ]] =>> A?x [[ c2 ]] >-> p <==> A?x [[ IF c1 THEN c2 ELSE False FI ]] >-> p
+guard v (BehExprDefs.view -> ActionPref (ActOffer o h c) b) = case ValExpr.view c of
+                                                                Vconst (Cbool True) -> actionPref (ActOffer o h v) b
+                                                                _                   -> actionPref (ActOffer o h (cstrITE v c (cstrConst (Cbool False)))) b
+--  [[ c ]] =>> (p1 ## p2) <==> ( ([[ c ]] =>> p1) ## ([[ c ]] =>> p2) )
+guard v (BehExprDefs.view -> Choice s)                      = choice $ Set.map (guard v) s
 guard v b                                                   = BExpr (Guard v b)
 
 -- | Create a choice behaviour expression.
@@ -179,7 +194,9 @@ disable b1 b2             = BExpr (Disable b1 b2)
 
 -- | Create an interrupt behaviour expression.
 interrupt :: BExpr -> BExpr -> BExpr
-interrupt b1 b2 = BExpr (Interrupt b1 b2)
+--  p [>< stop <==> p
+interrupt b1 b2 | isStop b2 = b1
+interrupt b1 b2             = BExpr (Interrupt b1 b2)
 
 -- | Create a process instantiation behaviour expression.
 procInst :: ProcId -> [ChanId] -> [VExpr] -> BExpr
@@ -237,6 +254,21 @@ data  Trans         = Trans  { from     :: StatId
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
 instance Resettable Trans
+
+-- * Standard channel identifiers
+chanIdExit :: ChanId
+chanIdExit  = ChanId "EXIT"  901 []
+chanIdIstep :: ChanId
+chanIdIstep = ChanId "ISTEP" 902 []
+chanIdQstep :: ChanId
+chanIdQstep = ChanId "QSTEP" 903 []
+chanIdHit :: ChanId
+chanIdHit   = ChanId "HIT"   904 []
+chanIdMiss :: ChanId
+chanIdMiss  = ChanId "MISS"  905 []
+
+containsEXIT :: Set.Set Offer -> Bool
+containsEXIT os = chanIdExit `Set.member` Set.map chanid os
 
 -- * Functions on behavior expressions.
 

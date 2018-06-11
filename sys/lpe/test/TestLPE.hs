@@ -900,7 +900,7 @@ testLPEPar = TestCase $
    -- assertEqual "test LPEPar integration"  (Just (procInst', procDefP')) (lpeTransformFunc procInst'' procDefs')
    assertBool "test LPEPar integration" $ eqProcDef (Just (procInst', procDefP')) res
    where
-      res = (lpeTransformFunc procInst'' procDefs')
+      res = lpeTransformFunc procInst'' procDefs'
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
 
@@ -1104,7 +1104,7 @@ testLPEHide1 = TestCase $
       procIdPlpe = procIdGen "LPE_P" [chanIdA0] [varIdPcP, varIdPcPpre1]
       procDefPlpe = ProcDef [chanIdA0] [varIdPcP, varIdPcPpre1] (choice (Set.fromList [
                                                       -- A [pc$P == 0] -> LPE_P[A](1, -1)
-                                                      (actionPref                         
+                                                      actionPref                         
                                                             
                                                             ActOffer {  offers = Set.singleton
                                                                                     Offer { chanid = chanIdA0
@@ -1113,10 +1113,10 @@ testLPEHide1 = TestCase $
                                                                         , hiddenvars = Set.empty
                                                                         , constraint = cstrEqual vexprPcP int0
                                                                         } 
-                                                            (procInst procIdPlpe [chanIdA0] [vexpr1, vexprMin1]))
+                                                            (procInst procIdPlpe [chanIdA0] [vexpr1, vexprMin1])
 
                                                       -- ##    A [pc$P == 1, P$pre1$A$pc$P$pre1 == 0] -> LPE_P[A](1,-1)
-                                                      , (actionPref                         
+                                                      , actionPref                         
                                                             ActOffer {  offers = Set.singleton
                                                                                     Offer { chanid = chanIdA0
                                                                                           , chanoffers = []
@@ -1126,7 +1126,7 @@ testLPEHide1 = TestCase $
                                                                                                 (cstrEqual vexprPcPpre1 int0)
                                                                                                 (cstrConst (Cbool False))
                                                                   } 
-                                                            (procInst procIdPlpe [chanIdA0] [vexpr1, vexprMin1]))
+                                                            (procInst procIdPlpe [chanIdA0] [vexpr1, vexprMin1])
 
                                                       ]))
       procInst' = procInst procIdPlpe [chanIdA0] [int0, anyInt]
@@ -1208,16 +1208,16 @@ testLPEHide2 = TestCase $
       procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP, varIdPcPpre1, varIdPpre1QAx]
       procDefPlpe = ProcDef [chanIdA] [varIdPcP, varIdPcPpre1, varIdPpre1QAx] (choice (Set.fromList [
                                                       -- {} [pc$P == 0, A$1_1 == 0] {A$1_1} -> LPE_P[A](1, 1, A$1_1)
-                                                            (actionPref                         
+                                                            actionPref                         
                                                                   ActOffer {  offers = Set.empty
                                                                               , hiddenvars = Set.fromList [varIdA1']
                                                                               , constraint = cstrITE (cstrEqual vexprPcP int0)
                                                                                                       (cstrEqual vexprA1' int0)
                                                                                                       (cstrConst (Cbool False))
                                                                               } 
-                                                                  (procInst procIdPlpe [chanIdA] [vexpr1, vexpr1, vexprA1']))
+                                                                  (procInst procIdPlpe [chanIdA] [vexpr1, vexpr1, vexprA1'])
                                                       , -- {} [pc$P == 1, P$pre1$A$pc$P$pre1 == 0, A$1_1 == 0] {A$1_1} -> LPE_P[A](1, 1, A$1_1)
-                                                            (actionPref                         
+                                                            actionPref                         
                                                             ActOffer {  offers = Set.empty
                                                                         , hiddenvars = Set.fromList [varIdA1']
                                                                         , constraint = cstrITE (cstrEqual vexprPcP int1)
@@ -1227,7 +1227,7 @@ testLPEHide2 = TestCase $
                                                                                                       )
                                                                                                 (cstrConst (Cbool False))
                                                                         } 
-                                                            (procInst procIdPlpe [chanIdA] [vexpr1, vexpr1, vexprA1']))
+                                                            (procInst procIdPlpe [chanIdA] [vexpr1, vexpr1, vexprA1'])
                                                       ]))
       procInst' = procInst procIdPlpe [chanIdA] [int0, anyInt, anyInt]
 
@@ -1370,15 +1370,14 @@ testEnable2 = TestCase $
       procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP, varIdPenableId]
       procDefPlpe = ProcDef [chanIdA] [varIdPcP, varIdPenableId] 
                                                 (choice (Set.fromList [
-                                                            (actionPref ActOffer {    offers = Set.empty
+                                                            actionPref ActOffer {    offers = Set.empty
                                                                                     , hiddenvars = Set.fromList [varIdExit1]
                                                                                     , constraint = cstrITE (cstrEqual vexprPcP int0)
                                                                                                                   (cstrEqual vexprExit1 int1)
                                                                                                                   (cstrConst (Cbool False))}
                                                                                     
-                                                            (procInst procIdPlpe [chanIdA] [vexpr1, vexprExit1]))
-
-                                                            , (actionPref actOfferA1 {     offers = Set.singleton
+                                                            (procInst procIdPlpe [chanIdA] [vexpr1, vexprExit1])
+                                                            , actionPref actOfferA1 {     offers = Set.singleton
                                                                                                       Offer { chanid = chanIdA
                                                                                                             , chanoffers = [Quest varIdA1]
                                                                                                       }
@@ -1386,7 +1385,7 @@ testEnable2 = TestCase $
                                                                                                                   (cstrEqual vexprA1 vexprPenableId)
                                                                                                                   (cstrConst (Cbool False))}
                                                               (procInst procIdPlpe [chanIdA] [vexprMin1, anyInt])
-                                                            )
+                                                            
 
 
                                                 ]))

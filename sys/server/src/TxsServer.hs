@@ -845,6 +845,7 @@ cmdShow args = do
                 ["mapperdef",nm      ] -> lift $ TxsCore.txsShow "mapperdef" nm
                 ["purpdef"  ,nm      ] -> lift $ TxsCore.txsShow "purpdef"   nm
                 ["procdef"  ,nm      ] -> lift $ TxsCore.txsShow "procdef"   nm
+                ["funcdef"  ,nm      ] -> lift $ TxsCore.txsShow "funcdef"   nm
                 ["cnect"             ] -> return $ let (_, _, towhdls ) = IOS.tow envs
                                                        (_, _, frowhdls) = IOS.frow envs
                                                     in TxsShow.fshow (towhdls ++ frowhdls)

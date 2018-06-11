@@ -30,6 +30,7 @@ import TranslatedProcDefs
 import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import           Data.Maybe
 
 import TxsDefs
 import TxsShow
@@ -43,7 +44,6 @@ import ValExpr
 
 import LPEfunc
 
-import StdTDefs (chanIdExit)
 -- import Debug.Trace
 
 ---------------------------------------------------------------------------
@@ -54,9 +54,9 @@ import StdTDefs (chanIdExit)
 preGNFEnableTestWrapper :: BExpr -> TranslatedProcDefs -> ProcDefs -> Maybe (BExpr, ProcDef)
 preGNFEnableTestWrapper procInst'' translatedProcDefs procDefs =
   let (procInst'@(TxsDefs.view -> ProcInst procId' _ _), procDefs') = preGNFEnableFunc procInst'' chanOffers translatedProcDefs procDefs
-      procDef' = case Map.lookup procId' procDefs' of
-                    Just procDef   -> procDef
-                    Nothing        -> error "preGNFEnableTestWrapper: could not find the procId" in
+      procDef' = fromMaybe
+                    (error "preGNFEnableTestWrapper: could not find the procId")
+                    (Map.lookup procId' procDefs') in
   --trace ("\nresult procInst: " ++ show procInst' ++ "\nprocDef': " ++ show procDef') $  
   Just (procInst', procDef')
 
@@ -218,10 +218,10 @@ anyInt = cstrConst $ Cany intSort
 testExit1 :: Test
 testExit1 = TestCase $
    --trace ("\n\ntestExit1:\n expected:" ++ show (procInst', procDefs'') ++ "\ngot: " ++ show  (res_procInst, res_procDefs')) $ 
-      assertBool "simple EXIT" ((eqProcDefs procDefs'' res_procDefs') && (procInst' ~~ res_procInst))
+      assertBool "simple EXIT" (eqProcDefs procDefs'' res_procDefs' && (procInst' ~~ res_procInst))
    where
       res_procDefs' = Map.delete procIdP res_procDefs  -- remove the original ProcId for the comparison with the expected result
-      (res_procInst, res_procDefs) = (preGNFEnableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs)
+      (res_procInst, res_procDefs) = preGNFEnableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] [ ]
       
@@ -266,10 +266,10 @@ testExit1 = TestCase $
 testExit2 :: Test
 testExit2 = TestCase $
    --trace ("\n\ntestExit2:\n expected:" ++ show (procInst', procDefs'') ++ "\ngot: " ++ show  (res_procInst, res_procDefs')) $ 
-       assertBool "EXIT ActionPref" ((eqProcDefs procDefs'' res_procDefs') && (procInst' ~~ res_procInst))
+       assertBool "EXIT ActionPref" (eqProcDefs procDefs'' res_procDefs' && (procInst' ~~ res_procInst))
    where
       res_procDefs' = Map.delete procIdP res_procDefs  -- remove the original ProcId for the comparison with the expected result
-      (res_procInst, res_procDefs) = (preGNFEnableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs)
+      (res_procInst, res_procDefs) = preGNFEnableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] [ ]
       
@@ -313,10 +313,10 @@ testExit2 = TestCase $
 testExit3 :: Test
 testExit3 = TestCase $
    -- trace ("\n\nACCEPT:\n expected:" ++ show (procInst', procDefs'') ++ "\ngot: " ++ show  (res_procInst, res_procDefs')) $ 
-       assertBool "ACCEPT" ((eqProcDefs procDefs'' res_procDefs') && (procInst' ~~ res_procInst))
+       assertBool "ACCEPT" (eqProcDefs procDefs'' res_procDefs' && (procInst' ~~ res_procInst))
    where
       res_procDefs' = Map.delete procIdP res_procDefs  -- remove the original ProcId for the comparison with the expected result
-      (res_procInst, res_procDefs) = (preGNFEnableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs)
+      (res_procInst, res_procDefs) = preGNFEnableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] [ ]
       
@@ -344,12 +344,12 @@ testExit3 = TestCase $
       procIdP' = procIdGen "P" [chanIdA] [varIdPcP]
       procIDPenable = procIdGen "P$enable" [chanIdA] [varIdid]
 
-      procDefs3 = Map.fromList [(ProcId {ProcId.name = (T.pack "P"), 
+      procDefs3 = Map.fromList [(ProcId {ProcId.name = T.pack "P", 
                                     ProcId.unid = 111, 
                                     ProcId.procchans = [], 
                                     ProcId.procvars = [], 
                                     ProcId.procexit = NoExit},
-                              (ProcDef [] [] stop))]
+                                 ProcDef [] [] stop)]
       
       procInst' = procInst procIdP' [chanIdA] [int0]
       procDefs'' = Map.fromList [   (procIdP', ProcDef [chanIdA] [varIdPcP] 

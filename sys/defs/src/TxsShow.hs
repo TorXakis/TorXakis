@@ -40,7 +40,6 @@ import           PurpId
 import           SortDef
 import           SortId
 import           StatId
-import           StdTDefs
 import           Sum
 import           TxsDefs
 import           ValExpr

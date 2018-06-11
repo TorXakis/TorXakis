@@ -228,9 +228,7 @@ setChanoffers mapping = do
     modify $ \env -> env { state = state' }
 
 getChanoffers :: IOC (Map.Map (Name, Int) VarId.VarId)
-getChanoffers = do 
-    mapping <- gets (chanoffers . state)
-    return mapping
+getChanoffers = gets (chanoffers . state)
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --

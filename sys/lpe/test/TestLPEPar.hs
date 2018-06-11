@@ -20,6 +20,7 @@ import TranslatedProcDefs
 import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import           Data.Maybe
 
 import ProcId
 import ChanId
@@ -43,9 +44,15 @@ import LPEfunc
 lpeParTestWrapper :: BExpr -> TranslatedProcDefs -> ProcDefs -> Maybe (BExpr, ProcDef)
 lpeParTestWrapper procInst'' translatedProcDefs procDefs' =
   let (procInst'@(TxsDefs.view -> ProcInst procId' _ _), procDefs'') = lpeParFunc procInst'' translatedProcDefs procDefs'
+<<<<<<< HEAD
       procDef' = case Map.lookup procId' procDefs'' of
                     Just procDef   -> procDef
                     Nothing        -> error "lpeParTestWrapper: could not find the procId" in
+=======
+      procDef' = fromMaybe
+                    (error "lpeParTestWrapper: could not find the procId")
+                    (Map.lookup procId' procDefs'') in
+>>>>>>> develop
   Just (procInst', procDef')
 
 
@@ -503,8 +510,13 @@ testSingleAction4 = TestCase $
       -- // both sides
       -- ## A?A$1 [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A](-1, -1)
 -- with ProcInst := P[A](0,0)
+<<<<<<< HEAD
 testSingleAction_differentVars :: Test
 testSingleAction_differentVars = TestCase $
+=======
+testSingleActionDifferentVars :: Test
+testSingleActionDifferentVars = TestCase $
+>>>>>>> develop
    assertBool "test single action - different vars" $ eqProcDef (Just (procInst', procDefP')) (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
    where
       procInst'' = procInst procIdP [chanIdA] []
@@ -529,10 +541,17 @@ testSingleAction_differentVars = TestCase $
                         -- // both sides
                         -- ## A?A$1 [op1$pc$P$op1 == 0, op2$pc$P$op2 == 0] >->  P[A](-1, -1)
                         (actionPref
+<<<<<<< HEAD
                           ActOffer {  offers = Set.singleton(
                                                     Offer { chanid = chanIdA
                                                           , chanoffers = [Quest varIdA1]
                                                     })
+=======
+                          ActOffer {  offers = Set.singleton
+                                                    Offer { chanid = chanIdA
+                                                          , chanoffers = [Quest varIdA1]
+                                                    }
+>>>>>>> develop
                                     , hiddenvars = Set.empty
                                     , constraint =  cstrAnd (Set.fromList [ cstrEqual vexprOp1pcPop1 int0
                                                                               , cstrEqual vexprOp2pcPop2 int0
@@ -3546,7 +3565,11 @@ testLPEParList = TestList [
                           , TestLabel "single actions 2" testSingleAction2
                           , TestLabel "single actions 3" testSingleAction3
                           , TestLabel "single actions 4" testSingleAction4
+<<<<<<< HEAD
                           , TestLabel "single action - different vars" testSingleAction_differentVars
+=======
+                          , TestLabel "single action - different vars" testSingleActionDifferentVars
+>>>>>>> develop
 
                           , TestLabel "single actions, different actions 1" testSingleActionDifferentActions1
                           , TestLabel "single actions, different actions 2" testSingleActionDifferentActions2

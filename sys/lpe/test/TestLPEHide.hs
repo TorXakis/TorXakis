@@ -30,20 +30,20 @@ import TranslatedProcDefs
 import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import           Data.Maybe
+import qualified Data.Text         as T
 
 import TxsDefs
 import TxsShow
 import ProcId
 import ChanId
 import SortId
-import qualified Data.Text         as T
 import VarId
 import ConstDefs
 import ValExpr
 
 import LPEfunc
 
-import StdTDefs (chanIdIstep)
 import Debug.Trace
 
 ---------------------------------------------------------------------------
@@ -54,9 +54,9 @@ import Debug.Trace
 lpeHideTestWrapper :: BExpr -> TranslatedProcDefs -> ProcDefs -> Maybe (BExpr, ProcDef)
 lpeHideTestWrapper procInst'' translatedProcDefs procDefs =
   let (procInst'@(TxsDefs.view -> ProcInst procId' _ _), procDefs') = lpeHideFunc procInst'' chanOffers translatedProcDefs procDefs
-      procDef' = case Map.lookup procId' procDefs' of
-                    Just procDef   -> procDef
-                    Nothing        -> error "lpeHideTestWrapper: could not find the procId" in
+      procDef' = fromMaybe
+                    (error "lpeHideTestWrapper: could not find the procId")
+                    (Map.lookup procId' procDefs') in
   --trace ("\nresult procInst: " ++ show procInst' ++ "\nprocDef': " ++ show procDef') $  
   Just (procInst', procDef')
 
