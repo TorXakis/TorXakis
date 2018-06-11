@@ -11,6 +11,7 @@ module TorXakis.Lib
 , module TorXakis.Lib.CommonCore
 , module TorXakis.Lib.Eval
 , module TorXakis.Lib.Session
+, module TorXakis.Lib.Simulator
 , module TorXakis.Lib.Tester
 , module TorXakis.Lib.Vals
 , module TorXakis.Lib.Vars
@@ -69,6 +70,7 @@ import           TorXakis.Lib.Common
 import           TorXakis.Lib.CommonCore
 import           TorXakis.Lib.Eval
 import           TorXakis.Lib.Session
+import           TorXakis.Lib.Simulator
 import           TorXakis.Lib.Tester
 import           TorXakis.Lib.Vals
 import           TorXakis.Lib.Vars

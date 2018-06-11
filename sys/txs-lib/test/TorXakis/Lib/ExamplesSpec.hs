@@ -47,3 +47,6 @@ spec = do
     it "testTesterWithPurpose" $ do
         res <- testTesterWithPurpose
         res `shouldBe` Just ()
+    it "testTesterWithSimulator" $ do
+        res <- testTesterWithSimulator
+        res `shouldBe` Just ()

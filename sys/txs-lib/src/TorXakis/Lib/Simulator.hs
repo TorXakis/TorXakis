@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
 -- |
-module TorXakis.Lib.Tester where
+module TorXakis.Lib.Simulator where
 
 import           Control.Concurrent.STM.TVar (readTVarIO, writeTVar)
 import           Control.Monad.Except        (throwError)
@@ -14,7 +14,6 @@ import           Control.Monad.STM           (atomically)
 import qualified Data.Map.Strict             as Map
 import           Data.Semigroup              ((<>))
 import qualified Data.Set                    as Set
-import qualified Data.Text                   as T
 import           Lens.Micro                  ((^.))
 import           Name                        (Name)
 
@@ -28,13 +27,13 @@ import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
 import           TorXakis.Lib.SocketWorld
 
--- | Start the tester
-setTest :: Name
-        -> Name
-        -> Name
-        -> Session
-        -> IO (Response ())
-setTest mdlNm cnctNm purpMappNms s = runResponse $ do
+-- | Start the Simulator
+setSim :: Name
+       -> Name
+       -> Name
+       -> Session
+       -> IO (Response ())
+setSim mdlNm cnctNm mappNm s = runResponse $ do
     tDefs <- liftIO $ runReadOnlyIOC s Core.txsGetTDefs
     mDef <- maybe
                 (throwError $ "No model named " <> mdlNm)
@@ -42,26 +41,8 @@ setTest mdlNm cnctNm purpMappNms s = runResponse $ do
     cDef <- maybe
                 (throwError $ "No CnectDef named " <> cnctNm)
                 return (tDefs ^. ix cnctNm)
-    let purpDefsMap = TxsDefs.purpDefs   tDefs
-        mappDefsMap = TxsDefs.mapperDefs tDefs
-        purpMapps = T.words purpMappNms
-        adefs = [ adef
-                | (TxsDefs.MapperId nm _, adef) <- Map.toList mappDefsMap
-                , nm `elem` purpMapps
-                ]
-        pdefs =  [ pdef
-                 | (TxsDefs.PurpId  nm _, pdef) <- Map.toList purpDefsMap
-                 , nm `elem` purpMapps
-                 ]
-    mADef <- case adefs of
-                 [a] -> return $ Just a
-                 []  -> return Nothing
-                 _   -> throwError "Wrong or inconsistent parameters"
-    mPDef <- case pdefs of
-                 [p] -> return $ Just p
-                 []  -> return Nothing
-                 _   -> throwError "Wrong or inconsistent parameters"
-    if isConsistent mDef mADef mPDef cDef
+    let mADef = tDefs ^. ix mappNm
+    if isConsistent mDef mADef cDef
         then lift $ do
             st <- readTVarIO (s ^. sessionState)
             let fWCh = s ^. fromWorldChan
@@ -73,19 +54,18 @@ setTest mdlNm cnctNm purpMappNms s = runResponse $ do
                 writeTVar (s ^. wConnDef) wcd
                 writeTVar (s ^. worldListeners) tids
             runIOC s $
-                Core.txsSetTest
+                Core.txsSetSim
                     (lift <$> putToW deltaTime fWCh (wcd ^. toWorldMappings))
                     (lift $ getFromW deltaTime fWCh)
-                    mDef mADef mPDef
+                    mDef mADef
         else throwError "Wrong or inconsistent parameters"
       where
         isConsistent :: TxsDefs.ModelDef
                      -> Maybe TxsDefs.MapperDef
-                     -> Maybe TxsDefs.PurpDef
                      -> TxsDefs.CnectDef
                      -> Bool
         isConsistent (TxsDefs.ModelDef minsyncs moutsyncs _ _)
-                     Nothing _
+                     Nothing
                      (TxsDefs.CnectDef _ conndefs) =
             let { mins   = Set.fromList minsyncs
                 ; mouts  = Set.fromList moutsyncs
@@ -94,9 +74,9 @@ setTest mdlNm cnctNm purpMappNms s = runResponse $ do
                 ; cfrows = Set.fromList
                                 [ Set.singleton chn | TxsDefs.ConnDfroW chn _ _ _ _ <- conndefs ]
                 }
-            in  mins == ctows && cfrows == mouts
+            in  mins == cfrows && ctows == mouts
         isConsistent _
-                     (Just (TxsDefs.MapperDef achins achouts asyncsets _)) _
+                     (Just (TxsDefs.MapperDef achins achouts asyncsets _))
                      (TxsDefs.CnectDef _ conndefs) =
             let { ctows  = Set.fromList
                                 [ Set.singleton chn | TxsDefs.ConnDtoW  chn _ _ _ _ <- conndefs ]
@@ -109,11 +89,7 @@ setTest mdlNm cnctNm purpMappNms s = runResponse $ do
                 }
             in  cfrows `Set.isSubsetOf` ains && ctows `Set.isSubsetOf` aouts
 
--- | Test for n-steps or an action
-test :: Session -> StepType -> IO (Response ())
-test s (NumberOfSteps n) = runForVerdict s (Core.txsTestN n)
-test s (AnAction a)      = runForVerdict s (Core.txsTestIn a)
-
--- | Test step by observing output
-testO :: Session -> IO (Response ())
-testO s = runForVerdict s Core.txsTestOut
+-- | Simulate for n-steps
+sim :: Session -> StepType -> IO (Response ())
+sim s (NumberOfSteps n) = runForVerdict s (Core.txsSimN n)
+sim _ _                 = return $ Left "Can only simulate a number of steps"

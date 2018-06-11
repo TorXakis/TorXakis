@@ -232,6 +232,27 @@ testTesterWithPurpose = timeout (10 * seconds) $
             waitForVerdict s >>= print
             cancel a
 
+testTesterWithSimulator :: IO (Maybe ())
+testTesterWithSimulator = timeout (10 * seconds) $ do
+            cs <- readFile $ ".." </> ".." </> "examps" </> "LuckyPeople" </> "spec" </> "LuckyPeople.txs"
+            sSim <- newSession
+            aSim <- async (printer sSim)
+            _ <- load sSim cs
+            _ <- setSim "Model" "Sut" "" sSim
+            rSim <- sim sSim (NumberOfSteps 40)
+
+            sTest <- newSession
+            aTest <- async (printer sTest)
+            _ <- load sTest cs
+            _ <- setTest "Model" "Sut" "" sTest
+            rTest <- test sTest (NumberOfSteps 20)
+            putStrLn $ "Result of `sim`: " ++ show rSim
+            waitForVerdict sSim >>= print
+            putStrLn $ "Result of `test`: " ++ show rTest
+            waitForVerdict sTest >>= print
+            cancel aSim
+            cancel aTest
+
 seconds :: Int
 seconds = 10 ^ (6 :: Int)
 
