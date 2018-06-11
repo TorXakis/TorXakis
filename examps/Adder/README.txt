@@ -74,13 +74,13 @@ usage:  # To observe the behaviour of model,
         TXS >> ...
         
         <start SUT in separate window>  # To execute TorXakis against the actual SUT,
-                                        # SUT must be running and
-                                        # listening on port 7890
-                                        # before the command 'tester Adder Sut'
+                                        # SUT must be running and listening on
+                                        # port 7890 before the 
+                                        # command 'tester Adder SutConnection'
         $ java -cp Adder 7890
 
         $ torxakis Adder.txs
-        TXS >> tester Adder Sut
+        TXS >> tester Adder SutConnection
         TXS >> test 10
         TXS >> ...
         TXS >> help              # TorXakis help for more possibilities
