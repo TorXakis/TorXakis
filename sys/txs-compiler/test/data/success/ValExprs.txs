@@ -176,6 +176,18 @@ FUNCDEF undefined2() :: Int ::=
     undefined2() + undefined2()
 ENDDEF
 
+FUNCDEF undefined3(y :: Int) :: Int ::=
+    undefined3(y) * undefined3(y) + undefined3(y) * undefined3(y)
+ENDDEF
+
+FUNCDEF someFormula(x, y :: Int) :: Int ::=
+    x + y * x + (y - x)
+ENDDEF
+
+FUNCDEF soundSimplify() :: Int ::=
+    someFormula(undefined3(4), undefined3(5))
+ENDDEF
+
 TYPEDEF Pair ::= Pair { fst, snd :: Int } ENDDEF
 
 -- | Because 'TriPair' is more fun that 'Tuple'.

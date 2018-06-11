@@ -13,12 +13,15 @@ import           Data.Text       (Text)
 
 import qualified BehExprDefs     as BExpr
 import           CnectId         (CnectId)
+import           FreeMonoidX     (FreeMonoidX (FMX), mapTerms)
 import           FuncDef         (FuncDef (FuncDef))
 import           FuncId          (FuncId (FuncId), name)
 import           FuncTable       (FuncTable, Signature (Signature), toMap)
 import           GoalId          (GoalId)
 import           ProcId          (ProcId)
+import           Product         (ProductTerm (ProductTerm))
 import           PurpId          (PurpId)
+import           Sum             (SumTerm (SumTerm))
 import           TxsDefs         (ActOffer (ActOffer), BExpr, BExprView (ActionPref, Guard, ProcInst, StAut, ValueEnv),
                                   ChanOffer (Exclam, Quest),
                                   CnectDef (CnectDef),
@@ -28,8 +31,9 @@ import           TxsDefs         (ActOffer (ActOffer), BExpr, BExprView (ActionP
                                   Offer (Offer), ProcDef (ProcDef),
                                   PurpDef (PurpDef), Trans (Trans), actionPref,
                                   guard, procInst, stAut, valueEnv)
-import           ValExpr         (ValExpr, ValExprView (Vfunc, Vite), cstrITE,
-                                  cstrVar)
+import           ValExpr         (ValExpr,
+                                  ValExprView (Vfunc, Vite, Vproduct, Vsum),
+                                  cstrITE, cstrProduct, cstrSum, cstrVar)
 import qualified ValExpr
 import           VarId           (VarId)
 
@@ -66,6 +70,10 @@ instance Simplifiable (ValExpr VarId) where
         (simplify ft fns ex0)
         (simplify ft fns ex1)
         (simplify ft fns ex2)
+    simplify ft fns (ValExpr.view -> Vsum terms) =
+        cstrSum (simplify ft fns terms)
+    simplify ft fns (ValExpr.view -> Vproduct terms) =
+        cstrProduct (simplify ft fns terms)
     simplify ft fns x                          =
         over uniplate (simplify ft fns) x
 
@@ -156,3 +164,12 @@ instance Simplifiable CnectDef where
 instance Simplifiable ConnDef where
     simplify ft fns (ConnDtoW c h p vs e) = ConnDtoW c h p vs (simplify ft fns e)
     simplify ft fns (ConnDfroW c h p v es) = ConnDfroW c h p v (simplify ft fns es)
+
+instance (Ord a, Simplifiable a) => Simplifiable (FreeMonoidX a) where
+    simplify ft fns = mapTerms (simplify ft fns)
+
+instance (Ord a, Simplifiable a) => Simplifiable (SumTerm a) where
+    simplify ft fns (SumTerm a) = SumTerm (simplify ft fns a)
+
+instance (Ord a, Simplifiable a) => Simplifiable (ProductTerm a) where
+    simplify ft fns (ProductTerm a) = ProductTerm (simplify ft fns a)

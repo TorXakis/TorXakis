@@ -136,7 +136,11 @@ compileParsedDefs pd = do
     --
     -- - 'funcDeclsToSignatureHandlers'
     -- - 'funcDeclsToFuncDefs' (to be used at @toTxsDefs@)
-    fdefs <- funcDeclsToFuncDefs2 (vIds :& allFids :& decls) (stdSHs `Map.union` adtsSHs) (allFuncs pd)
+    fSHs <- Map.fromList <$> traverse (funcDeclToSH allFids) (allFuncs pd)
+
+    fdefs <- funcDeclsToFuncDefs2 (vIds :& allFids :& decls)
+                                  (stdSHs `Map.union` adtsSHs `Map.union` fSHs)
+                                  (allFuncs pd)
     let fdefsSHs = innerSigHandlerMap (fIds :& fdefs)
         allFSHs = stdSHs `Map.union` adtsSHs `Map.union` fdefsSHs
 
@@ -187,10 +191,10 @@ toTxsDefs ft mm pd = do
         -- TODO: we have to simplify to comply with what TorXakis generates.
         fn = idefsNames mm ++ fmap name cfIds
         fds = TxsDefs.empty {
-            funcDefs = funcDefsNoConsts
+            funcDefs = simplify ft fn funcDefsNoConsts
             }
         pds = TxsDefs.empty {
-            procDefs = innerMap mm
+            procDefs = simplify ft fn (innerMap mm)
             }
     -- TODO: why not have these functions return a TxsDef data directly.
     -- Simplify this boilerplate!

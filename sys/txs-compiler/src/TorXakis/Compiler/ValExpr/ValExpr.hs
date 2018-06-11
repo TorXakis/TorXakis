@@ -128,7 +128,7 @@ import           TorXakis.Parser.Data
 --
 -- By the constraint:
 --
--- > MapsTo FuncId (Signature, Handler VarId)
+-- > MapsTo (Loc FuncDeclE) (Signature, Handler VarId)
 --
 expDeclToValExpr :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                     , MapsTo (Loc VarDeclE) VarId mm
@@ -229,11 +229,11 @@ varRefsToVarDefs :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
                  -> Map (Loc FuncDeclE) (Signature, Handler VarId)
                  -> Either Error (Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)]))
 varRefsToVarDefs vdecls vids fshs = do
-    defs <- traverse declToDef (snd <$> vrvd)
-    return $ Map.fromAscList $ zip (fst <$> vrvd) defs
+    defs <- traverse declToDef (snd <$> vdecls')
+    return $ Map.fromAscList $ zip (fst <$> vdecls') defs
     where
-      vrvd :: [(Loc VarRefE, Either (Loc VarDeclE) [Loc FuncDeclE])]
-      vrvd = Map.toList vdecls
+      vdecls' :: [(Loc VarRefE, Either (Loc VarDeclE) [Loc FuncDeclE])]
+      vdecls' = Map.toList vdecls
       declToDef :: Either (Loc VarDeclE) [Loc FuncDeclE]
                 -> Either Error (Either VarId [(Signature, Handler VarId)])
       declToDef (Left vid)  = Left <$> varIdforDecl vid
@@ -241,11 +241,19 @@ varRefsToVarDefs vdecls vids fshs = do
       varIdforDecl :: Loc VarDeclE -> Either Error VarId
       varIdforDecl l = maybe vidNotFound Right (Map.lookup l vids)
           where
-            vidNotFound = error "varRefsToVarDefs: vid not found" -- TODO: return the appropriate error.
+            vidNotFound = Left Error
+                { _errorType = UndefinedRef
+                , _errorLoc = getErrorLoc l
+                , _errorMsg = "varRefsToVarDefs: VarId not found."
+                }
       shForDecl :: Loc FuncDeclE -> Either Error (Signature, Handler VarId)
       shForDecl l = maybe shNotFound Right (Map.lookup l fshs)
           where
-            shNotFound = error "varRefsToVarDefs: signature-handler not found" -- TODO: return the appropriate error.
+            shNotFound = Left Error
+                { _errorType = UndefinedRef
+                , _errorLoc = getErrorLoc l
+                , _errorMsg =  "varRefsToVarDefs: Signature-Handler not found."
+                }
 
 expDeclToValExpr_2 :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)]) -- ^ Variable definitions associated to a given reference.
                   -> SortId -- ^ Expected SortId for the expression.

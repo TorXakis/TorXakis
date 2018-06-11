@@ -67,6 +67,16 @@ import           TorXakis.Parser.Data
 --     vExp <- expDeclToValExpr mm (funcsort fId) (funcBody f)
 --     return (fId, FuncDef pIds vExp)
 
+-- | Make a function @Signature@-@Handler@ pair from a function @FuncDecl@.
+funcDeclToSH :: Map (Loc FuncDeclE) FuncId
+             -> FuncDecl
+             -> CompilerM (Loc FuncDeclE, (Signature, Handler VarId))
+funcDeclToSH fids f = do
+    fid  <- fids .@ getLoc f
+    let sig     = Signature (funcargs fid) (funcsort fid)
+        handler = cstrFunc (Map.empty :: Map FuncId (FuncDef VarId)) fid
+    return (getLoc f, (sig, handler))
+
 -- | Version that replaces the constraint:
 --
 -- > MapsTo (Loc FuncDeclE) FuncId mm
@@ -81,17 +91,16 @@ funcDeclsToFuncDefs2 :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncD
                        , In (FuncId, FuncDefInfo) (Contents mm) ~ 'False
                        , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False )
                     => mm
-                    -> Map (Loc FuncDeclE) (Signature, Handler VarId) -- ^ Standard functions, and ADT functions.
+                    -> Map (Loc FuncDeclE) (Signature, Handler VarId) -- ^ Standard functions, ADT functions, and user defined functions.
                     -> [FuncDecl]
                     -> CompilerM (Map FuncId FuncDefInfo)
-funcDeclsToFuncDefs2 mm stdFuncs fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
+funcDeclsToFuncDefs2 mm fSHs fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
     where
-      mm' = stdFuncs :& mm
       gFuncDeclsToFuncDefs :: Map FuncId FuncDefInfo
                            -> [FuncDecl]
                            -> Either Error (Map FuncId FuncDefInfo)
       gFuncDeclsToFuncDefs mFDef gs =
-          case partitionEithers (funcDeclToFuncDef2 (mFDef :& mm') <$> gs) of
+          case partitionEithers (funcDeclToFuncDef2 (mFDef :& mm) fSHs <$> gs) of
               ([], rs) -> Right $ fromList rs <> mFDef
               (ls, []) -> Left $ Errors (fst <$> ls)
               (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> mFDef) (snd <$> ls)
@@ -109,28 +118,40 @@ funcDeclToFuncDef2 :: ( MapsTo (Loc VarDeclE) VarId mm
                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                       , MapsTo (Loc FuncDeclE) FuncId mm
                       , MapsTo FuncId FuncDefInfo mm
-                      , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm )
+                      , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False )
                    => mm
+                   -> Map (Loc FuncDeclE) (Signature, Handler VarId)
                    -> FuncDecl
                    -> Either (Error, FuncDecl) (FuncId, FuncDefInfo)
-funcDeclToFuncDef2 mm f = left (,f) $ do
+funcDeclToFuncDef2 mm fSHs f = left (,f) $ do
     fid  <- mm .@@ getLoc f
+    (sig, handler') <- fSHs .@@ getLoc f :: Either Error (Signature, Handler VarId)
     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
     let
-        fsig = Signature (funcargs fid) (funcsort fid)
-        handler' = cstrFunc (Map.empty :: Map FuncId (FuncDef VarId)) fid
+        -- fsig = Signature (funcargs fid) (funcsort fid)
+        -- handler' = cstrFunc (Map.empty :: Map FuncId (FuncDef VarId)) fid
         -- In case of a recursive function, we need to make the information of
         -- the current function available to @expDeclToValExpr@.
-        locToSigHdlrMap =
-            Map.insert (getLoc f) (fsig, handler') (innerSigHandlerMap mm)
-    vExp <- expDeclToValExpr (locToSigHdlrMap <.+> mm) (funcsort fid) (funcBody f)
+        -- locToSigHdlrMap =
+        --     Map.insert (getLoc f) (fsig, handler') (innerSigHandlerMap mm)
+        mm' =  fSHs :& mm
+        -- TODO: make sure these maps are passed as parameter.
+        varDecls :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
+        varDecls = innerMap mm'
+        varIds :: Map (Loc VarDeclE) VarId
+        varIds = innerMap mm'
+        funcSHs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+        funcSHs = fSHs
+    -- varDefs <- varRefsToVarDefs varDecls varIds funcSHs
+    vExp <- expDeclToValExpr mm' (funcsort fid) (funcBody f)
+    -- vExp <- expDeclToValExpr_2 (locToSigHdlrMap <.+> mm) (funcsort fid) (funcBody f)
     let fdef = FuncDef pIds vExp
         -- We recalculate the handler to simplify constant expressions.
         fhandler =
             case funcargs fid of
                 [] -> const vExp
                 _  -> handler'
-    return (fid, FuncDefInfo fdef fsig fhandler)
+    return (fid, FuncDefInfo fdef sig fhandler)
 
 innerSigHandlerMap :: ( MapsTo (Loc FuncDeclE) FuncId mm
                      ,  MapsTo FuncId FuncDefInfo mm )
