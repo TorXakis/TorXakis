@@ -78,18 +78,49 @@ setTest mdlNm cnctNm purpMappNms s = runResponse $ do
                  _   -> throwError "Wrong or inconsistent parameters"
     case cdefs of
         [] -> throwError $ "No CnectDef found with name: " <> cnctNm
-        [c]  -> lift $ do
-            (wcd,tids) <- initSocketWorld s fWCh c
-            atomically $ do
-                writeTVar (s ^. wConnDef) wcd
-                writeTVar (s ^. worldListeners) tids
-            runIOC s $
-                Core.txsSetTest
-                    (lift <$> putToW deltaTime fWCh (wcd ^. toWorldMappings))
-                    (lift $ getFromW deltaTime fWCh)
-                    mDef mADef mPDef
+        [c]
+            | isConsistent mDef mADef mPDef c -> lift $ do
+                    (wcd,tids) <- initSocketWorld s fWCh c
+                    atomically $ do
+                        writeTVar (s ^. wConnDef) wcd
+                        writeTVar (s ^. worldListeners) tids
+                    runIOC s $
+                        Core.txsSetTest
+                            (lift <$> putToW deltaTime fWCh (wcd ^. toWorldMappings))
+                            (lift $ getFromW deltaTime fWCh)
+                            mDef mADef mPDef
+            | otherwise   -> throwError "Wrong or inconsistent parameters"
         _   -> throwError "Wrong or inconsistent parameters"
-
+      where
+        isConsistent :: TxsDefs.ModelDef
+                     -> Maybe TxsDefs.MapperDef
+                     -> Maybe TxsDefs.PurpDef
+                     -> TxsDefs.CnectDef
+                     -> Bool
+        isConsistent (TxsDefs.ModelDef minsyncs moutsyncs _ _)
+                     Nothing _
+                     (TxsDefs.CnectDef _ conndefs) =
+            let { mins   = Set.fromList minsyncs
+                ; mouts  = Set.fromList moutsyncs
+                ; ctows  = Set.fromList
+                                [ Set.singleton chn | TxsDefs.ConnDtoW  chn _ _ _ _ <- conndefs ]
+                ; cfrows = Set.fromList
+                                [ Set.singleton chn | TxsDefs.ConnDfroW chn _ _ _ _ <- conndefs ]
+                }
+            in  mins == ctows && cfrows == mouts
+        isConsistent _
+                     (Just (TxsDefs.MapperDef achins achouts asyncsets _)) _
+                     (TxsDefs.CnectDef _ conndefs) =
+            let { ctows  = Set.fromList
+                                [ Set.singleton chn | TxsDefs.ConnDtoW  chn _ _ _ _ <- conndefs ]
+                ; cfrows = Set.fromList
+                                [ Set.singleton chn | TxsDefs.ConnDfroW chn _ _ _ _ <- conndefs ]
+                ; ains   = Set.fromList $ filter (not . Set.null)
+                                [ sync `Set.intersection` Set.fromList achins  | sync <- asyncsets ]
+                ; aouts  = Set.fromList $ filter (not . Set.null)
+                                [ sync `Set.intersection` Set.fromList achouts | sync <- asyncsets ]
+                }
+            in  cfrows `Set.isSubsetOf` ains && ctows `Set.isSubsetOf` aouts
 
 -- | Test for n-steps or an action
 test :: Session -> StepType -> IO (Response ())
