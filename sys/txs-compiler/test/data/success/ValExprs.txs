@@ -351,6 +351,15 @@ FUNCDEF let4(x :: Int) :: Int ::=
     NI
 ENDDEF
 
+-- Example of mutual recursion.
+FUNCDEF ping() :: Int ::=
+    pong()
+ENDDEF
+
+FUNCDEF pong() :: Int ::=
+    ping()
+ENDDEF
+
 -- TODO: it seems TorXakis cannot handle this. Could the new compiler?
 -- FUNCDEF j(g :: String) :: String ::=
 --     g
