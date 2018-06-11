@@ -42,7 +42,7 @@ import TranslatedProcDefs
 
 import TxsDefs
 import ConstDefs
-import StdTDefs (stdSortTable, chanIdExit)
+import StdTDefs (stdSortTable)
 
 import ChanId
 import ProcId
@@ -59,7 +59,7 @@ import Relabel (relabel)
 import Subst
 import SortOf
 
--- import Debug.Trace 
+import Debug.Trace 
 
 -- ----------------------------------------------------------------------------------------- --
 -- Types :
@@ -114,17 +114,17 @@ preGNF procId translatedProcDefs procDefs' = do
     let -- decompose the ProcDef of ProcId
         ProcDef chansDef paramsDef bexpr = fromMaybe (error "called preGNF with a non-existing procId") (Map.lookup procId procDefs')
         -- remember the current ProcId to avoid recursive loops translating the same ProcId again
-        translatedProcDefs' = translatedProcDefs { lPreGNF = lPreGNF translatedProcDefs ++ [procId]}
+        translatedProcDefs' = trace ("bexpr: " ++ show bexpr) $ translatedProcDefs { lPreGNF = lPreGNF translatedProcDefs ++ [procId]}
         -- translate each choice separately
 
     (procDef', procDefs''') <- case TxsDefs.view bexpr of
-                              (Choice bexprs) -> do  (bexprs', procDefs'') <-  applyPreGNFBexpr (Set.toList bexprs) 1 [] translatedProcDefs' procDefs'
-                                                     let procDef' = ProcDef chansDef paramsDef (choice (Set.fromList bexprs'))
-                                                     return (procDef', procDefs'')
+                                    (Choice bexprs) -> do  (bexprs', procDefs'') <-  applyPreGNFBexpr (Set.toList bexprs) 1 [] translatedProcDefs' procDefs'
+                                                           let procDef' = ProcDef chansDef paramsDef (choice (Set.fromList bexprs'))
+                                                           return (procDef', procDefs'')
 
-                              _               -> do  (bexpr', procDefs'') <- preGNFBExpr bexpr 1 [] procId translatedProcDefs' procDefs'
-                                                     let procDef' = ProcDef chansDef paramsDef bexpr'
-                                                     return (procDef', procDefs'')
+                                    _               -> do  (bexpr', procDefs'') <- preGNFBExpr bexpr 1 [] procId translatedProcDefs' procDefs'
+                                                           let procDef' = ProcDef chansDef paramsDef bexpr'
+                                                           return (procDef', procDefs'')
     return $ Map.insert procId procDef' procDefs'''
     where
         -- apply preGNFBExpr to each choice and collect all intermediate results (single bexprs)
@@ -182,8 +182,11 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Enable _bexprL _exitChans _bexprR) choiceCnt
     -- translate the created ProcDef with LPEEnable
     preGNFEnable procInst' translatedProcDefs procDefs'' 
 
+preGNFBexpr _bexpr'@(TxsDefs.view -> Guard vexpr' bexpr) _choiceCnt _ _ _ _ =
+    error $ "got Guard: \n vexpr: " ++ show vexpr' ++ "\nbexpr: " ++ show bexpr 
+
 preGNFBExpr _ _ _ _ _ _ =
-    error "unexpected type of bexpr"
+    error "unexpected type of bexpr" 
 
 
 preGNFBExprCreateProcDef :: (EnvB.EnvB envb) => BExpr -> Int -> [VarId] -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
