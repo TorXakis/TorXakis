@@ -163,15 +163,6 @@ startCLI = do
                  => [String] -> m ()
             seed [s] = setSeed s
             seed _   = throwError "Usage: seed <n>"
-
-    asTxsMsg :: BS.ByteString -> Either String Msg
-    asTxsMsg msg = do
-        msgData <- maybeToEither dataErr $
-            BS.stripPrefix "data:" msg
-        eitherDecodeStrict msgData
-            where
-              dataErr = "The message from TorXakis did not contain a \"data:\" field: "
-                      ++ show msg
     withMessages :: InputT CLIM () -> InputT CLIM ()
     withMessages action = do
         Log.info "Starting printer async..."
@@ -195,6 +186,15 @@ startCLI = do
             liftIO $ do
                 cancel producer
                 cancel consumer
+          where
+            asTxsMsg :: BS.ByteString -> Either String Msg
+            asTxsMsg msg = do
+                msgData <- maybeToEither dataErr $
+                    BS.stripPrefix "data:" msg
+                eitherDecodeStrict msgData
+                    where
+                    dataErr = "The message from TorXakis did not contain a \"data:\" field: "
+                            ++ show msg
 
 -- | Values that can be output in the command line.
 class Outputable v where

@@ -44,3 +44,6 @@ spec = do
     it "testTester" $ do
         res <- testTester
         res `shouldBe` Just ()
+    it "testTesterWithPurpose" $ do
+        res <- testTesterWithPurpose
+        res `shouldBe` Just ()

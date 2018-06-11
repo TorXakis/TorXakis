@@ -217,6 +217,21 @@ testTester = timeout (10 * seconds) $
             waitForVerdict s >>= print
             cancel a
 
+testTesterWithPurpose :: IO (Maybe ())
+testTesterWithPurpose = timeout (10 * seconds) $
+    withCreateProcess (proc "java" ["-cp","../../examps/LuckyPeople/sut","LuckyPeople"])
+        {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
+            csM <- readFile $ ".." </> ".." </> "examps" </> "LuckyPeople" </> "spec" </> "LuckyPeople.txs"
+            csP <- readFile $ ".." </> ".." </> "examps" </> "LuckyPeople" </> "spec" </> "PurposeExamples.txs"
+            s <- newSession
+            a <- async (printer s)
+            _ <- load s $ csM ++ csP
+            _ <- setTest "Model" "Sut" "PurposeExamples" s
+            r <- test s (NumberOfSteps 36)
+            putStrLn $ "Result of `test`: " ++ show r
+            waitForVerdict s >>= print
+            cancel a
+
 seconds :: Int
 seconds = 10 ^ (6 :: Int)
 
