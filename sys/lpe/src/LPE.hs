@@ -184,8 +184,8 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Enable _bexprL _exitChans _bexprR) choiceCnt
     res <- preGNFEnable procInst' translatedProcDefs procDefs'' 
     return $ res
 
-preGNFBExpr _ _ _ _ _ _ =
-    error "unexpected type of bexpr"
+preGNFBExpr bexpr _ _ _ _ _ =
+    error ("unexpected type of bexpr: " ++ show bexpr)
 
 
 preGNFBExprCreateProcDef :: (EnvB.EnvB envb) => BExpr -> Int -> [VarId] -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
