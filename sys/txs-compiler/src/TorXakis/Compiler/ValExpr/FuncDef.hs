@@ -38,39 +38,6 @@ import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Parser.Data
 
--- funcDeclsToFuncDefs :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
---                        , MapsTo (Loc FuncDeclE) FuncId mm
---                        , MapsTo (Loc VarDeclE) VarId mm
---                        , In (FuncId, FuncDef VarId) (Contents mm) ~ 'False )
---                     => mm
---                     -> [FuncDecl]
---                     -> CompilerM (Map FuncId (FuncDef VarId))
--- funcDeclsToFuncDefs mm fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
---     where
---       gFuncDeclsToFuncDefs :: Map FuncId (FuncDef VarId)
---                            -> [FuncDecl]
---                            -> Either Error (Map FuncId (FuncDef VarId))
---       gFuncDeclsToFuncDefs mFDef gs =
---           case partitionEithers (funcDeclToFuncDef (mFDef :& mm) <$> gs) of
---               ([], rs) -> Right $ fromList rs <> mFDef
---               (ls, []) -> Left $ Errors (fst <$> ls)
---               (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> mFDef) (snd <$> ls)
-
--- -- | Create a function definition for the given function declaration.
--- --
--- funcDeclToFuncDef :: ( MapsTo (Loc VarDeclE) VarId mm
---                      , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
---                      , MapsTo (Loc FuncDeclE) FuncId mm
---                      , MapsTo FuncId (FuncDef VarId) mm )
---                   => mm
---                   -> FuncDecl
---                   -> Either (Error, FuncDecl) (FuncId, FuncDef VarId)
--- funcDeclToFuncDef mm f = left (,f) $ do
---     fId  <- mm .@@ getLoc f
---     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
---     vExp <- expDeclToValExpr mm (funcsort fId) (funcBody f)
---     return (fId, FuncDef pIds vExp)
-
 -- | Make a function @Signature@-@Handler@ pair from a function @FuncDecl@.
 funcDeclToSH :: Map (Loc FuncDeclE) FuncId
              -> FuncDecl
@@ -98,26 +65,38 @@ funcDeclsToFuncDefs2 :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncD
                     -> Map (Loc FuncDeclE) (Signature, Handler VarId) -- ^ Standard functions, ADT functions, and user defined functions.
                     -> [FuncDecl]
                     -> CompilerM (Map FuncId FuncDefInfo)
-funcDeclsToFuncDefs2 mm fSHs fs = liftEither $ gFuncDeclsToFuncDefs mempty fs
+funcDeclsToFuncDefs2 mm fSHs fs = liftEither $ do
+    -- TODO: this map should be calculated globally.
+    fVDs <- varRefsToVarDefs fsVDs varIds fSHs
+    gFuncDeclsToFuncDefs mempty fVDs fs
     where
+      mm' = fSHs :& mm
+      varDecls :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
+      varDecls = innerMap mm'
+      allLets :: [LetVarDecl]
+      allLets = fs ^.. cosmosOn biplate
+      -- All references in all the functions.
+      fsVRs :: [Loc VarRefE]
+      fsVRs = (fs ^.. cosmosOn biplate) ++ (asVarReflLoc . getLoc <$> allLets)
+      -- All variable declarations for this function.
+      fsVDs = Map.restrictKeys varDecls (Set.fromList fsVRs)
+      varIds :: Map (Loc VarDeclE) VarId
+      varIds = innerMap mm'
+      -- | Generalized version of `funcDeclsToFuncDefs2`, which accumulates the
+      -- results in the first parameter.
       gFuncDeclsToFuncDefs :: Map FuncId FuncDefInfo
+                           -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
                            -> [FuncDecl]
                            -> Either Error (Map FuncId FuncDefInfo)
-      gFuncDeclsToFuncDefs mFDef gs =
-          case partitionEithers (funcDeclToFuncDef2 (mFDef :& mm) fSHs <$> gs) of
+      gFuncDeclsToFuncDefs mFDef fVDs gs =
+          case partitionEithers (funcDeclToFuncDef2 (mFDef :& mm) fSHs fVDs <$> gs) of
               ([], rs) -> Right $ fromList rs <> mFDef
               (ls, []) -> Left $ Errors (fst <$> ls)
-              (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> mFDef) (snd <$> ls)
+              (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> mFDef) fVDs (snd <$> ls)
 
--- | Create a function definition for the given function declaration.
+-- | Create a function definition (@FuncDef@), signature (@Signature@), and
+-- handler (@Handler@) for the given function declaration.
 --
--- TODO: mutually recursive functions are not supported :/ In principle there's
--- no reason why we have to put this restriction, since:
---
--- We can make signatures for all the functions! Only the funcdefs need the value expressions!
---
--- fsig = Signature (funcargs fid) (funcsort fid)
---        handler' = cstrFunc (Map.empty :: Map FuncId (FuncDef VarId)) fid
 funcDeclToFuncDef2 :: ( MapsTo (Loc VarDeclE) VarId mm
                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                       , MapsTo (Loc FuncDeclE) FuncId mm
@@ -125,38 +104,14 @@ funcDeclToFuncDef2 :: ( MapsTo (Loc VarDeclE) VarId mm
                       , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False )
                    => mm
                    -> Map (Loc FuncDeclE) (Signature, Handler VarId)
+                   -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
                    -> FuncDecl
                    -> Either (Error, FuncDecl) (FuncId, FuncDefInfo)
-funcDeclToFuncDef2 mm fSHs f = left (,f) $ do
+funcDeclToFuncDef2 mm fSHs fVDs f = left (,f) $ do
     fid  <- mm .@@ getLoc f
     (sig, handler') <- fSHs .@@ getLoc f :: Either Error (Signature, Handler VarId)
     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
-    let
-        -- fsig = Signature (funcargs fid) (funcsort fid)
-        -- handler' = cstrFunc (Map.empty :: Map FuncId (FuncDef VarId)) fid
-        -- In case of a recursive function, we need to make the information of
-        -- the current function available to @expDeclToValExpr@.
-        -- locToSigHdlrMap =
-        --     Map.insert (getLoc f) (fsig, handler') (innerSigHandlerMap mm)
-        mm' =  fSHs :& mm
-        -- TODO: make sure these maps are passed as parameter.
-        varDecls :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
-        varDecls = innerMap mm'
-        -- We are only interested in the variable references reachable from the current function.
-        -- Collect all the let variable declaration
-        allLets :: [LetVarDecl]
-        allLets = f ^.. cosmosOn biplate
-        thisFunVR :: [Loc VarRefE]
-        thisFunVR = (f ^.. cosmosOn biplate) ++ (asVarReflLoc . getLoc <$> allLets)
-        thisFunVD = Map.restrictKeys varDecls (Set.fromList thisFunVR)
-        varIds :: Map (Loc VarDeclE) VarId
-        varIds = innerMap mm'
-        funcSHs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-        funcSHs = fSHs
-
-    varDefs <- varRefsToVarDefs thisFunVD varIds funcSHs
---    vExp <- expDeclToValExpr mm' (funcsort fid) (funcBody f)
-    vExp <- expDeclToValExpr_2 varDefs (funcsort fid) (funcBody f)
+    vExp <- expDeclToValExpr_2 fVDs (funcsort fid) (funcBody f)
     let fdef = FuncDef pIds vExp
         -- We recalculate the handler to simplify constant expressions.
         fhandler =
