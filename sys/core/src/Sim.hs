@@ -24,30 +24,27 @@ module Sim
 
 where
 
-import System.Random
-import Control.Monad.State
+import           Control.Monad.State
+import           System.Random
 
-import Ioco
-import Mapper
-import CoreUtils
+import           CoreUtils
+import           Ioco
+import           Mapper
 
-import qualified ParamCore
-import qualified EnvCore     as IOC
+import qualified EnvCore             as IOC
 import qualified EnvData
+import qualified ParamCore
 
 import qualified TxsDDefs
-import qualified TxsShow
-
 
 -- ----------------------------------------------------------------------------------------- --
 -- simN depth :  simulation of depth>0 steps, or infinitely if depth<0
 
-
 simN :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simN depth step = do
-     envc <- get
-     [(_,parval)] <- IOC.getParams ["param_InputCompletion"]
-     case (read parval, IOC.state envc) of
+    envc <- get
+    [(_,parval)] <- IOC.getParams ["param_InputCompletion"]
+    case (read parval, IOC.state envc) of
         { ( ParamCore.ANGELIC
           , IOC.Simuling {..}
           ) -> simA depth step
@@ -65,60 +62,57 @@ simN depth step = do
 
 simA :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simA depth step =
-     if  depth == 0
-       then return TxsDDefs.Pass
-       else do iochoice <- lift $ randomRIO (True, False)
-               if  iochoice
-                 then simAfroW depth step
-                 else simAtoW  depth step
+    if depth == 0
+        then return TxsDDefs.Pass
+        else do iochoice <- lift $ randomRIO (True, False)
+                if iochoice
+                    then simAfroW depth step
+                    else simAtoW  depth step
 
 simAfroW :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simAfroW depth step = do
-     getFroW <- gets (IOC.getfrow . IOC.state)
-     act     <- getFroW                                      -- get next output or quiescence
-     mact    <- mapperMap act                                -- apply mapper
-     case mact of
-       TxsDDefs.Act {} -> do                               -- world provided input to system
-          IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                        $ TxsShow.showN step 6 ++ ":  IN:  "++ TxsShow.fshow mact ]
-          _done <- iocoModelAfter mact                        -- do input in model
-          nextBehTrie mact
-          simA (depth-1) (step+1)                  -- continue whether _done or not (angelic)
-       TxsDDefs.ActQui ->                                    -- world did not provide input
-          simAtoW depth step                                 -- continue with output to world
+    getFroW <- gets (IOC.getfrow . IOC.state)
+    act     <- getFroW                                      -- get next output or quiescence
+    mact    <- mapperMap act                                -- apply mapper
+    case mact of
+        TxsDDefs.Act {} -> do                               -- world provided input to system
+            IOC.putMsgs [ EnvData.AnAction step EnvData.In mact ]
+            _done <- iocoModelAfter mact                        -- do input in model
+            nextBehTrie mact
+            simA (depth-1) (step+1)                  -- continue whether _done or not (angelic)
+        TxsDDefs.ActQui ->                                    -- world did not provide input
+            simAtoW depth step                                 -- continue with output to world
 
 simAtoW :: Int -> Int -> IOC.IOC TxsDDefs.Verdict
 simAtoW depth step = do
-     putToW  <- gets (IOC.puttow . IOC.state)
-     mayAct  <- ranMenuOut
-     case mayAct of
-       Just act -> do                                        -- proposed real output or qui
-         mact  <- mapperMap act                              -- apply mapper
-         mact' <- putToW mact                                -- do output to world
-         if mact == mact'
-           then do
-             IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO        -- output to world was done
-                           $ TxsShow.showN step 6 ++ ": OUT: " ++ TxsShow.fshow act ]
-             done <- iocoModelAfter act                      -- do output in model
-             nextBehTrie act
-             if  done
-               then simA (depth-1) (step+1)               -- continue
-               else do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "proposed output could not happen in model" ]
-                       return TxsDDefs.NoVerdict
-           else do                                           -- input from world was faster
-             act' <- mapperMap mact'                          -- map input to model action
-             case act' of
-               TxsDDefs.Act{} -> do                       -- world provided input to system
-                 IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
-                               $ TxsShow.showN step 6 ++ ":  IN:  "++ TxsShow.fshow act' ]
-                 _done <- iocoModelAfter act'                  -- do input in model
-                 nextBehTrie act'
-                 simA (depth-1) (step+1)           -- continue whether _done or not  (angelic)
-               TxsDDefs.ActQui ->                            -- world did not provide input
-                 simAtoW depth step                          -- continue with output to world
-       Nothing -> do                                         -- no proposed output
-          IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no proposed output: should not happen" ]
-          return TxsDDefs.NoVerdict
+    putToW  <- gets (IOC.puttow . IOC.state)
+    mayAct  <- ranMenuOut
+    case mayAct of
+        Just act -> do                                        -- proposed real output or qui
+            mact  <- mapperMap act                              -- apply mapper
+            mact' <- putToW mact                                -- do output to world
+            if mact == mact'
+                then do
+                    IOC.putMsgs [ EnvData.AnAction step EnvData.Out act ] -- output to world was done
+                    done <- iocoModelAfter act                      -- do output in model
+                    nextBehTrie act
+                    if done
+                        then simA (depth-1) (step+1)               -- continue
+                        else do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "proposed output could not happen in model" ]
+                                return TxsDDefs.NoVerdict
+            else do                                           -- input from world was faster
+                act' <- mapperMap mact'                          -- map input to model action
+                case act' of
+                    TxsDDefs.Act{} -> do                       -- world provided input to system
+                        IOC.putMsgs [ EnvData.AnAction step EnvData.In act' ]
+                        _done <- iocoModelAfter act'                  -- do input in model
+                        nextBehTrie act'
+                        simA (depth-1) (step+1)           -- continue whether _done or not  (angelic)
+                    TxsDDefs.ActQui ->                            -- world did not provide input
+                        simAtoW depth step                          -- continue with output to world
+        Nothing -> do                                         -- no proposed output
+            IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "no proposed output: should not happen" ]
+            return TxsDDefs.NoVerdict
 
 -- ----------------------------------------------------------------------------------------- --
 -- randMenuOut :  random output action from menuOut

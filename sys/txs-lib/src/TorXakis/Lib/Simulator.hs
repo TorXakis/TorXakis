@@ -47,7 +47,7 @@ setSim mdlNm cnctNm mappNm s = runResponse $ do
             st <- readTVarIO (s ^. sessionState)
             let fWCh = s ^. fromWorldChan
                 prms = st ^. sessionParams
-                Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" prms
+                Just (deltaString,_) = Map.lookup "param_Sim_deltaTime" prms
                 deltaTime = read deltaString
             (wcd,tids) <- initSocketWorld s fWCh cDef
             atomically $ do
