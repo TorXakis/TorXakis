@@ -61,17 +61,20 @@ toBExpr :: ( MapsTo Text SortId mm
            , MapsTo ProcId () mm
            , MapsTo (Loc VarDeclE) SortId mm
            , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False )
-        => mm -> BExpDecl -> CompilerM BExpr
-toBExpr _ Stop             = return stop
-toBExpr mm (ActPref ao be) = actionPref <$> toActOffer mm ao <*> toBExpr mm be
-toBExpr mm (LetBExp vss be) = do
-    be0 <- toBExpr mm be
+        => mm
+        -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+        -> BExpDecl
+        -> CompilerM BExpr
+toBExpr _ vrvds Stop             = return stop
+toBExpr mm vrvds (ActPref ao be) = actionPref <$> toActOffer mm vrvds ao <*> toBExpr mm vrvds be
+toBExpr mm vrvds (LetBExp vss be) = do
+    be0 <- toBExpr mm vrvds be
     foldM letToBExpr be0 vss
     where
       letToBExpr be' vs = do
-          venv <- Map.fromList <$> traverse (vpair mm) vs
+          venv <- Map.fromList <$> traverse (vpair mm vrvds) vs
           return $ valueEnv venv be'
-toBExpr mm (Pappl n l crs exs) = do
+toBExpr mm vrvds (Pappl n l crs exs) = do
     chIds <- chRefsToIds mm crs
     let candidate :: ProcId -> Bool
         candidate pId =
@@ -82,7 +85,7 @@ toBExpr mm (Pappl n l crs exs) = do
     res <- forCatch (filter candidate $ keys @ProcId @() mm) $ \pId -> do
         let eSids = varsort <$> procvars pId
         vExps <- liftEither $
-            traverse (uncurry $ expDeclToValExpr mm) $ zip eSids exs
+            traverse (uncurry $ expDeclToValExpr_2 vrvds) $ zip eSids exs
         return (pId, procInst pId chIds vExps)
     case res of
         (_ , [(_, pInst)]) -> return pInst
@@ -98,69 +101,72 @@ toBExpr mm (Pappl n l crs exs) = do
             , _errorMsg  = "No matching process definition found: "
                          <> T.pack (show ls)
             }
-toBExpr mm (Par _ sOn be0 be1) = do
-    be0' <- toBExpr mm be0
-    be1' <- toBExpr mm be1
+toBExpr mm vrvds (Par _ sOn be0 be1) = do
+    be0' <- toBExpr mm vrvds be0
+    be1' <- toBExpr mm vrvds be1
     cIds <- case sOn of
             All         ->
                 return $ nub . Map.elems $ usedChIdMap mm
             OnlyOn crfs ->
                 traverse (lookupChId mm) (getLoc <$> crfs)
     return $ parallel (Set.fromList $ chanIdExit:cIds) [be0', be1']
-toBExpr mm (Enable _ be0 (Accept _ ofrs be1)) = do
-    be0'  <- toBExpr mm be0
+toBExpr mm vrvds (Enable _ be0 (Accept _ ofrs be1)) = do
+    be0'  <- toBExpr mm vrvds be0
     let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
         fshs = innerMap mm
         fss = fst <$> fshs
     eSids <- exitSortIds <$> exitSort (fss :& mm) be0
-    ofrs' <- traverse (uncurry $ toChanOffer mm) $ zip eSids ofrs
-    be1'  <- toBExpr mm be1
+    ofrs' <- traverse (uncurry $ toChanOffer mm vrvds) $ zip eSids ofrs
+    be1'  <- toBExpr mm vrvds be1
     return $ enable be0' ofrs' be1'
-toBExpr mm (Enable _ be0 be1) = do
-    be0' <- toBExpr mm be0
+toBExpr mm vrvds (Enable _ be0 be1) = do
+    be0' <- toBExpr mm vrvds be0
     let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
         fshs = innerMap mm
         fss = fst <$> fshs
     es   <- exitSort (fss :& mm) be0
     when (es /= Exit [])
         (throwError undefined) -- TODO: give the appropriate error message.
-    be1' <- toBExpr mm be1
+    be1' <- toBExpr mm vrvds be1
     return $ enable be0' [] be1'
-toBExpr _ (Accept l _ _ )      =
+toBExpr _ vrvds (Accept l _ _ )      =
     throwError Error
     { _errorType = ParseError
     , _errorLoc  = getErrorLoc l
     , _errorMsg  = "ACCEPT cannot be used here."
     }
-toBExpr mm (Disable _ be0 be1) = do
-    be0' <- toBExpr mm be0
-    be1' <- toBExpr mm be1
+toBExpr mm vrvds (Disable _ be0 be1) = do
+    be0' <- toBExpr mm vrvds be0
+    be1' <- toBExpr mm vrvds be1
     return $ disable be0' be1'
-toBExpr mm (Interrupt _ be0 be1) = do
-    be0' <- toBExpr mm be0
-    be1' <- toBExpr mm be1
+toBExpr mm vrvds (Interrupt _ be0 be1) = do
+    be0' <- toBExpr mm vrvds be0
+    be1' <- toBExpr mm vrvds be1
     return $ interrupt be0' be1'
-toBExpr mm (Choice _ be0 be1) = do
-    be0' <- toBExpr mm be0
-    be1' <- toBExpr mm be1
+toBExpr mm vrvds (Choice _ be0 be1) = do
+    be0' <- toBExpr mm vrvds be0
+    be1' <- toBExpr mm vrvds be1
     return $ choice (Set.fromList [be0', be1'])
-toBExpr mm (Guard g be) = do
-    g'  <- liftEither $ expDeclToValExpr mm sortIdBool g
-    be' <- toBExpr mm be
+toBExpr mm vrvds (Guard g be) = do
+    g'  <- liftEither $ expDeclToValExpr_2 vrvds sortIdBool g
+    be' <- toBExpr mm vrvds be
     return $ guard g' be'
-toBExpr mm (Hide _ cds be) = do
+toBExpr mm vrvds (Hide _ cds be) = do
     chNameChIds <- traverse (mm .@) (getLoc <$> cds) :: CompilerM [ChanId]
-    be' <- toBExpr mm be
+    be' <- toBExpr mm vrvds be
     return $ hide (Set.fromList chNameChIds) be'
 
 vpair :: ( MapsTo (Loc VarDeclE) VarId mm
          , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
-      => mm -> LetVarDecl -> CompilerM (VarId, ValExpr VarId)
-vpair mm vd = do
+      => mm
+      -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+      -> LetVarDecl
+      -> CompilerM (VarId, ValExpr VarId)
+vpair mm vrvds vd = do
     vId <- mm .@ getLoc vd
     ex  <- liftEither $
-        expDeclToValExpr mm (varsort vId) (varDeclExp vd)
+        expDeclToValExpr_2 vrvds (varsort vId) (varDeclExp vd)
     return (vId, ex)
 
 toActOffer :: ( MapsTo Text SortId mm
@@ -171,11 +177,14 @@ toActOffer :: ( MapsTo Text SortId mm
               , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
               , MapsTo (Loc VarDeclE) SortId mm
               , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False )
-           => mm -> ActOfferDecl -> CompilerM ActOffer
-toActOffer mm (ActOfferDecl osd mc) = do
-    os <- traverse (toOffer mm) osd
+           => mm
+           -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+           -> ActOfferDecl
+           -> CompilerM ActOffer
+toActOffer mm vrvds (ActOfferDecl osd mc) = do
+    os <- traverse (toOffer mm vrvds) osd
     c  <- fromMaybe (return . cstrConst . Cbool $ True)
-                    (liftEither . expDeclToValExpr mm sortIdBool <$> mc)
+                    (liftEither . expDeclToValExpr_2 vrvds sortIdBool <$> mc)
     -- Filter the internal actions (to comply with the current TorXakis compiler).
     let os' = filter ((chanIdIstep /=) . chanid) os
     return $ ActOffer (Set.fromList os') Set.empty c
@@ -189,25 +198,28 @@ toOffer :: ( MapsTo Text SortId mm
            , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
            , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False )
-        => mm -> OfferDecl -> CompilerM Offer
+        => mm
+        -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+        -> OfferDecl
+        -> CompilerM Offer
 -- EXIT is a special channel that can be use anywhere in a behavior
 -- expression and doesn't have to be declared. For instance:
 --
 -- >  X ? v >-> EXIT >>> EXIT ! "Boom" >>> ACCEPT ? str IN X ! str NI
 --
 -- so we have to treat this channel specially.
-toOffer mm (OfferDecl cr cods) = case chanRefName cr of
+toOffer mm vrvds (OfferDecl cr cods) = case chanRefName cr of
     "EXIT" -> do
         let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
             fshs = innerMap mm
             fss = fst <$> fshs
         eSids <- traverse (offerSid (fss :& mm)) cods
-        ofrs  <- traverse (uncurry (toChanOffer mm))
+        ofrs  <- traverse (uncurry (toChanOffer mm vrvds))
                      (zip eSids cods)
         return $ Offer chanIdExit ofrs
     _      -> do
         cId  <- lookupChId mm (getLoc cr)
-        ofrs <- traverse (uncurry (toChanOffer mm))
+        ofrs <- traverse (uncurry (toChanOffer mm vrvds))
                      (zip (chansorts cId) cods)
         return $ Offer cId ofrs
 
@@ -217,16 +229,12 @@ toChanOffer :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                , MapsTo (Loc VarDeclE) SortId mm
                , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm )
             => mm
+            -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
             -> SortId -- ^ Expected sort id's the offer
             -> ChanOfferDecl
             -> CompilerM ChanOffer
-toChanOffer mm _ (QuestD vd) =
+toChanOffer mm _ _ (QuestD vd) =
     Quest  <$> mm .@ getLoc vd
-toChanOffer mm eSid (ExclD ex) = liftEither $
-    Exclam <$> expDeclToValExpr mm eSid ex
+toChanOffer mm vrvds eSid (ExclD ex) = liftEither $
+    Exclam <$> expDeclToValExpr_2 vrvds eSid ex
 
-
----
-
-toBExpr_2 :: BExpDecl -> CompilerM BExpr
-toBExpr_2 = undefined

@@ -58,6 +58,7 @@ import           TorXakis.Compiler.Defs.ModelId
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
+import           TorXakis.Compiler.Maps.VarRef
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.CstrDef
 import           TorXakis.Compiler.ValExpr.FuncDef
@@ -162,9 +163,10 @@ purpDeclsToTxsDefs mm pds =
           bTypes <- Map.fromList <$> inferVarTypes (fss :& mm') (purpDeclGoals pd)
           bvIds  <- Map.fromList <$> mkVarIds bTypes (purpDeclGoals pd)
           let mm'' = bTypes <.+> (bvIds <.+> mm')
-              compileTestGoalDecl gd = do
+          evds <- liftEither $ varDefsFromExp mm'' pd
+          let compileTestGoalDecl gd = do
                   gId <- getNextId
-                  be  <- toBExpr mm'' (testGoalDeclBExp gd)
+                  be  <- toBExpr mm'' evds (testGoalDeclBExp gd)
                   return (GoalId (testGoalDeclName gd) (Id gId), be)
           gls <- traverse compileTestGoalDecl (purpDeclGoals pd)
           return $ PurpDef insyncs outsyncs splsyncs gls
@@ -195,7 +197,7 @@ cnectDeclsToTxsDefs mm cds =
           let
               mm' = chDecls :& mm
               toConnDef :: (Text, Integer, CodecItem) -> CompilerM ConnDef
-              toConnDef (h, p, CodecItem offr chOffr@(QuestD iv) Decode) = do
+              toConnDef (h, p, ci@(CodecItem offr chOffr@(QuestD iv) Decode)) = do
                   -- We know the type of 'iv' must be a string.
                   let ivSortMap = Map.singleton (getLoc iv) sortIdString
                   vIdMap   <- Map.fromList <$> mkVarIds ivSortMap chOffr
@@ -203,7 +205,9 @@ cnectDeclsToTxsDefs mm cds =
                   -- TODO: we should assert that offr does not contain question
                   -- marks, otherwise the user might get a different error (for
                   -- instance because a variable might not be declared).
-                  Offer chId chOffrs <- toOffer (ivSortMap <.+> (vIdMap <.+> mm')) offr
+                  let mm'' = ivSortMap <.+> (vIdMap <.+> mm')
+                  civds <- liftEither $ varDefsFromExp mm'' ci
+                  Offer chId chOffrs <- toOffer mm'' civds offr
                   vExps <- traverse exclamExp chOffrs
                   return $ ConnDfroW chId h p vId vExps
               toConnDef (_, _, CodecItem _ (ExclD _) Decode) =
@@ -212,7 +216,7 @@ cnectDeclsToTxsDefs mm cds =
                   , _errorLoc  = getErrorLoc cd -- TODO: add a location to CodecItem to be more precise.
                   , _errorMsg = "DECODE domain shall be one '?' of String\n"
                   }
-              toConnDef(h, p, CodecItem offr (ExclD e) Encode) = do
+              toConnDef(h, p, ci@(CodecItem offr (ExclD e) Encode)) = do
                   let
                       -- We don't need the proc ids' to infer the variable types of the offer.
                       -- TODO: 'HasTypedVars' should be replaced by 'DefinesAMap'.
@@ -224,9 +228,12 @@ cnectDeclsToTxsDefs mm cds =
                   offrSIdMap <- Map.fromList <$> inferVarTypes (fss :& emptyProcIds :& mm') offr
                   offrVIdMap <- Map.fromList <$> mkVarIds offrSIdMap offr
                   let mm'' = offrSIdMap <.+> (offrVIdMap <.+> mm')
-                  Offer chId chOffrs <- toOffer mm'' offr
+                  civds <- liftEither $ varDefsFromExp mm'' ci
+                  Offer chId chOffrs <- toOffer mm'' civds offr
                   vIds <- traverse questVIds chOffrs
-                  vExp <- liftEither $ expDeclToValExpr mm'' sortIdString e
+                  -- TODO: make this map global once we put `inferVarTypes` and
+                  -- `mkVarIds` at the top level.
+                  vExp <- liftEither $ expDeclToValExpr_2 civds sortIdString e
                   return $ ConnDtoW chId h p vIds vExp
               toConnDef (_, _, CodecItem _ (QuestD _) Encode) =
                   throwError Error
@@ -377,7 +384,8 @@ mapperDeclsToTxsDefs mm mds =
           let mm'' = bTypes <.+> (bvIds <.+> mm')
           --eSort <- exitSort mm'' (mapperBExp md)
           -- TODO: assert the exit sort is NoExit!
-          be   <- toBExpr mm'' (mapperBExp md)
+          evds <- liftEither $ varDefsFromExp mm'' md
+          be   <- toBExpr mm'' evds (mapperBExp md)
           return $ MapperDef ins outs syncs be
 
       -- TODO: reduce this duplication. Bring all the definitions from `ModelDef` to here.

@@ -33,6 +33,7 @@ import           Control.Monad.Error.Class         (liftEither)
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
+import           TorXakis.Compiler.Maps.VarRef
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.FuncId
 import           TorXakis.Compiler.ValExpr.ValExpr
@@ -67,21 +68,9 @@ funcDeclsToFuncDefs2 :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncD
                     -> CompilerM (Map FuncId FuncDefInfo)
 funcDeclsToFuncDefs2 mm fSHs fs = liftEither $ do
     -- TODO: this map should be calculated globally.
-    fVDs <- varRefsToVarDefs fsVDs varIds fSHs
+    fVDs <- varDefsFromExp (fSHs :& mm) fs
     gFuncDeclsToFuncDefs mempty fVDs fs
     where
-      mm' = fSHs :& mm
-      varDecls :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
-      varDecls = innerMap mm'
-      allLets :: [LetVarDecl]
-      allLets = fs ^.. cosmosOn biplate
-      -- All references in all the functions.
-      fsVRs :: [Loc VarRefE]
-      fsVRs = (fs ^.. cosmosOn biplate) ++ (asVarReflLoc . getLoc <$> allLets)
-      -- All variable declarations for this function.
-      fsVDs = Map.restrictKeys varDecls (Set.fromList fsVRs)
-      varIds :: Map (Loc VarDeclE) VarId
-      varIds = innerMap mm'
       -- | Generalized version of `funcDeclsToFuncDefs2`, which accumulates the
       -- results in the first parameter.
       gFuncDeclsToFuncDefs :: Map FuncId FuncDefInfo

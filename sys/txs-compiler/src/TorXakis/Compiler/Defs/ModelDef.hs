@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeFamilies     #-}
 module TorXakis.Compiler.Defs.ModelDef where
 
+import           Control.Monad.Error.Class          (liftEither)
 import           Data.List                          (nub, sortBy)
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
@@ -29,6 +30,7 @@ import           TorXakis.Compiler.Defs.BehExprDefs
 import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
+import           TorXakis.Compiler.Maps.VarRef
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.FuncDef
 import           TorXakis.Compiler.ValExpr.SortId
@@ -84,5 +86,6 @@ modelDeclToModelDef mm md = do
             NoExit  -> []
             Exit [] -> [ Set.singleton chanIdExit ]
             _       -> [] -- TODO: Ask jan, what should we return in this case? Error?
-    be   <- toBExpr mm'' (modelBExp md)
+    evds <- liftEither $ varDefsFromExp mm'' md
+    be   <- toBExpr mm'' evds (modelBExp md)
     return $ ModelDef insyncs outsyncs splsyncs be

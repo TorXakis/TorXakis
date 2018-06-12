@@ -32,11 +32,14 @@ import           ValExpr                            (ValExpr)
 import           VarId                              (VarId, varsort)
 
 import           TorXakis.Compiler.Data
+import           TorXakis.Compiler.Data.ProcDecl
+import           TorXakis.Compiler.Data.VarDecl
 import           TorXakis.Compiler.Defs.BehExprDefs
 import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
+import           TorXakis.Compiler.Maps.VarRef
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.Common
 import           TorXakis.Compiler.ValExpr.FuncDef
@@ -44,10 +47,6 @@ import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Compiler.ValExpr.VarId
 import           TorXakis.Parser.Data
-
-import           TorXakis.Compiler.Data.ProcDecl
-import           TorXakis.Compiler.Data.VarDecl
-import           TorXakis.Compiler.ValExpr.FuncDef
 
 procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
@@ -106,13 +105,14 @@ procDeclsToProcDefMap mm ps = do
                             :& fss
                             :& chIdsM ) body
           bvIds   <- mkVarIds bTypes body
-          b       <- toBExpr (  (bTypes `Map.union` paramTypes)
-                             :& Map.fromList (pvIds ++ bvIds)
-                             :& mm
-                             :& mpd'
-                             :& chDecls
-                             :& chIdsM
-                             ) body
+          let mm' = (bTypes `Map.union` paramTypes)
+                    :& Map.fromList (pvIds ++ bvIds)
+                    :& mm
+                    :& mpd'
+                    :& chDecls
+                    :& chIdsM
+          bvds <- liftEither $ varDefsFromExp mm' pd
+          b       <- toBExpr mm' bvds body
           -- NOTE that it is crucial that the order of the channel parameters
           -- declarations is preserved!
           procChIds <- traverse (chIdsM .@) (getLoc <$> procDeclChParams pd)
@@ -253,8 +253,10 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                       case vIds of
                           [] -> return []
                           v:_ -> do
+                              let mm' = (pvIds <.++> lVIds) :& mm
+                              evds <- liftEither $ varDefsFromExp mm' e
                               vExp <- liftEither $
-                                  expDeclToValExpr ((pvIds <.++> lVIds) :& mm) (varsort v) e
+                                  expDeclToValExpr_2 evds (varsort v) e
                               return (zip vIds (repeat vExp))
 
                   mkTransitions :: [StatId]
@@ -271,12 +273,12 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                             let
                                 allVIds = pvIds <.++> lVIds
                                 allVSIds = Map.map varsort allVIds
-                            ofr  <- toActOffer (  (chIds .& allVIds)
-                                               :& allVSIds
-                                               :& chDecls
-                                               :& mm
-                                               )
-                                               ofrD
+                                mm' = (chIds .& allVIds)
+                                      :& allVSIds
+                                      :& chDecls
+                                      :& mm
+                            ovds <- liftEither $ varDefsFromExp mm' ofrD
+                            ofr  <- toActOffer mm' ovds ofrD
                             upd  <- stUpdatesToVEnv allVIds updD
                             return $ Beh.Trans from ofr upd to
 
@@ -284,48 +286,48 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
 
 -- TODO: experiment
 
-procDeclsToProcDefMap_2 :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
-                       -> Map (Loc VarDeclE) VarId
-                       -> Map (Loc FuncDeclE) (Signature, Handler VarId)
-                       -> Map (Loc ProcDeclE) ProcInfo
-                       -> [ProcDecl]
-                       -> CompilerM (Map ProcId ProcDef)
-procDeclsToProcDefMap_2 vdecls vids fshs pinfs ps =
-    gProcDeclsToProcDefMap emptyMpd ps
-    where
-      emptyMpd = Map.empty :: Map ProcId ProcDef
-      gProcDeclsToProcDefMap :: Map ProcId ProcDef -- ^ Process definitions obtained so far.
-                             -> [ProcDecl]
-                             -> CompilerM (Map ProcId ProcDef)
-      gProcDeclsToProcDefMap pdefs rs = do
-          (ls, rs') <- traverseCatch mkpIdPDefM rs
-          case (ls, rs') of
-              ([], _) -> return $ Map.fromList rs' <> innerMap pdefs
-              (_, []) -> throwError Error
-                  { _errorType = ProcessNotDefined
-                  , _errorLoc = NoErrorLoc
-                  , _errorMsg = T.pack (show (snd <$> ls))
-                  }
-              (_, _ ) -> gProcDeclsToProcDefMap (Map.fromList rs' <.+> pdefs) (fst <$> ls)
+-- procDeclsToProcDefMap_2 :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
+--                        -> Map (Loc VarDeclE) VarId
+--                        -> Map (Loc FuncDeclE) (Signature, Handler VarId)
+--                        -> Map (Loc ProcDeclE) ProcInfo
+--                        -> [ProcDecl]
+--                        -> CompilerM (Map ProcId ProcDef)
+-- procDeclsToProcDefMap_2 vdecls vids fshs pinfs ps =
+--     gProcDeclsToProcDefMap emptyMpd ps
+--     where
+--       emptyMpd = Map.empty :: Map ProcId ProcDef
+--       gProcDeclsToProcDefMap :: Map ProcId ProcDef -- ^ Process definitions obtained so far.
+--                              -> [ProcDecl]
+--                              -> CompilerM (Map ProcId ProcDef)
+--       gProcDeclsToProcDefMap pdefs rs = do
+--           (ls, rs') <- traverseCatch mkpIdPDefM rs
+--           case (ls, rs') of
+--               ([], _) -> return $ Map.fromList rs' <> innerMap pdefs
+--               (_, []) -> throwError Error
+--                   { _errorType = ProcessNotDefined
+--                   , _errorLoc = NoErrorLoc
+--                   , _errorMsg = T.pack (show (snd <$> ls))
+--                   }
+--               (_, _ ) -> gProcDeclsToProcDefMap (Map.fromList rs' <.+> pdefs) (fst <$> ls)
 
-      mkpIdPDefM :: ProcDecl -> CompilerM (ProcId, ProcDef)
-      mkpIdPDefM pd = do
-          ProcInfo pId chIds pvIds <- pinfs .@ getLoc pd :: CompilerM ProcInfo
-          -- Scan for channel references and declarations
-          chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
-          let chIdsM = Map.fromList chIds
-              mpd' = Map.fromList $ zip (allProcIds pinfs) (repeat ())
-              fss = fst <$> fshs
+--       mkpIdPDefM :: ProcDecl -> CompilerM (ProcId, ProcDef)
+--       mkpIdPDefM pd = do
+--           ProcInfo pId chIds pvIds <- pinfs .@ getLoc pd :: CompilerM ProcInfo
+--           -- Scan for channel references and declarations
+--           chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
+--           let chIdsM = Map.fromList chIds
+--               mpd' = Map.fromList $ zip (allProcIds pinfs) (repeat ())
+--               fss = fst <$> fshs
 
-          b  <- toBExpr_2 (procDeclBody pd)
-          -- TODO: And we might need some of these maps (  vids
-          --               :& mpd'
-          --               :& chDecls
-          --               :& chIdsM
-          --               )
+--           b  <- toBExpr_2 (procDeclBody pd)
+--           -- TODO: And we might need some of these maps (  vids
+--           --               :& mpd'
+--           --               :& chDecls
+--           --               :& chIdsM
+--           --               )
 
-          -- NOTE that it is crucial that the order of the channel parameters
-          -- declarations is preserved!
-          procChIds <- traverse (chIdsM .@) (getLoc <$> procDeclChParams pd)
-          let pvIds' = snd <$> pvIds
-          return ( pId, ProcDef procChIds pvIds' b )
+--           -- NOTE that it is crucial that the order of the channel parameters
+--           -- declarations is preserved!
+--           procChIds <- traverse (chIdsM .@) (getLoc <$> procDeclChParams pd)
+--           let pvIds' = snd <$> pvIds
+--           return ( pId, ProcDef procChIds pvIds' b )
