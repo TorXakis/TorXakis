@@ -122,7 +122,7 @@ compileParsedDefs pd = do
     let allFSigs = funcIdAsSignature <$> allFids
     vdSortMap <- inferTypes (sIds :& decls :& allFSigs :& emptyVdMap) (allFuncs pd)
     -- Construct the variable declarations to @VarId@'s lookup table.
-    vIds <- generateVarIds (vdSortMap :& allFids) (allFuncs pd)
+    vIds <- generateVarIds vdSortMap (allFuncs pd)
 
     --
     -- UNDER REFACTOR!

@@ -6,11 +6,14 @@
 module TorXakis.Compiler.ValExpr.FuncDef where
 
 import           Control.Arrow                     (left, (&&&))
+import           Control.Lens                      ((^..))
+import           Data.Data.Lens                    (biplate)
 import           Data.Either                       (partitionEithers)
 import           Data.List                         (find)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
 import           Data.Monoid                       (mempty, (<>))
+import qualified Data.Set                          as Set
 import           Data.Text                         (Text)
 import qualified Data.Text                         as T
 import           GHC.Exts                          (fromList)
@@ -138,13 +141,17 @@ funcDeclToFuncDef2 mm fSHs f = left (,f) $ do
         -- TODO: make sure these maps are passed as parameter.
         varDecls :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
         varDecls = innerMap mm'
+        -- We are only interested in the variable references reachable from the current function.
+        thisFunVR :: [Loc VarRefE]
+        thisFunVR = f ^.. biplate
+        thisFunVD = Map.restrictKeys varDecls (Set.fromList thisFunVR)
         varIds :: Map (Loc VarDeclE) VarId
         varIds = innerMap mm'
         funcSHs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
         funcSHs = fSHs
-    -- varDefs <- varRefsToVarDefs varDecls varIds funcSHs
-    vExp <- expDeclToValExpr mm' (funcsort fid) (funcBody f)
-    -- vExp <- expDeclToValExpr_2 (locToSigHdlrMap <.+> mm) (funcsort fid) (funcBody f)
+    varDefs <- varRefsToVarDefs thisFunVD varIds funcSHs
+--    vExp <- expDeclToValExpr mm' (funcsort fid) (funcBody f)
+    vExp <- expDeclToValExpr_2 varDefs (funcsort fid) (funcBody f)
     let fdef = FuncDef pIds vExp
         -- We recalculate the handler to simplify constant expressions.
         fhandler =

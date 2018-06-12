@@ -258,10 +258,6 @@ instance HasTypedVars BExpDecl where
     inferVarTypes mm (LetBExp vss be) = do
         vssVarTypes <- foldM (inferLetVarTypes mm) [] vss
         beVarTypes  <- inferVarTypes (vssVarTypes <.++> mm) be
-
-        -- xs <- Map.toList <$> liftEither (gInferTypes mm vs)
-        -- ys <- inferVarTypes mm be
-
         return $ vssVarTypes ++ beVarTypes
     inferVarTypes mm (Pappl _ _ _ exs) =
         inferVarTypes mm exs
