@@ -233,7 +233,7 @@ cnectDeclsToTxsDefs mm cds =
                   vIds <- traverse questVIds chOffrs
                   -- TODO: make this map global once we put `inferVarTypes` and
                   -- `mkVarIds` at the top level.
-                  vExp <- liftEither $ expDeclToValExpr_2 civds sortIdString e
+                  vExp <- liftEither $ expDeclToValExpr civds sortIdString e
                   return $ ConnDtoW chId h p vIds vExp
               toConnDef (_, _, CodecItem _ (QuestD _) Encode) =
                   throwError Error

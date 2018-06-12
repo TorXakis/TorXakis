@@ -256,7 +256,7 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                               let mm' = (pvIds <.++> lVIds) :& mm
                               evds <- liftEither $ varDefsFromExp mm' e
                               vExp <- liftEither $
-                                  expDeclToValExpr_2 evds (varsort v) e
+                                  expDeclToValExpr evds (varsort v) e
                               return (zip vIds (repeat vExp))
 
                   mkTransitions :: [StatId]

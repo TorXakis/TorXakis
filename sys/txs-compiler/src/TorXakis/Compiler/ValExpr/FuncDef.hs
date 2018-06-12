@@ -100,7 +100,7 @@ funcDeclToFuncDef2 mm fSHs fVDs f = left (,f) $ do
     fid  <- mm .@@ getLoc f
     (sig, handler') <- fSHs .@@ getLoc f :: Either Error (Signature, Handler VarId)
     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
-    vExp <- expDeclToValExpr_2 fVDs (funcsort fid) (funcBody f)
+    vExp <- expDeclToValExpr fVDs (funcsort fid) (funcBody f)
     let fdef = FuncDef pIds vExp
         -- We recalculate the handler to simplify constant expressions.
         fhandler =

@@ -45,6 +45,7 @@ import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
+import           TorXakis.Compiler.Maps.VarRef
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Compiler.ValExpr.Common
 import           TorXakis.Compiler.ValExpr.FuncDef
@@ -56,7 +57,6 @@ toBExpr :: ( MapsTo Text SortId mm
            , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
            , MapsTo (Loc ChanDeclE) ChanId mm
            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-           , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
            , MapsTo ProcId () mm
            , MapsTo (Loc VarDeclE) SortId mm
@@ -72,7 +72,7 @@ toBExpr mm vrvds (LetBExp vss be) = do
     foldM letToBExpr be0 vss
     where
       letToBExpr be' vs = do
-          venv <- Map.fromList <$> traverse (vpair mm vrvds) vs
+          venv <- Map.fromList <$> traverse (vpair vrvds) vs
           return $ valueEnv venv be'
 toBExpr mm vrvds (Pappl n l crs exs) = do
     chIds <- chRefsToIds mm crs
@@ -85,7 +85,7 @@ toBExpr mm vrvds (Pappl n l crs exs) = do
     res <- forCatch (filter candidate $ keys @ProcId @() mm) $ \pId -> do
         let eSids = varsort <$> procvars pId
         vExps <- liftEither $
-            traverse (uncurry $ expDeclToValExpr_2 vrvds) $ zip eSids exs
+            traverse (uncurry $ expDeclToValExpr vrvds) $ zip eSids exs
         return (pId, procInst pId chIds vExps)
     case res of
         (_ , [(_, pInst)]) -> return pInst
@@ -116,7 +116,7 @@ toBExpr mm vrvds (Enable _ be0 (Accept _ ofrs be1)) = do
         fshs = innerMap mm
         fss = fst <$> fshs
     eSids <- exitSortIds <$> exitSort (fss :& mm) be0
-    ofrs' <- traverse (uncurry $ toChanOffer mm vrvds) $ zip eSids ofrs
+    ofrs' <- traverse (uncurry $ toChanOffer vrvds) $ zip eSids ofrs
     be1'  <- toBExpr mm vrvds be1
     return $ enable be0' ofrs' be1'
 toBExpr mm vrvds (Enable _ be0 be1) = do
@@ -148,7 +148,7 @@ toBExpr mm vrvds (Choice _ be0 be1) = do
     be1' <- toBExpr mm vrvds be1
     return $ choice (Set.fromList [be0', be1'])
 toBExpr mm vrvds (Guard g be) = do
-    g'  <- liftEither $ expDeclToValExpr_2 vrvds sortIdBool g
+    g'  <- liftEither $ expDeclToValExpr vrvds sortIdBool g
     be' <- toBExpr mm vrvds be
     return $ guard g' be'
 toBExpr mm vrvds (Hide _ cds be) = do
@@ -156,24 +156,19 @@ toBExpr mm vrvds (Hide _ cds be) = do
     be' <- toBExpr mm vrvds be
     return $ hide (Set.fromList chNameChIds) be'
 
-vpair :: ( MapsTo (Loc VarDeclE) VarId mm
-         , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
-         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm )
-      => mm
-      -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+vpair :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
       -> LetVarDecl
       -> CompilerM (VarId, ValExpr VarId)
-vpair mm vrvds vd = do
-    vId <- mm .@ getLoc vd
+vpair vrvds vd = do
+    vId <- liftEither (varIdForRef vrvds (asVarReflLoc (getLoc vd)))
     ex  <- liftEither $
-        expDeclToValExpr_2 vrvds (varsort vId) (varDeclExp vd)
+        expDeclToValExpr vrvds (varsort vId) (varDeclExp vd)
     return (vId, ex)
 
 toActOffer :: ( MapsTo Text SortId mm
               , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
               , MapsTo (Loc ChanDeclE) ChanId mm
               , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-              , MapsTo (Loc VarDeclE) VarId mm
               , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
               , MapsTo (Loc VarDeclE) SortId mm
               , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False )
@@ -184,7 +179,7 @@ toActOffer :: ( MapsTo Text SortId mm
 toActOffer mm vrvds (ActOfferDecl osd mc) = do
     os <- traverse (toOffer mm vrvds) osd
     c  <- fromMaybe (return . cstrConst . Cbool $ True)
-                    (liftEither . expDeclToValExpr_2 vrvds sortIdBool <$> mc)
+                    (liftEither . expDeclToValExpr vrvds sortIdBool <$> mc)
     -- Filter the internal actions (to comply with the current TorXakis compiler).
     let os' = filter ((chanIdIstep /=) . chanid) os
     return $ ActOffer (Set.fromList os') Set.empty c
@@ -192,10 +187,8 @@ toActOffer mm vrvds (ActOfferDecl osd mc) = do
 toOffer :: ( MapsTo Text SortId mm
            , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
            , MapsTo (Loc ChanDeclE) ChanId mm
-           , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo (Loc VarDeclE) SortId mm
            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-           , MapsTo (Loc VarDeclE) VarId mm
            , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
            , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False )
         => mm
@@ -214,27 +207,21 @@ toOffer mm vrvds (OfferDecl cr cods) = case chanRefName cr of
             fshs = innerMap mm
             fss = fst <$> fshs
         eSids <- traverse (offerSid (fss :& mm)) cods
-        ofrs  <- traverse (uncurry (toChanOffer mm vrvds))
+        ofrs  <- traverse (uncurry (toChanOffer vrvds))
                      (zip eSids cods)
         return $ Offer chanIdExit ofrs
     _      -> do
         cId  <- lookupChId mm (getLoc cr)
-        ofrs <- traverse (uncurry (toChanOffer mm vrvds))
+        ofrs <- traverse (uncurry (toChanOffer vrvds))
                      (zip (chansorts cId) cods)
         return $ Offer cId ofrs
 
-
-toChanOffer :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-               , MapsTo (Loc VarDeclE) VarId mm
-               , MapsTo (Loc VarDeclE) SortId mm
-               , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm )
-            => mm
-            -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+toChanOffer :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
             -> SortId -- ^ Expected sort id's the offer
             -> ChanOfferDecl
             -> CompilerM ChanOffer
-toChanOffer mm _ _ (QuestD vd) =
-    Quest  <$> mm .@ getLoc vd
-toChanOffer mm vrvds eSid (ExclD ex) = liftEither $
-    Exclam <$> expDeclToValExpr_2 vrvds eSid ex
+toChanOffer vrvds _ (QuestD vd) =
+    Quest  <$> liftEither (varIdForRef vrvds (asVarReflLoc (getLoc vd)))
+toChanOffer vrvds eSid (ExclD ex) = liftEither $
+    Exclam <$> expDeclToValExpr vrvds eSid ex
 

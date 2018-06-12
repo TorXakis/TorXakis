@@ -3,6 +3,7 @@
 -- | Functions to manipulate maps of variable references.
 module TorXakis.Compiler.Maps.VarRef where
 
+import           Control.Arrow            ((|||))
 import           Control.Lens             ((^..))
 import           Control.Lens.Plated      (cosmosOn)
 import           Data.Data                (Data)
@@ -15,6 +16,7 @@ import           FuncTable                (Handler, Signature)
 import           VarId                    (VarId)
 
 import           TorXakis.Compiler.Error
+import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Parser.Data
 
@@ -84,3 +86,19 @@ varRefsToVarDefs vdecls vids fshs = do
                 , _errorLoc = getErrorLoc l
                 , _errorMsg =  "varRefsToVarDefs: Signature-Handler not found."
                 }
+
+
+varIdForRef :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+            -> Loc VarRefE
+            -> Either Error VarId
+varIdForRef vrvds vr  = do
+    eVid <- vrvds .@@ vr
+    Right ||| err $ eVid
+    where
+      err :: [(Signature, Handler VarId)] -> Either Error VarId
+      err _ = Left Error
+              { _errorType = UndefinedRef
+              , _errorLoc = getErrorLoc vr
+              , _errorMsg = "VarId not found."
+              }
+
