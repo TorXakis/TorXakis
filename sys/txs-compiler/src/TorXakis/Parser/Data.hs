@@ -209,6 +209,9 @@ module TorXakis.Parser.Data
     )
 where
 
+import           Control.Lens.Plated     (Plated, plate)
+import           Data.Data.Lens          (uniplate)
+
 import           Control.Arrow           ((+++), (|||))
 import           Control.Lens            (Lens', (^..))
 import           Control.Lens.TH         (makeLenses)
@@ -236,6 +239,9 @@ data ParseTree t c = ParseTree
     , child    :: c
     } deriving (Show, Eq, Ord, Data)
 
+instance (Data t, Data c) => Plated (ParseTree t c) where
+    plate = uniplate
+
 newtype Name t = Name { toText :: Text } deriving (Show, Eq, Ord, Data)
 
 nodeNameT :: ParseTree t c -> Text
@@ -261,6 +267,9 @@ data Loc t
     -- generated per each automaton declaration.
     | ExtraAut Text (Loc t)
     deriving (Show, Eq, Ord, Data)
+
+instance Data t => Plated (Loc t) where
+    plate = uniplate
 
 -- | Change extract the location of the metadata, and change its type from 't'
 -- to 'u'. This is useful when defining parsed entities whose locations

@@ -325,10 +325,14 @@ parValDeclToMap_2 mm vs = Map.fromList <$>
 letValDeclToMap_2 :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
                   -> LetVarDecl
                   -> Either Error (VarId, ValExpr VarId)
-letValDeclToMap_2 vdefs vd = do
+letValDeclToMap_2 vdefs vd =
     -- TODO: introduce a function that checks whether the location is mapped
     -- onto a variable.
-    -- TODO: this requires that a variable declaration is also a reference!
-    let Just (Left vId) = Map.lookup (asVarReflLoc (getLoc vd)) vdefs
-    vdExp <- expDeclToValExpr_2 vdefs (varsort vId) (varDeclExp vd)
-    return (vId, vdExp)
+    case Map.lookup (asVarReflLoc (getLoc vd)) vdefs of
+        Just (Left vId) -> do
+            vdExp <- expDeclToValExpr_2 vdefs (varsort vId) (varDeclExp vd)
+            return (vId, vdExp)
+        -- TODO: give the appropriate errors.
+        Just (Right _) -> error $ "No variable id found for " ++ show vd ++ ". Got a function."
+        Nothing        -> error $ "No variable id found for " ++ show vd ++ " (and no function either)."
+

@@ -130,7 +130,9 @@ letRefToDecls (mm, xs) vs = do
     -- variable declared in 'vs', therefore the map 'mm' does not have to be
     -- augmented.
     ys <- mapRefToDecls mm (varDeclExp <$> vs)
-    return (letVds <.+> mm, xs ++ ys)
+    -- A variable declaration in a var expression refers to itself
+    let zs = zip (asVarReflLoc . getLoc <$> vs) (Left . getLoc <$> vs)
+    return (letVds <.+> mm, xs ++ ys ++ zs)
 
 instance HasVarReferences OfferDecl where
     mapRefToDecls mm (OfferDecl _ os) = mapRefToDecls mm os

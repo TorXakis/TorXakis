@@ -7,7 +7,8 @@ module TorXakis.Compiler.ValExpr.FuncDef where
 
 import           Control.Arrow                     (left, (&&&))
 import           Control.Lens                      ((^..))
-import           Data.Data.Lens                    (biplate)
+import           Control.Lens.Plated               (cosmosOn)
+import           Data.Data.Lens                    (biplate, template)
 import           Data.Either                       (partitionEithers)
 import           Data.List                         (find)
 import           Data.Map                          (Map)
@@ -142,13 +143,17 @@ funcDeclToFuncDef2 mm fSHs f = left (,f) $ do
         varDecls :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
         varDecls = innerMap mm'
         -- We are only interested in the variable references reachable from the current function.
+        -- Collect all the let variable declaration
+        allLets :: [LetVarDecl]
+        allLets = f ^.. cosmosOn biplate
         thisFunVR :: [Loc VarRefE]
-        thisFunVR = f ^.. biplate
+        thisFunVR = (f ^.. cosmosOn biplate) ++ (asVarReflLoc . getLoc <$> allLets)
         thisFunVD = Map.restrictKeys varDecls (Set.fromList thisFunVR)
         varIds :: Map (Loc VarDeclE) VarId
         varIds = innerMap mm'
         funcSHs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
         funcSHs = fSHs
+
     varDefs <- varRefsToVarDefs thisFunVD varIds funcSHs
 --    vExp <- expDeclToValExpr mm' (funcsort fid) (funcBody f)
     vExp <- expDeclToValExpr_2 varDefs (funcsort fid) (funcBody f)
