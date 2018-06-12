@@ -3,9 +3,6 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-     
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-
 module TestLPE
 (
 testLPEList
@@ -115,14 +112,14 @@ actOfferBx   = ActOffer {  offers = Set.singleton
             }
 
 -- action: B!x
-actOfferBExclamX :: ActOffer
-actOfferBExclamX   = ActOffer {  offers = Set.singleton
-                              Offer { chanid = chanIdB
-                                    , chanoffers = [Exclam vexprX]
-                              }
-                              , hiddenvars = Set.empty
-                              , constraint = cstrConst (Cbool True)
-            }
+-- actOfferBExclamX :: ActOffer
+-- actOfferBExclamX   = ActOffer {  offers = Set.singleton
+--                               Offer { chanid = chanIdB
+--                                     , chanoffers = [Exclam vexprX]
+--                               }
+--                               , hiddenvars = Set.empty
+--                               , constraint = cstrConst (Cbool True)
+--             }
 
 -- sorts, chanIds
 intSort :: SortId
