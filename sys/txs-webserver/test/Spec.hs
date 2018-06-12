@@ -229,6 +229,7 @@ spec = return $ do
                                           , partString "cnect" "Sut"
                                           , partString "purp&map" ""
                                           ] >>= check204NoContent
+                    threadDelay (10 ^ (4 :: Int))
                     let twentySteps = toJSON (NumberOfSteps 20)
                     post (testUrl sId) twentySteps >>= check204NoContent
                     post (openMessagesUrl sId) emptyP >>= check204NoContent

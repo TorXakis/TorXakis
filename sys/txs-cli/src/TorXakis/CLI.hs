@@ -101,25 +101,27 @@ startCLI = do
             cmd  = head tokens
             rest = tail tokens
         case map toLower cmd of
-            "#"       -> return ()
-            "echo"    -> outputStrLn $ unwords rest
-            "delay"   -> waitFor rest
-            "i"       -> lift (runExceptT info) >>= output
-            "info"    -> lift (runExceptT info) >>= output
-            "l"       -> lift (load rest) >>= output
-            "load"    -> lift (load rest) >>= output -- TODO: this will break if the file names contain a space.
-            "param"   -> lift (runExceptT $ param rest) >>= output
-            "stepper" -> subStepper rest >>= output
-            "step"    -> subStep rest >>= output
-            "tester"  -> tester rest >>= output
-            "test"    -> test rest >>= output
-            "time"    -> lift (runExceptT getTime) >>= output
-            "timer"   -> lift (runExceptT $ timer rest) >>= output
-            "val"     -> lift (runExceptT $ val rest) >>= output
-            "var"     -> lift (runExceptT $ var rest) >>= output
-            "eval"    -> lift (runExceptT $ eval rest) >>= output
-            "seed"    -> lift (runExceptT $ seed rest) >>= output
-            _         -> output $ "Unknown command: " ++ cmd
+            "#"         -> return ()
+            "echo"      -> outputStrLn $ unwords rest
+            "delay"     -> waitFor rest
+            "i"         -> lift (runExceptT info) >>= output
+            "info"      -> lift (runExceptT info) >>= output
+            "l"         -> lift (load rest) >>= output
+            "load"      -> lift (load rest) >>= output -- TODO: this will break if the file names contain a space.
+            "param"     -> lift (runExceptT $ param rest) >>= output
+            "simulator" -> simulator rest >>= output
+            "sim"       -> sim rest >>= output
+            "stepper"   -> subStepper rest >>= output
+            "step"      -> subStep rest >>= output
+            "tester"    -> tester rest >>= output
+            "test"      -> test rest >>= output
+            "time"      -> lift (runExceptT getTime) >>= output
+            "timer"     -> lift (runExceptT $ timer rest) >>= output
+            "val"       -> lift (runExceptT $ val rest) >>= output
+            "var"       -> lift (runExceptT $ var rest) >>= output
+            "eval"      -> lift (runExceptT $ eval rest) >>= output
+            "seed"      -> lift (runExceptT $ seed rest) >>= output
+            _           -> output $ "Unknown command: " ++ cmd
           where
             waitFor :: [String] -> InputT CLIM ()
             waitFor [n] = case readMaybe n :: Maybe Int of
@@ -138,6 +140,14 @@ startCLI = do
                 | otherwise = lift (startTester names) >>= output
             test :: [String] -> InputT CLIM ()
             test with = (lift . testStep . concat $ with) >>= output
+            simulator :: [String] -> InputT CLIM ()
+            simulator names
+                | null names || length names > 3 = outputStrLn "Usage: simulator <model> [<mapper>] <cnect>"
+                | otherwise = lift (startSimulator names) >>= output
+            sim :: [String] -> InputT CLIM ()
+            sim []  = lift (simStep "-1") >>= output
+            sim [n] = lift (simStep n) >>= output
+            sim _   = outputStrLn "Usage: sim [<step count>]"
             timer :: (MonadIO m, MonadReader Env m, MonadError String m)
                   => [String] -> m String
             timer [nm] = callTimer nm
