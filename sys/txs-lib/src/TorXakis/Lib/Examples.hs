@@ -239,7 +239,7 @@ testTesterWithSimulator = timeout (20 * seconds) $ do
             aSim <- async (printer sSim)
             _ <- load sSim cs
             _ <- setParam sSim "param_Sim_deltaTime" "1000"
-            _ <- async $ setSim "Model" "Sim" "" sSim
+            _ <- setSim "Model" "Sim" "" sSim
 
             sTest <- newSession
             aTest <- async (printer sTest)
@@ -247,10 +247,12 @@ testTesterWithSimulator = timeout (20 * seconds) $ do
             _ <- setParam sTest "param_Sut_deltaTime" "10000"
             _ <- setTest "Model" "Sut" "" sTest
 
-            rTest <- test sTest (NumberOfSteps 10)
-            putStrLn $ "Result of `test`: " ++ show rTest
+            threadDelay (1 * seconds) -- let simulator and tester initialize
+
             rSim <- sim sSim (NumberOfSteps 15)
             putStrLn $ "Result of `sim`: " ++ show rSim
+            rTest <- test sTest (NumberOfSteps 10)
+            putStrLn $ "Result of `test`: " ++ show rTest
 
             waitForVerdict sSim >>= print
             waitForVerdict sTest >>= print

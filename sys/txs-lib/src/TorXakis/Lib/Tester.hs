@@ -7,9 +7,10 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib.Tester where
 
+import           Control.Concurrent          (forkIO)
 import           Control.Concurrent.STM.TVar (readTVarIO, writeTVar)
 import           Control.Monad.Except        (throwError)
-import           Control.Monad.State         (lift, liftIO)
+import           Control.Monad.State         (lift, liftIO, void)
 import           Control.Monad.STM           (atomically)
 import qualified Data.Map.Strict             as Map
 import           Data.Semigroup              ((<>))
@@ -62,7 +63,7 @@ setTest mdlNm cnctNm purpMappNms s = runResponse $ do
                  []  -> return Nothing
                  _   -> throwError "Wrong or inconsistent parameters"
     if isConsistent mDef mADef mPDef cDef
-        then lift $ do
+        then lift $ void $ forkIO $ do
             st <- readTVarIO (s ^. sessionState)
             let fWCh = s ^. fromWorldChan
                 prms = st ^. sessionParams

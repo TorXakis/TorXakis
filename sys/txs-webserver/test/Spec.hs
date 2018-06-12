@@ -244,18 +244,54 @@ spec = return $ do
                     _ <- put (newSessionUrl sId) [ partFile "model.txs" "../../examps/LuckyPeople/spec/LuckyPeople.txs"
                                                  , partFile "purp.txs" "../../examps/LuckyPeople/spec/PurposeExamples.txs"
                                                  ]
+                    post (openMessagesUrl sId) emptyP >>= check204NoContent
+                    a <- async $ foldGet checkActions 0 (messagesUrl sId)
                     post (setTestUrl sId) [ partString "model" "Model"
                                           , partString "cnect" "Sut"
                                           , partString "purp&map" "PurposeExamples"
                                           ] >>= check204NoContent
+                    threadDelay (10 ^ (4 :: Int))
+
                     let fiftySteps = toJSON (NumberOfSteps 50)
                     post (testUrl sId) fiftySteps >>= check204NoContent
-                    post (openMessagesUrl sId) emptyP >>= check204NoContent
-                    a <- async $ foldGet checkActions 0 (messagesUrl sId)
                     threadDelay (2 * 10 ^ (6 :: Int))
+
                     post (closeMessagesUrl sId) emptyP >>= check204NoContent
                     totalSteps <- wait a
                     totalSteps `shouldBe` 36
+        describe "Simulator" $
+            it "Starts simulator & tester and tests 10 steps" $ do
+                    sSimId <- mkNewSession
+                    _ <- put (newSessionUrl sSimId) [partFile "model.txs" "../../examps/Echo/Echo.txs"]
+                    post (openMessagesUrl sSimId) emptyP >>= check204NoContent
+                    aSim <- async $ foldGet checkActions 0 (messagesUrl sSimId)
+                    _ <- put (paramUrl sSimId) [ partString "param_Sim_deltaTime" "100" ]
+                    post (setSimUrl sSimId) [ partString "model" "Model"
+                                            , partString "cnect" "Sim"
+                                            , partString "map"   ""
+                                            ] >>= check204NoContent
+
+                    sTestId <- mkNewSession
+                    _ <- put (newSessionUrl sTestId) [partFile "model.txs" "../../examps/Echo/Echo.txs"]
+                    post (openMessagesUrl sTestId) emptyP >>= check204NoContent
+                    aTest <- async $ foldGet checkActions 0 (messagesUrl sTestId)
+                    _ <- put (paramUrl sSimId) [ partString "param_Sut_deltaTime" "10000" ]
+                    post (setTestUrl sTestId) [ partString "model" "Model"
+                                              , partString "cnect" "Sut"
+                                              , partString "map"   ""
+                                              ] >>= check204NoContent
+                    threadDelay (10 ^ (4 :: Int))
+
+                    post (testUrl sTestId) (toJSON $ NumberOfSteps 10) >>= check204NoContent
+                    post (simUrl sSimId) (toJSON $ NumberOfSteps 15) >>= check204NoContent
+                    threadDelay (5 * 10 ^ (6 :: Int))
+
+                    post (closeMessagesUrl sSimId) emptyP >>= check204NoContent
+                    post (closeMessagesUrl sTestId) emptyP >>= check204NoContent
+                    testSteps <- wait aTest
+                    testSteps `shouldBe` 10
+                    simSteps <- wait aSim
+                    simSteps `shouldBe` 15
 
 check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
@@ -278,7 +314,7 @@ checkActions :: Int -> BS.ByteString -> IO Int
 checkActions steps bs = do
     let Just jsonBs  = BS.stripPrefix "data:" bs
         Just jsonObj = decodeStrict jsonBs
-    -- print bs
+    print bs
     case parseMaybe parseTag jsonObj of
         Just "AnAction" -> return $ steps + 1
         _               -> return steps
@@ -311,6 +347,12 @@ setTestUrl sId = Prelude.concat [host, "/sessions/", show sId, "/set-test"]
 testUrl :: Integer -> String
 testUrl sId = host ++ "/sessions/" ++ show sId ++ "/test/"
 
+setSimUrl :: Integer -> String
+setSimUrl sId = Prelude.concat [host, "/sessions/", show sId, "/set-sim"]
+
+simUrl :: Integer -> String
+simUrl sId = host ++ "/sessions/" ++ show sId ++ "/sim/"
+
 messagesUrl :: Integer -> String
 messagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages"
 
@@ -331,6 +373,9 @@ varsUrl sId = Prelude.concat [host, "/sessions/", show sId, "/vars"]
 
 evalUrl :: Integer -> String
 evalUrl sId = Prelude.concat [host, "/sessions/", show sId, "/eval"]
+
+paramUrl :: Integer -> String
+paramUrl sId = Prelude.concat [host, "/sessions/", show sId, "/params"]
 
 emptyP :: [Part]
 emptyP = [partText "" ""]

@@ -91,7 +91,6 @@ runIOCE s act = do
         Left eMsg -> throwError . T.pack . show $ eMsg
         Right res -> return res
 
-
 -- | Run a read-only IOC action which doesn't modify the state.
 --
 -- Can be run in parallel with a runIOC(E) or one or more runReadOnlyIOC

@@ -30,6 +30,8 @@ import           Endpoints.Stepper           (SetStepperEP, StepEP, setStep,
                                               step)
 import           Endpoints.Tester            (SetTestEP, TestOutEP, TestStepEP,
                                               startTester, testOut, testStep)
+import           Endpoints.Simulator            (SetSimEP, SimStepEP,
+                                              startSimulator, simStep)
 import           Endpoints.Time              (TimeEP, getTime)
 import           Endpoints.Timer             (TimerEP, timer)
 import           Endpoints.Upload            (UploadEP, upload)
@@ -49,6 +51,8 @@ type ServiceAPI
     :<|> SetTestEP
     :<|> TestStepEP
     :<|> TestOutEP
+    :<|> SetSimEP
+    :<|> SimStepEP
     :<|> ParseActionEP
     :<|> OpenMessagesEP
     :<|> CloseMessagesEP
@@ -86,6 +90,8 @@ server env
     :<|> startTester env
     :<|> testStep env
     :<|> testOut env
+    :<|> startSimulator env
+    :<|> simStep env
     :<|> parseAction env
     :<|> openMessages env
     :<|> closeMessages env

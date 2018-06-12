@@ -7,9 +7,10 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib.Simulator where
 
+import           Control.Concurrent          (forkIO)
 import           Control.Concurrent.STM.TVar (readTVarIO, writeTVar)
 import           Control.Monad.Except        (throwError)
-import           Control.Monad.State         (lift, liftIO)
+import           Control.Monad.State         (lift, liftIO, void)
 import           Control.Monad.STM           (atomically)
 import qualified Data.Map.Strict             as Map
 import           Data.Semigroup              ((<>))
@@ -43,7 +44,7 @@ setSim mdlNm cnctNm mappNm s = runResponse $ do
                 return (tDefs ^. ix cnctNm)
     let mADef = tDefs ^. ix mappNm
     if isConsistent mDef mADef cDef
-        then lift $ do
+        then lift $ void $ forkIO $ do
             st <- readTVarIO (s ^. sessionState)
             let fWCh = s ^. fromWorldChan
                 prms = st ^. sessionParams
