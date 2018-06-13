@@ -7,20 +7,21 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib.Tester where
 
-import           Control.Concurrent          (forkIO)
-import           Control.Concurrent.STM.TVar (readTVarIO, writeTVar)
-import           Control.Monad.Except        (throwError)
-import           Control.Monad.State         (lift, liftIO, void)
-import           Control.Monad.STM           (atomically)
-import qualified Data.Map.Strict             as Map
-import           Data.Semigroup              ((<>))
-import qualified Data.Set                    as Set
-import qualified Data.Text                   as T
-import           Lens.Micro                  ((^.))
-import           Name                        (Name)
+import           Control.Concurrent.STM.TQueue (writeTQueue)
+import           Control.Concurrent.STM.TVar   (readTVarIO, writeTVar)
+import           Control.Monad.Except          (throwError)
+import           Control.Monad.State           (lift, liftIO)
+import           Control.Monad.STM             (atomically)
+import qualified Data.Map.Strict               as Map
+import           Data.Semigroup                ((<>))
+import qualified Data.Set                      as Set
+import qualified Data.Text                     as T
+import           Lens.Micro                    ((^.))
+import           Name                          (Name)
 
-import           TorXakis.Lens.TxsDefs       (ix)
-import qualified TxsCore                     as Core
+import           EnvData                       (Msg (TXS_CORE_USER_INFO))
+import           TorXakis.Lens.TxsDefs         (ix)
+import qualified TxsCore                       as Core
 import qualified TxsDefs
 
 import           TorXakis.Lib.Common
@@ -63,12 +64,14 @@ setTest mdlNm cnctNm purpMappNms s = runResponse $ do
                  []  -> return Nothing
                  _   -> throwError "Wrong or inconsistent parameters"
     if isConsistent mDef mADef mPDef cDef
-        then lift $ void $ forkIO $ do
+        then lift $ do
             st <- readTVarIO (s ^. sessionState)
             let fWCh = s ^. fromWorldChan
                 prms = st ^. sessionParams
                 Just (deltaString,_) = Map.lookup "param_Sut_deltaTime" prms
                 deltaTime = read deltaString
+            atomically $ writeTQueue (s ^. sessionMsgs)
+                       $ TXS_CORE_USER_INFO "Tester connecting to SUT..."
             (wcd,tids) <- initSocketWorld s fWCh cDef
             atomically $ do
                 writeTVar (s ^. wConnDef) wcd

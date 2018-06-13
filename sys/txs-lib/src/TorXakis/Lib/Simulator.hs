@@ -7,19 +7,20 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib.Simulator where
 
-import           Control.Concurrent          (forkIO)
-import           Control.Concurrent.STM.TVar (readTVarIO, writeTVar)
-import           Control.Monad.Except        (throwError)
-import           Control.Monad.State         (lift, liftIO, void)
-import           Control.Monad.STM           (atomically)
-import qualified Data.Map.Strict             as Map
-import           Data.Semigroup              ((<>))
-import qualified Data.Set                    as Set
-import           Lens.Micro                  ((^.))
-import           Name                        (Name)
+import           Control.Concurrent.STM.TQueue (writeTQueue)
+import           Control.Concurrent.STM.TVar   (readTVarIO, writeTVar)
+import           Control.Monad.Except          (throwError)
+import           Control.Monad.State           (lift, liftIO)
+import           Control.Monad.STM             (atomically)
+import qualified Data.Map.Strict               as Map
+import           Data.Semigroup                ((<>))
+import qualified Data.Set                      as Set
+import           Lens.Micro                    ((^.))
+import           Name                          (Name)
 
-import           TorXakis.Lens.TxsDefs       (ix)
-import qualified TxsCore                     as Core
+import           EnvData                       (Msg (TXS_CORE_USER_INFO))
+import           TorXakis.Lens.TxsDefs         (ix)
+import qualified TxsCore                       as Core
 import qualified TxsDefs
 
 import           TorXakis.Lib.Common
@@ -44,12 +45,14 @@ setSim mdlNm cnctNm mappNm s = runResponse $ do
                 return (tDefs ^. ix cnctNm)
     let mADef = tDefs ^. ix mappNm
     if isConsistent mDef mADef cDef
-        then lift $ void $ forkIO $ do
+        then lift $ do
             st <- readTVarIO (s ^. sessionState)
             let fWCh = s ^. fromWorldChan
                 prms = st ^. sessionParams
                 Just (deltaString,_) = Map.lookup "param_Sim_deltaTime" prms
                 deltaTime = read deltaString
+            atomically $ writeTQueue (s ^. sessionMsgs)
+                       $ TXS_CORE_USER_INFO "Simulator waiting for connection..."
             (wcd,tids) <- initSocketWorld s fWCh cDef
             atomically $ do
                 writeTVar (s ^. wConnDef) wcd

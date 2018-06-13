@@ -5,7 +5,9 @@ where
 
 
 import           Control.Monad.IO.Class    (MonadIO, liftIO)
-import           System.Log.Formatter      (simpleLogFormatter)
+import           Data.Time                 (defaultTimeLocale, formatTime,
+                                            getCurrentTime)
+import           System.Log.Formatter      (tfLogFormatter)
 import           System.Log.Handler        (setFormatter)
 import           System.Log.Handler.Simple (fileHandler)
 import           System.Log.Logger         (Priority (INFO), addHandler, infoM,
@@ -18,9 +20,11 @@ appName = "txs-cli"
 initL :: MonadIO m => m ()
 initL = liftIO $ do
     removeAllHandlers
-    lh <- fileHandler "txs-cli.log" INFO
+    time <- getCurrentTime
+    let timeStr = formatTime defaultTimeLocale "%Y%m%d%H%M%S%3q" time
+    lh <- fileHandler ("txs-cli_" ++ timeStr ++ ".log") INFO
     let h = setFormatter lh
-           (simpleLogFormatter "[$time : $loggername : $prio] $msg")
+           (tfLogFormatter "%Y%m%d_%H%M%S.%3q" "[$time : $loggername : $prio] $msg")
     updateGlobalLogger appName
         (setLevel INFO)
     updateGlobalLogger appName (addHandler h)

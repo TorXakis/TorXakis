@@ -7,7 +7,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeSynonymInstances       #-}
 module TorXakis.CLI
@@ -34,12 +33,14 @@ import           Data.Char                        (toLower)
 import           Data.Either                      (isLeft)
 import           Data.Either.Utils                (maybeToEither)
 import           Data.Foldable                    (traverse_)
+import           Data.Maybe                       (fromMaybe)
 import           Data.String.Utils                (strip)
 import qualified Data.Text                        as T
 import           Lens.Micro                       ((^.))
 import           System.Console.Haskeline
 import           System.Console.Haskeline.History (addHistoryRemovingAllDupes)
-import           System.Directory                 (getHomeDirectory)
+import           System.Directory                 (doesFileExist,
+                                                   getHomeDirectory)
 import           System.FilePath                  ((</>))
 import           Text.Read                        (readMaybe)
 
@@ -74,21 +75,23 @@ startCLI = do
     cli = do
         Log.info "Starting the main loop..."
         outputStrLn "Welcome to TorXakis!"
-        withMessages $ withInterrupt $ handleInterrupt (outputStrLn "Ctrl+C: quitting") loop
+        withMessages $ withInterrupt $ handleInterrupt (output "Ctrl+C: quitting") loop
     loop :: InputT CLIM ()
     loop = do
         minput <- getInputLine (defaultConf ^. prompt)
+        Log.info $ "Processing input line: " ++ show (fromMaybe "<no input>" minput)
         case minput of
             Nothing -> return ()
             Just "" -> loop
             Just "q" -> return ()
-            Just "quit" -> return () -- stop TorXakis completely
-            Just "exit" -> return () -- TODO: exit the current command run of TorXakis; when a file is run, exit ends that run while quit exits TorXakis
-            Just "x" -> return ()    -- ^
+            Just "quit" -> return ()
+            Just "exit" -> return ()
+            Just "x" -> return ()
             Just "?" -> showHelp
             Just "h" -> showHelp
             Just "help" -> showHelp
-            Just input -> do dispatch input
+            Just input -> do modifyHistory $ addHistoryRemovingAllDupes (strip input)
+                             dispatch input
                              loop
     showHelp :: InputT CLIM ()
     showHelp = do
@@ -96,24 +99,25 @@ startCLI = do
         loop
     dispatch :: String -> InputT CLIM ()
     dispatch inputLine = do
-        modifyHistory $ addHistoryRemovingAllDupes (strip inputLine)
+        Log.info $ "Dispatching input: " ++ inputLine
         let tokens = words inputLine
             cmd  = head tokens
             rest = tail tokens
         case map toLower cmd of
             "#"         -> return ()
-            "echo"      -> outputStrLn $ unwords rest
+            "echo"      -> output $ unwords rest
             "delay"     -> waitFor rest
             "i"         -> lift (runExceptT info) >>= output
             "info"      -> lift (runExceptT info) >>= output
             "l"         -> lift (load rest) >>= output
             "load"      -> lift (load rest) >>= output -- TODO: this will break if the file names contain a space.
             "param"     -> lift (runExceptT $ param rest) >>= output
-            "simulator" -> simulator rest >>= output
+            "run"       -> run rest
+            "simulator" -> simulator rest
             "sim"       -> sim rest >>= output
-            "stepper"   -> subStepper rest >>= output
+            "stepper"   -> subStepper rest
             "step"      -> subStep rest >>= output
-            "tester"    -> tester rest >>= output
+            "tester"    -> tester rest
             "test"      -> test rest >>= output
             "time"      -> lift (runExceptT getTime) >>= output
             "timer"     -> lift (runExceptT $ timer rest) >>= output
@@ -121,33 +125,34 @@ startCLI = do
             "var"       -> lift (runExceptT $ var rest) >>= output
             "eval"      -> lift (runExceptT $ eval rest) >>= output
             "seed"      -> lift (runExceptT $ seed rest) >>= output
-            _           -> output $ "Unknown command: " ++ cmd
+            _           -> output $ "Can't dispatch command: " ++ cmd
+
           where
             waitFor :: [String] -> InputT CLIM ()
             waitFor [n] = case readMaybe n :: Maybe Int of
                             Nothing -> output $ "Error: " ++ show n ++ " doesn't seem to be an integer."
                             Just s  -> liftIO $ threadDelay (s * 10 ^ (6 :: Int))
-            waitFor _ = outputStrLn "Usage: delay <seconds>"
+            waitFor _ = output "Usage: delay <seconds>"
             -- | Sub-command stepper.
             subStepper :: [String] -> InputT CLIM ()
             subStepper [mName] = lift (stepper mName) >>= output
-            subStepper _ = outputStrLn "This command is not supported yet."
+            subStepper _       = output "This command is not supported yet."
             -- | Sub-command step.
-            subStep with = (lift . step . concat $ with) >>= output
+            subStep = lift . step . concat
             tester :: [String] -> InputT CLIM ()
             tester names
-                | null names || length names > 4 = outputStrLn "Usage: tester <model> [<purpose>] [<mapper>] <cnect>"
+                | null names || length names > 4 = output "Usage: tester <model> [<purpose>] [<mapper>] <cnect>"
                 | otherwise = lift (startTester names) >>= output
-            test :: [String] -> InputT CLIM ()
-            test with = (lift . testStep . concat $ with) >>= output
+            test :: [String] -> InputT CLIM (Either String ())
+            test = lift . testStep . concat
             simulator :: [String] -> InputT CLIM ()
             simulator names
-                | null names || length names > 3 = outputStrLn "Usage: simulator <model> [<mapper>] <cnect>"
+                | null names || length names > 3 = output "Usage: simulator <model> [<mapper>] <cnect>"
                 | otherwise = lift (startSimulator names) >>= output
-            sim :: [String] -> InputT CLIM ()
-            sim []  = lift (simStep "-1") >>= output
-            sim [n] = lift (simStep n) >>= output
-            sim _   = outputStrLn "Usage: sim [<step count>]"
+            sim :: [String] -> InputT CLIM (Either String ())
+            sim []  = lift (simStep "-1")
+            sim [n] = lift (simStep n)
+            sim _   = return $ Left "Usage: sim [<step count>]"
             timer :: (MonadIO m, MonadReader Env m, MonadError String m)
                   => [String] -> m String
             timer [nm] = callTimer nm
@@ -173,21 +178,31 @@ startCLI = do
                  => [String] -> m ()
             seed [s] = setSeed s
             seed _   = throwError "Usage: seed <n>"
+            run :: [String] -> InputT CLIM ()
+            run [filePath] = do
+                exists <- liftIO $ doesFileExist filePath
+                if exists
+                    then do fileContents <- liftIO $ readFile filePath
+                            let script = lines fileContents
+                            mapM_ dispatch script
+                    else output $ "File " ++ filePath ++ " does not exist."
+            run _ = output "Usage: run <file path>"
     withMessages :: InputT CLIM () -> InputT CLIM ()
     withMessages action = do
         Log.info "Starting printer async..."
         printer <- getExternalPrint
         ch <- liftIO newChan
         env <- lift ask
-        Log.info "Enabling messages..."
+        sId <- lift $ asks sessionId
+        Log.info $ "Enabling messages for session " ++ show sId ++ "..."
         res <- lift openMessages
         when (isLeft res) (error $ show res)
-        sId <- lift $ asks sessionId
-        Log.info "Subscribing to messages..."
         producer <- liftIO $ async $
             sseSubscribe env ch $ concat ["sessions/", show sId, "/messages"]
         consumer <- liftIO $ async $ forever $ do
+            Log.info "Waiting for message..."
             msg <- readChan ch
+            Log.info $ "Printing message: " ++ show msg
             traverse_ (printer . ("<< " ++)) $ pretty (asTxsMsg msg)
         Log.info "Triggering action..."
         action `finally` do
@@ -200,7 +215,7 @@ startCLI = do
             asTxsMsg :: BS.ByteString -> Either String Msg
             asTxsMsg msg = do
                 msgData <- maybeToEither dataErr $
-                    BS.stripPrefix "data:" msg
+                    BS.stripPrefix (BS.pack "data:") msg
                 eitherDecodeStrict msgData
                     where
                     dataErr = "The message from TorXakis did not contain a \"data:\" field: "
@@ -210,7 +225,11 @@ startCLI = do
 class Outputable v where
     -- | Perform an output action in the @InputT@ monad.
     output :: v -> InputT CLIM ()
-    output v = traverse_ outputStrLn (pretty v)
+    output v = traverse_ logAndOutput (pretty v)
+      where
+        logAndOutput s = do
+            Log.info $ "Showing output: " ++ s
+            outputStrLn s
 
     -- | Format the value as list of strings, to be printed line by line in the
     -- command line.

@@ -43,6 +43,7 @@ library:
   - aeson
   - base
   - bytestring
+  - directory
   - exceptions
   - filepath
   - haskeline
@@ -57,9 +58,9 @@ library:
   - http-client
   - pipes
   - pipes-aeson
-  - raw-strings-qq
-  - directory
   - process
+  - raw-strings-qq
+  - time
   # TorXakis specific dependencies
   - defs
   - coreenv

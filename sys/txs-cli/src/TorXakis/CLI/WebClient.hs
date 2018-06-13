@@ -52,6 +52,7 @@ import           TorXakis.Lib                  (StepType (AnAction, NumberOfStep
 import           Endpoints.Parse               (ActionText (ActionText))
 
 import           TorXakis.CLI.Env
+import qualified TorXakis.CLI.Log              as Log
 import           TorXakis.CLI.WebClient.Common
 import           TorXakis.CLI.WebClient.Eval
 import           TorXakis.CLI.WebClient.Params
@@ -153,9 +154,11 @@ openMessages = do
     ignoreSuccess $
         envPost (concat ["sessions/", show sId, "/messages/open/"]) noContent
 
-sseSubscribe :: Env -> Chan BSS.ByteString -> String -> IO (Either String ())
-sseSubscribe env ch suffix =
-    safe $ foldGet act () (host ++ suffix)
+sseSubscribe :: Env -> Chan BSS.ByteString -> String -> IO ()
+sseSubscribe env ch suffix = do
+    Log.info "Subscribing to messages..."
+    res <- safe (foldGet act () (host ++ suffix))
+    Log.info ("Exited foldGet that subscribed to messages, with: " ++ show res)
     where
       host = txsHost env
       act _ = writeChan ch

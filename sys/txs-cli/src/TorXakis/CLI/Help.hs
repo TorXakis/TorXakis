@@ -19,6 +19,9 @@ seed <n>                       : set random seed to <n>
 delay <n>                      : wait for <n> seconds
 echo <text>                    : echo the input <text>
 # <text>                       : comment, <text> is ignored
+time                           : give the current time
+timer <name>                   : set or read timer <name>
+run <file path>                : run TorXakis script from <file path>
 
 var [<variable-declarations>]  : show/[declare] variables
 val [<value-definitions>]      : show/[define] values
