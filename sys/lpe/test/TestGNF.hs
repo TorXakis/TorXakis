@@ -9,101 +9,15 @@ module TestGNF
 testGNFList
 )
 where
-import TranslatedProcDefs
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
--- import Control.Exception
--- import Control.Monad
 import Test.HUnit
 
+import TranslatedProcDefs
 import TxsDefs
-import ProcId
-import ChanId
-import SortId
-import qualified Data.Text         as T
-import VarId
-import ConstDefs
-import ValExpr
-
-
 import LPEfunc
--- import LPE
-
----------------------------------------------------------------------------
--- Helper functions
----------------------------------------------------------------------------
-
-procIdGen :: String -> [ChanId] -> [VarId] -> ProcId
-procIdGen name' chans vars' = ProcId   {  ProcId.name       = T.pack name'
-                                        , ProcId.unid       = 111
-                                        , ProcId.procchans  = chans
-                                        , ProcId.procvars   = vars'
-                                        , ProcId.procexit   = NoExit
-                                    }
-
-varIdX :: VarId
-varIdX = VarId (T.pack "x") 33 intSort
-vexprX :: VExpr
-vexprX = cstrVar varIdX
-vexpr1 :: VExpr
-vexpr1 = cstrConst (Cint 1)
-
-
--- action: A?x
-actOfferAx :: ActOffer
-actOfferAx   = ActOffer {  offers = Set.singleton
-                                        Offer { chanid = chanIdA
-                                              , chanoffers = [Quest varIdX]
-                                        }
-                        , hiddenvars = Set.empty
-                        , constraint = cstrConst (Cbool True)
-            }
--- action: A!1
-actOfferA1 :: ActOffer
-actOfferA1   = ActOffer {  offers = Set.singleton
-                                        Offer { chanid = chanIdA
-                                              , chanoffers = [Exclam vexpr1]
-                                        }
-                        , hiddenvars = Set.empty
-                        , constraint = cstrConst (Cbool True)
-            }
-
--- action: B!1
-actOfferB1 :: ActOffer
-actOfferB1   = ActOffer {  offers = Set.singleton
-                                        Offer { chanid = chanIdB
-                                              , chanoffers = [Exclam vexpr1]
-                                        }
-                        , hiddenvars = Set.empty
-                        , constraint = cstrConst (Cbool True)
-            }
-
--- action: B?x
-actOfferBx :: ActOffer
-actOfferBx   = ActOffer {  offers = Set.singleton
-                                        Offer { chanid = chanIdB
-                                              , chanoffers = [Quest varIdX]
-                                        }
-                        , hiddenvars = Set.empty
-                        , constraint = cstrConst (Cbool True)
-            }
-
--- sorts, chanIds
-intSort :: SortId
-intSort = SortId {  SortId.name = T.pack "Int"
-                  , SortId.unid = 1}
-
-chanIdA :: ChanId
-chanIdA = ChanId    { ChanId.name = T.pack "A"
-                    , ChanId.unid = 2
-                    , ChanId.chansorts = [intSort]
-                    }
-chanIdB :: ChanId
-chanIdB = ChanId    { ChanId.name = T.pack "B"
-                    , ChanId.unid = 3
-                    , ChanId.chansorts = [intSort]
-                    }
+import TestDefinitions
 
 ---------------------------------------------------------------------------
 -- Tests
