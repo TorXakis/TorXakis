@@ -32,7 +32,6 @@ import           Data.Data
 import           Data.Set        (Set)
 import           GHC.Generics    (Generic)
 
-import           ConstDefs
 import           CstrId
 import           FuncId
 import           Id
@@ -40,6 +39,7 @@ import           Product
 import           Sum
 import           SortId
 import           SortOf
+import           Const (Const)
 import           Variable
 
 

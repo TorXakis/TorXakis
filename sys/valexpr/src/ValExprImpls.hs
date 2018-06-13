@@ -84,7 +84,7 @@ import qualified Data.Set        as Set
 import qualified Data.Text       as T
 import           Text.Regex.TDFA
 
-import           ConstDefs
+import           Const
 import           CstrId
 import qualified FreeMonoidX     as FMX
 import           FuncDef
@@ -116,7 +116,7 @@ cstrFunc fis fi arguments =
 -- Preconditions are /not/ checked.
 cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
 cstrCstr c a = if all isConst a
-                then cstrConst (Cstr c (map toConst a) )
+                then cstrConst (Ccstr c (map toConst a) )
                 else ValExpr (Vcstr c a)
     where   toConst :: ValExpr v -> Const
             toConst (view -> Vconst v) = v
@@ -125,9 +125,9 @@ cstrCstr c a = if all isConst a
 -- | Is the provided value expression made by the ADT constructor with CstrId?
 -- Preconditions are /not/ checked.
 cstrIsCstr :: CstrId -> ValExpr v -> ValExpr v
-cstrIsCstr c1 (view -> Vcstr c2 _)         = cstrConst (Cbool (c1 == c2) )
-cstrIsCstr c1 (view -> Vconst (Cstr c2 _)) = cstrConst (Cbool (c1 == c2) )
-cstrIsCstr c e                             = ValExpr (Viscstr c e)
+cstrIsCstr c1 (view -> Vcstr c2 _)          = cstrConst (Cbool (c1 == c2) )
+cstrIsCstr c1 (view -> Vconst (Ccstr c2 _)) = cstrConst (Cbool (c1 == c2) )
+cstrIsCstr c e                              = ValExpr (Viscstr c e)
 
 -- | Apply ADT Accessor of constructor with CstrId on field with given position on the provided value expression.
 -- Preconditions are /not/ checked.
@@ -136,7 +136,7 @@ cstrAccess c1 p1 (view -> Vcstr c2 fields) =
     if c1 == c2 -- prevent crashes due to model errors
         then fields!!p1
         else error ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on instance from constructor " ++ show c2)
-cstrAccess c1 p1 (view -> Vconst (Cstr c2 fields)) =
+cstrAccess c1 p1 (view -> Vconst (Ccstr c2 fields)) =
     if c1 == c2 -- prevent crashes due to model errors
         then cstrConst (fields!!p1)
         else error ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on value from constructor " ++ show c2)

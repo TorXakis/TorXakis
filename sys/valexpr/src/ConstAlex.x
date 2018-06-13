@@ -4,7 +4,7 @@
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  ValueAlex
+-- Module      :  ConstAlex
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -14,9 +14,9 @@
 --
 -- Tokenize Value response.
 -----------------------------------------------------------------------------
-module ValueAlex
+module ConstAlex
 ( Token(..)
-, valueLexer
+, constLexer
 )
 
 where
@@ -67,8 +67,8 @@ data  Token  =  Tname             AlexPosn  String
    deriving (Eq,Show)
 
 -- | Value lexer.
-valueLexer :: String -> [Token]
-valueLexer = alexScanTokens
+constLexer :: String -> [Token]
+constLexer = alexScanTokens
 }
 
 -- ----------------------------------------------------------------------------------------- --

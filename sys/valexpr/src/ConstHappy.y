@@ -10,29 +10,29 @@ See LICENSE at root directory of this repository.
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  ValueHappy
+-- Module      :  ConstHappy
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
--- Maintainer  :  pierre.vandelaar@tno.nl (Embedded Systems Innovation by TNO)
+-- Maintainer  :  pierre.vandelaar@tno.nl (ESI)
 -- Stability   :  experimental
 -- Portability :  portable
 --
 -- Parse Value response.
 -----------------------------------------------------------------------------
-module ValueHappy
-( valueParser
-, Value(..)
+module ConstHappy
+( ParseConst(..)
+, constParser
 )
 where
-import ValueAlex (Token(..), valueLexer)
+import ConstAlex (Token(..), constLexer)
 import Data.Text (Text)
 import qualified Data.Text as T
 }
 -- ----------------------------------------------------------------------------------------- --
 --  happy preamble
 
-%name      happyValue       Value
+%name      happyConst       Const
 %tokentype { Token }
 %error     { parseError }
 
@@ -58,24 +58,24 @@ import qualified Data.Text as T
 -- The only reason we used left recursion is that Happy is more efficient at parsing left-recursive rules; 
 
             
-Values  :: { [Value] }
+Consts  :: { [ParseConst] }
         : 
             { [] }
-        | Value
+        | Const
             { [$1] }
-        | Values "," Value 
+        | Consts "," Const 
             { $1 ++ [ $3 ] }
 
                 
-Value   :: { Value }
+Const   :: { ParseConst }
         : bool
-            { ValueBool $1 }
+            { Pbool $1 }
         | integer
-            { ValueInt $1 }
+            { Pint $1 }
         | string
-            { ValueString $ T.pack (init (tail $1)) }
-        | name "(" Values ")"
-            { ValueADT (T.pack $1) $3 }
+            { Pstring $ T.pack (init (tail $1)) }
+        | name "(" Consts ")"
+            { Pcstr (T.pack $1) $3 }
 
 -- ----------------------------------------------------------------------------------------- --
 -- uninterpreted haskell postamble
@@ -87,16 +87,16 @@ parseError _ = error "Parse Error"
 
 noerror = ()
 
--- | Data structure for Values.
-data  Value = ValueADT    Text [Value]
-            | ValueBool   Bool
-            | ValueInt    Integer
-            | ValueString Text
+-- | Data structure for Parse Const.
+data  ParseConst = Pbool   Bool
+                 | Pint    Integer
+                 | Pstring Text
+                 | Pcstr   Text [ParseConst]
      deriving (Eq,Ord,Read,Show)
 
--- | Value Parser.
-valueParser :: [Token] -> Value
-valueParser = happyValue
+-- | Constant Value Parser.
+constParser :: [Token] -> ParseConst
+constParser = happyConst
 }
 -- ----------------------------------------------------------------------------------------- --
 -- end uninterpreted haskell postamble
