@@ -25,14 +25,18 @@ val [<value-definitions>]      : show/[define] values
 eval <value-expression>        : evaluate the (closed) <value-expression>
 
 load <file path>               : load TorXakis model definitions to the session
-tester <model> [<purpose>]     : start testing with model <mod> and connection <cnect>
-       [<mapper>] <cnect>        using possible test purpose <purp> and/or mapper <map>
-test <action>                  : make a test step identified by (visible) input <action>
-test                           : make a test step by observing output/quiescence
-test <n>                       : make <n> random test steps
 stepper <model>                : start stepping with model <model> where <model>
                                  is a model in model definitions which has been
                                  loaded with `load` command
 step <action>                  : make a step identified by <action>
 step [<n>]                     : make <n>/1 random steps
+tester <model> [<purpose>]     : start testing with model <model> and connection
+       [<mapper>] <cnect>        <cnect> using optional test purpose <purpose>
+                                 and/or mapper <mapper>
+test <action>                  : make a test step identified by (visible) input <action>
+test                           : make a test step by observing output/quiescence
+test <n>                       : make <n> random test steps
+simulator <model> [<mapper>]   : start simulating with model <model> and
+          <cnect>                connection <cnect> using optional mapper <mapper>
+sim [<n>]                      : make <n>/[unbounded] random simulation steps
 |]
