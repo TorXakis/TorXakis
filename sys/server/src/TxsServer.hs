@@ -406,6 +406,13 @@ cmdVal args = do
          cmdsIntpr
        else do
 
+         ((uid',venv'),e) <- lift $ lift $ catch
+                               ( let p = compileUnsafe $
+                                         valdefsParser sigs [] (_id uid + 1) args
+                                 in return $!! (p,"")
+                               )
+                               ( \e -> return ((uid,Map.empty),show (e::ErrorCall)))
+
          -- ((uid',venv'),e) <- lift $ lift $ catch
          --                       ( let p = TxsHappy.valdefsParser
          --                                   ( TxsAlex.Csigs sigs
@@ -416,17 +423,6 @@ cmdVal args = do
          --                          in return $!! (p,"")
          --                       )
          --                       ( \e -> return ((uid,Map.empty),show (e::ErrorCall)))
-
-         ((uid',venv'),e) <- lift $ lift $ catch
-                               ( let p = TxsHappy.valdefsParser
-                                           ( TxsAlex.Csigs sigs
-                                           : TxsAlex.Cvarenv []
-                                           : TxsAlex.Cunid (_id uid + 1)
-                                           : TxsAlex.txsLexer args
-                                           )
-                                  in return $!! (p,"")
-                               )
-                               ( \e -> return ((uid,Map.empty),show (e::ErrorCall)))
          if  e /= ""
            then do
              modify $ \env' -> env' { IOS.uid = uid' }

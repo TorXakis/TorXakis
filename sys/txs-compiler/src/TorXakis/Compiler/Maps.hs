@@ -4,6 +4,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE TypeOperators              #-}
 
@@ -99,6 +101,20 @@ determineF mm ls aSids mRSid =
           return $ sortArgs sig == aSids &&
                    fromMaybe True ((sortRet sig ==) <$> mRSid)
 
+-- | Select the function definitions that matches the given arguments and return
+-- types.
+determineF_2 :: [Signature]
+             -> [SortId]        -- ^ Arguments SortId
+             -> Maybe SortId    -- ^ Return Sort, if known.
+             -> [Signature]
+determineF_2 sigs aSids mRSid =
+    filter funcMatches sigs
+    where
+      funcMatches :: Signature -> Bool
+      funcMatches sig = sortArgs sig == aSids &&
+                        fromMaybe True ((sortRet sig ==) <$> mRSid)
+
+
 -- | Determine the signature and the handler based on the sort arguments and
 -- the expected return type (if any).
 determineSH :: [(Signature, Handler VarId)]
@@ -140,12 +156,13 @@ findFuncDecl mm l = Left ||| cErr ||| Right $ lookup l mm
             , _errorMsg  = "Could not function declaration."
             }
 
-findFuncDecl_2 :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+findFuncDefs :: forall a b . (Typeable a, Typeable b)
+               => Map (Loc VarRefE) (Either a b)
                -> Loc VarRefE
-               -> Either Error [(Signature, Handler VarId)]
-findFuncDecl_2 vdefs l = Left ||| cErr ||| Right $ lookup l vdefs
+               -> Either Error b
+findFuncDefs vdefs l = Left ||| cErr ||| Right $ lookup l vdefs
     where
-      cErr :: VarId -> Either Error a
+      cErr :: a -> Either Error b
       cErr _ = Left err
       err = Error
             { _errorType = FunctionNotDefined
@@ -231,6 +248,24 @@ closure2 m0 m1 = foldl maybeAddPair Map.empty (Map.toList m0)
     where
       maybeAddPair acc (k, v) =
           maybe acc (\w -> Map.insert k w acc) (Map.lookup v m1)
+
+joins :: forall a b c . (HasErrorLoc b, Ord b, Show b, Typeable b, Typeable c)
+      => Map a [b]
+      -> Map b c
+      -> Either Error (Map a [c])
+joins a2bs b2c = Map.traverseWithKey (const $ traverse (b2c .@@)) a2bs
+
+leftValuesOnly :: Ord a => Map a (Either b c) -> Map a b
+leftValuesOnly = Map.foldlWithKey keepLeft Map.empty
+    where
+      keepLeft acc a (Left b)  = Map.insert a b acc
+      keepLeft acc a (Right _) = acc
+
+rightValuesOnly :: Ord a => Map a (Either b c) -> Map a c
+rightValuesOnly = Map.foldlWithKey keepRight Map.empty
+    where
+      keepRight acc _ (Left _)  = acc
+      keepRight acc a (Right c) = Map.insert a c acc
 
 -- | Channels referred in the model
 usedChIdMap :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm

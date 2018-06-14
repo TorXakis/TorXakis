@@ -65,7 +65,7 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
         ve2 <- expDeclToValExpr vdefs eSid ex2
         return $ cstrITE (cstrAnd (Set.fromList [ve0])) ve1 ve2
     Fappl _ l exs -> do
-        shs <- findFuncDecl_2 vdefs l
+        shs <- findFuncDefs vdefs l
         case partitionEithers (tryMkValExpr <$> shs) of
             (ls, []) -> Left Error
                         { _errorType = UndefinedRef
