@@ -5,6 +5,7 @@ module TorXakis.Parser.ValExprDecl where
 import           Data.Char                (isPrint)
 import           Data.Text                (Text)
 import qualified Data.Text                as T
+import           GHC.Exts                 (fromList)
 import           Text.Parsec              (many, many1, notFollowedBy, oneOf,
                                            optionMaybe, parserFail, satisfy,
                                            sepBy, try, (<?>), (<|>))
@@ -61,11 +62,11 @@ letExpP = do
 -- | Parse a list of value declarations (where each value declaration is a list
 -- of the form 'x0 = v0, ..., xn=vn'), which allow to introduce values
 -- sequentially.
-letSeqVarDeclsP :: TxsParser [[LetVarDecl]]
+letSeqVarDeclsP :: TxsParser [ParLetVarDecl]
 letSeqVarDeclsP = letVarDeclsP `sepBy` txsSymbol ";"
 
-letVarDeclsP :: TxsParser [LetVarDecl]
-letVarDeclsP = letVarDeclP `sepBy` txsSymbol ","
+letVarDeclsP :: TxsParser ParLetVarDecl
+letVarDeclsP = fromList <$> letVarDeclP `sepBy` txsSymbol ","
 
 letVarDeclP :: TxsParser LetVarDecl
 letVarDeclP = do

@@ -333,32 +333,62 @@ valdefsParser :: Sigs VarId
               -> Int
               -> String
               -> CompilerM (Id, Map VarId (ValExpr VarId))
-valdefsParser sIds fDefs unid str = do undefined
-    -- ls <- liftEither $ parse 0 "" str letVarDeclsP
-    -- setUnid unid
---     let
---         allFIds = Map.keys fDefs
---         -- We cannot refer to a variable previously declared
---         lsVDs = Map.empty :: Map Text (Loc VarDeclE)
---         lsFDs = mkFuncDecls allFIds
---         lsFIds = mkFuncIds allFIds
---         mm =  sIds
---            :& fDefs
---            :& lsFDs
---            :& lsFIds
---     lsVRs  <- Map.fromList <$>
---         mapRefToDecls (lsVDs :& lsFDs) (varDeclExp <$> ls)
---     let
---         -- We don't have any external variables we can use.
---         lsEVSIds = Map.empty :: Map (Loc VarDeclE) SortId
---         lsEVVIds = Map.empty :: Map (Loc VarDeclE) VarId
---         mm' = lsVRs :& lsEVSIds :& lsEVVIds :& mm
---     lVSIds <- liftEither $ letInferTypes mm' Map.empty ls
---     lVIds  <- mkVarIds (lVSIds <.+> mm') ls
-    -- vEnv   <- liftEither $
-    --     parValDeclToMap2 (lVSIds <.+> (lVIds <.++> mm')) ls
---     unid'  <- getUnid
---     return (unid', vEnv)
+valdefsParser sigs vids unid str = do
+    ls <- liftEither $ parse 0 "" str letVarDeclsP
+    setUnid unid
+
+    --
+    -- TODO: factor out duplication w.r.t @vexprParser@
+    --
+
+    let
+        vlocs :: [(Loc VarDeclE, VarId)]
+        vlocs = zip (varIdToLoc <$> vids) vids
+
+        text2vdloc :: Map Text (Loc VarDeclE)
+        text2vdloc = Map.fromList $
+                     zip (VarId.name . snd <$> vlocs) (fst <$> vlocs)
+
+        text2sh :: [(Text, (Signature, Handler VarId))]
+        text2sh = do
+            (t, shmap) <- Map.toList . toMap . func $ sigs
+            (s, h) <- Map.toList shmap
+            return (t, (s, h))
+
+
+    floc2sh <- forM text2sh $ \(t, (s, h)) -> do
+        i <- getNextId
+        return (PredefLoc t i, (s, h))
+
+    let
+        text2fdloc :: Map Text [Loc FuncDeclE]
+        text2fdloc = Map.fromListWith (++) $
+            zip (fst <$> text2sh) (pure . fst <$> floc2sh)
+        tsids :: Map Text SortId
+        tsids = sort sigs
+        vsids :: Map (Loc VarDeclE) SortId
+        vsids = Map.fromList . fmap (second varsort) $ vlocs
+        fsigs :: Map (Loc FuncDeclE) Signature
+        fsigs = Map.fromList $ fmap (second fst) floc2sh
+
+    vdecls <- Map.fromList <$> mapRefToDecls (text2vdloc :& text2fdloc) ls
+    let  mm = tsids :& vsids :& fsigs :& vdecls
+    vsids' <- Map.fromList <$> inferVarTypes mm ls
+    vvids  <- Map.fromList <$> mkVarIds (vsids' <.+> vsids) ls
+    let mm' = vdecls
+            :& vvids
+            :& Map.fromList floc2sh
+
+    --
+    -- TODO: factor out duplication w.r.t @vexprParser@
+    --
+
+    vrvds <- liftEither $ varDefsFromExp mm' ls
+
+    venv <- liftEither $ parValDeclToMap vrvds ls
+
+    unid'  <- getUnid
+    return (Id unid', venv)
 
 mkFuncDecls :: [FuncId] -> Map Text [Loc FuncDeclE]
 mkFuncDecls fs = Map.fromListWith (++) $ zip (FuncId.name <$> fs)
@@ -400,32 +430,26 @@ vexprParser sigs vids unid str = do
         text2fdloc :: Map Text [Loc FuncDeclE]
         text2fdloc = Map.fromListWith (++) $
             zip (fst <$> text2sh) (pure . fst <$> floc2sh)
-
-    vdecls <- Map.fromList <$> mapRefToDecls (text2vdloc :& text2fdloc) eDecl
-
-    let
         tsids :: Map Text SortId
         tsids = sort sigs
         vsids :: Map (Loc VarDeclE) SortId
         vsids = Map.fromList . fmap (second varsort) $ vlocs
         fsigs :: Map (Loc FuncDeclE) Signature
         fsigs = Map.fromList $ fmap (second fst) floc2sh
-        mm = tsids :& vsids :& fsigs :& vdecls
 
+    vdecls <- Map.fromList <$> mapRefToDecls (text2vdloc :& text2fdloc) eDecl
+    let  mm = tsids :& vsids :& fsigs :& vdecls
     vsids' <- Map.fromList <$> inferVarTypes mm eDecl
     vvids  <- Map.fromList <$> mkVarIds (vsids' <.+> vsids) eDecl
-    let
-        mm' = vsids' <.+> mm
-
-    eSid  <- liftEither $ inferExpTypes mm' eDecl >>= getUniqueElement
-
-    let
-        mm'' = vdecls
+    let mm' = vdecls
             :& vvids
             :& Map.fromList floc2sh
+    vrvds <- liftEither $ varDefsFromExp mm' eDecl
 
-    vrvds <- liftEither $ varDefsFromExp mm'' eDecl
+    let mm'' = vsids' <.+> mm
+    eSid  <- liftEither $ inferExpTypes mm'' eDecl >>= getUniqueElement
     vExp  <- liftEither $ expDeclToValExpr vrvds eSid eDecl
+
     unid' <- getUnid
     return (Id unid', vExp)
 

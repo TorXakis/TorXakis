@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE OverloadedStrings      #-}
 {-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE TypeFamilies           #-}
 module TorXakis.Parser.Data
     ( St
     , mkState
@@ -89,6 +90,7 @@ module TorXakis.Parser.Data
     , LetVarDecl
     , varDeclExp
     , letVarDeclSortName
+    , ParLetVarDecl (ParLetVarDecl)
     -- ** Models
     , ModelDecl
     , mkModelDecl
@@ -209,16 +211,16 @@ module TorXakis.Parser.Data
     )
 where
 
-import           Control.Lens.Plated     (Plated, plate)
-import           Data.Data.Lens          (uniplate)
-
 import           Control.Arrow           ((+++), (|||))
 import           Control.Lens            (Lens', (^..))
+import           Control.Lens.Plated     (Plated, plate)
 import           Control.Lens.TH         (makeLenses)
 import           Data.Data               (Data)
+import           Data.Data.Lens          (uniplate)
 import           Data.Data.Lens          (biplate)
 import           Data.Set                (Set)
 import           Data.Text               (Text)
+import           GHC.Exts                (IsList, Item, fromList, toList)
 
 import           TorXakis.Compiler.Error
 
@@ -485,7 +487,7 @@ data ExpChild = VarRef (Name VarRefE) (Loc VarRefE)
               -- Here 'x' and 'y' cannot be used in the expressions of the
               -- first list, but it can be used in the expressions of the
               -- second.
-              | LetExp [[LetVarDecl]] ExpDecl
+              | LetExp [ParLetVarDecl] ExpDecl
               | If ExpDecl ExpDecl ExpDecl
               | Fappl (Name VarRefE) (Loc VarRefE) [ExpDecl] -- ^ Function application. A function is applied
                                                              -- to a list of expressions.
@@ -503,8 +505,10 @@ data Const = BoolConst Bool
 expLetVarDecls :: ExpDecl -> [[LetVarDecl]]
 expLetVarDecls ParseTree { child = VarRef _ _  } = []
 expLetVarDecls ParseTree { child = ConstLit _  } = []
-expLetVarDecls ParseTree { child = LetExp vs e } =
-    vs ++ expLetVarDecls e ++ concatMap (concatMap (expLetVarDecls . varDeclExp)) vs
+expLetVarDecls ParseTree { child = LetExp vs e }
+    =  (toList <$> vs)
+    ++ expLetVarDecls e
+    ++ concatMap (concatMap (expLetVarDecls . varDeclExp)) (toList <$> vs)
 expLetVarDecls ParseTree { child = If e0 e1 e2 } =
     expLetVarDecls e0 ++ expLetVarDecls e1 ++ expLetVarDecls e2
 expLetVarDecls ParseTree { child = Fappl _ _ exs } =
@@ -520,7 +524,7 @@ childExps ParseTree { child = LetExp _ e }     = [e]
 childExps ParseTree { child = If ex0 ex1 ex2 } = [ex0, ex1, ex2]
 childExps ParseTree { child = Fappl _ _ exs }  = exs
 
-mkLetExpDecl :: [[LetVarDecl]] -> ExpDecl -> Loc ExpDeclE -> ExpDecl
+mkLetExpDecl :: [ParLetVarDecl] -> ExpDecl -> Loc ExpDeclE -> ExpDecl
 mkLetExpDecl vss subEx l = mkExpDecl l (LetExp vss subEx)
 
 mkExpDecl :: Loc ExpDeclE -> ExpChild -> ExpDecl
@@ -541,6 +545,13 @@ letVarDeclSortName vd = do
 
 mkLetVarDecl :: Text -> Maybe OfSort -> ExpDecl -> Loc VarDeclE -> LetVarDecl
 mkLetVarDecl n ms subEx m = ParseTree (Name n) VarDeclE m (ms, subEx)
+
+newtype ParLetVarDecl = ParLetVarDecl [LetVarDecl] deriving (Eq, Ord, Show, Data)
+
+instance IsList ParLetVarDecl where
+    type Item ParLetVarDecl = LetVarDecl
+    fromList = ParLetVarDecl
+    toList (ParLetVarDecl ls) = ls
 
 mkITEExpDecl :: Loc ExpDeclE -> ExpDecl -> ExpDecl -> ExpDecl -> ExpDecl
 mkITEExpDecl l ex0 ex1 ex2 = mkExpDecl l (If ex0 ex1 ex2)
@@ -651,7 +662,7 @@ data BExpDecl
     -- | '>->' (action prefix) operator.
     | ActPref  ActOfferDecl BExpDecl
     -- | 'LET' declarations for behavior expressions.
-    | LetBExp  [[LetVarDecl]] BExpDecl
+    | LetBExp  [ParLetVarDecl] BExpDecl
     -- | Process instantiation.
     | Pappl (Name ProcRefE) (Loc ProcRefE) [ChanRef] [ExpDecl]
     -- | Parallel operators.

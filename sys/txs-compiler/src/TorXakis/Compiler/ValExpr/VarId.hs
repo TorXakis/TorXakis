@@ -4,6 +4,7 @@ module TorXakis.Compiler.ValExpr.VarId where
 
 import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
+import           GHC.Exts                 (toList)
 
 import           Id                       (Id (Id))
 import           SortId                   (SortId)
@@ -44,9 +45,9 @@ varIdsFromExpDecl :: (MapsTo (Loc VarDeclE) SortId mm)
                   => mm -> ExpDecl -> CompilerM [(Loc VarDeclE, VarId)]
 varIdsFromExpDecl mm ex = case expChild ex of
     LetExp vs subEx -> do
-        vdMap  <- concat <$> traverse (traverse (varIdFromVarDecl mm)) vs
+        vdMap  <- concat <$> traverse (traverse (varIdFromVarDecl mm)) (toList <$> vs)
         vdExpMap <- concat <$>
-            traverse (fmap concat . traverse (varIdsFromExpDecl mm) . fmap varDeclExp) vs
+            traverse (fmap concat . traverse (varIdsFromExpDecl mm) . fmap varDeclExp) (toList <$> vs)
         subMap <- varIdsFromExpDecl mm subEx
         return $ vdMap ++ subMap ++ vdExpMap
     _ ->
@@ -70,6 +71,9 @@ instance DeclaresVariables BExpDecl where
     mkVarIds mm (Choice _ be0 be1)    = (++) <$> mkVarIds mm be0 <*> mkVarIds mm be1
     mkVarIds mm (Guard ex be)         = (++) <$> mkVarIds mm ex <*> mkVarIds mm be
     mkVarIds mm (Hide _ _ be)         = mkVarIds mm be
+
+instance DeclaresVariables ParLetVarDecl where
+    mkVarIds mm = mkVarIds mm . toList
 
 instance DeclaresVariables ActOfferDecl where
     mkVarIds mm (ActOfferDecl os mEx) = (++) <$> mkVarIds mm os <*> mkVarIds mm mEx

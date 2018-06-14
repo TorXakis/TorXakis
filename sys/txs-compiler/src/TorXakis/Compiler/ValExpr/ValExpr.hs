@@ -10,6 +10,7 @@ import qualified Data.Map                            as Map
 import           Data.Semigroup                      ((<>))
 import qualified Data.Set                            as Set
 import qualified Data.Text                           as T
+import           GHC.Exts                            (toList)
 
 import           FuncDef                             (FuncDef)
 import           FuncId                              (FuncId, funcargs,
@@ -94,10 +95,10 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
                   return $ h vexs
 
 parValDeclToMap :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
-                  -> [LetVarDecl]
+                  -> ParLetVarDecl
                   -> Either Error (Map VarId (ValExpr VarId))
 parValDeclToMap mm vs = Map.fromList <$>
-    traverse (letValDeclToMap mm) vs
+    traverse (letValDeclToMap mm) (toList vs)
 
 letValDeclToMap :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
                   -> LetVarDecl

@@ -17,6 +17,7 @@ import qualified Data.Set                          as Set
 import           Data.Text                         (Text)
 import qualified Data.Text                         as T
 import           Data.Traversable                  (for)
+import           GHC.Exts                          (toList)
 
 import           ChanId                            (ChanId (ChanId), chansorts,
                                                     name, unid)
@@ -69,7 +70,7 @@ toBExpr _ vrvds Stop             = return stop
 toBExpr mm vrvds (ActPref ao be) = actionPref <$> toActOffer mm vrvds ao <*> toBExpr mm vrvds be
 toBExpr mm vrvds (LetBExp vss be) = do
     be0 <- toBExpr mm vrvds be
-    foldM letToBExpr be0 vss
+    foldM letToBExpr be0 (toList <$> vss)
     where
       letToBExpr be' vs = do
           venv <- Map.fromList <$> traverse (vpair vrvds) vs

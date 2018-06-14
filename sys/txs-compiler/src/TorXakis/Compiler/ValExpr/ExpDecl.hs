@@ -5,7 +5,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module TorXakis.Compiler.ValExpr.ExpDecl where
 
-
 import           Control.Arrow             (second, (+++))
 import           Control.Monad             (foldM)
 import           Control.Monad.Error.Class (catchError, liftEither)
@@ -14,6 +13,7 @@ import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
 import           Data.Semigroup            ((<>))
 import           Data.Text                 (Text)
+import           GHC.Exts                  (toList)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
@@ -61,7 +61,7 @@ instance HasVarReferences BExpDecl where
           -- the form 'Ch ? v':
           aoVds = mkVdMap (actOfferDecls ao)
     mapRefToDecls mm (LetBExp vss be) = do
-        (mm', letRefs) <- foldM letRefToDecls (mm, []) vss
+        (mm', letRefs) <- foldM letRefToDecls (mm, []) (toList <$> vss)
         subExRefs      <- mapRefToDecls mm' be
         return $ letRefs ++ subExRefs
         -- let letVds = mkVdMap vss
@@ -110,7 +110,7 @@ instance HasVarReferences ExpDecl where
         ConstLit _ ->
             return []
         LetExp vss subEx -> do
-            (mm', letRefs) <- foldM letRefToDecls (mm, []) vss
+            (mm', letRefs) <- foldM letRefToDecls (mm, []) (toList <$> vss)
             subExRefs <- mapRefToDecls mm' subEx
             return $ letRefs ++ subExRefs
         If ex0 ex1 ex2 ->
@@ -119,6 +119,9 @@ instance HasVarReferences ExpDecl where
             dLocs   <- mm .@!! (toText n, rLoc)
             vrVDExs <- mapRefToDecls mm exs
             return $ (rLoc, Right dLocs) : vrVDExs
+
+instance HasVarReferences ParLetVarDecl where
+    mapRefToDecls mm = fmap snd . letRefToDecls (mm, []) . toList
 
 letRefToDecls :: ( MapsTo Text (Loc VarDeclE) mm
                  , MapsTo Text [Loc FuncDeclE] mm )

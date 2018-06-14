@@ -10,7 +10,7 @@
 {-# LANGUAGE UndecidableInstances  #-}
 module TorXakis.Compiler.ValExpr.SortId where
 
-import           Control.Arrow                    (left, (|||))
+import           Control.Arrow                    (left, (+++), (|||))
 import           Control.Monad                    (foldM, when)
 import           Control.Monad.Error.Class        (liftEither, throwError)
 import           Data.Either                      (partitionEithers)
@@ -22,6 +22,7 @@ import           Data.Monoid                      ((<>))
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
 import           Data.Traversable                 (for)
+import           GHC.Exts                         (toList)
 import           GHC.Exts                         (fromList)
 import           Prelude                          hiding (lookup)
 
@@ -163,7 +164,7 @@ inferExpTypes mm ex =
         return $ -- The type of any is any sort known!
             maybe (values @Text mm) pure (sortIdConst c)
     LetExp vss subEx -> do
-        vdsSid <- foldM (letVarTypes mm) Map.empty vss
+        vdsSid <- foldM (letVarTypes mm) Map.empty (toList <$> vss)
         inferExpTypes (vdsSid <.+> mm) subEx
     -- TODO: shouldn't if be also a function? Defined in terms of the Haskell's @if@ operator.
     If e0 e1 e2 -> do
@@ -266,7 +267,7 @@ instance ( MapsTo Text SortId mm
         ys <- inferVarTypes (Map.fromList xs <.+> mm) be
         return $ xs ++ ys
     inferVarTypes mm (LetBExp vss be) = do
-        vssVarTypes <- foldM (inferLetVarTypes mm) [] vss
+        vssVarTypes <- foldM (inferLetVarTypes mm) [] (toList <$> vss)
         beVarTypes  <- inferVarTypes (vssVarTypes <.++> mm) be
         return $ vssVarTypes ++ beVarTypes
     inferVarTypes mm (Pappl _ _ _ exs) =
@@ -326,25 +327,10 @@ instance ( MapsTo Text SortId mm
          ) => HasTypedVars mm ActOfferDecl where
     inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx
 
-instance ( MapsTo Text SortId mm
-         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
-         , MapsTo (Loc ChanDeclE) ChanId mm
-         , MapsTo (Loc VarDeclE) SortId mm
-         , MapsTo (Loc FuncDeclE) Signature mm
-         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-         , MapsTo ProcId () mm
-         , HasTypedVars mm e ) => HasTypedVars mm (Maybe e) where
+instance ( HasTypedVars mm e ) => HasTypedVars mm (Maybe e) where
     inferVarTypes mm = maybe (return []) (inferVarTypes mm)
 
-instance ( MapsTo Text SortId mm
-         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
-         , MapsTo (Loc ChanDeclE) ChanId mm
-         , MapsTo (Loc VarDeclE) SortId mm
-         , MapsTo (Loc FuncDeclE) Signature mm
-         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-         , MapsTo ProcId () mm
-         , HasTypedVars mm e
-         ) => HasTypedVars mm [e] where
+instance ( HasTypedVars mm e ) => HasTypedVars mm [e] where
     inferVarTypes mm es = concat <$> traverse (inferVarTypes mm) es
 
 instance ( MapsTo Text SortId mm
@@ -356,11 +342,25 @@ instance ( MapsTo Text SortId mm
         VarRef {} -> return []
         ConstLit {} ->  return []
         LetExp vss subEx -> do
-            vssVarTypes <- foldM (inferLetVarTypes mm) [] vss
+            vssVarTypes <- foldM (inferLetVarTypes mm) [] (toList <$> vss)
             subExVarTypes <- inferVarTypes (vssVarTypes <.++> mm) subEx
             return $ subExVarTypes ++ vssVarTypes
         If e0 e1 e2 -> concat <$> traverse (inferVarTypes mm) [e0, e1, e2]
         Fappl _ _ exs -> concat <$> traverse (inferVarTypes mm) exs
+
+instance (MapsTo Text SortId mm
+         , MapsTo (Loc VarDeclE) SortId mm
+         , MapsTo (Loc FuncDeclE) Signature mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         ) => HasTypedVars mm LetVarDecl where
+    inferVarTypes mm = liftEither. (fst +++ pure) . inferVarDeclType mm
+
+instance ( MapsTo Text SortId mm
+         , MapsTo (Loc VarDeclE) SortId mm
+         , MapsTo (Loc FuncDeclE) Signature mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         ) => HasTypedVars mm ParLetVarDecl where
+    inferVarTypes mm = inferLetVarTypes mm [] . toList
 
 inferLetVarTypes :: ( MapsTo Text SortId mm
                     , MapsTo (Loc VarDeclE) SortId mm
