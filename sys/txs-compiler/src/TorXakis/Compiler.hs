@@ -22,6 +22,7 @@ import           Data.Text                          (Text)
 import           Data.Tuple                         (swap)
 
 import           ChanId                             (ChanId)
+import qualified ChanId
 import           CstrId                             (CstrId)
 import           FuncDef                            (FuncDef (FuncDef))
 import           FuncId                             (FuncId (FuncId), name)
@@ -37,11 +38,11 @@ import           SortId                             (SortId, sortIdBool,
                                                      sortIdInt, sortIdRegex,
                                                      sortIdString)
 import           StdTDefs                           (stdFuncTable, stdTDefs)
-import           TxsDefs                            (ProcDef, ProcId, TxsDefs,
-                                                     cnectDefs, fromList,
-                                                     funcDefs, mapperDefs,
-                                                     modelDefs, procDefs,
-                                                     purpDefs, union)
+import           TxsDefs                            (BExpr, ProcDef, ProcId,
+                                                     TxsDefs, cnectDefs,
+                                                     fromList, funcDefs,
+                                                     mapperDefs, modelDefs,
+                                                     procDefs, purpDefs, union)
 import qualified TxsDefs                            (empty)
 import           ValExpr                            (ValExpr,
                                                      ValExprView (Vfunc, Vite),
@@ -69,6 +70,7 @@ import           TorXakis.Compiler.ValExpr.ValExpr
 import           TorXakis.Compiler.ValExpr.VarId
 
 import           TorXakis.Compiler.Data.ProcDecl
+import           TorXakis.Compiler.Defs.BehExprDefs
 import           TorXakis.Compiler.Defs.FuncTable
 import           TorXakis.Compiler.Maps.VarRef
 import           TorXakis.Parser
@@ -458,3 +460,87 @@ fIdToLoc fId = PredefLoc (FuncId.name fId) (_id . FuncId.unid $ fId)
 
 varIdToLoc :: VarId -> Loc VarDeclE
 varIdToLoc vId = PredefLoc (VarId.name vId) (_id . VarId.unid $ vId)
+
+chIdToLoc :: ChanId -> Loc ChanDeclE
+chIdToLoc chId = PredefLoc (ChanId.name chId) (_id . ChanId.unid $ chId)
+
+bexprParser :: Sigs VarId
+            -> [ChanId]
+            -> [VarId]
+            -> Int
+            -> String
+            -> CompilerM (Id, BExpr)
+bexprParser sigs chids vids unid str = do
+    bDecl <- liftEither $ parse 0 "" str bexpDeclP
+    setUnid unid
+
+    -- These additional maps are needed w.r.t. @vexprParser@
+    let
+        cd2chids :: Map (Loc ChanDeclE) ChanId
+        cd2chids = Map.fromList $ zip (chIdToLoc <$> chids) chids
+
+        text2chids :: Map Text (Loc ChanDeclE)
+        text2chids = Map.fromList $ zip (ChanId.name <$> chids) (chIdToLoc <$> chids)
+
+        procIds :: Map ProcId ()
+        procIds = Map.fromList $ zip (pro sigs) (repeat ())
+
+    chDecls <- getMap text2chids bDecl  :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
+    --
+    -- TODO: factor out duplication w.r.t. @vexprParser@
+    --
+
+    let
+        vlocs :: [(Loc VarDeclE, VarId)]
+        vlocs = zip (varIdToLoc <$> vids) vids
+
+        text2vdloc :: Map Text (Loc VarDeclE)
+        text2vdloc = Map.fromList $
+                     zip (VarId.name . snd <$> vlocs) (fst <$> vlocs)
+
+        text2sh :: [(Text, (Signature, Handler VarId))]
+        text2sh = do
+            (t, shmap) <- Map.toList . toMap . func $ sigs
+            (s, h) <- Map.toList shmap
+            return (t, (s, h))
+
+
+    floc2sh <- forM text2sh $ \(t, (s, h)) -> do
+        i <- getNextId
+        return (PredefLoc t i, (s, h))
+
+    let
+        text2fdloc :: Map Text [Loc FuncDeclE]
+        text2fdloc = Map.fromListWith (++) $
+            zip (fst <$> text2sh) (pure . fst <$> floc2sh)
+        tsids :: Map Text SortId
+        tsids = sort sigs
+        vsids :: Map (Loc VarDeclE) SortId
+        vsids = Map.fromList . fmap (second varsort) $ vlocs
+        fsigs :: Map (Loc FuncDeclE) Signature
+        fsigs = Map.fromList $ fmap (second fst) floc2sh
+
+    vdecls <- Map.fromList <$> mapRefToDecls (text2vdloc :& text2fdloc) bDecl
+    let  mm = tsids :& vsids :& fsigs :& vdecls
+             :& (chDecls :& cd2chids :& procIds)  -- Differences w.r.t. @vexprParser@.
+    vsids' <- Map.fromList <$> inferVarTypes mm bDecl
+    vvids  <- Map.fromList <$> mkVarIds (vsids' <.+> vsids) bDecl
+    let mm' = vdecls
+            :& vvids
+            :& Map.fromList floc2sh
+
+    --
+    -- TODO: factor out duplication w.r.t @vexprParser@
+    --
+
+    let x :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+        x = Map.fromList floc2sh
+
+    vrvds <- liftEither $ varDefsFromExp mm' bDecl
+    let mm'' = tsids :& vsids :& vdecls
+             :& (chDecls :& cd2chids :& procIds)
+             :& Map.fromList floc2sh
+    bExp <- toBExpr mm'' vrvds bDecl
+
+    unid' <- getUnid
+    return (Id unid', bExp)

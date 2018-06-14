@@ -1108,17 +1108,26 @@ readBExpr chids args = do
      uid               <- gets IOS.uid
      sigs              <- gets IOS.sigs
      vals              <- gets IOS.locvals
+
      ((_,bexpr'),e) <- lift $ lift $ catch
-                            ( let p = TxsHappy.bexprParser
-                                      ( TxsAlex.Csigs    sigs
-                                      : TxsAlex.Cchanenv chids
-                                      : TxsAlex.Cvarenv  (Map.keys vals)
-                                      : TxsAlex.Cunid    (_id uid + 1)
-                                      : TxsAlex.txsLexer args
-                                      )
+                            ( let p = compileUnsafe $
+                                      bexprParser sigs chids (Map.keys vals) (_id uid + 1) args
                                in return $!! (p,"")
                             )
                             ( \e -> return ((uid, TxsDefs.stop),show (e::ErrorCall)))
+
+     -- ((_,bexpr'),e) <- lift $ lift $ catch
+     --                        ( let p = TxsHappy.bexprParser
+     --                                  ( TxsAlex.Csigs    sigs
+     --                                  : TxsAlex.Cchanenv chids
+     --                                  : TxsAlex.Cvarenv  (Map.keys vals)
+     --                                  : TxsAlex.Cunid    (_id uid + 1)
+     --                                  : TxsAlex.txsLexer args
+     --                                  )
+     --                           in return $!! (p,"")
+     --                        )
+     --                        ( \e -> return ((uid, TxsDefs.stop),show (e::ErrorCall)))
+
      if  e /= ""
        then do IFS.nack "ERROR" [ "incorrect behaviour expression: " ++ e ]
                return TxsDefs.stop
