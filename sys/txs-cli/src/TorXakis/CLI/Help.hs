@@ -42,4 +42,5 @@ test <n>                       : make <n> random test steps
 simulator <model> [<mapper>]   : start simulating with model <model> and
           <cnect>                connection <cnect> using optional mapper <mapper>
 sim [<n>]                      : make <n>/[unbounded] random simulation steps
+stop                           : stop testing, simulation, or stepping
 |]

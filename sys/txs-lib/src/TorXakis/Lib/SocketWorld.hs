@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib.SocketWorld where
 
-import           Control.Concurrent           (ThreadId, forkIO)
+import           Control.Concurrent           (forkIO, killThread)
 import           Control.Concurrent.Async     (async, mapConcurrently, wait)
 import           Control.Concurrent.STM.TChan (TChan, writeTChan)
 import           Control.Monad.State          (liftIO)
@@ -34,7 +34,7 @@ import           TorXakis.Lib.Common
 import           TorXakis.Lib.CommonCore
 import           TorXakis.Lib.Session
 
-initSocketWorld :: Session -> TChan Action -> CnectDef -> IO (WorldConnDef,[ThreadId])
+initSocketWorld :: Session -> TChan Action -> CnectDef -> IO WorldConnDef
 initSocketWorld s fWCh cdef = do
     (towhdls, frowhdls) <- connectToSockets cdef
     frowThreads <- sequence [ forkIO $ fromWorldThread s h fWCh
@@ -42,7 +42,10 @@ initSocketWorld s fWCh cdef = do
         ]
     let wcdPairs = zip (map TxsDDefs.chan towhdls)
                        $ map (ToWorldMapping . sendToSocket s) towhdls
-    return (WorldConnDef $ Map.fromList wcdPairs, frowThreads)
+    return $ WorldConnDef (map connection towhdls)
+                          (Map.fromList wcdPairs)
+                          (map connection frowhdls)
+                          frowThreads
 
 sendToSocket :: Session -> ConnHandle -> [Const] -> IO (Response (Maybe Action))
 sendToSocket _ ConnHfroW{} _ = return $ Left "Shouldn't send to socket FROM world."
@@ -173,3 +176,8 @@ decode s (ConnHfroW cId _ vId vExprs) txt = do
     return $ case partitionEithers mwals of
         ([], wals) -> Right $ Act ( Set.singleton (cId,wals) )
         (es, _)    -> Left $ T.intercalate "\n" $ "Decode: eval failed":es
+
+closeSockets :: WorldConnDef -> IO ()
+closeSockets (WorldConnDef toWConns _ froWConns froWThreadIds) = do
+    mapM_ TVS.close (toWConns ++ froWConns)
+    mapM_ killThread froWThreadIds

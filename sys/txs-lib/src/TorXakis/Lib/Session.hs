@@ -21,6 +21,7 @@ import qualified Data.Map.Strict               as Map
 import           Data.Time                     (UTCTime)
 import           GHC.Generics                  (Generic)
 import           Lens.Micro.TH                 (makeLenses)
+import qualified Network.TextViaSockets        as TVS
 
 import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
@@ -35,20 +36,18 @@ import           TorXakis.Lib.Common
 import           TorXakis.Lib.SessionParams
 
 newtype ToWorldMapping = ToWorldMapping
-    { -- Send some data to the external world, maybe get some action as a response
-      _sendToW    :: [Const] -> IO (Response (Maybe Action))
+    { _sendToW         :: [Const] -> IO (Response (Maybe Action))
     }
 makeLenses ''ToWorldMapping
 
--- | TODO: put in the right place:
-newtype WorldConnDef = WorldConnDef
-    { _toWorldMappings :: Map.Map ChanId ToWorldMapping
+data WorldConnDef = WorldConnDef
+    { _toWorldConns    :: [TVS.Connection]
+    , _toWorldMappings :: Map.Map ChanId ToWorldMapping
+    , _fromWorldConns  :: [TVS.Connection]
+    , _worldListeners  :: [ThreadId]
     }
 makeLenses ''WorldConnDef
 
--- TODO: '_tdefs' '_sigs', and '_wConnDef' should be placed in a data structure
--- having a name like 'SessionEnv', since they won't change once a 'TorXakis'
--- file is compiled.
 data SessionSt = SessionSt
     { _envCore       :: EnvC
     , _sessionParams :: Params
@@ -58,16 +57,15 @@ makeLenses ''SessionSt
 
 -- | The session, which maintains the state of a TorXakis model.
 data Session = Session
-    { _sessionState   :: TVar SessionSt
-    , _sessionMsgs    :: TQueue Msg
-    , _pendingIOC     :: MVar () -- ^ Signal that a pending IOC operation is taking place.
-    , _verdicts       :: TQueue (Either SomeException Verdict)
-    , _fromWorldChan  :: TChan Action
-    , _wConnDef       :: TVar WorldConnDef
-    , _worldListeners :: TVar [ThreadId]
-    , _timers         :: TVar (Map.Map String UTCTime)
-    , _locVars        :: TVar [VarId] -- ^ local free variables
-    , _locValEnv      :: TVar VEnv    -- ^ local value environment
+    { _sessionState  :: TVar SessionSt
+    , _sessionMsgs   :: TQueue Msg
+    , _pendingIOC    :: MVar () -- ^ Signal that a pending IOC operation is taking place.
+    , _verdicts      :: TQueue (Either SomeException Verdict)
+    , _fromWorldChan :: TChan Action
+    , _wConnDef      :: TVar WorldConnDef
+    , _timers        :: TVar (Map.Map String UTCTime)
+    , _locVars       :: TVar [VarId] -- ^ local free variables
+    , _locValEnv     :: TVar VEnv    -- ^ local value environment
     }
 
 makeLenses ''Session

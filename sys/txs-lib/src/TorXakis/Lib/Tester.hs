@@ -72,10 +72,8 @@ setTest mdlNm cnctNm purpMappNms s = runResponse $ do
                 deltaTime = read deltaString
             atomically $ writeTQueue (s ^. sessionMsgs)
                        $ TXS_CORE_USER_INFO "Tester connecting to SUT..."
-            (wcd,tids) <- initSocketWorld s fWCh cDef
-            atomically $ do
-                writeTVar (s ^. wConnDef) wcd
-                writeTVar (s ^. worldListeners) tids
+            wcd <- initSocketWorld s fWCh cDef
+            atomically $ writeTVar (s ^. wConnDef) wcd
             runIOC s $
                 Core.txsSetTest
                     (lift <$> putToW deltaTime fWCh (wcd ^. toWorldMappings))

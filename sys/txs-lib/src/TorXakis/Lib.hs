@@ -24,7 +24,7 @@ import           Control.Concurrent.STM.TChan  (newTChanIO)
 import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue,
                                                 writeTQueue)
 import           Control.Concurrent.STM.TVar   (modifyTVar', newTVarIO,
-                                                readTVarIO)
+                                                readTVarIO, writeTVar)
 import           Control.DeepSeq               (force)
 import           Control.Exception             (ErrorCall, Exception,
                                                 SomeException, evaluate, try)
@@ -71,6 +71,7 @@ import           TorXakis.Lib.CommonCore
 import           TorXakis.Lib.Eval
 import           TorXakis.Lib.Session
 import           TorXakis.Lib.Simulator
+import           TorXakis.Lib.SocketWorld      (closeSockets)
 import           TorXakis.Lib.Tester
 import           TorXakis.Lib.Vals
 import           TorXakis.Lib.Vars
@@ -111,8 +112,7 @@ newSession = Session <$> newTVarIO emptySessionState
                      <*> newMVar ()
                      <*> newTQueueIO
                      <*> newTChanIO
-                     <*> newTVarIO (WorldConnDef Map.empty)
-                     <*> newTVarIO []
+                     <*> newTVarIO (WorldConnDef [] Map.empty [] [])
                      <*> newTVarIO Map.empty
                      <*> newTVarIO []
                      <*> newTVarIO Map.empty
@@ -219,11 +219,11 @@ waitForVerdict :: Session -> IO (Either SomeException Verdict)
 waitForVerdict s = atomically $ readTQueue (s ^. verdicts)
 
 -- | Start the stepper with the given model.
-stop :: Session -> IO (Response ())
-stop _ =
-    -- TODO: `txsStop` was commented out by Jan.
-    -- runResponse $ lift $ runIOC s txsStop
-    return success
+stopTxs :: Session -> IO (Response ())
+stopTxs s = do
+    _ <- closeSockets <$> readTVarIO (s ^. wConnDef)
+    atomically $ writeTVar (s ^. wConnDef) $ WorldConnDef [] Map.empty [] []
+    runResponse $ lift $ runIOC s Core.txsStop
 
 -- | Parse a String into a set of offers.
 parseAction :: Session -> Text -> IO (Response Action)

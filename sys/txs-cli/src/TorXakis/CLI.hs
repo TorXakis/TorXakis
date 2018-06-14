@@ -117,6 +117,7 @@ startCLI = do
             "sim"       -> sim rest >>= output
             "stepper"   -> subStepper rest
             "step"      -> subStep rest >>= output
+            "stop"      -> stop
             "tester"    -> tester rest
             "test"      -> test rest >>= output
             "time"      -> lift (runExceptT getTime) >>= output
@@ -153,6 +154,8 @@ startCLI = do
             sim []  = lift (simStep "-1")
             sim [n] = lift (simStep n)
             sim _   = return $ Left "Usage: sim [<step count>]"
+            stop :: InputT CLIM ()
+            stop = lift stopTxs >>= output
             timer :: (MonadIO m, MonadReader Env m, MonadError String m)
                   => [String] -> m String
             timer [nm] = callTimer nm

@@ -14,7 +14,7 @@ See LICENSE at root directory of this repository.
 module TorXakis.Lib.Examples where
 
 import           Control.Concurrent           (threadDelay)
-import           Control.Concurrent.Async     (async, cancel)
+import           Control.Concurrent.Async     (async, cancel, wait)
 import           Control.Concurrent.STM.TChan (writeTChan)
 import           Control.Monad                (void)
 import           Control.Monad.STM            (atomically)
@@ -154,7 +154,7 @@ testPrematureStop = do
     -- void $ startStep s
     r <- step s (NumberOfSteps 20)
     putStrLn $ "Result of `step`: " ++ show r
-    r' <- stop s
+    r' <- stopTxs s
     putStrLn $ "Result of `stop`: " ++ show r'
     r'' <- step s (NumberOfSteps 20)
     putStrLn $ "Result of `step` 2: " ++ show r''
@@ -232,14 +232,14 @@ testTesterWithPurpose = timeout (10 * seconds) $
             waitForVerdict s >>= print
             cancel a
 
-testTesterWithSimulator :: IO (Maybe ())
-testTesterWithSimulator = timeout (20 * seconds) $ do
+testTesterWithSimulatorAndStop :: IO (Maybe ())
+testTesterWithSimulatorAndStop = timeout (20 * seconds) $ do
             cs <- readFile $ ".." </> ".." </> "examps" </> "Echo" </> "Echo.txs"
             sSim <- newSession
             aSim <- async (printer sSim)
             _ <- load sSim cs
             _ <- setParam sSim "param_Sim_deltaTime" "1000"
-            _ <- setSim "Model" "Sim" "" sSim
+            aSetSim <- async $ setSim "Model" "Sim" "" sSim
 
             sTest <- newSession
             aTest <- async (printer sTest)
@@ -247,8 +247,7 @@ testTesterWithSimulator = timeout (20 * seconds) $ do
             _ <- setParam sTest "param_Sut_deltaTime" "10000"
             _ <- setTest "Model" "Sut" "" sTest
 
-            threadDelay (1 * seconds) -- let simulator and tester initialize
-
+            _ <- wait aSetSim
             rSim <- sim sSim (NumberOfSteps 15)
             putStrLn $ "Result of `sim`: " ++ show rSim
             rTest <- test sTest (NumberOfSteps 10)
@@ -256,6 +255,16 @@ testTesterWithSimulator = timeout (20 * seconds) $ do
 
             waitForVerdict sSim >>= print
             waitForVerdict sTest >>= print
+
+            rTestStop <- stopTxs sTest
+            putStrLn $ "Result of `stop` test: " ++ show rTestStop
+            rSimStop <- stopTxs sSim
+            putStrLn $ "Result of `stop` sim: " ++ show rSimStop
+
+            _ <- setStep sTest "Model"
+            rStepStop <- stopTxs sTest
+            putStrLn $ "Result of `stop` step: " ++ show rStepStop
+
             cancel aSim
             cancel aTest
 

@@ -53,10 +53,8 @@ setSim mdlNm cnctNm mappNm s = runResponse $ do
                 deltaTime = read deltaString
             atomically $ writeTQueue (s ^. sessionMsgs)
                        $ TXS_CORE_USER_INFO "Simulator waiting for connection..."
-            (wcd,tids) <- initSocketWorld s fWCh cDef
-            atomically $ do
-                writeTVar (s ^. wConnDef) wcd
-                writeTVar (s ^. worldListeners) tids
+            wcd <- initSocketWorld s fWCh cDef
+            atomically $ writeTVar (s ^. wConnDef) wcd
             runIOC s $
                 Core.txsSetSim
                     (lift <$> putToW deltaTime fWCh (wcd ^. toWorldMappings))

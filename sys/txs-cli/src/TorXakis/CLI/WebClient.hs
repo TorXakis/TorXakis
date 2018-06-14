@@ -13,6 +13,7 @@ module TorXakis.CLI.WebClient
     , load
     , stepper
     , step
+    , stopTxs
     , openMessages
     , sseSubscribe
     , closeMessages
@@ -41,8 +42,9 @@ import qualified Data.Text                     as T
 import           Lens.Micro                    ((^.), (^?))
 import           Lens.Micro.Aeson              (key, _String)
 import           Lens.Micro.TH                 (makeLenses)
-import           Network.Wreq                  (foldGet, partFile, responseBody,
-                                                responseStatus, statusCode)
+import           Network.Wreq                  (foldGet, partFile, partString,
+                                                responseBody, responseStatus,
+                                                statusCode)
 import           System.FilePath               (takeFileName)
 import           Text.Read                     (readMaybe)
 
@@ -146,6 +148,12 @@ step with = do
           rsp <- envPost (concat ["sessions/", show sId, "/parse-action/"]) (toJSON actText)
           act <- liftEither $ eitherDecode $ rsp ^. responseBody
           return $ AnAction act
+
+stopTxs :: (MonadIO m, MonadReader Env m) => m (Either String ())
+stopTxs = do
+    sId <- asks sessionId
+    ignoreSuccess $
+        envPost (concat ["sessions/", show sId, "/stop"]) [partString "" ""]
 
 -- | Open the messages endpoint
 openMessages :: (MonadIO m, MonadReader Env m) => m (Either String ())

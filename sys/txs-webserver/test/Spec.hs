@@ -4,6 +4,7 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
 module Main (main) where
@@ -14,8 +15,9 @@ import           Control.Exception            (catch, throwIO)
 import           Data.Aeson                   (decode, decodeStrict)
 import           Data.Aeson.Types             (Object, Parser, parseMaybe,
                                                toJSON, (.:))
-import           Data.ByteString.Char8        as BS
-import           Data.ByteString.Lazy.Char8   as BSL
+import qualified Data.ByteString.Char8        as BS
+import qualified Data.ByteString.Lazy.Char8   as BSL
+import           Data.List                    (isInfixOf)
 import           Data.Maybe                   (mapMaybe)
 import           GHC.Stack                    (HasCallStack)
 import           Lens.Micro                   ((^.), (^?))
@@ -251,7 +253,6 @@ spec = return $ do
                                           , partString "cnect" "Sut"
                                           , partString "purp&map" "PurposeExamples"
                                           ] >>= check204NoContent
-                    threadDelay (10 ^ (4 :: Int))
 
                     let fiftySteps = toJSON (NumberOfSteps 50)
                     post (testUrl sId) fiftySteps >>= check204NoContent
@@ -261,38 +262,58 @@ spec = return $ do
                     totalSteps <- wait a
                     totalSteps `shouldBe` 36
         describe "Simulator" $
-            it "Starts simulator & tester and tests 10 steps" $ do
-                    sSimId <- mkNewSession
-                    _ <- put (newSessionUrl sSimId) [partFile "model.txs" "../../examps/Echo/Echo.txs"]
-                    post (openMessagesUrl sSimId) emptyP >>= check204NoContent
-                    aSim <- async $ foldGet checkActions 0 (messagesUrl sSimId)
-                    _ <- put (paramUrl sSimId) [ partString "param_Sim_deltaTime" "100" ]
-                    post (setSimUrl sSimId) [ partString "model" "Model"
-                                            , partString "cnect" "Sim"
+            it "Starts simulator & tester and tests 10 steps, then stops" $ do
+                sSimId <- mkNewSession
+                Prelude.putStrLn $ "sim session: " ++ show sSimId
+                _ <- put (newSessionUrl sSimId) [partFile "model.txs" "../../examps/Echo/Echo.txs"]
+                post (openMessagesUrl sSimId) emptyP >>= check204NoContent
+                aSim <- async $ foldGet checkActions 0 (messagesUrl sSimId)
+                _ <- put (paramUrl sSimId) [ partString "param_Sim_deltaTime" "100" ]
+                aSetSim <- async $ post (setSimUrl sSimId) [ partString "model" "Model"
+                                        , partString "cnect" "Sim"
+                                        , partString "map"   ""
+                                        ] >>= check204NoContent
+
+                sTestId <- mkNewSession
+                Prelude.putStrLn $ "test session: " ++ show sTestId
+                _ <- put (newSessionUrl sTestId) [partFile "model.txs" "../../examps/Echo/Echo.txs"]
+                post (openMessagesUrl sTestId) emptyP >>= check204NoContent
+                aTest <- async $ foldGet checkActions 0 (messagesUrl sTestId)
+                _ <- put (paramUrl sSimId) [ partString "param_Sut_deltaTime" "10000" ]
+                post (setTestUrl sTestId) [ partString "model" "Model"
+                                            , partString "cnect" "Sut"
                                             , partString "map"   ""
                                             ] >>= check204NoContent
+                _ <- wait aSetSim
 
-                    sTestId <- mkNewSession
-                    _ <- put (newSessionUrl sTestId) [partFile "model.txs" "../../examps/Echo/Echo.txs"]
-                    post (openMessagesUrl sTestId) emptyP >>= check204NoContent
-                    aTest <- async $ foldGet checkActions 0 (messagesUrl sTestId)
-                    _ <- put (paramUrl sSimId) [ partString "param_Sut_deltaTime" "10000" ]
-                    post (setTestUrl sTestId) [ partString "model" "Model"
-                                              , partString "cnect" "Sut"
-                                              , partString "map"   ""
-                                              ] >>= check204NoContent
-                    threadDelay (10 ^ (4 :: Int))
+                post (testUrl sTestId) (toJSON $ NumberOfSteps 10) >>= check204NoContent
+                post (simUrl sSimId) (toJSON $ NumberOfSteps 15) >>= check204NoContent
+                threadDelay (5 * 10 ^ (6 :: Int))
 
-                    post (testUrl sTestId) (toJSON $ NumberOfSteps 10) >>= check204NoContent
-                    post (simUrl sSimId) (toJSON $ NumberOfSteps 15) >>= check204NoContent
-                    threadDelay (5 * 10 ^ (6 :: Int))
+                post (closeMessagesUrl sTestId) emptyP >>= check204NoContent
+                post (closeMessagesUrl sSimId) emptyP >>= check204NoContent
+                testSteps <- wait aTest
+                simSteps <- wait aSim
+                testSteps `shouldBe` 10
+                simSteps `shouldBe` 15
 
-                    post (closeMessagesUrl sSimId) emptyP >>= check204NoContent
-                    post (closeMessagesUrl sTestId) emptyP >>= check204NoContent
-                    testSteps <- wait aTest
-                    testSteps `shouldBe` 10
-                    simSteps <- wait aSim
-                    simSteps `shouldBe` 15
+                post (openMessagesUrl sSimId) emptyP >>= check204NoContent
+                aSimStop <- async $ foldGet checkStops 0 (messagesUrl sSimId)
+                post (openMessagesUrl sTestId) emptyP >>= check204NoContent
+                aTestStop <- async $ foldGet checkStops 0 (messagesUrl sTestId)
+
+                post (stopUrl sSimId) emptyP >>= check204NoContent
+                post (stopUrl sTestId) emptyP >>= check204NoContent
+
+                post (setStepUrl sTestId) emptyP >>= check204NoContent
+                post (stopUrl sTestId) emptyP >>= check204NoContent
+
+                post (closeMessagesUrl sTestId) emptyP >>= check204NoContent
+                post (closeMessagesUrl sSimId) emptyP >>= check204NoContent
+                testStops <- wait aTestStop
+                simStops <- wait aSimStop
+                testStops `shouldBe` 2
+                simStops `shouldBe` 1
 
 check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
@@ -320,8 +341,24 @@ checkActions steps bs = do
         Just "AnAction" -> return $ steps + 1
         _               -> return steps
 
+checkStops :: Int -> BS.ByteString -> IO Int
+checkStops stops bs = do
+    let Just jsonBs  = BS.stripPrefix "data:" bs
+        Just jsonObj = decodeStrict jsonBs
+    print bs
+    case parseMaybe parseTag jsonObj of
+        Just "TXS_CORE_USER_INFO" ->
+            let Just str = parseMaybe parseS jsonObj
+            in  if "stopped" `isInfixOf` str
+                    then return $ stops + 1
+                    else return stops
+        _ -> return stops
+
 parseTag :: Object -> Parser String
 parseTag o = o .: "tag"
+
+parseS :: Object -> Parser String
+parseS o = o .: "s"
 
 mkNewSession :: IO Integer
 mkNewSession = do
@@ -353,6 +390,9 @@ setSimUrl sId = Prelude.concat [host, "/sessions/", show sId, "/set-sim"]
 
 simUrl :: Integer -> String
 simUrl sId = host ++ "/sessions/" ++ show sId ++ "/sim/"
+
+stopUrl :: Integer -> String
+stopUrl sId = host ++ "/sessions/" ++ show sId ++ "/stop"
 
 messagesUrl :: Integer -> String
 messagesUrl sId = host ++ "/sessions/" ++ show sId ++ "/messages"

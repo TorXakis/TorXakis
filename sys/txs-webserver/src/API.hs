@@ -33,6 +33,7 @@ import           Endpoints.Tester            (SetTestEP, TestOutEP, TestStepEP,
 import           Endpoints.Simulator            (SetSimEP, SimStepEP,
                                               startSimulator, simStep)
 import           Endpoints.Time              (TimeEP, getTime)
+import           Endpoints.Stop              (StopEP, stop)
 import           Endpoints.Timer             (TimerEP, timer)
 import           Endpoints.Upload            (UploadEP, upload)
 import           Endpoints.Vals              (ValsAPI, valsServer)
@@ -61,6 +62,7 @@ type ServiceAPI
     :<|> VarsAPI
     :<|> EvalEP
     :<|> SeedEP
+    :<|> StopEP
     :<|> TestPageAPI
 
 type TestPageAPI = "test" :> Raw
@@ -100,4 +102,5 @@ server env
     :<|> varsServer env
     :<|> eval env
     :<|> setSeed env
+    :<|> stop env
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"
