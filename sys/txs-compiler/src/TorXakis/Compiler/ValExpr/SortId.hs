@@ -1,11 +1,13 @@
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE TupleSections        #-}
-{-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TupleSections         #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE UndecidableInstances  #-}
 module TorXakis.Compiler.ValExpr.SortId where
 
 import           Control.Arrow                    (left, (|||))
@@ -237,17 +239,25 @@ checkSortIds sId0 sId1 =
                   <> T.pack (show sId0) <> T.pack (show sId1)
     }
 
-class HasTypedVars e where
-    inferVarTypes :: ( MapsTo Text SortId mm
-                     , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
-                     , MapsTo (Loc ChanDeclE) ChanId mm
-                     , MapsTo (Loc VarDeclE) SortId mm
-                     , MapsTo (Loc FuncDeclE) Signature mm
-                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                     , MapsTo ProcId () mm )
-                  => mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
+class HasTypedVars mm e where
+    inferVarTypes :: -- ( MapsTo Text SortId mm
+                     -- , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+                     -- , MapsTo (Loc ChanDeclE) ChanId mm
+                     -- , MapsTo (Loc VarDeclE) SortId mm
+                     -- , MapsTo (Loc FuncDeclE) Signature mm
+                     -- , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+                     -- , MapsTo ProcId () mm )
+                  -- => mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
+        mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
 
-instance HasTypedVars BExpDecl where
+instance ( MapsTo Text SortId mm
+         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+         , MapsTo (Loc ChanDeclE) ChanId mm
+         , MapsTo (Loc VarDeclE) SortId mm
+         , MapsTo (Loc FuncDeclE) Signature mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         , MapsTo ProcId () mm
+         ) => HasTypedVars mm BExpDecl where
     inferVarTypes _ Stop =
         return []
     inferVarTypes mm (ActPref ao be) = do
@@ -306,16 +316,42 @@ instance HasTypedVars BExpDecl where
     inferVarTypes mm (Hide _ _ be) =
         inferVarTypes mm be
 
-instance HasTypedVars ActOfferDecl where
+instance ( MapsTo Text SortId mm
+         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+         , MapsTo (Loc ChanDeclE) ChanId mm
+         , MapsTo (Loc VarDeclE) SortId mm
+         , MapsTo (Loc FuncDeclE) Signature mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         , MapsTo ProcId () mm
+         ) => HasTypedVars mm ActOfferDecl where
     inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx
 
-instance HasTypedVars e => HasTypedVars (Maybe e) where
+instance ( MapsTo Text SortId mm
+         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+         , MapsTo (Loc ChanDeclE) ChanId mm
+         , MapsTo (Loc VarDeclE) SortId mm
+         , MapsTo (Loc FuncDeclE) Signature mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         , MapsTo ProcId () mm
+         , HasTypedVars mm e ) => HasTypedVars mm (Maybe e) where
     inferVarTypes mm = maybe (return []) (inferVarTypes mm)
 
-instance HasTypedVars e => HasTypedVars [e] where
+instance ( MapsTo Text SortId mm
+         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+         , MapsTo (Loc ChanDeclE) ChanId mm
+         , MapsTo (Loc VarDeclE) SortId mm
+         , MapsTo (Loc FuncDeclE) Signature mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         , MapsTo ProcId () mm
+         , HasTypedVars mm e
+         ) => HasTypedVars mm [e] where
     inferVarTypes mm es = concat <$> traverse (inferVarTypes mm) es
 
-instance HasTypedVars ExpDecl where
+instance ( MapsTo Text SortId mm
+         , MapsTo (Loc VarDeclE) SortId mm
+         , MapsTo (Loc FuncDeclE) Signature mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         ) => HasTypedVars mm ExpDecl where
     inferVarTypes mm ex = case expChild ex of
         VarRef {} -> return []
         ConstLit {} ->  return []
@@ -327,12 +363,10 @@ instance HasTypedVars ExpDecl where
         Fappl _ _ exs -> concat <$> traverse (inferVarTypes mm) exs
 
 inferLetVarTypes :: ( MapsTo Text SortId mm
-                    , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
-                    , MapsTo (Loc ChanDeclE) ChanId mm
                     , MapsTo (Loc VarDeclE) SortId mm
                     , MapsTo (Loc FuncDeclE) Signature mm
                     , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                    , MapsTo ProcId () mm )
+                    )
                  => mm
                  -> [(Loc VarDeclE, SortId)]
                  -> [LetVarDecl]
@@ -342,7 +376,14 @@ inferLetVarTypes mm vdSId vs = do
         Map.toList <$> gInferTypes (vdSId <.++> mm) vs
     return $ vdSId' ++ vdSId
 
-instance HasTypedVars OfferDecl where
+instance ( MapsTo Text SortId mm
+         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+         , MapsTo (Loc ChanDeclE) ChanId mm
+         , MapsTo (Loc VarDeclE) SortId mm
+         , MapsTo (Loc FuncDeclE) Signature mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         , MapsTo ProcId () mm
+         ) => HasTypedVars mm OfferDecl where
     inferVarTypes mm (OfferDecl cr os) = do
         chId <- lookupChId mm (getLoc cr)
         -- Collect the variable declarations to @SortId@ maps from the output
@@ -356,7 +397,14 @@ instance HasTypedVars OfferDecl where
                           (chansorts chId)
         return $ catMaybes vds ++ exclVds
 
-instance HasTypedVars ChanOfferDecl where
+instance ( MapsTo Text SortId mm
+         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+         , MapsTo (Loc ChanDeclE) ChanId mm
+         , MapsTo (Loc VarDeclE) SortId mm
+         , MapsTo (Loc FuncDeclE) Signature mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         , MapsTo ProcId () mm
+         ) =>  HasTypedVars mm ChanOfferDecl where
     -- We don't have the @SortId@ of the variable, so we cannot know its type
     -- at this level. Refer to the 'instance HasTypedVars OfferDecl' to see how
     -- this is handled.
@@ -501,8 +549,22 @@ offerSid mm (ExclD ex) = case inferExpTypes mm ex of
     Right xs    -> error $  "Found multiple matching sorts for " ++ show ex
                          ++ ": " ++ show xs -- TODO: throwError
 
-instance HasTypedVars Transition where
+instance ( MapsTo Text SortId mm
+         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+         , MapsTo (Loc ChanDeclE) ChanId mm
+         , MapsTo (Loc VarDeclE) SortId mm
+         , MapsTo (Loc FuncDeclE) Signature mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         , MapsTo ProcId () mm
+         ) => HasTypedVars mm Transition where
     inferVarTypes mm (Transition _ ofr _ _) = inferVarTypes mm ofr
 
-instance HasTypedVars TestGoalDecl where
+instance ( MapsTo Text SortId mm
+         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+         , MapsTo (Loc ChanDeclE) ChanId mm
+         , MapsTo (Loc VarDeclE) SortId mm
+         , MapsTo (Loc FuncDeclE) Signature mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         , MapsTo ProcId () mm
+         ) => HasTypedVars mm TestGoalDecl where
     inferVarTypes mm gd = inferVarTypes mm (testGoalDeclBExp gd)

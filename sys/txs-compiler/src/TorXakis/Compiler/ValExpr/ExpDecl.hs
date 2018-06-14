@@ -34,6 +34,7 @@ class HasVarReferences e where
                      , MapsTo Text (Loc VarDeclE) mm )
                   => mm  -- ^ Predefined functions
                   -> e
+                  -- TODO: replace ':|' by 'Either'.
                   -> CompilerM [(Loc VarRefE, Loc VarDeclE :| [Loc FuncDeclE])]
 
 instance HasVarReferences e => HasVarReferences [e] where

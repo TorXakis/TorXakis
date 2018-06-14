@@ -10,6 +10,7 @@ module TorXakis.Compiler where
 import           Control.Arrow                      (first, second, (&&&),
                                                      (|||))
 import           Control.Lens                       (over, (^.), (^..))
+import           Control.Monad                      (forM)
 import           Control.Monad.Error.Class          (liftEither)
 import           Control.Monad.State                (evalStateT, get)
 import           Data.Data.Lens                     (uniplate)
@@ -331,7 +332,7 @@ valdefsParser :: Sigs VarId
               -> [VarId]
               -> Int
               -> String
-              -> CompilerM (Int, Map VarId (ValExpr VarId))
+              -> CompilerM (Id, Map VarId (ValExpr VarId))
 valdefsParser sIds fDefs unid str = do undefined
     -- ls <- liftEither $ parse 0 "" str letVarDeclsP
     -- setUnid unid
@@ -366,78 +367,67 @@ mkFuncDecls fs = Map.fromListWith (++) $ zip (FuncId.name <$> fs)
 mkFuncIds :: [FuncId] -> Map (Loc FuncDeclE) FuncId
 mkFuncIds fs = Map.fromList $ zip (fIdToLoc <$> fs) fs
 
--- TODO: place this in the appropriate module.
--- PROBLEM! The Sigs do not contain a FuncId!
--- sigsToFuncDefs :: Sigs -> Map FuncId (FuncDef VarId)
--- sigsToFuncDefs = undefined
---
 -- TODO: think about renaming this to something like 'compileVExpr'
 vexprParser :: Sigs VarId
             -> [VarId]
             -> Int
             -> String                        -- ^ String to parse.
-            -> CompilerM (Int, ValExpr VarId)
+            -> CompilerM (Id, ValExpr VarId)
 vexprParser sigs vids unid str = do
     eDecl <- liftEither $ parse 0 "" str valExpP
     setUnid unid
---     let
---         allFIds = Map.keys fDefs
---         fIds :: Map (Loc FuncDeclE) FuncId
---         fIds = mkFuncIds allFIds
---         eFDs :: Map Text [Loc FuncDeclE]
---         eFDs = mkFuncDecls allFIds
---         eVDs :: Map Text (Loc VarDeclE)
---         eVDs = Map.fromList $ zip (VarId.name <$> allVars) (varIdToLoc <$> allVars)
---         -- | SortIds of the pre-existing variables
---         vSIdsPre :: Map (Loc VarDeclE) SortId
---         vSIdsPre = Map.fromList $ zip (varIdToLoc <$> allVars) (varsort <$> allVars)
---     vRefs <- Map.fromList <$>
---         mapRefToDecls (eVDs :& eFDs) eDecl
---     let
---         mm =  sIds     -- MapsTo Text SortId mm
---            :& fIds     -- MapsTo (Loc FuncDeclE) FuncId mm
---            :& vRefs    -- MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
---            :& vSIdsPre -- MapsTo (Loc VarDeclE) SortId
---             -- TODO: if we change @HasTypedVars@ to @DefinesAMap@ then we don't
---             -- need the dummy maps below.
---            :& (Map.empty :: Map ProcId ())
---            :& (Map.empty :: Map (Loc ChanDeclE) ChanId)
---            :& (Map.empty :: Map (Loc ChanRefE) (Loc ChanDeclE))
---     vSIds <- Map.fromList <$> inferVarTypes mm eDecl
---     vIds  <- Map.fromList <$> mkVarIds (vSIds <.+> mm) eDecl
---     let
---         mm' =  (vSIds <.+> mm)
---             :& fDefs -- MapsTo FuncId (FuncDef VarId) mm
---             :& vIds  -- MapsTo (Loc VarDeclE) VarId mm
-
-    -- vSIds <- Map.fromList <$> inferVarTypes mm eDecl
 
     let
-        tSids :: Map Text SortId
-        tSids = sort sigs
+        vlocs :: [(Loc VarDeclE, VarId)]
+        vlocs = zip (varIdToLoc <$> vids) vids
+
+        text2vdloc :: Map Text (Loc VarDeclE)
+        text2vdloc = Map.fromList $
+                     zip (VarId.name . snd <$> vlocs) (fst <$> vlocs)
+
+        text2sh :: [(Text, (Signature, Handler VarId))]
+        text2sh = do
+            (t, shmap) <- Map.toList . toMap . func $ sigs
+            (s, h) <- Map.toList shmap
+            return (t, (s, h))
+
+
+    floc2sh <- forM text2sh $ \(t, (s, h)) -> do
+        i <- getNextId
+        return (PredefLoc t i, (s, h))
+
+    let
+        text2fdloc :: Map Text [Loc FuncDeclE]
+        text2fdloc = Map.fromListWith (++) $
+            zip (fst <$> text2sh) (pure . fst <$> floc2sh)
+
+    vdecls <- Map.fromList <$> mapRefToDecls (text2vdloc :& text2fdloc) eDecl
+
+    let
+        tsids :: Map Text SortId
+        tsids = sort sigs
         vsids :: Map (Loc VarDeclE) SortId
-        vsids = undefined
+        vsids = Map.fromList . fmap (second varsort) $ vlocs
         fsigs :: Map (Loc FuncDeclE) Signature
-        fsigs = undefined
-        vdecls :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
-        vdecls = undefined
-        mm = tSids :& vsids :& fsigs :& vdecls
+        fsigs = Map.fromList $ fmap (second fst) floc2sh
+        mm = tsids :& vsids :& fsigs :& vdecls
 
-    eSid  <- liftEither $ inferExpTypes mm eDecl >>= getUniqueElement
+    vsids' <- Map.fromList <$> inferVarTypes mm eDecl
+    vvids  <- Map.fromList <$> mkVarIds (vsids' <.+> vsids) eDecl
+    let
+        mm' = vsids' <.+> mm
+
+    eSid  <- liftEither $ inferExpTypes mm' eDecl >>= getUniqueElement
 
     let
-        fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-        fshs = undefined
-        vvids :: Map (Loc VarDeclE) VarId
-        vvids = undefined
-        mm' =  vdecls
+        mm'' = vdecls
             :& vvids
-            :& fshs
+            :& Map.fromList floc2sh
 
-    vrvds <- liftEither $ varDefsFromExp mm' eDecl
+    vrvds <- liftEither $ varDefsFromExp mm'' eDecl
     vExp  <- liftEither $ expDeclToValExpr vrvds eSid eDecl
     unid' <- getUnid
-    return (unid', vExp)
+    return (Id unid', vExp)
 
 fIdToLoc :: FuncId -> Loc FuncDeclE
 fIdToLoc fId = PredefLoc (FuncId.name fId) (_id . FuncId.unid $ fId)

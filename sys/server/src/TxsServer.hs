@@ -453,16 +453,24 @@ cmdEval args = do
          vals          = IOS.locvals env
          vars          = IOS.locvars env
      tdefs            <- lift TxsCore.txsGetTDefs
+
      ((uid',vexp'),e) <- lift $ lift $ catch
-                           ( let (i,p) = TxsHappy.vexprParser
-                                        ( TxsAlex.Csigs    sigs
-                                        : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-                                        : TxsAlex.Cunid   (_id uid + 1)
-                                        : TxsAlex.txsLexer args
-                                        )
+                           ( let (i,p) = compileUnsafe $
+                                         vexprParser sigs (Map.keys vals ++ vars) (_id uid + 1) args
                               in return $!! ((i, Just p),"")
                            )
-                           ( \ec -> return ((uid,Nothing), show (ec::ErrorCall)))
+                           ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
+
+     -- ((uid',vexp'),e) <- lift $ lift $ catch
+     --                       ( let (i,p) = TxsHappy.vexprParser
+     --                                    ( TxsAlex.Csigs    sigs
+     --                                    : TxsAlex.Cvarenv (Map.keys vals ++ vars)
+     --                                    : TxsAlex.Cunid   (_id uid + 1)
+     --                                    : TxsAlex.txsLexer args
+     --                                    )
+     --                          in return $!! ((i, Just p),"")
+     --                       )
+     --                       ( \ec -> return ((uid,Nothing), show (ec::ErrorCall)))
      case vexp' of
        Just vexp'' -> do
                         modify $ \env' -> env' { IOS.uid = uid' }
@@ -497,16 +505,24 @@ cmdSolve args kind = do
          vars          = IOS.locvars env
          vals          = IOS.locvals env
      tdefs            <- lift TxsCore.txsGetTDefs
+
      ((uid',vexp'),e) <- lift $ lift $ catch
-                           ( let (i,p) = TxsHappy.vexprParser
-                                           ( TxsAlex.Csigs sigs
-                                           : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-                                           : TxsAlex.Cunid (_id uid + 1)
-                                           : TxsAlex.txsLexer args
-                                           )
+                           ( let (i,p) = compileUnsafe $
+                                         vexprParser sigs [] (_id uid + 1) args
                               in return $!! ((i, Just p),"")
                            )
                            ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
+
+     -- ((uid',vexp'),e) <- lift $ lift $ catch
+     --                       ( let (i,p) = TxsHappy.vexprParser
+     --                                       ( TxsAlex.Csigs sigs
+     --                                       : TxsAlex.Cvarenv (Map.keys vals ++ vars)
+     --                                       : TxsAlex.Cunid (_id uid + 1)
+     --                                       : TxsAlex.txsLexer args
+     --                                       )
+     --                          in return $!! ((i, Just p),"")
+     --                       )
+     --                       ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
      case vexp' of
         Just vexp'' -> do
                         modify $ \env' -> env' { IOS.uid = uid' }
