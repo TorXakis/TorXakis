@@ -82,7 +82,7 @@ randValExprsSolveTrueBins p freevars exprs  =
         pop
         return sp
     else do
-        lift $ hPutStrLn stderr "TXS RandTrueBins randValExprsSolveTrueBins: Not all added constraints are Bool\n"
+        liftIO $ hPutStrLn stderr "TXS RandTrueBins randValExprsSolveTrueBins: Not all added constraints are Bool\n"
         return UnableToSolve
   where
         combine :: (Variable v) => v -> SMT [Text] -> SMT [Text]
@@ -148,8 +148,8 @@ toBins _ _ = []
 
 trueBins :: (Variable v) => ValExpr v -> Int -> (Integer -> Integer) -> SMT Text
 trueBins v n nxt = do
-    neg <- lift $ values n nxt
-    pos <- lift $ values n nxt
+    neg <- liftIO $ values n nxt
+    pos <- liftIO $ values n nxt
     let binSamples = reverse (map negate neg) ++ pos
     let orList = [ cstrLT v (cstrConst (Cint (head binSamples) ))
                  , cstrLE (cstrConst (Cint (last binSamples) )) v
@@ -212,7 +212,7 @@ trueStringLength n v = do
     
 trueStringRegex :: (Variable v) => Int -> ValExpr v -> SMT Text
 trueStringRegex n v = do
-    regexes <- lift $ trueCharsRegexes n
+    regexes <- liftIO $ trueCharsRegexes n
     let exprs = map (cstrStrInRe v . cstrConst . Cregex) (range <> "{" <> (T.pack . show) (n+1) <> ",}":regexes)
                                 -- Performance gain in problem solver? Use string length for length 0 and greater than n
     shuffleOrList exprs
