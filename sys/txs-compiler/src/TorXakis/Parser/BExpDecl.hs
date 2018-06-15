@@ -91,19 +91,19 @@ actOfferP = ActOfferDecl <$> offersP <*> actConstP
       actConstP =  fmap Just (try (txsSymbol "[[") *> valExpP <* txsSymbol "]]")
                <|> return Nothing
 
-      offersP :: TxsParser [OfferDecl]
-      offersP =  predefOffer "ISTEP"
-             <|> predefOffer "QSTEP"
-             <|> predefOffer "HIT"
-             <|> predefOffer "MISS"
-             <|> offerP `sepBy1` try (
-                     txsSymbol "|"
-                     >> notFollowedBy ( txsSymbol "|" <|> txsSymbol "[" )
-                 )
-          where predefOffer str = try $ do
-                    l <- mkLoc
-                    txsSymbol str
-                    return [OfferDecl (mkChanRef (T.pack str) l) []]
+offersP :: TxsParser [OfferDecl]
+offersP =  predefOffer "ISTEP"
+       <|> predefOffer "QSTEP"
+       <|> predefOffer "HIT"
+       <|> predefOffer "MISS"
+       <|> offerP `sepBy1` try (
+               txsSymbol "|"
+               >> notFollowedBy ( txsSymbol "|" <|> txsSymbol "[" )
+           )
+    where predefOffer str = try $ do
+              l <- mkLoc
+              txsSymbol str
+              return [OfferDecl (mkChanRef (T.pack str) l) []]
 
 offerP :: TxsParser OfferDecl
 offerP = do

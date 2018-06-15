@@ -5,6 +5,7 @@
 {-# LANGUAGE TupleSections       #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE TypeOperators       #-}
 module TorXakis.Compiler where
 
 import           Control.Arrow                      (first, second, (&&&),
@@ -13,14 +14,17 @@ import           Control.Lens                       (over, (^.), (^..))
 import           Control.Monad                      (forM)
 import           Control.Monad.Error.Class          (liftEither)
 import           Control.Monad.State                (evalStateT, get)
+import           Data.Data                          (Data)
 import           Data.Data.Lens                     (uniplate)
 import           Data.Map.Strict                    (Map)
 import qualified Data.Map.Strict                    as Map
 import           Data.Maybe                         (catMaybes, fromMaybe)
+import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
 import           Data.Tuple                         (swap)
 
+import           BehExprDefs                        (Offer)
 import           ChanId                             (ChanId)
 import qualified ChanId
 import           CstrId                             (CstrId)
@@ -37,9 +41,10 @@ import qualified Sigs                               (empty)
 import           SortId                             (SortId, sortIdBool,
                                                      sortIdInt, sortIdRegex,
                                                      sortIdString)
-import           StdTDefs                           (stdFuncTable, stdTDefs)
+import           StdTDefs                           (chanIdIstep, stdFuncTable,
+                                                     stdTDefs)
 import           TxsDefs                            (BExpr, ProcDef, ProcId,
-                                                     TxsDefs, cnectDefs,
+                                                     TxsDefs, chanid, cnectDefs,
                                                      fromList, funcDefs,
                                                      mapperDefs, modelDefs,
                                                      procDefs, purpDefs, union)
@@ -75,6 +80,7 @@ import           TorXakis.Compiler.Defs.FuncTable
 import           TorXakis.Compiler.Maps.VarRef
 import           TorXakis.Parser
 import           TorXakis.Parser.BExpDecl
+import           TorXakis.Parser.Common             (TxsParser)
 import           TorXakis.Parser.Data
 import           TorXakis.Parser.ValExprDecl
 
@@ -399,71 +405,34 @@ mkFuncDecls fs = Map.fromListWith (++) $ zip (FuncId.name <$> fs)
 mkFuncIds :: [FuncId] -> Map (Loc FuncDeclE) FuncId
 mkFuncIds fs = Map.fromList $ zip (fIdToLoc <$> fs) fs
 
--- TODO: think about renaming this to something like 'compileVExpr'
+-- | Sub-compiler for value expressions.
+--
 vexprParser :: Sigs VarId
             -> [VarId]
             -> Int
             -> String                        -- ^ String to parse.
             -> CompilerM (Id, ValExpr VarId)
-vexprParser sigs vids unid str = do
-    eDecl <- liftEither $ parse 0 "" str valExpP
-    setUnid unid
+vexprParser sigs vids unid str =
+    subCompile sigs [] vids unid str valExpP $ \ scm eDecl -> do
+        let mm =  text2sidM scm
+               :& lvd2sidM scm
+               :& lfd2sgM scm
+               :& lvr2lvdOrlfdM scm
 
-    let
-        vlocs :: [(Loc VarDeclE, VarId)]
-        vlocs = zip (varIdToLoc <$> vids) vids
-
-        text2vdloc :: Map Text (Loc VarDeclE)
-        text2vdloc = Map.fromList $
-                     zip (VarId.name . snd <$> vlocs) (fst <$> vlocs)
-
-        text2sh :: [(Text, (Signature, Handler VarId))]
-        text2sh = do
-            (t, shmap) <- Map.toList . toMap . func $ sigs
-            (s, h) <- Map.toList shmap
-            return (t, (s, h))
-
-
-    floc2sh <- forM text2sh $ \(t, (s, h)) -> do
-        i <- getNextId
-        return (PredefLoc t i, (s, h))
-
-    let
-        text2fdloc :: Map Text [Loc FuncDeclE]
-        text2fdloc = Map.fromListWith (++) $
-            zip (fst <$> text2sh) (pure . fst <$> floc2sh)
-        tsids :: Map Text SortId
-        tsids = sort sigs
-        vsids :: Map (Loc VarDeclE) SortId
-        vsids = Map.fromList . fmap (second varsort) $ vlocs
-        fsigs :: Map (Loc FuncDeclE) Signature
-        fsigs = Map.fromList $ fmap (second fst) floc2sh
-
-    vdecls <- Map.fromList <$> mapRefToDecls (text2vdloc :& text2fdloc) eDecl
-    let  mm = tsids :& vsids :& fsigs :& vdecls
-    vsids' <- Map.fromList <$> inferVarTypes mm eDecl
-    vvids  <- Map.fromList <$> mkVarIds (vsids' <.+> vsids) eDecl
-    let mm' = vdecls
-            :& vvids
-            :& Map.fromList floc2sh
-    vrvds <- liftEither $ varDefsFromExp mm' eDecl
-
-    let mm'' = vsids' <.+> mm
-    eSid  <- liftEither $ inferExpTypes mm'' eDecl >>= getUniqueElement
-    vExp  <- liftEither $ expDeclToValExpr vrvds eSid eDecl
-
-    unid' <- getUnid
-    return (Id unid', vExp)
+        eSid  <- liftEither $ inferExpTypes mm eDecl >>= getUniqueElement
+        liftEither $ expDeclToValExpr (lvr2vidOrsghdM scm) eSid eDecl
 
 fIdToLoc :: FuncId -> Loc FuncDeclE
 fIdToLoc fId = PredefLoc (FuncId.name fId) (_id . FuncId.unid $ fId)
 
+-- TODO: consider renaming these functions to vid2loc (be consistent!).
 varIdToLoc :: VarId -> Loc VarDeclE
 varIdToLoc vId = PredefLoc (VarId.name vId) (_id . VarId.unid $ vId)
 
 chIdToLoc :: ChanId -> Loc ChanDeclE
 chIdToLoc chId = PredefLoc (ChanId.name chId) (_id . ChanId.unid $ chId)
 
+-- | Sub-compiler for behavior expressions.
 bexprParser :: Sigs VarId
             -> [ChanId]
             -> [VarId]
@@ -533,9 +502,6 @@ bexprParser sigs chids vids unid str = do
     -- TODO: factor out duplication w.r.t @vexprParser@
     --
 
-    let x :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-        x = Map.fromList floc2sh
-
     vrvds <- liftEither $ varDefsFromExp mm' bDecl
     let mm'' = tsids :& vsids :& vdecls
              :& (chDecls :& cd2chids :& procIds)
@@ -544,3 +510,135 @@ bexprParser sigs chids vids unid str = do
 
     unid' <- getUnid
     return (Id unid', bExp)
+
+prefoffsParser :: Sigs VarId
+            -> [ChanId]
+            -> [VarId]
+            -> Int
+            -> String
+            -> CompilerM (Id, Set Offer)
+prefoffsParser sigs chids vids unid str = do
+    ofsDecl <- liftEither $ parse 0 "" str chanOffersP
+    setUnid unid
+
+
+
+    os <- undefined -- traverse (toOffer mm vrvds)
+    -- Filter the internal actions (to comply with the current TorXakis compiler).
+    let os' = filter ((chanIdIstep /=) . chanid) os
+
+    unid' <- getUnid
+    return (Id unid', Set.fromList os)
+
+-- | Maps required for the sub-compilation functions.
+data SubCompileMaps = SubCompileMaps
+    { text2sidM :: Map Text SortId
+    , lvd2sidM  :: Map (Loc VarDeclE) SortId
+    , lvd2vidM  :: Map (Loc VarDeclE) VarId
+    , text2lfdM :: Map Text [Loc FuncDeclE]
+    , lfd2sgM   :: Map (Loc FuncDeclE) Signature
+    , lfd2sghdM :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+    , pidsM     :: Map ProcId ()
+    , lvr2lvdOrlfdM :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
+    , lvr2vidOrsghdM :: Map (Loc VarRefE)
+                       (Either VarId [(Signature, Handler VarId)])
+    }
+
+-- | Context used in type inference
+type TypeInferenceEnv = Map Text SortId
+                      :& Map (Loc VarDeclE) SortId
+                      :& Map (Loc FuncDeclE) Signature
+                      :& Map (Loc VarRefE) (Loc VarDeclE :| [Loc FuncDeclE])
+                      :& Map (Loc ChanRefE) (Loc ChanDeclE)
+                      :& Map (Loc ChanDeclE) ChanId
+                      :& Map ProcId ()
+
+-- | Compile a subset of TorXakis, using the given external definitions.
+subCompile :: ( DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) e (Map Text (Loc ChanDeclE))
+              , HasVarReferences e
+              , DeclaresVariables e
+              , HasTypedVars TypeInferenceEnv e
+              , Data e )
+           => Sigs VarId
+           -> [ChanId]
+           -> [VarId]
+           -> Int
+           -> String
+           -> TxsParser e
+           -> (SubCompileMaps -> e -> CompilerM a)
+           -> CompilerM (Id, a)
+subCompile sigs chids vids unid str expP cmpF = do
+    edecl <- liftEither $ parse 0 "" str expP
+    setUnid unid
+
+    let
+        lchd2chid :: Map (Loc ChanDeclE) ChanId
+        lchd2chid = Map.fromList $ zip (chIdToLoc <$> chids) chids
+
+        text2chid :: Map Text (Loc ChanDeclE)
+        text2chid = Map.fromList $ zip (ChanId.name <$> chids) (chIdToLoc <$> chids)
+
+        pids :: Map ProcId ()
+        pids = Map.fromList $ zip (pro sigs) (repeat ())
+
+    lchr2lchd <- getMap text2chid edecl  :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
+
+    let
+        lvd2vid :: [(Loc VarDeclE, VarId)]
+        lvd2vid = zip (varIdToLoc <$> vids) vids
+
+        text2lvd :: Map Text (Loc VarDeclE)
+        text2lvd = Map.fromList $
+                     zip (VarId.name . snd <$> lvd2vid) (fst <$> lvd2vid)
+
+        text2sghd :: [(Text, (Signature, Handler VarId))]
+        text2sghd = do
+            (t, shmap) <- Map.toList . toMap . func $ sigs
+            (s, h) <- Map.toList shmap
+            return (t, (s, h))
+
+    lfd2sghd <- forM text2sghd $ \(t, (s, h)) -> do
+        i <- getNextId
+        return (PredefLoc t i, (s, h))
+
+    let
+        text2lfd :: Map Text [Loc FuncDeclE]
+        text2lfd = Map.fromListWith (++) $
+            zip (fst <$> text2sghd) (pure . fst <$> lfd2sghd)
+        text2sid :: Map Text SortId
+        text2sid = sort sigs
+        lvd2sid :: Map (Loc VarDeclE) SortId
+        lvd2sid = Map.fromList . fmap (second varsort) $ lvd2vid
+        lfd2sg :: Map (Loc FuncDeclE) Signature
+        lfd2sg = Map.fromList $ fmap (second fst) lfd2sghd
+
+    lvr2lvdOrlfd <- Map.fromList <$> mapRefToDecls (text2lvd :& text2lfd) edecl
+
+    let mm =  text2sid :& lvd2sid :& lfd2sg :& lvr2lvdOrlfd
+           :& lchr2lchd :& lchd2chid :& pids
+    lvd2sid' <- Map.fromList <$> inferVarTypes mm edecl
+    lvd2vid  <- Map.fromList <$> mkVarIds (lvd2sid' <.+> lvd2sid) edecl
+
+    let mm' =  lvr2lvdOrlfd
+            :& lvd2vid
+            :& Map.fromList lfd2sghd
+
+    lvr2vidOrsghd <- liftEither $ varDefsFromExp mm' edecl
+
+    let cmpMaps = SubCompileMaps
+            { text2sidM = text2sid
+            , lvd2sidM = lvd2sid' <.+> lvd2sid
+            , lvd2vidM = lvd2vid
+            , text2lfdM = text2lfd
+            , lfd2sgM = lfd2sg
+            , lfd2sghdM = Map.fromList lfd2sghd
+            , pidsM = pids
+            , lvr2lvdOrlfdM = lvr2lvdOrlfd
+            , lvr2vidOrsghdM = lvr2vidOrsghd
+            }
+
+    exp <- cmpF cmpMaps edecl
+
+    unid' <- getUnid
+    return (Id unid', exp)
+

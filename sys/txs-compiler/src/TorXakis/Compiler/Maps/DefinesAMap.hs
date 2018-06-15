@@ -334,3 +334,10 @@ instance ( MapsTo Text SortId mm
     uGetKVs _ HitD = return [ (hitChLoc, chanIdHit)
                            , (missChLoc, chanIdMiss)
                            ]
+
+-- | Bogus instance to be able to use @subCompile@.
+--
+-- A value expression declaration @ExpDecl@ has no channels, so @uGetKVs@
+-- returns the empty list.
+instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ExpDecl mm where
+    uGetKVs _ _ = return []
