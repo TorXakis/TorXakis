@@ -268,6 +268,17 @@ testTesterWithSimulatorAndStop = timeout (20 * seconds) $ do
             cancel aSim
             cancel aTest
 
+testMenu :: IO (Maybe ())
+testMenu = timeout (10 * seconds) $
+    withCreateProcess (proc "java" ["-cp","../../examps/LuckyPeople/sut","LuckyPeople"])
+        {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
+            cs <- readFile $ ".." </> ".." </> "examps" </> "LuckyPeople" </> "spec" </> "LuckyPeople.txs"
+            s <- newSession
+            _ <- load s cs
+            _ <- setTest "Model" "Sut" "" s
+            m <- getMenu s ""
+            putStrLn $ "Result of `menu`: " ++ show m
+
 seconds :: Int
 seconds = 10 ^ (6 :: Int)
 

@@ -18,6 +18,7 @@ import           Servant
 
 import           Common                      (Env (..))
 import           Endpoints.Eval              (EvalEP, eval)
+import           Endpoints.Menu              (MenuEP, menu)
 import           Endpoints.Info              (InfoEP, getInfo)
 import           Endpoints.Messages          (CloseMessagesEP, MessagesEP,
                                               OpenMessagesEP, closeMessages,
@@ -63,6 +64,7 @@ type ServiceAPI
     :<|> EvalEP
     :<|> SeedEP
     :<|> StopEP
+    :<|> MenuEP
     :<|> TestPageAPI
 
 type TestPageAPI = "test" :> Raw
@@ -103,4 +105,5 @@ server env
     :<|> eval env
     :<|> setSeed env
     :<|> stop env
+    :<|> menu env
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"

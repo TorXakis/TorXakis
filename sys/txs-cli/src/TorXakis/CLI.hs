@@ -125,6 +125,7 @@ startCLI = do
             "val"       -> lift (runExceptT $ val rest) >>= output
             "var"       -> lift (runExceptT $ var rest) >>= output
             "eval"      -> lift (runExceptT $ eval rest) >>= output
+            "menu"      -> lift (runExceptT $ menu rest) >>= output
             "seed"      -> lift (runExceptT $ seed rest) >>= output
             _           -> output $ "Can't dispatch command: " ++ cmd
 
@@ -177,6 +178,9 @@ startCLI = do
             eval :: (MonadIO m, MonadReader Env m, MonadError String m)
                 => [String] -> m String
             eval t = evaluate $ unwords t
+            menu :: (MonadIO m, MonadReader Env m, MonadError String m)
+                => [String] -> m String
+            menu t = getMenu $ unwords t
             seed :: (MonadIO m, MonadReader Env m, MonadError String m)
                  => [String] -> m ()
             seed [s] = setSeed s

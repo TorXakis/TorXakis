@@ -65,6 +65,7 @@ import qualified TxsCore                       as Core
 import           TxsDDefs                      (Action (Act), Verdict)
 import           TxsDefs                       (ModelDef (ModelDef))
 import           TxsHappy                      (prefoffsParser, txsParser)
+import           TxsShow                       (fshow)
 
 import           TorXakis.Lib.Common
 import           TorXakis.Lib.CommonCore
@@ -205,6 +206,20 @@ setStep :: Session
 setStep s mn = runResponse $ do
     mDef <- lookupModel s mn
     lift $ runIOC s (Core.txsSetStep mDef)
+
+-- | Get the menu.
+getMenu :: Session
+        -> Text
+        -> IO String
+getMenu s args =
+    let (kind,what) =
+            case T.words args of
+                ["in"]       -> ( "mod", "in" )
+                ["out"]      -> ( "mod", "out" )
+                ["map"]      -> ( "map", "" )
+                ["purp",gnm] -> ( "purp", T.unpack gnm )
+                _            -> ( "mod", "all" )
+   in TxsShow.fshow <$> runIOC s (Core.txsMenu kind what)
 
 msgHandler :: TQueue Msg -> [Msg] -> IOC ()
 msgHandler q = lift . atomically . traverse_ (writeTQueue q)

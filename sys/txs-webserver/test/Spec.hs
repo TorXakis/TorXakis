@@ -264,7 +264,6 @@ spec = return $ do
         describe "Simulator" $
             it "Starts simulator & tester and tests 10 steps, then stops" $ do
                 sSimId <- mkNewSession
-                Prelude.putStrLn $ "sim session: " ++ show sSimId
                 _ <- put (newSessionUrl sSimId) [partFile "model.txs" "../../examps/Echo/Echo.txs"]
                 post (openMessagesUrl sSimId) emptyP >>= check204NoContent
                 aSim <- async $ foldGet checkActions 0 (messagesUrl sSimId)
@@ -275,7 +274,6 @@ spec = return $ do
                                         ] >>= check204NoContent
 
                 sTestId <- mkNewSession
-                Prelude.putStrLn $ "test session: " ++ show sTestId
                 _ <- put (newSessionUrl sTestId) [partFile "model.txs" "../../examps/Echo/Echo.txs"]
                 post (openMessagesUrl sTestId) emptyP >>= check204NoContent
                 aTest <- async $ foldGet checkActions 0 (messagesUrl sTestId)
@@ -314,6 +312,39 @@ spec = return $ do
                 simStops <- wait aSimStop
                 testStops `shouldBe` 2
                 simStops `shouldBe` 1
+        describe "Menu" $
+            it "returns menu for different arguments" $
+                withCreateProcess (proc "java" ["-cp","../../examps/LuckyPeople/sut","LuckyPeople"])
+                                  {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
+                    sId <- mkNewSession
+                    _ <- put (newSessionUrl sId) [ partFile "model.txs" "../../examps/LuckyPeople/spec/LuckyPeople.txs"
+                                                 , partFile "purp.txs" "../../examps/LuckyPeople/spec/PurposeExamples.txs"
+                                                 ]
+                    r1 <- post (menuUrl sId) [ partString "args" "" ]
+                    let m1 = BSL.unpack $ r1 ^. responseBody
+                    Prelude.putStrLn $ "Emty args: " ++ m1
+                    r2 <- post (menuUrl sId) ([ ] :: [Part])
+                    let m2 = BSL.unpack $ r2 ^. responseBody
+                    Prelude.putStrLn $ "No args: " ++ m2
+                    r3 <- post (menuUrl sId) [ partString "args" "in" ]
+                    let m3 = BSL.unpack $ r3 ^. responseBody
+                    Prelude.putStrLn $ "in: " ++ m3
+                    r4 <- post (menuUrl sId) [ partString "args" "out" ]
+                    let m4 = BSL.unpack $ r4 ^. responseBody
+                    Prelude.putStrLn $ "out: " ++ m4
+                    r5 <- post (menuUrl sId) [ partString "args" "map" ]
+                    let m5 = BSL.unpack $ r5 ^. responseBody
+                    Prelude.putStrLn $ "map: " ++ m5
+                    r6 <- post (menuUrl sId) [ partString "args" "purp PurposeExamples" ]
+                    let m6 = BSL.unpack $ r6 ^. responseBody
+                    Prelude.putStrLn $ "purp PurposeExamples: " ++ m6
+                    m1 `shouldNotSatisfy` null
+                    m2 `shouldNotSatisfy` null
+                    m3 `shouldNotSatisfy` null
+                    m4 `shouldNotSatisfy` null
+                    m5 `shouldNotSatisfy` null
+                    m6 `shouldNotSatisfy` null
+
 
 check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
@@ -417,6 +448,9 @@ evalUrl sId = Prelude.concat [host, "/sessions/", show sId, "/eval"]
 
 paramUrl :: Integer -> String
 paramUrl sId = Prelude.concat [host, "/sessions/", show sId, "/params"]
+
+menuUrl :: Integer -> String
+menuUrl sId = Prelude.concat [host, "/sessions/", show sId, "/menu"]
 
 emptyP :: [Part]
 emptyP = [partText "" ""]
