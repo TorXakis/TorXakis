@@ -335,9 +335,16 @@ instance ( MapsTo Text SortId mm
                            , (missChLoc, chanIdMiss)
                            ]
 
--- | Bogus instance to be able to use @subCompile@.
+-- | Bogus instance for @ExpDecl@ to be able to use @subCompile@.
 --
 -- A value expression declaration @ExpDecl@ has no channels, so @uGetKVs@
 -- returns the empty list.
 instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ExpDecl mm where
+    uGetKVs _ _ = return []
+
+-- | Bogus instance for @ParLetVarDecl@ to be able to use @subCompile@.
+--
+-- A value expression declaration @ExpDecl@ has no channels, so @uGetKVs@
+-- returns the empty list.
+instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ParLetVarDecl mm where
     uGetKVs _ _ = return []

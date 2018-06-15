@@ -321,82 +321,9 @@ compileToProcDefs mm pd = do
     stautPDefMap <- stautDeclsToProcDefMap (pms :& mm) (pd ^. stauts)
     return $ procPDefMap `Map.union` stautPDefMap
 
--- * External parsing functions
-
--- | Compiler for value definitions
 --
--- name valdefsParser   ExNeValueDefs     -- valdefsParser   :: [Token]
+-- External parsing functions
 --
--- Originally:
---
--- > SIGS VARENV UNID -> ( Int, VEnv )
---
--- Where
---
--- > SIGS   ~~ (Sigs VarId)
--- > VARENV ~~ [VarId]  WARNING!!!!! This thing is empty when used at the server, so we might not need it.
--- > UNID   ~~ Int
-valdefsParser :: Sigs VarId
-              -> [VarId]
-              -> Int
-              -> String
-              -> CompilerM (Id, Map VarId (ValExpr VarId))
-valdefsParser sigs vids unid str = do
-    ls <- liftEither $ parse 0 "" str letVarDeclsP
-    setUnid unid
-
-    --
-    -- TODO: factor out duplication w.r.t @vexprParser@
-    --
-
-    let
-        vlocs :: [(Loc VarDeclE, VarId)]
-        vlocs = zip (varIdToLoc <$> vids) vids
-
-        text2vdloc :: Map Text (Loc VarDeclE)
-        text2vdloc = Map.fromList $
-                     zip (VarId.name . snd <$> vlocs) (fst <$> vlocs)
-
-        text2sh :: [(Text, (Signature, Handler VarId))]
-        text2sh = do
-            (t, shmap) <- Map.toList . toMap . func $ sigs
-            (s, h) <- Map.toList shmap
-            return (t, (s, h))
-
-
-    floc2sh <- forM text2sh $ \(t, (s, h)) -> do
-        i <- getNextId
-        return (PredefLoc t i, (s, h))
-
-    let
-        text2fdloc :: Map Text [Loc FuncDeclE]
-        text2fdloc = Map.fromListWith (++) $
-            zip (fst <$> text2sh) (pure . fst <$> floc2sh)
-        tsids :: Map Text SortId
-        tsids = sort sigs
-        vsids :: Map (Loc VarDeclE) SortId
-        vsids = Map.fromList . fmap (second varsort) $ vlocs
-        fsigs :: Map (Loc FuncDeclE) Signature
-        fsigs = Map.fromList $ fmap (second fst) floc2sh
-
-    vdecls <- Map.fromList <$> mapRefToDecls (text2vdloc :& text2fdloc) ls
-    let  mm = tsids :& vsids :& fsigs :& vdecls
-    vsids' <- Map.fromList <$> inferVarTypes mm ls
-    vvids  <- Map.fromList <$> mkVarIds (vsids' <.+> vsids) ls
-    let mm' = vdecls
-            :& vvids
-            :& Map.fromList floc2sh
-
-    --
-    -- TODO: factor out duplication w.r.t @vexprParser@
-    --
-
-    vrvds <- liftEither $ varDefsFromExp mm' ls
-
-    venv <- liftEither $ parValDeclToMap vrvds ls
-
-    unid'  <- getUnid
-    return (Id unid', venv)
 
 mkFuncDecls :: [FuncId] -> Map Text [Loc FuncDeclE]
 mkFuncDecls fs = Map.fromListWith (++) $ zip (FuncId.name <$> fs)
@@ -405,69 +332,8 @@ mkFuncDecls fs = Map.fromListWith (++) $ zip (FuncId.name <$> fs)
 mkFuncIds :: [FuncId] -> Map (Loc FuncDeclE) FuncId
 mkFuncIds fs = Map.fromList $ zip (fIdToLoc <$> fs) fs
 
--- | Sub-compiler for value expressions.
---
-vexprParser :: Sigs VarId
-            -> [VarId]
-            -> Int
-            -> String                        -- ^ String to parse.
-            -> CompilerM (Id, ValExpr VarId)
-vexprParser sigs vids unid str =
-    subCompile sigs [] vids unid str valExpP $ \scm eDecl -> do
-
-        let mm =  text2sidM scm
-               :& lvd2sidM scm
-               :& lfd2sgM scm
-               :& lvr2lvdOrlfdM scm
-        eSid  <- liftEither $ inferExpTypes mm eDecl >>= getUniqueElement
-        liftEither $ expDeclToValExpr (lvr2vidOrsghdM scm) eSid eDecl
-
 fIdToLoc :: FuncId -> Loc FuncDeclE
 fIdToLoc fId = PredefLoc (FuncId.name fId) (_id . FuncId.unid $ fId)
-
--- TODO: consider renaming these functions to vid2loc (be consistent!).
-varIdToLoc :: VarId -> Loc VarDeclE
-varIdToLoc vId = PredefLoc (VarId.name vId) (_id . VarId.unid $ vId)
-
-chIdToLoc :: ChanId -> Loc ChanDeclE
-chIdToLoc chId = PredefLoc (ChanId.name chId) (_id . ChanId.unid $ chId)
-
--- | Sub-compiler for behavior expressions.
-bexprParser :: Sigs VarId
-            -> [ChanId]
-            -> [VarId]
-            -> Int
-            -> String
-            -> CompilerM (Id, BExpr)
-bexprParser sigs chids vids unid str =
-    subCompile sigs chids vids unid str bexpDeclP $ \scm bdecl -> do
-        let mm =  text2sidM scm
-               :& lvr2lvdOrlfdM scm
-               :& lvd2sidM scm
-               :& lfd2sghdM scm
-               :& lchr2lchdM scm
-               :& lchd2chidM scm
-               :& pidsM scm
-        toBExpr mm (lvr2vidOrsghdM scm) bdecl
-
-prefoffsParser :: Sigs VarId
-            -> [ChanId]
-            -> [VarId]
-            -> Int
-            -> String
-            -> CompilerM (Id, Set Offer)
-prefoffsParser sigs chids vids unid str =
-    subCompile sigs chids vids unid str offersP $ \scm ofsDecl -> do
-        let mm = text2sidM scm
-                :& lvr2lvdOrlfdM scm
-                :& lvd2sidM scm
-                :& lfd2sghdM scm
-                :& lchr2lchdM scm
-                :& lchd2chidM scm
-
-        os <- traverse (toOffer mm (lvr2vidOrsghdM scm)) ofsDecl
-        -- Filter the internal actions (to comply with the current TorXakis compiler).
-        return $ Set.fromList $ filter ((chanIdIstep /=) . chanid) os
 
 -- | Maps required for the sub-compilation functions.
 data SubCompileMaps = SubCompileMaps
@@ -584,3 +450,74 @@ subCompile sigs chids vids unid str expP cmpF = do
     unid' <- getUnid
     return (Id unid', exp)
 
+-- TODO: consider renaming these functions to vid2loc (be consistent!).
+varIdToLoc :: VarId -> Loc VarDeclE
+varIdToLoc vId = PredefLoc (VarId.name vId) (_id . VarId.unid $ vId)
+
+chIdToLoc :: ChanId -> Loc ChanDeclE
+chIdToLoc chId = PredefLoc (ChanId.name chId) (_id . ChanId.unid $ chId)
+
+-- | Compiler for value definitions
+--
+valdefsParser :: Sigs VarId
+              -> [VarId]
+              -> Int
+              -> String
+              -> CompilerM (Id, Map VarId (ValExpr VarId))
+valdefsParser sigs vids unid str =
+    subCompile sigs [] vids unid str letVarDeclsP $ \scm ls ->
+        liftEither $ parValDeclToMap (lvr2vidOrsghdM scm) ls
+
+-- | Sub-compiler for value expressions.
+--
+vexprParser :: Sigs VarId
+            -> [VarId]
+            -> Int
+            -> String                        -- ^ String to parse.
+            -> CompilerM (Id, ValExpr VarId)
+vexprParser sigs vids unid str =
+    subCompile sigs [] vids unid str valExpP $ \scm eDecl -> do
+
+        let mm =  text2sidM scm
+               :& lvd2sidM scm
+               :& lfd2sgM scm
+               :& lvr2lvdOrlfdM scm
+        eSid  <- liftEither $ inferExpTypes mm eDecl >>= getUniqueElement
+        liftEither $ expDeclToValExpr (lvr2vidOrsghdM scm) eSid eDecl
+
+-- | Sub-compiler for behavior expressions.
+bexprParser :: Sigs VarId
+            -> [ChanId]
+            -> [VarId]
+            -> Int
+            -> String
+            -> CompilerM (Id, BExpr)
+bexprParser sigs chids vids unid str =
+    subCompile sigs chids vids unid str bexpDeclP $ \scm bdecl -> do
+        let mm =  text2sidM scm
+               :& lvr2lvdOrlfdM scm
+               :& lvd2sidM scm
+               :& lfd2sghdM scm
+               :& lchr2lchdM scm
+               :& lchd2chidM scm
+               :& pidsM scm
+        toBExpr mm (lvr2vidOrsghdM scm) bdecl
+
+prefoffsParser :: Sigs VarId
+            -> [ChanId]
+            -> [VarId]
+            -> Int
+            -> String
+            -> CompilerM (Id, Set Offer)
+prefoffsParser sigs chids vids unid str =
+    subCompile sigs chids vids unid str offersP $ \scm ofsDecl -> do
+        let mm = text2sidM scm
+                :& lvr2lvdOrlfdM scm
+                :& lvd2sidM scm
+                :& lfd2sghdM scm
+                :& lchr2lchdM scm
+                :& lchd2chidM scm
+
+        os <- traverse (toOffer mm (lvr2vidOrsghdM scm)) ofsDecl
+        -- Filter the internal actions (to comply with the current TorXakis compiler).
+        return $ Set.fromList $ filter ((chanIdIstep /=) . chanid) os
