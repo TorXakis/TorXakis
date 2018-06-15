@@ -413,12 +413,12 @@ vexprParser :: Sigs VarId
             -> String                        -- ^ String to parse.
             -> CompilerM (Id, ValExpr VarId)
 vexprParser sigs vids unid str =
-    subCompile sigs [] vids unid str valExpP $ \ scm eDecl -> do
+    subCompile sigs [] vids unid str valExpP $ \scm eDecl -> do
+
         let mm =  text2sidM scm
                :& lvd2sidM scm
                :& lfd2sgM scm
                :& lvr2lvdOrlfdM scm
-
         eSid  <- liftEither $ inferExpTypes mm eDecl >>= getUniqueElement
         liftEither $ expDeclToValExpr (lvr2vidOrsghdM scm) eSid eDecl
 
@@ -517,18 +517,18 @@ prefoffsParser :: Sigs VarId
             -> Int
             -> String
             -> CompilerM (Id, Set Offer)
-prefoffsParser sigs chids vids unid str = do
-    ofsDecl <- liftEither $ parse 0 "" str chanOffersP
-    setUnid unid
+prefoffsParser sigs chids vids unid str =
+    subCompile sigs chids vids unid str offersP $ \scm ofsDecl -> do
+        let mm = text2sidM scm
+                :& lvr2lvdOrlfdM scm
+                :& lvd2sidM scm
+                :& lfd2sghdM scm
+                :& lchr2lchdM scm
+                :& lchd2chidM scm
 
-
-
-    os <- undefined -- traverse (toOffer mm vrvds)
-    -- Filter the internal actions (to comply with the current TorXakis compiler).
-    let os' = filter ((chanIdIstep /=) . chanid) os
-
-    unid' <- getUnid
-    return (Id unid', Set.fromList os)
+        os <- traverse (toOffer mm (lvr2vidOrsghdM scm)) ofsDecl
+        -- Filter the internal actions (to comply with the current TorXakis compiler).
+        return $ Set.fromList $ filter ((chanIdIstep /=) . chanid) os
 
 -- | Maps required for the sub-compilation functions.
 data SubCompileMaps = SubCompileMaps
@@ -538,10 +538,12 @@ data SubCompileMaps = SubCompileMaps
     , text2lfdM :: Map Text [Loc FuncDeclE]
     , lfd2sgM   :: Map (Loc FuncDeclE) Signature
     , lfd2sghdM :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-    , pidsM     :: Map ProcId ()
     , lvr2lvdOrlfdM :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
     , lvr2vidOrsghdM :: Map (Loc VarRefE)
                        (Either VarId [(Signature, Handler VarId)])
+    , pidsM     :: Map ProcId ()
+    , lchr2lchdM :: Map (Loc ChanRefE) (Loc ChanDeclE)
+    , lchd2chidM :: Map (Loc ChanDeclE) ChanId
     }
 
 -- | Context used in type inference
@@ -632,9 +634,11 @@ subCompile sigs chids vids unid str expP cmpF = do
             , text2lfdM = text2lfd
             , lfd2sgM = lfd2sg
             , lfd2sghdM = Map.fromList lfd2sghd
-            , pidsM = pids
             , lvr2lvdOrlfdM = lvr2lvdOrlfd
             , lvr2vidOrsghdM = lvr2vidOrsghd
+            , pidsM = pids
+            , lchr2lchdM = lchr2lchd
+            , lchd2chidM = lchd2chid
             }
 
     exp <- cmpF cmpMaps edecl

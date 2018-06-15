@@ -186,11 +186,11 @@ toActOffer mm vrvds (ActOfferDecl osd mc) = do
     return $ ActOffer (Set.fromList os') Set.empty c
 
 toOffer :: ( MapsTo Text SortId mm
+           , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+           , MapsTo (Loc VarDeclE) SortId mm
+           , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
            , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
            , MapsTo (Loc ChanDeclE) ChanId mm
-           , MapsTo (Loc VarDeclE) SortId mm
-           , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-           , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
            , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False )
         => mm
         -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
