@@ -439,77 +439,16 @@ bexprParser :: Sigs VarId
             -> Int
             -> String
             -> CompilerM (Id, BExpr)
-bexprParser sigs chids vids unid str = do
-    bDecl <- liftEither $ parse 0 "" str bexpDeclP
-    setUnid unid
-
-    -- These additional maps are needed w.r.t. @vexprParser@
-    let
-        cd2chids :: Map (Loc ChanDeclE) ChanId
-        cd2chids = Map.fromList $ zip (chIdToLoc <$> chids) chids
-
-        text2chids :: Map Text (Loc ChanDeclE)
-        text2chids = Map.fromList $ zip (ChanId.name <$> chids) (chIdToLoc <$> chids)
-
-        procIds :: Map ProcId ()
-        procIds = Map.fromList $ zip (pro sigs) (repeat ())
-
-    chDecls <- getMap text2chids bDecl  :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
-    --
-    -- TODO: factor out duplication w.r.t. @vexprParser@
-    --
-
-    let
-        vlocs :: [(Loc VarDeclE, VarId)]
-        vlocs = zip (varIdToLoc <$> vids) vids
-
-        text2vdloc :: Map Text (Loc VarDeclE)
-        text2vdloc = Map.fromList $
-                     zip (VarId.name . snd <$> vlocs) (fst <$> vlocs)
-
-        text2sh :: [(Text, (Signature, Handler VarId))]
-        text2sh = do
-            (t, shmap) <- Map.toList . toMap . func $ sigs
-            (s, h) <- Map.toList shmap
-            return (t, (s, h))
-
-
-    floc2sh <- forM text2sh $ \(t, (s, h)) -> do
-        i <- getNextId
-        return (PredefLoc t i, (s, h))
-
-    let
-        text2fdloc :: Map Text [Loc FuncDeclE]
-        text2fdloc = Map.fromListWith (++) $
-            zip (fst <$> text2sh) (pure . fst <$> floc2sh)
-        tsids :: Map Text SortId
-        tsids = sort sigs
-        vsids :: Map (Loc VarDeclE) SortId
-        vsids = Map.fromList . fmap (second varsort) $ vlocs
-        fsigs :: Map (Loc FuncDeclE) Signature
-        fsigs = Map.fromList $ fmap (second fst) floc2sh
-
-    vdecls <- Map.fromList <$> mapRefToDecls (text2vdloc :& text2fdloc) bDecl
-    let  mm = tsids :& vsids :& fsigs :& vdecls
-             :& (chDecls :& cd2chids :& procIds)  -- Differences w.r.t. @vexprParser@.
-    vsids' <- Map.fromList <$> inferVarTypes mm bDecl
-    vvids  <- Map.fromList <$> mkVarIds (vsids' <.+> vsids) bDecl
-    let mm' = vdecls
-            :& vvids
-            :& Map.fromList floc2sh
-
-    --
-    -- TODO: factor out duplication w.r.t @vexprParser@
-    --
-
-    vrvds <- liftEither $ varDefsFromExp mm' bDecl
-    let mm'' = tsids :& vsids :& vdecls
-             :& (chDecls :& cd2chids :& procIds)
-             :& Map.fromList floc2sh
-    bExp <- toBExpr mm'' vrvds bDecl
-
-    unid' <- getUnid
-    return (Id unid', bExp)
+bexprParser sigs chids vids unid str =
+    subCompile sigs chids vids unid str bexpDeclP $ \scm bdecl -> do
+        let mm =  text2sidM scm
+               :& lvr2lvdOrlfdM scm
+               :& lvd2sidM scm
+               :& lfd2sghdM scm
+               :& lchr2lchdM scm
+               :& lchd2chidM scm
+               :& pidsM scm
+        toBExpr mm (lvr2vidOrsghdM scm) bdecl
 
 prefoffsParser :: Sigs VarId
             -> [ChanId]
@@ -532,18 +471,17 @@ prefoffsParser sigs chids vids unid str =
 
 -- | Maps required for the sub-compilation functions.
 data SubCompileMaps = SubCompileMaps
-    { text2sidM :: Map Text SortId
-    , lvd2sidM  :: Map (Loc VarDeclE) SortId
-    , lvd2vidM  :: Map (Loc VarDeclE) VarId
-    , text2lfdM :: Map Text [Loc FuncDeclE]
-    , lfd2sgM   :: Map (Loc FuncDeclE) Signature
-    , lfd2sghdM :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-    , lvr2lvdOrlfdM :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
-    , lvr2vidOrsghdM :: Map (Loc VarRefE)
-                       (Either VarId [(Signature, Handler VarId)])
-    , pidsM     :: Map ProcId ()
-    , lchr2lchdM :: Map (Loc ChanRefE) (Loc ChanDeclE)
-    , lchd2chidM :: Map (Loc ChanDeclE) ChanId
+    { text2sidM      :: Map Text SortId
+    , lvd2sidM       :: Map (Loc VarDeclE) SortId
+    , lvd2vidM       :: Map (Loc VarDeclE) VarId
+    , text2lfdM      :: Map Text [Loc FuncDeclE]
+    , lfd2sgM        :: Map (Loc FuncDeclE) Signature
+    , lfd2sghdM      :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+    , lvr2lvdOrlfdM  :: Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE])
+    , lvr2vidOrsghdM :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+    , pidsM          :: Map ProcId ()
+    , lchr2lchdM     :: Map (Loc ChanRefE) (Loc ChanDeclE)
+    , lchd2chidM     :: Map (Loc ChanDeclE) ChanId
     }
 
 -- | Context used in type inference

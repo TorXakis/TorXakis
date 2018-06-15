@@ -1062,18 +1062,6 @@ readAction chids args = do
                            )
                            ( \e -> return ((uid,Set.empty),show (e::ErrorCall)))
 
-     -- ((uid',offs'),e) <- lift $ lift $ catch
-     --                       ( let p = TxsHappy.prefoffsParser
-     --                                ( TxsAlex.Csigs    sigs
-     --                                : TxsAlex.Cchanenv chids
-     --                                : TxsAlex.Cvarenv  (Map.keys vals)
-     --                                : TxsAlex.Cunid    (_id uid + 1)
-     --                                : TxsAlex.txsLexer args
-     --                                )
-     --                          in return $!! (p,"")
-     --                       )
-     --                       ( \e -> return ((uid,Set.empty),show (e::ErrorCall)))
-
      if  e /= ""
        then do IFS.nack "ERROR" [ "incorrect action: " ++ e ]
                return TxsDDefs.ActQui
