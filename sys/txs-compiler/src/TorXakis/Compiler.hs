@@ -388,9 +388,6 @@ subCompile sigs chids vids unid str expP cmpF = do
         pids :: Map ProcId ()
         pids = Map.fromList $ zip (pro sigs) (repeat ())
 
-    lchr2lchd <- getMap text2chid edecl  :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
-
-    let
         lvd2vid :: [(Loc VarDeclE, VarId)]
         lvd2vid = zip (varIdToLoc <$> vids) vids
 
@@ -419,8 +416,8 @@ subCompile sigs chids vids unid str expP cmpF = do
         lfd2sg :: Map (Loc FuncDeclE) Signature
         lfd2sg = Map.fromList $ fmap (second fst) lfd2sghd
 
+    lchr2lchd <- getMap text2chid edecl  :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
     lvr2lvdOrlfd <- Map.fromList <$> mapRefToDecls (text2lvd :& text2lfd) edecl
-
     let mm =  text2sid :& lvd2sid :& lfd2sg :& lvr2lvdOrlfd
            :& lchr2lchd :& lchd2chid :& pids
     lvd2sid' <- Map.fromList <$> inferVarTypes mm edecl
