@@ -362,15 +362,24 @@ cmdVar args = do
          IFS.pack "VAR" [ TxsShow.fshow vars ]
          cmdsIntpr
        else do
+
          ((uid',vars'),e) <- lift $ lift $ catch
-                               ( let p = TxsHappy.vardeclsParser
-                                           ( TxsAlex.Csigs sigs
-                                           : TxsAlex.Cunid (_id uid + 1)
-                                           : TxsAlex.txsLexer args
-                                           )
+                               ( let p = compileUnsafe $
+                                         vardeclsParser sigs (_id uid + 1) args
                                   in return $!! (p,"")
                                )
                                ( \e -> return ((uid,[]),show (e::ErrorCall)))
+
+         -- ((uid',vars'),e) <- lift $ lift $ catch
+         --                       ( let p = TxsHappy.vardeclsParser
+         --                                   ( TxsAlex.Csigs sigs
+         --                                   : TxsAlex.Cunid (_id uid + 1)
+         --                                   : TxsAlex.txsLexer args
+         --                                   )
+         --                          in return $!! (p,"")
+         --                       )
+         --                       ( \e -> return ((uid,[]),show (e::ErrorCall)))
+
          if  e /= ""
            then do
              modify $ \env' -> env' { IOS.uid = uid' }

@@ -344,7 +344,11 @@ instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ExpDecl mm where
 
 -- | Bogus instance for @ParLetVarDecl@ to be able to use @subCompile@.
 --
--- A value expression declaration @ExpDecl@ has no channels, so @uGetKVs@
--- returns the empty list.
+-- A value expression declaration @ParLetVarDecl@ has no channels.
 instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ParLetVarDecl mm where
+    uGetKVs _ _ = return []
+
+-- | Bogus instance for @VarDecl@ to be able to use @subCompile@.
+--
+instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) VarDecl mm where
     uGetKVs _ _ = return []

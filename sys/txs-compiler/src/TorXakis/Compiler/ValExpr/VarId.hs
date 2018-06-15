@@ -58,6 +58,9 @@ class DeclaresVariables e where
     mkVarIds :: MapsTo (Loc VarDeclE) SortId mm
              => mm -> e -> CompilerM [(Loc VarDeclE, VarId)]
 
+instance DeclaresVariables VarDecl where
+    mkVarIds mm = fmap pure . varIdFromVarDecl mm
+
 instance DeclaresVariables BExpDecl where
     mkVarIds _  Stop                  = return []
     mkVarIds mm (ActPref ao be)       = (++) <$> mkVarIds mm ao <*> mkVarIds mm be

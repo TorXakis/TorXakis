@@ -209,3 +209,6 @@ instance HasVarReferences CodecItem where
         (++) <$> mapRefToDecls mm offr <*> mapRefToDecls (offrVd <.+> mm) chOffr
         where
           offrVd = mkVdMap (offerDecls offr)
+
+instance HasVarReferences VarDecl where
+    mapRefToDecls _ vd = return [(asVarReflLoc . getLoc $ vd, Left . getLoc $ vd)]

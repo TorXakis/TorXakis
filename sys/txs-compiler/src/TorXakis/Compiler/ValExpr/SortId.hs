@@ -241,15 +241,10 @@ checkSortIds sId0 sId1 =
     }
 
 class HasTypedVars mm e where
-    inferVarTypes :: -- ( MapsTo Text SortId mm
-                     -- , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
-                     -- , MapsTo (Loc ChanDeclE) ChanId mm
-                     -- , MapsTo (Loc VarDeclE) SortId mm
-                     -- , MapsTo (Loc FuncDeclE) Signature mm
-                     -- , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                     -- , MapsTo ProcId () mm )
-                  -- => mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
-        mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
+    inferVarTypes :: mm -> e -> CompilerM [(Loc VarDeclE, SortId)]
+
+instance MapsTo Text SortId mm => HasTypedVars mm VarDecl where
+    inferVarTypes mm vd = pure . (getLoc vd,) <$> mm .@!! varDeclSort vd
 
 instance ( MapsTo Text SortId mm
          , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm

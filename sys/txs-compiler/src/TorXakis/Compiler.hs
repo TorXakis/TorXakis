@@ -83,6 +83,7 @@ import           TorXakis.Parser.BExpDecl
 import           TorXakis.Parser.Common             (TxsParser)
 import           TorXakis.Parser.Data
 import           TorXakis.Parser.ValExprDecl
+import           TorXakis.Parser.VarDecl
 
 -- | Compile a string into a TorXakis model.
 --
@@ -457,7 +458,7 @@ varIdToLoc vId = PredefLoc (VarId.name vId) (_id . VarId.unid $ vId)
 chIdToLoc :: ChanId -> Loc ChanDeclE
 chIdToLoc chId = PredefLoc (ChanId.name chId) (_id . ChanId.unid $ chId)
 
--- | Compiler for value definitions
+-- | Sub-compiler for value definitions
 --
 valdefsParser :: Sigs VarId
               -> [VarId]
@@ -468,6 +469,16 @@ valdefsParser sigs vids unid str =
     subCompile sigs [] vids unid str letVarDeclsP $ \scm ls ->
         liftEither $ parValDeclToMap (lvr2vidOrsghdM scm) ls
 
+-- | Sub-compiler for variable declarations.
+vardeclsParser :: Sigs VarId
+               -> Int
+              -> String
+              -> CompilerM (Id, [VarId])
+vardeclsParser sigs unid str =
+    subCompile sigs [] [] unid str varDeclsP $ \scm vdecls ->
+        return $ Map.elems $
+            Map.restrictKeys (lvd2vidM scm) (Set.fromList $ getLoc <$> vdecls)
+
 -- | Sub-compiler for value expressions.
 --
 vexprParser :: Sigs VarId
@@ -476,14 +487,14 @@ vexprParser :: Sigs VarId
             -> String                        -- ^ String to parse.
             -> CompilerM (Id, ValExpr VarId)
 vexprParser sigs vids unid str =
-    subCompile sigs [] vids unid str valExpP $ \scm eDecl -> do
+    subCompile sigs [] vids unid str valExpP $ \scm edecl -> do
 
         let mm =  text2sidM scm
                :& lvd2sidM scm
                :& lfd2sgM scm
                :& lvr2lvdOrlfdM scm
-        eSid  <- liftEither $ inferExpTypes mm eDecl >>= getUniqueElement
-        liftEither $ expDeclToValExpr (lvr2vidOrsghdM scm) eSid eDecl
+        eSid  <- liftEither $ inferExpTypes mm edecl >>= getUniqueElement
+        liftEither $ expDeclToValExpr (lvr2vidOrsghdM scm) eSid edecl
 
 -- | Sub-compiler for behavior expressions.
 bexprParser :: Sigs VarId
