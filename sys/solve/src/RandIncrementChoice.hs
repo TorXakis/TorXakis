@@ -31,7 +31,7 @@ import           Data.Monoid
 import           Data.Text             (Text)
 import qualified Data.Text             as T
 
-import           ConstDefs
+import           Constant(Constant(Cbool, Cint, Cstring, Ccstr, Cregex))
 import           CstrDef
 import           CstrId
 import           SMT
@@ -107,7 +107,7 @@ randomSolve p ((v,_):xs) i    | vsort v == sortIdBool =
             Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - Bool"
     where
-        choicesFunc :: Variable v => v -> Bool -> Const -> SMT [(Bool, Text)]
+        choicesFunc :: Variable v => v -> Bool -> Constant -> SMT [(Bool, Text)]
         choicesFunc v' b (Cbool b')  = do
                                          let cond = b == b'
                                          st <- valExprToString $ cstrEqual (cstrVar v') (cstrConst (Cbool b))
@@ -133,7 +133,7 @@ randomSolve p ((v,_):xs) i    | vsort v == sortIdInt =
             Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - Int"
     where
-        choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, Text)]
+        choicesFunc :: Variable v => v -> Int -> Constant -> SMT [(Bool, Text)]
         choicesFunc v' r (Cint x)  = do
                                         let r' = toInteger r
                                             cond = x < r'
@@ -159,7 +159,7 @@ randomSolve p ((v,-123):xs) i    | vsort v == sortIdString =                 -- 
             Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - char"
     where
-        choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, Text)]
+        choicesFunc :: Variable v => v -> Int -> Constant -> SMT [(Bool, Text)]
         choicesFunc v' r (Cstring str) |
           T.length str == 1 = do
             let
@@ -203,7 +203,7 @@ randomSolve p ((v,d):xs) i    | vsort v == sortIdString =
                                             _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l == 0"
             _              -> error "RandIncrementChoice: impossible constant - string"
     where
-        choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, Text)]
+        choicesFunc :: Variable v => v -> Int -> Constant -> SMT [(Bool, Text)]
         choicesFunc v' r (Cstring s) = do
                                             let cond = T.length s < r
                                             st <- valExprToString $ cstrLT (cstrLength (cstrVar v')) (cstrConst (Cint (toInteger r)))
@@ -241,7 +241,7 @@ randomSolve p ((v,d):xs) i =
                         let (partA, partB) = splitAt (div (length cstrs) 2) shuffledCstrs
                         c <- randomSolveVar v (choicesFunc v partA partB)
                         case c of
-                            Cstr{cstrId = cid}  ->
+                            Ccstr{cstrId = cid}  ->
                                 case Map.lookup cid (Map.fromList cstrs) of
                                     Just CstrDef{} ->
                                         do
@@ -262,8 +262,8 @@ randomSolve p ((v,d):xs) i =
                                     Nothing                 -> error "RandIncrementChoice: value not found - ADT - n"
                             _                   -> error "RandIncrementChoice: impossible constant - ADT - n"
     where
-        choicesFunc :: Variable v => v -> [(CstrId, CstrDef)] -> [(CstrId, CstrDef)] -> Const -> SMT [(Bool, Text)]
-        choicesFunc v' partA partB Cstr{cstrId = cId} =
+        choicesFunc :: Variable v => v -> [(CstrId, CstrDef)] -> [(CstrId, CstrDef)] -> Constant -> SMT [(Bool, Text)]
+        choicesFunc v' partA partB Ccstr{cstrId = cId} =
             do
                 let cond = Map.member cId (Map.fromList partA)
                 lA <- mapM (\(tempCid,CstrDef{}) -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partA
@@ -279,7 +279,7 @@ randomSolve p ((v,d):xs) i =
 
 
 -- Find random solution for variable, using the different choices
-randomSolveVar :: (Variable v) => v -> (Const -> SMT [(Bool, Text)]) -> SMT Const
+randomSolveVar :: (Variable v) => v -> (Constant -> SMT [(Bool, Text)]) -> SMT Constant
 randomSolveVar v choicesFunc = do
     sol <- getSolution [v]
     case Map.lookup v sol of

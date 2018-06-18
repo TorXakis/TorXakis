@@ -84,7 +84,7 @@ import qualified Data.Set        as Set
 import qualified Data.Text       as T
 import           Text.Regex.TDFA
 
-import           Const
+import           Constant
 import           CstrId
 import qualified FreeMonoidX     as FMX
 import           FuncDef
@@ -118,7 +118,7 @@ cstrCstr :: CstrId -> [ValExpr v] -> ValExpr v
 cstrCstr c a = if all isConst a
                 then cstrConst (Ccstr c (map toConst a) )
                 else ValExpr (Vcstr c a)
-    where   toConst :: ValExpr v -> Const
+    where   toConst :: ValExpr v -> Constant
             toConst (view -> Vconst v) = v
             toConst _                  = error "Impossible when all satisfy isConst"
 
@@ -156,7 +156,7 @@ getIntVal _                         =
     error "ValExprImpls.hs - getIntVal - Unexpected ValExpr"
 
 -- | Create a constant as a value expression.
-cstrConst :: Const -> ValExpr v
+cstrConst :: Constant -> ValExpr v
 cstrConst = ValExpr . Vconst
 
 -- | Create a variable as a value expression.

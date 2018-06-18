@@ -8,7 +8,7 @@ module ValExprSpec where
 
 import           Sum
 import           Test.Hspec
-import           Const
+import           Constant
 import           ValExpr
 
 sum012 :: ValExpr Int

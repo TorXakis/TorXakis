@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Const
+-- Module      :  Constant
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -19,13 +19,13 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE TemplateHaskell    #-}
-module Const
+module Constant
 ( 
 -- * Data structure for constant definitions
-  Const.Const (..)
+  Constant (..)
 -- * Getter and Setter of Lens
 , toBool
-, Const.toInteger
+, Constant.toInteger
 , toText
 , toXSDRegex
 , cstrId
@@ -46,7 +46,7 @@ import           SortId
 import           SortOf
 
 -- | Union of Boolean, Integer, String, and AlgebraicDataType constant values.
-data Const = -- | Constructor of Boolean constant.
+data Constant = -- | Constructor of Boolean constant.
                 Cbool    { _toBool :: Bool }
                 -- | Constructor of Integer constant.
               | Cint     { _toInteger :: Integer }
@@ -58,17 +58,17 @@ data Const = -- | Constructor of Boolean constant.
                                             -- PvdL: performance gain: translate only once,
                                             --       storing SMT string as well
                 -- | Constructor of constructor constant (value of ADT).
-              | Ccstr    { _cstrId :: CstrId, _args :: [Const.Const] }
+              | Ccstr    { _cstrId :: CstrId, _args :: [Constant] }
                 -- | Constructor of ANY constant.
               | Cany     { _sort :: SortId }
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
-makeLenses ''Const.Const
+makeLenses ''Constant
 
 -- | Const is Resettable
-instance Resettable Const.Const
+instance Resettable Constant
 
 -- | Const has a Sort.
-instance SortOf Const.Const where
+instance SortOf Constant where
   sortOf (Cbool _b)                         = sortIdBool
   sortOf (Cint _i)                          = sortIdInt
   sortOf (Cstring _s)                       = sortIdString

@@ -3,53 +3,53 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-module ConstSpec where
+module ConstantSpec where
 
 import           Control.Lens
-import           Data.Maybe
 import qualified Data.Text as T
 import           Test.Hspec
 import           Test.QuickCheck
 
-import           Const
-import           GenConst
+import           Constant
+import           ConstantGen
 import           SortId
 import           SortOf
 
 prop_BoolConst :: Bool -> Bool
-prop_BoolConst b = b == (Cbool b) ^. toBool
+prop_BoolConst b = Just b == Cbool b ^? toBool
 
 prop_BoolSort :: Bool -> Bool
 prop_BoolSort b = sortIdBool == sortOf (Cbool b)
 
 prop_IntConst :: Integer -> Bool
-prop_IntConst i = i == (Cint i) ^. Const.toInteger
+prop_IntConst i = Just i == (Cint i) ^? Constant.toInteger
 
 prop_IntSort :: Integer -> Bool
 prop_IntSort i = sortIdInt == sortOf (Cint i)
 
 prop_StringConst :: UnicodeString -> Bool
-prop_StringConst (UnicodeString s) = (T.pack s) == (Cstring (T.pack s)) ^. toText
+prop_StringConst (UnicodeString s) = let t = T.pack s in
+                                        Just t == (Cstring t) ^? toText
 
 prop_StringSort :: UnicodeString -> Bool
 prop_StringSort (UnicodeString s) = sortIdString == sortOf (Cstring (T.pack s))
 
-prop_ConstEq :: GenConst -> Bool
-prop_ConstEq (GenConst val) =
+prop_ConstEq :: ConstantGen -> Bool
+prop_ConstEq (ConstantGen val) =
     not (val /= val)
 
-prop_ConstOrd :: GenConst -> Bool
-prop_ConstOrd (GenConst val) =
+prop_ConstOrd :: ConstantGen -> Bool
+prop_ConstOrd (ConstantGen val) =
     val >= val
 
-prop_ConstShow :: GenConst -> Bool
-prop_ConstShow (GenConst val) =
+prop_ConstShow :: ConstantGen -> Bool
+prop_ConstShow (ConstantGen val) =
     show [val] == show [val]
 
 spec :: Spec
 spec = do
   describe "Boolean Const" $ do
- --   it "Stores a Boolean" $ property prop_BoolConst
+    it "Stores a Boolean" $ property prop_BoolConst
     it "Has sort Boolean"$ property prop_BoolSort
   describe "Int Const" $ do
     it "Stores a Int" $ property prop_IntConst

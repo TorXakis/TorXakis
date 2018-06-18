@@ -4,7 +4,7 @@
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  ConstAlex
+-- Module      :  ConstantAlex
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -12,11 +12,11 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Tokenize Value response.
+-- Tokenize constant response.
 -----------------------------------------------------------------------------
-module ConstAlex
+module ConstantAlex
 ( Token(..)
-, constLexer
+, constantLexer
 )
 
 where
@@ -57,18 +57,18 @@ tokens :-                                          -- Each right-hand side has t
 tok f p s = f p s
 
 -- | Data structure for Value Tokens.
-data  Token  =  Tname             AlexPosn  String
-              | Tbool             AlexPosn  Bool
-              | Tinteger          AlexPosn  Integer
-              | Tstring           AlexPosn  String
-              | Topenpar          AlexPosn
-              | Tclosepar         AlexPosn
-              | Tcomma            AlexPosn
+data  Token  =  Tname       AlexPosn  String
+             | Tbool        AlexPosn  Bool
+             | Tinteger     AlexPosn  Integer
+             | Tstring      AlexPosn  String
+             | Topenpar     AlexPosn
+             | Tclosepar    AlexPosn
+             | Tcomma       AlexPosn
    deriving (Eq,Show)
 
 -- | Value lexer.
-constLexer :: String -> [Token]
-constLexer = alexScanTokens
+constantLexer :: String -> [Token]
+constantLexer = alexScanTokens
 }
 
 -- ----------------------------------------------------------------------------------------- --

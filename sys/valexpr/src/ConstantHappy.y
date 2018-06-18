@@ -6,11 +6,10 @@ See LICENSE at root directory of this repository.
 
 -- ----------------------------------------------------------------------------------------- --
 -- uninterpreted haskell preamble
-
 {
 -----------------------------------------------------------------------------
 -- |
--- Module      :  ConstHappy
+-- Module      :  ConstantHappy
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -20,19 +19,19 @@ See LICENSE at root directory of this repository.
 --
 -- Parse Value response.
 -----------------------------------------------------------------------------
-module ConstHappy
-( ParseConst(..)
-, constParser
+module ConstantHappy
+( ParseConstant(..)
+, constantParser
 )
 where
-import ConstAlex (Token(..), constLexer)
+import ConstantAlex (Token(..), constantLexer)
 import Data.Text (Text)
 import qualified Data.Text as T
 }
 -- ----------------------------------------------------------------------------------------- --
 --  happy preamble
 
-%name      happyConst       Const
+%name      happyConstant       Constant
 %tokentype { Token }
 %error     { parseError }
 
@@ -58,24 +57,24 @@ import qualified Data.Text as T
 -- The only reason we used left recursion is that Happy is more efficient at parsing left-recursive rules; 
 
             
-Consts  :: { [ParseConst] }
-        : 
-            { [] }
-        | Const
-            { [$1] }
-        | Consts "," Const 
-            { $1 ++ [ $3 ] }
+Constants :: { [ParseConstant] }
+          : 
+              { [] }
+          | Constant
+              { [$1] }
+          | Constants "," Constant 
+              { $1 ++ [ $3 ] }
 
                 
-Const   :: { ParseConst }
-        : bool
-            { Pbool $1 }
-        | integer
-            { Pint $1 }
-        | string
-            { Pstring $ T.pack (init (tail $1)) }
-        | name "(" Consts ")"
-            { Pcstr (T.pack $1) $3 }
+Constant :: { ParseConstant }
+         : bool
+             { Pbool $1 }
+         | integer
+             { Pint $1 }
+         | string
+             { Pstring $ T.pack (init (tail $1)) }
+         | name "(" Constants ")"
+             { Pcstr (T.pack $1) $3 }
 
 -- ----------------------------------------------------------------------------------------- --
 -- uninterpreted haskell postamble
@@ -87,16 +86,16 @@ parseError _ = error "Parse Error"
 
 noerror = ()
 
--- | Data structure for Parse Const.
-data  ParseConst = Pbool   Bool
-                 | Pint    Integer
-                 | Pstring Text
-                 | Pcstr   Text [ParseConst]
+-- | Data structure for Parse Constant.
+data  ParseConstant = Pbool   Bool
+                    | Pint    Integer
+                    | Pstring Text
+                    | Pcstr   Text [ParseConstant]
      deriving (Eq,Ord,Read,Show)
 
 -- | Constant Value Parser.
-constParser :: [Token] -> ParseConst
-constParser = happyConst
+constantParser :: [Token] -> ParseConstant
+constantParser = happyConstant
 }
 -- ----------------------------------------------------------------------------------------- --
 -- end uninterpreted haskell postamble

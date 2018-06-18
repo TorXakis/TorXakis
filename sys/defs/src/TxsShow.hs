@@ -25,7 +25,7 @@ import qualified Data.Text         as T
 
 import           ChanId
 import           CnectId
-import           ConstDefs
+import           Constant
 import           CstrDef
 import           CstrId
 import qualified FreeMonoidX       as FMX
@@ -325,13 +325,13 @@ instance PShow v => PShow (ValExprView v) where
 
 
 
-instance PShow Const where
+instance PShow Constant where
   pshow (Cbool b) = show b
   pshow (Cint i) = show i
   pshow (Cstring s) = "\"" ++ T.unpack s ++ "\""
   pshow (Cregex r) = show r
-  pshow (Cstr cid []) = pshow cid
-  pshow (Cstr cid a) = pshow cid ++ "(" ++ Utils.join "," (map pshow a) ++ ")"
+  pshow (Ccstr cid []) = pshow cid
+  pshow (Ccstr cid a) = pshow cid ++ "(" ++ Utils.join "," (map pshow a) ++ ")"
   pshow (Cany srt) = "(ANY :: " ++ pshow srt ++ ")"
 
 -- ----------------------------------------------------------------------------------------- --

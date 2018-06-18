@@ -16,16 +16,15 @@ import           Data.Text (Text)
 
 import           Network.TextViaSockets (Connection)
 
-import           ConstDefs (Const)
+import           Constant (Constant)
 import           TxsDefs   (ChanId, VExpr)
 import           TxsShow
 import           VarId     (VarId)
 
 -- ----------------------------------------------------------------------------------------- --
--- Const  :  values (for now: VExpr)
--- Action :  trie/primer valued actions
+-- Action :  trie/primer constant value actions
 
-data  Action   =  Act     ( Set.Set (ChanId,[Const]) )
+data  Action   =  Act     ( Set.Set (ChanId,[Constant]) )
                 | ActQui
      deriving (Eq,Ord,Read,Show)
 
