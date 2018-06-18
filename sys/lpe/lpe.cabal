@@ -40,15 +40,16 @@ test-suite lpe-test
 
   main-is:              TestMain.hs
 
-  other-modules:        TestPreGNF
+  other-modules:        LPE
+                      , LPEfunc
+                      , TestDefinitions
                       , TestGNF
                       , TestLPE
-                      , LPE
                       , TestLPEPar
                       , TestLPEHide
+                      , TestPreGNF
                       , TestPreGNFEnable 
                       , TranslatedProcDefs
-                      , LPEfunc
 
   ghc-options:       -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N -fmax-pmcheck-iterations=100000000
 

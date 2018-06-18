@@ -64,9 +64,8 @@ toRandParam p =
         IncrementChoice -> 
             RandIncrementChoice 
                 (   ParamIncrementChoice
-                    ( read (getParam "param_max_rand_depth" p) )
-                    ( read (getParam "param_IncrementChoice_IntRange" p) )
-                    ( read (getParam "param_IncrementChoice_IntPower" p) )
-                    ( read (getParam "param_IncrementChoice_MaxGeneratedStringLength" p) )
+                    (read (getParam "param_max_rand_depth" p) )
+                    (read (getParam "param_IncrementChoice_IntRange" p) )
+                    (read (getParam "param_IncrementChoice_IntPower" p) )
+                    (read (getParam "param_IncrementChoice_MaxGeneratedStringLength" p) )
                 )
-            

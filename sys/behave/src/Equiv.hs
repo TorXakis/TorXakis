@@ -23,6 +23,7 @@ module Equiv
 
 where
 
+import qualified Data.List           as List
 import qualified Data.Set            as Set
 
 import           BTree
@@ -56,13 +57,14 @@ instance (Equiv t) => Equiv [t]
 
 instance (Ord t,Equiv t) => Equiv (Set.Set t)
   where
-    xs ~=~ ys  =  do
-         let xs' = Set.toList xs
-         let ys' = Set.toList ys
-         xs_sub_ys <- sequence [ elemMby (~=~) x ys' | x <- xs' ]
-         ys_sub_xs <- sequence [ elemMby (~=~) y xs' | y <- ys' ]
-         return $ and xs_sub_ys && and ys_sub_xs
-
+    xs ~=~ ys  = do 
+        xs' <- nubMby (~=~) (Set.toList xs) 
+        ys' <- nubMby (~=~) (Set.toList ys) 
+        if List.length xs' == List.length ys' 
+            then
+                 -- given that all elements different under (~=~) and same number of elements holds that xs_sub_ys implies ys_sub_xs 
+                 and <$> sequence [ elemMby (~=~) x ys' | x <- xs' ] 
+            else return False 
 
 -- ----------------------------------------------------------------------------------------- --
 -- Equiv :  BTree
@@ -216,7 +218,7 @@ instance Equiv BExprView
 
     _ ~=~ _  = return False
 
--- | check elem of, with given momad equality
+-- | check elem of, with given monad equality
 elemMby :: (Monad m) => (a -> a -> m Bool) -> a -> [a] -> m Bool
 elemMby _ _ []      =  return False
 elemMby eqm e (x:xs)  =  do
