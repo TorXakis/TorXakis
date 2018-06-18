@@ -10,8 +10,11 @@ module TorXakis.Lib
 , module TorXakis.Lib.Common
 , module TorXakis.Lib.CommonCore
 , module TorXakis.Lib.Eval
+, module TorXakis.Lib.Params
 , module TorXakis.Lib.Session
 , module TorXakis.Lib.Simulator
+, module TorXakis.Lib.Stepper
+, module TorXakis.Lib.Timer
 , module TorXakis.Lib.Tester
 , module TorXakis.Lib.Vals
 , module TorXakis.Lib.Vars
@@ -19,12 +22,8 @@ module TorXakis.Lib
 where
 
 import           Control.Arrow                 (left)
-import           Control.Concurrent.MVar       (newMVar)
-import           Control.Concurrent.STM.TChan  (newTChanIO)
-import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, readTQueue,
-                                                writeTQueue)
-import           Control.Concurrent.STM.TVar   (modifyTVar', newTVarIO,
-                                                readTVarIO, writeTVar)
+import           Control.Concurrent.STM.TQueue (TQueue, readTQueue, writeTQueue)
+import           Control.Concurrent.STM.TVar   (readTVarIO, writeTVar)
 import           Control.DeepSeq               (force)
 import           Control.Exception             (ErrorCall, Exception,
                                                 SomeException, evaluate, try)
@@ -32,18 +31,15 @@ import           Control.Monad.Except          (ExceptT, liftEither, runExceptT,
                                                 throwError)
 import           Control.Monad.State           (lift)
 import           Control.Monad.STM             (atomically)
-import           Data.Aeson                    (FromJSON, ToJSON)
+import           Data.Aeson                    (ToJSON)
 import           Data.Either.Utils             (maybeToEither)
 import           Data.Foldable                 (traverse_)
 import qualified Data.Map.Strict               as Map
 import qualified Data.Set                      as Set
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
-import           Data.Time                     (diffUTCTime, getCurrentTime,
-                                                getCurrentTimeZone,
-                                                utcToLocalTime)
 import           GHC.Generics                  (Generic)
-import           Lens.Micro                    ((&), (.~), (^.))
+import           Lens.Micro                    ((^.))
 import           System.Random                 (mkStdGen, setStdGen)
 
 import qualified BuildInfo
@@ -54,11 +50,7 @@ import           BehExprDefs                   (ChanOffer (Exclam, Quest),
 import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
 import           EnvCore                       (IOC)
-import qualified EnvCore                       as IOC
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_INFO))
-import           Name                          (Name)
-import           ParamCore                     (getParamPairs, paramToPair,
-                                                updateParam)
 import           TxsAlex                       (Token (Cchanenv, Csigs, Cunid, Cvarenv),
                                                 txsLexer)
 import qualified TxsCore                       as Core
@@ -70,10 +62,13 @@ import           TxsShow                       (fshow)
 import           TorXakis.Lib.Common
 import           TorXakis.Lib.CommonCore
 import           TorXakis.Lib.Eval
+import           TorXakis.Lib.Params
 import           TorXakis.Lib.Session
 import           TorXakis.Lib.Simulator
 import           TorXakis.Lib.SocketWorld      (closeSockets)
+import           TorXakis.Lib.Stepper
 import           TorXakis.Lib.Tester
+import           TorXakis.Lib.Timer
 import           TorXakis.Lib.Vals
 import           TorXakis.Lib.Vars
 
@@ -94,88 +89,10 @@ instance ToJSON TorXakisInfo
 info :: TorXakisInfo
 info = Info VersionInfo.version BuildInfo.buildTime
 
-newtype TimeResult = TimeResult { currentTime :: String }
-    deriving (Generic)
-
-instance ToJSON TimeResult
-instance FromJSON TimeResult
-
-time :: IO TimeResult
-time = do
-    tz  <- getCurrentTimeZone
-    now <- getCurrentTime
-    return $ TimeResult $ show $ utcToLocalTime tz now
-
--- | Create a new session.
-newSession :: IO Session
-newSession = Session <$> newTVarIO emptySessionState
-                     <*> newTQueueIO
-                     <*> newMVar ()
-                     <*> newTQueueIO
-                     <*> newTChanIO
-                     <*> newTVarIO (WorldConnDef [] Map.empty [] [])
-                     <*> newTVarIO Map.empty
-                     <*> newTVarIO []
-                     <*> newTVarIO Map.empty
-
--- | Stop a session.
-killSession :: Session -> IO (Response ())
-killSession _ =
-    return $ Left "Kill Session: Not implemented (yet)"
-
-data Timer = Timer { timerName :: String
-                   , startTime :: String
-                   , stopTime  :: String
-                   , duration  :: String
-                   }
-    deriving (Generic)
-
-instance ToJSON Timer
-instance FromJSON Timer
-
-timer :: Session -> String -> IO Timer
-timer s nm = do
-    tz  <- getCurrentTimeZone
-    now <- getCurrentTime
-    let timersT = s ^. timers
-    timersMap <- readTVarIO timersT
-    case Map.lookup nm timersMap of
-        Nothing -> do
-                    atomically $ modifyTVar' timersT $ Map.insert nm now
-                    return $ Timer nm (show $ utcToLocalTime tz now) "" ""
-        Just t  -> do
-                    atomically $ modifyTVar' timersT $ Map.delete nm
-                    return $ Timer nm
-                                   (show $ utcToLocalTime tz t)
-                                   (show $ utcToLocalTime tz now)
-                                   (show $ diffUTCTime now t)
-
 setSeed :: Session -> Int -> IO ()
 setSeed s seed = do
     setStdGen $ mkStdGen seed
     atomically $ writeTQueue (s ^. sessionMsgs) (TXS_CORE_SYSTEM_INFO $ "Global seed set to " ++ show seed)
-
-getAllParams :: Session -> [String] -> IO [(String, String)]
-getAllParams s pNms = do
-    cParams <- runIOC s $ IOC.getParams pNms
-    st <- readTVarIO (s ^. sessionState)
-    return $ cParams ++ getParamPairs pNms (st ^. sessionParams)
-
-setParam :: Session -> String -> String -> IO (String,String)
-setParam s pNm pVl = do
-    setRes <- runIOC s $ IOC.setParams [(pNm, pVl)]
-    case setRes of
-        [] -> do
-            let stT = s ^. sessionState
-            st <- readTVarIO stT
-            let params  = st ^. sessionParams
-                params' = updateParam params (pNm, pVl)
-                st'     = st & sessionParams .~ params'
-                [pair]  = paramToPair params' pNm
-            atomically $ modifyTVar' stT (const st')
-            return pair
-        [pair] -> return pair
-        _ps    -> return ("","")
 
 -- | Load a TorXakis file, compile it, and return the response.
 --
@@ -195,17 +112,9 @@ load s xs = do
         Left err -> return $ Left $ T.pack $ show  (err :: ErrorCall)
         Right (ts, is) ->
             Right <$> runIOC s (Core.txsInit ts is (msgHandler (_sessionMsgs s)))
-            -- case er of
-            --     Left eMsg -> throwError . T.pack . show $ eMsg
-            --     Right res -> return res
-
--- | Set the stepper.
-setStep :: Session
-        -> Name -- ^ Model name
-        -> IO (Response ())
-setStep s mn = runResponse $ do
-    mDef <- lookupModel s mn
-    lift $ runIOC s (Core.txsSetStep mDef)
+      where
+        msgHandler :: TQueue Msg -> [Msg] -> IOC ()
+        msgHandler q = lift . atomically . traverse_ (writeTQueue q)
 
 -- | Get the menu.
 getMenu :: Session
@@ -220,14 +129,6 @@ getMenu s args =
                 ["purp",gnm] -> ( "purp", T.unpack gnm )
                 _            -> ( "mod", "all" )
    in TxsShow.fshow <$> runIOC s (Core.txsMenu kind what)
-
-msgHandler :: TQueue Msg -> [Msg] -> IOC ()
-msgHandler q = lift . atomically . traverse_ (writeTQueue q)
-
--- | Step for n-steps or actions
-step :: Session -> StepType -> IO (Response ())
-step s (NumberOfSteps n) = runForVerdict s (Core.txsStepN n)
-step s (AnAction a)      = runForVerdict s (Core.txsStepA a)
 
 -- | Wait for a verdict to be reached.
 waitForVerdict :: Session -> IO (Either SomeException Verdict)

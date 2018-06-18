@@ -11,10 +11,10 @@ See LICENSE at root directory of this repository.
 module TorXakis.Lib.Session where
 
 import           Control.Concurrent            (ThreadId)
-import           Control.Concurrent.MVar       (MVar)
-import           Control.Concurrent.STM.TChan  (TChan)
-import           Control.Concurrent.STM.TQueue (TQueue)
-import           Control.Concurrent.STM.TVar   (TVar)
+import           Control.Concurrent.MVar       (MVar, newMVar)
+import           Control.Concurrent.STM.TChan  (TChan, newTChanIO)
+import           Control.Concurrent.STM.TQueue (TQueue, newTQueueIO)
+import           Control.Concurrent.STM.TVar   (TVar, newTVarIO)
 import           Control.DeepSeq               (NFData)
 import           Control.Exception             (SomeException)
 import qualified Data.Map.Strict               as Map
@@ -73,3 +73,20 @@ makeLenses ''Session
 -- * Session state manipulation
 emptySessionState :: SessionSt
 emptySessionState = SessionSt initEnvC initSessionParams
+
+-- | Create a new session.
+newSession :: IO Session
+newSession = Session <$> newTVarIO emptySessionState
+                     <*> newTQueueIO
+                     <*> newMVar ()
+                     <*> newTQueueIO
+                     <*> newTChanIO
+                     <*> newTVarIO (WorldConnDef [] Map.empty [] [])
+                     <*> newTVarIO Map.empty
+                     <*> newTVarIO []
+                     <*> newTVarIO Map.empty
+
+-- | Stop a session.
+killSession :: Session -> IO (Response ())
+killSession _ =
+    return $ Left "Kill Session: Not implemented (yet)"
