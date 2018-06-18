@@ -16,7 +16,6 @@ import           Control.Monad.Error.Class (liftEither)
 import           Data.Either.Utils         (maybeToEither)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
-import           Data.Proxy                (Proxy)
 import           Data.Proxy                (Proxy (Proxy))
 import           Data.Semigroup            ((<>))
 import qualified Data.Text                 as T
@@ -44,6 +43,7 @@ class (In (k, v) (Contents m) ~ 'True) => MapsTo k v m where
     -- have the same key, then the value of the right map is discarded, and the
     -- value of the left map is kept.
     (<.+>) :: Ord k => Map k v -> m -> m
+    infixl 4 <.+>
     -- | Replace the inner map with the given one.
     replaceInnerMap :: m -> Map k v -> m
 
@@ -95,6 +95,7 @@ instance MapsTo k v (Map k v) where
 
 -- | Combinator for maps.
 data a :& b = a :& b
+infixl 5 :&
 
 -- | Combine lists of key values pairs into a pair of maps.
 (.&.) :: (Ord k0, Ord k1)

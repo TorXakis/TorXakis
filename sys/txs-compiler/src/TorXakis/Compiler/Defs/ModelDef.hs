@@ -54,6 +54,15 @@ modelDeclToModelDef mm md = do
     -- Add the channel declaration introduced by the hide operator.
     modelChIds <- getMap mm md :: CompilerM (Map (Loc ChanDeclE) ChanId)
     let mm' = chDecls :& (modelChIds <.+> mm)
+    -- Infer the variable types of the expression:
+    let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+        fshs = innerMap mm
+        fss = fst <$> fshs
+    bTypes <- Map.fromList <$> inferVarTypes (fss :& mm') (modelBExp md)
+    bvIds  <- Map.fromList <$> mkVarIds bTypes (modelBExp md)
+    let mm'' = bTypes <.+> (bvIds <.+> mm')
+    evds <- liftEither $ varDefsFromExp mm'' md
+
     ins  <- Set.fromList <$> traverse (lookupChId mm') (getLoc <$> modelIns md)
     outs <- Set.fromList <$> traverse (lookupChId mm') (getLoc <$> modelOuts md)
     let
@@ -73,19 +82,13 @@ modelDeclToModelDef mm md = do
         outsyncs = filter (`Set.isSubsetOf` outs) syncs
         -- TODO: construct this, once you know the exit sort of the behavior expression `be`.
         -- errsyncs = ...
-    -- Infer the variable types of the expression:
-    let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-        fshs = innerMap mm
-        fss = fst <$> fshs
-    bTypes <- Map.fromList <$> inferVarTypes (fss :& mm') (modelBExp md)
-    bvIds  <- Map.fromList <$> mkVarIds bTypes (modelBExp md)
-    let mm'' = bTypes <.+> (bvIds <.+> mm')
+
+    be   <- toBExpr mm'' evds (modelBExp md)
     eSort <- exitSort (fss :& mm'') (modelBExp md)
     let
         splsyncs = case eSort of
             NoExit  -> []
             Exit [] -> [ Set.singleton chanIdExit ]
             _       -> [] -- TODO: Ask jan, what should we return in this case? Error?
-    evds <- liftEither $ varDefsFromExp mm'' md
-    be   <- toBExpr mm'' evds (modelBExp md)
+
     return $ ModelDef insyncs outsyncs splsyncs be

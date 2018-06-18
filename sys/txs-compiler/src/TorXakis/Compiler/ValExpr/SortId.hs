@@ -247,11 +247,11 @@ instance MapsTo Text SortId mm => HasTypedVars mm VarDecl where
     inferVarTypes mm vd = pure . (getLoc vd,) <$> mm .@!! varDeclSort vd
 
 instance ( MapsTo Text SortId mm
-         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
-         , MapsTo (Loc ChanDeclE) ChanId mm
+         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
          , MapsTo (Loc VarDeclE) SortId mm
          , MapsTo (Loc FuncDeclE) Signature mm
-         , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+         , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+         , MapsTo (Loc ChanDeclE) ChanId mm
          , MapsTo ProcId () mm
          ) => HasTypedVars mm BExpDecl where
     inferVarTypes _ Stop =

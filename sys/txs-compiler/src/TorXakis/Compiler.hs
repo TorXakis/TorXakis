@@ -95,7 +95,6 @@ compileFile fp = do
         Right pd -> return $
             evalStateT (runCompiler . compileParsedDefs $ pd) newState
 
-
 compileUnsafe :: CompilerM a -> a
 compileUnsafe cmp = throwOnError $
     evalStateT (runCompiler cmp) newState
@@ -322,9 +321,9 @@ compileToProcDefs mm pd = do
     stautPDefMap <- stautDeclsToProcDefMap (pms :& mm) (pd ^. stauts)
     return $ procPDefMap `Map.union` stautPDefMap
 
---
+--------------------------------------------------------------------------------
 -- External parsing functions
---
+--------------------------------------------------------------------------------
 
 mkFuncDecls :: [FuncId] -> Map Text [Loc FuncDeclE]
 mkFuncDecls fs = Map.fromListWith (++) $ zip (FuncId.name <$> fs)

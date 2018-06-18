@@ -61,17 +61,18 @@ procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                       => mm
                       -> [ProcDecl]
                       -> CompilerM (Map ProcId ProcDef)
-procDeclsToProcDefMap mm ps = do
-    let pms = innerMap mm
-    gProcDeclsToProcDefMap pms emptyMpd ps
+procDeclsToProcDefMap mm ps =
+    gProcDeclsToProcDefMap emptyMpd ps
     where
       emptyMpd = Map.empty :: Map ProcId ProcDef
-      gProcDeclsToProcDefMap :: Map (Loc ProcDeclE) ProcInfo
-                             -> Map ProcId ProcDef
+      pms :: Map (Loc ProcDeclE) ProcInfo
+      pms = innerMap mm
+      mpd' = Map.fromList $ zip (allProcIds pms) (repeat ())
+      gProcDeclsToProcDefMap :: Map ProcId ProcDef -- ^ Accumulating parameter.
                              -> [ProcDecl]
                              -> CompilerM (Map ProcId ProcDef)
-      gProcDeclsToProcDefMap pms mpd rs = do
-          (ls, rs') <- traverseCatch (mkpIdPDefM pms) rs
+      gProcDeclsToProcDefMap mpd rs = do
+          (ls, rs') <- traverseCatch mkpIdPDefM rs
           case (ls, rs') of
               ([], _) -> return $ Map.fromList rs' <> innerMap mpd
               (_, []) -> throwError Error
@@ -79,18 +80,16 @@ procDeclsToProcDefMap mm ps = do
                   , _errorLoc = NoErrorLoc
                   , _errorMsg = T.pack (show (snd <$> ls))
                   }
-              (_, _ ) -> gProcDeclsToProcDefMap pms (Map.fromList rs' <.+> mpd) (fst <$> ls)
+              (_, _ ) -> gProcDeclsToProcDefMap (Map.fromList rs' <.+> mpd) (fst <$> ls)
 
-      mkpIdPDefM :: Map (Loc ProcDeclE) ProcInfo
-                 -> ProcDecl
+      mkpIdPDefM :: ProcDecl
                  -> CompilerM (ProcId, ProcDef)
-      mkpIdPDefM pms pd = do
+      mkpIdPDefM pd = do
           ProcInfo pId chIds pvIds <- pms .@ getLoc pd :: CompilerM ProcInfo
           -- Scan for channel references and declarations
           chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
           let chIdsM = Map.fromList chIds
           let body = procDeclBody pd
-              mpd' = Map.fromList $ zip (allProcIds pms) (repeat ())
               fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
               fshs = innerMap mm
               fss = fst <$> fshs

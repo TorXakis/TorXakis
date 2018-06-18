@@ -362,6 +362,18 @@ mapperDeclsToTxsDefs mm mds =
           chDecls  <- getMap mm md :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
           mprChIds <- getMap mm md :: CompilerM (Map (Loc ChanDeclE) ChanId)
           let mm' = chDecls :& (mprChIds <.+> mm) :& procIdsOnly
+
+          let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+              fshs = innerMap mm
+              fss = fst <$> fshs
+
+          bTypes <- Map.fromList <$> inferVarTypes (fss :& mm') (mapperBExp md)
+          bvIds  <- Map.fromList <$> mkVarIds bTypes (mapperBExp md)
+          let mm'' = bTypes <.+> (bvIds <.+> mm')
+
+          evds <- liftEither $ varDefsFromExp mm'' md
+          be   <- toBExpr mm'' evds (mapperBExp md)
+
           ins   <- traverse (lookupChId mm') (getLoc <$> mapperIns md)
           outs  <- traverse (lookupChId mm') (getLoc <$> mapperOuts md)
           let
@@ -376,16 +388,10 @@ mapperDeclsToTxsDefs mm mds =
           syncs <- maybe (return usedChIds)
                          (traverse (chRefsToChIdSet mm'))
                          (mapperSyncs md)
-          let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-              fshs = innerMap mm
-              fss = fst <$> fshs
-          bTypes <- Map.fromList <$> inferVarTypes (fss :& mm') (mapperBExp md)
-          bvIds  <- Map.fromList <$> mkVarIds bTypes (mapperBExp md)
-          let mm'' = bTypes <.+> (bvIds <.+> mm')
+
           --eSort <- exitSort mm'' (mapperBExp md)
           -- TODO: assert the exit sort is NoExit!
-          evds <- liftEither $ varDefsFromExp mm'' md
-          be   <- toBExpr mm'' evds (mapperBExp md)
+
           return $ MapperDef ins outs syncs be
 
       -- TODO: reduce this duplication. Bring all the definitions from `ModelDef` to here.
