@@ -123,7 +123,7 @@ module TxsCore
 
   -- * LPE transformation
 , txsLPE
-
+, txsLPEForModelDef
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -192,6 +192,7 @@ import qualified LPE
 
 -- import from valexpr
 import           ConstDefs
+import           Name
 import qualified SortId
 import qualified SortOf
 import           VarId
@@ -1137,7 +1138,6 @@ txsLPE :: Either TxsDefs.BExpr TxsDefs.ModelId   -- ^ either a behaviour express
        -> IOC.IOC (Maybe (Either TxsDefs.BExpr TxsDefs.ModelId))
                                                  -- ^ transformed process instantiation
                                                  --   or model definition
-
 txsLPE (Left bexpr)  =  do
   envc <- get
   case IOC.state envc of
@@ -1188,8 +1188,28 @@ txsLPE (Right modelid@(TxsDefs.ModelId modname _moduid))  =  do
     _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "LPE: only allowed if initialized" ]
             return Nothing
 
-
--- ----------------------------------------------------------------------------------------- --
---                                                                                           --
--- ----------------------------------------------------------------------------------------- --
-
+txsLPEForModelDef :: TxsDefs.ModelDef   -- ^ model definition to be tranformed
+                  -> Name               -- ^ model name
+                  -> IOC.IOC (Maybe TxsDefs.ModelId) -- ^ ModelId of transformed model definition
+txsLPEForModelDef (TxsDefs.ModelDef insyncs outsyncs splsyncs bexpr) modname =  do
+  envc <- get
+  case IOC.state envc of
+    IOC.Initing {}
+      -> do lpe' <- txsLPE (Left bexpr)
+            case lpe' of
+                Just (Left (procinst'@(TxsDefs.view -> TxsDefs.ProcInst{}))) ->
+                    do  uid'   <- IOC.newUnid
+                        tdefs' <- gets (IOC.tdefs . IOC.state)
+                        let modelid' = TxsDefs.ModelId ("LPE_"<>modname) uid'
+                            modeldef'= TxsDefs.ModelDef insyncs outsyncs splsyncs procinst'
+                            tdefs''  = tdefs'
+                                { TxsDefs.modelDefs = Map.insert modelid' modeldef'
+                                                                (TxsDefs.modelDefs tdefs')
+                                }
+                        IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs'' }
+                        return $ Just modelid'
+                _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $ "LPE: " ++
+                                    "transformation on behaviour of modeldef failed" ]
+                        return Nothing
+    _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "LPE: only allowed if initialized" ]
+            return Nothing

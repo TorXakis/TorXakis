@@ -23,6 +23,7 @@ import           Endpoints.Info              (InfoEP, getInfo)
 import           Endpoints.Messages          (CloseMessagesEP, MessagesEP,
                                               OpenMessagesEP, closeMessages,
                                               messages, openMessages)
+import           Endpoints.LPE               (LpeEP, lpe)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
 import           Endpoints.Params            (ParamsAPI, paramsServer)
 import           Endpoints.Parse             (ParseActionEP, parseAction)
@@ -34,6 +35,7 @@ import           Endpoints.Tester            (SetTestEP, TestOutEP, TestStepEP,
 import           Endpoints.Simulator            (SetSimEP, SimStepEP,
                                               startSimulator, simStep)
 import           Endpoints.Time              (TimeEP, getTime)
+import           Endpoints.Show              (ShowAPI, showServer)
 import           Endpoints.Stop              (StopEP, stop)
 import           Endpoints.Timer             (TimerEP, timer)
 import           Endpoints.Upload            (UploadEP, upload)
@@ -65,6 +67,8 @@ type ServiceAPI
     :<|> SeedEP
     :<|> StopEP
     :<|> MenuEP
+    :<|> ShowAPI
+    :<|> LpeEP
     :<|> TestPageAPI
 
 type TestPageAPI = "test" :> Raw
@@ -106,4 +110,6 @@ server env
     :<|> setSeed env
     :<|> stop env
     :<|> menu env
+    :<|> showServer env
+    :<|> lpe env
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"

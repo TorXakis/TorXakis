@@ -43,4 +43,8 @@ simulator <model> [<mapper>]   : start simulating with model <model> and
           <cnect>                connection <cnect> using optional mapper <mapper>
 sim [<n>]                      : make <n>/[unbounded] random simulation steps
 stop                           : stop testing, simulation, or stepping
+
+show <object>                  : show <object>
+menu [in|out|map|purp <goal>]  : give the [in|out|map] menu of actions of current state
+                                 or purp menu for given goal
 |]

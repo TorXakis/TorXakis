@@ -1,9 +1,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Params command of Web client for `txs-webserver`.
-module TorXakis.CLI.WebClient.Eval
-(evaluate)
-where
+module TorXakis.CLI.WebClient.Eval where
 
 import           Control.Monad.Except          (MonadError)
 import           Control.Monad.IO.Class        (MonadIO)
@@ -16,7 +14,7 @@ import           Network.Wreq                  (partString, responseBody,
 import           TorXakis.CLI.Env
 import           TorXakis.CLI.WebClient.Common
 
--- | Create a val in TorXakis session.
+-- | Evaluate an expression in TorXakis session.
 evaluate :: (MonadIO m, MonadReader Env m, MonadError String m)
          => String -> m String
 evaluate expr = do

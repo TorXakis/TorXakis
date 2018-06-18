@@ -21,14 +21,13 @@ import qualified Data.Map.Strict               as Map
 import           Data.Time                     (UTCTime)
 import           GHC.Generics                  (Generic)
 import           Lens.Micro.TH                 (makeLenses)
-import qualified Network.TextViaSockets        as TVS
 
 import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
 import           EnvCore                       (EnvC, initEnvC)
 import           EnvData                       (Msg)
 import           ParamCore                     (Params)
-import           TxsDDefs                      (Action, Verdict)
+import           TxsDDefs                      (Action, ConnHandle, Verdict)
 import           TxsDefs                       (VEnv)
 import           VarId                         (VarId)
 
@@ -41,9 +40,9 @@ newtype ToWorldMapping = ToWorldMapping
 makeLenses ''ToWorldMapping
 
 data WorldConnDef = WorldConnDef
-    { _toWorldConns    :: [TVS.Connection]
+    { _toWorldConns    :: [ConnHandle]
     , _toWorldMappings :: Map.Map ChanId ToWorldMapping
-    , _fromWorldConns  :: [TVS.Connection]
+    , _fromWorldConns  :: [ConnHandle]
     , _worldListeners  :: [ThreadId]
     }
 makeLenses ''WorldConnDef

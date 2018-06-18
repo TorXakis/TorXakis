@@ -42,9 +42,9 @@ initSocketWorld s fWCh cdef = do
         ]
     let wcdPairs = zip (map TxsDDefs.chan towhdls)
                        $ map (ToWorldMapping . sendToSocket s) towhdls
-    return $ WorldConnDef (map connection towhdls)
+    return $ WorldConnDef towhdls
                           (Map.fromList wcdPairs)
-                          (map connection frowhdls)
+                          frowhdls
                           frowThreads
 
 sendToSocket :: Session -> ConnHandle -> [Const] -> IO (Response (Maybe Action))
@@ -178,6 +178,6 @@ decode s (ConnHfroW cId _ vId vExprs) txt = do
         (es, _)    -> Left $ T.intercalate "\n" $ "Decode: eval failed":es
 
 closeSockets :: WorldConnDef -> IO ()
-closeSockets (WorldConnDef toWConns _ froWConns froWThreadIds) = do
-    mapM_ TVS.close (toWConns ++ froWConns)
+closeSockets (WorldConnDef toWConnHdls _ froWConnHdls froWThreadIds) = do
+    mapM_ (TVS.close . connection) (toWConnHdls ++ froWConnHdls)
     mapM_ killThread froWThreadIds

@@ -22,6 +22,7 @@ module TorXakis.Lib
 where
 
 import           Control.Arrow                 (left)
+import           Control.Concurrent            (forkIO)
 import           Control.Concurrent.STM.TQueue (TQueue, readTQueue, writeTQueue)
 import           Control.Concurrent.STM.TVar   (readTVarIO, writeTVar)
 import           Control.DeepSeq               (force)
@@ -50,13 +51,15 @@ import           BehExprDefs                   (ChanOffer (Exclam, Quest),
 import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
 import           EnvCore                       (IOC)
-import           EnvData                       (Msg (TXS_CORE_SYSTEM_INFO))
+import           EnvData                       (Msg (TXS_CORE_SYSTEM_INFO, TXS_CORE_USER_INFO, TXS_CORE_USER_WARNING))
 import           TxsAlex                       (Token (Cchanenv, Csigs, Cunid, Cvarenv),
                                                 txsLexer)
 import qualified TxsCore                       as Core
 import           TxsDDefs                      (Action (Act), Verdict)
-import           TxsDefs                       (ModelDef (ModelDef))
-import           TxsHappy                      (prefoffsParser, txsParser)
+import           TxsDefs                       (ModelDef (ModelDef), modelDefs,
+                                                stop)
+import           TxsHappy                      (bexprParser, prefoffsParser,
+                                                txsParser)
 import           TxsShow                       (fshow)
 
 import           TorXakis.Lib.Common
@@ -128,7 +131,7 @@ getMenu s args =
                 ["map"]      -> ( "map", "" )
                 ["purp",gnm] -> ( "purp", T.unpack gnm )
                 _            -> ( "mod", "all" )
-   in TxsShow.fshow <$> runIOC s (Core.txsMenu kind what)
+   in fshow <$> runIOC s (Core.txsMenu kind what)
 
 -- | Wait for a verdict to be reached.
 waitForVerdict :: Session -> IO (Either SomeException Verdict)
@@ -186,3 +189,67 @@ parseAction s act = do
       evalExclam (Exclam choff) = do
           res <- lift (runIOC s (Core.txsEval choff))
           liftEither $ left T.pack res
+
+lpe :: Session -> Text -> IO (Response ())
+lpe s args = do
+    let mn = args
+    mModelDef <- runExceptT $ lookupModel s mn
+    _ <- forkIO $ case mModelDef of
+        Right mDef -> do
+                mModelId <- runIOC s (Core.txsLPEForModelDef mDef mn)
+                atomically $ writeTQueue (s ^. sessionMsgs) $
+                    case mModelId of
+                        Just mId -> TXS_CORE_USER_INFO $
+                                        "LPE modeldef generated: \n" ++ fshow mId
+                        _         -> TXS_CORE_USER_WARNING "Could not generate LPE"
+        _          -> do
+            tdefs <- runIOC s Core.txsGetTDefs
+            let mdefs = modelDefs tdefs
+                chids = Set.toList $ Set.unions [ Set.unions (chins ++ chouts ++ spls)
+                                                | (_, ModelDef chins chouts spls _)
+                                                  <- Map.toList mdefs
+                                                ]
+            sigs <- runIOC s Core.txsGetSigs
+            vals <- readTVarIO $ s ^. locValEnv
+            parseRes <- fmap (left showEx) $
+                            try $ evaluate . force . bexprParser $
+                                    ( TxsAlex.Csigs    sigs
+                                    : TxsAlex.Cchanenv chids
+                                    : TxsAlex.Cvarenv  (Map.keys vals)
+                                    : TxsAlex.Cunid    0
+                                    : TxsAlex.txsLexer (T.unpack args)
+                                    )
+            bexpr <- case parseRes of
+                Left  err       ->  do  atomically $
+                                            writeTQueue (s ^. sessionMsgs)
+                                                        (TXS_CORE_USER_WARNING $
+                                                            "Incorrect behaviour expression: "
+                                                            ++ T.unpack err)
+                                        return TxsDefs.stop
+                Right (_, bxpr) ->  return bxpr
+            mayBexpr' <- runIOC s $ Core.txsLPE (Left bexpr)
+            atomically $ writeTQueue (s ^. sessionMsgs) $
+                case mayBexpr' of
+                    Just (Left bexpr') -> TXS_CORE_USER_INFO $
+                                            "LPE behaviour generated: \n" ++ fshow bexpr'
+                    _                  -> TXS_CORE_USER_WARNING "Could not generate LPE"
+    return success
+
+showItem :: Session -> String -> String -> IO String
+showItem s item nm =
+    case (item,nm) of
+        ("tdefs"    ,""      ) -> runIOC s $ Core.txsShow "tdefs"     ""
+        ("state"    ,"nr"    ) -> runIOC s $ Core.txsShow "state"     ""
+        ("state"    ,"model" ) -> runIOC s $ Core.txsShow "model"     ""
+        ("state"    ,"mapper") -> runIOC s $ Core.txsShow "mapper"    ""
+        ("state"    ,"purp"  ) -> runIOC s $ Core.txsShow "purp"      ""
+        ("modeldef" ,_       ) -> runIOC s $ Core.txsShow "modeldef"  nm
+        ("mapperdef",_       ) -> runIOC s $ Core.txsShow "mapperdef" nm
+        ("purpdef"  ,_       ) -> runIOC s $ Core.txsShow "purpdef"   nm
+        ("procdef"  ,_       ) -> runIOC s $ Core.txsShow "procdef"   nm
+        ("funcdef"  ,_       ) -> runIOC s $ Core.txsShow "funcdef"   nm
+        ("cnect"    ,""      ) -> do WorldConnDef towhdls _ frowhdls _ <- readTVarIO (s ^. wConnDef)
+                                     return $ fshow (towhdls ++ frowhdls)
+        ("var"      ,""      ) -> fshow <$> readTVarIO (s ^. locVars)
+        ("val"      ,""      ) -> fshow <$> readTVarIO (s ^. locValEnv)
+        _                      -> return "Nothing to be shown"

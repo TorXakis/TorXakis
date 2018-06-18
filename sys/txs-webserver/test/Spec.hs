@@ -322,7 +322,7 @@ spec = return $ do
                                                  ]
                     r1 <- post (menuUrl sId) [ partString "args" "" ]
                     let m1 = BSL.unpack $ r1 ^. responseBody
-                    Prelude.putStrLn $ "Emty args: " ++ m1
+                    Prelude.putStrLn $ "Empty args: " ++ m1
                     r2 <- post (menuUrl sId) ([ ] :: [Part])
                     let m2 = BSL.unpack $ r2 ^. responseBody
                     Prelude.putStrLn $ "No args: " ++ m2
@@ -344,10 +344,34 @@ spec = return $ do
                     m4 `shouldNotSatisfy` null
                     m5 `shouldNotSatisfy` null
                     m6 `shouldNotSatisfy` null
+        describe "LPE" $
+            it "Calculate for Echo" $ do
+                sId <- mkNewSession
+                _ <- put (newSessionUrl sId) [ partFile "model.txs" "../../examps/Echo/Echo.txs" ]
 
+                post (lpeUrl sId) [ partString "args" "proc [ In, Out ] ()" ] >>= check202Accepted
+                rP <- get (showUrl sId "procdef" "LPE_proc")
+                rP ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                let lpeProcStr = BSL.unpack $ rP ^. responseBody
+                lpeProcStr `shouldStartWith` "( LPE_proc,"
+
+                post (lpeUrl sId) [ partString "args" "Model" ] >>= check202Accepted
+                rM <- get (showUrl sId "modeldef" "LPE_Model")
+                rM ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                let lpeModelStr = BSL.unpack $ rM ^. responseBody
+                lpeModelStr `shouldStartWith` "( LPE_Model,"
+
+                -- Currently fails due to bug #735 in LPE
+                -- rP2 <- get (showUrl sId "procdef" "LPE_proc")
+                -- rP2 ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                -- let lpeProcStr2 = BSL.unpack $ rP2 ^. responseBody
+                -- lpeProcStr2 `shouldStartWith` "( LPE_proc,"
 
 check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
+
+check202Accepted :: HasCallStack => Response BSL.ByteString -> IO ()
+check202Accepted r = r ^. responseStatus . statusCode `shouldBe` 202
 
 parseFileUploadResult :: Object -> Parser (String, Bool)
 parseFileUploadResult o = do
@@ -367,7 +391,7 @@ checkActions :: Int -> BS.ByteString -> IO Int
 checkActions steps bs = do
     let Just jsonBs  = BS.stripPrefix "data:" bs
         Just jsonObj = decodeStrict jsonBs
-    print bs
+    -- print bs
     case parseMaybe parseTag jsonObj of
         Just "AnAction" -> return $ steps + 1
         _               -> return steps
@@ -376,7 +400,7 @@ checkStops :: Int -> BS.ByteString -> IO Int
 checkStops stops bs = do
     let Just jsonBs  = BS.stripPrefix "data:" bs
         Just jsonObj = decodeStrict jsonBs
-    print bs
+    -- print bs
     case parseMaybe parseTag jsonObj of
         Just "TXS_CORE_USER_INFO" ->
             let Just str = parseMaybe parseS jsonObj
@@ -451,6 +475,12 @@ paramUrl sId = Prelude.concat [host, "/sessions/", show sId, "/params"]
 
 menuUrl :: Integer -> String
 menuUrl sId = Prelude.concat [host, "/sessions/", show sId, "/menu"]
+
+lpeUrl :: Integer -> String
+lpeUrl sId = Prelude.concat [host, "/sessions/", show sId, "/lpe"]
+
+showUrl :: Integer -> String -> String -> String
+showUrl sId item nm= Prelude.concat [host, "/sessions/", show sId, "/show/", item, "/", nm]
 
 emptyP :: [Part]
 emptyP = [partText "" ""]

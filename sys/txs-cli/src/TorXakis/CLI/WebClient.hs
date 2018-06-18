@@ -14,11 +14,13 @@ module TorXakis.CLI.WebClient
     , stepper
     , step
     , stopTxs
+    , showTxs
     , openMessages
     , sseSubscribe
     , closeMessages
     , callTimer
     , module TorXakis.CLI.WebClient.Eval
+    , module TorXakis.CLI.WebClient.LPE
     , module TorXakis.CLI.WebClient.Menu
     , module TorXakis.CLI.WebClient.Params
     , module TorXakis.CLI.WebClient.Seed
@@ -37,6 +39,7 @@ import           Control.Monad.Reader          (MonadReader, asks)
 import           Data.Aeson                    (eitherDecode)
 import           Data.Aeson.Types              (toJSON)
 import qualified Data.ByteString               as BSS
+import qualified Data.ByteString.Lazy.Char8    as BSL
 import           Data.Either.Utils             (maybeToEither)
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
@@ -58,6 +61,7 @@ import           TorXakis.CLI.Env
 import qualified TorXakis.CLI.Log              as Log
 import           TorXakis.CLI.WebClient.Common
 import           TorXakis.CLI.WebClient.Eval
+import           TorXakis.CLI.WebClient.LPE
 import           TorXakis.CLI.WebClient.Menu
 import           TorXakis.CLI.WebClient.Params
 import           TorXakis.CLI.WebClient.Seed
@@ -179,3 +183,15 @@ closeMessages = do
     sId <- asks sessionId
     ignoreSuccess $
         envPost (concat ["sessions/", show sId, "/messages/close/"]) noContent
+
+-- | Show an entity in TorXakis session.
+showTxs :: (MonadIO m, MonadReader Env m, MonadError String m)
+         => [String] -> m String
+showTxs args = do
+    sId <- asks sessionId
+    r <- case args of
+            [item]     -> envGet $ concat ["sessions/", show sId, "/show/", item]
+            [item, nm] -> envGet $ concat ["sessions/", show sId, "/show/", item, "/", nm]
+            _          -> throwError "Usage: show <item> [<name>]"
+    (r ^. responseStatus . statusCode) `shouldBeStatus` 200
+    return $ BSL.unpack (r ^. responseBody)
