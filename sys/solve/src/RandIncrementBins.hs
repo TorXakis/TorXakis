@@ -96,7 +96,7 @@ mkRndIntBins p v = do
         bins = mkIntConstraintBins v boundaryValues
     shuffleM bins
 
-findRndValue :: Variable v => v -> [ValExpr v] -> SMT ()
+findRndValue :: Variable v => v -> [ValExpr v] -> SMT Const
 findRndValue _ [] = error "findRndValue - Solution exists, yet no solution found in all bins"
 findRndValue v (x:xs) = do
     push
@@ -108,12 +108,7 @@ findRndValue v (x:xs) = do
                 pop
                 let val = fromMaybe (error "findRndValue - SMT hasn't returned the value of requested variable.")
                                     (Map.lookup v sol)
-                    in do
-                        addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
-                        sat2 <- getSolvable
-                        case sat2 of
-                            Sat -> return ()
-                            _   -> error "Unexpected SMT issue - previous solution is no longer valid - findRndValue"
+                return val
         _   -> do
                     pop
                     findRndValue v xs
@@ -198,8 +193,13 @@ randomSolveBins p ((v,_):xs) i    | vsort v == sortIdBool =
 randomSolveBins p ((v,_):xs) i    | vsort v == sortIdInt =
     do
         rndBins <- liftIO $ mkRndIntBins p (cstrVar v)
-        findRndValue v rndBins
-        randomSolve p xs i
+        val <- findRndValue v rndBins
+        addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
+        sat <- getSolvable
+        case sat of
+            Sat -> randomSolve p xs i
+            _   -> error "Unexpected SMT issue - previous solution is no longer valid - Int"
+        
 
 randomSolveBins p ((v,-123):xs) i    | vsort v == sortIdString =                 -- abuse depth to encode char versus string
     let nrofChars :: Int
@@ -227,8 +227,12 @@ randomSolveBins p ((v,-123):xs) i    | vsort v == sortIdString =                
                     _                               -> map ( toConstraint v . toCharGroup ) ( toCharRange (nrofChars - nrofCharsInRange + offset) high <> toCharRange low (offset-1)
                                                                                             : map ( (\b -> toCharRange b (b+nrofCharsInRange-1)) . (offset+) ) boundaries
                                                                                             )
-        findRndValue v rndBins
-        randomSolve p xs i
+        val <- findRndValue v rndBins
+        addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
+        sat <- getSolvable
+        case sat of
+            Sat -> randomSolve p xs i
+            _   -> error "Unexpected SMT issue - previous solution is no longer valid - Int"
     where
         toCharGroup :: Text -> Text
         toCharGroup t = "[" <> t <> "]"
@@ -249,28 +253,22 @@ randomSolveBins p ((v,d):xs) i    | vsort v == sortIdString =
         boundaryValues <- liftIO $ mapM randomRIO basicStringLengthRanges
         let bins = mkIntConstraintBins (cstrVar lengthStringVar) boundaryValues
         rndBins <- shuffleM bins
-        findRndValue lengthStringVar rndBins
-        sol <- getSolution [lengthStringVar]
-        let val@(Cint l) = fromMaybe (error "randomSolve - String - SMT hasn't returned the value of requested variable.")
-                                     (Map.lookup lengthStringVar sol)
-          in do
-                addAssertions [ cstrEqual (cstrVar lengthStringVar) (cstrConst val) ]
-                sat2 <- getSolvable
-                case sat2 of
-                    Sat -> if l > 0 && d > 1
-                                then do
-                                        let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortIdString) [i+1 .. i+fromIntegral l]
-                                        addDeclarations charVars
-                                        let exprs = map (\(vNew,pos) -> cstrEqual (cstrVar vNew) (cstrAt (cstrVar v) (cstrConst (Cint pos)))) (zip charVars [0..])
-                                        addAssertions exprs
-                                        shuffledVars <- shuffleM (xs ++ zip charVars (map (const (-123)) [1::Integer .. ]) )
-                                        sat <- getSolvable
-                                        case sat of
-                                            Sat     -> randomSolve p shuffledVars (i+1+fromIntegral l)
-                                            _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l > 0"
-                                else randomSolve p xs (i+1)
-                    _   -> error "Unexpected SMT issue - previous solution is no longer valid - findRndValue"
+        val@(Cint l) <- findRndValue lengthStringVar rndBins
+        addAssertions [ cstrEqual (cstrVar lengthStringVar) (cstrConst val) ]
+        if l > 0 && d > 1
+            then do
+                    let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortIdString) [i+1 .. i+fromIntegral l]
+                    addDeclarations charVars
+                    let exprs = map (\(vNew,pos) -> cstrEqual (cstrVar vNew) (cstrAt (cstrVar v) (cstrConst (Cint pos)))) (zip charVars [0..])
+                    addAssertions exprs
+                    shuffledVars <- shuffleM (xs ++ zip charVars (map (const (-123)) [1::Integer .. ]) )
+                    sat <- getSolvable
+                    case sat of
+                        Sat     -> randomSolve p shuffledVars (i+1+fromIntegral l)
+                        _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l > 0"
+            else randomSolve p xs (i+1)
 
+-- TODO
 randomSolveBins p ((v,d):xs) i =
     do
         let sid = vsort v
