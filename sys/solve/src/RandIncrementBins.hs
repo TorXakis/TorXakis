@@ -5,7 +5,8 @@ See LICENSE at root directory of this repository.
 -}
 
 
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module RandIncrementBins
 -- ----------------------------------------------------------------------------------------- --
 --
@@ -23,16 +24,16 @@ where
 -- ----------------------------------------------------------------------------------------- --
 -- import
 import           Control.Monad.State
-import           System.IO
-import           System.Random
-import           System.Random.Shuffle
-
 import qualified Data.Char             as Char
 import qualified Data.Map              as Map
+import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Set              as Set
 import           Data.Text             (Text)
 import qualified Data.Text             as T
+import           System.IO
+import           System.Random
+import           System.Random.Shuffle
 
 import           ConstDefs
 import           CstrDef
@@ -51,59 +52,49 @@ data ParamIncrementBins =
      ParamIncrementBins { maxDepth                 :: Int
                         , next                     :: Next
                         , nrOfBins                 :: Int
-                        , maxGeneratedStringLength :: Int
                         }
     deriving (Eq,Ord,Read,Show)
 
 -- ---------------------------
-nextFunction :: ParamIncrementBins -> Integer -> Integer
-nextFunction p =
-    case RandIncrementBins.next p  of
-        Linear   -> nextLinear
-        Power    -> nextPower
-        Exponent -> nextExponent
-
 step :: Integer
 step = 10
 
-nextLinear :: Integer -> Integer
-nextLinear n = n + step
-
-nextPower :: Integer -> Integer
-nextPower n = n * step
+nextFunction :: ParamIncrementBins -> Integer -> Integer
+nextFunction p =
+    case RandIncrementBins.next p  of
+        Linear   -> (step +)
+        Power    -> (step *)
+        Exponent -> nextExponent
 
 nextExponent :: Integer -> Integer
 nextExponent n = n * n
 
--- -----------------------------------------------------------------
--- randomly draw values from multiple bins
--- the number of bins is controlled by `nrOfBins`
--- the size of the bins is controlled by `nextFunction`
--- ---------------------------------------------------------------------
-values :: ParamIncrementBins -> IO [Integer]
-values p = valueRecursive (nrOfBins p) 1 step
-    where
-        valueRecursive :: Int -> Integer -> Integer -> IO [Integer]
-        valueRecursive 0 _ _ = return []
-        valueRecursive n' lw hgh = do
-                r <- randomRIO (lw, hgh-1)
-                rr <- valueRecursive (n'-1) hgh (nextFunction p hgh)
-                return (r:rr)
+mkRanges :: (Integer -> Integer) -> Integer -> Integer -> [(Integer, Integer)]
+mkRanges nxt lw hgh = (lw, hgh-1): mkRanges nxt hgh (nxt hgh)
 
-toBins :: (Variable v) => ParamIncrementBins -> ValExpr v -> IO [ValExpr v]
-toBins p v = do
-    neg <- liftIO $ values p            -- faster to reuse the same bins for positive and negative?
-    pos <- liftIO $ values p
-    let binSamples = reverse (map negate neg) ++ pos
-    liftIO shuffleM ( [ cstrLT v (cstrConst (Cint (head binSamples) ))
-                      , cstrLE (cstrConst (Cint (last binSamples) )) v
-                      ]
-                      ++ midBins v binSamples
-                    )
-      where
-        midBins :: (Variable v) => ValExpr v -> [Integer] -> [ValExpr v]
-        midBins v (x1:x2:xs) = cstrAnd ( Set.fromList [cstrLE (cstrConst (Cint x1)) v, cstrLT v (cstrConst (Cint x2)) ] ) : midBins v (x2:xs)
-        midBins _ _ = []
+basicIntRanges :: ParamIncrementBins -> [(Integer, Integer)]
+basicIntRanges p = take (nrOfBins p) (mkRanges (nextFunction p) 1 step)
+
+basicStringLengthRanges :: [(Integer, Integer)]
+basicStringLengthRanges = take 3 (mkRanges (3*) 0 3)
+
+-- from ascending boundary values make intervals
+mkIntConstraintBins :: forall v. Ord v => ValExpr v -> [Integer] -> [ValExpr v]
+mkIntConstraintBins _ []     = [cstrConst (Cbool True)]       -- no boundary values, single interval
+mkIntConstraintBins v l@(x:_) = cstrLE v (cstrConst (Cint x)) : mkRestBins l
+    where
+        mkRestBins :: Ord v => [Integer] -> [ValExpr v]
+        mkRestBins [y]        = [cstrLT (cstrConst (Cint y)) v]
+        mkRestBins (y1:y2:ys) = cstrAnd ( Set.fromList [cstrLT (cstrConst (Cint y1)) v, cstrLE v (cstrConst (Cint y2)) ] ) : mkRestBins (y2:ys)
+        mkRestBins []         = error "mkIntConstraintBins - Should not happen - at least one element in mkRestBins"
+
+mkRndIntBins :: Ord v => ParamIncrementBins -> ValExpr v -> IO [ValExpr v]
+mkRndIntBins p v = do
+    neg <- mapM randomRIO (basicIntRanges p)            -- faster to reuse the same bins for positive and negative?
+    pos <- mapM randomRIO (basicIntRanges p)
+    let boundaryValues = reverse (map negate neg) ++ pos
+        bins = mkIntConstraintBins v boundaryValues
+    shuffleM bins
 
 findRndValue :: Variable v => v -> [ValExpr v] -> SMT ()
 findRndValue _ [] = error "findRndValue - Solution exists, yet no solution found in all bins"
@@ -111,19 +102,21 @@ findRndValue v (x:xs) = do
     push
     addAssertions [x]
     sat <- getSolvable
-    pop
     case sat of
         Sat -> do
                 sol <- getSolution [v]
+                pop
                 let val = fromMaybe (error "findRndValue - SMT hasn't returned the value of requested variable.")
-                                    (Map.lookup (vname v) sol)
+                                    (Map.lookup v sol)
                     in do
-                        addAssertions [ cstrEq (cstrVar v) (cstrConst val) ]
+                        addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
                         sat2 <- getSolvable
                         case sat2 of
-                            Sat -> return
-                            _   -> "Unexpected SMT issue - previous solution is no longer valid - findRndValue"
-        _   -> findRndValue v xs
+                            Sat -> return ()
+                            _   -> error "Unexpected SMT issue - previous solution is no longer valid - findRndValue"
+        _   -> do
+                    pop
+                    findRndValue v xs
     
 -- ----------------------------------------------------------------------------------------- --
 -- give a random solution for constraint vexps with free variables vars
@@ -140,9 +133,8 @@ randValExprsSolveIncrementBins p freevars exprs  =
         sat <- getSolvable
         sp <- case sat of
                 Sat     -> do
-                            initSol <- getSolution freevars
                             shuffledVars <- shuffleM freevars
-                            randomSolve p initSol (zip shuffledVars (map (const (maxDepth p)) [1::Integer .. ]) ) 0
+                            randomSolve p (zip shuffledVars (map (const (maxDepth p)) [1::Integer .. ]) ) 0
                             sol <- getSolution freevars
                             return $ Solved sol
                 Unsat   -> return Unsolvable
@@ -168,117 +160,118 @@ toRegexString   c = T.singleton (Char.chr c)
 -- * Current solution
 -- * List of tuples of (Variable, Depth)
 -- * available variable id
-randomSolve :: Variable v => ParamIncrementBins -> Solution v -> [(v, Int)] -> Int -> SMT ()
-randomSolve _ _ []        _    = return ()                                         -- empty list -> done
-randomSolve _ _ ((_,0):_) _    = error "At maximum depth: should not be added"
-randomSolve p sol ((v,d):xs) i = 
-    let val = fromMaybe (error "randomSolve - SMT hasn't returned the value of requested variable.")
-                        (Map.lookup (vname v) sol)
-        in do 
+randomSolve :: Variable v => ParamIncrementBins -> [(v, Int)] -> Int -> SMT ()
+randomSolve _ []        _    = return ()                                         -- empty list -> done
+randomSolve _ ((_,0):_) _    = error "At maximum depth: should not be added"
+randomSolve p vs@((v,_):xs) i = do
+            sol <- getSolution [v]
+            let val = fromMaybe (error "randomSolve - SMT hasn't returned the value of requested variable.")
+                                (Map.lookup v sol)
             push
-            addAssertions [ cstrNot ( cstrEq (cstrVar v) (cstrConst val) ) ]
+            addAssertions [ cstrNot ( cstrEqual (cstrVar v) (cstrConst val) ) ]
             sat <- getSolvable
             pop
             case sat of
-                Sat -> randomSolveBin p ((v,d):xs) i
+                Sat -> randomSolveBins p vs i
                 _   -> do
-                            addAssertions [ cstrEq (cstrVar v) (cstrConst val) ]
-                            randomSolve    p sol        xs  i -- Both Unsat and Unknown: robustness if not equal can be solve, 
-                                                              --                         we expect that intervals might also yield no solution
+                            addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
+                            sat2 <- getSolvable
+                            case sat2 of
+                                Sat -> randomSolve p xs i
+                                -- Both Unsat and Unknown: robustness if not equal can't be solve, 
+                                --                         we expect that intervals might also yield no solution
+                                _   -> error "randomSolve - Unexpected SMT issue - previous solution is no longer valid"
 
 
 randomSolveBins :: Variable v => ParamIncrementBins -> [(v, Int)] -> Int -> SMT ()
+randomSolveBins _ [] _                                    = error "randomSolveBins - should always be called with no empty list"
 randomSolveBins p ((v,_):xs) i    | vsort v == sortIdBool =
     -- since the variable can be changed both values are possible: pick one and be done
     do
         b <- liftIO randomIO
-        addAssertions [ cstrEq (cstrVar v) (cstrConst (Cbool b) ) ]
+        addAssertions [ cstrEqual (cstrVar v) (cstrConst (Cbool b) ) ]
         sat <- getSolvable
         case sat of
-            Sat     -> do
-                        newSol <- getSolution xs
-                        randomSolve p newSol xs i
+            Sat     -> randomSolve p xs i
             _       -> error "Unexpected SMT issue - previous solution is no longer valid - Bool"
 
 randomSolveBins p ((v,_):xs) i    | vsort v == sortIdInt =
     do
-        rndBins <- toBins p (cstrVar v)
+        rndBins <- liftIO $ mkRndIntBins p (cstrVar v)
         findRndValue v rndBins
-        newSol <- getSolution xs
-        randomSolve p newSol xs i
+        randomSolve p xs i
 
--- HERE
-randomSolve p ((v,-123):xs) i    | vsort v == sortIdString =                 -- abuse depth to encode char versus string
-    do
-        r <- lift $ randomRIO (0,127)
-        s <- randomSolveVar v (choicesFunc v r)
-        case s of
-            Cstring str | T.length str == 1 ->
-              addAssertions [cstrEqual (cstrVar v) (cstrConst (Cstring str))]
-            Cstring _ ->
-              error "RandIncrementChoice: expected a single character"
-            _           -> error "RandIncrementChoice: impossible constant - char"
-        sat <- getSolvable
-        case sat of
-            Sat     -> randomSolve p xs i
-            _       -> error "Unexpected SMT issue - previous solution is no longer valid - char"
+randomSolveBins p ((v,-123):xs) i    | vsort v == sortIdString =                 -- abuse depth to encode char versus string
+    let nrofChars :: Int
+        nrofChars = 256         -- nrofChars == nrOfRanges * nrofCharsInRange
+        nrOfRanges :: Int
+        nrOfRanges = 8
+        nrofCharsInRange :: Int
+        nrofCharsInRange = 32
+        low :: Int
+        low = 0
+        high :: Int
+        high = nrofChars -1
+        boundaries :: [Int]
+        boundaries = take (nrOfRanges-1) [0, nrofCharsInRange .. ]
+      in do
+        offset <- liftIO $ randomRIO (0,nrofCharsInRange-1)
+        let rndBins = case offset of
+                    0                               -> map ( toConstraint v . toCharGroup . (\b -> toCharRange b (b+nrofCharsInRange-1)) ) (nrofChars-nrofCharsInRange:boundaries)
+                    1                               -> map ( toConstraint v . toCharGroup ) ( toCharRange (nrofChars - nrofCharsInRange + 1) high <> toRegexString low
+                                                                                            : map (\b -> toCharRange (b+1) (b+nrofCharsInRange)) boundaries
+                                                                                            )
+                    n | n == nrofCharsInRange -1    -> map ( toConstraint v . toCharGroup ) ( toRegexString high <> toCharRange low (nrofCharsInRange-2)
+                                                                                            : map ( (\b -> toCharRange b (b+nrofCharsInRange-1)) . (offset+) ) boundaries
+                                                                                            )
+                    _                               -> map ( toConstraint v . toCharGroup ) ( toCharRange (nrofChars - nrofCharsInRange + offset) high <> toCharRange low (offset-1)
+                                                                                            : map ( (\b -> toCharRange b (b+nrofCharsInRange-1)) . (offset+) ) boundaries
+                                                                                            )
+        findRndValue v rndBins
+        randomSolve p xs i
     where
-        choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, Text)]
-        choicesFunc v' r (Cstring str) |
-          T.length str == 1 = do
-            let
-              c = T.head str
-              cond = r <= Char.ord c && Char.ord c <= r+127
-            st <- valExprToString $ cstrStrInRe (cstrVar v') (cstrConst (Cregex ("[" <> toRegexString r <> "-" <> toRegexString (r+127) <> "]")))
-            sf <- valExprToString $
-              case r of
-                0       -> cstrStrInRe (cstrVar v') (cstrConst (Cregex ("[" <> toRegexString 128 <> "-" <> toRegexString 255 <> "]")))
-                1       -> cstrStrInRe (cstrVar v') (cstrConst (Cregex ("[" <> toRegexString 129 <> "-" <> toRegexString 255 <> toRegexString 0 <> "]")))
-                127     -> cstrStrInRe (cstrVar v') (cstrConst (Cregex ("[" <> toRegexString 255 <> toRegexString 0 <> "-" <> toRegexString 126 <> "]")))
-                _       -> cstrStrInRe (cstrVar v') (cstrConst
-                                                               (Cregex ("[" <> toRegexString (r+128) <> "-" <> toRegexString 255 <> toRegexString 0 <> "-" <> toRegexString (r-1) <> "]")))
-            return [ (cond, st), (not cond, sf) ]
-        choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - char"
+        toCharGroup :: Text -> Text
+        toCharGroup t = "[" <> t <> "]"
+
+        toCharRange :: Int -> Int -> Text
+        toCharRange l h = toRegexString l <> "-" <> toRegexString h
+
+        toConstraint :: v -> Text -> ValExpr v
+        toConstraint v' t = cstrStrInRe (cstrVar v') (cstrConst (Cregex t))
 
 
-randomSolve p ((v,d):xs) i    | vsort v == sortIdString =
+randomSolveBins p ((v,d):xs) i    | vsort v == sortIdString =
     do
-        r <- lift $ randomRIO (0,maxGeneratedStringLength p)
-        c <- randomSolveVar v (choicesFunc v r)
-        case c of
-            Cstring s   -> do
-                                let l = T.length s
-                                addAssertions [cstrEqual (cstrLength (cstrVar v)) (cstrConst (Cint (toInteger l)))]
-                                if l > 0 && d > 1
+        let lengthStringVar = cstrVariable ("$$$l$" ++ show i) (10000000+i) sortIdInt
+        addDeclarations [lengthStringVar]
+        addAssertions [cstrEqual (cstrLength (cstrVar v)) (cstrVar lengthStringVar)]
+        
+        boundaryValues <- liftIO $ mapM randomRIO basicStringLengthRanges
+        let bins = mkIntConstraintBins (cstrVar lengthStringVar) boundaryValues
+        rndBins <- shuffleM bins
+        findRndValue lengthStringVar rndBins
+        sol <- getSolution [lengthStringVar]
+        let val@(Cint l) = fromMaybe (error "randomSolve - String - SMT hasn't returned the value of requested variable.")
+                                     (Map.lookup lengthStringVar sol)
+          in do
+                addAssertions [ cstrEqual (cstrVar lengthStringVar) (cstrConst val) ]
+                sat2 <- getSolvable
+                case sat2 of
+                    Sat -> if l > 0 && d > 1
                                 then do
-                                        let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortIdString) [i .. i+l-1]
+                                        let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortIdString) [i+1 .. i+fromIntegral l]
                                         addDeclarations charVars
                                         let exprs = map (\(vNew,pos) -> cstrEqual (cstrVar vNew) (cstrAt (cstrVar v) (cstrConst (Cint pos)))) (zip charVars [0..])
                                         addAssertions exprs
                                         shuffledVars <- shuffleM (xs ++ zip charVars (map (const (-123)) [1::Integer .. ]) )
                                         sat <- getSolvable
                                         case sat of
-                                            Sat     -> randomSolve p shuffledVars (i+l)
+                                            Sat     -> randomSolve p shuffledVars (i+1+fromIntegral l)
                                             _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l > 0"
-                                else do
-                                        sat <- getSolvable
-                                        case sat of
-                                            Sat     -> randomSolve p xs i
-                                            _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l == 0"
-            _              -> error "RandIncrementChoice: impossible constant - string"
-    where
-        choicesFunc :: Variable v => v -> Int -> Const -> SMT [(Bool, Text)]
-        choicesFunc v' r (Cstring s) = do
-                                            let cond = T.length s < r
-                                            st <- valExprToString $ cstrLT (cstrLength (cstrVar v')) (cstrConst (Cint (toInteger r)))
-                                            sf <- valExprToString $ cstrGE (cstrLength (cstrVar v')) (cstrConst (Cint (toInteger r)))
-                                            return [ (cond, st)
-                                                   , (not cond, sf)
-                                                   ]
-        choicesFunc _ _ _         = error "RandIncrementChoice: impossible choice - string"
+                                else randomSolve p xs (i+1)
+                    _   -> error "Unexpected SMT issue - previous solution is no longer valid - findRndValue"
 
-
-randomSolve p ((v,d):xs) i =
+randomSolveBins p ((v,d):xs) i =
     do
         let sid = vsort v
         cstrs <- lookupConstructors sid
@@ -302,8 +295,11 @@ randomSolve p ((v,d):xs) i =
             _   ->
                     do
                         shuffledCstrs <- shuffleM cstrs
-                        let (partA, partB) = splitAt (div (length cstrs) 2) shuffledCstrs
-                        c <- randomSolveVar v (choicesFunc v partA partB)
+                        let shuffledBins = map (\(tempCid, _) -> cstrIsCstr tempCid (cstrVar v)) shuffledCstrs
+                        findRndValue v shuffledBins
+                        sol <- getSolution [v]
+                        let c = fromMaybe (error "randomSolve - ADT - SMT hasn't returned the value of requested variable.")
+                                          (Map.lookup v sol)
                         case c of
                             Cstr{cstrId = cid}  ->
                                 case Map.lookup cid (Map.fromList cstrs) of
@@ -325,49 +321,6 @@ randomSolve p ((v,d):xs) i =
                                                 _       -> error "Unexpected SMT issue - previous solution is no longer valid - ADT - n"
                                     Nothing                 -> error "RandIncrementChoice: value not found - ADT - n"
                             _                   -> error "RandIncrementChoice: impossible constant - ADT - n"
-    where
-        choicesFunc :: Variable v => v -> [(CstrId, CstrDef)] -> [(CstrId, CstrDef)] -> Const -> SMT [(Bool, Text)]
-        choicesFunc v' partA partB Cstr{cstrId = cId} =
-            do
-                let cond = Map.member cId (Map.fromList partA)
-                lA <- mapM (\(tempCid,CstrDef{}) -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partA
-                lB <- mapM (\(tempCid,CstrDef{}) -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partB
-                return [ (cond, case lA of
-                                    [a] -> a
-                                    _   -> "(or " <> T.intercalate " " lA <> ") ")
-                       , (not cond, case lB of
-                                        [b] -> b
-                                        _   -> "(or " <> T.intercalate " " lB <> ") ")
-                       ]
-        choicesFunc _ _ _ _        = error "RandIncrementChoice: impossible choice - string"
-
-
--- Find random solution for variable, using the different choices
-randomSolveVar :: (Variable v) => v -> (Const -> SMT [(Bool, Text)]) -> SMT Const
-randomSolveVar v choicesFunc = do
-    sol <- getSolution [v]
-    case Map.lookup v sol of
-        Just c  -> do
-                        choices <- choicesFunc c
-                        shuffledChoices <- shuffleM choices
-                        case head shuffledChoices of
-                            (True , _)          -> return c
-                            (False, assertion)  -> do
-                                                        push
-                                                        SMT.putT $ "(assert " <> assertion <> ")"
-                                                        sat <- getSolvable
-                                                        case sat of
-                                                            Sat -> do
-                                                                        sol2 <- getSolution [v]
-                                                                        pop
-                                                                        case Map.lookup v sol2 of
-                                                                            Just c2 -> return c2
-                                                                            _       -> error "RandIncrementChoice: value not found - randomSolveVar - 2"
-
-                                                            _   -> do
-                                                                        pop
-                                                                        return c
-        _       -> error "RandIncrementChoice: value not found - randomSolveVar"
 
 -- lookup a constructor given its sort and constructor name
 lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]

@@ -33,7 +33,7 @@ import qualified Data.Map  as Map
 
 -- smt solve strategies
 
-data  SolveStrategy     =  No | Partition | TrueBins | IncrementChoice
+data  SolveStrategy     =  No | Partition | TrueBins | IncrementChoice | IncrementBins
      deriving (Eq,Ord,Read,Show)
 
 data  StringMode        =  Regex | Length
@@ -61,7 +61,8 @@ initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
                                                                           , \s ->    (s == show No)
                                                                                   || (s == show Partition)
                                                                                   || (s == show TrueBins)
-                                                                                  || (s == show IncrementChoice) )
+                                                                                  || (s == show IncrementChoice) 
+                                                                                  || (s == show IncrementBins) )
   , ( "param_TrueBins_StringLength"                        , "6"          , positiveInt )
   , ( "param_TrueBins_StringMode"                          , show Regex   , \s ->    (s== show Regex)
                                                                                   || (s== show Length) )
