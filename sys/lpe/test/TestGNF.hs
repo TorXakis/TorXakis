@@ -3,6 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module TestGNF
 (
@@ -293,6 +294,31 @@ testProcInst4 = TestCase $
 
 
 
+-- P[A]() := [[x == 1]] =>> Q[A]()
+-- Q[A]() := A?x >-> STOP
+-- with procInst = P[A]()
+-- 
+-- becomes
+-- P[A]() :=  [[x == 1]] =>> A?x >-> STOP     
+-- with procInst = P[A]()
+testGuardProcInst :: Test
+testGuardProcInst = TestCase $
+   assertBool "guard procInst"  $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
+   where
+      procIdP = procIdGen "P" [] []
+      procIdQ = procIdGen "Q" [] []
+      procDefP = ProcDef [] [] (guard   (cstrEqual vexprX vexpr1 )
+                                        (procInst procIdQ [chanIdA] []))
+      procDefQ = ProcDef [] []  (actionPref actOfferAx stop)
+
+
+      procDefP' = ProcDef [] [] (guard  (cstrEqual vexprX vexpr1 )
+                                        (actionPref actOfferAx stop))
+
+      procDefs' = Map.fromList  [  (procIdP, procDefP)
+                                , (procIdQ, procDefQ)]
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
+                                , (procIdQ, procDefQ) ]
 
 
 
@@ -420,7 +446,10 @@ testGNFList = TestList [
                         , TestLabel "procInst is substituted 3" testProcInst3
                         , TestLabel "procInst is substituted 4" testProcInst4
 
+                        , TestLabel "guard procInst" testGuardProcInst
+
                         , TestLabel "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash" testNamingClash
+
                         -- , TestLabel "loop 1" testLoop1
                         -- , TestLabel "loop 2" testLoop2
                         -- , TestLabel "loop 3" testLoop3

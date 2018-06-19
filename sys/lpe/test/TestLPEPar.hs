@@ -978,6 +978,10 @@ testSingleActionDifferentActions4 = TestCase $
       -- // only right side: ONLY IF G = [], [B]
       -- ## A [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
 -- with procInst := P[A,B](0,0)
+-- NOTICE: this tests relies on an implementation detail: 
+--    the order of the bexprs in the choice is not guaranteed
+--    hence the order of program counter values is not guaranteed either
+
 testMultiActions1 :: Test
 testMultiActions1 = TestCase $
    assertBool "test multi actions"  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
@@ -1177,6 +1181,9 @@ testMultiActions4 = TestCase $
       -- // only right side: ONLY IF G = []
       -- ## A | B [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
 -- with procInst := P[A,B](0,0)
+-- NOTICE: this tests relies on an implementation detail: 
+--    the order of the bexprs in the choice is not guaranteed
+--    hence the order of program counter values is not guaranteed either
 testMultiActions5 :: Test
 testMultiActions5 = TestCase $
    assertBool "test multi actions"  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')

@@ -42,6 +42,10 @@ procIdGen name' chans vars' = ProcId   {  ProcId.name       = T.pack name'
 
 varIdX :: VarId
 varIdX = VarId (T.pack "x") 33 intSort
+varIdY :: VarId
+varIdY = VarId (T.pack "y") 36 intSort
+varIdZ :: VarId
+varIdZ = VarId (T.pack "z") 36 intSort
 varIdA1 :: VarId
 varIdA1 = VarId (T.pack "A$1") 34 intSort
 varIdB1 :: VarId
@@ -49,6 +53,10 @@ varIdB1 = VarId (T.pack "B$1") 34 intSort
 
 vexprX :: VExpr
 vexprX = cstrVar varIdX
+vexprY :: VExpr
+vexprY = cstrVar varIdY
+vexprZ :: VExpr
+vexprZ = cstrVar varIdZ
 vexprA1 :: VExpr
 vexprA1 = cstrVar varIdA1
 vexprB1 :: VExpr
@@ -94,6 +102,17 @@ actOfferAx   = ActOffer {  offers = Set.singleton
                         , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
+
+-- action: A?y
+actOfferAy :: ActOffer
+actOfferAy   = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdA
+                                              , chanoffers = [Quest varIdY]
+                                        }
+                        , hiddenvars = Set.empty
+                        , constraint = cstrConst (Cbool True)
+            }
+
 -- action: A!x
 actOfferAExclamX :: ActOffer
 actOfferAExclamX   = ActOffer {  offers = Set.singleton
@@ -134,6 +153,13 @@ chanIdA = ChanId    { ChanId.name = T.pack "A"
                     , ChanId.unid = 2
                     , ChanId.chansorts = [intSort]
                     }
+
+chanIdA0 :: ChanId
+chanIdA0 = ChanId    { ChanId.name = T.pack "A"
+                        , ChanId.unid = 2
+                        , ChanId.chansorts = []
+}      
+
 chanIdB :: ChanId
 chanIdB = ChanId    { ChanId.name = T.pack "B"
                     , ChanId.unid = 3
@@ -1083,11 +1109,7 @@ testLPEHide1 = TestCase $
       vexprPcPpre1 :: VExpr
       vexprPcPpre1 = cstrVar varIdPcPpre1
 
-
-      chanIdA0 = ChanId    { ChanId.name = T.pack "A"
-                              , ChanId.unid = 2
-                              , ChanId.chansorts = []
-      }      
+   
 
       -- action: A
       actOfferA :: ActOffer
@@ -1395,13 +1417,350 @@ testEnable2 = TestCase $
 
 
 
--- -------------------------------------------------
--- test parallel nesting
--- e.g. P[A]() := Q[A]() || Q[B]()
--- Q[A]() := A >-> STOP || A >-> STOP
--- -------------------------------------------------
 
 
+
+
+-- -------------------------------------------------------
+-- LPE of guard
+-- -------------------------------------------------------
+
+-- P[A]() := [[x == 1]] =>> STOP
+-- with procInst = P[A]()
+-- 
+-- becomes
+-- LPE_P[A](pc$P) :=  [[x == 1]] =>> Choice []              -- ie. STOP
+-- with procInst = LPE_P[A](0)
+
+testLPEGuardStop :: Test
+testLPEGuardStop = TestCase $
+         --    trace ("\n\nexpected: " ++ show (procInstP', procDefP') ++ "\n\ngot: " ++ show res) $ 
+         assertBool "test guard with parallel" $ eqProcDef (Just (procInstP', procDefP')) res
+         where
+            res = lpeTransformFunc procInstP procDefs'
+
+            procInstP = procInst procIdP [chanIdA] []
+            procIdP = procIdGen "P" [chanIdA] []
+      
+            procDefP = ProcDef [chanIdA] []  (guard   (cstrEqual vexprX vexpr1 )
+                                                      (stop))
+            procDefs' = Map.fromList  [  (procIdP, procDefP)]
+      
+            varIdpcP = VarId (T.pack "pc$P") 0 intSort
+            procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP]
+            procInstP' = procInst procIdP' [chanIdA] [int0]
+            
+            procDefP' = ProcDef [chanIdA] [varIdpcP] (
+                                    (guard   (cstrEqual vexprX vexpr1 )
+                                             (choice Set.empty)))
+                  
+
+-- P[A]() := [[y == 1]] =>> (A?x >-> STOP)
+-- with procInst = P[A]()
+-- 
+-- becomes
+-- LPE_P[A](pc$P) :=  (A?A$1 [pc$P == 0, y == 1] >-> LPE_P[A](-1))             
+--                     - note that the original expression was first translated to   (A?x [y == 1] >-> STOP) due to smart constructors
+--                     - then the pc$P == 0 constraint gets added *before* that
+-- with procInst = LPE_P[A](0)
+
+testLPEGuardActionPref :: Test
+testLPEGuardActionPref = TestCase $
+         --    trace ("\n\nexpected: " ++ show (procInstP', procDefP') ++ "\n\ngot: " ++ show res) $ 
+         assertBool "test guard with parallel" $ eqProcDef (Just (procInstP', procDefP')) res
+         where
+            res = lpeTransformFunc procInstP procDefs'
+
+            procInstP = procInst procIdP [chanIdA] []
+            procIdP = procIdGen "P" [chanIdA] []
+      
+            procDefP = ProcDef [chanIdA] []  (guard   (cstrEqual vexprY vexpr1 )
+                                                      (actionPref actOfferAx stop))
+            procDefs' = Map.fromList  [  (procIdP, procDefP)]
+      
+            varIdpcP = VarId (T.pack "pc$P") 0 intSort
+            procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP]
+            procInstP' = procInst procIdP' [chanIdA] [int0]
+            
+            procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP]
+            procDefP' = ProcDef [chanIdA] [varIdpcP] (
+                                                (actionPref actOfferA1 {     offers = Set.singleton
+                                                                                          Offer { chanid = chanIdA
+                                                                                                , chanoffers = [Quest varIdA1]
+                                                                                          }
+                                                                              , constraint = cstrITE (cstrEqual vexprPcP int0)
+                                                                                                      (cstrEqual vexprY vexpr1)
+                                                                                                      (cstrConst (Cbool False))}
+                                                            (procInst procIdPlpe [chanIdA] [vexprMin1]) )           
+                                    )
+                  
+
+            
+
+-- P[A]() := [[y == 1]] =>> (A?x >-> STOP ## A?x >-> STOP )
+-- with procInst = P[A]()
+-- 
+-- becomes
+-- LPE_P[A](pc$P) :=  (A?A$1 [pc$P == 0, y == 1] >-> LPE_P[A](-1))                 
+--                ##  (A?A$1 [pc$P == 0, y == 1] >-> LPE_P[A](-1))               
+-- with procInst = LPE_P[A](0)
+
+testLPEGuardChoice :: Test
+testLPEGuardChoice = TestCase $
+         --    trace ("\n\nexpected: " ++ show (procInstP', procDefP') ++ "\n\ngot: " ++ show res) $ 
+         assertBool "test guard with parallel" $ eqProcDef (Just (procInstP', procDefP')) res
+         where
+            res = lpeTransformFunc procInstP procDefs'
+
+            procInstP = procInst procIdP [chanIdA] []
+            procIdP = procIdGen "P" [chanIdA] []
+      
+            procDefP = ProcDef [chanIdA] []  (guard   (cstrEqual vexprY vexpr1 )
+                                                      (choice $ Set.fromList [
+                                                            (actionPref actOfferAx stop),
+                                                            (actionPref actOfferBx stop)
+                                                            ]))
+            procDefs' = Map.fromList  [  (procIdP, procDefP)]
+      
+            varIdpcP = VarId (T.pack "pc$P") 0 intSort
+            procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP]
+            procInstP' = procInst procIdP' [chanIdA] [int0]
+            
+            procDefP' = ProcDef [chanIdA] [varIdpcP] (
+                                    (choice $ Set.fromList [
+                                                      (actionPref actOfferA1 {      offers = Set.singleton
+                                                                                          Offer { chanid = chanIdA
+                                                                                                , chanoffers = [Quest varIdA1]
+                                                                                          }
+                                                                                    , constraint =  cstrITE (cstrEqual vexprPcP int0)
+                                                                                                            (cstrEqual vexprY vexpr1)
+                                                                                                            (cstrConst (Cbool False))}
+                                                                  (procInst procIdP' [chanIdA] [vexprMin1]) ),
+
+                                                      (actionPref actOfferA1 {      offers = Set.singleton
+                                                                                                Offer { chanid = chanIdB
+                                                                                                      , chanoffers = [Quest varIdB1]
+                                                                                                }
+                                                                                    , constraint =  cstrITE (cstrEqual vexprPcP int0)
+                                                                                                            (cstrEqual vexprY vexpr1)
+                                                                                                            (cstrConst (Cbool False))}
+                                                                  (procInst procIdP' [chanIdA] [vexprMin1]) )
+                                    ]))
+                                                      
+                  
+
+-- P[A]() := [[y == 1]] =>> Q[A]()
+-- Q[A]() := A?x >-> STOP
+-- with procInst = P[A]()
+-- 
+-- becomes
+-- LPE_P[A](pc$P) :=  A?A$1 [pc$P == 0, y == 1]  >-> LPE_P[A](-1)        
+-- with procInst = LPE_P[A](0)
+
+testLPEGuardProcInst :: Test
+testLPEGuardProcInst = TestCase $
+         --    trace ("\n\nexpected: " ++ show (procInstP', procDefP') ++ "\n\ngot: " ++ show res) $ 
+         assertBool "test guard with parallel" $ eqProcDef (Just (procInstP', procDefP')) res
+         where
+            res = lpeTransformFunc procInstP procDefs'
+
+            procInstP = procInst procIdP [chanIdA] []
+            procIdP = procIdGen "P" [chanIdA] []
+            procIdQ = procIdGen "Q" [chanIdA] []
+
+            procDefP = ProcDef [chanIdA] []  (guard   (cstrEqual vexprY vexpr1 )
+                                                      (procInst procIdQ [chanIdA] []))
+            procDefQ = ProcDef [chanIdA] []  (actionPref actOfferAx stop)
+            procDefs' = Map.fromList  [  (procIdP, procDefP)
+                                       , (procIdQ, procDefQ)]
+      
+            varIdpcP = VarId (T.pack "pc$P") 0 intSort
+            procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP]
+            procInstP' = procInst procIdP' [chanIdA] [int0]
+            
+            procDefP' = ProcDef [chanIdA] [varIdpcP] (
+                                                (actionPref actOfferA1 {  offers = Set.singleton
+                                                                                    Offer { chanid = chanIdA
+                                                                                          , chanoffers = [Quest varIdA1]
+                                                                                    }
+                                                                        , constraint = cstrITE (cstrEqual vexprPcP int0)
+                                                                                                (cstrEqual vexprY vexpr1)
+                                                                                                (cstrConst (Cbool False))}
+                                                      (procInst procIdP' [chanIdA] [vexprMin1])  ))
+                  
+
+
+
+
+-- P[A]() := [[z == 1]] =>> (A?x >-> STOP |[A]| A?y >-> STOP)
+-- with procInst = P[A]()
+-- 
+-- becomes
+-- LPE_P[A](pc$P, op1$pc$P$op1, op2$pc$P$op2) :=
+--             A?A$1 [pc$P == 0, z == 1]                                >->  P[A](1, -1, -1)
+--          ## A?A$1 [pc$P == 1, op1$pc$P$op1 == 0, op2$pc$P$op2 == 0]  >->  P[A](1, -1, -1)         -- this branch is never reachable!
+--                                                                                                   -- exists only due to unfolding during GNF translation
+-- with ProcInst := P[A](0,0,0)
+testLPEGuardPar :: Test
+testLPEGuardPar = TestCase $
+         --    trace ("\n\nexpected: " ++ show (procInstP', procDefP') ++ "\n\ngot: " ++ show res) $ 
+         assertBool "test guard with parallel" $ eqProcDef (Just (procInstP', procDefP')) res
+         where
+            res = lpeTransformFunc procInstP procDefs'
+
+            procInstP = procInst procIdP [chanIdA] []
+            procIdP = procIdGen "P" [chanIdA] []
+      
+            procDefP = ProcDef [chanIdA] []  (guard   (cstrEqual vexprZ vexpr1 )
+                                                      (parallel (Set.singleton chanIdA) [
+                                                            actionPref actOfferAx stop,
+                                                            actionPref actOfferAy stop
+                                                          ])) 
+            procDefs' = Map.fromList  [  (procIdP, procDefP)]
+      
+
+            varIdOp1pcPop1 = VarId (T.pack "P$pre1$A$op1$pc$P$pre1$op1") 0 intSort
+            varIdOp2pcPop2 = VarId (T.pack "P$pre1$A$op2$pc$P$pre1$op2") 0 intSort
+            vexprOp1pcPop1 = cstrVar varIdOp1pcPop1
+            vexprOp2pcPop2 = cstrVar varIdOp2pcPop2
+            varIdpcP = VarId (T.pack "pc$P") 0 intSort
+            procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP, varIdOp1pcPop1, varIdOp2pcPop2]
+            procInstP' = procInst procIdP' [chanIdA] [int0, anyInt, anyInt]
+            
+            procDefP' = ProcDef [chanIdA] [varIdpcP, varIdOp1pcPop1, varIdOp2pcPop2] (
+                                          choice $ Set.fromList[
+                                                (actionPref actOfferA1 {  offers = Set.singleton
+                                                                                    Offer { chanid = chanIdA
+                                                                                          , chanoffers = [Quest varIdA1]
+                                                                                    }
+                                                                        , constraint = cstrITE  (cstrEqual vexprPcP int0)
+                                                                                                (cstrEqual vexprZ vexpr1)
+                                                                                                (cstrConst (Cbool False))}
+                                                            (procInst procIdP' [chanIdA] [int1, vexprMin1, vexprMin1]) ),
+
+                                                (actionPref actOfferA1 {  offers = Set.singleton
+                                                                                    Offer { chanid = chanIdA
+                                                                                          , chanoffers = [Quest varIdA1]
+                                                                                    }
+                                                                        , constraint = cstrITE  (cstrEqual vexprPcP int1)
+                                                                                                (cstrAnd (Set.fromList [ cstrEqual vexprOp1pcPop1 int0
+                                                                                                                        , cstrEqual vexprOp2pcPop2 int0]))
+                                                                                                (cstrConst (Cbool False))}
+                                                            (procInst procIdP' [chanIdA] [int1, vexprMin1, vexprMin1]) )
+                                                
+                                          ])
+
+-- same test as testLPEHide1 just with a guard added
+--
+-- P[A]() := [[x == 1]] =>> HIDE [] IN A -> STOP NI 
+-- with procInst = P[A]()
+-- becomes
+-- LPE_P[A](pc$P, P$pre1$A$pc$P$pre1) :=        A [pc$P == 0, x == 1] -> LPE_P[A](1, -1)
+--                                        ##    A [pc$P == 1, P$pre1$A$pc$P$pre1 == 0] -> LPE_P[A](1,-1)
+-- with procInst = P[A](0)
+testLPEGuardHide :: Test
+testLPEGuardHide = TestCase $
+      assertBool "test LPE Guard with HIDE" (eqProcDef (Just (procInst', procDefPlpe)) res)
+      where
+            res = lpeTransformFunc procInst'' procDefs'
+            procInst'' = procInst procIdP [chanIdA0] []
+            procIdP = procIdGen "P" [chanIdA0] []
+            procDefP = ProcDef [chanIdA0] [] (guard   (cstrEqual vexprX vexpr1)
+                                                      (hide Set.empty (actionPref actOfferA stop)))
+            procDefs' = Map.fromList  [  (procIdP, procDefP)]
+
+            varIdPcPpre1 :: VarId
+            varIdPcPpre1 = VarId (T.pack "P$pre1$A$pc$P$pre1") 0 intSort
+            vexprPcPpre1 :: VExpr
+            vexprPcPpre1 = cstrVar varIdPcPpre1
+
+
+            -- action: A
+            actOfferA :: ActOffer
+            actOfferA   = ActOffer {  offers = Set.singleton
+                                                Offer { chanid = chanIdA0
+                                                      , chanoffers = []
+                                                }
+                                    , hiddenvars = Set.empty
+                                    , constraint = cstrConst (Cbool True)
+                        }
+
+
+            procIdPlpe = procIdGen "LPE_P" [chanIdA0] [varIdPcP, varIdPcPpre1]
+            procDefPlpe = ProcDef [chanIdA0] [varIdPcP, varIdPcPpre1] 
+                                                (choice $ Set.fromList [
+                                                                  -- A [pc$P == 0] -> LPE_P[A](1, -1)
+                                                                  (actionPref                         
+                                                                        
+                                                                        ActOffer {  offers = Set.singleton
+                                                                                                Offer { chanid = chanIdA0
+                                                                                                      , chanoffers = []
+                                                                                                }
+                                                                                    , hiddenvars = Set.empty
+                                                                                    , constraint = cstrITE (cstrEqual vexprPcP int0)
+                                                                                                            (cstrEqual vexprX vexpr1)
+                                                                                                            (cstrConst (Cbool False))
+                                                                                    } 
+                                                                        (procInst procIdPlpe [chanIdA0] [vexpr1, vexprMin1]))
+                                                      ,                                                                   -- ##    A [pc$P == 1, P$pre1$A$pc$P$pre1 == 0] -> LPE_P[A](1,-1)
+                                                                  (actionPref                         
+                                                                        ActOffer {  offers = Set.singleton
+                                                                                                Offer { chanid = chanIdA0
+                                                                                                      , chanoffers = []
+                                                                                                }
+                                                                                    , hiddenvars = Set.empty
+                                                                                    , constraint = cstrITE (cstrEqual vexprPcP int1)
+                                                                                                            (cstrEqual vexprPcPpre1 int0)
+                                                                                                            (cstrConst (Cbool False))
+                                                                              } 
+                                                                        (procInst procIdPlpe [chanIdA0] [vexpr1, vexprMin1]))
+
+                                                                  ])
+            procInst' = procInst procIdPlpe [chanIdA0] [int0, anyInt]
+
+
+-- the same as testEnable1 but now with a guard 
+-- P[A]() := [[x == 1]] ==> EXIT >>> STOP
+-- with procInst = P[A]()
+-- becomes:
+--    LPE_P[A]() := EXIT [pcP == 0, x == 1] >-> P[A](1)
+--    LPE_P[A](0)
+
+testLPEGuardEnable :: Test
+testLPEGuardEnable = TestCase $
+   --    trace ("\n\n expected:" ++ show (Just (procInst', procDefPlpe)) ++ "\ngot: " ++ show res) $ 
+   assertBool "guard with enable" (eqProcDef (Just (procInst', procDefPlpe)) res)
+   where
+      res = lpeTransformFunc procInst'' procDefs'
+      procInst'' = procInst procIdP [chanIdA] []
+      procIdP = procIdGen "P" [chanIdA] []
+      
+      -- action: EXIT
+      actOfferExit :: ActOffer
+      actOfferExit   = ActOffer {  offers = Set.singleton
+                                          Offer { chanid = chanIdExit
+                                                , chanoffers = []
+                                          }
+                              , hiddenvars = Set.empty
+                              , constraint = cstrConst (Cbool True)
+                  }
+      
+      procDefP = ProcDef [chanIdA] [] (guard    (cstrEqual vexprX vexpr1)
+                                                (enable (actionPref actOfferExit stop)
+                                                            [] 
+                                                            stop))
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+
+      procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP]
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP]           (actionPref 
+                                                                  ActOffer {    offers = Set.empty
+                                                                              , hiddenvars = Set.empty
+                                                                              , constraint = cstrITE (cstrEqual vexprPcP int0)
+                                                                                                      (cstrEqual vexprX int1)
+                                                                                                      (cstrConst (Cbool False))
+                                                                              } 
+                                                                  (procInst procIdPlpe [chanIdA] [int1]))
+      procInst' = procInst procIdPlpe [chanIdA] [int0]
 
 
 
@@ -1433,6 +1792,16 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
                         , TestLabel "lpeHide integration" testLPEHide2
                         , TestLabel "lpeEnable integration" testEnable1
                         , TestLabel "lpeEnable integration 2" testEnable2
+
+                        , TestLabel "lpe guard stop" testLPEGuardStop
+                        , TestLabel "lpe guard ActionPref" testLPEGuardActionPref
+                        , TestLabel "lpe guard Choice" testLPEGuardChoice
+                        , TestLabel "lpe guard ProcInst" testLPEGuardProcInst
+
+                           
+                        , TestLabel "lpe guard par" testLPEGuardPar
+                        , TestLabel "lpe guard hide" testLPEGuardHide
+                        , TestLabel "lpe guard enable" testLPEGuardEnable
 
                         --, TestLabel "multi chanoffer translation" testMultiChanOffer
                         ]
