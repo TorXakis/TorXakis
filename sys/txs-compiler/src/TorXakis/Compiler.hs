@@ -373,7 +373,7 @@ compileToProcDefs :: ( MapsTo Text SortId mm
 compileToProcDefs mm pd = do
     pmsP <- getMap mm (pd ^. procs)  :: CompilerM (Map (Loc ProcDeclE) ProcInfo)
     pmsS <- getMap mm (pd ^. stauts) :: CompilerM (Map (Loc ProcDeclE) ProcInfo)
-    let pms = pmsP <> pmsS -- TODO: we might consider detecting for duplicated process here.
+    let pms = pmsP <> pmsS
     procPDefMap  <- procDeclsToProcDefMap (pms :& mm) (pd ^. procs)
     stautPDefMap <- stautDeclsToProcDefMap (pms :& mm) (pd ^. stauts)
     return $ procPDefMap <> stautPDefMap

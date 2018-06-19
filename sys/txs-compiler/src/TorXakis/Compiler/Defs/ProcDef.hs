@@ -220,10 +220,10 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                               , _errorLoc   = getErrorLoc staut
                               , _errorMsg  = "No initial state declaration"
                               }
-                          _  -> throwError Error
-                              { _errorType = MultipleDefinitions
+                          is  -> throwError Error
+                              { _errorType = MultipleDefinitions InitialState
                               , _errorLoc  = getErrorLoc staut
-                              , _errorMsg  = "Multiple initial state declarations"
+                              , _errorMsg  = "Multiple initial state declarations: " <> T.pack (show is)
                               }
 
                   lookupStatId :: StateRef -> [StatId] -> CompilerM StatId

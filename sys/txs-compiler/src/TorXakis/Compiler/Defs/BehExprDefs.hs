@@ -91,7 +91,7 @@ toBExpr mm vrvds (Pappl n l crs exs) = do
     case res of
         (_ , [(_, pInst)]) -> return pInst
         (_, r:rs )         -> throwError Error
-            { _errorType = MultipleDefinitions
+            { _errorType = MultipleDefinitions Process
             , _errorLoc  = getErrorLoc l
             , _errorMsg  = "Multiple matching definitions for process instantiation: "
                          <> T.pack (show (r:rs))

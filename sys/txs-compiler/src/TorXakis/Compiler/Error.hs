@@ -7,6 +7,13 @@ import           Control.Lens.TH (makeLenses)
 import           Data.Text       (Text)
 
 
+-- | Entity to which the error is related.
+data Entity = Function
+            | Process
+            | InitialState
+    deriving (Eq, Show)
+
+-- | Type of errors that can occur when compiling a 'TorXakis' model file.
 data ErrorType
     = ParseError
     | UndefinedRef -- TODO: we could specify the type of what's being undefined (variable, sort, etc...)
@@ -14,7 +21,7 @@ data ErrorType
     | UndefinedType
     | FunctionNotDefined
     | UnresolvedIdentifier
-    | MultipleDefinitions
+    | MultipleDefinitions Entity
     | NoDefinition -- ^ No definition found for function or process.
     | ProcessNotDefined
     | InvalidExpression

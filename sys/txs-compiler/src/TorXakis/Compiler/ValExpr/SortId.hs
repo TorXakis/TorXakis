@@ -448,10 +448,10 @@ instance HasExitSorts BExpDecl where
                 , _errorLoc  = getErrorLoc l
                 , _errorMsg  = "No matching process found"
                 }
-            _     -> throwError Error
-                { _errorType = MultipleDefinitions
+            ps    -> throwError Error
+                { _errorType = MultipleDefinitions Process
                 , _errorLoc  = getErrorLoc l
-                , _errorMsg  = "Multiple matching processes found"
+                , _errorMsg  = "Multiple matching processes found: " <> T.pack (show ps)
                 }
     exitSort mm (Par l _ be0 be1) = do
         es0 <- exitSort mm be0
