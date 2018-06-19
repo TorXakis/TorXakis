@@ -23,6 +23,7 @@ available-solvers:
   - "--fmf-fun-rlv"
   - "--uf-ss-fair"
   - "--no-strings-std-ascii"
+smt-log: True
 parameters:
 - name: "ImpRel"
   value: "IOCO"       # IOCO
@@ -41,7 +42,7 @@ parameters:
 - name: "RandSolve_adtWidth"
   value: "5"         # > 0
 - name: "Randomization"
-  value: "IncrementChoice" # No | Partition | TrueBins | IncrementChoice
+  value: "IncrementBins" # No | Partition | TrueBins | IncrementChoice | IncrementBins
 - name: "Sim_inputEager"
   value: "0"       # 0-3
 - name: "Test_inputEager"

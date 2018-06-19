@@ -265,10 +265,13 @@ randomSolveBins p ((v,d):xs) i    | vsort v == sortIdString =
                     sat <- getSolvable
                     case sat of
                         Sat     -> randomSolve p shuffledVars (i+1+fromIntegral l)
-                        _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l > 0"
-            else randomSolve p xs (i+1)
+                        _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l > 0 && d > 1"
+            else do
+                    sat <- getSolvable
+                    case sat of
+                        Sat     -> randomSolve p xs (i+1)
+                        _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - else"
 
--- TODO
 randomSolveBins p ((v,d):xs) i =
     do
         let sid = vsort v
@@ -294,31 +297,21 @@ randomSolveBins p ((v,d):xs) i =
                     do
                         shuffledCstrs <- shuffleM cstrs
                         let shuffledBins = map (\(tempCid, _) -> cstrIsCstr tempCid (cstrVar v)) shuffledCstrs
-                        findRndValue v shuffledBins
-                        sol <- getSolution [v]
-                        let c = fromMaybe (error "randomSolve - ADT - SMT hasn't returned the value of requested variable.")
-                                          (Map.lookup v sol)
-                        case c of
-                            Cstr{cstrId = cid}  ->
-                                case Map.lookup cid (Map.fromList cstrs) of
-                                    Just CstrDef{} ->
-                                        do
-                                            addIsConstructor v cid
-                                            fieldVars <- if d > 1 then addFields v i cid
-                                                                  else return []
-                                            sat2 <- getSolvable
-                                            case sat2 of
-                                                Sat     -> do
-                                                                let l = length fieldVars
-                                                                if l > 0
-                                                                    then do
-                                                                        shuffledVars <- shuffleM (xs ++ zip fieldVars (map (const (d-1)) [1::Integer .. ]) )
-                                                                        randomSolve p shuffledVars (i+l)
-                                                                    else
-                                                                        randomSolve p xs i
-                                                _       -> error "Unexpected SMT issue - previous solution is no longer valid - ADT - n"
-                                    Nothing                 -> error "RandIncrementChoice: value not found - ADT - n"
-                            _                   -> error "RandIncrementChoice: impossible constant - ADT - n"
+                        Cstr{cstrId = cid} <- findRndValue v shuffledBins
+                        addIsConstructor v cid
+                        fieldVars <- if d > 1 then addFields v i cid
+                                              else return []
+                        sat <- getSolvable
+                        case sat of
+                            Sat -> do
+                                    let l = length fieldVars
+                                    if l > 0
+                                        then do
+                                            shuffledVars <- shuffleM (xs ++ zip fieldVars (map (const (d-1)) [1::Integer .. ]) )
+                                            randomSolve p shuffledVars (i+l)
+                                        else
+                                            randomSolve p xs i
+                            _       -> error "Unexpected SMT issue - previous solution is no longer valid - ADT - n"
 
 -- lookup a constructor given its sort and constructor name
 lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]
