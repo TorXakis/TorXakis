@@ -1,3 +1,8 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -8,7 +13,41 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
-module TorXakis.Compiler.MapsTo where
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.MapsTo
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+--  Definition for the 'MapsTo' class, and associated operators.
+--
+--  A constraint of the form 'MapsTo k v mm' denotes that 'mm' contains a map
+--  from keys of type 'k' to values of type 't'.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.MapsTo
+    ( -- * Predicates on maps
+      MapsTo
+    , In
+    , Contents
+      -- * Lookup
+    , lookup
+    , lookupM
+    -- * Extraction of maps, keys and values
+    , keys
+    , values
+    , innerMap
+    -- * Combination of maps
+    , (:&) ((:&))
+    , (<.+>)
+    , (<.++>)
+    , (.&)
+    , replaceInnerMap
+    )
+where
 
 import           Control.Arrow             (left)
 import           Control.Lens              (Lens', to, (%~), (.~), (^.))
@@ -19,7 +58,7 @@ import qualified Data.Map                  as Map
 import           Data.Proxy                (Proxy (Proxy))
 import           Data.Semigroup            ((<>))
 import qualified Data.Text                 as T
-import           Data.Type.Bool
+import           Data.Type.Bool            (type (||))
 import           Data.Typeable             (Typeable, typeOf)
 import           GHC.TypeLits              (ErrorMessage ((:<>:), ShowType, Text),
                                             TypeError)
@@ -28,36 +67,42 @@ import           Prelude                   hiding (lookup)
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Error
 
--- | 'm' maps keys of type 'k' onto values of type 'v'.
-class (In (k, v) (Contents m) ~ 'True) => MapsTo k v m where
+-- | 'mm' maps keys of type 'k' onto values of type 'v'. The type 'mm' can be
+-- thought as a composite map, which contains multiple maps. See @:&@ for more
+-- details.
+class (In (k, v) (Contents mm) ~ 'True) => MapsTo k v mm where
     -- | Lookup a key in the map.
     lookup  :: (Ord k, Show k, Typeable k, Typeable v)
-            => k -> m -> Either Error v
+            => k -> mm -> Either Error v
     -- | Monadic version of @lookup@.
     lookupM :: (Ord k, Show k, Typeable k, Typeable v)
-            => k -> m -> CompilerM v
+            => k -> mm -> CompilerM v
     lookupM k m = liftEither $ lookup k m
     -- | Get the inner map.
-    innerMap :: m -> Map k v
+    innerMap :: mm -> Map k v
     -- | Add a map. The addition is biased towards the new map. If the two maps
     -- have the same key, then the value of the right map is discarded, and the
     -- value of the left map is kept.
-    (<.+>) :: Ord k => Map k v -> m -> m
+    (<.+>) :: Ord k => Map k v -> mm -> mm
     infixl 4 <.+>
     -- | Replace the inner map with the given one.
-    replaceInnerMap :: m -> Map k v -> m
+    replaceInnerMap :: mm -> Map k v -> mm
 
-keys :: forall k v m . MapsTo k v m => m -> [k]
-keys m = Map.keys im
+-- | Get all the keys of type 'k' that are associated to values of type 'v' in
+-- the given map.
+keys :: forall k v mm . MapsTo k v mm => mm -> [k]
+keys mm = Map.keys im
     where
       im :: Map k v
-      im = innerMap m
+      im = innerMap mm
 
-values :: forall k v m . MapsTo k v m => m -> [v]
-values m = Map.elems im
+-- | Get all the values of type 'v' that are associated to keys of type 'k' in
+-- the given map.
+values :: forall k v mm . MapsTo k v mm => mm -> [v]
+values mm = Map.elems im
     where
       im :: Map k v
-      im = innerMap m
+      im = innerMap mm
 
 -- | Compute when a type is in a tree.
 type family In (x :: *) (ys :: Tree *) :: Bool where
@@ -70,17 +115,25 @@ type family y == x :: Bool where
     x == y = 'False
 
 -- | Type family that represents the contents of a map.
-type family Contents m :: Tree *
+type family Contents mm :: Tree *
 
+-- | Search tree for types. This type would contain the key-value pairs found
+-- in a composite map.
 data Tree a = Leaf a | Node (Tree a) (Tree a)
 
+-- | A map from 'k' to 'v' is defined to contain a 'k' 'v' association.
 type instance Contents (Map k v) = 'Leaf (k, v)
+
+-- | A list of any type is not a map.
 type instance Contents [a] = 'Leaf ()
 
+-- | Canonical instance: a map from 'k' to 'v' maps 'k' to 'v'.
 instance MapsTo k v (Map k v) where
     lookup k = maybeToEither err . Map.lookup k
         where err = Error
                   { _errorType = UndefinedRef
+                  -- No error location can be given. However the error location
+                  -- could be overwritten by the caller of 'lookup'.
                   , _errorLoc  = NoErrorLoc
                   , _errorMsg  =  "Could not find key " <> T.pack (show k)
                                <> " of type " <> (T.pack . show . typeOf $ k)
@@ -95,29 +148,34 @@ instance MapsTo k v (Map k v) where
 
 -- | Combinator for maps.
 data a :& b = a :& b
-infixl 5 :&
+infixr 5 :&
 
 -- | Combine lists of key values pairs into a pair of maps.
 (.&.) :: (Ord k0, Ord k1)
       => [(k0, v0)] -> [(k1, v1)] -> Map k0 v0 :& Map k1 v1
 kv0 .&. kv1 = Map.fromList kv0 :& Map.fromList kv1
+infixr 6 .&.
 
 -- | Combine a list of key values pairs with an existing map.
 (.&) :: (Ord k0)
       => [(k0, v0)] -> mm -> Map k0 v0 :& mm
 kv0 .& mm = Map.fromList kv0 :& mm
+infixr 6 .&
 
+-- | Like @<.+>@ but its left argument is a list instead of a map. Useful when
+-- we want to add a list to a composite map.
 (<.++>) ::(Ord k, MapsTo k v mm) => [(k, v)] -> mm -> mm
 xs <.++> m = Map.fromList xs <.+> m
+infixr 6 <.++>
 
+-- | The composite structure contains the contents of 'a' and 'b'.
 type instance Contents (a :& b) = 'Node (Contents a) (Contents b)
 
 -- | The pair 'm0 :& m1' maps values of type 'k' onto values of type 'v'
 class ( In (k, v) (Contents m0) ~ inM0
       , In (k, v) (Contents m1) ~ inM1
       , (inM0 || inM1) ~ 'True
-      ) =>
-      PairMapsTo k v m0 m1 inM0 inM1 where
+      ) => PairMapsTo k v m0 m1 inM0 inM1 where
     lookupPair :: (Ord k, Show k, Typeable k, Typeable v)
                => k -> m0 :& m1 -> Either Error v
     innerMapPair :: m0 :& m1 -> Map k v

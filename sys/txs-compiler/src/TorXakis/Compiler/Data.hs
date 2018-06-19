@@ -49,7 +49,6 @@ import           Data.Monoid               (Monoid)
 import           Data.Semigroup            ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
-import           Prelude                   hiding (lookup)
 
 import           CstrId                    (CstrId)
 import           FuncDef                   (FuncDef)
