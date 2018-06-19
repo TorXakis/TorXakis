@@ -38,11 +38,10 @@ import           Control.Arrow                      (second, (|||))
 import           Control.Lens                       ((^.), (^..))
 import           Control.Monad                      (forM)
 import           Control.Monad.Error.Class          (liftEither)
-import           Control.Monad.State                (evalStateT, get)
+import           Control.Monad.State                (evalStateT)
 import           Data.Data                          (Data)
 import           Data.Map.Strict                    (Map)
 import qualified Data.Map.Strict                    as Map
-import           Data.Maybe                         (catMaybes)
 import           Data.Semigroup                     ((<>))
 import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
@@ -54,7 +53,6 @@ import qualified ChanId
 import           CstrId                             (CstrId)
 import           FuncDef                            (FuncDef)
 import           FuncId                             (FuncId, name)
-import qualified FuncId
 import           FuncTable                          (FuncTable, Handler,
                                                      Signature, toMap)
 import           Id                                 (Id (Id), _id)
@@ -94,7 +92,7 @@ import           TorXakis.Compiler.Defs.TxsDefs     (adtsToTxsDefs,
                                                      modelDeclsToTxsDefs,
                                                      purpDeclsToTxsDefs)
 import           TorXakis.Compiler.Error            (Error)
-import           TorXakis.Compiler.Maps             (fdiName, getUniqueElement,
+import           TorXakis.Compiler.Maps             (getUniqueElement,
                                                      idefsNames, (.@))
 import           TorXakis.Compiler.Maps.DefinesAMap (DefinesAMap, getMap)
 import           TorXakis.Compiler.Maps.VarRef      (varDefsFromExp)
@@ -379,24 +377,6 @@ compileToProcDefs mm pd = do
 --------------------------------------------------------------------------------
 -- External parsing functions
 --------------------------------------------------------------------------------
-
--- | Create a dummy map from the function name to the location in which it is
--- declared (which will be a predefined location). This is needed for
--- supporting pre-existing functions in the sub-compilers.
-mkFuncDecls :: [FuncId] -> Map Text [Loc FuncDeclE]
-mkFuncDecls fs = Map.fromListWith (++) $ zip (FuncId.name <$> fs)
-                                             (pure . fid2loc <$> fs)
-
--- | Create a map from location of function declarations to the @FuncId@'s they
--- refer to. This is needed for supporting pre-existing functions in the
--- sub-compilers.
-mkFuncIds :: [FuncId] -> Map (Loc FuncDeclE) FuncId
-mkFuncIds fs = Map.fromList $ zip (fid2loc <$> fs) fs
-
--- | Create a location from a @FuncId@. This is needed for supporting
--- pre-existing functions in the sub-compilers.
-fid2loc :: FuncId -> Loc FuncDeclE
-fid2loc fId = PredefLoc (FuncId.name fId) (_id . FuncId.unid $ fId)
 
 -- | Maps required for the sub-compilation functions.
 data SubCompileMaps = SubCompileMaps

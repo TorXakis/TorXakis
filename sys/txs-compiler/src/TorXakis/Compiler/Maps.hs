@@ -1,15 +1,29 @@
-{-# LANGUAGE DeriveFunctor              #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
-{-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE TypeOperators              #-}
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.Maps
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Compiler specific maps and operations on them.
+--------------------------------------------------------------------------------
 
--- | Compiler specific maps
 module TorXakis.Compiler.Maps where
 
 import           Control.Arrow             (left, (|||))
@@ -135,7 +149,6 @@ fdiName :: Loc FuncDeclE -> Maybe Text
 fdiName Loc {}          = Nothing
 fdiName ExtraAut {}     = Nothing
 fdiName (PredefLoc n _) = Just n
-
 
 -- TODO determine the right kind of precedence.
 infixr 5 :|

@@ -23,10 +23,10 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
---  Definition for the 'MapsTo' class, and associated operators.
+-- Definition for the 'MapsTo' class, and associated operators.
 --
---  A constraint of the form 'MapsTo k v mm' denotes that 'mm' contains a map
---  from keys of type 'k' to values of type 't'.
+-- A constraint of the form 'MapsTo k v mm' denotes that 'mm' contains a map
+-- from keys of type 'k' to values of type 't'.
 --------------------------------------------------------------------------------
 module TorXakis.Compiler.MapsTo
     ( -- * Predicates on maps
@@ -45,12 +45,11 @@ module TorXakis.Compiler.MapsTo
     , (<.+>)
     , (<.++>)
     , (.&)
+    , (.&.)    
     , replaceInnerMap
     )
 where
 
-import           Control.Arrow             (left)
-import           Control.Lens              (Lens', to, (%~), (.~), (^.))
 import           Control.Monad.Error.Class (liftEither)
 import           Data.Either.Utils         (maybeToEither)
 import           Data.Map                  (Map)
