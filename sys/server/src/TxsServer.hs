@@ -365,20 +365,10 @@ cmdVar args = do
 
          ((uid',vars'),e) <- lift $ lift $ catch
                                ( let p = compileUnsafe $
-                                         vardeclsParser sigs (_id uid + 1) args
+                                         compileVarDecls sigs (_id uid + 1) args
                                   in return $!! (p,"")
                                )
                                ( \e -> return ((uid,[]),show (e::ErrorCall)))
-
-         -- ((uid',vars'),e) <- lift $ lift $ catch
-         --                       ( let p = TxsHappy.vardeclsParser
-         --                                   ( TxsAlex.Csigs sigs
-         --                                   : TxsAlex.Cunid (_id uid + 1)
-         --                                   : TxsAlex.txsLexer args
-         --                                   )
-         --                          in return $!! (p,"")
-         --                       )
-         --                       ( \e -> return ((uid,[]),show (e::ErrorCall)))
 
          if  e /= ""
            then do
@@ -417,21 +407,11 @@ cmdVal args = do
 
          ((uid',venv'),e) <- lift $ lift $ catch
                                ( let p = compileUnsafe $
-                                         valdefsParser sigs [] (_id uid + 1) args
+                                         compileValDefs sigs [] (_id uid + 1) args
                                  in return $!! (p,"")
                                )
                                ( \e -> return ((uid,Map.empty),show (e::ErrorCall)))
 
-         -- ((uid',venv'),e) <- lift $ lift $ catch
-         --                       ( let p = TxsHappy.valdefsParser
-         --                                   ( TxsAlex.Csigs sigs
-         --                                   : TxsAlex.Cvarenv []
-         --                                   : TxsAlex.Cunid (_id uid + 1)
-         --                                   : TxsAlex.txsLexer args
-         --                                   )
-         --                          in return $!! (p,"")
-         --                       )
-         --                       ( \e -> return ((uid,Map.empty),show (e::ErrorCall)))
          if  e /= ""
            then do
              modify $ \env' -> env' { IOS.uid = uid' }
@@ -465,21 +445,11 @@ cmdEval args = do
 
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let (i,p) = compileUnsafe $
-                                         vexprParser sigs (Map.keys vals ++ vars) (_id uid + 1) args
+                                         compileValExpr sigs (Map.keys vals ++ vars) (_id uid + 1) args
                               in return $!! ((i, Just p),"")
                            )
                            ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
 
-     -- ((uid',vexp'),e) <- lift $ lift $ catch
-     --                       ( let (i,p) = TxsHappy.vexprParser
-     --                                    ( TxsAlex.Csigs    sigs
-     --                                    : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-     --                                    : TxsAlex.Cunid   (_id uid + 1)
-     --                                    : TxsAlex.txsLexer args
-     --                                    )
-     --                          in return $!! ((i, Just p),"")
-     --                       )
-     --                       ( \ec -> return ((uid,Nothing), show (ec::ErrorCall)))
      case vexp' of
        Just vexp'' -> do
                         modify $ \env' -> env' { IOS.uid = uid' }
@@ -517,21 +487,11 @@ cmdSolve args kind = do
 
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let (i,p) = compileUnsafe $
-                                         vexprParser sigs [] (_id uid + 1) args
+                                         compileValExpr sigs [] (_id uid + 1) args
                               in return $!! ((i, Just p),"")
                            )
                            ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
 
-     -- ((uid',vexp'),e) <- lift $ lift $ catch
-     --                       ( let (i,p) = TxsHappy.vexprParser
-     --                                       ( TxsAlex.Csigs sigs
-     --                                       : TxsAlex.Cvarenv (Map.keys vals ++ vars)
-     --                                       : TxsAlex.Cunid (_id uid + 1)
-     --                                       : TxsAlex.txsLexer args
-     --                                       )
-     --                          in return $!! ((i, Just p),"")
-     --                       )
-     --                       ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
      case vexp' of
         Just vexp'' -> do
                         modify $ \env' -> env' { IOS.uid = uid' }
@@ -1066,7 +1026,7 @@ readAction chids args = do
 
      ((uid',offs'),e) <- lift $ lift $ catch
                            ( let p = compileUnsafe $
-                                     prefoffsParser sigs chids (Map.keys vals) (_id uid + 1) args
+                                     compileOffer sigs chids (Map.keys vals) (_id uid + 1) args
                               in return $!! (p,"")
                            )
                            ( \e -> return ((uid,Set.empty),show (e::ErrorCall)))
@@ -1117,7 +1077,7 @@ readBExpr chids args = do
 
      ((_,bexpr'),e) <- lift $ lift $ catch
                             ( let p = compileUnsafe $
-                                      bexprParser sigs chids (Map.keys vals) (_id uid + 1) args
+                                      compileBExpr sigs chids (Map.keys vals) (_id uid + 1) args
                                in return $!! (p,"")
                             )
                             ( \e -> return ((uid, TxsDefs.stop),show (e::ErrorCall)))

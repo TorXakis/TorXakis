@@ -63,7 +63,7 @@ import           Variable
 import qualified TxsAlex
 import qualified TxsHappy
 
-import           TorXakis.Compiler   (compileUnsafe, vexprParser)
+import           TorXakis.Compiler   (compileUnsafe, compileValExpr)
 
 evalTuple :: Variable v => (ValExpr v, Integer) -> IOB.IOB (Either String (ValExpr v, Integer))
 evalTuple (v,i) = do
@@ -257,21 +257,10 @@ eval' (Vpredef kd fid vexps) =
 
                                             ((_,vexp'),e) <- lift $ catch
                                                 ( let (i,p) = compileUnsafe $
-                                                              vexprParser sigs [] (_id uid + 1) (T.unpack s)
+                                                              compileValExpr sigs [] (_id uid + 1) (T.unpack s)
                                                    in return $! show p `deepseq` ((i, Just p),"")
                                                 )
                                                 ( \ec -> return ((uid, Nothing), show (ec::ErrorCall)))
-
-                                            -- Sound of drums ....
-                                            -- ((_,vexp'),e) <- lift $ catch
-                                            --     ( let (i,p) = TxsHappy.vexprParser ( TxsAlex.Csigs   sigs
-                                            --                                        : TxsAlex.Cvarenv []
-                                            --                                        : TxsAlex.Cunid (_id uid + 1)
-                                            --                                        : TxsAlex.txsLexer (T.unpack s)
-                                            --                                        )
-                                            --        in return $! show p `deepseq` ((i, Just p),"")
-                                            --     )
-                                            --     ( \ec -> return ((uid, Nothing), show (ec::ErrorCall)))
 
                                             case vexp' of
                                                 Just exp' -> eval exp'

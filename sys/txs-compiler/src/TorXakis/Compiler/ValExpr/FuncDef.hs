@@ -57,7 +57,7 @@ funcDeclToSH fids f = do
 --
 -- > MapsTo FuncId (Signature, Handler VarId)
 --
-funcDeclsToFuncDefs2 :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+funcDeclsToFuncDefs :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                        , MapsTo (Loc VarDeclE) VarId mm
                        , MapsTo (Loc FuncDeclE) FuncId mm
                        , In (FuncId, FuncDefInfo) (Contents mm) ~ 'False
@@ -66,19 +66,19 @@ funcDeclsToFuncDefs2 :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncD
                     -> Map (Loc FuncDeclE) (Signature, Handler VarId) -- ^ Standard functions, ADT functions, and user defined functions.
                     -> [FuncDecl]
                     -> CompilerM (Map FuncId FuncDefInfo)
-funcDeclsToFuncDefs2 mm fSHs fs = liftEither $ do
+funcDeclsToFuncDefs mm fSHs fs = liftEither $ do
     -- TODO: this map should be calculated globally.
     fVDs <- varDefsFromExp (fSHs :& mm) fs
     gFuncDeclsToFuncDefs mempty fVDs fs
     where
-      -- | Generalized version of `funcDeclsToFuncDefs2`, which accumulates the
+      -- | Generalized version of `funcDeclsToFuncDefs`, which accumulates the
       -- results in the first parameter.
       gFuncDeclsToFuncDefs :: Map FuncId FuncDefInfo
                            -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
                            -> [FuncDecl]
                            -> Either Error (Map FuncId FuncDefInfo)
       gFuncDeclsToFuncDefs mFDef fVDs gs =
-          case partitionEithers (funcDeclToFuncDef2 (mFDef :& mm) fSHs fVDs <$> gs) of
+          case partitionEithers (funcDeclToFuncDef (mFDef :& mm) fSHs fVDs <$> gs) of
               ([], rs) -> Right $ fromList rs <> mFDef
               (ls, []) -> Left $ Errors (fst <$> ls)
               (ls, rs) -> gFuncDeclsToFuncDefs (fromList rs <> mFDef) fVDs (snd <$> ls)
@@ -86,7 +86,7 @@ funcDeclsToFuncDefs2 mm fSHs fs = liftEither $ do
 -- | Create a function definition (@FuncDef@), signature (@Signature@), and
 -- handler (@Handler@) for the given function declaration.
 --
-funcDeclToFuncDef2 :: ( MapsTo (Loc VarDeclE) VarId mm
+funcDeclToFuncDef :: ( MapsTo (Loc VarDeclE) VarId mm
                       , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                       , MapsTo (Loc FuncDeclE) FuncId mm
                       , MapsTo FuncId FuncDefInfo mm
@@ -96,7 +96,7 @@ funcDeclToFuncDef2 :: ( MapsTo (Loc VarDeclE) VarId mm
                    -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
                    -> FuncDecl
                    -> Either (Error, FuncDecl) (FuncId, FuncDefInfo)
-funcDeclToFuncDef2 mm fSHs fVDs f = left (,f) $ do
+funcDeclToFuncDef mm fSHs fVDs f = left (,f) $ do
     fid  <- mm .@@ getLoc f
     (sig, handler') <- fSHs .@@ getLoc f :: Either Error (Signature, Handler VarId)
     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
