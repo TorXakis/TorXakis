@@ -7,7 +7,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
@@ -77,10 +76,9 @@ import           ValExpr                            (ValExpr)
 import           VarId                              (VarId, varsort)
 import qualified VarId
 
-import           TorXakis.Compiler.Data             (CompilerM, St (St),
-                                                     getNextId, getUnid,
-                                                     newState, runCompiler,
-                                                     setUnid)
+import           TorXakis.Compiler.Data             (CompilerM, getNextId,
+                                                     getUnid, newState,
+                                                     runCompiler, setUnid)
 import           TorXakis.Compiler.Data.ProcDecl    (ProcInfo)
 import           TorXakis.Compiler.Defs.BehExprDefs (toBExpr, toOffer)
 import           TorXakis.Compiler.Defs.FuncTable   (adtsToFuncTable,
