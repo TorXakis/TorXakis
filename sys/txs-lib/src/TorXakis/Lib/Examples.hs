@@ -37,7 +37,7 @@ import           EnvData                      (Msg)
 import           Id                           (Id (Id))
 import           SortId                       (SortId (SortId))
 import           TorXakis.Lib
-import           TorXakis.Lib.Internal
+import           TorXakis.Lib.World
 import           TxsDDefs                     (Action (Act, ActQui))
 
 -- | Get the next N messages in the session.

@@ -26,9 +26,9 @@ import qualified TxsDefs
 
 import           TorXakis.Lib.Common
 import           TorXakis.Lib.CommonCore
-import           TorXakis.Lib.Internal
 import           TorXakis.Lib.Session
 import           TorXakis.Lib.SocketWorld
+import           TorXakis.Lib.World
 
 -- | Start the tester
 setTest :: Name

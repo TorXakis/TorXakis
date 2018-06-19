@@ -6,7 +6,7 @@ See LICENSE at root directory of this repository.
 -}
 
 -- | Module for internal functionality of TorXakis wrapper library.
-module TorXakis.Lib.Internal
+module TorXakis.Lib.World
 ( putToW
 , getFromW
 )
