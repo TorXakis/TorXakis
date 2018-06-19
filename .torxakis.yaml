@@ -23,7 +23,7 @@ available-solvers:
   - "--fmf-fun-rlv"
   - "--uf-ss-fair"
   - "--no-strings-std-ascii"
-smt-log: True
+smt-log: False
 parameters:
 - name: "ImpRel"
   value: "IOCO"       # IOCO
