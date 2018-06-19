@@ -63,7 +63,7 @@ spec = return $ do
             it "Uploads valid file" $ do
                 _ <- post (host ++ "/sessions/new") emptyP
                 r <- put (host ++ "/sessions/1/model") [partFile "Point.txs" "../../examps/Point/Point.txs"]
-                r ^. responseStatus . statusCode `shouldBe` 202 -- Accepted
+                r ^. responseStatus . statusCode `shouldBe` 200 -- OK
                 let res = do
                         [result] <- decode $ r ^. responseBody
                         parseMaybe parseFileUploadResult result
@@ -78,7 +78,7 @@ spec = return $ do
                     [ partFile "LuckyPeople.txs" "../../examps/LuckyPeople/spec/LuckyPeople.txs"
                     , partFile "PurposeExamples.txs" "../../examps/LuckyPeople/spec/PurposeExamples.txs"
                     ]
-                r ^. responseStatus . statusCode `shouldBe` 202 -- Accepted
+                r ^. responseStatus . statusCode `shouldBe` 200 -- OK
                 let res = do
                         results <- decode $ r ^. responseBody
                         return $ mapMaybe (parseMaybe parseFileUploadResult) results

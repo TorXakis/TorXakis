@@ -28,7 +28,7 @@ type UploadEP = "sessions"
              :> Capture "sid" SessionId
              :> "model"
              :> MultipartForm Mem (MultipartData Mem)
-             :> PutAccepted '[JSON] [FileLoadedResponse]
+             :> Put '[JSON] [FileLoadedResponse]
 
 data FileLoadedResponse = FileLoadedResponse
                             { fileName :: Text
