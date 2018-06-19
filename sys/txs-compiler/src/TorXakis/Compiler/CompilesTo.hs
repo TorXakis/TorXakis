@@ -8,7 +8,7 @@
 {-# LANGUAGE TypeOperators         #-}
 module TorXakis.Compiler.CompilesTo where
 
-import           Control.Lens                       ((%~), (.~), (^.))
+import           Control.Lens                       ((%~), (^.))
 import           Control.Lens.TH                    (makeLenses)
 import           Control.Monad.Error.Class          (liftEither)
 import           Data.Data                          (Data)

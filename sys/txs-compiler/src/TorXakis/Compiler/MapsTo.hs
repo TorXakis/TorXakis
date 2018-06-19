@@ -5,6 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE ExplicitNamespaces    #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -45,7 +46,7 @@ module TorXakis.Compiler.MapsTo
     , (<.+>)
     , (<.++>)
     , (.&)
-    , (.&.)    
+    , (.&.)
     , replaceInnerMap
     )
 where
@@ -63,8 +64,11 @@ import           GHC.TypeLits              (ErrorMessage ((:<>:), ShowType, Text
                                             TypeError)
 import           Prelude                   hiding (lookup)
 
-import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Error
+import           TorXakis.Compiler.Data    (CompilerM)
+import           TorXakis.Compiler.Error   (Entity (Entity), Error (Error),
+                                            ErrorLoc (NoErrorLoc),
+                                            ErrorType (Undefined), _errorLoc,
+                                            _errorMsg, _errorType)
 
 -- | 'mm' maps keys of type 'k' onto values of type 'v'. The type 'mm' can be
 -- thought as a composite map, which contains multiple maps. See @:&@ for more
