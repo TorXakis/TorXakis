@@ -8,29 +8,37 @@ import           Data.Text       (Text)
 
 
 -- | Entity to which the error is related.
-data Entity = Function
-            | Process
-            | InitialState
+data Entity
+    = Function
+    | Process
+    | InitialState
+    | State
+    | Variable
+    | Sort
+    -- | In case an error must be generated from a generic function that cannot
+    -- have access to the entity type. The error type can be made more specific
+    -- by the caller of such a generic function (see for instance
+    -- @getUniqueElement@).
+    | Entity
     deriving (Eq, Show)
 
 -- | Type of errors that can occur when compiling a 'TorXakis' model file.
 data ErrorType
     = ParseError
-    | UndefinedRef -- TODO: we could specify the type of what's being undefined (variable, sort, etc...)
     | TypeMismatch
-    | UndefinedType
-    | FunctionNotDefined
-    | UnresolvedIdentifier
+    -- | An entity was not defined.
+    | Undefined Entity
+    -- | Multiple definitions for the same entity.
     | MultipleDefinitions Entity
+    -- | An entity could not be resolved (based on the type information for
+    -- instance).
+    | Unresolved Entity
+    -- | An entity has multiple candidates (based on the type information for
+    -- instance)
+    | Ambiguous Entity
     | NoDefinition -- ^ No definition found for function or process.
-    | ProcessNotDefined
     | InvalidExpression
     | CompilerPanic -- ^ An error in the compiler has happened.
-    deriving (Eq, Show)
-
-data Decl
-    = Variable
-    | Sort
     deriving (Eq, Show)
 
 data ErrorLoc

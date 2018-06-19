@@ -130,7 +130,7 @@ type instance Contents [a] = 'Leaf ()
 instance MapsTo k v (Map k v) where
     lookup k = maybeToEither err . Map.lookup k
         where err = Error
-                  { _errorType = UndefinedRef
+                  { _errorType = Undefined Entity
                   -- No error location can be given. However the error location
                   -- could be overwritten by the caller of 'lookup'.
                   , _errorLoc  = NoErrorLoc

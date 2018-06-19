@@ -66,15 +66,17 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
         ve2 <- expDeclToValExpr vdefs eSid ex2
         return $ cstrITE (cstrAnd (Set.fromList [ve0])) ve1 ve2
     Fappl _ l exs -> do
-        shs <- findFuncDefs vdefs l
+        -- The location should correspond to a function (hence we look for the
+        -- right value of the @Either@).
+        shs <- findRight vdefs l
         case partitionEithers (tryMkValExpr <$> shs) of
             (ls, []) -> Left Error
-                        { _errorType = UndefinedRef
+                        { _errorType = Undefined Function
                         , _errorLoc  = getErrorLoc l
                         , _errorMsg   = "Could not resolve function: " <> T.pack (show ls)}
             (_, [vex]) -> Right vex
             (_, vexs)  -> Left Error
-                          { _errorType = UnresolvedIdentifier
+                          { _errorType = Ambiguous Function
                           , _errorLoc  = getErrorLoc l
                           , _errorMsg   = "Function not uniquely resolved: " <> T.pack (show vexs)
                           }
@@ -84,7 +86,7 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
               checkSortIds (sortRet sig) eSid
               if length (sortArgs sig) /= length exs
                   then Left Error
-                       { _errorType = UndefinedRef
+                       { _errorType = Undefined Function
                        , _errorLoc  = NoErrorLoc
                        , _errorMsg  = "Length of arguments don't match"
                                      <> T.pack (show sig)

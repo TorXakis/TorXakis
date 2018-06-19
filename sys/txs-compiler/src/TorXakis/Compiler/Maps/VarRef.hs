@@ -78,7 +78,7 @@ varRefsToVarDefs vdecls vids fshs = do
       varIdforDecl l = maybe vidNotFound Right (Map.lookup l vids)
           where
             vidNotFound = Left Error
-                { _errorType = UndefinedRef
+                { _errorType = Undefined Entity
                 , _errorLoc = getErrorLoc l
                 , _errorMsg = "varRefsToVarDefs: type value of type 'a' not found."
                 }
@@ -86,7 +86,7 @@ varRefsToVarDefs vdecls vids fshs = do
       shForDecl l = maybe shNotFound Right (Map.lookup l fshs)
           where
             shNotFound = Left Error
-                { _errorType = UndefinedRef
+                { _errorType = Undefined Entity
                 , _errorLoc = getErrorLoc l
                 , _errorMsg =  "varRefsToVarDefs: Signature-Handler not found."
                 }
@@ -102,7 +102,7 @@ varIdForRef vrvds vr  = do
     where
       err :: a -> Either Error VarId
       err _ = Left Error
-              { _errorType = UndefinedRef
+              { _errorType = Undefined Entity
               , _errorLoc = getErrorLoc vr
               , _errorMsg = "VarId not found."
               }

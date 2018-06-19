@@ -53,7 +53,13 @@ import           SortId                    (SortId)
 import           VarId                     (VarId)
 
 import           TorXakis.Compiler.Data    (CompilerM)
-import           TorXakis.Compiler.Error
+import           TorXakis.Compiler.Error   (Entity (Entity, Function, Variable),
+                                            Error (Error),
+                                            ErrorLoc (NoErrorLoc),
+                                            ErrorType (MultipleDefinitions, Undefined),
+                                            HasErrorLoc, errorLoc, errorMsg,
+                                            getErrorLoc, _errorLoc, _errorMsg,
+                                            _errorType)
 import           TorXakis.Compiler.MapsTo
 import           TorXakis.Parser.Data      hiding (St, nextId)
 
@@ -88,12 +94,12 @@ fidHasReturnSort mm sId fdi = const False ||| id $ do
 getUniqueElement :: Show a => [a] -> Either Error a
 getUniqueElement [fdi] = Right fdi
 getUniqueElement [] = Left Error
-    { _errorType = UndefinedRef
+    { _errorType = Undefined Entity
     , _errorLoc  = NoErrorLoc
     , _errorMsg  = "Could not find an element."
     }
 getUniqueElement xs = Left Error
-    { _errorType = UnresolvedIdentifier
+    { _errorType = MultipleDefinitions Entity
     , _errorLoc  = NoErrorLoc
     , _errorMsg  = "Found multiple elements: " <> T.pack (show xs)
     }
@@ -155,8 +161,8 @@ infixr 5 :|
  -- TODO: you might want to replace the 'Either's by ':|'.
 type (:|) = Either
 
--- | Find the (nullary) function declaration that corresponds to a variable
--- reference.
+-- | Find the nullary function declaration that corresponds to a variable
+-- reference. A nullary function is a funciton without arguments.
 findFuncDecl :: MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
              => mm -> Loc VarRefE -> Either Error [Loc FuncDeclE]
 findFuncDecl mm l = Left ||| cErr ||| Right $ lookup l mm
@@ -164,21 +170,22 @@ findFuncDecl mm l = Left ||| cErr ||| Right $ lookup l mm
       cErr :: Loc VarDeclE -> Either Error a
       cErr _ = Left err
       err = Error
-            { _errorType = FunctionNotDefined
+            { _errorType = Undefined Function
             , _errorLoc  = getErrorLoc l
             , _errorMsg  = "Could not function declaration."
             }
 
-findFuncDefs :: forall a b . (Typeable a, Typeable b)
+-- | Find the right element (if any) that corresponds to the given location.
+findRight :: forall a b . (Typeable a, Typeable b)
                => Map (Loc VarRefE) (Either a b)
                -> Loc VarRefE
                -> Either Error b
-findFuncDefs vdefs l = Left ||| cErr ||| Right $ lookup l vdefs
+findRight vdefs l = Left ||| cErr ||| Right $ lookup l vdefs
     where
       cErr :: a -> Either Error b
       cErr _ = Left err
       err = Error
-            { _errorType = FunctionNotDefined
+            { _errorType = Undefined Function
             , _errorLoc  = getErrorLoc l
             , _errorMsg  = "Could not function declaration."
             }
@@ -191,7 +198,7 @@ findVarDecl mm l = Left ||| Right ||| cErr $ lookup l mm
       cErr :: [Loc FuncDeclE] -> Either Error a
       cErr _ = Left err
       err = Error
-            { _errorType = UnresolvedIdentifier
+            { _errorType = Undefined Variable
             , _errorLoc  = getErrorLoc l
             , _errorMsg  = "Could not variable declaration."
             }

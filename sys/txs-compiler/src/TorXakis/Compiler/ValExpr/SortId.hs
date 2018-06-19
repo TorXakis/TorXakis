@@ -111,7 +111,7 @@ gInferTypes mm vs =
     case partitionEithers (inferVarDeclType mm <$> vs) of
         ([], rs) -> Right $ fromList rs <> innerMap mm
         (ls, []) -> Left  Error
-                    { _errorType = UndefinedType
+                    { _errorType = Undefined Sort
                     , _errorLoc  = NoErrorLoc -- TODO: we could generate
                                              -- multiple errors, giving
                                              -- all the locations in 'ls'
@@ -444,7 +444,7 @@ instance HasExitSorts BExpDecl where
         case filter candidate $ keys @ProcId @() mm of
             [pId] -> return $ procexit pId
             []    -> throwError Error
-                { _errorType = ProcessNotDefined
+                { _errorType = Undefined Process
                 , _errorLoc  = getErrorLoc l
                 , _errorMsg  = "No matching process found"
                 }

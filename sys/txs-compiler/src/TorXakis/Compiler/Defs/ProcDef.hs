@@ -76,7 +76,7 @@ procDeclsToProcDefMap mm ps =
           case (ls, rs') of
               ([], _) -> return $ Map.fromList rs' <> innerMap mpd
               (_, []) -> throwError Error
-                  { _errorType = ProcessNotDefined
+                  { _errorType = Undefined Process
                   , _errorLoc = NoErrorLoc
                   , _errorMsg = T.pack (show (snd <$> ls))
                   }
@@ -230,7 +230,7 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                   lookupStatId sr sts = maybe throwE return mElem
                       where mElem = find ((stateRefName sr ==) . StatId.name) sts
                             throwE = throwError Error
-                                { _errorType = UndefinedRef
+                                { _errorType = Undefined State
                                 , _errorLoc = getErrorLoc sr
                                 , _errorMsg = "Could not find the state"
                                 }
