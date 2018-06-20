@@ -224,7 +224,7 @@ randomSolveBins p ((v,-123):xs) i    | vsort v == sortIdString =                
                                                                                             )
         val@(Cstring s) <- findRndValue v rndBins
         if T.length s /= 1 
-            then error "Unexpected Result"
+            then error "randomSolveBins - Unexpected Result - length of char must be 1"
             else do
                 addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
                 randomSolve p xs i
