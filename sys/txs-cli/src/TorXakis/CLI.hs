@@ -125,6 +125,9 @@ startCLI = do
             "val"       -> lift (runExceptT $ val rest) >>= output
             "var"       -> lift (runExceptT $ var rest) >>= output
             "eval"      -> lift (runExceptT $ eval rest) >>= output
+            "solve"     -> lift (runExceptT $ callSolver "sol" rest) >>= output
+            "unisolve"  -> lift (runExceptT $ callSolver "uni" rest) >>= output
+            "ransolve"  -> lift (runExceptT $ callSolver "ran" rest) >>= output
             "lpe"       -> lift (runExceptT $ callLpe rest) >>= output
             "show"      -> lift (runExceptT $ showTxs rest) >>= output
             "menu"      -> lift (runExceptT $ menu rest) >>= output
@@ -179,7 +182,12 @@ startCLI = do
             var t  = createVar $ unwords t
             eval :: (MonadIO m, MonadReader Env m, MonadError String m)
                 => [String] -> m String
-            eval t = evaluate $ unwords t
+            eval [] = throwError "Usage: eval <value expression>"
+            eval t  = evaluate $ unwords t
+            callSolver :: (MonadIO m, MonadReader Env m, MonadError String m)
+                => String -> [String] -> m String
+            callSolver _    [] = throwError "Usage: [uni|ran]solve <value expression>"
+            callSolver kind t  = solve kind $ unwords t
             callLpe :: (MonadIO m, MonadReader Env m, MonadError String m)
                 => [String] -> m ()
             callLpe t = lpe $ unwords t

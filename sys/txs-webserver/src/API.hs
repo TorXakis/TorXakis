@@ -18,25 +18,26 @@ import           Servant
 
 import           Common                      (Env (..))
 import           Endpoints.Eval              (EvalEP, eval)
-import           Endpoints.Menu              (MenuEP, menu)
 import           Endpoints.Info              (InfoEP, getInfo)
+import           Endpoints.LPE               (LpeEP, lpe)
+import           Endpoints.Menu              (MenuEP, menu)
 import           Endpoints.Messages          (CloseMessagesEP, MessagesEP,
                                               OpenMessagesEP, closeMessages,
                                               messages, openMessages)
-import           Endpoints.LPE               (LpeEP, lpe)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
 import           Endpoints.Params            (ParamsAPI, paramsServer)
 import           Endpoints.Parse             (ParseActionEP, parseAction)
 import           Endpoints.Seed              (SeedEP, setSeed)
+import           Endpoints.Show              (ShowAPI, showServer)
+import           Endpoints.Simulator         (SetSimEP, SimStepEP, simStep,
+                                              startSimulator)
+import           Endpoints.Solve             (SolveEP, solve)
 import           Endpoints.Stepper           (SetStepperEP, StepEP, setStep,
                                               step)
+import           Endpoints.Stop              (StopEP, stop)
 import           Endpoints.Tester            (SetTestEP, TestOutEP, TestStepEP,
                                               startTester, testOut, testStep)
-import           Endpoints.Simulator            (SetSimEP, SimStepEP,
-                                              startSimulator, simStep)
 import           Endpoints.Time              (TimeEP, getTime)
-import           Endpoints.Show              (ShowAPI, showServer)
-import           Endpoints.Stop              (StopEP, stop)
 import           Endpoints.Timer             (TimerEP, timer)
 import           Endpoints.Upload            (UploadEP, upload)
 import           Endpoints.Vals              (ValsAPI, valsServer)
@@ -64,6 +65,7 @@ type ServiceAPI
     :<|> ValsAPI
     :<|> VarsAPI
     :<|> EvalEP
+    :<|> SolveEP
     :<|> SeedEP
     :<|> StopEP
     :<|> MenuEP
@@ -107,6 +109,7 @@ server env
     :<|> valsServer env
     :<|> varsServer env
     :<|> eval env
+    :<|> solve env
     :<|> setSeed env
     :<|> stop env
     :<|> menu env

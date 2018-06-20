@@ -7,15 +7,20 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib.CommonCore where
 
+import           Control.Arrow                 (left)
 import           Control.Concurrent            (forkIO)
 import           Control.Concurrent.MVar       (putMVar, takeMVar)
 import           Control.Concurrent.STM.TQueue (writeTQueue)
 import           Control.Concurrent.STM.TVar   (modifyTVar', readTVarIO)
-import           Control.Exception             (SomeException, catch, try)
-import           Control.Monad.Except          (ExceptT, throwError)
+import           Control.DeepSeq               (force)
+import           Control.Exception             (SomeException, catch, evaluate,
+                                                try)
+import           Control.Monad.Except          (ExceptT, liftEither, runExceptT,
+                                                throwError)
 import           Control.Monad.State           (lift, runStateT, void)
 import           Control.Monad.STM             (atomically)
 import           Data.Aeson                    (FromJSON, ToJSON)
+import qualified Data.Map.Strict               as Map
 import           Data.Semigroup                ((<>))
 import           Data.Text                     (Text)
 import qualified Data.Text                     as T
@@ -26,9 +31,13 @@ import           EnvCore                       (IOC)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
 import           TorXakis.Lens.TxsDefs         (ix)
+import           TxsAlex                       (Token (Csigs, Cunid, Cvarenv),
+                                                txsLexer)
 import qualified TxsCore                       as Core
 import           TxsDDefs                      (Action, Verdict)
-import           TxsDefs                       (ModelDef)
+import           TxsDefs                       (ModelDef, VExpr, funcDefs)
+import           TxsHappy                      (vexprParser)
+import           ValExpr                       (subst)
 
 import           TorXakis.Lib.Common
 import           TorXakis.Lib.Session
@@ -131,3 +140,26 @@ runForVerdict s ioc = do
             Left     e -> atomically $ writeTQueue (s ^. verdicts) $ Left e
             Right verd -> atomically $ writeTQueue (s ^. verdicts) $ Right verd
     return success
+
+parseVexprAndSubst :: Session -> Text -> IO (Response VExpr)
+parseVexprAndSubst s expr = do
+    let strExp = T.unpack expr
+        varsT  = s ^. locVars
+        valEnvT = s ^. locValEnv
+    if T.null expr
+        then return $ Left "No value expression received"
+        else do
+            valEnv <- readTVarIO valEnvT
+            vars <- readTVarIO varsT
+            sigs <- runIOC s Core.txsGetSigs
+            tDefs <- runIOC s Core.txsGetTDefs
+            runExceptT $ do
+                parseRes <- fmap (left showEx) $
+                    lift $ try $ evaluate . force . vexprParser $
+                    ( Csigs    sigs
+                    : Cvarenv  (Map.keys valEnv ++ vars)
+                    : Cunid    0
+                    : txsLexer strExp
+                    )
+                (_, vexp) <- liftEither parseRes
+                return $ subst valEnv (funcDefs tDefs) vexp

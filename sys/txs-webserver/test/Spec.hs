@@ -366,7 +366,24 @@ spec = return $ do
                 -- rP2 ^. responseStatus . statusCode `shouldBe` 200 -- OK
                 -- let lpeProcStr2 = BSL.unpack $ rP2 ^. responseBody
                 -- lpeProcStr2 `shouldStartWith` "( LPE_proc,"
-
+        describe "Solve" $
+            it "Solves normal, uni and ran" $ do
+                sId <- mkNewSession
+                _ <- put (newSessionUrl sId) [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                _ <- post (varsUrl sId) [partText "i" "x :: Int"]
+                _ <- post (varsUrl sId) [partText "i" "y :: Int"]
+                _ <- post (valsUrl sId) [partText "i" "z = 4"]
+                rSol <- post (solveUrl sId "sol") [partText "expr" "x+y==z"]
+                rSol ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                rSol ^. responseBody `shouldBe` "[ ( x, 0 ) ( y, 4 ) ]"
+                rUni <- post (solveUrl sId "uni") [partText "expr" "(x+y==z) /\\ (x == 1)"]
+                rUni ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                rUni ^. responseBody `shouldBe` "[ ( x, 1 ) ( y, 3 ) ]"
+                rRan <- post (solveUrl sId "ran") [partText "expr" "x+y==z"]
+                rRan ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                let ranRes = BSL.unpack $ rRan ^. responseBody
+                ranRes `shouldContain` "( x,"
+                ranRes `shouldContain` "( y,"
 check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
 
@@ -469,6 +486,9 @@ varsUrl sId = Prelude.concat [host, "/sessions/", show sId, "/vars"]
 
 evalUrl :: Integer -> String
 evalUrl sId = Prelude.concat [host, "/sessions/", show sId, "/eval"]
+
+solveUrl :: Integer -> String -> String
+solveUrl sId kind = Prelude.concat [host, "/sessions/", show sId, "/solve/", kind]
 
 paramUrl :: Integer -> String
 paramUrl sId = Prelude.concat [host, "/sessions/", show sId, "/params"]

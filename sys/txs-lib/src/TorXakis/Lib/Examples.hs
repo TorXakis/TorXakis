@@ -279,6 +279,23 @@ testMenu = timeout (10 * seconds) $
             m <- getMenu s ""
             putStrLn $ "Result of `menu`: " ++ show m
 
+testVarsAndSolvers :: IO ()
+testVarsAndSolvers = do
+    s <- newSession
+    a <- async (printer s)
+    cs <- readFile $ "test" </> "data" </> "Echo.txs"
+    void $ load s cs
+    _ <- createVar s "x :: Int"
+    _ <- createVar s "y :: Int"
+    _ <- createVal s "z = 4"
+    r <- solve s "x + y == z"
+    putStrLn $ "Result of solve: " ++ show r
+    ru <- unisolve s "x + 1 == z"
+    putStrLn $ "Result of unisolve: " ++ show ru
+    rr <- ransolve s "x + y == z"
+    putStrLn $ "Result of ransolve: " ++ show rr
+    cancel a
+
 seconds :: Int
 seconds = 10 ^ (6 :: Int)
 

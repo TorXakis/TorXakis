@@ -13,6 +13,7 @@ module TorXakis.Lib
 , module TorXakis.Lib.Params
 , module TorXakis.Lib.Session
 , module TorXakis.Lib.Simulator
+, module TorXakis.Lib.Solvers
 , module TorXakis.Lib.Stepper
 , module TorXakis.Lib.Timer
 , module TorXakis.Lib.Tester
@@ -69,6 +70,7 @@ import           TorXakis.Lib.Params
 import           TorXakis.Lib.Session
 import           TorXakis.Lib.Simulator
 import           TorXakis.Lib.SocketWorld      (closeSockets)
+import           TorXakis.Lib.Solvers
 import           TorXakis.Lib.Stepper
 import           TorXakis.Lib.Tester
 import           TorXakis.Lib.Timer

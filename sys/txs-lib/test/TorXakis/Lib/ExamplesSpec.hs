@@ -53,3 +53,4 @@ spec = do
     it "testMenu" $ do
         res <- testMenu
         res `shouldBe` Just ()
+    it "testVarsAndSolvers" testVarsAndSolvers

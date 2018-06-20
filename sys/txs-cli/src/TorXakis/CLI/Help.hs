@@ -26,6 +26,10 @@ run <file path>                : run TorXakis script from <file path>
 var [<variable-declarations>]  : show/[declare] variables
 val [<value-definitions>]      : show/[define] values
 eval <value-expression>        : evaluate the (closed) <value-expression>
+solve <value-expression>       : solve the (open, boolean) <value-expression>
+ransolve <value-expression>    : solve (randomly) the (open, boolean) <value-expression>
+unisolve <value-expression>    : solve (uniquely) the (open, boolean) <value-expression>
+                                 'unsat': 0, 'sat': 1, 'unknown': >1 or unknown solution
 
 load <file path>               : load TorXakis model definitions to the session
 stepper <model>                : start stepping with model <model> where <model>
