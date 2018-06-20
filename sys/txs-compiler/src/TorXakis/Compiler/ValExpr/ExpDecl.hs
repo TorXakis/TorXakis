@@ -34,8 +34,7 @@ class HasVarReferences e where
                      , MapsTo Text (Loc VarDeclE) mm )
                   => mm  -- ^ Predefined functions
                   -> e
-                  -- TODO: replace ':|' by 'Either'.
-                  -> CompilerM [(Loc VarRefE, Loc VarDeclE :| [Loc FuncDeclE])]
+                  -> CompilerM [(Loc VarRefE, Either (Loc VarDeclE) [Loc FuncDeclE])]
 
 instance HasVarReferences e => HasVarReferences [e] where
     mapRefToDecls mm = fmap concat . traverse (mapRefToDecls mm)
@@ -125,9 +124,9 @@ instance HasVarReferences ParLetVarDecl where
 
 letRefToDecls :: ( MapsTo Text (Loc VarDeclE) mm
                  , MapsTo Text [Loc FuncDeclE] mm )
-              => (mm, [(Loc VarRefE, Loc VarDeclE :| [Loc FuncDeclE])])
+              => (mm, [(Loc VarRefE, Either (Loc VarDeclE) [Loc FuncDeclE])])
               -> [LetVarDecl]
-              -> CompilerM (mm, [(Loc VarRefE, Loc VarDeclE :| [Loc FuncDeclE])])
+              -> CompilerM (mm, [(Loc VarRefE, Either (Loc VarDeclE) [Loc FuncDeclE])])
 letRefToDecls (mm, xs) vs = do
     let letVds = mkVdMap vs
     -- The expressions of the let variable declarations cannot contain a

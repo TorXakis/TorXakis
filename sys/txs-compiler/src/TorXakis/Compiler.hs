@@ -93,7 +93,7 @@ import           TorXakis.Compiler.Defs.TxsDefs     (adtsToTxsDefs,
                                                      purpDeclsToTxsDefs)
 import           TorXakis.Compiler.Error            (Error)
 import           TorXakis.Compiler.Maps             (getUniqueElement,
-                                                     idefsNames, (.@))
+                                                     idefsNames, (.@@))
 import           TorXakis.Compiler.Maps.DefinesAMap (DefinesAMap, getMap)
 import           TorXakis.Compiler.Maps.VarRef      (varDefsFromExp)
 import           TorXakis.Compiler.MapsTo           ((:&) ((:&)), Contents, In,
@@ -249,7 +249,7 @@ toTxsDefs :: ( MapsTo Text        SortId mm
 toTxsDefs ft mm pd = do
     ads <- adtsToTxsDefs mm (pd ^. adts)
     -- Get the function id's of all the constants.
-    cfIds <- traverse (mm .@) (pd ^.. consts . traverse . loc')
+    cfIds <- traverse (mm .@@) (pd ^.. consts . traverse . loc')
     let
         fdiMap :: Map FuncId FuncDefInfo
         fdiMap = innerMap mm

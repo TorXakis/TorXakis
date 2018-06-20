@@ -44,7 +44,7 @@ funcDeclToSH :: Map (Loc FuncDeclE) FuncId
              -> FuncDecl
              -> CompilerM (Loc FuncDeclE, (Signature, Handler VarId))
 funcDeclToSH fids f = do
-    fid  <- fids .@ getLoc f
+    fid  <- fids .@@ getLoc f
     let sig     = Signature (funcargs fid) (funcsort fid)
         handler = cstrFunc (Map.empty :: Map FuncId (FuncDef VarId)) fid
     return (getLoc f, (sig, handler))
@@ -97,8 +97,8 @@ funcDeclToFuncDef :: ( MapsTo (Loc VarDeclE) VarId mm
                    -> FuncDecl
                    -> Either (Error, FuncDecl) (FuncId, FuncDefInfo)
 funcDeclToFuncDef mm fSHs fVDs f = left (,f) $ do
-    fid  <- mm .@@ getLoc f
-    (sig, handler') <- fSHs .@@ getLoc f :: Either Error (Signature, Handler VarId)
+    fid  <- mm .@ getLoc f
+    (sig, handler') <- fSHs .@ getLoc f :: Either Error (Signature, Handler VarId)
     pIds <- traverse ((`lookup` mm) . getLoc) (funcParams f)
     vExp <- expDeclToValExpr fVDs (funcsort fid) (funcBody f)
     let fdef = FuncDef pIds vExp
@@ -112,7 +112,7 @@ funcDeclToFuncDef mm fSHs fVDs f = left (,f) $ do
 innerSigHandlerMap :: ( MapsTo (Loc FuncDeclE) FuncId mm
                      ,  MapsTo FuncId FuncDefInfo mm )
                    => mm -> Map (Loc FuncDeclE) (Signature, Handler VarId)
-innerSigHandlerMap mm = closure2 fdeclsMap sigHdlrMap
+innerSigHandlerMap mm = join fdeclsMap sigHdlrMap
     where
       fdisMap :: Map FuncId FuncDefInfo
       fdisMap = innerMap mm

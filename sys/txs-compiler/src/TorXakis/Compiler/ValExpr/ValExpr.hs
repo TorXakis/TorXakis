@@ -39,7 +39,7 @@ expDeclToValExpr :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)]
                   -> Either Error (ValExpr VarId)
 expDeclToValExpr vdefs eSid ex = case expChild ex of
     VarRef _ l -> do
-        vdef <- vdefs .@@ (l :: Loc VarRefE)
+        vdef <- vdefs .@ (l :: Loc VarRefE)
         case vdef of
             Left vId -> do
                 checkSortIds (varsort vId) eSid

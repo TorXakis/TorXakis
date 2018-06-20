@@ -153,7 +153,7 @@ toBExpr mm vrvds (Guard g be) = do
     be' <- toBExpr mm vrvds be
     return $ guard g' be'
 toBExpr mm vrvds (Hide _ cds be) = do
-    chNameChIds <- traverse (mm .@) (getLoc <$> cds) :: CompilerM [ChanId]
+    chNameChIds <- traverse (mm .@@) (getLoc <$> cds) :: CompilerM [ChanId]
     be' <- toBExpr mm vrvds be
     return $ hide (Set.fromList chNameChIds) be'
 

@@ -97,7 +97,7 @@ varIdForRef :: forall a . Typeable a
             -> Loc VarRefE
             -> Either Error VarId
 varIdForRef vrvds vr  = do
-    eVid <- vrvds .@@ vr
+    eVid <- vrvds .@ vr
     Right ||| err $ eVid
     where
       err :: a -> Either Error VarId

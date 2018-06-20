@@ -24,29 +24,45 @@ See LICENSE at root directory of this repository.
 -- Compiler specific maps and operations on them.
 --------------------------------------------------------------------------------
 
-module TorXakis.Compiler.Maps where
+module TorXakis.Compiler.Maps
+    ( -- * Map lookups
+      (.@)
+    , (.@!!)
+    , (.@@)
+    , (<!!>)
+      -- * Specific lookups
+    , findFuncDecl
+    , determineF
+    , getUniqueElement
+    , lookupChId
+    , chRefsToIds
+    , findSortId
+    , findFuncSortIds
+    , findSortIdM
+    , determineSH
+    , findRight
+    , usedChIdMap
+    , findVarIdM
+    , idefsNames
+      -- * Map manipulation
+    , join
+    )
+where
 
 import           Control.Arrow             (left, (|||))
-import           Control.Lens              (Lens', to, (%~), (.~), (^.))
-import           Control.Monad.Error.Class (MonadError, catchError, liftEither,
-                                            throwError)
-import           Control.Monad.State       (MonadState, StateT, get, put)
-import           Data.Either.Utils         (maybeToEither)
-import           Data.List                 (find)
+import           Control.Lens              ((.~))
+import           Control.Monad.Error.Class (catchError, liftEither, throwError)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
-import           Data.Maybe                (catMaybes, fromMaybe)
-import           Data.Monoid               (Monoid, (<>))
+import           Data.Maybe                (catMaybes, maybe)
+import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           Data.Typeable             (Typeable)
-import           GHC.Exts                  (IsList, Item, fromList, toList)
 import           Prelude                   hiding (lookup)
 
-import           ChanId                    (ChanId (ChanId), name)
-import           CstrId                    (CstrId)
-import           FuncDef                   (FuncDef)
-import           FuncId                    (FuncId, funcargs, funcsort)
+import           ChanId                    (ChanId)
+import           FuncId                    (FuncId)
 import           FuncTable                 (Handler, Signature, sortArgs,
                                             sortRet)
 import           SortId                    (SortId)
@@ -60,34 +76,24 @@ import           TorXakis.Compiler.Error   (Entity (Entity, Function, Variable),
                                             HasErrorLoc, errorLoc, errorMsg,
                                             getErrorLoc, _errorLoc, _errorMsg,
                                             _errorType)
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Parser.Data      hiding (St, nextId)
+import           TorXakis.Compiler.MapsTo  (MapsTo, innerMap, lookup, lookupM)
+import           TorXakis.Parser.Data      (ChanDeclE, ChanRef, ChanRefE,
+                                            FuncDeclE,
+                                            Loc (ExtraAut, Loc, PredefLoc),
+                                            VarDeclE, VarRefE, getLoc)
 
+-- | Lookup the @SortId@ associated to the given name, using the location for
+-- error reporting.
 findSortId :: MapsTo Text SortId mm
            => mm -> (Text, Loc t) -> Either Error SortId
 findSortId mm (t, l) = left (errorMsg .~ msg) $ lookup t mm <!> l
     where
       msg = "Could not find sort " <> t
 
+-- | Monadic version of @findSortIdM@
 findSortIdM :: MapsTo Text SortId mm
            => mm -> (Text, Loc t) -> CompilerM SortId
 findSortIdM mm (t, l) = liftEither $ findSortId mm (t, l)
-
-filterByReturnSort :: MapsTo (Loc FuncDeclE) FuncId mm
-                   => mm
-                   -> SortId
-                   -> [Loc FuncDeclE]
-                   -> [Loc FuncDeclE]
-filterByReturnSort mm sId = filter (fidHasReturnSort mm sId)
-
-fidHasReturnSort :: MapsTo (Loc FuncDeclE) FuncId mm
-                   => mm
-                   -> SortId
-                   -> (Loc FuncDeclE)
-                   -> Bool
-fidHasReturnSort mm sId fdi = const False ||| id $ do
-    fId <- lookup fdi mm
-    return $ funcsort fId == sId
 
 -- | Get the function definition if the given list is a singleton, return an
 -- error otherwise.
@@ -109,7 +115,7 @@ getUniqueElement xs = Left Error
 determineF :: MapsTo (Loc FuncDeclE) Signature mm
            => mm
            -> [Loc FuncDeclE]
-           -> [SortId]        -- ^ Arguments SortId
+           -> [SortId]        -- ^ Arguments SortId.
            -> Maybe SortId    -- ^ Return Sort, if known.
            -> [Loc FuncDeclE]
 determineF mm ls aSids mRSid =
@@ -119,34 +125,27 @@ determineF mm ls aSids mRSid =
       funcMatches l = const False ||| id $ do
           sig <- lookup l mm
           return $ sortArgs sig == aSids &&
-                   fromMaybe True ((sortRet sig ==) <$> mRSid)
-
--- | Select the function definitions that matches the given arguments and return
--- types.
-determineF_2 :: [Signature]
-             -> [SortId]        -- ^ Arguments SortId
-             -> Maybe SortId    -- ^ Return Sort, if known.
-             -> [Signature]
-determineF_2 sigs aSids mRSid =
-    filter funcMatches sigs
-    where
-      funcMatches :: Signature -> Bool
-      funcMatches sig = sortArgs sig == aSids &&
-                        fromMaybe True ((sortRet sig ==) <$> mRSid)
-
+                   maybe True (sortRet sig ==) mRSid
 
 -- | Determine the signature and the handler based on the sort arguments and
 -- the expected return type (if any).
 determineSH :: [(Signature, Handler VarId)]
-             -> [SortId]     -- ^ @SortId@s of the arguments
-             -> Maybe SortId -- ^ @SortId@ (if known)
+             -> [SortId]     -- ^ @SortId@s of the arguments.
+             -> Maybe SortId -- ^ Expected return @SortId@ (if known).
              -> Either Error (Signature, Handler VarId)
 determineSH shs sargs msret =
     case filter (sigMatches . fst) shs of
         [(sig, h)] -> return (sig, h)
-        -- TODO: give the appropriate error using Left
-        [] -> error "Could not determine the function based on the given signature "
-        _ -> error "Found matching signatures"
+        [] -> Left Error
+            { _errorType = Undefined Function
+            , _errorLoc = NoErrorLoc
+            , _errorMsg = "Could not determine the function based on the given signature "
+            }
+        _ -> Left Error
+            { _errorType = MultipleDefinitions Function
+            , _errorLoc = NoErrorLoc
+            , _errorMsg = "Found multiple functions that can be applied."
+            }
     where
       sigMatches sig = (sortArgs sig == sargs) && maybe True (sortRet sig ==) msret
 
@@ -155,11 +154,6 @@ fdiName :: Loc FuncDeclE -> Maybe Text
 fdiName Loc {}          = Nothing
 fdiName ExtraAut {}     = Nothing
 fdiName (PredefLoc n _) = Just n
-
--- TODO determine the right kind of precedence.
-infixr 5 :|
- -- TODO: you might want to replace the 'Either's by ':|'.
-type (:|) = Either
 
 -- | Find the nullary function declaration that corresponds to a variable
 -- reference. A nullary function is a funciton without arguments.
@@ -217,10 +211,12 @@ findVarIdM :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
           => mm -> Loc VarRefE -> CompilerM VarId
 findVarIdM mm vr = liftEither $ findVarId mm vr
 
+-- | Find all the return @SortId@'s of the given function declarations.
 findFuncSortIds :: MapsTo (Loc FuncDeclE) Signature mm
                 => mm -> [Loc FuncDeclE] -> Either Error [SortId]
 findFuncSortIds mm fdis = fmap sortRet <$> traverse (`lookup` mm) fdis
 
+-- | Extract the names of the implicit function declarations in the map.
 idefsNames :: MapsTo (Loc FuncDeclE) FuncId mm => mm -> [Text]
 idefsNames mm = catMaybes $ fdiName <$> Map.keys fm
     where
@@ -235,60 +231,50 @@ idefsNames mm = catMaybes $ fdiName <$> Map.keys fm
 (<!!>) :: HasErrorLoc l => CompilerM a -> l -> CompilerM a
 m <!!> l = catchError m $ throwError . (errorLoc .~ getErrorLoc l)
 
-(.@@) :: (HasErrorLoc k, MapsTo k v mm, Ord k, Show k
+-- | Infix version of lookup, for those keys that have an error location.
+(.@) :: (HasErrorLoc k, MapsTo k v mm, Ord k, Show k
          , Typeable k, Typeable v)
       => mm -> k -> Either Error v
-mm .@@ k = lookup k mm <!> k
+mm .@ k = lookup k mm <!> k
 
-(.@) :: ( HasErrorLoc k, MapsTo k v mm, Ord k, Show k
+-- | Monadic version of @.\@@.
+(.@@) :: ( HasErrorLoc k, MapsTo k v mm, Ord k, Show k
         , Typeable k, Typeable v)
      => mm -> k -> CompilerM v
-mm .@ k = lookupM k mm <!!> k
+mm .@@ k = lookupM k mm <!!> k
 
+-- | Lookup the @ChanId@ associated to the given location.
 lookupChId :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
               , MapsTo (Loc ChanDeclE) ChanId mm )
            => mm -> Loc ChanRefE -> CompilerM ChanId
 lookupChId mm cr = do
-    cd <- mm .@ cr :: CompilerM (Loc ChanDeclE)
-    mm .@ cd
+    cd <- mm .@@ cr :: CompilerM (Loc ChanDeclE)
+    mm .@@ cd
 
+-- | Lookup the given key, and use the given location for error reporting.
 (.@!!) :: ( HasErrorLoc l, MapsTo k v mm, Ord k, Show k
           , Typeable k, Typeable v )
      => mm -> (k, l) -> CompilerM v
 mm .@!! (k, l) = lookupM k mm <!!> l
 
+-- | Given a list of channel references and a composite map, get the @ChanId@'s
+-- associated to those references.
 chRefsToIds :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
                , MapsTo (Loc ChanDeclE) ChanId mm )
             => mm -> [ChanRef] -> CompilerM [ChanId]
 chRefsToIds mm chs = traverse (lookupChId mm) (getLoc <$> chs)
 
--- TODO: rename this to join!
-closure2 :: (Ord k, Ord v) => Map k v -> Map v w -> Map k w
-closure2 m0 m1 = foldl maybeAddPair Map.empty (Map.toList m0)
+-- | Join two maps 'm0' and 'm1'. A pair '(k, w)' is in the resulting map if
+-- and only if there is a key 'v' such that '(k, v)' is in 'm0' and '(v, w)' is
+-- in 'm1'.
+join :: (Ord k, Ord v) => Map k v -> Map v w -> Map k w
+join m0 m1 = foldl maybeAddPair Map.empty (Map.toList m0)
     where
       maybeAddPair acc (k, v) =
           maybe acc (\w -> Map.insert k w acc) (Map.lookup v m1)
-
-joins :: forall a b c . (HasErrorLoc b, Ord b, Show b, Typeable b, Typeable c)
-      => Map a [b]
-      -> Map b c
-      -> Either Error (Map a [c])
-joins a2bs b2c = Map.traverseWithKey (const $ traverse (b2c .@@)) a2bs
-
-leftValuesOnly :: Ord a => Map a (Either b c) -> Map a b
-leftValuesOnly = Map.foldlWithKey keepLeft Map.empty
-    where
-      keepLeft acc a (Left b)  = Map.insert a b acc
-      keepLeft acc a (Right _) = acc
-
-rightValuesOnly :: Ord a => Map a (Either b c) -> Map a c
-rightValuesOnly = Map.foldlWithKey keepRight Map.empty
-    where
-      keepRight acc _ (Left _)  = acc
-      keepRight acc a (Right c) = Map.insert a c acc
 
 -- | Channels referred in the model
 usedChIdMap :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
                , MapsTo (Loc ChanDeclE) ChanId mm )
             => mm -> Map (Loc ChanRefE) ChanId
-usedChIdMap mm =  closure2 (innerMap mm :: Map (Loc ChanRefE) (Loc ChanDeclE)) (innerMap mm)
+usedChIdMap mm =  join (innerMap mm :: Map (Loc ChanRefE) (Loc ChanDeclE)) (innerMap mm)

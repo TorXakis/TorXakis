@@ -201,7 +201,7 @@ cnectDeclsToTxsDefs mm cds =
                   -- We know the type of 'iv' must be a string.
                   let ivSortMap = Map.singleton (getLoc iv) sortIdString
                   vIdMap   <- Map.fromList <$> mkVarIds ivSortMap chOffr
-                  vId <- vIdMap .@ getLoc iv
+                  vId <- vIdMap .@@ getLoc iv
                   -- TODO: we should assert that offr does not contain question
                   -- marks, otherwise the user might get a different error (for
                   -- instance because a variable might not be declared).

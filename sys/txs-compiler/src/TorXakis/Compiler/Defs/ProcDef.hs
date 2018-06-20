@@ -85,7 +85,7 @@ procDeclsToProcDefMap mm ps =
       mkpIdPDefM :: ProcDecl
                  -> CompilerM (ProcId, ProcDef)
       mkpIdPDefM pd = do
-          ProcInfo pId chIds pvIds <- pms .@ getLoc pd :: CompilerM ProcInfo
+          ProcInfo pId chIds pvIds <- pms .@@ getLoc pd :: CompilerM ProcInfo
           -- Scan for channel references and declarations
           chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
           let chIdsM = Map.fromList chIds
@@ -114,7 +114,7 @@ procDeclsToProcDefMap mm ps =
           b       <- toBExpr mm' bvds body
           -- NOTE that it is crucial that the order of the channel parameters
           -- declarations is preserved!
-          procChIds <- traverse (chIdsM .@) (getLoc <$> procDeclChParams pd)
+          procChIds <- traverse (chIdsM .@@) (getLoc <$> procDeclChParams pd)
           let pvIds' = snd <$> pvIds
           return ( pId, ProcDef procChIds pvIds' b )
 
@@ -140,11 +140,11 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                            -> StautDecl
                            -> CompilerM [(ProcId, ProcDef)]
       stautDeclsToProcDefs pms staut = do
-          p@(ProcInfo pId chIds pvIds) <- mm .@ asProcDeclLoc staut :: CompilerM ProcInfo
-          (ProcInfo pIdStd _ _)        <- mm .@ ExtraAut "std" (asProcDeclLoc staut) :: CompilerM ProcInfo
-          (ProcInfo pIdStdi _ _)       <- mm .@ ExtraAut "stdi" (asProcDeclLoc staut) :: CompilerM ProcInfo
+          p@(ProcInfo pId chIds pvIds) <- mm .@@ asProcDeclLoc staut :: CompilerM ProcInfo
+          (ProcInfo pIdStd _ _)        <- mm .@@ ExtraAut "std" (asProcDeclLoc staut) :: CompilerM ProcInfo
+          (ProcInfo pIdStdi _ _)       <- mm .@@ ExtraAut "stdi" (asProcDeclLoc staut) :: CompilerM ProcInfo
           let chIdsM = Map.fromList chIds
-          procChIds <- traverse (chIdsM .@) (getLoc <$> stautDeclChParams staut)
+          procChIds <- traverse (chIdsM .@@) (getLoc <$> stautDeclChParams staut)
           let pvIds' = snd <$> pvIds
           (stIds, innerVars, initS, vEnv, trans) <- stautItemToBExpr p
           -- Now we create the other two non-standard automata
