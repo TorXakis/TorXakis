@@ -50,7 +50,7 @@ type Params = Map.Map String (String,String->Bool)
 
 -- Represent String a positive integer?
 positiveInt :: String -> Bool
-positiveInt s = not (null s) && all Char.isDigit s
+positiveInt s = not (null s) && all Char.isDigit s && (let v = read s :: Integer in (v <= toInteger (maxBound :: Int) ) )
 ----------------------------------------------------------------------------------------- --
 -- initParams
 
