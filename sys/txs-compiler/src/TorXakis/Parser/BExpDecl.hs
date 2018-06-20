@@ -72,7 +72,7 @@ stopP :: TxsParser BExpDecl
 stopP = try (txsSymbol "STOP") >> return Stop
 
 actPrefixP :: TxsParser BExpDecl
-actPrefixP = ActPref <$> actOfferP <*> actContP
+actPrefixP = ActPref <$> mkLoc <*> actOfferP <*> actContP
     where
       actContP = (try (txsSymbol ">->") >> bexpTermP)--bexpDeclP)
              <|> return Stop

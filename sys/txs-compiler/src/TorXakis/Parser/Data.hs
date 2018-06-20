@@ -31,6 +31,7 @@ module TorXakis.Parser.Data
     , incId
     , nextId
     , Loc (Loc, PredefLoc, ExtraAut)
+    , locFromLoc
     , line
     , start
     , locUid
@@ -58,6 +59,7 @@ module TorXakis.Parser.Data
     , PurpDeclE
     , GoalDeclE
     , CnectDeclE
+    , ActPrefE
     -- * Declarations.
     -- ** ADT's
     , ADTDecl
@@ -412,6 +414,9 @@ data HideE = HideE deriving (Eq, Ord, Show, Data)
 -- | Accept operator.
 data AcceptE = AcceptE deriving (Eq, Ord, Show, Data)
 
+-- | Action prefix.
+data ActPrefE = ActPrefE deriving (Eq, Ord, Show, Data)
+
 -- * Types of parse trees.
 type ADTDecl = ParseTree ADTE     [CstrDecl]
 
@@ -746,7 +751,7 @@ data BExpDecl
     -- | 'STOP' operator.
     = Stop
     -- | '>->' (action prefix) operator.
-    | ActPref  ActOfferDecl BExpDecl
+    | ActPref (Loc ActPrefE)  ActOfferDecl BExpDecl
     -- | 'LET' declarations for behavior expressions.
     | LetBExp  [ParLetVarDecl] BExpDecl
     -- | Process instantiation.

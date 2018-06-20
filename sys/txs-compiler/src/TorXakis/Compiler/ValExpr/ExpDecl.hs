@@ -53,7 +53,7 @@ mkVdMap vs =
 
 instance HasVarReferences BExpDecl where
     mapRefToDecls _ Stop                = return []
-    mapRefToDecls mm (ActPref ao be)    =
+    mapRefToDecls mm (ActPref _ ao be)    =
         (++) <$> mapRefToDecls mm ao <*> mapRefToDecls (aoVds <.+> mm) be
         where
           -- An action offer introduces new variables in the case of actions of

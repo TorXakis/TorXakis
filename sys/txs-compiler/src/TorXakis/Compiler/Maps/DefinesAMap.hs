@@ -195,7 +195,7 @@ instance DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) ProcDecl () where
 instance ( MapsTo Text (Loc ChanDeclE) mm
          ) => DefinesAMap (Loc ChanRefE) (Loc ChanDeclE) BExpDecl mm where
     uGetKVs _ Stop                = return []
-    uGetKVs mm (ActPref aod be)   = (++) <$> uGetKVs mm aod <*> uGetKVs mm be
+    uGetKVs mm (ActPref _ aod be) = (++) <$> uGetKVs mm aod <*> uGetKVs mm be
     uGetKVs mm (LetBExp _ be)     = uGetKVs mm be
     uGetKVs mm (Pappl _ _ crs _ ) = uGetKVs mm crs
     uGetKVs mm (Par _ son be0 be1) = (++) <$> uGetKVs mm son
@@ -309,7 +309,7 @@ instance ( MapsTo Text SortId mm
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId BExpDecl mm where
     uGetKVs _ Stop                = return []
-    uGetKVs mm (ActPref _ be)   = uGetKVs mm be
+    uGetKVs mm (ActPref _ _ be)   = uGetKVs mm be
     uGetKVs mm (LetBExp _ be)     = uGetKVs mm be
     uGetKVs _ Pappl {} = return []
     uGetKVs mm (Par _ _ be0 be1) = (++) <$> uGetKVs mm be0 <*> uGetKVs mm be1

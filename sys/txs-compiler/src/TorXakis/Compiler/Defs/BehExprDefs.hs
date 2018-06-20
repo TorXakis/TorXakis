@@ -66,9 +66,9 @@ toBExpr :: ( MapsTo Text SortId mm
         -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
         -> BExpDecl
         -> CompilerM BExpr
-toBExpr _ vrvds Stop             = return stop
-toBExpr mm vrvds (ActPref ao be) = actionPref <$> toActOffer mm vrvds ao <*> toBExpr mm vrvds be
-toBExpr mm vrvds (LetBExp vss be) = do
+toBExpr _ vrvds Stop               = return stop
+toBExpr mm vrvds (ActPref _ ao be) = actionPref <$> toActOffer mm vrvds ao <*> toBExpr mm vrvds be
+toBExpr mm vrvds (LetBExp vss be)  = do
     be0 <- toBExpr mm vrvds be
     foldM letToBExpr be0 (toList <$> vss)
     where

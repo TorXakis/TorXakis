@@ -65,6 +65,8 @@ data ErrorType
     -- | An entity has multiple candidates (based on the type information for
     -- instance)
     | Ambiguous Entity
+    -- | An entity is missing from the declaration.
+    | Missing Entity
     | NoDefinition -- ^ No definition found for function or process.
     | InvalidExpression
     | CompilerPanic -- ^ An error in the compiler has happened.
