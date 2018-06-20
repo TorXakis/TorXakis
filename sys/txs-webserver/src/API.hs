@@ -25,6 +25,7 @@ import           Endpoints.Messages          (CloseMessagesEP, MessagesEP,
                                               OpenMessagesEP, closeMessages,
                                               messages, openMessages)
 import           Endpoints.NewSession        (NewSessionEP, newSrvSession)
+import           Endpoints.NComp             (NCompEP, ncomp)
 import           Endpoints.Params            (ParamsAPI, paramsServer)
 import           Endpoints.Parse             (ParseActionEP, parseAction)
 import           Endpoints.Seed              (SeedEP, setSeed)
@@ -71,6 +72,7 @@ type ServiceAPI
     :<|> MenuEP
     :<|> ShowAPI
     :<|> LpeEP
+    :<|> NCompEP
     :<|> TestPageAPI
 
 type TestPageAPI = "test" :> Raw
@@ -115,4 +117,5 @@ server env
     :<|> menu env
     :<|> showServer env
     :<|> lpe env
+    :<|> ncomp env
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"

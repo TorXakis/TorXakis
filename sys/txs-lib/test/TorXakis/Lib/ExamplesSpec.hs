@@ -54,3 +54,4 @@ spec = do
         res <- testMenu
         res `shouldBe` Just ()
     it "testVarsAndSolvers" testVarsAndSolvers
+    it "testNComp" testNComp

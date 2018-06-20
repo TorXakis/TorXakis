@@ -384,6 +384,16 @@ spec = return $ do
                 let ranRes = BSL.unpack $ rRan ^. responseBody
                 ranRes `shouldContain` "( x,"
                 ranRes `shouldContain` "( y,"
+        describe "NComp" $
+            it "Generate for Echo" $ do
+                sId <- mkNewSession
+                _ <- put (newSessionUrl sId) [ partFile "model.txs" "../../examps/Echo/Echo.txs" ]
+                a <- async $ foldGet checkActions 0 (messagesUrl sId)
+                post (ncompUrl sId "Model") emptyP >>= check202Accepted
+                post (closeMessagesUrl sId) emptyP >>= check204NoContent
+                steps <- wait a
+                steps `shouldBe` 0
+
 check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
 
@@ -498,6 +508,9 @@ menuUrl sId = Prelude.concat [host, "/sessions/", show sId, "/menu"]
 
 lpeUrl :: Integer -> String
 lpeUrl sId = Prelude.concat [host, "/sessions/", show sId, "/lpe"]
+
+ncompUrl :: Integer -> String -> String
+ncompUrl sId mn = Prelude.concat [host, "/sessions/", show sId, "/ncomp/", mn]
 
 showUrl :: Integer -> String -> String -> String
 showUrl sId item nm= Prelude.concat [host, "/sessions/", show sId, "/show/", item, "/", nm]

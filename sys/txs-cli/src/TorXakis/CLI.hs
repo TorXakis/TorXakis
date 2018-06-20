@@ -129,6 +129,7 @@ startCLI = do
             "unisolve"  -> lift (runExceptT $ callSolver "uni" rest) >>= output
             "ransolve"  -> lift (runExceptT $ callSolver "ran" rest) >>= output
             "lpe"       -> lift (runExceptT $ callLpe rest) >>= output
+            "ncomp"     -> lift (runExceptT $ callNComp rest) >>= output
             "show"      -> lift (runExceptT $ showTxs rest) >>= output
             "menu"      -> lift (runExceptT $ menu rest) >>= output
             "seed"      -> lift (runExceptT $ seed rest) >>= output
@@ -190,7 +191,12 @@ startCLI = do
             callSolver kind t  = solve kind $ unwords t
             callLpe :: (MonadIO m, MonadReader Env m, MonadError String m)
                 => [String] -> m ()
-            callLpe t = lpe $ unwords t
+            callLpe [] = throwError "Usage: lpe <model|process>"
+            callLpe t  = lpe $ unwords t
+            callNComp :: (MonadIO m, MonadReader Env m, MonadError String m)
+                => [String] -> m ()
+            callNComp [] = throwError "Usage: ncomp <model>"
+            callNComp t  = ncomp $ unwords t
             menu :: (MonadIO m, MonadReader Env m, MonadError String m)
                 => [String] -> m String
             menu t = getMenu $ unwords t

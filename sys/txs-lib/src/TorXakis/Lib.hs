@@ -29,6 +29,7 @@ import           Control.Concurrent.STM.TVar   (readTVarIO, writeTVar)
 import           Control.DeepSeq               (force)
 import           Control.Exception             (ErrorCall, Exception,
                                                 SomeException, evaluate, try)
+import           Control.Monad                 (void)
 import           Control.Monad.Except          (ExceptT, liftEither, runExceptT,
                                                 throwError)
 import           Control.Monad.State           (lift)
@@ -236,6 +237,21 @@ lpe s args = do
                                             "LPE behaviour generated: \n" ++ fshow bexpr'
                     _                  -> TXS_CORE_USER_WARNING "Could not generate LPE"
     return success
+
+ncomp :: Session -> Text -> IO (Response ())
+ncomp s mn = do
+    mModelDef <- runExceptT $ lookupModel s mn
+    case mModelDef of
+        Right mDef -> do
+            void $ forkIO $ do
+                mPurpId <- runIOC s $ Core.txsNComp mDef
+                atomically $ writeTQueue (s ^. sessionMsgs) $
+                    case mPurpId of
+                        Just pId -> TXS_CORE_USER_INFO $
+                                        "Test Purpose generated: \n" ++ fshow pId
+                        _         -> TXS_CORE_USER_WARNING "Could not generate test purpose"
+            return success
+        Left err   -> return $ Left err
 
 showItem :: Session -> String -> String -> IO String
 showItem s item nm =

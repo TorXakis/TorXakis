@@ -22,6 +22,7 @@ module TorXakis.CLI.WebClient
     , module TorXakis.CLI.WebClient.Eval
     , module TorXakis.CLI.WebClient.LPE
     , module TorXakis.CLI.WebClient.Menu
+    , module TorXakis.CLI.WebClient.NComp
     , module TorXakis.CLI.WebClient.Params
     , module TorXakis.CLI.WebClient.Seed
     , module TorXakis.CLI.WebClient.Sim
@@ -64,6 +65,7 @@ import           TorXakis.CLI.WebClient.Common
 import           TorXakis.CLI.WebClient.Eval
 import           TorXakis.CLI.WebClient.LPE
 import           TorXakis.CLI.WebClient.Menu
+import           TorXakis.CLI.WebClient.NComp
 import           TorXakis.CLI.WebClient.Params
 import           TorXakis.CLI.WebClient.Seed
 import           TorXakis.CLI.WebClient.Sim

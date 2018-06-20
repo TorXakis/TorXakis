@@ -51,4 +51,9 @@ stop                           : stop testing, simulation, or stepping
 show <object>                  : show <object>
 menu [in|out|map|purp <goal>]  : give the [in|out|map] menu of actions of current state
                                  or purp menu for given goal
+
+ncomp <model>                  : test purpose generation for given model via
+                                 `N-Complete' algorithm
+lpe <model|process>            : LPE (Linear Process Equation) transformation for given
+                                 model or process
 |]

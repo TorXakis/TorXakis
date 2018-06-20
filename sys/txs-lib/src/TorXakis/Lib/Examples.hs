@@ -296,6 +296,16 @@ testVarsAndSolvers = do
     putStrLn $ "Result of ransolve: " ++ show rr
     cancel a
 
+testNComp :: IO ()
+testNComp = do
+    cs <- readFile $ ".." </> ".." </> "examps" </> "Echo" </> "Echo.txs"
+    s <- newSession
+    a <- async (printer s)
+    _ <- load s cs
+    r <- ncomp s "Model"
+    putStrLn $ "Result of `ncomp`: " ++ show r
+    cancel a
+
 seconds :: Int
 seconds = 10 ^ (6 :: Int)
 
