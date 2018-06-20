@@ -149,33 +149,29 @@ toRegexString  93 = "\\]"
 toRegexString  94 = "\\^"
 toRegexString   c = T.singleton (Char.chr c)
 
--- precondition: SMT has returned sat
---
 -- * configuration parameters
--- * Current solution
 -- * List of tuples of (Variable, Depth)
 -- * available variable id
 randomSolve :: Variable v => ParamIncrementBins -> [(v, Int)] -> Int -> SMT ()
 randomSolve _ []        _    = return ()                                         -- empty list -> done
 randomSolve _ ((_,0):_) _    = error "At maximum depth: should not be added"
 randomSolve p vs@((v,_):xs) i = do
-            sol <- getSolution [v]
-            let val = fromMaybe (error "randomSolve - SMT hasn't returned the value of requested variable.")
-                                (Map.lookup v sol)
-            push
-            addAssertions [ cstrNot ( cstrEqual (cstrVar v) (cstrConst val) ) ]
-            sat <- getSolvable
-            pop
-            case sat of
-                Sat -> randomSolveBins p vs i
-                _   -> do
-                            addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
-                            sat2 <- getSolvable
-                            case sat2 of
-                                Sat -> randomSolve p xs i
-                                -- Both Unsat and Unknown: robustness if not equal can't be solve, 
-                                --                         we expect that intervals might also yield no solution
-                                _   -> error "randomSolve - Unexpected SMT issue - previous solution is no longer valid"
+        sat <- getSolvable
+        case sat of
+            Sat -> do 
+                sol <- getSolution [v]
+                let val = fromMaybe (error "randomSolve - SMT hasn't returned the value of requested variable.")
+                                    (Map.lookup v sol)
+                push
+                addAssertions [ cstrNot ( cstrEqual (cstrVar v) (cstrConst val) ) ]
+                sat2 <- getSolvable
+                pop
+                case sat2 of
+                    Sat -> randomSolveBins p vs i
+                    _   -> do
+                                addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
+                                randomSolve p xs i
+            _   -> error "randomSolve - Unexpected SMT issue - previous solution is no longer valid"
 
 
 randomSolveBins :: Variable v => ParamIncrementBins -> [(v, Int)] -> Int -> SMT ()
@@ -185,21 +181,14 @@ randomSolveBins p ((v,_):xs) i    | vsort v == sortIdBool =
     do
         b <- liftIO randomIO
         addAssertions [ cstrEqual (cstrVar v) (cstrConst (Cbool b) ) ]
-        sat <- getSolvable
-        case sat of
-            Sat     -> randomSolve p xs i
-            _       -> error "Unexpected SMT issue - previous solution is no longer valid - Bool"
+        randomSolve p xs i
 
 randomSolveBins p ((v,_):xs) i    | vsort v == sortIdInt =
     do
         rndBins <- liftIO $ mkRndIntBins p (cstrVar v)
-        val <- findRndValue v rndBins
+        val@Cint{} <- findRndValue v rndBins
         addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
-        sat <- getSolvable
-        case sat of
-            Sat -> randomSolve p xs i
-            _   -> error "Unexpected SMT issue - previous solution is no longer valid - Int"
-        
+        randomSolve p xs i
 
 randomSolveBins p ((v,-123):xs) i    | vsort v == sortIdString =                 -- abuse depth to encode char versus string
     let nrofChars :: Int
@@ -227,12 +216,12 @@ randomSolveBins p ((v,-123):xs) i    | vsort v == sortIdString =                
                     _                               -> map ( toConstraint v . toCharGroup ) ( toCharRange (nrofChars - nrofCharsInRange + offset) high <> toCharRange low (offset-1)
                                                                                             : map ( (\b -> toCharRange b (b+nrofCharsInRange-1)) . (offset+) ) boundaries
                                                                                             )
-        val <- findRndValue v rndBins
-        addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
-        sat <- getSolvable
-        case sat of
-            Sat -> randomSolve p xs i
-            _   -> error "Unexpected SMT issue - previous solution is no longer valid - Int"
+        val@(Cstring s) <- findRndValue v rndBins
+        if T.length s /= 1 
+            then error "Unexpected Result"
+            else do
+                addAssertions [ cstrEqual (cstrVar v) (cstrConst val) ]
+                randomSolve p xs i
     where
         toCharGroup :: Text -> Text
         toCharGroup t = "[" <> t <> "]"
@@ -262,56 +251,31 @@ randomSolveBins p ((v,d):xs) i    | vsort v == sortIdString =
                     let exprs = map (\(vNew,pos) -> cstrEqual (cstrVar vNew) (cstrAt (cstrVar v) (cstrConst (Cint pos)))) (zip charVars [0..])
                     addAssertions exprs
                     shuffledVars <- shuffleM (xs ++ zip charVars (map (const (-123)) [1::Integer .. ]) )
-                    sat <- getSolvable
-                    case sat of
-                        Sat     -> randomSolve p shuffledVars (i+1+fromIntegral l)
-                        _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - l > 0 && d > 1"
-            else do
-                    sat <- getSolvable
-                    case sat of
-                        Sat     -> randomSolve p xs (i+1)
-                        _       -> error "Unexpected SMT issue - previous solution is no longer valid - String - else"
+                    randomSolve p shuffledVars (i+1+fromIntegral l)
+            else randomSolve p xs (i+1)
 
 randomSolveBins p ((v,d):xs) i =
     do
         let sid = vsort v
         cstrs <- lookupConstructors sid
-        case cstrs of
-            []  -> error $ "Unexpected: no constructor for " ++ show v
-            [(cid,_)] -> -- no choice -- one constructor
-                    do
-                        addIsConstructor v cid
-                        fieldVars <- addFields v i cid
-                        sat <- getSolvable
-                        case sat of
-                            Sat     -> do
-                                            let l = length fieldVars
-                                            if l > 0
-                                                then do
-                                                    shuffledVars <- shuffleM (xs ++ zip fieldVars (map (const d) [1::Integer .. ]) )
-                                                    randomSolve p shuffledVars (i+l)
-                                                else
-                                                    randomSolve p xs i
-                            _       -> error "Unexpected SMT issue - previous solution is no longer valid - ADT - 1"
-            _   ->
-                    do
-                        shuffledCstrs <- shuffleM cstrs
-                        let shuffledBins = map (\(tempCid, _) -> cstrIsCstr tempCid (cstrVar v)) shuffledCstrs
-                        Cstr{cstrId = cid} <- findRndValue v shuffledBins
-                        addIsConstructor v cid
-                        fieldVars <- if d > 1 then addFields v i cid
-                                              else return []
-                        sat <- getSolvable
-                        case sat of
-                            Sat -> do
-                                    let l = length fieldVars
-                                    if l > 0
-                                        then do
-                                            shuffledVars <- shuffleM (xs ++ zip fieldVars (map (const (d-1)) [1::Integer .. ]) )
-                                            randomSolve p shuffledVars (i+l)
-                                        else
-                                            randomSolve p xs i
-                            _       -> error "Unexpected SMT issue - previous solution is no longer valid - ADT - n"
+        (cid, d') <- case cstrs of
+                        []         -> error $ "Unexpected: no constructor for " ++ show v
+                        [(cid',_)] -> return (cid', d) -- No choice, no decrease of depth
+                        _          -> do
+                                        shuffledCstrs <- shuffleM cstrs
+                                        let shuffledBins = map (\(tempCid, _) -> cstrIsCstr tempCid (cstrVar v)) shuffledCstrs
+                                        Cstr{cstrId = cid'} <- findRndValue v shuffledBins
+                                        return (cid', d-1)
+        addIsConstructor v cid
+        fieldVars <- if d' > 1 then addFields v i cid
+                              else return []
+        let l = length fieldVars
+        if l > 0
+            then do
+                shuffledVars <- shuffleM (xs ++ zip fieldVars (map (const d') [1::Integer .. ]) )
+                randomSolve p shuffledVars (i+l)
+            else
+                randomSolve p xs i
 
 -- lookup a constructor given its sort and constructor name
 lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]
