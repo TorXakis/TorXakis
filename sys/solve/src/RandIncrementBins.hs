@@ -130,8 +130,14 @@ randValExprsSolveIncrementBins p freevars exprs  =
                 Sat     -> do
                             shuffledVars <- shuffleM freevars
                             randomSolve p (zip shuffledVars (map (const (maxDepth p)) [1::Integer .. ]) ) 0
-                            sol <- getSolution freevars
-                            return $ Solved sol
+                            sat2 <- getSolvable
+                            case sat2 of
+                                Sat -> do
+                                        sol <- getSolution freevars
+                                        return $ Solved sol
+                                _   -> do
+                                        lift $ hPutStrLn stderr "TXS RandIncrementBins randValExprsSolveIncrementBins: Problem no longer solvable\n"
+                                        return UnableToSolve
                 Unsat   -> return Unsolvable
                 Unknown -> return UnableToSolve
         pop
