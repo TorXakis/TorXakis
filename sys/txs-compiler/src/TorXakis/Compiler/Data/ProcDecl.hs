@@ -1,20 +1,34 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE TupleSections         #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
--- | Process declarations.
-module TorXakis.Compiler.Data.ProcDecl where
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.Data.ProcDecl
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Compiler functions and instances on process declarations.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.Data.ProcDecl
+    (ProcInfo (ProcInfo), allProcIds)
+where
 
-import           Control.Lens                       ((^.), (^..))
-import           Data.Data.Lens                     (biplate)
 import           Data.Map                           (Map)
-import qualified Data.Map                           as Map
 import           Data.Semigroup                     ((<>))
 import           Data.Text                          (Text)
 
@@ -23,24 +37,37 @@ import           Id                                 (Id (Id))
 import           ProcId                             (ProcId (ProcId))
 import           SortId                             (SortId, sortIdInt)
 import           StautDef                           (combineParameters)
-import           TxsDefs                            (ExitSort (..),
-                                                     ProcDef (ProcDef),
-                                                     ProcId (ProcId))
+import           TxsDefs                            (ExitSort (Exit, Hit, NoExit))
 import           VarId                              (VarId (VarId))
 
-import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Maps
-import           TorXakis.Compiler.Maps.DefinesAMap
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.ValExpr.SortId
-import           TorXakis.Compiler.ValExpr.VarId
-import           TorXakis.Parser.Data
-
-import           TorXakis.Compiler.Data.VarDecl
+import           TorXakis.Compiler.Data             (CompilerM, getNextId)
+import           TorXakis.Compiler.Data.VarDecl     ()
+import           TorXakis.Compiler.Maps             ((<!!>))
+import           TorXakis.Compiler.Maps.DefinesAMap (DefinesAMap, getKVs,
+                                                     getMap, predefChDecls,
+                                                     uGetKVs)
+import           TorXakis.Compiler.MapsTo           ((:&) ((:&)), Contents, In,
+                                                     MapsTo, values, (<.+>))
+import           TorXakis.Compiler.ValExpr.SortId   (sortIds)
+import           TorXakis.Parser.Data               (ChanDeclE, ChanRefE, ExitSortDecl (ExitD, HitD, NoExitD),
+                                                     Loc (ExtraAut), ProcDecl,
+                                                     ProcDeclE, StautDecl,
+                                                     Transition (Transition),
+                                                     VarDeclE, asProcDeclLoc,
+                                                     getLoc, procDeclChParams,
+                                                     procDeclName,
+                                                     procDeclParams,
+                                                     procDeclRetSort,
+                                                     stautDeclChParams,
+                                                     stautDeclInnerVars,
+                                                     stautDeclParams,
+                                                     stautDeclRetSort,
+                                                     stautName, stautTrans)
 
 -- | Information about a process.
 data ProcInfo = ProcInfo ProcId [(Loc ChanDeclE, ChanId)] [(Loc VarDeclE, VarId)]
 
+-- | Get the @ProcId@ of a process info value.
 getPId :: ProcInfo -> ProcId
 getPId (ProcInfo pId _ _) = pId
 
@@ -49,7 +76,7 @@ instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ProcDeclE) ProcInfo ProcDecl mm where
     uGetKVs mm pd = do
         pId    <- getNextId
-        allPChIds <- uGetKVs mm pd -- TODO: why not getKVs?
+        allPChIds <- getKVs mm pd
             :: CompilerM [(Loc ChanDeclE, ChanId)]
         let
             pChLocs = getLoc <$> procDeclChParams pd
@@ -70,6 +97,7 @@ instance ( MapsTo Text SortId mm
                            pVIds
                 )]
 
+-- | Exit sort of an exit sort declaration.
 declExitSort :: (MapsTo Text SortId mm)
              => mm -> ExitSortDecl -> CompilerM ExitSort
 declExitSort _  NoExitD    = return NoExit
@@ -94,7 +122,7 @@ instance ( MapsTo Text SortId mm
         pVIds  <- uGetKVs (vdSIds :& mm) (stautDeclParams staut)
             :: CompilerM [(Loc VarDeclE, VarId)]
         eSort  <- declExitSort mm (stautDeclRetSort staut) <!!> staut
-        -- TODO: NOTE: this is required to comply with the current TorXakis
+        -- NOTE: this is required to comply with the current TorXakis
         -- compiler, which generates an "std_" variant based on a
         -- 'combineParameters' function which shouldn't be exposed (according
         -- to the comments of 'StautDef').
@@ -138,6 +166,7 @@ instance ( MapsTo Text SortId mm
                  )
                ]
 
+-- | Get all the @ProcId@'s in a composite map.
 allProcIds :: MapsTo (Loc ProcDeclE) ProcInfo mm => mm -> [ProcId]
 allProcIds mm = getPId <$> values @(Loc ProcDeclE) @ProcInfo mm
 
