@@ -16,14 +16,25 @@ See LICENSE at root directory of this repository.
 --
 -- Compiler error type and associated functions.
 --------------------------------------------------------------------------------
+module TorXakis.Compiler.Error
+    ( -- * Error type and field accessors.
+      Error (..)
+      -- ** Lenses for error fields.
+    , errorLoc
+    , errorMsg
+    , errorType
+      -- * Type of errors.
+    , ErrorType (..)
+    , Entity (..)
+      -- * Error location support.
+    , ErrorLoc (..)
+    , HasErrorLoc
+    , getErrorLoc
+    )
+where
 
-module TorXakis.Compiler.Error where
-
-import           Control.Arrow   (left)
-import           Control.Lens    ((.~))
 import           Control.Lens.TH (makeLenses)
 import           Data.Text       (Text)
-
 
 -- | Entity to which the error is related.
 data Entity
@@ -59,8 +70,13 @@ data ErrorType
     | CompilerPanic -- ^ An error in the compiler has happened.
     deriving (Eq, Show)
 
+-- | Location of an error.
 data ErrorLoc
+    -- | The error location could not be determined. By adding location to
+    -- TorXakis core types like @SortId@ it is possible to augment the number
+    -- of places in which errors can be associated to locations.
     = NoErrorLoc
+    -- | The error is related to a pre-defined entity.
     | ErrorPredef Text
     | ErrorLoc
         { errorLine   :: Int
@@ -68,30 +84,19 @@ data ErrorLoc
         }
     deriving (Eq, Show)
 
+-- | Entities that have an error location.
 class HasErrorLoc l where
     getErrorLoc :: l -> ErrorLoc
 
--- | TODO: for now we define these ad-hoc instances. Maybe we want to define a
--- more general mechanism. These instances are coupled to the design decisions
--- taken at `TorXakis.Compiler.Data`, which shouldn't. Maybe we need to define
--- a type wrapper, instead of using a tuple.
-instance HasErrorLoc l => HasErrorLoc (Either l b) where
-    getErrorLoc (Left l) = getErrorLoc l
-    getErrorLoc _        = NoErrorLoc
-
-instance HasErrorLoc l => HasErrorLoc (k, l) where
-    getErrorLoc (_, l) = getErrorLoc l
-
-instance HasErrorLoc l => HasErrorLoc (l, c, d) where
-    getErrorLoc (l, _, _) = getErrorLoc l
-
--- | For now we use this simple error type.
+-- | Simple error type.
 data Error
+    -- | Single error.
     = Error
     { _errorType :: ErrorType
     , _errorLoc  :: ErrorLoc
     , _errorMsg  :: Text
     }
+    -- | Multiple errors.
     | Errors [Error]
     deriving (Eq, Show)
 
