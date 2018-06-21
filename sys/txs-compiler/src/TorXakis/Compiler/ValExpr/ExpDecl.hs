@@ -1,35 +1,82 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-module TorXakis.Compiler.ValExpr.ExpDecl where
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.ValExpr.ExpDecl
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Compilation functions related to expression declarations.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.ValExpr.ExpDecl
+    ( HasVarReferences
+    , mapRefToDecls
+    )
+where
 
-import           Control.Arrow             (second, (+++))
 import           Control.Monad             (foldM)
-import           Control.Monad.Error.Class (catchError, liftEither)
-import           Data.Either               (partitionEithers)
+import           Control.Monad.Error.Class (catchError)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
 import           Data.Semigroup            ((<>))
 import           Data.Text                 (Text)
 import           GHC.Exts                  (toList)
 
-import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.Maps
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Parser.Data
+import           TorXakis.Compiler.Data    (CompilerM)
+import           TorXakis.Compiler.Maps    ((.@!!))
+import           TorXakis.Compiler.MapsTo  (MapsTo, (<.+>))
+import           TorXakis.Parser.Data      (ActOfferDecl (ActOfferDecl), BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
+                                            ChanOfferDecl (ExclD, QuestD),
+                                            CnectDecl, CodecItem (CodecItem),
+                                            CodecType (Decode, Encode),
+                                            ExpChild (ConstLit, Fappl, If, LetExp, VarRef),
+                                            ExpDecl, FuncDecl, FuncDeclE,
+                                            HasLoc,
+                                            InitStateDecl (InitStateDecl),
+                                            IsVariable, LetVarDecl, Loc,
+                                            MapperDecl, ModelDecl,
+                                            OfferDecl (OfferDecl),
+                                            ParLetVarDecl, ProcDecl, PurpDecl,
+                                            StUpdate (StUpdate), StautDecl,
+                                            StautItem (InitState, StVarDecl, States, Trans),
+                                            TestGoalDecl,
+                                            Transition (Transition), VarDecl,
+                                            VarDeclE, VarRef, VarRefE,
+                                            actOfferDecls, asVarReflLoc,
+                                            chanOfferDecls, cnectDeclCodecs,
+                                            expChild, funcBody, funcParams,
+                                            getLoc, mapperBExp, modelBExp,
+                                            offerDecls, procDeclBody,
+                                            procDeclParams, purpDeclGoals,
+                                            stautDeclComps, stautDeclInnerVars,
+                                            stautDeclParams, testGoalDeclBExp,
+                                            toText, varDeclExp, varName)
 
+
+-- | Expressions that have variable references.
 class HasVarReferences e where
     -- | Map variable references to the entities they refer to.
     --
-    -- TODO: property to check:
+    -- NOTE: property to check:
     --
     -- the number of 'Loc FuncDeclE' entities in the function declaration
     -- should equal the length of the list returned by this function.
     --
     -- This ensures that the mapping returned is complete.
+    --
+    -- This class could be replaced by `DefinesAMap` which already includes
+    -- such an invariant check.
     mapRefToDecls :: ( MapsTo Text [Loc FuncDeclE] mm
                      , MapsTo Text (Loc VarDeclE) mm )
                   => mm  -- ^ Predefined functions
@@ -161,7 +208,7 @@ instance HasVarReferences StautDecl where
           paramVarDecls = mkVdMap (stautDeclParams staut)
           innerVarDecls = mkVdMap (stautDeclInnerVars staut)
           -- We give the inner variables precedence over the state automaton parameters.
-          stautVarDecls = innerVarDecls `Map.union` paramVarDecls
+          stautVarDecls = innerVarDecls <> paramVarDecls
 
 instance HasVarReferences StautItem where
     mapRefToDecls _  (States _)                        = return []
@@ -175,7 +222,6 @@ instance HasVarReferences StUpdate where
 
 instance HasVarReferences VarRef where
     mapRefToDecls mm vr = do
-        -- TODO: reduce duplication w.r.t 'instance HasVarReferences ExpDecl':
         let rLoc = getLoc vr
             n = varName vr
         dLoc <- fmap Left (mm .@!! (n, rLoc))
