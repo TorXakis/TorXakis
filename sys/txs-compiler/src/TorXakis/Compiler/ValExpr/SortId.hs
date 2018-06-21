@@ -75,11 +75,11 @@ import           VarId                     (varsort)
 
 import           TorXakis.Compiler.Data    (CompilerM, getNextId)
 import           TorXakis.Compiler.Error   (Entity (Process, Sort),
-                                            Error (Error),
+                                            Error (Error, Errors),
                                             ErrorLoc (NoErrorLoc),
                                             ErrorType (Ambiguous, Missing, MultipleDefinitions, ParseError, TypeMismatch, Undefined, Unresolved),
-                                            getErrorLoc, _errorLoc, _errorMsg,
-                                            _errorType)
+                                            HasErrorLoc, getErrorLoc, _errorLoc,
+                                            _errorMsg, _errorType)
 import           TorXakis.Compiler.Maps    (chRefsToIds, determineF,
                                             findFuncDecl, findFuncSortIds,
                                             findSortId, getUniqueElement,
@@ -172,19 +172,14 @@ accLetInferTypes :: ( MapsTo Text SortId mm
 accLetInferTypes mm vs =
     case partitionEithers (inferVarDeclType mm <$> vs) of
         ([], rs) -> Right $ fromList rs <> innerMap mm
-        (ls, []) -> Left  Error
-                    { _errorType = Undefined Sort
-                    , _errorLoc  = NoErrorLoc -- TODO: we could generate
-                                             -- multiple errors, giving
-                                             -- all the locations in 'ls'
-                    , _errorMsg  =  "Could not infer the types: " <> (T.pack . show . (fst <$>)) ls
-                    }
+        (ls, []) -> Left $ Errors (fst <$> ls)
         (ls, rs) -> accLetInferTypes (fromList rs <.+> mm) (snd <$> ls)
 
 -- | Get all the let variable declarations in a function.
 letVarDeclsInFunc :: FuncDecl -> [[LetVarDecl]]
 letVarDeclsInFunc fd = expLetVarDecls (funcBody fd)
 
+-- | Infer the type of a variable declaration.
 inferVarDeclType :: ( MapsTo Text SortId mm
                     , MapsTo (Loc VarDeclE) SortId mm
                     , MapsTo (Loc FuncDeclE) Signature mm
@@ -229,7 +224,6 @@ inferExpTypes mm ex =
     LetExp vss subEx -> do
         vdsSid <- foldM (letVarTypes mm) Map.empty (toList <$> vss)
         inferExpTypes (vdsSid <.+> mm) subEx
-    -- TODO: shouldn't if be also a function? Defined in terms of the Haskell's @if@ operator.
     If e0 e1 e2 -> do
         [se0s, se1s, se2s] <- traverse (inferExpTypes mm) [e0, e1, e2]
         when (sortIdBool `notElem` se0s)
@@ -530,10 +524,7 @@ instance HasExitSorts BExpDecl where
         (es0 <<->> es1) <!!> l
     exitSort mm (Enable _ _ be) = exitSort mm be
     exitSort mm (Accept _ _ be) = exitSort mm be
-    exitSort mm (Disable l be0 be1) = do
-        es0 <- exitSort mm be0
-        es1 <- exitSort mm be1
-        (es0 <<+>> es1) <!!> l
+    exitSort mm (Disable l be0 be1) = addExitSorts mm l be0 be1
     exitSort mm (Interrupt l be0 be1) = do
         es1 <- exitSort mm be1
         when (es1 /= Exit [])
@@ -544,13 +535,25 @@ instance HasExitSorts BExpDecl where
                                <> ". Exit sorts do not match in Interrupt."
                 })
         exitSort mm be0
-    exitSort mm (Choice l be0 be1) = do
-        es0 <- exitSort mm be0
-        es1 <- exitSort mm be1
-        (es0 <<+>> es1) <!!> l
+    exitSort mm (Choice l be0 be1) = addExitSorts mm l be0 be1
     exitSort mm (Guard _ be) = exitSort mm be
     exitSort mm (Hide _ _ be) =
         exitSort mm be
+
+addExitSorts :: ( HasErrorLoc l
+                , HasExitSorts be1
+                , HasExitSorts be0
+                , MapsTo ProcId () mm
+                , MapsTo Text SortId mm
+                , MapsTo (Loc FuncDeclE) Signature mm
+                , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
+                , MapsTo (Loc VarDeclE) SortId mm, MapsTo (Loc ChanDeclE) ChanId mm
+                , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm )
+             => mm -> l -> be0 -> be1 -> CompilerM ExitSort
+addExitSorts mm l be0 be1 = do
+    es0 <- exitSort mm be0
+    es1 <- exitSort mm be1
+    (es0 <<+>> es1) <!!> l
 
 instance HasExitSorts ActOfferDecl where
     exitSort mm (ActOfferDecl os _) =
