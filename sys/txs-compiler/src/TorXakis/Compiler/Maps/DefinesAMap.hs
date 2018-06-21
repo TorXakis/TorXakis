@@ -1,3 +1,8 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE DefaultSignatures     #-}
 {-# LANGUAGE FlexibleContexts      #-}
@@ -6,12 +11,24 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.Maps.DefinesAMap
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Expressions that define a map.
+--------------------------------------------------------------------------------
 module TorXakis.Compiler.Maps.DefinesAMap
     ( DefinesAMap
     , getKVs
     , getKs
     , getMap
-    , uGetKVs -- TODO: this shouldn't be visible outside the module. Arrange the modules structure to ensure this.
+    , uGetKVs
     , predefChDecls
     )
 where
@@ -37,12 +54,46 @@ import           StdTDefs                         (chanIdExit, chanIdHit,
                                                    chanIdHit, chanIdIstep,
                                                    chanIdMiss, chanIdQstep)
 
-import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.Maps
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.ValExpr.SortId
-import           TorXakis.Parser.Data
+import           TorXakis.Compiler.Data           (CompilerM, getNextId)
+import           TorXakis.Compiler.Error          (Error (Error),
+                                                   ErrorLoc (NoErrorLoc),
+                                                   ErrorType (CompilerPanic),
+                                                   _errorLoc, _errorMsg,
+                                                   _errorType)
+import           TorXakis.Compiler.Maps           ((.@!!))
+import           TorXakis.Compiler.MapsTo         (MapsTo, (<.+>))
+import           TorXakis.Compiler.ValExpr.SortId (sortIds)
+import           TorXakis.Parser.Data             (ActOfferDecl (ActOfferDecl), BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
+                                                   ChanDecl, ChanDeclE, ChanRef,
+                                                   ChanRefE, CnectDecl,
+                                                   CnectItem,
+                                                   CnectItem (CnectItem),
+                                                   CodecItem (CodecItem),
+                                                   ExitSortDecl (ExitD, HitD, NoExitD),
+                                                   ExpDecl, Loc (PredefLoc),
+                                                   MapperDecl, ModelDecl,
+                                                   OfferDecl (OfferDecl),
+                                                   ParLetVarDecl, ParsedDefs,
+                                                   ProcDecl, PurpDecl,
+                                                   StautDecl,
+                                                   SyncOn (All, OnlyOn),
+                                                   TestGoalDecl, VarDecl,
+                                                   chanDeclName, chanDeclSorts,
+                                                   chanRefName, chdecls,
+                                                   cnectDeclCnectItems,
+                                                   cnectDeclCodecs, getLoc,
+                                                   mapperBExp, mapperIns,
+                                                   mapperOuts, mapperSyncs,
+                                                   modelBExp, modelIns,
+                                                   modelOuts, modelSyncs,
+                                                   models, procDeclBody,
+                                                   procDeclChParams,
+                                                   procDeclRetSort, procs,
+                                                   purpDeclGoals, purpDeclIns,
+                                                   purpDeclOuts, purpDeclSyncs,
+                                                   stautDeclChParams,
+                                                   stautDeclRetSort,
+                                                   testGoalDeclBExp)
 
 -- | Abstract syntax tree types that define a map.
 --
