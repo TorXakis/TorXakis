@@ -38,6 +38,7 @@ import           SortDef                            (SortDef (SortDef))
 import           SortId                             (SortId, sortIdString)
 import           StdTDefs                           (chanIdHit, chanIdMiss,
                                                      chanIdQstep)
+import           TxsDefs                            (ModelId (ModelId))
 import           TxsDefs                            (CnectDef (CnectDef), ConnDef (ConnDfroW, ConnDtoW),
                                                      GoalId (GoalId),
                                                      MapperDef (MapperDef),
@@ -53,7 +54,6 @@ import           VarId                              (VarId (VarId))
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.BehExprDefs
 import           TorXakis.Compiler.Defs.ModelDef
-import           TorXakis.Compiler.Defs.ModelId
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
@@ -396,3 +396,7 @@ mapperDeclsToTxsDefs mm mds =
       -- TODO: reduce this duplication. Bring all the definitions from `ModelDef` to here.
       procIdsOnly :: Map ProcId ()
       procIdsOnly = Map.fromList $ zip (keys @ProcId @ProcDef mm) (repeat ())
+
+-- | Create a model id from a model declaration.
+modelDeclToModelId :: ModelDecl -> CompilerM ModelId
+modelDeclToModelId md = ModelId (modelName md) . Id <$>  getNextId
