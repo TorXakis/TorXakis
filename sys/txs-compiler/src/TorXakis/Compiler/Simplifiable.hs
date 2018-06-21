@@ -1,6 +1,25 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ViewPatterns      #-}
-module TorXakis.Compiler.Simplifiable where
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.Simplifiable
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- 'TorXakis' expressions that can be simplified.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.Simplifiable
+    (simplify)
+where
 
 import           Control.Lens    (over)
 import           Data.Data.Lens  (uniplate)
@@ -13,9 +32,9 @@ import           Data.Text       (Text)
 
 import qualified BehExprDefs     as BExpr
 import           CnectId         (CnectId)
-import           FreeMonoidX     (FreeMonoidX (FMX), mapTerms)
+import           FreeMonoidX     (FreeMonoidX, mapTerms)
 import           FuncDef         (FuncDef (FuncDef))
-import           FuncId          (FuncId (FuncId), name)
+import           FuncId          (FuncId (FuncId))
 import           FuncTable       (FuncTable, Signature (Signature), toMap)
 import           GoalId          (GoalId)
 import           ProcId          (ProcId)
@@ -26,24 +45,21 @@ import           TxsDefs         (ActOffer (ActOffer), BExpr, BExprView (ActionP
                                   ChanOffer (Exclam, Quest),
                                   CnectDef (CnectDef),
                                   ConnDef (ConnDfroW, ConnDtoW),
-                                  MapperDef (MapperDef), MapperId (MapperId),
-                                  ModelDef (ModelDef), ModelId (ModelId),
-                                  Offer (Offer), ProcDef (ProcDef),
-                                  PurpDef (PurpDef), Trans (Trans), actionPref,
-                                  guard, procInst, stAut, valueEnv)
+                                  MapperDef (MapperDef), MapperId,
+                                  ModelDef (ModelDef), ModelId, Offer (Offer),
+                                  ProcDef (ProcDef), PurpDef (PurpDef),
+                                  Trans (Trans), actionPref, guard, procInst,
+                                  stAut, valueEnv)
 import           ValExpr         (ValExpr,
                                   ValExprView (Vfunc, Vite, Vproduct, Vsum),
-                                  cstrITE, cstrProduct, cstrSum, cstrVar)
+                                  cstrITE, cstrProduct, cstrSum)
 import qualified ValExpr
 import           VarId           (VarId)
 
--- | TODO: probably a better name will be 'BetaReducible' or something like
--- that. But we have to be careful about how this beta-reduction operation is
--- defined.
+-- | 'TorXakis' expressions that can be simplified.
 class Simplifiable e where
     -- | Simplify the expressions by applying the functions defined in the function table.
     --
-    -- TODO: Return an Either instead of forcing the instances of this class to throw an error.
     simplify :: FuncTable VarId
              -> [Text] -- ^ Symbols that are allowed to be simplified (used for
                        -- compliance with old TorXakis compiler)
@@ -55,16 +71,17 @@ instance Simplifiable (ValExpr VarId) where
                     -- need to be compliant with the old TorXakis compiler we
                     -- can optimize further.
     simplify ft fns ex@(ValExpr.view -> Vfunc (FuncId n _ aSids rSid) vs) =
-        -- TODO: For now make the simplification only if "n" is a predefined
+        -- NOTE: For now make the simplification only if "n" is a predefined
         -- symbol. Once compliance with the current `TorXakis` compiler is not
-        -- needed we can remove this constraint and simplify further.
+        -- needed we can remove this constraint and simplify further. However,
+        -- care must be taken with recursive functions to avoid infinite calls
+        -- to `simplify`.
         if n `elem` fns
-        then fromMaybe (error "Could not apply handler") $ do
+        then fromMaybe ex $ do
             sh <- Map.lookup n (toMap ft)
             h  <- Map.lookup (Signature aSids rSid) sh
             return $ h (simplify ft fns <$> vs)
         else ex
-
     simplify ft fns (ValExpr.view -> Vite ex0 ex1 ex2) =
         cstrITE
         (simplify ft fns ex0)
