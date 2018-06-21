@@ -1,22 +1,40 @@
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections     #-}
-{-# LANGUAGE TypeFamilies      #-}
-module TorXakis.Compiler.ValExpr.FuncDef where
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+{-# LANGUAGE DataKinds        #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TupleSections    #-}
+{-# LANGUAGE TypeFamilies     #-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.ValExpr.FuncDef
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Compilation functions related to 'TorXakis' function definitions.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.ValExpr.FuncDef
+    ( FuncDefInfo
+    , funcHandler
+    , funcDeclToSH
+    , funcDeclsToFuncDefs
+    , innerSigHandlerMap
+    , funcDef
+    )
+where
 
 import           Control.Arrow                     (left, (&&&))
-import           Control.Lens                      ((^..))
-import           Control.Lens.Plated               (cosmosOn)
-import           Data.Data.Lens                    (biplate, template)
+import           Control.Monad.Error.Class         (liftEither)
 import           Data.Either                       (partitionEithers)
-import           Data.List                         (find)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
 import           Data.Monoid                       (mempty, (<>))
-import qualified Data.Set                          as Set
-import           Data.Text                         (Text)
-import qualified Data.Text                         as T
 import           GHC.Exts                          (fromList)
 import           Prelude                           hiding (lookup)
 
@@ -24,20 +42,19 @@ import           FuncDef                           (FuncDef (FuncDef))
 import           FuncId                            (FuncId, funcargs, funcsort)
 import           FuncTable                         (Handler,
                                                     Signature (Signature))
-import           SortId                            (SortId)
-import           ValExpr                           (cstrConst, cstrFunc,
-                                                    cstrVar)
+import           ValExpr                           (cstrFunc)
 import           VarId                             (VarId)
 
-import           Control.Monad.Error.Class         (liftEither)
-import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.Maps
-import           TorXakis.Compiler.Maps.VarRef
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.ValExpr.FuncId
-import           TorXakis.Compiler.ValExpr.ValExpr
-import           TorXakis.Parser.Data
+import           TorXakis.Compiler.Data            (CompilerM)
+import           TorXakis.Compiler.Error           (Error (Errors))
+import           TorXakis.Compiler.Maps            (join, (.@), (.@@))
+import           TorXakis.Compiler.Maps.VarRef     (varDefsFromExp)
+import           TorXakis.Compiler.MapsTo          ((:&) ((:&)), Contents, In,
+                                                    MapsTo, innerMap, lookup)
+import           TorXakis.Compiler.ValExpr.ValExpr (expDeclToValExpr)
+import           TorXakis.Parser.Data              (FuncDecl, FuncDeclE, Loc,
+                                                    VarDeclE, VarRefE, funcBody,
+                                                    funcParams, getLoc)
 
 -- | Make a function @Signature@-@Handler@ pair from a function @FuncDecl@.
 funcDeclToSH :: Map (Loc FuncDeclE) FuncId
@@ -49,14 +66,7 @@ funcDeclToSH fids f = do
         handler = cstrFunc (Map.empty :: Map FuncId (FuncDef VarId)) fid
     return (getLoc f, (sig, handler))
 
--- | Version that replaces the constraint:
---
--- > MapsTo (Loc FuncDeclE) FuncId mm
---
--- By the constraint:
---
--- > MapsTo FuncId (Signature, Handler VarId)
---
+-- | Compile function declarations to function definitions.
 funcDeclsToFuncDefs :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                        , MapsTo (Loc VarDeclE) VarId mm
                        , MapsTo (Loc FuncDeclE) FuncId mm
@@ -67,7 +77,6 @@ funcDeclsToFuncDefs :: ( MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDe
                     -> [FuncDecl]
                     -> CompilerM (Map FuncId FuncDefInfo)
 funcDeclsToFuncDefs mm fSHs fs = liftEither $ do
-    -- TODO: this map should be calculated globally.
     fVDs <- varDefsFromExp (fSHs :& mm) fs
     gFuncDeclsToFuncDefs mempty fVDs fs
     where
@@ -109,6 +118,7 @@ funcDeclToFuncDef mm fSHs fVDs f = left (,f) $ do
                 _  -> handler'
     return (fid, FuncDefInfo fdef sig fhandler)
 
+-- | Return the inner signal handler map of the composite map.
 innerSigHandlerMap :: ( MapsTo (Loc FuncDeclE) FuncId mm
                      ,  MapsTo FuncId FuncDefInfo mm )
                    => mm -> Map (Loc FuncDeclE) (Signature, Handler VarId)
@@ -121,6 +131,7 @@ innerSigHandlerMap mm = join fdeclsMap sigHdlrMap
       fdeclsMap :: Map (Loc FuncDeclE) FuncId
       fdeclsMap = innerMap mm
 
+-- | Information about a function definition.
 data FuncDefInfo = FuncDefInfo
     { funcDef     :: FuncDef VarId
     , funcSig     :: Signature
