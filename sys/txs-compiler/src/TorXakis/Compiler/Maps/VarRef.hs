@@ -1,23 +1,42 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
--- | Functions to manipulate maps of variable references.
-module TorXakis.Compiler.Maps.VarRef where
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.Maps.VarRef
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Functions to manipulate maps of variable references.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.Maps.VarRef
+    ( varIdForRef
+    , varDefsFromExp
+    )
+where
 
-import           Control.Arrow            (first, second, (+++), (|||))
+import           Control.Arrow            ((|||))
 import           Control.Lens             ((^..))
 import           Control.Lens.Plated      (cosmosOn)
 import           Data.Data                (Data)
-import           Data.Data.Lens           (biplate, template)
+import           Data.Data.Lens           (biplate)
 import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
 import qualified Data.Set                 as Set
 import           Data.Typeable            (Typeable)
 
 import           FuncTable                (Handler, Signature)
-import           SortId                   (SortId)
-import           VarId                    (VarId, varsort)
+import           VarId                    (VarId)
 
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
@@ -55,7 +74,8 @@ varDefsFromExp mm e = varRefsToVarDefs eVrvds vids fshs
       fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
       fshs = innerMap mm
 
--- | Construct a map from variable references to either variable id's or signature-handler pairs.
+-- | Construct a map from variable references to either variable id's or
+-- signature-handler pairs.
 --
 -- The three given maps are joined to calculate the end-result. Every
 -- declaration location must have an image in the second o third map, otherwise
@@ -64,9 +84,9 @@ varRefsToVarDefs :: forall a b . Map (Loc VarRefE) (Either (Loc VarDeclE) [Loc F
                  -> Map (Loc VarDeclE) a
                  -> Map (Loc FuncDeclE) b
                  -> Either Error (Map (Loc VarRefE) (Either a [b]))
-varRefsToVarDefs vdecls vids fshs = do
-    defs <- traverse declToDef (snd <$> vdecls')
-    return $ Map.fromAscList $ zip (fst <$> vdecls') defs
+varRefsToVarDefs vdecls vids fshs =
+    Map.fromAscList . zip (fst <$> vdecls') <$>
+        traverse declToDef (snd <$> vdecls')
     where
       vdecls' :: [(Loc VarRefE, Either (Loc VarDeclE) [Loc FuncDeclE])]
       vdecls' = Map.toList vdecls
@@ -91,14 +111,12 @@ varRefsToVarDefs vdecls vids fshs = do
                 , _errorMsg =  "varRefsToVarDefs: Signature-Handler not found."
                 }
 
-
+-- | Get the variable id that corresponds to the given reference.
 varIdForRef :: forall a . Typeable a
             => Map (Loc VarRefE) (Either VarId a)
             -> Loc VarRefE
             -> Either Error VarId
-varIdForRef vrvds vr  = do
-    eVid <- vrvds .@ vr
-    Right ||| err $ eVid
+varIdForRef vrvds vr = Right ||| err =<< vrvds .@ vr
     where
       err :: a -> Either Error VarId
       err _ = Left Error
@@ -106,25 +124,3 @@ varIdForRef vrvds vr  = do
               , _errorLoc = getErrorLoc vr
               , _errorMsg = "VarId not found."
               }
-
-signaturesForRef :: Map (Loc VarRefE) (Either a [Signature])
-                -> Loc VarRefE
-                -> Either Error [Signature]
-signaturesForRef = undefined
-
-vrvdSortIdSigs :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
-               -> Map (Loc VarRefE) (Either SortId [Signature])
-vrvdSortIdSigs = Map.map (varsort +++ fmap fst)
-
-addSortIds :: [(Loc VarRefE, SortId)]
-           -> Map (Loc VarRefE) (Either SortId [Signature])
-           -> Map (Loc VarRefE) (Either SortId [Signature])
-addSortIds sids = Map.union (Map.fromList (second Left <$> sids))
-
-addSortIdsMap :: Map (Loc VarRefE) SortId
-              -> Map (Loc VarRefE) (Either SortId [Signature])
-              -> Map (Loc VarRefE) (Either SortId [Signature])
-addSortIdsMap sids = Map.union (Map.map Left sids)
-
-asVarRefMap :: Map (Loc VarDeclE) a -> Map (Loc VarRefE) a
-asVarRefMap = Map.fromList . fmap (first asVarReflLoc) . Map.toList
