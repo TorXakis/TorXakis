@@ -98,3 +98,6 @@ identifierNE idStart = T.cons <$> idStart <*> idEnd
     where
       idEnd  = T.pack <$> many txsIdentLetter
 
+inP :: TxsParser a -> TxsParser a
+inP p = txsSymbol "IN" *> p <* txsSymbol "NI"
+

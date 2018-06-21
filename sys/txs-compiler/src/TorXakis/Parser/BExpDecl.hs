@@ -1,6 +1,31 @@
-module TorXakis.Parser.BExpDecl where
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Parser.BExpDecl
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Parser for behavior expression declarations.
+--------------------------------------------------------------------------------
+module TorXakis.Parser.BExpDecl
+    ( bexpDeclP
+    , procExitP
+    , chParamsP
+    , offerP
+    , chanOfferP
+    , actOfferP
+    , offersP
+    )
+where
 
-import           Control.Monad               (void)
 import qualified Data.Text                   as T
 import           Text.Parsec                 (many, notFollowedBy, optionMaybe,
                                               sepBy, sepBy1, try, (<?>), (<|>))
@@ -13,14 +38,14 @@ import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
 import           TorXakis.Parser.TypeDefs
 import           TorXakis.Parser.ValExprDecl
-import           TorXakis.Parser.VarDecl
 
+-- | Parser for behavior expressions declarations.
 bexpDeclP :: TxsParser BExpDecl
 bexpDeclP = buildExpressionParser table bexpTermP
     <?> "Behavior expression"
     where
-      table = [ [Infix choiceP AssocLeft]
-              , [Infix parOpP AssocLeft]
+      table = [ [ Infix choiceP AssocLeft]
+              , [ Infix parOpP AssocLeft]
               , [ Infix enableP AssocLeft
                 , Infix disableP AssocLeft
                 , Infix interruptP AssocLeft]
@@ -74,7 +99,7 @@ stopP = try (txsSymbol "STOP") >> return Stop
 actPrefixP :: TxsParser BExpDecl
 actPrefixP = ActPref <$> mkLoc <*> actOfferP <*> actContP
     where
-      actContP = (try (txsSymbol ">->") >> bexpTermP)--bexpDeclP)
+      actContP = (try (txsSymbol ">->") >> bexpTermP)
              <|> return Stop
 
 guardP :: TxsParser BExpDecl
@@ -84,6 +109,7 @@ guardP = do
     be <- bexpTermP
     return $ Guard g be
 
+-- | Parser for action offers.
 actOfferP :: TxsParser ActOfferDecl
 actOfferP = ActOfferDecl <$> offersP <*> actConstP
     where
@@ -91,6 +117,7 @@ actOfferP = ActOfferDecl <$> offersP <*> actConstP
       actConstP =  fmap Just (try (txsSymbol "[[") *> valExpP <* txsSymbol "]]")
                <|> return Nothing
 
+-- | Parser for offers.
 offersP :: TxsParser [OfferDecl]
 offersP =  predefOffer "ISTEP"
        <|> predefOffer "QSTEP"
@@ -105,6 +132,7 @@ offersP =  predefOffer "ISTEP"
               txsSymbol str
               return [OfferDecl (mkChanRef (T.pack str) l) []]
 
+-- | Parser for offers.
 offerP :: TxsParser OfferDecl
 offerP = do
     l     <- mkLoc
@@ -115,6 +143,7 @@ offerP = do
 chanOffersP :: TxsParser [ChanOfferDecl]
 chanOffersP = many chanOfferP
 
+-- | Parser for Channel offers.
 chanOfferP :: TxsParser ChanOfferDecl
 chanOfferP = try questOfferP <|> exclOfferP
     where
@@ -130,9 +159,7 @@ letBExpP :: TxsParser BExpDecl
 letBExpP = do
     try (txsSymbol "LET")
     vss <- letSeqVarDeclsP
-    txsSymbol "IN"
-    subEx <- bexpDeclP
-    txsSymbol "NI"
+    subEx <- inP bexpDeclP
     return $ LetBExp vss subEx
 
 hideP :: TxsParser BExpDecl
@@ -140,9 +167,7 @@ hideP = do
     l <- mkLoc
     try (txsSymbol "HIDE")
     crs <- chParamsP
-    txsSymbol "IN"
-    subEx <- bexpDeclP
-    txsSymbol "NI"
+    subEx <- inP bexpDeclP
     return $ Hide l crs subEx
 
 procInstP :: TxsParser BExpDecl
@@ -160,9 +185,7 @@ acceptP = do
     l <- mkLoc
     try (txsSymbol "ACCEPT")
     ofrs <- chanOffersP
-    txsSymbol "IN"
-    be <- bexpDeclP
-    txsSymbol "NI"
+    be <- inP bexpDeclP
     return $ Accept l ofrs be
 
 chanrefsP :: TxsParser [ChanRef]
@@ -170,6 +193,7 @@ chanrefsP = txsSymbol "["
             *> (mkChanRef <$> identifier <*> mkLoc) `sepBy` txsSymbol ","
             <* txsSymbol "]"
 
+-- | Parser for channel parameters.
 chParamsP :: TxsParser [ChanDecl]
 chParamsP = do
     txsSymbol "["
@@ -177,6 +201,7 @@ chParamsP = do
     txsSymbol "]"
     return res
 
+-- | Parser for exit declarations.
 procExitP :: TxsParser ExitSortDecl
 procExitP =  (ExitD <$> (txsSymbol "EXIT" *> sortP `sepBy` txsSymbol "#"))
          <|> (txsSymbol "HIT" >> return HitD)

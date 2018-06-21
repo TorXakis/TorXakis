@@ -1,4 +1,25 @@
-module TorXakis.Parser.ChanDecl where
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Parser.ChanDecl
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Parser for channel declarations
+--------------------------------------------------------------------------------
+module TorXakis.Parser.ChanDecl
+    ( chanDeclsOfSortP
+    , chanDeclsP
+    )
+where
 
 import           Control.Monad            (replicateM)
 import           Text.Parsec              (sepBy, sepBy1, (<|>))
