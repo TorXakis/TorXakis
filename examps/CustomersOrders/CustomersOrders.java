@@ -47,7 +47,6 @@ public class CustomersOrders {
                         "</orders>" +
                         "</Report>" +
                         TorXakisMsgCloseTag;
-        System.out.println("Report: " + report);
         return report;
     }
 
