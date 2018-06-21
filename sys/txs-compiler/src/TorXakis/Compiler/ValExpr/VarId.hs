@@ -1,6 +1,29 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
-module TorXakis.Compiler.ValExpr.VarId where
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.ValExpr.VarId
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Compilation functions related to 'TorXakis' variable id's.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.ValExpr.VarId
+    ( mkVarIds
+    , varIdFromVarDecl
+    , DeclaresVariables
+    , generateVarIds
+    )
+where
 
 import           Data.Map                 (Map)
 import qualified Data.Map                 as Map
@@ -10,15 +33,28 @@ import           Id                       (Id (Id))
 import           SortId                   (SortId)
 import           VarId                    (VarId (VarId))
 
-import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Parser.Data
+import           TorXakis.Compiler.Data   (CompilerM, getNextId)
+import           TorXakis.Compiler.MapsTo (MapsTo, lookupM)
+import           TorXakis.Parser.Data     (ActOfferDecl (ActOfferDecl), BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
+                                           ChanOfferDecl (ExclD, QuestD),
+                                           ExpChild (LetExp), ExpDecl, FuncDecl,
+                                           HasLoc, IsVariable, LetVarDecl, Loc,
+                                           OfferDecl (OfferDecl), ParLetVarDecl,
+                                           TestGoalDecl,
+                                           Transition (Transition), VarDecl,
+                                           VarDeclE, childExps, expChild,
+                                           funcBody, funcParams, getLoc,
+                                           testGoalDeclBExp, varDeclExp,
+                                           varName)
 
+-- | Generate the variable ids that are defined in a list of function
+-- declarations.
 generateVarIds :: (MapsTo (Loc VarDeclE) SortId mm)
                => mm -> [FuncDecl] -> CompilerM (Map (Loc VarDeclE) VarId)
 generateVarIds mm fs = Map.fromList . concat <$>
     traverse (varIdsFromFuncDecl mm) fs
 
+-- | Generate the variable ids that are defined in a function declaration.
 varIdsFromFuncDecl :: (MapsTo (Loc VarDeclE) SortId mm)
                    => mm -> FuncDecl -> CompilerM [(Loc VarDeclE, VarId)]
 varIdsFromFuncDecl e fd = do
@@ -26,6 +62,7 @@ varIdsFromFuncDecl e fd = do
     bVids <- varIdsFromExpDecl e (funcBody fd)
     return $ pVids ++ bVids
 
+-- | Generate a variable id from a variable declaration.
 varIdFromVarDecl :: ( MapsTo (Loc VarDeclE) SortId mm
                      , IsVariable v, HasLoc v VarDeclE)
                  => mm -> v -> CompilerM (Loc VarDeclE, VarId)
@@ -36,14 +73,16 @@ varIdFromVarDecl mm v = do
 
 -- | Generate 'VarId''s for each variable declaration.
 --
--- TODO: property to check:
+varIdsFromExpDecl :: (MapsTo (Loc VarDeclE) SortId mm)
+                  => mm -> ExpDecl -> CompilerM [(Loc VarDeclE, VarId)]
+varIdsFromExpDecl mm ex = case expChild ex of
+-- NOTE: property to check:
 --
 -- the number of 'Loc VarDeclE' equals the length of the list returned by this function.
 --
 -- This will imply that each location of a variable declaration introduces a 'VarId'.
-varIdsFromExpDecl :: (MapsTo (Loc VarDeclE) SortId mm)
-                  => mm -> ExpDecl -> CompilerM [(Loc VarDeclE, VarId)]
-varIdsFromExpDecl mm ex = case expChild ex of
+--
+-- Maybe this function can be replaced by the use of @getKvs@ in the @DefinesAMap@ class.
     LetExp vs subEx -> do
         vdMap  <- concat <$> traverse (traverse (varIdFromVarDecl mm)) (toList <$> vs)
         vdExpMap <- concat <$>
@@ -53,8 +92,9 @@ varIdsFromExpDecl mm ex = case expChild ex of
     _ ->
         concat <$> traverse (varIdsFromExpDecl mm) (childExps ex)
 
-
+-- | Expressions that declare variables.
 class DeclaresVariables e where
+    -- | Create variable id's from the given expression.
     mkVarIds :: MapsTo (Loc VarDeclE) SortId mm
              => mm -> e -> CompilerM [(Loc VarDeclE, VarId)]
 
