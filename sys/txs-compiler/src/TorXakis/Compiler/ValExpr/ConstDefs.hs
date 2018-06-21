@@ -15,7 +15,9 @@ See LICENSE at root directory of this repository.
 --
 -- Compilation to 'TorXakis' @Const@'s.
 --------------------------------------------------------------------------------
-module TorXakis.Compiler.ValExpr.ConstDefs where
+module TorXakis.Compiler.ValExpr.ConstDefs
+    (constToConstDef)
+where
 
 import qualified ConstDefs
 import           SortId               (SortId)
