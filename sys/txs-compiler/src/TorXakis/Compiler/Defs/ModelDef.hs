@@ -77,16 +77,7 @@ modelDeclToModelDef mm md = do
 
     ins  <- Set.fromList <$> traverse (lookupChId mm') (getLoc <$> modelIns md)
     outs <- Set.fromList <$> traverse (lookupChId mm') (getLoc <$> modelOuts md)
-    let
-        -- Channels used in the model.
-        usedChIds :: [Set ChanId]
-        usedChIds = fmap Set.singleton (sortByUnid . nub . Map.elems $ usedChIdMap mm')
-        -- Sort the channels by its id, since we have to comply with the current TorXakis compiler.
-        sortByUnid :: [ChanId] -> [ChanId]
-        sortByUnid = sortBy cmpChUnid
-            where
-              cmpChUnid c0 c1 = unid c0 `compare` unid c1
-    syncs <- maybe (return usedChIds)
+    syncs <- maybe (return (usedChIds mm'))
                    (traverse (chRefsToChIdSet mm'))
                    (modelSyncs md)
     let

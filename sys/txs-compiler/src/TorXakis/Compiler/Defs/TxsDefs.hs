@@ -1,71 +1,118 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE TypeFamilies      #-}
-module TorXakis.Compiler.Defs.TxsDefs where
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.Defs.TxsDefs
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Compilation functions related to 'TorXakis' definitions.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.Defs.TxsDefs
+    ( adtsToTxsDefs
+    , cnectDeclsToTxsDefs
+    , mapperDeclsToTxsDefs
+    , modelDeclsToTxsDefs
+    , purpDeclsToTxsDefs
+    )
+where
 
-import           Control.Monad                      (unless)
+import           Control.Monad                      (unless, when)
 import           Control.Monad.Error.Class          (liftEither, throwError)
-import           Data.List                          (nub, sortBy)
 import           Data.List.Unique                   (repeated)
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
-import           Data.Map.Merge.Strict              (WhenMatched, WhenMissing,
-                                                     mergeA, traverseMissing,
+import           Data.Map.Merge.Strict              (mergeA, traverseMissing,
                                                      zipWithAMatched)
-import           Data.Ord                           (compare)
 import           Data.Semigroup                     ((<>))
-import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 
-import           BehExprDefs                        (BExpr,
-                                                     ChanOffer (Exclam, Quest),
+import           BehExprDefs                        (ChanOffer (Exclam, Quest),
                                                      Offer (Offer))
-import           ChanId                             (ChanId, name, unid)
+import           ChanId                             (ChanId)
 import           CnectId                            (CnectId (CnectId))
-import           ConstDefs                          (Const (Cstring))
 import           CstrId                             (CstrId)
-import           FuncDef                            (FuncDef)
-import           FuncId                             (FuncId)
 import           FuncTable                          (Handler, Signature)
 import           Id                                 (Id (Id))
-import           ProcId                             (ProcId)
+import           ProcId                             (ExitSort (NoExit), ProcId)
 import           PurpId                             (PurpId (PurpId))
 import           SortDef                            (SortDef (SortDef))
 import           SortId                             (SortId, sortIdString)
 import           StdTDefs                           (chanIdHit, chanIdMiss,
                                                      chanIdQstep)
-import           TxsDefs                            (ModelId (ModelId))
 import           TxsDefs                            (CnectDef (CnectDef), ConnDef (ConnDfroW, ConnDtoW),
                                                      GoalId (GoalId),
                                                      MapperDef (MapperDef),
                                                      MapperId (MapperId),
-                                                     ModelDef, ModelId, ProcDef,
+                                                     ModelDef,
+                                                     ModelId (ModelId), ProcDef,
                                                      PurpDef (PurpDef), TxsDefs,
                                                      VExpr, cstrDefs, empty,
-                                                     modelDefs, sortDefs)
+                                                     sortDefs)
 import qualified TxsDefs
-import           ValExpr                            (cstrConst)
-import           VarId                              (VarId (VarId))
+import           VarId                              (VarId)
 
-import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Defs.BehExprDefs
-import           TorXakis.Compiler.Defs.ModelDef
-import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.Maps
-import           TorXakis.Compiler.Maps.DefinesAMap
-import           TorXakis.Compiler.Maps.VarRef
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.ValExpr.CstrDef
-import           TorXakis.Compiler.ValExpr.FuncDef
-import           TorXakis.Compiler.ValExpr.SortId
-import           TorXakis.Compiler.ValExpr.ValExpr
-import           TorXakis.Compiler.ValExpr.VarId
-import           TorXakis.Parser.Data
+import           TorXakis.Compiler.Data             (CompilerM, getNextId)
+import           TorXakis.Compiler.Defs.BehExprDefs (toBExpr, toOffer)
+import           TorXakis.Compiler.Defs.ModelDef    (chRefsToChIdSet,
+                                                     modelDeclToModelDef)
+import           TorXakis.Compiler.Error            (Error (Error), ErrorType (InvalidExpression, TypeMismatch),
+                                                     getErrorLoc, _errorLoc,
+                                                     _errorMsg, _errorType)
+import           TorXakis.Compiler.Maps             (dropHandler, lookupChId,
+                                                     usedChIds, (.@@))
+import           TorXakis.Compiler.Maps.DefinesAMap (getMap)
+import           TorXakis.Compiler.Maps.VarRef      (varDefsFromExp)
+import           TorXakis.Compiler.MapsTo           ((:&) ((:&)), Contents, In,
+                                                     MapsTo, innerMap, keys,
+                                                     values, (<.+>))
+import           TorXakis.Compiler.ValExpr.CstrDef  (compileToCstrDefs)
+import           TorXakis.Compiler.ValExpr.SortId   (exitSort, inferVarTypes)
+import           TorXakis.Compiler.ValExpr.ValExpr  (expDeclToValExpr)
+import           TorXakis.Compiler.ValExpr.VarId    (mkVarIds)
+import           TorXakis.Parser.Data               (ADTDecl, ChanDeclE, ChanOfferDecl (ExclD, QuestD),
+                                                     ChanRefE, CnectDecl,
+                                                     CnectItem,
+                                                     CnectItemType (ChanIn, ChanOut),
+                                                     CnectType (CTClient, CTServer),
+                                                     CodecItem (CodecItem),
+                                                     CodecType (Decode, Encode),
+                                                     CstrE, FuncDeclE, Loc,
+                                                     MapperDecl, ModelDecl,
+                                                     PurpDecl, VarDeclE,
+                                                     VarRefE, chanRefName,
+                                                     chanRefOfOfferDecl,
+                                                     cnectCh,
+                                                     cnectDeclCnectItems,
+                                                     cnectDeclCodecs,
+                                                     cnectDeclName,
+                                                     cnectDeclType, cnectType,
+                                                     codecOffer, codecType,
+                                                     getLoc, host, mapperBExp,
+                                                     mapperIns, mapperName,
+                                                     mapperOuts, mapperSyncs,
+                                                     modelName, port,
+                                                     purpDeclGoals, purpDeclIns,
+                                                     purpDeclName, purpDeclOuts,
+                                                     purpDeclSyncs,
+                                                     testGoalDeclBExp,
+                                                     testGoalDeclName)
 
+-- | Compile a list of ADT declarations into @TxsDefs@.
 adtsToTxsDefs :: ( MapsTo Text SortId mm
                  , MapsTo (Loc CstrE) CstrId mm)
               => mm -> [ADTDecl] -> CompilerM TxsDefs
@@ -76,11 +123,14 @@ adtsToTxsDefs mm ds = do
         , cstrDefs = lCstrDefs
         }
 
+-- | Extract the @SortDef@'s from the composite map.
 envToSortDefs :: ( MapsTo Text SortId mm )
               => mm -> Map SortId SortDef
 envToSortDefs mm = Map.fromList $
     zip (values @Text mm) (repeat SortDef)
 
+-- | Compile a list of model declarations into a map from model id's to model
+-- definitions.
 modelDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , MapsTo Text (Loc ChanDeclE) mm
                        , MapsTo (Loc ChanDeclE) ChanId mm
@@ -101,6 +151,8 @@ modelDeclsToTxsDefs mm mds =
       procIdsOnly = Map.fromList $ zip (keys @ProcId @ProcDef mm) (repeat ())
       mm' = mm :& procIdsOnly
 
+-- | Compile a list of purpose declarations into a map from purpose id's to
+-- purpose definitions.
 purpDeclsToTxsDefs :: ( MapsTo Text SortId mm
                       , MapsTo Text (Loc ChanDeclE) mm
                       , MapsTo (Loc ChanDeclE) ChanId mm
@@ -122,9 +174,7 @@ purpDeclsToTxsDefs mm pds =
       procIdsOnly = Map.fromList $ zip (keys @ProcId @ProcDef mm) (repeat ())
 
       purpDeclToPurpId :: PurpDecl -> CompilerM PurpId
-      purpDeclToPurpId pd = do
-          pId <- getNextId
-          return $ PurpId (purpDeclName pd) (Id pId)
+      purpDeclToPurpId pd = PurpId (purpDeclName pd) . Id <$> getNextId
 
       purpDeclToPurpDef :: PurpDecl -> CompilerM PurpDef
       purpDeclToPurpDef pd = do
@@ -133,17 +183,7 @@ purpDeclsToTxsDefs mm pds =
           -- Add the channel declaration introduced by the hide operator.
           purpChIds <- getMap mm pd :: CompilerM (Map (Loc ChanDeclE) ChanId)
           let mm' = chDecls :& (purpChIds <.+> mm) :& procIdsOnly
-          -- TODO: reduce duplication w.r.t 'ModelDef.modelDeclToModelDef' when
-          -- determining 'insyncs', 'outsyncs', and 'splsyncs'.
-          let
-              usedChIds :: [Set ChanId]
-              usedChIds = fmap Set.singleton (sortByUnid . nub . Map.elems $ usedChIdMap mm')
-
-              sortByUnid :: [ChanId] -> [ChanId]
-              sortByUnid = sortBy cmpChUnid
-                  where
-                    cmpChUnid c0 c1 = unid c0 `compare` unid c1
-          syncs <- maybe (return usedChIds)
+          syncs <- maybe (return (usedChIds mm'))
                          (traverse (chRefsToChIdSet mm'))
                          (purpDeclSyncs pd)
           ins  <- Set.fromList <$> traverse (lookupChId mm') (getLoc <$> purpDeclIns pd)
@@ -156,9 +196,7 @@ purpDeclsToTxsDefs mm pds =
                          , Set.singleton chanIdMiss
                          ]
           -- Compile the goals
-          let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-              fshs = innerMap mm
-              fss = fst <$> fshs
+          let fss = dropHandler (innerMap mm)
           bTypes <- Map.fromList <$> inferVarTypes (fss :& mm') (purpDeclGoals pd)
           bvIds  <- Map.fromList <$> mkVarIds bTypes (purpDeclGoals pd)
           let mm'' = bTypes <.+> (bvIds <.+> mm')
@@ -170,6 +208,8 @@ purpDeclsToTxsDefs mm pds =
           gls <- traverse compileTestGoalDecl (purpDeclGoals pd)
           return $ PurpDef insyncs outsyncs splsyncs gls
 
+-- | Compile a list of connect declarations into a map from connect id's to
+-- connect definitions.
 cnectDeclsToTxsDefs :: ( MapsTo Text SortId mm
                        , MapsTo Text (Loc ChanDeclE) mm
                        , MapsTo (Loc ChanDeclE) ChanId mm
@@ -186,9 +226,7 @@ cnectDeclsToTxsDefs mm cds =
                           <*> traverse cnectDeclToCnectDef cds)
     where
       cnectDeclToCnectId :: CnectDecl -> CompilerM CnectId
-      cnectDeclToCnectId cd = do
-          cId <- getNextId
-          return $ CnectId (cnectDeclName cd) (Id cId)
+      cnectDeclToCnectId cd = CnectId (cnectDeclName cd) . Id <$> getNextId
 
       cnectDeclToCnectDef :: CnectDecl -> CompilerM CnectDef
       cnectDeclToCnectDef cd = do
@@ -201,9 +239,10 @@ cnectDeclsToTxsDefs mm cds =
                   let ivSortMap = Map.singleton (getLoc iv) sortIdString
                   vIdMap   <- Map.fromList <$> mkVarIds ivSortMap chOffr
                   vId <- vIdMap .@@ getLoc iv
-                  -- TODO: we should assert that offr does not contain question
-                  -- marks, otherwise the user might get a different error (for
-                  -- instance because a variable might not be declared).
+                  -- NOTE: in the future smart constructors should assert that
+                  -- offr does not contain question marks, otherwise the user
+                  -- might get a different error (for instance because a
+                  -- variable might not be declared).
                   let mm'' = ivSortMap <.+> (vIdMap <.+> mm')
                   civds <- liftEither $ varDefsFromExp mm'' ci
                   Offer chId chOffrs <- toOffer mm'' civds offr
@@ -212,26 +251,22 @@ cnectDeclsToTxsDefs mm cds =
               toConnDef (_, _, CodecItem _ (ExclD _) Decode) =
                   throwError Error
                   { _errorType = InvalidExpression
-                  , _errorLoc  = getErrorLoc cd -- TODO: add a location to CodecItem to be more precise.
+                  , _errorLoc  = getErrorLoc cd -- NOTE: we could add a location to CodecItem to be more precise.
                   , _errorMsg = "DECODE domain shall be one '?' of String\n"
                   }
               toConnDef(h, p, ci@(CodecItem offr (ExclD e) Encode)) = do
                   let
                       -- We don't need the proc ids' to infer the variable types of the offer.
-                      -- TODO: 'HasTypedVars' should be replaced by 'DefinesAMap'.
+                      -- NOTE: 'HasTypedVars' could be replaced by 'DefinesAMap'.
                       emptyProcIds :: Map ProcId ()
                       emptyProcIds = Map.empty
-                      fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-                      fshs = innerMap mm
-                      fss = fst <$> fshs
+                      fss = dropHandler (innerMap mm)
                   offrSIdMap <- Map.fromList <$> inferVarTypes (fss :& emptyProcIds :& mm') offr
                   offrVIdMap <- Map.fromList <$> mkVarIds offrSIdMap offr
                   let mm'' = offrSIdMap <.+> (offrVIdMap <.+> mm')
                   civds <- liftEither $ varDefsFromExp mm'' ci
                   Offer chId chOffrs <- toOffer mm'' civds offr
                   vIds <- traverse questVIds chOffrs
-                  -- TODO: make this map global once we put `inferVarTypes` and
-                  -- `mkVarIds` at the top level.
                   vExp <- liftEither $ expDeclToValExpr civds sortIdString e
                   return $ ConnDtoW chId h p vIds vExp
               toConnDef (_, _, CodecItem _ (QuestD _) Encode) =
@@ -335,6 +370,8 @@ cnectDeclsToTxsDefs mm cds =
           connDefs <- traverse toConnDef hostPortCnects
           return $ CnectDef (asCnectType $ cnectDeclType cd) (Map.elems connDefs)
 
+-- | Compile a list of mapper declarations into a map from mapper id's to
+-- mapper definitions.
 mapperDeclsToTxsDefs :: ( MapsTo Text SortId mm
                         , MapsTo Text (Loc ChanDeclE) mm
                         , MapsTo (Loc ChanDeclE) ChanId mm
@@ -352,9 +389,7 @@ mapperDeclsToTxsDefs mm mds =
                           <*> traverse mapperDeclToMapperDef mds)
     where
       mapperDeclToMapperId :: MapperDecl -> CompilerM MapperId
-      mapperDeclToMapperId md = do
-          mId <- getNextId
-          return $ MapperId (mapperName md) (Id mId)
+      mapperDeclToMapperId md = MapperId (mapperName md) . Id <$> getNextId
 
       mapperDeclToMapperDef :: MapperDecl -> CompilerM MapperDef
       mapperDeclToMapperDef md = do
@@ -362,10 +397,7 @@ mapperDeclsToTxsDefs mm mds =
           mprChIds <- getMap mm md :: CompilerM (Map (Loc ChanDeclE) ChanId)
           let mm' = chDecls :& (mprChIds <.+> mm) :& procIdsOnly
 
-          let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-              fshs = innerMap mm
-              fss = fst <$> fshs
-
+          let fss = dropHandler (innerMap mm)
           bTypes <- Map.fromList <$> inferVarTypes (fss :& mm') (mapperBExp md)
           bvIds  <- Map.fromList <$> mkVarIds bTypes (mapperBExp md)
           let mm'' = bTypes <.+> (bvIds <.+> mm')
@@ -375,25 +407,21 @@ mapperDeclsToTxsDefs mm mds =
 
           ins   <- traverse (lookupChId mm') (getLoc <$> mapperIns md)
           outs  <- traverse (lookupChId mm') (getLoc <$> mapperOuts md)
-          let
-              -- Channels used in the model.
-              usedChIds :: [Set ChanId]
-              usedChIds = fmap Set.singleton (sortByUnid . nub . Map.elems $ usedChIdMap mm')
-              -- Sort the channels by its id, since we have to comply with the current TorXakis compiler.
-              sortByUnid :: [ChanId] -> [ChanId]
-              sortByUnid = sortBy cmpChUnid
-                  where
-                    cmpChUnid c0 c1 = unid c0 `compare` unid c1
-          syncs <- maybe (return usedChIds)
+          syncs <- maybe (return (usedChIds mm'))
                          (traverse (chRefsToChIdSet mm'))
                          (mapperSyncs md)
 
-          --eSort <- exitSort mm'' (mapperBExp md)
-          -- TODO: assert the exit sort is NoExit!
+          eSort <- exitSort (fss :& mm'') (mapperBExp md)
+          when (eSort /= NoExit)
+              (throwError Error
+                  { _errorType = TypeMismatch
+                  , _errorLoc = getErrorLoc md
+                  , _errorMsg = "Exit sort of a mapper must be 'NoExit'."
+                  }
+              )
 
           return $ MapperDef ins outs syncs be
 
-      -- TODO: reduce this duplication. Bring all the definitions from `ModelDef` to here.
       procIdsOnly :: Map ProcId ()
       procIdsOnly = Map.fromList $ zip (keys @ProcId @ProcDef mm) (repeat ())
 

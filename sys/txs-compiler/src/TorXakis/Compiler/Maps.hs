@@ -44,6 +44,7 @@ module TorXakis.Compiler.Maps
     , usedChIdMap
     , findVarIdM
     , idefsNames
+    , usedChIds
       -- * Map manipulation
     , join
     , dropHandler
@@ -53,16 +54,19 @@ where
 import           Control.Arrow             (left, (|||))
 import           Control.Lens              ((.~))
 import           Control.Monad.Error.Class (catchError, liftEither, throwError)
+import           Data.List                 (nub, sortBy)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
 import           Data.Maybe                (catMaybes, maybe)
 import           Data.Monoid               ((<>))
+import           Data.Set                  (Set)
+import qualified Data.Set                  as Set
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           Data.Typeable             (Typeable)
 import           Prelude                   hiding (lookup)
 
-import           ChanId                    (ChanId)
+import           ChanId                    (ChanId, unid)
 import           FuncId                    (FuncId)
 import           FuncTable                 (Handler, Signature, sortArgs,
                                             sortRet)
@@ -284,3 +288,14 @@ usedChIdMap mm =  join (innerMap mm :: Map (Loc ChanRefE) (Loc ChanDeclE)) (inne
 dropHandler :: Map (Loc FuncDeclE) (Signature, Handler VarId)
             -> Map (Loc FuncDeclE) Signature
 dropHandler = fmap fst
+
+-- | Get the list of channel ids used in an expression (model, purpose, etc).
+usedChIds :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+             , MapsTo (Loc ChanDeclE) ChanId mm )
+          => mm -> [Set ChanId]
+usedChIds mm = fmap Set.singleton (sortByUnid . nub . Map.elems $ usedChIdMap mm)
+    where
+      sortByUnid :: [ChanId] -> [ChanId]
+      sortByUnid = sortBy cmpChUnid
+          where
+            cmpChUnid c0 c1 = unid c0 `compare` unid c1
