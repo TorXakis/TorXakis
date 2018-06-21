@@ -1,6 +1,36 @@
-module TorXakis.Parser.Common where
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Parser.Common
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Common types and functionality for the 'TorXakis' parser.
+--------------------------------------------------------------------------------
+module TorXakis.Parser.Common
+    ( TxsParser
+    , txsSymbol
+    , identifier
+    , mkLoc
+    , lcIdentifier
+    , txsLexeme
+    , ucIdentifier
+    , txsIntP
+    , txsStringP
+    , txsWhitespace
+    , inP
+    , tryIdentifier
+    )
+where
 
--- TODO: use selective imports.
 import           Control.Monad          (void)
 import           Control.Monad.Identity (Identity)
 import           Data.Text              (Text)
@@ -15,9 +45,6 @@ import           TorXakis.Parser.Data
 
 -- | Type of the parser intput stream.
 --
--- TODO: for now we use String's to be able to leverage on the 'haskell' token
--- parser, in the future we might want to change this to text, and benchmark
--- what is the performance gain.
 type ParserInput = String
 
 type TxsParser = ParsecT ParserInput St Identity
@@ -43,21 +70,28 @@ txsTokenP = makeTokenParser txsLangDef
 txsIdentLetter :: TxsParser Char
 txsIdentLetter = identLetter txsLangDef
 
-txsSymbol :: String -> TxsParser ()
+-- | Parse given symbol, discarding its result.
+txsSymbol :: String -- ^ String representation of the symbol.
+          -> TxsParser ()
 txsSymbol = void . symbol txsTokenP
 
+-- | Parser for lexemes.
 txsLexeme :: TxsParser a -> TxsParser a
 txsLexeme = lexeme txsTokenP
 
+-- | Parser that ignores white-spaces.
 txsWhitespace :: TxsParser ()
 txsWhitespace = whiteSpace txsTokenP
 
+-- | Parser for strings.
 txsStringP :: TxsParser Text
 txsStringP = T.pack <$> stringLiteral txsTokenP
 
+-- | Parser for integer.
 txsIntP :: TxsParser Integer
 txsIntP = integer txsTokenP
 
+-- | Make a new location while parsing.
 mkLoc :: TxsParser (Loc t)
 mkLoc = do
     i <- getNextId
@@ -70,13 +104,13 @@ getNextId = do
     putState $ incId st
     return (nextId st)
 
--- | Parser for upper case identifiers.
+-- | Parser for upper-case identifiers.
 ucIdentifier :: String -> TxsParser Text
 ucIdentifier what = txsLexeme (identifierNE idStart) <?> what
     where
       idStart = upper
 
-
+-- | Parser for lower-case identifiers.
 lcIdentifier :: TxsParser Text
 lcIdentifier = txsLexeme (identifierNE idStart) <?> "lowercase identifier"
     where
@@ -98,6 +132,8 @@ identifierNE idStart = T.cons <$> idStart <*> idEnd
     where
       idEnd  = T.pack <$> many txsIdentLetter
 
+-- | Parse expressions of the form "IN exp NI", where 'p' is the expressions
+-- parser.
 inP :: TxsParser a -> TxsParser a
 inP p = txsSymbol "IN" *> p <* txsSymbol "NI"
 
