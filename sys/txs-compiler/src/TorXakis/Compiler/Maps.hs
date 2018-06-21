@@ -46,6 +46,7 @@ module TorXakis.Compiler.Maps
     , idefsNames
       -- * Map manipulation
     , join
+    , dropHandler
     )
 where
 
@@ -278,3 +279,8 @@ usedChIdMap :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
                , MapsTo (Loc ChanDeclE) ChanId mm )
             => mm -> Map (Loc ChanRefE) ChanId
 usedChIdMap mm =  join (innerMap mm :: Map (Loc ChanRefE) (Loc ChanDeclE)) (innerMap mm)
+
+-- | Drop the handler from the map.
+dropHandler :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+            -> Map (Loc FuncDeclE) Signature
+dropHandler = fmap fst

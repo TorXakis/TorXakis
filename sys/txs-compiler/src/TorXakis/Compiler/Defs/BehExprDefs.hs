@@ -64,8 +64,9 @@ import           TorXakis.Compiler.Error           (Entity (Process),
                                                     ErrorType (MultipleDefinitions, NoDefinition, ParseError, TypeMismatch),
                                                     getErrorLoc, _errorLoc,
                                                     _errorMsg, _errorType)
-import           TorXakis.Compiler.Maps            (chRefsToIds, lookupChId,
-                                                    usedChIdMap, (.@@))
+import           TorXakis.Compiler.Maps            (chRefsToIds, dropHandler,
+                                                    lookupChId, usedChIdMap,
+                                                    (.@@))
 import           TorXakis.Compiler.Maps.VarRef     (varIdForRef)
 import           TorXakis.Compiler.MapsTo          ((:&) ((:&)), Contents, In,
                                                     MapsTo, innerMap, keys)
@@ -186,11 +187,6 @@ toBExpr mm vrvds (Hide _ cds be) = do
     chNameChIds <- traverse (mm .@@) (getLoc <$> cds) :: CompilerM [ChanId]
     be' <- toBExpr mm vrvds be
     return $ hide (Set.fromList chNameChIds) be'
-
--- | Drop the handler from the map.
-dropHandler :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-            -> Map (Loc FuncDeclE) Signature
-dropHandler = fmap fst
 
 -- | Compile a let var declaration into a par of @VarId@ and a value
 -- expression.

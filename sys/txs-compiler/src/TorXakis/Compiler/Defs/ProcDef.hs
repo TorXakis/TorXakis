@@ -1,7 +1,24 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.Defs.ProcDef
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Compilation functions related to 'TorXakis' process definitions.
+--------------------------------------------------------------------------------
 module TorXakis.Compiler.Defs.ProcDef where
 
 import           Control.Arrow                      (second)
@@ -21,32 +38,58 @@ import           FuncTable                          (Handler, Signature)
 import           Id                                 (Id (Id))
 import qualified ProcId
 import           SortId                             (SortId)
-import qualified SortId
 import           StatId                             (StatId (StatId))
 import qualified StatId
 import           StautDef                           (translate)
-import           TxsDefs                            (ExitSort (..),
-                                                     ProcDef (ProcDef),
-                                                     ProcId (ProcId), VEnv)
+import           TxsDefs                            (ProcDef (ProcDef), ProcId,
+                                                     VEnv)
 import           ValExpr                            (ValExpr)
 import           VarId                              (VarId, varsort)
 
-import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Data.ProcDecl
-import           TorXakis.Compiler.Data.VarDecl
-import           TorXakis.Compiler.Defs.BehExprDefs
-import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.Maps
-import           TorXakis.Compiler.Maps.DefinesAMap
-import           TorXakis.Compiler.Maps.VarRef
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.ValExpr.Common
-import           TorXakis.Compiler.ValExpr.FuncDef
-import           TorXakis.Compiler.ValExpr.SortId
-import           TorXakis.Compiler.ValExpr.ValExpr
-import           TorXakis.Compiler.ValExpr.VarId
-import           TorXakis.Parser.Data
+import           TorXakis.Compiler.Data             (CompilerM, getNextId,
+                                                     traverseCatch)
+import           TorXakis.Compiler.Data.ProcDecl    (ProcInfo (ProcInfo),
+                                                     allProcIds)
+import           TorXakis.Compiler.Defs.BehExprDefs (toActOffer, toBExpr)
+import           TorXakis.Compiler.Error            (Entity (InitialState, Process, State),
+                                                     Error (Error),
+                                                     ErrorLoc (NoErrorLoc),
+                                                     ErrorType (MultipleDefinitions, NoDefinition, Undefined),
+                                                     getErrorLoc, _errorLoc,
+                                                     _errorMsg, _errorType)
+import           TorXakis.Compiler.Maps             (dropHandler, findVarIdM,
+                                                     (.@@))
+import           TorXakis.Compiler.Maps.DefinesAMap (getMap)
+import           TorXakis.Compiler.Maps.VarRef      (varDefsFromExp)
+import           TorXakis.Compiler.MapsTo           ((:&) ((:&)), Contents, In,
+                                                     MapsTo, innerMap, (.&),
+                                                     (<.++>), (<.+>))
+import           TorXakis.Compiler.ValExpr.SortId   (inferVarTypes)
+import           TorXakis.Compiler.ValExpr.ValExpr  (expDeclToValExpr)
+import           TorXakis.Compiler.ValExpr.VarId    (mkVarIds)
+import           TorXakis.Parser.Data               (ChanDeclE, ChanRefE,
+                                                     FuncDeclE,
+                                                     InitStateDecl (InitStateDecl),
+                                                     Loc (ExtraAut), ProcDecl,
+                                                     ProcDeclE,
+                                                     StUpdate (StUpdate),
+                                                     StateDecl, StateRef,
+                                                     StautDecl,
+                                                     Transition (Transition),
+                                                     VarDeclE, VarRefE,
+                                                     asProcDeclLoc, getLoc,
+                                                     procDeclBody,
+                                                     procDeclChParams,
+                                                     stateDeclName,
+                                                     stateRefName,
+                                                     stautDeclChParams,
+                                                     stautDeclInnerVars,
+                                                     stautDeclStates,
+                                                     stautInitStates,
+                                                     stautTrans)
 
+-- | Compile a list of process definitions into a map from process id to
+-- process definitions.
 procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                          , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
@@ -60,8 +103,7 @@ procDeclsToProcDefMap :: ( MapsTo Text SortId mm
                       => mm
                       -> [ProcDecl]
                       -> CompilerM (Map ProcId ProcDef)
-procDeclsToProcDefMap mm ps =
-    gProcDeclsToProcDefMap emptyMpd ps
+procDeclsToProcDefMap mm = gProcDeclsToProcDefMap emptyMpd
     where
       emptyMpd = Map.empty :: Map ProcId ProcDef
       pms :: Map (Loc ProcDeclE) ProcInfo
@@ -89,9 +131,7 @@ procDeclsToProcDefMap mm ps =
           chDecls <- getMap () pd :: CompilerM (Map (Loc ChanRefE) (Loc ChanDeclE))
           let chIdsM = Map.fromList chIds
           let body = procDeclBody pd
-              fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-              fshs = innerMap mm
-              fss = fst <$> fshs
+              fss = dropHandler (innerMap mm)
               paramTypes = Map.fromList (fmap (second varsort) pvIds)
 
           bTypes  <- Map.fromList <$>
@@ -117,7 +157,8 @@ procDeclsToProcDefMap mm ps =
           let pvIds' = snd <$> pvIds
           return ( pId, ProcDef procChIds pvIds' b )
 
--- | TODO: remove the unnecessary constraints.
+-- | Compile a list of state automaton declarations into a process id to
+-- process definition map.
 stautDeclsToProcDefMap :: ( MapsTo Text SortId mm
                           , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
                           , MapsTo (Loc FuncDeclE) (Signature, Handler VarId) mm
@@ -149,7 +190,7 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
           -- Now we create the other two non-standard automata
           id0   <- getNextId
           id1   <- getNextId
-          let trans' = reverse trans -- TODO: only needed for compatibility with the old compiler.
+          let trans' = reverse trans -- NOTE: only needed for compatibility with the old compiler.
               (pd, iStaut) = translate (Map.empty :: Map.Map FuncId (FuncDef VarId))
                                    (Id id0)
                                    (Id id1)
@@ -179,14 +220,11 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                 -- Collect all the implicit variable declarations (declared in offers).
                 let mpd = Map.fromList $ zip (allProcIds pms) (repeat ())
                 chDecls <- getMap () staut
-                let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-                    fshs = innerMap mm
-                    fss = fst <$> fshs
-
+                let fss = dropHandler (innerMap mm)
                 implVSIds <- Map.fromList <$>
                     inferVarTypes ( Map.fromList pvIds
                                   :& mm
-                                  :& Map.fromList (fmap (second varsort) pvIds) -- TODO: reduce dup.
+                                  :& Map.fromList (fmap (second varsort) pvIds)
                                   :& mpd
                                   :& chDecls
                                   :& Map.fromList chIds
@@ -196,7 +234,7 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                 implVids  <- mkVarIds implVSIds (stautTrans staut)
                 let extraVIds = innerVIds `Map.union` Map.fromList implVids
                 -- Collect all the state declarations.
-                -- TODO: check that there are no duplicated states.
+                -- NOTE: here we could check that there are no duplicated states.
                 stIds    <- traverse stateDeclToStateId (stautDeclStates staut)
                 -- Make sure there is a unique initial state.
                 InitStateDecl iniStRef uds <- getUniqueInitialStateDecl
@@ -238,8 +276,9 @@ stautDeclsToProcDefMap mm ts = Map.fromList . concat <$>
                                   -> [StUpdate]
                                   -> CompilerM VEnv
                   stUpdatesToVEnv lVIds uds = Map.fromList . concat <$>
-                      -- TODO: check that there are no overlapping updates
-                      -- (more than one update to the same variable).
+                      -- NOTE: here we could check that there are no
+                      -- overlapping updates (more than one update to the same
+                      -- variable).
                       traverse (stUpdateToVEnv lVIds) uds
 
                   stUpdateToVEnv :: Map (Loc VarDeclE) VarId

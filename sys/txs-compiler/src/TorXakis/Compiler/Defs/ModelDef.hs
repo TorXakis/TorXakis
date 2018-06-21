@@ -69,9 +69,7 @@ modelDeclToModelDef mm md = do
     modelChIds <- getMap mm md :: CompilerM (Map (Loc ChanDeclE) ChanId)
     let mm' = chDecls :& (modelChIds <.+> mm)
     -- Infer the variable types of the expression:
-    let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-        fshs = innerMap mm
-        fss = fst <$> fshs
+    let fss = dropHandler (innerMap mm)
     bTypes <- Map.fromList <$> inferVarTypes (fss :& mm') (modelBExp md)
     bvIds  <- Map.fromList <$> mkVarIds bTypes (modelBExp md)
     let mm'' = bTypes <.+> (bvIds <.+> mm')
