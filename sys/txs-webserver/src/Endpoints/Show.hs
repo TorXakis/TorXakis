@@ -27,14 +27,14 @@ type ShowAPI = "sessions"
             )
 
 showServer :: Env -> Server ShowAPI
-showServer env sId itm = showAll :<|> showNamed
+showServer env sId itm = showNamed :<|> showAll
     where
-        showAll :: String -> Handler String
-        showAll nm = do
+        showNamed :: String -> Handler String
+        showNamed nm = do
             s <- getSession env sId
             liftIO $ Lib.showItem s itm nm
 
-        showNamed :: Handler String
-        showNamed = do
+        showAll :: Handler String
+        showAll = do
             s <- getSession env sId
             liftIO $ Lib.showItem s itm ""
