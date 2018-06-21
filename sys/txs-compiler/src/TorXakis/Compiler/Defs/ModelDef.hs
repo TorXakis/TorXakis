@@ -1,8 +1,26 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE DataKinds        #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies     #-}
-module TorXakis.Compiler.Defs.ModelDef where
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.Defs.ModelDef
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Compilation functions related to 'TorXakis' model definitions.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.Defs.ModelDef
+    (modelDeclToModelDef, chRefsToChIdSet)
+where
 
 import           Control.Monad.Error.Class          (liftEither)
 import           Data.List                          (nub, sortBy)
@@ -13,16 +31,13 @@ import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
 
-import           ChanId                             (ChanId, name, unid)
-import           FuncDef                            (FuncDef)
-import           FuncId                             (FuncId)
+import           ChanId                             (ChanId, unid)
 import           FuncTable                          (Handler, Signature)
 import           ProcId                             (ExitSort (Exit, NoExit),
                                                      ProcId)
 import           SortId                             (SortId)
 import           StdTDefs                           (chanIdExit)
-import           TxsDefs                            (ModelDef (ModelDef),
-                                                     ProcDef)
+import           TxsDefs                            (ModelDef (ModelDef))
 import           VarId                              (VarId)
 
 import           TorXakis.Compiler.Data
@@ -31,11 +46,11 @@ import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
 import           TorXakis.Compiler.Maps.VarRef
 import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.ValExpr.FuncDef
 import           TorXakis.Compiler.ValExpr.SortId
 import           TorXakis.Compiler.ValExpr.VarId
 import           TorXakis.Parser.Data
 
+-- | Compile a model declaration into a model definition.
 modelDeclToModelDef :: ( MapsTo Text SortId mm
                        , MapsTo Text (Loc ChanDeclE) mm -- Needed because channels are declared outside the model.
                        , MapsTo (Loc ChanDeclE) ChanId mm -- Also needed because channels are declared outside the model
@@ -79,16 +94,13 @@ modelDeclToModelDef mm md = do
     let
         insyncs  = filter (`Set.isSubsetOf` ins) syncs
         outsyncs = filter (`Set.isSubsetOf` outs) syncs
-        -- TODO: construct this, once you know the exit sort of the behavior expression `be`.
-        -- errsyncs = ...
-
     be   <- toBExpr mm'' evds (modelBExp md)
     eSort <- exitSort (fss :& mm'') (modelBExp md)
     let
         splsyncs = case eSort of
             NoExit  -> []
             Exit [] -> [ Set.singleton chanIdExit ]
-            _       -> [] -- TODO: Ask jan, what should we return in this case? Error?
+            _       -> [] -- NOTE: Ask jan, what should we return in this case? Error?
 
     return $ ModelDef insyncs outsyncs splsyncs be
 
