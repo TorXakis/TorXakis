@@ -52,7 +52,6 @@ import           VarId                              (VarId (VarId))
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.BehExprDefs
-import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Compiler.Defs.ModelDef
 import           TorXakis.Compiler.Defs.ModelId
 import           TorXakis.Compiler.Error

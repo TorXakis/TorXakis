@@ -35,7 +35,6 @@ import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Data.ProcDecl
 import           TorXakis.Compiler.Data.VarDecl
 import           TorXakis.Compiler.Defs.BehExprDefs
-import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap

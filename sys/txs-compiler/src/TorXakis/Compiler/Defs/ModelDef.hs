@@ -27,7 +27,6 @@ import           VarId                              (VarId)
 
 import           TorXakis.Compiler.Data
 import           TorXakis.Compiler.Defs.BehExprDefs
-import           TorXakis.Compiler.Defs.ChanId
 import           TorXakis.Compiler.Maps
 import           TorXakis.Compiler.Maps.DefinesAMap
 import           TorXakis.Compiler.Maps.VarRef
@@ -92,3 +91,10 @@ modelDeclToModelDef mm md = do
             _       -> [] -- TODO: Ask jan, what should we return in this case? Error?
 
     return $ ModelDef insyncs outsyncs splsyncs be
+
+-- | Compile a set of channel references to the set of channel id's they refer
+-- to.
+chRefsToChIdSet :: ( MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
+                   , MapsTo (Loc ChanDeclE) ChanId mm )
+                => mm -> Set ChanRef -> CompilerM (Set ChanId)
+chRefsToChIdSet mm = fmap Set.fromList . chRefsToIds mm . Set.toList
