@@ -1,11 +1,34 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections     #-}
-module TorXakis.Compiler.ValExpr.FuncId where
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.ValExpr.FuncId
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Compilation functions related to 'TorXakis' function id's.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.ValExpr.FuncId
+    ( cstrToAccFuncId
+    , cstrToIsCstrFuncId
+    , sortFromStringFuncId
+    , sortToStringFuncId
+    , adtsToFuncIds
+    , funcIdAsSignature
+    , funcDeclsToFuncIds
+    , getStdFuncIds
+    )
+where
 
--- TODO: consider adding your own prelude.
-import           Control.Arrow                    ((***))
-import           Data.Map                         (Map)
 import qualified Data.Map                         as Map
 import           Data.Semigroup                   ((<>))
 import           Data.Text                        (Text)
@@ -24,12 +47,20 @@ import           StdTDefs                         (eqName, fromStringName,
                                                    toXmlName)
 import           VarId                            (VarId)
 
-import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Maps
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.ValExpr.SortId
-import           TorXakis.Parser.Data
+import           TorXakis.Compiler.Data           (CompilerM, getNextId)
+import           TorXakis.Compiler.Maps           (findSortIdM)
+import           TorXakis.Compiler.MapsTo         (MapsTo)
+import           TorXakis.Compiler.ValExpr.SortId (sortIdOfVarDeclM)
+import           TorXakis.Parser.Data             (ADTDecl, CstrDecl, FieldDecl,
+                                                   FuncDecl, FuncDeclE,
+                                                   Loc (PredefLoc), adtName,
+                                                   constructors, cstrFields,
+                                                   cstrName, fieldName,
+                                                   fieldSort, funcName,
+                                                   funcParams, funcRetSort,
+                                                   getLoc, nodeLoc)
 
+-- | Make a function id from the given constructor id.
 cstrToIsCstrFuncId :: CstrId -> CompilerM FuncId
 cstrToIsCstrFuncId cId = do
     fId <- getNextId
@@ -46,12 +77,13 @@ cstrToAccFuncId mm cId f = do
     sId <- findSortIdM mm (fieldSort f)
     return $ FuncId (fieldName f) (Id fId) [cstrsort cId] sId
 
+-- | Compile a list of function declarations to a list of pairs consisting of
+-- the function location and its id.
 funcDeclsToFuncIds :: MapsTo Text SortId mm
                    => mm -> [FuncDecl] -> CompilerM [(Loc FuncDeclE, FuncId)]
-funcDeclsToFuncIds mm fs = do
-    fIds <- traverse (funcDeclToFuncId mm) fs
-    return $ zip (getLoc <$> fs) fIds
+funcDeclsToFuncIds mm fs = zip (getLoc <$> fs) <$> traverse (funcDeclToFuncId mm) fs
 
+-- | Compile a function declaration into a function id.
 funcDeclToFuncId :: MapsTo Text SortId mm
                  => mm -> FuncDecl -> CompilerM FuncId
 funcDeclToFuncId mm f = do
@@ -89,11 +121,11 @@ signatureToFuncId n (Signature aSids rSid) = do
 
 -- | Create the function id's that the ADT implicitly defines.
 adtsToFuncIds :: (MapsTo Text SortId mm)
-              => mm -> [ADTDecl] -> CompilerM [((Loc FuncDeclE), FuncId)]
+              => mm -> [ADTDecl] -> CompilerM [(Loc FuncDeclE, FuncId)]
 adtsToFuncIds mm ds = concat <$> traverse (adtToFuncIds mm) ds
 
 adtToFuncIds :: (MapsTo Text SortId mm)
-             => mm -> ADTDecl -> CompilerM [((Loc FuncDeclE), FuncId)]
+             => mm -> ADTDecl -> CompilerM [(Loc FuncDeclE, FuncId)]
 adtToFuncIds mm a = do
     sId <- findSortIdM mm (adtName a, nodeLoc a)
     cstrFIds <- concat <$> traverse (cstrToFuncIds mm sId) (constructors a)
@@ -112,19 +144,19 @@ adtToFuncIds mm a = do
           mkPredef neqName [sId, sId] sortIdBool
       toStrFdiFid sId =
           mkPredef toStringName [sId] sortIdString
-      fromStrFdiFid sId =
-          mkPredef fromStringName [sortIdString] sId
+      fromStrFdiFid =
+          mkPredef fromStringName [sortIdString]
       toXMLFdiFid sId =
           mkPredef toXmlName [sId] sortIdString
-      fromXMLFdiFid sId =
-          mkPredef fromXmlName [sortIdString] sId
+      fromXMLFdiFid =
+          mkPredef fromXmlName [sortIdString]
 
-mkPredef :: Text -> [SortId] -> SortId -> CompilerM [((Loc FuncDeclE), FuncId)]
+mkPredef :: Text -> [SortId] -> SortId -> CompilerM [(Loc FuncDeclE, FuncId)]
 mkPredef n aSids rSid =
     (\i -> [(PredefLoc n i, FuncId n (Id i) aSids rSid)]) <$> getNextId
 
 cstrToFuncIds :: (MapsTo Text SortId mm)
-              => mm -> SortId -> CstrDecl -> CompilerM [((Loc FuncDeclE), FuncId)]
+              => mm -> SortId -> CstrDecl -> CompilerM [(Loc FuncDeclE, FuncId)]
 cstrToFuncIds mm sId c =
     concat <$> sequence [ mkCstrFdiFid
                         , isCstrFdiFid
@@ -136,13 +168,13 @@ cstrToFuncIds mm sId c =
           mkCstrId <- getNextId
           fSids <- traverse (findSortIdM mm . fieldSort) (cstrFields c)
           -- Create a function id for the constructor function.
-          -- TODO: sharing the ID should be fine.
+          -- NOTE: sharing the ID should be fine.
           return [(PredefLoc cn mkCstrId, FuncId cn (Id mkCstrId) fSids sId)]
       isCstrFdiFid = do
           let isN = "is" <> cn
           isCstrId <- getNextId
           -- Create a function id for the constructor function.
-          -- TODO: sharing the ID should be fine.
+          -- NOTE: sharing the ID should be fine.
           return [(PredefLoc isN isCstrId, FuncId isN (Id isCstrId) [sId] sortIdBool)]
       cstrAccessFdiFid = traverse accessFdiFid (cstrFields c)
           where
@@ -152,5 +184,6 @@ cstrToFuncIds mm sId c =
                 fSid   <- findSortIdM mm (fieldSort f)
                 return (PredefLoc accN accSid, FuncId accN (Id accSid) [sId] fSid)
 
+-- | Return the function id as a signature.
 funcIdAsSignature :: FuncId -> Signature
 funcIdAsSignature fid = Signature (funcargs fid) (funcsort fid)
