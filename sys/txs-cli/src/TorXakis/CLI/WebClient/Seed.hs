@@ -1,9 +1,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Set randomization seed in TorXakis.
-module TorXakis.CLI.WebClient.Seed
-(setSeed)
-where
+module TorXakis.CLI.WebClient.Seed where
 
 import           Control.Monad.Except          (MonadError)
 import           Control.Monad.IO.Class        (MonadIO)

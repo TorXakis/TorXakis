@@ -12,6 +12,7 @@ module Main (main) where
 import           Control.Concurrent           (threadDelay)
 import           Control.Concurrent.Async     (async, wait)
 import           Control.Exception            (catch, throwIO)
+import           Control.Monad                (void)
 import           Data.Aeson                   (decode, decodeStrict)
 import           Data.Aeson.Types             (Object, Parser, parseMaybe,
                                                toJSON, (.:))
@@ -393,6 +394,20 @@ spec = return $ do
                 post (closeMessagesUrl sId) emptyP >>= check204NoContent
                 steps <- wait a
                 steps `shouldBe` 0
+        describe "States" $
+            it "Goto and back commands navigate in states" $ do
+                sId <- mkNewSession
+                void $ put (newSessionUrl sId) [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                void $ post (setStepUrl sId) emptyP
+                void $ post (stepUrl sId) $ toJSON (NumberOfSteps 10)
+                threadDelay (10 ^ (6 :: Int))
+
+                rb2 <- post (statesUrl sId "back" 2) emptyP
+                rb2 ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                BSL.unpack (rb2 ^. responseBody) `shouldContain` "8"
+                r5 <- post (statesUrl sId "goto" 5) emptyP
+                r5 ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                BSL.unpack (r5 ^. responseBody) `shouldContain` "5"
 
 check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
@@ -514,6 +529,9 @@ ncompUrl sId mn = Prelude.concat [host, "/sessions/", show sId, "/ncomp/", mn]
 
 showUrl :: Integer -> String -> String -> String
 showUrl sId item nm= Prelude.concat [host, "/sessions/", show sId, "/show/", item, "/", nm]
+
+statesUrl :: Integer -> String -> Int -> String
+statesUrl sId cmd nr= Prelude.concat [host, "/sessions/", show sId, "/state/", cmd, "/", show nr]
 
 emptyP :: [Part]
 emptyP = [partText "" ""]

@@ -53,7 +53,8 @@ import           BehExprDefs                   (ChanOffer (Exclam, Quest),
 import           ChanId                        (ChanId)
 import           ConstDefs                     (Const)
 import           EnvCore                       (IOC)
-import           EnvData                       (Msg (TXS_CORE_SYSTEM_INFO, TXS_CORE_USER_INFO, TXS_CORE_USER_WARNING))
+import           EnvData                       (Msg (TXS_CORE_SYSTEM_INFO, TXS_CORE_USER_INFO, TXS_CORE_USER_WARNING),
+                                                StateNr)
 import           TxsAlex                       (Token (Cchanenv, Csigs, Cunid, Cvarenv),
                                                 txsLexer)
 import qualified TxsCore                       as Core
@@ -271,3 +272,11 @@ showItem s item nm =
         ("var"      ,""      ) -> fshow <$> readTVarIO (s ^. locVars)
         ("val"      ,""      ) -> fshow <$> readTVarIO (s ^. locValEnv)
         _                      -> return "Nothing to be shown"
+
+-- | Go to a state.
+gotoState :: Session -> StateNr -> IO (Response ())
+gotoState s stNr = runResponse $ lift $ runIOC s $ Core.txsGoTo stNr
+
+-- | Back a number of states.
+backStates :: Session -> Int -> IO (Response ())
+backStates s steps = gotoState s (-steps)

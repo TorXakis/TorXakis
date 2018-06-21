@@ -33,6 +33,7 @@ import           Endpoints.Show              (ShowAPI, showServer)
 import           Endpoints.Simulator         (SetSimEP, SimStepEP, simStep,
                                               startSimulator)
 import           Endpoints.Solve             (SolveEP, solve)
+import           Endpoints.States            (StatesEP, states)
 import           Endpoints.Stepper           (SetStepperEP, StepEP, setStep,
                                               step)
 import           Endpoints.Stop              (StopEP, stop)
@@ -73,6 +74,7 @@ type ServiceAPI
     :<|> ShowAPI
     :<|> LpeEP
     :<|> NCompEP
+    :<|> StatesEP
     :<|> TestPageAPI
 
 type TestPageAPI = "test" :> Raw
@@ -118,4 +120,5 @@ server env
     :<|> showServer env
     :<|> lpe env
     :<|> ncomp env
+    :<|> states env
     :<|> serveDirectoryWebApp "sys/txs-webserver/test/testPage"

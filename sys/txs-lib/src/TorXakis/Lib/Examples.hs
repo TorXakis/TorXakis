@@ -306,6 +306,21 @@ testNComp = do
     putStrLn $ "Result of `ncomp`: " ++ show r
     cancel a
 
+testGotoAndBack :: IO ()
+testGotoAndBack = do
+    cs <- readFile $ ".." </> ".." </> "examps" </> "Echo" </> "Echo.txs"
+    s <- newSession
+    a <- async (printer s)
+    void $ load s cs
+    void $ setStep s "Model"
+    void $ step s $ NumberOfSteps 10
+    threadDelay seconds
+    void $ backStates s 2
+    showItem s "state" "nr" >>= putStrLn
+    void $ gotoState s 5
+    showItem s "state" "nr" >>= putStrLn
+    cancel a
+
 seconds :: Int
 seconds = 10 ^ (6 :: Int)
 

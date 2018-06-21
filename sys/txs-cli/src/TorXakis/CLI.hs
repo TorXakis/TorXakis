@@ -133,6 +133,8 @@ startCLI = do
             "show"      -> lift (runExceptT $ showTxs rest) >>= output
             "menu"      -> lift (runExceptT $ menu rest) >>= output
             "seed"      -> lift (runExceptT $ seed rest) >>= output
+            "goto"      -> lift (runExceptT $ goto rest) >>= output
+            "back"      -> lift (runExceptT $ back rest) >>= output
             _           -> output $ "Can't dispatch command: " ++ cmd
 
           where
@@ -204,6 +206,19 @@ startCLI = do
                  => [String] -> m ()
             seed [s] = setSeed s
             seed _   = throwError "Usage: seed <n>"
+            goto :: (MonadIO m, MonadReader Env m, MonadError String m)
+                 => [String] -> m String
+            goto [st] = case readMaybe st of
+                Nothing   -> throwError "Usage: goto <state>"
+                Just stNr -> gotoState stNr
+            goto _    = throwError "Usage: goto <state>"
+            back :: (MonadIO m, MonadReader Env m, MonadError String m)
+                 => [String] -> m String
+            back []   = backState 1
+            back [st] =  case readMaybe st of
+                Nothing   -> throwError "Usage: back [<count>]"
+                Just stNr -> backState stNr
+            back _    = throwError "Usage: back [<count>]"
             run :: [String] -> InputT CLIM ()
             run [filePath] = do
                 exists <- liftIO $ doesFileExist filePath

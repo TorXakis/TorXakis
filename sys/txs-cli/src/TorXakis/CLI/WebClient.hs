@@ -27,6 +27,7 @@ module TorXakis.CLI.WebClient
     , module TorXakis.CLI.WebClient.Seed
     , module TorXakis.CLI.WebClient.Sim
     , module TorXakis.CLI.WebClient.Solve
+    , module TorXakis.CLI.WebClient.States
     , module TorXakis.CLI.WebClient.Test
     , module TorXakis.CLI.WebClient.Vals
     , module TorXakis.CLI.WebClient.Vars
@@ -70,6 +71,7 @@ import           TorXakis.CLI.WebClient.Params
 import           TorXakis.CLI.WebClient.Seed
 import           TorXakis.CLI.WebClient.Sim
 import           TorXakis.CLI.WebClient.Solve
+import           TorXakis.CLI.WebClient.States
 import           TorXakis.CLI.WebClient.Test
 import           TorXakis.CLI.WebClient.Vals
 import           TorXakis.CLI.WebClient.Vars

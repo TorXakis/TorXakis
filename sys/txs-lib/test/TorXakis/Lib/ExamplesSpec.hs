@@ -55,3 +55,4 @@ spec = do
         res `shouldBe` Just ()
     it "testVarsAndSolvers" testVarsAndSolvers
     it "testNComp" testNComp
+    it "testGotoAndBack" testGotoAndBack
