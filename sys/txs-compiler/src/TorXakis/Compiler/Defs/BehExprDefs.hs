@@ -1,31 +1,47 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE TypeFamilies        #-}
-module TorXakis.Compiler.Defs.BehExprDefs where
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.Defs.BehExprDefs
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Compilation functions related to 'TorXakis' behavior expressions.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.Defs.BehExprDefs
+    ( toBExpr
+    , toOffer
+    , toActOffer
+    )
+where
 
 import           Control.Monad                     (foldM, when)
 import           Control.Monad.Error.Class         (liftEither, throwError)
 import           Data.List                         (nub)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map
-import           Data.Maybe                        (fromMaybe)
 import           Data.Semigroup                    ((<>))
 import qualified Data.Set                          as Set
 import           Data.Text                         (Text)
 import qualified Data.Text                         as T
-import           Data.Traversable                  (for)
 import           GHC.Exts                          (toList)
 
-import           ChanId                            (ChanId (ChanId), chansorts,
-                                                    name, unid)
+import           ChanId                            (ChanId, chansorts)
 import           ConstDefs                         (Const (Cbool))
-import           FuncDef                           (FuncDef)
-import           FuncId                            (FuncId)
-import           FuncTable                         (Handler,
-                                                    Signature (Signature))
+import           FuncTable                         (Handler, Signature)
 import           ProcId                            (ExitSort (Exit), ProcId,
                                                     exitSortIds, procchans,
                                                     procvars)
@@ -34,26 +50,39 @@ import           SortId                            (SortId, sortIdBool)
 import           StdTDefs                          (chanIdExit, chanIdIstep)
 import           TxsDefs                           (ActOffer (ActOffer), BExpr,
                                                     ChanOffer (Exclam, Quest),
-                                                    Offer (Offer), ProcDef,
-                                                    actionPref, chanid, choice,
-                                                    disable, enable, guard,
-                                                    hide, interrupt, parallel,
+                                                    Offer (Offer), actionPref,
+                                                    chanid, choice, disable,
+                                                    enable, guard, hide,
+                                                    interrupt, parallel,
                                                     procInst, stop, valueEnv)
 import           ValExpr                           (ValExpr, cstrConst)
 import           VarId                             (VarId, varsort)
 
-import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Defs.ChanId
-import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.Maps
-import           TorXakis.Compiler.Maps.VarRef
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.ValExpr.Common
-import           TorXakis.Compiler.ValExpr.FuncDef
-import           TorXakis.Compiler.ValExpr.SortId
-import           TorXakis.Compiler.ValExpr.ValExpr
-import           TorXakis.Parser.Data
+import           TorXakis.Compiler.Data            (CompilerM, forCatch)
+import           TorXakis.Compiler.Error           (Entity (Process),
+                                                    Error (Error),
+                                                    ErrorType (MultipleDefinitions, NoDefinition, ParseError, TypeMismatch),
+                                                    getErrorLoc, _errorLoc,
+                                                    _errorMsg, _errorType)
+import           TorXakis.Compiler.Maps            (chRefsToIds, lookupChId,
+                                                    usedChIdMap, (.@@))
+import           TorXakis.Compiler.Maps.VarRef     (varIdForRef)
+import           TorXakis.Compiler.MapsTo          ((:&) ((:&)), Contents, In,
+                                                    MapsTo, innerMap, keys)
+import           TorXakis.Compiler.ValExpr.SortId  (exitSort, offerSid)
+import           TorXakis.Compiler.ValExpr.ValExpr (expDeclToValExpr)
+import           TorXakis.Parser.Data              (ActOfferDecl (ActOfferDecl), BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
+                                                    ChanDeclE,
+                                                    ChanOfferDecl (ExclD, QuestD),
+                                                    ChanRefE, FuncDeclE,
+                                                    LetVarDecl, Loc,
+                                                    OfferDecl (OfferDecl),
+                                                    SyncOn (All, OnlyOn),
+                                                    VarDeclE, VarRefE,
+                                                    asVarReflLoc, chanRefName,
+                                                    getLoc, toText, varDeclExp)
 
+-- | Compile a behavior expression declaration into a behavior expression.
 toBExpr :: ( MapsTo Text SortId mm
            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
            , MapsTo (Loc VarDeclE) SortId mm
@@ -66,7 +95,7 @@ toBExpr :: ( MapsTo Text SortId mm
         -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
         -> BExpDecl
         -> CompilerM BExpr
-toBExpr _ vrvds Stop               = return stop
+toBExpr _ _ Stop               = return stop
 toBExpr mm vrvds (ActPref _ ao be) = actionPref <$> toActOffer mm vrvds ao <*> toBExpr mm vrvds be
 toBExpr mm vrvds (LetBExp vss be)  = do
     be0 <- toBExpr mm vrvds be
@@ -113,24 +142,25 @@ toBExpr mm vrvds (Par _ sOn be0 be1) = do
     return $ parallel (Set.fromList $ chanIdExit:cIds) [be0', be1']
 toBExpr mm vrvds (Enable _ be0 (Accept _ ofrs be1)) = do
     be0'  <- toBExpr mm vrvds be0
-    let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-        fshs = innerMap mm
-        fss = fst <$> fshs
+    let fss = dropHandler (innerMap mm)
     eSids <- exitSortIds <$> exitSort (fss :& mm) be0
     ofrs' <- traverse (uncurry $ toChanOffer vrvds) $ zip eSids ofrs
     be1'  <- toBExpr mm vrvds be1
     return $ enable be0' ofrs' be1'
-toBExpr mm vrvds (Enable _ be0 be1) = do
+toBExpr mm vrvds (Enable l be0 be1) = do
     be0' <- toBExpr mm vrvds be0
-    let fshs :: Map (Loc FuncDeclE) (Signature, Handler VarId)
-        fshs = innerMap mm
-        fss = fst <$> fshs
+    let fss = dropHandler (innerMap mm)
     es   <- exitSort (fss :& mm) be0
     when (es /= Exit [])
-        (throwError undefined) -- TODO: give the appropriate error message.
+        (throwError Error
+            { _errorType = TypeMismatch
+            , _errorLoc = getErrorLoc l
+            , _errorMsg = "The exit sort of an enable expression without accept must be Exit []."
+            }
+        )
     be1' <- toBExpr mm vrvds be1
     return $ enable be0' [] be1'
-toBExpr _ vrvds (Accept l _ _ )      =
+toBExpr _ _ (Accept l _ _ )      =
     throwError Error
     { _errorType = ParseError
     , _errorLoc  = getErrorLoc l
@@ -157,6 +187,13 @@ toBExpr mm vrvds (Hide _ cds be) = do
     be' <- toBExpr mm vrvds be
     return $ hide (Set.fromList chNameChIds) be'
 
+-- | Drop the handler from the map.
+dropHandler :: Map (Loc FuncDeclE) (Signature, Handler VarId)
+            -> Map (Loc FuncDeclE) Signature
+dropHandler = fmap fst
+
+-- | Compile a let var declaration into a par of @VarId@ and a value
+-- expression.
 vpair :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
       -> LetVarDecl
       -> CompilerM (VarId, ValExpr VarId)
@@ -166,6 +203,7 @@ vpair vrvds vd = do
         expDeclToValExpr vrvds (varsort vId) (varDeclExp vd)
     return (vId, ex)
 
+-- | Compile an action offer declaration into an action offer.
 toActOffer :: ( MapsTo Text SortId mm
               , MapsTo (Loc ChanRefE) (Loc ChanDeclE) mm
               , MapsTo (Loc ChanDeclE) ChanId mm
@@ -179,12 +217,15 @@ toActOffer :: ( MapsTo Text SortId mm
            -> CompilerM ActOffer
 toActOffer mm vrvds (ActOfferDecl osd mc) = do
     os <- traverse (toOffer mm vrvds) osd
-    c  <- fromMaybe (return . cstrConst . Cbool $ True)
-                    (liftEither . expDeclToValExpr vrvds sortIdBool <$> mc)
+    c  <- maybe (return . cstrConst . Cbool $ True)
+                (liftEither . expDeclToValExpr vrvds sortIdBool)
+                mc
     -- Filter the internal actions (to comply with the current TorXakis compiler).
     let os' = filter ((chanIdIstep /=) . chanid) os
     return $ ActOffer (Set.fromList os') Set.empty c
 
+-- | Compile a list offer declarations on a channel into a list of offer
+-- declarations.
 toOffer :: ( MapsTo Text SortId mm
            , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
            , MapsTo (Loc VarDeclE) SortId mm
@@ -217,6 +258,7 @@ toOffer mm vrvds (OfferDecl cr cods) = case chanRefName cr of
                      (zip (chansorts cId) cods)
         return $ Offer cId ofrs
 
+-- | Compile a channel offer declaration into a channel offer.
 toChanOffer :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
             -> SortId -- ^ Expected sort id's the offer
             -> ChanOfferDecl
@@ -225,4 +267,3 @@ toChanOffer vrvds _ (QuestD vd) =
     Quest  <$> liftEither (varIdForRef vrvds (asVarReflLoc (getLoc vd)))
 toChanOffer vrvds eSid (ExclD ex) = liftEither $
     Exclam <$> expDeclToValExpr vrvds eSid ex
-
