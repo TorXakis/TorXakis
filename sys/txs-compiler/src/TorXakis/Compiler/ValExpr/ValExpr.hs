@@ -1,8 +1,28 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
-module TorXakis.Compiler.ValExpr.ValExpr where
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.ValExpr.ValExpr
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Compilation functions related to 'TorXakis' value expressions.
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.ValExpr.ValExpr
+    ( expDeclToValExpr
+    , parValDeclToMap
+    )
+where
 
-import           Control.Arrow                       (second, (+++))
 import           Data.Either                         (partitionEithers)
 import           Data.Foldable                       (traverse_)
 import           Data.Map                            (Map)
@@ -13,28 +33,36 @@ import qualified Data.Text                           as T
 import           GHC.Exts                            (toList)
 
 import           FuncDef                             (FuncDef)
-import           FuncId                              (FuncId, funcargs,
-                                                      funcsort)
+import           FuncId                              (FuncId)
 import           FuncTable                           (Handler, Signature,
                                                       sortArgs, sortRet)
 import           SortId                              (SortId, sortIdBool)
-import           SortOf                              (sortOf)
 import           ValExpr                             (ValExpr, cstrAnd,
-                                                      cstrConst, cstrFunc,
-                                                      cstrITE, cstrVar, subst)
+                                                      cstrConst, cstrITE,
+                                                      cstrVar, subst)
 import           VarId                               (VarId, varsort)
 
-import           TorXakis.Compiler.Data
-import           TorXakis.Compiler.Error
-import           TorXakis.Compiler.Maps
-import           TorXakis.Compiler.Maps.VarRef
-import           TorXakis.Compiler.MapsTo
-import           TorXakis.Compiler.ValExpr.ConstDefs
-import           TorXakis.Compiler.ValExpr.SortId
-import           TorXakis.Parser.Data
+import           TorXakis.Compiler.Error             (Entity (Function),
+                                                      Error (Error),
+                                                      ErrorLoc (NoErrorLoc),
+                                                      ErrorType (Ambiguous, Undefined),
+                                                      getErrorLoc, _errorLoc,
+                                                      _errorMsg, _errorType)
+import           TorXakis.Compiler.Maps              (determineSH, findRight,
+                                                      (.@))
+import           TorXakis.Compiler.Maps.VarRef       (varIdForRef)
+import           TorXakis.Compiler.ValExpr.ConstDefs (constToConstDef)
+import           TorXakis.Compiler.ValExpr.SortId    (checkSortIds, sortIdConst)
+import           TorXakis.Parser.Data                (ExpChild (ConstLit, Fappl, If, LetExp, VarRef),
+                                                      ExpDecl, LetVarDecl, Loc,
+                                                      ParLetVarDecl, VarRefE,
+                                                      asVarReflLoc, expChild,
+                                                      getLoc, varDeclExp)
 
+-- | Compile an expression declaration into a value expression, given a map of
+-- variable references to the entities they refer, and the expected sort id.
 expDeclToValExpr :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)]) -- ^ Variable definitions associated to a given reference.
-                  -> SortId -- ^ Expected SortId for the expression.
+                  -> SortId                                                       -- ^ Expected SortId for the expression.
                   -> ExpDecl
                   -> Either Error (ValExpr VarId)
 expDeclToValExpr vdefs eSid ex = case expChild ex of
@@ -96,12 +124,16 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
                                 zip (sortArgs sig) exs
                   return $ h vexs
 
+-- | Compile a parallel let-variable declaration into a map of variable id's to
+-- the expressions they are associated with.
 parValDeclToMap :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
                   -> ParLetVarDecl
                   -> Either Error (Map VarId (ValExpr VarId))
 parValDeclToMap mm vs = Map.fromList <$>
     traverse (letValDeclToMap mm) (toList vs)
 
+-- | Compile a let-variable declaration into a map of variable id's to the
+-- expressions they are associated with.
 letValDeclToMap :: Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
                   -> LetVarDecl
                   -> Either Error (VarId, ValExpr VarId)
