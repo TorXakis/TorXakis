@@ -28,10 +28,12 @@ module TorXakis.Parser.Common
     , txsWhitespace
     , inP
     , tryIdentifier
+    , declP
+    , declWithParamsP
     )
 where
 
-import           Control.Monad          (void)
+import           Control.Monad          (void, when)
 import           Control.Monad.Identity (Identity)
 import           Data.Text              (Text)
 import qualified Data.Text              as T
@@ -137,3 +139,44 @@ identifierNE idStart = T.cons <$> idStart <*> idEnd
 inP :: TxsParser a -> TxsParser a
 inP p = txsSymbol "IN" *> p <* txsSymbol "NI"
 
+-- | Parser for declarations of the form:
+--
+-- @
+-- XDEF n ::= p ENDEF
+-- @
+--
+-- Where n is the name of the definition, p is the parser that parses the body
+-- of the declaration, and 'XDEF' is the declaration name (e.g. 'MODELDEF').
+--
+declP :: String                         -- ^ Name of the declaration.
+      -> (Text -> Loc l -> TxsParser a) -- ^ Parser for the body of the
+                                        -- declaration. The name given as a
+                                        -- parameter is the name of the
+                                        -- declaration. The location given as
+                                        -- parameter is the location in which
+                                        -- the declaration name was found.
+      -> TxsParser a
+declP declName bodyP = declWithParamsP declName (return ()) (const bodyP) True
+
+-- | Parser for declarations with parameters of the form:
+-- @
+-- XDEF n params ::= body ENDEF
+-- @
+--
+-- Where 'n' is the name of the definition, 'params' are the parameters taken
+-- by the declaration, 'body' is the body of the declaration, and 'XDEF' is the
+-- declaration name (e.g. 'PROCDEF'). The boolean parameter of this function
+-- indicates whether '"ENDDEF"' is required.
+declWithParamsP :: String
+                -> TxsParser params
+                -> (params -> Text -> Loc l -> TxsParser a)
+                -> Bool                                     -- ^ Is "ENDEF" expected?
+                -> TxsParser a
+declWithParamsP declName paramsP bodyP end = do
+    l <- try (mkLoc <* txsSymbol declName)
+    n <- txsLexeme identifier
+    params <- paramsP
+    txsSymbol "::="
+    res <- bodyP params n l
+    when end (txsSymbol "ENDDEF")
+    return res

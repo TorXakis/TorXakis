@@ -1,4 +1,23 @@
-module TorXakis.Parser.StautDecl where
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Parser.StautDecl
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Parser for state automata declarations.
+--------------------------------------------------------------------------------
+module TorXakis.Parser.StautDecl
+    (stautDeclP)
+where
 
 import           Text.Parsec                 (many, sepBy, sepBy1, try, (<|>))
 
@@ -10,17 +29,13 @@ import           TorXakis.Parser.ValExprDecl
 import           TorXakis.Parser.VarDecl
 
 stautDeclP :: TxsParser StautDecl
-stautDeclP = do
-    txsSymbol "STAUTDEF"
-    l  <- mkLoc
-    n  <- identifier
-    cs <- chParamsP
-    vs <- fParamsP
-    e  <- procExitP
-    txsSymbol "::="
-    is <- many stautItemP
-    txsSymbol "ENDDEF"
-    return $ mkStautDecl n l cs vs e is
+stautDeclP = declWithParamsP "STAUTDEF" paramsP bodyP True
+    where paramsP = do
+              cs <- chParamsP
+              vs <- fParamsP
+              e  <- procExitP
+              return (cs, vs, e)
+          bodyP (cs, vs, e) n l = mkStautDecl n l cs vs e <$> many stautItemP
 
 stautItemP :: TxsParser StautItem
 stautItemP

@@ -1,17 +1,35 @@
-{-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE TypeApplications #-}
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
 {-# LANGUAGE FlexibleContexts #-}
-module TorXakis.Compiler.MapsToSpec where
+{-# LANGUAGE OverloadedLists  #-}
+{-# LANGUAGE TypeApplications #-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.Compiler.MapsToSpec
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Tests for @MapsTo@
+--------------------------------------------------------------------------------
+module TorXakis.Compiler.MapsToSpec
+    (spec)
+where
 
-import Prelude hiding (lookup)
-import           Data.Map   (Map)
-import qualified Data.Map   as Map
-import           Test.Hspec (Spec, it, pending, shouldBe)
-import Data.Proxy (Proxy (Proxy))
+import           Data.Map                 (Map)
+import qualified Data.Map                 as Map
+import           Prelude                  hiding (lookup)
+import           Test.Hspec               (Spec, it, shouldBe)
 
-import TorXakis.Compiler.Error
+import           TorXakis.Compiler.Error
 
-import TorXakis.Compiler.MapsTo
+import           TorXakis.Compiler.MapsTo
 
 data Fruit = Orange | Pear | Apple | Banana deriving (Show, Eq)
 data Vegetable = Cucumber | Carrot | Spinach deriving (Show, Eq)
@@ -27,17 +45,15 @@ fruitNumbers :: Map Int Fruit
 fruitNumbers = [(0, Orange), (1, Pear), (2, Apple)]
 
 fruitWithName :: MapsTo String Fruit m => String -> m -> Either Error Fruit
-fruitWithName n m =
-    lookup n m
+fruitWithName = lookup
 
 vegetableWithName :: MapsTo String Vegetable m => String -> m -> Either Error Vegetable
-vegetableWithName n m =
-    lookup n m    
+vegetableWithName = lookup
 
 somethingWithName :: ( MapsTo String Fruit m
                      , MapsTo String Vegetable m )
                   => String -> m -> Either Error (Either Fruit Vegetable)
-somethingWithName n m = 
+somethingWithName n m =
     case fruitWithName n m of
         Right f -> Right (Left f)
         Left _  -> Right <$> vegetableWithName n m
@@ -68,13 +84,14 @@ hh :: Map Char Double
 hh = Map.empty
 myma :: Map String Bool
 myma = Map.empty
-        
+
 boom :: ()
 boom =
     fooBi ( (myma
             :&
             qq)
-            :& (dd -- TODO: find out why removing the parentheses won't compile.
+            :& (dd -- NOTE: we need to find out why removing the parentheses
+                   -- won't compile.
             :& tt  -- Removing one of the elements here (e.g. 'tt' will work as well)
             :& zz
             :& gg)
@@ -88,7 +105,7 @@ spec = do
            res `shouldBe` Orange
     it "It gets the right fruit in a composite map" $
        let Right res = fruitWithName "Orange" (fruitNames :& fruitNumbers) in
-           res `shouldBe` Orange           
+           res `shouldBe` Orange
     it "It gets the right fruit in a composite map (second variant)" $
        let Right res = fruitWithName "Orange" (fruitNumbers :& fruitNames) in
            res `shouldBe` Orange
@@ -102,7 +119,7 @@ spec = do
            z :: Map Double Bool
            z = undefined
        in
-           res `shouldBe` Spinach           
+           res `shouldBe` Spinach
     it "It gets all the vegetables names in a composite map" $
         keys @String @Vegetable
             (fruitNames :& vegetableNames :& fruitNumbers)
@@ -120,7 +137,7 @@ spec = do
     it  "Adds a map in a nested context" $
         values @String ([("Whatever", Banana)] <.+> (fruitNames :& fruitNumbers))
         `shouldBe`
-        [Apple, Orange, Pear, Banana]                
+        [Apple, Orange, Pear, Banana]
     it "Replaces a map" $
         values @String (replaceInnerMap fruitNames [("Whatever", Banana)] )
         `shouldBe`
@@ -129,17 +146,17 @@ spec = do
         values @String (replaceInnerMap (fruitNames :& vegetableNames) [("Whatever", Banana)] )
         `shouldBe`
         [Banana]
-        
+
     -- Uncomment these to test for the type errors of the compiler:
     --
     -- it "Fails when no map is found)" $
     --    let Right res = fruitWithName "Orange" (fruitNumbers :& "Not here either") in
-    --        res `shouldBe` Orange                      
+    --        res `shouldBe` Orange
     -- it "It gets the right fruit in a composite map (third variant)" $
     --    let Right res = fruitWithName "Orange" (fruitNumbers :& fruitNames :& fruitNumbers :& fruitNames) in
     --        res `shouldBe` Orange
     --
     -- We could test this by calling the ghc compiler, and checking the error message.
 
-           
-       
+
+

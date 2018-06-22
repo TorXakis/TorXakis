@@ -36,25 +36,9 @@ module TorXakis.Compiler.Data
     )
 where
 
-import           Control.Arrow             (left, (|||))
-import           Control.Lens              ((&), (.~))
-import           Control.Monad.Error.Class (MonadError, catchError, liftEither)
-import           Control.Monad.State       (MonadState, StateT, get, put)
+import           Control.Monad.Error.Class (MonadError, catchError)
+import           Control.Monad.State       (MonadState, StateT, gets, put)
 import           Data.Either               (partitionEithers)
-import           Data.Either.Utils         (maybeToEither)
-import           Data.Map                  (Map)
-import qualified Data.Map                  as Map
-import           Data.Maybe                (catMaybes, fromMaybe)
-import           Data.Monoid               (Monoid)
-import           Data.Semigroup            ((<>))
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
-
-import           CstrId                    (CstrId)
-import           FuncDef                   (FuncDef)
-import           FuncId                    (FuncId, funcargs, funcsort)
-import           SortId                    (SortId)
-import           VarId                     (VarId)
 
 import           TorXakis.Compiler.Error   (Error)
 
@@ -72,7 +56,7 @@ newtype CompilerM a = CompilerM { runCompiler :: StateT St (Either Error) a }
 -- compiler state.
 getNextId :: CompilerM Int
 getNextId = do
-    i <- nextId <$> get
+    i <- gets nextId
     put (St $ i + 1)
     return i
 
@@ -82,7 +66,7 @@ setUnid unid = put (St unid)
 
 -- | Get the value of the unique id counter.
 getUnid :: CompilerM Int
-getUnid = nextId <$> get
+getUnid = gets nextId
 
 -- | Like traverse, but catch and error and continue if any `CompilerM` action
 -- throws an error in the process.

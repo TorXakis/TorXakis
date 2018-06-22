@@ -1,6 +1,27 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+--------------------------------------------------------------------------------
 -- |
-
-module TorXakis.Parser.TypeDefs where
+-- Module      :  TorXakis.Parser.TypeDefs
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Parser for type declarations ('TorXakis' ADT's)
+--------------------------------------------------------------------------------
+module TorXakis.Parser.TypeDefs
+    ( adtP
+    , sortP
+    , idOfSortsP
+    , ofSortP
+    )
+where
 
 import           Data.Text              (Text)
 import           Text.Parsec            (sepBy, (<|>))
@@ -8,17 +29,9 @@ import           Text.Parsec            (sepBy, (<|>))
 import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
 
-
--- | Parser of ADT's.
+-- | Parser for type declarations ('TorXakis' ADT's).
 adtP :: TxsParser ADTDecl
-adtP = do
-    txsSymbol "TYPEDEF"
-    m  <- mkLoc
-    n  <- txsLexeme (ucIdentifier "ADT's")
-    txsSymbol "::="
-    cs <- cstrP `sepBy` txsSymbol "|"
-    txsSymbol "ENDDEF"
-    return $ mkADTDecl n m cs
+adtP = declP "TYPEDEF" $ \n l -> mkADTDecl n l <$> cstrP `sepBy` txsSymbol "|"
 
 cstrP :: TxsParser CstrDecl
 cstrP = do
@@ -65,6 +78,6 @@ idOfSortsListP f =  do
           m <- mkLoc
           return $ f n m s
 
--- | Parse the declaration of a sort
+-- | Parser for the declaration of a sort.
 ofSortP :: TxsParser OfSort
 ofSortP = txsSymbol "::" >> sortP

@@ -28,18 +28,13 @@ import           TorXakis.Parser.ValExprDecl
 
 -- | Parser for function declarations.
 fDeclP :: TxsParser FuncDecl
-fDeclP = do
-    txsWhitespace
-    txsSymbol "FUNCDEF"
-    l  <- mkLoc
-    n  <- txsLexeme lcIdentifier
-    ps <- fParamsP
-    txsSymbol "::"
-    s  <- sortP
-    txsSymbol "::="
-    b <- txsLexeme valExpP
-    txsSymbol "ENDDEF"
-    return $ mkFuncDecl n l ps s b
+fDeclP = declWithParamsP "FUNCDEF" paramsP bodyP True
+    where paramsP = do
+              ps <- fParamsP
+              txsSymbol "::"
+              s  <- sortP
+              return (ps, s)
+          bodyP (ps, s) n l = mkFuncDecl n l ps s <$> txsLexeme valExpP
 
 -- | Parser for function parameters.
 fParamsP :: TxsParser [VarDecl]

@@ -1,15 +1,34 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+--------------------------------------------------------------------------------
 -- |
-
-module TorXakis.Parser.ValExprDecl where
+-- Module      :  TorXakis.Parser.ValExprDecl
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Parser for value expression declarations.
+--------------------------------------------------------------------------------
+module TorXakis.Parser.ValExprDecl
+    ( valExpP
+    , letSeqVarDeclsP
+    , letVarDeclsP
+    )
+where
 
 import           Data.Char                (isPrint)
 import           Data.Text                (Text)
 import qualified Data.Text                as T
 import           GHC.Exts                 (fromList)
-import           Text.Parsec              (many, many1, notFollowedBy, oneOf,
-                                           optionMaybe, parserFail, satisfy,
-                                           sepBy, try, (<?>), (<|>))
-
+import           Text.Parsec              (many, many1, oneOf, optionMaybe,
+                                           parserFail, satisfy, sepBy, try,
+                                           (<?>), (<|>))
 import           Text.Parsec.Expr         (Assoc (AssocLeft),
                                            Operator (Infix, Prefix),
                                            buildExpressionParser)
@@ -27,14 +46,15 @@ valExpP =  buildExpressionParser table termP
               , [Infix bop AssocLeft]
               ]
       uop = do
-          le  <- mkLoc
-          lr  <- mkLoc
-          opN <- txsBopSymbolP
+          (le, lr, opN) <- opP
           return $ \ex0 -> mkFappl le lr opN [ex0]
-      bop = do
+      opP = do
           le  <- mkLoc
           lr  <- mkLoc
           opN <- txsBopSymbolP
+          return (le, lr, opN)
+      bop = do
+          (le, lr, opN) <- opP
           return $ \ex0 ex1 -> (mkFappl le lr opN [ex0, ex1])
 
 -- | Terms of the TorXakis value expressions.
@@ -54,17 +74,16 @@ letExpP = do
     l <- mkLoc
     txsSymbol "LET"
     vss <- letSeqVarDeclsP
-    txsSymbol "IN"
-    subEx <- valExpP
-    txsSymbol "NI"
+    subEx <- inP valExpP
     return $ mkLetExpDecl vss subEx l
 
--- | Parse a list of value declarations (where each value declaration is a list
--- of the form 'x0 = v0, ..., xn=vn'), which allow to introduce values
+-- | Parser for a list of value declarations (where each value declaration is a list
+-- of the form 'x0 = v0; ...; xn=vn'), which allow to introduce values
 -- sequentially.
 letSeqVarDeclsP :: TxsParser [ParLetVarDecl]
 letSeqVarDeclsP = letVarDeclsP `sepBy` txsSymbol ";"
 
+-- | Parser for let value declarations, separated by commas.
 letVarDeclsP :: TxsParser ParLetVarDecl
 letVarDeclsP = fromList <$> letVarDeclP `sepBy` txsSymbol ","
 

@@ -23,15 +23,13 @@ module TorXakis.Compiler.Defs.ModelDef
 where
 
 import           Control.Monad.Error.Class          (liftEither)
-import           Data.List                          (nub, sortBy)
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
-import           Data.Ord                           (compare)
 import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
 
-import           ChanId                             (ChanId, unid)
+import           ChanId                             (ChanId)
 import           FuncTable                          (Handler, Signature)
 import           ProcId                             (ExitSort (Exit, NoExit),
                                                      ProcId)
