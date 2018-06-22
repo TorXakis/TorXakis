@@ -54,7 +54,7 @@ import           TorXakis.Parser.Data       (ADTDecl, ChanDecl, CnectDecl,
                                              consts, emptyPds, funcs, mappers,
                                              mkState, models, procs, purps,
                                              stauts)
-import           TorXakis.Parser.FuncDefs   (fdeclP)
+import           TorXakis.Parser.FuncDefs   (fDeclP)
 import           TorXakis.Parser.MapperDecl (mapperDeclP)
 import           TorXakis.Parser.ModelDecl  (modelDeclP)
 import           TorXakis.Parser.ProcDecl   (procDeclP)
@@ -123,7 +123,7 @@ txsP :: TxsParser ParsedDefs
 txsP = do
     txsWhitespace
     ts <- many $  fmap TLADT    adtP
-              <|> fmap TLFunc   fdeclP
+              <|> fmap TLFunc   fDeclP
               <|> fmap TLConsts (try constDeclsP)
               <|> fmap TLModel  (try modelDeclP)
               <|> fmap TLChan   (try chanDeclsP)
