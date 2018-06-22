@@ -67,10 +67,10 @@ ENDDEF
 PROCDEF  mapperS [ Plus, Minus :: Int # Int; Result :: Int;
                    Sin :: String # Int # Int;  Sout :: Int ] ( )
     ::=
-                 Plus ? x ? y  | Sin ! "Plus" ? xx ? yy  [[ x == xx, y == yy ]]
+                 Plus ? x ? y  | Sin ! "Plus" ? xx ? yy  [[ x == xx /\ y == yy ]]
             >->  mapperS [ Plus, Minus, Result, Sin, Sout ] ( )
         ##
-                 Minus ?x ?y | Sin ! "Minus" ? xx ? yy  [[ x == xx, y == yy ]]
+                 Minus ?x ?y | Sin ! "Minus" ? xx ? yy  [[ x == xx /\ y == yy ]]
             >->  mapperS [ Plus, Minus, Result, Sin, Sout ] ( )
         ##
                  Sout ? r | Result ? rr  [[ r == rr ]]

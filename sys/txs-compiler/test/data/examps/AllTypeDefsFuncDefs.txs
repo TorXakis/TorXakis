@@ -1,3 +1,9 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
 TYPEDEF Conditional_Int ::=  CAbsent_Int | CPresent_Int { value :: Int } ENDDEF
 TYPEDEF Double ::= CINF | CNINF | CNaN | CVal { val :: Int } ENDDEF
 
