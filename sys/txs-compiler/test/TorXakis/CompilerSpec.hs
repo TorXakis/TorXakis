@@ -4,6 +4,9 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+-- We choose convenience over safety. It is ok if tests fail due to an incomplete pattern.
+
 --------------------------------------------------------------------------------
 -- |
 -- Module      :  TorXakis.CompilerSpec
