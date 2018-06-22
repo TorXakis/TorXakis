@@ -42,6 +42,7 @@ valExpP :: TxsParser ExpDecl
 valExpP =  buildExpressionParser table termP
        <?> "Value expression"
     where
+      -- This table defines the precedence of operators.
       table = [ [Prefix uop]
               , [Infix bop AssocLeft]
               ]

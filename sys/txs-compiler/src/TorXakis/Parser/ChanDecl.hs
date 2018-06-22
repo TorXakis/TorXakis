@@ -29,13 +29,8 @@ import           TorXakis.Parser.Data
 import           TorXakis.Parser.TypeDefs
 
 chanDeclsP :: TxsParser [ChanDecl]
-chanDeclsP = do
-    txsSymbol "CHANDEF"
-    _ <- identifier -- The `CHANDEF` name is not used.
-    txsSymbol "::="
-    res <- concat <$> chanDeclsOfSortP `sepBy1` txsSymbol ";"
-    txsSymbol "ENDDEF"
-    return res
+chanDeclsP = declP "CHANDEF" $ \_ _ ->
+    concat <$> chanDeclsOfSortP `sepBy1` txsSymbol ";"
 
 chanDeclsOfSortP :: TxsParser [ChanDecl]
 chanDeclsOfSortP = do

@@ -19,8 +19,6 @@ module TorXakis.Parser.ProcDecl
     (procDeclP)
 where
 
-import           Text.Parsec              (try)
-
 import           TorXakis.Parser.BExpDecl
 import           TorXakis.Parser.Common
 import           TorXakis.Parser.Data
@@ -28,14 +26,10 @@ import           TorXakis.Parser.FuncDefs
 
 -- | Parser for process declarations.
 procDeclP :: TxsParser ProcDecl
-procDeclP = do
-    try $ txsSymbol "PROCDEF"
-    l  <- mkLoc
-    n  <- identifier
-    cs <- chParamsP
-    vs <- fParamsP
-    e  <- procExitP
-    txsSymbol "::="
-    be <- bexpDeclP
-    txsSymbol "ENDDEF"
-    return $ mkProcDecl n l cs vs e be
+procDeclP = declWithParamsP "PROCDEF" paramsP bodyP True
+    where paramsP = do
+              cs <- chParamsP
+              vs <- fParamsP
+              e  <- procExitP
+              return (cs, vs, e)
+          bodyP (cs, vs, e) n l = mkProcDecl n l cs vs e <$> bexpDeclP

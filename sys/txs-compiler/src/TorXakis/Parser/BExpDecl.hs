@@ -44,6 +44,7 @@ bexpDeclP :: TxsParser BExpDecl
 bexpDeclP = buildExpressionParser table bexpTermP
     <?> "Behavior expression"
     where
+      -- This table defines the precedence of operators.
       table = [ [ Infix choiceP AssocLeft]
               , [ Infix parOpP AssocLeft]
               , [ Infix enableP AssocLeft

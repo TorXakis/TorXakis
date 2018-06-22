@@ -29,15 +29,10 @@ import           TorXakis.Parser.Data
 
 -- | Parser for connect declarations.
 cnectDeclP :: TxsParser CnectDecl
-cnectDeclP = do
-    txsSymbol "CNECTDEF"
-    l <- mkLoc
-    n <- txsLexeme identifier
-    txsSymbol "::="
+cnectDeclP = declP "CNECTDEF" $ \n l -> do
     ct <- cnectTypeP
     (is, cs) <- partitionEithers <$>
         many (fmap Left cnectItemP <|> fmap Right codecItemP)
-    txsSymbol "ENDDEF"
     return $ mkCnectDecl n l ct is cs
 
 cnectTypeP :: TxsParser CnectType
