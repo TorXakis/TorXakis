@@ -476,7 +476,6 @@ cmdSolve args kind = do
      env              <- get
      let uid           = IOS.uid env
          sigs          = IOS.sigs env
-         vars          = IOS.locvars env
          vals          = IOS.locvals env
      tdefs            <- lift TxsCore.txsGetTDefs
 
