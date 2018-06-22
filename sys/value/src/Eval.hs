@@ -45,7 +45,6 @@ import qualified EnvData
 -- import from defs
 import           FreeMonoidX
 import           RegexXSD2Posix
-import qualified Sigs
 import           TxsDefs
 import           TxsShow
 import           XmlFormat
@@ -58,10 +57,6 @@ import           Id
 import           SortId
 import           ValExpr             hiding (eval)
 import           Variable
-
--- import from front
-import qualified TxsAlex
-import qualified TxsHappy
 
 import           TorXakis.Compiler   (compileUnsafe, compileValExpr)
 
