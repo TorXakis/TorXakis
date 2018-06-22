@@ -50,7 +50,6 @@ adtDeclsToSigs mm ds = do
 
 -- | Compile function declarations 'TorXakis' signatures.
 funDeclsToSigs :: ( MapsTo Text SortId mm
-                  , MapsTo (Loc CstrE) CstrId mm
                   , MapsTo (Loc FuncDeclE) FuncId mm
                   , MapsTo FuncId FuncDefInfo mm )
                => mm -> [FuncDecl] -> CompilerM (Sigs VarId)

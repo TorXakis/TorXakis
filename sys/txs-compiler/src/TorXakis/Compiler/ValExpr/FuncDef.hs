@@ -96,15 +96,13 @@ funcDeclsToFuncDefs mm fSHs fs = liftEither $ do
 -- handler (@Handler@) for the given function declaration.
 --
 funcDeclToFuncDef :: ( MapsTo (Loc VarDeclE) VarId mm
-                      , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
-                      , MapsTo (Loc FuncDeclE) FuncId mm
-                      , MapsTo FuncId FuncDefInfo mm
-                      , In (Loc FuncDeclE, (Signature, Handler VarId)) (Contents mm) ~ 'False )
-                   => mm
-                   -> Map (Loc FuncDeclE) (Signature, Handler VarId)
-                   -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
-                   -> FuncDecl
-                   -> Either (Error, FuncDecl) (FuncId, FuncDefInfo)
+                     , MapsTo (Loc FuncDeclE) FuncId mm
+                     )
+                  => mm
+                  -> Map (Loc FuncDeclE) (Signature, Handler VarId)
+                  -> Map (Loc VarRefE) (Either VarId [(Signature, Handler VarId)])
+                  -> FuncDecl
+                  -> Either (Error, FuncDecl) (FuncId, FuncDefInfo)
 funcDeclToFuncDef mm fSHs fVDs f = left (,f) $ do
     fid  <- mm .@ getLoc f
     (sig, handler') <- fSHs .@ getLoc f :: Either Error (Signature, Handler VarId)

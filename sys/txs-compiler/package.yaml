@@ -17,6 +17,10 @@ ghc-options:
 - -Wall
 - -O
 - -fconstraint-solver-iterations=10
+- -Wcompat
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wredundant-constraints
 
 library:
   source-dirs: src

@@ -185,8 +185,8 @@ instance Simplifiable ConnDef where
 instance (Ord a, Simplifiable a) => Simplifiable (FreeMonoidX a) where
     simplify ft fns = mapTerms (simplify ft fns)
 
-instance (Ord a, Simplifiable a) => Simplifiable (SumTerm a) where
+instance (Simplifiable a) => Simplifiable (SumTerm a) where
     simplify ft fns (SumTerm a) = SumTerm (simplify ft fns a)
 
-instance (Ord a, Simplifiable a) => Simplifiable (ProductTerm a) where
+instance (Simplifiable a) => Simplifiable (ProductTerm a) where
     simplify ft fns (ProductTerm a) = ProductTerm (simplify ft fns a)

@@ -165,7 +165,6 @@ stautDeclsToProcDefMap :: ( MapsTo Text SortId mm
                           , MapsTo (Loc ProcDeclE) ProcInfo mm
                           , In (Loc FuncDeclE, Signature) (Contents mm) ~ 'False
                           , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
-                          , In (Text, ChanId) (Contents mm) ~ 'False
                           , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
                           , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
                           , In (ProcId, ()) (Contents mm) ~ 'False

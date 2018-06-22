@@ -82,7 +82,6 @@ module TorXakis.Parser.Data
     , FuncDecl
     , mkFuncDecl
     , funcName
-    , funcNameL
     , funcParams
     , funcBody
     , funcRetSort
@@ -662,10 +661,6 @@ mkFuncDecl n l ps s b = ParseTree (Name n) FuncDeclE l (FuncComps ps s b)
 funcName :: FuncDecl -> Text
 funcName = nodeNameT
 
--- | Lens to the function name of a declaration.
-funcNameL :: Lens' FuncDecl Text
-funcNameL = undefined
-
 -- | Function parameters.
 funcParams :: FuncDecl -> [VarDecl]
 funcParams = funcCompsParams . child
@@ -688,8 +683,7 @@ instance HasErrorLoc (Loc t) where
 
 -- | A parse tree can be converted to an error location.
 instance HasErrorLoc (ParseTree t c) where
-    getErrorLoc pt = ErrorLoc { errorLine = l, errorColumn = c }
-        where Loc l c _ = nodeLoc pt
+    getErrorLoc = getErrorLoc . nodeLoc
 
 -- | Model declaration.
 type ModelDecl = ParseTree ModelDeclE ModelComps

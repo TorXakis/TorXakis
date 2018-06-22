@@ -14,6 +14,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE UndecidableInstances  #-}
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
 --------------------------------------------------------------------------------
 -- |
 -- Module      :  TorXakis.Compiler.MapsTo
