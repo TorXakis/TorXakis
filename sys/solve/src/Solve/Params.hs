@@ -57,7 +57,7 @@ positiveInt s = not (null s) && all Char.isDigit s && (let v = read s :: Integer
 initParams :: Params
 initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
   [ ( "param_max_rand_depth"                               , "4"          , positiveInt )
-  , ( "param_Randomization"                                , show IncrementChoice
+  , ( "param_Randomization"                                , show IncrementBins
                                                                           , \s ->    (s == show No)
                                                                                   || (s == show Partition)
                                                                                   || (s == show TrueBins)
