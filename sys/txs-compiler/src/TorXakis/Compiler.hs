@@ -145,13 +145,13 @@ compileFile fp = do
         Right pd -> return $
             evalStateT (runCompiler . compileParsedDefs $ pd) newState
 
--- | Run the compiler throwing an error if the compiler returns an @Error@.
+-- | Run the compiler throwing an error if the compiler returns an 'Error'.
 compileUnsafe :: CompilerM a -> a
 compileUnsafe cmp = throwOnError $
     evalStateT (runCompiler cmp) newState
 
 -- | Legacy compile function, used to comply with the old interface. It should
--- be deprecated in favor of @compile@.
+-- be deprecated in favor of 'compileFile'.
 compileLegacy :: String -> (Id, TxsDefs, Sigs VarId)
 compileLegacy str =
     case parseString "" str of
@@ -159,7 +159,7 @@ compileLegacy str =
         Right pd ->
             compileUnsafe (compileParsedDefs pd)
 
--- | Call @error@ if the result is @Left@
+-- | Call 'error' if the result is 'Left'.
 throwOnError :: Either Error a -> a
 throwOnError = throwOnLeft ||| id
     where throwOnLeft = error . show
@@ -167,15 +167,15 @@ throwOnError = throwOnLeft ||| id
 -- | Compile parsed definitions into TorXakis data-types.
 compileParsedDefs :: ParsedDefs -> CompilerM (Id, TxsDefs, Sigs VarId)
 compileParsedDefs pd = do
-    -- Generate a map from @Text@ to @SortId@ using the ADT's that are declared
-    -- in @pd@, as well as the predefined Sorts ("Bool", "Int", "Regex",
+    -- Generate a map from 'Text' to 'SortId' using the ADT's that are declared
+    -- in 'pd', as well as the predefined Sorts ("Bool", "Int", "Regex",
     -- "String").
     sIds <- compileToSortIds pd
 
-    -- Generate a map from constructor declarations to @CstrId@'s.
+    -- Generate a map from constructor declarations to 'CstrId''s.
     cstrIds <- compileToCstrId sIds (pd ^. adts)
 
-    -- Generate a map from locations of function declarations to @FuncId@'s.
+    -- Generate a map from locations of function declarations to 'FuncId''s.
     -- This map includes the predefined functions (standard functions) such as
     -- '*', '++', 'toString', 'fromString'.
     stdFuncIds <- Map.fromList <$> getStdFuncIds
@@ -194,7 +194,7 @@ compileParsedDefs pd = do
     -- since no variables can be declared at the top level.
     let allFSigs = funcIdAsSignature <$> allFids
     vdSortMap <- inferTypes (sIds :& decls :& allFSigs :& emptyVdMap) (allFuncs pd)
-    -- Construct the variable declarations to @VarId@'s lookup table.
+    -- Construct the variable declarations to 'VarId''s lookup table.
     vIds <- generateVarIds vdSortMap (allFuncs pd)
 
     -- Create a map from locations of function declarations to their signature
@@ -216,10 +216,10 @@ compileParsedDefs pd = do
     chIds <- getMap sIds (pd ^. chdecls) :: CompilerM (Map (Loc ChanDeclE) ChanId)
     let mm = sIds :& pdefs :& cstrIds :& allFids :& fdefs
 
-    -- Generate the 'TorXakis' @Sigs@.
+    -- Generate the 'TorXakis' 'Sigs'.
     sigs    <- toSigs (mm :& chIds) pd
 
-    -- Generate the 'TorXakis' @TxsDefs@.
+    -- Generate the 'TorXakis' 'TxsDefs'.
     chNames <-  getMap () (pd ^. chdecls) :: CompilerM (Map Text (Loc ChanDeclE))
     -- We need the map from channel names to the locations in which these
     -- channels are declared, because the model definitions rely on channels
@@ -230,7 +230,7 @@ compileParsedDefs pd = do
     i <- getUnid
     return (Id i, txsDefs, sigs)
 
--- | Compile the parsed definitions to @TxsDefs@.
+-- | Compile the parsed definitions to 'TxsDefs'.
 toTxsDefs :: ( MapsTo Text        SortId mm
              , MapsTo (Loc CstrE) CstrId mm
              , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
@@ -283,7 +283,7 @@ toTxsDefs ft mm pd = do
         `union` cds
         `union` rds
 
--- | Compile the parsed definitions to @Sigs@.
+-- | Compile the parsed definitions to 'Sigs'.
 toSigs :: ( MapsTo Text        SortId mm
           , MapsTo (Loc CstrE) CstrId mm
           , MapsTo (Loc FuncDeclE) FuncId mm
@@ -307,12 +307,12 @@ toSigs mm pd = do
         `uniqueCombine` cs
         `uniqueCombine` ss
 
--- | Get a dictionary from sort names to their @SortId@. The sorts returned
+-- | Get a dictionary from sort names to their 'SortId'. The sorts returned
 -- include all the sorts defined by a 'TYPEDEF' (in the parsed definitions),
 -- and the predefined sorts ('Bool', 'Int', 'Regex', 'String').
 compileToSortIds :: ParsedDefs -> CompilerM (Map Text SortId)
 compileToSortIds pd = do
-    -- Construct the @SortId@'s lookup table.
+    -- Construct the 'SortId''s lookup table.
     sMap <- compileToSortId (pd ^. adts)
     let pdsMap = Map.fromList [ ("Bool", sortIdBool)
                               , ("Int", sortIdInt)

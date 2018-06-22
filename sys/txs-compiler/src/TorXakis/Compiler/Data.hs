@@ -45,11 +45,16 @@ import           TorXakis.Compiler.Error   (Error)
 -- | State of the compiler.
 newtype St = St { nextId :: Int } deriving (Eq, Show)
 
+-- | Create a new state. The start value for identifiers will be '1000' for
+-- compatibility with the current 'TorXakis' compiler.
 newState :: St
--- '1000' was chosen for compatibility with the current TorXakis compiler.
+
 newState = St 1000
 
-newtype CompilerM a = CompilerM { runCompiler :: StateT St (Either Error) a }
+newtype CompilerM a = CompilerM {
+    -- | Run the compiler.
+    runCompiler :: StateT St (Either Error) a
+    }
     deriving (Functor, Applicative, Monad, MonadState St, MonadError Error)
 
 -- | Get the next unique id, and increment the unique id counter in the

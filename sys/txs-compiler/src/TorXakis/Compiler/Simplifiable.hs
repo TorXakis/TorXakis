@@ -67,9 +67,6 @@ class Simplifiable e where
              -> e
 
 instance Simplifiable (ValExpr VarId) where
--- ^ Only simplify these function calls. Once we do not
-                    -- need to be compliant with the old TorXakis compiler we
-                    -- can optimize further.
     simplify ft fns ex@(ValExpr.view -> Vfunc (FuncId n _ aSids rSid) vs) =
         -- NOTE: For now make the simplification only if "n" is a predefined
         -- symbol. Once compliance with the current `TorXakis` compiler is not
