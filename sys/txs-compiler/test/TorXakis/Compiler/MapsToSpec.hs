@@ -6,6 +6,9 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedLists  #-}
 {-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+-- We choose convenience over safety. It is ok if tests fail due to an incomplete pattern.
+
 --------------------------------------------------------------------------------
 -- |
 -- Module      :  TorXakis.Compiler.MapsToSpec
