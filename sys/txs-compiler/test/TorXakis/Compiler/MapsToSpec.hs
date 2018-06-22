@@ -23,7 +23,6 @@ module TorXakis.Compiler.MapsToSpec
 where
 
 import           Data.Map                 (Map)
-import qualified Data.Map                 as Map
 import           Prelude                  hiding (lookup)
 import           Test.Hspec               (Spec, it, shouldBe)
 
@@ -57,46 +56,6 @@ somethingWithName n m =
     case fruitWithName n m of
         Right f -> Right (Left f)
         Left _  -> Right <$> vegetableWithName n m
-
-fooBi :: ( --MapsTo Text SortId mm
-    MapsTo String Bool mm
---         , In (Loc VarDeclE, VarId) (Contents mm) ~ 'False
-         -- , In (Text, ChanId) (Contents mm) ~ 'False
-         -- , In (Loc ChanDeclE, ChanId) (Contents mm) ~ 'False
-         -- , In (Loc ChanRefE, Loc ChanDeclE) (Contents mm) ~ 'False
-         -- , In (ProcId, ()) (Contents mm) ~ 'False
---         , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
-         )
-      => mm -> ()
-fooBi _ = ()
-
-qq :: Map Double Int
-qq = Map.empty
-zz :: Map Bool Int
-zz = Map.empty
-tt :: Map Char Int
-tt = Map.empty
-dd :: Map Int Double
-dd = Map.empty
-gg :: Map Bool Double
-gg = Map.empty
-hh :: Map Char Double
-hh = Map.empty
-myma :: Map String Bool
-myma = Map.empty
-
-boom :: ()
-boom =
-    fooBi ( (myma
-            :&
-            qq)
-            :& (dd -- NOTE: we need to find out why removing the parentheses
-                   -- won't compile.
-            :& tt  -- Removing one of the elements here (e.g. 'tt' will work as well)
-            :& zz
-            :& gg)
-            :& hh
-          )
 
 spec :: Spec
 spec = do
@@ -157,6 +116,3 @@ spec = do
     --        res `shouldBe` Orange
     --
     -- We could test this by calling the ghc compiler, and checking the error message.
-
-
-
