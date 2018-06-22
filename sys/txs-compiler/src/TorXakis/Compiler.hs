@@ -47,7 +47,7 @@ import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
 
-import           BehExprDefs                        (Offer)
+import           BehExprDefs                        (Offer, chanIdIstep)
 import           ChanId                             (ChanId)
 import qualified ChanId
 import           CstrId                             (CstrId)
@@ -62,8 +62,7 @@ import qualified Sigs                               (empty)
 import           SortId                             (SortId, sortIdBool,
                                                      sortIdInt, sortIdRegex,
                                                      sortIdString)
-import           StdTDefs                           (chanIdIstep, stdFuncTable,
-                                                     stdTDefs)
+import           StdTDefs                           (stdFuncTable, stdTDefs)
 import           TxsDefs                            (BExpr, ProcDef, ProcId,
                                                      TxsDefs, chanid, cnectDefs,
                                                      fromList, funcDefs,

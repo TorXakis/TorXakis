@@ -43,6 +43,8 @@ import qualified Data.Text                          as T
 
 import           BehExprDefs                        (ChanOffer (Exclam, Quest),
                                                      Offer (Offer))
+import           BehExprDefs                        (chanIdHit, chanIdMiss,
+                                                     chanIdQstep)
 import           ChanId                             (ChanId)
 import           CnectId                            (CnectId (CnectId))
 import           CstrId                             (CstrId)
@@ -52,8 +54,6 @@ import           ProcId                             (ExitSort (NoExit), ProcId)
 import           PurpId                             (PurpId (PurpId))
 import           SortDef                            (SortDef (SortDef))
 import           SortId                             (SortId, sortIdString)
-import           StdTDefs                           (chanIdHit, chanIdMiss,
-                                                     chanIdQstep)
 import           TxsDefs                            (CnectDef (CnectDef), ConnDef (ConnDfroW, ConnDtoW),
                                                      GoalId (GoalId),
                                                      MapperDef (MapperDef),

@@ -47,12 +47,12 @@ import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
 
 
+import           BehExprDefs                      (chanIdExit, chanIdHit,
+                                                   chanIdHit, chanIdIstep,
+                                                   chanIdMiss, chanIdQstep)
 import           ChanId                           (ChanId (ChanId))
 import           Id                               (Id (Id))
 import           SortId                           (SortId)
-import           StdTDefs                         (chanIdExit, chanIdHit,
-                                                   chanIdHit, chanIdIstep,
-                                                   chanIdMiss, chanIdQstep)
 
 import           TorXakis.Compiler.Data           (CompilerM, getNextId)
 import           TorXakis.Compiler.Error          (Error (Error),

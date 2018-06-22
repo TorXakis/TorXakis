@@ -39,6 +39,7 @@ import           Data.Text                         (Text)
 import qualified Data.Text                         as T
 import           GHC.Exts                          (toList)
 
+import           BehExprDefs                       (chanIdExit, chanIdIstep)
 import           ChanId                            (ChanId, chansorts)
 import           ConstDefs                         (Const (Cbool))
 import           FuncTable                         (Handler, Signature)
@@ -47,7 +48,6 @@ import           ProcId                            (ExitSort (Exit), ProcId,
                                                     procvars)
 import qualified ProcId
 import           SortId                            (SortId, sortIdBool)
-import           StdTDefs                          (chanIdExit, chanIdIstep)
 import           TxsDefs                           (ActOffer (ActOffer), BExpr,
                                                     ChanOffer (Exclam, Quest),
                                                     Offer (Offer), actionPref,

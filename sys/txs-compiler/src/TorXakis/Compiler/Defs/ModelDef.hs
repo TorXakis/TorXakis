@@ -29,12 +29,12 @@ import           Data.Set                           (Set)
 import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
 
+import           BehExprDefs                        (chanIdExit)
 import           ChanId                             (ChanId)
 import           FuncTable                          (Handler, Signature)
 import           ProcId                             (ExitSort (Exit, NoExit),
                                                      ProcId)
 import           SortId                             (SortId)
-import           StdTDefs                           (chanIdExit)
 import           TxsDefs                            (ModelDef (ModelDef))
 import           VarId                              (VarId)
 
