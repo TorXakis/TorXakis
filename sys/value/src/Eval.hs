@@ -248,7 +248,6 @@ eval' (Vpredef kd fid vexps) =
                                 Right s -> do
                                             uid     <- gets IOB.unid
                                             sigs    <- gets IOB.sigs
-                                            tdefs   <- gets IOB.tdefs
 
                                             ((_,vexp'),e) <- lift $ catch
                                                 ( let (i,p) = compileUnsafe $
