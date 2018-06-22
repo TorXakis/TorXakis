@@ -30,7 +30,7 @@ module TorXakis.Compiler.Defs.TxsDefs
 where
 
 import           Control.Monad                      (unless, when)
-import           Control.Monad.Error.Class          (liftEither, throwError)
+import           Control.Monad.Except               (liftEither, throwError)
 import           Data.List.Unique                   (repeated)
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map

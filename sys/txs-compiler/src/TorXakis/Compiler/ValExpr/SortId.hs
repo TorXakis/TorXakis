@@ -47,68 +47,65 @@ module TorXakis.Compiler.ValExpr.SortId
     )
 where
 
-import           Control.Arrow             (left, (+++), (|||))
-import           Control.Monad             (foldM, when)
-import           Control.Monad.Error.Class (liftEither, throwError)
-import           Data.Either               (partitionEithers)
-import           Data.List                 (intersect)
-import           Data.Map                  (Map)
-import qualified Data.Map                  as Map
-import           Data.Maybe                (catMaybes)
-import           Data.Monoid               ((<>))
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
-import           Data.Traversable          (for)
-import           GHC.Exts                  (fromList, toList)
-import           Prelude                   hiding (lookup)
+import           Control.Arrow            (left, (+++), (|||))
+import           Control.Monad            (foldM, when)
+import           Control.Monad.Except     (liftEither, throwError)
+import           Data.Either              (partitionEithers)
+import           Data.List                (intersect)
+import           Data.Map                 (Map)
+import qualified Data.Map                 as Map
+import           Data.Maybe               (catMaybes)
+import           Data.Monoid              ((<>))
+import           Data.Text                (Text)
+import qualified Data.Text                as T
+import           Data.Traversable         (for)
+import           GHC.Exts                 (fromList, toList)
+import           Prelude                  hiding (lookup)
 
-import           ChanId                    (ChanId, chansorts)
-import           FuncTable                 (Signature, sortArgs, sortRet)
-import           Id                        (Id (Id))
-import           ProcId                    (ExitSort (Exit, Hit, NoExit),
-                                            ProcId, exitSortIds, procchans,
-                                            procexit, procvars)
+import           ChanId                   (ChanId, chansorts)
+import           FuncTable                (Signature, sortArgs, sortRet)
+import           Id                       (Id (Id))
+import           ProcId                   (ExitSort (Exit, Hit, NoExit), ProcId,
+                                           exitSortIds, procchans, procexit,
+                                           procvars)
 import qualified ProcId
-import           SortId                    (SortId (SortId), sortIdBool,
-                                            sortIdInt, sortIdRegex,
-                                            sortIdString)
+import           SortId                   (SortId (SortId), sortIdBool,
+                                           sortIdInt, sortIdRegex, sortIdString)
 import qualified SortId
-import           VarId                     (varsort)
+import           VarId                    (varsort)
 
-import           TorXakis.Compiler.Data    (CompilerM, getNextId)
-import           TorXakis.Compiler.Error   (Entity (Process, Sort),
-                                            Error (Error, Errors),
-                                            ErrorLoc (NoErrorLoc),
-                                            ErrorType (Ambiguous, Missing, MultipleDefinitions, ParseError, TypeMismatch, Undefined, Unresolved),
-                                            HasErrorLoc, getErrorLoc, _errorLoc,
-                                            _errorMsg, _errorType)
-import           TorXakis.Compiler.Maps    (chRefsToIds, determineF,
-                                            findFuncDecl, findFuncSortIds,
-                                            findSortId, getUniqueElement,
-                                            lookupChId, (.@!!), (<!!>))
-import           TorXakis.Compiler.MapsTo  (MapsTo, innerMap, keys, lookup,
-                                            values, (<.++>), (<.+>))
-import           TorXakis.Parser.Data      (ADTDecl,
-                                            ActOfferDecl (ActOfferDecl),
-                                            BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
-                                            ChanDeclE,
-                                            ChanOfferDecl (ExclD, QuestD),
-                                            ChanRefE,
-                                            Const (AnyConst, BoolConst, IntConst, RegexConst, StringConst),
-                                            ExpChild (ConstLit, Fappl, If, LetExp, VarRef),
-                                            ExpDecl, FuncDecl, FuncDeclE,
-                                            LetVarDecl, Loc, OfSort,
-                                            OfferDecl (OfferDecl),
-                                            ParLetVarDecl, TestGoalDecl,
-                                            Transition (Transition), VarDecl,
-                                            VarDeclE, VarRefE, adtName,
-                                            chanOfferIvarDecl, chanRefName,
-                                            expChild, expLetVarDecls, funcBody,
-                                            funcParams, getLoc, ivarDeclSort,
-                                            letVarDeclSortName, locFromLoc,
-                                            mkIVarDecl, mkOfSort, sortRefName,
-                                            testGoalDeclBExp, toText,
-                                            varDeclExp, varDeclSort, varName)
+import           TorXakis.Compiler.Data   (CompilerM, getNextId)
+import           TorXakis.Compiler.Error  (Entity (Process, Sort),
+                                           Error (Error, Errors),
+                                           ErrorLoc (NoErrorLoc),
+                                           ErrorType (Ambiguous, Missing, MultipleDefinitions, ParseError, TypeMismatch, Undefined, Unresolved),
+                                           HasErrorLoc, getErrorLoc, _errorLoc,
+                                           _errorMsg, _errorType)
+import           TorXakis.Compiler.Maps   (chRefsToIds, determineF,
+                                           findFuncDecl, findFuncSortIds,
+                                           findSortId, getUniqueElement,
+                                           lookupChId, (.@!!), (<!!>))
+import           TorXakis.Compiler.MapsTo (MapsTo, innerMap, keys, lookup,
+                                           values, (<.++>), (<.+>))
+import           TorXakis.Parser.Data     (ADTDecl, ActOfferDecl (ActOfferDecl), BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
+                                           ChanDeclE,
+                                           ChanOfferDecl (ExclD, QuestD),
+                                           ChanRefE,
+                                           Const (AnyConst, BoolConst, IntConst, RegexConst, StringConst),
+                                           ExpChild (ConstLit, Fappl, If, LetExp, VarRef),
+                                           ExpDecl, FuncDecl, FuncDeclE,
+                                           LetVarDecl, Loc, OfSort,
+                                           OfferDecl (OfferDecl), ParLetVarDecl,
+                                           TestGoalDecl,
+                                           Transition (Transition), VarDecl,
+                                           VarDeclE, VarRefE, adtName,
+                                           chanOfferIvarDecl, chanRefName,
+                                           expChild, expLetVarDecls, funcBody,
+                                           funcParams, getLoc, ivarDeclSort,
+                                           letVarDeclSortName, locFromLoc,
+                                           mkIVarDecl, mkOfSort, sortRefName,
+                                           testGoalDeclBExp, toText, varDeclExp,
+                                           varDeclSort, varName)
 
 -- | Construct a list of sort ID's from a list of ADT declarations.
 --

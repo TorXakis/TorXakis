@@ -36,11 +36,11 @@ module TorXakis.Compiler.Data
     )
 where
 
-import           Control.Monad.Error.Class (MonadError, catchError)
-import           Control.Monad.State       (MonadState, StateT, gets, put)
-import           Data.Either               (partitionEithers)
+import           Control.Monad.Except    (MonadError, catchError)
+import           Control.Monad.State     (MonadState, StateT, gets, put)
+import           Data.Either             (partitionEithers)
 
-import           TorXakis.Compiler.Error   (Error)
+import           TorXakis.Compiler.Error (Error)
 
 -- | State of the compiler.
 newtype St = St { nextId :: Int } deriving (Eq, Show)

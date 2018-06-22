@@ -22,7 +22,7 @@ module TorXakis.Compiler.Defs.ModelDef
     (modelDeclToModelDef, chRefsToChIdSet)
 where
 
-import           Control.Monad.Error.Class          (liftEither)
+import           Control.Monad.Except               (liftEither)
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map
 import           Data.Set                           (Set)

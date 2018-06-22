@@ -24,7 +24,7 @@ module TorXakis.Compiler.Defs.FuncTable
     )
 where
 
-import           Control.Monad.Error.Class         (throwError)
+import           Control.Monad.Except              (throwError)
 import           Data.Foldable                     (foldl')
 import           Data.List.Index                   (imapM)
 import           Data.Map                          (Map)

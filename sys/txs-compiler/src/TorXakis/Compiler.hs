@@ -37,7 +37,7 @@ where
 import           Control.Arrow                      (second, (|||))
 import           Control.Lens                       ((^.), (^..))
 import           Control.Monad                      (forM)
-import           Control.Monad.Error.Class          (liftEither)
+import           Control.Monad.Except               (liftEither)
 import           Control.Monad.State                (evalStateT)
 import           Data.Data                          (Data)
 import           Data.Map.Strict                    (Map)

@@ -30,7 +30,7 @@ module TorXakis.Compiler.ValExpr.FuncDef
 where
 
 import           Control.Arrow                     (left, (&&&))
-import           Control.Monad.Error.Class         (liftEither)
+import           Control.Monad.Except              (liftEither)
 import           Data.Either                       (partitionEithers)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map

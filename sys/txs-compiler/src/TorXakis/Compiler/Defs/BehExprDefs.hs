@@ -29,7 +29,7 @@ module TorXakis.Compiler.Defs.BehExprDefs
 where
 
 import           Control.Monad                     (foldM, when)
-import           Control.Monad.Error.Class         (liftEither, throwError)
+import           Control.Monad.Except              (liftEither, throwError)
 import           Data.List                         (nub)
 import           Data.Map                          (Map)
 import qualified Data.Map                          as Map

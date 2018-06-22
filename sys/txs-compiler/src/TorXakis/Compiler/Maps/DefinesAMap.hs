@@ -34,7 +34,7 @@ module TorXakis.Compiler.Maps.DefinesAMap
 where
 
 import           Control.Lens                     ((^.), (^..))
-import           Control.Monad.Error.Class        (throwError)
+import           Control.Monad.Except             (throwError)
 import           Data.Data                        (Data)
 import           Data.Data.Lens                   (biplate)
 import           Data.Map                         (Map)

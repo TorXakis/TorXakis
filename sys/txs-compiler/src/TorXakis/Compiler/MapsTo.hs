@@ -52,24 +52,24 @@ module TorXakis.Compiler.MapsTo
     )
 where
 
-import           Control.Monad.Error.Class (liftEither)
-import           Data.Either.Utils         (maybeToEither)
-import           Data.Map                  (Map)
-import qualified Data.Map                  as Map
-import           Data.Proxy                (Proxy (Proxy))
-import           Data.Semigroup            ((<>))
-import qualified Data.Text                 as T
-import           Data.Type.Bool            (type (||))
-import           Data.Typeable             (Typeable, typeOf)
-import           GHC.TypeLits              (ErrorMessage ((:<>:), ShowType, Text),
-                                            TypeError)
-import           Prelude                   hiding (lookup)
+import           Control.Monad.Except    (liftEither)
+import           Data.Either.Utils       (maybeToEither)
+import           Data.Map                (Map)
+import qualified Data.Map                as Map
+import           Data.Proxy              (Proxy (Proxy))
+import           Data.Semigroup          ((<>))
+import qualified Data.Text               as T
+import           Data.Type.Bool          (type (||))
+import           Data.Typeable           (Typeable, typeOf)
+import           GHC.TypeLits            (ErrorMessage ((:<>:), ShowType, Text),
+                                          TypeError)
+import           Prelude                 hiding (lookup)
 
-import           TorXakis.Compiler.Data    (CompilerM)
-import           TorXakis.Compiler.Error   (Entity (Entity), Error (Error),
-                                            ErrorLoc (NoErrorLoc),
-                                            ErrorType (Undefined), _errorLoc,
-                                            _errorMsg, _errorType)
+import           TorXakis.Compiler.Data  (CompilerM)
+import           TorXakis.Compiler.Error (Entity (Entity), Error (Error),
+                                          ErrorLoc (NoErrorLoc),
+                                          ErrorType (Undefined), _errorLoc,
+                                          _errorMsg, _errorType)
 
 -- | 'mm' maps keys of type 'k' onto values of type 'v'. The type 'mm' can be
 -- thought as a composite map, which contains multiple maps. See @:&@ for more

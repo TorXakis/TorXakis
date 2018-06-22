@@ -22,7 +22,7 @@ See LICENSE at root directory of this repository.
 module TorXakis.Compiler.Defs.ProcDef where
 
 import           Control.Arrow                      (second)
-import           Control.Monad.Error.Class          (liftEither, throwError)
+import           Control.Monad.Except               (liftEither, throwError)
 import           Data.List                          (find)
 import           Data.Map                           (Map)
 import qualified Data.Map                           as Map

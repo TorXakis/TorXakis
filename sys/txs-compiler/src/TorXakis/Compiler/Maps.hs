@@ -51,41 +51,40 @@ module TorXakis.Compiler.Maps
     )
 where
 
-import           Control.Arrow             (left, (|||))
-import           Control.Lens              ((.~))
-import           Control.Monad.Error.Class (catchError, liftEither, throwError)
-import           Data.List                 (nub, sortBy)
-import           Data.Map                  (Map)
-import qualified Data.Map                  as Map
-import           Data.Maybe                (catMaybes, maybe)
-import           Data.Monoid               ((<>))
-import           Data.Set                  (Set)
-import qualified Data.Set                  as Set
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
-import           Data.Typeable             (Typeable)
-import           Prelude                   hiding (lookup)
+import           Control.Arrow            (left, (|||))
+import           Control.Lens             ((.~))
+import           Control.Monad.Except     (catchError, liftEither, throwError)
+import           Data.List                (nub, sortBy)
+import           Data.Map                 (Map)
+import qualified Data.Map                 as Map
+import           Data.Maybe               (catMaybes, maybe)
+import           Data.Monoid              ((<>))
+import           Data.Set                 (Set)
+import qualified Data.Set                 as Set
+import           Data.Text                (Text)
+import qualified Data.Text                as T
+import           Data.Typeable            (Typeable)
+import           Prelude                  hiding (lookup)
 
-import           ChanId                    (ChanId, unid)
-import           FuncId                    (FuncId)
-import           FuncTable                 (Handler, Signature, sortArgs,
-                                            sortRet)
-import           SortId                    (SortId)
-import           VarId                     (VarId)
+import           ChanId                   (ChanId, unid)
+import           FuncId                   (FuncId)
+import           FuncTable                (Handler, Signature, sortArgs,
+                                           sortRet)
+import           SortId                   (SortId)
+import           VarId                    (VarId)
 
-import           TorXakis.Compiler.Data    (CompilerM)
-import           TorXakis.Compiler.Error   (Entity (Entity, Function, Variable),
-                                            Error (Error),
-                                            ErrorLoc (NoErrorLoc),
-                                            ErrorType (MultipleDefinitions, Undefined),
-                                            HasErrorLoc, errorLoc, errorMsg,
-                                            getErrorLoc, _errorLoc, _errorMsg,
-                                            _errorType)
-import           TorXakis.Compiler.MapsTo  (MapsTo, innerMap, lookup, lookupM)
-import           TorXakis.Parser.Data      (ChanDeclE, ChanRef, ChanRefE,
-                                            FuncDeclE,
-                                            Loc (ExtraAut, Loc, PredefLoc),
-                                            VarDeclE, VarRefE, getLoc)
+import           TorXakis.Compiler.Data   (CompilerM)
+import           TorXakis.Compiler.Error  (Entity (Entity, Function, Variable),
+                                           Error (Error), ErrorLoc (NoErrorLoc),
+                                           ErrorType (MultipleDefinitions, Undefined),
+                                           HasErrorLoc, errorLoc, errorMsg,
+                                           getErrorLoc, _errorLoc, _errorMsg,
+                                           _errorType)
+import           TorXakis.Compiler.MapsTo (MapsTo, innerMap, lookup, lookupM)
+import           TorXakis.Parser.Data     (ChanDeclE, ChanRef, ChanRefE,
+                                           FuncDeclE,
+                                           Loc (ExtraAut, Loc, PredefLoc),
+                                           VarDeclE, VarRefE, getLoc)
 
 -- | Lookup the @SortId@ associated to the given name, using the location for
 -- error reporting.
