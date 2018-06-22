@@ -46,7 +46,6 @@ import qualified EnvCore             as IOC
 import qualified EnvData
 
 -- import from defs
-import qualified StdTDefs
 import qualified TxsDDefs
 import qualified TxsDefs
 import qualified TxsShow
@@ -157,7 +156,7 @@ goalAfter allsyncs _ (TxsDDefs.Act acts) (gid,Left btree)  =  do
       Nothing  -> return (gid,Left [])
       Just bt' -> return (gid,Left bt')
 goalAfter allsyncs outsyncs TxsDDefs.ActQui (gid,Left btree)  =  do
-     let qacts      = Set.singleton (StdTDefs.chanIdQstep, [])
+     let qacts      = Set.singleton (TxsDefs.chanIdQstep, [])
      envb           <- filterEnvCtoEnvB
      (maybt1,envb1) <- lift $
        runStateT (Behave.behAfterRef btree (Set.unions outsyncs)) envb
@@ -224,13 +223,13 @@ isHit :: [ Set.Set TxsDefs.ChanId ] -> BTree.BTree -> Bool
 isHit allsyncs btree
   =  let menu = Behave.behMayMenu allsyncs btree
          chanids = Set.map BTree.ctchan (Set.unions (map Utils.frst menu))
-      in StdTDefs.chanIdHit `Set.member` chanids
+      in TxsDefs.chanIdHit `Set.member` chanids
 
 isMiss :: [ Set.Set TxsDefs.ChanId ] -> BTree.BTree -> Bool
 isMiss allsyncs btree
   =  let menu = Behave.behMayMenu allsyncs btree
          chanids = Set.map BTree.ctchan (Set.unions (map Utils.frst menu))
-      in StdTDefs.chanIdMiss `Set.member` chanids
+      in TxsDefs.chanIdMiss `Set.member` chanids
 
 isHalt :: BTree.BTree -> Bool
 isHalt = null

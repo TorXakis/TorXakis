@@ -42,7 +42,7 @@ import TranslatedProcDefs
 
 import TxsDefs
 import ConstDefs
-import StdTDefs (stdSortTable, chanIdExit)
+import StdTDefs (stdSortTable)
 
 import ChanId
 import ProcId
