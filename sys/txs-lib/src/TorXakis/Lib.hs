@@ -11,6 +11,7 @@ module TorXakis.Lib
 , module TorXakis.Lib.CommonCore
 , module TorXakis.Lib.Eval
 , module TorXakis.Lib.Params
+, module TorXakis.Lib.Path
 , module TorXakis.Lib.Session
 , module TorXakis.Lib.Simulator
 , module TorXakis.Lib.Solvers
@@ -69,6 +70,7 @@ import           TorXakis.Lib.Common
 import           TorXakis.Lib.CommonCore
 import           TorXakis.Lib.Eval
 import           TorXakis.Lib.Params
+import           TorXakis.Lib.Path
 import           TorXakis.Lib.Session
 import           TorXakis.Lib.Simulator
 import           TorXakis.Lib.SocketWorld      (closeSockets)

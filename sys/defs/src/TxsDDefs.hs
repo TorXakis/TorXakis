@@ -51,7 +51,7 @@ data  SAction       =  SAct     Connection Text
 
 instance PShow SAction
   where
-    pshow (SAct _h s) =  "SAct  "++" ! "++ show s ++"\n"
+    pshow (SAct _h s) =  "SAct   ! "++ show s ++"\n"
     pshow  SActQui    =  "No Output (Sut is Quiescent)\n"
 
 -- ----------------------------------------------------------------------------------------- --

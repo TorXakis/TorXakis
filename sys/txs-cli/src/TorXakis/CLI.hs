@@ -135,6 +135,8 @@ startCLI = do
             "seed"      -> lift (runExceptT $ seed rest) >>= output
             "goto"      -> lift (runExceptT $ goto rest) >>= output
             "back"      -> lift (runExceptT $ back rest) >>= output
+            "path"      -> lift (runExceptT getPath) >>= output
+            "trace"     -> lift (runExceptT $ trace rest) >>= output
             _           -> output $ "Can't dispatch command: " ++ cmd
 
           where
@@ -219,6 +221,11 @@ startCLI = do
                 Nothing   -> throwError "Usage: back [<count>]"
                 Just stNr -> backState stNr
             back _    = throwError "Usage: back [<count>]"
+            trace :: (MonadIO m, MonadReader Env m, MonadError String m)
+                 => [String] -> m String
+            trace []    = getTrace ""
+            trace [fmt] = getTrace fmt
+            trace _     = throwError "Usage: trace [<format>]"
             run :: [String] -> InputT CLIM ()
             run [filePath] = do
                 exists <- liftIO $ doesFileExist filePath

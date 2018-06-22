@@ -408,6 +408,26 @@ spec = return $ do
                 r5 <- post (statesUrl sId "goto" 5) emptyP
                 r5 ^. responseStatus . statusCode `shouldBe` 200 -- OK
                 BSL.unpack (r5 ^. responseBody) `shouldContain` "5"
+        describe "Path" $
+            it "Dump path and trace" $ do
+                sId <- mkNewSession
+                void $ put (newSessionUrl sId) [partFile "Point.txs" "../../examps/Point/Point.txs"]
+                void $ post (setStepUrl sId) emptyP
+                void $ post (stepUrl sId) $ toJSON (NumberOfSteps 10)
+                threadDelay (10 ^ (6 :: Int))
+
+                rP <- get (pathUrl sId)
+                rP ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                BSL.unpack (rP ^. responseBody) `shouldContain` "-> 10"
+                rT <- get (traceUrl sId "")
+                rT ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                BSL.unpack (rT ^. responseBody) `shouldContain` "....10"
+                rTProc <- get (traceUrl sId "proc")
+                rTProc ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                BSL.unpack (rTProc ^. responseBody) `shouldContain` ">-> EXIT"
+                rTPurp <- get (traceUrl sId "purp")
+                rTPurp ^. responseStatus . statusCode `shouldBe` 200 -- OK
+                BSL.unpack (rTPurp ^. responseBody) `shouldContain` ">-> HIT"
 
 check204NoContent :: HasCallStack => Response BSL.ByteString -> IO ()
 check204NoContent r = r ^. responseStatus . statusCode `shouldBe` 204
@@ -532,6 +552,12 @@ showUrl sId item nm= Prelude.concat [host, "/sessions/", show sId, "/show/", ite
 
 statesUrl :: Integer -> String -> Int -> String
 statesUrl sId cmd nr= Prelude.concat [host, "/sessions/", show sId, "/state/", cmd, "/", show nr]
+
+pathUrl :: Integer -> String
+pathUrl sId = Prelude.concat [host, "/sessions/", show sId, "/path"]
+
+traceUrl :: Integer -> String -> String
+traceUrl sId fmt = Prelude.concat [host, "/sessions/", show sId, "/trace/", fmt]
 
 emptyP :: [Part]
 emptyP = [partText "" ""]

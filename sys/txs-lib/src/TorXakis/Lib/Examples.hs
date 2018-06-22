@@ -21,6 +21,7 @@ import           Control.Monad.STM            (atomically)
 import           Data.Conduit                 (runConduit, (.|))
 import           Data.Conduit.Combinators     (mapM_, sinkList, take)
 import           Data.Conduit.TQueue          (sourceTQueue)
+import           Data.Either                  (fromRight)
 import           Data.Foldable                (traverse_)
 import qualified Data.Map                     as Map
 import qualified Data.Set                     as Set
@@ -319,6 +320,10 @@ testGotoAndBack = do
     showItem s "state" "nr" >>= putStrLn
     void $ gotoState s 5
     showItem s "state" "nr" >>= putStrLn
+    pathDump s >>= putStrLn . fromRight "Unexpected dump result!"
+    traceDump s "" >>= putStrLn . fromRight "Unexpected dump result!"
+    traceDump s "proc" >>= putStrLn . fromRight "Unexpected dump result!"
+    traceDump s "purp" >>= putStrLn . fromRight "Unexpected dump result!"
     cancel a
 
 seconds :: Int

@@ -49,6 +49,10 @@ sim [<n>]                      : make <n>/[unbounded] random simulation steps
 stop                           : stop testing, simulation, or stepping
 
 show <object>                  : show <object>
+goto <state nr>                : goto <state nr> in the model state
+back [<n>]                     : go back <n>/[one] visible steps in the model state
+path                           : show the visible path from the initial state
+trace [proc|purp]              : show the current trace [in PROCDEF|PURPDEF] format]
 menu [in|out|map|purp <goal>]  : give the [in|out|map] menu of actions of current state
                                  or purp menu for given goal
 
