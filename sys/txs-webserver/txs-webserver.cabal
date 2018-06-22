@@ -1,0 +1,118 @@
+-- This file has been generated from package.yaml by hpack version 0.20.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: f667c06b84459600f364cac79e17d9ce9114e12bae028f69d0df75b99b135e73
+
+name:           txs-webserver
+version:        0.2.0.0
+synopsis:       Web server for interface to the `TorXakis` parser and core.
+homepage:       https://github.com/TorXakis/TorXakis#readme
+bug-reports:    https://github.com/TorXakis/TorXakis/issues
+author:         Kerem Ispirli,
+                Damian Nadales
+maintainer:     kerem.ispirli@tno.nl,
+                damian.nadales@gmail.com
+copyright:      Copyright: (c) 2018 TorXakis
+license:        BSD3
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    license.txt
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/TorXakis/TorXakis
+
+library
+  hs-source-dirs:
+      src
+  default-extensions: DataKinds TypeOperators
+  ghc-options: -O2 -optc-O3 -Werror -Wall
+  build-depends:
+      aeson
+    , async
+    , base >=4.7 && <5
+    , binary
+    , bytestring
+    , conduit
+    , containers
+    , coreenv
+    , defs
+    , http-types
+    , microlens
+    , mtl
+    , servant-multipart
+    , servant-server >=0.12
+    , servant-swagger
+    , stm
+    , stm-conduit
+    , swagger2
+    , text
+    , txs-lib
+    , wai
+    , wai-cors
+    , wai-extra
+    , warp
+  exposed-modules:
+      API
+      Common
+      Endpoints.Eval
+      Endpoints.Info
+      Endpoints.Messages
+      Endpoints.NewSession
+      Endpoints.Params
+      Endpoints.Parse
+      Endpoints.Seed
+      Endpoints.Stepper
+      Endpoints.Tester
+      Endpoints.Time
+      Endpoints.Timer
+      Endpoints.Upload
+      Endpoints.Vals
+      Endpoints.Vars
+      Swagger
+  other-modules:
+      Paths_txs_webserver
+  default-language: Haskell2010
+
+executable txs-webserver
+  main-is: Main.hs
+  hs-source-dirs:
+      app
+  default-extensions: DataKinds TypeOperators
+  ghc-options: -O2 -optc-O3 -Werror -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      MissingH
+    , async
+    , base
+    , docopt
+    , txs-webserver
+  other-modules:
+      Paths_txs_webserver
+  default-language: Haskell2010
+
+test-suite txs-webserver-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs:
+      test
+  default-extensions: DataKinds TypeOperators
+  ghc-options: -O2 -optc-O3 -Werror -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , async
+    , base
+    , bytestring
+    , hspec
+    , http-client
+    , microlens
+    , microlens-aeson
+    , process
+    , txs-lib
+    , wreq
+  other-modules:
+      Paths_txs_webserver
+  default-language: Haskell2010
