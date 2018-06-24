@@ -28,7 +28,8 @@ where
 
 import qualified Data.Text                   as T
 import           Text.Parsec                 (many, notFollowedBy, optionMaybe,
-                                              sepBy, sepBy1, try, (<?>), (<|>))
+                                              optional, sepBy, sepBy1, try,
+                                              (<?>), (<|>))
 import           Text.Parsec.Expr            (Assoc (AssocLeft),
                                               Operator (Infix),
                                               buildExpressionParser)
@@ -124,14 +125,18 @@ offersP =  predefOffer "ISTEP"
        <|> predefOffer "QSTEP"
        <|> predefOffer "HIT"
        <|> predefOffer "MISS"
-       <|> offerP `sepBy1` try (
-               txsSymbol "|"
-               >> notFollowedBy ( txsSymbol "|" <|> txsSymbol "[" )
-           )
+       <|> offersP'
     where predefOffer str = try $ do
               l <- mkLoc
               txsSymbol str
               return [OfferDecl (mkChanRef (T.pack str) l) []]
+          offersP' = optional (txsSymbol "{")
+                   *> offerP `sepBy1` pipe
+                   <* optional (txsSymbol "}")
+          pipe = try $ do
+              txsSymbol "|"
+              notFollowedBy ( txsSymbol "|" <|> txsSymbol "[" )
+
 
 -- | Parser for offers.
 offerP :: TxsParser OfferDecl

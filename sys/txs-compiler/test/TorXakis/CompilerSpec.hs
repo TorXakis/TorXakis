@@ -26,8 +26,8 @@ import           Data.Either          (isRight)
 import           Data.Foldable        (traverse_)
 import           System.FilePath      ((</>))
 import           System.FilePath.Find (extension, find, (==?))
-import           Test.Hspec           (Spec, describe, it, parallel, runIO,
-                                       shouldSatisfy)
+import           Test.Hspec           (Spec, describe, describe, it, parallel,
+                                       runIO, shouldSatisfy)
 
 import           TorXakis.Compiler    (compileFile)
 
