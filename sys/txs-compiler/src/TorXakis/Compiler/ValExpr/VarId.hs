@@ -135,7 +135,6 @@ instance DeclaresVariables ChanOfferDecl where
     mkVarIds mm (ExclD  ex) = mkVarIds mm ex
 
 instance DeclaresVariables ExpDecl where
-    -- TODO: rename 'varIdsFromExpDecl' to 'mkVarIds'.
     mkVarIds = varIdsFromExpDecl
 
 instance DeclaresVariables LetVarDecl where

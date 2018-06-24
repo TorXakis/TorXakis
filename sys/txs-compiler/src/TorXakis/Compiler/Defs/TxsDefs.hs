@@ -42,9 +42,8 @@ import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 
 import           BehExprDefs                        (ChanOffer (Exclam, Quest),
-                                                     Offer (Offer))
-import           BehExprDefs                        (chanIdHit, chanIdMiss,
-                                                     chanIdQstep)
+                                                     Offer (Offer), chanIdHit,
+                                                     chanIdMiss, chanIdQstep)
 import           ChanId                             (ChanId)
 import           CnectId                            (CnectId (CnectId))
 import           CstrId                             (CstrId)
