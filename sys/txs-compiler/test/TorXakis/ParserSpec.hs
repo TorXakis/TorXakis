@@ -31,19 +31,19 @@ import           TorXakis.Parser      (parseFile)
 
 spec :: Spec
 spec = do
-    describe "Correctly parses the incremental examples (WIP)" $ do
+    describe "Parses the orthogonal examples" $ do
         fs <- runIO $ find (return True) (extension ==? ".txs")
               ("test" </> "data" </> "success")
         parallel $ traverse_ testParser fs
 
-    describe "Correctly parses complete TorXakis models" $ do
+    describe "Parses the examples in the 'examps' folder" $ do
         fs <- runIO $ find (return True) (extension ==? ".txs")
-              ("test" </> "data" </> "parser" </> "success")
+              ("test" </> "data" </> "examps")
         parallel $ traverse_ testParser fs
 
-    describe "Correctly parses the HUGE models" $ do
+    describe "Parses large models" $ do
         fs <- runIO $ find (return True) (extension ==? ".txs")
-              ("test" </> "data" </> "parser" </> "huge")
+              ("test" </> "data" </> "large")
         parallel $ traverse_ testParser fs
 
     where

@@ -51,7 +51,6 @@ executable txsserver
                       , core
                       , coreenv
                       , defs
-                      , front
                       , serverenv
                       , valexpr
                       , txs-compiler

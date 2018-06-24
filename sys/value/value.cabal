@@ -30,7 +30,6 @@ library
                       , behaveenv
                       , defs
                       , coreenv
-                      , front
                       , valexpr
                       , txs-compiler
                       

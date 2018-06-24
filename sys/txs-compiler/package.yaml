@@ -30,7 +30,6 @@ library:
   - mtl
   - containers
   - transformers
-  - unordered-containers
   - MissingH
   - ilist
   - lens
@@ -38,7 +37,6 @@ library:
   # TorXakis dependencies
   - defs
   - valexpr
-  - behave
   - bexpr
   
 tests:
@@ -59,10 +57,6 @@ tests:
     - filemanip
     - filepath
     - containers    
-    # TorXakis dependencies
-    - front # Temporary dependencies till the whole front is replaced.
-    - defs
-    - valexpr
 
     # Local dependencies
     - txs-compiler
