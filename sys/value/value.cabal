@@ -30,7 +30,7 @@ library
                       , behaveenv
                       , defs
                       , coreenv
-                      , front
                       , valexpr
+                      , txs-compiler
                       
   default-language:     Haskell2010

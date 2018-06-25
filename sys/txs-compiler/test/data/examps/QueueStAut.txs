@@ -1,0 +1,127 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- Models of Queues of Integers, with input "In x", and "Out y".
+
+
+TYPEDEF  IntList  ::=   Nil
+                      | Cons  { hd ::  Int
+                              ; tl ::  IntList
+                              }
+ENDDEF
+
+
+FUNCDEF  add ( x :: Int; l :: IntList ) :: IntList
+         ::= IF    isNil(l)
+             THEN  Cons(x,Nil)
+             ELSE  Cons(hd(l),add(x,tl(l)))
+             FI
+ENDDEF
+
+ 
+-- ----------------------------------------------------------------------------------------- --
+-- simple queue
+
+
+STAUTDEF  queue  [ Enq, Value :: Int;  Deq ]  ( )
+ ::=
+      STATE  s0, s1
+
+      VAR    buf :: IntList
+
+      INIT   s0   { buf := Nil }
+
+      TRANS  s0   ->   Enq ? x  { buf := add(x,buf) }        ->   s0
+             s0   ->   Deq   [[ isNil(buf) ]]                ->   s0
+             s0   ->   Deq   [[ not(isNil(buf)) ]]           ->   s1
+             s1   ->   Value ! hd(buf)  { buf := tl(buf) }   ->   s0
+
+ENDDEF
+
+CHANDEF ChanDefs ::= Enq   ::  Int
+                   ; Deq
+                   ; Value :: Int
+ENDDEF
+
+MODELDEF  Queue ::=
+      CHAN IN    Enq, Deq
+      CHAN OUT   Value
+
+      BEHAVIOUR  queue [ Enq, Value, Deq ] ( )
+
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- lossy queue
+
+
+STAUTDEF  lossyQueue  [ Enq, Value :: Int;  Deq ]  ( ) ::=
+      STATE  s0, s1, s2
+
+      VAR    buf   :: IntList ;
+             input :: Int
+
+      INIT   s0   {  buf   := Nil
+                  ;  input := 0
+                  }
+
+      TRANS  s0   ->   Enq ? x  { input := x }               ->   s1
+             s1   ->   ISTEP    { buf := add(input,buf) }    ->   s0
+             s1   ->   ISTEP                                 ->   s0
+             s0   ->   Deq   [[ isNil(buf) ]]                ->   s0
+             s0   ->   Deq   [[ not(isNil(buf)) ]]           ->   s2
+             s2   ->   Value ! hd(buf)  { buf := tl(buf) }   ->   s0
+ENDDEF
+
+
+MODELDEF  Lossy ::=
+      CHAN IN    Enq, Deq
+      CHAN OUT   Value
+
+      BEHAVIOUR  lossyQueue  [ Enq, Value, Deq ] ( )
+ENDDEF
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- adapter
+
+{-
+ADAPDEF  Adap
+ ::=
+      CHAN IN    Enq   ::  Int ;
+                 Deq
+      SUT IN     In    ::  String
+
+      CHAN OUT   Value ::  Int    
+      SUT OUT    Out   ::  String
+
+      MAP IN     Enq ?x    ->  In ! "enq " ++ toString(x)
+      MAP IN     Deq       ->  In ! "deq "
+
+      MAP OUT    Out ?s    ->  Value ! fromString(s)
+
+ENDDEF
+
+-- ----------------------------------------------------------------------------------------- --
+-- sut
+
+
+SUTDEF Sut
+ ::=
+      SUT IN     In  :: String
+      SUT OUT    Out :: String
+
+      SOCK IN    In   HOST "localhost"  PORT 7890
+      SOCK OUT   Out  HOST "localhost"  PORT 7890
+
+ENDDEF
+-}
+
+-- ----------------------------------------------------------------------------------------- --
+-- ----------------------------------------------------------------------------------------- --

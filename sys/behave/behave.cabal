@@ -73,9 +73,9 @@ test-suite behave-test
                      , behaveenv
                      , bexpr
                      , coreenv
-                     , defs
-                     , front
+                     , defs                     
                      , solve
+                     , txs-compiler
                      , valexpr
                      
   default-language:    Haskell2010
