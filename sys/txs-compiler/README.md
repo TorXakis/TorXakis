@@ -1,11 +1,11 @@
 # The TorXakis compiler
 
-This package contains the compiler that translate `TorXakis` models described
+This package contains the compiler that translates `TorXakis` models described
 in text files to their corresponding `Haskell` data structures.
 
 The [`compileLegacy`](src/TorXakis/Compiler.hs#L155) function, will parse a
 string containing a `TorXakis` model into a type `(Id, TxsDefs, Sigs VarId)`.
-If the model contains an error, and error will be thrown. The use of
+If the model contains an error, an error will be thrown. The use of
 `compileLegacy` is discouraged, and the function is kept for the sake of
 backwards compatibility. Instead of this function, use `compileFile` which will
 return either the tuple above, or an [`Error`](src/TorXakis/Compiler/Error.hs)
@@ -37,8 +37,8 @@ make a tuple `(Id, TxsDefs, Sigs VarId)` from the given parsed-definitions
 7. Generate a map from function declarations to their definitions (signature
    and handler).
 8. Generate a map from process declarations to their definitions.
-9. Generate the 'TorXakis' 'Sigs'.
-10. Generate the 'TorXakis' 'TxsDefs'.
+9. Generate the `TorXakis` `Sigs`.
+10. Generate the `TorXakis` `TxsDefs`.
 
 At each stage, the maps that are required by the subsequent functions are made.
 
@@ -70,3 +70,8 @@ In (Text, SortId) (Contents mm) ~ 'False
 
 specifies that the composite map `mm` **shall not contain** a map from `Text`
 to `SortId`.
+
+## Roadmap
+
+The roadmap for future improvements in the TorXakis compiler can be found in
+[this](https://github.com/TorXakis/TorXakis/projects/4) github project.
