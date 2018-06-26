@@ -24,6 +24,11 @@ ghc-options:
 
 library:
   source-dirs: src
+  exposed-modules:
+  - TorXakis.Compiler
+  - TorXakis.Compiler.Error
+  - TorXakis.Parser  
+  - TorXakis.Compiler.MapsTo
   dependencies:
   - text
   - parsec
