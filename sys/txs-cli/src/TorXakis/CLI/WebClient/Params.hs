@@ -8,7 +8,7 @@ module TorXakis.CLI.WebClient.Params
 )
 where
 
-import           Control.Monad.Except          (MonadError)
+import           Control.Monad.Except          (MonadError, throwError)
 import           Control.Monad.IO.Class        (MonadIO)
 import           Control.Monad.Reader          (MonadReader, asks)
 import           Data.Aeson                    (decode)
@@ -40,9 +40,9 @@ getAllParams = do
     let mParams = do
             results <- decode $ r ^. responseBody
             return $ mapMaybe (parseMaybe parseParameterValue) results
-    return $ case mParams of
-        Nothing     -> "Invalid response: " ++ BSL.unpack (r ^. responseBody)
-        Just params -> unlines params
+    case mParams of
+        Nothing     -> throwError $ "Invalid response: " ++ BSL.unpack (r ^. responseBody)
+        Just params -> return $ unlines params
 
 -- | Set given parameter to given value
 setParam :: (MonadIO m, MonadReader Env m, MonadError String m)

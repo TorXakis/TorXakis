@@ -93,7 +93,7 @@ getTime = do
 
 -- | Start/stop a timer in 'TorXakis'.
 callTimer :: (MonadIO m, MonadReader Env m, MonadError String m)
-          => String -> m String
+          => String -> m Text
 callTimer nm = do
     sId <- asks sessionId
     let path = concat ["sessions/", show sId, "/timers/", nm]
@@ -109,8 +109,8 @@ callTimer nm = do
         d   <- maybeToEither "Response did not contain \"duration\"" $
                     r ^? responseBody . key "duration" . _String
         if T.null d
-            then return $ concat ["Timer ", T.unpack tnm, " started at " ++ T.unpack stt ++ "."]
-            else return $ concat ["Timer ", T.unpack tnm, " stopped at " ++ T.unpack stp ++ ". Duration: ", T.unpack d]
+            then return $ T.concat ["Timer ", tnm, " started at ", stt, "."]
+            else return $ T.concat ["Timer ", tnm, " stopped at ", stp, ". Duration: ", d]
 
 -- | Load a list of files using the given environment.
 --

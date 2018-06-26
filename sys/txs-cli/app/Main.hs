@@ -7,22 +7,23 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE QuasiQuotes       #-}
 module Main where
 
-import qualified Data.ByteString.Lazy.Char8 as BSL
-import           Data.List                  (isInfixOf)
-import           Data.String.Utils          (strip)
-import           GHC.IO.Handle              (hGetContents)
-import           Lens.Micro                 ((^.), (^?))
-import           Lens.Micro.Aeson           (key, _Integer)
+import           Control.Concurrent.STM.TVar (newTVarIO)
+import qualified Data.ByteString.Lazy.Char8  as BSL
+import           Data.List                   (isInfixOf)
+import           Data.String.Utils           (strip)
+import           GHC.IO.Handle               (hGetContents)
+import           Lens.Micro                  ((^.), (^?))
+import           Lens.Micro.Aeson            (key, _Integer)
 import           Network.Wreq
-import           System.Console.Docopt      (Docopt, docopt, getArg, longOption,
-                                             parseArgsOrExit)
-import           System.Environment         (getArgs)
-import           System.Process             (StdStream (NoStream), proc,
-                                             std_out, withCreateProcess)
+import           System.Console.Docopt       (Docopt, docopt, getArg,
+                                              longOption, parseArgsOrExit)
+import           System.Environment          (getArgs)
+import           System.Process              (StdStream (NoStream), proc,
+                                              std_out, withCreateProcess)
 -- import           System.Process             (proc, withCreateProcess)
 
 import           TorXakis.CLI
-import qualified TorXakis.CLI.Log           as Log
+import qualified TorXakis.CLI.Log            as Log
 
 patterns :: Docopt
 patterns = [docopt|
@@ -93,7 +94,8 @@ main = do
               Left  e   -> Log.warn $ show e
               Right sid -> do
                             Log.info $ "Starting CLI for session" ++ show sid
-                            runCli (Env host sid) startCLI
+                            noHdl <- newTVarIO Nothing
+                            runCli (Env host sid noHdl) startCLI
       initTorXakisSession :: String -> IO (Either TorXakisServerException Int)
       initTorXakisSession host = do
           let url = host ++ "sessions/new"

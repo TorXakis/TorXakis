@@ -47,20 +47,22 @@ library:
   - exceptions
   - filepath
   - haskeline
+  - hslogger
+  - http-client
   - microlens
   - microlens-aeson
   - microlens-th
   - mtl
-  - safe-exceptions
-  - text
-  - wreq
-  - hslogger
-  - http-client
   - pipes
   - pipes-aeson
   - process
   - raw-strings-qq
+  - safe-exceptions
+  - split
+  - stm
+  - text
   - time
+  - wreq
   # TorXakis specific dependencies
   - defs
   - coreenv
@@ -85,6 +87,7 @@ executables:
     - microlens
     - mtl
     - process
+    - stm
     - wreq
     - docopt
     - txs-cli
