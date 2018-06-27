@@ -24,6 +24,7 @@ See LICENSE at root directory of this repository.
 --------------------------------------------------------------------------------
 module TorXakis.Compiler
     ( compileFile
+    , compileString
     , compileUnsafe
     , compileValDefs
     , compileVarDecls
@@ -134,15 +135,20 @@ import           TorXakis.Parser.Data               (ChanDeclE, ChanRefE, CstrE,
 import           TorXakis.Parser.ValExprDecl        (letVarDeclsP, valExpP)
 import           TorXakis.Parser.VarDecl            (varDeclsP)
 
--- | Compile a string into a TorXakis model.
+-- | Compile a file into a TorXakis model.
 --
 compileFile :: FilePath -> IO (Either Error (Id, TxsDefs, Sigs VarId))
-compileFile fp = do
-    ePd <- parseFile fp
-    case ePd of
-        Left err -> return . Left $ err
-        Right pd -> return $
-            evalStateT (runCompiler . compileParsedDefs $ pd) newState
+compileFile fp = parseFile fp >>= compileParsedDefsIO
+
+-- | Compile a string into a TorXakis model.
+--
+compileString :: String -> IO (Either Error (Id, TxsDefs, Sigs VarId))
+compileString str = compileParsedDefsIO $ parseString "" str
+
+compileParsedDefsIO :: Either Error ParsedDefs -> IO (Either Error (Id, TxsDefs, Sigs VarId))
+compileParsedDefsIO (Left err) = return . Left $ err
+compileParsedDefsIO (Right pd) = return $
+    evalStateT (runCompiler . compileParsedDefs $ pd) newState
 
 -- | Run the compiler throwing an error if the compiler returns an 'Error'.
 compileUnsafe :: CompilerM a -> a
