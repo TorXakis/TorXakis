@@ -5,6 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 --------------------------------------------------------------------------------
@@ -26,14 +27,17 @@ module TorXakis.Compiler.ValExpr.ExpDecl
 where
 
 import           Control.Monad             (foldM)
-import           Control.Monad.Error.Class (catchError)
+import           Control.Monad.Error.Class (catchError, throwError)
+import           Data.List.Unique          (count)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as Map
 import           Data.Semigroup            ((<>))
 import           Data.Text                 (Text)
+import qualified Data.Text                 as T
 import           GHC.Exts                  (toList)
 
 import           TorXakis.Compiler.Data    (CompilerM)
+import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps    ((.@!!))
 import           TorXakis.Compiler.MapsTo  (MapsTo, (<.+>))
 import           TorXakis.Parser.Data      (ActOfferDecl (ActOfferDecl), BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
@@ -194,7 +198,21 @@ instance HasVarReferences ChanOfferDecl where
     mapRefToDecls mm (ExclD ex)  = mapRefToDecls mm ex
 
 instance HasVarReferences FuncDecl where
-    mapRefToDecls mm f = mapRefToDecls (mkVdMap (funcParams f) <.+> mm) (funcBody f)
+    mapRefToDecls mm f = do
+        checkUnique (funcParams f)
+        mapRefToDecls (mkVdMap (funcParams f) <.+> mm) (funcBody f)
+        where
+          checkUnique :: [VarDecl] -> CompilerM ()
+          checkUnique vs =
+              let doubleDefParams = fmap fst $ filter ((1<) . snd) $ count (varName <$> vs) in
+              case  doubleDefParams of
+                  [] -> return ()
+                  _  -> throwError Error
+                      { _errorType = MultipleDefinitions Variable
+                      , _errorLoc = getErrorLoc f
+                      , _errorMsg = "Function parameter double defined: " <> T.pack (show doubleDefParams)
+                      }
+
 
 instance HasVarReferences ModelDecl where
     mapRefToDecls mm = mapRefToDecls mm . modelBExp
