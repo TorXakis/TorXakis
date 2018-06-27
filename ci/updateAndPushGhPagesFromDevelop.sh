@@ -15,4 +15,4 @@ cp -r $DOC_DIR/. ./doc/;
 git add .;
 commitMsg="Haddock @ $(date +%Y%m%d_%H%M%S)";
 git commit -m "$(echo $commitMsg)";
-git push -f "https://keremispirli:$GITHUB_TOKEN@github.com/TorXakis/TorXakis.git";
+git push -f "https://torxakis-admin:$GITHUB_TOKEN@github.com/TorXakis/TorXakis.git";
