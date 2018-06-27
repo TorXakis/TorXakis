@@ -1,0 +1,68 @@
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+name:                txs-compiler
+version:             0.1.0.0
+github:              "TorXakis/TorXakis"
+license:             BSD3
+author:              "Damian Nadales"
+maintainer:          "damian.nadales@gmail.com"
+copyright:           "Copyright: (c) 2017 Damian Nadales"
+
+dependencies:
+- base >= 4.7 && < 5
+
+ghc-options:
+- -Werror
+- -Wall
+- -O
+- -fconstraint-solver-iterations=10
+- -Wcompat
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+  dependencies:
+  - text
+  - parsec
+  - mtl
+  - containers
+  - transformers
+  - MissingH
+  - ilist
+  - lens
+  - Unique
+  # TorXakis dependencies
+  - defs
+  - valexpr
+  - bexpr
+  
+tests:
+  txs-compiler-test:
+    main: Spec.hs
+    source-dirs:
+    - test
+
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Werror
+    - -Wall
+    - -O
+    dependencies:
+    - hspec
+    - filemanip
+    - filepath
+    - containers    
+
+    # Local dependencies
+    - txs-compiler
+
+extra-source-files:
+- test/data/success/*.txs
+- test/data/examps/*.txs
+- test/data/parser/success/*.txs
+- README.md

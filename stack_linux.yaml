@@ -48,7 +48,6 @@ packages:
 - location: sys/core
 - location: sys/coreenv
 - location: sys/defs
-- location: sys/front
 - location: sys/lexregexxsd
 - location: sys/lpe
 - location: sys/server
@@ -58,6 +57,7 @@ packages:
 - location: sys/ui
 - location: sys/value
 - location: sys/valexpr
+- location: sys/txs-compiler
 - location: sys/txs-cli
 - location: sys/txs-lib
 - location: sys/txs-lenses

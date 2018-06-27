@@ -27,6 +27,11 @@ data  ExitSort      =  NoExit
                      | Hit
      deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
+exitSortIds :: ExitSort -> [SortId]
+exitSortIds NoExit    = []
+exitSortIds (Exit xs) = xs
+exitSortIds Hit       = []
+
 instance Resettable ExitSort
 instance Identifiable ExitSort
 

@@ -39,6 +39,8 @@ import qualified Data.Map        as Map
 import           Data.Maybe
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
+
+import           Id (Resettable)
 import           SortId
 import           ValExpr
 
@@ -46,6 +48,8 @@ data Signature = Signature  { sortArgs :: [SortId]
                             , sortRet  :: SortId
                             }
   deriving (Eq, Ord, Read, Show, Generic, NFData)
+
+instance Resettable Signature
 
 type Handler v = [ValExpr v] -> ValExpr v
 

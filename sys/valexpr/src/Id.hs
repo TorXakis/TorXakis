@@ -60,6 +60,9 @@ class Resettable e where
 instance Resettable Id where
     reset _ = Id 0
 
+instance Resettable () where
+    reset = id
+
 instance Resettable Bool where
     reset = id
 

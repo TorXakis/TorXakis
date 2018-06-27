@@ -30,9 +30,9 @@ import           Control.Exception
 import           Control.Monad.State
 import           Data.Either
 import           Data.Maybe
+import qualified Data.String.Utils   as Utils
 import           Data.Text           (Text)
 import qualified Data.Text           as T
-import qualified Data.String.Utils   as Utils
 import           Text.Regex.TDFA
 
 import qualified Data.Map            as Map
@@ -58,10 +58,7 @@ import           SortId
 import           ValExpr             hiding (eval)
 import           Variable
 
--- import from front
-import qualified TxsAlex
-import qualified TxsHappy
-
+import           TorXakis.Compiler   (compileUnsafe, compileValExpr)
 
 evalTuple :: Variable v => (ValExpr v, Integer) -> IOB.IOB (Either String (ValExpr v, Integer))
 evalTuple (v,i) = do
@@ -84,7 +81,7 @@ eval' (Vfunc fid vexps) = do
      case Map.lookup fid (funcDefs tdefs) of
        Nothing -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
                                    $ "Undefined function: " ++ fshow fid ]
-                     return $ Left $ "eval - undefined function: " ++ fshow fid 
+                     return $ Left $ "eval - undefined function: " ++ fshow fid
        Just (FuncDef args' vexp)
                -> do mvals <- mapM eval vexps
                      case partitionEithers mvals of
@@ -105,14 +102,14 @@ eval' (Viscstr cid1 arg) = do
         Right (Cstr cid2 _) -> return $ Right $ Cbool ( cid1 == cid2 )
         Right t             -> return $ Left $ "iscstr : wrong value " ++ show t
         Left t              -> return $ Left $ "iscstr : " ++ t
-        
+
 eval' (Vaccess _cid1 p arg) = do
     mval <- eval arg
     case mval of
         Right (Cstr _cid2 args') -> return $ Right $ args'!!p
         Right t                  -> return $ Left $ "access : wrong value " ++ show t
         Left t                   -> return $ Left $ "access : " ++ t
-        
+
 eval' (Vconst const') = return $ Right const'
 
 eval' (Vvar _vid) =
@@ -126,7 +123,7 @@ eval' (Vite cond vexp1 vexp2) = do
                                   else eval vexp2
         Right t             -> return $ Left $ "ite : wrong value " ++ show t
         Left t              -> return $ Left $ "ite : " ++ t
-        
+
 
 eval' (Vsum s) = do
     mconsts <- mapM evalTuple (toOccurListT s)
@@ -150,7 +147,7 @@ eval' (Vdivide t n) = do
                             Right valN -> return $ Right $ Cint $ valT `div` valN
                             Left e -> return $ Left $ "divide n " ++ show e
         Left e -> return $ Left $ "divide t " ++ show e
-    
+
 eval' (Vmodulo t n) = do
     mvalT <- txs2int t
     case mvalT of
@@ -165,8 +162,8 @@ eval' (Vgez vexp) = do
     mval <- eval vexp
     case mval of
         Right (Cint val) -> return $ Right $ Cbool ( 0 <= val)
-        Right x           -> return $ Left $ "GEZ: not a int " ++ show x
-        Left t     -> return $ Left $ "GEZ: not a int value" ++ show t
+        Right x          -> return $ Left $ "GEZ: not a int " ++ show x
+        Left t           -> return $ Left $ "GEZ: not a int value" ++ show t
 
 eval' (Vequal vexp1 vexp2) = do
     mval1 <- eval vexp1
@@ -177,12 +174,12 @@ eval' (Vequal vexp1 vexp2) = do
                             Right val2 -> return $ Right $ Cbool ( val1 == val2 )
                             Left t     -> return $ Left $ "equal: not a value 2" ++ show t
         Left t     -> return $ Left $ "equal: not a value 1" ++ show t
-    
-    
+
+
 
 eval' (Vnot vexp) = do
     mexp <- eval vexp
-    case mexp of 
+    case mexp of
         Right (Cbool val) -> return $ Right $ Cbool (not val)
         Right x           -> return $ Left $ "not: not a boolean " ++ show x
         Left t            -> return $ Left $ "not: not a boolean value " ++ show t
@@ -199,14 +196,14 @@ eval' (Vand vexps) = do
 
 eval' (Vlength vexp) = do
     mexp <- eval vexp
-    case mexp of 
+    case mexp of
         Right (Cstring val) -> return $ Right $ Cint $ toInteger (T.length val)
         Right x           -> return $ Left $ "length: not a string " ++ show x
         Left t            -> return $ Left $ "length: not a string value " ++ show t
 
 eval' (Vat s p) = do
     ms <- eval s
-    case ms of 
+    case ms of
         Right (Cstring vs) -> do
                                 mp <- eval p
                                 case mp of
@@ -219,13 +216,13 @@ eval' (Vat s p) = do
 eval' (Vconcat vexprs') = do
     ms <- mapM eval vexprs'
     case partitionEithers ms of
-        ([], vs) ->  let vs' = map (\(Cstring s) -> s) vs in 
+        ([], vs) ->  let vs' = map (\(Cstring s) -> s) vs in
                         return $ Right $ Cstring (T.concat vs')
         (es, _)      -> return $ Left $ "Concat:\n" ++ Utils.join "\n  " es
 
 eval' (Vstrinre s r) = do
     ms <- eval s
-    case ms of 
+    case ms of
         Right (Cstring vs) -> do
                                 mr <- eval r
                                 case mr of
@@ -243,7 +240,7 @@ eval' (Vpredef kd fid vexps) =
                             case mval of
                                 Right wal   -> return $ Right $ Cstring $ T.pack (pshow wal)
                                 Left t      -> return $ Left t
-                _      -> return $ Left "eval: AST" 
+                _      -> return $ Left "eval: AST"
        ASF -> case vexps of
                 [vexp] -> do
                             ms <- txs2str vexp
@@ -251,38 +248,37 @@ eval' (Vpredef kd fid vexps) =
                                 Right s -> do
                                             uid     <- gets IOB.unid
                                             sigs    <- gets IOB.sigs
+
                                             ((_,vexp'),e) <- lift $ catch
-                                                ( let (i,p) = TxsHappy.vexprParser ( TxsAlex.Csigs   sigs
-                                                                                   : TxsAlex.Cvarenv []
-                                                                                   : TxsAlex.Cunid (_id uid + 1)
-                                                                                   : TxsAlex.txsLexer (T.unpack s)
-                                                                                   )
+                                                ( let (i,p) = compileUnsafe $
+                                                              compileValExpr sigs [] (_id uid + 1) (T.unpack s)
                                                    in return $! show p `deepseq` ((i, Just p),"")
                                                 )
                                                 ( \ec -> return ((uid, Nothing), show (ec::ErrorCall)))
+
                                             case vexp' of
                                                 Just exp' -> eval exp'
                                                 Nothing   -> return $ Left $ "eval: ASF\nvexpr: " ++ show s ++ "\nsignatures: " ++ show sigs ++ "\nerror: " ++ e
                                 Left t  -> return $ Left t
-                _      -> return $ Left "eval: ASF" 
+                _      -> return $ Left "eval: ASF"
        AXT -> case vexps of
                 [vexp] -> do
                             mwal <- eval vexp
-                            case mwal of 
+                            case mwal of
                                 Right wal   -> do
                                                 tdefs <- gets IOB.tdefs
                                                 return $ Right $ Cstring $ constToXml tdefs wal
                                 Left t      -> return $ Left t
-                _      -> return $ Left "eval: AXT" 
+                _      -> return $ Left "eval: AXT"
        AXF -> case vexps of
                   [vexp] -> do
                                 es <- txs2str vexp
-                                case es of 
+                                case es of
                                     Right s -> do
                                                 tdefs <- gets IOB.tdefs
                                                 return $ Right $ constFromXml tdefs (funcsort fid) s
                                     Left t  -> return $ Left t
-                  _      -> return $ Left "eval: AXF" 
+                  _      -> return $ Left "eval: AXF"
        SSB -> evalSSB fid vexps
        SSI -> evalSSI fid vexps
        SSS -> evalSSS fid vexps
@@ -301,32 +297,32 @@ readBool x       = error $ "Unable to parse bool " ++ show x
 evalSSB :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB (Either String Const)
 evalSSB (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
-       ( "toString",    [v]    ) -> do 
+       ( "toString",    [v]    ) -> do
                                         es <- txs2bool v
                                         case es of
                                             Right b -> return $ Right $ Cstring $ (T.pack . show) b
                                             Left t  -> return $ Left t
-       ( "fromString",  [v]    ) -> do 
+       ( "fromString",  [v]    ) -> do
                                         es <- txs2str v
                                         case es of
                                             Right s -> return $ Right $ Cbool $ readBool s
                                             Left t  -> return $ Left t
 
-       ( "toXml",       [v]    ) -> do 
+       ( "toXml",       [v]    ) -> do
                                         mwal <- eval v
-                                        case mwal of 
+                                        case mwal of
                                             Right wal   -> do
                                                             tdefs <- gets IOB.tdefs
                                                             return $ Right $ Cstring $ constToXml tdefs wal
                                             Left t  -> return $ Left t
-       ( "fromXml",     [v]    ) -> do 
+       ( "fromXml",     [v]    ) -> do
                                         es <- txs2str v
-                                        case es of 
+                                        case es of
                                             Right s -> do
                                                         tdefs <- gets IOB.tdefs
                                                         return $ Right $ constFromXml tdefs sortIdBool s
                                             Left t  -> return $ Left t
-                                    
+
        (s,_)                     -> return $ Left $ "evalSSB: standard Bool opn - unknown operator " ++ show s
 
 -- ----------------------------------------------------------------------------------------- --
@@ -335,31 +331,31 @@ evalSSB (FuncId nm _ _ _) vexps =
 evalSSI :: Variable v => FuncId -> [ValExpr v] -> IOB.IOB (Either String Const)
 evalSSI (FuncId nm _ _ _) vexps =
      case ( nm, vexps ) of
-       ( "toString",    [v]    ) -> do 
+       ( "toString",    [v]    ) -> do
                                         es <- txs2int v
                                         case es of
                                             Right i -> return $ Right $ Cstring $ (T.pack . show) i
                                             Left t  -> return $ Left t
-       ( "fromString",  [v]    ) -> do 
+       ( "fromString",  [v]    ) -> do
                                         es <- txs2str v
                                         case es of
                                             Right s -> return $ Right $ Cint $ read (T.unpack s)
                                             Left t  -> return $ Left t
        ( "toXml",       [v]    ) -> do
                                         mwal <- eval v
-                                        case mwal of 
+                                        case mwal of
                                             Right wal   -> do
                                                             tdefs <- gets IOB.tdefs
                                                             return $ Right $ Cstring $ constToXml tdefs wal
                                             Left t  -> return $ Left t
-       ( "fromXml",     [v]    ) -> do 
+       ( "fromXml",     [v]    ) -> do
                                         es <- txs2str v
-                                        case es of 
+                                        case es of
                                             Right s -> do
                                                         tdefs <- gets IOB.tdefs
                                                         return $ Right $ constFromXml tdefs sortIdInt s
                                             Left t  -> return $ Left t
-                                    
+
        (s,_)                     -> return $ Left $ "evalSSI: standard Int opn - unknown operator " ++ show s
 
 -- ----------------------------------------------------------------------------------------- --
@@ -373,26 +369,26 @@ evalSSS (FuncId nm _ _ _) vexps =
                                    case es of
                                     Right s -> return $ Right $ Cstring s
                                     Left t  -> return $ Left t
-                                    
+
        ( "fromString", [v] ) -> do es <- txs2str v
                                    case es of
                                     Right s -> return $ Right $ Cstring s
                                     Left t  -> return $ Left t
-                                   
+
        ( "toXml",      [v] ) -> do mwal <- eval v
-                                   case mwal of 
+                                   case mwal of
                                     Right wal   -> do
                                                     tdefs <- gets IOB.tdefs
                                                     return $ Right $ Cstring $ constToXml tdefs wal
                                     Left t  -> return $ Left t
-                                    
+
        ( "fromXml",    [v] ) -> do  es <- txs2str v
-                                    case es of 
+                                    case es of
                                         Right s -> do
                                                     tdefs <- gets IOB.tdefs
                                                     return $ Right $ constFromXml tdefs sortIdString s
                                         Left t  -> return $ Left t
-                                        
+
        ( "takeWhile",    [v1,v2] ) -> do m1 <- txs2str v1
                                          m2 <- txs2str v2
                                          case partitionEithers [m1,m2] of

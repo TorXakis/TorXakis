@@ -13,13 +13,17 @@ import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
 import           ChanId
-import           VarId
 import           VarEnv
+import           VarId
+
+import           ValExpr         (Resettable)
 
 -- | Connection Definitions
 data CnectType =  ClientSocket
                | ServerSocket
   deriving (Eq, Ord, Read, Show, Generic, NFData)
+
+instance Resettable CnectType
 
 data  ConnDef = ConnDtoW  { chan     :: ChanId
                           , hostname :: Text
@@ -34,3 +38,5 @@ data  ConnDef = ConnDtoW  { chan     :: ChanId
                           , vexprs   :: [VExpr] -- ^ Decoding range
                           }
   deriving (Eq,Ord,Read,Show, Generic, NFData)
+
+instance Resettable ConnDef
