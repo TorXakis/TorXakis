@@ -26,7 +26,7 @@ startTester names = do
     ignoreSuccess $
         envPost (concat ["sessions/", show sId, "/set-test"])
                 [ partString "model" $ head names
-                , partString "cnect" $ last names
+                , partString "cnect" $ last $ tail names
                 , partString "purp&map" $ unwords $ tail $ reverse $ tail names
                 ]
 

@@ -22,7 +22,7 @@ startSimulator names = do
     ignoreSuccess $
         envPost (concat ["sessions/", show sId, "/set-sim"])
                 [ partString "model" $ head names
-                , partString "cnect" $ last names
+                , partString "cnect" $ last $ tail names
                 , partString "map" $ unwords $ tail $ reverse $ tail names
                 ]
 

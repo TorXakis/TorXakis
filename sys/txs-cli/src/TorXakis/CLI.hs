@@ -121,8 +121,10 @@ startCLI = do
                     loop
     parseRedirs :: String -> IO (String, Maybe Handle)
     parseRedirs redir = do
+        Log.info $ "Parsing redir: " ++ redir
         let redirs = splitOn "$" redir
             (mArgsFn,mOutIOmode,mOutFn) = foldr parseRedir (Nothing, Nothing, Nothing) redirs
+        Log.info $ "Parsed redir: " ++ show (mArgsFn,mOutIOmode,mOutFn)
         args <- case mArgsFn of
             Nothing  -> return ""
             Just fin -> readFile fin
@@ -131,20 +133,17 @@ startCLI = do
             Just fn -> case mOutIOmode of
                 Nothing     -> error "Impossible to have an out file and no IOMode set!"
                 Just ioMode -> do
-                    exists <- doesFileExist fn
-                    if exists
-                        then do fh <- openFile fn ioMode -- TODO: Handle other errors
-                                hSetBuffering fh NoBuffering
-                                return $ Just fh
-                        else return Nothing -- TODO: show error "File " ++ filePath ++ " does not exist."
+                    fh <- openFile fn ioMode -- TODO: Handle other errors
+                    hSetBuffering fh NoBuffering
+                    return $ Just fh
         return (args, mh)
           where
             parseRedir :: String
                        -> (Maybe String, Maybe IOMode, Maybe String)
                        -> (Maybe String, Maybe IOMode, Maybe String)
-            parseRedir ('>':'>':fn) (a,_m,_o) = (      a, Just AppendMode, Just fn)
-            parseRedir ('>':fn)     (a,_m,_o) = (      a, Just  WriteMode, Just fn)
-            parseRedir ('<':fn)     (_a,m,o)  = (Just fn,               m,       o)
+            parseRedir ('>':'>':fn) (a,_m,_o) = (              a, Just AppendMode, Just $ strip fn)
+            parseRedir ('>':fn)     (a,_m,_o) = (              a, Just  WriteMode, Just $ strip fn)
+            parseRedir ('<':fn)     (_a,m, o) = (Just $ strip fn,               m,               o)
             parseRedir _            t         = t
     showHelp :: InputT CLIM ()
     showHelp = do
@@ -219,7 +218,7 @@ startCLI = do
             run _ = return ["Usage: run <file path>"]
             simulator :: [String] -> CLIM (Either String ())
             simulator names
-                | null names || length names > 3 = return $ Left "Usage: simulator <model> [<mapper>] <cnect>"
+                | length names < 2 || length names > 3 = return $ Left "Usage: simulator <model> [<mapper>] <cnect>"
                 | otherwise = startSimulator names
             sim :: [String] -> CLIM (Either String ())
             sim []  = simStep "-1"
@@ -233,7 +232,7 @@ startCLI = do
             subStep = step . concat
             tester :: [String] -> CLIM (Either String ())
             tester names
-                | null names || length names > 4 = return $ Left "Usage: tester <model> [<purpose>] [<mapper>] <cnect>"
+                | length names < 2 || length names > 4 = return $ Left "Usage: tester <model> [<purpose>] [<mapper>] <cnect>"
                 | otherwise = startTester names
             test :: [String] -> CLIM (Either String ())
             test = testStep . concat
