@@ -13,7 +13,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE TypeFamilies           #-}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.Error
+-- Module      :  TorXakis.Parser.Data
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
