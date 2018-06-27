@@ -72,7 +72,7 @@ library:
   - core
   - coreenv
   - defs
-  - front
+  - txs-compiler
   - txs-lenses
   - valexpr
   - value

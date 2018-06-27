@@ -56,14 +56,12 @@ import           ConstDefs                     (Const)
 import           EnvCore                       (IOC)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_INFO, TXS_CORE_USER_INFO, TXS_CORE_USER_WARNING),
                                                 StateNr)
-import           TxsAlex                       (Token (Cchanenv, Csigs, Cunid, Cvarenv),
-                                                txsLexer)
+import           TorXakis.Compiler             (compileBExpr, compileLegacy,
+                                                compileOffer, compileUnsafe)
 import qualified TxsCore                       as Core
 import           TxsDDefs                      (Action (Act), Verdict)
 import           TxsDefs                       (ModelDef (ModelDef), modelDefs,
                                                 stop)
-import           TxsHappy                      (bexprParser, prefoffsParser,
-                                                txsParser)
 import           TxsShow                       (fshow)
 
 import           TorXakis.Lib.Common
@@ -115,7 +113,7 @@ load :: Session -> FileContents -> IO (Response ())
 load s xs = do
     r <- try $ do -- Since the 'TorXakis' parser currently just calls 'error'
                   -- we have to catch a generic 'ErrorCall' exception.
-        (_, ts, is) <- evaluate . force . txsParser . txsLexer $ xs
+        (_, ts, is) <- evaluate . force . compileLegacy $ xs
         return (ts, is)
     case r of
         Left err -> return $ Left $ T.pack $ show  (err :: ErrorCall)
@@ -174,13 +172,12 @@ parseAction s act = do
             maybeToEither cannotParse <$> Core.txsGetCurrentModel
         let chids = concatMap Set.toList is ++ concatMap Set.toList os
         parseRes <- fmap (left showEx) $
-            lift $ try $ evaluate . force . prefoffsParser $
-            ( Csigs    sigs
-            : Cchanenv chids
-            : Cvarenv  []
-            : Cunid    0 -- Do we need to keep track of the UID in the session?
-            : txsLexer strAct
-            )
+            lift $ try $ evaluate . force . compileUnsafe $
+            compileOffer sigs
+                         chids
+                         []
+                         0
+                         strAct
         (_, offs) <- liftEither parseRes
         cstOfs <- traverse offerToAction (Set.toList offs)
         return $ Act (Set.fromList cstOfs)
@@ -218,13 +215,12 @@ lpe s args = do
             sigs <- runIOC s Core.txsGetSigs
             vals <- readTVarIO $ s ^. locValEnv
             parseRes <- fmap (left showEx) $
-                            try $ evaluate . force . bexprParser $
-                                    ( TxsAlex.Csigs    sigs
-                                    : TxsAlex.Cchanenv chids
-                                    : TxsAlex.Cvarenv  (Map.keys vals)
-                                    : TxsAlex.Cunid    0
-                                    : TxsAlex.txsLexer (T.unpack args)
-                                    )
+                            try $ evaluate . force . compileUnsafe $
+                            compileBExpr sigs
+                                         chids
+                                         (Map.keys vals)
+                                         0
+                                         (T.unpack args)
             bexpr <- case parseRes of
                 Left  err       ->  do  atomically $
                                             writeTQueue (s ^. sessionMsgs)

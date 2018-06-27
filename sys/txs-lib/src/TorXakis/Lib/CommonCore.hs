@@ -30,13 +30,11 @@ import           Lens.Micro                    ((.~), (^.))
 import           EnvCore                       (IOC)
 import           EnvData                       (Msg (TXS_CORE_SYSTEM_ERROR))
 import           Name                          (Name)
+import           TorXakis.Compiler             (compileUnsafe, compileValExpr)
 import           TorXakis.Lens.TxsDefs         (ix)
-import           TxsAlex                       (Token (Csigs, Cunid, Cvarenv),
-                                                txsLexer)
 import qualified TxsCore                       as Core
 import           TxsDDefs                      (Action, Verdict)
 import           TxsDefs                       (ModelDef, VExpr, funcDefs)
-import           TxsHappy                      (vexprParser)
 import           ValExpr                       (subst)
 
 import           TorXakis.Lib.Common
@@ -154,12 +152,11 @@ parseVexprAndSubst s expr = do
             sigs <- runIOC s Core.txsGetSigs
             tDefs <- runIOC s Core.txsGetTDefs
             runExceptT $ do
-                parseRes <- fmap (left showEx) $
-                    lift $ try $ evaluate . force . vexprParser $
-                    ( Csigs    sigs
-                    : Cvarenv  (Map.keys valEnv ++ vars)
-                    : Cunid    0
-                    : txsLexer strExp
-                    )
+                parseRes <- fmap (left showEx) $ lift $ try $
+                            evaluate . force . compileUnsafe $
+                            compileValExpr sigs
+                                            (Map.keys valEnv ++ vars)
+                                            0
+                                            strExp
                 (_, vexp) <- liftEither parseRes
                 return $ subst valEnv (funcDefs tDefs) vexp

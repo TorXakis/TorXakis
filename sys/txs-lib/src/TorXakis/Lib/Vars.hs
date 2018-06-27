@@ -25,9 +25,8 @@ import           Lens.Micro                  ((^.))
 
 import           Id                          (_id)
 import qualified SortId
-import           TxsAlex                     (Token (Csigs, Cunid), txsLexer)
+import           TorXakis.Compiler           (compileUnsafe, compileVarDecls)
 import           TxsCore                     (txsGetSigs)
-import           TxsHappy                    (vardeclsParser)
 import           TxsShow                     (fshow)
 import           Variable                    (vsort, vunid)
 import qualified VarId
@@ -58,11 +57,10 @@ createVar s var = do
             sigs <- runIOC s txsGetSigs
             runExceptT $ do
                 parseRes <- fmap (left showEx) $
-                    lift $ try $ evaluate . force . vardeclsParser $
-                    ( Csigs    sigs
-                    : Cunid    0
-                    : txsLexer strVar
-                    )
+                    lift $ try $ evaluate . force . compileUnsafe $
+                    compileVarDecls sigs
+                                    0
+                                    strVar
                 (_, newVars) <- liftEither parseRes
                 if let newnames = map VarId.name newVars
                     in null (newnames `List.intersect` map VarId.name vars) &&

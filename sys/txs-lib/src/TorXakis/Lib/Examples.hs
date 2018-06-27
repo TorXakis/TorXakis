@@ -203,7 +203,7 @@ testVals = do
     cancel a
 
 testTester :: IO (Maybe ())
-testTester = timeout (10 * seconds) $
+testTester = timeout (12 * seconds) $
     withCreateProcess (proc "java" ["-cp","../../examps/LuckyPeople/sut","LuckyPeople"])
         {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
             cs <- readFile $ ".." </> ".." </> "examps" </> "LuckyPeople" </> "spec" </> "LuckyPeople.txs"

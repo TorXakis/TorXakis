@@ -23,10 +23,8 @@ import qualified Data.Text                   as T
 import           GHC.Generics                (Generic)
 import           Lens.Micro                  ((^.))
 
-import           TxsAlex                     (Token (Csigs, Cunid, Cvarenv),
-                                              txsLexer)
+import           TorXakis.Compiler           (compileUnsafe, compileValDefs)
 import           TxsCore                     (txsGetSigs)
-import           TxsHappy                    (valdefsParser)
 import           TxsShow                     (fshow)
 import           ValExpr                     (ValExpr)
 import qualified VarId
@@ -55,12 +53,11 @@ createVal s val = do
             sigs <- runIOC s txsGetSigs
             runExceptT $ do
                 parseRes <- fmap (left showEx) $
-                    lift $ try $ evaluate . force . valdefsParser $
-                    ( Csigs    sigs
-                    : Cvarenv  []
-                    : Cunid    0
-                    : txsLexer strVal
-                    )
+                    lift $ try $ evaluate . force . compileUnsafe $
+                    compileValDefs sigs
+                                    []
+                                    0
+                                    strVal
                 (_, venv) <- liftEither parseRes
                 if let newnames = map VarId.name (Map.keys venv)
                     in null (newnames `List.intersect` map VarId.name vars) &&
