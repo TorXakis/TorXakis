@@ -68,8 +68,10 @@ spec = do
                 Left err -> err ^? errorType `shouldBe` Just expectation
 
 failureTestCases :: [(TestName, CodeSnippet, ErrorType)]
-failureTestCases = [ duplicatedParam1
-                   , duplicatedParam2
+failureTestCases = [ duplicatedFuncParam1
+                   , duplicatedFuncParam2
+                   , duplicatedProcParam1
+                   , duplicatedProcParam2
                    , duplicatedChan1
                    , duplicatedChan2
                    , duplicatedChan3
@@ -82,8 +84,8 @@ failureTestCases = [ duplicatedParam1
 type TestName = String
 type CodeSnippet = String
 
-duplicatedParam1 :: (TestName, CodeSnippet, ErrorType)
-duplicatedParam1 =
+duplicatedFuncParam1 :: (TestName, CodeSnippet, ErrorType)
+duplicatedFuncParam1 =
     ( "Function with two `x` parameters. Variant 1."
      , [r|
 FUNCDEF myFunc(x, x :: Int) :: Int ::= x ENDDEF
@@ -91,11 +93,29 @@ FUNCDEF myFunc(x, x :: Int) :: Int ::= x ENDDEF
      , MultipleDefinitions Variable
      )
 
-duplicatedParam2 :: (TestName, CodeSnippet, ErrorType)
-duplicatedParam2 =
+duplicatedFuncParam2 :: (TestName, CodeSnippet, ErrorType)
+duplicatedFuncParam2 =
     ( "Function with two `x` parameters. Variant 2."
      , [r|
 FUNCDEF myFunc(x :: Int ; x :: Int) :: Int ::= x ENDDEF
+        |]
+     , MultipleDefinitions Variable
+     )
+
+duplicatedProcParam1 :: (TestName, CodeSnippet, ErrorType)
+duplicatedProcParam1 =
+    ( "ProcDef with two `x` parameters. Variant 1."
+     , [r|
+PROCDEF myProc[H:: Int](x, x :: Int) ::= STOP ENDDEF
+        |]
+     , MultipleDefinitions Variable
+     )
+
+duplicatedProcParam2 :: (TestName, CodeSnippet, ErrorType)
+duplicatedProcParam2 =
+    ( "ProcDef with two `x` parameters. Variant 2."
+     , [r|
+PROCDEF myProc[H:: Int](x :: Int; x :: Int) ::= STOP ENDDEF
         |]
      , MultipleDefinitions Variable
      )
