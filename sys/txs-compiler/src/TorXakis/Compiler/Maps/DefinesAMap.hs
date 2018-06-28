@@ -281,14 +281,6 @@ instance ( MapsTo Text (Loc ChanDeclE) mm
     uGetKVs mm (OnlyOn crs) = uGetKVs mm crs
 
 -- * Expressions that introduce new channel id's.
-
-instance ( MapsTo Text SortId mm
-         ) => DefinesAMap (Loc ChanDeclE) ChanId ParsedDefs mm where
-    uGetKVs mm pd = do
-        chIdsDecls <- uGetKVs mm (pd ^. chdecls)
-        chIdsProcs <- uGetKVs mm (pd ^. procs)
-        return $ chIdsDecls ++ chIdsProcs
-
 instance ( MapsTo Text SortId mm
          ) => DefinesAMap (Loc ChanDeclE) ChanId ChanDecl mm where
     uGetKVs mm cd = do

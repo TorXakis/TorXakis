@@ -5,6 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 --------------------------------------------------------------------------------
@@ -25,44 +26,48 @@ module TorXakis.Compiler.ValExpr.ExpDecl
     )
 where
 
-import           Control.Monad             (foldM)
-import           Control.Monad.Error.Class (catchError)
-import           Data.Map                  (Map)
-import qualified Data.Map                  as Map
-import           Data.Semigroup            ((<>))
-import           Data.Text                 (Text)
-import           GHC.Exts                  (toList)
+import           Control.Monad                (foldM)
+import           Control.Monad.Error.Class    (catchError)
+import           Data.Map                     (Map)
+import qualified Data.Map                     as Map
+import           Data.Semigroup               ((<>))
+import           Data.Text                    (Text)
+import           GHC.Exts                     (toList)
 
-import           TorXakis.Compiler.Data    (CompilerM)
-import           TorXakis.Compiler.Maps    ((.@!!))
-import           TorXakis.Compiler.MapsTo  (MapsTo, (<.+>))
-import           TorXakis.Parser.Data      (ActOfferDecl (ActOfferDecl), BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
-                                            ChanOfferDecl (ExclD, QuestD),
-                                            CnectDecl, CodecItem (CodecItem),
-                                            CodecType (Decode, Encode),
-                                            ExpChild (ConstLit, Fappl, If, LetExp, VarRef),
-                                            ExpDecl, FuncDecl, FuncDeclE,
-                                            HasLoc,
-                                            InitStateDecl (InitStateDecl),
-                                            IsVariable, LetVarDecl, Loc,
-                                            MapperDecl, ModelDecl,
-                                            OfferDecl (OfferDecl),
-                                            ParLetVarDecl, ProcDecl, PurpDecl,
-                                            StUpdate (StUpdate), StautDecl,
-                                            StautItem (InitState, StVarDecl, States, Trans),
-                                            TestGoalDecl,
-                                            Transition (Transition), VarDecl,
-                                            VarDeclE, VarRef, VarRefE,
-                                            actOfferDecls, asVarReflLoc,
-                                            chanOfferDecls, cnectDeclCodecs,
-                                            expChild, funcBody, funcParams,
-                                            getLoc, mapperBExp, modelBExp,
-                                            offerDecls, procDeclBody,
-                                            procDeclParams, purpDeclGoals,
-                                            stautDeclComps, stautDeclInnerVars,
-                                            stautDeclParams, testGoalDeclBExp,
-                                            toText, varDeclExp, varName)
-
+import           TorXakis.Compiler.Data       (CompilerM)
+import           TorXakis.Compiler.Error
+import           TorXakis.Compiler.Maps       ((.@!!))
+import           TorXakis.Compiler.MapsTo     (MapsTo, (<.+>))
+import           TorXakis.Compiler.Validation
+import           TorXakis.Parser.Data         (ActOfferDecl (ActOfferDecl), BExpDecl (Accept, ActPref, Choice, Disable, Enable, Guard, Hide, Interrupt, LetBExp, Pappl, Par, Stop),
+                                               ChanOfferDecl (ExclD, QuestD),
+                                               CnectDecl, CodecItem (CodecItem),
+                                               CodecType (Decode, Encode),
+                                               ExpChild (ConstLit, Fappl, If, LetExp, VarRef),
+                                               ExpDecl, FuncDecl, FuncDeclE,
+                                               HasLoc,
+                                               InitStateDecl (InitStateDecl),
+                                               IsVariable, LetVarDecl, Loc,
+                                               MapperDecl, ModelDecl,
+                                               OfferDecl (OfferDecl),
+                                               ParLetVarDecl, ProcDecl,
+                                               PurpDecl, StUpdate (StUpdate),
+                                               StautDecl,
+                                               StautItem (InitState, StVarDecl, States, Trans),
+                                               TestGoalDecl,
+                                               Transition (Transition), VarDecl,
+                                               VarDeclE, VarRef, VarRefE,
+                                               actOfferDecls, asVarReflLoc,
+                                               chanOfferDecls, cnectDeclCodecs,
+                                               expChild, funcBody, funcParams,
+                                               getLoc, mapperBExp, modelBExp,
+                                               offerDecls, procDeclBody,
+                                               procDeclParams, purpDeclGoals,
+                                               stautDeclComps,
+                                               stautDeclInnerVars,
+                                               stautDeclParams,
+                                               testGoalDeclBExp, toText,
+                                               varDeclExp, varName)
 
 -- | Expressions that have variable references.
 class HasVarReferences e where
@@ -87,7 +92,10 @@ instance HasVarReferences e => HasVarReferences [e] where
     mapRefToDecls mm = fmap concat . traverse (mapRefToDecls mm)
 
 instance HasVarReferences ProcDecl where
-    mapRefToDecls mm pd = mapRefToDecls (pNtoD <.+> mm) (procDeclBody pd)
+    mapRefToDecls mm pd = do
+        checkUnique (getErrorLoc pd, Variable, "Process variable parameter")
+                    (varName <$> procDeclParams pd)
+        mapRefToDecls (pNtoD <.+> mm) (procDeclBody pd)
         where
           pNtoD = mkVdMap (procDeclParams pd)
 
@@ -194,7 +202,10 @@ instance HasVarReferences ChanOfferDecl where
     mapRefToDecls mm (ExclD ex)  = mapRefToDecls mm ex
 
 instance HasVarReferences FuncDecl where
-    mapRefToDecls mm f = mapRefToDecls (mkVdMap (funcParams f) <.+> mm) (funcBody f)
+    mapRefToDecls mm f = do
+        checkUnique (getErrorLoc f, Variable, "Function variable parameter")
+                    (varName <$> funcParams f)
+        mapRefToDecls (mkVdMap (funcParams f) <.+> mm) (funcBody f)
 
 instance HasVarReferences ModelDecl where
     mapRefToDecls mm = mapRefToDecls mm . modelBExp

@@ -11,6 +11,7 @@ copyright:           "Copyright: (c) 2017 Damian Nadales"
 
 dependencies:
 - base >= 4.7 && < 5
+- lens
 
 ghc-options:
 - -Werror
@@ -32,13 +33,12 @@ library:
   - transformers
   - MissingH
   - ilist
-  - lens
   - Unique
   # TorXakis dependencies
   - defs
   - valexpr
   - bexpr
-  
+
 tests:
   txs-compiler-test:
     main: Spec.hs
@@ -56,7 +56,8 @@ tests:
     - hspec
     - filemanip
     - filepath
-    - containers    
+    - containers
+    - raw-strings-qq
 
     # Local dependencies
     - txs-compiler

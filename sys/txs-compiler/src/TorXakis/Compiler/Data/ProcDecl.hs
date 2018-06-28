@@ -25,7 +25,7 @@ See LICENSE at root directory of this repository.
 -- Compiler functions and instances on process declarations.
 --------------------------------------------------------------------------------
 module TorXakis.Compiler.Data.ProcDecl
-    (ProcInfo (ProcInfo), allProcIds)
+    (ProcInfo (ProcInfo), allProcIds, getPId)
 where
 
 import           Data.Map                           (Map)
@@ -42,6 +42,7 @@ import           VarId                              (VarId (VarId))
 
 import           TorXakis.Compiler.Data             (CompilerM, getNextId)
 import           TorXakis.Compiler.Data.VarDecl     ()
+import           TorXakis.Compiler.Error
 import           TorXakis.Compiler.Maps             ((<!!>))
 import           TorXakis.Compiler.Maps.DefinesAMap (DefinesAMap, getKVs,
                                                      getMap, predefChDecls,
@@ -49,12 +50,14 @@ import           TorXakis.Compiler.Maps.DefinesAMap (DefinesAMap, getKVs,
 import           TorXakis.Compiler.MapsTo           ((:&) ((:&)), Contents, In,
                                                      MapsTo, values, (<.+>))
 import           TorXakis.Compiler.ValExpr.SortId   (sortIds)
+import           TorXakis.Compiler.Validation
 import           TorXakis.Parser.Data               (ChanDeclE, ChanRefE, ExitSortDecl (ExitD, HitD, NoExitD),
                                                      Loc (ExtraAut), ProcDecl,
                                                      ProcDeclE, StautDecl,
                                                      Transition (Transition),
                                                      VarDeclE, asProcDeclLoc,
-                                                     getLoc, procDeclChParams,
+                                                     chanDeclName, getLoc,
+                                                     procDeclChParams,
                                                      procDeclName,
                                                      procDeclParams,
                                                      procDeclRetSort,
@@ -75,6 +78,8 @@ instance ( MapsTo Text SortId mm
          , In (Loc VarDeclE, SortId) (Contents mm) ~ 'False
          ) => DefinesAMap (Loc ProcDeclE) ProcInfo ProcDecl mm where
     uGetKVs mm pd = do
+        checkUnique (getErrorLoc pd, Channel, "Process channel parameter")
+                    (chanDeclName <$> procDeclChParams pd)
         pId    <- getNextId
         allPChIds <- getKVs mm pd
             :: CompilerM [(Loc ChanDeclE, ChanId)]

@@ -44,6 +44,7 @@ data Entity
     | State
     | Variable
     | Sort
+    | Channel
     -- | In case an error must be generated from a generic function that cannot
     -- have access to the entity type. The error type can be made more specific
     -- by the caller of such a generic function (see for instance
