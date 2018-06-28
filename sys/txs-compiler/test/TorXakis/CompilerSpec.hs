@@ -68,39 +68,69 @@ spec = do
                 Left err -> err ^? errorType `shouldBe` Just expectation
 
 failureTestCases :: [(TestName, CodeSnippet, ErrorType)]
-failureTestCases = [ duplicatedParam
-                   , duplicatedChan
-                   , duplicatedFunc
-                   , duplicatedProc
+failureTestCases = [ duplicatedParam1
+                   , duplicatedParam2
+                   , duplicatedChan1
+                   , duplicatedChan2
+                   , duplicatedChan3
+                   , duplicatedFunc1
+                   , duplicatedFunc2
+                   , duplicatedProc1
+                   , duplicatedProc2
                    ]
 
 type TestName = String
 type CodeSnippet = String
 
-duplicatedParam :: (TestName, CodeSnippet, ErrorType)
-duplicatedParam =
-    ( "Function with two `x` parameters."
+duplicatedParam1 :: (TestName, CodeSnippet, ErrorType)
+duplicatedParam1 =
+    ( "Function with two `x` parameters. Variant 1."
      , [r|
 FUNCDEF myFunc(x, x :: Int) :: Int ::= x ENDDEF
         |]
      , MultipleDefinitions Variable
      )
 
-duplicatedChan :: (TestName, CodeSnippet, ErrorType)
-duplicatedChan =
-    ( "Chan who is double defined."
+duplicatedParam2 :: (TestName, CodeSnippet, ErrorType)
+duplicatedParam2 =
+    ( "Function with two `x` parameters. Variant 2."
      , [r|
-CHANDEF myChans ::= 
-    In :: Int;
-    In :: Int
-ENDDEF
+FUNCDEF myFunc(x :: Int ; x :: Int) :: Int ::= x ENDDEF
+        |]
+     , MultipleDefinitions Variable
+     )
+
+duplicatedChan1 :: (TestName, CodeSnippet, ErrorType)
+duplicatedChan1 =
+    ( "ChannelDef with two `In` channels. Variant 1."
+     , [r|
+CHANDEF myChans ::= In, In :: Int ENDDEF
         |]
      , MultipleDefinitions Entity
      )
 
-duplicatedFunc :: (TestName, CodeSnippet, ErrorType)
-duplicatedFunc =
-    ( "Function with same signature twice."
+duplicatedChan2 :: (TestName, CodeSnippet, ErrorType)
+duplicatedChan2 =
+    ( "ChannelDef with two `In` channels. Variant 2."
+     , [r|
+CHANDEF myChans ::= In :: Int; In :: Int ENDDEF
+        |]
+     , MultipleDefinitions Entity
+     )
+
+duplicatedChan3 :: (TestName, CodeSnippet, ErrorType)
+duplicatedChan3 =
+    ( "Two ChannelDefs that both define an `In` channel. Variant 3."
+     , [r|
+CHANDEF myChans   ::= In :: Int ENDDEF
+CHANDEF yourChans ::= In :: Int ENDDEF
+        |]
+     , MultipleDefinitions Entity
+     )
+
+duplicatedFunc1 :: (TestName, CodeSnippet, ErrorType)
+duplicatedFunc1 =
+    ( "Function with same signature twice. Variant 1."
      , [r|
 FUNCDEF myFunc(x :: Int) :: Int ::= x ENDDEF
 FUNCDEF myFunc(y :: Int) :: Int ::= y ENDDEF
@@ -108,12 +138,33 @@ FUNCDEF myFunc(y :: Int) :: Int ::= y ENDDEF
      , MultipleDefinitions Function
      )
 
-duplicatedProc :: (TestName, CodeSnippet, ErrorType)
-duplicatedProc =
-    ( "Process with same signature twice."
+duplicatedFunc2 :: (TestName, CodeSnippet, ErrorType)
+duplicatedFunc2 =
+    ( "Function with same signature twice. Variant 2."
+     , [r|
+FUNCDEF myFunc(x :: Int; y :: Int) :: Int ::= x ENDDEF
+FUNCDEF myFunc(a,b :: Int) :: Int ::= a ENDDEF
+        |]
+     , MultipleDefinitions Function
+     )
+
+duplicatedProc1 :: (TestName, CodeSnippet, ErrorType)
+duplicatedProc1 =
+    ( "Process with same signature twice. Variant 1."
      , [r|
 PROCDEF myProc[G]()::= STOP ENDDEF
 PROCDEF myProc[H]()::= STOP ENDDEF
+        |]
+     , MultipleDefinitions Process
+     )
+
+
+duplicatedProc2 :: (TestName, CodeSnippet, ErrorType)
+duplicatedProc2 =
+    ( "Process with same signature twice. Variant 2."
+     , [r|
+PROCDEF myProc[G, H :: Int       ]()::= STOP ENDDEF
+PROCDEF myProc[A :: Int; B :: Int]()::= STOP ENDDEF
         |]
      , MultipleDefinitions Process
      )
