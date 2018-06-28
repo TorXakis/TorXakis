@@ -44,9 +44,12 @@ combineArguments params stateId vars' = params ++ (stateId:vars')
 translate :: Map.Map FuncId (FuncDef VarId) -> Id -> Id -> Name -> [ChanId] -> [VarId] -> ExitSort -> [StatId] -> [VarId] -> [Trans] -> StatId -> VEnv -> (ProcDef, BExpr)
 translate fdefs unidProc unidS name' chans params exitSort states vars' trans stateInit initialization =
     let Just initIndex = Map.lookup stateInit stateMap in
-        (ProcDef chans (combineParameters params stateId vars') (choice $ Set.fromList (map alternative trans)),
+        (ProcDef chans combineParams (choice $ Set.fromList (map alternative trans)),
          procInst procId chans (combineArguments args' (cstrConst (Cint initIndex)) (map (subst defaultMap fdefs . cstrVar) vars')))
   where
+        combineParams :: [VarId]
+        combineParams = combineParameters params stateId vars'
+        
         defaultMap :: VEnv
         defaultMap = Map.union initialization $ Map.fromList (map (id &&& (cstrConst . Cany . varsort) ) vars')
         
@@ -57,7 +60,7 @@ translate fdefs unidProc unidS name' chans params exitSort states vars' trans st
         stateId = VarId (T.pack "$s") unidS sortIdInt
         
         procId :: ProcId
-        procId = ProcId (T.pack "std_" <> name') unidProc chans (combineParameters params stateId vars') exitSort
+        procId = ProcId (T.pack "std_" <> name') unidProc (toChanSort <$> chans) (varsort <$> combineParams) exitSort
         
         args' :: [VExpr]
         args' = map cstrVar params

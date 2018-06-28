@@ -65,14 +65,13 @@ import           Prelude                  hiding (lookup)
 import           ChanId                   (ChanId, chansorts)
 import           FuncTable                (Signature, sortArgs, sortRet)
 import           Id                       (Id (Id))
-import           ProcId                   (ExitSort (Exit, Hit, NoExit), ProcId,
+import           ProcId                   (ExitSort (Exit, Hit, NoExit), ProcId, ChanSort(ChanSort),
                                            exitSortIds, procchans, procexit,
                                            procvars)
 import qualified ProcId
 import           SortId                   (SortId (SortId), sortIdBool,
                                            sortIdInt, sortIdRegex, sortIdString)
 import qualified SortId
-import           VarId                    (varsort)
 
 import           TorXakis.Compiler.Data   (CompilerM, getNextId)
 import           TorXakis.Compiler.Error  (Entity (Process, Sort),
@@ -503,8 +502,8 @@ instance HasExitSorts BExpDecl where
         let candidate :: ProcId -> Bool
             candidate pId =
                    toText   n                     == ProcId.name pId
-                && fmap chansorts (procchans pId) == fmap chansorts chIds -- Compare the sort id's of the channels
-                && fmap varsort (procvars pId )  `elem` expsSidss
+                && procchans pId == fmap (ChanSort . chansorts) chIds -- Compare the sort id's of the channels
+                && procvars pId `elem` expsSidss
         case filter candidate $ keys @ProcId @() mm of
             [pId] -> return $ procexit pId
             []    -> throwError Error
