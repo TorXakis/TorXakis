@@ -64,7 +64,8 @@ spec = do
             res <- compileString snippet
             case res of
                 Right _ -> expectationFailure $
-                    "Did not get the expected error "  ++ show expectation
+                    "Compilation succeeded instead of getting the expected error "
+                    ++ show expectation
                 Left err -> err ^? errorType `shouldBe` Just expectation
 
 failureTestCases :: [(TestName, CodeSnippet, ErrorType)]
@@ -72,6 +73,8 @@ failureTestCases = [ duplicatedFuncParam1
                    , duplicatedFuncParam2
                    , duplicatedProcParam1
                    , duplicatedProcParam2
+                   , duplicatedProcChan1
+                   , duplicatedProcChan2
                    , duplicatedChan1
                    , duplicatedChan2
                    , duplicatedChan3
@@ -120,13 +123,31 @@ PROCDEF myProc[H:: Int](x :: Int; x :: Int) ::= STOP ENDDEF
      , MultipleDefinitions Variable
      )
 
+duplicatedProcChan1 :: (TestName, CodeSnippet, ErrorType)
+duplicatedProcChan1 =
+    ( "ProcDef with two `H` channel parameters. Variant 1."
+     , [r|
+PROCDEF myProc[H, H:: Int]() ::= STOP ENDDEF
+        |]
+     , MultipleDefinitions Channel
+     )
+
+duplicatedProcChan2 :: (TestName, CodeSnippet, ErrorType)
+duplicatedProcChan2 =
+    ( "ProcDef with two `H` channel parameters. Variant 2."
+     , [r|
+PROCDEF myProc[H :: Int; J :: Bool; H:: Int]() ::= STOP ENDDEF
+        |]
+     , MultipleDefinitions Channel
+     )
+
 duplicatedChan1 :: (TestName, CodeSnippet, ErrorType)
 duplicatedChan1 =
     ( "ChannelDef with two `In` channels. Variant 1."
      , [r|
 CHANDEF myChans ::= In, In :: Int ENDDEF
         |]
-     , MultipleDefinitions Entity
+     , MultipleDefinitions Channel
      )
 
 duplicatedChan2 :: (TestName, CodeSnippet, ErrorType)
@@ -135,7 +156,7 @@ duplicatedChan2 =
      , [r|
 CHANDEF myChans ::= In :: Int; In :: Int ENDDEF
         |]
-     , MultipleDefinitions Entity
+     , MultipleDefinitions Channel
      )
 
 duplicatedChan3 :: (TestName, CodeSnippet, ErrorType)
@@ -145,7 +166,7 @@ duplicatedChan3 =
 CHANDEF myChans   ::= In :: Int ENDDEF
 CHANDEF yourChans ::= In :: Int ENDDEF
         |]
-     , MultipleDefinitions Entity
+     , MultipleDefinitions Channel
      )
 
 duplicatedFunc1 :: (TestName, CodeSnippet, ErrorType)
