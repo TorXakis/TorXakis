@@ -68,7 +68,11 @@ spec = do
                 Left err -> err ^? errorType `shouldBe` Just expectation
 
 failureTestCases :: [(TestName, CodeSnippet, ErrorType)]
-failureTestCases = [ duplicatedParam ]
+failureTestCases = [ duplicatedParam
+                   , duplicatedChan
+                   , duplicatedFunc
+                   , duplicatedProc
+                   ]
 
 type TestName = String
 type CodeSnippet = String
@@ -80,4 +84,36 @@ duplicatedParam =
 FUNCDEF myFunc(x, x :: Int) :: Int ::= x ENDDEF
         |]
      , MultipleDefinitions Variable
+     )
+
+duplicatedChan :: (TestName, CodeSnippet, ErrorType)
+duplicatedChan =
+    ( "Chan who is double defined."
+     , [r|
+CHANDEF myChans ::= 
+    In :: Int;
+    In :: Int
+ENDDEF
+        |]
+     , MultipleDefinitions Entity
+     )
+
+duplicatedFunc :: (TestName, CodeSnippet, ErrorType)
+duplicatedFunc =
+    ( "Function with same signature twice."
+     , [r|
+FUNCDEF myFunc(x :: Int) :: Int ::= x ENDDEF
+FUNCDEF myFunc(y :: Int) :: Int ::= y ENDDEF
+        |]
+     , MultipleDefinitions Function
+     )
+
+duplicatedProc :: (TestName, CodeSnippet, ErrorType)
+duplicatedProc =
+    ( "Process with same signature twice."
+     , [r|
+PROCDEF myProc[G]()::= STOP ENDDEF
+PROCDEF myProc[H]()::= STOP ENDDEF
+        |]
+     , MultipleDefinitions Process
      )
