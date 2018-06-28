@@ -51,6 +51,9 @@ import           Filesystem.Path.CurrentOS
 import           Prelude                   hiding (FilePath)
 import           System.Info
 import qualified System.IO                 as IO
+
+import           System.Process            (StdStream (NoStream), proc, std_out,
+                                            withCreateProcess)
 import           System.Random
 import           Test.Hspec
 import           Turtle
@@ -154,14 +157,11 @@ javaCmd = addExeSuffix "java"
 javacCmd :: Text
 javacCmd = addExeSuffix "javac"
 
-txsServerCmd :: Text
-txsServerCmd = addExeSuffix "txsserver"
-
 txsUICmd :: Text
-txsUICmd = addExeSuffix "torxakis"
+txsUICmd = addExeSuffix "ticl"
 
 txsUILinePrefix :: Text
-txsUILinePrefix = "TXS >>  "
+txsUILinePrefix = "<< "
 
 class ExpectedMessage a where
     expectedMessage :: a -> Text
@@ -218,7 +218,7 @@ checkCompilers = traverse_ checkCommand [javaCmd, javacCmd]
 
 -- | Check that the TorXakis UI and server programs are installed.
 checkTxsInstall :: IO ()
-checkTxsInstall = traverse_ checkCommand [txsUICmd, txsServerCmd]
+checkTxsInstall = void $ checkCommand txsUICmd
 
 -- * Compilation and testing
 
@@ -257,7 +257,7 @@ compileJavaSut :: FilePath -> Test CompiledSut
 compileJavaSut sourcePath = do
   allJavaFiles <- Turtle.fold (mfilter (`hasExtension` "java") (ls $ directory sourcePath)) Control.Foldl.list
   path <- mapM decodePath allJavaFiles
-  exitCode <- proc javacCmd path mempty
+  exitCode <- Turtle.proc javacCmd path mempty
   case exitCode of
     ExitFailure code ->
       throwError $ CompileError $
@@ -297,23 +297,22 @@ runTxsWithExample :: Maybe FilePath     -- ^ Path to the logging directory for
                     -> Concurrently (Either SqattError ())
 runTxsWithExample mLogDir ex delay = Concurrently $ do
   eInputModelF <- runExceptT $ runTest $ mapM decodePath (txsModelFiles ex)
-
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
       sleep delay
       port <- repr <$> getRandomPort
-      a <- async $ txsServerProc mLogDir (port : txsServerArgs ex)
-      runConcurrently $ timer a
-                    <|> heartbeat
-                    <|> txsUIProc mLogDir inputModelF port
+      withCreateProcess (System.Process.proc "txs-webserver" ["-p", port]) {std_out = NoStream} $
+                    \_stdin _stdout _stderr _ph -> -- do
+            runConcurrently $ timer
+                          <|> heartbeat
+                          <|> txsUIProc mLogDir inputModelF (T.pack port)
   where
     heartbeat = Concurrently $ forever $ do
       sleep 60.0 -- For now we don't make this configurable.
       putStr "."
-    timer srvProc = Concurrently $ do
+    timer = Concurrently $ do
       sleep sqattTimeout
-      cancel srvProc
       return $ Left TestTimedOut
     txsUIProc mUiLogDir imf port = Concurrently $ do
         eRes <- try $ Turtle.fold txsUIShell findExpectedMsg
@@ -328,12 +327,12 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
             case mUiLogDir of
                 Nothing ->
                     either id id <$> inprocWithErr txsUICmd
-                                                        (port:imf)
-                                                        inLines
+                                                    ("-s":"http://localhost:"<>port<>"/":imf)
+                                                    inLines
                 Just uiLogDir -> do
                     h <- appendonly $ uiLogDir </> "txsui.out.log"
                     line <- either id id <$> inprocWithErr txsUICmd
-                                                           (port:imf)
+                                                           ("-s":"http://localhost:"<>port<>"/":imf)
                                                            inLines
                     liftIO $ TIO.hPutStrLn h (lineToText line)
                     return line
@@ -344,8 +343,6 @@ runTxsWithExample mLogDir ex delay = Concurrently $ do
     tErr = TestExpectationError $
               format ("Did not get expected result "%s)
                      (repr . expectedResult $ ex)
-    txsServerProc sLogDir =
-      runInprocNI ((</> "txsserver.out.log") <$> sLogDir) txsServerCmd
 
 -- | Run a process.
 runInproc :: Maybe FilePath   -- ^ Directory where the logs will be stored, or @Nothing@ if no logging is desired.
@@ -379,16 +376,14 @@ runTxsAsSut mLogDir modelFiles cmdsFile = do
   case eInputModelF of
     Left decodeErr -> return $ Left decodeErr
     Right inputModelF -> do
-      port <- repr <$> getRandomPort
-      runConcurrently $
-        txsServerProc port <|> txsUIProc inputModelF port
+        port <- repr <$> getRandomPort
+        withCreateProcess (System.Process.proc "txs-webserver" ["-p", port]) {std_out = NoStream} $
+            \_stdin _stdout _stderr _ph ->
+                runConcurrently $ txsUIProc inputModelF (T.pack port)
   where
     txsUIProc imf port = Concurrently $
       let mCLogDir = (</> "txsui.SUT.out.log") <$> mLogDir in
-      runInproc mCLogDir txsUICmd (port:imf) (input cmdsFile)
-    txsServerProc port = Concurrently $
-      let mCLogDir = (</> "txsserver.SUT.out.log") <$> mLogDir in
-      runInprocNI mCLogDir txsServerCmd [port]
+      runInproc mCLogDir txsUICmd ("-s":"http://localhost:"<>port<>"/":imf) (input cmdsFile)
 
 mkTest :: Maybe FilePath -> RunnableExample -> Test ()
 mkTest mLogDir (ExampleWithSut ex cSUT args) = do

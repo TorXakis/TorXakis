@@ -15,8 +15,9 @@ import           GHC.IO.Handle               (hGetContents)
 import           Lens.Micro                  ((^.), (^?))
 import           Lens.Micro.Aeson            (key, _Integer)
 import           Network.Wreq
-import           System.Console.Docopt       (Docopt, docopt, getArg,
-                                              longOption, parseArgsOrExit)
+import           System.Console.Docopt       (Docopt, argument, docopt,
+                                              getAllArgs, getArg, longOption,
+                                              parseArgsOrExit)
 import           System.Environment          (getArgs)
 import           System.Process              (StdStream (NoStream), proc,
                                               std_out, withCreateProcess)
@@ -29,7 +30,7 @@ patterns :: Docopt
 patterns = [docopt|
 ticl
 
-Usage: ticl [options]
+Usage: ticl [options] [<modal-files>...]
 
 Options:
 -s --server <address>    Address of the server. If not present a new server
@@ -43,17 +44,21 @@ Options:
 -- maximum port number (2^16 - 1) is reached.
 main :: IO ()
 main = do
-    args <- parseArgsOrExit patterns =<< getArgs
     Log.initL
+    as <- getArgs
+    Log.info $ "Starting with arguments: " ++ show as
+    args <- parseArgsOrExit patterns as
+    let modelFiles = args `getAllArgs` argument "modal-files"
+    Log.info $ "Model files from args: " ++ show modelFiles
     case strip <$> args `getArg` longOption "server" of
         -- TODO: make the user input type-safe. For instance we're assuming the host ends with a '/'.
         Nothing    ->
-            tryStartCli (8080 :: Int)
+            tryStartCli (8080 :: Int) modelFiles
         Just oAddr ->
-            startCLIWithHost oAddr
+            startCLIWithHost oAddr modelFiles
     where
       -- | Try to start a web-server on the given port. Retry if the port was busy.
-      tryStartCli n
+      tryStartCli n mfs
           | n <= maxPortNumber = do
                 let p = show n
                 Log.info $ "Running web server on port " ++ p
@@ -71,7 +76,7 @@ main = do
                         if null errStr
                             then do
                                 Log.info "Starting CLI"
-                                startCLIWithHost ("http://localhost:" ++ p ++ "/")
+                                startCLIWithHost ("http://localhost:" ++ p ++ "/") mfs
                                 Log.info "Exiting CLI"
                             else retryIfPortBusy errStr
           | otherwise = let errStr = "Unable to find a free port for launching the TorXakis webserver"
@@ -81,13 +86,13 @@ main = do
             retryIfPortBusy err
                 | "resource busy" `isInfixOf` err =
                       -- The port is busy, we retry on the next one.
-                      tryStartCli (n + 1)
+                      tryStartCli (n + 1) mfs
                 | otherwise =
                       -- We got some other kind of error. Giving up.
                       Log.warn
                       $  "Unexpected error when trying to "
                       ++ "start the TorXakis webserver: " ++ show err
-      startCLIWithHost host = do
+      startCLIWithHost host mfs = do
           Log.info "Initializing TorXakis session..."
           initRes <- initTorXakisSession host -- todo: get session id from arguments
           case initRes of
@@ -95,7 +100,7 @@ main = do
               Right sid -> do
                             Log.info $ "Starting CLI for session" ++ show sid
                             noHdl <- newTVarIO Nothing
-                            runCli (Env host sid noHdl) startCLI
+                            runCli (Env host sid noHdl) (startCLI mfs)
       initTorXakisSession :: String -> IO (Either TorXakisServerException Int)
       initTorXakisSession host = do
           let url = host ++ "sessions/new"

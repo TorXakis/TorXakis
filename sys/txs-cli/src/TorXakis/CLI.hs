@@ -21,7 +21,7 @@ import           Control.Concurrent               (newChan, readChan,
                                                    threadDelay)
 import           Control.Concurrent.Async         (async, cancel)
 import           Control.Concurrent.STM.TVar      (readTVarIO, writeTVar)
-import           Control.Monad                    (forever, when)
+import           Control.Monad                    (forever, unless, void, when)
 import           Control.Monad.Except             (runExceptT)
 import           Control.Monad.IO.Class           (MonadIO, liftIO)
 import           Control.Monad.Reader             (MonadReader, ReaderT, ask,
@@ -74,8 +74,8 @@ newtype CLIM a = CLIM { innerM :: ReaderT Env IO a }
 runCli :: Env -> CLIM a -> IO a
 runCli e clim = runReaderT (innerM clim) e
 
-startCLI :: CLIM ()
-startCLI = do
+startCLI :: [FilePath] -> CLIM ()
+startCLI modelFiles = do
     home <- liftIO getHomeDirectory
     runInputT (haskelineSettings home) cli
   where
@@ -89,10 +89,12 @@ startCLI = do
     cli = do
         Log.info "Starting the main loop..."
         outputStrLn "Welcome to TorXakis!"
-        withMessages $ withInterrupt $ handleInterrupt (output Nothing ["Ctrl+C: quitting"]) loop
+        withMessages $ withModelFiles modelFiles $
+            withInterrupt $
+            handleInterrupt (output Nothing ["Ctrl+C: quitting"]) loop
     loop :: InputT CLIM ()
     loop = do
-        minput <- getInputLine (defaultConf ^. prompt)
+        minput <- fmap strip <$> getInputLine (defaultConf ^. prompt)
         Log.info $ "Processing input line: " ++ show (fromMaybe "<no input>" minput)
         case minput of
             Nothing -> return ()
@@ -321,6 +323,12 @@ startCLI = do
                     where
                     dataErr = "The message from TorXakis did not contain a \"data:\" field: "
                             ++ show msg
+    withModelFiles :: [FilePath] -> InputT CLIM () -> InputT CLIM ()
+    withModelFiles mfs action = do
+        unless (null mfs) $ void $ lift $
+            do Log.info $ "Loading model files: " ++ show mfs
+               load mfs
+        action
 
 -- | Perform an output action in the @InputT@ monad.
 output :: Maybe Handle -> [String] -> InputT CLIM ()
