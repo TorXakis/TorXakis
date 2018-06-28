@@ -90,7 +90,7 @@ spec = return $ do
                         arr `shouldContain` [("PurposeExamples.txs",True)]
             it "Fails for parse error" $ do
                 let handler (CI.HttpExceptionRequest _ (C.StatusCodeException r body)) = do
-                        BS.unpack body `shouldStartWith` "\nParse Error:"
+                        BS.unpack body `shouldStartWith` "Error {_errorType = ParseError,"
                         let s = r ^. responseStatus
                         return CI.Response{CI.responseStatus = s}
                     handler e = throwIO e
@@ -228,6 +228,7 @@ spec = return $ do
                                   {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
                     sId <- mkNewSession
                     _ <- put (newSessionUrl sId) [partFile "model.txs" "../../examps/LuckyPeople/spec/LuckyPeople.txs"]
+                    _ <- put (paramUrl sId) [ partString "param_Randomization" "IncrementChoice" ]
                     post (setTestUrl sId) [ partString "model" "Model"
                                           , partString "cnect" "Sut"
                                           , partString "purp&map" ""
