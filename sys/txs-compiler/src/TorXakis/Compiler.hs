@@ -389,8 +389,8 @@ compileToProcDefs mm pd = do
     let pms = pmsP <> pmsS
         -- Remove the names from variable and channel id's.
         -- NOTE: This won't be needed once https://github.com/TorXakis/TorXakis/issues/746 is fixed
-        pidsNN = (anonymizePid . getPId <$> Map.elems pms)
-        anonymizePid (ProcId n i cs vs e) = (ProcId n i (anonymizeCid <$> cs) (anonymizeVid <$> vs) e)
+        pidsNN = anonymizePid . getPId <$> Map.elems pms
+        anonymizePid (ProcId n i cs vs e) = ProcId n i (anonymizeCid <$> cs) (anonymizeVid <$> vs) e
         anonymizeCid (ChanId _ i sids) = ChanId "" i sids
         anonymizeVid (VarId _ i sid) = VarId "" i sid
     checkUnique (NoErrorLoc, Process, "Process") pidsNN
