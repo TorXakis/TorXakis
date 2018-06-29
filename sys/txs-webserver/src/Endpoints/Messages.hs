@@ -15,7 +15,6 @@ module Endpoints.Messages
 where
 
 import           Conduit                       (runConduit, (.|))
-import           Control.Concurrent            (threadDelay)
 import           Control.Concurrent.Async      (async, concurrently_, race_)
 import           Control.Concurrent.Chan       (Chan, newChan, writeChan)
 import           Control.Concurrent.STM.TQueue (isEmptyTQueue)

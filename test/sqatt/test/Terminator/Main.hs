@@ -1,26 +1,41 @@
 {-# LANGUAGE OverloadedStrings #-}
-import           Control.Concurrent.Async
-import           Turtle
+-- import           Control.Concurrent.Async
+import qualified System.Process as Process
+import           Turtle         (sleep)
 
 main :: IO ()
-main = runAllConcurrently
+main = runAllWithProcess
 
-runAllConcurrently :: IO ()
-runAllConcurrently = do
+runAllWithProcess :: IO ()
+runAllWithProcess = do
     putStrLn ""
-    runConcurrently $
-        Concurrently runTicl <|> Concurrently runTxsWebserver <|> Concurrently timeout
+    phTicl <- Process.spawnProcess "ticl" ["-s", "http://localhost:9831/"]
+    phWS <- Process.spawnProcess "txs-webserver" ["-p", "9831"]
+    putStrLn "Give them 5s"
+    suddenDeath phTicl phWS
+    putStrLn "Exiting!"
 
-runTicl ::IO ()
-runTicl = do
-    sleep 1
-    view $ inproc "ticl" ["-s", "http://localhost:9831/"] Turtle.empty
-    putStrLn "CLI done!"
+-- runAllConcurrently :: IO ()
+-- runAllConcurrently = do
+--     putStrLn ""
+--     runConcurrently $
+--         Concurrently runTicl <|> Concurrently runTxsWebserver <|> Concurrently timeout
 
-runTxsWebserver :: IO ()
-runTxsWebserver = do
-    view $ inproc "txs-webserver" ["-p", "9831"] Turtle.empty
-    putStrLn "Web-server done!"
+-- runTicl ::IO ()
+-- runTicl = do
+--     sleep 1
+--     view $ inproc "ticl" ["-s", "http://localhost:9831/"] Turtle.empty
+--     putStrLn "CLI done!"
 
-timeout :: IO ()
-timeout = sleep 5 >> putStrLn "Time's up!"
+-- runTxsWebserver :: IO ()
+-- runTxsWebserver = do
+--     view $ inproc "txs-webserver" ["-p", "9831"] Turtle.empty
+--     putStrLn "Web-server done!"
+
+-- timeout :: IO ()
+-- timeout = sleep 5 >> putStrLn "Time's up!"
+
+suddenDeath :: Process.ProcessHandle -> Process.ProcessHandle ->  IO ()
+suddenDeath ph1 ph2 = sleep 5 >> putStrLn "Time's up!"
+                        >> Process.terminateProcess ph1
+                        >> Process.terminateProcess ph2

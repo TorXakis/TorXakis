@@ -123,6 +123,7 @@ test-suite terminator
                      , hspec
                      , turtle
                      , async
+                     , process
                      , system-filepath
                      , time
   ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N -O
