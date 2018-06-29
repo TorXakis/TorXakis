@@ -9,7 +9,8 @@ main = runAllWithProcess
 runAllWithProcess :: IO ()
 runAllWithProcess = do
     putStrLn ""
-    phTicl <- Process.spawnProcess "ticl" ["-s", "http://localhost:9831/"]
+    let cp = Process.proc "ticl" ["-s", "http://localhost:9831/"]
+    (_, _, _, phTicl) <- Process.createProcess cp {Process.std_in = Process.CreatePipe}
     phWS <- Process.spawnProcess "txs-webserver" ["-p", "9831"]
     putStrLn "Give them 5s"
     suddenDeath phTicl phWS
