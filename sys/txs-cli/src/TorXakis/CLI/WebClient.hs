@@ -22,10 +22,12 @@ module TorXakis.CLI.WebClient
 where
 
 import           Control.Concurrent            (Chan, writeChan)
+import           Control.Concurrent.STM.TVar   (writeTVar)
 import           Control.Monad.Except          (MonadError, catchError,
                                                 liftEither, throwError)
-import           Control.Monad.IO.Class        (MonadIO)
+import           Control.Monad.IO.Class        (MonadIO, liftIO)
 import           Control.Monad.Reader          (MonadReader, asks)
+import           Control.Monad.STM             (atomically)
 import           Data.Aeson                    (eitherDecode)
 import           Data.Aeson.Types              (toJSON)
 import qualified Data.ByteString               as BSS
@@ -131,6 +133,8 @@ stepper mName = do
 step :: (MonadIO m, MonadReader Env m) => String -> m (Either String ())
 step with = do
     sId <- asks sessionId
+    waitingT <- asks waitingVerdict
+    liftIO $ atomically $ writeTVar waitingT True
     ignoreSuccess $ do
         sType <- step1 `catchError` \_ ->
                  parseNumberOfSteps `catchError` \_ ->

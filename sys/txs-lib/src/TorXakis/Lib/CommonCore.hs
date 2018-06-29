@@ -8,6 +8,7 @@ See LICENSE at root directory of this repository.
 module TorXakis.Lib.CommonCore where
 
 import           Control.Arrow                 (left)
+import           Control.Concurrent            (forkIO)
 import           Control.Concurrent.MVar       (putMVar, takeMVar)
 import           Control.Concurrent.STM.TQueue (writeTQueue)
 import           Control.Concurrent.STM.TVar   (modifyTVar', readTVarIO)
@@ -131,7 +132,7 @@ reportError s err = do
 
 runForVerdict :: Session -> IOC Verdict -> IO (Response ())
 runForVerdict s ioc = do
-    void $ do
+    void $ forkIO $ do
         eVerd <- try $ runIOC s ioc
         case eVerd of
             Left     e -> atomically $ writeTQueue (s ^. verdicts) $ Left e

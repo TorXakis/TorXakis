@@ -20,13 +20,14 @@ import           Control.Arrow                    ((|||))
 import           Control.Concurrent               (newChan, readChan,
                                                    threadDelay)
 import           Control.Concurrent.Async         (async, cancel)
-import           Control.Concurrent.STM.TVar      (readTVarIO, writeTVar)
+import           Control.Concurrent.STM.TVar      (readTVar, readTVarIO,
+                                                   writeTVar)
 import           Control.Monad                    (forever, unless, void, when)
 import           Control.Monad.Except             (runExceptT)
 import           Control.Monad.IO.Class           (MonadIO, liftIO)
 import           Control.Monad.Reader             (MonadReader, ReaderT, ask,
                                                    asks, runReaderT)
-import           Control.Monad.STM                (atomically)
+import           Control.Monad.STM                (atomically, retry)
 import           Control.Monad.Trans              (lift)
 import           Data.Aeson                       (eitherDecodeStrict)
 import qualified Data.ByteString.Char8            as BS
@@ -34,6 +35,7 @@ import           Data.Char                        (toLower)
 import           Data.Either                      (isLeft)
 import           Data.Either.Utils                (maybeToEither)
 import           Data.Foldable                    (traverse_)
+import           Data.List                        (isInfixOf)
 import           Data.List.Split                  (splitOn)
 import           Data.Maybe                       (fromMaybe)
 import           Data.String.Utils                (strip)
@@ -49,7 +51,8 @@ import           System.IO                        (BufferMode (NoBuffering),
                                                    Handle,
                                                    IOMode (AppendMode, WriteMode),
                                                    hClose, hFlush, hPutStrLn,
-                                                   hSetBuffering, openFile)
+                                                   hSetBuffering, openFile,
+                                                   stdout)
 import           Text.Read                        (readMaybe)
 
 import           EnvData                          (Msg)
@@ -92,9 +95,14 @@ startCLI modelFiles = do
         withMessages $ withModelFiles modelFiles $
             withInterrupt $
             handleInterrupt (output Nothing ["Ctrl+C: quitting"]) loop
+        liftIO $ hFlush stdout
     loop :: InputT CLIM ()
     loop = do
+        waitingT <- lift $ asks waitingVerdict
         minput <- fmap strip <$> getInputLine (defaultConf ^. prompt)
+        liftIO $ atomically $ do
+            waiting <- readTVar waitingT
+            when waiting retry
         Log.info $ "Processing input line: " ++ show (fromMaybe "<no input>" minput)
         case minput of
             Nothing -> loop
@@ -292,12 +300,17 @@ startCLI modelFiles = do
         producer <- liftIO $ async $
             sseSubscribe env ch $ concat ["sessions/", show sId, "/messages"]
         mhT <- lift $ asks fOutH
+        waitingT <- lift $ asks waitingVerdict
         consumer <- liftIO $ async $ forever $ do
             Log.info "Waiting for message..."
             msg <- readChan ch
             Log.info $ "Printing message: " ++ show msg
             mh <- readTVarIO mhT
-            traverse_ (outputAndPrint mh printer . ("<< " ++)) $ pretty (asTxsMsg msg)
+            let prettyMsg = pretty $ asTxsMsg msg
+            atomically $ do
+                waiting <- readTVar waitingT
+                when (waiting && hasVerdict prettyMsg) (writeTVar waitingT False)
+            traverse_ (outputAndPrint mh printer . ("<< " ++)) prettyMsg
         Log.info "Triggering action..."
         action `finally` do
             Log.info "Closing the messages endpoint..."
@@ -308,11 +321,19 @@ startCLI modelFiles = do
                 cancel consumer
                 Log.info "Produced and consumer canceled."
           where
+            hasVerdict :: [String] -> Bool
+            hasVerdict = foldl (\ res s -> res || isVerdict s) False
+              where
+                isVerdict :: String -> Bool
+                isVerdict "PASS"       = True
+                isVerdict "No Verdict" = True
+                isVerdict s
+                    | "FAIL: " `isInfixOf` s = True
+                    | otherwise               = False
             outputAndPrint :: Maybe Handle -> (String -> IO ()) -> String -> IO ()
             outputAndPrint mh prntr s = do
                 Log.info $ "Showing message on screen: " ++ s
                 prntr s
-                -- Log.info $ "Maybe file handle: " ++ show mh
                 case mh of
                     Just h  -> do hPutStrLn h s
                                   hFlush h
