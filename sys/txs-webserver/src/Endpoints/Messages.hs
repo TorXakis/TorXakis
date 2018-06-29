@@ -76,9 +76,7 @@ messages env sId = Tagged $ \req respond -> do
                                (waitForClose svrS >> waitTillDone s ch)
             eventSourceAppChan ch req respond
       where
-        waitForClose svrS = do
-            threadDelay (10 ^ (4 :: Int)) -- 10ms sleep is better than busy-wait
-            atomically $ do
+        waitForClose svrS = atomically $ do
                 b <- readTVar (_contListening svrS)
                 when b retry
         waitTillDone s ch =

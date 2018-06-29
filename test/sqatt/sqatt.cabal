@@ -114,6 +114,21 @@ test-suite models-test
   ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N -O
   default-language:    Haskell2010
 
+test-suite terminator
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test/Terminator/
+  main-is:             Main.hs
+  build-depends:       base
+                     , sqatt
+                     , hspec
+                     , turtle
+                     , async
+                     , system-filepath
+                     , time
+  ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N -O
+  default-language:    Haskell2010
+
+  
 benchmark bench
   type:                exitcode-stdio-1.0
   hs-source-dirs:      bench

@@ -30,7 +30,7 @@ patterns :: Docopt
 patterns = [docopt|
 ticl
 
-Usage: ticl [options] [<modal-files>...]
+Usage: ticl [options] [<model-files>...]
 
 Options:
 -s --server <address>    Address of the server. If not present a new server
@@ -48,7 +48,7 @@ main = do
     as <- getArgs
     Log.info $ "Starting with arguments: " ++ show as
     args <- parseArgsOrExit patterns as
-    let modelFiles = args `getAllArgs` argument "modal-files"
+    let modelFiles = args `getAllArgs` argument "model-files"
     Log.info $ "Model files from args: " ++ show modelFiles
     case strip <$> args `getArg` longOption "server" of
         -- TODO: make the user input type-safe. For instance we're assuming the host ends with a '/'.
@@ -74,10 +74,7 @@ main = do
                                             hGetContents h
                         Log.info $ "Read stderr handle: " ++ errStr
                         if null errStr
-                            then do
-                                Log.info "Starting CLI"
-                                startCLIWithHost ("http://localhost:" ++ p ++ "/") mfs
-                                Log.info "Exiting CLI"
+                            then startCLIWithHost ("http://localhost:" ++ p ++ "/") mfs
                             else retryIfPortBusy errStr
           | otherwise = let errStr = "Unable to find a free port for launching the TorXakis webserver"
                         in Log.warn errStr
@@ -94,6 +91,7 @@ main = do
                       ++ "start the TorXakis webserver: " ++ show err
       startCLIWithHost host mfs = do
           Log.info "Initializing TorXakis session..."
+          Log.info "Starting CLI"
           initRes <- initTorXakisSession host -- todo: get session id from arguments
           case initRes of
               Left  e   -> Log.warn $ show e
@@ -101,6 +99,7 @@ main = do
                             Log.info $ "Starting CLI for session" ++ show sid
                             noHdl <- newTVarIO Nothing
                             runCli (Env host sid noHdl) (startCLI mfs)
+                            Log.info "Exiting CLI"
       initTorXakisSession :: String -> IO (Either TorXakisServerException Int)
       initTorXakisSession host = do
           let url = host ++ "sessions/new"
@@ -117,3 +116,4 @@ main = do
                   _   -> Left $ TorXakisServerException
                                 (BSL.unpack $ r ^. responseBody)
                                 st url "HTTP Status 201"
+

@@ -97,7 +97,7 @@ startCLI modelFiles = do
         minput <- fmap strip <$> getInputLine (defaultConf ^. prompt)
         Log.info $ "Processing input line: " ++ show (fromMaybe "<no input>" minput)
         case minput of
-            Nothing -> return ()
+            Nothing -> loop
             Just "" -> loop
             Just "q" -> return ()
             Just "quit" -> return ()
@@ -300,11 +300,13 @@ startCLI modelFiles = do
             traverse_ (outputAndPrint mh printer . ("<< " ++)) $ pretty (asTxsMsg msg)
         Log.info "Triggering action..."
         action `finally` do
-            Log.info "Closing messages..."
+            Log.info "Closing the messages endpoint..."
             _ <- lift closeMessages
+            Log.info "Messages endpoint closed."
             liftIO $ do
                 cancel producer
                 cancel consumer
+                Log.info "Produced and consumer canceled."
           where
             outputAndPrint :: Maybe Handle -> (String -> IO ()) -> String -> IO ()
             outputAndPrint mh prntr s = do
