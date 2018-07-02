@@ -86,15 +86,15 @@ cache:
 
 test_script:
 - ps: Write-Host Starting test at $(Get-Date)
-# - ps: pushd test/sqatt
-# - ps: |
-#     $tryCount = 1
-#     do {
-#         Write-Host Try $tryCount
-#         $tryCount++
-#         cmd /c "stack build --install-ghc --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml 2>&1"
-#     } While ((!$?) -and ($tryCount -le 10))
-# - stack test --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml
-# - ps: popd
+- ps: pushd test/sqatt
+- ps: |
+    $tryCount = 1
+    do {
+        Write-Host Try $tryCount
+        $tryCount++
+        cmd /c "stack build --install-ghc --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml 2>&1"
+    } While ((!$?) -and ($tryCount -le 10))
+- stack test --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml
+- ps: popd
 
 # after_test:
