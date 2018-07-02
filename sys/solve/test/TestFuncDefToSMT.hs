@@ -13,7 +13,7 @@ import qualified Data.Map           as Map
 import qualified Data.Text          as T
 import           Test.HUnit
 
-import           ConstDefs
+import           Constant
 import           FuncDef(FuncDef)
 import           FuncId(FuncId)
 import           SMTData

@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 --------------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Compiler.ValExpr.ConstDefs
+-- Module      :  TorXakis.Compiler.ValExpr.Constant
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 --
@@ -13,21 +13,21 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Compilation to 'TorXakis' @Const@'s.
+-- Compilation to 'TorXakis' @Constant@'s.
 --------------------------------------------------------------------------------
-module TorXakis.Compiler.ValExpr.ConstDefs
-    (constToConstDef)
+module TorXakis.Compiler.ValExpr.Constant
+    (constToConstant)
 where
 
-import qualified ConstDefs
+import qualified Constant
 import           SortId               (SortId)
 
 import           TorXakis.Parser.Data (Const (AnyConst, BoolConst, IntConst, RegexConst, StringConst))
 
--- | Transform a constant declaration into a 'TorXakis' @Const@.
-constToConstDef :: SortId -> Const -> ConstDefs.Const
-constToConstDef _ (BoolConst b)   = ConstDefs.Cbool b
-constToConstDef _ (IntConst i)    = ConstDefs.Cint i
-constToConstDef _ (StringConst s) = ConstDefs.Cstring s
-constToConstDef _ (RegexConst s)  = ConstDefs.Cregex s
-constToConstDef sId AnyConst      = ConstDefs.Cany sId
+-- | Transform a constant declaration into a 'TorXakis' @Constant@.
+constToConstant :: SortId -> Const -> Constant.Constant
+constToConstant _ (BoolConst b)   = Constant.Cbool b
+constToConstant _ (IntConst i)    = Constant.Cint i
+constToConstant _ (StringConst s) = Constant.Cstring s
+constToConstant _ (RegexConst s)  = Constant.Cregex s
+constToConstant sId AnyConst      = Constant.Cany sId

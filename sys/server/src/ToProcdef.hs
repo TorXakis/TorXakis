@@ -32,7 +32,7 @@ import qualified TxsDefs
 import qualified TxsShow
 
 -- import from valexpr
-import ConstDefs
+import Constant
 import SortId
 
 -- ----------------------------------------------------------------------------------------- --
@@ -70,12 +70,12 @@ actionToProcdef :: TxsDDefs.Action -> Text
 actionToProcdef (TxsDDefs.Act s) =  communicationsToProcdef s
 actionToProcdef TxsDDefs.ActQui  =  "STOP"        -- can't be replayed
 
-communicationsToProcdef :: Set.Set (TxsDefs.ChanId, [Const]) -> Text
+communicationsToProcdef :: Set.Set (TxsDefs.ChanId, [Constant]) -> Text
 communicationsToProcdef set
   =  let communications = map communicationToProcdef (Set.toList set)
       in T.intercalate " | " communications
 
-communicationToProcdef :: (TxsDefs.ChanId, [Const]) -> Text
+communicationToProcdef :: (TxsDefs.ChanId, [Constant]) -> Text
 communicationToProcdef (chid, vexprs)
   =  ChanId.name chid <> foldMap ( (" ! " <>) . T.pack . TxsShow.pshow ) vexprs
 

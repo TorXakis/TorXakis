@@ -31,7 +31,7 @@ import           Data.Monoid
 import           Data.Text             (Text)
 import qualified Data.Text             as T
 
-import           Constant(Constant(Cbool, Cint, Cstring, Ccstr, Cregex))
+import           Constant
 import           CstrDef
 import           CstrId
 import           SMT
@@ -135,7 +135,7 @@ randomSolve p ((v,_):xs) i    | vsort v == sortIdInt =
     where
         choicesFunc :: Variable v => v -> Int -> Constant -> SMT [(Bool, Text)]
         choicesFunc v' r (Cint x)  = do
-                                        let r' = toInteger r
+                                        let r' = Prelude.toInteger r
                                             cond = x < r'
                                         st <- valExprToString $ cstrLT (cstrVar v') (cstrConst (Cint r'))
                                         sf <- valExprToString $ cstrGE (cstrVar v') (cstrConst (Cint r'))
@@ -184,7 +184,7 @@ randomSolve p ((v,d):xs) i    | vsort v == sortIdString =
         case c of
             Cstring s   -> do
                                 let l = T.length s
-                                addAssertions [cstrEqual (cstrLength (cstrVar v)) (cstrConst (Cint (toInteger l)))]
+                                addAssertions [cstrEqual (cstrLength (cstrVar v)) (cstrConst (Cint (Prelude.toInteger l)))]
                                 if l > 0 && d > 1
                                 then do
                                         let charVars = map (\iNew -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sortIdString) [i .. i+l-1]
@@ -206,8 +206,8 @@ randomSolve p ((v,d):xs) i    | vsort v == sortIdString =
         choicesFunc :: Variable v => v -> Int -> Constant -> SMT [(Bool, Text)]
         choicesFunc v' r (Cstring s) = do
                                             let cond = T.length s < r
-                                            st <- valExprToString $ cstrLT (cstrLength (cstrVar v')) (cstrConst (Cint (toInteger r)))
-                                            sf <- valExprToString $ cstrGE (cstrLength (cstrVar v')) (cstrConst (Cint (toInteger r)))
+                                            st <- valExprToString $ cstrLT (cstrLength (cstrVar v')) (cstrConst (Cint (Prelude.toInteger r)))
+                                            sf <- valExprToString $ cstrGE (cstrLength (cstrVar v')) (cstrConst (Cint (Prelude.toInteger r)))
                                             return [ (cond, st)
                                                    , (not cond, sf)
                                                    ]

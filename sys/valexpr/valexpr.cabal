@@ -48,7 +48,6 @@ library
                       , base
                       , containers
                       , deepseq
-                      , lens
                       , regex-tdfa
                       , text
 
@@ -75,7 +74,6 @@ test-suite valexpr-BlackBox
   build-depends:       base
                      , hspec
                      , hspec-contrib
-                     , lens
                      , ieee754
                      , text
                      , HUnit

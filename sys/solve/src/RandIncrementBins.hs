@@ -35,7 +35,7 @@ import           System.IO
 import           System.Random
 import           System.Random.Shuffle
 
-import           ConstDefs
+import           Constant
 import           CstrDef
 import           CstrId
 import           SMT
@@ -96,7 +96,7 @@ mkRndIntBins p v = do
         bins = mkIntConstraintBins v boundaryValues
     shuffleM bins
 
-findRndValue :: Variable v => v -> [ValExpr v] -> SMT Const
+findRndValue :: Variable v => v -> [ValExpr v] -> SMT Constant
 findRndValue _ [] = error "findRndValue - Solution exists, yet no solution found in all bins"
 findRndValue v (x:xs) = do
     push
@@ -268,7 +268,7 @@ randomSolveBins p ((v,d):xs) i =
                         _          -> do
                                         shuffledCstrs <- shuffleM cstrs
                                         let shuffledBins = map (\(tempCid, _) -> cstrIsCstr tempCid (cstrVar v)) shuffledCstrs
-                                        Cstr{cstrId = cid'} <- findRndValue v shuffledBins
+                                        Ccstr{cstrId = cid'} <- findRndValue v shuffledBins
                                         return (cid', d-1)
         addIsConstructor v cid
         fieldVars <- if d' > 1 then addFields v i cid

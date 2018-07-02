@@ -22,7 +22,7 @@ import qualified Data.Set as Set
 -- generic TorXakis imports
 import BehExprDefs
 import ChanId
-import ConstDefs
+import Constant
 import SortId
 import ValExpr
 import VarId

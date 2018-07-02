@@ -41,7 +41,7 @@ import qualified Data.Text           as T
 
 import           BTree
 import           ChanId
-import           ConstDefs
+import           Constant
 import qualified EnvBTree            as IOB
 import qualified EnvData
 import           Id

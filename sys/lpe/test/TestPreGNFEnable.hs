@@ -17,7 +17,7 @@ import qualified Data.Text         as T
 
 import TxsDefs
 import VarId
-import ConstDefs
+import Constant
 import ValExpr
 import TranslatedProcDefs
 import LPEfunc

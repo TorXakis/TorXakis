@@ -33,7 +33,7 @@ import qualified Data.Set   as Set
 import qualified Data.Map   as Map
 
 import BTree
-import ConstDefs
+import Constant
 import qualified EnvBTree   as IOB
 import qualified EnvData
 import Expand

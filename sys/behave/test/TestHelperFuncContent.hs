@@ -15,7 +15,7 @@ import qualified Data.Text         as T
 import           Data.Tuple        (fst, snd)
 
 import           ChanId
-import           ConstDefs
+import           Constant
 import           CstrDef
 import           CstrId
 import           FreeMonoidX

@@ -41,7 +41,7 @@ import qualified Control.Arrow
 import TranslatedProcDefs
 
 import TxsDefs
-import ConstDefs
+import Constant
 import StdTDefs (stdSortTable)
 
 import ChanId

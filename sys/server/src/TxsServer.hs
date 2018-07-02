@@ -62,7 +62,7 @@ import qualified Utils
 import qualified VarId
 
 -- import from valexpr
-import qualified ConstDefs
+import qualified Constant
 import           Id
 import qualified ValExpr
 
@@ -1051,7 +1051,7 @@ readAction chids args = do
                                 IFS.nack "ERROR" [ "eval failed:\n  " ++ Utils.join "\n  " es ]
                                 return TxsDDefs.ActQui
     where
-        makeEither :: (TxsDefs.ChanId, [Either String ConstDefs.Const]) -> Either String (TxsDefs.ChanId, [ConstDefs.Const])
+        makeEither :: (TxsDefs.ChanId, [Either String Constant.Constant]) -> Either String (TxsDefs.ChanId, [Constant.Constant])
         makeEither (chid, macts) =
              case Either.partitionEithers macts of
                 ([], acts) -> Right (chid, acts)

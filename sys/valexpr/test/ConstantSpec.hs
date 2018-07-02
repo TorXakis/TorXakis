@@ -5,7 +5,6 @@ See LICENSE at root directory of this repository.
 -}
 module ConstantSpec where
 
-import           Control.Lens
 import qualified Data.Text as T
 import           Test.Hspec
 import           Test.QuickCheck
@@ -16,20 +15,20 @@ import           SortId
 import           SortOf
 
 prop_BoolConst :: Bool -> Bool
-prop_BoolConst b = Just b == Cbool b ^? toBool
+prop_BoolConst b = b == toBool (Cbool b)
 
 prop_BoolSort :: Bool -> Bool
 prop_BoolSort b = sortIdBool == sortOf (Cbool b)
 
 prop_IntConst :: Integer -> Bool
-prop_IntConst i = Just i == (Cint i) ^? Constant.toInteger
+prop_IntConst i = i == Constant.toInteger (Cint i)
 
 prop_IntSort :: Integer -> Bool
 prop_IntSort i = sortIdInt == sortOf (Cint i)
 
 prop_StringConst :: UnicodeString -> Bool
 prop_StringConst (UnicodeString s) = let t = T.pack s in
-                                        Just t == (Cstring t) ^? toText
+                                        t == toText (Cstring t)
 
 prop_StringSort :: UnicodeString -> Bool
 prop_StringSort (UnicodeString s) = sortIdString == sortOf (Cstring (T.pack s))

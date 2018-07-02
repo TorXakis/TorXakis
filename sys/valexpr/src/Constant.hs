@@ -23,19 +23,10 @@ module Constant
 ( 
 -- * Data structure for constant definitions
   Constant (..)
--- * Getter and Setter of Lens
-, toBool
-, Constant.toInteger
-, toText
-, toXSDRegex
-, cstrId
-, args
-, sort
 )
 where
 
 import           Control.DeepSeq
-import           Control.Lens
 import           Data.Data
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
@@ -47,22 +38,21 @@ import           SortOf
 
 -- | Union of Boolean, Integer, String, and AlgebraicDataType constant values.
 data Constant = -- | Constructor of Boolean constant.
-                Cbool    { _toBool :: Bool }
+                Cbool    { toBool :: Bool }
                 -- | Constructor of Integer constant.
-              | Cint     { _toInteger :: Integer }
+              | Cint     { toInteger :: Integer }
                 -- | Constructor of String constant.
-              | Cstring  { _toText :: Text }
+              | Cstring  { toText :: Text }
                 -- | Constructor of Regular Expression constant.
               | Cregex   { -- | Regular Expression in XSD format
-                           _toXSDRegex :: Text } 
+                           toXSDRegex :: Text } 
                                             -- PvdL: performance gain: translate only once,
                                             --       storing SMT string as well
                 -- | Constructor of constructor constant (value of ADT).
-              | Ccstr    { _cstrId :: CstrId, _args :: [Constant] }
+              | Ccstr    { cstrId :: CstrId, args :: [Constant] }
                 -- | Constructor of ANY constant.
-              | Cany     { _sort :: SortId }
+              | Cany     { sort :: SortId }
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
-makeLenses ''Constant
 
 -- | Const is Resettable
 instance Resettable Constant

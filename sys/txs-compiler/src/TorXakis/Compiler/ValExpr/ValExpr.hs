@@ -51,7 +51,7 @@ import           TorXakis.Compiler.Error             (Entity (Function),
 import           TorXakis.Compiler.Maps              (determineSH, findRight,
                                                       (.@))
 import           TorXakis.Compiler.Maps.VarRef       (varIdForRef)
-import           TorXakis.Compiler.ValExpr.ConstDefs (constToConstDef)
+import           TorXakis.Compiler.ValExpr.Constant  (constToConstant)
 import           TorXakis.Compiler.ValExpr.SortId    (checkSortIds, sortIdConst)
 import           TorXakis.Parser.Data                (ExpChild (ConstLit, Fappl, If, LetExp, VarRef),
                                                       ExpDecl, LetVarDecl, Loc,
@@ -78,7 +78,7 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
                 return $ h []
     ConstLit c -> do
         traverse_ (checkSortIds eSid) (sortIdConst c)
-        return $ cstrConst (constToConstDef eSid c)
+        return $ cstrConst (constToConstant eSid c)
     LetExp vss subEx -> do
         let
             letValDeclsToMaps :: Either Error [Map VarId (ValExpr VarId)]
