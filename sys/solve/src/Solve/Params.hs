@@ -33,7 +33,7 @@ import qualified Data.Map  as Map
 
 -- smt solve strategies
 
-data  SolveStrategy     =  No | Partition | TrueBins | IncrementChoice
+data  SolveStrategy     =  No | Partition | TrueBins | IncrementChoice | IncrementBins
      deriving (Eq,Ord,Read,Show)
 
 data  StringMode        =  Regex | Length
@@ -50,18 +50,19 @@ type Params = Map.Map String (String,String->Bool)
 
 -- Represent String a positive integer?
 positiveInt :: String -> Bool
-positiveInt s = not (null s) && all Char.isDigit s
+positiveInt s = not (null s) && all Char.isDigit s && (let v = read s :: Integer in (v <= toInteger (maxBound :: Int) ) )
 ----------------------------------------------------------------------------------------- --
 -- initParams
 
 initParams :: Params
 initParams  =  Map.fromList $ map ( \(x,y,z) -> (x,(y,z)) )
   [ ( "param_max_rand_depth"                               , "4"          , positiveInt )
-  , ( "param_Randomization"                                , show IncrementChoice
+  , ( "param_Randomization"                                , show IncrementBins
                                                                           , \s ->    (s == show No)
                                                                                   || (s == show Partition)
                                                                                   || (s == show TrueBins)
-                                                                                  || (s == show IncrementChoice) )
+                                                                                  || (s == show IncrementChoice) 
+                                                                                  || (s == show IncrementBins) )
   , ( "param_TrueBins_StringLength"                        , "6"          , positiveInt )
   , ( "param_TrueBins_StringMode"                          , show Regex   , \s ->    (s== show Regex)
                                                                                   || (s== show Length) )

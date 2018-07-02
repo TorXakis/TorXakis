@@ -1,0 +1,75 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+STAUTDEF verrrrySimple[X]() ::=
+    STATE foo
+    INIT foo
+
+    TRANS foo -> X                          -> foo
+ENDDEF
+
+STAUTDEF verySimple[X]() ::=
+    STATE foo
+    INIT foo
+    VAR x :: Int
+
+    TRANS foo -> X {x := x + 1} -> foo
+ENDDEF
+
+STAUTDEF simple[X]() ::=
+    STATE foo, bar, Boo
+    VAR x :: Int
+    INIT foo
+
+    TRANS foo -> X                          -> bar
+          bar -> X { x := x + 10 }          -> foo
+          bar -> X [[ x < 20 ]] { x := 10 } -> foo          
+ENDDEF
+
+STAUTDEF simpleParam[X]  ( start_value :: Int ) ::=
+      STATE  state0
+      VAR    sum :: Int
+      INIT   state0 { sum := start_value }
+      TRANS  state0  -> X  ->  state0
+ENDDEF
+
+
+STAUTDEF simpleTwoParams[X]  ( start_value :: Int; foo_value :: Int ) ::=
+      STATE  state0
+      VAR    sum :: Int
+      INIT   state0 { sum := start_value + foo_value }
+      TRANS  state0  -> X  ->  state0
+ENDDEF
+
+STAUTDEF check1000 [ Add :: Int;  Sum :: Int;  Success ]  ( start_value :: Int ) ::=
+      STATE  state0, state1
+      STATE  state3
+      VAR    sum :: Int
+      INIT   state0 { sum := start_value }
+
+      TRANS  state0  ->  Add ? x    [[ x >= 0      ]]  { sum := sum + x }      ->  state1
+             state1  ->  Sum ! sum  [[ sum <= 1000 ]]  { }                     ->  state0
+             state1  ->  Success    [[ sum >= 1000 ]]  { sum := start_value }  ->  state0
+ENDDEF
+
+CHANDEF X ::=
+    Add, Sum :: Int;
+    Success
+ENDDEF
+
+MODELDEF Check1000 ::=
+    CHAN IN Add
+    CHAN OUT Sum, Success
+    BEHAVIOUR
+    check1000[Add, Sum, Success](0)
+ENDDEF
+
+MODELDEF STDCheck1000 ::=
+    CHAN IN Add
+    CHAN OUT Sum, Success
+    BEHAVIOUR
+    stdi_check1000[Add, Sum, Success](0)
+ENDDEF

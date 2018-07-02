@@ -103,7 +103,7 @@ instance PShow TxsDefs where
         ++ " :: " ++ Utils.join " # " (map pshow a)
         ++ " -> " ++ pshow srt ++ " ;\n"
         ++ "  ::=  " ++ pshow vexp ++ " ;\n"
-      showElem s (IdProc (ProcId nm _ chans pvars xt), DefProc (ProcDef _ _ bexp) ) =
+      showElem s (IdProc (ProcId nm _ _ _ xt), DefProc (ProcDef chans pvars bexp) ) =
         s ++ "\nPROCDEF " ++ T.unpack nm
         ++ " [ " ++ Utils.join "; "
         [ T.unpack n ++ " :: " ++ Utils.join " # " (map pshow srts)

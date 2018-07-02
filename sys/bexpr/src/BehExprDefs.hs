@@ -18,10 +18,10 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE ViewPatterns       #-}
 module BehExprDefs
-( 
+(
   -- * Behaviour Expression type and view
   BExprView(..)
 , BExpr
@@ -109,7 +109,7 @@ stop = BExpr (Choice Set.empty)
 -- | Is behaviour expression equal to Stop behaviour?
 isStop :: BExpr -> Bool
 isStop (BehExprDefs.view -> Choice s) | Set.null s = True
-isStop _                                           = False
+isStop _                              = False
 
 
 -- | Create an ActionPrefix behaviour expression.
@@ -143,21 +143,21 @@ guard v b                                                   = BExpr (Guard v b)
 --  A choice combines zero or more behaviour expressions.
 choice :: Set.Set BExpr -> BExpr
 choice s = let fs = flattenChoice s
-             in 
+             in
                 case Set.toList fs of
                     []  -> stop
                     [a] -> a
                     _   -> BExpr (Choice fs)
-    where 
+    where
         -- 1. nesting of choices are flatten
-        --    (p ## q) ## r <==> p ## q ## r 
+        --    (p ## q) ## r <==> p ## q ## r
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
         -- 2. elements in a set are distinctive
         --    hence p ## p <==> p
         -- 3. since stop == Choice Set.empty, we automatically have p ## stop <==> p
         flattenChoice :: Set.Set BExpr -> Set.Set BExpr
         flattenChoice = Set.unions . map fromBExpr . Set.toList
-        
+
         fromBExpr :: BExpr -> Set.Set BExpr
         fromBExpr (BehExprDefs.view -> Choice s') = s'
         fromBExpr x                               = Set.singleton x
@@ -173,16 +173,16 @@ parallel cs bs = let fbs = flattenParallel bs
         --    see https://wiki.haskell.org/Smart_constructors#Runtime_Optimisation_:_smart_constructors for inspiration for this implementation
         flattenParallel :: [BExpr] -> [BExpr]
         flattenParallel = concatMap fromBExpr
-        
+
         fromBExpr :: BExpr -> [BExpr]
         fromBExpr (BehExprDefs.view -> Parallel pcs pbs) | cs == pcs  = pbs
-        fromBExpr bexpr                                               = [bexpr]
+        fromBExpr bexpr                                  = [bexpr]
 
 -- | Create an enable behaviour expression.
 enable :: BExpr -> [ChanOffer] -> BExpr -> BExpr
 -- stop >>> p <==> stop
 enable b _ _    | isStop b = stop
-enable b1 cs b2            = BExpr (Enable b1 cs b2)
+enable b1 cs b2 = BExpr (Enable b1 cs b2)
 
 -- | Create a disable behaviour expression.
 disable :: BExpr -> BExpr -> BExpr
@@ -190,13 +190,13 @@ disable :: BExpr -> BExpr -> BExpr
 disable b1 b2 | isStop b1 = b2
 -- p [>> stop <==> p
 disable b1 b2 | isStop b2 = b1
-disable b1 b2             = BExpr (Disable b1 b2)
+disable b1 b2 = BExpr (Disable b1 b2)
 
 -- | Create an interrupt behaviour expression.
 interrupt :: BExpr -> BExpr -> BExpr
 --  p [>< stop <==> p
 interrupt b1 b2 | isStop b2 = b1
-interrupt b1 b2             = BExpr (Interrupt b1 b2)
+interrupt b1 b2 = BExpr (Interrupt b1 b2)
 
 -- | Create a process instantiation behaviour expression.
 procInst :: ProcId -> [ChanId] -> [VExpr] -> BExpr
