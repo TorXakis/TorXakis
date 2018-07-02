@@ -18,7 +18,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE TemplateHaskell    #-}
 module Constant
 ( 
 -- * Data structure for constant definitions
