@@ -41,7 +41,7 @@ import           GHC.Exts                          (toList)
 
 import           BehExprDefs                       (chanIdExit, chanIdIstep)
 import           ChanId                            (ChanId, chansorts)
-import           ConstDefs                         (Const (Cbool))
+import           Constant                          (Constant (Cbool))
 import           FuncTable                         (Handler, Signature)
 import           ProcId                            (ExitSort (Exit), ProcId,
                                                     exitSortIds, procchans,

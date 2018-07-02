@@ -17,7 +17,7 @@ import qualified Data.Text         as T
 import qualified Data.Set as Set
 
 import VarId
-import ConstDefs
+import Constant
 import ValExpr
 import TxsDefs
 import TxsShow

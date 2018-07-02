@@ -32,7 +32,7 @@ import           Data.Data
 import           Data.Set        (Set)
 import           GHC.Generics    (Generic)
 
-import           ConstDefs
+import           Constant (Constant)
 import           CstrId
 import           FuncId
 import           Id
@@ -47,7 +47,7 @@ import           Variable
 -- value expression
 
 -- | ValExprView: the public view of value expression 'ValExpr'
-data  ValExprView v = Vconst  Const
+data  ValExprView v = Vconst  Constant
                     | Vvar    v
                     -- Boolean
                     | Vequal    (ValExpr v) (ValExpr v)
@@ -129,10 +129,10 @@ instance (Ord v, Resettable v) => Resettable (ValExpr v)
 
 -- | Evaluate the provided value expression.
 -- Either the Right Constant Value is returned or a (Left) error message.
-eval :: Show v => ValExpr v -> Either String Const
+eval :: Show v => ValExpr v -> Either String Constant
 eval = evalView . view
 
-evalView :: Show v => ValExprView v -> Either String Const
+evalView :: Show v => ValExprView v -> Either String Constant
 evalView (Vconst v) = Right v
 evalView x          = Left $ "Value Expression is not a constant value " ++ show x
 

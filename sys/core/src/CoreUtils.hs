@@ -55,7 +55,7 @@ import qualified SolveDefs
 import qualified Solve
 
 -- import from valexpr
-import ConstDefs
+import Constant
 import ValExpr
 
 -- ----------------------------------------------------------------------------------------- --
@@ -217,12 +217,12 @@ randMenu menu =
            SolveDefs.Unsolvable    -> randMenu menu'
            SolveDefs.UnableToSolve -> randMenu menu'
 
-instantCTOffer :: Map.Map BTree.IVar Const -> BTree.CTOffer ->
-                  (TxsDefs.ChanId, [Const])
+instantCTOffer :: Map.Map BTree.IVar Constant -> BTree.CTOffer ->
+                  (TxsDefs.ChanId, [Constant])
 instantCTOffer sol (BTree.CToffer chan choffs)
  = ( chan, map (instantIVar sol) choffs )
 
-instantIVar :: Map.Map BTree.IVar Const -> BTree.IVar -> Const
+instantIVar :: Map.Map BTree.IVar Constant -> BTree.IVar -> Constant
 instantIVar sol ivar
  =   fromMaybe
       (error "TXS Test ranMenuIn: No value for interaction variable\n")

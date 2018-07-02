@@ -62,7 +62,7 @@ import           Solve
 import           SolveDefs
 
 -- import from valexpr
-import           ConstDefs
+import           Constant
 import           ValExpr
 
 -- ----------------------------------------------------------------------------------------- --

@@ -62,7 +62,7 @@ import qualified Data.Set        as Set
 import           GHC.Generics    (Generic)
 
 import           ChanId
-import           ConstDefs
+import           Constant
 import           Id
 import           ProcId
 import           SortOf

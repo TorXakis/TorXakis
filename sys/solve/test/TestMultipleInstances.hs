@@ -14,7 +14,7 @@ import           System.Process      (CreateProcess)
 
 import           Test.HUnit
 
-import           ConstDefs
+import           Constant
 import           SMT
 import           SolveDefs
 import           SortId

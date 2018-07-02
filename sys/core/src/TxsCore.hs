@@ -185,7 +185,7 @@ import qualified LPE
 -- import from valexpr
 import qualified SortId
 import qualified SortOf
-import ConstDefs
+import Constant
 import VarId
 
 -- | TorXakis core main api -- start
@@ -339,7 +339,7 @@ txsSetSeed seed  =  do
 --
 --   Only possible when txscore is initialized.
 txsEval :: TxsDefs.VExpr                    -- ^ value expression to be evaluated.
-        -> IOC.IOC (Either String Const)
+        -> IOC.IOC (Either String Constant)
 txsEval vexp  =  do
      envc <- get
      case IOC.state envc of

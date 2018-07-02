@@ -14,7 +14,7 @@ import qualified Data.Text         as T
 
 import           FreeMonoidX
 
-import           ConstDefs
+import           Constant
 import           CstrId
 import           FuncDef
 import           FuncId
@@ -49,7 +49,7 @@ createVsum ies =
     TXS2SMTVExprTest (cstrSum (fromListT (map input ies)))
                ("(+ " ++ join " " (map expected ies) ++ ")")
 
-createVconst :: Const -> TXS2SMTVExprTest
+createVconst :: Constant -> TXS2SMTVExprTest
 createVconst c@(Cint n) =
     if n < 0
         then TXS2SMTVExprTest (cstrConst c) ("(- " ++ show (abs n) ++ ")")

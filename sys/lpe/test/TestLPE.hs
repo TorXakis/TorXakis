@@ -16,7 +16,7 @@ import qualified Data.Map as Map
 import TxsDefs
 import qualified Data.Text         as T
 import VarId
-import ConstDefs
+import Constant
 import ValExpr
 
 import LPEfunc

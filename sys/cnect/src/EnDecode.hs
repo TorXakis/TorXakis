@@ -48,7 +48,7 @@ import           TxsDefs
 import           TxsShow
 
 -- import from valexpr
-import           ConstDefs
+import           Constant
 import           ValExpr
 
 -- ----------------------------------------------------------------------------------------- --

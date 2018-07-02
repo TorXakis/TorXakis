@@ -32,7 +32,7 @@ import           Data.Time
 import           System.IO
 import           System.Process
 
-import           ConstDefs
+import           Constant
 import           SMT2TXS
 import           SMTAlex
 import           SMTData
@@ -214,7 +214,7 @@ getSolution vs    = do
     edefs <- gets envDefs
     return $ Map.fromList (map (toConst edefs vnameSMTValueMap) vs)
   where
-    toConst :: (Variable v) => EnvDefs -> Map.Map Text SMTValue -> v -> (v, Const)
+    toConst :: (Variable v) => EnvDefs -> Map.Map Text SMTValue -> v -> (v, Constant)
     toConst edefs mp v = case Map.lookup (vname v) mp of
                             Just smtValue   -> case smtValueToValExpr smtValue (cstrDefs edefs) (vsort v) of
                                                     Left t -> error $ "getSolution - SMT parse error:\n" ++ t
@@ -344,10 +344,6 @@ skipCountInsideString ('"':'"':xxs) = skipCountInsideString xxs       -- escape 
 skipCountInsideString ('"':xs)      = countBracket xs            -- outside string
 skipCountInsideString (_:xs)        = skipCountInsideString xs
 skipCountInsideString []            = 0
-
--- ----------------------------------------------------------------------------------------- --
---
--- ----------------------------------------------------------------------------------------- --
 
 hPutSmtLog :: Maybe Handle -> String -> IO ()
 hPutSmtLog (Just lg) s = hPutStrLn lg s

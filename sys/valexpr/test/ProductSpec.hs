@@ -12,29 +12,29 @@ import           Test.QuickCheck
 
 import           FreeMonoidX     (fromDistinctAscPowerListT, fromListT,
                                   toDistinctAscOccurListT)
-import           GenProduct
 import           Product
+import           ProductGen
 
 -- * Properties
-prop_ProductPower :: GenProduct Integer -> Integer -> Bool
-prop_ProductPower (GenProduct s) 0 =
+prop_ProductPower :: ProductGen Integer -> Integer -> Bool
+prop_ProductPower (ProductGen s) 0 =
   power 0 s == fromListT []
-prop_ProductPower (GenProduct s) n =
+prop_ProductPower (ProductGen s) n =
   power n s == ( fromDistinctAscPowerListT
                  . List.map (second (n *))
                  . toDistinctAscOccurListT
                ) s
 
-prop_ProductEq :: GenProduct Integer -> Bool
-prop_ProductEq (GenProduct s) =
+prop_ProductEq :: ProductGen Integer -> Bool
+prop_ProductEq (ProductGen s) =
     not (s /= s)
 
-prop_ProductOrd :: GenProduct Integer -> Bool
-prop_ProductOrd (GenProduct s) =
+prop_ProductOrd :: ProductGen Integer -> Bool
+prop_ProductOrd (ProductGen s) =
     s >= s
 
-prop_ProductShow :: GenProduct Integer -> Bool
-prop_ProductShow (GenProduct s) =
+prop_ProductShow :: ProductGen Integer -> Bool
+prop_ProductShow (ProductGen s) =
     show [s] == show [s]
 
 spec :: Spec

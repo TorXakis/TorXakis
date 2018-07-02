@@ -40,7 +40,7 @@ import           Data.Monoid
 import qualified Data.Set    as Set
 import qualified Data.Text   as T
 
-import           ConstDefs
+import           Constant
 import           Id
 import           Name
 import           SortId
@@ -54,7 +54,7 @@ import           VarId
 -- BehAct :  behaviour Action
 
 
-type BehAction  =  Set.Set (TxsDefs.ChanId,[Const])
+type BehAction  =  Set.Set (TxsDefs.ChanId,[Constant])
 
 
 -- | IVar     :  interaction variable for behaviour tree

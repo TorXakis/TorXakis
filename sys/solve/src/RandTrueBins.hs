@@ -35,7 +35,7 @@ import           System.IO
 import           System.Random
 import           System.Random.Shuffle
 
-import           ConstDefs
+import           Constant(Constant(Cint, Cregex))
 import           CstrDef
 import           CstrId
 import           SMT

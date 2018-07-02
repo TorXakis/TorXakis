@@ -15,7 +15,7 @@ import ProcId
 import ChanId
 import SortId
 import VarId
-import ConstDefs
+import Constant
 import ValExpr
 
 ---------------------------------------------------------------------------
