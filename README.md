@@ -1,7 +1,7 @@
 ![TorXakis logo](https://git.io/vFvfj "TorXakis")
 
 [![Build Status](https://semaphoreci.com/api/v1/torxakis-admin/torxakis/branches/develop/badge.svg)](https://semaphoreci.com/torxakis-admin/torxakis)
-[![Build status](https://ci.appveyor.com/api/projects/status/sv3e96co0019taf9/branch/develop?svg=true)](https://ci.appveyor.com/project/keremispirli/torxakis/branch/develop)
+[![Build status](https://ci.appveyor.com/api/projects/status/ppk53o7uh7e6aie9/branch/develop?svg=true)](https://ci.appveyor.com/project/torxakis-admin/torxakis/branch/develop)
 [![Code Climate](https://codeclimate.com/github/TorXakis/TorXakis/badges/gpa.svg)](https://codeclimate.com/github/TorXakis/TorXakis)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
