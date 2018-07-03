@@ -38,6 +38,9 @@ FUNCDEF isLuckyByBirthday (p :: Person) :: Bool ::=
     dayOfBirth(p) == monthOfBirth(p)
 ENDDEF
 
+{-
+ THE ORIGINAL:
+
 PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
         In ? p [[ isValid_Person(p) ]] 
     >-> Out ! isLuckyPerson (p, last, n) 
@@ -47,18 +50,107 @@ PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
                 ( [[ sex(p) <> last ]] =>> luckyPeople[In,Out] ( sex(p), 1 ) )
         )
 ENDDEF
+-}
+
+
+{- result: leaving just one In -> Out -> ProcInst -}
+{-
+PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
+        In ? p [[ isValid_Person(p) ]] 
+    >-> Out ! isLuckyPerson (p, last, n) 
+    >-> ( [[ sex(p) == last ]] =>> luckyPeople[In,Out] ( sex(p), n+1 ) )
+
+ENDDEF
+-}
+
+{- this works -}
+{- isValid_Person() becomes internally: -}
+{- constraint = ValExpr {view = Vfunc (FuncId {name = "isValid_Person", unid = 1086, funcargs = [SortId {name = "Person", unid = 1047}], funcsort = SortId {name = "Bool", unid = 101}}) -}
+{- LPE: 
+            TXS >> lpe  luckyPeople[In, Out](Male,0)   
+            TXS >>  LPE behaviour generated:
+            TXS >>  LPE_luckyPeople [In,Out] ( 0, Male, 0, (ANY :: Sex), (ANY :: Int), (ANY :: Person) )
+            TXS >> show procdef LPE_luckyPeople
+            TXS >>  ( LPE_luckyPeople, PROCESS
+            TXS >>  [ In Out ]
+            TXS >>  [ pc$luckyPeople luckyPeople$In$Out$last luckyPeople$In$Out$n luckyPeople$gnf1$In$Out$last luckyPeople$gnf1$In$Out$n luckyPeople$gnf1$In$Out$p ]
+            TXS >>  ::=
+            TXS >>  ( { In ? In$1 :: Person}
+            TXS >>  [[ ( IF ( 0 == pc$luckyPeople ) THEN isValid_Person( In$1 ) ELSE False FI ) ]]
+            TXS >>  >-> ( LPE_luckyPeople [In,Out] ( 1, luckyPeople$In$Out$last, luckyPeople$In$Out$n, luckyPeople$In$Out$last, luckyPeople$In$Out$n, In$1 )
+            TXS >>  ) )
+            TXS >>  ##
+            TXS >>  ( { Out ? Out$1 :: Bool}
+            TXS >>  [[ ( IF ( 1 == pc$luckyPeople ) THEN ( Out$1 == isLuckyPerson( luckyPeople$gnf1$In$Out$p, luckyPeople$gnf1$In$Out$last, luckyPeople$gnf1$In$Out$n ) ) ELSE False FI ) ]]
+            TXS >>  >-> ( LPE_luckyPeople [In,Out] ( 0, access Person 0 (luckyPeople$gnf1$In$Out$p), ( 1 + luckyPeople$gnf1$In$Out$n ), luckyPeople$gnf1$In$Out$last, luckyPeople$gnf1$In$Out$n, luckyPeople$gnf1$In$Out$p )
+            TXS >>  ) )
+            TXS >>  )
+            TXS >>  
+            TXS >> 
+-}
+{-
+PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
+        In ? p [[ isValid_Person(p) ]] 
+    >-> Out ! isLuckyPerson (p, last, n) 
+    >-> luckyPeople[In,Out] ( sex(p), n+1 ) 
+ENDDEF
+-}
+
+{- works: take away the guard -}
+{- 
+PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
+        In ? p 
+    >-> luckyPeople[In,Out] ( sex(p), 1) 
+ENDDEF
+-}
+
+
+
+
+
+{- ===== PROBLEM 1 ======== -}
+
+PROCDEF luckyPeople [ In :: Person] ( last :: Sex) ::=
+        In ? p 
+    >-> [[ last == Male ]] =>> luckyPeople[In] ( sex(p)) 
+ENDDEF 
+
+
+{- works: remove sex(p) from the call -}
+{-
+PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
+        In ? p 
+    >-> [[ last == Male ]] =>> luckyPeople[In,Out] ( Male, 1) 
+ENDDEF
+-}
+
+{- does NOT work -}
+{- 
+PROCDEF luckyPeople [ In :: Person; Out :: Bool ] ( last :: Sex; n :: Int ) ::=
+        In ? p 
+    >-> [[ last == Male ]] =>> luckyPeople[In,Out] ( sex(p), 1) 
+ENDDEF
+-}
+
+{-
+    lpe luckyPeople[In](Male) 
+    show procdef LPE_luckyPeople
+-}
 
 CHANDEF Channels ::=  In   :: Person
                     ; Out  :: Bool
 ENDDEF
+
 
 MODELDEF Model ::=
     CHAN IN    In
     CHAN OUT   Out
 
     BEHAVIOUR  
-        luckyPeople[In, Out](Male,0)            -- first sex choice is arbitrary
+        luckyPeople[In](Male)            -- first sex choice is arbitrary
 ENDDEF
+
+
 
 CONSTDEF separator :: String ::= "@" ENDDEF
 

@@ -57,7 +57,7 @@ import Relabel (relabel)
 import Subst
 import SortOf
 
--- import Debug.Trace 
+import Debug.Trace 
 
 -- ----------------------------------------------------------------------------------------- --
 -- Types :
@@ -668,7 +668,7 @@ lpeTransform procInst' procDefs'  =
        ProcInst procid _chans _vexps
          -> case Map.lookup procid procDefs' of
               Just _procdef
-                -> lpeTransform' procInst' procDefs'
+                -> trace (" \n\n before LPE: \n " ++ show _procdef) $ lpeTransform' procInst' procDefs'
               _ -> do EnvB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
                                      "LPE Transformation: undefined process instantiation" ]
                       return Nothing
@@ -691,7 +691,7 @@ lpeTransform' procInst''' procDefs' = do    (procInst', procDefs'') <- lpe procI
 
                                                 -- rename ProcId P to LPE_<P>
                                                 -- put new ProcId in the procInst
-                                                procIdName' = T.pack $ "LPE_" ++ T.unpack (ProcId.name procIdInst'')
+                                                procIdName' = trace ("\n\n after LPE: \n procInst = " ++ show procInst' ++ "\n ProcDef bexpr: " ++ show bexpr ++ "\n\n full procDefs: " ++ show procDefs'') $ (T.pack $ "LPE_" ++ T.unpack (ProcId.name procIdInst''))
                                                 procIdInst' = procIdInst'' { ProcId.name = procIdName',
                                                                             ProcId.unid = procIdInstUid}
                                                 procInst'' = procInst procIdInst' chansInst paramsInst
@@ -705,9 +705,19 @@ lpeTransform' procInst''' procDefs' = do    (procInst', procDefs'') <- lpe procI
         substituteProcId _orig _new bexpr | isStop bexpr = stop
         substituteProcId orig new (TxsDefs.view -> ActionPref actOffer (TxsDefs.view -> ProcInst procId chansInst paramsInst)) =
           if procId == orig
-              then actionPref actOffer (procInst new chansInst paramsInst)
-              else error "Found a different ProcId, thus the given BExpr is probably not in LPE format"
-        substituteProcId _ _ _ = error "Only allowed with Stop or (ActionPref >-> ProcInst)"
+            then actionPref actOffer (procInst new chansInst paramsInst)
+            else error "Found a different ProcId, thus the given BExpr is probably not in LPE format"
+        substituteProcId orig new  (TxsDefs.view -> ActionPref actOffer 
+                                        (TxsDefs.view -> Guard vexpr' 
+                                            bexpr'@(TxsDefs.view -> ProcInst procId chansInst paramsInst))) =
+            if procId == orig
+                then TxsDefs.guard vexpr' $ actionPref actOffer (procInst new chansInst paramsInst)
+                else error $ "Found a different ProcId, thus the given BExpr is probably not in LPE format. \n\norig: " ++ show orig  ++
+                                            "\nnew: " ++ show new ++
+                                            "\nbexpr': " ++ show bexpr' 
+        substituteProcId orig new bexpr = error $ "Only allowed with Stop or (ActionPref >-> ProcInst)\n orig: " ++ show orig  ++
+                                                            "\nnew: " ++ show new ++
+                                                            "\nbexpr: " ++ show bexpr 
         
 lpe :: (EnvB.EnvB envb ) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb (BExpr, ProcDefs)
 lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) translatedProcDefs procDefs' = do
