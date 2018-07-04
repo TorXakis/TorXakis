@@ -284,7 +284,7 @@ randomSolveBins p ((v,d):xs) i =
 lookupCstrIds :: SortId -> SMT [CstrId]
 lookupCstrIds sid  =  do
      edefs <- gets envDefs
-     return [cstrid | cstrid@(CstrId _ _ _ sid') <- Map.keys (cstrDefs edefs), sid == sid']
+     return [cstrid | cstrid@CstrId{cstrsort = sid'} <- Map.keys (cstrDefs edefs), sid == sid']
 
 addIsConstructor :: (Variable v) => v -> CstrId -> SMT ()
 addIsConstructor v cid = addAssertions [cstrIsCstr cid (cstrVar v)]
