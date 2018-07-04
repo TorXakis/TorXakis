@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  SortDef
+-- Module      :  TorXakis.Sort.SortDef
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -16,13 +16,13 @@ See LICENSE at root directory of this repository.
 -- Sort Definition
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
-module SortDef
+module TorXakis.Sort.SortDef
 where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq
 
-import Id (Resettable)
+import TorXakis.Sort.Id (Resettable)
 
 -- | SortDef has no information 
 data  SortDef        = SortDef

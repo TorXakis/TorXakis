@@ -16,23 +16,15 @@ library
   hs-source-dirs:       src
 
   exposed-modules:      Constant
-                      , CstrDef
-                      , CstrId
                       , FreeMonoidX
                       , FuncDef
-                      , FuncId
-                      , Name
                       , Product
                       , RegexXSD2Posix
-                      , SortDef
-                      , SortId
-                      , SortOf
                       , Sum
                       , ValExpr
                       , Variable
                       , VarId
-                      , Id
-
+                      
   other-modules:        ConstantAlex
                       , ConstantHappy
                       , ValExprDefs
@@ -52,6 +44,7 @@ library
                       , text
 
                       , lexregexxsd
+                      , txs-sort
                       
   default-language:     Haskell2010
 

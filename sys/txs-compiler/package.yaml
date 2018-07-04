@@ -28,7 +28,7 @@ library:
   exposed-modules:
   - TorXakis.Compiler
   - TorXakis.Compiler.Error
-  - TorXakis.Parser  
+  - TorXakis.Parser
   - TorXakis.Compiler.MapsTo
   dependencies:
   - text

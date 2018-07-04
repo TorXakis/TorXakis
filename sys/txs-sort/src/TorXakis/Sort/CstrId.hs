@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  CstrId
+-- Module      :  TorXakis.Sort.CstrId
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -18,17 +18,18 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-module CstrId
-
+module TorXakis.Sort.CstrId
+( CstrId (..)
+)
 where
 
 import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
 
-import           Id
-import           Name
-import           SortId
+import           TorXakis.Sort.Id
+import           TorXakis.Sort.Name
+import           TorXakis.Sort.SortId
 
 -- | Identifier for Constructor
 data CstrId = CstrId

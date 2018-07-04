@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  CstrDef
+-- Module      :  TorXakis.Sort.CstrDef
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -17,14 +17,14 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveGeneric  #-}
 {-# LANGUAGE DeriveAnyClass #-}
-module CstrDef
+module TorXakis.Sort.CstrDef
 where
 
 import GHC.Generics (Generic)
 import Control.DeepSeq
 
-import FuncId
-import Id (Resettable)
+import TorXakis.ValExpr.FuncId
+import TorXakis.Sort.Id (Resettable)
 
 -- | A constructor has a `isCstr` functions, and a list of accessors functions.
 data  CstrDef       = CstrDef    FuncId [FuncId]       -- constructor_check [field_selectors]

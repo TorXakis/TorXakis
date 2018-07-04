@@ -5,12 +5,12 @@ See LICENSE at root directory of this repository.
 -}
 
 -- | SortOf for Value Expressions
-module SortOf
+module TorXakis.Sort.SortOf
 ( SortOf(..)
 )
 where
 
-import           SortId
+import           TorXakis.Sort.SortId (SortId)
 
 -- | Sort of a value expression
 class SortOf s where

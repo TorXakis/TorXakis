@@ -3,15 +3,10 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
-{-# LANGUAGE DefaultSignatures          #-}
-{-# LANGUAGE DeriveDataTypeable         #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeOperators              #-}
+
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Id
+-- Module      :  TorXakis.Sort.Id
 -- Copyright   :  (c) 2015-2017 TNO and Radboud University
 -- License     :  BSD3 (see the file LICENSE)
 --
@@ -21,8 +16,13 @@ See LICENSE at root directory of this repository.
 --
 -- This module provides a type-wrapper around id's.
 -----------------------------------------------------------------------------
-
-module Id where
+{-# LANGUAGE DefaultSignatures          #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeOperators              #-}
+module TorXakis.Sort.Id where
 
 import           Control.Applicative
 import           Control.DeepSeq
@@ -35,9 +35,11 @@ import qualified Data.Set            as Set
 import           Data.Text           (Text)
 import           GHC.Generics
 
+-- | Identifier
 newtype Id = Id { _id :: Int }
     deriving (Eq, Ord, Enum, Num, Read, NFData, Data)
 
+-- | Identifier is instance of @Show@.
 instance Show Id where
     show (Id x) = show x
 
@@ -52,18 +54,23 @@ class Resettable e where
     default reset :: (Generic e, GResettable (Rep e)) => e -> e
     reset = to . gReset . from
 
+-- | Identifier is instance of @Resettable@.
 instance Resettable Id where
     reset _ = Id 0
 
+-- | Tuple () is instance of @Resettable@.
 instance Resettable () where
     reset = id
 
+-- | Bool is instance of @Resettable@.
 instance Resettable Bool where
     reset = id
 
+-- | Char is instance of @Resettable@.
 instance Resettable Char where
     reset = id
 
+-- | Text is instance of @Resettable@.
 instance Resettable Text where
     reset = id
 
@@ -71,18 +78,25 @@ instance Resettable Text where
 instance Resettable Integer where
     reset = id
 
+-- | Int is instance of @Resettable@.
 instance Resettable Int where
     reset = id
 
+-- | List is instance of @Resettable@, when items in list are @Resettable@.
 instance (Resettable a) => Resettable [a] where
     reset = (reset <$>)
 
+-- | Tuple (a,b) is instance of @Resettable@, when items in tuple (i.e., a and b) are @Resettable@.
 instance (Resettable a, Resettable b) => Resettable (a, b) where
     reset (a, b) = (reset a, reset b)
 
+-- | Set is instance of @Resettable@, when items in set are @Resettable@.
+-- Note: items in a set must be instance of @Ord@.
 instance (Ord a, Resettable a) => Resettable (Set a) where
     reset = Set.fromList . (reset <$>) . Set.toList
 
+-- | Map is instance of @Resettable@, when items in map are @Resettable@.
+-- Note: keys of a map must be instance of @Ord@.
 instance (Ord k, Resettable k, Resettable v) => Resettable (Map k v) where
     reset = Map.fromList . (reset <$>) . Map.toList
 

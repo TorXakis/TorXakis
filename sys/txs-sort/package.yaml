@@ -1,0 +1,55 @@
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+name:                txs-sort
+version:             0.1.0.0
+github:              "TorXakis/TorXakis"
+license:             BSD3
+author:              "Pierre van de Laar"
+maintainer:          "pierre.vandelaar@tno.nl"
+copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
+
+dependencies:
+- base >= 4.7 && < 5
+- containers
+- text
+  
+ghc-options:
+- -Werror
+- -Wall
+- -O
+- -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
+- -Wmonomorphism-restriction
+- -Wmissing-local-signatures
+- -Wmissing-home-modules
+- -Widentities
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+  exposed-modules:
+  - TorXakis.Sort
+  - TorXakis.Sort.CstrId
+  - TorXakis.Sort.SortId
+  - TorXakis.ValExpr.FuncId
+  dependencies:
+  - deepseq
+
+tests:
+  txs-sort-test:
+    main: Spec.hs
+    source-dirs:
+    - test
+
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hspec
+    - QuickCheck
+    - txs-sort
+
+extra-source-files:
+- README.md

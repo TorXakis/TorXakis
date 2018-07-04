@@ -8,7 +8,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-module FuncId
+module TorXakis.ValExpr.FuncId
 
 where
 
@@ -16,9 +16,9 @@ import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
 
-import           Id
-import           Name
-import           SortId
+import           TorXakis.Sort.Id
+import           TorXakis.Sort.Name
+import           TorXakis.Sort.SortId
 
 data FuncId = FuncId
     { name     :: Name            -- smallid

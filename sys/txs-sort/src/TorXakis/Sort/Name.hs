@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Name
+-- Module      :  TorXakis.Sort.Name
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -13,9 +13,11 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Name
+-- Defines the Name type.
 -----------------------------------------------------------------------------
-module Name
+module TorXakis.Sort.Name
+( Name
+)
 where
 
 import           Data.Text (Text)

@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  SortId
+-- Module      :  TorXakis.Sort.SortId
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -19,20 +19,26 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE OverloadedStrings #-}
-module SortId where
+module TorXakis.Sort.SortId
+( SortId(..)
+, sortIdBool
+, sortIdInt
+, sortIdString
+, sortIdRegex
+)
+where
 
 import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
 
--- Local imports.
-import           Id
-import           Name
+import           TorXakis.Sort.Id
+import           TorXakis.Sort.Name
 
 
 -- | Identifier for Sort
 data SortId = SortId
-    { name :: Name            -- capid
+    { name :: Name
     , unid :: Id
     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
