@@ -27,7 +27,8 @@ import TorXakis.Sort.Id (Resettable)
 -- | SortDef has no information 
 data  SortDef        = SortDef
      deriving (Eq,Ord,Read,Show, Generic, NFData)
-
+     
+-- | SortDef is instance of @Resettable@.
 instance Resettable SortDef
 
 -- ----------------------------------------------------------------------------------------- --

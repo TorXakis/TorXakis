@@ -100,6 +100,7 @@ instance (Ord a, Resettable a) => Resettable (Set a) where
 instance (Ord k, Resettable k, Resettable v) => Resettable (Map k v) where
     reset = Map.fromList . (reset <$>) . Map.toList
 
+-- | Generalize Resettable class
 class GResettable f where
     gReset :: f e -> f e
 
@@ -135,18 +136,23 @@ class Identifiable e where
     default getId :: (Generic e, GIdentifiable (Rep e)) => e -> Maybe Id
     getId = gGetId . from
 
+-- | The identifier of an identifier is just the identifier
 instance Identifiable Id where
     getId = Just
 
+-- | A Text has no identifier
 instance Identifiable Text where
     getId = const Nothing
 
+-- | List is instance of @Identifiable@, when items in list are @Identifiable@.
 instance Identifiable a => Identifiable [a] where
     getId = asum . (getId <$>)
 
+-- | Generalize Resettable class
 class GIdentifiable f where
     gGetId :: f e -> Maybe Id
 
+-- | U1 has no identifier
 instance GIdentifiable U1 where
     gGetId U1 = Nothing
 
@@ -156,10 +162,12 @@ instance GIdentifiable U1 where
 instance (GIdentifiable a, GIdentifiable b) => GIdentifiable (a :*: b) where
     gGetId (a :*: b) = gGetId a <|> gGetId b
 
+-- | TODO
 instance (GIdentifiable a, GIdentifiable b) => GIdentifiable (a :+: b) where
     gGetId (L1 x) = gGetId x
     gGetId (R1 x) = gGetId x
 
+-- | TODO
 instance (GIdentifiable a) => GIdentifiable (M1 i c a) where
     gGetId (M1 x) = gGetId x
 

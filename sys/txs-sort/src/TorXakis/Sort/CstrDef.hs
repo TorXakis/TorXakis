@@ -30,6 +30,7 @@ import TorXakis.Sort.Id (Resettable)
 data  CstrDef       = CstrDef    FuncId [FuncId]       -- constructor_check [field_selectors]
      deriving (Eq,Ord,Read,Show, Generic, NFData)
 
+-- | CstrDef is instance of @Resettable@.
 instance Resettable CstrDef
 
 -- ----------------------------------------------------------------------------------------- --
