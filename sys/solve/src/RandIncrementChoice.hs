@@ -32,7 +32,6 @@ import           Data.Text             (Text)
 import qualified Data.Text             as T
 
 import           Constant
-import           CstrDef
 import           CstrId
 import           SMT
 import           SMTData
@@ -217,10 +216,10 @@ randomSolve p ((v,d):xs) i    | vsort v == sortIdString =
 randomSolve p ((v,d):xs) i =
     do
         let sid = vsort v
-        cstrs <- lookupConstructors sid
-        case cstrs of
-            []  -> error $ "Unexpected: no constructor for " ++ show v
-            [(cid,_)] -> -- no choice -- one constructor
+        cstrIds <- lookupCstrIds sid
+        case cstrIds of
+            []    -> error $ "Unexpected: no constructor for " ++ show v
+            [cid] -> -- no choice -- one constructor
                     do
                         addIsConstructor v cid
                         fieldVars <- addFields v i cid
@@ -235,15 +234,13 @@ randomSolve p ((v,d):xs) i =
                                                 else
                                                     randomSolve p xs i
                             _       -> error "Unexpected SMT issue - previous solution is no longer valid - ADT - 1"
-            _   ->
+            _     ->
                     do
-                        shuffledCstrs <- shuffleM cstrs
-                        let (partA, partB) = splitAt (div (length cstrs) 2) shuffledCstrs
+                        shuffledCstrs <- shuffleM cstrIds
+                        let (partA, partB) = splitAt (div (length cstrIds) 2) shuffledCstrs
                         c <- randomSolveVar v (choicesFunc v partA partB)
                         case c of
-                            Ccstr{cstrId = cid}  ->
-                                case Map.lookup cid (Map.fromList cstrs) of
-                                    Just CstrDef{} ->
+                            Ccstr{cstrId = cid} ->
                                         do
                                             addIsConstructor v cid
                                             fieldVars <- if d > 1 then addFields v i cid
@@ -259,15 +256,14 @@ randomSolve p ((v,d):xs) i =
                                                                     else
                                                                         randomSolve p xs i
                                                 _       -> error "Unexpected SMT issue - previous solution is no longer valid - ADT - n"
-                                    Nothing                 -> error "RandIncrementChoice: value not found - ADT - n"
                             _                   -> error "RandIncrementChoice: impossible constant - ADT - n"
     where
-        choicesFunc :: Variable v => v -> [(CstrId, CstrDef)] -> [(CstrId, CstrDef)] -> Constant -> SMT [(Bool, Text)]
+        choicesFunc :: Variable v => v -> [CstrId] -> [CstrId] -> Constant -> SMT [(Bool, Text)]
         choicesFunc v' partA partB Ccstr{cstrId = cId} =
             do
-                let cond = Map.member cId (Map.fromList partA)
-                lA <- mapM (\(tempCid,CstrDef{}) -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partA
-                lB <- mapM (\(tempCid,CstrDef{}) -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partB
+                let cond = cId `elem` partA
+                lA <- mapM (\tempCid -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partA
+                lB <- mapM (\tempCid -> valExprToString $ cstrIsCstr tempCid (cstrVar v')) partB
                 return [ (cond, case lA of
                                     [a] -> a
                                     _   -> "(or " <> T.intercalate " " lA <> ") ")
@@ -305,12 +301,12 @@ randomSolveVar v choicesFunc = do
                                                                         return c
         _       -> error "RandIncrementChoice: value not found - randomSolveVar"
 
--- lookup a constructor given its sort and constructor name
-lookupConstructors :: SortId -> SMT [(CstrId, CstrDef)]
-lookupConstructors sid  =  do
+-- lookup constructors given its sort id
+lookupCstrIds :: SortId -> SMT [CstrId]
+lookupCstrIds sid  =  do
      edefs <- gets envDefs
-     return [(cstrid, cdef) | (cstrid@(CstrId _ _ _ sid'), cdef) <- Map.toList (cstrDefs edefs), sid == sid']
-
+     return [cstrid | cstrid@CstrId{cstrsort = sid'} <- Map.keys (cstrDefs edefs), sid == sid']
+     
 addIsConstructor :: (Variable v) => v -> CstrId -> SMT ()
 addIsConstructor v cid = addAssertions [cstrIsCstr cid (cstrVar v)]
 
