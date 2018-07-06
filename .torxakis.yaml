@@ -23,6 +23,10 @@ available-solvers:
   - "--fmf-fun-rlv"
   - "--uf-ss-fair"
   - "--no-strings-std-ascii"
+- solver-id: "yices"
+  executable-name: "yices-smt2"
+  flags:
+  - "--incremental"
 smt-log: False
 parameters:
 - name: "ImpRel"
