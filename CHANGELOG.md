@@ -1,3 +1,4 @@
+# Torxakis Changelog
 
 ## v0.7.0
 
@@ -6,7 +7,7 @@ New compiler
 
 New randomization algorithm: IncrementBins
 
-Many smart operators added to BExpr# Torxakis Changelog
+Many smart operators added to BExpr
 
 ## v0.6.0
 
