@@ -17,7 +17,7 @@ import Data.Maybe (isJust)
 
 testEmpty :: Test
 testEmpty = TestCase $
-    let (xml, mErr) = parse defaultParseOptions (pack $ map c2w "") :: (UNode String, Maybe XMLParseError)  in
+    let (_, mErr) = parse defaultParseOptions (pack $ map c2w "") :: (UNode String, Maybe XMLParseError)  in
         assertBool "empty string fails" (isJust mErr)
 
 testSingleNode :: Test
@@ -40,7 +40,7 @@ testInvalidCharacterNumber :: Test
 testInvalidCharacterNumber = TestCase $
     let nodeName = "singleNode" in
         let nodeText = "&#1;" in
-            let (xml, mErr) = parse defaultParseOptions (pack $ map c2w ("<" ++ nodeName ++ ">" ++ nodeText ++ "</" ++ nodeName ++ ">") ) :: (UNode String, Maybe XMLParseError)  in
+            let (_, mErr) = parse defaultParseOptions (pack $ map c2w ("<" ++ nodeName ++ ">" ++ nodeText ++ "</" ++ nodeName ++ ">") ) :: (UNode String, Maybe XMLParseError)  in
                 -- putStrLn (show mErr)
                 assertBool "invalid character number" (isJust mErr)
         
@@ -52,11 +52,11 @@ testSingleEscapedTextNode = TestCase $
                 let (xml, mErr) = parse defaultParseOptions (pack $ map c2w ("<" ++ nodeName ++ ">" ++ nodeText ++ "</" ++ nodeName ++ ">") ) :: (UNode String, Maybe XMLParseError)  in
                     assertEqual ("Single Escaped Text Node - err : " ++ show mErr) (Element nodeName [] [Text expectedText]) (concatTexts xml) 
     where 
-        concatTexts (Element n [] l) = Element n [] (concatText l)
-        
-        concatText [Text a, Text b]         = [Text (a++b)]
-        concatText (Text a: Text b : xs )   = concatText (Text (a++b):xs)
-        concatText (a:xs)                   = a:concatText xs
+        concatTexts (Element n [] l) = Element n [] [Text $ concatMap fromText l]
+        concatTexts _                = error "unexpected pattern"
+
+        fromText (Text a)                 = a
+        fromText _                        = error "unexpected pattern"
 
 testNestedNode :: Test
 testNestedNode = TestCase $ 
@@ -86,6 +86,7 @@ testMixedContent = TestCase $
 ----------------------------------------------------------------------------------------
 -- List of Tests
 ----------------------------------------------------------------------------------------
+testTextXMLExpatTreeList :: Test
 testTextXMLExpatTreeList = TestList [
       TestLabel "empty"                             testEmpty
     , TestLabel "Single Node"                       testSingleNode

@@ -11,6 +11,7 @@ import System.Exit
 import TestPreludeRead
 import TestTextXMLExpatTree
 
+testList :: Test
 testList = TestList [
         TestLabel "Prelude Read"                        testPreludeReadList
       , TestLabel "Text.XML.Expat.Tree"                 testTextXMLExpatTreeList
