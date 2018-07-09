@@ -41,10 +41,12 @@ else
     rm $CACHE_DIR/z3 -rf
     curl -L -O https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-ubuntu-14.04.zip
     CURDIR=$(pwd)
-    mkdir $CACHE_DIR/z3 && cd $CACHE_DIR/z3
+    cd $CACHE_DIR
     Z3ZIP=$(ls $CURDIR/z3*.zip)
     unzip $Z3ZIP
-    chmod +x ./z3-*/bin/z3
-    touch ./z3-4.6.0    
+    Z3NAME=$(ls $CURDIR/z3*.zip | sed -e 's/\.[^.]*$//')
+    mv ./$Z3NAME ./z3
+    chmod +x ./z3/bin
+    touch ./z3/z3-4.7.1
     cd $CURDIR
 fi
