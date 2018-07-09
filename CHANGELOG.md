@@ -1,4 +1,12 @@
-# Torxakis Changelog
+
+## v0.7.0
+
+New compiler
+- This fixes among others out of memory by big stautdef (#702)
+
+New randomization algorithm: IncrementBins
+
+Many smart operators added to BExpr# Torxakis Changelog
 
 ## v0.6.0
 
