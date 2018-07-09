@@ -44,8 +44,8 @@ else
     cd $CACHE_DIR
     Z3ZIP=$(ls $CURDIR/z3*.zip)
     unzip $Z3ZIP
-    Z3NAME=$(ls $CURDIR/z3*.zip | sed -e 's/\.[^.]*$//')
-    mv ./$Z3NAME ./z3
+    Z3NAME=$(ls ./z3*)
+    mv $Z3NAME ./z3
     chmod +x ./z3/bin
     touch ./z3/z3-4.7.1
     cd $CURDIR
