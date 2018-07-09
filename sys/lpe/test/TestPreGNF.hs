@@ -317,6 +317,23 @@ testGuardActionPref = TestCase $
                                                     (actionPref actOfferAx stop) ))]
       in  assertBool "testGuardActionPref" $ eqProcDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
    
+
+-- ActionPref (Guard ProcInst) remains unchanged
+-- i.e. A?x >-> ([[x==1]] =>> P[]())
+testActionPrefGuardProcInst :: Test
+testActionPrefGuardProcInst = TestCase $
+      let procIdP = procIdGen "P" [] []
+          procInstP = procInst procIdP [] []
+          procDefs' = Map.fromList [(procIdP, ProcDef [] [] 
+                                                (actionPref actOfferAx 
+                                                    (guard   (cstrEqual vexprX vexpr1) procInstP)
+                                                )
+                                    )]
+                                           
+                                            
+      in  assertBool "testActionPrefGuardProcInst" $ eqProcDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
+   
+
 -- Guard Choice 
 -- [[x = 1]] =>> (A?x >-> STOP ## A?x >-> STOP)
 -- becomes
@@ -402,6 +419,7 @@ testPreGNFList = TestList [  TestLabel "Stop is unchanged" testStop
                           , TestLabel "guard with stop" testGuardStop
                           , TestLabel "guard with procInst" testGuardProcInst
                           , TestLabel "guard with action prefix" testGuardActionPref
+                          , TestLabel "action prefix with guard and procInst" testActionPrefGuardProcInst
                           , TestLabel "guard with choice" testGuardChoice
 
                          ]

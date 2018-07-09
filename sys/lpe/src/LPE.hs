@@ -268,6 +268,18 @@ gnfBExpr bexpr@(TxsDefs.view -> ActionPref _actOffer (TxsDefs.view -> ProcInst p
                   return ([bexpr], procDefs'')
       else    return ([bexpr], procDefs')
 
+-- case ActionPref (Guard ProcInst)
+gnfBExpr bexpr@(TxsDefs.view -> ActionPref _actOffer 
+                                        (TxsDefs.view -> Guard _vexpr' 
+                                                (TxsDefs.view -> ProcInst procIdInst _ _))) _choiceCnt _procId translatedProcDefs procDefs' =
+    if procIdInst `notElem` lGNF translatedProcDefs
+        then    do  -- recursively translate the called ProcDef
+                    -- reset GNF loop detection: we made progress, thus we are breaking a possible chain of direct calls (ProcInsts)
+                    let translatedProcDefs' = translatedProcDefs { lGNFdirectcalls = []}
+                    procDefs'' <- gnf procIdInst translatedProcDefs' procDefs'
+                    return ([bexpr], procDefs'')
+        else    return ([bexpr], procDefs')
+  
 gnfBExpr (TxsDefs.view -> ActionPref actOffer bexpr') choiceCnt procId translatedProcDefs procDefs' = do
     unidProcInst <- EnvB.newUnid
     let -- multi-action not allowed: split it

@@ -321,6 +321,36 @@ testGuardProcInst = TestCase $
                                 , (procIdQ, procDefQ) ]
 
 
+          
+-- P[A]() := A?x >-> [[x == 1]] =>> P[A]()
+-- with procInst = P[A]()
+--
+-- becomes
+-- P[A]() :=  A?x >-> P$gnf1[A]()
+-- P$gnf1[A]() :=  A?x [[x == 1]] =>> P$gnf1[A]()
+-- with procInst = P[A]()
+testActionPrefGuard :: Test
+testActionPrefGuard = TestCase $
+   assertBool "testActionPrefGuard"  $ eqProcDefs procDefs'' (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
+   where
+      procIdP = procIdGen "P" [] []
+      procIdPgnf1 = procIdGen "P$gnf1" [] []
+      procInstPgnf1 = procInst procIdPgnf1 [chanIdA] []
+      procInstP = procInst procIdP [chanIdA] []
+
+      procDefP = ProcDef [] [] (actionPref actOfferAx (guard  (cstrEqual vexprX vexpr1) procInstP))
+
+      procDefP' = ProcDef [] [] (actionPref actOfferAx procInstPgnf1)
+      procDefPgnf1 = ProcDef [] [] (actionPref actOfferAx {constraint = cstrEqual vexprX vexpr1} 
+                                                procInstPgnf1)            
+
+
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+      procDefs'' = Map.fromList  [ (procIdP, procDefP')
+                                 , (procIdPgnf1, procDefPgnf1) ]
+
+
+
 
 -- no name clash of newly created ProcDefs by pregnfFunc and GNF:
 -- P[A,B]() := A?x >-> B!1 >-> ( (A!1 >->STOP) ## (A?x >->STOP) )
@@ -447,7 +477,8 @@ testGNFList = TestList [
                         , TestLabel "procInst is substituted 4" testProcInst4
 
                         , TestLabel "guard procInst" testGuardProcInst
-
+                        , TestLabel "actionpref guard procInst" testActionPrefGuard
+                        
                         , TestLabel "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash" testNamingClash
 
                         -- , TestLabel "loop 1" testLoop1
