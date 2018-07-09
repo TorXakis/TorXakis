@@ -44,7 +44,7 @@ else
     mkdir $CACHE_DIR/z3 && cd $CACHE_DIR/z3
     Z3ZIP=$(ls $CURDIR/z3*.zip)
     unzip $Z3ZIP
-    chmod +x $CACHE_DIR/z3
-    touch $CACHE_DIR/z3/z3-4.7.1
+    chmod +x ./z3-*/bin/z3
+    touch ./z3-4.6.0    
     cd $CURDIR
 fi
