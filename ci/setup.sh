@@ -42,10 +42,10 @@ else
     curl -L -O https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-ubuntu-14.04.zip
     CURDIR=$(pwd)
     cd $CACHE_DIR
-    Z3ZIP=$(ls $CURDIR/z3*.zip)
+    Z3ZIP=$(ls $CURDIR/z3-*.zip)
     unzip $Z3ZIP
-    Z3NAME=$(ls ./z3-*)
-    mv $Z3NAME $CACHE_DIR/z3
+    Z3NAME=$(ls z3-*)
+    mv $Z3NAME z3
     chmod +x ./z3/bin
     touch ./z3/z3-4.7.1
     cd $CURDIR
