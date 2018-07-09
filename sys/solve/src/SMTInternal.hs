@@ -248,8 +248,8 @@ getInfo info = do
 
 init :: SMT ()
 init  =  do
-    put "(set-logic ALL)"
     put "(set-option :produce-models true)"
+    put "(set-logic ALL)"
     put "(set-info :smt-lib-version 2.5)"
     putT basicDefinitionsSMT
     return ()
