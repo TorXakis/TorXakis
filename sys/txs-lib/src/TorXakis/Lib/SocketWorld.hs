@@ -7,13 +7,19 @@ See LICENSE at root directory of this repository.
 -- |
 module TorXakis.Lib.SocketWorld where
 
+import           Debug.Trace
+
 import           Control.Concurrent           (forkIO, killThread)
 import           Control.Concurrent.Async     (async, mapConcurrently, wait)
 import           Control.Concurrent.STM.TChan (TChan, writeTChan)
+import           Control.Monad                (forever)
 import           Control.Monad.State          (liftIO)
 import           Control.Monad.STM            (atomically)
 import           Data.Either                  (partitionEithers)
+import           Data.List                    (nub)
+import           Data.Map                     (Map)
 import qualified Data.Map.Strict              as Map
+import           Data.Maybe                   (fromMaybe)
 import           Data.Semigroup               ((<>))
 import qualified Data.Set                     as Set
 import           Data.Text                    (Text)
@@ -35,25 +41,66 @@ import           TorXakis.Lib.CommonCore
 import           TorXakis.Lib.Session
 
 initSocketWorld :: Session -> TChan Action -> CnectDef -> IO WorldConnDef
-initSocketWorld s fWCh cdef = do
-    (towhdls, frowhdls) <- connectToSockets cdef
-    frowThreads <- sequence [ forkIO $ fromWorldThread s h fWCh
-        | h <- frowhdls
-        ]
+initSocketWorld s fWCh cdef@(CnectDef _ cds) = do
+    hp2conn <- mkConnections cdef
+    let towhdls  = map (connDefToConnHandle hp2conn) (filter isConnDtoW cds)
+        frowhdls = map (connDefToConnHandle hp2conn) (filter isConnDfroW cds)
+    -- Start the threads that listen for messages from the SUT.
+    frowThreads         <- traverse (forkIO . fromWorldThread s fWCh) frowhdls
     let wcdPairs = zip (map TxsDDefs.chan towhdls)
                        $ map (ToWorldMapping . sendToSocket s) towhdls
     return $ WorldConnDef towhdls
                           (Map.fromList wcdPairs)
                           frowhdls
                           frowThreads
+    where
+      -- | Connect to all the hosts and ports specified in the given connect def, and
+      -- return a mapping from (host, port) to the connection associated to it.
+      mkConnections :: CnectDef -> IO (Map (Host, Port) Connection)
+      mkConnections (CnectDef t ds) =  Map.fromList . zip hps <$>
+          mapConcurrently (mkConnection t) hps
+          where hp c = (Host . hostname $ c, Port . portnr $ c)
+                hps = nub $ fmap hp ds
+
+      mkConnection :: CnectType -> (Host, Port) -> IO Connection
+      mkConnection ClientSocket (Host h, Port p) =
+          TVS.connectTo (T.unpack h) (show p)
+      mkConnection ServerSocket (_, Port p) =
+          TVS.acceptOn (fromInteger p)
+
+      isConnDtoW :: ConnDef -> Bool
+      isConnDtoW ConnDtoW {}  = True
+      isConnDtoW ConnDfroW {} = False
+
+      isConnDfroW :: ConnDef -> Bool
+      isConnDfroW ConnDtoW {}  = False
+      isConnDfroW ConnDfroW {} = True
+
+      -- | Convert a connection definition to a connection handle, given the map from
+      -- (host, port) to their corresponding connection.
+      connDefToConnHandle :: Map (Host, Port) Connection -> ConnDef -> ConnHandle
+      connDefToConnHandle hp2c cd =
+          case cd of
+              ConnDtoW  chid h p vs e  -> ConnHtoW  chid (c h p) vs e
+              ConnDfroW chid h p v  es -> ConnHfroW chid (c h p) v  es
+          where c h p = fromMaybe (err h p)
+                    $ Map.lookup (Host h, Port p) hp2c
+                -- A connection should be always found. If not, then there's a
+                -- bug in this module!
+                err h p =  error $ "Panic: could not find a connection for ("
+                    ++ show h ++ ", " ++ show p ++ ")"
+
+newtype Host = Host Text deriving (Eq, Ord)
+newtype Port = Port Integer deriving (Eq, Ord)
 
 sendToSocket :: Session -> ConnHandle -> [Const] -> IO (Response (Maybe Action))
 sendToSocket _ ConnHfroW{} _ = return $ Left "Shouldn't send to socket FROM world."
 sendToSocket s h@ConnHtoW{connection = c} consts = do
     rTxt <- encode s h consts
     case rTxt of
-        Right txt -> do liftIO $ TVS.putLineTo c txt
-                        return $ Right Nothing
+        Right txt -> do
+            liftIO $ TVS.putLineTo c txt
+            return $ Right Nothing
         Left  err -> return $ Left err
 
 encode ::  Session -> ConnHandle -> [Const] -> IO (Response Text)
@@ -68,104 +115,14 @@ encode s (ConnHtoW _ _ vIds vExpr) consts = do
         Right _             -> Left "Encode 3: No encoding to String\n"
         Left  err           -> Left $ "Encode 3: No encoding to String\n" <> err
 
-connectToSockets :: CnectDef -> IO ([ConnHandle],[ConnHandle])
-connectToSockets (CnectDef sType conndefs) = do
-    let toFroTriplets = [ ((ctow, vars', vexp), (cfrow, var', vexps), (htow, ptow))
-                        | ConnDtoW  ctow  htow  ptow  vars' vexp  <- conndefs
-                        , ConnDfroW cfrow hfrow pfrow var'  vexps <- conndefs
-                        , htow == hfrow , ptow == pfrow
-                        ]
-        (towhdlInfo1, frowhdlInfo1, tofroInfo) =
-            foldr (\(t, f, i) (acct, accf, acci) -> (t:acct,f:accf,i:acci))
-                  ([],[],[])
-                  toFroTriplets
-        toTuples      = [ ((ctow, vars', vexp), (htow, ptow))
-                        | ConnDtoW  ctow  htow  ptow  vars' vexp  <- conndefs
-                        , (htow,ptow) `notElem` tofroInfo
-                        ]
-        (towhdlInfo2, toInfo) =
-            foldr (\(t, i) (acct, acci) -> (t:acct,i:acci))
-                  ([],[])
-                  toTuples
-        froTuples     = [ ((cfrow, var', vexps), (hfrow, pfrow))
-                        | ConnDfroW cfrow hfrow pfrow var' vexps <- conndefs
-                        , (hfrow,pfrow) `notElem` tofroInfo
-                        ]
-        (frowhdlInfo2, froInfo) =
-            foldr (\(f, i) (accf, acci) -> (f:accf,i:acci))
-                  ([],[])
-                  froTuples
-    (tofroConns, toConns, froConns) <- case sType of
-        ClientSocket -> openCnectClientSockets tofroInfo toInfo froInfo
-        ServerSocket -> openCnectServerSockets tofroInfo toInfo froInfo
-    return $ zipHandles (towhdlInfo1  ++ towhdlInfo2)
-                        (frowhdlInfo1 ++ frowhdlInfo2)
-                        (tofroConns ++ toConns)
-                        (tofroConns ++ froConns)
-
-openCnectClientSockets :: [(Text, Integer)]
-                       -> [(Text, Integer)]
-                       -> [(Text, Integer)]
-                       -> IO ([Connection],[Connection],[Connection])
-openCnectClientSockets tofroInfo toInfo froInfo = do
-    tofroConns <- sequence [ TVS.connectTo (T.unpack hst) (show prt)
-                            | (hst, prt) <- tofroInfo
-                            ]
-    toConns    <- sequence [ TVS.connectTo (T.unpack hst) (show prt)
-                            | (hst, prt) <- toInfo
-                            ]
-    froConns   <- sequence [ TVS.connectTo (T.unpack hst) (show prt)
-                            | (hst, prt) <- froInfo
-                            ]
-    return (tofroConns, toConns, froConns)
-
-openCnectServerSockets :: [(Text, Integer)]
-                       -> [(Text, Integer)]
-                       -> [(Text, Integer)]
-                       -> IO ([Connection],[Connection],[Connection])
-openCnectServerSockets tofroInfo toInfo froInfo = do
-    tofroConnsA <- async $ mapConcurrently TVS.acceptOn
-                                  [fromInteger prt
-                                  | (_, prt) <- tofroInfo
-                                  ]
-    toConnsA    <- async $ mapConcurrently TVS.acceptOn
-                                  [fromInteger prt
-                                  | (_, prt) <- toInfo
-                                  ]
-    froConnsA   <- async $ mapConcurrently TVS.acceptOn
-                                  [fromInteger prt
-                                  | (_, prt) <- froInfo
-                                  ]
-    tofroConns <- wait tofroConnsA
-    toConns    <- wait toConnsA
-    froConns   <- wait froConnsA
-    return (tofroConns, toConns, froConns)
-
-zipHandles :: [(TxsDefs.ChanId, [VarId.VarId], TxsDefs.VExpr)]
-           -> [(TxsDefs.ChanId, VarId.VarId, [TxsDefs.VExpr])]
-           -> [Connection]
-           -> [Connection]
-           -> ([ConnHandle], [ConnHandle])
-zipHandles towhdlInfos frowhdlInfos toWConns froWConns =
-    let towhdls  = [ ConnHtoW ctow c vars' vexp
-                   | (ctow, vars', vexp) <- towhdlInfos
-                   , c <- toWConns
-                   ]
-        frowhdls = [ ConnHfroW cfrow c var' vexps
-                   | (cfrow, var', vexps) <- frowhdlInfos
-                   , c <- froWConns
-                   ]
-    in  (towhdls, frowhdls)
-
-fromWorldThread :: Session -> ConnHandle -> TChan Action -> IO ()
-fromWorldThread _ ConnHtoW{} _ = error "Shouldn't try to listen to socket connection TO world."
-fromWorldThread s h@ConnHfroW{connection = c} frowchan = do
+fromWorldThread :: Session -> TChan Action -> ConnHandle -> IO ()
+fromWorldThread _ _ ConnHtoW{} = error "Shouldn't try to listen to socket connection TO world."
+fromWorldThread s frowchan h@ConnHfroW{connection = c} = forever $ do
     t <- TVS.getLineFrom c
     rAction <- decode s h t
     case rAction of
         Right action -> atomically $ writeTChan frowchan action
         Left  e      -> print e
-    fromWorldThread s h frowchan
 
 decode :: Session -> ConnHandle -> Text -> IO (Response Action)
 decode _ ConnHtoW{} _ = error "Shouldn't try to decode from socket connection TO world."

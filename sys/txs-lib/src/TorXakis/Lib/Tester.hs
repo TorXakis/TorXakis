@@ -31,9 +31,9 @@ import           TorXakis.Lib.SocketWorld
 import           TorXakis.Lib.World
 
 -- | Start the tester
-setTest :: Name
-        -> Name
-        -> Name
+setTest :: Name -- ^ Model name
+        -> Name -- ^ Connect definition name.
+        -> Name -- ^ Purpose mapper name.
         -> Session
         -> IO (Response ())
 setTest mdlNm cnctNm purpMappNms s = runResponse $ do

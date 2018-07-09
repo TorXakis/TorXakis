@@ -16,7 +16,7 @@ module TorXakis.Lib.Examples where
 import           Control.Concurrent           (threadDelay)
 import           Control.Concurrent.Async     (async, cancel, wait)
 import           Control.Concurrent.STM.TChan (writeTChan)
-import           Control.Monad                (void)
+import           Control.Monad                (forever, void)
 import           Control.Monad.STM            (atomically)
 import           Data.Conduit                 (runConduit, (.|))
 import           Data.Conduit.Combinators     (mapM_, sinkList, take)
@@ -28,8 +28,10 @@ import qualified Data.Set                     as Set
 import           Lens.Micro                   ((^.))
 import           Prelude                      hiding (mapM_, take)
 import           System.FilePath              ((</>))
-import           System.Process               (StdStream (NoStream), proc,
-                                               std_out, withCreateProcess)
+import           System.IO                    (hGetLine)
+import           System.Process               (StdStream (CreatePipe, NoStream),
+                                               proc, std_err, std_out,
+                                               withCreateProcess)
 import           System.Timeout               (timeout)
 
 import           ChanId                       (ChanId (ChanId))
@@ -220,18 +222,39 @@ testTester = timeout (12 * seconds) $
 
 testTesterWithPurpose :: IO (Maybe ())
 testTesterWithPurpose = timeout (10 * seconds) $
-    withCreateProcess (proc "java" ["-cp","../../examps/LuckyPeople/sut","LuckyPeople"])
+    withCreateProcess (proc "java" ["-cp", "examps/LuckyPeople/sut","LuckyPeople"])
         {std_out = NoStream} $ \_stdin _stdout _stderr _ph -> do
-            csM <- readFile $ ".." </> ".." </> "examps" </> "LuckyPeople" </> "spec" </> "LuckyPeople.txs"
-            csP <- readFile $ ".." </> ".." </> "examps" </> "LuckyPeople" </> "spec" </> "PurposeExamples.txs"
+            csM <- readFile $ "examps" </> "LuckyPeople" </> "spec" </> "LuckyPeople.txs"
+            csP <- readFile $ "examps" </> "LuckyPeople" </> "spec" </> "PurposeExamples.txs"
             s <- newSession
             a <- async (printer s)
             _ <- load s $ csM ++ csP
-            _ <- setTest "Model" "Sut" "PurposeExamples" s
+            _ <- setTest "Model" "Sut" "" s
             r <- test s (NumberOfSteps 36)
             putStrLn $ "Result of `test`: " ++ show r
             waitForVerdict s >>= print
             cancel a
+
+-- | Test using the parallel adders example.
+testParallelAdders :: IO ()
+testParallelAdders =
+    withCreateProcess (proc "java" ["-cp", "examps/Adder/", "Adder", "7891", "7892", "7893"])
+    {std_out = NoStream, std_err = NoStream} $
+    \_stdin _stdout  _stderr _ph -> do
+--        sutPrinter <- async (forever $ hGetLine stderr >>= print)
+        s <- newSession
+        a <- async (printer s)
+        r <- load s =<< readFile ("examps" </> "Adder" </> "Adder.txs")
+--        print r
+        r' <- setTest "Adder3" "Sut3" "" s
+--        print r'
+        r'' <- test s (NumberOfSteps 10)
+--        print r''
+        v <- waitForVerdict s
+--        cancel sutPrinter
+        threadDelay 1000000
+        cancel a
+        print v
 
 testTesterWithSimulatorAndStop :: IO (Maybe ())
 testTesterWithSimulatorAndStop = timeout (20 * seconds) $ do
