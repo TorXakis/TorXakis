@@ -72,7 +72,7 @@ mkRanges :: (Integer -> Integer) -> Integer -> Integer -> [(Integer, Integer)]
 mkRanges nxt lw hgh = (lw, hgh-1): mkRanges nxt hgh (nxt hgh)
 
 basicIntRanges :: ParamIncrementBins -> [(Integer, Integer)]
-basicIntRanges p = take (nrOfBins p) (mkRanges (nextFunction p) 1 step)
+basicIntRanges p = take (nrOfBins p) (mkRanges (nextFunction p) 0 step)
 
 basicStringLengthRanges :: [(Integer, Integer)]
 basicStringLengthRanges = take 3 (mkRanges (3*) 0 3)
