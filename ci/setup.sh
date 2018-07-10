@@ -42,6 +42,7 @@ else
     curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-ubuntu-14.04.zip -o z3.zip
     unzip z3.zip
     Z3NAME=$(find . -name "z3-*")
+    echo $Z3NAME
     mv $Z3NAME $CACHE_DIR/z3
     chmod +x $CACHE_DIR/z3/bin
     touch $CACHE_DIR/z3/z3-4.7.1
