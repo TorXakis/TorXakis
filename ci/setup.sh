@@ -28,7 +28,7 @@ then
 else
     echo "cvc4 not found in cache or different version than 1.6"
     rm -f $CACHE_DIR/bin/cvc4*
-    curl -L https://github.com/TorXakis/Dependencies/releases/download/cvc4-1.6/cvc4-1.6-x86_64-linux-opt -o cvc4
+    curl -L https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.6/cvc4-1.6-x86_64-linux-opt -o cvc4
     mv cvc4 $CACHE_DIR/bin
     chmod +x $CACHE_DIR/bin/cvc4
     touch $CACHE_DIR/bin/cvc4-1.6
@@ -39,7 +39,7 @@ then
     echo "$CACHE_DIR/z3 build 4.7.1 found in cache."
 else
     echo "z3 not found in cache or different version than 4.7.1"
-    rm $CACHE_DIR/z3* -rf
+    rm $CACHE_DIR/z3 -rf
     curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-ubuntu-14.04.zip -o z3.zip
     unzip z3.zip
     Z3NAME=$(ls -d z3-*/)
