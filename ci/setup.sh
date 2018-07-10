@@ -2,6 +2,7 @@
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
 
+
 set -e
 
 javac ./test/copyright/Copyright.java
@@ -38,10 +39,10 @@ then
     echo "$CACHE_DIR/z3 build 4.7.1 found in cache."
 else
     echo "z3 not found in cache or different version than 4.7.1"
-    rm $CACHE_DIR/z3 -rf
+    rm $CACHE_DIR/z3* -rf
     curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-ubuntu-14.04.zip -o z3.zip
     unzip z3.zip
-    Z3NAME=$(find . -name "z3-*")
+    Z3NAME=$(ls -d z3-*/)
     echo $Z3NAME
     mv $Z3NAME $CACHE_DIR/z3
     chmod +x $CACHE_DIR/z3/bin/z3
