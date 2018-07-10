@@ -33,7 +33,6 @@ else
     touch $CACHE_DIR/bin/cvc4-1.6
 fi
 
-rm $CACHE_DIR/z3 -rf
 if [ -d $CACHE_DIR/z3 ] && [ -e $CACHE_DIR/z3/z3-4.7.1 ]
 then
     echo "$CACHE_DIR/z3 build 4.7.1 found in cache."
@@ -46,7 +45,6 @@ else
     echo $Z3NAME
     mv $Z3NAME $CACHE_DIR/z3
     chmod +x $CACHE_DIR/z3/bin/z3
-    ls -R $CACHE_DIR/z3
     touch $CACHE_DIR/z3/z3-4.7.1
 fi
 echo "Set up done"
