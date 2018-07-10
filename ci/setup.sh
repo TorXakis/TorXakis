@@ -39,15 +39,12 @@ then
 else
     echo "z3 not found in cache or different version than 4.7.1"
     rm $CACHE_DIR/z3 -rf
-    curl -L -O https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-ubuntu-14.04.zip
-    CURDIR=$(pwd)
-    cd $CACHE_DIR
-    Z3ZIP=$(ls $CURDIR/z3-*.zip)
-    unzip $Z3ZIP
+    curl -L https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-ubuntu-14.04.zip -o z3.zip
+    unzip z3.zip
     Z3NAME=$(ls z3-*)
     echo $Z3NAME
-    mv -v $Z3NAME ./z3/
-    chmod +x ./z3/bin
-    touch ./z3/z3-4.7.1
+    mv $Z3NAME $CACHE_DIR/z3
+    chmod +x $CACHE_DIR/z3/bin
+    touch $CACHE_DIR/z3/z3-4.7.1
     cd $CURDIR
 fi
