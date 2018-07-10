@@ -4,8 +4,23 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 {-# LANGUAGE OverloadedStrings #-}
+--------------------------------------------------------------------------------
 -- |
-module TorXakis.Lib.SocketWorld where
+-- Module      :  TorXakis.Lib.SocketWorld
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Connections with the SUT using sockets.
+--------------------------------------------------------------------------------
+module TorXakis.Lib.SocketWorld
+    ( initSocketWorld
+    , closeSockets
+    )
+where
 
 import           Debug.Trace
 
@@ -40,7 +55,11 @@ import           TorXakis.Lib.Common
 import           TorXakis.Lib.CommonCore
 import           TorXakis.Lib.Session
 
-initSocketWorld :: Session -> TChan Action -> CnectDef -> IO WorldConnDef
+-- | Initialize the connections with the SUT.
+initSocketWorld :: Session
+                -> TChan Action -- ^ Channel where the actions received from the SUT will be placed.
+                -> CnectDef     -- ^ Description about how to connect with the SUT.
+                -> IO WorldConnDef
 initSocketWorld s fWCh cdef@(CnectDef _ cds) = do
     hp2conn <- mkConnections cdef
     let towhdls  = map (connDefToConnHandle hp2conn) (filter isConnDtoW cds)

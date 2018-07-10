@@ -229,7 +229,7 @@ testTesterWithPurpose = timeout (10 * seconds) $
             s <- newSession
             a <- async (printer s)
             _ <- load s $ csM ++ csP
-            _ <- setTest "Model" "Sut" "" s
+            _ <- setTest "Model" "Sut" "PurposeExamples" s
             r <- test s (NumberOfSteps 36)
             putStrLn $ "Result of `test`: " ++ show r
             waitForVerdict s >>= print

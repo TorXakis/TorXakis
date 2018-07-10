@@ -9,6 +9,18 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
 {-# LANGUAGE TypeSynonymInstances       #-}
+--------------------------------------------------------------------------------
+-- |
+-- Module      :  TorXakis.CLI
+-- Copyright   :  (c) TNO and Radboud University
+-- License     :  BSD3 (see the file license.txt)
+--
+-- Maintainer  :  damian.nadales@gmail.com (Embedded Systems Innovation by TNO)
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Command line interface for 'TorXakis'.
+--------------------------------------------------------------------------------
 module TorXakis.CLI
     ( startCLI
     , module TorXakis.CLI.Env
@@ -91,7 +103,7 @@ startCLI modelFiles = do
     cli :: InputT CLIM ()
     cli = do
         Log.info "Starting the main loop..."
-        outputStrLn "Welcome to TorXakis!"
+        outputStrLn "TorXakis :: Model-based testing"
         withMessages $ withModelFiles modelFiles $
             withInterrupt $
             handleInterrupt (output Nothing ["Ctrl+C: quitting"]) loop
@@ -205,7 +217,7 @@ startCLI modelFiles = do
                     "back"      -> pretty <$> back rest
                     "path"      -> pretty <$> runExceptT getPath
                     "trace"     -> pretty <$> trace rest
-                    _           -> return ["Can't dispatch command: " ++ cmd]
+                    _           -> return ["Unknown command: '" ++ cmd ++ "'. Try 'help'."]
             waitFor :: [String] -> CLIM String
             waitFor [n] = case readMaybe n :: Maybe Int of
                             Nothing -> return $ "Error: " ++ show n ++ " doesn't seem to be an integer."
