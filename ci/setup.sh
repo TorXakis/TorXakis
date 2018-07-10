@@ -46,6 +46,7 @@ else
     echo $Z3NAME
     mv $Z3NAME $CACHE_DIR/z3
     chmod +x $CACHE_DIR/z3/bin/z3
+    ls -R $CACHE_DIR/z3
     touch $CACHE_DIR/z3/z3-4.7.1
 fi
 echo "Set up done"
