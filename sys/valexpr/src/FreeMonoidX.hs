@@ -117,7 +117,7 @@ import           Data.Semigroup  (Semigroup, (<>))
 import           GHC.Exts
 import           GHC.Generics    (Generic)
 
-import           Id
+import           TorXakis.Sort
 
 -- | Symbolic representation of a polynomial, where each term is a member of
 -- type `a`.

@@ -31,15 +31,12 @@ import           Control.DeepSeq
 import           Data.Data
 import           Data.Set        (Set)
 import           GHC.Generics    (Generic)
+import           TorXakis.Sort
+import           TorXakis.ValExpr.FuncId
 
 import           Constant (Constant)
-import           CstrId
-import           FuncId
-import           Id
 import           Product
 import           Sum
-import           SortId
-import           SortOf
 import           Variable
 
 

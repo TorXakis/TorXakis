@@ -8,8 +8,7 @@ module Variable
 
 where
 
-import           Name
-import           SortId
+import           TorXakis.Sort
 
 class (Eq v, Ord v, Read v, Show v) => Variable v where
   vname  :: v -> Name

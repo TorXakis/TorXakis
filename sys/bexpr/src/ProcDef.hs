@@ -11,10 +11,11 @@ where
 
 import           Control.DeepSeq
 import           GHC.Generics    (Generic)
+import           TorXakis.Sort              (Resettable)
 
 import           BehExprDefs
 import           ChanId
-import           Id              (Resettable)
+
 import           VarId
 
 data  ProcDef        =  ProcDef    [ChanId] [VarId] BExpr

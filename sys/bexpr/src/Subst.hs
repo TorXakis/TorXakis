@@ -22,11 +22,11 @@ where
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import           TorXakis.ValExpr.FuncId
 
 -- TorXakis imports
 import           BehExprDefs
 import           FuncDef
-import           FuncId
 import qualified ValExpr
 import           VarEnv
 import           VarId

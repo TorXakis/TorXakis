@@ -33,6 +33,7 @@ where
 import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
+import           TorXakis.Sort
 
 import Constant
 
@@ -48,8 +49,6 @@ import RandIncrementChoice
 import RandIncrementBins
 
 import SolveRandParam
-import SortId
-import SortOf
 
 import ValExpr
 import Variable

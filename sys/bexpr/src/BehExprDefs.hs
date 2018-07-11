@@ -60,12 +60,10 @@ import           Control.DeepSeq
 import           Data.Data
 import qualified Data.Set        as Set
 import           GHC.Generics    (Generic)
-
+import           TorXakis.Sort
 import           ChanId
 import           Constant
-import           Id
 import           ProcId
-import           SortOf
 import           StatId
 import           ValExpr
 import           VarEnv

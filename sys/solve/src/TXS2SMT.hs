@@ -41,17 +41,17 @@ import qualified Data.Set      as Set
 import           Data.Text     (Text)
 import qualified Data.Text     as T
 
+import           TorXakis.Sort
+import           TorXakis.Sort.CstrId    as CstrId
+import           TorXakis.Sort.SortId    as SortId
+import           TorXakis.ValExpr.FuncId as FuncId
+
 import           Constant
-import           CstrDef
-import           CstrId
 import           FreeMonoidX
 import           FuncDef
-import           FuncId
 import           RegexXSD2SMT
 import           SMTData
 import           SMTString
-import           SortDef
-import           SortId
 import           ValExpr
 import           Variable
 import           VarId

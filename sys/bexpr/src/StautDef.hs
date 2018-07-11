@@ -15,17 +15,15 @@ import qualified Data.Map           as Map
 import qualified Data.Set           as Set
 import qualified Data.Text          as T
 import           Data.Monoid
+import           TorXakis.Sort
+import           TorXakis.ValExpr.FuncId
 
 import           BehExprDefs
 import           ChanId
 import           Constant
 import           FuncDef
-import           FuncId
-import           Id
-import           Name
 import           ProcDef
 import           ProcId
-import           SortId
 import           StatId
 import           VarEnv
 import           ValExpr

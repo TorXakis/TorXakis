@@ -16,8 +16,7 @@ import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
 
-import           Id
-import           Name
+import           TorXakis.Sort
 import           ProcId
 
 data StatId = StatId

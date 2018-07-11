@@ -31,14 +31,12 @@ import           Data.Monoid
 import           Data.Text             (Text)
 import qualified Data.Text             as T
 
+import           TorXakis.Sort
+
 import           Constant
-import           CstrDef
-import           CstrId
 import           SMT
 import           SMTData
 import           SolveDefs
-import           SortId
-import           SortOf
 import           ValExpr
 import           Variable
 

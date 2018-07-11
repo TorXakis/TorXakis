@@ -51,6 +51,7 @@ library
                       , text
 
                       , lexregexxsd
+                      , txs-sort
                       , valexpr
                       
   build-tools:          alex

@@ -63,7 +63,7 @@ import           FreeMonoidX     (FreeMonoidX (..), IntMultipliable,
                                   TermWrapper, (<.>))
 import qualified FreeMonoidX     as FMX
 
-import           Id
+import           TorXakis.Sort
 {--------------------------------------------------------------------
   The data types
 --------------------------------------------------------------------}

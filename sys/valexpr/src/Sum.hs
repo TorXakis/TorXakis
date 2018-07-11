@@ -52,7 +52,7 @@ import qualified FreeMonoidX     as FMX
 import           GHC.Generics    (Generic)
 import           Prelude         hiding (subtract, sum)
 
-import           Id
+import           TorXakis.Sort
 
 {--------------------------------------------------------------------
   The data types

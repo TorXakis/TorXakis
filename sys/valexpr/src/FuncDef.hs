@@ -23,7 +23,7 @@ where
 import GHC.Generics (Generic)
 import Control.DeepSeq
 
-import Id (Resettable)
+import            TorXakis.Sort (Resettable)
 
 import ValExprDefs
 

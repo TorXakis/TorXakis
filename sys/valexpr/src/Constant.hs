@@ -30,10 +30,7 @@ import           Data.Data
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
-import           CstrId
-import           Id
-import           SortId
-import           SortOf
+import           TorXakis.Sort
 
 -- | Union of Boolean, Integer, String, and AlgebraicDataType constant values.
 data Constant = -- | Constructor of Boolean constant.

@@ -28,18 +28,13 @@ module SMTData
 where
 
 import           Control.Monad.State
+import qualified Data.Map            as Map
 import           Data.Text           (Text)
-
 import           System.IO
 import           System.Process
-
-import qualified Data.Map            as Map
-import           CstrDef
-import           CstrId
+import           TorXakis.Sort
+import           TorXakis.ValExpr.FuncId
 import           FuncDef
-import           FuncId
-import           SortDef
-import           SortId
 import           VarId
 
 -- ----------------------------------------------------------------------------------------- --

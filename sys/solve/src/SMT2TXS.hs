@@ -25,17 +25,17 @@ module SMT2TXS
 where
 
 import           Data.Either
-import qualified Data.Map          as Map
+import qualified Data.Map             as Map
 import           Data.Monoid
-import qualified Data.String.Utils as Utils
-import           Data.Text         (Text)
-import qualified Data.Text         as T
+import qualified Data.String.Utils    as Utils
+import           Data.Text            (Text)
+import qualified Data.Text            as T
+import           TorXakis.Sort
+import           TorXakis.Sort.CstrId as CstrId
+import           TorXakis.Sort.SortId as SortId
 
 import           Constant
-import           CstrDef
-import           CstrId
 import           SMTHappy
-import           SortId
 
 
 -- ---------------------------------------------------------

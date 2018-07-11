@@ -21,13 +21,11 @@ module ValExpr
 , eval
 , ValExprView(..)
 , PredefKind(..)
-, Resettable
 , module ValExprImpls
 , module ValExprImplsExtension
 )
 where
 
-import           Id
 import           ValExprDefs
 import           ValExprImpls
 import           ValExprImplsExtension

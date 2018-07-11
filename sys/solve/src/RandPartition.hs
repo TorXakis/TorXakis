@@ -33,15 +33,12 @@ import           System.Random.Shuffle
 import qualified Data.List as List
 import qualified Data.Set  as Set
 import qualified Data.Map  as Map
+import           TorXakis.Sort
 
 import Constant
-import CstrId
-import CstrDef
 import SMT
 import SMTData
 import SolveDefs
-import SortId
-import SortOf
 import ValExpr
 import Variable
 

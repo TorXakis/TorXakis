@@ -83,12 +83,12 @@ import           Data.Monoid     ((<>))
 import qualified Data.Set        as Set
 import qualified Data.Text       as T
 import           Text.Regex.TDFA
+import           TorXakis.Sort
+import           TorXakis.ValExpr.FuncId
 
 import           Constant
-import           CstrId
 import qualified FreeMonoidX     as FMX
 import           FuncDef
-import           FuncId
 import           Product
 import           RegexXSD2Posix
 import           Sum

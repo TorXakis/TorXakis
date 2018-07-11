@@ -16,9 +16,7 @@ import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
 
-import           Id
-import           Name
-import           SortId
+import           TorXakis.Sort 
 
 data ChanId = ChanId
     { name      :: Name

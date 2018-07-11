@@ -15,11 +15,9 @@ where
 import           Control.DeepSeq
 import           Data.Data
 import           GHC.Generics    (Generic)
+import           TorXakis.Sort
 
 import           ChanId
-import           Id
-import           Name
-import           SortId
 import           VarId
 
 data  ExitSort      =  NoExit

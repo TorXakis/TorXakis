@@ -34,16 +34,13 @@ import qualified Data.Text             as T
 import           System.IO
 import           System.Random
 import           System.Random.Shuffle
+import           TorXakis.Sort
 
 import           Constant(Constant(Cint, Cregex))
-import           CstrDef
-import           CstrId
 import           SMT
 import           SMTData
 import           Solve.Params
 import           SolveDefs
-import           SortId
-import           SortOf
 import           ValExpr
 import           Variable
 

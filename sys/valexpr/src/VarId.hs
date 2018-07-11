@@ -18,12 +18,7 @@ import           Data.Data
 import           Data.Monoid
 import qualified Data.Text       as T
 import           GHC.Generics    (Generic)
-import           Id
-
--- Local imports.
-import           Name
-import           SortId
-import           SortOf
+import           TorXakis.Sort
 import           Variable
 
 
