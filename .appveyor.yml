@@ -39,6 +39,7 @@ install:
     } else {
         Write-Host "cvc4.exe found.";
     }
+- ps: Write-Host $(cvc4 --version)
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\z3")) {
         # install z3
@@ -49,6 +50,7 @@ install:
     } else {
         Write-Host "z3 folder found.";
     }
+- ps: Write-Host $(z3 -version)
 
 before_build:
 - ps: $env:CACHE_DIR = $CACHE_DIR
