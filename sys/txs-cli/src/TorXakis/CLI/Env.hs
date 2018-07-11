@@ -11,10 +11,9 @@ import           Control.Concurrent.STM.TVar (TVar)
 import           Control.Exception.Safe      (Exception)
 import           System.IO                   (Handle)
 
-data Env = Env { txsHost        :: String
-               , sessionId      :: Int
-               , fOutH          :: TVar (Maybe Handle)
-               , waitingVerdict :: TVar Bool
+data Env = Env { txsHost   :: String
+               , sessionId :: Int
+               , fOutH     :: TVar (Maybe Handle)
                }
 
 data TorXakisServerException = TorXakisServerException String Int String String

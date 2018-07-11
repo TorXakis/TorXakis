@@ -29,24 +29,27 @@ module TorXakis.CLI
 where
 
 import           Control.Arrow                    ((|||))
-import           Control.Concurrent               (newChan, readChan,
-                                                   threadDelay)
+import           Control.Concurrent               (threadDelay)
 import           Control.Concurrent.Async         (async, cancel)
+import           Control.Concurrent.STM.TChan     (TChan, newTChanIO, readTChan,
+                                                   tryReadTChan)
 import           Control.Concurrent.STM.TVar      (readTVar, readTVarIO,
                                                    writeTVar)
 import           Control.Monad                    (forever, unless, void, when)
 import           Control.Monad.Except             (runExceptT)
+import           Control.Monad.Extra              (whenM)
 import           Control.Monad.IO.Class           (MonadIO, liftIO)
 import           Control.Monad.Reader             (MonadReader, ReaderT, ask,
                                                    asks, runReaderT)
 import           Control.Monad.STM                (atomically, retry)
 import           Control.Monad.Trans              (lift)
 import           Data.Aeson                       (eitherDecodeStrict)
+import qualified Data.ByteString                  as BSS
 import qualified Data.ByteString.Char8            as BS
 import           Data.Char                        (toLower)
 import           Data.Either                      (isLeft)
 import           Data.Either.Utils                (maybeToEither)
-import           Data.Foldable                    (traverse_)
+import           Data.Foldable                    (for_, traverse_)
 import           Data.List                        (isInfixOf)
 import           Data.List.Split                  (splitOn)
 import           Data.Maybe                       (fromMaybe)
@@ -103,121 +106,184 @@ startCLI modelFiles = do
     cli :: InputT CLIM ()
     cli = do
         Log.info "Starting the main loop..."
-        outputStrLn "TorXakis :: Model-based testing"
-        withMessages $ withModelFiles modelFiles $
-            withInterrupt $
-            handleInterrupt (output Nothing ["Ctrl+C: quitting"]) loop
+        outputStrLn $ defaultConf ^. prompt ++ "TorXakis :: Model-based testing"
+        withMessages $ \ch ->
+            withModelFiles modelFiles $ withInterrupt $
+                handleInterrupt (output Nothing ["Ctrl+C: quitting"]) (loop ch)
         liftIO $ hFlush stdout
-    loop :: InputT CLIM ()
-    loop = do
-        waitingT <- lift $ asks waitingVerdict
-        minput <- fmap strip <$> getInputLine (defaultConf ^. prompt)
-        liftIO $ atomically $ do
-            waiting <- readTVar waitingT
-            when waiting retry
-        Log.info $ "Processing input line: " ++ show (fromMaybe "<no input>" minput)
-        case minput of
-            Nothing -> loop
-            Just "" -> loop
-            Just "q" -> return ()
-            Just "quit" -> return ()
-            Just "exit" -> return ()
-            Just "x" -> return ()
-            Just "?" -> showHelp
-            Just "h" -> showHelp
-            Just "help" -> showHelp
-            Just input ->
-                let strippedInput = strip input
-                    (cmdAndArgs, redir) = span (/= '$') strippedInput
-                in do
-                    mhT <- lift $ asks fOutH
-                    mh <- liftIO $ readTVarIO mhT
-                    case mh of
-                        Nothing -> return ()
-                        Just h -> liftIO $ do hClose h
-                                              atomically $ writeTVar mhT Nothing
-                    (argsFromFile, mToFileH) <- liftIO $ parseRedirs redir
-                    liftIO $ atomically $ writeTVar mhT mToFileH
-                    modifyHistory $ addHistoryRemovingAllDupes strippedInput
-                    dispatch $ cmdAndArgs ++ argsFromFile
-                    loop
-    parseRedirs :: String -> IO (String, Maybe Handle)
-    parseRedirs redir = do
-        Log.info $ "Parsing redir: " ++ redir
-        let redirs = splitOn "$" redir
-            (mArgsFn,mOutIOmode,mOutFn) = foldr parseRedir (Nothing, Nothing, Nothing) redirs
-        Log.info $ "Parsed redir: " ++ show (mArgsFn,mOutIOmode,mOutFn)
-        args <- case mArgsFn of
-            Nothing  -> return ""
-            Just fin -> readFile fin
-        mh <- case mOutFn of
-            Nothing -> return Nothing
-            Just fn -> case mOutIOmode of
-                Nothing     -> error "Impossible to have an out file and no IOMode set!"
-                Just ioMode -> do
-                    fh <- openFile fn ioMode -- TODO: Handle other errors
-                    hSetBuffering fh NoBuffering
-                    return $ Just fh
-        return (args, mh)
+
+    withMessages :: (TChan BSS.ByteString -> InputT CLIM ()) -> InputT CLIM ()
+    withMessages action = do
+        Log.info "Starting printer async..."
+        printer <- getExternalPrint
+        ch <- liftIO newTChanIO
+        env <- lift ask
+        sId <- lift $ asks sessionId
+        Log.info $ "Enabling messages for session " ++ show sId ++ "..."
+        res <- lift openMessages
+        when (isLeft res) (error $ show res)
+        producer <- liftIO $ async $
+            sseSubscribe env ch $ concat ["sessions/", show sId, "/messages"]
+        mhT <- lift $ asks fOutH
+        Log.info "Triggering action..."
+        action ch `finally` do
+            Log.info "Closing the messages endpoint..."
+            _ <- lift closeMessages
+            Log.info "Messages endpoint closed."
+            liftIO $ do
+                cancel producer
+                Log.info "Produced canceled."
           where
-            parseRedir :: String
-                       -> (Maybe String, Maybe IOMode, Maybe String)
-                       -> (Maybe String, Maybe IOMode, Maybe String)
-            parseRedir ('>':'>':fn) (a,_m,_o) = (              a, Just AppendMode, Just $ strip fn)
-            parseRedir ('>':fn)     (a,_m,_o) = (              a, Just  WriteMode, Just $ strip fn)
-            parseRedir ('<':fn)     (_a,m, o) = (Just $ strip fn,               m,               o)
-            parseRedir _            t         = t
-    showHelp :: InputT CLIM ()
-    showHelp = do
-        outputStrLn helpText
-        loop
-    dispatch :: String -> InputT CLIM ()
-    dispatch inputLine = do
+
+            outputAndPrint :: Maybe Handle -> (String -> IO ()) -> String -> IO ()
+            outputAndPrint mh prntr s = do
+                Log.info $ "Showing message on screen: " ++ s
+                -- prntr s
+                unless (null s) $ putStrLn s
+                case mh of
+                    Just h  -> do hPutStrLn h s
+                                  hFlush h
+                    Nothing -> return ()
+    withModelFiles :: [FilePath] -> InputT CLIM () -> InputT CLIM ()
+    withModelFiles mfs action = do
+        unless (null mfs) $ void $ lift $
+            do Log.info $ "Loading model files: " ++ show mfs
+               load mfs
+        action
+
+outputTillVerdict :: TChan BSS.ByteString -> InputT CLIM ()
+outputTillVerdict ch =  do
+    bs <- liftIO $ atomically $ readTChan ch
+    let msgs = pretty . asTxsMsg $ bs
+    traverse_ txsOut msgs
+    unless (any hasVerdict msgs) $ outputTillVerdict ch
+
+-- TODO: introduce a "Verdict" type of message in the Msg type.
+hasVerdict :: String -> Bool
+hasVerdict "PASS"       = True
+hasVerdict "No Verdict" = True
+hasVerdict s
+    | "FAIL: " `isInfixOf` s = True
+    | otherwise               = False
+
+printChanContents :: TChan BSS.ByteString -> InputT CLIM ()
+printChanContents ch = do
+    mbs <- liftIO $ atomically $ tryReadTChan ch
+    for_ mbs $ \bs -> do
+        traverse_ txsOut (pretty . asTxsMsg $ bs)
+        printChanContents ch
+
+txsOut :: String -> InputT CLIM ()
+txsOut str = outputStrLn $ prefix ++ str
+    where
+      prefix = defaultConf ^. rPrompt
+
+txsOuts :: [String] -> InputT CLIM ()
+txsOuts = traverse_ txsOut
+
+asTxsMsg :: BS.ByteString -> Either String Msg
+asTxsMsg msg = do
+    msgData <- maybeToEither dataErr $
+               BS.stripPrefix (BS.pack "data:") msg
+    eitherDecodeStrict msgData
+    where
+      dataErr = "The message from TorXakis did not contain a \"data:\" field: "
+                ++ show msg
+
+runAndShow :: Outputable a => CLIM a -> InputT CLIM ()
+runAndShow act = fmap pretty (lift act) >>= txsOuts
+
+-- | Main loop of the TorXakis CLI.
+loop :: TChan BSS.ByteString -> InputT CLIM ()
+loop ch = loop'
+    where
+      loop' = do
+          minput <- fmap strip <$> getInputLine (defaultConf ^. prompt)
+          Log.info $ "Processing input line: " ++ show (fromMaybe "<no input>" minput)
+          case minput of
+              Nothing -> loop'
+              Just "" -> loop'
+              Just "q" -> return ()
+              Just "quit" -> return ()
+              Just "exit" -> return ()
+              Just "x" -> return ()
+              Just "?" -> showHelp
+              Just "h" -> showHelp
+              Just "help" -> showHelp
+              Just input ->
+                  let strippedInput = strip input
+                      (cmdAndArgs, redir) = span (/= '$') strippedInput
+                  in do
+                      mhT <- lift $ asks fOutH
+                      mh <- liftIO $ readTVarIO mhT
+                      case mh of
+                          Nothing -> return ()
+                          Just h -> liftIO $ do hClose h
+                                                atomically $ writeTVar mhT Nothing
+                      (argsFromFile, mToFileH) <- liftIO $ parseRedirs redir
+                      liftIO $ atomically $ writeTVar mhT mToFileH
+                      modifyHistory $ addHistoryRemovingAllDupes strippedInput
+                      dispatch $ cmdAndArgs ++ argsFromFile
+                      loop'
+
+      showHelp :: InputT CLIM ()
+      showHelp = do
+          outputStrLn helpText
+          loop'
+
+      dispatch :: String -> InputT CLIM ()
+      dispatch inputLine = do
         Log.info $ "Dispatching input: " ++ inputLine
         mhT <- lift $ asks fOutH
         mh <- liftIO $ readTVarIO mhT
-        lift (getOutputableResult inputLine) >>= output mh
+        runLine inputLine
+        printChanContents ch
           where
-            getOutputableResult :: String -> CLIM [String]
-            getOutputableResult inp =
+            runLine :: String -> InputT CLIM ()
+            runLine inp =
                 let tokens = words inp
                     cmd  = head tokens
                     rest = tail tokens
                 in case map toLower cmd of
-                    "#"         -> return []
-                    "echo"      -> return rest
-                    "delay"     -> pretty <$> waitFor rest
-                    "i"         -> pretty <$> runExceptT info
-                    "info"      -> pretty <$> runExceptT info
-                    "l"         -> pretty <$> load rest
-                    "load"      -> pretty <$> load rest -- TODO: this will break if the file names contain a space.
-                    "param"     -> pretty <$> param rest
-                    "run"       -> pretty <$> run rest
-                    "simulator" -> pretty <$> simulator rest
-                    "sim"       -> pretty <$> sim rest
-                    "stepper"   -> pretty <$> subStepper rest
-                    "step"      -> pretty <$> subStep rest
-                    "tester"    -> pretty <$> tester rest
-                    "test"      -> pretty <$> test rest
-                    "stop"      -> pretty <$> stopTxs
-                    "time"      -> pretty <$> runExceptT getTime
-                    "timer"     -> pretty <$> timer rest
-                    "val"       -> pretty <$> val rest
-                    "var"       -> pretty <$> var rest
-                    "eval"      -> pretty <$> eval rest
-                    "solve"     -> pretty <$> callSolver "sol" rest
-                    "unisolve"  -> pretty <$> callSolver "uni" rest
-                    "ransolve"  -> pretty <$> callSolver "ran" rest
-                    "lpe"       -> pretty <$> callLpe rest
-                    "ncomp"     -> pretty <$> callNComp rest
-                    "show"      -> pretty <$> runExceptT (showTxs rest)
-                    "menu"      -> pretty <$> menu rest
-                    "seed"      -> pretty <$> seed rest
-                    "goto"      -> pretty <$> goto rest
-                    "back"      -> pretty <$> back rest
-                    "path"      -> pretty <$> runExceptT getPath
-                    "trace"     -> pretty <$> trace rest
-                    _           -> return ["Unknown command: '" ++ cmd ++ "'. Try 'help'."]
+                    "#"         -> return ()
+                    "echo"      -> txsOuts rest
+                    -- "delay"     -> pretty <$> waitFor rest
+                    -- "i"         -> pretty <$> runExceptT info
+                    -- "info"      -> pretty <$> runExceptT info
+                    -- "l"         -> pretty <$> load rest
+                    "load"      -> runAndShow (load rest)
+                        -- TODO: this will break if the file names contain a space.
+                    -- "param"     -> pretty <$> param rest
+                    -- "run"       -> pretty <$> run rest
+                    -- "simulator" -> pretty <$> simulator rest
+                    -- "sim"       -> pretty <$> sim rest
+                    "stepper"   -> do
+                        runAndShow (subStepper rest)
+                        printChanContents ch
+                    "step"      -> do
+                        runAndShow (subStep rest)
+                        outputTillVerdict ch
+                    -- "tester"    -> pretty <$> tester rest
+                    -- "test"      -> pretty <$> test rest
+                    -- "stop"      -> pretty <$> stopTxs
+                    -- "time"      -> pretty <$> runExceptT getTime
+                    -- "timer"     -> pretty <$> timer rest
+                    -- "val"       -> pretty <$> val rest
+                    -- "var"       -> pretty <$> var rest
+                    -- "eval"      -> pretty <$> eval rest
+                    -- "solve"     -> pretty <$> callSolver "sol" rest
+                    -- "unisolve"  -> pretty <$> callSolver "uni" rest
+                    -- "ransolve"  -> pretty <$> callSolver "ran" rest
+                    -- "lpe"       -> pretty <$> callLpe rest
+                    -- "ncomp"     -> pretty <$> callNComp rest
+                    -- "show"      -> pretty <$> runExceptT (showTxs rest)
+                    -- "menu"      -> pretty <$> menu rest
+                    -- "seed"      -> pretty <$> seed rest
+                    -- "goto"      -> pretty <$> goto rest
+                    -- "back"      -> pretty <$> back rest
+                    -- "path"      -> pretty <$> runExceptT getPath
+                    -- "trace"     -> pretty <$> trace rest
+                    _           -> txsOut $ "Unknown command: '" ++ cmd ++ "'. Try 'help'."
             waitFor :: [String] -> CLIM String
             waitFor [n] = case readMaybe n :: Maybe Int of
                             Nothing -> return $ "Error: " ++ show n ++ " doesn't seem to be an integer."
@@ -229,15 +295,15 @@ startCLI modelFiles = do
             param [p]   = runExceptT $ getParam p
             param [p,v] = runExceptT $ setParam p v
             param _     = return $ Left "Usage: param [ <parameter> [<value>] ]"
-            run :: [String] -> CLIM [String]
+            run :: [String] -> InputT CLIM ()
             run [filePath] = do
                 exists <- liftIO $ doesFileExist filePath
                 if exists
                     then do fileContents <- liftIO $ readFile filePath
                             let script = lines fileContents
-                            concat <$> mapM getOutputableResult script
-                    else return ["File " ++ filePath ++ " does not exist."]
-            run _ = return ["Usage: run <file path>"]
+                            traverse_ runLine script
+                    else txsOut $ "File " ++ filePath ++ " does not exist."
+            run _ = txsOut "Usage: run <file path>"
             simulator :: [String] -> CLIM (Either String ())
             simulator names
                 | length names < 2 || length names > 3 = return $ Left "Usage: simulator <model> [<mapper>] <cnect>"
@@ -251,6 +317,7 @@ startCLI modelFiles = do
             subStepper [mName] = stepper mName
             subStepper _       = return $ Left "This command is not supported yet."
             -- | Sub-command step.
+            subStep :: [String] -> CLIM (Either String ())
             subStep = step . concat
             tester :: [String] -> CLIM (Either String ())
             tester names
@@ -299,71 +366,57 @@ startCLI modelFiles = do
             trace []    = runExceptT $ getTrace ""
             trace [fmt] = runExceptT $ getTrace fmt
             trace _     = return $ Left "Usage: trace [<format>]"
-    withMessages :: InputT CLIM () -> InputT CLIM ()
-    withMessages action = do
-        Log.info "Starting printer async..."
-        printer <- getExternalPrint
-        ch <- liftIO newChan
-        env <- lift ask
-        sId <- lift $ asks sessionId
-        Log.info $ "Enabling messages for session " ++ show sId ++ "..."
-        res <- lift openMessages
-        when (isLeft res) (error $ show res)
-        producer <- liftIO $ async $
-            sseSubscribe env ch $ concat ["sessions/", show sId, "/messages"]
-        mhT <- lift $ asks fOutH
-        waitingT <- lift $ asks waitingVerdict
-        consumer <- liftIO $ async $ forever $ do
-            Log.info "Waiting for message..."
-            msg <- readChan ch
-            Log.info $ "Printing message: " ++ show msg
-            mh <- readTVarIO mhT
-            let prettyMsg = pretty $ asTxsMsg msg
-            atomically $ do
-                waiting <- readTVar waitingT
-                when (waiting && hasVerdict prettyMsg) (writeTVar waitingT False)
-            traverse_ (outputAndPrint mh printer . ("<< " ++)) prettyMsg
-        Log.info "Triggering action..."
-        action `finally` do
-            Log.info "Closing the messages endpoint..."
-            _ <- lift closeMessages
-            Log.info "Messages endpoint closed."
-            liftIO $ do
-                cancel producer
-                cancel consumer
-                Log.info "Produced and consumer canceled."
-          where
-            hasVerdict :: [String] -> Bool
-            hasVerdict = foldl (\ res s -> res || isVerdict s) False
-              where
-                isVerdict :: String -> Bool
-                isVerdict "PASS"       = True
-                isVerdict "No Verdict" = True
-                isVerdict s
-                    | "FAIL: " `isInfixOf` s = True
-                    | otherwise               = False
-            outputAndPrint :: Maybe Handle -> (String -> IO ()) -> String -> IO ()
-            outputAndPrint mh prntr s = do
-                Log.info $ "Showing message on screen: " ++ s
-                prntr s
-                case mh of
-                    Just h  -> do hPutStrLn h s
-                                  hFlush h
-                    Nothing -> return ()
-            asTxsMsg :: BS.ByteString -> Either String Msg
-            asTxsMsg msg = do
-                msgData <- maybeToEither dataErr $
-                    BS.stripPrefix (BS.pack "data:") msg
-                eitherDecodeStrict msgData
-                    where
-                    dataErr = "The message from TorXakis did not contain a \"data:\" field: "
-                            ++ show msg
-    withModelFiles :: [FilePath] -> InputT CLIM () -> InputT CLIM ()
-    withModelFiles mfs action = do
-        unless (null mfs) $ void $ lift $
-            do Log.info $ "Loading model files: " ++ show mfs
-               load mfs
-        action
+
+-- | Parse the redirection directories.
+parseRedirs :: String -> IO (String, Maybe Handle)
+parseRedirs redir = do
+    Log.info $ "Parsing redir: " ++ redir
+    let redirs = splitOn "$" redir
+        (mArgsFn,mOutIOmode,mOutFn) = foldr parseRedir (Nothing, Nothing, Nothing) redirs
+    Log.info $ "Parsed redir: " ++ show (mArgsFn,mOutIOmode,mOutFn)
+    args <- case mArgsFn of
+        Nothing  -> return ""
+        Just fin -> readFile fin
+    mh <- case mOutFn of
+        Nothing -> return Nothing
+        Just fn -> case mOutIOmode of
+            Nothing     -> error "Impossible to have an out file and no IOMode set!"
+            Just ioMode -> do
+                fh <- openFile fn ioMode -- TODO: Handle other errors
+                hSetBuffering fh NoBuffering
+                return $ Just fh
+    return (args, mh)
+      where
+        parseRedir :: String
+                   -> (Maybe String, Maybe IOMode, Maybe String)
+                   -> (Maybe String, Maybe IOMode, Maybe String)
+        parseRedir ('>':'>':fn) (a,_m,_o) = (              a, Just AppendMode, Just $ strip fn)
+        parseRedir ('>':fn)     (a,_m,_o) = (              a, Just  WriteMode, Just $ strip fn)
+        parseRedir ('<':fn)     (_a,m, o) = (Just $ strip fn,               m,               o)
+        parseRedir _            t         = t
+
+
+-- Consumer:
+        -- consumer <- liftIO $ async $ forever $ do
+        --     Log.info "Waiting for message..."
+        --     msg <- readChan ch
+            -- Log.info $ "Printing message: " ++ show msg
+            -- mh <- readTVarIO mhT
+            -- let prettyMsg = pretty $ asTxsMsg msg
+            -- atomically $ do
+            --     waiting <- readTVar waitingT
+            --     when (waiting && hasVerdict prettyMsg) (writeTVar waitingT False)
+            -- traverse_ (outputAndPrint mh printer . ("<< " ++)) prettyMsg
+
+            -- hasVerdict :: [String] -> Bool
+            -- hasVerdict = foldl (\ res s -> res || isVerdict s) False
+            --   where
+            --     isVerdict :: String -> Bool
+            --     isVerdict "PASS"       = True
+            --     isVerdict "No Verdict" = True
+            --     isVerdict s
+            --         | "FAIL: " `isInfixOf` s = True
+            --         | otherwise               = False
 
 -- | Perform an output action in the @InputT@ monad.
 output :: Maybe Handle -> [String] -> InputT CLIM ()

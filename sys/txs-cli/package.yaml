@@ -45,9 +45,10 @@ library:
   - bytestring
   - directory
   - exceptions
+  - extra
   - filepath
   - haskeline
-  - hslogger
+  - hslogger  
   - http-client
   - microlens
   - microlens-aeson

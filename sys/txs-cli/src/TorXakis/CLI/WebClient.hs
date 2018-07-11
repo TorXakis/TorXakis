@@ -21,7 +21,7 @@ module TorXakis.CLI.WebClient
     )
 where
 
-import           Control.Concurrent            (Chan, writeChan)
+import           Control.Concurrent.STM.TChan  (TChan, writeTChan)
 import           Control.Concurrent.STM.TVar   (writeTVar)
 import           Control.Monad.Except          (MonadError, catchError,
                                                 liftEither, throwError)
@@ -133,8 +133,6 @@ stepper mName = do
 step :: (MonadIO m, MonadReader Env m) => String -> m (Either String ())
 step with = do
     sId <- asks sessionId
-    waitingT <- asks waitingVerdict
-    liftIO $ atomically $ writeTVar waitingT True
     ignoreSuccess $ do
         sType <- step1 `catchError` \_ ->
                  parseNumberOfSteps `catchError` \_ ->
@@ -165,14 +163,14 @@ openMessages = do
     ignoreSuccess $
         envPost (concat ["sessions/", show sId, "/messages/open/"]) noContent
 
-sseSubscribe :: Env -> Chan BSS.ByteString -> String -> IO ()
+sseSubscribe :: Env -> TChan BSS.ByteString -> String -> IO ()
 sseSubscribe env ch suffix = do
     Log.info "Subscribing to messages..."
     res <- safe (foldGet act () (host ++ suffix))
     Log.info ("Exited foldGet that subscribed to messages, with: " ++ show res)
     where
       host = txsHost env
-      act _ = writeChan ch
+      act _ = atomically . writeTChan ch
 
 -- | Close the messages endpoint
 closeMessages :: (MonadIO m, MonadReader Env m) => m (Either String ())

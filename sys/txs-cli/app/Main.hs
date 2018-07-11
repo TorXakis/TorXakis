@@ -98,8 +98,7 @@ main = do
               Right sid -> do
                             Log.info $ "Starting CLI for session" ++ show sid
                             noHdl <- newTVarIO Nothing
-                            notWaiting <- newTVarIO False
-                            runCli (Env host sid noHdl notWaiting) (startCLI mfs)
+                            runCli (Env host sid noHdl) (startCLI mfs)
                             Log.info "Exiting CLI"
       initTorXakisSession :: String -> IO (Either TorXakisServerException Int)
       initTorXakisSession host = do
