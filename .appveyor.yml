@@ -39,15 +39,18 @@ install:
     } else {
         Write-Host "cvc4.exe found.";
     }
+- ps: Write-Host $(cvc4 --version)
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\z3")) {
         # install z3
         curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-win.zip -Verbose
         mkdir $CACHE_DIR\z3
         7z x $("-o${CACHE_DIR}\z3\") z3.zip
+        move ${CACHE_DIR}\z3\z3-*\* ${CACHE_DIR}\z3
     } else {
         Write-Host "z3 folder found.";
     }
+- ps: Write-Host $(z3 -version)
 
 before_build:
 - ps: $env:CACHE_DIR = $CACHE_DIR
