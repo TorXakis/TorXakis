@@ -19,8 +19,7 @@ init:
 - ps: $env:Path += ";${CACHE_DIR};${CACHE_DIR}\z3\bin;C:\Users\appveyor\AppData\Roaming\local\bin"
 - mkdir %LOCALAPPDATA%\Programs\stack
 - mkdir %LOCALAPPDATA%\Programs\stack\x86_64-windows
-- rm $CACHE_DIR\cvc4.exe
-- rmdir -Recurse -Force $CACHE_DIR\z3
+
 install:
 - ps: Write-Host Starting install at $(Get-Date)
 - ps: if (-not (Test-Path "$CACHE_DIR")) { mkdir $CACHE_DIR} else { Write-Host "$CACHE_DIR found." }
