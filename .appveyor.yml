@@ -88,7 +88,7 @@ cache:
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
 
 test_script:
-- ps: Write-Host $(dir -Recurse %LOCALAPPDATA%\Programs\stack\x86_64-windows)
+- dir /S %LOCALAPPDATA%\Programs\stack\x86_64-windows
 - ps: Write-Host Starting test at $(Get-Date)
 - ps: pushd test/sqatt
 - ps: |
