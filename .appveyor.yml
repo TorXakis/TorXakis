@@ -55,7 +55,7 @@ install:
 before_build:
 - ps: $env:CACHE_DIR = $CACHE_DIR
 - ps: $env:CACHE_DIR_REL = $CACHE_DIR_REL
-- ps: Write-Host $(dir -Recurse '%LOCALAPPDATA%\Programs\stack\x86_64-windows)
+- ps: Write-Host $(dir -Recurse '%LOCALAPPDATA%\Programs\stack\x86_64-windows')
 
 build_script:
 - ps: Write-Host Starting build at $(Get-Date)
