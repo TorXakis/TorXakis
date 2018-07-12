@@ -11,13 +11,12 @@ testMultipleInstancesList
 where
 import           Control.Monad.State
 import           System.Process      (CreateProcess)
-
 import           Test.HUnit
+import           TorXakis.Sort
 
 import           Constant
 import           SMT
 import           SolveDefs
-import           SortId
 import           ValExpr
 import           VarId
 

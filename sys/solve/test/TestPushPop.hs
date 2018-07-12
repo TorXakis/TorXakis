@@ -17,8 +17,8 @@ import           Data.Maybe
 import qualified Data.Text           as T
 import           Test.HUnit
 
+import           TorXakis.Sort
 import           Constant
-import           SortId
 import           ValExpr
 import           VarId
 

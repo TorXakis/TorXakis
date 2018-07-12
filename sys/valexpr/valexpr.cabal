@@ -73,5 +73,6 @@ test-suite valexpr-BlackBox
                      , QuickCheck
                      
                      , valexpr
+                     , txs-sort
 
   default-language:    Haskell2010

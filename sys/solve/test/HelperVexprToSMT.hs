@@ -13,12 +13,13 @@ import           Data.String.Utils
 import qualified Data.Text         as T
 
 import           FreeMonoidX
+import           TorXakis.Sort
+import qualified TorXakis.Sort.CstrId    as CstrId
+import qualified TorXakis.Sort.SortId    as SortId
+import qualified TorXakis.ValExpr.FuncId as FuncId
 
 import           Constant
-import           CstrId
 import           FuncDef
-import           FuncId
-import           SortId
 import           ValExpr
 import           VarId
 
@@ -39,9 +40,9 @@ createIsConstructor cid ie =
     TXS2SMTVExprTest (cstrIsCstr cid (input ie))
                      ("(is-" ++ T.unpack (SortId.name (CstrId.cstrsort cid)) ++ "$" ++ T.unpack (CstrId.name cid) ++ " " ++ expected ie ++ ")")
 
-createVfunc :: FuncId -> [TXS2SMTVExprTest] -> TXS2SMTVExprTest
+createVfunc :: FuncId.FuncId -> [TXS2SMTVExprTest] -> TXS2SMTVExprTest
 createVfunc funcId ies =
-   TXS2SMTVExprTest (cstrFunc (Map.empty :: Map.Map FuncId (FuncDef VarId)) funcId (map input ies))
+   TXS2SMTVExprTest (cstrFunc (Map.empty :: Map.Map FuncId.FuncId (FuncDef VarId)) funcId (map input ies))
               ("(" ++ T.unpack (FuncId.name funcId) ++ " " ++ join " " (map expected ies) ++ ")")
 
 createVsum :: [TXS2SMTVExprTest] -> TXS2SMTVExprTest

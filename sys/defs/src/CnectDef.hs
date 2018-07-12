@@ -13,7 +13,7 @@ where
 import           Control.DeepSeq
 import           GHC.Generics    (Generic)
 
-import           ValExpr         (Resettable)
+import           TorXakis.Sort   (Resettable)
 
 import           ConnectionDefs
 

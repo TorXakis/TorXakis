@@ -9,10 +9,9 @@ import qualified Data.Text as T
 import           Test.Hspec
 import           Test.QuickCheck
 
+import           TorXakis.Sort
 import           Constant
 import           ConstantGen
-import           SortId
-import           SortOf
 
 prop_BoolConst :: Bool -> Bool
 prop_BoolConst b = b == toBool (Cbool b)

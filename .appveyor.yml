@@ -5,7 +5,7 @@
 build: off
 skip_tags: true
 
-version: pre-0.7.0.{build}.{branch}
+version: pre-0.8.0.{build}.{branch}
 # branches:
     # only:
     # - develop
@@ -35,19 +35,22 @@ install:
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\cvc4.exe")) {
         # obtain the cvc4 executable
-        curl -OutFile $("$CACHE_DIR\cvc4.exe") https://github.com/TorXakis/Dependencies/releases/download/cvc4-20180306/cvc4-20180306-win32-opt.exe -Verbose
+        curl -OutFile $("$CACHE_DIR\cvc4.exe") https://github.com/TorXakis/Dependencies/releases/download/cvc4_1.6/cvc4-1.6-win64-opt.exe -Verbose
     } else {
         Write-Host "cvc4.exe found.";
     }
+- ps: Write-Host $(cvc4 --version)
 - ps: |
     if (-not (Test-Path "$CACHE_DIR\z3")) {
         # install z3
-        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.6.0/z3-4.6.0-x64-win.zip -Verbose
+        curl -OutFile z3.zip https://github.com/TorXakis/Dependencies/releases/download/z3-4.7.1/z3-4.7.1-x64-win.zip -Verbose
         mkdir $CACHE_DIR\z3
         7z x $("-o${CACHE_DIR}\z3\") z3.zip
+        move ${CACHE_DIR}\z3\z3-*\* ${CACHE_DIR}\z3
     } else {
         Write-Host "z3 folder found.";
     }
+- ps: Write-Host $(z3 -version)
 
 before_build:
 - ps: $env:CACHE_DIR = $CACHE_DIR
@@ -79,8 +82,8 @@ cache:
 - .cache -> stack.yaml
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2.installed'
-- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20150512'
-- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20150512.installed'
+- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys64'
+- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys64.installed'
 - .stack-work -> stack.yaml
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
 

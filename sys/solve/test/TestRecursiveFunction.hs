@@ -18,14 +18,11 @@ import           Data.Maybe
 import qualified Data.Text           as T
 import           System.Process      (CreateProcess)
 
+import           TorXakis.Sort
+import           TorXakis.ValExpr.FuncId
 import           Constant
-import           CstrDef
-import           CstrId
-import           FuncId
 import           SMT
 import           SMTData
-import           SortDef
-import           SortId
 import           SolveDefs
 import           TXS2SMT
 import           VarId

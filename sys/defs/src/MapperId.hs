@@ -14,11 +14,10 @@ where
 import           Control.DeepSeq
 import           GHC.Generics    (Generic)
 
-import           Id
-import           Name
+import           TorXakis.Sort
 
 data MapperId = MapperId
-    { name :: Name            -- capid
+    { name :: Name
     , unid :: Id
     } deriving (Eq, Ord, Read, Show, Generic, NFData)
 

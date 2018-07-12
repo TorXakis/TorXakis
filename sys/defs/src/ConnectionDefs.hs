@@ -16,7 +16,7 @@ import           ChanId
 import           VarEnv
 import           VarId
 
-import           ValExpr         (Resettable)
+import           TorXakis.Sort  (Resettable)
 
 -- | Connection Definitions
 data CnectType =  ClientSocket

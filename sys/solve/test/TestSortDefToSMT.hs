@@ -14,12 +14,9 @@ import qualified Data.Map   as Map
 import qualified Data.Text  as T
 import           Test.HUnit
 
-import           CstrDef
-import           CstrId
-import           FuncId
+import           TorXakis.Sort
+import           TorXakis.ValExpr.FuncId
 import           SMTData
-import           SortDef
-import           SortId
 
 import           TXS2SMT
 

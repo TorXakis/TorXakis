@@ -15,9 +15,9 @@ import qualified Data.Set         as Set
 import qualified Data.Text        as T
 import           Test.HUnit
 
+import           TorXakis.Sort
 import           Constant
 import           SMTData
-import           SortId
 import           VarId
 
 import           HelperVexprToSMT

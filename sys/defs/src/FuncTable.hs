@@ -40,8 +40,7 @@ import           Data.Maybe
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 
-import           Id (Resettable)
-import           SortId
+import           TorXakis.Sort (Resettable, SortId)
 import           ValExpr
 
 data Signature = Signature  { sortArgs :: [SortId]

@@ -20,10 +20,10 @@ import Test.QuickCheck
 import qualified Data.Set as Set
 
 -- generic TorXakis imports
+import TorXakis.Sort
 import BehExprDefs
 import ChanId
 import Constant
-import SortId
 import ValExpr
 import VarId
 

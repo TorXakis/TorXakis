@@ -15,7 +15,7 @@ import           GHC.Generics    (Generic)
 
 import qualified Data.Set        as Set
 
-import           ValExpr         (Resettable)
+import           TorXakis.Sort   (Resettable)
 
 import           BehExprDefs
 import           ChanId

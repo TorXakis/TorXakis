@@ -38,20 +38,21 @@ library
   default-language:     Haskell2010
   
 test-suite bexpr-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
+  type:                 exitcode-stdio-1.0
+  hs-source-dirs:       test
                      
-  main-is:             TestMain.hs
+  main-is:              TestMain.hs
   
-  other-modules:       TestBehExprDefs
+  other-modules:        TestBehExprDefs
   
-  ghc-options:         -Werror -Wall -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
+  ghc-options:          -Werror -Wall -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N                     
   
-  build-depends:       base
-                     , containers
-                     , QuickCheck
+  build-depends:        base
+                      , containers
+                      , QuickCheck
 
-                     , bexpr
-                     , valexpr
-
+                      , bexpr
+                      , valexpr
+                      , txs-sort
+                      
   default-language:    Haskell2010  

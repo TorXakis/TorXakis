@@ -12,12 +12,11 @@ import           Data.String.Utils
 import           Data.Text         (Text)
 import qualified Data.Text         as T
 
+import           TorXakis.Sort
+import           TorXakis.ValExpr.FuncId
 import           FuncDef
-import           FuncId
 import           HelperVexprToSMT
-import           Id
 import           SMTData
-import           SortId
 import           VarId
 ------------------------------
 -- Data types

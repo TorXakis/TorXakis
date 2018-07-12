@@ -23,15 +23,12 @@ import           Text.Regex.TDFA
 import           Test.HUnit
 
 -- general Torxakis imports
+import           TorXakis.Sort
+import           TorXakis.ValExpr.FuncId
 import           Constant
-import           CstrDef
-import           CstrId
 import           FreeMonoidX
 import           FuncDef
-import           FuncId
 import           RegexXSD2Posix
-import           SortDef
-import           SortId
 import           ValExpr
 import           VarId
 

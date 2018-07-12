@@ -114,12 +114,12 @@ cvc4defaultConfig :: SolverConfig
 cvc4defaultConfig = SolverConfig
   { execName = "cvc4"
   , smtArgs =
-      [ "--lang=smt"
+      [ "--lang=smt2.5"
       , "--incremental"
       , "--strings-exp"
       , "--fmf-fun-rlv"
       , "--uf-ss-fair"
-      , "--no-strings-std-ascii"
+      , "--no-strings-print-ascii"
       ]
   }
 

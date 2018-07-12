@@ -107,6 +107,7 @@ test-suite SmtSolver-WhiteBox
                       , text
 
                       , lexregexxsd
+                      , txs-sort
                       , valexpr
                       
   ghc-options:          -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N
@@ -134,6 +135,7 @@ test-suite SmtSolver-BlackBox
                       , text
 
                       , solve
+                      , txs-sort
                       , valexpr
                       
   ghc-options:          -Wall -Werror -O2 -optc-O3 -optc-ffast-math -threaded -rtsopts -with-rtsopts=-N

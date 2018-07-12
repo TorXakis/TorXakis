@@ -15,8 +15,7 @@ where
 import           Control.DeepSeq
 import           GHC.Generics    (Generic)
 
-import           Id
-import           Name
+import           TorXakis.Sort
 
 data GoalId = GoalId
     { name :: Name

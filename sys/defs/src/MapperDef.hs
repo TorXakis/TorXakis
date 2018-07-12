@@ -15,7 +15,7 @@ import           GHC.Generics    (Generic)
 
 import           BehExprDefs
 import           ChanId
-import           ValExpr         (Resettable)
+import           TorXakis.Sort   (Resettable)
 
 -- | A mapper maps actions to actions.
 --

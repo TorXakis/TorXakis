@@ -17,7 +17,7 @@ import qualified Data.Set        as Set
 
 import           BehExprDefs
 import           ChanId
-import           Id              (Resettable)
+import           TorXakis.Sort   (Resettable)
 
 data  ModelDef       = ModelDef   [Set.Set ChanId] [Set.Set ChanId] [Set.Set ChanId] BExpr
      deriving (Eq,Ord,Read,Show, Generic, NFData)

@@ -13,11 +13,11 @@ import qualified Data.Map           as Map
 import qualified Data.Text          as T
 import           Test.HUnit
 
+import           TorXakis.Sort
+import           TorXakis.ValExpr.FuncId
 import           Constant
 import           FuncDef(FuncDef)
-import           FuncId(FuncId)
 import           SMTData
-import           SortId
 import           TXS2SMT
 import           VarId
 

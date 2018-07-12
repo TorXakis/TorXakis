@@ -1,5 +1,16 @@
 # Torxakis Changelog
 
+## v0.7.0
+
+New compiler
+- This fixes among others out of memory by big stautdef (#702)
+
+New randomization algorithm: IncrementBins
+- IncrementBins is the new default value for `param_Randomization`
+
+Many smart operators added to BExpr
+- For developers / internal representation 
+
 ## v0.6.0
 
 Removed hlint warnings from LPE
