@@ -1,3 +1,4 @@
 tester Adder SutConnection
 stop
+delay 1
 exit

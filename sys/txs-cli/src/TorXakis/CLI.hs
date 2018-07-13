@@ -174,9 +174,16 @@ printChanContents ch = do
         printChanContents ch
 
 txsOut :: String -> InputT CLIM ()
-txsOut str = outputStrLn $ prefix ++ str
+txsOut str = do
+    outputStrLn $ prefix ++ str
+    -- | Write the output to file as well, if a file handle is open.
+    mhT <- lift $ asks fOutH
+    mh  <- liftIO $ readTVarIO mhT
+    traverse_ printToFile mh
     where
       prefix = defaultConf ^. rPrompt
+      printToFile handle = liftIO $
+          hPutStrLn handle str >> hFlush handle
 
 txsOuts :: [String] -> InputT CLIM ()
 txsOuts = traverse_ txsOut
@@ -234,8 +241,6 @@ loop ch = loop'
       dispatch :: String -> InputT CLIM ()
       dispatch inputLine = do
         Log.info $ "Dispatching input: " ++ inputLine
-        mhT <- lift $ asks fOutH
-        mh <- liftIO $ readTVarIO mhT
         runLine inputLine
         printChanContents ch
           where
@@ -247,42 +252,44 @@ loop ch = loop'
                 in case map toLower cmd of
                     "#"         -> return ()
                     "echo"      -> txsOuts rest
-                    -- "delay"     -> pretty <$> waitFor rest
-                    -- "i"         -> pretty <$> runExceptT info
-                    -- "info"      -> pretty <$> runExceptT info
-                    -- "l"         -> pretty <$> load rest
+                    "delay"     -> runAndShow (waitFor rest)
+                    "i"         -> runAndShow (runExceptT info)
+                    "info"      -> runAndShow (runExceptT info)
+                    -- TODO: the load command will break if the file names contain a space.
+                    "l"         -> runAndShow (load rest)
                     "load"      -> runAndShow (load rest)
-                        -- TODO: this will break if the file names contain a space.
-                    -- "param"     -> pretty <$> param rest
-                    -- "run"       -> pretty <$> run rest
-                    -- "simulator" -> pretty <$> simulator rest
-                    -- "sim"       -> pretty <$> sim rest
-                    "stepper"   -> do
-                        runAndShow (subStepper rest)
-                        printChanContents ch
+                    "param"     -> runAndShow (param rest)
+                    "run"       -> run rest
+                    "simulator" -> runAndShow (simulator rest)
+                    "sim"       -> do
+                        runAndShow (sim rest)
+                        outputTillVerdict ch
+                    "stepper"   -> runAndShow (subStepper rest)
                     "step"      -> do
                         runAndShow (subStep rest)
                         outputTillVerdict ch
-                    -- "tester"    -> pretty <$> tester rest
-                    -- "test"      -> pretty <$> test rest
-                    -- "stop"      -> pretty <$> stopTxs
-                    -- "time"      -> pretty <$> runExceptT getTime
-                    -- "timer"     -> pretty <$> timer rest
-                    -- "val"       -> pretty <$> val rest
-                    -- "var"       -> pretty <$> var rest
-                    -- "eval"      -> pretty <$> eval rest
-                    -- "solve"     -> pretty <$> callSolver "sol" rest
-                    -- "unisolve"  -> pretty <$> callSolver "uni" rest
-                    -- "ransolve"  -> pretty <$> callSolver "ran" rest
-                    -- "lpe"       -> pretty <$> callLpe rest
-                    -- "ncomp"     -> pretty <$> callNComp rest
-                    -- "show"      -> pretty <$> runExceptT (showTxs rest)
-                    -- "menu"      -> pretty <$> menu rest
-                    -- "seed"      -> pretty <$> seed rest
-                    -- "goto"      -> pretty <$> goto rest
-                    -- "back"      -> pretty <$> back rest
-                    -- "path"      -> pretty <$> runExceptT getPath
-                    -- "trace"     -> pretty <$> trace rest
+                    "tester"    -> runAndShow (tester rest)
+                    "test"      -> do
+                        runAndShow (test rest)
+                        outputTillVerdict ch
+                    "stop"      -> runAndShow stopTxs
+                    "time"      -> runAndShow (runExceptT getTime)
+                    "timer"     -> runAndShow (timer rest)
+                    "val"       -> runAndShow (val rest)
+                    "var"       -> runAndShow (var rest)
+                    "eval"      -> runAndShow (eval rest)
+                    "solve"     -> runAndShow (callSolver "sol" rest)
+                    "unisolve"  -> runAndShow (callSolver "uni" rest)
+                    "ransolve"  -> runAndShow (callSolver "ran" rest)
+                    "lpe"       -> runAndShow (callLpe rest)
+                    "ncomp"     -> runAndShow (callNComp rest)
+                    "show"      -> runAndShow (runExceptT (showTxs rest))
+                    "menu"      -> runAndShow (menu rest)
+                    "seed"      -> runAndShow (seed rest)
+                    "goto"      -> runAndShow (goto rest)
+                    "back"      -> runAndShow (back rest)
+                    "path"      -> runAndShow (runExceptT getPath)
+                    "trace"     -> runAndShow (trace rest)
                     _           -> txsOut $ "Unknown command: '" ++ cmd ++ "'. Try 'help'."
             waitFor :: [String] -> CLIM String
             waitFor [n] = case readMaybe n :: Maybe Int of
