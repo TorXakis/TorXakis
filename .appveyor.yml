@@ -82,8 +82,8 @@ cache:
 - .cache -> stack.yaml
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2.installed'
-- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys64'
-- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys64.installed'
+- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20180531'
+- '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20180531.installed'
 - .stack-work -> stack.yaml
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
 
