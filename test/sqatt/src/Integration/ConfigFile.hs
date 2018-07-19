@@ -6,9 +6,9 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings #-}
 module Integration.ConfigFile (testSet) where
 
-import           Data.Text          (Text)
-import qualified Data.Text          as T
-import           Prelude     hiding (FilePath)
+import           Data.Text (Text)
+import qualified Data.Text as T
+import           Prelude   hiding (FilePath)
 
 import           Paths
 import           Sqatt
@@ -18,17 +18,17 @@ testDir = "ConfigFile"
 
 testSet :: TxsExampleSet
 testSet = TxsExampleSet "ConfigFile #long"
-              $  map newValTest   paramNewValues
+              $  map wrongValTest paramDefaultValues
               ++ map emptyValTest paramDefaultValues
-              ++ map wrongValTest paramDefaultValues
+              ++ map newValTest   paramNewValues
 
 paramNewValues :: [(Text, Text)]
 paramNewValues = [ ("IncrementChoice_IntPower", "14")
-                -- only IOCO is valid, enable when changable
+                -- only IOCO is valid, enable when other implementation relations are supported
                 --  , ("ImpRel", "")
                  , ("IncrementChoice_IntRange", "165536")
                  , ("IncrementChoice_MaxGeneratedStringLength", "110")
-                -- only ANGELIC is valid, enable when changable
+                -- only ANGELIC is valid, enable when other input completion modes are supported
                 --  , ("InputCompletion", "")
                  , ("RandSolve_IntHalf", "11000")
                  , ("RandSolve_IntNum", "15")
@@ -45,7 +45,7 @@ paramNewValues = [ ("IncrementChoice_IntPower", "14")
                  , ("Sim_deltaTime", "11000")
                  , ("Sim_ioTime", "110")
                  ]
-                 
+
 
 newValTest :: (Text, Text) -> TxsExample
 newValTest (pNm,pVl) = templateTest "New" pNm pVl pVl
@@ -73,10 +73,10 @@ paramDefaultValues = [ ("ImpRel", "IOCO")
                      ]
 
 emptyValTest :: (Text, Text) -> TxsExample
-emptyValTest (pNm,defVal) = templateTest "Empty" pNm T.empty defVal
+emptyValTest (pNm, defVal) = templateTest "Empty" pNm T.empty defVal
 
 wrongValTest :: (Text, Text) -> TxsExample
-wrongValTest (pNm,defVal) = templateTest "Wrong" pNm "WrongVal" defVal
+wrongValTest (pNm, defVal) = templateTest "Wrong" pNm "WrongVal" defVal
 
 templateTest :: String -> Text -> Text -> Text -> TxsExample
 templateTest exPrefix pNm newVal expVal = emptyExample
@@ -116,4 +116,7 @@ fileContent = select . textToLines
 createParamCmdFile :: Text -> IO ()
 createParamCmdFile pNm =
     output (txsCmdPath ITest testDir pNm)
-           (fileContent $ "param param_" <> pNm <> "\nexit")
+           (fileContent $ "echo checking...\n"
+                        <> "param param_" <> pNm <> "\n"
+                        <> "echo done\n"
+                        <> "exit")

@@ -103,6 +103,7 @@ startCLI modelFiles = do
         -- 'addHistoryRemovingAllDupes'.
         , autoAddHistory = False
         }
+
     cli :: InputT CLIM ()
     cli = do
         Log.info "Starting the main loop..."
@@ -133,17 +134,7 @@ startCLI modelFiles = do
             liftIO $ do
                 cancel producer
                 Log.info "Produced canceled."
-          where
 
-            outputAndPrint :: Maybe Handle -> (String -> IO ()) -> String -> IO ()
-            outputAndPrint mh prntr s = do
-                Log.info $ "Showing message on screen: " ++ s
-                -- prntr s
-                unless (null s) $ putStrLn s
-                case mh of
-                    Just h  -> do hPutStrLn h s
-                                  hFlush h
-                    Nothing -> return ()
     withModelFiles :: [FilePath] -> InputT CLIM () -> InputT CLIM ()
     withModelFiles mfs action = do
         unless (null mfs) $ void $ lift $

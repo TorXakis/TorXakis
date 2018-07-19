@@ -46,7 +46,7 @@ paramsServer env sid = param :<|> params :<|> setParam
         param :: String -> Handler ParameterValue
         param pNm = do
             s <- getSession env sid
-            [prm] <- liftIO $ Lib.getAllParams s [pNm]
+            [prm] <- liftIO $ Lib.getAllParams s [pNm] -- TODO: this might result in an error!
             return $ showPrm prm
         params :: Handler [ParameterValue]
         params = do
