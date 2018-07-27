@@ -17,9 +17,9 @@ module EnDecode
 -- ----------------------------------------------------------------------------------------- --
 -- export
 
-( encode    -- encode :: Action -> IOC SAction
+( encode    -- :: [DD.ConnHandle] -> DD.Action -> IOC.IOC DD.SAction
             -- mapping from Abstract to Representation
-, decode    -- decode :: SAction -> IOC Action
+, decode    -- :: [DD.ConnHandle] -> DD.SAction -> IOC.IOC DD.Action
             -- mapping from Representation to Abstract
 )
 
@@ -30,83 +30,78 @@ where
 
 import           Control.Monad.State
 
-import           Data.Either
-import qualified Data.Map  as Map
-import qualified Data.Set  as Set
-import qualified Data.String.Utils  as Utils
+import           Data.Either         (partitionEithers)
+import qualified Data.Map            as Map
+import qualified Data.Set            as Set
 
 -- import from serverenv
-import qualified EnvServer as IOS
+-- import qualified EnvServer    as IOS
 
 -- import from core
-import qualified EnvCore   as IOC
+import qualified EnvCore             as IOC
 import qualified TxsCore
 
 --import from defs
-import           TxsDDefs
-import           TxsDefs
+import qualified TxsDDefs            as DD
+import qualified TxsDefs             as D
 import           TxsShow
 
 -- import from valexpr
-import           Constant
+import           ConstDefs
 import           ValExpr
 
 -- ----------------------------------------------------------------------------------------- --
 -- encode :  encoding from Abstract to Concrete (String)
 
 
-encode :: IOS.EnvS -> Action -> IOC.IOC SAction
+encode :: [DD.ConnHandle] -> DD.Action -> IOC.IOC DD.SAction
+encode towhdls (DD.Act offs)
+  =  let ss     = [ tow
+                  | tow@(DD.ConnHtoW chan' _h _vars _vexp) <- towhdls
+                  , Set.singleton chan' == Set.map fst offs
+                  ]
+         DD.ConnHtoW _chan h vars' vexp
+                = case ss of
+                    [ tow ] -> tow
+                    _       -> error $ "Encode 1: No (unique) action: " ++ fshow ss
+         walues = case Set.toList offs of
+                    [ ( _chanid, wals ) ] -> wals
+                    _                     -> error $ "Encode 2: " ++
+                                                     "No (unique) action: " ++ fshow offs
+         wenv   = Map.fromList $ zip vars' walues
+      in do st   <- gets IOC.state
+            sval <- TxsCore.txsEval $
+                      subst (Map.map cstrConst wenv) (D.funcDefs (IOC.tdefs st)) vexp
+            return $ case sval of
+                       Right (Cstring s) -> DD.SAct h s
+                       x -> error $ "Encode 3: No encoding to String\n" ++ show x
 
-encode envs (Act offs)  =  do
-     let ( _, _, towhdls ) = IOS.tow envs
-     let ss = [ tow
-              | tow@(ConnHtoW chan' _h _vars _vexp) <- towhdls
-              , Set.singleton chan' == Set.map fst offs
-              ]
-     let ConnHtoW _chan h vars' vexp =
-                             case ss of
-                               [ tow ] -> tow
-                               _       -> error $ "Encode 1: No (unique) action: " ++ fshow ss
-     let walues = case Set.toList offs of
-                        [ ( _chanid, wals ) ] -> wals
-                        _                     -> error $ "Encode 2: No (unique) action: " ++ fshow offs
-     let wenv = Map.fromList $ zip vars' walues
-     st <- gets IOC.state
-     mval     <- TxsCore.txsEval $ subst (Map.map cstrConst wenv) (funcDefs (IOC.tdefs st)) vexp
-     return $ case mval of
-                Right (Cstring s) -> SAct h s
-                _                 -> error "Encode 3: No encoding to String\n"
-
-encode _envs ActQui  =
-     return SActQui
+encode _towhdls DD.ActQui
+  =  return DD.SActQui
 
 
 -- ----------------------------------------------------------------------------------------- --
 -- decode :  decoding from Concrete (String) to Abstract
 
 
-decode :: IOS.EnvS -> SAction -> IOC.IOC Action
+decode :: [DD.ConnHandle] -> DD.SAction -> IOC.IOC DD.Action
+decode frowhdls (DD.SAct hdl sval)
+  =  let DD.ConnHfroW chan' _h var' vexps
+              = case [ frow | frow@(DD.ConnHfroW _ h _ _) <- frowhdls, h == hdl ] of
+                  [ frow ] -> frow
+                  _        -> error "Decode: No (unique) handle\n"
+         senv = Map.fromList [ (var', cstrConst (Cstring sval)) ]
+      in do st   <- gets IOC.state
+            eWals <- mapM (TxsCore.txsEval . subst senv (D.funcDefs (IOC.tdefs st))) vexps
+            case partitionEithers eWals of
+                ([], wals) -> return $ DD.Act ( Set.singleton (chan',wals) )
+                (errs, _)  -> error $ "Decode: " ++ show errs
 
-decode envs (SAct hdl sval)  =
-     let ( _, _, frowhdls )         = IOS.frow envs
-         ConnHfroW chan' _h var' vexps = case [ frow
-                                             | frow@(ConnHfroW _ h _ _) <- frowhdls
-                                             , h == hdl
-                                             ] of
-                                          { [ frow ] -> frow
-                                          ; _        -> error "Decode: No (unique) handle\n"
-                                          }
-      in do let senv = Map.fromList [ (var', cstrConst (Cstring sval)) ]
-            st <- gets IOC.state
-            mwals     <- mapM (TxsCore.txsEval . subst senv (funcDefs (IOC.tdefs st))) vexps
-            case partitionEithers mwals of
-                ([], wals) -> return $ Act ( Set.singleton (chan',wals) )
-                (es, _)    -> error $ "Decode: eval failed\n  " ++ Utils.join "\n  " es
-
-decode _envs SActQui  =
-     return ActQui
+decode _frowhdls DD.SActQui
+  =  return DD.ActQui
 
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
+

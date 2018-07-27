@@ -285,11 +285,15 @@ cmdIntpr cmdname args  =
          ; "tester"        -> cmdTester     args
          ; "simulator"     -> cmdSimulator  args
          ; "stepper"       -> cmdStepper    args
+         ; "learner"       -> cmdLearner    args
+         ; "manualor"      -> cmdManualor   args
          ; "stop"          -> cmdStop       args
 -- -------------------------------------------------------------------- test, simulate, step --
          ; "test"          -> cmdTest       args
          ; "sim"           -> cmdSim        args
          ; "step"          -> cmdStep       args
+         ; "learn"         -> cmdLearn      args
+         ; "man"           -> cmdMan        args
 -- --------------------------------------------------------------------------- btree state --
          ; "show"          -> cmdShow       args
          ; "state"         -> cmdState      args
@@ -302,11 +306,9 @@ cmdIntpr cmdname args  =
          ; "map"           -> cmdMap        args
          ; "ncomp"         -> cmdNComp      args
          ; "lpe"           -> cmdLPE        args
--- ---------------------------------------------------------------------------------- system --
-         ; "systart"       -> cmdSyStart    args
-         ; "systop"        -> cmdSyStop     args
 -- ---------------------------------------------------------------------------- unrecognized --
-         ; _               -> do putErr $ "unrecognized command `" ++ cmdname ++  "` (enter 'help' for help)"
+         ; _               -> do putErr $ "unrecognized command `" ++ cmdname
+                                          ++  "` (enter 'help' for help)"
                                  (cmdhin:cmdhins) <- lift $ gets uihins
                                  if  cmdhin == stdin
                                     then    cmdsIntpr
@@ -486,6 +488,20 @@ cmdStepper args  =  do
 
 -- ----------------------------------------------------------------------------------------- --
 
+cmdLearner :: String -> UIO ()
+cmdLearner args  =  do
+     doCmd "LEARNER" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdManualor :: String -> UIO ()
+cmdManualor args  =  do
+     doCmd "MANUALOR" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
 cmdStop :: String -> UIO ()
 cmdStop args  =  do
      doCmd "STOP" args
@@ -510,6 +526,20 @@ cmdSim args  =  do
 cmdStep :: String -> UIO ()
 cmdStep args  =  do
      doCmd "STEP" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdLearn :: String -> UIO ()
+cmdLearn args  =  do
+     doCmd "LEARN" args
+     cmdsIntpr
+
+-- ----------------------------------------------------------------------------------------- --
+
+cmdMan :: String -> UIO ()
+cmdMan args  =  do
+     doCmd "MAN" args
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --

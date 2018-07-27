@@ -4,14 +4,17 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
 
-
-{-# LANGUAGE FlexibleInstances #-}
+-- {-# LANGUAGE DeriveGeneric             #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleInstances         #-}
 -- | TorXakis Core Environment (Internal State) Data Type Definitions.
 module EnvCore
   ( IOC -- IOC = StateT EnvC IO
                   -- torxakis core main state monad transformer
   , EnvC(..)
+--, initEnvC
   , CoreState(..)
+  , EWorld(..)
   , getSMT -- :: String -> IOC SMTData.SmtEnv
   , putSMT -- :: String -> SMTData.SmtEnv -> IOC ()
   , getParams -- :: [String] -> IOC [(String,String)]
@@ -73,60 +76,115 @@ data EnvC = EnvC
   , state  :: CoreState        -- ^ State specific information.
   }
 
-data CoreState = Noning
-             | Initing  { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                        , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs    :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
-                        , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                        , chanoffers :: Map.Map (Name, Int) VarId.VarId    -- substitution for channel offers (LPE translation)
-                        }
-             | Testing  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                        , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
-                        , modeldef  :: TxsDefs.ModelDef
-                        , mapperdef :: Maybe TxsDefs.MapperDef
-                        , purpdef   :: Maybe TxsDefs.PurpDef
-                        , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
-                        , getfrow   :: IOC TxsDDefs.Action
-                        , behtrie   :: [ (EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr) ]
-                                                                     -- behaviour trie
-                        , inistate  :: EnvData.StateNr               -- initial beh statenr
-                        , curstate  :: EnvData.StateNr               -- current beh statenr
-                        , modsts    :: BTree.BTree                      -- model state
-                        , mapsts    :: BTree.BTree                      -- mapper state
-                        , purpsts   :: [(TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)]   -- purpose state
-                        , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                        , chanoffers :: Map.Map (Name, Int) VarId.VarId    -- substitution for channel offers (LPE translation)
-                        }
-             | Simuling { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                        , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
-                        , modeldef  :: TxsDefs.ModelDef
-                        , mapperdef :: Maybe TxsDefs.MapperDef
-                        , puttow    :: TxsDDefs.Action -> IOC TxsDDefs.Action
-                        , getfrow   :: IOC TxsDDefs.Action
-                        , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
-                                                                     -- behaviour trie
-                        , inistate  :: EnvData.StateNr               -- initial beh statenr
-                        , curstate  :: EnvData.StateNr               -- current beh statenr
-                        , modsts    :: BTree.BTree                   -- model state
-                        , mapsts    :: BTree.BTree                   -- mapper state
-                        , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                        , chanoffers :: Map.Map (Name, Int) VarId.VarId    -- substitution for channel offers (LPE translation)
-                        }
-             | Stepping { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
-                        , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
-                        , sigs      :: Sigs.Sigs VarId.VarId       -- TorXakis signatures
-                        , modeldef  :: TxsDefs.ModelDef
-                        , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
-                                                                     -- behaviour trie
-                        , inistate  :: EnvData.StateNr               -- initial beh statenr
-                        , curstate  :: EnvData.StateNr               -- current beh statenr
-                        , maxstate  :: EnvData.StateNr               -- max beh statenr
-                        , modstss   :: Map.Map EnvData.StateNr BTree.BTree   -- model state
-                        , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
-                        , chanoffers :: Map.Map (Name, Int) VarId.VarId    -- substitution for channel offers (LPE translation)
-                        }
+
+{-
+instance NFData EnvC where
+     -- We don't fully evaluate the core state as it contains functions.
+     rnf (EnvC c u p _) =
+         rnf c `seq` rnf u `seq` rnf p `seq` ()
+-}
+
+
+data CoreState  =
+       Idling
+     | Initing   { smts    :: Map.Map String SMTData.SmtEnv   -- named smt solver envs
+                 , tdefs   :: TxsDefs.TxsDefs                 -- TorXakis definitions
+                 , sigs    :: Sigs.Sigs VarId.VarId           -- TorXakis signatures
+                 , putmsgs :: [EnvData.Msg] -> IOC ()         -- (error) reporting
+                 , chanoffers :: Map.Map (Name, Int) VarId.VarId
+                              -- substitution for channel offers (LPE translation)
+                 }
+     | forall ew . (EWorld ew) =>
+       TestSet   { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , modeldef  :: TxsDefs.ModelDef
+                 , mapperdef :: Maybe TxsDefs.MapperDef
+                 , eworld    :: ew
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 , chanoffers :: Map.Map (Name, Int) VarId.VarId
+                              -- substitution for channel offers (LPE translation)
+                 }
+     | forall ew . (EWorld ew) =>
+       Testing   { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , modeldef  :: TxsDefs.ModelDef
+                 , mapperdef :: Maybe TxsDefs.MapperDef
+                 , purpdef   :: Maybe TxsDefs.PurpDef
+                 , eworld    :: ew
+                 , behtrie   :: [ (EnvData.StateNr, TxsDDefs.Action, EnvData.StateNr) ]
+                                                              -- behaviour trie
+                 , inistate  :: EnvData.StateNr               -- initial beh statenr
+                 , curstate  :: EnvData.StateNr               -- current beh statenr
+                 , modsts    :: BTree.BTree                   -- model state
+                 , mapsts    :: BTree.BTree                   -- mapper state
+                 , purpsts   :: [(TxsDefs.GoalId,Either BTree.BTree TxsDDefs.PurpVerdict)]
+                                                              -- purpose state
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 , chanoffers :: Map.Map (Name, Int) VarId.VarId
+                              -- substitution for channel offers (LPE translation)
+                 }
+     | forall ew . (EWorld ew) =>
+       Simuling  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , modeldef  :: TxsDefs.ModelDef
+                 , mapperdef :: Maybe TxsDefs.MapperDef
+                 , eworld    :: ew
+                 , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
+                                                              -- behaviour trie
+                 , inistate  :: EnvData.StateNr               -- initial beh statenr
+                 , curstate  :: EnvData.StateNr               -- current beh statenr
+                 , modsts    :: BTree.BTree                   -- model state
+                 , mapsts    :: BTree.BTree                   -- mapper state
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 , chanoffers :: Map.Map (Name, Int) VarId.VarId
+                              -- substitution for channel offers (LPE translation)
+                 }
+     | StepSet   { smts     :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs    :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs     :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , modeldef :: TxsDefs.ModelDef
+                 , putmsgs  :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 , chanoffers :: Map.Map (Name, Int) VarId.VarId
+                              -- substitution for channel offers (LPE translation)
+                 }
+     | Stepping  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , modeldef  :: TxsDefs.ModelDef
+                 , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)]
+                                                              -- behaviour trie
+                 , inistate  :: EnvData.StateNr               -- initial beh statenr
+                 , curstate  :: EnvData.StateNr               -- current beh statenr
+                 , maxstate  :: EnvData.StateNr               -- max beh statenr
+                 , modstss   :: Map.Map EnvData.StateNr BTree.BTree   -- model state
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 , chanoffers :: Map.Map (Name, Int) VarId.VarId
+                              -- substitution for channel offers (LPE translation)
+                 }
+     | forall ew . (EWorld ew) =>
+       ManSet    { smts    :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs   :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs    :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , eworld  :: ew
+                 , putmsgs :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 , chanoffers :: Map.Map (Name, Int) VarId.VarId
+                              -- substitution for channel offers (LPE translation)
+                 }
+     | forall ew . (EWorld ew) =>
+       Manualing { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , behtrie   :: [(EnvData.StateNr,TxsDDefs.Action,EnvData.StateNr)] -- beh tree
+                 , inistate  :: EnvData.StateNr               -- initial beh statenr
+                 , curstate  :: EnvData.StateNr               -- current beh statenr
+                 , eworld    :: ew
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 , chanoffers :: Map.Map (Name, Int) VarId.VarId
+                              -- substitution for channel offers (LPE translation)
+                 }
 
 
 modifyCS :: (CoreState -> CoreState) -> IOC ()
@@ -137,6 +195,29 @@ putCS newSt = modify $ \env -> env { state = newSt }
 
 incUnid :: IOC ()
 incUnid = modify $ \env -> env { unid = unid env + 1}
+
+
+{-
+-- | Initial state for the core environment.
+initEnvC :: EnvC
+initEnvC = EnvC defaultConfig (Id 0) initParams Idling
+  where
+     initParams = Map.union ParamCore.initParams Solve.Params.initParams
+-}
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- external world
+
+class EWorld w
+  where
+     startW     ::  w -> IOC w
+     stopW      ::  w -> IOC w
+     putToW     ::  w -> TxsDDefs.Action -> IOC TxsDDefs.Action
+     getFroW    ::  w -> IOC TxsDDefs.Action
+     chansToW   ::  w -> [TxsDefs.ChanId]
+     chansFroW  ::  w -> [TxsDefs.ChanId]
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- SMT :  getting and setting SMT solver
@@ -229,6 +310,9 @@ setChanoffers mapping = do
 
 getChanoffers :: IOC (Map.Map (Name, Int) VarId.VarId)
 getChanoffers = gets (chanoffers . state)
+
+
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --
+
