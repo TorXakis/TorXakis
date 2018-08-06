@@ -23,7 +23,7 @@ testList = TestList
         , TestLabel "LPE"             testLPEList
         , TestLabel "LPEPar"          testLPEParList
         , TestLabel "LPEHide"         testLPEHideList
-        , TestLabel "PreGNFEnable"       testPreGNFEnableList
+        , TestLabel "PreGNFEnable"    testPreGNFEnableList
     ]
 
 main :: IO ()
