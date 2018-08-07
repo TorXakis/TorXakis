@@ -1,0 +1,26 @@
+PROCDEF produce [In; Out :: Int](n :: Int) ::=
+    In >-> ( Out ! n ||| produce [In,Out](n+1) )
+ENDDEF
+
+PROCDEF communicate [In :: Int; Out] (n :: Int) ::=
+    In ! n | Out >-> communicate[In, Out] (n+1)
+ENDDEF
+
+PROCDEF p [In, Out]() ::=
+    HIDE [Chan :: Int] IN
+            produce [In, Chan](1)
+        |[ Chan ]|
+            communicate [Chan, Out](1)
+    NI
+ENDDEF
+
+CHANDEF Channels ::=  In, Out
+ENDDEF
+
+MODELDEF Model ::=
+    CHAN IN    In
+    CHAN OUT   Out
+
+    BEHAVIOUR  
+        p[In, Out]()
+ENDDEF

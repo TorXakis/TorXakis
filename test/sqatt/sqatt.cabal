@@ -22,6 +22,7 @@ library
                      , Integration.All
                      , ExploreModels.All
   other-modules:       Benchmarks.Choice
+                     , Benchmarks.Dynamic
                      , Benchmarks.Enable
                      , Benchmarks.Common
                      , Benchmarks.Hiding

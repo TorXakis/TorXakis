@@ -1,0 +1,15 @@
+PROCDEF p [In, Out]() ::=
+    In >-> ( Out ||| p [In,Out]() )
+ENDDEF
+
+CHANDEF Channels ::=  In
+                    ; Out
+ENDDEF
+
+MODELDEF Model ::=
+    CHAN IN    In
+    CHAN OUT   Out
+
+    BEHAVIOUR  
+        p[In, Out]()
+ENDDEF

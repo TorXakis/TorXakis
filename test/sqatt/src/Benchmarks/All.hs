@@ -7,6 +7,7 @@ See LICENSE at root directory of this repository.
 module Benchmarks.All (allExamples, allBenchmarks) where
 
 import qualified Benchmarks.Choice          as Choice
+import qualified Benchmarks.Dynamic         as Dynamic
 import qualified Benchmarks.Enable          as Enable
 import qualified Benchmarks.Hiding          as Hiding
 import qualified Benchmarks.Parallel        as Parallel
@@ -18,6 +19,7 @@ import           Sqatt
 
 allExamples :: [TxsExampleSet]
 allExamples = [ Choice.benchmarksSet
+              , Dynamic.benchmarksSet
               , Enable.benchmarksSet
               , Hiding.benchmarksSet
               , Parallel.benchmarksSet
