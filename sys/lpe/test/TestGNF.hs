@@ -60,6 +60,32 @@ vexpr0 = cstrConst (Cint 0)
 vexpr1 :: VExpr
 vexpr1 = cstrConst (Cint 1)
 
+varIdPpre1X :: VarId
+varIdPpre1X = VarId (T.pack "P$pre1$x") 33 intSort
+varIdPpre1Y :: VarId
+varIdPpre1Y = VarId (T.pack "P$pre1$y") 33 intSort
+varIdPpre1Z :: VarId
+varIdPpre1Z = VarId (T.pack "P$pre1$z") 33 intSort
+varIdPgnf1X :: VarId
+varIdPgnf1X = VarId (T.pack "P$gnf1$x") 33 intSort
+varIdPgnf1Y :: VarId
+varIdPgnf1Y = VarId (T.pack "P$gnf1$y") 33 intSort
+varIdPgnf1Z :: VarId
+varIdPgnf1Z = VarId (T.pack "P$gnf1$z") 33 intSort
+
+-- vexprPpre1X :: VExpr
+-- vexprPpre1X = cstrVar varIdPpre1X
+-- vexprPpre1Y :: VExpr
+-- vexprPpre1Y = cstrVar varIdPpre1Y
+-- vexprPpre1Z :: VExpr
+-- vexprPpre1Z = cstrVar varIdPpre1Z
+vexprPgnf1X :: VExpr
+vexprPgnf1X = cstrVar varIdPgnf1X
+vexprPgnf1Y :: VExpr
+vexprPgnf1Y = cstrVar varIdPgnf1Y
+vexprPgnf1Z :: VExpr
+vexprPgnf1Z = cstrVar varIdPgnf1Z
+
 -- action: A?x
 actOfferAx :: ActOffer
 actOfferAx   = ActOffer {  offers = Set.singleton
@@ -135,7 +161,7 @@ chanIdB = ChanId    { ChanId.name = T.pack "B"
 -- P[A]() = A?x >-> ( (A!1 >->STOP) ## (A?x >->STOP) )
 -- becomes
   -- P[A]()  = A?x >-> P$pre1[A](x)
-  -- P$pre1[A](x) = (A!1 >->STOP) ## (A?x >->STOP)
+  -- P$pre1[A](P$pre1$x) = (A!1 >->STOP) ## (A?x >->STOP)
 testPreGNFFirst :: Test
 testPreGNFFirst = TestCase $
    assertBool "choice (on lower level) is substituted" $ eqProcDefs procDefs'' procDefsResult
@@ -146,11 +172,11 @@ testPreGNFFirst = TestCase $
       choice'   = choice $ Set.fromList [actionPref actOfferA1 stop, actionPref actOfferAx stop]
       procDefP = ProcDef [chanIdA] [] (actionPref actOfferAx choice')
 
-      procIdPpre1x = procIdGen "P$pre1" [chanIdA] [varIdX]
+      procIdPpre1x = procIdGen "P$pre1" [chanIdA] [varIdPpre1X]
       procInstPpre1 = procInst procIdPpre1x [chanIdA] [vexprX]
 
       procDefP' = ProcDef [chanIdA] [] (actionPref actOfferAx procInstPpre1)
-      procDefPpre1x = ProcDef [chanIdA] [varIdX] choice'
+      procDefPpre1x = ProcDef [chanIdA] [varIdPpre1X] choice'
 
 
       procDefs' = Map.fromList  [ (procIdP, procDefP) ]
@@ -190,7 +216,7 @@ testASeqProcInst = TestCase $
 
 -- P[A,B]() := A?x >-> B!1 >-> STOP is split, becomes:
 -- P[A,B]() := A?x >-> P$gnf1[A,B](x)
--- P$gnf1[A,B](x) := B!1 >-> STOP
+-- P$gnf1[A,B](P$gnf1$x) := B!1 >-> STOP
 testActPrefSplit :: Test
 testActPrefSplit = TestCase $
    assertBool "multi action sequence is split"  $ eqProcDefs procDefs'' procDefsResult
@@ -201,11 +227,11 @@ testActPrefSplit = TestCase $
       procDefP = ProcDef [chanIdA, chanIdB] [] (actionPref actOfferAx (actionPref actOfferB1 stop))
 
 
-      procIdPgnf1 = procIdGen "P$gnf1" [chanIdA, chanIdB] [varIdX]
+      procIdPgnf1 = procIdGen "P$gnf1" [chanIdA, chanIdB] [varIdPgnf1X]
       procInstPgnf1x = procInst procIdPgnf1 [chanIdA, chanIdB] [vexprX]
 
       procDefP' = ProcDef [chanIdA, chanIdB] [] (actionPref actOfferAx procInstPgnf1x)
-      procDefPgnf1x = ProcDef [chanIdA, chanIdB] [varIdX] (actionPref actOfferB1 stop)
+      procDefPgnf1x = ProcDef [chanIdA, chanIdB] [varIdPgnf1X] (actionPref actOfferB1 stop)
 
 
       procDefs' = Map.fromList  [ (procIdP, procDefP) ]
@@ -359,12 +385,12 @@ testGuardProcInst = TestCase $
 -- P[A]() := A?x >-> [[x == 1]] =>> P[A]()
 -- with procInst = P[A]()
 -- 
--- explanation: the formal parameters of the ProcDef that is being created need to be unified
+-- explanation: the formal parameters of the ProcDef that is being created need to be made unique
 -- to avoid name clashes due substitution
 --
 -- becomes
 -- P[A]() :=  A?x >-> P$gnf1[A](x)
--- P$gnf1[A](gnf1$x) :=  A?x [[gnf1$x == 1]] >-> P$gnf1[A](x)
+-- P$gnf1[A](P$gnf1$x) :=  A?x [[P$gnf1$x == 1]] >-> P$gnf1[A](x)
 -- with procInst = P[A]()
 testActionPrefGuard :: Test
 testActionPrefGuard = TestCase $
@@ -372,19 +398,14 @@ testActionPrefGuard = TestCase $
    where
       (procDefsResult, _gnfTodo) = (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
 
-      varIdgnfX :: VarId
-      varIdgnfX = VarId (T.pack "gnf1$x") 33 intSort
-      vexprgnfX :: VExpr
-      vexprgnfX = cstrVar varIdgnfX
-
       procIdP = procIdGen "P" [] []
-      procIdPgnf1 = procIdGen "P$gnf1" [] [varIdgnfX]
+      procIdPgnf1 = procIdGen "P$gnf1" [] [varIdPgnf1X]
       procInstP = procInst procIdP [] []
 
       procDefP = ProcDef [] [] (actionPref actOfferAx (guard  (cstrEqual vexprX vexpr1) procInstP))
 
       procDefP' = ProcDef [] [] (actionPref actOfferAx (procInst procIdPgnf1 [] [vexprX]))
-      procDefPgnf1 = ProcDef [] [varIdgnfX] (actionPref actOfferAx {constraint = cstrEqual vexprgnfX vexpr1} 
+      procDefPgnf1 = ProcDef [] [varIdPgnf1X] (actionPref actOfferAx {constraint = cstrEqual vexprPgnf1X vexpr1} 
                                                     (procInst procIdPgnf1 [] [vexprX]))            
 
 
@@ -401,8 +422,8 @@ testActionPrefGuard = TestCase $
 -- becomes
 -- P[A]() :=    A?x >-> P$gnf1[A]()
 --          ##  A?x >-> Stop 
--- P$gnf1[A](x) :=       A?x [[gnf1$x == 1]] >-> P$gnf1[A](x)
---                  ##   A?x [[gnf1$x == 1]] >-> Stop 
+-- P$gnf1[A](P$gnf1$x) :=       A?x [[P$gnf1$x == 1]] >-> P$gnf1[A](x)
+--                          ##  A?x [[P$gnf1$x == 1]] >-> Stop 
 -- with procInst = P[A]()
 testActionPrefGuard2 :: Test
 testActionPrefGuard2 = TestCase $
@@ -410,13 +431,8 @@ testActionPrefGuard2 = TestCase $
    where
       (procDefsResult, _gnfTodo) = (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
 
-      varIdgnfX :: VarId
-      varIdgnfX = VarId (T.pack "gnf1$x") 33 intSort
-      vexprgnfX :: VExpr
-      vexprgnfX = cstrVar varIdgnfX
-
       procIdP = procIdGen "P" [] []
-      procIdPgnf1 = procIdGen "P$gnf1" [] [varIdgnfX]
+      procIdPgnf1 = procIdGen "P$gnf1" [] [varIdPgnf1X]
       procInstP = procInst procIdP [] []
 
       procDefP = ProcDef [] [] (choice $ Set.fromList [
@@ -428,10 +444,10 @@ testActionPrefGuard2 = TestCase $
                                             (actionPref actOfferAx (procInst procIdPgnf1 [] [vexprX]))
                                         ,   (actionPref actOfferAx stop)
                                         ])
-      procDefPgnf1 = ProcDef [] [varIdgnfX] (choice $ Set.fromList [
-                                                        (actionPref actOfferAx {constraint = cstrEqual vexprgnfX vexpr1} 
+      procDefPgnf1 = ProcDef [] [varIdPgnf1X] (choice $ Set.fromList [
+                                                        (actionPref actOfferAx {constraint = cstrEqual vexprPgnf1X vexpr1} 
                                                             (procInst procIdPgnf1 [] [vexprX]))            
-                                                    ,   (actionPref actOfferAx {constraint = cstrEqual vexprgnfX vexpr1} 
+                                                    ,   (actionPref actOfferAx {constraint = cstrEqual vexprPgnf1X vexpr1} 
                                                             stop)
                                         ])
 
@@ -449,7 +465,7 @@ testActionPrefGuard2 = TestCase $
 -- becomes
 -- P[A]() := A?x >-> Q[A]()
 -- Q[A]() := A?x >-> Q$gnf1[A](x)
--- Q$gnf1[A](gnf1$x) :=  A?x [[gnf1$x == 1]] >-> Q[A]()
+-- Q$gnf1[A](P$gnf1$x) :=  A?x [[P$gnf1$x == 1]] >-> Q[A]()         -- watch out! the x checked in the constraints refers back to the previous x, hence P$gnf1$x
 -- with procInst = P[A]()
 testGuardLoop :: Test
 testGuardLoop = TestCase $
@@ -457,22 +473,23 @@ testGuardLoop = TestCase $
    where
       (procDefsResult, _gnfTodo) = (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
 
-      varIdgnfX :: VarId
-      varIdgnfX = VarId (T.pack "gnf1$x") 33 intSort
-      vexprgnfX :: VExpr
-      vexprgnfX = cstrVar varIdgnfX
-
       procIdP = procIdGen "P" [] []
       procIdQ = procIdGen "Q" [] []
-      procIdQgnf1 = procIdGen "Q$gnf1" [] [varIdgnfX]
+      procIdQgnf1 = procIdGen "Q$gnf1" [] [varIdQgnf1X]
       procInstP = procInst procIdP [] []
       procInstQ = procInst procIdQ [] []
 
       procDefP = ProcDef [] [] (actionPref actOfferAx procInstQ)
       procDefQ = ProcDef [] [] (actionPref actOfferAx (guard  (cstrEqual vexprX vexpr1) procInstP))
 
+
+      varIdQgnf1X :: VarId
+      varIdQgnf1X = VarId (T.pack "Q$gnf1$x") 33 intSort
+      vexprQgnf1X :: VExpr
+      vexprQgnf1X = cstrVar varIdQgnf1X
+
       procDefQ' = ProcDef [] [] (actionPref actOfferAx (procInst procIdQgnf1 [] [vexprX]))
-      procDefQgnf1 = ProcDef [] [varIdgnfX] (actionPref actOfferAx {constraint = cstrEqual vexprgnfX vexpr1} 
+      procDefQgnf1 = ProcDef [] [varIdQgnf1X] (actionPref actOfferAx {constraint = cstrEqual vexprQgnf1X vexpr1} 
                                                 procInstQ)            
 
       procDefs' = Map.fromList  [  (procIdP, procDefP),
@@ -487,7 +504,7 @@ testGuardLoop = TestCase $
 --
 -- becomes after GNF:
 -- P[A](y) :=                           A?x >-> P$gnf1[A](y,x)
--- P$gnf1[A](P$A$gnf1$y, P$A$gnf1$x) := A?x [[P$A$gnf1$y == 1]] >-> P$gnf1[A](P$A$gnf1$x, x)
+-- P$gnf1[A](P$gnf1$y, P$gnf1$x) := A?x [[P$gnf1$y == 1]] >-> P$gnf1[A](P$gnf1$x, x)
 -- with procInst = P[A](0)
 testGuardLoop2 :: Test
 testGuardLoop2 = TestCase $
@@ -496,22 +513,14 @@ testGuardLoop2 = TestCase $
       (procDefsResult, _gnfTodo) = (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
 
       procIdP = procIdGen "P" [chanIdA] [varIdY]
-      varIdgnfX :: VarId
-      varIdgnfX = VarId (T.pack "gnf1$x") 33 intSort
-      varIdgnfY :: VarId
-      varIdgnfY = VarId (T.pack "gnf1$y") 33 intSort
-      vexprgnfX :: VExpr
-      vexprgnfX = cstrVar varIdgnfX
-      vexprgnfY :: VExpr
-      vexprgnfY = cstrVar varIdgnfY
-      procIdPgnf1 = procIdGen "P$gnf1" [chanIdA] [varIdgnfY, varIdgnfX]
+      procIdPgnf1 = procIdGen "P$gnf1" [chanIdA] [varIdPgnf1Y, varIdPgnf1X]
 
       procInstP = procInst procIdP [chanIdA] [vexprX]
       
       procDefP = ProcDef [chanIdA] [varIdY] (actionPref actOfferAx (guard  (cstrEqual vexprY vexpr1) procInstP))
       procDefP' = ProcDef [chanIdA] [varIdY] (actionPref actOfferAx (procInst procIdPgnf1 [chanIdA] [vexprY, vexprX]))
-      procDefPgnf1 = ProcDef [chanIdA] [varIdgnfY, varIdgnfX] (actionPref actOfferAx {constraint = cstrEqual vexprgnfY vexpr1} 
-                                                            (procInst procIdPgnf1 [chanIdA] [vexprgnfX, vexprX]))            
+      procDefPgnf1 = ProcDef [chanIdA] [varIdPgnf1Y, varIdPgnf1X] (actionPref actOfferAx {constraint = cstrEqual vexprPgnf1Y vexpr1} 
+                                                            (procInst procIdPgnf1 [chanIdA] [vexprPgnf1X, vexprX]))            
 
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
       procDefs'' = Map.fromList  [ (procIdP, procDefP')
@@ -528,7 +537,7 @@ testGuardLoop2 = TestCase $
 -- P[A](z) :=       A?x >-> A?y >-> P$pre1(z,x,y)
 --              ##  Q[A]()
 -- Q[A]() := A?x >-> STOP 
--- P$pre1(P$A$pre1$z, P$A$pre1$x, P$A$pre1$y) := P[A](0) ## P[A](1)
+-- P$pre1(P$pre1$z, P$pre1$x, P$pre1$y) := P[A](0) ## P[A](1)
 -- 
 -- remarks:
 -- the GNF translation of P will create a new ProcDef for part of the first summand: A?y >-> P$pre1(z,x,y)
@@ -542,8 +551,8 @@ testGuardLoop2 = TestCase $
 -- P[A](z) :=       A?x >-> P$gnf1[A](z,x)
 --              ##  A?x >-> STOP                    -- Q[A]() was instantiated
 -- Q[A]() := A?x >-> STOP 
--- P$gnf1[A](z,x) := A?y >-> P$pre1(z,x,y)
--- P$pre1(P$A$pre1$z, P$A$pre1$x, P$A$pre1$y) := 
+-- P$gnf1[A](P$gnf1$z,P$gnf1$x) := A?y >-> P$pre1(P$gnf1$z,P$gnf1$x,y)
+-- P$pre1(P$pre1$z, P$pre1$x, P$pre1$y) := 
 --                  A?x >-> P$gnf1[A](0,x)          -- P[A](0) was instantiated
 --              ##  A?x >-> STOP                    -- cont'd...
 --              ##  A?x >-> P$gnf1[A](1,x)          -- P[A](1) was instantiated
@@ -574,42 +583,18 @@ testNoPrematureSubstitution = TestCase $
 
 
     -- translated:
-    
-    procIdPgnf1 = procIdGen "P$gnf1" [chanIdA] [varIdZ, varIdX]
-    -- procIdPpre1 = procIdGen "P$pre1" [chanIdA] [varIdPpre1Z, varIdPpre1X, varIdPpre1Y]
-    procIdPpre1 = procIdGen "P$pre1" [chanIdA] [varIdZ, varIdX, varIdY]
-    -- varIdPpre1X :: VarId
-    -- varIdPpre1X = VarId (T.pack "P$A$pre1$x") 33 intSort
-    -- varIdPpre1Y :: VarId
-    -- varIdPpre1Y = VarId (T.pack "P$A$pre1$y") 33 intSort
-    -- varIdPpre1Z :: VarId
-    -- varIdPpre1Z = VarId (T.pack "P$A$pre1$z") 33 intSort
-    
-    -- vexprPpre1X :: VExpr
-    -- vexprPpre1X = cstrVar varIdPpre1X
-    -- vexprPpre1Y :: VExpr
-    -- vexprPpre1Y = cstrVar varIdPpre1Y
-    -- vexprPpre1Z :: VExpr
-    -- vexprPpre1Z = cstrVar varIdPpre1Z
 
--- becomes after GNF:
--- P[A](z) :=       A?x >-> P$gnf1[A](z,x)
---              ##  A?x >-> STOP                    -- Q[A]() was instantiated
--- Q[A]() := A?x >-> STOP 
--- P$gnf1[A](z,x) := A?y >-> P$pre1(z,x,y)
--- P$pre1(P$A$pre1$z, P$A$pre1$x, P$A$pre1$y) := 
---                  A?x >-> P$gnf1[A](0,x)          -- P[A](0) was instantiated
---              ##  A?x >-> STOP                    -- cont'd...
---              ##  A?x >-> P$gnf1[A](1,x)          -- P[A](1) was instantiated
---              ##  A?x >-> STOP                    -- cont'd...
--- 
--- with procInst = P[A](0)
+
+
+    procIdPgnf1 = procIdGen "P$gnf1" [chanIdA] [varIdPgnf1Z, varIdPgnf1X]
+    procIdPpre1 = procIdGen "P$pre1" [chanIdA] [varIdPpre1Z, varIdPpre1X, varIdPpre1Y]
+
     procDefP' = ProcDef [chanIdA] [varIdZ] (choice $ Set.fromList [(actionPref actOfferAx ( procInst procIdPgnf1 [chanIdA] [vexprZ, vexprX])),
                                                                      (actionPref actOfferAx stop)])
-    procDefPgnf1 = ProcDef [chanIdA] [varIdZ, varIdX] (actionPref actOfferAy (procInst procIdPpre1 [chanIdA] [vexprZ, vexprX, vexprY]))
+    procDefPgnf1 = ProcDef [chanIdA] [varIdPgnf1Z, varIdPgnf1X] 
+                            (actionPref actOfferAy (procInst procIdPpre1 [chanIdA] [vexprPgnf1Z, vexprPgnf1X, vexprY]))
     
-    -- procDefPpre1 = ProcDef [chanIdA] [varIdPpre1Z, varIdPpre1X, varIdPpre1Y] 
-    procDefPpre1 = ProcDef [chanIdA] [varIdZ, varIdX, varIdY] 
+    procDefPpre1 = ProcDef [chanIdA] [varIdPpre1Z, varIdPpre1X, varIdPpre1Y] 
                         (choice $ Set.fromList [
                                 (actionPref actOfferAx (procInst procIdPgnf1 [chanIdA] [vexpr0, vexprX])),
                                 (actionPref actOfferAx stop),
@@ -632,8 +617,8 @@ testNoPrematureSubstitution = TestCase $
 --
 -- becomes after GNF:
 -- P[A,B]() := A?x >-> P$gnf1(x)
--- P$gnf1[A,B](x) := B!1 >-> P$pre1[A,B](x)
--- P$pre1[A,B](x) := (A!1 >->STOP) ## (A?x >->STOP)
+-- P$gnf1[A,B](P$gnf1$x) := B!1 >-> P$pre1[A,B](P$gnf1$x)
+-- P$pre1[A,B](P$pre1$x) := (A!1 >->STOP) ## (A?x >->STOP)
 testNamingClash :: Test
 testNamingClash = TestCase $
    assertBool "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash"  $ eqProcDefs procDefs'' procDefsRes
@@ -641,15 +626,15 @@ testNamingClash = TestCase $
       (procDefsRes, _gnfTodo) = (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
 
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
-      procIdPgnf1 = procIdGen "P$gnf1" [chanIdA, chanIdB] [varIdX]
-      procIdPpre1 = procIdGen "P$pre1" [chanIdA, chanIdB] [varIdX]
+      procIdPgnf1 = procIdGen "P$gnf1" [chanIdA, chanIdB] [varIdPgnf1X]
+      procIdPpre1 = procIdGen "P$pre1" [chanIdA, chanIdB] [varIdPpre1X]
       choice'= choice $ Set.fromList [actionPref actOfferA1 stop, actionPref actOfferAx stop]
       
       procDefP = ProcDef [chanIdA, chanIdB] [] (actionPref actOfferAx (actionPref actOfferB1 choice'))
 
       procDefP' = ProcDef [chanIdA, chanIdB] [] (actionPref actOfferAx (procInst procIdPgnf1 [chanIdA, chanIdB] [vexprX]))
-      procDefPgnf1 = ProcDef [chanIdA, chanIdB] [varIdX] (actionPref actOfferB1 (procInst procIdPpre1 [chanIdA, chanIdB] [vexprX]))
-      procDefPpre1 = ProcDef [chanIdA, chanIdB] [varIdX] choice'
+      procDefPgnf1 = ProcDef [chanIdA, chanIdB] [varIdPgnf1X] (actionPref actOfferB1 (procInst procIdPpre1 [chanIdA, chanIdB] [vexprPgnf1X]))
+      procDefPpre1 = ProcDef [chanIdA, chanIdB] [varIdPpre1X] choice'
 
       procDefs' = Map.fromList  [ (procIdP, procDefP) ]
 

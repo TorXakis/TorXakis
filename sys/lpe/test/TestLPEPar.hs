@@ -1771,9 +1771,9 @@ testMultiSeq1 = TestCase $
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
       varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$x") 33 intSort
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
       varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$x") 33 intSort
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx
@@ -1978,9 +1978,9 @@ testMultiSeq2 = TestCase $
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
       varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$x") 33 intSort
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
       varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$x") 33 intSort
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx
@@ -2186,9 +2186,9 @@ testMultiSeq3 = TestCase $
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
       varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$x") 33 intSort
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
       varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$x") 33 intSort
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx
@@ -2389,9 +2389,9 @@ testMultiSeq4 = TestCase $
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
       varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$x") 33 intSort
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
       varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$x") 33 intSort
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx

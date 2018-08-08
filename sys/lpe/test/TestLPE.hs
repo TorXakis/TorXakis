@@ -24,10 +24,11 @@ import qualified Data.Text         as T
 import VarId
 import ConstDefs
 import ValExpr
+import TxsShow
 
 import LPEfunc
 
--- import Debug.Trace
+import Debug.Trace
 ---------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------
@@ -785,12 +786,12 @@ testChannelSwitch = TestCase $
 -- P[A,B](s) := A?x >-> B!s >-> STOP
 -- becomes with GNF:
 -- P[A,B](s) := A?x >-> P$gnf1[A,B](s,x)
--- P$gnf1[A,B](s,x) := B!s >-> STOP
+-- P$gnf1[A,B](P$gnf1$s,P$gnf1$x) := B!s >-> STOP
 -- with procInst = P[A,B](1)
 -- becomes
--- LPE_P[A,B](pc$P, P$A$B$s, P$gnf1$A$B$s, P$gnf1$A$B$x) :=
+-- LPE_P[A,B](pc$P, P$A$B$s, P$gnf1$A$B$P$gnf1$s, P$gnf1$A$B$P$gnf1$x) :=
 --       A?A1 [pc$P == 0] >-> LPE_P[A,B](1, P$A$B$s, P$A$B$s, A1)
---    ## B?B1 [pc$P == 1, B1 ==  P$gnf1$A$B$s] >-> LPE_P[A,B](-1, ANY, ANY, ANY)
+--    ## B?B1 [pc$P == 1, B1 ==  P$gnf1$A$B$P$gnf1$s] >-> LPE_P[A,B](-1, ANY, ANY, ANY)
 -- with procInst = LPE_P[A,B](0,1,ANY,ANY)
 testMultiAction :: Test
 testMultiAction = TestCase $
@@ -815,8 +816,8 @@ testMultiAction = TestCase $
 
       procIdPlpe = procIdGen "LPE_P" [chanIdA, chanIdB] [varIdPcP, varIdPABs, varIdPgnf1ABs, varIdPgnf1ABx]
       varIdPABs = VarId (T.pack "P$A$B$s") 33 intSort
-      varIdPgnf1ABs = VarId (T.pack "P$gnf1$A$B$s") 33 intSort
-      varIdPgnf1ABx = VarId (T.pack "P$gnf1$A$B$x") 33 intSort
+      varIdPgnf1ABs = VarId (T.pack "P$gnf1$A$B$P$gnf1$s") 33 intSort
+      varIdPgnf1ABx = VarId (T.pack "P$gnf1$A$B$P$gnf1$x") 33 intSort
 
       vexprPABs = cstrVar varIdPABs
       vexprPgnf1ABs = cstrVar varIdPgnf1ABs
@@ -896,25 +897,25 @@ testChannelInstantiation = TestCase $
 -- with procInst P[A]()
 -- first preGNF
 -- P[A]() := A?x >-> P$pre1[A](x)
--- P$pre1[A](x) := A!x >-> STOP || A!x >-> STOP
+-- P$pre1[A](P$pre1$x) := A!P$pre1$x >-> STOP || A!P$pre1$x >-> STOP
 -- then parallel translation:
--- P$pre1[A](op1$pc$P$pre1$op1, op1$P$pre1$x, op2$pc$P$pre1$op2, op2$P$pre1$x) :=
+-- P$pre1[A](op1$pc$P$pre1$op1, op1$P$pre1$P$pre1$x, op2$pc$P$pre1$op2, op2$P$pre1$P$pre1$x) :=
 --   A?A1 [op1$pc$P$pre1$op1 == 0, op2$pc$P$pre1$op2 == 0,
---         A1 == op1$P$pre1$x, A1 == op2$P$pre1$x] >->  P$pre1[A](-1, ANY, -1, ANY)
+--         A1 == op1$P$pre1$P$pre1$x, A1 == op2$P$pre1$P$pre1$x] >->  P$pre1[A](-1, ANY, -1, ANY)
 --  with P$pre1[A](0, x, 0, x) // which is put into P[A]() !!!
 
 -- LPE of P becomes:
--- P[A](pc$P, P$pre1$A$op1$pc$P$pre1$op1, P$pre1$A$op1$P$pre1$op1$A$x, P$pre1$A$op2$pc$P$pre1$op2, P$pre1$A$op2$P$pre1$op2$A$x) :=
---    A?A1 [pc$P == 0] >-> P[A](1, x, 0, x, 0)
+-- P[A](pc$P, P$pre1$A$op1$pc$P$pre1$op1, P$pre1$A$op1$P$pre1$op1$A$P$pre1$x, P$pre1$A$op2$pc$P$pre1$op2, P$pre1$A$op2$P$pre1$op2$A$P$pre1$x) :=
+--    A?A1 [pc$P == 0] >-> P[A](1, A1, 0, A1, 0)
 -- ## A?A1 [pc$P == 1,
 --          P$pre1$A$op1$pc$P$pre1$op1 == 0, P$pre1$A$op2$pc$P$pre1$op2 == 0,
---          A1 == P$pre1$A$op1$P$pre1$x, A1 == P$pre1$A$op2$P$pre1$x] >->  P$pre1[A](1, -1, ANY, -1, ANY)
+--          A1 == P$pre1$A$op1$P$pre1$P$pre1$x, A1 == P$pre1$A$op2$P$pre1$P$pre1$x] >->  P$pre1[A](1, -1, ANY, -1, ANY)
 --    // note that pc$P is set to 1, but the pc=1 for each operand makes sure, the STOP is translated correctly
 -- resulting procInst is put in the original place in preGNF!!
 -- with procInst: P[A](0, ANY, ANY, ANY, ANY)
 
 -- description of the param names:
-    --  P$pre1$A$ op1$  P$pre1$op1$A$x
+    --  P$pre1$A$ op1$  P$pre1$op1$A$P$pre1$x
     --                  name after LPE of left operator: temporary ProcId = P$pre1$op1!
     --                  full process name + var name
     --            made unique during parallel translation: prefix of operator nr
@@ -923,8 +924,9 @@ testChannelInstantiation = TestCase $
 testLPEPar :: Test
 testLPEPar = TestCase $
    -- assertEqual "test LPEPar integration"  (Just (procInst', procDefP')) (lpeTransformFunc procInst'' procDefs')
-   assertBool "test LPEPar integration" $ eqProcDef (Just (procInst', procDefP')) res
+   assertBool "test LPEPar integration" $ trace ("\n\n expected: "  ++ pshow (procInst', DefProc procDefP') ++ "\n\ngot: " ++ pshow (res1, DefProc res2)) $ eqProcDef (Just (procInst', procDefP')) res
    where
+      (Just (res1, res2)) = res
       res = lpeTransformFunc procInst'' procDefs'
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
@@ -1803,5 +1805,5 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
                         , TestLabel "lpe guard hide" testLPEGuardHide
                         , TestLabel "lpe guard enable" testLPEGuardEnable
 
-                        --, TestLabel "multi chanoffer translation" testMultiChanOffer
+                        -- , TestLabel "multi chanoffer translation" testMultiChanOffer
                         ]
