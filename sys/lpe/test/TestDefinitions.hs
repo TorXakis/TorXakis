@@ -75,12 +75,12 @@ varIdPgnf1Y = VarId (T.pack "P$gnf1$y") 33 intSort
 varIdPgnf1Z :: VarId
 varIdPgnf1Z = VarId (T.pack "P$gnf1$z") 33 intSort
 
--- vexprPpre1X :: VExpr
--- vexprPpre1X = cstrVar varIdPpre1X
--- vexprPpre1Y :: VExpr
--- vexprPpre1Y = cstrVar varIdPpre1Y
--- vexprPpre1Z :: VExpr
--- vexprPpre1Z = cstrVar varIdPpre1Z
+vexprPpre1X :: VExpr
+vexprPpre1X = cstrVar varIdPpre1X
+vexprPpre1Y :: VExpr
+vexprPpre1Y = cstrVar varIdPpre1Y
+vexprPpre1Z :: VExpr
+vexprPpre1Z = cstrVar varIdPpre1Z
 vexprPgnf1X :: VExpr
 vexprPgnf1X = cstrVar varIdPgnf1X
 vexprPgnf1Y :: VExpr

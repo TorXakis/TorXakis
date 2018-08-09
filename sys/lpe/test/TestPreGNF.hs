@@ -4,8 +4,6 @@ Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
   
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module TestPreGNF
 (
@@ -18,11 +16,16 @@ import TranslatedProcDefs
 import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import qualified Data.Text         as T
+import VarId
 
 import TxsDefs
+import ValExpr
 
 import LPEfunc
 import TestDefinitions
+
+-- import Debug.Trace
 
 ---------------------------------------------------------------------------
 -- Tests
@@ -189,7 +192,9 @@ testChoice4 = TestCase $
 -- P$pre1$pre1[A,B](P$pre1$pre1$x,P$pre1$pre1$y)    = P[A,B]() ## A?x >-> STOP
 testChoice5 :: Test
 testChoice5 = TestCase $
-   assertBool "choice (on lower level) is substituted 2"  $ trace ("\n\n expected: " ++ show procDefs'' ++ "\n\n got: " ++ show res ) $ eqProcDefs procDefs'' res 
+   assertBool "choice (on lower level) is substituted 2" 
+   -- $ trace ("\n\n expected: " ++ show procDefs'' ++ "\n\n got: " ++ show res ) 
+   $ eqProcDefs procDefs'' res 
    where
       res = (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
@@ -231,7 +236,7 @@ testGuardStop :: Test
 testGuardStop = TestCase $
    let procIdP = procIdGen "P" [] []
        procDefs' = Map.fromList [(procIdP, ProcDef [chanIdA] [] 
-                                        (guard (cstrEqual vexprX vexpr1 )
+                                        (guard (cstrEqual vexprX int1 )
                                                 stop))]
    in  assertBool "testGuardStop" $ eqProcDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
 
@@ -241,7 +246,7 @@ testGuardProcInst = TestCase $
       let procIdP = procIdGen "P" [] []
           procInstP = procInst procIdP [] []
           procDefs' = Map.fromList [(procIdP, ProcDef [] [] 
-                                           (guard (cstrEqual vexprX vexpr1 )
+                                           (guard (cstrEqual vexprX int1 )
                                                    procInstP))]
       in  assertBool "testGuardProcInst" $ eqProcDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
 
@@ -250,7 +255,7 @@ testGuardActionPref :: Test
 testGuardActionPref = TestCase $
       let procIdP = procIdGen "P" [] []
           procDefs' = Map.fromList [(procIdP, ProcDef [] [] 
-                                           (guard   (cstrEqual vexprX vexpr1 )
+                                           (guard   (cstrEqual vexprX int1 )
                                                     (actionPref actOfferAx stop) ))]
       in  assertBool "testGuardActionPref" $ eqProcDefs  procDefs' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
    
@@ -263,7 +268,7 @@ testActionPrefGuardProcInst = TestCase $
           procInstP = procInst procIdP [] []
           procDefs' = Map.fromList [(procIdP, ProcDef [] [] 
                                                 (actionPref actOfferAx 
-                                                    (guard   (cstrEqual vexprX vexpr1) procInstP)
+                                                    (guard   (cstrEqual vexprX int1) procInstP)
                                                 )
                                     )]
                                            
@@ -280,13 +285,13 @@ testGuardChoice :: Test
 testGuardChoice = TestCase $
       let procIdP = procIdGen "P" [] []
           procDefs' = Map.fromList [(procIdP, ProcDef [] [] 
-                                           (guard   (cstrEqual vexprX vexpr1 )
+                                           (guard   (cstrEqual vexprX int1 )
                                                     (choice $ Set.fromList [actionPref actOfferAx stop, stop]) ))]
           procDefs'' = Map.fromList [(procIdP, ProcDef [] [] 
                                         (choice $ Set.fromList [
-                                            (guard   (cstrEqual vexprX vexpr1 )
+                                            (guard   (cstrEqual vexprX int1 )
                                                      (actionPref actOfferAx stop)),
-                                            (guard   (cstrEqual vexprX vexpr1 )
+                                            (guard   (cstrEqual vexprX int1 )
                                                      stop)
                                             ]))]
       in assertBool "testGuardChoice" $ eqProcDefs  procDefs'' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
@@ -300,7 +305,7 @@ testGuardChoice = TestCase $
 -- testGuardPar = TestCase $
 --       let   procIdP = procIdGen "P" [] []
 --             procDefs' = Map.fromList [(procIdP, ProcDef [] [] 
---                                            (guard   (cstrEqual vexprX vexpr1 )
+--                                            (guard   (cstrEqual vexprX int1 )
 --                                                     ( parallel Set.empty [stop, stop])))]
 
 
@@ -312,7 +317,7 @@ testGuardChoice = TestCase $
 --             procIdPpre1 = procIdGen "P$pre1" [] [varIdOp1pcPpre1op1, varIdOp1pcPpre1op2]
 --             procInstPpre1 = procInst procIdPpre1 [] [int0, int0]
 --             procDefs'' = Map.fromList [(procIdP, ProcDef [] [] 
---                                                 (guard (cstrEqual vexprX vexpr1 )
+--                                                 (guard (cstrEqual vexprX int1 )
 --                                                         procInstPpre1)),
                                       
 --                                         (ProcId {ProcId.name = T.pack "P$pre1", ProcId.unid = 1, procchans = [], procvars = [],  procexit = NoExit},
