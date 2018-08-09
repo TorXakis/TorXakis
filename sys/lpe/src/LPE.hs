@@ -59,7 +59,6 @@ import Relabel (relabel)
 import Subst
 import SortOf
 
--- import Debug.Trace 
 
 -- ----------------------------------------------------------------------------------------- --
 -- Types :
@@ -827,13 +826,13 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
                 procInst' = procInst procIdNew chansInst paramsInst in
             actionPref actOffer procInst'
 
-        stepsUpdateProcInsts procs procToParams pcMap procIdNew _ (TxsDefs.view -> ActionPref actOffer procInst''@(TxsDefs.view -> ProcInst procIdInst' chansInst _paramsInst)) =
+        stepsUpdateProcInsts procs procToParams pcMap procIdNew chansInst2 (TxsDefs.view -> ActionPref actOffer procInst''@(TxsDefs.view -> ProcInst procIdInst' chansInst _paramsInst)) =
             let -- collect params AND channels from procs in the order they appear in procs
                 paramsNew = createParams procs procInst''
 
                 pcValue = fromMaybe (error "stepsUpdateProcInsts: no pc value found for given (ProcId, [ChanId]) (should be impossible)") (Map.lookup (procIdInst', chansInst) pcMap)
 
-                procInst' = procInst procIdNew chansInst ( cstrConst (Cint pcValue) : paramsNew) in
+                procInst' = procInst procIdNew chansInst2 ( cstrConst (Cint pcValue) : paramsNew) in
             actionPref actOffer procInst'
             where
                 createParams :: [Proc] -> BExpr -> [VExpr]
