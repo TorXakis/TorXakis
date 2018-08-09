@@ -1141,7 +1141,7 @@ txsLPE (Right modelid@(TxsDefs.ModelId modname _moduid))  =  do
              -> do lpe' <- txsLPE (Left bexpr)
                    lift $ hPrint stderr lpe'
                    case lpe' of
-                     Just (Left (procinst'@(TxsDefs.view -> TxsDefs.ProcInst{})))
+                     Just (Left procinst'@(TxsDefs.view -> TxsDefs.ProcInst{}))
                        -> do uid'   <- IOC.newUnid
                              tdefs' <- gets (IOC.tdefs . IOC.state)
                              let modelid' = TxsDefs.ModelId ("LPE_"<>modname) uid'

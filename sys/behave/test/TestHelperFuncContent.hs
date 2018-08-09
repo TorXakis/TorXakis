@@ -296,8 +296,8 @@ expectProcDef nm chans vars' exits content = TxsDefs.fromList [(  IdProc  (expec
 expectProcId :: String -> TypedElements -> TypedElements -> Maybe [String] -> ProcId
 expectProcId nm chans vars' exits = ProcId (T.pack nm)
                                      dontCareUnid
-                                     (toChanSort <$> (fromTypedElementsToChanIds chans))
-                                     (varsort <$> (fromTypedElementsToVarIds vars'))
+                                     (toChanSort <$> fromTypedElementsToChanIds chans)
+                                     (varsort <$> fromTypedElementsToVarIds vars')
                                      (fromMaybeTypeToMaybeSortIds exits)
 
 
