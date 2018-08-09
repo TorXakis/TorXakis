@@ -31,7 +31,7 @@ import qualified Data.String.Utils as Utils
 import           Data.Text         (Text)
 import qualified Data.Text         as T
 
-import           ConstDefs
+import           Constant
 import           CstrDef
 import           CstrId
 import           SMTHappy
@@ -63,7 +63,7 @@ lookupConstructor cstrMap sid n
 
 -- | convert an SMT expression to a ValExpr given a varName the varName is the
 -- name of a SMT identifier that refers to a SMT variable.
-smtValueToValExpr :: SMTValue -> Map.Map CstrId CstrDef -> SortId -> Either String Const
+smtValueToValExpr :: SMTValue -> Map.Map CstrId CstrDef -> SortId -> Either String Constant
 smtValueToValExpr (SMTBool b) _ srt
   =  if sortIdBool == srt
        then Right $ Cbool b
@@ -94,7 +94,7 @@ smtValueToValExpr (SMTConstructor cname argValues) cstrMap srt =
                                 (es, vexprArgs) = partitionEithers mexprArgs 
                               in
                                 case es of 
-                                    [] -> Right $ Cstr cstrid vexprArgs
+                                    [] -> Right $ Ccstr cstrid vexprArgs
                                     _  -> Left $ Utils.join "\n" es
                         else Left $ "TXS SMT2TXS smtValueToValExpr: Number of arguments mismatch " ++
                                       "in constructor " ++ show cname ++ " of sort " ++ show nameSort ++

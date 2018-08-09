@@ -35,7 +35,7 @@ import           System.IO
 import           System.Random
 import           System.Random.Shuffle
 
-import           ConstDefs
+import           Constant(Constant(Cint, Cregex))
 import           CstrDef
 import           CstrId
 import           SMT
@@ -82,7 +82,7 @@ randValExprsSolveTrueBins p freevars exprs  =
         pop
         return sp
     else do
-        lift $ hPutStrLn stderr "TXS RandTrueBins randValExprsSolveTrueBins: Not all added constraints are Bool\n"
+        liftIO $ hPutStrLn stderr "TXS RandTrueBins randValExprsSolveTrueBins: Not all added constraints are Bool\n"
         return UnableToSolve
   where
         combine :: (Variable v) => v -> SMT [Text] -> SMT [Text]
@@ -132,13 +132,13 @@ trueBool expr = do
 -- randomly draw values from multiple bins
 -- the size of the bins is controlled by the next function: either equal size, proportional larger, or exponential larger
 -- ---------------------------------------------------------------------
-values :: Int -> (Integer -> Integer) -> SMT [Integer]
+values :: Int -> (Integer -> Integer) -> IO [Integer]
 values n nxt = valueRecursive n 1 step
     where
-        valueRecursive :: Int -> Integer -> Integer -> SMT [Integer]
+        valueRecursive :: Int -> Integer -> Integer -> IO [Integer]
         valueRecursive 0 _ _ = return []
         valueRecursive n' lw hgh = do
-                r <- lift $ randomRIO (lw, hgh-1)
+                r <- randomRIO (lw, hgh-1)
                 rr <- valueRecursive (n'-1) hgh (nxt hgh)
                 return (r:rr)
 
@@ -148,8 +148,8 @@ toBins _ _ = []
 
 trueBins :: (Variable v) => ValExpr v -> Int -> (Integer -> Integer) -> SMT Text
 trueBins v n nxt = do
-    neg <- values n nxt
-    pos <- values n nxt
+    neg <- liftIO $ values n nxt
+    pos <- liftIO $ values n nxt
     let binSamples = reverse (map negate neg) ++ pos
     let orList = [ cstrLT v (cstrConst (Cint (head binSamples) ))
                  , cstrLE (cstrConst (Cint (last binSamples) )) v
@@ -181,15 +181,15 @@ high = 255
 range :: Text
 range = "[" <> toRegexString low <> "-" <> toRegexString high <> "]"
 
-trueCharRegex :: SMT Text
+trueCharRegex :: IO Text
 trueCharRegex = do
-    charId <- lift $ randomRIO (low, high)
+    charId <- randomRIO (low, high)
     case charId of
         x | x == low  -> return range
         x | x == high -> return $ "[" <> toRegexString high <> toRegexString low <> "-" <> toRegexString (high-1) <> "]"
         _             -> return $ "[" <> toRegexString charId <> "-" <> toRegexString high <> toRegexString low <> "-" <> toRegexString (charId-1) <> "]"
 
-trueCharsRegex :: Int -> SMT Text
+trueCharsRegex :: Int -> IO Text
 trueCharsRegex 0           = return ""
 trueCharsRegex n | n > 0   = do
     hd <- trueCharRegex
@@ -197,7 +197,7 @@ trueCharsRegex n | n > 0   = do
     return $ hd <> tl
 trueCharsRegex n          = error ("trueCharsRegex: Illegal argument n = " ++ show n)
 
-trueCharsRegexes :: Int -> SMT [Text]
+trueCharsRegexes :: Int -> IO [Text]
 trueCharsRegexes 0          = return [""]
 trueCharsRegexes n | n > 0  = do
     hd <- trueCharsRegex n
@@ -208,17 +208,14 @@ trueCharsRegexes n          = error ("trueCharsRegexes: Illegal argument n = " +
 trueStringLength :: (Variable v) => Int -> ValExpr v -> SMT Text
 trueStringLength n v = do
     let exprs = map (cstrEqual (cstrLength v) . cstrConst . Cint . toInteger ) [0..n] ++ [cstrGT (cstrLength v) (cstrConst (Cint (toInteger n)))]
-    shuffledOrList <- shuffleM exprs
-    stringList <- mapM valExprToString shuffledOrList
-    return $ "(or " <> T.intercalate " " stringList <> ") "
-
+    shuffleOrList exprs
+    
 trueStringRegex :: (Variable v) => Int -> ValExpr v -> SMT Text
 trueStringRegex n v = do
-    regexes <- trueCharsRegexes n
-    sregexes <- shuffleM (regexes <> [range <> "{"<> (T.pack . show) (n+1) <> ",}"])               -- Performance gain in problem solver? Use string length for length 0 and greater than n
-    let shuffledOrList = map (cstrStrInRe v . cstrConst . Cregex) sregexes
-    stringList <- mapM valExprToString shuffledOrList
-    return $ "(or " <> T.intercalate " " stringList <> ") "
+    regexes <- liftIO $ trueCharsRegexes n
+    let exprs = map (cstrStrInRe v . cstrConst . Cregex) (range <> "{" <> (T.pack . show) (n+1) <> ",}":regexes)
+                                -- Performance gain in problem solver? Use string length for length 0 and greater than n
+    shuffleOrList exprs
 
 trueString :: (Variable v) => ParamTrueBins -> ValExpr v -> SMT Text
 trueString p v =

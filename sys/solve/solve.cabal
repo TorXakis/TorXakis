@@ -19,6 +19,7 @@ library
   exposed-modules:      FreeVar
                       , RandPartition
                       , RandTrueBins
+                      , RandIncrementBins
                       , RandIncrementChoice
                       , RegexXSD2SMT
                       , SMT

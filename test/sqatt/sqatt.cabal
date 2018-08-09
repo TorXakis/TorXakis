@@ -41,7 +41,6 @@ library
                      , Examples.ReadWriteConflict
                      , Examples.Queue
                      , Examples.StimulusResponse
-                     , Integration.Any
                      , Integration.ConfigFile
                      , ExploreModels.ControlLoop
                      , ExploreModels.CustomersOrders

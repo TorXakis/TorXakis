@@ -17,7 +17,7 @@ import           Data.Maybe
 import qualified Data.Text           as T
 import           Test.HUnit
 
-import           ConstDefs
+import           Constant
 import           SortId
 import           ValExpr
 import           VarId
@@ -47,7 +47,7 @@ labelTestList = [
 -----------------------------------------------------
 -- Helper function
 -----------------------------------------------------
-getValues :: [VarId] -> SMT [Const]
+getValues :: [VarId] -> SMT [Constant]
 getValues vs = do
     resp <- getSolvable
     lift $ assertEqual "sat" Sat resp
@@ -58,9 +58,9 @@ getValues vs = do
 --    Trace.trace ("values = " ++ (show values)) $
     return values
 
-testPushPopTemplate :: ([VarId] -> [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()) ->
-                        EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId], [Const] -> SMT()) ->
-                                              [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()
+testPushPopTemplate :: ([VarId] -> [([VarId] -> [ValExpr VarId], [Constant] -> SMT())] -> SMT()) ->
+                        EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId], [Constant] -> SMT()) ->
+                                              [([VarId] -> [ValExpr VarId], [Constant] -> SMT())] -> SMT()
 testPushPopTemplate steps envDefs' types (createInitialAssertions,checkInitial) pps = do
     _ <- SMT.openSolver
     addDefinitions envDefs'
@@ -74,29 +74,29 @@ testPushPopTemplate steps envDefs' types (createInitialAssertions,checkInitial) 
     checkInitial popValues
     SMT.close
 
-pushAssertionsCheck :: [VarId] -> ([VarId] -> [ValExpr VarId]) -> ([Const] -> SMT()) -> SMT()
+pushAssertionsCheck :: [VarId] -> ([VarId] -> [ValExpr VarId]) -> ([Constant] -> SMT()) -> SMT()
 pushAssertionsCheck vs createAssertions check = do
         push
         addAssertions (createAssertions vs)
         pushValues <- getValues vs
         check pushValues
 
-testNestedPushPopTemplate :: EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId], [Const] -> SMT()) ->
-                                              [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()
+testNestedPushPopTemplate :: EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId], [Constant] -> SMT()) ->
+                                              [([VarId] -> [ValExpr VarId], [Constant] -> SMT())] -> SMT()
 testNestedPushPopTemplate = testPushPopTemplate nestedSteps
   where
-    nestedSteps :: [VarId] -> [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()
+    nestedSteps :: [VarId] -> [([VarId] -> [ValExpr VarId], [Constant] -> SMT())] -> SMT()
     nestedSteps _ [] = return ()
     nestedSteps vs ((createAssertions, check):xs) = do
         pushAssertionsCheck vs createAssertions check
         nestedSteps vs xs
         pop
 
-testSequentialPushPopTemplate :: EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId], [Const] -> SMT()) ->
-                                              [([VarId] -> [ValExpr VarId], [Const] -> SMT())] -> SMT()
+testSequentialPushPopTemplate :: EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId], [Constant] -> SMT()) ->
+                                              [([VarId] -> [ValExpr VarId], [Constant] -> SMT())] -> SMT()
 testSequentialPushPopTemplate = testPushPopTemplate (mapM_ . step)
     where
-        step :: [VarId] -> ([VarId] -> [ValExpr VarId], [Const] -> SMT()) -> SMT()
+        step :: [VarId] -> ([VarId] -> [ValExpr VarId], [Constant] -> SMT()) -> SMT()
         step vs (createAssertions, check) = do
             pushAssertionsCheck vs createAssertions check
             pop
@@ -104,7 +104,7 @@ testSequentialPushPopTemplate = testPushPopTemplate (mapM_ . step)
 ---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
-checkInt :: [Const] -> SMT()
+checkInt :: [Constant] -> SMT()
 checkInt [value] = case value of
     Cint _ -> lift $ assertBool "expected pattern" True
     _      -> lift $ assertBool "unexpected pattern" False
@@ -122,7 +122,7 @@ testPushAssertion = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empty M
         createAssertions [v] = [cstrLT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions _   = error "One variable in problem"
 
-        checkAssert :: [Const] -> SMT()
+        checkAssert :: [Constant] -> SMT()
         checkAssert [value] = case value of
             Cint x  -> lift $ assertBool ("expected pattern " ++ show x) (x < 0)
             _       -> lift $ assertBool "unexpected pattern" False
@@ -136,7 +136,7 @@ testPushAssertionPop = testSequentialPushPopTemplate (EnvDefs Map.empty Map.empt
         createAssertions [v] = [cstrGT (cstrVar v) (cstrConst (Cint 123))]
         createAssertions _   = error "One variable in problem"
 
-        checkAssert :: [Const] -> SMT()
+        checkAssert :: [Constant] -> SMT()
         checkAssert [value] = case value of
             Cint x  -> lift $ assertBool ("expected pattern " ++ show x) (x>123)
             _       -> lift $ assertBool "unexpected pattern" False
@@ -150,7 +150,7 @@ testPushAssertionPopAssertion = testSequentialPushPopTemplate (EnvDefs Map.empty
         createAssertions1 [v] = [cstrLT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions1 _   = error "One variable in problem"
 
-        checkAssert1 :: [Const] -> SMT()
+        checkAssert1 :: [Constant] -> SMT()
         checkAssert1 [value]    = case value of
             Cint x -> lift $ assertBool ("expected pattern " ++ show x) (x<0)
             _      -> lift $ assertBool "unexpected pattern" False
@@ -160,7 +160,7 @@ testPushAssertionPopAssertion = testSequentialPushPopTemplate (EnvDefs Map.empty
         createAssertions2 [v] = [cstrGT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions2 _   = error "One variable in problem"
 
-        checkAssert2 :: [Const] -> SMT()
+        checkAssert2 :: [Constant] -> SMT()
         checkAssert2 [value]    = case value of
             Cint x -> lift $ assertBool ("expected pattern " ++ show x) (x>0)
             _      -> lift $ assertBool "unexpected pattern" False
@@ -178,7 +178,7 @@ testNestedRanges = testNestedPushPopTemplate (EnvDefs Map.empty Map.empty Map.em
                                  ]
         createAssertions _ _   = error "One variable in problem"
 
-        checkAssert :: Integer -> [Const] -> SMT()
+        checkAssert :: Integer -> [Constant] -> SMT()
         checkAssert n [value] = case value of
             Cint x  -> lift $ assertBool ("expected pattern:\nx = " ++ show x ++ "\ny = " ++ show y ++ "\nn= " ++ show n) (y-n < x && x < y+n)
             _       -> lift $ assertBool "unexpected pattern" False

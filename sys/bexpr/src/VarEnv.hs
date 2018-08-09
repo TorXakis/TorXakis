@@ -16,7 +16,7 @@ module VarEnv
 )
 where
 import qualified Data.Map as Map
-import ConstDefs
+import Constant
 import ValExpr
 import VarId
 
@@ -28,7 +28,7 @@ type  VExpr         = ValExpr VarId
 
 type  VEnv          = VarEnv VarId VarId
 
-type  WEnv v        = Map.Map v Const
+type  WEnv v        = Map.Map v Constant
 -- ----------------------------------------------------------------------------------------- --
 --
 -- ----------------------------------------------------------------------------------------- --

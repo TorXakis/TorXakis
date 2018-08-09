@@ -24,10 +24,13 @@ import GHC.Generics (Generic)
 import Control.DeepSeq
 
 import FuncId
+import Id (Resettable)
 
 -- | A constructor has a `isCstr` functions, and a list of accessors functions.
 data  CstrDef       = CstrDef    FuncId [FuncId]       -- constructor_check [field_selectors]
      deriving (Eq,Ord,Read,Show, Generic, NFData)
+
+instance Resettable CstrDef
 
 -- ----------------------------------------------------------------------------------------- --
 --

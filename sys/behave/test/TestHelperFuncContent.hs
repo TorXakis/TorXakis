@@ -15,7 +15,7 @@ import qualified Data.Text         as T
 import           Data.Tuple        (fst, snd)
 
 import           ChanId
-import           ConstDefs
+import           Constant
 import           CstrDef
 import           CstrId
 import           FreeMonoidX
@@ -27,9 +27,8 @@ import           Sigs
 import           SortDef
 import           SortId
 import           StdTDefs
-import           TxsAlex
+import           TorXakis.Compiler (compileLegacy)
 import           TxsDefs           hiding (vexpr)
-import           TxsHappy
 import           TxsShow
 import           ValExpr
 import           VarId
@@ -192,7 +191,7 @@ toTorXakisDefs (_, b, _) = b
 
 parseTorXakis :: String -> TxsDefs
 parseTorXakis txt = -- Trace.trace ("txt = " ++ txt)
-                    let parserOutput = txsParser (txsLexer txt) in
+                    let parserOutput = compileLegacy txt in
                         -- Trace.trace ("parser output = " ++ show(parserOutput)) $
                             toTorXakisDefs parserOutput
 

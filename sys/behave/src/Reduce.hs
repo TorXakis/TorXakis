@@ -28,7 +28,7 @@ import qualified Data.Map  as Map
 import qualified Data.Set  as Set
 
 import           BTree
-import           ConstDefs
+import           Constant
 import qualified EnvBTree  as IOB
 import           Subst
 import           TxsDefs

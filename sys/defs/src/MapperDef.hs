@@ -15,6 +15,7 @@ import           GHC.Generics    (Generic)
 
 import           BehExprDefs
 import           ChanId
+import           ValExpr         (Resettable)
 
 -- | A mapper maps actions to actions.
 --
@@ -31,3 +32,5 @@ data MapperDef = MapperDef
     , syncChs   :: [Set.Set ChanId] -- ^ Synchronization channels.
     , bexpr     :: BExpr            -- ^ Behavior expression.
     } deriving (Eq, Ord, Read, Show, Generic, NFData)
+
+instance Resettable MapperDef

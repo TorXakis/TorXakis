@@ -23,13 +23,13 @@ where
 
 import qualified Data.Map  as Map
 
-import ConstDefs
+import Constant
 
 -- ----------------------------------------------------------------------------------------- --
 -- SMT definitions
 
 
-type  Solution v       =  Map.Map v Const
+type  Solution v       =  Map.Map v Constant
 
 data  SolvableProblem  = Sat
                        | Unsat

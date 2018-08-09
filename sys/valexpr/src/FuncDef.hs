@@ -23,6 +23,8 @@ where
 import GHC.Generics (Generic)
 import Control.DeepSeq
 
+import Id (Resettable)
+
 import ValExprDefs
 
 -- | Data structure to store the information of a Function Definition:
@@ -30,6 +32,8 @@ import ValExprDefs
 -- * A body (possibly using the variables)
 data  FuncDef v      = FuncDef    [v] (ValExpr v)
      deriving (Eq,Ord,Read,Show, Generic, NFData)
+
+instance (Resettable v, Ord v) => Resettable (FuncDef v)
 
 -- ----------------------------------------------------------------------------------------- --
 --

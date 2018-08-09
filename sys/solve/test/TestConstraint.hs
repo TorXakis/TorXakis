@@ -23,7 +23,7 @@ import           Text.Regex.TDFA
 import           Test.HUnit
 
 -- general Torxakis imports
-import           ConstDefs
+import           Constant
 import           CstrDef
 import           CstrId
 import           FreeMonoidX
@@ -137,7 +137,7 @@ testTemplateSat createAssertions = do
     lift $ assertEqual "sat" Sat resp
     SMT.close
 
-testTemplateValue :: EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId]) -> ([Const] -> SMT()) -> SMT()
+testTemplateValue :: EnvDefs -> [SortId] -> ([VarId] -> [ValExpr VarId]) -> ([Constant] -> SMT()) -> SMT()
 testTemplateValue envDefs' types createAssertions check = do
     _ <- SMT.openSolver
     addDefinitions envDefs'
@@ -173,14 +173,14 @@ testAdd = testTemplateSat [cstrEqual (cstrConst (Cint 12)) (cstrSum (fromListT [
 testNoVariables :: SMT()
 testNoVariables = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [] (const []) check
     where
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [] = lift $ assertBool "expected pattern" True
         check _  = error "No variable in problem"
 
 testBool :: SMT()
 testBool = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdBool] (const []) check
     where
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value]   = case value of
             Cbool _b -> lift $ assertBool "expected pattern" True
             _        -> lift $ assertBool "unexpected pattern" False
@@ -193,7 +193,7 @@ testBoolTrue = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortId
         createAssertions [v] = [cstrVar v]
         createAssertions _   = error "One variable in problem"
 
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value] = case value of
             Cbool b -> lift $ assertBool "expected pattern" b
             _       -> lift $ assertBool "unexpected pattern" False
@@ -206,7 +206,7 @@ testBoolFalse = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortI
         createAssertions [v] = [cstrNot (cstrVar v)]
         createAssertions _   = error "One variable in problem"
 
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value] = case value of
             Cbool b -> lift $ assertBool "expected pattern" (not b)
             _       -> lift $ assertBool "unexpected pattern" False
@@ -216,7 +216,7 @@ testBoolFalse = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortI
 testInt :: SMT()
 testInt = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdInt] (const []) check
     where
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value] = case value of
                             Cint _  -> lift $ assertBool "expected pattern" True
                             _       -> lift $ assertBool "unexpected pattern" False
@@ -231,7 +231,7 @@ testIntNegative = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sor
         createAssertions [v] = [cstrLT (cstrVar v) (cstrConst (Cint 0))]
         createAssertions _   = error "One variable in problem"
 
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value]   = case value of
                             Cint x  -> lift $ assertBool ("expected pattern" ++ show x) (x < 0)
                             _       -> lift $ assertBool "unexpected pattern" False
@@ -261,11 +261,11 @@ conditionalIntDef = EnvDefs (Map.fromList [(conditionalIntSortId, SortDef)]) (Ma
 testConditionalInt :: SMT()
 testConditionalInt = testTemplateValue conditionalIntDef [conditionalIntSortId] (const []) check
     where
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value] = case value of
-            Cstr x []       | x == absentCstrId  -> lift $ assertBool "expected pattern" True
-            Cstr x [Cint _] | x == presentCstrId -> lift $ assertBool "expected pattern" True
-            _                                    -> lift $ assertBool "unexpected pattern" False
+            Ccstr x []       | x == absentCstrId  -> lift $ assertBool "expected pattern" True
+            Ccstr x [Cint _] | x == presentCstrId -> lift $ assertBool "expected pattern" True
+            _                                     -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"
 
 
@@ -276,10 +276,10 @@ testConditionalIntIsAbsent = testTemplateValue conditionalIntDef [conditionalInt
         createAssertions [v] = [cstrIsCstr absentCstrId (cstrVar v)]
         createAssertions _   = error "One variable in problem"
 
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value]   = case value of
-            Cstr x [] | x == absentCstrId  -> lift $ assertBool "expected pattern" True
-            _                              -> lift $ assertBool "unexpected pattern" False
+            Ccstr x [] | x == absentCstrId  -> lift $ assertBool "expected pattern" True
+            _                               -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"
 
 
@@ -290,9 +290,9 @@ testConditionalIntIsPresent = testTemplateValue conditionalIntDef [conditionalIn
         createAssertions [v] = [cstrIsCstr presentCstrId (cstrVar v)]
         createAssertions _   = error "One variable in problem"
 
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value] = case value of
-            Cstr x [Cint _] | x == presentCstrId    -> lift $ assertBool "expected pattern" True
+            Ccstr x [Cint _] | x == presentCstrId   -> lift $ assertBool "expected pattern" True
             _                                       -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"
 
@@ -311,14 +311,14 @@ testConditionalIntPresentValue = testTemplateValue conditionalIntDef [conditiona
                                   ]
         createAssertions _   = error "One variable in problem"
 
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value] = case value of
-            Cstr c [Cint x] | c == presentCstrId    -> lift $ assertBool "expected pattern" (x > boundary)
+            Ccstr c [Cint x] | c == presentCstrId   -> lift $ assertBool "expected pattern" (x > boundary)
             _                                       -> lift $ assertBool "unexpected pattern" False
         check _         = error "One variable in problem"
 
 
-check3Different :: [Const] -> SMT()
+check3Different :: [Constant] -> SMT()
 check3Different [v1, v2, v3]    = do
                                     lift $ assertBool "value1 != value2" (v1 /= v2)
                                     lift $ assertBool "value1 != value3" (v1 /= v3)
@@ -391,7 +391,7 @@ testFunctions = do
                                         ]
         createAssertions _   = error "Three variables in problem"
 
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [b1, b2, i] = do
                                 lift $ assertEqual "booleans equal" b1 b2
                                 lift $ assertEqual "i equal" const2  (cstrConst i)
@@ -400,7 +400,7 @@ testFunctions = do
 testString :: SMT()
 testString = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] (const []) check
     where
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value]   = case value of
                             Cstring _   -> lift $ assertBool "expected pattern" True
                             _           -> lift $ assertBool "unexpected pattern" False
@@ -413,7 +413,7 @@ testStringEquals str = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty)
         createAssertions [v] = [cstrEqual (cstrVar v) (cstrConst (Cstring str))]
         createAssertions _   = error "One variable in problem"
 
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value] = case value of
                             Cstring s   -> lift $ assertBool ("expected pattern s = " ++ T.unpack s)
                                                              (s == str)
@@ -424,10 +424,10 @@ testStringLength :: Int -> SMT()
 testStringLength n = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [sortIdString] createAssertions check
     where
         createAssertions :: [VarId] -> [ValExpr VarId]
-        createAssertions [v] = [cstrEqual (cstrConst (Cint (toInteger n))) (cstrLength (cstrVar v))]
+        createAssertions [v] = [cstrEqual (cstrConst (Cint (Prelude.toInteger n))) (cstrLength (cstrVar v))]
         createAssertions _   = error "One variable in problem"
 
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value] = case value of
                             Cstring s   -> lift $ assertBool "expected pattern" (n == T.length s)
                             _           -> lift $ assertBool "unexpected pattern" False
@@ -441,7 +441,7 @@ testRegex regexStr = testTemplateValue (EnvDefs Map.empty Map.empty Map.empty) [
         createAssertions [v] = [cstrStrInRe (cstrVar v) (cstrConst (Cregex (T.pack regexStr)))]
         createAssertions _   = error "One variable in problem"
 
-        check :: [Const] -> SMT()
+        check :: [Constant] -> SMT()
         check [value] = case value of
                             Cstring s   -> let haskellRegex = xsd2posix . T.pack $ regexStr in
                                                 lift $ assertBool ("expected pattern: smt solution " ++ T.unpack s ++ "\nXSD pattern " ++ regexStr ++ "\nHaskell pattern " ++ T.unpack haskellRegex)

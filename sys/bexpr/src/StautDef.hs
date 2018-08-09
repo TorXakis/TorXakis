@@ -18,7 +18,7 @@ import           Data.Monoid
 
 import           BehExprDefs
 import           ChanId
-import           ConstDefs
+import           Constant
 import           FuncDef
 import           FuncId
 import           Id

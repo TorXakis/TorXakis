@@ -3,5 +3,5 @@
 @REM See LICENSE at root directory of this repository.
 
 @ECHO OFF
-call torxakisPort 4567 benchmark.txs < run.cmd
+call torxakis benchmark.txs < run.cmd
 more benchmarkresult.log
