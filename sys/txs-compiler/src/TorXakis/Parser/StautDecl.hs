@@ -65,8 +65,7 @@ stautItemP
           ofrs <- actOfferP
           upds <- stUpdatesP
           txsSymbol "->"
-          dst <- stateRefP
-          return $ Transition src ofrs upds dst
+          Transition src ofrs upds <$> stateRefP
 
 
 statesDecP :: TxsParser StateDecl

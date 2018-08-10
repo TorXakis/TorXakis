@@ -1289,16 +1289,16 @@ testLPEGuardStop = TestCase $
             procIdP = procIdGen "P" [chanIdA] []
       
             procDefP = ProcDef [chanIdA] []  (guard   (cstrEqual vexprX int1 )
-                                                      (stop))
+                                                      stop)
             procDefs' = Map.fromList  [  (procIdP, procDefP)]
       
             varIdpcP = VarId (T.pack "pc$P") 0 intSort
             procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP]
             procInstP' = procInst procIdP' [chanIdA] [int0]
             
-            procDefP' = ProcDef [chanIdA] [varIdpcP] (
+            procDefP' = ProcDef [chanIdA] [varIdpcP]
                                     (guard   (cstrEqual vexprX int1 )
-                                             (choice Set.empty)))
+                                             (choice Set.empty))
                   
 
 -- P[A]() := [[y == 1]] =>> (A?x >-> STOP)
@@ -1329,7 +1329,7 @@ testLPEGuardActionPref = TestCase $
             procInstP' = procInst procIdP' [chanIdA] [int0]
             
             procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP]
-            procDefP' = ProcDef [chanIdA] [varIdpcP] (
+            procDefP' = ProcDef [chanIdA] [varIdpcP]
                                                 (actionPref actOfferA1 {     offers = Set.singleton
                                                                                           Offer { chanid = chanIdA
                                                                                                 , chanoffers = [Quest varIdA1]
@@ -1337,10 +1337,7 @@ testLPEGuardActionPref = TestCase $
                                                                               , constraint = cstrITE (cstrEqual vexprPcP int0)
                                                                                                       (cstrEqual vexprY int1)
                                                                                                       (cstrConst (Cbool False))}
-                                                            (procInst procIdPlpe [chanIdA] [intMin1]) )           
-                                    )
-                  
-
+                                                            (procInst procIdPlpe [chanIdA] [intMin1]) )
             
 
 -- P[A]() := [[y == 1]] =>> (A?x >-> STOP ## A?x >-> STOP )
@@ -1363,8 +1360,8 @@ testLPEGuardChoice = TestCase $
       
             procDefP = ProcDef [chanIdA] []  (guard   (cstrEqual vexprY int1 )
                                                       (choice $ Set.fromList [
-                                                            (actionPref actOfferAx stop),
-                                                            (actionPref actOfferBx stop)
+                                                            actionPref actOfferAx stop,
+                                                            actionPref actOfferBx stop
                                                             ]))
             procDefs' = Map.fromList  [  (procIdP, procDefP)]
       
@@ -1372,26 +1369,25 @@ testLPEGuardChoice = TestCase $
             procIdP' = procIdGen "LPE_P" [chanIdA] [varIdpcP]
             procInstP' = procInst procIdP' [chanIdA] [int0]
             
-            procDefP' = ProcDef [chanIdA] [varIdpcP] (
+            procDefP' = ProcDef [chanIdA] [varIdpcP]
                                     (choice $ Set.fromList [
-                                                      (actionPref actOfferA1 {      offers = Set.singleton
+                                                        actionPref actOfferA1 {      offers = Set.singleton
                                                                                           Offer { chanid = chanIdA
                                                                                                 , chanoffers = [Quest varIdA1]
                                                                                           }
                                                                                     , constraint =  cstrITE (cstrEqual vexprPcP int0)
                                                                                                             (cstrEqual vexprY int1)
                                                                                                             (cstrConst (Cbool False))}
-                                                                  (procInst procIdP' [chanIdA] [intMin1]) ),
-
-                                                      (actionPref actOfferA1 {      offers = Set.singleton
+                                                                  (procInst procIdP' [chanIdA] [intMin1])
+                                                     ,  actionPref actOfferA1 {      offers = Set.singleton
                                                                                                 Offer { chanid = chanIdB
                                                                                                       , chanoffers = [Quest varIdB1]
                                                                                                 }
                                                                                     , constraint =  cstrITE (cstrEqual vexprPcP int0)
                                                                                                             (cstrEqual vexprY int1)
                                                                                                             (cstrConst (Cbool False))}
-                                                                  (procInst procIdP' [chanIdA] [intMin1]) )
-                                    ]))
+                                                                  (procInst procIdP' [chanIdA] [intMin1])
+                                                     ])
                                                       
                   
 
@@ -1425,14 +1421,14 @@ testLPEGuardProcInst = TestCase $
             procInstP' = procInst procIdP' [chanIdA] [int0]
             
             procDefP' = ProcDef [chanIdA] [varIdpcP] (
-                                                (actionPref actOfferA1 {  offers = Set.singleton
+                                                 actionPref actOfferA1 {  offers = Set.singleton
                                                                                     Offer { chanid = chanIdA
                                                                                           , chanoffers = [Quest varIdA1]
                                                                                     }
                                                                         , constraint = cstrITE (cstrEqual vexprPcP int0)
                                                                                                 (cstrEqual vexprY int1)
                                                                                                 (cstrConst (Cbool False))}
-                                                      (procInst procIdP' [chanIdA] [intMin1])  ))
+                                                      (procInst procIdP' [chanIdA] [intMin1])  )
                   
 
 
@@ -1475,16 +1471,15 @@ testLPEGuardPar = TestCase $
             
             procDefP' = ProcDef [chanIdA] [varIdpcP, varIdOp1pcPop1, varIdOp2pcPop2] (
                                           choice $ Set.fromList[
-                                                (actionPref actOfferA1 {  offers = Set.singleton
+                                                actionPref actOfferA1 {  offers = Set.singleton
                                                                                     Offer { chanid = chanIdA
                                                                                           , chanoffers = [Quest varIdA1]
                                                                                     }
                                                                         , constraint = cstrITE  (cstrEqual vexprPcP int0)
                                                                                                 (cstrEqual vexprZ int1)
                                                                                                 (cstrConst (Cbool False))}
-                                                            (procInst procIdP' [chanIdA] [int1, intMin1, intMin1]) ),
-
-                                                (actionPref actOfferA1 {  offers = Set.singleton
+                                                            (procInst procIdP' [chanIdA] [int1, intMin1, intMin1]) 
+                                              , actionPref actOfferA1 {  offers = Set.singleton
                                                                                     Offer { chanid = chanIdA
                                                                                           , chanoffers = [Quest varIdA1]
                                                                                     }
@@ -1492,9 +1487,8 @@ testLPEGuardPar = TestCase $
                                                                                                 (cstrAnd (Set.fromList [ cstrEqual vexprOp1pcPop1 int0
                                                                                                                         , cstrEqual vexprOp2pcPop2 int0]))
                                                                                                 (cstrConst (Cbool False))}
-                                                            (procInst procIdP' [chanIdA] [int1, intMin1, intMin1]) )
-                                                
-                                          ])
+                                                            (procInst procIdP' [chanIdA] [int1, intMin1, intMin1]) 
+                                              ])
 
 -- same test as testLPEHide1 just with a guard added
 --
@@ -1524,8 +1518,7 @@ testLPEGuardHide = TestCase $
             procDefPlpe = ProcDef [chanIdA0] [varIdPcP, varIdPcPpre1] 
                                                 (choice $ Set.fromList [
                                                                   -- A [pc$P == 0] -> LPE_P[A](1, -1)
-                                                                  (actionPref                         
-                                                                        
+                                                                  actionPref                         
                                                                         ActOffer {  offers = Set.singleton
                                                                                                 Offer { chanid = chanIdA0
                                                                                                       , chanoffers = []
@@ -1535,9 +1528,9 @@ testLPEGuardHide = TestCase $
                                                                                                             (cstrEqual vexprX int1)
                                                                                                             (cstrConst (Cbool False))
                                                                                     } 
-                                                                        (procInst procIdPlpe [chanIdA0] [int1, intMin1]))
+                                                                        (procInst procIdPlpe [chanIdA0] [int1, intMin1])
                                                       ,                                                                   -- ##    A [pc$P == 1, P$pre1$A$pc$P$pre1 == 0] -> LPE_P[A](1,-1)
-                                                                  (actionPref                         
+                                                                  actionPref                         
                                                                         ActOffer {  offers = Set.singleton
                                                                                                 Offer { chanid = chanIdA0
                                                                                                       , chanoffers = []
@@ -1547,8 +1540,7 @@ testLPEGuardHide = TestCase $
                                                                                                             (cstrEqual vexprPcPpre1 int0)
                                                                                                             (cstrConst (Cbool False))
                                                                               } 
-                                                                        (procInst procIdPlpe [chanIdA0] [int1, intMin1]))
-
+                                                                        (procInst procIdPlpe [chanIdA0] [int1, intMin1])
                                                                   ])
             procInst' = procInst procIdPlpe [chanIdA0] [int0, anyInt]
 

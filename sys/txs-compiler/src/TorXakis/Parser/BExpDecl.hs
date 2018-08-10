@@ -108,8 +108,7 @@ guardP :: TxsParser BExpDecl
 guardP = do
     g <- try (txsSymbol "[[") *> valExpP <* txsSymbol "]]"
     txsSymbol "=>>"
-    be <- bexpTermP
-    return $ Guard g be
+    Guard g <$> bexpTermP
 
 -- | Parser for action offers.
 actOfferP :: TxsParser ActOfferDecl
@@ -143,8 +142,7 @@ offerP :: TxsParser OfferDecl
 offerP = do
     l     <- mkLoc
     n     <- identifier
-    chOfs <- chanOffersP
-    return $ OfferDecl (mkChanRef n l) chOfs
+    OfferDecl (mkChanRef n l) <$> chanOffersP
 
 chanOffersP :: TxsParser [ChanOfferDecl]
 chanOffersP = many chanOfferP

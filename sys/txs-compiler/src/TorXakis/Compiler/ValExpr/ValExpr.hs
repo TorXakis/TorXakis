@@ -86,8 +86,7 @@ expDeclToValExpr vdefs eSid ex = case expChild ex of
             fsM :: Map.Map FuncId (FuncDef VarId)
             fsM = Map.empty
         subValExpr <- expDeclToValExpr vdefs eSid subEx
-        vsM <- letValDeclsToMaps
-        return $ foldr (`subst` fsM) subValExpr vsM
+        foldr (`subst` fsM) subValExpr <$> letValDeclsToMaps
     If ex0 ex1 ex2 -> do
         ve0 <- expDeclToValExpr vdefs sortIdBool ex0
         ve1 <- expDeclToValExpr vdefs eSid ex1
