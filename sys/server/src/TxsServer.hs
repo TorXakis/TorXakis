@@ -161,13 +161,17 @@ cmdsIntpr = do
        "SIMULATOR" | not $ IOS.isInited   modus ->  cmdNoop      cmd
        "STEPPER"   |       IOS.isInited   modus ->  cmdStepper   args
        "STEPPER"   | not $ IOS.isInited   modus ->  cmdNoop      cmd
--- -------------------------------------------------------------------- test, simulate, step --
+       "MANUALER"  |       IOS.isInited   modus ->  cmdManualer  args
+       "MANUALER"  | not $ IOS.isInited   modus ->  cmdNoop      cmd
+-- ------------------------------------------------------------ test, simulate, step, manual --
        "TEST"      |       IOS.isTested   modus ->  cmdTest      args
        "TEST"      | not $ IOS.isTested   modus ->  cmdNoop      cmd
        "SIM"       |       IOS.isSimuled  modus ->  cmdSim       args
        "SIM"       | not $ IOS.isSimuled  modus ->  cmdNoop      cmd
        "STEP"      |       IOS.isStepped  modus ->  cmdStep      args
        "STEP"      | not $ IOS.isStepped  modus ->  cmdNoop      cmd
+       "MAN"       |       IOS.isManualed modus ->  cmdMan       args
+       "MAN"       | not $ IOS.isManualed modus ->  cmdNoop      cmd
 -- ----------------------------------------------------------------------------- btree state --
        "SHOW"      |       IOS.isGtIdled  modus ->  cmdShow      args
        "SHOW"      | not $ IOS.isGtIdled  modus ->  cmdNoop      cmd
@@ -197,14 +201,14 @@ cmdsIntpr = do
 
 cmdNoop :: String -> IOS.IOS ()
 cmdNoop cmd = do
-     IFS.nack cmd [ "NoOp : No action"]
+     IFS.nack cmd [ "inopportune command: " ++ cmd ]
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdUnknown :: String -> IOS.IOS ()
 cmdUnknown cmd = do
-     IFS.nack "ERROR" [ "Unknown command : " ++ cmd ]
+     IFS.nack cmd [ "unknown command: " ++ cmd ]
      cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
@@ -258,8 +262,8 @@ cmdInit args = do
 cmdTermit :: String -> IOS.IOS ()
 cmdTermit _ = do
      modify $ \env -> env { IOS.modus  = IOS.Idled
-                          , IOS.tow    = ( Nothing, Nothing, [] )
-                          , IOS.frow   = ( Nothing, [],      [] )
+                          , IOS.tdefs  = TxsDefs.empty
+                          , IOS.sigs   = Sigs.empty
                           }
      lift TxsCore.txsTermit
      IFS.pack "TERMIT" []

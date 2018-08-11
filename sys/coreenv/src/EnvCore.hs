@@ -126,6 +126,17 @@ data CoreState  =
                               -- substitution for channel offers (LPE translation)
                  }
      | forall ew . (EWorld ew) =>
+       SimSet    { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
+                 , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
+                 , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures
+                 , modeldef  :: TxsDefs.ModelDef
+                 , mapperdef :: Maybe TxsDefs.MapperDef
+                 , eworld    :: ew
+                 , putmsgs   :: [EnvData.Msg] -> IOC ()       -- (error) reporting
+                 , chanoffers :: Map.Map (Name, Int) VarId.VarId
+                              -- substitution for channel offers (LPE translation)
+                 }
+     | forall ew . (EWorld ew) =>
        Simuling  { smts      :: Map.Map String SMTData.SmtEnv -- named smt solver envs
                  , tdefs     :: TxsDefs.TxsDefs               -- TorXakis definitions
                  , sigs      :: Sigs.Sigs VarId.VarId         -- TorXakis signatures

@@ -16,6 +16,10 @@ library
   hs-source-dirs:       src
 
   exposed-modules:      TxsCore
+                      , TxsTest
+                      , TxsSim
+                      , TxsStep
+                      , TxsManual
                       , CoreUtils
                       , BuildInfo
                       , VersionInfo

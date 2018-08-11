@@ -7,7 +7,7 @@ See LICENSE at root directory of this repository.
 
 -----------------------------------------------------------------------------
 -- |
--- Module      :  TxsCore
+-- Module      :  TxsCoreShow
 -- Copyright   :  TNO and Radboud University
 -- License     :  BSD3
 -- Maintainer  :  jan.tretmans
@@ -20,36 +20,10 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE ViewPatterns        #-}
 
 
-module TxsCore
+module TxsCoreShow
 (
- -- * run TorXakis core
-  runTxsCore
-
-  -- * initialize TorXakis core
-, txsInit
-
-  -- * terminate TorXakis core
-, txsTermit
-
-  -- *  TorXakis definitions
-  -- ** get all torxakis definitions
-, txsGetTDefs
-
-  -- ** set all torxakis definitions
-, txsSetTDefs
-
-  -- * Parameters
-  -- ** get all parameter values
-, txsGetParams
-
-  -- ** get value of parameter
-, txsGetParam
-
-  -- ** set value of parameter
-, txsSetParam
-
-  -- * set random seed
-, txsSetSeed
+  -- * show item
+  txsShow
 
 )
 

@@ -16,6 +16,8 @@ module Test
 ( testIn
 , testOut
 , testN
+, testModelMenuIn  -- :: IOC.IOC BTree.Menu
+, testModelMenuOut -- :: IOC.IOC BTree.Menu
 )
 
 -- ----------------------------------------------------------------------------------------- --
@@ -25,6 +27,7 @@ where
 
 import Control.Monad.State
 import Data.Maybe
+import qualified Data.Map  as Map
 import System.Random
 
 -- local
@@ -43,6 +46,11 @@ import qualified TxsDDefs
 import qualified TxsShow
 import BTShow()
 
+import qualified Behave
+import qualified BTree
+import qualified Utils
+
+
 -- ----------------------------------------------------------------------------------------- --
 -- testIn :  try to give input (Act acts), and give new environment
 --        :  result is whether input was successful, or faster output was successful/conforming
@@ -50,7 +58,12 @@ import BTShow()
 
 testIn :: TxsDDefs.Action -> Int -> IOC.IOC (TxsDDefs.Action, TxsDDefs.Verdict)
 testIn act@TxsDDefs.Act{} step = do
-     putToW <- gets (IOC.puttow . IOC.state)
+     cState <- gets IOC.state
+     putToW <- case cState of
+                 IOC.Testing { IOC.eworld = eWorld } -> return $ IOC.putToW eWorld
+                 _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                       "testIn while not in Testing mode" ]
+                         return $ \act' -> return act'
      mact   <- mapperMap act                                -- map action
      mact'  <- putToW mact                                  -- try to do input on sut
      if mact == mact'
@@ -86,7 +99,12 @@ testIn TxsDDefs.ActQui _ = do
 
 testOut :: Int -> IOC.IOC (TxsDDefs.Action, TxsDDefs.Verdict)
 testOut step = do
-     getFroW <- gets (IOC.getfrow . IOC.state)
+     cState  <- gets IOC.state
+     let getFroW = case cState of
+                     IOC.Testing { IOC.eworld = eWorld } -> IOC.getFroW eWorld
+                     _ -> do IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                                           "testOut while not in Testing mode" ]
+                             return TxsDDefs.ActQui 
      mact    <- getFroW                                     -- get next output or quiescence
      act     <- mapperMap mact                              -- map output to model action
      IOC.putMsgs [ EnvData.TXS_CORE_USER_INFO
@@ -122,7 +140,7 @@ testN depth step = do
       IOC.putMsgs [EnvData.TXS_CORE_SYSTEM_ERROR "testing could not start"]
       return TxsDDefs.NoVerdict
   where
-    -- No test purpose.    
+    -- No test purpose.
     continue Nothing =
       testIOCO depth False step 
     continue (Just (TxsDefs.PurpDef [] [] _ _)) =
@@ -257,5 +275,33 @@ testIOCOfullPurp depth lastDelta step =
                  return TxsDDefs.Pass
 
 -- ----------------------------------------------------------------------------------------- --
+-- testMenu
+
+testModelMenu :: IOC.IOC BTree.Menu
+testModelMenu  =  do
+     envSt <- gets IOC.state
+     case envSt of 
+       IOC.Stepping {IOC.modeldef = TxsDefs.ModelDef insyncs outsyncs splsyncs _bexp} -> do
+         let allSyncs = insyncs ++ outsyncs ++ splsyncs
+             curState = IOC.curstate envSt
+             modSts   = fromMaybe [] (Map.lookup curState (IOC.modstss envSt))
+         return $ Behave.behMayMenu allSyncs modSts
+       _ -> do
+         IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR "testModelMenu without valid model" ]
+         return []
+
+testModelMenuIn :: IOC.IOC BTree.Menu
+testModelMenuIn  =  do
+     menu <- testModelMenu
+     filterM (isInCTOffers . Utils.frst) menu
+
+testModelMenuOut :: IOC.IOC BTree.Menu
+testModelMenuOut  =  do
+     menu <- testModelMenu
+     filterM (isOutCTOffers . Utils.frst) menu
+
+
+-- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --
+
