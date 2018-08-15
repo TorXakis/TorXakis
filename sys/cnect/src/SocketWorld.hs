@@ -206,9 +206,7 @@ closeSockets  =  do
      ( _, towThread,   towConns  ) <- gets IOS.tow
      ( _, frowThreads, frowConns ) <- gets IOS.frow
 
-     lift $ lift $ case towThread of
-                     Just thrd -> killThread thrd
-                     Nothing   -> return ()
+     lift $ lift $ forM_ towThread killThread
      lift $ lift $ mapM_ killThread frowThreads
      lift $ lift $ mapM_ TVS.close [ c | ConnHtoW  _ c _ _ <- towConns  ]
      lift $ lift $ mapM_ TVS.close [ c | ConnHfroW _ c _ _ <- frowConns ]

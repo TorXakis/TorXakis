@@ -34,11 +34,11 @@ import           Data.Text                          (Text)
 
 import           ChanId                             (ChanId)
 import           Id                                 (Id (Id))
-import           ProcId                             (ProcId (ProcId))
+import           ProcId                             (ProcId (ProcId), toChanSort)
 import           SortId                             (SortId, sortIdInt)
 import           StautDef                           (combineParameters)
 import           TxsDefs                            (ExitSort (Exit, Hit, NoExit))
-import           VarId                              (VarId (VarId))
+import           VarId                              (VarId (VarId), varsort)
 
 import           TorXakis.Compiler.Data             (CompilerM, getNextId)
 import           TorXakis.Compiler.Data.VarDecl     ()
@@ -94,8 +94,8 @@ instance ( MapsTo Text SortId mm
         return [( getLoc pd
                 , ProcInfo ( ProcId (procDeclName pd)
                                     (Id pId)
-                                    pChIds
-                                    (snd <$> pVIds)
+                                    (toChanSort <$> pChIds)
+                                    (varsort . snd <$> pVIds)
                                     eSort
                            )
                            allPChIds
@@ -142,8 +142,8 @@ instance ( MapsTo Text SortId mm
         return [ ( loc
                  , ProcInfo ( ProcId n
                                     (Id pId)
-                                    sChIds
-                                    (snd <$> pVIds)
+                                    (toChanSort <$> sChIds)
+                                    (varsort . snd <$> pVIds)
                                     eSort
                             )
                            allSChIds
@@ -152,8 +152,8 @@ instance ( MapsTo Text SortId mm
                , ( ExtraAut "std" loc
                  , ProcInfo ( ProcId ("std_" <> n)
                                     (Id pIdStd)
-                                    sChIds
-                                    stdVids
+                                    (toChanSort <$> sChIds)
+                                    (varsort <$> stdVids)
                                     eSort
                             )
                            allSChIds
@@ -162,8 +162,8 @@ instance ( MapsTo Text SortId mm
                , ( ExtraAut "stdi" loc
                  , ProcInfo ( ProcId ("stdi_" <> n)
                                     (Id pIdStdi)
-                                    sChIds
-                                    (snd <$> pVIds)
+                                    (toChanSort <$> sChIds)
+                                    (varsort . snd <$> pVIds)
                                     eSort
                             )
                            allSChIds

@@ -20,7 +20,6 @@ import           ChanId
 import           Id
 import           Name
 import           SortId
-import           VarId
 
 data  ExitSort      =  NoExit
                      | Exit [SortId]
@@ -35,10 +34,18 @@ exitSortIds Hit       = []
 instance Resettable ExitSort
 instance Identifiable ExitSort
 
+newtype ChanSort = ChanSort [SortId]
+     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+instance Resettable ChanSort
+instance Identifiable ChanSort
+
+toChanSort :: ChanId -> ChanSort
+toChanSort = ChanSort . chansorts
+
 data ProcId         = ProcId    { name      :: Name
                                 , unid      :: Id
-                                , procchans :: [ChanId]
-                                , procvars  :: [VarId]
+                                , procchans :: [ChanSort]
+                                , procvars  :: [SortId]
                                 , procexit  :: ExitSort
                                 }
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
