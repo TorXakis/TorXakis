@@ -23,11 +23,6 @@ import LPEfunc
 
 import TestDefinitions
 
--- import TxsShow
--- import Debug.Trace
-
-
-
 ---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
@@ -433,8 +428,8 @@ testMultipleProcDefs3 = TestCase $
 -- with procInst = LPE_P[A,B](0, ANY, ANY)
 testProcDefIdentity :: Test
 testProcDefIdentity = TestCase $
-   assertBool "ProcDef identity" (eqProcDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst''  procDefs'))
-   where
+     assertBool "ProcDef identity"  (eqProcDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst''  procDefs'))
+     where
       procInst'' = procInst procIdP [chanIdA, chanIdB] []
       procIdP = procIdGen "P" [chanIdA,chanIdB] []
       procIdQ = procIdGen "Q" [chanIdA] [varIdX]

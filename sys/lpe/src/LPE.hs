@@ -201,7 +201,7 @@ preGNFBExprCreateProcDef bexpr choiceCnt freeVarsInScope procId procDefs' = do
         name' = T.append (ProcId.name procId) (T.pack ("$pre" ++ show choiceCnt))
         procId' = procId { ProcId.name = name',
                             ProcId.unid = unid',
-                            ProcId.procvars = paramsDef ++ freeVarsInScope}
+                            ProcId.procvars = varsort <$> paramsDef ++ freeVarsInScope}
         -- create ProcInst, translate params to VExprs
         paramsDef' = map cstrVar paramsDef
         paramsFreeVars = map cstrVar freeVarsInScope
@@ -235,9 +235,10 @@ preGNFBExprCreateProcDefWithUniqueness bexpr choiceCnt extraParams procId procDe
         
         -- create ProcInst calling that ProcDef
         name' = T.append (ProcId.name procId) (T.pack ("$pre" ++ show choiceCnt))
-        procId' = procId { ProcId.name = name',
-                            ProcId.unid = unid',
-                            ProcId.procvars = paramsPrefixed}
+        procId' = procId { ProcId.name = name'
+                         , ProcId.unid = unid'
+                         , ProcId.procvars = varsort <$> paramsPrefixed
+                         }
         -- create ProcInst, translate params to VExprs
         paramsDef' = map cstrVar paramsDef
         paramsFreeVars = map cstrVar extraParams
@@ -489,9 +490,10 @@ gnfBExprCreateProcDefWithUniqueness bexpr choiceCnt extraParams procId procDefs'
         
         -- create ProcInst calling that ProcDef
         name' = T.append (ProcId.name procId) (T.pack ("$gnf" ++ show choiceCnt))
-        procId' = procId { ProcId.name = name',
-                            ProcId.unid = unid',
-                            ProcId.procvars = paramsPrefixed}
+        procId' = procId { ProcId.name = name'
+                         , ProcId.unid = unid'
+                         , ProcId.procvars = varsort <$> paramsPrefixed
+                         }
         -- create ProcInst, translate params to VExprs
         paramsDef' = map cstrVar paramsDef
         paramsFreeVars = map cstrVar extraParams
@@ -523,9 +525,9 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
     let -- create a new ProcId
         chansDefPAR = chansDef
         paramsDefPAR = concatMap snd stepsOpParams
-        procIdPAR = procIdInst { ProcId.procchans = chansDefPAR,
+        procIdPAR = procIdInst { ProcId.procchans = toChanSort <$> chansDefPAR,
                                   ProcId.unid = unid',
-                                  ProcId.procvars = paramsDefPAR}
+                                  ProcId.procvars = varsort <$> paramsDefPAR}
 
         -- combine the steps of all operands according to parallel semantics
         -- stepOpParams is a list of pairs, one pair for each operand:
@@ -769,7 +771,7 @@ preGNFEnable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsIn
         procIdR = procIdInst {  ProcId.name = name',
                                 ProcId.unid = unidR,
                                 -- concatenate the original params with the varIds passed via ACCEPT to extend their scope into the RHS of ENABLE
-                                ProcId.procvars = paramsDef ++ paramsAccept} 
+                                ProcId.procvars = varsort <$> paramsDef ++ paramsAccept} 
         -- create ProcInst, translate params to VExprs
         paramsDef' = map cstrVar paramsDef
         procInstR = procInst procIdR chansDef paramsDef'
@@ -901,11 +903,11 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
           paramsNew = varIdPC : params
           procIdNew = procIdInst { ProcId.name = T.pack nameNew
                                    , ProcId.unid = procIdUnid
-                                   , ProcId.procchans = chansDef
-                                   , ProcId.procvars = paramsNew}
+                                   , ProcId.procchans = toChanSort <$> chansDef
+                                   , ProcId.procvars = varsort <$> paramsNew}
 
           -- update the ProcInsts in the steps
-          steps' = map (stepsUpdateProcInsts calledProcs procToParams pcMapping procIdNew) steps
+          steps' = map (stepsUpdateProcInsts calledProcs procToParams pcMapping procIdNew chansDef) steps
 
           procDefLpe = ProcDef chansDef paramsNew (wrapSteps steps')
           procDefs'' = Map.insert procIdNew procDefLpe procDefsGnf
@@ -979,31 +981,28 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
                 -- get the params, but leave out the first ones (those of procIdInst itself)
                 -- plus an extra one (that of the program counter)
                 params = snd $ splitAt (length paramsInst+1) (ProcId.procvars procIdNew)
-                paramsSorts = map varIdToSort params
-                paramsANYs = map (cstrConst . Cany) paramsSorts
+                paramsANYs = map (cstrConst . Cany) params
                 paramsNew = (pcValue : paramsInst) ++ paramsANYs in
             procInst procIdNew chansInst paramsNew
         updateProcInst _ _ _ = error "Only allowed with ProcInst"
         
         -- update the ProcInsts in the steps to the new ProcId
-        stepsUpdateProcInsts :: [Proc] -> ProcToParams -> PCMapping -> ProcId -> BExpr -> BExpr
-        stepsUpdateProcInsts _procs _procToParams _pcMap procIdNew (TxsDefs.view -> ActionPref actOffer bexpr) | isStop bexpr =
+        stepsUpdateProcInsts :: [Proc] -> ProcToParams -> PCMapping -> ProcId -> [ChanId] -> BExpr -> BExpr
+        stepsUpdateProcInsts _procs _procToParams _pcMap procIdNew chansInst (TxsDefs.view -> ActionPref actOffer bexpr) | isStop bexpr =
             let -- get the params, but leave out the first one because it's the program counter
                 (_:params) = ProcId.procvars procIdNew
-                paramsSorts = map varIdToSort params
-                paramsANYs = map (cstrConst . Cany) paramsSorts
+                paramsANYs = map (cstrConst . Cany) params
                 paramsInst = (cstrConst (Cint (-1)) : paramsANYs)
-                chansInst = ProcId.procchans procIdNew
                 procInst' = procInst procIdNew chansInst paramsInst in
             actionPref actOffer procInst'
 
-        stepsUpdateProcInsts procs procToParams pcMap procIdNew (TxsDefs.view -> ActionPref actOffer procInst''@(TxsDefs.view -> ProcInst procIdInst' chansInst _paramsInst)) =
+        stepsUpdateProcInsts procs procToParams pcMap procIdNew chansInst2 (TxsDefs.view -> ActionPref actOffer procInst''@(TxsDefs.view -> ProcInst procIdInst' chansInst _paramsInst)) =
             let -- collect params AND channels from procs in the order they appear in procs
                 paramsNew = createParams procs procInst''
 
                 pcValue = fromMaybe (error "stepsUpdateProcInsts: no pc value found for given (ProcId, [ChanId]) (should be impossible)") (Map.lookup (procIdInst', chansInst) pcMap)
 
-                procInst' = procInst procIdNew (ProcId.procchans procIdNew) ( cstrConst (Cint pcValue) : paramsNew) in
+                procInst' = procInst procIdNew chansInst2 ( cstrConst (Cint pcValue) : paramsNew) in
             actionPref actOffer procInst'
             where
                 createParams :: [Proc] -> BExpr -> [VExpr]
@@ -1019,11 +1018,7 @@ lpe bexprProcInst@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
                     params ++ paramsRec
                 createParams _ _ = error "Only allowed with list of tuples and ProcInst"
                 
-        stepsUpdateProcInsts _ _ _ _ bexpr = bexpr
-
-
-        varIdToSort :: VarId -> SortId
-        varIdToSort (VarId _ _ sort') = sort'
+        stepsUpdateProcInsts _ _ _ _ _ bexpr = bexpr
 
 
 lpe _ _ _ = error "Only allowed with ProcInst"
