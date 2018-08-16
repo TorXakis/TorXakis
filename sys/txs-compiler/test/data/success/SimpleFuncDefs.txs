@@ -1,0 +1,34 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+CONSTDEF
+    one :: Int ::= 1;
+    two :: String ::= "two"
+ENDDEF
+
+FUNCDEF const() :: Int ::=
+    2
+ENDDEF
+
+FUNCDEF inc(x :: Int) :: Int ::=
+    x + 1
+ENDDEF
+
+FUNCDEF incOne() :: Int ::=
+    inc(one)
+ENDDEF
+
+FUNCDEF incConst() :: Int ::=
+    inc(const())
+ENDDEF
+
+FUNCDEF doubleInc(x :: Int) :: Int ::=
+    inc(x) + 1
+ENDDEF
+
+FUNCDEF matchInc(s :: String; x :: Int) :: Int ::=
+    IF s == two THEN inc(x) ELSE x FI
+ENDDEF
