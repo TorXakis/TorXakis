@@ -664,3 +664,10 @@ PROCDEF hidder2[I, J, K :: Int]() ::=
         I ! v
     NI
 ENDDEF    
+
+-- | Test support for implicit variables introduced in (question mark) actions.
+--
+-- See https://github.com/TorXakis/TorXakis/issues/769#issuecomment-413872550
+PROCDEF varActionBinding[S, R :: Int]() ::=
+   S ? x [[ LET y = x IN True NI ]]
+ENDDEF
