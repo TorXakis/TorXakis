@@ -33,8 +33,7 @@ purpDeclP = declP "PURPDEF" $ \n l -> do
     is <- chansInDecl
     os <- chansOutDecl
     ys <- chansSyncDecl
-    ts <- testGoalsP
-    return $ mkPurpDecl n l is os ys ts
+    mkPurpDecl n l is os ys <$> testGoalsP
 
 testGoalsP :: TxsParser [TestGoalDecl]
 testGoalsP = many testGoalP
@@ -45,5 +44,4 @@ testGoalP = do
     l <-  mkLoc
     n <- txsLexeme identifier
     txsSymbol "::="
-    be <- bexpDeclP
-    return $ mkTestGoalDecl n l be
+    mkTestGoalDecl n l <$> bexpDeclP

@@ -850,6 +850,10 @@ testSingleActionDifferentActions4 = TestCase $
       -- // only right side: ONLY IF G = [], [B]
       -- ## A [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
 -- with procInst := P[A,B](0,0)
+-- NOTICE: this tests relies on an implementation detail: 
+--    the order of the bexprs in the choice is not guaranteed
+--    hence the order of program counter values is not guaranteed either
+
 testMultiActions1 :: Test
 testMultiActions1 = TestCase $
    assertBool "test multi actions"  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
@@ -1049,6 +1053,9 @@ testMultiActions4 = TestCase $
       -- // only right side: ONLY IF G = []
       -- ## A | B [op2$pc$P$op2 == 0] >->  P[A,B](op1$pc$P$op1, -1)
 -- with procInst := P[A,B](0,0)
+-- NOTICE: this tests relies on an implementation detail: 
+--    the order of the bexprs in the choice is not guaranteed
+--    hence the order of program counter values is not guaranteed either
 testMultiActions5 :: Test
 testMultiActions5 = TestCase $
    assertBool "test multi actions"  $ eqProcDef (Just (procInst', procDefP'))  (lpeParTestWrapper procInst'' emptyTranslatedProcDefs procDefs')
@@ -1636,9 +1643,9 @@ testMultiSeq1 = TestCase $
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
       varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$x") 33 intSort
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
       varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$x") 33 intSort
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx
@@ -1843,9 +1850,9 @@ testMultiSeq2 = TestCase $
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
       varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$x") 33 intSort
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
       varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$x") 33 intSort
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx
@@ -2051,9 +2058,9 @@ testMultiSeq3 = TestCase $
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
       varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$x") 33 intSort
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
       varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$x") 33 intSort
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx
@@ -2254,9 +2261,9 @@ testMultiSeq4 = TestCase $
       -- becomes after step combination
       -- P[A,B](op1$pc$Q, op1$Q$gnf1$A$B$x, op2$pc$Q, op2$Q$gnf1$A$B$x) :=
       varIdOp1pcQ = VarId (T.pack "op1$pc$Q") 0 intSort
-      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$x") 33 intSort
+      varIdOp1QABx = VarId (T.pack "op1$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
       varIdOp2pcQ = VarId (T.pack "op2$pc$Q") 0 intSort
-      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$x") 33 intSort
+      varIdOp2QABx = VarId (T.pack "op2$Q$gnf1$A$B$Q$gnf1$x") 33 intSort
 
       vexprOp1pcQ = cstrVar varIdOp1pcQ
       vexprOp1QABx = cstrVar varIdOp1QABx

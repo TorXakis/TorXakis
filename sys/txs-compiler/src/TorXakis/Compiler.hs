@@ -386,7 +386,7 @@ compileToProcDefs mm pd = do
     pmsP <- getMap mm (pd ^. procs)  :: CompilerM (Map (Loc ProcDeclE) ProcInfo)
     pmsS <- getMap mm (pd ^. stauts) :: CompilerM (Map (Loc ProcDeclE) ProcInfo)
     let pms = pmsP <> pmsS
-    checkUnique (NoErrorLoc, Process, "Process") (getPId <$> Map.elems pms)
+    checkUnique (NoErrorLoc, Process, "Process") (getPId <$> Map.elems pms) 
     procPDefMap  <- procDeclsToProcDefMap (pms :& mm) (pd ^. procs)
     stautPDefMap <- stautDeclsToProcDefMap (pms :& mm) (pd ^. stauts)
     return $ procPDefMap <> stautPDefMap

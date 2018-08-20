@@ -59,6 +59,35 @@ vexprA1 = cstrVar varIdA1
 vexprB1 :: VExpr
 vexprB1 = cstrVar varIdB1
 
+
+
+
+varIdPpre1X :: VarId
+varIdPpre1X = VarId (T.pack "P$pre1$x") 33 intSort
+varIdPpre1Y :: VarId
+varIdPpre1Y = VarId (T.pack "P$pre1$y") 33 intSort
+varIdPpre1Z :: VarId
+varIdPpre1Z = VarId (T.pack "P$pre1$z") 33 intSort
+varIdPgnf1X :: VarId
+varIdPgnf1X = VarId (T.pack "P$gnf1$x") 33 intSort
+varIdPgnf1Y :: VarId
+varIdPgnf1Y = VarId (T.pack "P$gnf1$y") 33 intSort
+varIdPgnf1Z :: VarId
+varIdPgnf1Z = VarId (T.pack "P$gnf1$z") 33 intSort
+
+vexprPpre1X :: VExpr
+vexprPpre1X = cstrVar varIdPpre1X
+vexprPpre1Y :: VExpr
+vexprPpre1Y = cstrVar varIdPpre1Y
+vexprPpre1Z :: VExpr
+vexprPpre1Z = cstrVar varIdPpre1Z
+vexprPgnf1X :: VExpr
+vexprPgnf1X = cstrVar varIdPgnf1X
+vexprPgnf1Y :: VExpr
+vexprPgnf1Y = cstrVar varIdPgnf1Y
+vexprPgnf1Z :: VExpr
+vexprPgnf1Z = cstrVar varIdPgnf1Z
+
 int0 :: VExpr
 int0 = cstrConst (Cint 0)
 int1 :: VExpr

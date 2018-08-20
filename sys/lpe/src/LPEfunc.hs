@@ -116,10 +116,10 @@ preGNFEnableFunc bexpr _chanOffers translatedProcDefs procDefs' =
 
 
 -- gnf :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb (ProcDefs)
-gnfFunc :: ProcId -> TranslatedProcDefs -> ProcDefs -> ProcDefs
+gnfFunc :: ProcId -> TranslatedProcDefs -> ProcDefs -> (ProcDefs, Map.Map ProcId [ProcId])
 gnfFunc procId translatedProcDefs procDefs' =
  let envl = EnvL 0 (Map.fromList []) []
-  in evalState (gnf procId translatedProcDefs procDefs') envl
+  in evalState (gnf procId Map.empty translatedProcDefs procDefs') envl
 
 
   -- preGNF :: (EnvB.EnvB envb) => ProcId -> TranslatedProcDefs -> ProcDefs -> envb ProcDefs
