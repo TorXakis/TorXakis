@@ -22,7 +22,7 @@ module TxsTransform
 
 (
   -- ** test purposes for n-complete coverage
-, txsNComplete   -- :: TxsDefs.ModelDef -> IOC.IOC (Either EnvData.Msg TxsDefs.PurpId)
+, txsNComplete   -- :: TxsDefs.ModelDef -> IOC.IOC (Either Error TxsDefs.PurpId)
 
   -- ** LPE transformation
 , txsLPE         -- :: Either TxsDefs.BExpr TxsDefs.ModelId
@@ -106,7 +106,7 @@ where
 --   Only possible when Initing.
 txsNComplete :: TxsDefs.ModelDef                              -- ^ model: currently only
                                                               -- `StautDef` without data
-             -> IOC.IOC (Either EnvData.Msg TxsDefs.PurpId)   -- ^ constructed purpose
+             -> IOC.IOC (Either Error TxsDefs.PurpId)   -- ^ constructed purpose
 txsNComplete (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)  =  do
      envc <- get
      case (IOC.state envc, TxsDefs.view bexp) of
@@ -136,10 +136,8 @@ txsNComplete (TxsDefs.ModelDef insyncs outsyncs splsyncs bexp)  =  do
                            return $ Right purpid
                          _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
                                               "Could not construct a test prurpose"
-              _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                                   "N-Complete requires a data-less STAUTDEF"
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "N-Complete only in Initing Mode with a StAutDef"
+              _ -> return $ Left $ Error "N-Complete requires a data-less STAUTDEF"
+       _ -> return $ Left $ Error "N-Complete only in Initing Mode with a StAutDef"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | LPE transformation.

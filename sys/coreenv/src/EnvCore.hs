@@ -260,18 +260,6 @@ putSMT smtname smtenv = do
 -- ----------------------------------------------------------------------------------------- --
 -- Params :  getParams, setParams
 
-getParams :: [String] -> IOC [(String,String)]
-getParams prms =
-     case prms of
-       [] -> map (\(nm,(val,_))->(nm,val)) . Map.toList <$> gets params
-       _  -> concat <$> mapM getParam prms
-
-getParam :: String -> IOC [(String,String)]
-getParam prm = do
-     params' <- gets params
-     case Map.lookup prm params' of
-       Nothing           -> return []
-       Just (val,_check) -> return [(prm,val)]
 
 setParams :: [(String,String)] -> IOC [(String,String)]
 setParams parvals = concat <$> mapM setParam parvals

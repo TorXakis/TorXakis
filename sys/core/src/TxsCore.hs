@@ -19,10 +19,10 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ViewPatterns        #-}
 
-
 module TxsCore
+
 (
- -- * run TorXakis core
+  -- * run TorXakis core
   runTxsCore
 
   -- * initialize TorXakis core
@@ -31,27 +31,23 @@ module TxsCore
   -- * terminate TorXakis core
 , txsTermit
 
-  -- *  TorXakis definitions
-  -- ** get all torxakis definitions
+  -- * get Mode of TorXakis core
+, txsGetMode
+
+  -- * get all TorXakis definitions
 , txsGetTDefs
 
-  -- ** set all torxakis definitions
-, txsSetTDefs
-
-  -- * Parameters
-  -- ** get all parameter values
+  -- * get all Parameter values
 , txsGetParams
 
-  -- ** get value of parameter
-, txsGetParam
+  -- * add torxakis definitions
+, txsAddTDefs
 
-  -- ** set value of parameter
+  -- ** set value of parameter(s)
 , txsSetParam
 
-  -- * set random seed
-, txsSetSeed
-
 )
+
 
 -- ----------------------------------------------------------------------------------------- --
 -- import
@@ -76,6 +72,9 @@ import           Ioco
 import           Mapper
 import           NComp
 import           Purpose
+import           Sim
+import           Step
+import           Test
 
 import           Config              (Config)
 import qualified Config
@@ -122,70 +121,193 @@ import VarId
 
 
 -- ----------------------------------------------------------------------------------------- --
---                                                                                           --
+-- run TorXakis core
+
+
+-- | TorXakis core main api -- start
+runTxsCore :: Config -> StateT s IOC.IOC a -> s -> IO ()
+runTxsCore initConfig ctrl s0  =  do
+      _ <- runStateT (runTxsCtrl ctrl s0)
+              IOC.EnvC { IOC.config = initConfig
+                       , IOC.unid   = 0
+                       , IOC.params = Config.updateParamVals -- updating parameters...
+                                        initParams -- ...defined in EnvCore and SolveDefs
+                                        $ Config.configuredParameters initConfig
+                       , IOC.state  = initState
+                       }
+      return ()
+      where initState  = IOC.Idling
+            initParams = Map.union ParamCore.initParams Solve.Params.initParams
+
+runTxsCtrl :: StateT s IOC.IOC a -> s -> IOC.IOC ()
+runTxsCtrl ctrl s0  =  do
+     _ <- runStateT ctrl s0
+     return ()
+
+
 -- ----------------------------------------------------------------------------------------- --
+-- initializing and terminating
 
 
--- | Show provided item.
-txsShow :: String               -- ^ kind of item to be shown.
-        -> String               -- ^ name of item to be shown.
-                                --   Valid items are "tdefs", "state",
-                                --   "model", "mapper", "purp", "modeldef" \<name>,
-                                --   "mapperdef" \<name>, "purpdef" \<name>
-        -> IOC.IOC String
-txsShow item nm  = do
-     envc  <- gets IOC.state
-     let tdefs = IOC.tdefs envc
-     case envc of
-      IOC.Noning{ }
-         -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "Noning: nothing to be shown" ]
-               return "\n"
-      IOC.Initing{ }
-         -> case (item,nm) of
-              ("tdefs"    ,"") -> return $ show (IOC.tdefs envc)
-              ("modeldef" ,_) -> return $ nm2string nm TxsDefs.IdModel TxsDefs.DefModel
-                                                     (TxsDefs.modelDefs tdefs)
-              ("mapperdef",_) -> return $ nm2string nm TxsDefs.IdMapper TxsDefs.DefMapper
-                                                     (TxsDefs.mapperDefs tdefs)
-              ("purpdef"  ,_) -> return $ nm2string nm TxsDefs.IdPurp TxsDefs.DefPurp
-                                                     (TxsDefs.purpDefs tdefs)
-              ("procdef"  ,_) -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
-                                                     (TxsDefs.procDefs tdefs)
-              ("funcdef"  ,_) -> return $ nm2string nm TxsDefs.IdFunc TxsDefs.DefFunc
-                                                     (TxsDefs.funcDefs tdefs)
-              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown 1" ]
-                      return "\n"
-      _ -> case (item,nm) of
-              ("tdefs"    ,"") -> return $ show (IOC.tdefs envc)
-              ("state"    ,"") -> return $ show (IOC.curstate envc)
-              ("model"    ,"") -> return $ TxsShow.fshow (IOC.modsts envc)
-              ("mapper"   ,"") -> return $ TxsShow.fshow (IOC.mapsts envc)
-              ("purp"     ,"") -> return $ TxsShow.fshow (IOC.purpsts envc)
-              ("modeldef" ,_)  -> return $ nm2string nm TxsDefs.IdModel TxsDefs.DefModel
-                                                     (TxsDefs.modelDefs tdefs)
-              ("mapperdef",_)  -> return $ nm2string nm TxsDefs.IdMapper TxsDefs.DefMapper
-                                                     (TxsDefs.mapperDefs tdefs)
-              ("purpdef"  ,_)  -> return $ nm2string nm TxsDefs.IdPurp TxsDefs.DefPurp
-                                                     (TxsDefs.purpDefs tdefs)
-              ("procdef"  ,_)  -> return $ nm2string nm TxsDefs.IdProc TxsDefs.DefProc
-                                                     (TxsDefs.procDefs tdefs)
-              ("funcdef"  ,_) -> return $ nm2string nm TxsDefs.IdFunc TxsDefs.DefFunc
-                                                     (TxsDefs.funcDefs tdefs)
-              _ -> do IOC.putMsgs [ EnvData.TXS_CORE_USER_ERROR "nothing to be shown 2" ]
-                      return "\n"
+-- | Initialize TorXakis core
+--
+--   Only possible when in Idling Mode.
+txsInit :: TxsDefs.TxsDefs                 -- ^ Definitions for computations.
+        -> Sigs.Sigs VarId                 -- ^ Signatures needed to parse.
+        -> ([EnvData.Msg] -> IOC.IOC ())   -- ^ Handler for info, warning, and error messages.
+        -> IOC.IOC (Either Error ())
+txsInit tdefs sigs putMsgs  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Idling 
+         -> do
+               let cfg    = IOC.config envc
+                   smtLog = Config.smtLog cfg
+                   -- An error will be thrown if the selected solver is not in
+                   -- the list of available solvers. The sanity of the
+                   -- configuration is checked outside this function, however
+                   -- nothing prevents a client of this function from injecting
+                   -- a wrong configuration. A nicer error handling requires
+                   -- some refactoring of the TorXakis core to take this into
+                   -- account.
+                   smtProc = fromJust (Config.getProc cfg)
+               smtEnv         <- lift $ SMT.createSMTEnv smtProc smtLog
+               (info,smtEnv') <- lift $ runStateT SMT.openSolver smtEnv
+               (_,smtEnv'')   <- lift $ runStateT (SMT.addDefinitions (SMTData.EnvDefs (TxsDefs.sortDefs tdefs) (TxsDefs.cstrDefs tdefs) (Set.foldr Map.delete (TxsDefs.funcDefs tdefs) (allENDECfuncs tdefs)))) smtEnv'
+               putMsgs [ EnvData.TXS_CORE_USER_INFO $ "Solver " ++ show (Config.solverId (Config.selectedSolver cfg)) ++ " initialized : " ++ info
+                       , EnvData.TXS_CORE_USER_INFO   "TxsCore initialized"
+                       ]
+               put envc {
+                 IOC.state =
+                     IOC.Initing { IOC.smts    = Map.singleton "current" smtEnv''
+                                 , IOC.tdefs   = tdefs
+                                 , IOC.sigs    = sigs
+                                 , IOC.putmsgs = putMsgs
+                                 , IOC.chanoffers = Map.fromList []
+                                 }
+                 }
+               return $ Right ()
+       _ -> do return $ Left $ Error "Initialization must be started from Idling Mode"
 
+
+-- | Terminate TorXakis core
+--
+--   Only possible when in Initing Mode.
+txsTermit :: IOC.IOC (Either Error ())
+txsTermit  =  do
+     envc <- get
+     case IOC.state envc of
+       IOC.Initing { IOC.smts    = smts
+                   , IOC.putmsgs = putmsgs
+                   }
+         -> do lift $ mapM_ (runStateT SMT.close) (Map.elems smts)
+               putmsgs [ EnvData.TXS_CORE_USER_INFO "Solver(s) closed"
+                       , EnvData.TXS_CORE_USER_INFO "TxsCore terminated"
+                       ]
+               put envc { IOC.state = IOC.Idling }
+               return $ Right ()
+       _ -> do return $ Left $ Error "Termination must be started from Initing Mode"
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- getters
+
+
+-- | Get TorXakis Mode
+--
+--   Possible in all Modes.
+txsGetMode :: IOC.IOC (Either Error TxsMode)
+txsGetMode  =  do
+     envc <- get
+     case IOC.state envc of
+       Idling    {} ->  return $ Right Idling
+       Initing   {} ->  return $ Right Initing
+       TestSet   {} ->  return $ Right TestSet
+       Testing   {} ->  return $ Right Testing
+       SimSet    {} ->  return $ Right SimSet
+       Simuling  {} ->  return $ Right Simuling
+       StepSet   {} ->  return $ Right StepSet
+       Stepping  {} ->  return $ Right Stepping
+       ManSet    {} ->  return $ Right ManSet
+       Manualing {} ->  return $ Right Manualing 
+     
+
+-- | Get all TorXakis definitions
+--
+--   Possible in all Modes.
+txsGetTDefs :: IOC.IOC (Either Error TxsDefs.TxsDefs)
+txsGetTDefs  =  do
+     envc <- get
+     case IOC.state envc of
+       _ -> return $ Right $ IOC.tdefs (IOC.state envc)
+
+
+-- | Get the values of named parameters, or all parameters if empty.
+--
+--   Possible in any Mode.
+txsGetParams :: [String] -> IOC.IOC (Either Error [(String,String)])
+txsGetParams prms  =  do
+     envc <- get
+     case IOC.state envc of
+       _ -> do let params' = map (\(nm,(val,_))->(nm,val)) . Map.toList (IOC.params envc)
+               case prms of
+                 [] -> return $ Right params'
+                 _  -> return $ Right $ filter ((`elem` prms) . fst) params'
+
+
+-- ----------------------------------------------------------------------------------------- --
+-- setters
+
+
+-- | Add TorXakis definitions
+--
+--   Only possible when in Initing or some X-Set Mode.
+--   Added definitions are assumed to be correct and consistent with current definitions.
+txsAddTDefs :: TxsDefs.TxsDefs -> IOC.IOC (Either Error ())
+txsAddTDefs tdefs'  =  do
+     envc <- get
+     case IOC.state envc of
+       Initing {} ->  Right <$> updateTDefs
+       TestSet {} ->  Right <$> updateTDefs
+       SimSet  {} ->  Right <$> updateTDefs
+       StepSet {} ->  Right <$> updateTDefs
+       ManSet  {} ->  Right <$> updateTDefs
+       _          ->  return $ Left $ Error
+                        "Adding TorXakis Definitions only in Initing or some X-Set Mode"
   where
-     nm2string :: String
-               -> (id -> TxsDefs.Ident)
-               -> (def -> TxsDefs.TxsDef)
-               -> Map.Map id def
-               -> String
-     nm2string nm' id2ident id2def iddefs =
-       let defs = [ (id2ident id', id2def def) | (id', def) <- Map.toList iddefs
-                                              , TxsDefs.name (id2ident id') == T.pack nm' ]
-       in case defs of
-            [(ident,txsdef)] -> TxsShow.fshow (ident,txsdef)
-            _                -> "no (uniquely) defined item to be shown: " ++ nm' ++ "\n"
+     tdefs :: TxsDefs.TxsDefs
+     tdefs  =  IOC.tdefs envc
+     updateTDefs :: IOC.IOC ()
+     updateTDefs  =  IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs ++ tdefs' }
+
+
+-- | Set the provided parameter(s) to the provided value.
+--
+--   Only possible when in Idling, Initing, or some X-Set Mode.
+txsSetParams :: [(String,String)]          -- ^ list of parameter (name,value).
+             -> IOC.IOC (Either Error ())
+txsSetParams paramvals  =  do
+     envc <- get
+     case IOC.state envc of
+       Idling  {} ->  Right <$> setParams
+       Initing {} ->  Right <$> setParams
+       TestSet {} ->  Right <$> setParams
+       SimSet  {} ->  Right <$> setParams
+       StepSet {} ->  Right <$> setParams
+       ManSet  {} ->  Right <$> setParams
+       _          ->  return $ Left $ Error
+                        "Setting parameters only in Idling, Initing, or some X-Set Mode"
+  where
+     setParams :: IOC.IOC ()
+     setParams  =  do
+          let (seeds,paramvals') = partition ((==)"param_Seed" . fst) paramvals
+          _ <- IOC.setParams paramvals'
+          case seeds of
+            []                                -> return $ Right ()
+            (seed:_) | and (map isDigit seed) -> do lift $ setStdGen(mkStdGen (read seed)::Int)
+                                                    IOC.putMsgs [ EnvData.TXS_CORE_SYSTEM_INFO
+                                                                  "Seed set to " ++ seed ]
+                                                    return $ Right ()
 
 
 -- ----------------------------------------------------------------------------------------- --

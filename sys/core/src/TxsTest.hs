@@ -27,47 +27,47 @@ module TxsTest
                    -- => D.ModelDef
                    -- -> Maybe D.MapperDef
                    -- -> ew
-                   -- -> IOC.IOC (Either EnvData.Msg ())
+                   -- -> IOC.IOC (Either Error ())
 
   -- ** shut testing mode
-, txsShutTest      -- :: IOC.IOC (Either EnvData.Msg ())
+, txsShutTest      -- :: IOC.IOC (Either Error ())
 
   -- ** start testing
 , txsStartTest     -- :: Maybe D.PurpDef
-                   -- -> IOC.IOC (Either EnvData.Msg ())
+                   -- -> IOC.IOC (Either Error ())
 
   -- ** stop testing
-, txsStopTest      -- :: IOC.IOC (Either EnvData.Msg ())
+, txsStopTest      -- :: IOC.IOC (Either Error ())
 
   -- ** test sut with the provided input action
 , txsTestActIn     -- :: DD.Action
-                   -- -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+                   -- -> IOC.IOC (Either Error DD.Verdict)
 
   -- ** test sut by observing output action
-, txsTestActOut    -- :: IOC.IOC (Either EnvData.Msg DD.Verdict)
+, txsTestActOut    -- :: IOC.IOC (Either Error DD.Verdict)
 
   -- ** test sut with action according to offer-pattern in the model
 , txsTestOfferIn   -- :: D.Offer
-                   -- -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+                   -- -> IOC.IOC (Either Error DD.Verdict)
 
   -- ** test sut with the provided number of actions
 , txsTestRun       -- :: Int
-                   -- -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+                   -- -> IOC.IOC (Either Error DD.Verdict)
 
   -- ** give the input menu, i.e., all possible input offers, in the model
-, txsTestMenuIn    --  :: IOC.IOC (Either EnvData.Msg BTree.Menu)
+, txsTestMenuIn    --  :: IOC.IOC (Either Error BTree.Menu)
 
   -- ** give the output menu, i.e., all possible output offers, in the model
-, txsTestMenuOut   --  :: IOC.IOC (Either EnvData.Msg BTree.Menu)
+, txsTestMenuOut   --  :: IOC.IOC (Either Error BTree.Menu)
 
   -- ** give current state number
-, txsTestStateNr   --  :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
+, txsTestStateNr   --  :: IOC.IOC (Either Error EnvData.StateNr)
 
   -- ** give current state
-, txsTestState     --  :: IOC.IOC (Either EnvData.Msg BTree.BTree)
+, txsTestState     --  :: IOC.IOC (Either Error BTree.BTree)
 
   -- ** give trace from initial state to current state
-, txsTestTrace     --  :: IOC.IOC (Either EnvData.Msg [DD.Action])
+, txsTestTrace     --  :: IOC.IOC (Either Error [DD.Action])
 
 )
 
@@ -107,7 +107,7 @@ txsSetTest :: IOC.EWorld ew
            => D.ModelDef                           -- ^ model definition.
            -> Maybe D.MapperDef                    -- ^ optional mapper definition.
            -> ew                                   -- ^ external world.
-           -> IOC.IOC (Either EnvData.Msg ())
+           -> IOC.IOC (Either Error ())
 txsSetTest moddef mapdef eworld  =  do
      envc <- get
      case IOC.state envc of
@@ -126,14 +126,13 @@ txsSetTest moddef mapdef eworld  =  do
                                      }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Testing Mode set" ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Testing Mode must be set from Initing mode"
+       _ -> return $ Left $ Error "Testing Mode must be set from Initing mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Shut Testing Mode.
 --
 --   Only possible when in TestSet Mode.
-txsShutTest :: IOC.IOC (Either EnvData.Msg ())
+txsShutTest :: IOC.IOC (Either Error ())
 txsShutTest  =  do
      envc <- get
      case IOC.state envc of
@@ -152,15 +151,14 @@ txsShutTest  =  do
                                      }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Testing Mode shut" ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Testing Mode must be shut from TestSet Mode"
+       _ -> return $ Left $ Error "Testing Mode must be shut from TestSet Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Start testing.
 --
 --   Only possible when in TestSet Mode.
 txsStartTest :: Maybe D.PurpDef                    -- ^ optional test purpose definition.
-             -> IOC.IOC (Either EnvData.Msg ())
+             -> IOC.IOC (Either Error ())
 txsStartTest purpdef  =  do
      envc <- get
      case IOC.state envc of
@@ -215,8 +213,7 @@ txsStartTest purpdef  =  do
                                       List.intercalate "," (TxsShow.fshow . fst <$> gls) ])
                          Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                              "Testing Mode started" ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Testing Mode must be started from TestSet Mode"
+       _ -> return $ Left $ Error "Testing Mode must be started from TestSet Mode"
 
 
 startTester :: D.ModelDef
@@ -339,7 +336,7 @@ goalInit chsets (gid,bexp)  =  do
 -- | Stop testing.
 --
 --   Only possible when Testing Mode.
-txsStopTest :: IOC.IOC (Either EnvData.Msg ())
+txsStopTest :: IOC.IOC (Either Error ())
 txsStopTest  =  do
      envc <- get
      case IOC.state envc of
@@ -369,44 +366,43 @@ txsStopTest  =  do
                                      }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Testing Mode stopped" ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Testing Mode must be stopped from Testing Mode"
+       _ -> return $ Left $ Error "Testing Mode must be stopped from Testing Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Test SUT with the provided input action.
 --
 --   Only possible when Testing
 txsTestActIn :: DD.Action                                 -- ^ input action to SUT.
-             -> IOC.IOC (Either EnvData.Msg DD.Verdict)   -- ^ verdict of test.
+             -> IOC.IOC (Either Error DD.Verdict)   -- ^ verdict of test.
 txsTestActIn act  =  do
      envc <- get
      case IOC.state envc of
        IOC.Testing { IOC.purpdef = Nothing }
          -> do (_,verdict) <- Test.testIn act 1
                return $ Right verdict
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Testing with action only in Testing Mode (without Test Purpose)"
+       _ -> return $ Left
+                   $ Error "Testing with action only in Testing Mode (without Test Purpose)"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Test SUT by observing output action.
 --
 --   Only possible when Testing
-txsTestActOut :: IOC.IOC (Either EnvData.Msg DD.Verdict)
+txsTestActOut :: IOC.IOC (Either Error DD.Verdict)
 txsTestActOut  =  do
      envc <- get
      case IOC.state envc of
        IOC.Testing { IOC.purpdef = Nothing }
          -> do (_, verdict) <- Test.testOut 1
                return $ Right verdict
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Testing observation only in Testing Mode (without Test Purpose)"
+       _ -> return $ Left
+                   $ Error "Testing observation only in Testing Mode (without Test Purpose)"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Test SUT with action according to offer-pattern in the model.
 -- 
 --   Only possible when Testing
 txsTestOfferIn :: D.Offer                         -- ^ Offer-pattern for test input action.
-               -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+               -> IOC.IOC (Either Error DD.Verdict)
 txsTestOfferIn offer  =  do
      envc <- get
      case IOC.state envc of
@@ -422,80 +418,75 @@ txsTestOfferIn offer  =  do
                  Just act
                    -> do (_,verdict) <- Test.testIn act 1
                          return $ Right verdict
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Testing with offer only in Testing Mode (without Test Purpose)"
+       _ -> return $ Left
+                   $ Error "Testing with offer only in Testing Mode (without Test Purpose)"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Test SUT with the provided number of actions.
 --
 --   Only possible when Testing
 txsTestRun :: Int                                       -- ^ number of actions to test the SUT
-           -> IOC.IOC (Either EnvData.Msg DD.Verdict)   -- ^ verdict after test run
+           -> IOC.IOC (Either Error DD.Verdict)   -- ^ verdict after test run
 txsTestRun nrsteps  =  do
      envc <- get
      case IOC.state envc of
        IOC.Testing {}
          -> Right <$> Test.testN nrsteps 1
-       _ -> do return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                               "Testing Run only in Testing Mode"
+       _ -> do return $ Left $ Error "Testing Run only in Testing Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Give the input menu, i.e., all possible input offers, in the model.
 --
 --   Only possible when Testing
-txsTestMenuIn :: IOC.IOC (Either EnvData.Msg BTree.Menu)
+txsTestMenuIn :: IOC.IOC (Either Error BTree.Menu)
 txsTestMenuIn  =  do
      envc <- get
      case IOC.state envc of
        IOC.Testing {}
          -> Right <$> Test.testModelMenuIn
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Testing MenuIn only in Testing Mode"
+       _ -> return $ Left $ Error "Testing MenuIn only in Testing Mode"
  
 -- ----------------------------------------------------------------------------------------- --
 -- | Give the output menu, i.e., all possible output offers, in the model.
 --
 --   Only possible when Testing
-txsTestMenuOut :: IOC.IOC (Either EnvData.Msg BTree.Menu)
+txsTestMenuOut :: IOC.IOC (Either Error BTree.Menu)
 txsTestMenuOut  =  do
      envc <- get
      case IOC.state envc of
        IOC.Testing {}
          -> Right <$> Test.testModelMenuOut
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Testing MenuOut only in Testing Mode"
+       _ -> return $ Left $ Error "Testing MenuOut only in Testing Mode"
  
 -- ----------------------------------------------------------------------------------------- --
 -- | Give current state number
 -- 
 --   Only possible when Testing
-txsTestStateNr :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
+txsTestStateNr :: IOC.IOC (Either Error EnvData.StateNr)
 txsTestStateNr  =  do
      envc <- get
      case IOC.state envc of
        IOC.Testing { IOC.curstate = curstate }
          -> return $ Right curstate
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Current state of testing only in Testing Mode"
+       _ -> return $ Left $ Error "Current state of testing only in Testing Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Give current state.
 --
 --   Only possible when Testing
-txsTestState :: IOC.IOC (Either EnvData.Msg BTree.BTree)
+txsTestState :: IOC.IOC (Either Error BTree.BTree)
 txsTestState  =  do
      envc <- get
      case IOC.state envc of
        IOC.Testing { IOC.modsts = modsts }
          -> return $ Right modsts
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Current state of testing only in Testing Mode"
+       _ -> return $ Left $ Error "Current state of testing only in Testing Mode"
  
 -- ----------------------------------------------------------------------------------------- --
 -- | Give trace from initial state to current state.
 --
 --   Only possible when Testing
-txsTestTrace :: IOC.IOC (Either EnvData.Msg [DD.Action])
+txsTestTrace :: IOC.IOC (Either Error [DD.Action])
 txsTestTrace  =  do
      envc <- get
      case IOC.state envc of
@@ -507,8 +498,7 @@ txsTestTrace  =  do
               Nothing -> return $ Left $ EnvData.TXS_CORE_SYSTEM_ERROR
                                          "Path error: Behaviour Trie is not a tree"
               Just t  -> return $ Right t
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Trace of testing only in Testing Mode"
+       _ -> return $ Left $ Error "Trace of testing only in Testing Mode"
   where
      trace :: [(EnvData.StateNr, DD.Action, EnvData.StateNr)]
            -> EnvData.StateNr

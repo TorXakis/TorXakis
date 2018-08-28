@@ -74,10 +74,9 @@ type IOS a = StateT EnvS IOC.IOC a
 -- torxakis server state type definitions
 
 
-data EnvS  = EnvS { host    :: String                  -- ^ host of server client
-                  , portNr  :: PortNumber              -- ^ port number of server client
+data EnvS  = EnvS { -- host    :: String                  -- ^ host of server client
+                  , -- portNr  :: PortNumber              -- ^ port number of server client
                   , servhs  :: Handle                  -- ^ server socket handle
-                  , modus   :: TxsModus                -- ^ current modus of TXS operation
                   , uid     :: Id                      -- ^ last used unique id number
                   , sigs    :: Sigs.Sigs VarId.VarId   -- ^ signatures in TorXakis files
                   , locvars :: [VarId.VarId]           -- ^ local free variables
@@ -168,50 +167,6 @@ setParam (prm,val) = do
                                     modify $ \env -> env { params = newParams }
                                     return [(prm,val)]
                             else return []
-
--- ----------------------------------------------------------------------------------------- --
--- Msg :  (Error) Messages
-
-{-
-
-data Msg    =  TXS_SERV_SYSTEM_ERROR     { s :: String }
-               | TXS_SERV_MODEL_ERROR      { s :: String }
-               | TXS_SERV_USER_ERROR       { s :: String }
-               | TXS_SERV_RUNTIME_ERROR    { s :: String }
-               | TXS_SERV_SYSTEM_WARNING   { s :: String }
-               | TXS_SERV_MODEL_WARNING    { s :: String }
-               | TXS_SERV_USER_WARNING     { s :: String }
-               | TXS_SERV_RUNTIME_WARNING  { s :: String }
-               | TXS_SERV_SYSTEM_INFO      { s :: String }
-               | TXS_SERV_MODEL_INFO       { s :: String }
-               | TXS_SERV_USER_INFO        { s :: String }
-               | TXS_SERV_RUNTIME_INFO     { s :: String }
-               | TXS_SERV_RESPONSE         { s :: String }
-               | TXS_SERV_OK               { s :: String }
-               | TXS_SERV_NOK              { s :: String }
-               | TXS_SERV_ANY              { s :: String }
-     deriving (Eq,Ord,Read,Show)
-
-instance TxsShow.PShow Msg
-  where
-     pshow msg = s msg
-
-
--- | Add messages to IOS Monad.
-putMsgs :: [Msg] -> IOS ()
-putMsgs mess = do
-     msgs' <- gets msgs
-     modify $ \env -> env { msgs = msgs' ++ mess }
-
-
--- | Take messages from Monad, and reset message list .
-takeMsgs :: IOS [String]
-takeMsgs = do
-     msgs' <- gets msgs
-     modify $ \env -> env { msgs = [] }
-     return $ map TxsShow.pshow msgs'
-
--}
 
 
 -- ----------------------------------------------------------------------------------------- --

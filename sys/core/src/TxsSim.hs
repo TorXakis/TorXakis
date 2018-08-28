@@ -27,43 +27,43 @@ module TxsSim
                    -- => D.ModelDef
                    -- -> Maybe D.MapperDef
                    -- -> ew
-                   -- -> IOC.IOC (Either EnvData.Msg ())
+                   -- -> IOC.IOC (Either Error ())
 
   -- ** shut simulating mode
-, txsShutSim       -- :: IOC.IOC (Either EnvData.Msg ())
+, txsShutSim       -- :: IOC.IOC (Either Error ())
 
   -- ** start simulating
-, txsStartSim      -- :: IOC.IOC (Either EnvData.Msg ())
+, txsStartSim      -- :: IOC.IOC (Either Error ())
 
   -- ** stop simulating
-, txsStopSim       -- :: IOC.IOC (Either EnvData.Msg ())
+, txsStopSim       -- :: IOC.IOC (Either Error ())
 
   -- ** simulate system by observing input action from external world
-, txsSimActIn      -- :: IOC.IOC (Either EnvData.Msg DD.Verdict)
+, txsSimActIn      -- :: IOC.IOC (Either Error DD.Verdict)
 
   -- ** simulate system by sending provided output action to external world
-, txsSimActOut     -- :: DD.Action -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+, txsSimActOut     -- :: DD.Action -> IOC.IOC (Either Error DD.Verdict)
 
   -- ** simulate system by sending output action according to offer-pattern to external world
-, txsSimOfferOut   -- :: D.Offer -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+, txsSimOfferOut   -- :: D.Offer -> IOC.IOC (Either Error DD.Verdict)
 
   -- ** simulate model with the provided number of actions
-, txsSimRun        -- :: Int ->IOC.IOC (Either EnvData.Msg DD.Verdict)
+, txsSimRun        -- :: Int ->IOC.IOC (Either Error DD.Verdict)
 
   -- ** give the input menu, i.e., all possible input offers, in the model
-, txsSimMenuIn     -- :: IOC.IOC (Either EnvData.Msg BTree.Menu)
+, txsSimMenuIn     -- :: IOC.IOC (Either Error BTree.Menu)
 
   -- ** Give the output menu, i.e., all possible output offers, in the model.
-, txsSimMenuOut    -- :: IOC.IOC (Either EnvData.Msg BTree.Menu)
+, txsSimMenuOut    -- :: IOC.IOC (Either Error BTree.Menu)
 
   -- ** give current state number
-, txsSimStateNr    -- :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
+, txsSimStateNr    -- :: IOC.IOC (Either Error EnvData.StateNr)
 
   -- ** give current state
-, txsSimState      -- :: IOC.IOC (Either EnvData.Msg BTree.BTree)
+, txsSimState      -- :: IOC.IOC (Either Error BTree.BTree)
 
   -- ** give trace from initial state to current state
-, txsSimTrace      -- :: IOC.IOC (Either EnvData.Msg [DD.Action])
+, txsSimTrace      -- :: IOC.IOC (Either Error [DD.Action])
 
 )
 
@@ -145,7 +145,7 @@ txsSetSim :: IOC.EWorld ew
           => D.ModelDef                           -- ^ model definition.
           -> Maybe D.MapperDef                    -- ^ optional mapper definition.
           -> ew                                   -- ^ external world.
-          -> IOC.IOC (Either EnvData.Msg ())
+          -> IOC.IOC (Either Error ())
 txsSetSim moddef mapdef eworld  =  do
      envc <- get
      case IOC.state envc of
@@ -164,14 +164,13 @@ txsSetSim moddef mapdef eworld  =  do
                                     }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Simulating Mode set" ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Simulating Mode must be set from Initing mode"
+       _ -> return $ Left $ Error "Simulating Mode must be set from Initing mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Shut Simulating Mode.
 --
 --   Only possible when in SimSet Mode.
-txsShutSim :: IOC.IOC (Either EnvData.Msg ())
+txsShutSim :: IOC.IOC (Either Error ())
 txsShutSim  =  do
      envc <- get
      case IOC.state envc of
@@ -190,14 +189,13 @@ txsShutSim  =  do
                                      }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Simulating Mode shut" ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Simulating Mode must be shut from SimSet Mode"
+       _ -> return $ Left $ Error "Simulating Mode must be shut from SimSet Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Start simulating.
 --
 --   Only possible when in SimSet Mode.
-txsStartSim :: IOC.IOC (Either EnvData.Msg ())
+txsStartSim :: IOC.IOC (Either Error ())
 txsStartSim  =  do
      envc <- get
      case IOC.state envc of
@@ -245,8 +243,7 @@ txsStartSim  =  do
                          Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                              "Simulating Mode started" ]
                          return eWorld'
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Simulating Mode must be started from SimSet Mode"
+       _ -> return $ Left $ Error "Simulating Mode must be started from SimSet Mode"
 
 
 startSimulator :: TxsDefs.ModelDef
@@ -294,7 +291,7 @@ startSimulator (TxsDefs.ModelDef minsyncs moutsyncs msplsyncs mbexp)
 -- | Stop simulating.
 --
 --   Only possible when in Simuling Mode.
-txsStopSim :: IOC.IOC (Either EnvData.Msg ())
+txsStopSim :: IOC.IOC (Either Error ())
 txsStopSim  =  do
      envc <- get
      case IOC.state envc of
@@ -322,29 +319,27 @@ txsStopSim  =  do
                                     }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Simulating Mode stopped" ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Simulating Mode must be stopped from Simulating Mode"
+       _ -> return $ Left $ Error "Simulating Mode must be stopped from Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Simulate system by observing input action from External World.
 --
 --   Only possible when Simuling.
-txsSimActIn :: IOC.IOC (Either EnvData.Msg DD.Verdict)
+txsSimActIn :: IOC.IOC (Either Error DD.Verdict)
 txsSimActIn  =  do
      envc <- get
      case IOC.state envc of
        IOC.Simuling {}
          -> do (_, verdict) <- Sim.simAfroW 1 1
                return $ Right verdict
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Simulating input only in Simulating Mode"
+       _ -> return $ Left $ Error "Simulating input only in Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Simulate system by sending provided output action to External World.
 --
 --   Only possible when Simuling
 txsSimActOut :: DD.Action                                 -- ^ output action to world.
-             -> IOC.IOC (Either EnvData.Msg DD.Verdict)   -- ^ verdict of simulation.
+             -> IOC.IOC (Either Error DD.Verdict)   -- ^ verdict of simulation.
 txsSimActOut act  =  do
      envc <- get
      case IOC.state envc of
@@ -354,15 +349,14 @@ txsSimActOut act  =  do
                          "doing random action instead" ]
                (_,verdict) <- Sim.simAtoW 1 1
                return $ Right verdict
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Simulating output only in Simulating Mode"
+       _ -> return $ Left $ Error "Simulating output only in Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Simulate system by sending output action according to offer-pattern to External World.
 --
 --   Only possible when Simuling.
 txsSimOfferOut :: D.Offer                           -- ^ Offer-pattern to step in model.
-               -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+               -> IOC.IOC (Either Error DD.Verdict)
 txsSimOfferOut offer  =  do
      envc <- get
      case IOC.state envc of
@@ -379,80 +373,74 @@ txsSimOfferOut offer  =  do
                                    "doing random action instead" ]
                          (_,verdict) <- Sim.simAtoW 1 1
                          return $ Right verdict
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Simulating with offer only in Simulating Mode"
+       _ -> return $ Left $ Error "Simulating with offer only in Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Simulate model with the provided number of actions.
 --
 --   Only possible when Simuling.
 txsSimRun :: Int                                      -- ^ number of actions to simulate
-          ->IOC.IOC (Either EnvData.Msg DD.Verdict)   -- ^ verdict after  simulation run
+          ->IOC.IOC (Either Error DD.Verdict)   -- ^ verdict after  simulation run
 txsSimRun nrsteps  =  do
      envc <- get
      case IOC.state envc of
        IOC.Simuling {}
          -> Right <$> Sim.simN nrsteps 1
-       _ -> do return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                               "Simulating Run only in Simulating Mode"
+       _ -> do return $ Left $ Error "Simulating Run only in Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Give the input menu, i.e., all possible input offers, in the model.
 --
 --   Only possible when Simuling.
-txsSimMenuIn :: IOC.IOC (Either EnvData.Msg BTree.Menu)
+txsSimMenuIn :: IOC.IOC (Either Error BTree.Menu)
 txsSimMenuIn  =  do
      envc <- get
      case IOC.state envc of
        IOC.Simuling {}
          -> Right <$> Sim.simModelMenuIn
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Simulating MenuIn only in Simulating Mode"
+       _ -> return $ Left $ Error "Simulating MenuIn only in Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Give the output menu, i.e., all possible output offers, in the model.
 --
 --   Only possible when Simuling.
-txsSimMenuOut :: IOC.IOC (Either EnvData.Msg BTree.Menu)
+txsSimMenuOut :: IOC.IOC (Either Error BTree.Menu)
 txsSimMenuOut  =  do
      envc <- get
      case IOC.state envc of
        IOC.Simuling {}
          -> Right <$> Sim.simModelMenuOut
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Simulating MenuOut only in Simulating Mode"
+       _ -> return $ Left $ Error "Simulating MenuOut only in Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Give current state number
 --
 --   Only possible when Simuling.
-txsSimStateNr :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
+txsSimStateNr :: IOC.IOC (Either Error EnvData.StateNr)
 txsSimStateNr  =  do
      envc <- get
      case IOC.state envc of
        IOC.Simuling { IOC.curstate = curstate }
          -> return $ Right curstate
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Current state of simulating only in Simulating Mode"
+       _ -> return $ Left $ Error "Current state of simulating only in Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Give current state.
 --
 --   Only possible when Simuling.
-txsSimState :: IOC.IOC (Either EnvData.Msg BTree.BTree)
+txsSimState :: IOC.IOC (Either Error BTree.BTree)
 txsSimState  =  do
      envc <- get
      case IOC.state envc of
        IOC.Simuling { IOC.modsts = modsts }
          -> return $ Right modsts
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Current state of simulating only in Simulating Mode"
+       _ -> return $ Left $ Error "Current state of simulating only in Simulating Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Give trace from initial state to current state.
 --
 --   Only possible when Simuling.
-txsSimTrace :: IOC.IOC (Either EnvData.Msg [DD.Action])
+txsSimTrace :: IOC.IOC (Either Error [DD.Action])
 txsSimTrace  =  do
      envc <- get
      case IOC.state envc of
@@ -464,8 +452,7 @@ txsSimTrace  =  do
               Nothing -> return $ Left $ EnvData.TXS_CORE_SYSTEM_ERROR
                                          "Path error: Behaviour Trie is not a tree"
               Just t  -> return $ Right t
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Trace of simulating only in Simulating Mode"
+       _ -> return $ Left $ Error "Trace of simulating only in Simulating Mode"
   where
      trace :: [(EnvData.StateNr, DD.Action, EnvData.StateNr)]
            -> EnvData.StateNr

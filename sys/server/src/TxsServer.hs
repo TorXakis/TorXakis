@@ -97,8 +97,12 @@ main = withSocketsDo $ do
                               $ SC.configuredParameters config
               }
           coreConfig = config
+      IFS.pack "START" ["txsserver starting:  " ++ show host ++ " : " ++ show port]
+
       TxsCore.runTxsCore coreConfig cmdsIntpr initS
+
       threadDelay 1000000    -- 1 sec delay on closing
+      IFS.pack "QUIT" ["txsserver closing  " ++ show host ++ " : " ++ show port]
       sClose sock
       hPutStrLn stderr "\nTXSSERVER >>  Closing  ..... \n"
 
@@ -117,7 +121,10 @@ txsListenOn (Just portNr) = do
     sock <- listenOn (PortNumber portNr)
     return (portNr, sock)
 
+
+-- ----------------------------------------------------------------------------------------- --
 -- * TorXakis server commands processing
+
 
 cmdsIntpr :: IOS.IOS ()
 cmdsIntpr = do
@@ -213,32 +220,12 @@ cmdUnknown cmd = do
 
 -- ----------------------------------------------------------------------------------------- --
 
-cmdStart :: String -> IOS.IOS ()
-cmdStart _ = do
-     modify $ \env -> env { IOS.modus = IOS.Idled }
-     host <- gets IOS.host
-     port <- gets IOS.portNr
-     IFS.pack "START" ["txsserver starting:  " ++ show host ++ " : " ++ show port]
-     cmdsIntpr
-
--- ----------------------------------------------------------------------------------------- --
-
-cmdQuit :: String -> IOS.IOS ()
-cmdQuit _ = do
-     modify $ \env -> env { IOS.modus = IOS.Noned }
-     host <- gets IOS.host
-     port <- gets IOS.portNr
-     IFS.pack "QUIT" ["txsserver closing  " ++ show host ++ " : " ++ show port]
-     return ()
-
--- ----------------------------------------------------------------------------------------- --
-
 cmdInit :: String -> IOS.IOS ()
-cmdInit args = do
+cmdInit args  =  do
      servhs             <- gets IOS.servhs
      unid               <- gets IOS.uid
      tdefs              <- lift TxsCore.txsGetTDefs
-     sigs               <- gets IOS.sigs
+     sigs               <- gets sigs
      srctxts            <- lift $ lift $ mapM readFile (words args)
      let srctxt          = List.intercalate "\n\n" srctxts
      ((unid',tdefs', sigs'),e) <- lift $ lift $ catch
@@ -249,56 +236,59 @@ cmdInit args = do
      if e /= ""
        then do IFS.nack "INIT" [e]
                cmdsIntpr
-       else do modify $ \env -> env { IOS.modus  = IOS.Inited
-                                    , IOS.uid    = unid'
-                                    , IOS.sigs   = sigs'
-                                    }
-               lift $ TxsCore.txsInit tdefs' sigs' ( IFS.hmack servhs . map TxsShow.pshow )
+       else do modify $ \env -> env { IOS.uid    = unid' }
+               either <- lift $ TxsCore.txsInit tdefs' sigs' ( IFS.hmack servhs . map TxsShow.pshow )
                IFS.pack "INIT" ["input files parsed:", unwords (words args)]
                cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdTermit :: String -> IOS.IOS ()
-cmdTermit _ = do
-     modify $ \env -> env { IOS.modus  = IOS.Idled
-                          , IOS.tdefs  = TxsDefs.empty
-                          , IOS.sigs   = Sigs.empty
-                          }
-     lift TxsCore.txsTermit
-     IFS.pack "TERMIT" []
-     cmdsIntpr
+cmdTermit _  =  do
+     either <- lift TxsCore.txsTermit
+     case either of
+       Left e  -> do IFS.nack "TERMIT" [ toText e ]
+                     cmdsIntpr
+       Right _ -> do IFS.pack "TERMIT" []
+                     cmdsIntpr
+
+++++
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdStop :: String -> IOS.IOS ()
-cmdStop _ = do
-     World.closeSockets
-     -- modus <- gets IOS.modus
-     -- if  IOS.isSimuled modus
-       -- then do -- [(_,valsut)] <- IOS.getParams ["param_Sut_deltaTime"]
-               -- [(_,valsim)] <- IOS.getParams ["param_Sim_deltaTime"]
-               -- IOS.setParams [("param_Sut_deltaTime",valsut)]
-               -- IOS.setParams [("param_Sim_deltaTime",valsim)]
-     modify $ \env -> env { IOS.modus   = IOS.Inited
-                          , IOS.tow     = ( Nothing, Nothing, [] )
-                          , IOS.frow    = ( Nothing, [],      [] )
-                          }
-     lift TxsCore.txsStop
-     IFS.pack "STOP" []
-     cmdsIntpr
-       -- else do modify $ \env -> env { IOS.modus   = IOS.Inited
-                                    -- , IOS.tow     = ( Nothing, Nothing, [] )
-                                    -- , IOS.frow    = ( Nothing, [],      [] )
-                                    -- }
-               -- lift TxsCore.txsStop
-               -- IFS.pack "STOP" []
-               -- cmdsIntpr
+cmdStop _  =  do
+     either <- lift $ txsGetMode
+     case either of 
+       Left e
+         -> do IFS.nack "STOP" [ toText e ]
+               cmdsIntpr
+       Right txsmode
+         -> do either' <- case txsmode of
+                            Idling    -> do return $ Right ()
+                            Initing   -> do return $ Right ()
+                            TestSet   -> do txsShutTest
+                            Testing   -> do txsStopTest
+                                            txsShutTest
+                            SimSet    -> do txsShutSim
+                            Simuling  -> do txsStopSim
+                                            txsShutSim
+                            StepSet   -> do txsShutStep 
+                            Stepping  -> do txsStopStep
+                                            txsShutStep 
+                            ManSet    -> do txsShutManual
+                            Manualing -> do txsStopW
+                                            txsShutManual
+               case either' of
+                 Left e        -> do IFS.nack "STOP" [ toText e ]
+                                     cmdsIntpr
+                 Right txsmode -> do IFS.pack "STOP" []
+                                     cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdInfo :: String -> IOS.IOS ()
-cmdInfo _ = do
+cmdInfo _  =  do
      IFS.pack "INFO" [ "TorXakis version    : " ++ VersionInfo.version
                      , "Build time          : " ++ BuildInfo.buildTime
                      ]
@@ -307,7 +297,7 @@ cmdInfo _ = do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdParam :: String -> IOS.IOS ()
-cmdParam args =
+cmdParam args  =
      case words args of
        []        -> do params1 <- lift TxsCore.txsGetParams
                        params2 <- IOS.getParams []
@@ -336,21 +326,21 @@ cmdParam args =
 -- ----------------------------------------------------------------------------------------- --
 
 cmdSeed :: String -> IOS.IOS ()
-cmdSeed args =
+cmdSeed args  =
      case words args of
-       [val] -> let seed :: Int
-                    seed = read val
-                  in do
-                   lift $ TxsCore.txsSetSeed seed
-                   IFS.pack "SEED" []
-                   cmdsIntpr
+       [val] -> do either <- lift $ TxsCore.txsSetParams [("param_Seed",val)]
+                   case either' of
+                     Left e        -> do IFS.nack "SEED" [ toText e ]
+                                         cmdsIntpr
+                     Right txsmode -> do IFS.pack "SEED" []
+                                         cmdsIntpr
        _     -> do IFS.nack "SEED" [ "Incorrect seed" ]
                    cmdsIntpr
 
 -- ----------------------------------------------------------------------------------------- --
 
 cmdVar :: String -> IOS.IOS ()
-cmdVar args = do
+cmdVar args  =  do
      env              <- get
      let uid          = IOS.uid env
          sigs         = IOS.sigs env
@@ -361,14 +351,12 @@ cmdVar args = do
          IFS.pack "VAR" [ TxsShow.fshow vars ]
          cmdsIntpr
        else do
-
          ((uid',vars'),e) <- lift $ lift $ catch
                                ( let p = compileUnsafe $
                                          compileVarDecls sigs (_id uid + 1) args
                                   in return $!! (p,"")
                                )
                                ( \e -> return ((uid,[]),show (e::ErrorCall)))
-
          if  e /= ""
            then do
              modify $ \env' -> env' { IOS.uid = uid' }
@@ -392,10 +380,10 @@ cmdVar args = do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdVal :: String -> IOS.IOS ()
-cmdVal args = do
+cmdVal args  =  do
      env              <- get
      let uid          = IOS.uid env
-         sigs         = IOS.sigs env
+         sigs         =  IOS.sigs env
          vars         = IOS.locvars env
          vals         = IOS.locvals env
      if  args == ""
@@ -403,14 +391,12 @@ cmdVal args = do
          IFS.pack "VAL" [ TxsShow.fshow vals ]
          cmdsIntpr
        else do
-
          ((uid',venv'),e) <- lift $ lift $ catch
                                ( let p = compileUnsafe $
                                          compileValDefs sigs [] (_id uid + 1) args
                                  in return $!! (p,"")
                                )
                                ( \e -> return ((uid,Map.empty),show (e::ErrorCall)))
-
          if  e /= ""
            then do
              modify $ \env' -> env' { IOS.uid = uid' }
@@ -434,25 +420,23 @@ cmdVal args = do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdEval :: String -> IOS.IOS ()
-cmdEval args = do
+cmdEval args  =  do
      env              <- get
      let uid           = IOS.uid env
          sigs          = IOS.sigs env
          vals          = IOS.locvals env
          vars          = IOS.locvars env
      tdefs            <- lift TxsCore.txsGetTDefs
-
      ((uid',vexp'),e) <- lift $ lift $ catch
                            ( let (i,p) = compileUnsafe $
                                          compileValExpr sigs (Map.keys vals ++ vars) (_id uid + 1) args
                               in return $!! ((i, Just p),"")
                            )
                            ( \e -> return ((uid, Nothing),show (e::ErrorCall)))
-
      case vexp' of
        Just vexp'' -> do
                         modify $ \env' -> env' { IOS.uid = uid' }
-                        mwalue <- lift $ TxsCore.txsEval (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp'')
+                        mwalue <- lift $ TxsValue.txsEval (ValExpr.subst vals (TxsDefs.funcDefs tdefs) vexp'')
                         case mwalue of
                             Right walue -> do
                                             IFS.pack "EVAL" [ TxsShow.fshow walue ]
@@ -469,7 +453,7 @@ cmdEval args = do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdSolve :: String -> String -> IOS.IOS ()
-cmdSolve args kind = do
+cmdSolve args kind  =  do
      let cmd :: String
          solver :: TxsCore.TxsSolveType
          (cmd,solver) = case kind of
@@ -504,7 +488,7 @@ cmdSolve args kind = do
 -- ----------------------------------------------------------------------------------------- --
 
 cmdTester :: String -> IOS.IOS ()
-cmdTester args = do
+cmdTester args  =  do
      envs'  <- get
      let Just (ioString,_) = Map.lookup "param_Sut_ioTime" (IOS.params envs')
          ioTime :: Int

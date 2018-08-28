@@ -25,34 +25,34 @@ module TxsManual
 
 (
   -- * set manual mode for External World
-  txsSetManual     -- :: IOC.EWorld ew => ew -> IOC.IOC (Either EnvData.Msg ())
+  txsSetManual     -- :: IOC.EWorld ew => ew -> IOC.IOC (Either Error ())
 
   -- * shut manual mode for External World
-, txsShutManual    -- :: IOC.IOC (Either EnvData.Msg ())
+, txsShutManual    -- :: IOC.IOC (Either Error ())
 
   -- * start running with the External World
-,  txsStartW       -- :: IOC.IOC (Either EnvData.Msg ())
+,  txsStartW       -- :: IOC.IOC (Either Error ())
 
   -- * stop running with the External World
-, txsStopW         -- :: IOC.IOC (Either EnvData.Msg ())
+, txsStopW         -- :: IOC.IOC (Either Error ())
 
   -- * send an action to the External World, and do that action, or an observed earlier action.
-, txsActToW        -- :: DD.Action -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+, txsActToW        -- :: DD.Action -> IOC.IOC (Either Error DD.Verdict)
 
   -- * observe an action from the External World
-, txsActFroW       -- :: IOC.IOC (Either EnvData.Msg DD.Verdict)
+, txsActFroW       -- :: IOC.IOC (Either Error DD.Verdict)
 
   -- send an action according to the offer-pattern to the External World
-, txsOfferToW      -- :: D.Offer -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+, txsOfferToW      -- :: D.Offer -> IOC.IOC (Either Error DD.Verdict)
 
   -- * run n actions on the External World; if n<0 then run indefinitely
-, txsRunW          -- :: Int -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+, txsRunW          -- :: Int -> IOC.IOC (Either Error DD.Verdict)
 
   -- * give the current state number
-, txsGetWStateNr   -- :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
+, txsGetWStateNr   -- :: IOC.IOC (Either Error EnvData.StateNr)
 
   -- * give the trace from the initial state to the current state
-, txsGetWTrace     -- :: IOC.IOC (Either EnvData.Msg [DD.Action])
+, txsGetWTrace     -- :: IOC.IOC (Either Error [DD.Action])
 )
 
 
@@ -84,7 +84,7 @@ import qualified TxsShow
 --   Only possible when in Initing Mode.
 txsSetManual :: IOC.EWorld ew
              => ew                               -- ^ external world
-             -> IOC.IOC (Either EnvData.Msg ())
+             -> IOC.IOC (Either Error ())
 txsSetManual eworld  =  do
      envc <- get
      case IOC.state envc of
@@ -101,14 +101,13 @@ txsSetManual eworld  =  do
                                     }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Manual Mode set" ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Manual Mode must be set from Initing mode"
+       _ -> return $ Left $ Error "Manual Mode must be set from Initing mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Shut Manual Mode
 --
 --   Only possible when in ManSet Mode.
-txsShutManual :: IOC.IOC (Either EnvData.Msg ())
+txsShutManual :: IOC.IOC (Either Error ())
 txsShutManual  =  do
      envc <- get
      case IOC.state envc of
@@ -125,14 +124,13 @@ txsShutManual  =  do
                                      }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Manual Mode shut" ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Manual Mode must be shut from ManSet Mode"
+       _ -> return $ Left $ Error "Manual Mode must be shut from ManSet Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Start External World
 --
 --   Only possible when in ManSet Mode.
-txsStartW :: IOC.IOC (Either EnvData.Msg ())
+txsStartW :: IOC.IOC (Either Error ())
 txsStartW  =  do
      envc <- get
      case IOC.state envc of
@@ -154,14 +152,13 @@ txsStartW  =  do
                                        }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Manualing Mode started" ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Manualing Mode must be started from ManSet Mode"
+       _ -> return $ Left $ Error "Manualing Mode must be started from ManSet Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Stop External World
 --
 --   Only possible when in Manualing Mode.
-txsStopW :: IOC.IOC (Either EnvData.Msg ())
+txsStopW :: IOC.IOC (Either Error ())
 txsStopW  =  do
      envc <- get
      case IOC.state envc of
@@ -183,15 +180,14 @@ txsStopW  =  do
                                     }
                Right <$> putmsgs [ EnvData.TXS_CORE_USER_INFO
                                    "Manualing Mode stopped" ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Manualing Mode must be stopped from Manualing Mode"
+       _ -> return $ Left $ Error "Manualing Mode must be stopped from Manualing Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Provide action to External World
 --
 --   Only possible when in Manualing Mode.
 txsActToW :: DD.Action
-          -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+          -> IOC.IOC (Either Error DD.Verdict)
 txsActToW act  =  do
      envc <- get
      case ( act, IOC.state envc ) of
@@ -215,14 +211,13 @@ txsActToW act  =  do
                                    " OUT: " ++ TxsShow.fshow act'
                                  ]
                          return $ Right $ DD.Fail act'
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Manual input on EWorld only in Manualing Mode"
+       _ -> return $ Left $ Error "Manual input on EWorld only in Manualing Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Observe action from External World
 --
 --   Only possible when in Manualing Mode.
-txsActFroW :: IOC.IOC (Either EnvData.Msg DD.Verdict)
+txsActFroW :: IOC.IOC (Either Error DD.Verdict)
 txsActFroW  =  do
      envc <- get
      case IOC.state envc of
@@ -240,15 +235,14 @@ txsActFroW  =  do
                          " OUT: " ++ TxsShow.fshow act'
                        ]
                return $ Right DD.Pass
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Manual observation on EWorld only in Manualing Mode"
+       _ -> return $ Left $ Error "Manual observation on EWorld only in Manualing Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 -- | Provide action according to offer pattern to External World
 --
 --   Only possible when in Manualing Mode.
 txsOfferToW :: D.Offer                           -- ^ Offer-pattern.
-            -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+            -> IOC.IOC (Either Error DD.Verdict)
 txsOfferToW offer  =  do
      envc <- get
      case IOC.state envc of
@@ -274,19 +268,18 @@ txsOfferToW offer  =  do
                                  "  IN: " ++ TxsShow.fshow act'
                                  ]
                          return $ Right DD.Pass
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Manual offer on EWorld only in Manualing Mode"
+       _ -> return $ Left $ Error "Manual offer on EWorld only in Manualing Mode"
  
 -- ----------------------------------------------------------------------------------------- --
 -- | Run a number of random actions on External World
 --
 --   Only possible when in Manualing Mode.
 txsRunW :: Int                               -- ^ Number of actions on External World.
-        -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+        -> IOC.IOC (Either Error DD.Verdict)
 txsRunW nrsteps  =  do
      runW nrsteps False
   where
-     runW :: Int -> Bool -> IOC.IOC (Either EnvData.Msg DD.Verdict)
+     runW :: Int -> Bool -> IOC.IOC (Either Error DD.Verdict)
      runW depth lastDelta  =  do
           envc <- get
           case IOC.state envc of
@@ -330,34 +323,31 @@ txsRunW nrsteps  =  do
                              putmsgs [ EnvData.TXS_CORE_USER_INFO
                                        "No more actions on EWorld" ]
                              return $ Right DD.Pass
-            _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                                 "Run on EWorld only in ManualActive Mode"
+            _ -> return $ Left $ Error "Run on EWorld only in ManualActive Mode"
  
 -- ----------------------------------------------------------------------------------------- --
 -- | Give current state number
 --
 --   Only possible when in Manualing Mode.
-txsGetWStateNr :: IOC.IOC (Either EnvData.Msg EnvData.StateNr)
+txsGetWStateNr :: IOC.IOC (Either Error EnvData.StateNr)
 txsGetWStateNr  =  do
      envc <- get
      case IOC.state envc of
        IOC.Manualing { IOC.curstate = curstate }
          -> return $ Right curstate
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Current state of EWorld only in Manualing Mode"
+       _ -> return $ Left $ Error "Current state of EWorld only in Manualing Mode"
     
 -- ----------------------------------------------------------------------------------------- --
 -- | Give trace from initial state to current state
 --
 --   Only possible when in Manualing Mode.
-txsGetWTrace :: IOC.IOC (Either EnvData.Msg [DD.Action])
+txsGetWTrace :: IOC.IOC (Either Error [DD.Action])
 txsGetWTrace  =  do
      envc <- get
      case IOC.state envc of
        IOC.Manualing { IOC.behtrie = behtrie }
          -> return $ Right [ act | (_s1,act,_s2) <- behtrie ]
-       _ -> return $ Left $ EnvData.TXS_CORE_USER_ERROR
-                            "Trace of EWorld only in Manualing Mode"
+       _ -> return $ Left $ Error "Trace of EWorld only in Manualing Mode"
 
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
