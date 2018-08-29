@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9dd666dfdcf0f811f234221ed09ce1f4585e64ddcada26e9b5f0d95592e981e6
+-- hash: df598eddf032289a39d4c24d27f7385572f21fef5df2ff0d1aedf5dae5c7036e
 
 name:           txs-error
 version:        0.1.0.0
@@ -32,4 +32,21 @@ library
   build-depends:
       base >=4.7 && <5
     , text
+  default-language: Haskell2010
+
+test-suite txs-error-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      TorXakis.ErrorSpec
+      Paths_txs_error
+  hs-source-dirs:
+      test
+  ghc-options: -Werror -Wall -O -Widentities -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-home-modules -Wmissing-local-signatures -Wmonomorphism-restriction -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      QuickCheck
+    , base >=4.7 && <5
+    , hspec
+    , text
+    , txs-error
   default-language: Haskell2010
