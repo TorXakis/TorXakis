@@ -1,0 +1,35 @@
+-- This file has been generated from package.yaml by hpack version 0.28.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 9dd666dfdcf0f811f234221ed09ce1f4585e64ddcada26e9b5f0d95592e981e6
+
+name:           txs-error
+version:        0.1.0.0
+homepage:       https://github.com/TorXakis/TorXakis#readme
+bug-reports:    https://github.com/TorXakis/TorXakis/issues
+author:         Pierre van de Laar
+maintainer:     pierre.vandelaar@tno.nl
+copyright:      Copyright (c) 2015-2017 TNO and Radboud University
+license:        BSD3
+build-type:     Simple
+cabal-version:  >= 1.10
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/TorXakis/TorXakis
+
+library
+  exposed-modules:
+      TorXakis.Error
+  other-modules:
+      Paths_txs_error
+  hs-source-dirs:
+      src
+  ghc-options: -Werror -Wall -O -Widentities -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-home-modules -Wmissing-local-signatures -Wmonomorphism-restriction -Wredundant-constraints
+  build-depends:
+      base >=4.7 && <5
+    , text
+  default-language: Haskell2010

@@ -1,0 +1,34 @@
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+name:                txs-error
+version:             0.1.0.0
+github:              "TorXakis/TorXakis"
+license:             BSD3
+author:              "Pierre van de Laar"
+maintainer:          "pierre.vandelaar@tno.nl"
+copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
+
+library:
+  source-dirs: src
+  exposed-modules:
+  - TorXakis.Error
+
+dependencies:
+- base >= 4.7 && < 5
+- text
+
+extra-source-files:
+- README.md
+
+ghc-options:
+- -Werror
+- -Wall
+- -O
+- -Widentities
+- -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
+- -Wmissing-home-modules
+- -Wmissing-local-signatures
+- -Wmonomorphism-restriction
+- -Wredundant-constraints
