@@ -70,7 +70,7 @@ instance (HasName a, HasName b) => HasName (Either a b) where
 --
 --   * The provided 'Data.Text.Text' value is non-empty
 --
---   Otherwise an error is return. The error reflects the violations of the formentioned constraint.
+--   Otherwise an error is returned. The error reflects the violations of the aforementioned constraint.
 mkName :: Text -> Either Error Name
 mkName s | T.null s = Left $ Error (T.pack "Illegal input: Empty String")
 mkName s            = Right $ Name s
