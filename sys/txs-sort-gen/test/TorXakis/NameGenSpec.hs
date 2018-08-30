@@ -27,6 +27,29 @@ import           Test.QuickCheck
 import           TorXakis.Sort
 import           TorXakis.SortGen
 
+-- | Eq check
+prop_Eq :: NameGen -> Bool 
+prop_Eq (NameGen a) =
+    let aNOTa = a /= a in   -- local variable to prevent hlint issue
+        not aNOTa
+
+-- | Ord check
+prop_Ord :: NameGen -> Bool 
+prop_Ord (NameGen a) =
+    let aGTa = a > a
+        aLTa = a < a in     -- local variables to prevent hlint issues
+           a <= a
+        && a >= a
+        && not aGTa
+        && not aLTa
+        && a == max a a
+        && a == min a a
+    
+-- Read Show check
+prop_ReadShow :: NameGen -> Bool
+prop_ReadShow (NameGen val) =
+    [val] == (read . show) [val]
+
 prop_notNull :: NameGen -> Bool
 prop_notNull (NameGen nm) =
     ( not . T.null . toText ) nm
@@ -44,10 +67,25 @@ prop_RepeatedByName_Duplicate s =
         outputSet = Set.fromList outputList in
             outputSet == inputSet
 
+prop_RepeatedByNameIncremental_Duplicate :: Set.Set NameGen -> Set.Set NameGen -> Bool
+prop_RepeatedByNameIncremental_Duplicate s1 s2 =
+    let n1 = Set.map unNameGen s1
+        n2 = Set.map unNameGen s2
+        l1 = Set.toList n1
+        l2 = Set.toList n2
+        lo = repeatedByNameIncremental (l1 ++ l1) l2 
+        no = Set.fromList lo in
+            no == Set.intersection n1 n2
+
 spec :: Spec
 spec = do
-  describe "A Generated Name" $
+  describe "A Generated Name" $ do
     it "does not contain the empty string" $ property prop_notNull
+    it "is an instance of Eq" $ property prop_Eq
+    it "is an instance of Ord" $ property prop_Ord
+    it "is an instance of Read and Show - read . show is identity" $ property prop_ReadShow
   describe "RepeatedByName Function" $ do
-    it "return empty on any set" $ property prop_RepeatedByName_Set
-    it "return duplicates" $ property prop_RepeatedByName_Duplicate
+    it "returns empty on any set" $ property prop_RepeatedByName_Set
+    it "returns all duplicates" $ property prop_RepeatedByName_Duplicate
+  describe "RepeatedByNameIncremental Function" $
+    it "returns all duplicates in combination caused by second argument" $ property prop_RepeatedByNameIncremental_Duplicate
