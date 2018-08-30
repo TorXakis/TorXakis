@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.Sort
+-- Module      :  TorXakis.SortGen
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -17,7 +17,9 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 module TorXakis.SortGen
 ( module TorXakis.NameGen
+, module TorXakis.Cover
 )
 where
 
 import TorXakis.NameGen
+import TorXakis.Cover
