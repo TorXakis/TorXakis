@@ -10,15 +10,7 @@
 
 # Resolver to choose a 'specific' stackage snapshot or a compiler version.
 # A snapshot resolver dictates the compiler version and the set of packages
-# to be used for project dependencies. For example:
-#
-# resolver: lts-3.5
-# resolver: nightly-2015-09-21
-# resolver: ghc-7.10.2
-# resolver: ghcjs-0.1.0_ghc-7.10.2
-# resolver:
-#  name: custom-snapshot
-#  location: "./custom-snapshot.yaml"
+# to be used for project dependencies.
 resolver: lts-11.22
 ghc-variant: integersimple
 
@@ -43,6 +35,7 @@ ghc-variant: integersimple
 packages:
 - location: sys/txs-error
 - location: sys/txs-sort
+- location: sys/txs-sort-gen
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
