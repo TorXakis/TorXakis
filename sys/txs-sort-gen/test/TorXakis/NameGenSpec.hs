@@ -29,26 +29,15 @@ import           TorXakis.SortGen
 
 -- | Eq check
 prop_Eq :: NameGen -> Bool 
-prop_Eq (NameGen a) =
-    let aNEQa = a /= a in   -- local variable to prevent hlint issue
-        not aNEQa
+prop_Eq (NameGen a) = coverEq a
 
 -- | Ord check
 prop_Ord :: NameGen -> Bool 
-prop_Ord (NameGen a) =
-    let aGTa = a > a
-        aLTa = a < a in     -- local variables to prevent hlint issues
-           a <= a
-        && a >= a
-        && not aGTa
-        && not aLTa
-        && a == max a a
-        && a == min a a
-    
+prop_Ord (NameGen a) = coverOrd a
+
 -- Read Show check
 prop_ReadShow :: NameGen -> Bool
-prop_ReadShow (NameGen val) =
-    [val] == (read . show) [val]
+prop_ReadShow (NameGen val) = coverReadShow val
 
 prop_notNull :: NameGen -> Bool
 prop_notNull (NameGen nm) =
