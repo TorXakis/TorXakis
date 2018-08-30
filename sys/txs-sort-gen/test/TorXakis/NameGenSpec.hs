@@ -30,8 +30,8 @@ import           TorXakis.SortGen
 -- | Eq check
 prop_Eq :: NameGen -> Bool 
 prop_Eq (NameGen a) =
-    let aNOTa = a /= a in   -- local variable to prevent hlint issue
-        not aNOTa
+    let aNEQa = a /= a in   -- local variable to prevent hlint issue
+        not aNEQa
 
 -- | Ord check
 prop_Ord :: NameGen -> Bool 
