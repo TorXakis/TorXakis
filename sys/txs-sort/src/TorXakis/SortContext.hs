@@ -33,8 +33,7 @@ import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error      ( Error(Error) )
-import           TorXakis.Name       ( Name, getName, repeatedByNameIncremental )
-import           TorXakis.RefByName  ( RefByName, toMapByName, toName )
+import           TorXakis.Name       ( Name, getName, repeatedByNameIncremental, RefByName, toMapByName, toName )
 import           TorXakis.SortADT    ( ADTDef, viewADTDef, constructors
                                      , ConstructorDef, viewConstructorDef, fields
                                      , FieldDef(sort)

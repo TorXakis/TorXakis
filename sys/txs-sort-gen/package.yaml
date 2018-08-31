@@ -11,9 +11,7 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
 dependencies:
 - base >= 4.7 && < 5
-- QuickCheck
-- text
-- txs-sort
+
 
 library:
   source-dirs: src
@@ -21,7 +19,6 @@ library:
   - TorXakis.SortGen
   dependencies:
   - base >= 4.7 && < 5
-  - deepseq
 
 extra-source-files:
 - README.md
@@ -47,6 +44,4 @@ tests:
         - -rtsopts
         - -with-rtsopts=-N
         dependencies:
-        - containers
         - hspec
-        - txs-sort-gen

@@ -1,7 +1,7 @@
 # TorXakis - Model Based Testing
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
-name:                txs-error
+name:                txs-basics-gen
 version:             0.1.0.0
 github:              "TorXakis/TorXakis"
 license:             BSD3
@@ -11,15 +11,22 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
 dependencies:
 - base >= 4.7 && < 5
+- QuickCheck
 - text
-
-extra-source-files:
-- README.md
+- txs-basics
 
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.Error
+  - TorXakis.Cover
+  - TorXakis.ErrorGen
+  - TorXakis.NameGen
+  dependencies:
+  - base >= 4.7 && < 5
+  - deepseq
+
+extra-source-files:
+- README.md
 
 ghc-options:
 - -Werror
@@ -34,7 +41,7 @@ ghc-options:
 - -Wredundant-constraints
 
 tests:
-    txs-error-test:
+    txs-basics-gen-test:
         main : Spec.hs
         source-dirs: test
         ghc-options:
@@ -42,6 +49,6 @@ tests:
         - -rtsopts
         - -with-rtsopts=-N
         dependencies:
+        - containers
         - hspec
-        - QuickCheck
-        - txs-error
+        - txs-basics-gen

@@ -33,7 +33,8 @@ ghc-variant: integersimple
 # non-dependency (i.e. a user package), and its test suites and benchmarks
 # will not be run. This is useful for tweaking upstream packages.
 packages:
-- location: sys/txs-error
+- location: sys/txs-basics
+- location: sys/txs-basics-gen
 - location: sys/txs-sort
 - location: sys/txs-sort-gen
 

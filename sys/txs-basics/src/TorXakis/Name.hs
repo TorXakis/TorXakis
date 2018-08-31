@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  TorXakis.SortGen
+-- Module      :  TorXakis.Name
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -13,9 +13,13 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Generators associated with the Sort package
+-- Interface for Name related functionality.
 -----------------------------------------------------------------------------
-module TorXakis.SortGen
-(
+module TorXakis.Name
+( module TorXakis.Name.Name
+, module TorXakis.Name.RefByName
 )
 where
+
+import TorXakis.Name.Name
+import TorXakis.Name.RefByName

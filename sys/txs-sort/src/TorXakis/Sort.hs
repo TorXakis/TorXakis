@@ -16,14 +16,10 @@ See LICENSE at root directory of this repository.
 -- Interface for Sort package
 -----------------------------------------------------------------------------
 module TorXakis.Sort
-( module TorXakis.Name
-, module TorXakis.RefByName
-, module TorXakis.SortADT
+( module TorXakis.SortADT
 , module TorXakis.SortContext
 )
 where
 
-import TorXakis.Name
-import TorXakis.RefByName
 import TorXakis.SortADT
 import TorXakis.SortContext

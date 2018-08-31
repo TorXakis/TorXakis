@@ -50,8 +50,7 @@ import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error      (Error(Error))
-import           TorXakis.Name       (Name, repeatedByName, HasName, getName)
-import           TorXakis.RefByName  (RefByName, toMapByName)
+import           TorXakis.Name       (Name, repeatedByName, HasName, getName, RefByName, toMapByName)
 
 -----------------------------------------------------------------------------
 -- Sort
