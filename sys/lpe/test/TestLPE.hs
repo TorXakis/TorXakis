@@ -3,6 +3,10 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+
+{-# LANGUAGE ViewPatterns        #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
+
 module TestLPE
 (
 testLPEList
@@ -12,6 +16,7 @@ where
 import Test.HUnit
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+import           Data.Maybe
 
 import TxsDefs
 import qualified Data.Text         as T
@@ -23,8 +28,8 @@ import LPEfunc
 
 import TestDefinitions
 
--- import TxsShow
--- import Debug.Trace
+import TxsShow
+import Debug.Trace
 
 
 
@@ -1152,16 +1157,6 @@ testEnable1 = TestCase $
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
       
-      -- action: EXIT
-      actOfferExit :: ActOffer
-      actOfferExit   = ActOffer {  offers = Set.singleton
-                                          Offer { chanid = chanIdExit
-                                                , chanoffers = []
-                                          }
-                              , hiddenvars = Set.empty
-                              , constraint = cstrConst (Cbool True)
-                  }
-      
       procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExit stop)
                                               [] 
                                               stop)
@@ -1199,8 +1194,8 @@ testEnable2 = TestCase $
       
 
       -- action: EXIT !1
-      actOfferExit :: ActOffer
-      actOfferExit   = ActOffer {  offers = Set.singleton
+      actOfferExit1 :: ActOffer
+      actOfferExit1   = ActOffer {  offers = Set.singleton
                                           Offer { chanid = chanIdExit
                                                 , chanoffers = [Exclam int1]
                                           }
@@ -1227,7 +1222,7 @@ testEnable2 = TestCase $
       varIdPenableId = VarId (T.pack "P$pre1$enable$A$id") 123 intSort
       vexprPenableId = cstrVar varIdPenableId
 
-      procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExit stop)
+      procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExit1 stop)
                                                 [Quest varIdid]
                                                 (actionPref actOfferAid stop))
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
@@ -1568,17 +1563,7 @@ testLPEGuardEnable = TestCase $
       res = lpeTransformFunc procInst'' procDefs'
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
-      
-      -- action: EXIT
-      actOfferExit :: ActOffer
-      actOfferExit   = ActOffer {  offers = Set.singleton
-                                          Offer { chanid = chanIdExit
-                                                , chanoffers = []
-                                          }
-                              , hiddenvars = Set.empty
-                              , constraint = cstrConst (Cbool True)
-                  }
-      
+
       procDefP = ProcDef [chanIdA] [] (guard    (cstrEqual vexprX int1)
                                                 (enable (actionPref actOfferExit stop)
                                                             [] 
@@ -1598,44 +1583,97 @@ testLPEGuardEnable = TestCase $
 
 
 
+-- test LPE translation of DISABLE
+-- P[A]() := EXIT >-> STOP [>> A >-> STOP
+-- with procInst = P[A]()
+-- becomes:
+--                P[A](P$disable$lhs, P$lhs$pc$P$lhs, P$rhs$pc$P$rhs) :=
+--                      EXIT [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, -1, -1)                       -- NOTICE that RHS has been disabled by setting pc$P$rhs to -1! 
+--                 ##   A [P$rhs$pc$P$rhs == 0]                        >-> P[A](1, P$lhs$pc$P$lhs, -1)   
+--          with ProcInst: P[A](0,0,0)
+-- becomes with LPE:
+-- 
+
+testLPEDisable1 :: Test
+testLPEDisable1 = TestCase $
+   trace ("\ntestDisable2:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
+            "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
+            "\n res_procDef: " ++ (pshow $ DefProc res_procDef)) $
+      assertBool "EXIT, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) ((Just (res_procInst, res_procDef)))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
+   where
+      (res_procInst, res_procDef) = fromMaybe (error "could not find the given procId 1") $ lpeTransformFunc procInst'' procDefs'
+      -- extract expected ProcDef from all results:
+      -- res_procDef = fromMaybe (error "could not find the given procId") (Map.lookup res_procId res_procDefs')
+
+      procInst'' = procInst procIdP [chanIdA] []
+      procIdP = procIdGen "P" [chanIdA] [ ]
+      procDefP = ProcDef [chanIdA] [] (disable (actionPref actOfferExit stop)
+                                                (actionPref actOfferA stop))
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+
+      procIdP' = procIdGen "P" [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPpcRHS]
+      procInst' = procInst procIdP' [chanIdA] [int0, int0, int0]
+      procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPpcRHS]
+                                                (choice $ Set.fromList [
+
+                                                      (actionPref 
+                                                            actOfferExit { constraint = cstrAnd (Set.fromList [ 
+                                                                                                cstrITE (cstrEqual vexprPdisable int0)
+                                                                                                      (cstrEqual vexprPpcLHS int0)
+                                                                                                      (cstrConst (Cbool False))
+                                                                                          ])
+                                                                        } 
+                                                            (procInst procIdP' [chanIdA] [int0, intMin1, intMin1])),
+
+                                                      (actionPref 
+                                                            actOfferA { constraint = (cstrEqual vexprPpcRHS int0)
+                                                                        } 
+                                                            (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])) 
+
+
+                                                ])
+
+
 
 ----------------------------------------------------------------------------------------
 -- List of Tests
 ----------------------------------------------------------------------------------------
 testLPEList :: Test
-testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
+testLPEList = TestList [  --TestLabel "translation to GNF did work" testGNFFirst
 
-                        , TestLabel "STOP becomes empty choice" testStop
-                        , TestLabel "actionPref stop" testActionPrefStop
-                        , TestLabel "actionPref Constraints are kept" testActionPrefConstraints
-                        , TestLabel "actionPref procInst" testActionPrefProcInst
-                        , TestLabel "choice" testChoice
-                        , TestLabel "Multiple ProcDefs simple" testMultipleProcDefs1
-                        , TestLabel "Multiple ProcDefs circular" testMultipleProcDefs2
-                        , TestLabel "Multiple ProcDefs removal of STOP" testMultipleProcDefs3
+                        -- , TestLabel "STOP becomes empty choice" testStop
+                        -- , TestLabel "actionPref stop" testActionPrefStop
+                        -- , TestLabel "actionPref Constraints are kept" testActionPrefConstraints
+                        -- , TestLabel "actionPref procInst" testActionPrefProcInst
+                        -- , TestLabel "choice" testChoice
+                        -- , TestLabel "Multiple ProcDefs simple" testMultipleProcDefs1
+                        -- , TestLabel "Multiple ProcDefs circular" testMultipleProcDefs2
+                        -- , TestLabel "Multiple ProcDefs removal of STOP" testMultipleProcDefs3
 
-                        , TestLabel "ProcDef Identity" testProcDefIdentity
-                        , TestLabel "Params are made unique" testParamsUnique
-                        , TestLabel "switching channels" testChannelSwitch
-                        , TestLabel "multi action" testMultiAction
-                        , TestLabel "channel instantiation not for top-level procInst" testChannelInstantiation
+                        -- , TestLabel "ProcDef Identity" testProcDefIdentity
+                        -- , TestLabel "Params are made unique" testParamsUnique
+                        -- , TestLabel "switching channels" testChannelSwitch
+                        -- , TestLabel "multi action" testMultiAction
+                        -- , TestLabel "channel instantiation not for top-level procInst" testChannelInstantiation
 
-                        , TestLabel "lpePar integration" testLPEPar
+                        -- , TestLabel "lpePar integration" testLPEPar
 
-                        , TestLabel "lpeHide integration" testLPEHide1
-                        , TestLabel "lpeHide integration" testLPEHide2
-                        , TestLabel "lpeEnable integration" testEnable1
-                        , TestLabel "lpeEnable integration 2" testEnable2
+                        -- , TestLabel "lpeHide integration" testLPEHide1
+                        -- , TestLabel "lpeHide integration" testLPEHide2
+                        -- , TestLabel "lpeEnable integration" testEnable1
+                        -- , TestLabel "lpeEnable integration 2" testEnable2
 
-                        , TestLabel "lpe guard stop" testLPEGuardStop
-                        , TestLabel "lpe guard ActionPref" testLPEGuardActionPref
-                        , TestLabel "lpe guard Choice" testLPEGuardChoice
-                        , TestLabel "lpe guard ProcInst" testLPEGuardProcInst
+                        -- , TestLabel "lpe guard stop" testLPEGuardStop
+                        -- , TestLabel "lpe guard ActionPref" testLPEGuardActionPref
+                        -- , TestLabel "lpe guard Choice" testLPEGuardChoice
+                        -- , TestLabel "lpe guard ProcInst" testLPEGuardProcInst
 
                            
-                        , TestLabel "lpe guard par" testLPEGuardPar
-                        , TestLabel "lpe guard hide" testLPEGuardHide
-                        , TestLabel "lpe guard enable" testLPEGuardEnable
+                        -- , TestLabel "lpe guard par" testLPEGuardPar
+                        -- , TestLabel "lpe guard hide" testLPEGuardHide
+                        -- , TestLabel "lpe guard enable" testLPEGuardEnable
+
+                         TestLabel "lpe disable" testLPEDisable1
 
                         -- , TestLabel "multi chanoffer translation" testMultiChanOffer
                         ]

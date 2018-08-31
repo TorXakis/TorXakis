@@ -8,22 +8,24 @@ module Main where
 import System.Exit
 import Test.HUnit
 
-import TestPreGNF
-import TestGNF
-import TestLPE
-import TestLPEPar
-import TestLPEHide
-import TestPreGNFEnable
+-- import TestPreGNF
+-- import TestGNF
+-- import TestLPE
+-- import TestLPEPar
+-- import TestLPEHide
+-- import TestPreGNFEnable
+import TestPreGNFDisable
 
 testList :: Test
 testList = TestList
     [
-          TestLabel "preGNF"          testPreGNFList
-        , TestLabel "GNF"             testGNFList
-        , TestLabel "LPE"             testLPEList
-        , TestLabel "LPEPar"          testLPEParList
-        , TestLabel "LPEHide"         testLPEHideList
-        , TestLabel "PreGNFEnable"    testPreGNFEnableList
+        --   TestLabel "preGNF"          testPreGNFList
+        -- , TestLabel "GNF"             testGNFList
+        --  TestLabel "LPE"             testLPEList
+        -- , TestLabel "LPEPar"          testLPEParList
+        -- , TestLabel "LPEHide"         testLPEHideList
+        -- , TestLabel "PreGNFEnable"    testPreGNFEnableList
+         TestLabel "PreGNFDisable"   testPreGNFDisableList
     ]
 
 main :: IO ()

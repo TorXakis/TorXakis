@@ -58,17 +58,7 @@ testExit1 = TestCase $
       (res_procInst, res_procDefs') = preGNFEnableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] [ ]
-      
-      -- action: EXIT
-      actOfferExit :: ActOffer
-      actOfferExit   = ActOffer {  offers = Set.singleton
-                                          Offer { chanid = chanIdExit
-                                                , chanoffers = []
-                                          }
-                              , hiddenvars = Set.empty
-                              , constraint = cstrConst (Cbool True)
-                  }
-      
+            
       procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExit stop)
                                               [] 
                                               stop)
@@ -106,17 +96,7 @@ testExit2 = TestCase $
       (res_procInst, res_procDefs') = preGNFEnableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] [ ]
-      
-      -- action: EXIT
-      actOfferExit :: ActOffer
-      actOfferExit   = ActOffer {  offers = Set.singleton
-                                          Offer { chanid = chanIdExit
-                                                , chanoffers = []
-                                          }
-                              , hiddenvars = Set.empty
-                              , constraint = cstrConst (Cbool True)
-                  }
-      
+          
       procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExit stop)
                                               [] 
                                               (actionPref actOfferA stop))
@@ -155,8 +135,8 @@ testExit3 = TestCase $
       procIdP = procIdGen "P" [chanIdA] [ ]
       
       -- action: EXIT ?x
-      actOfferExit :: ActOffer
-      actOfferExit   = ActOffer {  offers = Set.singleton
+      actOfferExitX :: ActOffer
+      actOfferExitX   = ActOffer {  offers = Set.singleton
                                           Offer { chanid = chanIdExit
                                                 , chanoffers = [Quest varIdX]
                                           }
@@ -169,7 +149,7 @@ testExit3 = TestCase $
       varIdExit1 = VarId (T.pack "EXIT$1") 122 intSort
       vexprExit1 = cstrVar varIdExit1
 
-      procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExit stop)
+      procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExitX stop)
                                               [Quest varIdid]
                                               stop)
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
