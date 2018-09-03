@@ -196,7 +196,7 @@ testChoice5 = TestCase $
    -- $ trace ("\n\n expected: " ++ show procDefs'' ++ "\n\n got: " ++ show res ) 
    $ eqProcDefs procDefs'' res 
    where
-      res = (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
+      res = preGNFFunc procIdP emptyTranslatedProcDefs procDefs'
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
       procDefP = ProcDef [chanIdA, chanIdB] [] bexprP
       procInstP = procInst procIdP [chanIdA, chanIdB] []
@@ -289,10 +289,10 @@ testGuardChoice = TestCase $
                                                     (choice $ Set.fromList [actionPref actOfferAx stop, stop]) ))]
           procDefs'' = Map.fromList [(procIdP, ProcDef [] [] 
                                         (choice $ Set.fromList [
-                                            (guard   (cstrEqual vexprX int1 )
-                                                     (actionPref actOfferAx stop)),
-                                            (guard   (cstrEqual vexprX int1 )
-                                                     stop)
+                                            guard   (cstrEqual vexprX int1 )
+                                                     (actionPref actOfferAx stop),
+                                            guard   (cstrEqual vexprX int1 )
+                                                     stop
                                             ]))]
       in assertBool "testGuardChoice" $ eqProcDefs  procDefs'' (preGNFFunc procIdP emptyTranslatedProcDefs procDefs')
 

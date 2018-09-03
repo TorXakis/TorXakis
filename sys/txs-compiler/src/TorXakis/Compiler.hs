@@ -49,7 +49,7 @@ import qualified Data.Set                           as Set
 import           Data.Text                          (Text)
 
 import           BehExprDefs                        (Offer, chanIdIstep)
-import           ChanId                             (ChanId (ChanId))
+import           ChanId                             (ChanId)
 import qualified ChanId
 import           CstrId                             (CstrId)
 import           FuncDef                            (FuncDef)
@@ -64,15 +64,14 @@ import           SortId                             (SortId, sortIdBool,
                                                      sortIdInt, sortIdRegex,
                                                      sortIdString)
 import           StdTDefs                           (stdFuncTable, stdTDefs)
-import           TxsDefs                            (BExpr, ProcDef,
-                                                     ProcId (ProcId), TxsDefs,
-                                                     chanid, cnectDefs,
+import           TxsDefs                            (BExpr, ProcDef, ProcId,
+                                                     TxsDefs, chanid, cnectDefs,
                                                      fromList, funcDefs,
                                                      mapperDefs, modelDefs,
                                                      procDefs, purpDefs, union)
 import qualified TxsDefs                            (empty)
 import           ValExpr                            (ValExpr)
-import           VarId                              (VarId (VarId), varsort)
+import           VarId                              (VarId, varsort)
 import qualified VarId
 
 import           TorXakis.Compiler.Data             (CompilerM, getNextId,
@@ -227,7 +226,7 @@ compileParsedDefs parsedDefs = do
     let fdefsSHs = innerSigHandlerMap (fIds :& fdefs)
         allFSHs = stdSHs <> adtsSHs <> fdefsSHs
 
-    -- Generate a map from process declarations to their definitons.
+    -- Generate a map from process declarations to their definitions.
     pdefs <- compileToProcDefs (sIds :& cstrIds :& allFids :& allFSHs :& decls) parsedDefs
     checkUnique (NoErrorLoc, Channel, "Channel definition")
                 (chanDeclName <$> (parsedDefs ^. chdecls))
@@ -387,13 +386,7 @@ compileToProcDefs mm pd = do
     pmsP <- getMap mm (pd ^. procs)  :: CompilerM (Map (Loc ProcDeclE) ProcInfo)
     pmsS <- getMap mm (pd ^. stauts) :: CompilerM (Map (Loc ProcDeclE) ProcInfo)
     let pms = pmsP <> pmsS
-        -- Remove the names from variable and channel id's.
-        -- NOTE: This won't be needed once https://github.com/TorXakis/TorXakis/issues/746 is fixed
-        pidsNN = anonymizePid . getPId <$> Map.elems pms
-        anonymizePid (ProcId n i cs vs e) = ProcId n i (anonymizeCid <$> cs) (anonymizeVid <$> vs) e
-        anonymizeCid (ChanId _ i sids) = ChanId "" i sids
-        anonymizeVid (VarId _ i sid) = VarId "" i sid
-    checkUnique (NoErrorLoc, Process, "Process") pidsNN
+    checkUnique (NoErrorLoc, Process, "Process") (getPId <$> Map.elems pms) 
     procPDefMap  <- procDeclsToProcDefMap (pms :& mm) (pd ^. procs)
     stautPDefMap <- stautDeclsToProcDefMap (pms :& mm) (pd ^. stauts)
     return $ procPDefMap <> stautPDefMap

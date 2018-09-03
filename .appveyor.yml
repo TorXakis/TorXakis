@@ -79,12 +79,13 @@ environment:
 
 cache:
 - .stack-root -> stack.yaml
+- .stack-work -> stack.yaml
 - .cache -> stack.yaml
+- test\sqatt\.stack-work -> test\sqatt\stack.yaml
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\ghc-integersimple-8.2.2.installed'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20180531'
 - '%LOCALAPPDATA%\Programs\stack\x86_64-windows\msys2-20180531.installed'
-- .stack-work -> stack.yaml
 # - packages -> **\packages.config  # preserve "packages" directory in the root of build folder but will reset it if packages.config is modified
 
 test_script:
@@ -95,9 +96,9 @@ test_script:
     do {
         Write-Host Try $tryCount
         $tryCount++
-        cmd /c "stack build --install-ghc --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml 2>&1"
+        cmd /c "stack build --install-ghc --no-terminal --stack-root %STACK_ROOT% 2>&1"
     } While ((!$?) -and ($tryCount -le 10))
-- stack test --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT% --stack-yaml stack_appveyor.yaml
+- stack test --test-arguments="--skip=#model" --no-terminal --stack-root %STACK_ROOT%
 - ps: popd
 
 # after_test:

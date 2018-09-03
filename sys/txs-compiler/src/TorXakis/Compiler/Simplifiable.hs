@@ -52,7 +52,7 @@ import           TxsDefs         (ActOffer (ActOffer), BExpr, BExprView (ActionP
                                   stAut, valueEnv)
 import           ValExpr         (ValExpr,
                                   ValExprView (Vfunc, Vite, Vproduct, Vsum),
-                                  cstrITE, cstrProduct, cstrSum)
+                                  cstrITE, cstrFunc, cstrProduct, cstrSum)
 import qualified ValExpr
 import           VarId           (VarId)
 
@@ -67,7 +67,7 @@ class Simplifiable e where
              -> e
 
 instance Simplifiable (ValExpr VarId) where
-    simplify ft fns ex@(ValExpr.view -> Vfunc (FuncId n _ aSids rSid) vs) =
+    simplify ft fns ex@(ValExpr.view -> Vfunc (FuncId n i aSids rSid) vs) =
         -- NOTE: For now make the simplification only if "n" is a predefined
         -- symbol. Once compliance with the current `TorXakis` compiler is not
         -- needed we can remove this constraint and simplify further. However,
@@ -78,7 +78,7 @@ instance Simplifiable (ValExpr VarId) where
             sh <- Map.lookup n (toMap ft)
             h  <- Map.lookup (Signature aSids rSid) sh
             return $ h (simplify ft fns <$> vs)
-        else ex
+        else cstrFunc (Map.empty :: Map.Map FuncId (FuncDef VarId)) (FuncId n i aSids rSid) (simplify ft fns <$> vs)
     simplify ft fns (ValExpr.view -> Vite ex0 ex1 ex2) =
         cstrITE
         (simplify ft fns ex0)

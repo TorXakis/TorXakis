@@ -65,14 +65,14 @@ import           Prelude                  hiding (lookup)
 import           ChanId                   (ChanId, chansorts)
 import           FuncTable                (Signature, sortArgs, sortRet)
 import           Id                       (Id (Id))
-import           ProcId                   (ExitSort (Exit, Hit, NoExit), ProcId,
+import           ProcId                   (ChanSort (ChanSort),
+                                           ExitSort (Exit, Hit, NoExit), ProcId,
                                            exitSortIds, procchans, procexit,
                                            procvars)
 import qualified ProcId
 import           SortId                   (SortId (SortId), sortIdBool,
                                            sortIdInt, sortIdRegex, sortIdString)
 import qualified SortId
-import           VarId                    (varsort)
 
 import           TorXakis.Compiler.Data   (CompilerM, getNextId)
 import           TorXakis.Compiler.Error  (Entity (Process, Sort),
@@ -384,7 +384,13 @@ instance ( MapsTo Text SortId mm
          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
          , MapsTo ProcId () mm
          ) => HasTypedVars mm ActOfferDecl where
-    inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx
+    inferVarTypes mm (ActOfferDecl os mEx) = do
+        xs <- inferVarTypes mm os
+        -- The offers can introduce typed variables which can be referred to in
+        -- the guard. That is why we need to infer the types in the offers, and
+        -- use these to infer the types of the variable expressions.
+        ys <- inferVarTypes (xs <.++> mm) mEx
+        return $ xs ++ ys
 
 instance ( HasTypedVars mm e ) => HasTypedVars mm (Maybe e) where
     inferVarTypes mm = maybe (return []) (inferVarTypes mm)
@@ -503,8 +509,8 @@ instance HasExitSorts BExpDecl where
         let candidate :: ProcId -> Bool
             candidate pId =
                    toText   n                     == ProcId.name pId
-                && fmap chansorts (procchans pId) == fmap chansorts chIds -- Compare the sort id's of the channels
-                && fmap varsort (procvars pId )  `elem` expsSidss
+                && procchans pId == fmap (ChanSort . chansorts) chIds -- Compare the sort id's of the channels
+                && procvars pId `elem` expsSidss
         case filter candidate $ keys @ProcId @() mm of
             [pId] -> return $ procexit pId
             []    -> throwError Error

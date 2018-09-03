@@ -270,7 +270,7 @@ testActionPrefGuard = TestCase $
     --    trace ("\n\n expected: " ++ show procDefs'' ++ "\n\n got: " ++ show procDefsResult) $ 
    assertBool "testActionPrefGuard"  $ eqProcDefs procDefs'' procDefsResult
    where
-      (procDefsResult, _gnfTodo) = (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
+      (procDefsResult, _gnfTodo) = gnfFunc procIdP emptyTranslatedProcDefs procDefs'
 
       procIdP = procIdGen "P" [] []
       procIdPgnf1 = procIdGen "P$gnf1" [] [varIdPgnf1X]
@@ -304,26 +304,26 @@ testActionPrefGuard2 = TestCase $
     --    trace ("\n\n expected: " ++ show procDefs'' ++ "\n\n got: " ++ show procDefsResult) $ 
    assertBool "testActionPrefGuard"  $ eqProcDefs procDefs'' procDefsResult
    where
-      (procDefsResult, _gnfTodo) = (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
+      (procDefsResult, _gnfTodo) = gnfFunc procIdP emptyTranslatedProcDefs procDefs'
 
       procIdP = procIdGen "P" [] []
       procIdPgnf1 = procIdGen "P$gnf1" [] [varIdPgnf1X]
       procInstP = procInst procIdP [] []
 
       procDefP = ProcDef [] [] (choice $ Set.fromList [
-                                            (actionPref actOfferAx (guard  (cstrEqual vexprX int1) procInstP))
-                                        ,   (actionPref actOfferAx stop)
+                                            actionPref actOfferAx (guard  (cstrEqual vexprX int1) procInstP)
+                                        ,   actionPref actOfferAx stop
                                 ])
 
       procDefP' = ProcDef [] [] (choice $ Set.fromList [
-                                            (actionPref actOfferAx (procInst procIdPgnf1 [] [vexprX]))
-                                        ,   (actionPref actOfferAx stop)
+                                            actionPref actOfferAx (procInst procIdPgnf1 [] [vexprX])
+                                        ,   actionPref actOfferAx stop
                                         ])
       procDefPgnf1 = ProcDef [] [varIdPgnf1X] (choice $ Set.fromList [
-                                                        (actionPref actOfferAx {constraint = cstrEqual vexprPgnf1X int1} 
-                                                            (procInst procIdPgnf1 [] [vexprX]))            
-                                                    ,   (actionPref actOfferAx {constraint = cstrEqual vexprPgnf1X int1} 
-                                                            stop)
+                                                        actionPref actOfferAx {constraint = cstrEqual vexprPgnf1X int1} 
+                                                            (procInst procIdPgnf1 [] [vexprX])
+                                                    ,   actionPref actOfferAx {constraint = cstrEqual vexprPgnf1X int1} 
+                                                            stop
                                         ])
 
 
@@ -347,7 +347,7 @@ testGuardLoop = TestCase $
    --    trace ("\n\n expected: " ++ show procDefs'' ++ "\n\n got: " ++ show procDefsResult) $ 
    assertBool "testActionPrefGuard"  $ eqProcDefs procDefs'' procDefsResult
    where
-      (procDefsResult, _gnfTodo) = (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
+      (procDefsResult, _gnfTodo) = gnfFunc procIdP emptyTranslatedProcDefs procDefs'
 
       procIdP = procIdGen "P" [] []
       procIdQ = procIdGen "Q" [] []
@@ -387,7 +387,7 @@ testGuardLoop2 = TestCase $
    -- trace ("\n\n expected: " ++ show procDefs'' ++ "\n\n got: " ++ show procDefsResult) $ 
    assertBool "testActionPrefGuard"  $ eqProcDefs procDefs'' procDefsResult
    where
-      (procDefsResult, _gnfTodo) = (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
+      (procDefsResult, _gnfTodo) = gnfFunc procIdP emptyTranslatedProcDefs procDefs'
 
       procIdP = procIdGen "P" [chanIdA] [varIdY]
       procIdPgnf1 = procIdGen "P$gnf1" [chanIdA] [varIdPgnf1Y, varIdPgnf1X]
@@ -441,7 +441,7 @@ testNoPrematureSubstitution = TestCase $
    -- trace ("\n\n expected: " ++ show procDefs'' ++ "\n\n got: " ++ show procDefsResult) $ 
    assertBool "testActionPrefGuard"  $ eqProcDefs procDefs'' procDefsResult
    where
-    (procDefsResult, _gnfTodo) = (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
+    (procDefsResult, _gnfTodo) = gnfFunc procIdP emptyTranslatedProcDefs procDefs'
 
     procIdP = procIdGen "P" [chanIdA] [varIdZ]
     procIdQ = procIdGen "Q" [chanIdA] []
@@ -451,10 +451,10 @@ testNoPrematureSubstitution = TestCase $
     procInstP1 = procInst procIdP [chanIdA] [int1]
     procInstQ = procInst procIdQ [chanIdA] []
     
-    procDefP = ProcDef [chanIdA] [varIdZ] (choice $ Set.fromList [(actionPref actOfferAx 
-                                                                    (actionPref actOfferAy 
-                                                                        (choice $ Set.fromList [procInstP0, procInstP1]))),
-                                                                procInstQ])
+    procDefP = ProcDef [chanIdA] [varIdZ] (choice $ Set.fromList [ actionPref actOfferAx 
+                                                                     (actionPref actOfferAy 
+                                                                        (choice $ Set.fromList [procInstP0, procInstP1]))
+                                                                 , procInstQ])
     procDefQ = ProcDef [chanIdA] [] (actionPref actOfferAx stop)
     procDefs' = Map.fromList  [  (procIdP, procDefP),
                                 (procIdQ, procDefQ)]
@@ -467,17 +467,17 @@ testNoPrematureSubstitution = TestCase $
     procIdPgnf1 = procIdGen "P$gnf1" [chanIdA] [varIdPgnf1Z, varIdPgnf1X]
     procIdPpre1 = procIdGen "P$pre1" [chanIdA] [varIdPpre1Z, varIdPpre1X, varIdPpre1Y]
 
-    procDefP' = ProcDef [chanIdA] [varIdZ] (choice $ Set.fromList [(actionPref actOfferAx ( procInst procIdPgnf1 [chanIdA] [vexprZ, vexprX])),
-                                                                     (actionPref actOfferAx stop)])
+    procDefP' = ProcDef [chanIdA] [varIdZ] (choice $ Set.fromList [actionPref actOfferAx ( procInst procIdPgnf1 [chanIdA] [vexprZ, vexprX])
+                                                                  ,actionPref actOfferAx stop])
     procDefPgnf1 = ProcDef [chanIdA] [varIdPgnf1Z, varIdPgnf1X] 
                             (actionPref actOfferAy (procInst procIdPpre1 [chanIdA] [vexprPgnf1Z, vexprPgnf1X, vexprY]))
     
     procDefPpre1 = ProcDef [chanIdA] [varIdPpre1Z, varIdPpre1X, varIdPpre1Y] 
                         (choice $ Set.fromList [
-                                (actionPref actOfferAx (procInst procIdPgnf1 [chanIdA] [int0, vexprX])),
-                                (actionPref actOfferAx stop),
-                                (actionPref actOfferAx (procInst procIdPgnf1 [chanIdA] [int1, vexprX])),
-                                (actionPref actOfferAx stop)
+                                actionPref actOfferAx (procInst procIdPgnf1 [chanIdA] [int0, vexprX]),
+                                actionPref actOfferAx stop,
+                                actionPref actOfferAx (procInst procIdPgnf1 [chanIdA] [int1, vexprX]),
+                                actionPref actOfferAx stop
                         ])
                         
     
@@ -501,7 +501,7 @@ testNamingClash :: Test
 testNamingClash = TestCase $
    assertBool "pregnfFunc / gnfFunc naming of new ProcDefs doesn't clash"  $ eqProcDefs procDefs'' procDefsRes
    where
-      (procDefsRes, _gnfTodo) = (gnfFunc procIdP emptyTranslatedProcDefs procDefs')
+      (procDefsRes, _gnfTodo) = gnfFunc procIdP emptyTranslatedProcDefs procDefs'
 
       procIdP = procIdGen "P" [chanIdA, chanIdB] []
       procIdPgnf1 = procIdGen "P$gnf1" [chanIdA, chanIdB] [varIdPgnf1X]

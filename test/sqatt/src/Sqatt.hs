@@ -196,9 +196,8 @@ toFSSafeStr str = repl <$> str
 --
 -- Throws an exception on failure.
 checkSMTSolvers :: IO ()
-checkSMTSolvers = do
+checkSMTSolvers = 
   traverse_ checkCommand txsSupportedSolvers
-  return ()
   where
     txsSupportedSolvers = Prelude.map addExeSuffix ["z3","cvc4"]
 
