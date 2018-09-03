@@ -16,6 +16,10 @@ See LICENSE at root directory of this repository.
 -- Generators associated with the Sort package
 -----------------------------------------------------------------------------
 module TorXakis.SortGen
-(
+( module TorXakis.TestSortContext
+, module TorXakis.SortGenContext
 )
 where
+
+import TorXakis.TestSortContext
+import TorXakis.SortGenContext

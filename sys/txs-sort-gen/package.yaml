@@ -11,14 +11,18 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
 dependencies:
 - base >= 4.7 && < 5
-
+- QuickCheck
 
 library:
   source-dirs: src
   exposed-modules:
   - TorXakis.SortGen
   dependencies:
-  - base >= 4.7 && < 5
+    - deepseq
+    - hashmap
+    - text
+    - txs-basics
+    - txs-sort
 
 extra-source-files:
 - README.md

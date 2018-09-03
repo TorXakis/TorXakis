@@ -21,7 +21,7 @@ See LICENSE at root directory of this repository.
 module TorXakis.SortContext
 ( -- * Sort Context
   SortContext (..)
-, MinimalSortContext
+, MinimalSortContext(MinimalSortContext)
 )
 where
 import           Control.DeepSeq     (NFData)
@@ -40,7 +40,7 @@ import           TorXakis.SortADT    ( ADTDef, viewADTDef, constructors
                                      , Sort(SortADT)
                                      )
 
--- | A HasSorts instance contains all definitions to work with sort and reference thereof
+-- | A SortContext instance contains all definitions to work with sort and reference thereof
 class SortContext a where
     -- | An empty sort context (initial state)
     empty :: a

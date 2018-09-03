@@ -7,6 +7,9 @@
 # Log files
 *.log
 
+# cabal files -> output of hpack
+*.cabal
+
 # SMT Solver output
 *.smt2
 
