@@ -27,8 +27,8 @@ import TranslatedProcDefs
 import LPEfunc
 import TestDefinitions
 
-import Debug.Trace
-import TxsShow
+-- import Debug.Trace
+-- import TxsShow
 
 
 --type ProcDefs = Map.Map ProcId ProcDef
@@ -132,9 +132,9 @@ testDisable1 = TestCase $
 
 testDisable2 :: Test
 testDisable2 = TestCase $
-   trace ("\ntestDisable2:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
-            "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
-            "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
+--    trace ("\ntestDisable2:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
+--             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
+--             "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
       assertBool "EXIT, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) ((Just (res_procInst, res_procDef)))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'

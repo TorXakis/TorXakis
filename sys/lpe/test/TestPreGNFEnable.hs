@@ -23,6 +23,7 @@ import TranslatedProcDefs
 import LPEfunc
 import TestDefinitions
 
+-- import TxsShow
 -- import Debug.Trace
 
 ---------------------------------------------------------------------------
@@ -169,6 +170,61 @@ testExit3 = TestCase $
                         ]
 
 
+-- P[A]() := A | EXIT ?x >>> ACCEPT ?id IN STOP NI
+-- with procInst = P[A]()
+-- becomes
+-- P[A](pc$P) := A [pc$P == 0] {EXIT$1} >-> P$enable[A](EXIT$1)
+-- P$enable[A](id) := STOP
+-- with procInst = P[A](0)
+testExit4 :: Test
+testExit4 = TestCase $
+--    trace ("\ntestDisable2:\n expected:" ++  pshow procInst' ++ "\n ProcDefs: " ++ pshow_procDefs procDefs'''  ++ 
+--             "\ngot: " ++ pshow res_procInst ++ "\nProcDefs: " ++ pshow_procDefs res_procDefs'') $
+       assertBool "ACCEPT" (eqProcDefs procDefs''' res_procDefs'' && (procInst' ~~ res_procInst))
+   where
+      res_procDefs'' = Map.delete procIdP res_procDefs'  -- remove the original ProcId for the comparison with the expected result
+      (res_procInst, res_procDefs') = preGNFEnableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
+     
+      procInst'' = procInst procIdP [chanIdA] []
+      procIdP = procIdGen "P" [chanIdA] [ ]
+      
+      -- action: EXIT ?x
+      actOfferExitX :: ActOffer
+      actOfferExitX  = ActOffer {  offers = Set.fromList [
+                                          Offer { chanid = chanIdA0
+                                                , chanoffers = []
+                                                },
+                                          Offer { chanid = chanIdExit
+                                                , chanoffers = [Quest varIdX]
+                                                }]
+                              , hiddenvars = Set.empty
+                              , constraint = cstrConst (Cbool True)
+                  }
+            
+      varIdid = VarId (T.pack "id") 33 intSort
+
+      varIdExit1 = VarId (T.pack "EXIT$1") 122 intSort
+      vexprExit1 = cstrVar varIdExit1
+
+      procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExitX stop)
+                                              [Quest varIdid]
+                                              stop)
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+
+      procIdP' = procIdGen "P" [chanIdA] [varIdPcP]
+      procIDPenable = procIdGen "P$enable" [chanIdA] [varIdid]
+
+      procInst' = procInst procIdP' [chanIdA] [int0]
+      procDefs''' = Map.fromList [   (procIdP', ProcDef [chanIdA] [varIdPcP] 
+                                                (actionPref 
+                                                      actOfferA {    hiddenvars = Set.fromList [varIdExit1]
+                                                                  , constraint = cstrEqual vexprPcP int0
+                                                                  } 
+                                                      (procInst procIDPenable [chanIdA] [vexprExit1]))),
+                                    (procIDPenable, ProcDef [chanIdA] [varIdid] stop)
+                        ]
+
+
         
         
 ----------------------------------------------------------------------------------------
@@ -179,5 +235,6 @@ testPreGNFEnableList = TestList [
                               TestLabel "simple EXIT" testExit1
                             , TestLabel "EXIT ActionPref" testExit2
                             , TestLabel "ACCEPT" testExit3
+                            , TestLabel "A|EXIT, ACCEPT" testExit4
 
                         ]

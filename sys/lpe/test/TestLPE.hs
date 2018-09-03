@@ -5,7 +5,6 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE ViewPatterns        #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module TestLPE
 (
@@ -28,8 +27,8 @@ import LPEfunc
 
 import TestDefinitions
 
-import TxsShow
-import Debug.Trace
+-- import TxsShow
+-- import Debug.Trace
 
 
 
@@ -1587,18 +1586,21 @@ testLPEGuardEnable = TestCase $
 -- P[A]() := EXIT >-> STOP [>> A >-> STOP
 -- with procInst = P[A]()
 -- becomes:
---                P[A](P$disable$lhs, P$lhs$pc$P$lhs, P$rhs$pc$P$rhs) :=
+--                P[A](pc$P, P$pre1$A$P$pre1$disable$lhs, P$pre1$A$P$pre1$lhs$pc$P$pre1$lhs, P$pre1$A$P$pre1$rhs$pc$P$pre1$rhs) :=
+--                      A [[ pc$P == 0 ]] >-> LPE_P[A](1,1,0,-1)
+--                      A [[ pc$P == 1, P$pre1$A$P$pre1$rhs$pc$P$pre1$rhs == 0]] >-> LPE_P[A](1, 1, P$pre1$A$P$pre1$lhs$pc$P$pre1$lhs, -1 )
+--                      EXIT [[ pc$P == 0 ]] >-> LPE_P[A](1,0,-1,-1)
+--                      EXIT [[ pc$P == 0, P$pre1$A$P$pre1$disable$lhs == 0, P$pre1$A$P$pre1$lhs$pc$P$pre1$lhs == 0]] >-> LPE_P[A](1,0,-1,-1)
+
 --                      EXIT [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, -1, -1)                       -- NOTICE that RHS has been disabled by setting pc$P$rhs to -1! 
 --                 ##   A [P$rhs$pc$P$rhs == 0]                        >-> P[A](1, P$lhs$pc$P$lhs, -1)   
---          with ProcInst: P[A](0,0,0)
--- becomes with LPE:
--- 
+--          with ProcInst: P[A](0, ANY, ANY, ANY)
 
 testLPEDisable1 :: Test
 testLPEDisable1 = TestCase $
-   trace ("\ntestDisable2:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
-            "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
-            "\n res_procDef: " ++ (pshow $ DefProc res_procDef)) $
+--    trace ("\ntestDisable2:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
+--             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
+--             "\n res_procDef: " ++ (pshow $ DefProc res_procDef)) $
       assertBool "EXIT, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) ((Just (res_procInst, res_procDef)))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst, res_procDef) = fromMaybe (error "could not find the given procId 1") $ lpeTransformFunc procInst'' procDefs'
@@ -1611,27 +1613,55 @@ testLPEDisable1 = TestCase $
                                                 (actionPref actOfferA stop))
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      procIdP' = procIdGen "P" [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPpcRHS]
-      procInst' = procInst procIdP' [chanIdA] [int0, int0, int0]
-      procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPpcRHS]
+      varIdPdisable' :: VarId
+      varIdPdisable' = VarId (T.pack "P$pre1$A$P$pre1$disable$lhs") 33 intSort
+      varIdPpcLHS' :: VarId
+      varIdPpcLHS' = VarId (T.pack "P$pre1$A$P$pre1$lhs$pc$P$pre1$lhs") 33 intSort
+      varIdPpcRHS' :: VarId
+      varIdPpcRHS' = VarId (T.pack "P$pre1$A$P$pre1$rhs$pc$P$pre1$rhs") 33 intSort
+      
+      vexprPdisable' :: VExpr
+      vexprPdisable' = cstrVar varIdPdisable'
+      vexprPpcLHS' :: VExpr
+      vexprPpcLHS' = cstrVar varIdPpcLHS'
+      vexprPpcRHS' :: VExpr
+      vexprPpcRHS' = cstrVar varIdPpcRHS'
+
+
+      procIdP' = procIdGen "LPE_P" [chanIdA] [varIdPcP, varIdPdisable', varIdPpcLHS', varIdPpcRHS']
+      procInst' = procInst procIdP' [chanIdA] [int0, anyInt, anyInt, anyInt]
+      procDefExpected = ProcDef [chanIdA] [varIdPcP, varIdPdisable', varIdPpcLHS', varIdPpcRHS']
                                                 (choice $ Set.fromList [
 
-                                                      (actionPref 
-                                                            actOfferExit { constraint = cstrAnd (Set.fromList [ 
-                                                                                                cstrITE (cstrEqual vexprPdisable int0)
-                                                                                                      (cstrEqual vexprPpcLHS int0)
-                                                                                                      (cstrConst (Cbool False))
-                                                                                          ])
-                                                                        } 
-                                                            (procInst procIdP' [chanIdA] [int0, intMin1, intMin1])),
+                                                            (actionPref 
+                                                                  actOfferA { constraint = (cstrEqual vexprPcP int0)
+                                                                              } 
+                                                                  (procInst procIdP' [chanIdA] [int1, int1, int0, intMin1])),
+                                                            
+                                                            (actionPref 
+                                                                  actOfferA { constraint =      (cstrITE (cstrEqual vexprPcP int1)
+                                                                                                      (cstrEqual vexprPpcRHS' int0)
+                                                                                                      (cstrConst (Cbool False)))
+                                                                              } 
+                                                                  (procInst procIdP' [chanIdA] [int1, int1, vexprPpcLHS', intMin1])),
+                                                            
+                                                            (actionPref 
+                                                                  actOfferExit { constraint =  (cstrEqual vexprPcP int0)
+                                                                              } 
+                                                                  (procInst procIdP' [chanIdA] [int1, int0, intMin1, intMin1])),
+                                                            
+                                                            (actionPref 
+                                                                  actOfferExit { constraint = cstrAnd (Set.fromList [ 
+                                                                                                      cstrITE (cstrEqual vexprPcP int1)
+                                                                                                            (cstrITE (cstrEqual vexprPdisable' int0)
+                                                                                                                  (cstrEqual vexprPpcLHS' int0)
+                                                                                                                  (cstrConst (Cbool False)))
+                                                                                                            (cstrConst (Cbool False))
+                                                                                                ])
+                                                                              } 
+                                                                  (procInst procIdP' [chanIdA] [int1, int0, intMin1, intMin1]))
 
-                                                      (actionPref 
-                                                            actOfferA { constraint = (cstrEqual vexprPpcRHS int0)
-                                                                        } 
-                                                            (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])) 
-
-
-                                                ])
+                                                      ])
 
 
 
@@ -1639,41 +1669,41 @@ testLPEDisable1 = TestCase $
 -- List of Tests
 ----------------------------------------------------------------------------------------
 testLPEList :: Test
-testLPEList = TestList [  --TestLabel "translation to GNF did work" testGNFFirst
+testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
 
-                        -- , TestLabel "STOP becomes empty choice" testStop
-                        -- , TestLabel "actionPref stop" testActionPrefStop
-                        -- , TestLabel "actionPref Constraints are kept" testActionPrefConstraints
-                        -- , TestLabel "actionPref procInst" testActionPrefProcInst
-                        -- , TestLabel "choice" testChoice
-                        -- , TestLabel "Multiple ProcDefs simple" testMultipleProcDefs1
-                        -- , TestLabel "Multiple ProcDefs circular" testMultipleProcDefs2
-                        -- , TestLabel "Multiple ProcDefs removal of STOP" testMultipleProcDefs3
+                        , TestLabel "STOP becomes empty choice" testStop
+                        , TestLabel "actionPref stop" testActionPrefStop
+                        , TestLabel "actionPref Constraints are kept" testActionPrefConstraints
+                        , TestLabel "actionPref procInst" testActionPrefProcInst
+                        , TestLabel "choice" testChoice
+                        , TestLabel "Multiple ProcDefs simple" testMultipleProcDefs1
+                        , TestLabel "Multiple ProcDefs circular" testMultipleProcDefs2
+                        , TestLabel "Multiple ProcDefs removal of STOP" testMultipleProcDefs3
 
-                        -- , TestLabel "ProcDef Identity" testProcDefIdentity
-                        -- , TestLabel "Params are made unique" testParamsUnique
-                        -- , TestLabel "switching channels" testChannelSwitch
-                        -- , TestLabel "multi action" testMultiAction
-                        -- , TestLabel "channel instantiation not for top-level procInst" testChannelInstantiation
+                        , TestLabel "ProcDef Identity" testProcDefIdentity
+                        , TestLabel "Params are made unique" testParamsUnique
+                        , TestLabel "switching channels" testChannelSwitch
+                        , TestLabel "multi action" testMultiAction
+                        , TestLabel "channel instantiation not for top-level procInst" testChannelInstantiation
 
-                        -- , TestLabel "lpePar integration" testLPEPar
+                        , TestLabel "lpePar integration" testLPEPar
 
-                        -- , TestLabel "lpeHide integration" testLPEHide1
-                        -- , TestLabel "lpeHide integration" testLPEHide2
-                        -- , TestLabel "lpeEnable integration" testEnable1
-                        -- , TestLabel "lpeEnable integration 2" testEnable2
+                        , TestLabel "lpeHide integration" testLPEHide1
+                        , TestLabel "lpeHide integration" testLPEHide2
+                        , TestLabel "lpeEnable integration" testEnable1
+                        , TestLabel "lpeEnable integration 2" testEnable2
 
-                        -- , TestLabel "lpe guard stop" testLPEGuardStop
-                        -- , TestLabel "lpe guard ActionPref" testLPEGuardActionPref
-                        -- , TestLabel "lpe guard Choice" testLPEGuardChoice
-                        -- , TestLabel "lpe guard ProcInst" testLPEGuardProcInst
+                        , TestLabel "lpe guard stop" testLPEGuardStop
+                        , TestLabel "lpe guard ActionPref" testLPEGuardActionPref
+                        , TestLabel "lpe guard Choice" testLPEGuardChoice
+                        , TestLabel "lpe guard ProcInst" testLPEGuardProcInst
 
                            
-                        -- , TestLabel "lpe guard par" testLPEGuardPar
-                        -- , TestLabel "lpe guard hide" testLPEGuardHide
-                        -- , TestLabel "lpe guard enable" testLPEGuardEnable
+                        , TestLabel "lpe guard par" testLPEGuardPar
+                        , TestLabel "lpe guard hide" testLPEGuardHide
+                        , TestLabel "lpe guard enable" testLPEGuardEnable
 
-                         TestLabel "lpe disable" testLPEDisable1
+                        , TestLabel "lpe disable" testLPEDisable1
 
                         -- , TestLabel "multi chanoffer translation" testMultiChanOffer
                         ]

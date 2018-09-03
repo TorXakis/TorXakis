@@ -17,9 +17,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ViewPatterns        #-}
 
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -Wno-unused-local-binds #-}
-
 module LPE
 ( ProcDefs
 , preGNF
@@ -62,7 +59,7 @@ import Relabel (relabel)
 import Subst
 import SortOf
 
-import Debug.Trace
+-- import Debug.Trace
 import TxsShow
 
 -- ----------------------------------------------------------------------------------------- --
@@ -197,20 +194,11 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Disable _bexprL _bexprR) choiceCnt freeVarsI
     -- DISABLE at lower level not allowed
     (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
     -- translate the created ProcDef with preGNFDisable
-    trace ("preGNFBExpr DISABLE: \n" ++ pshow procInst' ++ "\n" ++ (pshow_procDefs procDefs'')) $ preGNFDisable procInst' translatedProcDefs procDefs'' 
+    preGNFDisable procInst' translatedProcDefs procDefs'' 
     
 
 preGNFBExpr bexpr _ _ _ _ _ =
     error $ "unexpected type of bexpr" ++ show bexpr
-
-
-
-pshow_procDefs :: (Map.Map ProcId ProcDef) -> String
-pshow_procDefs procDefs' = pshow_procDefs' $ Map.toList procDefs'
-  where
-      pshow_procDefs' :: [(ProcId, ProcDef)] -> String
-      pshow_procDefs' [] = ""
-      pshow_procDefs' ((procId, procDef'):rest) = "\n ** " ++ pshow procId ++ "\n" ++ show procId ++ "\n" ++ (pshow $ DefProc procDef') ++ pshow_procDefs' rest
 
 
 preGNFBExprCreateProcDef :: (EnvB.EnvB envb) => BExpr -> Int -> [VarId] -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
@@ -813,14 +801,32 @@ preGNFEnable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsIn
         -- just for the steps with EXIT -> <>  replace with the ProcInst
         replaceExits :: BExpr -> BExpr -> BExpr 
         replaceExits (TxsDefs.view -> ProcInst procId chanIds params) bexpr'@(TxsDefs.view -> ActionPref actOffer'@ActOffer{offers = offers'} _bexpr) = --{ offers = Set.fromList [Offer { chanid = chanIdExit, chanoffers = []}]}
-            let exitParams = extractVars actOffer' in 
-            case Set.toList offers' of 
-                [Offer { chanid = chid}] | chid == chanIdExit -> actionPref 
-                                                                    actOffer'{  offers = Set.empty
-                                                                                , hiddenvars = Set.fromList exitParams} 
-                                                                    (procInst procId chanIds (params ++ map cstrVar exitParams))
-                _       -> bexpr'
+            -- let exitParams = extractVars actOffer' 
+            let (offerExit, offersRest) = List.partition isExit (Set.toList offers') in 
+                case offerExit of 
+                    [] ->   -- no EXIT found: just return original BExpr
+                            bexpr'
+                    [o] ->  -- found one EXIT: replace, but keep rest
+                            let exitParams = (extractVarIdsOffer o []) in 
+                            actionPref 
+                                actOffer'{    offers = Set.fromList offersRest
+                                            , hiddenvars = Set.fromList exitParams} 
+                                (procInst procId chanIds (params ++ map cstrVar exitParams))
+                    _   ->  -- found multiple EXITs: not supported
+                            error "Found multiple EXIT in single action offer. Not supported."
+                -- case Set.toList offers' of 
+                --     [Offer { chanid = chid}] | chid == chanIdExit -> actionPref 
+                --                                                         actOffer'{  offers = Set.empty
+                --                                                                     , hiddenvars = Set.fromList exitParams} 
+                --                                                         (procInst procId chanIds (params ++ map cstrVar exitParams))
+                --     _       -> bexpr'
+            where   
+                isExit :: Offer -> Bool
+                isExit o = case o of 
+                            (Offer { chanid = chid}) | chid == chanIdExit -> True
+                            _                                             -> False 
         replaceExits _ _ = error "replaceExits: unknown input"  
+    
 
 preGNFEnable _ _ _ = error "preGNFEnable: was called with something other than a ProcInst"
     
@@ -859,7 +865,7 @@ preGNFDisable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsI
         
     -- translate left bexpr of Disable to LPE
     (procInstLHS, procDefs'') <- preGNFDisableCreateProcDef bexprL "lhs" procIdInst procDefs'
-    (procInstLHS_lpe@(TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe paramsInstLHS_lpe), procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
+    ((TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe _paramsInstLHS_lpe), procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
     let -- decompose translated ProcDef
         ProcDef _chans paramsDefLHS_lpe bexprLHS_lpe = fromMaybe (error "preGNFDisable 2: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs''')
         -- prefix all params to make them unique: params from lhs and rhs may clash
@@ -876,7 +882,7 @@ preGNFDisable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsI
 
     -- translate right bexpr of Disable to LPE
     (procInstRHS, procDefs4) <- preGNFDisableCreateProcDef bexprR "rhs" procIdInst  procDefs'''
-    (procInstRHS_lpe@(TxsDefs.view -> ProcInst procIdRHS_lpe _chansInstRHS_lpe paramsInstRHS_lpe), procDefs5) <- lpe procInstRHS translatedProcDefs procDefs4
+    ((TxsDefs.view -> ProcInst procIdRHS_lpe _chansInstRHS_lpe _paramsInstRHS_lpe), procDefs5) <- lpe procInstRHS translatedProcDefs procDefs4
     let -- decompose translated ProcDef
         ProcDef _chans paramsDefRHS_lpe bexprRHS_lpe = fromMaybe (error "preGNFDisable 3: could not find the given procId") (Map.lookup procIdRHS_lpe procDefs5)
         -- prefix all params to make them unique: params from lhs and rhs may clash
@@ -905,19 +911,19 @@ preGNFDisable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsI
         -- add new ProcDef to ProcDefs:
         procDefsRes = Map.insert procIdRes procDefRes procDefs5
 
-    trace ("\n\n preGNFDisable: " ++ 
-        "\n procInstLHS_lpe: " ++ pshow procInstLHS_lpe ++
-        "\n procDefLHS_lpe: " ++ pshow  (DefProc $ fromMaybe (error "preGNFDisable: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs5)    ) ++ 
-        "\n procInstRHS_lpe: " ++ pshow procInstRHS_lpe ++
-        "\n procDefRHS_lpe: " ++ pshow  (DefProc $ fromMaybe (error "preGNFDisable: could not find the given procId") (Map.lookup procIdRHS_lpe procDefs5)    ) ++
+    -- trace ("\n\n preGNFDisable: " ++ 
+    --     "\n procInstLHS_lpe: " ++ pshow procInstLHS_lpe ++
+    --     "\n procDefLHS_lpe: " ++ pshow  (DefProc $ fromMaybe (error "preGNFDisable: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs5)    ) ++ 
+    --     "\n procInstRHS_lpe: " ++ pshow procInstRHS_lpe ++
+    --     "\n procDefRHS_lpe: " ++ pshow  (DefProc $ fromMaybe (error "preGNFDisable: could not find the given procId") (Map.lookup procIdRHS_lpe procDefs5)    ) ++
         
-        "\n procInstRes: " ++ pshow procInstRes ++
-        "\n procDefRes: " ++ pshow (DefProc procDefRes) ++ 
+    --     "\n procInstRes: " ++ pshow procInstRes ++
+    --     "\n procDefRes: " ++ pshow (DefProc procDefRes) ++ 
         
-        "\n steps appended: " ++ pshow (stepsLHS' ++ stepsRHS') 
+    --     "\n steps appended: " ++ pshow (stepsLHS' ++ stepsRHS') 
 
-        ) $ 
-        return (procInstRes, procDefsRes)
+    --     ) $ 
+    return (procInstRes, procDefsRes)
     where 
         addDisableConstraint :: VarId -> BExpr -> BExpr
         addDisableConstraint varIdDisable (TxsDefs.view -> ActionPref actOffer bexpr') = 
@@ -930,7 +936,7 @@ preGNFDisable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsI
 
         -- update procInsts of LHS/RHS steps to signature of new overall ProcDef 
         updateProcInst :: Integer -> ProcId -> [VarId] -> [VarId] -> [VarId] -> BExpr -> BExpr
-        updateProcInst disableValue procIdNew paramsDef paramsDefL paramsDefR (TxsDefs.view -> ActionPref actOffer procInst''@(TxsDefs.view -> ProcInst procIdInst' chansInst paramsInst))=
+        updateProcInst disableValue procIdNew paramsDef paramsDefL paramsDefR (TxsDefs.view -> ActionPref actOffer (TxsDefs.view -> ProcInst _procIdInst' chansInst paramsInst))=
             let paramsInst' = (cstrConst (Cint (disableValue)) : 
                                     ((map cstrVar paramsDef) ++  
                                         (if disableValue == 0 
@@ -950,8 +956,7 @@ preGNFDisable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsI
         -- update the original ProcInst, initialise with artifical values
         updateProcInstOriginal :: BExpr -> ProcId -> [VarId] -> [VarId] -> BExpr
         updateProcInstOriginal (TxsDefs.view -> ProcInst _procIdInst chansInst paramsInst) procIdNew paramsDefLHS paramsDefRHS =
-            let pcValue = cstrConst (Cint 0)
-                -- get the params, but leave out the first ones (those of procIdInst itself)
+            let -- get the params, but leave out the first ones (those of procIdInst itself)
                 -- plus an extra one (that of the program counter)
                 
                 -- new parameter list: 
@@ -968,41 +973,11 @@ preGNFDisable procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsI
                 paramsInstRHS = ((cstrConst (Cint 0)) : paramsRHSany)
 
                 paramsNew = ((cstrConst (Cint 0)) : paramsInst) ++ paramsInstLHS ++ paramsInstRHS in
-
-                -- paramsOrginal = snd $ splitAt (length paramsInst+1) (ProcId.procvars procIdNew)
-                -- paramsSorts = map varIdToSort params
-                -- paramsANYs = map (cstrConst . Cany) paramsSorts
-                -- paramsNew = (pcValue : paramsInst) ++ paramsANYs in
             procInst procIdNew chansInst paramsNew
         updateProcInstOriginal _ _ _ _ = error "Only allowed with ProcInst"
 
         actOfferContainsExit :: ActOffer -> Bool 
         actOfferContainsExit actOffer = chanIdExit `elem` (map chanid $ Set.toList $ offers actOffer)
-
-                -- -- just for the steps with EXIT -> <>  replace with the ProcInst
-                -- replaceExits :: BExpr -> BExpr -> BExpr 
-                -- replaceExits (TxsDefs.view -> ProcInst procId chanIds params) bexpr'@(TxsDefs.view -> ActionPref actOffer'@ActOffer{offers = offers'} _bexpr) = --{ offers = Set.fromList [Offer { chanid = chanIdExit, chanoffers = []}]}
-                --     let exitParams = extractVars actOffer' in 
-                --     case Set.toList offers' of 
-                --         [Offer { chanid = chid}] | chid == chanIdExit -> actionPref 
-                --                                                             actOffer'{  offers = Set.empty
-                --                                                                         , hiddenvars = Set.fromList exitParams} 
-                --                                                             (procInst procId chanIds (params ++ map cstrVar exitParams))
-                --         _       -> bexpr'
-        
-
-    -- where   
-    --     -- just for the steps with EXIT -> <>  replace with the ProcInst
-    --     replaceExits :: BExpr -> BExpr -> BExpr 
-    --     replaceExits (TxsDefs.view -> ProcInst procId chanIds params) bexpr'@(TxsDefs.view -> ActionPref actOffer'@ActOffer{offers = offers'} _bexpr) = --{ offers = Set.fromList [Offer { chanid = chanIdExit, chanoffers = []}]}
-    --         let exitParams = extractVars actOffer' in 
-    --         case Set.toList offers' of 
-    --             [Offer { chanid = chid}] | chid == chanIdExit -> actionPref 
-    --                                                                 actOffer'{  offers = Set.empty
-    --                                                                             , hiddenvars = Set.fromList exitParams} 
-    --                                                                 (procInst procId chanIds (params ++ map cstrVar exitParams))
-    --             _       -> bexpr'
-    --     replaceExits _ _ = error "replaceExits: unknown input"  
 
 preGNFDisable _ _ _ = error "preGNFDisable: was called with something other than a ProcInst"
     
@@ -1053,8 +1028,9 @@ lpeTransform' procInst''' procDefs' = do    (procInst', procDefs'') <- lpe procI
                                                 procIdName' = (T.pack $ "LPE_" ++ T.unpack (ProcId.name procIdInst''))
                                                 procIdInst' = procIdInst'' { ProcId.name = procIdName',
                                                                             ProcId.unid = procIdInstUid}
-                                                procInst'' = trace ("\n lpeTransform: \n procIdInst'': " ++ show procIdInst'' ++ "\n" ++ pshow_procDefs procDefs'' ++
-                                                                "\n bexpr: " ++ (List.intercalate "\n--" $ (map pshow (extractSteps bexpr)))) $ procInst procIdInst' chansInst paramsInst
+                                                procInst'' = --trace ("\n lpeTransform: \n procIdInst'': " ++ show procIdInst'' ++ "\n" ++ pshow_procDefs procDefs'' ++
+                                                             --   "\n bexpr: " ++ (List.intercalate "\n--" $ (map pshow (extractSteps bexpr)))) $ 
+                                                                procInst procIdInst' chansInst paramsInst
 
                                                 -- put new ProcId in each step
                                                 steps = map (substituteProcId procIdInst'' procIdInst') (extractSteps bexpr)
