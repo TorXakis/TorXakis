@@ -42,6 +42,6 @@ prop_Increments =
                                                         Right c12 -> c12 == c2
 
 spec :: Spec
-spec = do
+spec =
   describe "A sort gen context" $
     it "incr2 after incr1 == incr2 ++ incr1" $ property prop_Increments
