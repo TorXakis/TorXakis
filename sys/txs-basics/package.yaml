@@ -1,7 +1,7 @@
 # TorXakis - Model Based Testing
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
-name:                txs-sort
+name:                txs-basics
 version:             0.1.0.0
 github:              "TorXakis/TorXakis"
 license:             BSD3
@@ -12,20 +12,21 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 dependencies:
 - base >= 4.7 && < 5
 - text
-- txs-basics
+
+extra-source-files:
+- README.md
 
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.Sort
+  - TorXakis.Error
+  - TorXakis.Name
   dependencies:
   - deepseq
   - hashable
   - hashmap
+  - Unique
 
-
-extra-source-files:
-- README.md
 
 ghc-options:
 - -Werror
@@ -40,7 +41,7 @@ ghc-options:
 - -Wredundant-constraints
 
 tests:
-    txs-sort-test:
+    txs-basics-test:
         main : Spec.hs
         source-dirs: test
         ghc-options:
@@ -50,4 +51,4 @@ tests:
         dependencies:
         - hspec
         - QuickCheck
-        - txs-sort
+        - txs-basics

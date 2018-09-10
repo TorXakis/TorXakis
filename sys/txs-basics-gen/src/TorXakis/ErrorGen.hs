@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Name
+-- Module      :  ErrorGen
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -13,15 +13,15 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- This module provides a Generator for 'TorXakis.Name'.
+-- This module provides a Generator for 'TorXakis.Error'.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-module TorXakis.NameGen
+module TorXakis.ErrorGen
 ( 
--- * Name Generator
-  NameGen(..)
+-- * ErrorGen Generator
+  ErrorGen(..)
 )
 where
 
@@ -32,19 +32,16 @@ import qualified Data.Text as T
 import           GHC.Generics     (Generic)
 import           Test.QuickCheck
 
-import           TorXakis.Sort
+import           TorXakis.Error
 
 -- | Definition of the name generator.
-newtype NameGen = NameGen { -- | accessor to 'TorXakis.Name'
-                            unNameGen :: Name}
+newtype ErrorGen = ErrorGen { -- | accessor to 'TorXakis.Error'
+                              unErrorGen :: Error
+                            }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
     
-instance Arbitrary NameGen
+instance Arbitrary ErrorGen
     where
         arbitrary = do
-            c <- arbitrary :: Gen Char
             s <- arbitrary :: Gen String
-            case mkName (T.pack (c:s)) of
-                Right n -> return (NameGen n)
-                Left e  -> error $ "Error in NameGen: unexpected error " ++ show e
-             
+            return $ ErrorGen (Error (T.pack s))

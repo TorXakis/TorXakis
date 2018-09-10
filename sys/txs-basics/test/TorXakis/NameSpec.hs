@@ -23,7 +23,7 @@ import qualified Data.Text          as T
 import           Test.Hspec
 import           Test.QuickCheck
 
-import           TorXakis.Sort
+import           TorXakis.Name
 
 prop_empty :: Bool
 prop_empty =

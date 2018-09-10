@@ -20,7 +20,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-module TorXakis.Name
+module TorXakis.Name.Name
 ( 
 -- * Name
 -- ** Name data type

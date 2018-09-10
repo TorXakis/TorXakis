@@ -44,14 +44,15 @@ where
 
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
+import           Data.Hashable       (Hashable(hash, hashWithSalt))
 import qualified Data.HashMap        as Map
+import           Data.Monoid         ((<>))
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error      (Error(Error))
-import           TorXakis.Name       (Name, repeatedByName, HasName, getName)
-import           TorXakis.RefByName  (RefByName, toMapByName)
+import           TorXakis.Name       (Name, toText, repeatedByName, HasName, getName, RefByName, toName, toMapByName)
 
 -----------------------------------------------------------------------------
 -- Sort
@@ -65,6 +66,15 @@ data Sort = SortBool
           | SortADT (RefByName ADTDef)
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 -- If we want to make Sort package more flexible, we can use SortPrim "Int" & SortADT "WhatEver".
+
+instance Hashable Sort where
+    hash SortBool    = hash (T.pack "Bool")
+    hash SortInt     = hash (T.pack "Int")
+    hash SortChar    = hash (T.pack "Char")
+    hash SortString  = hash (T.pack "String")
+    hash SortRegex   = hash (T.pack "Regex")
+    hash (SortADT r) = hash ( (T.pack "A") <> ( (toText . toName) r) )
+    hashWithSalt s = (*s) . hash 
 
 -- | Is the sort primitive?
 isPrimitive :: Sort -> Bool
