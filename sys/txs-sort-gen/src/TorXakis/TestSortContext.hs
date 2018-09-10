@@ -28,7 +28,7 @@ where
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import qualified Data.HashMap        as Map
-import           Data.Maybe          (catMaybes)
+import           Data.Maybe          (catMaybes, fromMaybe)
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
@@ -46,7 +46,7 @@ class SortContext a => TestSortContext a where
     --   * The context contains the 'ADTDef' reference.
     --
     --   Otherwise an error is return. The error reflects the violations of the formentioned constraint.
-    adtSize :: a -> RefByName ADTDef -> Either Error Int
+    adtSize :: a -> RefByName ADTDef -> Either MinError Int
 
     -- | get Sort to Size map
     getMapSortSize :: a -> Map.Map Sort Int
@@ -59,7 +59,7 @@ class SortContext a => TestSortContext a where
     --   * The context contains the 'ConstructorDef' reference for the referred 'ADTDef'.
     --
     --   Otherwise an error is return. The error reflects the violations of any of the formentioned constraints.
-    constructorSize :: a -> RefByName ADTDef -> RefByName ConstructorDef -> Either Error Int
+    constructorSize :: a -> RefByName ADTDef -> RefByName ConstructorDef -> Either MinError Int
 
 -- | A minimal instance of 'TestSortContext'.
 data MinimalTestSortContext = MinimalTestSortContext 
@@ -93,13 +93,13 @@ instance SortContext MinimalTestSortContext where
                                           -> Map.Map Sort Int
                                           -> [ADTDef]
                                           -> Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
-            addToMapAdtMapConstructorSize cMap sMap adefs =
-                foldl addConstrucorSizes cMap adefs
+            addToMapAdtMapConstructorSize cMap sMap =
+                foldl addConstructorSizes cMap
               where
-                addConstrucorSizes :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int) 
-                                   -> ADTDef 
-                                   -> Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
-                addConstrucorSizes iMap adef =
+                addConstructorSizes :: Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int) 
+                                    -> ADTDef 
+                                    -> Map.Map (RefByName ADTDef) (Map.Map (RefByName ConstructorDef) Int)
+                addConstructorSizes iMap adef =
                     let ra :: RefByName ADTDef
                         ra = RefByName (getName adef) in
                         if Map.member ra iMap 
@@ -140,21 +140,20 @@ instance SortContext MinimalTestSortContext where
                     fieldSizes = map ( (`Map.lookup` defined) . sort ) ( (fields . viewConstructorDef) cdef )
 
             getConstructorSize :: Map.Map Sort Int -> ConstructorDef -> Int
-            getConstructorSize defined cdef = case getKnownConstructorSize defined cdef of
-                                                Just i -> i
-                                                Nothing -> error ("Invariant violated: unable to calculate size of ConstructorDef " ++ show cdef)
-                                                
+            getConstructorSize defined cdef = fromMaybe (error ("Invariant violated: unable to calculate size of ConstructorDef " ++ show cdef) )
+                                                        (getKnownConstructorSize defined cdef)
+
     adtDefs = adtDefsToMap
-    
+
 instance TestSortContext MinimalTestSortContext where
     adtSize ctx r = case Map.lookup (SortADT r) (mapSortSize ctx) of
                     Just i  -> Right i
-                    Nothing -> Left $ Error (T.pack ("reference not contained in context " ++ show r))
+                    Nothing -> Left $ MinError (T.pack ("reference not contained in context " ++ show r))
 
     getMapSortSize = mapSortSize
-    
+
     constructorSize ctx r c = case Map.lookup r (mapAdtMapConstructorSize ctx) of
-                                Nothing -> Left $ Error (T.pack ("ADT reference not contained in context " ++ show r))
+                                Nothing -> Left $ MinError (T.pack ("ADT reference not contained in context " ++ show r))
                                 Just m -> case Map.lookup c m of
-                                            Nothing -> Left $ Error (T.pack ("ADT reference not contained in context " ++ show r))
+                                            Nothing -> Left $ MinError (T.pack ("ADT reference not contained in context " ++ show r))
                                             Just i -> Right i

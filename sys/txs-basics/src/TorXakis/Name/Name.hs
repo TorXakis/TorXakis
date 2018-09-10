@@ -45,7 +45,7 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 import           GHC.Generics     (Generic)
 
-import           TorXakis.Error(Error(Error))
+import           TorXakis.Error(MinError(MinError))
 
 -- | Definition of the name of entities.
 newtype Name = Name
@@ -71,8 +71,8 @@ instance (HasName a, HasName b) => HasName (Either a b) where
 --   * The provided 'Data.Text.Text' value is non-empty
 --
 --   Otherwise an error is returned. The error reflects the violations of the aforementioned constraint.
-mkName :: Text -> Either Error Name
-mkName s | T.null s = Left $ Error (T.pack "Illegal input: Empty String")
+mkName :: Text -> Either MinError Name
+mkName s | T.null s = Left $ MinError (T.pack "Illegal input: Empty String")
 mkName s            = Right $ Name s
 
 -- |  Return the elements with non-unique names that the second list contains in the combination of the first and second list.

@@ -14,6 +14,7 @@ See LICENSE at root directory of this repository.
 -- Portability :  portable
 --
 -- This module provides the basis error type for TorXakis.
+-- Receivers of errors should depend only on the Error class.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -21,7 +22,9 @@ See LICENSE at root directory of this repository.
 module TorXakis.Error
 ( 
   -- * Error
-  Error (..)
+  Error(..)
+  -- * Minimal Error Implementation
+, MinError(MinError)
 ) where
 import           Control.DeepSeq (NFData)
 import           Data.Data (Data)
@@ -30,7 +33,17 @@ import           GHC.Generics     (Generic)
 
 
 -- | An error in TorXakis.
-newtype Error = Error { -- | An error can be converted to 'Data.Text.Text'.
-                            toText :: Text
-                      }
-                      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+class Error a where
+    -- | An error can be converted to 'Data.Text.Text'.
+    toText :: a -> Text
+
+-- | A minimal error.
+--   Instance of 'Error'
+newtype MinError = 
+    MinError {
+          -- | A minimal error just contains a 'Data.Text.Text'.
+          _toText :: Text
+    } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance Error MinError where
+    toText = _toText

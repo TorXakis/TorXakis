@@ -28,7 +28,7 @@ import           TorXakis.Error
 prop_toText :: String -> Bool
 prop_toText s =
     let txt = T.pack s in 
-      txt == toText (Error txt)
+      txt == toText (MinError txt)
 
 spec :: Spec
 spec = 

@@ -47,11 +47,10 @@ import           Data.Data           (Data)
 import           Data.Hashable       (Hashable(hash, hashWithSalt))
 import qualified Data.HashMap        as Map
 import           Data.Monoid         ((<>))
-import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
-import           TorXakis.Error      (Error(Error))
+import           TorXakis.Error      (MinError(MinError))
 import           TorXakis.Name       (Name, toText, repeatedByName, HasName, getName, RefByName, toName, toMapByName)
 
 -----------------------------------------------------------------------------
@@ -73,7 +72,7 @@ instance Hashable Sort where
     hash SortChar    = hash (T.pack "Char")
     hash SortString  = hash (T.pack "String")
     hash SortRegex   = hash (T.pack "Regex")
-    hash (SortADT r) = hash ( (T.pack "A") <> ( (toText . toName) r) )
+    hash (SortADT r) = hash ( T.pack "A" <> (toText . toName) r )
     hashWithSalt s = (*s) . hash 
 
 -- | Is the sort primitive?
@@ -87,8 +86,6 @@ data FieldDef = FieldDef
       fieldName :: Name
       -- | Sort of the field
     , sort      :: Sort
-      -- | Meta data of the field
-    , metadata  :: Text
     }
     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
@@ -119,9 +116,9 @@ instance HasName ConstructorDef where
     getName = getName . viewConstructorDef
 
 -- | Smart constructor for ConstructorDef
-mkConstructorDef :: Name -> [FieldDef] -> Either Error ConstructorDef
+mkConstructorDef :: Name -> [FieldDef] -> Either MinError ConstructorDef
 mkConstructorDef n fs
-    | not $ null nuFieldNames = Left $ Error (T.pack ("Non unique field names: " ++ show nuFieldNames))
+    | not $ null nuFieldNames = Left $ MinError (T.pack ("Non unique field names: " ++ show nuFieldNames))
     | otherwise               = Right $ ConstructorDef $ ConstructorDefView n fs
     where
         nuFieldNames :: [FieldDef]
@@ -157,11 +154,11 @@ instance HasName ADTDef where
 --   * Names of 'FieldDef's are unique across all 'ConstructorDef's
 --
 --   Otherwise an error is return. The error reflects the violations of any of the formentioned constraints.
-mkADTDef :: Name -> [ConstructorDef] -> Either Error ADTDef
-mkADTDef _ [] = Left $ Error (T.pack "Empty Constructor List")
+mkADTDef :: Name -> [ConstructorDef] -> Either MinError ADTDef
+mkADTDef _ [] = Left $ MinError (T.pack "Empty Constructor List")
 mkADTDef m cs
-    | not $ null nuCstrDefs   = Left $ Error (T.pack ("Non-unique constructor definitions" ++ show nuCstrDefs))
-    | not $ null nuFieldNames = Left $ Error (T.pack ("Non-unique field definitions" ++ show nuFieldNames))
+    | not $ null nuCstrDefs   = Left $ MinError (T.pack ("Non-unique constructor definitions" ++ show nuCstrDefs))
+    | not $ null nuFieldNames = Left $ MinError (T.pack ("Non-unique field definitions" ++ show nuFieldNames))
     | otherwise               = Right $ ADTDef $ ADTDefView m (toMapByName cs)
     where
         nuCstrDefs :: [ConstructorDef]

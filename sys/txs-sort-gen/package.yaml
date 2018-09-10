@@ -12,17 +12,21 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
+- txs-sort
 
 library:
   source-dirs: src
   exposed-modules:
   - TorXakis.SortGen
+  - TorXakis.SortGenContext
+  - TorXakis.TestSortContext
   dependencies:
+    - containers
     - deepseq
     - hashmap
     - text
     - txs-basics
-    - txs-sort
+    - txs-basics-gen
 
 extra-source-files:
 - README.md
@@ -49,3 +53,4 @@ tests:
         - -with-rtsopts=-N
         dependencies:
         - hspec
+        - txs-sort-gen

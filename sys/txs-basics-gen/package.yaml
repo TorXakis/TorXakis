@@ -19,7 +19,6 @@ library:
   source-dirs: src
   exposed-modules:
   - TorXakis.Cover
-  - TorXakis.ErrorGen
   - TorXakis.NameGen
   dependencies:
   - base >= 4.7 && < 5

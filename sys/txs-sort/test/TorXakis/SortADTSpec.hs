@@ -35,11 +35,8 @@ arbitraryFieldDef =
 
         arbitrarySort :: Sort
         arbitrarySort = SortInt
-
-        arbitraryMetadata :: T.Text
-        arbitraryMetadata = T.pack "arbitrary"
       in
-        FieldDef arbitraryFieldName arbitrarySort arbitraryMetadata
+        FieldDef arbitraryFieldName arbitrarySort
 
 
 -- | NonUniqueFields for Constructor should result in error

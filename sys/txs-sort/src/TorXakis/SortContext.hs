@@ -15,12 +15,14 @@ See LICENSE at root directory of this repository.
 --
 -- Context for Sort: all defined sorts and necessary other definitions
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+--{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.SortContext
 ( -- * Sort Context
   SortContext (..)
+, violationsAddAdtDefs
 , MinimalSortContext(MinimalSortContext)
 )
 where
@@ -32,7 +34,7 @@ import           Data.Maybe          (mapMaybe)
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
-import           TorXakis.Error      ( Error(Error) )
+import           TorXakis.Error      ( MinError(MinError) )
 import           TorXakis.Name       ( Name, getName, repeatedByNameIncremental, RefByName, toMapByName, toName )
 import           TorXakis.SortADT    ( ADTDef, viewADTDef, constructors
                                      , ConstructorDef, viewConstructorDef, fields
@@ -42,8 +44,13 @@ import           TorXakis.SortADT    ( ADTDef, viewADTDef, constructors
 
 -- | A SortContext instance contains all definitions to work with sort and reference thereof
 class SortContext a where
+-- TODO: Kind of Error should be a parameter: allow for SortContext that yield more informative Errors than MinError
+
     -- | An empty sort context (initial state)
     empty :: a
+
+    -- | Accessor for ADTDefs
+    adtDefs :: a -> Map.Map (RefByName ADTDef) ADTDef
 
     -- | Add adt definitions to sort context.
     --   A sort context is returned when the following constraints are satisfied:
@@ -55,89 +62,88 @@ class SortContext a where
     --   * All ADTs are constructable
     --
     --   Otherwise an error is return. The error reflects the violations of any of the formentioned constraints.
-    addAdtDefs :: a -> [ADTDef] -> Either Error a
+    addAdtDefs :: a -> [ADTDef] -> Either MinError a
 
-    -- | Validation function that reports whether an error will occurs when the list of 'ADTDef's are added to the given context.
-    --   The error reflects the violations of any of the following constraints:
-    --
-    --   * The 'Name's of ADTDef are unique
-    --
-    --   * All references are known
-    --
-    --   * All ADTs are constructable
-    violationsAddAdtDefs :: a -> [ADTDef] -> Maybe Error
-    violationsAddAdtDefs context as
-        | not $ null nonUniqueNames       = Just $ Error (T.pack ("Non unique names : " ++ show nonUniqueNames))
-        | not $ null unknownRefs          = Just $ Error (T.pack ("Unknown references : " ++ show unknownRefs))
-        | not $ null nonConstructableADTs = Just $ Error (T.pack ("Non constructable ADTs : " ++ show nonConstructableADTs))
-        | otherwise       = Nothing
-        where
-            definedADTs :: [ADTDef]
-            definedADTs = Map.elems (adtDefs context)
-            
-            nonUniqueNames :: [ADTDef]
-            nonUniqueNames = repeatedByNameIncremental definedADTs as
-            
-            definedNames :: [Name]
-            definedNames = map getName (definedADTs ++ as)
-            
-            hasUnknownRefs :: ADTDef -> Maybe (ADTDef, [Sort])
-            hasUnknownRefs adtdef = 
-                let xs = filter (not . isDefined) (concatMap ( map sort . getFields ) (getConstructors adtdef) ) in
-                    if null xs 
-                        then Nothing
-                        else Just (adtdef,xs)
-            
-            getFields :: ConstructorDef -> [FieldDef]
-            getFields = fields . viewConstructorDef    -- TODO: discuss Jan: should be globally defined?
-            
-            getConstructors :: ADTDef -> [ConstructorDef]
-            getConstructors = Map.elems . constructors . viewADTDef
 
-            isDefined :: Sort -> Bool
-            isDefined (SortADT t) = toName t `elem` definedNames
-            isDefined _           = True
 
-            unknownRefs :: [(ADTDef, [Sort])]
-            unknownRefs = mapMaybe hasUnknownRefs as
-            
-            nonConstructableADTs :: [ADTDef]
-            nonConstructableADTs =  verifyConstructibleADTs (map getName definedADTs) as
-              where
-                -- | Verifies if given list of 'ADTDef's are constructable.
-                --
-                --   Input:
-                --
-                --   * A list of known constructable 'ADTDef's
-                --
-                --   * A list of 'ADTDef's to be verified
-                --
-                --   Output: A tuple consisting of:
-                --
-                --   * A list of non-constructable 'ADTDef's
-                --
-                verifyConstructibleADTs ::[Name]
-                                        -> [ADTDef]
-                                        -> [ADTDef]
-                verifyConstructibleADTs constructableSortNames uADTDfs =
-                    let (cs, ncs)  = List.partition
-                                    (any (allFieldsConstructable constructableSortNames) . getConstructors)
-                                    uADTDfs
-                    in if null cs
-                    then uADTDfs
-                    else verifyConstructibleADTs (map getName cs ++ constructableSortNames) ncs
+-- | Validation function that reports whether an error will occurs when the list of 'ADTDef's are added to the given context.
+--   The error reflects the violations of any of the following constraints:
+--
+--   * The 'Name's of ADTDef are unique
+--
+--   * All references are known
+--
+--   * All ADTs are constructable
+violationsAddAdtDefs :: SortContext a => a -> [ADTDef] -> Maybe MinError
+violationsAddAdtDefs context as
+    | not $ null nonUniqueNames       = Just $ MinError (T.pack ("Non unique names : " ++ show nonUniqueNames))
+    | not $ null unknownRefs          = Just $ MinError (T.pack ("Unknown references : " ++ show unknownRefs))
+    | not $ null nonConstructableADTs = Just $ MinError (T.pack ("Non constructable ADTs : " ++ show nonConstructableADTs))
+    | otherwise                       = Nothing
+    where
+        definedADTs :: [ADTDef]
+        definedADTs = Map.elems (adtDefs context)
+        
+        nonUniqueNames :: [ADTDef]
+        nonUniqueNames = repeatedByNameIncremental definedADTs as
+        
+        definedNames :: [Name]
+        definedNames = map getName (definedADTs ++ as)
+        
+        hasUnknownRefs :: ADTDef -> Maybe (ADTDef, [Sort])
+        hasUnknownRefs adtdef = 
+            let xs = filter (not . isDefined) (concatMap ( map sort . getFields ) (getConstructors adtdef) ) in
+                if null xs 
+                    then Nothing
+                    else Just (adtdef,xs)
+        
+        getFields :: ConstructorDef -> [FieldDef]
+        getFields = fields . viewConstructorDef
+        
+        getConstructors :: ADTDef -> [ConstructorDef]
+        getConstructors = Map.elems . constructors . viewADTDef
 
-                allFieldsConstructable :: [Name] -> ConstructorDef -> Bool
-                allFieldsConstructable constructableSortNames cDef =
-                    all ( isSortConstructable constructableSortNames . sort )
-                        $ getFields cDef
+        isDefined :: Sort -> Bool
+        isDefined (SortADT t) = toName t `elem` definedNames
+        isDefined _           = True
 
-                isSortConstructable :: [Name] -> Sort -> Bool
-                isSortConstructable ns (SortADT t) = toName t `elem` ns
-                isSortConstructable _  _           = True
+        unknownRefs :: [(ADTDef, [Sort])]
+        unknownRefs = mapMaybe hasUnknownRefs as
+        
+        nonConstructableADTs :: [ADTDef]
+        nonConstructableADTs =  verifyConstructibleADTs (map getName definedADTs) as
+          where
+            -- | Verifies if given list of 'ADTDef's are constructable.
+            --
+            --   Input:
+            --
+            --   * A list of known constructable 'ADTDef's
+            --
+            --   * A list of 'ADTDef's to be verified
+            --
+            --   Output: A tuple consisting of:
+            --
+            --   * A list of non-constructable 'ADTDef's
+            --
+            verifyConstructibleADTs ::[Name]
+                                    -> [ADTDef]
+                                    -> [ADTDef]
+            verifyConstructibleADTs constructableSortNames uADTDfs =
+                let (cs, ncs)  = List.partition
+                                (any (allFieldsConstructable constructableSortNames) . getConstructors)
+                                uADTDfs
+                in if null cs
+                then uADTDfs
+                else verifyConstructibleADTs (map getName cs ++ constructableSortNames) ncs
 
-    -- | Accessor for ADTDefs
-    adtDefs :: a -> Map.Map (RefByName ADTDef) ADTDef
+            allFieldsConstructable :: [Name] -> ConstructorDef -> Bool
+            allFieldsConstructable constructableSortNames cDef =
+                all ( isSortConstructable constructableSortNames . sort )
+                    $ getFields cDef
+
+            isSortConstructable :: [Name] -> Sort -> Bool
+            isSortConstructable ns (SortADT t) = toName t `elem` ns
+            isSortConstructable _  _           = True
 
 -- | A minimal instance of 'SortContext'.
 newtype MinimalSortContext = MinimalSortContext { adtDefsToMap :: Map.Map (RefByName ADTDef) ADTDef 
