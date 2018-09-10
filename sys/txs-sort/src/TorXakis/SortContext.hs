@@ -41,7 +41,7 @@ import           TorXakis.SortADT    ( ADTDef, viewADTDef, constructors
                                      , Sort(SortADT)
                                      )
 
--- | A HasSorts instance contains all definitions to work with sort and reference thereof
+-- | A SortContext instance contains all definitions to work with sorts and references thereof
 class SortContext a where
     -- | An empty sort context (initial state)
     empty :: a
@@ -55,7 +55,7 @@ class SortContext a where
     --
     --   * All ADTs are constructable
     --
-    --   Otherwise an error is return. The error reflects the violations of any of the formentioned constraints.
+    --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     addAdtDefs :: a -> [ADTDef] -> Either Error a
 
     -- | Validation function that reports whether an error will occurs when the list of 'ADTDef's are added to the given context.
