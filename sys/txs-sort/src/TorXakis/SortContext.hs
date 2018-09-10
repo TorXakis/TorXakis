@@ -42,7 +42,7 @@ import           TorXakis.SortADT    ( ADTDef, viewADTDef, constructors
                                      , Sort(SortADT)
                                      )
 
--- | A SortContext instance contains all definitions to work with sort and reference thereof
+-- | A SortContext instance contains all definitions to work with sorts and references thereof
 class SortContext a where
 -- TODO: Kind of Error should be a parameter: allow for SortContext that yield more informative Errors than MinError
 
@@ -61,7 +61,7 @@ class SortContext a where
     --
     --   * All ADTs are constructable
     --
-    --   Otherwise an error is return. The error reflects the violations of any of the formentioned constraints.
+    --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     addAdtDefs :: a -> [ADTDef] -> Either MinError a
 
 

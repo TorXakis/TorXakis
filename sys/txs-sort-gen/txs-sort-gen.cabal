@@ -1,0 +1,59 @@
+-- This file has been generated from package.yaml by hpack version 0.28.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 5e051792876deac9140f7d1ed71eaa4ec0a3eac6db74177ab642322aa437abc4
+
+name:           txs-sort-gen
+version:        0.1.0.0
+homepage:       https://github.com/TorXakis/TorXakis#readme
+bug-reports:    https://github.com/TorXakis/TorXakis/issues
+author:         Pierre van de Laar
+maintainer:     pierre.vandelaar@tno.nl
+copyright:      Copyright (c) 2015-2017 TNO and Radboud University
+license:        BSD3
+build-type:     Simple
+cabal-version:  >= 1.10
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/TorXakis/TorXakis
+
+library
+  exposed-modules:
+      TorXakis.SortGen
+  other-modules:
+      TorXakis.Cover
+      TorXakis.NameGen
+      Paths_txs_sort_gen
+  hs-source-dirs:
+      src
+  ghc-options: -Werror -Wall -O -Widentities -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-home-modules -Wmissing-local-signatures -Wmonomorphism-restriction -Wredundant-constraints
+  build-depends:
+      QuickCheck
+    , base >=4.7 && <5
+    , deepseq
+    , text
+    , txs-sort
+  default-language: Haskell2010
+
+test-suite txs-sort-gen-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      TorXakis.NameGenSpec
+      Paths_txs_sort_gen
+  hs-source-dirs:
+      test
+  ghc-options: -Werror -Wall -O -Widentities -Wincomplete-uni-patterns -Wincomplete-record-updates -Wmissing-home-modules -Wmissing-local-signatures -Wmonomorphism-restriction -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      QuickCheck
+    , base >=4.7 && <5
+    , containers
+    , hspec
+    , text
+    , txs-sort
+    , txs-sort-gen
+  default-language: Haskell2010

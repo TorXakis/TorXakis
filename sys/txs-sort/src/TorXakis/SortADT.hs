@@ -97,7 +97,7 @@ data ConstructorDefView = ConstructorDefView
                         { -- | Name of the constructor
                           constructorName :: Name
                           -- | Field definitions of the constructor
-                          --   Note that the position in the list is relevant as it represents implicit
+                          --   Note that the position in the list is relevant as it represents implicitly
                           --   the position of the fields in a constructor.
                         , fields :: [FieldDef]
                         }
@@ -153,7 +153,7 @@ instance HasName ADTDef where
 --
 --   * Names of 'FieldDef's are unique across all 'ConstructorDef's
 --
---   Otherwise an error is return. The error reflects the violations of any of the formentioned constraints.
+--   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
 mkADTDef :: Name -> [ConstructorDef] -> Either MinError ADTDef
 mkADTDef _ [] = Left $ MinError (T.pack "Empty Constructor List")
 mkADTDef m cs
@@ -166,4 +166,3 @@ mkADTDef m cs
         
         nuFieldNames :: [FieldDef]
         nuFieldNames = repeatedByName (concatMap (fields . viewConstructorDef) cs)
-
