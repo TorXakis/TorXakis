@@ -39,34 +39,38 @@ arbitrarySort ctx =
         let availableSort = Map.keys (Map.filter (<=n) (getMapSortSize ctx)) in
             elements availableSort
 
-arbitraryFields :: TestSortContext a => a -> Gen [FieldDef]
-arbitraryFields ctx =
+arbitraryFields :: [Sort] -> [Name] -> Gen [FieldDef]
+arbitraryFields ss ns =
     do
-        nameGens <- arbitrary :: Gen (Set.Set NameGen)
-        sorts <- vectorOf (Set.size nameGens) (arbitrarySort ctx)
-        let listNames = map unNameGen (Set.toList nameGens)
-           in
-              return $ zipWith FieldDef listNames sorts
+        sorts <- vectorOf (length ns) (elements ss)
+        return $ zipWith FieldDef ns sorts
 
-arbitraryConstructors :: TestSortContext a => a -> Gen [ConstructorDef]
-arbitraryConstructors ctx =
+arbitraryConstructors :: [Sort] -> [Sort] -> Gen [ConstructorDef]
+arbitraryConstructors defined add =
     do
         NameGen cName <- arbitrary :: Gen NameGen
         cNameGens <- arbitrary :: Gen (Set.Set NameGen)
-        let cNames = Set.insert cName (Set.map unNameGen cNameGens)
-        fs <- arbitraryFields ctx
-        mkConstructorDefs (Set.toList cNames) fs
+        let cNames = Set.toList (Set.insert cName (Set.map unNameGen cNameGens))
+        
+        fnameGens <- arbitrary :: Gen (Set.Set NameGen)
+        let fNames = Set.toList (Set.map unNameGen fnameGens)
+        
+        mkConstructorDefs cNames fNames
     where
-        mkConstructorDefs :: [Name] -> [FieldDef] -> Gen [ConstructorDef]
+        mkConstructorDefs :: [Name] -> [Name] -> Gen [ConstructorDef]
         mkConstructorDefs []        _ = error "Non-empty list expected"
-        mkConstructorDefs [cn]     fs = return $ case mkConstructorDef cn fs of
-                                                        Left  _ -> error "error in generator: creating valid ConstructorDef - singleton"
-                                                        Right x -> [x]
-        mkConstructorDefs (cn:cns) fs =
+        mkConstructorDefs [cn]     ns =
             do
-                nf <- choose (0, length fs)
-                let (hfs,tfs) = splitAt nf fs in do
-                    tl <- mkConstructorDefs cns tfs
+                fs <- arbitraryFields defined ns
+                return $ case mkConstructorDef cn fs of
+                            Left  _ -> error "error in generator: creating valid ConstructorDef - singleton"
+                            Right x -> [x]
+        mkConstructorDefs (cn:cns) ns =
+            do
+                n <- choose (0, length ns)
+                let (hns,tns) = splitAt n ns in do
+                    tl <- mkConstructorDefs cns tns
+                    hfs <- arbitraryFields (defined ++ add) hns
                     return $ case mkConstructorDef cn hfs of
                                 Left  _ -> error "error in generator: creating valid ConstructorDef - list"
                                 Right x -> x : tl
@@ -75,14 +79,23 @@ arbitraryConstructors ctx =
 arbitraryADTDefs :: TestSortContext a => a -> Gen [ADTDef]
 arbitraryADTDefs ctx =
     do
-        NameGen aName <- arbitrary :: Gen NameGen
-        aNameGens <- arbitrary :: Gen (Set.Set NameGen)
-        let aNames = Set.insert aName (Set.map unNameGen aNameGens) in
-            mapM toADTDef (Set.toList aNames)
+        aNames <- nonEmptyNameList
+        let toADTDef :: Name -> Gen ADTDef
+            toADTDef n =
+                do
+                    cs <- arbitraryConstructors (Map.keys (getMapSortSize ctx)) (map (SortADT . RefByName) aNames)
+                    return $ case mkADTDef n cs of
+                        Left  _ -> error "error in generator: creating valid ADTDef"
+                        Right x -> x
+          in
+            mapM toADTDef aNames
     where
-        toADTDef :: Name -> Gen ADTDef
-        toADTDef n = do
-                        cs <- arbitraryConstructors ctx
-                        return $ case mkADTDef n cs of
-                            Left  _ -> error "error in generator: creating valid ADTDef"
-                            Right x -> x
+        nonEmptyNameList :: Gen [Name]
+        nonEmptyNameList = 
+            do
+                nameGens <- arbitrary :: Gen (Set.Set NameGen)
+                let names = Set.map unNameGen nameGens
+                    uniqueNames = Set.difference names (Set.fromList (map getName (Map.elems (adtDefs ctx)))) in
+                    case Set.toList uniqueNames of
+                        [] -> nonEmptyNameList
+                        l  -> return l
