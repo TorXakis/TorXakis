@@ -1,0 +1,56 @@
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+name:                txs-value-gen
+version:             0.1.0.0
+github:              "TorXakis/TorXakis"
+license:             BSD3
+author:              "Pierre van de Laar"
+maintainer:          "pierre.vandelaar@tno.nl"
+copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
+
+dependencies:
+- base >= 4.7 && < 5
+- QuickCheck
+- txs-sort
+- txs-value
+
+library:
+  source-dirs: src
+  exposed-modules:
+  - TorXakis.ValueGen
+  dependencies:
+    - containers
+    - deepseq
+    - hashmap
+    - text
+    - txs-basics
+    - txs-basics-gen
+    - txs-sort-gen
+
+extra-source-files:
+- README.md
+
+ghc-options:
+- -Werror
+- -Wall
+- -O
+- -Widentities
+- -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
+- -Wmissing-home-modules
+- -Wmissing-local-signatures
+- -Wmonomorphism-restriction
+- -Wredundant-constraints
+
+tests:
+    txs-sort-gen-test:
+        main : Spec.hs
+        source-dirs: test
+        ghc-options:
+        - -threaded
+        - -rtsopts
+        - -with-rtsopts=-N
+        dependencies:
+        - hspec
+        - txs-value-gen

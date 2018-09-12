@@ -60,6 +60,9 @@ class SortContext a => TestSortContext a where
     --
     --   Otherwise an error is return. The error reflects the violations of any of the formentioned constraints.
     constructorSize :: a -> RefByName ADTDef -> RefByName ConstructorDef -> Either MinError Int
+    
+    -- | get ConstructorDef to Size map
+    getMapConstructorDefSize :: a -> RefByName ADTDef -> Either MinError (Map.Map (RefByName ConstructorDef) Int)
 
 -- | A minimal instance of 'TestSortContext'.
 data MinimalTestSortContext = MinimalTestSortContext 
@@ -155,5 +158,9 @@ instance TestSortContext MinimalTestSortContext where
     constructorSize ctx r c = case Map.lookup r (mapAdtMapConstructorSize ctx) of
                                 Nothing -> Left $ MinError (T.pack ("ADT reference not contained in context " ++ show r))
                                 Just m -> case Map.lookup c m of
-                                            Nothing -> Left $ MinError (T.pack ("ADT reference not contained in context " ++ show r))
+                                            Nothing -> Left $ MinError (T.pack ("component reference " ++ show c ++ " not contained in ADT " ++ show r))
                                             Just i -> Right i
+
+    getMapConstructorDefSize ctx r = case Map.lookup r (mapAdtMapConstructorSize ctx) of
+                                        Nothing -> Left $ MinError (T.pack ("ADT reference not contained in context " ++ show r))
+                                        Just m -> Right m
