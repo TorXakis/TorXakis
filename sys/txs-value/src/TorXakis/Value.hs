@@ -18,8 +18,10 @@ See LICENSE at root directory of this repository.
 module TorXakis.Value
 ( module TorXakis.Value.Value
 , module TorXakis.Value.ConversionText
+, module TorXakis.Value.ConversionXML
 )
 where
 
 import TorXakis.Value.Value
 import TorXakis.Value.ConversionText
+import TorXakis.Value.ConversionXML

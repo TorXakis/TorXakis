@@ -21,8 +21,10 @@ library:
   - happy
   dependencies:
   - array
+  - bytestring
   - deepseq
   - hashmap
+  - hexpat
   - text
   - txs-basics
   - txs-sort
