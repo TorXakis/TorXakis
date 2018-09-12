@@ -24,7 +24,6 @@ See LICENSE at root directory of this repository.
 module TorXakis.SortADT
 ( -- * Sort
   Sort (..)
-, isPrimitive
 
   -- * Abstract Data Types
   -- ** Field Definition
@@ -73,12 +72,8 @@ instance Hashable Sort where
     hash SortString  = hash (T.pack "String")
     hash SortRegex   = hash (T.pack "Regex")
     hash (SortADT r) = hash ( T.pack "A" <> (toText . toName) r )
-    hashWithSalt s = (*s) . hash 
 
--- | Is the sort primitive?
-isPrimitive :: Sort -> Bool
-isPrimitive (SortADT _) = False
-isPrimitive _           = True
+    hashWithSalt s   = (*s) . hash
 
 -- | Data structure for a field definition.
 data FieldDef = FieldDef
