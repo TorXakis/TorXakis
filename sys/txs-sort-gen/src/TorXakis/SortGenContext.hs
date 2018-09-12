@@ -79,23 +79,19 @@ arbitraryConstructors defined add =
 arbitraryADTDefs :: TestSortContext a => a -> Gen [ADTDef]
 arbitraryADTDefs ctx =
     do
-        aNames <- nonEmptyNameList
-        let toADTDef :: Name -> Gen ADTDef
+        nameGens <- arbitrary :: Gen (Set.Set NameGen)
+        let names :: Set.Set Name
+            names = Set.map unNameGen nameGens
+            
+            uniqueNames :: [Name]
+            uniqueNames = Set.toList (Set.difference names (Set.fromList (map getName (Map.elems (adtDefs ctx)))))
+            
+            toADTDef :: Name -> Gen ADTDef
             toADTDef n =
                 do
-                    cs <- arbitraryConstructors (Map.keys (getMapSortSize ctx)) (map (SortADT . RefByName) aNames)
+                    cs <- arbitraryConstructors (Map.keys (getMapSortSize ctx)) (map (SortADT . RefByName) uniqueNames)
                     return $ case mkADTDef n cs of
                         Left  _ -> error "error in generator: creating valid ADTDef"
                         Right x -> x
           in
-            mapM toADTDef aNames
-    where
-        nonEmptyNameList :: Gen [Name]
-        nonEmptyNameList = 
-            do
-                nameGens <- arbitrary :: Gen (Set.Set NameGen)
-                let names = Set.map unNameGen nameGens
-                    uniqueNames = Set.difference names (Set.fromList (map getName (Map.elems (adtDefs ctx)))) in
-                    case Set.toList uniqueNames of
-                        [] -> nonEmptyNameList
-                        l  -> return l
+            mapM toADTDef uniqueNames
