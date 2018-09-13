@@ -72,5 +72,5 @@ arbitraryValueOfSort ctx (SortADT a) =
                                                 cstrDef = fromMaybe (error ("cstrDef " ++ show selected ++ " not in ADT " ++ show adtDef))
                                                                     (Map.lookup selected ((constructors . viewADTDef) adtDef))
                                               in do
-                                                fs <- mapM (arbitraryValueOfSort ctx) (map sort ((fields . viewConstructorDef) cstrDef))
+                                                fs <- mapM (arbitraryValueOfSort ctx . sort) ((fields . viewConstructorDef) cstrDef)
                                                 return $ Ccstr a selected fs

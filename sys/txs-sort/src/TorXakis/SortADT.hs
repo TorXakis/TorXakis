@@ -77,6 +77,7 @@ instance Hashable Sort where
 
     hashWithSalt s   = (*s) . hash
 
+-- | Enables 'Sort's of entities to be accessed in a common way.
 class HasSort a where
     getSort :: a -> Sort
 

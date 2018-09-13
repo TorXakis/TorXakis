@@ -20,7 +20,7 @@ module TorXakis.NameSpec
 )
 where
 import           Data.Either
-import qualified Data.Text          as T
+import qualified Data.Text              as T
 import           Text.Regex.TDFA
 
 import           Test.Hspec
@@ -35,19 +35,15 @@ prop_empty =
         Right _ -> False
 
 -- | match regex
--- note ^ and $ are line boundaries, so "\na" matches "^[A-Z_a-z][A-Z_a-z0-9-]*$".
--- we need buffer boundaries!
--- However \A and \z (see https://www.boost.org/doc/libs/1_44_0/libs/regex/doc/html/boost_regex/syntax/basic_extended.html)
--- are not supported, so we need lines to ensure we have a single line and 
--- thus line boundaries are buffer boundaries.
+-- note ^ and $ are line boundaries, so "\na" and "a\n" matches "^[A-Z_a-z][A-Z_a-z0-9-]*$".
+-- we need entire text boundaries!
+-- see http://hackage.haskell.org/package/regex-tdfa-1.2.3.1/docs/Text-Regex-TDFA.html
 prop_regex :: String -> Bool
 prop_regex str =
-    let txt = T.pack str 
-      in case lines str of
-        [content] -> if content =~ "^[A-Z_a-z][A-Z_a-z0-9-]*$"
-                        then isRight $ mkName txt
-                        else isLeft $ mkName txt
-        _         -> isLeft $ mkName txt
+    let txt = T.pack str
+      in if str =~ "\\`[A-Z_a-z][A-Z_a-z0-9-]*\\'"
+            then isRight $ mkName txt
+            else isLeft $ mkName txt
 
 spec :: Spec
 spec = 

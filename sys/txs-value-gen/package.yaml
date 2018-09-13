@@ -21,13 +21,8 @@ library:
   exposed-modules:
   - TorXakis.ValueGen
   dependencies:
-    - containers
-    - deepseq
     - hashmap
     - text
-    - txs-basics
-    - txs-basics-gen
-
 
 extra-source-files:
 - README.md
