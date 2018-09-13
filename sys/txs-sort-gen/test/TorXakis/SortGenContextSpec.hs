@@ -20,6 +20,7 @@ module TorXakis.SortGenContextSpec
 )
 where
 import           Test.Hspec
+import           Test.Hspec.QuickCheck (modifyMaxSize)
 import           Test.QuickCheck
 
 import           TorXakis.Sort
@@ -44,4 +45,5 @@ prop_Increments =
 spec :: Spec
 spec =
   describe "A sort gen context" $
-    it "incr2 after incr1 == incr2 ++ incr1" $ property prop_Increments
+    modifyMaxSize (const 20) $
+        it "incr2 after incr1 == incr2 ++ incr1" $ property prop_Increments

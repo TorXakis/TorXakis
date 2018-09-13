@@ -50,5 +50,6 @@ tests:
         - -with-rtsopts=-N
         dependencies:
         - hspec
+        - regex-tdfa
         - QuickCheck
         - txs-basics

@@ -20,6 +20,7 @@ module TorXakis.ValueGen
 , arbitraryValueOfSort
 )
 where
+import           Data.Char          (chr)
 import qualified Data.HashMap       as Map
 import           Data.Maybe         (fromMaybe)
 import qualified Data.Text          as T
@@ -30,6 +31,11 @@ import TorXakis.Value
 import TorXakis.TestSortContext
 import TorXakis.SortGenContext
 
+-- | generate a char within the allowed range
+arbitraryChar :: Gen Char
+arbitraryChar = chr <$> choose (0, 255)
+
+
 -- | generate a random value within a context.
 arbitraryValue :: TestSortContext a => a -> Gen Value
 arbitraryValue ctx = 
@@ -38,19 +44,20 @@ arbitraryValue ctx =
         arbitraryValueOfSort ctx s
 
 -- | generate a random value of the given sort within a context.
--- ANY is included
+-- ANY is excluded
 arbitraryValueOfSort :: TestSortContext a => a -> Sort -> Gen Value
-arbitraryValueOfSort ctx s = oneof [return $ Cany s, arbitraryValueOfSort' ctx s]
-
-arbitraryValueOfSort' :: TestSortContext a => a -> Sort -> Gen Value
-arbitraryValueOfSort' ctx SortBool   = Cbool <$> arbitrary
-arbitraryValueOfSort' ctx SortInt    = Cint <$> arbitrary
-arbitraryValueOfSort' ctx SortChar   = Cchar <$> arbitrary
-arbitraryValueOfSort' ctx SortString = 
+arbitraryValueOfSort _   SortBool   = Cbool <$> arbitrary
+arbitraryValueOfSort _   SortInt    = Cint <$> arbitrary
+arbitraryValueOfSort _   SortChar   = Cchar <$> arbitraryChar
+arbitraryValueOfSort _   SortString = 
     do
-        s <- arbitrary :: Gen String
+        s <- listOf arbitraryChar
         return $ Cstring (T.pack s)
-arbitraryValueOfSort' ctx (SortADT a) = 
+arbitraryValueOfSort _   SortRegex = 
+    do
+        s <- listOf arbitraryChar
+        return $ Cregex (T.pack s)
+arbitraryValueOfSort ctx (SortADT a) = 
     do
         n <- getSize
         case getMapConstructorDefSize ctx a of
@@ -65,5 +72,5 @@ arbitraryValueOfSort' ctx (SortADT a) =
                                                 cstrDef = fromMaybe (error ("cstrDef " ++ show selected ++ " not in ADT " ++ show adtDef))
                                                                     (Map.lookup selected ((constructors . viewADTDef) adtDef))
                                               in do
-                                                fs <- mapM (arbitraryValueOfSort' ctx) (map sort ((fields . viewConstructorDef) cstrDef))
+                                                fs <- mapM (arbitraryValueOfSort ctx) (map sort ((fields . viewConstructorDef) cstrDef))
                                                 return $ Ccstr a selected fs

@@ -28,29 +28,30 @@ where
 %wrapper "posn"
    
 $digit              = [0-9]                              -- digits
-$alpha              = [a-zA-Z]                           -- alphabetic characters
-$nameCharStart      = [ $alpha ]
-$nameChar           = [ $alpha $digit ]
+$nameStartChar      = [A-Za-z_]
+$nameChar           = [A-Za-z_0-9\-]
 
 tokens :-                                          -- Each right-hand side has type
                                                    -- :: AlexPosn -> String -> Token
 
    $white+                   ;                     -- white space
 
-   \(                                    { tok ( \p _s -> Topenpar p ) }
-   \)                                    { tok ( \p _s -> Tclosepar p ) }
-   \,                                    { tok ( \p _s -> Tcomma p ) }
-   
-   True                                  { tok ( \p _s -> Tbool p True ) }
-   False                                 { tok ( \p _s -> Tbool p False ) }
-   ANY                                   { tok ( \p _s -> Tany p ) }
-   
-   $nameCharStart $nameChar*             { tok ( \p s -> Tname p s ) }
-   
-   $digit+                               { tok ( \p s -> Tint p (read s) ) }
-   \' . \'                               { tok ( \p c -> Tchar p (read c) ) }
-   \" ([^\"]|\"\")* \"                   { tok ( \p s -> Tstring p (read s) ) }
-                        -- All characters can occur: either as escapeChar \xdd or as nonEscapeChar
+   \(                                               { tok ( \p _s -> Topenpar p ) }
+   \)                                               { tok ( \p _s -> Tclosepar p ) }
+   \,                                               { tok ( \p _s -> Tcomma p ) }
+
+   True                                             { tok ( \p _s -> Tbool p True ) }
+   False                                            { tok ( \p _s -> Tbool p False ) }
+
+   $nameStartChar $nameChar*                        { tok ( \p s -> Tname p s ) }
+
+   \-? $digit+                                      { tok ( \p s -> Tint p (read s) ) }
+   \' ( .
+      | \\$digit{1,3}
+      | \\[A-Z]{2}[A-Z1-4]?
+      | \\[\\abfnrtv']
+      ) \'                                          { tok ( \p c -> Tchar p (read c) ) }
+   \" ([^\"\\]|\\.)* \"                             { tok ( \p s -> Tstring p (read s) ) }
 
 -- ----------------------------------------------------------------------------------------- --
 
@@ -64,7 +65,6 @@ data  Token  = Tname        AlexPosn  String
              | Tint         AlexPosn  Integer
              | Tchar        AlexPosn  Char
              | Tstring      AlexPosn  String
-             | Tany         AlexPosn
              | Topenpar     AlexPosn
              | Tclosepar    AlexPosn
              | Tcomma       AlexPosn

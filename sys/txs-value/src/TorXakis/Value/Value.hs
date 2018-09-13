@@ -47,6 +47,15 @@ data Value = -- | Constructor of Boolean value.
                                          --       storing SMT string as well
              -- | Constructor of constructor value (value of ADT).
            | Ccstr (RefByName ADTDef) (RefByName ConstructorDef) [Value]
-             -- | Constructor of ANY value.
+             -- | Constructor of ANY value - temporary hack : don't use.
            | Cany Sort -- TODO: replace by generic - Maybe
   deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+  
+instance HasSort Value where
+    getSort Cbool{}         = SortBool
+    getSort Cint{}          = SortInt
+    getSort Cchar{}         = SortChar
+    getSort Cstring{}       = SortString
+    getSort Cregex{}        = SortRegex
+    getSort (Ccstr a _ _)   = SortADT a
+    getSort (Cany s)        = s

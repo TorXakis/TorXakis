@@ -38,14 +38,15 @@ module TorXakis.Name.Name
 )
 where
 
-import           Control.DeepSeq (NFData)
-import           Data.Data (Data)
-import           Data.List.Unique (repeated)
-import           Data.Text (Text)
-import qualified Data.Text as T
-import           GHC.Generics     (Generic)
+import           Control.DeepSeq    (NFData)
+import           Data.Data          (Data)
+import           Data.List.Unique   (repeated)
+import           Data.Monoid        ((<>))
+import           Data.Text          (Text)
+import qualified Data.Text          as T
+import           GHC.Generics       (Generic)
 
-import           TorXakis.Error(MinError(MinError))
+import           TorXakis.Error     (MinError(MinError))
 
 -- | Definition of the name of entities.
 newtype Name = Name
@@ -66,15 +67,34 @@ instance (HasName a, HasName b) => HasName (Either a b) where
     
 -- | Smart constructor for Name.
 --
---   A Name is returned when the following constraint is satisfied:
+--   A Name is returned when the following constraints are satisfied:
 --
 --   * The provided 'Data.Text.Text' value is non-empty
 --
---   Otherwise an error is returned. The error reflects the violations of the aforementioned constraint.
+--   * The start character adheres to [A-Z] | '_' | [a-z]
+--
+--   * The remaining characters adhere to [A-Z] | '_' | [a-z] | '-' | '0-9'
+--
+--   Otherwise an error is returned. The error reflects the violations of the aforementioned constraints.
+--
+--   These constraints are enforced to be able to use Names as fields in XML.
+--   See e.g. http://www.w3.org/TR/REC-xml/#NT-NameStartChar and http://www.w3.org/TR/REC-xml/#NT-NameChar
 mkName :: Text -> Either MinError Name
-mkName s | T.null s = Left $ MinError (T.pack "Illegal input: Empty String")
-mkName s            = Right $ Name s
-
+mkName s = case T.unpack s of
+            []     -> Left $ MinError (T.pack "Illegal input: Empty String")
+            (x:xs) -> if isNameStartChar x && all isNameChar xs 
+                        then Right $ Name s
+                        else Left $ MinError (T.pack "String contains illegal characters: " <> s)
+    where
+        isNameStartChar :: Char -> Bool
+        isNameStartChar c =      ('A' <= c && c <= 'Z')
+                              || ('_' == c)
+                              || ('a' <= c && c <= 'z')
+        isNameChar :: Char -> Bool
+        isNameChar c =     isNameStartChar c 
+                        || ('-' == c)
+                        || ('0' <= c && c <= '9')
+                              
 -- |  Return the elements with non-unique names that the second list contains in the combination of the first and second list.
 repeatedByNameIncremental :: (HasName a, HasName b) => [a] -> [b] -> [b]
 repeatedByNameIncremental xs ys = filter ((`elem` nuNames) . getName) ys

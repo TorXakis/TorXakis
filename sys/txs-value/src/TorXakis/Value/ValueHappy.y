@@ -47,8 +47,6 @@ import qualified Data.Text as T
     integer       { Tint       pos  $$ }
     char          { Tchar      pos  $$ }
     string        { Tstring    pos  $$ }
-    any           { Tany       pos }
-
 
 %% ----------------------------------------------------------------------------------------- --
 
@@ -76,9 +74,7 @@ Value :: { ParseValue }
          | char
              { Pchar $1 }
          | string
-             { Pstring $ T.pack (init (tail $1)) }
-         | any
-             { Pany }
+             { Pstring $ T.pack $1 }
          | name "(" Values ")"
              { Pcstr (T.pack $1) $3 }
 
@@ -98,7 +94,6 @@ data  ParseValue = Pbool   Bool
                  | Pchar   Char
                  | Pstring Text
                  | Pcstr   Text [ParseValue]
-                 | Pany
      deriving (Eq,Ord,Read,Show)
 
 -- | Value Parser.

@@ -50,7 +50,7 @@ valueToText ctx (Ccstr _ c as) = TorXakis.Name.toText (toName c)
                                     <> T.pack "("
                                     <> T.intercalate (T.pack ",") (map (valueToText ctx) as) 
                                     <> T.pack ")"
-valueToText _   (Cany _)       = T.pack "ANY"
+valueToText _   (Cany _)       = error "ANY not supported"
 
 -- | 'TorXakis.Value.Value' from 'Data.Text.Text' conversion.
 -- Expected 'TorXakis.Sort' of 'TorXakis.Value.Value' must be provided.
@@ -67,7 +67,6 @@ valueFromText ctx s t =
         fromParseValue SortChar    (Pchar c)    = Right $ Cchar c
         fromParseValue SortString  (Pstring s') = Right $ Cstring s'
         fromParseValue SortRegex   (Pstring r)  = Right $ Cregex r
-        fromParseValue sAny         Pany        = Right $ Cany sAny
         fromParseValue (SortADT a) (Pcstr n ps) =
             case mkName n of
                 Left e   -> Left $ MinError (T.pack "Illegal name " <> n <> T.pack "\n" <> TorXakis.Error.toText e)
@@ -84,4 +83,4 @@ valueFromText ctx s t =
                                                                   ([], vs) -> Right $ Ccstr a c vs
                                                                   (es, _)  -> Left $ MinError $ T.intercalate (T.pack "\n") (map TorXakis.Error.toText es)
                                                         else Left $ MinError (T.pack ("Fields mismatch - expected " ++ show expected ++ " yet actual " ++ show actual))
-        fromParseValue s' p                     = Left $ MinError (T.pack ("Sort " ++ show s' ++ " mismatch with parsed value " ++ show p))
+        fromParseValue s' p                     = Left $ MinError (T.pack ("Sort " ++ show s' ++ " mismatch with parsed value " ++ show p ++ "\nNote ANY is not supported"))

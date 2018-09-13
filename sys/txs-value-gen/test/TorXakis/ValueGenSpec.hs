@@ -19,9 +19,14 @@ module TorXakis.ValueGenSpec
 (spec
 )
 where
+import           Debug.Trace
 import           Test.Hspec
+import           Test.Hspec.QuickCheck (modifyMaxSuccess, modifyMaxSize)
 import           Test.QuickCheck
 
+import           TorXakis.Sort
+import           TorXakis.SortGenContext
+import           TorXakis.TestSortContext
 import           TorXakis.Value
 import           TorXakis.ValueGen
 
@@ -32,11 +37,49 @@ prop_ConversionText_id =
         incr1 <- arbitraryADTDefs c0
         case addAdtDefs c0 incr1 of
             Left e  -> error ("Invalid generator - " ++ show e)
-            Right ctx -> do
-                            val <- arbitraryValue ctx
-                            return $ val == valueFromText ctx (valueToText ctx val)
+            Right ctx -> prop_Ctx_ConversionText_id ctx
 
+prop_Ctx_ConversionText_id :: TestSortContext a => a -> Gen Bool
+prop_Ctx_ConversionText_id ctx =
+    do
+        vals <- listOf1 (arbitraryValue ctx)
+        return $ all check vals
+    where check :: Value -> Bool
+          check v = 
+                let txt = valueToText ctx v
+                    actual = valueFromText ctx (getSort v) txt
+                  in
+                    trace ("txt = " ++ show txt) $
+                    case actual of
+                        Left _   -> False
+                        Right v' -> v == v'
+
+-- | ConversionXML is Identity
+prop_ConversionXML_id :: Gen Bool
+prop_ConversionXML_id = 
+    let c0 = empty :: MinimalTestSortContext in do
+        incr1 <- arbitraryADTDefs c0
+        case addAdtDefs c0 incr1 of
+            Left e  -> error ("Invalid generator - " ++ show e)
+            Right ctx -> prop_Ctx_ConversionXML_id ctx
+
+prop_Ctx_ConversionXML_id :: TestSortContext a => a -> Gen Bool
+prop_Ctx_ConversionXML_id ctx =
+    do
+        vals <- listOf1 (arbitraryValue ctx)
+        return $ all check vals
+    where check :: Value -> Bool
+          check v = 
+                let xml = valueToXML ctx v
+                    actual = valueFromXML ctx (getSort v) xml
+                  in
+                    case actual of
+                        Left _   -> False
+                        Right v' -> v == v'
 spec :: Spec
 spec =
   describe "conversion" $
-    it "fromText . toText == id" $ property prop_ConversionText_id
+    modifyMaxSuccess (const 25) $
+    modifyMaxSize (const 15) $ do
+      it "fromText . toText == id" $ property prop_ConversionText_id
+      it "fromXML . toXML == id" $ property prop_ConversionXML_id

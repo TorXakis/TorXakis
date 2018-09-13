@@ -24,6 +24,8 @@ See LICENSE at root directory of this repository.
 module TorXakis.SortADT
 ( -- * Sort
   Sort (..)
+  -- ** Has Sort
+, HasSort (..)
 
   -- * Abstract Data Types
   -- ** Field Definition
@@ -75,6 +77,9 @@ instance Hashable Sort where
 
     hashWithSalt s   = (*s) . hash
 
+class HasSort a where
+    getSort :: a -> Sort
+
 -- | Data structure for a field definition.
 data FieldDef = FieldDef
     { -- | Name of the field 
@@ -87,6 +92,9 @@ data FieldDef = FieldDef
 instance HasName FieldDef where
     getName = fieldName
 
+instance HasSort FieldDef where
+    getSort = sort
+    
 -- | The public view of 'ConstructorDef'.
 data ConstructorDefView = ConstructorDefView
                         { -- | Name of the constructor

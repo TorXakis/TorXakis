@@ -49,9 +49,6 @@ rootNodeName = "TorXakis"
 charNodeName :: Text
 charNodeName = "char"
 
-anyValue :: Text
-anyValue = "ANY"
-
 nodeTextToXML :: Text -> Text -> Text
 nodeTextToXML n t = T.concat ["<", n, ">", t, "</", n, ">"]
 
@@ -99,7 +96,7 @@ valueToXML ctx = pairToXML rootNodeName
                 cNode = (TorXakis.Name.toText . toName) c
                 txt = nodeTextToXML cNode (T.concat (zipWith pairToXML fieldTexts as))
               in nodeTextToXML node txt
-        pairToXML node (Cany _)       = nodeTextToXML node anyValue
+        pairToXML _   (Cany _)       = error "ANY not supported"
 
 
 stringFromList :: [Node Text Text] -> Text
@@ -123,8 +120,6 @@ valueFromXML ctx s t =
         Right tree -> fromXML s rootNodeName tree
     where
         fromXML :: Sort -> Text -> Node Text Text -> Either MinError Value
-        fromXML s'         n (Element nt [] list) | nt == n && anyValue == stringFromList list
-                = Right $ Cany s'
         fromXML SortBool   n (Element nt [] list) | nt == n
                 = Right $ Cbool ("true" == stringFromList list)
         fromXML SortInt    n (Element nt [] list) | nt == n
