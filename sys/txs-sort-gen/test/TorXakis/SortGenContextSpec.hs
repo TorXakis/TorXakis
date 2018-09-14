@@ -19,8 +19,9 @@ module TorXakis.SortGenContextSpec
 (spec
 )
 where
+import           Debug.Trace
 import           Test.Hspec
-import           Test.Hspec.QuickCheck (modifyMaxSize)
+import           Test.Hspec.QuickCheck (modifyMaxSuccess,modifyMaxSize)
 import           Test.QuickCheck
 
 import           TorXakis.Sort
@@ -39,11 +40,14 @@ prop_Increments =
                             case addAdtDefs c1 incr2 of
                                 Left e2  -> error ("Invalid generator 2 - " ++ show e2)
                                 Right c2 -> return $ case addAdtDefs c0 (incr1++incr2) of
-                                                        Left _    -> False
-                                                        Right c12 -> c12 == c2
+                                                        Left e    -> trace ("error = " ++ show e) $ False
+                                                        Right c12 -> if c12 == c2
+                                                                        then True
+                                                                        else trace ("incr1 = " ++ show incr1 ++ "\nincr2 = " ++ show incr2) $ False
 
 spec :: Spec
 spec =
   describe "A sort gen context" $
-    modifyMaxSize (const 20) $
+    modifyMaxSuccess (const 1000000) $
+    modifyMaxSize (const 3) $
         it "incr2 after incr1 == incr2 ++ incr1" $ property prop_Increments

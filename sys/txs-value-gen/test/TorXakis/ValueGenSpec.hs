@@ -19,7 +19,6 @@ module TorXakis.ValueGenSpec
 (spec
 )
 where
-import           Debug.Trace
 import           Test.Hspec
 import           Test.Hspec.QuickCheck (modifyMaxSuccess, modifyMaxSize)
 import           Test.QuickCheck
@@ -49,7 +48,6 @@ prop_Ctx_ConversionText_id ctx =
                 let txt = valueToText ctx v
                     actual = valueFromText ctx (getSort v) txt
                   in
-                    trace ("txt = " ++ show txt) $
                     case actual of
                         Left _   -> False
                         Right v' -> v == v'
@@ -79,7 +77,8 @@ prop_Ctx_ConversionXML_id ctx =
 spec :: Spec
 spec =
   describe "conversion" $
-    modifyMaxSuccess (const 25) $
-    modifyMaxSize (const 15) $ do
-      it "fromText . toText == id" $ property prop_ConversionText_id
-      it "fromXML . toXML == id" $ property prop_ConversionXML_id
+    modifyMaxSuccess (const 15) $
+    modifyMaxSize (const 15) $ 
+      do
+        it "fromText . toText == id" $ property prop_ConversionText_id
+        it "fromXML . toXML == id" $ property prop_ConversionXML_id

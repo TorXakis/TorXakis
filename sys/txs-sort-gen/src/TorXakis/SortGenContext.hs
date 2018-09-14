@@ -21,6 +21,7 @@ module TorXakis.SortGenContext
 , arbitraryADTDefs
 )
 where
+import           Control.Monad
 import qualified Data.HashMap        as Map
 import qualified Data.Set            as Set
 import           Test.QuickCheck
@@ -58,7 +59,7 @@ arbitraryConstructors defined add =
         mkConstructorDefs cNames fNames
     where
         mkConstructorDefs :: [Name] -> [Name] -> Gen [ConstructorDef]
-        mkConstructorDefs []        _ = error "Non-empty list expected"
+        mkConstructorDefs []       _  = error "Non-empty list expected"
         mkConstructorDefs [cn]     ns =
             do
                 fs <- arbitraryFields defined ns
@@ -86,12 +87,15 @@ arbitraryADTDefs ctx =
             uniqueNames :: [Name]
             uniqueNames = Set.toList (Set.difference names (Set.fromList (map getName (Map.elems (adtDefs ctx)))))
             
-            toADTDef :: Name -> Gen ADTDef
-            toADTDef n =
+            toADTDef :: ([ADTDef],[Sort],[Sort]) -> Name -> Gen ([ADTDef],[Sort],[Sort])
+            toADTDef (aDefs, s, s') n =
                 do
-                    cs <- arbitraryConstructors (Map.keys (getMapSortSize ctx)) (map (SortADT . RefByName) uniqueNames)
+                    cs <- arbitraryConstructors s s'
                     return $ case mkADTDef n cs of
-                        Left  _ -> error "error in generator: creating valid ADTDef"
-                        Right x -> x
-          in
-            mapM toADTDef uniqueNames
+                        Left  _    -> error "error in generator: creating valid ADTDef"
+                        Right aDef -> (aDef:aDefs, head s':s, tail s')                  -- tail is possible due to invariant
+          in do
+            (aDefs, _ , _ ) <- foldM toADTDef ([], Map.keys (getMapSortSize ctx), map (SortADT . RefByName) uniqueNames) uniqueNames
+                                                   -- invariant: same length of third element in tuple of second argument and third argument of foldM
+                                                   -- Note: foldM works from left-to-right over the list 
+            return aDefs
