@@ -48,5 +48,5 @@ prop_regex str =
 spec :: Spec
 spec = 
   describe "mkName (the smart constructor of Name)"$ do
-    it "doesn't accept empty string" $ property prop_empty
+    it "doesn't accept empty string" prop_empty
     it "does accept strings that adhere to regex" $ property prop_regex

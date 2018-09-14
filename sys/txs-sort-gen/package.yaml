@@ -11,7 +11,10 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
 dependencies:
 - base >= 4.7 && < 5
+- hashmap
 - QuickCheck
+- text
+- txs-basics
 - txs-sort
 
 library:
@@ -23,9 +26,6 @@ library:
   dependencies:
     - containers
     - deepseq
-    - hashmap
-    - text
-    - txs-basics
     - txs-basics-gen
 
 extra-source-files:

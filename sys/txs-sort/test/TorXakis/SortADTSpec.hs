@@ -21,7 +21,6 @@ module TorXakis.SortADTSpec
 where
 import qualified Data.Text as T
 import           Test.Hspec
-import           Test.QuickCheck
 
 import           TorXakis.Name
 import           TorXakis.Sort
@@ -105,7 +104,7 @@ prop_ADTDef_NonUniqueFields =
 spec :: Spec
 spec = do
   describe "A constructor" $
-    it "must have fields with unique names" $ property prop_Constructor_NonUniqueFields
+    it "must have fields with unique names" prop_Constructor_NonUniqueFields
   describe "An ADT" $ do
-    it "must be constructable, i.e., have at least one constructor " $ property prop_ADTDef_Empty
-    it "must over all constructors have fields with unique names" $ property prop_ADTDef_NonUniqueFields
+    it "must be constructable, i.e., have at least one constructor " prop_ADTDef_Empty
+    it "must over all constructors have fields with unique names" prop_ADTDef_NonUniqueFields

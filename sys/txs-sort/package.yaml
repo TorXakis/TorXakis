@@ -48,5 +48,4 @@ tests:
         - -with-rtsopts=-N
         dependencies:
         - hspec
-        - QuickCheck
         - txs-sort
