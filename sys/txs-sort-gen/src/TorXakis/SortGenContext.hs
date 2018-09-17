@@ -21,7 +21,6 @@ module TorXakis.SortGenContext
 , arbitraryADTDefs
 )
 where
-import           Control.Monad
 import qualified Data.HashMap        as Map
 import qualified Data.Set            as Set
 import           Test.QuickCheck
@@ -83,19 +82,18 @@ arbitraryADTDefs ctx =
         nameGens <- arbitrary :: Gen (Set.Set NameGen)
         let names :: Set.Set Name
             names = Set.map unNameGen nameGens
-            
+
             uniqueNames :: [Name]
             uniqueNames = Set.toList (Set.difference names (Set.fromList (map getName (Map.elems (adtDefs ctx)))))
-            
-            toADTDef :: ([ADTDef],[Sort],[Sort]) -> Name -> Gen ([ADTDef],[Sort],[Sort])
-            toADTDef (aDefs, s, s') n =
+
+            toADTDefs :: [Name] -> [Sort] -> Gen [ADTDef]
+            toADTDefs [] _ = return []
+            toADTDefs uNames@(n:ns) s = 
                 do
-                    cs <- arbitraryConstructors s s'
+                    cs <- arbitraryConstructors s (map (SortADT . RefByName) uNames)
+                    aDefs <- toADTDefs ns (SortADT (RefByName n) : s)
                     return $ case mkADTDef n cs of
                         Left  _    -> error "error in generator: creating valid ADTDef"
-                        Right aDef -> (aDef:aDefs, head s':s, tail s')                  -- tail is possible due to invariant
+                        Right aDef -> aDef : aDefs
           in do
-            (aDefs, _ , _ ) <- foldM toADTDef ([], Map.keys (getMapSortSize ctx), map (SortADT . RefByName) uniqueNames) uniqueNames
-                                                   -- invariant: same length of third element in tuple of second argument and third argument of foldM
-                                                   -- Note: foldM works from left-to-right over the list 
-            return aDefs
+            toADTDefs uniqueNames (Map.keys (getMapSortSize ctx))

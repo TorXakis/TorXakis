@@ -114,20 +114,17 @@ instance SortContext MinimalTestSortContext where
 
             addToMapSortSize :: Map.Map Sort Int -> [ADTDef] -> Map.Map Sort Int
             addToMapSortSize defined adefs =
-                let (newDefined, newUnknown) = foldl incrementKnown (defined, []) adefs in
-                    case newUnknown of
-                        [] -> newDefined
-                        _  -> if length newUnknown == length adefs 
-                                then error ("Invariant violated: adding unconstructable ADTDefs " ++ show adefs)
-                                else addToMapSortSize newDefined newUnknown
-
-            incrementKnown :: (Map.Map Sort Int, [ADTDef]) -> ADTDef -> (Map.Map Sort Int, [ADTDef])
-            incrementKnown (defined, unknown) adef =
-                case getKnownAdtSize defined adef of
-                    Nothing -> (defined, adef : unknown)
-                    Just n  -> ( Map.insert (SortADT (RefByName (getName adef))) n defined
-                               , unknown
-                               )
+                let newDefined = foldl addCurrent defined adefs
+                    in if newDefined == defined 
+                        then if any (`Map.notMember` newDefined) (map (SortADT . RefByName . getName) adefs)
+                                then error ("Invariant violated: non constructable ADTDefs in " ++ show adefs)
+                                else newDefined
+                        else addToMapSortSize newDefined adefs
+              where 
+                addCurrent :: Map.Map Sort Int -> ADTDef -> Map.Map Sort Int
+                addCurrent mp aDef = case getKnownAdtSize mp aDef of
+                                        Nothing -> mp
+                                        Just i  -> Map.insert (SortADT (RefByName (getName aDef))) i mp
 
             getKnownAdtSize :: Map.Map Sort Int -> ADTDef -> Maybe Int
             getKnownAdtSize defined adef =

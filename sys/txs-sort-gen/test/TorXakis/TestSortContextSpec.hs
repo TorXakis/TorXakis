@@ -19,6 +19,7 @@ module TorXakis.TestSortContextSpec
 (spec
 )
 where
+import           Debug.Trace
 import qualified Data.HashMap        as Map
 import qualified Data.Text           as T
 import           Test.Hspec
@@ -133,6 +134,46 @@ prop_ADTDefs_Dependent =
                                                                                    , (cRef, Map.fromList [(depRef,3), (cstrRef,2)])
                                                                                    ]
 
+-- | a sort context can be incrementally extended - which should be the same as creating it in one step.
+prop_increment :: Bool
+prop_increment =
+    let
+        aName = unsafeName "A"
+        aDef = unsafeADTDef aName
+                            [ unsafeConstructorDef (unsafeName "CstrA") [] ]
+        aRef :: RefByName ADTDef
+        aRef = RefByName aName
+        bName = unsafeName "B"
+        bDef = unsafeADTDef bName
+                            [ unsafeConstructorDef (unsafeName "CstrB") [ FieldDef (unsafeName "FieldB") (SortADT aRef) ] ]
+        bRef :: RefByName ADTDef
+        bRef = RefByName bName
+        
+        dName = unsafeName "D"
+        dDef = unsafeADTDef dName
+                            [ unsafeConstructorDef (unsafeName "CstrD") [] ]
+        dRef :: RefByName ADTDef
+        dRef = RefByName dName
+        cName = unsafeName "C"
+        cDef = unsafeADTDef cName
+                            [ unsafeConstructorDef (unsafeName "CstrCbyB") [ FieldDef (unsafeName "FieldB") (SortADT bRef) ] 
+                            , unsafeConstructorDef (unsafeName "CstrCbyD") [ FieldDef (unsafeName "FieldD") (SortADT dRef) ]
+                            ]
+        c0 = empty :: MinimalTestSortContext
+        
+        incr1 = [aDef, bDef]
+        incr2 = [cDef, dDef]
+      in do
+        case addAdtDefs c0 incr1 of
+            Left e1  -> error ("Invalid incr1 - " ++ show e1)
+            Right c1 -> case addAdtDefs c1 incr2 of
+                                Left e2  -> error ("Invalid incr2 - " ++ show e2)
+                                Right c2 -> case addAdtDefs c0 (incr2 ++ incr1) of
+                                                Left e    -> trace ("error = " ++ show e) $ False
+                                                Right c12 -> if c12 == c2
+                                                                then True
+                                                                else trace ("incr1 = " ++ show incr1 ++ "\nincr2 = " ++ show incr2) $ False
+
 spec :: Spec
 spec =
   describe "A test context" $ do
@@ -140,3 +181,4 @@ spec =
     it "cannot be extended with ADTDefs with unknown references" prop_ADTDefs_unknownReference
     it "cannot be extended such that names are no longer unique" prop_ADTDefs_unique
     it "can contain dependent ADTDefs" prop_ADTDefs_Dependent
+    it "can be incrementally extended" prop_increment

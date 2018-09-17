@@ -39,7 +39,7 @@ prop_Increments =
                             incr2 <- arbitraryADTDefs c1
                             case addAdtDefs c1 incr2 of
                                 Left e2  -> error ("Invalid generator 2 - " ++ show e2)
-                                Right c2 -> return $ case addAdtDefs c0 (incr1++incr2) of
+                                Right c2 -> return $ case addAdtDefs c0 (incr2++incr1) of
                                                         Left e    -> trace ("error = " ++ show e) $ False
                                                         Right c12 -> if c12 == c2
                                                                         then True
@@ -48,6 +48,6 @@ prop_Increments =
 spec :: Spec
 spec =
   describe "A sort gen context" $
-    modifyMaxSuccess (const 1000000) $
-    modifyMaxSize (const 3) $
+    modifyMaxSuccess (const 100) $
+    modifyMaxSize (const 15) $
         it "incr2 after incr1 == incr2 ++ incr1" $ property prop_Increments
