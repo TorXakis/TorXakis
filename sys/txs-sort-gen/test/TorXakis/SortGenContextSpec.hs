@@ -49,5 +49,5 @@ spec :: Spec
 spec =
   describe "A sort gen context" $
     modifyMaxSuccess (const 100) $
-    modifyMaxSize (const 15) $
+    modifyMaxSize (const 10) $
         it "incr2 after incr1 == incr2 ++ incr1" $ property prop_Increments

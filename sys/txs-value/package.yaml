@@ -25,6 +25,7 @@ library:
   - deepseq
   - hashmap
   - hexpat
+  - regex-tdfa
   - text
   - txs-basics
   - txs-sort

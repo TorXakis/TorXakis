@@ -49,4 +49,5 @@ tests:
         - -with-rtsopts=-N
         dependencies:
         - hspec
+        - regex-tdfa
         - txs-value-gen

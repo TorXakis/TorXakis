@@ -22,12 +22,14 @@ module TorXakis.Value.ConversionText
 , valueFromText
 )
 where
-import           Data.Either     (partitionEithers)
-import qualified Data.HashMap    as Map
-import           Data.Maybe      (fromMaybe)
-import           Data.Monoid     ((<>))
-import           Data.Text       (Text)
-import qualified Data.Text       as T
+import           Data.Char              (chr, ord)
+import           Data.Either            (partitionEithers)
+import qualified Data.HashMap           as Map
+import           Data.Maybe             (fromMaybe)
+import           Data.Monoid            ((<>))
+import           Data.Text              (Text)
+import qualified Data.Text              as T
+import           Text.Regex.TDFA
 
 import           TorXakis.Error
 import           TorXakis.Name
@@ -36,15 +38,65 @@ import           TorXakis.Value.Value
 import           TorXakis.Value.ValueAlex
 import           TorXakis.Value.ValueHappy
 
+-- | encode character to canconical representation: &#...; for non-printable characters, enclosing quote ('), and normal otherwise
+encodeChar :: Char -> String
+encodeChar c | mustEncodeChar (ord c) = "&#" ++ show (ord c) ++ ";"
+    where 
+        mustEncodeChar :: Int -> Bool
+        mustEncodeChar  39 = True           -- '
+        mustEncodeChar 127 = True           -- DEL
+        mustEncodeChar   i = i < 32         -- Control character
+encodeChar c                          = [c]
+
+
+-- | decode character from canconical representation: &#...; for non-printable characters, enclosing quote ('), and normal otherwise
+decodeChar :: String -> Char
+decodeChar [c]                            = c
+decodeChar s | s =~ "\\`&#[0-9]{1,3};\\'" = (chr . read . init . drop 2) s
+decodeChar e                              = error ("decodeChar - unexpected string sequence " ++ show e)
+
+
+-- | encode String to canconical representation: &#...; for non-printable characters, enclosing quote ("), and normal otherwise
+encodeString :: String -> String
+encodeString = concatMap encodeStringChar
+    where 
+        encodeStringChar :: Char -> String
+        encodeStringChar c | mustEncodeChar (ord c) = "&#" ++ show (ord c) ++ ";"
+        encodeStringChar c                                = [c]
+        
+        mustEncodeChar :: Int -> Bool
+        mustEncodeChar  34 = True           -- "
+        mustEncodeChar  38 = True           -- &
+        mustEncodeChar 127 = True           -- DEL
+        mustEncodeChar   i = i < 32         -- Control character
+
+-- | decode character from canconical representation: &#...; for non-printable characters, enclosing quote ('), escape char, and normal otherwise
+decodeString :: String -> String
+decodeString s = replaceMatches (getAllMatches (s =~ "&#[0-9]{1,3};")) escapedCharToString 0 s
+    where
+        replaceMatches :: [(MatchOffset, MatchLength)]
+                       -> (String -> String)
+                       -> Int 
+                       -> String
+                       -> String
+        replaceMatches [] _ _ s' = s'
+        replaceMatches ((off,len):ms) f pos s' =
+            let (pre, rest)            = splitAt (off-pos) s'
+                (matchText, remaining) = splitAt len rest
+              in
+                pre ++ f matchText ++ replaceMatches ms f (off+len) remaining
+
+        escapedCharToString :: String -> String
+        escapedCharToString = (: []) . chr . read . init . drop 2
 
 -- | 'TorXakis.Value.Value' to 'Data.Text.Text' conversion.
 valueToText :: SortContext a => a -> Value -> Text       -- Usage of SortContext is prevented since reference by Name is exploited
 valueToText _   (Cbool True)   = T.pack "True"
 valueToText _   (Cbool False)  = T.pack "False"
 valueToText _   (Cint i)       = T.pack (show i)
-valueToText _   (Cchar c)      = T.pack (show c)
-valueToText _   (Cstring s)    = T.pack (show s)
-valueToText _   (Cregex r)     = T.pack (show r)
+valueToText _   (Cchar c)      = T.pack ("'" ++ encodeChar c ++ "'")
+valueToText _   (Cstring s)    = T.pack ("\"" ++ encodeString (T.unpack s) ++ "\"")
+valueToText _   (Cregex r)     = T.pack ("REGEX('" ++ concatMap encodeChar (T.unpack r) ++ "')")
 -- valueToText _   (Ccstr _ c []) = TorXakis.Name.toText (toName c)  -- TODO: desired? - parser need to be changed as well!
 valueToText ctx (Ccstr _ c as) = TorXakis.Name.toText (toName c) 
                                     <> T.pack "("
@@ -64,9 +116,9 @@ valueFromText ctx s t =
         fromParseValue :: Sort -> ParseValue -> Either MinError Value
         fromParseValue SortBool    (Pbool b)    = Right $ Cbool b
         fromParseValue SortInt     (Pint b)     = Right $ Cint b
-        fromParseValue SortChar    (Pchar c)    = Right $ Cchar c
-        fromParseValue SortString  (Pstring s') = Right $ Cstring s'
-        fromParseValue SortRegex   (Pstring r)  = Right $ Cregex r
+        fromParseValue SortChar    (Pchar c)    = Right $ Cchar (decodeChar c)
+        fromParseValue SortString  (Pstring s') = Right $ Cstring (T.pack (decodeString s'))
+        fromParseValue SortRegex   (Pregex r)   = Right $ Cregex (T.pack (decodeString r))
         fromParseValue (SortADT a) (Pcstr n ps) =
             case mkName n of
                 Left e   -> Left $ MinError (T.pack "Illegal name " <> n <> T.pack "\n" <> TorXakis.Error.toText e)
