@@ -40,7 +40,7 @@ ghc-options:
 - -Wredundant-constraints
 
 tests:
-    txs-sort-gen-test:
+    txs-value-gen-test:
         main : Spec.hs
         source-dirs: test
         ghc-options:

@@ -11,6 +11,8 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
 dependencies:
 - base >= 4.7 && < 5
+- text
+- txs-sort
 
 library:
   source-dirs: src
@@ -26,9 +28,8 @@ library:
   - hashmap
   - hexpat
   - regex-tdfa
-  - text
   - txs-basics
-  - txs-sort
+
 
 extra-source-files:
 - README.md
@@ -44,3 +45,16 @@ ghc-options:
 #- -Wincomplete-uni-patterns  -- for alex
 #- -Wmissing-local-signatures -- for alex
 #- -Wmonomorphism-restriction -- for alex
+
+tests:
+    txs-value-test:
+        main : Spec.hs
+        source-dirs: test
+        ghc-options:
+        - -threaded
+        - -rtsopts
+        - -with-rtsopts=-N
+        dependencies:
+        - hspec
+        - txs-sort-gen
+        - txs-value
