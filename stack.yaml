@@ -39,6 +39,8 @@ packages:
 - location: sys/txs-sort-gen
 - location: sys/txs-value
 - location: sys/txs-value-gen
+- location: sys/txs-lex-regex-xsd
+- location: sys/txs-valexpr
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
