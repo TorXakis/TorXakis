@@ -77,7 +77,7 @@ Value :: { ParseValue }
          | string
              { Pstring ( (init . tail) $1 ) }
          | regex
-             { Pregex ( (drop 7 . init . init ) $1 ) }
+             { Pregex ( (init . tail) $1 ) }
          | name "(" Values ")"
              { Pcstr (T.pack $1) $3 }
 

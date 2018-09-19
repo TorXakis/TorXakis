@@ -163,16 +163,14 @@ prop_increment =
         
         incr1 = [aDef, bDef]
         incr2 = [cDef, dDef]
-      in do
+      in
         case addAdtDefs c0 incr1 of
             Left e1  -> error ("Invalid incr1 - " ++ show e1)
             Right c1 -> case addAdtDefs c1 incr2 of
                                 Left e2  -> error ("Invalid incr2 - " ++ show e2)
                                 Right c2 -> case addAdtDefs c0 (incr2 ++ incr1) of
-                                                Left e    -> trace ("error = " ++ show e) $ False
-                                                Right c12 -> if c12 == c2
-                                                                then True
-                                                                else trace ("incr1 = " ++ show incr1 ++ "\nincr2 = " ++ show incr2) $ False
+                                                Left e    -> trace ("error = " ++ show e) False
+                                                Right c12 -> c12 == c2 || trace ("incr1 = " ++ show incr1 ++ "\nincr2 = " ++ show incr2) False
 
 spec :: Spec
 spec =

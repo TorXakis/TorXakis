@@ -51,7 +51,7 @@ prop_Ctx_ConversionText_id ctx =
                   in
                     trace ("txt = " ++ show txt) $
                         case actual of
-                            Left e   -> trace ("\nParse error " ++ show e) $ False
+                            Left e   -> trace ("\nParse error " ++ show e) False
                             Right v' -> v == v'
 
 -- | ConversionXML is Identity
@@ -75,13 +75,13 @@ prop_Ctx_ConversionXML_id ctx =
                   in
                     trace ("xml = " ++ show xml) $
                         case actual of
-                            Left e   -> trace ("\nParse error " ++ show e) $ False
+                            Left e   -> trace ("\nParse error " ++ show e) False
                             Right v' -> v == v'
 
 spec :: Spec
 spec =
   describe "conversion" $
-    modifyMaxSuccess (const 20) $
+    modifyMaxSuccess (const 50) $
     modifyMaxSize (const 10) $ 
       do
         it "fromText . toText == id" $ property prop_ConversionText_id

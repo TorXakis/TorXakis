@@ -95,5 +95,5 @@ arbitraryADTDefs ctx =
                     return $ case mkADTDef n cs of
                         Left  _    -> error "error in generator: creating valid ADTDef"
                         Right aDef -> aDef : aDefs
-          in do
+          in
             toADTDefs uniqueNames (Map.keys (getMapSortSize ctx))

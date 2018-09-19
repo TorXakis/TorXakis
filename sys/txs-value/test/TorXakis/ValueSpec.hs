@@ -37,7 +37,7 @@ prop_ConversionText_StringId =
         actual = valueFromText ctx SortString txt
       in
         case actual of
-            Left e     -> trace ("\nParse error " ++ show e) $ False
+            Left e     -> trace ("\nParse error " ++ show e) False
             Right val' -> val == val'
 
 -- | ConversionXML for String is Identity
@@ -49,7 +49,7 @@ prop_ConversionXML_StringId =
         actual = valueFromXML ctx SortString xml
       in
         case actual of
-            Left e     -> trace ("\nParse error " ++ show e) $ False
+            Left e     -> trace ("\nParse error " ++ show e) False
             Right val' -> val == val'
 
 -- | ConversionText for Char is Identity
@@ -65,7 +65,7 @@ prop_ConversionText_CharId =
                     actual = valueFromText ctx SortChar txt
                   in
                     case actual of
-                        Left e   -> trace ("\nParse error " ++ show e) $ False
+                        Left e   -> trace ("\nParse error " ++ show e) False
                         Right v' -> v' == Cchar v
 
 -- | ConversionXML for Char is Identity
@@ -81,7 +81,7 @@ prop_ConversionXML_CharId =
                     actual = valueFromText ctx SortChar xml
                   in
                     case actual of
-                        Left e   -> trace ("\nParse error " ++ show e) $ False
+                        Left e   -> trace ("\nParse error " ++ show e) False
                         Right v' -> v' == Cchar v
 
 -- | ConversionText for Int is Identity
@@ -94,7 +94,7 @@ prop_ConversionText_IntId = all check [-255..255]
                     actual = valueFromText ctx SortInt txt
                   in
                     case actual of
-                        Left e   -> trace ("\nParse error " ++ show e) $ False
+                        Left e   -> trace ("\nParse error " ++ show e) False
                         Right v' -> v' == Cint v
 
 -- | ConversionXML for Int is Identity
@@ -107,7 +107,7 @@ prop_ConversionXML_IntId = all check [-255..255]
                     actual = valueFromText ctx SortInt xml
                   in
                     case actual of
-                        Left e   -> trace ("\nParse error " ++ show e) $ False
+                        Left e   -> trace ("\nParse error " ++ show e) False
                         Right v' -> v' == Cint v
 
 spec :: Spec

@@ -38,39 +38,30 @@ import           TorXakis.Value.Value
 import           TorXakis.Value.ValueAlex
 import           TorXakis.Value.ValueHappy
 
--- | encode character to canconical representation: &#...; for non-printable characters, enclosing quote ('), and normal otherwise
-encodeChar :: Char -> String
-encodeChar c | mustEncodeChar (ord c) = "&#" ++ show (ord c) ++ ";"
-    where 
-        mustEncodeChar :: Int -> Bool
-        mustEncodeChar  39 = True           -- '
-        mustEncodeChar 127 = True           -- DEL
-        mustEncodeChar   i = i < 32         -- Control character
-encodeChar c                          = [c]
+-- | Is Char a control charachter?
+controlChar :: Char -> Bool
+controlChar c = ord c == 127 || ord c < 32
 
+-- | encode character to canconical representation: &#...; for non-printable characters, terminator char ('), and normal otherwise
+encodeChar :: Char -> Char -> String
+encodeChar terminator c | c == terminator || controlChar c = "&#" ++ show (ord c) ++ ";"
+encodeChar _          c                                    = [c]
 
--- | decode character from canconical representation: &#...; for non-printable characters, enclosing quote ('), and normal otherwise
+-- | decode character from canconical representation: &#...; for non-printable characters, terminator char ('), and normal otherwise
 decodeChar :: String -> Char
 decodeChar [c]                            = c
 decodeChar s | s =~ "\\`&#[0-9]{1,3};\\'" = (chr . read . init . drop 2) s
 decodeChar e                              = error ("decodeChar - unexpected string sequence " ++ show e)
 
-
--- | encode String to canconical representation: &#...; for non-printable characters, enclosing quote ("), and normal otherwise
-encodeString :: String -> String
-encodeString = concatMap encodeStringChar
+-- | encode String to canconical representation: &#...; for non-printable characters, terminator char, escape symbol (&), and normal otherwise
+encodeString :: Char -> String -> String
+encodeString terminator = concatMap encodeStringChar
     where 
         encodeStringChar :: Char -> String
-        encodeStringChar c | mustEncodeChar (ord c) = "&#" ++ show (ord c) ++ ";"
-        encodeStringChar c                                = [c]
-        
-        mustEncodeChar :: Int -> Bool
-        mustEncodeChar  34 = True           -- "
-        mustEncodeChar  38 = True           -- &
-        mustEncodeChar 127 = True           -- DEL
-        mustEncodeChar   i = i < 32         -- Control character
+        encodeStringChar c | c == terminator || c == '&' || controlChar c = "&#" ++ show (ord c) ++ ";"
+        encodeStringChar c                                                = [c]
 
--- | decode character from canconical representation: &#...; for non-printable characters, enclosing quote ('), escape char, and normal otherwise
+-- | decode String from canconical representation: &#...; for non-printable characters, terminator char, escape symbol (&), and normal otherwise
 decodeString :: String -> String
 decodeString s = replaceMatches (getAllMatches (s =~ "&#[0-9]{1,3};")) escapedCharToString 0 s
     where
@@ -94,9 +85,9 @@ valueToText :: SortContext a => a -> Value -> Text       -- Usage of SortContext
 valueToText _   (Cbool True)   = T.pack "True"
 valueToText _   (Cbool False)  = T.pack "False"
 valueToText _   (Cint i)       = T.pack (show i)
-valueToText _   (Cchar c)      = T.pack ("'" ++ encodeChar c ++ "'")
-valueToText _   (Cstring s)    = T.pack ("\"" ++ encodeString (T.unpack s) ++ "\"")
-valueToText _   (Cregex r)     = T.pack ("REGEX('" ++ concatMap encodeChar (T.unpack r) ++ "')")
+valueToText _   (Cchar c)      = T.pack ("'" ++ encodeChar '\'' c ++ "'")
+valueToText _   (Cstring s)    = T.pack ("\"" ++ encodeString '"' (T.unpack s) ++ "\"")
+valueToText _   (Cregex r)     = T.pack ("`" ++ encodeString '`' (T.unpack r) ++ "`")
 -- valueToText _   (Ccstr _ c []) = TorXakis.Name.toText (toName c)  -- TODO: desired? - parser need to be changed as well!
 valueToText ctx (Ccstr _ c as) = TorXakis.Name.toText (toName c) 
                                     <> T.pack "("

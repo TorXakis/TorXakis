@@ -40,10 +40,8 @@ prop_Increments =
                             case addAdtDefs c1 incr2 of
                                 Left e2  -> error ("Invalid generator 2 - " ++ show e2)
                                 Right c2 -> return $ case addAdtDefs c0 (incr2++incr1) of
-                                                        Left e    -> trace ("error = " ++ show e) $ False
-                                                        Right c12 -> if c12 == c2
-                                                                        then True
-                                                                        else trace ("incr1 = " ++ show incr1 ++ "\nincr2 = " ++ show incr2) $ False
+                                                        Left e    -> trace ("error = " ++ show e) False
+                                                        Right c12 -> c12 == c2 || trace ("incr1 = " ++ show incr1 ++ "\nincr2 = " ++ show incr2) False
 
 spec :: Spec
 spec =
