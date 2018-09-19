@@ -117,10 +117,11 @@ actionPref :: ActOffer -> BExpr -> BExpr
 actionPref a b = case ValExpr.view (constraint a) of
                     -- A?x [[ False ]] >-> p <==> stop
                     Vconst (Cbool False)    -> stop
-                    _                       -> if containsEXIT (offers a)
-                                                    then -- EXIT >-> p <==> EXIT >-> STOP
-                                                         BExpr (ActionPref a stop)
-                                                    else BExpr (ActionPref a b)
+                    -- _                       -> if containsEXIT (offers a)
+                    --                                 then -- EXIT >-> p <==> EXIT >-> STOP
+                    --                                      BExpr (ActionPref a stop)
+                    --                                 else BExpr (ActionPref a b)
+                    _                       -> BExpr (ActionPref a b)
 
 -- | Create a guard behaviour expression.
 guard :: VExpr -> BExpr -> BExpr
