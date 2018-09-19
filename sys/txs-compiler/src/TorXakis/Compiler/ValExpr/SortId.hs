@@ -65,7 +65,8 @@ import           Prelude                  hiding (lookup)
 import           ChanId                   (ChanId, chansorts)
 import           FuncTable                (Signature, sortArgs, sortRet)
 import           Id                       (Id (Id))
-import           ProcId                   (ExitSort (Exit, Hit, NoExit), ProcId, ChanSort(ChanSort),
+import           ProcId                   (ChanSort (ChanSort),
+                                           ExitSort (Exit, Hit, NoExit), ProcId,
                                            exitSortIds, procchans, procexit,
                                            procvars)
 import qualified ProcId
@@ -383,7 +384,13 @@ instance ( MapsTo Text SortId mm
          , MapsTo (Loc VarRefE) (Either (Loc VarDeclE) [Loc FuncDeclE]) mm
          , MapsTo ProcId () mm
          ) => HasTypedVars mm ActOfferDecl where
-    inferVarTypes mm (ActOfferDecl os mEx) = (++) <$> inferVarTypes mm os <*> inferVarTypes mm mEx
+    inferVarTypes mm (ActOfferDecl os mEx) = do
+        xs <- inferVarTypes mm os
+        -- The offers can introduce typed variables which can be referred to in
+        -- the guard. That is why we need to infer the types in the offers, and
+        -- use these to infer the types of the variable expressions.
+        ys <- inferVarTypes (xs <.++> mm) mEx
+        return $ xs ++ ys
 
 instance ( HasTypedVars mm e ) => HasTypedVars mm (Maybe e) where
     inferVarTypes mm = maybe (return []) (inferVarTypes mm)

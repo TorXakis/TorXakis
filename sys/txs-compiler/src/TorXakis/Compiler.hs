@@ -227,7 +227,7 @@ compileParsedDefs parsedDefs = do
     let fdefsSHs = innerSigHandlerMap (fIds :& fdefs)
         allFSHs = stdSHs <> adtsSHs <> fdefsSHs
 
-    -- Generate a map from process declarations to their definitons.
+    -- Generate a map from process declarations to their definitions.
     pdefs <- compileToProcDefs (sIds :& cstrIds :& allFids :& allFSHs :& decls) parsedDefs
     checkUnique (NoErrorLoc, Channel, "Channel definition")
                 (chanDeclName <$> (parsedDefs ^. chdecls))
