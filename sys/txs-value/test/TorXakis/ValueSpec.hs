@@ -52,6 +52,19 @@ prop_ConversionXML_StringId =
             Left e     -> trace ("\nParse error " ++ show e) False
             Right val' -> val == val'
 
+prop_fromText_String :: Bool
+prop_fromText_String = 
+    let range = [0..255]
+        txt = T.pack ("\"" ++ concatMap (\i -> "&#" ++ show i ++ ";") range ++ "\"")
+        
+        ctx = empty :: MinimalTestSortContext
+        actual = valueFromText ctx SortString txt
+      in
+        
+        case actual of
+            Left e     -> trace ("\nParse error " ++ show e) False
+            Right val -> val == Cstring (T.pack (map chr range))
+
 -- | ConversionText for Char is Identity
 prop_ConversionText_CharId ::  Bool
 prop_ConversionText_CharId =
@@ -115,6 +128,7 @@ spec = do
   describe "String conversion" $ do
         it "fromText . toText == id" prop_ConversionText_StringId
         it "fromXML . toXML == id" prop_ConversionXML_StringId
+        it "fromText with all characters escaped" prop_fromText_String
   describe "Char conversion" $ do
         it "fromText . toText == id" prop_ConversionText_CharId
         it "fromXML . toXML == id" prop_ConversionXML_CharId
