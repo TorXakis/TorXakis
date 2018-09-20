@@ -81,8 +81,8 @@ prop_Ctx_ConversionXML_id ctx =
 spec :: Spec
 spec =
   describe "conversion" $
-    modifyMaxSuccess (const 50) $
-    modifyMaxSize (const 10) $ 
+    modifyMaxSuccess (const 25) $
+    modifyMaxSize (const 8) $ 
       do
         it "fromText . toText == id" $ property prop_ConversionText_id
         it "fromXML . toXML == id" $ property prop_ConversionXML_id

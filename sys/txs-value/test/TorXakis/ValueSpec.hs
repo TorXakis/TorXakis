@@ -85,7 +85,7 @@ prop_ConversionText_CharId =
 prop_ConversionXML_CharId ::  Bool
 prop_ConversionXML_CharId =
     let vals = map chr [0..255]
-      in 
+      in
         all check vals
     where check :: Char -> Bool
           check v = 
@@ -96,6 +96,21 @@ prop_ConversionXML_CharId =
                     case actual of
                         Left e   -> trace ("\nParse error " ++ show e) False
                         Right v' -> v' == Cchar v
+
+prop_fromText_Char :: Bool
+prop_fromText_Char = 
+    let vals = [0..255]
+      in
+        all check vals
+    where check :: Int -> Bool
+          check i =
+            let txt = T.pack ("'&#" ++ show i ++ ";'")
+                ctx = empty :: MinimalTestSortContext
+                actual = valueFromText ctx SortChar txt
+              in
+                case actual of
+                    Left e     -> trace ("\nParse error " ++ show e) False
+                    Right val -> val == Cchar (chr i)
 
 -- | ConversionText for Int is Identity
 prop_ConversionText_IntId ::  Bool
@@ -132,6 +147,7 @@ spec = do
   describe "Char conversion" $ do
         it "fromText . toText == id" prop_ConversionText_CharId
         it "fromXML . toXML == id" prop_ConversionXML_CharId
+        it "fromText with all characters escaped" prop_fromText_Char
   describe "Int conversion" $ do
         it "fromText . toText == id" prop_ConversionText_IntId
         it "fromXML . toXML == id" prop_ConversionXML_IntId
