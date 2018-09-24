@@ -32,7 +32,7 @@ import           Data.Data            (Data)
 import           Data.Hashable        (Hashable(hash, hashWithSalt))
 import           Data.HashMap         (Map, fromList)
 
-import           TorXakis.Name.Name   (Name, toText, HasName, getName)
+import           TorXakis.Name.Name   (Name, HasName, getName)
 
 -- | A generalized, type-safe reference.
 newtype RefByName t = RefByName { -- | This reference keeps a 'Name' that represents the entity.
@@ -41,8 +41,7 @@ newtype RefByName t = RefByName { -- | This reference keeps a 'Name' that repres
     deriving (Eq, Ord, Show, Read, NFData, Data)
 
 instance Hashable (RefByName t) where
-    hash = hash . toText . toName
-    hashWithSalt s = (*s) . hash . toText . toName
+    hashWithSalt s = (*s) . hash . toName
 
 -- | Return 'Data.HashMap.Map' where the 'Name' of the element is taken as key
 --   and the element itself is taken as value.

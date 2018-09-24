@@ -25,8 +25,8 @@ module TorXakis.Value.Value
 )
 where
 
-import           Control.DeepSeq
-import           Data.Data
+import           Control.DeepSeq (NFData)
+import           Data.Data       (Data)
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 

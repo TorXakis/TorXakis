@@ -45,14 +45,14 @@ where
 
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
-import           Data.Hashable       (Hashable(hash, hashWithSalt))
+import           Data.Hashable       (Hashable(hashWithSalt))
 import qualified Data.HashMap        as Map
 import           Data.Monoid         ((<>))
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error      (MinError(MinError))
-import           TorXakis.Name       (Name, toText, repeatedByName, HasName, getName, RefByName, toName, toMapByName)
+import           TorXakis.Name       (Name, toText, repeatedByName, HasName, getName, RefByName ( toName ), toMapByName)
 
 -----------------------------------------------------------------------------
 -- Sort
@@ -68,14 +68,12 @@ data Sort = SortBool
 -- If we want to make Sort package more flexible, we can use SortPrim "Int" & SortADT "WhatEver".
 
 instance Hashable Sort where
-    hash SortBool    = hash (T.pack "Bool")
-    hash SortInt     = hash (T.pack "Int")
-    hash SortChar    = hash (T.pack "Char")
-    hash SortString  = hash (T.pack "String")
-    hash SortRegex   = hash (T.pack "Regex")
-    hash (SortADT r) = hash ( T.pack "A" <> (toText . toName) r )
-
-    hashWithSalt s   = (*s) . hash
+    hashWithSalt s SortBool    = s `hashWithSalt` T.pack "Bool"
+    hashWithSalt s SortInt     = s `hashWithSalt` T.pack "Int"
+    hashWithSalt s SortChar    = s `hashWithSalt` T.pack "Char"
+    hashWithSalt s SortString  = s `hashWithSalt` T.pack "String"
+    hashWithSalt s SortRegex   = s `hashWithSalt` T.pack "Regex"
+    hashWithSalt s (SortADT r) = s `hashWithSalt` ( T.pack "A" <> (toText . toName) r )
 
 -- | Enables 'Sort's of entities to be accessed in a common way.
 class HasSort a where

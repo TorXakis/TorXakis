@@ -35,7 +35,7 @@ import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
 import           TorXakis.Error      ( MinError(MinError) )
-import           TorXakis.Name       ( Name, getName, repeatedByNameIncremental, RefByName, toMapByName, toName )
+import           TorXakis.Name       ( Name, getName, repeatedByNameIncremental, RefByName( toName ), toMapByName )
 import           TorXakis.SortADT    ( ADTDef, viewADTDef, constructors
                                      , ConstructorDef, viewConstructorDef, fields
                                      , FieldDef(sort)
@@ -151,7 +151,7 @@ newtype MinimalSortContext = MinimalSortContext { adtDefsToMap :: Map.Map (RefBy
 
 instance SortContext MinimalSortContext where
     empty = MinimalSortContext Map.empty
+    adtDefs = adtDefsToMap
     addAdtDefs context as = case violationsAddAdtDefs context as of
                                 Just e  -> Left e
                                 Nothing -> Right $ context { adtDefsToMap = Map.union (adtDefsToMap context) (toMapByName as) }
-    adtDefs = adtDefsToMap

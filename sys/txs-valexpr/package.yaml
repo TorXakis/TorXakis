@@ -15,10 +15,19 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
+  - TorXakis.FuncDef
   - TorXakis.ValExpr
   dependencies:
+  - array
+  - containers
+  - deepseq
+  - hashable
+  - hashmap
+  - text
   - txs-basics
+  - txs-lex-regex-xsd
   - txs-sort
+  - txs-value
 
 extra-source-files:
 - README.md
