@@ -18,10 +18,10 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
---{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.SortContext
 ( -- * Sort Context
   SortContext (..)
+, elemSort
 , violationsAddAdtDefs
 , MinimalSortContext(MinimalSortContext)
 )
@@ -64,7 +64,12 @@ class SortContext a where
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     addAdtDefs :: a -> [ADTDef] -> Either MinError a
 
-
+-- | Is the provided sort a element of the context?
+elemSort :: SortContext a => a     -- | the context
+                      -> Sort  -- | the sort
+                      -> Bool
+elemSort ctx (SortADT a) = Map.member a (adtDefs ctx)
+elemSort _   _           = True
 
 -- | Validation function that reports whether an error will occurs when the list of 'ADTDef's are added to the given context.
 --   The error reflects the violations of any of the following constraints:
@@ -155,3 +160,4 @@ instance SortContext MinimalSortContext where
     addAdtDefs context as = case violationsAddAdtDefs context as of
                                 Just e  -> Left e
                                 Nothing -> Right $ context { adtDefsToMap = Map.union (adtDefsToMap context) (toMapByName as) }
+

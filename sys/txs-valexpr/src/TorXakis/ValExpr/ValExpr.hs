@@ -13,16 +13,18 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Interface file for Value Expressions.
+-- Definitions for Value Expressions.
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveAnyClass     #-}
 module TorXakis.ValExpr.ValExpr
-( ValExprView (..)
-, ValExpr
-, view
+( -- * Value Expression
+  ValExprView (..)
+, ValExpr (..)
+  -- * Evaluate
 , eval
+, PredefKind(..)
 )
 where
 import           Control.DeepSeq (NFData)

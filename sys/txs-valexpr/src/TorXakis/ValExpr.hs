@@ -16,12 +16,19 @@ See LICENSE at root directory of this repository.
 -- Interface file for Value Expressions.
 -----------------------------------------------------------------------------
 module TorXakis.ValExpr
-( module TorXakis.ValExpr.ValExpr
---, module TorXakis.ValExpr.ValExprExtension
+( -- * Value Expression
+  ValExprView (..)
+, ValExpr
+, view
+  -- * Evaluate
+, eval
+, PredefKind(..)
+, module TorXakis.ValExpr.ValExprConstructor
 , module TorXakis.ValExpr.ValExprContext
 )
 where
 
 import TorXakis.ValExpr.ValExpr
---import TorXakis.ValExpr.ValExprExtension
 import TorXakis.ValExpr.ValExprContext
+import TorXakis.ValExpr.ValExprConstructor
+--import TorXakis.ValExpr.ValExprExtension
