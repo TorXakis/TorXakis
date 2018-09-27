@@ -78,9 +78,9 @@ mkEqual _   ve1 _                                = Left $  MinError (T.pack ("So
 
 unsafeEqual :: Ord v => ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 -- Simplification: a == a <==> True
-unsafeEqual ve1 ve2 | ve1 == ve2                    = Right $ trueValueExpr
+unsafeEqual ve1 ve2 | ve1 == ve2                    = Right trueValueExpr
 -- Simplification: Different Values <==> False : use Same Values are already detected in previous step
-unsafeEqual (view -> Vconst {}) (view -> Vconst {}) = Right $ falseValueExpr
+unsafeEqual (view -> Vconst {}) (view -> Vconst {}) = Right falseValueExpr
 -- Simplification: True == e <==> e (twice)
 unsafeEqual (view -> Vconst (Cbool True)) e         = Right e
 unsafeEqual e (view -> Vconst (Cbool True))         = Right e
@@ -88,8 +88,8 @@ unsafeEqual e (view -> Vconst (Cbool True))         = Right e
 unsafeEqual (view -> Vconst (Cbool False)) e        = unsafeNot e
 unsafeEqual e (view -> Vconst (Cbool False))        = unsafeNot e
 -- Simplification: Not x == x <==> false (twice)
-unsafeEqual e (view -> Vnot n) | e == n             = Right $ falseValueExpr
-unsafeEqual (view -> Vnot n) e | e == n             = Right $ falseValueExpr
+unsafeEqual e (view -> Vnot n) | e == n             = Right falseValueExpr
+unsafeEqual (view -> Vnot n) e | e == n             = Right falseValueExpr
 -- Simplification: Not x == Not y <==> x == y
 unsafeEqual (view -> Vnot n1) (view -> Vnot n2)     = unsafeEqual n1 n2
 -- Same representation: Not a == b <==> a == Not b (twice)
@@ -135,15 +135,15 @@ mkNot _ n                         = Left $ MinError (T.pack ("Argument of Not is
 
 unsafeNot :: ValExpr v -> Either MinError (ValExpr v)
 -- Simplification: not True <==> False
-unsafeNot (view -> Vconst (Cbool True))       = Right $ falseValueExpr
+unsafeNot (view -> Vconst (Cbool True))       = Right falseValueExpr
 -- Simplification: not False <==> True
-unsafeNot (view -> Vconst (Cbool False))      = Right $ trueValueExpr
+unsafeNot (view -> Vconst (Cbool False))      = Right trueValueExpr
 -- Simplification: not (not x) <==> x
 unsafeNot (view -> Vnot ve)                   = Right ve
 -- Simplification: not (if cs then tb else fb) <==> if cs then not (tb) else not (fb)
 unsafeNot (view -> Vite cs tb fb)             = case (unsafeNot tb, unsafeNot fb) of
                                                     (Right nt, Right nf) -> Right $ ValExpr (Vite cs nt nf)
-                                                    _                    -> error ("Unexpected error in NOT with ITE")
+                                                    _                    -> error "Unexpected error in NOT with ITE"
 unsafeNot ve                                  = Right $ ValExpr (Vnot ve)
 
 -- | Apply operator And on the provided set of value expressions.
@@ -166,16 +166,16 @@ unsafeAnd = unsafeAnd' . flattenAnd
 unsafeAnd' :: forall v . Ord v => Set.Set (ValExpr v) -> Either MinError (ValExpr v)
 unsafeAnd' s =
     if Set.member falseValueExpr s
-        then Right $ falseValueExpr
+        then Right falseValueExpr
         else let s' :: Set.Set (ValExpr v)
                  s' = Set.delete trueValueExpr s in
                 case Set.size s' of
-                    0   -> Right $ trueValueExpr
+                    0   -> Right trueValueExpr
                     1   -> Right $ head (Set.toList s')
                     _   ->  -- Simplification: not(x) and x <==> False
                             let nots = filterNot (Set.toList s') in
                                 if any (contains s') nots
-                                    then Right $ falseValueExpr
+                                    then Right falseValueExpr
                                     else Right $ ValExpr (Vand s')
     where
         filterNot :: [ValExpr v] -> [ValExpr v]
