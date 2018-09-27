@@ -46,100 +46,113 @@ import           TorXakis.Value
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.ValExpr.ValExprContext
 
+trueValueExpr :: ValExpr v
+trueValueExpr = ValExpr $ Vconst (Cbool True)
+
+falseValueExpr :: ValExpr v
+falseValueExpr = ValExpr $ Vconst (Cbool True)
+
 -- | Create a constant value as a value expression.
 mkConst :: ValExprContext c v => c -> Value -> Either MinError (ValExpr v)
 mkConst ctx v = if elemSort ctx (getSort v)
-                    then Right $ unsafeConst v
+                    then unsafeConst v
                     else Left $  MinError (T.pack ("Sort " ++ show (getSort v) ++ " not defined in context"))
 
-unsafeConst :: Value -> ValExpr v
-unsafeConst = ValExpr . Vconst
+unsafeConst :: Value -> Either MinError (ValExpr v)
+unsafeConst = Right . ValExpr . Vconst
 
 -- | Create a variable as a value expression.
 mkVar :: ValExprContext c v => c -> RefByName v -> Either MinError (ValExpr v)
 mkVar ctx n = case Map.lookup n (varDefs ctx) of
                 Nothing -> Left $ MinError (T.pack ("Variable name " ++ show n ++ " not defined in context"))
-                Just v  -> Right $ unsafeVar v
-unsafeVar :: v -> ValExpr v
-unsafeVar = ValExpr . Vvar
+                Just v  -> unsafeVar v
+
+unsafeVar :: v -> Either MinError (ValExpr v)
+unsafeVar = Right . ValExpr . Vvar
 
 -- | Apply operator Equal on the provided value expressions.
 mkEqual :: (Ord v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkEqual _   ve1 ve2 | getSort ve1 /= getSort ve2 = Left $ MinError (T.pack ("Sort of value expressions in equal differ " ++ show (getSort ve1) ++ " versus " ++ show (getSort ve2)))
-mkEqual ctx ve1 ve2 | elemSort ctx (getSort ve1) = Right $ unsafeEqual ve1 ve2
+mkEqual ctx ve1 ve2 | elemSort ctx (getSort ve1) = unsafeEqual ve1 ve2
 mkEqual _   ve1 _                                = Left $  MinError (T.pack ("Sort " ++ show (getSort ve1) ++ " not defined in context"))
 
-unsafeEqual :: Ord v => ValExpr v -> ValExpr v -> ValExpr v
+unsafeEqual :: Ord v => ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 -- Simplification: a == a <==> True
-unsafeEqual ve1 ve2 | ve1 == ve2                    = unsafeConst (Cbool True)
+unsafeEqual ve1 ve2 | ve1 == ve2                    = Right $ trueValueExpr
 -- Simplification: Different Values <==> False : use Same Values are already detected in previous step
-unsafeEqual (view -> Vconst {}) (view -> Vconst {}) = unsafeConst (Cbool False)
+unsafeEqual (view -> Vconst {}) (view -> Vconst {}) = Right $ falseValueExpr
 -- Simplification: True == e <==> e (twice)
-unsafeEqual (view -> Vconst (Cbool True)) e         = e
-unsafeEqual e (view -> Vconst (Cbool True))         = e
+unsafeEqual (view -> Vconst (Cbool True)) e         = Right e
+unsafeEqual e (view -> Vconst (Cbool True))         = Right e
 -- Simplification: False == e <==> not e (twice)
 unsafeEqual (view -> Vconst (Cbool False)) e        = unsafeNot e
 unsafeEqual e (view -> Vconst (Cbool False))        = unsafeNot e
 -- Simplification: Not x == x <==> false (twice)
-unsafeEqual e (view -> Vnot n) | e == n             = unsafeConst (Cbool False)
-unsafeEqual (view -> Vnot n) e | e == n             = unsafeConst (Cbool False)
+unsafeEqual e (view -> Vnot n) | e == n             = Right $ falseValueExpr
+unsafeEqual (view -> Vnot n) e | e == n             = Right $ falseValueExpr
 -- Simplification: Not x == Not y <==> x == y
 unsafeEqual (view -> Vnot n1) (view -> Vnot n2)     = unsafeEqual n1 n2
 -- Same representation: Not a == b <==> a == Not b (twice)
 unsafeEqual x@(view -> Vnot n) e                    = if n <= e
-                                                            then ValExpr (Vequal x e)
-                                                            else ValExpr (Vequal (unsafeNot e) n)
+                                                            then Right $ ValExpr (Vequal x e)
+                                                            else case unsafeNot e of
+                                                                    Left m  -> error ("Unexpected error in Equal: " ++ show m)
+                                                                    Right m -> Right $ ValExpr (Vequal m n)
 unsafeEqual e x@(view -> Vnot n)                    = if n <= e
-                                                            then ValExpr (Vequal x e)
-                                                            else ValExpr (Vequal (unsafeNot e) n)
+                                                            then Right $ ValExpr (Vequal x e)
+                                                            else case unsafeNot e of
+                                                                    Left m  -> error ("Unexpected error in Equal: " ++ show m)
+                                                                    Right m -> Right $ ValExpr (Vequal m n)
 -- Same representation: a == b <==> b == a
 unsafeEqual ve1 ve2                                 = if ve1 <= ve2
-                                                            then ValExpr (Vequal ve1 ve2)
-                                                            else ValExpr (Vequal ve2 ve1)
+                                                            then Right $ ValExpr (Vequal ve1 ve2)
+                                                            else Right $ ValExpr (Vequal ve2 ve1)
 
 -- | Apply operator ITE (IF THEN ELSE) on the provided value expressions.
 mkITE :: (Eq v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkITE _   b _  _  | getSort b  /= SortBool    = Left $ MinError (T.pack ("Condition of ITE is not of expected sort Bool but " ++ show (getSort b)))
 mkITE _   _ tb fb | getSort tb /= getSort fb  = Left $ MinError (T.pack ("Sorts of branches differ " ++ show (getSort tb) ++ " versus " ++ show (getSort fb)))
-mkITE ctx b tb fb | elemSort ctx (getSort tb) = Right $ unsafeITE b tb fb
+mkITE ctx b tb fb | elemSort ctx (getSort tb) = unsafeITE b tb fb
 mkITE _   _ tb _                              = Left $  MinError (T.pack ("Sort " ++ show (getSort tb) ++ " not defined in context"))
 
-unsafeITE :: Eq v => ValExpr v -> ValExpr v -> ValExpr v -> ValExpr v
+unsafeITE :: Eq v => ValExpr v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 -- Simplification: if True then a else b <==> a
-unsafeITE (view -> Vconst (Cbool True))  tb _ = tb
+unsafeITE (view -> Vconst (Cbool True))  tb _ = Right tb
 -- Simplification: if False then a else b <==> b
-unsafeITE (view -> Vconst (Cbool False)) _ fb = fb
+unsafeITE (view -> Vconst (Cbool False)) _ fb = Right fb
 -- Simplification: if q then p else False fi <==> q /\ p : Note: p is boolean expression (otherwise different sorts in branches) 
 -- Not implemented to enable conditional evaluation
 -- Simplification: if c then a else a <==> a
-unsafeITE _ tb fb | tb == fb                  = tb
+unsafeITE _ tb fb | tb == fb                  = Right tb
 -- Simplification: if (not c) then tb else fb <==> if c then fb else tb
-unsafeITE (view -> Vnot n) tb fb              = ValExpr (Vite n fb tb)
-unsafeITE cs tb fb                            = ValExpr (Vite cs tb fb)
+unsafeITE (view -> Vnot n) tb fb              = Right $ ValExpr (Vite n fb tb)
+unsafeITE cs tb fb                            = Right $ ValExpr (Vite cs tb fb)
 
 -- | Apply operator Not on the provided value expression.
 mkNot :: ValExprContext c v => c -> ValExpr v -> Either MinError (ValExpr v)
-mkNot _ n | getSort n == SortBool = Right $ unsafeNot n
+mkNot _ n | getSort n == SortBool = unsafeNot n
 mkNot _ n                         = Left $ MinError (T.pack ("Argument of Not is not of expected sort Bool but " ++ show (getSort n)))
 
-unsafeNot :: ValExpr v -> ValExpr v
+unsafeNot :: ValExpr v -> Either MinError (ValExpr v)
 -- Simplification: not True <==> False
 unsafeNot (view -> Vconst (Cbool True))       = unsafeConst (Cbool False)
 -- Simplification: not False <==> True
 unsafeNot (view -> Vconst (Cbool False))      = unsafeConst (Cbool True)
 -- Simplification: not (not x) <==> x
-unsafeNot (view -> Vnot ve)                   = ve
+unsafeNot (view -> Vnot ve)                   = Right ve
 -- Simplification: not (if cs then tb else fb) <==> if cs then not (tb) else not (fb)
-unsafeNot (view -> Vite cs tb fb)             = ValExpr (Vite cs (unsafeNot tb) (unsafeNot fb))
-unsafeNot ve                                  = ValExpr (Vnot ve)
+unsafeNot (view -> Vite cs tb fb)             = case (unsafeNot tb, unsafeNot fb) of
+                                                    (Right nt, Right nf) -> Right $ ValExpr (Vite cs nt nf)
+                                                    _                    -> error ("Unexpected error in NOT with ITE")
+unsafeNot ve                                  = Right $ ValExpr (Vnot ve)
 
 -- | Apply operator And on the provided set of value expressions.
 mkAnd :: (Ord v, ValExprContext c v) => c -> Set.Set (ValExpr v) -> Either MinError (ValExpr v)
-mkAnd _ s | all (\e -> SortBool == getSort e) (Set.toList s) = Right $ unsafeAnd s
+mkAnd _ s | all (\e -> SortBool == getSort e) (Set.toList s) = unsafeAnd s
 mkAnd _ _                                                    = Left $ MinError (T.pack "Not all value expressions in set are of expected sort Bool")
 
 -- And doesn't contain elements of type Vand.
-unsafeAnd :: Ord v => Set.Set (ValExpr v) -> ValExpr v
+unsafeAnd :: Ord v => Set.Set (ValExpr v) -> Either MinError (ValExpr v)
 unsafeAnd = unsafeAnd' . flattenAnd
     where
         flattenAnd :: Ord v => Set.Set (ValExpr v) -> Set.Set (ValExpr v)
@@ -150,20 +163,20 @@ unsafeAnd = unsafeAnd' . flattenAnd
         fromValExpr x                = Set.singleton x
 
 -- And doesn't contain elements of type Vand.
-unsafeAnd' :: forall v . Ord v => Set.Set (ValExpr v) -> ValExpr v
+unsafeAnd' :: forall v . Ord v => Set.Set (ValExpr v) -> Either MinError (ValExpr v)
 unsafeAnd' s =
-    if Set.member (unsafeConst (Cbool False)) s
-        then unsafeConst (Cbool False)
+    if Set.member falseValueExpr s
+        then Right $ falseValueExpr
         else let s' :: Set.Set (ValExpr v)
-                 s' = Set.delete (unsafeConst (Cbool True)) s in
+                 s' = Set.delete trueValueExpr s in
                 case Set.size s' of
-                    0   -> unsafeConst (Cbool True)
-                    1   -> head (Set.toList s')
+                    0   -> Right $ trueValueExpr
+                    1   -> Right $ head (Set.toList s')
                     _   ->  -- Simplification: not(x) and x <==> False
                             let nots = filterNot (Set.toList s') in
                                 if any (contains s') nots
-                                    then unsafeConst (Cbool False)
-                                    else ValExpr (Vand s')
+                                    then Right $ falseValueExpr
+                                    else Right $ ValExpr (Vand s')
     where
         filterNot :: [ValExpr v] -> [ValExpr v]
         filterNot [] = []
