@@ -135,9 +135,9 @@ mkNot _ n                         = Left $ MinError (T.pack ("Argument of Not is
 
 unsafeNot :: ValExpr v -> Either MinError (ValExpr v)
 -- Simplification: not True <==> False
-unsafeNot (view -> Vconst (Cbool True))       = unsafeConst (Cbool False)
+unsafeNot (view -> Vconst (Cbool True))       = Right $ falseValueExpr
 -- Simplification: not False <==> True
-unsafeNot (view -> Vconst (Cbool False))      = unsafeConst (Cbool True)
+unsafeNot (view -> Vconst (Cbool False))      = Right $ trueValueExpr
 -- Simplification: not (not x) <==> x
 unsafeNot (view -> Vnot ve)                   = Right ve
 -- Simplification: not (if cs then tb else fb) <==> if cs then not (tb) else not (fb)
