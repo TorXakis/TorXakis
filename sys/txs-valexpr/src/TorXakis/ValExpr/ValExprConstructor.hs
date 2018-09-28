@@ -33,6 +33,11 @@ module TorXakis.ValExpr.ValExprConstructor
 , mkNot
   -- **** And
 , mkAnd
+  -- *** Integer Operators to create Value Expressions
+  -- **** Divide
+, mkDivide
+  -- **** Modulo
+, mkModulo
 )
 where
 import qualified Data.HashMap as Map
@@ -50,7 +55,7 @@ trueValueExpr :: ValExpr v
 trueValueExpr = ValExpr $ Vconst (Cbool True)
 
 falseValueExpr :: ValExpr v
-falseValueExpr = ValExpr $ Vconst (Cbool True)
+falseValueExpr = ValExpr $ Vconst (Cbool False)
 
 -- | Create a constant value as a value expression.
 mkConst :: ValExprContext c v => c -> Value -> Either MinError (ValExpr v)
@@ -82,11 +87,11 @@ unsafeEqual ve1 ve2 | ve1 == ve2                    = Right trueValueExpr
 -- Simplification: Different Values <==> False : use Same Values are already detected in previous step
 unsafeEqual (view -> Vconst {}) (view -> Vconst {}) = Right falseValueExpr
 -- Simplification: True == e <==> e (twice)
-unsafeEqual (view -> Vconst (Cbool True)) e         = Right e
-unsafeEqual e (view -> Vconst (Cbool True))         = Right e
+unsafeEqual b e | b == trueValueExpr                = Right e
+unsafeEqual e b | b == trueValueExpr                = Right e
 -- Simplification: False == e <==> not e (twice)
-unsafeEqual (view -> Vconst (Cbool False)) e        = unsafeNot e
-unsafeEqual e (view -> Vconst (Cbool False))        = unsafeNot e
+unsafeEqual b e | b == falseValueExpr               = unsafeNot e
+unsafeEqual e b | b == falseValueExpr               = unsafeNot e
 -- Simplification: Not x == x <==> false (twice)
 unsafeEqual e (view -> Vnot n) | e == n             = Right falseValueExpr
 unsafeEqual (view -> Vnot n) e | e == n             = Right falseValueExpr
@@ -117,9 +122,9 @@ mkITE _   _ tb _                              = Left $  MinError (T.pack ("Sort 
 
 unsafeITE :: Eq v => ValExpr v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 -- Simplification: if True then a else b <==> a
-unsafeITE (view -> Vconst (Cbool True))  tb _ = Right tb
+unsafeITE b tb _ | b == trueValueExpr         = Right tb
 -- Simplification: if False then a else b <==> b
-unsafeITE (view -> Vconst (Cbool False)) _ fb = Right fb
+unsafeITE b _ fb | b == falseValueExpr        = Right fb
 -- Simplification: if q then p else False fi <==> q /\ p : Note: p is boolean expression (otherwise different sorts in branches) 
 -- Not implemented to enable conditional evaluation
 -- Simplification: if c then a else a <==> a
@@ -129,15 +134,15 @@ unsafeITE (view -> Vnot n) tb fb              = Right $ ValExpr (Vite n fb tb)
 unsafeITE cs tb fb                            = Right $ ValExpr (Vite cs tb fb)
 
 -- | Apply operator Not on the provided value expression.
-mkNot :: ValExprContext c v => c -> ValExpr v -> Either MinError (ValExpr v)
+mkNot :: Eq v => ValExprContext c v => c -> ValExpr v -> Either MinError (ValExpr v)
 mkNot _ n | getSort n == SortBool = unsafeNot n
 mkNot _ n                         = Left $ MinError (T.pack ("Argument of Not is not of expected sort Bool but " ++ show (getSort n)))
 
-unsafeNot :: ValExpr v -> Either MinError (ValExpr v)
+unsafeNot :: Eq v => ValExpr v -> Either MinError (ValExpr v)
 -- Simplification: not True <==> False
-unsafeNot (view -> Vconst (Cbool True))       = Right falseValueExpr
+unsafeNot b | b == trueValueExpr              = Right falseValueExpr
 -- Simplification: not False <==> True
-unsafeNot (view -> Vconst (Cbool False))      = Right trueValueExpr
+unsafeNot b | b == falseValueExpr             = Right trueValueExpr
 -- Simplification: not (not x) <==> x
 unsafeNot (view -> Vnot ve)                   = Right ve
 -- Simplification: not (if cs then tb else fb) <==> if cs then not (tb) else not (fb)
@@ -187,3 +192,26 @@ unsafeAnd' s =
         contains :: Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set
+
+-- | Apply operator Divide on the provided value expressions.
+mkDivide :: ValExprContext c v => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkDivide _ d _ | getSort d /= SortInt = Left $ MinError (T.pack ("Dividend not of expected Sort Int but " ++ show (getSort d)))
+mkDivide _ _ d | getSort d /= SortInt = Left $ MinError (T.pack ("Divisor not of expected Sort Int but " ++ show (getSort d)))
+mkDivide _ t n                        = unsafeDivide t n
+
+unsafeDivide :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+unsafeDivide _                          (view -> Vconst (Cint n)) | n == 0 = Left $ MinError (T.pack "Divisor equal to zero in Divide")
+unsafeDivide (view ->  Vconst (Cint t)) (view -> Vconst (Cint n))          = unsafeConst (Cint (t `div` n) )
+unsafeDivide vet                        ven                                = Right $ ValExpr (Vdivide vet ven)
+
+-- | Apply operator Modulo on the provided value expressions.
+mkModulo :: ValExprContext c v => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkModulo _ d _ | getSort d /= SortInt = Left $ MinError (T.pack ("Dividend not of expected Sort Int but " ++ show (getSort d)))
+mkModulo _ _ d | getSort d /= SortInt = Left $ MinError (T.pack ("Divisor not of expected Sort Int but " ++ show (getSort d)))
+mkModulo _ t n                        = unsafeModulo t n
+
+unsafeModulo :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+unsafeModulo _                          (view -> Vconst (Cint n)) | n == 0 = Left $ MinError (T.pack "Divisor equal to zero in Modulo")
+unsafeModulo (view ->  Vconst (Cint t)) (view -> Vconst (Cint n))          = unsafeConst (Cint (t `mod` n) )
+unsafeModulo vet                        ven                                = Right $ ValExpr (Vmodulo vet ven)
+
