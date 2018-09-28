@@ -65,9 +65,9 @@ class SortContext a where
     addAdtDefs :: a -> [ADTDef] -> Either MinError a
 
 -- | Is the provided sort a element of the context?
-elemSort :: SortContext a => a     -- | the context
-                      -> Sort  -- | the sort
-                      -> Bool
+elemSort :: SortContext a => a     -- ^ the context
+                          -> Sort  -- ^ the sort
+                          -> Bool
 elemSort ctx (SortADT a) = Map.member a (adtDefs ctx)
 elemSort _   _           = True
 

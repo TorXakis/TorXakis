@@ -23,6 +23,7 @@ library:
   - deepseq
   - hashable
   - hashmap
+  - regex-tdfa
   - text
   - txs-basics
   - txs-lex-regex-xsd
