@@ -27,10 +27,11 @@ module TorXakis.ValExpr.ValExpr
 , PredefKind(..)
 )
 where
-import           Control.DeepSeq (NFData)
-import           Data.Data           (Data)
+import           Control.DeepSeq    (NFData)
+import           Data.Data          (Data)
+import qualified Data.Map        as Map
 import           Data.Set
-import           GHC.Generics    (Generic)
+import           GHC.Generics       (Generic)
 
 
 import           TorXakis.FuncSignature
@@ -55,8 +56,8 @@ data ValExprView v = Vconst    Value
                                (ValExpr v)
                    | Vmodulo   (ValExpr v)
                                (ValExpr v)
-                   -- | Vsum      (FreeSum (ValExpr v))
-                   -- | Vproduct  (FreeProduct (ValExpr v))
+                   | Vsum      (Map.Map (ValExpr v) Integer)
+                   | Vproduct  (Map.Map (ValExpr v) Integer)
                    | Vgez      (ValExpr v)
                    -- String
                    | Vlength   (ValExpr v)
@@ -110,8 +111,8 @@ sortOf  Vnot { }                                      = SortBool
 sortOf  Vand { }                                      = SortBool
 sortOf  Vdivide { }                                   = SortInt
 sortOf  Vmodulo { }                                   = SortInt
---sortOf  Vsum { }                                      = SortInt
---sortOf  Vproduct { }                                  = SortInt
+sortOf  Vsum { }                                      = SortInt
+sortOf  Vproduct { }                                  = SortInt
 sortOf  Vgez { }                                      = SortBool
 sortOf  Vlength { }                                   = SortInt
 sortOf  Vat { }                                       = SortString

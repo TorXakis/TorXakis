@@ -34,10 +34,16 @@ module TorXakis.ValExpr.ValExprConstructor
   -- **** And
 , mkAnd
   -- *** Integer Operators to create Value Expressions
+  -- **** Unary Minus
+, mkUnaryMinus
   -- **** Divide
 , mkDivide
   -- **** Modulo
 , mkModulo
+  -- **** Sum
+, mkSum
+  -- **** Product
+, mkProduct
   -- **** Comparisons Greater Equal Zero
 , mkGEZ
   -- *** String Operators to create Value Expressions
@@ -52,9 +58,10 @@ module TorXakis.ValExpr.ValExprConstructor
 , mkStrInRe
 )
 where
-import qualified Data.HashMap as Map
-import qualified Data.Set     as Set
-import qualified Data.Text    as T
+import qualified Data.HashMap    as HashMap
+import qualified Data.Map        as Map
+import qualified Data.Set        as Set
+import qualified Data.Text       as T
 import           Text.Regex.TDFA
 
 import           TorXakis.Error
@@ -74,6 +81,9 @@ falseValExpr = ValExpr $ Vconst (Cbool False)
 stringEmptyValExpr :: ValExpr v
 stringEmptyValExpr = ValExpr $ Vconst (Cstring (T.pack ""))
 
+zeroValExpr :: ValExpr v
+zeroValExpr = ValExpr $ Vconst (Cint 0)
+
 -- | Create a constant value as a value expression.
 mkConst :: ValExprContext c v => c -> Value -> Either MinError (ValExpr v)
 mkConst ctx v = if elemSort ctx (getSort v)
@@ -85,7 +95,7 @@ unsafeConst = Right . ValExpr . Vconst
 
 -- | Create a variable as a value expression.
 mkVar :: ValExprContext c v => c -> RefByName v -> Either MinError (ValExpr v)
-mkVar ctx n = case Map.lookup n (varDefs ctx) of
+mkVar ctx n = case HashMap.lookup n (varDefs ctx) of
                 Nothing -> Left $ MinError (T.pack ("Variable name " ++ show n ++ " not defined in context"))
                 Just v  -> unsafeVar v
 
@@ -173,7 +183,6 @@ mkAnd :: (Ord v, ValExprContext c v) => c -> Set.Set (ValExpr v) -> Either MinEr
 mkAnd _ s | all (\e -> SortBool == getSort e) (Set.toList s) = unsafeAnd s
 mkAnd _ _                                                    = Left $ MinError (T.pack "Not all value expressions in set are of expected sort Bool")
 
--- And doesn't contain elements of type Vand.
 unsafeAnd :: Ord v => Set.Set (ValExpr v) -> Either MinError (ValExpr v)
 unsafeAnd = unsafeAnd' . flattenAnd
     where
@@ -210,6 +219,15 @@ unsafeAnd' s =
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set
 
+-- | Apply unary operator Minus on the provided value expression.
+mkUnaryMinus :: ValExprContext c v => c -> ValExpr v -> Either MinError (ValExpr v)
+mkUnaryMinus _ v | getSort v == SortInt = unsafeUnaryMinus v
+mkUnaryMinus _ v                        = Left $ MinError (T.pack ("Unary Minus argument not of expected Sort Int but " ++ show (getSort v)))
+
+unsafeUnaryMinus :: ValExpr v -> Either MinError (ValExpr v)
+unsafeUnaryMinus (view -> Vsum m) = Right (ValExpr (Vsum (Map.map (* (-1)) m)))
+unsafeUnaryMinus x                = Right (ValExpr (Vsum (Map.singleton x (-1))))
+
 -- | Apply operator Divide on the provided value expressions.
 mkDivide :: ValExprContext c v => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkDivide _ d _ | getSort d /= SortInt = Left $ MinError (T.pack ("Dividend not of expected Sort Int but " ++ show (getSort d)))
@@ -231,6 +249,91 @@ unsafeModulo :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 unsafeModulo _                          (view -> Vconst (Cint n)) | n == 0 = Left $ MinError (T.pack "Divisor equal to zero in Modulo")
 unsafeModulo (view ->  Vconst (Cint t)) (view -> Vconst (Cint n))          = unsafeConst (Cint (t `mod` n) )
 unsafeModulo vet                        ven                                = Right $ ValExpr (Vmodulo vet ven)
+
+-- is key a constant?
+isKeyConst :: ValExpr v -> Integer -> Bool
+isKeyConst (view -> Vconst{}) _ = True
+isKeyConst _                  _ = False
+
+-- | Apply operator sum on the provided list of value expressions.
+mkSum :: (Ord v, ValExprContext c v) => c -> [ValExpr v] -> Either MinError (ValExpr v)
+mkSum _ l | all (\e -> SortInt == getSort e) l = unsafeSum l
+mkSum _ _                                      = Left $ MinError (T.pack "Not all value expressions in list are of expected sort Int")
+-- Note: inverse of addition (subtraction) is communicative -> occurrence can also be negativeonly
+-- Simplification incorporated:
+-- 1. remove all nested sums, since (a+b) + (c+d) == (a+b+c+d)
+--    remove duplicates (by using occurrence) -- we use communicative property of sum
+-- 2. at most one value: the value is the sum of all values
+--    special case if the sum is zero, no value is inserted since v == v+0
+-- 3. When map is empty return 0
+--    When map contains a single element exactly once, return that element
+unsafeSum :: Ord v => [ValExpr v] -> Either MinError (ValExpr v)
+unsafeSum = unsafeSum' . flattenSum
+    where
+        flattenSum :: Ord v => [ValExpr v] -> Map.Map (ValExpr v) Integer
+        flattenSum = Map.filter (0 ==) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
+        
+        fromValExpr :: ValExpr v -> Map.Map (ValExpr v) Integer
+        fromValExpr (view -> Vsum m) = m
+        fromValExpr x                = Map.singleton x 1
+
+-- Sum doesn't contain elements of type Vsum.
+unsafeSum' :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
+unsafeSum' m = 
+    let (vals, nonvals) = Map.partitionWithKey isKeyConst m
+        retVal :: Map.Map (ValExpr v) Integer
+        retVal = case sum (map toValue (Map.toList vals)) of
+                    0   -> nonvals
+                    val -> case unsafeConst (Cint val) of
+                                Right x -> Map.insert x 1 nonvals
+                                Left _  -> error "Unexpected failure in unsafeConst in unsafeSum"
+      in
+        case Map.toList retVal of
+            []          -> Right zeroValExpr     -- sum of nothing equal to zero
+            [(term, 1)] -> Right term
+            _           -> Right (ValExpr (Vsum retVal))
+    where
+        toValue :: (ValExpr v, Integer) -> Integer
+        toValue (view -> Vconst (Cint i), o) = i * o
+        toValue (_                      , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeSum"
+
+-- | Apply operator product on the provided list of value expressions.
+mkProduct :: (Ord v, ValExprContext c v) => c -> [ValExpr v] -> Either MinError (ValExpr v)
+mkProduct _ l | all (\e -> SortInt == getSort e) l = unsafeProduct l
+mkProduct _ _                                      = Left $ MinError (T.pack "Not all value expressions in list are of expected sort Int")
+-- Note: inverse of product (division) is not communicative -> occurrence can only be positive
+-- Simplification incorporated:
+-- 1. remove all nested products, since (a*b) * (c*d) == (a*b*c*d)
+--    remove duplicates (by using occurrence) -- we use communicative property of product
+-- 2. at most one value: the value is the product of all values
+--    special case if the product is zero, value is zero
+-- 3. When non values are empty return value
+--    When non-values are not empty, return sum which multiplies value with non-values
+unsafeProduct :: Ord v => [ValExpr v] -> Either MinError (ValExpr v)
+unsafeProduct = unsafeProduct' . flattenProduct
+    where
+        flattenProduct :: Ord v => [ValExpr v] -> Map.Map (ValExpr v) Integer
+        flattenProduct = Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted)
+        
+        fromValExpr :: ValExpr v -> Map.Map (ValExpr v) Integer
+        fromValExpr (view -> Vproduct m) = m
+        fromValExpr x                    = Map.singleton x 1
+
+-- Product doesn't contain elements of type Vproduct.
+unsafeProduct' :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
+-- Simplification: 0 * x = 0
+unsafeProduct' m | Map.member zeroValExpr m = Right zeroValExpr
+unsafeProduct' m =
+    let (vals, nonvals) = Map.partitionWithKey isKeyConst m
+        value = product (map toValue (Map.toList vals))
+      in
+        case Map.toList nonvals of
+            []         -> unsafeConst (Cint value)
+            _          -> Right (ValExpr (Vsum (Map.map (* value) nonvals)))
+    where
+        toValue :: (ValExpr v, Integer) -> Integer
+        toValue (view -> Vconst (Cint i), o) = i ^ o
+        toValue (_                      , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeProduct"
 
 -- | Apply operator GEZ (Greater Equal Zero) on the provided value expression.
 -- Preconditions are /not/ checked.
