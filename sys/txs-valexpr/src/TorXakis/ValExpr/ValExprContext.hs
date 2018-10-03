@@ -28,11 +28,12 @@ where
 import           Control.DeepSeq        (NFData)
 import           Data.Data              (Data)
 import qualified Data.HashMap           as Map
+import qualified Data.Text              as T
 import           GHC.Generics           (Generic)
 
-import           TorXakis.Error         ( MinError )
-import           TorXakis.Name          ( RefByName, toMapByName )
-import           TorXakis.Sort          ( SortContext (..) , ADTDef, violationsAddAdtDefs )
+import           TorXakis.Error         ( MinError(MinError) )
+import           TorXakis.Name          ( RefByName, toMapByName, repeatedByName )
+import           TorXakis.Sort          ( SortContext (..), MinimalSortContext (..), elemSort, getSort )
 import           TorXakis.VarDef        ( VarDef, MinimalVarDef )
 import           TorXakis.FuncDef       ( FuncDef )
 import           TorXakis.FuncSignature ( FuncSignature )
@@ -72,24 +73,32 @@ class (SortContext a, VarDef v) => ValExprContext a v where
 
 
 -- | A minimal instance of 'ValExprContext'.
-data MinimalValExprContext = MinimalValExprContext { -- adt definitions
-                                                     adtDefsToMap :: Map.Map (RefByName ADTDef) ADTDef 
+data MinimalValExprContext = MinimalValExprContext { sortContext :: MinimalSortContext
                                                      -- var definitions
-                                                   , varDefsToMap :: Map.Map (RefByName MinimalVarDef) MinimalVarDef
+                                                   , _varDefs :: Map.Map (RefByName MinimalVarDef) MinimalVarDef
                                                      -- function definitions
-                                                   , funcDefsToMap :: Map.Map FuncSignature (FuncDef MinimalVarDef)
+                                                   , _funcDefs :: Map.Map FuncSignature (FuncDef MinimalVarDef)
                                                 } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance SortContext MinimalValExprContext where
-    empty = MinimalValExprContext Map.empty Map.empty Map.empty
-    adtDefs = adtDefsToMap
-    addAdtDefs context as = case violationsAddAdtDefs context as of
-                                Just e  -> Left e
-                                Nothing -> Right $ context { adtDefsToMap = Map.union (adtDefsToMap context) (toMapByName as) }
+    empty = MinimalValExprContext (MinimalSortContext Map.empty) Map.empty Map.empty
+    adtDefs ctx    = adtDefs (sortContext ctx)
+    addAdtDefs ctx as = case addAdtDefs (sortContext ctx) as of
+                          Left e     -> Left e
+                          Right sctx -> Right $ ctx {sortContext = sctx} 
 
-    
 instance ValExprContext MinimalValExprContext MinimalVarDef where
-    varDefs = varDefsToMap
-    addVarDefs = undefined
-    funcDefs = funcDefsToMap
+    varDefs = _varDefs
+    addVarDefs ctx vs 
+        | not $ null nuVarNames    = Left $ MinError (T.pack ("Non unique variable names: " ++ show nuVarNames))
+        | not $ null undefinedSort = Left $ MinError (T.pack ("Sorts not defined in context of variables: " ++ show undefinedSort))
+        | otherwise                = Right $ ctx { _varDefs = Map.union (toMapByName vs) (_varDefs ctx) }
+      where
+        nuVarNames :: [MinimalVarDef]
+        nuVarNames = repeatedByName vs
+
+        undefinedSort :: [MinimalVarDef]
+        undefinedSort = filter (not . (elemSort ctx) . getSort) vs
+
+    funcDefs = _funcDefs
     addFuncDefs = undefined

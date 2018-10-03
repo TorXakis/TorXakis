@@ -36,7 +36,7 @@ arbitrarySort :: TestSortContext a => a -> Gen Sort
 arbitrarySort ctx =
     do
         n <- getSize
-        let availableSort = Map.keys (Map.filter (<=n) (getMapSortSize ctx)) in
+        let availableSort = Map.keys (Map.filter (<=n) (mapSortSize ctx)) in
             elements availableSort
 
 arbitraryFields :: [Sort] -> [Name] -> Gen [FieldDef]
@@ -96,4 +96,4 @@ arbitraryADTDefs ctx =
                         Left  _    -> error "error in generator: creating valid ADTDef"
                         Right aDef -> aDef : aDefs
           in
-            toADTDefs uniqueNames (Map.keys (getMapSortSize ctx))
+            toADTDefs uniqueNames (Map.keys (mapSortSize ctx))

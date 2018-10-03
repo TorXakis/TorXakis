@@ -151,13 +151,12 @@ violationsAddAdtDefs context as
             isSortConstructable _  _           = True
 
 -- | A minimal instance of 'SortContext'.
-newtype MinimalSortContext = MinimalSortContext { adtDefsToMap :: Map.Map (RefByName ADTDef) ADTDef 
+newtype MinimalSortContext = MinimalSortContext { _adtDefs :: Map.Map (RefByName ADTDef) ADTDef 
                                                 } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance SortContext MinimalSortContext where
     empty = MinimalSortContext Map.empty
-    adtDefs = adtDefsToMap
-    addAdtDefs context as = case violationsAddAdtDefs context as of
+    adtDefs = _adtDefs
+    addAdtDefs ctx as = case violationsAddAdtDefs ctx as of
                                 Just e  -> Left e
-                                Nothing -> Right $ context { adtDefsToMap = Map.union (adtDefsToMap context) (toMapByName as) }
-
+                                Nothing -> Right $ ctx { _adtDefs = Map.union (_adtDefs ctx) (toMapByName as) }

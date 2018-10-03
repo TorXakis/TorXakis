@@ -225,8 +225,8 @@ mkUnaryMinus _ v | getSort v == SortInt = unsafeUnaryMinus v
 mkUnaryMinus _ v                        = Left $ MinError (T.pack ("Unary Minus argument not of expected Sort Int but " ++ show (getSort v)))
 
 unsafeUnaryMinus :: ValExpr v -> Either MinError (ValExpr v)
-unsafeUnaryMinus (view -> Vsum m) = Right (ValExpr (Vsum (Map.map (* (-1)) m)))
-unsafeUnaryMinus x                = Right (ValExpr (Vsum (Map.singleton x (-1))))
+unsafeUnaryMinus (view -> Vsum m) = unsafeSumFromMap (Map.map (* (-1)) m)
+unsafeUnaryMinus x                = unsafeSumFromMap (Map.singleton x (-1))
 
 -- | Apply operator Divide on the provided value expressions.
 mkDivide :: ValExprContext c v => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
@@ -268,7 +268,7 @@ mkSum _ _                                      = Left $ MinError (T.pack "Not al
 -- 3. When map is empty return 0
 --    When map contains a single element exactly once, return that element
 unsafeSum :: Ord v => [ValExpr v] -> Either MinError (ValExpr v)
-unsafeSum = unsafeSum' . flattenSum
+unsafeSum = unsafeFlattenSum . flattenSum
     where
         flattenSum :: Ord v => [ValExpr v] -> Map.Map (ValExpr v) Integer
         flattenSum = Map.filter (0 ==) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
@@ -277,9 +277,9 @@ unsafeSum = unsafeSum' . flattenSum
         fromValExpr (view -> Vsum m) = m
         fromValExpr x                = Map.singleton x 1
 
--- Sum doesn't contain elements of type Vsum.
-unsafeSum' :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
-unsafeSum' m = 
+-- Flatten Sum doesn't contain elements of type Vsum.
+unsafeFlattenSum :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
+unsafeFlattenSum m = 
     let (vals, nonvals) = Map.partitionWithKey isKeyConst m
         retVal :: Map.Map (ValExpr v) Integer
         retVal = case sum (map toValue (Map.toList vals)) of
@@ -288,14 +288,18 @@ unsafeSum' m =
                                 Right x -> Map.insert x 1 nonvals
                                 Left _  -> error "Unexpected failure in unsafeConst in unsafeSum"
       in
-        case Map.toList retVal of
-            []          -> Right zeroValExpr     -- sum of nothing equal to zero
-            [(term, 1)] -> Right term
-            _           -> Right (ValExpr (Vsum retVal))
+        unsafeSumFromMap retVal
     where
         toValue :: (ValExpr v, Integer) -> Integer
         toValue (view -> Vconst (Cint i), o) = i * o
         toValue (_                      , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeSum"
+
+unsafeSumFromMap :: Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
+unsafeSumFromMap m = 
+        case Map.toList m of
+            []          -> Right zeroValExpr     -- sum of nothing equal to zero
+            [(term, 1)] -> Right term
+            _           -> Right (ValExpr (Vsum m))
 
 -- | Apply operator product on the provided list of value expressions.
 mkProduct :: (Ord v, ValExprContext c v) => c -> [ValExpr v] -> Either MinError (ValExpr v)
@@ -310,7 +314,7 @@ mkProduct _ _                                      = Left $ MinError (T.pack "No
 -- 3. When non values are empty return value
 --    When non-values are not empty, return sum which multiplies value with non-values
 unsafeProduct :: Ord v => [ValExpr v] -> Either MinError (ValExpr v)
-unsafeProduct = unsafeProduct' . flattenProduct
+unsafeProduct = unsafeFlattenProduct . flattenProduct
     where
         flattenProduct :: Ord v => [ValExpr v] -> Map.Map (ValExpr v) Integer
         flattenProduct = Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted)
@@ -319,17 +323,18 @@ unsafeProduct = unsafeProduct' . flattenProduct
         fromValExpr (view -> Vproduct m) = m
         fromValExpr x                    = Map.singleton x 1
 
--- Product doesn't contain elements of type Vproduct.
-unsafeProduct' :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
+-- Flatten Product doesn't contain elements of type Vproduct.
+unsafeFlattenProduct :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
 -- Simplification: 0 * x = 0
-unsafeProduct' m | Map.member zeroValExpr m = Right zeroValExpr
-unsafeProduct' m =
+unsafeFlattenProduct m | Map.member zeroValExpr m = Right zeroValExpr
+unsafeFlattenProduct m =
     let (vals, nonvals) = Map.partitionWithKey isKeyConst m
         value = product (map toValue (Map.toList vals))
       in
         case Map.toList nonvals of
             []         -> unsafeConst (Cint value)
-            _          -> Right (ValExpr (Vsum (Map.map (* value) nonvals)))
+            [(term,1)] -> unsafeSumFromMap $ Map.singleton term value
+            _          -> unsafeSumFromMap $ Map.singleton (ValExpr (Vproduct nonvals)) value
     where
         toValue :: (ValExpr v, Integer) -> Integer
         toValue (view -> Vconst (Cint i), o) = i ^ o

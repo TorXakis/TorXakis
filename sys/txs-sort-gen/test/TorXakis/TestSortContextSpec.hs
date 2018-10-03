@@ -128,11 +128,11 @@ prop_ADTDefs_Dependent =
         case addAdtDefs ctx [cDef, bDef, aDef] of
             Left  _      -> False
             Right newCtx ->     adtDefs newCtx == Map.fromList [(aRef, aDef),(bRef, bDef),(cRef, cDef)]
-                            &&  all ( `elem` Map.toList (getMapSortSize newCtx) ) [(SortADT aRef, 1),(SortADT bRef, 2),(SortADT cRef, 3)] -- also primitive Sorts are contained
-                            &&  getMapAdtMapConstructorSize newCtx == Map.fromList [ (aRef, Map.fromList [(depRef,3), (cstrRef,0)])
-                                                                                   , (bRef, Map.fromList [(depRef,3), (cstrRef,1)])
-                                                                                   , (cRef, Map.fromList [(depRef,3), (cstrRef,2)])
-                                                                                   ]
+                            &&  all ( `elem` Map.toList (mapSortSize newCtx) ) [(SortADT aRef, 1),(SortADT bRef, 2),(SortADT cRef, 3)] -- also primitive Sorts are contained
+                            &&  mapAdtMapConstructorSize newCtx == Map.fromList [ (aRef, Map.fromList [(depRef,3), (cstrRef,0)])
+                                                                                , (bRef, Map.fromList [(depRef,3), (cstrRef,1)])
+                                                                                , (cRef, Map.fromList [(depRef,3), (cstrRef,2)])
+                                                                                ]
 
 -- | a sort context can be incrementally extended - which should be the same as creating it in one step.
 prop_increment :: Bool

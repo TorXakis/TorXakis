@@ -1,7 +1,7 @@
 # TorXakis - Model Based Testing
 # Copyright (c) 2015-2017 TNO and Radboud University
 # See LICENSE at root directory of this repository.
-name:                txs-valexpr
+name:                txs-valexpr-gen
 version:             0.1.0.0
 github:              "TorXakis/TorXakis"
 license:             BSD3
@@ -11,26 +11,22 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 
 dependencies:
 - base >= 4.7 && < 5
+- QuickCheck
+- txs-basics
+- txs-sort
+- txs-sort-gen
+- txs-value-gen
+- txs-valexpr
 
 library:
   source-dirs: src
   exposed-modules:
-  - TorXakis.FuncDef
-  - TorXakis.FuncSignature
-  - TorXakis.ValExpr
-  - TorXakis.VarDef
+  - TorXakis.ValExprGen
+  - TorXakis.TestValExprContext
   dependencies:
-  - array
-  - containers
-  - deepseq
-  - hashable
-  - hashmap
-  - regex-tdfa
-  - text
-  - txs-basics
-  - txs-lex-regex-xsd
-  - txs-sort
-  - txs-value
+    - deepseq
+    - hashmap
+    - text
 
 extra-source-files:
 - README.md
@@ -40,9 +36,21 @@ ghc-options:
 - -Wall
 - -O
 - -Widentities
-- -Wincomplete-record-updates
 - -Wincomplete-uni-patterns
+- -Wincomplete-record-updates
 - -Wmissing-home-modules
 - -Wmissing-local-signatures
 - -Wmonomorphism-restriction
 - -Wredundant-constraints
+
+tests:
+    txs-value-gen-test:
+        main : Spec.hs
+        source-dirs: test
+        ghc-options:
+        - -threaded
+        - -rtsopts
+        - -with-rtsopts=-N
+        dependencies:
+        - hspec
+        - txs-valexpr-gen

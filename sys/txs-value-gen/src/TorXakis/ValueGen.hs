@@ -60,7 +60,7 @@ arbitraryValueOfSort _   SortRegex =
 arbitraryValueOfSort ctx (SortADT a) = 
     do
         n <- getSize
-        case getMapConstructorDefSize ctx a of
+        case mapConstructorDefSize ctx a of
             Left e -> error ("ADTDef " ++ show a ++ " not in context " ++ show e)
             Right mpSize -> let availableCstr = Map.keys (Map.filter (<=n) mpSize)
                               in case availableCstr of
