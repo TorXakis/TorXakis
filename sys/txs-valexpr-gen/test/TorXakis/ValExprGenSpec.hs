@@ -35,7 +35,7 @@ prop_MkUnaryMinus_id :: Gen Bool
 prop_MkUnaryMinus_id =
     -- TODO: add to context, to generate more value expressions of type int
     let ctx = empty :: MinimalTestValExprContext in do
-        ve <- (arbitraryValExprOfSort ctx SortInt) :: Gen (ValExpr MinimalVarDef)
+        ve <- arbitraryValExprOfSort ctx SortInt :: Gen (ValExpr MinimalVarDef)
         return $ case mkUnaryMinus ctx ve of
                         Left e    -> trace ("\nUnexpected error in generator 1 " ++ show e) False
                         Right mve -> case mkUnaryMinus ctx mve of

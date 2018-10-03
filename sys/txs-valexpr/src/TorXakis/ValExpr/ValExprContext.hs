@@ -98,7 +98,7 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
         nuVarNames = repeatedByName vs
 
         undefinedSort :: [MinimalVarDef]
-        undefinedSort = filter (not . (elemSort ctx) . getSort) vs
+        undefinedSort = filter (not . elemSort ctx . getSort) vs
 
     funcDefs = _funcDefs
     addFuncDefs = undefined

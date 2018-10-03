@@ -12,10 +12,7 @@ copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
 dependencies:
 - base >= 4.7 && < 5
 - QuickCheck
-- txs-basics
 - txs-sort
-- txs-sort-gen
-- txs-value-gen
 - txs-valexpr
 
 library:
@@ -26,7 +23,9 @@ library:
   dependencies:
     - deepseq
     - hashmap
-    - text
+    - txs-basics
+    - txs-sort-gen
+    - txs-value-gen
 
 extra-source-files:
 - README.md
