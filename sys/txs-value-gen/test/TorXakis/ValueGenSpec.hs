@@ -40,10 +40,7 @@ prop_ConversionText_id =
             Right ctx -> prop_Ctx_ConversionText_id ctx
 
 prop_Ctx_ConversionText_id :: TestSortContext a => a -> Gen Bool
-prop_Ctx_ConversionText_id ctx =
-    do
-        vals <- listOf1 (arbitraryValue ctx)
-        return $ all check vals
+prop_Ctx_ConversionText_id ctx = all check <$> listOf1 (arbitraryValue ctx)
     where check :: Value -> Bool
           check v = 
                 let txt = valueToText ctx v
@@ -64,10 +61,7 @@ prop_ConversionXML_id =
             Right ctx -> prop_Ctx_ConversionXML_id ctx
 
 prop_Ctx_ConversionXML_id :: TestSortContext a => a -> Gen Bool
-prop_Ctx_ConversionXML_id ctx =
-    do
-        vals <- listOf1 (arbitraryValue ctx)
-        return $ all check vals
+prop_Ctx_ConversionXML_id ctx = all check <$> listOf1 (arbitraryValue ctx)
     where check :: Value -> Bool
           check v = 
                 let xml = valueToXML ctx v
@@ -81,8 +75,8 @@ prop_Ctx_ConversionXML_id ctx =
 spec :: Spec
 spec =
   describe "conversion" $
-    modifyMaxSuccess (const 25) $
-    modifyMaxSize (const 8) $ 
+    modifyMaxSuccess (const 100) $
+    modifyMaxSize (const 20) $ 
       do
         it "fromText . toText == id" $ property prop_ConversionText_id
         it "fromXML . toXML == id" $ property prop_ConversionXML_id
