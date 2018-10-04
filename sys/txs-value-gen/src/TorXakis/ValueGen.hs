@@ -62,7 +62,7 @@ arbitraryValueOfSort ctx (SortADT a) =
         n <- getSize
         case mapConstructorDefSize ctx a of
             Left e -> error ("ADTDef " ++ show a ++ " not in context " ++ show e)
-            Right mpSize -> let availableCstr = Map.keys (Map.filter (<=n) mpSize)
+            Right mpSize -> let availableCstr = Map.keys (Map.filter (<n) mpSize)
                               in case availableCstr of
                                     [] -> error ("Unexpected: No Constructor available for " ++ show a)
                                     _  -> do
@@ -72,5 +72,5 @@ arbitraryValueOfSort ctx (SortADT a) =
                                                 cstrDef = fromMaybe (error ("cstrDef " ++ show selected ++ " not in ADT " ++ show adtDef))
                                                                     (Map.lookup selected ((constructors . viewADTDef) adtDef))
                                               in do
-                                                fs <- mapM (resize (max 0 (n-1)) . arbitraryValueOfSort ctx . sort) ((fields . viewConstructorDef) cstrDef)
+                                                fs <- mapM (resize (n-1) . arbitraryValueOfSort ctx . sort) ((fields . viewConstructorDef) cstrDef)
                                                 return $ Ccstr a selected fs
