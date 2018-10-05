@@ -51,5 +51,7 @@ tests:
         - -rtsopts
         - -with-rtsopts=-N
         dependencies:
+        - containers
         - hspec
+        - txs-value
         - txs-valexpr-gen

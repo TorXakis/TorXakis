@@ -19,6 +19,7 @@ module TorXakis.ValExprGenSpec
 (spec
 )
 where
+import qualified Data.Set as Set
 import           Debug.Trace
 import           Test.Hspec
 import           Test.Hspec.QuickCheck (modifyMaxSuccess, modifyMaxSize)
@@ -28,6 +29,7 @@ import           TorXakis.Sort
 import           TorXakis.TestValExprContext
 import           TorXakis.ValExpr
 import           TorXakis.ValExprGen
+import           TorXakis.Value
 import           TorXakis.VarDef
 
 -- | min (min x) == x
@@ -40,11 +42,29 @@ prop_MkUnaryMinus_id =
                         Left e    -> trace ("\nUnexpected error in generator 1 " ++ show e) False
                         Right mve -> case mkUnaryMinus ctx mve of
                                         Left e     -> trace ("\nUnexpected error in generator 2 " ++ show e) False
-                                        Right mmve -> trace ("ve = " ++ show ve ++ "\nmmve = " ++ show mmve) ve == mmve
+                                        Right mmve -> ve == mmve
+
+-- | a \/ not a <==> True
+prop_AOrNotA :: Gen Bool
+prop_AOrNotA =
+    -- TODO: add to context, to generate more value expressions of type Bool
+    let ctx = empty :: MinimalTestValExprContext in do
+        a <- arbitraryValExprOfSort ctx SortBool :: Gen (ValExpr MinimalVarDef)
+        return $ case mkNot ctx a of
+                        Left e   -> trace ("\nUnexpected error with mkNot " ++ show e) False
+                        Right na -> case mkOr ctx (Set.fromList [a,na]) of
+                                        Left e  -> trace ("\nUnexpected error with mkOr " ++ show e) False
+                                        Right v -> case view v of 
+                                                        Vconst (Cbool True) -> True
+                                                        x                   -> trace ("\nWrong value = " ++ show x) False
 
 spec :: Spec
-spec =
-  describe "mkUnaryMinus" $
-    modifyMaxSuccess (const 25) $
-    modifyMaxSize (const 8) $ 
-        it "mkUnaryMinus mkUnaryMinus == id" $ property prop_MkUnaryMinus_id
+spec = do
+            describe "mkUnaryMinus" $
+                modifyMaxSuccess (const 100) $
+                modifyMaxSize (const 20) $ 
+                it "mkUnaryMinus mkUnaryMinus == id" $ property prop_MkUnaryMinus_id
+            describe "Or" $
+                modifyMaxSuccess (const 100) $
+                modifyMaxSize (const 20) $ 
+                it "a \\/ not a == True" $ property prop_AOrNotA

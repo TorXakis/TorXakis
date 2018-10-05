@@ -25,10 +25,11 @@ module TorXakis.ValExpr
 , PredefKind(..)
 , module TorXakis.ValExpr.ValExprConstructor
 , module TorXakis.ValExpr.ValExprContext
+, module TorXakis.ValExpr.ValExprExtension
 )
 where
 
 import TorXakis.ValExpr.ValExpr
 import TorXakis.ValExpr.ValExprContext
 import TorXakis.ValExpr.ValExprConstructor
---import TorXakis.ValExpr.ValExprExtension
+import TorXakis.ValExpr.ValExprExtension

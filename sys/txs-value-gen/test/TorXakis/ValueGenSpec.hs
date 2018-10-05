@@ -30,44 +30,37 @@ import           TorXakis.TestSortContext
 import           TorXakis.Value
 import           TorXakis.ValueGen
 
--- | ConversionText is Identity
-prop_ConversionText_id :: Gen Bool
-prop_ConversionText_id = 
+propertyInContext  :: (MinimalTestSortContext -> Gen Bool) -> Gen Bool
+propertyInContext prop = 
     let c0 = empty :: MinimalTestSortContext in do
         incr1 <- arbitraryADTDefs c0
         case addAdtDefs c0 incr1 of
-            Left e  -> error ("Invalid generator - " ++ show e)
-            Right ctx -> prop_Ctx_ConversionText_id ctx
+            Left e    -> error ("Invalid generator - " ++ show e)
+            Right ctx -> prop ctx
 
-prop_Ctx_ConversionText_id :: TestSortContext a => a -> Gen Bool
-prop_Ctx_ConversionText_id ctx = all check <$> listOf1 (arbitraryValue ctx)
+
+-- | ConversionText is Identity
+prop_ConversionText_id :: TestSortContext a => a -> Gen Bool
+prop_ConversionText_id ctx = all check <$> listOf1 (arbitraryValue ctx)
     where check :: Value -> Bool
           check v = 
                 let txt = valueToText ctx v
                     actual = valueFromText ctx (getSort v) txt
                   in
-                    trace ("txt = " ++ show txt) $
+                    -- trace ("txt = " ++ show txt) $
                         case actual of
                             Left e   -> trace ("\nParse error " ++ show e) False
                             Right v' -> v == v'
 
 -- | ConversionXML is Identity
-prop_ConversionXML_id :: Gen Bool
-prop_ConversionXML_id = 
-    let c0 = empty :: MinimalTestSortContext in do
-        incr1 <- arbitraryADTDefs c0
-        case addAdtDefs c0 incr1 of
-            Left e  -> error ("Invalid generator - " ++ show e)
-            Right ctx -> prop_Ctx_ConversionXML_id ctx
-
-prop_Ctx_ConversionXML_id :: TestSortContext a => a -> Gen Bool
-prop_Ctx_ConversionXML_id ctx = all check <$> listOf1 (arbitraryValue ctx)
+prop_ConversionXML_id :: TestSortContext a => a -> Gen Bool
+prop_ConversionXML_id ctx = all check <$> listOf1 (arbitraryValue ctx)
     where check :: Value -> Bool
           check v = 
                 let xml = valueToXML ctx v
                     actual = valueFromXML ctx (getSort v) xml
                   in
-                    trace ("xml = " ++ show xml) $
+                    -- trace ("xml = " ++ show xml) $
                         case actual of
                             Left e   -> trace ("\nParse error " ++ show e) False
                             Right v' -> v == v'
@@ -78,5 +71,5 @@ spec =
     modifyMaxSuccess (const 100) $
     modifyMaxSize (const 20) $ 
       do
-        it "fromText . toText == id" $ property prop_ConversionText_id
-        it "fromXML . toXML == id" $ property prop_ConversionXML_id
+        it "fromText . toText == id" $ property (propertyInContext prop_ConversionText_id)
+        it "fromXML . toXML == id" $ property (propertyInContext prop_ConversionXML_id)
