@@ -44,7 +44,7 @@ module TorXakis.ValExpr.ValExprConstructor
 , mkSum
   -- **** Product
 , mkProduct
-  -- **** Comparisons Greater Equal Zero
+  -- **** Comparison
 , mkGEZ
   -- *** String Operators to create Value Expressions
   -- **** Length operator
@@ -341,7 +341,6 @@ unsafeFlattenProduct m =
         toValue (_                      , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeProduct"
 
 -- | Apply operator GEZ (Greater Equal Zero) on the provided value expression.
--- Preconditions are /not/ checked.
 mkGEZ :: ValExprContext c v => c -> ValExpr v -> Either MinError (ValExpr v)
 mkGEZ _ d | getSort d /= SortInt = Left $ MinError (T.pack ("Argument of GEZ not of expected Sort Int but " ++ show (getSort d)))
 mkGEZ _ d                        = unsafeGEZ d

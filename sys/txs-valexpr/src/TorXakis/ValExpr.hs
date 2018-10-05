@@ -24,8 +24,8 @@ module TorXakis.ValExpr
 , eval
 , PredefKind(..)
 , module TorXakis.ValExpr.ValExprConstructor
-, module TorXakis.ValExpr.ValExprContext
 , module TorXakis.ValExpr.ValExprExtension
+, module TorXakis.ValExpr.ValExprContext
 )
 where
 

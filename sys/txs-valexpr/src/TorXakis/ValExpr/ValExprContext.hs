@@ -39,7 +39,7 @@ import           TorXakis.FuncDef       ( FuncDef )
 import           TorXakis.FuncSignature ( FuncSignature )
 
 
--- | A ValExprContext instance contains all definitions to work with sorts and references thereof
+-- | A ValExprContext instance contains all definitions to work with value expressions and references thereof
 class (SortContext a, VarDef v) => ValExprContext a v where
     -- | Accessor for Variable Definitions
     varDefs :: a -> Map.Map (RefByName v) v
