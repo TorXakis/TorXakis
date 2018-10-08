@@ -28,6 +28,11 @@ module TorXakis.ValExpr.ValExprConstructor
 , mkEqual
   -- **** If Then Else
 , mkITE
+  -- **** Function Call
+, mkFunc
+  -- **** Recursive Function Call
+, mkRecursiveFunc
+  -- **** Predefined Function Call
   -- *** Boolean Operators to create Value Expressions
   -- **** Not
 , mkNot
@@ -72,12 +77,15 @@ import qualified Data.Text       as T
 import           Text.Regex.TDFA
 
 import           TorXakis.Error
+import           TorXakis.FuncDef
+import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.Value
 import           TorXakis.ValExpr.RegexXSD2Posix
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.ValExpr.ValExprContext
+import           TorXakis.VarDef
 
 trueValExpr :: ValExpr v
 trueValExpr = ValExpr $ Vconst (Cbool True)
@@ -166,6 +174,35 @@ unsafeITE _ tb fb | tb == fb                  = Right tb
 -- Simplification: if (not c) then tb else fb <==> if c then fb else tb
 unsafeITE (view -> Vnot n) tb fb              = Right $ ValExpr (Vite n fb tb)
 unsafeITE cs tb fb                            = Right $ ValExpr (Vite cs tb fb)
+
+-- | Create a function call.
+mkFunc :: ValExprContext c v => c -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
+mkFunc ctx fs vs 
+    | expected == actual = case HashMap.lookup fs (funcDefs ctx) of
+                            Nothing -> Left $ MinError (T.pack ("Function with signature " ++ show fs ++ " not defined in context"))
+                            Just fd -> case body fd of
+                                            (view -> Vconst x)  -> unsafeConst x
+                                            _                   -> case toMaybeValues vs of
+                                                                        Just vs -> subst ctx (Map.fromList (zip (paramDefs fd) vs)) (body fd)
+                                                                        Nothing -> Right $ ValExpr (Vfunc fs vs)
+    | otherwise          = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
+        where
+            expected :: [Sort]
+            expected = args fs
+            actual :: [Sort]
+            actual = map getSort vs
+
+-- | Create a recursive function call.
+-- When a recursive function is added to the context, all function calls will be checked to refer to existing functions.
+mkRecursiveFunc :: VarDef v => FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
+mkRecursiveFunc fs vs 
+    | expected == actual = Right $ ValExpr (Vfunc fs vs)
+    | otherwise          = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
+        where
+            expected :: [Sort]
+            expected = args fs
+            actual :: [Sort]
+            actual = map getSort vs
 
 -- | Apply operator Not on the provided value expression.
 mkNot :: Eq v => ValExprContext c v => c -> ValExpr v -> Either MinError (ValExpr v)
@@ -432,20 +469,24 @@ getCstr ctx aName cName = case HashMap.lookup aName (adtDefs ctx) of
                                 Just aDef -> case HashMap.lookup cName ( (constructors . viewADTDef) aDef) of
                                                 Nothing   -> Left $ MinError (T.pack ("Constructor " ++ show cName ++ " not defined for ADTDefinition " ++ show aName))
                                                 Just cDef -> Right cDef
-                                                
+
+-- | When all value expressions are constant values, return Just them otherwise return Nothing.
+toMaybeValues :: [ValExpr v] -> Maybe [Value]
+toMaybeValues = foldl toMaybeValue (Just [])
+    where
+        toMaybeValue :: Maybe [Value] -> ValExpr v -> Maybe [Value]
+        toMaybeValue Nothing   _                  = Nothing
+        toMaybeValue (Just vs) (view -> Vconst v) = Just (v:vs)
+        toMaybeValue _         _                  = Nothing
+
 -- | Apply ADT Constructor of the given ADT Name and Constructor Name on the provided arguments (the list of value expressions).
 mkCstr :: ValExprContext c v => c -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpr v] -> Either MinError (ValExpr v)
 mkCstr ctx aName cName as = getCstr ctx aName cName >>= const (unsafeCstr aName cName as)
                                 
 unsafeCstr :: RefByName ADTDef -> RefByName ConstructorDef -> [ValExpr v] -> Either MinError (ValExpr v)
-unsafeCstr aName cName as = case foldl toMaybeValues (Just []) as of
+unsafeCstr aName cName as = case toMaybeValues as of
                                 Just vs -> unsafeConst (Ccstr aName cName vs)
                                 Nothing -> Right $ ValExpr (Vcstr aName cName as)
-    where
-        toMaybeValues :: Maybe [Value] -> ValExpr v -> Maybe [Value]
-        toMaybeValues Nothing   _                  = Nothing
-        toMaybeValues (Just vs) (view -> Vconst v) = Just (v:vs)
-        toMaybeValues _         _                  = Nothing
 
 -- | Is the provided value expression made by the ADT constructor with the given ADT Name and Constructor Name?
 mkIsCstr :: ValExprContext c v => c -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
