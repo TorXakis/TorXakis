@@ -16,7 +16,7 @@ See LICENSE at root directory of this repository.
 -- Smart constructors for Value Expressions.
 -----------------------------------------------------------------------------
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ViewPatterns         #-}
+{-# LANGUAGE ViewPatterns        #-}
 module TorXakis.ValExpr.ValExprConstructor
 ( -- ** Constructors to create Value Expression
   -- *** Constant Value
@@ -56,6 +56,13 @@ module TorXakis.ValExpr.ValExprConstructor
   -- *** Regular Expression Operators to create Value Expressions
   -- **** String in Regular Expression operator
 , mkStrInRe
+  -- *** Algebraic Data Type Operators to create Value Expressions
+  -- **** Algebraic Data Type constructor operator
+, mkCstr
+  -- **** Algebraic Data Type IsConstructor function
+, mkIsCstr
+  -- **** Algebraic Data Type Accessor
+, mkAccess
 )
 where
 import qualified Data.HashMap    as HashMap
@@ -367,13 +374,10 @@ mkAt _ s _ | getSort s /= SortString = Left $ MinError (T.pack ("First argument 
 mkAt _ _ i | getSort i /= SortInt    = Left $ MinError (T.pack ("Second argument of At not of expected Sort Int but " ++ show (getSort i)))
 mkAt _ s i                           = unsafeAt s i
 
--- TODO: is this the correct behaviour? -- check with smt solvers
--- Either return char   and error on illegal index
--- or     return string and ""    on an illegal index 
 unsafeAt :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 unsafeAt (view -> Vconst (Cstring s)) (view -> Vconst (Cint i)) =
     if i < 0 || i >= Prelude.toInteger (T.length s)
-        then Left $ MinError (T.pack ("Error in model: Accessing string " ++ show s ++ " of length " ++ show (T.length s) ++ " with illegal index "++ show i))
+        then Right stringEmptyValExpr
         else unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))    -- s !! i for Text
 unsafeAt ves vei = Right $ ValExpr (Vat ves vei)
 
@@ -420,3 +424,62 @@ mkStrInRe _ s r                           = unsafeStrInRe s r
 unsafeStrInRe :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 unsafeStrInRe (view -> Vconst (Cstring s)) (view -> Vconst (Cregex r)) = unsafeConst (Cbool (T.unpack s =~ T.unpack (xsd2posix r) ) )
 unsafeStrInRe s r                                                      = Right $ ValExpr (Vstrinre s r)
+
+-- get ConstructorDef when possible
+getCstr :: SortContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> Either MinError ConstructorDef
+getCstr ctx aName cName = case HashMap.lookup aName (adtDefs ctx) of
+                                Nothing   -> Left $ MinError (T.pack ("ADTDefinition " ++ show aName ++ " not defined in context"))
+                                Just aDef -> case HashMap.lookup cName ( (constructors . viewADTDef) aDef) of
+                                                Nothing   -> Left $ MinError (T.pack ("Constructor " ++ show cName ++ " not defined for ADTDefinition " ++ show aName))
+                                                Just cDef -> Right cDef
+                                                
+-- | Apply ADT Constructor of the given ADT Name and Constructor Name on the provided arguments (the list of value expressions).
+mkCstr :: ValExprContext c v => c -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpr v] -> Either MinError (ValExpr v)
+mkCstr ctx aName cName as = getCstr ctx aName cName >>= const (unsafeCstr aName cName as)
+                                
+unsafeCstr :: RefByName ADTDef -> RefByName ConstructorDef -> [ValExpr v] -> Either MinError (ValExpr v)
+unsafeCstr aName cName as = case foldl toMaybeValues (Just []) as of
+                                Just vs -> unsafeConst (Ccstr aName cName vs)
+                                Nothing -> Right $ ValExpr (Vcstr aName cName as)
+    where
+        toMaybeValues :: Maybe [Value] -> ValExpr v -> Maybe [Value]
+        toMaybeValues Nothing   _                  = Nothing
+        toMaybeValues (Just vs) (view -> Vconst v) = Just (v:vs)
+        toMaybeValues _         _                  = Nothing
+
+-- | Is the provided value expression made by the ADT constructor with the given ADT Name and Constructor Name?
+mkIsCstr :: ValExprContext c v => c -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
+mkIsCstr ctx aName cName v = getCstr ctx aName cName >>= const (unsafeIsCstr aName cName v)
+
+unsafeIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
+unsafeIsCstr aName cName (view -> Vcstr a c _)          = unsafeConst (Cbool (aName == a && cName == c))
+unsafeIsCstr aName cName (view -> Vconst (Ccstr a c _)) = unsafeConst (Cbool (aName == a && cName == c))
+unsafeIsCstr aName cName v                              = Right $ ValExpr (Viscstr aName cName v)
+
+mkAccess :: ValExprContext c v => c -> RefByName ADTDef -> RefByName ConstructorDef -> RefByName FieldDef -> ValExpr v -> Either MinError (ValExpr v)
+mkAccess ctx aName cName fName v = getCstr ctx aName cName >>= getFieldInfo >>= (\(s,p) -> unsafeAccess aName cName s p v)
+    where
+        getFieldInfo :: ConstructorDef -> Either MinError (Sort, Int)
+        getFieldInfo cDef = case lookupField (zip (fields (viewConstructorDef cDef)) [0..]) of
+                                Nothing       -> Left $ MinError (T.pack ("FieldName " ++ show fName ++ " not contained in constructor " ++ show cName ++ " of ADTDefinition " ++ show aName))
+                                Just (fd,pos) -> Right (getSort fd, pos)
+            where                    
+                lookupField :: [(FieldDef, Int)] -> Maybe (FieldDef, Int)
+                lookupField []            = Nothing
+                lookupField ((f,p):xs)    = if fieldName f == toName fName
+                                            then Just (f,p)
+                                            else lookupField xs
+
+unsafeAccess :: RefByName ADTDef -> RefByName ConstructorDef -> Sort -> Int -> ValExpr v -> Either MinError (ValExpr v)
+-- Note: different sort is impossible so aName for both the same
+unsafeAccess _ cName _ pos (view -> Vcstr _ c fs) = 
+    if cName == c
+        then Right $ fs !! pos
+        else Left $ MinError (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on instance from constructor " ++ show c
+                                      ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
+unsafeAccess _ cName _ pos (view -> Vconst (Ccstr _ c fs)) = 
+    if cName == c
+        then unsafeConst $ fs !! pos
+        else Left $ MinError (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on value from constructor " ++ show c
+                                      ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
+unsafeAccess aName cName srt pos v = Right $ ValExpr (Vaccess aName cName srt pos v)

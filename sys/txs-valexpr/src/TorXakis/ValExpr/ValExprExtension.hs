@@ -60,9 +60,7 @@ import           TorXakis.ValExpr.ValExprContext
 mkOr :: (Ord v, ValExprContext c v) => c -> Set.Set (ValExpr v) -> Either MinError (ValExpr v)
 -- a \/ b <==> not (not a /\ not b)
 mkOr c s | all (\e -> SortBool == getSort e) (Set.toList s) = case partitionEithers (map (mkNot c) (Set.toList s)) of
-                                                                    ([] , ns) -> case mkAnd c (Set.fromList ns) of
-                                                                                    Right a -> mkNot c a
-                                                                                    Left e  -> error ("mkAnd on booleans should succeed in Or. However: " ++ show e)
+                                                                    ([] , ns) -> mkAnd c (Set.fromList ns) >>= mkNot c
                                                                     (es, _)   -> error ("mkNot on booleans should succeed in Or. However: " ++ show es)
 mkOr _ _                                                    = Left $ MinError (T.pack "Not all value expressions in set are of expected sort Bool")
 
@@ -70,30 +68,23 @@ mkOr _ _                                                    = Left $ MinError (T
 mkXor :: (Ord v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkXor _ a _ | SortBool /= getSort a = Left $ MinError (T.pack ("First argument of Xor is not of expected sort Bool but " ++ show (getSort a)))
 mkXor _ _ b | SortBool /= getSort b = Left $ MinError (T.pack ("Second argument of Xor is not of expected sort Bool but " ++ show (getSort b)))
-mkXor c a b                         = case mkNot c a of
-                                            Left e   -> error ("mkNot on boolean a should succeed in Xor. However: " ++ show e)
-                                            Right na -> case mkNot c b of
-                                                            Left e   -> error ("mkNot on boolean b should succeed in Xor. However: " ++ show e)
-                                                            Right nb -> case mkAnd c (Set.fromList [a,nb]) of
-                                                                            Left e   -> error ("First mkAnd should succeed in Xor. However: " ++ show e)
-                                                                            Right a1 -> case mkAnd c (Set.fromList [na,b]) of
-                                                                                            Left e   -> error ("Second mkAnd should succeed in Xor. However: " ++ show e)
-                                                                                            Right a2 -> mkOr c (Set.fromList [a1,a2])
+-- a xor b <==> (a /\ not b) \/ (not a /\ b)
+mkXor c a b                         = mkNot c a >>= (\na ->
+                                      mkNot c b >>= (\nb -> 
+                                            mkAnd c (Set.fromList [a,nb]) >>= (\a1 ->
+                                            mkAnd c (Set.fromList [na,b]) >>= (\a2 ->
+                                                    mkOr c (Set.fromList [a1,a2]) )) ))
 
 -- | Apply operator Implies (=>) on the provided value expressions.
 mkImplies :: (Ord v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkImplies _ a _ | SortBool /= getSort a = Left $ MinError (T.pack ("First argument of Implies is not of expected sort Bool but " ++ show (getSort a)))
 mkImplies _ _ b | SortBool /= getSort b = Left $ MinError (T.pack ("Second argument of Implies is not of expected sort Bool but " ++ show (getSort b)))
 -- a => b <==> not a \/ b <==> not (a /\ not b)
-mkImplies c a b                         = case mkNot c b of
-                                            Left e   -> error ("mkNot on boolean b should succeed in Implies. However: " ++ show e)
-                                            Right nb -> case mkAnd c (Set.fromList [a,nb]) of
-                                                            Left e   -> error ("mkAnd on set of booleans should succeed in Implies. However: " ++ show e)
-                                                            Right as -> mkNot c as
+mkImplies c a b                         = mkNot c b >>= (\nb -> mkAnd c (Set.fromList [a,nb]) >>= mkNot c)
 
 -- | Apply unary operator Plus on the provided value expression.
 mkUnaryPlus :: ValExprContext c v => c -> ValExpr v -> Either MinError (ValExpr v)
-mkUnaryPlus _ v | getSort v == SortInt = Right $ v
+mkUnaryPlus _ v | getSort v == SortInt = Right v
 mkUnaryPlus _ v                        = Left $ MinError (T.pack ("Unary Plus argument not of expected Sort Int but " ++ show (getSort v)))
 
 -- | Apply operator Plus on the provided value expressions.
@@ -108,9 +99,7 @@ mkPlus ctx a b                        = mkSum ctx [a,b]
 mkMinus :: (Ord v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkMinus _   a _ | SortInt /= getSort a = Left $ MinError (T.pack ("First argument of Minus is not of expected sort Int but " ++ show (getSort a)))
 mkMinus _   _ b | SortInt /= getSort b = Left $ MinError (T.pack ("Second argument of Minus is not of expected sort Int but " ++ show (getSort b)))
-mkMinus ctx a b                        = case mkUnaryMinus ctx b of 
-                                            Left e   -> error ("mkUnaryMinus on Int b should succeed in mkMinus. However: " ++ show e)
-                                            Right nb -> mkSum ctx [a,nb]
+mkMinus ctx a b                        = mkUnaryMinus ctx b >>= (\nb -> mkSum ctx [a,nb])
 
 -- | Apply operator Times on the provided value expressions.
 -- Times is the 'mkProduct' of two Value Expressions.
@@ -122,43 +111,29 @@ mkTimes ctx a b                        = mkProduct ctx [a,b]
 -- | Apply operator Abs on the provided value expression.
 mkAbs :: (Ord v, ValExprContext c v) => c -> ValExpr v -> Either MinError (ValExpr v)
 mkAbs _   a | SortInt /= getSort a = Left $ MinError (T.pack ("Argument of Abs is not of expected sort Int but " ++ show (getSort a)))
-mkAbs ctx a                        = case mkUnaryMinus ctx a of
-                                            Left e   -> error ("mkUnaryMinus on Int a should succeed in mkAbs. However: " ++ show e)
-                                            Right na -> case mkGEZ ctx a of
-                                                            Left e  -> error ("mkGEZ on Int a should succeed in mkAbs. However: " ++ show e)
-                                                            Right c -> mkITE ctx c a na
+-- abs (x) <==> IF (x >=0) THEN x ELSE -x
+mkAbs ctx a                        = mkUnaryMinus ctx a >>= (\na -> mkGEZ ctx a >>= (\c -> mkITE ctx c a na))
 
 -- | Apply operator Less Then (<) on the provided value expressions.
 mkLT :: (Ord v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkLT _   a _ | SortInt /= getSort a = Left $ MinError (T.pack ("First argument of LT is not of expected sort Int but " ++ show (getSort a)))
 mkLT _   _ b | SortInt /= getSort b = Left $ MinError (T.pack ("Second argument of LT is not of expected sort Int but " ++ show (getSort b)))
 -- a < b <==> a - b < 0 <==> Not ( a - b >= 0 )
-mkLT ctx a b                        = mkMinus ctx a b >>= mkGEZ ctx >>= mkNot ctx   -- TODO: Which implementation to prefer?
---                                        case mkMinus ctx a b of 
---                                            Left e  -> error ("mkMinus should succeed in mkLT. However: " ++ show e)
---                                            Right s -> case mkGEZ ctx s of 
---                                                            Left e  -> error ("mkGEZ should succeed in mkLT. However: " ++ show e)
---                                                            Right c -> mkNot ctx c
+mkLT ctx a b                        = mkMinus ctx a b >>= mkGEZ ctx >>= mkNot ctx
 
 -- | Apply operator Greater Then (>) on the provided value expressions.
 mkGT :: (Ord v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkGT _   a _ | SortInt /= getSort a = Left $ MinError (T.pack ("First argument of GT is not of expected sort Int but " ++ show (getSort a)))
 mkGT _   _ b | SortInt /= getSort b = Left $ MinError (T.pack ("Second argument of GT is not of expected sort Int but " ++ show (getSort b)))
 -- a > b <==> 0 > b - a <==> Not ( 0 <= b - a )
-mkGT ctx a b                        = case mkMinus ctx b a of 
-                                            Left e  -> error ("mkMinus should succeed in mkGT. However: " ++ show e)
-                                            Right s -> case mkGEZ ctx s of 
-                                                            Left e  -> error ("mkGEZ should succeed in mkGT. However: " ++ show e)
-                                                            Right c -> mkNot ctx c
+mkGT ctx a b                        = mkMinus ctx b a >>= mkGEZ ctx >>= mkNot ctx
 
 -- | Apply operator Less Equal (<=) on the provided value expressions.
 mkLE :: (Ord v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkLE _   a _ | SortInt /= getSort a = Left $ MinError (T.pack ("First argument of LE is not of expected sort Int but " ++ show (getSort a)))
 mkLE _   _ b | SortInt /= getSort b = Left $ MinError (T.pack ("Second argument of LE is not of expected sort Int but " ++ show (getSort b)))
 -- a <= b <==> 0 <= b - a
-mkLE ctx a b                        = case mkMinus ctx b a of 
-                                            Left e  -> error ("mkMinus should succeed in mkLE. However: " ++ show e)
-                                            Right s -> mkGEZ ctx s
+mkLE ctx a b                        = mkMinus ctx b a >>= mkGEZ ctx
 
 
 -- | Apply operator Less Equal (>=) on the provided value expressions.
@@ -166,6 +141,4 @@ mkGE :: (Ord v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> Either Min
 mkGE _   a _ | SortInt /= getSort a = Left $ MinError (T.pack ("First argument of GE is not of expected sort Int but " ++ show (getSort a)))
 mkGE _   _ b | SortInt /= getSort b = Left $ MinError (T.pack ("Second argument of GE is not of expected sort Int but " ++ show (getSort b)))
 -- a >= b <==> a - b >= 0
-mkGE ctx a b                        = case mkMinus ctx a b of 
-                                            Left e  -> error ("mkMinus should succeed in mkGE. However: " ++ show e)
-                                            Right s -> mkGEZ ctx s
+mkGE ctx a b                        = mkMinus ctx a b >>= mkGEZ ctx
