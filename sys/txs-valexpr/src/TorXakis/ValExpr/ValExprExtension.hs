@@ -133,11 +133,12 @@ mkLT :: (Ord v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> Either Min
 mkLT _   a _ | SortInt /= getSort a = Left $ MinError (T.pack ("First argument of LT is not of expected sort Int but " ++ show (getSort a)))
 mkLT _   _ b | SortInt /= getSort b = Left $ MinError (T.pack ("Second argument of LT is not of expected sort Int but " ++ show (getSort b)))
 -- a < b <==> a - b < 0 <==> Not ( a - b >= 0 )
-mkLT ctx a b                        = case mkMinus ctx a b of 
-                                            Left e  -> error ("mkMinus should succeed in mkLT. However: " ++ show e)
-                                            Right s -> case mkGEZ ctx s of 
-                                                            Left e  -> error ("mkGEZ should succeed in mkLT. However: " ++ show e)
-                                                            Right c -> mkNot ctx c
+mkLT ctx a b                        = mkMinus ctx a b >>= mkGEZ ctx >>= mkNot ctx   -- TODO: Which implementation to prefer?
+--                                        case mkMinus ctx a b of 
+--                                            Left e  -> error ("mkMinus should succeed in mkLT. However: " ++ show e)
+--                                            Right s -> case mkGEZ ctx s of 
+--                                                            Left e  -> error ("mkGEZ should succeed in mkLT. However: " ++ show e)
+--                                                            Right c -> mkNot ctx c
 
 -- | Apply operator Greater Then (>) on the provided value expressions.
 mkGT :: (Ord v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
