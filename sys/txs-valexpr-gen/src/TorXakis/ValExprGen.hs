@@ -30,14 +30,14 @@ import           TorXakis.ValueGen
 
 
 -- | generate a random value expression within a context.
-arbitraryValExpr :: TestValExprContext a v => a -> Gen (ValExpr v)
+arbitraryValExpr :: TestValExprContext a v => a v -> Gen (ValExpr v)
 arbitraryValExpr ctx = 
     do
         s <- arbitrarySort ctx
         arbitraryValExprOfSort ctx s
 
 -- | generate a random value expression of the given sort within a context.
-arbitraryValExprOfSort :: TestValExprContext a v => a -> Sort -> Gen (ValExpr v)
+arbitraryValExprOfSort :: TestValExprContext a v => a v -> Sort -> Gen (ValExpr v)
                                  -- for now only constants
 arbitraryValExprOfSort ctx s = do
     val <- arbitraryValueOfSort ctx s

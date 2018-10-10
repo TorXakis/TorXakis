@@ -19,6 +19,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.TestValExprContext
 (-- * Test Sort Context
@@ -41,24 +42,24 @@ import           TorXakis.VarDef
 
 -- | A TestValExprContext instance contains all definitions to work with value expressions (of course including sort)
 --  and reference thereof for test purposes
-class (ValExprContext a v, TestSortContext a) => TestValExprContext a v
+class (ValExprContext a v, TestSortContext (a v) ) => TestValExprContext a v
 
 -- | A minimal instance of 'TestValExprContext'.
-data MinimalTestValExprContext = MinimalTestValExprContext 
+data MinimalTestValExprContext v = MinimalTestValExprContext 
                                     { testSortContext :: MinimalTestSortContext
-                                    , _varDefs :: Map.Map (RefByName MinimalVarDef) MinimalVarDef
+                                    , _varDefs :: Map.Map (RefByName v) v
                                       -- TODO add sort to var mapping?
-                                    , _funcDefs :: Map.Map FuncSignature (FuncDef MinimalVarDef)
+                                    , _funcDefs :: Map.Map FuncSignature (FuncDef v)
                                     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance SortContext MinimalTestValExprContext where
+instance SortContext (MinimalTestValExprContext MinimalVarDef) where
     empty             = MinimalTestValExprContext empty Map.empty Map.empty
     adtDefs ctx       = adtDefs (testSortContext ctx)
     addAdtDefs ctx as = case addAdtDefs (testSortContext ctx) as of
                             Left e     -> Left e
                             Right tctx -> Right $ ctx { testSortContext = tctx }
 
-instance TestSortContext MinimalTestValExprContext where
+instance TestSortContext (MinimalTestValExprContext MinimalVarDef) where
     mapSortSize ctx              = mapSortSize (testSortContext ctx)
     mapAdtMapConstructorSize ctx = mapAdtMapConstructorSize (testSortContext ctx)
 

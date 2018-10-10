@@ -32,7 +32,7 @@ import TorXakis.Name
 import TorXakis.Sort
 
 -- | Class for a variable definition.
-class (HasName v, HasSort v) => VarDef v
+class (Ord v, Show v, HasName v, HasSort v) => VarDef v
 
 -- | Minimal implementation of Variable Definition.
 data MinimalVarDef = MinimalVarDef { -- | name

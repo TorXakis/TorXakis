@@ -18,6 +18,7 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass        #-}
 {-# LANGUAGE DeriveDataTypeable    #-}
 {-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.ValExpr.ValExprContext
 ( -- * ValExpr Context
@@ -40,9 +41,9 @@ import           TorXakis.FuncSignature ( FuncSignature )
 
 
 -- | A ValExprContext instance contains all definitions to work with value expressions and references thereof
-class (SortContext a, VarDef v) => ValExprContext a v where
+class (SortContext (a v), VarDef v) => ValExprContext a v where
     -- | Accessor for Variable Definitions
-    varDefs :: a -> Map.Map (RefByName v) v
+    varDefs :: a v -> Map.Map (RefByName v) v
 
     -- | Add variable definitions to value expression context.
     --   A value expression context is returned when the following constraints are satisfied:
@@ -54,10 +55,10 @@ class (SortContext a, VarDef v) => ValExprContext a v where
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     --
     -- Note that variables in the context are hidden when variables with the same names are added.
-    addVarDefs :: a -> [v] -> Either MinError a
+    addVarDefs :: a v -> [v] -> Either MinError (a v)
 
     -- | Accessor for Function Definitions
-    funcDefs :: a -> Map.Map FuncSignature (FuncDef v)
+    funcDefs :: a v -> Map.Map FuncSignature (FuncDef v)
 
     -- | Add function definitions to value expression context.
     --   A value expression context is returned when the following constraints are satisfied:
@@ -69,18 +70,18 @@ class (SortContext a, VarDef v) => ValExprContext a v where
     --   * The sort of all bodys of the added Function Definitions is in agreement with the function signature (its return type).
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    addFuncDefs :: a -> [FuncDef v] -> Either MinError a
+    addFuncDefs :: a v -> [FuncDef v] -> Either MinError (a v)
 
 
 -- | A minimal instance of 'ValExprContext'.
-data MinimalValExprContext = MinimalValExprContext { sortContext :: MinimalSortContext
-                                                     -- var definitions
-                                                   , _varDefs :: Map.Map (RefByName MinimalVarDef) MinimalVarDef
-                                                     -- function definitions
-                                                   , _funcDefs :: Map.Map FuncSignature (FuncDef MinimalVarDef)
-                                                } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+data MinimalValExprContext v = MinimalValExprContext { sortContext :: MinimalSortContext
+                                                         -- var definitions
+                                                     , _varDefs :: Map.Map (RefByName v) v
+                                                         -- function definitions
+                                                     , _funcDefs :: Map.Map FuncSignature (FuncDef v)
+                                                     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
-instance SortContext MinimalValExprContext where
+instance SortContext (MinimalValExprContext MinimalVarDef) where
     empty = MinimalValExprContext (MinimalSortContext Map.empty) Map.empty Map.empty
     adtDefs ctx    = adtDefs (sortContext ctx)
     addAdtDefs ctx as = case addAdtDefs (sortContext ctx) as of

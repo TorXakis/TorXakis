@@ -30,9 +30,10 @@ module TorXakis.ValExpr.ValExprConstructor
 , mkITE
   -- **** Function Call
 , mkFunc
-  -- **** Recursive Function Call
-, mkRecursiveFunc
+  -- **** Function Call to a New Function
+, mkNewFunc
   -- **** Predefined Function Call
+, mkPredef
   -- *** Boolean Operators to create Value Expressions
   -- **** Not
 , mkNot
@@ -70,8 +71,10 @@ module TorXakis.ValExpr.ValExprConstructor
 , mkAccess
 )
 where
+import           Data.Either
 import qualified Data.HashMap    as HashMap
 import qualified Data.Map        as Map
+import           Data.Maybe
 import qualified Data.Set        as Set
 import qualified Data.Text       as T
 import           Text.Regex.TDFA
@@ -100,7 +103,7 @@ zeroValExpr :: ValExpr v
 zeroValExpr = ValExpr $ Vconst (Cint 0)
 
 -- | Create a constant value as a value expression.
-mkConst :: ValExprContext c v => c -> Value -> Either MinError (ValExpr v)
+mkConst :: ValExprContext c v => c v -> Value -> Either MinError (ValExpr v)
 mkConst ctx v = if elemSort ctx (getSort v)
                     then unsafeConst v
                     else Left $  MinError (T.pack ("Sort " ++ show (getSort v) ++ " not defined in context"))
@@ -109,7 +112,7 @@ unsafeConst :: Value -> Either MinError (ValExpr v)
 unsafeConst = Right . ValExpr . Vconst
 
 -- | Create a variable as a value expression.
-mkVar :: ValExprContext c v => c -> RefByName v -> Either MinError (ValExpr v)
+mkVar :: ValExprContext c v => c v -> RefByName v -> Either MinError (ValExpr v)
 mkVar ctx n = case HashMap.lookup n (varDefs ctx) of
                 Nothing -> Left $ MinError (T.pack ("Variable name " ++ show n ++ " not defined in context"))
                 Just v  -> unsafeVar v
@@ -118,7 +121,7 @@ unsafeVar :: v -> Either MinError (ValExpr v)
 unsafeVar = Right . ValExpr . Vvar
 
 -- | Apply operator Equal on the provided value expressions.
-mkEqual :: (Ord v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkEqual :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkEqual _   ve1 ve2 | getSort ve1 /= getSort ve2 = Left $ MinError (T.pack ("Sort of value expressions in equal differ " ++ show (getSort ve1) ++ " versus " ++ show (getSort ve2)))
 mkEqual ctx ve1 ve2 | elemSort ctx (getSort ve1) = unsafeEqual ve1 ve2
 mkEqual _   ve1 _                                = Left $  MinError (T.pack ("Sort " ++ show (getSort ve1) ++ " not defined in context"))
@@ -156,7 +159,7 @@ unsafeEqual ve1 ve2                                 = if ve1 <= ve2
                                                             else Right $ ValExpr (Vequal ve2 ve1)
 
 -- | Apply operator ITE (IF THEN ELSE) on the provided value expressions.
-mkITE :: (Eq v, ValExprContext c v) => c -> ValExpr v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkITE :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkITE _   b _  _  | getSort b  /= SortBool    = Left $ MinError (T.pack ("Condition of ITE is not of expected sort Bool but " ++ show (getSort b)))
 mkITE _   _ tb fb | getSort tb /= getSort fb  = Left $ MinError (T.pack ("Sorts of branches differ " ++ show (getSort tb) ++ " versus " ++ show (getSort fb)))
 mkITE ctx b tb fb | elemSort ctx (getSort tb) = unsafeITE b tb fb
@@ -173,39 +176,76 @@ unsafeITE b _ fb | b == falseValExpr        = Right fb
 unsafeITE _ tb fb | tb == fb                  = Right tb
 -- Simplification: if (not c) then tb else fb <==> if c then fb else tb
 unsafeITE (view -> Vnot n) tb fb              = Right $ ValExpr (Vite n fb tb)
+-- Simplification: if c then True else False <==> c
+unsafeITE b tb fb | tb == trueValExpr && fb == falseValExpr = Right b
+-- Simplification: if c then False else True <==> not c
+unsafeITE b tb fb | tb == falseValExpr && fb == trueValExpr = unsafeNot b
 unsafeITE cs tb fb                            = Right $ ValExpr (Vite cs tb fb)
 
 -- | Create a function call.
-mkFunc :: ValExprContext c v => c -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
+mkFunc :: ValExprContext c v => c v -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
 mkFunc ctx fs vs 
-    | expected == actual = case HashMap.lookup fs (funcDefs ctx) of
+    | expected == actual = unsafeFunc ctx fs vs
+    | otherwise          = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
+        where
+            expected = args fs
+            actual = map getSort vs
+
+unsafeFunc :: (ValExprContext c v, VarDef w) => c v -> FuncSignature -> [ValExpr w] -> Either MinError (ValExpr w)
+unsafeFunc ctx fs vs = case HashMap.lookup fs (funcDefs ctx) of
                             Nothing -> Left $ MinError (T.pack ("Function with signature " ++ show fs ++ " not defined in context"))
                             Just fd -> case body fd of
                                             (view -> Vconst x)  -> unsafeConst x
                                             _                   -> case toMaybeValues vs of
-                                                                        Just vs -> subst ctx (Map.fromList (zip (paramDefs fd) vs)) (body fd)
+                                                                        Just _  -> compSubst ctx (Map.fromList (zip (paramDefs fd) vs)) (body fd)
                                                                         Nothing -> Right $ ValExpr (Vfunc fs vs)
-    | otherwise          = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
-        where
-            expected :: [Sort]
-            expected = args fs
-            actual :: [Sort]
-            actual = map getSort vs
 
--- | Create a recursive function call.
--- When a recursive function is added to the context, all function calls will be checked to refer to existing functions.
-mkRecursiveFunc :: VarDef v => FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
-mkRecursiveFunc fs vs 
+-- | Create a function call to a function that is being defined (e.g. a recursive function).
+-- When a new function is added to the context, all function calls will be checked to refer to existing functions.
+mkNewFunc :: VarDef v => FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
+mkNewFunc fs vs 
     | expected == actual = Right $ ValExpr (Vfunc fs vs)
     | otherwise          = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
         where
-            expected :: [Sort]
             expected = args fs
-            actual :: [Sort]
             actual = map getSort vs
 
+-- | Make a call to some predefined functions
+-- Only allowed in CNECTDEF
+mkPredef :: ValExprContext c v => c v -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
+mkPredef ctx fs vs
+    | expected == actual = unsafePredef ctx fs vs
+    | otherwise          = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
+        where
+            expected = args fs
+            actual = map getSort vs
+
+unsafePredef :: SortContext c => c -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
+unsafePredef ctx fs vs = case toMaybeValues vs of
+                                Just values -> evalPredef ctx fs values
+                                Nothing     -> Right $ ValExpr (Vpredef fs vs)
+
+evalPredef :: SortContext c => c -> FuncSignature -> [Value] -> Either MinError (ValExpr v)
+evalPredef ctx fs vs =
+    case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, vs) of
+            ("toString",     SortString, [v])                      -> unsafeConst $ Cstring (valueToText ctx v)
+            ("fromString",   s,          [Cstring t])              -> valueFromText ctx s t >>= unsafeConst
+            ("toXML",        SortString, [v])                      -> unsafeConst $ Cstring (valueToXML ctx v)
+            ("fromXML",      s,          [Cstring t])              -> valueFromXML ctx s t >>= unsafeConst
+            ("takeWhile",    SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`elemT` v1) v2)
+            ("takeWhileNot", SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.takeWhile (`notElemT` v1) v2)
+            ("dropWhile",    SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`elemT` v1) v2)
+            ("dropWhileNot", SortString, [Cstring v1, Cstring v2]) -> unsafeConst $ Cstring (T.dropWhile (`notElemT` v1) v2)
+            _                                                      -> error ("Unknown predefined function: " ++ show fs)
+    where
+        elemT :: Char -> T.Text -> Bool
+        elemT c = isJust . T.find (== c)
+
+        notElemT :: Char -> T.Text -> Bool
+        notElemT c = not . elemT c
+
 -- | Apply operator Not on the provided value expression.
-mkNot :: Eq v => ValExprContext c v => c -> ValExpr v -> Either MinError (ValExpr v)
+mkNot :: ValExprContext c v => c v -> ValExpr v -> Either MinError (ValExpr v)
 mkNot _ n | getSort n == SortBool = unsafeNot n
 mkNot _ n                         = Left $ MinError (T.pack ("Argument of Not is not of expected sort Bool but " ++ show (getSort n)))
 
@@ -222,10 +262,11 @@ unsafeNot (view -> Vite cs tb fb)             = case (unsafeNot tb, unsafeNot fb
                                                     _                    -> error "Unexpected error in NOT with ITE"
 unsafeNot ve                                  = Right $ ValExpr (Vnot ve)
 
--- | Apply operator And on the provided set of value expressions.
-mkAnd :: (Ord v, ValExprContext c v) => c -> Set.Set (ValExpr v) -> Either MinError (ValExpr v)
-mkAnd _ s | all (\e -> SortBool == getSort e) (Set.toList s) = unsafeAnd s
-mkAnd _ _                                                    = Left $ MinError (T.pack "Not all value expressions in set are of expected sort Bool")
+-- | Apply operator And on the provided list of value expressions.
+-- TODO: generalize to Traversable instead of list?
+mkAnd :: ValExprContext c v => c v -> [ValExpr v] -> Either MinError (ValExpr v)
+mkAnd _ s | all (\e -> SortBool == getSort e) s = unsafeAnd (Set.fromList s)
+mkAnd _ _                                       = Left $ MinError (T.pack "Not all value expressions in set are of expected sort Bool")
 
 unsafeAnd :: Ord v => Set.Set (ValExpr v) -> Either MinError (ValExpr v)
 unsafeAnd = unsafeAnd' . flattenAnd
@@ -264,16 +305,16 @@ unsafeAnd' s =
         contains set a                = Set.member a set
 
 -- | Apply unary operator Minus on the provided value expression.
-mkUnaryMinus :: ValExprContext c v => c -> ValExpr v -> Either MinError (ValExpr v)
+mkUnaryMinus :: ValExprContext c v => c v -> ValExpr v -> Either MinError (ValExpr v)
 mkUnaryMinus _ v | getSort v == SortInt = unsafeUnaryMinus v
 mkUnaryMinus _ v                        = Left $ MinError (T.pack ("Unary Minus argument not of expected Sort Int but " ++ show (getSort v)))
 
-unsafeUnaryMinus :: ValExpr v -> Either MinError (ValExpr v)
+unsafeUnaryMinus :: Ord v => ValExpr v -> Either MinError (ValExpr v)
 unsafeUnaryMinus (view -> Vsum m) = unsafeSumFromMap (Map.map (* (-1)) m)
 unsafeUnaryMinus x                = unsafeSumFromMap (Map.singleton x (-1))
 
 -- | Apply operator Divide on the provided value expressions.
-mkDivide :: ValExprContext c v => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkDivide :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkDivide _ d _ | getSort d /= SortInt = Left $ MinError (T.pack ("Dividend not of expected Sort Int but " ++ show (getSort d)))
 mkDivide _ _ d | getSort d /= SortInt = Left $ MinError (T.pack ("Divisor not of expected Sort Int but " ++ show (getSort d)))
 mkDivide _ t n                        = unsafeDivide t n
@@ -284,7 +325,7 @@ unsafeDivide (view ->  Vconst (Cint t)) (view -> Vconst (Cint n))          = uns
 unsafeDivide vet                        ven                                = Right $ ValExpr (Vdivide vet ven)
 
 -- | Apply operator Modulo on the provided value expressions.
-mkModulo :: ValExprContext c v => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkModulo :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkModulo _ d _ | getSort d /= SortInt = Left $ MinError (T.pack ("Dividend not of expected Sort Int but " ++ show (getSort d)))
 mkModulo _ _ d | getSort d /= SortInt = Left $ MinError (T.pack ("Divisor not of expected Sort Int but " ++ show (getSort d)))
 mkModulo _ t n                        = unsafeModulo t n
@@ -300,7 +341,7 @@ isKeyConst (view -> Vconst{}) _ = True
 isKeyConst _                  _ = False
 
 -- | Apply operator sum on the provided list of value expressions.
-mkSum :: (Ord v, ValExprContext c v) => c -> [ValExpr v] -> Either MinError (ValExpr v)
+mkSum :: ValExprContext c v => c v -> [ValExpr v] -> Either MinError (ValExpr v)
 mkSum _ l | all (\e -> SortInt == getSort e) l = unsafeSum l
 mkSum _ _                                      = Left $ MinError (T.pack "Not all value expressions in list are of expected sort Int")
 -- Note: inverse of addition (subtraction) is communicative -> occurrence can also be negativeonly
@@ -312,7 +353,7 @@ mkSum _ _                                      = Left $ MinError (T.pack "Not al
 -- 3. When map is empty return 0
 --    When map contains a single element exactly once, return that element
 unsafeSum :: Ord v => [ValExpr v] -> Either MinError (ValExpr v)
-unsafeSum = unsafeFlattenSum . flattenSum
+unsafeSum = unsafeSumFromMap . flattenSum
     where
         flattenSum :: Ord v => [ValExpr v] -> Map.Map (ValExpr v) Integer
         flattenSum = Map.filter (0 ==) . Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted) and remove elements with occurrence 0
@@ -321,9 +362,9 @@ unsafeSum = unsafeFlattenSum . flattenSum
         fromValExpr (view -> Vsum m) = m
         fromValExpr x                = Map.singleton x 1
 
--- Flatten Sum doesn't contain elements of type Vsum.
-unsafeFlattenSum :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
-unsafeFlattenSum m = 
+-- unsafeSumFromMap doesn't contain elements of type Vsum.
+unsafeSumFromMap :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
+unsafeSumFromMap m = 
     let (vals, nonvals) = Map.partitionWithKey isKeyConst m
         retVal :: Map.Map (ValExpr v) Integer
         retVal = case sum (map toValue (Map.toList vals)) of
@@ -332,21 +373,17 @@ unsafeFlattenSum m =
                                 Right x -> Map.insert x 1 nonvals
                                 Left _  -> error "Unexpected failure in unsafeConst in unsafeSum"
       in
-        unsafeSumFromMap retVal
+        case Map.toList retVal of
+            []          -> Right zeroValExpr     -- sum of nothing equal to zero
+            [(term, 1)] -> Right term
+            _           -> Right (ValExpr (Vsum m))
     where
         toValue :: (ValExpr v, Integer) -> Integer
         toValue (view -> Vconst (Cint i), o) = i * o
         toValue (_                      , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeSum"
 
-unsafeSumFromMap :: Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
-unsafeSumFromMap m = 
-        case Map.toList m of
-            []          -> Right zeroValExpr     -- sum of nothing equal to zero
-            [(term, 1)] -> Right term
-            _           -> Right (ValExpr (Vsum m))
-
 -- | Apply operator product on the provided list of value expressions.
-mkProduct :: (Ord v, ValExprContext c v) => c -> [ValExpr v] -> Either MinError (ValExpr v)
+mkProduct :: ValExprContext c v => c v -> [ValExpr v] -> Either MinError (ValExpr v)
 mkProduct _ l | all (\e -> SortInt == getSort e) l = unsafeProduct l
 mkProduct _ _                                      = Left $ MinError (T.pack "Not all value expressions in list are of expected sort Int")
 -- Note: inverse of product (division) is not communicative -> occurrence can only be positive
@@ -358,7 +395,7 @@ mkProduct _ _                                      = Left $ MinError (T.pack "No
 -- 3. When non values are empty return value
 --    When non-values are not empty, return sum which multiplies value with non-values
 unsafeProduct :: Ord v => [ValExpr v] -> Either MinError (ValExpr v)
-unsafeProduct = unsafeFlattenProduct . flattenProduct
+unsafeProduct = unsafeProductFromMap  . flattenProduct
     where
         flattenProduct :: Ord v => [ValExpr v] -> Map.Map (ValExpr v) Integer
         flattenProduct = Map.unionsWith (+) . map fromValExpr       -- combine maps (duplicates should be counted)
@@ -368,10 +405,10 @@ unsafeProduct = unsafeFlattenProduct . flattenProduct
         fromValExpr x                    = Map.singleton x 1
 
 -- Flatten Product doesn't contain elements of type Vproduct.
-unsafeFlattenProduct :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
+unsafeProductFromMap  :: forall v . Ord v => Map.Map (ValExpr v) Integer -> Either MinError (ValExpr v)
 -- Simplification: 0 * x = 0
-unsafeFlattenProduct m | Map.member zeroValExpr m = Right zeroValExpr
-unsafeFlattenProduct m =
+unsafeProductFromMap  m | Map.member zeroValExpr m = Right zeroValExpr
+unsafeProductFromMap  m =
     let (vals, nonvals) = Map.partitionWithKey isKeyConst m
         value = product (map toValue (Map.toList vals))
       in
@@ -385,7 +422,7 @@ unsafeFlattenProduct m =
         toValue (_                      , _) = error "Unexpected value expression (expecting const of integer type) in toValue of unsafeProduct"
 
 -- | Apply operator GEZ (Greater Equal Zero) on the provided value expression.
-mkGEZ :: ValExprContext c v => c -> ValExpr v -> Either MinError (ValExpr v)
+mkGEZ :: ValExprContext c v => c v -> ValExpr v -> Either MinError (ValExpr v)
 mkGEZ _ d | getSort d /= SortInt = Left $ MinError (T.pack ("Argument of GEZ not of expected Sort Int but " ++ show (getSort d)))
 mkGEZ _ d                        = unsafeGEZ d
 
@@ -397,7 +434,7 @@ unsafeGEZ (view -> Vlength {})      = Right trueValExpr
 unsafeGEZ ve                        = Right $ ValExpr (Vgez ve)
 
 -- | Apply operator Length on the provided value expression.
-mkLength :: ValExprContext c v => c -> ValExpr v -> Either MinError (ValExpr v)
+mkLength :: ValExprContext c v => c v -> ValExpr v -> Either MinError (ValExpr v)
 mkLength _ s | getSort s /= SortString = Left $ MinError (T.pack ("Argument of Length not of expected Sort String but " ++ show (getSort s)))
 mkLength _ s                           = unsafeLength s
 
@@ -406,7 +443,7 @@ unsafeLength (view -> Vconst (Cstring s)) = unsafeConst (Cint (Prelude.toInteger
 unsafeLength v                            = Right $ ValExpr (Vlength v)
 
 -- | Apply operator At on the provided value expressions.
-mkAt :: ValExprContext c v => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkAt :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkAt _ s _ | getSort s /= SortString = Left $ MinError (T.pack ("First argument of At not of expected Sort String but " ++ show (getSort s)))
 mkAt _ _ i | getSort i /= SortInt    = Left $ MinError (T.pack ("Second argument of At not of expected Sort Int but " ++ show (getSort i)))
 mkAt _ s i                           = unsafeAt s i
@@ -419,7 +456,7 @@ unsafeAt (view -> Vconst (Cstring s)) (view -> Vconst (Cint i)) =
 unsafeAt ves vei = Right $ ValExpr (Vat ves vei)
 
 -- | Apply operator Concat on the provided sequence of value expressions.
-mkConcat :: (Eq v, ValExprContext c v) => c -> [ValExpr v] -> Either MinError (ValExpr v)
+mkConcat :: ValExprContext c v => c v -> [ValExpr v] -> Either MinError (ValExpr v)
 mkConcat _ l | all (\e -> SortString == getSort e) l = unsafeConcat l
 mkConcat _ _                                         = Left $ MinError (T.pack "Not all value expressions in list are of expected sort String")
 
@@ -453,7 +490,7 @@ unsafeConcat l =
     fromValExpr x                    = [x]
 
 -- | Apply String In Regular Expression operator on the provided value expressions.
-mkStrInRe :: ValExprContext c v => c -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+mkStrInRe :: ValExprContext c v => c v -> ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
 mkStrInRe _ s _ | getSort s /= SortString = Left $ MinError (T.pack ("First argument of At not of expected Sort String but " ++ show (getSort s)))
 mkStrInRe _ _ r | getSort r /= SortRegex  = Left $ MinError (T.pack ("Second argument of At not of expected Sort Regex but " ++ show (getSort r)))
 mkStrInRe _ s r                           = unsafeStrInRe s r
@@ -480,7 +517,7 @@ toMaybeValues = foldl toMaybeValue (Just [])
         toMaybeValue _         _                  = Nothing
 
 -- | Apply ADT Constructor of the given ADT Name and Constructor Name on the provided arguments (the list of value expressions).
-mkCstr :: ValExprContext c v => c -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpr v] -> Either MinError (ValExpr v)
+mkCstr :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> [ValExpr v] -> Either MinError (ValExpr v)
 mkCstr ctx aName cName as = getCstr ctx aName cName >>= const (unsafeCstr aName cName as)
                                 
 unsafeCstr :: RefByName ADTDef -> RefByName ConstructorDef -> [ValExpr v] -> Either MinError (ValExpr v)
@@ -489,7 +526,7 @@ unsafeCstr aName cName as = case toMaybeValues as of
                                 Nothing -> Right $ ValExpr (Vcstr aName cName as)
 
 -- | Is the provided value expression made by the ADT constructor with the given ADT Name and Constructor Name?
-mkIsCstr :: ValExprContext c v => c -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
+mkIsCstr :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
 mkIsCstr ctx aName cName v = getCstr ctx aName cName >>= const (unsafeIsCstr aName cName v)
 
 unsafeIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
@@ -497,7 +534,7 @@ unsafeIsCstr aName cName (view -> Vcstr a c _)          = unsafeConst (Cbool (aN
 unsafeIsCstr aName cName (view -> Vconst (Ccstr a c _)) = unsafeConst (Cbool (aName == a && cName == c))
 unsafeIsCstr aName cName v                              = Right $ ValExpr (Viscstr aName cName v)
 
-mkAccess :: ValExprContext c v => c -> RefByName ADTDef -> RefByName ConstructorDef -> RefByName FieldDef -> ValExpr v -> Either MinError (ValExpr v)
+mkAccess :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> RefByName FieldDef -> ValExpr v -> Either MinError (ValExpr v)
 mkAccess ctx aName cName fName v = getCstr ctx aName cName >>= getFieldInfo >>= (\(s,p) -> unsafeAccess aName cName s p v)
     where
         getFieldInfo :: ConstructorDef -> Either MinError (Sort, Int)
@@ -524,3 +561,62 @@ unsafeAccess _ cName _ pos (view -> Vconst (Ccstr _ c fs)) =
         else Left $ MinError (T.pack ("Error in model: Accessing field with number " ++ show pos ++ " of constructor " ++ show cName ++ " on value from constructor " ++ show c
                                       ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
 unsafeAccess aName cName srt pos v = Right $ ValExpr (Vaccess aName cName srt pos v)
+
+-- | Substitute variables by value expressions in a value expression (change variable kind).
+-- TODO: What is the context?
+--       should context be split? Function in original variables, defined variables after substitution (hence in new variable)?
+compSubst :: (ValExprContext c v, VarDef w) => c v -> Map.Map v (ValExpr w) -> ValExpr v -> Either MinError (ValExpr w)
+compSubst ctx mp v = compSubst' ctx mp (view v)
+
+compSubst' :: (ValExprContext c v, VarDef w) => c v -> Map.Map v (ValExpr w) -> ValExprView v -> Either MinError (ValExpr w)
+compSubst' _   _  (Vconst c)                = unsafeConst c
+compSubst' _   mp (Vvar v)                  = case Map.lookup v mp of
+                                                Nothing -> Left $ MinError (T.pack ("Subst compSubst: incomplete. Missing " ++ show v))
+                                                Just w  -> Right w
+compSubst' ctx mp (Vequal ve1 ve2)          = compSubst' ctx mp (view ve1) >>= (\ne1 ->
+                                              compSubst' ctx mp (view ve2) >>= 
+                                              unsafeEqual ne1)
+compSubst' ctx mp (Vite c tb fb)            = compSubst' ctx mp (view tb) >>= (\ntb ->
+                                              compSubst' ctx mp (view fb) >>= (\nfb ->
+                                              compSubst' ctx mp (view c) >>= (\nc ->
+                                              unsafeITE nc ntb nfb)))
+compSubst' ctx mp (Vfunc fs vs)             = case partitionEithers (map (compSubst' ctx mp . view) vs) of
+                                                ([] , nvs) -> unsafeFunc ctx fs nvs
+                                                (es, _)    -> Left $ MinError (T.pack ("Subst compSubst 'func' failed\n" ++ show es))
+compSubst' ctx mp (Vpredef fs vs)           = case partitionEithers (map (compSubst' ctx mp . view) vs) of
+                                                ([] , nvs) -> unsafePredef ctx fs nvs
+                                                (es, _)    -> Left $ MinError (T.pack ("Subst compSubst 'predef' failed\n" ++ show es))
+compSubst' ctx mp (Vnot v)                  = compSubst' ctx mp (view v) >>= unsafeNot
+compSubst' ctx mp (Vand s)                  = case partitionEithers (map (compSubst' ctx mp . view) (Set.toList s)) of
+                                                ([] , ns) -> unsafeAnd (Set.fromList ns)
+                                                (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'and' failed\n" ++ show es))
+compSubst' ctx mp (Vdivide t n)             = compSubst' ctx mp (view t) >>= (\nt ->
+                                              compSubst' ctx mp (view n) >>=
+                                              unsafeDivide nt)
+compSubst' ctx mp (Vmodulo t n)             = compSubst' ctx mp (view t) >>= (\nt ->
+                                              compSubst' ctx mp (view n) >>=
+                                              unsafeModulo nt)
+compSubst' ctx mp (Vsum m)                  = case partitionEithers (map (\(x,i) -> compSubst' ctx mp (view x) >>= (\nx -> Right (nx,i)))
+                                                                         (Map.toList m)) of
+                                                ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
+                                                (es, _) -> Left $ MinError (T.pack ("Subst compSubst 'sum' failed\n" ++ show es))
+compSubst' ctx mp (Vproduct m)              = case partitionEithers (map (\(x,i) -> compSubst' ctx mp (view x) >>= (\nx -> Right (nx,i)))
+                                                                         (Map.toList m)) of
+                                                ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
+                                                (es, _) -> Left $ MinError (T.pack ("Subst compSubst 'product' failed\n" ++ show es))
+compSubst' ctx mp (Vgez v)                  = compSubst' ctx mp (view v) >>= unsafeGEZ
+compSubst' ctx mp (Vlength s)               = compSubst' ctx mp (view s) >>= unsafeLength
+compSubst' ctx mp (Vat s i)                 = compSubst' ctx mp (view s) >>= (\ns ->
+                                              compSubst' ctx mp (view i) >>= 
+                                              unsafeAt ns)
+compSubst' ctx mp (Vconcat s)               = case partitionEithers (map (compSubst' ctx mp . view) s) of
+                                                ([] , ns) -> unsafeConcat ns
+                                                (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'concat' failed\n" ++ show es))
+compSubst' ctx mp (Vstrinre s r)            = compSubst' ctx mp (view s) >>= (\ns ->
+                                              compSubst' ctx mp (view r) >>= 
+                                              unsafeStrInRe ns)
+compSubst' ctx mp (Vcstr a c l)             = case partitionEithers (map (compSubst' ctx mp . view) l) of
+                                                ([] , nl) -> unsafeCstr a c nl
+                                                (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'cstr' failed\n" ++ show es))
+compSubst' ctx mp (Viscstr a c v)           = compSubst' ctx mp (view v) >>= unsafeIsCstr a c
+compSubst' ctx mp (Vaccess a c s p v)       = compSubst' ctx mp (view v) >>= unsafeAccess a c s p

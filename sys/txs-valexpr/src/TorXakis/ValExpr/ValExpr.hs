@@ -24,7 +24,6 @@ module TorXakis.ValExpr.ValExpr
 , ValExpr (..)
   -- * Evaluate
 , eval
-, PredefKind(..)
 )
 where
 import           Control.DeepSeq    (NFData)
@@ -43,12 +42,15 @@ import           TorXakis.VarDef
 -- | ValExprView: the public view of value expression 'ValExpr'
 data ValExprView v = Vconst    Value
                    | Vvar      v                                                                        -- Sort is stored to prevent lookup in context
-                   -- Boolean
+                   -- generic
                    | Vequal    (ValExpr v)
                                (ValExpr v)
                    | Vite      (ValExpr v)
                                (ValExpr v)
                                (ValExpr v)
+                   | Vfunc     FuncSignature [ValExpr v]
+                   | Vpredef   FuncSignature [ValExpr v]
+                   -- Boolean
                    | Vnot      (ValExpr v)
                    | Vand      (Set (ValExpr v))
                    -- Int
@@ -71,9 +73,6 @@ data ValExprView v = Vconst    Value
                    | Vcstr     (RefByName ADTDef) (RefByName ConstructorDef) [ValExpr v]
                    | Viscstr   (RefByName ADTDef) (RefByName ConstructorDef) (ValExpr v)
                    | Vaccess   (RefByName ADTDef) (RefByName ConstructorDef) Sort Int (ValExpr v)       -- Sort is stored to prevent lookup in context
-                
-                   | Vfunc     FuncSignature [ValExpr v]
-                   | Vpredef   PredefKind FuncSignature [ValExpr v]
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 -- | ValExpr: value expression
@@ -96,7 +95,6 @@ eval = evalView . view
 evalView :: Show v => ValExprView v -> Either String Value
 evalView (Vconst v) = Right v
 evalView x          = Left $ "Value Expression is not a constant value " ++ show x
-
 
 -- | SortOf instance
 instance (VarDef v) => HasSort (ValExpr v) where
@@ -122,15 +120,4 @@ sortOf (Vcstr a _c _vexps)                            = SortADT a
 sortOf  Viscstr { }                                   = SortBool
 sortOf (Vaccess _a _c s _p _vexps)                    = s
 sortOf (Vfunc fs _vexps)                              = returnSort fs
-sortOf (Vpredef _kd fs _vexps)                        = returnSort fs
-
--- | only needed for CNECTDEF 
--- Function from Values to Value
-data PredefKind     = AST     -- Algebraic To String
-                    | ASF     -- Algebraic From String
-                    | AXT     -- Algebraic To Xml
-                    | AXF     -- Algebraic From Xml
-                    | SSB     -- Standard Sort Bool
-                    | SSI     -- Standard Sort Int
-                    | SSS     -- Standard Sort String
-     deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+sortOf (Vpredef fs _vexps)                            = returnSort fs

@@ -22,7 +22,6 @@ module TorXakis.ValExpr
 , view
   -- * Evaluate
 , eval
-, PredefKind(..)
 , module TorXakis.ValExpr.ValExprConstructor
 , module TorXakis.ValExpr.ValExprExtension
 , module TorXakis.ValExpr.ValExprContext
