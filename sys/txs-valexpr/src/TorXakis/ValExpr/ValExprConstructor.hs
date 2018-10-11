@@ -460,11 +460,17 @@ mkAt _ s _ | getSort s /= SortString = Left $ MinError (T.pack ("First argument 
 mkAt _ _ i | getSort i /= SortInt    = Left $ MinError (T.pack ("Second argument of At not of expected Sort Int but " ++ show (getSort i)))
 mkAt _ s i                           = unsafeAt s i
 
-unsafeAt :: ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
-unsafeAt (view -> Vconst (Cstring s)) (view -> Vconst (Cint i)) =
-    if i < 0 || i >= Prelude.toInteger (T.length s)
-        then Right stringEmptyValExpr
-        else unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))    -- s !! i for Text
+unsafeAt :: (Eq v) => ValExpr v -> ValExpr v -> Either MinError (ValExpr v)
+unsafeAt _                            (view -> Vconst (Cint i)) | i < 0                                 = Right stringEmptyValExpr
+unsafeAt (view -> Vconst (Cstring s)) (view -> Vconst (Cint i)) | i >= Prelude.toInteger (T.length s)   = Right stringEmptyValExpr
+unsafeAt (view -> Vconst (Cstring s)) (view -> Vconst (Cint i))                                         = unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))    -- s !! i for Text
+unsafeAt (view -> Vconcat ((view -> Vconst (Cstring s)):xs)) (view -> Vconst (Cint i)) =
+    let lengthS = Prelude.toInteger (T.length s) in
+        if i < lengthS 
+            then unsafeConst (Cstring (T.take 1 (T.drop (fromInteger i) s)))
+            else unsafeConcat xs >>= (\nc -> 
+                    unsafeConst (Cint (i - lengthS)) >>=
+                        unsafeAt nc)
 unsafeAt ves vei = Right $ ValExpr (Vat ves vei)
 
 -- | Apply operator Concat on the provided sequence of value expressions.
