@@ -214,12 +214,24 @@ mkNewFunc fs vs
 -- Only allowed in CNECTDEF
 mkPredef :: ValExprContext c v => c v -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
 mkPredef ctx fs vs
-    | expected == actual = unsafePredef ctx fs vs
-    | otherwise          = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
+    | not isPredefFunction  = Left $ MinError (T.pack ("Signature is not of a predefined function: " ++ show fs))
+    | expected == actual    = unsafePredef ctx fs vs
+    | otherwise             = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
         where
             expected = args fs
             actual = map getSort vs
-
+            isPredefFunction =
+                case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, args fs) of
+                    ("toString",     SortString, [v])                      -> elemSort ctx v
+                    ("fromString",   v,          [SortString])             -> elemSort ctx v
+                    ("toXML",        SortString, [v])                      -> elemSort ctx v
+                    ("fromXML",      v,          [SortString])             -> elemSort ctx v
+                    ("takeWhile",    SortString, [SortString, SortString]) -> True
+                    ("takeWhileNot", SortString, [SortString, SortString]) -> True
+                    ("dropWhile",    SortString, [SortString, SortString]) -> True
+                    ("dropWhileNot", SortString, [SortString, SortString]) -> True
+                    _                                                      -> False
+    
 unsafePredef :: SortContext c => c -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
 unsafePredef ctx fs vs = case toMaybeValues vs of
                                 Just values -> evalPredef ctx fs values
@@ -534,6 +546,7 @@ unsafeIsCstr aName cName (view -> Vcstr a c _)          = unsafeConst (Cbool (aN
 unsafeIsCstr aName cName (view -> Vconst (Ccstr a c _)) = unsafeConst (Cbool (aName == a && cName == c))
 unsafeIsCstr aName cName v                              = Right $ ValExpr (Viscstr aName cName v)
 
+-- | Access field made by ADT Constructor of the given ADT Name and Constructor Name on the provided argument.
 mkAccess :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> RefByName FieldDef -> ValExpr v -> Either MinError (ValExpr v)
 mkAccess ctx aName cName fName v = getCstr ctx aName cName >>= getFieldInfo >>= (\(s,p) -> unsafeAccess aName cName s p v)
     where
