@@ -115,20 +115,20 @@ spec :: Spec
 spec = do
             describe "mkUnaryMinus" $
                 modifyMaxSuccess (const 100) $
-                modifyMaxSize (const 20) $ 
+                modifyMaxSize (const 10) $ 
                 it "mkUnaryMinus mkUnaryMinus == id" $ property (propertyInContext prop_MkUnaryMinus_id)
             describe "Or" $
                 modifyMaxSuccess (const 100) $
-                modifyMaxSize (const 20) $ 
+                modifyMaxSize (const 10) $ 
                 it "a \\/ not a == True" $ property (propertyInContext prop_AOrNotA)
             describe "Implies" $
                 modifyMaxSuccess (const 100) $
-                modifyMaxSize (const 20) $ do
+                modifyMaxSize (const 10) $ do
                     it "not a => a <==> a"     $ property (propertyInContext prop_NotAImpliesAEqualsA)
                     it "a => not a <==> not a" $ property (propertyInContext prop_AImpliesNotAEqualsNotA)
             describe "Comparisons" $ 
                 modifyMaxSuccess (const 100) $
-                modifyMaxSize (const 20) $ do
+                modifyMaxSize (const 10) $ do
                     it "a >= b <==> b <= a"      $ property (propertyInContext prop_GELE)
                     it "a > b <==> b < a"        $ property (propertyInContext prop_GTLT)
                     it "a > b <==> not (a <= b)" $ property (propertyInContext prop_GTNotLE)

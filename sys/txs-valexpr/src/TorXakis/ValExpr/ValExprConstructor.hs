@@ -293,25 +293,44 @@ unsafeAnd = unsafeAnd' . flattenAnd
 -- And doesn't contain elements of type Vand.
 unsafeAnd' :: forall v . Ord v => Set.Set (ValExpr v) -> Either MinError (ValExpr v)
 unsafeAnd' s =
-    if Set.member falseValExpr s
-        then Right falseValExpr
-        else let s' :: Set.Set (ValExpr v)
-                 s' = Set.delete trueValExpr s in
-                case Set.size s' of
-                    0   -> Right trueValExpr
-                    1   -> Right $ head (Set.toList s')
-                    _   ->  -- Simplification: not(x) and x <==> False
-                            let nots = filterNot (Set.toList s') in
-                                if any (contains s') nots
-                                    then Right falseValExpr
-                                    else Right $ ValExpr (Vand s')
+    -- Canonical form (merge conditional IFs)
+    -- IF a THEN b ELSE False FI /\ IF c THEN d ELSE False FI <==> IF a /\ c THEN b /\ d ELSE False FI
+        mergeConditionals s >>= (\can ->
+        let s' :: Set.Set (ValExpr v)
+            s' = Set.delete trueValExpr can in
+                if Set.member falseValExpr s'
+                    then Right falseValExpr
+                    else case Set.toList s' of
+                            []  -> Right trueValExpr
+                            [h] -> Right h
+                            _   -> -- Simplification: not(x) and x <==> False
+                                   let nots = filterNot (Set.toList s') in
+                                        if any (contains s') nots
+                                            then Right falseValExpr
+                                            else Right $ ValExpr (Vand s')
+        )
     where
+        mergeConditionals :: Set.Set (ValExpr v) -> Either MinError (Set.Set (ValExpr v))
+        mergeConditionals s' = Set.foldr mergeConditional (Right (Set.empty, Set.empty, Set.empty)) s' >>= 
+                                (\(s'', cs, ds) -> unsafeAnd cs >>=
+                                          (\acs -> unsafeAnd ds >>=
+                                          (\ads -> unsafeITE acs ads falseValExpr >>= 
+                                          (\ite -> Right $ Set.insert ite s''))))
+
+        mergeConditional :: ValExpr v 
+                         -> Either MinError (Set.Set (ValExpr v), Set.Set (ValExpr v), Set.Set (ValExpr v))
+                         -> Either MinError (Set.Set (ValExpr v), Set.Set (ValExpr v), Set.Set (ValExpr v))
+        mergeConditional _                      (Left e)                                  = Left e
+        mergeConditional (view -> Vite c tb fb) (Right (s', cs, ds)) | tb == falseValExpr = unsafeNot c >>= (\nc -> Right (s', Set.insert nc cs, Set.insert fb ds))
+        mergeConditional (view -> Vite c tb fb) (Right (s', cs, ds)) | fb == falseValExpr = Right (s', Set.insert c cs, Set.insert tb ds)
+        mergeConditional x                      (Right (s', cs, ds))                      = Right (Set.insert x s', cs, ds)
+
         filterNot :: [ValExpr v] -> [ValExpr v]
         filterNot [] = []
         filterNot (x:xs) = case view x of
                             Vnot n -> n : filterNot xs
                             _      ->     filterNot xs
-        
+
         contains :: Set.Set (ValExpr v) -> ValExpr v -> Bool
         contains set (view -> Vand a) = all (`Set.member` set) (Set.toList a)
         contains set a                = Set.member a set

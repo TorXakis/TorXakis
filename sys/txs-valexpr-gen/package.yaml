@@ -43,7 +43,7 @@ ghc-options:
 - -Wredundant-constraints
 
 tests:
-    txs-value-gen-test:
+    txs-valexpr-gen-test:
         main : Spec.hs
         source-dirs: test
         ghc-options:
