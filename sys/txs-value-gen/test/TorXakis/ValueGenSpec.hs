@@ -47,9 +47,8 @@ prop_ConversionText_id ctx = all check <$> listOf1 (arbitraryValue ctx)
                 let txt = valueToText ctx v
                     actual = valueFromText ctx (getSort v) txt
                   in
-                    -- trace ("txt = " ++ show txt) $
                         case actual of
-                            Left e   -> trace ("\nParse error " ++ show e) False
+                            Left e   -> trace ("\nParse error " ++ show e ++ " on\n" ++ show txt) False
                             Right v' -> v == v'
 
 -- | ConversionXML is Identity
@@ -60,9 +59,8 @@ prop_ConversionXML_id ctx = all check <$> listOf1 (arbitraryValue ctx)
                 let xml = valueToXML ctx v
                     actual = valueFromXML ctx (getSort v) xml
                   in
-                    -- trace ("xml = " ++ show xml) $
                         case actual of
-                            Left e   -> trace ("\nParse error " ++ show e) False
+                            Left e   -> trace ("\nParse error " ++ show e ++ " on\n" ++ show xml) False
                             Right v' -> v == v'
 
 spec :: Spec
