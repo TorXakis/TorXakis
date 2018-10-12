@@ -312,10 +312,15 @@ unsafeAnd' s =
     where
         mergeConditionals :: Set.Set (ValExpr v) -> Either MinError (Set.Set (ValExpr v))
         mergeConditionals s' = Set.foldr mergeConditional (Right (Set.empty, Set.empty, Set.empty)) s' >>= 
-                                (\(s'', cs, ds) -> unsafeAnd cs >>=
-                                          (\acs -> unsafeAnd ds >>=
-                                          (\ads -> unsafeITE acs ads falseValExpr >>= 
-                                          (\ite -> Right $ Set.insert ite s''))))
+                                (\(s'', cs, ds) -> case Set.toList cs of
+                                                    (_:_:_) -> -- at least two items to merge
+                                                                unsafeAnd cs >>=
+                                                                (\acs -> unsafeAnd ds >>=
+                                                                (\ads -> unsafeITE acs ads falseValExpr >>= 
+                                                                (\ite -> Right $ Set.insert ite s'')))
+                                                    _       -> -- nothing to merge
+                                                                Right s'
+                                )
 
         mergeConditional :: ValExpr v 
                          -> Either MinError (Set.Set (ValExpr v), Set.Set (ValExpr v), Set.Set (ValExpr v))
