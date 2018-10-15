@@ -59,7 +59,7 @@ import Relabel (relabel)
 import Subst
 import SortOf
 
--- import Debug.Trace
+import Debug.Trace
 import TxsShow
 
 -- ----------------------------------------------------------------------------------------- --
@@ -1222,7 +1222,7 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
         bexprSubstituted = Subst.subst paramMap (Map.fromList []) bexprRelabeled
 
         -- decompose bexpr, bexpr' can be STOP or ProcInst (distinction later)
-        ActionPref actOffer bexpr' = TxsDefs.view bexprSubstituted
+        ActionPref actOffer bexpr' = trace ("\n\n: bexprSubstituted: " ++ pshow bexprSubstituted ++ "\n\n") TxsDefs.view bexprSubstituted
 
 
     (offers', constraints', varMap) <- translateOffers (Set.toList (offers actOffer))
