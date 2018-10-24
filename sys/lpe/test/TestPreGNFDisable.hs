@@ -415,7 +415,7 @@ testDisable4 = TestCase $
 --                P[A](P$disable$lhs, x, P$lhs$pc$P$lhs, P$lhs$P$lhs$A$x, P$rhs$pc$P$rhs, P$rhs$P$rhs$A$x) :=
 --                      A [P$disable$lhs == 0, pc$P$lhs == 0]   >-> P[A](0, x, -1, ANY, pc$P$rhs, P$rhs$A$x) 
 --                 ##   A [pc$P$rhs == 0]                       >-> P[A](1, x, pc$P$lhs, P$lhs$A$x, -1, ANY)   
---          with ProcInst: P[A](0, 2, 0, ANY, 0, ANY)
+--          with ProcInst: P[A](0, 2, 0, x, 0, x)
 testDisable5 :: Test
 testDisable5 = TestCase $
 --    trace ("\ntestDisable5:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
@@ -449,7 +449,7 @@ testDisable5 = TestCase $
       vexprPrhsX = cstrVar varIdPrhsX
 
       procIdP' = procIdGen "P" [chanIdA] [varIdPdisable, varIdX, varIdPpcLHS, varIdPlhsX, varIdPpcRHS, varIdPrhsX]
-      procInst' = procInst procIdP' [chanIdA] [int0, int2, int0, anyInt, int0, anyInt]
+      procInst' = procInst procIdP' [chanIdA] [int0, int2, int0, vexprX, int0, vexprX]
       procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdX, varIdPpcLHS, varIdPlhsX, varIdPpcRHS, varIdPrhsX]
                                                 (choice $ Set.fromList [
                                                       (actionPref 
