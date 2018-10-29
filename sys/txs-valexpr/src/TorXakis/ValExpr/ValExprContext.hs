@@ -29,15 +29,17 @@ where
 import           Control.DeepSeq        (NFData)
 import           Data.Data              (Data)
 import qualified Data.HashMap           as Map
+import           Data.Maybe             (mapMaybe)
+import qualified Data.Set               as Set
 import qualified Data.Text              as T
 import           GHC.Generics           (Generic)
 
 import           TorXakis.Error         ( MinError(MinError) )
 import           TorXakis.Name          ( RefByName, toMapByName, repeatedByName )
-import           TorXakis.Sort          ( SortContext (..), MinimalSortContext (..), elemSort, getSort )
+import           TorXakis.Sort          ( Sort, SortContext (..), MinimalSortContext (..), elemSort, getSort )
 import           TorXakis.VarDef        ( VarDef, MinimalVarDef )
 import           TorXakis.FuncDef       ( FuncDef )
-import           TorXakis.FuncSignature ( FuncSignature )
+import           TorXakis.FuncSignature ( FuncSignature (..) , HasFuncSignature (..) , toMapByFuncSignature, repeatedByFuncSignatureIncremental )
 
 
 -- | A ValExprContext instance contains all definitions to work with value expressions and references thereof
@@ -66,8 +68,6 @@ class (SortContext (a v), VarDef v) => ValExprContext a v where
     --   * The signatures of the function definitions are unique.
     --
     --   * All references (both Sort and FunctionDefinition) are known
-    --
-    --   * The sort of all bodys of the added Function Definitions is in agreement with the function signature (its return type).
     --
     --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
     addFuncDefs :: a v -> [FuncDef v] -> Either MinError (a v)
@@ -102,4 +102,29 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
         undefinedSort = filter (not . elemSort ctx . getSort) vs
 
     funcDefs = _funcDefs
-    addFuncDefs = undefined
+    addFuncDefs ctx fds
+        | not $ null nuFuncSignatures        = Left $ MinError (T.pack ("Non unique function signatures: " ++ show nuFuncSignatures))
+        | not $ null undefinedSorts          = Left $ MinError (T.pack ("List of function signatures with undefined sorts: " ++ show undefinedSorts))
+        | not $ null undefinedFuncSignatures = Left $ MinError (T.pack ("List of function signatures with undefined function signatures in their bodies: " ++ show undefinedFuncSignatures))
+        | otherwise                          = Right $ ctx { _funcDefs = definedFuncSignatures }
+      where
+        nuFuncSignatures :: [FuncDef MinimalVarDef]
+        nuFuncSignatures = repeatedByFuncSignatureIncremental (Map.elems (funcDefs ctx)) fds
+
+        undefinedSorts :: [(FuncSignature, Set.Set Sort)]
+        undefinedSorts = mapMaybe undefinedSort fds
+
+        undefinedSort :: HasFuncSignature a => a -> Maybe (FuncSignature, Set.Set Sort)
+        undefinedSort fd = let fs@(FuncSignature _ as rs) = getFuncSignature fd in
+                            case filter (not . elemSort ctx) (rs:as) of
+                                [] -> Nothing
+                                xs -> Just (fs, Set.fromList xs)
+
+        definedFuncSignatures :: Map.Map FuncSignature (FuncDef MinimalVarDef)
+        definedFuncSignatures = Map.union (toMapByFuncSignature fds) (_funcDefs ctx)
+
+        undefinedFuncSignatures :: [(FuncSignature, Set.Set FuncSignature)]
+        undefinedFuncSignatures = mapMaybe undefinedFuncSignature fds
+
+        undefinedFuncSignature :: FuncDef MinimalVarDef -> Maybe (FuncSignature, Set.Set FuncSignature)
+        undefinedFuncSignature = undefined

@@ -32,8 +32,8 @@ module TorXakis.ValExpr.ValExprConstructor
 , mkFunc
   -- **** Function Call to a New Function
 , mkNewFunc
-  -- **** Predefined Function Call
-, mkPredef
+  -- **** PredefNonSolvableined Function Call
+, mkPredefNonSolvable
   -- *** Boolean Operators to create Value Expressions
   -- **** Not
 , mkNot
@@ -217,15 +217,15 @@ mkNewFunc fs vs
 
 -- | Make a call to some predefined functions
 -- Only allowed in CNECTDEF
-mkPredef :: ValExprContext c v => c v -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
-mkPredef ctx fs vs
-    | not isPredefFunction  = Left $ MinError (T.pack ("Signature is not of a predefined function: " ++ show fs))
-    | expected == actual    = unsafePredef ctx fs vs
+mkPredefNonSolvable :: ValExprContext c v => c v -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
+mkPredefNonSolvable ctx fs vs
+    | not isPredefNonSolvableFunction  = Left $ MinError (T.pack ("Signature is not of a predefined function: " ++ show fs))
+    | expected == actual    = unsafePredefNonSolvable ctx fs vs
     | otherwise             = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
         where
             expected = args fs
             actual = map getSort vs
-            isPredefFunction =
+            isPredefNonSolvableFunction =
                 case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, args fs) of
                     ("toString",     SortString, [v])                      -> elemSort ctx v
                     ("fromString",   v,          [SortString])             -> elemSort ctx v
@@ -237,13 +237,13 @@ mkPredef ctx fs vs
                     ("dropWhileNot", SortString, [SortString, SortString]) -> True
                     _                                                      -> False
     
-unsafePredef :: SortContext c => c -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
-unsafePredef ctx fs vs = case toMaybeValues vs of
-                                Just values -> evalPredef ctx fs values
-                                Nothing     -> Right $ ValExpr (Vpredef fs vs)
+unsafePredefNonSolvable :: SortContext c => c -> FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
+unsafePredefNonSolvable ctx fs vs = case toMaybeValues vs of
+                                        Just values -> evalPredefNonSolvable ctx fs values
+                                        Nothing     -> Right $ ValExpr (Vpredef fs vs)
 
-evalPredef :: SortContext c => c -> FuncSignature -> [Value] -> Either MinError (ValExpr v)
-evalPredef ctx fs vs =
+evalPredefNonSolvable :: SortContext c => c -> FuncSignature -> [Value] -> Either MinError (ValExpr v)
+evalPredefNonSolvable ctx fs vs =
     case (T.unpack (TorXakis.Name.toText (TorXakis.FuncSignature.funcName fs)), returnSort fs, vs) of
             ("toString",     SortString, [v])                      -> unsafeConst $ Cstring (valueToText ctx v)
             ("fromString",   s,          [Cstring t])              -> valueFromText ctx s t >>= unsafeConst
@@ -631,7 +631,7 @@ partSubst' ctx mp (Vfunc fs vs)             = case partitionEithers (map (partSu
                                                 ([] , nvs) -> unsafeFunc ctx fs nvs
                                                 (es, _)    -> Left $ MinError (T.pack ("Subst partSubst 'func' failed\n" ++ show es))
 partSubst' ctx mp (Vpredef fs vs)           = case partitionEithers (map (partSubst' ctx mp . view) vs) of
-                                                ([] , nvs) -> unsafePredef ctx fs nvs
+                                                ([] , nvs) -> unsafePredefNonSolvable ctx fs nvs
                                                 (es, _)    -> Left $ MinError (T.pack ("Subst partSubst 'predef' failed\n" ++ show es))
 partSubst' ctx mp (Vnot v)                  = partSubst' ctx mp (view v) >>= unsafeNot
 partSubst' ctx mp (Vand s)                  = case partitionEithers (map (partSubst' ctx mp . view) (Set.toList s)) of
@@ -693,7 +693,7 @@ compSubst' ctx mp (Vfunc fs vs)             = case partitionEithers (map (compSu
                                                 ([] , nvs) -> unsafeFunc ctx fs nvs
                                                 (es, _)    -> Left $ MinError (T.pack ("Subst compSubst 'func' failed\n" ++ show es))
 compSubst' ctx mp (Vpredef fs vs)           = case partitionEithers (map (compSubst' ctx mp . view) vs) of
-                                                ([] , nvs) -> unsafePredef ctx fs nvs
+                                                ([] , nvs) -> unsafePredefNonSolvable ctx fs nvs
                                                 (es, _)    -> Left $ MinError (T.pack ("Subst compSubst 'predef' failed\n" ++ show es))
 compSubst' ctx mp (Vnot v)                  = compSubst' ctx mp (view v) >>= unsafeNot
 compSubst' ctx mp (Vand s)                  = case partitionEithers (map (compSubst' ctx mp . view) (Set.toList s)) of
