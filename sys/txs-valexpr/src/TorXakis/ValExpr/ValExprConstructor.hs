@@ -69,6 +69,11 @@ module TorXakis.ValExpr.ValExprConstructor
 , mkIsCstr
   -- **** Algebraic Data Type Accessor
 , mkAccess
+  -- ** Substitution of varaibles
+  -- *** Partial Substitution
+, partSubst
+  -- *** Complete Substitution
+, compSubst
 )
 where
 import           Data.Either
@@ -605,11 +610,72 @@ unsafeAccess _ cName _ pos (view -> Vconst (Ccstr _ c fs)) =
                                       ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
 unsafeAccess aName cName srt pos v = Right $ ValExpr (Vaccess aName cName srt pos v)
 
--- | Substitute variables by value expressions in a value expression (change variable kind).
+-- | Partial Substitution: Substitute some variables by value expressions in a value expression.
+partSubst :: ValExprContext c v => c v -> Map.Map v (ValExpr v) -> ValExpr v -> Either MinError (ValExpr v)
+partSubst _   mp v | mp == Map.empty = Right v
+partSubst ctx mp v                   = partSubst' ctx mp (view v)
+
+partSubst' :: ValExprContext c v => c v -> Map.Map v (ValExpr v) -> ValExprView v -> Either MinError (ValExpr v)
+partSubst' _   _  (Vconst c)                = unsafeConst c
+partSubst' _   mp (Vvar v)                  = case Map.lookup v mp of
+                                                    Nothing -> unsafeVar v
+                                                    Just x  -> Right x
+partSubst' ctx mp (Vequal ve1 ve2)          = partSubst' ctx mp (view ve1) >>= (\ne1 ->
+                                              partSubst' ctx mp (view ve2) >>= 
+                                              unsafeEqual ne1)
+partSubst' ctx mp (Vite c tb fb)            = partSubst' ctx mp (view tb) >>= (\ntb ->
+                                              partSubst' ctx mp (view fb) >>= (\nfb ->
+                                              partSubst' ctx mp (view c) >>= (\nc ->
+                                              unsafeITE nc ntb nfb)))
+partSubst' ctx mp (Vfunc fs vs)             = case partitionEithers (map (partSubst' ctx mp . view) vs) of
+                                                ([] , nvs) -> unsafeFunc ctx fs nvs
+                                                (es, _)    -> Left $ MinError (T.pack ("Subst partSubst 'func' failed\n" ++ show es))
+partSubst' ctx mp (Vpredef fs vs)           = case partitionEithers (map (partSubst' ctx mp . view) vs) of
+                                                ([] , nvs) -> unsafePredef ctx fs nvs
+                                                (es, _)    -> Left $ MinError (T.pack ("Subst partSubst 'predef' failed\n" ++ show es))
+partSubst' ctx mp (Vnot v)                  = partSubst' ctx mp (view v) >>= unsafeNot
+partSubst' ctx mp (Vand s)                  = case partitionEithers (map (partSubst' ctx mp . view) (Set.toList s)) of
+                                                ([] , ns) -> unsafeAnd (Set.fromList ns)
+                                                (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'and' failed\n" ++ show es))
+partSubst' ctx mp (Vdivide t n)             = partSubst' ctx mp (view t) >>= (\nt ->
+                                              partSubst' ctx mp (view n) >>=
+                                              unsafeDivide nt)
+partSubst' ctx mp (Vmodulo t n)             = partSubst' ctx mp (view t) >>= (\nt ->
+                                              partSubst' ctx mp (view n) >>=
+                                              unsafeModulo nt)
+partSubst' ctx mp (Vsum m)                  = case partitionEithers (map (\(x,i) -> partSubst' ctx mp (view x) >>= (\nx -> Right (nx,i)))
+                                                                         (Map.toList m)) of
+                                                ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
+                                                (es, _) -> Left $ MinError (T.pack ("Subst partSubst 'sum' failed\n" ++ show es))
+partSubst' ctx mp (Vproduct m)              = case partitionEithers (map (\(x,i) -> partSubst' ctx mp (view x) >>= (\nx -> Right (nx,i)))
+                                                                         (Map.toList m)) of
+                                                ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
+                                                (es, _) -> Left $ MinError (T.pack ("Subst partSubst 'product' failed\n" ++ show es))
+partSubst' ctx mp (Vgez v)                  = partSubst' ctx mp (view v) >>= unsafeGEZ
+partSubst' ctx mp (Vlength s)               = partSubst' ctx mp (view s) >>= unsafeLength
+partSubst' ctx mp (Vat s i)                 = partSubst' ctx mp (view s) >>= (\ns ->
+                                              partSubst' ctx mp (view i) >>= 
+                                              unsafeAt ns)
+partSubst' ctx mp (Vconcat s)               = case partitionEithers (map (partSubst' ctx mp . view) s) of
+                                                ([] , ns) -> unsafeConcat ns
+                                                (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'concat' failed\n" ++ show es))
+partSubst' ctx mp (Vstrinre s r)            = partSubst' ctx mp (view s) >>= (\ns ->
+                                              partSubst' ctx mp (view r) >>= 
+                                              unsafeStrInRe ns)
+partSubst' ctx mp (Vcstr a c l)             = case partitionEithers (map (partSubst' ctx mp . view) l) of
+                                                ([] , nl) -> unsafeCstr a c nl
+                                                (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'cstr' failed\n" ++ show es))
+partSubst' ctx mp (Viscstr a c v)           = partSubst' ctx mp (view v) >>= unsafeIsCstr a c
+partSubst' ctx mp (Vaccess a c s p v)       = partSubst' ctx mp (view v) >>= unsafeAccess a c s p
+
+
+-- | Complete Substitution: Substitute all variables by value expressions in a value expression.
+-- Since all variables are changed, one can change the kind of variables.
+--
 -- TODO: What is the context?
 --       should context be split? Function in original variables, defined variables after substitution (hence in new variable)?
 compSubst :: (ValExprContext c v, VarDef w) => c v -> Map.Map v (ValExpr w) -> ValExpr v -> Either MinError (ValExpr w)
-compSubst ctx mp v = compSubst' ctx mp (view v)
+compSubst ctx mp v                   = compSubst' ctx mp (view v)
 
 compSubst' :: (ValExprContext c v, VarDef w) => c v -> Map.Map v (ValExpr w) -> ValExprView v -> Either MinError (ValExpr w)
 compSubst' _   _  (Vconst c)                = unsafeConst c

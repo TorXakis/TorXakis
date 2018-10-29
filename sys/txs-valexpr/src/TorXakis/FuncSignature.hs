@@ -23,11 +23,20 @@ See LICENSE at root directory of this repository.
 module TorXakis.FuncSignature
 ( -- * Function Signature
   FuncSignature (..)
+  -- * Has Function Signature class
+, HasFuncSignature (..)
+  -- ** Conversion List to Map By Function Signature
+, toMapByFuncSignature
+-- ** Repeated Function Signatures functions
+, repeatedByFuncSignature
+, repeatedByFuncSignatureIncremental
 ) where
 
 import           Control.DeepSeq      (NFData)
 import           Data.Data            (Data)
 import           Data.Hashable        (Hashable(hashWithSalt))
+import           Data.HashMap         (Map, fromList)
+import           Data.List.Unique     (repeated)
 import           GHC.Generics         (Generic)
 
 import           TorXakis.Name
@@ -43,8 +52,31 @@ data FuncSignature = FuncSignature { -- | The 'Name' of the function.
                                    }
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
+-- | Enables 'FuncSignature's of entities to be accessed in a common way.
+class HasFuncSignature e where
+    -- | return the function signature of the given element
+    getFuncSignature :: e -> FuncSignature
+
+instance HasFuncSignature FuncSignature where
+    getFuncSignature = id
+
 instance Hashable FuncSignature where
     hashWithSalt s (FuncSignature n as r) = s `hashWithSalt`
                                             n `hashWithSalt`
                                             as `hashWithSalt`
                                             r
+
+-- | Return 'Data.HashMap.Map' where the 'FuncSignature' of the element is taken as key
+--   and the element itself is taken as value.
+toMapByFuncSignature :: HasFuncSignature a => [a] -> Map FuncSignature a
+toMapByFuncSignature = fromList . map (\e -> (getFuncSignature e,e))
+
+-- |  Return the elements with non-unique function signatures that the second list contains in the combination of the first and second list.
+repeatedByFuncSignatureIncremental :: (HasFuncSignature a, HasFuncSignature b) => [a] -> [b] -> [b]
+repeatedByFuncSignatureIncremental xs ys = filter ((`elem` nuFuncSignatures) . getFuncSignature) ys
+    where nuFuncSignatures = repeated $ map getFuncSignature xs ++ map getFuncSignature ys
+
+-- | Return the elements with non-unique function signatures: 
+-- the elements with a 'FuncSignature' that is present more than once in the list.
+repeatedByFuncSignature :: (HasFuncSignature a) => [a] -> [a]
+repeatedByFuncSignature = repeatedByFuncSignatureIncremental ([] :: [FuncSignature])

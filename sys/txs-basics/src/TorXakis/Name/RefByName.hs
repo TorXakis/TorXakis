@@ -23,7 +23,7 @@ See LICENSE at root directory of this repository.
 module TorXakis.Name.RefByName
 ( -- * Reference By Name
   RefByName (..)
-  -- ** Conversion By Name functions
+  -- ** Conversion List to Map By Name
 , toMapByName
 ) where
 

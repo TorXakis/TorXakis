@@ -20,7 +20,6 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveGeneric      #-}
 module TorXakis.FuncDef
 ( FuncDef(..)
-, toFuncSignature
 )
 where
 
@@ -47,9 +46,9 @@ data FuncDef v = FuncDef { -- | The name of the function (of type 'TorXakis.Name
                          }
      deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
--- | return the function signature of the given function definition
-toFuncSignature :: VarDef v => FuncDef v -> FuncSignature
-toFuncSignature (FuncDef fn pds bd) = FuncSignature fn (map getSort pds) (getSort bd)
+instance VarDef v => HasFuncSignature (FuncDef v)
+    where
+        getFuncSignature (FuncDef fn pds bd) = FuncSignature fn (map getSort pds) (getSort bd)
 
 -- ----------------------------------------------------------------------------------------- --
 --

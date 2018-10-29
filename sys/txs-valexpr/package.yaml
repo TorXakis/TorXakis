@@ -31,6 +31,7 @@ library:
   - txs-lex-regex-xsd
   - txs-sort
   - txs-value
+  - Unique
 
 extra-source-files:
 - README.md
