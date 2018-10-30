@@ -161,11 +161,18 @@ preGNFBExpr (TxsDefs.view -> ActionPref actOffer bexpr') choiceCnt freeVarsInSco
     return (actionPref actOffer bexpr'', procDefs'')
 
 preGNFBExpr bexpr@(TxsDefs.view -> ProcInst procIdInst _ _) _choiceCnt _freeVarsInScope _procId translatedProcDefs procDefs' =
-    if procIdInst `notElem` lPreGNF translatedProcDefs
-      then  do -- recursively translate the called ProcDef
-               procDefs'' <- preGNF procIdInst translatedProcDefs procDefs'
-               return (bexpr, procDefs'')
-      else return (bexpr, procDefs')
+    -- check for parallel loops
+    if procIdInst `notElem` lParInTranslation translatedProcDefs
+        -- check for preGNF loops
+        then  if procIdInst `notElem` lPreGNF translatedProcDefs
+                then  do -- recursively translate the called ProcDef
+                        procDefs'' <- preGNF procIdInst translatedProcDefs procDefs'
+                        return (bexpr, procDefs'')
+                else return (bexpr, procDefs')
+        else  do    EnvB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                        ("found Parallel loop with ProcId " ++ pshow procIdInst)]
+                    error ("found Parallel loop with ProcId " ++ pshow procIdInst)
+
 
 
 preGNFBExpr bexpr@(TxsDefs.view -> Choice{}) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
@@ -178,9 +185,13 @@ preGNFBExpr bexpr@(TxsDefs.view -> Choice{}) choiceCnt freeVarsInScope procId tr
 
 preGNFBExpr bexpr@(TxsDefs.view -> Parallel{}) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
     -- parallel at lower level not allowed
+    
+    -- remember the ProcIds currently being in PAR translation (also up the tree) to avoid premature substitutions
+    let translatedProcDefs' = translatedProcDefs { lParInTranslation = lParInTranslation translatedProcDefs ++ [procId]}
+
     (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr choiceCnt freeVarsInScope procId procDefs'
     -- translate the created ProcDef with LPEPar
-    (procInst'', procDefs''') <- lpePar procInst' translatedProcDefs procDefs''
+    (procInst'', procDefs''') <- lpePar procInst' translatedProcDefs' procDefs''
     return (procInst'', procDefs''')
 
 
@@ -412,7 +423,10 @@ gnfBExpr bexpr@(TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) _choic
     | procIdInst `elem` lGNFdirectcalls translatedProcDefs =
         do  -- found a loop
             let loop = map ProcId.name $ lGNFdirectcalls translatedProcDefs ++ [procIdInst]
+            EnvB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                    ("found GNF loop of direct calls without progress: " ++ show loop)]
             error ("found GNF loop of direct calls without progress: " ++ show loop)
+
     | procIdInst `elem` lGNFinTranslation translatedProcDefs = 
         do  -- no loop
             -- if the called ProcId is still being translated to GNF: have to come back later
@@ -535,12 +549,12 @@ gnfBExprCreateProcDefWithUniqueness bexpr choiceCnt extraParams procId procDefs'
 lpePar :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
 lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedProcDefs procDefs' = do
     let -- get and decompose ProcDef and the parallel bexpr
-      ProcDef chansDef _paramsDef bexpr = fromMaybe (error "lpePar: could not find the given procId") (Map.lookup procIdInst procDefs')
-      Parallel syncChans ops = TxsDefs.view bexpr
+        ProcDef chansDef _paramsDef bexpr = fromMaybe (error "lpePar: could not find the given procId") (Map.lookup procIdInst procDefs')
+        Parallel syncChans ops = TxsDefs.view bexpr
 
-      -- translate the operands to LPE first
-      -- collect (in accu) per operand: translated steps, the generated procInst
-      --  and a changed mapping of procDefs
+        -- translate the operands to LPE first
+        -- collect (in accu) per operand: translated steps, the generated procInst
+        --  and a changed mapping of procDefs
     (_, stepsOpParams, paramsInsts, procDefs'') <- foldM translateOperand (1, [],[], procDefs') ops
 
     unid' <- EnvB.newUnid
@@ -642,7 +656,7 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
       -- a = (opNr, steps, params, procDefs)
       -- b = BExpr
       -- transform list of bexprs to our big accu combination
-      translateOperand :: (EnvB.EnvB envb) => (Int, [([BExpr], [VarId])], [VExpr], ProcDefs ) -> BExpr -> envb (Int, [([BExpr], [VarId])], [VExpr], ProcDefs)
+      translateOperand :: (EnvB.EnvB envb) =>  (Int, [([BExpr], [VarId])], [VExpr], ProcDefs ) -> BExpr -> envb (Int, [([BExpr], [VarId])], [VExpr], ProcDefs)
       translateOperand (opNr, stepsOpParams, paramsInsts, procDefs'') operand = do
         -- translate operand to ProcInst if necessary
         (opProcInst, procDefs''') <- transformToProcInst operand procIdInst procDefs''
@@ -666,7 +680,16 @@ lpePar (TxsDefs.view -> ProcInst procIdInst chansInst _paramsInst) translatedPro
           where 
             transformToProcInst :: (EnvB.EnvB envb) => BExpr -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
             -- if operand is already a ProcInst: no need to change anything
-            transformToProcInst bexpr@(TxsDefs.view -> ProcInst{}) _procIdParent procDefs''' = return (bexpr, procDefs''')
+            transformToProcInst bexpr@(TxsDefs.view -> ProcInst procIdInst' _ _) _procIdParent procDefs''' =  
+                -- check for parallel loops
+                if procIdInst' `notElem` lParInTranslation translatedProcDefs
+                    then    return (bexpr, procDefs''')
+                    else    do  EnvB.putMsgs [ EnvData.TXS_CORE_USER_ERROR
+                                    ("found Parallel loop with ProcId " ++ pshow procIdInst')]
+                                error ("found Parallel loop with ProcId " ++ pshow procIdInst') 
+                
+                                   
+                
             -- otherwise: create new ProcDef and ProcInst
             transformToProcInst operand' procIdParent procDefs''' = do
               unid' <- EnvB.newUnid
@@ -888,7 +911,7 @@ preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) transla
         prefixLHS = prefix ++ "$lhs$"
     paramsDefLHS_lpe_prefixed <- mapM (prefixVarId prefixLHS) paramsDefLHS_lpe
     let paramMapLHS = Map.fromList $ zip paramsDefLHS_lpe (map cstrVar paramsDefLHS_lpe_prefixed)
-        bexprLHS_lpe_subst =Subst.subst paramMapLHS (Map.fromList []) bexprLHS_lpe
+        bexprLHS_lpe_subst = Subst.subst paramMapLHS (Map.fromList []) bexprLHS_lpe
         -- paramsDefLHS_lpe_prefixed = paramsDefLHS_lpe
         -- bexprLHS_lpe_subst = bexprLHS_lpe
 
