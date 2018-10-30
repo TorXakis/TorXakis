@@ -1736,6 +1736,13 @@ testLPEDisable1 = TestCase $
                                                       ])
 
 
+
+-- test LPE translation of DISABLE with recursion
+-- P[A,B]() := A!1 [>> P[A,B]()
+-- ERROR!
+--    there is a possible trace with NO progress, i.e. when the RHS is always executed. 
+--    
+
 -- test LPE translation of DISABLE with recursion
 -- P[A,B]() := A!1 [>> B?x >-> P[A,B]()
 -- with procInst = P[A,B]()
