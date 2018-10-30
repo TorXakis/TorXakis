@@ -1,0 +1,19 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+PROCDEF p [In; Out :: Int](n :: Int) ::=
+    In >-> ( Out ! n ||| p [In,Out](n+1) )
+ENDDEF
+
+CHANDEF Channels ::=  In; Out :: Int
+ENDDEF
+
+MODELDEF Model ::=
+    CHAN IN    In
+    CHAN OUT   Out
+
+    BEHAVIOUR  
+        p[In, Out](1)
+ENDDEF

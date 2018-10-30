@@ -43,7 +43,7 @@ import           BehExprDefs                       (chanIdExit, chanIdIstep)
 import           ChanId                            (ChanId, chansorts)
 import           Constant                          (Constant (Cbool))
 import           FuncTable                         (Handler, Signature)
-import           ProcId                            (ExitSort (Exit), ProcId,
+import           ProcId                            (ExitSort (Exit), ProcId, ChanSort(ChanSort),
                                                     exitSortIds, procchans,
                                                     procvars)
 import qualified ProcId
@@ -109,12 +109,12 @@ toBExpr mm vrvds (Pappl n l crs exs) = do
     chIds <- chRefsToIds mm crs
     let candidate :: ProcId -> Bool
         candidate pId =
-               toText   n                     == ProcId.name pId
-            && fmap chansorts (procchans pId) == fmap chansorts chIds -- Compare the sort id's of the channels
-            && length (procvars pId)          == length exs
+               toText   n            == ProcId.name pId
+            && procchans pId         == fmap (ChanSort . chansorts) chIds -- Compare the sort id's of the channels
+            && length (procvars pId) == length exs
     -- Try to find a matching process definition:
     res <- forCatch (filter candidate $ keys @ProcId @() mm) $ \pId -> do
-        let eSids = varsort <$> procvars pId
+        let eSids = procvars pId
         vExps <- liftEither $
             traverse (uncurry $ expDeclToValExpr vrvds) $ zip eSids exs
         return (pId, procInst pId chIds vExps)

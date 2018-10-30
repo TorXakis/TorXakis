@@ -133,7 +133,6 @@ procDeclsToProcDefMap mm = gProcDeclsToProcDefMap emptyMpd
           let body = procDeclBody pd
               fss = dropHandler (innerMap mm)
               paramTypes = Map.fromList (fmap (second varsort) pvIds)
-
           bTypes  <- Map.fromList <$>
               inferVarTypes (  Map.fromList pvIds
                             :& mm

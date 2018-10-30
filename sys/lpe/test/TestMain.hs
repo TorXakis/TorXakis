@@ -14,6 +14,7 @@ import TestLPE
 import TestLPEPar
 import TestLPEHide
 import TestPreGNFEnable
+import TestPreGNFDisable
 
 testList :: Test
 testList = TestList
@@ -24,6 +25,7 @@ testList = TestList
         , TestLabel "LPEPar"          testLPEParList
         , TestLabel "LPEHide"         testLPEHideList
         , TestLabel "PreGNFEnable"    testPreGNFEnableList
+        , TestLabel "PreGNFDisable"   testPreGNFDisableList
     ]
 
 main :: IO ()

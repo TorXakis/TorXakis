@@ -3,6 +3,7 @@ TorXakis - Model Based Testing
 Copyright (c) 2015-2017 TNO and Radboud University
 See LICENSE at root directory of this repository.
 -}
+
 module TestDefinitions
 where
 
@@ -18,6 +19,8 @@ import VarId
 import Constant
 import ValExpr
 
+import TxsShow
+
 ---------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------
@@ -25,10 +28,19 @@ import ValExpr
 procIdGen :: String -> [ChanId] -> [VarId] -> ProcId
 procIdGen name' chans vars' = ProcId   {  ProcId.name       = T.pack name'
                                         , ProcId.unid       = 111
-                                        , ProcId.procchans  = chans
-                                        , ProcId.procvars   = vars'
+                                        , ProcId.procchans  = toChanSort <$> chans
+                                        , ProcId.procvars   = varsort <$> vars'
                                         , ProcId.procexit   = NoExit
                                     }
+
+
+pshowProcDefs :: Map.Map ProcId ProcDef -> String
+pshowProcDefs procDefs' = pshowProcDefs' $ Map.toList procDefs'
+  where
+      pshowProcDefs' :: [(ProcId, ProcDef)] -> String
+      pshowProcDefs' [] = ""
+      pshowProcDefs' ((procId, procDef'):rest) = "\n ** " ++ pshow procId ++ "\n" ++ pshow (DefProc procDef') ++ pshowProcDefs' rest
+
 
 ---------------------------------------------------------------------------
 -- Predefined values
@@ -102,6 +114,26 @@ varIdPcP = VarId (T.pack "pc$P") 0 intSort
 vexprPcP :: VExpr
 vexprPcP = cstrVar varIdPcP
 
+
+
+varIdPdisable :: VarId
+varIdPdisable = VarId (T.pack "P$disable$lhs") 33 intSort
+varIdPpcLHS :: VarId
+varIdPpcLHS = VarId (T.pack "P$lhs$pc$P$lhs") 33 intSort
+varIdPpcRHS :: VarId
+varIdPpcRHS = VarId (T.pack "P$rhs$pc$P$rhs") 33 intSort
+
+vexprPdisable :: VExpr
+vexprPdisable = cstrVar varIdPdisable
+vexprPpcLHS :: VExpr
+vexprPpcLHS = cstrVar varIdPpcLHS
+vexprPpcRHS :: VExpr
+vexprPpcRHS = cstrVar varIdPpcRHS
+
+
+
+
+
 -- action: A
 actOfferA :: ActOffer
 actOfferA   = ActOffer {  offers = Set.singleton
@@ -140,6 +172,17 @@ actOfferAExclamX   = ActOffer {  offers = Set.singleton
                         , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
+
+-- action: A?A$1
+actOfferAA1 :: ActOffer
+actOfferAA1   = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdA
+                                              , chanoffers = [Quest varIdA1]
+                                        }
+                        , hiddenvars = Set.empty
+                        , constraint = cstrConst (Cbool True)
+            }
+
 -- action: A?y
 actOfferAy :: ActOffer
 actOfferAy   = ActOffer {  offers = Set.singleton
@@ -149,6 +192,7 @@ actOfferAy   = ActOffer {  offers = Set.singleton
                         , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
+
 -- action: B
 actOfferB :: ActOffer
 actOfferB = ActOffer {  offers = Set.singleton
@@ -188,6 +232,16 @@ actOfferBExclamX   = ActOffer {  offers = Set.singleton
                               , constraint = cstrConst (Cbool True)
             }
 
+-- action: B?B$1
+actOfferBB1 :: ActOffer
+actOfferBB1  = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdB
+                                              , chanoffers = [Quest varIdB1]
+                                        }
+                        , hiddenvars = Set.empty
+                        , constraint = cstrConst (Cbool True)
+            }
+
 -- action: B?y
 actOfferBy :: ActOffer
 actOfferBy   = ActOffer {  offers = Set.singleton
@@ -212,7 +266,19 @@ actOfferAB   = ActOffer {  offers = Set.fromList [
                         , constraint = cstrConst (Cbool True)
                         }
 
+                        
 
+
+-- action: EXIT
+actOfferExit :: ActOffer
+actOfferExit   = ActOffer {  offers = Set.singleton
+                                    Offer { chanid = chanIdExit
+                                          , chanoffers = []
+                                    }
+                        , hiddenvars = Set.empty
+                        , constraint = cstrConst (Cbool True)
+            }
+      
 -- sorts, chanIds
 intSort :: SortId
 intSort = SortId {  SortId.name = T.pack "Int"

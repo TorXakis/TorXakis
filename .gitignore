@@ -46,3 +46,8 @@ sys/txs-sort/txs-sort.cabal
 
 # RPM package.
 *.rpm
+
+# custom build scripts
+build_it.sh
+
+#
