@@ -28,7 +28,8 @@ module TorXakis.ValExpr.ValExprContext
 where
 import           Control.DeepSeq        (NFData)
 import           Data.Data              (Data)
-import qualified Data.HashMap           as Map
+import qualified Data.HashMap           as HashMap
+import qualified Data.Map               as Map
 import           Data.Maybe             (mapMaybe)
 import qualified Data.Set               as Set
 import qualified Data.Text              as T
@@ -37,15 +38,16 @@ import           GHC.Generics           (Generic)
 import           TorXakis.Error         ( MinError(MinError) )
 import           TorXakis.Name          ( RefByName, toMapByName, repeatedByName )
 import           TorXakis.Sort          ( Sort, SortContext (..), MinimalSortContext (..), elemSort, getSort )
+import           TorXakis.ValExpr.ValExpr
 import           TorXakis.VarDef        ( VarDef, MinimalVarDef )
-import           TorXakis.FuncDef       ( FuncDef )
+import           TorXakis.FuncDef       ( FuncDef (..) )
 import           TorXakis.FuncSignature ( FuncSignature (..) , HasFuncSignature (..) , toMapByFuncSignature, repeatedByFuncSignatureIncremental )
 
 
 -- | A ValExprContext instance contains all definitions to work with value expressions and references thereof
 class (SortContext (a v), VarDef v) => ValExprContext a v where
     -- | Accessor for Variable Definitions
-    varDefs :: a v -> Map.Map (RefByName v) v
+    varDefs :: a v -> HashMap.Map (RefByName v) v
 
     -- | Add variable definitions to value expression context.
     --   A value expression context is returned when the following constraints are satisfied:
@@ -60,7 +62,7 @@ class (SortContext (a v), VarDef v) => ValExprContext a v where
     addVarDefs :: a v -> [v] -> Either MinError (a v)
 
     -- | Accessor for Function Definitions
-    funcDefs :: a v -> Map.Map FuncSignature (FuncDef v)
+    funcDefs :: a v -> HashMap.Map FuncSignature (FuncDef v)
 
     -- | Add function definitions to value expression context.
     --   A value expression context is returned when the following constraints are satisfied:
@@ -76,13 +78,13 @@ class (SortContext (a v), VarDef v) => ValExprContext a v where
 -- | A minimal instance of 'ValExprContext'.
 data MinimalValExprContext v = MinimalValExprContext { sortContext :: MinimalSortContext
                                                          -- var definitions
-                                                     , _varDefs :: Map.Map (RefByName v) v
+                                                     , _varDefs :: HashMap.Map (RefByName v) v
                                                          -- function definitions
-                                                     , _funcDefs :: Map.Map FuncSignature (FuncDef v)
+                                                     , _funcDefs :: HashMap.Map FuncSignature (FuncDef v)
                                                      } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance SortContext (MinimalValExprContext MinimalVarDef) where
-    empty = MinimalValExprContext (MinimalSortContext Map.empty) Map.empty Map.empty
+    empty = MinimalValExprContext (MinimalSortContext HashMap.empty) HashMap.empty HashMap.empty
     adtDefs ctx    = adtDefs (sortContext ctx)
     addAdtDefs ctx as = case addAdtDefs (sortContext ctx) as of
                           Left e     -> Left e
@@ -93,7 +95,7 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
     addVarDefs ctx vs 
         | not $ null nuVarNames    = Left $ MinError (T.pack ("Non unique variable names: " ++ show nuVarNames))
         | not $ null undefinedSort = Left $ MinError (T.pack ("Sorts not defined in context of variables: " ++ show undefinedSort))
-        | otherwise                = Right $ ctx { _varDefs = Map.union (toMapByName vs) (_varDefs ctx) }
+        | otherwise                = Right $ ctx { _varDefs = HashMap.union (toMapByName vs) (_varDefs ctx) }
       where
         nuVarNames :: [MinimalVarDef]
         nuVarNames = repeatedByName vs
@@ -109,7 +111,7 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
         | otherwise                          = Right $ ctx { _funcDefs = definedFuncSignatures }
       where
         nuFuncSignatures :: [FuncDef MinimalVarDef]
-        nuFuncSignatures = repeatedByFuncSignatureIncremental (Map.elems (funcDefs ctx)) fds
+        nuFuncSignatures = repeatedByFuncSignatureIncremental (HashMap.elems (funcDefs ctx)) fds
 
         undefinedSorts :: [(FuncSignature, Set.Set Sort)]
         undefinedSorts = mapMaybe undefinedSort fds
@@ -120,11 +122,42 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
                                 [] -> Nothing
                                 xs -> Just (fs, Set.fromList xs)
 
-        definedFuncSignatures :: Map.Map FuncSignature (FuncDef MinimalVarDef)
-        definedFuncSignatures = Map.union (toMapByFuncSignature fds) (_funcDefs ctx)
+        definedFuncSignatures :: HashMap.Map FuncSignature (FuncDef MinimalVarDef)
+        definedFuncSignatures = HashMap.union (toMapByFuncSignature fds) (_funcDefs ctx)
 
         undefinedFuncSignatures :: [(FuncSignature, Set.Set FuncSignature)]
         undefinedFuncSignatures = mapMaybe undefinedFuncSignature fds
 
         undefinedFuncSignature :: FuncDef MinimalVarDef -> Maybe (FuncSignature, Set.Set FuncSignature)
-        undefinedFuncSignature = undefined
+        undefinedFuncSignature fd = case findUndefinedFuncSignature (body fd) of
+                                        [] -> Nothing
+                                        xs -> Just (getFuncSignature fd, Set.fromList xs)
+
+        findUndefinedFuncSignature :: ValExpr v -> [FuncSignature]
+        findUndefinedFuncSignature = findUndefinedFuncSignature' . view
+
+        findUndefinedFuncSignature' :: ValExprView v -> [FuncSignature]
+        findUndefinedFuncSignature' Vconst{}                            = []
+        findUndefinedFuncSignature' Vvar{}                              = []
+        findUndefinedFuncSignature' (Vequal v1 v2)                      = findUndefinedFuncSignature v1 ++ findUndefinedFuncSignature v2
+        findUndefinedFuncSignature' (Vite c t f)                        = findUndefinedFuncSignature c ++ findUndefinedFuncSignature t ++ findUndefinedFuncSignature f
+        findUndefinedFuncSignature' (Vfunc f as)                        = (if HashMap.member f definedFuncSignatures 
+                                                                                then []
+                                                                                else [f]
+                                                                          )
+                                                                          ++ concatMap findUndefinedFuncSignature as
+        findUndefinedFuncSignature' (Vpredef _ as)                      = concatMap findUndefinedFuncSignature as
+        findUndefinedFuncSignature' (Vnot v)                            = findUndefinedFuncSignature v
+        findUndefinedFuncSignature' (Vand vs)                           = concatMap findUndefinedFuncSignature (Set.toList vs)
+        findUndefinedFuncSignature' (Vdivide t n)                       = findUndefinedFuncSignature t ++ findUndefinedFuncSignature n
+        findUndefinedFuncSignature' (Vmodulo t n)                       = findUndefinedFuncSignature t ++ findUndefinedFuncSignature n
+        findUndefinedFuncSignature' (Vsum mp)                           = concatMap findUndefinedFuncSignature (Map.keys mp)
+        findUndefinedFuncSignature' (Vproduct mp)                       = concatMap findUndefinedFuncSignature (Map.keys mp)
+        findUndefinedFuncSignature' (Vgez v)                            = findUndefinedFuncSignature v
+        findUndefinedFuncSignature' (Vlength v)                         = findUndefinedFuncSignature v
+        findUndefinedFuncSignature' (Vat s p)                           = findUndefinedFuncSignature s ++ findUndefinedFuncSignature p
+        findUndefinedFuncSignature' (Vconcat vs)                        = concatMap findUndefinedFuncSignature vs
+        findUndefinedFuncSignature' (Vstrinre s r)                      = findUndefinedFuncSignature s ++ findUndefinedFuncSignature r
+        findUndefinedFuncSignature' (Vcstr _ _ as)                      = concatMap findUndefinedFuncSignature as
+        findUndefinedFuncSignature' (Viscstr _ _ v)                     = findUndefinedFuncSignature v
+        findUndefinedFuncSignature' (Vaccess _ _ _ _ v)                 = findUndefinedFuncSignature v
