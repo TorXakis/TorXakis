@@ -74,7 +74,6 @@ stack install
 ```
 
 On Linux, the following libraries should be installed:
-- libexpat1-dev
 - libgmp-dev
 
 For Unix systems a different stack configuration is used:
