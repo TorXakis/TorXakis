@@ -208,7 +208,7 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Disable _bexprL _bexprR) choiceCnt freeVarsI
     (bexprRes, procDefsRes) <- preGNFDisable procInst' translatedProcDefs procDefs'' 
     
     return (bexprRes, procDefsRes) 
- 
+
 preGNFBExpr bexpr _ _ _ _ _ =
     error $ "unexpected type of bexpr" ++ show bexpr
 
@@ -924,11 +924,11 @@ preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) transla
     disableUnid <- EnvB.newUnid
     
     let varIdDisable = VarId name' disableUnid intSort
-        stepsLHS' =  map (updateProcInst 0 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed
-                         . addDisableConstraint varIdDisable) 
-                         (extractSteps bexprLHS_lpe_subst)
-        stepsRHS' =  map (updateProcInst 1 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed) (extractSteps bexprRHS_lpe_subst)
-        
+        stepsLHS' = map (updateProcInst 0 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed
+                        . addDisableConstraint varIdDisable) 
+                        (extractSteps bexprLHS_lpe_subst)
+        stepsRHS' = map (updateProcInst 1 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed) (extractSteps bexprRHS_lpe_subst)
+
         name' = T.append (ProcId.name procIdInst) (T.pack "$disable$lhs")
         paramsDefRes = [varIdDisable] ++ paramsDef ++ paramsDefLHS_lpe_prefixed ++ paramsDefRHS_lpe_prefixed
         procIdRes = procIdInst { ProcId.procvars = varsort <$> paramsDefRes}
@@ -938,7 +938,7 @@ preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) transla
         -- updateProcInstOriginal :: BExpr -> ProcId -> BExpr
         -- updateProcInstOriginal (TxsDefs.view -> ProcInst _procIdInst chansInst paramsInst) procIdNew =
         -- add new ProcDef to ProcDefs:
-        procDefsRes = Map.insert procIdRes procDefRes procDefs5 
+        procDefsRes = Map.insert procIdRes procDefRes procDefs5
     return (procInstRes, procDefsRes)
     where 
         addDisableConstraint :: VarId -> BExpr -> BExpr

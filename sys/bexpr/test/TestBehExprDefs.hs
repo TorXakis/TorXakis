@@ -224,6 +224,11 @@ prop_ActionPrefixConditionFalseEqualsStop soffers (GenBExpr p) =
         stop == actionPref (ActOffer offers' Set.empty valExprFalse) p
 
 -- rewrite removed since LPE wants standard form: ActOffer >-> P[..](..)
+--
+-- temporarily disabled,
+-- because rewrite rule for EXIT >-> has been disabled,
+-- because otherwise LPE invariant is invalidated.
+--
 -- TODO: decide whether LPE has to change or rewrite should not be done
 --
 -- EXIT >-> p <==> EXIT >-> STOP

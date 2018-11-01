@@ -27,8 +27,8 @@ import TranslatedProcDefs
 import LPEfunc
 import TestDefinitions
 
--- import Debug.Trace
--- import TxsShow
+--import Debug.Trace
+--import TxsShow
 
 
 --type ProcDefs = Map.Map ProcId ProcDef
@@ -415,7 +415,7 @@ testDisable4 = TestCase $
 --                P[A](P$disable$lhs, x, P$lhs$pc$P$lhs, P$lhs$P$lhs$A$x, P$rhs$pc$P$rhs, P$rhs$P$rhs$A$x) :=
 --                      A [P$disable$lhs == 0, pc$P$lhs == 0]   >-> P[A](0, x, -1, ANY, pc$P$rhs, P$rhs$A$x) 
 --                 ##   A [pc$P$rhs == 0]                       >-> P[A](1, x, pc$P$lhs, P$lhs$A$x, -1, ANY)   
---          with ProcInst: P[A](0, 2, 0, x, 0, x)
+--          with ProcInst: P[A](0, 2, 0, ANY, 0, ANY)
 testDisable5 :: Test
 testDisable5 = TestCase $
 --    trace ("\ntestDisable5:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
@@ -478,7 +478,7 @@ testPreGNFDisableList = TestList [
                              TestLabel "ActionPref, ActionPref" testDisable1
                         ,    TestLabel "EXIT , ActionPref" testDisable2
                         ,    TestLabel "EXIT | A , ActionPref" testDisable3
-                        ,    TestLabel "ProcInst , ActionPref" testDisable4
-                        ,    TestLabel "ProcInst , ActionPref" testDisable5
+                        ,    TestLabel "ProcInst , ActionPref -4 " testDisable4
+                        ,    TestLabel "ProcInst , ActionPref -5 " testDisable5
 
                         ]

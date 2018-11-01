@@ -1736,7 +1736,6 @@ testLPEDisable1 = TestCase $
                                                       ])
 
 
-
 -- test LPE translation of DISABLE with recursion
 -- P[A,B]() := A!1 [>> P[A,B]()
 -- ERROR!
@@ -1834,7 +1833,6 @@ testLPEDisableRec = TestCase $
                                                                   (procInst procIdP' [chanIdA, chanIdB] [int0, vexprPdisable', vexprPpcLHS', vexprPpcRHS'])
 
                                                       ])
-
 
 
 ----------------------------------------------------------------------------------------
