@@ -65,6 +65,10 @@ extra-deps:
 - git: https://github.com/TorXakis/text-via-sockets.git
   commit: e3228cd0407ec0d7991a544e154ea2def184fcae
 
+flags:
+  hexpat:
+    bundle: true
+
 # Extra package databases containing global packages
 extra-package-dbs: []
 
