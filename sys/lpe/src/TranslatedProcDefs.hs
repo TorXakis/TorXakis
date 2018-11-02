@@ -10,6 +10,7 @@ module TranslatedProcDefs
 
 where
 
+import ChanId
 import ProcId
 
 
@@ -20,7 +21,8 @@ data TranslatedProcDefs = TranslatedProcDefs
   , lGNF     :: [ProcId]          -- translated
   , lGNFdirectcalls :: [ProcId]   -- loop detection: current chain of direct calls without progress
   , lGNFinTranslation :: [ProcId] -- currently being translated
-  , lLPE     :: [ProcId]
+  , lParInTranslation :: [ProcId] -- ProcIds with Parallel Expressions currently being translated
+  , lLPE     :: [(ProcId, [ChanId])]
   } deriving (Eq, Ord, Read, Show)
 
 emptyTranslatedProcDefs :: TranslatedProcDefs
@@ -28,4 +30,5 @@ emptyTranslatedProcDefs = TranslatedProcDefs { TranslatedProcDefs.lPreGNF = []
                                              , TranslatedProcDefs.lGNF = []
                                              , TranslatedProcDefs.lGNFdirectcalls = []
                                              , TranslatedProcDefs.lGNFinTranslation = []
+                                             , TranslatedProcDefs.lParInTranslation = []
                                              , TranslatedProcDefs.lLPE = [] }

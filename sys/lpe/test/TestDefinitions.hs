@@ -172,6 +172,17 @@ actOfferAExclamX   = ActOffer {  offers = Set.singleton
                         , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
+
+-- action: A?A$1
+actOfferAA1 :: ActOffer
+actOfferAA1   = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdA
+                                              , chanoffers = [Quest varIdA1]
+                                        }
+                        , hiddenvars = Set.empty
+                        , constraint = cstrConst (Cbool True)
+            }
+
 -- action: A?y
 actOfferAy :: ActOffer
 actOfferAy   = ActOffer {  offers = Set.singleton
@@ -181,6 +192,7 @@ actOfferAy   = ActOffer {  offers = Set.singleton
                         , hiddenvars = Set.empty
                         , constraint = cstrConst (Cbool True)
             }
+
 -- action: B
 actOfferB :: ActOffer
 actOfferB = ActOffer {  offers = Set.singleton
@@ -218,6 +230,16 @@ actOfferBExclamX   = ActOffer {  offers = Set.singleton
                               }
                               , hiddenvars = Set.empty
                               , constraint = cstrConst (Cbool True)
+            }
+
+-- action: B?B$1
+actOfferBB1 :: ActOffer
+actOfferBB1  = ActOffer {  offers = Set.singleton
+                                        Offer { chanid = chanIdB
+                                              , chanoffers = [Quest varIdB1]
+                                        }
+                        , hiddenvars = Set.empty
+                        , constraint = cstrConst (Cbool True)
             }
 
 -- action: B?y

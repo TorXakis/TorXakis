@@ -178,8 +178,8 @@ testExit3 = TestCase $
 -- with procInst = P[A](0)
 testExit4 :: Test
 testExit4 = TestCase $
---    trace ("\ntestDisable2:\n expected:" ++  pshow procInst' ++ "\n ProcDefs: " ++ pshow_procDefs procDefs'''  ++ 
---             "\ngot: " ++ pshow res_procInst ++ "\nProcDefs: " ++ pshow_procDefs res_procDefs'') $
+--    trace ("\ntestDisable2:\n expected:" ++  pshow procInst' ++ "\n ProcDefs: " ++ pshowProcDefs procDefs'''  ++ 
+--             "\ngot: " ++ pshow res_procInst ++ "\nProcDefs: " ++ pshowProcDefs res_procDefs'') $
        assertBool "ACCEPT" (eqProcDefs procDefs''' res_procDefs'' && (procInst' ~~ res_procInst))
    where
       res_procDefs'' = Map.delete procIdP res_procDefs'  -- remove the original ProcId for the comparison with the expected result

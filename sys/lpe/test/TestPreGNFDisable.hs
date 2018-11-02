@@ -27,8 +27,8 @@ import TranslatedProcDefs
 import LPEfunc
 import TestDefinitions
 
--- import Debug.Trace
--- import TxsShow
+--import Debug.Trace
+--import TxsShow
 
 
 --type ProcDefs = Map.Map ProcId ProcDef
@@ -66,7 +66,7 @@ testDisable1 :: Test
 testDisable1 = TestCase $
 --    trace ("\ntestDisable1:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
 --             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
---             "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
+--             "\n res_procDefs': " ++ pshowProcDefs res_procDefs') $
       assertBool "ActionPref, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
@@ -134,7 +134,7 @@ testDisable2 :: Test
 testDisable2 = TestCase $
 --    trace ("\ntestDisable2:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
 --             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
---             "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
+--             "\n res_procDefs': " ++ pshowProcDefs res_procDefs') $
       assertBool "EXIT, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
@@ -162,7 +162,7 @@ testDisable2 = TestCase $
 
                                                       actionPref 
                                                             actOfferA { constraint = cstrEqual vexprPpcRHS int0
-                                                                        } 
+                                                                      } 
                                                             (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])
 
 
@@ -201,7 +201,7 @@ testDisable3 :: Test
 testDisable3 = TestCase $
 --    trace ("\ntestDisable3:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
 --             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
---             "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
+--             "\n res_procDefs': " ++ pshowProcDefs res_procDefs') $
       assertBool "ActionPref | EXIT, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
@@ -245,7 +245,7 @@ testDisable3 = TestCase $
 
                                                       actionPref 
                                                             actOfferA { constraint = cstrEqual vexprPpcRHS int0
-                                                                        } 
+                                                                      }
                                                             (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])
 
 
@@ -291,7 +291,7 @@ testDisable4 :: Test
 testDisable4 = TestCase $
 --    trace ("\ntestDisable4:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
 --             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
---             "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
+--             "\n res_procDefs': " ++ pshowProcDefs res_procDefs') $
       assertBool "ProcInst, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
@@ -371,7 +371,7 @@ testDisable4 = TestCase $
                                                             actOfferAx {offers = Set.singleton
                                                                               Offer { chanid = chanIdA
                                                                                     , chanoffers = [Quest varIdA1]
-                                                                              },
+                                                                                    },
                                                                         constraint = cstrAnd (Set.fromList [ 
                                                                                           cstrITE (cstrEqual vexprPdisable int0)
                                                                                                 (cstrEqual vexprPpcLHS int1)
@@ -385,7 +385,7 @@ testDisable4 = TestCase $
                                                             actOfferAx {offers = Set.singleton
                                                                             Offer { chanid = chanIdA
                                                                                   , chanoffers = [Quest varIdA1]
-                                                                        },
+                                                                                  },
                                                                   constraint = cstrAnd (Set.fromList [ 
                                                                                     cstrITE (cstrEqual vexprPdisable int0)
                                                                                           (cstrEqual vexprPpcLHS int1)
@@ -420,7 +420,7 @@ testDisable5 :: Test
 testDisable5 = TestCase $
 --    trace ("\ntestDisable5:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
 --             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
---             "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
+--             "\n res_procDefs': " ++ pshowProcDefs res_procDefs') $
       assertBool "ProcInst, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
@@ -449,7 +449,7 @@ testDisable5 = TestCase $
       vexprPrhsX = cstrVar varIdPrhsX
 
       procIdP' = procIdGen "P" [chanIdA] [varIdPdisable, varIdX, varIdPpcLHS, varIdPlhsX, varIdPpcRHS, varIdPrhsX]
-      procInst' = procInst procIdP' [chanIdA] [int0, int2, int0, anyInt, int0, anyInt]
+      procInst' = procInst procIdP' [chanIdA] [int0, int2, int0, vexprX, int0, vexprX]
       procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdX, varIdPpcLHS, varIdPlhsX, varIdPpcRHS, varIdPrhsX]
                                                 (choice $ Set.fromList [
                                                       actionPref 
@@ -462,7 +462,8 @@ testDisable5 = TestCase $
                                                             (procInst procIdP' [chanIdA] [int0, vexprX, intMin1, anyInt, vexprPpcRHS, vexprPrhsX]),
 
                                                       actionPref 
-                                                            actOfferA { constraint = cstrEqual vexprPpcRHS int0 }
+                                                            actOfferA { constraint = cstrEqual vexprPpcRHS int0
+                                                                      } 
                                                             (procInst procIdP' [chanIdA] [int1, vexprX, vexprPpcLHS, vexprPlhsX, intMin1, anyInt])
                                                 ])
 
@@ -477,7 +478,7 @@ testPreGNFDisableList = TestList [
                              TestLabel "ActionPref, ActionPref" testDisable1
                         ,    TestLabel "EXIT , ActionPref" testDisable2
                         ,    TestLabel "EXIT | A , ActionPref" testDisable3
-                        ,    TestLabel "ProcInst , ActionPref" testDisable4
-                        ,    TestLabel "ProcInst , ActionPref" testDisable5
+                        ,    TestLabel "ProcInst , ActionPref -4 " testDisable4
+                        ,    TestLabel "ProcInst , ActionPref -5 " testDisable5
 
                         ]

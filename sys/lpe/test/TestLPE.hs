@@ -24,6 +24,11 @@ import LPEfunc
 
 import TestDefinitions
 
+-- import TxsShow
+-- import Debug.Trace
+
+
+
 ---------------------------------------------------------------------------
 -- Tests
 ---------------------------------------------------------------------------
@@ -1163,6 +1168,90 @@ testEnable1 = TestCase $
       procInst' = procInst procIdPlpe [chanIdA] [int0]
 
 
+-- P[A]() := EXIT >>> P[A]()
+-- with procInst = P[A]()
+-- becomes:
+-- LPE:
+--    LPE_P[A]() :=     {} [pcP == 0] >-> P[A](1)
+--                  ##  {} [pcP == 1] >-> P[A](1)           // another step created because of unfolding in the translation
+--    LPE_P[A](0)
+
+testEnable1Rec :: Test
+testEnable1Rec = TestCase $
+      -- trace ("\n\n expected:" ++ show (Just (procInst', procDefPlpe)) ++ "\ngot: " ++ show res) $ 
+   assertBool "Recursion" (eqProcDef (Just (procInst', procDefPlpe)) res)
+   where
+      res = lpeTransformFunc procInst'' procDefs'
+      procInst'' = procInst procIdP [chanIdA] []
+      procIdP = procIdGen "P" [chanIdA] []
+      
+      procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExit stop)
+                                              [] 
+                                              procInst'')
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+
+      procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP]
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (choice (Set.fromList [
+                                                            actionPref 
+                                                                  ActOffer {    offers = Set.empty
+                                                                              , hiddenvars = Set.empty
+                                                                              , constraint = cstrEqual vexprPcP int0
+                                                                              } 
+                                                                  (procInst procIdPlpe [chanIdA] [int1]),
+                                                            
+                                                            actionPref 
+                                                                  ActOffer {    offers = Set.empty
+                                                                              , hiddenvars = Set.empty
+                                                                              , constraint = cstrEqual vexprPcP int1
+                                                                              } 
+                                                                  (procInst procIdPlpe [chanIdA] [int1])
+                                                      ]))
+
+      procInst' = procInst procIdPlpe [chanIdA] [int0]
+
+
+-- P[A]() := EXIT >>> A >-> P[A]()
+-- with procInst = P[A]()
+-- becomes:
+-- LPE:
+--    LPE_P[A]() :=     {} [pcP == 0] >-> P[A](1)
+--                  ##  A [pcP == 1] >-> P[A](0)  
+--    LPE_P[A](0)
+
+testEnable2Rec :: Test
+testEnable2Rec = TestCase $
+      -- trace ("\ntestEnable:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)  ++ 
+      --       "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
+      --       "\n res_procDef: " ++ (pshow $ DefProc res_procDef)) $
+            assertBool "ActionPref" $ eqProcDef (Just (procInst', procDefPlpe)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
+      where
+      (res_procInst, res_procDef) = fromMaybe (error "could not find the given procId 1") $ lpeTransformFunc procInst'' procDefs'
+      procInst'' = procInst procIdP [chanIdA] []
+      procIdP = procIdGen "P" [chanIdA] []
+      
+      procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExit stop)
+                                              [] 
+                                              (actionPref actOfferA procInst''))
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+
+      procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP]
+      procDefPlpe = ProcDef [chanIdA] [varIdPcP] (choice (Set.fromList [
+                                                            actionPref 
+                                                                  ActOffer {    offers = Set.empty
+                                                                              , hiddenvars = Set.empty
+                                                                              , constraint = cstrEqual vexprPcP int0
+                                                                              } 
+                                                                  (procInst procIdPlpe [chanIdA] [int1]),
+                                                            
+                                                            actionPref 
+                                                                  actOfferA {  constraint = cstrEqual vexprPcP int1
+                                                                              } 
+                                                                  (procInst procIdPlpe [chanIdA] [int0])
+                                                      ]))
+
+      procInst' = procInst procIdPlpe [chanIdA] [int0]
+
+
 
 
 
@@ -1581,7 +1670,7 @@ testLPEGuardEnable = TestCase $
 
 testLPEDisable1 :: Test
 testLPEDisable1 = TestCase $
---    trace ("\ntestDisable2:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
+--    trace ("\ntestDisable:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
 --             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
 --             "\n res_procDef: " ++ (pshow $ DefProc res_procDef)) $
       assertBool "EXIT, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
@@ -1617,18 +1706,20 @@ testLPEDisable1 = TestCase $
                                                 (choice $ Set.fromList [
 
                                                             actionPref 
-                                                                  actOfferA { constraint = cstrEqual vexprPcP int0 }
+                                                                  actOfferA { constraint = cstrEqual vexprPcP int0
+                                                                              } 
                                                                   (procInst procIdP' [chanIdA] [int1, int1, int0, intMin1]),
                                                             
                                                             actionPref 
-                                                                  actOfferA { constraint = cstrITE (cstrEqual vexprPcP int1)
-                                                                                                   (cstrEqual vexprPpcRHS' int0)
-                                                                                                   (cstrConst (Cbool False))
+                                                                  actOfferA { constraint =    cstrITE (cstrEqual vexprPcP int1)
+                                                                                                      (cstrEqual vexprPpcRHS' int0)
+                                                                                                      (cstrConst (Cbool False))
                                                                               } 
                                                                   (procInst procIdP' [chanIdA] [int1, int1, vexprPpcLHS', intMin1]),
                                                             
                                                             actionPref 
-                                                                  actOfferExit { constraint = cstrEqual vexprPcP int0 }
+                                                                  actOfferExit { constraint =  cstrEqual vexprPcP int0
+                                                                              } 
                                                                   (procInst procIdP' [chanIdA] [int1, int0, intMin1, intMin1]),
                                                             
                                                             actionPref 
@@ -1644,6 +1735,104 @@ testLPEDisable1 = TestCase $
 
                                                       ])
 
+
+-- test LPE translation of DISABLE with recursion
+-- P[A,B]() := A!1 [>> P[A,B]()
+-- ERROR!
+--    there is a possible trace with NO progress, i.e. when the RHS is always executed. 
+--    
+
+-- test LPE translation of DISABLE with recursion
+-- P[A,B]() := A!1 [>> B?x >-> P[A,B]()
+-- with procInst = P[A,B]()
+-- becomes:
+--                P[A,B](pc$P P$pre1$A$B$P$pre1$disable$lhs P$pre1$A$B$P$pre1$lhs$pc$P$pre1$lhs P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs) :=
+--                      A?A$1 [[ IF pc$P == 0 THEN A$1 == 1 ELSE FALSE FI  ]] 
+--                            >-> LPE_P[A](1, 0, -1, 0)
+--                 ##   A?A$1 [[ IF pc$P == 1 THEN (IF P$pre1$A$B$P$pre1$disable$lhs == 0 THEN (IF P$pre1$A$B$P$pre1$lhs$pc$P$pre1$lhs == 0 THEN A$1 == 1 ELSE FALSE) ELSE FALSE) ELSE FALSE FI  ]] 
+--                            >-> LPE_P[A](1, 0, -1, P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs)
+--                 ##   B?B$1 [[ pc$P == 0 ]] 
+--                            >-> LPE_P[A](0, P$pre1$A$B$P$pre1$disable$lhs, P$pre1$A$B$P$pre1$lhs$pc$P$pre1$lhs, P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs)
+--                 ##   B?B$1 [[ IF pc$P == 1 THEN P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs == 0 ELSE FALSE FI  ]] 
+--                            >-> LPE_P[A]( 0, P$pre1$A$B$P$pre1$disable$lhs, P$pre1$A$B$P$pre1$lhs$pc$P$pre1$lhs, P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs)
+--          with ProcInst: P[A](0, ANY, ANY, ANY)
+
+testLPEDisableRec :: Test
+testLPEDisableRec = TestCase $
+--    trace ("\ntestDisable2:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
+--             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
+--             "\n res_procDef: " ++ (pshow $ DefProc res_procDef)) $
+      assertBool "LPE Disable Rec" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
+   where
+      (res_procInst, res_procDef) = fromMaybe (error "could not find the given procId 1") $ lpeTransformFunc procInst'' procDefs'
+      -- extract expected ProcDef from all results:
+      -- res_procDef = fromMaybe (error "could not find the given procId") (Map.lookup res_procId res_procDefs')
+
+      procInst'' = procInst procIdP [chanIdA, chanIdB] []
+      procIdP = procIdGen "P" [chanIdA, chanIdB] [ ]
+      procDefP = ProcDef [chanIdA, chanIdB] [] (disable (actionPref actOfferA1 stop)
+                                                            (actionPref actOfferBx procInst''))
+      procDefs' = Map.fromList  [  (procIdP, procDefP)]
+
+      varIdPdisable' :: VarId
+      varIdPdisable' = VarId (T.pack "P$pre1$A$B$P$pre1$disable$lhs") 33 intSort
+      varIdPpcLHS' :: VarId
+      varIdPpcLHS' = VarId (T.pack "P$pre1$A$B$P$pre1$lhs$pc$P$pre1$lhs") 33 intSort
+      varIdPpcRHS' :: VarId
+      varIdPpcRHS' = VarId (T.pack "P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs") 33 intSort
+      
+      vexprPdisable' :: VExpr
+      vexprPdisable' = cstrVar varIdPdisable'
+      vexprPpcLHS' :: VExpr
+      vexprPpcLHS' = cstrVar varIdPpcLHS'
+      vexprPpcRHS' :: VExpr
+      vexprPpcRHS' = cstrVar varIdPpcRHS'
+
+
+
+      procIdP' = procIdGen "LPE_P" [chanIdA, chanIdB] [varIdPcP, varIdPdisable', varIdPpcLHS', varIdPpcRHS']
+      procInst' = procInst procIdP' [chanIdA, chanIdB] [int0, anyInt, anyInt, anyInt]
+      procDefExpected = ProcDef [chanIdA, chanIdB] [varIdPcP, varIdPdisable', varIdPpcLHS', varIdPpcRHS']
+                                                (choice $ Set.fromList [
+                                                            -- A?A$1 [[ IF pc$P == 0 THEN A$1 == 1 ELSE FALSE FI  ]] 
+                                                            --    >-> LPE_P[A](1, 0, -1, 0)
+                                                            actionPref 
+                                                                  actOfferAA1 { constraint = cstrITE (cstrEqual vexprPcP int0)
+                                                                                                     (cstrEqual vexprA1 int1)
+                                                                                                     (cstrConst (Cbool False))
+                                                                              } 
+                                                                  (procInst procIdP' [chanIdA, chanIdB] [int1, int0, intMin1, int0]),
+                                                            -- ##   A?A$1 [[ IF pc$P == 1 THEN (IF P$pre1$A$B$P$pre1$disable$lhs == 0 THEN (IF P$pre1$A$B$P$pre1$lhs$pc$P$pre1$lhs == 0 THEN A$1 == 1 ELSE FALSE) ELSE FALSE) ELSE FALSE FI  ]] 
+                                                            --          >-> LPE_P[A](1, 0, -1, P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs)
+                                                            actionPref 
+                                                                  actOfferAA1 { constraint =      cstrITE (cstrEqual vexprPcP int1)
+                                                                                                            (cstrITE (cstrEqual vexprPdisable' int0)
+                                                                                                                  (cstrITE  (cstrEqual vexprPpcLHS' int0)
+                                                                                                                        (cstrEqual vexprA1 int1)
+                                                                                                                        (cstrConst (Cbool False)))
+                                                                                                                  (cstrConst (Cbool False)))
+                                                                                                            (cstrConst (Cbool False))
+                                                                              } 
+                                                                  (procInst procIdP' [chanIdA, chanIdB] [int1, int0, intMin1, vexprPpcRHS']),
+                                                            
+                                                            -- ##   B?B$1 [[ pc$P == 0 ]] 
+                                                            --          >-> LPE_P[A](0, P$pre1$A$B$P$pre1$disable$lhs, P$pre1$A$B$P$pre1$lhs$pc$P$pre1$lhs, P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs)
+                                                            actionPref 
+                                                                  actOfferBB1 { constraint =  cstrEqual vexprPcP int0
+                                                                              } 
+                                                                  (procInst procIdP' [chanIdA, chanIdB] [int0, vexprPdisable', vexprPpcLHS', vexprPpcRHS']),
+                                                            
+                                                            -- ##   B?B$1 [[ IF pc$P == 1 THEN P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs == 0 ELSE FALSE FI  ]] 
+                                                            --          >-> LPE_P[A]( 0, P$pre1$A$B$P$pre1$disable$lhs, P$pre1$A$B$P$pre1$lhs$pc$P$pre1$lhs, P$pre1$A$B$P$pre1$rhs$pc$P$pre1$rhs)
+
+                                                            actionPref 
+                                                                  actOfferBB1 { constraint = cstrITE (cstrEqual vexprPcP int1)
+                                                                                                     (cstrEqual vexprPpcRHS' int0)
+                                                                                                     (cstrConst (Cbool False))
+                                                                              } 
+                                                                  (procInst procIdP' [chanIdA, chanIdB] [int0, vexprPdisable', vexprPpcLHS', vexprPpcRHS'])
+
+                                                      ])
 
 
 ----------------------------------------------------------------------------------------
@@ -1672,6 +1861,9 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
                         , TestLabel "lpeHide integration" testLPEHide1
                         , TestLabel "lpeHide integration" testLPEHide2
                         , TestLabel "lpeEnable integration" testEnable1
+                        , TestLabel "lpeEnable integration recursion" testEnable1Rec
+                        , TestLabel "lpeEnable integration recursion 2" testEnable2Rec
+
                         , TestLabel "lpeEnable integration 2" testEnable2
 
                         , TestLabel "lpe guard stop" testLPEGuardStop
@@ -1685,6 +1877,6 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
                         , TestLabel "lpe guard enable" testLPEGuardEnable
 
                         , TestLabel "lpe disable" testLPEDisable1
-
+                        , TestLabel "lpe disable rec" testLPEDisableRec
                         -- , TestLabel "multi chanoffer translation" testMultiChanOffer
                         ]

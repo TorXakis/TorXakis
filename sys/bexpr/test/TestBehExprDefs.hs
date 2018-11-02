@@ -223,14 +223,19 @@ prop_ActionPrefixConditionFalseEqualsStop soffers (GenBExpr p) =
     let offers' = Set.map (\(GenOffer o) -> o) soffers in
         stop == actionPref (ActOffer offers' Set.empty valExprFalse) p
 
+-- rewrite removed since LPE wants standard form: ActOffer >-> P[..](..)
+--
 -- temporarily disabled,
 -- because rewrite rule for EXIT >-> has been disabled,
 -- because otherwise LPE invariant is invalidated.
+--
+-- TODO: decide whether LPE has to change or rewrite should not be done
+--
 -- EXIT >-> p <==> EXIT >-> STOP
 -- prop_EXIT :: Set.Set GenOffer -> GenValExprBool -> GenBExpr -> Property
 -- prop_EXIT soffers (GenValExprBool vexpr) (GenBExpr p) =
---     let offers' = Set.map (\(GenOffer o) -> o) soffers in
---         containsEXIT offers' ==> actionPref (ActOffer offers' Set.empty vexpr) p == actionPref (ActOffer offers' Set.empty vexpr) stop
+--    let offers' = Set.map (\(GenOffer o) -> o) soffers in
+--        containsEXIT offers' ==> actionPref (ActOffer offers' Set.empty vexpr) p == actionPref (ActOffer offers' Set.empty vexpr) stop
 
 -- | [[ True ]] =>> p <==> p
 prop_GuardTrue :: GenBExpr -> Bool
