@@ -84,7 +84,7 @@ data MinimalValExprContext v = MinimalValExprContext { sortContext :: MinimalSor
                                                      } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance SortContext (MinimalValExprContext MinimalVarDef) where
-    empty = MinimalValExprContext (MinimalSortContext HashMap.empty) HashMap.empty HashMap.empty
+    empty = MinimalValExprContext (empty::MinimalSortContext) HashMap.empty HashMap.empty
     adtDefs ctx    = adtDefs (sortContext ctx)
     addAdtDefs ctx as = case addAdtDefs (sortContext ctx) as of
                           Left e     -> Left e
@@ -105,13 +105,13 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
 
     funcDefs = _funcDefs
     addFuncDefs ctx fds
-        | not $ null nuFuncSignatures        = Left $ MinError (T.pack ("Non unique function signatures: " ++ show nuFuncSignatures))
+        | not $ null nuFuncDefs              = Left $ MinError (T.pack ("Non unique function signatures: " ++ show nuFuncDefs))
         | not $ null undefinedSorts          = Left $ MinError (T.pack ("List of function signatures with undefined sorts: " ++ show undefinedSorts))
         | not $ null undefinedFuncSignatures = Left $ MinError (T.pack ("List of function signatures with undefined function signatures in their bodies: " ++ show undefinedFuncSignatures))
         | otherwise                          = Right $ ctx { _funcDefs = definedFuncSignatures }
       where
-        nuFuncSignatures :: [FuncDef MinimalVarDef]
-        nuFuncSignatures = repeatedByFuncSignatureIncremental (HashMap.elems (funcDefs ctx)) fds
+        nuFuncDefs :: [FuncDef MinimalVarDef]
+        nuFuncDefs = repeatedByFuncSignatureIncremental (HashMap.elems (funcDefs ctx)) fds
 
         undefinedSorts :: [(FuncSignature, Set.Set Sort)]
         undefinedSorts = mapMaybe undefinedSort fds

@@ -1,0 +1,50 @@
+# TorXakis - Model Based Testing
+# Copyright (c) 2015-2017 TNO and Radboud University
+# See LICENSE at root directory of this repository.
+name:                txs-bexpr
+version:             0.1.0.0
+github:              "TorXakis/TorXakis"
+license:             BSD3
+author:              "Pierre van de Laar"
+maintainer:          "pierre.vandelaar@tno.nl"
+copyright:           "Copyright (c) 2015-2017 TNO and Radboud University"
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+  exposed-modules:
+  - TorXakis.BExpr
+  - TorXakis.ChanDef
+  - TorXakis.ProcDef
+  - TorXakis.ProcSignature
+  dependencies:
+  - array
+  - containers
+  - deepseq
+  - hashable
+  - hashmap
+  - regex-tdfa
+  - text
+  - txs-basics
+  - txs-lex-regex-xsd
+  - txs-sort
+  - txs-value
+  - txs-valexpr
+  - Unique
+
+extra-source-files:
+- README.md
+
+ghc-options:
+- -Werror
+- -Wall
+- -O
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-home-modules
+- -Wmissing-local-signatures
+- -Wmonomorphism-restriction
+- -Wredundant-constraints
