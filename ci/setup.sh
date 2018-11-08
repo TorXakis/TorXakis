@@ -7,7 +7,7 @@ set -e
 javac ./test/copyright/Copyright.java
 java -cp ./test/copyright Copyright . 0 ./.semaphore-cache
 
-sudo apt-get install -y libgmp3-dev
+sudo apt-get install -y libgmp-dev
 # Download and unpack the stack executable
 if [ ! -d $CACHE_DIR/bin ]
 then
