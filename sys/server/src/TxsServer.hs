@@ -980,7 +980,7 @@ cmdLPE :: String -> IOS.IOS ()
 cmdLPE args = do
      tdefs <- lift TxsCore.txsGetTDefs
      let mdefs = TxsDefs.modelDefs tdefs
-         mids  = [ m | m@((TxsDefs.ModelId nm _uid), _) <- Map.toList mdefs
+         mids  = [ m | m@(TxsDefs.ModelId nm _uid, _) <- Map.toList mdefs
                            , T.unpack nm == args
                  ]
          chids = Set.toList $ Set.unions [ Set.unions (chins ++ chouts ++ spls)
@@ -995,16 +995,16 @@ cmdLPE args = do
                -- - The new process uses the body of the old model.
                -- By doing this, LPEs can be generated for models that do not
                -- have a body that consists of only a process instantiation:
-               newProcUnid <- lift $ IOC.newUnid
-               let newProcId = TxsDefs.ProcId { ProcId.name = (T.pack "proxyProcess")
+               newProcUnid <- lift IOC.newUnid
+               let newProcId = TxsDefs.ProcId { ProcId.name = T.pack "proxyProcess"
                                               , ProcId.unid = newProcUnid
                                               , ProcId.procchans = chids
                                               , ProcId.procvars = []
                                               , ProcId.procexit = ProcId.NoExit }
                let newProcDef = TxsDefs.ProcDef chids [] body
                let newProcInit = TxsDefs.procInst newProcId chids []
-               newModelUnid <- lift $ IOC.newUnid
-               let newModelId = modelId { ModelId.name = (T.pack "proxyModel")
+               newModelUnid <- lift IOC.newUnid
+               let newModelId = modelId { ModelId.name = T.pack "proxyModel"
                                         , ModelId.unid = newModelUnid
                                         }
                let newModelDef = TxsDefs.ModelDef chins chouts spls newProcInit
