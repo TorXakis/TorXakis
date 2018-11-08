@@ -53,6 +53,7 @@ import qualified IfServer            as IFS
 import qualified BuildInfo
 import qualified TxsCore
 import qualified VersionInfo
+import qualified EnvCore as IOC
 
 -- import from defs
 import qualified TxsDDefs
@@ -60,6 +61,8 @@ import qualified TxsDefs
 import qualified TxsShow
 import qualified Utils
 import qualified VarId
+import qualified ModelId
+import qualified ProcId
 
 -- import from valexpr
 import qualified ConstDefs
@@ -977,7 +980,7 @@ cmdLPE :: String -> IOS.IOS ()
 cmdLPE args = do
      tdefs <- lift TxsCore.txsGetTDefs
      let mdefs = TxsDefs.modelDefs tdefs
-         mids  = [ modelid | (modelid@(TxsDefs.ModelId nm _uid), _) <- Map.toList mdefs
+         mids  = [ m | m@((TxsDefs.ModelId nm _uid), _) <- Map.toList mdefs
                            , T.unpack nm == args
                  ]
          chids = Set.toList $ Set.unions [ Set.unions (chins ++ chouts ++ spls)
@@ -985,8 +988,33 @@ cmdLPE args = do
                                            <- Map.toList mdefs
                                          ]
      case mids of
-       [ modelId ]
-         -> do mayModelId' <- lift $ TxsCore.txsLPE (Right modelId)
+       [ (modelId, TxsDefs.ModelDef chins chouts spls body) ]
+       -- [ (modelId, _) ]
+         -> do -- Create a new model and process:
+               -- - The new model instantiates the new process;
+               -- - The new process uses the body of the old model.
+               -- By doing this, LPEs can be generated for models that do not
+               -- have a body that consists of only a process instantiation:
+               newProcUnid <- lift $ IOC.newUnid
+               let newProcId = TxsDefs.ProcId { ProcId.name = (T.pack "proxyProcess")
+                                              , ProcId.unid = newProcUnid
+                                              , ProcId.procchans = chids
+                                              , ProcId.procvars = []
+                                              , ProcId.procexit = ProcId.NoExit }
+               let newProcDef = TxsDefs.ProcDef chids [] body
+               let newProcInit = TxsDefs.procInst newProcId chids []
+               newModelUnid <- lift $ IOC.newUnid
+               let newModelId = modelId { ModelId.name = (T.pack "proxyModel")
+                                        , ModelId.unid = newModelUnid
+                                        }
+               let newModelDef = TxsDefs.ModelDef chins chouts spls newProcInit
+               let tdefs' = tdefs { TxsDefs.procDefs = Map.insert newProcId newProcDef (TxsDefs.procDefs tdefs)
+                                  , TxsDefs.modelDefs = Map.insert newModelId newModelDef (TxsDefs.modelDefs tdefs)
+                                  }
+               lift $ IOC.modifyCS $ \st -> st { IOC.tdefs = tdefs' }
+               -- Generate an LPE from the new model:
+               mayModelId' <- lift $ TxsCore.txsLPE (Right newModelId)
+               -- mayModelId' <- lift $ TxsCore.txsLPE (Right modelId)
                case mayModelId' of
                  Just (Right modelId') -> do IFS.pack "LPE" [ "LPE modeldef generated: "
                                                             , TxsShow.fshow modelId'
