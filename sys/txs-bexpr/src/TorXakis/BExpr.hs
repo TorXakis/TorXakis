@@ -16,8 +16,13 @@ See LICENSE at root directory of this repository.
 -- Interface file for Behavioural Expressions.
 -----------------------------------------------------------------------------
 module TorXakis.BExpr
-( module TorXakis.BExpr.BExprContext
+( -- * Behaviour Expression type and view
+  BExprView(..)
+, BExpr
+, view
+, module TorXakis.BExpr.BExprContext
 )
 where
 
+import TorXakis.BExpr.BExpr
 import TorXakis.BExpr.BExprContext

@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  FuncDef
+-- Module      :  ProcDef
 -- Copyright   :  (c) TNO and Radboud University
 -- License     :  BSD3 (see the file license.txt)
 -- 
@@ -13,13 +13,13 @@ See LICENSE at root directory of this repository.
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Function Definition
+-- Process Definition
 -----------------------------------------------------------------------------
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-module TorXakis.FuncDef
-( FuncDef(..)
+module TorXakis.ProcDef
+( ProcDef(..)
 )
 where
 
@@ -27,28 +27,32 @@ import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
 import           GHC.Generics        (Generic)
 
-import           TorXakis.FuncSignature
+import           TorXakis.BExpr.BExpr
+import           TorXakis.ChanDef
 import           TorXakis.Name
+import           TorXakis.ProcSignature
 import           TorXakis.Sort
 import           TorXakis.VarDef
-import           TorXakis.ValExpr.ValExpr
 
--- | Data structure to store the information of a Function Definition:
+-- | Data structure to store the information of a Process Definition:
 -- * A Name
+-- * A list of Channels
 -- * A list of variables
--- * A body (possibly using the variables)
-data FuncDef v = FuncDef { -- | The name of the function (of type 'TorXakis.Name')
-                           funcName :: Name
-                           -- | The function parameter definitions
-                         , paramDefs:: [v]
-                           -- | The body of the function
-                         , body :: ValExpr v
-                         }
+-- * A body (possibly using the channels and variables)
+data ProcDef = ProcDef { -- | The name of the process (of type 'TorXakis.Name')
+                         procName :: Name
+                         -- | The process channel definitions
+                       , channelDefs:: [ChanDef]
+                         -- | The process parameter definitions
+                       , paramDefs:: [MinimalVarDef]
+                         -- | The body of the process
+                       , body :: BExpr
+                       }
      deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
-instance VarDef v => HasFuncSignature (FuncDef v)
+instance HasProcSignature ProcDef
     where
-        getFuncSignature (FuncDef fn pds bd) = FuncSignature fn (map getSort pds) (getSort bd)
+        getProcSignature (ProcDef fn cds pds bd) = ProcSignature fn (map chanSort cds) (map getSort pds) (getExitSort bd)
 
 -- ----------------------------------------------------------------------------------------- --
 --

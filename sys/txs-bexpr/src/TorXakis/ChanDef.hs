@@ -26,6 +26,7 @@ where
 
 import           Control.DeepSeq     (NFData)
 import           Data.Data           (Data)
+import           Data.Hashable        (Hashable(hashWithSalt))
 import           GHC.Generics        (Generic)
 
 import TorXakis.Name
@@ -33,6 +34,9 @@ import TorXakis.Sort
 
 newtype ChanSort = ChanSort [Sort]
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
+
+instance Hashable ChanSort where
+    hashWithSalt s (ChanSort xs)    = s `hashWithSalt` xs
 
 -- | Data structure of Channel Definition.
 data ChanDef = ChanDef { -- | Name

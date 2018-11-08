@@ -24,6 +24,8 @@ module TorXakis.ValExpr.ValExprContext
 ( -- * ValExpr Context
   ValExprContext (..)
 , MinimalValExprContext(MinimalValExprContext)
+  -- *** Check for usage of undefined function signatures (due to 'mkNewFunc' which can be used everywhere)
+, findUndefinedFuncSignature
 )
 where
 import           Control.DeepSeq        (NFData)
@@ -129,35 +131,40 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
         undefinedFuncSignatures = mapMaybe undefinedFuncSignature fds
 
         undefinedFuncSignature :: FuncDef MinimalVarDef -> Maybe (FuncSignature, Set.Set FuncSignature)
-        undefinedFuncSignature fd = case findUndefinedFuncSignature (body fd) of
+        undefinedFuncSignature fd = case findUndefinedFuncSignature definedFuncSignatures (body fd) of
                                         [] -> Nothing
                                         xs -> Just (getFuncSignature fd, Set.fromList xs)
 
-        findUndefinedFuncSignature :: ValExpr v -> [FuncSignature]
-        findUndefinedFuncSignature = findUndefinedFuncSignature' . view
 
-        findUndefinedFuncSignature' :: ValExprView v -> [FuncSignature]
-        findUndefinedFuncSignature' Vconst{}                            = []
-        findUndefinedFuncSignature' Vvar{}                              = []
-        findUndefinedFuncSignature' (Vequal v1 v2)                      = findUndefinedFuncSignature v1 ++ findUndefinedFuncSignature v2
-        findUndefinedFuncSignature' (Vite c t f)                        = findUndefinedFuncSignature c ++ findUndefinedFuncSignature t ++ findUndefinedFuncSignature f
-        findUndefinedFuncSignature' (Vfunc f as)                        = (if HashMap.member f definedFuncSignatures 
-                                                                                then []
-                                                                                else [f]
-                                                                          )
-                                                                          ++ concatMap findUndefinedFuncSignature as
-        findUndefinedFuncSignature' (Vpredef _ as)                      = concatMap findUndefinedFuncSignature as
-        findUndefinedFuncSignature' (Vnot v)                            = findUndefinedFuncSignature v
-        findUndefinedFuncSignature' (Vand vs)                           = concatMap findUndefinedFuncSignature (Set.toList vs)
-        findUndefinedFuncSignature' (Vdivide t n)                       = findUndefinedFuncSignature t ++ findUndefinedFuncSignature n
-        findUndefinedFuncSignature' (Vmodulo t n)                       = findUndefinedFuncSignature t ++ findUndefinedFuncSignature n
-        findUndefinedFuncSignature' (Vsum mp)                           = concatMap findUndefinedFuncSignature (Map.keys mp)
-        findUndefinedFuncSignature' (Vproduct mp)                       = concatMap findUndefinedFuncSignature (Map.keys mp)
-        findUndefinedFuncSignature' (Vgez v)                            = findUndefinedFuncSignature v
-        findUndefinedFuncSignature' (Vlength v)                         = findUndefinedFuncSignature v
-        findUndefinedFuncSignature' (Vat s p)                           = findUndefinedFuncSignature s ++ findUndefinedFuncSignature p
-        findUndefinedFuncSignature' (Vconcat vs)                        = concatMap findUndefinedFuncSignature vs
-        findUndefinedFuncSignature' (Vstrinre s r)                      = findUndefinedFuncSignature s ++ findUndefinedFuncSignature r
-        findUndefinedFuncSignature' (Vcstr _ _ as)                      = concatMap findUndefinedFuncSignature as
-        findUndefinedFuncSignature' (Viscstr _ _ v)                     = findUndefinedFuncSignature v
-        findUndefinedFuncSignature' (Vaccess _ _ _ _ v)                 = findUndefinedFuncSignature v
+-- | Find Undefined Function Signatures in given Value Expression (given the defined Function Signatures)
+findUndefinedFuncSignature :: HashMap.Map FuncSignature (FuncDef v) -> ValExpr v -> [FuncSignature]
+findUndefinedFuncSignature definedFuncSignatures = findUndefinedFuncSignature'
+    where
+        findUndefinedFuncSignature' :: ValExpr v -> [FuncSignature]
+        findUndefinedFuncSignature' = findUndefinedFuncSignatureView . view
+        
+        findUndefinedFuncSignatureView :: ValExprView v -> [FuncSignature]
+        findUndefinedFuncSignatureView Vconst{}                            = []
+        findUndefinedFuncSignatureView Vvar{}                              = []
+        findUndefinedFuncSignatureView (Vequal v1 v2)                      = findUndefinedFuncSignature' v1 ++ findUndefinedFuncSignature' v2
+        findUndefinedFuncSignatureView (Vite c t f)                        = findUndefinedFuncSignature' c ++ findUndefinedFuncSignature' t ++ findUndefinedFuncSignature' f
+        findUndefinedFuncSignatureView (Vfunc f as)                        = (if HashMap.member f definedFuncSignatures
+                                                                                    then []
+                                                                                    else [f]
+                                                                              )
+                                                                              ++ concatMap findUndefinedFuncSignature' as
+        findUndefinedFuncSignatureView (Vpredef _ as)                      = concatMap findUndefinedFuncSignature' as
+        findUndefinedFuncSignatureView (Vnot v)                            = findUndefinedFuncSignature' v
+        findUndefinedFuncSignatureView (Vand vs)                           = concatMap findUndefinedFuncSignature' (Set.toList vs)
+        findUndefinedFuncSignatureView (Vdivide t n)                       = findUndefinedFuncSignature' t ++ findUndefinedFuncSignature' n
+        findUndefinedFuncSignatureView (Vmodulo t n)                       = findUndefinedFuncSignature' t ++ findUndefinedFuncSignature' n
+        findUndefinedFuncSignatureView (Vsum mp)                           = concatMap findUndefinedFuncSignature' (Map.keys mp)
+        findUndefinedFuncSignatureView (Vproduct mp)                       = concatMap findUndefinedFuncSignature' (Map.keys mp)
+        findUndefinedFuncSignatureView (Vgez v)                            = findUndefinedFuncSignature' v
+        findUndefinedFuncSignatureView (Vlength v)                         = findUndefinedFuncSignature' v
+        findUndefinedFuncSignatureView (Vat s p)                           = findUndefinedFuncSignature' s ++ findUndefinedFuncSignature' p
+        findUndefinedFuncSignatureView (Vconcat vs)                        = concatMap findUndefinedFuncSignature' vs
+        findUndefinedFuncSignatureView (Vstrinre s r)                      = findUndefinedFuncSignature' s ++ findUndefinedFuncSignature' r
+        findUndefinedFuncSignatureView (Vcstr _ _ as)                      = concatMap findUndefinedFuncSignature' as
+        findUndefinedFuncSignatureView (Viscstr _ _ v)                     = findUndefinedFuncSignature' v
+        findUndefinedFuncSignatureView (Vaccess _ _ _ _ v)                 = findUndefinedFuncSignature' v
