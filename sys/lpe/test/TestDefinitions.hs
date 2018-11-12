@@ -122,6 +122,10 @@ varIdPpcLHS :: VarId
 varIdPpcLHS = VarId (T.pack "P$lhs$pc$P$lhs") 33 intSort
 varIdPpcRHS :: VarId
 varIdPpcRHS = VarId (T.pack "P$rhs$pc$P$rhs") 33 intSort
+varIdPpcInterruptLHS :: VarId
+varIdPpcInterruptLHS = VarId (T.pack "P$lhs$pc$P$interrupt$lhs") 33 intSort
+varIdPpcInterruptRHS :: VarId
+varIdPpcInterruptRHS = VarId (T.pack "P$rhs$pc$P$interrupt$rhs") 33 intSort
 
 vexprPdisable :: VExpr
 vexprPdisable = cstrVar varIdPdisable
@@ -129,7 +133,10 @@ vexprPpcLHS :: VExpr
 vexprPpcLHS = cstrVar varIdPpcLHS
 vexprPpcRHS :: VExpr
 vexprPpcRHS = cstrVar varIdPpcRHS
-
+vexprPpcInterruptLHS :: VExpr
+vexprPpcInterruptLHS = cstrVar varIdPpcInterruptLHS
+vexprPpcInterruptRHS :: VExpr
+vexprPpcInterruptRHS = cstrVar varIdPpcInterruptRHS
 
 
 

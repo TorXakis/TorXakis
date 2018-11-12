@@ -5,6 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE ViewPatterns        #-}
+-- {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module TestLPE
 (
@@ -1175,16 +1176,17 @@ testEnable1 = TestCase $
 -- with procInst = P[A]()
 -- becomes:
 -- LPE:
---    LPE_P[A]() :=     {} [pcP == 0] >-> P[A](1)
---                  ##  {} [pcP == 1] >-> P[A](1)           // another step created because of unfolding in the translation
+--    LPE_P[A]() :=     {} [pcP == 0] >-> P[A](0)
 --    LPE_P[A](0)
 
 testEnable1Rec :: Test
 testEnable1Rec = TestCase $
-      -- trace ("\n\n expected:" ++ show (Just (procInst', procDefPlpe)) ++ "\ngot: " ++ show res) $ 
-   assertBool "Recursion" (eqProcDef (Just (procInst', procDefPlpe)) res)
+      -- trace ("\testEnable1Rec:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)  ++ 
+      --       "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
+      --       "\n res_procDef: " ++ (pshow $ DefProc res_procDef)) $   
+      assertBool "Recursion" (eqProcDef (Just (procInst', procDefPlpe)) (Just (res_procInst, res_procDef)))
    where
-      res = lpeTransformFunc procInst'' procDefs'
+      (res_procInst, res_procDef) = fromMaybe (error "could not find the given procId 1") $ lpeTransformFunc procInst'' procDefs'
       procInst'' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
       
@@ -1200,14 +1202,7 @@ testEnable1Rec = TestCase $
                                                                               , hiddenvars = Set.empty
                                                                               , constraint = cstrEqual vexprPcP int0
                                                                               } 
-                                                                  (procInst procIdPlpe [chanIdA] [int1])),
-                                                            
-                                                            (actionPref 
-                                                                  ActOffer {    offers = Set.empty
-                                                                              , hiddenvars = Set.empty
-                                                                              , constraint = cstrEqual vexprPcP int1
-                                                                              } 
-                                                                  (procInst procIdPlpe [chanIdA] [int1]))
+                                                                  (procInst procIdPlpe [chanIdA] [int0]))
                                                       ]))
 
       procInst' = procInst procIdPlpe [chanIdA] [int0]
@@ -1840,6 +1835,41 @@ testLPEDisableRec = TestCase $
 
 
 
+-- -- P[]() ::= STOP [>< EXIT
+-- --    with procInst = P[]()
+-- -- becomes 
+-- -- P[](pc$P$interrupt$lhs, pc$P$interrupt$rhs) ::=
+-- --             {} [pc$P$interrupt$rhs == 0] >-> P$interrupt[](0,0)     
+-- -- with procInst = P(0, 0)
+        
+-- testLPEInterruptStopExit :: Test
+-- testLPEInterruptStopExit = TestCase $
+--    trace ("\testLPEInterruptStopExit:\n expected:" ++  pshow (procInst', DefProc procDefPlpe)  ++ 
+--             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef)) $
+--             -- "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
+--       assertBool "testStopExit" (eqProcDef (Just (procInst', procDefPlpe)) (Just (res_procInst, res_procDef) ))
+--    where
+--       (res_procInst, res_procDef) = fromMaybe (error "could not find the given procId") (lpeTransformFunc procInst'' procDefs')
+--       -- (res_procInst, res_procDef) = result
+--       -- (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
+--       -- -- extract expected ProcDef from all results:
+--       -- res_procDef = fromMaybe (error "could not find the given procId") (Map.lookup res_procId res_procDefs')
+
+--       procInst'' = procInst procIdP [] []
+--       procIdP = procIdGen "P" [] []
+--       procDefP = ProcDef [] [] (interrupt stop (actionPref actOfferExit stop))
+--       procDefs' = Map.fromList  [  (procIdP, procDefP)]
+
+--       procIdPlpe = procIdGen "LPE_P" [] [varIdPpcLHS, varIdPpcRHS]
+--       procDefPlpe = ProcDef [chanIdA] [varIdPpcLHS, varIdPpcRHS] (
+--                                     actionPref  ActOffer {  offers = Set.empty
+--                                                             , hiddenvars = Set.fromList []
+--                                                             , constraint = (cstrEqual vexprPpcRHS int0)
+--                                                             } 
+--                                                 (procInst procIdPlpe [] [int0, int0]))
+--       procInst' = procInst procIdPlpe [] [int0, int0]
+
+
 ----------------------------------------------------------------------------------------
 -- List of Tests
 ----------------------------------------------------------------------------------------
@@ -1883,5 +1913,7 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
 
                         , TestLabel "lpe disable" testLPEDisable1
                         , TestLabel "lpe disable rec" testLPEDisableRec
+
+                        -- TestLabel "testLPEInterruptStopExit" testLPEInterruptStopExit
                         -- , TestLabel "multi chanoffer translation" testMultiChanOffer
                         ]
