@@ -13,7 +13,6 @@ import TestGNF
 import TestLPE
 import TestLPEPar
 import TestLPEHide
-import TestPreGNFEnable
 import TestPreGNFDisable
 import TestLPEInterrupt
 
@@ -25,7 +24,6 @@ testList = TestList
         , TestLabel "LPE"             testLPEList
         , TestLabel "LPEPar"          testLPEParList
         , TestLabel "LPEHide"         testLPEHideList
-        , TestLabel "PreGNFEnable"    testPreGNFEnableList
         , TestLabel "PreGNFDisable"   testPreGNFDisableList
         , TestLabel "LPEInterrupt"    testLPEInterruptList
     ]

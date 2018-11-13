@@ -5,7 +5,7 @@ See LICENSE at root directory of this repository.
 -}
 
 {-# LANGUAGE ViewPatterns        #-}
--- {-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module TestLPE
 (
@@ -1145,7 +1145,7 @@ testLPEHide2 = TestCase $
 --          P$pre1$enable[A]() := STOP
 -- LPE cont'd:
 --    becomes: 
---    LPE_P[A]() := EXIT[pcP == 0] >-> P[A](1)
+--    LPE_P[A](pcP) := {} [pcP == 0] >-> P[A](1)
 --    LPE_P[A](0)
 
 testEnable1 :: Test
@@ -1253,30 +1253,34 @@ testEnable2Rec = TestCase $
 
 
 
--- P[A]() := EXIT !1 >>> ACCEPT ?id IN A!id >-> STOP NI
+-- P[A]() := A | EXIT !1 >>> ACCEPT ?id IN A!id >-> STOP NI
 -- with procInst = P[A]()
 -- 
 -- becomes
 -- LPE_P[A](pc$P, P$pre1$enable$A$id) :=
---                        {}    [pc$P == 0, EXIT$1 == 1] {EXIT$1}               >-> LPE_P[A](1, EXIT$1)
+--                        A     [pc$P == 0, EXIT$1 == 1] {EXIT$1}               >-> LPE_P[A](1, EXIT$1)
 --                    ##  A?A$1 [pc$P == 1, A$1 == P$pre1$enable$A$id] {}       >-> LPE_P[A](-1, ANY)
 -- with procInst = LPE_P[A](0, ANY)
 testEnable2 :: Test
 testEnable2 = TestCase $
-      -- trace ("\n\n expected:" ++ show (Just (procInstlpe, procDefPlpe)) ++ "\ngot: " ++ show res) $ 
-      assertBool "simple EXIT" (eqProcDef (Just (procInstlpe, procDefPlpe)) res)
+      -- trace ("\n\n expected:" ++ pshow procInstlpe ++ "\n" ++ (pshow $ DefProc procDefPlpe) ++ 
+      --       "\n\ngot: " ++ pshow procInstRes ++ "\n" ++ (pshow $ DefProc procDefRes) ) $ 
+      assertBool "simple EXIT" (eqProcDef (Just (procInstlpe, procDefPlpe)) (Just (procInstRes, procDefRes)))
       where
-      res = lpeTransformFunc procInst' procDefs'
+      (procInstRes, procDefRes) = fromMaybe (error "could not find the given procId 1") $ lpeTransformFunc procInst' procDefs'
       procInst' = procInst procIdP [chanIdA] []
       procIdP = procIdGen "P" [chanIdA] []
       
 
-      -- action: EXIT !1
+      -- action: A | EXIT !1
       actOfferExit1 :: ActOffer
-      actOfferExit1   = ActOffer {  offers = Set.singleton
+      actOfferExit1   = ActOffer {  offers = Set.fromList [
+                                          Offer { chanid = chanIdA0
+                                                , chanoffers = []
+                                          },
                                           Offer { chanid = chanIdExit
                                                 , chanoffers = [Exclam int1]
-                                          }
+                                          }]
                               , hiddenvars = Set.empty
                               , constraint = cstrConst (Cbool True)
                   }
@@ -1297,7 +1301,7 @@ testEnable2 = TestCase $
       varIdExit1 = VarId (T.pack "EXIT$1") 122 intSort
       vexprExit1 = cstrVar varIdExit1
 
-      varIdPenableId = VarId (T.pack "P$pre1$enable$A$id") 123 intSort
+      varIdPenableId = VarId (T.pack "P$pre1$rhs$A$id") 123 intSort
       vexprPenableId = cstrVar varIdPenableId
 
       procDefP = ProcDef [chanIdA] [] (enable (actionPref actOfferExit1 stop)
@@ -1310,7 +1314,10 @@ testEnable2 = TestCase $
       procIdPlpe = procIdGen "LPE_P" [chanIdA] [varIdPcP, varIdPenableId]
       procDefPlpe = ProcDef [chanIdA] [varIdPcP, varIdPenableId] 
                                                 (choice (Set.fromList [
-                                                            actionPref ActOffer {    offers = Set.empty
+                                                            actionPref ActOffer {    offers = Set.singleton
+                                                                                                Offer { chanid = chanIdA0
+                                                                                                      , chanoffers = []
+                                                                                                }
                                                                                     , hiddenvars = Set.fromList [varIdExit1]
                                                                                     , constraint = cstrITE (cstrEqual vexprPcP int0)
                                                                                                                   (cstrEqual vexprExit1 int1)
@@ -1331,8 +1338,6 @@ testEnable2 = TestCase $
                                                 ]))
                                                 
       procInstlpe = procInst procIdPlpe [chanIdA] [int0, anyInt]
-
-
 
 
 
@@ -1905,8 +1910,7 @@ testLPEList = TestList [  TestLabel "translation to GNF did work" testGNFFirst
                         , TestLabel "lpe guard ActionPref" testLPEGuardActionPref
                         , TestLabel "lpe guard Choice" testLPEGuardChoice
                         , TestLabel "lpe guard ProcInst" testLPEGuardProcInst
-
-                           
+ 
                         , TestLabel "lpe guard par" testLPEGuardPar
                         , TestLabel "lpe guard hide" testLPEGuardHide
                         , TestLabel "lpe guard enable" testLPEGuardEnable

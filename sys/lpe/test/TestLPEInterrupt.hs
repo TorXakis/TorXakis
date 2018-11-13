@@ -175,16 +175,14 @@ testActionPrefExitExit = TestCase $
                                           ])
       procInst' = procInst procIdPlpe [] [int0, int0]
 
-     
-
 -- P[A]() ::= EXIT [>< A >-> EXIT 
 --    with procInst = P[]()
 -- becomes 
--- P[A](P$lhs$pc$P$interrupt$lhs, P$rhs$pc$P$interrupt$rhs, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1 ) ::= 
---       {} [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1 == 1] >-> P[A](0, 0, ANY) 
+-- P[A](P$lhs$pc$P$interrupt$lhs, P$rhs$pc$P$interrupt$rhs, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs ) ::= 
+--       {} [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs == 1] >-> P[A](0, 0, ANY) 
 --   ##  A [P$rhs$pc$P$interrupt$rhs == 0] >-> P[A](-1, 1, 1) 
---   ##  A [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1 == 0] >-> P[A](-1, 1, 1)      // dead branch due to an extra unfolding of a ProcDef during translation
---   ##  EXIT [P$rhs$pc$P$interrupt$rhs == 0,  P$lhs$pc$P$interrupt$lhs == 0] >-> P[A](-1, -1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1)
+--   ##  A [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs == 0] >-> P[A](-1, 1, 1)      // dead branch due to an extra unfolding of a ProcDef during translation
+--   ##  EXIT [P$rhs$pc$P$interrupt$rhs == 0,  P$lhs$pc$P$interrupt$lhs == 0] >-> P[A](-1, -1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs)
 -- P[A](0,0, ANY)
  
  
@@ -208,7 +206,7 @@ testExitActionPref = TestCase $
       varIdPpcRHS' :: VarId
       varIdPpcRHS' = VarId (T.pack "P$rhs$pc$P$interrupt$rhs") 33 intSort
       varIdPpcRHS2' :: VarId
-      varIdPpcRHS2' = VarId (T.pack "P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1") 33 intSort
+      varIdPpcRHS2' = VarId (T.pack "P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs") 33 intSort
       
       vexprPpcLHS' :: VExpr
       vexprPpcLHS' = cstrVar varIdPpcLHS'
@@ -220,7 +218,7 @@ testExitActionPref = TestCase $
       procIdPlpe = procIdGen "P" [] [varIdPpcLHS', varIdPpcRHS', varIdPpcRHS2']
       procDefPlpe = ProcDef [] [varIdPpcLHS', varIdPpcRHS', varIdPpcRHS2'] (
                                     choice $ Set.fromList [
-                                          -- {} [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1 == 1] >-> P[A](0, 0, ANY) 
+                                          -- {} [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs == 1] >-> P[A](0, 0, ANY) 
                                           actionPref  ActOffer {  offers = Set.empty
                                                                   , hiddenvars = Set.fromList []
                                                                   , constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprPpcRHS' int1)
@@ -237,7 +235,7 @@ testExitActionPref = TestCase $
                                                 (procInst procIdPlpe [] [intMin1, int1, int1]),
 
                                           
-                                          --   ##  A [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1 == 0] >-> P[A](-1, 1, 1)      // dead branch due to an extra unfolding of a ProcDef during translation
+                                          --   ##  A [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs == 0] >-> P[A](-1, 1, 1)      // dead branch due to an extra unfolding of a ProcDef during translation
                                           actionPref  actOfferA {  hiddenvars = Set.fromList []
                                                                   ,   constraint =  cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprPpcRHS' int1)
                                                                                                                         (cstrEqual vexprPpcRHS2' int0)
@@ -246,7 +244,7 @@ testExitActionPref = TestCase $
                                                 } 
                                                 (procInst procIdPlpe [] [intMin1, int1, int1]),
 
-                                          --   ##  EXIT [P$rhs$pc$P$interrupt$rhs == 0,  P$lhs$pc$P$interrupt$lhs == 0] >-> P[A](-1, -1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1)
+                                          --   ##  EXIT [P$rhs$pc$P$interrupt$rhs == 0,  P$lhs$pc$P$interrupt$lhs == 0] >-> P[A](-1, -1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs)
                                           actionPref  actOfferExit {  hiddenvars = Set.fromList []
                                                                   ,   constraint = cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprPpcRHS' int0)
                                                                                                                         (cstrEqual vexprPpcLHS' int0)

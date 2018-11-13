@@ -48,7 +48,6 @@ test-suite lpe-test
                       , TestLPEPar
                       , TestLPEHide
                       , TestPreGNF
-                      , TestPreGNFEnable 
                       , TestPreGNFDisable
                       , TestLPEInterrupt
                       , TranslatedProcDefs
