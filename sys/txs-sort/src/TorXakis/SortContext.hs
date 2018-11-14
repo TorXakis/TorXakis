@@ -23,6 +23,7 @@ module TorXakis.SortContext
   SortContext (..)
 , elemSort
 , violationsAddAdtDefs
+, prettyPrintSortContext
 , MinimalSortContext(MinimalSortContext)
 )
 where
@@ -41,6 +42,7 @@ import           TorXakis.SortADT    ( ADTDef, viewADTDef, constructors
                                      , FieldDef(sort)
                                      , Sort(SortADT)
                                      )
+import           TorXakis.PrettyPrint.TorXakis
 
 -- | A SortContext instance contains all definitions to work with sorts and references thereof
 class SortContext a where
@@ -160,3 +162,10 @@ instance SortContext MinimalSortContext where
     addAdtDefs ctx as = case violationsAddAdtDefs ctx as of
                                 Just e  -> Left e
                                 Nothing -> Right $ ctx { _adtDefs = Map.union (_adtDefs ctx) (toMapByName as) }
+
+-- | Generic Pretty Printer for all instance of 'SortContext'.
+prettyPrintSortContext :: SortContext a => Options -> a -> TxsString
+prettyPrintSortContext o sc = TxsString (T.intercalate (T.pack "\n") (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o) (Map.elems (adtDefs sc))))
+
+instance PrettyPrint MinimalSortContext where
+    prettyPrint = prettyPrintSortContext

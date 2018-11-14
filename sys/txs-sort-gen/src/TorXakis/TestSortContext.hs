@@ -163,3 +163,6 @@ instance SortContext MinimalTestSortContext where
 instance TestSortContext MinimalTestSortContext where
     mapSortSize = _mapSortSize
     mapAdtMapConstructorSize = _mapAdtMapConstructorSize
+
+instance PrettyPrint MinimalTestSortContext where
+    prettyPrint = prettyPrintSortContext

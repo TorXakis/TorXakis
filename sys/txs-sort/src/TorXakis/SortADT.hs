@@ -51,8 +51,9 @@ import           Data.Monoid         ((<>))
 import qualified Data.Text           as T
 import           GHC.Generics        (Generic)
 
-import           TorXakis.Error      (MinError(MinError))
-import           TorXakis.Name       (Name, toText, repeatedByName, HasName, getName, RefByName ( toName ), toMapByName)
+import           TorXakis.Error                     (MinError(MinError))
+import           TorXakis.Name                      (Name, toText, repeatedByName, HasName, getName, RefByName ( toName ), toMapByName)
+import           TorXakis.PrettyPrint.TorXakis
 
 -----------------------------------------------------------------------------
 -- Sort
@@ -73,7 +74,7 @@ instance Hashable Sort where
     hashWithSalt s SortChar    = s `hashWithSalt` T.pack "Char"
     hashWithSalt s SortString  = s `hashWithSalt` T.pack "String"
     hashWithSalt s SortRegex   = s `hashWithSalt` T.pack "Regex"
-    hashWithSalt s (SortADT r) = s `hashWithSalt` ( T.pack "A" <> (toText . toName) r )
+    hashWithSalt s (SortADT r) = s `hashWithSalt` ( T.pack "A" <> (TorXakis.Name.toText . toName) r )
 
 -- | Enables 'Sort's of entities to be accessed in a common way.
 class HasSort a where
@@ -168,3 +169,82 @@ mkADTDef m cs
         
         nuFieldNames :: [FieldDef]
         nuFieldNames = repeatedByName (concatMap (fields . viewConstructorDef) cs)
+
+-- Pretty Print 
+-- TODO short option: no arguments, no bracket and combine fields with same type (e.g. x,y :: Int instead of x:: Int; y :: Int)
+
+instance PrettyPrint Sort where
+    prettyPrint _ SortBool     = TxsString (T.pack "Bool")
+    prettyPrint _ SortInt      = TxsString (T.pack "Int")
+    prettyPrint _ SortChar     = TxsString (T.pack "Char")
+    prettyPrint _ SortString   = TxsString (T.pack "String")
+    prettyPrint _ SortRegex    = TxsString (T.pack "Regex")
+    prettyPrint _ (SortADT a)  = (TxsString . TorXakis.Name.toText . toName) a
+
+instance PrettyPrint FieldDef where
+    prettyPrint o fd = TxsString ( T.concat [ TorXakis.Name.toText (fieldName fd)
+                                            , T.pack " :: "
+                                            , TorXakis.PrettyPrint.TorXakis.toText ( prettyPrint o (sort fd) )
+                                            ] )
+
+instance PrettyPrint ConstructorDefView where
+    prettyPrint o cv = TxsString ( T.append (TorXakis.Name.toText (constructorName cv))
+                                            (case (short o, fields cv) of
+                                                (True, [])   -> T.empty
+                                                (True, x:xs) -> T.concat [ wsField
+                                                                         , T.pack "{ "
+                                                                         , TorXakis.Name.toText (fieldName x)
+                                                                         , shorten (sort x) xs
+                                                                         , wsField
+                                                                         , T.pack "}"
+                                                                         ]
+                                                _            -> T.concat [ wsField
+                                                                         , T.pack "{ "
+                                                                         , T.intercalate (T.append wsField (T.pack "; ")) (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o) (fields cv))
+                                                                         , wsField
+                                                                         , T.pack "}"
+                                                                         ]
+                                            )
+                                 )
+        where wsField :: T.Text
+              wsField = if multiline o then T.pack "\n        "
+                                       else T.singleton ' '
+
+              shorten :: Sort -> [FieldDef] -> T.Text
+              shorten s []                     = addSort s
+              shorten s (x:xs) | sort x == s   = T.concat [ T.pack ", "
+                                                          , TorXakis.Name.toText (fieldName x)
+                                                          , shorten s xs
+                                                          ]
+              shorten s (x:xs)                 = T.concat [ addSort s
+                                                          , wsField
+                                                          , T.pack "; "
+                                                          , TorXakis.Name.toText (fieldName x)
+                                                          , shorten (sort x) xs
+                                                          ]
+
+              addSort :: Sort -> T.Text
+              addSort s = T.append (T.pack " :: ") ( TorXakis.PrettyPrint.TorXakis.toText ( prettyPrint o s ) )
+
+instance PrettyPrint ConstructorDef where
+    prettyPrint o = prettyPrint o . viewConstructorDef
+
+instance PrettyPrint ADTDefView where
+    prettyPrint o av = TxsString ( T.concat [ T.pack "TYPEDEF "
+                                            , TorXakis.Name.toText (adtName av)
+                                            , T.pack " ::="
+                                            , wsConstructor
+                                            , offsetFirst
+                                            , T.intercalate (T.append wsConstructor (T.pack "| ")) (map (TorXakis.PrettyPrint.TorXakis.toText . prettyPrint o) (Map.elems (constructors av)))
+                                            , wsDefinition
+                                            , T.pack "ENDDEF"
+                                            ] )
+        where wsConstructor = if multiline o then T.pack "\n    "
+                                             else T.singleton ' '
+              offsetFirst   = if multiline o then T.pack "  "      -- same length as constructors separator ("| ") to get nice layout with multilines
+                                             else T.empty
+              wsDefinition  = if multiline o then T.pack "\n"
+                                             else T.singleton ' '
+
+instance PrettyPrint ADTDef where
+    prettyPrint o = prettyPrint o . viewADTDef
