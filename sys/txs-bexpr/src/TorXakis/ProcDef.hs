@@ -29,6 +29,7 @@ import           GHC.Generics        (Generic)
 
 import           TorXakis.BExpr.BExpr
 import           TorXakis.ChanDef
+import           TorXakis.ExitKind
 import           TorXakis.Name
 import           TorXakis.ProcSignature
 import           TorXakis.Sort
@@ -52,7 +53,7 @@ data ProcDef = ProcDef { -- | The name of the process (of type 'TorXakis.Name')
 
 instance HasProcSignature ProcDef
     where
-        getProcSignature (ProcDef fn cds pds bd) = ProcSignature fn (map chanSort cds) (map getSort pds) (getExitSort bd)
+        getProcSignature (ProcDef fn cds pds bd) = ProcSignature fn (map chanSort cds) (map getSort pds) (getExitKind bd)
 
 -- ----------------------------------------------------------------------------------------- --
 --

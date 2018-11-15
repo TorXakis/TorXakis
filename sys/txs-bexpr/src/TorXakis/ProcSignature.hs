@@ -23,9 +23,6 @@ See LICENSE at root directory of this repository.
 module TorXakis.ProcSignature
 ( -- * Process Signature
   ProcSignature (..)
-  -- ** Exit Sort and functions
-, ExitSort (..)
-, exitSorts
   -- * Has Process Signature class
 , HasProcSignature (..)
   -- ** Conversion List to Map By Process Signature
@@ -43,19 +40,9 @@ import           Data.List.Unique     (repeated)
 import           GHC.Generics         (Generic)
 
 import           TorXakis.ChanDef
+import           TorXakis.ExitKind
 import           TorXakis.Name
 import           TorXakis.Sort
-
--- | Exit Sort of Process
-data  ExitSort      =  NoExit
-                     | Exit [Sort]
-                     | Hit
-     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
-
--- | Sorts used in Exit Sort
-exitSorts :: ExitSort -> [Sort]
-exitSorts (Exit xs) = xs
-exitSorts _         = []
 
 -- | A generalized, type-safe reference.
 data ProcSignature = ProcSignature { -- | The 'Name' of the process.
@@ -64,8 +51,8 @@ data ProcSignature = ProcSignature { -- | The 'Name' of the process.
                                    , channels :: [ChanSort]
                                      -- | The 'Sort's of the process' arguments.
                                    , args :: [Sort]
-                                     -- | The 'ExitSort' of the process.
-                                   , exitSort :: ExitSort
+                                     -- | The 'ExitKind' of the process.
+                                   , exitKind :: ExitKind
                                    }
     deriving (Eq, Ord, Show, Read, Generic, NFData, Data)
 
@@ -77,13 +64,6 @@ class HasProcSignature e where
 instance HasProcSignature ProcSignature where
     getProcSignature = id
 
-instance Hashable ExitSort where
-    hashWithSalt s NoExit    = s `hashWithSalt` "NoExit"
-    hashWithSalt s (Exit xs) = s `hashWithSalt` "Exit" 
-                                 `hashWithSalt` xs
-    hashWithSalt s Hit       = s `hashWithSalt` "Hit"
-    
-    
 instance Hashable ProcSignature where
     hashWithSalt s (ProcSignature n cs as r) = s `hashWithSalt`
                                                n `hashWithSalt`
