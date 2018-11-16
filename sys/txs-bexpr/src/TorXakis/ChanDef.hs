@@ -38,7 +38,7 @@ import           GHC.Generics        (Generic)
 import TorXakis.Name
 import TorXakis.Sort
 
-newtype ChanSort = ChanSort [Sort]
+newtype ChanSort = ChanSort { toSorts :: [Sort] }
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance Hashable ChanSort where

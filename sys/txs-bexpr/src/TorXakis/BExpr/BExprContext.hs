@@ -22,24 +22,25 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.BExpr.BExprContext
 ( -- * BExpr Context
-  ValExprContext (..)
-, MinimalValExprContext(MinimalValExprContext)
+  BExprContext(..)
+, MinimalBExprContext (..)
 )
 where
 import           Control.DeepSeq        (NFData)
 import           Data.Data              (Data)
 import qualified Data.HashMap           as HashMap
-import qualified Data.Map               as Map
 import           Data.Maybe             (mapMaybe)
 import qualified Data.Set               as Set
 import qualified Data.Text              as T
 import           GHC.Generics           (Generic)
 
+import           TorXakis.BExpr.BExpr
+import           TorXakis.BExpr.ExitKind
+import           TorXakis.ChanDef
 import           TorXakis.Error         ( MinError(MinError) )
-import           TorXakis.Name          ( RefByName, toMapByName, repeatedByName )
-import           TorXakis.Sort          ( Sort, SortContext (..), MinimalSortContext (..), elemSort, getSort )
+import           TorXakis.Sort          ( Sort, SortContext (..), elemSort )
 import           TorXakis.ValExpr
-import           TorXakis.VarDef        ( VarDef, MinimalVarDef )
+import           TorXakis.VarDef        ( MinimalVarDef )
 import           TorXakis.ProcDef
 import           TorXakis.ProcSignature
 
@@ -68,7 +69,7 @@ data MinimalBExprContext v = MinimalBExprContext { valExprContext :: MinimalValE
                                                  } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance SortContext (MinimalBExprContext MinimalVarDef) where
-    empty = MinimalBExprContext (empty::MinimalValExprContext) HashMap.empty
+    empty = MinimalBExprContext (empty :: MinimalValExprContext MinimalVarDef) HashMap.empty
     adtDefs ctx    = adtDefs (valExprContext ctx)
     addAdtDefs ctx as = case addAdtDefs (valExprContext ctx) as of
                           Left e     -> Left e
@@ -100,8 +101,8 @@ instance BExprContext MinimalBExprContext MinimalVarDef where
         undefinedSorts = mapMaybe undefinedSort pds
 
         undefinedSort :: HasProcSignature a => a -> Maybe (ProcSignature, Set.Set Sort)
-        undefinedSort pd = let ps@(ProcSignature ...) = getProcSignature pd in
-                            case filter (not . elemSort ctx) (...) of
+        undefinedSort pd = let ps@(ProcSignature _ cs as e) = getProcSignature pd in
+                            case filter (not . elemSort ctx) (concat [concatMap toSorts cs, as, exitSorts e]) of
                                 [] -> Nothing
                                 xs -> Just (ps, Set.fromList xs)
 
@@ -111,13 +112,27 @@ instance BExprContext MinimalBExprContext MinimalVarDef where
         undefinedProcSignatures :: [(ProcSignature, Set.Set ProcSignature)]
         undefinedProcSignatures = mapMaybe undefinedProcSignature pds
 
-        undefinedProcSignature :: ProcDef MinimalVarDef -> Maybe (ProcSignature, Set.Set ProcSignature)
-        undefinedProcSignature pd = case findUndefinedProcSignature (body pd) of
+        undefinedProcSignature :: ProcDef -> Maybe (ProcSignature, Set.Set ProcSignature)
+        undefinedProcSignature pd = case findUndefinedProcSignature definedProcSignatures (body pd) of
                                         [] -> Nothing
                                         xs -> Just (getProcSignature pd, Set.fromList xs)
 
-        findUndefinedProcSignature :: BExpr -> [ProcSignature]
-        findUndefinedProcSignature = findUndefinedProcSignature' . view
-
-        findUndefinedProcSignature' :: BExprView -> [ProcSignature]
+-- | Find Undefined Process Signatures in given Behaviour Expression (given the defined Process Signatures)
+findUndefinedProcSignature :: HashMap.Map ProcSignature ProcDef -> BExpr -> [ProcSignature]
+findUndefinedProcSignature definedProcSignatures = findUndefinedProcSignature'
+    where
+        findUndefinedProcSignature' :: BExpr -> [ProcSignature]
+        findUndefinedProcSignature' = findUndefinedProcSignatureView . TorXakis.BExpr.BExpr.view
         
+        findUndefinedProcSignatureView :: BExprView -> [ProcSignature]
+        findUndefinedProcSignatureView (ActionPref _ b) = findUndefinedProcSignature' b
+        findUndefinedProcSignatureView (Guard _ b)      = findUndefinedProcSignature' b
+        findUndefinedProcSignatureView (Choice s)       = concatMap findUndefinedProcSignature' (Set.toList s)
+        findUndefinedProcSignatureView (Parallel _ l)   = concatMap findUndefinedProcSignature' l
+        findUndefinedProcSignatureView (Enable a _ b)   = findUndefinedProcSignature' a ++ findUndefinedProcSignature' b
+        findUndefinedProcSignatureView (Disable a b)    = findUndefinedProcSignature' a ++ findUndefinedProcSignature' b
+        findUndefinedProcSignatureView (Interrupt a b)  = findUndefinedProcSignature' a ++ findUndefinedProcSignature' b
+        findUndefinedProcSignatureView (ProcInst p _ _) = if HashMap.member p definedProcSignatures
+                                                            then []
+                                                            else [p]
+        findUndefinedProcSignatureView (Hide _ b)      = findUndefinedProcSignature' b
