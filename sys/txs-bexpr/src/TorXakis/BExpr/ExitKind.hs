@@ -19,12 +19,13 @@ See LICENSE at root directory of this repository.
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric      #-}
-module TorXakis.ExitKind
+module TorXakis.BExpr.ExitKind
 ( -- ** Exit Kind and functions
   ExitKind (..)
 , exitSorts
 , HasExitKind(..)
 , (<<+>>)
+, (<<->>)
 ) where
 
 import           Control.DeepSeq      (NFData)
@@ -57,15 +58,28 @@ instance Hashable ExitKind where
                                  `hashWithSalt` xs
     hashWithSalt s Hit       = s `hashWithSalt` "Hit"
 
--- | Combine exit kinds for Synchronized actions, sequences and choices
+-- | Combine exit kinds for Synchronized actions, sequences and choices (max of exit kinds)
 (<<+>>) :: ExitKind -> ExitKind -> Either MinError ExitKind
-NoExit   <<+>> NoExit                  = Right NoExit
-NoExit   <<+>> Exit exs                = Right $ Exit exs
-NoExit   <<+>> Hit                     = Right Hit
-Exit exs <<+>> NoExit                  = Right $ Exit exs
-Exit exs <<+>> Exit exs' | exs == exs' = Right $ Exit exs
-Exit exs <<+>> Exit exs'               = Left $ MinError (T.pack ("ExitKinds do not match: Exit " ++ show exs ++ " versus Exit " ++ show exs') )
-Exit exs <<+>> Hit                     = Left $ MinError (T.pack ("ExitKinds do not match: Exit " ++ show exs ++ " versus Hit") )
-Hit      <<+>> NoExit                  = Right Hit
-Hit      <<+>> Exit exs                = Left $ MinError (T.pack ("ExitKinds do not match: Hit versus Exit " ++ show exs) )
-Hit      <<+>> Hit                     = Right Hit
+NoExit   <<+>> NoExit                   = Right NoExit
+NoExit   <<+>> Exit exs                 = Right $ Exit exs
+NoExit   <<+>> Hit                      = Right Hit
+Exit exs <<+>> NoExit                   = Right $ Exit exs
+Exit exs <<+>> Exit exs' | exs == exs'  = Right $ Exit exs
+Exit exs <<+>> Exit exs'                = Left $ MinError (T.pack ("ExitKinds do not match (max): Exit " ++ show exs ++ " versus Exit " ++ show exs') )
+Exit exs <<+>> Hit                      = Left $ MinError (T.pack ("ExitKinds do not match (max): Exit " ++ show exs ++ " versus Hit") )
+Hit      <<+>> NoExit                   = Right Hit
+Hit      <<+>> Exit exs                 = Left $ MinError (T.pack ("ExitKinds do not match (max): Hit versus Exit " ++ show exs) )
+Hit      <<+>> Hit                      = Right Hit
+
+-- | Combine exit kinds for parallel (min of exit kinds)
+(<<->>) :: ExitKind -> ExitKind -> Either MinError ExitKind
+NoExit   <<->> NoExit                   = Right NoExit
+NoExit   <<->> Exit _                   = Right NoExit
+NoExit   <<->> Hit                      = Right NoExit
+Exit _   <<->> NoExit                   = Right NoExit
+Exit exs <<->> Exit exs' | exs == exs'  = Right $ Exit exs
+Exit exs <<->> Exit exs'                = Left $ MinError (T.pack ("ExitKinds do not match (min): Exit " ++ show exs ++ " versus Exit " ++ show exs') )
+Exit exs <<->> Hit                      = Left $ MinError (T.pack ("ExitKinds do not match (min): Exit " ++ show exs ++ " versus Hit") )
+Hit      <<->> NoExit                   = Right NoExit
+Hit      <<->> Exit exs                 = Left $ MinError (T.pack ("ExitKinds do not match (min): Hit versus Exit " ++ show exs) )
+Hit      <<->> Hit                      = Right Hit

@@ -38,8 +38,8 @@ import qualified Data.Map            as Map
 import qualified Data.Set            as Set
 import           GHC.Generics        (Generic)
 
+import           TorXakis.BExpr.ExitKind
 import           TorXakis.ChanDef
-import           TorXakis.ExitKind
 import           TorXakis.ProcSignature
 import           TorXakis.Sort
 import           TorXakis.ValExpr
@@ -101,3 +101,25 @@ instance HasExitKind ActOffer where
     getExitKind a = case foldM (<<+>>) NoExit (map toExitKind (Map.toList (offers a))) of
                         Right v -> v
                         Left e  -> error ("Smart constructor created invalid ActOffer " ++ show e)
+
+instance HasExitKind BExprView where
+    getExitKind (ActionPref  a b)   = case getExitKind a <<+>> getExitKind b of
+                                            Right v -> v
+                                            Left e  -> error ("Smart constructor created invalid ActionPref " ++ show e)
+    getExitKind (Guard _ b)         = getExitKind b
+    getExitKind (Choice s)          = case foldM (<<+>>) NoExit (map getExitKind (Set.toList s)) of
+                                            Right v -> v
+                                            Left e  -> error ("Smart constructor created invalid Choice " ++ show e)
+    getExitKind (Parallel _ l)      = case foldM (<<->>) NoExit (map getExitKind l) of
+                                            Right v -> v
+                                            Left e  -> error ("Smart constructor created invalid Parallel " ++ show e)
+    getExitKind (Enable _ _ b)      = getExitKind b
+    getExitKind (Disable a b)       = case getExitKind a <<+>> getExitKind b of
+                                            Right v -> v
+                                            Left e  -> error ("Smart constructor created invalid Disable " ++ show e)
+    getExitKind (Interrupt a _)     = getExitKind a
+    getExitKind (ProcInst ps _ _)   = exitKind ps
+    getExitKind (Hide _ b)          = getExitKind b
+
+instance HasExitKind BExpr where
+    getExitKind = getExitKind . TorXakis.BExpr.BExpr.view

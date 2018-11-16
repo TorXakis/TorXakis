@@ -28,8 +28,8 @@ import           Data.Data           (Data)
 import           GHC.Generics        (Generic)
 
 import           TorXakis.BExpr.BExpr
+import           TorXakis.BExpr.ExitKind
 import           TorXakis.ChanDef
-import           TorXakis.ExitKind
 import           TorXakis.Name
 import           TorXakis.ProcSignature
 import           TorXakis.Sort

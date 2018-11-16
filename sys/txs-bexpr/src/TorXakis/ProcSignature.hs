@@ -39,8 +39,8 @@ import           Data.HashMap         (Map, fromList)
 import           Data.List.Unique     (repeated)
 import           GHC.Generics         (Generic)
 
+import           TorXakis.BExpr.ExitKind
 import           TorXakis.ChanDef
-import           TorXakis.ExitKind
 import           TorXakis.Name
 import           TorXakis.Sort
 
