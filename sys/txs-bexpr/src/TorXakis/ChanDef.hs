@@ -38,6 +38,7 @@ import           GHC.Generics        (Generic)
 import TorXakis.Name
 import TorXakis.Sort
 
+-- | Data structure for Channel Sort: a list of `Sort`s.
 newtype ChanSort = ChanSort { toSorts :: [Sort] }
      deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
