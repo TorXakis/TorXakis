@@ -38,6 +38,7 @@ import qualified Data.Text              as T
 import           GHC.Generics           (Generic)
 
 import           TorXakis.Error         ( MinError(MinError) )
+import           TorXakis.FreeVars      ( freeVars )
 import           TorXakis.Name          ( RefByName, toMapByName, repeatedByName )
 import           TorXakis.Sort          ( Sort, SortContext (..), MinimalSortContext (..), elemSort, getSort )
 import           TorXakis.ValExpr.ValExpr
@@ -70,6 +71,8 @@ class (SortContext (a v), VarDef v) => ValExprContext a v where
     --   A value expression context is returned when the following constraints are satisfied:
     --
     --   * The signatures of the function definitions are unique.
+    --
+    --   * The variables used are known
     --
     --   * All references (both Sort and FunctionDefinition) are known
     --
@@ -109,6 +112,7 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
     addFuncDefs ctx fds
         | not $ null nuFuncDefs              = Left $ MinError (T.pack ("Non unique function signatures: " ++ show nuFuncDefs))
         | not $ null undefinedSorts          = Left $ MinError (T.pack ("List of function signatures with undefined sorts: " ++ show undefinedSorts))
+        | not $ null undefinedVariables      = Left $ MinError (T.pack ("List of function signatures with undefined variables in their bodies: " ++ show undefinedVariables))
         | not $ null undefinedFuncSignatures = Left $ MinError (T.pack ("List of function signatures with undefined function signatures in their bodies: " ++ show undefinedFuncSignatures))
         | otherwise                          = Right $ ctx { _funcDefs = definedFuncSignatures }
       where
@@ -123,6 +127,18 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
                             case filter (not . elemSort ctx) (rs:as) of
                                 [] -> Nothing
                                 xs -> Just (fs, Set.fromList xs)
+
+        undefinedVariables :: [(FuncSignature, Set.Set MinimalVarDef)]
+        undefinedVariables = mapMaybe undefinedVariable fds
+
+        undefinedVariable :: FuncDef MinimalVarDef -> Maybe (FuncSignature, Set.Set MinimalVarDef)
+        undefinedVariable fd = let definedVars   = Set.fromList (paramDefs fd)  -- TODO: include globally defined variables in VarDefs?
+                                   usedVars      = freeVars (body fd)
+                                   undefinedVars = Set.difference usedVars definedVars
+                                in
+                                    if Set.null undefinedVars
+                                        then Nothing
+                                        else Just (getFuncSignature fd, undefinedVars)
 
         definedFuncSignatures :: HashMap.Map FuncSignature (FuncDef MinimalVarDef)
         definedFuncSignatures = HashMap.union (toMapByFuncSignature fds) (_funcDefs ctx)

@@ -24,7 +24,7 @@ import qualified Data.Map               as Map
 import qualified Data.Set               as Set
 
 
-import           TorXakis.ValExpr
+import           TorXakis.ValExpr.ValExpr
 import           TorXakis.VarDef
 
 -- | Determine the free variables in Value Expression.
