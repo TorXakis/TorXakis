@@ -15,6 +15,7 @@ dependencies:
 library:
   source-dirs: src
   exposed-modules:
+  - TorXakis.FreeVars
   - TorXakis.FuncDef
   - TorXakis.FuncSignature
   - TorXakis.ValExpr

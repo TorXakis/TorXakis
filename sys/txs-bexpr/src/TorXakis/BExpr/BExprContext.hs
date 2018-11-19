@@ -23,7 +23,9 @@ See LICENSE at root directory of this repository.
 module TorXakis.BExpr.BExprContext
 ( -- * BExpr Context
   BExprContext(..)
-, MinimalBExprContext (..)
+, MinimalBExprContext (MinimalBExprContext)
+--TODO needed?  -- *** Check for usage of undefined process signatures (due to recursive processes)
+--, findUndefinedProcSignature
 )
 where
 import           Control.DeepSeq        (NFData)
