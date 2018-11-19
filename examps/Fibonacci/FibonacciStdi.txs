@@ -1,0 +1,24 @@
+{-
+TorXakis - Model Based Testing
+Copyright (c) 2015-2017 TNO and Radboud University
+See LICENSE at root directory of this repository.
+-}
+
+CHANDEF Channels ::=
+    Input, Output :: Int
+ENDDEF
+
+STAUTDEF fibonacci [Input, Output :: Int]() ::=
+    VAR   fibm, fibn, count, max :: Int
+    STATE inputState, outputState
+    INIT  inputState
+    TRANS inputState  -> Input  ? n    [[ (n > 0) /\ (n < 100) ]] { fibm := 0; fibn := 1; count := 1; max := n }   -> outputState
+          outputState -> Output ! fibn [[ count == max ]]                                                          -> inputState
+          outputState -> Output ! fibn [[ count < max ]] { fibm := fibn; fibn := fibm + fibn; count := count + 1 } -> outputState
+ENDDEF 
+
+MODELDEF Model ::=
+    CHAN IN   Input
+    CHAN OUT  Output
+    BEHAVIOUR stdi_fibonacci [Input, Output]()
+ENDDEF

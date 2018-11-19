@@ -43,7 +43,8 @@ import           BehExprDefs                       (chanIdExit, chanIdIstep)
 import           ChanId                            (ChanId, chansorts)
 import           Constant                          (Constant (Cbool))
 import           FuncTable                         (Handler, Signature)
-import           ProcId                            (ExitSort (Exit), ProcId, ChanSort(ChanSort),
+import           ProcId                            (ChanSort (ChanSort),
+                                                    ExitSort (Exit), ProcId,
                                                     exitSortIds, procchans,
                                                     procvars)
 import qualified ProcId
