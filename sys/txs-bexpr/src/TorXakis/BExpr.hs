@@ -20,6 +20,10 @@ module TorXakis.BExpr
   BExprView(..)
 , BExpr
 , view
+  -- Action Offer
+, ActOffer(..)
+  -- Channel Offer
+, ChanOffer(..)
 , module TorXakis.BExpr.BExprContext
 )
 where

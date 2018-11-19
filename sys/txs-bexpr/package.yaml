@@ -20,17 +20,13 @@ library:
   - TorXakis.ProcDef
   - TorXakis.ProcSignature
   dependencies:
-  - array
   - containers
   - deepseq
   - hashable
   - hashmap
-  - regex-tdfa
   - text
   - txs-basics
-  - txs-lex-regex-xsd
   - txs-sort
-  - txs-value
   - txs-valexpr
   - Unique
 
