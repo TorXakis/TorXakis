@@ -64,7 +64,7 @@ class ValExprContext a v => BExprContext a v where
     addProcDefs :: a v -> [ProcDef] -> Either MinError (a v)
 
 
--- | A minimal instance of 'ValExprContext'.
+-- | A minimal instance of 'BExprContext'.
 data MinimalBExprContext v = MinimalBExprContext { valExprContext :: MinimalValExprContext v
                                                          -- process definitions
                                                  , _procDefs :: HashMap.Map ProcSignature ProcDef
