@@ -816,9 +816,6 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
         
     -- translate left bexpr of Enable to LPE first
     (procInstLHS, procDefs'') <- preGNFEnableCreateProcDef bexprL "lhs" procIdInst procDefs'
-        -- -- reuse current ProcDef: 
-        -- procDef' = ProcDef chansDef paramsDef bexprL
-        -- procDefs'' = Map.insert procIdInst procDef' procDefs'
     (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInst_lpe paramsInst_lpe, procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
 
     unidR <- EnvB.newUnid
@@ -952,7 +949,7 @@ preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) transla
         ProcDef _chans paramsDefLHS_lpe bexprLHS_lpe = fromMaybe (error "preGNFDisable 2: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs''')
         -- prefix all params to make them unique: params from lhs and rhs may clash
         -- prefix the params and wrap them as VExpr just to be able to use the substitution function later
-        prefix = T.unpack (ProcId.name procIdInst) -- ++ concat chanNames ++ "$"
+        prefix = T.unpack (ProcId.name procIdInst)
 
         prefixLHS = prefix ++ "$lhs$"
     paramsDefLHS_lpe_prefixed <- mapM (prefixVarId prefixLHS) paramsDefLHS_lpe
@@ -1064,8 +1061,8 @@ lpeInterrupt procInst'@(TxsDefs.view -> ProcInst procIdInst chansInst paramsInst
     (procInstLHS, procDefs'') <- lpeInterruptCreateProcDef bexprLHS "lhs" procIdInst procDefs'
     (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe paramsInstLHS_lpe, procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
     
-    -- translate right bexpr of Disable to LPE
-    -- markt the current ProcDef as already in LPE translation to avoid recursive translations of calls to the current ProcDef
+    -- translate right bexpr to LPE
+    -- mark the current ProcDef as already in LPE translation to avoid recursive translations of calls to the current ProcDef
     let translatedProcDefs' = translatedProcDefs {  lLPE = lLPE translatedProcDefs ++ [(procIdInst, chansInst)],
                                                     lPreGNF = lPreGNF translatedProcDefs ++ [procIdInst],
                                                     lGNFinTranslation = lGNFinTranslation translatedProcDefs ++ [procIdInst]
