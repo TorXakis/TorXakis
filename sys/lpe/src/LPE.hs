@@ -234,8 +234,7 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Disable _bexprL _bexprR) choiceCnt freeVarsI
     -- translate the created ProcDef with preGNFDisable
     (bexprRes, procDefsRes) <- preGNFDisable procInst' translatedProcDefs procDefs'' 
     
-    return (bexprRes, procDefsRes) 
- 
+    return (bexprRes, procDefsRes)
 
 preGNFBExpr bexpr'@(TxsDefs.view -> Interrupt _bexprL _bexprR) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
         -- INTERRUPT at lower level not allowed
@@ -244,15 +243,6 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Interrupt _bexprL _bexprR) choiceCnt freeVar
         (bexprRes, procDefsRes) <- lpeInterrupt procInst' translatedProcDefs procDefs'' 
         
         return (bexprRes, procDefsRes) 
-
-
-preGNFBExpr bexpr'@(TxsDefs.view -> Disable _bexprL _bexprR) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
-    -- DISABLE at lower level not allowed
-    (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
-    -- translate the created ProcDef with preGNFDisable
-    (bexprRes, procDefsRes) <- preGNFDisable procInst' translatedProcDefs procDefs'' 
-    
-    return (bexprRes, procDefsRes) 
 
 preGNFBExpr bexpr _ _ _ _ _ =
     error $ "unexpected type of bexpr" ++ show bexpr
@@ -787,21 +777,18 @@ lpeHide procInst'@(TxsDefs.view -> ProcInst procIdInst _chansInst _paramsInst) t
         hideChans _ _ = error "hideChans: unknown input"            
 
 lpeHide _ _ _ = error "lpeHide: was called with something other than a ProcInst"
-    
-
 
 
 -- ----------------------------------------------------------------------------------------- --
--- preGNFEnable :
+-- enable, disable & interrupt helper function :
 -- ----------------------------------------------------------------------------------------- --
 
-
-preGNFEnableCreateProcDef :: (EnvB.EnvB envb) => BExpr -> String -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
-preGNFEnableCreateProcDef bexpr postfix procId procDefs' = do
+createProcDef :: (EnvB.EnvB envb) => BExpr -> String -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
+createProcDef bexpr postfix procId procDefs' = do
     unid' <- EnvB.newUnid
     
     let -- decompose original ProcDef
-        ProcDef chansDef paramsDef _ = fromMaybe (error "preGNFEnableCreateProcDef: called with a non-existing procId") (Map.lookup procId procDefs')
+        ProcDef chansDef paramsDef _ = fromMaybe (error "createProcDef: called with a non-existing procId") (Map.lookup procId procDefs')
 
         name' = T.append (ProcId.name procId) (T.pack ("$" ++ postfix))
         procId' = procId {  ProcId.name = name',
@@ -813,8 +800,10 @@ preGNFEnableCreateProcDef bexpr postfix procId procDefs' = do
         
     return (procInst', procDefs'')
 
+-- ----------------------------------------------------------------------------------------- --
+-- preGNFEnable :
+-- ----------------------------------------------------------------------------------------- --
 
-    
 -- we assume that the top-level bexpr of the called ProcDef is Enable
 preGNFEnable :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
 preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translatedProcDefs procDefs' = do
@@ -823,7 +812,7 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
         Enable bexprL acceptChanOffers bexprR = TxsDefs.view bexpr
         
     -- translate left bexpr of Enable to LPE first
-    (procInstLHS, procDefs'') <- preGNFEnableCreateProcDef bexprL "lhs" procIdInst procDefs'
+    (procInstLHS, procDefs'') <- createProcDef bexprL "lhs" procIdInst procDefs'
     (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInst_lpe paramsInst_lpe, procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
 
     unidR <- EnvB.newUnid
@@ -920,26 +909,6 @@ preGNFEnable _ _ _ = error "preGNFEnable: was called with something other than a
 -- preGNFDisable :
 -- ----------------------------------------------------------------------------------------- --
 
-
-preGNFDisableCreateProcDef :: (EnvB.EnvB envb) => BExpr -> String -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
-preGNFDisableCreateProcDef bexpr postfix procId procDefs' = do
-    unid' <- EnvB.newUnid
-    
-    let -- decompose original ProcDef
-        ProcDef chansDef paramsDef _ = fromMaybe (error "preGNFDisableCreateProcDef: called with a non-existing procId") (Map.lookup procId procDefs')
-
-        name' = T.append (ProcId.name procId) (T.pack ("$" ++ postfix))
-        procId' = procId {  ProcId.name = name',
-                            ProcId.unid = unid',
-                            ProcId.procvars = varsort <$> paramsDef} 
-        procDef' = ProcDef chansDef paramsDef bexpr
-        procDefs'' = Map.insert procId' procDef' procDefs'
-        procInst'= procInst procId' chansDef (map cstrVar paramsDef)
-        
-    return (procInst', procDefs'')
-
-
-    
 -- we assume that the top-level bexpr of the called ProcDef is Disable
 preGNFDisable :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
 preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translatedProcDefs procDefs' = do
@@ -948,7 +917,7 @@ preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) transla
         Disable bexprL bexprR = TxsDefs.view bexpr 
         
     -- translate left bexpr of Disable to LPE
-    (procInstLHS, procDefs'') <- preGNFDisableCreateProcDef bexprL "lhs" procIdInst procDefs'
+    (procInstLHS, procDefs'') <- createProcDef bexprL "lhs" procIdInst procDefs'
     (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe paramsInstLHS_lpe, procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
     let -- decompose translated ProcDef
         ProcDef _chans paramsDefLHS_lpe bexprLHS_lpe = fromMaybe (error "preGNFDisable 2: could not find the given procId") (Map.lookup procIdLHS_lpe procDefs''')
@@ -962,7 +931,7 @@ preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) transla
         bexprLHS_lpe_subst = Subst.subst paramMapLHS (Map.fromList []) bexprLHS_lpe
 
     -- translate right bexpr of Disable to LPE
-    (procInstRHS, procDefs4) <- preGNFDisableCreateProcDef bexprR "rhs" procIdInst  procDefs'''
+    (procInstRHS, procDefs4) <- createProcDef bexprR "rhs" procIdInst  procDefs'''
     (TxsDefs.view -> ProcInst procIdRHS_lpe _chansInstRHS_lpe paramsInstRHS_lpe, procDefs5) <- lpe procInstRHS translatedProcDefs procDefs4
     let -- decompose translated ProcDef
         ProcDef _chans paramsDefRHS_lpe bexprRHS_lpe = fromMaybe (error "preGNFDisable 3: could not find the given procId") (Map.lookup procIdRHS_lpe procDefs5)
@@ -1037,26 +1006,6 @@ actOfferContainsExit actOffer = chanIdExit `elem` map chanid  (Set.toList $ offe
 -- lpeInterrupt :
 -- ----------------------------------------------------------------------------------------- --
 
-lpeInterruptCreateProcDef :: (EnvB.EnvB envb) => BExpr -> String -> ProcId -> ProcDefs -> envb(BExpr, ProcDefs)
-lpeInterruptCreateProcDef bexpr postfix procId procDefs' = do
-    unid' <- EnvB.newUnid
-    
-    let -- decompose original ProcDef
-        ProcDef chansDef paramsDef _ = fromMaybe (error "lpeInterruptCreateProcDef: called with a non-existing procId") (Map.lookup procId procDefs')
-
-        name' = T.append (ProcId.name procId) (T.pack ("$interrupt$" ++ postfix))
-        procId' = procId {  ProcId.name = name',
-                            ProcId.unid = unid',
-                            ProcId.procvars = varsort <$> paramsDef} 
-        procDef' = ProcDef chansDef paramsDef bexpr
-        procDefs'' = Map.insert procId' procDef' procDefs'
-        procInst'= procInst procId' chansDef (map cstrVar paramsDef)
-        
-    return (procInst', procDefs'')
-
-
-    
-
 -- we assume that the top-level bexpr of the called ProcDef is INTERRUPT
 lpeInterrupt :: (EnvB.EnvB envb) => BExpr -> TranslatedProcDefs -> ProcDefs -> envb(BExpr, ProcDefs)
 lpeInterrupt procInst'@(TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translatedProcDefs procDefs' = do
@@ -1065,7 +1014,7 @@ lpeInterrupt procInst'@(TxsDefs.view -> ProcInst procIdInst chansInst paramsInst
         Interrupt bexprLHS bexprRHS = TxsDefs.view bexpr
 
     -- translate LHS to LPE 
-    (procInstLHS, procDefs'') <- lpeInterruptCreateProcDef bexprLHS "lhs" procIdInst procDefs'
+    (procInstLHS, procDefs'') <- createProcDef bexprLHS "interrupt$lhs" procIdInst procDefs'
     (TxsDefs.view -> ProcInst procIdLHS_lpe _chansInstLHS_lpe paramsInstLHS_lpe, procDefs''') <- lpe procInstLHS translatedProcDefs procDefs''
     
     -- translate right bexpr to LPE
@@ -1077,7 +1026,7 @@ lpeInterrupt procInst'@(TxsDefs.view -> ProcInst procIdInst chansInst paramsInst
 
     -- create bexprRHS >>> procInst', i.e. the original call is appended after the RHS
     let bexprRHS' = enable bexprRHS [] procInst'
-    (procInstRHS, procDefs4) <- lpeInterruptCreateProcDef bexprRHS' "rhs" procIdInst  procDefs'''
+    (procInstRHS, procDefs4) <- createProcDef bexprRHS' "interrupt$rhs" procIdInst  procDefs'''
     
     (TxsDefs.view -> ProcInst procIdRHS_lpe _chansInstRHS_lpe paramsInstRHS_lpe, procDefs5) <- lpe procInstRHS translatedProcDefs' procDefs4
     
