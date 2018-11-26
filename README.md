@@ -73,6 +73,9 @@ stack setup
 stack install
 ```
 
+On Linux, the following libraries should be installed:
+- libgmp-dev
+
 For Unix systems a different stack configuration is used:
 
 ```sh

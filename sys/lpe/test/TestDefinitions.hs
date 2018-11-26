@@ -34,12 +34,12 @@ procIdGen name' chans vars' = ProcId   {  ProcId.name       = T.pack name'
                                     }
 
 
-pshow_procDefs :: (Map.Map ProcId ProcDef) -> String
-pshow_procDefs procDefs' = pshow_procDefs' $ Map.toList procDefs'
+pshowProcDefs :: Map.Map ProcId ProcDef -> String
+pshowProcDefs procDefs' = pshowProcDefs' $ Map.toList procDefs'
   where
-      pshow_procDefs' :: [(ProcId, ProcDef)] -> String
-      pshow_procDefs' [] = ""
-      pshow_procDefs' ((procId, procDef'):rest) = "\n ** " ++ pshow procId ++ "\n" ++ (pshow $ DefProc procDef') ++ pshow_procDefs' rest
+      pshowProcDefs' :: [(ProcId, ProcDef)] -> String
+      pshowProcDefs' [] = ""
+      pshowProcDefs' ((procId, procDef'):rest) = "\n ** " ++ pshow procId ++ "\n" ++ pshow (DefProc procDef') ++ pshowProcDefs' rest
 
 
 ---------------------------------------------------------------------------
@@ -75,17 +75,17 @@ vexprB1 = cstrVar varIdB1
 
 
 varIdPpre1X :: VarId
-varIdPpre1X = VarId (T.pack "P$pre1$x") 33 intSort
+varIdPpre1X = VarId (T.pack "P$pre1$x") 43 intSort
 varIdPpre1Y :: VarId
-varIdPpre1Y = VarId (T.pack "P$pre1$y") 33 intSort
+varIdPpre1Y = VarId (T.pack "P$pre1$y") 44 intSort
 varIdPpre1Z :: VarId
-varIdPpre1Z = VarId (T.pack "P$pre1$z") 33 intSort
+varIdPpre1Z = VarId (T.pack "P$pre1$z") 45 intSort
 varIdPgnf1X :: VarId
-varIdPgnf1X = VarId (T.pack "P$gnf1$x") 33 intSort
+varIdPgnf1X = VarId (T.pack "P$gnf1$x") 46 intSort
 varIdPgnf1Y :: VarId
-varIdPgnf1Y = VarId (T.pack "P$gnf1$y") 33 intSort
+varIdPgnf1Y = VarId (T.pack "P$gnf1$y") 47 intSort
 varIdPgnf1Z :: VarId
-varIdPgnf1Z = VarId (T.pack "P$gnf1$z") 33 intSort
+varIdPgnf1Z = VarId (T.pack "P$gnf1$z") 48 intSort
 
 vexprPpre1X :: VExpr
 vexprPpre1X = cstrVar varIdPpre1X
@@ -110,22 +110,22 @@ intMin1 :: VExpr
 intMin1 = cstrConst (Cint (-1))
 
 varIdPcP :: VarId
-varIdPcP = VarId (T.pack "pc$P") 0 intSort
+varIdPcP = VarId (T.pack "pc$P") 50 intSort
 vexprPcP :: VExpr
 vexprPcP = cstrVar varIdPcP
 
 
 
 varIdPdisable :: VarId
-varIdPdisable = VarId (T.pack "P$disable$lhs") 33 intSort
+varIdPdisable = VarId (T.pack "P$disable$lhs") 53 intSort
 varIdPpcLHS :: VarId
-varIdPpcLHS = VarId (T.pack "P$lhs$pc$P$lhs") 33 intSort
+varIdPpcLHS = VarId (T.pack "P$lhs$pc$P$lhs") 54 intSort
 varIdPpcRHS :: VarId
-varIdPpcRHS = VarId (T.pack "P$rhs$pc$P$rhs") 33 intSort
+varIdPpcRHS = VarId (T.pack "P$rhs$pc$P$rhs") 55 intSort
 varIdPpcInterruptLHS :: VarId
-varIdPpcInterruptLHS = VarId (T.pack "P$lhs$pc$P$interrupt$lhs") 33 intSort
+varIdPpcInterruptLHS = VarId (T.pack "P$lhs$pc$P$interrupt$lhs") 56 intSort
 varIdPpcInterruptRHS :: VarId
-varIdPpcInterruptRHS = VarId (T.pack "P$rhs$pc$P$interrupt$rhs") 33 intSort
+varIdPpcInterruptRHS = VarId (T.pack "P$rhs$pc$P$interrupt$rhs") 57 intSort
 
 vexprPdisable :: VExpr
 vexprPdisable = cstrVar varIdPdisable

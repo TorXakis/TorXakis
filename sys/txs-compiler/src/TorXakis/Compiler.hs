@@ -64,8 +64,9 @@ import           SortId                             (SortId, sortIdBool,
                                                      sortIdInt, sortIdRegex,
                                                      sortIdString)
 import           StdTDefs                           (stdFuncTable, stdTDefs)
-import           TxsDefs                            (BExpr, ProcDef, ProcId,
-                                                     TxsDefs, chanid, cnectDefs,
+import           TxsDefs                            (BExpr, ProcDef,
+                                                     ProcId, TxsDefs,
+                                                     chanid, cnectDefs,
                                                      fromList, funcDefs,
                                                      mapperDefs, modelDefs,
                                                      procDefs, purpDefs, union)

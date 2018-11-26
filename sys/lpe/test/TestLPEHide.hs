@@ -189,7 +189,7 @@ testActionPref4 = TestCase $
       procDefP = ProcDef [chanIdA] [] (hide (Set.singleton chanIdA) (actionPref actOfferAx stop))
       procDefs' = Map.fromList  [  (procIdP, procDefP)]
 
-      varIdA1' = VarId (T.pack "A$1_3") 34 intSort
+      varIdA1' = VarId (T.pack "A$1_3") 4034 intSort
                                                                                           
       procIdPlpe = procIdGen "P" [chanIdA] [varIdPcP]
       procDefPlpe = ProcDef [chanIdA] [varIdPcP] (actionPref                         

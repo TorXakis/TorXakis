@@ -31,7 +31,7 @@ import TestDefinitions
 -- import TxsShow
 
 
---type ProcDefs = Map.Map ProcId ProcDef
+-- type ProcDefs = Map.Map ProcId ProcDef
 
 ---------------------------------------------------------------------------
 -- Tests
@@ -66,8 +66,8 @@ testDisable1 :: Test
 testDisable1 = TestCase $
 --    trace ("\ntestDisable1:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
 --             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
---             "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
-      assertBool "ActionPref, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) ((Just (res_procInst, res_procDef)))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
+--             "\n res_procDefs': " ++ pshowProcDefs res_procDefs') $
+      assertBool "ActionPref, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
       -- extract expected ProcDef from all results:
@@ -83,22 +83,18 @@ testDisable1 = TestCase $
       procInst' = procInst procIdP' [chanIdA] [int0, int0, int0]
       procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPpcRHS]
                                                 (choice $ Set.fromList [
-
-                                                      (actionPref 
+                                                      actionPref 
                                                             actOfferA { constraint = cstrAnd (Set.fromList [ 
                                                                                                 cstrITE (cstrEqual vexprPdisable int0)
                                                                                                       (cstrEqual vexprPpcLHS int0)
                                                                                                       (cstrConst (Cbool False))
                                                                                           ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, intMin1, vexprPpcRHS])),
-
-                                                      (actionPref 
-                                                            actOfferA { constraint = (cstrEqual vexprPpcRHS int0)
+                                                            (procInst procIdP' [chanIdA] [int0, intMin1, vexprPpcRHS]),
+                                                      actionPref 
+                                                            actOfferA { constraint = cstrEqual vexprPpcRHS int0
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])) 
-
-
+                                                            (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])
                                                 ])
 
 
@@ -134,8 +130,8 @@ testDisable2 :: Test
 testDisable2 = TestCase $
 --    trace ("\ntestDisable2:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
 --             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
---             "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
-      assertBool "EXIT, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) ((Just (res_procInst, res_procDef)))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
+--             "\n res_procDefs': " ++ pshowProcDefs res_procDefs') $
+      assertBool "EXIT, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
       -- extract expected ProcDef from all results:
@@ -151,24 +147,19 @@ testDisable2 = TestCase $
       procInst' = procInst procIdP' [chanIdA] [int0, int0, int0]
       procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPpcRHS]
                                                 (choice $ Set.fromList [
-                                                      (actionPref 
+                                                      actionPref 
                                                             actOfferExit { constraint = cstrAnd (Set.fromList [ 
                                                                                                 cstrITE (cstrEqual vexprPdisable int0)
                                                                                                       (cstrEqual vexprPpcLHS int0)
                                                                                                       (cstrConst (Cbool False))
                                                                                           ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, intMin1, intMin1])),
-
-                                                      (actionPref 
-                                                            actOfferA { constraint = (cstrEqual vexprPpcRHS int0)
-                                                                        } 
-                                                            (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])) 
-
-
+                                                            (procInst procIdP' [chanIdA] [int0, intMin1, intMin1]),
+                                                      actionPref 
+                                                            actOfferA { constraint = cstrEqual vexprPpcRHS int0
+                                                                      } 
+                                                            (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])
                                                 ])
-
-        
 
 
 
@@ -201,8 +192,8 @@ testDisable3 :: Test
 testDisable3 = TestCase $
 --    trace ("\ntestDisable3:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
 --             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
---             "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
-      assertBool "ActionPref | EXIT, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) ((Just (res_procInst, res_procDef)))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
+--             "\n res_procDefs': " ++ pshowProcDefs res_procDefs') $
+      assertBool "ActionPref | EXIT, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
       -- extract expected ProcDef from all results:
@@ -233,26 +224,19 @@ testDisable3 = TestCase $
       procInst' = procInst procIdP' [chanIdA] [int0, int0, int0]
       procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPpcRHS]
                                                 (choice $ Set.fromList [
-
-                                                      (actionPref 
+                                                      actionPref 
                                                             actOfferAExit { constraint = cstrAnd (Set.fromList [ 
                                                                                                 cstrITE (cstrEqual vexprPdisable int0)
                                                                                                       (cstrEqual vexprPpcLHS int0)
                                                                                                       (cstrConst (Cbool False))
                                                                                           ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, intMin1, intMin1])),
-
-                                                      (actionPref 
-                                                            actOfferA { constraint = (cstrEqual vexprPpcRHS int0)
-                                                                        } 
-                                                            (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])) 
-
-
+                                                            (procInst procIdP' [chanIdA] [int0, intMin1, intMin1]),
+                                                      actionPref 
+                                                            actOfferA { constraint = cstrEqual vexprPpcRHS int0
+                                                                      }
+                                                            (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])
                                                 ])
-
-        
-  
 
 -- P[A]() := P1[A](0) [>> A?x >-> STOP
 -- P1[A](y) :=    A?x >-> STOP
@@ -291,8 +275,8 @@ testDisable4 :: Test
 testDisable4 = TestCase $
 --    trace ("\ntestDisable4:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
 --             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
---             "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
-      assertBool "ProcInst, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) ((Just (res_procInst, res_procDef)))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
+--             "\n res_procDefs': " ++ pshowProcDefs res_procDefs') $
+      assertBool "ProcInst, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
       -- extract expected ProcDef from all results:
@@ -304,8 +288,8 @@ testDisable4 = TestCase $
                                                 (actionPref actOfferAx stop))
       procIdP1 = procIdGen "P1" [chanIdA] [varIdY]
       procDefP1 = ProcDef [chanIdA] [varIdY] (choice $ Set.fromList [
-                                                (actionPref actOfferAx stop)
-                                          ,     (actionPref actOfferAx (procInst procIdP1 [chanIdA] [int2]))
+                                                actionPref actOfferAx stop
+                                          ,     actionPref actOfferAx (procInst procIdP1 [chanIdA] [int2])
                                           ])
       procDefs' = Map.fromList [  (procIdP, procDefP)
                                ,  (procIdP1, procDefP1)]
@@ -329,17 +313,17 @@ testDisable4 = TestCase $
       procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPlhsP1y, varIdPpcRHS]
                                                 (choice $ Set.fromList [
                                                       --                    A$A$1 [P$rhs$pc$P$rhs == 0]                     >-> P[A](1, P$lhs$pc$P$lhs, P$lhs$P1$A$y, -1)   
-                                                      (actionPref 
+                                                      actionPref 
                                                             actOfferA { offers = Set.singleton
                                                                               Offer { chanid = chanIdA
                                                                                     , chanoffers = [Quest varIdA1]
                                                                               },
-                                                                        constraint = (cstrEqual vexprPpcRHS int0)
+                                                                        constraint = cstrEqual vexprPpcRHS int0
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, vexprPlhsP1y, intMin1])),
+                                                            (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, vexprPlhsP1y, intMin1]),
 
                                                       --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, -1, ANY, P$rhs$pc$P$rhs) 
-                                                      (actionPref 
+                                                      actionPref 
                                                             actOfferAx {offers = Set.singleton
                                                                               Offer { chanid = chanIdA
                                                                                     , chanoffers = [Quest varIdA1]
@@ -350,10 +334,10 @@ testDisable4 = TestCase $
                                                                                                 (cstrConst (Cbool False))
                                                                                     ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, intMin1, anyInt, vexprPpcRHS])),
+                                                            (procInst procIdP' [chanIdA] [int0, intMin1, anyInt, vexprPpcRHS]),
 
                                                       --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 0] >-> P[A](0, 1, 2, P$rhs$pc$P$rhs)
-                                                      (actionPref 
+                                                      actionPref 
                                                             actOfferAx {offers = Set.singleton
                                                                               Offer { chanid = chanIdA
                                                                                     , chanoffers = [Quest varIdA1]
@@ -364,35 +348,35 @@ testDisable4 = TestCase $
                                                                                                 (cstrConst (Cbool False))
                                                                                     ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, int1, int2, vexprPpcRHS])),
+                                                            (procInst procIdP' [chanIdA] [int0, int1, int2, vexprPpcRHS]),
 
                                                       --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 1] >-> P[A](0, -1, ANY, P$rhs$pc$P$rhs)
-                                                      (actionPref 
+                                                      actionPref 
                                                             actOfferAx {offers = Set.singleton
                                                                               Offer { chanid = chanIdA
                                                                                     , chanoffers = [Quest varIdA1]
-                                                                              },
+                                                                                    },
                                                                         constraint = cstrAnd (Set.fromList [ 
                                                                                           cstrITE (cstrEqual vexprPdisable int0)
                                                                                                 (cstrEqual vexprPpcLHS int1)
                                                                                                 (cstrConst (Cbool False))
                                                                                     ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, intMin1, anyInt, vexprPpcRHS])),
+                                                            (procInst procIdP' [chanIdA] [int0, intMin1, anyInt, vexprPpcRHS]),
 
                                                       --                 ## A?A$1 [P$disable$lhs == 0, P$lhs$pc$P$lhs == 1] >-> P[A](0, 1, 2, P$rhs$pc$P$rhs) 
-                                                      (actionPref 
-                                                      actOfferAx {offers = Set.singleton
-                                                                        Offer { chanid = chanIdA
-                                                                              , chanoffers = [Quest varIdA1]
-                                                                        },
+                                                      actionPref 
+                                                            actOfferAx {offers = Set.singleton
+                                                                            Offer { chanid = chanIdA
+                                                                                  , chanoffers = [Quest varIdA1]
+                                                                                  },
                                                                   constraint = cstrAnd (Set.fromList [ 
                                                                                     cstrITE (cstrEqual vexprPdisable int0)
                                                                                           (cstrEqual vexprPpcLHS int1)
                                                                                           (cstrConst (Cbool False))
                                                                               ])
                                                                   } 
-                                                      (procInst procIdP' [chanIdA] [int0, int1, int2, vexprPpcRHS]))
+                                                      (procInst procIdP' [chanIdA] [int0, int1, int2, vexprPpcRHS])
                                                 ])
 
         
@@ -415,13 +399,13 @@ testDisable4 = TestCase $
 --                P[A](P$disable$lhs, x, P$lhs$pc$P$lhs, P$lhs$P$lhs$A$x, P$rhs$pc$P$rhs, P$rhs$P$rhs$A$x) :=
 --                      A [P$disable$lhs == 0, pc$P$lhs == 0]   >-> P[A](0, x, -1, ANY, pc$P$rhs, P$rhs$A$x) 
 --                 ##   A [pc$P$rhs == 0]                       >-> P[A](1, x, pc$P$lhs, P$lhs$A$x, -1, ANY)   
---          with ProcInst: P[A](0, 2, 0, x, 0, x)
+--          with ProcInst: P[A](0, 2, 0, ANY, 0, ANY)
 testDisable5 :: Test
 testDisable5 = TestCase $
 --    trace ("\ntestDisable5:\n expected:" ++  pshow (procInst', DefProc procDefExpected)  ++ 
 --             "\ngot: " ++ pshow (res_procInst, DefProc res_procDef) ++ 
---             "\n res_procDefs': " ++ pshow_procDefs res_procDefs') $
-      assertBool "ProcInst, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) ((Just (res_procInst, res_procDef)))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
+--             "\n res_procDefs': " ++ pshowProcDefs res_procDefs') $
+      assertBool "ProcInst, ActionPref" $ eqProcDef (Just (procInst', procDefExpected)) (Just (res_procInst, res_procDef))--((eqProcDef procDefExpected res_procDef)  && (procInst' ~~ res_procInst))
    where
       (res_procInst@(TxsDefs.view -> ProcInst res_procId _ _), res_procDefs') = preGNFDisableFunc procInst'' chanOffers emptyTranslatedProcDefs procDefs'
       -- extract expected ProcDef from all results:
@@ -452,22 +436,20 @@ testDisable5 = TestCase $
       procInst' = procInst procIdP' [chanIdA] [int0, int2, int0, vexprX, int0, vexprX]
       procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdX, varIdPpcLHS, varIdPlhsX, varIdPpcRHS, varIdPrhsX]
                                                 (choice $ Set.fromList [
-                                                      (actionPref 
+                                                      actionPref 
                                                             actOfferA { constraint = cstrAnd (Set.fromList [ 
                                                                                                 cstrITE (cstrEqual vexprPdisable int0)
                                                                                                       (cstrEqual vexprPpcLHS int0)
                                                                                                       (cstrConst (Cbool False))
                                                                                           ])
                                                                         } 
-                                                            (procInst procIdP' [chanIdA] [int0, vexprX, intMin1, anyInt, vexprPpcRHS, vexprPrhsX])),
+                                                            (procInst procIdP' [chanIdA] [int0, vexprX, intMin1, anyInt, vexprPpcRHS, vexprPrhsX]),
 
-                                                      (actionPref 
-                                                            actOfferA { constraint = (cstrEqual vexprPpcRHS int0)
-                                                                        } 
-                                                            (procInst procIdP' [chanIdA] [int1, vexprX, vexprPpcLHS, vexprPlhsX, intMin1, anyInt])) 
+                                                      actionPref 
+                                                            actOfferA { constraint = cstrEqual vexprPpcRHS int0
+                                                                      } 
+                                                            (procInst procIdP' [chanIdA] [int1, vexprX, vexprPpcLHS, vexprPlhsX, intMin1, anyInt])
                                                 ])
-
-        
 
 
 ----------------------------------------------------------------------------------------
@@ -478,7 +460,6 @@ testPreGNFDisableList = TestList [
                              TestLabel "ActionPref, ActionPref" testDisable1
                         ,    TestLabel "EXIT , ActionPref" testDisable2
                         ,    TestLabel "EXIT | A , ActionPref" testDisable3
-                        ,    TestLabel "ProcInst , ActionPref" testDisable4
-                        ,    TestLabel "ProcInst , ActionPref" testDisable5
-
+                        ,    TestLabel "ProcInst , ActionPref -4 " testDisable4
+                        ,    TestLabel "ProcInst , ActionPref -5 " testDisable5
                         ]

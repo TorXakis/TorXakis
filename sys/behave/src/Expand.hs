@@ -6,7 +6,7 @@ See LICENSE at root directory of this repository.
 
 
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE ViewPatterns      #-}
 module Expand
 
 -- ----------------------------------------------------------------------------------------- --
@@ -45,7 +45,7 @@ import           Constant
 import qualified EnvBTree            as IOB
 import qualified EnvData
 import           Id
-import           Relabel(relabel)
+import           Relabel             (relabel)
 import           StdTDefs
 import           Subst
 import           TxsDefs
@@ -171,8 +171,13 @@ expand chsets (BNbexpr we (TxsDefs.view -> ProcInst procid@(ProcId nm _ _ _ _) c
                     (s, _)  -> do IOB.putMsgs [ EnvData.TXS_CORE_MODEL_ERROR
                                                 ("Expand: Eval failed in expand - ProcInst " ++ show s) ]
                                   return []
-       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR $
-                             "Expand: Undefined process name: " ++ T.unpack nm ]
+       _ -> do IOB.putMsgs [ EnvData.TXS_CORE_SYSTEM_ERROR
+                             ("Expand: Undefined process name: " ++ T.unpack nm)
+                           , EnvData.TXS_CORE_SYSTEM_ERROR
+                             ("\twhen looking for: " ++ show procid)
+                           , EnvData.TXS_CORE_SYSTEM_ERROR
+                             ("\tprocess definition map:" ++ show (procDefs tdefs))
+                           ]
                return []
 
 -- ----------------------------------------------------------------------------------------- --

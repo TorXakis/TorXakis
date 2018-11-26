@@ -75,7 +75,7 @@ testStopExit = TestCase $
       procDefPlpe = ProcDef [] [varIdPpcInterruptLHS, varIdPpcInterruptRHS] (
                                     actionPref  ActOffer {  offers = Set.empty
                                                             , hiddenvars = Set.fromList []
-                                                            , constraint = (cstrEqual vexprPpcInterruptRHS int0)
+                                                            , constraint = cstrEqual vexprPpcInterruptRHS int0
                                                             } 
                                                 (procInst procIdPlpe [] [int0, int0]))
       procInst' = procInst procIdPlpe [] [int0, int0]
@@ -119,7 +119,7 @@ testActionPrefExit = TestCase $
 
                                           actionPref  ActOffer {  offers = Set.empty
                                                                   , hiddenvars = Set.fromList []
-                                                                  , constraint = (cstrEqual vexprPpcInterruptRHS int0)
+                                                                  , constraint = cstrEqual vexprPpcInterruptRHS int0
                                                                   } 
                                                 (procInst procIdPlpe [] [int0, int0]) 
                                           ])
@@ -169,7 +169,7 @@ testActionPrefExitExit = TestCase $
 
                                           actionPref  ActOffer {  offers = Set.empty
                                                                   , hiddenvars = Set.fromList []
-                                                                  , constraint = (cstrEqual vexprPpcInterruptRHS int0)
+                                                                  , constraint = cstrEqual vexprPpcInterruptRHS int0
                                                                   } 
                                                 (procInst procIdPlpe [] [int0, int0]) 
                                           ])
@@ -202,11 +202,11 @@ testExitActionPref = TestCase $
 
 
       varIdPpcLHS' :: VarId
-      varIdPpcLHS' = VarId (T.pack "P$lhs$pc$P$interrupt$lhs") 33 intSort
+      varIdPpcLHS' = VarId (T.pack "P$lhs$pc$P$interrupt$lhs") 133 intSort
       varIdPpcRHS' :: VarId
-      varIdPpcRHS' = VarId (T.pack "P$rhs$pc$P$interrupt$rhs") 33 intSort
+      varIdPpcRHS' = VarId (T.pack "P$rhs$pc$P$interrupt$rhs") 134 intSort
       varIdPpcRHS2' :: VarId
-      varIdPpcRHS2' = VarId (T.pack "P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs") 33 intSort
+      varIdPpcRHS2' = VarId (T.pack "P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs") 135 intSort
       
       vexprPpcLHS' :: VExpr
       vexprPpcLHS' = cstrVar varIdPpcLHS'
@@ -229,10 +229,10 @@ testExitActionPref = TestCase $
                                                 (procInst procIdPlpe [] [int0, int0, anyInt]), 
 
                                           --   ##  A [P$rhs$pc$P$interrupt$rhs == 0] >-> P[A](-1, 1, 1) 
-                                          actionPref  actOfferA {  hiddenvars = Set.fromList []
-                                                                  ,   constraint =  (cstrEqual vexprPpcRHS' int0)
-                                                } 
-                                                (procInst procIdPlpe [] [intMin1, int1, int1]),
+                                          actionPref actOfferA { hiddenvars = Set.fromList []
+                                                               , constraint = cstrEqual vexprPpcRHS' int0
+                                                               }
+                                                     (procInst procIdPlpe [] [intMin1, int1, int1]),
 
                                           
                                           --   ##  A [P$rhs$pc$P$interrupt$rhs == 1, P$rhs$P$interrupt$rhs$pre1$pc$P$interrupt$rhs$pre1$lhs == 0] >-> P[A](-1, 1, 1)      // dead branch due to an extra unfolding of a ProcDef during translation

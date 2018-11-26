@@ -244,7 +244,15 @@ preGNFBExpr bexpr'@(TxsDefs.view -> Interrupt _bexprL _bexprR) choiceCnt freeVar
         (bexprRes, procDefsRes) <- lpeInterrupt procInst' translatedProcDefs procDefs'' 
         
         return (bexprRes, procDefsRes) 
-     
+
+
+preGNFBExpr bexpr'@(TxsDefs.view -> Disable _bexprL _bexprR) choiceCnt freeVarsInScope procId translatedProcDefs procDefs' = do
+    -- DISABLE at lower level not allowed
+    (procInst', procDefs'') <- preGNFBExprCreateProcDef bexpr' choiceCnt freeVarsInScope procId procDefs'
+    -- translate the created ProcDef with preGNFDisable
+    (bexprRes, procDefsRes) <- preGNFDisable procInst' translatedProcDefs procDefs'' 
+    
+    return (bexprRes, procDefsRes) 
 
 preGNFBExpr bexpr _ _ _ _ _ =
     error $ "unexpected type of bexpr" ++ show bexpr
@@ -887,23 +895,20 @@ preGNFEnable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) translat
                 isExit :: Offer -> Bool
                 isExit o = case o of 
                             Offer { chanid = chid} | chid == chanIdExit -> True
-                            _                                             -> False 
+                            _                                           -> False
         replaceExits _ _ = error "replaceExits: unknown input"  
     
         -- update procInsts of LHS steps to signature of new overall ProcDef 
         updateProcInst :: ProcId -> ProcId -> [VarId] -> BExpr -> BExpr
         updateProcInst procIdNew procIdToReplace paramsDef bexpr'@(TxsDefs.view -> ActionPref actOffer (TxsDefs.view -> ProcInst procIdInst' chansInst' paramsInst')) =
-            if (procIdInst', chansInst') `notElem` lLPE translatedProcDefs
-                then    -- we are NOT treating a recursive call to a ProcDef that's still in translation up the AST
-                        if procIdInst' == procIdToReplace
-                            then    -- if we are treating a recursive call to the LHS (i.e. is locally recursive call)
+            if ( (procIdInst', chansInst') `notElem` lLPE translatedProcDefs )
+               && (procIdInst' == procIdToReplace)
+                            then    -- we are NOT treating a recursive call to a ProcDef that's still in translation up the AST
+                                    -- and we are treating a recursive call to the LHS (i.e. is locally recursive call)
                                     let     paramsInst'' = map cstrVar paramsDef ++ paramsInst'
                                             procInst'' = procInst procIdNew chansInst' paramsInst'' in
                                     actionPref actOffer procInst''
-                            else    -- else leave as is 
-                                    bexpr'
-                else    -- return unchanged
-                        bexpr'
+                            else    bexpr'
                                                 
         updateProcInst _ _ _ _ = error "updateProcInst: unknown input"  
 
@@ -971,9 +976,11 @@ preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) transla
     disableUnid <- EnvB.newUnid
     
     let varIdDisable = VarId name' disableUnid intSort
-        stepsLHS' =   map (updateProcInst 0 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed. addDisableConstraint varIdDisable) (extractSteps bexprLHS_lpe_subst)
-        stepsRHS' =  map (updateProcInst 1 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed) (extractSteps bexprRHS_lpe_subst)
-        
+        stepsLHS' = map (updateProcInst 0 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed
+                        . addDisableConstraint varIdDisable) 
+                        (extractSteps bexprLHS_lpe_subst)
+        stepsRHS' = map (updateProcInst 1 procIdRes paramsDef paramsDefLHS_lpe_prefixed paramsDefRHS_lpe_prefixed) (extractSteps bexprRHS_lpe_subst)
+
         name' = T.append (ProcId.name procIdInst) (T.pack "$disable$lhs")
         paramsDefRes = [varIdDisable] ++ paramsDef ++ paramsDefLHS_lpe_prefixed ++ paramsDefRHS_lpe_prefixed
         procIdRes = procIdInst { ProcId.procvars = varsort <$> paramsDefRes}
@@ -1005,7 +1012,7 @@ preGNFDisable (TxsDefs.view -> ProcInst procIdInst chansInst paramsInst) transla
                                                 -- if we have a ProcInst of the LHS: take params from the ProcInst of LHS and params from the ProcDef of RHS
                                                 then let paramsRHS = if actOfferContainsExit actOffer
                                                                         -- if there is an EXIT in the LHS action: disable the RHS by setting the program counter to -1
-                                                                        then  cstrConst (Cint (-1)) : tail (map cstrVar paramsDefR)
+                                                                        then cstrConst (Cint (-1)) : tail (map cstrVar paramsDefR)
                                                                         else map cstrVar paramsDefR
                                                         in paramsInst' ++ paramsRHS
                                                 -- if we have a ProcInst of the RHS: take params from ProcDef of LHS and params from the procInst of LHS
