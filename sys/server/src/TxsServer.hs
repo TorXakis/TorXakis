@@ -93,7 +93,7 @@ main = withSocketsDo $ do
       (hs, host, _) <- accept sock
       hSetBuffering hs LineBuffering
       hSetEncoding hs latin1
-      hPutStrLn stdout "\nTXSSERVER >>  Starting  ..... \n"
+      putStrLn "\nTXSSERVER >>  Starting  ..... \n"
       let initS = IOS.envsNone
               { IOS.host   = host
               , IOS.portNr = portNr
@@ -106,7 +106,7 @@ main = withSocketsDo $ do
       TxsCore.runTxsCore coreConfig cmdsIntpr initS
       threadDelay 1000000    -- 1 sec delay on closing
       sClose sock
-      hPutStrLn stdout "\nTXSSERVER >>  Closing  ..... \n"
+      putStrLn "\nTXSSERVER >>  Closing  ..... \n"
 
 -- | Listen on the given port. If no port number is given, then a free port is
 -- determined, and this port number is printed to the standard output.
