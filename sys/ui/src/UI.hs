@@ -62,7 +62,7 @@ main  =  withSocketsDo $ do
 
     where
       startUI uiArgs = do
-          hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing\n"
+          putStrLn "\nTXS >>  TorXakis :: Model-Based Testing\n"
           now <- getCurrentTime
           bracket (initializeServer uiArgs) cleanup $ \(hc, _) -> do
               home <- getHomeDirectory
@@ -79,7 +79,7 @@ main  =  withSocketsDo $ do
                                   , uitimers  = Map.singleton "global" now
                                   , uiparams  = Map.empty
                                   }
-              hPutStrLn stderr "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
+              putStrLn "\nTXS >>  TorXakis :: Model-Based Testing  << End\n"
 
       initializeServer :: UIArgs -> IO (Handle, Maybe TxsServerInfo)
       initializeServer uiArgs = do
