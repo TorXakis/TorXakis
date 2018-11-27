@@ -360,7 +360,7 @@ testGuardLoop = TestCase $
 
 
       varIdQgnf1X :: VarId
-      varIdQgnf1X = VarId (T.pack "Q$gnf1$x") 33 intSort
+      varIdQgnf1X = VarId (T.pack "Q$gnf1$x") 233 intSort
       vexprQgnf1X :: VExpr
       vexprQgnf1X = cstrVar varIdQgnf1X
 

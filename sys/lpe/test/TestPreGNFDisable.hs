@@ -27,11 +27,11 @@ import TranslatedProcDefs
 import LPEfunc
 import TestDefinitions
 
---import Debug.Trace
---import TxsShow
+-- import Debug.Trace
+-- import TxsShow
 
 
---type ProcDefs = Map.Map ProcId ProcDef
+-- type ProcDefs = Map.Map ProcId ProcDef
 
 ---------------------------------------------------------------------------
 -- Tests
@@ -83,7 +83,6 @@ testDisable1 = TestCase $
       procInst' = procInst procIdP' [chanIdA] [int0, int0, int0]
       procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPpcRHS]
                                                 (choice $ Set.fromList [
-
                                                       actionPref 
                                                             actOfferA { constraint = cstrAnd (Set.fromList [ 
                                                                                                 cstrITE (cstrEqual vexprPdisable int0)
@@ -92,13 +91,10 @@ testDisable1 = TestCase $
                                                                                           ])
                                                                         } 
                                                             (procInst procIdP' [chanIdA] [int0, intMin1, vexprPpcRHS]),
-
                                                       actionPref 
                                                             actOfferA { constraint = cstrEqual vexprPpcRHS int0
                                                                         } 
                                                             (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])
-
-
                                                 ])
 
 
@@ -159,16 +155,11 @@ testDisable2 = TestCase $
                                                                                           ])
                                                                         } 
                                                             (procInst procIdP' [chanIdA] [int0, intMin1, intMin1]),
-
                                                       actionPref 
                                                             actOfferA { constraint = cstrEqual vexprPpcRHS int0
                                                                       } 
                                                             (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])
-
-
                                                 ])
-
-        
 
 
 
@@ -233,7 +224,6 @@ testDisable3 = TestCase $
       procInst' = procInst procIdP' [chanIdA] [int0, int0, int0]
       procDefExpected = ProcDef [chanIdA] [varIdPdisable, varIdPpcLHS, varIdPpcRHS]
                                                 (choice $ Set.fromList [
-
                                                       actionPref 
                                                             actOfferAExit { constraint = cstrAnd (Set.fromList [ 
                                                                                                 cstrITE (cstrEqual vexprPdisable int0)
@@ -242,17 +232,11 @@ testDisable3 = TestCase $
                                                                                           ])
                                                                         } 
                                                             (procInst procIdP' [chanIdA] [int0, intMin1, intMin1]),
-
                                                       actionPref 
                                                             actOfferA { constraint = cstrEqual vexprPpcRHS int0
                                                                       }
                                                             (procInst procIdP' [chanIdA] [int1, vexprPpcLHS, intMin1])
-
-
                                                 ])
-
-        
-  
 
 -- P[A]() := P1[A](0) [>> A?x >-> STOP
 -- P1[A](y) :=    A?x >-> STOP
@@ -467,8 +451,6 @@ testDisable5 = TestCase $
                                                             (procInst procIdP' [chanIdA] [int1, vexprX, vexprPpcLHS, vexprPlhsX, intMin1, anyInt])
                                                 ])
 
-        
-
 
 ----------------------------------------------------------------------------------------
 -- List of Tests
@@ -480,5 +462,4 @@ testPreGNFDisableList = TestList [
                         ,    TestLabel "EXIT | A , ActionPref" testDisable3
                         ,    TestLabel "ProcInst , ActionPref -4 " testDisable4
                         ,    TestLabel "ProcInst , ActionPref -5 " testDisable5
-
                         ]

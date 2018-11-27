@@ -75,17 +75,17 @@ vexprB1 = cstrVar varIdB1
 
 
 varIdPpre1X :: VarId
-varIdPpre1X = VarId (T.pack "P$pre1$x") 33 intSort
+varIdPpre1X = VarId (T.pack "P$pre1$x") 43 intSort
 varIdPpre1Y :: VarId
-varIdPpre1Y = VarId (T.pack "P$pre1$y") 33 intSort
+varIdPpre1Y = VarId (T.pack "P$pre1$y") 44 intSort
 varIdPpre1Z :: VarId
-varIdPpre1Z = VarId (T.pack "P$pre1$z") 33 intSort
+varIdPpre1Z = VarId (T.pack "P$pre1$z") 45 intSort
 varIdPgnf1X :: VarId
-varIdPgnf1X = VarId (T.pack "P$gnf1$x") 33 intSort
+varIdPgnf1X = VarId (T.pack "P$gnf1$x") 46 intSort
 varIdPgnf1Y :: VarId
-varIdPgnf1Y = VarId (T.pack "P$gnf1$y") 33 intSort
+varIdPgnf1Y = VarId (T.pack "P$gnf1$y") 47 intSort
 varIdPgnf1Z :: VarId
-varIdPgnf1Z = VarId (T.pack "P$gnf1$z") 33 intSort
+varIdPgnf1Z = VarId (T.pack "P$gnf1$z") 48 intSort
 
 vexprPpre1X :: VExpr
 vexprPpre1X = cstrVar varIdPpre1X
@@ -110,18 +110,22 @@ intMin1 :: VExpr
 intMin1 = cstrConst (Cint (-1))
 
 varIdPcP :: VarId
-varIdPcP = VarId (T.pack "pc$P") 0 intSort
+varIdPcP = VarId (T.pack "pc$P") 50 intSort
 vexprPcP :: VExpr
 vexprPcP = cstrVar varIdPcP
 
 
 
 varIdPdisable :: VarId
-varIdPdisable = VarId (T.pack "P$disable$lhs") 33 intSort
+varIdPdisable = VarId (T.pack "P$disable$lhs") 53 intSort
 varIdPpcLHS :: VarId
-varIdPpcLHS = VarId (T.pack "P$lhs$pc$P$lhs") 33 intSort
+varIdPpcLHS = VarId (T.pack "P$lhs$pc$P$lhs") 54 intSort
 varIdPpcRHS :: VarId
-varIdPpcRHS = VarId (T.pack "P$rhs$pc$P$rhs") 33 intSort
+varIdPpcRHS = VarId (T.pack "P$rhs$pc$P$rhs") 55 intSort
+varIdPpcInterruptLHS :: VarId
+varIdPpcInterruptLHS = VarId (T.pack "P$lhs$pc$P$interrupt$lhs") 56 intSort
+varIdPpcInterruptRHS :: VarId
+varIdPpcInterruptRHS = VarId (T.pack "P$rhs$pc$P$interrupt$rhs") 57 intSort
 
 vexprPdisable :: VExpr
 vexprPdisable = cstrVar varIdPdisable
@@ -129,7 +133,10 @@ vexprPpcLHS :: VExpr
 vexprPpcLHS = cstrVar varIdPpcLHS
 vexprPpcRHS :: VExpr
 vexprPpcRHS = cstrVar varIdPpcRHS
-
+vexprPpcInterruptLHS :: VExpr
+vexprPpcInterruptLHS = cstrVar varIdPpcInterruptLHS
+vexprPpcInterruptRHS :: VExpr
+vexprPpcInterruptRHS = cstrVar varIdPpcInterruptRHS
 
 
 
