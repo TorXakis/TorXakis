@@ -116,31 +116,31 @@ containsIdentical x1@(k1,v1) ((k2,v2):xs) =    ( identicalVarId k1 k2 && identic
                                             || containsIdentical x1 xs
 
 identicalVExpr :: VExpr -> VExpr -> Bool
-identicalVExpr (ValExpr.view -> Vfunc fid1 vexps1)      (ValExpr.view -> Vfunc fid2 vexps2)      = identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2
-identicalVExpr (ValExpr.view -> Vcstr cid1 vexps1)      (ValExpr.view -> Vcstr cid2 vexps2)      = identicalCstrId cid1 cid2 && identicalLists identicalVExpr vexps1 vexps2
-identicalVExpr (ValExpr.view -> Viscstr cid1 vexp1)     (ValExpr.view -> Viscstr cid2 vexp2)     = identicalCstrId cid1 cid2 && identicalVExpr vexp1 vexp2
-identicalVExpr (ValExpr.view -> Vaccess cid1 p1 vexp1)  (ValExpr.view -> Vaccess cid2 p2 vexp2)  = identicalCstrId cid1 cid2 && p1 == p2 && identicalVExpr vexp1 vexp2
-identicalVExpr (ValExpr.view -> Vconst c1)              (ValExpr.view -> Vconst c2)              = c1 == c2
-identicalVExpr (ValExpr.view -> Vvar v1)                (ValExpr.view -> Vvar v2)                = identicalVarId v1 v2
-identicalVExpr (ValExpr.view -> Vite vc1 vt1 ve1)       (ValExpr.view -> Vite vc2 vt2 ve2)       = identicalVExpr vc1 vc2 && identicalVExpr vt1 vt2 && identicalVExpr ve1 ve2
-identicalVExpr (ValExpr.view -> Vequal vl1 vr1)         (ValExpr.view -> Vequal vl2 vr2)         = identicalVExpr vl1 vl2  && identicalVExpr vr1 vr2
-identicalVExpr (ValExpr.view -> Vnot v1)                (ValExpr.view -> Vnot v2)                = identicalVExpr v1 v2
-identicalVExpr (ValExpr.view -> Vand vs1)               (ValExpr.view -> Vand vs2)               = identicalLists identicalVExpr (Set.toAscList vs1) (Set.toAscList vs2)
-identicalVExpr (ValExpr.view -> Vdivide t1 n1)          (ValExpr.view -> Vdivide t2 n2)          = identicalVExpr t1 t2  && identicalVExpr n1 n2
-identicalVExpr (ValExpr.view -> Vmodulo t1 n1)          (ValExpr.view -> Vmodulo t2 n2)          = identicalVExpr t1 t2  && identicalVExpr n1 n2
-identicalVExpr (ValExpr.view -> Vsum s1)                (ValExpr.view -> Vsum s2)                = let l1 = toOccurListT s1
-                                                                                                       l2 = toOccurListT s2
-                                                                                                     in identicalLists (\e1 e2 -> snd e1 == snd e2 && identicalVExpr (fst e1) (fst e2)) l1 l2
-identicalVExpr (ValExpr.view -> Vproduct s1)            (ValExpr.view -> Vproduct s2)            = let l1 = toOccurListT s1
-                                                                                                       l2 = toOccurListT s2
-                                                                                                     in identicalLists (\e1 e2 -> snd e1 == snd e2 && identicalVExpr (fst e1) (fst e2)) l1 l2
-identicalVExpr (ValExpr.view -> Vgez v1)                (ValExpr.view -> Vgez v2)                = identicalVExpr v1 v2
-identicalVExpr (ValExpr.view -> Vlength v1)             (ValExpr.view -> Vlength v2)             = identicalVExpr v1 v2
-identicalVExpr (ValExpr.view -> Vat s1 p1)              (ValExpr.view -> Vat s2 p2)              = identicalVExpr s1 s2 && identicalVExpr p1 p2
-identicalVExpr (ValExpr.view -> Vconcat vs1)            (ValExpr.view -> Vconcat vs2)            = identicalLists identicalVExpr vs1 vs2
-identicalVExpr (ValExpr.view -> Vstrinre s1 r1)         (ValExpr.view -> Vstrinre s2 r2)         = identicalVExpr s1 s2 && identicalVExpr r1 r2
-identicalVExpr (ValExpr.view -> Vpredef p1 fid1 vexps1) (ValExpr.view -> Vpredef p2 fid2 vexps2) = p1 == p2 && identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2
-identicalVExpr _                                        _                                        = False                          -- different
+identicalVExpr (ValExpr.view -> Vfunc fid1 vexps1)        (ValExpr.view -> Vfunc fid2 vexps2)        = identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2
+identicalVExpr (ValExpr.view -> Vcstr cid1 vexps1)        (ValExpr.view -> Vcstr cid2 vexps2)        = identicalCstrId cid1 cid2 && identicalLists identicalVExpr vexps1 vexps2
+identicalVExpr (ValExpr.view -> Viscstr cid1 vexp1)       (ValExpr.view -> Viscstr cid2 vexp2)       = identicalCstrId cid1 cid2 && identicalVExpr vexp1 vexp2
+identicalVExpr (ValExpr.view -> Vaccess cid1 n1 p1 vexp1) (ValExpr.view -> Vaccess cid2 n2 p2 vexp2) = identicalCstrId cid1 cid2 && n1 == n2 && p1 == p2 && identicalVExpr vexp1 vexp2
+identicalVExpr (ValExpr.view -> Vconst c1)                (ValExpr.view -> Vconst c2)                = c1 == c2
+identicalVExpr (ValExpr.view -> Vvar v1)                  (ValExpr.view -> Vvar v2)                  = identicalVarId v1 v2
+identicalVExpr (ValExpr.view -> Vite vc1 vt1 ve1)         (ValExpr.view -> Vite vc2 vt2 ve2)         = identicalVExpr vc1 vc2 && identicalVExpr vt1 vt2 && identicalVExpr ve1 ve2
+identicalVExpr (ValExpr.view -> Vequal vl1 vr1)           (ValExpr.view -> Vequal vl2 vr2)           = identicalVExpr vl1 vl2  && identicalVExpr vr1 vr2
+identicalVExpr (ValExpr.view -> Vnot v1)                  (ValExpr.view -> Vnot v2)                  = identicalVExpr v1 v2
+identicalVExpr (ValExpr.view -> Vand vs1)                 (ValExpr.view -> Vand vs2)                 = identicalLists identicalVExpr (Set.toAscList vs1) (Set.toAscList vs2)
+identicalVExpr (ValExpr.view -> Vdivide t1 n1)            (ValExpr.view -> Vdivide t2 n2)            = identicalVExpr t1 t2  && identicalVExpr n1 n2
+identicalVExpr (ValExpr.view -> Vmodulo t1 n1)            (ValExpr.view -> Vmodulo t2 n2)            = identicalVExpr t1 t2  && identicalVExpr n1 n2
+identicalVExpr (ValExpr.view -> Vsum s1)                  (ValExpr.view -> Vsum s2)                  = let l1 = toOccurListT s1
+                                                                                                           l2 = toOccurListT s2
+                                                                                                         in identicalLists (\e1 e2 -> snd e1 == snd e2 && identicalVExpr (fst e1) (fst e2)) l1 l2
+identicalVExpr (ValExpr.view -> Vproduct s1)              (ValExpr.view -> Vproduct s2)              = let l1 = toOccurListT s1
+                                                                                                           l2 = toOccurListT s2
+                                                                                                         in identicalLists (\e1 e2 -> snd e1 == snd e2 && identicalVExpr (fst e1) (fst e2)) l1 l2
+identicalVExpr (ValExpr.view -> Vgez v1)                  (ValExpr.view -> Vgez v2)                  = identicalVExpr v1 v2
+identicalVExpr (ValExpr.view -> Vlength v1)               (ValExpr.view -> Vlength v2)               = identicalVExpr v1 v2
+identicalVExpr (ValExpr.view -> Vat s1 p1)                (ValExpr.view -> Vat s2 p2)                = identicalVExpr s1 s2 && identicalVExpr p1 p2
+identicalVExpr (ValExpr.view -> Vconcat vs1)              (ValExpr.view -> Vconcat vs2)              = identicalLists identicalVExpr vs1 vs2
+identicalVExpr (ValExpr.view -> Vstrinre s1 r1)           (ValExpr.view -> Vstrinre s2 r2)           = identicalVExpr s1 s2 && identicalVExpr r1 r2
+identicalVExpr (ValExpr.view -> Vpredef p1 fid1 vexps1)   (ValExpr.view -> Vpredef p2 fid2 vexps2)   = p1 == p2 && identicalFuncId fid1 fid2 && identicalLists identicalVExpr vexps1 vexps2
+identicalVExpr _                                          _                                          = False                          -- different
 
 identicalActOffer :: ActOffer -> ActOffer -> Bool
 identicalActOffer (ActOffer offers1 _hidvars1 vexpr1) (ActOffer offers2 _hidvars2 vexpr2) =    identicalLists identicalOffer (Set.toAscList offers1) (Set.toAscList offers2)

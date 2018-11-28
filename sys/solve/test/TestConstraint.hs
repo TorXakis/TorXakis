@@ -306,7 +306,7 @@ testConditionalIntPresentValue = testTemplateValue conditionalIntDef [conditiona
         createAssertions :: [VarId] -> [ValExpr VarId]
         createAssertions [v]    = [ cstrIsCstr presentCstrId (cstrVar v)
                                   , cstrITE (cstrIsCstr presentCstrId (cstrVar v))
-                                            (cstrGT (cstrAccess presentCstrId 0 (cstrVar v)) (cstrConst (Cint boundary)) )
+                                            (cstrGT (cstrAccess presentCstrId "value" 0 (cstrVar v)) (cstrConst (Cint boundary)) )
                                             (cstrConst (Cbool True))
                                   ]
         createAssertions _   = error "One variable in problem"

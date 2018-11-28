@@ -32,7 +32,9 @@ import           Data.Text             (Text)
 import qualified Data.Text             as T
 
 import           Constant
+import           CstrDef
 import           CstrId
+import           FuncId
 import           SMT
 import           SMTData
 import           SolveDefs
@@ -314,9 +316,15 @@ addFields :: (Variable v) => v -> Int -> CstrId -> SMT [v]
 addFields v i cid@CstrId{ cstrargs = args' } = do
     let fieldVars = map (\(iNew,sNew) -> cstrVariable ("$$$t$" ++ show iNew) (10000000+iNew) sNew) (zip [i .. ] args')
     addDeclarations fieldVars
-    let exprs = map (\(pos, fieldVar) -> cstrEqual (cstrVar fieldVar) (cstrAccess cid pos (cstrVar v))) (zip [0..] fieldVars)
-    addAssertions exprs
-    return fieldVars
+    edefs <- gets envDefs
+    let mcdef = Map.lookup cid (cstrDefs edefs)
+    case mcdef of
+        Nothing               -> error $ "Unexpected: no constructor definition for " ++ show cid
+        Just (CstrDef _ fIds) -> do
+            let names = map FuncId.name fIds
+                exprs = map (\(nm, pos, fieldVar) -> cstrEqual (cstrVar fieldVar) (cstrAccess cid nm pos (cstrVar v))) (zip3 names [0..] fieldVars)
+            addAssertions exprs
+            return fieldVars
 -- ----------------------------------------------------------------------------------------- --
 --                                                                                           --
 -- ----------------------------------------------------------------------------------------- --

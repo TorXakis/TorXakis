@@ -131,16 +131,16 @@ cstrIsCstr c e                              = ValExpr (Viscstr c e)
 
 -- | Apply ADT Accessor of constructor with CstrId on field with given position on the provided value expression.
 -- Preconditions are /not/ checked.
-cstrAccess :: CstrId -> Int -> ValExpr v -> ValExpr v
-cstrAccess c1 p1 (view -> Vcstr c2 fields) =
+cstrAccess :: CstrId -> T.Text -> Int -> ValExpr v -> ValExpr v
+cstrAccess c1 n1 p1 (view -> Vcstr c2 fields) =
     if c1 == c2 -- prevent crashes due to model errors
         then fields!!p1
-        else error ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on instance from constructor " ++ show c2)
-cstrAccess c1 p1 (view -> Vconst (Ccstr c2 fields)) =
+        else error ("Error in model: Accessing field " ++ show n1 ++ " of constructor " ++ show c1 ++ " on instance from constructor " ++ show c2)
+cstrAccess c1 n1 p1 (view -> Vconst (Ccstr c2 fields)) =
     if c1 == c2 -- prevent crashes due to model errors
         then cstrConst (fields!!p1)
-        else error ("Error in model: Accessing field with number " ++ show p1 ++ " of constructor " ++ show c1 ++ " on value from constructor " ++ show c2)
-cstrAccess c p e = ValExpr (Vaccess c p e)
+        else error ("Error in model: Accessing field " ++ show n1 ++ " of constructor " ++ show c1 ++ " on value from constructor " ++ show c2)
+cstrAccess c n p e = ValExpr (Vaccess c n p e)
 
 -- | Is ValExpr a Constant/Value Expression?
 isConst :: ValExpr v -> Bool
@@ -172,6 +172,10 @@ cstrITE (view -> Vconst (Cbool False)) _ fb = fb
 -- Not implemented to enable conditional evaluation 
 -- if c then a else a <==> a
 cstrITE _ tb fb | tb == fb = tb
+-- Simplification: if c then True else False <==> c
+cstrITE c (view -> Vconst (Cbool True)) (view -> Vconst (Cbool False)) = c
+-- Simplification: if c then False else True <==> not c
+cstrITE c (view -> Vconst (Cbool False)) (view -> Vconst (Cbool True)) = cstrNot c
 -- if (not c) then tb else fb <==> if c then fb else tb
 cstrITE (view -> Vnot n) tb fb              = ValExpr (Vite n fb tb)
 cstrITE cs tb fb                            = ValExpr (Vite cs tb fb)
@@ -450,7 +454,7 @@ subst' ve _   (Vvar vid)               = Map.findWithDefault (cstrVar vid) vid v
 subst' ve fis (Vfunc fid vexps)        = cstrFunc fis fid (map (subst' ve fis . view) vexps)
 subst' ve fis (Vcstr cid vexps)        = cstrCstr cid (map (subst' ve fis . view) vexps)
 subst' ve fis (Viscstr cid vexp)       = cstrIsCstr cid ( (subst' ve fis . view) vexp)
-subst' ve fis (Vaccess cid p vexp)     = cstrAccess cid p ( (subst' ve fis . view) vexp)
+subst' ve fis (Vaccess cid n p vexp)   = cstrAccess cid n p ( (subst' ve fis . view) vexp)
 subst' ve fis (Vite cond vexp1 vexp2)  = cstrITE ( (subst' ve fis . view) cond) ( (subst' ve fis . view) vexp1) ( (subst' ve fis . view) vexp2)
 subst' ve fis (Vdivide t n)            = cstrDivide ( (subst' ve fis . view) t) ( (subst' ve fis . view) n)
 subst' ve fis (Vmodulo t n)            = cstrModulo ( (subst' ve fis . view) t) ( (subst' ve fis . view) n)
@@ -482,7 +486,7 @@ compSubst' ve _   (Vvar vid)               = fromMaybe
 compSubst' ve fis (Vfunc fid vexps)        = cstrFunc fis fid (map (compSubst' ve fis . view) vexps)
 compSubst' ve fis (Vcstr cid vexps)        = cstrCstr cid (map (compSubst' ve fis . view) vexps)
 compSubst' ve fis (Viscstr cid vexp)       = cstrIsCstr cid ( (compSubst' ve fis . view) vexp)
-compSubst' ve fis (Vaccess cid p vexp)     = cstrAccess cid p ( (compSubst' ve fis . view) vexp)
+compSubst' ve fis (Vaccess cid n p vexp)   = cstrAccess cid n p ( (compSubst' ve fis . view) vexp)
 compSubst' ve fis (Vite cond vexp1 vexp2)  = cstrITE ( (compSubst' ve fis . view) cond) ( (compSubst' ve fis . view) vexp1) ( (compSubst' ve fis . view) vexp2)
 compSubst' ve fis (Vdivide t n)            = cstrDivide ( (compSubst' ve fis . view) t) ( (compSubst' ve fis . view) n)
 compSubst' ve fis (Vmodulo t n)            = cstrModulo ( (compSubst' ve fis . view) t) ( (compSubst' ve fis . view) n)
