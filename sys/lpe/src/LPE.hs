@@ -1368,7 +1368,7 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
 
         -- TODO: properly initialise funcDefs param of subst
         constraintOfOffer' = Subst.subst varMap' (Map.fromList []) constraintOfOffer
-        constraintsList = constraintOfOffer' : constraints'
+        constraintsSubst = cstrITE constraintOfOffer' (cstrAnd (Set.fromList constraints')) (cstrConst (Cbool False))
         constraintPC = cstrEqual (cstrVar varIdPC) (cstrConst (Cint pcValue))
 
 
@@ -1376,9 +1376,9 @@ lpeBExpr chanMap paramMap varIdPC pcValue bexpr = do
         --    i.e. the normal constraint is empty (just True)
         -- then evaluate the program counter constraint first in an IF clause
         --    to avoid evaluation of possible comparisons with ANY in the following constraint
-        constraint' = if constraintsList == [cstrConst (Cbool True)]
+        constraint' = if constraintsSubst == cstrConst (Cbool True)
                         then constraintPC
-                        else cstrITE constraintPC (cstrAnd (Set.fromList constraintsList)) (cstrConst (Cbool False))
+                        else cstrITE constraintPC constraintsSubst (cstrConst (Cbool False))
 
         actOffer' = ActOffer { offers = Set.fromList offers'
                              , hiddenvars = hiddenvars actOffer
