@@ -103,7 +103,7 @@ eval' (Viscstr cid1 arg) = do
         Right t             -> return $ Left $ "iscstr : wrong value " ++ show t
         Left t              -> return $ Left $ "iscstr : " ++ t
 
-eval' (Vaccess _cid1 p arg) = do
+eval' (Vaccess _cid1 _n p arg) = do
     mval <- eval arg
     case mval of
         Right (Ccstr _cid2 args') -> return $ Right $ args'!!p

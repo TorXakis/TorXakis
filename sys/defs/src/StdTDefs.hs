@@ -124,8 +124,8 @@ cstrHandler = cstrCstr
 iscstrHandler :: CstrId -> Handler v
 iscstrHandler c = oneArgumentHandler (cstrIsCstr c)
 
-accessHandler :: CstrId -> Int -> Handler v
-accessHandler c p = oneArgumentHandler (cstrAccess c p)
+accessHandler :: CstrId -> Text -> Int -> Handler v
+accessHandler c n p = oneArgumentHandler (cstrAccess c n p)
 
 -- ----------------------------------------------------------------------------------------- --
 -- FuncTable

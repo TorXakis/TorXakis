@@ -255,10 +255,9 @@ instance PShow v => PShow (ValExprView v) where
     pshow (Vcstr cid vexps)
       =  pshow cid ++ "(" ++ Utils.join "," (map pshow vexps) ++ ")"
     pshow (Viscstr cid vexp)
-      = "is"++ T.unpack (CstrId.name cid) ++ "(" ++ pshow vexp ++ ")"
-    pshow (Vaccess cid p vexp)
-      =  "access "++ T.unpack (CstrId.name cid) ++ " " ++ show p
-      ++ " (" ++ pshow vexp ++ ")"
+      = "is" ++ T.unpack (CstrId.name cid) ++ "(" ++ pshow vexp ++ ")"
+    pshow (Vaccess _cid n _p vexp)
+      =  T.unpack n ++ "(" ++ pshow vexp ++ ")"
     pshow (Vconst con)
       =  pshow con
     pshow (Vvar vid)

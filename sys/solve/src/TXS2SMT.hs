@@ -204,8 +204,8 @@ valexprToSMT enames (view -> Vfunc funcId args') = "(" <> justLookupFunc funcId 
 valexprToSMT enames (view -> Vcstr cd [])    =        justLookupCstr cd enames
 valexprToSMT enames (view -> Vcstr cd args') = "(" <> justLookupCstr cd enames <> " " <> T.intercalate " " (map (valexprToSMT enames) args') <> ")"
 
-valexprToSMT enames (view -> Viscstr cd arg)    = "(" <> toIsCstrName cd <> " " <> valexprToSMT enames arg <> ")"
-valexprToSMT enames (view -> Vaccess cd p arg)  = "(" <> toFieldName cd p <> " " <> valexprToSMT enames arg <> ")"
+valexprToSMT enames (view -> Viscstr cd arg)      = "(" <> toIsCstrName cd <> " " <> valexprToSMT enames arg <> ")"
+valexprToSMT enames (view -> Vaccess cd _n p arg) = "(" <> toFieldName cd p <> " " <> valexprToSMT enames arg <> ")"
 
 
 valexprToSMT enames (view -> Vconst c) = constToSMT enames c

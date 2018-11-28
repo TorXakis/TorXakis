@@ -138,6 +138,7 @@ testActionPrefStop = TestCase $
 -- with procInst = LPE_P[A](0)
 testActionPrefConstraints :: Test
 testActionPrefConstraints = TestCase $
+--   trace ("\n\n expected: " ++ pshow (procInst', DefProc procDefPlpe) ++ "\n\ngot: " ++ (pshow . (\(Just (a,b)) -> (a, DefProc b))) (lpeTransformFunc procInst'' procDefs')) $ 
    assertBool "Action Pref constraints are kept" (eqProcDef (Just (procInst', procDefPlpe)) (lpeTransformFunc procInst'' procDefs'))
    where
       procInst'' = procInst procIdP [chanIdA] []
@@ -164,10 +165,9 @@ testActionPrefConstraints = TestCase $
                                                         , chanoffers = [Quest varIdA1]
                                                   }
                                  , hiddenvars = Set.empty
-                                 , constraint = cstrAnd (Set.fromList [ cstrITE (cstrEqual vexprPcP int0)
-                                                                                         (cstrEqual vexprA1 int1)
-                                                                                         (cstrConst (Cbool False))
-                                                              ])
+                                 , constraint = cstrITE (cstrEqual vexprPcP int0)
+                                                        (cstrEqual vexprA1 int1)
+                                                        (cstrConst (Cbool False))
                                  }
                         (procInst procIdPlpe [chanIdA] [intMin1]))
 
