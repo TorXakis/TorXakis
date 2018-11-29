@@ -932,8 +932,8 @@ txsShow item nm  = do
        let defs = [ (id2ident id', id2def def) | (id', def) <- Map.toList iddefs
                                               , TxsDefs.name (id2ident id') == T.pack nm' ]
        in case defs of
-            [(ident,txsdef)] -> TxsShow.fshow (ident,txsdef)
-            _                -> "no (uniquely) defined item to be shown: " ++ nm' ++ "\n"
+            [_] -> TxsShow.fshow $ TxsDefs.fromList defs
+            _   -> "no (uniquely) defined item to be shown: " ++ nm' ++ "\n"
 
 -- | Go to state with the provided state number.
 -- core action.
