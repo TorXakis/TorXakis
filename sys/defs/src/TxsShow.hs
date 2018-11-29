@@ -165,7 +165,7 @@ instance PShow BExprView
                                 _                   -> " [[ " ++ pshow c ++ " ]]"
                             ++ "\n >-> ( " ++ pshow bexp ++ " )"
                             ++ "\nNI"
-                    else    error ("Hidden Variables only allowed by ISTEP")
+                    else    error "Hidden Variables only allowed by ISTEP"
     pshow (Guard c bexp)
       =  "[[ " ++ pshow c ++ " ]] =>> \n" ++ "( " ++ pshow bexp ++ " )"
     pshow (Choice bexps)
@@ -230,7 +230,7 @@ instance PShow ActOffer
                 ++ case ValExpr.view c of
                         Vconst (Cbool True) -> ""
                         _                   -> " [[ " ++ pshow c ++ " ]]"
-        else    error ("Hidden variables should be handled at ActionPrefix level")
+        else    error "Hidden variables should be handled at ActionPrefix level"
 
 instance PShow Offer where
   pshow (Offer chid choffs) = pshow chid ++ concatMap pshow choffs
