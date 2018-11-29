@@ -115,7 +115,7 @@ instance PShow TxsDefs where
                                     ]
         ++ " ) "
         ++ case xt of
-             NoExit     -> "NOEXIT\n"
+             NoExit     -> "\n"
              Exit xsrts -> "EXIT " ++ Utils.join " # " (map pshow xsrts) ++ " \n"
              Hit        -> "HIT\n"
         ++ "  ::=\n" ++ pshow bexp ++  "\nENDDEF\n"
