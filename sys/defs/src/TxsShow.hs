@@ -154,9 +154,18 @@ instance PShow BExpr
 
 instance PShow BExprView
   where
-    pshow (ActionPref actoff bexp)
-      =  pshow actoff ++ "\n"
-         ++ "  >->  " ++ "( " ++ pshow bexp ++ " )"
+    pshow (ActionPref actoff@(ActOffer ofs hidvars c) bexp) =
+        case Set.toList hidvars of
+            [] -> pshow actoff ++ "\n >-> ( " ++ pshow bexp ++ " )"
+            ls -> if null ofs
+                    then    "HIDE [ HiddenChannel :: " ++ Utils.join " # " (map (pshow . varsort) ls) ++ " ] IN\n" ++ 
+                            "HiddenChannel ? " ++ Utils.join " ? " (map (T.unpack . VarId.name) ls) 
+                            ++ case ValExpr.view c of
+                                Vconst (Cbool True) -> ""
+                                _                   -> " [[ " ++ pshow c ++ " ]]"
+                            ++ "\n >-> ( " ++ pshow bexp ++ " )"
+                            ++ "\nNI"
+                    else    error ("Hidden Variables only allowed by ISTEP")
     pshow (Guard c bexp)
       =  "[[ " ++ pshow c ++ " ]] =>> \n" ++ "( " ++ pshow bexp ++ " )"
     pshow (Choice bexps)
@@ -213,17 +222,15 @@ instance PShow BExprView
 
 instance PShow ActOffer
   where
-    pshow (ActOffer ofs hidvars c)
-      =  "{ " ++ Utils.join " | " (map pshow (Set.toList ofs)) ++ "} "
-         ++ ( if  null hidvars
-                then ""
-                else  "{/ " ++ Utils.join " | " (map pshow (Set.toList hidvars)) ++ " /} "
-            )
-         ++ case ValExpr.view c of
-            { Vconst (Cbool True) -> ""
-            ; _                   -> "\n   [[ " ++ pshow c ++ " ]]"
-            }
-
+    pshow (ActOffer ofs hidvars c) =
+        if null hidvars
+        then    case Set.toList ofs of
+                    [] -> "ISTEP"
+                    ls -> "{ " ++ Utils.join " | " (map pshow ls) ++ " }"
+                ++ case ValExpr.view c of
+                        Vconst (Cbool True) -> ""
+                        _                   -> " [[ " ++ pshow c ++ " ]]"
+        else    error ("Hidden variables should be handled at ActionPrefix level")
 
 instance PShow Offer where
   pshow (Offer chid choffs) = pshow chid ++ concatMap pshow choffs
