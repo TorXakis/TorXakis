@@ -574,13 +574,13 @@ unsafeCstr aName cName as = case toMaybeValues as of
 
 -- | Is the provided value expression made by the ADT constructor with the given ADT Name and Constructor Name?
 mkIsCstr :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
-mkIsCstr ctx aName cName v = getCstr ctx aName cName >>= unsafeIsCstrStructural aName cName v
+mkIsCstr ctx aName cName v = getCstr ctx aName cName >>= structuralIsCstr aName cName v
 
 -- One time only check - will never change (since structural)
 -- After type checking holds:
 -- IsX(t::T) with T having only one constructor (X) <==> true
-unsafeIsCstrStructural :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> (ADTDef, ConstructorDef) -> Either MinError (ValExpr v)
-unsafeIsCstrStructural aName cName v (aDef,_) = case HashMap.toList ( (constructors . viewADTDef) aDef) of
+structuralIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> (ADTDef, ConstructorDef) -> Either MinError (ValExpr v)
+structuralIsCstr aName cName v (aDef,_) = case HashMap.toList ( (constructors . viewADTDef) aDef) of
                                                     [_] -> Right trueValExpr
                                                     _   -> unsafeIsCstr aName cName v
 
