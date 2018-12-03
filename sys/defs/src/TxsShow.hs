@@ -200,10 +200,10 @@ instance PShow BExprView
          ++ " [" ++ Utils.join "," (map pshow chans) ++ "]"
          ++ " ( " ++ Utils.join ", " (map pshow vexps) ++ " )\n"
     pshow (Hide chans bexp)
-      =  "HIDE "
+      =  "HIDE ["
          ++ Utils.join "; " [ T.unpack n ++ " :: " ++ Utils.join " # " (map pshow srts)
                             | ChanId n _ srts <- Set.toList chans
-                            ] ++ " IN\n"
+                            ] ++ "] IN\n"
          ++ pshow bexp ++ "\n"
          ++ "NI\n"
     pshow (ValueEnv ve bexp)
