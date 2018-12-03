@@ -94,15 +94,14 @@ instance PShow TxsDefs where
         s ++ "\nCSTRDEF " ++ T.unpack nm
         ++ " :: " ++ Utils.join " # " (map pshow a)
         ++ " -> " ++ pshow srt ++  " ;\n"
-      showElem s (IdFunc (FuncId nm _ a srt), DefFunc (FuncDef vids vexp) ) =
+      showElem s (IdFunc (FuncId nm _ _ srt), DefFunc (FuncDef vids vexp) ) =
         s ++ "\nFUNCDEF " ++ T.unpack nm
         ++ " ( " ++ Utils.join "; " [ T.unpack n ++ " :: " ++ pshow vsrt
                                     | VarId n _ vsrt <- vids
                                     ]
         ++ " ) "
-        ++ " :: " ++ Utils.join " # " (map pshow a)
-        ++ " -> " ++ pshow srt ++ " ;\n"
-        ++ "  ::=  " ++ pshow vexp ++ " ;\n"
+        ++ " :: " ++ pshow srt ++ "\n"
+        ++ "  ::=  " ++ pshow vexp ++ "\nENDDEF\n"
       showElem s (IdProc (ProcId nm _ _ _ xt), DefProc (ProcDef chans pvars bexp) ) =
         s ++ "\nPROCDEF " ++ T.unpack nm
         ++ " [ " ++ Utils.join "; "
@@ -200,10 +199,10 @@ instance PShow BExprView
          ++ " [" ++ Utils.join "," (map pshow chans) ++ "]"
          ++ " ( " ++ Utils.join ", " (map pshow vexps) ++ " )\n"
     pshow (Hide chans bexp)
-      =  "HIDE "
+      =  "HIDE ["
          ++ Utils.join "; " [ T.unpack n ++ " :: " ++ Utils.join " # " (map pshow srts)
                             | ChanId n _ srts <- Set.toList chans
-                            ] ++ " IN\n"
+                            ] ++ "] IN\n"
          ++ pshow bexp ++ "\n"
          ++ "NI\n"
     pshow (ValueEnv ve bexp)
