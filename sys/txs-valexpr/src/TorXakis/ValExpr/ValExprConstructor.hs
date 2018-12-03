@@ -547,12 +547,12 @@ unsafeStrInRe (view -> Vconst (Cstring s)) (view -> Vconst (Cregex r)) = unsafeC
 unsafeStrInRe s r                                                      = Right $ ValExpr (Vstrinre s r)
 
 -- get ConstructorDef when possible
-getCstr :: SortContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> Either MinError ConstructorDef
+getCstr :: SortContext c => c -> RefByName ADTDef -> RefByName ConstructorDef -> Either MinError (ADTDef, ConstructorDef)
 getCstr ctx aName cName = case HashMap.lookup aName (adtDefs ctx) of
                                 Nothing   -> Left $ MinError (T.pack ("ADTDefinition " ++ show aName ++ " not defined in context"))
                                 Just aDef -> case HashMap.lookup cName ( (constructors . viewADTDef) aDef) of
                                                 Nothing   -> Left $ MinError (T.pack ("Constructor " ++ show cName ++ " not defined for ADTDefinition " ++ show aName))
-                                                Just cDef -> Right cDef
+                                                Just cDef -> Right (aDef, cDef)
 
 -- | When all value expressions are constant values, return Just them otherwise return Nothing.
 toMaybeValues :: [ValExpr v] -> Maybe [Value]
@@ -574,7 +574,15 @@ unsafeCstr aName cName as = case toMaybeValues as of
 
 -- | Is the provided value expression made by the ADT constructor with the given ADT Name and Constructor Name?
 mkIsCstr :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
-mkIsCstr ctx aName cName v = getCstr ctx aName cName >>= const (unsafeIsCstr aName cName v)
+mkIsCstr ctx aName cName v = getCstr ctx aName cName >>= unsafeIsCstrStructural aName cName v
+
+-- One time only check - will never change (since structural)
+-- After type checking holds:
+-- IsX(t::T) with T having only one constructor (X) <==> true
+unsafeIsCstrStructural :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> (ADTDef, ConstructorDef) -> Either MinError (ValExpr v)
+unsafeIsCstrStructural aName cName v (aDef,_) = case HashMap.toList ( (constructors . viewADTDef) aDef) of
+                                                    [_] -> Right trueValExpr
+                                                    _   -> unsafeIsCstr aName cName v
 
 unsafeIsCstr :: RefByName ADTDef -> RefByName ConstructorDef -> ValExpr v -> Either MinError (ValExpr v)
 unsafeIsCstr aName cName (view -> Vcstr a c _)          = unsafeConst (Cbool (aName == a && cName == c))
@@ -583,7 +591,7 @@ unsafeIsCstr aName cName v                              = Right $ ValExpr (Viscs
 
 -- | Access field made by ADT Constructor of the given ADT Name and Constructor Name on the provided argument.
 mkAccess :: ValExprContext c v => c v -> RefByName ADTDef -> RefByName ConstructorDef -> RefByName FieldDef -> ValExpr v -> Either MinError (ValExpr v)
-mkAccess ctx aName cName fName v = getCstr ctx aName cName >>= getFieldInfo >>= (\(s,p) -> unsafeAccess aName cName s p v)
+mkAccess ctx aName cName fName v = getCstr ctx aName cName >>= getFieldInfo . snd >>= (\(s,p) -> unsafeAccess aName cName s p v)
     where
         getFieldInfo :: ConstructorDef -> Either MinError (Sort, Int)
         getFieldInfo cDef = case lookupField (zip (fields (viewConstructorDef cDef)) [0..]) of
