@@ -15,15 +15,19 @@ See LICENSE at root directory of this repository.
 --
 -- This module introduces definitions related to behaviour expressions.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.BExpr.BExpr
 (
   -- * Behaviour Expression type and view
-  BExprView(..)
-, BExpr(..)
+  BExprView
+, BExpressionView (..)
+, BExpr
+, BExpression (..)
   -- Action Offer
 , ActOffer(..)
   -- Channel Offer
@@ -40,35 +44,42 @@ import           GHC.Generics        (Generic)
 
 import           TorXakis.BExpr.ExitKind
 import           TorXakis.ChanDef
+import           TorXakis.FreeVars
 import           TorXakis.ProcSignature
 import           TorXakis.Sort
 import           TorXakis.ValExpr
 import           TorXakis.VarDef
 
--- | BExprView: the public view of Behaviour Expression `BExpr`
-data BExprView = ActionPref  ActOffer BExpr
-               | Guard       (ValExpr MinimalVarDef) BExpr
-               | Choice      (Set.Set BExpr)
-               | Parallel    (Set.Set ChanDef) [BExpr] -- actually (MultiSet.MultiSet BExpr) but that has lousy performance (due to sorting which needs more evaluation?)
-               | Enable      BExpr [ChanOffer] BExpr
-               | Disable     BExpr BExpr
-               | Interrupt   BExpr BExpr
-               | ProcInst    ProcSignature [ChanDef] [ValExpr MinimalVarDef]
-               | Hide        (Set.Set ChanDef) BExpr
+-- | BExpressionView: the public view of Behaviour Expression `BExpression`
+data BExpressionView v = ActionPref  ActOffer (BExpression v)
+                       | Guard       (ValExpr v) (BExpression v)
+                       | Choice      (Set.Set (BExpression v))
+                       | Parallel    (Set.Set ChanDef) [BExpression v] -- actually (MultiSet.MultiSet BExpr) but that has lousy performance (due to sorting which needs more evaluation?)
+                       | Enable      (BExpression v) [ChanOffer] (BExpression v)
+                       | Disable     (BExpression v) (BExpression v)
+                       | Interrupt   (BExpression v) (BExpression v)
+                       | ProcInst    ProcSignature [ChanDef] [ValExpr v]
+                       | Hide        (Set.Set ChanDef) (BExpression v)
   deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
 
--- | BExpr: behaviour expression
+-- | BExpression: behaviour expression
 --
 -- 1. User can't directly construct BExpr (such that invariants will always hold)
 --
 -- 2. User can still pattern match on BExpr using 'BExprView'
 --
 -- 3. Overhead at run-time is zero. See https://wiki.haskell.org/Performance/Data_types#Newtypes
-newtype BExpr = BExpr {
+newtype BExpression v = BExpression {
             -- | View on Behaviour Expression
-            view :: BExprView
+            view :: BExpressionView v
         }
     deriving (Eq,Ord,Read,Show, Generic, NFData, Data)
+
+-- | type synonym BExpr
+type BExpr = BExpression MinimalVarDef
+
+-- | type synonym BExprView
+type BExprView = BExpressionView MinimalVarDef
 
 -- | ActOffer
 -- Offer on multiple channels with constraints
@@ -102,7 +113,11 @@ instance HasExitKind ActOffer where
                         Right v -> v
                         Left e  -> error ("Smart constructor created invalid ActOffer " ++ show e)
 
-instance HasExitKind BExprView where
+
+instance HasExitKind (BExpression v) where
+    getExitKind = getExitKind . TorXakis.BExpr.BExpr.view
+
+instance HasExitKind (BExpressionView v) where
     getExitKind (ActionPref  a b)   = case getExitKind a <<+>> getExitKind b of
                                             Right v -> v
                                             Left e  -> error ("Smart constructor created invalid ActionPref " ++ show e)
@@ -121,5 +136,9 @@ instance HasExitKind BExprView where
     getExitKind (ProcInst ps _ _)   = exitKind ps
     getExitKind (Hide _ b)          = getExitKind b
 
-instance HasExitKind BExpr where
-    getExitKind = getExitKind . TorXakis.BExpr.BExpr.view
+
+instance VarDef v => FreeVars BExpression v where
+    freeVars = freeVars . TorXakis.BExpr.BExpr.view
+
+instance VarDef v => FreeVars BExpressionView v where
+    freeVars = undefined

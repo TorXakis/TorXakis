@@ -17,7 +17,8 @@ See LICENSE at root directory of this repository.
 -----------------------------------------------------------------------------
 module TorXakis.BExpr
 ( -- * Behaviour Expression type and view
-  BExprView(..)
+  BExprView
+, BExpressionView (..)
 , BExpr
 , view
   -- Action Offer

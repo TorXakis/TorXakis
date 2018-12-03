@@ -39,8 +39,7 @@ import           GHC.Generics           (Generic)
 
 import           TorXakis.Error         ( MinError(MinError) )
 import           TorXakis.FreeVars      ( freeVars )
-import           TorXakis.Name          ( RefByName, toMapByName, repeatedByName )
-import           TorXakis.Sort          ( Sort, SortContext (..), MinimalSortContext (..), elemSort, getSort )
+import           TorXakis.Sort          ( Sort, SortContext (..), MinimalSortContext (..), elemSort )
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.VarDef        ( VarDef, MinimalVarDef )
 import           TorXakis.FuncDef       ( FuncDef (..) )
@@ -49,21 +48,6 @@ import           TorXakis.FuncSignature ( FuncSignature (..) , HasFuncSignature 
 
 -- | A ValExprContext instance contains all definitions to work with value expressions and references thereof
 class (SortContext (a v), VarDef v) => ValExprContext a v where
-    -- | Accessor for Variable Definitions
-    varDefs :: a v -> HashMap.Map (RefByName v) v
-
-    -- | Add variable definitions to value expression context.
-    --   A value expression context is returned when the following constraints are satisfied:
-    --
-    --   * The 'Name's of added variable definitions are unique
-    --
-    --   * All sorts of the added variables are known (within this context)
-    --
-    --   Otherwise an error is returned. The error reflects the violations of any of the aforementioned constraints.
-    --
-    -- Note that variables in the context are hidden when variables with the same names are added.
-    addVarDefs :: a v -> [v] -> Either MinError (a v)
-
     -- | Accessor for Function Definitions
     funcDefs :: a v -> HashMap.Map FuncSignature (FuncDef v)
 
@@ -82,32 +66,18 @@ class (SortContext (a v), VarDef v) => ValExprContext a v where
 
 -- | A minimal instance of 'ValExprContext'.
 data MinimalValExprContext v = MinimalValExprContext { sortContext :: MinimalSortContext
-                                                         -- var definitions
-                                                     , _varDefs :: HashMap.Map (RefByName v) v
                                                          -- function definitions
                                                      , _funcDefs :: HashMap.Map FuncSignature (FuncDef v)
                                                      } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance SortContext (MinimalValExprContext MinimalVarDef) where
-    empty = MinimalValExprContext (empty::MinimalSortContext) HashMap.empty HashMap.empty
+    empty = MinimalValExprContext (empty::MinimalSortContext) HashMap.empty
     adtDefs ctx    = adtDefs (sortContext ctx)
     addAdtDefs ctx as = case addAdtDefs (sortContext ctx) as of
                           Left e     -> Left e
                           Right sctx -> Right $ ctx {sortContext = sctx} 
 
 instance ValExprContext MinimalValExprContext MinimalVarDef where
-    varDefs = _varDefs
-    addVarDefs ctx vs 
-        | not $ null nuVarNames    = Left $ MinError (T.pack ("Non unique variable names: " ++ show nuVarNames))
-        | not $ null undefinedSort = Left $ MinError (T.pack ("Sorts not defined in context of variables: " ++ show undefinedSort))
-        | otherwise                = Right $ ctx { _varDefs = HashMap.union (toMapByName vs) (_varDefs ctx) }
-      where
-        nuVarNames :: [MinimalVarDef]
-        nuVarNames = repeatedByName vs
-
-        undefinedSort :: [MinimalVarDef]
-        undefinedSort = filter (not . elemSort ctx . getSort) vs
-
     funcDefs = _funcDefs
     addFuncDefs ctx fds
         | not $ null nuFuncDefs              = Left $ MinError (T.pack ("Non unique function signatures: " ++ show nuFuncDefs))
@@ -132,7 +102,7 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
         undefinedVariables = mapMaybe undefinedVariable fds
 
         undefinedVariable :: FuncDef MinimalVarDef -> Maybe (FuncSignature, Set.Set MinimalVarDef)
-        undefinedVariable fd = let definedVars   = Set.fromList (paramDefs fd)  -- TODO: include globally defined variables in VarDefs?
+        undefinedVariable fd = let definedVars   = Set.fromList (paramDefs fd)
                                    usedVars      = freeVars (body fd)
                                    undefinedVars = Set.difference usedVars definedVars
                                 in

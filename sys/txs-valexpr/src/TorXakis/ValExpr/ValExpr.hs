@@ -15,9 +15,11 @@ See LICENSE at root directory of this repository.
 --
 -- Definitions for Value Expressions.
 -----------------------------------------------------------------------------
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module TorXakis.ValExpr.ValExpr
 ( -- * Value Expression
   ValExprView (..)
@@ -28,11 +30,12 @@ module TorXakis.ValExpr.ValExpr
 where
 import           Control.DeepSeq    (NFData)
 import           Data.Data          (Data)
-import qualified Data.Map        as Map
-import           Data.Set
+import qualified Data.Map           as Map
+import qualified Data.Set           as Set
 import           GHC.Generics       (Generic)
 
 
+import           TorXakis.FreeVars
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.Sort
@@ -52,7 +55,7 @@ data ValExprView v = Vconst    Value
                    | Vpredef   FuncSignature [ValExpr v]
                    -- Boolean
                    | Vnot      (ValExpr v)
-                   | Vand      (Set (ValExpr v))
+                   | Vand      (Set.Set (ValExpr v))
                    -- Int
                    | Vdivide   (ValExpr v)
                                (ValExpr v)
@@ -97,27 +100,53 @@ evalView (Vconst v) = Right v
 evalView x          = Left $ "Value Expression is not a constant value " ++ show x
 
 -- | SortOf instance
-instance (VarDef v) => HasSort (ValExpr v) where
-  getSort = sortOf . view
+instance VarDef v => HasSort (ValExpr v) where
+  getSort = getSort . view
 
-sortOf :: (VarDef v) => ValExprView v -> Sort
-sortOf (Vconst val)                                   = getSort val
-sortOf (Vvar v)                                       = getSort v
-sortOf  Vequal { }                                    = SortBool
-sortOf (Vite _cond vexp1 _vexp2)                      = getSort vexp1
-sortOf  Vnot { }                                      = SortBool
-sortOf  Vand { }                                      = SortBool
-sortOf  Vdivide { }                                   = SortInt
-sortOf  Vmodulo { }                                   = SortInt
-sortOf  Vsum { }                                      = SortInt
-sortOf  Vproduct { }                                  = SortInt
-sortOf  Vgez { }                                      = SortBool
-sortOf  Vlength { }                                   = SortInt
-sortOf  Vat { }                                       = SortString
-sortOf  Vconcat { }                                   = SortString
-sortOf  Vstrinre { }                                  = SortBool
-sortOf (Vcstr a _c _vexps)                            = SortADT a
-sortOf  Viscstr { }                                   = SortBool
-sortOf (Vaccess _a _c s _p _vexps)                    = s
-sortOf (Vfunc fs _vexps)                              = returnSort fs
-sortOf (Vpredef fs _vexps)                            = returnSort fs
+instance VarDef v => HasSort (ValExprView v) where
+    getSort (Vconst val)                                   = getSort val
+    getSort (Vvar v)                                       = getSort v
+    getSort  Vequal { }                                    = SortBool
+    getSort (Vite _cond vexp1 _vexp2)                      = getSort vexp1
+    getSort  Vnot { }                                      = SortBool
+    getSort  Vand { }                                      = SortBool
+    getSort  Vdivide { }                                   = SortInt
+    getSort  Vmodulo { }                                   = SortInt
+    getSort  Vsum { }                                      = SortInt
+    getSort  Vproduct { }                                  = SortInt
+    getSort  Vgez { }                                      = SortBool
+    getSort  Vlength { }                                   = SortInt
+    getSort  Vat { }                                       = SortString
+    getSort  Vconcat { }                                   = SortString
+    getSort  Vstrinre { }                                  = SortBool
+    getSort (Vcstr a _c _vexps)                            = SortADT a
+    getSort  Viscstr { }                                   = SortBool
+    getSort (Vaccess _a _c s _p _vexps)                    = s
+    getSort (Vfunc fs _vexps)                              = returnSort fs
+    getSort (Vpredef fs _vexps)                            = returnSort fs
+
+instance VarDef v => FreeVars ValExpr v where
+    freeVars = freeVars . view
+
+instance VarDef v => FreeVars ValExprView v where
+    freeVars  Vconst{}             = Set.empty
+    freeVars (Vvar v)              = Set.singleton v
+    freeVars (Vequal v1 v2)        = Set.unions $ map freeVars [v1, v2]
+    freeVars (Vite c t f)          = Set.unions $ map freeVars [c, t, f]
+    freeVars (Vfunc _ as)          = Set.unions $ map freeVars as
+    freeVars (Vpredef _ as)        = Set.unions $ map freeVars as
+    freeVars (Vnot v)              = freeVars v
+    freeVars (Vand s)              = Set.unions $ map freeVars (Set.toList s)
+    freeVars (Vdivide t n)         = Set.unions $ map freeVars [t, n]
+    freeVars (Vmodulo t n)         = Set.unions $ map freeVars [t, n]
+    freeVars (Vsum m)              = Set.unions $ map freeVars (Map.keys m)
+    freeVars (Vproduct m)          = Set.unions $ map freeVars (Map.keys m)
+    freeVars (Vgez v)              = freeVars v
+    freeVars (Vlength v)           = freeVars v
+    freeVars (Vat s p)             = Set.unions $ map freeVars [s, p]
+    freeVars (Vconcat vs)          = Set.unions $ map freeVars vs
+    freeVars (Vstrinre s r)        = Set.unions $ map freeVars [s, r]
+    freeVars (Vcstr _ _ vs)        = Set.unions $ map freeVars vs
+    freeVars (Viscstr _ _ v)       = freeVars v
+    freeVars (Vaccess _ _ _ _ v)   = freeVars v
+

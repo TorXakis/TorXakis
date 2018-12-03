@@ -40,6 +40,7 @@ import           TorXakis.BExpr.BExpr
 import           TorXakis.BExpr.ExitKind
 import           TorXakis.ChanDef
 import           TorXakis.Error         ( MinError(MinError) )
+import           TorXakis.FreeVars
 import           TorXakis.Sort          ( Sort, SortContext (..), elemSort )
 import           TorXakis.ValExpr
 import           TorXakis.VarDef        ( MinimalVarDef )
@@ -78,10 +79,6 @@ instance SortContext (MinimalBExprContext MinimalVarDef) where
                           Right vctx -> Right $ ctx {valExprContext = vctx} 
 
 instance ValExprContext MinimalBExprContext MinimalVarDef where
-    varDefs ctx    = varDefs (valExprContext ctx)
-    addVarDefs ctx vs = case addVarDefs (valExprContext ctx) vs of
-                          Left e     -> Left e
-                          Right vctx -> Right $ ctx {valExprContext = vctx} 
     funcDefs ctx    = funcDefs (valExprContext ctx)
     addFuncDefs ctx fs = case addFuncDefs (valExprContext ctx) fs of
                           Left e     -> Left e
@@ -92,6 +89,7 @@ instance BExprContext MinimalBExprContext MinimalVarDef where
     addProcDefs ctx pds
         | not $ null nuProcDefs              = Left $ MinError (T.pack ("Non unique process definitions: " ++ show nuProcDefs))
         | not $ null undefinedSorts          = Left $ MinError (T.pack ("List of process signatures with references to undefined sorts: " ++ show undefinedSorts))
+        | not $ null undefinedVariables      = Left $ MinError (T.pack ("List of process signatures with undefined variables in their bodies: " ++ show undefinedVariables))
         -- undefined function references already checked in constructors of BExprs
         | not $ null undefinedProcSignatures = Left $ MinError (T.pack ("List of process signatures with references to undefined process signatures: " ++ show undefinedProcSignatures))
         | otherwise                          = Right $ ctx { _procDefs = definedProcSignatures }
@@ -107,6 +105,18 @@ instance BExprContext MinimalBExprContext MinimalVarDef where
                             case filter (not . elemSort ctx) (concat [concatMap toSorts cs, as, exitSorts e]) of
                                 [] -> Nothing
                                 xs -> Just (ps, Set.fromList xs)
+
+        undefinedVariables :: [(ProcSignature, Set.Set MinimalVarDef)]
+        undefinedVariables = mapMaybe undefinedVariable pds
+
+        undefinedVariable :: ProcDef -> Maybe (ProcSignature, Set.Set MinimalVarDef)
+        undefinedVariable pd = let definedVars   = Set.fromList (paramDefs pd)
+                                   usedVars      = freeVars (body pd)
+                                   undefinedVars = Set.difference usedVars definedVars
+                                in
+                                    if Set.null undefinedVars
+                                        then Nothing
+                                        else Just (getProcSignature pd, undefinedVars)
 
         definedProcSignatures :: HashMap.Map ProcSignature ProcDef
         definedProcSignatures = HashMap.union (toMapByProcSignature pds) (_procDefs ctx)

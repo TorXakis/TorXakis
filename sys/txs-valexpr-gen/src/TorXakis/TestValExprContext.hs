@@ -34,7 +34,6 @@ import           GHC.Generics        (Generic)
 
 import           TorXakis.FuncDef
 import           TorXakis.FuncSignature
-import           TorXakis.Name
 import           TorXakis.Sort
 import           TorXakis.TestSortContext
 import           TorXakis.ValExpr
@@ -47,13 +46,11 @@ class (ValExprContext a v, TestSortContext (a v) ) => TestValExprContext a v
 -- | A minimal instance of 'TestValExprContext'.
 data MinimalTestValExprContext v = MinimalTestValExprContext 
                                     { testSortContext :: MinimalTestSortContext
-                                    , _varDefs :: Map.Map (RefByName v) v
-                                      -- TODO add sort to var mapping?
                                     , _funcDefs :: Map.Map FuncSignature (FuncDef v)
                                     } deriving (Eq, Ord, Read, Show, Generic, NFData, Data)
 
 instance SortContext (MinimalTestValExprContext MinimalVarDef) where
-    empty             = MinimalTestValExprContext empty Map.empty Map.empty
+    empty             = MinimalTestValExprContext empty Map.empty
     adtDefs ctx       = adtDefs (testSortContext ctx)
     addAdtDefs ctx as = case addAdtDefs (testSortContext ctx) as of
                             Left e     -> Left e
@@ -64,9 +61,7 @@ instance TestSortContext (MinimalTestValExprContext MinimalVarDef) where
     mapAdtMapConstructorSize ctx = mapAdtMapConstructorSize (testSortContext ctx)
 
 instance ValExprContext MinimalTestValExprContext MinimalVarDef where
-    varDefs = _varDefs
-    addVarDefs = undefined
     funcDefs = _funcDefs
-    addFuncDefs = undefined
+    addFuncDefs = undefined -- TODO: add look functionality for generation of ValExpr
 
 instance TestValExprContext MinimalTestValExprContext MinimalVarDef

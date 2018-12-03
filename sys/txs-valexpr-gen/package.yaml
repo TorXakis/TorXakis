@@ -23,7 +23,6 @@ library:
   dependencies:
     - deepseq
     - hashmap
-    - txs-basics
     - txs-sort-gen
     - txs-value-gen
 

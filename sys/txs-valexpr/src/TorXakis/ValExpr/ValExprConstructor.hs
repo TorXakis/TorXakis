@@ -117,10 +117,8 @@ unsafeConst :: Value -> Either MinError (ValExpr v)
 unsafeConst = Right . ValExpr . Vconst
 
 -- | Create a variable as a value expression.
-mkVar :: ValExprContext c v => c v -> RefByName v -> Either MinError (ValExpr v)
-mkVar ctx n = case HashMap.lookup n (varDefs ctx) of
-                Nothing -> Left $ MinError (T.pack ("Variable name " ++ show n ++ " not defined in context"))
-                Just v  -> unsafeVar v
+mkVar :: c v -> v -> Either MinError (ValExpr v)
+mkVar _ = unsafeVar
 
 unsafeVar :: v -> Either MinError (ValExpr v)
 unsafeVar = Right . ValExpr . Vvar
