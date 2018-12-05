@@ -105,7 +105,10 @@ instance PShow TxsDefs where
       showElem s (IdProc (ProcId nm _ _ _ xt), DefProc (ProcDef chans pvars bexp) ) =
         s ++ "\nPROCDEF " ++ T.unpack nm
         ++ " [ " ++ Utils.join "; "
-        [ T.unpack n ++ " :: " ++ Utils.join " # " (map pshow srts)
+        [ T.unpack n ++ 
+            case srts of
+                [] -> ""
+                _  -> " :: " ++ Utils.join " # " (map pshow srts)
         | ChanId n _ srts <- chans
         ]
         ++ " ] "
