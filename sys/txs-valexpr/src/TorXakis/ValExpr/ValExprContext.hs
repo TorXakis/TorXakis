@@ -42,7 +42,7 @@ import           TorXakis.FreeVars      ( freeVars )
 import           TorXakis.Sort          ( Sort, SortContext (..), MinimalSortContext (..), elemSort )
 import           TorXakis.ValExpr.ValExpr
 import           TorXakis.VarDef        ( VarDef, MinimalVarDef )
-import           TorXakis.FuncDef       ( FuncDef (..) )
+import           TorXakis.FuncDef       ( FuncDef, FuncDefView (..), view )
 import           TorXakis.FuncSignature ( FuncSignature (..) , HasFuncSignature (..) , toMapByFuncSignature, repeatedByFuncSignatureIncremental )
 
 
@@ -102,8 +102,9 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
         undefinedVariables = mapMaybe undefinedVariable fds
 
         undefinedVariable :: FuncDef MinimalVarDef -> Maybe (FuncSignature, Set.Set MinimalVarDef)
-        undefinedVariable fd = let definedVars   = Set.fromList (paramDefs fd)
-                                   usedVars      = freeVars (body fd)
+        undefinedVariable fd = let vw            = TorXakis.FuncDef.view fd
+                                   definedVars   = Set.fromList (paramDefs vw)
+                                   usedVars      = freeVars (body vw)
                                    undefinedVars = Set.difference usedVars definedVars
                                 in
                                     if Set.null undefinedVars
@@ -117,7 +118,7 @@ instance ValExprContext MinimalValExprContext MinimalVarDef where
         undefinedFuncSignatures = mapMaybe undefinedFuncSignature fds
 
         undefinedFuncSignature :: FuncDef MinimalVarDef -> Maybe (FuncSignature, Set.Set FuncSignature)
-        undefinedFuncSignature fd = case findUndefinedFuncSignature definedFuncSignatures (body fd) of
+        undefinedFuncSignature fd = case findUndefinedFuncSignature definedFuncSignatures (body (TorXakis.FuncDef.view fd)) of
                                         [] -> Nothing
                                         xs -> Just (getFuncSignature fd, Set.fromList xs)
 
@@ -127,7 +128,7 @@ findUndefinedFuncSignature :: HashMap.Map FuncSignature (FuncDef v) -> ValExpr v
 findUndefinedFuncSignature definedFuncSignatures = findUndefinedFuncSignature'
     where
         findUndefinedFuncSignature' :: ValExpr v -> [FuncSignature]
-        findUndefinedFuncSignature' = findUndefinedFuncSignatureView . view
+        findUndefinedFuncSignature' = findUndefinedFuncSignatureView . TorXakis.ValExpr.ValExpr.view
         
         findUndefinedFuncSignatureView :: ValExprView v -> [FuncSignature]
         findUndefinedFuncSignatureView Vconst{}                            = []

@@ -30,8 +30,6 @@ module TorXakis.ValExpr.ValExprConstructor
 , mkITE
   -- **** Function Call
 , mkFunc
-  -- **** Function Call to a New Function
-, mkNewFunc
   -- **** PredefNonSolvableined Function Call
 , mkPredefNonSolvable
   -- *** Boolean Operators to create Value Expressions
@@ -69,7 +67,7 @@ module TorXakis.ValExpr.ValExprConstructor
 , mkIsCstr
   -- **** Algebraic Data Type Accessor
 , mkAccess
-  -- ** Substitution of varaibles
+  -- ** Substitution of variables
   -- *** Partial Substitution
 , partSubst
   -- *** Complete Substitution
@@ -85,7 +83,7 @@ import qualified Data.Text       as T
 import           Text.Regex.TDFA
 
 import           TorXakis.Error
-import           TorXakis.FuncDef
+import qualified TorXakis.FuncDef
 import           TorXakis.FuncSignature
 import           TorXakis.Name
 import           TorXakis.Sort
@@ -196,22 +194,17 @@ mkFunc ctx fs vs
 
 unsafeFunc :: (ValExprContext c v, VarDef w) => c v -> FuncSignature -> [ValExpr w] -> Either MinError (ValExpr w)
 unsafeFunc ctx fs vs = case HashMap.lookup fs (funcDefs ctx) of
-                            Nothing -> Left $ MinError (T.pack ("Function with signature " ++ show fs ++ " not defined in context"))
-                            Just fd -> case body fd of
+                            Nothing -> -- Allow creating a function call to a function that is being defined (e.g. a recursive function).
+                                       -- When a new function is added to the context, all function calls will be checked to refer to existing functions.
+                                       Right $ ValExpr (Vfunc fs vs)
+                            Just fd -> let vw = TorXakis.FuncDef.view fd in
+                                         case TorXakis.FuncDef.body vw of
                                             (view -> Vconst x)  -> unsafeConst x
                                             _                   -> case toMaybeValues vs of
-                                                                        Just _  -> compSubst ctx (Map.fromList (zip (paramDefs fd) vs)) (body fd)
+                                                                        Just _  -> compSubst ctx 
+                                                                                             (Map.fromList (zip (TorXakis.FuncDef.paramDefs vw) vs))
+                                                                                             (TorXakis.FuncDef.body vw)
                                                                         Nothing -> Right $ ValExpr (Vfunc fs vs)
-
--- | Create a function call to a function that is being defined (e.g. a recursive function).
--- When a new function is added to the context, all function calls will be checked to refer to existing functions.
-mkNewFunc :: VarDef v => FuncSignature -> [ValExpr v] -> Either MinError (ValExpr v)
-mkNewFunc fs vs 
-    | expected == actual = Right $ ValExpr (Vfunc fs vs)
-    | otherwise          = Left $ MinError (T.pack ("Sorts of signature and arguments differ: " ++ show (zip expected actual) ) )
-        where
-            expected = args fs
-            actual = map getSort vs
 
 -- | Make a call to some predefined functions
 -- Only allowed in CNECTDEF
@@ -617,121 +610,119 @@ unsafeAccess _ cName _ pos (view -> Vconst (Ccstr _ c fs)) =
 unsafeAccess aName cName srt pos v = Right $ ValExpr (Vaccess aName cName srt pos v)
 
 -- | Partial Substitution: Substitute some variables by value expressions in a value expression.
-partSubst :: ValExprContext c v => c v -> Map.Map v (ValExpr v) -> ValExpr v -> Either MinError (ValExpr v)
-partSubst _   mp v | mp == Map.empty = Right v
-partSubst ctx mp v                   = partSubst' ctx mp (view v)
-
-partSubst' :: ValExprContext c v => c v -> Map.Map v (ValExpr v) -> ValExprView v -> Either MinError (ValExpr v)
-partSubst' _   _  (Vconst c)                = unsafeConst c
-partSubst' _   mp (Vvar v)                  = case Map.lookup v mp of
+partSubst :: forall c v . ValExprContext c v => c v -> Map.Map v (ValExpr v) -> ValExpr v -> Either MinError (ValExpr v)
+partSubst _   mp ve | mp == Map.empty = Right ve
+-- TODO: check map is ok (type of variable is type of expression that replaces it)
+partSubst ctx mp ve                   = partSubstView (view ve)
+  where
+    partSubstView :: ValExprView v -> Either MinError (ValExpr v)
+    partSubstView (Vconst c)                = unsafeConst c
+    partSubstView (Vvar v)                  = case Map.lookup v mp of
                                                     Nothing -> unsafeVar v
                                                     Just x  -> Right x
-partSubst' ctx mp (Vequal ve1 ve2)          = partSubst' ctx mp (view ve1) >>= (\ne1 ->
-                                              partSubst' ctx mp (view ve2) >>= 
+    partSubstView (Vequal ve1 ve2)          = partSubstView (view ve1) >>= (\ne1 ->
+                                              partSubstView (view ve2) >>= 
                                               unsafeEqual ne1)
-partSubst' ctx mp (Vite c tb fb)            = partSubst' ctx mp (view tb) >>= (\ntb ->
-                                              partSubst' ctx mp (view fb) >>= (\nfb ->
-                                              partSubst' ctx mp (view c) >>= (\nc ->
+    partSubstView (Vite c tb fb)            = partSubstView (view tb) >>= (\ntb ->
+                                              partSubstView (view fb) >>= (\nfb ->
+                                              partSubstView (view c) >>= (\nc ->
                                               unsafeITE nc ntb nfb)))
-partSubst' ctx mp (Vfunc fs vs)             = case partitionEithers (map (partSubst' ctx mp . view) vs) of
+    partSubstView (Vfunc fs vs)             = case partitionEithers (map (partSubstView . view) vs) of
                                                 ([] , nvs) -> unsafeFunc ctx fs nvs
                                                 (es, _)    -> Left $ MinError (T.pack ("Subst partSubst 'func' failed\n" ++ show es))
-partSubst' ctx mp (Vpredef fs vs)           = case partitionEithers (map (partSubst' ctx mp . view) vs) of
+    partSubstView (Vpredef fs vs)           = case partitionEithers (map (partSubstView . view) vs) of
                                                 ([] , nvs) -> unsafePredefNonSolvable ctx fs nvs
                                                 (es, _)    -> Left $ MinError (T.pack ("Subst partSubst 'predef' failed\n" ++ show es))
-partSubst' ctx mp (Vnot v)                  = partSubst' ctx mp (view v) >>= unsafeNot
-partSubst' ctx mp (Vand s)                  = case partitionEithers (map (partSubst' ctx mp . view) (Set.toList s)) of
+    partSubstView (Vnot v)                  = partSubstView (view v) >>= unsafeNot
+    partSubstView (Vand s)                  = case partitionEithers (map (partSubstView . view) (Set.toList s)) of
                                                 ([] , ns) -> unsafeAnd (Set.fromList ns)
                                                 (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'and' failed\n" ++ show es))
-partSubst' ctx mp (Vdivide t n)             = partSubst' ctx mp (view t) >>= (\nt ->
-                                              partSubst' ctx mp (view n) >>=
+    partSubstView (Vdivide t n)             = partSubstView (view t) >>= (\nt ->
+                                              partSubstView (view n) >>=
                                               unsafeDivide nt)
-partSubst' ctx mp (Vmodulo t n)             = partSubst' ctx mp (view t) >>= (\nt ->
-                                              partSubst' ctx mp (view n) >>=
+    partSubstView (Vmodulo t n)             = partSubstView (view t) >>= (\nt ->
+                                              partSubstView (view n) >>=
                                               unsafeModulo nt)
-partSubst' ctx mp (Vsum m)                  = case partitionEithers (map (\(x,i) -> partSubst' ctx mp (view x) >>= (\nx -> Right (nx,i)))
+    partSubstView (Vsum m)                  = case partitionEithers (map (\(x,i) -> partSubstView (view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
                                                 ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
                                                 (es, _) -> Left $ MinError (T.pack ("Subst partSubst 'sum' failed\n" ++ show es))
-partSubst' ctx mp (Vproduct m)              = case partitionEithers (map (\(x,i) -> partSubst' ctx mp (view x) >>= (\nx -> Right (nx,i)))
+    partSubstView (Vproduct m)              = case partitionEithers (map (\(x,i) -> partSubstView (view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
                                                 ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
                                                 (es, _) -> Left $ MinError (T.pack ("Subst partSubst 'product' failed\n" ++ show es))
-partSubst' ctx mp (Vgez v)                  = partSubst' ctx mp (view v) >>= unsafeGEZ
-partSubst' ctx mp (Vlength s)               = partSubst' ctx mp (view s) >>= unsafeLength
-partSubst' ctx mp (Vat s i)                 = partSubst' ctx mp (view s) >>= (\ns ->
-                                              partSubst' ctx mp (view i) >>= 
+    partSubstView (Vgez v)                  = partSubstView (view v) >>= unsafeGEZ
+    partSubstView (Vlength s)               = partSubstView (view s) >>= unsafeLength
+    partSubstView (Vat s i)                 = partSubstView (view s) >>= (\ns ->
+                                              partSubstView (view i) >>= 
                                               unsafeAt ns)
-partSubst' ctx mp (Vconcat s)               = case partitionEithers (map (partSubst' ctx mp . view) s) of
+    partSubstView (Vconcat s)               = case partitionEithers (map (partSubstView . view) s) of
                                                 ([] , ns) -> unsafeConcat ns
                                                 (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'concat' failed\n" ++ show es))
-partSubst' ctx mp (Vstrinre s r)            = partSubst' ctx mp (view s) >>= (\ns ->
-                                              partSubst' ctx mp (view r) >>= 
+    partSubstView (Vstrinre s r)            = partSubstView (view s) >>= (\ns ->
+                                              partSubstView (view r) >>= 
                                               unsafeStrInRe ns)
-partSubst' ctx mp (Vcstr a c l)             = case partitionEithers (map (partSubst' ctx mp . view) l) of
+    partSubstView (Vcstr a c l)             = case partitionEithers (map (partSubstView . view) l) of
                                                 ([] , nl) -> unsafeCstr a c nl
                                                 (es, _)   -> Left $ MinError (T.pack ("Subst partSubst 'cstr' failed\n" ++ show es))
-partSubst' ctx mp (Viscstr a c v)           = partSubst' ctx mp (view v) >>= unsafeIsCstr a c
-partSubst' ctx mp (Vaccess a c s p v)       = partSubst' ctx mp (view v) >>= unsafeAccess a c s p
+    partSubstView (Viscstr a c v)           = partSubstView (view v) >>= unsafeIsCstr a c
+    partSubstView (Vaccess a c s p v)       = partSubstView (view v) >>= unsafeAccess a c s p
 
 
 -- | Complete Substitution: Substitute all variables by value expressions in a value expression.
 -- Since all variables are changed, one can change the kind of variables.
---
--- TODO: What is the context?
---       should context be split? Function in original variables, defined variables after substitution (hence in new variable)?
-compSubst :: (ValExprContext c v, VarDef w) => c v -> Map.Map v (ValExpr w) -> ValExpr v -> Either MinError (ValExpr w)
-compSubst ctx mp v                   = compSubst' ctx mp (view v)
-
-compSubst' :: (ValExprContext c v, VarDef w) => c v -> Map.Map v (ValExpr w) -> ValExprView v -> Either MinError (ValExpr w)
-compSubst' _   _  (Vconst c)                = unsafeConst c
-compSubst' _   mp (Vvar v)                  = case Map.lookup v mp of
-                                                Nothing -> Left $ MinError (T.pack ("Subst compSubst: incomplete. Missing " ++ show v))
-                                                Just w  -> Right w
-compSubst' ctx mp (Vequal ve1 ve2)          = compSubst' ctx mp (view ve1) >>= (\ne1 ->
-                                              compSubst' ctx mp (view ve2) >>= 
+compSubst :: forall c v w . (ValExprContext c v, VarDef w) => c v -> Map.Map v (ValExpr w) -> ValExpr v -> Either MinError (ValExpr w)
+compSubst ctx mp ve                   = compSubstView (view ve)
+  where
+    compSubstView :: ValExprView v -> Either MinError (ValExpr w)
+    compSubstView (Vconst c)                = unsafeConst c
+    compSubstView (Vvar v)                  = case Map.lookup v mp of
+                                                    Nothing -> Left $ MinError (T.pack ("Subst compSubst: incomplete. Missing " ++ show v))
+                                                    Just w  -> Right w
+    compSubstView (Vequal ve1 ve2)          = compSubstView (view ve1) >>= (\ne1 ->
+                                              compSubstView (view ve2) >>= 
                                               unsafeEqual ne1)
-compSubst' ctx mp (Vite c tb fb)            = compSubst' ctx mp (view tb) >>= (\ntb ->
-                                              compSubst' ctx mp (view fb) >>= (\nfb ->
-                                              compSubst' ctx mp (view c) >>= (\nc ->
+    compSubstView (Vite c tb fb)            = compSubstView (view tb) >>= (\ntb ->
+                                              compSubstView (view fb) >>= (\nfb ->
+                                              compSubstView (view c) >>= (\nc ->
                                               unsafeITE nc ntb nfb)))
-compSubst' ctx mp (Vfunc fs vs)             = case partitionEithers (map (compSubst' ctx mp . view) vs) of
-                                                ([] , nvs) -> unsafeFunc ctx fs nvs
-                                                (es, _)    -> Left $ MinError (T.pack ("Subst compSubst 'func' failed\n" ++ show es))
-compSubst' ctx mp (Vpredef fs vs)           = case partitionEithers (map (compSubst' ctx mp . view) vs) of
-                                                ([] , nvs) -> unsafePredefNonSolvable ctx fs nvs
-                                                (es, _)    -> Left $ MinError (T.pack ("Subst compSubst 'predef' failed\n" ++ show es))
-compSubst' ctx mp (Vnot v)                  = compSubst' ctx mp (view v) >>= unsafeNot
-compSubst' ctx mp (Vand s)                  = case partitionEithers (map (compSubst' ctx mp . view) (Set.toList s)) of
-                                                ([] , ns) -> unsafeAnd (Set.fromList ns)
-                                                (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'and' failed\n" ++ show es))
-compSubst' ctx mp (Vdivide t n)             = compSubst' ctx mp (view t) >>= (\nt ->
-                                              compSubst' ctx mp (view n) >>=
+    compSubstView (Vfunc fs vs)             = case partitionEithers (map (compSubstView . view) vs) of
+                                                    ([] , nvs) -> unsafeFunc ctx fs nvs
+                                                    (es, _)    -> Left $ MinError (T.pack ("Subst compSubst 'func' failed\n" ++ show es))
+    compSubstView (Vpredef fs vs)           = case partitionEithers (map (compSubstView . view) vs) of
+                                                    ([] , nvs) -> unsafePredefNonSolvable ctx fs nvs
+                                                    (es, _)    -> Left $ MinError (T.pack ("Subst compSubst 'predef' failed\n" ++ show es))
+    compSubstView (Vnot v)                  = compSubstView (view v) >>= unsafeNot
+    compSubstView (Vand s)                  = case partitionEithers (map (compSubstView . view) (Set.toList s)) of
+                                                    ([] , ns) -> unsafeAnd (Set.fromList ns)
+                                                    (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'and' failed\n" ++ show es))
+    compSubstView (Vdivide t n)             = compSubstView (view t) >>= (\nt ->
+                                              compSubstView (view n) >>=
                                               unsafeDivide nt)
-compSubst' ctx mp (Vmodulo t n)             = compSubst' ctx mp (view t) >>= (\nt ->
-                                              compSubst' ctx mp (view n) >>=
+    compSubstView (Vmodulo t n)             = compSubstView (view t) >>= (\nt ->
+                                              compSubstView (view n) >>=
                                               unsafeModulo nt)
-compSubst' ctx mp (Vsum m)                  = case partitionEithers (map (\(x,i) -> compSubst' ctx mp (view x) >>= (\nx -> Right (nx,i)))
+    compSubstView (Vsum m)                  = case partitionEithers (map (\(x,i) -> compSubstView (view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
-                                                ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
-                                                (es, _) -> Left $ MinError (T.pack ("Subst compSubst 'sum' failed\n" ++ show es))
-compSubst' ctx mp (Vproduct m)              = case partitionEithers (map (\(x,i) -> compSubst' ctx mp (view x) >>= (\nx -> Right (nx,i)))
+                                                    ([], l) -> unsafeSumFromMap (Map.fromListWith (+) l)
+                                                    (es, _) -> Left $ MinError (T.pack ("Subst compSubst 'sum' failed\n" ++ show es))
+    compSubstView (Vproduct m)              = case partitionEithers (map (\(x,i) -> compSubstView (view x) >>= (\nx -> Right (nx,i)))
                                                                          (Map.toList m)) of
-                                                ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
-                                                (es, _) -> Left $ MinError (T.pack ("Subst compSubst 'product' failed\n" ++ show es))
-compSubst' ctx mp (Vgez v)                  = compSubst' ctx mp (view v) >>= unsafeGEZ
-compSubst' ctx mp (Vlength s)               = compSubst' ctx mp (view s) >>= unsafeLength
-compSubst' ctx mp (Vat s i)                 = compSubst' ctx mp (view s) >>= (\ns ->
-                                              compSubst' ctx mp (view i) >>= 
+                                                    ([], l) -> unsafeProductFromMap (Map.fromListWith (+) l)
+                                                    (es, _) -> Left $ MinError (T.pack ("Subst compSubst 'product' failed\n" ++ show es))
+    compSubstView (Vgez v)                  = compSubstView (view v) >>= unsafeGEZ
+    compSubstView (Vlength s)               = compSubstView (view s) >>= unsafeLength
+    compSubstView (Vat s i)                 = compSubstView (view s) >>= (\ns ->
+                                              compSubstView (view i) >>= 
                                               unsafeAt ns)
-compSubst' ctx mp (Vconcat s)               = case partitionEithers (map (compSubst' ctx mp . view) s) of
-                                                ([] , ns) -> unsafeConcat ns
-                                                (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'concat' failed\n" ++ show es))
-compSubst' ctx mp (Vstrinre s r)            = compSubst' ctx mp (view s) >>= (\ns ->
-                                              compSubst' ctx mp (view r) >>= 
+    compSubstView (Vconcat s)               = case partitionEithers (map (compSubstView . view) s) of
+                                                    ([] , ns) -> unsafeConcat ns
+                                                    (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'concat' failed\n" ++ show es))
+    compSubstView (Vstrinre s r)            = compSubstView (view s) >>= (\ns ->
+                                              compSubstView (view r) >>= 
                                               unsafeStrInRe ns)
-compSubst' ctx mp (Vcstr a c l)             = case partitionEithers (map (compSubst' ctx mp . view) l) of
-                                                ([] , nl) -> unsafeCstr a c nl
-                                                (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'cstr' failed\n" ++ show es))
-compSubst' ctx mp (Viscstr a c v)           = compSubst' ctx mp (view v) >>= unsafeIsCstr a c
-compSubst' ctx mp (Vaccess a c s p v)       = compSubst' ctx mp (view v) >>= unsafeAccess a c s p
+    compSubstView (Vcstr a c l)             = case partitionEithers (map (compSubstView . view) l) of
+                                                    ([] , nl) -> unsafeCstr a c nl
+                                                    (es, _)   -> Left $ MinError (T.pack ("Subst compSubst 'cstr' failed\n" ++ show es))
+    compSubstView (Viscstr a c v)           = compSubstView (view v) >>= unsafeIsCstr a c
+    compSubstView (Vaccess a c s p v)       = compSubstView (view v) >>= unsafeAccess a c s p
