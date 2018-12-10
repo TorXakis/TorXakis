@@ -609,12 +609,19 @@ unsafeAccess _ cName _ pos (view -> Vconst (Ccstr _ c fs)) =
                                       ++ "\nFor more info, see https://github.com/TorXakis/TorXakis/wiki/Function#implicitly-defined-typedef-functions") )
 unsafeAccess aName cName srt pos v = Right $ ValExpr (Vaccess aName cName srt pos v)
 
+-- | find mismatches in sort in mapping
+mismatchesSort :: (HasSort a, HasSort b) => Map.Map a b -> [ (a, b) ]
+mismatchesSort = filter (\(a,b) -> getSort a /= getSort b) . Map.toList
+
 -- | Partial Substitution: Substitute some variables by value expressions in a value expression.
 partSubst :: forall c v . ValExprContext c v => c v -> Map.Map v (ValExpr v) -> ValExpr v -> Either MinError (ValExpr v)
-partSubst _   mp ve | mp == Map.empty = Right ve
--- TODO: check map is ok (type of variable is type of expression that replaces it)
-partSubst ctx mp ve                   = partSubstView (view ve)
+partSubst ctx mp ve | Map.null mp              = Right ve
+                    | not (null mismatches)    = Left $ MinError (T.pack ("Sort mismatches in map : " ++ show mismatches))
+                    | otherwise                = partSubstView (view ve)
   where
+    mismatches :: [ (v, ValExpr v) ]
+    mismatches = mismatchesSort mp
+    
     partSubstView :: ValExprView v -> Either MinError (ValExpr v)
     partSubstView (Vconst c)                = unsafeConst c
     partSubstView (Vvar v)                  = case Map.lookup v mp of
@@ -672,8 +679,12 @@ partSubst ctx mp ve                   = partSubstView (view ve)
 -- | Complete Substitution: Substitute all variables by value expressions in a value expression.
 -- Since all variables are changed, one can change the kind of variables.
 compSubst :: forall c v w . (ValExprContext c v, VarDef w) => c v -> Map.Map v (ValExpr w) -> ValExpr v -> Either MinError (ValExpr w)
-compSubst ctx mp ve                   = compSubstView (view ve)
+compSubst ctx mp ve | not (null mismatches)    = Left $ MinError (T.pack ("Sort mismatches in map : " ++ show mismatches))
+                    | otherwise                = compSubstView (view ve)
   where
+    mismatches :: [ (v, ValExpr w) ]
+    mismatches = mismatchesSort mp
+
     compSubstView :: ValExprView v -> Either MinError (ValExpr w)
     compSubstView (Vconst c)                = unsafeConst c
     compSubstView (Vvar v)                  = case Map.lookup v mp of
